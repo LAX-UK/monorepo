@@ -10,7 +10,7 @@ import {
   publicRailNote,
   toLinkRow,
 } from "@/server/domain/editorial-links.vm";
-import { ConfirmActionDialog, Notice, Section, StaffButton, toast } from "@auction/staff-ui";
+import { ConfirmActionDialog, FormSection, Notice, StaffButton, toast } from "@auction/staff-ui";
 import { useCallback, useState } from "react";
 
 function useLinkSearch(spec: LinkSectionSpec) {
@@ -39,7 +39,7 @@ function LinkListSection({
   const note = publicRailNote(spec, items.length);
   const search = useLinkSearch(spec);
   return (
-    <Section id={`links-${spec.list}`} title={spec.heading} description={spec.description}>
+    <FormSection title={spec.heading} description={spec.description}>
       <div className="flex flex-col gap-3">
         <RelationListEditor
           label={spec.heading}
@@ -54,7 +54,7 @@ function LinkListSection({
         />
         {note ? <p className="text-staff-sm text-staff-muted">{note}</p> : null}
       </div>
-    </Section>
+    </FormSection>
   );
 }
 
@@ -155,11 +155,11 @@ export function EditorialLinkLists({
 /** What a new, unsaved item shows in place of the lists: they need a saved item to attach to. */
 export function EditorialLinksAfterFirstSave({ what }: { what: string }) {
   return (
-    <Section title="Linked records">
+    <FormSection title="Linked records">
       <p className="text-staff-sm text-staff-muted">
         {what} can be linked once the draft has been created. Create the draft first, then come back
         to this section.
       </p>
-    </Section>
+    </FormSection>
   );
 }

@@ -1,13 +1,16 @@
 "use client";
 
 import {
+  EditorialCheckbox,
+  EditorialSelectField,
+  EditorialTextArea,
+  EditorialTextField,
   type EntityFieldsProps,
   FieldSection,
   SeoSection,
   SlugField,
 } from "@/components/editorial/editorial-field-parts.client";
-import { CheckboxField, SelectField, TextAreaField, TextField } from "@/components/forms/fields";
-import { MediaUploadField } from "@/components/media-upload-field";
+import { EditorialImageField } from "@/components/editorial/editorial-image-field.client";
 import type { StoryForm } from "@/lib/editorial-entity-forms";
 import {
   STORY_KINDS,
@@ -16,6 +19,10 @@ import {
   storyCategoryOptions,
   storyKindHasField,
 } from "@/lib/editorial-story-kinds";
+import { FieldRow } from "@auction/staff-ui";
+
+/** The category menu has no empty option, so "use the kind's default" is a value of its own. */
+const DEFAULT_CATEGORY = "default";
 
 /** The fields only some kinds use. A field shows when the chosen kind uses it. */
 function StoryKindFields({ form, onChange, disabled, errors }: EntityFieldsProps<StoryForm>) {
@@ -25,37 +32,42 @@ function StoryKindFields({ form, onChange, disabled, errors }: EntityFieldsProps
   const label = STORY_KIND_LABELS[form.kind];
 
   return (
-    <FieldSection title={`${label} details`}>
-      {has("series") ? (
-        <TextField
-          name="series"
-          label="Series (optional)"
-          value={form.series}
-          error={errors.series}
-          maxLength={120}
-          disabled={disabled}
-          onChange={(value) => set("series", value)}
-        />
-      ) : null}
-      {has("episodeNumber") ? (
-        <TextField
-          name="episodeNumber"
-          label="Episode number (optional)"
-          type="number"
-          min={1}
-          value={form.episodeNumber}
-          error={errors.episodeNumber}
-          disabled={disabled}
-          onChange={(value) => set("episodeNumber", value)}
-        />
+    <FieldSection title={`${label} details`} description="Asked for because of the story's kind.">
+      {has("series") || has("episodeNumber") ? (
+        <FieldRow>
+          {has("series") ? (
+            <EditorialTextField
+              name="series"
+              label="Series"
+              optional
+              value={form.series}
+              error={errors.series}
+              maxLength={120}
+              disabled={disabled}
+              onChange={(value) => set("series", value)}
+            />
+          ) : null}
+          {has("episodeNumber") ? (
+            <EditorialTextField
+              name="episodeNumber"
+              label="Episode number"
+              optional
+              type="number"
+              min={1}
+              value={form.episodeNumber}
+              error={errors.episodeNumber}
+              disabled={disabled}
+              onChange={(value) => set("episodeNumber", value)}
+            />
+          ) : null}
+        </FieldRow>
       ) : null}
       {has("audioUrl") ? (
-        <TextField
+        <EditorialTextField
           name="audioUrl"
           label="Audio URL"
           type="url"
-          className="sm:col-span-2"
-          hint="Link to the episode audio; must start with https://"
+          description="Link to the episode audio; it must start with https://"
           value={form.audioUrl}
           error={errors.audioUrl}
           maxLength={2048}
@@ -64,10 +76,11 @@ function StoryKindFields({ form, onChange, disabled, errors }: EntityFieldsProps
         />
       ) : null}
       {has("durationSeconds") ? (
-        <TextField
+        <EditorialTextField
           name="duration"
-          label="Duration (optional)"
-          hint="Minutes and seconds, e.g. 46:18, or 1:02:03 for over an hour"
+          label="Duration"
+          optional
+          description="Minutes and seconds, such as 46:18, or 1:02:03 for over an hour."
           value={form.duration}
           error={errors.duration}
           maxLength={9}
@@ -76,13 +89,14 @@ function StoryKindFields({ form, onChange, disabled, errors }: EntityFieldsProps
         />
       ) : null}
       {has("readMinutes") ? (
-        <TextField
+        <EditorialTextField
           name="readMinutes"
-          label="Reading time in minutes (optional)"
+          label="Reading time in minutes"
+          optional
           type="number"
           min={1}
           max={600}
-          hint="Leave blank to estimate it from the body."
+          description="Leave blank to estimate it from the body."
           value={form.readMinutes}
           error={errors.readMinutes}
           disabled={disabled}
@@ -90,10 +104,10 @@ function StoryKindFields({ form, onChange, disabled, errors }: EntityFieldsProps
         />
       ) : null}
       {has("publicationName") ? (
-        <TextField
+        <EditorialTextField
           name="publicationName"
           label="Publication"
-          hint="Where the piece appeared, e.g. Art Plugged"
+          description="Where the piece appeared, such as Art Plugged."
           value={form.publicationName}
           error={errors.publicationName}
           maxLength={300}
@@ -102,11 +116,11 @@ function StoryKindFields({ form, onChange, disabled, errors }: EntityFieldsProps
         />
       ) : null}
       {has("externalUrl") ? (
-        <TextField
+        <EditorialTextField
           name="externalUrl"
           label="Link to the piece"
           type="url"
-          hint="Must start with https://"
+          description="It must start with https://"
           value={form.externalUrl}
           error={errors.externalUrl}
           maxLength={2048}
@@ -124,62 +138,70 @@ export function StoryFields(props: EntityFieldsProps<StoryForm>) {
     onChange({ ...form, [key]: value });
   return (
     <>
-      <FieldSection title="Details">
+      <FieldSection title="Details" description="What it is and how it reads on lax.art.">
         <SlugField
           value={form.slug}
           error={errors.slug}
           disabled={disabled}
           onChange={(value) => set("slug", value)}
         />
-        <SelectField
+        <EditorialSelectField
           name="kind"
           label="Kind"
-          hint="Decides the format of the story and which details are asked for."
+          description="Decides the format of the story and which details are asked for."
           value={form.kind}
-          options={STORY_KINDS.map((kind) => ({ value: kind, label: STORY_KIND_LABELS[kind] }))}
+          error={errors.kind}
           disabled={disabled}
-          onChange={(value) => set("kind", value)}
+          options={STORY_KINDS.map((kind) => ({ value: kind, label: STORY_KIND_LABELS[kind] }))}
+          onValueChange={(value) => set("kind", value)}
         />
-        <TextField
+        <EditorialTextField
           name="title"
           label="Title"
-          className="sm:col-span-2"
           value={form.title}
           error={errors.title}
           maxLength={300}
-          required
           disabled={disabled}
           onChange={(value) => set("title", value)}
         />
-        <TextAreaField
+        <EditorialTextArea
           name="standfirst"
-          label="Standfirst (optional)"
-          className="sm:col-span-2"
+          label="Standfirst"
+          optional
           value={form.standfirst}
           error={errors.standfirst}
           maxLength={2000}
           disabled={disabled}
           onChange={(value) => set("standfirst", value)}
         />
-        <SelectField
-          name="category"
-          label="Category"
-          hint="The label shown on lax.art story cards."
-          value={form.category}
-          options={storyCategoryOptions(form.kind)}
-          disabled={disabled}
-          onChange={(value) => set("category", value)}
-        />
-        <TextField
-          name="authorName"
-          label="Author or host (optional)"
-          value={form.authorName}
-          error={errors.authorName}
-          maxLength={300}
-          disabled={disabled}
-          onChange={(value) => set("authorName", value)}
-        />
-        <CheckboxField
+        <FieldRow>
+          <EditorialSelectField
+            name="category"
+            label="Category"
+            description="The label on story cards."
+            value={form.category || DEFAULT_CATEGORY}
+            error={errors.category}
+            disabled={disabled}
+            options={storyCategoryOptions(form.kind).map((option) => ({
+              value: option.value || DEFAULT_CATEGORY,
+              label: option.label,
+            }))}
+            onValueChange={(value) =>
+              set("category", value === DEFAULT_CATEGORY ? "" : (value as StoryForm["category"]))
+            }
+          />
+          <EditorialTextField
+            name="authorName"
+            label="Author or host"
+            optional
+            value={form.authorName}
+            error={errors.authorName}
+            maxLength={300}
+            disabled={disabled}
+            onChange={(value) => set("authorName", value)}
+          />
+        </FieldRow>
+        <EditorialCheckbox
           name="featured"
           label="Featured on lax.art"
           checked={form.featured}
@@ -190,28 +212,27 @@ export function StoryFields(props: EntityFieldsProps<StoryForm>) {
 
       <StoryKindFields {...props} />
 
-      <FieldSection title="Media">
-        <TextField
+      <FieldSection title="Media" description="The cover image and an optional video.">
+        <EditorialImageField
+          name="coverMediaKey"
+          label="Cover image"
+          kind="editorial_cover"
+          value={form.coverMediaKey}
+          disabled={disabled}
+          onChange={(key) => set("coverMediaKey", key)}
+        />
+        <EditorialTextField
           name="videoUrl"
-          label="Video URL (optional)"
+          label="Video URL"
+          optional
           type="url"
-          className="sm:col-span-2"
-          hint="Must start with https://"
+          description="It must start with https://"
           value={form.videoUrl}
           error={errors.videoUrl}
           maxLength={2048}
           disabled={disabled}
           onChange={(value) => set("videoUrl", value)}
         />
-        <div className="sm:col-span-2">
-          <MediaUploadField
-            kind="editorial_cover"
-            label="Cover image"
-            value={form.coverMediaKey}
-            disabled={disabled}
-            onChange={(key) => set("coverMediaKey", key)}
-          />
-        </div>
       </FieldSection>
 
       <SeoSection form={form} onChange={onChange} disabled={disabled} errors={errors} />

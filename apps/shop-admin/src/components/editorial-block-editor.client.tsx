@@ -1,8 +1,7 @@
 "use client";
 
 import { EditorialBlockFields } from "@/components/editorial-block-fields.client";
-import { SelectField, TextAreaField } from "@/components/forms/fields";
-import { useFieldControlId } from "@/components/forms/form-field";
+import { editorialFieldId } from "@/components/editorial/editorial-field-parts.client";
 import {
   EDITORIAL_BLOCK_LABELS,
   EDITORIAL_BLOCK_TYPES,
@@ -15,8 +14,15 @@ import {
 import { moveItem, removeItem, replaceItem } from "@/lib/editorial-list-ops";
 import type { FieldErrors } from "@/lib/form-validation";
 import type { EditorialBlock } from "@auction/shop-contracts";
-import { EmptyState } from "@auction/staff-ui";
-import { Button } from "@auction/ui";
+import {
+  EmptyState,
+  EnumSelect,
+  Field,
+  StaffButton,
+  StaffTooltip,
+  TextArea,
+} from "@auction/staff-ui";
+import { ArrowDown, ArrowUp, CircleAlert, Plus, Trash2 } from "@auction/staff-ui/icons";
 import { type ReactNode, useState } from "react";
 
 type EditorialBlockEditorProps = {
@@ -34,6 +40,7 @@ const BLOCK_TYPE_OPTIONS = EDITORIAL_BLOCK_TYPES.map((type) => ({
   label: EDITORIAL_BLOCK_LABELS[type],
 }));
 
+/** For a block with no simple form, or formatting a form would lose. */
 function BlockJsonFields({
   block,
   onChange,
@@ -46,17 +53,19 @@ function BlockJsonFields({
   const [text, setText] = useState(() => JSON.stringify(block, null, 2));
   const [error, setError] = useState<string | null>(null);
   return (
-    <div className="space-y-1">
-      <p className="text-xs text-on-surface-variant">
-        This block has no simple form (or carries formatting the form would lose). Edit it as JSON.
-      </p>
-      <TextAreaField
-        label="Block JSON"
-        rows={6}
-        monospace
+    <Field
+      label="Block JSON"
+      description="This block has no simple form, or carries formatting a form would lose. Edit it as JSON; changes apply once the JSON is valid."
+      error={error}
+      disabled={disabled}
+    >
+      <TextArea
+        rows={8}
+        spellCheck={false}
+        className="font-mono text-staff-xs"
         value={text}
-        disabled={disabled}
-        onChange={(next) => {
+        onChange={(event) => {
+          const next = event.target.value;
           setText(next);
           const parsed = parseSingleBlockJson(next);
           if (!parsed.ok) {
@@ -68,12 +77,7 @@ function BlockJsonFields({
           if (first) onChange(first);
         }}
       />
-      {error ? (
-        <p role="alert" className="text-xs text-error">
-          {error} Changes are not applied until the JSON is valid.
-        </p>
-      ) : null}
-    </div>
+    </Field>
   );
 }
 
@@ -87,16 +91,47 @@ function BlockCard({
   error: string | undefined;
   children: ReactNode;
 }) {
-  const id = useFieldControlId(`block-${number}`);
   return (
     <li
-      id={id}
+      id={editorialFieldId(`block-${number}`)}
       tabIndex={-1}
-      className="space-y-3 rounded border bg-surface p-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+      className="staff-focus flex flex-col gap-4 rounded-staff-md border border-staff-line bg-staff-surface p-4"
     >
       {children}
-      {error ? <p className="text-xs font-medium text-error">{error}</p> : null}
+      {error ? (
+        <p className="flex items-start gap-1.5 text-staff-xs font-medium text-staff-danger">
+          <CircleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
+          {error}
+        </p>
+      ) : null}
     </li>
+  );
+}
+
+function BlockControl({
+  label,
+  disabled,
+  onClick,
+  children,
+}: {
+  label: string;
+  disabled: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <StaffTooltip label={label}>
+      <StaffButton
+        type="button"
+        variant="ghost"
+        size="icon-sm"
+        aria-label={label}
+        disabled={disabled}
+        onClick={onClick}
+      >
+        {children}
+      </StaffButton>
+    </StaffTooltip>
   );
 }
 
@@ -109,59 +144,50 @@ export function EditorialBlockEditor({
   const [newType, setNewType] = useState<EditorialBlockType>("richText");
 
   return (
-    <section className="space-y-3" aria-label="Body blocks">
-      <h3 className="text-base font-medium">Body blocks ({items.length})</h3>
+    <div className="flex flex-col gap-4">
       {items.length === 0 ? (
         <EmptyState
           size="compact"
           headingLevel="h3"
           illustration="easel"
           title="No blocks yet"
-          description="Add one below."
+          description="Choose a block type below and add the first one."
         />
       ) : (
-        <ol className="space-y-3">
+        <ol aria-label="Body blocks" className="flex flex-col gap-3">
           {items.map((item, index) => {
-            const label = `block ${index + 1} (${EDITORIAL_BLOCK_LABELS[item.block.type] ?? "Unknown"})`;
+            const typeLabel = EDITORIAL_BLOCK_LABELS[item.block.type] ?? "Unknown";
+            const label = `block ${index + 1} (${typeLabel})`;
             const updateBlock = (block: EditorialBlock) =>
               onChange(replaceItem(items, index, { ...item, block }));
             return (
               <BlockCard key={item.key} number={index + 1} error={errors[`block-${index + 1}`]}>
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <p className="text-sm font-medium">
-                    {index + 1}. {EDITORIAL_BLOCK_LABELS[item.block.type] ?? item.block.type}
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-staff-sm font-semibold text-staff-fg">
+                    {index + 1}. {typeLabel}
                   </p>
-                  <div className="flex flex-wrap gap-1">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
+                  <div className="flex shrink-0 items-center gap-0.5">
+                    <BlockControl
+                      label={`Move ${label} up`}
                       disabled={disabled || index === 0}
-                      aria-label={`Move ${label} up`}
                       onClick={() => onChange(moveItem(items, index, -1))}
                     >
-                      Up
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
+                      <ArrowUp aria-hidden />
+                    </BlockControl>
+                    <BlockControl
+                      label={`Move ${label} down`}
                       disabled={disabled || index === items.length - 1}
-                      aria-label={`Move ${label} down`}
                       onClick={() => onChange(moveItem(items, index, 1))}
                     >
-                      Down
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
+                      <ArrowDown aria-hidden />
+                    </BlockControl>
+                    <BlockControl
+                      label={`Remove ${label}`}
                       disabled={disabled}
-                      aria-label={`Remove ${label}`}
                       onClick={() => onChange(removeItem(items, index))}
                     >
-                      Remove
-                    </Button>
+                      <Trash2 aria-hidden />
+                    </BlockControl>
                   </div>
                 </div>
                 {isStructuredBlock(item.block) ? (
@@ -179,27 +205,21 @@ export function EditorialBlockEditor({
         </ol>
       )}
       <div className="flex flex-wrap items-end gap-2">
-        <div className="min-w-[12rem]">
-          <SelectField
-            label="New block type"
-            value={newType}
-            options={BLOCK_TYPE_OPTIONS}
-            disabled={disabled}
-            onChange={setNewType}
-          />
-        </div>
-        <Button
+        <Field label="New block type" disabled={disabled} className="w-full sm:w-60">
+          <EnumSelect value={newType} onValueChange={setNewType} options={BLOCK_TYPE_OPTIONS} />
+        </Field>
+        <StaffButton
           type="button"
-          variant="outline"
-          size="sm"
+          variant="secondary"
+          icon={<Plus aria-hidden />}
           disabled={disabled}
           onClick={() =>
             onChange([...items, { key: newKey(), block: createEditorialBlock(newType) }])
           }
         >
           Add block
-        </Button>
+        </StaffButton>
       </div>
-    </section>
+    </div>
   );
 }

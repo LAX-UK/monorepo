@@ -20,9 +20,9 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push, replace, refresh: vi.fn() }),
   usePathname: () => "/editorial/exhibitions/e-1",
 }));
-vi.mock("@auction/ui", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@auction/ui")>()),
-  toast: { success: vi.fn() },
+vi.mock("sonner", () => ({
+  toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), warning: vi.fn() }),
+  Toaster: () => null,
 }));
 
 // The date pickers measure and match the viewport, which jsdom does not implement.
@@ -81,6 +81,8 @@ function save() {
   fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
 }
 
+const saved = () => screen.findByRole("button", { name: "Saved" });
+
 describe("exhibition editor saving", () => {
   beforeEach(() => {
     for (const action of [
@@ -112,14 +114,14 @@ describe("exhibition editor saving", () => {
         payload: expect.objectContaining({ title: "Summer show 2026", subtitle: null }),
       }),
     );
-    expect(await screen.findByText("Saved 11:45")).toBeInTheDocument();
+    expect(await saved()).toBeDisabled();
   });
 
   it("sends the new version on the next save", async () => {
     renderEditor();
     editTitle("One");
     save();
-    await screen.findByText("Saved 11:45");
+    await saved();
     editTitle("Two");
     save();
     await waitFor(() => expect(saveEditorialEntity).toHaveBeenCalledTimes(2));
@@ -204,7 +206,7 @@ describe("exhibition editor when someone else saved first", () => {
     fireEvent.click(screen.getByRole("button", { name: "Discard my changes and reload" }));
     await waitFor(() => expect(screen.getByLabelText("Title")).toHaveValue("Their title"));
     expect(screen.queryByText(/Someone else saved/)).not.toBeInTheDocument();
-    expect(screen.getByText("Saved 11:30")).toBeInTheDocument();
+    expect(screen.getByText(/11:30/)).toBeInTheDocument();
   });
 
   it("keeps the editor's changes by saving again on top of the new version, after a confirm", async () => {
@@ -235,34 +237,44 @@ describe("exhibition editor publishing and leaving", () => {
     setEditorialPublication.mockResolvedValue({ ok: true, data: { version: THEIRS } });
     renderEditor();
     fireEvent.click(screen.getByRole("button", { name: "Publish" }));
-    const dialog = await screen.findByRole("dialog", { name: "Publish “Summer show”" });
-    expect(dialog).toHaveTextContent("goes live on lax.art");
+    const dialog = await screen.findByRole("dialog", { name: "Publish “Summer show”?" });
+    expect(dialog).toHaveTextContent("lax.test/exhibitions/summer-show goes live on lax.art");
     expect(setEditorialPublication).not.toHaveBeenCalled();
 
-    fireEvent.click(within(dialog).getByRole("button", { name: "Publish" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Publish exhibition" }));
     await waitFor(() => expect(setEditorialPublication).toHaveBeenCalledTimes(1));
     expect(await screen.findByRole("button", { name: "Unpublish" })).toBeInTheDocument();
     expect(screen.getByText("Published")).toBeInTheDocument();
   });
 
-  it("will not publish or preview with unsaved changes", () => {
+  it("states what unpublishing changes on lax.art", async () => {
+    render(
+      <ExhibitionEditor
+        detail={{ ...detail, status: "published" }}
+        venues={[]}
+        artPublicUrl="https://lax.test"
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Unpublish" }));
+    const dialog = await screen.findByRole("dialog", { name: "Unpublish “Summer show”?" });
+    expect(dialog).toHaveTextContent("The page at lax.test/exhibitions/summer-show stops showing");
+    expect(
+      within(dialog).getByRole("button", { name: "Unpublish exhibition" }),
+    ).toBeInTheDocument();
+  });
+
+  it("will not publish with unsaved changes", () => {
     renderEditor();
     editTitle("Changed");
     expect(screen.getByRole("button", { name: "Publish" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Create preview link" })).toBeDisabled();
   });
 
   it("holds a click on a link while there are unsaved changes, until the editor agrees", async () => {
-    render(
-      <>
-        <a href="/editorial/exhibitions">Exhibitions</a>
-        <ExhibitionEditor detail={detail} venues={[]} artPublicUrl={null} />
-      </>,
-    );
+    renderEditor();
     editTitle("Changed");
     fireEvent.click(screen.getByRole("link", { name: "Exhibitions" }));
     expect(
-      await screen.findByRole("dialog", { name: "Discard unsaved changes?" }),
+      await screen.findByRole("dialog", { name: "Discard changes to “Summer show”?" }),
     ).toBeInTheDocument();
     expect(push).not.toHaveBeenCalled();
 
@@ -294,17 +306,19 @@ describe("exhibition editor publishing and leaving", () => {
       editTitle("Changed");
       await pressBack();
       expect(
-        await screen.findByRole("dialog", { name: "Discard unsaved changes?" }),
+        await screen.findByRole("dialog", { name: "Discard changes to “Summer show”?" }),
       ).toBeInTheDocument();
 
       fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
-      expect(screen.queryByRole("dialog", { name: "Discard unsaved changes?" })).toBeNull();
+      expect(
+        screen.queryByRole("dialog", { name: "Discard changes to “Summer show”?" }),
+      ).toBeNull();
       expect(screen.getByLabelText("Title")).toHaveValue("Changed");
 
       // The guard re-armed, so a second Back asks again.
       await pressBack();
       expect(
-        await screen.findByRole("dialog", { name: "Discard unsaved changes?" }),
+        await screen.findByRole("dialog", { name: "Discard changes to “Summer show”?" }),
       ).toBeInTheDocument();
     });
 
@@ -312,11 +326,13 @@ describe("exhibition editor publishing and leaving", () => {
       renderEditor();
       editTitle("Changed");
       save();
-      await screen.findByText("Saved 11:45");
+      await saved();
       await settle();
 
       await pressBack();
-      expect(screen.queryByRole("dialog", { name: "Discard unsaved changes?" })).toBeNull();
+      expect(
+        screen.queryByRole("dialog", { name: "Discard changes to “Summer show”?" }),
+      ).toBeNull();
     });
   });
 });

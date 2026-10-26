@@ -30,10 +30,6 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
   usePathname: () => "/editorial/exhibitions/e-1",
 }));
-vi.mock("@auction/ui", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@auction/ui")>()),
-  toast: { success: vi.fn() },
-}));
 vi.mock("sonner", () => ({
   toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), warning: vi.fn() }),
   Toaster: () => null,
