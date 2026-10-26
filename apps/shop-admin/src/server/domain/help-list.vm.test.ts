@@ -1,59 +1,96 @@
 import type { HelpAdminArticleRow, HelpAdminCategoryRow } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 import {
-  helpArticleListUrl,
   helpArticlesApiPath,
-  isFilteredHelpArticleList,
+  helpArticlesList,
+  inView,
   movedOrder,
-  parseHelpArticleListSearch,
+  parseHelpArticlesState,
+  parseHelpCategoriesState,
+  statusCounts,
   toHelpArticleListRow,
   toHelpCategoryListRow,
 } from "./help-list.vm";
 
 const CATEGORY = "11111111-1111-4111-8111-111111111111";
 
-describe("parseHelpArticleListSearch", () => {
-  it("reads the term, status and category from the URL", () => {
+describe("parseHelpArticlesState", () => {
+  it("reads the term, view, category and open question from the URL", () => {
     expect(
-      parseHelpArticleListSearch({ q: "  deliver   abroad ", status: "draft", category: CATEGORY }),
-    ).toEqual({ q: "deliver abroad", status: "draft", categoryId: CATEGORY });
+      parseHelpArticlesState({
+        q: "deliver abroad",
+        view: "draft",
+        category: CATEGORY,
+        article: "a1",
+      }),
+    ).toEqual({
+      view: "draft",
+      q: "deliver abroad",
+      filters: { category: CATEGORY },
+      open: "a1",
+    });
   });
 
   it("falls back to defaults for anything unrecognised", () => {
-    expect(parseHelpArticleListSearch({ status: "archived", category: "not-a-uuid" })).toEqual({
-      q: "",
-      status: "all",
-      categoryId: null,
+    expect(parseHelpArticlesState({ view: "archived", category: "not-a-uuid" })).toEqual({
+      view: "all",
+      filters: {},
     });
   });
 
   it("takes the first of a repeated parameter and caps the term", () => {
-    const search = parseHelpArticleListSearch({ q: ["a".repeat(200), "b"] });
-    expect(search.q).toHaveLength(120);
+    expect(parseHelpArticlesState({ q: ["a".repeat(200), "b"] }).q).toHaveLength(120);
+  });
+
+  it("never carries a sort: the order is the manual position", () => {
+    expect(parseHelpArticlesState({ sort: "created_desc" }).sort).toBeUndefined();
+    expect(helpArticlesList.defaultSortState().columnId).toBe("position");
   });
 });
 
 describe("list URLs", () => {
-  it("leaves out defaults in the page address and puts every filter in the API path", () => {
-    const search = { q: "pay", status: "published" as const, categoryId: CATEGORY };
-    expect(helpArticleListUrl(search)).toBe(`/help?q=pay&status=published&category=${CATEGORY}`);
-    expect(helpArticlesApiPath(search)).toBe(
-      `help/articles?q=pay&status=published&categoryId=${CATEGORY}`,
-    );
-    const none = { q: "", status: "all" as const, categoryId: null };
-    expect(helpArticleListUrl(none)).toBe("/help");
+  it("leaves defaults out of the page address and puts the search and category in the API path", () => {
+    const state = parseHelpArticlesState({ q: "pay", view: "published", category: CATEGORY });
+    expect(helpArticlesList.href(state)).toBe(`/help?view=published&q=pay&category=${CATEGORY}`);
+    // The view is applied on the page so every view can be counted.
+    expect(helpArticlesApiPath(state)).toBe(`help/articles?q=pay&categoryId=${CATEGORY}`);
+    const none = parseHelpArticlesState({});
+    expect(helpArticlesList.href(none)).toBe("/help");
     expect(helpArticlesApiPath(none)).toBe("help/articles");
   });
 
-  it("knows when a view is filtered", () => {
-    expect(isFilteredHelpArticleList({ q: "", status: "all", categoryId: null })).toBe(false);
-    expect(isFilteredHelpArticleList({ q: "", status: "draft", categoryId: null })).toBe(true);
-    expect(isFilteredHelpArticleList({ q: "", status: "all", categoryId: CATEGORY })).toBe(true);
+  it("opens a question in the panel with ?article=", () => {
+    expect(helpArticlesList.panelHref(parseHelpArticlesState({}), "a1")).toBe("/help?article=a1");
+  });
+
+  it("opens a category in the panel with ?category=", () => {
+    const state = parseHelpCategoriesState({ category: "c1", view: "draft" });
+    expect(state.open).toBe("c1");
+  });
+});
+
+describe("views", () => {
+  const rows = [{ status: "published" }, { status: "draft" }, { status: "published" }];
+
+  it("counts rows per status and filters them by view", () => {
+    expect(statusCounts(rows)).toEqual({ published: 2, draft: 1 });
+    expect(inView(rows, "all")).toHaveLength(3);
+    expect(inView(rows, "published")).toHaveLength(2);
+    expect(inView(rows, "draft")).toHaveLength(1);
+  });
+
+  it("adds the counts up per view", () => {
+    const views = helpArticlesList.views(parseHelpArticlesState({}), statusCounts(rows));
+    expect(views.map((view) => [view.label, view.count])).toEqual([
+      ["All", 3],
+      ["Published", 2],
+      ["Drafts", 1],
+    ]);
   });
 });
 
 describe("row mapping", () => {
-  it("formats the update time in London", () => {
+  it("keeps the update time as sent, for the list to format in London", () => {
     const row: HelpAdminArticleRow = {
       id: "a",
       slug: "how-do-i-pay",
@@ -68,7 +105,8 @@ describe("row mapping", () => {
     expect(toHelpArticleListRow(row)).toMatchObject({
       question: "How do I pay?",
       categoryTitle: "Buying",
-      updated: expect.stringContaining("13:00"),
+      categoryId: CATEGORY,
+      updatedAt: "2026-07-01T12:00:00.000Z",
     });
   });
 

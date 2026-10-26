@@ -1,52 +1,46 @@
 import { describe, expect, it } from "vitest";
 import {
-  merchandiseApiQuery,
-  merchandiseListUrl,
-  parseMerchandiseListSearch,
+  merchandiseList,
+  priceRangeLabel,
   toMerchandiseListRow,
+  variantsLabel,
 } from "./merchandise-list.vm";
 
-describe("parseMerchandiseListSearch", () => {
-  it("reads the URL state", () => {
-    expect(parseMerchandiseListSearch({ q: " tote ", status: "archived", cursor: "abc" })).toEqual({
-      q: "tote",
-      status: "archived",
-      cursor: "abc",
-    });
+describe("merchandiseList", () => {
+  it("reads the view, search and open product from the URL", () => {
+    expect(
+      merchandiseList.parse({ q: " tote ", view: "archived", cursor: "abc", product: "p1" }),
+    ).toEqual({ view: "archived", q: "tote", cursor: "abc", filters: {}, open: "p1" });
   });
 
   it("falls back to defaults for anything unrecognised", () => {
-    expect(parseMerchandiseListSearch({ status: "deleted", q: ["a", "b"] })).toEqual({
+    expect(merchandiseList.parse({ view: "deleted", q: ["a", "b"] })).toEqual({
+      view: "all",
       q: "a",
-      status: "all",
-      cursor: undefined,
+      filters: {},
     });
   });
 
-  it("caps the search text", () => {
-    expect(parseMerchandiseListSearch({ q: "x".repeat(300) }).q).toHaveLength(100);
-  });
-});
-
-describe("merchandiseListUrl", () => {
-  it("leaves defaults out of the address", () => {
-    expect(merchandiseListUrl({ q: "", status: "all", cursor: undefined })).toBe("/merchandise");
+  it("caps the search text and never carries a sort", () => {
+    expect(merchandiseList.parse({ q: "x".repeat(300) }).q).toHaveLength(100);
+    expect(merchandiseList.parse({ sort: "created_asc" }).sort).toBeUndefined();
   });
 
-  it("carries search, status and cursor", () => {
-    expect(merchandiseListUrl({ q: "tote bag", status: "active", cursor: "c1" })).toBe(
-      "/merchandise?q=tote+bag&status=active&cursor=c1",
-    );
-  });
-});
-
-describe("merchandiseApiQuery", () => {
-  it("omits the all filter", () => {
-    expect(merchandiseApiQuery({ q: "", status: "all", cursor: "c1" })).toEqual({});
-    expect(merchandiseApiQuery({ q: "a", status: "archived", cursor: undefined })).toEqual({
-      q: "a",
-      status: "archived",
+  it("asks the API for a status only for a status view", () => {
+    expect(merchandiseList.apiQuery(merchandiseList.parse({}))).toEqual({});
+    expect(merchandiseList.apiQuery(merchandiseList.parse({ view: "active", q: "tote" }))).toEqual({
+      status: "active",
+      q: "tote",
     });
+  });
+
+  it("labels the views with their counts", () => {
+    const views = merchandiseList.views(merchandiseList.parse({}), { active: 4, archived: 1 });
+    expect(views.map((view) => [view.label, view.count])).toEqual([
+      ["All", 5],
+      ["On sale", 4],
+      ["Archived", 1],
+    ]);
   });
 });
 
@@ -62,33 +56,30 @@ describe("toMerchandiseListRow", () => {
     totalOnHand: 12,
   };
 
-  it("shows a price range, the variant count and stock", () => {
+  it("carries the figures the list formats", () => {
     expect(toMerchandiseListRow(item)).toEqual({
       id: "p1",
       title: "Tote bag",
       slug: "tote-bag",
       status: "active",
-      variants: "2 variants",
-      price: "£15.00 – £25.00",
-      stock: "12",
+      variantCount: 2,
+      fromPricePence: 1500,
+      toPricePence: 2500,
+      totalOnHand: 12,
     });
   });
+});
 
-  it("shows one price when the range is a single value", () => {
-    const row = toMerchandiseListRow({ ...item, variantCount: 1, toPricePence: 1500 });
-    expect(row.price).toBe("£15.00");
-    expect(row.variants).toBe("1 variant");
+describe("labels", () => {
+  it("shows a price range, or one price when the range is a single value", () => {
+    expect(priceRangeLabel(1500, 2500)).toBe("£15.00 – £25.00");
+    expect(priceRangeLabel(1500, 1500)).toBe("£15.00");
+    expect(priceRangeLabel(null, null)).toBeNull();
   });
 
-  it("copes with a product that has no variants on sale", () => {
-    const row = toMerchandiseListRow({
-      ...item,
-      variantCount: 0,
-      fromPricePence: null,
-      toPricePence: null,
-      totalOnHand: 0,
-    });
-    expect(row.price).toBe("—");
-    expect(row.variants).toBe("No variants on sale");
+  it("counts variants on sale", () => {
+    expect(variantsLabel(2)).toBe("2 variants");
+    expect(variantsLabel(1)).toBe("1 variant");
+    expect(variantsLabel(0)).toBe("No variants on sale");
   });
 });

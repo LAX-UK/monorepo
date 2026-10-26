@@ -1,65 +1,53 @@
-import { formatAdminDetailGbpPence } from "@/lib/admin-detail-format";
 import type { MerchandiseProductListItem, MerchandiseStatus } from "@auction/shop-contracts";
+import { formatStaffMoney } from "@auction/staff-ui";
+import { staffStatusLabel } from "./staff-status";
+import { defineWorkList } from "./work-list.vm";
 
-export type MerchandiseStatusFilter = "all" | MerchandiseStatus;
+export const MERCHANDISE_SEARCH_MAX_LENGTH = 100;
 
-export type MerchandiseListSearch = {
-  q: string;
-  status: MerchandiseStatusFilter;
-  cursor: string | undefined;
-};
+/*
+ * Products: a view for all, on sale and archived products, a search by title, slug or SKU and the
+ * product open in the panel (`?product=`). The API orders newest first, with the id as a
+ * tiebreaker, and the rows carry no created date, so the list shows no sort: `created` is the one
+ * sort key and is never sent to the API.
+ */
+export const merchandiseList = defineWorkList({
+  path: "/merchandise",
+  views: [
+    { id: "all", label: "All", api: {} },
+    {
+      id: "active",
+      label: staffStatusLabel("merchandise", "active"),
+      api: { status: "active" },
+      statuses: ["active"],
+    },
+    {
+      id: "archived",
+      label: staffStatusLabel("merchandise", "archived"),
+      api: { status: "archived" },
+      statuses: ["archived"],
+    },
+  ],
+  defaultView: "all",
+  filters: {},
+  sorts: { created: { asc: "created", desc: "created" } },
+  defaultSort: "created",
+  panelParam: "product",
+  searchMaxLength: MERCHANDISE_SEARCH_MAX_LENGTH,
+});
 
 export type MerchandiseListRow = {
   id: string;
   title: string;
   slug: string;
   status: MerchandiseStatus;
-  /** "3 variants", or "No variants on sale" when every variant is archived. */
-  variants: string;
-  price: string;
-  stock: string;
+  /** Variants still on sale. */
+  variantCount: number;
+  fromPricePence: number | null;
+  toPricePence: number | null;
+  /** Stock on hand across the variants on sale. */
+  totalOnHand: number;
 };
-
-function first(value: string | string[] | undefined): string {
-  return (Array.isArray(value) ? value[0] : value) ?? "";
-}
-
-/** Reads `q`, `status` and `cursor` from the URL; anything unrecognised falls back to its default. */
-export function parseMerchandiseListSearch(params: {
-  q?: string | string[];
-  status?: string | string[];
-  cursor?: string | string[];
-}): MerchandiseListSearch {
-  const status = first(params.status);
-  return {
-    q: first(params.q).trim().slice(0, 100),
-    status: status === "active" || status === "archived" ? status : "all",
-    cursor: first(params.cursor).trim() || undefined,
-  };
-}
-
-/** The query the API list route takes for a search state; `all` is expressed by leaving it out. */
-export function merchandiseApiQuery(search: MerchandiseListSearch): Record<string, string> {
-  return {
-    ...(search.q ? { q: search.q } : {}),
-    ...(search.status !== "all" ? { status: search.status } : {}),
-  };
-}
-
-/** List URL for a search state, leaving out defaults so the address stays short and shareable. */
-export function merchandiseListUrl(search: MerchandiseListSearch): string {
-  const params = new URLSearchParams(merchandiseApiQuery(search));
-  if (search.cursor) params.set("cursor", search.cursor);
-  const query = params.toString();
-  return `/merchandise${query ? `?${query}` : ""}`;
-}
-
-function priceRange(from: number | null, to: number | null): string {
-  if (from === null || to === null) return "—";
-  return from === to
-    ? formatAdminDetailGbpPence(from)
-    : `${formatAdminDetailGbpPence(from)} – ${formatAdminDetailGbpPence(to)}`;
-}
 
 export function toMerchandiseListRow(item: MerchandiseProductListItem): MerchandiseListRow {
   return {
@@ -67,11 +55,23 @@ export function toMerchandiseListRow(item: MerchandiseProductListItem): Merchand
     title: item.title,
     slug: item.slug,
     status: item.status,
-    variants:
-      item.variantCount === 0
-        ? "No variants on sale"
-        : `${item.variantCount} ${item.variantCount === 1 ? "variant" : "variants"}`,
-    price: priceRange(item.fromPricePence, item.toPricePence),
-    stock: String(item.totalOnHand),
+    variantCount: item.variantCount,
+    fromPricePence: item.fromPricePence,
+    toPricePence: item.toPricePence,
+    totalOnHand: item.totalOnHand,
   };
+}
+
+/** "3 variants", or "No variants on sale" when every variant is archived. */
+export function variantsLabel(count: number): string {
+  if (count === 0) return "No variants on sale";
+  return `${count} ${count === 1 ? "variant" : "variants"}`;
+}
+
+/** "£15.00" or "£15.00 – £25.00"; null when no variant is on sale. */
+export function priceRangeLabel(from: number | null, to: number | null): string | null {
+  if (from === null || to === null) return null;
+  return from === to
+    ? formatStaffMoney(from)
+    : `${formatStaffMoney(from)} – ${formatStaffMoney(to)}`;
 }
