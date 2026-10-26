@@ -2,6 +2,7 @@
 
 import { SofCaseReviewActionsSection } from "@/components/admin/compliance-sof-board/sof-case-context-rail";
 import { SofCaseDetailClient } from "@/components/admin/compliance-sof-board/sof-case-detail-client";
+import { SofCaseTimeline } from "@/components/admin/compliance-sof-board/sof-case-timeline";
 import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
 import { usePinPageAction } from "@/components/admin/staff/use-pin-page-action";
 import { parseAdminListReturnTarget } from "@/lib/admin/admin-list-return-context";
@@ -13,6 +14,7 @@ import {
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminSourceOfFundsDetail } from "@/lib/data/http/compliance.server";
 import type { AdminSofTableRow } from "@/lib/data/view-models/admin-sof-table.vm";
+import { buildSofTimeline } from "@/lib/data/view-models/admin-sof-timeline.vm";
 import {
   DetailPage,
   OverflowMenu,
@@ -91,6 +93,9 @@ export function SofCaseDetailShell({
           { id: "documents", label: "Documents", value: String(documents) },
         ]}
       />
+      <SofCaseTimeline
+        steps={buildSofTimeline({ row, detail, canTriage, canDecide, currentUserId })}
+      />
       <SofCaseReviewActionsSection
         row={row}
         detail={detail}
@@ -102,9 +107,6 @@ export function SofCaseDetailShell({
         row={row}
         detail={detail}
         readOnly={row.status !== "pending"}
-        canTriage={canTriage}
-        canDecide={canDecide}
-        currentUserId={currentUserId}
         {...(success != null ? { success } : {})}
         {...(error != null ? { error } : {})}
       />

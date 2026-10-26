@@ -179,11 +179,11 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
             const current = selectedId === doc.id;
             return (
               <li key={doc.id}>
-                <button
-                  type="button"
+                <StaffButton
+                  variant="ghost"
                   aria-current={current ? "true" : undefined}
                   className={cn(
-                    "staff-focus flex w-full flex-col gap-0.5 rounded-staff-md border px-3 py-2 text-left text-staff-sm",
+                    "h-auto w-full flex-col items-start justify-start gap-0.5 whitespace-normal rounded-staff-md border px-3 py-2 text-left text-staff-sm",
                     current
                       ? "border-staff-ink bg-staff-hover"
                       : "border-staff-line hover:bg-staff-hover",
@@ -198,7 +198,7 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
                     {formatDateTime(doc.uploadedAt)}
                     {reviewed ? " · Reviewed" : ""}
                   </span>
-                </button>
+                </StaffButton>
               </li>
             );
           })}

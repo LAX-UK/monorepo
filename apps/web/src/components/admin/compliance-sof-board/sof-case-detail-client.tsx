@@ -1,7 +1,6 @@
 "use client";
 
 import { SofCaseAuditTrail } from "@/components/admin/compliance-sof-board/sof-case-audit-trail";
-import { SofCaseTimeline } from "@/components/admin/compliance-sof-board/sof-case-timeline";
 import { SofEvidenceReviewer } from "@/components/admin/compliance-sof-board/sof-evidence-reviewer";
 import { SofSettlementBreakdown } from "@/components/admin/compliance-sof-board/sof-settlement-breakdown";
 import {
@@ -10,7 +9,6 @@ import {
 } from "@/lib/admin/compliance-error-messages";
 import type { AdminSourceOfFundsDetail } from "@/lib/data/http/compliance.server";
 import type { AdminSofTableRow } from "@/lib/data/view-models/admin-sof-table.vm";
-import { buildSofTimeline } from "@/lib/data/view-models/admin-sof-timeline.vm";
 import {
   KeyValueList,
   Notice,
@@ -28,26 +26,13 @@ type Props = {
   row: AdminSofTableRow;
   detail: AdminSourceOfFundsDetail;
   readOnly: boolean;
-  canTriage: boolean;
-  canDecide: boolean;
-  currentUserId: string;
   success?: string | null;
   error?: string | null;
 };
 
 /** The case's workflow, evidence, settlement exposure, why it exists and its review history. */
-export function SofCaseDetailClient({
-  row,
-  detail,
-  readOnly,
-  canTriage,
-  canDecide,
-  currentUserId,
-  success,
-  error,
-}: Props) {
+export function SofCaseDetailClient({ row, detail, readOnly, success, error }: Props) {
   const router = useRouter();
-  const steps = buildSofTimeline({ row, detail, canTriage, canDecide, currentUserId });
   const staleConflict = Boolean(error && isSofStaleConflictMessage(error));
   const blocked = detail.blockedPayments.length;
 
@@ -71,8 +56,6 @@ export function SofCaseDetailClient({
           {error}
         </Notice>
       ) : null}
-
-      <SofCaseTimeline steps={steps} />
 
       <SofEvidenceReviewer caseId={row.id} row={row} detail={detail} readOnly={readOnly} />
 
