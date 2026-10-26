@@ -85,6 +85,7 @@ describe("buy block copy", () => {
       priceLabel: "£120.00",
       vatNote: "Includes VAT",
       editionSize: "Limited edition of 24",
+      editionShort: "Edition of 24",
       availability: "available",
       availabilityLabel: "Available",
       deliveryLine: shopDeliveryLine(),

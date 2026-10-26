@@ -235,8 +235,10 @@ export function ArtworkBuyBox({
       {barVisible ? (
         <MarketingStickyActionBar ariaLabel="Buy this edition" className="shop-buy-bar">
           <div className="shop-buy-bar__price">
-            <p className="shop-buy-bar__amount">{purchase.priceLabel}</p>
-            <p className="shop-buy-bar__vat">{purchase.vatNote}</p>
+            <p className="shop-buy-bar__amount">
+              {purchase.priceLabel} <span className="shop-buy-bar__vat">incl. VAT</span>
+            </p>
+            <p className="shop-buy-bar__edition">{purchase.editionShort}</p>
           </div>
           <div ref={barRef} className="shop-buy-bar__action">
             {actionButton("bar")}
