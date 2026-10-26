@@ -2,6 +2,7 @@
 
 import { RelatedRecordsSection } from "@/components/admin/people/related-records-section";
 import { useTelephoneBookingActions } from "@/components/admin/sale-detail/tabs/use-telephone-booking-actions";
+import { CsvExportMenu } from "@/components/admin/staff/csv-export-menu";
 import { downloadSaleTelephoneBookingsCsv } from "@/lib/admin/export-sale-telephone-bookings-csv";
 import { staffTelephoneBookingStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminTelephoneBookingRow } from "@/lib/data/http/admin.server";
@@ -23,7 +24,6 @@ import {
   PersonCell,
   Section,
   SegmentedControl,
-  StaffButton,
   StaffDate,
   type StaffLinkComponent,
   StaffMoney,
@@ -181,14 +181,14 @@ export function SaleTelephoneBookingsTab({
           title="Telephone bookings"
           description="Confirm lines, assign clerks and follow telephone bidding."
           action={
-            <StaffButton
-              size="sm"
-              variant="secondary"
-              {...(rows.length === 0 ? { disabledReason: "There are no bookings to export" } : {})}
-              onClick={() => downloadSaleTelephoneBookingsCsv(rows, sale.title)}
-            >
-              Export CSV
-            </StaffButton>
+            <CsvExportMenu
+              noun="bookings"
+              shown={filtered.length}
+              total={rows.length}
+              onExport={(scope) =>
+                downloadSaleTelephoneBookingsCsv(scope === "shown" ? filtered : rows, sale.title)
+              }
+            />
           }
           label="Telephone bookings"
           columns={columns}
