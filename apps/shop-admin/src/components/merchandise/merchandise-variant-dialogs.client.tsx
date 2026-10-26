@@ -1,11 +1,8 @@
 "use client";
 
-import { AdminMutationFeedback } from "@/components/admin-mutation-feedback";
-import { TextField } from "@/components/forms/fields";
-import { FormErrorSummary } from "@/components/forms/form-error-summary";
-import { FormScopeProvider } from "@/components/forms/form-field";
-import { useAdminMutation } from "@/components/use-admin-mutation";
-import { type FieldErrors, hasFieldErrors } from "@/lib/form-validation";
+import { checkResolver, summaryOf } from "@/components/sales/sales-form";
+import { StaffFormDialog } from "@/components/staff-form-dialog";
+import { useAdminAction } from "@/components/use-admin-action.client";
 import { conflictField, validateStockAdjustment, validateVariant } from "@/lib/merchandise-form";
 import {
   addMerchandiseVariant,
@@ -13,75 +10,24 @@ import {
   updateMerchandiseVariant,
 } from "@/server/application/admin-merchandise-actions.server";
 import type { MerchandiseVariantDetail } from "@auction/shop-contracts";
-import { formatPenceAsPounds } from "@auction/staff-ui";
 import {
-  Button,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  LoadingButton,
-} from "@auction/ui";
-import { type ReactNode, useId, useState } from "react";
+  Field,
+  FormErrorSummary,
+  MoneyInput,
+  TextInput,
+  formatPenceAsPounds,
+} from "@auction/staff-ui";
+import { useId } from "react";
+import { Controller, useForm } from "react-hook-form";
 
-/** Shell shared by the variant dialogs: a titled form whose footer holds Cancel and the verb. */
-function VariantDialogFrame({
-  title,
-  description,
-  scope,
-  errors,
-  mutation,
-  submitLabel,
-  onClose,
-  onSubmit,
-  children,
-}: {
-  title: string;
-  description: ReactNode;
-  scope: string;
-  errors: FieldErrors;
-  mutation: ReturnType<typeof useAdminMutation>;
-  submitLabel: string;
-  onClose: () => void;
-  onSubmit: () => void;
-  children: ReactNode;
-}) {
-  return (
-    <FormScopeProvider value={scope}>
-      <form
-        noValidate
-        className="space-y-4"
-        onSubmit={(event) => {
-          event.preventDefault();
-          onSubmit();
-        }}
-      >
-        <DialogHeader>
-          <DialogTitle>{title}</DialogTitle>
-          <DialogDescription asChild>
-            <div className="text-sm text-on-surface-variant">{description}</div>
-          </DialogDescription>
-        </DialogHeader>
-        {hasFieldErrors(errors) ? <FormErrorSummary scope={scope} errors={errors} /> : null}
-        <div className="grid gap-3">{children}</div>
-        <AdminMutationFeedback
-          message={hasFieldErrors(errors) ? null : mutation.message}
-          stepUpRequired={mutation.stepUpRequired}
-          stepUpHref={mutation.stepUpHref}
-        />
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button type="button" variant="outline" disabled={mutation.pending} onClick={onClose}>
-            Cancel
-          </Button>
-          <LoadingButton type="submit" loading={mutation.pending} loadingLabel="Saving…">
-            {submitLabel}
-          </LoadingButton>
-        </DialogFooter>
-      </form>
-    </FormScopeProvider>
-  );
+type VariantValues = { sku: string; pricePence: number | null };
+type StockValues = { onHand: string; reason: string };
+
+function checkVariant(values: VariantValues) {
+  return validateVariant({
+    sku: values.sku,
+    price: values.pricePence === null ? "" : formatPenceAsPounds(values.pricePence),
+  });
 }
 
 function VariantForm({
@@ -94,74 +40,93 @@ function VariantForm({
   variant: MerchandiseVariantDetail | null;
   onClose: () => void;
 }) {
-  const scope = useId();
-  const mutation = useAdminMutation();
-  const [sku, setSku] = useState(variant?.sku ?? "");
-  const [price, setPrice] = useState(variant ? formatPenceAsPounds(variant.pricePence) : "");
-  const [errors, setErrors] = useState<FieldErrors>({});
-  // A taken SKU comes back from the server; show it against the SKU field, not as a loose message.
-  const taken = conflictField(mutation.message ?? "") === "sku" ? mutation.message : null;
-  const shown: FieldErrors = { ...errors, ...(taken ? { sku: taken } : {}) };
+  const action = useAdminAction();
+  const base = useId();
+  const ids = { sku: `${base}-sku`, price: `${base}-price` };
+  const form = useForm<VariantValues>({
+    mode: "onSubmit",
+    reValidateMode: "onChange",
+    defaultValues: { sku: variant?.sku ?? "", pricePence: variant?.pricePence ?? null },
+    resolver: checkResolver(checkVariant, { price: "pricePence" }),
+  });
+  const { errors, submitCount } = form.formState;
+  // A taken SKU comes back from the server; show it against the SKU field.
+  const taken = conflictField(action.message ?? "") === "sku" ? action.message : null;
+  const skuError = errors.sku?.message ?? taken ?? undefined;
+  const priceError = errors.pricePence?.message;
+  const summary = [
+    ...(skuError ? [{ fieldId: ids.sku, message: skuError }] : []),
+    ...(priceError ? [{ fieldId: ids.price, message: priceError }] : []),
+  ];
 
-  function submit() {
-    const checked = validateVariant({ sku, price });
-    setErrors(checked.ok ? {} : checked.errors);
+  const submit = form.handleSubmit(async (values) => {
+    const checked = checkVariant(values);
     if (!checked.ok) return;
-    void mutation
-      .run(
-        () =>
-          variant
-            ? updateMerchandiseVariant({
-                variantId: variant.variantId,
-                payload: checked.value,
-                idempotencyKey: mutation.idempotencyKey,
-              })
-            : addMerchandiseVariant({
-                productId,
-                payload: checked.value,
-                idempotencyKey: mutation.idempotencyKey,
-              }),
-        variant ? "Variant saved." : "Variant added.",
-      )
-      .then((saved) => {
-        if (saved) onClose();
-      });
-  }
+    const payload = checked.value;
+    const ok = await action.run(
+      () =>
+        variant
+          ? updateMerchandiseVariant({
+              variantId: variant.variantId,
+              payload,
+              idempotencyKey: action.idempotencyKey,
+            })
+          : addMerchandiseVariant({
+              productId,
+              payload,
+              idempotencyKey: action.idempotencyKey,
+            }),
+      variant ? "Variant saved" : "Variant added",
+      variant ? "save this variant" : "add this variant",
+    );
+    if (ok) onClose();
+  });
 
   return (
-    <VariantDialogFrame
-      title={variant ? `Edit ${variant.sku}` : "Add a variant"}
-      description={
-        variant
-          ? "A new price applies to new baskets. Shoppers who already hold this variant must refresh their basket to see it before they can pay."
-          : "A variant is one SKU with its own price. It starts with no stock; use Adjust stock to add units."
-      }
-      scope={scope}
-      errors={shown}
-      mutation={mutation}
-      submitLabel={variant ? "Save variant" : "Add variant"}
-      onClose={onClose}
-      onSubmit={submit}
-    >
-      <TextField
-        name="sku"
-        label="SKU"
-        value={sku}
-        error={shown.sku}
-        disabled={mutation.pending}
-        maxLength={64}
-        onChange={setSku}
-      />
-      <TextField
-        name="price"
-        label="Price (£)"
-        hint="In pounds, for example 12.50."
-        value={price}
-        error={shown.price}
-        disabled={mutation.pending}
-        onChange={setPrice}
-      />
-    </VariantDialogFrame>
+    <>
+      <StaffFormDialog
+        open
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+        title={variant ? `Edit ${variant.sku}` : "Add a variant"}
+        description={
+          variant
+            ? "A new price applies to new baskets. Shoppers who already hold this variant must refresh their basket to see it before they can pay."
+            : "A variant is one SKU with its own price. It starts with no stock; use Adjust stock to add units."
+        }
+        submitLabel={variant ? "Save variant" : "Add variant"}
+        pending={action.pending}
+        onSubmit={() => void submit()}
+      >
+        <FormErrorSummary focusKey={submitCount} errors={summary} />
+        {taken ? null : action.error}
+        <Field label="SKU" id={ids.sku} error={skuError}>
+          <TextInput maxLength={64} autoComplete="off" {...form.register("sku")} />
+        </Field>
+        <Field
+          label="Price"
+          id={ids.price}
+          description="In pounds, for example 12.50."
+          error={priceError}
+        >
+          <Controller
+            control={form.control}
+            name="pricePence"
+            render={({ field }) => (
+              <MoneyInput
+                ref={field.ref}
+                value={field.value}
+                onValueChange={field.onChange}
+                onBlur={field.onBlur}
+                placeholder="0.00"
+              />
+            )}
+          />
+        </Field>
+      </StaffFormDialog>
+      {action.stepUpDialog}
+    </>
   );
 }
 
@@ -172,65 +137,71 @@ function StockForm({
   variant: MerchandiseVariantDetail;
   onClose: () => void;
 }) {
-  const scope = useId();
-  const mutation = useAdminMutation();
-  const [onHand, setOnHand] = useState(String(variant.onHand));
-  const [reason, setReason] = useState("");
-  const [errors, setErrors] = useState<FieldErrors>({});
+  const action = useAdminAction();
+  const base = useId();
+  const ids = { onHand: `${base}-on-hand`, reason: `${base}-reason` };
+  const form = useForm<StockValues>({
+    mode: "onSubmit",
+    reValidateMode: "onChange",
+    defaultValues: { onHand: String(variant.onHand), reason: "" },
+    resolver: checkResolver((values) => validateStockAdjustment(values, variant.reserved)),
+  });
+  const { errors, submitCount } = form.formState;
 
-  function submit() {
-    const checked = validateStockAdjustment({ onHand, reason }, variant.reserved);
-    setErrors(checked.ok ? {} : checked.errors);
+  const submit = form.handleSubmit(async (values) => {
+    const checked = validateStockAdjustment(values, variant.reserved);
     if (!checked.ok) return;
-    void mutation
-      .run(
-        () =>
-          adjustMerchandiseStock({
-            variantId: variant.variantId,
-            payload: checked.value,
-            idempotencyKey: mutation.idempotencyKey,
-          }),
-        "Stock updated.",
-      )
-      .then((saved) => {
-        if (saved) onClose();
-      });
-  }
+    const payload = checked.value;
+    const ok = await action.run(
+      () =>
+        adjustMerchandiseStock({
+          variantId: variant.variantId,
+          payload,
+          idempotencyKey: action.idempotencyKey,
+        }),
+      "Stock updated",
+      "change this stock count",
+    );
+    if (ok) onClose();
+  });
 
   return (
-    <VariantDialogFrame
-      title={`Adjust stock for ${variant.sku}`}
-      description={`Set the count of units physically on hand. ${variant.reserved} ${
-        variant.reserved === 1 ? "unit is" : "units are"
-      } held for open checkouts and cannot be removed. The change and your reason are recorded in the audit log.`}
-      scope={scope}
-      errors={errors}
-      mutation={mutation}
-      submitLabel="Update stock"
-      onClose={onClose}
-      onSubmit={submit}
-    >
-      <TextField
-        name="onHand"
-        label="On hand"
-        type="number"
-        min={0}
-        value={onHand}
-        error={errors.onHand}
-        disabled={mutation.pending}
-        onChange={setOnHand}
-      />
-      <TextField
-        name="reason"
-        label="Reason"
-        hint="For example “Recount after delivery”."
-        value={reason}
-        error={errors.reason}
-        disabled={mutation.pending}
-        maxLength={200}
-        onChange={setReason}
-      />
-    </VariantDialogFrame>
+    <>
+      <StaffFormDialog
+        open
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+        title={`Adjust stock for ${variant.sku}`}
+        description={`Set the count of units physically on hand. ${variant.reserved} ${
+          variant.reserved === 1 ? "unit is" : "units are"
+        } held for open checkouts and cannot be removed. The change and your reason are recorded in the audit log.`}
+        submitLabel="Update stock"
+        pending={action.pending}
+        onSubmit={() => void submit()}
+      >
+        <FormErrorSummary
+          focusKey={submitCount}
+          errors={summaryOf(errors, [
+            { field: "onHand", id: ids.onHand },
+            { field: "reason", id: ids.reason },
+          ])}
+        />
+        {action.error}
+        <Field label="On hand" id={ids.onHand} error={errors.onHand?.message}>
+          <TextInput type="number" min={0} inputMode="numeric" {...form.register("onHand")} />
+        </Field>
+        <Field
+          label="Reason"
+          id={ids.reason}
+          description="For example “Recount after delivery”."
+          error={errors.reason?.message}
+        >
+          <TextInput maxLength={200} autoComplete="off" {...form.register("reason")} />
+        </Field>
+      </StaffFormDialog>
+      {action.stepUpDialog}
+    </>
   );
 }
 
@@ -249,24 +220,13 @@ export function MerchandiseVariantDialogs({
   dialog: VariantDialogState | null;
   onClose: () => void;
 }) {
+  if (!dialog) return null;
+  if (dialog.kind === "stock") return <StockForm variant={dialog.variant} onClose={onClose} />;
   return (
-    <Dialog
-      open={dialog !== null}
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
-      <DialogContent className="max-w-md border-border-hairline">
-        {dialog?.kind === "stock" ? (
-          <StockForm variant={dialog.variant} onClose={onClose} />
-        ) : dialog ? (
-          <VariantForm
-            productId={productId}
-            variant={dialog.kind === "edit" ? dialog.variant : null}
-            onClose={onClose}
-          />
-        ) : null}
-      </DialogContent>
-    </Dialog>
+    <VariantForm
+      productId={productId}
+      variant={dialog.kind === "edit" ? dialog.variant : null}
+      onClose={onClose}
+    />
   );
 }

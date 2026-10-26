@@ -1,17 +1,68 @@
 "use client";
 
-import { AdminStaffDataTable } from "@/components/admin-staff-data-table";
 import {
   MerchandiseVariantDialogs,
   type VariantDialogState,
 } from "@/components/merchandise/merchandise-variant-dialogs.client";
-import { useAdminMutation } from "@/components/use-admin-mutation";
-import { formatAdminDetailGbpPence } from "@/lib/admin-detail-format";
+import { useAdminAction } from "@/components/use-admin-action.client";
 import { setMerchandiseVariantArchived } from "@/server/application/admin-merchandise-actions.server";
+import { presentStatus } from "@/server/domain/staff-status";
 import type { MerchandiseVariantDetail } from "@auction/shop-contracts";
-import { Button, ConfirmDialog, StatusBadge } from "@auction/ui";
-import type { ColumnDef } from "@tanstack/react-table";
+import {
+  ConfirmActionDialog,
+  type DataColumn,
+  MappedStatusBadge,
+  type OverflowAction,
+  RelatedRecordsSection,
+  StaffButton,
+  StaffMoney,
+  rowActionsColumn,
+} from "@auction/staff-ui";
+import { Archive, ArchiveRestore, Pencil, Plus, SlidersHorizontal } from "@auction/staff-ui/icons";
 import { useState } from "react";
+
+const presentVariantStatus = presentStatus("merchandise");
+
+function ArchiveVariantDialog({
+  variant,
+  onClose,
+}: {
+  variant: MerchandiseVariantDetail;
+  onClose: () => void;
+}) {
+  const action = useAdminAction();
+  return (
+    <>
+      <ConfirmActionDialog
+        open
+        onOpenChange={(open) => {
+          if (!open) onClose();
+        }}
+        title={`Archive ${variant.sku}?`}
+        description="The variant stops being sold straight away, and shoppers who hold it in a basket can no longer check out with it. Orders already placed are not affected. Its SKU stays reserved so it cannot be reused, and you can restore it later."
+        confirmLabel="Archive variant"
+        tone="danger"
+        loading={action.pending}
+        onConfirm={async () => {
+          const ok = await action.run(
+            () =>
+              setMerchandiseVariantArchived({
+                variantId: variant.variantId,
+                archived: true,
+                idempotencyKey: action.idempotencyKey,
+              }),
+            `${variant.sku} archived`,
+            "archive this variant",
+          );
+          if (ok) onClose();
+        }}
+      >
+        {action.error}
+      </ConfirmActionDialog>
+      {action.stepUpDialog}
+    </>
+  );
+}
 
 /**
  * The product's variants with their stock. Price, SKU and archive changes are saved straight
@@ -27,159 +78,130 @@ export function MerchandiseVariants({
 }) {
   const [dialog, setDialog] = useState<VariantDialogState | null>(null);
   const [archiving, setArchiving] = useState<MerchandiseVariantDetail | null>(null);
-  const mutation = useAdminMutation();
+  const restore = useAdminAction();
 
-  const columns: ColumnDef<MerchandiseVariantDetail, unknown>[] = [
+  const actionsFor = (variant: MerchandiseVariantDetail): OverflowAction[] => [
+    {
+      id: "edit",
+      label: "Edit…",
+      icon: Pencil,
+      onSelect: () => setDialog({ kind: "edit", variant }),
+    },
+    {
+      id: "stock",
+      label: "Adjust stock…",
+      icon: SlidersHorizontal,
+      onSelect: () => setDialog({ kind: "stock", variant }),
+    },
+    variant.status === "active"
+      ? {
+          id: "archive",
+          label: "Archive…",
+          icon: Archive,
+          tone: "danger",
+          onSelect: () => setArchiving(variant),
+        }
+      : {
+          id: "restore",
+          label: "Restore",
+          icon: ArchiveRestore,
+          disabled: restore.pending,
+          onSelect: () =>
+            void restore.run(
+              () =>
+                setMerchandiseVariantArchived({
+                  variantId: variant.variantId,
+                  archived: false,
+                  idempotencyKey: restore.idempotencyKey,
+                }),
+              `${variant.sku} restored`,
+              "restore this variant",
+            ),
+        },
+  ];
+
+  const columns: DataColumn<MerchandiseVariantDetail>[] = [
     {
       id: "sku",
       header: "SKU",
-      cell: ({ row }) => {
-        const variant = row.original;
-        return (
-          <div className="space-y-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-mono text-sm">{variant.sku}</span>
-              {variant.status === "archived" ? (
-                <StatusBadge variant="neutral">Archived</StatusBadge>
-              ) : null}
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                size="md"
-                onClick={() => setDialog({ kind: "edit", variant })}
-              >
-                Edit<span className="sr-only"> {variant.sku}</span>
-              </Button>
-              <Button
-                type="button"
-                variant="outline"
-                size="md"
-                onClick={() => setDialog({ kind: "stock", variant })}
-              >
-                Adjust stock<span className="sr-only"> for {variant.sku}</span>
-              </Button>
-              {variant.status === "active" ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="md"
-                  onClick={() => setArchiving(variant)}
-                >
-                  Archive<span className="sr-only"> {variant.sku}</span>
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="md"
-                  disabled={mutation.pending}
-                  onClick={() =>
-                    void mutation.run(
-                      () =>
-                        setMerchandiseVariantArchived({
-                          variantId: variant.variantId,
-                          archived: false,
-                          idempotencyKey: mutation.idempotencyKey,
-                        }),
-                      `${variant.sku} restored.`,
-                    )
-                  }
-                >
-                  Restore<span className="sr-only"> {variant.sku}</span>
-                </Button>
-              )}
-            </div>
-          </div>
-        );
-      },
+      mobile: "title",
+      cell: (variant) => <span className="font-mono">{variant.sku}</span>,
+    },
+    {
+      id: "status",
+      header: "Status",
+      width: "128px",
+      mobile: "badge",
+      truncate: false,
+      cell: (variant) => (
+        <MappedStatusBadge status={variant.status} present={presentVariantStatus} />
+      ),
     },
     {
       id: "price",
       header: "Price",
-      cell: ({ row }) => formatAdminDetailGbpPence(row.original.pricePence),
+      width: "120px",
+      numeric: true,
+      mobile: "meta",
+      cell: (variant) => <StaffMoney minor={variant.pricePence} />,
     },
-    { id: "onHand", header: "On hand", cell: ({ row }) => row.original.onHand },
+    {
+      id: "onHand",
+      header: "On hand",
+      width: "104px",
+      numeric: true,
+      mobile: "meta",
+      cell: (variant) => variant.onHand,
+    },
     {
       id: "reserved",
       header: "Held for checkouts",
-      cell: ({ row }) => row.original.reserved,
+      width: "160px",
+      numeric: true,
+      mobile: "meta",
+      cell: (variant) => variant.reserved,
     },
+    rowActionsColumn<MerchandiseVariantDetail>({
+      actions: actionsFor,
+      label: (variant) => `Actions for ${variant.sku}`,
+    }),
   ];
 
   return (
-    <section aria-labelledby="variants-heading" className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h2 id="variants-heading" className="font-headline text-xl font-semibold">
-            Variants
-          </h2>
-          <p className="text-sm text-on-surface-variant">
-            Each variant is one SKU with its own price and stock.
-          </p>
-        </div>
-        <Button type="button" onClick={() => setDialog({ kind: "add" })}>
-          Add variant
-        </Button>
-      </div>
-      {mutation.message ? (
-        <p role="alert" className="text-sm text-error">
-          {mutation.message}
-        </p>
-      ) : null}
-      <AdminStaffDataTable
+    <>
+      <RelatedRecordsSection<MerchandiseVariantDetail>
+        id="variants"
+        title="Variants"
+        description="Each variant is one SKU with its own price and stock."
         columns={columns}
         data={variants}
         getRowId={(variant) => variant.variantId}
+        defaultSort={{ columnId: "sku", direction: "asc" }}
+        action={
+          <StaffButton
+            variant="secondary"
+            size="sm"
+            icon={<Plus aria-hidden />}
+            onClick={() => setDialog({ kind: "add" })}
+          >
+            Add variant
+          </StaffButton>
+        }
         empty={{
           title: "No variants",
           description: "Add a variant to give this product a SKU, a price and stock.",
         }}
-        ariaLabel="Variants"
       />
+      {restore.error}
+      {restore.stepUpDialog}
       <MerchandiseVariantDialogs
         productId={productId}
         dialog={dialog}
         onClose={() => setDialog(null)}
       />
-      <ConfirmDialog
-        open={archiving !== null}
-        onOpenChange={(open) => {
-          if (!open) setArchiving(null);
-        }}
-        title={`Archive ${archiving?.sku ?? "this variant"}?`}
-        body={
-          <>
-            <p>
-              The variant stops being sold straight away, and shoppers who hold it in a basket can
-              no longer check out with it. Orders already placed are not affected. Its SKU stays
-              reserved so it cannot be reused, and you can restore it later.
-            </p>
-            {mutation.message ? (
-              <p role="alert" className="mt-2 text-error">
-                {mutation.message}
-              </p>
-            ) : null}
-          </>
-        }
-        confirmLabel="Archive variant"
-        tone="warning"
-        loading={mutation.pending}
-        onConfirm={async () => {
-          if (!archiving) return;
-          const saved = await mutation.run(
-            () =>
-              setMerchandiseVariantArchived({
-                variantId: archiving.variantId,
-                archived: true,
-                idempotencyKey: mutation.idempotencyKey,
-              }),
-            `${archiving.sku} archived.`,
-          );
-          if (saved) setArchiving(null);
-        }}
-      />
-    </section>
+      {archiving ? (
+        <ArchiveVariantDialog variant={archiving} onClose={() => setArchiving(null)} />
+      ) : null}
+    </>
   );
 }

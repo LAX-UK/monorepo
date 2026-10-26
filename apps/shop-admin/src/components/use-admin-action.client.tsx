@@ -58,6 +58,8 @@ export function useAdminAction() {
   return {
     run,
     pending: mutation.pending,
+    /** The failure message, for a caller that shows it against a field instead of in `error`. */
+    message: mutation.message,
     idempotencyKey: mutation.idempotencyKey,
     error,
     stepUpDialog,
