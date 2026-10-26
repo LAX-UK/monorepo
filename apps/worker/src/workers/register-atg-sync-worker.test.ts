@@ -45,8 +45,16 @@ const ENABLED = {
   ATG_POLL_INTERVAL_MS: "90000",
 };
 
+/** The startup check is replaced so no test reaches the real ATG API. */
 function runtime() {
-  return createAtgSyncRuntime({ env: loadWorkerEnv(), db: {} as never, onTickError: vi.fn() });
+  const checkConfig = vi.fn().mockResolvedValue(undefined);
+  const built = createAtgSyncRuntime({
+    env: loadWorkerEnv(),
+    db: {} as never,
+    onTickError: vi.fn(),
+    onConfigCheck: vi.fn(),
+  });
+  return built ? { ...built, checkConfig } : built;
 }
 
 function deps(): WorkerBootstrapDeps {
@@ -93,6 +101,14 @@ describe("registerAtgSyncWorker", () => {
       {},
       expect.objectContaining({ jobId: "atg-sync-tick", repeat: { every: 90_000 } }),
     );
+  });
+
+  it("runs the configuration check once at startup without waiting for it", () => {
+    for (const [key, value] of Object.entries(ENABLED)) vi.stubEnv(key, value);
+    const atg = runtime();
+    registerAtgSyncWorker(deps(), atg);
+
+    expect(atg?.checkConfig).toHaveBeenCalledTimes(1);
   });
 
   it("makes precondition failures unrecoverable instead of retrying them", async () => {

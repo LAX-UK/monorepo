@@ -80,6 +80,7 @@ describe.skipIf(!HAS_DB)("DrizzleAtgLinkReader (integration)", () => {
           saleId,
           atgAuctionId: "atg-a",
           remoteStatus: "published",
+          atgApprovedAt: t,
           publishedAt: t,
           resultsSnapshot: [{ lotNumber: "1", hammerPrice: 1500 }],
         });
@@ -97,6 +98,7 @@ describe.skipIf(!HAS_DB)("DrizzleAtgLinkReader (integration)", () => {
           linked: true,
           atgAuctionId: "atg-a",
           remoteStatus: "published",
+          approvedAt: t.toISOString(),
           publishedAt: t.toISOString(),
           results: [{ lotNumber: "1", hammerPrice: 1500 }],
         });

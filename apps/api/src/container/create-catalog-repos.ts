@@ -10,6 +10,7 @@ import type {
   IArtistRegistryRepository,
   IArtistWatchlistRepository,
   IAtgLinkReader,
+  IAtgSaleSettingsWriter,
   IAttentionFeedReader,
   ICategoryRepository,
   IConditionReportRequestRepository,
@@ -60,6 +61,7 @@ import {
   DrizzleArtistRegistryRepository,
   DrizzleArtistWatchlistRepository,
   DrizzleAtgLinkReader,
+  DrizzleAtgSaleSettingsWriter,
   DrizzleAttentionFeedReader,
   DrizzleCategoryRepository,
   DrizzleConditionReportRequestRepository,
@@ -112,6 +114,7 @@ export type CatalogRepositories = {
   lotRepo: ReturnType<IRepositoryFactory["forConnection"]>["lot"];
   saleRepo: ISaleRepository;
   atgLinkReader: IAtgLinkReader;
+  atgSaleSettingsWriter: IAtgSaleSettingsWriter;
   itemSubmissionRepository: IItemSubmissionRepository;
   saleRegistrationRepository: ISaleRegistrationRepository;
   conditionReportRequestRepository: IConditionReportRequestRepository;
@@ -165,6 +168,7 @@ export function createCatalogRepositories(db: Database): CatalogRepositories {
   const { sale: saleRepo, itemSubmission: itemSubmissionRepository } =
     repoFactory.forTransaction(db);
   const atgLinkReader = new DrizzleAtgLinkReader(db);
+  const atgSaleSettingsWriter = new DrizzleAtgSaleSettingsWriter(db);
   const saleRegistrationRepository = new DrizzleSaleRegistrationRepository(db);
   const conditionReportRequestRepository = new DrizzleConditionReportRequestRepository(db);
   const qrCodeRepository = new DrizzleQrCodeRepository(db);
@@ -215,6 +219,7 @@ export function createCatalogRepositories(db: Database): CatalogRepositories {
     lotRepo,
     saleRepo,
     atgLinkReader,
+    atgSaleSettingsWriter,
     itemSubmissionRepository,
     saleRegistrationRepository,
     conditionReportRequestRepository,

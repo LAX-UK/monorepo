@@ -44,17 +44,10 @@ const envSchema = z
     ATG_PLATFORM_CODE: z.preprocess(emptyToUndefined, z.string().optional()),
     ATG_INCREMENT_SET_ID: z.preprocess(emptyToUndefined, z.string().uuid().optional()),
     ATG_DEFAULT_CATEGORY: z.preprocess(emptyToUndefined, z.string().optional()),
-    ATG_AUCTION_TYPE: z.preprocess(
-      emptyToUndefined,
-      z.enum(["Timed", "CatalogueTimed", "Live", "CatalogueLive"]).default("Timed"),
-    ),
-    /** Keep new ATG auctions private until ATG confirms production go-live. */
-    ATG_LISTING_PRIVATE: z.preprocess(parseOptionalBooleanFlag, z.boolean().default(true)),
     ATG_ARTIST_PLACEMENT: z.preprocess(
       emptyToUndefined,
       z.enum(["title_prefix", "description"]).default("description"),
     ),
-    ATG_APPROVE_BEFORE_PUBLISH: z.preprocess(parseOptionalBooleanFlag, z.boolean().default(false)),
     ATG_TIMEZONE: z.preprocess(emptyToUndefined, z.string().default("Europe/London")),
     /** Must stay under the 5-minute worker readiness heartbeat window. */
     ATG_POLL_INTERVAL_MS: z.coerce.number().int().min(30_000).max(240_000).default(120_000),

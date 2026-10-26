@@ -87,17 +87,16 @@ divergence, and under the "apply newer than the last `created_at`" rule it would
 harmless. `RELEASE_TO_MAIN_SQL_MAPPING` records this as the `replace` action, and
 `planReleaseLedgerNormalization` fails closed if the stamp no longer matches `0132`.
 
-## Pending release migration `0133_atg_sale_settings`
+## ATG per-sale settings `0234_atg_sale_settings`
 
-Release work not yet on `release` (local branch `feat/atg-production-readiness`) adds
-`0133_atg_sale_settings`: per-sale ATG auction type and distribution, a locked-fields hash, no
-`ApproveAuction`, and a JPG/10 MB image preflight. It is not ported here. Before it ships it
-must be renumbered **`0134`** with a journal `when` **greater than `1788000008000`** (for
-example `1788000008500`). The migrator only applies migrations newer than the last applied
-row, and production already holds `1788000008000`, so its original `1788000007750` would be
-skipped silently. When it lands, add it to the lineage mapping and to the main journal after
-`0132_domain_event_delivery` with the same stamp, and list that stamp in
-`late-registered-migrations.ts` so main's existing databases apply it in place.
+Per-sale ATG auction type and distribution, a locked-fields hash, no `ApproveAuction`, and a
+JPG/10 MB image preflight land on `main` first as `0234_atg_sale_settings`, with journal `when`
+**`1795593600000`** (after `0233_shop_order_reference_and_progress`). The SQL is additive and
+idempotent.
+
+Any backport to `release` must carry **byte-identical** SQL and the same `when`, so that
+production's ledger row matches `main`'s when `main` is promoted. Do not renumber it or give it
+the stamp `release` used in earlier drafts (`1788000007750`).
 
 ## Promotion checklist (main → release)
 

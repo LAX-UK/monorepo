@@ -1,7 +1,12 @@
 import type { Database } from "@auction/db";
 import { lotNotDeleted, saleNotDeleted } from "@auction/db";
 import { artistProfile, atgAuctionLink, atgLotLink, lot, sale } from "@auction/db/schema";
-import type { SaleStatus } from "@auction/types";
+import {
+  type AtgAuctionType,
+  type AtgDistribution,
+  DEFAULT_ATG_SALE_SETTINGS,
+  type SaleStatus,
+} from "@auction/types";
 import { and, asc, count, eq, gt, gte, inArray, isNotNull, ne, or, sql } from "drizzle-orm";
 import type { AtgRemoteLot } from "./atg-gateway.js";
 import type { AtgAuctionLinkPatch, AtgLotLinkPatch, AtgSyncStore } from "./atg-sync-store.js";
@@ -26,6 +31,7 @@ function toAuctionLink(row: typeof atgAuctionLink.$inferSelect): AtgAuctionLink 
     remoteStatus: row.remoteStatus as AtgRemoteStatus,
     payloadHash: row.payloadHash,
     lastSyncedAt: row.lastSyncedAt,
+    approvedAt: row.atgApprovedAt,
     closedAt: row.closedAt,
     lastError: row.lastError,
   };
@@ -38,6 +44,8 @@ function toLotLink(row: typeof atgLotLink.$inferSelect): AtgLotLink {
     atgLotId: row.atgLotId,
     imageNames: row.imageNames,
     payloadHash: row.payloadHash,
+    lockedFieldsHash: row.lockedFieldsHash,
+    numberOfBids: row.numberOfBids ?? 0,
   };
 }
 
@@ -45,12 +53,18 @@ export class DrizzleAtgSyncStore implements AtgSyncStore {
   constructor(private readonly db: Database) {}
 
   async loadSale(saleId: string): Promise<AtgSaleSnapshot | null> {
-    const [saleRow] = await this.db
-      .select()
+    const [row] = await this.db
+      .select({
+        sale,
+        auctionType: atgAuctionLink.auctionType,
+        distribution: atgAuctionLink.distribution,
+      })
       .from(sale)
+      .leftJoin(atgAuctionLink, eq(atgAuctionLink.saleId, sale.id))
       .where(and(eq(sale.id, saleId), saleNotDeleted()))
       .limit(1);
-    if (!saleRow) return null;
+    if (!row) return null;
+    const saleRow = row.sale;
 
     const lotRows = await this.db
       .select({ lot, artistName: artistProfile.displayName })
@@ -76,6 +90,12 @@ export class DrizzleAtgSyncStore implements AtgSyncStore {
       locationCountry: saleRow.locationCountry,
       cancelled: saleRow.status === "cancelled",
       updatedAt: saleRow.updatedAt,
+      atgSettings: {
+        auctionType:
+          (row.auctionType as AtgAuctionType | null) ?? DEFAULT_ATG_SALE_SETTINGS.auctionType,
+        distribution:
+          (row.distribution as AtgDistribution | null) ?? DEFAULT_ATG_SALE_SETTINGS.distribution,
+      },
       lots: lotRows.map(({ lot: row, artistName }) => ({
         id: row.id,
         lotNumber: row.lotNumber,
@@ -131,12 +151,14 @@ export class DrizzleAtgSyncStore implements AtgSyncStore {
   }
 
   async saveAuctionLink(saleId: string, patch: AtgAuctionLinkPatch): Promise<void> {
+    const { approvedAt, ...rest } = patch;
+    const columns = { ...rest, ...(approvedAt ? { atgApprovedAt: approvedAt } : {}) };
     await this.db
       .insert(atgAuctionLink)
-      .values({ saleId, ...patch })
+      .values({ saleId, ...columns })
       .onConflictDoUpdate({
         target: atgAuctionLink.saleId,
-        set: { ...patch, updatedAt: new Date() },
+        set: { ...columns, updatedAt: new Date() },
       });
   }
 
@@ -161,7 +183,10 @@ export class DrizzleAtgSyncStore implements AtgSyncStore {
   }
 
   async insertLotLink(
-    link: Pick<AtgLotLink, "lotId" | "saleId" | "atgLotId"> & { payloadHash: string },
+    link: Pick<AtgLotLink, "lotId" | "saleId" | "atgLotId"> & {
+      payloadHash: string;
+      lockedFieldsHash: string;
+    },
   ): Promise<void> {
     await this.db.insert(atgLotLink).values(link);
   }

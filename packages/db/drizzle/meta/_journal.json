@@ -1639,6 +1639,13 @@
       "when": 1795507200000,
       "tag": "0233_shop_order_reference_and_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 234,
+      "version": "7",
+      "when": 1795593600000,
+      "tag": "0234_atg_sale_settings",
+      "breakpoints": true
     }
   ]
 }

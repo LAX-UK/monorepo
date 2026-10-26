@@ -1,3 +1,4 @@
+import { ATG_AUCTION_TYPES, ATG_DISTRIBUTIONS } from "@auction/types";
 import { lotIdParamSchema, saleIdParamSchema } from "@auction/validators";
 import { z } from "zod";
 import { asHttpStatus } from "../../lib/http-status.js";
@@ -12,9 +13,18 @@ const saleActionParamSchema = saleIdParamSchema.extend({
 
 const jobIdParamSchema = z.object({ jobId: z.string().min(1) });
 
+const saleSettingsBodySchema = z
+  .object({
+    auctionType: z.enum(ATG_AUCTION_TYPES),
+    distribution: z.enum(ATG_DISTRIBUTIONS),
+    confirmPublic: z.boolean().default(false),
+  })
+  .strict();
+
 /**
  * Staff-only ATG White Label controls under `/admin/integrations/atg`, gated on
- * `auction.manage`. Mutations only enqueue `atg-sync` jobs; the worker talks to ATG.
+ * `auction.manage`. ATG traffic only happens through enqueued `atg-sync` jobs; the worker
+ * talks to ATG.
  */
 export function attachAdminAtgRoutes(platform: AdminHono, atg: IAtgAdminService): void {
   // Guards must be path-scoped and registered before the routes they protect: Hono merges
@@ -43,6 +53,28 @@ export function attachAdminAtgRoutes(platform: AdminHono, atg: IAtgAdminService)
     if (!view) return c.json({ error: "Sale not found", code: "sale_not_found" }, 404);
     return c.json({ data: view });
   });
+
+  platform.put(
+    "/integrations/atg/sales/:id/settings",
+    zValidator("param", saleIdParamSchema),
+    zValidator("json", saleSettingsBodySchema),
+    async (c) => {
+      const userId = c.get("userId");
+      if (!userId) return c.json({ error: "Unauthorized", code: "unauthorized" }, 401);
+      const result = await atg.updateSaleSettings(
+        c.req.valid("param").id,
+        c.req.valid("json"),
+        userId,
+      );
+      if (!result.ok) {
+        return c.json(
+          { error: result.error.message, code: result.error.code },
+          asHttpStatus(result.error.status),
+        );
+      }
+      return c.json({ data: { settings: result.settings, pushJobId: result.pushJobId } });
+    },
+  );
 
   platform.post(
     "/integrations/atg/sales/:id/:action",
