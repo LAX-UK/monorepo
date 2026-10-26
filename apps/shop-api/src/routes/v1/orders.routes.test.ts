@@ -8,7 +8,10 @@ vi.mock("@auction/auth/token-verifier", () => ({
   })),
 }));
 import { createShopApiApp } from "../../app.js";
+import { createEnquiryRateLimiter } from "../../application/enquiry-rate-limit.js";
+import { createInMemoryFixedWindowCounter } from "../../infrastructure/in-memory-fixed-window-counter.js";
 import { createMinimalShopApiTestDeps } from "../../test-app-deps.js";
+import { sampleOrderRecord } from "../../test-support/order-record.fixture.js";
 
 const USER_TOKEN = "user-token-placeholder";
 
@@ -74,19 +77,19 @@ describe("orders routes", () => {
       payload: { scope: "shop.write" },
     } as never);
     const cancelCheckoutOrder = vi.fn(async () => undefined);
-    const getOrder = vi.fn(async () => ({
-      orderId: "00000000-0000-4000-8000-000000000042",
-      status: "cancelled" as const,
-      totalPence: 1000,
-      merchandiseSubtotalPence: 1000,
-      fulfilmentSurchargePence: 0,
-      refundedPence: 0,
-      fulfilment: "collect_brunswick" as const,
-      lines: [],
-      createdAt: new Date(),
-      paidAt: null,
-      deliveryAddress: null,
-    }));
+    const getOrder = vi.fn(async () =>
+      sampleOrderRecord({
+        orderId: "00000000-0000-4000-8000-000000000042",
+        status: "cancelled",
+        totalPence: 1000,
+        merchandiseSubtotalPence: 1000,
+        fulfilmentSurchargePence: 0,
+        fulfilment: "collect_brunswick",
+        lines: [],
+        paidAt: null,
+        deliveryAddress: null,
+      }),
+    );
     const deps = createMinimalShopApiTestDeps({
       commerce: { ...createMinimalShopApiTestDeps().commerce, cancelCheckoutOrder, getOrder },
     });
@@ -199,6 +202,99 @@ describe("orders routes", () => {
     });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ available: false, addresses: [] });
+    await app.close();
+  });
+
+  const ORDER_ID = "550e8400-e29b-41d4-a716-846655440001";
+
+  function orderApp(
+    order: ReturnType<typeof sampleOrderRecord> | null,
+    submit = vi.fn(async () => ({ reportId: "550e8400-e29b-41d4-a716-846655440099" })),
+  ) {
+    const base = createMinimalShopApiTestDeps();
+    const deps = createMinimalShopApiTestDeps({
+      commerce: {
+        ...base.commerce,
+        getOrder: vi.fn(async () => order),
+        getCustomerProfile: async () => ({ name: "Robert Thorne", email: "robert@example.test" }),
+        orderProblems: {
+          writer: { submit },
+          rateLimiter: createEnquiryRateLimiter(createInMemoryFixedWindowCounter()),
+        },
+      },
+    });
+    return { app: createShopApiApp({ deps, logger: false }), submit };
+  }
+
+  it("downloads the invoice of a paid order as a PDF named after its invoice number", async () => {
+    const { app } = orderApp(sampleOrderRecord());
+    await app.ready();
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/orders/${ORDER_ID}/invoice`,
+      headers: { authorization: `Bearer ${USER_TOKEN}` },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.headers["content-type"]).toBe("application/pdf");
+    expect(response.headers["content-disposition"]).toBe(
+      'attachment; filename="LAX-INV-000124.pdf"',
+    );
+    expect(response.rawPayload.subarray(0, 5).toString()).toBe("%PDF-");
+    await app.close();
+  });
+
+  it("has no invoice for an order that was never paid", async () => {
+    const { app } = orderApp(sampleOrderRecord({ status: "expired", paidAt: null }));
+    await app.ready();
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/orders/${ORDER_ID}/invoice`,
+      headers: { authorization: `Bearer ${USER_TOKEN}` },
+    });
+    expect(response.statusCode).toBe(404);
+    await app.close();
+  });
+
+  it("sends a problem report with the order reference while the window is open", async () => {
+    vi.mocked(verifyBearerToken).mockResolvedValueOnce({
+      subject: "subject-1",
+      payload: { scope: "shop.write" },
+    } as never);
+    const { app, submit } = orderApp(sampleOrderRecord());
+    await app.ready();
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/orders/${ORDER_ID}/problem-reports`,
+      headers: { authorization: `Bearer ${USER_TOKEN}` },
+      payload: { reason: "damaged", details: "  The corner of the frame is cracked.  " },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(submit).toHaveBeenCalledWith({
+      sender: expect.objectContaining({ kind: "account", identitySubjectId: "subject-1" }),
+      orderReference: "LAX-S-10482",
+      reason: "damaged",
+      details: "The corner of the frame is cracked.",
+    });
+    await app.close();
+  });
+
+  it("refuses a problem report once the cancellation period has ended", async () => {
+    vi.mocked(verifyBearerToken).mockResolvedValueOnce({
+      subject: "subject-1",
+      payload: { scope: "shop.write" },
+    } as never);
+    const { app, submit } = orderApp(
+      sampleOrderRecord({ refundPeriodEndsAt: new Date("2026-01-01T00:00:00.000Z") }),
+    );
+    await app.ready();
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/orders/${ORDER_ID}/problem-reports`,
+      headers: { authorization: `Bearer ${USER_TOKEN}` },
+      payload: { reason: "other", details: "It was lovely, just checking." },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(submit).not.toHaveBeenCalled();
     await app.close();
   });
 });

@@ -11,6 +11,7 @@ import {
 import { and, eq } from "drizzle-orm";
 import type { FulfilmentWriter } from "../../application/ports/fulfilment.writer.js";
 import { ShopApiError, notFound } from "../../errors/shop-api-error.js";
+import { fulfilmentStageStamp } from "../fulfilment-stage-stamp.js";
 import { insertShopAdminAudit } from "../shop-admin-audit.js";
 import { orderHasPersonalisedGoods } from "../shop-order-personalised-goods.js";
 import {
@@ -79,6 +80,7 @@ export function createDrizzleFulfilmentWriter(
               ? { trackingNumber: command.trackingNumber }
               : {}),
             ...(possessionAt ? { possessionAt } : {}),
+            ...fulfilmentStageStamp(nextStatus, new Date()),
             updatedAt: new Date(),
           })
           .where(eq(shopFulfilment.id, command.fulfilmentId));

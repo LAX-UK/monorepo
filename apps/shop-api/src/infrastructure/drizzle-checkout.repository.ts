@@ -10,7 +10,7 @@ import {
   pence,
   reservedUntilFromCheckoutExpiry,
 } from "@auction/shop-domain";
-import { isUkPostcode, normalizeUkPostcode } from "@auction/shop-domain";
+import { isUkPostcode, normalizeUkPostcode, vatIncludedIn } from "@auction/shop-domain";
 import { eq } from "drizzle-orm";
 import type {
   CheckoutWriter,
@@ -71,6 +71,7 @@ export function createDrizzleCheckoutRepository(
     ]);
     return resolveOrCreateStripeCheckoutSession(db, paymentGateway, {
       orderId: pending.orderId,
+      orderReference: orderRow?.reference ?? null,
       totalPence: pending.totalPence,
       successUrl: input.successUrl,
       cancelUrl: input.cancelUrl,
@@ -207,6 +208,10 @@ export function createDrizzleCheckoutRepository(
               fulfilment: input.fulfilment,
               merchandiseSubtotalPence: merchandiseSubtotal,
               fulfilmentSurchargePence: fulfilmentSurcharge,
+              // Delivery is charged at the goods' rate; without a VAT policy no VAT is recorded.
+              fulfilmentVatPence: options.vatPolicy
+                ? vatIncludedIn(fulfilmentSurcharge, options.vatPolicy.standardRateBp)
+                : null,
               totalPence: total,
               idempotencyKey: input.idempotencyKey,
               checkoutExpiresAt,
@@ -328,6 +333,7 @@ export function createDrizzleCheckoutRepository(
 
       return resolveOrCreateStripeCheckoutSession(db, paymentGateway, {
         orderId: order.id,
+        orderReference: order.reference,
         totalPence: order.totalPence,
         successUrl: input.successUrl,
         cancelUrl: input.cancelUrl,

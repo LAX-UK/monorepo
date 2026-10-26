@@ -6,6 +6,7 @@ import type { TemplateVarsByName } from "../types.js";
 export const subject = "Your LAX Shop order is on its way";
 
 export default function ShopDispatchNoticeEmail({
+  orderReference,
   artworkTitle,
   trackingUrl,
   fulfilmentSummary,
@@ -17,6 +18,7 @@ export default function ShopDispatchNoticeEmail({
       preview={`${artworkTitle} has been dispatched.`}
       title="Your order has been dispatched"
     >
+      {orderReference ? <TextBlock>Order {orderReference}</TextBlock> : null}
       <TextBlock>{fulfilmentSummary}</TextBlock>
       {trackingUrl ? <Button href={trackingUrl}>Track delivery</Button> : null}
     </Layout>

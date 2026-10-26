@@ -16,6 +16,7 @@ export const ENQUIRY_TOPICS = [
   "art_advisory",
   "selling",
   "exhibition",
+  "order_problem",
   "artwork",
 ] as const;
 export const EnquiryTopicSchema = Type.Union(ENQUIRY_TOPICS.map((topic) => Type.Literal(topic)));

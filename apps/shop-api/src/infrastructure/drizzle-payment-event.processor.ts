@@ -11,7 +11,7 @@ import {
   shopProduct,
   shopProductVariant,
 } from "@auction/db/schema";
-import { computePayoutDueAt } from "@auction/shop-domain";
+import { computePayoutDueAt, orderVatBreakdown } from "@auction/shop-domain";
 import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
 import type { PaymentEventProcessor } from "../application/ports/payment-event.processor.js";
@@ -427,12 +427,20 @@ export async function completeShopCheckoutSession(
           editionNumber: shopOrderLine.editionNumber,
           productVariantId: shopOrderLine.productVariantId,
           unitPricePence: shopOrderLine.unitPricePence,
+          vatRateBp: shopOrderLine.vatRateBp,
+          vatPence: shopOrderLine.vatPence,
         })
         .from(shopOrderLine)
         .leftJoin(shopArtwork, eq(shopOrderLine.artworkId, shopArtwork.id))
         .leftJoin(shopProductVariant, eq(shopOrderLine.productVariantId, shopProductVariant.id))
         .leftJoin(shopProduct, eq(shopProductVariant.productId, shopProduct.id))
         .where(eq(shopOrderLine.orderId, order.id));
+      // The VAT stored with the lines and the delivery charge, as on the order page and invoice.
+      const vat = orderVatBreakdown({
+        lines: lineDetails.map((line) => ({ vatPence: line.vatPence, vatRateBp: line.vatRateBp })),
+        deliveryVatPence: order.fulfilmentVatPence,
+        totalPence: order.totalPence,
+      });
 
       const receiptLines = lineDetails.map((line) => ({
         artworkTitle: line.productVariantId
@@ -443,20 +451,14 @@ export async function completeShopCheckoutSession(
         unitPricePence: line.unitPricePence,
       }));
 
-      const [vatRow] = await tx
-        .select({
-          vatAmountPence: sql<number>`coalesce(sum(${shopOrderLine.vatPence}), 0)::int`,
-        })
-        .from(shopOrderLine)
-        .where(eq(shopOrderLine.orderId, order.id));
-
       await options.notifications.queueOrderReceipt(tx, {
         idempotencyKey: `order-receipt:${order.id}`,
         identitySubjectId: order.identitySubjectId,
         fallbackEmail: options.fallbackCustomerEmail ?? null,
         orderId: order.id,
+        orderReference: order.reference,
         totalPence: order.totalPence,
-        vatAmountPence: vatRow?.vatAmountPence ?? 0,
+        vatAmountPence: vat ? vat.vatPence : null,
         storefrontUrl: options.storefrontUrl,
         lines: receiptLines.map((line) => ({
           artworkTitle: line.artworkTitle,

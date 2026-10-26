@@ -127,6 +127,27 @@ describe("renderEmail", () => {
     expect(rendered.text).toContain("ord-1");
   });
 
+  it("names the order by its reference and leaves VAT out when none was recorded", async () => {
+    const rendered = await renderEmail("shop-order-receipt", {
+      orderId: "ord-1",
+      orderReference: "LAX-S-10482",
+      totalAmount: "£135.00",
+      orderUrl: "https://shop.lax.art/account/orders/ord-1",
+      lineSummary: "Warm Basket (edition 3) — £120.00",
+    });
+    expect(rendered.html).toContain("Order LAX-S-10482 is confirmed");
+    expect(rendered.text).toContain("We received your payment of £135.00.");
+    expect(rendered.text).not.toContain("VAT");
+
+    const refund = await renderEmail("shop-refund-issued", {
+      orderId: "ord-1",
+      orderReference: "LAX-S-10482",
+      amountPence: 4000,
+      buyerEmail: "ada@example.com",
+    });
+    expect(refund.text).toContain("for your order LAX-S-10482");
+  });
+
   it("renders payment-invoice with bill-to block", async () => {
     const rendered = await renderEmail("payment-invoice", {
       userName: "Ada",

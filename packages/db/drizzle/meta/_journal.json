@@ -1632,6 +1632,13 @@
       "when": 1795420800000,
       "tag": "0232_shop_sale_authority_decline_reason",
       "breakpoints": true
+    },
+    {
+      "idx": 233,
+      "version": "7",
+      "when": 1795507200000,
+      "tag": "0233_shop_order_reference_and_progress",
+      "breakpoints": true
     }
   ]
 }

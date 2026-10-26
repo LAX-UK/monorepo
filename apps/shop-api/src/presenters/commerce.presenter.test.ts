@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { BasketRecord, OrderRecord } from "../application/ports/commerce.ports.js";
+import { sampleOrderLine, sampleOrderRecord } from "../test-support/order-record.fixture.js";
 import { presentBasket, presentOrder } from "./commerce.presenter.js";
 
 const LIMIT = { editionOrderLimit: 2 };
@@ -134,11 +135,8 @@ describe("presentBasket", () => {
 });
 
 describe("presentOrder", () => {
-  const order: OrderRecord = {
-    orderId: "550e8400-e29b-41d4-a716-846655440001",
+  const order: OrderRecord = sampleOrderRecord({
     status: "partially_refunded",
-    fulfilment: "uk_insured_delivery",
-    merchandiseSubtotalPence: 12000,
     fulfilmentSurchargePence: 0,
     totalPence: 12000,
     refundedPence: 4000,
@@ -146,7 +144,79 @@ describe("presentOrder", () => {
     createdAt: new Date("2026-01-01T00:00:00.000Z"),
     paidAt: new Date("2026-01-01T00:01:00.000Z"),
     deliveryAddress: null,
-  };
+  });
+
+  it("gives the reference, the VAT included and the tracking link", () => {
+    const view = presentOrder(
+      sampleOrderRecord({
+        progress: {
+          status: "in_transit",
+          carrier: "Royal Mail",
+          trackingNumber: "AB123456789GB",
+          productionStartedAt: new Date("2026-10-02T09:00:00.000Z"),
+          dispatchedAt: new Date("2026-10-03T09:00:00.000Z"),
+          readyForCollectionAt: null,
+          possessionAt: null,
+          cancelledAt: null,
+        },
+      }),
+      new Date("2026-10-04T09:00:00.000Z"),
+    );
+    expect(view).toMatchObject({
+      reference: "LAX-S-10482",
+      vatIncludedPence: 2250,
+      vatRateBp: 2000,
+      invoiceAvailable: true,
+      problemReport: { open: true, endsAt: null },
+      progress: {
+        trackingUrl: "https://www.royalmail.com/track-your-item#/tracking-results/AB123456789GB",
+        dispatchedAt: "2026-10-03T09:00:00.000Z",
+      },
+    });
+  });
+
+  it("offers no VAT figure, invoice or problem report where the data does not support one", () => {
+    const view = presentOrder(
+      sampleOrderRecord({
+        status: "expired",
+        paidAt: null,
+        checkoutExpiresAt: new Date("2026-10-01T09:30:00.000Z"),
+        lines: [sampleOrderLine({ vatRateBp: null })],
+      }),
+    );
+    expect(view).toMatchObject({
+      vatIncludedPence: null,
+      invoiceAvailable: false,
+      problemReport: { open: false },
+      // Only an order still awaiting payment can be finished.
+      checkoutExpiresAt: null,
+    });
+  });
+
+  it("names cancellation refunds apart from other refunds", () => {
+    const view = presentOrder(
+      sampleOrderRecord({
+        refunds: [
+          {
+            amountPence: 13_500,
+            source: "cancellation",
+            status: "pending",
+            requestedAt: new Date("2026-10-05T09:00:00.000Z"),
+            refundedAt: null,
+          },
+        ],
+      }),
+    );
+    expect(view.refunds).toEqual([
+      {
+        amountPence: 13_500,
+        kind: "cancellation",
+        status: "pending",
+        requestedAt: "2026-10-05T09:00:00.000Z",
+        refundedAt: null,
+      },
+    ]);
+  });
 
   it("passes a refunded status and the refunded amount to the response", () => {
     expect(presentOrder(order)).toMatchObject({
@@ -160,17 +230,7 @@ describe("presentOrder", () => {
   });
 
   it("passes each line's artwork image through for order lists", () => {
-    const line = {
-      orderLineId: "550e8400-e29b-41d4-a716-846655440002",
-      artworkSlug: "warm-basket",
-      artworkTitle: "Warm Basket",
-      productVariantId: null,
-      productSlug: null,
-      productTitle: null,
-      variantSku: null,
-      editionNumber: null,
-      unitPricePence: 12000,
-    };
+    const line = sampleOrderLine();
     const view = presentOrder({
       ...order,
       lines: [

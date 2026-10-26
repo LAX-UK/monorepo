@@ -43,6 +43,15 @@ describe("enquiryContextLinks", () => {
     ]);
   });
 
+  it("links a problem reported on an order to that order in the orders list", () => {
+    expect(
+      enquiryContextLinks(
+        { artwork: null, contextSlug: "LAX-S-10482", topic: "order_problem" },
+        "https://lax.art",
+      ),
+    ).toEqual([{ label: "Order", text: "LAX-S-10482", href: "/orders?q=LAX-S-10482" }]);
+  });
+
   it("returns nothing for an enquiry with no context", () => {
     expect(
       enquiryContextLinks({ artwork: null, contextSlug: null, topic: "general" }, "x"),

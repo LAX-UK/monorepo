@@ -121,13 +121,103 @@ export const OrderLineSchema = Type.Object(
     productSlug: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
     productTitle: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
     variantSku: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
-    editionNumber: Type.Union([Type.Integer({ minimum: 1, maximum: 24 }), Type.Null()]),
+    /**
+     * The edition this line holds. Only set while a paid order holds it: an unpaid, cancelled or
+     * refunded line never names one. Bounded by the edition size, not by a fixed number.
+     */
+    editionNumber: Type.Union([Type.Integer({ minimum: 1 }), Type.Null()]),
     unitPricePence: Type.Integer({ minimum: 0 }),
     /** The artwork's primary image for order lists; absent from older responses. */
     imageUrl: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+    /** How many editions the run has ("Edition 3 of 24"); null for merchandise. */
+    editionSize: Type.Optional(Type.Union([Type.Integer({ minimum: 1 }), Type.Null()])),
+    artistName: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
   },
   { additionalProperties: false },
 );
+
+const NullableDateTime = Type.Union([Type.String({ format: "date-time" }), Type.Null()]);
+
+/** Where delivery or collection stands, with the date each stage was reached when it is known. */
+export const OrderProgressSchema = Type.Object(
+  {
+    status: Type.Union([
+      Type.Literal("pending_production"),
+      Type.Literal("in_production"),
+      Type.Literal("awaiting_dispatch"),
+      Type.Literal("in_transit"),
+      Type.Literal("ready_for_collection"),
+      Type.Literal("collected"),
+      Type.Literal("in_storage"),
+      Type.Literal("delivered"),
+      Type.Literal("cancelled"),
+    ]),
+    carrier: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
+    trackingNumber: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
+    /** The carrier's tracking page, when its address is known for that carrier. */
+    trackingUrl: Type.Union([Type.String({ minLength: 1 }), Type.Null()]),
+    productionStartedAt: NullableDateTime,
+    dispatchedAt: NullableDateTime,
+    readyForCollectionAt: NullableDateTime,
+    /** When the shopper received it: delivered or collected. */
+    possessionAt: NullableDateTime,
+    cancelledAt: NullableDateTime,
+  },
+  { additionalProperties: false },
+);
+
+/** Money returned to the shopper. `cancellation` refunds follow a cancellation within 14 days. */
+export const OrderRefundSchema = Type.Object(
+  {
+    amountPence: Type.Integer({ minimum: 0 }),
+    kind: Type.Union([Type.Literal("cancellation"), Type.Literal("refund")]),
+    status: Type.Union([Type.Literal("pending"), Type.Literal("succeeded")]),
+    /** When it was asked for. */
+    requestedAt: Type.String({ format: "date-time" }),
+    /** When the money was returned; null while it is still pending. */
+    refundedAt: NullableDateTime,
+  },
+  { additionalProperties: false },
+);
+
+/** Whether the shopper can report a problem now, and until when. */
+export const OrderProblemReportWindowSchema = Type.Object(
+  {
+    open: Type.Boolean(),
+    /** Null before delivery, when the 14 days have not started. */
+    endsAt: NullableDateTime,
+  },
+  { additionalProperties: false },
+);
+
+export const ORDER_PROBLEM_REASONS = [
+  "changed_mind",
+  "damaged",
+  "wrong_item",
+  "not_arrived",
+  "other",
+] as const;
+
+export type OrderProblemReason = (typeof ORDER_PROBLEM_REASONS)[number];
+
+export const ORDER_PROBLEM_DETAILS_MAX_LENGTH = 2000;
+
+export const OrderProblemReportRequestSchema = Type.Object(
+  {
+    reason: Type.Union(ORDER_PROBLEM_REASONS.map((reason) => Type.Literal(reason))),
+    details: Type.String({ minLength: 1, maxLength: ORDER_PROBLEM_DETAILS_MAX_LENGTH }),
+  },
+  { additionalProperties: false },
+);
+
+export const OrderProblemReportResponseSchema = Type.Object(
+  { reportId: Type.String({ format: "uuid" }) },
+  { additionalProperties: false },
+);
+
+export type OrderProblemReportRequest = Static<typeof OrderProblemReportRequestSchema>;
+export type OrderProgress = Static<typeof OrderProgressSchema>;
+export type OrderRefund = Static<typeof OrderRefundSchema>;
 
 /**
  * Every status an order can reach, including the two staff refunds set after payment. Kept in step
@@ -167,6 +257,31 @@ export const OrderSummarySchema = Type.Object(
     createdAt: Type.String({ format: "date-time" }),
     paidAt: Type.Union([Type.String({ format: "date-time" }), Type.Null()]),
     deliveryAddress: Type.Union([ShopDeliveryAddressSchema, Type.Null()]),
+    // The fields below are optional so a storefront parses responses from an older shop-api.
+    /** What the shopper quotes: "LAX-S-10482". */
+    reference: Type.Optional(Type.String({ minLength: 1 })),
+    /** Until when an unpaid order can still be paid. */
+    checkoutExpiresAt: Type.Optional(NullableDateTime),
+    /** VAT included in the total; null when the order recorded no VAT rate. */
+    vatIncludedPence: Type.Optional(Type.Union([Type.Integer({ minimum: 0 }), Type.Null()])),
+    /** The one rate every line was charged at, in basis points (2000 is 20%). */
+    vatRateBp: Type.Optional(Type.Union([Type.Integer({ minimum: 1 }), Type.Null()])),
+    progress: Type.Optional(Type.Union([OrderProgressSchema, Type.Null()])),
+    refunds: Type.Optional(Type.Array(OrderRefundSchema)),
+    problemReport: Type.Optional(OrderProblemReportWindowSchema),
+    /** True once the order is paid: its invoice can be downloaded. */
+    invoiceAvailable: Type.Optional(Type.Boolean()),
+    /** "LAX-INV-000124", issued when the order is paid; null before. */
+    invoiceNumber: Type.Optional(Type.Union([Type.String({ minLength: 1 }), Type.Null()])),
+    /** Problems the shopper reported on this order, oldest first. */
+    problemReports: Type.Optional(
+      Type.Array(
+        Type.Object(
+          { reportedAt: Type.String({ format: "date-time" }) },
+          { additionalProperties: false },
+        ),
+      ),
+    ),
   },
   { additionalProperties: false },
 );

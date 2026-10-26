@@ -75,7 +75,7 @@ export function refundTargetOptions(detail: AdminOrderDetail): EntityOption[] {
     {
       id: "",
       label: "Whole order",
-      description: `${orderNumber(detail.orderId)} · ${formatGbp(detail.totalPence)}`,
+      description: `${orderNumber(detail.orderId, detail.reference)} · ${formatGbp(detail.totalPence)}`,
     },
     ...detail.lines.map((line) => ({
       id: line.orderLineId,

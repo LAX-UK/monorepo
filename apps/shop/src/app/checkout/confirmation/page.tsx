@@ -1,12 +1,21 @@
+import { ShopOrderLines, ShopOrderTotals } from "@/components/account/shop-order-lines";
 import { CheckoutConfirmationPoller } from "@/components/checkout/checkout-confirmation-poller.client";
 import { ShopCheckoutSteps } from "@/components/checkout/shop-checkout-steps";
-import { ShopOrderSummary } from "@/components/commerce/shop-order-summary";
+import { ShopOrderConfirmation } from "@/components/checkout/shop-order-confirmation";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { ShopCommerceButton, ShopCommerceOutlineLink } from "@/components/shop-commerce-button";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
 import { shopPageWayfinding } from "@/components/shop-page-header";
 import { ShopStatusState, ShopStatusStateLink } from "@/components/shop-status-state";
+import { shopOrderHref } from "@/lib/account/shop-account-routes";
+import {
+  buildShopOrderLines,
+  buildShopOrderTotals,
+  shopOrderName,
+} from "@/lib/account/shop-orders.vm";
 import { resolveCheckoutConfirmationView } from "@/lib/checkout-confirmation-state";
+import { loadCheckoutDeliveryTimes } from "@/lib/checkout/checkout-delivery.server";
+import { buildOrderConfirmationVm } from "@/lib/checkout/order-confirmation.vm";
 import { fetchShopOrder } from "@/lib/shop-commerce.server";
 import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
@@ -146,22 +155,43 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
     );
   }
 
+  if (view.order.status === "paid") {
+    const confirmation = buildOrderConfirmationVm({
+      order: view.order,
+      displayName: viewer.kind === "authenticated" ? viewer.displayName : null,
+      email: viewer.kind === "authenticated" ? viewer.email : null,
+      times: loadCheckoutDeliveryTimes(),
+    });
+    return (
+      <ConfirmationRouteShell title={confirmation.heading}>
+        <ShopOrderConfirmation confirmation={confirmation} />
+      </ConfirmationRouteShell>
+    );
+  }
+
+  const order = view.order;
   return (
     <ConfirmationRouteShell title={view.heading}>
       <CheckoutConfirmationPoller
-        active={view.order.status === "pending_payment"}
-        orderId={view.order.orderId}
+        active={order.status === "pending_payment"}
+        orderId={order.orderId}
       />
       {view.statusMessage ? <output className="block">{view.statusMessage}</output> : null}
-      {view.order.status === "payment_failed" ? (
+      {order.status === "payment_failed" ? (
         <ShopCommerceButton href="/basket">Return to basket</ShopCommerceButton>
       ) : null}
-      <ShopOrderSummary order={view.order} heading={`Order ${view.order.orderId.slice(0, 8)}…`} />
+      <section className="shop-order-panel" aria-labelledby="confirmation-order-heading">
+        <h2 id="confirmation-order-heading" className="shop-order-panel__title">
+          {shopOrderName(order)}
+        </h2>
+        <ShopOrderLines lines={buildShopOrderLines(order)} />
+        <ShopOrderTotals totals={buildShopOrderTotals(order)} />
+      </section>
       <div className="flex flex-wrap gap-3">
-        <ShopCommerceButton href={`/account/orders/${view.order.orderId}`}>
+        <ShopCommerceOutlineLink href={shopOrderHref(order.orderId)}>
           View order
-        </ShopCommerceButton>
-        <ShopCommerceOutlineLink href="/account/orders">Order history</ShopCommerceOutlineLink>
+        </ShopCommerceOutlineLink>
+        <ShopCommerceOutlineLink href="/account/orders">Your orders</ShopCommerceOutlineLink>
       </div>
     </ConfirmationRouteShell>
   );

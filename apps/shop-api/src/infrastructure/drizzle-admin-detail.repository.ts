@@ -397,6 +397,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
 
       return {
         orderId: order.id,
+        reference: order.reference,
         status: order.status,
         fulfilment: order.fulfilment,
         totalPence: order.totalPence,

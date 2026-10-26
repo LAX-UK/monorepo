@@ -65,7 +65,7 @@ export function ProductionTaskPage({
         status={<MappedStatusBadge status={task.status} present={presentProductionStatus} />}
         meta={
           <>
-            <MetaItem label="Order">{orderNumber(task.orderId)}</MetaItem>
+            <MetaItem label="Order">{orderNumber(task.orderId, task.orderReference)}</MetaItem>
             <MetaItem label="Created">
               {formatStaffDateTime(task.createdAt, { zoneLabel: true })}
             </MetaItem>

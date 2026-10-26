@@ -30,6 +30,7 @@ const TOPIC_LABELS: Record<string, string> = {
   art_advisory: "Art advisory",
   selling: "Selling",
   exhibition: "Exhibition",
+  order_problem: "Order problem",
 };
 
 type Enquiry = NonNullable<AdminClientDetail["enquiries"]>[number];

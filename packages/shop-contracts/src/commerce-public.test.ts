@@ -73,6 +73,67 @@ describe("OrderSummarySchema", () => {
       }),
     ).toBe(false);
   });
+
+  const line = {
+    orderLineId: "550e8400-e29b-41d4-a716-846655440003",
+    artworkSlug: "harbor-print",
+    artworkTitle: "Harbor Print",
+    productVariantId: null,
+    productSlug: null,
+    productTitle: null,
+    variantSku: null,
+    unitPricePence: 100,
+  };
+
+  it("accepts any edition number in the run, not only up to 24", () => {
+    const order = { ...base, status: "paid" as const };
+    for (const editionNumber of [1, 24, 25, 150]) {
+      expect(
+        Value.Check(OrderSummarySchema, {
+          ...order,
+          lines: [{ ...line, editionNumber, editionSize: 150 }],
+        }),
+      ).toBe(true);
+    }
+    expect(
+      Value.Check(OrderSummarySchema, { ...order, lines: [{ ...line, editionNumber: 0 }] }),
+    ).toBe(false);
+  });
+
+  it("accepts the reference, progress, refunds and problem window", () => {
+    expect(
+      Value.Check(OrderSummarySchema, {
+        ...base,
+        status: "partially_refunded",
+        reference: "LAX-S-10482",
+        checkoutExpiresAt: null,
+        vatIncludedPence: 17,
+        vatRateBp: 2000,
+        progress: {
+          status: "in_transit",
+          carrier: "Royal Mail",
+          trackingNumber: "AB123456789GB",
+          trackingUrl: "https://www.royalmail.com/track-your-item",
+          productionStartedAt: "2026-01-02T00:00:00.000Z",
+          dispatchedAt: "2026-01-03T00:00:00.000Z",
+          readyForCollectionAt: null,
+          possessionAt: null,
+          cancelledAt: null,
+        },
+        refunds: [
+          {
+            amountPence: 40,
+            kind: "refund",
+            status: "succeeded",
+            requestedAt: "2026-01-04T00:00:00.000Z",
+            refundedAt: "2026-01-05T00:00:00.000Z",
+          },
+        ],
+        problemReport: { open: true, endsAt: null },
+        invoiceAvailable: true,
+      }),
+    ).toBe(true);
+  });
 });
 
 describe("parseSavedDeliveryAddressList", () => {

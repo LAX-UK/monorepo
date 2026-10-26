@@ -28,6 +28,7 @@ const GENERAL_ENQUIRY_TOPIC_LABELS = {
   art_advisory: "Art advisory",
   selling: "Selling a work",
   exhibition: "Exhibition enquiry",
+  order_problem: "Problem with a Shop order",
 } as const satisfies Record<
   Parameters<ShopNotificationPublisher["queueGeneralEnquiryAlert"]>[1]["topic"],
   string
@@ -102,8 +103,11 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
         template: "shop-order-receipt",
         vars: {
           orderId: input.orderId,
+          orderReference: input.orderReference,
           totalAmount: formatPence(input.totalPence),
-          vatAmount: formatPence(input.vatAmountPence),
+          ...(input.vatAmountPence !== null
+            ? { vatAmount: formatPence(input.vatAmountPence) }
+            : {}),
           orderUrl,
           lineSummary,
         },
@@ -169,6 +173,7 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
         to,
         template: "shop-dispatch-notice",
         vars: {
+          orderReference: input.orderReference,
           artworkTitle: input.artworkTitle,
           trackingUrl: input.trackingUrl,
           fulfilmentSummary: input.fulfilmentSummary,
@@ -188,6 +193,7 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
         template: "shop-refund-issued",
         vars: {
           orderId: input.orderId,
+          orderReference: input.orderReference,
           amountPence: input.amountPence,
           buyerEmail: to,
         },

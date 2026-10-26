@@ -10,17 +10,19 @@ export const subject = "Your LAX Shop refund";
 
 export default function ShopRefundIssuedEmail({
   orderId,
+  orderReference,
   amountPence,
 }: TemplateVarsByName["shop-refund-issued"]) {
+  const order = orderReference ?? orderId;
   return (
     <Layout
       category="finance"
       eyebrow="Refund"
-      preview={`Refund of ${formatPence(amountPence)} for order ${orderId}`}
+      preview={`Refund of ${formatPence(amountPence)} for order ${order}`}
       title="Your refund is on its way"
     >
       <TextBlock>
-        We have issued a refund of {formatPence(amountPence)} for your order ({orderId}).
+        We have issued a refund of {formatPence(amountPence)} for your order {order}.
       </TextBlock>
       <TextBlock>
         It may take a few days to appear on your statement, depending on your bank.

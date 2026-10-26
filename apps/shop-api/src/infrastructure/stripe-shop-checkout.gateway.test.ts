@@ -83,6 +83,7 @@ describe("createStripeShopCheckoutGateway", () => {
     });
     await gateway.createHostedCheckout({
       orderId: "11111111-1111-4111-8111-111111111111",
+      orderReference: "LAX-S-10482",
       totalPence: 1000,
       successUrl: "http://localhost:3020/ok?orderId={ORDER_ID}",
       cancelUrl: "http://localhost:3020/basket?orderId={ORDER_ID}",
@@ -110,5 +111,9 @@ describe("createStripeShopCheckoutGateway", () => {
       "https://cdn.example/art.jpg",
     ]);
     expect(params.line_items[1].price_data.product_data.name).toBe("Delivery & fulfilment");
+    // Staff find the order in Stripe by the reference the shopper quotes.
+    expect(params.metadata).toMatchObject({ orderReference: "LAX-S-10482" });
+    expect(params.payment_intent_data.metadata).toMatchObject({ orderReference: "LAX-S-10482" });
+    expect(params.payment_intent_data.description).toBe("LAX Shop order LAX-S-10482");
   });
 });

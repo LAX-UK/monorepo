@@ -11,6 +11,7 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
+  smallint,
   text,
   timestamp,
   unique,
@@ -587,12 +588,26 @@ export const shopOrder = pgTable(
   "shop_order",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    /**
+     * What people quote for the order ("LAX-S-10482"): shoppers, emails, invoices, Stripe and
+     * staff. Issued by the database from `shop_order_reference_seq` when the row is inserted.
+     */
+    reference: text("reference")
+      .default(sql`('LAX-S-' || nextval('shop_order_reference_seq')::text)`)
+      .notNull(),
+    /**
+     * The invoice number ("LAX-INV-000124"), set by the `shop_order_invoice_number_trg` trigger from
+     * `shop_invoice_counter` in the transaction that sets `paid_at`. Null until the order is paid.
+     */
+    invoiceNumber: text("invoice_number"),
     identitySubjectId: text("identity_subject_id").notNull(),
     buyerPartyId: uuid("buyer_party_id").references(() => shopParty.id, { onDelete: "restrict" }),
     status: shopOrderStatusEnum("status").default("pending_payment").notNull(),
     fulfilment: shopFulfilmentOptionEnum("fulfilment").notNull(),
     merchandiseSubtotalPence: integer("merchandise_subtotal_pence").notNull(),
     fulfilmentSurchargePence: integer("fulfilment_surcharge_pence").notNull(),
+    /** VAT included in the delivery charge, at the goods' rate; null when no VAT was recorded. */
+    fulfilmentVatPence: integer("fulfilment_vat_pence"),
     totalPence: integer("total_pence").notNull(),
     stripeCheckoutSessionId: text("stripe_checkout_session_id"),
     stripePaymentIntentId: text("stripe_payment_intent_id"),
@@ -613,8 +628,23 @@ export const shopOrder = pgTable(
   },
   (table) => [
     uniqueIndex("shop_order_idempotency_key_uid").on(table.idempotencyKey),
+    uniqueIndex("shop_order_reference_uid").on(table.reference),
+    uniqueIndex("shop_order_invoice_number_uid").on(table.invoiceNumber),
     index("shop_order_subject_idx").on(table.identitySubjectId),
     index("shop_order_subject_created_idx").on(table.identitySubjectId, table.createdAt),
+  ],
+);
+
+/** One row: the last invoice number issued. Paying an order takes the next under a row lock. */
+export const shopInvoiceCounter = pgTable(
+  "shop_invoice_counter",
+  {
+    id: smallint("id").default(1).primaryKey(),
+    lastNumber: integer("last_number").default(0).notNull(),
+  },
+  (table) => [
+    check("shop_invoice_counter_single_row_ck", sql`${table.id} = 1`),
+    check("shop_invoice_counter_nonnegative_ck", sql`${table.lastNumber} >= 0`),
   ],
 );
 
@@ -995,6 +1025,14 @@ export const shopFulfilment = pgTable(
     carrier: text("carrier"),
     trackingNumber: text("tracking_number"),
     possessionAt: timestamp("possession_at", { mode: "date", withTimezone: true }),
+    /** When each stage was first reached, for the buyer's order timeline. */
+    productionStartedAt: timestamp("production_started_at", { mode: "date", withTimezone: true }),
+    dispatchedAt: timestamp("dispatched_at", { mode: "date", withTimezone: true }),
+    readyForCollectionAt: timestamp("ready_for_collection_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    cancelledAt: timestamp("cancelled_at", { mode: "date", withTimezone: true }),
     storageLocation: text("storage_location"),
     version: integer("version").default(1).notNull(),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),

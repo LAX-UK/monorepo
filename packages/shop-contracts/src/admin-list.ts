@@ -58,6 +58,8 @@ export const AdminOrderListItemSchema = Type.Object({
   buyerEmail: Type.Union([Type.String(), Type.Null()]),
   createdAt: Type.String(),
   paidAt: Type.Union([Type.String(), Type.Null()]),
+  /** "LAX-S-10482"; optional so the admin parses responses from an older shop-api. */
+  reference: Type.Optional(Type.String()),
 });
 
 export const AdminOrderListSchema = Type.Object({
@@ -102,6 +104,8 @@ export const AdminFulfilmentListItemSchema = Type.Object({
   paidAt: Type.Optional(NullableString),
   buyerName: Type.Optional(NullableString),
   buyerEmail: Type.Optional(NullableString),
+  /** The order's reference, "LAX-S-10482". */
+  orderReference: Type.Optional(Type.String()),
 });
 
 export const AdminFulfilmentListSchema = workListSchema(AdminFulfilmentListItemSchema);

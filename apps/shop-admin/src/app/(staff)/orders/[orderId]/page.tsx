@@ -6,7 +6,11 @@ import type { AdminOrderDetail } from "@auction/shop-contracts";
 import { notFound, redirect } from "next/navigation";
 
 export async function generateMetadata({ params }: { params: Promise<{ orderId: string }> }) {
-  return { title: `Order ${orderNumber((await params).orderId)}` };
+  const { orderId } = await params;
+  const result = await fetchAdminJson<AdminOrderDetail>(`orders/${orderId}`);
+  return {
+    title: `Order ${orderNumber(orderId, result.status === "ok" ? result.data.reference : null)}`,
+  };
 }
 
 export default async function OrderDetailPage({

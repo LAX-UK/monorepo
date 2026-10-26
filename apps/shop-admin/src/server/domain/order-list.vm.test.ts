@@ -185,8 +185,10 @@ describe("order labels", () => {
     expect(orderStatusTone("expired")).toBe("neutral");
   });
 
-  it("quotes the order number as the first eight characters of the id", () => {
+  it("quotes the order by its reference, or the first eight characters of the id without one", () => {
+    expect(orderNumber("a1b2c3d4-0000-4000-8000-000000000000", "LAX-S-10482")).toBe("LAX-S-10482");
     expect(orderNumber("a1b2c3d4-0000-4000-8000-000000000000")).toBe("a1b2c3d4");
+    expect(orderNumber("a1b2c3d4-0000-4000-8000-000000000000", null)).toBe("a1b2c3d4");
   });
 
   it("names the buyer by name, then email, then falls back", () => {

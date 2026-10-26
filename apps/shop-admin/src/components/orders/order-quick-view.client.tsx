@@ -89,7 +89,7 @@ export function OrderQuickView({
       onOpenChange={(open) => {
         if (!open) onClose();
       }}
-      title={orderId ? `Order ${orderNumber(orderId)}` : "Order"}
+      title={detail ? `Order ${orderNumber(detail.orderId, detail.reference)}` : "Order"}
       description={
         detail
           ? `${detail.buyerName ?? detail.buyerEmail ?? "Unknown buyer"} · ${formatGbp(detail.totalPence)}`
@@ -125,10 +125,10 @@ export function OrderQuickView({
             <KeyValueList
               items={[
                 {
-                  label: "Order number",
-                  value: orderNumber(detail.orderId),
-                  copyValue: detail.orderId,
+                  label: "Order",
+                  value: orderNumber(detail.orderId, detail.reference),
                 },
+                { label: "Order ID", value: detail.orderId, copyValue: detail.orderId },
                 {
                   label: "Buyer",
                   value: detail.buyerName ?? detail.buyerEmail ?? "Unknown buyer",

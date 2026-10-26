@@ -1,5 +1,6 @@
 import { ShopAccountShell } from "@/components/account/shop-account-shell";
 import { ShopEditionAlertList } from "@/components/account/shop-edition-alert-list";
+import { ShopFinishPaying } from "@/components/account/shop-finish-paying.client";
 import { ShopOrderList } from "@/components/account/shop-order-list";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { shopPageWayfinding } from "@/components/shop-page-header";
@@ -46,9 +47,9 @@ export default async function AccountOrdersPage() {
   const alerts = alertsResult.status === "ok" ? alertsResult.alerts : [];
   const list =
     ordersResult.status === "ok"
-      ? buildShopOrderListVm(ordersResult.data)
+      ? buildShopOrderListVm(ordersResult.data, new Date())
       : ordersResult.status === "empty"
-        ? ({ kind: "empty" } as const)
+        ? buildShopOrderListVm([], new Date())
         : null;
 
   return (
@@ -78,22 +79,30 @@ export default async function AccountOrdersPage() {
           description="We could not load your orders. Try again in a moment."
           actions={<ShopCatalogueStateRetryButton />}
         />
-      ) : list.kind === "empty" ? (
-        <ShopStatusState
-          layout="page"
-          variant="empty"
-          icon="parcel"
-          title="No orders yet"
-          titleAs="h2"
-          description="When you buy an edition, the order and its progress appear here."
-          actions={
-            <ShopStatusStateLink href="/artworks" priority="primary">
-              Browse editions
-            </ShopStatusStateLink>
-          }
-        />
       ) : (
-        <ShopOrderList rows={list.rows} />
+        <>
+          {list.finishPaying ? <ShopFinishPaying order={list.finishPaying} /> : null}
+          {list.rows.length === 0 ? (
+            <ShopStatusState
+              layout="page"
+              variant="empty"
+              icon="parcel"
+              title="No orders yet"
+              titleAs="h2"
+              description="When you buy an edition, the order and its progress appear here."
+              actions={
+                <ShopStatusStateLink
+                  href="/artworks"
+                  priority={list.finishPaying ? "secondary" : "primary"}
+                >
+                  Browse editions
+                </ShopStatusStateLink>
+              }
+            />
+          ) : (
+            <ShopOrderList rows={list.rows} />
+          )}
+        </>
       )}
       {alerts.length > 0 ? (
         <section

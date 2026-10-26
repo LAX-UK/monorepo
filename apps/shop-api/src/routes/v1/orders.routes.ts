@@ -1,11 +1,16 @@
+import { randomUUID } from "node:crypto";
 import {
   CheckoutSessionSchema,
+  type OrderProblemReportRequest,
+  OrderProblemReportRequestSchema,
+  OrderProblemReportResponseSchema,
   OrderStatusSchema,
   OrderSummarySchema,
   SavedDeliveryAddressListSchema,
   ShopApiErrorBodySchema,
   ShopFulfilmentOptionSchema,
 } from "@auction/shop-contracts";
+import { orderProblemWindow } from "@auction/shop-domain";
 import { Type } from "@sinclair/typebox";
 import type { Static } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
@@ -16,11 +21,13 @@ import {
   decodeCatalogueCursor,
   encodeCatalogueCursor,
 } from "../../application/catalogue-cursor.js";
+import { buildOrderInvoiceModel, renderOrderInvoicePdf } from "../../application/order-invoice.js";
 import { DEFAULT_ORDER_LIST_LIMIT } from "../../application/ports/commerce.ports.js";
 import type { CommerceRoutesDeps } from "../../commerce-route-deps.js";
 import { ShopApiError, notFound } from "../../errors/shop-api-error.js";
 import { requireShopScope, requireShopSubject } from "../../plugins/shop-auth.js";
 import { presentCheckoutSession, presentOrder } from "../../presenters/commerce.presenter.js";
+import { admitEnquiry } from "./enquiry-admission.js";
 
 const OrderListQuerySchema = Type.Object({
   limit: Type.Optional(
@@ -59,7 +66,7 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
         cursor: decodeCatalogueCursor(query.cursor),
       });
       return {
-        items: result.items.map(presentOrder),
+        items: result.items.map((order) => presentOrder(order)),
         ...(result.nextCursor ? { nextCursor: encodeCatalogueCursor(result.nextCursor) } : {}),
       };
     },
@@ -83,6 +90,102 @@ export async function registerOrderRoutes(app: FastifyInstance, deps: CommerceRo
         throw notFound("Order");
       }
       return presentOrder(order);
+    },
+  );
+
+  app.get(
+    "/v1/orders/:orderId/invoice",
+    {
+      schema: {
+        tags: ["commerce"],
+        params: Type.Object({ orderId: Type.String({ format: "uuid" }) }),
+        response: { 404: ShopApiErrorBodySchema },
+      },
+    },
+    async (request, reply) => {
+      requireShopScope(request, "shop.read");
+      const subject = requireShopSubject(request);
+      const { orderId } = request.params as { orderId: string };
+      const order = await deps.getOrder(subject, orderId);
+      // An unpaid order has no invoice; it answers as if it did not exist.
+      if (!order?.paidAt || !order.invoiceNumber) throw notFound("Invoice");
+      const model = buildOrderInvoiceModel({
+        order,
+        customer: await deps.getCustomerProfile(subject),
+        supplier: deps.invoiceIssuer.supplier,
+        vatNumber: deps.invoiceIssuer.vatNumber,
+      });
+      const pdf = await renderOrderInvoicePdf(model);
+      return reply
+        .header("content-type", "application/pdf")
+        .header("content-disposition", `attachment; filename="${model.fileName}"`)
+        .header("cache-control", "private, no-store")
+        .send(pdf);
+    },
+  );
+
+  app.post(
+    "/v1/orders/:orderId/problem-reports",
+    {
+      schema: {
+        tags: ["commerce"],
+        params: Type.Object({ orderId: Type.String({ format: "uuid" }) }),
+        body: OrderProblemReportRequestSchema,
+        response: {
+          201: OrderProblemReportResponseSchema,
+          400: ShopApiErrorBodySchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+          409: ShopApiErrorBodySchema,
+          429: ShopApiErrorBodySchema,
+          503: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request, reply) => {
+      requireShopScope(request, "shop.write");
+      const subject = requireShopSubject(request);
+      const problems = deps.orderProblems;
+      if (!problems) {
+        throw new ShopApiError(
+          SHOP_API_ERROR_CODES.FEATURE_DISABLED,
+          "Problem reports are not available",
+          503,
+        );
+      }
+      const { orderId } = request.params as { orderId: string };
+      const body = request.body as OrderProblemReportRequest;
+      const details = body.details.trim();
+      if (!details) {
+        throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Tell us what happened", 400);
+      }
+      const order = await deps.getOrder(subject, orderId);
+      if (!order) throw notFound("Order");
+      const window = orderProblemWindow({
+        status: order.status,
+        paidAt: order.paidAt,
+        refundPeriodEndsAt: order.refundPeriodEndsAt,
+        possessionAt: order.progress?.possessionAt ?? null,
+        now: new Date(),
+      });
+      if (!window.open) {
+        throw new ShopApiError(
+          SHOP_API_ERROR_CODES.CONFLICT,
+          "This order can no longer be reported here",
+          409,
+        );
+      }
+      const admission = await admitEnquiry(request, reply, problems.rateLimiter, {});
+      if (admission.kind === "honeypot") {
+        return reply.status(201).send({ reportId: randomUUID() });
+      }
+      const result = await problems.writer.submit({
+        sender: admission.sender,
+        orderReference: order.reference,
+        reason: body.reason,
+        details,
+      });
+      return reply.status(201).send(result);
     },
   );
 

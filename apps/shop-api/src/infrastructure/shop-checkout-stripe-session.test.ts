@@ -28,6 +28,7 @@ describe("resolveOrCreateStripeCheckoutSession", () => {
     await expect(
       resolveOrCreateStripeCheckoutSession(db as never, paymentGateway as never, {
         orderId: "order-1",
+        orderReference: "LAX-S-10001",
         totalPence: 1000,
         successUrl: "http://localhost:3020/success",
         cancelUrl: "http://localhost:3020/cancel",

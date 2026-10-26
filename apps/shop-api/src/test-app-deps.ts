@@ -89,6 +89,8 @@ export function createMinimalShopApiTestDeps(
       cancelCheckoutOrder: async () => undefined,
       listOrders: async () => ({ items: [] }),
       getOrder: async () => null,
+      getCustomerProfile: async () => ({ name: null, email: null }),
+      invoiceIssuer: { supplier: legalEntityFor("shop"), vatNumber: null },
     },
     health: {
       checkConnectivity: async () => undefined,

@@ -73,7 +73,7 @@ export default async function AccountOrderDetailPage({ params }: OrderDetailPage
     );
   }
 
-  const order = buildShopOrderDetailVm(orderResult.data);
+  const order = buildShopOrderDetailVm(orderResult.data, new Date());
   const wayfinding = shopPageWayfinding.orderDetail(order.title);
 
   return (

@@ -67,6 +67,7 @@ import { createDrizzleHelpRepository } from "./infrastructure/drizzle-help.repos
 import { createDrizzleMerchandiseCatalogueRepository } from "./infrastructure/drizzle-merchandise-catalogue.repository.js";
 import { createDrizzleMerchandiseCatalogueWriter } from "./infrastructure/drizzle-merchandise-catalogue.writer.js";
 import { createDrizzleMerchandiseStockWriter } from "./infrastructure/drizzle-merchandise-stock.writer.js";
+import { createDrizzleOrderProblemReportWriter } from "./infrastructure/drizzle-order-problem-report.writer.js";
 import { createDrizzlePortalArtistRepository } from "./infrastructure/drizzle-portal-artist.repository.js";
 import { createDrizzlePortalFavoritesRepository } from "./infrastructure/drizzle-portal-favorites.repository.js";
 import { createDrizzlePortalOwnershipRepository } from "./infrastructure/drizzle-portal-ownership.repository.js";
@@ -436,7 +437,16 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         issuer: env.OIDC_ISSUER_URL,
         bffToken: env.SHOP_API_BFF_TOKEN,
       },
-      commerce,
+      commerce: {
+        ...commerce,
+        orderProblems: {
+          writer: createDrizzleOrderProblemReportWriter(db, {
+            notifications,
+            opsEmail: env.SHOP_ENQUIRY_NOTIFICATION_EMAIL ?? env.SHOP_OPS_ALERT_EMAIL ?? null,
+          }),
+          rateLimiter: enquiryRateLimiter,
+        },
+      },
       stripeWebhook,
       health: healthDeps,
       staffReader,

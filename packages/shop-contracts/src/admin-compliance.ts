@@ -35,6 +35,8 @@ export const AdminDisputeListItemSchema = Type.Object({
   /* The rest is optional so the admin parses responses from an older shop-api. */
   buyerName: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   buyerEmail: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  /** The order's reference, "LAX-S-10482". */
+  orderReference: Type.Optional(Type.String()),
 });
 
 export const AdminDisputeListSchema = Type.Object({
