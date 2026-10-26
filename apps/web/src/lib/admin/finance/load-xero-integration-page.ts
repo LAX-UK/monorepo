@@ -1,8 +1,6 @@
 import "server-only";
 
 import { xeroCallbackErrorMessage } from "@/lib/admin/finance/xero-callback-error";
-import { getFinanceAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
-import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminXeroIntegrationStatus } from "@/lib/data/http/admin.server";
 
 export type XeroIntegrationSearchParams = {
@@ -14,7 +12,6 @@ export type XeroIntegrationPageModel = {
   error: string | null;
   connected: boolean;
   status: Awaited<ReturnType<typeof getAdminXeroIntegrationStatus>> | null;
-  navCounts: typeof EMPTY_ADMIN_NAV_COUNTS;
   loadError: string | null;
 };
 
@@ -33,18 +30,10 @@ export async function loadAdminXeroIntegrationPage(
     loadError = e instanceof Error ? e.message : "Could not load Xero status.";
   }
 
-  let navCounts = EMPTY_ADMIN_NAV_COUNTS;
-  try {
-    navCounts = await getFinanceAdminNavCounts();
-  } catch {
-    /* use empty */
-  }
-
   return {
     error,
     connected,
     status,
-    navCounts,
     loadError,
   };
 }

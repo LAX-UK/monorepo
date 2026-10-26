@@ -1,21 +1,17 @@
-import { AdminHubQuickLinks } from "@/components/admin/admin-hub-quick-links";
-import { AdminListAlert } from "@/components/admin/admin-list-alert";
-import { CatalogBreadcrumbs } from "@/components/admin/catalog/catalog-breadcrumbs";
-import { CatalogListMobileSummary } from "@/components/admin/catalog/catalog-list-mobile-summary";
-import { CatalogListShell } from "@/components/admin/catalog/catalog-list-shell";
 import { PayoutSettlementWorkspace } from "@/components/admin/payout-settlement-workspace";
-import { mapFinanceHubQuickLinks } from "@/lib/admin/finance-hub-links";
+import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
+import { UrlSuccessToast } from "@/components/admin/staff/url-success-toast";
 import {
   loadAdminSettlementPage,
   loadSettlementPreview,
 } from "@/lib/admin/finance/load-settlement-page";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
+import { FormPage, Notice } from "@auction/staff-ui";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = metadataForPrivate(
-  "Run settlement",
-  "Create a payout from captured payments for one legal entity.",
+  "Settlement run",
+  "Pay one seller now from their captured payments.",
 );
 
 export default async function PayoutSettlementPage({
@@ -23,51 +19,33 @@ export default async function PayoutSettlementPage({
 }: {
   searchParams: Promise<{ error?: string; success?: string }>;
 }) {
-  const sp = await searchParams;
-  const { success, error, navCounts } = await loadAdminSettlementPage(sp);
+  const { success, error } = await loadAdminSettlementPage(await searchParams);
 
   return (
-    <CatalogListShell
-      variant="queue"
-      title="Run settlement"
-      description="Run on-demand settlement for one legal entity. Nightly automation handles the rest."
+    <FormPage
       breadcrumbs={
-        <CatalogBreadcrumbs
-          segments={[
+        <StaffBreadcrumbs
+          items={[
             { label: "Finance", href: "/admin/finance" },
             { label: "Payouts", href: "/admin/payouts" },
-            { label: "Run settlement" },
+            { label: "Settlement run" },
           ]}
         />
       }
-      mobileSummary={
-        <CatalogListMobileSummary
-          metrics={[
-            {
-              id: "manual-review",
-              label: "Manual review",
-              value: String(navCounts.manualReviewCount),
-            },
-            { id: "disputes", label: "Open disputes", value: String(navCounts.disputesOpen) },
-            { id: "payouts", label: "Failed payouts", value: String(navCounts.payoutsFailed) },
-          ]}
-        />
-      }
-      errorAlert={error ? <AdminListAlert title="Settlement failed">{error}</AdminListAlert> : null}
+      title="Settlement run"
+      description="Pay one seller now from their captured payments. The nightly run settles everyone else."
+      {...(error
+        ? {
+            notice: (
+              <Notice tone="danger" alert title="The settlement did not run">
+                {error}
+              </Notice>
+            ),
+          }
+        : {})}
     >
-      <div className="space-y-8">
-        {success ? (
-          <Alert>
-            <AlertTitle>Done</AlertTitle>
-            <AlertDescription>{success}</AlertDescription>
-          </Alert>
-        ) : null}
-        <PayoutSettlementWorkspace loadPreview={loadSettlementPreview} />
-        <AdminHubQuickLinks
-          ariaLabel="Finance quick links"
-          links={mapFinanceHubQuickLinks(navCounts)}
-        />
-      </div>
-    </CatalogListShell>
+      <UrlSuccessToast message={success} />
+      <PayoutSettlementWorkspace loadPreview={loadSettlementPreview} />
+    </FormPage>
   );
 }

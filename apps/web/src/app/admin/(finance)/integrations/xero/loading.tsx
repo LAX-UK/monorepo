@@ -1,11 +1,5 @@
-import { FinancePanelPageSkeleton } from "@/components/admin/finance/finance-list-states";
+import { FormPageSkeleton } from "@auction/staff-ui";
 
 export default function XeroLoading() {
-  return (
-    <FinancePanelPageSkeleton
-      title="Xero"
-      description="Loading integration…"
-      className="max-w-[640px]"
-    />
-  );
+  return <FormPageSkeleton title="Xero" sections={2} />;
 }

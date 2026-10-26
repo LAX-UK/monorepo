@@ -1,8 +1,8 @@
 "use client";
 
-import { createFinanceListRouteError } from "@/components/admin/finance/create-finance-list-route-error";
+import { createFinanceRouteError } from "@/components/admin/finance/create-finance-route-error";
 
-export default createFinanceListRouteError({
+export default createFinanceRouteError({
   title: "Finance",
   backHref: "/admin/finance",
   backLabel: "Back to finance",

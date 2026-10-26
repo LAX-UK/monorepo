@@ -3,7 +3,7 @@
 import { createAdminSegmentRouteError } from "@/components/admin/create-admin-segment-route-error";
 
 export default createAdminSegmentRouteError({
-  title: "Impersonation error",
+  title: "Support session could not load",
   homeHref: "/admin",
-  homeLabel: "Back to admin home",
+  homeLabel: "Back to Overview",
 });

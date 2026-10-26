@@ -1,5 +1,5 @@
-import { FinancePanelPageSkeleton } from "@/components/admin/finance/finance-list-states";
+import { FormPageSkeleton } from "@auction/staff-ui";
 
 export default function PayoutSettlementLoading() {
-  return <FinancePanelPageSkeleton title="Run settlement" description="Loading settlement…" />;
+  return <FormPageSkeleton title="Settlement run" sections={2} />;
 }
