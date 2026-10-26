@@ -12,6 +12,10 @@ export const staffErrorMap: ZodErrorMap = (issue, ctx) => {
       if (issue.received === "undefined" || issue.received === "null") {
         return { message: "Enter a value" };
       }
+      if (issue.expected === "integer") return { message: "Enter a whole number" };
+      if (issue.received === "nan" || issue.expected === "number") {
+        return { message: "Enter a number" };
+      }
       break;
     case ZodIssueCode.invalid_string:
       if (issue.validation === "url") {

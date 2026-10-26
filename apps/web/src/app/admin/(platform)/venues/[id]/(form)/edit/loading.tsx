@@ -1,5 +1,5 @@
-import { AdminCatalogFormSkeleton } from "@/components/admin/admin-catalog-form-skeleton";
+import { FormPageSkeleton } from "@auction/staff-ui";
 
-export default function AdminVenueEditLoading() {
-  return <AdminCatalogFormSkeleton />;
+export default function Loading() {
+  return <FormPageSkeleton title="Edit venue" />;
 }

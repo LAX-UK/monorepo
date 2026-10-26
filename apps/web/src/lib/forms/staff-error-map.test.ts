@@ -9,6 +9,7 @@ const schema = z.object({
   code: z.string().min(3),
   own: z.string().min(1, "Name the record"),
   required: z.string(),
+  count: z.coerce.number().optional(),
 });
 
 function messages(input: unknown): Record<string, string> {
@@ -27,6 +28,7 @@ describe("staffErrorMap", () => {
     expect(found.note).toBe("Use 5 characters or fewer");
     expect(found.code).toBe("Use at least 3 characters");
     expect(found.required).toBe("Enter a value");
+    expect(messages({ count: "abc" }).count).toBe("Enter a number");
   });
 
   it("leaves a message the schema wrote itself alone", () => {
