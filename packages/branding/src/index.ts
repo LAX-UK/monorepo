@@ -10,3 +10,4 @@ export * from "./favicons.js";
 export * from "./tokens.js";
 export * from "./lax-logo-path.js";
 export * from "./lockup/lockup.js";
+export * from "./lockup/shop-lockup-candidates.js";
