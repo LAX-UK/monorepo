@@ -10,7 +10,7 @@ vi.mock("@/lib/data/http/invitations.reader", () => ({
 }));
 
 describe("loadAdminInvitationsListPage", () => {
-  it("returns authoritative summary and hydrates query cache", async () => {
+  it("returns the authoritative summary and the page of rows", async () => {
     getPage.mockResolvedValue({
       rows: [{ id: "inv-1", email: "alice@example.com" }],
       total: 40,
@@ -26,7 +26,7 @@ describe("loadAdminInvitationsListPage", () => {
 
     expect(result.loadError).toBeNull();
     expect(result.summary.pending).toBe(10);
-    expect(result.dehydratedState).toBeDefined();
+    expect(result.rows).toHaveLength(1);
     expect(result.model.hasFilters).toBe(true);
   });
 
