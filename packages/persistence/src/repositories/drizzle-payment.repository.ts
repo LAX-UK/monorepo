@@ -11,6 +11,7 @@ import { and, desc, eq, gte, ilike, inArray, isNotNull, isNull, lte, or, sql } f
 import type { InferSelectModel, SQL } from "drizzle-orm";
 import type {
   AdminPaymentTableRowDto,
+  AdminPaymentsDailyAmounts,
   AdminPaymentsSummaryStats,
   CreatePaymentRow,
   IPaymentWriteRepository,
@@ -426,16 +427,24 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     return row?.n ?? 0;
   }
 
-  async sumAdminTableVolumeByDay(
+  async sumAdminTableAmountsByDay(
     filter: Omit<ListPaymentsAdminTableFilter, "limit" | "offset">,
     rangeStart: Date,
-  ): Promise<Map<string, number>> {
+  ): Promise<Map<string, AdminPaymentsDailyAmounts>> {
     const where = and(gte(payment.createdAt, rangeStart), adminTableWhere(filter));
     const day = sql`date_trunc('day', ${payment.createdAt} AT TIME ZONE 'UTC')`;
+    const amount = sql`round(${payment.amount}::numeric * 100)`;
+    const pence = (status?: SQL) =>
+      status
+        ? sql<string>`coalesce(sum(${amount}) filter (where ${status}), 0)::text`
+        : sql<string>`coalesce(sum(${amount}), 0)::text`;
     const rows = await this.db
       .select({
         dayKey: sql<string>`to_char(${day}, 'YYYY-MM-DD')`,
-        pence: sql<string>`coalesce(sum(round(${payment.amount}::numeric * 100)), 0)::text`,
+        volume: pence(),
+        captured: pence(eq(payment.status, "captured")),
+        refunded: pence(eq(payment.status, "refunded")),
+        awaiting: pence(inArray(payment.status, ["pending", "authorized"])),
       })
       .from(payment)
       .innerJoin(lot, eq(payment.lotId, lot.id))
@@ -444,7 +453,17 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
       .leftJoin(paymentExternalRef, eq(payment.id, paymentExternalRef.paymentId))
       .where(where)
       .groupBy(day);
-    return new Map(rows.map((row) => [row.dayKey, Number(row.pence)]));
+    return new Map(
+      rows.map((row) => [
+        row.dayKey,
+        {
+          volume: Number(row.volume),
+          captured: Number(row.captured),
+          refunded: Number(row.refunded),
+          awaiting: Number(row.awaiting),
+        },
+      ]),
+    );
   }
 
   async summarizeForAdminTable(

@@ -102,6 +102,8 @@ export interface IAdminNavCountsQueryService {
 export interface IAdminKpiTrendsQueryService {
   getLotsTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
   getLotsEndedTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
+  /** Lots open for bidding each day. */
+  getLotsLiveTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
   getLotsHammerTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
   getPaymentsTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;
   getSalesTrend(periodDays: AdminKpiPeriodDays): Promise<AdminKpiTrendBundle>;

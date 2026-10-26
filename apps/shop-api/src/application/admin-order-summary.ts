@@ -39,15 +39,19 @@ export function buildOrderSummary(
   const prior = ukDayKeys(now, days, days);
   const sum = (values: readonly number[]) => values.reduce((a, b) => a + b, 0);
   const paidPence = (keys: readonly string[]) => keys.map((k) => totals.paid.get(k)?.pence ?? 0);
-  const paidOrders = (keys: readonly string[]) =>
-    sum(keys.map((k) => totals.paid.get(k)?.orders ?? 0));
+  const paidOrders = (keys: readonly string[]) => keys.map((k) => totals.paid.get(k)?.orders ?? 0);
   const placed = (keys: readonly string[]) => keys.map((k) => totals.placed.get(k) ?? 0);
   const paidDaily = paidPence(current);
   const placedDaily = placed(current);
+  const paidOrdersDaily = paidOrders(current);
   return {
     periodDays: days,
     paidPence: { daily: paidDaily, current: sum(paidDaily), prior: sum(paidPence(prior)) },
     orders: { daily: placedDaily, current: sum(placedDaily), prior: sum(placed(prior)) },
-    paidOrders: { current: paidOrders(current), prior: paidOrders(prior) },
+    paidOrders: {
+      daily: paidOrdersDaily,
+      current: sum(paidOrdersDaily),
+      prior: sum(paidOrders(prior)),
+    },
   };
 }

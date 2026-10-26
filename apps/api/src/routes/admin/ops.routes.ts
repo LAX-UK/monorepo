@@ -86,6 +86,17 @@ export function attachAdminOpsRoutes(
   );
 
   platform.get(
+    "/kpi/lots-live-trend",
+    requireAdminDashboard,
+    zValidator("query", adminKpiTrendQuerySchema),
+    async (c) => {
+      const q = c.req.valid("query");
+      const data = await container.admin.kpiTrends.getLotsLiveTrend(q.periodDays);
+      return c.json({ data });
+    },
+  );
+
+  platform.get(
     "/kpi/lots-trend",
     requireAdminDashboard,
     zValidator("query", adminKpiTrendQuerySchema),

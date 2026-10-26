@@ -11,6 +11,7 @@ import { AdminLotsEndedKpiTrendService } from "../services/admin/admin-lots-ende
 import { AdminLotsHammerKpiTrendService } from "../services/admin/admin-lots-hammer-kpi-trend.service.js";
 import { AdminLotsKpiTrendService } from "../services/admin/admin-lots-kpi-trend.service.js";
 import { AdminLotsListSummaryService } from "../services/admin/admin-lots-list-summary.service.js";
+import { AdminLotsLiveKpiTrendService } from "../services/admin/admin-lots-live-kpi-trend.service.js";
 import {
   createAdminNavCountsAuthorityPorts,
   createAdminNavCountsDeps,
@@ -239,6 +240,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
 
   const adminLotsKpiTrendService = new AdminLotsKpiTrendService(lotRepo);
   const adminLotsEndedKpiTrendService = new AdminLotsEndedKpiTrendService(lotRepo);
+  const adminLotsLiveKpiTrendService = new AdminLotsLiveKpiTrendService(lotRepo);
   const adminLotsHammerKpiTrendService = new AdminLotsHammerKpiTrendService(lotRepo);
   const adminPaymentsKpiTrendService = new AdminPaymentsKpiTrendService(paymentRepo);
   const adminSalesKpiTrendService = new AdminSalesKpiTrendService(saleRepo);
@@ -307,6 +309,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
         navCounts: adminNavCountsService,
         lotsKpiTrend: adminLotsKpiTrendService,
         lotsEndedKpiTrend: adminLotsEndedKpiTrendService,
+        lotsLiveKpiTrend: adminLotsLiveKpiTrendService,
         lotsHammerKpiTrend: adminLotsHammerKpiTrendService,
         paymentsKpiTrend: adminPaymentsKpiTrendService,
         salesKpiTrend: adminSalesKpiTrendService,

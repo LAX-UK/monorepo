@@ -170,6 +170,28 @@ describe("admin dashboard metrics routes", () => {
     expect(getLotsEndedTrend).toHaveBeenCalledWith(30);
   });
 
+  it("GET /kpi/lots-live-trend returns the lots open each day for authorized staff", async () => {
+    const trend = { currentTotal: 9, priorTotal: 6, dailyCounts: [3, 3, 3] };
+    const getLotsLiveTrend = vi.fn().mockResolvedValue(trend);
+    const container = createDashboardMetricsContainer({}, { getLotsLiveTrend });
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: staffUserId,
+        role: "staff",
+        staffRole: "super_admin",
+        scopes: ["bid.read"],
+      }),
+    };
+    const app = new Hono();
+    app.route("/admin", createAdminRoutes(container, authenticator));
+
+    const res = await app.request("http://test/admin/kpi/lots-live-trend?periodDays=30");
+
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { data: typeof trend }).data).toEqual(trend);
+    expect(getLotsLiveTrend).toHaveBeenCalledWith(30);
+  });
+
   it("GET /kpi/lots-hammer-trend returns hammer trend bundle for authorized staff", async () => {
     const trend = {
       currentTotal: 45000,

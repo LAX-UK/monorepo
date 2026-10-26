@@ -184,33 +184,65 @@ export function lotsAttention(
   ];
 }
 
-/** The period line over the lots summary: counts are now, the hammer trend covers the period. */
-export function lotsMetricsPeriod(hammerTrend: AdminKpiTrendBundle | null): string {
-  const days = hammerTrend?.dailyCounts.length ?? 0;
-  return days > 1 ? `All lots · hammer trend over the last ${days} days` : "All lots";
+/** The daily series behind the lots summary, each null when it could not be loaded. */
+export type LotsMetricTrends = {
+  /** Lots open for bidding each day. */
+  live?: AdminKpiTrendBundle | null;
+  /** Lots that ended each day. */
+  ended?: AdminKpiTrendBundle | null;
+  /** Lots added each day. */
+  added?: AdminKpiTrendBundle | null;
+  /** Hammer of lots ended each day. */
+  hammer?: AdminKpiTrendBundle | null;
+};
+
+const trendDays = (trends: LotsMetricTrends) =>
+  Math.max(
+    0,
+    ...[trends.live, trends.ended, trends.added, trends.hammer].map(
+      (trend) => trend?.dailyCounts.length ?? 0,
+    ),
+  );
+
+/** The period line over the lots summary: counts are now, the trends cover the period. */
+export function lotsMetricsPeriod(trends: LotsMetricTrends): string {
+  const days = trendDays(trends);
+  return days > 1 ? `All lots · daily trends over the last ${days} days` : "All lots";
+}
+
+/** A count's daily series, what it counts, and its change against the period before. */
+function lotTrend(
+  trend: AdminKpiTrendBundle | null | undefined,
+  what: string,
+  rise: "good" | "bad" | "neutral",
+): Pick<Metric, "trend" | "trendLabel" | "comparison"> {
+  const days = trend?.dailyCounts.length ?? 0;
+  if (!trend || days < 2) return {};
+  const change = metricChange({
+    current: trend.currentTotal,
+    prior: trend.priorTotal,
+    basis: `${what.toLowerCase()}, vs previous ${days} days`,
+    rise,
+  });
+  return {
+    trend: trend.dailyCounts,
+    trendLabel: `${what}, last ${days} days`,
+    ...(change ? { comparison: change } : {}),
+  };
 }
 
 /**
- * Headline numbers across every lot, from the lots summary. The counts link to their view; the
- * hammer total carries the hammer of lots ended each day and the change against the period
- * before, when that trend loaded.
+ * Headline numbers across every lot, from the lots summary. The counts link to their view. Each
+ * carries the daily series closest to it, named on hover and in the change: lots open each day
+ * beside Live, lots ended each day beside Ending, lots added each day beside Drafts, and hammer of
+ * lots ended each day beside the hammer total.
  */
 export function lotsMetrics(
   summary: AdminLotsListSummary,
-  hammerTrend: AdminKpiTrendBundle | null = null,
+  trends: LotsMetricTrends = {},
 ): Metric[] {
   const count = new Intl.NumberFormat("en-GB");
   const hammer = Number.parseFloat(summary.totalHammerValue);
-  const days = hammerTrend?.dailyCounts.length ?? 0;
-  const hammerChange =
-    hammerTrend && days > 1
-      ? metricChange({
-          current: hammerTrend.currentTotal,
-          prior: hammerTrend.priorTotal,
-          basis: `vs previous ${days} days`,
-          rise: "good",
-        })
-      : undefined;
   return [
     {
       id: "live",
@@ -218,6 +250,7 @@ export function lotsMetrics(
       value: count.format(summary.liveCount),
       tone: summary.liveCount > 0 ? "positive" : "neutral",
       href: lotLensHref("live", {}),
+      ...lotTrend(trends.live, "Lots open for bidding each day", "good"),
     },
     {
       id: "ending",
@@ -225,19 +258,20 @@ export function lotsMetrics(
       value: count.format(summary.endingSoonCount),
       tone: summary.endingSoonCount > 0 ? "attention" : "neutral",
       href: lotLensHref("ending", {}),
+      ...lotTrend(trends.ended, "Lots ended each day", "neutral"),
     },
     {
       id: "draft",
       label: "Drafts",
       value: count.format(summary.draftCount),
       href: lotLensHref("draft", {}),
+      ...lotTrend(trends.added, "Lots added each day", "good"),
     },
     {
       id: "hammer",
       label: "Hammer total",
       value: formatStaffMoney(Math.round((Number.isFinite(hammer) ? hammer : 0) * 100)),
-      ...(hammerTrend && days > 1 ? { trend: hammerTrend.dailyCounts } : {}),
-      ...(hammerChange ? { comparison: hammerChange } : {}),
+      ...lotTrend(trends.hammer, "Hammer of lots ended each day", "good"),
     },
   ];
 }

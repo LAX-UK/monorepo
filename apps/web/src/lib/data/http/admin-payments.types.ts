@@ -3,13 +3,23 @@ import type { AdminPaymentTableRow } from "@/lib/data/view-models/admin-payments
 import type { PaymentStatus } from "@auction/types";
 import type { AdminPaymentXeroFilter, LotFulfilmentStatus } from "@auction/validators";
 
-/** Volume of the matching payments created each day, with the totals of two equal windows. */
-export type AdminPaymentsVolumeTrend = {
-  periodDays: number;
-  /** One value per day, oldest first, in pence. */
+/** One summary total's daily series, oldest first, in pence, with the totals of two equal windows. */
+export type AdminPaymentsTrend = {
   dailyPence: number[];
   currentPence: number;
   priorPence: number;
+};
+
+/**
+ * The matching payments created each day over the last `periodDays`, by where they are now: the
+ * volume, and the captured, refunded and awaiting-capture parts of it.
+ */
+export type AdminPaymentsTrends = {
+  periodDays: number;
+  volume: AdminPaymentsTrend;
+  captured: AdminPaymentsTrend;
+  refunded: AdminPaymentsTrend;
+  awaiting: AdminPaymentsTrend;
 };
 
 /** Totals over the payments that match the list's filters, in pounds. */
@@ -19,7 +29,7 @@ export type AdminPaymentsSummary = {
   pending: number;
   refunded: number;
   /** Absent when the API sent none. */
-  volumeTrend?: AdminPaymentsVolumeTrend | undefined;
+  trends?: AdminPaymentsTrends | undefined;
 };
 
 export type AdminPaymentsListPageResult = {

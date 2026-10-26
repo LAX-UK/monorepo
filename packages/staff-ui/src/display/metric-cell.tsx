@@ -32,6 +32,8 @@ export type Metric = {
   comparison?: MetricComparison;
   /** A recent series behind the number, oldest first (e.g. one value a day). Real data only. */
   trend?: readonly number[];
+  /** What the trend counts, shown on hover: "Lots ended each day, last 30 days". */
+  trendLabel?: string;
   /** The list filtered to the records behind the number; the whole cell becomes the link. */
   href?: string;
 };
@@ -200,6 +202,7 @@ export function MetricCell({
         </dd>
         {comparison || trend ? (
           <dd
+            title={trend ? item.trendLabel : undefined}
             className={cn(
               "flex min-w-0 grow items-center",
               "@min-[15rem]:col-start-2 @min-[15rem]:row-span-2 @min-[15rem]:row-start-1 @min-[15rem]:flex-col @min-[15rem]:items-end @min-[15rem]:gap-0.5",

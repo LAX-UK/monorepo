@@ -166,6 +166,30 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle admin order list", () => {
     expect(midnightMay).toBeDefined();
   });
 
+  it("totals orders paid and placed per UK day, from the day given", async () => {
+    const { repo, marker } = setup();
+    const since = new Date("2019-06-30T00:00:00.000Z");
+    const before = await repo.orders.readOrderDailyTotals(since);
+    // 23:30 UTC on 1 July is 00:30 on 2 July in the UK (BST).
+    const [late, paid] = await seedOrders(marker, [
+      { createdAt: "2019-07-01T23:30:00.000Z", status: "pending_payment" },
+      { createdAt: "2019-07-01T10:00:00.000Z" },
+      { createdAt: "2019-06-01T10:00:00.000Z" },
+    ]);
+    await ownerPool.query("update shop_order set paid_at = $2::timestamptz where id = $1", [
+      paid,
+      "2019-07-03T09:00:00.000Z",
+    ]);
+    expect(late).toBeDefined();
+
+    const after = await repo.orders.readOrderDailyTotals(since);
+    const placed = (day: string) => (after.placed.get(day) ?? 0) - (before.placed.get(day) ?? 0);
+    expect([placed("2019-07-01"), placed("2019-07-02"), placed("2019-06-01")]).toEqual([1, 1, 0]);
+    const paidOn = after.paid.get("2019-07-03");
+    const paidBefore = before.paid.get("2019-07-03") ?? { pence: 0, orders: 0 };
+    expect(paidOn).toEqual({ pence: paidBefore.pence + 1000, orders: paidBefore.orders + 1 });
+  });
+
   describe("search", () => {
     it("matches buyer email, buyer name and delivery recipient, in any case", async () => {
       const { repo, marker } = setup();

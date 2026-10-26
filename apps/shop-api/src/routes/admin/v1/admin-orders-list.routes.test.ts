@@ -152,7 +152,8 @@ describe("order summary", () => {
     expect(body.paidPence.daily.at(-1)).toBe(18500);
     expect(body.paidPence.current).toBe(18500);
     expect(body.orders).toMatchObject({ current: 2, prior: 0 });
-    expect(body.paidOrders).toEqual({ current: 1, prior: 0 });
+    expect(body.paidOrders).toMatchObject({ current: 1, prior: 0 });
+    expect(body.paidOrders.daily.at(-1)).toBe(1);
     expect(readOrderDailyTotals).toHaveBeenCalledTimes(1);
     await app.close();
   });

@@ -257,6 +257,7 @@ export function orderMetrics(summary: AdminOrderSummary): Metric[] {
   const paidChange = change(summary.paidPence.current, summary.paidPence.prior);
   const ordersChange = change(summary.orders.current, summary.orders.prior);
   const averageChange = change(averageNow, averageBefore);
+  const days = summary.periodDays;
   return [
     {
       id: "paid",
@@ -264,6 +265,7 @@ export function orderMetrics(summary: AdminOrderSummary): Metric[] {
       tone: "positive",
       value: formatGbp(summary.paidPence.current),
       trend: summary.paidPence.daily,
+      trendLabel: `Paid each day, last ${days} days`,
       ...(paidChange ? { comparison: paidChange } : {}),
     },
     {
@@ -271,13 +273,38 @@ export function orderMetrics(summary: AdminOrderSummary): Metric[] {
       label: "Orders placed",
       value: count.format(summary.orders.current),
       trend: summary.orders.daily,
+      trendLabel: `Orders placed each day, last ${days} days`,
       ...(ordersChange ? { comparison: ordersChange } : {}),
     },
     {
       id: "average",
       label: "Average paid order",
       value: summary.paidOrders.current > 0 ? formatGbp(Math.round(averageNow)) : null,
-      ...(averageChange && summary.paidOrders.current > 0 ? { comparison: averageChange } : {}),
+      ...(summary.paidOrders.current > 0
+        ? {
+            trend: dailyAveragePence(summary, averageBefore),
+            trendLabel: `Average of the orders paid each day, last ${days} days; a day without one keeps the day before`,
+            ...(averageChange ? { comparison: averageChange } : {}),
+          }
+        : {}),
     },
   ];
+}
+
+/**
+ * The average paid order for each day. A day with no paid orders has no average of its own, so
+ * it keeps the previous day's (or, before the first order, the previous window's), rather than
+ * dropping to zero.
+ */
+export function dailyAveragePence(summary: AdminOrderSummary, before: number): number[] {
+  const firstPaid = summary.paidOrders.daily.findIndex((orders) => orders > 0);
+  const firstAverage =
+    firstPaid >= 0
+      ? (summary.paidPence.daily[firstPaid] ?? 0) / (summary.paidOrders.daily[firstPaid] ?? 1)
+      : 0;
+  let last = before > 0 ? before : firstAverage;
+  return summary.paidOrders.daily.map((orders, index) => {
+    if (orders > 0) last = (summary.paidPence.daily[index] ?? 0) / orders;
+    return Math.round(last);
+  });
 }

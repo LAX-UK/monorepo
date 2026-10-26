@@ -2,7 +2,7 @@ import { parseAdminPaymentRow, parseAdminPayoutRow } from "@/lib/data/http/admin
 import type {
   AdminPaymentRow,
   AdminPaymentsListPageResult,
-  AdminPaymentsVolumeTrend,
+  AdminPaymentsTrends,
   AdminPayoutRow,
   AdminXeroIntegrationStatus,
 } from "@/lib/data/http/admin-payments.types";
@@ -55,17 +55,24 @@ function parseMoneyStat(value: unknown): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-const volumeTrendSchema = z.object({
-  periodDays: z.number().int().positive(),
+const trendSchema = z.object({
   dailyPence: z.array(z.number().finite()),
   currentPence: z.number().finite(),
   priorPence: z.number().finite(),
 });
 
-/** The summary's daily volume, when the API sent a well-formed one; anything else is dropped. */
-function parseVolumeTrend(raw: unknown): { volumeTrend?: AdminPaymentsVolumeTrend } {
-  const parsed = volumeTrendSchema.safeParse(raw);
-  return parsed.success ? { volumeTrend: parsed.data } : {};
+const trendsSchema = z.object({
+  periodDays: z.number().int().positive(),
+  volume: trendSchema,
+  captured: trendSchema,
+  refunded: trendSchema,
+  awaiting: trendSchema,
+});
+
+/** The summary's daily series, when the API sent well-formed ones; anything else is dropped. */
+function parseTrends(raw: unknown): { trends?: AdminPaymentsTrends } {
+  const parsed = trendsSchema.safeParse(raw);
+  return parsed.success ? { trends: parsed.data } : {};
 }
 
 const xeroConnectionHealthValues = ["healthy", "degraded", "disconnected"] as const;
@@ -136,7 +143,7 @@ export function parseAdminPaymentsListPageBody(
       captured: parseMoneyStat(summaryRaw.captured),
       pending: parseMoneyStat(summaryRaw.pending),
       refunded: parseMoneyStat(summaryRaw.refunded),
-      ...parseVolumeTrend(summaryRaw.volumeTrend),
+      ...parseTrends(summaryRaw.trends),
     },
   };
 }

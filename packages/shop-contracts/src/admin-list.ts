@@ -82,11 +82,8 @@ export const AdminOrderSummarySchema = Type.Object({
   paidPence: AdminDailySeriesSchema,
   /** Orders by the day they were placed. */
   orders: AdminDailySeriesSchema,
-  /** Orders paid in each window, for the average order value. */
-  paidOrders: Type.Object({
-    current: Type.Integer({ minimum: 0 }),
-    prior: Type.Integer({ minimum: 0 }),
-  }),
+  /** Orders by the day they were paid, for the average order value. */
+  paidOrders: AdminDailySeriesSchema,
 });
 export type AdminOrderSummary = Static<typeof AdminOrderSummarySchema>;
 

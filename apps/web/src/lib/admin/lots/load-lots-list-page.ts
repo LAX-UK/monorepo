@@ -16,6 +16,7 @@ import {
   getAdminLotsEndedKpiTrend,
   getAdminLotsHammerKpiTrend,
   getAdminLotsKpiTrend,
+  getAdminLotsLiveKpiTrend,
 } from "@/lib/data/http/admin-kpi-trends.server";
 import {
   type AdminLotsListSummary,
@@ -52,6 +53,8 @@ export type AdminLotsListPageViewModel = {
   lotsEndedTrend: Awaited<ReturnType<typeof getAdminLotsEndedKpiTrend>>;
   /** Hammer of lots ended each day over the period, with the period before; null if unavailable. */
   hammerTrend: Awaited<ReturnType<typeof getAdminLotsHammerKpiTrend>> | null;
+  /** Lots open for bidding each day over the period; null if unavailable. */
+  liveTrend: Awaited<ReturnType<typeof getAdminLotsLiveKpiTrend>> | null;
   navCounts: AdminNavCounts;
   listError: string | null;
   pageRows: LotListRow[];
@@ -117,40 +120,47 @@ export async function loadAdminLotsListPage(
     }),
   );
 
-  const [lotsSummary, lotResult, lotsTrendResult, lotsEndedTrendResult, hammerTrendResult] =
-    await Promise.all([
-      getAdminLotsListSummary().catch(() => EMPTY_ADMIN_LOTS_LIST_SUMMARY),
-      (withdrawalsLens
-        ? lotsForWithdrawalRequests(withdrawalResult.tasks).then((rows) => ({
-            rows,
-            hasNextPage: false,
-            offset: 0,
-            limit: query.limit,
-          }))
-        : lotsListController.fetch(query)
-      ).then(
-        (r) => ({ err: null as string | null, ...r }),
-        (e) => ({
-          err: e instanceof Error ? e.message : "Could not load lots.",
-          rows: [] as LotListRow[],
+  const [
+    lotsSummary,
+    lotResult,
+    lotsTrendResult,
+    lotsEndedTrendResult,
+    hammerTrendResult,
+    liveTrendResult,
+  ] = await Promise.all([
+    getAdminLotsListSummary().catch(() => EMPTY_ADMIN_LOTS_LIST_SUMMARY),
+    (withdrawalsLens
+      ? lotsForWithdrawalRequests(withdrawalResult.tasks).then((rows) => ({
+          rows,
           hasNextPage: false,
-          offset: query.offset,
+          offset: 0,
           limit: query.limit,
-        }),
-      ),
-      getAdminLotsKpiTrend(periodDays).catch(() => ({
-        currentTotal: 0,
-        priorTotal: 0,
-        dailyCounts: [] as number[],
-      })),
-      getAdminLotsEndedKpiTrend(periodDays).catch(() => ({
-        currentTotal: 0,
-        priorTotal: 0,
-        dailyCounts: [] as number[],
-      })),
-      // The hammer total's trend; null when it cannot be loaded, so the cell shows no chart.
-      getAdminLotsHammerKpiTrend(periodDays).catch(() => null),
-    ]);
+        }))
+      : lotsListController.fetch(query)
+    ).then(
+      (r) => ({ err: null as string | null, ...r }),
+      (e) => ({
+        err: e instanceof Error ? e.message : "Could not load lots.",
+        rows: [] as LotListRow[],
+        hasNextPage: false,
+        offset: query.offset,
+        limit: query.limit,
+      }),
+    ),
+    getAdminLotsKpiTrend(periodDays).catch(() => ({
+      currentTotal: 0,
+      priorTotal: 0,
+      dailyCounts: [] as number[],
+    })),
+    getAdminLotsEndedKpiTrend(periodDays).catch(() => ({
+      currentTotal: 0,
+      priorTotal: 0,
+      dailyCounts: [] as number[],
+    })),
+    // The hammer total's trend; null when it cannot be loaded, so the cell shows no chart.
+    getAdminLotsHammerKpiTrend(periodDays).catch(() => null),
+    getAdminLotsLiveKpiTrend(periodDays).catch(() => null),
+  ]);
 
   const pageRows = lotResult.rows;
   const lensOwnedSort = activeLens === "ending" && !sp.sort;
@@ -271,6 +281,7 @@ export async function loadAdminLotsListPage(
     lotsTrend: lotsTrendResult,
     lotsEndedTrend: lotsEndedTrendResult,
     hammerTrend: hammerTrendResult,
+    liveTrend: liveTrendResult,
     navCounts: navCountsResult,
     listError: lotResult.err,
     pageRows,

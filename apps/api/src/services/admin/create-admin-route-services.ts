@@ -84,6 +84,7 @@ import type { AdminLotsEndedKpiTrendService } from "./admin-lots-ended-kpi-trend
 import type { AdminLotsHammerKpiTrendService } from "./admin-lots-hammer-kpi-trend.service.js";
 import type { AdminLotsKpiTrendService } from "./admin-lots-kpi-trend.service.js";
 import type { AdminLotsListSummaryService } from "./admin-lots-list-summary.service.js";
+import type { AdminLotsLiveKpiTrendService } from "./admin-lots-live-kpi-trend.service.js";
 import type { AdminNavCountsService } from "./admin-nav-counts.service.js";
 import type { AdminPaymentListQueryService } from "./admin-payment-list-query.service.js";
 import type { AdminPaymentsKpiTrendService } from "./admin-payments-kpi-trend.service.js";
@@ -309,6 +310,7 @@ export type AttachAdminDashboardMetricsInput = {
   navCounts: AdminNavCountsService;
   lotsKpiTrend: AdminLotsKpiTrendService;
   lotsEndedKpiTrend: AdminLotsEndedKpiTrendService;
+  lotsLiveKpiTrend: AdminLotsLiveKpiTrendService;
   lotsHammerKpiTrend: AdminLotsHammerKpiTrendService;
   paymentsKpiTrend: AdminPaymentsKpiTrendService;
   salesKpiTrend: AdminSalesKpiTrendService;
@@ -338,6 +340,7 @@ export function attachAdminMetricsQueries(
     metrics.salesListSummary,
     metrics.lotsListSummary,
     metrics.submissionsListSummary,
+    metrics.lotsLiveKpiTrend,
   );
   return {
     ...admin,

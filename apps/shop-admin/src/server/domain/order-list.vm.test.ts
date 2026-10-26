@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   ADMIN_ORDER_STATUSES,
   ORDER_STATUS_LABELS,
+  dailyAveragePence,
   hasActiveOrderFilters,
   orderBuyerName,
   orderBuyerSecondary,
@@ -21,7 +22,7 @@ describe("orderMetrics", () => {
     periodDays: 30,
     paidPence: { daily: [0, 18500, 4200], current: 22700, prior: 20000 },
     orders: { daily: [1, 2, 0], current: 3, prior: 3 },
-    paidOrders: { current: 2, prior: 4 },
+    paidOrders: { daily: [0, 1, 1], current: 2, prior: 4 },
   };
 
   it("shows what was paid and placed with their trends, and the average paid order", () => {
@@ -41,7 +42,8 @@ describe("orderMetrics", () => {
     expect(metrics[1]?.comparison?.direction).toBe("flat");
     // £113.50 now against £50.00 before.
     expect(metrics[2]?.comparison).toMatchObject({ text: "127%", direction: "up" });
-    expect(metrics[2]?.trend).toBeUndefined();
+    // No order on the first day: it starts from the previous window's £50.00.
+    expect(metrics[2]?.trend).toEqual([5000, 18500, 4200]);
     expect(orderMetricsPeriod(summary)).toBe("All orders · last 30 days");
   });
 
@@ -49,11 +51,25 @@ describe("orderMetrics", () => {
     const metrics = orderMetrics({
       ...summary,
       paidPence: { daily: [0, 0, 0], current: 0, prior: 0 },
-      paidOrders: { current: 0, prior: 0 },
+      paidOrders: { daily: [0, 0, 0], current: 0, prior: 0 },
     });
     expect(metrics[0]?.comparison).toBeUndefined();
     expect(metrics[2]?.value).toBeNull();
     expect(metrics[2]?.comparison).toBeUndefined();
+    expect(metrics[2]?.trend).toBeUndefined();
+  });
+
+  it("keeps the last day's average through days without a paid order", () => {
+    expect(
+      dailyAveragePence(
+        {
+          ...summary,
+          paidPence: { daily: [0, 9000, 0, 3000], current: 12000, prior: 0 },
+          paidOrders: { daily: [0, 2, 0, 1], current: 3, prior: 0 },
+        },
+        0,
+      ),
+    ).toEqual([4500, 4500, 4500, 3000]);
   });
 });
 

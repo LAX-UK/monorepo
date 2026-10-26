@@ -57,6 +57,35 @@ export async function countLotsEndedAtByDay(
   );
 }
 
+/**
+ * Lots open for bidding on each UTC day from `rangeStart` to today: their bidding window (start to
+ * end) overlaps the day. Drafts, cancelled, voided and deleted lots are left out. Every day in the
+ * range is present, with 0 when nothing was live.
+ */
+export async function countLotsLiveByDay(
+  db: Database,
+  rangeStart: Date,
+): Promise<Map<string, number>> {
+  const result = await db.execute(sql`
+    SELECT to_char(d.day, 'YYYY-MM-DD') AS day_key, count(l.id)::int AS n
+    FROM generate_series(
+      date_trunc('day', ${rangeStart}::timestamptz AT TIME ZONE 'UTC'),
+      date_trunc('day', now() AT TIME ZONE 'UTC'),
+      interval '1 day'
+    ) AS d(day)
+    LEFT JOIN ${lot} l
+      ON l.start_time < (d.day + interval '1 day') AT TIME ZONE 'UTC'
+      AND l.end_time >= d.day AT TIME ZONE 'UTC'
+      AND l.status IN ('scheduled', 'active', 'ended')
+      AND l.deleted_at IS NULL
+    GROUP BY d.day
+  `);
+  const rows = (
+    Array.isArray(result) ? result : ((result as { rows?: unknown[] }).rows ?? [])
+  ) as Array<{ day_key: string; n: number | string }>;
+  return new Map(rows.map((row) => [row.day_key, Number(row.n)]));
+}
+
 /** Sum hammer (current price) for lots that ended per UTC day (by endTime). */
 export async function sumEndedLotHammerByDay(
   db: Database,

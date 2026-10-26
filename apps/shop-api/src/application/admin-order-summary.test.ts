@@ -46,7 +46,9 @@ describe("buildOrderSummary", () => {
     expect(summary.paidPence).toMatchObject({ current: 22700, prior: 9600 });
     expect(summary.orders).toMatchObject({ current: 3, prior: 2 });
     expect(summary.orders.daily[28]).toBe(3);
-    expect(summary.paidOrders).toEqual({ current: 3, prior: 1 });
+    expect(summary.paidOrders).toMatchObject({ current: 3, prior: 1 });
+    expect(summary.paidOrders.daily[0]).toBe(2);
+    expect(summary.paidOrders.daily[29]).toBe(1);
   });
 
   it("reads from before the comparison window starts", () => {

@@ -9,6 +9,7 @@ import type { AdminLotsEndedKpiTrendService } from "./admin-lots-ended-kpi-trend
 import type { AdminLotsHammerKpiTrendService } from "./admin-lots-hammer-kpi-trend.service.js";
 import type { AdminLotsKpiTrendService } from "./admin-lots-kpi-trend.service.js";
 import type { AdminLotsListSummaryService } from "./admin-lots-list-summary.service.js";
+import type { AdminLotsLiveKpiTrendService } from "./admin-lots-live-kpi-trend.service.js";
 import type { AdminNavCountsService } from "./admin-nav-counts.service.js";
 import type { AdminPaymentsKpiTrendService } from "./admin-payments-kpi-trend.service.js";
 import type { AdminPayoutsKpiTrendService } from "./admin-payouts-kpi-trend.service.js";
@@ -36,6 +37,7 @@ export class AdminDashboardMetricsApplicationService
     private readonly salesListSummary: AdminSalesListSummaryService,
     private readonly lotsListSummary: AdminLotsListSummaryService,
     private readonly submissionsListSummary: AdminSubmissionsListSummaryService,
+    private readonly lotsLiveKpiTrend: AdminLotsLiveKpiTrendService,
   ) {}
 
   getNavCounts() {
@@ -48,6 +50,10 @@ export class AdminDashboardMetricsApplicationService
 
   getLotsEndedTrend(periodDays: AdminKpiPeriodDays) {
     return this.lotsEndedKpiTrend.getTrend(periodDays);
+  }
+
+  getLotsLiveTrend(periodDays: AdminKpiPeriodDays) {
+    return this.lotsLiveKpiTrend.getTrend(periodDays);
   }
 
   getLotsHammerTrend(periodDays: AdminKpiPeriodDays) {
