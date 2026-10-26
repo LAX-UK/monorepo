@@ -139,6 +139,7 @@ import { DrizzleAntiShillingRepository } from "./repositories/drizzle-anti-shill
 import { DrizzleArtistProfileRepository } from "./repositories/drizzle-artist-profile.repository.js";
 import { DrizzleArtistWatchlistRepository } from "./repositories/drizzle-artist-watchlist.repository.js";
 import { DrizzleAtgLinkReader } from "./repositories/drizzle-atg-link.reader.js";
+import { DrizzleAtgSaleSettingsWriter } from "./repositories/drizzle-atg-sale-settings.writer.js";
 import { DrizzleCategoryInterestsRepository } from "./repositories/drizzle-category-interests.repository.js";
 import { DrizzleCategoryRepository } from "./repositories/drizzle-category.repository.js";
 import { DrizzleConveyorPipelineReader } from "./repositories/drizzle-conveyor-pipeline.reader.js";
@@ -1027,8 +1028,10 @@ export function createContainer(env: Env): Container {
     : null;
   const atgAdmin = new AtgAdminService(
     atgLinkReader,
+    new DrizzleAtgSaleSettingsWriter(db),
     atgSyncQueue,
     env.ATG_WHITE_LABEL_BASE_URL ?? null,
+    createBaseLogger(env),
   );
   const exportProviderDeps = createExportProviderDeps(db);
   const exportProviders = createExportProviders(exportProviderDeps);

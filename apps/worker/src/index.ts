@@ -56,6 +56,7 @@ import { Registry, collectDefaultMetrics } from "prom-client";
 import { loadWorkerEnv } from "./env.js";
 import { ConsoleEmailSender, PostmarkEmailSender } from "./infrastructure/postmark-email.sender.js";
 import { loadAtgRuntimeConfig } from "./integrations/atg/atg-config.js";
+import { HttpAtgImageInspector } from "./integrations/atg/atg-image-inspector.js";
 import { isPermanentAtgJobError, processAtgSyncJob } from "./integrations/atg/atg-sync-job.js";
 import { AtgSyncService } from "./integrations/atg/atg-sync-service.js";
 import { DrizzleAtgSyncStore } from "./integrations/atg/drizzle-atg-sync-store.js";
@@ -656,6 +657,7 @@ if (atgRuntime) {
   const atgSyncService = new AtgSyncService({
     gateway: new GapHttpAdapter(atgRuntime.adapter),
     store: new DrizzleAtgSyncStore(db),
+    imageInspector: new HttpAtgImageInspector(),
     config: atgRuntime.sync,
     onTickError: (saleId, err) => {
       log.warn({ err, saleId }, "ATG tick failed for sale");
@@ -693,10 +695,7 @@ if (atgRuntime) {
       removeOnFail: 50,
     },
   );
-  log.info(
-    { pollIntervalMs: atgRuntime.pollIntervalMs, listingPrivate: atgRuntime.sync.listingPrivate },
-    "atg-sync enabled",
-  );
+  log.info({ pollIntervalMs: atgRuntime.pollIntervalMs }, "atg-sync enabled");
 }
 
 type LegalEntityArchiveJobData = { legalEntityId: string };

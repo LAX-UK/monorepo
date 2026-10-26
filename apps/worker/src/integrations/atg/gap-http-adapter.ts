@@ -63,10 +63,6 @@ export class GapHttpAdapter implements AtgGateway {
     await this.call("updateAuction", "PUT", "/Auction/UpdateAuction", request);
   }
 
-  async approveAuction(auctionId: string): Promise<void> {
-    await this.call("approveAuction", "POST", "/Auction/ApproveAuction", { AuctionId: auctionId });
-  }
-
   async publishAuction(auctionId: string): Promise<void> {
     await this.call("publishAuction", "POST", "/Auction/PublishAuction", { AuctionId: auctionId });
   }

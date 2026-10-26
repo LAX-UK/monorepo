@@ -51,7 +51,7 @@ export class AtgGatewayError extends Error {
 export interface AtgGateway {
   createAuction(request: GapCreateAuctionRequest): Promise<{ auctionId: string }>;
   updateAuction(request: GapUpdateAuctionRequest): Promise<void>;
-  approveAuction(auctionId: string): Promise<void>;
+  /** ATG staff must have approved the auction in Toolbox first. */
   publishAuction(auctionId: string): Promise<void>;
   closeAuction(auctionId: string): Promise<void>;
   createLot(request: GapCreateLotRequest): Promise<{ lotId: string }>;

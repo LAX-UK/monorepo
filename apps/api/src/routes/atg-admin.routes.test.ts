@@ -127,6 +127,74 @@ describe("admin ATG routes", () => {
     expect(missing.status).toBe(404);
   });
 
+  describe("PUT /sales/:id/settings", () => {
+    const put = (app: Hono, body: unknown) =>
+      app.request(`http://test/admin/integrations/atg/sales/${SALE_ID}/settings`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(body),
+      });
+
+    it("saves settings as the signed-in staff member", async () => {
+      const updateSaleSettings = vi.fn().mockResolvedValue({
+        ok: true,
+        settings: { auctionType: "Live", distribution: "private_test" },
+        pushJobId: null,
+      });
+      const app = buildApp("auction_manager", { updateSaleSettings });
+
+      const res = await put(app, { auctionType: "Live", distribution: "private_test" });
+
+      expect(res.status).toBe(200);
+      expect(await res.json()).toEqual({
+        data: { settings: { auctionType: "Live", distribution: "private_test" }, pushJobId: null },
+      });
+      expect(updateSaleSettings).toHaveBeenCalledWith(
+        SALE_ID,
+        { auctionType: "Live", distribution: "private_test", confirmPublic: false },
+        "staff-1",
+      );
+    });
+
+    it("rejects auction types ATG doesn't allow and unknown fields", async () => {
+      const updateSaleSettings = vi.fn();
+      const app = buildApp("super_admin", { updateSaleSettings });
+
+      for (const body of [
+        { auctionType: "CatalogueTimed", distribution: "private_test" },
+        { auctionType: "Timed", distribution: "white_label_only" },
+        { auctionType: "Timed", distribution: "private_test", Private: false },
+      ]) {
+        expect((await put(app, body)).status).toBe(400);
+      }
+      expect(updateSaleSettings).not.toHaveBeenCalled();
+    });
+
+    it("maps locked settings to 409 and forbids staff without auction.manage", async () => {
+      const updateSaleSettings = vi.fn().mockResolvedValue({
+        ok: false,
+        error: { status: 409, code: "atg_settings_locked", message: "locked" },
+      });
+      const locked = await put(buildApp("auction_manager", { updateSaleSettings }), {
+        auctionType: "Live",
+        distribution: "private_test",
+      });
+      expect(locked.status).toBe(409);
+      expect(await locked.json()).toEqual({ error: "locked", code: "atg_settings_locked" });
+
+      const forbiddenUpdate = vi.fn();
+      const forbidden = await put(
+        buildApp("finance_ops", { updateSaleSettings: forbiddenUpdate }),
+        {
+          auctionType: "Live",
+          distribution: "private_test",
+        },
+      );
+      expect(forbidden.status).toBe(403);
+      expect(forbiddenUpdate).not.toHaveBeenCalled();
+    });
+  });
+
   it("enqueues ATG lot deletion", async () => {
     const enqueueLotDelete = vi.fn().mockResolvedValue({ ok: true, jobId: "job-2" });
     const app = buildApp("operations", { enqueueLotDelete });

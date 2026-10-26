@@ -925,6 +925,13 @@
       "when": 1788000007500,
       "tag": "0132_atg_sync_links",
       "breakpoints": true
+    },
+    {
+      "idx": 132,
+      "version": "7",
+      "when": 1788000007750,
+      "tag": "0133_atg_sale_settings",
+      "breakpoints": true
     }
   ]
 }

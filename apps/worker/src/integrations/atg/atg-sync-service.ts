@@ -1,7 +1,9 @@
 import { canPushOrPublishSaleOnAtg, resolveSaleSellingPlatform } from "@auction/types";
 import { type AtgGateway, AtgGatewayError } from "./atg-gateway.js";
+import { type AtgImageInspector, atgImageProblem } from "./atg-image-inspector.js";
 import {
   AtgMappingError,
+  bidLockedFieldsHash,
   gapImageName,
   mapLotToLotFields,
   mapSaleToAuctionFields,
@@ -40,6 +42,7 @@ export class AtgPartialSyncError extends Error {
 export type AtgSyncServiceDeps = {
   gateway: AtgGateway;
   store: AtgSyncStore;
+  imageInspector: AtgImageInspector;
   config: AtgSyncConfig;
   now?: () => Date;
   /** Per-sale tick failure; the tick carries on with the next sale. */
@@ -80,6 +83,20 @@ function failureSummary(failures: string[]): string | null {
 const SALE_ON_LAX_MESSAGE =
   "This sale is published on lax.bid. Unpublish it there before pushing to ATG.";
 
+export const AWAITING_ATG_APPROVAL_MESSAGE =
+  "ATG did not publish the auction. ATG staff must approve it in Toolbox first; once they confirm, publish again.";
+
+const BID_LOCKED_MESSAGE =
+  "The lot has bids on ATG, so its description, reserve, estimates and opening price can't change. Undo the edit in LAX.";
+
+/** ATG staff approve every auction; until then `PublishAuction` is rejected (not retryable). */
+function publishErrorText(err: unknown): string {
+  if (err instanceof AtgGatewayError && !err.retryable) {
+    return `${AWAITING_ATG_APPROVAL_MESSAGE} (${err.message})`;
+  }
+  return errorText(err);
+}
+
 /**
  * Pushes LAX sales to ATG and pulls results back. Every operation is idempotent: link rows
  * record what ATG already has, and payload hashes skip unchanged updates, so jobs can be
@@ -88,6 +105,7 @@ const SALE_ON_LAX_MESSAGE =
 export class AtgSyncService {
   private readonly gateway: AtgGateway;
   private readonly store: AtgSyncStore;
+  private readonly imageInspector: AtgImageInspector;
   private readonly config: AtgSyncConfig;
   private readonly now: () => Date;
   private readonly onTickError: ((saleId: string, err: unknown) => void) | undefined;
@@ -95,6 +113,7 @@ export class AtgSyncService {
   constructor(deps: AtgSyncServiceDeps) {
     this.gateway = deps.gateway;
     this.store = deps.store;
+    this.imageInspector = deps.imageInspector;
     this.config = deps.config;
     this.now = deps.now ?? (() => new Date());
     this.onTickError = deps.onTickError;
@@ -157,13 +176,9 @@ export class AtgSyncService {
     if (link.remoteStatus === "published") return;
     await this.assertCanPushToAtg(saleId);
     try {
-      if (this.config.approveBeforePublish && link.remoteStatus !== "approved") {
-        await this.gateway.approveAuction(link.atgAuctionId);
-        await this.store.saveAuctionLink(saleId, { remoteStatus: "approved" });
-      }
       await this.gateway.publishAuction(link.atgAuctionId);
     } catch (err) {
-      await this.store.saveAuctionLink(saleId, { lastError: errorText(err) });
+      await this.store.saveAuctionLink(saleId, { lastError: publishErrorText(err) });
       throw err;
     }
     await this.store.saveAuctionLink(saleId, {
@@ -424,36 +439,52 @@ export class AtgSyncService {
     adoptAtgLotId: string | undefined,
   ): Promise<"created" | "updated" | "unchanged"> {
     const fields = { ...mapLotToLotFields(lot, sale, sequence, this.config), AuctionId: auctionId };
+    const createFields = {
+      ...mapLotToLotFields(lot, sale, sequence, this.config, "create"),
+      AuctionId: auctionId,
+    };
     const hash = payloadHash(fields);
+    const lockedHash = bidLockedFieldsHash(fields);
     let outcome: "created" | "updated" | "unchanged" = "unchanged";
     let current = link;
 
-    if (!current && adoptAtgLotId) {
-      await this.gateway.updateLot({ ...fields, LotId: adoptAtgLotId });
-      await this.store.insertLotLink({
-        lotId: lot.id,
-        saleId: sale.id,
-        atgLotId: adoptAtgLotId,
-        payloadHash: hash,
-      });
-      current = {
-        lotId: lot.id,
-        saleId: sale.id,
-        atgLotId: adoptAtgLotId,
-        imageNames: [],
-        payloadHash: hash,
-      };
-      outcome = "updated";
-    } else if (!current) {
-      const { lotId: atgLotId } = await this.gateway.createLot(fields);
+    await this.assertImagesAccepted(lot, current);
+    // Locked fields are re-sent unchanged rather than omitted: UpdateLot replacement semantics
+    // are unconfirmed, and a rejected request is safer than a silently cleared field.
+    if (
+      current &&
+      current.numberOfBids > 0 &&
+      current.payloadHash !== hash &&
+      current.lockedFieldsHash !== lockedHash
+    ) {
+      throw new AtgMappingError(BID_LOCKED_MESSAGE);
+    }
+
+    if (!current) {
+      let atgLotId: string;
+      if (adoptAtgLotId) {
+        await this.gateway.updateLot({ ...fields, LotId: adoptAtgLotId });
+        atgLotId = adoptAtgLotId;
+      } else {
+        ({ lotId: atgLotId } = await this.gateway.createLot(createFields));
+      }
       await this.store.insertLotLink({
         lotId: lot.id,
         saleId: sale.id,
         atgLotId,
         payloadHash: hash,
+        lockedFieldsHash: lockedHash,
       });
-      current = { lotId: lot.id, saleId: sale.id, atgLotId, imageNames: [], payloadHash: hash };
-      outcome = "created";
+      current = {
+        lotId: lot.id,
+        saleId: sale.id,
+        atgLotId,
+        imageNames: [],
+        payloadHash: hash,
+        lockedFieldsHash: lockedHash,
+        numberOfBids: 0,
+      };
+      outcome = adoptAtgLotId ? "updated" : "created";
     } else if (current.payloadHash !== hash) {
       await this.gateway.updateLot({ ...fields, LotId: current.atgLotId });
       outcome = "updated";
@@ -462,10 +493,25 @@ export class AtgSyncService {
     await this.sendImages(lot, current);
     await this.store.updateLotLink(lot.id, {
       payloadHash: hash,
+      lockedFieldsHash: lockedHash,
       lastSyncedAt: this.now(),
       lastError: null,
     });
     return outcome;
+  }
+
+  /** Checks images not yet on ATG before any lot write, so failures name the lot and image. */
+  private async assertImagesAccepted(lot: AtgLotSnapshot, link: AtgLotLink | undefined) {
+    const sent = new Set(link?.imageNames ?? []);
+    const problems: string[] = [];
+    for (const [index, url] of resolveLotImageUrls(lot, this.config).entries()) {
+      if (sent.has(gapImageName(index))) continue;
+      const problem = atgImageProblem(await this.imageInspector.inspect(url));
+      if (problem) problems.push(`image ${index + 1} ${problem}`);
+    }
+    if (problems.length > 0) {
+      throw new AtgMappingError(`ATG can't take this lot's images: ${problems.join("; ")}`);
+    }
   }
 
   /**

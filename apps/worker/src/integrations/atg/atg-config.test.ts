@@ -38,10 +38,8 @@ describe("loadAtgRuntimeConfig", () => {
       username: "api@lax.bid",
       password: "secret",
     });
+    expect(config?.sync).not.toHaveProperty("auctionType");
     expect(config?.sync).toMatchObject({
-      auctionType: "Timed",
-      listingPrivate: true,
-      approveBeforePublish: false,
       artistPlacement: "description",
       currency: "GBP",
       countryCode: "UK",

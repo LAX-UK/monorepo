@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { testAtgConfig, testLot, testSale } from "./__fixtures__/atg-snapshots.js";
 import {
   AtgMappingError,
+  bidLockedFieldsHash,
   gapImageName,
   mapLotToLotFields,
   mapSaleToAuctionFields,
@@ -41,18 +42,42 @@ describe("mapSaleToAuctionFields", () => {
     expect(fields).not.toHaveProperty("Address2");
   });
 
-  it("omits timed-only fields for live auctions", () => {
-    const fields = mapSaleToAuctionFields(testSale(), { ...testAtgConfig, auctionType: "Live" });
+  it("uses the sale's own auction type and omits timed-only fields for live auctions", () => {
+    const fields = mapSaleToAuctionFields(
+      testSale({ atgSettings: { auctionType: "Live", distribution: "private_test" } }),
+      testAtgConfig,
+    );
 
+    expect(fields.AuctionListings[0]?.AuctionTypeAndListing).toBe("Live");
     expect(fields.TimedStart).toBeUndefined();
     expect(fields.SaleDates).toEqual([
       { Starts: "2026-10-20T10:00:00.000Z", Ends: "2026-11-01T18:00:00.000Z" },
     ]);
   });
 
+  it("lists only public-marketplace sales publicly", () => {
+    const listing = (distribution: "private_test" | "public_marketplace") =>
+      mapSaleToAuctionFields(
+        testSale({ atgSettings: { auctionType: "Timed", distribution } }),
+        testAtgConfig,
+      ).AuctionListings[0]?.Private;
+
+    expect(listing("private_test")).toBe(true);
+    expect(listing("public_marketplace")).toBe(false);
+  });
+
   it("converts fractional premium rates to percentages without float noise", () => {
     const fields = mapSaleToAuctionFields(testSale({ buyerPremiumRate: "0.2875" }), testAtgConfig);
     expect(fields.BuyersPremium).toBe(28.75);
+  });
+
+  it("requires one flat buyer's premium", () => {
+    expect(() =>
+      mapSaleToAuctionFields(
+        testSale({ buyerPremiumTiers: [{ hammerThresholdMinor: 100_000, rate: "0.2000" }] }),
+        testAtgConfig,
+      ),
+    ).toThrow(/single flat buyer's premium/);
   });
 });
 
@@ -98,14 +123,18 @@ describe("mapLotToLotFields", () => {
     expect(fields.LongDescription).toHaveLength(8000);
   });
 
-  it("sends a lot-level premium only when it differs from the sale", () => {
-    expect(
-      mapLotToLotFields(testLot(), testSale(), 1, testAtgConfig).BuyersPremiumPercent,
-    ).toBeUndefined();
-    expect(
-      mapLotToLotFields(testLot({ buyerPremiumRate: "0.2000" }), testSale(), 1, testAtgConfig)
-        .BuyersPremiumPercent,
-    ).toBe(20);
+  it("refuses a lot whose premium differs from the sale, ignoring formatting", () => {
+    expect(() =>
+      mapLotToLotFields(testLot({ buyerPremiumRate: "0.2000" }), testSale(), 1, testAtgConfig),
+    ).toThrow(/one buyer's premium per auction/);
+    expect(() =>
+      mapLotToLotFields(testLot({ buyerPremiumRate: "0.25" }), testSale(), 1, testAtgConfig),
+    ).not.toThrow();
+  });
+
+  it("omits EndTimeUtc for live auctions", () => {
+    const sale = testSale({ atgSettings: { auctionType: "Live", distribution: "private_test" } });
+    expect(mapLotToLotFields(testLot(), sale, 1, testAtgConfig).EndTimeUtc).toBeUndefined();
   });
 
   it.each([
@@ -128,6 +157,14 @@ describe("mapLotToLotFields", () => {
     expect(() =>
       mapLotToLotFields(testLot({ lotNumber: null }), testSale(), 1, testAtgConfig),
     ).toThrow(AtgMappingError);
+  });
+
+  it("sends Status 0 only when creating a lot", () => {
+    expect(mapLotToLotFields(testLot(), testSale(), 1, testAtgConfig, "create").Status).toBe(0);
+    expect(mapLotToLotFields(testLot(), testSale(), 1, testAtgConfig).Status).toBeUndefined();
+    expect(mapLotToLotFields(testLot(), testSale(), 1, testAtgConfig, "update")).not.toHaveProperty(
+      "Status",
+    );
   });
 
   it("drops zero or empty prices", () => {
@@ -159,6 +196,26 @@ describe("lot images", () => {
 
   it("names images in GAP order", () => {
     expect([0, 1, 2].map(gapImageName)).toEqual(["1", "1-1", "1-2"]);
+  });
+});
+
+describe("bidLockedFieldsHash", () => {
+  const base = mapLotToLotFields(testLot(), testSale(), 1, testAtgConfig);
+
+  it("ignores fields ATG still allows after bidding, including Status", () => {
+    expect(bidLockedFieldsHash({ ...base, Title: "Renamed", SequenceNumber: 9, Status: 0 })).toBe(
+      bidLockedFieldsHash(base),
+    );
+  });
+
+  it.each([
+    ["LongDescription", "changed"],
+    ["Reserve", 900],
+    ["LowEstimate", 700],
+    ["HighEstimate", 1300],
+    ["OpeningPrice", 400],
+  ])("changes when %s changes", (key, value) => {
+    expect(bidLockedFieldsHash({ ...base, [key]: value })).not.toBe(bidLockedFieldsHash(base));
   });
 });
 
