@@ -107,7 +107,6 @@ jobs:
       TF_VAR_atg_platform_code: ${{ vars.ATG_PLATFORM_CODE }}
       TF_VAR_atg_increment_set_id: ${{ vars.ATG_INCREMENT_SET_ID }}
       TF_VAR_atg_default_category: ${{ vars.ATG_DEFAULT_CATEGORY }}
-      TF_VAR_atg_listing_private: ${{ vars.ATG_LISTING_PRIVATE || 'true' }}
       TF_VAR_atg_white_label_base_url: ${{ vars.ATG_WHITE_LABEL_BASE_URL }}
       # persistent layer: ATG's DNS-only ACM validation CNAME for auctions.lax.bid.
       TF_VAR_atg_acm_validation_enabled: ${{ vars.ATG_ACM_VALIDATION_ENABLED || 'false' }}

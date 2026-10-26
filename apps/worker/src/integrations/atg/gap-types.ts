@@ -3,12 +3,8 @@
  * used by the LAX integration. Field names match the wire format exactly.
  */
 
-export type GapAuctionTypeAndListing =
-  | "CatalogueLive"
-  | "Live"
-  | "Timed"
-  | "CatalogueTimed"
-  | "Tender";
+/** GAP also defines catalogue and tender types; ATG allows LAX only these two. */
+export type GapAuctionTypeAndListing = "Live" | "Timed";
 
 export type GapAuctionListing = {
   PlatformCode: string;
@@ -67,7 +63,6 @@ export type GapLotFields = {
   Reserve?: number;
   OpeningPrice?: number;
   BuyItNowPrice?: number;
-  BuyersPremiumPercent?: number;
   EndTimeUtc?: string;
 };
 
@@ -104,6 +99,26 @@ export type GapSaleResultResponse = {
   HammerPrice?: number | null;
   TotalHammerPrice?: number | null;
   EndTimeUtc?: string | null;
+};
+
+/** `GET /Auction/GetAuctionById/{id}` and `GetAuctionsByClientId/{id}` item (fields LAX reads). */
+export type GapAuctionResponse = {
+  AuctionId?: string | null;
+  ClientsAuctionId?: string | null;
+  IsApproved?: boolean | null;
+  IsPublished?: boolean | null;
+  AuctionStatusCode?: number | null;
+};
+
+/** `GET /Clients/GetIncrementDetails/{clientId}` item (fields LAX reads). */
+export type GapIncrementDetailsResponse = {
+  IncrementSetId?: string | null;
+  IncrementSetName?: string | null;
+};
+
+/** `GET /Auction/GetSupportedCategories/{platformCode}` item. */
+export type GapSupportedCategoryResponse = {
+  CategoryName?: string | null;
 };
 
 /** ServiceStack error envelope returned by GAP on failures. */

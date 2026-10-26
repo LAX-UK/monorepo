@@ -620,7 +620,7 @@ variable "atg_client_id" {
 variable "atg_platform_code" {
   type        = string
   default     = ""
-  description = "ATG PlatformCode for the LAX White Label."
+  description = "ATG PlatformCode for the LAX White Label. ATG confirmed the production value is SR."
 }
 
 variable "atg_increment_set_id" {

@@ -1,5 +1,12 @@
 import type { SaleStatus } from "@auction/types";
-import type { AtgGateway, AtgRemoteLot, AtgSaleResult } from "../atg-gateway.js";
+import type {
+  AtgGateway,
+  AtgIncrementSet,
+  AtgRemoteAuction,
+  AtgRemoteLot,
+  AtgSaleResult,
+} from "../atg-gateway.js";
+import type { AtgImageFacts, AtgImageInspector } from "../atg-image-inspector.js";
 import type { AtgAuctionLinkPatch, AtgLotLinkPatch, AtgSyncStore } from "../atg-sync-store.js";
 import type {
   AtgAuctionLink,
@@ -17,11 +24,28 @@ import type {
 
 type GatewayCall = { op: keyof AtgGateway; arg: unknown };
 
+/** Every image is a small JPG unless `facts` says otherwise for its URL. */
+export class FakeAtgImageInspector implements AtgImageInspector {
+  readonly facts = new Map<string, AtgImageFacts>();
+  readonly inspected: string[] = [];
+
+  async inspect(url: string): Promise<AtgImageFacts> {
+    this.inspected.push(url);
+    return this.facts.get(url) ?? { contentType: "image/jpeg", bytes: 200_000, error: null };
+  }
+}
+
 /** Records calls; `failNext` makes a later call to an operation throw. */
 export class FakeAtgGateway implements AtgGateway {
   readonly calls: GatewayCall[] = [];
   remoteLots: AtgRemoteLot[] = [];
   saleResults: AtgSaleResult[] = [];
+  /** `getAuction` answers from here by auction id; unknown ids are null. */
+  remoteAuctions = new Map<string, AtgRemoteAuction>();
+  /** What `findAuctionsByClientId` returns. */
+  clientAuctions: AtgRemoteAuction[] = [];
+  incrementSets: AtgIncrementSet[] = [];
+  supportedCategories: string[] = [];
   private seq = 0;
   private readonly failures = new Map<keyof AtgGateway, Array<Error | null>>();
 
@@ -48,9 +72,6 @@ export class FakeAtgGateway implements AtgGateway {
   }
   async updateAuction(request: GapUpdateAuctionRequest) {
     this.record("updateAuction", request);
-  }
-  async approveAuction(auctionId: string) {
-    this.record("approveAuction", auctionId);
   }
   async publishAuction(auctionId: string) {
     this.record("publishAuction", auctionId);
@@ -79,6 +100,22 @@ export class FakeAtgGateway implements AtgGateway {
   async getSaleResults(auctionId: string) {
     this.record("getSaleResults", auctionId);
     return this.saleResults;
+  }
+  async getAuction(auctionId: string) {
+    this.record("getAuction", auctionId);
+    return this.remoteAuctions.get(auctionId) ?? null;
+  }
+  async findAuctionsByClientId(clientId: string, fromDate: Date) {
+    this.record("findAuctionsByClientId", { clientId, fromDate });
+    return this.clientAuctions;
+  }
+  async getIncrementSets(clientId: string) {
+    this.record("getIncrementSets", clientId);
+    return this.incrementSets;
+  }
+  async getSupportedCategories(platformCode: string) {
+    this.record("getSupportedCategories", platformCode);
+    return this.supportedCategories;
   }
 }
 
@@ -118,6 +155,7 @@ export class InMemoryAtgSyncStore implements AtgSyncStore {
       remoteStatus: "pending",
       payloadHash: null,
       lastSyncedAt: null,
+      approvedAt: null,
       closedAt: null,
       lastError: null,
     };
@@ -133,9 +171,12 @@ export class InMemoryAtgSyncStore implements AtgSyncStore {
     return [...this.lotLinks.values()].filter((l) => lotIds.includes(l.lotId));
   }
   async insertLotLink(
-    link: Pick<AtgLotLink, "lotId" | "saleId" | "atgLotId"> & { payloadHash: string },
+    link: Pick<AtgLotLink, "lotId" | "saleId" | "atgLotId"> & {
+      payloadHash: string;
+      lockedFieldsHash: string;
+    },
   ) {
-    this.lotLinks.set(link.lotId, { ...link, imageNames: [] });
+    this.lotLinks.set(link.lotId, { ...link, imageNames: [], numberOfBids: 0 });
   }
   async updateLotLink(lotId: string, patch: AtgLotLinkPatch) {
     const current = this.lotLinks.get(lotId);
@@ -144,11 +185,11 @@ export class InMemoryAtgSyncStore implements AtgSyncStore {
   async deleteLotLink(lotId: string) {
     this.lotLinks.delete(lotId);
   }
-  async applyRemoteLots(saleId: string, lots: AtgRemoteLot[]) {
+  async applyRemoteLots(saleId: string, lots: AtgRemoteLot[], _polledAt?: Date) {
     for (const link of this.lotLinks.values()) {
       if (link.saleId !== saleId) continue;
       const remote = lots.find((l) => l.atgLotId === link.atgLotId);
-      if (remote) Object.assign(link, remote);
+      if (remote) Object.assign(link, remote, { numberOfBids: remote.numberOfBids ?? 0 });
     }
   }
   async listActiveAuctionLinks(closedSince: Date) {

@@ -130,6 +130,71 @@ describe("GapHttpAdapter", () => {
     expect(JSON.stringify(row)).not.toContain("Jane");
   });
 
+  it("maps approval and publication from GetAuctionById, and a 404 to null", async () => {
+    const { adapter, calls } = adapterWith([
+      json({
+        AuctionId: "a-1",
+        ClientsAuctionId: "sale-1",
+        IsApproved: true,
+        IsPublished: false,
+        AuctionStatusCode: 2,
+      }),
+      json({ Message: "not found" }, 404),
+    ]);
+
+    expect(await adapter.getAuction("a-1")).toEqual({
+      atgAuctionId: "a-1",
+      clientsAuctionId: "sale-1",
+      isApproved: true,
+      isPublished: false,
+      statusCode: 2,
+    });
+    expect(calls[0]?.url).toBe("https://gap.test/Auction/GetAuctionById/a-1");
+    expect(await adapter.getAuction("a-2")).toBeNull();
+  });
+
+  it("lists a client's auctions from a date, whether ATG returns a list or one object", async () => {
+    const { adapter, calls } = adapterWith([
+      json([{ AuctionId: "a-1", ClientsAuctionId: "sale-1" }, { Title: "no id" }]),
+      json({ AuctionId: "a-2", IsApproved: true }),
+      json(""),
+    ]);
+    const from = new Date("2026-10-12T10:00:00Z");
+
+    expect(await adapter.findAuctionsByClientId("client-1", from)).toEqual([
+      {
+        atgAuctionId: "a-1",
+        clientsAuctionId: "sale-1",
+        isApproved: false,
+        isPublished: false,
+        statusCode: null,
+      },
+    ]);
+    expect(calls[0]?.url).toBe(
+      "https://gap.test/Auction/GetAuctionsByClientId/client-1?fromDate=2026-10-12T10%3A00%3A00.000Z",
+    );
+    expect(await adapter.findAuctionsByClientId("client-1", from)).toMatchObject([
+      { atgAuctionId: "a-2", isApproved: true },
+    ]);
+    expect(await adapter.findAuctionsByClientId("client-1", from)).toEqual([]);
+  });
+
+  it("reads the client's increment sets and the platform's categories", async () => {
+    const { adapter, calls } = adapterWith([
+      json([{ IncrementSetId: "inc-1", IncrementSetName: "Default", IncrementSets: [] }, {}]),
+      json([{ CategoryName: "Fine Art", CategoryCode: "FA" }, { CategoryCode: "none" }]),
+    ]);
+
+    expect(await adapter.getIncrementSets("client-1")).toEqual([
+      { incrementSetId: "inc-1", name: "Default" },
+    ]);
+    expect(await adapter.getSupportedCategories("LAX")).toEqual(["Fine Art"]);
+    expect(calls.map((c) => c.url)).toEqual([
+      "https://gap.test/Clients/GetIncrementDetails/client-1",
+      "https://gap.test/Auction/GetSupportedCategories/LAX",
+    ]);
+  });
+
   it("surfaces ServiceStack validation messages as non-retryable errors", async () => {
     const { adapter } = adapterWith([json(fixture("error-validation.json"), 400)]);
 

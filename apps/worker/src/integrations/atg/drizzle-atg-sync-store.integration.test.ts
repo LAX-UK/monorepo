@@ -1,5 +1,13 @@
 import { type Database, createDb } from "@auction/db";
-import { artistProfile, atgLotLink, legalEntity, lot, sale, user } from "@auction/db/schema";
+import {
+  artistProfile,
+  atgAuctionLink,
+  atgLotLink,
+  legalEntity,
+  lot,
+  sale,
+  user,
+} from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { DrizzleAtgSyncStore } from "./drizzle-atg-sync-store.js";
@@ -84,6 +92,15 @@ describe.skipIf(!HAS_DB)("DrizzleAtgSyncStore (integration)", () => {
       expect(snapshot?.lots.map((l) => l.title)).toEqual(["First", "Second"]);
       expect(snapshot?.buyerPremiumRate).toBe("0.2500");
       expect(snapshot?.cancelled).toBe(false);
+      expect(snapshot?.atgSettings).toEqual({ auctionType: "Timed", distribution: "private_test" });
+
+      await db
+        .insert(atgAuctionLink)
+        .values({ saleId, auctionType: "Live", distribution: "public_marketplace" });
+      expect((await store.loadSale(saleId))?.atgSettings).toEqual({
+        auctionType: "Live",
+        distribution: "public_marketplace",
+      });
 
       await db.update(sale).set({ status: "cancelled" }).where(eq(sale.id, saleId));
       expect((await store.loadSale(saleId))?.cancelled).toBe(true);
@@ -94,9 +111,23 @@ describe.skipIf(!HAS_DB)("DrizzleAtgSyncStore (integration)", () => {
     await withSeededSale(async (store) => {
       expect(await store.findLotLinks([])).toEqual([]);
       await store.saveAuctionLink(saleId, { atgAuctionId: "atg-a", remoteStatus: "created" });
-      await store.insertLotLink({ lotId: lotIds[0], saleId, atgLotId: "atg-l1", payloadHash: "h" });
+      await store.insertLotLink({
+        lotId: lotIds[0],
+        saleId,
+        atgLotId: "atg-l1",
+        payloadHash: "h",
+        lockedFieldsHash: "l",
+      });
       expect(await store.findLotLinks([lotIds[0], lotIds[1]])).toEqual([
-        { lotId: lotIds[0], saleId, atgLotId: "atg-l1", imageNames: [], payloadHash: "h" },
+        {
+          lotId: lotIds[0],
+          saleId,
+          atgLotId: "atg-l1",
+          imageNames: [],
+          payloadHash: "h",
+          lockedFieldsHash: "l",
+          numberOfBids: 0,
+        },
       ]);
     });
   });
@@ -119,6 +150,7 @@ describe.skipIf(!HAS_DB)("DrizzleAtgSyncStore (integration)", () => {
         saleId,
         atgLotId: "atg-l1",
         payloadHash: "h1",
+        lockedFieldsHash: "l1",
       });
       await store.updateLotLink(lotIds[0], { imageNames: ["1", "1-1"] });
       await store.applyRemoteLots(
@@ -145,6 +177,8 @@ describe.skipIf(!HAS_DB)("DrizzleAtgSyncStore (integration)", () => {
         atgLotId: "atg-l1",
         imageNames: ["1", "1-1"],
         payloadHash: "h1",
+        lockedFieldsHash: "l1",
+        numberOfBids: 7,
       });
       const [row] = await db.select().from(atgLotLink).where(eq(atgLotLink.lotId, lotIds[0]));
       expect(row).toMatchObject({
@@ -156,6 +190,20 @@ describe.skipIf(!HAS_DB)("DrizzleAtgSyncStore (integration)", () => {
 
       await store.deleteLotLink(lotIds[0]);
       expect(await store.listLotLinks(saleId)).toEqual([]);
+    });
+  });
+
+  it("stores the approval time and lists pushed, unpublished links for the approval check", async () => {
+    await withSeededSale(async (store) => {
+      const approvedAt = new Date("2026-10-05T09:00:00Z");
+      await store.saveAuctionLink(saleId, { atgAuctionId: "atg-a", remoteStatus: "created" });
+      expect(await store.listActiveAuctionLinks(new Date("2026-09-30T00:00:00Z"))).toEqual([
+        expect.objectContaining({ remoteStatus: "created", approvedAt: null }),
+      ]);
+
+      await store.saveAuctionLink(saleId, { approvedAt });
+
+      expect((await store.getAuctionLink(saleId))?.approvedAt).toEqual(approvedAt);
     });
   });
 
@@ -184,7 +232,13 @@ describe.skipIf(!HAS_DB)("DrizzleAtgSyncStore (integration)", () => {
       expect(await store.hasCatalogueChangesSince(saleId, syncedAt)).toBe(true);
 
       const later = new Date("2026-10-07T00:00:00Z");
-      await store.insertLotLink({ lotId: lotIds[1], saleId, atgLotId: "atg-l2", payloadHash: "h" });
+      await store.insertLotLink({
+        lotId: lotIds[1],
+        saleId,
+        atgLotId: "atg-l2",
+        payloadHash: "h",
+        lockedFieldsHash: "l",
+      });
       await db
         .update(lot)
         .set({ saleId: null, deletedAt: new Date("2026-10-08T00:00:00Z") })
@@ -230,7 +284,13 @@ describe.skipIf(!HAS_DB)("DrizzleAtgSyncStore (integration)", () => {
         atgSoldLotCount: 0,
       });
       await store.saveAuctionLink(saleId, { atgAuctionId: "atg-a", remoteStatus: "closed" });
-      await store.insertLotLink({ lotId: lotIds[0], saleId, atgLotId: "atg-l1", payloadHash: "h" });
+      await store.insertLotLink({
+        lotId: lotIds[0],
+        saleId,
+        atgLotId: "atg-l1",
+        payloadHash: "h",
+        lockedFieldsHash: "l",
+      });
       await store.applyRemoteLots(
         saleId,
         [

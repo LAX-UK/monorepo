@@ -8,6 +8,9 @@ const ATG_ADMIN_ERROR_MESSAGES: Record<string, string> = {
     "This sale is published on lax.bid. Unpublish it on the sale overview before pushing to ATG.",
   sale_not_found: "Sale not found.",
   lot_not_linked: "That lot is not linked to ATG.",
+  public_confirmation_required:
+    "Confirm that this sale may be listed publicly on the White Label and The Saleroom.",
+  atg_settings_locked: "Those ATG settings can no longer change. Reload the page.",
   queue_unavailable: "The ATG queue is unavailable. Try again in a moment.",
   atg_action_failed: "The ATG action could not be completed.",
   invalid_response: "Unexpected response from the server.",
