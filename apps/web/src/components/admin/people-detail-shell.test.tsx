@@ -1,5 +1,5 @@
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
-import { TooltipProvider } from "@auction/ui/components/tooltip";
+import { StaffTooltipProvider } from "@auction/staff-ui";
 import { render as baseRender, fireEvent, screen, within } from "@testing-library/react";
 import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -51,7 +51,7 @@ vi.mock("@/lib/ui/notify", () => ({
 }));
 vi.mock("@/lib/auth/step-up/use-step-up-coordinator", () => ({ redirectToHostedReauth: vi.fn() }));
 
-const render = (ui: ReactElement) => baseRender(<TooltipProvider>{ui}</TooltipProvider>);
+const render = (ui: ReactElement) => baseRender(<StaffTooltipProvider>{ui}</StaffTooltipProvider>);
 
 function client(overrides: Partial<AdminUserDetailPayload> = {}): AdminUserDetailPayload {
   return {
@@ -232,11 +232,11 @@ describe("PeopleDetailShell sections", () => {
     expect(screen.queryByRole("navigation", { name: "Client sections" })).toBeNull();
 
     rerender(
-      <TooltipProvider>
+      <StaffTooltipProvider>
         {shell({ canModerate: true, canManageRoles: true }, client(), {
           tabs: [...tabs, { id: "bids", label: "Bids", content: <p>Bids content</p>, count: 4 }],
         })}
-      </TooltipProvider>,
+      </StaffTooltipProvider>,
     );
     const nav = screen.getByRole("navigation", { name: "Client sections" });
     expect(within(nav).getByRole("link", { name: /Bids/ })).toHaveAttribute(

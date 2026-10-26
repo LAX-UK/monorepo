@@ -1,43 +1,68 @@
 "use client";
 
-import { AdminLegalEntityPicker } from "@/components/admin/admin-legal-entity-picker";
 import { IdempotencyKeyField } from "@/components/admin/idempotency-key-field";
-import { PendingFormSubmit } from "@/components/admin/pending-form-submit";
 import { runPayoutSettlementAction } from "@/lib/admin/finance/admin-finance-mutations";
+import { presentPayoutStatus } from "@/lib/admin/finance/payouts-staff-list.vm";
+import { searchLegalEntityOptions } from "@/lib/admin/pickers/staff-entity-search";
 import type { AdminSettlementPreview } from "@/lib/data/http/admin-payouts.shared";
-import { formatMoney } from "@/lib/ui/format";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
+import {
+  ConfirmActionDialog,
+  type EntityOption,
+  EntityPicker,
+  Field,
+  KeyValueList,
+  Notice,
+  Section,
+  Skeleton,
+  StaffButton,
+  TextLink,
+  formatStaffMoney,
+} from "@auction/staff-ui";
 import Link from "next/link";
-import { useCallback, useState, useTransition } from "react";
-
-const FORM_ID = "payout-settlement-form";
+import { useCallback, useRef, useState, useTransition } from "react";
 
 type Props = {
   loadPreview: (legalEntityId: string) => Promise<AdminSettlementPreview>;
+  /** Test override for the legal entity search. */
+  searchEntities?: (query: string) => Promise<readonly EntityOption[]>;
 };
 
-export function PayoutSettlementWorkspace({ loadPreview }: Props) {
-  const [legalEntityId, setLegalEntityId] = useState<string | null>(null);
-  const [legalEntityLabel, setLegalEntityLabel] = useState<string | null>(null);
+/** Pounds as the API sends them ("1250.5") in full, in the payout's currency. */
+function money(pounds: string, currency: string): string {
+  const value = Number.parseFloat(pounds);
+  return formatStaffMoney(Math.round((Number.isFinite(value) ? value : 0) * 100), currency);
+}
+
+/**
+ * Pay one seller now instead of waiting for the nightly run: choose the legal entity, read what
+ * would be paid, then run it. Running asks first, naming the entity and the net amount; the API
+ * asks for a fresh sign-in when it wants one. Nothing runs while the entity already has an open
+ * payout or nothing is waiting.
+ */
+export function PayoutSettlementWorkspace({
+  loadPreview,
+  searchEntities = searchLegalEntityOptions,
+}: Props) {
+  const formRef = useRef<HTMLFormElement>(null);
+  const [entity, setEntity] = useState<EntityOption | null>(null);
   const [preview, setPreview] = useState<AdminSettlementPreview | null>(null);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  const [confirmed, setConfirmed] = useState(false);
-  const [loadingPreview, startPreviewTransition] = useTransition();
-  const pickerId = "payout-settlement-legal-entity";
+  const [confirming, setConfirming] = useState(false);
+  const [loadingPreview, startPreview] = useTransition();
+  const [running, startRun] = useTransition();
 
-  const refreshPreview = useCallback(
-    (entityId: string) => {
-      startPreviewTransition(async () => {
-        setPreviewError(null);
-        setPreview(null);
-        setConfirmed(false);
+  const choose = useCallback(
+    (option: EntityOption | null) => {
+      setEntity(option);
+      setPreview(null);
+      setPreviewError(null);
+      if (!option) return;
+      startPreview(async () => {
         try {
-          const next = await loadPreview(entityId);
-          setPreview(next);
+          setPreview(await loadPreview(option.id));
         } catch (error) {
           setPreviewError(
-            error instanceof Error ? error.message : "Could not load settlement preview.",
+            error instanceof Error ? error.message : "The settlement preview could not load.",
           );
         }
       });
@@ -45,152 +70,108 @@ export function PayoutSettlementWorkspace({ loadPreview }: Props) {
     [loadPreview],
   );
 
-  const onEntityChange = (id: string | null, label: string | null) => {
-    setLegalEntityId(id);
-    setLegalEntityLabel(label);
-    setConfirmed(false);
-    setPreview(null);
-    setPreviewError(null);
-    if (id) refreshPreview(id);
-  };
-
-  const hasEligiblePayments = (preview?.pending.paymentCount ?? 0) > 0;
-  const hasOpenPayout = preview?.openPayout != null;
+  const pending = preview?.pending;
+  const net = pending ? money(pending.pendingNet, pending.currency) : null;
+  const canRun = Boolean(pending && pending.paymentCount > 0 && !preview?.openPayout);
 
   return (
-    <div className="space-y-6">
-      <section aria-labelledby="settlement-select-heading" className="space-y-3">
-        <div>
-          <h2 id="settlement-select-heading" className="font-heading text-lg">
-            1. Select legal entity
-          </h2>
-          <p className="text-sm text-on-surface-variant">
-            Choose the seller entity you want to settle immediately.
-          </p>
-        </div>
-        <div className="block space-y-1 text-sm">
-          <label htmlFor={pickerId} className="font-medium">
-            Legal entity
-          </label>
-          <AdminLegalEntityPicker
-            id={pickerId}
-            value={legalEntityId}
-            displayLabel={legalEntityLabel}
-            onChange={(id, row) => onEntityChange(id, row?.displayName ?? null)}
-            searchPlaceholder="Search legal entities…"
+    <div className="flex flex-col gap-6">
+      <Section title="Seller" description="The legal entity to pay now.">
+        <Field label="Legal entity" id="settlement-legal-entity">
+          <EntityPicker
+            id="settlement-legal-entity"
+            value={entity?.id ?? null}
+            selected={entity}
+            onValueChange={choose}
+            search={searchEntities}
+            placeholder="Choose a legal entity"
+            searchPlaceholder="Search by organisation or entity name"
+            emptyText="No legal entity matches"
           />
-        </div>
-      </section>
+        </Field>
+      </Section>
 
-      {previewError ? (
-        <Alert variant="destructive" role="alert">
-          <AlertTitle>Preview unavailable</AlertTitle>
-          <AlertDescription>{previewError}</AlertDescription>
-        </Alert>
-      ) : null}
-
-      {loadingPreview ? (
-        <output className="block text-sm text-on-surface-variant" aria-live="polite">
-          Loading settlement preview…
-        </output>
-      ) : null}
-
-      {preview && legalEntityId ? (
-        <section aria-labelledby="settlement-review-heading" className="space-y-4">
-          <div>
-            <h2 id="settlement-review-heading" className="font-heading text-lg">
-              2. Review settlement
-            </h2>
-            <p className="text-sm text-on-surface-variant">
-              Confirm the payment scope and net amount before creating the payout.
-            </p>
-          </div>
-
-          <dl className="grid gap-3 rounded-md border border-outline-variant/30 p-4 text-sm sm:grid-cols-2">
-            <div>
-              <dt className="text-on-surface-variant">Eligible payments</dt>
-              <dd className="text-lg font-semibold tabular-nums">{preview.pending.paymentCount}</dd>
+      {entity ? (
+        <Section
+          title="What would be paid"
+          description="Captured payments waiting to settle for this entity."
+        >
+          {previewError ? (
+            <Notice tone="danger" alert title="The preview could not load">
+              {previewError}
+            </Notice>
+          ) : loadingPreview || !pending ? (
+            <div aria-busy="true" className="flex flex-col gap-3">
+              <Skeleton className="h-5 w-64" />
+              <Skeleton className="h-5 w-56" />
+              <Skeleton className="h-5 w-48" />
             </div>
-            <div>
-              <dt className="text-on-surface-variant">Pending gross</dt>
-              <dd className="font-semibold tabular-nums">
-                {formatMoney(preview.pending.pendingGross, preview.pending.currency)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-on-surface-variant">Platform fees</dt>
-              <dd className="font-semibold tabular-nums">
-                {formatMoney(preview.pending.pendingPlatformFee, preview.pending.currency)}
-              </dd>
-            </div>
-            <div>
-              <dt className="text-on-surface-variant">Estimated net</dt>
-              <dd className="text-lg font-semibold tabular-nums">
-                {formatMoney(preview.pending.pendingNet, preview.pending.currency)}
-              </dd>
-            </div>
-          </dl>
-
-          {hasOpenPayout ? (
-            <Alert role="alert">
-              <AlertTitle>Open payout already exists</AlertTitle>
-              <AlertDescription>
-                This entity already has a modifiable payout in {preview.openPayout?.status} status.
-                Review{" "}
-                <Link href="/admin/payouts" className="text-link underline">
-                  existing payouts
-                </Link>{" "}
-                before running another settlement.
-              </AlertDescription>
-            </Alert>
-          ) : null}
-
-          {!hasEligiblePayments ? (
-            <Alert>
-              <AlertTitle>No eligible payments</AlertTitle>
-              <AlertDescription>
-                There are no captured payments waiting to settle for this entity.
-              </AlertDescription>
-            </Alert>
-          ) : null}
-        </section>
-      ) : null}
-
-      {preview && legalEntityId && hasEligiblePayments && !hasOpenPayout ? (
-        <section aria-labelledby="settlement-confirm-heading" className="space-y-4">
-          <div>
-            <h2 id="settlement-confirm-heading" className="font-heading text-lg">
-              3. Confirm settlement
-            </h2>
-            <p className="text-sm text-on-surface-variant">
-              Settlement creates a payout immediately for{" "}
-              {legalEntityLabel ?? "the selected entity"}.
-            </p>
-          </div>
-
-          {!confirmed ? (
-            <Button type="button" onClick={() => setConfirmed(true)}>
-              Review complete — enable settlement
-            </Button>
           ) : (
-            <form id={FORM_ID} action={runPayoutSettlementAction} className="space-y-3">
-              <input type="hidden" name="legalEntityId" value={legalEntityId} />
-              <IdempotencyKeyField />
-              <PendingFormSubmit
-                formId={FORM_ID}
-                pendingLabel="Running settlement…"
-                className="rounded-md bg-primary px-4 py-2 font-label text-sm font-semibold text-on-primary"
-              >
-                Run settlement for{" "}
-                {formatMoney(preview.pending.pendingNet, preview.pending.currency)}
-              </PendingFormSubmit>
-              <Button type="button" variant="outline" onClick={() => setConfirmed(false)}>
-                Back to review
-              </Button>
-            </form>
+            <div className="flex flex-col gap-4">
+              <KeyValueList
+                columns={2}
+                items={[
+                  { label: "Payments", value: String(pending.paymentCount), numeric: true },
+                  {
+                    label: "Gross",
+                    value: money(pending.pendingGross, pending.currency),
+                    numeric: true,
+                  },
+                  {
+                    label: "Platform fees",
+                    value: money(pending.pendingPlatformFee, pending.currency),
+                    numeric: true,
+                  },
+                  { label: "Net to the seller", value: net, numeric: true },
+                ]}
+              />
+              {preview?.openPayout ? (
+                <Notice tone="warning" title="This entity already has an open payout">
+                  It is {presentPayoutStatus(preview.openPayout.status).label.toLowerCase()}. Settle
+                  or cancel it from{" "}
+                  <TextLink href="/admin/payouts" Link={Link}>
+                    Payouts
+                  </TextLink>{" "}
+                  before running another.
+                </Notice>
+              ) : pending.paymentCount === 0 ? (
+                <Notice tone="info" title="Nothing to settle">
+                  No captured payments are waiting to settle for this entity.
+                </Notice>
+              ) : null}
+              {canRun ? (
+                <div>
+                  <StaffButton
+                    variant="primary"
+                    loading={running}
+                    onClick={() => setConfirming(true)}
+                  >
+                    Run settlement for {net}
+                  </StaffButton>
+                </div>
+              ) : null}
+            </div>
           )}
-        </section>
+        </Section>
       ) : null}
+
+      <form ref={formRef} action={runPayoutSettlementAction} hidden>
+        <input type="hidden" name="legalEntityId" value={entity?.id ?? ""} />
+        <IdempotencyKeyField />
+      </form>
+
+      <ConfirmActionDialog
+        open={confirming}
+        onOpenChange={(open) => {
+          if (!running) setConfirming(open);
+        }}
+        title={`Pay ${net ?? ""} to ${entity?.label ?? "this entity"} now?`}
+        description="A payout is created at once from the captured payments above and sent to the seller's payout account. It cannot be undone from here."
+        confirmLabel={`Pay ${net ?? ""}`}
+        cancelLabel="Not now"
+        loading={running}
+        onConfirm={() => startRun(() => formRef.current?.requestSubmit())}
+      />
     </div>
   );
 }

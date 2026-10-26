@@ -50,3 +50,17 @@ describe("StaffMenu", () => {
     expect(rootProps).toEqual([{ modal: true }]);
   });
 });
+
+describe("StaffTooltipProvider", () => {
+  it("lets a kit tooltip render outside the shell", async () => {
+    const { StaffTooltip, StaffTooltipProvider } = await import("./menu.js");
+    const { getByRole } = render(
+      <StaffTooltipProvider>
+        <StaffTooltip label="Copy ID">
+          <button type="button">Copy</button>
+        </StaffTooltip>
+      </StaffTooltipProvider>,
+    );
+    expect(getByRole("button", { name: "Copy" })).toBeTruthy();
+  });
+});

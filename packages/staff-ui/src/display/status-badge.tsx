@@ -8,6 +8,7 @@ const toneClass: Record<StaffStatusTone, { badge: string; dot: string }> = {
   success: { badge: "bg-staff-success-bg text-staff-success-fg", dot: "bg-staff-success-dot" },
   warning: { badge: "bg-staff-warning-bg text-staff-warning-fg", dot: "bg-staff-warning-dot" },
   danger: { badge: "bg-staff-danger-bg text-staff-danger-fg", dot: "bg-staff-danger-dot" },
+  live: { badge: "bg-staff-live-bg text-staff-on-live", dot: "bg-staff-on-live" },
 };
 
 /**
@@ -38,7 +39,9 @@ export function StatusBadge({
         aria-hidden
         className={cn(
           "size-1.5 shrink-0 rounded-full",
-          live ? "animate-pulse bg-staff-live-dot" : classes.dot,
+          live && "animate-pulse",
+          // On the solid live fill the dot is white; on a tint it is the live red.
+          live && tone !== "live" ? "bg-staff-live-dot" : classes.dot,
         )}
       />
       <span className="truncate">{children}</span>

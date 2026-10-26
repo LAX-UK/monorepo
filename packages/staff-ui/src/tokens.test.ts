@@ -6,6 +6,7 @@ import {
   STAFF_CONTROL_HEIGHT,
   STAFF_LAYOUT,
   STAFF_RADIUS,
+  STAFF_STATUS_TONES,
   STAFF_STICKY_LAYERS,
   STAFF_TYPE_SCALE,
 } from "./tokens.js";
@@ -94,6 +95,26 @@ describe("staff tokens", () => {
         pair("color-staff-control-border")[scheme],
       );
       expect(ratio).toBeGreaterThanOrEqual(STAFF_CONTROL_BORDER_MIN_CONTRAST);
+    });
+  });
+
+  describe("status badge text keeps 4.5:1 on its fill", () => {
+    const pairs = [
+      ...STAFF_STATUS_TONES.filter((tone) => tone !== "live").map(
+        (tone) => [tone, `color-staff-${tone}-fg`, `color-staff-${tone}-bg`] as const,
+      ),
+      ["live", "color-staff-on-live", "color-staff-live-bg"] as const,
+    ];
+    it.each(
+      pairs.flatMap(([tone, fg, bg]) =>
+        (["light", "dark"] as const).map((scheme) => [tone, scheme, fg, bg] as const),
+      ),
+    )("%s (%s)", (_tone, scheme, fg, bg) => {
+      // Tinted dark fills are translucent rgb(); only opaque hex fills are measured here.
+      const parts = /^light-dark\(([^,]+),\s*(.+)\)$/.exec(token(bg) ?? "");
+      const background = (scheme === "light" ? parts?.[1] : parts?.[2])?.trim() ?? "";
+      if (!background.startsWith("#")) return;
+      expect(contrast(pair(fg)[scheme], background)).toBeGreaterThanOrEqual(4.5);
     });
   });
 

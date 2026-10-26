@@ -20,7 +20,7 @@ test.describe("catalogue manager dashboard @roles", () => {
     await expect(
       page.locator("#main-content").getByRole("link", { name: /^submissions$/i }),
     ).toBeVisible();
-    await expect(page.getByRole("heading", { name: /work inbox/i })).toBeVisible();
+    await expect(page.getByRole("heading", { name: /^your work$/i })).toBeVisible();
     await expectNoSeriousAxeViolationsInMain(page);
   });
 });

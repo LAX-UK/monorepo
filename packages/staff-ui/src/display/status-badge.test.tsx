@@ -1,10 +1,10 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { MappedStatusBadge, defineStatusMap, humanizeStatus } from "./status-badge.js";
+import { MappedStatusBadge, StatusBadge, defineStatusMap, humanizeStatus } from "./status-badge.js";
 
 const present = defineStatusMap({
   paid: { label: "Paid", tone: "success" },
-  live: { label: "Live", tone: "danger", live: true },
+  live: { label: "Live", tone: "live", live: true },
 });
 
 describe("defineStatusMap", () => {
@@ -20,6 +20,32 @@ describe("defineStatusMap", () => {
 describe("humanizeStatus", () => {
   it("reads machine names as sentence case", () => {
     expect(humanizeStatus("ready_for-collection")).toBe("Ready for collection");
+  });
+});
+
+describe("StatusBadge", () => {
+  it("draws live as its own solid tone with a pulsing white dot, never the danger tint", () => {
+    const { container } = render(
+      <StatusBadge tone="live" live>
+        Live
+      </StatusBadge>,
+    );
+    const badge = container.firstElementChild as HTMLElement;
+    expect(badge.className).toContain("bg-staff-live-bg");
+    expect(badge.className).not.toContain("bg-staff-danger-bg");
+    const dot = badge.firstElementChild as HTMLElement;
+    expect(dot.className).toContain("animate-pulse");
+    expect(dot.className).toContain("bg-staff-on-live");
+  });
+
+  it("pulses the live red dot on a tinted tone", () => {
+    const { container } = render(
+      <StatusBadge tone="info" live>
+        Opening
+      </StatusBadge>,
+    );
+    const dot = container.firstElementChild?.firstElementChild as HTMLElement;
+    expect(dot.className).toContain("bg-staff-live-dot");
   });
 });
 

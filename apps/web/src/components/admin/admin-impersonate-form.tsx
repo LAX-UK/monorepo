@@ -1,111 +1,138 @@
 "use client";
 
+import { searchLegalEntityOptions } from "@/lib/admin/pickers/staff-entity-search";
 import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
 import { startAdminImpersonationAfterLookup } from "@/lib/legal-entity/acting-context.actions";
 import { notify } from "@/lib/ui/notify";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
-import { Label } from "@auction/ui/components/label";
+import {
+  ConfirmActionDialog,
+  type EntityOption,
+  EntityPicker,
+  Field,
+  FormActions,
+  FormSection,
+  Notice,
+  StaffButton,
+} from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { AdminLegalEntityPicker } from "./admin-legal-entity-picker";
 
-function errorMessage(code: string): string {
-  switch (code) {
+/** What went wrong, in words a staff member can act on. */
+export function impersonationErrorMessage(result: { error: string; message?: string }): string {
+  switch (result.error) {
     case "not_found":
-      return "No legal entity exists for that selection.";
+      return "That legal entity no longer exists. Choose another.";
     case "not_impersonation":
-      return "You are already a member of that entity — use the dashboard acting-context switcher instead.";
+      return "You are already a member of that entity. Switch to it from your account instead.";
     case "bad_request":
       return "Choose a legal entity from the search results.";
     case "unauthorized":
-      return "Your session is not accepted by the API (401). Sign out and sign in again, or check that the web app can reach the API with your cookies.";
+      return "Your sign-in has expired. Sign out, sign in again and retry.";
     case "forbidden":
-      return "The API refused this request (403). Impersonation is limited to staff with full platform admin access.";
+      return "Support sessions are limited to staff with full platform admin access.";
     case "network":
-      return "The browser could not complete the server request to the API (network or DNS).";
-    case "missing_acting_cookie":
-      return "The API responded but did not include an acting cookie payload.";
-    case "schema_incomplete":
-      return "The API database is missing required tables (migrations not applied). Run database migrations for the API, then retry.";
+      return "Bid could not reach the server. Check your connection and retry.";
     default:
-      return "Could not start impersonation. Try again.";
+      return result.message
+        ? `The support session did not start: ${result.message}`
+        : "The support session did not start. Try again.";
   }
 }
 
-function formatImpersonationError(result: {
-  ok: false;
-  error: string;
-  message?: string;
-}): string {
-  const friendly = errorMessage(result.error);
-  if (!result.message) return friendly;
-  return `${friendly}\n\nAPI: ${result.message}`;
-}
-
-export function AdminImpersonateForm() {
+/**
+ * Start a support session as a legal entity: choose it by name, then confirm. The confirm says
+ * that the entity's owners and admins are told and that the session ends after four hours. A
+ * failure stays on the form; a fresh sign-in is asked for when the API wants one.
+ */
+export function AdminImpersonateForm({
+  searchEntities = searchLegalEntityOptions,
+}: {
+  searchEntities?: (query: string) => Promise<readonly EntityOption[]>;
+}) {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
+  const [entity, setEntity] = useState<EntityOption | null>(null);
+  const [missing, setMissing] = useState(false);
+  const [confirming, setConfirming] = useState(false);
+  const [failure, setFailure] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [selectedLabel, setSelectedLabel] = useState<string | null>(null);
+
+  const start = () => {
+    if (!entity) return;
+    setFailure(null);
+    startTransition(async () => {
+      const result = await startAdminImpersonationAfterLookup(entity.id);
+      if (!result.ok) {
+        setConfirming(false);
+        if (handleStaffStepUp(result)) return;
+        setFailure(impersonationErrorMessage(result));
+        return;
+      }
+      notify.success(`Support session started as ${entity.label}`);
+      router.push("/dashboard");
+      router.refresh();
+    });
+  };
 
   return (
     <form
-      className="space-y-4"
-      onSubmit={(e) => {
-        e.preventDefault();
-        setError(null);
-        const id = selectedId ?? "";
-        startTransition(async () => {
-          const result = await startAdminImpersonationAfterLookup(id);
-          if (!result.ok) {
-            if (handleStaffStepUp(result)) return;
-            setError(formatImpersonationError(result));
-            notify.error("Impersonation failed");
-            return;
-          }
-          notify.success("Impersonation started");
-          router.push("/dashboard");
-          router.refresh();
-        });
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        if (!entity) {
+          setMissing(true);
+          return;
+        }
+        setConfirming(true);
       }}
     >
-      <div aria-live="polite" className="min-h-0">
-        {error ? (
-          <Alert variant="destructive" className="mb-4">
-            <AlertTitle>Impersonation failed</AlertTitle>
-            <AlertDescription className="whitespace-pre-wrap">{error}</AlertDescription>
-          </Alert>
-        ) : null}
-      </div>
-
-      <div className="space-y-2">
-        <Label>Legal entity</Label>
-        <AdminLegalEntityPicker
-          value={selectedId}
-          displayLabel={selectedLabel}
-          disabled={pending}
-          onChange={(id, row) => {
-            setSelectedId(id);
-            setSelectedLabel(
-              row ? `${row.displayName} · ${row.status.replaceAll("_", " ")}` : null,
-            );
-          }}
-        />
-        <p className="text-sm text-on-surface-variant">
-          Search by name. A four-hour support session starts; owners and admins are emailed
-          automatically.
-        </p>
-      </div>
-
-      <Button
-        type="submit"
-        disabled={pending || !selectedId}
-        className="min-h-11 w-full min-w-[12rem] px-6 py-3 sm:w-auto"
+      {failure ? (
+        <Notice tone="danger" alert title="The support session did not start">
+          {failure}
+        </Notice>
+      ) : null}
+      <FormSection
+        title="Who to support"
+        description="You see Bid as its members do, and can act for it."
       >
-        {pending ? "Starting…" : "Start impersonation"}
-      </Button>
+        <Field
+          label="Legal entity"
+          id="impersonate-legal-entity"
+          description="Search by organisation or entity name."
+          error={missing && !entity ? "Choose the legal entity to support." : null}
+        >
+          <EntityPicker
+            id="impersonate-legal-entity"
+            value={entity?.id ?? null}
+            selected={entity}
+            onValueChange={(option) => {
+              setEntity(option);
+              setFailure(null);
+            }}
+            search={searchEntities}
+            placeholder="Choose a legal entity"
+            searchPlaceholder="Search legal entities"
+            emptyText="No legal entity matches"
+            disabled={pending}
+            invalid={missing && !entity}
+          />
+        </Field>
+      </FormSection>
+      <FormActions>
+        <StaffButton type="submit" variant="primary" loading={pending}>
+          Start support session
+        </StaffButton>
+      </FormActions>
+      <ConfirmActionDialog
+        open={confirming}
+        onOpenChange={(open) => {
+          if (!pending) setConfirming(open);
+        }}
+        title={`Start a support session as ${entity?.label ?? "this entity"}?`}
+        description="Its owners and admins are emailed that staff are acting for them. The session ends after four hours, or when you end it from the banner."
+        confirmLabel="Start support session"
+        loading={pending}
+        onConfirm={start}
+      />
     </form>
   );
 }

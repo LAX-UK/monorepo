@@ -1,11 +1,7 @@
 "use client";
 
-import {
-  EmptyStateIllustration,
-  type EmptyStateIllustrationKey,
-} from "@/components/illustrations/empty-state-illustrations";
 import { useReportRouteError } from "@/lib/observability/use-report-route-error";
-import { Button } from "@auction/ui/components/button";
+import { ErrorState, StaffButton } from "@auction/staff-ui";
 import Link from "next/link";
 
 type Props = {
@@ -14,40 +10,37 @@ type Props = {
   reset?: () => void;
   homeHref?: string;
   homeLabel?: string;
-  illustration?: EmptyStateIllustrationKey;
   error?: Error & { digest?: string };
 };
 
-/** Shared admin route error boundary UI. */
+/** A staff route that failed to load: what failed, Try again, and a way back. */
 export function AdminErrorPage({
-  title = "Admin hiccup",
-  message = "Something went wrong loading this page. Try again or return to the dashboard.",
+  title = "This page could not load",
+  message = "Something went wrong loading this page. Try again, or go back to Overview.",
   reset,
   homeHref = "/admin",
-  homeLabel = "Back to admin home",
-  illustration = "error",
+  homeLabel = "Back to Overview",
   error,
 }: Props) {
   useReportRouteError(error);
 
   return (
-    <div
-      className="flex min-h-[50vh] flex-col items-center justify-center gap-4 px-4 text-center"
-      role="alert"
-    >
-      <EmptyStateIllustration name={illustration} size="page" className="mb-4" />
-      <h1 className="font-display text-2xl text-on-surface">{title}</h1>
-      <p className="max-w-md font-body text-sm text-on-surface-variant">{message}</p>
-      <div className="flex flex-wrap justify-center gap-2">
-        {reset ? (
-          <Button type="button" variant="default" onClick={reset}>
-            Try again
-          </Button>
-        ) : null}
-        <Button variant="outline" asChild>
-          <Link href={homeHref}>{homeLabel}</Link>
-        </Button>
-      </div>
-    </div>
+    <ErrorState
+      title={title}
+      description={message}
+      headingLevel="h2"
+      action={
+        <>
+          <StaffButton asChild>
+            <Link href={homeHref}>{homeLabel}</Link>
+          </StaffButton>
+          {reset ? (
+            <StaffButton variant="primary" onClick={reset}>
+              Try again
+            </StaffButton>
+          ) : null}
+        </>
+      }
+    />
   );
 }

@@ -14,11 +14,11 @@ test.describe("admin dashboard home @smoke", () => {
     await gotoAdminPath(page, "/admin");
     await dismissStaffPaletteIfOpen(page);
     await expect(page.getByRole("heading", { name: /good day/i })).toBeVisible();
-    const inboxHeading = page.getByRole("heading", { name: /work inbox/i });
+    const inboxHeading = page.getByRole("heading", { name: /^your work$/i });
     await expect(inboxHeading).toBeVisible();
     await expectNoSeriousAxeViolationsInMain(page);
     const firstInboxLink = page
-      .getByRole("table", { name: /work inbox/i })
+      .getByRole("table", { name: /^your work$/i })
       .getByRole("link")
       .first();
     if (await firstInboxLink.isVisible()) {

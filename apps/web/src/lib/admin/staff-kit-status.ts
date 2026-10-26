@@ -5,11 +5,11 @@ import { type StatusPresentation, humanizeStatus } from "@auction/staff-ui";
 
 /**
  * Bid's status registries (lib/presenters/status) speak in badge variants; the staff kit speaks
- * in tones. "live" is the danger tone with a pulsing dot, so live lots and sales still read as
- * happening now. One adapter keeps the registries the single source of each label and tone.
+ * in tones. "live" is its own solid tone with a pulsing dot, so live lots and sales read as
+ * happening now and never as a withdrawn or failed record. One adapter keeps the registries the single source of each label and tone.
  */
 export function toStaffStatus(variant: StatusBadgeVariant, label: string): StatusPresentation {
-  if (variant === "live") return { label, tone: "danger", live: true };
+  if (variant === "live") return { label, tone: "live", live: true };
   return { label, tone: variant };
 }
 
@@ -26,7 +26,7 @@ const CATALOGUE_STATUS: Record<CatalogueDomain, Record<string, StatusPresentatio
   lot: {
     draft: { label: "Draft", tone: "neutral" },
     scheduled: { label: "Scheduled", tone: "info" },
-    active: { label: "Live", tone: "danger", live: true },
+    active: { label: "Live", tone: "live", live: true },
     ended: { label: "Ended", tone: "neutral" },
     cancelled: { label: "Withdrawn", tone: "danger" },
     voided: { label: "Voided", tone: "danger" },
@@ -34,7 +34,7 @@ const CATALOGUE_STATUS: Record<CatalogueDomain, Record<string, StatusPresentatio
   sale: {
     draft: { label: "Draft", tone: "neutral" },
     scheduled: { label: "Scheduled", tone: "info" },
-    active: { label: "Live", tone: "danger", live: true },
+    active: { label: "Live", tone: "live", live: true },
     ended: { label: "Ended", tone: "neutral" },
     cancelled: { label: "Cancelled", tone: "danger" },
   },

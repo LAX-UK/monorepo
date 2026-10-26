@@ -1,231 +1,227 @@
 "use client";
 
-import { AdminCopyField } from "@/components/admin/admin-copy-field";
-import { XeroDisconnectSubmit } from "@/components/admin/xero-disconnect-submit";
+import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
 import type { AdminXeroIntegrationStatus } from "@/lib/data/http/admin.server";
-import { formatDateTime, formatRelativeTime } from "@/lib/ui/format";
-import { Badge } from "@auction/ui/components/badge";
-import { Button } from "@auction/ui/components/button";
-import { cn } from "@auction/ui/lib/utils";
+import {
+  ConfirmActionDialog,
+  type KeyValueItem,
+  KeyValueList,
+  Notice,
+  type OverflowAction,
+  OverflowMenu,
+  PageHeader,
+  RelativeTime,
+  Section,
+  StaffButton,
+  StatusBadge,
+  type StatusPresentation,
+  TextLink,
+  formatStaffDateTime,
+} from "@auction/staff-ui";
+import { Unplug } from "lucide-react";
+import { type ReactNode, useRef, useState, useTransition } from "react";
 
 type Props = {
   status: AdminXeroIntegrationStatus;
   oauthStartAction: (formData: FormData) => Promise<void>;
   disconnectAction: (formData: FormData) => Promise<void>;
+  /** Notices from the page: a failed connection, a status that could not load. */
+  notice?: ReactNode;
 };
 
-function healthLabel(status: AdminXeroIntegrationStatus): string {
-  if (!status.connected) return "Not connected";
-  if (status.connectionStatus === "needs_reauth") return "Action required";
-  if (status.health === "degraded") return "Degraded";
-  return "Connected · Healthy";
+/** The connection's state in words and a tone; never the raw status. */
+export function xeroHealth(status: AdminXeroIntegrationStatus): StatusPresentation {
+  if (!status.connected) return { label: "Not connected", tone: "neutral" };
+  if (status.connectionStatus === "needs_reauth")
+    return { label: "Needs reconnecting", tone: "danger" };
+  if (status.health === "degraded") return { label: "Degraded", tone: "warning" };
+  return { label: "Connected", tone: "success" };
 }
 
-function healthBadgeVariant(
-  status: AdminXeroIntegrationStatus,
-): "default" | "secondary" | "destructive" | "outline" {
-  if (!status.connected) return "outline";
-  if (status.connectionStatus === "needs_reauth") return "destructive";
-  if (status.health === "degraded") return "secondary";
-  return "default";
-}
+const when = (iso: string | null) => (iso ? formatStaffDateTime(iso, { zoneLabel: true }) : null);
 
-export function XeroIntegrationPanel({ status, oauthStartAction, disconnectAction }: Props) {
-  const scopeList = status.scopes?.split(/\s+/).filter(Boolean) ?? [];
-  const showReconnect =
+/**
+ * Bid's link to Xero for hosted invoices and payment sync: its state and organisation in the
+ * header with Connect (or Reconnect when it needs it) as the one action, then the connection and
+ * webhook facts with copyable IDs. Disconnect sits in the overflow menu and asks first.
+ */
+export function XeroIntegrationPanel({
+  status,
+  oauthStartAction,
+  disconnectAction,
+  notice,
+}: Props) {
+  const disconnectForm = useRef<HTMLFormElement>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [disconnecting, startDisconnect] = useTransition();
+  const health = xeroHealth(status);
+  const needsReconnect =
     status.connected &&
     (status.connectionStatus === "needs_reauth" || status.health === "degraded");
+  const scopes = status.scopes?.split(/\s+/).filter(Boolean) ?? [];
+
+  const connection: KeyValueItem[] = [
+    { label: "Organisation", value: status.tenantName },
+    ...(status.tenantId
+      ? [{ label: "Tenant ID", value: status.tenantId, copyValue: status.tenantId }]
+      : []),
+    { label: "Short code", value: status.orgShortCode },
+    { label: "Base currency", value: status.orgBaseCurrency },
+    { label: "Connected", value: when(status.connectedAt) },
+    {
+      label: "Connected by",
+      value: status.connectedBy ? `${status.connectedBy.name} · ${status.connectedBy.email}` : null,
+    },
+    ...(status.expiresAt
+      ? [
+          {
+            label: "Access renews",
+            value: <RelativeTime value={status.expiresAt} />,
+          },
+          { label: "Last renewed", value: when(status.updatedAt) },
+        ]
+      : []),
+    ...(scopes.length > 0
+      ? [
+          {
+            label: "Permissions",
+            value: `${scopes.length} approved for invoice and payment sync`,
+          },
+        ]
+      : []),
+    ...(status.syncErrorCount > 0
+      ? [{ label: "Invoice sync errors", value: String(status.syncErrorCount), numeric: true }]
+      : []),
+  ];
+
+  const webhooks: KeyValueItem[] = [
+    {
+      label: "Payment events",
+      value: status.webhookConfigured
+        ? "Delivered to Bid"
+        : "Not set up. Ask your platform administrator.",
+    },
+    ...(status.webhookUrl
+      ? [{ label: "Webhook URL", value: status.webhookUrl, copyValue: status.webhookUrl }]
+      : []),
+    ...(status.recentWebhookErrors > 0
+      ? [
+          {
+            label: "Failures, last 24 hours",
+            value: String(status.recentWebhookErrors),
+            numeric: true,
+          },
+        ]
+      : []),
+  ];
+
+  const overflow: OverflowAction[] = status.connected
+    ? [
+        {
+          id: "disconnect",
+          label: "Disconnect Xero",
+          icon: Unplug,
+          tone: "danger",
+          onSelect: () => setConfirming(true),
+        },
+      ]
+    : [];
 
   return (
-    <div className="space-y-6">
-      <div
-        className={cn(
-          "rounded-2xl border border-border-hairline bg-surface-container-lowest p-6 shadow-sm",
-          status.connectionStatus === "needs_reauth" && "border-destructive/40",
-        )}
-      >
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <Badge variant={healthBadgeVariant(status)} className="text-xs">
-              {healthLabel(status)}
-            </Badge>
-            <p className="mt-3 text-sm text-on-surface-variant">
-              {status.connected && status.tenantName
-                ? `Invoices and payment sync use ${status.tenantName}.`
-                : "Connect one Xero organisation for hosted invoices and payment collection."}
-            </p>
-            {status.connected ? (
-              <p className="mt-2 text-xs text-on-surface-variant">
-                You only need to reconnect if sync fails or Xero access is revoked. Access tokens
-                renew automatically (~every 30 minutes).
-              </p>
-            ) : null}
-            {status.connectionStatus === "needs_reauth" && status.lastRefreshError ? (
-              <p className="mt-2 text-xs text-destructive">{status.lastRefreshError}</p>
-            ) : null}
-          </div>
-          {!status.oauthConfigured ? (
-            <p className="text-xs text-on-surface-variant">
-              OAuth is not configured for this environment. Contact your platform administrator.
-            </p>
-          ) : null}
-        </div>
-      </div>
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        breadcrumbs={
+          <StaffBreadcrumbs
+            items={[{ label: "Finance", href: "/admin/finance" }, { label: "Xero" }]}
+          />
+        }
+        title="Xero"
+        status={<StatusBadge tone={health.tone}>{health.label}</StatusBadge>}
+        description={
+          status.connected && status.tenantName
+            ? `Invoices and payments sync with ${status.tenantName}.`
+            : "Connect one Xero organisation for hosted invoices and payment collection."
+        }
+        {...(status.oauthConfigured && (!status.connected || needsReconnect)
+          ? {
+              primaryAction: (
+                <form action={oauthStartAction}>
+                  <StaffButton type="submit" variant="primary">
+                    {status.connected ? "Reconnect Xero" : "Connect Xero"}
+                  </StaffButton>
+                </form>
+              ),
+            }
+          : {})}
+        {...(status.oauthConfigured && status.connected && !needsReconnect
+          ? {
+              secondaryActions: (
+                <form action={oauthStartAction}>
+                  <StaffButton type="submit">Reconnect Xero</StaffButton>
+                </form>
+              ),
+            }
+          : {})}
+        {...(overflow.length > 0
+          ? { overflow: <OverflowMenu actions={overflow} label="More actions for Xero" /> }
+          : {})}
+      />
 
-      {status.connected ? (
-        <section className="rounded-2xl border border-border-hairline bg-surface-container-lowest p-6 shadow-sm">
-          <h2 className="font-headline text-base text-on-surface">Connection</h2>
-          <dl className="mt-4 grid gap-4 text-sm sm:grid-cols-2">
-            <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4 sm:col-span-2">
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                Organisation
-              </dt>
-              <dd className="mt-1 text-on-surface">{status.tenantName ?? "—"}</dd>
-            </div>
-            {status.tenantId ? (
-              <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4 sm:col-span-2">
-                <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                  Tenant ID
-                </dt>
-                <dd className="mt-1">
-                  <AdminCopyField value={status.tenantId} label="Tenant ID" />
-                </dd>
-              </div>
-            ) : null}
-            {status.orgShortCode || status.orgBaseCurrency ? (
-              <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4">
-                <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                  Org short code
-                </dt>
-                <dd className="mt-1 text-xs text-on-surface">{status.orgShortCode ?? "—"}</dd>
-              </div>
-            ) : null}
-            {status.orgShortCode || status.orgBaseCurrency ? (
-              <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4">
-                <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                  Base currency
-                </dt>
-                <dd className="mt-1 text-xs text-on-surface">{status.orgBaseCurrency ?? "—"}</dd>
-              </div>
-            ) : null}
-            <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4">
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                Connected on
-              </dt>
-              <dd className="mt-1 text-on-surface">
-                {status.connectedAt ? formatDateTime(status.connectedAt) : "—"}
-              </dd>
-            </div>
-            <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4">
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                Connected by
-              </dt>
-              <dd className="mt-1 text-on-surface">
-                {status.connectedBy
-                  ? `${status.connectedBy.name} (${status.connectedBy.email})`
-                  : "—"}
-              </dd>
-            </div>
-            {status.expiresAt ? (
-              <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4 sm:col-span-2">
-                <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                  Access token renews automatically
-                </dt>
-                <dd className="mt-1 text-on-surface">
-                  Next renewal {formatRelativeTime(status.expiresAt)}
-                  <span className="mt-1 block text-xs text-on-surface-variant">
-                    Last token rotation {status.updatedAt ? formatDateTime(status.updatedAt) : "—"}
-                  </span>
-                </dd>
-              </div>
-            ) : null}
-            {scopeList.length > 0 ? (
-              <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4 sm:col-span-2">
-                <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                  Scopes granted
-                </dt>
-                <dd className="mt-2 text-xs text-on-surface-variant">
-                  {scopeList.length} permission{scopeList.length === 1 ? "" : "s"} approved for
-                  invoice and payment sync.
-                </dd>
-              </div>
-            ) : null}
-            {status.syncErrorCount > 0 ? (
-              <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4 sm:col-span-2">
-                <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                  Invoice sync errors
-                </dt>
-                <dd className="mt-1 text-on-surface">{status.syncErrorCount}</dd>
-              </div>
-            ) : null}
-          </dl>
-        </section>
+      {notice}
+
+      {status.connectionStatus === "needs_reauth" ? (
+        <Notice tone="danger" title="Xero stopped accepting Bid's access">
+          {status.lastRefreshError ?? "Reconnect Xero so invoices and payments sync again."}
+        </Notice>
+      ) : null}
+      {!status.oauthConfigured ? (
+        <Notice tone="info" title="Xero sign-in is not set up here">
+          Ask your platform administrator to configure it for this environment.
+        </Notice>
       ) : null}
 
-      <section className="rounded-2xl border border-border-hairline bg-surface-container-lowest p-6 shadow-sm">
-        <h2 className="font-headline text-base text-on-surface">Webhooks</h2>
-        <dl className="mt-4 grid gap-4 text-sm">
-          <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4">
-            <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-              Webhook configured
-            </dt>
-            <dd className="mt-1 text-on-surface">
-              {status.webhookConfigured
-                ? "Yes — payment events are delivered to the platform"
-                : "Not configured — ask your platform administrator"}
-            </dd>
-          </div>
-          {status.webhookUrl ? (
-            <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4">
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                Webhook URL
-              </dt>
-              <dd className="mt-1">
-                <AdminCopyField value={status.webhookUrl} label="Webhook URL" />
-                <p className="mt-2 text-xs text-on-surface-variant">
-                  Register this URL in your Xero organisation webhook settings.{" "}
-                  <a
-                    href="https://developer.xero.com/documentation/guides/webhooks/overview/"
-                    className="underline underline-offset-2"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    Xero webhook guide (external)
-                  </a>
-                  .
-                </p>
-              </dd>
-            </div>
-          ) : null}
-          {status.recentWebhookErrors > 0 ? (
-            <div className="rounded-xl border border-border-hairline bg-surface-container-low/35 p-4">
-              <dt className="font-label text-[10px] uppercase text-on-surface-variant">
-                Webhook failures (24h)
-              </dt>
-              <dd className="mt-1 text-on-surface">{status.recentWebhookErrors}</dd>
-            </div>
-          ) : null}
-        </dl>
-      </section>
+      {status.connected ? (
+        <Section
+          title="Connection"
+          description="Access renews by itself about every 30 minutes. Reconnect only if sync fails or access is revoked."
+        >
+          <KeyValueList items={connection} columns={2} />
+        </Section>
+      ) : null}
 
-      <div className="flex flex-wrap gap-3">
-        {status.oauthConfigured ? (
-          <form action={oauthStartAction}>
-            <Button
-              type="submit"
-              className="min-h-11"
-              variant={!status.connected || showReconnect ? "default" : "outline"}
-            >
-              {status.connected ? "Reconnect to Xero" : "Connect to Xero"}
-            </Button>
-          </form>
-        ) : null}
-        {status.connected ? (
-          <form id="xero-disconnect-form" action={disconnectAction}>
-            <XeroDisconnectSubmit formId="xero-disconnect-form" />
-          </form>
-        ) : null}
-      </div>
+      <Section
+        title="Webhooks"
+        description={
+          status.webhookUrl ? (
+            <>
+              Register the URL in the Xero organisation's webhook settings.{" "}
+              <TextLink
+                href="https://developer.xero.com/documentation/guides/webhooks/overview/"
+                external
+              >
+                Xero webhook guide
+              </TextLink>
+            </>
+          ) : undefined
+        }
+      >
+        <KeyValueList items={webhooks} />
+      </Section>
+
+      <form ref={disconnectForm} action={disconnectAction} hidden />
+      <ConfirmActionDialog
+        open={confirming}
+        onOpenChange={(open) => {
+          if (!disconnecting) setConfirming(open);
+        }}
+        title="Disconnect Xero?"
+        description="Hosted invoices and payment sync stop until someone connects Xero again."
+        confirmLabel="Disconnect Xero"
+        cancelLabel="Keep connected"
+        tone="danger"
+        loading={disconnecting}
+        onConfirm={() => startDisconnect(() => disconnectForm.current?.requestSubmit())}
+      />
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import type { StaffAccessDetail } from "@/lib/data/http/staff-access.server";
-import { TooltipProvider } from "@auction/ui/components/tooltip";
+import { StaffTooltipProvider } from "@auction/staff-ui";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { StaffLaxAccessPanel } from "./staff-lax-access-panel";
@@ -53,13 +53,13 @@ const detail: StaffAccessDetail = {
 
 const renderPanel = (props: { canManage: boolean; detail?: StaffAccessDetail | null }) =>
   render(
-    <TooltipProvider>
+    <StaffTooltipProvider>
       <StaffLaxAccessPanel
         person={person}
         detail={props.detail === undefined ? detail : props.detail}
         canManage={props.canManage}
       />
-    </TooltipProvider>,
+    </StaffTooltipProvider>,
   );
 
 describe("StaffLaxAccessPanel", () => {

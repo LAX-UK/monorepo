@@ -22,6 +22,7 @@ const dotTone: Record<StaffStatusTone, string> = {
   success: "bg-staff-success-dot",
   warning: "bg-staff-warning-dot",
   danger: "bg-staff-danger-dot",
+  live: "bg-staff-live-dot",
 };
 
 /**

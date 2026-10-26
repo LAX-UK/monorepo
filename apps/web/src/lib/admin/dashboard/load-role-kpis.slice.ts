@@ -45,6 +45,7 @@ export async function loadRoleKpisSlice(
     trends = await ctx.sources.getHomeKpiTrends(ctx.periodDays, {
       includeSubmissions,
       includePayments,
+      includeLiveLots: ctx.profile.kpiIds.includes("live-lots"),
     });
   } catch {
     recordDashboardSliceFailure({

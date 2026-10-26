@@ -10,8 +10,8 @@ type Props = {
 export default function AdminDashboardErrorPage({ error, reset }: Props) {
   return (
     <AdminErrorPage
-      title="Dashboard unavailable"
-      message="Something went wrong loading your dashboard. Try again or return to admin home."
+      title="Overview could not load"
+      message="Something went wrong loading your work and numbers. Try again in a moment."
       reset={reset}
       error={error}
     />

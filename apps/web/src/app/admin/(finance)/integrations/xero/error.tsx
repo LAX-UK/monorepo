@@ -1,8 +1,8 @@
 "use client";
 
-import { createFinancePanelRouteError } from "@/components/admin/finance/create-finance-panel-route-error";
+import { createFinanceRouteError } from "@/components/admin/finance/create-finance-route-error";
 
-export default createFinancePanelRouteError({
+export default createFinanceRouteError({
   title: "Xero integration",
   backHref: "/admin/finance",
   backLabel: "Back to finance",

@@ -1,5 +1,5 @@
+import { StaffTooltipProvider } from "@auction/staff-ui";
 import type { ArtistProfile } from "@auction/types";
-import { TooltipProvider } from "@auction/ui/components/tooltip";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AdminClientArtistProfilesPanel } from "./admin-client-artist-profiles-panel";
@@ -28,14 +28,14 @@ const artist = {
 
 function panel(props: { canCreate?: boolean; linkedArtists?: ArtistProfile[] } = {}) {
   render(
-    <TooltipProvider>
+    <StaffTooltipProvider>
       <AdminClientArtistProfilesPanel
         userId="user_1"
         userName="Ada Lovelace"
         linkedArtists={props.linkedArtists ?? []}
         {...(props.canCreate !== undefined ? { canCreate: props.canCreate } : {})}
       />
-    </TooltipProvider>,
+    </StaffTooltipProvider>,
   );
 }
 
