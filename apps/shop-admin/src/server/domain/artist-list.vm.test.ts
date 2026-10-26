@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import { artistList, artworkCountLabel } from "./artist-list.vm";
 
 describe("artist list URL state", () => {
-  it("defaults to active artists, newest first", () => {
+  it("defaults to active artists, A to Z", () => {
     const state = artistList.parse({});
     expect(state.view).toBe("active");
     expect(artistList.apiQuery(state)).toEqual({ status: "active" });
-    expect(artistList.sortState(state)).toEqual({ columnId: "created", direction: "desc" });
+    expect(artistList.sortState(state)).toEqual({ columnId: "name", direction: "asc" });
+    expect(artistList.sortParam({ columnId: "name", direction: "desc" })).toBe("name_desc");
+    expect(artistList.sortParam({ columnId: "created", direction: "desc" })).toBe("created_desc");
+    expect(artistList.sortParam({ columnId: "name", direction: "asc" })).toBeNull();
   });
 
   it("asks the API for the view, search and sort in the URL", () => {
@@ -20,7 +23,7 @@ describe("artist list URL state", () => {
   });
 
   it("drops an unknown view or sort and returns to page one on change", () => {
-    const state = artistList.parse({ view: "deleted", sort: "name_asc", q: "ada", cursor: "c" });
+    const state = artistList.parse({ view: "deleted", sort: "price_asc", q: "ada", cursor: "c" });
     expect(state.view).toBe("active");
     expect(state.sort).toBeUndefined();
     expect(artistList.href(state, { view: "archived" })).toBe("/artists?view=archived&q=ada");

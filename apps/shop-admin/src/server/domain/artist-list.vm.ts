@@ -5,8 +5,8 @@ export const ARTIST_LIST_PATH = "/artists";
 
 /**
  * The artist list's URL rules. Active is the default view, because archived artists are kept for
- * history rather than day-to-day work. The server orders by when the artist was added, newest
- * first, with the artist id breaking ties; oldest first is the other direction.
+ * history rather than day-to-day work. The server orders by name, A to Z by default, or by when
+ * the artist was added, with the artist id breaking ties either way.
  */
 export const artistList = defineWorkList({
   path: ARTIST_LIST_PATH,
@@ -17,8 +17,11 @@ export const artistList = defineWorkList({
   ],
   defaultView: "active",
   filters: {},
-  sorts: { created: { asc: "created_asc", desc: "created_desc" } },
-  defaultSort: "created_desc",
+  sorts: {
+    name: { asc: "name_asc", desc: "name_desc" },
+    created: { asc: "created_asc", desc: "created_desc" },
+  },
+  defaultSort: "name_asc",
   panelParam: "artist",
   searchMaxLength: ARTWORK_LIST_SEARCH_MAX_LENGTH,
 });

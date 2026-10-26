@@ -166,7 +166,8 @@ export type AdminArtistListInput = CursorListInput & {
   /** Name or slug, anywhere in the text. */
   q?: string | undefined;
   status?: "active" | "archived" | undefined;
-  sort?: "created_desc" | "created_asc" | undefined;
+  /** A to Z by name when absent. */
+  sort?: "name_asc" | "name_desc" | "created_desc" | "created_asc" | undefined;
 };
 
 export type AdminArtistListResult = CursorListResult<AdminArtistListItem> & {

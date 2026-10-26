@@ -21,19 +21,24 @@ import {
   and,
   asc,
   count,
+  desc,
   eq,
   exists,
+  gt,
   ilike,
   inArray,
   isNotNull,
   isNull,
+  lt,
   max,
   or,
   sql,
 } from "drizzle-orm";
 import {
   decodeCatalogueCursor,
+  decodeNameCursor,
   encodeCatalogueCursor,
+  encodeNameCursor,
   truncateCatalogueCursorDate,
 } from "../application/catalogue-cursor.js";
 import type { AdminOrderListFilters, AdminReadPorts } from "../application/ports/admin-readers.js";
@@ -241,8 +246,11 @@ export function createDrizzleAdminReadRepository(
       },
       async listArtists(input) {
         const limit = resolveLimit(input.limit);
-        const cursor = decodeCatalogueCursor(input.cursor);
-        const direction = input.sort === "created_asc" ? "asc" : "desc";
+        const sort = input.sort ?? "name_asc";
+        const byName = sort === "name_asc" || sort === "name_desc";
+        const direction = sort === "name_asc" || sort === "created_asc" ? "asc" : "desc";
+        const cursor = byName ? null : decodeCatalogueCursor(input.cursor);
+        const nameCursor = byName ? decodeNameCursor(input.cursor) : null;
         const q = input.q?.trim();
         const pattern = q ? containsPattern(q) : null;
         const search = pattern
@@ -251,6 +259,22 @@ export function createDrizzleAdminReadRepository(
               sql`${shopArtist.slug} ILIKE ${pattern}`,
             )
           : undefined;
+        const nameAfter = nameCursor
+          ? direction === "asc"
+            ? or(
+                gt(shopParty.displayName, nameCursor.name),
+                and(eq(shopParty.displayName, nameCursor.name), gt(shopArtist.id, nameCursor.id)),
+              )
+            : or(
+                lt(shopParty.displayName, nameCursor.name),
+                and(eq(shopParty.displayName, nameCursor.name), lt(shopArtist.id, nameCursor.id)),
+              )
+          : undefined;
+        const order = byName
+          ? direction === "asc"
+            ? [asc(shopParty.displayName), asc(shopArtist.id)]
+            : [desc(shopParty.displayName), desc(shopArtist.id)]
+          : [...orderByMsTimestampId(shopArtist.createdAt, shopArtist.id, direction)];
         const [rows, countRows] = await Promise.all([
           db
             .select({
@@ -270,12 +294,13 @@ export function createDrizzleAdminReadRepository(
                   : input.status === "active"
                     ? isNull(shopArtist.archivedAt)
                     : undefined,
+                nameAfter,
                 cursor
                   ? keysetAfter(shopArtist.createdAt, shopArtist.id, cursor, direction)
                   : undefined,
               ),
             )
-            .orderBy(...orderByMsTimestampId(shopArtist.createdAt, shopArtist.id, direction))
+            .orderBy(...order)
             .limit(limit + 1),
           db
             .select({
@@ -301,10 +326,12 @@ export function createDrizzleAdminReadRepository(
           })),
           nextCursor:
             hasMore && last
-              ? encodeCatalogueCursor({
-                  createdAt: truncateCatalogueCursorDate(last.artist.createdAt),
-                  id: last.artist.id,
-                })
+              ? byName
+                ? encodeNameCursor({ name: last.displayName, id: last.artist.id })
+                : encodeCatalogueCursor({
+                    createdAt: truncateCatalogueCursorDate(last.artist.createdAt),
+                    id: last.artist.id,
+                  })
               : null,
           counts: {
             active: Number(countRows[0]?.active ?? 0),

@@ -594,7 +594,7 @@ describe("admin artwork catalogue routes", () => {
       await app.close();
     });
 
-    it("sorts artists oldest first on request and rejects unknown sorts", async () => {
+    it("sorts artists by name or date added on request and rejects unknown sorts", async () => {
       const listArtists = vi.fn(async () => ({
         items: [],
         nextCursor: null,
@@ -608,9 +608,16 @@ describe("admin artwork catalogue routes", () => {
       });
       expect(sorted.statusCode).toBe(200);
       expect(listArtists).toHaveBeenCalledWith({ sort: "created_asc" });
+      const byName = await app.inject({
+        method: "GET",
+        url: "/admin/v1/artists?sort=name_desc",
+        headers,
+      });
+      expect(byName.statusCode).toBe(200);
+      expect(listArtists).toHaveBeenLastCalledWith({ sort: "name_desc" });
       const unknown = await app.inject({
         method: "GET",
-        url: "/admin/v1/artists?sort=name_asc",
+        url: "/admin/v1/artists?sort=price_asc",
         headers,
       });
       expect(unknown.statusCode).toBe(400);

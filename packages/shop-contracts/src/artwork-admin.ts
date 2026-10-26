@@ -336,7 +336,7 @@ export const AdminArtistStatusSchema = Type.Union([
 export type AdminArtistStatus = Static<typeof AdminArtistStatusSchema>;
 
 /** Artist list sorts; the first is the default. */
-export const ADMIN_ARTIST_SORTS = ["created_desc", "created_asc"] as const;
+export const ADMIN_ARTIST_SORTS = ["name_asc", "name_desc", "created_desc", "created_asc"] as const;
 export type AdminArtistSort = (typeof ADMIN_ARTIST_SORTS)[number];
 
 export const AdminArtistListQuerySchema = Type.Object({
@@ -345,7 +345,7 @@ export const AdminArtistListQuerySchema = Type.Object({
   /** Name or slug. */
   q: Type.Optional(Type.String({ maxLength: ARTWORK_LIST_SEARCH_MAX_LENGTH })),
   status: Type.Optional(AdminArtistStatusSchema),
-  /** Newest first by default; the artist id breaks ties. */
+  /** A to Z by name by default; the artist id breaks ties. */
   sort: Type.Optional(Type.Union(ADMIN_ARTIST_SORTS.map((sort) => Type.Literal(sort)))),
 });
 export type AdminArtistListQuery = Static<typeof AdminArtistListQuerySchema>;

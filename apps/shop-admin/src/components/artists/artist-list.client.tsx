@@ -44,7 +44,7 @@ const statusOf = (row: AdminArtistListItem) => (row.archived ? "archived" : "act
 
 /**
  * Artists on lax.art and LAX Shop on the staff list template: active by default, archived and all
- * a view away with counts, search by name or web address, newest first on the server, and a
+ * a view away with counts, search by name or web address, A to Z on the server, and a
  * record panel linked from the URL (`?artist=`). The artist's page holds their sign-in, search
  * listing, works, editions and sales.
  */
@@ -76,6 +76,8 @@ export function ArtistList({
       {
         id: "name",
         header: "Name",
+        sortable: true,
+        defaultSortDirection: "asc",
         mobile: "title",
         cell: (row) => (
           <PrimaryCell
