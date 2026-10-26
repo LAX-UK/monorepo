@@ -27,7 +27,7 @@ export function scheduleEndingSparkline(lots: Lot[], days = 7): number[] {
   return buckets.map((b) => b / max);
 }
 
-export function toAdminSaleBoardRow(row: AdminSaleBoardInput) {
+export function toAdminSaleBoardRow(row: AdminSaleBoardInput, onAtg = false) {
   return {
     saleId: row.sale.id,
     title: row.sale.title,
@@ -37,5 +37,6 @@ export function toAdminSaleBoardRow(row: AdminSaleBoardInput) {
     startTimeLabel: formatDateTime(row.sale.startTime),
     sparklineValues: scheduleEndingSparkline(row.lots, 7),
     canDelete: row.deleteEligibility?.canDelete === true,
+    ...(onAtg ? { onAtg } : {}),
   };
 }

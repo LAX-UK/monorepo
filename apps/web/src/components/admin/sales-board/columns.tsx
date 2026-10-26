@@ -2,6 +2,7 @@
 
 import { AdminSortableColumnHeader } from "@/components/admin/admin-sortable-column-header";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { AtgListMarker } from "@/components/admin/atg/selling-platform-badge";
 import { adminSaleHref } from "@/lib/admin/catalog-route-helpers";
 import { Sparkline } from "@auction/ui";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -38,7 +39,12 @@ export function saleBoardColumns(
     {
       accessorKey: "status",
       header: "Status",
-      cell: ({ row }) => <AdminStatusBadge domain="sale" status={row.original.status} />,
+      cell: ({ row }) => (
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+          <AdminStatusBadge domain="sale" status={row.original.status} />
+          {row.original.onAtg ? <AtgListMarker /> : null}
+        </span>
+      ),
     },
     {
       id: "lots",

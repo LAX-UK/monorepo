@@ -1,5 +1,7 @@
 import type {
   AtgIntegrationStatus,
+  AtgLotSellingSummary,
+  AtgSaleSellingSummary,
   AtgSaleSettings,
   AtgSaleSyncView,
   AtgSyncAction,
@@ -42,6 +44,10 @@ export type AtgSettingsResult =
 export interface IAtgAdminService {
   status(): AtgIntegrationStatus;
   getSale(saleId: string): Promise<AtgSaleSyncView | null>;
+  /** Where each sale sells, keyed by sale id. Works while ATG sync is off. */
+  getSaleSellingSummaries(saleIds: string[]): Promise<Record<string, AtgSaleSellingSummary>>;
+  /** Where each lot sells, keyed by lot id. Works while ATG sync is off. */
+  getLotSellingSummaries(lotIds: string[]): Promise<Record<string, AtgLotSellingSummary>>;
   enqueueSaleAction(saleId: string, action: AtgSyncAction): Promise<AtgEnqueueResult>;
   enqueueLotDelete(lotId: string): Promise<AtgEnqueueResult>;
   getJobState(jobId: string): Promise<AtgSyncJobState | null>;

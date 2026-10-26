@@ -29,6 +29,13 @@ export function toAdminLotTableRow(a: AdminLotListRow): AdminLotTableRow {
   };
 }
 
-export function toAdminLotTableRows(rows: AdminLotListRow[]): AdminLotTableRow[] {
-  return rows.map(toAdminLotTableRow);
+/** `onAtgLotIds`: lots that get the compact ATG marker (see `isLotOnAtg`). */
+export function toAdminLotTableRows(
+  rows: AdminLotListRow[],
+  onAtgLotIds: ReadonlySet<string> = new Set(),
+): AdminLotTableRow[] {
+  return rows.map((row) => {
+    const out = toAdminLotTableRow(row);
+    return onAtgLotIds.has(row.id) ? { ...out, onAtg: true } : out;
+  });
 }

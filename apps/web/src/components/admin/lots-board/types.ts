@@ -12,6 +12,8 @@ export type AdminLotTableRow = {
   lastActivityType?: string;
   lastActivityAt?: string;
   lastActivityLabel?: string;
+  /** Pushed to ATG in a sale that is not selling on lax.bid; drives the compact ATG marker. */
+  onAtg?: boolean;
 };
 
 export type LotColumnSortConfig = {

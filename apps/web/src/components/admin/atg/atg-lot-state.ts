@@ -1,25 +1,21 @@
-import { type AtgLotSyncView, atgLotStatusLabel } from "@auction/types";
+import { type AtgLotSyncView, atgLotStateLabel } from "@auction/types";
 import type { StatusBadgeProps } from "@auction/ui/components/status-badge";
 
 export type AtgLotState = { label: string; variant: StatusBadgeProps["variant"] };
 
 const STATUS_VARIANT: Record<string, StatusBadgeProps["variant"]> = {
+  "Sync error": "danger",
   "Not yet offered": "neutral",
   Offered: "info",
   "Not sold": "neutral",
   Sold: "success",
 };
 
-/** Staff-facing label. Known GetLots codes win; unknown codes fall back to sold/bids. */
+/** Staff-facing label (shared with the header badge). Sync errors win over everything else. */
 export function atgLotState(
   lot: Pick<AtgLotSyncView, "atgLotId" | "lastError" | "sold" | "numberOfBids" | "remoteStatus">,
 ): AtgLotState {
-  if (lot.lastError) return { label: "Sync error", variant: "danger" };
-  if (!lot.atgLotId) return { label: "Not pushed", variant: "neutral" };
-  const documented = atgLotStatusLabel(lot.remoteStatus);
-  if (documented) return { label: documented, variant: STATUS_VARIANT[documented] ?? "info" };
-  if (lot.sold) return { label: "Sold", variant: "success" };
-  const bids = lot.numberOfBids ?? 0;
-  if (bids > 0) return { label: bids === 1 ? "1 bid" : `${bids} bids`, variant: "info" };
-  return { label: "On ATG", variant: "info" };
+  if (!lot.atgLotId && !lot.lastError) return { label: "Not pushed", variant: "neutral" };
+  const label = atgLotStateLabel(lot) ?? "On ATG";
+  return { label, variant: STATUS_VARIANT[label] ?? "info" };
 }

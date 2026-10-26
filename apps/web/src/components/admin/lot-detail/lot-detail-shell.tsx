@@ -1,6 +1,7 @@
 import { AdminLotDetailActions } from "@/components/admin/admin-lot-detail-actions";
 import { AdminPinPageButton } from "@/components/admin/admin-pin-page-button";
 import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { SellingPlatformBadge } from "@/components/admin/atg/selling-platform-badge";
 import {
   CatalogBreadcrumbs,
   CatalogDetailMobileMeta,
@@ -23,6 +24,7 @@ import { LotStatusJourney } from "@/components/admin/lot-detail/lot-status-journ
 import { AdminQrCodeButton } from "@/components/admin/qr-code/admin-qr-code-button";
 import { buildLotDetailNavActions } from "@/lib/admin/build-lot-mobile-actions";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
+import { adminSaleDetailTabHref } from "@/lib/admin/catalog-route-helpers";
 import {
   computeLotDetailReadiness,
   lotDetailReadinessDismissKey,
@@ -32,6 +34,7 @@ import type { AdminDomainEventRow, AdminLotLifecyclePayload } from "@/lib/data/h
 import { resolveLotCurrency } from "@/lib/money/currency";
 import { lotPath } from "@/lib/seo/url";
 import { formatDateTime, formatMoney } from "@/lib/ui/format";
+import { type AtgLotSellingSummary, atgLotSellingBadge } from "@auction/types";
 import { Badge } from "@auction/ui";
 import type { ReactNode } from "react";
 import { Suspense } from "react";
@@ -47,6 +50,8 @@ type Props = {
   canManageCatalog?: boolean;
   canManageAuction?: boolean;
   publishReadiness?: CatalogReadinessResult | null;
+  /** Where the lot sells (its ATG state, or lax.bid with its sale). */
+  selling?: AtgLotSellingSummary | null;
   children: ReactNode;
 };
 
@@ -67,9 +72,12 @@ export function LotDetailShell({
   canManageCatalog = false,
   canManageAuction = false,
   publishReadiness: publishReadinessProp,
+  selling = null,
   children,
 }: Props) {
   const { auction, context } = bundle;
+  const sellingBadge = selling ? atgLotSellingBadge(selling) : null;
+  const atgSaleId = selling?.saleId ?? auction.saleId ?? null;
   const publicHref = lotPath({ id: auction.id, title: auction.title });
   const subtitle = lotSubtitle(auction);
 
@@ -175,6 +183,12 @@ export function LotDetailShell({
             <AdminStatusBadge domain="lot" status={auction.status} />
             {auction.lotNumber != null ? (
               <Badge variant="secondary">Lot #{auction.lotNumber}</Badge>
+            ) : null}
+            {sellingBadge ? (
+              <SellingPlatformBadge
+                badge={sellingBadge}
+                atgHref={atgSaleId ? adminSaleDetailTabHref(atgSaleId, "atg") : null}
+              />
             ) : null}
           </div>
         }

@@ -12,7 +12,7 @@ import {
   getAdminDomainEventsForAggregate,
   getAdminTelephoneBookings,
 } from "@/lib/data/http/admin.server";
-import { getAtgSaleSellingPlatform } from "@/lib/data/http/atg.server";
+import { getAtgSaleSellingSummary } from "@/lib/data/http/atg.server";
 import { getServerSaleDocuments } from "@/lib/data/http/sale-documents.server";
 import { SALES_ACCESS, SALE_CATALOG_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { type UserRole, userHasAccessTo } from "@auction/types";
@@ -41,7 +41,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
     activityEvents,
     connectRequiredByLotId,
     pendingTelephoneBookings,
-    sellingPlatform,
+    selling,
   ] = await Promise.all([
     loadAdminSaleRegistrationCount(id, bundle.sale),
     loadAdminSalePendingRegistrationCount(id, bundle.sale),
@@ -51,7 +51,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
     ),
     loadSaleConnectRequiredByLotId(id),
     isSaleroom ? getAdminTelephoneBookings(id, "requested").catch(() => []) : Promise.resolve([]),
-    canManageSales ? getAtgSaleSellingPlatform(bundle.sale) : Promise.resolve(null),
+    canManageSales ? getAtgSaleSellingSummary(bundle.sale) : Promise.resolve(null),
   ]);
   const liveish = isSaleLiveish(bundle.sale);
   const pendingRegs =
@@ -78,7 +78,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
       canManageSales={canManageSales}
       connectRequiredByLotId={connectRequiredByLotId}
       draftSetupReadiness={draftSetupReadiness}
-      sellingPlatform={sellingPlatform}
+      selling={selling}
     >
       {children}
     </SaleDetailShell>

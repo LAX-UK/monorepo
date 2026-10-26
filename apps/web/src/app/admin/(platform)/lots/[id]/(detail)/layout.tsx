@@ -7,6 +7,7 @@ import {
   getAdminDomainEventsForAggregate,
   getAdminLotLifecycle,
 } from "@/lib/data/http/admin.server";
+import { getAtgLotSellingSummaries } from "@/lib/data/http/atg.server";
 import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
 import { getServerLotBids } from "@/lib/data/http/lots.server";
 import { LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -31,16 +32,20 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
     user.staffRole ?? null,
     SALES_ACCESS,
   );
-  const [bundle, bids, documents, activityEvents, lifecycle, connectRequired] = await Promise.all([
-    loadAdminLotDetail(id),
-    getServerLotBids(id, 100).catch(() => []),
-    getServerLotDocuments(id).catch(() => []),
-    getAdminDomainEventsForAggregate({ aggregateType: "lot", aggregateId: id, limit: 5 }).catch(
-      () => [],
-    ),
-    getAdminLotLifecycle(id).catch(() => ({ snapshot: null, events: [] })),
-    loadLotConnectRequired(id),
-  ]);
+  const [bundle, bids, documents, activityEvents, lifecycle, connectRequired, selling] =
+    await Promise.all([
+      loadAdminLotDetail(id),
+      getServerLotBids(id, 100).catch(() => []),
+      getServerLotDocuments(id).catch(() => []),
+      getAdminDomainEventsForAggregate({ aggregateType: "lot", aggregateId: id, limit: 5 }).catch(
+        () => [],
+      ),
+      getAdminLotLifecycle(id).catch(() => ({ snapshot: null, events: [] })),
+      loadLotConnectRequired(id),
+      canManageAuction
+        ? getAtgLotSellingSummaries([id]).then((rows) => rows.get(id) ?? null)
+        : Promise.resolve(null),
+    ]);
 
   const publishReadiness = computeLotDetailReadiness({
     lotId: id,
@@ -61,6 +66,7 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
       canManageAuction={canManageAuction}
       connectRequired={connectRequired}
       publishReadiness={publishReadiness}
+      selling={selling}
     >
       {children}
     </LotDetailShell>

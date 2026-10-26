@@ -21,10 +21,16 @@ import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { getAdminSalesKpiTrend } from "@/lib/data/http/admin-kpi-trends.server";
 import { getAdminNavCounts } from "@/lib/data/http/admin-nav-counts.server";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
+import { getAtgSaleSellingSummaries } from "@/lib/data/http/atg.server";
 import { toAdminSaleBoardRow } from "@/lib/data/view-models/admin-sales.vm";
 import { SALES_ACCESS, SALE_CATALOG_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { type UserRole, userHasAccessTo } from "@auction/types";
+import {
+  type AtgSaleSellingSummary,
+  type UserRole,
+  isSaleOnAtg,
+  userHasAccessTo,
+} from "@auction/types";
 import { Button } from "@auction/ui";
 import { PageSkeleton } from "@auction/ui/components/page-skeleton";
 import { Plus } from "lucide-react";
@@ -109,7 +115,14 @@ export default async function AdminSalesPage({
     setupLens: model.setupLens,
   });
 
-  const boardRows = rows.map(toAdminSaleBoardRow);
+  const atgSelling = canManageSales
+    ? await getAtgSaleSellingSummaries(
+        rows.filter((r) => r.sale.status === "draft").map((r) => r.sale.id),
+      )
+    : new Map<string, AtgSaleSellingSummary>();
+  const boardRows = rows.map((row) =>
+    toAdminSaleBoardRow(row, isSaleOnAtg(atgSelling.get(row.sale.id))),
+  );
   const liveOnPage = boardRows.filter((r) => r.status === "active").length;
   const draftOnPage = boardRows.filter((r) => r.status === "draft").length;
 
