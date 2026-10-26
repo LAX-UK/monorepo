@@ -1,14 +1,13 @@
 import { AdminArtistDuplicatesTable } from "@/components/admin/admin-artist-duplicates-table";
 import { AdminArtistMergePanel } from "@/components/admin/admin-artist-merge-panel";
-import { AdminEmptyState } from "@/components/admin/admin-empty-state";
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminArtistDuplicateHit } from "@/lib/data/http/admin.server";
 import {
   getAdminArtistDuplicateCandidates,
   getAdminArtistList,
 } from "@/lib/data/http/admin.server";
+import { EmptyState, Notice, Section, StaffButton, StatusBadge } from "@auction/staff-ui";
 import type { AdminArtistListRow } from "@auction/types";
-import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 
 const FETCH_CHUNK = 12;
@@ -36,8 +35,9 @@ async function dupesHitsFor(
 }
 
 /**
- * Aggregate duplicate candidates across registry rows — shown from /admin/artists?duplicates=1 .
- * There is no global duplicates API yet; pending artists are scanned first, then a popular-approved slice as fallback.
+ * Profiles with similar names, gathered across the registry for the duplicates queue. There is no
+ * registry-wide duplicates endpoint yet, so pending profiles are scanned first and, if they have
+ * none, a sample of popular approved ones. Each cluster can be merged on the spot.
  */
 export async function ArtistDuplicateReviewSection() {
   let loadError: string | null = null;
@@ -63,63 +63,65 @@ export async function ArtistDuplicateReviewSection() {
   }
 
   if (loadError) {
-    return <p className="font-body text-sm text-destructive">{loadError}</p>;
+    return (
+      <Notice tone="danger" alert title="The duplicate suggestions did not load">
+        {loadError}
+      </Notice>
+    );
   }
 
   if (hits.length === 0) {
     return (
-      <AdminEmptyState
-        title="No duplicate clusters found"
-        description="Scanned pending artists (then a sample of catalogue profiles). When the registry suggests overlaps, merge work happens here inline."
-      />
+      <div className="rounded-staff-md border border-staff-line bg-staff-surface">
+        <EmptyState
+          title="No duplicates found"
+          description="Pending profiles and a sample of catalogue profiles were checked. When the registry suggests overlaps, you can merge them here."
+        />
+      </div>
     );
   }
 
   const slice = hits.slice(0, DISPLAY_MAX);
 
   return (
-    <div className="space-y-6">
-      <p className="font-body text-sm text-on-surface-variant">
-        Server-suggested name overlaps per profile. Pick a survivor in each merge panel, or open an
-        artist detail for full context. Showing{" "}
-        <span className="tabular-nums font-medium text-on-surface">{slice.length}</span> profile
-        {slice.length === 1 ? "" : "s"} (cap {DISPLAY_MAX}).
+    <div className="flex flex-col gap-6">
+      <p className="text-staff-sm text-staff-muted">
+        Showing {slice.length} {slice.length === 1 ? "profile" : "profiles"} with similar names.
+        Choose the profile to keep in each, or open a profile to compare.
       </p>
-      <ul className="space-y-6">
-        {slice.map(({ artist, dupes }) => (
-          <li key={artist.id}>
-            <Surface variant="section" padding="md" className="space-y-4">
-              <div className="flex flex-wrap items-baseline justify-between gap-3">
-                <div>
-                  <h2 className="font-display text-lg font-semibold text-on-surface">
-                    <Link
-                      href={`/admin/artists/${artist.id}`}
-                      className="text-link hover:underline"
-                    >
-                      {artist.displayName}
-                    </Link>
-                  </h2>
-                  <p className="mt-1 flex flex-wrap items-center gap-2 font-body text-xs text-on-surface-variant">
-                    Candidate lots: <span className="tabular-nums">{artist.lotCount}</span>
-                    {artist.status ? (
-                      <AdminStatusBadge domain="artist" status={artist.status} />
-                    ) : null}
-                  </p>
-                </div>
-              </div>
-              <AdminArtistDuplicatesTable rows={dupes} />
-              <AdminArtistMergePanel
-                fromArtistId={artist.id}
-                fromDisplayName={artist.displayName}
-              />
-            </Surface>
-          </li>
-        ))}
-      </ul>
+      {slice.map(({ artist, dupes }) => {
+        const status = artist.status ? staffStatus("artist", artist.status) : null;
+        return (
+          <Section
+            key={artist.id}
+            title={artist.displayName}
+            description={
+              <span className="inline-flex flex-wrap items-center gap-2">
+                {artist.lotCount} {artist.lotCount === 1 ? "lot" : "lots"}
+                {status ? <StatusBadge tone={status.tone}>{status.label}</StatusBadge> : null}
+              </span>
+            }
+            action={
+              <StaffButton asChild size="sm" variant="ghost">
+                <Link href={`/admin/artists/${artist.id}`}>Open profile</Link>
+              </StaffButton>
+            }
+            bodyClassName="p-0"
+          >
+            <AdminArtistDuplicatesTable rows={dupes} />
+            <AdminArtistMergePanel
+              bare
+              fromArtistId={artist.id}
+              fromDisplayName={artist.displayName}
+            />
+          </Section>
+        );
+      })}
       {hits.length > DISPLAY_MAX ? (
-        <p className="text-center font-body text-xs text-on-surface-variant">
-          {hits.length - DISPLAY_MAX} more profile(s) matched — tighten filters from each artist
-          detail page if needed.
+        <p className="text-center text-staff-sm text-staff-muted">
+          {hits.length - DISPLAY_MAX} more{" "}
+          {hits.length - DISPLAY_MAX === 1 ? "profile" : "profiles"} also have similar names. Open
+          an artist to see theirs.
         </p>
       ) : null}
     </div>

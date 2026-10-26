@@ -1,50 +1,53 @@
 "use client";
 
-import { RhfUserPicker } from "@/components/ui/rhf-user-picker";
-import { LabelCaps } from "@/components/ui/typography";
-import { FormField, FormItem, FormLabel, FormMessage } from "@auction/ui/components/form";
-import type { ArtistFormSectionProps } from "../types";
+import { staffFieldId } from "@/components/admin/forms/staff-form-fields";
+import { PlatformUserPicker } from "@/components/admin/staff/platform-user-picker";
+import { Field, FormSection } from "@auction/staff-ui";
+import { useController } from "react-hook-form";
+import { ARTIST_FORM_ID } from "../admin-artist-form.constants";
+import type { ArtistFormSectionProps, ArtistScenario } from "../types";
 
 type Props = ArtistFormSectionProps & {
-  /** Extra guidance for maker–seller path */
-  emphasize?: boolean;
+  scenario: ArtistScenario;
 };
 
-export function UserLinkSection({ control, disabled = false, emphasize = false }: Props) {
+/**
+ * Links the profile to the platform account of the person it represents when they sell their own
+ * work. It records attribution only: the account does not gain edit access to the profile.
+ */
+export function UserLinkSection({ control, scenario, disabled = false }: Props) {
+  const { field, fieldState } = useController({ control, name: "ownerUserId" });
+  const linked = scenario === "maker-seller";
   return (
-    <FormField
-      control={control}
-      name="ownerUserId"
-      render={({ field }) => (
-        <FormItem>
-          <FormLabel>
-            <LabelCaps>Linked platform user</LabelCaps>
-          </FormLabel>
-          <RhfUserPicker
-            value={field.value ?? null}
-            onChange={(id) => field.onChange(id)}
-            disabled={disabled}
-          />
-          <p
-            className={`text-xs text-on-surface-variant ${emphasize ? "rounded-lg border border-primary/20 bg-primary-container/10 p-3" : ""}`}
-          >
-            {emphasize ? (
-              <>
-                <span className="font-semibold text-on-surface">Required for maker–seller.</span>{" "}
-                Search by name or email. Use this when the seller is also the maker of the work. It
-                does <span className="font-semibold text-on-surface">not</span> grant the client
-                edit access to this catalogue profile—admins remain the sole writers.
-              </>
-            ) : (
-              <>
-                Optional link to a platform user. Records attribution only; it does not grant the
-                client edit access—admins keep editorial control.
-              </>
-            )}
-          </p>
-          <FormMessage />
-        </FormItem>
-      )}
-    />
+    <FormSection
+      title="Linked account"
+      description={
+        linked
+          ? "This profile represents a seller who makes the work they sell."
+          : "This profile is catalogue only: a historical creator, a brand or anyone not on the platform."
+      }
+    >
+      <Field
+        id={staffFieldId(ARTIST_FORM_ID, "ownerUserId")}
+        label="Platform account"
+        optional={!linked}
+        description={
+          linked
+            ? "Search by name or email. Linking records attribution only; it does not give the account edit access, so staff remain the only editors."
+            : "Only needed when the seller is also the maker. Linking records attribution only; staff remain the only editors."
+        }
+        error={fieldState.error?.message}
+        disabled={disabled}
+      >
+        <PlatformUserPicker
+          id={staffFieldId(ARTIST_FORM_ID, "ownerUserId")}
+          value={field.value ?? null}
+          onValueChange={(option) => field.onChange(option?.id ?? null)}
+          placeholder="No linked account"
+          disabled={disabled}
+          invalid={Boolean(fieldState.error)}
+        />
+      </Field>
+    </FormSection>
   );
 }

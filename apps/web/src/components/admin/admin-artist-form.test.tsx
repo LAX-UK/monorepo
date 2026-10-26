@@ -1,80 +1,32 @@
 import { AdminArtistForm } from "@/components/admin/admin-artist-form";
-import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
-import type { CategoryNode } from "@auction/types";
-import { render } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import type { ArtistFormValues } from "@/components/admin/artist-form/types";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const adminFormWizardProps: Array<Record<string, unknown>> = [];
-
-vi.mock("@/components/admin/admin-form-wizard", () => ({
-  AdminFormWizard: (props: Record<string, unknown>) => {
-    adminFormWizardProps.push(props);
-    return <div data-testid="admin-form-wizard" />;
-  },
+const { pushMock, createMock, updateMock } = vi.hoisted(() => ({
+  pushMock: vi.fn(),
+  createMock: vi.fn(),
+  updateMock: vi.fn(),
 }));
 
-vi.mock("@/components/admin/form-dirty-guard", () => ({
-  FormDirtyGuard: () => null,
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: pushMock, refresh: vi.fn() }),
+  usePathname: () => "/admin/artists/new",
 }));
-
-vi.mock("@/components/admin/use-guarded-navigation", () => ({
-  useGuardedNavigation: () => ({ guardedPush: vi.fn() }),
+vi.mock("@/lib/actions/admin", () => ({
+  adminCreateArtistResultAction: (...args: unknown[]) => createMock(...args),
+  adminUpdateArtistResultAction: (...args: unknown[]) => updateMock(...args),
 }));
-
-vi.mock("@/components/admin/artist-form/admin-artist-wizard-steps", () => ({
-  AdminArtistWizardSteps: () => <div>Artist steps</div>,
+vi.mock("@/lib/actions/admin-users-browse", () => ({
+  searchAdminUsersBrowseAction: vi.fn(),
+  resolveAdminUserForPickerAction: vi.fn(),
 }));
+vi.mock("@/lib/ui/notify", () => ({ notify: { success: vi.fn(), error: vi.fn() } }));
 
-vi.mock("@/components/admin/artist-form/scenario-badge", () => ({
-  ArtistScenarioBadge: () => null,
-}));
-
-vi.mock("@/components/admin/artist-form/use-admin-artist-form", () => ({
-  useAdminArtistForm: () => ({
-    form: {
-      formState: { isDirty: false },
-      control: {},
-      handleSubmit: (handler: () => void) => (event?: { preventDefault?: () => void }) => {
-        event?.preventDefault?.();
-        handler();
-      },
-    },
-    submit: vi.fn(),
-    isSubmitting: false,
-    validationBanner: null,
-    validationStepIndex: null,
-    wizardGoToRef: { current: vi.fn() },
-    activeScenario: "historical",
-    watchedDisplay: "",
-    watchedKind: "artist",
-    watchedShortBio: "",
-    watchedPortrait: "",
-    clearBanner: vi.fn(),
-    handleBeforeNext: vi.fn(),
-    draftExtras: {},
-  }),
-}));
-
-const categories: CategoryNode[] = [
-  {
-    id: "cat-1",
-    name: "Paintings",
-    slug: "paintings",
-    parentId: null,
-    sortOrder: 0,
-    archived: false,
-    description: null,
-    heroImageKey: null,
-    children: [],
-    createdAt: new Date("2026-01-01T00:00:00.000Z"),
-    updatedAt: new Date("2026-01-01T00:00:00.000Z"),
-  },
-];
-
-const defaultValues = {
-  displayName: "Carolina Vale",
-  kind: "artist" as const,
-  status: "approved" as const,
+const blank: ArtistFormValues = {
+  displayName: "",
+  kind: "artist",
+  status: "approved",
   portraitUrl: "",
   heroImageUrl: "",
   shortBio: "",
@@ -96,60 +48,116 @@ const defaultValues = {
   attributes: {},
 };
 
-describe("AdminArtistForm wizard presentation", () => {
-  it("keeps horizontal layout defaults for legacy flows", () => {
-    adminFormWizardProps.length = 0;
+function memoryStorage(): Storage {
+  const store = new Map<string, string>();
+  return {
+    get length() {
+      return store.size;
+    },
+    clear: () => store.clear(),
+    getItem: (key: string) => store.get(key) ?? null,
+    key: (index: number) => [...store.keys()][index] ?? null,
+    removeItem: (key: string) => void store.delete(key),
+    setItem: (key: string, value: string) => void store.set(key, value),
+  } as Storage;
+}
 
-    render(<AdminArtistForm mode="create" categories={categories} defaultValues={defaultValues} />);
-
-    expect(adminFormWizardProps.at(-1)).toMatchObject({
-      layout: "default",
-      hideStickyOnMobile: false,
-      showSubmitOnAllSteps: false,
-    });
+describe("AdminArtistForm", () => {
+  beforeEach(() => {
+    pushMock.mockReset();
+    createMock.mockReset();
+    updateMock.mockReset();
+    vi.stubGlobal("localStorage", memoryStorage());
   });
 
-  it("uses sidebar layout with edit save visibility and suppressed mobile sticky actions", () => {
-    adminFormWizardProps.length = 0;
+  it("keeps Create artist enabled and lists what is missing when submitted empty", async () => {
+    render(<AdminArtistForm mode="create" defaultValues={blank} />);
+    const submit = screen.getByRole("button", { name: "Create artist" });
+    expect(submit).toBeEnabled();
+    fireEvent.click(submit);
+    await waitFor(() =>
+      expect(screen.getByRole("alert", { name: "There is a problem" })).toBeInTheDocument(),
+    );
+    expect(screen.getAllByText("Display name is required")).toHaveLength(2);
+    expect(createMock).not.toHaveBeenCalled();
+  });
 
+  it("clears the error as soon as the name is typed", async () => {
+    render(<AdminArtistForm mode="create" defaultValues={blank} />);
+    fireEvent.click(screen.getByRole("button", { name: "Create artist" }));
+    await screen.findByRole("alert", { name: "There is a problem" });
+    fireEvent.change(screen.getByLabelText("Display name"), { target: { value: "Ada Marsh" } });
+    await waitFor(() => expect(screen.queryByText("Display name is required")).toBeNull());
+  });
+
+  it("creates the artist and opens its page", async () => {
+    createMock.mockResolvedValue({ ok: true, data: { id: "artist-9" } });
+    render(<AdminArtistForm mode="create" defaultValues={blank} />);
+    fireEvent.change(screen.getByLabelText("Display name"), { target: { value: "Ada Marsh" } });
+    fireEvent.click(screen.getByRole("button", { name: "Create artist" }));
+    await waitFor(() => expect(createMock).toHaveBeenCalled());
+    await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/admin/artists/artist-9"));
+    expect(createMock).toHaveBeenCalledWith(expect.objectContaining({ displayName: "Ada Marsh" }));
+  });
+
+  it("asks for a linked account when the profile is a maker", async () => {
+    render(
+      <AdminArtistForm
+        mode="create"
+        defaultValues={{ ...blank, displayName: "Ada", kind: "maker" }}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Create artist" }));
+    await waitFor(() =>
+      expect(
+        screen.getAllByText("Link the platform account of the seller who makes this work."),
+      ).toHaveLength(2),
+    );
+    expect(createMock).not.toHaveBeenCalled();
+  });
+
+  it("keeps the form and says why when the save is refused", async () => {
+    updateMock.mockResolvedValue({ ok: false, error: "The artist changed elsewhere." });
     render(
       <AdminArtistForm
         mode="edit"
         artistId="artist-1"
-        slug="carolina-vale"
-        categories={categories}
-        defaultValues={defaultValues}
-        htmlFormId={CATALOG_FORM_IDS.artist}
-        wizardLayout="sidebar"
-        cancelHref="/admin/artists/artist-1"
+        displayName="Ada Marsh"
+        slug="ada-marsh"
+        defaultValues={{ ...blank, displayName: "Ada Marsh" }}
       />,
     );
-
-    expect(adminFormWizardProps.at(-1)).toMatchObject({
-      layout: "sidebar",
-      hideStickyOnMobile: true,
-      showSubmitOnAllSteps: true,
-    });
+    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("The artist changed elsewhere.")).toBeInTheDocument();
+    expect(screen.getByLabelText("Display name")).toHaveValue("Ada Marsh");
+    expect(pushMock).not.toHaveBeenCalled();
   });
 
-  it("uses sidebar layout for full-page create with suppressed mobile sticky actions", () => {
-    adminFormWizardProps.length = 0;
+  it("offers a saved draft of a new profile and fills the form from it", async () => {
+    window.localStorage.setItem(
+      "lax_admin_wizard_draft:admin_artist_new:new",
+      JSON.stringify({
+        stepIndex: 0,
+        values: { displayName: "Half typed" },
+        savedAt: new Date().toISOString(),
+      }),
+    );
+    render(<AdminArtistForm mode="create" defaultValues={blank} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Resume draft" }));
+    expect(screen.getByLabelText("Display name")).toHaveValue("Half typed");
+  });
 
+  it("is read-only for a merged profile", () => {
     render(
       <AdminArtistForm
-        mode="create"
-        categories={categories}
-        defaultValues={defaultValues}
-        htmlFormId={CATALOG_FORM_IDS.artist}
-        wizardLayout="sidebar"
-        cancelHref="/admin/artists"
+        mode="edit"
+        artistId="artist-1"
+        displayName="Ada Marsh"
+        defaultValues={{ ...blank, displayName: "Ada Marsh" }}
+        readOnly
       />,
     );
-
-    expect(adminFormWizardProps.at(-1)).toMatchObject({
-      layout: "sidebar",
-      hideStickyOnMobile: true,
-      showSubmitOnAllSteps: false,
-    });
+    expect(screen.getByLabelText("Display name")).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
   });
 });

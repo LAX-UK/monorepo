@@ -1,71 +1,86 @@
 "use client";
 
-import { CatalogSingleImageField } from "@/components/admin/catalog/media";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
-import { ArtistTextField } from "../fields";
+import { StaffTextField, staffFieldId } from "@/components/admin/forms/staff-form-fields";
+import { StaffSingleImage } from "@/components/admin/media/staff-single-image";
+import { Field, FormSection } from "@auction/staff-ui";
+import { useController } from "react-hook-form";
+import { ARTIST_FORM_ID } from "../admin-artist-form.constants";
 import type { ArtistFormSectionProps } from "../types";
 
 type Props = ArtistFormSectionProps & {
   previewUrlByKey?: Record<string, string>;
 };
 
+function ImageField({
+  control,
+  name,
+  label,
+  noun,
+  description,
+  disabled,
+  previewUrlByKey,
+}: ArtistFormSectionProps & {
+  name: "portraitUrl" | "heroImageUrl";
+  label: string;
+  noun: string;
+  description: string;
+  previewUrlByKey: Record<string, string>;
+}) {
+  const { field, fieldState } = useController({ control, name });
+  return (
+    <Field
+      id={staffFieldId(ARTIST_FORM_ID, name)}
+      label={label}
+      optional
+      description={description}
+      error={fieldState.error?.message}
+      disabled={disabled ?? false}
+    >
+      <StaffSingleImage
+        kind="artist_image"
+        value={field.value}
+        onChange={(next) => field.onChange(next ?? "")}
+        noun={noun}
+        disabled={disabled ?? false}
+        previewUrlByKey={previewUrlByKey}
+      />
+    </Field>
+  );
+}
+
 export function MediaSection({ control, disabled = false, previewUrlByKey = {} }: Props) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <FormField
+    <FormSection
+      title="Images and website"
+      description="The portrait is the profile's main picture. The hero image sits behind the name."
+    >
+      <ImageField
         control={control}
         name="portraitUrl"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="font-label text-xs uppercase">Portrait</FormLabel>
-            <FormControl>
-              <CatalogSingleImageField
-                kind="artist_image"
-                value={field.value}
-                onChange={field.onChange}
-                disabled={disabled}
-                previewUrlByKey={previewUrlByKey}
-                inputId="artist-portrait"
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+        label="Portrait"
+        noun="portrait"
+        description="A square picture works best."
+        disabled={disabled}
+        previewUrlByKey={previewUrlByKey}
       />
-      <FormField
+      <ImageField
         control={control}
         name="heroImageUrl"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel className="font-label text-xs uppercase">Hero image</FormLabel>
-            <FormControl>
-              <CatalogSingleImageField
-                kind="artist_image"
-                value={field.value}
-                onChange={field.onChange}
-                disabled={disabled}
-                previewUrlByKey={previewUrlByKey}
-                inputId="artist-hero"
-              />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
+        label="Hero image"
+        noun="hero image"
+        description="A wide picture shown across the top of the profile."
+        disabled={disabled}
+        previewUrlByKey={previewUrlByKey}
       />
-      <div className="sm:col-span-2">
-        <ArtistTextField
-          control={control}
-          name="websiteUrl"
-          label="Website URL"
-          disabled={disabled}
-        />
-      </div>
-    </div>
+      <StaffTextField
+        control={control}
+        formId={ARTIST_FORM_ID}
+        name="websiteUrl"
+        label="Website"
+        optional
+        placeholder="https://"
+        disabled={disabled}
+      />
+    </FormSection>
   );
 }

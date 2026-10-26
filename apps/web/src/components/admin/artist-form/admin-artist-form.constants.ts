@@ -1,18 +1,54 @@
-import {
-  ARTIST_SETUP_STEPS,
-  ARTIST_STEP_FIELD_GROUPS,
-} from "@/components/admin/artist-form/artist-setup-steps";
+import type { ArtistFormValues } from "@/components/admin/artist-form/types";
 import type { ArtistStatus } from "@auction/types";
 
-export const ARTIST_STATUS_OPTIONS: ReadonlyArray<{ value: ArtistStatus; label: string }> = [
-  { value: "approved", label: "Approved (visible to public)" },
-  { value: "pending", label: "Pending review" },
-  { value: "rejected", label: "Rejected (hidden)" },
+/** The artist form's id: prefixes every control's id so the error summary can link to them. */
+export const ARTIST_FORM_ID = "artist-form";
+
+/** Catalogue status choices on the form; a merged profile is read-only and not offered. */
+export const ARTIST_STATUS_OPTIONS: ReadonlyArray<{
+  value: Exclude<ArtistStatus, "merged_into">;
+  label: string;
+  description: string;
+}> = [
+  {
+    value: "approved",
+    label: "Approved",
+    description: "Listed in the public directory and available for attribution.",
+  },
+  {
+    value: "pending",
+    label: "Pending review",
+    description: "Hidden until reviewed. Lots attributed to it are flagged for review.",
+  },
+  {
+    value: "rejected",
+    label: "Rejected",
+    description: "Hidden, and not available for attribution.",
+  },
 ];
 
-/** Map a form field error key (e.g. "attributes.movement") to its wizard step index. */
-export function stepIndexForField(field: string): number {
-  const head = field.split(".")[0] ?? field;
-  const idx = ARTIST_STEP_FIELD_GROUPS.findIndex((group) => group.some((f) => String(f) === head));
-  return idx >= 0 ? idx : ARTIST_SETUP_STEPS.length - 1;
-}
+/** Field names in the order they appear on the form, which orders the error summary. */
+export const ARTIST_FIELD_ORDER: readonly (keyof ArtistFormValues)[] = [
+  "kind",
+  "displayName",
+  "nationality",
+  "location",
+  "birthYear",
+  "deathYear",
+  "foundedYear",
+  "dissolvedYear",
+  "countryCode",
+  "shortBio",
+  "longBio",
+  "statement",
+  "portraitUrl",
+  "heroImageUrl",
+  "websiteUrl",
+  "categoryIds",
+  "attributes",
+  "ownerUserId",
+  "status",
+  "featured",
+  "verified",
+  "archived",
+];

@@ -1,72 +1,45 @@
 "use client";
 
-import { UnderlineInput } from "@/components/ui/input";
-import { LabelCaps } from "@/components/ui/typography";
+import { StaffTextAreaField, StaffTextField } from "@/components/admin/forms/staff-form-fields";
+import { FormSection } from "@auction/staff-ui";
 import { type ArtistKind, getCreatorKindConfig } from "@auction/types";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
-import { Textarea } from "@auction/ui/components/textarea";
 import type { FieldPath } from "react-hook-form";
+import { ARTIST_FORM_ID } from "../admin-artist-form.constants";
 import type { ArtistFormSectionProps, ArtistFormValues } from "../types";
 
-/** Renders the kind-specific attribute fields declared in the creator-kind
- * config. Adding a new kind/attribute changes nothing here (OCP) — the section
- * iterates the config and binds each field to `attributes.<key>`. */
+/**
+ * The details that belong to the chosen kind, from the creator-kind config: adding a kind or an
+ * attribute there adds its field here.
+ */
 export function AttributesSection({
   control,
   kind = "artist",
   disabled = false,
 }: ArtistFormSectionProps & { kind?: ArtistKind }) {
   const config = getCreatorKindConfig(kind);
-  if (config.attributes.length === 0) {
-    return (
-      <p className="text-sm text-on-surface-variant">
-        No additional attributes for {config.label.toLowerCase()} profiles.
-      </p>
-    );
-  }
+  if (config.attributes.length === 0) return null;
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <FormSection
+      title={`${config.label} details`}
+      description="Details specific to this kind, shown on the public profile."
+    >
       {config.attributes.map((attr) => {
         const name = `attributes.${attr.key}` as FieldPath<ArtistFormValues>;
-        return (
-          <FormField
-            key={attr.key}
-            control={control}
-            name={name}
-            render={({ field }) => (
-              <FormItem className={attr.type === "textarea" ? "sm:col-span-2" : undefined}>
-                <FormLabel>
-                  <LabelCaps>{attr.label}</LabelCaps>
-                </FormLabel>
-                <FormControl>
-                  {attr.type === "textarea" ? (
-                    <Textarea
-                      {...field}
-                      value={typeof field.value === "string" ? field.value : ""}
-                      rows={3}
-                      disabled={disabled}
-                    />
-                  ) : (
-                    <UnderlineInput
-                      {...field}
-                      value={typeof field.value === "string" ? field.value : ""}
-                      disabled={disabled}
-                    />
-                  )}
-                </FormControl>
-                {attr.help ? <p className="text-xs text-on-surface-variant">{attr.help}</p> : null}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
+        const common = {
+          control,
+          formId: ARTIST_FORM_ID,
+          name,
+          label: attr.label,
+          optional: true,
+          disabled,
+          ...(attr.help ? { description: attr.help } : {}),
+        } as const;
+        return attr.type === "textarea" ? (
+          <StaffTextAreaField key={attr.key} {...common} rows={3} />
+        ) : (
+          <StaffTextField key={attr.key} {...common} />
         );
       })}
-    </div>
+    </FormSection>
   );
 }

@@ -1,59 +1,37 @@
 "use client";
 
-import { UnderlineInput } from "@/components/ui/input";
-import { LabelCaps } from "@/components/ui/typography";
-import {
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
-import { ArtistTextField } from "../fields";
+import { StaffTextField } from "@/components/admin/forms/staff-form-fields";
+import { Field, FieldRow, FormSection } from "@auction/staff-ui";
+import { ARTIST_FORM_ID } from "../admin-artist-form.constants";
 import type { ArtistFormSectionProps } from "../types";
 
 type Props = ArtistFormSectionProps & {
   mode: "create" | "edit";
-  /** Read-only slug shown on edit (server-generated at create). */
+  /** The profile's web address, shown on edit; it is set when the profile is created. */
   slug?: string;
 };
 
 export function IdentitySection({ control, mode, slug, disabled = false }: Props) {
+  const f = { control, formId: ARTIST_FORM_ID, disabled } as const;
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
-      <FormField
-        control={control}
-        name="displayName"
-        render={({ field }) => (
-          <FormItem className="sm:col-span-2">
-            <FormLabel>
-              <LabelCaps>Display name</LabelCaps>
-            </FormLabel>
-            <FormControl>
-              <UnderlineInput placeholder="Artist or brand name" {...field} disabled={disabled} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+    <FormSection
+      title="Identity"
+      description={
+        mode === "edit"
+          ? "The public name and place. The web address was set when the profile was created."
+          : "The public name and place. A unique web address is made from the name when you save."
+      }
+    >
+      <StaffTextField {...f} name="displayName" label="Display name" />
       {mode === "edit" && slug ? (
-        <div className="sm:col-span-2">
-          <p className="mb-2 font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
-            Slug
-          </p>
-          <p className="font-mono text-sm text-on-surface">/{slug}</p>
-          <p className="mt-1 text-xs text-on-surface-variant">
-            Generated at creation and cannot be changed.
-          </p>
-        </div>
+        <Field label="Web address" description="Cannot be changed.">
+          <p className="font-mono text-staff-sm text-staff-fg">/{slug}</p>
+        </Field>
       ) : null}
-      <ArtistTextField
-        control={control}
-        name="nationality"
-        label="Nationality"
-        disabled={disabled}
-      />
-      <ArtistTextField control={control} name="location" label="Location" disabled={disabled} />
-    </div>
+      <FieldRow>
+        <StaffTextField {...f} name="nationality" label="Nationality" optional />
+        <StaffTextField {...f} name="location" label="Location" optional />
+      </FieldRow>
+    </FormSection>
   );
 }

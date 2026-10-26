@@ -1,56 +1,48 @@
 "use client";
 
 import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
-import { Badge } from "@auction/ui/components/badge";
+import { FormSection, RecordImage, StatusBadge } from "@auction/staff-ui";
 import type { ArtistPreviewData, ArtistScenario } from "./types";
 
 type Props = {
   data: ArtistPreviewData;
   scenario: ArtistScenario;
-  className?: string;
 };
 
-/** Presentation-only preview; parent supplies data (dependency inversion). */
-export function ArtistPreview({ data, scenario, className = "" }: Props) {
+/** How the profile reads in the catalogue so far; the page supplies what was typed. */
+export function ArtistPreview({ data, scenario }: Props) {
   const { displayName, kindLabel, shortBio, portraitUrl } = data;
   const title = displayName.trim() || "Untitled profile";
   const bio = shortBio.trim();
   const portraitSrc = resolveMediaSrc(portraitUrl);
 
   return (
-    <aside
-      className={`rounded-2xl border border-outline-variant/30 bg-surface-container-lowest p-4 shadow-sm ${className}`}
-      aria-label="Catalogue preview"
-    >
-      <p className="font-label text-[10px] uppercase tracking-wide text-on-surface-variant">
-        Preview
-      </p>
-      <div className="mt-3 flex gap-3">
-        <div className="size-14 shrink-0 overflow-hidden rounded-lg border border-outline-variant/30 bg-surface-container-high">
+    <FormSection title="Preview" description="How the profile reads so far.">
+      <div className="flex gap-4 rounded-staff-md border border-staff-line bg-staff-surface p-4">
+        <div className="w-24 shrink-0">
           {portraitSrc ? (
-            // eslint-disable-next-line @next/next/no-img-element -- admin preview resolves storage keys
-            <img src={portraitSrc} alt="" className="size-full object-cover" />
+            <RecordImage src={portraitSrc} alt="" className="aspect-square" />
           ) : (
-            <div className="flex size-full items-center justify-center text-xs text-on-surface-variant">
-              No image
+            <div className="flex aspect-square items-center justify-center rounded-staff-md border border-staff-line bg-staff-sunken text-staff-xs text-staff-muted">
+              No portrait
             </div>
           )}
         </div>
-        <div className="min-w-0 flex-1 space-y-1">
-          <p className="truncate font-display text-base font-semibold text-on-surface">{title}</p>
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <p className="truncate font-staff-display text-staff-lg font-semibold text-staff-fg">
+            {title}
+          </p>
           <div className="flex flex-wrap gap-1.5">
-            <Badge variant="outline">{kindLabel}</Badge>
-            <Badge variant="secondary">
-              {scenario === "maker-seller" ? "Linked user" : "Catalogue only"}
-            </Badge>
+            <StatusBadge tone="neutral">{kindLabel}</StatusBadge>
+            <StatusBadge tone="neutral">
+              {scenario === "maker-seller" ? "Linked account" : "Catalogue only"}
+            </StatusBadge>
           </div>
+          <p className="line-clamp-4 text-staff-sm text-staff-muted">
+            {bio || "No short bio yet."}
+          </p>
         </div>
       </div>
-      {bio ? (
-        <p className="mt-3 line-clamp-4 text-xs leading-relaxed text-on-surface-variant">{bio}</p>
-      ) : (
-        <p className="mt-3 text-xs italic text-on-surface-variant/80">No short bio yet.</p>
-      )}
-    </aside>
+    </FormSection>
   );
 }

@@ -1,12 +1,9 @@
 import { AdminArtistLotsPanel } from "@/components/admin/admin-artist-lots-panel";
 import { ArtistEditForm } from "@/components/admin/artist-detail/artist-edit-form";
-import {
-  CatalogBreadcrumbs,
-  CatalogDetailActionError,
-  CatalogFormShell,
-} from "@/components/admin/catalog";
+import { StaffActionError } from "@/components/admin/staff/staff-action-error";
+import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
 import { loadAdminArtistEditPage } from "@/lib/admin/artists/load-artist-edit-page";
-import { CATALOG_FORM_IDS } from "@/lib/admin/catalog-form-ids";
+import { FormPage, Notice, StaffButton } from "@auction/staff-ui";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -26,29 +23,11 @@ export default async function EditAdminArtistPage({
   const isMerged = artist.status === "merged_into";
   const detailHref = `/admin/artists/${id}`;
 
-  const mergedNotice = isMerged ? (
-    <div className="rounded-lg border border-amber-500/40 bg-amber-500/10 p-4 text-sm text-on-surface">
-      <p className="font-semibold">This profile has been merged into another artist.</p>
-      <p className="mt-1 text-on-surface-variant">
-        This form is read-only. All catalogue work should happen on the surviving profile.
-      </p>
-      {artist.mergedIntoArtistId ? (
-        <Link
-          href={`/admin/artists/${artist.mergedIntoArtistId}`}
-          className="mt-2 inline-flex items-center gap-1 font-medium text-link hover:underline"
-        >
-          View merge target →
-        </Link>
-      ) : null}
-    </div>
-  ) : null;
-
   return (
-    <CatalogFormShell
-      layout="wizard"
+    <FormPage
       breadcrumbs={
-        <CatalogBreadcrumbs
-          segments={[
+        <StaffBreadcrumbs
+          items={[
             { label: "Artists", href: "/admin/artists" },
             { label: artist.displayName, href: detailHref },
             { label: "Edit" },
@@ -56,47 +35,42 @@ export default async function EditAdminArtistPage({
         />
       }
       title={`Edit ${artist.displayName}`}
-      description="Update catalogue copy, visibility flags, and optional platform user linkage. Profile type (catalogue-only vs maker–seller) is fixed after creation."
-      {...(isMerged
-        ? {
-            mobileActions: [
-              {
-                id: "back" as const,
-                label: "Back to profile",
-                variant: "secondary" as const,
-                href: detailHref,
-              },
-            ],
-          }
-        : {
-            wizardMobile: {
-              formId: CATALOG_FORM_IDS.artist,
-              submitLabel: "Save artist",
-              cancelHref: detailHref,
-              alwaysShowSubmit: true,
-            },
-          })}
+      description="Update the profile's copy, status and flags, and the platform account it is linked to."
+      notice={
+        <>
+          <StaffActionError error={sp.error} title="The artist was not saved" />
+          {isMerged ? (
+            <Notice
+              tone="info"
+              title="This profile was merged into another artist"
+              actions={
+                artist.mergedIntoArtistId ? (
+                  <StaffButton asChild size="sm" variant="secondary">
+                    <Link href={`/admin/artists/${artist.mergedIntoArtistId}`}>
+                      Open surviving profile
+                    </Link>
+                  </StaffButton>
+                ) : null
+              }
+            >
+              It is read-only. Catalogue work now happens on the surviving profile.
+            </Notice>
+          ) : null}
+        </>
+      }
     >
-      <div className="space-y-8">
-        <CatalogDetailActionError error={sp.error} title="Could not save artist" />
-        {mergedNotice}
-
-        <ArtistEditForm
-          artist={artist}
-          categories={categories}
-          cancelHref={detailHref}
-          readOnly={isMerged}
-        />
-
-        <section className="space-y-3">
-          <h2 className="font-display text-xl font-semibold tracking-tight">Lots by this artist</h2>
-          <p className="text-sm text-on-surface-variant">
-            Read-only summary of the lots currently attached via the catalogue FK. To reassign a
-            lot, open it and use the artist picker on the lot edit page.
-          </p>
-          <AdminArtistLotsPanel artistId={artist.id} lots={lots} />
-        </section>
-      </div>
-    </CatalogFormShell>
+      <ArtistEditForm
+        artist={artist}
+        categories={categories}
+        cancelHref={detailHref}
+        readOnly={isMerged}
+      />
+      <AdminArtistLotsPanel
+        artistId={artist.id}
+        lots={lots}
+        title="Lots by this artist"
+        description="Change a lot's artist from the lot's own edit page."
+      />
+    </FormPage>
   );
 }

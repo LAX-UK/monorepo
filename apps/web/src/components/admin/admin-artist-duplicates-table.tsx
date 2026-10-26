@@ -1,93 +1,89 @@
 "use client";
 
-import { AdminDataTable } from "@/components/admin/admin-data-table";
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { CatalogMobileCardShell } from "@/components/admin/catalog/catalog-mobile-card-shell";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { artistKindMeta } from "@/lib/artists/kind-presenter";
 import type { AdminArtistDuplicateHit } from "@/lib/data/http/admin.server";
-import { EntityList } from "@auction/ui";
-import type { ColumnDef } from "@tanstack/react-table";
+import {
+  type DataColumn,
+  DataTable,
+  EmptyState,
+  PrimaryCell,
+  type StaffLinkComponent,
+  StatusBadge,
+  rowActionsColumn,
+} from "@auction/staff-ui";
+import { UserRound } from "lucide-react";
 import Link from "next/link";
-import { useMemo } from "react";
 
-function columns(): ColumnDef<AdminArtistDuplicateHit>[] {
-  return [
-    {
-      accessorKey: "displayName",
-      header: "Name",
-      cell: ({ row }) => (
-        <span className="font-medium text-on-surface">{row.original.displayName}</span>
-      ),
-    },
-    {
-      accessorKey: "kind",
-      header: "Kind",
-      cell: ({ row }) => (
-        <span className="text-on-surface-variant">{artistKindMeta(row.original.kind).badge}</span>
-      ),
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
-      cell: ({ row }) => <AdminStatusBadge domain="artist" status={row.original.status} />,
-    },
-    {
-      id: "open",
-      header: "",
-      cell: ({ row }) => (
-        <Link
-          href={`/admin/artists/${row.original.id}`}
-          className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
-        >
-          View
-        </Link>
-      ),
-      enableSorting: false,
-    },
-  ];
-}
+const NextLink: StaffLinkComponent = Link;
 
+const columns: DataColumn<AdminArtistDuplicateHit>[] = [
+  {
+    id: "name",
+    header: "Name",
+    sortable: true,
+    sortValue: (row) => row.displayName.toLowerCase(),
+    mobile: "title",
+    cell: (row) => (
+      <PrimaryCell href={`/admin/artists/${row.id}`} Link={NextLink}>
+        {row.displayName}
+      </PrimaryCell>
+    ),
+  },
+  {
+    id: "kind",
+    header: "Kind",
+    width: "180px",
+    mobile: "meta",
+    cell: (row) => artistKindMeta(row.kind).badge,
+  },
+  {
+    id: "status",
+    header: "Status",
+    width: "160px",
+    mobile: "badge",
+    cell: (row) => {
+      const status = staffStatus("artist", row.status);
+      return <StatusBadge tone={status.tone}>{status.label}</StatusBadge>;
+    },
+  },
+  rowActionsColumn<AdminArtistDuplicateHit>({
+    label: (row) => `Actions for ${row.displayName}`,
+    Link: NextLink,
+    actions: (row) => [
+      {
+        id: "open",
+        label: "Open profile",
+        icon: UserRound,
+        href: `/admin/artists/${row.id}`,
+      },
+    ],
+  }),
+];
+
+/**
+ * Artists whose names resemble another, as a table that sits inside a `Section` (which is the
+ * card). Each name opens the profile, so staff can compare before merging.
+ */
 export function AdminArtistDuplicatesTable({ rows }: { rows: AdminArtistDuplicateHit[] }) {
-  const cols = useMemo(() => columns(), []);
-
-  const cards = (
-    <ul className="space-y-3 lg:hidden">
-      {rows.map((row) => (
-        <CatalogMobileCardShell
-          key={row.id}
-          id={row.id}
-          title={row.displayName}
-          selectionLabel={`Select ${row.displayName}`}
-          status={<AdminStatusBadge domain="artist" status={row.status} />}
-          footer={
-            <Link
-              href={`/admin/artists/${row.id}`}
-              className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link hover:underline"
-            >
-              View profile →
-            </Link>
-          }
-        >
-          <p className="font-body text-xs text-on-surface-variant">
-            {artistKindMeta(row.kind).badge}
-          </p>
-        </CatalogMobileCardShell>
-      ))}
-    </ul>
-  );
-
   return (
-    <EntityList
-      responsiveMode="auto"
-      table={
-        <AdminDataTable
-          ariaLabel="Artist duplicate candidates"
-          columns={cols}
-          data={rows}
-          emptyMessage="No duplicate candidates."
+    <DataTable<AdminArtistDuplicateHit>
+      embedded
+      label="Artist duplicate candidates"
+      columns={columns}
+      data={rows}
+      getRowId={(row) => row.id}
+      density="compact"
+      defaultSort={{ columnId: "name", direction: "asc" }}
+      stickyHeader={false}
+      stickyToolbar={false}
+      empty={
+        <EmptyState
+          headingLevel="h3"
+          title="No duplicate candidates"
+          description="Profiles with similar names appear here so they can be merged."
         />
       }
-      cards={cards}
     />
   );
 }

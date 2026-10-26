@@ -1,10 +1,5 @@
 "use client";
 
-import { createCatalogDetailRouteError } from "@/components/admin/catalog/create-catalog-detail-route-error";
+import { createStaffTabError } from "@/components/admin/staff/create-staff-tab-error";
 
-export default createCatalogDetailRouteError({
-  title: "Artist",
-  listLabel: "Artists",
-  listHref: "/admin/artists",
-  breadcrumbs: [{ label: "Artists", href: "/admin/artists" }],
-});
+export default createStaffTabError({ title: "This artist section did not load" });

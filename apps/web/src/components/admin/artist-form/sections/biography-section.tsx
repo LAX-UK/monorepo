@@ -1,32 +1,29 @@
 "use client";
 
-import { ArtistTextareaField } from "../fields";
+import { StaffTextAreaField } from "@/components/admin/forms/staff-form-fields";
+import { FormSection } from "@auction/staff-ui";
+import { ARTIST_FORM_ID } from "../admin-artist-form.constants";
 import type { ArtistFormSectionProps } from "../types";
 
 export function BiographySection({ control, disabled = false }: ArtistFormSectionProps) {
+  const f = { control, formId: ARTIST_FORM_ID, disabled, optional: true } as const;
   return (
-    <div className="space-y-4">
-      <ArtistTextareaField
-        control={control}
+    <FormSection title="Biography" description="The copy shown on the public artist profile.">
+      <StaffTextAreaField
+        {...f}
         name="shortBio"
         label="Short bio"
+        description="Up to 500 characters, shown in lists and previews."
         rows={3}
-        disabled={disabled}
       />
-      <ArtistTextareaField
-        control={control}
-        name="longBio"
-        label="Long bio"
-        rows={6}
-        disabled={disabled}
-      />
-      <ArtistTextareaField
-        control={control}
+      <StaffTextAreaField {...f} name="longBio" label="Long bio" rows={6} />
+      <StaffTextAreaField
+        {...f}
         name="statement"
-        label="Artist statement"
+        label="Statement"
+        description="In the creator's own words."
         rows={6}
-        disabled={disabled}
       />
-    </div>
+    </FormSection>
   );
 }
