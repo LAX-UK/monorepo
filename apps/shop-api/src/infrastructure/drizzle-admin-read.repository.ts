@@ -25,6 +25,7 @@ import {
   eq,
   exists,
   gt,
+  gte,
   ilike,
   inArray,
   isNotNull,
@@ -201,6 +202,33 @@ export function createDrizzleAdminReadRepository(
         };
       },
       getOrderDetail: detail.getOrderDetail,
+      async readOrderDailyTotals(since) {
+        // UK days, as staff count them.
+        const paidDay = sql<string>`to_char(${shopOrder.paidAt} AT TIME ZONE 'Europe/London', 'YYYY-MM-DD')`;
+        const placedDay = sql<string>`to_char(${shopOrder.createdAt} AT TIME ZONE 'Europe/London', 'YYYY-MM-DD')`;
+        const [paid, placed] = await Promise.all([
+          db
+            .select({
+              day: paidDay,
+              pence: sql<number>`coalesce(sum(${shopOrder.totalPence}), 0)::int`,
+              orders: count(),
+            })
+            .from(shopOrder)
+            .where(and(isNotNull(shopOrder.paidAt), gte(shopOrder.paidAt, since)))
+            .groupBy(paidDay),
+          db
+            .select({ day: placedDay, orders: count() })
+            .from(shopOrder)
+            .where(gte(shopOrder.createdAt, since))
+            .groupBy(placedDay),
+        ]);
+        return {
+          paid: new Map(
+            paid.map((row) => [row.day, { pence: Number(row.pence), orders: row.orders }]),
+          ),
+          placed: new Map(placed.map((row) => [row.day, row.orders])),
+        };
+      },
     },
     fulfilment: { listFulfilment: workLists.listFulfilment },
     payouts: { listPayouts: workLists.listPayouts },

@@ -198,6 +198,7 @@ export function createMinimalShopApiTestDeps(
           getOrderDetail: async () => {
             throw new Error("not implemented in test deps");
           },
+          readOrderDailyTotals: async () => ({ paid: new Map(), placed: new Map() }),
         },
         fulfilment: { listFulfilment: async () => ({ items: [], nextCursor: null, counts: {} }) },
         payouts: { listPayouts: async () => ({ items: [], nextCursor: null, counts: {} }) },

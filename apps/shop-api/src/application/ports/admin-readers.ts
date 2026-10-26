@@ -186,9 +186,18 @@ export type AdminStaffMemberListItem = {
   createdAt: string;
 };
 
+/** Orders per UK day ("YYYY-MM-DD"), on or after `since`; days without orders are absent. */
+export type AdminOrderDailyTotals = {
+  /** Order totals in pence and number of orders, by the day they were paid. */
+  paid: ReadonlyMap<string, { pence: number; orders: number }>;
+  /** Orders by the day they were placed. */
+  placed: ReadonlyMap<string, number>;
+};
+
 export interface AdminOrderReader {
   listOrders(input: AdminOrderListInput): Promise<AdminOrderListResult>;
   getOrderDetail(orderId: string): Promise<AdminOrderDetail>;
+  readOrderDailyTotals(since: Date): Promise<AdminOrderDailyTotals>;
 }
 
 export interface AdminFulfilmentReader {

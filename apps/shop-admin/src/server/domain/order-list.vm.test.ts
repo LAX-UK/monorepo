@@ -8,11 +8,54 @@ import {
   orderListApiQuery,
   orderListHref,
   orderListPageHref,
+  orderMetrics,
+  orderMetricsPeriod,
   orderNumber,
   orderStatusTone,
   orderTeamViews,
   parseOrderListQuery,
 } from "./order-list.vm";
+
+describe("orderMetrics", () => {
+  const summary = {
+    periodDays: 30,
+    paidPence: { daily: [0, 18500, 4200], current: 22700, prior: 20000 },
+    orders: { daily: [1, 2, 0], current: 3, prior: 3 },
+    paidOrders: { current: 2, prior: 4 },
+  };
+
+  it("shows what was paid and placed with their trends, and the average paid order", () => {
+    const metrics = orderMetrics(summary);
+    expect(metrics.map((metric) => [metric.label, metric.value])).toEqual([
+      ["Paid", "£227.00"],
+      ["Orders placed", "3"],
+      ["Average paid order", "£113.50"],
+    ]);
+    expect(metrics[0]?.trend).toEqual([0, 18500, 4200]);
+    expect(metrics[0]?.comparison).toEqual({
+      text: "14%",
+      direction: "up",
+      tone: "positive",
+      basis: "vs previous 30 days",
+    });
+    expect(metrics[1]?.comparison?.direction).toBe("flat");
+    // £113.50 now against £50.00 before.
+    expect(metrics[2]?.comparison).toMatchObject({ text: "127%", direction: "up" });
+    expect(metrics[2]?.trend).toBeUndefined();
+    expect(orderMetricsPeriod(summary)).toBe("All orders · last 30 days");
+  });
+
+  it("leaves out a change with nothing before it, and an average with no paid orders", () => {
+    const metrics = orderMetrics({
+      ...summary,
+      paidPence: { daily: [0, 0, 0], current: 0, prior: 0 },
+      paidOrders: { current: 0, prior: 0 },
+    });
+    expect(metrics[0]?.comparison).toBeUndefined();
+    expect(metrics[2]?.value).toBeNull();
+    expect(metrics[2]?.comparison).toBeUndefined();
+  });
+});
 
 describe("orderTeamViews", () => {
   const views = orderTeamViews(new Date("2026-03-10T12:00:00Z"));

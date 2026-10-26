@@ -45,9 +45,17 @@ async function buildApp(role: ShopStaffRole) {
     },
   });
   deps.admin.adminRead.orders.listOrders = listOrders;
+  const ukToday = new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(
+    new Date(),
+  );
+  const readOrderDailyTotals = vi.fn(async (_since: Date) => ({
+    paid: new Map([[ukToday, { pence: 18500, orders: 1 }]]),
+    placed: new Map([[ukToday, 2]]),
+  }));
+  deps.admin.adminRead.orders.readOrderDailyTotals = readOrderDailyTotals;
   const app = createShopApiApp({ deps, logger: false });
   await app.ready();
-  return { app, listOrders };
+  return { app, listOrders, readOrderDailyTotals };
 }
 
 const get = (url: string) => ({ method: "GET" as const, url, headers: auth });
@@ -119,6 +127,33 @@ describe("order list filters", () => {
     const response = await app.inject(get(`/admin/v1/orders?${query}`));
     expect(response.statusCode).toBe(400);
     expect(listOrders).not.toHaveBeenCalled();
+    await app.close();
+  });
+});
+
+describe("order summary", () => {
+  it.each(ALL_ROLES.map((role) => ({ role, allowed: CAN_READ.includes(role) })))(
+    "$role is allowed: $allowed",
+    async ({ role, allowed }) => {
+      const { app } = await buildApp(role);
+      const response = await app.inject(get("/admin/v1/orders/summary"));
+      expect(response.statusCode).toBe(allowed ? 200 : 403);
+      await app.close();
+    },
+  );
+
+  it("returns 30 UK days of paid totals and orders, with the 30 days before", async () => {
+    const { app, readOrderDailyTotals } = await buildApp("finance");
+    const response = await app.inject(get("/admin/v1/orders/summary"));
+    expect(response.statusCode).toBe(200);
+    const body = response.json();
+    expect(body.periodDays).toBe(30);
+    expect(body.paidPence.daily).toHaveLength(30);
+    expect(body.paidPence.daily.at(-1)).toBe(18500);
+    expect(body.paidPence.current).toBe(18500);
+    expect(body.orders).toMatchObject({ current: 2, prior: 0 });
+    expect(body.paidOrders).toEqual({ current: 1, prior: 0 });
+    expect(readOrderDailyTotals).toHaveBeenCalledTimes(1);
     await app.close();
   });
 });

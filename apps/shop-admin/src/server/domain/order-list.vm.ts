@@ -1,5 +1,16 @@
-import { ADMIN_ORDER_STATUSES, type AdminOrderStatus } from "@auction/shop-contracts";
-import { STAFF_DEFAULT_PAGE_SIZE, type TeamView, parseStaffPageSize } from "@auction/staff-ui";
+import {
+  ADMIN_ORDER_STATUSES,
+  type AdminOrderStatus,
+  type AdminOrderSummary,
+} from "@auction/shop-contracts";
+import {
+  type Metric,
+  STAFF_DEFAULT_PAGE_SIZE,
+  type TeamView,
+  formatGbp,
+  metricChange,
+  parseStaffPageSize,
+} from "@auction/staff-ui";
 import {
   type RawSearchParams,
   calendarDayParam,
@@ -223,4 +234,50 @@ export function orderBuyerSecondary(order: {
   buyerEmail: string | null;
 }): string | null {
   return order.buyerName?.trim() ? (order.buyerEmail?.trim() ?? null) : null;
+}
+
+/** The period line over the orders summary. */
+export function orderMetricsPeriod(summary: AdminOrderSummary): string {
+  return `All orders · last ${summary.periodDays} days`;
+}
+
+/**
+ * The orders list's headline numbers over the summary window: what was paid and how many orders
+ * came in, each with its daily trend, and the average paid order. Each carries the change
+ * against the window before, when there was one.
+ */
+export function orderMetrics(summary: AdminOrderSummary): Metric[] {
+  const basis = `vs previous ${summary.periodDays} days`;
+  const count = new Intl.NumberFormat("en-GB");
+  const average = (pence: number, orders: number) => (orders > 0 ? pence / orders : 0);
+  const averageNow = average(summary.paidPence.current, summary.paidOrders.current);
+  const averageBefore = average(summary.paidPence.prior, summary.paidOrders.prior);
+  const change = (current: number, prior: number) =>
+    metricChange({ current, prior, basis, rise: "good" });
+  const paidChange = change(summary.paidPence.current, summary.paidPence.prior);
+  const ordersChange = change(summary.orders.current, summary.orders.prior);
+  const averageChange = change(averageNow, averageBefore);
+  return [
+    {
+      id: "paid",
+      label: "Paid",
+      tone: "positive",
+      value: formatGbp(summary.paidPence.current),
+      trend: summary.paidPence.daily,
+      ...(paidChange ? { comparison: paidChange } : {}),
+    },
+    {
+      id: "orders",
+      label: "Orders placed",
+      value: count.format(summary.orders.current),
+      trend: summary.orders.daily,
+      ...(ordersChange ? { comparison: ordersChange } : {}),
+    },
+    {
+      id: "average",
+      label: "Average paid order",
+      value: summary.paidOrders.current > 0 ? formatGbp(Math.round(averageNow)) : null,
+      ...(averageChange && summary.paidOrders.current > 0 ? { comparison: averageChange } : {}),
+    },
+  ];
 }
