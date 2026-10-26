@@ -846,3 +846,86 @@ describe("commerce enquiry routes", () => {
     );
   });
 });
+
+describe("commerce order routes", () => {
+  const ORDER_ID = "550e8400-e29b-41d4-a716-846655440001";
+
+  it("passes the invoice PDF through with its file name and no caching", async () => {
+    const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d]);
+    const shopApiFetch = vi.fn(
+      async () =>
+        new Response(pdf, {
+          status: 200,
+          headers: {
+            "content-type": "application/pdf",
+            "content-disposition": 'attachment; filename="LAX-S-10482-invoice.pdf"',
+            "x-upstream-only": "1",
+          },
+        }),
+    );
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request(`/commerce/orders/${ORDER_ID}/invoice`, {
+      headers: { cookie: AUTH_COOKIE },
+    });
+    expect(response.status).toBe(200);
+    expect(response.headers.get("content-type")).toBe("application/pdf");
+    expect(response.headers.get("content-disposition")).toContain("LAX-S-10482-invoice.pdf");
+    expect(response.headers.get("cache-control")).toBe("private, no-store");
+    expect(response.headers.get("x-upstream-only")).toBeNull();
+    expect(new Uint8Array(await response.arrayBuffer())).toEqual(pdf);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ path: `/v1/orders/${ORDER_ID}/invoice`, scopes: "shop.read" }),
+    );
+  });
+
+  it("answers a missing invoice as JSON", async () => {
+    const shopApiFetch = vi.fn(async () =>
+      Response.json({ code: "shop.not_found", message: "Invoice not found" }, { status: 404 }),
+    );
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request(`/commerce/orders/${ORDER_ID}/invoice`, {
+      headers: { cookie: AUTH_COOKIE },
+    });
+    expect(response.status).toBe(404);
+    expect(await response.json()).toMatchObject({ code: "shop.not_found" });
+  });
+
+  it("checks a problem report before sending it on", async () => {
+    const shopApiFetch = vi.fn(async () =>
+      Response.json({ reportId: "550e8400-e29b-41d4-a716-846655440099" }, { status: 201 }),
+    );
+    const { app } = createCommerceApp(shopApiFetch);
+    const csrf = await app.request("/commerce/csrf", { headers: { cookie: AUTH_COOKIE } });
+    const csrfBody = (await csrf.json()) as { csrfToken: string };
+    const csrfCookie = csrf.headers.get("set-cookie")?.split(";")[0] ?? "";
+    const headers = {
+      "content-type": "application/json",
+      cookie: `${AUTH_COOKIE}; ${csrfCookie}`,
+      "x-shop-csrf": csrfBody.csrfToken,
+    };
+
+    const invalid = await app.request(`/commerce/orders/${ORDER_ID}/problem-reports`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ reason: "lost", details: "" }),
+    });
+    expect(invalid.status).toBe(400);
+    expect(shopApiFetch).not.toHaveBeenCalled();
+
+    const sent = await app.request(`/commerce/orders/${ORDER_ID}/problem-reports`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({ reason: "damaged", details: "The corner is creased." }),
+    });
+    expect(sent.status).toBe(201);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        method: "POST",
+        path: `/v1/orders/${ORDER_ID}/problem-reports`,
+        body: { reason: "damaged", details: "The corner is creased." },
+      }),
+    );
+  });
+});

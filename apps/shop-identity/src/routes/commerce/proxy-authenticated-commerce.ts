@@ -20,6 +20,8 @@ export async function proxyAuthenticatedCommerce(
     requireVerifiedEmail?: boolean;
     basketToken?: string;
     idempotencyKey?: string;
+    /** Pass a successful file response (an invoice PDF) through as it is, not as JSON. */
+    file?: boolean;
   },
 ) {
   if (options.requireCsrf) {
@@ -57,5 +59,18 @@ export async function proxyAuthenticatedCommerce(
     ...(options.basketToken ? { basketToken: options.basketToken } : {}),
     ...(options.idempotencyKey ? { idempotencyKey: options.idempotencyKey } : {}),
   });
+  if (options.file && response.ok) return proxyFile(c, response);
   return proxyJson(c, response);
+}
+
+/** Only these response headers reach the browser with a file; nothing else from upstream does. */
+const FILE_HEADERS = ["content-type", "content-disposition", "content-length"] as const;
+
+function proxyFile(c: Context, response: Response) {
+  const headers: Record<string, string> = { "cache-control": "private, no-store" };
+  for (const name of FILE_HEADERS) {
+    const value = response.headers.get(name);
+    if (value) headers[name] = value;
+  }
+  return c.newResponse(response.body, 200, headers);
 }

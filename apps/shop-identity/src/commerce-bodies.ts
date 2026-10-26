@@ -150,6 +150,14 @@ export const artworkInterestBodySchema = z
   })
   .strict();
 
+/** "Report a problem" on an order: a reason and what happened. */
+export const orderProblemReportBodySchema = z
+  .object({
+    reason: z.enum(["changed_mind", "damaged", "wrong_item", "not_arrived", "other"]),
+    details: z.string().trim().min(1).max(2000),
+  })
+  .strict();
+
 export const generalEnquiryBodySchema = z
   .object({
     topic: z.enum(["general", "private_viewing", "art_advisory", "selling", "exhibition"]),
