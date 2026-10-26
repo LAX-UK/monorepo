@@ -67,9 +67,11 @@ function captureTarget(page: Page, capture: VisualCapture): Page | Locator {
 
 function adminHomeMasks(page: Page): Locator[] {
   return [
-    page.getByText(/need attention/i),
-    page.getByLabel("Key metrics"),
-    page.getByLabel("List summary"),
+    // Overview's live data: the work list, the numbers and the sections under them.
+    page.getByRole("region", { name: "Your work" }),
+    page.getByRole("region", { name: "Your numbers" }),
+    page.getByRole("region", { name: "Upcoming sales" }),
+    page.getByRole("region", { name: "Recent activity" }),
   ];
 }
 
