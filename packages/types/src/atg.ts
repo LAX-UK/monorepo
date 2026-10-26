@@ -48,7 +48,7 @@ export const ATG_LOT_STATUSES = {
 } as const;
 
 const ATG_LOT_STATUS_LABEL: Record<keyof typeof ATG_LOT_STATUSES, string> = {
-  0: "Waiting",
+  0: "Not yet offered",
   1: "Offered",
   2: "Not sold",
   4: "Sold",
@@ -67,12 +67,24 @@ export function canChangeAtgDistribution(state: { remoteStatus: AtgRemoteStatus 
   return state.remoteStatus !== "published" && state.remoteStatus !== "closed";
 }
 
-/** Why this sale is not ready to publish on ATG, from the admin view (push adds more). */
+/** Names lots in a blocker: up to three titles, then a count of the rest. */
+function lotTitles(titles: string[]): string {
+  const shown = titles.slice(0, 3).map((title) => `“${title}”`);
+  const rest = titles.length - shown.length;
+  if (rest > 0) return `${shown.join(", ")} and ${rest} more`;
+  if (shown.length === 1) return shown[0] ?? "";
+  return `${shown.slice(0, -1).join(", ")} and ${shown[shown.length - 1]}`;
+}
+
+/**
+ * Why this sale is not ready to publish on ATG, from the admin view (push adds more). Lot sync
+ * errors are left out: the tab reports them once, above everything else.
+ */
 export function atgReadinessBlockers(view: {
   sellingPlatform: AtgOwnershipState;
   saleCancelled: boolean;
   lastError: string | null;
-  lots: Array<{ lotNumber: number | null; lastError: string | null }>;
+  lots: Array<{ lotNumber: number | null; title: string }>;
 }): string[] {
   const blockers: string[] = [];
   if (view.sellingPlatform === "lax") {
@@ -81,16 +93,12 @@ export function atgReadinessBlockers(view: {
   if (view.saleCancelled) {
     blockers.push("This sale is cancelled in LAX.");
   }
-  const unnumbered = view.lots.filter((lot) => lot.lotNumber == null).length;
-  if (unnumbered > 0) {
+  const unnumbered = view.lots.filter((lot) => lot.lotNumber == null).map((lot) => lot.title);
+  if (unnumbered.length > 0) {
     blockers.push(
-      unnumbered === 1 ? "1 lot needs a lot number." : `${unnumbered} lots need a lot number.`,
-    );
-  }
-  const lotErrors = view.lots.filter((lot) => lot.lastError).length;
-  if (lotErrors > 0) {
-    blockers.push(
-      lotErrors === 1 ? "1 lot has a sync error." : `${lotErrors} lots have a sync error.`,
+      unnumbered.length === 1
+        ? `${lotTitles(unnumbered)} needs a lot number.`
+        : `${lotTitles(unnumbered)} need lot numbers.`,
     );
   }
   if (view.lastError?.includes("did not confirm the new auction")) {

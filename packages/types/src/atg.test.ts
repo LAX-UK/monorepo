@@ -141,11 +141,11 @@ describe("resolveSaleSellingPlatform", () => {
 
 describe("atgLotStatusLabel", () => {
   it.each([
-    [0, "Waiting"],
+    [0, "Not yet offered"],
     [1, "Offered"],
     [2, "Not sold"],
     [4, "Sold"],
-    ["0", "Waiting"],
+    ["0", "Not yet offered"],
     ["4", "Sold"],
   ])("labels documented code %s", (code, label) => {
     expect(atgLotStatusLabel(code)).toBe(label);
@@ -176,22 +176,21 @@ describe("ATG settings locks", () => {
 });
 
 describe("atgReadinessBlockers", () => {
-  it("lists ownership, missing numbers, lot errors, and uncertain creates", () => {
+  it("lists ownership, missing numbers by lot title, and uncertain creates", () => {
     expect(
       atgReadinessBlockers({
         sellingPlatform: "lax",
         saleCancelled: true,
         lastError: "ATG did not confirm the new auction (timeout). Check the ATG admin.",
         lots: [
-          { lotNumber: null, lastError: null },
-          { lotNumber: 2, lastError: "must be a JPG" },
+          { lotNumber: null, title: "Garden study" },
+          { lotNumber: 2, title: "Cornish coast" },
         ],
       }),
     ).toEqual([
       "This sale is published on lax.bid. Unpublish it there first.",
       "This sale is cancelled in LAX.",
-      "1 lot needs a lot number.",
-      "1 lot has a sync error.",
+      "“Garden study” needs a lot number.",
       "The last create may have reached ATG. Check Toolbox before pushing again.",
     ]);
   });
@@ -202,8 +201,22 @@ describe("atgReadinessBlockers", () => {
         sellingPlatform: "free",
         saleCancelled: false,
         lastError: null,
-        lots: [{ lotNumber: 1, lastError: null }],
+        lots: [{ lotNumber: 1, title: "Harbour at dusk" }],
       }),
     ).toEqual([]);
+  });
+
+  it("names up to three unnumbered lots, then counts the rest", () => {
+    const blockers = (titles: string[]) =>
+      atgReadinessBlockers({
+        sellingPlatform: "free",
+        saleCancelled: false,
+        lastError: null,
+        lots: titles.map((title) => ({ lotNumber: null, title })),
+      });
+    expect(blockers(["A", "B"])).toEqual(["“A” and “B” need lot numbers."]);
+    expect(blockers(["A", "B", "C", "D", "E"])).toEqual([
+      "“A”, “B”, “C” and 2 more need lot numbers.",
+    ]);
   });
 });

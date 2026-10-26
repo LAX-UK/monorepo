@@ -28,6 +28,7 @@ import {
   type AtgSaleResultRow,
   type AtgSaleSyncView,
   type AtgSyncAction,
+  atgLotStatusLabel,
   atgReadinessBlockers,
 } from "@auction/types";
 import { ExternalLink } from "lucide-react";
@@ -165,7 +166,6 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
   const closed = view.remoteStatus === "closed";
   const published = view.remoteStatus === "published";
   const syncing = waiting != null && !waiting.slow;
-  const settingsDisabled = syncing || laxOwned || view.saleCancelled || closed;
   const readiness = atgReadinessBlockers(view);
   const busy = confirm.busy || syncing;
   const linkedLots = view.lots.filter((lot) => lot.atgLotId).length;
@@ -218,21 +218,21 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
         sortable: true,
         sortValue: (lot) => lot.lotNumber ?? Number.MAX_SAFE_INTEGER,
         cell: (lot) => (
-          <PrimaryCell
-            Link={NextLink}
-            href={`/admin/lots/${encodeURIComponent(lot.lotId)}`}
-            secondary={
-              lot.lastError ? (
-                <span className="text-staff-danger-fg" title={lot.lastError}>
-                  {lot.lastError}
-                </span>
-              ) : lot.lotNumber != null ? (
-                `Lot ${lot.lotNumber}`
-              ) : null
-            }
-          >
-            {lot.title}
-          </PrimaryCell>
+          <span className="flex min-w-0 flex-col">
+            <PrimaryCell
+              Link={NextLink}
+              href={`/admin/lots/${encodeURIComponent(lot.lotId)}`}
+              secondary={lot.lotNumber != null ? `Lot ${lot.lotNumber}` : "No lot number"}
+            >
+              {lot.title}
+            </PrimaryCell>
+            {lot.lastError ? (
+              // The whole message wraps, at every width: it says how to fix the lot.
+              <span className="block whitespace-normal text-staff-xs leading-4 text-staff-danger-fg">
+                {lot.lastError}
+              </span>
+            ) : null}
+          </span>
         ),
       },
       {
@@ -273,8 +273,15 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
               width: "112px",
               mobile: "meta",
               truncate: false,
+              // Only when the status badge has no documented ATG status to say it already.
               cell: (lot: AtgLotSyncView) =>
-                lot.sold === true ? "Sold" : lot.sold === false && lot.atgLotId ? "Unsold" : null,
+                lot.lastError || atgLotStatusLabel(lot.remoteStatus)
+                  ? null
+                  : lot.sold === true
+                    ? "Sold"
+                    : lot.sold === false && lot.atgLotId
+                      ? "Not sold"
+                      : null,
             } satisfies DataColumn<AtgLotSyncView>,
             {
               id: "paddle",
@@ -308,8 +315,8 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
       saleId={saleId}
       view={view}
       canManage={canManage}
-      disabled={settingsDisabled}
-      readiness={readiness}
+      busy={syncing}
+      lockedReason={blockedReason}
       onSaved={(pushJobId) => {
         if (pushJobId) {
           setWaiting({ jobId: pushJobId, until: Date.now() + ATG_JOB_TIMEOUT_MS, slow: false });
@@ -434,6 +441,15 @@ export function SaleAtgTab({ saleId, status, view, canManage }: Props) {
           : {})}
       >
         <KeyValueList items={facts} columns={2} />
+        {readiness.length > 0 ? (
+          <Notice tone="warning" title="Not ready to publish on ATG" className="mt-4">
+            <ul className="list-disc pl-5">
+              {readiness.map((item) => (
+                <li key={item}>{item}</li>
+              ))}
+            </ul>
+          </Notice>
+        ) : null}
         {canManage ? (
           <div className="mt-4 flex flex-wrap items-center gap-2 border-t border-staff-line-subtle pt-4">
             <StaffButton

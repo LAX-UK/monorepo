@@ -33,6 +33,8 @@ export type StaffConfirmRequest = {
   run: (details: { reason: string }) => Promise<StaffActionResult>;
   /** The toast once it is done: "Blue Interior withdrawn". */
   success: string;
+  /** A line under the toast, read once the action has run: "Sending the change to ATG now." */
+  successDescription?: () => string;
   /** After success; the list refreshes unless this navigates away. */
   onSuccess?: () => void;
   /** A failure this caller handles itself (e.g. Connect not ready); true when handled. */
@@ -70,7 +72,9 @@ export function useStaffConfirm() {
       const result = await current.run(details);
       if (result.ok) {
         close();
-        notify.success(current.success);
+        const description = current.successDescription?.();
+        if (description) notify.success(current.success, { description });
+        else notify.success(current.success);
         if (current.onSuccess) current.onSuccess();
         else router.refresh();
         return;

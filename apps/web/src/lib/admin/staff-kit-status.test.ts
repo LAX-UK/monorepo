@@ -155,9 +155,10 @@ describe("ATG lot status", () => {
   };
 
   it("uses documented GetLots codes before bid counts", () => {
-    expect(staffAtgLotStatus({ ...linked, remoteStatus: "0", numberOfBids: 2 }).label).toBe(
-      "Waiting",
-    );
+    expect(staffAtgLotStatus({ ...linked, remoteStatus: "0", numberOfBids: 2 })).toEqual({
+      label: "Not yet offered",
+      tone: "neutral",
+    });
     expect(staffAtgLotStatus({ ...linked, remoteStatus: "1" }).label).toBe("Offered");
     expect(staffAtgLotStatus({ ...linked, remoteStatus: "2", numberOfBids: 3 }).label).toBe(
       "Not sold",

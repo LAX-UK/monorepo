@@ -224,7 +224,7 @@ export function staffAtgAuctionStatus(status: string | null | undefined): Status
 }
 
 const ATG_DOCUMENTED_LOT_TONE: Record<string, StatusPresentation["tone"]> = {
-  Waiting: "neutral",
+  "Not yet offered": "neutral",
   Offered: "info",
   "Not sold": "neutral",
   Sold: "success",
