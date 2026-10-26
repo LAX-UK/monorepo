@@ -1,3 +1,5 @@
+import type { LegalEntity } from "@auction/branding";
+import type { EnquiryRateLimiter } from "./application/enquiry-rate-limit.js";
 import type { createCancelCheckoutOrderHandler } from "./application/handlers/commerce-handlers.js";
 import type { createCheckoutOrderHandler } from "./application/handlers/commerce-handlers.js";
 import type { createGetBasketHandler } from "./application/handlers/commerce-handlers.js";
@@ -11,6 +13,8 @@ import type {
   createListSavedDeliveryAddressesHandler,
   createSaveDeliveryAddressHandler,
 } from "./application/handlers/delivery-address-book.handler.js";
+import type { OrderReader } from "./application/ports/commerce.ports.js";
+import type { OrderProblemReportWriter } from "./application/ports/order-problem-report.port.js";
 import type { StripeMoneyWebhookOutcome } from "./application/ports/stripe-money-webhook.types.js";
 import type {
   StripeCheckoutAsyncFailedDto,
@@ -36,6 +40,12 @@ export type CommerceRoutesDeps = {
   cancelCheckoutOrder: ReturnType<typeof createCancelCheckoutOrderHandler>;
   listOrders: ReturnType<typeof createListOrdersHandler>;
   getOrder: ReturnType<typeof createGetOrderHandler>;
+  /** The buyer's name and email for the invoice. */
+  getCustomerProfile: OrderReader["getCustomerProfile"];
+  /** Who issues Shop invoices, and the VAT number printed on them when there is one. */
+  invoiceIssuer: { supplier: LegalEntity; vatNumber: string | null };
+  /** "Report a problem" on an order; the limiter is the one enquiries share. */
+  orderProblems?: { writer: OrderProblemReportWriter; rateLimiter: EnquiryRateLimiter };
   /** The LAX Account address book; absent where Identity's machine client is not configured. */
   savedAddresses?: {
     list: ReturnType<typeof createListSavedDeliveryAddressesHandler>;

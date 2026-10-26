@@ -134,12 +134,17 @@ export function createStripeShopCheckoutGateway(options: {
           metadata: {
             app: SHOP_CHECKOUT_METADATA_APP,
             orderId: input.orderId,
+            ...(input.orderReference ? { orderReference: input.orderReference } : {}),
           },
           payment_intent_data: {
             metadata: {
               app: SHOP_CHECKOUT_METADATA_APP,
               orderId: input.orderId,
+              ...(input.orderReference ? { orderReference: input.orderReference } : {}),
             },
+            ...(input.orderReference
+              ? { description: `LAX Shop order ${input.orderReference}` }
+              : {}),
             statement_descriptor_suffix: "LAX SHOP",
           },
         },

@@ -3,6 +3,7 @@ import {
   shopAdminAudit,
   shopArtwork,
   shopEdition,
+  shopOrder,
   shopOrderLine,
   shopProductionTask,
   shopStaffMember,
@@ -29,6 +30,7 @@ export const PRODUCTION_TASK_AUDIT_TARGET = "shop_production_task";
 const taskColumns = {
   task: shopProductionTask,
   orderId: shopOrderLine.orderId,
+  orderReference: shopOrder.reference,
   artworkTitle: shopArtwork.title,
   editionNumber: shopEdition.editionNumber,
   assigneeName: shopUserProfile.name,
@@ -41,6 +43,7 @@ function selectTasks(db: Database) {
     .select(taskColumns)
     .from(shopProductionTask)
     .innerJoin(shopOrderLine, eq(shopOrderLine.id, shopProductionTask.orderLineId))
+    .innerJoin(shopOrder, eq(shopOrder.id, shopOrderLine.orderId))
     .leftJoin(shopEdition, eq(shopEdition.id, shopProductionTask.editionId))
     .leftJoin(shopArtwork, eq(shopArtwork.id, shopEdition.artworkId))
     .leftJoin(
@@ -71,6 +74,7 @@ function toListItem(row: TaskRow) {
   return {
     taskId: task.id,
     orderId: row.orderId,
+    orderReference: row.orderReference,
     orderLineId: task.orderLineId,
     editionId: task.editionId,
     artworkTitle: row.artworkTitle,
@@ -107,6 +111,7 @@ function filterConditions(filters: ProductionTaskFilters): SQL[] {
       sql`${shopArtwork.title} ILIKE ${contains}`,
       sql`${shopProductionTask.id}::text ILIKE ${idPrefix}`,
       sql`${shopOrderLine.orderId}::text ILIKE ${idPrefix}`,
+      sql`${shopOrder.reference} ILIKE ${contains}`,
     );
     if (search) conditions.push(search);
   }
@@ -188,6 +193,7 @@ export function createDrizzleProductionTaskRepository(db: Database): ProductionT
           .select({ status: shopProductionTask.status, total: count() })
           .from(shopProductionTask)
           .innerJoin(shopOrderLine, eq(shopOrderLine.id, shopProductionTask.orderLineId))
+          .innerJoin(shopOrder, eq(shopOrder.id, shopOrderLine.orderId))
           .leftJoin(shopEdition, eq(shopEdition.id, shopProductionTask.editionId))
           .leftJoin(shopArtwork, eq(shopArtwork.id, shopEdition.artworkId))
           .where(and(...filters))

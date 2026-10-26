@@ -1,5 +1,12 @@
 import type { BasketView, CheckoutSession, OrderSummary } from "@auction/shop-contracts";
-import { basketLineMaxQuantity, computeMerchandiseSubtotal, pence } from "@auction/shop-domain";
+import {
+  basketLineMaxQuantity,
+  carrierTrackingUrl,
+  computeMerchandiseSubtotal,
+  orderProblemWindow,
+  pence,
+} from "@auction/shop-domain";
+import { orderRecordVat } from "../application/order-vat.js";
 import type {
   BasketRecord,
   CheckoutOrderResult,
@@ -54,9 +61,21 @@ export function presentCheckoutSession(result: CheckoutOrderResult): CheckoutSes
   };
 }
 
-export function presentOrder(record: OrderRecord): OrderSummary {
+const iso = (date: Date | null): string | null => (date ? date.toISOString() : null);
+
+export function presentOrder(record: OrderRecord, now: Date = new Date()): OrderSummary {
+  const vat = orderRecordVat(record);
+  const window = orderProblemWindow({
+    status: record.status,
+    paidAt: record.paidAt,
+    refundPeriodEndsAt: record.refundPeriodEndsAt,
+    possessionAt: record.progress?.possessionAt ?? null,
+    now,
+  });
+  const progress = record.progress;
   return {
     orderId: record.orderId,
+    reference: record.reference,
     status: record.status,
     fulfilment: record.fulfilment,
     merchandiseSubtotalPence: record.merchandiseSubtotalPence,
@@ -64,7 +83,10 @@ export function presentOrder(record: OrderRecord): OrderSummary {
     totalPence: record.totalPence,
     refundedPence: record.refundedPence,
     createdAt: record.createdAt.toISOString(),
-    paidAt: record.paidAt ? record.paidAt.toISOString() : null,
+    paidAt: iso(record.paidAt),
+    checkoutExpiresAt: record.status === "pending_payment" ? iso(record.checkoutExpiresAt) : null,
+    vatIncludedPence: vat ? vat.vatPence : null,
+    vatRateBp: vat?.rateBp ?? null,
     deliveryAddress: record.deliveryAddress
       ? {
           ...(record.deliveryAddress.recipientName
@@ -77,6 +99,28 @@ export function presentOrder(record: OrderRecord): OrderSummary {
           country: record.deliveryAddress.country,
         }
       : null,
+    progress: progress
+      ? {
+          status: progress.status,
+          carrier: progress.carrier,
+          trackingNumber: progress.trackingNumber,
+          trackingUrl: carrierTrackingUrl(progress.carrier, progress.trackingNumber),
+          productionStartedAt: iso(progress.productionStartedAt),
+          dispatchedAt: iso(progress.dispatchedAt),
+          readyForCollectionAt: iso(progress.readyForCollectionAt),
+          possessionAt: iso(progress.possessionAt),
+          cancelledAt: iso(progress.cancelledAt),
+        }
+      : null,
+    refunds: record.refunds.map((refund) => ({
+      amountPence: refund.amountPence,
+      kind: refund.source === "cancellation" ? "cancellation" : "refund",
+      status: refund.status,
+      requestedAt: refund.requestedAt.toISOString(),
+      refundedAt: iso(refund.refundedAt),
+    })),
+    problemReport: { open: window.open, endsAt: iso(window.endsAt) },
+    invoiceAvailable: record.paidAt !== null,
     lines: record.lines.map((line) => ({
       orderLineId: line.orderLineId,
       artworkSlug: line.artworkSlug,
@@ -86,6 +130,8 @@ export function presentOrder(record: OrderRecord): OrderSummary {
       productTitle: line.productTitle,
       variantSku: line.variantSku,
       editionNumber: line.editionNumber,
+      editionSize: line.editionSize,
+      artistName: line.artistName,
       unitPricePence: line.unitPricePence,
       imageUrl: line.imageUrl,
     })),

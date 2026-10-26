@@ -15,6 +15,8 @@ export async function resolveOrCreateStripeCheckoutSession(
   paymentGateway: PaymentCheckoutGateway,
   input: {
     orderId: string;
+    /** "LAX-S-10482", shown to staff in Stripe and on the card statement description. */
+    orderReference: string | null;
     totalPence: number;
     successUrl: string;
     cancelUrl: string;
@@ -50,6 +52,7 @@ export async function resolveOrCreateStripeCheckoutSession(
 
   const session = await paymentGateway.createHostedCheckout({
     orderId: input.orderId,
+    ...(input.orderReference ? { orderReference: input.orderReference } : {}),
     totalPence: input.totalPence,
     successUrl: input.successUrl,
     cancelUrl: input.cancelUrl,

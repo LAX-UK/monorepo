@@ -13,6 +13,7 @@ import { and, eq } from "drizzle-orm";
 import type { ShopUnitOfWorkFactory } from "../../../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
 import { shopPhaseDbSession } from "../../drizzle-shop-transaction-effects.js";
+import { fulfilmentStageStamp } from "../../fulfilment-stage-stamp.js";
 import { orderHasPersonalisedGoods } from "../../shop-order-personalised-goods.js";
 
 const POSSESSION_FULFILMENT_STATUSES: readonly ShopFulfilmentStatus[] = [
@@ -139,7 +140,12 @@ export function createRecordPossessionHandler(deps: {
           }
           await shopPhaseDbSession(tx)
             .update(shopFulfilment)
-            .set({ status: nextStatus, possessionAt, updatedAt: new Date() })
+            .set({
+              status: nextStatus,
+              possessionAt,
+              ...fulfilmentStageStamp(nextStatus, new Date()),
+              updatedAt: new Date(),
+            })
             .where(eq(shopFulfilment.id, command.fulfilmentId));
           const lines = await shopPhaseDbSession(tx)
             .select({ id: shopOrderLine.id })

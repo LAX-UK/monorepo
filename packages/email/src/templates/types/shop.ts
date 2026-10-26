@@ -18,8 +18,11 @@ type ShopTemplateName = (typeof names)[number];
 type ShopTemplateVars = {
   "shop-order-receipt": {
     orderId: string;
+    /** "LAX-S-10482"; absent on receipts queued before orders had references. */
+    orderReference?: string;
     totalAmount: string;
-    vatAmount: string;
+    /** Absent when the order recorded no VAT rate. */
+    vatAmount?: string;
     orderUrl: string;
     lineSummary: string;
   };
@@ -59,6 +62,8 @@ type ShopTemplateVars = {
     editionLabel: string;
   };
   "shop-dispatch-notice": {
+    /** "LAX-S-10482"; absent on notices queued before orders had references. */
+    orderReference?: string;
     artworkTitle: string;
     trackingUrl: string | null;
     fulfilmentSummary: string;
@@ -70,6 +75,8 @@ type ShopTemplateVars = {
   };
   "shop-refund-issued": {
     orderId: string;
+    /** "LAX-S-10482"; absent on emails queued before orders had references. */
+    orderReference?: string;
     amountPence: number;
     buyerEmail: string;
   };

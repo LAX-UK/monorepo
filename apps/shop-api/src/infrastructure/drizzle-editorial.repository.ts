@@ -652,17 +652,29 @@ export function createDrizzleEditorialRepository(
       const rows = await db
         .select()
         .from(shopGeneralEnquiry)
-        .where(eq(shopGeneralEnquiry.identitySubjectId, identitySubjectId))
+        .where(
+          and(
+            eq(shopGeneralEnquiry.identitySubjectId, identitySubjectId),
+            // Problems reported on a Shop order belong to that order, not to the enquiry list.
+            sql`${shopGeneralEnquiry.topic} <> 'order_problem'`,
+          ),
+        )
         .orderBy(desc(shopGeneralEnquiry.createdAt))
         .limit(50);
-      return rows.map((row) => ({
-        enquiryId: row.id,
-        topic: row.topic,
-        contextSlug: row.contextSlug,
-        message: row.message,
-        phone: row.phone,
-        createdAt: row.createdAt,
-      }));
+      return rows.flatMap(({ topic, ...row }) =>
+        topic === "order_problem"
+          ? []
+          : [
+              {
+                enquiryId: row.id,
+                topic,
+                contextSlug: row.contextSlug,
+                message: row.message,
+                phone: row.phone,
+                createdAt: row.createdAt,
+              },
+            ],
+      );
     },
 
     async getDraftEntityById(entity, id) {

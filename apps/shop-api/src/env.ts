@@ -87,6 +87,14 @@ export const shopApiEnvSchema = z.object({
     (val) => (val === "" ? undefined : val),
     z.string().email().optional(),
   ),
+  /**
+   * London Art Exchange Ltd's VAT registration number, printed on Shop invoices. Until it is set
+   * the document is titled "Invoice", not "VAT invoice", because a VAT invoice must carry one.
+   */
+  SHOP_VAT_REGISTRATION_NUMBER: z.preprocess(
+    (val) => (typeof val === "string" && val.trim() === "" ? undefined : val),
+    z.string().trim().min(4).max(20).optional(),
+  ),
   SHOP_FAKE_CHECKOUT_ENABLED: z
     .enum(["true", "false"])
     .default("false")

@@ -1,4 +1,5 @@
 import type { EnquirySender } from "../enquiry-sender.js";
+import type { GeneralEnquiryTopic } from "./editorial.repository.js";
 
 /** Opaque transaction handle passed from infrastructure (same DB tx as the business write). */
 export type ShopNotificationTx = unknown;
@@ -11,8 +12,11 @@ export type ShopNotificationPublisher = {
       identitySubjectId: string;
       fallbackEmail: string | null;
       orderId: string;
+      /** "LAX-S-10482", what the shopper quotes. */
+      orderReference: string;
       totalPence: number;
-      vatAmountPence: number;
+      /** VAT included in the total; null when the order recorded no VAT rate. */
+      vatAmountPence: number | null;
       storefrontUrl: string;
       lines: Array<{
         artworkTitle: string;
@@ -45,7 +49,7 @@ export type ShopNotificationPublisher = {
       idempotencyKey: string;
       sender: EnquirySender;
       opsEmail: string;
-      topic: "general" | "private_viewing" | "art_advisory" | "selling" | "exhibition";
+      topic: GeneralEnquiryTopic;
       contextSlug: string | null;
       message: string;
       phone: string | null;
@@ -85,6 +89,7 @@ export type ShopNotificationPublisher = {
       idempotencyKey: string;
       identitySubjectId: string;
       fallbackEmail: string | null;
+      orderReference: string;
       artworkTitle: string;
       trackingUrl: string | null;
       fulfilmentSummary: string;
@@ -98,6 +103,7 @@ export type ShopNotificationPublisher = {
       identitySubjectId: string;
       fallbackEmail: string | null;
       orderId: string;
+      orderReference: string;
       amountPence: number;
     },
   ): Promise<void>;

@@ -1,4 +1,8 @@
-import type { ShopFulfilmentOption, ShopOrderStatus } from "@auction/shop-domain";
+import type {
+  ShopFulfilmentOption,
+  ShopFulfilmentStatus,
+  ShopOrderStatus,
+} from "@auction/shop-domain";
 import type { CatalogueCursor } from "../catalogue-cursor.js";
 
 export type BasketOwner =
@@ -67,8 +71,50 @@ export type ShopDeliveryAddressRecord = {
   country: string;
 };
 
+export type OrderLineRecord = {
+  orderLineId: string;
+  artworkSlug: string | null;
+  artworkTitle: string | null;
+  artistName: string | null;
+  productVariantId: string | null;
+  productSlug: string | null;
+  productTitle: string | null;
+  variantSku: string | null;
+  /** Null unless the order is paid and still holds the edition (see `holdsEdition`). */
+  editionNumber: number | null;
+  /** Editions in the run; null for merchandise. */
+  editionSize: number | null;
+  unitPricePence: number;
+  /** The rate recorded when the line was sold; null when no VAT policy was configured. */
+  vatRateBp: number | null;
+  /** The artwork's primary image; null for merchandise or a work without one. */
+  imageUrl: string | null;
+};
+
+export type OrderProgressRecord = {
+  status: ShopFulfilmentStatus;
+  carrier: string | null;
+  trackingNumber: string | null;
+  productionStartedAt: Date | null;
+  dispatchedAt: Date | null;
+  readyForCollectionAt: Date | null;
+  possessionAt: Date | null;
+  cancelledAt: Date | null;
+};
+
+export type OrderRefundRecord = {
+  amountPence: number;
+  source: "admin" | "cancellation" | "stripe_dashboard";
+  status: "pending" | "succeeded";
+  requestedAt: Date;
+  /** When Stripe confirmed it; null while pending. */
+  refundedAt: Date | null;
+};
+
 export type OrderRecord = {
   orderId: string;
+  /** "LAX-S-10482". */
+  reference: string;
   status: ShopOrderStatus;
   fulfilment: ShopFulfilmentOption;
   merchandiseSubtotalPence: number;
@@ -76,22 +122,16 @@ export type OrderRecord = {
   totalPence: number;
   /** Sum of refunds Stripe has confirmed for this order. */
   refundedPence: number;
-  lines: Array<{
-    orderLineId: string;
-    artworkSlug: string | null;
-    artworkTitle: string | null;
-    productVariantId: string | null;
-    productSlug: string | null;
-    productTitle: string | null;
-    variantSku: string | null;
-    editionNumber: number | null;
-    unitPricePence: number;
-    /** The artwork's primary image; null for merchandise or a work without one. */
-    imageUrl: string | null;
-  }>;
+  lines: OrderLineRecord[];
   createdAt: Date;
   paidAt: Date | null;
+  checkoutExpiresAt: Date | null;
+  /** When the cancellation period ends; null until delivery or collection is recorded. */
+  refundPeriodEndsAt: Date | null;
   deliveryAddress: ShopDeliveryAddressRecord | null;
+  progress: OrderProgressRecord | null;
+  /** Pending and confirmed refunds, oldest first. Failed and withdrawn ones are left out. */
+  refunds: OrderRefundRecord[];
 };
 
 export const DEFAULT_ORDER_LIST_LIMIT = 50;
@@ -136,6 +176,8 @@ export interface CheckoutWriter {
 export interface OrderReader {
   listOrders(subject: string, input: ListOrdersInput): Promise<ListOrdersResult>;
   getOrder(subject: string, orderId: string): Promise<OrderRecord | null>;
+  /** The buyer's name and email from their LAX profile, for the invoice. */
+  getCustomerProfile(subject: string): Promise<{ name: string | null; email: string | null }>;
 }
 
 export type CommerceRepository = BasketRepository & CheckoutWriter & OrderReader;
@@ -151,6 +193,8 @@ export type HostedCheckoutLineItem = {
 export interface PaymentCheckoutGateway {
   createHostedCheckout(input: {
     orderId: string;
+    /** "LAX-S-10482"; recorded in the session and payment metadata for staff. */
+    orderReference?: string;
     totalPence: number;
     successUrl: string;
     cancelUrl: string;

@@ -12,6 +12,18 @@ import type {
   ArtworkSummaryReadModel,
 } from "../read-models/catalogue.read-model.js";
 
+/**
+ * What a general enquiry is about. `order_problem` comes only from "Report a problem" on a Shop
+ * order; the public enquiry form offers the others.
+ */
+export type GeneralEnquiryTopic =
+  | "general"
+  | "private_viewing"
+  | "art_advisory"
+  | "selling"
+  | "exhibition"
+  | "order_problem";
+
 /** Omitted leaves the stored value unchanged on update; `null` clears it. */
 type SeoFieldsInput = Partial<SeoFields>;
 
@@ -284,7 +296,7 @@ export type EditorialRepository = {
   ): Promise<EditorialPageDetailReadModel | null>;
   insertGeneralEnquiry(input: {
     sender: EnquirySender;
-    topic: "general" | "private_viewing" | "art_advisory" | "selling" | "exhibition";
+    topic: GeneralEnquiryTopic;
     contextSlug: string | null;
     message: string;
     phone: string | null;
@@ -292,7 +304,7 @@ export type EditorialRepository = {
   listGeneralEnquiriesForSubject(identitySubjectId: string): Promise<
     Array<{
       enquiryId: string;
-      topic: "general" | "private_viewing" | "art_advisory" | "selling" | "exhibition";
+      topic: Exclude<GeneralEnquiryTopic, "order_problem">;
       contextSlug: string | null;
       message: string;
       phone: string | null;

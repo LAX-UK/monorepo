@@ -83,6 +83,7 @@ function orderFilterConditions(input: AdminOrderListFilters): SQL[] {
     const idPrefix = contains.slice(1);
     const search = or(
       sql`${shopOrder.id}::text ILIKE ${idPrefix}`,
+      sql`${shopOrder.reference} ILIKE ${contains}`,
       sql`${shopUserProfile.email} ILIKE ${contains}`,
       sql`${shopUserProfile.name} ILIKE ${contains}`,
       sql`${shopOrder.deliveryRecipientName} ILIKE ${contains}`,
@@ -184,6 +185,7 @@ export function createDrizzleAdminReadRepository(
           limit,
           ({ order, buyerName, buyerEmail }) => ({
             orderId: order.id,
+            reference: order.reference,
             status: order.status,
             totalPence: order.totalPence,
             fulfilment: order.fulfilment,

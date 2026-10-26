@@ -89,10 +89,16 @@ export function computeEffectiveLineRefundedPence(
 async function resolveShopOrderForPaymentIntent(
   db: Database,
   paymentIntentId: string,
-): Promise<{ orderId: string; totalPence: number; identitySubjectId: string } | null> {
+): Promise<{
+  orderId: string;
+  reference: string;
+  totalPence: number;
+  identitySubjectId: string;
+} | null> {
   const [order] = await db
     .select({
       id: shopOrder.id,
+      reference: shopOrder.reference,
       totalPence: shopOrder.totalPence,
       identitySubjectId: shopOrder.identitySubjectId,
     })
@@ -102,6 +108,7 @@ async function resolveShopOrderForPaymentIntent(
   if (!order) return null;
   return {
     orderId: order.id,
+    reference: order.reference,
     totalPence: order.totalPence,
     identitySubjectId: order.identitySubjectId,
   };
@@ -374,6 +381,7 @@ export async function completeRefundFromWebhook(
           identitySubjectId: order.identitySubjectId,
           fallbackEmail: null,
           orderId: order.orderId,
+          orderReference: order.reference,
           amountPence: input.amountPence,
         });
       }

@@ -71,6 +71,7 @@ export function createDrizzleCheckoutRepository(
     ]);
     return resolveOrCreateStripeCheckoutSession(db, paymentGateway, {
       orderId: pending.orderId,
+      orderReference: orderRow?.reference ?? null,
       totalPence: pending.totalPence,
       successUrl: input.successUrl,
       cancelUrl: input.cancelUrl,
@@ -328,6 +329,7 @@ export function createDrizzleCheckoutRepository(
 
       return resolveOrCreateStripeCheckoutSession(db, paymentGateway, {
         orderId: order.id,
+        orderReference: order.reference,
         totalPence: order.totalPence,
         successUrl: input.successUrl,
         cancelUrl: input.cancelUrl,

@@ -6,6 +6,7 @@ import type { TemplateVarsByName } from "../types.js";
 export const subject = "Your LAX Shop order confirmation";
 
 export default function ShopOrderReceiptEmail({
+  orderReference,
   totalAmount,
   vatAmount,
   orderUrl,
@@ -16,12 +17,17 @@ export default function ShopOrderReceiptEmail({
       category="finance"
       eyebrow="Order confirmed"
       preview={`Thank you for your order (${totalAmount}).`}
-      title="Thank you for your order"
+      title={orderReference ? `Order ${orderReference} is confirmed` : "Thank you for your order"}
     >
       <TextBlock>
-        We received your payment of {totalAmount} (including {vatAmount} VAT).
+        {vatAmount
+          ? `We received your payment of ${totalAmount} (including ${vatAmount} VAT).`
+          : `We received your payment of ${totalAmount}.`}
       </TextBlock>
       <TextBlock>{lineSummary}</TextBlock>
+      <TextBlock>
+        Your order page shows its progress and the invoice, and is where to report a problem.
+      </TextBlock>
       <Button href={orderUrl}>View your order</Button>
     </Layout>
   );

@@ -4,11 +4,13 @@ import {
   SHOP_FULFILMENT_STATUSES,
   type ShopFulfilmentStatus,
   canTransitionFulfilmentStatus,
+  carrierTrackingUrl,
 } from "@auction/shop-domain";
 import { eq } from "drizzle-orm";
 import type { ShopUnitOfWorkFactory } from "../../../application/ports/shop-unit-of-work.js";
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
 import { shopPhaseDbSession } from "../../drizzle-shop-transaction-effects.js";
+import { fulfilmentStageStamp } from "../../fulfilment-stage-stamp.js";
 
 function parseFulfilmentStatus(raw: string): ShopFulfilmentStatus {
   if ((SHOP_FULFILMENT_STATUSES as readonly string[]).includes(raw)) {
@@ -26,16 +28,6 @@ export type UpdateFulfilmentCommand = {
   carrier?: string;
   trackingNumber?: string;
 };
-
-function buildTrackingUrl(carrier: string | null, trackingNumber: string | null): string | null {
-  if (!trackingNumber?.trim()) return null;
-  const num = trackingNumber.trim();
-  const c = carrier?.trim().toLowerCase() ?? "";
-  if (c.includes("royal mail")) {
-    return `https://www.royalmail.com/track-your-item#/tracking-results/${encodeURIComponent(num)}`;
-  }
-  return null;
-}
 
 function fulfilmentSummary(
   status: string,
@@ -91,6 +83,7 @@ export function createUpdateFulfilmentHandler(deps: {
               ...(command.trackingNumber !== undefined
                 ? { trackingNumber: command.trackingNumber }
                 : {}),
+              ...fulfilmentStageStamp(nextStatus, new Date()),
               updatedAt: new Date(),
             })
             .where(eq(shopFulfilment.id, command.fulfilmentId));
@@ -115,7 +108,10 @@ export function createUpdateFulfilmentHandler(deps: {
             });
 
             const [orderRow] = await shopPhaseDbSession(tx)
-              .select({ identitySubjectId: shopOrder.identitySubjectId })
+              .select({
+                identitySubjectId: shopOrder.identitySubjectId,
+                reference: shopOrder.reference,
+              })
               .from(shopOrder)
               .where(eq(shopOrder.id, existing.orderId))
               .limit(1);
@@ -136,8 +132,9 @@ export function createUpdateFulfilmentHandler(deps: {
                 idempotencyKey: `dispatch:${command.fulfilmentId}:${command.idempotencyKey}`,
                 identitySubjectId: orderRow.identitySubjectId,
                 fallbackEmail: null,
+                orderReference: orderRow.reference,
                 artworkTitle: lineRow?.title ?? "Your order",
-                trackingUrl: buildTrackingUrl(carrier, trackingNumber),
+                trackingUrl: carrierTrackingUrl(carrier, trackingNumber),
                 fulfilmentSummary: fulfilmentSummary(nextStatus, carrier, trackingNumber),
               });
             }

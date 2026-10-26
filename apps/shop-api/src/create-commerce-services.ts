@@ -1,3 +1,4 @@
+import { legalEntityFor } from "@auction/branding";
 import type { Database } from "@auction/db";
 import {
   createCancelCheckoutOrderHandler,
@@ -95,6 +96,11 @@ export function createCommerceServices(
       cancelCheckoutOrder: createCancelCheckoutOrderHandler(repository),
       listOrders: createListOrdersHandler(repository),
       getOrder: createGetOrderHandler(repository),
+      getCustomerProfile: (subject) => repository.getCustomerProfile(subject),
+      invoiceIssuer: {
+        supplier: legalEntityFor("shop"),
+        vatNumber: env.SHOP_VAT_REGISTRATION_NUMBER ?? legalEntityFor("shop").vatNumber ?? null,
+      },
       savedAddresses: {
         list: createListSavedDeliveryAddressesHandler(addressBook),
         save: createSaveDeliveryAddressHandler(addressBook),
