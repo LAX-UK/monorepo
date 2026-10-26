@@ -618,6 +618,9 @@ importers:
       react-dom:
         specifier: ^19.1.1
         version: 19.2.5(react@19.2.5)
+      react-hook-form:
+        specifier: ^7.56.0
+        version: 7.72.1(react@19.2.5)
       zod:
         specifier: ^3.24.1
         version: 3.25.76

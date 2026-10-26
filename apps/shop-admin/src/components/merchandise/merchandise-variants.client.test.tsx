@@ -20,11 +20,17 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ refresh }),
   usePathname: () => "/merchandise/p-1",
 }));
-vi.mock("@auction/ui", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@auction/ui")>()),
-  toast: { success: vi.fn() },
+vi.mock("sonner", () => ({
+  toast: Object.assign(vi.fn(), { success: vi.fn(), error: vi.fn(), warning: vi.fn() }),
+  Toaster: () => null,
 }));
 
+vi.mock("@auction/ui/components/dropdown-menu", async () =>
+  (await import("@/test/radix-stubs")).dropdownMenuStub(),
+);
+
+const { installLayoutStubs } = await import("@/test/radix-stubs");
+installLayoutStubs();
 const { MerchandiseVariants } = await import("./merchandise-variants.client");
 
 const PRODUCT = "5b1c2d3e-0000-4000-8000-000000000001";
@@ -39,6 +45,11 @@ const variant: MerchandiseVariantDetail = {
 
 function renderVariants(variants: MerchandiseVariantDetail[] = [variant]) {
   return render(<MerchandiseVariants productId={PRODUCT} variants={variants} />);
+}
+
+/** A row's menu item; the stubbed menu keeps its items in the page. */
+function menuItem(name: RegExp) {
+  return screen.getAllByRole("menuitem", { name })[0] as HTMLElement;
 }
 
 function change(label: string, value: string) {
@@ -79,7 +90,7 @@ describe("merchandise variants", () => {
       fireEvent.click(screen.getByRole("button", { name: "Add variant" }));
       const dialog = await screen.findByRole("dialog");
       change("SKU", "TOTE-02");
-      change("Price (£)", "18.50");
+      change("Price", "18.50");
       fireEvent.click(within(dialog).getByRole("button", { name: "Add variant" }));
 
       await waitFor(() =>
@@ -113,7 +124,7 @@ describe("merchandise variants", () => {
       fireEvent.click(screen.getByRole("button", { name: "Add variant" }));
       const dialog = await screen.findByRole("dialog");
       change("SKU", "TOTE-01");
-      change("Price (£)", "10");
+      change("Price", "10");
       fireEvent.click(within(dialog).getByRole("button", { name: "Add variant" }));
 
       await waitFor(() =>
@@ -126,17 +137,17 @@ describe("merchandise variants", () => {
   describe("editing", () => {
     it("starts from the saved SKU and price", async () => {
       renderVariants();
-      fireEvent.click(screen.getByRole("button", { name: /Edit/ }));
+      fireEvent.click(menuItem(/Edit/));
       await screen.findByRole("dialog");
       expect(screen.getByLabelText("SKU")).toHaveValue("TOTE-01");
-      expect(screen.getByLabelText("Price (£)")).toHaveValue("15.00");
+      expect(screen.getByLabelText("Price")).toHaveValue("15.00");
     });
   });
 
   describe("adjusting stock", () => {
     async function openStock() {
       renderVariants();
-      fireEvent.click(screen.getByRole("button", { name: /Adjust stock/ }));
+      fireEvent.click(menuItem(/Adjust stock/));
       return screen.findByRole("dialog");
     }
 
@@ -176,7 +187,7 @@ describe("merchandise variants", () => {
   describe("archiving", () => {
     it("states the consequence and archives only on confirmation", async () => {
       renderVariants();
-      fireEvent.click(screen.getByRole("button", { name: /Archive/ }));
+      fireEvent.click(menuItem(/Archive/));
       const dialog = await screen.findByRole("dialog");
       expect(within(dialog).getByText(/stops being sold straight away/)).toBeInTheDocument();
       expect(setMerchandiseVariantArchived).not.toHaveBeenCalled();
@@ -191,8 +202,8 @@ describe("merchandise variants", () => {
 
     it("restores an archived variant straight away", async () => {
       renderVariants([{ ...variant, status: "archived" }]);
-      expect(screen.getByText("Archived")).toBeInTheDocument();
-      fireEvent.click(screen.getByRole("button", { name: /Restore/ }));
+      expect(screen.getAllByText("Archived").length).toBeGreaterThan(0);
+      fireEvent.click(menuItem(/Restore/));
       await waitFor(() =>
         expect(setMerchandiseVariantArchived).toHaveBeenCalledWith(
           expect.objectContaining({ archived: false }),

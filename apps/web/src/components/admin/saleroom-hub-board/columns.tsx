@@ -1,87 +1,102 @@
 "use client";
 
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
-import { AdminTableDateTimeCell } from "@/components/admin/admin-table-datetime-cell";
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { SaleroomHubSessionBadge } from "@/components/admin/saleroom-hub-board/saleroom-hub-session-badge";
-import { SaleDeliveryModeBadge } from "@/features/saleroom/components/shared/sale-delivery-mode-badge";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminSaleListRow } from "@/lib/data/http/admin.server";
+import { deliveryModeShortLabel } from "@/lib/presenters/delivery-mode/delivery-mode-registry";
+import {
+  type DataColumn,
+  type OverflowAction,
+  PrimaryCell,
+  StaffDate,
+  StatusBadge,
+  rowActionsColumn,
+} from "@auction/staff-ui";
 import type { SaleDeliveryMode } from "@auction/types";
-import { Button } from "@auction/ui";
 import { toRequiredIsoString } from "@auction/validators";
-import type { ColumnDef } from "@tanstack/react-table";
+import { DoorOpen, UserCheck } from "lucide-react";
 import Link from "next/link";
 
 type Row = AdminSaleListRow;
 
-export function saleroomHubColumns(): ColumnDef<Row>[] {
+function rowActions(row: Row): OverflowAction[] {
   return [
     {
-      accessorKey: "sale.title",
-      header: "Sale",
-      cell: ({ row }) => (
-        <Link
-          href={`/admin/saleroom/${row.original.sale.id}`}
-          className="font-medium text-link hover:underline"
-        >
-          {row.original.sale.title}
-        </Link>
-      ),
+      id: "console",
+      label: "Open clerk console",
+      icon: DoorOpen,
+      href: `/admin/saleroom/${row.sale.id}`,
     },
     {
-      id: "delivery",
-      header: "Delivery",
-      cell: ({ row }) => (
-        <SaleDeliveryModeBadge mode={row.original.sale.deliveryMode as SaleDeliveryMode} />
+      id: "check-in",
+      label: "Check in bidders",
+      icon: UserCheck,
+      href: `${saleDetailTabHref(row.sale.id, "registrations")}#check-in`,
+    },
+  ];
+}
+
+export function saleroomHubColumns(): DataColumn<Row>[] {
+  return [
+    {
+      id: "sale",
+      header: "Sale",
+      mobile: "title",
+      cell: (row) => (
+        <PrimaryCell
+          href={`/admin/saleroom/${row.sale.id}`}
+          Link={Link}
+          secondary={deliveryModeShortLabel(row.sale.deliveryMode as SaleDeliveryMode)}
+        >
+          {row.sale.title}
+        </PrimaryCell>
       ),
-      enableSorting: false,
     },
     {
       id: "schedule",
-      header: "Schedule",
-      cell: ({ row }) => (
-        <div className="flex min-w-0 flex-col gap-0.5">
-          <AdminTableDateTimeCell
-            iso={toRequiredIsoString(row.original.sale.startTime)}
-            mode="deadline"
-            deadlineKind="start"
-          />
-          <AdminTableDateTimeCell
-            iso={toRequiredIsoString(row.original.sale.endTime)}
-            mode="deadline"
-            live={row.original.sale.status === "active"}
-          />
-        </div>
-      ),
-      enableSorting: false,
+      header: "Starts",
+      width: "176px",
+      mobile: "meta",
+      truncate: false,
+      cell: (row) => <StaffDate value={toRequiredIsoString(row.sale.startTime)} withTime />,
+    },
+    {
+      id: "ends",
+      header: "Ends",
+      width: "176px",
+      hideBelow: "lg",
+      mobile: "hidden",
+      truncate: false,
+      cell: (row) => <StaffDate value={toRequiredIsoString(row.sale.endTime)} withTime />,
     },
     {
       id: "session",
-      header: "Session",
-      cell: ({ row }) => <SaleroomHubSessionBadge saleId={row.original.sale.id} />,
-      enableSorting: false,
+      header: "Room",
+      width: "120px",
+      mobile: "badge",
+      truncate: false,
+      cell: (row) => <SaleroomHubSessionBadge saleId={row.sale.id} />,
     },
     {
       id: "status",
-      header: "Status",
-      cell: ({ row }) => <AdminStatusBadge domain="sale" status={row.original.sale.status} />,
+      header: "Sale status",
+      width: "120px",
+      mobile: "hidden",
+      truncate: false,
+      cell: (row) => {
+        const status = staffStatus("sale", row.sale.status);
+        return (
+          <StatusBadge tone={status.tone} live={status.live ?? false}>
+            {status.label}
+          </StatusBadge>
+        );
+      },
     },
-    {
-      id: "open",
-      header: "",
-      cell: ({ row }) => (
-        <div className="flex flex-wrap gap-2">
-          <Button variant="secondary" size="sm" asChild>
-            <Link href={`/admin/saleroom/${row.original.sale.id}`}>Clerk console</Link>
-          </Button>
-          <Button variant="outline" size="sm" asChild>
-            <Link href={`${saleDetailTabHref(row.original.sale.id, "registrations")}#check-in`}>
-              Check-in
-            </Link>
-          </Button>
-        </div>
-      ),
-      enableSorting: false,
-    },
+    rowActionsColumn<Row>({
+      actions: rowActions,
+      label: (row) => `Actions for ${row.sale.title}`,
+      Link,
+    }),
   ];
 }

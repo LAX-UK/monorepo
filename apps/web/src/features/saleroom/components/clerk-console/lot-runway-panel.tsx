@@ -6,24 +6,16 @@ import {
   PanelHeading,
 } from "@/features/saleroom/components/clerk-console/console-panel";
 import { type LotRunwayRow, useLotRunway } from "@/features/saleroom/hooks/use-lot-runway";
+import { formatSaleroomMoney } from "@/features/saleroom/lib/format-saleroom-money";
 import type { ClerkActionPolicy } from "@/features/saleroom/types/clerk-console.types";
 import { adminSaleroomAdvanceAction } from "@/lib/actions/admin";
+import { staffRunwayLotStatus } from "@/lib/admin/staff-kit-status";
 import { resolveLotCurrency } from "@/lib/money/currency";
 import { isLotAdvanceable } from "@/lib/saleroom/lot-run-progress";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import { formatLotRunListLabel } from "@/lib/saleroom/sort-lots-for-run-list";
-import { formatMoney } from "@/lib/ui/format";
+import { EnumSelect, Field, StaffButton, StatusBadge, cn } from "@auction/staff-ui";
 import type { Lot } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
-import { Label } from "@auction/ui/components/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@auction/ui/components/select";
-import { Check, Minus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 type Props = {
@@ -38,41 +30,37 @@ type Props = {
   hammeredLotIds: ReadonlySet<string>;
 };
 
-function RunwayRow({ row }: { row: LotRunwayRow }) {
+/** Each outcome reads as its own word, never only as a colour: sold, passed or withdrawn. */
+function RunwayRow({ row, paused }: { row: LotRunwayRow; paused: boolean }) {
   const { lot, label, outcome, isCurrent, isNext } = row;
-
-  let rowClass = "rounded-md px-3 py-2 font-body text-sm transition-colors duration-200 ";
-  if (isCurrent) {
-    rowClass += "bg-primary/10 font-medium text-foreground ring-1 ring-primary/20";
-  } else if (isNext) {
-    rowClass += "border border-outline-variant/30 bg-surface-container-low text-on-surface";
-  } else if (outcome === "sold") {
-    rowClass += "text-secondary opacity-80";
-  } else if (outcome === "no_sale" || outcome === "skipped") {
-    rowClass += "text-secondary opacity-60";
-  } else {
-    rowClass += "text-on-surface-variant";
-  }
-
-  const prefix = isCurrent ? "● " : isNext ? "→ " : "  ";
+  const status = staffRunwayLotStatus(isCurrent ? "on_block" : isNext ? "next" : outcome);
+  const done = outcome === "sold" || outcome === "no_sale" || outcome === "skipped";
 
   return (
-    <li className={rowClass} data-lot-id={lot.id} data-current={isCurrent ? "true" : undefined}>
-      <span className="flex items-center justify-between gap-2">
-        <span>
-          {prefix}
-          {label}
-        </span>
+    <li
+      className={cn(
+        "flex items-center justify-between gap-3 rounded-staff-sm px-3 py-2 text-staff-sm",
+        isCurrent ? "bg-staff-selected font-medium text-staff-fg" : "text-staff-fg",
+        done && !isCurrent && "text-staff-muted",
+      )}
+      data-lot-id={lot.id}
+      data-current={isCurrent ? "true" : undefined}
+      aria-current={isCurrent ? "true" : undefined}
+    >
+      <span className="min-w-0 truncate">{label}</span>
+      <span className="flex shrink-0 items-center gap-2">
         {outcome === "sold" ? (
-          <span className="flex items-center gap-1 text-xs tabular-nums">
-            <Check className="size-3.5 shrink-0" aria-hidden />
-            {formatMoney(lot.currentPrice, resolveLotCurrency(lot))}
+          <span className="tabular-nums">
+            {formatSaleroomMoney(lot.currentPrice, resolveLotCurrency(lot))}
           </span>
-        ) : outcome === "no_sale" ? (
-          <span className="flex items-center gap-1 text-xs">
-            <Minus className="size-3.5 shrink-0" aria-hidden />
-            No sale
-          </span>
+        ) : null}
+        {status ? (
+          <StatusBadge
+            tone={paused && isCurrent ? "warning" : status.tone}
+            live={!(paused && isCurrent) && (status.live ?? false)}
+          >
+            {status.label}
+          </StatusBadge>
         ) : null}
       </span>
     </li>
@@ -126,7 +114,7 @@ export function LotRunwayPanel({
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <PanelHeading>Lot runway</PanelHeading>
         {progress.totalLots > 0 ? (
-          <p className="font-body text-xs text-secondary">
+          <p className="text-staff-sm text-staff-muted tabular-nums">
             {progress.completedLots} of {progress.totalLots} complete · {progress.remainingLots}{" "}
             remaining
           </p>
@@ -134,12 +122,19 @@ export function LotRunwayPanel({
       </div>
 
       {orderedLots.length === 0 ? (
-        <p className="mt-2 font-body text-sm text-secondary">No lots on this sale yet.</p>
+        <p className="mt-2 text-staff-sm text-staff-muted">No lots on this sale yet.</p>
       ) : (
         <>
-          <ul ref={listRef} className="mt-3 max-h-[min(420px,50vh)] space-y-1 overflow-y-auto pr-1">
+          <ul
+            ref={listRef}
+            // The list scrolls on its own, so a keyboard has to be able to reach it.
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be focusable
+            tabIndex={0}
+            aria-label="Lots in run order"
+            className="staff-focus mt-3 flex max-h-[min(420px,50vh)] flex-col gap-0.5 overflow-y-auto rounded-staff-sm"
+          >
             {runway.map((row) => (
-              <RunwayRow key={row.lot.id} row={row} />
+              <RunwayRow key={row.lot.id} row={row} paused={sessionStatus === "paused"} />
             ))}
           </ul>
 
@@ -147,10 +142,9 @@ export function LotRunwayPanel({
             <div className="mt-4">
               <SaleroomPendingSubmit
                 pendingLabel="Advancing…"
-                variant="default"
-                className="min-h-11 w-full sm:w-auto"
+                variant="primary"
+                size="live"
                 disabled={!sessionLive}
-                aria-disabled={!sessionLive}
                 onRun={() => adminSaleroomAdvanceAction({ saleId, lotId: nextLot.id })}
               >
                 Advance next ({formatLotRunListLabel(nextLot)})
@@ -159,46 +153,36 @@ export function LotRunwayPanel({
           ) : null}
 
           {policy.jumpToLotInRunway ? (
-            <div className="mt-3 flex flex-wrap items-end gap-3">
-              <div className="flex w-full flex-col gap-1 font-body text-xs text-secondary sm:w-auto">
-                <Label htmlFor={`saleroom-advance-lot-${saleId}`}>Jump to lot</Label>
-                <Select value={advanceLotId} onValueChange={setAdvanceLotId}>
-                  <SelectTrigger
-                    id={`saleroom-advance-lot-${saleId}`}
-                    className="w-full font-body text-sm sm:min-w-[240px]"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {advanceableLots.map((l) => (
-                      <SelectItem key={l.id} value={l.id}>
-                        {formatLotRunListLabel(l)}
-                        {l.id === currentLotId ? " (on block)" : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="mt-4 flex flex-wrap items-end gap-3">
+              <Field label="Jump to lot" className="w-full sm:w-72">
+                <EnumSelect
+                  size="live"
+                  value={advanceLotId || null}
+                  onValueChange={setAdvanceLotId}
+                  options={advanceableLots.map((l) => ({
+                    value: l.id,
+                    label: `${formatLotRunListLabel(l)}${l.id === currentLotId ? " (on the block)" : ""}`,
+                  }))}
+                />
+              </Field>
               <SaleroomPendingSubmit
                 pendingLabel="Advancing…"
-                variant="outline"
-                className="min-h-11 w-full sm:w-auto"
+                variant="secondary"
+                size="live"
                 disabled={!sessionLive || advanceableLots.length === 0}
-                aria-disabled={!sessionLive}
                 onRun={() => adminSaleroomAdvanceAction({ saleId, lotId: advanceLotId })}
               >
-                On the block
+                Put on the block
               </SaleroomPendingSubmit>
               {nextLot ? (
-                <Button
-                  type="button"
+                <StaffButton
                   variant="ghost"
-                  className="min-h-11 w-full sm:w-auto"
+                  size="live"
                   disabled={!sessionLive}
                   onClick={() => setAdvanceLotId(nextLot.id)}
                 >
-                  Select next
-                </Button>
+                  Select next lot
+                </StaffButton>
               ) : null}
             </div>
           ) : null}

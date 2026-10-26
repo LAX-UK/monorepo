@@ -3,38 +3,45 @@ import {
   PanelHeading,
 } from "@/features/saleroom/components/clerk-console/console-panel";
 import type { SaleroomActivityEntry } from "@/features/saleroom/types/staff-saleroom.vm";
-import { formatDateTime, formatRelativeTime } from "@/lib/ui/format";
+import { formatStaffDateTime, formatStaffRelative } from "@auction/staff-ui";
 
 type Props = {
   entries: SaleroomActivityEntry[];
   panelVariant?: "bordered" | "plain";
 };
 
+/** What has happened in the room, newest first, as it arrives. */
 export function SaleroomActivityLog({ entries, panelVariant = "bordered" }: Props) {
   return (
     <ConsolePanel variant={panelVariant}>
-      <PanelHeading>Activity log</PanelHeading>
-      <ul
-        className="mt-3 max-h-64 space-y-2 overflow-y-auto font-body text-xs text-secondary transition-opacity duration-200"
+      <PanelHeading>Activity</PanelHeading>
+      <div
+        // The list scrolls on its own, so a keyboard has to be able to reach it.
+        // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be focusable
+        tabIndex={0}
+        className="staff-focus mt-3 flex max-h-64 flex-col gap-2 overflow-y-auto rounded-staff-xs text-staff-sm text-staff-muted"
         role="log"
         aria-live="polite"
         aria-relevant="additions"
         aria-label="Saleroom activity"
       >
         {entries.length === 0 ? (
-          <li>Waiting for events…</li>
+          <p>Waiting for events…</p>
         ) : (
           entries.map((entry) => (
-            <li key={entry.id} className="flex flex-wrap items-baseline gap-2">
-              <span className="font-medium text-foreground">{entry.label}</span>
-              {entry.detail ? <span className="opacity-80">{entry.detail}</span> : null}
-              <span className="opacity-60 tabular-nums" title={formatDateTime(entry.occurredAt)}>
-                {formatRelativeTime(entry.occurredAt)}
+            <p key={entry.id} className="flex flex-wrap items-baseline gap-x-2">
+              <span className="font-medium text-staff-fg">{entry.label}</span>
+              {entry.detail ? <span>{entry.detail}</span> : null}
+              <span
+                className="tabular-nums"
+                title={formatStaffDateTime(entry.occurredAt, { zoneLabel: true })}
+              >
+                {formatStaffRelative(entry.occurredAt)}
               </span>
-            </li>
+            </p>
           ))
         )}
-      </ul>
+      </div>
     </ConsolePanel>
   );
 }

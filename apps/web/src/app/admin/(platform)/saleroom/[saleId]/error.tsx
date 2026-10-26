@@ -1,9 +1,9 @@
 "use client";
 
-import { createAdminDetailRouteError } from "@/components/admin/create-admin-detail-route-error";
+import { createStaffPageError } from "@/components/admin/staff/create-staff-page-error";
 
-export default createAdminDetailRouteError({
-  title: "Saleroom console",
+export default createStaffPageError({
+  title: "Clerk console",
   backHref: "/admin/saleroom",
-  backLabel: "Back to saleroom",
+  backLabel: "Back to the saleroom",
 });

@@ -2,8 +2,7 @@
 
 import { partitionClerkConsoleAlerts } from "@/features/saleroom/lib/clerk-console-alerts";
 import type { ClerkAlertDefinition } from "@/features/saleroom/types/clerk-console.types";
-import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
+import { Notice, StaffButton, TextLink } from "@auction/staff-ui";
 import Link from "next/link";
 import { useState } from "react";
 
@@ -17,9 +16,9 @@ function renderAlertBody(alert: ClerkAlertDefinition, registrationsHref?: string
     return (
       <>
         No paddles assigned yet.{" "}
-        <Link href={registrationsHref} className="font-medium text-link underline">
+        <TextLink href={registrationsHref} Link={Link}>
           Check in bidders
-        </Link>{" "}
+        </TextLink>{" "}
         so clerks can place in-room bids.
       </>
     );
@@ -27,6 +26,7 @@ function renderAlertBody(alert: ClerkAlertDefinition, registrationsHref?: string
   return alert.body;
 }
 
+/** What needs a clerk's attention before or during the sale, most important first. */
 export function ClerkConsoleAlertsPanel({ alerts, registrationsHref }: Props) {
   const [showAllAlerts, setShowAllAlerts] = useState(false);
   const { visible, hiddenCount } = partitionClerkConsoleAlerts(alerts, showAllAlerts);
@@ -34,23 +34,23 @@ export function ClerkConsoleAlertsPanel({ alerts, registrationsHref }: Props) {
   if (alerts.length === 0) return null;
 
   return (
-    <div className="space-y-3">
+    <div className="flex flex-col gap-3">
       {visible.map((alert) => (
-        <Alert key={alert.key} variant={alert.variant}>
-          <AlertTitle>{alert.title}</AlertTitle>
-          <AlertDescription>{renderAlertBody(alert, registrationsHref)}</AlertDescription>
-        </Alert>
+        <Notice
+          key={alert.key}
+          tone={alert.variant === "destructive" ? "danger" : "warning"}
+          alert={alert.variant === "destructive"}
+          title={alert.title}
+        >
+          {renderAlertBody(alert, registrationsHref)}
+        </Notice>
       ))}
       {hiddenCount > 0 ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          className="h-auto px-0 font-body text-sm text-secondary"
-          onClick={() => setShowAllAlerts(true)}
-        >
-          +{hiddenCount} more alert{hiddenCount === 1 ? "" : "s"}
-        </Button>
+        <div>
+          <StaffButton variant="ghost" size="sm" onClick={() => setShowAllAlerts(true)}>
+            Show {hiddenCount} more {hiddenCount === 1 ? "alert" : "alerts"}
+          </StaffButton>
+        </div>
       ) : null}
     </div>
   );

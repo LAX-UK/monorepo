@@ -25,7 +25,8 @@ export type EnumSelectProps<T extends string> = {
   onValueChange: (value: T) => void;
   options: readonly EnumOption<T>[];
   placeholder?: string;
-  size?: "sm" | "md";
+  /** `live` is 44px at every pointer, for fields filled under time pressure. */
+  size?: "sm" | "md" | "live";
   disabled?: boolean;
   invalid?: boolean;
   id?: string;
@@ -70,7 +71,9 @@ export function EnumSelect<T extends string>({
         className={cn(
           staffFieldBox,
           "justify-between shadow-none",
-          size === "sm" ? "h-control-sm text-staff-sm" : "h-control-md text-staff-md",
+          size === "sm" && "h-control-sm text-staff-sm",
+          size === "md" && "h-control-md text-staff-md",
+          size === "live" && "h-11 text-staff-md",
           "staff-focus focus:ring-0 focus:ring-offset-0",
           "aria-invalid:border-staff-danger",
           "disabled:cursor-not-allowed disabled:border-staff-line disabled:bg-staff-sunken disabled:text-staff-disabled disabled:opacity-100",

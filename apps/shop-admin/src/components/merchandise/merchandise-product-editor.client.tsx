@@ -1,14 +1,9 @@
 "use client";
 
-import { TextAreaField, TextField } from "@/components/forms/fields";
-import { FormErrorSummary } from "@/components/forms/form-error-summary";
-import { FormScopeProvider } from "@/components/forms/form-field";
+import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
 import { MerchandiseConflictBanner } from "@/components/merchandise/merchandise-conflict-banner.client";
-import { MerchandiseStatusBadge } from "@/components/merchandise/merchandise-status-badge";
 import { MerchandiseVariants } from "@/components/merchandise/merchandise-variants.client";
-import { formatAdminDetailDateTime } from "@/lib/admin-detail-format";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
-import { type FieldErrors, hasFieldErrors } from "@/lib/form-validation";
 import {
   conflictField,
   slugFromTitle,
@@ -22,20 +17,32 @@ import {
   setMerchandiseProductArchived,
 } from "@/server/application/admin-merchandise-actions.server";
 import type { AdminMutationResult } from "@/server/application/admin-mutation-result";
+import { presentStatus } from "@/server/domain/staff-status";
 import type { MerchandiseProductDetail } from "@auction/shop-contracts";
-import { UnsavedChangesDialog, useUnsavedChanges } from "@auction/staff-ui";
 import {
-  Alert,
-  AlertDescription,
-  Button,
-  ConfirmDialog,
-  LoadingButton,
-  StatusBadge,
-  StickySaveBar,
+  ConfirmActionDialog,
+  Field,
+  FieldRow,
+  FormActions,
+  FormErrorSummary,
+  FormPage,
+  FormSection,
+  MappedStatusBadge,
+  MoneyInput,
+  Notice,
+  StaffButton,
+  TextArea,
+  TextInput,
+  UnsavedChangesDialog,
+  formatStaffDateTime,
+  parsePoundsToPence,
   toast,
-} from "@auction/ui";
+  useUnsavedChanges,
+} from "@auction/staff-ui";
+import { Archive, ArchiveRestore, Save } from "@auction/staff-ui/icons";
+import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useId, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 type Form = {
   title: string;
@@ -52,6 +59,12 @@ type Dialog = "archive" | "reload" | "overwrite";
 
 const FORM_ID = "merchandise-product-form";
 const newKey = () => crypto.randomUUID();
+const presentMerchandiseStatus = presentStatus("merchandise");
+
+/** Fields in the order they appear, which is the order the error summary lists them. */
+const FIELD_ORDER = ["title", "slug", "description", "sku", "price", "onHand"] as const;
+type FormField = (typeof FIELD_ORDER)[number];
+const fieldId = (field: FormField) => `product-${field}`;
 
 function formFrom(detail: MerchandiseProductDetail | null): Form {
   return {
@@ -76,32 +89,47 @@ function failureFrom(
 }
 
 /**
- * Create or edit one product. Saving is explicit, from a sticky bar; archiving asks first; and
- * edits are protected from being lost by leaving the page or from silently replacing a newer
- * save by someone else. Variants are listed below the form for a saved product, each change
- * to them saved on its own.
+ * Create or edit one product. Saving is explicit; archiving asks first; and edits are protected
+ * from being lost by leaving the page or from silently replacing a newer save by someone else.
+ * Errors show beside their field and in a summary after a failed save, and clear as each field is
+ * fixed. Variants are listed below the form for a saved product, each change to them saved on its
+ * own.
  */
 export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProductDetail | null }) {
   const productId = detail?.productId ?? null;
   const router = useRouter();
   const pathname = usePathname();
-  const scope = useId();
 
   const [form, setForm] = useState<Form>(() => formFrom(detail));
+  const [baseline, setBaseline] = useState<Form>(form);
   // A new product's slug follows its title until staff type their own.
   const [slugTouched, setSlugTouched] = useState(false);
   const [version, setVersion] = useState<string | null>(detail?.version ?? null);
   const [savedAt, setSavedAt] = useState<string | null>(detail?.version ?? null);
   const [status, setStatus] = useState(detail?.status ?? "active");
-  const [dirty, setDirty] = useState(false);
-  const [errors, setErrors] = useState<FieldErrors>({});
+  /** Failed saves so far; errors show live once there has been one. */
+  const [failedSubmits, setFailedSubmits] = useState(0);
+  const [serverErrors, setServerErrors] = useState<Partial<Record<FormField, string>>>({});
   const [failure, setFailure] = useState<Failure | null>(null);
   const [conflictVersion, setConflictVersion] = useState<string | null>(null);
   const [busy, setBusy] = useState<Busy | null>(null);
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const attempt = useRef<{ signature: string; key: string } | null>(null);
-  const leaveGuard = useUnsavedChanges(dirty, { navigate: (href) => router.push(href) });
+
+  const dirty = FIELD_ORDER.some((field) => form[field] !== baseline[field]);
+  const leaveGuard = useUnsavedChanges(dirty, {
+    navigate: (href) => router.push(href),
+    ...(detail?.title ? { label: `“${detail.title}”` } : {}),
+  });
   const releaseGuard = leaveGuard.release;
+
+  const checked = productId ? validateProductFields(form) : validateNewProduct(form);
+  const clientErrors = failedSubmits > 0 && !checked.ok ? checked.errors : {};
+  const errors: Partial<Record<string, string>> = { ...serverErrors, ...clientErrors };
+  const summary = FIELD_ORDER.flatMap((field) => {
+    const message = errors[field];
+    return message ? [{ fieldId: fieldId(field), message }] : [];
+  });
 
   /** A repeat of the same request reuses its key; a changed request gets a new one. */
   function keyFor(signature: string): string {
@@ -121,7 +149,7 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
 
   function edit(change: Partial<Form>) {
     setForm((current) => ({ ...current, ...change }));
-    setDirty(true);
+    if (Object.keys(serverErrors).length > 0) setServerErrors({});
   }
 
   function editTitle(title: string) {
@@ -132,24 +160,24 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
   function showConflict(message: string): boolean {
     const field = conflictField(message);
     if (!field) return false;
-    setErrors({ [field]: message });
+    setServerErrors({ [field]: message });
+    setFailedSubmits((count) => count + 1);
     return true;
   }
 
   async function create() {
-    const checked = validateNewProduct(form);
-    if (!checked.ok) {
-      setErrors(checked.errors);
+    const found = validateNewProduct(form);
+    if (!found.ok) {
+      setFailedSubmits((count) => count + 1);
       setFailure(null);
       return;
     }
-    setErrors({});
     setFailure(null);
     setBusy("save");
     const result = await attemptMutation(() =>
       createMerchandiseProduct({
-        payload: checked.value,
-        idempotencyKey: keyFor(JSON.stringify(checked.value)),
+        payload: found.value,
+        idempotencyKey: keyFor(JSON.stringify(found.value)),
       }),
     );
     setBusy(null);
@@ -160,7 +188,7 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
       return;
     }
     attempt.current = null;
-    setDirty(false);
+    setBaseline(form);
     toast.success("Product created.");
     // Drop the Back-button sentinel first; its clean-up history.back() would cancel this replace.
     await releaseGuard();
@@ -168,22 +196,25 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
   }
 
   async function save(expectedVersion: string | null = version) {
-    if (!productId || !expectedVersion) return;
-    const checked = validateProductFields(form);
-    if (!checked.ok) {
-      setErrors(checked.errors);
+    if (!productId || !expectedVersion || busy !== null) return;
+    if (!dirty && !conflictVersion) {
+      toast.info("Nothing has changed.");
+      return;
+    }
+    const found = validateProductFields(form);
+    if (!found.ok) {
+      setFailedSubmits((count) => count + 1);
       setFailure(null);
       return;
     }
-    setErrors({});
     setFailure(null);
     setBusy("save");
     const result = await attemptMutation(() =>
       saveMerchandiseProduct({
         productId,
-        payload: checked.value,
+        payload: found.value,
         expectedVersion,
-        idempotencyKey: keyFor(JSON.stringify([productId, expectedVersion, checked.value])),
+        idempotencyKey: keyFor(JSON.stringify([productId, expectedVersion, found.value])),
       }),
     );
     setBusy(null);
@@ -196,7 +227,8 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
       return;
     }
     attempt.current = null;
-    setDirty(false);
+    setBaseline(form);
+    setFailedSubmits(0);
     setConflictVersion(null);
     setVersion(result.data.version);
     setSavedAt(result.data.version);
@@ -241,12 +273,14 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
       setFailure(failureFrom(result, "reload the product"));
       return;
     }
-    setForm(formFrom(result.data));
+    const next = formFrom(result.data);
+    setForm(next);
+    setBaseline(next);
     setVersion(result.data.version);
     setSavedAt(result.data.version);
     setStatus(result.data.status);
-    setDirty(false);
-    setErrors({});
+    setFailedSubmits(0);
+    setServerErrors({});
     setFailure(null);
     setConflictVersion(null);
     router.refresh();
@@ -255,235 +289,263 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
   const disabled = busy !== null;
   const name = form.title.trim() || "this product";
   const archiving = status === "active";
+  const heading = detail ? detail.title : "New product";
+  // The money field resets its text whenever `value` differs from what it last parsed, so it is
+  // fed its own reading of the text; the form's stricter rules apply on validation.
+  const typedPrice = parsePoundsToPence(form.price);
+  const conflictTime = conflictVersion ? formatStaffDateTime(conflictVersion) : "the last save";
 
   return (
-    <div className="space-y-8">
-      <FormScopeProvider value={scope}>
-        <form
-          id={FORM_ID}
-          noValidate
-          className="space-y-8"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void (productId ? save() : create());
-          }}
-        >
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            {productId ? (
-              <MerchandiseStatusBadge status={status} />
-            ) : (
-              <StatusBadge variant="info">New product</StatusBadge>
-            )}
-            {productId ? (
-              <Button
-                type="button"
-                variant="outline"
-                disabled={disabled || (archiving && dirty)}
-                onClick={() => (archiving ? setDialog("archive") : void changeArchived())}
-              >
-                {archiving ? "Archive product" : "Restore product"}
-              </Button>
-            ) : null}
-          </div>
-          {productId && archiving && dirty ? (
-            <p className="-mt-4 text-sm text-on-surface-variant">
-              Save your changes before archiving this product.
-            </p>
-          ) : null}
+    <FormPage
+      breadcrumbs={
+        <AdminBreadcrumbs list={{ label: "Products", href: "/merchandise" }} current={heading} />
+      }
+      title={heading}
+      description={
+        detail
+          ? `/${detail.slug}`
+          : "Add the product and its first variant. It goes on sale as soon as it is created and has stock."
+      }
+      notice={
+        <>
           {status === "archived" ? (
-            <Alert>
-              <AlertDescription>
-                This product is archived: it is not shown on the shop and cannot be bought. Restore
-                it to put it back on sale.
-              </AlertDescription>
-            </Alert>
+            <Notice tone="warning" title="This product is archived">
+              It is not shown on the shop and cannot be bought. Restore it to put it back on sale.
+            </Notice>
           ) : null}
-
           {conflictVersion ? (
             <MerchandiseConflictBanner
-              savedAt={formatAdminDetailDateTime(conflictVersion)}
+              savedAt={conflictTime}
               busy={disabled}
               onReload={() => setDialog("reload")}
               onKeepMine={() => setDialog("overwrite")}
             />
           ) : null}
           {failure ? (
-            <Alert variant="destructive">
-              <AlertDescription>
-                {failure.text}
-                {failure.stepUp ? (
-                  <>
-                    {" "}
-                    <a
-                      href={`/api/auth/login?returnTo=${encodeURIComponent(pathname)}`}
-                      className="underline"
-                    >
-                      Sign in again
-                    </a>
-                  </>
-                ) : null}
-              </AlertDescription>
-            </Alert>
+            <Notice
+              tone="danger"
+              alert
+              title={failure.text}
+              {...(failure.stepUp
+                ? {
+                    actions: (
+                      <StaffButton asChild size="sm" variant="secondary">
+                        <a href={`/api/auth/login?returnTo=${encodeURIComponent(pathname)}`}>
+                          Sign in again
+                        </a>
+                      </StaffButton>
+                    ),
+                  }
+                : {})}
+            />
           ) : null}
-          {hasFieldErrors(errors) ? <FormErrorSummary scope={scope} errors={errors} /> : null}
+        </>
+      }
+    >
+      <form
+        id={FORM_ID}
+        noValidate
+        aria-label={productId ? `Edit ${detail?.title ?? "product"}` : "New product"}
+        className="flex flex-col gap-6 rounded-staff-md border border-staff-line bg-staff-surface p-4 sm:p-6"
+        onSubmit={(event) => {
+          event.preventDefault();
+          void (productId ? save() : create());
+        }}
+      >
+        <FormErrorSummary errors={summary} focusKey={failedSubmits} />
 
-          <section aria-labelledby="product-details-heading" className="space-y-4">
-            <h2 id="product-details-heading" className="font-headline text-xl font-semibold">
-              Product details
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <TextField
-                name="title"
-                label="Title"
-                value={form.title}
-                error={errors.title}
-                disabled={disabled}
-                maxLength={200}
-                onChange={editTitle}
-              />
-              <TextField
-                name="slug"
-                label="Slug"
-                hint={
-                  productId
-                    ? "Part of the product's web address. Changing it stops existing links working."
-                    : "Part of the product's web address, such as tote-bag."
-                }
-                value={form.slug}
-                error={errors.slug}
-                disabled={disabled}
-                maxLength={120}
-                onChange={(slug) => {
-                  setSlugTouched(true);
-                  edit({ slug });
-                }}
-              />
-              <TextAreaField
-                className="sm:col-span-2"
-                name="description"
-                label="Description"
-                hint="Shown on the product page."
-                value={form.description}
-                error={errors.description}
-                disabled={disabled}
-                rows={6}
-                maxLength={4000}
-                onChange={(description) => edit({ description })}
-              />
-            </div>
-          </section>
+        <FormSection
+          title="Product details"
+          description="What shoppers see on the product page and in its web address."
+        >
+          <Field label="Title" id={fieldId("title")} error={errors.title} disabled={disabled}>
+            <TextInput
+              value={form.title}
+              maxLength={200}
+              autoComplete="off"
+              onChange={(event) => editTitle(event.target.value)}
+            />
+          </Field>
+          <Field
+            label="Slug"
+            id={fieldId("slug")}
+            description={
+              productId
+                ? "Part of the product's web address. Changing it stops existing links working."
+                : "Part of the product's web address, such as tote-bag."
+            }
+            error={errors.slug}
+            disabled={disabled}
+          >
+            <TextInput
+              value={form.slug}
+              maxLength={120}
+              autoComplete="off"
+              spellCheck={false}
+              onChange={(event) => {
+                setSlugTouched(true);
+                edit({ slug: event.target.value });
+              }}
+            />
+          </Field>
+          <Field
+            label="Description"
+            optional
+            id={fieldId("description")}
+            description="Shown on the product page."
+            error={errors.description}
+            disabled={disabled}
+          >
+            <TextArea
+              rows={6}
+              maxLength={4000}
+              value={form.description}
+              onChange={(event) => edit({ description: event.target.value })}
+            />
+          </Field>
+        </FormSection>
 
-          {productId ? null : (
-            <section aria-labelledby="first-variant-heading" className="space-y-4">
-              <div>
-                <h2 id="first-variant-heading" className="font-headline text-xl font-semibold">
-                  First variant
-                </h2>
-                <p className="text-sm text-on-surface-variant">
-                  A product needs one SKU to be sold. You can add more variants once it is created.
-                </p>
-              </div>
-              <div className="grid gap-4 sm:grid-cols-3">
-                <TextField
-                  name="sku"
-                  label="SKU"
-                  value={form.sku}
-                  error={errors.sku}
-                  disabled={disabled}
-                  maxLength={64}
-                  onChange={(sku) => edit({ sku })}
+        {productId ? null : (
+          <FormSection
+            title="First variant"
+            description="A product needs one SKU to be sold. You can add more variants once it is created."
+          >
+            <Field label="SKU" id={fieldId("sku")} error={errors.sku} disabled={disabled}>
+              <TextInput
+                value={form.sku}
+                maxLength={64}
+                autoComplete="off"
+                onChange={(event) => edit({ sku: event.target.value })}
+              />
+            </Field>
+            <FieldRow>
+              <Field
+                label="Price"
+                id={fieldId("price")}
+                description="In pounds, for example 12.50."
+                error={errors.price}
+                disabled={disabled}
+              >
+                <MoneyInput
+                  value={typedPrice.ok ? typedPrice.pence : null}
+                  onValueChange={() => undefined}
+                  onInput={(event) => edit({ price: event.currentTarget.value })}
+                  placeholder="0.00"
                 />
-                <TextField
-                  name="price"
-                  label="Price (£)"
-                  hint="In pounds, for example 12.50."
-                  value={form.price}
-                  error={errors.price}
-                  disabled={disabled}
-                  onChange={(price) => edit({ price })}
-                />
-                <TextField
-                  name="onHand"
-                  label="Opening stock"
+              </Field>
+              <Field
+                label="Opening stock"
+                id={fieldId("onHand")}
+                error={errors.onHand}
+                disabled={disabled}
+              >
+                <TextInput
                   type="number"
                   min={0}
+                  inputMode="numeric"
                   value={form.onHand}
-                  error={errors.onHand}
-                  disabled={disabled}
-                  onChange={(onHand) => edit({ onHand })}
+                  onChange={(event) => edit({ onHand: event.target.value })}
                 />
-              </div>
-            </section>
-          )}
-        </form>
-      </FormScopeProvider>
+              </Field>
+            </FieldRow>
+          </FormSection>
+        )}
+
+        {detail ? (
+          <FormSection
+            title="Availability"
+            description="Whether the product is on the shop. Archiving removes it from sale and nothing is deleted."
+          >
+            <div className="flex flex-wrap items-center gap-3">
+              <MappedStatusBadge status={status} present={presentMerchandiseStatus} />
+              <StaffButton
+                type="button"
+                variant={archiving ? "danger-secondary" : "secondary"}
+                icon={archiving ? <Archive aria-hidden /> : <ArchiveRestore aria-hidden />}
+                disabled={disabled || (archiving && dirty)}
+                loading={busy === "archive"}
+                onClick={() => (archiving ? setDialog("archive") : void changeArchived())}
+              >
+                {archiving ? "Archive product" : "Restore product"}
+              </StaffButton>
+            </div>
+            {archiving && dirty ? (
+              <p className="text-staff-sm text-staff-muted">
+                Save your changes before archiving this product.
+              </p>
+            ) : null}
+          </FormSection>
+        ) : null}
+
+        <FormActions
+          start={
+            <output aria-live="polite" className="text-staff-sm text-staff-muted">
+              {dirty ? "Unsaved changes" : savedAt ? `Saved ${formatStaffDateTime(savedAt)}` : null}
+            </output>
+          }
+        >
+          <StaffButton asChild variant="secondary">
+            <Link href="/merchandise">Cancel</Link>
+          </StaffButton>
+          <StaffButton
+            type="submit"
+            variant="primary"
+            icon={<Save aria-hidden />}
+            loading={busy === "save"}
+            disabled={busy !== null && busy !== "save"}
+          >
+            {productId ? "Save changes" : "Create product"}
+          </StaffButton>
+        </FormActions>
+      </form>
 
       {detail ? (
         <MerchandiseVariants productId={detail.productId} variants={detail.variants} />
       ) : null}
 
-      <StickySaveBar>
-        <div className="flex flex-wrap items-center gap-3">
-          <LoadingButton
-            type="submit"
-            form={FORM_ID}
-            loading={busy === "save"}
-            loadingLabel="Saving…"
-            disabled={disabled}
-          >
-            {productId ? "Save changes" : "Create product"}
-          </LoadingButton>
-          <output aria-live="polite" className="text-sm text-on-surface-variant">
-            {dirty
-              ? "Unsaved changes"
-              : savedAt
-                ? `Saved ${formatAdminDetailDateTime(savedAt)}`
-                : "Not saved yet"}
-          </output>
-        </div>
-      </StickySaveBar>
-
-      <ConfirmDialog
+      <ConfirmActionDialog
         open={dialog === "archive"}
         onOpenChange={(open) => {
           if (!open) setDialog(null);
         }}
         title={`Archive “${name}”?`}
-        body="The product is removed from the shop straight away: it no longer appears in the catalogue, its page is not found, and shoppers who hold it in a basket can no longer check out with it. Orders already placed are not affected and nothing is deleted. You can restore it later."
+        description="The product is removed from the shop straight away: it no longer appears in the catalogue, its page is not found, and shoppers who hold it in a basket can no longer check out with it. Orders already placed are not affected and nothing is deleted. You can restore it later."
         confirmLabel="Archive product"
-        tone="warning"
+        tone="danger"
         loading={busy === "archive"}
-        onConfirm={changeArchived}
+        onConfirm={() => void changeArchived()}
       />
-      <ConfirmDialog
+      <ConfirmActionDialog
         open={dialog === "reload"}
         onOpenChange={(open) => {
           if (!open) setDialog(null);
         }}
         title={`Discard your changes to “${name}”?`}
-        body={`Reloading shows the version saved at ${conflictVersion ? formatAdminDetailDateTime(conflictVersion) : "the last save"}. Your unsaved changes to this product are lost and cannot be recovered.`}
+        description={`Reloading shows the version saved at ${conflictTime}. Your unsaved changes to this product are lost and cannot be recovered.`}
         confirmLabel="Discard my changes and reload"
         cancelLabel="Keep editing"
+        tone="danger"
         loading={busy === "reload"}
-        onConfirm={reloadFromStore}
+        onConfirm={() => void reloadFromStore()}
       />
-      <ConfirmDialog
+      <ConfirmActionDialog
         open={dialog === "overwrite"}
         onOpenChange={(open) => {
           if (!open) setDialog(null);
         }}
         title={`Save over the other changes to “${name}”?`}
-        body={`Saving now replaces what was saved at ${conflictVersion ? formatAdminDetailDateTime(conflictVersion) : "the last save"} with your version of this product. Their changes cannot be recovered afterwards.`}
+        description={`Saving now replaces what was saved at ${conflictTime} with your version of this product. Their changes cannot be recovered afterwards.`}
         confirmLabel="Save my version"
         cancelLabel="Go back"
+        tone="danger"
         loading={busy === "save"}
-        onConfirm={async () => {
+        onConfirm={() => {
           const current = conflictVersion;
           setDialog(null);
-          if (current) await save(current);
+          if (current) void save(current);
         }}
       />
       <UnsavedChangesDialog guard={leaveGuard} />
-    </div>
+    </FormPage>
   );
 }

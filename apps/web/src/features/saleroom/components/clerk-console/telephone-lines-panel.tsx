@@ -5,14 +5,14 @@ import {
   ConsolePanel,
   PanelHeading,
 } from "@/features/saleroom/components/clerk-console/console-panel";
+import { formatSaleroomMoney } from "@/features/saleroom/lib/format-saleroom-money";
 import {
   adminTelephoneBookingCompleteLineAction,
   adminTelephoneBookingStartLineAction,
 } from "@/lib/actions/admin";
+import { staffTelephoneBookingStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminTelephoneBookingRow } from "@/lib/data/http/admin.server";
-import { telephoneBookingStatusLabel } from "@/lib/telephone/telephone-booking-types";
-import { formatMoney } from "@/lib/ui/format";
-import { Badge } from "@auction/ui/components/badge";
+import { StatusBadge } from "@auction/staff-ui";
 
 type Props = {
   saleId: string;
@@ -21,6 +21,7 @@ type Props = {
   panelVariant?: "bordered" | "plain";
 };
 
+/** The telephone bidders for this sale: who is waiting, and starting and finishing their line. */
 export function TelephoneLinesPanel({
   saleId,
   currentLotId,
@@ -35,65 +36,70 @@ export function TelephoneLinesPanel({
     <ConsolePanel variant={panelVariant}>
       <PanelHeading>Telephone lines</PanelHeading>
       {active.length === 0 ? (
-        <p className="mt-2 font-body text-sm text-secondary">No active telephone bookings.</p>
+        <p className="mt-2 text-staff-sm text-staff-muted">No active telephone bookings.</p>
       ) : (
-        <ul className="mt-3 space-y-3">
-          {active.map((row) => (
-            <li
-              key={row.id}
-              className="rounded-md border border-outline-variant/20 bg-surface-container-low/30 p-3"
-            >
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-body text-sm font-medium text-foreground">
-                    {row.userName ?? row.userEmail ?? row.userId}
-                  </p>
-                  <p className="font-body text-xs text-secondary">
-                    {row.phoneDisplay ?? row.phoneE164}
-                  </p>
-                  {row.authorizedMax ? (
-                    <p className="font-body text-xs text-secondary">
-                      Max {formatMoney(row.authorizedMax)}
+        <ul className="mt-3 flex flex-col gap-3">
+          {active.map((row) => {
+            const status = staffTelephoneBookingStatus(row.status);
+            return (
+              <li
+                key={row.id}
+                className="rounded-staff-sm border border-staff-line-subtle bg-staff-sunken p-3"
+              >
+                <div className="flex flex-wrap items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="text-staff-sm font-medium text-staff-fg">
+                      {row.userName ?? row.userEmail ?? "Unnamed bidder"}
                     </p>
-                  ) : null}
+                    <p className="text-staff-sm text-staff-muted tabular-nums">
+                      {row.phoneDisplay ?? row.phoneE164}
+                    </p>
+                    {row.authorizedMax ? (
+                      <p className="text-staff-sm text-staff-muted tabular-nums">
+                        Limit {formatSaleroomMoney(row.authorizedMax)}
+                      </p>
+                    ) : null}
+                  </div>
+                  <StatusBadge tone={status.tone} live={status.live ?? false}>
+                    {status.label}
+                  </StatusBadge>
                 </div>
-                <Badge variant="secondary">{telephoneBookingStatusLabel(row.status)}</Badge>
-              </div>
-              {currentLotId ? (
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <form id={`tel-start-${row.id}`} action={adminTelephoneBookingStartLineAction}>
-                    <input type="hidden" name="saleId" value={saleId} />
-                    <input type="hidden" name="bookingId" value={row.id} />
-                    <input type="hidden" name="lotId" value={currentLotId} />
-                    <SaleroomPendingSubmit
-                      formId={`tel-start-${row.id}`}
-                      pendingLabel="Starting…"
-                      variant="secondary"
-                      className="min-h-11"
+                {currentLotId ? (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <form id={`tel-start-${row.id}`} action={adminTelephoneBookingStartLineAction}>
+                      <input type="hidden" name="saleId" value={saleId} />
+                      <input type="hidden" name="bookingId" value={row.id} />
+                      <input type="hidden" name="lotId" value={currentLotId} />
+                      <SaleroomPendingSubmit
+                        formId={`tel-start-${row.id}`}
+                        pendingLabel="Starting…"
+                        variant="secondary"
+                        size="live"
+                      >
+                        Start line
+                      </SaleroomPendingSubmit>
+                    </form>
+                    <form
+                      id={`tel-complete-${row.id}`}
+                      action={adminTelephoneBookingCompleteLineAction}
                     >
-                      Start line
-                    </SaleroomPendingSubmit>
-                  </form>
-                  <form
-                    id={`tel-complete-${row.id}`}
-                    action={adminTelephoneBookingCompleteLineAction}
-                  >
-                    <input type="hidden" name="saleId" value={saleId} />
-                    <input type="hidden" name="bookingId" value={row.id} />
-                    <input type="hidden" name="lotId" value={currentLotId} />
-                    <SaleroomPendingSubmit
-                      formId={`tel-complete-${row.id}`}
-                      pendingLabel="Completing…"
-                      variant="outline"
-                      className="min-h-11"
-                    >
-                      Complete line
-                    </SaleroomPendingSubmit>
-                  </form>
-                </div>
-              ) : null}
-            </li>
-          ))}
+                      <input type="hidden" name="saleId" value={saleId} />
+                      <input type="hidden" name="bookingId" value={row.id} />
+                      <input type="hidden" name="lotId" value={currentLotId} />
+                      <SaleroomPendingSubmit
+                        formId={`tel-complete-${row.id}`}
+                        pendingLabel="Completing…"
+                        variant="secondary"
+                        size="live"
+                      >
+                        Complete line
+                      </SaleroomPendingSubmit>
+                    </form>
+                  </div>
+                ) : null}
+              </li>
+            );
+          })}
         </ul>
       )}
     </ConsolePanel>

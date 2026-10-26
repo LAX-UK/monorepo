@@ -4,6 +4,7 @@ import { ExpectedGuestsPanel } from "@/components/admin/expected-guests-panel";
 import { RelatedRecordsSection } from "@/components/admin/people/related-records-section";
 import { useSaleRegistrationActions } from "@/components/admin/sale-detail/tabs/use-sale-registration-actions";
 import { SaleroomCheckInPanel } from "@/components/admin/saleroom-check-in-panel";
+import { CsvExportMenu } from "@/components/admin/staff/csv-export-menu";
 import { downloadSaleRegistrationsCsv } from "@/lib/admin/export-sale-registrations-csv";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminExpectedGuestsSummary } from "@/lib/data/http/admin-expected-guests.server";
@@ -26,7 +27,6 @@ import {
   PersonCell,
   Section,
   SegmentedControl,
-  StaffButton,
   StaffDate,
   type StaffLinkComponent,
   StaffMoney,
@@ -220,16 +220,14 @@ export function SaleRegistrationsTab({
               : "Approve or reject requests to bid before and during the sale."
           }
           action={
-            <StaffButton
-              size="sm"
-              variant="secondary"
-              {...(rows.length === 0
-                ? { disabledReason: "There are no registrations to export" }
-                : {})}
-              onClick={() => downloadSaleRegistrationsCsv(rows, sale.title)}
-            >
-              Export CSV
-            </StaffButton>
+            <CsvExportMenu
+              noun="registrations"
+              shown={filtered.length}
+              total={rows.length}
+              onExport={(scope) =>
+                downloadSaleRegistrationsCsv(scope === "shown" ? filtered : rows, sale.title)
+              }
+            />
           }
           label="Sale registrations"
           columns={columns}

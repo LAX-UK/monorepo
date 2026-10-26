@@ -23,7 +23,6 @@ import {
   saleLotsBoardFilters,
 } from "@/lib/data/view-models/sale-lots-tab.vm";
 import {
-  CellLink,
   type DataColumn,
   DataTableToolbar,
   EmptyValue,
@@ -215,7 +214,7 @@ export function SaleLotsTabBoard({
     {
       id: "number",
       header: "Lot no.",
-      width: "88px",
+      width: "76px",
       numeric: true,
       sortable: true,
       sortValue: (row) => row.lotNumber,
@@ -233,29 +232,11 @@ export function SaleLotsTabBoard({
           href={`/admin/lots/${row.id}`}
           Link={Link}
           thumbnail={{ src: row.thumbnailUrl, missingLabel: "No photos yet" }}
+          secondary={artistOf(row) ?? undefined}
         >
           {row.title}
         </PrimaryCell>
       ),
-    },
-    {
-      id: "artist",
-      header: "Artist",
-      width: "148px",
-      sortable: true,
-      sortValue: (row) => artistOf(row)?.toLowerCase() ?? null,
-      hideBelow: "md",
-      mobile: "meta",
-      cell: (row) => {
-        const name = artistOf(row);
-        return name && row.lot.artistId ? (
-          <CellLink href={`/admin/artists/${row.lot.artistId}`} Link={Link}>
-            {name}
-          </CellLink>
-        ) : (
-          <EmptyValue />
-        );
-      },
     },
     {
       id: "status",
@@ -333,6 +314,15 @@ export function SaleLotsTabBoard({
         const lot = row.lot;
         return [
           { id: "open", label: "Open lot page", href: `/admin/lots/${lot.id}` },
+          ...(lot.artistId && artistNameById[lot.artistId]
+            ? [
+                {
+                  id: "artist",
+                  label: `Open artist ${artistNameById[lot.artistId]}`,
+                  href: `/admin/artists/${lot.artistId}`,
+                },
+              ]
+            : []),
           ...(canManageAuction
             ? [{ id: "edit", label: "Edit lot", href: `/admin/lots/${lot.id}/edit` }]
             : []),

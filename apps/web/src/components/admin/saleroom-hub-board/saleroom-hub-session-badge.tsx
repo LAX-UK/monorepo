@@ -1,8 +1,9 @@
 "use client";
 
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { fetchSaleroomStatus } from "@/lib/data/http/saleroom-status.client";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
+import { StatusBadge } from "@auction/staff-ui";
 import { useEffect, useState } from "react";
 
 type Props = {
@@ -33,13 +34,10 @@ export function SaleroomHubSessionBadge({ saleId }: Props) {
     };
   }, [saleId]);
 
-  if (!session || session.status === "none") {
-    return (
-      <span className="font-body text-xs text-on-surface-variant" aria-label="Saleroom not live">
-        Not live
-      </span>
-    );
-  }
-
-  return <AdminStatusBadge domain="saleroomSession" status={session.status} />;
+  const status = staffStatus("saleroomSession", session?.status ?? "none");
+  return (
+    <StatusBadge tone={status.tone} live={status.live ?? false}>
+      {status.label}
+    </StatusBadge>
+  );
 }

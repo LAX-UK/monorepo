@@ -2,12 +2,16 @@
 
 import type { AdminCheckInCandidate } from "@/lib/data/http/admin.server";
 import { decimalToMinorUnits } from "@/lib/data/view-models/client-commerce-tab.vm";
+import { bidLimitFieldHelp } from "@/lib/saleroom/bid-limit-field-copy";
 import {
-  BID_LIMIT_FIELD_LABEL,
-  bidLimitFieldHelp,
-  bidLimitFieldPlaceholder,
-} from "@/lib/saleroom/bid-limit-field-copy";
-import { EnumSelect, Field, Notice, StaffButton, StaffMoney, TextInput } from "@auction/staff-ui";
+  EnumSelect,
+  Field,
+  Notice,
+  StaffButton,
+  StaffMoney,
+  TextInput,
+  humanizeStatus,
+} from "@auction/staff-ui";
 import Link from "next/link";
 
 type Props = {
@@ -89,7 +93,7 @@ export function SaleroomCheckInForm({
           }}
           options={eligibleEntities.map((entity) => ({
             value: entity.id,
-            label: `${entity.displayName} (${entity.role})`,
+            label: `${entity.displayName} (${humanizeStatus(entity.role)})`,
           }))}
           placeholder="Choose an entity"
         />
@@ -97,7 +101,7 @@ export function SaleroomCheckInForm({
 
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
-          label={BID_LIMIT_FIELD_LABEL}
+          label="Maximum hammer"
           description={bidLimitFieldHelp(saleCurrency)}
           optional
           disabled={pending}
@@ -108,7 +112,7 @@ export function SaleroomCheckInForm({
             leading={<span className="text-staff-muted">{saleCurrency}</span>}
             value={bidLimit}
             onChange={(event) => onBidLimitChange(event.target.value)}
-            placeholder={bidLimitFieldPlaceholder(saleCurrency)}
+            placeholder="e.g. 50,000"
             className="tabular-nums"
           />
           {existingLimit && bidLimit.trim() === "" ? (

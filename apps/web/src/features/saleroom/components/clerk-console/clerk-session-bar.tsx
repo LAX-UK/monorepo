@@ -1,14 +1,13 @@
 import { ConnectionStatusChip } from "@/features/saleroom/components/shared/connection-status-chip";
-import { SaleDeliveryModeBadge } from "@/features/saleroom/components/shared/sale-delivery-mode-badge";
+import { formatSaleroomMoney } from "@/features/saleroom/lib/format-saleroom-money";
 import type { StaffSaleroomSessionVM } from "@/features/saleroom/types/staff-saleroom.vm";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { LotRunProgress } from "@/lib/saleroom/lot-run-progress";
 import { formatLotRunListLabel } from "@/lib/saleroom/sort-lots-for-run-list";
-import { formatMoney } from "@/lib/ui/format";
-import type { Lot, SaleDeliveryMode } from "@auction/types";
+import { ProgressBar, StatusBadge } from "@auction/staff-ui";
+import type { Lot } from "@auction/types";
 
 type Props = {
-  saleTitle: string;
-  deliveryMode?: SaleDeliveryMode;
   session: StaffSaleroomSessionVM;
   currentLot: Lot | null;
   progress: LotRunProgress;
@@ -17,9 +16,12 @@ type Props = {
   mode?: "full" | "live";
 };
 
+/**
+ * The room at a glance, updating as events arrive: whether it is live, how far through the lots
+ * it is, who leads, and whether the feed is still reaching this screen. It is the one place the
+ * room's status shows, so it can never disagree with the controls under it.
+ */
 export function ClerkSessionBar({
-  saleTitle,
-  deliveryMode,
   session,
   currentLot,
   progress,
@@ -27,87 +29,57 @@ export function ClerkSessionBar({
   leaderAmount,
   mode = "full",
 }: Props) {
-  const progressPercent =
-    progress.totalLots > 0 ? Math.round((progress.completedLots / progress.totalLots) * 100) : 0;
-  const showFullChrome = mode === "full";
-  const showLeadingBid = showFullChrome && Boolean(leaderLabel);
+  const status = staffStatus("saleroomSession", session.status);
+  const showLeadingBid = mode === "full" && Boolean(leaderLabel);
 
   return (
-    <div className="space-y-4 rounded-lg border border-outline-variant/25 bg-surface-container-low p-4 shadow-sm">
-      {showFullChrome ? (
-        <div className="flex flex-wrap items-center gap-2">
-          {deliveryMode ? <SaleDeliveryModeBadge mode={deliveryMode} /> : null}
-          {session.isSessionLive ? (
-            <span className="rounded-full bg-error/10 px-2.5 py-1 font-label text-[10px] uppercase tracking-wide text-error">
-              Live
-            </span>
-          ) : session.status === "paused" ? (
-            <span className="rounded-full bg-warning/10 px-2.5 py-1 font-label text-[10px] uppercase tracking-wide text-warning-on-surface">
-              Paused
-            </span>
-          ) : (
-            <span className="rounded-full bg-surface-container-high px-2.5 py-1 font-label text-[10px] uppercase tracking-wide text-secondary capitalize">
-              {session.status}
-            </span>
-          )}
-          {progress.sessionStatusLabel ? (
-            <span className="font-body text-xs text-secondary">{progress.sessionStatusLabel}</span>
-          ) : null}
-        </div>
-      ) : null}
-
+    <section
+      aria-label="Session"
+      className="flex flex-col gap-3 rounded-staff-md border border-staff-line bg-staff-surface p-4"
+    >
       <div className="flex flex-wrap items-start justify-between gap-4">
-        <div className="min-w-0 flex-1 space-y-2">
-          {showFullChrome ? (
-            <p className="font-body text-sm text-foreground">
-              <span className="font-medium">{saleTitle}</span>
-              {currentLot && !progress.betweenLots ? (
-                <>
-                  {" "}
-                  · <span className="font-medium">{formatLotRunListLabel(currentLot)}</span>
-                </>
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <StatusBadge tone={status.tone} live={status.live ?? false}>
+              {status.label}
+            </StatusBadge>
+            {currentLot && !progress.betweenLots ? (
+              <span className="text-staff-sm font-medium text-staff-fg">
+                {formatLotRunListLabel(currentLot)}
+              </span>
+            ) : null}
+          </div>
+          <div className="flex max-w-sm flex-col gap-1.5" aria-live="polite">
+            <div className="flex items-baseline justify-between gap-3 text-staff-sm">
+              <p className="text-staff-fg">{progress.progressLabel}</p>
+              {progress.totalLots > 0 ? (
+                <p className="text-staff-muted tabular-nums">
+                  {progress.completedLots} of {progress.totalLots} complete
+                </p>
               ) : null}
-            </p>
-          ) : null}
-          <div className="space-y-1" aria-live="polite">
-            <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-              {progress.progressLabel}
-            </p>
+            </div>
             {progress.totalLots > 0 ? (
-              <div className="flex items-center gap-2">
-                <div
-                  className="h-1.5 max-w-xs flex-1 rounded-full bg-surface-container-high"
-                  aria-hidden="true"
-                >
-                  <div
-                    className="h-full rounded-full bg-primary transition-all duration-300"
-                    style={{ width: `${progressPercent}%` }}
-                  />
-                </div>
-                <span className="font-body text-xs tabular-nums text-secondary">
-                  {progress.completedLots}/{progress.totalLots}
-                </span>
-              </div>
+              <ProgressBar
+                value={progress.completedLots}
+                max={progress.totalLots}
+                label="Lots complete"
+              />
             ) : null}
           </div>
         </div>
 
         {showLeadingBid ? (
-          <div className="rounded-md border border-outline-variant/20 bg-surface-container-high/50 px-3 py-2 text-right">
-            <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-              Leading bid
+          <div className="rounded-staff-sm border border-staff-line-subtle bg-staff-sunken px-3 py-2 text-right">
+            <p className="text-staff-xs text-staff-muted">Leading bid</p>
+            <p className="font-staff-display text-staff-xl font-semibold text-staff-fg tabular-nums">
+              {leaderAmount ? formatSaleroomMoney(leaderAmount) : "—"}
             </p>
-            <p className="mt-1 font-headline text-xl tabular-nums text-foreground">
-              {leaderAmount ? formatMoney(leaderAmount) : "—"}
-            </p>
-            <p className="font-body text-sm text-secondary">
-              <span className="font-medium text-foreground">{leaderLabel}</span>
-            </p>
+            <p className="text-staff-sm font-medium text-staff-fg">{leaderLabel}</p>
           </div>
         ) : null}
       </div>
 
       <ConnectionStatusChip status={session.connectionStatus} lastEventAt={session.lastEventAt} />
-    </div>
+    </section>
   );
 }

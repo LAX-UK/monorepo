@@ -3,8 +3,42 @@ import {
   staffArrivalStatus,
   staffIdentitySessionStatus,
   staffIdentityStatus,
+  staffRunwayLotStatus,
+  staffSaleroomRoomStatus,
   staffStatus,
 } from "./staff-kit-status";
+
+describe("saleroom statuses", () => {
+  it("reads a room's session in words", () => {
+    expect(staffStatus("saleroomSession", "live")).toEqual({
+      label: "Live",
+      tone: "live",
+      live: true,
+    });
+    expect(staffStatus("saleroomSession", "paused")).toEqual({ label: "Paused", tone: "warning" });
+    expect(staffStatus("saleroomSession", "none").label).toBe("Not live");
+    expect(staffStatus("saleroomSession", "ended").label).toBe("Closed");
+  });
+
+  it("asks for a room to be closed once its sale has ended", () => {
+    expect(staffSaleroomRoomStatus("live", { saleEnded: true })).toEqual({
+      label: "Needs closing",
+      tone: "warning",
+    });
+    expect(staffSaleroomRoomStatus("paused", { saleEnded: true }).label).toBe("Needs closing");
+    expect(staffSaleroomRoomStatus("none", { saleEnded: true }).label).toBe("Not live");
+    expect(staffSaleroomRoomStatus("live").label).toBe("Live");
+  });
+
+  it("gives sold, passed and withdrawn lots their own words", () => {
+    expect(staffRunwayLotStatus("sold")).toEqual({ label: "Sold", tone: "success" });
+    expect(staffRunwayLotStatus("no_sale")).toEqual({ label: "Passed", tone: "neutral" });
+    expect(staffRunwayLotStatus("skipped")).toEqual({ label: "Withdrawn", tone: "danger" });
+    expect(staffRunwayLotStatus("next")).toEqual({ label: "Up next", tone: "info" });
+    expect(staffRunwayLotStatus("on_block")?.live).toBe(true);
+    expect(staffRunwayLotStatus("upcoming")).toBeNull();
+  });
+});
 
 describe("identity statuses", () => {
   it("says Not verified for someone who never started an identity check", () => {

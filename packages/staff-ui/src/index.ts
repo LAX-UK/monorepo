@@ -18,6 +18,8 @@ export {
 // Primitives
 export { StaffButton, staffButtonVariants } from "./primitives/button.js";
 export type { StaffButtonProps } from "./primitives/button.js";
+export { HoldButton, STAFF_HOLD_MS } from "./primitives/hold-button.js";
+export type { HoldButtonProps } from "./primitives/hold-button.js";
 export { Kbd, ShortcutKeys, TextArea, TextInput, staffFieldBox } from "./primitives/input.js";
 export type { TextAreaProps, TextInputProps } from "./primitives/input.js";
 export {
@@ -93,6 +95,7 @@ export type {
   MetricTone,
 } from "./display/metric-cell.js";
 export { Sparkline, SparklineSkeleton } from "./display/sparkline.js";
+export { ProgressBar } from "./display/progress-bar.js";
 export { AttentionStrip } from "./display/attention-strip.js";
 export type { AttentionStripItem } from "./display/attention-strip.js";
 

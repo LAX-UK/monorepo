@@ -6,10 +6,8 @@ import {
   adminSaleroomDisplayClearOverlayAction,
   adminSaleroomDisplayOverlayAction,
 } from "@/lib/actions/admin";
+import { Field, TextInput, cn } from "@auction/staff-ui";
 import type { SaleroomDisplayOverlay } from "@auction/types";
-import { Input } from "@auction/ui/components/input";
-import { Label } from "@auction/ui/components/label";
-import { cn } from "@auction/ui/lib/utils";
 import { useState } from "react";
 
 type Props = {
@@ -18,6 +16,7 @@ type Props = {
   className?: string;
 };
 
+/** What the venue display shows on top of the lot: a fair warning, an announcement, or nothing. */
 export function DisplayOverlayActions({ saleId, initialOverlay = null, className }: Props) {
   const [announcement, setAnnouncement] = useState("");
   const {
@@ -29,14 +28,13 @@ export function DisplayOverlayActions({ saleId, initialOverlay = null, className
   } = useDisplayOverlayState({ saleId, initialOverlay });
 
   return (
-    <div className={cn("flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-end", className)}>
+    <div className={cn("flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end", className)}>
       <SaleroomPendingSubmit
         pendingLabel="Sending…"
-        variant={activeOverlay?.kind === "fair_warning" ? "default" : "outline"}
-        className={cn(
-          "min-h-11 w-full sm:w-auto",
-          activeOverlay?.kind === "fair_warning" && "ring-2 ring-primary/30",
-        )}
+        variant={activeOverlay?.kind === "fair_warning" ? "primary" : "secondary"}
+        size="live"
+        aria-pressed={activeOverlay?.kind === "fair_warning"}
+        className="w-full sm:w-auto"
         onRun={() => adminSaleroomDisplayOverlayAction({ saleId, kind: "fair_warning" })}
         onSuccess={() => {
           setOptimisticOverlay({ kind: "fair_warning" });
@@ -46,27 +44,22 @@ export function DisplayOverlayActions({ saleId, initialOverlay = null, className
         Fair warning
       </SaleroomPendingSubmit>
 
-      <div className="flex w-full min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-end">
-        <div className="min-w-0 flex-1 space-y-1">
-          <Label htmlFor={`display-announce-${saleId}`} className="sr-only">
-            Announcement text
-          </Label>
-          <Input
-            id={`display-announce-${saleId}`}
+      <div className="flex w-full min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-end">
+        <Field label="Announcement text" optional className="min-w-0 flex-1">
+          <TextInput
+            size="live"
             value={announcement}
             onChange={(e) => setAnnouncement(e.target.value)}
-            placeholder="Announcement text"
-            className="h-11 font-body text-sm"
             maxLength={500}
+            autoComplete="off"
           />
-        </div>
+        </Field>
         <SaleroomPendingSubmit
           pendingLabel="Sending…"
-          variant={activeOverlay?.kind === "announcement" ? "default" : "outline"}
-          className={cn(
-            "min-h-11 w-full sm:w-auto",
-            activeOverlay?.kind === "announcement" && "ring-2 ring-primary/30",
-          )}
+          variant={activeOverlay?.kind === "announcement" ? "primary" : "secondary"}
+          size="live"
+          aria-pressed={activeOverlay?.kind === "announcement"}
+          className="w-full sm:w-auto"
           onRun={() => {
             const message = announcement.trim();
             return adminSaleroomDisplayOverlayAction({
@@ -91,9 +84,9 @@ export function DisplayOverlayActions({ saleId, initialOverlay = null, className
       <SaleroomPendingSubmit
         pendingLabel="Clearing…"
         variant="ghost"
-        className="min-h-11 w-full text-secondary sm:w-auto"
+        size="live"
+        className="w-full sm:w-auto"
         disabled={!hasActiveOverlay}
-        aria-disabled={!hasActiveOverlay}
         onRun={() => adminSaleroomDisplayClearOverlayAction({ saleId })}
         onSuccess={() => {
           clearOptimisticOverlay();

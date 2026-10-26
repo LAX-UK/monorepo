@@ -13,7 +13,13 @@ export function toStaffStatus(variant: StatusBadgeVariant, label: string): Statu
   return { label, tone: variant };
 }
 
-type CatalogueDomain = "lot" | "sale" | "submission" | "conditionReport" | "onsiteEvent";
+type CatalogueDomain =
+  | "lot"
+  | "sale"
+  | "submission"
+  | "conditionReport"
+  | "onsiteEvent"
+  | "saleroomSession";
 
 /**
  * The catalogue families as staff read them. The shared registry gives drafts and scheduled
@@ -53,6 +59,15 @@ const CATALOGUE_STATUS: Record<CatalogueDomain, Record<string, StatusPresentatio
     in_progress: { label: "In progress", tone: "info" },
     fulfilled: { label: "Fulfilled", tone: "success" },
     declined: { label: "Declined", tone: "neutral" },
+  },
+  saleroomSession: {
+    none: { label: "Not live", tone: "neutral" },
+    idle: { label: "Not live", tone: "neutral" },
+    pending: { label: "Not live", tone: "neutral" },
+    live: { label: "Live", tone: "live", live: true },
+    paused: { label: "Paused", tone: "warning" },
+    ended: { label: "Closed", tone: "neutral" },
+    closed: { label: "Closed", tone: "neutral" },
   },
   onsiteEvent: {
     draft: { label: "Draft", tone: "neutral" },
@@ -157,6 +172,40 @@ const TELEPHONE_BOOKING_STATUS: Record<string, StatusPresentation> = {
 /** A telephone bidding line: asked for, confirmed, being worked now, finished or cancelled. */
 export function staffTelephoneBookingStatus(status: string): StatusPresentation {
   return TELEPHONE_BOOKING_STATUS[status] ?? { label: humanizeStatus(status), tone: "neutral" };
+}
+
+/**
+ * A sale's room as the hub reads it. A room still open after its sale has ended needs someone to
+ * close it, which matters more than the fact that it is live.
+ */
+export function staffSaleroomRoomStatus(
+  sessionStatus: string,
+  options: { saleEnded?: boolean } = {},
+): StatusPresentation {
+  const open = sessionStatus === "live" || sessionStatus === "paused";
+  if (open && options.saleEnded) return { label: "Needs closing", tone: "warning" };
+  return staffStatus("saleroomSession", sessionStatus);
+}
+
+/**
+ * One lot in the run order. Sold, passed and withdrawn each have their own word and tone, so
+ * they never differ by colour alone. Lots still to come carry no badge.
+ */
+export function staffRunwayLotStatus(outcome: string): StatusPresentation | null {
+  switch (outcome) {
+    case "on_block":
+      return { label: "On the block", tone: "live", live: true };
+    case "sold":
+      return { label: "Sold", tone: "success" };
+    case "no_sale":
+      return { label: "Passed", tone: "neutral" };
+    case "skipped":
+      return { label: "Withdrawn", tone: "danger" };
+    case "next":
+      return { label: "Up next", tone: "info" };
+    default:
+      return null;
+  }
 }
 
 const ATG_AUCTION_STATUS: Record<string, StatusPresentation> = {

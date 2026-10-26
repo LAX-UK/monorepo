@@ -7,15 +7,8 @@ import type {
   ClerkToolsRailSlots,
   ClerkToolsTab,
 } from "@/features/saleroom/types/clerk-console.types";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@auction/ui/components/tabs";
-import { cn } from "@auction/ui/lib/utils";
+import { SegmentedControl } from "@auction/staff-ui";
 import { useEffect, useState } from "react";
-
-const TOOLS_TABS: Array<{ id: ClerkToolsTab; label: string }> = [
-  { id: "display", label: "Display" },
-  { id: "telephone", label: "Telephone" },
-  { id: "activity", label: "Activity" },
-];
 
 type Props = {
   phase: ClerkLivePhase;
@@ -24,6 +17,11 @@ type Props = {
   slots: ClerkToolsRailSlots;
 };
 
+/**
+ * The tools beside the lot controls: the venue display, telephone lines and the activity log.
+ * Before the sale they show together; once it runs they sit behind one switch so the lot controls
+ * stay in view, and the telephone tab comes forward when a line is waiting.
+ */
 export function ClerkSecondaryToolsRail({ phase, phaseLayout, pendingTelForLot, slots }: Props) {
   const defaultTab = resolveDefaultToolsTab(phase, pendingTelForLot);
   const [activeTab, setActiveTab] = useState<ClerkToolsTab>(defaultTab);
@@ -36,71 +34,35 @@ export function ClerkSecondaryToolsRail({ phase, phaseLayout, pendingTelForLot, 
 
   if (phaseLayout.toolsPresentation === "expanded") {
     return (
-      <div className="space-y-6">
+      <div className="flex flex-col gap-6">
         {slots.display}
-        <div className="hidden lg:grid lg:grid-cols-2 lg:gap-6">
+        <div className="grid grid-cols-2 items-start gap-6">
           {slots.telephone}
           {slots.activity}
-        </div>
-        <div className="lg:hidden">
-          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as ClerkToolsTab)}>
-            <TabsList className="grid h-auto w-full grid-cols-2 gap-2 bg-transparent p-0">
-              <TabsTrigger
-                value="telephone"
-                className="min-h-11 rounded-md font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] data-[state=active]:bg-primary data-[state=active]:text-on-primary"
-              >
-                Telephone
-              </TabsTrigger>
-              <TabsTrigger
-                value="activity"
-                className="min-h-11 rounded-md font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] data-[state=active]:bg-primary data-[state=active]:text-on-primary"
-              >
-                Activity
-              </TabsTrigger>
-            </TabsList>
-            <TabsContent value="telephone" className="mt-4">
-              {slots.telephone}
-            </TabsContent>
-            <TabsContent value="activity" className="mt-4">
-              {slots.activity}
-            </TabsContent>
-          </Tabs>
         </div>
       </div>
     );
   }
 
   return (
-    <Tabs
-      value={activeTab}
-      onValueChange={(v) => setActiveTab(v as ClerkToolsTab)}
-      className="space-y-4"
-    >
-      <TabsList className={cn("grid h-auto w-full gap-2 bg-transparent p-0", "grid-cols-3")}>
-        {TOOLS_TABS.map((tab) => (
-          <TabsTrigger
-            key={tab.id}
-            value={tab.id}
-            className="min-h-11 rounded-md font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] data-[state=active]:bg-primary data-[state=active]:text-on-primary"
-          >
-            {tab.label}
-            {tab.id === "telephone" && pendingTelForLot > 0 ? (
-              <span className="ml-1.5 rounded-full bg-warning/20 px-1.5 py-0.5 text-[10px] text-warning-on-surface">
-                {pendingTelForLot}
-              </span>
-            ) : null}
-          </TabsTrigger>
-        ))}
-      </TabsList>
-      {TOOLS_TABS.map((tab) => (
-        <TabsContent
-          key={tab.id}
-          value={tab.id}
-          className="mt-0 rounded-lg border border-outline-variant/25 p-4"
-        >
-          {slots[tab.id]}
-        </TabsContent>
-      ))}
-    </Tabs>
+    <div className="flex flex-col gap-4">
+      <SegmentedControl<ClerkToolsTab>
+        label="Console tools"
+        size="md"
+        value={activeTab}
+        onValueChange={setActiveTab}
+        options={[
+          { value: "display", label: "Display" },
+          {
+            value: "telephone",
+            label: pendingTelForLot > 0 ? `Telephone (${pendingTelForLot} waiting)` : "Telephone",
+          },
+          { value: "activity", label: "Activity" },
+        ]}
+      />
+      <div className="rounded-staff-md border border-staff-line bg-staff-surface p-4">
+        {slots[activeTab]}
+      </div>
+    </div>
   );
 }

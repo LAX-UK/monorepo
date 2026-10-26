@@ -97,7 +97,8 @@ export type ClerkConsoleSlots = {
   runway: ReactNode;
   onBlock: ReactNode;
   tools: ReactNode;
-  liveDock: ReactNode;
+  /** What a screen too narrow to run the floor shows instead of the controls. */
+  phoneView: ReactNode;
 };
 
 export type ClerkToolsRailSlots = {

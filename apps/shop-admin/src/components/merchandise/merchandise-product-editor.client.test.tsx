@@ -2,6 +2,7 @@
 import type { MerchandiseProductDetail } from "@auction/shop-contracts";
 import { MERCHANDISE_SLUG_IN_USE_MESSAGE } from "@auction/shop-contracts";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import type * as React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const createMerchandiseProduct = vi.fn();
@@ -25,9 +26,21 @@ vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace, refresh }),
   usePathname: () => "/merchandise/p-1",
 }));
-vi.mock("@auction/ui", async (importOriginal) => ({
-  ...(await importOriginal<typeof import("@auction/ui")>()),
-  toast: { success: vi.fn() },
+vi.mock("next/link", () => ({
+  default: ({ href, children, ...rest }: { href: string; children: React.ReactNode }) => (
+    <a href={href} {...rest}>
+      {children}
+    </a>
+  ),
+}));
+vi.mock("sonner", () => ({
+  toast: Object.assign(vi.fn(), {
+    success: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    warning: vi.fn(),
+  }),
+  Toaster: () => null,
 }));
 
 const { MerchandiseProductEditor } = await import("./merchandise-product-editor.client");
@@ -86,6 +99,14 @@ describe("merchandise product editor", () => {
       expect(await screen.findByText(/^Saved /)).toBeInTheDocument();
     });
 
+    it("keeps Save available with nothing changed and says so without saving", () => {
+      render(<MerchandiseProductEditor detail={detail} />);
+      const save = screen.getByRole("button", { name: "Save changes" });
+      expect(save).toBeEnabled();
+      fireEvent.click(save);
+      expect(saveMerchandiseProduct).not.toHaveBeenCalled();
+    });
+
     it("lists field problems and sends nothing", async () => {
       render(<MerchandiseProductEditor detail={detail} />);
       change("Title", "");
@@ -96,6 +117,20 @@ describe("merchandise product editor", () => {
       expect(within(summary).getByText("Enter a title.")).toBeInTheDocument();
       expect(screen.getByLabelText("Title")).toHaveAttribute("aria-invalid", "true");
       expect(saveMerchandiseProduct).not.toHaveBeenCalled();
+    });
+
+    it("shows no error before a save and clears each one as soon as it is fixed", async () => {
+      render(<MerchandiseProductEditor detail={detail} />);
+      change("Title", "");
+      expect(screen.queryByText("Enter a title.")).not.toBeInTheDocument();
+
+      fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
+      const summary = await screen.findByRole("alert");
+      expect(within(summary).getByText("Enter a title.")).toBeInTheDocument();
+      expect(screen.getAllByText("Enter a title.")).toHaveLength(2);
+
+      change("Title", "Tote");
+      expect(screen.queryByText("Enter a title.")).not.toBeInTheDocument();
     });
 
     it("shows a taken slug against the slug field", async () => {
@@ -212,7 +247,7 @@ describe("merchandise product editor", () => {
     const fill = () => {
       change("Title", "Canvas tote bag");
       change("SKU", "TOTE-01");
-      change("Price (£)", "15");
+      fireEvent.input(screen.getByLabelText("Price"), { target: { value: "15" } });
       change("Opening stock", "4");
     };
 

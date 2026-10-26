@@ -10,17 +10,12 @@ import {
 } from "@/lib/data/http/invitations.reader";
 import { EMPTY_ADMIN_INVITATIONS_LIST_SUMMARY } from "@/lib/data/http/invitations.shared";
 import type { AdminInvitationSummary } from "@/lib/data/http/invitations.shared";
-import { adminInvitationsKeys } from "@/lib/data/queries/admin-invitations";
-import { getQueryClient } from "@/lib/query/get-query-client";
-import { dehydrate } from "@tanstack/react-query";
 
 export async function loadAdminInvitationsListPage(sp: InvitationsListSearchParams) {
   const model = buildInvitationsListPageModel(sp);
 
   try {
-    const queryClient = getQueryClient();
     const page = await getAdminInvitationsPage(model.listQueryParams);
-    queryClient.setQueryData(adminInvitationsKeys.list(model.listQueryParams), page);
 
     const selectedId = model.selectedInvitationId;
     const selectedFromPage = selectedId
@@ -45,7 +40,6 @@ export async function loadAdminInvitationsListPage(sp: InvitationsListSearchPara
       hasNextPage: page.hasNextPage,
       selectedInvitation,
       previewDegraded: Boolean(selectedId && !selectedInvitation),
-      dehydratedState: dehydrate(queryClient),
       loadError: null as string | null,
       pagination:
         page.total > 0 && (model.query.offset > 0 || page.hasNextPage)
@@ -78,7 +72,6 @@ export async function loadAdminInvitationsListPage(sp: InvitationsListSearchPara
       hasNextPage: false,
       selectedInvitation: null,
       previewDegraded: false,
-      dehydratedState: undefined,
       loadError: message === "forbidden" ? "Access denied" : message,
       pagination: null,
     };

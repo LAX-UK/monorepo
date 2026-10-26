@@ -1,8 +1,7 @@
-import { cn } from "@auction/ui/lib/utils";
+import { cn } from "@auction/staff-ui";
 import type { ReactNode } from "react";
 
-const PANEL_HEADING_CLASS =
-  "font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
+const PANEL_HEADING_CLASS = "text-staff-md font-semibold text-staff-fg";
 
 export function PanelHeading({
   children,
@@ -16,6 +15,7 @@ export function PanelHeading({
   return <Tag className={cn(PANEL_HEADING_CLASS, className)}>{children}</Tag>;
 }
 
+/** A block of the console: a hairline card, or `plain` when it already sits inside one. */
 export function ConsolePanel({
   children,
   className,
@@ -28,7 +28,7 @@ export function ConsolePanel({
   return (
     <div
       className={cn(
-        variant === "bordered" && "rounded-lg border border-outline-variant/25 p-4",
+        variant === "bordered" && "rounded-staff-md border border-staff-line bg-staff-surface p-4",
         className,
       )}
     >
@@ -37,6 +37,7 @@ export function ConsolePanel({
   );
 }
 
+/** A small label above a group of controls inside a panel. */
 export function ConsoleSectionLabel({
   children,
   className,
@@ -44,7 +45,5 @@ export function ConsoleSectionLabel({
   children: ReactNode;
   className?: string;
 }) {
-  return <p className={cn(PANEL_HEADING_CLASS, className)}>{children}</p>;
+  return <p className={cn("text-staff-sm font-medium text-staff-muted", className)}>{children}</p>;
 }
-
-export { CollapsibleConsoleSection } from "@/features/saleroom/components/clerk-console/collapsible-console-section";
