@@ -25,6 +25,17 @@
   font-weight: 600;
 }
 
+/* Applied filter chips carry Shop's accent: a full-strength edge (well over 3:1) on a light tint;
+   the label stays in the text colour. */
+.catalog-filter-chip.catalog-filter-chip {
+  border-color: var(--color-product-accent);
+  background-color: color-mix(in srgb, var(--color-product-accent) 8%, var(--color-surface));
+}
+
+.catalog-filter-chip.catalog-filter-chip:hover {
+  background-color: color-mix(in srgb, var(--color-product-accent) 14%, var(--color-surface));
+}
+
 /* Form controls: text inputs, search, selects and textareas. */
 .shop-field {
   min-height: var(--shop-control-height);

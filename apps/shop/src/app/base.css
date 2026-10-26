@@ -29,9 +29,11 @@
   --color-on-background: var(--color-on-surface);
   --color-primary: var(--color-brand-obsidian);
   --color-on-primary: #ffffff;
-  /* LAX colour rule (docs/DESIGN_SYSTEM.md): shared neutrals only; navy is Bid's accent.
-     LAX Shop has no accent yet, so the product accent is the primary neutral. */
-  --color-product-accent: var(--color-primary);
+  /* LAX colour rule (docs/DESIGN_SYSTEM.md): Shop's accent is aubergine (PRODUCT_ACCENTS.shop in
+     @auction/branding). It colours the .SHOP tag, the active-nav bar, links, focus rings and
+     selected filter chips. Primary buttons stay ink and status colours never take it.
+     10.9:1 on white, 9.4:1 on #eeeeee. */
+  --color-product-accent: #5a2a5c;
   --color-secondary: var(--color-brand-ink);
   --color-on-secondary: #ffffff;
   --color-secondary-container: var(--color-surface-container-low);
@@ -67,9 +69,9 @@
     var(--color-brand-obsidian) 20%,
     var(--color-outline-variant)
   );
-  /* Links stay underlined (they share the text colour), so colour is never the only cue. */
-  --color-link: var(--color-brand-obsidian);
-  --color-ring: var(--color-brand-obsidian);
+  /* Links take the accent and stay underlined, so colour is never the only cue. */
+  --color-link: var(--color-product-accent);
+  --color-ring: var(--color-product-accent);
   --color-cta-bg: var(--color-brand-obsidian);
   --color-cta-on: var(--color-brand-light-cream);
   --color-border-hairline: color-mix(in srgb, var(--color-brand-light-gray) 60%, white);
@@ -258,7 +260,8 @@ html.dark {
   --color-on-primary: var(--color-brand-obsidian);
   --color-cta-bg: var(--color-brand-light-cream);
   --color-cta-on: var(--color-brand-obsidian);
-  --color-product-accent: var(--color-primary);
+  /* Light aubergine on dark surfaces: 9.2:1 on #121414, 6.7:1 on #2d2f2e. */
+  --color-product-accent: #d6a8d4;
   --color-secondary: var(--color-brand-light-cream);
   --color-on-secondary: var(--color-brand-obsidian);
   --color-secondary-container: var(--color-surface-container);
@@ -295,8 +298,8 @@ html.dark {
     var(--color-surface)
   );
   --color-alert-border: color-mix(in srgb, var(--color-outline-variant) 70%, transparent);
-  --color-link: var(--color-brand-light-cream);
-  --color-ring: var(--color-brand-light-cream);
+  --color-link: var(--color-product-accent);
+  --color-ring: var(--color-product-accent);
   --color-border-hairline: color-mix(in srgb, var(--color-outline-variant) 40%, transparent);
   --color-input-border: #858585;
   --color-control-border-hover: #b3b3b3;

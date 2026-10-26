@@ -78,7 +78,7 @@ export function ShopHeaderClient({
       >
         <div
           className={cn(
-            "mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-4 py-2 lg:gap-4 lg:pt-3 lg:pb-4",
+            "mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-4 py-2 lg:gap-4 lg:pt-2 lg:pb-[0.8125rem]",
             MARKETING_PAGE_GUTTER_X,
           )}
         >
@@ -103,7 +103,11 @@ export function ShopHeaderClient({
                 className={cn("min-w-[76px] shrink-0 rounded-sm", FOCUS_RING)}
                 aria-label="LAX Shop home"
               >
-                <LaxLogo kind="shop" className="shop-header__logo" />
+                <LaxLogo kind="shop" className="shop-header__logo shop-header__logo--compact" />
+                <LaxLogo
+                  kind="shop-exchange"
+                  className="shop-header__logo shop-header__logo--full"
+                />
               </Link>
             }
             trailing={

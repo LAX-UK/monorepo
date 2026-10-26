@@ -3,6 +3,33 @@
   height: 2.5rem;
 }
 
+/* Phones and tablets show the compact lockup (the mark and .SHOP); desktop shows the full
+   London Art Exchange lockup with .SHOP, 50px tall so its smallest line stays near 9px. The
+   header's padding is trimmed on desktop so the bar keeps its height. */
+.lax-logo.shop-header__logo--full {
+  display: none;
+}
+
+.shop-header__logo--full .lax-lockup {
+  height: 3.125rem;
+}
+
+@media (min-width: 64rem) {
+  .lax-logo.shop-header__logo--compact {
+    display: none;
+  }
+
+  .lax-logo.shop-header__logo--full {
+    display: block;
+  }
+}
+
+/* The active and open nav item carries Shop's accent underline. */
+.site-header-mega-trigger[aria-current="page"],
+.site-header-mega-trigger[aria-expanded="true"] {
+  border-bottom-color: var(--color-product-accent);
+}
+
 .shop-header__utility-form {
   display: inline;
   margin: 0;
