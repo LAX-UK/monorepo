@@ -1,28 +1,35 @@
-import { StaffHubShell } from "@/components/admin/catalog/staff-hub-shell";
-import { Skeleton } from "@auction/ui/components/skeleton";
+import { DataTable, MetricStrip, PageHeader, Section, Skeleton } from "@auction/staff-ui";
 
+const COLUMNS = ["Item", "Priority", "Area", "Owner", "Due"].map((header) => ({
+  id: header.toLowerCase(),
+  header,
+  cell: () => null,
+}));
+
+/** Overview while it loads: the same blocks, in the same order, at their final size. */
 export default function PersonalDashboardLoading() {
   return (
-    <StaffHubShell
-      title="Good day"
-      description="Your queue, then the context you need to resolve it."
-      primaryAction={<Skeleton className="h-9 w-28 rounded-md" />}
-      kpiStrip={
-        <div className="hidden lg:block">
-          <Skeleton className="h-24 w-full rounded-xl" />
-        </div>
-      }
-      mobileSummary={
-        <div className="flex gap-3">
-          <Skeleton className="h-10 w-24 rounded-md" />
-        </div>
-      }
-      view={
-        <div className="space-y-10" aria-busy="true" aria-label="Loading dashboard">
-          <Skeleton className="h-[28rem] w-full rounded-xl" />
-          <Skeleton className="h-48 w-full rounded-xl" />
-        </div>
-      }
-    />
+    <div className="flex flex-col gap-6" aria-busy="true">
+      <PageHeader
+        title="Overview"
+        description="The work waiting on you, then the numbers and what changed."
+      />
+      <Section title="Your work" bodyClassName="p-0">
+        <DataTable
+          label="Your work, loading"
+          columns={COLUMNS}
+          data={[]}
+          getRowId={() => ""}
+          loading
+          embedded
+        />
+      </Section>
+      <MetricStrip
+        label="Your numbers, loading"
+        period={<Skeleton className="h-3 w-40" />}
+        items={[]}
+        loading
+      />
+    </div>
   );
 }

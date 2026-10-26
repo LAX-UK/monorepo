@@ -26,11 +26,11 @@ export function createAdminSegmentRouteError(config: AdminSegmentRouteErrorConfi
     return (
       <AdminErrorPage
         error={error}
-        title={config.title ?? "Admin error"}
+        title={config.title ?? "This page could not load"}
         message={adminRouteErrorMessage(error)}
         reset={reset}
         homeHref={config.homeHref ?? "/admin"}
-        homeLabel={config.homeLabel ?? "Back to admin home"}
+        homeLabel={config.homeLabel ?? "Back to Overview"}
       />
     );
   };

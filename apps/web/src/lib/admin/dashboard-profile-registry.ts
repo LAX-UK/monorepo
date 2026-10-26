@@ -66,7 +66,7 @@ const PROFILES: Record<DashboardProfileId, DashboardProfile> = {
       fallbackLabel: "Open lots",
     },
     queueDomains: ["Finance", "Compliance", "Operations", "Catalog", "People"],
-    kpiIds: ["live-lots", "new-lots", "stale-payments", "revenue-today", "bids-per-minute"],
+    kpiIds: ["live-lots", "new-lots", "stale-payments", "revenue-today"],
     showLiveOperations: true,
     secondaryWidgets: ["activity"],
     emptyStateNextStep: "Review finance and compliance queues when badges update.",

@@ -1,10 +1,10 @@
 export type AdminKpiPeriodDays = 7 | 30 | 90;
 
-const VALID: readonly AdminKpiPeriodDays[] = [7, 30, 90];
+export const ADMIN_KPI_PERIODS: readonly AdminKpiPeriodDays[] = [7, 30, 90];
 
 export function parseAdminKpiPeriod(raw: string | undefined): AdminKpiPeriodDays {
   const n = Number(raw);
-  if (VALID.includes(n as AdminKpiPeriodDays)) return n as AdminKpiPeriodDays;
+  if (ADMIN_KPI_PERIODS.includes(n as AdminKpiPeriodDays)) return n as AdminKpiPeriodDays;
   return 30;
 }
 

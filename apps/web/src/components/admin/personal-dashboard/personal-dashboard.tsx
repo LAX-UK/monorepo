@@ -1,89 +1,154 @@
-import { OperationalContextSection } from "@/components/admin/personal-dashboard/operational-context-section";
-import type { AssignmentFilter } from "@/components/admin/personal-dashboard/work-inbox/work-inbox-utils";
-import { WorkInboxWidget } from "@/components/admin/personal-dashboard/work-inbox/work-inbox-widget";
-import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
-import { getDashboardProfile } from "@/lib/admin/dashboard-profile-registry";
+"use client";
+
+import { CustomisePanel } from "@/components/admin/personal-dashboard/customise-panel";
+import { MetricsPeriodMenu } from "@/components/admin/personal-dashboard/metrics-period-menu";
+import {
+  RecentActivitySection,
+  SalesSection,
+} from "@/components/admin/personal-dashboard/overview-context-sections";
+import { WorkInbox } from "@/components/admin/personal-dashboard/work-inbox/work-inbox";
+import type { AdminActivityRow } from "@/lib/admin/admin-home-types";
+import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import {
   type DashboardWidgetState,
   isDashboardWidgetVisible,
 } from "@/lib/admin/dashboard-widgets.vm";
-import type { RecentActivitySlice } from "@/lib/admin/dashboard/recent-activity.slice";
 import type { SaleReadinessSlice } from "@/lib/admin/dashboard/sale-readiness.slice";
 import type { WorkInboxSlice } from "@/lib/admin/dashboard/work-inbox.slice";
+import type { WorkArea, WorkAssignment } from "@/lib/admin/dashboard/work-inbox.vm";
+import type { AdminWorkItemDomain } from "@/lib/data/http/admin-work-items.schema";
+import {
+  type Metric,
+  MetricStrip,
+  Notice,
+  PageHeader,
+  Section,
+  StaffButton,
+  type StaffLinkComponent,
+} from "@auction/staff-ui";
 import type { UserStaffRole } from "@auction/types";
-import { Surface } from "@auction/ui/components/surface";
+import Link from "next/link";
 
-type Props = {
+const NextLink: StaffLinkComponent = Link;
+
+export type PersonalDashboardProps = {
+  title: string;
   actorUserId: string;
+  staffRole: UserStaffRole | null;
   widgets: readonly DashboardWidgetState[];
-  staffRole?: UserStaffRole | null;
-  activeLotIds: readonly string[];
-  workAssignment?: AssignmentFilter;
+  /** The role's usual next step, the page's one primary action. */
+  primaryAction: { href: string; label: string };
+  /** A second, quieter link beside it. */
+  quickLink?: { href: string; label: string } | null;
+  /** Some data could not load; what did loads. */
+  loadWarning?: string | null;
   workInbox: WorkInboxSlice;
+  workAreas: readonly AdminWorkItemDomain[];
+  area: WorkArea;
+  assignment: WorkAssignment;
+  openItemId?: string | null;
+  periodDays: AdminKpiPeriodDays;
+  /** The role's numbers; empty when the role has none. */
+  metrics: readonly Metric[];
+  metricsPeriod: string;
   saleReadiness: SaleReadinessSlice;
-  recentActivity: RecentActivitySlice;
+  activeLotIds: readonly string[];
+  activity: readonly AdminActivityRow[];
+  activityUnavailable?: string | null;
 };
 
-function SliceUnavailable({
-  title,
-  message,
-}: {
-  title: string;
-  message: string;
-}) {
-  return (
-    <Surface variant="section" padding="md" className="border-border-hairline">
-      <DashboardEmptyState variant="quiet" title={title} description={message} headingLevel="h3" />
-    </Surface>
-  );
-}
-
-export function PersonalDashboard({
-  actorUserId,
-  widgets,
-  staffRole = null,
-  activeLotIds,
-  workAssignment = "all",
-  workInbox,
-  saleReadiness,
-  recentActivity,
-}: Props) {
-  const show = (id: DashboardWidgetState["id"]) => isDashboardWidgetVisible(widgets, id);
-  const profile = getDashboardProfile(staffRole);
-
-  const activityRows =
-    recentActivity.status === "ready" || recentActivity.status === "empty"
-      ? recentActivity.data.rows
-      : [];
-
-  const showOperations = show("saleroom-live") || show("onsite-radar");
-  const showActivity = show("activity");
-  const showContext = showOperations || showActivity;
+/**
+ * Bid admin's Overview, a work inbox first: the work waiting on this person, then their role's
+ * numbers with trends, then the saleroom and upcoming sales beside the latest lot activity. Each
+ * block can be hidden from Customise.
+ */
+export function PersonalDashboard(props: PersonalDashboardProps) {
+  const show = (id: DashboardWidgetState["id"]) => isDashboardWidgetVisible(props.widgets, id);
+  const inbox = props.workInbox;
+  const showPulse = show("saleroom-live");
+  const showSales = show("onsite-radar");
 
   return (
-    <div className="space-y-10">
+    <div className="flex flex-col gap-6">
+      <PageHeader
+        title={props.title}
+        description="The work waiting on you, then the numbers and what changed."
+        primaryAction={
+          <StaffButton asChild variant="primary">
+            <Link href={props.primaryAction.href}>{props.primaryAction.label}</Link>
+          </StaffButton>
+        }
+        secondaryActions={
+          <>
+            {props.quickLink ? (
+              <StaffButton asChild>
+                <Link href={props.quickLink.href}>{props.quickLink.label}</Link>
+              </StaffButton>
+            ) : null}
+            <CustomisePanel widgets={props.widgets} staffRole={props.staffRole} />
+          </>
+        }
+      />
+
+      {props.loadWarning ? (
+        <Notice tone="warning" title="Some of Overview could not load">
+          {props.loadWarning}
+        </Notice>
+      ) : null}
+
       {show("my-queue") ? (
-        workInbox.status === "unavailable" ? (
-          <SliceUnavailable title="Work inbox unavailable" message={workInbox.message} />
+        inbox.status === "unavailable" ? (
+          <Section title="Your work">
+            <Notice tone="warning" title="Your work could not load">
+              {inbox.message}
+            </Notice>
+          </Section>
         ) : (
-          <WorkInboxWidget
-            workInbox={workInbox}
-            actorUserId={actorUserId}
-            queueDomains={profile.queueDomains}
-            initialAssignment={workAssignment}
+          <WorkInbox
+            items={inbox.data.items}
+            counts={inbox.data.counts}
+            areas={props.workAreas}
+            area={props.area}
+            assignment={props.assignment}
+            period={props.periodDays === 30 ? undefined : String(props.periodDays)}
+            openItemId={props.openItemId ?? null}
+            actorUserId={props.actorUserId}
+            emptyMessage={inbox.status === "empty" ? inbox.message : null}
           />
         )
       ) : null}
 
-      {showContext ? (
-        <OperationalContextSection
-          showOperations={showOperations}
-          showActivity={showActivity}
-          saleReadiness={saleReadiness}
-          recentActivity={recentActivity}
-          activeLotIds={activeLotIds}
-          activityRows={activityRows}
+      {show("kpi-band") && props.metrics.length > 0 ? (
+        <MetricStrip
+          label="Your numbers"
+          period={props.metricsPeriod}
+          action={<MetricsPeriodMenu current={props.periodDays} />}
+          items={props.metrics}
+          Link={NextLink}
         />
+      ) : null}
+
+      {showPulse || showSales || show("activity") ? (
+        <div className="grid items-start gap-6 xl:grid-cols-2">
+          {showPulse || showSales ? (
+            <div className="flex min-w-0 flex-col gap-6">
+              <SalesSection
+                saleReadiness={props.saleReadiness}
+                activeLotIds={props.activeLotIds}
+                showPulse={showPulse}
+                showSales={showSales}
+              />
+            </div>
+          ) : null}
+          {show("activity") ? (
+            <div className="min-w-0">
+              <RecentActivitySection
+                rows={props.activity}
+                unavailable={props.activityUnavailable ?? null}
+              />
+            </div>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
