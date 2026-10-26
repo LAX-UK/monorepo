@@ -80,6 +80,8 @@ export const shopGeneralEnquiryTopicEnum = pgEnum("shop_general_enquiry_topic", 
   "art_advisory",
   "selling",
   "exhibition",
+  /** "Report a problem" from an order page; `context_slug` holds the order reference. */
+  "order_problem",
 ]);
 
 export const shopEditorialVenue = pgTable(

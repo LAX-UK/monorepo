@@ -587,6 +587,13 @@ export const shopOrder = pgTable(
   "shop_order",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    /**
+     * What people quote for the order ("LAX-S-10482"): shoppers, emails, invoices, Stripe and
+     * staff. Issued by the database from `shop_order_reference_seq` when the row is inserted.
+     */
+    reference: text("reference")
+      .default(sql`('LAX-S-' || nextval('shop_order_reference_seq')::text)`)
+      .notNull(),
     identitySubjectId: text("identity_subject_id").notNull(),
     buyerPartyId: uuid("buyer_party_id").references(() => shopParty.id, { onDelete: "restrict" }),
     status: shopOrderStatusEnum("status").default("pending_payment").notNull(),
@@ -613,6 +620,7 @@ export const shopOrder = pgTable(
   },
   (table) => [
     uniqueIndex("shop_order_idempotency_key_uid").on(table.idempotencyKey),
+    uniqueIndex("shop_order_reference_uid").on(table.reference),
     index("shop_order_subject_idx").on(table.identitySubjectId),
     index("shop_order_subject_created_idx").on(table.identitySubjectId, table.createdAt),
   ],
@@ -995,6 +1003,14 @@ export const shopFulfilment = pgTable(
     carrier: text("carrier"),
     trackingNumber: text("tracking_number"),
     possessionAt: timestamp("possession_at", { mode: "date", withTimezone: true }),
+    /** When each stage was first reached, for the buyer's order timeline. */
+    productionStartedAt: timestamp("production_started_at", { mode: "date", withTimezone: true }),
+    dispatchedAt: timestamp("dispatched_at", { mode: "date", withTimezone: true }),
+    readyForCollectionAt: timestamp("ready_for_collection_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
+    cancelledAt: timestamp("cancelled_at", { mode: "date", withTimezone: true }),
     storageLocation: text("storage_location"),
     version: integer("version").default(1).notNull(),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),

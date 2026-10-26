@@ -20,7 +20,8 @@ const BEFORE_DIRECTORY_0158_FOLDER_MILLIS = 1788000034000;
 const DIRECTORY_0159_FOLDER_MILLIS = 1788000035000;
 const WORKER_CUTOVER_0160_FOLDER_MILLIS = 1788000036000;
 const BEFORE_ADDRESS_BOOK_FOLDER_MILLIS = 1794643200000;
-const FINAL_FOLDER_MILLIS = 1795420800000;
+const DECLINE_REASON_0232_FOLDER_MILLIS = 1795420800000;
+const FINAL_FOLDER_MILLIS = 1795507200000;
 const ATG_SYNC_LINKS_FOLDER_MILLIS = 1788000007500;
 
 function isExpectedTeardownPoolError(error: Error): boolean {
@@ -801,6 +802,84 @@ describe.skipIf(!migrationUrl)("main-to-Identity migration upgrade", { timeout: 
         "collector@example.test",
         "member@example.test",
       ]);
+    });
+  });
+
+  it("numbers existing orders by creation, issues new references once, dates fulfilment stages from the audit trail, and rolls back", async () => {
+    await withTemporaryDatabase(async (pool) => {
+      await runMigrationsPerTransactionThrough(pool, DECLINE_REASON_0232_FOLDER_MILLIS);
+
+      const insertOrder = (key: string, createdAt: string) =>
+        pool.query<{ id: string }>(
+          `INSERT INTO public.shop_order
+            (identity_subject_id, fulfilment, merchandise_subtotal_pence, fulfilment_surcharge_pence,
+             total_pence, idempotency_key, created_at)
+           VALUES ('subject-ref', 'uk_insured_delivery', 1000, 0, 1000, $1, $2) RETURNING id`,
+          [key, createdAt],
+        );
+      await insertOrder("ref-later", "2026-03-02T10:00:00Z");
+      const earlier = await insertOrder("ref-earlier", "2026-03-01T10:00:00Z");
+      const fulfilment = await pool.query<{ id: string }>(
+        "INSERT INTO public.shop_fulfilment (order_id, option, status) VALUES ($1, 'uk_insured_delivery', 'in_transit') RETURNING id",
+        [earlier.rows[0]?.id],
+      );
+      const fulfilmentId = fulfilment.rows[0]?.id ?? "";
+      for (const [status, at] of [
+        ["in_production", "2026-03-03T09:00:00Z"],
+        ["awaiting_dispatch", "2026-03-04T09:00:00Z"],
+        ["in_transit", "2026-03-05T09:00:00Z"],
+      ] as const) {
+        await pool.query(
+          `INSERT INTO public.shop_admin_audit
+            (actor_subject_id, capability, action, target_type, target_id, after_json, created_at)
+           VALUES ('staff', 'fulfilment.write', 'update_fulfilment', 'shop_fulfilment', $1, $2, $3)`,
+          [fulfilmentId, JSON.stringify({ status }), at],
+        );
+      }
+
+      await runMigrationsPerTransaction(pool);
+
+      const numbered = await pool.query<{ idempotency_key: string; reference: string }>(
+        "SELECT idempotency_key, reference FROM public.shop_order ORDER BY created_at",
+      );
+      expect(numbered.rows).toEqual([
+        { idempotency_key: "ref-earlier", reference: "LAX-S-10001" },
+        { idempotency_key: "ref-later", reference: "LAX-S-10002" },
+      ]);
+
+      const fresh = await insertOrder("ref-new", "2026-03-06T10:00:00Z");
+      const freshRef = await pool.query<{ reference: string }>(
+        "SELECT reference FROM public.shop_order WHERE id = $1",
+        [fresh.rows[0]?.id],
+      );
+      expect(freshRef.rows[0]?.reference).toBe("LAX-S-10003");
+      await expect(
+        pool.query("UPDATE public.shop_order SET reference = 'LAX-S-10001' WHERE id = $1", [
+          fresh.rows[0]?.id,
+        ]),
+      ).rejects.toThrow(/shop_order_reference_uid/);
+
+      const stages = await pool.query<{
+        production_started_at: Date | null;
+        dispatched_at: Date | null;
+        ready_for_collection_at: Date | null;
+      }>(
+        "SELECT production_started_at, dispatched_at, ready_for_collection_at FROM public.shop_fulfilment WHERE id = $1",
+        [fulfilmentId],
+      );
+      expect(stages.rows[0]?.production_started_at?.toISOString()).toBe("2026-03-03T09:00:00.000Z");
+      expect(stages.rows[0]?.dispatched_at?.toISOString()).toBe("2026-03-05T09:00:00.000Z");
+      expect(stages.rows[0]?.ready_for_collection_at).toBeNull();
+
+      await executeMigrationSql(pool, "0233_rollback.sql");
+      const columns = await pool.query(
+        "SELECT column_name FROM information_schema.columns WHERE table_schema = 'public' AND ((table_name = 'shop_order' AND column_name = 'reference') OR (table_name = 'shop_fulfilment' AND column_name IN ('production_started_at', 'dispatched_at', 'ready_for_collection_at', 'cancelled_at')))",
+      );
+      expect(columns.rows).toEqual([]);
+      const sequence = await pool.query(
+        "SELECT 1 FROM pg_class WHERE relkind = 'S' AND relname = 'shop_order_reference_seq'",
+      );
+      expect(sequence.rows).toEqual([]);
     });
   });
 
