@@ -348,6 +348,13 @@ html.lenis {
   line-height: 1.6;
 }
 
+.marketing-status-state__control {
+  width: 100%;
+  max-width: 28rem;
+  margin-top: 0.375rem;
+  text-align: start;
+}
+
 .marketing-status-state__actions {
   display: flex;
   flex-wrap: wrap;

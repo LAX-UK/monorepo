@@ -163,8 +163,13 @@ export {
   type MarketingMegaNavSection,
 } from "./header/marketing-header-mega-nav.js";
 export {
+  HEADER_SEARCH_MIN_QUERY,
   MarketingHeaderSearch,
+  headerSearchResultSummary,
+  type MarketingHeaderSearchLoader,
   type MarketingHeaderSearchProps,
+  type MarketingHeaderSearchResult,
+  type MarketingHeaderSearchResultGroup,
   type MarketingHeaderSearchSuggestion,
 } from "./header/marketing-header-search.js";
 export {

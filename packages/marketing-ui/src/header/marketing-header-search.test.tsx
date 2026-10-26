@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MarketingHeaderSearch } from "./marketing-header-search.js";
 
@@ -155,5 +155,160 @@ describe("MarketingHeaderSearch", () => {
     });
     fireEvent.submit(within(dialog).getByRole("form", { name: "Search" }));
     expect(push).toHaveBeenCalledWith("/search?q=Bacon");
+  });
+});
+
+describe("MarketingHeaderSearch live results", () => {
+  const groups = [
+    {
+      id: "editions",
+      title: "Editions",
+      items: [
+        {
+          id: "a",
+          label: "Warm Basket",
+          detail: "Emmett King",
+          href: "/artworks/a",
+          imageUrl: null,
+        },
+        { id: "b", label: "Blue Hour", detail: "Emmett King", href: "/artworks/b", imageUrl: null },
+      ],
+    },
+    {
+      id: "artists",
+      title: "Artists",
+      items: [{ id: "c", label: "Emmett King", href: "/artists/c" }],
+    },
+  ];
+
+  beforeEach(() => {
+    stubStorage();
+    push.mockReset();
+    vi.useFakeTimers();
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  async function openWithResults(loadResults = vi.fn().mockResolvedValue(groups)) {
+    render(
+      <MarketingHeaderSearch
+        action="/artworks"
+        recentStorageKey={KEY}
+        placeholder="Search editions and artists"
+        loadResults={loadResults}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Search editions and artists" }));
+    const input = screen.getByRole("combobox", { name: "Search editions and artists" });
+    fireEvent.change(input, { target: { value: "em" } });
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(250);
+    });
+    return { input, loadResults };
+  }
+
+  it("waits for two characters, then lists results grouped by kind with a search-all option", async () => {
+    const { input, loadResults } = await openWithResults();
+    expect(loadResults).toHaveBeenCalledTimes(1);
+    expect(loadResults.mock.calls[0]?.[0]).toBe("em");
+    expect(input).toHaveAttribute("aria-expanded", "true");
+
+    const listbox = screen.getByRole("listbox", { name: "Search suggestions" });
+    const groupNames = within(listbox)
+      .getAllByRole("group")
+      .map((group) => document.getElementById(group.getAttribute("aria-labelledby") ?? ""))
+      .map((title) => title?.textContent);
+    expect(groupNames).toEqual(["Editions", "Artists"]);
+    expect(
+      within(listbox)
+        .getAllByRole("option")
+        .map((option) => option.getAttribute("aria-label")),
+    ).toEqual([
+      "Warm Basket, Emmett King",
+      "Blue Hour, Emmett King",
+      "Emmett King",
+      "See all results for “em”",
+    ]);
+    expect(screen.getByRole("status")).toHaveTextContent("2 editions and 1 artist");
+  });
+
+  it("moves through the options with the arrow keys and opens the active one on Enter", async () => {
+    const { input } = await openWithResults();
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    const active = screen.getByRole("option", { name: "Blue Hour, Emmett King" });
+    expect(active).toHaveAttribute("aria-selected", "true");
+    expect(input).toHaveAttribute("aria-activedescendant", active.id);
+
+    fireEvent.keyDown(input, { key: "ArrowUp" });
+    fireEvent.keyDown(input, { key: "ArrowUp" });
+    expect(screen.getByRole("option", { name: "See all results for “em”" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(push).toHaveBeenCalledWith("/artworks/a");
+    expect(JSON.parse(window.localStorage.getItem(KEY) ?? "[]")).toEqual(["em"]);
+    expect(screen.queryByRole("dialog")).toBeNull();
+  });
+
+  it("opens a result on click, and Enter with no option chosen runs the full search", async () => {
+    await openWithResults();
+    fireEvent.click(screen.getByRole("option", { name: "Emmett King" }));
+    expect(push).toHaveBeenCalledWith("/artists/c");
+
+    push.mockReset();
+    fireEvent.click(screen.getByRole("button", { name: "Search editions and artists" }));
+    const input = screen.getByRole("combobox", { name: "Search editions and artists" });
+    fireEvent.change(input, { target: { value: "em" } });
+    fireEvent.submit(screen.getByRole("form", { name: "Search" }));
+    expect(push).toHaveBeenCalledWith("/artworks?q=em");
+  });
+
+  it("says when nothing matches or suggestions fail, and still offers the full search", async () => {
+    await openWithResults(
+      vi.fn().mockResolvedValue([{ id: "editions", title: "Editions", items: [] }]),
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("No matches for “em”.");
+    expect(screen.getAllByRole("option")).toHaveLength(1);
+    cleanup();
+
+    await openWithResults(vi.fn().mockRejectedValue(new Error("offline")));
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Suggestions are unavailable. Press Enter to search.",
+    );
+    expect(screen.getByRole("option", { name: "See all results for “em”" })).toBeInTheDocument();
+  });
+
+  it("on phones opens from an icon as a modal sheet that keeps focus inside", () => {
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: false, media: query }));
+    render(
+      <MarketingHeaderSearch
+        action="/artworks"
+        recentStorageKey={KEY}
+        placeholder="Search editions and artists"
+        loadResults={vi.fn().mockResolvedValue([])}
+        compactBelowDesktop
+      />,
+    );
+    const icon = screen.getByRole("button", { name: "Search" });
+    fireEvent.click(icon);
+    const dialog = screen.getByRole("dialog", { name: "Search" });
+    expect(dialog).toHaveAttribute("aria-modal", "true");
+    expect(dialog).toHaveAttribute("data-search-layout", "sheet");
+    expect(document.documentElement.style.overflow).toBe("hidden");
+
+    const cancel = within(dialog).getByRole("button", { name: "Cancel" });
+    cancel.focus();
+    fireEvent.keyDown(document, { key: "Tab" });
+    expect(within(dialog).getByRole("combobox")).toHaveFocus();
+
+    fireEvent.click(cancel);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(icon).toHaveFocus();
+    expect(document.documentElement.style.overflow).toBe("");
   });
 });
