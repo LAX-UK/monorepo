@@ -215,7 +215,7 @@ export function SaleLotsTabBoard({
     {
       id: "number",
       header: "Lot no.",
-      width: "88px",
+      width: "76px",
       numeric: true,
       sortable: true,
       sortValue: (row) => row.lotNumber,
@@ -233,29 +233,17 @@ export function SaleLotsTabBoard({
           href={`/admin/lots/${row.id}`}
           Link={Link}
           thumbnail={{ src: row.thumbnailUrl, missingLabel: "No photos yet" }}
+          secondary={
+            row.lot.artistId && artistOf(row) ? (
+              <CellLink href={`/admin/artists/${row.lot.artistId}`} Link={Link}>
+                {artistOf(row)}
+              </CellLink>
+            ) : undefined
+          }
         >
           {row.title}
         </PrimaryCell>
       ),
-    },
-    {
-      id: "artist",
-      header: "Artist",
-      width: "148px",
-      sortable: true,
-      sortValue: (row) => artistOf(row)?.toLowerCase() ?? null,
-      hideBelow: "md",
-      mobile: "meta",
-      cell: (row) => {
-        const name = artistOf(row);
-        return name && row.lot.artistId ? (
-          <CellLink href={`/admin/artists/${row.lot.artistId}`} Link={Link}>
-            {name}
-          </CellLink>
-        ) : (
-          <EmptyValue />
-        );
-      },
     },
     {
       id: "status",
