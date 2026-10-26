@@ -148,6 +148,7 @@ jobs:
       - uses: digitalocean/action-doctl@v2
         if: inputs.layer == 'ephemeral' && vars.APP_DEPLOY_SOURCE_PROD == 'image'
         with:
+          version: 2.0.0
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
       - name: Resolve monorepo app image tag for Terraform
         if: inputs.layer == 'ephemeral' && vars.APP_DEPLOY_SOURCE_PROD == 'image'

@@ -66,6 +66,7 @@ jobs:
       - uses: digitalocean/action-doctl@v2
         if: env.APP_ID != ''
         with:
+          version: 2.0.0
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
       - name: Validate redeploy SHA
         if: env.APP_ID != '' && inputs.git_sha != ''
@@ -129,6 +130,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: digitalocean/action-doctl@v2
         with:
+          version: 2.0.0
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
       - name: Record active deployment for rollback
         id: prior

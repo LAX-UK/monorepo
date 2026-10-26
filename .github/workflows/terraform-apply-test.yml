@@ -203,6 +203,7 @@ jobs:
       - uses: digitalocean/action-doctl@v2
         if: inputs.layer == 'ephemeral'
         with:
+          version: 2.0.0
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
       - name: Require approved Auth and Shop image contracts before ephemeral apply
         if: inputs.layer == 'ephemeral' && vars.APP_DEPLOY_SOURCE_TEST == 'image'

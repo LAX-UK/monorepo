@@ -55,6 +55,7 @@ jobs:
       - uses: digitalocean/action-doctl@v2
         if: env.APP_ID != ''
         with:
+          version: 2.0.0
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
       - if: env.APP_ID != ''
         uses: ./.github/actions/app-platform-deploy

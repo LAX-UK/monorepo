@@ -66,6 +66,7 @@ jobs:
           spaces-secret-access-key: ${{ secrets.SPACES_SECRET_ACCESS_KEY }}
       - uses: digitalocean/action-doctl@v2
         with:
+          version: 2.0.0
           token: ${{ secrets.DIGITALOCEAN_TOKEN }}
       - name: Load managed Postgres CA certificate
         run: |
