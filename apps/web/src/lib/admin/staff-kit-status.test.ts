@@ -37,8 +37,8 @@ describe("staffStatus", () => {
   });
 
   it("shows a live lot and a live sale as happening now", () => {
-    expect(staffStatus("lot", "active")).toEqual({ label: "Live", tone: "danger", live: true });
-    expect(staffStatus("sale", "active")).toEqual({ label: "Live", tone: "danger", live: true });
+    expect(staffStatus("lot", "active")).toEqual({ label: "Live", tone: "live", live: true });
+    expect(staffStatus("sale", "active")).toEqual({ label: "Live", tone: "live", live: true });
   });
 
   it("names a withdrawn lot with the word staff use for the action", () => {

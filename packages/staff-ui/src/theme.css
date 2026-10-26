@@ -121,6 +121,10 @@
   --color-staff-danger-solid-hover: light-dark(#931c13, #a93125);
   --color-staff-on-danger: light-dark(#ffffff, #ffffff);
   --color-staff-live-dot: light-dark(#e83030, #ff5a4f);
+  /* Live now (Bid): a solid fill, so it never reads as the tinted danger of a failed or
+     withdrawn record. White text meets 4.5:1 on it in both schemes. */
+  --color-staff-live-bg: light-dark(#c81e1e, #c13a2e);
+  --color-staff-on-live: light-dark(#ffffff, #ffffff);
 }
 
 :root:not(.dark) {
