@@ -1,9 +1,18 @@
-import { PageSkeleton } from "@auction/ui/components/page-skeleton";
+import { PageHeader, Skeleton } from "@auction/staff-ui";
 
-export default function Loading() {
+export default function SaleroomHubLoading() {
   return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 py-6 md:px-8">
-      <PageSkeleton variant="table" />
+    <div className="flex flex-col gap-6" aria-busy="true" aria-label="Loading the saleroom">
+      <PageHeader
+        title="Saleroom"
+        description="Run the floor for live sales, or open a sale's console to check bidders in."
+      />
+      <Skeleton className="h-24 w-full rounded-staff-md" />
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <Skeleton className="h-48 rounded-staff-md" />
+        <Skeleton className="h-48 rounded-staff-md" />
+        <Skeleton className="h-48 rounded-staff-md" />
+      </div>
     </div>
   );
 }

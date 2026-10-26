@@ -1,19 +1,18 @@
 "use client";
 
-import { AdminStatusBadge } from "@/components/admin/admin-status-badge";
 import { saleDetailTabHref } from "@/components/admin/sale-detail/sale-detail-types";
 import { ConnectionStatusChip } from "@/features/saleroom/components/shared/connection-status-chip";
-import { SaleDeliveryModeBadge } from "@/features/saleroom/components/shared/sale-delivery-mode-badge";
 import { useSaleroomHubLive } from "@/features/saleroom/hooks/use-saleroom-hub-live";
 import type { SaleroomHubLiveSession } from "@/features/saleroom/hooks/use-saleroom-hub-live";
 import { useSaleroomHubMetricsPoll } from "@/features/saleroom/hooks/use-saleroom-hub-metrics-poll";
+import { staffSaleroomRoomStatus } from "@/lib/admin/staff-kit-status";
 import type { SaleroomHubRowSummary } from "@/lib/data/view-models/admin-saleroom-hub.vm";
+import { deliveryModeShortLabel } from "@/lib/presenters/delivery-mode/delivery-mode-registry";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import { isSaleroomSessionLive } from "@/lib/saleroom/public-session-status";
 import type { AdminSaleOperationsSnapshot } from "@/lib/telephone/telephone-booking-types";
-import { Button } from "@auction/ui";
-import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
-import { LiveBadge } from "@auction/ui/components/live-badge";
+import { ProgressBar, StaffButton, StatusBadge, TextLink } from "@auction/staff-ui";
+import { TriangleAlert } from "lucide-react";
 import Link from "next/link";
 
 type Props = {
@@ -60,120 +59,111 @@ function RoomCard({
     currentLotTitle: row.currentLotTitle ?? saleroom?.currentLotTitle ?? null,
   };
 
-  const progressPercent = row.totalLots > 0 ? Math.round((completedLots / row.totalLots) * 100) : 0;
-
   const pendingReg = snapshot?.registrations.pending ?? 0;
   const pendingTel = snapshot?.telephoneBookings.requested ?? 0;
   const needsAttention = pendingReg > 0 || pendingTel > 0;
-  const needsClosing = isSaleroomSessionLive(session.status) && row.saleStatus === "ended";
+  const status = staffSaleroomRoomStatus(session.status, { saleEnded: row.saleStatus === "ended" });
+  const betweenLots = session.status === "live" && !session.currentLotId;
 
+  const completedLabel = `${completedLots} of ${row.totalLots} complete`;
   let progressLabel: string;
+  let showCompleted = row.totalLots > 0;
   if (session.currentLotId && enriched.currentLotNumber != null && row.totalLots > 0) {
     progressLabel = `Lot ${enriched.currentLotNumber} of ${row.totalLots}`;
-  } else if (session.status === "live" && !session.currentLotId) {
+  } else if (betweenLots) {
     progressLabel = "Between lots";
   } else if (row.totalLots > 0) {
-    progressLabel = `${completedLots} of ${row.totalLots} complete`;
+    progressLabel = `${row.totalLots} ${row.totalLots === 1 ? "lot" : "lots"}`;
   } else {
     progressLabel = "No lots";
+    showCompleted = false;
   }
+  const roomOpen = session.status === "live" || session.status === "paused";
 
+  const waiting = [
+    pendingReg > 0 ? `${pendingReg} ${pendingReg === 1 ? "registration" : "registrations"}` : null,
+    pendingTel > 0 ? `${pendingTel} telephone ${pendingTel === 1 ? "request" : "requests"}` : null,
+  ]
+    .filter(Boolean)
+    .join(" and ");
+
+  const titleId = `room-${row.saleId}`;
   return (
     <article
-      className={`flex flex-col rounded-xl border border-border-hairline bg-surface-container-low/40 p-4 transition-colors duration-200 ${
-        needsAttention ? "ring-1 ring-error/30" : ""
-      }`}
+      aria-labelledby={titleId}
+      className="flex flex-col gap-3 rounded-staff-md border border-staff-line bg-staff-surface p-4"
     >
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0 space-y-2">
-          <div className="flex flex-wrap items-center gap-2">
-            {needsAttention ? (
-              <span
-                className="size-2 shrink-0 rounded-full bg-error"
-                aria-label="Needs attention"
-              />
-            ) : null}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h3 id={titleId} className="text-staff-md font-semibold text-staff-fg">
             <Link
               href={`/admin/saleroom/${row.saleId}`}
-              className="font-headline text-base text-link hover:underline"
+              className="staff-focus rounded-staff-xs hover:underline"
             >
               {row.title}
             </Link>
-            <SaleDeliveryModeBadge mode={row.deliveryMode} />
-            {needsClosing ? (
-              <DotStatusPill label="Needs closing" tone="warning" />
-            ) : isSaleroomSessionLive(session.status) ? (
-              <LiveBadge />
-            ) : null}
-            {session.status === "paused" ? (
-              <AdminStatusBadge domain="saleroomSession" status="paused" />
-            ) : session.status === "live" && !session.currentLotId ? (
-              <DotStatusPill label="Between lots" tone="info" />
-            ) : null}
-          </div>
-          {enriched.currentLotTitle ? (
-            <p className="font-body text-sm text-on-surface-variant">
-              On block: {enriched.currentLotTitle}
-            </p>
-          ) : session.status === "live" && !session.currentLotId ? (
-            <p className="font-body text-sm text-on-surface-variant">Between lots</p>
-          ) : null}
+          </h3>
+          <p className="text-staff-sm text-staff-muted">
+            {deliveryModeShortLabel(row.deliveryMode)} sale
+          </p>
         </div>
-        <ConnectionStatusChip
-          status={session.connectionStatus}
-          lastEventAt={session.lastEventAt}
-          hideWhenConnected
-        />
+        <StatusBadge tone={status.tone} live={status.live ?? false}>
+          {status.label}
+        </StatusBadge>
       </div>
 
-      <div className="mt-3 space-y-1">
-        <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          {progressLabel}
-        </p>
-        {row.totalLots > 0 ? (
-          <div className="flex items-center gap-2">
-            <div className="h-1.5 flex-1 rounded-full bg-surface-container-high" aria-hidden="true">
-              <div
-                className="h-full rounded-full bg-primary transition-all duration-300"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-            <span className="font-body text-xs tabular-nums text-secondary">
-              {completedLots}/{row.totalLots}
-            </span>
-          </div>
-        ) : null}
-      </div>
-
-      {(pendingReg > 0 || pendingTel > 0) && (
-        <p className="mt-2 font-body text-xs text-on-surface-variant">
-          {pendingReg > 0 ? `${pendingReg} reg pending` : null}
-          {pendingReg > 0 && pendingTel > 0 ? " · " : null}
-          {pendingTel > 0 ? `${pendingTel} tel pending` : null}
-        </p>
-      )}
-
-      {row.venueDayCounts ? (
-        <p className="mt-2 font-body text-xs text-on-surface-variant">
-          RSVP&apos;d {row.venueDayCounts.rsvped} · Gala in {row.venueDayCounts.galaCheckedIn} ·
-          Paddled {row.venueDayCounts.paddled}
-          {" · "}
-          <Link
-            href={`/admin/event-rsvps/${encodeURIComponent(row.venueDayCounts.eventSlug)}`}
-            className="text-link underline"
-          >
-            {row.venueDayCounts.eventTitle}
-          </Link>
+      {enriched.currentLotTitle ? (
+        <p className="text-staff-sm text-staff-fg">
+          <span className="text-staff-muted">On the block </span>
+          {enriched.currentLotTitle}
         </p>
       ) : null}
 
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Button variant="secondary" size="sm" className="min-h-11" asChild>
+      <div className="flex flex-col gap-1.5">
+        <div className="flex items-baseline justify-between gap-3 text-staff-sm">
+          <p className="text-staff-fg">{progressLabel}</p>
+          {showCompleted ? <p className="text-staff-muted tabular-nums">{completedLabel}</p> : null}
+        </div>
+        {row.totalLots > 0 ? (
+          <ProgressBar value={completedLots} max={row.totalLots} label="Lots complete" />
+        ) : null}
+      </div>
+
+      <ConnectionStatusChip
+        status={session.connectionStatus}
+        lastEventAt={session.lastEventAt}
+        hideWhenConnected
+      />
+
+      {needsAttention ? (
+        <p className="flex items-start gap-1.5 text-staff-sm font-medium text-staff-warning-fg">
+          <TriangleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
+          {waiting} waiting for review
+        </p>
+      ) : null}
+
+      {row.venueDayCounts ? (
+        <p className="text-staff-sm text-staff-muted tabular-nums">
+          {row.venueDayCounts.rsvped} RSVPs · {row.venueDayCounts.galaCheckedIn} arrived ·{" "}
+          {row.venueDayCounts.paddled} with paddles ·{" "}
+          <TextLink
+            href={`/admin/event-rsvps/${encodeURIComponent(row.venueDayCounts.eventSlug)}`}
+            Link={Link}
+          >
+            {row.venueDayCounts.eventTitle}
+          </TextLink>
+        </p>
+      ) : null}
+
+      <div className="mt-auto flex flex-wrap gap-2 pt-1">
+        <StaffButton asChild variant={roomOpen ? "primary" : "secondary"} size="live">
           <Link href={`/admin/saleroom/${row.saleId}`}>Open console</Link>
-        </Button>
-        <Button variant="outline" size="sm" className="min-h-11" asChild>
-          <Link href={`${saleDetailTabHref(row.saleId, "registrations")}#check-in`}>Check-in</Link>
-        </Button>
+        </StaffButton>
+        <StaffButton asChild variant="secondary" size="live">
+          <Link href={`${saleDetailTabHref(row.saleId, "registrations")}#check-in`}>
+            Check in bidders
+          </Link>
+        </StaffButton>
       </div>
     </article>
   );
@@ -192,9 +182,11 @@ export function SaleroomHubLiveGrid({ rows, initialSessions }: Props) {
   if (sorted.length === 0) return null;
 
   return (
-    <div className="space-y-3">
-      <h2 className="font-headline text-lg text-on-surface">Live rooms</h2>
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <section aria-labelledby="live-rooms-title" className="flex flex-col gap-3">
+      <h2 id="live-rooms-title" className="text-staff-md font-semibold text-staff-fg">
+        Rooms to run
+      </h2>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {sorted.map((row) => {
           const session = sessions[row.saleId] ?? {
             status: "none" as const,
@@ -215,6 +207,6 @@ export function SaleroomHubLiveGrid({ rows, initialSessions }: Props) {
           );
         })}
       </div>
-    </div>
+    </section>
   );
 }

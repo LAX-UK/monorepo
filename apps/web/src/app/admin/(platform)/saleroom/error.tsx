@@ -1,9 +1,9 @@
 "use client";
 
-import { createAdminSegmentRouteError } from "@/components/admin/create-admin-segment-route-error";
+import { createStaffPageError } from "@/components/admin/staff/create-staff-page-error";
 
-export default createAdminSegmentRouteError({
-  title: "Saleroom error",
-  homeHref: "/admin/saleroom",
-  homeLabel: "Back to saleroom",
+export default createStaffPageError({
+  title: "Saleroom",
+  backHref: "/admin",
+  backLabel: "Back to the dashboard",
 });
