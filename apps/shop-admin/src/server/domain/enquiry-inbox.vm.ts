@@ -6,6 +6,7 @@ import {
   type EnquiryKind,
   type EnquiryTopic,
 } from "@auction/shop-contracts";
+import { type RawSearchParams, singleParam } from "./list-url-state";
 import { staffRoleLabel } from "./staff-role-label.vm";
 import { type WorkListState, defineWorkList } from "./work-list.vm";
 
@@ -63,6 +64,20 @@ export const enquiriesList = defineWorkList({
 });
 
 export type EnquiriesListState = WorkListState<"kind" | "topic" | "assignee">;
+
+/** Longest staff identity subject the assignee filter accepts, as the API does. */
+const ASSIGNEE_SUBJECT_MAX_LENGTH = 200;
+
+/**
+ * The inbox's URL state. The assignee filter takes "me", "unassigned" or a colleague's staff
+ * identity subject, so it is read here rather than from a fixed list of values.
+ */
+export function parseEnquiriesState(params: RawSearchParams): EnquiriesListState {
+  const state = enquiriesList.parse(params);
+  const raw = singleParam(params.assignee);
+  if (!raw || state.filters.assignee || raw.length > ASSIGNEE_SUBJECT_MAX_LENGTH) return state;
+  return { ...state, filters: { ...state.filters, assignee: raw } };
+}
 
 /** The panel id for an enquiry: `kind:id`. */
 export function enquiryRef(item: { kind: EnquiryKind; id: string }): string {

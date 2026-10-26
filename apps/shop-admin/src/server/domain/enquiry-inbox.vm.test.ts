@@ -6,10 +6,23 @@ import {
   enquirySenderName,
   enquirySenderSecondary,
   enquiryStaffName,
+  parseEnquiriesState,
   parseEnquiryRef,
 } from "./enquiry-inbox.vm";
 
 const ID = "0b8f6c1e-5d7a-4a43-9b52-0d3a1f4c9e11";
+
+describe("parseEnquiriesState", () => {
+  it("keeps me, unassigned or a colleague's subject as the assignee filter", () => {
+    expect(parseEnquiriesState({ assignee: "me" }).filters.assignee).toBe("me");
+    expect(parseEnquiriesState({ assignee: "staff-42" }).filters.assignee).toBe("staff-42");
+    expect(enquiriesList.apiQuery(parseEnquiriesState({ assignee: "staff-42" }))).toMatchObject({
+      assignee: "staff-42",
+    });
+    expect(parseEnquiriesState({ assignee: "x".repeat(201) }).filters.assignee).toBeUndefined();
+    expect(parseEnquiriesState({}).filters.assignee).toBeUndefined();
+  });
+});
 
 describe("enquiriesList", () => {
   it("opens on every enquiry, newest first, with waiting enquiries leading on the server", () => {

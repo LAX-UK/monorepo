@@ -20,7 +20,6 @@ import {
   type EnquiryAssignee,
 } from "@auction/shop-contracts";
 import {
-  CellLink,
   DetailPage,
   EmptyState,
   type EnumOption,
@@ -39,6 +38,7 @@ import {
   StaffDate,
   type StaffLinkComponent,
   TextArea,
+  TextLink,
   UnsavedChangesDialog,
   toast,
   useUnsavedChanges,
@@ -224,9 +224,9 @@ export function EnquiryConversation({
                         {
                           label: "Email",
                           value: (
-                            <CellLink href={`mailto:${detail.sender.email}`}>
+                            <TextLink href={`mailto:${detail.sender.email}`}>
                               {detail.sender.email}
-                            </CellLink>
+                            </TextLink>
                           ),
                           copyValue: detail.sender.email,
                         },
@@ -237,9 +237,9 @@ export function EnquiryConversation({
                         {
                           label: "Phone",
                           value: (
-                            <CellLink href={`tel:${detail.sender.phone.replace(/\s+/g, "")}`}>
+                            <TextLink href={`tel:${detail.sender.phone.replace(/\s+/g, "")}`}>
                               {detail.sender.phone}
-                            </CellLink>
+                            </TextLink>
                           ),
                         },
                       ]
@@ -265,9 +265,9 @@ export function EnquiryConversation({
                           {
                             label: "Artwork",
                             value: (
-                              <CellLink href={`/artworks/${detail.artwork.id}`} Link={NextLink}>
+                              <TextLink href={`/artworks/${detail.artwork.id}`} Link={NextLink}>
                                 {detail.artwork.title}
-                              </CellLink>
+                              </TextLink>
                             ),
                           },
                           ...(artworkLink?.href
@@ -275,10 +275,9 @@ export function EnquiryConversation({
                                 {
                                   label: "Public page",
                                   value: (
-                                    <CellLink href={artworkLink.href} external>
+                                    <TextLink href={artworkLink.href} external>
                                       View on lax.art
-                                      <span className="sr-only"> (opens in a new tab)</span>
-                                    </CellLink>
+                                    </TextLink>
                                   ),
                                 },
                               ]
@@ -293,10 +292,9 @@ export function EnquiryConversation({
                         {
                           label: pageLink.label,
                           value: pageLink.href ? (
-                            <CellLink href={pageLink.href} external>
+                            <TextLink href={pageLink.href} external>
                               {pageLink.text}
-                              <span className="sr-only"> (opens in a new tab)</span>
-                            </CellLink>
+                            </TextLink>
                           ) : (
                             pageLink.text
                           ),

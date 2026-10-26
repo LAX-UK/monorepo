@@ -24,6 +24,7 @@ import {
   type AdminEnquiryListResponse,
   ENQUIRY_KINDS,
   ENQUIRY_TOPICS,
+  type EnquiryAssignee,
 } from "@auction/shop-contracts";
 import {
   CellThumbnail,
@@ -78,12 +79,15 @@ export function EnquiriesList({
   state,
   page,
   currentSubject,
+  assignees = [],
   canWrite,
   loadFailed = false,
 }: {
   state: EnquiriesListState;
   page: AdminEnquiryListResponse;
   currentSubject: string;
+  /** Staff who can handle enquiries, offered by name in the assignee filter. */
+  assignees?: readonly EnquiryAssignee[];
   canWrite: boolean;
   loadFailed?: boolean;
 }) {
@@ -176,11 +180,13 @@ export function EnquiriesList({
     "topic",
     (value) => `Topic: ${ENQUIRY_TOPIC_LABELS[value as keyof typeof ENQUIRY_TOPIC_LABELS]}`,
   );
-  const assigneeChip = filterChip(enquiriesList, state, list.navigate, "assignee", (value) =>
-    value === "me"
-      ? "Assigned to me"
-      : ENQUIRY_ASSIGNEE_LABELS[value as keyof typeof ENQUIRY_ASSIGNEE_LABELS],
-  );
+  const colleagues = assignees.filter((person) => person.subject !== currentSubject);
+  const assigneeChip = filterChip(enquiriesList, state, list.navigate, "assignee", (value) => {
+    if (value === "me") return "Assigned to me";
+    if (value === "unassigned") return ENQUIRY_ASSIGNEE_LABELS.unassigned;
+    const person = assignees.find((candidate) => candidate.subject === value);
+    return `Assigned to ${person ? enquiryStaffName(person) : "a colleague"}`;
+  });
 
   const rowMenu = (row: AdminEnquiryListItem): OverflowAction[] => [
     {
@@ -235,6 +241,10 @@ export function EnquiriesList({
                 options: [
                   { value: "me", label: "Me" },
                   { value: "unassigned", label: "Unassigned" },
+                  ...colleagues.map((person) => ({
+                    value: person.subject,
+                    label: enquiryStaffName(person),
+                  })),
                 ],
                 value: state.filters.assignee ?? "",
               },
