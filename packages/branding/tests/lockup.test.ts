@@ -179,13 +179,38 @@ describe("laxLockupColors", () => {
     expect(laxLockupColors("bid", "dark").descriptor).toBe("#b9bac0");
   });
 
-  it("gives Shop and Art the neutral ink until their accents are chosen", () => {
-    for (const product of ["shop", "art"] as const) {
-      for (const scheme of SCHEMES) {
-        const colors = laxLockupColors(product, scheme);
-        expect(colors.descriptor).toBe(colors.ink);
-      }
+  it("gives Art the neutral ink until its accent is chosen", () => {
+    for (const scheme of SCHEMES) {
+      const colors = laxLockupColors("art", scheme);
+      expect(colors.descriptor).toBe(colors.ink);
     }
+  });
+
+  it("sets Shop's tag in aubergine, in both Shop lockups", () => {
+    for (const kind of ["shop", "shop-exchange"] as const) {
+      expect(laxLockupColors(kind, "light").descriptor).toBe("#5a2a5c");
+      expect(laxLockupColors(kind, "dark").descriptor).toBe("#d6a8d4");
+    }
+  });
+});
+
+describe("shop-exchange lockup", () => {
+  it("is the London Art Exchange wordmark unchanged, with the family .SHOP tag on a fourth line", () => {
+    const exchange = laxLockup("exchange");
+    const shop = laxLockup("shop-exchange");
+    expect(shop.ink).toEqual(exchange.ink);
+    expect(shop.mist).toEqual(exchange.mist);
+    // The tag is the family's own outlines (the compact Shop lockup's), moved and scaled as one.
+    expect(shop.descriptorPaths.map((path) => path.d)).toEqual(
+      laxLockup("shop").descriptorPaths.map((path) => path.d),
+    );
+    const [, top, , height] = shop.viewBox.split(" ").map(Number);
+    const [, exchangeTop, , exchangeHeight] = exchange.viewBox.split(" ").map(Number);
+    expect(top).toBe(exchangeTop);
+    // Marylebone ends near 293; the tag line adds about 77 units below it.
+    expect((top ?? 0) + (height ?? 0)).toBeGreaterThan(
+      (exchangeTop ?? 0) + (exchangeHeight ?? 0) + 70,
+    );
   });
 });
 

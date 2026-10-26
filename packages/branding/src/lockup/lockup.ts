@@ -36,14 +36,17 @@ import { TAGLINE_BOUNDS, TAGLINE_PATHS } from "./tagline-paths.js";
  */
 /**
  * `exchange` is the plain mark with the three-line "London / Art Exchange(R) / Marylebone" tagline,
- * the vector form of the wordmark Shop and Art show in their headers and footers.
+ * the vector form of the wordmark lax.art shows in its header and footer. `shop-exchange` is that
+ * wordmark with the family tag ".SHOP" on a fourth line under "Marylebone": LAX Shop's header and
+ * footer lockup. `shop` (the mark and ".SHOP") is its compact form, for phones.
  */
 export type LaxLockupKind =
   | "mark"
   | LaxBrandProduct
   | "bid-compact"
   | "account-compact"
-  | "exchange";
+  | "exchange"
+  | "shop-exchange";
 export type LaxLockupScheme = "light" | "dark";
 
 export type LockupPath = { d: string; transform?: string };
@@ -82,6 +85,7 @@ const LABELS: Readonly<Record<LaxLockupKind, string>> = {
   "bid-compact": "LAX Bid",
   exchange: "LAX London Art Exchange",
   shop: "LAX Shop",
+  "shop-exchange": "LAX Shop",
   art: "lax.art",
   account: "LAX Account",
   "account-compact": "LAX Account",
@@ -143,6 +147,38 @@ function setDescriptor(word: string): { paths: LockupPath[]; right: number } {
   return { paths, right };
 }
 
+/**
+ * The ".SHOP" line of `shop-exchange`: the family tag (same outlines, weight, tracking and dot as
+ * ".BID" and ".ID") moved under "Marylebone" and scaled as one. Measured in the plain-mark space:
+ *
+ * - The family name's cap height is 70.39 (Bid "Auction", Account "Account"); the London Art
+ *   Exchange name ("London") is 71.6, so the tag scales by 71.6 / 70.39 to keep its proportion.
+ * - The family dot starts 1.55 right of the text column (606.85 against 605.3); this wordmark's
+ *   text column starts at 635.
+ * - The family tag's cap top is 42.04 below the last name baseline; "Marylebone" sits on 279.8.
+ */
+const SHOP_TAG_SCALE = 71.6 / 70.39;
+const SHOP_TAG_TRANSFORM = {
+  dx: 635 + 1.55 * SHOP_TAG_SCALE - 606.85 * SHOP_TAG_SCALE,
+  dy:
+    279.8 + (42.04 + DESCRIPTOR_CAP_HEIGHT) * SHOP_TAG_SCALE - DESCRIPTOR_BASELINE * SHOP_TAG_SCALE,
+};
+
+function shopTagLine(): { paths: LockupPath[]; right: number; bottom: number } {
+  const { paths, right } = setDescriptor(LAX_LOCKUP_DESCRIPTORS.shop);
+  const { dx, dy } = SHOP_TAG_TRANSFORM;
+  const prefix = `translate(${round(dx)} ${round(dy)}) scale(${round(SHOP_TAG_SCALE)})`;
+  return {
+    paths: paths.map((path) => ({
+      d: path.d,
+      transform: path.transform ? `${prefix} ${path.transform}` : prefix,
+    })),
+    right: right * SHOP_TAG_SCALE + dx,
+    // The dot overshoots the baseline by about half a unit.
+    bottom: (DESCRIPTOR_BASELINE + 0.6) * SHOP_TAG_SCALE + dy,
+  };
+}
+
 const format = (value: number): string => String(Math.round(value * 100) / 100);
 
 function frame(width: number, y: number, height: number) {
@@ -179,6 +215,21 @@ export function laxLockup(kind: LaxLockupKind): LaxLockup {
       // The tagline is ink like the mark's strokes, so it follows the text colour with them.
       ink: [...markInk, ...plain(TAGLINE_PATHS)],
       descriptorPaths: [],
+    };
+  }
+
+  if (kind === "shop-exchange") {
+    const tag = shopTagLine();
+    const top = Math.floor(TAGLINE_BOUNDS.y) - EXCHANGE_FRAME_PAD;
+    const bottom = Math.ceil(Math.max(TAGLINE_BOUNDS.bottom, tag.bottom)) + EXCHANGE_FRAME_PAD;
+    const right = Math.ceil(Math.max(TAGLINE_BOUNDS.right, tag.right)) + EXCHANGE_FRAME_PAD;
+    return {
+      ...base,
+      mist: plain(LAX_MARK_MIST_PATHS),
+      descriptor: LAX_LOCKUP_DESCRIPTORS.shop,
+      ...frame(right, top, bottom - top),
+      ink: [...markInk, ...plain(TAGLINE_PATHS)],
+      descriptorPaths: tag.paths,
     };
   }
 
@@ -251,6 +302,15 @@ const BID_DESCRIPTOR: Readonly<Record<LaxLockupScheme, string>> = {
  * product has no accent. Bid keeps the navy of its master, which is a touch lighter than
  * `PRODUCT_ACCENTS.bid`.
  */
+/** The product whose accent colours a lockup's descriptor. */
+function accentProduct(
+  kind: Exclude<LaxLockupKind, "mark" | "exchange" | "bid" | "bid-compact">,
+): LaxBrandProduct {
+  if (kind === "account-compact") return "account";
+  if (kind === "shop-exchange") return "shop";
+  return kind;
+}
+
 export function laxLockupColors(kind: LaxLockupKind, scheme: LaxLockupScheme): LaxLockupColors {
   const ink = INK[scheme];
   const accent =
@@ -259,8 +319,8 @@ export function laxLockupColors(kind: LaxLockupKind, scheme: LaxLockupScheme): L
       : kind === "bid" || kind === "bid-compact"
         ? BID_DESCRIPTOR[scheme]
         : scheme === "light"
-          ? PRODUCT_ACCENTS[kind === "account-compact" ? "account" : kind]
-          : PRODUCT_ACCENTS_ON_DARK[kind === "account-compact" ? "account" : kind];
+          ? PRODUCT_ACCENTS[accentProduct(kind)]
+          : PRODUCT_ACCENTS_ON_DARK[accentProduct(kind)];
   return { ink, mist: MIST, descriptor: accent ?? ink };
 }
 
@@ -294,6 +354,7 @@ export const LAX_LOCKUP_KINDS: readonly LaxLockupKind[] = [
   "bid",
   "bid-compact",
   "shop",
+  "shop-exchange",
   "art",
   "account",
   "account-compact",

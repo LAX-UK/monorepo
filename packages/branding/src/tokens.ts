@@ -63,7 +63,8 @@ export type EmailCategory = "account" | "auction" | "finance" | "alert" | "admin
 
 /**
  * Accent for an email's eyebrow dot and heading rule: the sending product's accent (Bid navy,
- * Account teal), or ink for products without one (Shop, lax.art). Alerts keep the status red.
+ * Shop aubergine, Account teal), or ink for products without one (lax.art). Alerts keep the status
+ * red.
  */
 export function emailAccentColor(product: LaxBrandProduct, category: EmailCategory): string {
   if (category === "alert") return COLORS.red;

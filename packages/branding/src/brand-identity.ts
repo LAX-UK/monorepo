@@ -32,7 +32,8 @@ export type LaxBrandProduct = "bid" | "shop" | "art" | "account";
  */
 export const PRODUCT_ACCENTS: Readonly<Record<LaxBrandProduct, string | null>> = {
   bid: BRAND_COLORS.midnight,
-  shop: null,
+  /** Aubergine: 10.9:1 on white, 9.4:1 on #eeeeee. Owner choice 2026-10-26; never a status colour. */
+  shop: "#5a2a5c",
   art: null,
   /** Deep teal: AA text colour on white (5.47:1). Never a success colour; see PRODUCT_ACCENTS_ON_DARK. */
   account: "#0f766e",
@@ -49,7 +50,8 @@ export const PRODUCT_ACCENTS_ON_DARK: Readonly<Record<LaxBrandProduct, string | 
    * master's light-grey descriptor; this is for the product's name set as text.
    */
   bid: "#a5b7e9",
-  shop: null,
+  /** Light aubergine: 9.2:1 on the Shop dark page #121414, 6.7:1 on #2d2f2e. */
+  shop: "#d6a8d4",
   art: null,
   /** Bright teal: about 10:1 on the Account dark page surface. */
   account: "#2dd4bf",
