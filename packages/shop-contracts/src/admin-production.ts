@@ -50,6 +50,8 @@ export type AdminProductionTaskListQuery = Static<typeof AdminProductionTaskList
 export const AdminProductionTaskListItemSchema = Type.Object({
   taskId: Type.String({ format: "uuid" }),
   orderId: Type.String({ format: "uuid" }),
+  /** The order's reference, "LAX-S-10482"; optional for responses from an older shop-api. */
+  orderReference: Type.Optional(Type.String()),
   orderLineId: Type.String({ format: "uuid" }),
   editionId: Type.String({ format: "uuid" }),
   artworkTitle: NullableString,

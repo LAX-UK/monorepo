@@ -157,4 +157,20 @@ export {
 export { isPayeeConnectReady, type PayeeConnectReadinessInput } from "./payee-connect-readiness.js";
 export { RESERVATION_GRACE_MS, reservedUntilFromCheckoutExpiry } from "./reservation-timing.js";
 export { isUkPostcode, normalizeUkPostcode } from "./uk-postcode.js";
-export { computeLineVat, type LineVatResult, type VatPolicy } from "./vat-policy.js";
+export {
+  computeLineVat,
+  orderVatBreakdown,
+  vatIncludedIn,
+  type LineVatResult,
+  type OrderVatBreakdown,
+  type OrderVatLine,
+  type VatPolicy,
+} from "./vat-policy.js";
+export {
+  STATUTORY_CANCELLATION_DAYS,
+  carrierTrackingUrl,
+  fulfilmentStageColumn,
+  orderProblemWindow,
+  type FulfilmentStageColumn,
+  type OrderProblemWindow,
+} from "./order-progress.js";

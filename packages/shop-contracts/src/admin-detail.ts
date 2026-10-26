@@ -184,6 +184,8 @@ export const AdminOrderActivitySchema = Type.Object({
 
 export const AdminOrderDetailSchema = Type.Object({
   orderId: Type.String({ format: "uuid" }),
+  /** "LAX-S-10482"; optional for responses from an older shop-api. */
+  reference: Type.Optional(Type.String()),
   status: Type.String(),
   fulfilment: Type.String(),
   totalPence: Type.Integer(),
