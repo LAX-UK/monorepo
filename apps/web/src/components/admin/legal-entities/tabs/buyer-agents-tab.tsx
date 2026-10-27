@@ -57,6 +57,7 @@ export function LegalEntityBuyerAgentsTab({ entityId, entityName, overview, canM
       {
         id: "agent",
         header: "Buyer agent",
+        width: "260px",
         mobile: "title",
         sortable: true,
         sortValue: (a) => a.userName.toLowerCase(),
@@ -78,7 +79,7 @@ export function LegalEntityBuyerAgentsTab({ entityId, entityName, overview, canM
       {
         id: "limit",
         header: "Limit",
-        width: "128px",
+        width: "104px",
         numeric: true,
         mobile: "meta",
         sortable: true,
@@ -88,8 +89,8 @@ export function LegalEntityBuyerAgentsTab({ entityId, entityName, overview, canM
       {
         id: "window",
         header: "Dates",
-        width: "220px",
-        hideBelow: "lg",
+        width: "184px",
+        hideBelow: "xl",
         mobile: "hidden",
         cell: (a) =>
           a.status === "revoked" && a.revokedAt ? (
@@ -108,7 +109,7 @@ export function LegalEntityBuyerAgentsTab({ entityId, entityName, overview, canM
       {
         id: "status",
         header: "Status",
-        width: "128px",
+        width: "120px",
         mobile: "badge",
         truncate: false,
         sortable: true,
