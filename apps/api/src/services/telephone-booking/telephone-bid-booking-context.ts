@@ -1,4 +1,4 @@
-import type { IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
+import type { IBidAuthority, IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
 import type { ITelephoneBookingUserPhoneReader } from "@auction/persistence/interfaces";
 import type { ITelephoneBidBookingDetailReader } from "@auction/persistence/interfaces";
 import type { ITelephoneBidBookingRepository } from "@auction/persistence/interfaces";
@@ -24,6 +24,7 @@ export function createTelephoneBidBookingContext(input: {
   lotRepo: ILotRepository;
   userPhoneReader: ITelephoneBookingUserPhoneReader;
   legalEntityRepository: ILegalEntityRepository;
+  bidAuthority: IBidAuthority;
   identityEligibilityGate: IBidIdentityEligibilityGate | null;
   amlHoldStore: IAmlHoldStore | null;
   domainEventSink: IDomainEventSink | null;
@@ -35,6 +36,7 @@ export function createTelephoneBidBookingContext(input: {
     validationDeps: {
       repo: input.repo,
       legalEntityRepository: input.legalEntityRepository,
+      bidAuthority: input.bidAuthority,
       identityEligibilityGate: input.identityEligibilityGate,
       amlHoldStore: input.amlHoldStore,
       saleRepo: input.saleRepo,

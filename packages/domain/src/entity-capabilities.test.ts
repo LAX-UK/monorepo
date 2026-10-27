@@ -16,6 +16,9 @@ const EXPECTED: Record<EntityCapability, LegalEntityMemberRole[]> = {
   "entity.consignments.read": ["owner", "admin", "finance", "consignor", "viewer"],
   "entity.submissions.create": ["owner", "admin", "consignor"],
   "entity.consignments.withdraw": ["owner", "admin"],
+  "entity.bid.place": ["owner", "admin", "buyer_agent"],
+  "entity.bid.place_without_authorisation": ["owner", "admin"],
+  "entity.buyer_agents.manage": ["owner", "admin"],
   "entity.holdings.read": ["owner", "admin", "finance", "viewer", "buyer_agent"],
 };
 
@@ -118,5 +121,38 @@ describe("starting a submission", () => {
     expect(
       entityActorCan({ role: "owner", isImpersonation: true }, "entity.submissions.create"),
     ).toBe(false);
+  });
+});
+
+describe("bidding for an organisation", () => {
+  it.each(["owner", "admin", "buyer_agent"] as const)("allows %s", (role) => {
+    expect(entityRoleCan(role, "entity.bid.place")).toBe(true);
+  });
+
+  it.each(["finance", "consignor", "viewer", "specialist", "staff"] as const)(
+    "refuses %s",
+    (role) => {
+      expect(entityRoleCan(role, "entity.bid.place")).toBe(false);
+    },
+  );
+
+  it("needs an authorisation only for buyer agents", () => {
+    expect(entityRoleCan("buyer_agent", "entity.bid.place_without_authorisation")).toBe(false);
+    expect(entityRoleCan("owner", "entity.bid.place_without_authorisation")).toBe(true);
+    expect(entityRoleCan("admin", "entity.bid.place_without_authorisation")).toBe(true);
+  });
+
+  it("lets only owners and admins manage buyer agents", () => {
+    for (const role of legalEntityMemberRoles) {
+      expect(entityRoleCan(role, "entity.buyer_agents.manage")).toBe(
+        role === "owner" || role === "admin",
+      );
+    }
+  });
+
+  it("is a write, so an impersonating admin can neither bid nor authorise", () => {
+    const actor = { role: "owner", isImpersonation: true } as const;
+    expect(entityActorCan(actor, "entity.bid.place")).toBe(false);
+    expect(entityActorCan(actor, "entity.buyer_agents.manage")).toBe(false);
   });
 });

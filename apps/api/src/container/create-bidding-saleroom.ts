@@ -110,7 +110,7 @@ function composeRegistrationAndBidding(
   } = platform;
   const { lotLifecycleHooks } = lotLifecycle;
   const { kycService } = complianceMedia;
-  const { lotJobScheduler, telephoneBidBookingService } = catalog;
+  const { lotJobScheduler, telephoneBidBookingService, bidAuthority } = catalog;
 
   const strictBidEligibilityEnabled = resolveStrictBidEligibilityEnabled(env);
   const identityEligibilityGate = createBidIdentityEligibilityGate(
@@ -133,6 +133,7 @@ function composeRegistrationAndBidding(
     db,
     amlHoldStore,
     identityEligibilityGate,
+    bidAuthority,
   });
 
   const bidIdempotencyStore = new RedisIdempotencyStore(redis);
@@ -170,6 +171,7 @@ function composeRegistrationAndBidding(
     legalEntityRepository,
     repoFactory.root.bid,
     identityEligibilityGate,
+    bidAuthority,
   );
   const adminSaleOperationsSnapshotService = new AdminSaleOperationsSnapshotService(
     repos.adminSaleOperationsSnapshotReader,

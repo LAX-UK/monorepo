@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { groupEligibleCheckInEntities } from "./saleroom-check-in-entities.js";
 
 describe("groupEligibleCheckInEntities", () => {
-  it("keeps owner individual and buyer_agent organisation memberships", () => {
+  it("keeps the memberships that may bid for their legal entity", () => {
     const map = groupEligibleCheckInEntities([
       {
         userId: "u1",
@@ -28,9 +28,9 @@ describe("groupEligibleCheckInEntities", () => {
       },
       {
         userId: "u1",
-        legalEntityId: "le-staff",
-        role: "admin",
-        displayName: "Staff Org",
+        legalEntityId: "le-viewer",
+        role: "viewer",
+        displayName: "Viewer Org",
         kind: "organisation",
         regStatus: null,
         regPaddle: null,

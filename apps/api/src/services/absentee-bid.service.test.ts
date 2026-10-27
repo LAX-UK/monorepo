@@ -9,6 +9,7 @@ import { DrizzleAbsenteeBidRepository } from "@auction/persistence/repositories"
 import type { Lot } from "@auction/types";
 import { err, ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
+import { fakeBidAuthority } from "../testing/fake-bid-authority.js";
 import { AbsenteeBidService } from "./absentee-bid.service.js";
 import type { IBidPlacer } from "./interfaces/place-bid.js";
 
@@ -143,11 +144,16 @@ describe("AbsenteeBidService", () => {
     expect(insertScheduled).not.toHaveBeenCalled();
   });
 
-  it("rejects removed organisation membership before inserting an absentee bid", async () => {
+  it.each([
+    [null, "membership_required"],
+    ["viewer", "bid_role_not_permitted"],
+    ["finance", "bid_role_not_permitted"],
+    ["consignor", "bid_role_not_permitted"],
+    ["buyer_agent", "buyer_agent_authorisation_required"],
+  ] as const)("refuses a %s member before inserting an absentee bid", async (role, code) => {
     const insertScheduled = vi.fn();
     const legalEntities = {
       findById: vi.fn().mockResolvedValue({ status: "approved" }),
-      findActiveMembership: vi.fn().mockResolvedValue(null),
     } as unknown as ILegalEntityRepository;
     const svc = new AbsenteeBidService(
       { insertScheduled } as unknown as IAbsenteeBidRepository,
@@ -158,6 +164,7 @@ describe("AbsenteeBidService", () => {
       legalEntities,
       null,
       okIdentityGate(),
+      fakeBidAuthority(role),
     );
 
     const result = await svc.schedule({
@@ -167,7 +174,32 @@ describe("AbsenteeBidService", () => {
       maxAmount: 500,
     });
 
-    expect(result.isErr() && result.error.code).toBe("membership_required");
+    expect(result.isErr() && result.error.code).toBe(code);
+    expect(insertScheduled).not.toHaveBeenCalled();
+  });
+
+  it("refuses an absentee maximum above a buyer agent's limit", async () => {
+    const insertScheduled = vi.fn();
+    const svc = new AbsenteeBidService(
+      { insertScheduled } as unknown as IAbsenteeBidRepository,
+      {} as IBidPlacer,
+      {
+        findById: vi.fn().mockResolvedValue(mkLot({ status: "scheduled" })),
+      } as unknown as ILotRepository,
+      null,
+      null,
+      okIdentityGate(),
+      fakeBidAuthority("buyer_agent", [{ saleId: null, bidLimit: "400.00" }]),
+    );
+
+    const result = await svc.schedule({
+      userId: "u1",
+      lotId: "lot-1",
+      buyerLegalEntityId: "le-1",
+      maxAmount: 500,
+    });
+
+    expect(result.isErr() && result.error.code).toBe("bid_limit_exceeded");
     expect(insertScheduled).not.toHaveBeenCalled();
   });
 
@@ -189,6 +221,7 @@ describe("AbsenteeBidService", () => {
       null,
       null,
       okIdentityGate(),
+      fakeBidAuthority("owner"),
     );
     const result = await svc.schedule({
       userId: "u1",

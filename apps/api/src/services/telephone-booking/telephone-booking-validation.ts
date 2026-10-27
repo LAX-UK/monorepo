@@ -1,4 +1,9 @@
-import type { IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
+import {
+  type IBidAuthority,
+  type IBidIdentityEligibilityGate,
+  bidAuthorityError,
+} from "@auction/bidding-runtime";
+import { bidExceedsAuthority } from "@auction/domain";
 import type { ITelephoneBookingUserPhoneReader } from "@auction/persistence/interfaces";
 import type { ITelephoneBidBookingRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
@@ -27,6 +32,7 @@ export function telephoneBookingErr(
 export type TelephoneBookingValidationDeps = {
   repo: ITelephoneBidBookingRepository;
   legalEntityRepository: ILegalEntityRepository;
+  bidAuthority: IBidAuthority;
   identityEligibilityGate: IBidIdentityEligibilityGate | null;
   amlHoldStore: IAmlHoldStore | null;
   saleRepo: ISaleRepository;
@@ -89,22 +95,31 @@ export async function assertOnsiteSaleOpen(
   return ok({ deliveryMode: saleRow.deliveryMode, status: saleRow.status });
 }
 
-export async function assertMembership(
+/**
+ * The caller may bid for the legal entity in this sale (the shared bid authority), and an
+ * `authorizedMax` stays within a buyer agent's authorisation limit.
+ */
+export async function assertCanBidFor(
   deps: TelephoneBookingValidationDeps,
-  userId: string,
-  buyerLegalEntityId: string,
+  input: { userId: string; buyerLegalEntityId: string; saleId: string; authorizedMax?: number },
 ): Promise<Result<void, TelephoneBidBookingServiceError>> {
-  const membership = await deps.legalEntityRepository.findActiveMembership(
-    userId,
-    buyerLegalEntityId,
-  );
-  if (!membership) {
+  const authority = await deps.bidAuthority.resolve({
+    userId: input.userId,
+    legalEntityId: input.buyerLegalEntityId,
+    saleId: input.saleId,
+  });
+  if (!authority.allowed) {
+    const { message, status, code } = bidAuthorityError(authority.reason);
+    return telephoneBookingErr(message, status, code);
+  }
+  if (input.authorizedMax != null && bidExceedsAuthority(authority, input.authorizedMax)) {
     return telephoneBookingErr(
-      "Not a member of the selected legal entity",
+      "The maximum is above your buyer agent authorisation limit",
       403,
-      "membership_required",
+      "bid_limit_exceeded",
     );
   }
+  const buyerLegalEntityId = input.buyerLegalEntityId;
   const entity = await deps.legalEntityRepository.findById(buyerLegalEntityId);
   if (!entity) {
     return telephoneBookingErr("Legal entity not found", 404);

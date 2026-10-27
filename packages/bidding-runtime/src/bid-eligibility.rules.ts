@@ -1,10 +1,12 @@
-import type { IBidLotRulesReader, IBidMembershipReader } from "@auction/persistence/interfaces";
+import { type BidAuthorityDecision, bidExceedsAuthority } from "@auction/domain";
+import type { IBidLotRulesReader } from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { type AutoBidLotRules, validateAutoBidStepAmount } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { BidError } from "./bid-error.js";
 import type { IAmlBidGate } from "./bid/aml-bid.gate.js";
-import type { BuyerAgentBidGate } from "./bid/buyer-agent-bid.gate.js";
+import { bidAuthorityError } from "./bid/bid-authority-error.js";
+import type { IBidAuthority } from "./bid/bid-authority.service.js";
 import type { IBidIdentityEligibilityGate } from "./bid/identity-bid-eligibility.gate.js";
 import type { OperatorPlacementPolicy } from "./bid/operator-placement-policy.js";
 import type { SaleRegistrationBidGate } from "./bid/sale-registration-bid.gate.js";
@@ -17,6 +19,7 @@ export type BidEligibilityRuleContext = {
   lotRow: Awaited<ReturnType<IBidLotRulesReader["findLotBidRules"]>>;
   saleId: string | null;
   memberRole: LegalEntityMemberRole | null;
+  authority: BidAuthorityDecision | null;
   operatorBypass: boolean;
 };
 
@@ -29,10 +32,9 @@ export type BidEligibilityRuleDeps = {
   identityEligibilityGate: IBidIdentityEligibilityGate;
   amlGate: IAmlBidGate;
   lotRulesReader: IBidLotRulesReader;
-  membershipReader: IBidMembershipReader;
+  bidAuthority: IBidAuthority;
   operatorPolicy: OperatorPlacementPolicy;
   saleRegistrationGate: SaleRegistrationBidGate;
-  buyerAgentGate: BuyerAgentBidGate;
 };
 
 function selfServiceIdentityRule(deps: BidEligibilityRuleDeps): BidEligibilityRule {
@@ -100,19 +102,23 @@ function autoBidRulesRule(): BidEligibilityRule {
   };
 }
 
-function membershipRule(deps: BidEligibilityRuleDeps): BidEligibilityRule {
+/**
+ * Only members whose role bids for the organisation may bid for it, and buyer agents only with
+ * an authorisation that covers this sale. Applies to every channel, operators included.
+ */
+function bidAuthorityRule(deps: BidEligibilityRuleDeps): BidEligibilityRule {
   return {
-    name: "membership",
+    name: "bid_authority",
     async apply(ctx) {
       ctx.saleId = ctx.lotRow?.saleId ?? ctx.input.saleId ?? null;
-      ctx.memberRole = await deps.membershipReader.findActiveMemberRole(
-        ctx.input.placedByUserId,
-        ctx.input.buyerLegalEntityId,
-      );
-      if (!ctx.memberRole) {
-        return err(new BidError("Not a member of this legal entity", 403, "membership_required"));
-      }
-      return ok(undefined);
+      const decision = await deps.bidAuthority.resolve({
+        userId: ctx.input.placedByUserId,
+        legalEntityId: ctx.input.buyerLegalEntityId,
+        saleId: ctx.saleId,
+      });
+      ctx.authority = decision;
+      ctx.memberRole = decision.role;
+      return decision.allowed ? ok(undefined) : err(bidAuthorityError(decision.reason));
     },
   };
 }
@@ -183,19 +189,17 @@ function saleRegistrationRule(deps: BidEligibilityRuleDeps): BidEligibilityRule 
   };
 }
 
-function buyerAgentRule(deps: BidEligibilityRuleDeps): BidEligibilityRule {
+/** A buyer agent's authorisation limit caps the bid (or auto-bid ceiling) on every channel. */
+function authorisationLimitRule(): BidEligibilityRule {
   return {
-    name: "buyer_agent",
+    name: "authorisation_limit",
     async apply(ctx) {
-      if (!ctx.memberRole) return ok(undefined);
-      return deps.buyerAgentGate.assertCanBid({
-        saleId: ctx.saleId,
-        placedByUserId: ctx.input.placedByUserId,
-        buyerLegalEntityId: ctx.input.buyerLegalEntityId,
-        memberRole: ctx.memberRole,
-        effectiveAmount: ctx.effectiveAmount,
-        operatorBypass: ctx.operatorBypass,
-      });
+      if (ctx.authority && bidExceedsAuthority(ctx.authority, ctx.effectiveAmount)) {
+        return err(
+          new BidError("Bid exceeds buyer agent authorisation limit", 403, "bid_limit_exceeded"),
+        );
+      }
+      return ok(undefined);
     },
   };
 }
@@ -207,11 +211,11 @@ export function createBidEligibilityRules(deps: BidEligibilityRuleDeps): BidElig
     amlRule(deps),
     lotExistsRule(deps),
     autoBidRulesRule(),
-    membershipRule(deps),
+    bidAuthorityRule(deps),
     operatorCapRule(deps),
     operatorIdentityRule(deps),
     saleRegistrationRule(deps),
-    buyerAgentRule(deps),
+    authorisationLimitRule(),
   ];
 }
 
@@ -229,6 +233,7 @@ export function createBidEligibilityContext(
     lotRow: null,
     saleId: null,
     memberRole: null,
+    authority: null,
     operatorBypass: false,
   };
 }

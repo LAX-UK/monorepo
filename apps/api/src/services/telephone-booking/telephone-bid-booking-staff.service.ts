@@ -3,6 +3,7 @@ import type { ITelephoneBidBookingStaffService } from "../interfaces/telephone-b
 import type { TelephoneBidBookingContext } from "./telephone-bid-booking-context.js";
 import { notifyBestEffort, publishTelephoneBookingEvent } from "./telephone-booking-events.js";
 import {
+  assertCanBidFor,
   getBookingForSaleOrErr,
   getBookingOrErr,
   telephoneBookingErr,
@@ -23,6 +24,12 @@ export class TelephoneBidBookingStaffService implements ITelephoneBidBookingStaf
         "invalid_status_transition",
       );
     }
+    const authority = await assertCanBidFor(deps, {
+      userId: found.value.userId,
+      buyerLegalEntityId: found.value.buyerLegalEntityId,
+      saleId: found.value.saleId,
+    });
+    if (authority.isErr()) return err(authority.error);
 
     const now = new Date();
     const updated = await repo.update(input.bookingId, {

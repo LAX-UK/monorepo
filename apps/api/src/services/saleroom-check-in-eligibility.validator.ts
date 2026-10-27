@@ -1,16 +1,17 @@
+import { type IBidAuthority, bidAuthorityError } from "@auction/bidding-runtime";
 import type { ISaleRegistrationCheckInReader } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { SaleDeliveryMode } from "@auction/types";
 import { PADDLE_NUMBER_MIN, saleAllowsInRoomCheckIn } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { buyerEntityCanBid } from "../lib/buyer-entity-bid-eligibility.js";
-import { memberEligibleForStaffInRoomCheckIn } from "../lib/sale-registration-policy.js";
 import type { SaleroomCheckInServiceError } from "./interfaces/saleroom-check-in-service.js";
 
 export class SaleroomCheckInEligibilityValidator {
   constructor(
     private readonly reader: ISaleRegistrationCheckInReader,
     private readonly legalEntityRepository: ILegalEntityRepository,
+    private readonly bidAuthority: IBidAuthority,
   ) {}
 
   private serviceErr(
@@ -57,16 +58,14 @@ export class SaleroomCheckInEligibilityValidator {
       return this.serviceErr("Email address must be verified", 400, "email_not_verified");
     }
 
-    const membership = await this.legalEntityRepository.findActiveMembership(
-      input.userId,
-      input.buyerLegalEntityId,
-    );
-    if (!membership) {
-      return this.serviceErr(
-        "Not a member of the selected legal entity",
-        403,
-        "membership_required",
-      );
+    const authority = await this.bidAuthority.resolve({
+      userId: input.userId,
+      legalEntityId: input.buyerLegalEntityId,
+      saleId: input.saleId,
+    });
+    if (!authority.allowed) {
+      const { message, status, code } = bidAuthorityError(authority.reason);
+      return this.serviceErr(message, status, code);
     }
 
     const entity = await this.legalEntityRepository.findById(input.buyerLegalEntityId);
@@ -75,14 +74,6 @@ export class SaleroomCheckInEligibilityValidator {
     }
     if (!buyerEntityCanBid(entity.status)) {
       return this.serviceErr("Legal entity is not authorised to bid", 403, "entity_not_authorised");
-    }
-
-    if (!memberEligibleForStaffInRoomCheckIn(membership.role, entity.kind)) {
-      return this.serviceErr(
-        "This membership is not eligible for in-room check-in",
-        400,
-        "not_eligible_for_check_in",
-      );
     }
 
     if (

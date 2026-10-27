@@ -1,3 +1,4 @@
+import { type IBidAuthority, bidAuthorityError } from "@auction/bidding-runtime";
 import type { IPaddleRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository } from "@auction/persistence/interfaces";
 import { isPaddleUniqueViolation } from "@auction/persistence/lib";
@@ -61,6 +62,7 @@ export class PaddleService {
       saleId: string,
       userId: string,
     ) => Promise<boolean>,
+    private readonly bidAuthority: IBidAuthority | null = null,
   ) {}
 
   private err(message: string, status: number, code?: string): Result<never, PaddleServiceError> {
@@ -84,6 +86,17 @@ export class PaddleService {
         402,
         "kyc_required",
       );
+    }
+    if (this.bidAuthority) {
+      const authority = await this.bidAuthority.resolve({
+        userId: reg.userId,
+        legalEntityId: reg.buyerLegalEntityId,
+        saleId: input.saleId,
+      });
+      if (!authority.allowed) {
+        const { message, status, code } = bidAuthorityError(authority.reason);
+        return this.err(message, status, code);
+      }
     }
 
     let paddleNumber = input.paddleNumber;

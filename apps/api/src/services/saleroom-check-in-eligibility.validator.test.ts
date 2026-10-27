@@ -2,11 +2,13 @@ import type { ISaleRegistrationCheckInReader } from "@auction/persistence/interf
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { LegalEntity } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fakeBidAuthority } from "../testing/fake-bid-authority.js";
 import { SaleroomCheckInEligibilityValidator } from "./saleroom-check-in-eligibility.validator.js";
 
 const saleId = "00000000-0000-4000-8000-000000000002";
 const userId = "00000000-0000-4000-8000-000000000003";
 const entityId = "00000000-0000-4000-8000-0000000000e1";
+const owner = fakeBidAuthority("owner");
 
 function mockReader(
   overrides: Partial<ISaleRegistrationCheckInReader> = {},
@@ -80,7 +82,11 @@ describe("SaleroomCheckInEligibilityValidator", () => {
   });
 
   it("passes for eligible sale, user, and entity", async () => {
-    const validator = new SaleroomCheckInEligibilityValidator(mockReader(), mockLegalEntityRepo());
+    const validator = new SaleroomCheckInEligibilityValidator(
+      mockReader(),
+      mockLegalEntityRepo(),
+      owner,
+    );
     const result = await validator.validate({
       saleId,
       userId,
@@ -99,6 +105,7 @@ describe("SaleroomCheckInEligibilityValidator", () => {
         }),
       }),
       mockLegalEntityRepo(),
+      owner,
     );
     const result = await validator.validate({
       saleId,
@@ -122,6 +129,7 @@ describe("SaleroomCheckInEligibilityValidator", () => {
         }),
       }),
       mockLegalEntityRepo(),
+      owner,
     );
     const result = await validator.validate({
       saleId,
@@ -132,5 +140,38 @@ describe("SaleroomCheckInEligibilityValidator", () => {
     if (result.isErr()) {
       expect(result.error.code).toBe("kyc_required");
     }
+  });
+
+  it.each(["viewer", "finance", "consignor"] as const)(
+    "refuses to check in a %s for the organisation",
+    async (role) => {
+      const validator = new SaleroomCheckInEligibilityValidator(
+        mockReader(),
+        mockLegalEntityRepo(),
+        fakeBidAuthority(role),
+      );
+      const result = await validator.validate({ saleId, userId, buyerLegalEntityId: entityId });
+      expect(result.isErr() && result.error.code).toBe("bid_role_not_permitted");
+    },
+  );
+
+  it("refuses a buyer agent with no authorisation for the sale", async () => {
+    const validator = new SaleroomCheckInEligibilityValidator(
+      mockReader(),
+      mockLegalEntityRepo(),
+      fakeBidAuthority("buyer_agent"),
+    );
+    const result = await validator.validate({ saleId, userId, buyerLegalEntityId: entityId });
+    expect(result.isErr() && result.error.code).toBe("buyer_agent_authorisation_required");
+  });
+
+  it("checks in an authorised buyer agent", async () => {
+    const validator = new SaleroomCheckInEligibilityValidator(
+      mockReader(),
+      mockLegalEntityRepo(),
+      fakeBidAuthority("buyer_agent", [{ saleId, bidLimit: "5000.00" }]),
+    );
+    const result = await validator.validate({ saleId, userId, buyerLegalEntityId: entityId });
+    expect(result.isOk()).toBe(true);
   });
 });

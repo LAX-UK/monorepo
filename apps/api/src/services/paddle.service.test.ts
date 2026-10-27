@@ -1,5 +1,7 @@
+import type { IBidAuthority } from "@auction/bidding-runtime";
 import { describe, expect, it, vi } from "vitest";
 import { BidError } from "../lib/errors.js";
+import { fakeBidAuthority } from "../testing/fake-bid-authority.js";
 import { PaddleService } from "./paddle.service.js";
 
 function createPaddleService(
@@ -11,6 +13,7 @@ function createPaddleService(
       set: ReturnType<typeof vi.fn>;
       del: ReturnType<typeof vi.fn>;
     } | null;
+    bidAuthority?: IBidAuthority;
   } = {},
 ) {
   const repo = {
@@ -30,7 +33,13 @@ function createPaddleService(
     ...overrides.lotRepo,
   };
 
-  return new PaddleService(repo as never, lotRepo as never, overrides.cache ?? null);
+  return new PaddleService(
+    repo as never,
+    lotRepo as never,
+    overrides.cache ?? null,
+    undefined,
+    overrides.bidAuthority ?? null,
+  );
 }
 
 describe("PaddleService.assignPaddle", () => {
@@ -61,6 +70,52 @@ describe("PaddleService.assignPaddle", () => {
       expect(result.error.status).toBe(409);
       expect(result.error.code).toBe("paddle_taken");
     }
+  });
+});
+
+describe("PaddleService.assignPaddle bid authority", () => {
+  const registration = {
+    id: "reg-1",
+    status: "approved",
+    kycStatus: "approved",
+    paddleNumber: null,
+    preferredPaddleNumber: null,
+    userId: "user-1",
+    buyerLegalEntityId: "le-1",
+  };
+
+  it.each(["viewer", "finance", "consignor"] as const)(
+    "refuses a paddle to a %s registered for the organisation",
+    async (role) => {
+      const assignPaddle = vi.fn();
+      const service = createPaddleService({
+        repo: {
+          findRegistrationById: vi.fn().mockResolvedValue(registration),
+          assignPaddle,
+        },
+        bidAuthority: fakeBidAuthority(role),
+      });
+      const result = await service.assignPaddle({
+        saleId: "sale-1",
+        registrationId: "reg-1",
+        clerkUserId: "staff-1",
+      });
+      expect(result.isErr() && result.error.code).toBe("bid_role_not_permitted");
+      expect(assignPaddle).not.toHaveBeenCalled();
+    },
+  );
+
+  it("refuses a paddle to a buyer agent without an authorisation for the sale", async () => {
+    const service = createPaddleService({
+      repo: { findRegistrationById: vi.fn().mockResolvedValue(registration) },
+      bidAuthority: fakeBidAuthority("buyer_agent", [{ saleId: "sale-2", bidLimit: null }]),
+    });
+    const result = await service.assignPaddle({
+      saleId: "sale-1",
+      registrationId: "reg-1",
+      clerkUserId: "staff-1",
+    });
+    expect(result.isErr() && result.error.code).toBe("buyer_agent_authorisation_required");
   });
 });
 

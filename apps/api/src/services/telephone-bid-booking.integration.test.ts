@@ -17,6 +17,7 @@ import {
 } from "@auction/persistence/repositories";
 import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { createBidAuthority } from "../container/create-bid-eligibility.js";
 import {
   deleteIdentityUserFixtures,
   seedIdentityUserFixtures,
@@ -55,6 +56,7 @@ describe.skipIf(!HAS_DB)("TelephoneBidBookingService (integration)", () => {
           : null,
     },
     legalEntityRepository,
+    bidAuthority: createBidAuthority(db),
   });
 
   async function cleanup() {
