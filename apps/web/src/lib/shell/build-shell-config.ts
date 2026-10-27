@@ -4,29 +4,28 @@ import {
   getStaffNavGroups,
   getStaffNavItems,
 } from "@/components/layout/staff-nav";
-import type { ActingContext } from "@/lib/auth/capabilities";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
+import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
 import {
   type ClientNavScope,
   PERSONAL_NAV_SCOPE,
   getClientMobileTabs,
+  getClientNavSections,
 } from "@/lib/navigation/client-nav-model";
 import type { DashboardDensity } from "@/lib/preferences/density";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import type { UserRole, UserStaffRole } from "@auction/types";
 import type { ReactNode } from "react";
 import {
   type SellerConnectNavBadgeInput,
   applySellerConnectNavBadges,
 } from "./apply-seller-connect-nav-badges";
-import type { ShellConfig } from "./contracts";
+import type { NavSection, ShellConfig } from "./contracts";
 import { appShellNavItemsToNavItems, staffNavGroupsToNavEntries } from "./nav-adapters";
 
 export type BuildShellConfigInput = {
   user: Pick<SessionUser, "role" | "staffRole">;
   role: AppShellRole;
-  clientWorkspaceMode?: ClientWorkspaceMode;
   density?: DashboardDensity;
   headerActionsSlot?: ReactNode;
   headerExtraSlot?: ReactNode;
@@ -38,8 +37,9 @@ export type BuildShellConfigInput = {
   navCounts?: AdminNavCounts;
   /** Whose account the client nav is for; defaults to a personal account with no organisations. */
   clientNavScope?: ClientNavScope;
-  mobileHeader?: { actingContext: ActingContext };
-  /** When selling workspace and payout setup incomplete — server-resolved nav badge. */
+  /** Client only: the account in use, its switcher and the header strip. */
+  clientAccount?: AccountChrome;
+  /** Payout setup incomplete while it is required — server-resolved nav badge. */
   sellerConnectNavBadge?: SellerConnectNavBadgeInput | null;
   /** Hide mobile bottom tab bar (wizard, checkout). */
   hideBottomTabBar?: boolean;
@@ -48,7 +48,6 @@ export type BuildShellConfigInput = {
 export function buildShellConfig({
   user,
   role,
-  clientWorkspaceMode = "buying",
   density = "normal",
   headerActionsSlot,
   headerExtraSlot,
@@ -59,7 +58,7 @@ export function buildShellConfig({
   pendingArtistCount = 0,
   navCounts,
   clientNavScope = PERSONAL_NAV_SCOPE,
-  mobileHeader,
+  clientAccount,
   sellerConnectNavBadge = null,
   hideBottomTabBar = false,
 }: BuildShellConfigInput): ShellConfig {
@@ -67,13 +66,22 @@ export function buildShellConfig({
     role,
     user,
     pendingSubmissionCount,
-    clientWorkspaceMode,
     pendingArtistCount,
     navCounts,
     clientNavScope,
   );
-  const applyConnectBadge =
-    role === "client" && clientWorkspaceMode === "selling" ? sellerConnectNavBadge : null;
+  const applyConnectBadge = role === "client" ? sellerConnectNavBadge : null;
+  const navSections: NavSection[] | null =
+    role === "client"
+      ? getClientNavSections(clientNavScope).map((section) => ({
+          id: section.id,
+          title: section.label,
+          items: applySellerConnectNavBadges(
+            appShellNavItemsToNavItems(section.items),
+            applyConnectBadge,
+          ),
+        }))
+      : null;
 
   const nav =
     role === "client"
@@ -90,9 +98,7 @@ export function buildShellConfig({
   const mobileNav =
     role === "client"
       ? applySellerConnectNavBadges(
-          appShellNavItemsToNavItems(
-            getClientMobileTabs({ ...clientNavScope, mode: clientWorkspaceMode }),
-          ),
+          appShellNavItemsToNavItems(getClientMobileTabs(clientNavScope)),
           applyConnectBadge,
         )
       : appShellNavItemsToNavItems(
@@ -142,11 +148,11 @@ export function buildShellConfig({
     ...(topSlot ? { topSlot } : {}),
     density,
     ...(hideEmailStatusBanner ? { hideEmailStatusBanner: true } : {}),
-    ...(role === "client" ? { clientWorkspaceMode } : {}),
+    ...(navSections ? { navSections } : {}),
+    ...(role === "client" && clientAccount ? { clientAccount } : {}),
     pendingSubmissionCount,
     pendingArtistCount,
     ...(navCounts ? { navCounts } : {}),
-    ...(mobileHeader ? { mobileHeader } : {}),
     ...(hideBottomTabBar ? { hideBottomTabBar: true } : {}),
   };
 }

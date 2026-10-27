@@ -48,7 +48,7 @@ function renderAppShellBreadcrumbs(ui: ReactNode) {
 
 describe("AppShellBreadcrumbs", () => {
   it("renders mobile shell title for section routes", () => {
-    vi.mocked(usePathname).mockReturnValue("/dashboard/watchlist");
+    vi.mocked(usePathname).mockReturnValue("/watching");
 
     // biome-ignore lint/a11y/useValidAriaRole: `role` is the shell prop, not a DOM ARIA role
     renderAppShellBreadcrumbs(<AppShellBreadcrumbs role="client" sessionUser={clientUser} />);
@@ -56,14 +56,26 @@ describe("AppShellBreadcrumbs", () => {
     expect(screen.getByRole("heading", { name: "Watching" })).toBeInTheDocument();
   });
 
-  it("renders desktop breadcrumb trail", () => {
-    vi.mocked(usePathname).mockReturnValue("/dashboard/watchlist");
+  it("renders the desktop trail for a nested page", () => {
+    vi.mocked(usePathname).mockReturnValue("/organisation/members");
 
     // biome-ignore lint/a11y/useValidAriaRole: `role` is the shell prop, not a DOM ARIA role
     renderAppShellBreadcrumbs(<AppShellBreadcrumbs role="client" sessionUser={clientUser} />);
 
     expect(screen.getByRole("navigation", { name: "Breadcrumb" })).toBeInTheDocument();
-    expect(screen.queryByRole("link", { name: "Dashboard" })).toBeNull();
-    expect(screen.getByText("Watching", { selector: "[aria-current=page]" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Organisation" })).toHaveAttribute(
+      "href",
+      "/organisation",
+    );
+    expect(screen.getByText("Members", { selector: "[aria-current=page]" })).toBeInTheDocument();
+  });
+
+  it("leaves out a desktop trail that would only repeat the page title", () => {
+    vi.mocked(usePathname).mockReturnValue("/watching");
+
+    // biome-ignore lint/a11y/useValidAriaRole: `role` is the shell prop, not a DOM ARIA role
+    renderAppShellBreadcrumbs(<AppShellBreadcrumbs role="client" sessionUser={clientUser} />);
+
+    expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).toBeNull();
   });
 });

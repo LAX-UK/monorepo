@@ -31,6 +31,7 @@ const EMPTY_ACTING_CTX = {
   memberships: [],
   impersonation: null,
   bootstrapFailed: false,
+  needsRestore: false,
 } as const;
 
 export type LotPageShellData = {

@@ -8,7 +8,7 @@ let searchParams = new URLSearchParams();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ replace: vi.fn() }),
-  usePathname: () => "/dashboard/notifications",
+  usePathname: () => "/notifications",
   useSearchParams: () => searchParams,
 }));
 
@@ -77,7 +77,7 @@ describe("NotificationsInboxBoard", () => {
     expect(screen.getByText(/No notifications match this filter/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Clear filters/i })).toHaveAttribute(
       "href",
-      "/dashboard/notifications",
+      "/notifications",
     );
   });
 

@@ -3,17 +3,13 @@ import { isSellerSubmissionPath, sellLoginRedirect } from "./seller-submission-p
 
 describe("seller-submission-path", () => {
   it("detects submission wizard routes", () => {
-    expect(isSellerSubmissionPath("/dashboard/submissions/new")).toBe(true);
-    expect(isSellerSubmissionPath("/dashboard/submissions/new?categorySlug=watches-clocks")).toBe(
-      true,
-    );
-    expect(isSellerSubmissionPath("/dashboard/submissions/sub-1")).toBe(true);
-    expect(isSellerSubmissionPath("/dashboard/seller")).toBe(false);
+    expect(isSellerSubmissionPath("/selling/new")).toBe(true);
+    expect(isSellerSubmissionPath("/selling/new?categorySlug=watches-clocks")).toBe(true);
+    expect(isSellerSubmissionPath("/selling/consignments/sub-1")).toBe(true);
+    expect(isSellerSubmissionPath("/selling")).toBe(false);
   });
 
   it("builds sell login redirect with intent", () => {
-    expect(sellLoginRedirect("/dashboard/submissions/new")).toBe(
-      "/login?next=%2Fdashboard%2Fsubmissions%2Fnew&intent=sell",
-    );
+    expect(sellLoginRedirect("/selling/new")).toBe("/login?next=%2Fselling%2Fnew&intent=sell");
   });
 });

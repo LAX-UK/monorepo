@@ -70,7 +70,7 @@ export function contactIntentFromSearchParams(input: {
       topic: "selling",
       headline,
       successMessage,
-      successCtaHref: "/dashboard/submissions/new",
+      successCtaHref: "/selling/new",
       successCtaLabel: "Start a submission",
     };
   }

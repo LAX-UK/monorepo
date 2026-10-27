@@ -77,7 +77,7 @@ export function resolvePostVerifyDestination(
     return { href: "/onboarding/organisation", label: "Set up your organisation" };
   }
 
-  const eventualDestination = requestedDestination ?? "/dashboard";
+  const eventualDestination = requestedDestination ?? "/home";
 
   if (
     input.fullBuyerOnboardingEnabled === true &&
@@ -103,6 +103,6 @@ export function resolvePostVerifyDestination(
 
   return {
     href: eventualDestination,
-    label: eventualDestination === "/dashboard" ? "Go to dashboard" : "Continue",
+    label: eventualDestination === "/home" ? "Continue to Bid" : "Continue",
   };
 }

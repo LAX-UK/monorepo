@@ -96,8 +96,8 @@ describe("stripe-connect routes — role gates", () => {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        returnUrl: "https://app.test/dashboard/seller/connect",
-        refreshUrl: "https://app.test/dashboard/seller/connect",
+        returnUrl: "https://app.test/selling/payout-setup",
+        refreshUrl: "https://app.test/selling/payout-setup",
       }),
     });
     expect(res.status).toBe(403);

@@ -1,6 +1,8 @@
 "use client";
 
+import { AccountSwitcher } from "@/components/layout/account-switcher/account-switcher";
 import { type AppShellRole, appShellRoleMeta } from "@/components/layout/app-shell-nav";
+import { ClientSidebarNav } from "@/components/layout/client-sidebar-nav";
 import { LaxLogo } from "@/components/layout/lax-logo";
 import { SidebarCollapseButton } from "@/components/layout/sidebar-collapse-button";
 import { useSidebarState } from "@/components/layout/sidebar-state";
@@ -9,42 +11,11 @@ import { StaffWorkspaceSwitcher } from "@/components/layout/staff-workspace-swit
 import { shellRolePillLabel } from "@/lib/admin/staff-role-presenter";
 import { SITE_LOGO_PATH, SITE_LOGO_SHORT_PATH } from "@/lib/brand";
 import type { SessionUser } from "@/lib/data/contracts";
-import { navBadgeClassName } from "@/lib/layout/nav-badge-classes";
-import { navEntriesToFlatItems, navEntriesToGroups } from "@/lib/shell/nav-adapters";
+import { navEntriesToGroups } from "@/lib/shell/nav-adapters";
 import { useShellConfig } from "@/lib/shell/shell-config-context";
 import { cn } from "@auction/ui";
-import { Badge } from "@auction/ui/components/badge";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
-
-/** An entry that leaves Bid (LAX Account) is a plain link; the rest use client navigation. */
-function NavLink({
-  item,
-  children,
-  ...props
-}: {
-  item: { href: string; external?: true };
-  children: ReactNode;
-  className?: string;
-  onClick?: () => void;
-  "aria-current"?: "page" | undefined;
-  "aria-label"?: string;
-}) {
-  if (item.external) {
-    return (
-      <a href={item.href} rel="noopener noreferrer" {...props}>
-        {children}
-      </a>
-    );
-  }
-  return (
-    <Link href={item.href} {...props}>
-      {children}
-    </Link>
-  );
-}
 
 type Props = {
   user: SessionUser;
@@ -62,14 +33,13 @@ export function AppShellSidebar({
   collapsible = false,
   showLogo = true,
 }: Props) {
-  const pathname = usePathname();
   const config = useShellConfig();
   const meta = appShellRoleMeta[role];
-  const clientNavItems = navEntriesToFlatItems(config.nav);
   const staffNavGroups = navEntriesToGroups(config.nav);
   const { collapsed } = useSidebarState();
   const labelsHidden = collapsible && collapsed;
   const rolePillLabel = shellRolePillLabel(user);
+  const showAccountHint = user.hasSeenActingContextTooltip === false;
 
   const rolePill = (
     <Tooltip delayDuration={labelsHidden ? 250 : 400}>
@@ -155,63 +125,29 @@ export function AppShellSidebar({
       )}
 
       <nav
-        className={cn("min-h-0 flex-1 overflow-y-auto px-2 py-4", !labelsHidden && "px-3")}
-        aria-label={`${meta.label} dashboard`}
+        className={cn(
+          "min-h-0 flex-1 overflow-y-auto px-2 py-4",
+          !labelsHidden && "px-3",
+          role === "client" && "flex flex-col",
+        )}
+        aria-label={role === "client" ? "Bid" : `${meta.label} dashboard`}
       >
         {showLogo ? <div className="mb-4">{roleRow}</div> : null}
-        {role === "client" ? (
-          <div className="space-y-1">
-            {clientNavItems.map((item) => {
-              const active = item.match
-                ? item.match(pathname)
-                : pathname === item.href || pathname.startsWith(`${item.href}/`);
-              const Icon = item.icon;
-              return (
-                <Tooltip key={item.id} delayDuration={400}>
-                  <TooltipTrigger asChild>
-                    <NavLink
-                      item={item}
-                      {...(onNavigate ? { onClick: onNavigate } : {})}
-                      aria-current={active ? "page" : undefined}
-                      aria-label={item.label}
-                      className={cn(
-                        "group relative flex min-h-[var(--tap-target-min,44px)] items-center justify-center gap-3 rounded-lg px-2 py-2 font-label text-[13px] font-medium text-on-surface-variant transition-colors",
-                        !labelsHidden && "justify-start px-3",
-                        "hover:bg-surface-container-high hover:text-on-surface",
-                        active &&
-                          "border-l-2 border-nav-active-border bg-nav-active-bg pl-[calc(0.75rem-2px)] text-on-surface",
-                      )}
-                    >
-                      <Icon className="size-4 shrink-0" aria-hidden />
-                      <span
-                        className={cn(
-                          "min-w-0 flex-1 truncate whitespace-nowrap transition-[max-width,opacity] duration-150",
-                          labelsHidden ? "max-w-0 opacity-0" : "max-w-[10rem] opacity-100",
-                        )}
-                        aria-hidden={labelsHidden}
-                      >
-                        {item.label}
-                      </span>
-                      {item.badge ? (
-                        <Badge
-                          className={cn(
-                            navBadgeClassName(item.badgeTone),
-                            labelsHidden && "absolute right-1 top-1",
-                          )}
-                          aria-label={`${item.badge > 99 ? "99+" : item.badge} pending ${item.label}`}
-                        >
-                          {item.badge > 99 ? "99+" : item.badge}
-                        </Badge>
-                      ) : null}
-                    </NavLink>
-                  </TooltipTrigger>
-                  <TooltipContent side="right" className={cn("hidden", labelsHidden && "lg:block")}>
-                    {item.label}
-                  </TooltipContent>
-                </Tooltip>
-              );
-            })}
+        {role === "client" && config.clientAccount?.switcher ? (
+          <div className="mb-5">
+            <AccountSwitcher
+              account={config.clientAccount}
+              collapsed={labelsHidden}
+              showHint={showAccountHint}
+            />
           </div>
+        ) : null}
+        {role === "client" ? (
+          <ClientSidebarNav
+            sections={config.navSections ?? []}
+            labelsHidden={labelsHidden}
+            {...(onNavigate ? { onNavigate } : {})}
+          />
         ) : (
           <StaffSidebarNav
             groups={staffNavGroups}

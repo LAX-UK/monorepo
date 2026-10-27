@@ -64,7 +64,7 @@ describe("useLegalEntityActions", () => {
 
     await waitFor(() => expect(impersonate).toHaveBeenCalledWith("le_1"));
     await waitFor(() => expect(notifySuccess).toHaveBeenCalledWith("Impersonating Gallery One"));
-    expect(push).toHaveBeenCalledWith("/dashboard");
+    expect(push).toHaveBeenCalledWith("/home");
   });
 
   it("keeps the dialog open and says why when impersonation does not start", async () => {

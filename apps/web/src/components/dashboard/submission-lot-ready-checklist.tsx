@@ -57,7 +57,7 @@ export function SubmissionLotReadyChecklist({ submission, lot, connectRequired =
                   <>
                     {" — "}
                     <Link
-                      href="/dashboard/seller/connect"
+                      href="/selling/payout-setup"
                       className="text-link underline-offset-4 hover:underline"
                     >
                       Complete Connect
@@ -103,7 +103,7 @@ export function SubmissionLotReadyChecklist({ submission, lot, connectRequired =
                   {" — "}
                   {check.id === "seller" ? (
                     <Link
-                      href="/dashboard/seller/connect"
+                      href="/selling/payout-setup"
                       className="text-link underline-offset-4 hover:underline"
                     >
                       Complete Connect
@@ -121,7 +121,7 @@ export function SubmissionLotReadyChecklist({ submission, lot, connectRequired =
                       </Link>
                       {" · "}
                       <Link
-                        href="/dashboard/seller/in-sale"
+                        href="/selling/consignments?tab=in-sale"
                         className="text-link underline-offset-4 hover:underline"
                       >
                         In-sale dashboard

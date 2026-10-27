@@ -1,5 +1,6 @@
 import { connectGapStageBadgeVariant, connectGapStageLabel } from "@/lib/connect/connect-gap-copy";
 import { orgOnboardingStepHref } from "@/lib/legal-entity/org-onboarding-resume";
+import { organisationHref } from "@/lib/navigation/client-routes";
 import { getConnectGapState } from "@auction/connect";
 import type { LegalEntity, LegalEntitySubkind } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -77,7 +78,7 @@ export function OrganisationCard({
       <CardFooter className="flex flex-wrap gap-2 border-t border-border-hairline pt-4">
         {!isActing ? (
           <Button asChild size="sm" variant="secondary">
-            <Link href={`/dashboard/seller/organisations/${summary.id}`} prefetch>
+            <Link href={organisationHref("profile", summary.id)} prefetch>
               Manage
             </Link>
           </Button>

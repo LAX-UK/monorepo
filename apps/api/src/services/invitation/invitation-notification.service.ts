@@ -33,7 +33,7 @@ export class InvitationNotificationService {
         orgName,
         inviterName,
         role: input.role,
-        acceptUrl: `${base}/dashboard/invitations/accept/${encodeURIComponent(input.token)}`,
+        acceptUrl: `${base}/organisations/invitations/accept/${encodeURIComponent(input.token)}`,
       });
       return;
     }

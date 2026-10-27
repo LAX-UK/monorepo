@@ -12,7 +12,7 @@ const PAYOUT_ID = "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
 const SELLER_USER = "7f6e5d4c-3b2a-4190-8f7e-6d5c4b3a2918";
 const STAFF_USER = "2b3c4d5e-6f70-4a81-92a3-b4c5d6e7f809";
 const ADMIN_URL = "https://test.lax.bid/admin/payouts";
-const SELLER_URL = "https://test.lax.bid/dashboard/seller/payouts";
+const SELLER_URL = "https://test.lax.bid/selling/payouts";
 
 function harness() {
   const sent: EmailEnqueueInput<TemplateName>[] = [];

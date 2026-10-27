@@ -3,7 +3,6 @@ import { getStaffNavItems, getStaffNavParentLabel } from "@/components/layout/st
 import type { SessionUser } from "@/lib/data/contracts";
 import { type ClientNavScope, getClientNavItems } from "@/lib/navigation/client-nav-model";
 import { type AppShellRole, sessionUserToShellRole } from "@/lib/shell/session-user-shell-role";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import type { UserRole, UserStaffRole } from "@auction/types";
 
 export type { AppShellRole, AppShellNavItem };
@@ -41,11 +40,10 @@ function exactOrNested(href: string) {
   return (pathname: string) => pathname === href || pathname.startsWith(`${href}/`);
 }
 
-/** Every entry visible, so route labels resolve whatever the viewer may open. */
+/** Every entry an organisation owner sees, so route labels resolve whatever the viewer may open. */
 const LABEL_LOOKUP_SCOPE: ClientNavScope = {
-  context: { kind: "personal" },
-  orgModuleEnabled: true,
-  isOrgMember: true,
+  context: { kind: "organisation", id: "", role: "owner" },
+  hasSubmissions: true,
 };
 
 export { getStaffNavItems };
@@ -54,12 +52,11 @@ export function getAppShellNavItems(
   shell: AppShellRole,
   sessionUser: Pick<SessionUser, "role" | "staffRole">,
   pendingSubmissionCount = 0,
-  clientWorkspace: ClientWorkspaceMode = "buying",
   pendingArtistCount = 0,
   navCounts?: import("@/lib/data/http/admin-nav-counts.types").AdminNavCounts,
   clientScope: ClientNavScope = LABEL_LOOKUP_SCOPE,
 ): AppShellNavItem[] {
-  if (shell === "client") return getClientNavItems({ ...clientScope, mode: clientWorkspace });
+  if (shell === "client") return getClientNavItems(clientScope);
   return getStaffNavItems(
     sessionUser.role as UserRole,
     sessionUser.staffRole ?? null,
@@ -72,14 +69,13 @@ export function getAppShellNavItems(
 export function getRouteLabel(
   pathname: string,
   shell: AppShellRole,
-  clientWorkspace: ClientWorkspaceMode = "buying",
   sessionUser?: Pick<SessionUser, "role" | "staffRole"> | null,
 ): string {
   const navUser: Pick<SessionUser, "role" | "staffRole"> =
     shell === "client"
       ? { role: "client", staffRole: null }
       : (sessionUser ?? { role: "staff", staffRole: "super_admin" });
-  const items = getAppShellNavItems(shell, navUser, 0, clientWorkspace);
+  const items = getAppShellNavItems(shell, navUser);
   const active = items.find((item) =>
     item.match ? item.match(pathname) : exactOrNested(item.href)(pathname),
   );
@@ -87,23 +83,14 @@ export function getRouteLabel(
   if (pathname.includes("/new")) return "New";
   if (pathname.includes("/edit")) return "Edit";
   if (pathname.includes("/checkout")) return "Checkout";
-  if (shell === "client" && pathname.startsWith("/dashboard/organisations")) return "Organisations";
-  if (shell === "client" && pathname.startsWith("/dashboard/invitations")) return "Invitations";
   return "Detail";
 }
 
 export function getRouteParentLabel(
   pathname: string,
   shell: AppShellRole,
-  clientWorkspace: ClientWorkspaceMode = "buying",
   sessionUser?: Pick<SessionUser, "role" | "staffRole"> | null,
 ): string | null {
-  if (shell === "client" && pathname.startsWith("/dashboard/settings")) return "Bid settings";
-  if (shell === "client" && pathname.startsWith("/dashboard/checkout")) return "Purchases";
-  if (shell === "client" && pathname.startsWith("/dashboard/seller"))
-    return clientWorkspace === "selling" ? "Selling" : null;
-  if (shell === "client" && pathname.startsWith("/dashboard/organisations")) return "Organisations";
-  if (shell === "client" && pathname.startsWith("/dashboard/invitations")) return "Invitations";
   if (shell !== "client" && pathname.startsWith("/admin")) {
     const u = sessionUser ?? {
       role: "staff" as UserRole,

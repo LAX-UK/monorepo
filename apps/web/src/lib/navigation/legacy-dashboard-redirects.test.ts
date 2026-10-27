@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { laxAccountOrigin } from "@/lib/lax-account-url";
 import { describe, expect, it } from "vitest";
@@ -6,25 +6,130 @@ import {
   IDENTITY_SETTINGS_REDIRECTS,
   LEGACY_DASHBOARD_REDIRECTS,
   identitySettingsRedirects,
+  resolveLegacyDashboardRedirect,
 } from "./legacy-dashboard-redirects";
 
-const destinationOf = (source: string) =>
-  LEGACY_DASHBOARD_REDIRECTS.find((redirect) => redirect.source === source)?.destination;
+const APP_DIR = path.join(process.cwd(), "src", "app");
+
+/**
+ * Whether the app serves a page (or route handler) at `pathname`, the way the router finds one:
+ * route groups `(name)` add no segment and `[param]` folders match any one segment.
+ */
+function servesPage(pathname: string): boolean {
+  const segments = pathname.split("/").filter(Boolean);
+  function walk(dir: string, rest: readonly string[]): boolean {
+    if (!existsSync(dir)) return false;
+    const entries = readdirSync(dir).filter((entry) =>
+      statSync(path.join(dir, entry)).isDirectory(),
+    );
+    if (rest.length === 0) {
+      if (existsSync(path.join(dir, "page.tsx")) || existsSync(path.join(dir, "route.ts"))) {
+        return true;
+      }
+      return entries.some((entry) => /^\(.+\)$/.test(entry) && walk(path.join(dir, entry), rest));
+    }
+    const [head, ...tail] = rest;
+    return entries.some((entry) => {
+      if (/^\(.+\)$/.test(entry)) return walk(path.join(dir, entry), rest);
+      if (entry === head || /^\[[^.]+\]$/.test(entry)) return walk(path.join(dir, entry), tail);
+      return false;
+    });
+  }
+  return walk(APP_DIR, segments);
+}
+
+/** Every page the client area had under `/dashboard`, with sample ids, and where it lives now. */
+const EVERY_OLD_PAGE: readonly [string, string][] = [
+  ["/dashboard", "/home"],
+  ["/dashboard/bids", "/bids"],
+  ["/dashboard/telephone-bids/tb-1", "/bids/telephone/tb-1"],
+  ["/dashboard/purchases", "/purchases"],
+  ["/dashboard/checkout", "/purchases/checkout"],
+  ["/dashboard/checkout/lot-1", "/purchases/checkout/lot-1"],
+  ["/dashboard/watchlist", "/watching"],
+  ["/dashboard/notifications", "/notifications"],
+  ["/dashboard/settings", "/settings"],
+  ["/dashboard/settings/bidding", "/settings/bidding"],
+  ["/dashboard/settings/notifications", "/settings/notifications"],
+  ["/dashboard/settings/interests", "/settings/interests"],
+  ["/dashboard/settings/appearance", "/settings/appearance"],
+  ["/dashboard/verify-identity", "/verify-identity"],
+  ["/dashboard/compliance/source-of-funds", "/compliance/source-of-funds"],
+  ["/dashboard/seller", "/selling"],
+  ["/dashboard/seller/consignments", "/selling/consignments"],
+  ["/dashboard/submissions/new", "/selling/new"],
+  ["/dashboard/submissions/sub-1", "/selling/consignments/sub-1"],
+  ["/dashboard/seller/works", "/selling/works"],
+  ["/dashboard/seller/payouts", "/selling/payouts"],
+  ["/dashboard/seller/connect", "/selling/payout-setup"],
+  ["/dashboard/seller/artist", "/selling/artist"],
+  ["/dashboard/seller/organisations/org-1", "/organisation?account=org-1"],
+  ["/dashboard/seller/organisations/org-1/profile", "/organisation?account=org-1"],
+  ["/dashboard/seller/organisations/org-1/members", "/organisation/members?account=org-1"],
+  ["/dashboard/seller/organisations/org-1/documents", "/organisation/documents?account=org-1"],
+  ["/dashboard/seller/organisations/org-1/connect", "/organisation/payouts?account=org-1"],
+  ["/dashboard/seller/organisations/org-1/security", "/organisation/security?account=org-1"],
+  ["/dashboard/organisations", "/organisations"],
+  ["/dashboard/invitations", "/organisations/invitations"],
+  ["/dashboard/invitations/accept/tok-1", "/organisations/invitations/accept/tok-1"],
+  ["/dashboard/invitations/review/inv-1", "/organisations/invitations/review/inv-1"],
+  [
+    "/dashboard/legal-entities/le-1/payouts/po-1/statement",
+    "/legal-entities/le-1/payouts/po-1/statement",
+  ],
+];
+
+/** Addresses that already redirected before the move; they now go straight to the new page. */
+const EARLIER_RETIREMENTS: readonly [string, string][] = [
+  ["/dashboard/portfolio", "/purchases"],
+  ["/dashboard/payments", "/purchases#payment-history"],
+  ["/dashboard/telephone-bids", "/bids#telephone-bids"],
+  ["/dashboard/condition-reports", "/bids#condition-reports"],
+  ["/dashboard/settings/payment-methods", "/purchases"],
+  ["/dashboard/submissions", "/selling/consignments"],
+  ["/dashboard/seller/in-sale", "/selling/consignments?tab=in-sale"],
+  ["/dashboard/artist-follow", "/watching?section=artists"],
+  ["/dashboard/organisations/org-1", "/organisation?account=org-1"],
+  ["/dashboard/organisations/org-1/members", "/organisation/members?account=org-1"],
+  ["/dashboard/organisations/org-1/connect", "/organisation/payouts?account=org-1"],
+];
 
 describe("LEGACY_DASHBOARD_REDIRECTS", () => {
-  it.each([
-    ["/dashboard/portfolio", "/dashboard/purchases"],
-    ["/dashboard/payments", "/dashboard/purchases#payment-history"],
-    ["/dashboard/telephone-bids", "/dashboard/bids#telephone-bids"],
-    ["/dashboard/condition-reports", "/dashboard/bids#condition-reports"],
-    ["/dashboard/settings/payment-methods", "/dashboard/purchases"],
-    ["/dashboard/submissions", "/dashboard/seller/consignments"],
-    ["/dashboard/seller/in-sale", "/dashboard/seller/consignments?tab=in-sale"],
-  ])("sends %s to %s", (source, destination) => {
-    expect(destinationOf(source)).toBe(destination);
+  it.each([...EVERY_OLD_PAGE, ...EARLIER_RETIREMENTS])("sends %s to %s", (from, to) => {
+    expect(resolveLegacyDashboardRedirect(from)).toBe(to);
   });
 
-  it("is permanent for every entry so old bookmarks and crawlers update", () => {
+  it.each(EVERY_OLD_PAGE)("serves a page where %s now goes", (_from, to) => {
+    const pathname = to.split(/[?#]/)[0] ?? to;
+    expect(servesPage(pathname)).toBe(true);
+  });
+
+  it("keeps the query string, alongside any the destination adds", () => {
+    expect(resolveLegacyDashboardRedirect("/dashboard/purchases", "?payment=due")).toBe(
+      "/purchases?payment=due",
+    );
+    expect(
+      resolveLegacyDashboardRedirect("/dashboard/seller/organisations/org-1/members", "?welcome=1"),
+    ).toBe("/organisation/members?account=org-1&welcome=1");
+    expect(resolveLegacyDashboardRedirect("/dashboard/payments", "?a=1&b=2")).toBe(
+      "/purchases?a=1&b=2#payment-history",
+    );
+    expect(resolveLegacyDashboardRedirect("/dashboard", "?welcome=back&utm_source=a")).toBe(
+      "/home?welcome=back&utm_source=a",
+    );
+  });
+
+  it("ignores a trailing slash", () => {
+    expect(resolveLegacyDashboardRedirect("/dashboard/bids/")).toBe("/bids");
+  });
+
+  it("leaves addresses outside the old client area alone", () => {
+    expect(resolveLegacyDashboardRedirect("/bids")).toBeNull();
+    expect(resolveLegacyDashboardRedirect("/admin/dashboard")).toBeNull();
+    expect(resolveLegacyDashboardRedirect("/dashboard/unknown")).toBeNull();
+  });
+
+  it("is permanent (308) for every entry so old bookmarks and crawlers update", () => {
     expect(LEGACY_DASHBOARD_REDIRECTS.every((redirect) => redirect.permanent)).toBe(true);
   });
 
@@ -33,66 +138,15 @@ describe("LEGACY_DASHBOARD_REDIRECTS", () => {
     expect(new Set(sources).size).toBe(sources.length);
   });
 
-  it("never points at another redirected address", () => {
-    const sources = new Set(LEGACY_DASHBOARD_REDIRECTS.map((redirect) => redirect.source));
+  it("never points at another redirected address, so nobody follows a chain", () => {
     for (const { destination } of LEGACY_DASHBOARD_REDIRECTS) {
-      expect(sources.has(destination.split("#")[0] ?? destination)).toBe(false);
+      const pathname = destination.split(/[?#]/)[0] ?? destination;
+      expect(resolveLegacyDashboardRedirect(pathname)).toBeNull();
     }
   });
 
-  it("has no page left behind that the redirect would silently shadow", () => {
-    const appDir = path.join(process.cwd(), "src", "app");
-    for (const { source } of LEGACY_DASHBOARD_REDIRECTS) {
-      expect(existsSync(path.join(appDir, source, "page.tsx"))).toBe(false);
-    }
-  });
-
-  describe("organisation settings", () => {
-    const rule = LEGACY_DASHBOARD_REDIRECTS.find((redirect) =>
-      redirect.source.startsWith("/dashboard/organisations/"),
-    );
-
-    /**
-     * Applies the rule's `:id/:path*` pattern: an id, then zero or more path segments, which the
-     * destination repeats. The live redirect is checked against a running app in the PR.
-     */
-    function redirectTarget(pathname: string): string | null {
-      if (!rule) return null;
-      const matched = pathname.match(/^\/dashboard\/organisations\/([^/]+)((?:\/[^/]+)*)$/);
-      if (!matched) return null;
-      return `/dashboard/seller/organisations/${matched[1]}${matched[2] ?? ""}`;
-    }
-
-    it.each([
-      ["/dashboard/organisations/org-1", "/dashboard/seller/organisations/org-1"],
-      ["/dashboard/organisations/org-1/members", "/dashboard/seller/organisations/org-1/members"],
-      [
-        "/dashboard/organisations/org-1/documents",
-        "/dashboard/seller/organisations/org-1/documents",
-      ],
-      ["/dashboard/organisations/org-1/connect", "/dashboard/seller/organisations/org-1/connect"],
-      ["/dashboard/organisations/org-1/profile", "/dashboard/seller/organisations/org-1/profile"],
-    ])("sends %s to %s", (from, to) => {
-      expect(redirectTarget(from)).toBe(to);
-    });
-
-    it("declares the destination with the same id and path parameters", () => {
-      expect(rule?.destination).toBe("/dashboard/seller/organisations/:id/:path*");
-    });
-
-    it("leaves the organisations list and invitations where they are", () => {
-      expect(redirectTarget("/dashboard/organisations")).toBeNull();
-      expect(redirectTarget("/dashboard/invitations/review/abc")).toBeNull();
-    });
-
-    it("has moved every page the old tabs pointed at", () => {
-      const dashboardDir = path.join(process.cwd(), "src", "app", "dashboard");
-      const moved = path.join(dashboardDir, "seller", "organisations", "[id]");
-      for (const tab of ["", "members", "profile", "documents", "connect", "security"]) {
-        expect(existsSync(path.join(moved, tab, "page.tsx"))).toBe(true);
-      }
-      expect(existsSync(path.join(dashboardDir, "organisations", "[id]"))).toBe(false);
-    });
+  it("has no page left under /dashboard that a redirect would shadow", () => {
+    expect(existsSync(path.join(APP_DIR, "dashboard"))).toBe(false);
   });
 });
 
@@ -124,13 +178,6 @@ describe("identity settings redirects", () => {
     );
   });
 
-  it("leaves the Bid settings that remain alone", () => {
-    const sources = new Set(rules.map((rule) => rule.source));
-    for (const kept of ["bidding", "notifications", "interests", "appearance"]) {
-      expect(sources.has(`/dashboard/settings/${kept}`)).toBe(false);
-    }
-  });
-
   it("points only at Account, never back at a Bid page, so it cannot loop", () => {
     const accountOrigin = laxAccountOrigin();
     for (const rule of identitySettingsRedirects(accountOrigin)) {
@@ -139,17 +186,9 @@ describe("identity settings redirects", () => {
     }
   });
 
-  it("has no Bid page left behind that a redirect would silently shadow", () => {
-    const appDir = path.join(process.cwd(), "src", "app");
+  it("does not share a source with the client area map", () => {
     for (const { source } of IDENTITY_SETTINGS_REDIRECTS) {
-      expect(existsSync(path.join(appDir, source, "page.tsx"))).toBe(false);
-    }
-  });
-
-  it("does not share a source with the other legacy redirects", () => {
-    const legacy = new Set(LEGACY_DASHBOARD_REDIRECTS.map((rule) => rule.source));
-    for (const { source } of IDENTITY_SETTINGS_REDIRECTS) {
-      expect(legacy.has(source)).toBe(false);
+      expect(resolveLegacyDashboardRedirect(source)).toBeNull();
     }
   });
 });

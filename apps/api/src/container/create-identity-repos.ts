@@ -20,6 +20,8 @@ import type {
   IProfileReader,
   IProfileWriter,
   IPushSubscriptionRepository,
+  IRecordAccountReader,
+  IRememberedAccountStore,
   ISavedSearchRepository,
   IUiPreferenceRepository,
   IUserInvitationRepository,
@@ -44,6 +46,8 @@ import {
   DrizzlePendingInvitationsReader,
   DrizzleProfileRepository,
   DrizzlePushSubscriptionRepository,
+  DrizzleRecordAccountReader,
+  DrizzleRememberedAccountStore,
   DrizzleSavedSearchRepository,
   DrizzleUiPreferenceRepository,
   DrizzleUserInvitationRepository,
@@ -68,6 +72,8 @@ export type IdentityRepositories = {
   legalEntityMemberRepository: ILegalEntityMemberRepository;
   kycRepository: IKycRepository;
   pendingInvitationsReader: IPendingInvitationsReader;
+  rememberedAccountStore: IRememberedAccountStore;
+  recordAccountReader: IRecordAccountReader;
   invitationRepository: IUserInvitationRepository;
   entityInvitationRepository: IEntityInvitationRepository;
   notificationPreferenceRepository: INotificationPreferenceRepository;
@@ -124,6 +130,8 @@ export function createIdentityRepositories(db: Database): IdentityRepositories {
     legalEntityMemberRepository,
     kycRepository,
     pendingInvitationsReader,
+    rememberedAccountStore: new DrizzleRememberedAccountStore(db),
+    recordAccountReader: new DrizzleRecordAccountReader(db),
     invitationRepository,
     entityInvitationRepository,
     notificationPreferenceRepository,

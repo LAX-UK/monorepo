@@ -5,28 +5,28 @@ import type { NavItem } from "./contracts";
 
 const items: NavItem[] = [
   {
-    id: "connect",
-    href: "/dashboard/seller/connect",
-    label: "Payout setup",
+    id: "consignments",
+    href: "/selling/consignments",
+    label: "Consignments",
     icon: LayoutGrid,
   },
   {
     id: "payouts",
-    href: "/dashboard/seller/payouts",
+    href: "/selling/payouts",
     label: "Sold & payouts",
     icon: LayoutGrid,
   },
 ];
 
 describe("applySellerConnectNavBadges", () => {
-  it("adds warning badge on connect when not ready", () => {
+  it("flags Sold & payouts, where payout setup is reached, when it is not ready", () => {
     const out = applySellerConnectNavBadges(items, {
       connectEnforced: true,
       connectReady: false,
     });
-    expect(out.find((i) => i.id === "connect")?.badge).toBe(1);
-    expect(out.find((i) => i.id === "connect")?.badgeTone).toBe("warning");
-    expect(out.find((i) => i.id === "payouts")?.badge).toBeUndefined();
+    expect(out.find((i) => i.id === "payouts")?.badge).toBe(1);
+    expect(out.find((i) => i.id === "payouts")?.badgeTone).toBe("warning");
+    expect(out.find((i) => i.id === "consignments")?.badge).toBeUndefined();
   });
 
   it("skips badge when connect is ready", () => {
@@ -34,7 +34,7 @@ describe("applySellerConnectNavBadges", () => {
       connectEnforced: true,
       connectReady: true,
     });
-    expect(out.find((i) => i.id === "connect")?.badge).toBeUndefined();
+    expect(out.find((i) => i.id === "payouts")?.badge).toBeUndefined();
   });
 
   it("skips badge when connect is not enforced", () => {
@@ -42,6 +42,6 @@ describe("applySellerConnectNavBadges", () => {
       connectEnforced: false,
       connectReady: false,
     });
-    expect(out.find((i) => i.id === "connect")?.badge).toBeUndefined();
+    expect(out.find((i) => i.id === "payouts")?.badge).toBeUndefined();
   });
 });

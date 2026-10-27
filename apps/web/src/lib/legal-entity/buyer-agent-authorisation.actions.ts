@@ -7,6 +7,7 @@ import {
   submitAuthorisationRevoke,
 } from "@/lib/buyer-agents/authorisation-request";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
+import { organisationHref } from "@/lib/navigation/client-routes";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { revalidatePath } from "next/cache";
 import { X_LEGAL_ENTITY_ID_HEADER } from "./client-acting-context";
@@ -20,8 +21,8 @@ function sender(legalEntityId: string) {
     });
 }
 
-function revalidateMembers(legalEntityId: string) {
-  revalidatePath(`/dashboard/seller/organisations/${legalEntityId}/members`);
+function revalidateMembers() {
+  revalidatePath(organisationHref("members"));
 }
 
 /** An owner or admin authorises a buyer-agent member to bid for the organisation. */
@@ -35,7 +36,7 @@ export async function authoriseBuyerAgentAction(
       "/legal-entities/buyer-agent-authorisations",
       draft,
     );
-    if (result.ok) revalidateMembers(legalEntityId);
+    if (result.ok) revalidateMembers();
     return result;
   });
 }
@@ -52,7 +53,7 @@ export async function revokeBuyerAgentAuthorisationAction(
       `/legal-entities/buyer-agent-authorisations/${encodeURIComponent(authorisationId)}/revoke`,
       reason,
     );
-    if (result.ok) revalidateMembers(legalEntityId);
+    if (result.ok) revalidateMembers();
     return result;
   });
 }

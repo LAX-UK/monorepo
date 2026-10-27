@@ -1,4 +1,4 @@
-import type { ConsignmentRow } from "@/app/dashboard/seller/consignments/consignments.vm";
+import type { ConsignmentRow } from "@/app/(client)/selling/consignments/consignments.vm";
 import {
   DashboardListRowCard,
   DashboardMobileList,

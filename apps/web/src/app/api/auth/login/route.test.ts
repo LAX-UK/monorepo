@@ -41,14 +41,14 @@ describe("GET /api/auth/login", () => {
 
   it("uses create prompt for signup intent", async () => {
     const response = await GET(
-      new NextRequest("https://lax.bid/api/auth/login?intent=signup&next=%2Fdashboard"),
+      new NextRequest("https://lax.bid/api/auth/login?intent=signup&next=%2Fhome"),
     );
     expect(response.status).toBe(302);
     expect(buildAuthorizationUrl).toHaveBeenCalledWith(
       expect.objectContaining({ prompt: "create" }),
     );
     expect(createPending).toHaveBeenCalledWith(
-      expect.objectContaining({ entryIntent: "signup", nextPath: "/dashboard" }),
+      expect.objectContaining({ entryIntent: "signup", nextPath: "/home" }),
     );
     expect(setBidSessionCookie).toHaveBeenCalledWith(response, "pending-session-id", "login");
   });
@@ -57,7 +57,7 @@ describe("GET /api/auth/login", () => {
     readBidSessionId.mockReturnValue("authed-session");
     readSession.mockResolvedValue({ kind: "authenticated", subject: "user-1" });
 
-    await GET(new NextRequest("https://lax.bid/api/auth/login?intent=reauth&next=%2Fdashboard"));
+    await GET(new NextRequest("https://lax.bid/api/auth/login?intent=reauth&next=%2Fhome"));
 
     expect(createPending).toHaveBeenCalledWith(
       expect.objectContaining({

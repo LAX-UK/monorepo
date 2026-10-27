@@ -2,6 +2,7 @@
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { X_LEGAL_ENTITY_ID_HEADER } from "@/lib/legal-entity/client-acting-context";
+import { organisationHref } from "@/lib/navigation/client-routes";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { revalidatePath } from "next/cache";
 
@@ -38,8 +39,8 @@ export async function setOrgTwoFactorPolicyAction(
       body: JSON.stringify({ required }),
     });
     if (!res.ok) return failure(res.status);
-    revalidatePath(`/dashboard/seller/organisations/${legalEntityId}/security`);
-    revalidatePath(`/dashboard/seller/organisations/${legalEntityId}/members`);
+    revalidatePath(organisationHref("security"));
+    revalidatePath(organisationHref("members"));
     return { ok: true };
   });
 }

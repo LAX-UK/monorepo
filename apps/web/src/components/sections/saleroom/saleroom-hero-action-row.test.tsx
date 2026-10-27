@@ -57,7 +57,7 @@ describe("SaleroomHeroActionRow", () => {
     expect(screen.getAllByRole("link", { name: /register to bid/i })).toHaveLength(1);
     expect(screen.getByRole("link", { name: /register to bid/i })).toHaveAttribute(
       "href",
-      "/api/auth/login?next=%2Fdashboard&intent=signup",
+      "/api/auth/login?next=%2Fhome&intent=signup",
     );
     expect(screen.queryByRole("link", { name: /browse lots/i })).not.toBeInTheDocument();
   });

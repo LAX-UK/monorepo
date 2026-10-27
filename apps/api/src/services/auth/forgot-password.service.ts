@@ -53,7 +53,7 @@ export async function runForgotPasswordSideEffects(args: {
       vars: {
         provider: social,
         signInUrl: `${webOrigin}/login`,
-        settingsUrl: `${webOrigin}/dashboard/settings?tab=security`,
+        settingsUrl: `${webOrigin}/settings?tab=security`,
         userEmail: found.email,
         userName: found.name,
       },

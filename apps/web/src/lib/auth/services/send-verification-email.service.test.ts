@@ -128,13 +128,13 @@ describe("resendVerificationEmailFromPending", () => {
 
     const result = await resendVerificationEmailFromPending({
       email: "a@b.com",
-      next: "/dashboard",
+      next: "/home",
       webOrigin: "http://web.test",
     });
 
     expect(buildVerifyEmailResendCallbackUrl).toHaveBeenCalledWith(
       "a@b.com",
-      "/dashboard",
+      "/home",
       "http://web.test",
     );
     expect(authClient.sendVerificationEmail).toHaveBeenCalledWith({
@@ -160,7 +160,7 @@ describe("sendVerificationEmailFromBanner", () => {
 
     const result = await sendVerificationEmailFromBanner({
       email: "a@b.com",
-      next: "/dashboard",
+      next: "/home",
     });
 
     expect(result).toEqual({
@@ -176,10 +176,10 @@ describe("sendVerificationEmailFromBanner", () => {
 
     const result = await sendVerificationEmailFromBanner({
       email: "a@b.com",
-      next: "/dashboard",
+      next: "/home",
     });
 
-    expect(buildVerifyEmailCallbackUrl).toHaveBeenCalledWith("a@b.com", "/dashboard");
+    expect(buildVerifyEmailCallbackUrl).toHaveBeenCalledWith("a@b.com", "/home");
     expect(authClient.sendVerificationEmail).toHaveBeenCalledWith({
       email: "a@b.com",
       callbackURL: "http://web.test/verify-email?email=a%40b.com&next=%2Fdashboard",

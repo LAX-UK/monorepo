@@ -128,7 +128,7 @@ export default async function ContactPage({
 
         <aside className="mt-10 border-t border-divider-soft pt-6 font-body text-sm text-on-surface-variant">
           For bidding support during live phases, signed-in collectors can reach us through their{" "}
-          <Link href="/dashboard" className={MARKETING_PROSE_LINK}>
+          <Link href="/home" className={MARKETING_PROSE_LINK}>
             dashboard
           </Link>{" "}
           notifications channel. See also{" "}

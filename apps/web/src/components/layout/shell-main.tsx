@@ -6,7 +6,6 @@ import { useDashboardDensity } from "@/components/layout/density-provider";
 import { EmailStatusBanner } from "@/components/layout/email-status-banner";
 import type { SessionUser } from "@/lib/data/contracts";
 import { shouldHideStaffBreadcrumbs } from "@/lib/layout/should-hide-staff-breadcrumbs";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { cn } from "@auction/ui";
 import { usePathname } from "next/navigation";
 import type { ReactNode } from "react";
@@ -14,7 +13,6 @@ import type { ReactNode } from "react";
 type ShellMainProps = {
   user: SessionUser;
   shellRole: AppShellRole;
-  clientWorkspaceMode: ClientWorkspaceMode;
   hideEmailStatusBanner: boolean;
   mobileNavCount: number;
   topSlot?: ReactNode;
@@ -26,7 +24,6 @@ type ShellMainProps = {
 export function ShellMain({
   user,
   shellRole,
-  clientWorkspaceMode,
   hideEmailStatusBanner,
   mobileNavCount,
   topSlot,
@@ -60,12 +57,7 @@ export function ShellMain({
       >
         {shellRole === "client" || (isStaffShell && !hideStaffBreadcrumbs) ? (
           <div className="mb-4 hidden lg:block">
-            <AppShellBreadcrumbs
-              role={shellRole}
-              sessionUser={user}
-              variant="desktop"
-              {...(shellRole === "client" ? { clientWorkspaceMode } : {})}
-            />
+            <AppShellBreadcrumbs role={shellRole} sessionUser={user} variant="desktop" />
           </div>
         ) : null}
         {topSlot ? <div className="mb-6">{topSlot}</div> : null}

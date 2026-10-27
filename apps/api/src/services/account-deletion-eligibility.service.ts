@@ -37,7 +37,7 @@ export class AccountDeletionEligibilityService {
       blockers.push({
         code: BID_DELETION_BLOCKER_CODES.pendingPayments,
         message: "You have a payment still to make. Pay it before deleting your account.",
-        href: link("/dashboard/payments"),
+        href: link("/purchases#payment-history"),
       });
     }
     if (hasActiveSellerLot) {
@@ -45,7 +45,7 @@ export class AccountDeletionEligibilityService {
         code: BID_DELETION_BLOCKER_CODES.activeSellerLots,
         message:
           "You have lots in draft, scheduled or live in a sale. Withdraw them or wait until they finish.",
-        href: link("/dashboard/seller/in-sale"),
+        href: link("/selling/consignments?tab=in-sale"),
       });
     }
     if (hasOpenPayout) {
@@ -53,7 +53,7 @@ export class AccountDeletionEligibilityService {
         code: BID_DELETION_BLOCKER_CODES.openPayouts,
         message:
           "A payout to you or your organisation is still on its way. It needs to arrive first.",
-        href: link("/dashboard/seller/payouts"),
+        href: link("/selling/payouts"),
       });
     }
     return blockers;

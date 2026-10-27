@@ -50,7 +50,7 @@ async function buildLoginFailureResponse(
 }
 
 function redirectSilentGuest(nextPath: string): NextResponse {
-  const safePath = isSafeNextPath(nextPath) ? nextPath : "/dashboard";
+  const safePath = isSafeNextPath(nextPath) ? nextPath : "/home";
   const response = NextResponse.redirect(resolvePublicOriginUrl(safePath), 302);
   clearBidSessionCookie(response);
   markBidSilentQuiet(response);
@@ -73,7 +73,7 @@ export async function GET(request: NextRequest) {
           nextPath: pending.nextPath,
           ...(pending.entryIntent !== undefined ? { entryIntent: pending.entryIntent } : {}),
         }
-      : { nextPath: "/dashboard" };
+      : { nextPath: "/home" };
 
   if (pending?.kind === "pending" && pending.entryIntent === "silent") {
     const silentOutcome = classifySilentCallback(oauthError);

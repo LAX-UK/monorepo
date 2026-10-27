@@ -39,7 +39,7 @@ describe("MarketingPromptDialog", () => {
       screen.getByRole("dialog", { name: "Have something special to sell?" }),
     ).toBeInTheDocument();
     const cta = screen.getByRole("link", { name: "Explore selling" });
-    expect(cta).toHaveAttribute("href", "/dashboard/submissions/new");
+    expect(cta).toHaveAttribute("href", "/selling/new");
     cta.addEventListener("click", (event) => event.preventDefault(), { once: true });
     fireEvent.click(cta);
     expect(onCta).toHaveBeenCalledOnce();
@@ -58,7 +58,7 @@ describe("MarketingPromptDialog", () => {
 
     expect(screen.getByRole("link", { name: "Explore selling" })).toHaveAttribute(
       "href",
-      "/register?next=%2Fdashboard%2Fsubmissions%2Fnew&intent=sell",
+      "/register?next=%2Fselling%2Fnew&intent=sell",
     );
   });
 

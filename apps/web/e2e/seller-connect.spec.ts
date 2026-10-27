@@ -17,7 +17,7 @@ test.describe("seller connect embedded @journey", () => {
     test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");
 
     await clientSession(page);
-    await page.goto("/dashboard/seller/connect");
+    await page.goto("/selling/payout-setup");
     await expect(page.getByRole("heading", { name: /payout setup/i })).toBeVisible();
     const workspace = page.getByTestId("connect-workspace");
     const empty = page.getByText(/payout setup is not available/i);
@@ -31,7 +31,7 @@ test.describe("seller connect embedded @journey", () => {
     test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");
 
     await clientSession(page);
-    await page.goto("/dashboard/seller/connect");
+    await page.goto("/selling/payout-setup");
     await expect(page.getByText(/stripe connect not set up/i)).toHaveCount(0);
     const workspace = page.getByTestId("connect-workspace");
     const empty = page.getByText(/payout setup is not available/i);
@@ -43,7 +43,7 @@ test.describe("seller connect embedded @journey", () => {
     test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");
 
     await clientSession(page);
-    await page.goto("/dashboard/seller/connect");
+    await page.goto("/selling/payout-setup");
     const workspace = page.getByTestId("connect-workspace");
     await expect(workspace).toBeVisible({ timeout: 15_000 });
     const hasStatusOrPreparing = await page
@@ -59,7 +59,7 @@ test.describe("seller connect embedded @journey", () => {
     test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");
 
     await clientSession(page);
-    await page.goto("/dashboard/seller/connect");
+    await page.goto("/selling/payout-setup");
     await expect(
       page
         .getByTestId("connect-page-header-skeleton")
@@ -77,7 +77,7 @@ test.describe("seller workspace navigation @journey", () => {
     test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");
 
     await clientSession(page);
-    await page.goto("/dashboard/seller");
+    await page.goto("/selling");
     await page.getByRole("button", { name: /open more dashboard actions/i }).click();
     await expect(page.getByRole("link", { name: /^payout setup$/i })).toBeVisible();
   });
@@ -87,7 +87,7 @@ test.describe("seller workspace navigation @journey", () => {
     test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");
 
     await clientSession(page);
-    await page.goto("/dashboard/seller/payouts");
+    await page.goto("/selling/payouts");
     await expect(page.getByRole("heading", { name: /sold & payouts/i })).toBeVisible({
       timeout: 15_000,
     });
@@ -98,7 +98,7 @@ test.describe("seller workspace navigation @journey", () => {
     test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");
 
     await clientSession(page);
-    await page.goto("/dashboard/seller/payouts");
+    await page.goto("/selling/payouts");
     await expect(page.getByRole("heading", { name: /sold & payouts/i })).toBeVisible({
       timeout: 15_000,
     });
@@ -122,7 +122,7 @@ test.describe("organisation connect @journey", () => {
     );
 
     await clientSession(page);
-    await page.goto(`/dashboard/seller/organisations/${orgEntityId}/connect`);
+    await page.goto(`/organisation/payouts?account=${orgEntityId}`);
     await expect(page.getByRole("heading", { name: /payout setup/i })).toBeVisible({
       timeout: 15_000,
     });
@@ -137,7 +137,7 @@ test.describe("organisation connect @journey", () => {
     test.skip(!orgEntityId, "Set PLAYWRIGHT_ORG_ENTITY_ID");
 
     await clientSession(page);
-    await page.goto(`/dashboard/seller/organisations/${orgEntityId}/connect`);
+    await page.goto(`/organisation/payouts?account=${orgEntityId}`);
     await expect(
       page
         .getByTestId("connect-page-header-skeleton")
@@ -156,7 +156,7 @@ test.describe("connect role matrix @roles", () => {
     );
 
     await financeLogin(page);
-    await page.goto(`/dashboard/seller/organisations/${orgEntityId}/connect`);
+    await page.goto(`/organisation/payouts?account=${orgEntityId}`);
     await expect(page.getByRole("heading", { name: /payout setup/i })).toBeVisible({
       timeout: 15_000,
     });
@@ -199,7 +199,7 @@ test.describe("buying workspace notifications @journey", () => {
     test.skip(!clientEmail || !clientPassword, "Set PLAYWRIGHT_CLIENT_EMAIL/PASSWORD");
 
     await clientSession(page);
-    await page.goto("/dashboard/notifications");
+    await page.goto("/notifications");
     await expect(page.getByRole("heading", { name: /^notifications$/i })).toBeVisible({
       timeout: 15_000,
     });

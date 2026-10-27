@@ -83,7 +83,7 @@ describe("EmailNotificationChannel outbid and won", () => {
       winningBid: "£1,000.00",
       hammerPrice: "£1,000.00",
       totalDue: "£1,250.00",
-      paymentUrl: `https://test.lax.bid/dashboard/checkout/${LOT_ID}`,
+      paymentUrl: `https://test.lax.bid/purchases/checkout/${LOT_ID}`,
     });
     expect(JSON.stringify(enqueued[0]?.vars)).not.toContain("portfolio");
   });
@@ -103,7 +103,7 @@ describe("EmailNotificationChannel lot ended for the seller", () => {
     expect(enqueued[0]?.vars).toMatchObject({
       outcome: "sold",
       hammerPrice: "£1,000.00",
-      saleUrl: "https://test.lax.bid/dashboard/seller/consignments",
+      saleUrl: "https://test.lax.bid/selling/consignments",
     });
   });
 
@@ -129,7 +129,7 @@ describe("EmailNotificationChannel payment receipt", () => {
     expect(enqueued[0]?.vars).toMatchObject({
       lotTitle: "Blue Vase",
       amount: "£1,250.00",
-      receiptUrl: "https://test.lax.bid/dashboard/purchases",
+      receiptUrl: "https://test.lax.bid/purchases",
     });
   });
 

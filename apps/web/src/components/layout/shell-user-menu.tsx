@@ -5,12 +5,11 @@ import { type AppShellRole, appShellRoleMeta } from "@/components/layout/app-she
 import { LogoutButton } from "@/components/layout/logout-button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { DensityTweakSection, ThemeTweakSection } from "@/components/layout/tweaks-popover";
-import { MediaImage } from "@/components/ui/media-image";
+import { PersonAvatar } from "@/components/ui/person-avatar";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { shellRolePillLabel } from "@/lib/admin/staff-role-presenter";
 import type { SessionUser } from "@/lib/data/contracts";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronDown } from "lucide-react";
@@ -36,11 +35,9 @@ function menuItemsFromPanel(panel: HTMLElement | null): HTMLElement[] {
 type ShellUserMenuProps = {
   user: SessionUser;
   role: AppShellRole;
-  /** Which workspace the client is in; selling swaps "Selling" for "Back to buying". */
-  clientWorkspaceMode?: ClientWorkspaceMode;
 };
 
-export function ShellUserMenu({ user, role, clientWorkspaceMode = "buying" }: ShellUserMenuProps) {
+export function ShellUserMenu({ user, role }: ShellUserMenuProps) {
   const [open, setOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
@@ -105,7 +102,7 @@ export function ShellUserMenu({ user, role, clientWorkspaceMode = "buying" }: Sh
   const roleMeta = appShellRoleMeta[role];
   const rolePillLabel = shellRolePillLabel(user);
   const isClient = role === "client";
-  const groups = useAccountMenuGroups(user, clientWorkspaceMode, isClient);
+  const groups = useAccountMenuGroups(user, isClient);
 
   return (
     <div className="relative shrink-0" ref={wrapRef}>
@@ -122,13 +119,10 @@ export function ShellUserMenu({ user, role, clientWorkspaceMode = "buying" }: Sh
         onKeyDown={onTriggerKeyDown}
       >
         <div className="relative shrink-0">
-          <MediaImage
-            src={user.image ?? null}
-            alt={displayName}
-            label={initials(user.name, user.email)}
-            shape="circle"
-            sizes="40px"
-            className="size-10"
+          <PersonAvatar
+            src={user.image}
+            name={displayName}
+            initials={initials(user.name, user.email)}
           />
           <span
             className="absolute bottom-0 right-0 size-2.5 rounded-full border-2 border-surface-container-lowest bg-positive"

@@ -1,7 +1,7 @@
 "use client";
 
-import { INITIAL_AUCTION_INTERESTS_SETTINGS_ACTION_STATE } from "@/app/dashboard/settings/interests/action-state";
-import { saveAuctionInterestPreferences } from "@/app/dashboard/settings/interests/actions";
+import { INITIAL_AUCTION_INTERESTS_SETTINGS_ACTION_STATE } from "@/app/(client)/settings/interests/action-state";
+import { saveAuctionInterestPreferences } from "@/app/(client)/settings/interests/actions";
 import { MediaImage } from "@/components/ui/media-image";
 import { BUYER_INTERESTS } from "@/lib/onboarding/buyer-interest-manifest";
 import { notify } from "@/lib/ui/notify";

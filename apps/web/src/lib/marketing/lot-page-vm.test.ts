@@ -89,6 +89,7 @@ const secondary: LotPageSecondaryData = {
     memberships: [],
     impersonation: null,
     bootstrapFailed: false,
+    needsRestore: false,
   },
   mySaleRegs: [],
   buyerConditionReportRequest: null,

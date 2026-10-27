@@ -1,4 +1,8 @@
-import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
+import type {
+  ILegalEntityRepository,
+  IRecordAccountReader,
+  IRememberedAccountStore,
+} from "@auction/persistence/interfaces";
 import type { IPendingInvitationsReader } from "@auction/persistence/interfaces";
 import type { OrgModuleGate } from "../lib/org-module-gate.js";
 import { IdentityAccountSecurityHttpApplicationService } from "../services/identity/identity-account-security-http-application.service.js";
@@ -16,6 +20,8 @@ import type { IMemberManagementService } from "../services/interfaces/member-man
 import type { IOrganizationOnboardingService } from "../services/interfaces/organization-onboarding.js";
 import type { LegalEntityAccessService } from "../services/legal-entity-access.service.js";
 import type { PersonalLegalEntityResolver } from "../services/legal-entity/personal-legal-entity-resolver.service.js";
+import { RecordAccountService } from "../services/legal-entity/record-account.service.js";
+import { RememberedAccountService } from "../services/legal-entity/remembered-account.service.js";
 import type { IOrganizationOnboardingFlowService } from "../services/organization-onboarding/onboarding-context.js";
 import type { UserService } from "../services/user.service.js";
 
@@ -32,6 +38,8 @@ export type CreateIdentityRouteServicesInput = {
   organizationOnboardingService: IOrganizationOnboardingService;
   organizationOnboardingFlowService: IOrganizationOnboardingFlowService;
   orgTwoFactorPolicy: IOrgTwoFactorPolicyHttp;
+  rememberedAccountStore: IRememberedAccountStore;
+  recordAccountReader: IRecordAccountReader;
 };
 
 export function createIdentityRouteServices(
@@ -62,5 +70,15 @@ export function createIdentityRouteServices(
       input.organizationOnboardingFlowService,
     ),
     orgTwoFactorPolicy: input.orgTwoFactorPolicy,
+    rememberedAccount: new RememberedAccountService({
+      accounts: input.legalEntityRepository,
+      store: input.rememberedAccountStore,
+      organisationsEnabled: () => input.orgModuleGate.isEnabled(),
+    }),
+    recordAccount: new RecordAccountService({
+      accounts: input.legalEntityRepository,
+      records: input.recordAccountReader,
+      organisationsEnabled: () => input.orgModuleGate.isEnabled(),
+    }),
   };
 }

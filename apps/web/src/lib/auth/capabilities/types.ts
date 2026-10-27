@@ -1,13 +1,12 @@
 import type { CapabilityRequirement, UserRole, UserStaffRole } from "@auction/types";
 
-export type ClientWorkspace = "buying" | "selling";
-
 export type ActingContext =
   | { kind: "self" }
   | { kind: "organisation"; orgId: string; orgName: string }
   | { kind: "impersonating"; userId: string; userName: string };
 
-export type ViewerWorkspace = ClientWorkspace | "staff" | "finance";
+/** Which shell the viewer is in: the client area, staff admin or finance. */
+export type ViewerWorkspace = "client" | "staff" | "finance";
 
 export type ViewerCapabilities = {
   role: UserRole;

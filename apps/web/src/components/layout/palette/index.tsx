@@ -27,7 +27,6 @@ import { useDebouncedPaletteSearch } from "@/components/layout/palette/use-debou
 import type { SessionUser } from "@/lib/data/contracts";
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
 import type { ShellRole } from "@/lib/shell/contracts";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { Command, CommandDialog } from "@auction/ui";
 import { cn } from "@auction/ui";
 import { useRouter } from "next/navigation";
@@ -54,7 +53,6 @@ const EMPTY_ASYNC_SOURCES: readonly (typeof ADMIN_ASYNC_SOURCES)[number][] = [];
 type Props = {
   variant: "marketing" | "dashboard" | "admin";
   sessionUser?: SessionUser | null;
-  clientWorkspaceMode?: ClientWorkspaceMode;
   shellRole?: ShellRole;
   pendingSubmissionCount?: number;
   pendingArtistCount?: number;
@@ -64,7 +62,6 @@ type Props = {
 export function CommandPalette({
   variant,
   sessionUser = null,
-  clientWorkspaceMode = "buying",
   shellRole = "platform",
   pendingSubmissionCount = 0,
   pendingArtistCount = 0,
@@ -84,21 +81,11 @@ export function CommandPalette({
         query,
         sessionUser,
         shellRole,
-        clientWorkspaceMode,
         pendingSubmissionCount,
         pendingArtistCount,
         navCounts,
       }),
-    [
-      variant,
-      query,
-      sessionUser,
-      shellRole,
-      clientWorkspaceMode,
-      pendingSubmissionCount,
-      pendingArtistCount,
-      navCounts,
-    ],
+    [variant, query, sessionUser, shellRole, pendingSubmissionCount, pendingArtistCount, navCounts],
   );
 
   const visibleSections = useMemo(

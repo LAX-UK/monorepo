@@ -37,7 +37,7 @@ export default async function UnsubscribePage({
               </AlertDescription>
             </Alert>
             <Button asChild variant="cta" size="xl" className="font-headline shadow-none">
-              <Link href="/dashboard/settings/notifications" prefetch>
+              <Link href="/settings/notifications" prefetch>
                 Manage preferences
               </Link>
             </Button>

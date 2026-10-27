@@ -1,5 +1,6 @@
 import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
+import { organisationHref } from "@/lib/navigation/client-routes";
 import type { LegalEntitySummary } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import Link from "next/link";
@@ -36,8 +37,8 @@ function copyForStatus(acting: LegalEntitySummary): {
               className="font-medium underline underline-offset-2"
               href={
                 kind === "organisation"
-                  ? `/dashboard/seller/organisations/${acting.id}/documents`
-                  : "/dashboard/organisations"
+                  ? organisationHref("documents", acting.id)
+                  : "/organisations"
               }
             >
               Upload now
@@ -62,7 +63,7 @@ function copyForStatus(acting: LegalEntitySummary): {
               href={
                 kind === "individual"
                   ? DASHBOARD_ROUTES.sellerConnect
-                  : `/dashboard/seller/organisations/${acting.id}/connect`
+                  : organisationHref("payouts", acting.id)
               }
             >
               Continue setup

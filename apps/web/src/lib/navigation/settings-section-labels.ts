@@ -1,4 +1,4 @@
-/** Human-readable labels for `/dashboard/settings/*` leaf routes. */
+/** Human-readable labels for `/settings/*` leaf routes. */
 export const SETTINGS_SECTION_LABELS: Record<string, string> = {
   appearance: "Appearance and layout",
   notifications: "Auction alerts and notifications",

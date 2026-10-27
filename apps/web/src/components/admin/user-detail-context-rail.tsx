@@ -45,7 +45,7 @@ export function UserDetailContextRail({ legalEntities = [] }: Props) {
       },
       success: "Impersonation started",
       onSuccess: () => {
-        router.push("/dashboard");
+        router.push("/home");
         router.refresh();
       },
     });

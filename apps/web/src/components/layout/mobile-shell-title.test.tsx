@@ -21,7 +21,7 @@ describe("MobileShellTitle", () => {
   it("renders a section root title without a back button", () => {
     render(
       <MobileShellTitle
-        items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Watchlist" }]}
+        items={[{ label: "Dashboard", href: "/home" }, { label: "Watchlist" }]}
         model={{ title: "Watchlist" }}
       />,
     );
@@ -34,13 +34,13 @@ describe("MobileShellTitle", () => {
     render(
       <MobileShellTitle
         items={[
-          { label: "Dashboard", href: "/dashboard" },
-          { label: "Settings", href: "/dashboard/settings" },
+          { label: "Dashboard", href: "/home" },
+          { label: "Settings", href: "/settings" },
           { label: "Profile" },
         ]}
         model={{
           title: "Profile",
-          backHref: "/dashboard/settings",
+          backHref: "/settings",
           backLabel: "Settings",
           eyebrow: "Settings",
         }}
@@ -50,15 +50,13 @@ describe("MobileShellTitle", () => {
     expect(screen.getByRole("heading", { name: "Profile" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Back to Settings/i })).toHaveAttribute(
       "href",
-      "/dashboard/settings",
+      "/settings",
     );
   });
 
   it("does not use absolute positioning", () => {
     const { container } = render(
-      <MobileShellTitle
-        items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Watchlist" }]}
-      />,
+      <MobileShellTitle items={[{ label: "Dashboard", href: "/home" }, { label: "Watchlist" }]} />,
     );
 
     for (const node of container.querySelectorAll("*")) {

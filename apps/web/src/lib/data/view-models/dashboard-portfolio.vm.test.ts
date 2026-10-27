@@ -206,7 +206,7 @@ describe("buildPayNow", () => {
   it("links several due lots to one basket", () => {
     const pay = buildPayNow([makeRow({ id: "a" }), makeRow({ id: "b" })]);
     expect(pay?.dueCount).toBe(2);
-    expect(pay?.href).toBe("/dashboard/checkout?lots=a,b");
+    expect(pay?.href).toBe("/purchases/checkout?lots=a,b");
   });
 
   it("has no link while every due lot is in compliance review", () => {

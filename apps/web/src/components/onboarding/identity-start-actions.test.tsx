@@ -14,18 +14,16 @@ vi.mock("@/components/kyc", () => ({
   ),
 }));
 
-vi.mock("@/app/dashboard/verify-identity/actions", () => ({
+vi.mock("@/app/(client)/verify-identity/actions", () => ({
   startKycVerification: vi.fn(),
 }));
 
 describe("IdentityStartActions", () => {
   it("tracks skip with source and keeps a safe next path", () => {
-    render(
-      <IdentityStartActions summary={null} next="/dashboard/watchlist" source="post_verify" />,
-    );
+    render(<IdentityStartActions summary={null} next="/watching" source="post_verify" />);
 
     const skip = screen.getByRole("link", { name: /verify later/i });
-    expect(skip).toHaveAttribute("href", "/dashboard/watchlist");
+    expect(skip).toHaveAttribute("href", "/watching");
     skip.addEventListener("click", (event) => event.preventDefault());
     fireEvent.click(skip);
     expect(trackKycOnboarding).toHaveBeenCalledWith({

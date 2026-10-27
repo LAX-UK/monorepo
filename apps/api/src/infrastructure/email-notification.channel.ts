@@ -77,8 +77,8 @@ export class EmailNotificationChannel implements INotificationChannel {
           winningBid: formatMoneyMajor(m?.bidAmount ?? m?.hammerPrice, m?.currency),
           // The call to action is paying for this lot, not browsing it.
           paymentUrl: payload.lotId
-            ? `${this.baseUrl()}/dashboard/checkout/${encodeURIComponent(payload.lotId)}`
-            : `${this.baseUrl()}/dashboard/checkout`,
+            ? `${this.baseUrl()}/purchases/checkout/${encodeURIComponent(payload.lotId)}`
+            : `${this.baseUrl()}/purchases/checkout`,
           unsubscribeUrl,
           ...(hammerPrice ? { hammerPrice } : {}),
           ...(totalDue ? { totalDue } : {}),
@@ -91,7 +91,7 @@ export class EmailNotificationChannel implements INotificationChannel {
           lotUrl,
           outcome: payload.meta?.outcome === "sold" ? "sold" : "unsold",
           hammerPrice: formatMoneyMajor(payload.meta?.hammerPrice, payload.meta?.currency),
-          saleUrl: `${this.baseUrl()}/dashboard/seller/consignments`,
+          saleUrl: `${this.baseUrl()}/selling/consignments`,
           unsubscribeUrl,
         };
       case "payment-receipt":
@@ -99,7 +99,7 @@ export class EmailNotificationChannel implements INotificationChannel {
           userName,
           lotTitle,
           amount: formatMoneyMajor(payload.meta?.amount, payload.meta?.currency),
-          receiptUrl: `${this.baseUrl()}/dashboard/purchases`,
+          receiptUrl: `${this.baseUrl()}/purchases`,
         };
       case "payment-invoice": {
         const m = payload.meta;
@@ -108,7 +108,7 @@ export class EmailNotificationChannel implements INotificationChannel {
         const dueDate = typeof m?.dueDate === "string" ? m.dueDate : undefined;
         const base = this.apiBaseUrl.replace(/\/$/, "");
         const invoiceUrl =
-          m?.invoiceUrl && /^https?:\/\//i.test(m.invoiceUrl) ? m.invoiceUrl : `${base}/dashboard`;
+          m?.invoiceUrl && /^https?:\/\//i.test(m.invoiceUrl) ? m.invoiceUrl : `${base}/home`;
         const billTo: BillToContext = {
           kind: "individual",
           billToName: userName,
@@ -139,7 +139,7 @@ export class EmailNotificationChannel implements INotificationChannel {
         const submissionUrl = this.absoluteWebPath(payload);
         const submissionId = payload.submissionId;
         const resubmitUrl = submissionId
-          ? `${this.apiBaseUrl.replace(/\/$/, "")}/dashboard/submissions/new?fromRejected=${encodeURIComponent(submissionId)}`
+          ? `${this.apiBaseUrl.replace(/\/$/, "")}/selling/new?fromRejected=${encodeURIComponent(submissionId)}`
           : submissionUrl;
         return {
           userName,

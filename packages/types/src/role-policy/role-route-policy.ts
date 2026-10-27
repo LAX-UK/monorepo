@@ -78,7 +78,7 @@ export function staffRoleDefaultDestination(
   role: UserRole,
   staffRole: UserStaffRole | null | undefined,
 ): string {
-  if (role === "client") return "/dashboard";
+  if (role === "client") return "/home";
   const staff = normalizeUserStaffRole(staffRole ?? undefined);
   if (staff == null) return "/admin";
 

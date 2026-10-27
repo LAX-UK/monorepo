@@ -12,7 +12,7 @@ describe("adminReturnPath", () => {
 
   it("falls back to the admin home for unknown, non-admin or unsafe paths", () => {
     expect(adminReturnPath(null)).toBe("/admin");
-    expect(adminReturnPath("/dashboard", "?x=1")).toBe("/admin");
+    expect(adminReturnPath("/home", "?x=1")).toBe("/admin");
     expect(adminReturnPath("/administrator")).toBe("/admin");
     expect(adminReturnPath("/admin/api/export")).toBe("/admin");
     expect(adminReturnPath("/admin/%2F%2Fevil.com")).toBe("/admin");

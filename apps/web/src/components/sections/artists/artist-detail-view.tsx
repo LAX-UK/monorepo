@@ -211,7 +211,7 @@ export function ArtistDetailView({ vm, jsonLdText }: ArtistDetailViewProps) {
         actions={
           <>
             <Button variant="cta" asChild>
-              <Link href="/dashboard/submissions/new">Submit work</Link>
+              <Link href="/selling/new">Submit work</Link>
             </Button>
             <Button variant="outline" asChild>
               <Link href="/sell">Selling guide</Link>

@@ -1,108 +1,83 @@
 "use client";
 
+import { AccountChromeProvider } from "@/components/layout/account-switcher/account-chrome-context";
 import { AppShell } from "@/components/layout/app-shell";
 import { ContextualKycReturnTracker } from "@/components/onboarding/buyer-onboarding-analytics";
 import { ViewerCapabilitiesProvider } from "@/lib/auth/capabilities";
 import type { ActingContext } from "@/lib/auth/capabilities";
 import type { SessionUser } from "@/lib/data/contracts";
 import { isHideDashboardTabBarRoute } from "@/lib/layout/bottom-chrome";
+import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
 import type { ClientNavScope } from "@/lib/navigation/client-nav-model";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import type { SellerConnectNavBadgeInput } from "@/lib/shell/apply-seller-connect-nav-badges";
 import { buildShellConfig } from "@/lib/shell/build-shell-config";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
-import { resolveClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
-import type { LegalEntitySummary } from "@auction/types";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useMemo } from "react";
 
 type Props = {
   user: SessionUser;
-  clientWorkspaceMode?: ClientWorkspaceMode;
+  /** Whose account the menu is for, and what it holds. */
+  navScope: ClientNavScope;
+  /** The account in use, its switcher and the header strip. */
+  account: AccountChrome;
   cookieDensity?: DashboardDensity | null;
   hideEmailStatusBanner?: boolean;
-  headerActionsSlot?: ReactNode;
   contextBanner?: ReactNode;
   topSlot?: ReactNode;
   acting?: ActingContext;
-  safeActing?: LegalEntitySummary | null;
-  orgModuleEnabled?: boolean;
-  /** The person belongs to at least one organisation (not only the one they are acting for). */
-  isOrgMember?: boolean;
   sellerConnectNavBadge?: SellerConnectNavBadgeInput | null;
   children: ReactNode;
 };
 
-/** Client dashboard shell adapter — builds ShellConfig and wires capabilities. */
+/** Client area shell adapter — builds ShellConfig and wires capabilities. */
 export function ClientShell({
   user,
-  clientWorkspaceMode = "buying",
+  navScope,
+  account,
   cookieDensity,
   hideEmailStatusBanner,
-  headerActionsSlot,
   contextBanner,
   topSlot,
   acting = { kind: "self" },
-  safeActing = null,
-  orgModuleEnabled = true,
-  isOrgMember = false,
   sellerConnectNavBadge = null,
   children,
 }: Props) {
   const pathname = usePathname();
-  const effectiveWorkspaceMode = resolveClientWorkspaceMode(pathname, clientWorkspaceMode);
-
-  const clientNavScope = useMemo<ClientNavScope>(
-    () => ({
-      context:
-        safeActing?.kind === "organisation"
-          ? { kind: "organisation", id: safeActing.id, role: safeActing.role }
-          : { kind: "personal" },
-      orgModuleEnabled,
-      isOrgMember,
-    }),
-    [safeActing, orgModuleEnabled, isOrgMember],
-  );
 
   const config = useMemo(
     () =>
       buildShellConfig({
         user,
         role: "client",
-        clientWorkspaceMode: effectiveWorkspaceMode,
-        clientNavScope,
-        headerActionsSlot,
-        mobileHeader: { actingContext: acting },
+        clientNavScope: navScope,
+        clientAccount: account,
         ...(contextBanner ? { contextBanner } : {}),
         ...(topSlot ? { topSlot } : {}),
         ...(hideEmailStatusBanner ? { hideEmailStatusBanner: true } : {}),
-        sellerConnectNavBadge: effectiveWorkspaceMode === "selling" ? sellerConnectNavBadge : null,
+        sellerConnectNavBadge,
         hideBottomTabBar: isHideDashboardTabBarRoute(pathname),
       }),
     [
       user,
-      effectiveWorkspaceMode,
-      clientNavScope,
-      headerActionsSlot,
+      navScope,
+      account,
       contextBanner,
       topSlot,
       hideEmailStatusBanner,
-      acting,
       sellerConnectNavBadge,
       pathname,
     ],
   );
 
   return (
-    <ViewerCapabilitiesProvider
-      user={user}
-      clientWorkspaceMode={effectiveWorkspaceMode}
-      acting={acting}
-    >
+    <ViewerCapabilitiesProvider user={user} acting={acting}>
       <ContextualKycReturnTracker kycApproved={user.kycStatus === "approved"} />
-      <AppShell user={user} config={config} cookieDensity={cookieDensity ?? null}>
-        {children}
-      </AppShell>
+      <AccountChromeProvider account={account}>
+        <AppShell user={user} config={config} cookieDensity={cookieDensity ?? null}>
+          {children}
+        </AppShell>
+      </AccountChromeProvider>
     </ViewerCapabilitiesProvider>
   );
 }

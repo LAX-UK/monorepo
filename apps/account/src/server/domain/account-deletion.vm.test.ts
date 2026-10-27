@@ -5,7 +5,7 @@ import { buildDeletionPageVm } from "./account-deletion.vm";
 const BID_BLOCKER = {
   code: "account_deletion_pending_payments",
   message: "You have a payment still to make. Pay it before deleting your account.",
-  href: "https://bid.example/dashboard/payments",
+  href: "https://bid.example/purchases#payment-history",
 };
 const SHOP_BLOCKER = {
   code: "shop_open_orders",

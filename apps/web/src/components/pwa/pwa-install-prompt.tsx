@@ -1,5 +1,6 @@
 "use client";
 
+import { isClientAreaPath } from "@/lib/navigation/client-routes";
 import { Button } from "@auction/ui/components/button";
 import { X } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -45,7 +46,7 @@ export function PwaInstallPrompt() {
 
   useEffect(() => {
     if (!deferredPrompt || isDismissed()) return;
-    if (pathname.startsWith("/dashboard")) {
+    if (isClientAreaPath(pathname)) {
       setVisible(true);
     }
   }, [pathname, deferredPrompt]);

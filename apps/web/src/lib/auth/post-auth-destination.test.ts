@@ -18,8 +18,8 @@ const clientUser = {
 
 describe("isSafeNextPath", () => {
   it("accepts safe internal paths", () => {
-    expect(isSafeNextPath("/dashboard")).toBe(true);
-    expect(isSafeNextPath("/dashboard/portfolio")).toBe(true);
+    expect(isSafeNextPath("/home")).toBe(true);
+    expect(isSafeNextPath("/purchases")).toBe(true);
     expect(isSafeNextPath("/sales/foo?bar=1")).toBe(true);
   });
 
@@ -51,12 +51,12 @@ describe("staffRoleDefaultDestination", () => {
     expect(staffRoleDefaultDestination("staff", "super_admin")).toBe("/admin");
     expect(staffRoleDefaultDestination("staff", "finance_ops")).toBe("/admin/finance");
     expect(staffRoleDefaultDestination("staff", "content_marketing")).toBe("/admin/artists");
-    expect(staffRoleDefaultDestination("client", null)).toBe("/dashboard");
+    expect(staffRoleDefaultDestination("client", null)).toBe("/home");
   });
 
-  it("never sends staff to /dashboard", () => {
+  it("never sends staff to /home", () => {
     expect(staffRoleDefaultDestination("staff", null)).toBe("/admin");
-    expect(staffRoleDefaultDestination("staff", "content_marketing")).not.toBe("/dashboard");
+    expect(staffRoleDefaultDestination("staff", "content_marketing")).not.toBe("/home");
   });
 });
 
@@ -65,10 +65,10 @@ describe("resolvePostAuthDestination", () => {
     expect(
       resolvePostAuthDestination({
         user: { ...clientUser, accountOnboardingComplete: false },
-        requestedNext: "/dashboard/bids",
+        requestedNext: "/bids",
         context: "sign-in",
       }),
-    ).toBe("/onboarding/account?next=%2Fdashboard%2Fbids");
+    ).toBe("/onboarding/account?next=%2Fbids");
   });
 
   it("skips account onboarding redirect for staff", () => {
@@ -93,12 +93,12 @@ describe("resolvePostAuthDestination", () => {
           kycStatus: "unverified",
           categoryInterestsOnboardingCompletedAt: new Date(),
         },
-        requestedNext: "/dashboard/bids",
+        requestedNext: "/bids",
         context: "sign-in",
         fullBuyerOnboardingEnabled: true,
         withWelcomeBack: true,
       }),
-    ).toBe("/dashboard/bids?welcome=back");
+    ).toBe("/bids?welcome=back");
   });
 
   it("starts the full interests flow on login when onboarding is still incomplete", () => {
@@ -109,12 +109,12 @@ describe("resolvePostAuthDestination", () => {
           kycStatus: "unverified",
           categoryInterestsOnboardingCompletedAt: null,
         },
-        requestedNext: "/dashboard/bids",
+        requestedNext: "/bids",
         context: "sign-in",
         fullBuyerOnboardingEnabled: true,
         withWelcomeBack: true,
       }),
-    ).toBe("/onboarding/interests?next=%2Fdashboard%2Fbids%3Fwelcome%3Dback&source=sign_in_resume");
+    ).toBe("/onboarding/interests?next=%2Fbids%3Fwelcome%3Dback&source=sign_in_resume");
   });
 
   it("preserves in-progress full onboarding destinations on login", () => {
@@ -125,12 +125,11 @@ describe("resolvePostAuthDestination", () => {
           kycStatus: "unverified",
           categoryInterestsOnboardingCompletedAt: new Date(),
         },
-        requestedNext:
-          "/onboarding/recommendations?next=%2Fdashboard%2Fwatchlist&source=post_verify",
+        requestedNext: "/onboarding/recommendations?next=%2Fwatching&source=post_verify",
         context: "sign-in",
         fullBuyerOnboardingEnabled: true,
       }),
-    ).toBe("/onboarding/recommendations?next=%2Fdashboard%2Fwatchlist&source=post_verify");
+    ).toBe("/onboarding/recommendations?next=%2Fwatching&source=post_verify");
   });
 
   it.each(["pending", "rejected"] as const)(
@@ -146,7 +145,7 @@ describe("resolvePostAuthDestination", () => {
           context: "redirect-if-authed",
           fullBuyerOnboardingEnabled: true,
         }),
-      ).toBe("/dashboard");
+      ).toBe("/home");
     },
   );
 
@@ -165,7 +164,7 @@ describe("resolvePostAuthDestination", () => {
           user,
           context: "sign-in",
         }),
-      ).toBe("/dashboard");
+      ).toBe("/home");
     }
 
     expect(
@@ -173,17 +172,17 @@ describe("resolvePostAuthDestination", () => {
         user: { ...clientUser, kycStatus: "unverified" },
         context: "sign-in",
       }),
-    ).toBe("/dashboard");
+    ).toBe("/home");
   });
 
   it("does not wrap an existing identity onboarding destination", () => {
     expect(
       resolvePostAuthDestination({
         user: { ...clientUser, kycStatus: "unverified" },
-        requestedNext: "/onboarding/identity/prepare?next=%2Fdashboard",
+        requestedNext: "/onboarding/identity/prepare?next=%2Fhome",
         context: "sign-in",
       }),
-    ).toBe("/onboarding/identity/prepare?next=%2Fdashboard");
+    ).toBe("/onboarding/identity/prepare?next=%2Fhome");
   });
 
   it("sends suspended users to account-suspended", () => {
@@ -213,21 +212,21 @@ describe("resolvePostAuthDestination", () => {
     expect(
       resolvePostAuthDestination({
         user: { ...clientUser, emailVerified: false },
-        requestedNext: "/dashboard/foo",
+        requestedNext: "/home/foo",
         context: "sign-up",
         requireEmailVerification: true,
       }),
-    ).toBe("/register/verify-pending?next=%2Fdashboard%2Ffoo");
+    ).toBe("/register/verify-pending?next=%2Fhome%2Ffoo");
   });
 
   it("uses safe next when present", () => {
     expect(
       resolvePostAuthDestination({
         user: clientUser,
-        requestedNext: "/dashboard/bids",
+        requestedNext: "/bids",
         context: "sign-in",
       }),
-    ).toBe("/dashboard/bids");
+    ).toBe("/bids");
   });
 
   it("falls back to role default when next is unsafe", () => {
@@ -237,7 +236,7 @@ describe("resolvePostAuthDestination", () => {
         requestedNext: "//evil.com",
         context: "sign-in",
       }),
-    ).toBe("/dashboard");
+    ).toBe("/home");
     expect(
       resolvePostAuthDestination({
         user: { ...clientUser, role: "staff", staffRole: "super_admin" },
@@ -270,7 +269,7 @@ describe("resolvePostAuthDestination", () => {
     expect(
       resolvePostAuthDestination({
         user: staffMarketing,
-        requestedNext: "/dashboard",
+        requestedNext: "/home",
         context: "sign-in",
         withWelcomeBack: true,
       }),
@@ -278,7 +277,7 @@ describe("resolvePostAuthDestination", () => {
     expect(
       resolvePostAuthDestination({
         user: staffMarketing,
-        requestedNext: "/dashboard/portfolio",
+        requestedNext: "/purchases",
         context: "sign-in",
         withWelcomeBack: true,
       }),
@@ -292,7 +291,7 @@ describe("resolvePostAuthDestination", () => {
     ).toBe("/sales/foo");
   });
 
-  it("allows staff to open seller submission routes", () => {
+  it("sends staff to admin instead of the client submission form", () => {
     const staffMarketing = {
       ...clientUser,
       role: "staff" as const,
@@ -301,47 +300,47 @@ describe("resolvePostAuthDestination", () => {
     expect(
       resolvePostAuthDestination({
         user: staffMarketing,
-        requestedNext: "/dashboard/submissions/new",
+        requestedNext: "/selling/new",
         context: "sign-in",
         withWelcomeBack: true,
       }),
-    ).toBe("/dashboard/submissions/new?welcome=back");
+    ).toBe("/admin/artists?welcome=back");
     expect(
       resolvePostAuthDestination({
         user: staffMarketing,
-        requestedNext: "/dashboard/submissions/new?categorySlug=motor-cars",
+        requestedNext: "/selling/new?categorySlug=motor-cars",
         context: "redirect-if-authed",
       }),
-    ).toBe("/dashboard/submissions/new?categorySlug=motor-cars");
+    ).toBe("/admin/artists");
   });
 
   it("preserves client dashboard deep links", () => {
     expect(
       resolvePostAuthDestination({
         user: clientUser,
-        requestedNext: "/dashboard/portfolio",
+        requestedNext: "/purchases",
         context: "sign-in",
         withWelcomeBack: true,
       }),
-    ).toBe("/dashboard/portfolio?welcome=back");
+    ).toBe("/purchases?welcome=back");
   });
 
   it("appends welcome=back", () => {
     expect(
       resolvePostAuthDestination({
         user: clientUser,
-        requestedNext: "/dashboard/portfolio",
+        requestedNext: "/purchases",
         context: "sign-in",
         withWelcomeBack: true,
       }),
-    ).toBe("/dashboard/portfolio?welcome=back");
+    ).toBe("/purchases?welcome=back");
     expect(
       resolvePostAuthDestination({
         user: clientUser,
         context: "sign-in",
         withWelcomeBack: true,
       }),
-    ).toBe("/dashboard?welcome=back");
+    ).toBe("/home?welcome=back");
   });
 });
 

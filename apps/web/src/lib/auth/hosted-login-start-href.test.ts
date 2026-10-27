@@ -2,8 +2,8 @@ import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { describe, expect, it } from "vitest";
 
 describe("buildHostedLoginStartHref", () => {
-  it("defaults next to dashboard", () => {
-    expect(buildHostedLoginStartHref()).toBe("/api/auth/login?next=%2Fdashboard");
+  it("defaults next to Home", () => {
+    expect(buildHostedLoginStartHref()).toBe("/api/auth/login?next=%2Fhome");
   });
 
   it("preserves safe next and signup intent", () => {
@@ -13,8 +13,6 @@ describe("buildHostedLoginStartHref", () => {
   });
 
   it("rejects unsafe next paths", () => {
-    expect(buildHostedLoginStartHref({ next: "//evil.com" })).toBe(
-      "/api/auth/login?next=%2Fdashboard",
-    );
+    expect(buildHostedLoginStartHref({ next: "//evil.com" })).toBe("/api/auth/login?next=%2Fhome");
   });
 });

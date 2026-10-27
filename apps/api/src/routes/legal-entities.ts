@@ -19,6 +19,20 @@ const invitationIdParamSchema = z.object({
   id: z.string().uuid(),
 });
 
+const rememberAccountBodySchema = z.object({
+  legalEntityId: z.string().uuid(),
+});
+
+const recordAccountParamSchema = z.object({
+  kind: z.enum(["consignment", "purchase"]),
+  id: z.string().uuid(),
+});
+
+const restoreAccountBodySchema = z.object({
+  /** The account this browser last used; `null` on a new device. */
+  candidateId: z.string().uuid().nullable(),
+});
+
 export function createLegalEntityRoutes(
   container: ContainerLegalEntityRoutesSlice,
   authenticator: IAuthenticator,
@@ -85,6 +99,66 @@ export function createLegalEntityRoutes(
         return c.json({ error: "user_not_found" }, 404);
       }
       return respondIdentityRouteOutcome(c, outcome);
+    },
+  );
+
+  /** Remember the account the person now uses Bid as, so every device opens in it. */
+  r.put(
+    "/me/remembered-account",
+    requireAuth,
+    zValidator("json", rememberAccountBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { legalEntityId } = c.req.valid("json");
+      const outcome = await container.identityRoutes.rememberedAccount.remember(
+        userId,
+        legalEntityId,
+      );
+      if (!outcome.ok) return c.json({ error: outcome.reason, code: outcome.reason }, 403);
+      return c.json({ data: { legalEntityId } });
+    },
+  );
+
+  /**
+   * The account Bid should open in: this browser's, else the remembered one, while the person
+   * may still use it; otherwise their personal account, naming the organisation they lost.
+   */
+  r.post(
+    "/me/remembered-account/restore",
+    requireAuth,
+    zValidator("json", restoreAccountBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { candidateId } = c.req.valid("json");
+      const restored = await container.identityRoutes.rememberedAccount.restore(
+        userId,
+        candidateId,
+      );
+      if (!restored) {
+        return c.json(
+          { error: "personal_entity_unavailable", code: "personal_entity_unavailable" },
+          503,
+        );
+      }
+      return c.json({ data: restored });
+    },
+  );
+
+  /** Which of the person's accounts a consignment or purchase belongs to. */
+  r.get(
+    "/me/record-account/:kind/:id",
+    requireAuth,
+    zValidator("param", recordAccountParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { kind, id } = c.req.valid("param");
+      const outcome = await container.identityRoutes.recordAccount.accountFor(userId, kind, id);
+      if (outcome.kind === "not_found")
+        return c.json({ error: "not_found", code: "not_found" }, 404);
+      if (outcome.kind === "no_access") {
+        return c.json({ error: "not_a_member", code: "not_a_member" }, 403);
+      }
+      return c.json({ data: { legalEntityId: outcome.legalEntityId } });
     },
   );
 

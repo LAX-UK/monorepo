@@ -2,7 +2,7 @@ import { isSafeNextPath } from "@/lib/auth/safe-next-path";
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
 
 export const IDENTITY_ONBOARDING_PATH = "/onboarding/identity";
-export const DEFAULT_IDENTITY_ONBOARDING_DESTINATION = "/dashboard";
+export const DEFAULT_IDENTITY_ONBOARDING_DESTINATION = "/home";
 
 export const IDENTITY_ONBOARDING_STEPS = [
   { id: "why", label: "Why verify", estimatedMinutes: 1 },
@@ -74,15 +74,13 @@ export function contextualIdentityOnboardingHref(
   return buildIdentityOnboardingHref({ step: "why", next, source, lotId });
 }
 
-export function dashboardIdentityOnboardingHref(
-  next: string | null | undefined = "/dashboard",
-): string {
+export function dashboardIdentityOnboardingHref(next: string | null | undefined = "/home"): string {
   return identityOnboardingHref("why", next, "dashboard");
 }
 
 export function legacyKycVerificationHref(next: string | null | undefined): string {
   const destination = resolveIdentityOnboardingNext(next);
-  return `/dashboard/verify-identity?${new URLSearchParams({ next: destination }).toString()}`;
+  return `/verify-identity?${new URLSearchParams({ next: destination }).toString()}`;
 }
 
 export function resolveIdentityOnboardingSource(

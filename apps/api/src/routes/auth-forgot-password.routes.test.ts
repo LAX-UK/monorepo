@@ -238,7 +238,7 @@ describe("POST /auth/forgot-password (provider-aware)", () => {
       vars: {
         provider: "google",
         signInUrl: "http://localhost:3000/login",
-        settingsUrl: "http://localhost:3000/dashboard/settings?tab=security",
+        settingsUrl: "http://localhost:3000/settings?tab=security",
         userEmail: "bob@example.com",
         userName: "",
       },

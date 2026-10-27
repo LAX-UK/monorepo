@@ -14,6 +14,7 @@ import {
   stripeConnectUrlSchema,
 } from "@/lib/data/http/stripe-connect.schema";
 import { X_LEGAL_ENTITY_ID_HEADER } from "@/lib/legal-entity/client-acting-context";
+import { organisationHref } from "@/lib/navigation/client-routes";
 import { getSiteUrl } from "@/lib/site-url";
 import { revalidatePath } from "next/cache";
 
@@ -186,11 +187,11 @@ export async function createStripeConnectOnboardingLinkAction(
 }
 
 function revalidateConnectPaths(entityId?: string) {
-  revalidatePath("/dashboard/seller/connect");
-  revalidatePath("/dashboard/seller/payouts");
+  revalidatePath("/selling/payout-setup");
+  revalidatePath("/selling/payouts");
   if (entityId) {
-    revalidatePath(`/dashboard/seller/organisations/${entityId}`);
-    revalidatePath(`/dashboard/seller/organisations/${entityId}/connect`);
+    revalidatePath(organisationHref("profile"));
+    revalidatePath(organisationHref("payouts"));
     revalidatePath("/onboarding/organisation/step/connect");
   }
 }

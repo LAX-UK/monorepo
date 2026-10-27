@@ -53,7 +53,7 @@ const nextConfig: NextConfig = {
         ],
       },
       {
-        source: "/dashboard/verify-identity/:path*",
+        source: "/verify-identity/:path*",
         headers: [
           {
             key: "Permissions-Policy",
@@ -115,15 +115,7 @@ const nextConfig: NextConfig = {
     optimizePackageImports: ["lucide-react", "@auction/ui"],
   },
   async redirects() {
-    return [
-      ...LEGACY_DASHBOARD_REDIRECTS,
-      ...identitySettingsRedirects(laxAccountOrigin()),
-      {
-        source: "/dashboard/artist-follow",
-        destination: "/dashboard/watchlist?section=artists",
-        permanent: false,
-      },
-    ];
+    return [...LEGACY_DASHBOARD_REDIRECTS, ...identitySettingsRedirects(laxAccountOrigin())];
   },
 };
 

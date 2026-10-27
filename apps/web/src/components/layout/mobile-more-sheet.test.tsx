@@ -20,7 +20,7 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/dashboard",
+  usePathname: () => "/home",
   useRouter: () => ({
     push: vi.fn(),
     refresh: vi.fn(),
@@ -57,10 +57,7 @@ describe("MobileMoreSheet", () => {
 
     expect(screen.getByText("Jane Doe")).toBeInTheDocument();
     expect(screen.getByText("jane@example.com")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Bid settings" })).toHaveAttribute(
-      "href",
-      "/dashboard/settings",
-    );
+    expect(screen.getByRole("link", { name: "Bid settings" })).toHaveAttribute("href", "/settings");
     const account = screen.getByRole("link", { name: /LAX Account/ });
     expect(account).toHaveAttribute("href", laxAccountHomeUrl());
     expect(account).toHaveTextContent("Manage your LAX Account: profile, security, addresses");
@@ -78,7 +75,7 @@ describe("MobileMoreSheet", () => {
           {
             id: "notifications",
             label: "Notifications",
-            href: "/dashboard/notifications",
+            href: "/notifications",
             icon: Bell,
           },
         ]}

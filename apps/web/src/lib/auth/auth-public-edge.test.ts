@@ -23,7 +23,7 @@ describe("getAuthPublicCookieRedirectUrl", () => {
   });
 
   it("bypasses when auth=required (avoid stale-cookie loop)", () => {
-    const u = new URL("http://localhost:3000/login?auth=required&next=/dashboard");
+    const u = new URL("http://localhost:3000/login?auth=required&next=/home");
     expect(getAuthPublicCookieRedirectUrl(u, "better-auth.session=1")).toBeNull();
   });
 
@@ -53,10 +53,10 @@ describe("getAuthPublicCookieRedirectUrl", () => {
   });
 
   it("routes cookie login through the server decision with safe next", () => {
-    const u = new URL("http://localhost:3000/login?next=/dashboard/bids");
+    const u = new URL("http://localhost:3000/login?next=/bids");
     const out = getAuthPublicCookieRedirectUrl(u, "lax-bid-session=1");
     expect(out?.pathname).toBe("/auth/post-login");
-    expect(out?.searchParams.get("next")).toBe("/dashboard/bids");
+    expect(out?.searchParams.get("next")).toBe("/bids");
     expect(out?.searchParams.get("welcome")).toBe("back");
   });
 
@@ -89,7 +89,7 @@ describe("isStaleAuthEdgePublicLanding", () => {
   it("ignores protected dashboard edge landing", () => {
     expect(
       isStaleAuthEdgePublicLanding(
-        new URL("http://localhost:3000/dashboard?from=auth-edge&welcome=back"),
+        new URL("http://localhost:3000/home?from=auth-edge&welcome=back"),
         "lax-bid-session=1",
       ),
     ).toBe(false);
@@ -98,13 +98,13 @@ describe("isStaleAuthEdgePublicLanding", () => {
 
 describe("buildRequestWithAuthEdgeHeader", () => {
   it("tags dashboard requests with from=auth-edge", () => {
-    const req = new NextRequest(new URL("http://localhost:3000/dashboard?from=auth-edge"));
+    const req = new NextRequest(new URL("http://localhost:3000/home?from=auth-edge"));
     const out = buildRequestWithAuthEdgeHeader(req);
     expect(out?.request.headers.get("x-lax-auth-edge")).toBe("1");
   });
 
   it("returns null without from=auth-edge", () => {
-    const req = new NextRequest(new URL("http://localhost:3000/dashboard"));
+    const req = new NextRequest(new URL("http://localhost:3000/home"));
     expect(buildRequestWithAuthEdgeHeader(req)).toBeNull();
   });
 });

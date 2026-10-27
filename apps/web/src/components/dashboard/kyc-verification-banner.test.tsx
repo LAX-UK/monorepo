@@ -17,7 +17,7 @@ describe("KycVerificationBanner", () => {
     expect(screen.getByText(/verify now for uninterrupted bidding/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /start identity setup/i })).toHaveAttribute(
       "href",
-      "/onboarding/identity?next=%2Fdashboard&source=dashboard",
+      "/onboarding/identity?next=%2Fhome&source=dashboard",
     );
   });
 
@@ -38,7 +38,7 @@ describe("KycVerificationBanner", () => {
     expect(screen.getByText(/identity verification required/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /^verify identity$/i })).toHaveAttribute(
       "href",
-      "/onboarding/identity?next=%2Fdashboard&source=dashboard",
+      "/onboarding/identity?next=%2Fhome&source=dashboard",
     );
   });
 
@@ -57,7 +57,7 @@ describe("KycVerificationBanner", () => {
 
     expect(screen.getByRole("link", { name: /^verify identity$/i })).toHaveAttribute(
       "href",
-      "/onboarding/identity?next=%2Fdashboard&source=dashboard",
+      "/onboarding/identity?next=%2Fhome&source=dashboard",
     );
   });
 
@@ -86,7 +86,7 @@ describe("KycVerificationBanner", () => {
     expect(screen.getByText(/identity verification in review/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /view verification status/i })).toHaveAttribute(
       "href",
-      "/onboarding/identity?next=%2Fdashboard&source=dashboard",
+      "/onboarding/identity?next=%2Fhome&source=dashboard",
     );
     expect(screen.queryByText(/verify now for uninterrupted bidding/i)).not.toBeInTheDocument();
   });

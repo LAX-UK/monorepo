@@ -10,7 +10,7 @@ describe("resolveMobileShellTitle", () => {
 
   it("returns section title only for section root routes", () => {
     expect(
-      resolveMobileShellTitle([{ label: "Dashboard", href: "/dashboard" }, { label: "Watchlist" }]),
+      resolveMobileShellTitle([{ label: "Dashboard", href: "/home" }, { label: "Watchlist" }]),
     ).toEqual({
       title: "Watchlist",
     });
@@ -19,13 +19,13 @@ describe("resolveMobileShellTitle", () => {
   it("returns back link and title for nested routes", () => {
     expect(
       resolveMobileShellTitle([
-        { label: "Dashboard", href: "/dashboard" },
-        { label: "Settings", href: "/dashboard/settings" },
+        { label: "Dashboard", href: "/home" },
+        { label: "Settings", href: "/settings" },
         { label: "Profile" },
       ]),
     ).toEqual({
       title: "Profile",
-      backHref: "/dashboard/settings",
+      backHref: "/settings",
       backLabel: "Settings",
       eyebrow: "Settings",
     });

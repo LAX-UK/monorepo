@@ -17,7 +17,7 @@ describe("resolveMagicLinkUrl", () => {
   });
 
   it("keeps Bid activation URLs when the callback is not an issuer continuation", () => {
-    const pluginUrl = `http://localhost:3003/api/auth/magic-link/verify?token=abc&callbackURL=${encodeURIComponent("http://localhost:3000/dashboard")}`;
+    const pluginUrl = `http://localhost:3003/api/auth/magic-link/verify?token=abc&callbackURL=${encodeURIComponent("http://localhost:3000/home")}`;
     expect(
       resolveMagicLinkUrl({
         pluginUrl,

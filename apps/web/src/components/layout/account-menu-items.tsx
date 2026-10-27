@@ -1,11 +1,11 @@
 "use client";
 
+import { usesBidAsClient } from "@/lib/auth/client-audience";
 import type { SessionUser } from "@/lib/data/contracts";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { AccountMenuEntry, AccountMenuFacts } from "@/lib/navigation/account-menu-model";
 import { buildAccountMenu } from "@/lib/navigation/account-menu-model";
 import { useAccountMenuContext } from "@/lib/navigation/use-account-menu-context.client";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { Fragment, useMemo } from "react";
@@ -14,11 +14,11 @@ export type AccountMenuVariant = "header" | "shell" | "drawer";
 
 const ITEM_CLASS: Record<AccountMenuVariant, string> = {
   header:
-    "block px-3 py-2.5 font-label text-sm font-medium uppercase tracking-wide text-brand-900 transition-colors hover:bg-page-bg focus-visible:bg-page-bg focus-visible:outline-none dark:text-on-surface dark:hover:bg-surface-container-low",
+    "block px-3 py-2.5 font-label text-sm font-medium text-brand-900 transition-colors hover:bg-page-bg focus-visible:bg-page-bg focus-visible:outline-none dark:text-on-surface dark:hover:bg-surface-container-low",
   shell:
     "block px-4 py-2.5 font-label text-sm font-medium text-on-surface transition-colors hover:bg-surface-container-low focus-visible:bg-surface-container-low focus-visible:outline-none",
   drawer: cn(
-    "block min-h-11 rounded-sm py-2 font-label text-sm font-medium uppercase tracking-wide",
+    "block min-h-11 rounded-sm py-2 font-label text-sm font-medium",
     "text-brand-900 transition-colors hover:text-brand-800 dark:text-on-surface",
     FOCUS_RING,
   ),
@@ -31,21 +31,17 @@ const SEPARATOR_CLASS: Record<AccountMenuVariant, string> = {
 };
 
 /** Groups for the signed-in menu; safe defaults apply until the person's facts arrive. */
-export function useAccountMenuGroups(
-  user: SessionUser,
-  mode: ClientWorkspaceMode,
-  enabled: boolean,
-): AccountMenuEntry[][] {
-  const context = useAccountMenuContext(user.id, enabled);
+export function useAccountMenuGroups(user: SessionUser, enabled: boolean): AccountMenuEntry[][] {
+  // Staff have no client facts to load: their menu is the admin area and LAX Account.
+  const context = useAccountMenuContext(user.id, enabled && usesBidAsClient(user));
   return useMemo(() => {
     const facts: AccountMenuFacts = {
-      mode,
       hasConsigned: context?.hasConsigned ?? false,
       isOrgMember: context?.isOrgMember ?? false,
       user,
     };
     return buildAccountMenu(facts);
-  }, [context, mode, user]);
+  }, [context, user]);
 }
 
 type AccountMenuItemsProps = {

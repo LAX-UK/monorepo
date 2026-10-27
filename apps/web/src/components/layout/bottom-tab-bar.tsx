@@ -13,7 +13,6 @@ import { usePathname } from "next/navigation";
 import { useMemo, useState } from "react";
 
 function isActive(pathname: string, href: string): boolean {
-  if (href === "/dashboard") return pathname === href;
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -113,6 +112,8 @@ export function BottomTabBar({ user }: { user: Pick<SessionUser, "name" | "email
           variant={moreSheetVariant}
           items={moreItems}
           user={user}
+          sections={config.navSections}
+          account={config.clientAccount}
         />
       ) : null}
     </>

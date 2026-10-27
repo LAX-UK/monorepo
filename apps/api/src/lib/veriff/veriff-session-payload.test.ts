@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildVeriffCreateSessionVerification } from "./veriff-session-payload.js";
 
-const CALLBACK = "https://test.lax.bid/dashboard/verify-identity?kyc=complete";
+const CALLBACK = "https://test.lax.bid/verify-identity?kyc=complete";
 
 describe("buildVeriffCreateSessionVerification", () => {
   it("sends vendorData only for Better Auth alphanumeric user ids", () => {

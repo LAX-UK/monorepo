@@ -2,8 +2,10 @@
 
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 
+import { usesBidAsClient } from "@/lib/auth/client-audience";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { getServerApiBase } from "@/lib/data/http/hc-server";
+import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts";
 import { decodeActingContextCookie } from "@auction/types";
@@ -11,9 +13,10 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { writeActingAccountCookie } from "./acting-cookie.server";
 import { ACTING_LEGAL_ENTITY_COOKIE } from "./client-acting-context";
+import { rememberAccount } from "./remembered-account.server";
 
-const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 const IMPERSONATION_COOKIE_MAX_AGE = 60 * 60 * 5;
 
 type ApiFailureRead = { summary: string; error?: string; code?: string };
@@ -67,28 +70,27 @@ type SwitchResult =
   | { ok: true }
   | { ok: false; error: "not_a_member" | "unauthenticated" | "unknown" };
 
-/** Switches the acting legal entity by setting the cookie. Validation
- * (membership) is enforced server-side: we hit `GET /legal-entities/:id`
- * which 403s if the caller is not an active member.
- * * Pass `null` to clear the cookie (falls back to personal entity).
+/** The person's own legal entity, for "switch to personal". */
+async function findPersonalAccountId(): Promise<string | null> {
+  const res = await authedServerFetch("/legal-entities/me", { cache: "no-store" });
+  if (!res.ok) return null;
+  const body = (await res.json().catch(() => null)) as {
+    data?: { id: string; kind: string }[];
+  } | null;
+  return body?.data?.find((m) => m.kind === "individual")?.id ?? null;
+}
+
+/**
+ * Switches the account this browser uses Bid as, and remembers it on the person's profile so
+ * other devices open in it too. Membership is checked by the API (`GET /legal-entities/:id`
+ * refuses non-members). Pass `null` for the person's own account.
  */
 export async function switchActingLegalEntity(legalEntityId: string | null): Promise<SwitchResult> {
   return instrumentServerAction("switchActingLegalEntity", async () => {
-    const jar = await cookies();
+    const targetId = legalEntityId ?? (await findPersonalAccountId());
+    if (!targetId) return { ok: false, error: "unknown" };
 
-    if (legalEntityId === null) {
-      jar.set(ACTING_LEGAL_ENTITY_COOKIE, "", {
-        path: "/",
-        maxAge: 0,
-        sameSite: "lax",
-      });
-      revalidatePath("/", "layout");
-      revalidatePath("/dashboard/organisations");
-      revalidatePath("/dashboard/invitations");
-      return { ok: true };
-    }
-
-    const res = await authedServerFetch(`/legal-entities/${legalEntityId}`, {
+    const res = await authedServerFetch(`/legal-entities/${targetId}`, {
       cache: "no-store",
     });
     if (res.status === 401) return { ok: false, error: "unauthenticated" };
@@ -103,15 +105,11 @@ export async function switchActingLegalEntity(legalEntityId: string | null): Pro
       if (!orgModuleEnabled) return { ok: false, error: "not_a_member" };
     }
 
-    jar.set(ACTING_LEGAL_ENTITY_COOKIE, legalEntityId, {
-      path: "/",
-      maxAge: ONE_YEAR_SECONDS,
-      sameSite: "lax",
-      httpOnly: false,
-    });
+    await writeActingAccountCookie(targetId);
+    // Staff have no client accounts to come back to, so nothing is remembered for them.
+    const user = await getServerSessionUser();
+    if (user && usesBidAsClient(user)) await rememberAccount(targetId);
     revalidatePath("/", "layout");
-    revalidatePath("/dashboard/organisations");
-    revalidatePath("/dashboard/invitations");
     return { ok: true };
   });
 }

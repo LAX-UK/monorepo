@@ -28,7 +28,7 @@ describe("BuyerInterestsForm", () => {
   it("exposes labelled checkbox choices and updates selection accessibly", () => {
     render(
       <BuyerInterestsForm
-        next="/dashboard/watchlist"
+        next="/watching"
         source="post_verify"
         categoryIdBySlug={{ paintings: "category-art", "watches-clocks": "category-watches" }}
         initialCategoryIds={["category-art"]}
@@ -53,7 +53,7 @@ describe("BuyerInterestsForm", () => {
   it("submits selected category ids via hidden inputs", () => {
     const { container } = render(
       <BuyerInterestsForm
-        next="/dashboard/watchlist"
+        next="/watching"
         source="post_verify"
         categoryIdBySlug={{ paintings: "category-art", "watches-clocks": "category-watches" }}
         initialCategoryIds={["category-art"]}
@@ -76,7 +76,7 @@ describe("BuyerInterestsForm", () => {
   it("does not treat an archived category id as a selected live interest", () => {
     const { container } = render(
       <BuyerInterestsForm
-        next="/dashboard"
+        next="/home"
         source="post_verify"
         categoryIdBySlug={{ paintings: "category-art" }}
         initialCategoryIds={["archived-category"]}
@@ -89,7 +89,7 @@ describe("BuyerInterestsForm", () => {
   it("omits manifest choices that have no live category mapping", () => {
     render(
       <BuyerInterestsForm
-        next="/dashboard"
+        next="/home"
         source="post_verify"
         categoryIdBySlug={{ paintings: "category-art" }}
         initialCategoryIds={[]}

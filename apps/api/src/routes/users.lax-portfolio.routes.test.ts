@@ -131,7 +131,7 @@ describe("GET /users/me/lax-portfolio", () => {
       image: "https://cdn.lax.bid/lots/blue-study.jpg",
       actions: [{ kind: "pay" }, { kind: "view" }],
     });
-    expect(body.items[0]?.actions[0]?.href).toMatch(/\/dashboard\/checkout\/11111111-/);
+    expect(body.items[0]?.actions[0]?.href).toMatch(/\/purchases\/checkout\/11111111-/);
   });
 
   it("returns wins, consignments and sales together, each in the contract shape", async () => {

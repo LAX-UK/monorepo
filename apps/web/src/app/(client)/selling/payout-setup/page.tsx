@@ -1,0 +1,111 @@
+import { startKycVerification } from "@/app/(client)/verify-identity/actions";
+import { SellerConnectWorkspace } from "@/components/connect/seller-connect-workspace";
+import { DashboardPage } from "@/components/dashboard/dashboard-page";
+import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
+import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import { SellerProfileUnavailableAlert } from "@/components/dashboard/seller-profile-unavailable-alert";
+import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
+import { buildSellerConnectFailure } from "@/lib/dashboard/dashboard-fetch-errors";
+import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
+import {
+  getServerStripeConnectClientConfig,
+  getServerStripeConnectStatus,
+  syncServerStripeConnectStatus,
+} from "@/lib/data/http/stripe-connect.server";
+import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
+import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
+import { organisationHref } from "@/lib/navigation/client-routes";
+import Link from "next/link";
+import { redirect } from "next/navigation";
+
+export default async function SellerStripeConnectPage() {
+  const user = await requireAuthenticatedUser({
+    shell: "client",
+    loginNext: DASHBOARD_ROUTES.sellerConnect,
+  });
+  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
+  const { sellerEntityId, sellingAsOrganisation, bootstrapFailed } = sellerCtx;
+  // An organisation's payout setup is one of its settings pages.
+  if (sellingAsOrganisation && sellerEntityId) {
+    redirect(organisationHref("payouts"));
+  }
+
+  const [clientConfig, kycSummary] = await Promise.all([
+    getServerStripeConnectClientConfig(),
+    getServerKycStatusSummary().catch(() => null),
+  ]);
+  const kycApproved = kycSummary?.status === "approved";
+
+  let status = null;
+  let connectFailure = null;
+  let syncDegraded = false;
+  let isLaxManaged = false;
+  let memberRole = "owner";
+  let entityStatus = "connect_pending";
+
+  if (sellerEntityId) {
+    const hub = createOrganisationHubGateway();
+    const entity = await hub.getEntityDetail(sellerEntityId).catch(() => null);
+    isLaxManaged = entity?.isLaxManaged ?? false;
+    entityStatus = entity?.status ?? "connect_pending";
+    memberRole = sellerCtx.personalEntity?.role ?? "owner";
+
+    const connectRes = entity?.stripeConnectAccountId
+      ? await syncServerStripeConnectStatus(sellerEntityId)
+      : await getServerStripeConnectStatus(sellerEntityId);
+
+    if (connectRes.ok) {
+      status = connectRes.data;
+      syncDegraded = Boolean(connectRes.data.syncDegraded);
+    } else if (connectRes.error === "not_connected") {
+      status = null;
+    } else {
+      connectFailure = buildSellerConnectFailure(connectRes.error);
+    }
+  }
+
+  return (
+    <DashboardPage className="mx-auto max-w-3xl space-y-8">
+      <DashboardPageHeader
+        title="Payout setup"
+        hideTitleOnMobile
+        hideDescriptionOnMobile
+        description="Verify your identity, then complete payout details in the secure form below so approved lots can be scheduled once finance enables settlement."
+      />
+
+      {!sellerEntityId ? <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} /> : null}
+
+      {connectFailure ? (
+        <DashboardSliceErrorAlert failure={connectFailure} />
+      ) : sellerEntityId ? (
+        <SellerConnectWorkspace
+          publishableKey={clientConfig.publishableKey}
+          connectEnforced={clientConfig.connectEnforced}
+          status={status}
+          legalEntityId={sellerEntityId}
+          memberRole={memberRole}
+          kycApproved={kycApproved}
+          kycSummary={kycSummary}
+          onStartKyc={startKycVerification}
+          isLaxManaged={isLaxManaged}
+          entityStatus={entityStatus}
+          returnPath={DASHBOARD_ROUTES.sellerConnect}
+          showDashboardLink={false}
+          syncDegraded={syncDegraded}
+        />
+      ) : null}
+
+      <p className="font-body text-xs text-on-surface-variant">
+        Questions?{" "}
+        <a href="mailto:support@lax.bid" className="text-link underline">
+          support@lax.bid
+        </a>
+        {" · "}
+        <Link href={DASHBOARD_ROUTES.seller} className="text-link underline">
+          Back to Selling overview
+        </Link>
+      </p>
+    </DashboardPage>
+  );
+}

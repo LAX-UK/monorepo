@@ -19,7 +19,7 @@ const sampleRow: PaymentDisplayRow = {
   status: "authorized",
   statusLabel: "Authorised",
   statusTone: "info",
-  primaryAction: { kind: "pay", href: "/dashboard/checkout/l1", label: "Pay now" },
+  primaryAction: { kind: "pay", href: "/purchases/checkout/l1", label: "Pay now" },
   invoiceNumber: "INV-001",
   manualReviewReason: null,
 };

@@ -12,17 +12,14 @@ describe("AppRouteError", () => {
       <AppRouteError
         error={new Error("boom")}
         reset={() => {}}
-        homeHref="/dashboard"
+        homeHref="/home"
         homeLabel="Open overview"
       />,
     );
 
     expect(screen.getByRole("alert")).toBeTruthy();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
-    expect(screen.getByRole("link", { name: "Open overview" })).toHaveAttribute(
-      "href",
-      "/dashboard",
-    );
+    expect(screen.getByRole("link", { name: "Open overview" })).toHaveAttribute("href", "/home");
     expect(document.querySelector("svg[aria-hidden]")).toBeTruthy();
   });
 

@@ -68,7 +68,7 @@ export function AdminImpersonateForm({
         return;
       }
       notify.success(`Support session started as ${entity.label}`);
-      router.push("/dashboard");
+      router.push("/home");
       router.refresh();
     });
   };

@@ -36,13 +36,13 @@ test.describe("submission wizard mobile @journey", () => {
     await clientSession(page);
 
     if (draftId) {
-      await page.goto(`/dashboard/submissions/${draftId}`);
+      await page.goto(`/selling/consignments/${draftId}`);
     } else {
-      await page.goto("/dashboard/seller/consignments?tab=drafts");
+      await page.goto("/selling/consignments?tab=drafts");
       const draftLink = page.getByRole("link", { name: /draft/i }).first();
       await expect(draftLink).toBeVisible({ timeout: 15_000 });
       await draftLink.click();
-      await page.waitForURL(/\/dashboard\/submissions\/[^/]+$/);
+      await page.waitForURL(/\/selling\/consignments\/[^/]+$/);
     }
 
     await expect(page.getByTestId("submission-wizard-step-basics")).toBeVisible({

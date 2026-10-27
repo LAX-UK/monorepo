@@ -1,12 +1,12 @@
 /**
- * Fails when dashboard routes expose raw HTTP error strings to users.
+ * Fails when signed-in client pages expose raw HTTP error strings to users.
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const dashboardRoot = join(__dirname, "..", "src", "app", "dashboard");
+const dashboardRoot = join(__dirname, "..", "src", "app", "(client)");
 
 const legacyFailedToLoadRe = /Failed to load [^:]+:\s*\d{3}/;
 const allowlist = new Set(["error.tsx"]);

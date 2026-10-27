@@ -25,7 +25,7 @@ describe("resolveBuyerOnboardingRequestPath", () => {
   });
 
   it("falls back when middleware headers are unavailable or outside the flow", async () => {
-    vi.mocked(headers).mockResolvedValue(new Headers({ "x-pathname": "/dashboard" }) as never);
+    vi.mocked(headers).mockResolvedValue(new Headers({ "x-pathname": "/home" }) as never);
     await expect(resolveBuyerOnboardingRequestPath()).resolves.toBe("/onboarding/interests");
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { startKycVerification } from "@/app/dashboard/verify-identity/actions";
+import { startKycVerification } from "@/app/(client)/verify-identity/actions";
 import { KycVerificationLauncher } from "@/components/kyc";
 import { canStartKycVerification, kycInitialPhase } from "@/components/kyc/kyc-copy";
 import {

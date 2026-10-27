@@ -51,11 +51,11 @@ function businessOf(ctx: BidPortfolioContext): LaxBusinessV1 {
 }
 
 function paymentsPage(ctx: BidPortfolioContext): string {
-  return `${ctx.webOrigin}/dashboard/payments`;
+  return `${ctx.webOrigin}/purchases#payment-history`;
 }
 
 function payoutsPage(ctx: BidPortfolioContext): string {
-  return `${ctx.webOrigin}/dashboard/seller/payouts`;
+  return `${ctx.webOrigin}/selling/payouts`;
 }
 
 /** Newest payment per lot; the facts arrive newest first. */
@@ -117,9 +117,9 @@ function wonLotItem(
 
   const actions: LaxPortfolioActionV1[] = [];
   if (status === "awaiting_payment") {
-    actions.push({ kind: "pay", href: `${ctx.webOrigin}/dashboard/checkout/${lot.lotId}` });
+    actions.push({ kind: "pay", href: `${ctx.webOrigin}/purchases/checkout/${lot.lotId}` });
   } else {
-    actions.push({ kind: "consign", href: `${ctx.webOrigin}/dashboard/submissions/new` });
+    actions.push({ kind: "consign", href: `${ctx.webOrigin}/selling/new` });
   }
   actions.push({
     kind: "view",
@@ -200,7 +200,7 @@ export function buildBidPortfolioItems(
       status: "consigned",
       paid: { lines: [] },
       documents: [],
-      actions: [{ kind: "view", href: `${ctx.webOrigin}/dashboard/submissions/${submission.id}` }],
+      actions: [{ kind: "view", href: `${ctx.webOrigin}/selling/consignments/${submission.id}` }],
       business: businessOf(ctx),
     }),
   );

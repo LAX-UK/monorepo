@@ -848,3 +848,5 @@ export type {
 } from "./repository-factory.js";
 
 export type { ITransactionRunner } from "../transaction-runner.js";
+export type { IRememberedAccountStore } from "./remembered-account.store.js";
+export type { AccountRecordKind, IRecordAccountReader } from "./record-account.reader.js";

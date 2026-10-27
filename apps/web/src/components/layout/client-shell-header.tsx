@@ -1,10 +1,11 @@
 "use client";
 
+import { AccountHeaderButton } from "@/components/layout/account-switcher/account-header-button";
 import { AppShellBreadcrumbs } from "@/components/layout/app-shell-breadcrumbs";
 import type { AppShellRole } from "@/components/layout/app-shell-nav";
 import { ShellUserMenu } from "@/components/layout/shell-user-menu";
 import type { SessionUser } from "@/lib/data/contracts";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
+import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
 import { ExternalLink } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -12,7 +13,7 @@ import type { ReactNode } from "react";
 type ClientShellHeaderProps = {
   user: SessionUser;
   role: AppShellRole;
-  clientWorkspaceMode: ClientWorkspaceMode;
+  account?: AccountChrome | undefined;
   actionsSlot?: ReactNode;
   extraSlot?: ReactNode;
 };
@@ -21,7 +22,7 @@ type ClientShellHeaderProps = {
 export function ClientShellHeader({
   user,
   role,
-  clientWorkspaceMode,
+  account,
   actionsSlot,
   extraSlot,
 }: ClientShellHeaderProps) {
@@ -29,12 +30,7 @@ export function ClientShellHeader({
     <>
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <div className="flex min-w-0 flex-1 items-center gap-3 lg:hidden">
-          <AppShellBreadcrumbs
-            role={role}
-            sessionUser={user}
-            variant="mobile"
-            clientWorkspaceMode={clientWorkspaceMode}
-          />
+          <AppShellBreadcrumbs role={role} sessionUser={user} variant="mobile" />
           <Link
             href="/"
             prefetch
@@ -50,7 +46,8 @@ export function ClientShellHeader({
       <div className="flex shrink-0 items-center gap-1 sm:gap-2">
         {actionsSlot}
         {extraSlot}
-        <ShellUserMenu user={user} role={role} clientWorkspaceMode={clientWorkspaceMode} />
+        {account ? <AccountHeaderButton account={account} /> : null}
+        <ShellUserMenu user={user} role={role} />
       </div>
     </>
   );

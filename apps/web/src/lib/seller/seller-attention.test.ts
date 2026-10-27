@@ -30,7 +30,7 @@ function build(overrides: Partial<Parameters<typeof buildSellerAttentionItems>[0
     submissions: [],
     lots: [],
     payoutSetupIncomplete: false,
-    payoutSetupHref: "/dashboard/seller/connect",
+    payoutSetupHref: "/selling/payout-setup",
     canOpenPayoutSetup: true,
     identityVerificationNeeded: false,
     now: NOW,
@@ -49,7 +49,7 @@ describe("buildSellerAttentionItems", () => {
     expect(item).toMatchObject({
       title: 'Finish "Moonlit quay"',
       status: "Not submitted",
-      href: "/dashboard/submissions/s7",
+      href: "/selling/consignments/s7",
     });
   });
 
@@ -60,7 +60,7 @@ describe("buildSellerAttentionItems", () => {
     expect(items).toHaveLength(1);
     expect(items[0]).toMatchObject({
       title: "Finish 3 drafts",
-      href: "/dashboard/seller/consignments?tab=drafts",
+      href: "/selling/consignments?tab=drafts",
     });
   });
 
@@ -81,7 +81,7 @@ describe("buildSellerAttentionItems", () => {
       lots: [lot({})],
     });
     expect(items.map((i) => i.id)).toEqual(["identity", "payout-setup"]);
-    expect(items[0]?.href).toBe("/dashboard/verify-identity");
+    expect(items[0]?.href).toBe("/verify-identity");
   });
 
   it("hides payout setup from roles that cannot open it", () => {
@@ -113,7 +113,7 @@ describe("buildSellerAttentionItems", () => {
       title: '"Quiet pier" was not accepted',
       detail: "Reason given: Needs a clearer signature photo",
       status: "Needs changes",
-      href: "/dashboard/submissions/new?fromRejected=new",
+      href: "/selling/new?fromRejected=new",
     });
   });
 
@@ -132,7 +132,7 @@ describe("buildSellerAttentionItems", () => {
     expect(one[0]).toMatchObject({
       title: '"Harbour at dusk" did not sell',
       status: "Decide next step",
-      href: "/dashboard/seller/consignments?tab=unsold",
+      href: "/selling/consignments?tab=unsold",
     });
     const many = build({
       lots: [

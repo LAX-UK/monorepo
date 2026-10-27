@@ -15,7 +15,7 @@ export default async function LoginTwoFactorPage({
   searchParams: Promise<{ next?: string }>;
 }) {
   const sp = await searchParams;
-  const rawNext = typeof sp.next === "string" ? sp.next : "/dashboard";
-  const next = isSafeNextPath(rawNext) ? rawNext : "/dashboard";
-  redirect(buildBidIssuerHostedUrl("/two-factor", next !== "/dashboard" ? { next } : undefined));
+  const rawNext = typeof sp.next === "string" ? sp.next : "/home";
+  const next = isSafeNextPath(rawNext) ? rawNext : "/home";
+  redirect(buildBidIssuerHostedUrl("/two-factor", next !== "/home" ? { next } : undefined));
 }

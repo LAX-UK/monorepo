@@ -12,7 +12,6 @@ describe("buildShellConfig", () => {
     expect(config.role).toBe("client");
     expect(config.nav.every((e) => !isNavGroup(e))).toBe(true);
     expect(config.mobileNav.length).toBeGreaterThan(0);
-    expect(config.clientWorkspaceMode).toBe("buying");
   });
 
   it("builds grouped nav for platform staff", () => {
@@ -45,46 +44,33 @@ describe("buildShellConfig", () => {
     expect(config.topSlot).toBeTruthy();
   });
 
-  it("does not apply connect badge on buying workspace even when badge input is present", () => {
+  it("leaves Sold & payouts plain for someone who sells nothing", () => {
     const config = buildShellConfig({
       user: clientUser,
       role: "client",
-      clientWorkspaceMode: "buying",
       sellerConnectNavBadge: { connectEnforced: true, connectReady: false },
     });
-    const connectNav = config.nav.find((item) => !isNavGroup(item) && item.id === "connect");
-    expect(connectNav && !isNavGroup(connectNav) && connectNav.badge).toBeUndefined();
+    const payouts = config.nav.find((item) => !isNavGroup(item) && item.id === "payouts");
+    expect(payouts).toBeUndefined();
   });
 
-  it("applies connect warning badge on selling nav when not ready", () => {
+  it("flags Sold & payouts when payout setup is required but unfinished", () => {
     const config = buildShellConfig({
       user: clientUser,
       role: "client",
-      clientWorkspaceMode: "selling",
+      clientNavScope: { context: { kind: "personal" }, hasSubmissions: true },
       sellerConnectNavBadge: { connectEnforced: true, connectReady: false },
     });
-    const connectNav = config.nav.find((item) => !isNavGroup(item) && item.id === "connect");
-    expect(connectNav && !isNavGroup(connectNav) && connectNav.badge).toBe(1);
-    expect(connectNav && !isNavGroup(connectNav) && connectNav.badgeTone).toBe("warning");
-  });
-
-  it("includes payout setup in selling more sheet nav", () => {
-    const config = buildShellConfig({
-      user: clientUser,
-      role: "client",
-      clientWorkspaceMode: "selling",
-    });
-    const flatMore = config.moreSheetNav?.filter((e) => !isNavGroup(e)) ?? [];
-    const connectItem = flatMore.find((item) => item.id === "connect");
-    expect(connectItem).toBeDefined();
-    expect(connectItem && "href" in connectItem && connectItem.href).toContain("/seller/connect");
+    const all = [...config.nav, ...(config.moreSheetNav ?? [])];
+    const payouts = all.find((item) => !isNavGroup(item) && item.id === "payouts");
+    expect(payouts && !isNavGroup(payouts) && payouts.badge).toBe(1);
+    expect(payouts && !isNavGroup(payouts) && payouts.badgeTone).toBe("warning");
   });
 
   it("splits client more sheet nav from bottom tabs", () => {
     const config = buildShellConfig({
       user: clientUser,
       role: "client",
-      clientWorkspaceMode: "buying",
     });
     expect(config.mobileNav.map((t) => t.id)).toEqual([
       "bids",

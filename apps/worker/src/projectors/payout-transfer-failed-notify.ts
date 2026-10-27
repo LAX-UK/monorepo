@@ -57,8 +57,8 @@ export async function processPayoutTransferFailedNotify(options: {
       const webOrigin = ctx.webOrigin?.replace(/\/$/, "") ?? "https://lax.bid";
       const sellerPayoutSetupUrl =
         context.entityKind === "organisation"
-          ? `${webOrigin}/dashboard/organisations/${payload.legalEntityId}/connect`
-          : `${webOrigin}/dashboard/seller/connect`;
+          ? `${webOrigin}/organisation/payouts?account=${payload.legalEntityId}`
+          : `${webOrigin}/selling/payout-setup`;
 
       const failureReason = payload.stripeErrorMessage
         ? `${payload.stripeErrorCode}: ${payload.stripeErrorMessage}`

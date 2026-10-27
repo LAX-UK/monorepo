@@ -16,7 +16,7 @@ export function redirectIfSilentProbeBlocked(
   request: NextRequest,
   nextPath: string,
 ): NextResponse | null {
-  const safePath = isSafeNextPath(nextPath) ? nextPath : "/dashboard";
+  const safePath = isSafeNextPath(nextPath) ? nextPath : "/home";
   if (readBidSessionId(request)) {
     return NextResponse.redirect(resolvePublicOriginUrl(safePath), 302);
   }

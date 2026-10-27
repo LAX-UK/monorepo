@@ -25,7 +25,7 @@ export function SubmissionRejectionPanel({ submission }: Props) {
         You can submit a new item with updated information. Our team will review it again.
       </p>
       <Button asChild variant="cta">
-        <Link href={`/dashboard/submissions/new?fromRejected=${encodeURIComponent(submission.id)}`}>
+        <Link href={`/selling/new?fromRejected=${encodeURIComponent(submission.id)}`}>
           Resubmit with updates
         </Link>
       </Button>

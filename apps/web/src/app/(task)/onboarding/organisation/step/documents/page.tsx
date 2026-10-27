@@ -54,7 +54,7 @@ export default async function OrgOnboardingDocumentsStepPage({
     const reqRes = await authedServerFetch(`/organizations/requirements/${subkind}`, {
       cache: "no-store",
     });
-    if (!reqRes.ok) redirect("/dashboard");
+    if (!reqRes.ok) redirect("/home");
     const reqBody = (await reqRes.json()) as { data?: { documentKinds?: string[] } };
     const kinds = reqBody.data?.documentKinds ?? [];
     slots = kinds.map((k) => ({

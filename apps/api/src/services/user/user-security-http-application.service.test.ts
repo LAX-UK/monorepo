@@ -6,7 +6,7 @@ describe("UserSecurityHttpApplicationService", () => {
     const BLOCKER = {
       code: "account_deletion_pending_payments",
       message: "You have a payment still to make.",
-      href: "https://bid.example/dashboard/payments",
+      href: "https://bid.example/purchases#payment-history",
     };
     const SHOP_BLOCKER = {
       code: "shop_open_orders",

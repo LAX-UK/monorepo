@@ -205,9 +205,7 @@ export function ConnectWorkspace({
             />
           ) : (
             <Button asChild variant="cta" size="sm">
-              <a href={dashboardIdentityOnboardingHref("/dashboard/seller/connect")}>
-                Verify identity
-              </a>
+              <a href={dashboardIdentityOnboardingHref("/selling/payout-setup")}>Verify identity</a>
             </Button>
           )}
         </Surface>

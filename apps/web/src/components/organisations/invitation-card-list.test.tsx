@@ -30,7 +30,7 @@ describe("InvitationCardList", () => {
     expect(screen.getByText(/Pat/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /review/i })).toHaveAttribute(
       "href",
-      "/dashboard/invitations/review/inv-1",
+      "/organisations/invitations/review/inv-1",
     );
   });
 });

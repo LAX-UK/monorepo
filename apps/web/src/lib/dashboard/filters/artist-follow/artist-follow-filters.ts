@@ -2,7 +2,7 @@ import { buildActiveFilterDescriptors, hasActiveFilters } from "../filter-active
 import { buildFilterHref } from "../filter-params";
 import type { ActiveFilterDescriptor, FilterParamsRecord, ListPageFilterConfig } from "../types";
 
-export const ARTIST_FOLLOW_BASE_PATH = "/dashboard/watchlist";
+export const ARTIST_FOLLOW_BASE_PATH = "/watching";
 
 export const ARTIST_FOLLOW_SECTION = "artists";
 

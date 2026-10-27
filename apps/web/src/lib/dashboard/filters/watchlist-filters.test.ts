@@ -17,9 +17,7 @@ describe("watchlist-filters", () => {
 
   it("buildWatchlistHref toggles status off", () => {
     const current = parseWatchlistParams({ status: "active", sort: "endingSoon" });
-    expect(buildWatchlistHref(current, { status: null })).toBe(
-      "/dashboard/watchlist?sort=endingSoon",
-    );
+    expect(buildWatchlistHref(current, { status: null })).toBe("/watching?sort=endingSoon");
   });
 
   it("hasWatchlistActiveFilters detects q and status", () => {

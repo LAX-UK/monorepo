@@ -80,7 +80,7 @@ export async function runLegalEntityArchiveCascadeJob(
           recipientFirstName: m.firstName,
           entityName,
           legalEntityId,
-          dashboardUrl: `${webOrigin.replace(/\/$/, "")}/dashboard`,
+          dashboardUrl: `${webOrigin.replace(/\/$/, "")}/home`,
           supportContactEmail,
         },
         category: "transactional",

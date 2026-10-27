@@ -12,7 +12,7 @@ describe("useStepUpCoordinator", () => {
   it("redirects to hosted reauth for recent_auth_required", async () => {
     vi.stubGlobal("location", {
       ...window.location,
-      pathname: "/dashboard/settings",
+      pathname: "/settings",
       search: "?tab=security",
       assign,
     });
@@ -21,7 +21,7 @@ describe("useStepUpCoordinator", () => {
       void result.current.request("recent_auth_required");
     });
     expect(assign).toHaveBeenCalledWith(
-      "/api/auth/login?intent=reauth&next=%2Fdashboard%2Fsettings%3Ftab%3Dsecurity",
+      "/api/auth/login?intent=reauth&next=%2Fsettings%3Ftab%3Dsecurity",
     );
     vi.unstubAllGlobals();
   });

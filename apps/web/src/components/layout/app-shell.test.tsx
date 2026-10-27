@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { AppShell } from "./app-shell";
 
-const pathnameMock = vi.hoisted(() => ({ current: "/dashboard/bids" }));
+const pathnameMock = vi.hoisted(() => ({ current: "/bids" }));
 
 vi.mock("@/lib/navigation/use-account-menu-context.client", () => ({
   useAccountMenuContext: () => null,
@@ -97,10 +97,7 @@ describe("AppShell", () => {
     );
 
     fireEvent.click(screen.getByRole("button", { name: /account menu/i }));
-    expect(screen.getByRole("menuitem", { name: "My bids" })).toHaveAttribute(
-      "href",
-      "/dashboard/bids",
-    );
+    expect(screen.getByRole("menuitem", { name: "My bids" })).toHaveAttribute("href", "/bids");
     expect(screen.getByRole("menuitem", { name: "Sign out" })).toBeInTheDocument();
     // Appearance lives in Bid settings; only a compact dark-mode toggle stays in the menu.
     expect(screen.queryByText("Display settings")).not.toBeInTheDocument();
@@ -187,15 +184,14 @@ describe("AppShell", () => {
   });
 
   it("titles the seller overview plainly, with no welcome block", () => {
-    pathnameMock.current = "/dashboard/seller";
+    pathnameMock.current = "/selling";
     render(
       <AppShell
         user={clientUser}
         config={buildShellConfig({
           user: clientUser,
           role: "client",
-          clientWorkspaceMode: "selling",
-          mobileHeader: { actingContext: { kind: "self" } },
+          clientNavScope: { context: { kind: "personal" }, hasSubmissions: true },
         })}
       >
         <p>Dashboard content</p>
@@ -203,8 +199,8 @@ describe("AppShell", () => {
     );
 
     expect(screen.queryByText(/welcome/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Overview" })).toBeInTheDocument();
-    pathnameMock.current = "/dashboard/bids";
+    expect(screen.getByRole("heading", { name: "Selling" })).toBeInTheDocument();
+    pathnameMock.current = "/bids";
   });
 
   it("does not render the mobile hamburger and uses a unified account menu", () => {

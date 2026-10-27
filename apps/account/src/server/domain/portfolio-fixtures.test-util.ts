@@ -29,7 +29,7 @@ export function moneyEntry(overrides: Partial<LaxMoneyEntryV1> = {}): LaxMoneyEn
     amount: 100_000,
     currency: "GBP",
     occurredAt: "2026-03-01T10:00:00.000Z",
-    href: "https://lax.bid/dashboard/payments",
+    href: "https://lax.bid/purchases#payment-history",
     ...overrides,
   };
 }

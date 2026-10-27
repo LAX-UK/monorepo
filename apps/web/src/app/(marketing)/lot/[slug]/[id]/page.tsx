@@ -17,6 +17,7 @@ import { ArtworkOnlineLayout } from "@/components/sections/artwork/layouts/artwo
 import { LotOnsiteMarketingLayout } from "@/components/sections/artwork/layouts/lot-onsite-marketing-layout";
 import { OnlineBidsView } from "@/components/sections/artwork/online/online-bids-view";
 import { OnsiteLotUnavailable } from "@/components/sections/artwork/onsite/onsite-lot-unavailable";
+import { usesBidAsClient } from "@/lib/auth/client-audience";
 import { isStrictBidEligibilityEnabled } from "@/lib/bid/strict-bid-eligibility-rollout.server";
 import { atgCatalogState, atgLotBadge } from "@/lib/catalog/atg-catalog-display";
 import { LiveConnectivityNoticeProvider } from "@/lib/connection/live-connectivity-notice";
@@ -32,9 +33,11 @@ import {
   loadLotDetailMetadata,
   loadLotDetailPage,
 } from "@/lib/marketing/load-lot-detail-page";
+import { restoreAccountHref } from "@/lib/navigation/account-link";
 import { metadataForLot, metadataForNotFound } from "@/lib/seo/metadata-factory";
 import { lotPath, salePath } from "@/lib/seo/url";
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
 type PageProps = {
   params: Promise<{ slug: string; id: string }>;
@@ -110,6 +113,12 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     viewItemCurrency,
     viewItemPriceMinor,
   } = vm;
+
+  // A signed-in person on a new device bids as the account they used last, not by default as
+  // themselves: put this browser in it first.
+  if (session && usesBidAsClient(session) && actingCtx.needsRestore) {
+    redirect(restoreAccountHref(lotPath(auction)));
+  }
 
   const atgReadOnlyCatalog = isAtgReadOnlyCatalogSale(saleBundle?.sale ?? null);
   const atgState = atgCatalogState(saleBundle?.sale);
@@ -204,7 +213,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
           {...(viewItemPriceMinor != null ? { priceMinor: viewItemPriceMinor } : {})}
         />
         <RecentlyViewedTracker lotId={auction.id} href={lotPath(auction)} title={auction.title} />
-        {session && actingCtx.acting ? (
+        {session && actingCtx.acting && !actingCtx.needsRestore ? (
           <ActingEntityCookieReconciler
             serverActingId={actingCtx.acting.id}
             verbose={sp.acting_debug === "1" || sp.acting_debug === "true"}

@@ -34,8 +34,8 @@ export class CardCheckoutRail implements ICheckoutRail {
       };
     }
     const webOrigin = this.env.WEB_ORIGIN.replace(/\/$/, "");
-    const successUrl = `${webOrigin}/dashboard/checkout/${ctx.lot.id}?payment=success`;
-    const cancelUrl = `${webOrigin}/dashboard/checkout/${ctx.lot.id}?payment=cancelled`;
+    const successUrl = `${webOrigin}/purchases/checkout/${ctx.lot.id}?payment=success`;
+    const cancelUrl = `${webOrigin}/purchases/checkout/${ctx.lot.id}?payment=cancelled`;
 
     try {
       const imageUrl = await resolveCheckoutLotHeroImage(ctx.lot, this.mediaUrlResolver);

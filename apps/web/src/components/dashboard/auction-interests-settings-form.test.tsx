@@ -2,7 +2,7 @@ import { AuctionInterestsSettingsForm } from "@/components/dashboard/auction-int
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-vi.mock("@/app/dashboard/settings/interests/actions", () => ({
+vi.mock("@/app/(client)/settings/interests/actions", () => ({
   saveAuctionInterestPreferences: vi.fn(),
 }));
 vi.mock("next/navigation", () => ({

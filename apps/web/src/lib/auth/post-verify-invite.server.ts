@@ -7,6 +7,7 @@ import {
   clearPendingEntityInviteCookie,
   getPendingEntityInviteCookie,
 } from "@/lib/legal-entity/pending-invite-cookie.server";
+import { CLIENT_ROUTES, withAccount } from "@/lib/navigation/client-routes";
 
 /** After email verification, auto-accept a pending org invite (URL `?invite=` or signup cookie). */
 export async function tryConsumePendingInviteAfterVerify(
@@ -21,6 +22,6 @@ export async function tryConsumePendingInviteAfterVerify(
       return null;
     }
     await clearPendingEntityInviteCookie();
-    return { redirectTo: `/dashboard/seller/organisations/${res.data.legalEntityId}?welcome=1` };
+    return { redirectTo: withAccount(CLIENT_ROUTES.home, res.data.legalEntityId) };
   });
 }

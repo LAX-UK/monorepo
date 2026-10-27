@@ -37,7 +37,7 @@ export async function processSourceOfFundsDocuments(options: {
     sourceOfFundsDocumentsTaskRepo,
   } = ctx;
   const base = webOrigin?.replace(/\/$/, "") ?? "";
-  const buyerSofUrl = `${base}/dashboard/compliance/source-of-funds`;
+  const buyerSofUrl = `${base}/compliance/source-of-funds`;
   const adminReviewUrl = `${base}/admin/compliance/source-of-funds`;
 
   const cursor = await projectorStateRepo.getCursor(SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR);

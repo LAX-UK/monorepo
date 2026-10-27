@@ -65,7 +65,7 @@ export default async function StaffAccessWelcomePage({
         </ul>
         {links.length === 0 ? (
           <Button asChild variant="cta" className="mt-2 min-h-11 w-full">
-            <Link href="/dashboard">Continue</Link>
+            <Link href="/home">Continue</Link>
           </Button>
         ) : null}
       </AuthLayout>

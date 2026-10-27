@@ -187,7 +187,7 @@ const SLICE_DEFAULTS: Record<DashboardSlice, SliceDefaults> = {
   checkout: {
     title: "Checkout issue",
     message: () => "Something went wrong preparing checkout. Try again.",
-    retryHref: "/dashboard/checkout",
+    retryHref: "/purchases/checkout",
   },
   kyc: {
     title: "Verification unavailable",
@@ -202,7 +202,7 @@ const SLICE_DEFAULTS: Record<DashboardSlice, SliceDefaults> = {
   settings: {
     title: "Settings unavailable",
     message: () => "Something went wrong. Try again.",
-    retryHref: "/dashboard/settings",
+    retryHref: "/settings",
   },
 };
 
@@ -314,7 +314,7 @@ export function describeSettingsActionError(raw: string): DashboardSliceFailure 
     ...buildDashboardSliceFailure("settings", 400, null),
     title: "Could not save",
     message: trimmed,
-    actions: [{ kind: "retry", label: DASHBOARD_CTA.tryAgain, href: "/dashboard/settings" }],
+    actions: [{ kind: "retry", label: DASHBOARD_CTA.tryAgain, href: "/settings" }],
   };
 }
 

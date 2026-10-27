@@ -7,7 +7,7 @@ vi.mock("server-only", () => ({}));
 
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams("q=nonexistent"),
-  usePathname: () => "/dashboard/bids",
+  usePathname: () => "/bids",
   useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
 }));
 
@@ -52,9 +52,6 @@ describe("BidsBoard", () => {
     );
 
     expect(screen.getByText(/No bids match this filter/i)).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Clear filters/i })).toHaveAttribute(
-      "href",
-      "/dashboard/bids",
-    );
+    expect(screen.getByRole("link", { name: /Clear filters/i })).toHaveAttribute("href", "/bids");
   });
 });

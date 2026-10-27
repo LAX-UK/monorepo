@@ -23,6 +23,8 @@ export function stubIdentityRouteServices(
       getLegalEntityDetail: vi.fn(),
       markActingContextTooltipSeen: vi.fn(),
     },
+    rememberedAccount: { remember: vi.fn(), restore: vi.fn() },
+    recordAccount: { accountFor: vi.fn() },
     legalEntityMemberHttp: {
       listMembers: vi.fn(),
       inviteMember: vi.fn(),

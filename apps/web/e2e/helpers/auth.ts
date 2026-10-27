@@ -436,7 +436,7 @@ async function readLoginBannerErrors(page: Page): Promise<string> {
 }
 
 async function resumeIfAlreadySignedIn(page: Page, destination: RegExp): Promise<boolean> {
-  const continueLink = page.getByRole("link", { name: /^continue(?: to dashboard)?$/i }).first();
+  const continueLink = page.getByRole("link", { name: /^continue(?: to bid)?$/i }).first();
   const signedIn = page.locator("output").filter({ hasText: /signed in/i });
   if ((await signedIn.count()) === 0 && !(await continueLink.isVisible().catch(() => false))) {
     return false;
@@ -461,7 +461,8 @@ async function login(
   credentials: Credentials,
   options: LoginOptions = {},
 ): Promise<void> {
-  const destination = options.destination ?? /\/(admin|dashboard)/;
+  const destination =
+    options.destination ?? /\/(admin|home|bids|purchases|watching|selling|organisation)/;
   const preservedNext = preservedNextFromUrl(page.url());
   const loginUrl = preservedNext
     ? `/login?email=${encodeURIComponent(credentials.email)}&next=${encodeURIComponent(preservedNext)}`
@@ -491,7 +492,7 @@ async function login(
     );
   }
 
-  const continueAuthed = page.getByRole("link", { name: /^continue(?: to dashboard)?$/i });
+  const continueAuthed = page.getByRole("link", { name: /^continue(?: to bid)?$/i });
   const alreadySignedIn = page.getByText(/already signed in/i);
   const continueToCredentials = page.getByRole("button", { name: /^continue$/i });
   const password = page
@@ -702,12 +703,16 @@ export async function operationsLogin(page: Page): Promise<void> {
 }
 
 export async function buyerLogin(page: Page): Promise<void> {
-  await login(page, buyerCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
+  await login(page, buyerCredentials, {
+    destination: /\/(admin|home|bids|purchases|watching|selling|organisation|onboarding)/,
+  });
   await assertNotStaffShell(page, "Buyer");
 }
 
 export async function clientLogin(page: Page): Promise<void> {
-  await login(page, clientCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
+  await login(page, clientCredentials, {
+    destination: /\/(admin|home|bids|purchases|watching|selling|organisation|onboarding)/,
+  });
   await assertNotStaffShell(page, "Client");
 }
 
@@ -718,7 +723,7 @@ export async function clientSession(page: Page): Promise<void> {
       cookies: Parameters<BrowserContext["addCookies"]>[0];
     };
     await page.context().addCookies(state.cookies);
-    await page.goto("/dashboard");
+    await page.goto("/home");
     if (!isLoginUrl(page.url())) {
       await assertNotStaffShell(page, "Client");
       return;
@@ -728,12 +733,16 @@ export async function clientSession(page: Page): Promise<void> {
 }
 
 export async function unapprovedLogin(page: Page): Promise<void> {
-  await login(page, unapprovedCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
+  await login(page, unapprovedCredentials, {
+    destination: /\/(admin|home|bids|purchases|watching|selling|organisation|onboarding)/,
+  });
   await assertNotStaffShell(page, "Unapproved buyer");
 }
 
 export async function incompleteLogin(page: Page): Promise<void> {
-  await login(page, incompleteCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
+  await login(page, incompleteCredentials, {
+    destination: /\/(admin|home|bids|purchases|watching|selling|organisation|onboarding)/,
+  });
   await assertNotStaffShell(page, "Incomplete buyer");
 }
 
@@ -745,7 +754,9 @@ export async function onboardingIncompleteLogin(page: Page): Promise<void> {
 }
 
 export async function zeroLotLogin(page: Page): Promise<void> {
-  await login(page, zeroLotCredentials, { destination: /\/(admin|dashboard|onboarding)/ });
+  await login(page, zeroLotCredentials, {
+    destination: /\/(admin|home|bids|purchases|watching|selling|organisation|onboarding)/,
+  });
   await assertNotStaffShell(page, "Zero-lot buyer");
 }
 

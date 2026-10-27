@@ -20,7 +20,7 @@ describe("OrganisationCard", () => {
     expect(screen.getByText("Test Gallery")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /manage/i })).toHaveAttribute(
       "href",
-      "/dashboard/seller/organisations/org-1",
+      "/organisation?account=org-1",
     );
     expect(screen.getByRole("link", { name: /continue setup/i })).toBeInTheDocument();
   });

@@ -38,7 +38,7 @@ describe("portfolioSettlementAttentionAction", () => {
 
   it("keeps checkout link for ordinary pending payments", () => {
     const action = portfolioSettlementAttentionAction(row());
-    expect(action.href).toContain("/dashboard/checkout/lot-1");
+    expect(action.href).toContain("/purchases/checkout/lot-1");
     expect(action.label).toBe("Complete checkout");
   });
 });

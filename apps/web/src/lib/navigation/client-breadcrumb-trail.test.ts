@@ -1,115 +1,72 @@
 import { buildClientBreadcrumbTrail } from "@/lib/navigation/client-breadcrumb-trail";
 import { describe, expect, it } from "vitest";
 
+function labels(pathname: string): string[] {
+  return buildClientBreadcrumbTrail(pathname).map((i) => i.label);
+}
+
 describe("buildClientBreadcrumbTrail", () => {
-  it("labels purchases from nav", () => {
-    expect(buildClientBreadcrumbTrail("/dashboard/purchases")).toEqual([{ label: "Purchases" }]);
+  it("shows one crumb on top-level pages", () => {
+    expect(buildClientBreadcrumbTrail("/purchases")).toEqual([{ label: "Purchases" }]);
+    expect(buildClientBreadcrumbTrail("/settings")).toEqual([{ label: "Bid settings" }]);
   });
 
-  it("labels organisation detail without raw uuid", () => {
-    const trail = buildClientBreadcrumbTrail("/dashboard/seller/organisations/org-uuid-123");
-    expect(trail.map((i) => i.label)).toEqual(["Selling", "Organisation"]);
-    expect(trail[0]?.href).toBe("/dashboard/seller");
+  it("labels the Organisation page and its tabs, with no id in the address", () => {
+    expect(labels("/organisation")).toEqual(["Organisation"]);
+    expect(buildClientBreadcrumbTrail("/organisation/members")).toEqual([
+      { label: "Organisation", href: "/organisation" },
+      { label: "Members" },
+    ]);
+    expect(labels("/organisation/payouts")).toEqual(["Organisation", "Payouts"]);
+    expect(labels("/organisation/security")).toEqual(["Organisation", "Security"]);
   });
 
-  it("labels organisation tab routes without Detail fallback", () => {
-    expect(
-      buildClientBreadcrumbTrail("/dashboard/seller/organisations/org-uuid-123/members").map(
-        (i) => i.label,
-      ),
-    ).toEqual(["Selling", "Organisation", "Members"]);
-    expect(
-      buildClientBreadcrumbTrail("/dashboard/seller/organisations/org-uuid-123/connect").map(
-        (i) => i.label,
-      ),
-    ).toEqual(["Selling", "Organisation", "Payout setup"]);
-    expect(
-      buildClientBreadcrumbTrail("/dashboard/seller/organisations/org-uuid-123/security").map(
-        (i) => i.label,
-      ),
-    ).toEqual(["Selling", "Organisation", "Two-step policy"]);
-  });
-
-  it("labels invitation review and accept without Detail fallback", () => {
-    expect(
-      buildClientBreadcrumbTrail("/dashboard/invitations/review/inv-123").map((i) => i.label),
-    ).toEqual(["Invitations", "Review invitation"]);
-    expect(
-      buildClientBreadcrumbTrail("/dashboard/invitations/accept/token-abc").map((i) => i.label),
-    ).toEqual(["Invitations", "Accept invitation"]);
-  });
-
-  it("labels legal entity payout statement", () => {
-    expect(
-      buildClientBreadcrumbTrail(
-        "/dashboard/legal-entities/le-1/payouts/po-1/statement",
-        "selling",
-      ).map((i) => i.label),
-    ).toEqual(["Selling", "Sold & payouts", "Statement"]);
-    expect(
-      buildClientBreadcrumbTrail(
-        "/dashboard/legal-entities/le-1/payouts/po-1/statement",
-        "buying",
-      ).map((i) => i.label),
-    ).toEqual(["Sold & payouts", "Statement"]);
-  });
-
-  it("labels checkout lot without raw id", () => {
-    const trail = buildClientBreadcrumbTrail("/dashboard/checkout/lot-abc");
-    expect(trail.map((i) => i.label)).toEqual(["Purchases", "Checkout"]);
-  });
-
-  it("labels new submission route", () => {
-    expect(buildClientBreadcrumbTrail("/dashboard/submissions/new")).toEqual([
-      { label: "New submission" },
+  it("labels invitation review and accept", () => {
+    expect(labels("/organisations/invitations/review/inv-123")).toEqual([
+      "Invitations",
+      "Review invitation",
+    ]);
+    expect(labels("/organisations/invitations/accept/token-abc")).toEqual([
+      "Invitations",
+      "Accept invitation",
     ]);
   });
 
-  it("shows one crumb on the settings index instead of repeating itself", () => {
-    expect(buildClientBreadcrumbTrail("/dashboard/settings")).toEqual([{ label: "Bid settings" }]);
+  it("labels a payout statement under Sold & payouts", () => {
+    expect(labels("/legal-entities/le-1/payouts/po-1/statement")).toEqual([
+      "Sold & payouts",
+      "Statement",
+    ]);
   });
 
-  it("labels the remaining Bid settings pages", () => {
-    expect(buildClientBreadcrumbTrail("/dashboard/settings/bidding")).toEqual([
-      { label: "Bid settings", href: "/dashboard/settings" },
+  it("labels checkout and a consignment without raw ids", () => {
+    expect(labels("/purchases/checkout/lot-abc")).toEqual(["Purchases", "Checkout"]);
+    expect(labels("/selling/consignments/s1")).toEqual(["Consignments", "Submission"]);
+    expect(labels("/selling/new")).toEqual(["Consignments", "New submission"]);
+  });
+
+  it("labels the Bid settings pages", () => {
+    expect(buildClientBreadcrumbTrail("/settings/bidding")).toEqual([
+      { label: "Bid settings", href: "/settings" },
       { label: "Bidding limits" },
     ]);
-    expect(buildClientBreadcrumbTrail("/dashboard/settings/notifications")).toEqual([
-      { label: "Bid settings", href: "/dashboard/settings" },
-      { label: "Auction alerts and notifications" },
-    ]);
   });
 
-  it("never falls through to Detail on covered nested routes", () => {
-    const paths = [
-      "/dashboard/seller/organisations/org-1/documents",
-      "/dashboard/seller/consignments",
-      "/dashboard/seller/works",
-      "/dashboard/invitations/review/x",
-      "/dashboard/legal-entities/le/payouts/p/st/statement",
-      "/dashboard/settings/appearance",
-    ];
-    for (const path of paths) {
-      const labels = buildClientBreadcrumbTrail(path).map((i) => i.label);
-      expect(labels).not.toContain("Detail");
+  it("labels payout setup under Sold & payouts", () => {
+    expect(labels("/selling/payout-setup")).toEqual(["Sold & payouts", "Payout setup"]);
+  });
+
+  it("never falls through to Detail on a client-area page", () => {
+    for (const path of [
+      "/home",
+      "/bids/telephone/t1",
+      "/selling/works",
+      "/selling/artist",
+      "/organisation/documents",
+      "/settings/appearance",
+      "/no-access",
+    ]) {
+      expect(labels(path)).not.toContain("Detail");
     }
-  });
-
-  it("labels the merged consignments and works pages", () => {
-    expect(
-      buildClientBreadcrumbTrail("/dashboard/seller/consignments", "selling").map((i) => i.label),
-    ).toEqual(["Selling", "Consignments"]);
-    expect(
-      buildClientBreadcrumbTrail("/dashboard/seller/works", "selling").map((i) => i.label),
-    ).toEqual(["Selling", "Works"]);
-  });
-
-  it("labels seller connect and payouts", () => {
-    expect(
-      buildClientBreadcrumbTrail("/dashboard/seller/connect", "selling").map((i) => i.label),
-    ).toEqual(["Selling", "Payout setup"]);
-    expect(
-      buildClientBreadcrumbTrail("/dashboard/seller/payouts", "selling").map((i) => i.label),
-    ).toEqual(["Selling", "Sold & payouts"]);
   });
 });

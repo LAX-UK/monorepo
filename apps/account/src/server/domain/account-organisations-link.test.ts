@@ -4,7 +4,7 @@ import { buildOrganisationsLink } from "./account-links";
 describe("buildOrganisationsLink", () => {
   it("opens Bid's organisations page", () => {
     expect(buildOrganisationsLink({ bidPublicUrl: "https://lax.bid" })).toBe(
-      "https://lax.bid/dashboard/organisations",
+      "https://lax.bid/organisations",
     );
   });
 

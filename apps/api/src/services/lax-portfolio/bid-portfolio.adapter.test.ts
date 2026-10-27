@@ -76,7 +76,7 @@ describe("buildBidPortfolioItems: wins", () => {
     expect(item?.paid.lines).toEqual([{ kind: "hammer", amount: 100_000, currency: "GBP" }]);
     expect(item?.actions[0]).toEqual({
       kind: "pay",
-      href: `https://lax.bid/dashboard/checkout/${WON_LOT_ID}`,
+      href: `https://lax.bid/purchases/checkout/${WON_LOT_ID}`,
     });
     expect(item?.documents).toEqual([
       expect.objectContaining({ kind: "invoice", available: false }),
@@ -108,7 +108,7 @@ describe("buildBidPortfolioItems: wins", () => {
   it("links the invoice and offers to consign once the work is owned", () => {
     const [item] = itemsFor({ wonLots: [wonLot()], payments: [payment()] });
     expect(item?.documents).toEqual([
-      { kind: "invoice", available: true, href: "https://lax.bid/dashboard/payments" },
+      { kind: "invoice", available: true, href: "https://lax.bid/purchases#payment-history" },
     ]);
     expect(item?.actions.map((a) => a.kind)).toEqual(["consign", "view"]);
   });
@@ -146,7 +146,7 @@ describe("buildBidPortfolioItems: consigned and selling", () => {
       actions: [
         {
           kind: "view",
-          href: "https://lax.bid/dashboard/submissions/33333333-3333-4333-8333-333333333333",
+          href: "https://lax.bid/selling/consignments/33333333-3333-4333-8333-333333333333",
         },
       ],
     });
@@ -186,7 +186,7 @@ describe("buildBidPortfolioItems: consigned and selling", () => {
       {
         kind: "payout_statement",
         available: true,
-        href: "https://lax.bid/dashboard/seller/payouts",
+        href: "https://lax.bid/selling/payouts",
       },
     ]);
   });
@@ -201,7 +201,7 @@ describe("buildBidMoneyEntries", () => {
         status: "pending",
         amount: 125_000,
         currency: "GBP",
-        href: "https://lax.bid/dashboard/payments",
+        href: "https://lax.bid/purchases#payment-history",
         business: { key: "lax_bid", legalName: "London Auction Xchange LTD" },
       }),
     ]);
@@ -235,7 +235,7 @@ describe("buildBidMoneyEntries", () => {
       ["fee", "completed", 2_500],
     ]);
     expect(entries[0]?.occurredAt).toBe("2026-04-03T12:00:00.000Z");
-    expect(entries[0]?.href).toBe("https://lax.bid/dashboard/seller/payouts");
+    expect(entries[0]?.href).toBe("https://lax.bid/selling/payouts");
   });
 
   it("reports a scheduled payout as pending, dated by its period end", () => {

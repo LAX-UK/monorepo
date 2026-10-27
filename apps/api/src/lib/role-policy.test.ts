@@ -73,10 +73,10 @@ describe("role policy (staff | client)", () => {
     expect(staffRoleDefaultDestination("staff", "client_advisor")).toBe("/admin/clients");
     expect(staffRoleDefaultDestination("staff", "operations")).toBe("/admin/sales");
     expect(staffRoleDefaultDestination("staff", null)).toBe("/admin");
-    expect(staffRoleDefaultDestination("client", null)).toBe("/dashboard");
+    expect(staffRoleDefaultDestination("client", null)).toBe("/home");
   });
 
-  it("staffRoleDefaultDestination never returns /dashboard for staff", () => {
+  it("staffRoleDefaultDestination never returns /home for staff", () => {
     const staffRoles: (UserStaffRole | null)[] = [
       "super_admin",
       "finance_ops",
@@ -93,7 +93,7 @@ describe("role policy (staff | client)", () => {
       null,
     ];
     for (const sr of staffRoles) {
-      expect(staffRoleDefaultDestination("staff", sr)).not.toBe("/dashboard");
+      expect(staffRoleDefaultDestination("staff", sr)).not.toBe("/home");
     }
   });
 

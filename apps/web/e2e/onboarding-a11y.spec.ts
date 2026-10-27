@@ -22,7 +22,7 @@ test.describe("buyer onboarding a11y @a11y", () => {
   test("identity why page has no serious axe violations and is keyboard reachable", async ({
     page,
   }) => {
-    await page.goto("/onboarding/identity?next=%2Fdashboard&source=post_verify");
+    await page.goto("/onboarding/identity?next=%2Fhome&source=post_verify");
     await expect(page.getByRole("heading", { name: /verify your identity/i })).toBeVisible();
     await expectNoSeriousAxeViolationsInMain(page);
 
@@ -30,7 +30,7 @@ test.describe("buyer onboarding a11y @a11y", () => {
     await skip.focus();
     await expect(skip).toBeFocused();
     await page.keyboard.press("Enter");
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page).toHaveURL(/\/(home|bids)$/);
   });
 
   test("identity why page keeps semantic tokens in dark mode", async ({ page }) => {
@@ -41,7 +41,7 @@ test.describe("buyer onboarding a11y @a11y", () => {
         url: process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000",
       },
     ]);
-    await page.goto("/onboarding/identity?next=%2Fdashboard&source=post_verify");
+    await page.goto("/onboarding/identity?next=%2Fhome&source=post_verify");
     await expect(page.locator("html")).toHaveClass(/dark/);
     await expect(page.getByRole("heading", { name: /verify your identity/i })).toBeVisible();
     await expectNoSeriousAxeViolationsInMain(page);
@@ -49,7 +49,7 @@ test.describe("buyer onboarding a11y @a11y", () => {
 
   test("interests page is labelled and axe-clean when full onboarding is on", async ({ page }) => {
     test.skip(!fullBuyerOnboarding, "Requires FULL_BUYER_ONBOARDING_ENABLED=true.");
-    await page.goto("/onboarding/interests?next=%2Fdashboard&source=post_verify");
+    await page.goto("/onboarding/interests?next=%2Fhome&source=post_verify");
     await expect(
       page.getByRole("heading", { name: /what are your areas of interest/i }),
     ).toBeVisible();
@@ -64,7 +64,7 @@ test.describe("buyer onboarding a11y @a11y", () => {
 
   test("recommendations page is axe-clean when full onboarding is on", async ({ page }) => {
     test.skip(!fullBuyerOnboarding, "Requires FULL_BUYER_ONBOARDING_ENABLED=true.");
-    await page.goto("/onboarding/recommendations?next=%2Fdashboard&source=post_verify");
+    await page.goto("/onboarding/recommendations?next=%2Fhome&source=post_verify");
     await expect(page.getByRole("heading", { name: /recommended lots/i })).toBeVisible();
     await expectNoSeriousAxeViolationsInMain(page);
   });

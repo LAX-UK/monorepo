@@ -1,9 +1,11 @@
 "use client";
 
+import { AccountRolePill } from "@/components/layout/account-role-pill";
 import { HeaderBidUrgencyChip } from "@/components/layout/header-bid-urgency-chip";
 import { HeaderGuestMenu } from "@/components/layout/header-guest-menu";
 import { HeaderUserMenu } from "@/components/layout/header-user-menu";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { usesBidAsClient } from "@/lib/auth/client-audience";
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { useAuthHeaderLinks } from "@/lib/auth/use-auth-header-links";
 import type { SessionUser } from "@/lib/data/contracts";
@@ -80,7 +82,7 @@ function MobileGuestAuthSection({ onNavigate }: { onNavigate: () => void }) {
       <a
         href={signInHref}
         className={cn(
-          "min-h-11 rounded-sm py-2 font-label text-sm font-medium uppercase tracking-wide text-brand-900 underline-offset-4 transition-colors hover:text-brand-800 hover:underline dark:text-on-surface dark:hover:text-on-surface-variant",
+          "min-h-11 rounded-sm py-2 font-label text-sm font-medium text-brand-900 underline-offset-4 transition-colors hover:text-brand-800 hover:underline dark:text-on-surface dark:hover:text-on-surface-variant",
           FOCUS_RING,
         )}
         onClick={onNavigate}
@@ -114,10 +116,10 @@ function MobileSignedInSection({
   user,
   onNavigate,
 }: { user: SessionUser; onNavigate: () => void }) {
-  const groups = useAccountMenuGroups(user, "buying", true);
+  const groups = useAccountMenuGroups(user, true);
   return (
     <div className="flex flex-col gap-3 border-t border-nav-border pt-4">
-      <p className="font-label text-xs font-semibold uppercase tracking-wide text-brand-400 dark:text-on-surface-variant">
+      <p className="font-label text-xs font-medium text-brand-400 dark:text-on-surface-variant">
         Account
       </p>
       <div className="rounded-md border border-nav-border bg-page-bg px-3 py-2 dark:border-border-hairline dark:bg-surface-container-low">
@@ -127,6 +129,7 @@ function MobileSignedInSection({
         <p className="mt-0.5 truncate font-body text-xs text-brand-400 dark:text-on-surface-variant">
           {user.email}
         </p>
+        {usesBidAsClient(user) ? null : <AccountRolePill user={user} className="mt-2" />}
       </div>
       <div className="flex flex-col">
         <AccountMenuItems groups={groups} variant="drawer" menu={false} onNavigate={onNavigate} />

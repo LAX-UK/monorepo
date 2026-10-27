@@ -2,6 +2,7 @@
 
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { getWriteContainer } from "@/lib/data/write-container.server";
+import { organisationHref } from "@/lib/navigation/client-routes";
 import { LEGAL_ENTITY_BROWSE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import { getSiteUrl } from "@/lib/site-url";
@@ -41,8 +42,8 @@ export async function adminCreateStripeConnectOnboardingLinkAction(
     const site = getSiteUrl();
     const returnPath =
       kind === "organisation"
-        ? `/dashboard/seller/organisations/${legalEntityId}/connect`
-        : "/dashboard/seller/connect";
+        ? organisationHref("payouts", legalEntityId)
+        : "/selling/payout-setup";
     const returnUrl = `${site}${returnPath}`;
     const res = await getWriteContainer().adminStripeConnect.createOnboardingLink(
       legalEntityId,

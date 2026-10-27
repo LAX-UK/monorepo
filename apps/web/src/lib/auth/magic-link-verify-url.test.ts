@@ -18,9 +18,9 @@ describe("buildMagicLinkVerifyUrl", () => {
   });
 
   it("threads safe next into set-password callback", () => {
-    const url = new URL(buildMagicLinkVerifyUrl("tok123", "https://lax.bid", "/dashboard"));
+    const url = new URL(buildMagicLinkVerifyUrl("tok123", "https://lax.bid", "/home"));
     expect(url.searchParams.get("callbackURL")).toBe(
-      "https://lax.bid/api/auth/login?next=%2Fauth%2Factivate%2Fset-password%3Fnext%3D%252Fdashboard%26auth_method%3Dmagic_link",
+      "https://lax.bid/api/auth/login?next=%2Fauth%2Factivate%2Fset-password%3Fnext%3D%252Fhome%26auth_method%3Dmagic_link",
     );
   });
 

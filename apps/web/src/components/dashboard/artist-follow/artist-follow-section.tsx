@@ -88,7 +88,7 @@ export async function ArtistFollowSection({
         <FilterEmptyState
           segment="dashboard"
           entity="artists"
-          clearFiltersHref="/dashboard/watchlist?section=artists"
+          clearFiltersHref="/watching?section=artists"
         />
       ) : null}
       {!loadFailure && filteredCards.length > 0 ? (

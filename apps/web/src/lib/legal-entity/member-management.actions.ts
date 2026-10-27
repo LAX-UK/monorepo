@@ -61,9 +61,9 @@ export async function inviteMemberAction(
         error: normalizeApiErrorMessage((body as { error?: unknown }).error, "invite_failed"),
       };
     }
-    revalidatePath("/dashboard/organisations");
+    revalidatePath("/organisations");
     revalidatePath("/invitations");
-    revalidatePath("/dashboard/invitations");
+    revalidatePath("/organisations/invitations");
     return {
       ok: true,
       data: (body as { data: { memberId: string | null; invitationToken: string | null } }).data,
@@ -86,9 +86,9 @@ export async function updateMemberRoleAction(
       const body = (await res.json()) as { error?: unknown };
       return { ok: false, error: normalizeApiErrorMessage(body.error, "update_failed") };
     }
-    revalidatePath("/dashboard/organisations");
+    revalidatePath("/organisations");
     revalidatePath("/invitations");
-    revalidatePath("/dashboard/invitations");
+    revalidatePath("/organisations/invitations");
     return { ok: true };
   });
 }
@@ -114,9 +114,9 @@ export async function removeMemberAction(
       const body = (await res.json()) as { error?: unknown };
       return { ok: false, error: normalizeApiErrorMessage(body.error, "remove_failed") };
     }
-    revalidatePath("/dashboard/organisations");
+    revalidatePath("/organisations");
     revalidatePath("/invitations");
-    revalidatePath("/dashboard/invitations");
+    revalidatePath("/organisations/invitations");
     return { ok: true };
   });
 }
@@ -136,9 +136,9 @@ export async function transferPrimaryAdminAction(
       const body = (await res.json()) as { error?: string };
       return { ok: false, error: normalizeApiErrorMessage(body.error, "transfer_failed") };
     }
-    revalidatePath("/dashboard/organisations");
+    revalidatePath("/organisations");
     revalidatePath("/invitations");
-    revalidatePath("/dashboard/invitations");
+    revalidatePath("/organisations/invitations");
     return { ok: true };
   });
 }
@@ -161,9 +161,9 @@ export async function acceptInvitationAction(
     }
     const legalEntityId = (body as { data: { legalEntityId: string } }).data.legalEntityId;
     await switchActingLegalEntity(legalEntityId);
-    revalidatePath("/dashboard/organisations");
+    revalidatePath("/organisations");
     revalidatePath("/invitations");
-    revalidatePath("/dashboard/invitations");
+    revalidatePath("/organisations/invitations");
     revalidatePath("/", "layout");
     return {
       ok: true,

@@ -30,11 +30,11 @@ describe("PortfolioEmptyState", () => {
       <PortfolioEmptyState
         kind="only_awaiting_payment"
         products={products}
-        payHref="https://lax.bid/dashboard/checkout/1"
+        payHref="https://lax.bid/purchases/checkout/1"
       />,
     );
     expect(html).toContain("Pay now");
-    expect(html).toContain('href="https://lax.bid/dashboard/checkout/1"');
+    expect(html).toContain('href="https://lax.bid/purchases/checkout/1"');
   });
 
   it("tells a collector with no documents which are coming", () => {
@@ -65,12 +65,12 @@ describe("PortfolioAttention", () => {
     const rows = buildAttentionRows([
       item({
         status: "awaiting_payment",
-        actions: [{ kind: "pay", href: "https://lax.bid/dashboard/checkout/1" }],
+        actions: [{ kind: "pay", href: "https://lax.bid/purchases/checkout/1" }],
       }),
     ]);
     const html = renderToStaticMarkup(<PortfolioAttention rows={rows} />);
     expect(html).toContain("Needs your attention");
-    expect(html).toContain('href="https://lax.bid/dashboard/checkout/1"');
+    expect(html).toContain('href="https://lax.bid/purchases/checkout/1"');
     expect(textOf(html)).toContain("Opens LAX Bid");
     expect(renderToStaticMarkup(<PortfolioAttention rows={[]} />)).toBe("");
   });
@@ -90,11 +90,9 @@ describe("overview cards", () => {
   });
 
   it("links the organisations card into Bid", () => {
-    const html = renderToStaticMarkup(
-      <OrganisationsCard href="https://lax.bid/dashboard/organisations" />,
-    );
+    const html = renderToStaticMarkup(<OrganisationsCard href="https://lax.bid/organisations" />);
     expect(html).toContain("Your organisations");
-    expect(html).toContain('href="https://lax.bid/dashboard/organisations"');
+    expect(html).toContain('href="https://lax.bid/organisations"');
     expect(html).toContain("Open in LAX Bid");
   });
 });

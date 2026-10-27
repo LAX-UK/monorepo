@@ -13,10 +13,10 @@ const work = item({
     ],
   },
   documents: [
-    { kind: "invoice", available: true, href: "https://lax.bid/dashboard/payments" },
+    { kind: "invoice", available: true, href: "https://lax.bid/purchases#payment-history" },
     { kind: "certificate", available: false, expectedNote: "Sent after payment clears." },
   ],
-  actions: [{ kind: "consign", href: "https://lax.bid/dashboard/submissions/new" }],
+  actions: [{ kind: "consign", href: "https://lax.bid/selling/new" }],
 });
 
 const render = () =>
@@ -43,13 +43,13 @@ describe("PortfolioWorkDetail", () => {
 
   it("shows present documents as links and expected ones with their note", () => {
     const html = render();
-    expect(html).toContain('href="https://lax.bid/dashboard/payments"');
+    expect(html).toContain('href="https://lax.bid/purchases#payment-history"');
     expect(html).toContain("Expected. Sent after payment clears.");
   });
 
   it("deep-links actions into the product", () => {
     const html = render();
-    expect(html).toContain('href="https://lax.bid/dashboard/submissions/new"');
+    expect(html).toContain('href="https://lax.bid/selling/new"');
     expect(html).toContain("Consign this work");
   });
 

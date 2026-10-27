@@ -55,5 +55,5 @@ export function requireSellerCapability(
   ctx: SellerWorkspaceContext,
   capability: EntityCapability,
 ): void {
-  if (!sellerCan(ctx, capability)) redirect("/dashboard/seller");
+  if (!sellerCan(ctx, capability)) redirect("/selling");
 }

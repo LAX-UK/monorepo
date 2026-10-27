@@ -45,7 +45,7 @@ export function HostedLoginErrorPanel({
           description: "Something went wrong while signing you in. Please try again.",
         });
   const safeNext = next && isSafeNextPath(next) ? next : null;
-  const continueHref = safeNext ?? "/dashboard";
+  const continueHref = safeNext ?? "/home";
   const retryParams = new URLSearchParams();
   if (safeNext) retryParams.set("next", safeNext);
   const reauth = retryIntent === "reauth" || errorCode === "reauth_subject_mismatch";

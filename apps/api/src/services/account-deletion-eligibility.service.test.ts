@@ -36,7 +36,7 @@ describe("AccountDeletionEligibilityService", () => {
       {
         code: BID_DELETION_BLOCKER_CODES.pendingPayments,
         message: expect.stringContaining("payment"),
-        href: "https://bid.example/dashboard/payments",
+        href: "https://bid.example/purchases#payment-history",
       },
     ]);
   });
@@ -44,7 +44,7 @@ describe("AccountDeletionEligibilityService", () => {
   it("names active seller lots and links to the in-sale page", async () => {
     const [blocker] = await setup({ hasActiveSellerLot: true }).service.listBlockers("u1");
     expect(blocker?.code).toBe(BID_DELETION_BLOCKER_CODES.activeSellerLots);
-    expect(blocker?.href).toBe("https://bid.example/dashboard/seller/in-sale");
+    expect(blocker?.href).toBe("https://bid.example/selling/consignments?tab=in-sale");
   });
 
   it("looks for open payouts across the organisations the person belongs to", async () => {
@@ -52,7 +52,7 @@ describe("AccountDeletionEligibilityService", () => {
     const [blocker] = await service.listBlockers("u1");
     expect(readers.hasOpenPayoutForEntities).toHaveBeenCalledWith(["e1", "e2"]);
     expect(blocker?.code).toBe(BID_DELETION_BLOCKER_CODES.openPayouts);
-    expect(blocker?.href).toBe("https://bid.example/dashboard/seller/payouts");
+    expect(blocker?.href).toBe("https://bid.example/selling/payouts");
   });
 
   it("lists every blocker, not just the first", async () => {

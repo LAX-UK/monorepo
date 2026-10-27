@@ -84,4 +84,4 @@ export const EMAIL_PRODUCT_LOGOS: Readonly<Record<LaxBrandProduct, EmailProductL
 };
 
 /** Primary post-welcome / transactional CTA to the signed-in app. */
-export const EMAIL_DASHBOARD_URL = `${EMAIL_SITE_URL}/dashboard`;
+export const EMAIL_DASHBOARD_URL = `${EMAIL_SITE_URL}/home`;

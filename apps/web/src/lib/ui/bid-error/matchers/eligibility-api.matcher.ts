@@ -49,7 +49,7 @@ export const membershipRequiredBidErrorMatcher: BidErrorMatcher = {
       title: "Organisation membership required",
       message: "You must be a member of the buying organisation to place this bid.",
       severity: "error",
-      actionHref: "/dashboard/organisations",
+      actionHref: "/organisations",
       actionLabel: "View organisations",
     };
   },
@@ -98,8 +98,9 @@ export const entityNotAuthorisedBidErrorMatcher: BidErrorMatcher = {
       title: "Account not authorised",
       message: "Your buying profile is not approved to place bids yet.",
       severity: "error",
-      actionHref: "/dashboard",
-      actionLabel: "Go to dashboard",
+      // The accounts list shows each account's approval status.
+      actionHref: "/organisations",
+      actionLabel: "View your accounts",
     };
   },
 };

@@ -74,7 +74,7 @@ export function NotificationsInboxBoard({
             loading={board.loading}
             actions={
               <Button type="button" variant="tertiary" asChild>
-                <Link href="/dashboard/settings/notifications">Notification settings</Link>
+                <Link href="/settings/notifications">Notification settings</Link>
               </Button>
             }
           />
@@ -196,7 +196,7 @@ export function NotificationsInboxBoard({
             <p className="mt-10 font-body text-sm text-on-surface-variant">
               Tip: enable browser push in{" "}
               <Link
-                href="/dashboard/settings/notifications"
+                href="/settings/notifications"
                 className="text-link underline-offset-2 hover:underline"
               >
                 notification settings

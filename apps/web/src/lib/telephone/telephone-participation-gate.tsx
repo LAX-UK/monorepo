@@ -142,7 +142,7 @@ export function TelephoneParticipationGate({
           from your dashboard.
         </p>
         <Button size="sm" variant="outline" className="w-full" asChild>
-          <Link href={`/dashboard/telephone-bids/${existingBooking.id}`}>View booking</Link>
+          <Link href={`/bids/telephone/${existingBooking.id}`}>View booking</Link>
         </Button>
       </div>
     );

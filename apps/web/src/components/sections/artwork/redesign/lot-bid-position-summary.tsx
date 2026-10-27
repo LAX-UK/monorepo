@@ -242,7 +242,7 @@ export function LotBidPositionSummary({
           </span>
           <p className="mt-1">{position.hammerLabel}</p>
           <Link
-            href="/dashboard/purchases#payment-history"
+            href="/purchases#payment-history"
             className="mt-2 inline-flex font-body text-sm font-semibold text-link underline-offset-2 hover:underline"
           >
             View invoices

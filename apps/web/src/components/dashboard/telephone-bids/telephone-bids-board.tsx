@@ -17,7 +17,7 @@ export function TelephoneBidsBoard({ rows }: Props) {
       {rows.map((row) => (
         <li key={row.id}>
           <Link
-            href={`/dashboard/telephone-bids/${row.id}`}
+            href={`/bids/telephone/${row.id}`}
             className="flex flex-col gap-2 px-4 py-4 transition-colors hover:bg-surface-container-low sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="min-w-0 space-y-1">

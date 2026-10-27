@@ -7,8 +7,6 @@ export type MobileShellTitleModel = {
   backLabel?: string;
   /** Optional muted parent label above the title on nested routes. */
   eyebrow?: string;
-  /** When true, user is acting on behalf of an organisation. */
-  orgActing?: boolean;
 };
 
 /** Maps a breadcrumb trail to a mobile shell title model. */

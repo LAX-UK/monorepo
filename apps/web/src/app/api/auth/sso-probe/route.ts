@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: NextRequest) {
   const requestedNext = request.nextUrl.searchParams.get("next");
-  const nextPath = requestedNext && isSafeNextPath(requestedNext) ? requestedNext : "/dashboard";
+  const nextPath = requestedNext && isSafeNextPath(requestedNext) ? requestedNext : "/home";
   const blocked = redirectIfSilentProbeBlocked(request, nextPath);
   if (blocked) {
     return blocked;

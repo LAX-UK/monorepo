@@ -13,7 +13,7 @@ describe("safe-product-url", () => {
   });
 
   it("rejects paths, credentials, and non-https public hosts", () => {
-    expect(isAllowedLaxProductUrl("https://lax.bid/dashboard")).toBe(false);
+    expect(isAllowedLaxProductUrl("https://lax.bid/home")).toBe(false);
     expect(isAllowedLaxProductUrl("https://user:pass@lax.bid")).toBe(false);
     expect(isAllowedLaxProductUrl("http://lax.bid")).toBe(false);
   });

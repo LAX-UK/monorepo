@@ -17,6 +17,8 @@ type SectionTabsNavProps = {
   className?: string;
   variant?: "underline" | "pill";
   sticky?: boolean;
+  /** Tabs that are current only on their own address, not on the addresses below it. */
+  exactHrefs?: readonly string[];
 };
 
 /**
@@ -29,6 +31,7 @@ export function SectionTabsNav({
   className,
   variant = "underline",
   sticky = true,
+  exactHrefs = [],
 }: SectionTabsNavProps) {
   const pathname = usePathname();
   const tabs: SectionTabItem[] = items.map((item) => ({
@@ -36,7 +39,10 @@ export function SectionTabsNav({
     label: item.label,
     href: item.href,
     badge: item.badge,
-    active: item.isActive ?? (pathname === item.href || pathname.startsWith(`${item.href}/`)),
+    active:
+      item.isActive ??
+      (pathname === item.href ||
+        (!exactHrefs.includes(item.href) && pathname.startsWith(`${item.href}/`))),
   }));
 
   return (

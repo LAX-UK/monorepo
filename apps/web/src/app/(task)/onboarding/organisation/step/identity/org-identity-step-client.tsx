@@ -73,7 +73,7 @@ export function OrgIdentityStepClient({ entityId, kycSummary }: Props) {
         setError((sub.error ?? "Submit failed") + extra);
         return;
       }
-      router.push("/dashboard/organisations?org_submitted=1");
+      router.push("/organisations?org_submitted=1");
     });
   };
 

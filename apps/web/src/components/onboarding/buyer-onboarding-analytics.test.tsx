@@ -40,7 +40,7 @@ describe("buyer onboarding view trackers", () => {
 
   it("tracks the same event again after navigation to a different path", () => {
     const { rerender } = render(<BuyerInterestsViewTracker source="post_verify" />);
-    pathname = "/dashboard/settings/interests";
+    pathname = "/settings/interests";
     rerender(<BuyerInterestsViewTracker source="post_verify" />);
     expect(trackBuyerPersonalization).toHaveBeenCalledTimes(2);
   });

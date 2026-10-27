@@ -40,7 +40,7 @@ describe("KycVerificationLauncher", () => {
     const onStartSession = vi.fn();
     render(
       <KycVerificationLauncher
-        returnUrl="https://test.lax.bid/dashboard/verify-identity"
+        returnUrl="https://test.lax.bid/verify-identity"
         onStartSession={onStartSession}
         kycSummary={{ status: "unverified", requiresKyc: false } as never}
       />,
@@ -63,7 +63,7 @@ describe("KycVerificationLauncher", () => {
     });
     render(
       <KycVerificationLauncher
-        returnUrl="https://test.lax.bid/dashboard/verify-identity"
+        returnUrl="https://test.lax.bid/verify-identity"
         onStartSession={onStartSession}
         kycSummary={{ status: "unverified", requiresKyc: false } as never}
       />,

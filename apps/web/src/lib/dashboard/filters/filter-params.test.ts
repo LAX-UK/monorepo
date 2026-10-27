@@ -17,9 +17,9 @@ describe("filter-params", () => {
   });
 
   it("buildFilterHref returns path only when empty", () => {
-    expect(
-      buildFilterHref("/dashboard/watchlist", {}, { omitDefaults: { sort: "addedDesc" } }),
-    ).toBe("/dashboard/watchlist");
+    expect(buildFilterHref("/watching", {}, { omitDefaults: { sort: "addedDesc" } })).toBe(
+      "/watching",
+    );
   });
 
   it("parseCommaSeparatedIds splits and trims", () => {

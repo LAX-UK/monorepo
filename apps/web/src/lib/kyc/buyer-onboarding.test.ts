@@ -56,23 +56,23 @@ describe("buyer onboarding entry policy", () => {
   });
 
   it("builds full-flow hrefs with safe intent", () => {
-    expect(fullBuyerOnboardingHref("/dashboard/watchlist")).toBe(
-      "/onboarding/interests?next=%2Fdashboard%2Fwatchlist&source=post_verify",
+    expect(fullBuyerOnboardingHref("/watching")).toBe(
+      "/onboarding/interests?next=%2Fwatching&source=post_verify",
     );
     expect(fullBuyerOnboardingHref("//evil.example")).toBe(
-      "/onboarding/interests?next=%2Fdashboard&source=post_verify",
+      "/onboarding/interests?next=%2Fhome&source=post_verify",
     );
   });
 
   it("routes selected interests to recommendations and skip directly to KYC", () => {
-    expect(buyerInterestsCompletionHref("/dashboard/watchlist", true)).toBe(
-      "/onboarding/recommendations?next=%2Fdashboard%2Fwatchlist&source=post_verify",
+    expect(buyerInterestsCompletionHref("/watching", true)).toBe(
+      "/onboarding/recommendations?next=%2Fwatching&source=post_verify",
     );
-    expect(buyerInterestsCompletionHref("/dashboard/watchlist", false)).toBe(
-      "/onboarding/identity?next=%2Fdashboard%2Fwatchlist&source=post_verify",
+    expect(buyerInterestsCompletionHref("/watching", false)).toBe(
+      "/onboarding/identity?next=%2Fwatching&source=post_verify",
     );
     expect(buyerInterestsCompletionHref("//evil.example", true)).toBe(
-      "/onboarding/recommendations?next=%2Fdashboard&source=post_verify",
+      "/onboarding/recommendations?next=%2Fhome&source=post_verify",
     );
   });
 });

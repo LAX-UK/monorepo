@@ -13,55 +13,6 @@ import {
 import { cookies } from "next/headers";
 import { ACTING_LEGAL_ENTITY_COOKIE, X_LEGAL_ENTITY_ID_HEADER } from "./client-acting-context";
 
-const DEFAULT_ACTING_COOKIE_MAX_AGE_SEC = 365 * 24 * 60 * 60;
-
-/** Set the acting cookie to the user's personal entity. */
-async function setPersonalActingLegalEntityCookie(
-  memberships: LegalEntitySummary[],
-): Promise<void> {
-  if (memberships.length === 0) return;
-  const personal = memberships.find((m) => m.kind === "individual") ?? memberships[0];
-  if (!personal) return;
-
-  try {
-    const jar = await cookies();
-    jar.set(ACTING_LEGAL_ENTITY_COOKIE, encodeURIComponent(personal.id), {
-      path: "/",
-      sameSite: "lax",
-      maxAge: DEFAULT_ACTING_COOKIE_MAX_AGE_SEC,
-      secure: process.env.NODE_ENV === "production",
-    });
-  } catch {
-    /* cookie mutation unavailable (e.g. fully static segment) */
-  }
-}
-
-/** When the acting-entity cookie is absent, set it to the user's personal
- * (`individual`) entity so the browser sends `X-Legal-Entity-Id` on later
- * API calls. Best-effort: some static render paths cannot mutate cookies. */
-async function seedPersonalActingLegalEntityCookieIfAbsent(
-  memberships: LegalEntitySummary[],
-): Promise<void> {
-  if (memberships.length === 0) return;
-  const jar = await cookies();
-  if (jar.get(ACTING_LEGAL_ENTITY_COOKIE)?.value?.trim()) return;
-  await setPersonalActingLegalEntityCookie(memberships);
-}
-
-/** Clear a stale acting-entity cookie (e.g. after org removal or session change). */
-async function clearActingLegalEntityCookie(): Promise<void> {
-  try {
-    const jar = await cookies();
-    jar.set(ACTING_LEGAL_ENTITY_COOKIE, "", {
-      path: "/",
-      maxAge: 0,
-      sameSite: "lax",
-    });
-  } catch {
-    /* cookie mutation unavailable */
-  }
-}
-
 export type ResolvedActingImpersonation = {
   displayName: string;
   expiresAtIso: string;
@@ -80,10 +31,17 @@ export type ResolvedActingContext = {
   impersonation: ResolvedActingImpersonation | null;
   /** True when `/legal-entities/me` reported personal-entity bootstrap failure. */
   bootstrapFailed: boolean;
+  /**
+   * This browser has no usable account choice: no cookie yet (a new device) or one for an
+   * account the person can no longer use. The client area then sends it through
+   * `/restore-account`, which opens the remembered account or explains the fallback.
+   */
+  needsRestore: boolean;
 };
 
-/** Resolves the acting legal entity for the current request.
- * * 1. Fetch `/legal-entities/me` (cookie-authenticated).
+/** Resolves the acting legal entity for the current request. Read-only: the cookie is written
+ * only by the switch action and the `/switch-account` and `/restore-account` hops.
+ * 1. Fetch `/legal-entities/me` (cookie-authenticated).
  * 2. For platform administrators, a structured cookie with an
  * impersonation block is validated via `GET /legal-entities/:id`.
  * 3. Otherwise pick the membership whose id matches the cookie; if no match,
@@ -98,7 +56,13 @@ export async function resolveActingContext(
   });
   if (!res.ok) {
     const bootstrapFailed = res.status === 503;
-    return { acting: null, memberships: [], impersonation: null, bootstrapFailed };
+    return {
+      acting: null,
+      memberships: [],
+      impersonation: null,
+      bootstrapFailed,
+      needsRestore: false,
+    };
   }
   const body = (await res.json()) as {
     data?: LegalEntitySummary[];
@@ -108,10 +72,14 @@ export async function resolveActingContext(
   const bootstrapFailed = body.code === "personal_entity_unavailable";
   const memberships = body.data ?? [];
   if (memberships.length === 0) {
-    return { acting: null, memberships: [], impersonation: null, bootstrapFailed };
+    return {
+      acting: null,
+      memberships: [],
+      impersonation: null,
+      bootstrapFailed,
+      needsRestore: false,
+    };
   }
-
-  await seedPersonalActingLegalEntityCookieIfAbsent(memberships);
 
   const jar = await cookies();
   const cookieValue = jar.get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
@@ -163,6 +131,7 @@ export async function resolveActingContext(
               }
             : null,
           bootstrapFailed: false,
+          needsRestore: false,
         };
       }
     }
@@ -175,18 +144,28 @@ export async function resolveActingContext(
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
   const orgGatedByKillSwitch = !orgModuleEnabled && matchedByCookie?.kind === "organisation";
 
-  if (decoded?.e && (!matchedByCookie || orgGatedByKillSwitch)) {
-    await clearActingLegalEntityCookie();
-    await setPersonalActingLegalEntityCookie(memberships);
-  }
+  const usable = matchedByCookie !== undefined && !orgGatedByKillSwitch;
 
   const firstMembership = memberships[0];
   if (!firstMembership) {
-    return { acting: null, memberships: [], impersonation: null, bootstrapFailed };
+    return {
+      acting: null,
+      memberships: [],
+      impersonation: null,
+      bootstrapFailed,
+      needsRestore: false,
+    };
   }
   const fallback = memberships.find((m) => m.kind === "individual") ?? firstMembership;
-  const acting = (orgGatedByKillSwitch ? undefined : matchedByCookie) ?? fallback;
-  return { acting, memberships, impersonation: null, bootstrapFailed: false };
+  const acting = (usable ? matchedByCookie : undefined) ?? fallback;
+  return {
+    acting,
+    memberships,
+    impersonation: null,
+    bootstrapFailed: false,
+    // A staff impersonation cookie is never "restored" over; the staff tools end it.
+    needsRestore: !usable && !decoded?.i?.sid,
+  };
 }
 
 /** Convenience for server-side data fetchers that need to forward acting

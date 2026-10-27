@@ -26,7 +26,7 @@ describe("Button", () => {
   it("merges className onto asChild output", () => {
     render(
       <Button variant="secondaryOutline" asChild className="w-full">
-        <a href="/dashboard/submissions/new">New submission</a>
+        <a href="/selling/new">New submission</a>
       </Button>,
     );
     const link = screen.getByRole("link", { name: /new submission/i });

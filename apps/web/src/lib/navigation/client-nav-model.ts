@@ -1,278 +1,281 @@
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
 import { laxAccountHomeUrl } from "@/lib/lax-account-url";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { type EntityCapability, entityRoleCan } from "@auction/domain";
-import type { LegalEntityMemberRole } from "@auction/types";
 import {
   Bell,
-  Brush,
   Building2,
-  CreditCard,
-  FileText,
   Heart,
+  House,
   Layers,
   Menu,
   Package,
   Settings,
-  ShieldCheck,
   Store,
   TrendingUp,
   Upload,
   UserRound,
-  Users,
   WalletCards,
 } from "lucide-react";
+import type { AccountContext } from "./account-home";
+import { CLIENT_ROUTES } from "./client-routes";
+import { ORGANISATION_PAGE_CAPABILITIES } from "./organisation-tabs";
+
+export type { AccountContext };
 
 /**
- * Whose account the signed-in person is acting for. Organisation members are limited by the
- * capability matrix in `@auction/domain`, so the sidebar never offers a page the API would refuse.
+ * Everything about the viewer that shapes the Bid menu. There is no buying or selling mode: one
+ * menu has a Buying and a Selling section, and the account switcher decides whose pages they are.
+ * Organisation members see only what the capability table in `@auction/domain` grants their role,
+ * so the menu never offers a page the API would refuse.
  */
-export type ClientNavContext =
-  | { kind: "personal" }
-  | { kind: "organisation"; id: string; role: LegalEntityMemberRole };
-
-export type ClientNavInput = {
-  mode: ClientWorkspaceMode;
-  context: ClientNavContext;
-  /** False hides every organisation entry (kill switch). */
-  orgModuleEnabled: boolean;
-  /** True when the person belongs to at least one organisation. */
-  isOrgMember: boolean;
+export type ClientNavScope = {
+  context: AccountContext;
+  /** The person has submitted work to sell, so their personal Selling section has pages. */
+  hasSubmissions: boolean;
 };
 
-/** Everything about the viewer that shapes the nav except the workspace mode, which follows the route. */
-export type ClientNavScope = Omit<ClientNavInput, "mode">;
-
-/** A personal account that belongs to no organisation. */
+/** A personal account that has not sold anything yet. */
 export const PERSONAL_NAV_SCOPE: ClientNavScope = {
   context: { kind: "personal" },
-  orgModuleEnabled: true,
-  isOrgMember: false,
+  hasSubmissions: false,
 };
+
+export type ClientNavSectionId = "home" | "buying" | "selling" | "organisation" | "account";
+
+/** One block of the menu: a heading (or none) and its entries. */
+export type ClientNavSection = {
+  id: ClientNavSectionId;
+  /** Shown above the entries; `null` for the Home entry and the account block. */
+  label: string | null;
+  items: AppShellNavItem[];
+};
+
+type Audience = "personal" | "organisation" | "both";
 
 type NavSpec = {
-  /** Entries that point into an organisation's settings need its id; the rest ignore it. */
-  item: AppShellNavItem | ((orgId: string | null) => AppShellNavItem);
+  audience: Audience;
+  item: (scope: ClientNavScope) => AppShellNavItem;
   /** Organisation members need at least one of these; personal accounts always pass. */
   anyCapability?: readonly EntityCapability[];
-  /** Hidden when acting for an organisation. */
-  personalOnly?: true;
-  /** Hidden unless acting for an organisation. */
-  organisationOnly?: true;
-  /** Hidden unless the person belongs to an organisation and the module is on. */
-  orgMembersOnly?: true;
+  /** Extra condition for personal accounts. */
+  personalWhen?: (scope: ClientNavScope) => boolean;
 };
 
-/** Where an organisation's settings live; the organisation id follows. */
-export const ORG_SETTINGS_PATH = "/dashboard/seller/organisations";
+type SectionSpec = {
+  id: ClientNavSectionId;
+  label: string | null;
+  specs: readonly NavSpec[];
+};
 
 function exactOrNested(href: string) {
   return (pathname: string) => pathname === href || pathname.startsWith(`${href}/`);
 }
 
+function isOrganisation(scope: ClientNavScope): boolean {
+  return scope.context.kind === "organisation";
+}
+
+const HOME: NavSpec = {
+  audience: "organisation",
+  item: () => ({
+    id: "home",
+    label: "Home",
+    href: CLIENT_ROUTES.home,
+    icon: House,
+    // Until organisations have a Home page, Home opens the selling overview.
+    match: (pathname) => pathname === CLIENT_ROUTES.home || pathname === CLIENT_ROUTES.selling,
+  }),
+};
+
+const BIDS: NavSpec = {
+  audience: "both",
+  item: (scope) => ({
+    id: "bids",
+    // Personal bids are the person's own; an organisation's are everyone's who bids for it.
+    label: isOrganisation(scope) ? "Bids" : "My bids",
+    href: CLIENT_ROUTES.bids,
+    icon: TrendingUp,
+    match: exactOrNested(CLIENT_ROUTES.bids),
+  }),
+  anyCapability: ["entity.bid.place"],
+};
+
+const PURCHASES: NavSpec = {
+  audience: "both",
+  item: () => ({
+    id: "purchases",
+    label: "Purchases",
+    href: CLIENT_ROUTES.purchases,
+    icon: Package,
+    match: exactOrNested(CLIENT_ROUTES.purchases),
+  }),
+  // The organisation's money view, or a buyer agent's own wins.
+  anyCapability: ["entity.finance.read", "entity.bid.place"],
+};
+
+const WATCHING: NavSpec = {
+  audience: "both",
+  item: () => ({
+    id: "watchlist",
+    label: "Watching",
+    href: CLIENT_ROUTES.watching,
+    icon: Heart,
+    match: exactOrNested(CLIENT_ROUTES.watching),
+  }),
+  // Watching follows lots to bid on or to sell; members who do neither have no use for it.
+  anyCapability: ["entity.bid.place", "entity.submissions.create"],
+};
+
+const SELL_WITH_LAX: NavSpec = {
+  audience: "personal",
+  item: () => ({
+    id: "sell",
+    label: "Sell with LAX",
+    href: CLIENT_ROUTES.sellingNew,
+    icon: Store,
+    match: (pathname) => pathname === CLIENT_ROUTES.sellingNew,
+  }),
+  personalWhen: (scope) => !scope.hasSubmissions,
+};
+
+const CONSIGNMENTS: NavSpec = {
+  audience: "both",
+  item: (scope) => ({
+    id: "consignments",
+    label: "Consignments",
+    shortLabel: "Lots",
+    href: CLIENT_ROUTES.consignments,
+    icon: Upload,
+    // Submissions are consignments before they are accepted, so a new one belongs here too, and
+    // a personal account's selling overview (which has no menu entry of its own) as well.
+    match: (pathname) =>
+      exactOrNested(CLIENT_ROUTES.consignments)(pathname) ||
+      pathname === CLIENT_ROUTES.sellingNew ||
+      (!isOrganisation(scope) && pathname === CLIENT_ROUTES.selling),
+  }),
+  anyCapability: ["entity.consignments.read"],
+  personalWhen: (scope) => scope.hasSubmissions,
+};
+
+const WORKS: NavSpec = {
+  // An organisation's own works; a person's are in Purchases and LAX Account.
+  audience: "organisation",
+  item: () => ({ id: "works", label: "Works", href: CLIENT_ROUTES.works, icon: Layers }),
+  anyCapability: ["entity.holdings.read", "entity.finance.read"],
+};
+
+const SOLD_AND_PAYOUTS: NavSpec = {
+  audience: "both",
+  item: () => ({
+    id: "payouts",
+    label: "Sold & payouts",
+    shortLabel: "Payouts",
+    href: CLIENT_ROUTES.payouts,
+    icon: WalletCards,
+    // A person's payout setup is reached from their payouts.
+    match: (pathname) =>
+      exactOrNested(CLIENT_ROUTES.payouts)(pathname) ||
+      exactOrNested(CLIENT_ROUTES.payoutSetup)(pathname) ||
+      pathname.startsWith("/legal-entities/"),
+  }),
+  anyCapability: ["entity.payouts.read"],
+  personalWhen: (scope) => scope.hasSubmissions,
+};
+
+const ORGANISATION_SETTINGS: NavSpec = {
+  audience: "organisation",
+  item: () => ({
+    id: "organisation",
+    label: "Organisation settings",
+    href: CLIENT_ROUTES.organisation,
+    icon: Building2,
+    match: exactOrNested(CLIENT_ROUTES.organisation),
+  }),
+  anyCapability: ORGANISATION_PAGE_CAPABILITIES,
+};
+
 const NOTIFICATIONS: NavSpec = {
-  item: {
+  audience: "both",
+  item: () => ({
     id: "notifications",
     label: "Notifications",
     shortLabel: "Alerts",
-    href: "/dashboard/notifications",
+    href: CLIENT_ROUTES.notifications,
     icon: Bell,
-  },
+  }),
 };
 
 const BID_SETTINGS: NavSpec = {
-  item: {
+  audience: "both",
+  item: () => ({
     id: "settings",
     label: "Bid settings",
-    href: "/dashboard/settings",
+    href: CLIENT_ROUTES.settings,
     icon: Settings,
-    match: exactOrNested("/dashboard/settings"),
-  },
+    match: exactOrNested(CLIENT_ROUTES.settings),
+  }),
 };
 
 /** Profile, security and addresses are managed in LAX Account, for every LAX product. */
 const LAX_ACCOUNT: NavSpec = {
-  item: {
+  audience: "both",
+  item: () => ({
     id: "lax-account",
     label: "LAX Account",
     href: laxAccountHomeUrl(),
     icon: UserRound,
     match: () => false,
     external: true,
-  },
+  }),
 };
 
-const BUYING_SPECS: readonly NavSpec[] = [
-  { item: { id: "bids", label: "My bids", href: "/dashboard/bids", icon: TrendingUp } },
+/** The whole menu, in order. Adding or moving an entry is one edit here. */
+const SECTIONS: readonly SectionSpec[] = [
+  { id: "home", label: null, specs: [HOME] },
+  { id: "buying", label: "Buying", specs: [BIDS, PURCHASES, WATCHING] },
   {
-    item: {
-      id: "purchases",
-      label: "Purchases",
-      href: "/dashboard/purchases",
-      icon: Package,
-      match: exactOrNested("/dashboard/purchases"),
-    },
-    // Won lots show prices and payment state, so an organisation needs either the
-    // works-only or the money view of what it owns.
-    anyCapability: ["entity.holdings.read", "entity.finance.read"],
+    id: "selling",
+    label: "Selling",
+    specs: [SELL_WITH_LAX, CONSIGNMENTS, WORKS, SOLD_AND_PAYOUTS],
   },
-  {
-    item: {
-      id: "watchlist",
-      label: "Watching",
-      href: "/dashboard/watchlist",
-      icon: Heart,
-      match: exactOrNested("/dashboard/watchlist"),
-    },
-  },
-  {
-    item: {
-      id: "organisations",
-      label: "Your organisations",
-      href: "/dashboard/organisations",
-      icon: Building2,
-      match: (pathname) =>
-        pathname === "/dashboard/organisations" || pathname.startsWith("/dashboard/invitations"),
-    },
-    orgMembersOnly: true,
-  },
-  NOTIFICATIONS,
-  BID_SETTINGS,
-  LAX_ACCOUNT,
+  { id: "organisation", label: "Organisation", specs: [ORGANISATION_SETTINGS] },
+  { id: "account", label: null, specs: [NOTIFICATIONS, BID_SETTINGS, LAX_ACCOUNT] },
 ];
 
-function orgSettingsItem(
-  id: string,
-  label: string,
-  suffix: string,
-  icon: AppShellNavItem["icon"],
-): (orgId: string | null) => AppShellNavItem {
-  return (orgId) => {
-    const href = `${ORG_SETTINGS_PATH}/${orgId ?? ""}${suffix}`;
-    return { id, label, href, icon, match: exactOrNested(href) };
-  };
-}
-
-/** The organisation's overview and profile; its other settings pages have entries of their own. */
-function orgDetailsItem(orgId: string | null): AppShellNavItem {
-  const href = `${ORG_SETTINGS_PATH}/${orgId ?? ""}`;
-  return {
-    id: "org-details",
-    label: "Organisation",
-    href,
-    icon: Building2,
-    match: (pathname) => pathname === href || pathname === `${href}/profile`,
-  };
-}
-
-const SELLING_SPECS: readonly NavSpec[] = [
-  {
-    item: {
-      id: "seller-overview",
-      label: "Overview",
-      href: "/dashboard/seller",
-      icon: Store,
-      match: (pathname) => pathname === "/dashboard/seller",
-    },
-    anyCapability: ["entity.consignments.read"],
-  },
-  {
-    item: {
-      id: "consignments",
-      label: "Consignments",
-      shortLabel: "Lots",
-      href: "/dashboard/seller/consignments",
-      icon: Upload,
-      // Submissions are consignments before they are accepted, so their pages belong here.
-      match: (pathname) =>
-        exactOrNested("/dashboard/seller/consignments")(pathname) ||
-        exactOrNested("/dashboard/submissions")(pathname),
-    },
-    anyCapability: ["entity.consignments.read"],
-  },
-  {
-    // An organisation's own works and purchases; a person's are in Purchases and LAX Account.
-    item: { id: "works", label: "Works", href: "/dashboard/seller/works", icon: Layers },
-    organisationOnly: true,
-    anyCapability: ["entity.holdings.read", "entity.finance.read"],
-  },
-  {
-    item: {
-      id: "payouts",
-      label: "Sold & payouts",
-      shortLabel: "Payouts",
-      href: "/dashboard/seller/payouts",
-      icon: WalletCards,
-    },
-    anyCapability: ["entity.payouts.read"],
-  },
-  {
-    // An organisation's payout setup is one of its settings pages, so its link carries the id.
-    item: (orgId) => {
-      const href = orgId ? `${ORG_SETTINGS_PATH}/${orgId}/connect` : "/dashboard/seller/connect";
-      return {
-        id: "connect",
-        label: "Payout setup",
-        href,
-        icon: CreditCard,
-        match: exactOrNested(href),
-      };
-    },
-    anyCapability: ["entity.connect.operate"],
-  },
-  {
-    item: { id: "artist", label: "Artist profile", href: "/dashboard/seller/artist", icon: Brush },
-    personalOnly: true,
-  },
-  {
-    item: orgDetailsItem,
-    organisationOnly: true,
-  },
-  {
-    item: orgSettingsItem("org-members", "Members", "/members", Users),
-    organisationOnly: true,
-    anyCapability: ["entity.members.manage"],
-  },
-  {
-    // KYB documents have no capability of their own; the people who manage members manage them.
-    item: orgSettingsItem("org-documents", "Documents", "/documents", FileText),
-    organisationOnly: true,
-    anyCapability: ["entity.members.manage"],
-  },
-  {
-    item: orgSettingsItem("org-security", "Two-step policy", "/security", ShieldCheck),
-    organisationOnly: true,
-    anyCapability: ["entity.security.manage"],
-  },
-  NOTIFICATIONS,
-  BID_SETTINGS,
-  LAX_ACCOUNT,
-];
-
-function isVisible(spec: NavSpec, input: ClientNavInput): boolean {
-  if (spec.orgMembersOnly && !(input.orgModuleEnabled && input.isOrgMember)) return false;
-  if (input.context.kind === "personal") return !spec.organisationOnly;
-  if (spec.personalOnly) return false;
+function isVisible(spec: NavSpec, scope: ClientNavScope): boolean {
+  const { context } = scope;
+  if (context.kind === "personal") {
+    if (spec.audience === "organisation") return false;
+    return spec.personalWhen ? spec.personalWhen(scope) : true;
+  }
+  if (spec.audience === "personal") return false;
   if (!spec.anyCapability) return true;
-  const { role } = input.context;
-  return spec.anyCapability.some((capability) => entityRoleCan(role, capability));
+  return spec.anyCapability.some((capability) => entityRoleCan(context.role, capability));
 }
 
-/** Sidebar entries for one mode, one context and the viewer's capabilities. */
-export function getClientNavItems(input: ClientNavInput): AppShellNavItem[] {
-  const specs = input.mode === "selling" ? SELLING_SPECS : BUYING_SPECS;
-  const orgId = input.context.kind === "organisation" ? input.context.id : null;
-  return specs
-    .filter((spec) => isVisible(spec, input))
-    .map((spec) => (typeof spec.item === "function" ? spec.item(orgId) : spec.item));
+/** The menu for one account, as sections; sections with nothing to show are left out. */
+export function getClientNavSections(scope: ClientNavScope): ClientNavSection[] {
+  return SECTIONS.map((section) => ({
+    id: section.id,
+    label: section.label,
+    items: section.specs.filter((spec) => isVisible(spec, scope)).map((spec) => spec.item(scope)),
+  })).filter((section) => section.items.length > 0);
 }
 
-const BUYING_TAB_IDS = ["bids", "purchases", "watchlist", "notifications"] as const;
-const SELLING_TAB_IDS = [
-  "seller-overview",
+/** Every menu entry for one account, in order. */
+export function getClientNavItems(scope: ClientNavScope): AppShellNavItem[] {
+  return getClientNavSections(scope).flatMap((section) => section.items);
+}
+
+/** Which entries earn a place in the phone's bottom bar, most important first. */
+const MOBILE_TAB_PRIORITY = [
+  "home",
+  "bids",
+  "purchases",
+  "watchlist",
   "consignments",
-  "works",
   "payouts",
+  "works",
   "notifications",
 ] as const;
 
@@ -282,11 +285,9 @@ const MAX_TABS = 4;
 const MORE_TAB: AppShellNavItem = { id: "more", label: "More", href: "#more", icon: Menu };
 
 /** The most-used entries plus "More", for the mobile bottom bar. */
-export function getClientMobileTabs(input: ClientNavInput): AppShellNavItem[] {
-  const items = getClientNavItems(input);
-  const tabIds: readonly string[] = input.mode === "selling" ? SELLING_TAB_IDS : BUYING_TAB_IDS;
-  const tabs = tabIds
-    .map((id) => items.find((item) => item.id === id))
+export function getClientMobileTabs(scope: ClientNavScope): AppShellNavItem[] {
+  const items = getClientNavItems(scope);
+  const tabs = MOBILE_TAB_PRIORITY.map((id) => items.find((item) => item.id === id))
     .filter((item): item is AppShellNavItem => item != null)
     .slice(0, MAX_TABS);
   return [...tabs, MORE_TAB];

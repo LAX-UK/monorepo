@@ -145,7 +145,7 @@ describe("shouldReuseKycSessionUrl", () => {
         expectedCallbackUrl: "https://lax.bid/onboarding/identity",
         decisionPayload: {
           sessionUrl: "https://magic.veriff.me/v/abc",
-          callbackUrl: "https://lax.bid/dashboard/verify-identity",
+          callbackUrl: "https://lax.bid/verify-identity",
         },
       }),
     ).toBe(false);
@@ -178,7 +178,7 @@ describe("mergeKycDecisionPayload", () => {
     const merged = mergeKycDecisionPayload(
       {
         sessionUrl: "https://magic.veriff.me/v/abc",
-        callbackUrl: "https://test.lax.bid/dashboard/verify-identity",
+        callbackUrl: "https://test.lax.bid/verify-identity",
       },
       {
         status: "success",
@@ -186,7 +186,7 @@ describe("mergeKycDecisionPayload", () => {
       },
     );
     expect(readKycSessionUrl(merged)).toBe("https://magic.veriff.me/v/abc");
-    expect(readKycCallbackUrl(merged)).toBe("https://test.lax.bid/dashboard/verify-identity");
+    expect(readKycCallbackUrl(merged)).toBe("https://test.lax.bid/verify-identity");
     expect(merged.verification).toBeDefined();
   });
 });

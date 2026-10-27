@@ -9,7 +9,7 @@ describe("isMarketingPromptRoute", () => {
     },
   );
 
-  it.each(["/lot/example/lot-1", "/dashboard", "/sell", "/login"])("excludes %s", (pathname) => {
+  it.each(["/lot/example/lot-1", "/home", "/sell", "/login"])("excludes %s", (pathname) => {
     expect(isMarketingPromptRoute(pathname)).toBe(false);
   });
 });

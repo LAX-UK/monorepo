@@ -14,9 +14,7 @@ export default async function AdminFinanceLayout({ children }: { children: React
   }
   const role = user.role as UserRole;
   if (!canAccessFinanceAdminRoutes(role, user.staffRole ?? null)) {
-    redirect(
-      role === "staff" ? adminDenialDestination(role, user.staffRole, requested) : "/dashboard",
-    );
+    redirect(role === "staff" ? adminDenialDestination(role, user.staffRole, requested) : "/home");
   }
   return children;
 }

@@ -12,8 +12,8 @@ const SESSION_COOKIE = "lax-bid-session=abc";
 
 describe("isProtectedPostAuthPath", () => {
   it("recognizes dashboard and admin shells", () => {
-    expect(isProtectedPostAuthPath("/dashboard")).toBe(true);
-    expect(isProtectedPostAuthPath("/dashboard/bids")).toBe(true);
+    expect(isProtectedPostAuthPath("/home")).toBe(true);
+    expect(isProtectedPostAuthPath("/bids")).toBe(true);
     expect(isProtectedPostAuthPath("/admin/finance")).toBe(true);
   });
 
@@ -42,11 +42,9 @@ describe("shouldBypassAuthEdgeRedirect", () => {
 
 describe("resolveAuthEdgeRedirectTarget", () => {
   it("routes protected next paths through the server decision", () => {
-    const dest = resolveAuthEdgeRedirectTarget(
-      new URL("http://localhost:3000/login?next=/dashboard/bids"),
-    );
+    const dest = resolveAuthEdgeRedirectTarget(new URL("http://localhost:3000/login?next=/bids"));
     expect(dest.pathname).toBe("/auth/post-login");
-    expect(dest.searchParams.get("next")).toBe("/dashboard/bids");
+    expect(dest.searchParams.get("next")).toBe("/bids");
     expect(dest.searchParams.get("welcome")).toBe("back");
   });
 
@@ -108,7 +106,7 @@ describe("isStaleAuthEdgePublicLanding", () => {
   it("ignores protected dashboard edge landing", () => {
     expect(
       isStaleAuthEdgePublicLanding(
-        new URL("http://localhost:3000/dashboard?from=auth-edge&welcome=back"),
+        new URL("http://localhost:3000/home?from=auth-edge&welcome=back"),
         SESSION_COOKIE,
       ),
     ).toBe(false);

@@ -49,7 +49,7 @@ describe("useSubmissionWizardController", () => {
     updateSubmissionFromValuesAction.mockResolvedValue({ ok: true, data: {} });
     createSubmissionFromValuesAction.mockResolvedValue({
       ok: true,
-      data: { id: "sub-new", redirectTo: "/dashboard/submissions/sub-new" },
+      data: { id: "sub-new", redirectTo: "/selling/consignments/sub-new" },
     });
     submitForReviewFromValuesAction.mockResolvedValue({ ok: true, data: {} });
   });
@@ -111,7 +111,7 @@ describe("useSubmissionWizardController", () => {
     await waitFor(() => {
       expect(createSubmissionFromValuesAction).toHaveBeenCalledTimes(1);
       expect(submitForReviewFromValuesAction).toHaveBeenCalledWith("sub-new");
-      expect(push).toHaveBeenCalledWith("/dashboard/submissions/sub-new");
+      expect(push).toHaveBeenCalledWith("/selling/consignments/sub-new");
     });
   });
 });

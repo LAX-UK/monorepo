@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { BottomTabBar } from "./bottom-tab-bar";
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/dashboard",
+  usePathname: () => "/home",
 }));
 
 vi.mock("next/link", () => ({
