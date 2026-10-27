@@ -194,12 +194,15 @@ describe("SaleLotsTabBoard", () => {
     expect(within(actions).getByRole("button", { name: "Print QR labels" })).toBeInTheDocument();
   });
 
-  it("offers attaching and adding in the header when the sale has no lots", () => {
+  it("offers attaching and adding in the empty state, not the header, when there are no lots", () => {
     render(<SaleLotsTabBoard saleId="sale-1" sale={SALE} lots={[]} canManageAuction />);
 
     const header = screen.getByRole("heading", { name: "Lots" }).closest("header") as HTMLElement;
-    expect(within(header).getByRole("button", { name: "Attach existing lot" })).toBeInTheDocument();
-    expect(within(header).getByRole("link", { name: "Add lot" })).toBeInTheDocument();
-    expect(within(header).queryByRole("button", { name: "Export" })).not.toBeInTheDocument();
+    expect(within(header).queryByRole("link", { name: "Add lot" })).not.toBeInTheDocument();
+    expect(
+      within(header).queryByRole("button", { name: "Attach existing lot" }),
+    ).not.toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Add lot" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Attach existing lot" })).toBeInTheDocument();
   });
 });

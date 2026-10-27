@@ -359,6 +359,12 @@ export function SaleLotsTabBoard({
     }),
   ];
 
+  const attachAction = canEditDraft ? (
+    <StaffButton variant="secondary" size="sm" onClick={() => setAttachOpen(true)}>
+      Attach existing lot
+    </StaffButton>
+  ) : null;
+
   const addAction = canEditDraft ? (
     <Link
       href={saleSetupHref(saleId, "lots")}
@@ -378,34 +384,36 @@ export function SaleLotsTabBoard({
     </StaffButton>
   ) : null;
 
+  // With no lots the empty state offers the actions that create them; the header takes "Add lot"
+  // back once there are lots.
+  const emptyActions = (
+    <>
+      {attachAction}
+      {addAction}
+    </>
+  );
+
   const empty = canEditDraft
     ? {
         title: "No lots in this sale yet",
         description:
           "Add new lots in the sale setup, or attach lots that are already in inventory. They appear here with their estimates and bids.",
-        action: addAction,
+        action: emptyActions,
       }
     : canAddLots
       ? {
           title: "No lots in this sale yet",
           description:
             "Add a lot and it is scheduled as soon as it is saved. Lots appear here with their estimates and bids.",
-          action: addAction,
+          action: emptyActions,
         }
       : {
           title: "This sale has no lots",
           description: "No lots were added before the sale closed.",
         };
 
-  const attachAction = canEditDraft ? (
-    <StaffButton variant="secondary" size="sm" onClick={() => setAttachOpen(true)}>
-      Attach existing lot
-    </StaffButton>
-  ) : null;
-
   // With lots, the secondary actions sit beside the table's search and wrap with it on a phone,
-  // so the header keeps one action. With none there is nothing to print or export: the header
-  // holds "Attach existing lot" and "Add lot".
+  // so the header keeps one action. With none there is nothing to print or export.
   const toolbarActions = (
     <>
       {canManageAuction ? (
@@ -439,16 +447,7 @@ export function SaleLotsTabBoard({
         id="sale-lots"
         title="Lots"
         label="Lots in this sale"
-        action={
-          lots.length > 0 ? (
-            addAction
-          ) : (
-            <>
-              {attachAction}
-              {addAction}
-            </>
-          )
-        }
+        action={lots.length > 0 ? addAction : undefined}
         columns={columns}
         data={rows}
         getRowId={(row) => row.id}
