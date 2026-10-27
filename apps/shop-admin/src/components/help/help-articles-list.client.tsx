@@ -213,9 +213,20 @@ export function HelpArticlesList({
         Link={list.Link}
         listKey="lax-admin.help-articles"
         primaryAction={
-          <StaffButton asChild variant="primary" icon={<Plus aria-hidden />}>
-            <list.Link href={newHref}>New question</list.Link>
-          </StaffButton>
+          // Every question needs a category, so with none the page offers the category first.
+          noCategories ? (
+            <StaffButton
+              variant="primary"
+              icon={<Plus aria-hidden />}
+              onClick={() => setDialog({ kind: "category" })}
+            >
+              New category
+            </StaffButton>
+          ) : (
+            <StaffButton asChild variant="primary" icon={<Plus aria-hidden />}>
+              <list.Link href={newHref}>New question</list.Link>
+            </StaffButton>
+          )
         }
         secondaryActions={
           <StaffButton asChild variant="secondary">
@@ -267,23 +278,7 @@ export function HelpArticlesList({
             : state.view === "all"
               ? "Add the first question as a draft, then publish it when it is ready."
               : "Questions appear here as they are published or saved as drafts.",
-          ...(state.view === "all"
-            ? {
-                action: noCategories ? (
-                  <StaffButton
-                    variant="primary"
-                    icon={<Plus aria-hidden />}
-                    onClick={() => setDialog({ kind: "category" })}
-                  >
-                    New category
-                  </StaffButton>
-                ) : (
-                  <StaffButton asChild variant="primary" icon={<Plus aria-hidden />}>
-                    <list.Link href={newHref}>New question</list.Link>
-                  </StaffButton>
-                ),
-              }
-            : {}),
+          // The header holds the one action for the page: the empty state does not repeat it.
         }}
         noResults={{
           title: "No questions match",

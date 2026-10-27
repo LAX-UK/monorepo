@@ -25,7 +25,7 @@ import {
   TextArea,
   formatGbp,
 } from "@auction/staff-ui";
-import { useState } from "react";
+import { useRef, useState } from "react";
 
 type Errors = Partial<Record<"amount" | "reason", string>>;
 
@@ -65,6 +65,7 @@ export function RefundDialog({
   onOpenChange: (open: boolean) => void;
 }) {
   const mutation = useAdminMutation();
+  const amountRef = useRef<HTMLInputElement>(null);
   const [target, setTarget] = useState<string>("");
   const [amountPence, setAmountPence] = useState<number | null>(null);
   const [amountTyped, setAmountTyped] = useState(false);
@@ -133,6 +134,8 @@ export function RefundDialog({
         onOpenChange(next);
       }}
       size="md"
+      // Most refunds are for the whole order, so the cursor starts on the amount.
+      initialFocusRef={amountRef}
       title={`Refund order ${orderNumber(detail.orderId, detail.reference)}`}
       description="The payment provider returns the money to the card the customer paid with. A refund cannot be undone once it has been processed."
       footer={
@@ -180,6 +183,7 @@ export function RefundDialog({
         >
           <div className="flex items-center gap-2">
             <MoneyInput
+              ref={amountRef}
               value={amountPence}
               onValueChange={(pence) => setAmountPence(pence)}
               onInput={(event) => setAmountTyped(Boolean(event.currentTarget.value.trim()))}
@@ -187,7 +191,7 @@ export function RefundDialog({
               boxClassName="max-w-48"
             />
             <StaffButton
-              variant="ghost"
+              variant="secondary"
               size="sm"
               disabled={remaining === 0}
               onClick={() => {
@@ -195,7 +199,7 @@ export function RefundDialog({
                 setAmountTyped(true);
               }}
             >
-              Refund {formatGbp(remaining)}
+              Use {formatGbp(remaining)}
             </StaffButton>
           </div>
         </Field>
