@@ -244,10 +244,7 @@ export function SalesStaffList(props: SalesStaffListProps) {
               }
             : {}),
         }}
-        noResults={{
-          title: "No sales match",
-          description: "Try another view, or clear the search and filters.",
-        }}
+        noResults={{ noun: "sales" }}
         table={{
           columns,
           data: rows,

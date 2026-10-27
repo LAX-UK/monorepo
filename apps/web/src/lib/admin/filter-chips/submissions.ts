@@ -1,5 +1,6 @@
 import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import { type SearchParams, omitParamsHref } from "@/lib/admin/filter-chips/shared";
+import { searchChipLabel } from "@auction/staff-ui";
 
 export function buildSubmissionsActiveFilterChips(
   sp: SearchParams,
@@ -18,7 +19,7 @@ export function buildSubmissionsActiveFilterChips(
   if (ctx.q?.trim()) {
     chips.push({
       id: "q",
-      label: `Search: ${ctx.q.trim()}`,
+      label: searchChipLabel(ctx.q),
       clearHref: omitParamsHref(base, sp, ["q"]),
     });
   }

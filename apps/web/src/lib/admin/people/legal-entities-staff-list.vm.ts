@@ -17,6 +17,7 @@ import type {
   AdminLegalEntityListRow,
   AdminLegalEntityListSummary,
 } from "@/lib/data/http/admin-legal-entities.shared";
+import { searchChipLabel } from "@auction/staff-ui";
 import type {
   AttentionStripItem,
   Metric,
@@ -247,7 +248,13 @@ export function legalEntitiesFilterChips(
   const kind = LEGAL_ENTITY_KIND_FILTERS.find((o) => o.value === listParam(search.kind));
   return [
     ...(q
-      ? [{ id: "q", label: `“${q}”`, clearHref: legalEntitiesListHref(search, { q: null }) }]
+      ? [
+          {
+            id: "q",
+            label: searchChipLabel(q),
+            clearHref: legalEntitiesListHref(search, { q: null }),
+          },
+        ]
       : []),
     ...(status
       ? [

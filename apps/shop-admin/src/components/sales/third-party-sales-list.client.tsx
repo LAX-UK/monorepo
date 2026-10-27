@@ -290,10 +290,7 @@ export function ThirdPartySalesList({
               }
             : {}),
         }}
-        noResults={{
-          title: "No sales match",
-          description: "Try another artwork or person, or clear the filters.",
-        }}
+        noResults={{ noun: "sales" }}
         table={{
           columns,
           data: page.items,

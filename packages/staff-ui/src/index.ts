@@ -186,6 +186,7 @@ export {
   TablePagination,
   TableSearch,
   fitViewTabs,
+  searchChipLabel,
   useTableDensity,
 } from "./data/toolbar.js";
 export { FilterSheet } from "./data/filter-sheet.js";

@@ -2,6 +2,7 @@ import { buildListHref, firstString } from "@/lib/admin/admin-list-params";
 import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import type { GetAdminUserListParams } from "@/lib/data/http/admin-users.types";
+import { searchChipLabel } from "@auction/staff-ui";
 import type { UserStaffRole } from "@auction/types";
 import { userStaffRoles } from "@auction/types";
 import { adminUserListSortEnum } from "@auction/validators";
@@ -94,7 +95,7 @@ export function buildStaffActiveFilterChips(
   if (filters.q?.trim()) {
     chips.push({
       id: "q",
-      label: `Search: ${filters.q.trim()}`,
+      label: searchChipLabel(filters.q),
       clearHref: omitParamsHref(basePath, sp, ["q"]),
     });
   }

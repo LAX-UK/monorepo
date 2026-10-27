@@ -3,7 +3,7 @@ import { type SearchParams, omitParamsHref } from "@/lib/admin/filter-chips/shar
 import { signupPersonaFilterLabel } from "@/lib/admin/signup-persona-presenter";
 import { staffIdentityStatus } from "@/lib/admin/staff-kit-status";
 import type { UsersListFilters } from "@/lib/admin/users-list-query";
-import { formatStaffDay } from "@auction/staff-ui";
+import { formatStaffDay, searchChipLabel } from "@auction/staff-ui";
 
 function identityLabel(status: string): string {
   return staffIdentityStatus(status).label;
@@ -29,7 +29,7 @@ export function buildUsersActiveFilterChips(
   if (filters.q?.trim()) {
     chips.push({
       id: "q",
-      label: `Search: ${filters.q.trim()}`,
+      label: searchChipLabel(filters.q),
       clearHref: omitParamsHref(basePath, sp, ["q"]),
     });
   }

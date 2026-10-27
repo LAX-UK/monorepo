@@ -205,10 +205,7 @@ export function VenuesStaffList(props: VenuesStaffListProps) {
             </StaffButton>
           ),
         }}
-        noResults={{
-          title: "No venues match",
-          description: "Try another search, include archived venues or clear the organisation.",
-        }}
+        noResults={{ noun: "venues" }}
         table={{
           columns,
           data: rows,

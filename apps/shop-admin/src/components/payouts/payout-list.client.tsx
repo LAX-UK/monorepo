@@ -219,10 +219,7 @@ export function PayoutList({
                   "Money owed to artists and owners appears here once a sale has completed.",
               }
         }
-        noResults={{
-          title: "No payouts match",
-          description: "Try another payee or reference, or clear the filters.",
-        }}
+        noResults={{ noun: "payouts" }}
         table={{
           columns,
           data: page.items,

@@ -230,7 +230,7 @@ export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
           description:
             "Payments held for finance or compliance review appear here before checkout can finish.",
         }}
-        noResults={{ title: "No held payments match", description: "Try another hold reason." }}
+        noResults={{ noun: "held payments" }}
         table={{
           columns,
           data: rows,

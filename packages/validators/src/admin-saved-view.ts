@@ -5,6 +5,7 @@ export const ADMIN_SAVED_VIEW_LIST_KEYS = [
   "bid-admin.lots",
   "bid-admin.clients",
   "bid-admin.submissions",
+  "bid-admin.payments",
 ] as const;
 export type AdminSavedViewListKey = (typeof ADMIN_SAVED_VIEW_LIST_KEYS)[number];
 

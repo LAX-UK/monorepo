@@ -203,10 +203,7 @@ export function DisputesStaffList(props: DisputesStaffListProps) {
           title: "No disputes",
           description: "Disputes appear here when a buyer challenges a card payment.",
         }}
-        noResults={{
-          title: "No disputes in this view",
-          description: "Try another view, or look at all disputes.",
-        }}
+        noResults={{ noun: "disputes" }}
         table={{
           label: "Disputes",
           columns,

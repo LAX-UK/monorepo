@@ -312,10 +312,7 @@ export function ClientsStaffList(props: ClientsStaffListProps) {
             : null
         }
         empty={VIEW_EMPTY[activeView] ?? (VIEW_EMPTY.all as { title: string; description: string })}
-        noResults={{
-          title: "No clients match",
-          description: "Try another name or email, or clear the filters.",
-        }}
+        noResults={{ noun: "clients" }}
         table={{
           columns,
           data: rows,

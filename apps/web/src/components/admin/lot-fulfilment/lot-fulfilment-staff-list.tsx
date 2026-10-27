@@ -187,10 +187,7 @@ export function LotFulfilmentStaffList(props: LotFulfilmentStaffListProps) {
                   "When a lot sells, it appears here and moves through payment, release and delivery.",
               }
         }
-        noResults={{
-          title: "No lots match",
-          description: "Try another lot title, or clear the search.",
-        }}
+        noResults={{ noun: "lots" }}
         table={{
           columns,
           data: rows,

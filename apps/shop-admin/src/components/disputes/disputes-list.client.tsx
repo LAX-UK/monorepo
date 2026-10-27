@@ -155,10 +155,7 @@ export function DisputesList({
           title: state.view === "opened" ? "No open disputes" : "No disputes",
           description: "Card disputes raised against an order will be listed here.",
         }}
-        noResults={{
-          title: "No disputes match",
-          description: "Try another order number or reference, or clear the search.",
-        }}
+        noResults={{ noun: "disputes" }}
         table={{
           columns,
           data: page.items,

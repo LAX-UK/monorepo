@@ -212,10 +212,7 @@ export function ArtistList({
                 action: newArtist,
               }
         }
-        noResults={{
-          title: "No artists match",
-          description: "Check the spelling, or search by part of the name.",
-        }}
+        noResults={{ noun: "artists" }}
         table={{
           columns,
           data: page.items,

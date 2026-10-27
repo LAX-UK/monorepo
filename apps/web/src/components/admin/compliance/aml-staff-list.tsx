@@ -130,6 +130,7 @@ export function AmlStaffList(props: AmlStaffListProps) {
         }}
         loading={pending}
         filtered={false}
+        noResults={{ noun: "screenings" }}
         error={
           props.loadError
             ? {

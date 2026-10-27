@@ -21,6 +21,7 @@ import {
   StaffDate,
   StatusBadge,
   TableSearch,
+  searchChipLabel,
 } from "@auction/staff-ui";
 import { Plus } from "lucide-react";
 import Link from "next/link";
@@ -166,6 +167,17 @@ export function CategoriesStaffList(props: CategoriesStaffListProps) {
             onSearch={(next) => navigate(categoriesListHref(search, { q: next || null }))}
           />
         }
+        activeFilters={
+          q
+            ? [
+                {
+                  id: "q",
+                  label: searchChipLabel(q),
+                  onRemove: () => navigate(categoriesListHref(search, { q: null })),
+                },
+              ]
+            : []
+        }
         onClearFilters={() => navigate(categoriesListHref(search, { q: null }))}
         loading={pending}
         filtered={props.filtered}
@@ -186,10 +198,7 @@ export function CategoriesStaffList(props: CategoriesStaffListProps) {
             </StaffButton>
           ),
         }}
-        noResults={{
-          title: "No categories match",
-          description: "Try another search, or include archived categories.",
-        }}
+        noResults={{ noun: "categories" }}
         table={{
           columns,
           data: rows,

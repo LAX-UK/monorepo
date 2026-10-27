@@ -178,10 +178,7 @@ export function OriginalSalesList({
               }
             : {}),
         }}
-        noResults={{
-          title: "No original sales match",
-          description: "Try another artwork or buyer, or clear the search.",
-        }}
+        noResults={{ noun: "original sales" }}
         table={{
           columns,
           data: page.items,

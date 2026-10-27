@@ -3,6 +3,7 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import { manualReviewListController } from "@/lib/admin/manual-review-list-controller";
 import { manualReviewReasonLabel } from "@/lib/admin/manual-review-presenter";
+import { searchChipLabel } from "@auction/staff-ui";
 
 const PAYMENTS_LIST_PATH = "/admin/payments";
 
@@ -140,7 +141,7 @@ export function buildPaymentsListPageModel(sp: PaymentsListSearchParams) {
       ? [
           {
             id: "q",
-            label: `Search: ${paymentQ.trim()}`,
+            label: searchChipLabel(paymentQ),
             clearHref: buildListHref(PAYMENTS_LIST_PATH, sp, { q: "", offset: 0 }),
           },
         ]

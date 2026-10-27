@@ -120,7 +120,7 @@ describe("payments staff list view model", () => {
       xero: "missing",
     });
     expect(chips.map((chip) => chip.label)).toEqual([
-      "“golden”",
+      "Search: golden",
       "Fulfilment: In transit, Delivered",
       "Xero: No invoice yet",
     ]);

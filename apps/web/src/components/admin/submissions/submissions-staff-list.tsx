@@ -295,10 +295,7 @@ export function SubmissionsStaffList(props: SubmissionsStaffListProps) {
             : null
         }
         empty={empty ?? { title: "No submissions" }}
-        noResults={{
-          title: "No submissions match",
-          description: "Try another view, or clear the search and filters.",
-        }}
+        noResults={{ noun: "submissions" }}
         table={{
           columns,
           data: rows,

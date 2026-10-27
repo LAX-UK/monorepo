@@ -4,6 +4,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import {
   type CapabilityRequirement,
+  FINANCE_ACCESS,
   LOTS_ACCESS,
   SUBMISSIONS_ACCESS,
   USERS_DIRECTORY_ACCESS,
@@ -40,6 +41,7 @@ const LIST_ACCESS: Record<AdminSavedViewListKey, CapabilityRequirement> = {
   "bid-admin.lots": LOTS_ACCESS,
   "bid-admin.clients": USERS_DIRECTORY_ACCESS,
   "bid-admin.submissions": SUBMISSIONS_ACCESS,
+  "bid-admin.payments": FINANCE_ACCESS,
 };
 
 function toDto(view: AdminSavedViewRecord): AdminSavedViewDto {

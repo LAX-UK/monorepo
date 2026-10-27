@@ -313,10 +313,7 @@ export function EditorialList({
               </StaffButton>
             ) : undefined,
         }}
-        noResults={{
-          title: `No ${entity.title.toLowerCase()} match`,
-          description: "Try a different title or slug, or clear the search and filters.",
-        }}
+        noResults={{ noun: `${entity.title.toLowerCase()}` }}
         table={{
           columns,
           data: page.items,

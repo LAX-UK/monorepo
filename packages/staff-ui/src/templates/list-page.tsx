@@ -28,6 +28,13 @@ import type { StaffLinkComponent } from "../shell/link.js";
 import type { OverflowAction } from "../shell/overflow-menu.js";
 import { PageHeader } from "../shell/page-header.js";
 
+/** One sentence for every list whose search or filters matched nothing. */
+export const NO_RESULTS_DESCRIPTION =
+  "Try a different search or filter, or clear the filters to start again.";
+
+/** "No payments match". */
+export const noResultsTitle = (noun: string) => `No ${noun} match`;
+
 /** Who is looking: everything, look but not change, or nothing at all. */
 export type ListPageAccess = "full" | "read-only" | "denied";
 
@@ -131,8 +138,11 @@ export type ListPageProps<T> = {
     /** The drawing that matches the list: "parcel" for orders, "ledger" for money. */
     illustration?: LaxIllustrationName;
   };
-  /** Filters matched nothing. */
-  noResults?: { title?: string; description?: React.ReactNode };
+  /**
+   * Filters matched nothing. Say what the list holds, in the plural ("payments"); the title,
+   * the sentence and "Clear filters" are the same on every list.
+   */
+  noResults: { noun: string };
 };
 
 /**
@@ -304,10 +314,8 @@ export function ListPage<T>({
 
   const emptyState = filtered ? (
     <NoResultsState
-      title={noResults?.title ?? "Nothing matches these filters"}
-      description={
-        noResults?.description ?? "Try a different search, or clear the filters to see everything."
-      }
+      title={noResultsTitle(noResults.noun)}
+      description={NO_RESULTS_DESCRIPTION}
       {...(onClearFilters
         ? {
             action: (
@@ -375,7 +383,7 @@ export function ListPage<T>({
           : {})}
         empty={emptyState}
         footer={
-          pagination && !error ? (
+          pagination && !error && !(filtered && table.data.length === 0) ? (
             <TablePagination
               summary={pagination.summary}
               prevHref={pagination.prevHref}

@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { searchChipLabel } from "../data/toolbar.js";
 import type { DataColumn } from "../data/types.js";
 
 vi.mock("@auction/ui/components/dropdown-menu", () =>
@@ -15,7 +16,7 @@ vi.mock("@auction/ui/components/dialog", () =>
   import("../test/radix-stubs.js").then((m) => m.dialog),
 );
 
-const { ListPage } = await import("./list-page.js");
+const { ListPage, NO_RESULTS_DESCRIPTION } = await import("./list-page.js");
 const { DetailColumns, DetailError, DetailPage, DetailPageSkeleton } = await import(
   "./detail-page.js"
 );
@@ -44,6 +45,7 @@ function page(overrides: Partial<React.ComponentProps<typeof ListPage<Payment>>>
       primaryAction={<StaffButton variant="primary">New payment link</StaffButton>}
       filtered={false}
       empty={{ title: "No payments yet", description: "Payments appear after a sale." }}
+      noResults={{ noun: "payments" }}
       table={{
         columns,
         data: rows,
@@ -212,13 +214,16 @@ describe("ListPage", () => {
       page({
         filtered: true,
         onClearFilters: clear,
-        noResults: { title: "No payments match these filters" },
+        activeFilters: [{ id: "q", label: searchChipLabel("golden"), onRemove: () => {} }],
+        pagination: { summary: "0 of 0", prevHref: null, nextHref: null },
         table: { columns, data: [], getRowId: (r) => r.id },
       }),
     );
-    expect(
-      screen.getByRole("heading", { name: "No payments match these filters" }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "No payments match" })).toBeInTheDocument();
+    expect(screen.getByText(NO_RESULTS_DESCRIPTION)).toBeInTheDocument();
+    // The search stays visible as a chip, and there is no page count over nothing.
+    expect(screen.getByText("Search: golden")).toBeInTheDocument();
+    expect(screen.queryByRole("navigation", { name: "Pagination" })).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
     expect(clear).toHaveBeenCalled();
   });
