@@ -6,6 +6,7 @@ import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
 import { ExportButton } from "@/components/exports/export-button";
 import {
+  PAYMENTS_LIST_PATH,
   PAYMENT_FULFILMENT_FILTERS,
   PAYMENT_XERO_FILTERS,
   type PaymentsListSearch,
@@ -17,8 +18,10 @@ import {
   paymentsListHref,
   paymentsMetrics,
   paymentsMetricsPeriod,
+  paymentsTeamViews,
   paymentsViews,
 } from "@/lib/admin/finance/payments-staff-list.vm";
+import { createSavedViewsPort } from "@/lib/admin/saved-views-port";
 import type { AdminPaymentsSummary } from "@/lib/data/http/admin-payments.types";
 import {
   CellLink,
@@ -31,6 +34,7 @@ import {
   StatusBadge,
   TableSearch,
   staffButtonVariants,
+  useSavedViews,
 } from "@auction/staff-ui";
 import { Banknote, CircleCheck, Hourglass, Undo2 } from "@auction/staff-ui/icons";
 import Link from "next/link";
@@ -71,6 +75,10 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
     hrefFor: panelHref,
   });
   const openId = panel.openId;
+  const port = useMemo(() => createSavedViewsPort("bid-admin.payments"), []);
+  const saved = useSavedViews("bid-admin.payments", port);
+  const teamViews = useMemo(() => paymentsTeamViews(), []);
+  const currentQuery = paymentsListHref(search, {}).split("?")[1] ?? "";
   const money = usePaymentMoneyActions({ canWritePayments: props.canWritePayments });
   const q = typeof search.q === "string" ? search.q : "";
   const status = typeof search.status === "string" ? search.status : "";
@@ -205,6 +213,10 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
             views={paymentsViews(search, props.attentionCounts.manualReviewCount)}
             activeId={props.view}
             Link={ListLink}
+            team={teamViews}
+            saved={saved}
+            savedHref={(view) => `${PAYMENTS_LIST_PATH}?${view.query}`}
+            currentQuery={currentQuery}
           />
         }
         search={
@@ -265,10 +277,7 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
           title: "No payments yet",
           description: "Payments appear here when a buyer checks out a won lot.",
         }}
-        noResults={{
-          title: "No payments match",
-          description: "Try a different search or status, or clear the filters.",
-        }}
+        noResults={{ noun: "payments" }}
         table={{
           columns,
           data: rows,

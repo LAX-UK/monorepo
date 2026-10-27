@@ -13,9 +13,12 @@ import {
   type Metric,
   type DataView as StaffDataView,
   type StatusPresentation,
+  type TeamView,
   formatStaffMoney,
   metricChange,
   parsePoundsToPence,
+  searchChipLabel,
+  viewQuery,
 } from "@auction/staff-ui";
 import type { PaymentStatus } from "@auction/types";
 
@@ -212,6 +215,26 @@ export function paymentsViews(
   ];
 }
 
+/** The views the payments desk starts with, beside the ones each person saves. Fixed, never edited. */
+export function paymentsTeamViews(): TeamView[] {
+  const view = (id: string, label: string, patch: Record<string, string>) => {
+    const [path, rest = ""] = paymentsListHref({}, patch).split("?");
+    const query = viewQuery(rest);
+    return { id: `team-${id}`, label, href: `${path}?${query}`, query };
+  };
+  return [
+    view("captured-no-invoice", "Captured, no invoice yet", {
+      status: "captured",
+      xero: "missing",
+    }),
+    view("invoice-sync-failed", "Invoice sync failed", { xero: "sync_error" }),
+    view("awaiting-release", "Paid, awaiting release", {
+      status: "captured",
+      fulfilment: "awaiting_release",
+    }),
+  ];
+}
+
 /** Work waiting on the payments desk, each linking to the view that holds it. */
 export function paymentsAttention(
   search: PaymentsListSearch,
@@ -373,7 +396,9 @@ export function paymentsFilterChips(
     .filter((label): label is string => Boolean(label));
   const xero = PAYMENT_XERO_FILTERS.find((option) => option.value === listParam(search.xero));
   return [
-    ...(q ? [{ id: "q", label: `“${q}”`, clearHref: paymentsListHref(search, { q: null }) }] : []),
+    ...(q
+      ? [{ id: "q", label: searchChipLabel(q), clearHref: paymentsListHref(search, { q: null }) }]
+      : []),
     ...(fulfilment.length > 0
       ? [
           {
