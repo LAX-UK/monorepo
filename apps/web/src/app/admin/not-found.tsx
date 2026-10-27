@@ -1,16 +1,19 @@
-import { AppNotFound } from "@/components/app/app-not-found";
-import { NOT_FOUND_PRESETS } from "@/lib/ui/empty-state-copy";
+import { NotFoundState, StaffButton } from "@auction/staff-ui";
+import Link from "next/link";
 
+/** A link or record that does not exist, inside the admin shell so staff keep their navigation. */
 export default function AdminNotFound() {
-  const preset = NOT_FOUND_PRESETS.admin;
   return (
-    <AppNotFound
-      kicker={preset.kicker}
-      title={preset.title}
-      description={preset.description}
-      primaryHref={preset.primaryHref}
-      primaryLabel={preset.primaryLabel}
-      illustration={preset.illustration}
+    <NotFoundState
+      headingLevel="h1"
+      className="min-h-[60vh]"
+      title="This page doesn’t exist"
+      description="The link may be out of date, or the record was deleted. Search for it, or go back to the overview."
+      action={
+        <StaffButton asChild variant="secondary">
+          <Link href="/admin">Back to overview</Link>
+        </StaffButton>
+      }
     />
   );
 }

@@ -27,7 +27,7 @@ import {
   parseDashboardDensityCookie,
 } from "@/lib/preferences/dashboard-density-cookie";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { STAFF_NAV_COOKIE } from "@auction/staff-ui";
+import { STAFF_NAV_COOKIE, StaffToaster } from "@auction/staff-ui";
 import {
   type UserRole,
   type UserStaffRole,
@@ -137,6 +137,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
           }
         >
           <ImpersonationEndWarningListener />
+          <StaffToaster />
           {impersonation && showImpersonationBanner ? (
             <ImpersonationBanner
               entityName={impersonation.displayName}

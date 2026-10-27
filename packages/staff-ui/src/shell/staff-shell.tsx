@@ -6,6 +6,7 @@ import { Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import * as React from "react";
 import { confirmDiscardChanges } from "../forms/unsaved-changes.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
+import { useReturnFocus } from "../lib/return-focus.js";
 import { StaffButton } from "../primitives/button.js";
 import { Kbd } from "../primitives/input.js";
 import { StaffTooltip } from "../primitives/menu.js";
@@ -86,6 +87,7 @@ export function StaffShell({
   const [collapsed, setCollapsed] = React.useState(defaultCollapsed);
   const [drawerOpen, setDrawerOpen] = React.useState(false);
   const [paletteOpen, setPaletteOpen] = React.useState(false);
+  const returnDrawerFocus = useReturnFocus(drawerOpen);
   const togglePalette = React.useCallback(() => setPaletteOpen((open) => !open), []);
   useCommandPaletteShortcut(togglePalette);
 
@@ -224,6 +226,7 @@ export function StaffShell({
               {...STAFF_LAYER}
               side="left"
               overlayClassName="bg-staff-scrim"
+              onCloseAutoFocus={returnDrawerFocus}
               className="flex w-72 max-w-[85vw] flex-col gap-0 border-r border-staff-line bg-staff-sunken p-0 [&>button:last-child]:hidden"
             >
               <SheetTitle className="sr-only">{product.name} navigation</SheetTitle>

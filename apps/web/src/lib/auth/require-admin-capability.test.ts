@@ -56,6 +56,22 @@ describe("requireAdminCapability", () => {
     );
   });
 
+  it("explains the refusal instead of bouncing to another page", async () => {
+    getServerSessionUser.mockResolvedValue({ role: "staff", staffRole: "staff_viewer" });
+    resolveAdminReturnPath.mockResolvedValueOnce("/admin/lots?status=draft");
+    await expect(requireAdminCapability(LOTS_ACCESS, "/admin/lots")).rejects.toThrow(
+      `REDIRECT:/admin/no-access?from=${encodeURIComponent("/admin/lots?status=draft")}`,
+    );
+  });
+
+  it("keeps finance out of platform sections it holds a capability for", async () => {
+    getServerSessionUser.mockResolvedValue({ role: "staff", staffRole: "finance_ops" });
+    resolveAdminReturnPath.mockResolvedValueOnce("/admin/legal-entities");
+    await expect(
+      requireAdminCapability("legal_entity.read", "/admin/legal-entities"),
+    ).rejects.toThrow("REDIRECT:/admin/no-access");
+  });
+
   it("allows catalogue_manager for lots", async () => {
     getServerSessionUser.mockResolvedValue({
       role: "staff",

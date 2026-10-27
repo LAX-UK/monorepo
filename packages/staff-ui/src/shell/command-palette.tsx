@@ -18,6 +18,7 @@ import { CornerDownLeft, LoaderCircle } from "lucide-react";
 import * as React from "react";
 import { staffCommandClass, staffCommandItemClass } from "../forms/command-styles.js";
 import { STAFF_LAYER } from "../lib/cn.js";
+import { useReturnFocus } from "../lib/return-focus.js";
 import { Kbd } from "../primitives/input.js";
 import type { StaffCommand, StaffCommandSearch } from "./types.js";
 
@@ -65,6 +66,7 @@ export function CommandPalette({
   placeholder?: string;
 }) {
   const [query, setQuery] = React.useState("");
+  const returnFocus = useReturnFocus(open);
   const [results, setResults] = React.useState<readonly StaffCommand[]>([]);
   const [loading, setLoading] = React.useState(false);
 
@@ -111,6 +113,7 @@ export function CommandPalette({
         {...STAFF_LAYER}
         overlayClassName="bg-staff-scrim"
         closeClassName="hidden"
+        onCloseAutoFocus={returnFocus}
         className="top-[12vh] w-[calc(100%-2rem)] max-w-[640px] translate-y-0 gap-0 overflow-hidden rounded-staff-lg border border-staff-line bg-staff-raised p-0 text-staff-fg shadow-staff-lg sm:rounded-staff-lg"
       >
         <DialogTitle className="sr-only">Search and go to</DialogTitle>

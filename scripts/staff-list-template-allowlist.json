@@ -4,6 +4,7 @@
   "exempt": [
     { "page": "bid-admin:(platform)/(dashboard)/page.tsx", "reason": "Overview: work inbox" },
     { "page": "bid-admin:(finance)/finance/page.tsx", "reason": "Finance hub" },
+    { "page": "bid-admin:(shared)/no-access/page.tsx", "reason": "Access-denied state" },
     { "page": "bid-admin:(finance)/integrations/xero/page.tsx", "reason": "Integration settings" },
     {
       "page": "bid-admin:(finance)/payouts/settlement/page.tsx",

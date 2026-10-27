@@ -65,14 +65,6 @@ export const NOT_FOUND_PRESETS = {
     secondaryLabel: "Browse catalogue",
     illustration: "lots" as const,
   },
-  admin: {
-    kicker: "404 · Admin",
-    title: "That admin route doesn't exist",
-    description: "Check the URL or return to the operations cockpit.",
-    primaryHref: "/admin",
-    primaryLabel: "Operations",
-    illustration: "notFound" as const,
-  },
   task: {
     kicker: "404",
     title: "That sign-in link isn't valid",

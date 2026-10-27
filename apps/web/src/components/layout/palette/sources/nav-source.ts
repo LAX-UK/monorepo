@@ -3,6 +3,7 @@ import type { PaletteItem, PaletteSection } from "@/components/layout/palette/ty
 import { getStaffNavGroups } from "@/components/layout/staff-nav";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
+import { canOpenAdminRoute } from "@/lib/navigation/admin-route-access";
 import {
   AML_REVIEW_ACCESS,
   ARTISTS_ACCESS,
@@ -202,7 +203,9 @@ export function buildQuickActionsSection(
   for (const spec of QUICK_ACTION_SPECS) {
     if (spec.platformOnly && isFinanceShell) continue;
     if (spec.financeOnly && !isFinanceShell) continue;
-    if (spec.requirement && !userHasAccessTo(role, staffRole, spec.requirement)) continue;
+    if (spec.href.startsWith("/admin")) {
+      if (!canOpenAdminRoute(role, staffRole, spec.href, spec.requirement)) continue;
+    } else if (spec.requirement && !userHasAccessTo(role, staffRole, spec.requirement)) continue;
     if (spec.id === "qa-pending-artists" && pendingArtistCount <= 0) continue;
 
     const item: PaletteItem = {

@@ -3,6 +3,7 @@ import {
   type AdminNavCounts,
   EMPTY_ADMIN_NAV_COUNTS,
 } from "@/lib/data/http/admin-nav-counts.types";
+import { canOpenAdminRoute } from "@/lib/navigation/admin-route-access";
 /**
  * Single source of truth for staff (platform + finance shell) sidebar navigation.
  * Grouped for accordion UI; flattened for command palette and legacy consumers.
@@ -29,7 +30,6 @@ import {
 } from "@/lib/navigation/staff-nav-access";
 import type { NavBadgeTone } from "@/lib/shell/contracts";
 import type { CapabilityRequirement, UserRole, UserStaffRole } from "@auction/types";
-import { userHasAccessTo } from "@auction/types";
 import {
   AlertTriangle,
   Banknote,
@@ -94,7 +94,7 @@ function filterNavItem(
   staffRole: UserStaffRole | null | undefined,
   item: StaffNavItemSpec,
 ): boolean {
-  return userHasAccessTo(role, staffRole ?? null, item.requirement);
+  return canOpenAdminRoute(role, staffRole, item.href, item.requirement);
 }
 
 function filterGroups(
@@ -262,6 +262,14 @@ function buildStaffNavGroupSpecs(
       title: "Finance",
       icon: WalletCards,
       items: [
+        {
+          id: "finance-overview",
+          href: "/admin/finance",
+          label: "Finance overview",
+          icon: Gauge,
+          match: (pathname) => pathname === "/admin/finance",
+          requirement: FINANCE_ACCESS,
+        },
         {
           id: "payments",
           href: "/admin/payments",
@@ -483,4 +491,18 @@ export function staffNavItemToAppShellItem(spec: StaffNavItemSpec): AppShellNavI
     ...(spec.badge !== undefined ? { badge: spec.badge } : {}),
     ...(spec.badgeTone !== undefined ? { badgeTone: spec.badgeTone } : {}),
   };
+}
+
+/**
+ * The navigation item a path belongs to (longest matching link), whatever the person's role:
+ * the page's name and the capability it needs, e.g. to explain an access refusal.
+ */
+export function findStaffNavItemForPath(pathname: string): StaffNavItemSpec | null {
+  const path = pathname.split(/[?#]/)[0] ?? pathname;
+  let best: StaffNavItemSpec | null = null;
+  for (const item of buildStaffNavGroupSpecs(0).flatMap((group) => group.items)) {
+    const matches = path === item.href || path.startsWith(`${item.href}/`);
+    if (matches && (!best || item.href.length > best.href.length)) best = item;
+  }
+  return best;
 }

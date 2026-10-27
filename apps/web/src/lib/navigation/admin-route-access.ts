@@ -1,0 +1,85 @@
+import {
+  type CapabilityRequirement,
+  type UserRole,
+  type UserStaffRole,
+  canAccessFinanceAdminRoutes,
+  canAccessPlatformAdminRoutes,
+  laxStaffRoleOption,
+  staffRoleDefaultDestination,
+  userHasAccessTo,
+  userStaffRoles,
+} from "@auction/types";
+
+/**
+ * The admin route groups and who may enter each, the same rules their layouts enforce:
+ * `(platform)` pages, `(finance)` pages, and `(shared)` pages every staff member can open.
+ */
+export type AdminRouteArea = "platform" | "finance" | "shared";
+
+const AREA_ACCESS: Record<
+  AdminRouteArea,
+  (role: UserRole, staffRole: UserStaffRole | null | undefined) => boolean
+> = {
+  platform: canAccessPlatformAdminRoutes,
+  finance: canAccessFinanceAdminRoutes,
+  shared: (role) => role === "staff",
+};
+
+/** Top-level admin sections outside `(platform)`, by the route group they live in. */
+export const ADMIN_ROUTE_AREAS: Readonly<Record<string, Exclude<AdminRouteArea, "platform">>> = {
+  payments: "finance",
+  disputes: "finance",
+  payouts: "finance",
+  finance: "finance",
+  integrations: "finance",
+  audit: "shared",
+  "no-access": "shared",
+};
+
+/** The route group an admin path belongs to; anything not listed is a platform page. */
+export function adminRouteArea(href: string): AdminRouteArea {
+  const path = href.split(/[?#]/)[0] ?? href;
+  const section = path.replace(/^\/admin\/?/, "").split("/")[0] ?? "";
+  return ADMIN_ROUTE_AREAS[section] ?? "platform";
+}
+
+/**
+ * Whether this person can open an admin page: they may enter its route group and hold the
+ * capability the page asks for. Navigation, the command palette and page guards all use this,
+ * so nothing is offered that would then turn the person away.
+ */
+export function canOpenAdminRoute(
+  role: UserRole,
+  staffRole: UserStaffRole | null | undefined,
+  href: string,
+  requirement?: CapabilityRequirement,
+): boolean {
+  if (!AREA_ACCESS[adminRouteArea(href)](role, staffRole ?? null)) return false;
+  return requirement === undefined || userHasAccessTo(role, staffRole ?? null, requirement);
+}
+
+/** The Bid staff roles (other than super admin) that can open a page, by their display name. */
+export function staffRolesThatCanOpen(href: string, requirement?: CapabilityRequirement): string[] {
+  return userStaffRoles
+    .filter((staffRole) => staffRole !== "super_admin")
+    .filter((staffRole) => canOpenAdminRoute("staff", staffRole, href, requirement))
+    .map((staffRole) => laxStaffRoleOption("bid", staffRole)?.label ?? staffRole);
+}
+
+export const ADMIN_NO_ACCESS_PATH = "/admin/no-access";
+
+/**
+ * Where to send someone who cannot open `requestedPath`: the admin home is each role's own
+ * overview, so asking for it goes there; any other page explains who can open it.
+ */
+export function adminDenialDestination(
+  role: UserRole,
+  staffRole: UserStaffRole | null | undefined,
+  requestedPath: string,
+): string {
+  const path = requestedPath.split(/[?#]/)[0] ?? requestedPath;
+  const home = staffRoleDefaultDestination(role, staffRole);
+  // A role whose overview is the admin home itself has nowhere better to go than the explanation.
+  if (path === "/admin" && home !== "/admin") return home;
+  return `${ADMIN_NO_ACCESS_PATH}?from=${encodeURIComponent(requestedPath)}`;
+}
