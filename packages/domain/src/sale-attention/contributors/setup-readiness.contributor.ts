@@ -74,7 +74,7 @@ export const setupReadinessContributor: SaleAttentionContributor = {
       items.push({
         id: `setup-lot-${rollup.checkId}`,
         kind,
-        category: rollup.checkId === "seller" ? "Setup" : "Catalog",
+        category: rollup.checkId === "seller" ? "Setup" : "Catalogue",
         severity: rollup.checkId === "seller" ? "critical" : "high",
         count: rollup.count,
         target: { tab: rollup.checkId === "images" ? "lots" : "lots" },

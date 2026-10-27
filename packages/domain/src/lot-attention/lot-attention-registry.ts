@@ -49,7 +49,7 @@ export const missingPhotosContributor: LotAttentionContributor = {
       {
         id: "missing-photos",
         kind: "missing_photos",
-        category: "Catalog",
+        category: "Catalogue",
         severity: "high",
         count: 1,
         target: { tab: "images" },

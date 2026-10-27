@@ -6,7 +6,7 @@ export type SaleAttentionCategory =
   | "Setup"
   | "Delete"
   | "Bidders"
-  | "Catalog"
+  | "Catalogue"
   | "Operations"
   | "Finance"
   | "Compliance";

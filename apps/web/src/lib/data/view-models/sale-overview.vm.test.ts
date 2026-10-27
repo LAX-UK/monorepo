@@ -162,7 +162,7 @@ describe("buildSaleOverviewViewModel", () => {
         {
           id: "api-only",
           kind: "incomplete_catalog_lots",
-          category: "Catalog",
+          category: "Catalogue",
           severity: "high",
           count: 1,
           target: { tab: "lots" },

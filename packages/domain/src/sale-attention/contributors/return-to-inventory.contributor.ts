@@ -13,7 +13,7 @@ export const returnToInventoryContributor: SaleAttentionContributor = {
       {
         id: "return-inventory",
         kind: "return_to_inventory",
-        category: "Catalog",
+        category: "Catalogue",
         severity: "medium",
         count,
         target: { tab: "lots" },

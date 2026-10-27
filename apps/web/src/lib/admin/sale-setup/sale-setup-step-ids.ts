@@ -35,7 +35,7 @@ function stepLabel(id: SaleSetupStepId): string {
     case "lots":
       return "Lots";
     case "catalog-prep":
-      return "Catalog prep";
+      return "Catalogue prep";
     case "review":
       return "Review";
   }

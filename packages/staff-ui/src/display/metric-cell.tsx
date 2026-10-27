@@ -78,6 +78,15 @@ const TREND_HEIGHT = 24;
 /** The trend in a narrow cell, on the chip's row under the value. */
 const COMPACT_TREND_WIDTH = 56;
 const COMPACT_TREND_HEIGHT = 16;
+/**
+ * A value this long (such as "£5,638,464,102.00") would run into a trend or change beside it, so
+ * the cell keeps them under the value, as it does when narrow. The figure is never shortened.
+ */
+const LONG_VALUE_LENGTH = 12;
+
+export function isLongMetricValue(value: React.ReactNode | null | undefined): boolean {
+  return typeof value === "string" && value.length >= LONG_VALUE_LENGTH;
+}
 
 /** The change as a chip: arrow and figure on a tinted ground, with the full sentence spoken. */
 export function MetricDelta({
@@ -125,6 +134,8 @@ export function MetricCell({
   className?: string;
 }) {
   const tone = item.tone ?? "neutral";
+  // Long values keep the change and trend under them; short ones put them in a column beside.
+  const stackBeside = isLongMetricValue(item.value);
   const missing = item.value === null || item.value === undefined || item.value === "";
   const trend = !missing && item.trend && item.trend.length > 1 ? item.trend : null;
   const comparison = missing ? undefined : item.comparison;
@@ -158,7 +169,11 @@ export function MetricCell({
           comparison || trend
             ? // Narrow: the change and trend follow the value, on its line when they fit and on
               // the next when they do not. Wide: they take a column of their own on the right.
-              "flex flex-wrap items-end @min-[15rem]:grid @min-[15rem]:grid-cols-[minmax(0,1fr)_auto] @min-[15rem]:items-stretch"
+              cn(
+                "flex flex-wrap items-end",
+                !stackBeside &&
+                  "@min-[15rem]:grid @min-[15rem]:grid-cols-[minmax(0,1fr)_auto] @min-[15rem]:items-stretch",
+              )
             : "grid grid-cols-1",
         )}
       >
@@ -179,7 +194,10 @@ export function MetricCell({
           ) : null}
         </dt>
         <dd className="col-start-1 row-start-2 mt-0.5 min-w-0">
-          <span className="block text-staff-lg font-semibold whitespace-nowrap text-staff-fg tabular-nums @min-[10rem]:text-staff-xl">
+          <span
+            title={typeof item.value === "string" && !linked ? item.value : undefined}
+            className="block text-staff-lg font-semibold whitespace-nowrap text-staff-fg tabular-nums @min-[10rem]:text-staff-xl"
+          >
             {linked && item.href && Link ? (
               <Link
                 href={item.href}
@@ -205,11 +223,13 @@ export function MetricCell({
             title={trend ? item.trendLabel : undefined}
             className={cn(
               "flex min-w-0 grow items-center",
-              "@min-[15rem]:col-start-2 @min-[15rem]:row-span-2 @min-[15rem]:row-start-1 @min-[15rem]:flex-col @min-[15rem]:items-end @min-[15rem]:gap-0.5",
-              // Narrow cells: the chip and a smaller trend share a row under the value.
-              "mt-1.5 min-h-5 justify-between gap-2 @min-[15rem]:mt-0 @min-[15rem]:min-h-0",
+              // Narrow cells (and long values): the chip and a smaller trend share a row under
+              // the value.
+              "mt-1.5 min-h-5 justify-between gap-2",
+              !stackBeside &&
+                "@min-[15rem]:col-start-2 @min-[15rem]:row-span-2 @min-[15rem]:row-start-1 @min-[15rem]:mt-0 @min-[15rem]:min-h-0 @min-[15rem]:flex-col @min-[15rem]:items-end @min-[15rem]:gap-0.5",
               // With only a trend, the line sits level with the value.
-              !comparison && "@min-[15rem]:justify-end",
+              !comparison && !stackBeside && "@min-[15rem]:justify-end",
             )}
           >
             {comparison ? <MetricDelta comparison={comparison} /> : null}
@@ -220,15 +240,17 @@ export function MetricCell({
                   tone={tone}
                   width={COMPACT_TREND_WIDTH}
                   height={COMPACT_TREND_HEIGHT}
-                  className="ml-auto @min-[15rem]:hidden"
+                  className={cn("ml-auto", !stackBeside && "@min-[15rem]:hidden")}
                 />
-                <Sparkline
-                  values={trend}
-                  tone={tone}
-                  width={TREND_WIDTH}
-                  height={TREND_HEIGHT}
-                  className="hidden @min-[15rem]:block"
-                />
+                {stackBeside ? null : (
+                  <Sparkline
+                    values={trend}
+                    tone={tone}
+                    width={TREND_WIDTH}
+                    height={TREND_HEIGHT}
+                    className="hidden @min-[15rem]:block"
+                  />
+                )}
               </>
             ) : null}
           </dd>

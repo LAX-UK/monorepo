@@ -397,6 +397,37 @@ export function SaleLotsTabBoard({
           description: "No lots were added before the sale closed.",
         };
 
+  // Beside the table's search when there are lots, so the header keeps one action and the rest
+  // wrap with the filters on a phone; with no lots yet they stay in the header with "Add lot".
+  const secondaryActions = (
+    <>
+      {canManageAuction ? (
+        <AdminSaleLotQrPrintButton
+          lots={lots.map((lot) => ({
+            id: lot.id,
+            title: lot.title,
+            lotNumber: lot.lotNumber,
+          }))}
+        />
+      ) : null}
+      <ExportButton
+        entityType="lots"
+        filters={{ saleId }}
+        className={staffButtonVariants({ variant: "secondary", size: "sm" })}
+      />
+      {canEditDraft ? (
+        <StaffButton variant="secondary" size="sm" onClick={() => setAttachOpen(true)}>
+          Attach existing lot
+        </StaffButton>
+      ) : null}
+      {sale.status === "cancelled" && returnEligible.length > 0 && canManageAuction ? (
+        <StaffButton variant="secondary" size="sm" onClick={returnAll}>
+          Return lots to inventory
+        </StaffButton>
+      ) : null}
+    </>
+  );
+
   const filtered = rows.length !== lots.length;
 
   return (
@@ -405,35 +436,7 @@ export function SaleLotsTabBoard({
         id="sale-lots"
         title="Lots"
         label="Lots in this sale"
-        action={
-          <>
-            {canManageAuction ? (
-              <AdminSaleLotQrPrintButton
-                lots={lots.map((lot) => ({
-                  id: lot.id,
-                  title: lot.title,
-                  lotNumber: lot.lotNumber,
-                }))}
-              />
-            ) : null}
-            <ExportButton
-              entityType="lots"
-              filters={{ saleId }}
-              className={staffButtonVariants({ variant: "secondary", size: "sm" })}
-            />
-            {canEditDraft ? (
-              <StaffButton variant="secondary" size="sm" onClick={() => setAttachOpen(true)}>
-                Attach existing lot
-              </StaffButton>
-            ) : null}
-            {sale.status === "cancelled" && returnEligible.length > 0 && canManageAuction ? (
-              <StaffButton variant="secondary" size="sm" onClick={returnAll}>
-                Return lots to inventory
-              </StaffButton>
-            ) : null}
-            {addAction}
-          </>
-        }
+        action={lots.length > 0 ? addAction : secondaryActions}
         columns={columns}
         data={rows}
         getRowId={(row) => row.id}
@@ -459,6 +462,7 @@ export function SaleLotsTabBoard({
                   onSearch={setSearch}
                 />
               }
+              end={secondaryActions}
               filters={
                 <SegmentedControl<SaleLotsLens>
                   label="Filter lots"
