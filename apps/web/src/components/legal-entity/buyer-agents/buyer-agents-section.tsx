@@ -38,7 +38,7 @@ function AuthorisationLine({
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1">
       <DotStatusPill tone={state.tone} label={state.label} />
-      <span className="min-w-0 flex-1 font-body text-sm text-on-surface">
+      <span className="order-last min-w-0 basis-full font-body text-sm text-on-surface sm:order-none sm:flex-1 sm:basis-0">
         {summary.scope} · {summary.limit} · {summary.window}
       </span>
       {canManage ? (
@@ -46,7 +46,7 @@ function AuthorisationLine({
           type="button"
           variant="ghost"
           size="sm"
-          className="min-h-11 text-error hover:text-error sm:min-h-9"
+          className="ml-auto min-h-11 text-error hover:text-error sm:ml-0 sm:min-h-9"
           onClick={onRevoke}
         >
           Revoke

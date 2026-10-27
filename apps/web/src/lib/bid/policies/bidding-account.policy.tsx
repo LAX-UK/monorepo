@@ -25,7 +25,7 @@ export const biddingAccountPolicy: BidPolicy = {
 
     if (!account.allowed) {
       return blockBid("bidding-account-not-allowed", {
-        tone: "neutral",
+        tone: "info",
         title: `You can't bid for ${account.name}`,
         detail: REFUSAL_DETAIL[account.reason](account.name),
         ...(account.canSwitchToPersonal ? { content: <SwitchToPersonalButton /> } : {}),
@@ -34,7 +34,7 @@ export const biddingAccountPolicy: BidPolicy = {
 
     if (account.bidLimit != null && biddingAccountOverLimit(account, ctx.minNextBid ?? 0)) {
       return blockBid("bidding-account-over-limit", {
-        tone: "neutral",
+        tone: "info",
         title: "This lot is above your limit",
         detail: `Your limit for this sale is ${formatPounds(account.bidLimit)}. Ask an owner or admin of ${account.name} to raise it, or bid in your own name.`,
         content: <SwitchToPersonalButton />,
