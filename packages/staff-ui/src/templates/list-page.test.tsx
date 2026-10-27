@@ -223,6 +223,37 @@ describe("ListPage", () => {
     expect(clear).toHaveBeenCalled();
   });
 
+  it("offers the creating action once, in the empty state, and returns it to the header with rows", () => {
+    const create = <StaffButton variant="primary">New payment link</StaffButton>;
+    const emptyTable = { columns, data: [], getRowId: (r: Payment) => r.id };
+    const { rerender } = render(
+      page({
+        primaryAction: create,
+        empty: { title: "No payments yet", action: create },
+        table: emptyTable,
+      }),
+    );
+    expect(screen.getAllByRole("button", { name: "New payment link" })).toHaveLength(1);
+    expect(
+      within(
+        screen
+          .getByRole("heading", { name: "No payments yet" })
+          .closest("[data-staff-state]") as HTMLElement,
+      ).getByRole("button", { name: "New payment link" }),
+    ).toBeInTheDocument();
+    rerender(
+      page({
+        primaryAction: create,
+        empty: { title: "No payments yet", action: create },
+        filtered: true,
+        table: emptyTable,
+      }),
+    );
+    expect(screen.getAllByRole("button", { name: "New payment link" })).toHaveLength(1);
+    rerender(page({ primaryAction: create, empty: { title: "No payments yet", action: create } }));
+    expect(screen.getAllByRole("button", { name: "New payment link" })).toHaveLength(1);
+  });
+
   it("replaces the rows with an error and a retry, keeping the frame", () => {
     const retry = vi.fn();
     render(

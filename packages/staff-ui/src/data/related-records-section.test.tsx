@@ -56,4 +56,27 @@ describe("RelatedRecordsSection", () => {
     expect(screen.getByRole("heading", { name: "No orders yet" })).toBeInTheDocument();
     expect(screen.getByText("Orders they place appear here.")).toBeInTheDocument();
   });
+  it("offers the creating action once while empty, and in the header once there are rows", () => {
+    const action = <button type="button">Add press link</button>;
+    const { unmount } = renderSection({
+      data: [],
+      action,
+      empty: { title: "No press links yet", action },
+    });
+    expect(screen.getAllByRole("button", { name: "Add press link" })).toHaveLength(1);
+    unmount();
+    renderSection({ action, empty: { title: "No press links yet", action } });
+    expect(screen.getAllByRole("button", { name: "Add press link" })).toHaveLength(1);
+  });
+
+  it("keeps the header action when the empty state has none", () => {
+    renderSection({ data: [], action: <button type="button">New category</button> });
+    expect(screen.getByRole("button", { name: "New category" })).toBeInTheDocument();
+  });
+
+  it("uses the compact empty state so a short section stays short", () => {
+    const { container } = renderSection({ data: [] });
+    const state = container.querySelector("[data-staff-state]");
+    expect(state?.className).toContain("py-8");
+  });
 });

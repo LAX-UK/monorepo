@@ -24,7 +24,10 @@ export type RelatedRecordsSectionProps<T> = {
    * "View all 23" in the section's header.
    */
   viewAll?: { href: string; total: number; Link: StaffLinkComponent } | null;
-  /** One action for the section, e.g. "Grant sale authority". */
+  /**
+   * One action for the section, e.g. "Grant sale authority". While the section is empty and its
+   * `empty` state has an action, only the empty state shows it.
+   */
   action?: React.ReactNode;
   /** Comfortable when a cell carries a second line; compact otherwise. */
   density?: TableDensity;
@@ -52,8 +55,10 @@ export function RelatedRecordsSection<T>({
   density = "compact",
 }: RelatedRecordsSectionProps<T>) {
   const more = viewAll && viewAll.total > data.length ? viewAll : null;
+  // An empty section offers its creating action once, in the empty state, not twice.
+  const headerButton = data.length === 0 && empty.action ? null : action;
   const headerAction =
-    more || action ? (
+    more || headerButton ? (
       <>
         {more ? (
           <more.Link
@@ -63,7 +68,7 @@ export function RelatedRecordsSection<T>({
             View all {more.total.toLocaleString("en-GB")}
           </more.Link>
         ) : null}
-        {action}
+        {headerButton}
       </>
     ) : null;
   return (
@@ -88,6 +93,7 @@ export function RelatedRecordsSection<T>({
         {...(onRowOpen ? { onRowOpen } : {})}
         empty={
           <EmptyState
+            size="compact"
             headingLevel="h3"
             title={empty.title}
             {...(empty.description ? { description: empty.description } : {})}

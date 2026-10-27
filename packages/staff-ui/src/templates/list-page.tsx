@@ -194,6 +194,15 @@ export function ListPage<T>({
     ...tableProps
   } = table;
   const readOnly = access === "read-only";
+  // An empty list offers the action that creates it in its empty state; the header does not
+  // repeat it. The header action returns as soon as there is a row, a filter or an error.
+  const emptyOffersAction =
+    !loading &&
+    !error &&
+    !filtered &&
+    table.data.length === 0 &&
+    Boolean(empty.action) &&
+    !readOnly;
   const [density, setDensity] = useTableDensity(listKey, defaultDensity);
   const headerSecondary =
     exportAction || secondaryActions ? (
@@ -216,7 +225,9 @@ export function ListPage<T>({
       {...(readOnly
         ? { status: <ViewOnlyBadge {...(roleLabel ? { role: roleLabel } : {})} /> }
         : {})}
-      {...(access !== "denied" && !readOnly && primaryAction ? { primaryAction } : {})}
+      {...(access !== "denied" && !readOnly && !emptyOffersAction && primaryAction
+        ? { primaryAction }
+        : {})}
       {...(access !== "denied" && headerSecondary ? { secondaryActions: headerSecondary } : {})}
       {...(access !== "denied" && overflow ? { overflow } : {})}
     />
