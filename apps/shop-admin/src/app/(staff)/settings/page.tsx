@@ -37,12 +37,18 @@ export default async function SettingsPage() {
           <KeyValueList
             items={[
               {
-                label: "Cancellation days after possession",
-                value: s.cancellationDaysAfterPossession ?? NOT_CONFIGURED,
+                label: "Cancellation window",
+                value:
+                  s.cancellationDaysAfterPossession === null ||
+                  s.cancellationDaysAfterPossession === undefined
+                    ? NOT_CONFIGURED
+                    : `${s.cancellationDaysAfterPossession} days after possession`,
               },
               {
-                label: "Personalised goods cancellation exempt",
-                value: s.personalisedGoodsCancellationExempt ? "Yes" : "No",
+                label: "Personalised goods",
+                value: s.personalisedGoodsCancellationExempt
+                  ? "Exempt from cancellation"
+                  : "Can be cancelled",
               },
               { label: "VAT standard rate", value: vatRate(s.vatStandardRateBp) },
             ]}

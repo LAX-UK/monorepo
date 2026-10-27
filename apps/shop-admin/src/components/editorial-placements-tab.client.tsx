@@ -50,7 +50,7 @@ const REF_KIND_OPTIONS = PLACEMENT_REF_KINDS.map((kind) => ({
   label: PLACEMENT_REF_KIND_COPY[kind].label,
 }));
 
-const HREF_HINT = "https://…, mailto:… or a site path such as /visit";
+const HREF_PLACEHOLDER = "https://… or /visit";
 
 const fieldId = (slot: string, rowKey: string, field: string) =>
   `placement-${slot}-${rowKey}-${field}`;
@@ -118,13 +118,13 @@ function PlacementRowFields({
         <Field
           label="Link URL"
           optional={!external}
-          description={HREF_HINT}
           disabled={disabled}
           error={errors.linkUrl}
           id={fieldId(slot, draft.key, "linkUrl")}
         >
           <TextInput
             value={draft.linkUrl}
+            placeholder={HREF_PLACEHOLDER}
             maxLength={2048}
             autoComplete="off"
             spellCheck={false}

@@ -197,7 +197,10 @@ export function RichTextField({
           if (unavailable) return;
           onClick();
         }}
-        className={cn(pressed && "bg-staff-pressed")}
+        className={cn(
+          "[&_svg]:text-staff-fg! aria-disabled:[&_svg]:text-staff-disabled!",
+          pressed && "bg-staff-pressed",
+        )}
       >
         {icon}
       </StaffButton>
