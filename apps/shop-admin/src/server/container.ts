@@ -9,16 +9,19 @@ import { createCachedStaffToolsAccess } from "./infrastructure/cached-staff-tool
 import { createFetchAdminApiClient } from "./infrastructure/fetch-admin-api-client";
 import { createHttpStaffToolsAccess } from "./infrastructure/http-staff-tools-access";
 import { createMemorySessionStore } from "./infrastructure/memory-session-store";
+import { createOidcStaffSessionRenewal } from "./infrastructure/oidc-staff-session-renewal";
 import { createRedisSessionStore } from "./infrastructure/redis-session-store";
 import { systemClock } from "./infrastructure/system-clock";
 import type { AdminApiClient } from "./ports/admin-api-client";
 import type { Clock } from "./ports/clock";
 import type { SessionStore } from "./ports/session-store";
+import type { StaffSessionRenewal } from "./ports/staff-session-renewal";
 import type { StaffToolsAccess } from "./ports/staff-tools-access";
 
 export type ShopAdminContainer = {
   config: ShopAdminConfig;
   sessions: SessionStore;
+  sessionRenewal: StaffSessionRenewal;
   adminApi: AdminApiClient;
   staffTools: StaffToolsAccess;
   clock: Clock;
@@ -69,6 +72,7 @@ export function createShopAdminContainer(config: ShopAdminConfig): ShopAdminCont
   return {
     config,
     sessions,
+    sessionRenewal: createOidcStaffSessionRenewal(config),
     adminApi,
     staffTools,
     clock,

@@ -57,6 +57,10 @@ function buildApp(
         completeRotation: vi.fn(async () => undefined),
         revokeFamily: vi.fn(async () => undefined),
       },
+      idTokenRenewal: {
+        rememberIssued: vi.fn(async () => undefined),
+        renew: vi.fn(async () => null),
+      },
       replay: {
         reserve: vi.fn(async () => true),
         get: vi.fn(async () => null),

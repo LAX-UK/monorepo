@@ -1,21 +1,63 @@
-import { JWKS_PATH, normalizeIssuerUrl } from "@auction/identity-contracts";
-import { verifyIdentityToken } from "@auction/identity-contracts/verify";
-import { createFetchTokenEndpoint, mergeRefreshTokens } from "@auction/identity-rp";
-import type { ShopAdminConfig } from "../config";
+import { isIdentityRejected, mergeRefreshTokens } from "@auction/identity-rp";
+import { StaffSessionEndedError } from "../domain/staff-session-ended";
 import type { Clock } from "../ports/clock";
 import type { SessionStore, StaffSessionRecord } from "../ports/session-store";
-import { exchangeForShopApiToken } from "./exchange-shop-api-token";
+import type { StaffSessionRenewal } from "../ports/staff-session-renewal";
 
 const REFRESH_SKEW_MS = 60_000;
+/**
+ * LAX Admin signs in against the same Identity issuer as LAX Bid and LAX Account, which may leave
+ * `refresh_token` out of a refresh response; the previous one is then kept. ("shop" would reject
+ * such a response: it is for the Shop identity service, which always sends both.)
+ */
+const REFRESH_RESPONSE_MODE = "bid";
 
+function isFresh(session: StaffSessionRecord, nowMs: number): boolean {
+  return session.accessTokenExpiresAtMs - nowMs > REFRESH_SKEW_MS;
+}
+
+async function renew(
+  latest: StaffSessionRecord,
+  renewal: StaffSessionRenewal,
+  nowMs: () => number,
+): Promise<StaffSessionRecord> {
+  const token = await renewal.refresh(latest.refreshToken);
+  if (!token.id_token) {
+    // Shop API access is exchanged for the ID token, and the one held is past its lifetime.
+    throw new StaffSessionEndedError("id_token_not_renewed");
+  }
+  const merged = mergeRefreshTokens(latest, token, REFRESH_RESPONSE_MODE);
+  const verified = await renewal.verifyIdToken(merged.idToken);
+  if (!verified) {
+    throw new StaffSessionEndedError("renewal_failed", {
+      cause: new Error("Renewed ID token did not verify"),
+    });
+  }
+  const shopApi = await renewal.exchangeForShopApi(merged.idToken);
+  return {
+    ...latest,
+    ...merged,
+    accessToken: shopApi.accessToken,
+    accessTokenExpiresAtMs: nowMs() + shopApi.expiresInSeconds * 1000,
+    authTime: verified.authTime ?? latest.authTime,
+    acr: verified.acr ?? latest.acr,
+  };
+}
+
+/**
+ * Returns the staff session with a usable Shop API token, renewing it shortly before it expires.
+ * When it cannot be renewed the session ends with `StaffSessionEndedError`, which pages turn into
+ * a sign-in that returns to the same page. A session the issuer refused is removed at once.
+ */
 export async function refreshStaffSessionIfNeeded(input: {
-  config: ShopAdminConfig;
   sessions: SessionStore;
+  renewal: StaffSessionRenewal;
   clock: Clock;
+  sessionTtlSeconds: number;
   sessionId: string;
   session: StaffSessionRecord;
 }): Promise<StaffSessionRecord> {
-  if (input.session.accessTokenExpiresAtMs - input.clock.nowMs() > REFRESH_SKEW_MS) {
+  if (isFresh(input.session, input.clock.nowMs())) {
     return input.session;
   }
   return input.sessions.withRefreshLock(input.sessionId, async () => {
@@ -23,57 +65,24 @@ export async function refreshStaffSessionIfNeeded(input: {
     if (!latest) {
       throw new Error("Unauthorized");
     }
-    if (latest.accessTokenExpiresAtMs - input.clock.nowMs() > REFRESH_SKEW_MS) {
+    if (isFresh(latest, input.clock.nowMs())) {
       return latest;
     }
-    const tokenEndpoint = createFetchTokenEndpoint({
-      tokenEndpointUrl: `${input.config.oidcInternalIssuer}/api/auth/oauth2/token`,
-      auth: {
-        kind: "basic",
-        clientId: input.config.oidcClientId,
-        clientSecret: input.config.oidcClientSecret,
-      },
-      timeoutMs: 15_000,
-    });
-    const token = await tokenEndpoint.requestToken(
-      new URLSearchParams({
-        grant_type: "refresh_token",
-        refresh_token: latest.refreshToken,
-      }),
-    );
-    const merged = mergeRefreshTokens(
-      { refreshToken: latest.refreshToken, idToken: latest.idToken },
-      token,
-      "shop",
-    );
-    const issuer = normalizeIssuerUrl(input.config.oidcIssuer);
-    const jwksUrl = `${input.config.oidcInternalIssuer.replace(/\/+$/, "")}${JWKS_PATH}`;
-    const verified = await verifyIdentityToken({
-      token: merged.idToken,
-      jwksUrl,
-      issuer,
-      audience: input.config.oidcClientId,
-    });
-    if (!verified) {
-      throw new Error("Invalid id_token after refresh");
+    let updated: StaffSessionRecord;
+    try {
+      updated = await renew(latest, input.renewal, () => input.clock.nowMs());
+    } catch (error) {
+      if (error instanceof StaffSessionEndedError) {
+        await input.sessions.delete(input.sessionId);
+        throw error;
+      }
+      if (isIdentityRejected(error)) {
+        await input.sessions.delete(input.sessionId);
+        throw new StaffSessionEndedError("refresh_rejected", { cause: error });
+      }
+      throw new StaffSessionEndedError("renewal_failed", { cause: error });
     }
-    const authTime =
-      typeof verified.payload.auth_time === "number" ? verified.payload.auth_time : latest.authTime;
-    const acr = typeof verified.payload.acr === "string" ? verified.payload.acr : latest.acr;
-    const shopApi = await exchangeForShopApiToken({
-      config: input.config,
-      idToken: merged.idToken,
-    });
-    const updated: StaffSessionRecord = {
-      ...latest,
-      idToken: merged.idToken,
-      refreshToken: merged.refreshToken,
-      accessToken: shopApi.accessToken,
-      accessTokenExpiresAtMs: input.clock.nowMs() + shopApi.expiresInSeconds * 1000,
-      authTime,
-      acr,
-    };
-    await input.sessions.save(input.sessionId, updated, input.config.sessionTtlSeconds);
+    await input.sessions.save(input.sessionId, updated, input.sessionTtlSeconds);
     return updated;
   });
 }

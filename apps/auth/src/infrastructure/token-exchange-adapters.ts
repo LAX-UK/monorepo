@@ -6,7 +6,7 @@ import {
   type RegisteredOidcClientId,
 } from "@auction/identity-contracts";
 import type { IdentityDatabase } from "@auction/identity-db";
-import { oauthApplication, user } from "@auction/identity-db/schema";
+import { oauthApplication } from "@auction/identity-db/schema";
 import { eq } from "drizzle-orm";
 import { createLocalJWKSet, jwtVerify } from "jose";
 import type { ConfidentialClientAuthenticator } from "../routes/token-exchange.routes.js";
@@ -20,6 +20,7 @@ import {
   type TokenExchangePorts,
 } from "../services/token-exchange.service.js";
 import type { IdentityJwtSigner } from "./identity-jwt-signer.ports.js";
+import { isIdentitySubjectActive } from "./identity-subject-status.js";
 import type { JwksProvider } from "./jwks-provider.js";
 
 export type { JwksProvider, StoredSigningJwk } from "./jwks-provider.js";
@@ -128,18 +129,7 @@ export function createTokenExchangePorts(options: {
         return null;
       }
     },
-    async isSubjectActive(subject) {
-      const [identity] = await options.db
-        .select({
-          id: user.id,
-          disabledAt: user.identityDisabledAt,
-          mergedInto: user.mergedIntoSubjectId,
-        })
-        .from(user)
-        .where(eq(user.id, subject))
-        .limit(1);
-      return Boolean(identity && !identity.disabledAt && !identity.mergedInto);
-    },
+    isSubjectActive: (subject) => isIdentitySubjectActive(options.db, subject),
     async signAccessToken({ subject, sid, audience, scopes, acr, authTime }) {
       const { token } = await options.signer.sign({
         typ: "at+jwt",

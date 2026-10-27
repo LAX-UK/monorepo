@@ -1,6 +1,7 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from "node:crypto";
 import Redis from "ioredis";
 import type { SessionStore, StaffSessionRecord } from "../ports/session-store";
+import { createKeyedSerialLock } from "./keyed-serial-lock";
 
 function deriveKey(raw: string): Buffer {
   return createHash("sha256").update(raw).digest();
@@ -36,7 +37,7 @@ export function createRedisSessionStore(input: {
   const idxSubPrefix = "shop-admin:idx:sub:";
   const jtiPrefix = "shop-admin:logout-jti:";
   const cryptoKey = deriveKey(input.encryptionKey);
-  const locks = new Map<string, Promise<unknown>>();
+  const withSessionLock = createKeyedSerialLock();
 
   async function deleteSession(sessionId: string): Promise<void> {
     const raw = await redis.get(`${keyPrefix}${sessionId}`);
@@ -89,16 +90,8 @@ export function createRedisSessionStore(input: {
       const accepted = await redis.set(`${jtiPrefix}${jti}`, "1", "EX", ttlSeconds, "NX");
       return accepted === "OK";
     },
-    async withRefreshLock(sessionId, fn) {
-      const prior = locks.get(sessionId) ?? Promise.resolve();
-      const next = prior.then(fn, fn);
-      locks.set(
-        sessionId,
-        next.finally(() => {
-          if (locks.get(sessionId) === next) locks.delete(sessionId);
-        }),
-      );
-      return next as Promise<Awaited<ReturnType<typeof fn>>>;
+    withRefreshLock(sessionId, fn) {
+      return withSessionLock(sessionId, fn);
     },
   };
 }

@@ -16,6 +16,7 @@ import { createIdentityLifecycleService } from "./container/create-identity-life
 import { createIdentityOperationsService } from "./container/create-identity-operations-service.js";
 import { createOidcRouteServices } from "./container/create-oidc-route-services.js";
 import { createRefreshTokenFamilyRepository } from "./container/create-refresh-token-family-repository.js";
+import { createRefreshedIdTokenService } from "./container/create-refreshed-id-token-service.js";
 import {
   createDurableSecurityEffects,
   createSecurityNoticeService,
@@ -84,6 +85,17 @@ const securityNotices = createSecurityNoticeService({
   secureAccountUrl: `${(env.LAX_ACCOUNT_ORIGIN ?? DEFAULT_LAX_ACCOUNT_ORIGIN).replace(/\/+$/, "")}/account/security`,
   log,
 });
+const accountAccessClaims = createAccountAccessClaimsResolver({
+  store: identityPorts.twoFactorPolicyStore,
+});
+const refreshedIdTokens = createRefreshedIdTokenService({
+  db,
+  redis,
+  jwks: infra.jwks,
+  authSecret: env.BETTER_AUTH_SECRET,
+  accessClaims: accountAccessClaims,
+  sealer: envelope ?? undefined,
+});
 const auth = createAuthIssuer({
   env,
   db,
@@ -94,9 +106,7 @@ const auth = createAuthIssuer({
   trustedOrigins: webOrigins,
   logout: services.oidc.logout,
   oidcSessions: services.oidc.sessions,
-  accountAccessClaims: createAccountAccessClaimsResolver({
-    store: identityPorts.twoFactorPolicyStore,
-  }),
+  accountAccessClaims,
   identityEventPublisher: repositories.identityEventPublisher,
   securityNotices,
 });
@@ -220,6 +230,7 @@ const app = createAuthApp({
     webOrigins,
     retryResponseCrypto: envelope,
     refreshFamilies,
+    idTokenRenewal: refreshedIdTokens,
     replay: {
       reserve: async (key, value, ttlSec) =>
         (await redis.set(key, value, "EX", ttlSec, "NX")) === "OK",

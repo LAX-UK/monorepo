@@ -1,6 +1,6 @@
 import type { IdentityDatabase } from "@auction/identity-db";
 import { oidcRpSession, session } from "@auction/identity-db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq, gt } from "drizzle-orm";
 import type { Redis } from "ioredis";
 import type {
   OidcCodeCorrelationStore,
@@ -49,6 +49,22 @@ export class DrizzleOidcRpSessionRepository implements OidcRpSessionRepository {
       })
       .from(session)
       .where(eq(session.id, identitySessionId))
+      .limit(1);
+    return row ?? null;
+  }
+
+  /** The Identity session behind `sid` while it is still signed in (not ended or expired). */
+  async findLiveIdentitySession(identitySessionId: string, now: Date) {
+    const [row] = await this.db
+      .select({
+        id: session.id,
+        subjectId: session.userId,
+        createdAt: session.createdAt,
+        lastPasswordAuthAt: session.lastPasswordAuthAt,
+        mfaCompletedAt: session.mfaCompletedAt,
+      })
+      .from(session)
+      .where(and(eq(session.id, identitySessionId), gt(session.expiresAt, now)))
       .limit(1);
     return row ?? null;
   }

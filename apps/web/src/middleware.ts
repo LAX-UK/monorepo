@@ -1,3 +1,4 @@
+import { isAdminPath } from "@/lib/admin/admin-return-path";
 import {
   buildRequestWithAuthEdgeHeader,
   buildStaleSessionRecoveryLoginUrl,
@@ -76,10 +77,13 @@ function buildCsp(nonce: string, themeInitScriptSrcToken: string): string {
 
 const CSP_REPORT_ONLY = process.env.CSP_ENFORCE !== "1";
 
-/** Pass pathname + search to server components for onboarding auth/rollback redirects. */
-function applyOnboardingPathHeaders(request: NextRequest, reqHeaders: Headers): void {
+/**
+ * Pass pathname + search to server components that redirect to sign-in and back: onboarding
+ * auth/rollback redirects, and admin pages, which return staff to the page they were on.
+ */
+function applyRequestPathHeaders(request: NextRequest, reqHeaders: Headers): void {
   const { pathname, search } = request.nextUrl;
-  if (pathname.startsWith("/onboarding/")) {
+  if (pathname.startsWith("/onboarding/") || isAdminPath(pathname)) {
     reqHeaders.set("x-pathname", pathname);
     reqHeaders.set("x-search", search);
   }
@@ -112,7 +116,7 @@ export async function middleware(request: NextRequest) {
   let baseResponse: ReturnType<typeof NextResponse.next> | ReturnType<typeof NextResponse.redirect>;
 
   if (tagged) {
-    applyOnboardingPathHeaders(request, tagged.request.headers);
+    applyRequestPathHeaders(request, tagged.request.headers);
     const res = NextResponse.next(tagged);
     res.headers.set("x-nonce", nonce);
     baseResponse = res;
@@ -124,7 +128,7 @@ export async function middleware(request: NextRequest) {
 
     const reqHeaders = new Headers(request.headers);
     reqHeaders.set("x-nonce", nonce);
-    applyOnboardingPathHeaders(request, reqHeaders);
+    applyRequestPathHeaders(request, reqHeaders);
     baseResponse = NextResponse.next({ request: { headers: reqHeaders } });
   }
 

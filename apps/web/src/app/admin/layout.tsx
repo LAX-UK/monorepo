@@ -7,6 +7,7 @@ import { sessionUserToShellRole } from "@/components/layout/app-shell-nav";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { FinanceShell } from "@/components/shell/finance-shell";
 import { StaffShell } from "@/components/shell/staff-shell";
+import { resolveAdminReturnPath } from "@/lib/admin/admin-return-path.server";
 import { buildStaffHeaderAttentionItems } from "@/lib/admin/build-staff-header-attention-items";
 import { loadStaffProducts } from "@/lib/admin/load-staff-products";
 import type { ActingContext } from "@/lib/auth/capabilities";
@@ -39,7 +40,10 @@ import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
 export async function generateMetadata(): Promise<Metadata> {
-  const user = await requireAuthenticatedUser({ shell: "staff", loginNext: "/admin" });
+  const user = await requireAuthenticatedUser({
+    shell: "staff",
+    loginNext: await resolveAdminReturnPath(),
+  });
   const { impersonation } = await resolveActingContext(user.role, user.staffRole ?? null);
   const base = metadataForPrivate("Admin");
   if (
@@ -62,7 +66,10 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const user = await requireAuthenticatedUser({ shell: "staff", loginNext: "/admin" });
+  const user = await requireAuthenticatedUser({
+    shell: "staff",
+    loginNext: await resolveAdminReturnPath(),
+  });
   const { impersonation } = await resolveActingContext(user.role, user.staffRole ?? null);
 
   let pendingSubmissionCount = 0;

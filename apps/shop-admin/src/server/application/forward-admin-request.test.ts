@@ -38,6 +38,11 @@ async function forwardStaffGrantFromServerAction(authAgeSeconds: number) {
   const result = forwardAdminRequest({
     config,
     sessions,
+    renewal: {
+      refresh: vi.fn(),
+      verifyIdToken: vi.fn(),
+      exchangeForShopApi: vi.fn(),
+    },
     adminApi: { forward },
     clock: { nowMs: () => NOW_MS },
     sessionId: "session-1",
@@ -83,6 +88,7 @@ describe("forwardAdminRequest", () => {
           sessionTtlSeconds: 3600,
         },
         sessions: createMemorySessionStore(),
+        renewal: { refresh: vi.fn(), verifyIdToken: vi.fn(), exchangeForShopApi: vi.fn() },
         adminApi: {
           forward: async () => ({
             status: 200,

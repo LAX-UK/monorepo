@@ -30,6 +30,7 @@ import {
   createSendVerificationIssuerRateLimitMiddleware,
 } from "../middleware/auth-rate-limit.js";
 import { createAuthRouteCorsMiddleware } from "../middleware/auth-route-cors.js";
+import { createIdTokenRenewalMiddleware } from "../middleware/id-token-renewal.js";
 import {
   createOAuthTokenRequestContextMiddleware,
   getOAuthTokenRequestContext,
@@ -61,6 +62,7 @@ import type { EmailChangeService } from "../services/email-change.service.js";
 import type { IdentityOperationsService } from "../services/identity-operations.service.js";
 import { RecentSessionGuard } from "../services/recent-session-guard.js";
 import type { IRefreshTokenFamilyRepository } from "../services/refresh-token-family.ports.js";
+import type { RefreshedIdTokenService } from "../services/refreshed-id-token.service.js";
 import { createSubjectReadRateLimiter } from "../services/subject-read-rate-limiter.js";
 import type { TwoFactorRequirementReader } from "../services/two-factor-requirement.service.js";
 import type { AuthRouteServicesSlice } from "./auth-container-slices.js";
@@ -80,6 +82,8 @@ export type OidcRouteMountOptions = {
   webOrigins: string[];
   retryResponseCrypto?: { seal(value: string): string; open(value: string): string } | undefined;
   refreshFamilies: IRefreshTokenFamilyRepository;
+  /** Renews the ID token on refresh, so clients never hold an expired one after rotating. */
+  idTokenRenewal: Pick<RefreshedIdTokenService, "rememberIssued" | "renew">;
   replay: RefreshReplayRedis;
   clientIp: ClientIpResolver;
   services: AuthRouteServicesSlice;
@@ -122,6 +126,16 @@ export function mountOidcRoutes(app: Hono, options: OidcRouteMountOptions): void
       onOutcome: (outcome) => options.metrics.refreshRotationOutcomes.inc({ outcome }),
       ...(options.retryResponseCrypto ? { retryResponseCrypto: options.retryResponseCrypto } : {}),
       replay: options.replay,
+    }),
+  );
+  // Inside the replay gate, so a refresh retried within its grace window replays the renewed token.
+  app.use(
+    "/api/auth/*",
+    createIdTokenRenewalMiddleware({
+      renewal: options.idTokenRenewal,
+      onOutcome: (outcome, error) => {
+        if (outcome === "failed") options.log.warn({ err: error }, "id_token_renewal_failed");
+      },
     }),
   );
   app.use("/api/auth/*", createAuthNoStoreMiddleware());
