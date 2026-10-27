@@ -285,7 +285,11 @@ export function EditorialPlacementsTab({
   placements: readonly AdminPlacementRow[];
   refLists: PlacementRefLists;
 }) {
-  const [initial] = useState(() => placementDraftsBySlot(placements, newKey));
+  // Saved rows get stable keys: their ids appear in the markup, so the server and the browser must agree.
+  const [initial] = useState(() => {
+    let next = 0;
+    return placementDraftsBySlot(placements, () => `saved-${next++}`);
+  });
   return (
     <div className="flex w-full max-w-[1040px] flex-col gap-6">
       {EDITORIAL_PLACEMENT_SLOTS.map((slot) => (

@@ -71,7 +71,7 @@ export default async function OverviewPage() {
               Nothing is waiting for you here. Open one of the areas you can use.
             </p>
           </div>
-          <div className="grid gap-6 md:grid-cols-2">
+          <div className="grid items-start gap-6 md:grid-cols-2">
             {sections.map((section) => (
               <LinkList
                 key={section.title}
