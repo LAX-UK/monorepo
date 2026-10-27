@@ -1,8 +1,6 @@
 "use client";
 
-import { EditorialErrorList, EditorialStatusMessage } from "@/components/editorial-status-message";
-import { SelectField, TextField } from "@/components/forms/fields";
-import { MediaUploadField } from "@/components/media-upload-field";
+import { EditorialImageField } from "@/components/editorial/editorial-image-field.client";
 import { useEditorialMutation } from "@/components/use-editorial-mutation";
 import type { EditorialAdminRow } from "@/lib/editorial-entity-forms";
 import { moveItem, removeItem, replaceItem } from "@/lib/editorial-list-ops";
@@ -12,16 +10,32 @@ import {
   type EditorialPlacementSlot,
   PLACEMENT_MAX_ROWS,
   PLACEMENT_REF_KINDS,
+  PLACEMENT_REF_KIND_COPY,
   PLACEMENT_SLOT_LABELS,
   type PlacementDraft,
+  type PlacementField,
+  type PlacementIssue,
   type PlacementRefKind,
   buildPlacementSlotPayload,
   emptyPlacementDraft,
   placementDraftsBySlot,
 } from "@/lib/editorial-placements";
 import { replaceEditorialPlacementSlot } from "@/server/application/admin-editorial-actions.server";
-import { EmptyState, useBeforeUnloadGuard } from "@auction/staff-ui";
-import { Button } from "@auction/ui";
+import {
+  EnumSelect,
+  Field,
+  FieldRow,
+  FormActions,
+  FormErrorSummary,
+  ListEditor,
+  Notice,
+  StaffButton,
+  StatusBadge,
+  TextInput,
+  useBeforeUnloadGuard,
+} from "@auction/staff-ui";
+import { Save } from "@auction/staff-ui/icons";
+import Link from "next/link";
 import { useState } from "react";
 
 export type PlacementRefLists = Record<
@@ -33,120 +47,110 @@ const newKey = () => crypto.randomUUID();
 
 const REF_KIND_OPTIONS = PLACEMENT_REF_KINDS.map((kind) => ({
   value: kind,
-  label: kind === "external" ? "External link" : kind,
+  label: PLACEMENT_REF_KIND_COPY[kind].label,
 }));
 
+const HREF_PLACEHOLDER = "https://… or /visit";
+
+const fieldId = (slot: string, rowKey: string, field: string) =>
+  `placement-${slot}-${rowKey}-${field}`;
+
 function PlacementRowFields({
+  slot,
   draft,
-  index,
-  count,
   refLists,
   disabled,
+  errors,
   onChange,
-  onMove,
-  onRemove,
 }: {
+  slot: EditorialPlacementSlot;
   draft: PlacementDraft;
-  index: number;
-  count: number;
   refLists: PlacementRefLists;
   disabled: boolean;
+  errors: Partial<Record<PlacementField, string>>;
   onChange: (next: PlacementDraft) => void;
-  onMove: (direction: -1 | 1) => void;
-  onRemove: () => void;
 }) {
-  const label = `row ${index + 1}`;
+  const copy = PLACEMENT_REF_KIND_COPY[draft.refKind];
   const refRows = draft.refKind === "external" ? [] : refLists[draft.refKind];
-  const refOptions = [
-    { value: "", label: `Choose a ${draft.refKind}…` },
-    ...refRows.map((row) => ({
-      value: row.id,
-      label: `${row.label}${row.status === "draft" ? " (draft)" : ""}`,
-    })),
-  ];
+  const refOptions = refRows.map((row) => ({
+    value: row.id,
+    label: `${row.label}${row.status === "draft" ? " (draft)" : ""}`,
+  }));
   if (draft.refId && !refRows.some((row) => row.id === draft.refId)) {
     refOptions.push({ value: draft.refId, label: "Unknown item (removed?)" });
   }
+  const external = draft.refKind === "external";
   return (
-    <li className="space-y-3 rounded border bg-surface p-3">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="text-sm font-medium">Row {index + 1}</p>
-        <div className="flex flex-wrap gap-1">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={disabled || index === 0}
-            aria-label={`Move ${label} up`}
-            onClick={() => onMove(-1)}
-          >
-            Up
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={disabled || index === count - 1}
-            aria-label={`Move ${label} down`}
-            onClick={() => onMove(1)}
-          >
-            Down
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            disabled={disabled}
-            aria-label={`Remove ${label}`}
-            onClick={onRemove}
-          >
-            Remove
-          </Button>
-        </div>
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <SelectField
-          label="Links to"
-          value={draft.refKind}
-          options={REF_KIND_OPTIONS}
-          disabled={disabled}
-          onChange={(refKind) => onChange({ ...draft, refKind, refId: "" })}
-        />
-        {draft.refKind === "external" ? null : (
-          <SelectField
-            label={`Featured ${draft.refKind}`}
-            value={draft.refId}
-            options={refOptions}
-            disabled={disabled}
-            onChange={(refId) => onChange({ ...draft, refId })}
+    <>
+      <FieldRow>
+        <Field label="Links to" disabled={disabled}>
+          <EnumSelect
+            value={draft.refKind}
+            options={REF_KIND_OPTIONS}
+            onValueChange={(refKind) => onChange({ ...draft, refKind, refId: "" })}
           />
+        </Field>
+        {external ? null : (
+          <Field
+            label={`Featured ${copy.noun}`}
+            disabled={disabled}
+            error={errors.refId}
+            id={fieldId(slot, draft.key, "refId")}
+          >
+            <EnumSelect
+              value={draft.refId || null}
+              options={refOptions}
+              placeholder={copy.choose}
+              onValueChange={(refId) => onChange({ ...draft, refId })}
+            />
+          </Field>
         )}
-        <TextField
-          label="Headline (optional)"
-          value={draft.headline}
-          maxLength={300}
+      </FieldRow>
+      <FieldRow>
+        <Field label="Headline" optional disabled={disabled}>
+          <TextInput
+            value={draft.headline}
+            maxLength={300}
+            autoComplete="off"
+            onChange={(event) => onChange({ ...draft, headline: event.target.value })}
+          />
+        </Field>
+        <Field
+          label="Link URL"
+          optional={!external}
           disabled={disabled}
-          onChange={(headline) => onChange({ ...draft, headline })}
-        />
-        <TextField
-          label={draft.refKind === "external" ? "Link URL" : "Link URL (optional)"}
-          hint="https://…, mailto:… or a site path such as /visit"
-          value={draft.linkUrl}
-          maxLength={2048}
-          required={draft.refKind === "external"}
-          disabled={disabled}
-          onChange={(linkUrl) => onChange({ ...draft, linkUrl })}
-        />
-      </div>
-      <MediaUploadField
+          error={errors.linkUrl}
+          id={fieldId(slot, draft.key, "linkUrl")}
+        >
+          <TextInput
+            value={draft.linkUrl}
+            placeholder={HREF_PLACEHOLDER}
+            maxLength={2048}
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(event) => onChange({ ...draft, linkUrl: event.target.value })}
+          />
+        </Field>
+      </FieldRow>
+      <EditorialImageField
+        name={fieldId(slot, draft.key, "image")}
+        label="Image"
         kind="editorial_cover"
-        label="Placement image (optional)"
         value={draft.mediaKey}
         disabled={disabled}
         onChange={(mediaKey) => onChange({ ...draft, mediaKey })}
       />
-    </li>
+    </>
   );
+}
+
+function issuesByRow(issues: readonly PlacementIssue[]) {
+  const byRow = new Map<string, Partial<Record<PlacementField, string>>>();
+  for (const issue of issues) {
+    if (!issue.rowKey || !issue.field) continue;
+    byRow.set(issue.rowKey, { ...byRow.get(issue.rowKey), [issue.field]: issue.message });
+  }
+  return byRow;
 }
 
 function PlacementSlotEditor({
@@ -161,83 +165,115 @@ function PlacementSlotEditor({
   const { status, setStatus, pending, run } = useEditorialMutation();
   const [drafts, setDrafts] = useState(initialDrafts);
   const [dirty, setDirty] = useState(false);
+  const [issues, setIssues] = useState<PlacementIssue[]>([]);
+  const [failedSaves, setFailedSaves] = useState(0);
   useBeforeUnloadGuard(dirty);
-  const [errors, setErrors] = useState<string[]>([]);
   const headingId = `placement-${slot}-heading`;
+  const rowErrors = issuesByRow(issues);
 
   const update = (next: PlacementDraft[]) => {
     setDrafts(next);
     setDirty(true);
+    if (issues.length > 0) setIssues([]);
   };
 
   async function save() {
     const result = buildPlacementSlotPayload(drafts);
     if (!result.ok) {
       setStatus(null);
-      setErrors(result.errors);
+      setIssues(result.issues);
+      setFailedSaves((count) => count + 1);
       return;
     }
-    setErrors([]);
+    setIssues([]);
     const saved = await run(
       (idempotencyKey) =>
         replaceEditorialPlacementSlot({ slot, items: result.payload.items, idempotencyKey }),
       {
         action: "save the placements",
-        success: `${PLACEMENT_SLOT_LABELS[slot]} saved (${drafts.length} row${drafts.length === 1 ? "" : "s"}).`,
+        success: `${PLACEMENT_SLOT_LABELS[slot]} saved (${drafts.length} ${drafts.length === 1 ? "row" : "rows"})`,
       },
     );
     if (saved !== null) setDirty(false);
   }
 
+  const summary = issues.map((issue) => {
+    const position = drafts.findIndex((draft) => draft.key === issue.rowKey) + 1;
+    return {
+      fieldId: issue.rowKey && issue.field ? fieldId(slot, issue.rowKey, issue.field) : headingId,
+      message: issue.rowKey ? `Row ${position}: ${issue.message}` : issue.message,
+    };
+  });
+
   return (
-    <section aria-labelledby={headingId} className="space-y-3 rounded border p-4">
+    <section
+      aria-labelledby={headingId}
+      className="flex flex-col gap-4 rounded-staff-md border border-staff-line bg-staff-surface p-4 sm:p-6"
+    >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 id={headingId} className="text-lg font-medium">
-          {PLACEMENT_SLOT_LABELS[slot]}{" "}
-          <span className="font-mono text-xs text-on-surface-variant">{slot}</span>
+        <h2
+          id={headingId}
+          tabIndex={-1}
+          className="staff-focus rounded-staff-xs font-staff text-staff-md font-semibold text-staff-fg"
+        >
+          {PLACEMENT_SLOT_LABELS[slot]}
         </h2>
-        {dirty ? <span className="text-xs text-on-surface-variant">Unsaved changes</span> : null}
+        {dirty ? <StatusBadge tone="warning">Unsaved changes</StatusBadge> : null}
       </div>
-      {drafts.length === 0 ? (
-        <EmptyState
-          size="compact"
-          headingLevel="h3"
-          illustration="frame"
-          title="Nothing placed in this slot"
-        />
-      ) : (
-        <ol className="space-y-3">
-          {drafts.map((draft, index) => (
+      <FormErrorSummary errors={summary} focusKey={failedSaves} />
+      <ListEditor
+        items={drafts}
+        getKey={(draft) => draft.key}
+        itemLabel={(index) => `row ${index + 1}`}
+        addLabel="Add row"
+        emptyText="Nothing is placed in this slot."
+        max={PLACEMENT_MAX_ROWS}
+        disabled={pending}
+        onAdd={() => update([...drafts, emptyPlacementDraft(newKey())])}
+        onRemove={(index) => update(removeItem(drafts, index))}
+        onMove={(from, to) => update(moveItem(drafts, from, to > from ? 1 : -1))}
+        renderItem={(draft, index) => (
+          // biome-ignore lint/a11y/useSemanticElements: a row is several fields, not one control
+          <div role="group" aria-label={`Row ${index + 1}`} className="flex flex-col gap-4">
             <PlacementRowFields
-              key={draft.key}
+              slot={slot}
               draft={draft}
-              index={index}
-              count={drafts.length}
               refLists={refLists}
               disabled={pending}
+              errors={rowErrors.get(draft.key) ?? {}}
               onChange={(next) => update(replaceItem(drafts, index, next))}
-              onMove={(direction) => update(moveItem(drafts, index, direction))}
-              onRemove={() => update(removeItem(drafts, index))}
             />
-          ))}
-        </ol>
-      )}
-      <EditorialErrorList errors={errors} />
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
+          </div>
+        )}
+      />
+      {status ? (
+        <Notice
+          tone="danger"
+          alert
+          title={status.text}
+          {...(status.stepUp
+            ? {
+                actions: (
+                  <StaffButton asChild size="sm" variant="secondary">
+                    <Link href="/api/auth/login?returnTo=%2Feditorial%2Fhome">Sign in again</Link>
+                  </StaffButton>
+                ),
+              }
+            : {})}
+        />
+      ) : null}
+      <FormActions>
+        <StaffButton
           type="button"
-          variant="outline"
-          size="sm"
-          disabled={pending || drafts.length >= PLACEMENT_MAX_ROWS}
-          onClick={() => update([...drafts, emptyPlacementDraft(newKey())])}
+          variant="primary"
+          icon={<Save aria-hidden />}
+          {...(dirty || pending ? {} : { disabledReason: "No changes to save" })}
+          loading={pending}
+          onClick={() => void save()}
         >
-          Add row
-        </Button>
-        <Button type="button" size="sm" disabled={pending} onClick={() => void save()}>
           {pending ? "Saving…" : "Save slot"}
-        </Button>
-      </div>
-      <EditorialStatusMessage status={status} />
+        </StaffButton>
+      </FormActions>
     </section>
   );
 }
@@ -249,13 +285,13 @@ export function EditorialPlacementsTab({
   placements: readonly AdminPlacementRow[];
   refLists: PlacementRefLists;
 }) {
-  const [initial] = useState(() => placementDraftsBySlot(placements, newKey));
+  // Saved rows get stable keys: their ids appear in the markup, so the server and the browser must agree.
+  const [initial] = useState(() => {
+    let next = 0;
+    return placementDraftsBySlot(placements, () => `saved-${next++}`);
+  });
   return (
-    <div className="space-y-6">
-      <p className="text-sm text-on-surface-variant">
-        Each slot is saved on its own and replaces everything in that slot. Rows show in the order
-        listed.
-      </p>
+    <div className="flex w-full max-w-[1040px] flex-col gap-6">
       {EDITORIAL_PLACEMENT_SLOTS.map((slot) => (
         <PlacementSlotEditor
           key={slot}

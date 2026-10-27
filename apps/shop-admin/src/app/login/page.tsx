@@ -2,11 +2,8 @@ import { loadAdminSession } from "@/lib/admin-data.server";
 import { safeReturnTo } from "@/lib/safe-return-to";
 import { shopAdminLoginErrorView } from "@/server/domain/login-error.vm";
 import { SITE_SUPPORT_EMAIL } from "@auction/branding";
-import { Button } from "@auction/ui";
+import { StaffButton } from "@auction/staff-ui";
 import { redirect } from "next/navigation";
-
-const primaryButton =
-  "inline-flex min-h-11 w-full items-center justify-center rounded-md bg-primary px-4 text-sm font-medium text-on-primary transition-opacity hover:opacity-90";
 
 export default function ShopAdminLoginPage({
   searchParams,
@@ -64,22 +61,22 @@ async function ShopAdminLoginContent({
           </div>
           <div className="mt-6 flex flex-col gap-3">
             {view.showRetrySignIn ? (
-              <a href={loginHref} className={primaryButton}>
-                Sign in again
-              </a>
+              <StaffButton asChild variant="primary" className="w-full">
+                <a href={loginHref}>Sign in again</a>
+              </StaffButton>
             ) : null}
             {view.showUseDifferentAccount ? (
               <form
                 method="post"
                 action={`/api/auth/switch-account?returnTo=${encodeURIComponent(returnTo)}`}
               >
-                <Button
+                <StaffButton
                   type="submit"
-                  variant={view.showRetrySignIn ? "outline" : "default"}
+                  variant={view.showRetrySignIn ? "secondary" : "primary"}
                   className="w-full"
                 >
                   Use a different account
-                </Button>
+                </StaffButton>
               </form>
             ) : null}
           </div>

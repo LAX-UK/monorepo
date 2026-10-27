@@ -154,6 +154,15 @@ export {
 export type { FormErrorSummaryProps } from "./forms/form-section.js";
 export { ReviewSection, StepHeader, StepIndicator } from "./forms/wizard.js";
 export { ListEditor } from "./forms/list-editor.js";
+export { RichTextField } from "./forms/rich-text-field.js";
+export type { RichTextFieldProps } from "./forms/rich-text-field.js";
+export {
+  htmlToSpans,
+  normalizeSpans,
+  spansToHtml,
+  spansToPlainText,
+} from "./forms/rich-text-model.js";
+export type { RichTextMark, RichTextSpan } from "./forms/rich-text-model.js";
 export type { WizardStep } from "./forms/wizard.js";
 
 // Data

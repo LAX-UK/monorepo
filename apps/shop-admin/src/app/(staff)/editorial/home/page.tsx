@@ -4,7 +4,7 @@ import { EditorialPlacementsTab } from "@/components/editorial-placements-tab.cl
 import type { EditorialAdminRow } from "@/lib/editorial-entity-forms";
 import type { AdminPlacementRow } from "@/lib/editorial-placements";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
-import { PageHeader } from "@auction/ui";
+import { PageHeader } from "@auction/staff-ui";
 import { redirect } from "next/navigation";
 
 type RowList = { items: EditorialAdminRow[] };
@@ -37,7 +37,7 @@ export default async function HomePlacementsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="flex flex-col gap-6">
       <PageHeader
         breadcrumbs={
           <AdminBreadcrumbs
@@ -46,7 +46,7 @@ export default async function HomePlacementsPage() {
           />
         }
         title="Home placements"
-        description="What the lax.art home page features, slot by slot."
+        description="What lax.art features on its home and hub pages, slot by slot. Each slot is saved on its own and replaces everything in it; rows show in the order listed."
       />
       <EditorialPlacementsTab
         placements={placements.data.items}

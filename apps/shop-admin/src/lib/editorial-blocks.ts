@@ -86,34 +86,19 @@ export function withOptionalText<T extends object>(
 }
 
 /**
- * Reads spans as one plain paragraph with an optional link. Returns null when the
- * spans carry formatting the simple form cannot represent without data loss.
+ * Whether a block has a form. Paragraphs and FAQ answers are edited as formatted text, so any
+ * run list opens in the form; only blocks that carry no form at all, and blocks whose shape is
+ * not what the form expects, fall back to JSON.
  */
-export function readSimpleText(
-  spans: readonly EditorialInlineSpan[] | undefined,
-): { text: string; href: string } | null {
-  if (!Array.isArray(spans) || spans.length > 1) return null;
-  const span = spans[0];
-  if (!span) return { text: "", href: "" };
-  const marks: readonly string[] = span.marks ?? [];
-  if (marks.some((mark) => mark !== "link")) return null;
-  return { text: span.text ?? "", href: span.href ?? "" };
-}
-
-export function simpleSpans(text: string, href: string): EditorialInlineSpan[] {
-  const link = href.trim();
-  return [link ? { text, marks: ["link"], href: link } : { text }];
-}
-
 export function isStructuredBlock(block: EditorialBlock): boolean {
   if (!EDITORIAL_BLOCK_TYPES.includes(block.type) || JSON_ONLY_BLOCK_TYPES.has(block.type)) {
     return false;
   }
-  if (block.type === "richText") return readSimpleText(block.spans) !== null;
+  if (block.type === "richText") return Array.isArray(block.spans);
   if (block.type === "faqGroup") {
     return (
       Array.isArray(block.items) &&
-      block.items.every((item) => readSimpleText(item.answer) !== null)
+      block.items.every((item) => Array.isArray(item.answer) && typeof item.question === "string")
     );
   }
   return true;

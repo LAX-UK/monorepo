@@ -1,13 +1,9 @@
 "use client";
 
 import { EditorialImageField } from "@/components/editorial/editorial-image-field.client";
+import { EditorialRichText } from "@/components/editorial/editorial-rich-text.client";
 import { RailRelationFields } from "@/components/editorial/rail-relation-fields.client";
-import {
-  type EditorialBlockOf,
-  readSimpleText,
-  simpleSpans,
-  withOptionalText,
-} from "@/lib/editorial-blocks";
+import { type EditorialBlockOf, withOptionalText } from "@/lib/editorial-blocks";
 import { moveItem, removeItem, replaceItem } from "@/lib/editorial-list-ops";
 import type { EditorialBlock } from "@auction/shop-contracts";
 import { EnumSelect, Field, FieldRow, ListEditor, TextArea, TextInput } from "@auction/staff-ui";
@@ -125,25 +121,13 @@ function HeadingFields({ block, onChange, disabled }: FieldsProps<EditorialBlock
 }
 
 function RichTextFields({ block, onChange, disabled }: FieldsProps<EditorialBlockOf<"richText">>) {
-  const simple = readSimpleText(block.spans) ?? { text: "", href: "" };
   return (
-    <div className="flex flex-col gap-4">
-      <BlockTextArea
-        label="Paragraph text"
-        value={simple.text}
-        disabled={disabled}
-        onChange={(text) => onChange({ ...block, spans: simpleSpans(text, simple.href) })}
-      />
-      <BlockText
-        label="Link"
-        optional
-        description={`Turns the whole paragraph into a link. ${HREF_HINT}`}
-        value={simple.href}
-        maxLength={2048}
-        disabled={disabled}
-        onChange={(href) => onChange({ ...block, spans: simpleSpans(simple.text, href) })}
-      />
-    </div>
+    <EditorialRichText
+      label="Paragraph"
+      value={block.spans}
+      disabled={disabled}
+      onChange={(spans) => onChange({ ...block, spans })}
+    />
   );
 }
 
@@ -251,51 +235,26 @@ function FaqGroupFields({ block, onChange, disabled }: FieldsProps<EditorialBloc
         keys.move(from, to);
         setItems(moveItem(block.items, from, to > from ? 1 : -1));
       }}
-      renderItem={(item, index) => {
-        const answer = readSimpleText(item.answer) ?? { text: "", href: "" };
-        return (
-          <>
-            <BlockText
-              label={`Question ${index + 1}`}
-              value={item.question}
-              maxLength={500}
-              disabled={disabled}
-              onChange={(question) =>
-                setItems(replaceItem(block.items, index, { ...item, question }))
-              }
-            />
-            <BlockTextArea
-              label={`Answer ${index + 1}`}
-              value={answer.text}
-              disabled={disabled}
-              onChange={(text) =>
-                setItems(
-                  replaceItem(block.items, index, {
-                    ...item,
-                    answer: simpleSpans(text, answer.href),
-                  }),
-                )
-              }
-            />
-            <BlockText
-              label={`Answer ${index + 1} link`}
-              optional
-              description={HREF_HINT}
-              value={answer.href}
-              maxLength={2048}
-              disabled={disabled}
-              onChange={(href) =>
-                setItems(
-                  replaceItem(block.items, index, {
-                    ...item,
-                    answer: simpleSpans(answer.text, href),
-                  }),
-                )
-              }
-            />
-          </>
-        );
-      }}
+      renderItem={(item, index) => (
+        <>
+          <BlockText
+            label={`Question ${index + 1}`}
+            value={item.question}
+            maxLength={500}
+            disabled={disabled}
+            onChange={(question) =>
+              setItems(replaceItem(block.items, index, { ...item, question }))
+            }
+          />
+          <EditorialRichText
+            label={`Answer ${index + 1}`}
+            rows={3}
+            value={item.answer}
+            disabled={disabled}
+            onChange={(answer) => setItems(replaceItem(block.items, index, { ...item, answer }))}
+          />
+        </>
+      )}
     />
   );
 }

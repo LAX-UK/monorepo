@@ -6,6 +6,8 @@ import { cn } from "../lib/cn.js";
 
 type FieldContextValue = {
   controlId: string;
+  /** The label's id, for controls that are not labelable elements and name themselves with it. */
+  labelId: string;
   describedBy: string | undefined;
   invalid: boolean;
   required: boolean;
@@ -53,16 +55,25 @@ export function Field({
   const controlId = id ?? `field-${autoId}`;
   const descriptionId = description ? `${controlId}-description` : undefined;
   const errorId = error ? `${controlId}-error` : undefined;
+  const labelId = `${controlId}-label`;
   const describedBy = [descriptionId, errorId].filter(Boolean).join(" ") || undefined;
   const value = React.useMemo(
-    () => ({ controlId, describedBy, invalid: Boolean(error), required: !optional, disabled }),
-    [controlId, describedBy, error, optional, disabled],
+    () => ({
+      controlId,
+      labelId,
+      describedBy,
+      invalid: Boolean(error),
+      required: !optional,
+      disabled,
+    }),
+    [controlId, labelId, describedBy, error, optional, disabled],
   );
 
   return (
     <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
       <div className="flex flex-col gap-0.5">
         <label
+          id={labelId}
           htmlFor={controlId}
           className={cn(
             "flex items-baseline gap-2 text-staff-sm font-medium text-staff-fg",

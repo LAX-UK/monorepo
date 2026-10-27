@@ -3,16 +3,17 @@
  * Staff legacy shell guardrails:
  * - Rejects deprecated AdminListKpiStrip / AdminListFilterSheet imports
  * - Rejects inline list-board card surfaces outside CatalogBoardCard
- * - Rejects `@auction/ui/components/*` imports in Bid admin (app/admin and components/admin):
- *   admin screens are built on `@auction/staff-ui`.
+ * - Rejects `@auction/ui/components/*` imports in Bid admin (app/admin and components/admin) and any
+ *   `@auction/ui` import in LAX Admin (apps/shop-admin): admin screens are built on
+ *   `@auction/staff-ui`. The rule itself lives in staff-legacy-ui-rule.mjs.
  */
 import { readFile, readdir } from "node:fs/promises";
 import path from "node:path";
+import { legacyUiViolation } from "./staff-legacy-ui-rule.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 const WEB_SRC = path.join(ROOT, "apps/web/src");
-const ADMIN_DIRS = ["app/admin", "components/admin"];
-const LEGACY_UI_IMPORT = /["']@auction\/ui\/components\/[^"']+["']/;
+const SHOP_ADMIN_SRC = path.join(ROOT, "apps/shop-admin/src");
 
 const DEPRECATED_PATTERNS = [
   { pattern: /AdminListKpiStrip/, message: "deprecated AdminListKpiStrip — use AdminTrendKpiBand" },
@@ -53,11 +54,8 @@ for (const file of files) {
     }
   }
 
-  if (ADMIN_DIRS.some((dir) => rel.startsWith(`${dir}/`)) && LEGACY_UI_IMPORT.test(text)) {
-    violations.push(
-      `${rel}: imports @auction/ui/components — build admin screens with @auction/staff-ui`,
-    );
-  }
+  const legacy = legacyUiViolation("web", rel, text);
+  if (legacy) violations.push(`${rel}: ${legacy}`);
 
   if (BOARD_CARD_ALLOWLIST.has(rel)) continue;
   const isListBoard =
@@ -67,6 +65,12 @@ for (const file of files) {
   if (text.includes(BOARD_CARD_CLASS) && !text.includes("catalogBoardCardClassName")) {
     violations.push(`${rel}: inline board card surface — use CatalogBoardCard`);
   }
+}
+
+for (const file of await walk(SHOP_ADMIN_SRC)) {
+  const rel = path.relative(SHOP_ADMIN_SRC, file);
+  const legacy = legacyUiViolation("shop-admin", rel, await readFile(file, "utf8"));
+  if (legacy) violations.push(`apps/shop-admin/src/${rel}: ${legacy}`);
 }
 
 if (violations.length > 0) {

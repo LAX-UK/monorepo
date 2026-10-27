@@ -90,10 +90,14 @@ describe("buildPlacementSlotPayload", () => {
     ]);
     expect(result).toEqual({
       ok: false,
-      errors: [
-        "Row 1: choose which exhibition to feature.",
-        "Row 2: external rows need a link URL.",
-        "Row 3: link must start with https://, mailto: or a single /.",
+      issues: [
+        { rowKey: "a", field: "refId", message: "Choose which exhibition to feature." },
+        { rowKey: "b", field: "linkUrl", message: "Enter the link URL." },
+        {
+          rowKey: "c",
+          field: "linkUrl",
+          message: "The link must start with https://, mailto: or a single /.",
+        },
       ],
     });
   });
@@ -105,6 +109,9 @@ describe("buildPlacementSlotPayload", () => {
       refKind: "external" as const,
       linkUrl: "/x",
     }));
-    expect(buildPlacementSlotPayload(tooMany).ok).toBe(false);
+    expect(buildPlacementSlotPayload(tooMany)).toMatchObject({
+      ok: false,
+      issues: [{ rowKey: null, field: null }],
+    });
   });
 });

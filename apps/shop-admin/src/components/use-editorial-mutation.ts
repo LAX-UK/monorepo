@@ -2,7 +2,7 @@
 
 import { editorialMutationErrorMessage } from "@/lib/editorial-mutation-message";
 import type { AdminMutationResult } from "@/server/application/admin-mutation-result";
-import { toast } from "@auction/ui";
+import { toast } from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
