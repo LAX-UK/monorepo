@@ -28,6 +28,10 @@ import type {
 import type { IAuthOAuthAccountReader } from "../services/interfaces/auth-oauth-account-reader.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { BiddingRouteServices } from "../services/interfaces/bidding-routes.js";
+import type {
+  IBidAuthorityQueryService,
+  IBuyerAgentAuthorisationService,
+} from "../services/interfaces/buyer-agent-authorisation-service.js";
 import type { CatalogRouteServices } from "../services/interfaces/catalog-routes/index.js";
 import type { ComplianceRouteServices } from "../services/interfaces/compliance-routes/index.js";
 import type { FinanceRouteServices } from "../services/interfaces/finance-routes/index.js";
@@ -309,6 +313,14 @@ export type ContainerIdentityRoutesSlice = {
   identityRoutes: IdentityRouteServices;
 };
 
+/** Buyer-agent authorisations and the bid panel's "Bidding as" answer (`container.buyerAgents`). */
+export type ContainerBuyerAgentsSlice = {
+  buyerAgents: {
+    authorisations: IBuyerAgentAuthorisationService;
+    bidAuthority: IBidAuthorityQueryService;
+  };
+};
+
 /** Route-facing buyer user account bag (mirrors `container.userRoutes`). */
 export type ContainerUserRouteServicesSlice = {
   userRoutes: UserRouteServices;
@@ -338,6 +350,7 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerAdminRoutesSlice &
   ContainerBiddingRoutesSlice &
   ContainerIdentityRoutesSlice &
+  ContainerBuyerAgentsSlice &
   ContainerUserRouteServicesSlice;
 
 export type Container = ContainerComposedSlices;
@@ -550,6 +563,12 @@ export type ContainerLegalEntityRoutesSlice = Pick<
 export type ContainerLegalEntityMemberRoutesSlice = Pick<
   Container,
   "userSuspensionChecker" | "requireLegalEntityContext" | "identityRoutes"
+>;
+
+/** Buyer-agent authorisations and the "Bidding as" answer for the acting legal entity. */
+export type ContainerLegalEntityBuyerAgentRoutesSlice = Pick<
+  Container,
+  "userSuspensionChecker" | "requireLegalEntityContext" | "buyerAgents"
 >;
 
 /** Item submission seller + admin APIs. */

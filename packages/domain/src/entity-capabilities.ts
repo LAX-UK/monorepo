@@ -62,6 +62,8 @@ const ENTITY_CAPABILITY_RULES = {
    * but lack this need an active authorisation (sale scope, bid limit, valid window).
    */
   "entity.bid.place_without_authorisation": { access: "write", roles: ["owner", "admin"] },
+  /** See which buyer agents may bid for the organisation, with their limits. */
+  "entity.buyer_agents.read": { access: "read", roles: ["owner", "admin"] },
   /** Authorise buyer agents to bid for the organisation, and revoke those authorisations. */
   "entity.buyer_agents.manage": { access: "write", roles: ["owner", "admin"] },
   /** See the works the organisation owns, without any prices. */

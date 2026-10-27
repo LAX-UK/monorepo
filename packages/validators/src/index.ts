@@ -63,6 +63,7 @@ export {
 } from "./sale-revenue/compute-sale-revenue.js";
 /** Legal Entity Model validators */
 export * from "./legal-entity.js";
+export * from "./buyer-agent-authorisation.js";
 export * from "./org-onboarding-subkind.js";
 export * from "./payout.js";
 export * from "./saleroom.js";

@@ -17,6 +17,7 @@ export * from "./admin-access.js";
 export * from "./item-submission.js";
 /** Legal Entity Model types */
 export * from "./legal-entity.js";
+export * from "./buyer-agent-authorisation.js";
 export * from "./stripe-connect.js";
 export * from "./acting-context-cookie.js";
 export * from "./payout.js";

@@ -18,6 +18,7 @@ const EXPECTED: Record<EntityCapability, LegalEntityMemberRole[]> = {
   "entity.consignments.withdraw": ["owner", "admin"],
   "entity.bid.place": ["owner", "admin", "buyer_agent"],
   "entity.bid.place_without_authorisation": ["owner", "admin"],
+  "entity.buyer_agents.read": ["owner", "admin"],
   "entity.buyer_agents.manage": ["owner", "admin"],
   "entity.holdings.read": ["owner", "admin", "finance", "viewer", "buyer_agent"],
 };

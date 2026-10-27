@@ -42,6 +42,7 @@ import { createInternalIdentityEmailRoutes } from "./routes/internal-identity-em
 import { createInternalIdentitySubjectUsageRoutes } from "./routes/internal-identity-subject-usage.routes.js";
 import { createKycRoutes } from "./routes/kyc.js";
 import { createActingContextUserRoutes, createLegalEntityRoutes } from "./routes/legal-entities.js";
+import { createLegalEntityBuyerAgentRoutes } from "./routes/legal-entity-buyer-agents.js";
 import { createLegalEntityMemberRoutes } from "./routes/legal-entity-members.js";
 import { createLotDocumentRoutes } from "./routes/lot-documents.js";
 import { createLotRoutes } from "./routes/lots.js";
@@ -227,6 +228,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/users", createActingContextUserRoutes(container, authenticator))
     .route("/legal-entities", createLegalEntityPayoutStatementRoutes(container, authenticator))
     .route("/legal-entities", createLegalEntityMemberRoutes(container, authenticator))
+    .route("/legal-entities", createLegalEntityBuyerAgentRoutes(container, authenticator))
     .route("/legal-entities", createLegalEntityRoutes(container, authenticator))
     .route("/kyc", createKycRoutes(container, authenticator))
     .route(

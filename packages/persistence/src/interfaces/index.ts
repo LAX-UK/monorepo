@@ -106,6 +106,13 @@ export type {
   BuyerAgentAuthorisationRow,
   IBuyerAgentAuthorisationReader,
 } from "./buyer-agent-authorisation.reader.js";
+export type {
+  BuyerAgentAuthorisationRecord,
+  BuyerAgentAuthorisationStatus,
+  IBuyerAgentAuthorisationDirectory,
+  IBuyerAgentAuthorisationWriter,
+  NewBuyerAgentAuthorisation,
+} from "./buyer-agent-authorisation.repository.js";
 
 export type { IGuestPaddleReader } from "./guest-paddle.reader.js";
 
