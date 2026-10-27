@@ -56,7 +56,9 @@ export function DataTableToolbar({
         {search}
         {filters}
         {activeFilters}
-        {end ? <div className="ml-auto flex items-center gap-2">{end}</div> : null}
+        {end ? (
+          <div className="ml-auto flex flex-wrap items-center gap-2 max-sm:ml-0">{end}</div>
+        ) : null}
       </div>
     </div>
   );

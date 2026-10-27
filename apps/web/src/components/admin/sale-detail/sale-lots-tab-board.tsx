@@ -397,9 +397,16 @@ export function SaleLotsTabBoard({
           description: "No lots were added before the sale closed.",
         };
 
-  // Beside the table's search when there are lots, so the header keeps one action and the rest
-  // wrap with the filters on a phone; with no lots yet they stay in the header with "Add lot".
-  const secondaryActions = (
+  const attachAction = canEditDraft ? (
+    <StaffButton variant="secondary" size="sm" onClick={() => setAttachOpen(true)}>
+      Attach existing lot
+    </StaffButton>
+  ) : null;
+
+  // With lots, the secondary actions sit beside the table's search and wrap with it on a phone,
+  // so the header keeps one action. With none there is nothing to print or export: the header
+  // holds "Attach existing lot" and "Add lot".
+  const toolbarActions = (
     <>
       {canManageAuction ? (
         <AdminSaleLotQrPrintButton
@@ -415,11 +422,7 @@ export function SaleLotsTabBoard({
         filters={{ saleId }}
         className={staffButtonVariants({ variant: "secondary", size: "sm" })}
       />
-      {canEditDraft ? (
-        <StaffButton variant="secondary" size="sm" onClick={() => setAttachOpen(true)}>
-          Attach existing lot
-        </StaffButton>
-      ) : null}
+      {attachAction}
       {sale.status === "cancelled" && returnEligible.length > 0 && canManageAuction ? (
         <StaffButton variant="secondary" size="sm" onClick={returnAll}>
           Return lots to inventory
@@ -436,7 +439,16 @@ export function SaleLotsTabBoard({
         id="sale-lots"
         title="Lots"
         label="Lots in this sale"
-        action={lots.length > 0 ? addAction : secondaryActions}
+        action={
+          lots.length > 0 ? (
+            addAction
+          ) : (
+            <>
+              {attachAction}
+              {addAction}
+            </>
+          )
+        }
         columns={columns}
         data={rows}
         getRowId={(row) => row.id}
@@ -462,7 +474,7 @@ export function SaleLotsTabBoard({
                   onSearch={setSearch}
                 />
               }
-              end={secondaryActions}
+              end={toolbarActions}
               filters={
                 <SegmentedControl<SaleLotsLens>
                   label="Filter lots"

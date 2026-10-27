@@ -196,7 +196,13 @@ export function MetricCell({
         <dd className="col-start-1 row-start-2 mt-0.5 min-w-0">
           <span
             title={typeof item.value === "string" && !linked ? item.value : undefined}
-            className="block text-staff-lg font-semibold whitespace-nowrap text-staff-fg tabular-nums @min-[10rem]:text-staff-xl"
+            className={cn(
+              "block font-semibold whitespace-nowrap text-staff-fg tabular-nums",
+              // A long figure steps down in a narrow cell instead of running past its edge.
+              stackBeside
+                ? "text-staff-sm @min-[12rem]:text-staff-md @min-[13rem]:text-staff-lg @min-[18rem]:text-staff-xl"
+                : "text-staff-lg @min-[10rem]:text-staff-xl",
+            )}
           >
             {linked && item.href && Link ? (
               <Link
