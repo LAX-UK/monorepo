@@ -18,7 +18,8 @@ import {
   workAreasFor,
 } from "@/lib/admin/dashboard/work-inbox.vm";
 import { loadAdminDashboardPage } from "@/lib/admin/load-admin-dashboard-page";
-import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
+import { ADMIN_HOME_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { UserRole, UserStaffRole } from "@auction/types";
 import type { Metadata } from "next";
@@ -42,7 +43,9 @@ export default async function AdminHomePage({
   const sp = await searchParams;
   const periodDays = parseAdminKpiPeriod(sp.period);
   const assignment = parseWorkAssignment(sp.assignment);
-  const user = await requireAuthenticatedUser({ shell: "staff", loginNext: "/admin" });
+  // Decided before any data loads: finance staff go to their own overview, without a wasted
+  // round of dashboard requests the API would refuse.
+  const user = await requireAdminCapability(ADMIN_HOME_ACCESS, "/admin");
   const jar = await cookies();
 
   const role = (user.role ?? "staff") as UserRole;
