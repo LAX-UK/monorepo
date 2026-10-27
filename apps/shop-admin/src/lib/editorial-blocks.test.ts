@@ -7,8 +7,6 @@ import {
   isStructuredBlock,
   parseBlocksJson,
   parseSingleBlockJson,
-  readSimpleText,
-  simpleSpans,
   toBlockItems,
   withOptionalText,
 } from "./editorial-blocks";
@@ -44,38 +42,43 @@ describe("withOptionalText", () => {
   });
 });
 
-describe("simple rich text", () => {
-  it("reads a single span with an optional link", () => {
-    expect(readSimpleText([{ text: "Hi", marks: ["link"], href: "/x" }])).toEqual({
-      text: "Hi",
-      href: "/x",
-    });
-    expect(readSimpleText([])).toEqual({ text: "", href: "" });
-  });
-
-  it("refuses spans the simple form would flatten", () => {
-    expect(readSimpleText([{ text: "a" }, { text: "b" }])).toBeNull();
-    expect(readSimpleText([{ text: "a", marks: ["bold"] }])).toBeNull();
-  });
-
-  it("writes a link mark only when an href is given", () => {
-    expect(simpleSpans("Hi", "")).toEqual([{ text: "Hi" }]);
-    expect(simpleSpans("Hi", " /x ")).toEqual([{ text: "Hi", marks: ["link"], href: "/x" }]);
-  });
-});
-
 describe("isStructuredBlock", () => {
-  it("routes JSON-only and richly formatted blocks to the JSON fallback", () => {
+  it("sends only blocks without a form to the JSON fallback", () => {
     expect(isStructuredBlock({ type: "heading", level: 2, text: "x" })).toBe(true);
     expect(isStructuredBlock(createEditorialBlock("gallery"))).toBe(false);
-    expect(isStructuredBlock({ type: "richText", spans: [{ text: "a" }, { text: "b" }] })).toBe(
-      false,
-    );
+    expect(isStructuredBlock(createEditorialBlock("imagePair"))).toBe(false);
+  });
+
+  it("opens formatted paragraphs and FAQ answers in the form", () => {
+    expect(
+      isStructuredBlock({
+        type: "richText",
+        spans: [{ text: "a" }, { text: "b", marks: ["bold"] }],
+      }),
+    ).toBe(true);
     expect(
       isStructuredBlock({
         type: "faqGroup",
-        items: [{ question: "q", answer: [{ text: "a", marks: ["italic"] }] }],
+        items: [
+          {
+            question: "q",
+            answer: [
+              { text: "a", marks: ["italic"] },
+              { text: "b", marks: ["link"], href: "/x" },
+            ],
+          },
+        ],
       }),
+    ).toBe(true);
+  });
+
+  it("falls back to JSON for a paragraph or FAQ whose shape the form cannot read", () => {
+    expect(isStructuredBlock({ type: "richText" } as unknown as EditorialBlock)).toBe(false);
+    expect(
+      isStructuredBlock({
+        type: "faqGroup",
+        items: [{ question: "q" }],
+      } as unknown as EditorialBlock),
     ).toBe(false);
   });
 });
