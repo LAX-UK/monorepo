@@ -4,10 +4,8 @@ import { ChromePopoverPanel } from "@/components/marketing/chrome-popover-panel"
 import { MediaImage } from "@/components/ui/media-image";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
-import { shellRolePillLabel } from "@/lib/admin/staff-role-presenter";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { SiteHeaderTone } from "@/lib/layout/header-chrome-tone";
-import { resolveClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -15,7 +13,7 @@ import { ChevronDown } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { AccountMenuItems, useAccountMenuGroups } from "./account-menu-items";
-import { type AppShellRole, appShellRoleMeta, sessionUserToShellRole } from "./app-shell-nav";
+import { AccountRolePill } from "./account-role-pill";
 import { LogoutButton } from "./logout-button";
 
 const MENU_ID = "header-account-menu";
@@ -106,11 +104,8 @@ export function HeaderUserMenu({
     items[next]?.focus();
   };
 
-  const groups = useAccountMenuGroups(user, resolveClientWorkspaceMode(pathname, "buying"), true);
+  const groups = useAccountMenuGroups(user, true);
   const displayName = user.name.trim() || user.email;
-  const shellRole: AppShellRole = sessionUserToShellRole(user);
-  const roleMeta = appShellRoleMeta[shellRole];
-  const rolePillLabel = shellRolePillLabel(user);
 
   return (
     <div className="relative shrink-0" ref={wrapRef}>
@@ -177,14 +172,7 @@ export function HeaderUserMenu({
             <p className="mt-0.5 truncate font-body text-xs text-brand-400 dark:text-on-surface-variant">
               {user.email}
             </p>
-            <div
-              className={`mt-2 inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 ${roleMeta.pillClassName}`}
-            >
-              <span className={`size-1.5 rounded-full ${roleMeta.dotClassName}`} aria-hidden />
-              <span className="font-label text-[10px] font-bold uppercase tracking-[0.12em]">
-                {rolePillLabel}
-              </span>
-            </div>
+            <AccountRolePill user={user} className="mt-2" />
           </div>
           <div className="py-1">
             {otherProducts.length > 0 ? (

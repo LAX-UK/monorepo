@@ -1,10 +1,11 @@
+import { usesBidAsClient } from "@/lib/auth/client-audience";
 import { isSafeNextPath } from "@/lib/auth/safe-next-path";
-import { isSellerSubmissionPath } from "@/lib/auth/seller-submission-path";
 import type { SessionUser } from "@/lib/data/contracts";
 import {
   fullBuyerOnboardingHref,
   shouldStartFullBuyerOnboardingAfterLogin,
 } from "@/lib/kyc/buyer-onboarding";
+import { isClientAreaPath } from "@/lib/navigation/client-routes";
 import {
   type UserRole,
   canAccessStaffAdminShell,
@@ -92,14 +93,12 @@ export function resolvePostAuthDestination(input: ResolvePostAuthDestinationInpu
     );
   }
 
-  const requestedIsClientHome =
-    requestedNext === "/dashboard" || (requestedNext?.startsWith("/dashboard/") ?? false);
-  const requestedIsSellerSubmission =
-    requestedNext != null && isSellerSubmissionPath(requestedNext);
+  const requestedIsClientArea =
+    requestedNext != null && isClientAreaPath(requestedNext.split(/[?#]/)[0] ?? requestedNext);
 
+  // Staff never land in the client area (submission form included); they go to admin.
   const eventualDestination =
-    isSafeNextPath(requestedNext ?? undefined) &&
-    !(isStaff && requestedIsClientHome && !requestedIsSellerSubmission)
+    isSafeNextPath(requestedNext ?? undefined) && !(requestedIsClientArea && !usesBidAsClient(user))
       ? (requestedNext as string)
       : staffRoleDefaultDestination(role, user.staffRole ?? null);
   const destination = appendWelcomeBack(eventualDestination, withWelcomeBack);

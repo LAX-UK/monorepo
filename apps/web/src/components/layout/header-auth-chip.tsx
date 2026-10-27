@@ -1,9 +1,11 @@
 "use client";
 
+import { AccountRolePill } from "@/components/layout/account-role-pill";
 import { HeaderBidUrgencyChip } from "@/components/layout/header-bid-urgency-chip";
 import { HeaderGuestMenu } from "@/components/layout/header-guest-menu";
 import { HeaderUserMenu } from "@/components/layout/header-user-menu";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { usesBidAsClient } from "@/lib/auth/client-audience";
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { useAuthHeaderLinks } from "@/lib/auth/use-auth-header-links";
 import type { SessionUser } from "@/lib/data/contracts";
@@ -114,7 +116,7 @@ function MobileSignedInSection({
   user,
   onNavigate,
 }: { user: SessionUser; onNavigate: () => void }) {
-  const groups = useAccountMenuGroups(user, "buying", true);
+  const groups = useAccountMenuGroups(user, true);
   return (
     <div className="flex flex-col gap-3 border-t border-nav-border pt-4">
       <p className="font-label text-xs font-semibold uppercase tracking-wide text-brand-400 dark:text-on-surface-variant">
@@ -127,6 +129,7 @@ function MobileSignedInSection({
         <p className="mt-0.5 truncate font-body text-xs text-brand-400 dark:text-on-surface-variant">
           {user.email}
         </p>
+        {usesBidAsClient(user) ? null : <AccountRolePill user={user} className="mt-2" />}
       </div>
       <div className="flex flex-col">
         <AccountMenuItems groups={groups} variant="drawer" menu={false} onNavigate={onNavigate} />

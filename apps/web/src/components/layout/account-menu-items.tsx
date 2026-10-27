@@ -1,11 +1,11 @@
 "use client";
 
+import { usesBidAsClient } from "@/lib/auth/client-audience";
 import type { SessionUser } from "@/lib/data/contracts";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { AccountMenuEntry, AccountMenuFacts } from "@/lib/navigation/account-menu-model";
 import { buildAccountMenu } from "@/lib/navigation/account-menu-model";
 import { useAccountMenuContext } from "@/lib/navigation/use-account-menu-context.client";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { cn } from "@auction/ui";
 import Link from "next/link";
 import { Fragment, useMemo } from "react";
@@ -31,21 +31,17 @@ const SEPARATOR_CLASS: Record<AccountMenuVariant, string> = {
 };
 
 /** Groups for the signed-in menu; safe defaults apply until the person's facts arrive. */
-export function useAccountMenuGroups(
-  user: SessionUser,
-  mode: ClientWorkspaceMode,
-  enabled: boolean,
-): AccountMenuEntry[][] {
-  const context = useAccountMenuContext(user.id, enabled);
+export function useAccountMenuGroups(user: SessionUser, enabled: boolean): AccountMenuEntry[][] {
+  // Staff have no client facts to load: their menu is the admin area and LAX Account.
+  const context = useAccountMenuContext(user.id, enabled && usesBidAsClient(user));
   return useMemo(() => {
     const facts: AccountMenuFacts = {
-      mode,
       hasConsigned: context?.hasConsigned ?? false,
       isOrgMember: context?.isOrgMember ?? false,
       user,
     };
     return buildAccountMenu(facts);
-  }, [context, mode, user]);
+  }, [context, user]);
 }
 
 type AccountMenuItemsProps = {

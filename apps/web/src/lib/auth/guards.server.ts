@@ -1,5 +1,6 @@
 import "server-only";
 
+import { clientAreaRedirectFor } from "@/lib/auth/client-audience";
 import { resolveServerPostAuthDestination } from "@/lib/auth/post-auth-destination.server";
 import { isRequireEmailVerificationServer } from "@/lib/auth/require-email-verification.server";
 import { isSafeNextPath } from "@/lib/auth/safe-next-path";
@@ -7,11 +8,7 @@ import { isSellerSubmissionPath, sellLoginRedirect } from "@/lib/auth/seller-sub
 import type { SessionUser } from "@/lib/data/contracts";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { laxAccountUrl } from "@/lib/lax-account-url";
-import {
-  type UserRole,
-  canAccessStaffAdminShell,
-  staffRoleDefaultDestination,
-} from "@auction/types";
+import { type UserRole, canAccessStaffAdminShell } from "@auction/types";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
@@ -62,23 +59,16 @@ export async function requireAuthenticatedUser(opts: {
   }
 
   const role = user.role as UserRole;
-  const staff = user.staffRole ?? null;
 
-  if (
-    opts.shell === "client" &&
-    canAccessStaffAdminShell(role) &&
-    !isSellerSubmissionPath(opts.loginNext)
-  ) {
-    const dest = staffRoleDefaultDestination(role, staff);
-    const destPath = dest.split("?")[0] ?? dest;
-    const loginPath = opts.loginNext.split("?")[0] ?? opts.loginNext;
-    if (destPath !== loginPath) {
-      redirect(dest);
-    }
+  // Staff never use Bid as a client, including the submission form: specialists work on a
+  // client's consignment from admin.
+  if (opts.shell === "client") {
+    const staffDestination = clientAreaRedirectFor(user, opts.loginNext);
+    if (staffDestination) redirect(staffDestination);
   }
 
   if (opts.shell === "staff" && !canAccessStaffAdminShell(role)) {
-    redirect("/dashboard");
+    redirect("/home");
   }
 
   return user;
