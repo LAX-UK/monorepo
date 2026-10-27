@@ -1,6 +1,7 @@
 import { relations, sql } from "drizzle-orm";
-import { boolean, date, index, integer, pgTable, text, timestamp } from "drizzle-orm/pg-core";
+import { boolean, date, index, integer, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user, userAmlHoldStatusEnum, userKycStatusEnum, userStaffRoleEnum } from "./auth.js";
+import { legalEntity } from "./legal-entities.js";
 
 /** Bid-owned authorization, compliance summary, and auction profile keyed by Identity subject. */
 export const bidUserProfile = pgTable(
@@ -52,6 +53,13 @@ export const bidUserProfile = pgTable(
     hasSeenActingContextTooltip: boolean("has_seen_acting_context_tooltip")
       .notNull()
       .default(false),
+    /**
+     * The account the person last used Bid as (their personal entity or an organisation), so Bid
+     * opens in it on any device. Cleared when that legal entity is deleted.
+     */
+    lastActingLegalEntityId: uuid("last_acting_legal_entity_id").references(() => legalEntity.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull(),
   },

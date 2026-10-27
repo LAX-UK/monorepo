@@ -196,3 +196,10 @@ export {
   type EntityActor,
   type EntityCapability,
 } from "./entity-capabilities.js";
+export {
+  canUseAccount,
+  decideOpeningAccount,
+  type OpeningAccountDecision,
+  type OpeningAccountInput,
+  type UsableAccount,
+} from "./opening-account.js";

@@ -464,6 +464,8 @@ export function createContainer(env: Env): Container {
       organizationOnboardingService: platform.organizationOnboardingService,
       organizationOnboardingFlowService: platform.organizationOnboardingFlowService,
       orgTwoFactorPolicy: twoFactorPolicy,
+      rememberedAccountStore: repos.rememberedAccountStore,
+      recordAccountReader: repos.recordAccountReader,
     }),
     userRoutes: createUserRouteServices({
       env,
