@@ -38,7 +38,6 @@ export function BidConfirmation({
               This bid
             </dt>
             <dd className="font-headline text-3xl text-primary">{formatMoney(amount)}</dd>
-            {biddingAs ? <div className="mt-2">{biddingAs}</div> : null}
           </div>
           {maxAuto ? (
             <div className="border-t border-outline-variant/20 pt-4">
@@ -59,6 +58,7 @@ export function BidConfirmation({
             </div>
           ) : null}
         </dl>
+        {biddingAs ? <div className="mt-2">{biddingAs}</div> : null}
         <p className="mt-4 font-label text-xs leading-relaxed text-on-surface-variant">
           By placing a bid you agree to the{" "}
           <Link href="/terms" className="text-link underline-offset-2 hover:underline">
