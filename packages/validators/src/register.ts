@@ -5,7 +5,7 @@ import { resolvePhoneFromBody } from "./phone/resolve.js";
 
 /**
  * Signup persona — captured at registration to drive post-verify routing
- * (individual → /dashboard, organisation → /onboarding/organisation) and to
+ * (individual → /home, organisation → /onboarding/organisation) and to
  * power the dashboard "finish setting up your organisation" CTAs (SE-P24).
  */
 export const signupPersonaSchema = z.enum(["individual", "organisation"]);

@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation";
 
 export function WelcomeBackToast() {
   const pathname = usePathname();
-  const homeHref = pathname.startsWith("/admin") ? "/admin" : "/dashboard/bids";
+  const homeHref = pathname.startsWith("/admin") ? "/admin" : "/bids";
   const homeLabel = pathname.startsWith("/admin") ? "Admin home" : "My bids";
 
   return (

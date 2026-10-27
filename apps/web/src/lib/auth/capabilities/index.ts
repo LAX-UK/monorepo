@@ -1,6 +1,5 @@
 export type {
   ActingContext,
-  ClientWorkspace,
   ViewerCapabilities,
   ViewerWorkspace,
 } from "./types";

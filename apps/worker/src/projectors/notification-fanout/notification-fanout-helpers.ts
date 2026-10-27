@@ -65,7 +65,7 @@ export function centsToAmount(cents: number | undefined): string {
 
 /** Where sellers follow their payouts: Sold & payouts in Bid's Selling mode. */
 export function sellerPayoutsUrlFor(adminPayoutsUrl: string): string {
-  return new URL("/dashboard/seller/payouts", adminPayoutsUrl).toString();
+  return new URL("/selling/payouts", adminPayoutsUrl).toString();
 }
 
 export type StaffAlertTarget = {

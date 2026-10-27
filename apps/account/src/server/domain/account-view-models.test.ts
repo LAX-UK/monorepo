@@ -57,7 +57,7 @@ describe("buildAccountLinks", () => {
       changePassword: "https://test-auth.lax.bid/forgot-password?client_id=lax-account-web",
       verifyEmail: "https://test-auth.lax.bid/resend-verification?client_id=lax-account-web",
       bidSettings: {
-        notifications: "https://test.lax.bid/dashboard/settings/notifications",
+        notifications: "https://test.lax.bid/settings/notifications",
       },
       support: {
         helpCentre: "https://test.lax.bid/faq",

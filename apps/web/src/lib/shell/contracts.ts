@@ -1,5 +1,5 @@
-import type { ActingContext } from "@/lib/auth/capabilities";
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
+import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import type { CapabilityRequirement } from "@auction/types";
 import type { LucideIcon } from "lucide-react";
@@ -32,6 +32,14 @@ export type NavGroup = {
 
 export type NavEntry = NavItem | NavGroup;
 
+/** One block of the client menu: an optional heading and its entries. */
+export type NavSection = {
+  id: string;
+  /** `null` for blocks without a heading (Home, and the account block at the foot). */
+  title: string | null;
+  items: readonly NavItem[];
+};
+
 export function isNavGroup(entry: NavEntry): entry is NavGroup {
   return "items" in entry;
 }
@@ -57,12 +65,13 @@ export type ShellConfig = {
   hideEmailStatusBanner?: boolean;
   /** When true, the mobile bottom tab bar is not rendered (e.g. focused wizard flows). */
   hideBottomTabBar?: boolean;
-  clientWorkspaceMode?: "buying" | "selling";
+  /** Client menu as sections (Buying, Selling, Organisation); `nav` lists the same entries flat. */
+  navSections?: readonly NavSection[];
+  /** Client only: the account in use, its switcher and the header strip. */
+  clientAccount?: AccountChrome;
   pendingSubmissionCount?: number;
   pendingArtistCount?: number;
   navCounts?: AdminNavCounts;
-  /** Client dashboard mobile header: which organisation, if any, the person is acting for. */
-  mobileHeader?: { actingContext: ActingContext };
 };
 
 export const SHELL_BREAKPOINTS = {

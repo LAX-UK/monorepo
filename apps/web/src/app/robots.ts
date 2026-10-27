@@ -1,3 +1,4 @@
+import { CLIENT_AREA_PREFIXES } from "@/lib/navigation/client-routes";
 import { isIndexingAllowedAtBuildTime } from "@/lib/seo/is-indexing-allowed";
 import { getSiteUrl } from "@/lib/site-url";
 import type { MetadataRoute } from "next";
@@ -13,7 +14,16 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: "*",
         allow: "/",
-        disallow: ["/dashboard", "/dashboard/", "/admin", "/admin/", "/api/", "/api"],
+        // The signed-in client area, the old `/dashboard` addresses that redirect into it, and staff.
+        disallow: [
+          ...CLIENT_AREA_PREFIXES.flatMap((prefix) => [prefix, `${prefix}/`]),
+          "/dashboard",
+          "/dashboard/",
+          "/admin",
+          "/admin/",
+          "/api/",
+          "/api",
+        ],
       },
     ],
   };

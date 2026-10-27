@@ -5,7 +5,7 @@ describe("assertConnectUrlAllowed", () => {
   it("allows URLs on the trusted web origin", () => {
     expect(() =>
       assertConnectUrlAllowed(
-        "https://app.example.com/dashboard/seller/connect",
+        "https://app.example.com/selling/payout-setup",
         "https://app.example.com",
       ),
     ).not.toThrow();

@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { ClientShellHeader } from "./client-shell-header";
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/dashboard",
+  usePathname: () => "/home",
 }));
 
 vi.mock("@/lib/navigation/use-account-menu-context.client", () => ({
@@ -57,7 +57,6 @@ describe("ClientShellHeader", () => {
       <ClientShellHeader
         user={clientUser}
         role="client"
-        clientWorkspaceMode="buying"
         actionsSlot={<span data-testid="client-actions">Client actions</span>}
       />,
     );

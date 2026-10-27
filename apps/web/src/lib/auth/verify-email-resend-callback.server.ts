@@ -15,7 +15,7 @@ export async function buildVerifyEmailResendCallbackUrl(
     "http://localhost:3000"
   ).replace(/\/$/, "");
   const params = new URLSearchParams({ email });
-  const effectiveNext = next != null && next !== "" && isSafeNextPath(next) ? next : "/dashboard";
+  const effectiveNext = next != null && next !== "" && isSafeNextPath(next) ? next : "/home";
   params.set("next", effectiveNext);
   const invite = await getPendingEntityInviteCookie();
   if (invite) {

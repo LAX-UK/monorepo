@@ -167,8 +167,8 @@ export class LegalEntityLifecycleAdminService {
           legalEntityId: entityId,
           template: "legal-entity-approved-notice",
           vars: {
-            dashboardUrl: `${webOrigin}/dashboard`,
-            connectUrl: `${webOrigin}/dashboard/organisations/${entityId}/connect`,
+            dashboardUrl: `${webOrigin}/home`,
+            connectUrl: `${webOrigin}/organisation/payouts?account=${entityId}`,
             supportContactEmail,
           },
           idempotencyPrefix: `legal-entity-approved:${entityId}`,
@@ -183,7 +183,7 @@ export class LegalEntityLifecycleAdminService {
           template: "legal-entity-rejected-notice",
           vars: {
             rejectionReason: reason?.trim() ?? null,
-            dashboardUrl: `${webOrigin}/dashboard/organisations`,
+            dashboardUrl: `${webOrigin}/organisations`,
             supportContactEmail,
           },
           idempotencyPrefix: `legal-entity-rejected:${entityId}`,
@@ -197,7 +197,7 @@ export class LegalEntityLifecycleAdminService {
           legalEntityId: entityId,
           template: "legal-entity-docs-requested-notice",
           vars: {
-            docsUrl: `${webOrigin}/dashboard/organisations/${entityId}/documents`,
+            docsUrl: `${webOrigin}/organisation/documents?account=${entityId}`,
             supportContactEmail,
           },
           idempotencyPrefix: `legal-entity-docs-requested:${entityId}`,

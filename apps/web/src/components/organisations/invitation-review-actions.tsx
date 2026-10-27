@@ -5,6 +5,7 @@ import {
   declineInvitationByIdAction,
 } from "@/lib/legal-entity/invitation.actions";
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
+import { CLIENT_ROUTES, withAccount } from "@/lib/navigation/client-routes";
 import { notify } from "@/lib/ui/notify";
 import { Button } from "@auction/ui/components/button";
 import { useRouter } from "next/navigation";
@@ -29,7 +30,7 @@ export function InvitationReviewActions({ invitation }: Props) {
               notify.success("Invitation accepted", {
                 description: `You've joined ${invitation.orgDisplayName}.`,
               });
-              router.push(`/dashboard/seller/organisations/${r.data.legalEntityId}?welcome=1`);
+              router.push(withAccount(CLIENT_ROUTES.home, r.data.legalEntityId));
               router.refresh();
               return;
             }
@@ -48,7 +49,7 @@ export function InvitationReviewActions({ invitation }: Props) {
             const r = await declineInvitationByIdAction(invitation.id);
             if (r.ok) {
               notify.success("Invitation declined");
-              router.push("/dashboard/invitations");
+              router.push("/organisations/invitations");
               router.refresh();
               return;
             }

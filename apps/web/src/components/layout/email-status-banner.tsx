@@ -4,6 +4,7 @@ import { SendVerificationEmailButton } from "@/components/auth/send-verification
 import { AUTH_INLINE_LINK } from "@/lib/auth/auth-link-classes";
 import type { SessionUser } from "@/lib/data/contracts";
 import { laxAccountUrl } from "@/lib/lax-account-url";
+import { isClientAreaPath } from "@/lib/navigation/client-routes";
 import { Button } from "@auction/ui/components/button";
 import { X } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -51,9 +52,9 @@ export function EmailStatusBanner({ user }: { user: SessionUser }) {
             next={
               pathname?.startsWith("/") &&
               !pathname.startsWith("//") &&
-              (pathname.startsWith("/dashboard") || pathname.startsWith("/onboarding"))
+              (isClientAreaPath(pathname) || pathname.startsWith("/onboarding"))
                 ? pathname
-                : "/dashboard"
+                : "/home"
             }
             label="Send a new link"
             className="min-h-11 shrink-0"

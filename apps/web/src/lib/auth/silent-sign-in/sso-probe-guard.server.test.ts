@@ -26,14 +26,14 @@ describe("redirectIfSilentProbeBlocked", () => {
     const request = new NextRequest("https://lax.bid/api/auth/sso-probe", {
       headers: { cookie: `${BID_SILENT_SSO_COOKIE_NAMES.quiet}=1` },
     });
-    expect(redirectIfSilentProbeBlocked(request, "/dashboard")).not.toBeNull();
+    expect(redirectIfSilentProbeBlocked(request, "/home")).not.toBeNull();
   });
 
   it("redirects when suppressed cookie is set", () => {
     const request = new NextRequest("https://lax.bid/api/auth/sso-probe", {
       headers: { cookie: `${BID_SILENT_SSO_COOKIE_NAMES.suppressed}=1` },
     });
-    expect(redirectIfSilentProbeBlocked(request, "/dashboard")).not.toBeNull();
+    expect(redirectIfSilentProbeBlocked(request, "/home")).not.toBeNull();
   });
 
   it("returns null when probe is allowed", () => {

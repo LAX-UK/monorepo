@@ -13,7 +13,7 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(mocks.query),
 }));
 
-vi.mock("@/app/dashboard/verify-identity/actions", () => ({
+vi.mock("@/app/(client)/verify-identity/actions", () => ({
   startKycVerification: vi.fn(),
 }));
 
@@ -67,7 +67,7 @@ describe("IdentityOnboardingVerifyClient", () => {
         latestSessionStatus: "processing",
         latestSessionId: "session-123",
       } as never,
-      next: "/dashboard",
+      next: "/home",
       source: "direct" as const,
     };
     const { unmount } = render(
@@ -115,19 +115,16 @@ describe("IdentityOnboardingVerifyClient", () => {
   );
 
   it("keeps Finish later on skippable verify sources", () => {
-    render(<IdentityOnboardingVerifyClient summary={null} next="/dashboard" source="direct" />);
+    render(<IdentityOnboardingVerifyClient summary={null} next="/home" source="direct" />);
 
-    expect(screen.getByRole("link", { name: /finish later/i })).toHaveAttribute(
-      "href",
-      "/dashboard",
-    );
+    expect(screen.getByRole("link", { name: /finish later/i })).toHaveAttribute("href", "/home");
   });
 
   it("does not report submission without a provider return marker", () => {
     render(
       <IdentityOnboardingVerifyClient
         summary={{ status: "pending", latestSessionStatus: "processing" } as never}
-        next="/dashboard"
+        next="/home"
         source="direct"
       />,
     );

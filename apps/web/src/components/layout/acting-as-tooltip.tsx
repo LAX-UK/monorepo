@@ -33,7 +33,7 @@ export function ActingAsTooltip({ initiallyVisible }: Props) {
 
   return (
     <output
-      className="absolute right-0 top-full z-50 mt-2 w-72 rounded-md border bg-surface p-3 shadow-lg"
+      className="absolute left-0 top-full z-50 mt-2 w-72 rounded-lg border border-shell-stroke bg-surface-container-lowest p-3 shadow-lg"
       aria-live="polite"
     >
       <p className="text-sm font-medium">Switch between your accounts</p>

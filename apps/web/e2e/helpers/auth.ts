@@ -718,7 +718,7 @@ export async function clientSession(page: Page): Promise<void> {
       cookies: Parameters<BrowserContext["addCookies"]>[0];
     };
     await page.context().addCookies(state.cookies);
-    await page.goto("/dashboard");
+    await page.goto("/home");
     if (!isLoginUrl(page.url())) {
       await assertNotStaffShell(page, "Client");
       return;

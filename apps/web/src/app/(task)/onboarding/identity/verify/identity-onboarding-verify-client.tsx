@@ -1,6 +1,6 @@
 "use client";
 
-import { startKycVerification } from "@/app/dashboard/verify-identity/actions";
+import { startKycVerification } from "@/app/(client)/verify-identity/actions";
 import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
 import {
   KycStatusPanel,

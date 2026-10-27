@@ -1,5 +1,6 @@
 import { isSafeNextPath } from "@/lib/auth/post-auth-destination";
 import { hasAuthSessionCookie } from "@/lib/auth/session-cookie";
+import { isClientAreaPath } from "@/lib/navigation/client-routes";
 
 const AUTH_EDGE_HANDOFF_PATH = "/auth/post-login";
 
@@ -17,12 +18,7 @@ const LOGIN_EDGE_BYPASS: ReadonlyArray<[param: string, value: string]> = [
 /** Shell routes whose SSR guards can detect stale cookies and recover safely. */
 export function isProtectedPostAuthPath(path: string): boolean {
   const pathOnly = path.split("?")[0] ?? path;
-  return (
-    pathOnly === "/dashboard" ||
-    pathOnly.startsWith("/dashboard/") ||
-    pathOnly === "/admin" ||
-    pathOnly.startsWith("/admin/")
-  );
+  return isClientAreaPath(pathOnly) || pathOnly === "/admin" || pathOnly.startsWith("/admin/");
 }
 
 export function shouldBypassAuthEdgeRedirect(

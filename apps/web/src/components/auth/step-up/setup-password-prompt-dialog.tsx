@@ -27,7 +27,7 @@ export function SetupPasswordPromptDialog({
       footer={
         <>
           <Button type="button" size="sm" asChild>
-            <Link href="/dashboard/settings?tab=security#password-setup">Set up a password</Link>
+            <Link href="/settings?tab=security#password-setup">Set up a password</Link>
           </Button>
           <Button type="button" variant="outline" size="sm" onClick={onCancel}>
             Cancel

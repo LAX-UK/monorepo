@@ -90,7 +90,7 @@ export function OrgOnboardingSidebar({ activeStepKey, subkind, completedSteps, c
         })}
         <p className="text-xs leading-relaxed">
           Progress is saved to your account. Continue from{" "}
-          <Link href="/dashboard/organisations" className="font-semibold text-link hover:underline">
+          <Link href="/organisations" className="font-semibold text-link hover:underline">
             Organisations
           </Link>{" "}
           in the dashboard.

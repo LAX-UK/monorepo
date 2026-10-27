@@ -2,7 +2,7 @@ import { buildActiveFilterDescriptors, hasActiveFilters } from "../filter-active
 import { buildFilterHref, patchFilterParams } from "../filter-params";
 import type { ActiveFilterDescriptor, FilterParamsRecord, ListPageFilterConfig } from "../types";
 
-export const NOTIFICATIONS_BASE_PATH = "/dashboard/notifications";
+export const NOTIFICATIONS_BASE_PATH = "/notifications";
 
 export type NotificationsTab = "all" | "unread" | "archived";
 

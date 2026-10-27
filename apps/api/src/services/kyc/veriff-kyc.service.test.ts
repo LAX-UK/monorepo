@@ -406,13 +406,13 @@ describe("VeriffKycService.createSession", () => {
         },
         decisionPayload: {
           sessionUrl: "https://magic.veriff.me/v/reuse",
-          callbackUrl: `${webOrigin}/dashboard/verify-identity`,
+          callbackUrl: `${webOrigin}/verify-identity`,
           verification: { status: "resubmission_requested", reasonCode: 201 },
         },
       }),
     });
     const svc = new VeriffKycService(envWithOrigin(), repo, null, null, veriffClient as never);
-    const result = await svc.createSession("user-1", `${webOrigin}/dashboard/verify-identity`);
+    const result = await svc.createSession("user-1", `${webOrigin}/verify-identity`);
     expect(result.verificationUrl).toBe("https://magic.veriff.me/v/reuse");
     expect(result.sessionId).toBe("session-reuse");
     expect(veriffClient.createSession).not.toHaveBeenCalled();
@@ -438,7 +438,7 @@ describe("VeriffKycService.createSession", () => {
       update: vi.fn().mockResolvedValue(created),
     });
     const svc = new VeriffKycService(envWithOrigin(), repo, null, null, veriffClient as never);
-    const result = await svc.createSession("user-1", `${webOrigin}/dashboard/verify-identity`);
+    const result = await svc.createSession("user-1", `${webOrigin}/verify-identity`);
     expect(veriffClient.createSession).toHaveBeenCalled();
     expect(repo.createWithCurrentSession).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -463,12 +463,12 @@ describe("VeriffKycService.createSession", () => {
         },
         decisionPayload: {
           sessionUrl: "https://magic.veriff.me/v/continue",
-          callbackUrl: `${webOrigin}/dashboard/verify-identity`,
+          callbackUrl: `${webOrigin}/verify-identity`,
         },
       }),
     });
     const svc = new VeriffKycService(envWithOrigin(), repo, null, null, veriffClient as never);
-    const result = await svc.createSession("user-1", `${webOrigin}/dashboard/verify-identity`);
+    const result = await svc.createSession("user-1", `${webOrigin}/verify-identity`);
     expect(result.verificationUrl).toBe("https://magic.veriff.me/v/continue");
     expect(result.sessionId).toBe("session-created");
     expect(veriffClient.createSession).not.toHaveBeenCalled();
@@ -479,7 +479,7 @@ describe("VeriffKycService.createSession", () => {
     const mergedPayload = mergeKycDecisionPayload(
       {
         sessionUrl: "https://magic.veriff.me/v/reuse",
-        callbackUrl: `${webOrigin}/dashboard/verify-identity`,
+        callbackUrl: `${webOrigin}/verify-identity`,
       },
       {
         verification: { status: "resubmission_requested", reasonCode: 201 },
@@ -497,7 +497,7 @@ describe("VeriffKycService.createSession", () => {
       }),
     });
     const svc = new VeriffKycService(envWithOrigin(), repo, null, null, veriffClient as never);
-    const result = await svc.createSession("user-1", `${webOrigin}/dashboard/verify-identity`);
+    const result = await svc.createSession("user-1", `${webOrigin}/verify-identity`);
     expect(result.verificationUrl).toBe("https://magic.veriff.me/v/reuse");
     expect(result.sessionId).toBe("session-reuse");
     expect(veriffClient.createSession).not.toHaveBeenCalled();

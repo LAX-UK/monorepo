@@ -13,7 +13,11 @@ const credentials = {
   IDENTITY_MACHINE_CLIENT_SECRET: "identity-machine-secret-at-least-32-characters",
 };
 const SUBJECT = "11111111-1111-4111-8111-111111111111";
-const BLOCKER = { code: "pay", message: "Pay it.", href: "https://bid.example/dashboard/payments" };
+const BLOCKER = {
+  code: "pay",
+  message: "Pay it.",
+  href: "https://bid.example/purchases#payment-history",
+};
 
 function authHeaders() {
   return {

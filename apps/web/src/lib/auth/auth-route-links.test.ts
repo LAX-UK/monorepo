@@ -7,9 +7,7 @@ describe("buildAuthHref", () => {
   });
 
   it("appends safe next path", () => {
-    expect(buildAuthHref("/register", { next: "/dashboard/bids" })).toBe(
-      "/register?next=%2Fdashboard%2Fbids",
-    );
+    expect(buildAuthHref("/register", { next: "/bids" })).toBe("/register?next=%2Fbids");
   });
 
   it("rejects unsafe next paths", () => {

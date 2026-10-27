@@ -17,7 +17,7 @@ describe("portfolio-filters", () => {
 
   it("buildPortfolioHref clears payment filter", () => {
     const current = parsePortfolioParams({ payment: "paid", q: "monet" });
-    expect(buildPortfolioHref(current, { payment: "all" })).toBe("/dashboard/purchases?q=monet");
+    expect(buildPortfolioHref(current, { payment: "all" })).toBe("/purchases?q=monet");
   });
 
   it("hasPortfolioActiveFilters detects q payment year", () => {

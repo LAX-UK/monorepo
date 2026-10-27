@@ -19,11 +19,11 @@ describe("middleware org module redirects", () => {
   it.each([
     "/onboarding/organisation",
     "/onboarding/organisation/step-1",
-    "/dashboard/invitations",
-    "/dashboard/invitations/abc",
-    "/dashboard/organisations/abc",
-    "/dashboard/seller/organisations/abc",
-    "/dashboard/seller/organisations/abc/members",
+    "/organisations/invitations",
+    "/organisations/invitations/abc",
+    "/organisation/documents",
+    "/organisation",
+    "/organisation/members",
   ])("does not redirect %s on lax.bid (org module launched)", async (pathname) => {
     const response = await middleware(requestFor("lax.bid", pathname));
     expect(response.status).toBe(200);
@@ -32,27 +32,27 @@ describe("middleware org module redirects", () => {
 
   it.each([
     "/onboarding/organisation",
-    "/dashboard/invitations/abc",
-    "/dashboard/organisations/abc",
-    "/dashboard/seller/organisations/abc",
+    "/organisations/invitations/abc",
+    "/organisation/documents",
+    "/organisation",
   ])("redirects %s when NEXT_PUBLIC_FORCE_ORG_MODULE=hidden (kill switch)", async (pathname) => {
     vi.stubEnv("NEXT_PUBLIC_FORCE_ORG_MODULE", "hidden");
     const response = await middleware(requestFor("lax.bid", pathname));
     expect(response.status).toBe(307);
-    expect(await redirectLocation(response)).toBe("https://lax.bid/dashboard/organisations");
+    expect(await redirectLocation(response)).toBe("https://lax.bid/organisations");
   });
 
-  it("does not redirect /dashboard/organisations hub when kill switch is on", async () => {
+  it("does not redirect /organisations hub when kill switch is on", async () => {
     vi.stubEnv("NEXT_PUBLIC_FORCE_ORG_MODULE", "hidden");
-    const response = await middleware(requestFor("lax.bid", "/dashboard/organisations"));
+    const response = await middleware(requestFor("lax.bid", "/organisations"));
     expect(response.status).toBe(200);
     expect(await redirectLocation(response)).toBeNull();
   });
 
   it.each([
     "/onboarding/organisation",
-    "/dashboard/invitations/abc",
-    "/dashboard/organisations/abc",
+    "/organisations/invitations/abc",
+    "/organisation/documents",
   ])("does not redirect %s on test.lax.bid", async (pathname) => {
     const response = await middleware(requestFor("test.lax.bid", pathname));
     expect(response.status).toBe(200);
@@ -61,8 +61,8 @@ describe("middleware org module redirects", () => {
 
   it.each([
     "/onboarding/organisation",
-    "/dashboard/invitations/abc",
-    "/dashboard/organisations/abc",
+    "/organisations/invitations/abc",
+    "/organisation/documents",
   ])("does not redirect %s on localhost", async (pathname) => {
     const response = await middleware(requestFor("localhost:3000", pathname));
     expect(response.status).toBe(200);

@@ -37,7 +37,7 @@ export function InvitationCardList({ invitations }: ListProps) {
             </CardHeader>
             <CardFooter className="justify-end border-t-0 pt-0">
               <Button asChild size="sm" variant="cta">
-                <Link href={`/dashboard/invitations/review/${encodeURIComponent(inv.id)}`}>
+                <Link href={`/organisations/invitations/review/${encodeURIComponent(inv.id)}`}>
                   Review
                 </Link>
               </Button>

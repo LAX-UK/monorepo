@@ -38,11 +38,11 @@ describe("bottom-chrome", () => {
   });
 
   it("detects lot checkout pay bar routes", () => {
-    expect(isFixedPayBarRoute("/dashboard/checkout/abc-123")).toBe(true);
-    expect(isFixedPayBarRoute("/dashboard/checkout")).toBe(false);
-    expect(isHideDashboardTabBarRoute("/dashboard/submissions/new")).toBe(true);
-    expect(isHideDashboardTabBarRoute("/dashboard/submissions/abc-123")).toBe(true);
-    expect(isHideDashboardTabBarRoute("/dashboard/submissions")).toBe(false);
+    expect(isFixedPayBarRoute("/purchases/checkout/abc-123")).toBe(true);
+    expect(isFixedPayBarRoute("/purchases/checkout")).toBe(false);
+    expect(isHideDashboardTabBarRoute("/selling/new")).toBe(true);
+    expect(isHideDashboardTabBarRoute("/selling/consignments/abc-123")).toBe(true);
+    expect(isHideDashboardTabBarRoute("/selling/consignments")).toBe(false);
   });
 
   it("uses pay bar padding on lot checkout routes", () => {

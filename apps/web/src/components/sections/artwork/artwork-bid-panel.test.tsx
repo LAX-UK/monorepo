@@ -10,6 +10,10 @@ const placeBidMock = vi.fn();
 const setAutoBidMock = vi.fn();
 const clearAutoBidMock = vi.fn();
 
+vi.mock("next/navigation", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("next/navigation")>()),
+  useRouter: () => ({ refresh: vi.fn() }),
+}));
 vi.mock("@/hooks/use-lot-realtime", () => ({
   useLotRealtime: vi.fn(),
 }));

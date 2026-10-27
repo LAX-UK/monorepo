@@ -25,7 +25,7 @@ describe("postServerKycSession", () => {
       json: async () => ({ data: { verificationUrl: "https://veriff.com/session" } }),
     });
 
-    const result = await postServerKycSession("/dashboard/seller/connect");
+    const result = await postServerKycSession("/selling/payout-setup");
 
     expect(result).toEqual({ ok: true, url: "https://veriff.com/session" });
     expect(fetchMock).toHaveBeenCalledWith(
@@ -33,7 +33,7 @@ describe("postServerKycSession", () => {
       expect.objectContaining({
         method: "POST",
         body: JSON.stringify({
-          returnUrl: "https://test.lax.bid/dashboard/seller/connect",
+          returnUrl: "https://test.lax.bid/selling/payout-setup",
         }),
       }),
     );
@@ -68,7 +68,7 @@ describe("postServerKycSession", () => {
       }),
     });
 
-    const result = await postServerKycSession("/dashboard/seller/connect");
+    const result = await postServerKycSession("/selling/payout-setup");
 
     expect(result.ok).toBe(false);
     if (!result.ok) {

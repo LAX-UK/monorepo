@@ -5,19 +5,17 @@ import {
   getRouteParentLabel,
 } from "@/components/layout/app-shell-nav";
 import type { SessionUser } from "@/lib/data/contracts";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 
 /** Build href trail segments from pathname for staff admin. */
 export function buildAdminBreadcrumbTrail(
   pathname: string,
   role: AppShellRole,
   sessionUser: SessionUser,
-  clientWorkspaceMode: ClientWorkspaceMode = "buying",
 ): BreadcrumbItem[] {
   const workspaceHref = role === "finance" ? "/admin/finance" : "/admin";
   const workspaceLabel = role === "finance" ? "Finance" : "Admin";
-  const parent = getRouteParentLabel(pathname, role, clientWorkspaceMode, sessionUser);
-  const current = getRouteLabel(pathname, role, clientWorkspaceMode, sessionUser);
+  const parent = getRouteParentLabel(pathname, role, sessionUser);
+  const current = getRouteLabel(pathname, role, sessionUser);
 
   const items: BreadcrumbItem[] = [{ label: workspaceLabel, href: workspaceHref }];
 

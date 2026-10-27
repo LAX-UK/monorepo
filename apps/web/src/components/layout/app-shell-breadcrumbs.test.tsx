@@ -48,7 +48,7 @@ function renderAppShellBreadcrumbs(ui: ReactNode) {
 
 describe("AppShellBreadcrumbs", () => {
   it("renders mobile shell title for section routes", () => {
-    vi.mocked(usePathname).mockReturnValue("/dashboard/watchlist");
+    vi.mocked(usePathname).mockReturnValue("/watching");
 
     // biome-ignore lint/a11y/useValidAriaRole: `role` is the shell prop, not a DOM ARIA role
     renderAppShellBreadcrumbs(<AppShellBreadcrumbs role="client" sessionUser={clientUser} />);
@@ -57,7 +57,7 @@ describe("AppShellBreadcrumbs", () => {
   });
 
   it("renders desktop breadcrumb trail", () => {
-    vi.mocked(usePathname).mockReturnValue("/dashboard/watchlist");
+    vi.mocked(usePathname).mockReturnValue("/watching");
 
     // biome-ignore lint/a11y/useValidAriaRole: `role` is the shell prop, not a DOM ARIA role
     renderAppShellBreadcrumbs(<AppShellBreadcrumbs role="client" sessionUser={clientUser} />);

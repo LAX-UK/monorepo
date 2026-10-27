@@ -8,7 +8,7 @@ import {
 } from "../filter-params";
 import type { ActiveFilterDescriptor, FilterParamsRecord, ListPageFilterConfig } from "../types";
 
-export const WATCHLIST_BASE_PATH = "/dashboard/watchlist";
+export const WATCHLIST_BASE_PATH = "/watching";
 
 export type WatchlistSortOption = "addedDesc" | "endingSoon" | "priceAsc" | "priceDesc";
 export type WatchlistStatusFilter = "active" | "scheduled" | "ended";

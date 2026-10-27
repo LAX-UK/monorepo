@@ -1,5 +1,6 @@
 "use client";
 
+import { AccountStrip } from "@/components/layout/account-switcher/account-strip";
 import type { AppShellRole } from "@/components/layout/app-shell-nav";
 import { AppShellSidebar } from "@/components/layout/app-shell-sidebar";
 import { BottomTabBar } from "@/components/layout/bottom-tab-bar";
@@ -34,7 +35,7 @@ function AppShellFrame({ user, config, children }: Props) {
   const pendingSubmissionCount = config.pendingSubmissionCount ?? 0;
   const pendingArtistCount = config.pendingArtistCount ?? 0;
   const navCounts = config.navCounts;
-  const clientWorkspaceMode = config.clientWorkspaceMode ?? "buying";
+  const clientAccount = config.clientAccount;
   const hideEmailStatusBanner = config.hideEmailStatusBanner ?? false;
   const headerActionsSlot = config.header.actionsSlot;
   const headerExtraSlot = config.header.extraSlot;
@@ -71,7 +72,7 @@ function AppShellFrame({ user, config, children }: Props) {
         variant={shellRole === "client" ? "dashboard" : "admin"}
         sessionUser={user}
         {...(shellRole === "client"
-          ? { clientWorkspaceMode }
+          ? {}
           : {
               shellRole,
               pendingSubmissionCount,
@@ -98,7 +99,7 @@ function AppShellFrame({ user, config, children }: Props) {
               <ClientShellHeader
                 user={user}
                 role={shellRole}
-                clientWorkspaceMode={clientWorkspaceMode}
+                account={clientAccount}
                 actionsSlot={headerActionsSlot}
                 extraSlot={headerExtraSlot}
               />
@@ -106,10 +107,11 @@ function AppShellFrame({ user, config, children }: Props) {
           </div>
         </header>
 
+        {clientAccount?.strip ? <AccountStrip strip={clientAccount.strip} /> : null}
+
         <ShellMain
           user={user}
           shellRole={shellRole}
-          clientWorkspaceMode={clientWorkspaceMode}
           hideEmailStatusBanner={hideEmailStatusBanner}
           mobileNavCount={config.mobileNav.length}
           topSlot={topSlot}

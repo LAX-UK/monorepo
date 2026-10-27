@@ -12,12 +12,12 @@ describe("bids-filters", () => {
   });
 
   it("buildBidsTabHref preserves tab and q", () => {
-    expect(buildBidsTabHref("won", "canvas")).toBe("/dashboard/bids?tab=won&q=canvas");
+    expect(buildBidsTabHref("won", "canvas")).toBe("/bids?tab=won&q=canvas");
   });
 
   it("buildBidsHref clears search", () => {
     const current = parseBidsParams({ tab: "active", q: "oil" });
-    expect(buildBidsHref(current, { q: null })).toBe("/dashboard/bids");
+    expect(buildBidsHref(current, { q: null })).toBe("/bids");
   });
 
   it("hasBidsActiveFilters detects q and non-default tab", () => {

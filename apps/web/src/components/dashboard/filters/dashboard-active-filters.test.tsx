@@ -15,20 +15,14 @@ describe("DashboardActiveFilters", () => {
           {
             id: "q",
             label: "Search: canvas",
-            href: "/dashboard/bids",
+            href: "/bids",
           },
         ]}
-        clearAllHref="/dashboard/bids"
+        clearAllHref="/bids"
       />,
     );
     expect(screen.getByLabelText("Active filters")).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Search: canvas/i })).toHaveAttribute(
-      "href",
-      "/dashboard/bids",
-    );
-    expect(screen.getByRole("link", { name: "Clear all" })).toHaveAttribute(
-      "href",
-      "/dashboard/bids",
-    );
+    expect(screen.getByRole("link", { name: /Search: canvas/i })).toHaveAttribute("href", "/bids");
+    expect(screen.getByRole("link", { name: "Clear all" })).toHaveAttribute("href", "/bids");
   });
 });

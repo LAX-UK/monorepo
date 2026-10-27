@@ -44,9 +44,7 @@ describe("extractNextFromCallbackUrl", () => {
   });
 
   it("extracts from a relative callback URL", () => {
-    expect(extractNextFromCallbackUrl("/auth/activate/set-password?next=%2Fdashboard")).toBe(
-      "/dashboard",
-    );
+    expect(extractNextFromCallbackUrl("/auth/activate/set-password?next=%2Fhome")).toBe("/home");
   });
 
   it("rejects unsafe next values", () => {

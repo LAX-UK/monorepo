@@ -1,7 +1,6 @@
 "use client";
 
 import type { BreadcrumbItem } from "@/components/dashboard/primitives/breadcrumbs";
-import { resolveMobileHeaderTitleModel } from "@/lib/navigation/mobile-header-context";
 import type { MobileShellTitleModel } from "@/lib/navigation/mobile-shell-title";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -46,5 +45,3 @@ export function MobileShellTitle({ items, model: modelOverride, className }: Pro
     </div>
   );
 }
-
-export { resolveMobileHeaderTitleModel };

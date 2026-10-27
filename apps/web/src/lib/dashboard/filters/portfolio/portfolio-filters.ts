@@ -2,7 +2,7 @@ import { buildActiveFilterDescriptors, hasActiveFilters } from "../filter-active
 import { buildFilterHref } from "../filter-params";
 import type { ActiveFilterDescriptor, FilterParamsRecord, ListPageFilterConfig } from "../types";
 
-export const PORTFOLIO_BASE_PATH = "/dashboard/purchases";
+export const PORTFOLIO_BASE_PATH = "/purchases";
 
 export type PortfolioFilterValue = "all" | "due" | "paid" | "authorized" | "refunded";
 

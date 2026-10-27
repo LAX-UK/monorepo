@@ -18,7 +18,7 @@ test.describe("hosted account onboarding @journey", () => {
 test.describe("hosted step-up reauth @journey", () => {
   test("recent auth requirement starts hosted reauth login", async ({ page }) => {
     test.skip(!enabled, skipReason);
-    await page.goto("/api/auth/login?intent=reauth&next=%2Fdashboard%2Fsettings");
+    await page.goto("/api/auth/login?intent=reauth&next=%2Fsettings");
     await page.waitForURL(/\/(oauth2\/authorize|login)/, { timeout: 30_000 });
     const hostedLogin = page.locator("#login-form");
     const hostedHeading = page.getByRole("heading", { name: /sign in/i });

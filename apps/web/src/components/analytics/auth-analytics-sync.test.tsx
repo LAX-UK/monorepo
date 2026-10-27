@@ -29,7 +29,7 @@ beforeEach(() => {
   mocks.resolveOAuthOutcome.mockReset();
   mocks.consent.snapshot.analytics = true;
   mocks.consent.snapshot.marketing = true;
-  window.history.replaceState({}, "", "/dashboard?oauth_provider=google&utm_source=paid");
+  window.history.replaceState({}, "", "/home?oauth_provider=google&utm_source=paid");
 });
 
 describe("AuthAnalyticsSync", () => {

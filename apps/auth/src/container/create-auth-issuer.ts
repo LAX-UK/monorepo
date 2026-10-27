@@ -152,7 +152,10 @@ export function createAuthIssuer(options: {
     requireEmailVerification: env.REQUIRE_EMAIL_VERIFICATION,
     jwtAudience: env.JWT_AUDIENCE ?? DEFAULT_JWT_AUDIENCE,
     totpIssuer: env.TOTP_ISSUER ?? "LAX",
-    sessionsSettingsUrl: `${env.WEB_ORIGIN.replace(/\/$/, "")}/dashboard/settings/sessions`,
+    // Signed-in devices are managed in LAX Account; Bid's old settings address redirects there.
+    sessionsSettingsUrl: env.LAX_ACCOUNT_ORIGIN
+      ? `${env.LAX_ACCOUNT_ORIGIN.replace(/\/$/, "")}/account/security`
+      : `${env.WEB_ORIGIN.replace(/\/$/, "")}/dashboard/settings/sessions`,
     revokeAllSessions: createPasswordResetSessionRevoker(options),
     ...lifecycle,
     onUserUpdated: (user) =>

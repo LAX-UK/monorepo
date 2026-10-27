@@ -2,55 +2,39 @@
 
 import { Breadcrumbs } from "@/components/dashboard/primitives/breadcrumbs";
 import type { AppShellRole } from "@/components/layout/app-shell-nav";
-import {
-  MobileShellTitle,
-  resolveMobileHeaderTitleModel,
-} from "@/components/layout/mobile-shell-title";
+import { MobileShellTitle } from "@/components/layout/mobile-shell-title";
 import type { SessionUser } from "@/lib/data/contracts";
 import { buildAdminBreadcrumbTrail } from "@/lib/navigation/admin-breadcrumb-trail";
 import { buildClientBreadcrumbTrail } from "@/lib/navigation/client-breadcrumb-trail";
+import { resolveMobileShellTitle } from "@/lib/navigation/mobile-shell-title";
 import { useShellChrome } from "@/lib/shell/shell-chrome-context";
-import { useShellConfig } from "@/lib/shell/shell-config-context";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { usePathname } from "next/navigation";
 
 export function AppShellBreadcrumbs({
   role,
   sessionUser,
-  clientWorkspaceMode = "buying",
   variant = "all",
 }: {
   role: AppShellRole;
   sessionUser: SessionUser;
-  clientWorkspaceMode?: ClientWorkspaceMode;
   /** `mobile` — header title only; `desktop` — breadcrumb trail only. */
   variant?: "all" | "mobile" | "desktop";
 }) {
   const pathname = usePathname();
-  const config = useShellConfig();
   const { mobileTitleOverride } = useShellChrome();
 
   if (role === "client") {
-    const items = buildClientBreadcrumbTrail(pathname, clientWorkspaceMode);
-    const mobileHeader = config.mobileHeader;
-    const mobileModel = mobileHeader
-      ? resolveMobileHeaderTitleModel(items, {
-          actingContext: mobileHeader.actingContext,
-          workspace: clientWorkspaceMode,
-        })
-      : undefined;
-    const resolvedModel =
-      mobileTitleOverride && mobileModel
-        ? { ...mobileModel, title: mobileTitleOverride }
-        : mobileTitleOverride
-          ? { title: mobileTitleOverride }
-          : mobileModel;
+    const items = buildClientBreadcrumbTrail(pathname);
+    const routeModel = resolveMobileShellTitle(items);
+    const resolvedModel = mobileTitleOverride
+      ? { ...routeModel, title: mobileTitleOverride }
+      : routeModel;
 
     return (
       <>
         {variant !== "desktop" ? (
           <div className="min-w-0 flex-1 lg:hidden">
-            <MobileShellTitle items={items} {...(resolvedModel ? { model: resolvedModel } : {})} />
+            <MobileShellTitle items={items} model={resolvedModel} />
           </div>
         ) : null}
         {variant !== "mobile" ? (
@@ -62,7 +46,7 @@ export function AppShellBreadcrumbs({
     );
   }
 
-  const items = buildAdminBreadcrumbTrail(pathname, role, sessionUser, clientWorkspaceMode);
+  const items = buildAdminBreadcrumbTrail(pathname, role, sessionUser);
 
   return (
     <>

@@ -5,7 +5,10 @@ export type SellerConnectNavBadgeInput = {
   connectReady: boolean;
 };
 
-/** Warning badge on Payout setup when connect is enforced but not ready. */
+/**
+ * Warning badge on Sold & payouts when payout setup is required but unfinished. Payout setup is
+ * reached from there (and, for organisations, from Organisation › Payouts).
+ */
 export function applySellerConnectNavBadges(
   items: readonly NavItem[],
   input: SellerConnectNavBadgeInput | null | undefined,
@@ -14,6 +17,6 @@ export function applySellerConnectNavBadges(
     return [...items];
   }
   return items.map((item) =>
-    item.id === "connect" ? { ...item, badge: 1, badgeTone: "warning" as const } : item,
+    item.id === "payouts" ? { ...item, badge: 1, badgeTone: "warning" as const } : item,
   );
 }

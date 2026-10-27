@@ -1,6 +1,7 @@
 "use client";
 
 import { BidGate } from "@/components/bid/bid-gate";
+import { useBiddingAccountFreshness } from "@/components/bid/use-bidding-account-freshness";
 import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-view-models";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
@@ -78,6 +79,7 @@ export function ArtworkBidPanel({
 }: Props) {
   const { bidWriter } = useLotPorts();
   const { refreshFromServer } = useLotBidHistory();
+  useBiddingAccountFreshness(sessionUser ? actingLegalEntityId : null);
   const onlineLifecycle = useOnlineLotLifecycle();
   const saleroomLive = useSaleroomLive();
   const connectivityScope = saleroomLive ? "hybrid" : "bidding";

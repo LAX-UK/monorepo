@@ -56,7 +56,7 @@ describe("useConnectedAccounts", () => {
 
     expect(linkSocial).toHaveBeenCalledWith({
       provider: "google",
-      callbackURL: "https://lax.bid/dashboard/settings?tab=security&linked=google",
+      callbackURL: "https://lax.bid/settings?tab=security&linked=google",
     });
   });
 });

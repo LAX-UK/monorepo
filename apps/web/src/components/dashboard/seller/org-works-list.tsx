@@ -1,4 +1,4 @@
-import type { OrgWorkRow } from "@/app/dashboard/seller/works/org-works.vm";
+import type { OrgWorkRow } from "@/app/(client)/selling/works/org-works.vm";
 import { DashboardMobileLotThumbnail } from "@/components/dashboard/list/dashboard-mobile-lot-thumbnail";
 import {
   DashboardListRowCard,

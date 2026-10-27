@@ -22,9 +22,9 @@ export async function acceptInvitationByIdAction(
     }
     const legalEntityId = (body as { data: { legalEntityId: string } }).data.legalEntityId;
     await switchActingLegalEntity(legalEntityId);
-    revalidatePath("/dashboard/organisations");
+    revalidatePath("/organisations");
     revalidatePath("/invitations");
-    revalidatePath("/dashboard/invitations");
+    revalidatePath("/organisations/invitations");
     revalidatePath("/", "layout");
     return {
       ok: true,
@@ -47,8 +47,8 @@ export async function declineInvitationByIdAction(
     if (!res.ok) {
       return { ok: false, error: (body as { error?: string }).error ?? "decline_failed" };
     }
-    revalidatePath("/dashboard/organisations");
-    revalidatePath("/dashboard/invitations");
+    revalidatePath("/organisations");
+    revalidatePath("/organisations/invitations");
     revalidatePath("/invitations");
     return { ok: true };
   });

@@ -21,7 +21,7 @@ export class TelephoneBookingNotifier {
 
   private buyerDetailUrl(bookingId: string): string {
     const base = this.webOrigin.replace(/\/$/, "");
-    return `${base}/dashboard/telephone-bids/${bookingId}`;
+    return `${base}/bids/telephone/${bookingId}`;
   }
 
   private async saleTitle(saleId: string): Promise<string> {

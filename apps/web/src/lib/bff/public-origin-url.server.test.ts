@@ -35,6 +35,6 @@ describe("resolvePublicOriginUrl", () => {
     vi.stubEnv("OIDC_CLIENT_SECRET_LAX_BID_WEB", "test-secret-at-least-32-characters-long");
     vi.stubEnv("BID_BFF_SESSION_ENCRYPTION_KEY", "ci-test-bff-session-encryption-key-value");
 
-    expect(resolvePublicOriginUrl("/dashboard").toString()).toBe("https://lax.bid/dashboard");
+    expect(resolvePublicOriginUrl("/home").toString()).toBe("https://lax.bid/home");
   });
 });

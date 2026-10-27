@@ -203,7 +203,7 @@ describe("BidBffSessionStore", () => {
       state: "state-secret",
       nonce: "nonce-secret",
       codeVerifier: "verifier-secret",
-      nextPath: "/dashboard",
+      nextPath: "/home",
     });
     expect(encrypted).not.toContain("state-secret");
     expect(decryptSession(encrypted)).toMatchObject({ state: "state-secret" });

@@ -144,7 +144,7 @@ export function useConnectedAccounts(): UseConnectedAccountsReturn {
   );
 
   const linkSocial = useCallback<UseConnectedAccountsReturn["linkSocial"]>(async (provider) => {
-    const callbackURL = `${window.location.origin}/dashboard/settings?tab=security&linked=${provider}`;
+    const callbackURL = `${window.location.origin}/settings?tab=security&linked=${provider}`;
     try {
       const { error: err } = await authClient.linkSocial({ provider, callbackURL });
       if (err) return { ok: false, error: readMessage(err, "Could not start linking.") };

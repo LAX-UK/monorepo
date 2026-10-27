@@ -17,11 +17,11 @@ describe("buildWorkDetail", () => {
     },
     documents: [
       { kind: "certificate", available: false, expectedNote: "Sent after payment clears." },
-      { kind: "invoice", available: true, href: "https://lax.bid/dashboard/payments" },
+      { kind: "invoice", available: true, href: "https://lax.bid/purchases#payment-history" },
       { kind: "provenance", available: false },
     ],
     actions: [
-      { kind: "consign", href: "https://lax.bid/dashboard/submissions/new" },
+      { kind: "consign", href: "https://lax.bid/selling/new" },
       { kind: "contact", href: "mailto:art@lax.bid" },
     ],
   });
@@ -55,7 +55,7 @@ describe("buildWorkDetail", () => {
       {
         key: "consign",
         label: "Consign this work",
-        href: "https://lax.bid/dashboard/submissions/new",
+        href: "https://lax.bid/selling/new",
       },
     ]);
   });

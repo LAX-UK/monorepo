@@ -47,6 +47,7 @@ function acting(current: LegalEntitySummary, memberships: LegalEntitySummary[]) 
     memberships,
     impersonation: null,
     bootstrapFailed: false,
+    needsRestore: false,
   });
 }
 
@@ -83,6 +84,7 @@ describe("resolveSellerWorkspaceContext", () => {
       memberships: [],
       impersonation: null,
       bootstrapFailed: true,
+      needsRestore: false,
     });
     const ctx = await resolveSellerWorkspaceContext("client", null);
     expect(ctx.sellerEntityId).toBeNull();
@@ -114,7 +116,7 @@ describe("sellerCan and requireSellerCapability", () => {
   it("sends a role without the capability back to the Selling overview", async () => {
     const consignor = await ctxFor("consignor");
     expect(() => requireSellerCapability(consignor, "entity.payouts.read")).toThrow(
-      "redirect:/dashboard/seller",
+      "redirect:/selling",
     );
     expect(() => requireSellerCapability(consignor, "entity.consignments.read")).not.toThrow();
   });

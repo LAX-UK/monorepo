@@ -15,7 +15,7 @@ export class KycResubmissionNotifier {
     const user = await this.users.findById(userId);
     if (!user?.email) return;
 
-    const verifyUrl = `${this.webOrigin.replace(/\/$/, "")}/dashboard/verify-identity`;
+    const verifyUrl = `${this.webOrigin.replace(/\/$/, "")}/verify-identity`;
     const issueDetail = feedback.detail;
 
     await this.email.enqueue({

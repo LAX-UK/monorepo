@@ -121,7 +121,7 @@ export function SaleTelephoneBookingPanel({
         </p>
         {createdBookingId ? (
           <Button size="sm" variant="outline" asChild>
-            <Link href={`/dashboard/telephone-bids/${createdBookingId}`}>View booking</Link>
+            <Link href={`/bids/telephone/${createdBookingId}`}>View booking</Link>
           </Button>
         ) : null}
       </div>

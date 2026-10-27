@@ -13,14 +13,12 @@ import type { SessionUser } from "@/lib/data/contracts";
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import type { ShellRole } from "@/lib/shell/contracts";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 
 type BuildStaticSectionsInput = {
   variant: "marketing" | "dashboard" | "admin";
   query: string;
   sessionUser: SessionUser | null;
   shellRole: ShellRole;
-  clientWorkspaceMode: ClientWorkspaceMode;
   pendingSubmissionCount: number;
   pendingArtistCount: number;
   navCounts: AdminNavCounts;
@@ -32,7 +30,6 @@ export function buildStaticPaletteSections(input: BuildStaticSectionsInput): Pal
     input.variant,
     input.query,
     input.sessionUser,
-    input.clientWorkspaceMode,
     input.pendingSubmissionCount,
     input.pendingArtistCount,
     true,

@@ -3,321 +3,211 @@ import { entityRoleCan } from "@auction/domain";
 import { type LegalEntityMemberRole, legalEntityMemberRoles } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
-  type ClientNavContext,
-  type ClientNavInput,
+  type AccountContext,
+  type ClientNavScope,
   getClientMobileTabs,
   getClientNavItems,
+  getClientNavSections,
 } from "./client-nav-model";
 
-const ORG_ID = "org-1";
-const personal: ClientNavContext = { kind: "personal" };
-
-function input(overrides: Partial<ClientNavInput> = {}): ClientNavInput {
-  return {
-    mode: "buying",
-    context: personal,
-    orgModuleEnabled: true,
-    isOrgMember: false,
-    ...overrides,
-  };
+function org(role: LegalEntityMemberRole): AccountContext {
+  return { kind: "organisation", id: "org-1", role };
 }
 
-function ids(overrides: Partial<ClientNavInput> = {}): string[] {
-  return getClientNavItems(input(overrides)).map((item) => item.id);
+function scope(context: AccountContext, hasSubmissions = false): ClientNavScope {
+  return { context, hasSubmissions };
 }
 
-function org(role: LegalEntityMemberRole): ClientNavContext {
-  return { kind: "organisation", id: ORG_ID, role };
+/** The menu as `section: item ids`, the shape a reader scans. */
+function menu(navScope: ClientNavScope): Record<string, string[]> {
+  return Object.fromEntries(
+    getClientNavSections(navScope).map((section) => [
+      section.id,
+      section.items.map((item) => item.id),
+    ]),
+  );
 }
 
-describe("buying nav, personal account", () => {
-  it("offers the everyday pages and Bid settings, with no dashboard or duplicates", () => {
-    expect(ids()).toEqual([
-      "bids",
-      "purchases",
-      "watchlist",
-      "notifications",
-      "settings",
-      "lax-account",
-    ]);
-  });
+const ACCOUNT = ["notifications", "settings", "lax-account"];
 
-  it("links LAX Account to the Account origin as an external link in both modes", () => {
-    for (const mode of ["buying", "selling"] as const) {
-      const entry = getClientNavItems(input({ mode })).find((item) => item.id === "lax-account");
-      expect(entry).toMatchObject({ href: laxAccountHomeUrl(), external: true });
-    }
-  });
-
-  it("opens the Bid settings list from the settings entry", () => {
-    const entry = getClientNavItems(input()).find((item) => item.id === "settings");
-    expect(entry?.href).toBe("/dashboard/settings");
-  });
-
-  it("gives the narrow tab bar short names while keeping the full label", () => {
-    const buying = getClientNavItems(input());
-    expect(buying.find((i) => i.id === "notifications")).toMatchObject({
-      label: "Notifications",
-      shortLabel: "Alerts",
-    });
-    const selling = getClientNavItems(input({ mode: "selling" }));
-    expect(selling.find((i) => i.id === "consignments")).toMatchObject({
-      label: "Consignments",
-      shortLabel: "Lots",
-    });
-    expect(selling.find((i) => i.id === "payouts")).toMatchObject({
-      label: "Sold & payouts",
-      shortLabel: "Payouts",
+describe("menu sections, personal account", () => {
+  it("before any submission, Selling is a single Sell with LAX link", () => {
+    expect(menu(scope({ kind: "personal" }))).toEqual({
+      buying: ["bids", "purchases", "watchlist"],
+      selling: ["sell"],
+      account: ACCOUNT,
     });
   });
 
-  it("uses one name per page", () => {
-    const labels = getClientNavItems(input()).map((item) => item.label);
-    expect(labels).toEqual([
+  it("after a first submission, Selling lists Consignments and Sold & payouts", () => {
+    expect(menu(scope({ kind: "personal" }, true))).toEqual({
+      buying: ["bids", "purchases", "watchlist"],
+      selling: ["consignments", "payouts"],
+      account: ACCOUNT,
+    });
+  });
+
+  it("labels the sections and the personal pages as the person sees them", () => {
+    const sections = getClientNavSections(scope({ kind: "personal" }, true));
+    expect(sections.map((s) => s.label)).toEqual(["Buying", "Selling", null]);
+    expect(getClientNavItems(scope({ kind: "personal" }, true)).map((i) => i.label)).toEqual([
       "My bids",
       "Purchases",
       "Watching",
-      "Notifications",
-      "Bid settings",
-      "LAX Account",
-    ]);
-  });
-
-  it("adds Your organisations only for members when the module is on", () => {
-    expect(ids({ isOrgMember: true })).toContain("organisations");
-    expect(ids({ isOrgMember: false })).not.toContain("organisations");
-    expect(ids({ isOrgMember: true, orgModuleEnabled: false })).not.toContain("organisations");
-  });
-
-  it("keeps Invitations out of the nav entirely", () => {
-    for (const mode of ["buying", "selling"] as const) {
-      expect(ids({ mode, isOrgMember: true })).not.toContain("invitations");
-    }
-  });
-});
-
-describe("selling nav, personal account", () => {
-  it("lists the selling pages in order, with no organisation entries", () => {
-    expect(ids({ mode: "selling", isOrgMember: true })).toEqual([
-      "seller-overview",
-      "consignments",
-      "payouts",
-      "connect",
-      "artist",
-      "notifications",
-      "settings",
-      "lax-account",
-    ]);
-  });
-
-  it("names the pages as the seller sees them", () => {
-    const labels = getClientNavItems(input({ mode: "selling" })).map((item) => item.label);
-    expect(labels).toEqual([
-      "Overview",
       "Consignments",
       "Sold & payouts",
-      "Payout setup",
-      "Artist profile",
       "Notifications",
       "Bid settings",
       "LAX Account",
     ]);
   });
 
-  it("points payout setup at the personal page", () => {
-    const connect = getClientNavItems(input({ mode: "selling" })).find((i) => i.id === "connect");
-    expect(connect?.href).toBe("/dashboard/seller/connect");
+  it("has no Home and no Organisation section", () => {
+    const ids = getClientNavItems(scope({ kind: "personal" }, true)).map((i) => i.id);
+    expect(ids).not.toContain("home");
+    expect(ids).not.toContain("organisation");
   });
 });
 
-describe.each(legalEntityMemberRoles)("organisation context, role %s", (role) => {
-  const context = org(role);
+describe("menu sections, organisation roles", () => {
+  const cases: [LegalEntityMemberRole, Record<string, string[]>][] = [
+    [
+      "owner",
+      {
+        home: ["home"],
+        buying: ["bids", "purchases", "watchlist"],
+        selling: ["consignments", "works", "payouts"],
+        organisation: ["organisation"],
+        account: ACCOUNT,
+      },
+    ],
+    [
+      "admin",
+      {
+        home: ["home"],
+        buying: ["bids", "purchases", "watchlist"],
+        selling: ["consignments", "works", "payouts"],
+        organisation: ["organisation"],
+        account: ACCOUNT,
+      },
+    ],
+    [
+      "buyer_agent",
+      {
+        home: ["home"],
+        buying: ["bids", "purchases", "watchlist"],
+        selling: ["works"],
+        account: ACCOUNT,
+      },
+    ],
+    [
+      "consignor",
+      {
+        home: ["home"],
+        buying: ["watchlist"],
+        selling: ["consignments"],
+        account: ACCOUNT,
+      },
+    ],
+    [
+      "finance",
+      {
+        home: ["home"],
+        buying: ["purchases"],
+        selling: ["consignments", "works", "payouts"],
+        organisation: ["organisation"],
+        account: ACCOUNT,
+      },
+    ],
+    [
+      "viewer",
+      {
+        home: ["home"],
+        selling: ["consignments", "works"],
+        account: ACCOUNT,
+      },
+    ],
+  ];
 
-  it("shows Purchases only to roles that can read holdings or finance", () => {
-    const expected =
-      entityRoleCan(role, "entity.holdings.read") || entityRoleCan(role, "entity.finance.read");
-    expect(ids({ context, isOrgMember: true }).includes("purchases")).toBe(expected);
+  it.each(cases)("%s", (role, expected) => {
+    expect(menu(scope(org(role)))).toEqual(expected);
   });
 
-  it("always keeps bids, watching, notifications and settings", () => {
-    expect(ids({ context, isOrgMember: true })).toEqual(
-      expect.arrayContaining(["bids", "watchlist", "notifications", "settings"]),
-    );
+  it("never offers Sell with LAX inside an organisation", () => {
+    for (const role of legalEntityMemberRoles) {
+      expect(getClientNavItems(scope(org(role))).map((i) => i.id)).not.toContain("sell");
+    }
   });
 
-  it("gates each selling page on its capability and hides the artist profile", () => {
-    const selling = ids({ mode: "selling", context, isOrgMember: true });
-    const has = (id: string) => selling.includes(id);
-    expect(has("seller-overview")).toBe(entityRoleCan(role, "entity.consignments.read"));
-    expect(has("consignments")).toBe(entityRoleCan(role, "entity.consignments.read"));
-    expect(has("works")).toBe(
-      entityRoleCan(role, "entity.holdings.read") || entityRoleCan(role, "entity.finance.read"),
-    );
-    expect(has("payouts")).toBe(entityRoleCan(role, "entity.payouts.read"));
-    expect(has("connect")).toBe(entityRoleCan(role, "entity.connect.operate"));
-    expect(has("org-members")).toBe(entityRoleCan(role, "entity.members.manage"));
-    expect(has("org-documents")).toBe(entityRoleCan(role, "entity.members.manage"));
-    expect(has("org-security")).toBe(entityRoleCan(role, "entity.security.manage"));
-    expect(has("org-details")).toBe(true);
-    expect(has("artist")).toBe(false);
+  it("names an organisation's bids without 'My'", () => {
+    expect(getClientNavItems(scope(org("owner"))).find((i) => i.id === "bids")?.label).toBe("Bids");
   });
 
-  it("never offers a selling page the capability matrix would refuse", () => {
-    const selling = ids({ mode: "selling", context, isOrgMember: true });
-    const needs: Record<string, Parameters<typeof entityRoleCan>[1][]> = {
-      "seller-overview": ["entity.consignments.read"],
-      consignments: ["entity.consignments.read"],
-      works: ["entity.holdings.read", "entity.finance.read"],
-      payouts: ["entity.payouts.read"],
-      connect: ["entity.connect.operate"],
-      "org-members": ["entity.members.manage"],
-      "org-documents": ["entity.members.manage"],
-      "org-security": ["entity.security.manage"],
-    };
-    for (const [id, capabilities] of Object.entries(needs)) {
-      if (selling.includes(id)) {
-        expect(capabilities.some((c) => entityRoleCan(role, c))).toBe(true);
-      }
+  it("shows bidding pages only to roles the capability table lets bid", () => {
+    for (const role of legalEntityMemberRoles) {
+      const ids = getClientNavItems(scope(org(role))).map((i) => i.id);
+      expect(ids.includes("bids")).toBe(entityRoleCan(role, "entity.bid.place"));
     }
   });
 });
 
-describe("organisation context, specific roles", () => {
-  it("a consignor sees consignments but no purchases, works, payouts or payout setup", () => {
-    const context = org("consignor");
-    expect(ids({ context })).not.toContain("purchases");
-    expect(ids({ mode: "selling", context })).toEqual([
-      "seller-overview",
-      "consignments",
-      "org-details",
-      "notifications",
-      "settings",
-      "lax-account",
-    ]);
+describe("menu links", () => {
+  it("links LAX Account to the Account origin as an external link", () => {
+    const entry = getClientNavItems(scope({ kind: "personal" })).find(
+      (i) => i.id === "lax-account",
+    );
+    expect(entry).toMatchObject({ href: laxAccountHomeUrl(), external: true });
+    expect(entry?.match?.("/anything")).toBe(false);
   });
 
-  it("a viewer sees works and consignments but no money, members or policy pages", () => {
-    const context = org("viewer");
-    expect(ids({ context })).toContain("purchases");
-    expect(ids({ mode: "selling", context })).toEqual([
-      "seller-overview",
-      "consignments",
-      "works",
-      "org-details",
-      "notifications",
-      "settings",
-      "lax-account",
-    ]);
-  });
-
-  it("a finance member sees works, payouts and payout setup but cannot manage members", () => {
-    expect(ids({ mode: "selling", context: org("finance") })).toEqual([
-      "seller-overview",
-      "consignments",
-      "works",
-      "payouts",
-      "connect",
-      "org-details",
-      "notifications",
-      "settings",
-      "lax-account",
-    ]);
-  });
-
-  it("an admin manages members and documents but not the two-step policy", () => {
-    const selling = ids({ mode: "selling", context: org("admin") });
-    expect(selling).toEqual(expect.arrayContaining(["org-members", "org-documents"]));
-    expect(selling).not.toContain("org-security");
-  });
-
-  it("only the owner sees every entry, including the two-step policy", () => {
-    expect(ids({ mode: "selling", context: org("owner") })).toEqual([
-      "seller-overview",
-      "consignments",
-      "works",
-      "payouts",
-      "connect",
-      "org-details",
-      "org-members",
-      "org-documents",
-      "org-security",
-      "notifications",
-      "settings",
-      "lax-account",
-    ]);
-  });
-
-  it("links organisation pages and payout setup to the organisation being sold as", () => {
-    const items = getClientNavItems(input({ mode: "selling", context: org("owner") }));
-    const hrefOf = (id: string) => items.find((item) => item.id === id)?.href;
-    expect(hrefOf("connect")).toBe("/dashboard/seller/organisations/org-1/connect");
-    expect(hrefOf("org-details")).toBe("/dashboard/seller/organisations/org-1");
-    expect(hrefOf("org-members")).toBe("/dashboard/seller/organisations/org-1/members");
-    expect(hrefOf("org-documents")).toBe("/dashboard/seller/organisations/org-1/documents");
-    expect(hrefOf("org-security")).toBe("/dashboard/seller/organisations/org-1/security");
-  });
-
-  it("keeps organisation entries out of buying mode", () => {
-    const buying = ids({ context: org("owner"), isOrgMember: true });
-    expect(buying).not.toContain("org-members");
-    expect(buying).not.toContain("works");
+  it("uses the clean addresses", () => {
+    const hrefs = Object.fromEntries(
+      getClientNavItems(scope(org("owner"))).map((i) => [i.id, i.href]),
+    );
+    expect(hrefs).toMatchObject({
+      home: "/home",
+      bids: "/bids",
+      purchases: "/purchases",
+      watchlist: "/watching",
+      consignments: "/selling/consignments",
+      works: "/selling/works",
+      payouts: "/selling/payouts",
+      organisation: "/organisation",
+      settings: "/settings",
+    });
   });
 });
 
-describe("nav matching", () => {
-  const items = getClientNavItems(input({ isOrgMember: true }));
-  const activeId = (pathname: string) =>
-    items.find((item) => (item.match ? item.match(pathname) : pathname.startsWith(item.href)))?.id;
+describe("active entry", () => {
+  function activeId(navScope: ClientNavScope, pathname: string): string | undefined {
+    return getClientNavItems(navScope).find((i) =>
+      i.match ? i.match(pathname) : i.href === pathname,
+    )?.id;
+  }
 
-  it("highlights Purchases on its page and nested routes", () => {
-    expect(activeId("/dashboard/purchases")).toBe("purchases");
+  it("treats a consignment and a new submission as Consignments", () => {
+    const personal = scope({ kind: "personal" }, true);
+    expect(activeId(personal, "/selling/consignments/s1")).toBe("consignments");
+    expect(activeId(personal, "/selling/new")).toBe("consignments");
   });
 
-  it("highlights Your organisations on the list and for invitations", () => {
-    expect(activeId("/dashboard/organisations")).toBe("organisations");
-    expect(activeId("/dashboard/invitations/review")).toBe("organisations");
+  it("highlights every Organisation tab and Bid settings across its tree", () => {
+    expect(activeId(scope(org("owner")), "/organisation/members")).toBe("organisation");
+    expect(activeId(scope(org("owner")), "/settings/notifications")).toBe("settings");
   });
 
-  it("highlights Bid settings across the settings tree", () => {
-    expect(activeId("/dashboard/settings")).toBe("settings");
-    expect(activeId("/dashboard/settings/interests")).toBe("settings");
-  });
-
-  it("never highlights LAX Account, which is a different site", () => {
-    expect(items.find((item) => item.id === "lax-account")?.match?.("/account")).toBe(false);
-  });
-
-  it("no longer claims the retired artist-follow route for Watching", () => {
-    expect(activeId("/dashboard/artist-follow")).toBeUndefined();
-  });
-
-  describe("in Selling mode", () => {
-    const selling = getClientNavItems(input({ mode: "selling", context: org("owner") }));
-    const sellingActive = (pathname: string) =>
-      selling.find((item) => item.match?.(pathname) ?? pathname === item.href)?.id;
-
-    it("keeps Overview exact so it does not shadow the other pages", () => {
-      expect(sellingActive("/dashboard/seller")).toBe("seller-overview");
-      expect(sellingActive("/dashboard/seller/consignments")).toBe("consignments");
-    });
-
-    it("treats a submission page as part of Consignments", () => {
-      expect(sellingActive("/dashboard/submissions/abc")).toBe("consignments");
-      expect(sellingActive("/dashboard/submissions/new")).toBe("consignments");
-    });
-
-    it("highlights the organisation page, tab and payout setup under the organisation", () => {
-      expect(sellingActive("/dashboard/seller/organisations/org-1")).toBe("org-details");
-      expect(sellingActive("/dashboard/seller/organisations/org-1/profile")).toBe("org-details");
-      expect(sellingActive("/dashboard/seller/organisations/org-1/members")).toBe("org-members");
-      expect(sellingActive("/dashboard/seller/organisations/org-1/connect")).toBe("connect");
-    });
+  it("treats payout setup and statements as Sold & payouts", () => {
+    const personal = scope({ kind: "personal" }, true);
+    expect(activeId(personal, "/selling/payout-setup")).toBe("payouts");
+    expect(activeId(personal, "/legal-entities/e1/payouts/p1/statement")).toBe("payouts");
   });
 });
 
 describe("mobile tabs", () => {
-  it("buying personal: bids, purchases, watching, notifications, more", () => {
-    expect(getClientMobileTabs(input()).map((item) => item.id)).toEqual([
+  const tabIds = (navScope: ClientNavScope) => getClientMobileTabs(navScope).map((t) => t.id);
+
+  it("personal: bids, purchases, watching, then More", () => {
+    expect(tabIds(scope({ kind: "personal" }))).toEqual([
       "bids",
       "purchases",
       "watchlist",
@@ -326,24 +216,17 @@ describe("mobile tabs", () => {
     ]);
   });
 
-  it("selling personal: overview, consignments, payouts, notifications, more", () => {
-    expect(getClientMobileTabs(input({ mode: "selling" })).map((item) => item.id)).toEqual([
-      "seller-overview",
+  it("organisation owner: Home first, then the most used entries", () => {
+    expect(tabIds(scope(org("owner")))).toEqual(["home", "bids", "purchases", "watchlist", "more"]);
+  });
+
+  it("consignor: only the entries the role can open, and always More", () => {
+    expect(tabIds(scope(org("consignor")))).toEqual([
+      "home",
+      "watchlist",
       "consignments",
-      "payouts",
       "notifications",
       "more",
     ]);
-  });
-
-  it("selling as an owner: the four most useful entries, with Works in place of notifications", () => {
-    expect(
-      getClientMobileTabs(input({ mode: "selling", context: org("owner") })).map((item) => item.id),
-    ).toEqual(["seller-overview", "consignments", "works", "payouts", "more"]);
-  });
-
-  it("drops tabs the role cannot open but keeps More", () => {
-    const tabs = getClientMobileTabs(input({ context: org("consignor") })).map((item) => item.id);
-    expect(tabs).toEqual(["bids", "watchlist", "notifications", "more"]);
   });
 });

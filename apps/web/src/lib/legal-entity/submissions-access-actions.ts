@@ -9,8 +9,8 @@ import { revalidatePath } from "next/cache";
 export async function usePersonalProfileForSubmissions(): Promise<void> {
   return instrumentServerAction("usePersonalProfileForSubmissions", async () => {
     await switchActingLegalEntity(null);
-    revalidatePath("/dashboard/seller", "layout");
-    revalidatePath("/dashboard/submissions", "layout");
-    revalidatePath("/dashboard", "layout");
+    revalidatePath("/selling", "layout");
+    revalidatePath("/selling/consignments", "layout");
+    revalidatePath("/home", "layout");
   });
 }

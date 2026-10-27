@@ -16,7 +16,7 @@
       "name": "My bids",
       "short_name": "Bids",
       "description": "View your active bids",
-      "url": "/dashboard/bids",
+      "url": "/bids",
       "icons": [{ "src": "/favicons/android-chrome-192x192.png", "sizes": "192x192" }]
     },
     {

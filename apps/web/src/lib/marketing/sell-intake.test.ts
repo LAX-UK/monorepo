@@ -7,9 +7,9 @@ import {
 
 describe("sell-intake", () => {
   it("sellIntakeHref points at the submission wizard", () => {
-    expect(sellIntakeHref()).toBe("/dashboard/submissions/new");
+    expect(sellIntakeHref()).toBe("/selling/new");
     expect(sellIntakeHref({ categorySlug: "motor-cars" })).toBe(
-      "/dashboard/submissions/new?categorySlug=motor-cars",
+      "/selling/new?categorySlug=motor-cars",
     );
   });
 
@@ -22,10 +22,8 @@ describe("sell-intake", () => {
   });
 
   it("sellRegisterHrefFromSubmissionNext preserves categorySlug from next", () => {
-    expect(
-      sellRegisterHrefFromSubmissionNext("/dashboard/submissions/new?categorySlug=fine-prints"),
-    ).toBe(
-      "/register?next=%2Fdashboard%2Fsubmissions%2Fnew%3FcategorySlug%3Dfine-prints&intent=sell",
+    expect(sellRegisterHrefFromSubmissionNext("/selling/new?categorySlug=fine-prints")).toBe(
+      "/register?next=%2Fselling%2Fnew%3FcategorySlug%3Dfine-prints&intent=sell",
     );
   });
 });

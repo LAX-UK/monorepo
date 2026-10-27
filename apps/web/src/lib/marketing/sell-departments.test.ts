@@ -15,21 +15,17 @@ function departmentById(id: string): SellDepartment {
 describe("departmentIntakeHref", () => {
   it("routes wizard departments to the submission wizard with categorySlug", () => {
     const watches = departmentById("watches-clocks");
-    expect(departmentIntakeHref(watches)).toBe(
-      "/dashboard/submissions/new?categorySlug=watches-clocks",
-    );
+    expect(departmentIntakeHref(watches)).toBe("/selling/new?categorySlug=watches-clocks");
   });
 
   it("routes estate collections to the submission wizard", () => {
     const estate = departmentById("estate");
-    expect(departmentIntakeHref(estate)).toBe("/dashboard/submissions/new");
+    expect(departmentIntakeHref(estate)).toBe("/selling/new");
   });
 
   it("routes prints through the wizard with category preselect", () => {
     const prints = departmentById("fine-prints");
-    expect(departmentIntakeHref(prints)).toBe(
-      "/dashboard/submissions/new?categorySlug=fine-prints",
-    );
+    expect(departmentIntakeHref(prints)).toBe("/selling/new?categorySlug=fine-prints");
   });
 });
 

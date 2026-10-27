@@ -45,8 +45,8 @@ export function megaMenuSectionActive(
     return (
       pathname === "/sell" ||
       pathname.startsWith("/sell/") ||
-      pathname.startsWith("/dashboard/submissions") ||
-      pathname.startsWith("/dashboard/seller")
+      pathname.startsWith("/selling/consignments") ||
+      pathname.startsWith("/selling")
     );
   }
   if (section.id === "privateSales") {
@@ -66,10 +66,9 @@ export function navItemActive(pathname: string, href: string): boolean {
   }
   if (href.startsWith("/sales")) return pathname.startsWith("/sales");
   if (href.startsWith("/search")) return pathname.startsWith("/search");
-  if (href.startsWith("/dashboard/seller")) return pathname.startsWith("/dashboard/seller");
-  if (href.startsWith("/dashboard/submissions"))
-    return pathname.startsWith("/dashboard/submissions");
-  if (href.startsWith("/dashboard/settings")) return pathname.startsWith("/dashboard/settings");
+  if (href.startsWith("/selling")) return pathname.startsWith("/selling");
+  if (href.startsWith("/selling/consignments")) return pathname.startsWith("/selling/consignments");
+  if (href.startsWith("/settings")) return pathname.startsWith("/settings");
   return linkIsCurrent(pathname, href);
 }
 

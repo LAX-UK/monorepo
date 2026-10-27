@@ -79,14 +79,14 @@ describe("WatchlistBoard", () => {
       <WatchlistBoard
         rows={sampleRows}
         initialQ="nonexistent"
-        clearSearchHref="/dashboard/watchlist?status=active&sort=addedDesc"
+        clearSearchHref="/watching?status=active&sort=addedDesc"
       />,
     );
 
     expect(screen.getByText(/No title matches/i)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Clear filters/i })).toHaveAttribute(
       "href",
-      "/dashboard/watchlist?status=active&sort=addedDesc",
+      "/watching?status=active&sort=addedDesc",
     );
   });
 

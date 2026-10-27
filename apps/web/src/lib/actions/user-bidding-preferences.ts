@@ -26,7 +26,7 @@ export async function updateBiddingPreferencesFromValuesAction(
     if (!r.ok) {
       return actionFailure(r.message, undefined, r.status);
     }
-    revalidatePath("/dashboard/settings/bidding");
+    revalidatePath("/settings/bidding");
     return actionSuccess();
   });
 }
@@ -52,11 +52,11 @@ export async function updateBiddingPreferencesAction(formData: FormData): Promis
       });
       if (!r.ok) {
         const { redirect } = await import("next/navigation");
-        redirect(`/dashboard/settings/bidding?error=${encodeURIComponent(r.message)}`);
+        redirect(`/settings/bidding?error=${encodeURIComponent(r.message)}`);
       }
-      revalidatePath("/dashboard/settings/bidding");
+      revalidatePath("/settings/bidding");
       const { redirect } = await import("next/navigation");
-      redirect("/dashboard/settings/bidding?saved=1");
+      redirect("/settings/bidding?saved=1");
     },
     { formData },
   );

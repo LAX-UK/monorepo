@@ -35,7 +35,7 @@ export function getMarketingMegaMenuSections(): MegaMenuSection[] {
         { href: timedAuctionsHref, label: "Timed Auctions" },
         { href: calendarSalesHref({ tab: "results" }), label: "Past Results" },
         { href: "/sales", label: "Auction Calendar" },
-        { href: "/dashboard/settings/notifications", label: "Auction Alerts" },
+        { href: "/settings/notifications", label: "Auction Alerts" },
       ],
     },
     {
@@ -69,7 +69,7 @@ export function getMarketingMegaMenuSections(): MegaMenuSection[] {
         { href: "/sell/prints", label: "Prints & editions" },
         { href: "/sell/estate", label: "Estate collections" },
         { href: "/sell/corporate", label: "Corporate collections" },
-        { href: "/dashboard/seller", label: "Seller dashboard" },
+        { href: "/selling", label: "Seller dashboard" },
       ],
     },
     {

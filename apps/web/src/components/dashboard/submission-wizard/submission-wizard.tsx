@@ -187,7 +187,7 @@ export function SubmissionWizard({
       setExitGuardOpen(true);
       return;
     }
-    router.push("/dashboard/submissions");
+    router.push("/selling/consignments");
   }, [exitGuardActive, router]);
 
   const handleWithdraw = useCallback(() => {
@@ -196,7 +196,7 @@ export function SubmissionWizard({
       const result = await withdrawSubmissionFromValuesAction(mode.submissionId);
       if (result.ok) {
         notify.success("Withdrawn");
-        router.push("/dashboard/submissions");
+        router.push("/selling/consignments");
         return;
       }
       notify.error(result.error ?? "Withdraw failed");

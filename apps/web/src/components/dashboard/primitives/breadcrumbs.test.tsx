@@ -24,8 +24,8 @@ describe("Breadcrumbs", () => {
     render(
       <Breadcrumbs
         items={[
-          { label: "Dashboard", href: "/dashboard" },
-          { label: "Submissions", href: "/dashboard/submissions" },
+          { label: "Dashboard", href: "/home" },
+          { label: "Submissions", href: "/selling/consignments" },
           { label: "Draft" },
         ]}
       />,
@@ -39,16 +39,14 @@ describe("Breadcrumbs", () => {
 
   it("marks the final crumb with aria-current=page", () => {
     render(
-      <Breadcrumbs
-        items={[{ label: "Dashboard", href: "/dashboard" }, { label: "Current page" }]}
-      />,
+      <Breadcrumbs items={[{ label: "Dashboard", href: "/home" }, { label: "Current page" }]} />,
     );
 
     expect(screen.getByText("Current page")).toHaveAttribute("aria-current", "page");
   });
 
   it("marks the current slot with aria-current=page", () => {
-    render(<Breadcrumbs items={[{ label: "Dashboard", href: "/dashboard" }]} current="Lot 42" />);
+    render(<Breadcrumbs items={[{ label: "Dashboard", href: "/home" }]} current="Lot 42" />);
 
     expect(screen.getByText("Lot 42")).toHaveAttribute("aria-current", "page");
   });
@@ -58,14 +56,14 @@ describe("Breadcrumbs", () => {
       <Breadcrumbs
         compact
         items={[
-          { label: "Dashboard", href: "/dashboard" },
-          { label: "Seller", href: "/dashboard/seller" },
+          { label: "Dashboard", href: "/home" },
+          { label: "Seller", href: "/selling" },
           { label: "Watchlist" },
         ]}
       />,
     );
 
-    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/dashboard");
+    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/home");
     expect(screen.getByText("Watchlist")).toHaveAttribute("aria-current", "page");
     expect(screen.queryByRole("link", { name: "Seller" })).not.toBeInTheDocument();
 

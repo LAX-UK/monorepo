@@ -72,7 +72,7 @@ export function useLegalEntityActions() {
       if (result.ok) {
         close();
         notify.success(`Impersonating ${entity.name}`);
-        router.push("/dashboard");
+        router.push("/home");
         router.refresh();
         return;
       }

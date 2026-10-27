@@ -68,7 +68,7 @@ export function BiddingPreferencesForm({ initial }: { initial: Prefs | null }) {
             });
             if (r.ok) {
               notify.success("Preferences saved");
-              router.replace("/dashboard/settings/bidding?saved=1");
+              router.replace("/settings/bidding?saved=1");
               router.refresh();
               return;
             }

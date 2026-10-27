@@ -24,7 +24,7 @@ type Input = {
   now: Date;
 };
 
-const CONSIGNMENTS = "/dashboard/seller/consignments";
+const CONSIGNMENTS = "/selling/consignments";
 /** A rejection older than this is history, not a task. */
 const REJECTION_RELEVANT_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -44,7 +44,7 @@ function draftItems(submissions: readonly ItemSubmission[]): SellerAttentionItem
         title: `Finish "${only.title}"`,
         detail: "Saved but not yet sent to our specialists for review.",
         status: "Not submitted",
-        href: `/dashboard/submissions/${only.id}`,
+        href: `/selling/consignments/${only.id}`,
       },
     ];
   }
@@ -78,7 +78,7 @@ function rejectedItem(
       ? `Reason given: ${recent.rejectionReason}`
       : "You can submit a revised version with updated details.",
     status: "Needs changes",
-    href: `/dashboard/submissions/new?fromRejected=${encodeURIComponent(recent.id)}`,
+    href: `/selling/new?fromRejected=${encodeURIComponent(recent.id)}`,
   };
 }
 
@@ -111,7 +111,7 @@ export function buildSellerAttentionItems(input: Input): SellerAttentionItem[] {
       title: "Verify your identity",
       detail: "We check who you are before we can pay you.",
       status: "To do",
-      href: "/dashboard/verify-identity",
+      href: "/verify-identity",
     });
   }
 

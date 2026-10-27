@@ -16,7 +16,7 @@ const render = (vm: Parameters<typeof DeleteAccountSection>[0]["vm"]) =>
 const BID = {
   code: "account_deletion_pending_payments",
   message: "You have a payment still to make. Pay it before deleting your account.",
-  href: "https://bid.example/dashboard/payments",
+  href: "https://bid.example/purchases#payment-history",
 };
 const SHOP = {
   code: "shop_open_orders",

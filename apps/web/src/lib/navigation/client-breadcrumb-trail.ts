@@ -1,185 +1,73 @@
 import type { BreadcrumbItem } from "@/components/dashboard/primitives/breadcrumbs";
-import {
-  type AppShellRole,
-  getRouteLabel,
-  getRouteParentLabel,
-} from "@/components/layout/app-shell-nav";
 import { settingsSectionLabel } from "@/lib/navigation/settings-section-labels";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
+import { CLIENT_ROUTES } from "./client-routes";
 
-const CLIENT_SEGMENT_LABELS: Record<string, string> = {
-  checkout: "Checkout",
-  organisations: "Organisations",
-  invitations: "Invitations",
-  settings: "Bid settings",
-  seller: "Overview",
-  submissions: "Submissions",
-  purchases: "Purchases",
-  watchlist: "Watching",
-  bids: "My bids",
-  notifications: "Notifications",
-};
+type Crumb = BreadcrumbItem;
 
-const ORG_TAB_LABELS: Record<string, string> = {
+const MY_BIDS: Crumb = { label: "My bids", href: CLIENT_ROUTES.bids };
+const PURCHASES: Crumb = { label: "Purchases", href: CLIENT_ROUTES.purchases };
+const CONSIGNMENTS: Crumb = { label: "Consignments", href: CLIENT_ROUTES.consignments };
+const SOLD_AND_PAYOUTS: Crumb = { label: "Sold & payouts", href: CLIENT_ROUTES.payouts };
+const BID_SETTINGS: Crumb = { label: "Bid settings", href: CLIENT_ROUTES.settings };
+const ORGANISATION: Crumb = { label: "Organisation", href: CLIENT_ROUTES.organisation };
+const ORGANISATIONS: Crumb = { label: "Organisations", href: CLIENT_ROUTES.organisations };
+const INVITATIONS: Crumb = { label: "Invitations", href: CLIENT_ROUTES.invitations };
+
+const ORGANISATION_TAB_LABELS: Record<string, string> = {
   members: "Members",
-  profile: "Profile",
   documents: "Documents",
-  connect: "Payout setup",
-  security: "Two-step policy",
+  payouts: "Payouts",
+  security: "Security",
 };
 
-function inferClientParentHref(pathname: string): string | undefined {
-  const segments = pathname.split("/").filter(Boolean);
-  if (segments.length < 2 || segments[0] !== "dashboard") return undefined;
-
-  const section = segments[1];
-  if (!section) return "/dashboard";
-
-  if (section === "settings" && segments.length > 2) {
-    return "/dashboard/settings";
-  }
-  if (section === "checkout" && segments.length > 2) {
-    return "/dashboard/purchases";
-  }
-  if (section === "seller" && segments.length > 2) {
-    return "/dashboard/seller";
-  }
-  if (section === "invitations" && segments.length > 2) {
-    return "/dashboard/invitations";
-  }
-
-  const navHref = `/dashboard/${section}`;
-  return navHref === pathname ? "/dashboard" : navHref;
+/** The current page, which is never a link. */
+function here(label: string): Crumb {
+  return { label };
 }
 
-function resolveClientCurrentLabel(pathname: string, workspace: ClientWorkspaceMode): string {
-  const segments = pathname.split("/").filter(Boolean);
+/**
+ * Every client-area page and its trail, first match wins. Each page has one address, so its
+ * trail is the same whichever account is in use.
+ */
+const TRAILS: readonly [RegExp, (match: RegExpMatchArray) => Crumb[]][] = [
+  [/^\/home$/, () => [here("Home")]],
+  [/^\/bids$/, () => [here("My bids")]],
+  [/^\/bids\/telephone\/[^/]+$/, () => [MY_BIDS, here("Telephone bid")]],
+  [/^\/purchases$/, () => [here("Purchases")]],
+  [/^\/purchases\/checkout(\/[^/]+)?$/, () => [PURCHASES, here("Checkout")]],
+  [/^\/watching$/, () => [here("Watching")]],
+  [/^\/notifications$/, () => [here("Notifications")]],
+  [/^\/settings$/, () => [here("Bid settings")]],
+  [/^\/settings\/([^/]+)$/, (m) => [BID_SETTINGS, here(settingsSectionLabel(m[1] ?? ""))]],
+  [/^\/selling$/, () => [here("Selling")]],
+  [/^\/selling\/new$/, () => [CONSIGNMENTS, here("New submission")]],
+  [/^\/selling\/consignments$/, () => [here("Consignments")]],
+  [/^\/selling\/consignments\/[^/]+$/, () => [CONSIGNMENTS, here("Submission")]],
+  [/^\/selling\/works$/, () => [here("Works")]],
+  [/^\/selling\/payouts$/, () => [here("Sold & payouts")]],
+  [/^\/selling\/payout-setup$/, () => [SOLD_AND_PAYOUTS, here("Payout setup")]],
+  [/^\/selling\/artist$/, () => [here("Artist profile")]],
+  [/^\/legal-entities\/.+\/statement$/, () => [SOLD_AND_PAYOUTS, here("Statement")]],
+  [/^\/organisation$/, () => [here("Organisation")]],
+  [
+    /^\/organisation\/([^/]+)$/,
+    (m) => [ORGANISATION, here(ORGANISATION_TAB_LABELS[m[1] ?? ""] ?? "Organisation")],
+  ],
+  [/^\/organisations$/, () => [here("Organisations")]],
+  [/^\/organisations\/invitations$/, () => [ORGANISATIONS, here("Invitations")]],
+  [/^\/organisations\/invitations\/review\/[^/]+$/, () => [INVITATIONS, here("Review invitation")]],
+  [/^\/organisations\/invitations\/accept\/[^/]+$/, () => [INVITATIONS, here("Accept invitation")]],
+  [/^\/verify-identity$/, () => [here("Verify identity")]],
+  [/^\/compliance\/source-of-funds$/, () => [here("Source of funds")]],
+  [/^\/no-access$/, () => [here("No access")]],
+];
 
-  const section = segments[1] ?? "";
-  if (segments.length === 2) {
-    return CLIENT_SEGMENT_LABELS[section] ?? getRouteLabel(pathname, "client", workspace);
+/** Human-readable breadcrumb trail for a signed-in client-area page. */
+export function buildClientBreadcrumbTrail(pathname: string): BreadcrumbItem[] {
+  const path = pathname.replace(/\/+$/, "") || "/";
+  for (const [pattern, trail] of TRAILS) {
+    const match = path.match(pattern);
+    if (match) return trail(match);
   }
-
-  if (section === "invitations") {
-    if (segments[2] === "review") return "Review invitation";
-    if (segments[2] === "accept") return "Accept invitation";
-  }
-
-  if (section === "legal-entities" && segments[segments.length - 1] === "statement") {
-    return "Statement";
-  }
-
-  if (section === "checkout" && segments.length === 3) return "Checkout";
-  if (section === "submissions" && segments.length === 3 && segments[2] === "new") {
-    return "New submission";
-  }
-  if (section === "submissions" && segments.length === 3) return "Submission";
-  if (section === "seller" && segments.length === 3) {
-    const sellerLeaf: Record<string, string> = {
-      connect: "Payout setup",
-      payouts: "Sold & payouts",
-      consignments: "Consignments",
-      works: "Works",
-      artist: "Artist profile",
-    };
-    const sub = segments[2] ?? "";
-    if (sellerLeaf[sub]) return sellerLeaf[sub];
-  }
-  if (section === "settings" && segments.length >= 3) {
-    const leaf = segments[segments.length - 1] ?? "settings";
-    return settingsSectionLabel(leaf);
-  }
-
-  const fromNav = getRouteLabel(pathname, "client", workspace);
-  if (fromNav !== "Detail") return fromNav;
-
-  return CLIENT_SEGMENT_LABELS[section] ?? "Detail";
-}
-
-/** An organisation's settings pages sit under Selling: Selling > Organisation > Members. */
-function buildOrganisationTrail(segments: string[]): BreadcrumbItem[] | null {
-  if (segments[1] !== "seller" || segments[2] !== "organisations") return null;
-  const orgId = segments[3];
-  if (!orgId) return null;
-
-  const selling: BreadcrumbItem = { label: "Selling", href: "/dashboard/seller" };
-  const tabLabel = ORG_TAB_LABELS[segments[4] ?? ""];
-  if (!tabLabel) return [selling, { label: "Organisation" }];
-  return [
-    selling,
-    { label: "Organisation", href: `/dashboard/seller/organisations/${orgId}` },
-    { label: tabLabel },
-  ];
-}
-
-function buildInvitationsTrail(segments: string[]): BreadcrumbItem[] | null {
-  if (segments[1] !== "invitations" || segments.length < 3) return null;
-  const action = segments[2];
-  if (action === "review") {
-    return [
-      { label: "Invitations", href: "/dashboard/invitations" },
-      { label: "Review invitation" },
-    ];
-  }
-  if (action === "accept") {
-    return [
-      { label: "Invitations", href: "/dashboard/invitations" },
-      { label: "Accept invitation" },
-    ];
-  }
-  return null;
-}
-
-function buildLegalEntityStatementTrail(
-  segments: string[],
-  workspace: ClientWorkspaceMode,
-): BreadcrumbItem[] | null {
-  if (segments[1] !== "legal-entities" || segments[segments.length - 1] !== "statement") {
-    return null;
-  }
-
-  const items: BreadcrumbItem[] = [];
-  if (workspace === "selling") {
-    items.push({ label: "Selling", href: "/dashboard/seller" });
-  }
-  items.push({ label: "Sold & payouts", href: "/dashboard/seller/payouts" });
-  items.push({ label: "Statement" });
-  return items;
-}
-
-/** Human-readable breadcrumb trail for signed-in client dashboard routes. */
-export function buildClientBreadcrumbTrail(
-  pathname: string,
-  clientWorkspaceMode: ClientWorkspaceMode = "buying",
-): BreadcrumbItem[] {
-  const segments = pathname.split("/").filter(Boolean);
-
-  const orgTrail = buildOrganisationTrail(segments);
-  if (orgTrail) return orgTrail;
-
-  const invitationsTrail = buildInvitationsTrail(segments);
-  if (invitationsTrail) return invitationsTrail;
-
-  const statementTrail = buildLegalEntityStatementTrail(segments, clientWorkspaceMode);
-  if (statementTrail) return statementTrail;
-
-  const parent = getRouteParentLabel(pathname, "client" as AppShellRole, clientWorkspaceMode);
-  const current = resolveClientCurrentLabel(pathname, clientWorkspaceMode);
-
-  const items: BreadcrumbItem[] = [];
-
-  if (parent && parent !== current) {
-    const parentHref = inferClientParentHref(pathname);
-    if (parentHref) {
-      items.push({ label: parent, href: parentHref });
-    } else {
-      items.push({ label: parent });
-    }
-  }
-
-  if (current) {
-    items.push({ label: current });
-  }
-
-  return items;
+  return [here("Detail")];
 }

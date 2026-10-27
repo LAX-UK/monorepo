@@ -15,7 +15,7 @@ describe("notificationHref", () => {
         read: false,
         createdAt: new Date(),
       }),
-    ).toBe("/dashboard/submissions/sub-1");
+    ).toBe("/selling/consignments/sub-1");
   });
 
   it("routes staff submission notifications to admin detail", () => {

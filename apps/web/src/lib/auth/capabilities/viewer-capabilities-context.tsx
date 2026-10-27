@@ -1,7 +1,6 @@
 "use client";
 
 import type { SessionUser } from "@/lib/data/contracts";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import {
   type CapabilityRequirement,
   type UserRole,
@@ -16,24 +15,18 @@ const ViewerCapabilitiesContext = createContext<ViewerCapabilities | null>(null)
 
 export type ViewerCapabilitiesProviderProps = {
   user: Pick<SessionUser, "role" | "staffRole" | "name">;
-  clientWorkspaceMode?: ClientWorkspaceMode;
   acting?: ActingContext;
   children: ReactNode;
 };
 
-function resolveWorkspace(
-  role: UserRole,
-  staffRole: UserStaffRole | null,
-  clientWorkspaceMode: ClientWorkspaceMode,
-): ViewerWorkspace {
-  if (role === "client") return clientWorkspaceMode;
+function resolveWorkspace(role: UserRole, staffRole: UserStaffRole | null): ViewerWorkspace {
+  if (role === "client") return "client";
   const shell = staffRoleToShellLayout(role, staffRole);
   return shell === "finance" ? "finance" : "staff";
 }
 
 export function ViewerCapabilitiesProvider({
   user,
-  clientWorkspaceMode = "buying",
   acting = { kind: "self" },
   children,
 }: ViewerCapabilitiesProviderProps) {
@@ -49,11 +42,11 @@ export function ViewerCapabilitiesProvider({
     () => ({
       role,
       staffRole,
-      workspace: resolveWorkspace(role, staffRole, clientWorkspaceMode),
+      workspace: resolveWorkspace(role, staffRole),
       acting,
       can,
     }),
-    [role, staffRole, clientWorkspaceMode, acting, can],
+    [role, staffRole, acting, can],
   );
 
   return (

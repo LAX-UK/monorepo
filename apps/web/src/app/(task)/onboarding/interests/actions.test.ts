@@ -61,14 +61,14 @@ describe("completeBuyerInterests", () => {
     const formData = new FormData();
     formData.set("skip", "1");
     formData.set("categoryId", "11111111-1111-4111-8111-111111111111");
-    formData.set("next", "/dashboard/watchlist");
+    formData.set("next", "/watching");
     formData.set("source", "sign_in_resume");
 
     await expect(
       completeBuyerInterests(INITIAL_BUYER_INTERESTS_ACTION_STATE, formData),
     ).resolves.toEqual({
       error: null,
-      redirectTo: "/onboarding/identity?next=%2Fdashboard%2Fwatchlist&source=sign_in_resume",
+      redirectTo: "/onboarding/identity?next=%2Fwatching&source=sign_in_resume",
       submission: { skipped: true, selectedCount: 0, source: "sign_in_resume" },
     });
     expect(replaceServerCategoryInterests).toHaveBeenLastCalledWith([]);
@@ -82,13 +82,13 @@ describe("completeBuyerInterests", () => {
     });
     const formData = new FormData();
     formData.set("categoryId", "11111111-1111-4111-8111-111111111111");
-    formData.set("next", "/dashboard/watchlist");
+    formData.set("next", "/watching");
 
     await expect(
       completeBuyerInterests(INITIAL_BUYER_INTERESTS_ACTION_STATE, formData),
     ).resolves.toEqual({
       error: null,
-      redirectTo: "/onboarding/recommendations?next=%2Fdashboard%2Fwatchlist&source=post_verify",
+      redirectTo: "/onboarding/recommendations?next=%2Fwatching&source=post_verify",
       submission: {
         skipped: false,
         selectedCount: 1,

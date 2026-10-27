@@ -14,7 +14,7 @@ export function PaymentCompleteBlock() {
         Your payment is on file. Track fulfilment above and view this lot in your purchases.
       </p>
       <Button asChild variant="secondaryOutline" className="mt-6">
-        <Link href="/dashboard/purchases">View purchases</Link>
+        <Link href="/purchases">View purchases</Link>
       </Button>
     </output>
   );

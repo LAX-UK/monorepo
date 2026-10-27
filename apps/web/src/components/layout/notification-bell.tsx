@@ -145,7 +145,7 @@ export function NotificationBell({ headerTone = "on-light" }: { headerTone?: Sit
           </div>
           <div className="flex flex-col gap-2 border-t border-border-hairline px-4 py-2">
             <Link
-              href="/dashboard/notifications"
+              href="/notifications"
               className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
               onClick={closeMenu}
             >

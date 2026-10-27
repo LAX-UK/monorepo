@@ -20,10 +20,10 @@ test.describe("identity onboarding login redirect @journey", () => {
   test("does not force a completed buyer through KYC on sign-in", async ({ page }) => {
     skipUnlessPrepared(roleAuthState.client, "setup-client");
 
-    await page.goto("/auth/post-login?next=/dashboard/watchlist");
+    await page.goto("/auth/post-login?next=/watching");
 
     await expect(page).not.toHaveURL(/\/onboarding\/(?:interests|identity)/);
-    await expect(page).toHaveURL(/\/dashboard\/watchlist/);
+    await expect(page).toHaveURL(/\/watching/);
   });
 });
 
@@ -34,7 +34,7 @@ test.describe("incomplete buyer login resume @journey", () => {
     skipUnlessPrepared(roleAuthState.incomplete, "setup-incomplete");
     test.skip(!fullBuyerOnboarding, "Requires FULL_BUYER_ONBOARDING_ENABLED=true.");
 
-    await page.goto("/auth/post-login?next=/dashboard/watchlist");
+    await page.goto("/auth/post-login?next=/watching");
 
     await expect(page).toHaveURL(/\/onboarding\/interests\?.*source=sign_in_resume/);
     await expect(
@@ -52,16 +52,16 @@ test.describe("identity onboarding @journey", () => {
   });
 
   test("preserves intent through KYC and allows skip/resume", async ({ page }) => {
-    await page.goto("/onboarding/identity?next=%2Fdashboard%2Fwatchlist&source=post_verify");
+    await page.goto("/onboarding/identity?next=%2Fwatching&source=post_verify");
     await expect(page.getByRole("heading", { name: /verify your identity/i })).toBeVisible();
     await expect(page.getByText(/photo id ready/i).first()).toBeVisible();
 
     await dismissCookieConsentIfVisible(page);
     await page.getByRole("link", { name: /verify later|finish later/i }).click();
-    await expect(page).toHaveURL(/\/dashboard\/watchlist/);
+    await expect(page).toHaveURL(/\/watching/);
 
-    // /dashboard lands on My bids, where account alerts sit behind one compact button.
-    await page.goto("/dashboard");
+    // /home lands on My bids, where account alerts sit behind one compact button.
+    await page.goto("/home");
     await page.getByTestId("dashboard-alerts-preview").click();
     await expect(page.getByRole("link", { name: /identity|verification/i }).first()).toBeVisible();
   });
@@ -71,7 +71,7 @@ test.describe("identity onboarding @journey", () => {
       process.env.PLAYWRIGHT_KYC_START !== "1",
       "Set PLAYWRIGHT_KYC_START=1 with a disposable unverified Veriff test user.",
     );
-    await page.goto("/onboarding/identity/verify?next=%2Fdashboard&source=direct");
+    await page.goto("/onboarding/identity/verify?next=%2Fhome&source=direct");
     await page.getByRole("button", { name: /start verification|resume verification/i }).click();
     await expect(
       page.getByText(/verification in progress|complete document and selfie/i),
@@ -82,7 +82,7 @@ test.describe("identity onboarding @journey", () => {
     await page.goto("/onboarding/identity?next=%2F%2Fevil.example&source=direct");
     await dismissCookieConsentIfVisible(page);
     await page.getByRole("link", { name: /verify later|finish later/i }).click();
-    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page).toHaveURL(/\/(home|bids)$/);
   });
 });
 
@@ -97,7 +97,7 @@ test.describe("full post-verification buyer onboarding @journey", () => {
       "Set PLAYWRIGHT_FULL_ONBOARDING_ENTRY_URL to a fresh individual email-verification URL.",
     );
     await page.goto(entryUrl);
-    await expect(page).toHaveURL(/\/onboarding\/interests\?.*next=%2Fdashboard%2Fwatchlist/);
+    await expect(page).toHaveURL(/\/onboarding\/interests\?.*next=%2Fwatching/);
     await expect(
       page.getByRole("heading", { name: /what are your areas of interest/i }),
     ).toBeVisible();
@@ -114,7 +114,7 @@ test.describe("full post-verification buyer onboarding @journey", () => {
     await page.getByRole("link", { name: "Continue" }).click();
     await expect(page.getByRole("heading", { name: /one step from bidding on/i })).toBeVisible();
     await page.getByRole("link", { name: /verify later|finish later/i }).click();
-    await expect(page).toHaveURL(/\/dashboard\/watchlist/);
+    await expect(page).toHaveURL(/\/watching/);
   });
 
   test.describe("empty recommendations @journey", () => {
@@ -123,13 +123,13 @@ test.describe("full post-verification buyer onboarding @journey", () => {
     test("explains empty recommendations and continues to identity", async ({ page }) => {
       skipUnlessPrepared(roleAuthState.zeroLot, "setup-zero-lot");
       test.skip(!fullBuyerOnboarding, "Requires FULL_BUYER_ONBOARDING_ENABLED=true.");
-      await page.goto("/onboarding/recommendations?next=%2Fdashboard%2Fwatchlist");
+      await page.goto("/onboarding/recommendations?next=%2Fwatching");
       await expect(
         page.getByText(/don.t have live lots in your selected categories/i),
       ).toBeVisible();
       await expect(page.getByRole("link", { name: "Continue" })).toHaveAttribute(
         "href",
-        /\/onboarding\/identity\?.*next=%2Fdashboard%2Fwatchlist/,
+        /\/onboarding\/identity\?.*next=%2Fwatching/,
       );
     });
   });
@@ -141,7 +141,7 @@ test.describe("onboarding eligibility exclusions @roles", () => {
 
     test("staff login never enters buyer interests or KYC onboarding", async ({ page }) => {
       test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 and start the web/API stack.");
-      await page.goto("/auth/post-login?next=/dashboard/watchlist", {
+      await page.goto("/auth/post-login?next=/watching", {
         waitUntil: "domcontentloaded",
       });
       await expect(page).not.toHaveURL(/\/onboarding\/(?:interests|identity)/);
@@ -157,7 +157,7 @@ test.describe("onboarding eligibility exclusions @roles", () => {
         !existsSync(roleAuthState.buyer),
         "Mint setup-buyer via prepare-e2e-auth-states.mjs",
       );
-      await page.goto("/auth/post-login?next=/dashboard/watchlist");
+      await page.goto("/auth/post-login?next=/watching");
       await expect(page).not.toHaveURL(/\/onboarding\/(?:interests|identity)/);
     });
   });
@@ -182,19 +182,19 @@ test.describe("buyer onboarding visual contracts @visual", () => {
   for (const screen of [
     {
       name: "interests",
-      path: "/onboarding/interests?next=%2Fdashboard&source=post_verify",
+      path: "/onboarding/interests?next=%2Fhome&source=post_verify",
       heading: /what are your areas of interest/i,
       requiresFullBuyer: true,
     },
     {
       name: "recommendations",
-      path: "/onboarding/recommendations?next=%2Fdashboard&source=post_verify",
+      path: "/onboarding/recommendations?next=%2Fhome&source=post_verify",
       heading: /recommended lots/i,
       requiresFullBuyer: true,
     },
     {
       name: "identity",
-      path: "/onboarding/identity?next=%2Fdashboard&source=post_verify",
+      path: "/onboarding/identity?next=%2Fhome&source=post_verify",
       heading: /verify your identity/i,
       requiresFullBuyer: false,
     },
@@ -217,7 +217,7 @@ test.describe("buyer onboarding visual contracts @visual", () => {
   test("interests representative mobile screen", async ({ page }) => {
     test.skip(!fullBuyerOnboarding, "Requires FULL_BUYER_ONBOARDING_ENABLED=true.");
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/onboarding/interests?next=%2Fdashboard&source=post_verify");
+    await page.goto("/onboarding/interests?next=%2Fhome&source=post_verify");
     await expect(page.locator("#main-content")).toBeVisible();
     await expect(page).toHaveScreenshot("buyer-onboarding-interests-mobile.png", {
       fullPage: true,

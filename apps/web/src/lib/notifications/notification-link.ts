@@ -8,7 +8,7 @@ export function notificationHref(item: UserNotification): string | null {
   if (item.submissionId && STAFF_SUBMISSION_NOTIFICATION_TYPES.has(item.type)) {
     return `/admin/submissions/${item.submissionId}`;
   }
-  if (item.submissionId) return `/dashboard/submissions/${item.submissionId}`;
+  if (item.submissionId) return `/selling/consignments/${item.submissionId}`;
   if (item.lotId) return lotPath({ id: item.lotId, title: item.title });
   return null;
 }

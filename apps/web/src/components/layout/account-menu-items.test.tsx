@@ -27,8 +27,8 @@ const user: SessionUser = {
   role: "client",
 };
 
-function Menu({ mode = "buying", menu = true }: { mode?: "buying" | "selling"; menu?: boolean }) {
-  const groups = useAccountMenuGroups(user, mode, true);
+function Menu({ menu = true }: { menu?: boolean }) {
+  const groups = useAccountMenuGroups(user, true);
   return (
     <div role={menu ? "menu" : undefined}>
       <AccountMenuItems groups={groups} variant="header" menu={menu} onNavigate={() => {}} />
@@ -56,12 +56,12 @@ describe("AccountMenuItems", () => {
     expect(names).not.toContain("Dashboard");
   });
 
-  it("offers Start selling to a buyer who has never consigned", () => {
+  it("offers Sell with LAX to a buyer who has never consigned", () => {
     withContext();
     render(<Menu />);
-    expect(screen.getByRole("menuitem", { name: "Start selling" })).toHaveAttribute(
+    expect(screen.getByRole("menuitem", { name: "Sell with LAX" })).toHaveAttribute(
       "href",
-      "/dashboard/submissions/new",
+      "/selling/new",
     );
     expect(screen.queryByRole("menuitem", { name: "Your organisations" })).toBeNull();
   });
@@ -69,20 +69,8 @@ describe("AccountMenuItems", () => {
   it("offers Selling and Your organisations to an organisation member", () => {
     withContext({ isOrgMember: true });
     render(<Menu />);
-    expect(screen.getByRole("menuitem", { name: "Selling" })).toHaveAttribute(
-      "href",
-      "/dashboard/seller",
-    );
+    expect(screen.getByRole("menuitem", { name: "Selling" })).toHaveAttribute("href", "/selling");
     expect(screen.getByRole("menuitem", { name: "Your organisations" })).toBeInTheDocument();
-  });
-
-  it("offers a way back to buying while selling", () => {
-    withContext({ hasConsigned: true });
-    render(<Menu mode="selling" />);
-    expect(screen.getByRole("menuitem", { name: "Back to buying" })).toHaveAttribute(
-      "href",
-      "/dashboard/bids",
-    );
   });
 
   it("always links LAX Account to the Account origin", () => {
@@ -94,14 +82,14 @@ describe("AccountMenuItems", () => {
     );
     expect(screen.getByRole("menuitem", { name: "Bid settings" })).toHaveAttribute(
       "href",
-      "/dashboard/settings",
+      "/settings",
     );
   });
 
   it("falls back to safe defaults until the person's facts load", () => {
     contextMock.mockReturnValue(null);
     render(<Menu />);
-    expect(screen.getByRole("menuitem", { name: "Start selling" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Sell with LAX" })).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "LAX Account" })).toBeInTheDocument();
   });
 
@@ -115,9 +103,6 @@ describe("AccountMenuItems", () => {
     withContext();
     render(<Menu menu={false} />);
     expect(screen.queryByRole("menuitem")).toBeNull();
-    expect(screen.getByRole("link", { name: "Purchases" })).toHaveAttribute(
-      "href",
-      "/dashboard/purchases",
-    );
+    expect(screen.getByRole("link", { name: "Purchases" })).toHaveAttribute("href", "/purchases");
   });
 });

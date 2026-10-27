@@ -15,7 +15,7 @@ import {
 const BLOCKER = {
   code: "unpaid_payment",
   message: "You have a payment to make.",
-  href: "https://lax.example/dashboard/payments",
+  href: "https://lax.example/purchases#payment-history",
 };
 
 describe("deletionEligibilityPath", () => {

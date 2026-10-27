@@ -13,9 +13,7 @@ describe("notifications-filters", () => {
 
   it("buildNotificationsHref toggles type off", () => {
     const current = parseNotificationsParams({ type: "outbid", tab: "unread" });
-    expect(buildNotificationsHref(current, { type: null })).toBe(
-      "/dashboard/notifications?tab=unread",
-    );
+    expect(buildNotificationsHref(current, { type: null })).toBe("/notifications?tab=unread");
   });
 
   it("hasNotificationsActiveFilters detects tab and type", () => {

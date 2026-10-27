@@ -5,8 +5,8 @@ test.describe("buyer source of funds @roles", () => {
   test.skip(!e2eEnabled, e2eSkipReason);
 
   test("exposes progress landmarks without serious violations", async ({ page }) => {
-    await page.goto("/dashboard/compliance/source-of-funds");
-    if (!page.url().includes("/dashboard/compliance/source-of-funds")) {
+    await page.goto("/compliance/source-of-funds");
+    if (!page.url().includes("/compliance/source-of-funds")) {
       test.skip(true, "Buyer has no active Source of Funds case in this environment");
     }
 

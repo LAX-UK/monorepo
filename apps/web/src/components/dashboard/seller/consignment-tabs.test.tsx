@@ -16,12 +16,12 @@ vi.mock("next/link", () => ({
 }));
 
 const tabs = [
-  { id: "all", label: "All", count: 9, href: "/dashboard/seller/consignments", active: true },
+  { id: "all", label: "All", count: 9, href: "/selling/consignments", active: true },
   {
     id: "drafts",
     label: "Drafts",
     count: 1,
-    href: "/dashboard/seller/consignments?tab=drafts",
+    href: "/selling/consignments?tab=drafts",
     active: false,
   },
 ];
@@ -32,7 +32,7 @@ describe("ConsignmentTabs", () => {
     const all = screen.getByRole("link", { name: "All 9" });
     expect(all).toHaveAttribute("aria-current", "page");
     const drafts = screen.getByRole("link", { name: "Drafts 1" });
-    expect(drafts).toHaveAttribute("href", "/dashboard/seller/consignments?tab=drafts");
+    expect(drafts).toHaveAttribute("href", "/selling/consignments?tab=drafts");
     expect(drafts).not.toHaveAttribute("aria-current");
   });
 

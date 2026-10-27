@@ -2,6 +2,7 @@
 
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import { bulkBarBottomOffset } from "@/lib/layout/bottom-chrome";
+import { isClientAreaPath } from "@/lib/navigation/client-routes";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot, PublicLotView } from "@auction/types";
 import { cn } from "@auction/ui";
@@ -27,7 +28,7 @@ type Props = {
 /** Basket list with mobile card layout and sticky combined total above the tab bar. */
 export function CheckoutBasketPanel({ rows, grandTotal }: Props) {
   const pathname = usePathname();
-  const tabBarActive = pathname.startsWith("/dashboard");
+  const tabBarActive = isClientAreaPath(pathname);
   const stickyBottom = tabBarActive ? bulkBarBottomOffset(true) : "0px";
 
   return (
@@ -73,7 +74,7 @@ export function CheckoutBasketPanel({ rows, grandTotal }: Props) {
                   </div>
                   <Button variant="secondaryOutline" asChild className="shrink-0">
                     <Link
-                      href={`/dashboard/checkout/${row.lot.id}`}
+                      href={`/purchases/checkout/${row.lot.id}`}
                       className="inline-flex items-center gap-2"
                     >
                       Pay this lot <ArrowRight className="size-4" aria-hidden />

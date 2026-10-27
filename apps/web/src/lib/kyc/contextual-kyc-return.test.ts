@@ -52,7 +52,7 @@ describe("contextual KYC return tracking", () => {
     });
 
     trackContextualKycReturnIfPending("/sales/example/live", false);
-    trackContextualKycReturnIfPending("/dashboard", true);
+    trackContextualKycReturnIfPending("/home", true);
 
     expect(trackContextualKycGate).not.toHaveBeenCalled();
   });

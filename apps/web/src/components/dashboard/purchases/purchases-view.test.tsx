@@ -6,7 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 import { PurchasesView } from "./purchases-view";
 
 vi.mock("next/navigation", () => ({
-  usePathname: () => "/dashboard/purchases",
+  usePathname: () => "/purchases",
   useRouter: () => ({ push: vi.fn(), replace: vi.fn() }),
   useSearchParams: () => new URLSearchParams(),
 }));

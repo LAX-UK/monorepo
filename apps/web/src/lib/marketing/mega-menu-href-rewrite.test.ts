@@ -8,9 +8,9 @@ import {
 
 describe("mega-menu-href-rewrite", () => {
   it("rewrites dashboard hrefs for guests and restores them for authed users", () => {
-    const guestHref = rewriteDashboardHrefForGuest("/dashboard/seller");
-    expect(guestHref).toBe("/login?next=%2Fdashboard%2Fseller");
-    expect(restoreDashboardHrefForAuthed(guestHref)).toBe("/dashboard/seller");
+    const guestHref = rewriteDashboardHrefForGuest("/selling");
+    expect(guestHref).toBe("/login?next=%2Fselling");
+    expect(restoreDashboardHrefForAuthed(guestHref)).toBe("/selling");
   });
 
   it("leaves non-dashboard hrefs unchanged", () => {
@@ -24,12 +24,12 @@ describe("mega-menu-href-rewrite", () => {
         id: "sell",
         href: "/sell",
         label: "Sell",
-        items: [{ href: "/dashboard/seller", label: "Seller dashboard" }],
+        items: [{ href: "/selling", label: "Seller dashboard" }],
       },
     ];
     const guest = rewriteMegaMenuForGuest(sections);
     expect(guest[0]?.items[0]?.href).toContain("/login?next=");
     const authed = restoreMegaMenuAuthedHrefs(guest);
-    expect(authed[0]?.items[0]?.href).toBe("/dashboard/seller");
+    expect(authed[0]?.items[0]?.href).toBe("/selling");
   });
 });

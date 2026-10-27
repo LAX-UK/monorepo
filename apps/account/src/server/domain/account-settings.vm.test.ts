@@ -114,7 +114,7 @@ describe("buildPrivacyGroups", () => {
       ["Delete your account"],
       ["Privacy policy", "Terms of use"],
     ]);
-    expect(groups[0]?.rows[0]?.href).toBe("https://test.lax.bid/dashboard/settings/notifications");
+    expect(groups[0]?.rows[0]?.href).toBe("https://test.lax.bid/settings/notifications");
     expect(groups[1]?.rows[0]?.href).toBe("/account/security/delete");
   });
 

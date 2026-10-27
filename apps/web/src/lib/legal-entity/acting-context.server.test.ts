@@ -41,7 +41,7 @@ const ORG = {
   isPrimaryAdmin: true,
 };
 
-describe("resolveActingContext cookie writes", () => {
+describe("resolveActingContext", () => {
   beforeEach(() => {
     mockGet.mockReset();
     mockSet.mockReset();
@@ -55,7 +55,7 @@ describe("resolveActingContext cookie writes", () => {
     vi.unstubAllEnvs();
   });
 
-  it("swallows read-only cookie store errors when seeding acting entity", async () => {
+  it("acts as personal on a new device, never writes the cookie, and asks for a restore", async () => {
     mockAuthedFetch.mockResolvedValue({
       ok: true,
       json: async () => ({ data: [PERSONAL] }),
@@ -67,6 +67,21 @@ describe("resolveActingContext cookie writes", () => {
       memberships: expect.arrayContaining([
         expect.objectContaining({ id: "11111111-1111-4111-8111-111111111111" }),
       ]),
+      needsRestore: true,
+    });
+    expect(mockSet).not.toHaveBeenCalled();
+  });
+
+  it("asks for a restore when the cookie names an organisation the person left", async () => {
+    mockAuthedFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({ data: [PERSONAL] }),
+    });
+    mockGet.mockReturnValue({ value: ORG.id });
+
+    await expect(resolveActingContext("client", null)).resolves.toMatchObject({
+      acting: expect.objectContaining({ id: PERSONAL.id }),
+      needsRestore: true,
     });
   });
 
@@ -82,6 +97,7 @@ describe("resolveActingContext cookie writes", () => {
         id: "22222222-2222-4222-8222-222222222222",
         kind: "organisation",
       }),
+      needsRestore: false,
     });
   });
 

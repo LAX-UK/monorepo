@@ -31,7 +31,7 @@ test.describe("sell funnel smoke @journey", () => {
     await expect(page.getByRole("heading", { name: /prepare your submission/i })).toBeVisible();
     const submitCtas = page.getByRole("link", { name: /start your submission/i });
     await expect(submitCtas).toHaveCount(2);
-    await expect(submitCtas.first()).toHaveAttribute("href", /^\/dashboard\/submissions\/new/);
+    await expect(submitCtas.first()).toHaveAttribute("href", /^\/selling\/new/);
   });
 
   test("/sell#departments exposes department grid", async ({ page }) => {
@@ -71,14 +71,14 @@ test.describe("sell funnel smoke @journey", () => {
     await expect(page.getByRole("heading", { name: /estate & collections/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /start your submission/i })).toHaveAttribute(
       "href",
-      /^\/dashboard\/submissions\/new/,
+      /^\/selling\/new/,
     );
   });
 
   test("login with intent=sell hands off to hosted sign-up", async ({ page }) => {
     test.skip(!enabled, skipReason);
 
-    await page.goto("/login?next=/dashboard/submissions/new&intent=sell");
+    await page.goto("/login?next=/selling/new&intent=sell");
     await page.waitForURL(/\/sign-up\?/, { timeout: 30_000, waitUntil: "domcontentloaded" });
     expect(new URL(page.url()).searchParams.get("client_id")).toBe("lax-bid-web");
   });
@@ -91,7 +91,7 @@ test.describe("sell funnel smoke @journey", () => {
     );
 
     await clientSession(page);
-    await page.goto("/dashboard/submissions/new");
+    await page.goto("/selling/new");
 
     await expect(page.getByTestId("submission-wizard-step-basics")).toBeVisible({
       timeout: 15_000,

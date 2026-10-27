@@ -21,7 +21,7 @@ export type AuthorizePromptParams = {
 
 export function resolveHostedAuthEntry(searchParams: URLSearchParams): HostedAuthEntry {
   const requestedNext = searchParams.get("next");
-  const nextPath = requestedNext && isSafeNextPath(requestedNext) ? requestedNext : "/dashboard";
+  const nextPath = requestedNext && isSafeNextPath(requestedNext) ? requestedNext : "/home";
   const rawIntent = searchParams.get("intent")?.trim();
   const reauth = rawIntent === "reauth";
   const funnel: HostedAuthEntry["funnel"] = rawIntent === "sell" ? "sell" : null;

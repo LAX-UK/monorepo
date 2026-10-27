@@ -36,7 +36,7 @@ export async function updateUiPreferencesAction(input: unknown): Promise<ActionR
         sameSite: "lax",
       });
     }
-    revalidatePath("/dashboard/settings/appearance");
+    revalidatePath("/settings/appearance");
     return actionSuccess();
   });
 }
@@ -76,7 +76,7 @@ export async function resetLayoutPreferencesAction(): Promise<ActionResult<void>
     for (const name of allMarketingViewCookieNames()) {
       jar.delete(name);
     }
-    revalidatePath("/dashboard/settings/appearance");
+    revalidatePath("/settings/appearance");
     revalidatePath("/search");
     revalidatePath("/archive");
     revalidatePath("/sales");

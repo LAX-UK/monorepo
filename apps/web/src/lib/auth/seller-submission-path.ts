@@ -1,7 +1,11 @@
 /** Seller consignment routes under the client dashboard shell. */
 export function isSellerSubmissionPath(path: string): boolean {
   const pathOnly = path.split("?")[0] ?? path;
-  return pathOnly === "/dashboard/submissions" || pathOnly.startsWith("/dashboard/submissions/");
+  return (
+    pathOnly === "/selling/new" ||
+    pathOnly === "/selling/consignments" ||
+    pathOnly.startsWith("/selling/consignments/")
+  );
 }
 
 /** Login handoff for unauthenticated sell-intake with intent preserved. */

@@ -27,7 +27,7 @@ export function notificationSubmissionWebPath(
   payload: Pick<NotificationPayload, "submissionId">,
 ): string | undefined {
   if (!payload.submissionId) return undefined;
-  return `/dashboard/submissions/${payload.submissionId}`;
+  return `/selling/consignments/${payload.submissionId}`;
 }
 
 export function notificationAdminSubmissionWebPath(

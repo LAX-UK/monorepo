@@ -39,7 +39,7 @@ function assertTrustedRedirect(url, allowedOrigins, expectedPath, label) {
 function isSuccessfulBidCallbackRedirect(status, location, webOrigin) {
   if (status !== 302 && status !== 303) return false;
   if (!location) return false;
-  if (location.includes("/dashboard")) return true;
+  if (location.includes("/home")) return true;
   try {
     const url = new URL(location, webOrigin);
     if (url.pathname !== "/auth/post-login") return false;
@@ -90,7 +90,7 @@ function assertBidSessionCookie(jar) {
 }
 
 async function assertHostedLoginEntry() {
-  const loginPage = await fetch(`${webBase}/login?next=${encodeURIComponent("/dashboard")}`, {
+  const loginPage = await fetch(`${webBase}/login?next=${encodeURIComponent("/home")}`, {
     redirect: "manual",
   });
   if (loginPage.status !== 307 && loginPage.status !== 308) {
@@ -149,12 +149,9 @@ async function main() {
   }
 
   const webCookies = new Map();
-  const beginLogin = await fetch(
-    `${webBase}/api/auth/login?next=${encodeURIComponent("/dashboard")}`,
-    {
-      redirect: "manual",
-    },
-  );
+  const beginLogin = await fetch(`${webBase}/api/auth/login?next=${encodeURIComponent("/home")}`, {
+    redirect: "manual",
+  });
   captureCookies(beginLogin, webCookies);
   const authorizeUrl = beginLogin.headers.get("location");
   if (beginLogin.status !== 302 || !authorizeUrl) {

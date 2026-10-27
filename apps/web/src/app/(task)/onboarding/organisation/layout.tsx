@@ -17,7 +17,7 @@ export const metadata: Metadata = metadataForPrivate(
 export default async function OrganisationOnboardingLayout({ children }: { children: ReactNode }) {
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
   if (!orgModuleEnabled) {
-    redirect("/dashboard/organisations");
+    redirect("/organisations");
   }
 
   const loginNext = await resolveOrgOnboardingLoginNext();

@@ -102,7 +102,7 @@ export function useSubmissionWizardController(
         saveInFlight.current = false;
         if (ok && opts?.leaveAfter) {
           notify.success("Progress saved");
-          router.push("/dashboard/submissions");
+          router.push("/selling/consignments");
         }
         return ok;
       }
@@ -128,9 +128,9 @@ export function useSubmissionWizardController(
       setAutosaveStatus("saved");
       form.reset(parsed.data);
       if (opts?.leaveAfter) {
-        router.push("/dashboard/submissions");
+        router.push("/selling/consignments");
       } else if (!opts?.skipRedirect) {
-        router.replace(r.data?.redirectTo ?? `/dashboard/submissions/${newId}`);
+        router.replace(r.data?.redirectTo ?? `/selling/consignments/${newId}`);
       }
       return true;
     },
@@ -213,7 +213,7 @@ export function useSubmissionWizardController(
       notify.success("Submitted for review");
       setAutosaveStatus("saved");
       setLastSavedAt(new Date());
-      router.push(`/dashboard/submissions/${id}`);
+      router.push(`/selling/consignments/${id}`);
       router.refresh();
     } finally {
       saveInFlight.current = false;

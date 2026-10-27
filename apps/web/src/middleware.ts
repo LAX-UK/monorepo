@@ -10,11 +10,12 @@ import { purgeStaleAuthCookies } from "@/lib/auth/purge-stale-auth-cookies";
 import { applySilentSignInEdge } from "@/lib/auth/silent-sign-in/apply-silent-sign-in-edge";
 import { THEME_INIT_SNIPPET } from "@/lib/csp/theme-init-snippet";
 import { isOrgModuleEnabled } from "@/lib/legal-entity/org-module-enabled";
+import { accountLinkRedirect } from "@/lib/navigation/account-link";
+import { isClientAreaPath } from "@/lib/navigation/client-routes";
 import { applyClientHintHeaders } from "@/lib/preferences/client-hint-headers";
 import { seedDefaultThemeCookieIfNeeded } from "@/lib/preferences/seed-theme-cookie";
 import { X_ROBOTS_TAG_NOINDEX, isIndexingAllowedForHost } from "@/lib/seo/is-indexing-allowed";
 import { resolveRequestHostname } from "@/lib/seo/request-hostname";
-import { syncClientWorkspaceCookie } from "@/lib/workspace/sync-client-workspace-cookie";
 import { type NextRequest, NextResponse } from "next/server";
 
 /** Generate a cryptographically random nonce string for CSP. */
@@ -83,7 +84,7 @@ const CSP_REPORT_ONLY = process.env.CSP_ENFORCE !== "1";
  */
 function applyRequestPathHeaders(request: NextRequest, reqHeaders: Headers): void {
   const { pathname, search } = request.nextUrl;
-  if (pathname.startsWith("/onboarding/") || isAdminPath(pathname)) {
+  if (pathname.startsWith("/onboarding/") || isAdminPath(pathname) || isClientAreaPath(pathname)) {
     reqHeaders.set("x-pathname", pathname);
     reqHeaders.set("x-search", search);
   }
@@ -109,6 +110,12 @@ export async function middleware(request: NextRequest) {
     const res = NextResponse.redirect(recovery, 307);
     purgeStaleAuthCookies(res);
     return res;
+  }
+
+  // A client-area link that names its account (`?account=`) opens through the switch hop.
+  const accountLink = accountLinkRedirect(request.nextUrl);
+  if (accountLink) {
+    return NextResponse.redirect(new URL(accountLink, request.url), 307);
   }
 
   // Auth edge header tagging.
@@ -137,7 +144,6 @@ export async function middleware(request: NextRequest) {
   }
 
   seedDefaultThemeCookieIfNeeded(request, baseResponse);
-  syncClientWorkspaceCookie(request, baseResponse);
 
   const hostname = request.nextUrl.hostname;
   if (!isOrgModuleEnabled(hostname)) {
@@ -145,12 +151,12 @@ export async function middleware(request: NextRequest) {
     if (
       pathname === "/onboarding/organisation" ||
       pathname.startsWith("/onboarding/organisation/") ||
-      pathname === "/dashboard/invitations" ||
-      pathname.startsWith("/dashboard/invitations/") ||
-      pathname.startsWith("/dashboard/organisations/") ||
-      pathname.startsWith("/dashboard/seller/organisations/")
+      pathname === "/organisations/invitations" ||
+      pathname.startsWith("/organisations/invitations/") ||
+      pathname === "/organisation" ||
+      pathname.startsWith("/organisation/")
     ) {
-      return NextResponse.redirect(new URL("/dashboard/organisations", request.url), 307);
+      return NextResponse.redirect(new URL("/organisations", request.url), 307);
     }
   }
 

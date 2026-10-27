@@ -108,7 +108,7 @@ describe("renderEmail", () => {
       inviteeEmail: "member@example.com",
       grants: [{ platform: "Acme Gallery", role: "Admin" }],
       existingAccount: true,
-      actionUrl: "https://lax.bid/dashboard/invitations/accept/tok",
+      actionUrl: "https://lax.bid/organisations/invitations/accept/tok",
     });
     expect(rendered.subject).toBe("You've been given access to Acme Gallery");
     expect(rendered.text).toContain("Acme Gallery on LAX Bid");
@@ -290,12 +290,12 @@ describe("renderEmail", () => {
       supportContactEmail: "support@lax.bid",
       audience: "staff",
       payoutsUrl: "https://lax.bid/admin/payouts",
-      sellerPayoutSetupUrl: "https://lax.bid/dashboard/seller/connect",
+      sellerPayoutSetupUrl: "https://lax.bid/selling/payout-setup",
     });
     expect(rendered.html).toContain("Amount");
     expect(rendered.html).toContain("No account");
     expect(rendered.html).toContain("po_123");
-    expect(rendered.html).toContain("https://lax.bid/dashboard/seller/connect");
+    expect(rendered.html).toContain("https://lax.bid/selling/payout-setup");
   });
 
   it("words payout notices for the seller and never links them to the admin queue", async () => {
@@ -304,7 +304,7 @@ describe("renderEmail", () => {
       entityName: "Acme Ltd",
       payoutId: "po_123",
       supportContactEmail: "support@lax.bid",
-      payoutsUrl: "https://lax.bid/dashboard/seller/payouts",
+      payoutsUrl: "https://lax.bid/selling/payouts",
       audience: "seller" as const,
     };
     const failed = await renderEmail("payout-transfer-failed-notice", {
@@ -312,10 +312,10 @@ describe("renderEmail", () => {
       payoutAmount: "100.00",
       payoutCurrency: "GBP",
       failureReason: "account_closed: raw provider error",
-      sellerPayoutSetupUrl: "https://lax.bid/dashboard/seller/connect",
+      sellerPayoutSetupUrl: "https://lax.bid/selling/payout-setup",
     });
     expect(failed.subject).toBe("We could not send your payout for Acme Ltd");
-    expect(failed.html).toContain("https://lax.bid/dashboard/seller/payouts");
+    expect(failed.html).toContain("https://lax.bid/selling/payouts");
     expect(failed.html).not.toContain("raw provider error");
     expect(failed.html).not.toContain("finance team");
     expect(failed.html).not.toContain("/admin/");
@@ -334,14 +334,14 @@ describe("renderEmail", () => {
       amount: "100.00",
       currency: "GBP",
     });
-    expect(initiated.html).toContain("https://lax.bid/dashboard/seller/payouts");
+    expect(initiated.html).toContain("https://lax.bid/selling/payouts");
 
     const clawback = await renderEmail("payout-clawback-required-notice", {
       ...base,
       netAmount: "-20.00",
       currency: "GBP",
     });
-    expect(clawback.html).toContain("https://lax.bid/dashboard/seller/payouts");
+    expect(clawback.html).toContain("https://lax.bid/selling/payouts");
     expect(clawback.html).not.toContain("manual reconciliation");
   });
 

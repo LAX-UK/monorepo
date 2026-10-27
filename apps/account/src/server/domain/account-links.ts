@@ -48,7 +48,7 @@ export function buildAccountLinks(
     verifyEmail: hosted("/resend-verification", account.email ? { email: account.email } : {}),
     bidSettings: bidUrl
       ? {
-          notifications: bid("/dashboard/settings/notifications"),
+          notifications: bid("/settings/notifications"),
         }
       : null,
     support: bidUrl
@@ -66,9 +66,7 @@ export function buildAccountLinks(
 export function buildOrganisationsLink(
   config: Pick<LaxAccountConfig, "bidPublicUrl">,
 ): string | null {
-  return config.bidPublicUrl
-    ? new URL("/dashboard/organisations", config.bidPublicUrl).toString()
-    : null;
+  return config.bidPublicUrl ? new URL("/organisations", config.bidPublicUrl).toString() : null;
 }
 
 export type StaffPlatformLinkVm = { product: "bid" | "shop"; label: string; href: string };
@@ -83,7 +81,7 @@ export function buildPayoutLaunchLinks(
   if (config.bidPublicUrl) {
     links.push({
       label: "LAX Bid payouts",
-      href: new URL("/dashboard/seller/connect", config.bidPublicUrl).toString(),
+      href: new URL("/selling/payout-setup", config.bidPublicUrl).toString(),
     });
   }
   const artPayouts = config.laxArtPublicUrl ?? config.shopPublicUrl;

@@ -2,7 +2,7 @@ import { buildActiveFilterDescriptors, hasActiveFilters } from "../filter-active
 import { buildFilterHref } from "../filter-params";
 import type { ActiveFilterDescriptor, FilterParamsRecord, ListPageFilterConfig } from "../types";
 
-export const BIDS_BASE_PATH = "/dashboard/bids";
+export const BIDS_BASE_PATH = "/bids";
 
 export type BidTab = "active" | "won" | "lost";
 

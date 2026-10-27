@@ -17,14 +17,14 @@ const items: SellerAttentionItem[] = [
     title: 'Finish "Moonlit quay"',
     detail: "Saved but not yet sent to our specialists for review.",
     status: "Not submitted",
-    href: "/dashboard/submissions/s1",
+    href: "/selling/consignments/s1",
   },
   {
     id: "payout-setup",
     title: "Finish payout setup",
     detail: "We can only pay you once your bank details are verified.",
     status: "To do",
-    href: "/dashboard/seller/connect",
+    href: "/selling/payout-setup",
   },
 ];
 
@@ -39,7 +39,7 @@ describe("SellerAttentionList", () => {
     render(<SellerAttentionList items={items} />);
     const [first] = screen.getAllByRole("listitem");
     const link = within(first as HTMLElement).getByRole("link");
-    expect(link).toHaveAttribute("href", "/dashboard/submissions/s1");
+    expect(link).toHaveAttribute("href", "/selling/consignments/s1");
     expect(link).toHaveTextContent('Finish "Moonlit quay"');
     expect(link).toHaveTextContent("Saved but not yet sent");
     expect(link.textContent).toMatch(/Not submitted/);

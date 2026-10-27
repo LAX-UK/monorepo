@@ -13,8 +13,8 @@ describe("magic-link-callback", () => {
   });
 
   it("builds set-password callback with optional next", () => {
-    expect(buildMagicLinkSetPasswordCallbackUrl("https://lax.bid/", "/dashboard")).toBe(
-      "https://lax.bid/auth/activate/set-password?next=%2Fdashboard",
+    expect(buildMagicLinkSetPasswordCallbackUrl("https://lax.bid/", "/home")).toBe(
+      "https://lax.bid/auth/activate/set-password?next=%2Fhome",
     );
     expect(buildMagicLinkSetPasswordCallbackUrl("https://lax.bid", "/login")).toBe(
       "https://lax.bid/auth/activate/set-password",

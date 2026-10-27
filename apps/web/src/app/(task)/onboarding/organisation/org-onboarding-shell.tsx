@@ -136,7 +136,7 @@ export function OrgOnboardingShell({
           </div>
         </div>
         <Button asChild variant="ghost" size="sm" className="shrink-0 self-start sm:self-auto">
-          <Link href="/dashboard/organisations">{WIZARD_COPY.finishLater}</Link>
+          <Link href="/organisations">{WIZARD_COPY.finishLater}</Link>
         </Button>
       </div>
 

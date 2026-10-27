@@ -23,7 +23,7 @@ vi.mock("@/lib/bff/oidc.server", () => ({
   })),
 }));
 vi.mock("@/lib/bff/auth-entry-intent.server", () => ({
-  resolveHostedAuthEntry: vi.fn(() => ({ nextPath: "/dashboard" })),
+  resolveHostedAuthEntry: vi.fn(() => ({ nextPath: "/home" })),
   authorizeParamsForEntry: vi.fn(() => ({})),
   pendingIntentForStorage: vi.fn(() => undefined),
 }));

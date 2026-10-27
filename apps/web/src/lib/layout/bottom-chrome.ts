@@ -1,3 +1,4 @@
+import { isClientAreaPath } from "@/lib/navigation/client-routes";
 /** Fixed bottom chrome height tokens (match globals.css). */
 export const BOTTOM_CHROME = {
   bid: "5rem",
@@ -47,19 +48,19 @@ export function isMarketingBidBarRoute(pathname: string): boolean {
 }
 
 export function isDashboardTabBarRoute(pathname: string): boolean {
-  return pathname.startsWith("/dashboard");
+  return isClientAreaPath(pathname);
 }
 
 /** Single-lot checkout — fixed pay bar replaces tab bar on mobile. */
 export function isFixedPayBarRoute(pathname: string): boolean {
-  return /^\/dashboard\/checkout\/[^/]+$/.test(pathname);
+  return /^\/purchases\/checkout\/[^/]+$/.test(pathname);
 }
 
 /** Routes that hide the dashboard tab bar while mounted. */
 export function isHideDashboardTabBarRoute(pathname: string): boolean {
   if (isFixedPayBarRoute(pathname)) return true;
-  if (pathname.startsWith("/dashboard/submissions/new")) return true;
-  if (/^\/dashboard\/submissions\/[^/]+$/.test(pathname)) return true;
+  if (pathname.startsWith("/selling/new")) return true;
+  if (/^\/selling\/consignments\/[^/]+$/.test(pathname)) return true;
   return false;
 }
 

@@ -22,7 +22,7 @@ type DashboardComplianceStripProps = {
 export async function DashboardComplianceStrip({
   className,
   user: userProp,
-  loginNext = "/dashboard",
+  loginNext = "/home",
   includePayoutSetup = false,
 }: DashboardComplianceStripProps) {
   const user =

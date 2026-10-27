@@ -6,7 +6,7 @@ describe("renderEmail", () => {
     const rendered = await renderEmail("kyc-resubmission-required", {
       userName: "Ada",
       issueDetail: "Face not clearly visible",
-      verifyUrl: "https://lax.bid/dashboard/verify-identity",
+      verifyUrl: "https://lax.bid/verify-identity",
     });
 
     expect(rendered.subject).toContain("identity verification");

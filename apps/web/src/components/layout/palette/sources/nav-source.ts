@@ -16,12 +16,8 @@ import {
   SALES_ACCESS,
   SUBMISSIONS_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
-import {
-  buildClientBuyingPaletteSections,
-  buildClientSellingPaletteSections,
-} from "@/lib/shell/client-nav-palette";
+import { buildClientPaletteSections } from "@/lib/shell/client-nav-palette";
 import type { ShellRole } from "@/lib/shell/contracts";
-import type { ClientWorkspaceMode } from "@/lib/workspace/client-workspace-mode";
 import { type UserRole, type UserStaffRole, userHasAccessTo } from "@auction/types";
 import {
   Brush,
@@ -250,7 +246,6 @@ export function buildNavPaletteSections(
   variant: "marketing" | "dashboard" | "admin",
   query: string,
   sessionUser?: SessionUser | null,
-  clientWorkspaceMode: ClientWorkspaceMode = "buying",
   pendingSubmissionCount = 0,
   pendingArtistCount = 0,
   orgModuleEnabled = true,
@@ -258,9 +253,7 @@ export function buildNavPaletteSections(
 ): PaletteSection[] {
   const base =
     variant === "dashboard"
-      ? clientWorkspaceMode === "selling"
-        ? buildClientSellingPaletteSections(orgModuleEnabled)
-        : buildClientBuyingPaletteSections(orgModuleEnabled)
+      ? buildClientPaletteSections(orgModuleEnabled)
       : variant === "admin" && sessionUser
         ? buildStaffAdminPaletteSections(
             sessionUser,

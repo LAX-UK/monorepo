@@ -59,7 +59,7 @@ export const NOT_FOUND_PRESETS = {
     title: "That page doesn't exist",
     description:
       "The address you opened isn't a known page. Go to My bids or browse the catalogue.",
-    primaryHref: "/dashboard/bids",
+    primaryHref: "/bids",
     primaryLabel: "Go to My bids",
     secondaryHref: "/search",
     secondaryLabel: "Browse catalogue",
@@ -85,7 +85,7 @@ export const ROUTE_ERROR_PRESETS = {
   },
   dashboard: {
     title: "Something went wrong",
-    homeHref: "/dashboard/bids",
+    homeHref: "/bids",
     homeLabel: "Go to My bids",
   },
   admin: {

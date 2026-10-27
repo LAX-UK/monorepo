@@ -172,9 +172,9 @@ describe("KpiRow (v3)", () => {
 describe("DashboardDetailHeader (v3)", () => {
   it("renders back link and sticky class when enabled", () => {
     const { container } = render(
-      <DashboardDetailHeader sticky backHref="/dashboard" title="Lot detail" eyebrow="Catalogue" />,
+      <DashboardDetailHeader sticky backHref="/home" title="Lot detail" eyebrow="Catalogue" />,
     );
-    expect(screen.getByRole("link", { name: /back/i })).toHaveAttribute("href", "/dashboard");
+    expect(screen.getByRole("link", { name: /back/i })).toHaveAttribute("href", "/home");
     expect(container.querySelector("header")?.className).toMatch(/sticky/);
   });
 });

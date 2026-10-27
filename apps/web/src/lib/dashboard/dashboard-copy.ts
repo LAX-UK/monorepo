@@ -1,4 +1,5 @@
 import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 
 /** Canonical dashboard meta labels (page headers). Aliases for workspace helpers — prefer `clientWorkspacePageMeta` / `clientWorkspaceOverviewMeta`. */
 export const DASHBOARD_META = {
@@ -26,23 +27,24 @@ export const DASHBOARD_CTA = {
   myOrganisations: "Organisations",
 } as const;
 
+/** Client-area links used by dashboard copy; the addresses themselves live in `CLIENT_ROUTES`. */
 export const DASHBOARD_ROUTES = {
-  home: "/dashboard",
-  bids: "/dashboard/bids",
-  purchases: "/dashboard/purchases",
-  watchlist: "/dashboard/watchlist",
-  artistFollow: "/dashboard/watchlist?section=artists",
-  notifications: "/dashboard/notifications",
-  seller: "/dashboard/seller",
-  consignments: "/dashboard/seller/consignments",
-  consignmentsInSale: "/dashboard/seller/consignments?tab=in-sale",
-  submissionsNew: "/dashboard/submissions/new",
-  sellerPayouts: "/dashboard/seller/payouts",
-  sellerConnect: "/dashboard/seller/connect",
-  organisations: "/dashboard/organisations",
-  invitations: "/dashboard/invitations",
-  checkout: "/dashboard/checkout",
-  sofCompliance: "/dashboard/compliance/source-of-funds",
+  home: CLIENT_ROUTES.home,
+  bids: CLIENT_ROUTES.bids,
+  purchases: CLIENT_ROUTES.purchases,
+  watchlist: CLIENT_ROUTES.watching,
+  artistFollow: `${CLIENT_ROUTES.watching}?section=artists`,
+  notifications: CLIENT_ROUTES.notifications,
+  seller: CLIENT_ROUTES.selling,
+  consignments: CLIENT_ROUTES.consignments,
+  consignmentsInSale: `${CLIENT_ROUTES.consignments}?tab=in-sale`,
+  submissionsNew: CLIENT_ROUTES.sellingNew,
+  sellerPayouts: CLIENT_ROUTES.payouts,
+  sellerConnect: CLIENT_ROUTES.payoutSetup,
+  organisations: CLIENT_ROUTES.organisations,
+  invitations: CLIENT_ROUTES.invitations,
+  checkout: CLIENT_ROUTES.checkout,
+  sofCompliance: CLIENT_ROUTES.sourceOfFunds,
   signIn: "/login",
 } as const;
 

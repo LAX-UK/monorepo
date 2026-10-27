@@ -101,12 +101,9 @@ describe("HeaderAuthChip", () => {
     expect(screen.getAllByText("Client User")).toHaveLength(2);
     expect(screen.getByText("client@example.com")).toBeInTheDocument();
     expect(screen.getByText("Client")).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "My bids" })).toHaveAttribute(
-      "href",
-      "/dashboard/bids",
-    );
-    expect(screen.queryByRole("menuitem", { name: /dashboard/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Start selling" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "My bids" })).toHaveAttribute("href", "/bids");
+    expect(screen.queryByRole("menuitem", { name: /home/i })).not.toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Sell with LAX" })).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "Sign out" })).toBeInTheDocument();
   });
 });

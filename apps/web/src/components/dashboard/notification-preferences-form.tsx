@@ -54,7 +54,7 @@ export function NotificationPreferencesForm({
               );
               if (r.ok) {
                 notify.success("Preferences saved");
-                router.replace("/dashboard/settings/notifications?saved=1");
+                router.replace("/settings/notifications?saved=1");
                 router.refresh();
                 return;
               }

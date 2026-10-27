@@ -34,7 +34,7 @@ export function InboxEmptyState({ tab, filters }: InboxEmptyStateProps) {
         description="You're up to date. Switch to All to see your full history."
         action={
           <Button type="button" variant="secondaryOutline" asChild>
-            <Link href="/dashboard/notifications">View all</Link>
+            <Link href="/notifications">View all</Link>
           </Button>
         }
       />
@@ -47,7 +47,7 @@ export function InboxEmptyState({ tab, filters }: InboxEmptyStateProps) {
         description="Archived notifications appear here. Archive a row to move it out of the active inbox."
         action={
           <Button type="button" variant="secondaryOutline" asChild>
-            <Link href="/dashboard/notifications">Back to All</Link>
+            <Link href="/notifications">Back to All</Link>
           </Button>
         }
       />

@@ -67,8 +67,8 @@ describe("processPayoutTransferFailedNotify", () => {
     const staff = sent.find((e) => e.to === "ops@example.com");
     expect(seller?.vars).toMatchObject({
       audience: "seller",
-      payoutsUrl: "https://test.lax.bid/dashboard/seller/payouts",
-      sellerPayoutSetupUrl: `https://test.lax.bid/dashboard/organisations/${ENTITY_ID}/connect`,
+      payoutsUrl: "https://test.lax.bid/selling/payouts",
+      sellerPayoutSetupUrl: `https://test.lax.bid/organisation/payouts?account=${ENTITY_ID}`,
     });
     expect(staff?.vars).toMatchObject({
       audience: "staff",

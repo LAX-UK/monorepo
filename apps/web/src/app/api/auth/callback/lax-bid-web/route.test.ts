@@ -57,7 +57,7 @@ describe("Bid BFF OIDC callback", () => {
       state: "expected-state",
       codeVerifier: "pkce-verifier",
       nonce: "expected-nonce",
-      nextPath: "/dashboard",
+      nextPath: "/home",
     });
     validateCallbackState.mockReturnValue(true);
     exchangeAuthorizationCode.mockResolvedValue({
@@ -72,7 +72,7 @@ describe("Bid BFF OIDC callback", () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe(
-      "https://lax.bid/auth/post-login?next=%2Fdashboard&auth_fresh=1",
+      "https://lax.bid/auth/post-login?next=%2Fhome&auth_fresh=1",
     );
     expect(response.headers.get("cache-control")).toBe("no-store");
     expect(validateCallbackState).toHaveBeenCalledWith("expected-state", "expected-state");
@@ -122,7 +122,7 @@ describe("Bid BFF OIDC callback", () => {
         state: "expected-state",
         codeVerifier: "pkce-verifier",
         nonce: "expected-nonce",
-        nextPath: "/dashboard",
+        nextPath: "/home",
         replacesSessionId: "prior-session",
       };
     });
@@ -139,7 +139,7 @@ describe("Bid BFF OIDC callback", () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe(
-      "https://lax.bid/login?error=oidc_callback&next=%2Fdashboard",
+      "https://lax.bid/login?error=oidc_callback&next=%2Fhome",
     );
     expect(invalidateSession).toHaveBeenCalledWith("pending-session");
     expect(exchangeAuthorizationCode).not.toHaveBeenCalled();
@@ -158,7 +158,7 @@ describe("Bid BFF OIDC callback", () => {
           state: "expected-state",
           codeVerifier: "pkce-verifier",
           nonce: "expected-nonce",
-          nextPath: "/dashboard",
+          nextPath: "/home",
           entryIntent: "reauth",
           replacesSessionId: "prior-session",
         };
@@ -174,7 +174,7 @@ describe("Bid BFF OIDC callback", () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe(
-      "https://lax.bid/login?error=reauth_subject_mismatch&next=%2Fdashboard&restored=1&intent=reauth",
+      "https://lax.bid/login?error=reauth_subject_mismatch&next=%2Fhome&restored=1&intent=reauth",
     );
     expect(setBidSessionCookie).toHaveBeenCalledWith(response, "prior-session", "authenticated");
     expect(rotateAuthenticated).not.toHaveBeenCalled();
@@ -216,7 +216,7 @@ describe("Bid BFF OIDC callback", () => {
 
     expect(response.status).toBe(302);
     expect(response.headers.get("location")).toBe(
-      "https://lax.bid/login?error=oidc_exchange&next=%2Fdashboard",
+      "https://lax.bid/login?error=oidc_exchange&next=%2Fhome",
     );
     expect(invalidateSession).toHaveBeenCalledWith("pending-session");
     expect(clearBidSessionCookie).toHaveBeenCalledWith(response);

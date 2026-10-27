@@ -8,14 +8,14 @@ import { normalizeKycReturnUrl } from "./kyc-return-url";
 
 describe("normalizeKycReturnUrl", () => {
   it("prefixes relative paths with site origin", () => {
-    expect(normalizeKycReturnUrl("/dashboard/seller/connect")).toBe(
-      "https://test.lax.bid/dashboard/seller/connect",
+    expect(normalizeKycReturnUrl("/selling/payout-setup")).toBe(
+      "https://test.lax.bid/selling/payout-setup",
     );
   });
 
   it("preserves query strings on relative paths", () => {
-    expect(normalizeKycReturnUrl("/dashboard/verify-identity?kyc=complete&next=%2Ffoo")).toBe(
-      "https://test.lax.bid/dashboard/verify-identity?kyc=complete&next=%2Ffoo",
+    expect(normalizeKycReturnUrl("/verify-identity?kyc=complete&next=%2Ffoo")).toBe(
+      "https://test.lax.bid/verify-identity?kyc=complete&next=%2Ffoo",
     );
   });
 

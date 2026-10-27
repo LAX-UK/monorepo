@@ -14,11 +14,11 @@ describe("auth-entry-intent", () => {
   });
 
   it("parses invite and switch login", () => {
-    const params = new URLSearchParams("invite=abcdefghijklmnop&switch=1&next=%2Fdashboard");
+    const params = new URLSearchParams("invite=abcdefghijklmnop&switch=1&next=%2Fhome");
     expect(resolveHostedAuthEntry(params)).toMatchObject({
       inviteToken: "abcdefghijklmnop",
       forceLoginPrompt: true,
-      nextPath: "/dashboard",
+      nextPath: "/home",
       screen: "login",
     });
   });
