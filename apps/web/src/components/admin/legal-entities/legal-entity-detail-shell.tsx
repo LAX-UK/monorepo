@@ -52,6 +52,7 @@ export function LegalEntityDetailShell({ bundle, backHref, saleCount = 0, childr
     pendingDocCount,
     stripeDueCount,
     saleCount,
+    hasBuyerAgents: entity.kind === "organisation",
   }).map((tab) => ({
     id: tab.id,
     label: typeof tab.label === "string" ? tab.label : tab.id,

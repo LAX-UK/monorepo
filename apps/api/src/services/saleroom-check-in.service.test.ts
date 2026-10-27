@@ -4,6 +4,7 @@ import { PaddleTakenError } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { LegalEntity } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { fakeBidAuthority } from "../testing/fake-bid-authority.js";
 import type { PaddleService } from "./paddle.service.js";
 import { SaleroomCheckInEligibilityValidator } from "./saleroom-check-in-eligibility.validator.js";
 import { SaleroomCheckInService } from "./saleroom-check-in.service.js";
@@ -120,6 +121,7 @@ function buildService(
   const eligibility = new SaleroomCheckInEligibilityValidator(
     mockReader(sale, user),
     mockLegalEntityRepo(legalEntityOverrides),
+    fakeBidAuthority("owner"),
   );
   return new SaleroomCheckInService(mockRepo(repoOverrides), eligibility, mockPaddleService());
 }
@@ -141,6 +143,7 @@ describe("SaleroomCheckInService", () => {
         },
       ),
       mockLegalEntityRepo(),
+      fakeBidAuthority("owner"),
     );
     const svc = new SaleroomCheckInService(mockRepo(), eligibility, paddleService);
 

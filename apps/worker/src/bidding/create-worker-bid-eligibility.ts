@@ -1,8 +1,8 @@
 import {
   AmlBidGate,
+  BidAuthorityService,
   BidEligibilityService,
   BidIdentityEligibilityGate,
-  BuyerAgentBidGate,
   type IBidEligibility,
   type IBidIdentityEligibilityGate,
   type IKycThresholdGate,
@@ -60,10 +60,12 @@ export function createWorkerBidEligibility(
     identityEligibilityGate,
     new AmlBidGate(amlHoldStore),
     new DrizzleBidLotRulesReader(db),
-    new DrizzleBidMembershipReader(db),
+    new BidAuthorityService(
+      new DrizzleBidMembershipReader(db),
+      new DrizzleBuyerAgentAuthorisationReader(db),
+    ),
     new OperatorPlacementPolicy(operatorReader),
     new SaleRegistrationBidGate(new DrizzleSaleRegistrationBidReader(db)),
-    new BuyerAgentBidGate(new DrizzleBuyerAgentAuthorisationReader(db)),
   );
 }
 

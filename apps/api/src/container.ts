@@ -1,6 +1,7 @@
 import { createDb } from "@auction/db";
 import {
   DrizzleAdminSavedViewRepository,
+  DrizzleBuyerAgentAuthorisationRepository,
   DrizzleLaxStaffAccessRepository,
 } from "@auction/persistence/repositories";
 import type { Container, ContainerComposedSlices } from "./container/container-slices.js";
@@ -36,6 +37,10 @@ import { AdminSavedViewService } from "./services/admin/admin-saved-view.service
 import { AdminTwoFactorResetService } from "./services/admin/admin-two-factor-reset.service.js";
 import { AtgAdminService } from "./services/admin/atg-admin.service.js";
 import { StaffAccessAdminService } from "./services/admin/staff-access-admin.service.js";
+import {
+  BidAuthorityQueryService,
+  BuyerAgentAuthorisationService,
+} from "./services/buyer-agents/buyer-agent-authorisation.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { TwoFactorPolicyService } from "./services/security/two-factor-policy.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
@@ -245,6 +250,19 @@ export function createContainer(env: Env): Container {
   });
 
   const savedViews = new AdminSavedViewService(new DrizzleAdminSavedViewRepository(db));
+  const buyerAgentAuthorisationRepository = new DrizzleBuyerAgentAuthorisationRepository(db);
+
+  const buyerAgentAuthorisations = new BuyerAgentAuthorisationService({
+    directory: buyerAgentAuthorisationRepository,
+    writer: buyerAgentAuthorisationRepository,
+    members: repos.legalEntityMemberRepository,
+    sales: repos.saleRepo,
+    events: platform.domainEventSink,
+  });
+  const buyerAgents = {
+    authorisations: buyerAgentAuthorisations,
+    bidAuthority: new BidAuthorityQueryService(catalog.bidAuthority),
+  };
 
   const atg = new AtgAdminService(
     repos.atgLinkReader,
@@ -487,6 +505,7 @@ export function createContainer(env: Env): Container {
       staffAccess,
       savedViews,
       atg,
+      buyerAgentAuthorisations,
       stepUp: new StaffStepUpService(identityIssuer),
       idempotencyStore: new RedisIdempotencyStore(infra.redis),
     },
@@ -495,6 +514,7 @@ export function createContainer(env: Env): Container {
     compliance,
     catalogRoutes,
     submissionRoutes,
+    buyerAgents,
     queueAdmin: userMisc.queueAdmin,
     closeBullQueues: userMisc.closeBullQueues,
   };
@@ -533,6 +553,7 @@ export type {
   ContainerInternalIdentityDeletionEligibilityRoutesSlice,
   ContainerInternalIdentitySubjectUsageRoutesSlice,
   ContainerKycRoutesSlice,
+  ContainerLegalEntityBuyerAgentRoutesSlice,
   ContainerLegalEntityMemberRoutesSlice,
   ContainerLegalEntityRoutesSlice,
   ContainerLotCatalogSlice,

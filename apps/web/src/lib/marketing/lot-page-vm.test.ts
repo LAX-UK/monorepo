@@ -95,6 +95,7 @@ const secondary: LotPageSecondaryData = {
   telephoneBookingForOnsite: null,
   initialSaleroomStatus: { status: "none", currentLotId: null },
   orgModuleEnabled: false,
+  bidAuthority: null,
 };
 
 describe("buildLotPageViewModel", () => {

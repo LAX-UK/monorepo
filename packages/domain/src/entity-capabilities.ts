@@ -52,6 +52,20 @@ const ENTITY_CAPABILITY_RULES = {
   "entity.submissions.create": { access: "write", roles: ["owner", "admin", "consignor"] },
   /** Ask for a consigned lot to be withdrawn from sale. */
   "entity.consignments.withdraw": { access: "write", roles: ["owner", "admin"] },
+  /**
+   * Place bids, auto-bids, absentee and telephone bids, or check in at the saleroom, for the
+   * organisation. Finance, consignors and viewers bid only in their own name.
+   */
+  "entity.bid.place": { access: "write", roles: ["owner", "admin", "buyer_agent"] },
+  /**
+   * Bid for the organisation without a buyer-agent authorisation. Members who can place bids
+   * but lack this need an active authorisation (sale scope, bid limit, valid window).
+   */
+  "entity.bid.place_without_authorisation": { access: "write", roles: ["owner", "admin"] },
+  /** See which buyer agents may bid for the organisation, with their limits. */
+  "entity.buyer_agents.read": { access: "read", roles: ["owner", "admin"] },
+  /** Authorise buyer agents to bid for the organisation, and revoke those authorisations. */
+  "entity.buyer_agents.manage": { access: "write", roles: ["owner", "admin"] },
   /** See the works the organisation owns, without any prices. */
   "entity.holdings.read": {
     access: "read",

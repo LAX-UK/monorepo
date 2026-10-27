@@ -8,6 +8,7 @@ import type { DeliveryOpsApplicationService } from "../../delivery-ops.applicati
 import type { TwoFactorPolicyService } from "../../security/two-factor-policy.service.js";
 import type { IStaffStepUpGuard } from "../../staff-step-up.service.js";
 import type { IAtgAdminService } from "../atg-admin-service.js";
+import type { IBuyerAgentAuthorisationService } from "../buyer-agent-authorisation-service.js";
 import type { IIdempotencyStore } from "../idempotency-store.js";
 import type { IOnsiteEventAdminService } from "../onsite-event-admin-service.js";
 import type { IOnsiteEventStaffCheckInService } from "../onsite-event-staff-check-in-service.js";
@@ -55,6 +56,8 @@ export type AdminSatelliteRouteServices = {
 /** Third-party integrations staff operate from the admin (composed in the container root). */
 export type AdminIntegrationRouteServices = {
   atg: IAtgAdminService;
+  /** Staff manage an organisation's buyer-agent authorisations from its legal entity record. */
+  buyerAgentAuthorisations: IBuyerAgentAuthorisationService;
 };
 
 /** Wired in the container root because the policy client lives outside the admin graph. */

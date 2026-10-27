@@ -182,6 +182,15 @@ export {
   sortLotsForRunList,
 } from "./lot-run-order.js";
 export {
+  BID_AUTHORITY_ERROR_CODES,
+  bidExceedsAuthority,
+  type BidAuthorityDecision,
+  type BidAuthorityDenial,
+  type BuyerAgentGrant,
+  decideBidAuthority,
+  roleBidsThroughAuthorisation,
+} from "./bid-authority.js";
+export {
   entityActorCan,
   entityRoleCan,
   type EntityActor,

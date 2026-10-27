@@ -1,6 +1,7 @@
 import { lotViewItemPriceMinor } from "@/lib/analytics/lot-view-item-price";
 import type { BidHistoryEntry } from "@/lib/bid/bid-history-entry";
 import { shouldShowBidStickyMobileBar } from "@/lib/bid/bid-sticky-mobile-bar.logic";
+import { type BiddingAccount, resolveBiddingAccount } from "@/lib/bid/bidding-account";
 import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-bid-gate";
 import { computeIsOwnLot } from "@/lib/bid/compute-is-own-lot";
 import { deriveInitialOutbid, deriveUserHasBid } from "@/lib/bid/derive-initial-outbid";
@@ -32,6 +33,7 @@ import { isSaleroomSessionLive } from "@/lib/saleroom/public-session-status";
 import { breadcrumbJsonLd, jsonLdScript, lotProductJsonLd } from "@/lib/seo/structured-data";
 import { artistPath, lotPath, salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
+import { entityRoleCan } from "@auction/domain";
 import type { Lot, Sale } from "@auction/types";
 import { toLotCardTimingVM } from "@auction/validators";
 
@@ -103,6 +105,7 @@ export type LotPageViewModel = {
   saleRegistrationBidGate: ReturnType<typeof buildSaleRegistrationBidGate>;
   isOwnLot: boolean;
   actingLegalEntityId: string | null;
+  biddingAccount: BiddingAccount | null;
   buyerEntitiesForOnsite: Array<{
     id: string;
     displayName: string;
@@ -146,6 +149,7 @@ export function buildLotPageViewModel(input: {
     telephoneBookingForOnsite,
     initialSaleroomStatus,
     orgModuleEnabled,
+    bidAuthority,
   } = secondary;
 
   const artistForAccordion = catalogArtist
@@ -361,11 +365,20 @@ export function buildLotPageViewModel(input: {
 
   const isOwnLot = computeIsOwnLot(auction, session, actingCtx.acting);
   const actingLegalEntityId = actingCtx.acting?.id ?? null;
+  const biddingAccount = session
+    ? resolveBiddingAccount({
+        acting: actingCtx.acting,
+        memberships: actingCtx.memberships,
+        authority: bidAuthority,
+      })
+    : null;
 
   const buyerEntitiesForOnsite =
     actingCtx.memberships
       .filter(
-        (membership) => membership.status === "approved" || membership.status === "restricted",
+        (membership) =>
+          (membership.status === "approved" || membership.status === "restricted") &&
+          entityRoleCan(membership.role, "entity.bid.place"),
       )
       .map((membership) => ({
         id: membership.id,
@@ -436,6 +449,7 @@ export function buildLotPageViewModel(input: {
     saleRegistrationBidGate,
     isOwnLot,
     actingLegalEntityId,
+    biddingAccount,
     buyerEntitiesForOnsite,
     telephoneBookingForOnsite,
     viewItemCurrency,

@@ -23,8 +23,12 @@ export type DatePickerProps = {
   className?: string;
   placeholder?: string;
   zone?: string;
-  "aria-invalid"?: boolean;
-  "aria-describedby"?: string;
+  /** Earliest day that can be picked, as `YYYY-MM-DD`. */
+  min?: string;
+  /** How the chosen day reads on the trigger, e.g. "1 Nov 2026"; the raw value by default. */
+  formatValue?: (value: string) => string;
+  "aria-invalid"?: boolean | undefined;
+  "aria-describedby"?: string | undefined;
 };
 
 function DatePicker({
@@ -36,6 +40,8 @@ function DatePicker({
   className,
   placeholder = "Pick a date",
   zone = DEFAULT_AUCTION_ZONE,
+  min,
+  formatValue,
   "aria-invalid": ariaInvalid,
   "aria-describedby": ariaDescribedBy,
 }: DatePickerProps) {
@@ -43,6 +49,7 @@ function DatePicker({
   const selected = value
     ? toCalendarDate(fromDateFormString(value, zone).instant, zone)
     : undefined;
+  const earliest = min ? toCalendarDate(fromDateFormString(min, zone).instant, zone) : undefined;
 
   const trigger = (
     <Button
@@ -60,7 +67,7 @@ function DatePicker({
       )}
     >
       <CalendarIcon className="mr-2 size-4 opacity-60" />
-      {value || placeholder}
+      {value ? (formatValue ? formatValue(value) : value) : placeholder}
     </Button>
   );
 
@@ -75,6 +82,7 @@ function DatePicker({
           mode="single"
           timeZone={zone}
           selected={selected}
+          {...(earliest ? { disabled: { before: earliest } } : {})}
           onSelect={(day) => {
             if (!day) return;
             onChange(toDateFormString(day, zone));

@@ -1,3 +1,4 @@
+import type { IBidAuthority } from "@auction/bidding-runtime";
 import type { Database } from "@auction/db";
 import {
   DrizzlePaddleBidWindowReader,
@@ -14,13 +15,15 @@ import { SaleroomCheckInEligibilityValidator } from "../services/saleroom-check-
 import { SaleroomCheckInService } from "../services/saleroom-check-in.service.js";
 import { buildTelephoneBidBookingService } from "../services/telephone-bid-booking.service.js";
 import { TelephoneBookingNotifier } from "../services/telephone-booking-notifier.js";
-import { createBidIdentityEligibilityGate } from "./create-bid-eligibility.js";
+import { createBidAuthority, createBidIdentityEligibilityGate } from "./create-bid-eligibility.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
 import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
 
 export type ContainerSaleRegistrationServices = {
+  /** Who may bid for a legal entity; every bidding channel shares this one instance. */
+  bidAuthority: IBidAuthority;
   telephoneBidBookingService: TelephoneBidBookingServicePort;
   paddleService: PaddleService;
   saleroomCheckInService: SaleroomCheckInService;
@@ -63,6 +66,7 @@ export function createSaleRegistrationServices(
     env.WEB_ORIGIN,
     env.OPS_SUPPORT_EMAIL,
   );
+  const bidAuthority = createBidAuthority(db);
   const telephoneBidBookingService = buildTelephoneBidBookingService({
     repo: telephoneBidBookingRepo,
     detailReader: new DrizzleTelephoneBidBookingDetailReader(db),
@@ -70,6 +74,7 @@ export function createSaleRegistrationServices(
     lotRepo,
     userPhoneReader: new IdentityTelephoneBookingUserPhoneReader(identitySecurity),
     legalEntityRepository,
+    bidAuthority,
     identityEligibilityGate: createBidIdentityEligibilityGate(
       db,
       kycService,
@@ -81,13 +86,18 @@ export function createSaleRegistrationServices(
   });
 
   const paddleBidWindowReader = new DrizzlePaddleBidWindowReader(db);
-  const paddleService = new PaddleService(paddleRepo, lotRepo, cache, (saleId, userId) =>
-    paddleBidWindowReader.hasRecentSelfServiceBid(saleId, userId),
+  const paddleService = new PaddleService(
+    paddleRepo,
+    lotRepo,
+    cache,
+    (saleId, userId) => paddleBidWindowReader.hasRecentSelfServiceBid(saleId, userId),
+    bidAuthority,
   );
 
   const saleroomCheckInEligibility = new SaleroomCheckInEligibilityValidator(
     new DrizzleSaleRegistrationCheckInReader(db),
     legalEntityRepository,
+    bidAuthority,
   );
   const saleroomCheckInService = new SaleroomCheckInService(
     saleroomCheckInRepo,
@@ -97,6 +107,7 @@ export function createSaleRegistrationServices(
   const saleExpectedGuestsService = new SaleExpectedGuestsService(saleExpectedGuestsReader);
 
   return {
+    bidAuthority,
     telephoneBidBookingService,
     paddleService,
     saleroomCheckInService,

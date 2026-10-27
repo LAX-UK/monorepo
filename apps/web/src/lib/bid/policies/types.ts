@@ -1,4 +1,5 @@
 import type { BidBlockerPresentation } from "@/lib/bid/bid-blocker-presentation";
+import type { BiddingAccount } from "@/lib/bid/bidding-account";
 import type { LiveConnectionState } from "@/lib/connection/merge-connection-status";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
@@ -36,6 +37,10 @@ export type BidPolicyContext = {
   isOwnLot?: boolean;
   /** Acting legal entity id forwarded to bid writers. */
   actingLegalEntityId?: string | null;
+  /** Who a bid here is for, and whether that account may bid in this sale. */
+  biddingAccount?: BiddingAccount | null;
+  /** The lowest bid accepted next, so a buyer agent below it is told before trying. */
+  minNextBid?: number;
   /** When set, bidding is blocked until identity verification threshold is met. */
   kycBidGate?: KycBidGateContext | null;
   /** When set, buyer_agent acting context must have approved sale registration. */

@@ -1,6 +1,7 @@
 "use client";
 
 import { BidBlockerNotice } from "@/components/bid/bid-blocker-notice";
+import { BiddingAsLine } from "@/components/bid/bidding-as-line";
 import { LotBidFeedbackBanner } from "@/components/bid/lot-bid-feedback-banner";
 import { BidConfirmation } from "@/components/sections/artwork/bid-confirmation";
 import { BidForm } from "@/components/sections/artwork/bid-form";
@@ -10,6 +11,7 @@ import {
 } from "@/components/sections/artwork/online/bid-panel-context";
 import { LotAutoBidPanel } from "@/components/sections/artwork/redesign/lot-auto-bid-panel";
 import { LotBidModeChooser } from "@/components/sections/artwork/redesign/lot-bid-mode-chooser";
+import { shouldShowBiddingAs } from "@/lib/bid/bidding-account";
 import { formatMoney } from "@/lib/format-currency";
 import { cn } from "@auction/ui";
 
@@ -30,8 +32,12 @@ export function BidEntryRegion() {
     biddingAllowed,
     realtimeHealthy,
     kycSummary,
+    biddingAccount,
     panel,
   } = useBidPanelContext();
+  const biddingAs = shouldShowBiddingAs(biddingAccount) ? (
+    <BiddingAsLine account={biddingAccount} />
+  ) : null;
 
   const {
     displayedFeedback,
@@ -119,6 +125,7 @@ export function BidEntryRegion() {
             biddingAllowed={biddingAllowed}
             realtimeHealthy={realtimeHealthy}
             refreshBeforeSave={async () => (await refreshFromServer()).ok}
+            biddingAs={biddingAs}
           />
         </div>
       ) : !englishOnlySurfaceLock && showAutoBidExplainer ? (
@@ -139,6 +146,10 @@ export function BidEntryRegion() {
               <output className="mb-4 block rounded-md bg-primary-container/25 px-4 py-3 font-body text-sm text-on-primary-container ring-1 ring-primary/30">
                 Bid placed successfully.
               </output>
+            ) : null}
+
+            {decision.kind !== "block" && step === 1 && biddingAs ? (
+              <div className="mb-4">{biddingAs}</div>
             ) : null}
 
             {decision.kind === "block" ? (
@@ -184,6 +195,7 @@ export function BidEntryRegion() {
                   setStep(1);
                 }}
                 onConfirm={onConfirm}
+                biddingAs={biddingAs}
               />
             )}
           </div>

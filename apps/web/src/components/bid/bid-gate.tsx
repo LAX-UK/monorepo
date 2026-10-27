@@ -14,6 +14,8 @@ type Props = {
   loginNextPath: string;
   isOwnLot?: boolean;
   actingLegalEntityId?: string | null;
+  biddingAccount?: BidPolicyContext["biddingAccount"];
+  minNextBid?: number;
   kycBidGate?: BidPolicyContext["kycBidGate"];
   saleRegistrationBidGate?: BidPolicyContext["saleRegistrationBidGate"];
   strictBidEligibilityEnabled?: boolean;
@@ -35,6 +37,8 @@ export function BidGate({
   loginNextPath,
   isOwnLot = false,
   actingLegalEntityId = null,
+  biddingAccount = null,
+  minNextBid,
   kycBidGate = null,
   saleRegistrationBidGate = null,
   strictBidEligibilityEnabled = false,
@@ -55,6 +59,8 @@ export function BidGate({
       loginNextPath,
       isOwnLot,
       actingLegalEntityId,
+      biddingAccount,
+      ...(minNextBid !== undefined ? { minNextBid } : {}),
       kycBidGate,
       saleRegistrationBidGate,
       strictBidEligibilityEnabled,
@@ -72,6 +78,8 @@ export function BidGate({
       loginNextPath,
       isOwnLot,
       actingLegalEntityId,
+      biddingAccount,
+      minNextBid,
       kycBidGate,
       saleRegistrationBidGate,
       strictBidEligibilityEnabled,

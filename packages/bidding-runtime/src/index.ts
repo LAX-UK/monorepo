@@ -39,7 +39,12 @@ export { BidError } from "./bid-error.js";
 export { BidService, type BidServiceOptions } from "./bid.service.js";
 export { createBidPlacer, type CreateBidPlacerDeps } from "./create-bid-placer.js";
 export { AmlBidGate, NoOpAmlBidGate, type IAmlBidGate } from "./bid/aml-bid.gate.js";
-export { BuyerAgentBidGate } from "./bid/buyer-agent-bid.gate.js";
+export { bidAuthorityError } from "./bid/bid-authority-error.js";
+export {
+  BidAuthorityService,
+  type BidAuthorityQuery,
+  type IBidAuthority,
+} from "./bid/bid-authority.service.js";
 export {
   BidIdentityEligibilityGate,
   type IBidIdentityEligibilityGate,

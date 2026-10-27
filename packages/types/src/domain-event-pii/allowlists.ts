@@ -216,6 +216,24 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "role_at_removal",
     "reason",
   ]),
+  /** buyer agent authorised to bid for the organisation (by a member or by staff). */
+  "legal_entity.buyer_agent_authorised": new Set([
+    "authorisation_id",
+    "member_user_id",
+    "sale_id",
+    "bid_limit",
+    "valid_from",
+    "valid_until",
+    "superseded_authorisation_id",
+    "granted_by",
+  ]),
+  "legal_entity.buyer_agent_authorisation_revoked": new Set([
+    "authorisation_id",
+    "member_user_id",
+    "sale_id",
+    "reason",
+    "revoked_by",
+  ]),
   /** archive cascade summary. */
   "legal_entity.archive_cascaded": new Set([
     "legalEntityId",

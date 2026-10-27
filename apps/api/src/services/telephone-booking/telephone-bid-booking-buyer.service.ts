@@ -7,7 +7,7 @@ import { notifyBestEffort, publishTelephoneBookingEvent } from "./telephone-book
 import {
   EDITABLE_LOT_STATUSES,
   assertBuyerEligible,
-  assertMembership,
+  assertCanBidFor,
   assertOnsiteSaleOpen,
   isUniqueViolation,
   resolveProfilePhone,
@@ -33,7 +33,12 @@ export class TelephoneBidBookingBuyerService implements ITelephoneBidBookingBuye
     const buyerCheck = await assertBuyerEligible(deps, input.userId);
     if (buyerCheck.isErr()) return err(buyerCheck.error);
 
-    const memCheck = await assertMembership(deps, input.userId, input.buyerLegalEntityId);
+    const memCheck = await assertCanBidFor(deps, {
+      userId: input.userId,
+      buyerLegalEntityId: input.buyerLegalEntityId,
+      saleId: input.saleId,
+      ...(input.authorizedMax !== undefined ? { authorizedMax: input.authorizedMax } : {}),
+    });
     if (memCheck.isErr()) return err(memCheck.error);
 
     const phoneCheck = await resolveProfilePhone(deps, input.userId);

@@ -13,11 +13,19 @@ describe("sale-registration-policy", () => {
     expect(memberRequiresWebSaleRegistration(null)).toBe(false);
   });
 
-  it("memberEligibleForStaffInRoomCheckIn", () => {
-    expect(memberEligibleForStaffInRoomCheckIn("owner", "individual")).toBe(true);
-    expect(memberEligibleForStaffInRoomCheckIn("owner", "organisation")).toBe(false);
-    expect(memberEligibleForStaffInRoomCheckIn("buyer_agent", "organisation")).toBe(true);
-    expect(memberEligibleForStaffInRoomCheckIn("buyer_agent", "individual")).toBe(false);
+  it.each(["owner", "admin", "buyer_agent"] as const)("lists %s for in-room check-in", (role) => {
+    expect(memberEligibleForStaffInRoomCheckIn(role)).toBe(true);
+  });
+
+  it.each(["finance", "consignor", "viewer", "specialist", "staff"] as const)(
+    "never lists %s for in-room check-in",
+    (role) => {
+      expect(memberEligibleForStaffInRoomCheckIn(role)).toBe(false);
+    },
+  );
+
+  it("never lists a missing role", () => {
+    expect(memberEligibleForStaffInRoomCheckIn(null)).toBe(false);
   });
 
   it("saleAllowsInRoomCheckIn for saleroom modes", () => {

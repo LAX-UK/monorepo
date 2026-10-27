@@ -1,4 +1,4 @@
-import type { IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
+import type { IBidAuthority, IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
 import type { ITelephoneBookingUserPhoneReader } from "@auction/persistence/interfaces";
 import type { ITelephoneBidBookingDetailReader } from "@auction/persistence/interfaces";
 import type { ITelephoneBidBookingRepository } from "@auction/persistence/interfaces";
@@ -31,6 +31,7 @@ export type TelephoneBidBookingServiceDeps = {
   lotRepo: ILotRepository;
   userPhoneReader: ITelephoneBookingUserPhoneReader;
   legalEntityRepository: ILegalEntityRepository;
+  bidAuthority: IBidAuthority;
   identityEligibilityGate?: IBidIdentityEligibilityGate | null;
   amlHoldStore?: IAmlHoldStore | null;
   domainEventSink?: IDomainEventSink | null;
@@ -48,6 +49,7 @@ export function buildTelephoneBidBookingService(
     lotRepo: deps.lotRepo,
     userPhoneReader: deps.userPhoneReader,
     legalEntityRepository: deps.legalEntityRepository,
+    bidAuthority: deps.bidAuthority,
     identityEligibilityGate: deps.identityEligibilityGate ?? null,
     amlHoldStore: deps.amlHoldStore ?? null,
     domainEventSink: deps.domainEventSink ?? null,

@@ -1,4 +1,5 @@
 import { adminPolicy } from "./admin.policy";
+import { biddingAccountPolicy } from "./bidding-account.policy";
 import { connectionPolicy } from "./connection.policy";
 import { kycThresholdPolicy } from "./kyc-threshold.policy";
 import { notLivePolicy } from "./not-live.policy";
@@ -21,6 +22,7 @@ export const defaultBidPolicies: readonly BidPolicy[] = [
   suspendedPolicy,
   sellerOwnLotPolicy,
   adminPolicy,
+  biddingAccountPolicy,
   strictEligibilityPolicy,
   kycThresholdPolicy,
   saleRegistrationPolicy,

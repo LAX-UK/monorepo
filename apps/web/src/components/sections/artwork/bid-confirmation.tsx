@@ -3,6 +3,7 @@ import { formatMoney } from "@/lib/format-currency";
 import type { BidErrorPresentation } from "@/lib/ui/bid-error";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 type Props = {
   amount: string;
@@ -13,6 +14,8 @@ type Props = {
   biddingDisabled?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
+  /** Names the account the bid is for, under the amount. */
+  biddingAs?: ReactNode;
 };
 
 export function BidConfirmation({
@@ -24,6 +27,7 @@ export function BidConfirmation({
   biddingDisabled = false,
   onCancel,
   onConfirm,
+  biddingAs = null,
 }: Props) {
   return (
     <div className="space-y-8">
@@ -54,6 +58,7 @@ export function BidConfirmation({
             </div>
           ) : null}
         </dl>
+        {biddingAs ? <div className="mt-2">{biddingAs}</div> : null}
         <p className="mt-4 font-label text-xs leading-relaxed text-on-surface-variant">
           By placing a bid you agree to the{" "}
           <Link href="/terms" className="text-link underline-offset-2 hover:underline">

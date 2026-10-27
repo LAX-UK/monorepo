@@ -1,8 +1,9 @@
 import {
   AmlBidGate,
+  BidAuthorityService,
   BidEligibilityService,
   BidIdentityEligibilityGate,
-  BuyerAgentBidGate,
+  type IBidAuthority,
   type IBidIdentityEligibilityGate,
   type ISelfServiceIdentityEligibilityGate,
   KycBidGate,
@@ -29,7 +30,16 @@ export type CreateBidEligibilityInput = {
   db: Database;
   amlHoldStore: IAmlHoldStore;
   identityEligibilityGate: IBidIdentityEligibilityGate;
+  bidAuthority?: IBidAuthority;
 };
+
+/** Who may bid for a legal entity; shared by every bidding channel. */
+export function createBidAuthority(db: Database): IBidAuthority {
+  return new BidAuthorityService(
+    new DrizzleBidMembershipReader(db),
+    new DrizzleBuyerAgentAuthorisationReader(db),
+  );
+}
 
 export function createBidEligibility(input: CreateBidEligibilityInput): IBidEligibility {
   const { db, amlHoldStore, identityEligibilityGate } = input;
@@ -38,10 +48,9 @@ export function createBidEligibility(input: CreateBidEligibilityInput): IBidElig
     identityEligibilityGate,
     new AmlBidGate(amlHoldStore),
     new DrizzleBidLotRulesReader(db),
-    new DrizzleBidMembershipReader(db),
+    input.bidAuthority ?? createBidAuthority(db),
     new OperatorPlacementPolicy(operatorReader),
     new SaleRegistrationBidGate(new DrizzleSaleRegistrationBidReader(db)),
-    new BuyerAgentBidGate(new DrizzleBuyerAgentAuthorisationReader(db)),
   );
 }
 
@@ -84,9 +93,8 @@ export function createBidEligibilityForTest(
     identityEligibilityGate,
     opts?.amlHoldStore ? new AmlBidGate(opts.amlHoldStore) : new NoOpAmlBidGate(),
     new DrizzleBidLotRulesReader(db),
-    new DrizzleBidMembershipReader(db),
+    createBidAuthority(db),
     new OperatorPlacementPolicy(operatorReader),
     new SaleRegistrationBidGate(new DrizzleSaleRegistrationBidReader(db)),
-    new BuyerAgentBidGate(new DrizzleBuyerAgentAuthorisationReader(db)),
   );
 }

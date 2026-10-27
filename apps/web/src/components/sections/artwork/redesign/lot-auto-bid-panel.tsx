@@ -5,6 +5,7 @@ import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { getArtworkAuctionTypeProfile } from "@/lib/marketing/artwork/auction-type-profile";
 import type { clientBidError } from "@/lib/ui/bid-error";
 import type { LotAuctionType } from "@auction/types";
+import type { ReactNode } from "react";
 import { AutoBidUnavailableCard } from "./lot-auto-bid/auto-bid-unavailable-card";
 import { LotAutoBidPanelContent } from "./lot-auto-bid/lot-auto-bid-panel-content";
 import {
@@ -18,9 +19,11 @@ type Props = LotAutoBidPanelProps & {
   onFeedbackError?: (error: ReturnType<typeof clientBidError> | null) => void;
   initialSettings: AutoBidSettings | null;
   onSettingsSaved?: (settings: AutoBidSettings | null, placedBid?: AutoBidPlacedBid) => void;
+  /** Names the account the auto-bid is for, shown beside the save action. */
+  biddingAs?: ReactNode;
 };
 
-export function LotAutoBidPanel({ lot, auctionType, ...panelProps }: Props) {
+export function LotAutoBidPanel({ lot, auctionType, biddingAs, ...panelProps }: Props) {
   const view = useLotAutoBidPanel({ lot, ...panelProps });
 
   if (!getArtworkAuctionTypeProfile(auctionType).showAutoBidPanel) return null;
@@ -29,5 +32,5 @@ export function LotAutoBidPanel({ lot, auctionType, ...panelProps }: Props) {
     return <AutoBidUnavailableCard />;
   }
 
-  return <LotAutoBidPanelContent {...view} />;
+  return <LotAutoBidPanelContent {...view} biddingAs={biddingAs} />;
 }

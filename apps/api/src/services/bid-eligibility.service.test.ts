@@ -165,11 +165,32 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
     expect(r.isOk()).toBe(true);
   });
 
-  it("allows staff membership role without sale registration", async () => {
+  it.each(["finance", "consignor", "viewer", "staff", "specialist"] as const)(
+    "refuses a %s bidding for the organisation",
+    async (role) => {
+      const db = createSequentialDb([
+        { kind: "limit", rows: [{ saleId }] },
+        { kind: "limit", rows: [{ role }] },
+      ]);
+      const svc = createBidEligibilityForTest(db);
+      const r = await svc.assertCanPlaceBid({
+        placedByUserId: userId,
+        buyerLegalEntityId: buyerLeId,
+        lotId,
+        amount: 1000,
+      });
+      expect(r.isErr() && [r.error.status, r.error.code]).toEqual([403, "bid_role_not_permitted"]);
+    },
+  );
+
+  it.each([
+    ["telephone", { telephoneBookingId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd" }],
+    ["saleroom", { paddleNumber: 205 }],
+    ["absentee", {}],
+  ] as const)("refuses a viewer on the %s channel too", async (placedVia, extra) => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
-      { kind: "limit", rows: [{ role: "staff" }] },
-      { kind: "limit", rows: [] },
+      { kind: "limit", rows: [{ role: "viewer" }] },
     ]);
     const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
@@ -177,8 +198,61 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
       buyerLegalEntityId: buyerLeId,
       lotId,
       amount: 1000,
+      placedVia,
+      ...extra,
     });
-    expect(r.isOk()).toBe(true);
+    expect(r.isErr() && r.error.code).toBe("bid_role_not_permitted");
+  });
+
+  it("refuses a viewer setting an auto-bid", async () => {
+    const db = createSequentialDb([
+      {
+        kind: "limit",
+        rows: [
+          {
+            saleId,
+            autoBidEnabled: true,
+            minBidIncrement: "10.00",
+            autoBidStepMin: null,
+            autoBidStepMax: null,
+            autoBidStepPresets: null,
+          },
+        ],
+      },
+      { kind: "limit", rows: [{ role: "viewer" }] },
+    ]);
+    const svc = createBidEligibilityForTest(db);
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 100,
+      maxAutoBidAmount: 500,
+    });
+    expect(r.isErr() && r.error.code).toBe("bid_role_not_permitted");
+  });
+
+  it("caps a telephone bid at the buyer agent's authorisation limit", async () => {
+    const db = createSequentialDb([
+      { kind: "limit", rows: [{ saleId }] },
+      { kind: "limit", rows: [{ role: "buyer_agent" }] },
+      { kind: "all", rows: [{ saleId, bidLimit: "800.00" }] },
+      {
+        kind: "limit",
+        rows: [{ status: "confirmed", saleId, userId, buyerLegalEntityId: buyerLeId }],
+      },
+      { kind: "limit", rows: [{ reserveAltMax: "5000.00" }] },
+    ]);
+    const svc = createBidEligibilityForTest(db);
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 1000,
+      placedVia: "telephone",
+      telephoneBookingId: "dddddddd-dddd-4ddd-8ddd-dddddddddddd",
+    });
+    expect(r.isErr() && r.error.code).toBe("bid_limit_exceeded");
   });
 
   it("returns membership_required when user is not a member", async () => {
@@ -203,6 +277,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
+      { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
       { kind: "limit", rows: [] },
     ]);
     const svc = createBidEligibilityForTest(db);
@@ -222,6 +297,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
+      { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
       { kind: "limit", rows: [{ status: "pending", bidLimit: null }] },
     ]);
     const svc = createBidEligibilityForTest(db);
@@ -241,7 +317,6 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
-      { kind: "limit", rows: [{ status: "approved", bidLimit: null }] },
       { kind: "all", rows: [] },
     ]);
     const svc = createBidEligibilityForTest(db);
@@ -261,6 +336,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
+      { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
       { kind: "limit", rows: [{ status: "approved", bidLimit: "100.00" }] },
     ]);
     const svc = createBidEligibilityForTest(db);
@@ -280,11 +356,8 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
+      { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
       { kind: "limit", rows: [{ status: "approved", bidLimit: null }] },
-      {
-        kind: "all",
-        rows: [{ saleId: null, bidLimit: null }],
-      },
     ]);
     const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
@@ -300,11 +373,8 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
+      { kind: "all", rows: [{ saleId, bidLimit: "50.00" }] },
       { kind: "limit", rows: [{ status: "approved", bidLimit: null }] },
-      {
-        kind: "all",
-        rows: [{ saleId, bidLimit: "50.00" }],
-      },
     ]);
     const svc = createBidEligibilityForTest(db);
     const r = await svc.assertCanPlaceBid({
@@ -467,6 +537,7 @@ describe("BidEligibilityService auto-bid", () => {
         ],
       },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
+      { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
       { kind: "limit", rows: [{ status: "approved", bidLimit: "200.00" }] },
     ]);
     const svc = createBidEligibilityForTest(db);
@@ -520,6 +591,7 @@ describe("BidEligibilityService auto-bid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
+      { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
       {
         kind: "limit",
         rows: [{ status: "confirmed", saleId, userId, buyerLegalEntityId: buyerLeId }],
@@ -542,6 +614,7 @@ describe("BidEligibilityService auto-bid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
+      { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
       {
         kind: "limit",
         rows: [{ status: "confirmed", saleId, userId, buyerLegalEntityId: buyerLeId }],
@@ -592,6 +665,7 @@ describe("BidEligibilityService auto-bid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
+      { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
       {
         kind: "limit",
         rows: [{ status: "in_progress", saleId, userId, buyerLegalEntityId: buyerLeId }],
@@ -617,6 +691,7 @@ describe("BidEligibilityService auto-bid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
+      { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
       { kind: "limit", rows: [{ bidLimit: "1000.00", status: "approved" }] },
     ]);
     const svc = createBidEligibilityForTest(db);
@@ -638,6 +713,7 @@ describe("BidEligibilityService auto-bid", () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
+      { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
       { kind: "limit", rows: [{ bidLimit: "5000.00", status: "pending" }] },
     ]);
     const svc = createBidEligibilityForTest(db);

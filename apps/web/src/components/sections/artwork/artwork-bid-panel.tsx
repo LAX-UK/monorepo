@@ -13,6 +13,7 @@ import { FullBidCard } from "@/components/sections/artwork/online/full-bid-card"
 import { VideoCompactBidPanel } from "@/components/sections/artwork/online/video-compact-bid-panel";
 import { usePlaceBid } from "@/hooks/lot-bid/use-place-bid";
 import { useLotBidState } from "@/hooks/use-lot-bid-state";
+import type { BiddingAccount } from "@/lib/bid/bidding-account";
 import type { SaleRegistrationBidGateContext } from "@/lib/bid/policies/types";
 import { resolveKycBidGate, resolveKycSurfaceFeedback } from "@/lib/bid/resolve-kyc-bid-gate";
 import { useLiveConnection } from "@/lib/connection/use-live-connection";
@@ -48,6 +49,7 @@ type Props = {
     | null;
   isOwnLot?: boolean;
   actingLegalEntityId?: string | null;
+  biddingAccount?: BiddingAccount | null;
   strictBidEligibilityEnabled?: boolean;
 };
 
@@ -71,6 +73,7 @@ export function ArtworkBidPanel({
   saleForLifecycle = null,
   isOwnLot = false,
   actingLegalEntityId = null,
+  biddingAccount = null,
   strictBidEligibilityEnabled = false,
 }: Props) {
   const { bidWriter } = useLotPorts();
@@ -194,6 +197,8 @@ export function ArtworkBidPanel({
       loginNextPath={loginNext}
       isOwnLot={isOwnLot}
       actingLegalEntityId={actingLegalEntityId}
+      biddingAccount={biddingAccount}
+      minNextBid={panel.minNumeric}
       kycBidGate={kycBidGate}
       saleRegistrationBidGate={saleRegistrationBidGate}
       strictBidEligibilityEnabled={strictBidEligibilityEnabled}
@@ -255,6 +260,7 @@ export function ArtworkBidPanel({
               connectivityScope,
               auction,
               sessionUser,
+              biddingAccount,
               summarySeed,
               initialWatching,
               omitPricingHeader,

@@ -1,4 +1,5 @@
-import type { LegalEntityKind, LegalEntityMemberRole } from "@auction/types";
+import { entityRoleCan } from "@auction/domain";
+import type { LegalEntityMemberRole } from "@auction/types";
 import type { SaleDeliveryMode } from "@auction/types";
 import { isSaleroomDeliveryMode } from "./sale-mode-policy.js";
 
@@ -16,14 +17,15 @@ export function memberRequiresSaleRegistration(
   return memberRequiresWebSaleRegistration(role);
 }
 
-/** Staff in-room check-in: personal collectors (owner on individual) or buyer agents on orgs. */
+/**
+ * Staff in-room check-in lists the memberships that may bid for their legal entity: a person's
+ * own profile, and an organisation's owners, admins and buyer agents. Whether a buyer agent is
+ * authorised for the sale is checked when they are checked in.
+ */
 export function memberEligibleForStaffInRoomCheckIn(
   role: LegalEntityMemberRole | undefined | null,
-  entityKind: LegalEntityKind,
 ): boolean {
-  if (role === "owner" && entityKind === "individual") return true;
-  if (role === "buyer_agent" && entityKind === "organisation") return true;
-  return false;
+  return role != null && entityRoleCan(role, "entity.bid.place");
 }
 
 export function saleAllowsInRoomCheckIn(deliveryMode: SaleDeliveryMode): boolean {

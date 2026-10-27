@@ -33,4 +33,15 @@ describe("detail-tab-compat", () => {
     expect(specs.find((t) => t.id === "stripe")?.badge).toBe("pending");
     expect(specs.find((t) => t.id === "sales")?.count).toBe(3);
   });
+
+  it("shows the buyer agents tab for organisations only", () => {
+    const base = { entityId: "ent-1", pendingDocCount: 0, stripeDueCount: 0 };
+    expect(buildLegalEntityDetailTabSpecs(base).map((t) => t.id)).toContain("buyer-agents");
+    expect(
+      buildLegalEntityDetailTabSpecs({ ...base, hasBuyerAgents: false }).map((t) => t.id),
+    ).not.toContain("buyer-agents");
+    expect(legalEntityDetailTabHref("ent-1", "buyer-agents")).toBe(
+      "/admin/legal-entities/ent-1/buyer-agents",
+    );
+  });
 });

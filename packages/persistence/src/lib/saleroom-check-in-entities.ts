@@ -24,7 +24,7 @@ export function groupEligibleCheckInEntities(
   for (const m of membershipRows) {
     const role = m.role as LegalEntityMemberRole;
     const kind = m.kind as LegalEntityKind;
-    if (!memberEligibleForStaffInRoomCheckIn(role, kind)) continue;
+    if (!memberEligibleForStaffInRoomCheckIn(role)) continue;
 
     const list = entitiesByUser.get(m.userId) ?? [];
     list.push({

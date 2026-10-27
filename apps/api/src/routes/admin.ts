@@ -26,6 +26,7 @@ import { attachAdminDeliveryOpsRoutes } from "./admin/delivery-ops.routes.js";
 import { attachAdminEmailRoutes } from "./admin/email.routes.js";
 import { attachAdminFinanceRoutes } from "./admin/finance.routes.js";
 import { attachAdminImpersonationRoutes } from "./admin/impersonation.routes.js";
+import { attachAdminLegalEntityBuyerAgentRoutes } from "./admin/legal-entity-buyer-agents.routes.js";
 import { attachAdminLotFulfilmentRoutes } from "./admin/lot-fulfilment.routes.js";
 import { attachAdminLotsCatalogRoutes } from "./admin/lots-catalog.routes.js";
 import { attachAdminLotsRoutes } from "./admin/lots.routes.js";
@@ -124,6 +125,7 @@ export function createAdminRoutes(
   attachAdminSavedViewRoutes(platform, container.admin.savedViews);
 
   attachAdminLegalEntityLifecycleRoutes(platform, container.admin.legalEntityLifecycle);
+  attachAdminLegalEntityBuyerAgentRoutes(platform, container.admin.buyerAgentAuthorisations);
 
   if (container.admin.stripeConnect) {
     attachAdminStripeConnectRoutes(platform, container.admin.stripeConnect);

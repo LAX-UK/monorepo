@@ -1,10 +1,12 @@
-import { buyerEntityCanBid } from "@auction/domain";
+import { bidExceedsAuthority, buyerEntityCanBid } from "@auction/domain";
 import type { IAbsenteeBidRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository } from "@auction/persistence/interfaces";
 import type { IBidRepository } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
+import { bidAuthorityError } from "./bid/bid-authority-error.js";
+import type { IBidAuthority } from "./bid/bid-authority.service.js";
 import type { IBidIdentityEligibilityGate } from "./bid/identity-bid-eligibility.gate.js";
 import type { AbsenteeBidServiceError, IAbsenteeBidService, IBidPlacer } from "./ports.js";
 
@@ -31,6 +33,7 @@ export class AbsenteeBidService implements IAbsenteeBidService {
     private readonly legalEntityRepository: ILegalEntityRepository | null,
     private readonly bidRepo: IBidRepository | null = null,
     private readonly identityEligibilityGate: IBidIdentityEligibilityGate | null = null,
+    private readonly bidAuthority: IBidAuthority | null = null,
   ) {}
 
   private async reconcileStaleExecutingLeases(cutoff: Date): Promise<void> {
@@ -94,17 +97,29 @@ export class AbsenteeBidService implements IAbsenteeBidService {
           code: "entity_not_authorised_to_bid",
         });
       }
-      const mem = await this.legalEntityRepository.findActiveMembership(
-        input.userId,
-        input.buyerLegalEntityId,
-      );
-      if (!mem) {
-        return err({
-          message: "Not a member of the selected legal entity",
-          status: 403,
-          code: "membership_required",
-        });
-      }
+    }
+    if (!this.bidAuthority) {
+      return err({
+        message: "Bid authority is not configured",
+        status: 503,
+        code: "bid_authority_unconfigured",
+      });
+    }
+    const authority = await this.bidAuthority.resolve({
+      userId: input.userId,
+      legalEntityId: input.buyerLegalEntityId,
+      saleId: lotRow.saleId ?? null,
+    });
+    if (!authority.allowed) {
+      const { message, status, code } = bidAuthorityError(authority.reason);
+      return err({ message, status, ...(code ? { code } : {}) });
+    }
+    if (bidExceedsAuthority(authority, input.maxAmount)) {
+      return err({
+        message: "Bid exceeds buyer agent authorisation limit",
+        status: 403,
+        code: "bid_limit_exceeded",
+      });
     }
 
     try {
