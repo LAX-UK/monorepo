@@ -102,13 +102,13 @@ describe("lots staff list view model", () => {
     expect(lotsMetricsPeriod({})).toBe("All lots");
   });
 
-  it("never repeats the search or the sort as a chip", () => {
+  it("keeps the search as a chip but never repeats the sort", () => {
     const chips = lotsFilterChips([
       { id: "q", label: "Search: blue", clearHref: "/admin/lots" },
       { id: "sort", label: "Sort: Ending soon", clearHref: "/admin/lots" },
       { id: "saleId", label: "Sale: Autumn Contemporary", clearHref: "/admin/lots" },
     ]);
-    expect(chips.map((chip) => chip.id)).toEqual(["saleId"]);
+    expect(chips.map((chip) => chip.id)).toEqual(["q", "saleId"]);
   });
 
   it("always shows a sorted column, newest first by default", () => {

@@ -72,7 +72,7 @@ export type HubQuickLinkSpec = {
  */
 export const HUB_QUICK_LINK_SPECS: readonly HubQuickLinkSpec[] = [
   { href: "/admin/finance", label: "Finance", requirement: FINANCE_ACCESS },
-  { href: "/admin/sales", label: "Catalog", requirement: SALE_CATALOG_ACCESS },
+  { href: "/admin/sales", label: "Catalogue", requirement: SALE_CATALOG_ACCESS },
   { href: "/admin/compliance/aml", label: "Compliance", requirement: AML_REVIEW_ACCESS },
   { href: "/admin/clients", label: "Clients", requirement: USERS_DIRECTORY_ACCESS },
   { href: "/admin/lot-fulfilment", label: "Fulfilment", requirement: LOT_FULFILMENT_ACCESS },

@@ -129,13 +129,16 @@ describe("submissions staff list view model", () => {
     ).toBe("1 day");
   });
 
-  it("keeps search and sort out of the chips, and words the flags plainly", () => {
+  it("keeps the search in the chips, the sort out, and words the flags plainly", () => {
     const chips = submissionsFilterChips([
       { id: "q", label: "Search: harbour", clearHref: "/a" },
       { id: "sort", label: "Sort", clearHref: "/b" },
       { id: "qualityGaps", label: "Quality gaps only", clearHref: "/c" },
     ]);
-    expect(chips).toEqual([{ id: "qualityGaps", label: "Missing details only", clearHref: "/c" }]);
+    expect(chips).toEqual([
+      { id: "q", label: "Search: harbour", clearHref: "/a" },
+      { id: "qualityGaps", label: "Missing details only", clearHref: "/c" },
+    ]);
   });
 
   it("summarises the range shown", () => {

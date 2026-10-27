@@ -12,6 +12,7 @@ import { Kbd } from "../primitives/input.js";
 import { StaffTooltip } from "../primitives/menu.js";
 import { CommandPalette, useCommandPaletteShortcut } from "./command-palette.js";
 import type { StaffLinkComponent } from "./link.js";
+import { NavScrollArea } from "./nav-scroll-area.js";
 import { ProductMark, ProductSwitcher } from "./product-switcher.js";
 import { StaffShortcutsProvider } from "./shortcuts.js";
 import { SidebarNav } from "./sidebar-nav.js";
@@ -144,14 +145,14 @@ export function StaffShell({
                 >
                   <ProductSwitcher current={product} products={products} collapsed={collapsed} />
                 </div>
-                <div className="min-h-0 flex-1 overflow-y-auto overflow-x-hidden [scrollbar-width:thin]">
+                <NavScrollArea>
                   <SidebarNav
                     groups={navGroups}
                     pathname={pathname}
                     Link={Link}
                     collapsed={collapsed}
                   />
-                </div>
+                </NavScrollArea>
                 <div
                   className={cn(
                     "flex shrink-0 border-t border-staff-line p-2",
@@ -234,14 +235,14 @@ export function StaffShell({
               <div className="flex h-13 shrink-0 items-center border-b border-staff-line px-2">
                 <ProductSwitcher current={product} products={products} />
               </div>
-              <div className="min-h-0 flex-1 overflow-y-auto">
+              <NavScrollArea>
                 <SidebarNav
                   groups={navGroups}
                   pathname={pathname}
                   Link={Link}
                   onNavigate={() => setDrawerOpen(false)}
                 />
-              </div>
+              </NavScrollArea>
             </SheetContent>
           </Sheet>
 

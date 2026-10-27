@@ -141,12 +141,13 @@ export function salesMetrics(summary: AdminSalesListSummary): Metric[] {
 }
 
 /**
- * The filters in force beyond the view tab, as chips. The search shows in its own field, the
- * sort in the column headers and the lifecycle in the tabs, so none of them repeats as a chip.
+ * The filters in force beyond the view tab, as chips, the search included so a no-results list
+ * names what it looked for. The sort shows in the column headers and the lifecycle in the tabs,
+ * so neither repeats as a chip.
  */
 export function salesFilterChips(chips: readonly CatalogActiveFilterChip[]) {
   return chips
-    .filter((chip) => !["q", "sort", "lens", "lifecycle"].includes(chip.id))
+    .filter((chip) => !["sort", "lens", "lifecycle"].includes(chip.id))
     .map((chip) => ({ id: chip.id, label: chip.label, clearHref: chip.clearHref }));
 }
 

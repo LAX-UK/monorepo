@@ -170,7 +170,7 @@ const CAPABILITY_PRESENTATION: Record<RoleCapability, CapabilityPresentation> = 
 const GROUP_LABELS: Record<CapabilityGroupId, string> = {
   platform: "Platform",
   finance: "Finance",
-  catalog: "Catalog",
+  catalog: "Catalogue",
   operations: "Operations",
   compliance: "Compliance",
   people: "People",

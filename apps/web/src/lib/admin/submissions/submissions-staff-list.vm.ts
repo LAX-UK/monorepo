@@ -199,10 +199,10 @@ export const SUBMISSION_FLAG_FILTERS = [
   { value: "qualityGaps", label: "Missing details only" },
 ] as const;
 
-/** The filters in force beyond the tab, as chips; the search and sort have their own controls. */
+/** The filters in force beyond the tab, as chips, the search included; the sort has its own control. */
 export function submissionsFilterChips(chips: readonly CatalogActiveFilterChip[]) {
   return chips
-    .filter((chip) => chip.id !== "q" && chip.id !== "sort")
+    .filter((chip) => chip.id !== "sort")
     .map((chip) => ({
       id: chip.id,
       label: chip.id === "qualityGaps" ? "Missing details only" : chip.label,

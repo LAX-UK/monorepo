@@ -151,7 +151,7 @@ function buildStaffNavGroupSpecs(
     },
     {
       id: "catalog",
-      title: "Catalog",
+      title: "Catalogue",
       icon: Package,
       items: [
         {
