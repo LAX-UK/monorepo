@@ -27,8 +27,8 @@ export type DatePickerProps = {
   min?: string;
   /** How the chosen day reads on the trigger, e.g. "1 Nov 2026"; the raw value by default. */
   formatValue?: (value: string) => string;
-  "aria-invalid"?: boolean;
-  "aria-describedby"?: string;
+  "aria-invalid"?: boolean | undefined;
+  "aria-describedby"?: string | undefined;
 };
 
 function DatePicker({

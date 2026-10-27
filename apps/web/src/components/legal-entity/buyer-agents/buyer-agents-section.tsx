@@ -135,7 +135,7 @@ export function BuyerAgentsSection({ legalEntityId, entityName, overview }: Prop
         <div className="border-t border-border-hairline">
           <EmptyState
             size="compact"
-            headingLevel="h4"
+            headingLevel="h3"
             illustration="gavel"
             title="No buyer agents"
             description="Invite someone with the buyer agent role to bid on the organisation's behalf."
