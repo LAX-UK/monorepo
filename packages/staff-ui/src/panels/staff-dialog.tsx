@@ -9,6 +9,7 @@ import {
 import * as React from "react";
 import { Field } from "../forms/field.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
+import { useReturnFocus } from "../lib/return-focus.js";
 import { StaffButton } from "../primitives/button.js";
 import { TextArea, TextInput } from "../primitives/input.js";
 
@@ -38,12 +39,14 @@ export function StaffDialog({
   size = "sm",
   initialFocusRef,
 }: StaffDialogProps) {
+  const returnFocus = useReturnFocus(open);
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         {...STAFF_LAYER}
         overlayClassName="bg-staff-scrim"
         closeClassName="hidden"
+        onCloseAutoFocus={returnFocus}
         {...(initialFocusRef
           ? {
               onOpenAutoFocus: (event: Event) => {

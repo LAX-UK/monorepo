@@ -36,7 +36,10 @@ export function Toaster({
       {...rest}
       toastOptions={{
         ...toastOptions,
+        // Callers' other slots (close button, per-type icons) pass through; the defaults below
+        // only add to the slots this wrapper styles.
         classNames: {
+          ...u,
           toast: cn(
             "group toast font-body group-[.toaster]:bg-surface-container-highest group-[.toaster]:text-on-surface group-[.toaster]:border-outline-variant/20 group-[.toaster]:shadow-lg",
             u?.toast,

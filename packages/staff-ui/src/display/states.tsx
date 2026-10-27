@@ -10,7 +10,7 @@ type StateProps = {
   action?: React.ReactNode;
   className?: string;
   /** Use h2 when the state replaces a page's main content; h3 inside a section. */
-  headingLevel?: "h2" | "h3";
+  headingLevel?: "h1" | "h2" | "h3";
   /**
    * The drawing from the shared LAX illustration set (the public products use the same set).
    * Each state has a default; pick the object that matches the list ("parcel" for orders).
@@ -91,7 +91,9 @@ export function NotFoundState({ illustration = "ticket", ...props }: StateProps)
 export function AccessDeniedState({
   resource,
   requiredRole,
+  requiredRoles,
   contact = "an admin on your team",
+  action,
   className,
   headingLevel,
 }: {
@@ -99,24 +101,32 @@ export function AccessDeniedState({
   resource: string;
   /** Who can open it: "Finance". */
   requiredRole?: string;
+  /** Several roles that can open it: ["Catalogue manager", "Operations"]. */
+  requiredRoles?: readonly string[];
   contact?: string;
+  /** A way on, e.g. back to the person's own overview. */
+  action?: React.ReactNode;
   className?: string;
-  headingLevel?: "h2" | "h3";
+  headingLevel?: "h1" | "h2" | "h3";
 }) {
+  const roles = requiredRoles?.length ? requiredRoles : requiredRole ? [requiredRole] : [];
+  const who =
+    roles.length > 0
+      ? `${resource} is open to the ${ROLE_LIST.format(roles)} ${roles.length === 1 ? "role" : "roles"}. `
+      : "";
   return (
     <StateFrame
       illustration="lock"
       title={`You don’t have access to ${resource}`}
-      description={
-        requiredRole
-          ? `${resource} is open to the ${requiredRole} role. Ask ${contact} if you need it.`
-          : `Ask ${contact} if you need it.`
-      }
+      description={`${who}Ask ${contact} if you need it.`}
+      {...(action ? { action } : {})}
       {...(className ? { className } : {})}
       {...(headingLevel ? { headingLevel } : {})}
     />
   );
 }
+
+const ROLE_LIST = new Intl.ListFormat("en-GB", { style: "long", type: "conjunction" });
 
 /** A quiet marker in a page header for roles that can look but not change: "View only · Finance". */
 export function ViewOnlyBadge({ role }: { role?: string }) {

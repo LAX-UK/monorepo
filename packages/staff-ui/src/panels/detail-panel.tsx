@@ -12,9 +12,15 @@ import * as React from "react";
 import { type KeyValueItem, KeyValueList } from "../display/key-value-list.js";
 import { discardPrompt } from "../forms/unsaved-changes.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
+import { useReturnFocus } from "../lib/return-focus.js";
 import { StaffButton } from "../primitives/button.js";
 import { MetaItem } from "../shell/page-header.js";
 import { ConfirmActionDialog } from "./staff-dialog.js";
+
+/** The row a list marks as the open record (`DataTable` sets `data-active` on it). */
+function activeTableRow(): HTMLElement | null {
+  return document.querySelector<HTMLElement>("tr[data-active]");
+}
 
 /** One key fact in a panel's meta line: "Buyer Ada Lovelace". */
 export type PanelMetaFact = { label: string; value: React.ReactNode };
@@ -96,6 +102,8 @@ export function DetailPanel<L extends string = string>({
 }: DetailPanelProps<L>) {
   const [confirmingClose, setConfirmingClose] = React.useState(false);
   const titleRef = React.useRef<HTMLHeadingElement>(null);
+  // A panel opened from the URL, or after the list re-rendered, returns to the active row.
+  const returnFocus = useReturnFocus(open, activeTableRow);
   const shown = new Set<string>([
     ...(meta ?? []).map((fact) => fact.label),
     ...(headerFacts ?? []),
@@ -124,6 +132,7 @@ export function DetailPanel<L extends string = string>({
             event.preventDefault();
             titleRef.current?.focus({ preventScroll: true });
           }}
+          onCloseAutoFocus={returnFocus}
         >
           <div className="flex min-h-0 flex-1 flex-col">
             {/* On a phone the actions take their own row under the title, so the title keeps the

@@ -19,11 +19,14 @@ export function StaffToaster() {
       toastOptions={{
         classNames: {
           toast:
-            "font-staff group-[.toaster]:rounded-staff-md group-[.toaster]:border group-[.toaster]:border-staff-line group-[.toaster]:bg-staff-raised group-[.toaster]:text-staff-fg group-[.toaster]:shadow-staff-md",
+            "font-staff rounded-staff-md! border! border-staff-line! bg-staff-raised! text-staff-fg! shadow-staff-md!",
           title: "font-staff text-staff-sm font-medium normal-case tracking-normal",
-          description: "font-staff text-staff-sm group-[.toast]:text-staff-muted",
+          description: "font-staff text-staff-sm text-staff-muted!",
           actionButton:
             "group-[.toast]:rounded-staff-sm group-[.toast]:bg-staff-ink group-[.toast]:text-staff-on-ink",
+          // Sonner's own close button is 20px; staff targets are at least 24px.
+          closeButton:
+            "size-6! border-staff-line! bg-staff-raised! text-staff-muted! hover:text-staff-fg! staff-focus",
           cancelButton:
             "group-[.toast]:rounded-staff-sm group-[.toast]:bg-staff-sunken group-[.toast]:text-staff-fg",
           success: "[&_[data-icon]]:text-staff-success-dot",

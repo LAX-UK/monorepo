@@ -12,6 +12,7 @@ import * as React from "react";
 import { type EntityOption, EntityPicker } from "../forms/entity-picker.js";
 import { Field } from "../forms/field.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
+import { useReturnFocus } from "../lib/return-focus.js";
 import { StaffButton } from "../primitives/button.js";
 import { ChoiceRow, StaffCheckbox, StaffRadio, StaffRadioGroup } from "../primitives/choice.js";
 import { TextInput } from "../primitives/input.js";
@@ -135,6 +136,8 @@ export function FilterSheet({
   today?: string;
 }) {
   const [open, setOpen] = React.useState(false);
+  const filterButtonRef = React.useRef<HTMLButtonElement>(null);
+  const returnFocus = useReturnFocus(open, () => filterButtonRef.current);
   const [draft, setDraft] = React.useState<FilterSheetValues>(() => valuesOf(sections));
   const applied = valuesOf(sections);
   const activeCount = sections.filter((section) => isActive(section, applied[section.id])).length;
@@ -164,6 +167,7 @@ export function FilterSheet({
   return (
     <>
       <StaffButton
+        ref={filterButtonRef}
         size="sm"
         variant="secondary"
         icon={<ListFilter aria-hidden />}
@@ -181,6 +185,7 @@ export function FilterSheet({
           {...STAFF_LAYER}
           side="right"
           overlayClassName="bg-staff-scrim"
+          onCloseAutoFocus={returnFocus}
           className="flex w-full max-w-none flex-col gap-0 border-l border-staff-line bg-staff-surface p-0 text-staff-fg shadow-staff-lg sm:w-[400px] sm:max-w-none [&>button:last-child]:hidden"
         >
           <form
