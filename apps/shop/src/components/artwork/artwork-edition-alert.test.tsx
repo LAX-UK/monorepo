@@ -77,8 +77,8 @@ describe("ArtworkEditionAlert", () => {
     fireEvent.click(screen.getByRole("button", { name: "Email me if it is back" }));
     await waitFor(() => expect(screen.getByText("You are on the list")).toBeTruthy());
     expect(registerMock).toHaveBeenCalledWith("reed-study", {});
-    fireEvent.click(screen.getByRole("button", { name: "Stop this alert" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Stop this alert" }));
     await waitFor(() => expect(screen.getByText(/Alert stopped/)).toBeTruthy());
-    expect(screen.getByRole("button", { name: "Email me if it is back" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Email me if it is back" })).toBeTruthy();
   });
 });
