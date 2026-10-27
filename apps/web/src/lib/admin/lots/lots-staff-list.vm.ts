@@ -277,12 +277,12 @@ export function lotsMetrics(
 }
 
 /**
- * The filters in force beyond the view tab, as chips. The search shows in its own field and the
- * sort in the column headers, so neither is repeated as a chip.
+ * The filters in force beyond the view tab, as chips, the search included so a no-results list
+ * names what it looked for. The sort shows in the column headers, so it is not repeated.
  */
 export function lotsFilterChips(chips: readonly CatalogActiveFilterChip[]) {
   return chips
-    .filter((chip) => chip.id !== "q" && chip.id !== "sort")
+    .filter((chip) => chip.id !== "sort")
     .map((chip) => ({ id: chip.id, label: chip.label, clearHref: chip.clearHref }));
 }
 

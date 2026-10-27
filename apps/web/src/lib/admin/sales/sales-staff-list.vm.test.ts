@@ -60,13 +60,13 @@ describe("sales staff list view model", () => {
     expect(metrics.find((metric) => metric.id === "hammer")?.value).toBe("£62,500.00");
   });
 
-  it("leaves the search, sort and lifecycle to their own controls", () => {
+  it("keeps the search as a chip and leaves the sort and lifecycle to their own controls", () => {
     const chips = salesFilterChips([
       { id: "q", label: "Search: autumn", clearHref: "/admin/sales" },
       { id: "lifecycle", label: "Lifecycle: Live", clearHref: "/admin/sales" },
       { id: "deliveryMode", label: "Delivery: Onsite", clearHref: "/admin/sales" },
     ]);
-    expect(chips.map((chip) => chip.id)).toEqual(["deliveryMode"]);
+    expect(chips.map((chip) => chip.id)).toEqual(["q", "deliveryMode"]);
   });
 
   it("always shows a sorted column", () => {
