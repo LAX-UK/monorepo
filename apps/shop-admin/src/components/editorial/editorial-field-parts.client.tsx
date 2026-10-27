@@ -250,16 +250,14 @@ export function SlugField({
 }
 
 export function SeoSection<F extends SeoFieldsFormValues>({
+  description = "How the page appears in search results. Leave blank to use the title and summary.",
   form,
   onChange,
   disabled,
   errors,
-}: EntityFieldsProps<F>) {
+}: EntityFieldsProps<F> & { description?: string }) {
   return (
-    <FieldSection
-      title="Search listing"
-      description="How the page appears in search results. Leave blank to use the title and summary."
-    >
+    <FieldSection title="Search listing" description={description}>
       <EditorialTextField
         name="seoTitle"
         label="Search title"

@@ -18,7 +18,6 @@ import {
   EditorialPreviewPanel,
 } from "@/components/editorial/editorial-preview-panel.client";
 import type { LinksController } from "@/components/editorial/use-editorial-links.client";
-import { FormScopeProvider } from "@/components/forms/form-field";
 import { type EditorialBlockItem, fromBlockItems, toBlockItems } from "@/lib/editorial-blocks";
 import type { EditorialPublicationStatus, PayloadResult } from "@/lib/editorial-entity-forms";
 import { editorialMutationErrorMessage } from "@/lib/editorial-mutation-message";
@@ -368,7 +367,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
   });
 
   return (
-    <FormScopeProvider value="editorial-field">
+    <>
       <div className="flex flex-col gap-6">
         <PageHeader
           {...(config.page
@@ -560,6 +559,6 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
         }}
       />
       <UnsavedChangesDialog guard={leaveGuard} />
-    </FormScopeProvider>
+    </>
   );
 }

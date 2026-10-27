@@ -23,6 +23,18 @@ export const PLACEMENT_SLOT_LABELS: Record<EditorialPlacementSlot, string> = {
 export const PLACEMENT_REF_KINDS = ["exhibition", "story", "page", "venue", "external"] as const;
 export type PlacementRefKind = (typeof PLACEMENT_REF_KINDS)[number];
 
+/** How a row's target reads to staff, and the prompt for choosing one of that kind. */
+export const PLACEMENT_REF_KIND_COPY: Record<
+  PlacementRefKind,
+  { label: string; choose: string; noun: string }
+> = {
+  exhibition: { label: "Exhibition", choose: "Choose an exhibition", noun: "exhibition" },
+  story: { label: "Story", choose: "Choose a story", noun: "story" },
+  page: { label: "Page", choose: "Choose a page", noun: "page" },
+  venue: { label: "Venue", choose: "Choose a venue", noun: "venue" },
+  external: { label: "External link", choose: "Link to a page", noun: "link" },
+};
+
 /** shop-api accepts positions 0–50. */
 export const PLACEMENT_MAX_ROWS = 51;
 
@@ -90,28 +102,52 @@ export function placementDraftsBySlot(
   return grouped;
 }
 
+/** The field of a row a problem belongs to; `null` for a problem with the slot as a whole. */
+export type PlacementField = "refId" | "linkUrl";
+
+export type PlacementIssue = {
+  /** The row's draft key, or null for the slot. */
+  rowKey: string | null;
+  field: PlacementField | null;
+  /** Reads on its own beside its field. */
+  message: string;
+};
+
 export type PlacementPayloadResult =
   | { ok: true; payload: { items: PlacementWriteItem[] } }
-  | { ok: false; errors: string[] };
+  | { ok: false; issues: PlacementIssue[] };
 
 export function buildPlacementSlotPayload(
   drafts: readonly PlacementDraft[],
 ): PlacementPayloadResult {
-  const errors: string[] = [];
+  const issues: PlacementIssue[] = [];
   if (drafts.length > PLACEMENT_MAX_ROWS) {
-    errors.push(`A slot can hold at most ${PLACEMENT_MAX_ROWS} rows.`);
+    issues.push({
+      rowKey: null,
+      field: null,
+      message: `A slot can hold at most ${PLACEMENT_MAX_ROWS} rows.`,
+    });
   }
   const items = drafts.map((draft, position): PlacementWriteItem => {
-    const row = `Row ${position + 1}`;
     const linkUrl = draft.linkUrl.trim();
     const refId = draft.refId.trim();
     if (draft.refKind === "external") {
-      if (!linkUrl) errors.push(`${row}: external rows need a link URL.`);
+      if (!linkUrl) {
+        issues.push({ rowKey: draft.key, field: "linkUrl", message: "Enter the link URL." });
+      }
     } else if (!isUuid(refId)) {
-      errors.push(`${row}: choose which ${draft.refKind} to feature.`);
+      issues.push({
+        rowKey: draft.key,
+        field: "refId",
+        message: `Choose which ${PLACEMENT_REF_KIND_COPY[draft.refKind].noun} to feature.`,
+      });
     }
     if (linkUrl && !isAllowedEditorialHref(linkUrl)) {
-      errors.push(`${row}: link ${HREF_RULE_MESSAGE}.`);
+      issues.push({
+        rowKey: draft.key,
+        field: "linkUrl",
+        message: `The link ${HREF_RULE_MESSAGE}.`,
+      });
     }
     return {
       position,
@@ -122,5 +158,5 @@ export function buildPlacementSlotPayload(
       linkUrl: linkUrl || null,
     };
   });
-  return errors.length > 0 ? { ok: false, errors } : { ok: true, payload: { items } };
+  return issues.length > 0 ? { ok: false, issues } : { ok: true, payload: { items } };
 }

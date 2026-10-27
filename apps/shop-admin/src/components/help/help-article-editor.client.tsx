@@ -2,7 +2,6 @@
 
 import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
 import { EditorialBlockEditor } from "@/components/editorial-block-editor.client";
-import { FormScopeProvider } from "@/components/forms/form-field";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
 import { fromBlockItems, toBlockItems } from "@/lib/editorial-blocks";
 import { editorialMutationErrorMessage } from "@/lib/editorial-mutation-message";
@@ -299,7 +298,7 @@ export function HelpArticleEditor({
   const saveLabel = mode === "create" ? "Create draft" : dirty ? "Save changes" : "Saved";
 
   return (
-    <FormScopeProvider value={SCOPE}>
+    <>
       <div className="flex flex-col gap-6">
         <PageHeader
           breadcrumbs={
@@ -563,6 +562,6 @@ export function HelpArticleEditor({
         />
         <UnsavedChangesDialog guard={guard} />
       </div>
-    </FormScopeProvider>
+    </>
   );
 }

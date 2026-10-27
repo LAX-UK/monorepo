@@ -2,7 +2,7 @@
 
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
 import type { AdminMutationResult } from "@/server/application/admin-mutation-result";
-import { toast } from "@auction/ui";
+import { toast } from "@auction/staff-ui";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 

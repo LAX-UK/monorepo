@@ -1,7 +1,6 @@
 "use client";
 
 import { RelationListEditor } from "@/components/editorial/relation-list-editor.client";
-import { TextField } from "@/components/forms/fields";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
 import {
   resolveRailSlugs,
@@ -16,6 +15,7 @@ import {
   railRowsFor,
   railSlugs,
 } from "@/server/domain/editorial-rails.vm";
+import { Field, TextInput } from "@auction/staff-ui";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const NOUNS = {
@@ -80,13 +80,14 @@ export function RailRelationFields({
 
   return (
     <div className="space-y-3">
-      <TextField
-        label="Rail headline (optional)"
-        value={headline}
-        maxLength={200}
-        disabled={disabled}
-        onChange={(value) => onChange({ headline: value, slugs: [...slugs] })}
-      />
+      <Field label="Rail headline" optional disabled={disabled}>
+        <TextInput
+          value={headline}
+          maxLength={200}
+          autoComplete="off"
+          onChange={(event) => onChange({ headline: event.target.value, slugs: [...slugs] })}
+        />
+      </Field>
       <RelationListEditor
         label={`${noun.plural} in this rail`}
         plural={noun.plural}

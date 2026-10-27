@@ -33,7 +33,8 @@ export function EditorialImageField({
   kind: ShopMediaKind;
   /** The stored media key, or null for no image. */
   value: string | null;
-  onChange: (mediaKey: string | null) => void;
+  /** The public URL comes with a fresh upload, for forms that store the address as well. */
+  onChange: (mediaKey: string | null, publicUrl?: string) => void;
   /** Alt text recorded with the upload, when the caller owns it. */
   alt?: string;
   optional?: boolean;
@@ -60,7 +61,7 @@ export function EditorialImageField({
           }),
       });
       setPreviewUrl(confirmed.publicUrl);
-      onChange(confirmed.key);
+      onChange(confirmed.key, confirmed.publicUrl);
     } catch (error) {
       setFailure(error instanceof Error ? error.message : "The upload failed. Try again.");
     } finally {
