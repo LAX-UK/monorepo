@@ -1,3 +1,4 @@
+import { resolveAdminReturnPath } from "@/lib/admin/admin-return-path.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { type UserRole, canAccessFinanceAdminRoutes } from "@auction/types";
 import { redirect } from "next/navigation";
@@ -7,7 +8,7 @@ import type { ReactNode } from "react";
 export default async function AdminFinanceLayout({ children }: { children: ReactNode }) {
   const user = await getServerSessionUser();
   if (!user) {
-    redirect("/login?next=/admin/payments&auth=required");
+    redirect(`/login?next=${encodeURIComponent(await resolveAdminReturnPath())}&auth=required`);
   }
   if (!canAccessFinanceAdminRoutes(user.role as UserRole, user.staffRole ?? null)) {
     redirect("/dashboard");

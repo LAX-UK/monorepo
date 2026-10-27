@@ -1,5 +1,6 @@
 import "server-only";
 
+import { resolveAdminReturnPath } from "@/lib/admin/admin-return-path.server";
 import type { SessionUser } from "@/lib/data/contracts";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import {
@@ -17,7 +18,9 @@ export async function requireAdminCapability(
 ): Promise<SessionUser> {
   const user = await getServerSessionUser();
   if (!user) {
-    redirect(`/login?next=${encodeURIComponent(returnTo)}&auth=required`);
+    const resume = await resolveAdminReturnPath();
+    const next = resume.startsWith(returnTo.split("?")[0] ?? returnTo) ? resume : returnTo;
+    redirect(`/login?next=${encodeURIComponent(next)}&auth=required`);
   }
   const role = user.role as UserRole;
   const staffRole = user.staffRole ?? null;

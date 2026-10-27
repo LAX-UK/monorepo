@@ -11,6 +11,11 @@ vi.mock("@/lib/data/http/session.server", () => ({
   getServerSessionUser: () => getServerSessionUser(),
 }));
 
+const resolveAdminReturnPath = vi.fn(async () => "/admin");
+vi.mock("@/lib/admin/admin-return-path.server", () => ({
+  resolveAdminReturnPath: () => resolveAdminReturnPath(),
+}));
+
 vi.mock("next/navigation", () => ({
   redirect: (url: string) => redirect(url),
 }));
@@ -32,6 +37,22 @@ describe("requireAdminCapability", () => {
     getServerSessionUser.mockResolvedValue(null);
     await expect(requireAdminCapability(LOTS_ACCESS, "/admin/lots")).rejects.toThrow(
       "REDIRECT:/login",
+    );
+  });
+
+  it("returns staff to the page they were on after signing in", async () => {
+    getServerSessionUser.mockResolvedValue(null);
+    resolveAdminReturnPath.mockResolvedValueOnce("/admin/lots/lot-1?tab=bids");
+    await expect(requireAdminCapability(LOTS_ACCESS, "/admin/lots")).rejects.toThrow(
+      `REDIRECT:/login?next=${encodeURIComponent("/admin/lots/lot-1?tab=bids")}&auth=required`,
+    );
+  });
+
+  it("keeps the section as the return path when the request is outside it", async () => {
+    getServerSessionUser.mockResolvedValue(null);
+    resolveAdminReturnPath.mockResolvedValueOnce("/admin");
+    await expect(requireAdminCapability(LOTS_ACCESS, "/admin/lots")).rejects.toThrow(
+      `REDIRECT:/login?next=${encodeURIComponent("/admin/lots")}&auth=required`,
     );
   });
 

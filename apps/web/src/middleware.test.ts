@@ -69,3 +69,16 @@ describe("middleware org module redirects", () => {
     expect(await redirectLocation(response)).toBeNull();
   });
 });
+
+describe("middleware request path headers", () => {
+  it("passes the admin page and its query on, so sign-in can return to it", async () => {
+    const response = await middleware(requestFor("lax.bid", "/admin/lots?status=draft"));
+    expect(response.headers.get("x-middleware-request-x-pathname")).toBe("/admin/lots");
+    expect(response.headers.get("x-middleware-request-x-search")).toBe("?status=draft");
+  });
+
+  it("does not pass the path on for public pages", async () => {
+    const response = await middleware(requestFor("lax.bid", "/lots"));
+    expect(response.headers.get("x-middleware-request-x-pathname")).toBeNull();
+  });
+});
