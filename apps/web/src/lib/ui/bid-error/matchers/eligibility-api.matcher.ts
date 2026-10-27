@@ -71,11 +71,22 @@ export const buyerAgentAuthorisationBidErrorMatcher: BidErrorMatcher = {
   match(raw: string, options?: MapBidErrorOptions): BidErrorPresentation | null {
     if (!matchesCode(options, "buyer_agent_authorisation_required", raw)) return null;
     return {
-      title: "Authorisation required",
-      message: "Buyer agent authorisation is required for this account on this sale.",
+      title: "Authorisation needed",
+      message:
+        "An owner or admin of this organisation needs to authorise you for this sale before you can bid for it. You can still bid in your own name.",
       severity: "error",
-      actionHref: "/dashboard/organisations",
-      actionLabel: "View organisations",
+    };
+  },
+};
+
+export const bidRoleNotPermittedBidErrorMatcher: BidErrorMatcher = {
+  match(raw: string, options?: MapBidErrorOptions): BidErrorPresentation | null {
+    if (!matchesCode(options, "bid_role_not_permitted", raw)) return null;
+    return {
+      title: "You can't bid for this organisation",
+      message:
+        "Only owners, admins and authorised buyers can bid for this organisation. You can still bid in your own name.",
+      severity: "error",
     };
   },
 };

@@ -43,4 +43,19 @@ describe("eligibility API bid error matchers", () => {
     expect(r.severity).toBe("warning");
     expect(r.message).toContain("personal profile");
   });
+
+  it("maps bid_role_not_permitted to a calm refusal", () => {
+    const r = mapBidError("Only owners, admins and authorised buyers", {
+      code: "bid_role_not_permitted",
+    });
+    expect(r.title).toBe("You can't bid for this organisation");
+    expect(r.message).toMatch(/your own name/);
+  });
+
+  it("maps buyer_agent_authorisation_required to ask for an authorisation", () => {
+    const r = mapBidError("Buyer agent authorisation is required", {
+      code: "buyer_agent_authorisation_required",
+    });
+    expect(r.title).toBe("Authorisation needed");
+  });
 });

@@ -3,12 +3,16 @@ import { formatMoney } from "@/lib/format-currency";
 import { BodyText, cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
+import type { ReactNode } from "react";
 import { AutoBidRangeVisual } from "./auto-bid-range-visual";
 import type { useLotAutoBidPanel } from "./use-lot-auto-bid-panel";
 
 type PanelView = ReturnType<typeof useLotAutoBidPanel>;
 
-export function LotAutoBidPanelContent(view: PanelView) {
+export function LotAutoBidPanelContent({
+  biddingAs,
+  ...view
+}: PanelView & { biddingAs?: ReactNode }) {
   const {
     allowedSteps,
     activeSettings,
@@ -138,6 +142,8 @@ export function LotAutoBidPanelContent(view: PanelView) {
       </div>
 
       {success ? <output className="mt-3 block text-sm text-primary">{success}</output> : null}
+
+      {biddingAs ? <div className="mt-4">{biddingAs}</div> : null}
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Button

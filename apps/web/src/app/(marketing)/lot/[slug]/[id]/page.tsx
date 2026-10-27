@@ -104,6 +104,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     saleRegistrationBidGate,
     isOwnLot,
     actingLegalEntityId,
+    biddingAccount,
     saleLots,
     breadcrumbItems,
     viewItemCurrency,
@@ -146,6 +147,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
           saleForLifecycle={saleLifecyclePick}
           isOwnLot={isOwnLot}
           actingLegalEntityId={actingLegalEntityId}
+          biddingAccount={biddingAccount}
           strictBidEligibilityEnabled={isStrictBidEligibilityEnabled()}
         />
       </OnlineBidsView>

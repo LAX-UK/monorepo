@@ -1,5 +1,6 @@
 import type { SaleRegistrationBidGateContext } from "@/lib/bid/policies/types";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
+import { entityRoleCan } from "@auction/domain";
 import type { LegalEntityMemberRole, LegalEntitySummary, SaleDeliveryMode } from "@auction/types";
 import { saleModeAllowsBidding } from "@auction/validators";
 
@@ -24,7 +25,11 @@ function toBuyerEntities(
   memberships: LegalEntitySummary[],
 ): SaleRegistrationBidGateContext["buyerEntities"] {
   return memberships
-    .filter((m) => m.status === "approved" || m.status === "restricted")
+    .filter(
+      (m) =>
+        (m.status === "approved" || m.status === "restricted") &&
+        entityRoleCan(m.role, "entity.bid.place"),
+    )
     .map((m) => ({
       id: m.id,
       displayName: m.displayName,

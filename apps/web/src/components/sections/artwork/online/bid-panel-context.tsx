@@ -5,6 +5,7 @@ import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-vie
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
 import type { BidPanelSurface } from "@/components/sections/artwork/online/bid-panel-surface";
 import type { usePlaceBid } from "@/hooks/lot-bid/use-place-bid";
+import type { BiddingAccount } from "@/lib/bid/bidding-account";
 import type { LotBidPosition } from "@/lib/bid/derive-lot-bid-position";
 import type { BidPolicyDecision } from "@/lib/bid/policies/types";
 import type { SaleRegistrationBidGateContext } from "@/lib/bid/policies/types";
@@ -55,6 +56,8 @@ export type BidPanelContextValue = {
   connectivityScope: "hybrid" | "bidding";
   auction: Lot | PublicLotView;
   sessionUser: SessionUser | null;
+  /** Who a bid here is for; `null` when signed out. */
+  biddingAccount: BiddingAccount | null;
   summarySeed: LotSummarySeedVM;
   initialWatching: boolean;
   omitPricingHeader: boolean;

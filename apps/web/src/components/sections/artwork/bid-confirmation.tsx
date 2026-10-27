@@ -3,6 +3,7 @@ import { formatMoney } from "@/lib/format-currency";
 import type { BidErrorPresentation } from "@/lib/ui/bid-error";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 type Props = {
   amount: string;
@@ -13,6 +14,8 @@ type Props = {
   biddingDisabled?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
+  /** Names the account the bid is for, under the amount. */
+  biddingAs?: ReactNode;
 };
 
 export function BidConfirmation({
@@ -24,6 +27,7 @@ export function BidConfirmation({
   biddingDisabled = false,
   onCancel,
   onConfirm,
+  biddingAs = null,
 }: Props) {
   return (
     <div className="space-y-8">
@@ -34,6 +38,7 @@ export function BidConfirmation({
               This bid
             </dt>
             <dd className="font-headline text-3xl text-primary">{formatMoney(amount)}</dd>
+            {biddingAs ? <div className="mt-2">{biddingAs}</div> : null}
           </div>
           {maxAuto ? (
             <div className="border-t border-outline-variant/20 pt-4">

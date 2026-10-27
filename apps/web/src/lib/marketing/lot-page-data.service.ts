@@ -5,6 +5,7 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import type { PublicUser, SessionUser } from "@/lib/data/contracts";
 import { fetchRegistryArtistById } from "@/lib/data/http/artist.server";
 import { getServerAutoBid } from "@/lib/data/http/auto-bid.server";
+import { getServerBidAuthority } from "@/lib/data/http/buyer-agent-authorisations.server";
 import { getServerConditionReportForLot } from "@/lib/data/http/condition-report.server";
 import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
 import {
@@ -62,6 +63,8 @@ export type LotPageSecondaryData = {
         currentLotId: null;
       };
   orgModuleEnabled: boolean;
+  /** Whether the person may bid for the acting organisation in this sale; `null` when personal. */
+  bidAuthority: Awaited<ReturnType<typeof getServerBidAuthority>>;
 };
 
 export class LotPageDataService {
@@ -165,6 +168,12 @@ export class LotPageDataService {
         resolveOrgModuleEnabledFromRequest(),
       ]);
 
+    const acting = actingCtx.acting;
+    const bidAuthority =
+      session && acting?.kind === "organisation"
+        ? await getServerBidAuthority(acting.id, auction.saleId ?? null).catch(() => null)
+        : null;
+
     const telephoneBookingForOnsite =
       session && isOnsiteSale && auction.saleId
         ? await getServerTelephoneBookingForSale(auction.saleId).catch(() => null)
@@ -182,6 +191,7 @@ export class LotPageDataService {
       telephoneBookingForOnsite,
       initialSaleroomStatus,
       orgModuleEnabled,
+      bidAuthority,
     };
   }
 }
