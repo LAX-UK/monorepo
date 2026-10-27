@@ -2,6 +2,7 @@
 
 import { usePaymentMoneyActions } from "@/components/admin/payments/payment-money-actions";
 import { PaymentQuickView } from "@/components/admin/payments/payment-quick-view";
+import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
 import { ExportButton } from "@/components/exports/export-button";
 import {
@@ -10,6 +11,7 @@ import {
   type PaymentsListSearch,
   type PaymentsStaffRow,
   type PaymentsViewId,
+  paymentPanelHref,
   paymentsAttention,
   paymentsFilterChips,
   paymentsListHref,
@@ -32,7 +34,7 @@ import {
 } from "@auction/staff-ui";
 import { Banknote, CircleCheck, Hourglass, Undo2 } from "@auction/staff-ui/icons";
 import Link from "next/link";
-import { type ReactNode, useMemo, useState } from "react";
+import { type ReactNode, useCallback, useMemo } from "react";
 
 const PAYMENT_METRIC_ICONS: Record<string, ReactNode> = {
   volume: <Banknote />,
@@ -62,7 +64,13 @@ export type PaymentsStaffListProps = {
 export function PaymentsStaffList(props: PaymentsStaffListProps) {
   const { search, rows } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
-  const [openId, setOpenId] = useState<string | null>(null);
+  const panelHref = useCallback((id: string | null) => paymentPanelHref(search, id), [search]);
+  const panel = useListPanel({
+    param: "payment",
+    initialId: typeof search.payment === "string" ? search.payment : null,
+    hrefFor: panelHref,
+  });
+  const openId = panel.openId;
   const money = usePaymentMoneyActions({ canWritePayments: props.canWritePayments });
   const q = typeof search.q === "string" ? search.q : "";
   const status = typeof search.status === "string" ? search.status : "";
@@ -269,12 +277,12 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
           // The lot cell carries a second line (lot number and sale), which needs 44px rows.
           defaultDensity: "comfortable",
           defaultHiddenColumns: ["xero"],
-          onRowOpen: (row) => setOpenId(row.id),
+          onRowOpen: (row) => panel.show(row.id),
           activeRowId: openId,
           rowActions: {
             label: (row) => `Actions for payment ${row.lotTitle}`,
             actions: (row) => [
-              { id: "open", label: "Open details", onSelect: () => setOpenId(row.id) },
+              { id: "open", label: "Open details", onSelect: () => panel.show(row.id) },
               { id: "lot", label: "Open lot", href: `/admin/lots/${row.lotId}` },
               ...money.actionsFor(row),
             ],
@@ -289,7 +297,7 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
       <PaymentQuickView
         row={openRow}
         canWritePayments={props.canWritePayments}
-        onClose={() => setOpenId(null)}
+        onClose={() => panel.show(null)}
         onCapture={money.capture}
         onRefund={money.refund}
         moneyActions={openRow ? money.actionsFor(openRow) : []}
