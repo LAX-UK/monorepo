@@ -6,11 +6,13 @@ import { assertMutationCsrf } from "../domain/csrf-policy";
 import type { AdminApiClient } from "../ports/admin-api-client";
 import type { Clock } from "../ports/clock";
 import type { SessionStore } from "../ports/session-store";
+import type { StaffSessionRenewal } from "../ports/staff-session-renewal";
 import { refreshStaffSessionIfNeeded } from "./refresh-staff-session";
 
 export async function forwardAdminRequest(input: {
   config: ShopAdminConfig;
   sessions: SessionStore;
+  renewal: StaffSessionRenewal;
   adminApi: AdminApiClient;
   clock: Clock;
   sessionId: string | null;
@@ -50,8 +52,9 @@ export async function forwardAdminRequest(input: {
     throw new Error("Unauthorized");
   }
   session = await refreshStaffSessionIfNeeded({
-    config: input.config,
     sessions: input.sessions,
+    renewal: input.renewal,
+    sessionTtlSeconds: input.config.sessionTtlSeconds,
     clock: input.clock,
     sessionId: input.sessionId,
     session,

@@ -24,6 +24,7 @@ async function handle(request: Request, pathSegments: string[]): Promise<Respons
     const result = await container.forwardAdminRequest({
       config: container.config,
       sessions: container.sessions,
+      renewal: container.sessionRenewal,
       adminApi: container.adminApi,
       clock: container.clock,
       sessionId,

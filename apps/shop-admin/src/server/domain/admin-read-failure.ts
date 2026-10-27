@@ -1,4 +1,5 @@
 import { isIdentityRejected } from "@auction/identity-rp";
+import { isStaffSessionEnded } from "./staff-session-ended";
 
 export type AdminReadFailure =
   | { kind: "unauthorized" }
@@ -14,7 +15,7 @@ export function classifyAdminReadFailure(error: unknown): AdminReadFailure {
   if (error instanceof Error && error.message === "Unauthorized") {
     return { kind: "unauthorized" };
   }
-  if (isIdentityRejected(error)) {
+  if (isIdentityRejected(error) || isStaffSessionEnded(error)) {
     return { kind: "unauthorized" };
   }
   if (error instanceof Error) {

@@ -54,6 +54,7 @@ export async function forwardAdminMutation<T = unknown>(
     const result = await container.forwardAdminRequest({
       config: container.config,
       sessions: container.sessions,
+      renewal: container.sessionRenewal,
       adminApi: container.adminApi,
       clock: container.clock,
       sessionId,
