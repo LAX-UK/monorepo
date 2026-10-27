@@ -1,3 +1,4 @@
+import { lotOutcome } from "@/lib/lot/lot-outcome";
 import type { StatusBadgeVariant } from "@/lib/presenters/status-presentation";
 import { resolveStatusPresentation } from "@/lib/presenters/status-presentation";
 import type { LotStatusContext, StatusDomain } from "@/lib/presenters/status/core";
@@ -113,9 +114,9 @@ export function staffStatus(
 
 /** Sold when the lot has a winner, Unsold when it closed without one, Ended when not known. */
 function endedLotStatus(context: LotStatusContext | undefined): StatusPresentation {
-  const winner = context?.winnerId;
-  if (winner != null || context?.hasWinner === true) return { label: "Sold", tone: "success" };
-  if (winner === null || context?.hasWinner === false) return { label: "Unsold", tone: "neutral" };
+  const outcome = lotOutcome(context);
+  if (outcome === "sold") return { label: "Sold", tone: "success" };
+  if (outcome === "unsold") return { label: "Unsold", tone: "neutral" };
   return { label: "Ended", tone: "neutral" };
 }
 

@@ -22,6 +22,7 @@ import {
   resolveSaleLotsBoardMode,
   saleLotsBoardFilters,
 } from "@/lib/data/view-models/sale-lots-tab.vm";
+import { lotWasSold } from "@/lib/lot/lot-outcome";
 import {
   type DataColumn,
   DataTableToolbar,
@@ -89,7 +90,7 @@ function toRow(lot: Lot): SaleLotRow {
   const estimate = lot.marketingDetails?.estimate;
   const low = minor(estimate?.low);
   const high = minor(estimate?.high);
-  const sold = lot.status === "ended" && Boolean(lot.winnerId);
+  const sold = lot.status === "ended" && lotWasSold(lot);
   const bidding = lot.status === "active" || sold;
   const current = minor(lot.currentPrice);
   return {
@@ -102,7 +103,7 @@ function toRow(lot: Lot): SaleLotRow {
     estimate: low !== null && high !== null ? { low, high } : null,
     reserve: minor(lot.reservePrice),
     current: bidding && current !== null && current > 0 ? current : null,
-    unsold: lot.status === "ended" && !lot.winnerId,
+    unsold: lot.status === "ended" && !lotWasSold(lot),
   };
 }
 
@@ -351,7 +352,7 @@ export function SaleLotsTabBoard({
             status: lot.status,
             inDraftSale: canEditDraft,
             canDelete: false,
-            hasWinner: Boolean(lot.winnerId),
+            hasWinner: lotWasSold(lot),
             withdrawalRequested: false,
           }),
         ];
