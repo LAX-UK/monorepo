@@ -37,7 +37,8 @@ export function AppShellBreadcrumbs({
             <MobileShellTitle items={items} model={resolvedModel} />
           </div>
         ) : null}
-        {variant !== "mobile" ? (
+        {/* A trail of one only repeats the page title, so it is left out. */}
+        {variant !== "mobile" && items.length > 1 ? (
           <nav aria-label="Breadcrumb" className="hidden min-w-0 flex-1 lg:block lg:flex-none">
             <Breadcrumbs items={items} className="text-xs" inline />
           </nav>

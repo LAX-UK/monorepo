@@ -21,9 +21,7 @@ export function AccountRolePill({
       )}
     >
       <span className={`size-1.5 rounded-full ${roleMeta.dotClassName}`} aria-hidden />
-      <span className="font-label text-[10px] font-bold uppercase tracking-[0.12em]">
-        {shellRolePillLabel(user)}
-      </span>
+      <span className="font-label text-xs font-medium">{shellRolePillLabel(user)}</span>
     </div>
   );
 }

@@ -98,8 +98,9 @@ export const entityNotAuthorisedBidErrorMatcher: BidErrorMatcher = {
       title: "Account not authorised",
       message: "Your buying profile is not approved to place bids yet.",
       severity: "error",
-      actionHref: "/home",
-      actionLabel: "Go to dashboard",
+      // The accounts list shows each account's approval status.
+      actionHref: "/organisations",
+      actionLabel: "View your accounts",
     };
   },
 };

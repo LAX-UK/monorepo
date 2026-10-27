@@ -7,7 +7,7 @@ import { openCommandPalette } from "@/components/layout/command-palette-events";
 import { LogoutButton } from "@/components/layout/logout-button";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { DensityTweakSection } from "@/components/layout/tweaks-popover";
-import { MediaImage } from "@/components/ui/media-image";
+import { PersonAvatar } from "@/components/ui/person-avatar";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import type { SessionUser } from "@/lib/data/contracts";
 import { laxAccountHomeUrl } from "@/lib/lax-account-url";
@@ -120,13 +120,10 @@ function MobileProfileStrip({
   return (
     <div className="rounded-lg border border-border-hairline bg-surface-container-low/40 p-4">
       <div className="flex items-center gap-3">
-        <MediaImage
-          src={user.image ?? null}
-          alt={displayName}
-          label={profileInitials(user.name, user.email)}
-          shape="circle"
-          sizes="40px"
-          className="size-10 shrink-0"
+        <PersonAvatar
+          src={user.image}
+          name={displayName}
+          initials={profileInitials(user.name, user.email)}
         />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-on-surface">{displayName}</p>

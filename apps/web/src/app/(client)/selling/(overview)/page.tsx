@@ -3,6 +3,7 @@ import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SellerProfileUnavailableAlert } from "@/components/dashboard/seller-profile-unavailable-alert";
 import { SellerAttentionList } from "@/components/dashboard/seller/seller-attention-list";
+import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import {
   legalEntityToConnectFields,
@@ -102,8 +103,10 @@ export default async function SellerOverviewPage() {
 
   return (
     <DashboardPage className="space-y-8">
+      {/* For an organisation this page is its Home until Home has a page of its own. */}
+      {sellingAsOrganisation ? <SetMobileShellTitle title="Home" /> : null}
       <DashboardPageHeader
-        title="Overview"
+        title={sellingAsOrganisation ? "Home" : "Overview"}
         hideTitleOnMobile
         hideDescriptionOnMobile
         description="What needs you today, and where to find the rest."

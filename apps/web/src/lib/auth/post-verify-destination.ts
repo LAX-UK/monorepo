@@ -103,6 +103,6 @@ export function resolvePostVerifyDestination(
 
   return {
     href: eventualDestination,
-    label: eventualDestination === "/home" ? "Go to dashboard" : "Continue",
+    label: eventualDestination === "/home" ? "Continue to Bid" : "Continue",
   };
 }

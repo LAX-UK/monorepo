@@ -1,7 +1,7 @@
 "use client";
 
 import { ChromePopoverPanel } from "@/components/marketing/chrome-popover-panel";
-import { MediaImage } from "@/components/ui/media-image";
+import { PersonAvatar } from "@/components/ui/person-avatar";
 import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import type { SessionUser } from "@/lib/data/contracts";
@@ -126,17 +126,15 @@ export function HeaderUserMenu({
         onClick={() => setOpen((o) => !o)}
         onKeyDown={onTriggerKeyDown}
       >
-        <MediaImage
-          src={user.image ?? null}
-          alt={displayName}
-          label={initials(user.name, user.email)}
-          shape="circle"
-          sizes="36px"
-          className="h-9 w-9 shrink-0"
+        <PersonAvatar
+          src={user.image}
+          name={displayName}
+          initials={initials(user.name, user.email)}
+          className="size-9"
         />
         <span
           className={cn(
-            "hidden min-w-0 truncate font-label text-sm font-medium uppercase leading-tight sm:inline",
+            "hidden min-w-0 truncate font-label text-sm font-medium leading-tight sm:inline",
             headerTone === "on-dark"
               ? "text-hero-foreground"
               : "text-brand-900 dark:text-on-surface",
@@ -177,25 +175,24 @@ export function HeaderUserMenu({
           <div className="py-1">
             {otherProducts.length > 0 ? (
               <div className="border-b border-nav-border px-3 py-2 dark:border-border-hairline">
-                <p className="font-label text-[10px] font-bold uppercase tracking-[0.12em] text-brand-400 dark:text-on-surface-variant">
+                <p className="font-label text-xs font-medium text-brand-400 dark:text-on-surface-variant">
                   LAX products
                 </p>
-                <ul className="mt-2 flex flex-col gap-1">
+                <div className="mt-2 flex flex-col gap-1">
                   {otherProducts.map((item) => (
-                    <li key={item.id}>
-                      <a
-                        href={item.href}
-                        role="menuitem"
-                        data-account-menu-item=""
-                        className="block px-0 py-1.5 font-label text-xs font-medium uppercase tracking-wide text-brand-900 transition-colors hover:text-link focus-visible:outline-none dark:text-on-surface"
-                        rel="noopener noreferrer"
-                        onClick={closeMenu}
-                      >
-                        {item.label}
-                      </a>
-                    </li>
+                    <a
+                      key={item.id}
+                      href={item.href}
+                      role="menuitem"
+                      data-account-menu-item=""
+                      className="block px-0 py-1.5 font-label text-sm font-medium text-brand-900 transition-colors hover:text-link focus-visible:text-link focus-visible:underline focus-visible:outline-none dark:text-on-surface"
+                      rel="noopener noreferrer"
+                      onClick={closeMenu}
+                    >
+                      {item.label}
+                    </a>
                   ))}
-                </ul>
+                </div>
               </div>
             ) : null}
             <AccountMenuItems groups={groups} variant="header" menu onNavigate={closeMenu} />

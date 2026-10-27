@@ -117,7 +117,7 @@ describe("resolvePostVerifyDestination existing routing", () => {
   it("defaults to /home when no persona signal exists", () => {
     expect(resolvePostVerifyDestination({})).toEqual({
       href: "/home",
-      label: "Go to dashboard",
+      label: "Continue to Bid",
     });
   });
 
@@ -131,7 +131,7 @@ describe("resolvePostVerifyDestination existing routing", () => {
   it("individual persona from session routes to /home", () => {
     expect(resolvePostVerifyDestination({ sessionPersona: "individual" })).toEqual({
       href: "/home",
-      label: "Go to dashboard",
+      label: "Continue to Bid",
     });
   });
 
@@ -148,7 +148,7 @@ describe("resolvePostVerifyDestination existing routing", () => {
         queryPersona: "organisation",
         sessionPersona: "individual",
       }),
-    ).toEqual({ href: "/home", label: "Go to dashboard" });
+    ).toEqual({ href: "/home", label: "Continue to Bid" });
   });
 
   it("safe ?next= wins over persona signal", () => {
@@ -175,12 +175,12 @@ describe("resolvePostVerifyDestination existing routing", () => {
         sessionPersona: "organisation",
         orgModuleEnabled: false,
       }),
-    ).toEqual({ href: "/home", label: "Go to dashboard" });
+    ).toEqual({ href: "/home", label: "Continue to Bid" });
   });
 
   it("unknown persona strings are ignored", () => {
     expect(
       resolvePostVerifyDestination({ queryPersona: "robot" as unknown as "individual" }),
-    ).toEqual({ href: "/home", label: "Go to dashboard" });
+    ).toEqual({ href: "/home", label: "Continue to Bid" });
   });
 });

@@ -14,11 +14,11 @@ export type AccountMenuVariant = "header" | "shell" | "drawer";
 
 const ITEM_CLASS: Record<AccountMenuVariant, string> = {
   header:
-    "block px-3 py-2.5 font-label text-sm font-medium uppercase tracking-wide text-brand-900 transition-colors hover:bg-page-bg focus-visible:bg-page-bg focus-visible:outline-none dark:text-on-surface dark:hover:bg-surface-container-low",
+    "block px-3 py-2.5 font-label text-sm font-medium text-brand-900 transition-colors hover:bg-page-bg focus-visible:bg-page-bg focus-visible:outline-none dark:text-on-surface dark:hover:bg-surface-container-low",
   shell:
     "block px-4 py-2.5 font-label text-sm font-medium text-on-surface transition-colors hover:bg-surface-container-low focus-visible:bg-surface-container-low focus-visible:outline-none",
   drawer: cn(
-    "block min-h-11 rounded-sm py-2 font-label text-sm font-medium uppercase tracking-wide",
+    "block min-h-11 rounded-sm py-2 font-label text-sm font-medium",
     "text-brand-900 transition-colors hover:text-brand-800 dark:text-on-surface",
     FOCUS_RING,
   ),
