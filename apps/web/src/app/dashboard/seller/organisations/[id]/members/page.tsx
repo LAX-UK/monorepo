@@ -1,10 +1,12 @@
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardErrorAlert } from "@/components/dashboard/primitives";
+import { BuyerAgentsSection } from "@/components/legal-entity/buyer-agents/buyer-agents-section";
 import { InviteMemberForm } from "@/components/legal-entity/invite-member-form";
 import { MemberList } from "@/components/legal-entity/member-list";
 import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { buildDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
+import { getServerBuyerAgentOverview } from "@/lib/data/http/buyer-agent-authorisations.server";
 import { getServerOrgTwoFactorPolicy } from "@/lib/data/http/two-factor-policy.server";
 import {
   type ILegalEntityMemberListGateway,
@@ -67,6 +69,13 @@ export default async function OrganisationMembersPage({
     viewerIsAdmin && acting.kind === "organisation"
       ? await getServerOrgTwoFactorPolicy(acting.id)
       : null;
+  const canSeeBuyerAgents =
+    acting.kind === "organisation" &&
+    meRow != null &&
+    entityRoleCan(meRow.role, "entity.buyer_agents.read");
+  const buyerAgentOverview = canSeeBuyerAgents
+    ? await getServerBuyerAgentOverview(acting.id).catch(() => null)
+    : null;
   const twoFactorByUserId = twoFactorPolicy
     ? Object.fromEntries(twoFactorPolicy.members.map((m) => [m.userId, m.twoFactorEnabled]))
     : undefined;
@@ -121,6 +130,14 @@ export default async function OrganisationMembersPage({
         viewerIsPrimaryAdmin={viewerIsPrimaryAdmin}
         viewerUserId={user.id}
       />
+
+      {buyerAgentOverview ? (
+        <BuyerAgentsSection
+          legalEntityId={acting.id}
+          entityName={acting.displayName}
+          overview={buyerAgentOverview}
+        />
+      ) : null}
     </div>
   );
 }

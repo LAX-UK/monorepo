@@ -37,7 +37,8 @@ export type LegalEntityDetailRouteTab =
   | "compliance"
   | "stripe"
   | "activity"
-  | "sales";
+  | "sales"
+  | "buyer-agents";
 
 const LEGAL_ENTITY_ROUTE_TABS = new Set<string>([
   "overview",
@@ -46,6 +47,7 @@ const LEGAL_ENTITY_ROUTE_TABS = new Set<string>([
   "stripe",
   "activity",
   "sales",
+  "buyer-agents",
 ]);
 
 /** Map legacy legal-entity `?tab=` values to route segments. */
@@ -71,8 +73,10 @@ export function buildLegalEntityDetailTabSpecs(input: {
   pendingDocCount: number;
   stripeDueCount: number;
   saleCount?: number;
+  /** Organisations have buyer agents; a person's own profile does not. */
+  hasBuyerAgents?: boolean;
 }): CatalogDetailTabSpec[] {
-  const { entityId, pendingDocCount, stripeDueCount, saleCount = 0 } = input;
+  const { entityId, pendingDocCount, stripeDueCount, saleCount = 0, hasBuyerAgents = true } = input;
   return [
     {
       id: "overview",
@@ -102,6 +106,15 @@ export function buildLegalEntityDetailTabSpecs(input: {
       href: legalEntityDetailTabHref(entityId, "sales"),
       ...(saleCount > 0 ? { count: saleCount } : {}),
     },
+    ...(hasBuyerAgents
+      ? [
+          {
+            id: "buyer-agents",
+            label: "Buyer agents",
+            href: legalEntityDetailTabHref(entityId, "buyer-agents"),
+          },
+        ]
+      : []),
     {
       id: "activity",
       label: "Activity",

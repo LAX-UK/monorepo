@@ -12,6 +12,7 @@ const files = [
   "src/routes/auth.ts",
   "src/routes/legal-entities.ts",
   "src/routes/legal-entity-members.ts",
+  "src/routes/legal-entity-buyer-agents.ts",
   "src/routes/organizations.ts",
   "src/routes/organization-onboarding.ts",
 ];
@@ -26,6 +27,7 @@ const ALLOWED_CONTAINER_KEYS = new Set([
   "requireLegalEntityContext",
   "orgModuleGate",
   "userService",
+  "buyerAgents",
 ]);
 
 const re = /(?<![\w./])container\.(\w+)\b/g;
