@@ -3,7 +3,12 @@ import { recordDashboardSliceFailure } from "@/lib/admin/dashboard/dashboard-tel
 import { type RoleKpisSlice, buildRoleKpisSlice } from "@/lib/admin/dashboard/role-kpis.slice";
 import type { AdminHomeKpiTrends } from "@/lib/data/http/admin-kpi-trends.server";
 import type { AdminTodayMetricsPayload } from "@/lib/data/http/admin.server";
-import { FINANCE_ACCESS, SUBMISSIONS_ACCESS } from "@auction/types";
+import {
+  ADMIN_DASHBOARD_ACCESS,
+  FINANCE_ACCESS,
+  SUBMISSIONS_ACCESS,
+  canAccessPlatformAdminRoutes,
+} from "@auction/types";
 
 export type RoleKpisLoadResult = {
   slice: RoleKpisSlice;
@@ -37,12 +42,18 @@ export async function loadRoleKpisSlice(
     bidsPerMinute: number;
   },
 ): Promise<RoleKpisLoadResult> {
-  const includeSubmissions = ctx.can(SUBMISSIONS_ACCESS);
-  const includePayments = ctx.can(FINANCE_ACCESS);
+  // Each trend is asked for only when the API will answer this person. The trends live on the
+  // platform admin routes, which the finance shell cannot reach, so it never triggers refused
+  // requests; within the platform shell each trend follows its own permission.
+  const onPlatformShell = canAccessPlatformAdminRoutes(ctx.role, ctx.staffRole);
+  const includeLots = onPlatformShell && ctx.can(ADMIN_DASHBOARD_ACCESS);
+  const includeSubmissions = onPlatformShell && ctx.can(SUBMISSIONS_ACCESS);
+  const includePayments = onPlatformShell && ctx.can(FINANCE_ACCESS);
 
   let trends = EMPTY_TRENDS(ctx.periodDays);
   try {
     trends = await ctx.sources.getHomeKpiTrends(ctx.periodDays, {
+      includeLots,
       includeSubmissions,
       includePayments,
       includeLiveLots: ctx.profile.kpiIds.includes("live-lots"),

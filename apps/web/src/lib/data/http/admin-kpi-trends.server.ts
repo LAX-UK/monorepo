@@ -104,6 +104,8 @@ export async function getAdminSubmissionsKpiTrend(
 }
 
 export type AdminHomeKpiTrendsOptions = {
+  /** Lots trend; the API only serves it to staff who can open the overview. Defaults to true. */
+  includeLots?: boolean;
   includeSubmissions?: boolean;
   includePayments?: boolean;
   /** Lots open for bidding on each day, for the Live lots number. */
@@ -122,11 +124,12 @@ export async function getAdminHomeKpiTrends(
   periodDays: AdminKpiPeriodDays,
   options: AdminHomeKpiTrendsOptions = {},
 ): Promise<AdminHomeKpiTrends> {
+  const includeLots = options.includeLots ?? true;
   const includeSubmissions = options.includeSubmissions ?? false;
   const includePayments = options.includePayments ?? false;
 
   const [lots, submissions, payments, liveLots] = await Promise.all([
-    getAdminLotsKpiTrend(periodDays),
+    includeLots ? getAdminLotsKpiTrend(periodDays) : Promise.resolve(emptyKpiTrend(periodDays)),
     includeSubmissions
       ? getAdminSubmissionsKpiTrend(periodDays)
       : Promise.resolve(emptyKpiTrend(periodDays)),
@@ -134,7 +137,7 @@ export async function getAdminHomeKpiTrends(
       ? getAdminPaymentsKpiTrend(periodDays)
       : Promise.resolve(emptyKpiTrend(periodDays)),
     // A missing live series leaves the number without its trend rather than failing the rest.
-    options.includeLiveLots
+    includeLots && options.includeLiveLots
       ? getAdminLotsLiveKpiTrend(periodDays).catch(() => undefined)
       : Promise.resolve(undefined),
   ]);
