@@ -18,6 +18,7 @@ import type {
   AdminWorkItemSourceRow,
   IAdminWorkItemsReader,
 } from "../interfaces/admin-work-items.reader.js";
+import { lotWorkItemTitle, sentenceCase } from "./work-item-labels.js";
 
 const GBP = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
 
@@ -132,7 +133,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       sourceId: row.paymentId,
       kind: "payment_manual_review" as const,
       domain: "finance" as const,
-      title: `Payment manual review — Lot ${row.lotNumber ?? "?"}: ${row.lotTitle}`,
+      title: lotWorkItemTitle("Payment manual review", row.lotNumber, row.lotTitle),
       subtitle: `${row.winnerEmail ?? "Buyer"} · ${formatWorkItemAmount(row.amount)}`,
       href: `/admin/payments/${row.paymentId}`,
       saleId: null,
@@ -242,7 +243,7 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       sourceId: row.id,
       kind: "condition_report" as const,
       domain: "catalogue" as const,
-      title: `Condition report — Lot ${row.lotNumber ?? "?"}: ${row.lotTitle}`,
+      title: lotWorkItemTitle("Condition report", row.lotNumber, row.lotTitle),
       subtitle: row.status === "in_progress" ? "In progress" : "Pending",
       href: `/admin/condition-reports?preview=${row.id}`,
       saleId: null,
@@ -280,8 +281,8 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       sourceId: row.lotId,
       kind: "lot_fulfilment" as const,
       domain: "fulfilment" as const,
-      title: `Fulfilment — Lot ${row.lotNumber ?? "?"}: ${row.lotTitle}`,
-      subtitle: row.status.replaceAll("_", " "),
+      title: lotWorkItemTitle("Fulfilment", row.lotNumber, row.lotTitle),
+      subtitle: sentenceCase(row.status),
       href: `/admin/lot-fulfilment?preview=${row.lotId}`,
       saleId: null,
       createdAt: row.createdAt,

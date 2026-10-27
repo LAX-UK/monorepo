@@ -1,5 +1,6 @@
 "use client";
 
+import { describePendingWork } from "@/features/saleroom/lib/describe-pending-work";
 import { fetchAdminSaleOperationsSnapshot } from "@/lib/data/http/operations-snapshot.client";
 import { RateLimitedError, mapInChunks } from "@/lib/data/http/rate-limited";
 import type { SaleroomHubRowSummary } from "@/lib/data/view-models/admin-saleroom-hub.vm";
@@ -71,14 +72,12 @@ export function useSaleroomHubMetricsPoll(
       if (pending > prev) {
         const row = rows.find((r) => r.saleId === saleId);
         const title = row?.title ?? "Saleroom";
-        const reg = snap?.registrations.pending ?? 0;
-        const tel = snap?.telephoneBookings.requested ?? 0;
-        const parts: string[] = [];
-        if (reg > 0) parts.push(`${reg} reg pending`);
-        if (tel > 0) parts.push(`${tel} tel pending`);
         notify.info(`${title} needs attention`, {
           id: `hub-attention-${saleId}`,
-          description: parts.join(" · ") || "New pending work",
+          description: describePendingWork({
+            registrations: snap?.registrations.pending ?? 0,
+            telephoneBookings: snap?.telephoneBookings.requested ?? 0,
+          }),
         });
       }
       prevPendingRef.current[saleId] = pending;
