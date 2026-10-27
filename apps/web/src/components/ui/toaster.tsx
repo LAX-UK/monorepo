@@ -1,6 +1,8 @@
 "use client";
 
+import { isAdminPath } from "@/lib/admin/admin-return-path";
 import { Toaster as AuctionToaster } from "@auction/ui";
+import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
 function useHtmlDarkClass(): "light" | "dark" {
@@ -16,8 +18,13 @@ function useHtmlDarkClass(): "light" | "dark" {
   return theme;
 }
 
-/** Global toast host — theme follows `<html class="dark">`; defaults live in `@auction/ui`. */
+/**
+ * Global toast host — theme follows `<html class="dark">`; defaults live in `@auction/ui`.
+ * Admin pages render the staff toaster from their own shell instead, so a toast shows once.
+ */
 export function Toaster() {
   const resolvedTheme = useHtmlDarkClass();
+  const pathname = usePathname();
+  if (isAdminPath(pathname)) return null;
   return <AuctionToaster theme={resolvedTheme} />;
 }
