@@ -8,6 +8,7 @@ import type {
   ITelephoneBidBookingQueryService,
   ITelephoneBidBookingStaffService,
 } from "../interfaces/telephone-bid-booking-service.js";
+import type { ITelephoneClerkEligibility } from "./telephone-clerk-eligibility.js";
 
 export class AdminTelephoneBookingApplicationService
   implements IAdminTelephoneBookingApplicationService
@@ -15,6 +16,7 @@ export class AdminTelephoneBookingApplicationService
   constructor(
     private readonly staff: ITelephoneBidBookingStaffService,
     private readonly query: ITelephoneBidBookingQueryService,
+    private readonly clerks: ITelephoneClerkEligibility,
   ) {}
 
   async countGlobalPending(): Promise<{ count: number }> {
@@ -57,15 +59,26 @@ export class AdminTelephoneBookingApplicationService
   assignClerk(
     input: Parameters<IAdminTelephoneBookingApplicationService["assignClerk"]>[0],
   ): Promise<BiddingRouteOutcome<TelephoneBidBooking>> {
-    return this.withBookingOnSale(input.saleId, input.bookingId, async () =>
-      biddingRouteFromServiceResult(
+    return this.withBookingOnSale(input.saleId, input.bookingId, async () => {
+      if (!(await this.clerks.canTakeTelephoneLines(input.clerkUserId))) {
+        return {
+          kind: "err",
+          error: {
+            message:
+              "That person cannot take telephone lines; choose a member of the saleroom team",
+            status: 400,
+            code: "clerk_not_eligible",
+          },
+        };
+      }
+      return biddingRouteFromServiceResult(
         await this.staff.assignClerk({
           bookingId: input.bookingId,
           staffUserId: input.staffUserId,
           clerkUserId: input.clerkUserId,
         }),
-      ),
-    );
+      );
+    });
   }
 
   approveLimitIncrease(

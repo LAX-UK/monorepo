@@ -149,10 +149,42 @@ describe("loadAdminDashboardPage", () => {
     });
 
     expect(getHomeTrends).toHaveBeenCalledWith(7, {
+      includeLots: true,
       includeSubmissions: true,
       includePayments: false,
       includeLiveLots: true,
     });
+  });
+
+  it("asks for no trends from the platform routes when the role is on the finance shell", async () => {
+    await loadAdminDashboardPage({
+      periodDays: 7,
+      role: "staff",
+      staffRole: "finance_ops",
+      actorUserId: "user-1",
+      widgets: [],
+      dataSources: {
+        getMetricsToday,
+        getMetricsLive,
+        getNavCounts,
+        getFinanceIssues,
+        getHomeKpiTrends: getHomeTrends,
+        getActiveLots: () => getLotList({ status: "active", limit: 20 }),
+        getRecentLots: () => getLotList({ limit: 12 }),
+        getOperationsRadar: getOpsRadar,
+        getWorkItems,
+        getSaleReadiness,
+      },
+    });
+
+    expect(getHomeTrends).toHaveBeenCalledWith(
+      7,
+      expect.objectContaining({
+        includeLots: false,
+        includeSubmissions: false,
+        includePayments: false,
+      }),
+    );
   });
 
   it("surfaces a load warning when core metrics fail", async () => {

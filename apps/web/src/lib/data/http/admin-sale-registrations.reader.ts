@@ -12,6 +12,7 @@ import type {
   AdminSaleListRow,
   AdminSaleRegistrationRow,
 } from "@/lib/data/http/admin-sale-registrations.types";
+import { AdminSessionExpiredError } from "@/lib/data/http/admin-session-expired";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { readDataEnvelope, readJsonBody } from "@/lib/data/http/envelope";
 import type { Sale } from "@auction/types";
@@ -49,6 +50,7 @@ export async function getAdminSalesList(
 export async function getAdminSaleById(id: string): Promise<AdminSaleDetailRow | null> {
   const res = await authedServerFetch(`/sales/${encodeURIComponent(id)}/catalog-admin`);
   if (res.status === 404) return null;
+  if (res.status === 401) throw new AdminSessionExpiredError();
   if (!res.ok) throw new Error(`Failed to load sale: ${res.status}`);
   const body = await readJsonBody(res);
   return readDataEnvelope(body, adminSaleDetailRowSchemaExport, `GET /sales/${id}/catalog-admin`);

@@ -10,7 +10,7 @@ describe("buildSaleSetupStepperSteps", () => {
       "Schedule",
       "Documents",
       "Lots",
-      "Catalog",
+      "Catalogue",
       "Review",
     ]);
   });

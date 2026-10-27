@@ -7,6 +7,11 @@ describe("formatAdminRelativeTimeLabel", () => {
     expect(formatAdminRelativeTimeLabel(new Date("2026-06-01T11:30:00Z"), now)).toBe("30m ago");
   });
 
+  it("gives an older date in words, not as an ISO string", () => {
+    const now = new Date("2026-10-27T12:00:00Z");
+    expect(formatAdminRelativeTimeLabel(new Date("2026-07-07T09:00:00Z"), now)).toBe("7 Jul 2026");
+  });
+
   it("returns null for invalid values", () => {
     expect(formatAdminRelativeTimeLabel("not-a-date")).toBeNull();
   });

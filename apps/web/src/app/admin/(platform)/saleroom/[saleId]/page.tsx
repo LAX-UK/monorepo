@@ -1,6 +1,7 @@
 import { SaleroomClerkConsole } from "@/components/admin/saleroom-clerk-console";
 import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
 import { SaleroomSaleSwitcher } from "@/features/saleroom/components/clerk-console/saleroom-sale-switcher";
+import { redirectIfSessionExpired } from "@/lib/admin/redirect-if-session-expired.server";
 import { loadSaleroomClerkPage } from "@/lib/admin/saleroom/load-saleroom-clerk-page";
 import { getAdminSaleById } from "@/lib/data/http/admin.server";
 import { deliveryModeShortLabel } from "@/lib/presenters/delivery-mode/delivery-mode-registry";
@@ -15,7 +16,8 @@ type Props = {
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { saleId } = await params;
-  const saleRow = await getAdminSaleById(saleId);
+  // The page itself handles an ended session; a title must never fail the whole page.
+  const saleRow = await getAdminSaleById(saleId).catch(() => null);
   if (!saleRow) {
     return { title: "Saleroom clerk" };
   }
@@ -27,7 +29,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 export default async function AdminSaleroomSalePage({ params, searchParams }: Props) {
   const { saleId } = await params;
   const { error: actionError, checkedIn } = await searchParams;
-  const model = await loadSaleroomClerkPage({ saleId });
+  const model = await redirectIfSessionExpired(() => loadSaleroomClerkPage({ saleId }));
   if (model.notFound) notFound();
 
   return (

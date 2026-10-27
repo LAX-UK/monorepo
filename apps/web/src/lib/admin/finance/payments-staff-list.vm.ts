@@ -148,11 +148,18 @@ export function paymentsListHref(
   patch: Record<string, string | number | null | undefined>,
 ): string {
   const base: PaymentsListSearch = { ...search };
-  for (const key of ["error", "success", "period", "paymentId"]) delete base[key];
+  for (const key of ["error", "success", "period", "payment"]) delete base[key];
   return buildListHref(PAYMENTS_LIST_PATH, base, {
     ...("offset" in patch ? {} : { offset: null }),
     ...patch,
   });
+}
+
+/** The list with a payment's panel open (`?payment=`), or closed for null; keeps the page. */
+export function paymentPanelHref(current: PaymentsListSearch, paymentId: string | null): string {
+  const base: PaymentsListSearch = { ...current };
+  for (const key of ["error", "success", "period"]) delete base[key];
+  return buildListHref(PAYMENTS_LIST_PATH, base, { payment: paymentId });
 }
 
 /** The status views, in the order money moves through them. */

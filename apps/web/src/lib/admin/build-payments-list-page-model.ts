@@ -18,6 +18,8 @@ export type PaymentsListSearchParams = {
   fulfilment?: string;
   xero?: string;
   success?: string;
+  /** The payment whose panel is open. */
+  payment?: string;
 };
 
 export function buildPaymentsListPageModel(sp: PaymentsListSearchParams) {

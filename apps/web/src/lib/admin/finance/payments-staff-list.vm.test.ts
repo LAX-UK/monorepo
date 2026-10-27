@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   activePaymentsView,
   formatPaymentAmount,
+  paymentPanelHref,
   paymentsAttention,
   paymentsFilterChips,
   paymentsListHref,
@@ -128,5 +129,20 @@ describe("payments staff list view model", () => {
 
   it("states the range shown", () => {
     expect(paymentsRangeSummary(50, 50, 1312)).toBe("51–100 of 1,312 payments");
+  });
+
+  it("links a payment's panel in the list URL and closes it by dropping the param", () => {
+    expect(paymentPanelHref({ q: "golden", offset: "50" }, "pay-1")).toBe(
+      "/admin/payments?q=golden&offset=50&payment=pay-1",
+    );
+    expect(paymentPanelHref({ q: "golden", payment: "pay-1" }, null)).toBe(
+      "/admin/payments?q=golden",
+    );
+  });
+
+  it("closes an open panel when the filters change", () => {
+    expect(paymentsListHref({ payment: "pay-1" }, { status: "captured" })).toBe(
+      "/admin/payments?status=captured",
+    );
   });
 });

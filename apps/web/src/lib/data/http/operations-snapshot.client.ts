@@ -8,6 +8,7 @@ import {
 } from "@/lib/data/http/admin-saleroom.schema";
 import { readDataEnvelope } from "@/lib/data/http/envelope";
 import { browserApiBase, browserFetch } from "@/lib/data/http/hc-browser";
+import { rateLimitedFrom } from "@/lib/data/http/rate-limited";
 
 export async function fetchAdminSaleOperationsSnapshot(
   saleId: string,
@@ -17,6 +18,7 @@ export async function fetchAdminSaleOperationsSnapshot(
     { cache: "no-store" },
   );
   if (res.status === 404) return null;
+  if (res.status === 429) throw rateLimitedFrom(res);
   if (!res.ok) throw new Error(`Failed to load operations snapshot (${res.status})`);
   const body = (await res.json()) as { data?: unknown };
   return parseAdminSaleOperationsSnapshot(body.data ?? null);

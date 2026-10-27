@@ -217,6 +217,7 @@ export function createAdminRouteServices(
     saleroomOnBlockPolicy: input.saleroomOnBlockPolicy,
     paddleService: input.paddleService,
     telephoneBidBookingService: input.telephoneBidBookingService,
+    userRepository: input.userRepository,
     redis: input.redis,
     findLotById: input.findLotById,
     adminDomainEventReader: input.adminDomainEventReader,

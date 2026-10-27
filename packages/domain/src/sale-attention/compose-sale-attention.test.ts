@@ -72,4 +72,41 @@ describe("resolveNeededSignalKeys", () => {
     expect(keys).toContain("sale");
     expect(keys).toContain("lots");
   });
+
+  it("reports draft lots without photos once when two contributors see them", () => {
+    const result = composeSaleAttention(
+      draftSignals({
+        lots: [
+          {
+            id: "lot-1",
+            status: "draft",
+            images: [],
+            description: "",
+            startTime: new Date("2026-12-01T10:00:00Z"),
+            endTime: new Date("2026-12-02T18:00:00Z"),
+          } as never,
+        ],
+        draftLotsMissingPhotosCount: 1,
+        incompleteCatalogLotCount: 1,
+      }),
+      DEFAULT_SALE_ATTENTION_CONTRIBUTORS,
+      { principal },
+    );
+    const kinds = result.items.map((i) => i.kind);
+    expect(kinds.filter((k) => k === "draft_lots_missing_photos")).toHaveLength(1);
+    expect(kinds.filter((k) => k === "incomplete_catalog_lots")).toHaveLength(1);
+    expect(result.totalCount).toBe(result.items.length);
+  });
+
+  it("keeps each setup check as its own item", () => {
+    const result = composeSaleAttention(
+      draftSignals({ startInFuture: false }),
+      DEFAULT_SALE_ATTENTION_CONTRIBUTORS,
+      { principal },
+    );
+    const ids = result.items.map((i) => i.id);
+    expect(ids).toEqual(
+      expect.arrayContaining(["setup-sale-lots", "setup-sale-sale_start_future"]),
+    );
+  });
 });

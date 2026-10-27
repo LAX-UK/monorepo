@@ -11,7 +11,7 @@ const SETUP_STEP_LABELS: Record<SaleSetupStepId, string> = {
   schedule: "Schedule",
   documents: "Documents",
   lots: "Lots",
-  "catalog-prep": "Catalog",
+  "catalog-prep": "Catalogue",
   review: "Review",
 };
 

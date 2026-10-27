@@ -1,12 +1,16 @@
 "use client";
 
+import { describePendingWork } from "@/features/saleroom/lib/describe-pending-work";
 import { fetchAdminSaleOperationsSnapshot } from "@/lib/data/http/operations-snapshot.client";
+import { RateLimitedError, mapInChunks } from "@/lib/data/http/rate-limited";
 import type { SaleroomHubRowSummary } from "@/lib/data/view-models/admin-saleroom-hub.vm";
 import type { AdminSaleOperationsSnapshot } from "@/lib/telephone/telephone-booking-types";
 import { notify } from "@/lib/ui/notify";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const POLL_MS = 45_000;
+/** Snapshots fetched at once; a long hub list would otherwise trip the API rate limit. */
+const SNAPSHOT_CONCURRENCY = 3;
 
 function pendingAttentionCount(snap: AdminSaleOperationsSnapshot | null): number {
   if (!snap) return 0;
@@ -22,19 +26,23 @@ export function useSaleroomHubMetricsPoll(
   );
   const prevPendingRef = useRef<Record<string, number>>({});
   const initializedRef = useRef(false);
+  const pausedUntilRef = useRef(0);
 
   const refresh = useCallback(async () => {
-    if (saleIds.length === 0) return;
-    const results = await Promise.all(
-      saleIds.map(async (saleId) => {
-        try {
-          const snap = await fetchAdminSaleOperationsSnapshot(saleId);
-          return { saleId, snap };
-        } catch {
-          return { saleId, snap: null };
+    if (saleIds.length === 0 || Date.now() < pausedUntilRef.current) return;
+    const outcomes = await mapInChunks(saleIds, SNAPSHOT_CONCURRENCY, async (saleId) => {
+      try {
+        return { saleId, snap: await fetchAdminSaleOperationsSnapshot(saleId), limited: false };
+      } catch (error) {
+        if (error instanceof RateLimitedError) {
+          pausedUntilRef.current = Date.now() + (error.retryAfterMs ?? POLL_MS);
+          return { saleId, snap: null, limited: true };
         }
-      }),
-    );
+        return { saleId, snap: null, limited: false };
+      }
+    });
+    // A rate-limited sale keeps the numbers already shown and is tried again after the pause.
+    const results = outcomes.filter((outcome) => !outcome.limited);
     setSnapshots((prev) => {
       const next = { ...prev };
       for (const { saleId, snap } of results) {
@@ -64,14 +72,12 @@ export function useSaleroomHubMetricsPoll(
       if (pending > prev) {
         const row = rows.find((r) => r.saleId === saleId);
         const title = row?.title ?? "Saleroom";
-        const reg = snap?.registrations.pending ?? 0;
-        const tel = snap?.telephoneBookings.requested ?? 0;
-        const parts: string[] = [];
-        if (reg > 0) parts.push(`${reg} reg pending`);
-        if (tel > 0) parts.push(`${tel} tel pending`);
         notify.info(`${title} needs attention`, {
           id: `hub-attention-${saleId}`,
-          description: parts.join(" · ") || "New pending work",
+          description: describePendingWork({
+            registrations: snap?.registrations.pending ?? 0,
+            telephoneBookings: snap?.telephoneBookings.requested ?? 0,
+          }),
         });
       }
       prevPendingRef.current[saleId] = pending;

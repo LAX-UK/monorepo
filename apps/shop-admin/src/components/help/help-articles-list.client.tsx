@@ -205,6 +205,24 @@ export function HelpArticlesList({
         : "No questions yet";
   const noCategories = categories.length === 0;
 
+  // Every question needs a category, so with none the page offers the category first.
+  const createAction = noCategories ? (
+    <StaffButton
+      variant="primary"
+      icon={<Plus aria-hidden />}
+      onClick={() => setDialog({ kind: "category" })}
+    >
+      New category
+    </StaffButton>
+  ) : (
+    <StaffButton asChild variant="primary" icon={<Plus aria-hidden />}>
+      <list.Link href={newHref}>New question</list.Link>
+    </StaffButton>
+  );
+  // An empty list says what will appear and offers the one action that creates it; the header
+  // takes the action back once there is something to list.
+  const isEmptyList = rows.length === 0 && state.view === "all" && !list.filtered;
+
   return (
     <>
       <ListPage<HelpArticleListRow>
@@ -212,11 +230,7 @@ export function HelpArticlesList({
         description="Questions and answers shown on lax.art, in the order readers see them."
         Link={list.Link}
         listKey="lax-admin.help-articles"
-        primaryAction={
-          <StaffButton asChild variant="primary" icon={<Plus aria-hidden />}>
-            <list.Link href={newHref}>New question</list.Link>
-          </StaffButton>
-        }
+        primaryAction={isEmptyList ? undefined : createAction}
         secondaryActions={
           <StaffButton asChild variant="secondary">
             <list.Link href="/help/categories">Categories</list.Link>
@@ -267,23 +281,7 @@ export function HelpArticlesList({
             : state.view === "all"
               ? "Add the first question as a draft, then publish it when it is ready."
               : "Questions appear here as they are published or saved as drafts.",
-          ...(state.view === "all"
-            ? {
-                action: noCategories ? (
-                  <StaffButton
-                    variant="primary"
-                    icon={<Plus aria-hidden />}
-                    onClick={() => setDialog({ kind: "category" })}
-                  >
-                    New category
-                  </StaffButton>
-                ) : (
-                  <StaffButton asChild variant="primary" icon={<Plus aria-hidden />}>
-                    <list.Link href={newHref}>New question</list.Link>
-                  </StaffButton>
-                ),
-              }
-            : {}),
+          ...(state.view === "all" ? { action: createAction } : {}),
         }}
         noResults={{
           title: "No questions match",

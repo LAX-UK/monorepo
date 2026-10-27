@@ -16,7 +16,7 @@ export const catalogContributor: SaleAttentionContributor = {
       items.push({
         id: "incomplete-catalog",
         kind: "incomplete_catalog_lots" as const,
-        category: "Catalog" as const,
+        category: "Catalogue" as const,
         severity: "high" as const,
         count: incomplete,
         target: { tab: "lots" as const },
@@ -26,7 +26,7 @@ export const catalogContributor: SaleAttentionContributor = {
       items.push({
         id: "missing-photos",
         kind: "draft_lots_missing_photos" as const,
-        category: "Catalog" as const,
+        category: "Catalogue" as const,
         severity: "high" as const,
         count: missingPhotos,
         target: { tab: "lots" as const },
@@ -36,7 +36,7 @@ export const catalogContributor: SaleAttentionContributor = {
       items.push({
         id: "past-start",
         kind: "draft_lots_past_start" as const,
-        category: "Catalog" as const,
+        category: "Catalogue" as const,
         severity: "critical" as const,
         count: pastStart,
         target: { tab: "lots" as const },
