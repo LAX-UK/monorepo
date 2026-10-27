@@ -1,6 +1,6 @@
 import { AsyncLocalStorage } from "node:async_hooks";
 import { createHash } from "node:crypto";
-import { OIDC_ACR_BRONZE, OIDC_ACR_SILVER } from "@auction/identity-contracts";
+import { oidcSessionClaims } from "./oidc-session-claims.js";
 
 const AUTHORIZATION_CODE_TTL_SEC = 10 * 60;
 const OAUTH_SERVER_ERROR_DESCRIPTION = "Authorization request could not be completed";
@@ -222,28 +222,15 @@ export class OidcSessionCoordinator {
       this.#failCorrelation("subject_mismatch");
     }
 
-    const now = this.now();
-    const passwordAt = identitySession.lastPasswordAuthAt;
-    const isSilver = identitySession.mfaCompletedAt !== null;
     const sid = identitySession.id;
-
     await this.sessions.upsertRpSession({
       clientId: input.clientId,
       subjectId: input.subjectId,
       sid,
       identitySessionId: identitySession.id,
-      seenAt: now,
+      seenAt: this.now(),
     });
 
-    return {
-      sid,
-      auth_time: Math.floor(identitySession.createdAt.getTime() / 1_000),
-      acr: isSilver ? OIDC_ACR_SILVER : OIDC_ACR_BRONZE,
-      ...(identitySession.mfaCompletedAt
-        ? { amr: ["pwd", "otp"] }
-        : passwordAt
-          ? { amr: ["pwd"] }
-          : {}),
-    };
+    return oidcSessionClaims(identitySession);
   }
 }
