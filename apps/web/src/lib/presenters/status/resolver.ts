@@ -1,3 +1,4 @@
+import { lotOutcome } from "@/lib/lot/lot-outcome";
 import type { LotStatus } from "@auction/types";
 import type { DotStatusPillTone } from "@auction/ui";
 import { presentationToDotStatus } from "@auction/ui";
@@ -25,14 +26,9 @@ export function adminStatusToBadgeVariant(
 
 /** Outcome-aware label + variant for `ended` lots (uses API `winnerId` or list `hasWinner`). */
 export function lotEndedPresentation(context?: LotStatusContext): StatusPresentation {
-  const winnerId = context?.winnerId;
-  const hasWinner = context?.hasWinner;
-  if (winnerId != null || hasWinner === true) {
-    return { label: "Sold", variant: "success" };
-  }
-  if (winnerId === null || hasWinner === false) {
-    return { label: "Unsold", variant: "neutral" };
-  }
+  const outcome = lotOutcome(context);
+  if (outcome === "sold") return { label: "Sold", variant: "success" };
+  if (outcome === "unsold") return { label: "Unsold", variant: "neutral" };
   return { label: lotStatusLabel.ended, variant: "neutral" };
 }
 

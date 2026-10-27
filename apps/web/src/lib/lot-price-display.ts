@@ -1,4 +1,5 @@
 import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { lotWasSold } from "@/lib/lot/lot-outcome";
 import type { Lot } from "@auction/types";
 
 export type LotPriceDisplay = {
@@ -23,10 +24,6 @@ type LotPriceDisplaySource = Pick<
 > & {
   hasWinner?: boolean;
 };
-
-function lotWasSold(lot: LotPriceDisplaySource): boolean {
-  return lot.winnerId != null || lot.hasWinner === true;
-}
 
 function money(amount: string, lot: LotPriceDisplaySource): string {
   return formatMoney(amount, resolveLotCurrency(lot));

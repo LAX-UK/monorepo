@@ -4,6 +4,7 @@ import {
   formatAdminTableMoney,
   formatAdminTableMoneyRange,
 } from "@/lib/admin/format-admin-table-money";
+import { lotWasSold } from "@/lib/lot/lot-outcome";
 import { resolveLotCurrency } from "@/lib/money/currency";
 import { lotDotStatusPresentation } from "@/lib/presenters/status/lot-dot-status";
 import { formatMoney } from "@/lib/ui/format";
@@ -64,6 +65,8 @@ type LotHammerSource = {
   currentPrice: string;
   startingPrice: string;
   winnerId?: string | null;
+  /** List rows hide the buyer and carry only this flag. */
+  hasWinner?: boolean | undefined;
   marketingDetails?: Parameters<typeof resolveLotCurrency>[0]["marketingDetails"];
 };
 
@@ -90,7 +93,7 @@ export function formatLotHammerForTable(lot: LotHammerSource): AdminTableMoneyDi
   }
 
   if (lot.status === "ended") {
-    if (lot.winnerId) {
+    if (lotWasSold(lot)) {
       return formatAdminTableMoney(lot.currentPrice, currency);
     }
     return { primary: "Unsold" };

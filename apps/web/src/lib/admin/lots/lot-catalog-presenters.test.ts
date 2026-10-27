@@ -63,6 +63,14 @@ describe("formatLotHammerForTable", () => {
     expect(display.primary).toMatch(/£1,200/);
   });
 
+  it("shows hammer for an ended list row that only carries the hasWinner flag", () => {
+    const display = formatLotHammerForTable({
+      ...makeLot({ status: "ended", currentPrice: "1200" }),
+      hasWinner: true,
+    });
+    expect(display.primary).toMatch(/£1,200/);
+  });
+
   it("shows em dash for cancelled lots", () => {
     const display = formatLotHammerForTable(makeLot({ status: "cancelled" }));
     expect(display.primary).toBe("—");

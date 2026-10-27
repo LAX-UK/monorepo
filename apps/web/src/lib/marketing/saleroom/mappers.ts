@@ -1,6 +1,7 @@
 import { mapPressRefToVM } from "@/components/sections/press/mappers";
 import { formatEstimateRange, formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
+import { lotWasSold } from "@/lib/lot/lot-outcome";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import type {
@@ -144,7 +145,7 @@ export function computeEndedSaleSummary(
 
   const allLoaded = opts.loadedCount === opts.totalLots && lots.length === opts.totalLots;
   const endedLots = lots.filter((l) => l.status === "ended");
-  const soldLots = endedLots.filter((l) => l.winnerId != null || l.hasWinner === true);
+  const soldLots = endedLots.filter(lotWasSold);
   const unsoldCount = endedLots.length - soldLots.length;
 
   let hammerSum = 0;
