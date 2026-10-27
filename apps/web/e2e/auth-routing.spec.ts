@@ -14,7 +14,9 @@ test.describe("marketing auth routing @smoke", () => {
     await expect(hostedLogin.or(hostedHeading).first()).toBeVisible({ timeout: 30_000 });
   });
 
-  test("unsafe next param is not preserved after edge redirect to dashboard", async ({ page }) => {
+  test("unsafe next param is not preserved after edge redirect to the client area", async ({
+    page,
+  }) => {
     test.skip(!enabled, skipReason);
     const base = new URL(process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3000");
     await page.context().addCookies([

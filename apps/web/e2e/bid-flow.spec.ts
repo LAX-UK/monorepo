@@ -15,7 +15,8 @@ const buyerCredentials: Credentials = {
 
 async function loginAsBuyer(page: Page) {
   await loginWithCredentials(page, buyerCredentials, {
-    destination: /\/(dashboard|onboarding|lot|search|sales)(?:\/|[?#]|$)/,
+    destination:
+      /\/(home|bids|purchases|watching|selling|organisation|onboarding|lot|search|sales)(?:\/|[?#]|$)/,
   });
 }
 
@@ -113,7 +114,8 @@ const unverifiedCredentials: Credentials = {
   email: process.env.PLAYWRIGHT_UNVERIFIED_EMAIL ?? "unverified@lax.bid",
   password: process.env.PLAYWRIGHT_UNVERIFIED_PASSWORD ?? "Password123!",
 };
-const authenticatedDestination = /\/(dashboard|onboarding|lot|search|sales)(?:\/|[?#]|$)/;
+const authenticatedDestination =
+  /\/(home|bids|purchases|watching|selling|organisation|onboarding|lot|search|sales)(?:\/|[?#]|$)/;
 const strictLotCases = [
   {
     name: "online",

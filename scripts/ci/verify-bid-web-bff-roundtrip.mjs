@@ -39,12 +39,12 @@ function assertTrustedRedirect(url, allowedOrigins, expectedPath, label) {
 function isSuccessfulBidCallbackRedirect(status, location, webOrigin) {
   if (status !== 302 && status !== 303) return false;
   if (!location) return false;
-  if (location.includes("/home")) return true;
   try {
     const url = new URL(location, webOrigin);
+    if (url.pathname === "/home") return true;
     if (url.pathname !== "/auth/post-login") return false;
-    const next = url.searchParams.get("next") ?? "";
-    return next.includes("dashboard");
+    const next = url.searchParams.get("next");
+    return next != null && new URL(next, webOrigin).pathname === "/home";
   } catch {
     return false;
   }
