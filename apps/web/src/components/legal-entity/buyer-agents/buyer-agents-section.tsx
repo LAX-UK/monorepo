@@ -11,8 +11,8 @@ import type {
   BuyerAgentAuthorisationView,
 } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
+import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
 import { useState } from "react";
 import { AuthoriseBuyerAgentDialog } from "./authorise-buyer-agent-dialog";
@@ -23,8 +23,6 @@ type Props = {
   entityName: string;
   overview: BuyerAgentAuthorisationOverview;
 };
-
-const TONE_TO_VARIANT = { success: "success", info: "info", neutral: "neutral" } as const;
 
 function AuthorisationLine({
   authorisation,
@@ -39,9 +37,7 @@ function AuthorisationLine({
   const state = authorisationStatePresentation(authorisation);
   return (
     <li className="flex flex-wrap items-center gap-x-3 gap-y-1">
-      <StatusBadge size="md" variant={TONE_TO_VARIANT[state.tone]}>
-        {state.label}
-      </StatusBadge>
+      <DotStatusPill tone={state.tone} label={state.label} />
       <span className="min-w-0 flex-1 font-body text-sm text-on-surface">
         {summary.scope} · {summary.limit} · {summary.window}
       </span>
@@ -124,7 +120,7 @@ export function BuyerAgentsSection({ legalEntityId, entityName, overview }: Prop
   const { buyerAgents, authorisations, sales, canManage } = overview;
 
   return (
-    <Surface variant="section" padding="none" className="overflow-hidden">
+    <Surface variant="section" padding="none" className="overflow-hidden p-0 sm:p-0">
       <div className="space-y-1 p-4 sm:px-5 sm:pt-5">
         <h3 className="font-headline text-base font-semibold text-on-surface">
           Who can bid for {entityName}
