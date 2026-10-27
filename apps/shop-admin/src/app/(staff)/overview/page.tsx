@@ -4,11 +4,13 @@ import { loadEnquirySummary } from "@/server/application/load-enquiry-summary";
 import { buildAdminNavGroups } from "@/server/domain/admin-nav.vm";
 import { buildOverviewTiles, buildWelcomeSections } from "@/server/domain/overview.vm";
 import type { AdminOverviewKpis } from "@auction/shop-contracts";
-import { KpiTile, PageHeader } from "@auction/ui";
+import { AttentionList, LinkList, PageHeader, type StaffLinkComponent } from "@auction/staff-ui";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "Overview" };
+
+const NextLink: StaffLinkComponent = Link;
 
 export default async function OverviewPage() {
   const [kpisResult, sessionResult] = await Promise.all([
@@ -37,52 +39,54 @@ export default async function OverviewPage() {
     newEnquiryCount: enquiries?.newCount ?? null,
   });
   const sections = buildWelcomeSections(navGroups);
+  const nothingWaiting = !tiles.some((tile) => tile.value > 0);
 
   return (
-    <div>
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Overview"
         description="What needs attention across lax.art and LAX Shop."
       />
       {tiles.length > 0 ? (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {tiles.map((tile) => (
-            <li key={tile.key}>
-              <Link
-                href={tile.href}
-                className="block h-full rounded-shell-card focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-              >
-                <KpiTile variant="dashboard" clickable label={tile.label} value={tile.value} />
-              </Link>
-            </li>
-          ))}
-        </ul>
-      ) : (
-        <section aria-labelledby="welcome-heading" className="max-w-2xl">
-          <h2 id="welcome-heading" className="font-headline text-lg font-semibold">
-            Welcome to LAX Admin
-          </h2>
-          <p className="mt-1 text-on-surface-variant">
-            Nothing is waiting for you here. Pick up your work from the areas you can open.
-          </p>
-          <div className="mt-4 grid gap-6 sm:grid-cols-2">
+        <AttentionList
+          Link={NextLink}
+          items={tiles.map((tile) => ({
+            id: tile.key,
+            label: tile.label,
+            count: tile.value,
+            href: tile.href,
+          }))}
+        />
+      ) : null}
+      {nothingWaiting ? (
+        <section aria-labelledby="areas-heading" className="flex flex-col gap-4">
+          <div className="flex flex-col gap-1">
+            <h2
+              id="areas-heading"
+              className="font-staff-display text-staff-lg font-semibold text-staff-fg"
+            >
+              Pick up your work
+            </h2>
+            <p className="text-staff-sm text-staff-muted">
+              Nothing is waiting for you here. Open one of the areas you can use.
+            </p>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
             {sections.map((section) => (
-              <nav key={section.title} aria-label={section.title}>
-                <h3 className="text-sm font-semibold text-on-surface-variant">{section.title}</h3>
-                <ul className="mt-2 space-y-1">
-                  {section.items.map((item) => (
-                    <li key={item.href}>
-                      <Link href={item.href} className="underline underline-offset-4">
-                        {item.label}
-                      </Link>
-                    </li>
-                  ))}
-                </ul>
-              </nav>
+              <LinkList
+                key={section.title}
+                Link={NextLink}
+                title={section.title}
+                items={section.items.map((item) => ({
+                  id: item.href,
+                  label: item.label,
+                  href: item.href,
+                }))}
+              />
             ))}
           </div>
         </section>
-      )}
+      ) : null}
     </div>
   );
 }

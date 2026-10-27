@@ -5,11 +5,18 @@ import {
   editorialListHref,
 } from "@/lib/editorial-entities";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
-import { PageHeader } from "@auction/ui";
+import {
+  LinkList,
+  type LinkListItem,
+  PageHeader,
+  type StaffLinkComponent,
+} from "@auction/staff-ui";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export const metadata = { title: "Editorial" };
+
+const NextLink: StaffLinkComponent = Link;
 
 type CountedRows = { items: Array<{ status: "draft" | "published" }> };
 
@@ -27,45 +34,37 @@ export default async function EditorialLandingPage() {
   const blocked = results.find((result) => result.status === "forbidden");
   if (blocked) return <AdminFailedPage title="Editorial" status="forbidden" />;
 
-  const links = EDITORIAL_ENTITY_KINDS.map((kind, index) => {
+  const links: LinkListItem[] = EDITORIAL_ENTITY_KINDS.map((kind, index) => {
     const result = results[index];
     const entity = EDITORIAL_ENTITIES[kind];
+    const counts = result?.status === "ok" ? describeCounts(result.data.items) : null;
     return {
+      id: kind,
       href: editorialListHref(kind),
-      title: entity.title,
-      description: entity.description,
-      counts: result?.status === "ok" ? describeCounts(result.data.items) : null,
+      label: entity.title,
+      description: counts ? `${entity.description} ${counts}.` : entity.description,
     };
   });
   links.push({
+    id: "home-placements",
     href: "/editorial/home",
-    title: "Home placements",
+    label: "Home placements",
     description: "What the lax.art home page features, slot by slot.",
-    counts: null,
   });
 
   return (
-    <div>
+    <div className="flex flex-col gap-6">
       <PageHeader
         title="Editorial"
         description="The content shown on lax.art. Everything starts as a draft and goes live when you publish it."
       />
-      <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {links.map((link) => (
-          <li key={link.href}>
-            <Link
-              href={link.href}
-              className="block h-full rounded-md border border-border-hairline p-4 transition-colors hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary"
-            >
-              <h2 className="text-lg font-medium">{link.title}</h2>
-              <p className="mt-1 text-sm text-on-surface-variant">{link.description}</p>
-              {link.counts ? (
-                <p className="mt-3 text-sm font-medium text-on-surface">{link.counts}</p>
-              ) : null}
-            </Link>
-          </li>
-        ))}
-      </ul>
+      <LinkList
+        Link={NextLink}
+        title="Content"
+        description="Open a list to add, edit or publish."
+        items={links}
+        className="max-w-[720px]"
+      />
     </div>
   );
 }
