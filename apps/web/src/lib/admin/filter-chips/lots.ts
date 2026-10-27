@@ -1,6 +1,7 @@
 import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import { type SearchParams, omitParamsHref } from "@/lib/admin/filter-chips/shared";
 import { isLotListSortKey } from "@/lib/admin/lots-list-sort";
+import { searchChipLabel } from "@auction/staff-ui";
 
 const LOT_SORT_LABELS: Record<string, string> = {
   createdDesc: "Newest first",
@@ -39,7 +40,7 @@ export function buildLotsActiveFilterChips(
   if (ctx.q?.trim()) {
     chips.push({
       id: "q",
-      label: `Search: ${ctx.q.trim()}`,
+      label: searchChipLabel(ctx.q),
       clearHref: omitParamsHref(base, sp, ["q"]),
     });
   }

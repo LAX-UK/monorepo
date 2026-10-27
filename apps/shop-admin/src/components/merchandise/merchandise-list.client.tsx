@@ -215,10 +215,7 @@ export function MerchandiseList({
               : "Products appear here as they are put on sale or archived.",
           ...(newProduct && state.view === "all" ? { action: newProduct } : {}),
         }}
-        noResults={{
-          title: "No products match",
-          description: "Try another title, slug or SKU, or clear the search.",
-        }}
+        noResults={{ noun: "products" }}
         table={{
           columns,
           data: page.items,

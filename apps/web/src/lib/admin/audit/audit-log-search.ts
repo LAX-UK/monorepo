@@ -1,5 +1,6 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
 import { domainEventLabel } from "@/lib/admin/domain-event-labels";
+import { searchChipLabel } from "@auction/staff-ui";
 import { type AuditLogView, isAuditLogView } from "@auction/types";
 import { auditEntityTypeLabel } from "./audit-log.vm";
 
@@ -107,7 +108,7 @@ export function buildAuditFilterChips(
   if (filters.q) {
     chips.push({
       id: "q",
-      label: `Search: ${filters.q}`,
+      label: searchChipLabel(filters.q),
       clearHref: auditLogHref(current, { q: null }),
     });
   }

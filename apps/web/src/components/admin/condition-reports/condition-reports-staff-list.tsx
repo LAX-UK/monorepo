@@ -144,6 +144,7 @@ export function ConditionReportsStaffList(props: ConditionReportsStaffListProps)
         views={<DataViews views={props.views} activeId={lens} Link={ListLink} />}
         loading={pending}
         filtered={false}
+        noResults={{ noun: "requests" }}
         error={
           props.listError
             ? {

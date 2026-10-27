@@ -43,6 +43,7 @@ import {
   daysBefore,
   formatGbp,
   londonToday,
+  searchChipLabel,
   toast,
   useSavedViews,
 } from "@auction/staff-ui";
@@ -209,7 +210,7 @@ export function OrderList({
       ? [
           {
             id: "q",
-            label: `“${query.q}”`,
+            label: searchChipLabel(query.q),
             onRemove: () => navigate(orderListHref(query, { q: null })),
           },
         ]
@@ -337,11 +338,7 @@ export function OrderList({
           title: "No orders yet",
           description: "Orders appear here as soon as a customer completes checkout.",
         }}
-        noResults={{
-          title: "No orders match these filters",
-          description:
-            "Try a different search or date range, or clear the filters to see every order.",
-        }}
+        noResults={{ noun: "orders" }}
         table={{
           columns,
           data: page.items,

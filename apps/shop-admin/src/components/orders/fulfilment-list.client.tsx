@@ -247,10 +247,7 @@ export function FulfilmentList({
             : null
         }
         empty={{ illustration: "parcel", ...empty }}
-        noResults={{
-          title: "No fulfilments match",
-          description: "Try another order number or buyer, or clear the filters.",
-        }}
+        noResults={{ noun: "fulfilments" }}
         table={{
           columns,
           data: page.items,

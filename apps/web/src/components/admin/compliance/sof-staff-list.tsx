@@ -172,6 +172,7 @@ export function SofStaffList(props: SofStaffListProps) {
         }
         loading={pending}
         filtered={false}
+        noResults={{ noun: "checks" }}
         error={
           props.loadError
             ? {

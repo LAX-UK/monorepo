@@ -1,6 +1,7 @@
 import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import { type SearchParams, omitParamsHref } from "@/lib/admin/filter-chips/shared";
 import { deliveryModeShortLabel } from "@/lib/presenters/delivery-mode/delivery-mode-registry";
+import { searchChipLabel } from "@auction/staff-ui";
 import type { SaleDeliveryMode } from "@auction/types";
 
 export function buildSalesActiveFilterChips(
@@ -42,7 +43,7 @@ export function buildSalesActiveFilterChips(
   if (ctx.q?.trim()) {
     chips.push({
       id: "q",
-      label: `Search: ${ctx.q.trim()}`,
+      label: searchChipLabel(ctx.q),
       clearHref: omitParamsHref(base, sp, ["q"]),
     });
   }

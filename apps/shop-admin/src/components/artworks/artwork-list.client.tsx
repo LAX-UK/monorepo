@@ -56,6 +56,7 @@ import {
   StaffDate,
   type StaffLinkComponent,
   TableSearch,
+  searchChipLabel,
   toast,
 } from "@auction/staff-ui";
 import {
@@ -260,7 +261,7 @@ export function ArtworkList({
       ? [
           {
             id: "q",
-            label: `“${query.q}”`,
+            label: searchChipLabel(query.q),
             onRemove: () => navigate(artworkListHref(query, { q: null })),
           },
         ]
@@ -418,10 +419,7 @@ export function ArtworkList({
                 action: newArtwork,
               }
         }
-        noResults={{
-          title: "No artworks match",
-          description: "Try another search, artist or storefront, or clear the filters.",
-        }}
+        noResults={{ noun: "artworks" }}
         table={{
           columns,
           data: page.items,

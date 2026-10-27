@@ -232,10 +232,7 @@ export function HelpCategoriesList({
               : "Categories appear here as they are published or saved as drafts.",
           ...(state.view === "all" ? { action: newCategory } : {}),
         }}
-        noResults={{
-          title: "No categories match",
-          description: "Try another title, or clear the search.",
-        }}
+        noResults={{ noun: "categories" }}
         table={{
           columns,
           data: rows,

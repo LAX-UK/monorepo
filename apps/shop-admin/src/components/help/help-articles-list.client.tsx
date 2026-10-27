@@ -283,10 +283,7 @@ export function HelpArticlesList({
               : "Questions appear here as they are published or saved as drafts.",
           ...(state.view === "all" ? { action: createAction } : {}),
         }}
-        noResults={{
-          title: "No questions match",
-          description: "Try another word, a different category, or clear the search.",
-        }}
+        noResults={{ noun: "questions" }}
         table={{
           columns,
           data: rows,

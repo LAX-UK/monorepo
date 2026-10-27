@@ -203,10 +203,7 @@ export function HoldsList({
               }
             : {}),
         }}
-        noResults={{
-          title: "No holds match",
-          description: "Try another artwork or client, or clear the search.",
-        }}
+        noResults={{ noun: "holds" }}
         table={{
           columns,
           data: page.items,

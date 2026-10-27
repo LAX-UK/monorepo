@@ -163,10 +163,7 @@ export function ClientsList({
           description:
             "Collectors and galleries appear here after their first order, purchase or edition.",
         }}
-        noResults={{
-          title: "No clients match",
-          description: "Try another name or email, or clear the search.",
-        }}
+        noResults={{ noun: "clients" }}
         table={{
           columns,
           data: page.items,

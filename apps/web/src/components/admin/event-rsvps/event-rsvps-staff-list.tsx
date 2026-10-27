@@ -24,6 +24,7 @@ import {
   StatusBadge,
   TableSearch,
   formatStaffDateTime,
+  searchChipLabel,
 } from "@auction/staff-ui";
 import { ArrowUpRight, Plus, ScanLine } from "lucide-react";
 import Link from "next/link";
@@ -171,7 +172,7 @@ export function EventRsvpsStaffList(props: EventRsvpsStaffListProps) {
             ? [
                 {
                   id: "q",
-                  label: `Search: ${q}`,
+                  label: searchChipLabel(q),
                   onRemove: () => navigate(eventRsvpsListHref(search, { q: null })),
                 },
               ]
@@ -204,10 +205,7 @@ export function EventRsvpsStaffList(props: EventRsvpsStaffListProps) {
                 ),
               }),
         }}
-        noResults={{
-          title: "No events match",
-          description: "Try another title, or clear the search.",
-        }}
+        noResults={{ noun: "events" }}
         table={{
           columns,
           data: rows,

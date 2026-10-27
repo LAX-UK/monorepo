@@ -1,6 +1,7 @@
 import { buildListHref, firstString, parseListSearchParams } from "@/lib/admin/admin-list-params";
 import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import type { AdminListQueryBase } from "@/lib/admin/i-admin-list-controller";
+import { searchChipLabel } from "@auction/staff-ui";
 import { adminInvitationsListSortValues } from "@auction/validators";
 import type { AdminInvitationsListSort } from "@auction/validators";
 
@@ -95,7 +96,7 @@ export function buildInvitationsActiveFilterChips(
   if (filters.q?.trim()) {
     chips.push({
       id: "q",
-      label: `Search: ${filters.q.trim()}`,
+      label: searchChipLabel(filters.q),
       clearHref: omitParamsHref(basePath, sp, ["q"]),
     });
   }

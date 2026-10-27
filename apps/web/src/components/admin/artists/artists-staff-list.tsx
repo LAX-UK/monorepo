@@ -309,10 +309,7 @@ export function ArtistsStaffList(props: ArtistsStaffListProps) {
               }
             : {}),
         }}
-        noResults={{
-          title: "No artists match",
-          description: "Try another view, or clear the search and filters.",
-        }}
+        noResults={{ noun: "artists" }}
         table={{
           columns,
           data: rows,

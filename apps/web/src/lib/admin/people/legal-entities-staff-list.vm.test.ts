@@ -117,7 +117,7 @@ describe("legal entities staff list view model", () => {
   it("shows search, status and kind as chips that each remove only themselves", () => {
     const search = { q: "gallery", status: "approved", kind: "organisation", stripe: "1" };
     expect(legalEntitiesFilterChips(search).map((chip) => [chip.label, chip.clearHref])).toEqual([
-      ["“gallery”", "/admin/legal-entities?status=approved&kind=organisation&stripe=1"],
+      ["Search: gallery", "/admin/legal-entities?status=approved&kind=organisation&stripe=1"],
       ["Status: Approved", "/admin/legal-entities?q=gallery&kind=organisation&stripe=1"],
       ["Kind: Organisation", "/admin/legal-entities?q=gallery&status=approved&stripe=1"],
     ]);

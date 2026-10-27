@@ -251,10 +251,7 @@ export function LegalEntitiesStaffList(props: LegalEntitiesStaffListProps) {
           description:
             "Legal entities appear here when someone starts selling or registers an organisation.",
         }}
-        noResults={{
-          title: "No legal entities match",
-          description: "Try a different search, or clear the filters.",
-        }}
+        noResults={{ noun: "legal entities" }}
         table={{
           label: "Legal entities",
           columns,

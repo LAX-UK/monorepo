@@ -359,10 +359,7 @@ export function LotsStaffList(props: LotsStaffListProps) {
               }
             : {}),
         }}
-        noResults={{
-          title: "No lots match",
-          description: "Try another view, or clear the search and filters.",
-        }}
+        noResults={{ noun: "lots" }}
         table={{
           columns,
           data: rows,

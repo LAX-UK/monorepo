@@ -272,10 +272,7 @@ export function StaffDirectoryList(props: StaffDirectoryListProps) {
             : null
         }
         empty={VIEW_EMPTY[activeView] ?? (VIEW_EMPTY.all as { title: string; description: string })}
-        noResults={{
-          title: "No staff match",
-          description: "Try another name, email or staff role, or clear the filters.",
-        }}
+        noResults={{ noun: "staff" }}
         table={{
           columns,
           data: rows,

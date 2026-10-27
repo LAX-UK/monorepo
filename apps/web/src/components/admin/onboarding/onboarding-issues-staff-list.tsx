@@ -206,6 +206,7 @@ export function OnboardingIssuesStaffList(props: OnboardingIssuesStaffListProps)
         }
         loading={pending}
         filtered={false}
+        noResults={{ noun: "issues" }}
         error={
           props.loadError
             ? {

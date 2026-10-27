@@ -310,10 +310,7 @@ export function AuditLogList({
           title: "No events recorded yet",
           description: "Staff and system actions appear here as they happen.",
         }}
-        noResults={{
-          title: "No events match",
-          description: "Try another person, action or date range, or clear the filters.",
-        }}
+        noResults={{ noun: "events" }}
         table={{
           columns,
           data: page.items,

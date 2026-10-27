@@ -3,7 +3,13 @@
 import { useListNavigation } from "@/components/use-list-navigation.client";
 import { useListPanel } from "@/components/use-list-panel.client";
 import { type WorkList, type WorkListState, pageSummary } from "@/server/domain/work-list.vm";
-import { type ActiveFilter, DataViews, type SortState, TableSearch } from "@auction/staff-ui";
+import {
+  type ActiveFilter,
+  DataViews,
+  type SortState,
+  TableSearch,
+  searchChipLabel,
+} from "@auction/staff-ui";
 import { useCallback, useMemo } from "react";
 
 type Page = {
@@ -47,7 +53,13 @@ export function useWorkList<F extends string>({
   }, [list, navigate, state]);
 
   const searchChip: ActiveFilter[] = state.q
-    ? [{ id: "q", label: `“${state.q}”`, onRemove: () => navigate(list.href(state, { q: null })) }]
+    ? [
+        {
+          id: "q",
+          label: searchChipLabel(state.q),
+          onRemove: () => navigate(list.href(state, { q: null })),
+        },
+      ]
     : [];
 
   const views = useMemo(

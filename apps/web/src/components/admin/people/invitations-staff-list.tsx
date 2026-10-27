@@ -317,10 +317,7 @@ export function InvitationsStaffList(props: InvitationsStaffListProps) {
                 ),
               }),
         }}
-        noResults={{
-          title: "No invitations match",
-          description: "Try another email address, or clear the search.",
-        }}
+        noResults={{ noun: "invitations" }}
         table={{
           columns,
           data: rows,

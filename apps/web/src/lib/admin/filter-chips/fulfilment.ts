@@ -1,5 +1,6 @@
 import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import { type SearchParams, omitParamsHref } from "@/lib/admin/filter-chips/shared";
+import { searchChipLabel } from "@auction/staff-ui";
 
 export const FULFILMENT_STATUS_LABELS: Record<string, string> = {
   awaiting_payment: "Awaiting payment",
@@ -19,7 +20,7 @@ export function buildFulfilmentActiveFilterChips(
   if (ctx.q?.trim()) {
     chips.push({
       id: "q",
-      label: `Search: ${ctx.q.trim()}`,
+      label: searchChipLabel(ctx.q),
       clearHref: omitParamsHref("/admin/lot-fulfilment", sp, ["q"]),
     });
   }

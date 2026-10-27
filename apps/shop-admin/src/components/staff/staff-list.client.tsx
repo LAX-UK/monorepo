@@ -235,10 +235,7 @@ export function StaffList({
             : null
         }
         empty={{ illustration: "plinth", ...empty }}
-        noResults={{
-          title: "No staff match",
-          description: "Try another name, email or role, or clear the filters.",
-        }}
+        noResults={{ noun: "staff" }}
         table={{
           columns,
           data: page.items,

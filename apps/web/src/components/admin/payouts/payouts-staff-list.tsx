@@ -232,10 +232,7 @@ export function PayoutsStaffList(props: PayoutsStaffListProps) {
           title: "No payouts yet",
           description: "Payouts appear here when a settlement is run for a seller.",
         }}
-        noResults={{
-          title: "No payouts match",
-          description: "Try a different status, or clear the filters.",
-        }}
+        noResults={{ noun: "payouts" }}
         table={{
           label: "Payouts",
           columns,

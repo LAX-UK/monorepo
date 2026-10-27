@@ -213,6 +213,11 @@ export function FilterMenu({
 
 export type ActiveFilter = { id: string; label: string; onRemove: () => void };
 
+/** The chip for the search in force, worded the same on every list: "Search: ada". */
+export function searchChipLabel(query: string): string {
+  return `Search: ${query.trim()}`;
+}
+
 /** Applied filters as removable chips, plus "Clear all". */
 export function ActiveFilterChips({
   filters,

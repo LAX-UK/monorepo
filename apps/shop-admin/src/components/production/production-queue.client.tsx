@@ -183,10 +183,7 @@ export function ProductionQueue({
           description:
             "When an edition needs to be made, send it to production from its order and the task appears here.",
         }}
-        noResults={{
-          title: "No tasks match",
-          description: "Try a different search, or clear the filters to see every task.",
-        }}
+        noResults={{ noun: "tasks" }}
         table={{
           columns,
           data: page.items,

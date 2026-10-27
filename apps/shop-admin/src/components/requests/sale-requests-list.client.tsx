@@ -160,10 +160,7 @@ export function SaleRequestsList({
                 description: "Requests move here once they are answered or withdrawn.",
               }
         }
-        noResults={{
-          title: "No requests match",
-          description: "Try another artwork or owner, or clear the search.",
-        }}
+        noResults={{ noun: "requests" }}
         table={{
           columns,
           data: page.items,

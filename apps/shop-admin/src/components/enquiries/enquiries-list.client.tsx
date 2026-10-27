@@ -293,10 +293,7 @@ export function EnquiriesList({
                   description: "Enquiries move here as they are picked up and closed.",
                 }
         }
-        noResults={{
-          title: "No enquiries match",
-          description: "Try another sender or word from the message, or clear the filters.",
-        }}
+        noResults={{ noun: "enquiries" }}
         table={{
           columns,
           data: page.items,
