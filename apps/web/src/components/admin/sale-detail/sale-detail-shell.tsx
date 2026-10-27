@@ -21,7 +21,11 @@ import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { saleSetupResumeHref } from "@/lib/admin/sale-setup";
 import { buildSaleDetailTabSpecs } from "@/lib/admin/sales/build-sale-detail-tab-specs";
 import { isSaleLiveish, venueOneLiner } from "@/lib/admin/sales/sale-detail-helpers";
-import { firstBlockedSeller, saleDetailNotice } from "@/lib/admin/sales/sale-detail-page.vm";
+import {
+  firstBlockedSeller,
+  saleDetailNotice,
+  saleEditLink,
+} from "@/lib/admin/sales/sale-detail-page.vm";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminSaleListRow } from "@/lib/data/http/admin.server";
 import { deliveryModeShortLabel } from "@/lib/presenters/delivery-mode/delivery-mode-registry";
@@ -200,15 +204,24 @@ export function SaleDetailShell({
     ...lifecycle.filter((action) => action.id !== "publish"),
   ];
 
-  const editLink = canManageSales
-    ? sale.status === "draft"
-      ? setupReadiness && setupReadiness.percent < 100 && setupHref
-        ? { label: "Continue setup", href: setupHref }
-        : { label: "Edit draft", href: adminSaleEditHref(saleId) }
-      : liveish
-        ? { label: "Edit details", href: adminSaleEditHref(saleId) }
-        : null
-    : null;
+  const notice = saleDetailNotice({
+    status: sale.status,
+    connectRequired,
+    blockedSellerLegalEntityId: seller.sellerLegalEntityId,
+    sellingOnAtg,
+    readiness: setupReadiness,
+    setupHref,
+  });
+
+  const editLink = saleEditLink({
+    status: sale.status,
+    canManage: canManageSales,
+    liveish,
+    editHref: adminSaleEditHref(saleId),
+    setupHref,
+    setupOpen: Boolean(setupReadiness && setupReadiness.percent < 100),
+    notice,
+  });
   const editButton = editLink ? (
     <StaffButton asChild variant="secondary" icon={<Pencil aria-hidden />}>
       <Link href={editLink.href}>{editLink.label}</Link>
@@ -227,15 +240,6 @@ export function SaleDetailShell({
       <Link href={adminSaleroomHref(saleId)}>Open saleroom</Link>
     </StaffButton>
   ) : null;
-
-  const notice = saleDetailNotice({
-    status: sale.status,
-    connectRequired,
-    blockedSellerLegalEntityId: seller.sellerLegalEntityId,
-    sellingOnAtg,
-    readiness: setupReadiness,
-    setupHref,
-  });
 
   const tabs = buildSaleDetailTabSpecs({
     saleId,

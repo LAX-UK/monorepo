@@ -33,7 +33,7 @@ type Props = {
 function navGroupLabel(item: AppShellNavItem, variant: "client" | "staff"): string {
   if (variant === "staff") {
     if (item.href.startsWith("/admin/finance")) return "Finance";
-    if (item.href.startsWith("/admin/catalog")) return "Catalog";
+    if (item.href.startsWith("/admin/catalog")) return "Catalogue";
     return "Admin";
   }
   if (item.id === "organisations" || item.id === "invitations") return "Organisations";

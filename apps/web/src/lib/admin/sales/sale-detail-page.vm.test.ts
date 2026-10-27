@@ -1,6 +1,6 @@
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import { describe, expect, it } from "vitest";
-import { firstBlockedSeller, saleDetailNotice } from "./sale-detail-page.vm";
+import { firstBlockedSeller, saleDetailNotice, saleEditLink } from "./sale-detail-page.vm";
 
 const readiness: CatalogReadinessResult = {
   items: [{ id: "lots", label: "Add at least one lot", ok: false, severity: "required" }],
@@ -56,5 +56,36 @@ describe("sale detail notice", () => {
       ),
     ).toEqual({ blocked: true, sellerLegalEntityId: "le_2" });
     expect(firstBlockedSeller([{ id: "a" }], undefined).blocked).toBe(false);
+  });
+});
+
+describe("sale header edit link", () => {
+  const link = {
+    status: "draft" as const,
+    canManage: true,
+    liveish: false,
+    editHref: "/admin/sales/s1/edit",
+    setupHref: base.setupHref,
+    setupOpen: true,
+  };
+
+  it("does not repeat Continue setup when the notice offers it", () => {
+    expect(saleEditLink({ ...link, notice: saleDetailNotice(base) })).toEqual({
+      label: "Edit draft",
+      href: "/admin/sales/s1/edit",
+    });
+  });
+
+  it("keeps Continue setup in the header when another notice is in front", () => {
+    const notice = saleDetailNotice({ ...base, sellingOnAtg: true });
+    expect(saleEditLink({ ...link, notice })?.label).toBe("Continue setup");
+  });
+
+  it("edits a live sale, and offers nothing to people who cannot manage sales", () => {
+    expect(
+      saleEditLink({ ...link, status: "active", liveish: true, setupOpen: false, notice: null })
+        ?.label,
+    ).toBe("Edit details");
+    expect(saleEditLink({ ...link, canManage: false, notice: null })).toBeNull();
   });
 });

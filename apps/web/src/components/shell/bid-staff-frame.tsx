@@ -9,6 +9,7 @@ import { salesPaletteSource } from "@/components/layout/palette/sources/sales-so
 import type { PaletteSource } from "@/components/layout/palette/types";
 import { getStaffNavGroups } from "@/components/layout/staff-nav";
 import { StaffRouteRecentTracker } from "@/components/layout/staff-route-recent-tracker";
+import { ContextBannerSlot } from "@/components/shell/context-banner-slot";
 import { syncUiThemeFromClientAction } from "@/lib/actions/user-ui-preferences";
 import { useLogout } from "@/lib/auth/use-logout";
 import type { SessionUser } from "@/lib/data/contracts";
@@ -190,7 +191,9 @@ export function BidStaffFrame({
               }
             >
               {config.topSlot}
-              {config.contextBanner ? <div className="mb-4">{config.contextBanner}</div> : null}
+              {config.contextBanner ? (
+                <ContextBannerSlot>{config.contextBanner}</ContextBannerSlot>
+              ) : null}
               {children}
             </StaffShell>
           </DensityProvider>

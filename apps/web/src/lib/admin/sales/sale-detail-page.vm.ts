@@ -59,6 +59,30 @@ export function saleDetailNotice(input: {
   return null;
 }
 
+/**
+ * The header's edit link. While setup is open the sale's notice already carries "Continue setup",
+ * so the header says "Edit draft" instead of offering the same link twice; with another notice
+ * in front (an unpayable seller, ATG), the header keeps "Continue setup".
+ */
+export function saleEditLink(input: {
+  status: SaleStatus;
+  canManage: boolean;
+  liveish: boolean;
+  editHref: string;
+  setupHref: string | null;
+  setupOpen: boolean;
+  notice: SaleDetailNotice | null;
+}): { label: string; href: string } | null {
+  if (!input.canManage) return null;
+  if (input.status === "draft") {
+    const noticeHasSetup = input.notice?.action?.label === "Continue setup";
+    return input.setupOpen && input.setupHref && !noticeHasSetup
+      ? { label: "Continue setup", href: input.setupHref }
+      : { label: "Edit draft", href: input.editHref };
+  }
+  return input.liveish ? { label: "Edit details", href: input.editHref } : null;
+}
+
 /** The first lot whose seller cannot be paid, for the notice's link. */
 export function firstBlockedSeller(
   lots: ReadonlyArray<{ id: string; sellerLegalEntityId?: string | null | undefined }>,
