@@ -159,6 +159,8 @@ export {
   FormSection,
 } from "./forms/form-section.js";
 export type { FormErrorSummaryProps } from "./forms/form-section.js";
+export { ChoiceFieldset } from "./forms/choice-fieldset.js";
+export type { ChoiceFieldsetProps } from "./forms/choice-fieldset.js";
 export { ReviewSection, StepHeader, StepIndicator } from "./forms/wizard.js";
 export { ListEditor } from "./forms/list-editor.js";
 export { RichTextField } from "./forms/rich-text-field.js";
