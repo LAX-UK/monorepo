@@ -1,9 +1,20 @@
 import { formatDate } from "@/lib/format-money";
 import type { PortalSaleAuthority, PortalSaleAuthorityRequest } from "@auction/shop-contracts";
 
-/** Shop accepts a request for between 0 and 10 editions available to sell. */
+/**
+ * A seller can ask for 0 up to the prints they hold in the run that are not sold or reserved.
+ * Older Shop responses do not say how many they hold; for those the old limit of 10 applies.
+ */
 export const MIN_AVAILABLE_TO_SELL = 0;
-export const MAX_AVAILABLE_TO_SELL = 10;
+const LIMIT_WITHOUT_OWNED_COUNT = 10;
+
+/** The most editions of this artwork the seller can have available to sell. */
+export function maxAvailableToSell(
+  row: Pick<PortalSaleAuthority, "ownedCount" | "committedCount">,
+): number {
+  if (row.ownedCount === undefined) return LIMIT_WITHOUT_OWNED_COUNT;
+  return Math.max(MIN_AVAILABLE_TO_SELL, row.ownedCount - Math.max(0, row.committedCount));
+}
 /** The longest note the request dialog accepts. */
 export const SALE_REQUEST_NOTE_MAX = 500;
 
@@ -44,8 +55,11 @@ export type EditionRowVm = {
   availableNow: number;
   lastApprovedOn: string | null;
   pending: PendingRequestVm | null;
-  /** Opens the request dialog; absent while a request is pending, because Shop takes one at a time. */
-  action: { label: "Request more" | "Change"; current: number } | null;
+  /**
+   * Opens the request dialog; absent while a request is pending, because Shop takes one at a
+   * time, and when the seller holds no print that could be offered.
+   */
+  action: { label: "Request more" | "Change"; current: number; max: number } | null;
 };
 
 export type RequestHistoryVm = {
@@ -104,6 +118,7 @@ export function buildEditionsPage(
   const pending = latestPendingByArtwork(requests);
   const rows = editions.map((row): EditionRowVm => {
     const counts = editionCounts(row);
+    const max = maxAvailableToSell(row);
     const request = pending.get(row.artworkId);
     return {
       artworkId: row.artworkId,
@@ -117,12 +132,14 @@ export function buildEditionsPage(
             note: cleanNote(request.note),
           }
         : null,
-      action: request
-        ? null
-        : {
-            label: counts.availableNow >= MAX_AVAILABLE_TO_SELL ? "Change" : "Request more",
-            current: counts.availableNow,
-          },
+      action:
+        request || (max === 0 && counts.availableNow === 0)
+          ? null
+          : {
+              label: counts.availableNow >= max ? "Change" : "Request more",
+              current: counts.availableNow,
+              max,
+            },
     };
   });
 
@@ -176,6 +193,7 @@ export type SaleRequestDraftVm = {
 export function describeSaleRequestDraft(
   requested: number,
   availableNow: number,
+  max: number,
 ): SaleRequestDraftVm {
   const delta = requested - availableNow;
   const changeText =
@@ -183,14 +201,13 @@ export function describeSaleRequestDraft(
   return {
     title: delta < 0 ? "Sell fewer editions" : "Request more editions",
     changeText,
-    canSubmit:
-      delta !== 0 && requested >= MIN_AVAILABLE_TO_SELL && requested <= MAX_AVAILABLE_TO_SELL,
+    canSubmit: delta !== 0 && requested >= MIN_AVAILABLE_TO_SELL && requested <= max,
     submitLabel: "Send request",
   };
 }
 
-/** Keeps a typed number inside what Shop accepts. */
-export function clampAvailableToSell(value: number): number {
+/** Keeps a typed number inside what Shop accepts for this artwork. */
+export function clampAvailableToSell(value: number, max: number): number {
   if (!Number.isFinite(value)) return MIN_AVAILABLE_TO_SELL;
-  return Math.min(MAX_AVAILABLE_TO_SELL, Math.max(MIN_AVAILABLE_TO_SELL, Math.round(value)));
+  return Math.min(max, Math.max(MIN_AVAILABLE_TO_SELL, Math.round(value)));
 }

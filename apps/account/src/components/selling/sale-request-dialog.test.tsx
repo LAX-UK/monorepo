@@ -14,12 +14,13 @@ const { SaleRequestDialog } = await import("./sale-request-dialog.client");
 
 const ARTWORK = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 
-function open(current = 3) {
+function open(current = 3, max = 10) {
   render(
     <SaleRequestDialog
       artworkId={ARTWORK}
       artworkTitle="Harbour Print"
       current={current}
+      max={max}
       triggerLabel="Request more"
     />,
   );
@@ -52,10 +53,17 @@ describe("SaleRequestDialog", () => {
     expect(screen.getByRole("dialog").textContent).toContain("1 fewer than now");
   });
 
-  it("stops the stepper at Shop's limits", () => {
+  it("stops the stepper at the prints the seller holds", () => {
     open(9);
     expect(screen.getByLabelText("Editions available to sell")).toHaveProperty("value", "10");
     expect(screen.getByRole("button", { name: "One more" })).toHaveProperty("disabled", true);
+  });
+
+  it("goes past 10 for a seller holding more prints of a custom run", () => {
+    const dialog = open(12, 30);
+    expect(screen.getByLabelText("Editions available to sell")).toHaveProperty("value", "13");
+    expect(screen.getByRole("button", { name: "One more" })).toHaveProperty("disabled", false);
+    expect(dialog.textContent).toContain("Between 0 and 30, the prints you hold");
   });
 
   it("sends the new total and the trimmed note, then refreshes the page", async () => {

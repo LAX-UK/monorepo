@@ -6,6 +6,7 @@ import {
   describeChange,
   describeSaleRequestDraft,
   editionCounts,
+  maxAvailableToSell,
 } from "./selling-editions.vm";
 
 const ART_A = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
@@ -163,26 +164,51 @@ describe("buildEditionsPage", () => {
 
 describe("the request dialog's wording", () => {
   it("follows the direction of the change and blocks a request for no change", () => {
-    expect(describeSaleRequestDraft(5, 3)).toMatchObject({
+    expect(describeSaleRequestDraft(5, 3, 10)).toMatchObject({
       title: "Request more editions",
       changeText: "2 more than now",
       canSubmit: true,
     });
-    expect(describeSaleRequestDraft(1, 3)).toMatchObject({
+    expect(describeSaleRequestDraft(1, 3, 10)).toMatchObject({
       title: "Sell fewer editions",
       changeText: "2 fewer than now",
       canSubmit: true,
     });
-    expect(describeSaleRequestDraft(3, 3)).toMatchObject({
+    expect(describeSaleRequestDraft(3, 3, 10)).toMatchObject({
       changeText: "The same as now",
       canSubmit: false,
     });
+    expect(describeSaleRequestDraft(31, 3, 30).canSubmit).toBe(false);
   });
 
   it("keeps a typed number inside what Shop accepts", () => {
-    expect(clampAvailableToSell(14)).toBe(10);
-    expect(clampAvailableToSell(-3)).toBe(0);
-    expect(clampAvailableToSell(2.6)).toBe(3);
-    expect(clampAvailableToSell(Number.NaN)).toBe(0);
+    expect(clampAvailableToSell(14, 10)).toBe(10);
+    expect(clampAvailableToSell(28, 30)).toBe(28);
+    expect(clampAvailableToSell(-3, 10)).toBe(0);
+    expect(clampAvailableToSell(2.6, 10)).toBe(3);
+    expect(clampAvailableToSell(Number.NaN, 10)).toBe(0);
+  });
+});
+
+describe("maxAvailableToSell", () => {
+  it("is the prints the seller holds, less those sold or reserved, not a fixed 10", () => {
+    expect(maxAvailableToSell({ ownedCount: 30, committedCount: 2 })).toBe(28);
+    expect(maxAvailableToSell({ ownedCount: 4, committedCount: 4 })).toBe(0);
+  });
+
+  it("keeps the old limit for a Shop response that does not say how many are held", () => {
+    expect(maxAvailableToSell({ committedCount: 2 })).toBe(10);
+  });
+
+  it("offers a custom run's whole share, and no action when nothing can be offered", () => {
+    const page = buildEditionsPage(
+      [
+        edition({ ownedCount: 30, authorisedCount: 28, committedCount: 2 }),
+        edition({ artworkId: ART_B, ownedCount: 3, authorisedCount: 0, committedCount: 3 }),
+      ],
+      [],
+    );
+    expect(page.rows[0]?.action).toEqual({ label: "Change", current: 28, max: 28 });
+    expect(page.rows[1]?.action).toBeNull();
   });
 });
