@@ -333,16 +333,15 @@ test.describe("lax.art journeys", () => {
     const footer = page.getByRole("contentinfo");
     // Account and LAX products depend on sign-in and product directory config.
     const titles = await footer.getByRole("heading", { level: 3 }).allTextContents();
-    expect(titles.slice(0, 2)).toEqual(["About us", "Our services"]);
+    expect(titles.slice(0, 2)).toEqual(["Gallery", "Our services"]);
     expect(titles.slice(-2)).toEqual(["Legal", "Connect"]);
-    await expect(footer.getByRole("link", { name: "How to sell" })).toHaveAttribute(
-      "href",
-      "/how-to-sell",
-    );
-    await expect(footer.getByRole("link", { name: "Contact us" })).toHaveAttribute(
-      "href",
-      "/contact",
-    );
+    // Columns fold on phones, so links are checked whether or not their column is open.
+    await expect(
+      footer.getByRole("link", { name: "How to sell", includeHidden: true }),
+    ).toHaveAttribute("href", "/how-to-sell");
+    await expect(
+      footer.getByRole("link", { name: "Contact", includeHidden: true }),
+    ).toHaveAttribute("href", "/contact");
   });
 
   test("mobile bottom nav marks the current tab", async ({ page }, testInfo) => {
