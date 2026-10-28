@@ -54,6 +54,9 @@ export type PaymentsStaffListProps = {
   summary: AdminPaymentsSummary;
   attentionCounts: { manualReviewCount: number; disputesOpen: number };
   canWritePayments: boolean;
+  /** Lot and client pages need their own capability; without it names show as plain text. */
+  canOpenLot: boolean;
+  canOpenClient: boolean;
   exportFilters: Record<string, unknown>;
   pageSize: number;
   pagination: { summary: string; prevHref: string | null; nextHref: string | null } | null;
@@ -66,7 +69,7 @@ export type PaymentsStaffListProps = {
  * each row's `…` menu or the record panel, always through a confirm dialog with the amount.
  */
 export function PaymentsStaffList(props: PaymentsStaffListProps) {
-  const { search, rows } = props;
+  const { search, rows, canOpenLot, canOpenClient } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
   const panelHref = useCallback((id: string | null) => paymentPanelHref(search, id), [search]);
   const panel = useListPanel({
@@ -94,7 +97,10 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         header: "Lot",
         mobile: "title",
         cell: (row) => (
-          <PrimaryCell href={`/admin/lots/${row.lotId}`} Link={Link} secondary={row.lotContext}>
+          <PrimaryCell
+            {...(canOpenLot ? { href: `/admin/lots/${row.lotId}`, Link } : {})}
+            secondary={row.lotContext}
+          >
             {row.lotTitle}
           </PrimaryCell>
         ),
@@ -116,11 +122,14 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         header: "Buyer",
         width: "22%",
         mobile: "meta",
-        cell: (row) => (
-          <CellLink href={`/admin/clients/${encodeURIComponent(row.buyerId)}`} Link={Link}>
-            {row.buyer}
-          </CellLink>
-        ),
+        cell: (row) =>
+          canOpenClient ? (
+            <CellLink href={`/admin/clients/${encodeURIComponent(row.buyerId)}`} Link={Link}>
+              {row.buyer}
+            </CellLink>
+          ) : (
+            row.buyer
+          ),
       },
       {
         id: "amount",
@@ -173,7 +182,7 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
         cell: (row) => <StaffDate value={row.createdAt} />,
       },
     ],
-    [],
+    [canOpenLot, canOpenClient],
   );
 
   const activeFilters = paymentsFilterChips(search).map((chip) => ({
@@ -292,7 +301,9 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
             label: (row) => `Actions for payment ${row.lotTitle}`,
             actions: (row) => [
               { id: "open", label: "Open details", onSelect: () => panel.show(row.id) },
-              { id: "lot", label: "Open lot", href: `/admin/lots/${row.lotId}` },
+              ...(canOpenLot
+                ? [{ id: "lot", label: "Open lot", href: `/admin/lots/${row.lotId}` }]
+                : []),
               ...money.actionsFor(row),
             ],
           },
@@ -306,6 +317,8 @@ export function PaymentsStaffList(props: PaymentsStaffListProps) {
       <PaymentQuickView
         row={openRow}
         canWritePayments={props.canWritePayments}
+        canOpenLot={canOpenLot}
+        canOpenClient={canOpenClient}
         onClose={() => panel.show(null)}
         onCapture={money.capture}
         onRefund={money.refund}

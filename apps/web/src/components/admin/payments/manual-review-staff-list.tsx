@@ -44,6 +44,9 @@ export type ManualReviewStaffListProps = {
   attentionCounts: { manualReviewCount: number; disputesOpen: number };
   canOpenComplianceQueues: boolean;
   canResolveManualReview: boolean;
+  /** Lot and client pages need their own capability; without it names show as plain text. */
+  canOpenLot: boolean;
+  canOpenClient: boolean;
   loadError: string | null;
 };
 
@@ -65,7 +68,7 @@ function complianceHref(row: ManualReviewStaffRow): string {
  * confirm dialog with the amount and the winner; a refund needs a reason.
  */
 export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
-  const { search, rows } = props;
+  const { search, rows, canOpenLot, canOpenClient } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
   const [openId, setOpenId] = useState<string | null>(null);
   const openRow = rows.find((row) => row.id === openId) ?? null;
@@ -82,8 +85,7 @@ export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
         mobile: "title",
         cell: (row) => (
           <PrimaryCell
-            href={`/admin/lots/${row.lotId}`}
-            Link={Link}
+            {...(canOpenLot ? { href: `/admin/lots/${row.lotId}`, Link } : {})}
             secondary={row.lotNumber != null ? `Lot ${row.lotNumber}` : null}
           >
             {row.lotTitle}
@@ -105,11 +107,14 @@ export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
         header: "Winner",
         width: "22%",
         mobile: "meta",
-        cell: (row) => (
-          <CellLink href={`/admin/clients/${encodeURIComponent(row.winnerId)}`} Link={Link}>
-            {row.winner}
-          </CellLink>
-        ),
+        cell: (row) =>
+          canOpenClient ? (
+            <CellLink href={`/admin/clients/${encodeURIComponent(row.winnerId)}`} Link={Link}>
+              {row.winner}
+            </CellLink>
+          ) : (
+            row.winner
+          ),
       },
       {
         id: "seller",
@@ -143,16 +148,20 @@ export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
         cell: (row) => <StaffDate value={row.source.createdAt} />,
       },
     ],
-    [],
+    [canOpenLot, canOpenClient],
   );
 
   const linkActions = (row: ManualReviewStaffRow): OverflowAction[] => [
-    { id: "lot", label: "Open lot", href: `/admin/lots/${row.lotId}` },
-    {
-      id: "winner",
-      label: "Open winner",
-      href: `/admin/clients/${encodeURIComponent(row.winnerId)}`,
-    },
+    ...(canOpenLot ? [{ id: "lot", label: "Open lot", href: `/admin/lots/${row.lotId}` }] : []),
+    ...(canOpenClient
+      ? [
+          {
+            id: "winner",
+            label: "Open winner",
+            href: `/admin/clients/${encodeURIComponent(row.winnerId)}`,
+          },
+        ]
+      : []),
     ...(row.compliance && props.canOpenComplianceQueues
       ? [{ id: "case", label: "Open compliance case", href: complianceHref(row) }]
       : []),
@@ -273,7 +282,7 @@ export function ManualReviewStaffList(props: ManualReviewStaffListProps) {
             : []
         }
         headerActions={
-          openRow ? (
+          openRow && canOpenLot ? (
             <StaffButton asChild variant="ghost" size="sm" icon={<ArrowUpRight aria-hidden />}>
               <Link href={`/admin/lots/${openRow.lotId}`}>Open lot</Link>
             </StaffButton>
