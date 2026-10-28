@@ -54,7 +54,6 @@ export default async function VisitPage() {
       {venues.length === 0 ? (
         <ArtStatusState
           variant="empty"
-          layout="inline"
           title="No venues listed"
           description="Visit details will appear here when venues are published."
         />

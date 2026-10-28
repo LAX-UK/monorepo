@@ -65,7 +65,7 @@ const ROW_SIZE = {
     article: "py-4 md:gap-6 md:py-6 md:pr-6",
     media: "size-20 md:aspect-[4/3] md:size-auto md:w-48 lg:w-[16.25rem]",
     body: "md:justify-center",
-    title: "text-sm md:text-xl md:leading-7",
+    title: "flex min-h-6 items-center text-sm md:text-xl md:leading-7",
     subtitle: "mt-1 text-xs md:mt-1.5 md:text-base",
   },
 } as const;

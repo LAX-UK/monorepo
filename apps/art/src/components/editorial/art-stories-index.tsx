@@ -57,7 +57,6 @@ export async function ArtStoriesIndex({ tab }: { tab: StoriesTabId }) {
         ) : result.data.cards.length === 0 && !episode ? (
           <ArtStatusState
             variant="empty"
-            layout="inline"
             title="Nothing published yet"
             description={EMPTY_COPY[tab]}
           />

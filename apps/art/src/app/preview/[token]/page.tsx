@@ -7,6 +7,7 @@ import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import { cn } from "@auction/ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,8 @@ export default async function EditorialPreviewPage({ params }: PreviewPageProps)
   const { token } = await params;
   const result = await composePreviewPage(artServices, token);
 
+  // A wrong or expired link is a 404, shown by this segment's not-found page.
+  if (result.status === "not_found") notFound();
   if (result.status !== "ok") {
     return (
       <div className={cn(MARKETING_PAGE_SHELL, "py-10")}>
@@ -31,8 +34,8 @@ export default async function EditorialPreviewPage({ params }: PreviewPageProps)
           result={result}
           disabledTitle="Preview unavailable"
           disabledDescription="Editorial preview is not enabled in this environment yet."
-          emptyTitle="Preview expired"
-          emptyDescription="This preview link is invalid or has expired. Issue a new one from LAX admin."
+          emptyTitle="Preview unavailable"
+          emptyDescription="This preview has no content to show."
         />
       </div>
     );

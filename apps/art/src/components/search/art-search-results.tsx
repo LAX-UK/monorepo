@@ -30,7 +30,7 @@ function SearchPanel({ vm }: { vm: SearchResultsVm }) {
     const filtered = vm.activeFilterCount > 0;
     const copy = searchEmptyCopy(activeTab, filtered);
     return (
-      <div data-testid={vm.noResults ? "art-search-no-results" : "art-search-tab-empty"}>
+      <div data-testid="art-search-tab-empty">
         <ArtStatusState
           variant="empty"
           icon="search-remove"
@@ -76,10 +76,36 @@ function SearchPanel({ vm }: { vm: SearchResultsVm }) {
   );
 }
 
+/** Nothing matched anywhere: say so once, with places to look next, instead of empty tabs. */
+function SearchNoResults({ query }: { query: string }) {
+  return (
+    <div data-testid="art-search-no-results">
+      <ArtStatusState
+        variant="empty"
+        icon="search-remove"
+        layout="page"
+        titleAs="h1"
+        title={`No results for “${query}”`}
+        description="Check the spelling, or look through the gallery instead."
+        actions={
+          <>
+            <ArtStatusStateLink href="/artworks" priority="primary">
+              Browse artworks
+            </ArtStatusStateLink>
+            <ArtStatusStateLink href="/artists">Artists</ArtStatusStateLink>
+            <ArtStatusStateLink href="/exhibitions">Exhibitions</ArtStatusStateLink>
+          </>
+        }
+      />
+    </div>
+  );
+}
+
 /** Results layout from Figma `826:14746`: title, Filters + tabs row, count and sort, panel. */
 export function ArtSearchResults({ vm }: { vm: SearchResultsVm }) {
+  if (vm.noResults) return <SearchNoResults query={vm.query} />;
   const artworkTab = isArtworkTab(vm.activeTab);
-  const showFilters = artworkTab && !vm.noResults;
+  const showFilters = artworkTab;
   const count = panelCount(vm.panel);
 
   return (
@@ -114,7 +140,7 @@ export function ArtSearchResults({ vm }: { vm: SearchResultsVm }) {
           />
         </div>
 
-        {count !== null && !vm.noResults ? (
+        {count !== null ? (
           <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <p
               className="font-body text-sm font-medium text-on-surface"

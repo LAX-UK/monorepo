@@ -63,7 +63,6 @@ export default async function ExhibitionsPage({ searchParams }: ExhibitionsPageP
         ) : result.data.cards.length === 0 ? (
           <ArtStatusState
             variant="empty"
-            layout="inline"
             title="Nothing to show yet"
             description={EMPTY_COPY[status]}
           />
