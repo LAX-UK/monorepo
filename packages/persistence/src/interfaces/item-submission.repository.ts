@@ -44,6 +44,8 @@ export type ItemSubmissionUpdatePatch = {
   reviewedAt?: Date | null;
   reviewNotes?: string | null;
   rejectionReason?: string | null;
+  changesRequestedNote?: string | null;
+  changesRequestedAt?: Date | null;
   convertedLotId?: string | null;
   assignedToUserId?: string | null;
   draftReminderSentAt?: Date | null;

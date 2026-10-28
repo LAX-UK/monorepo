@@ -86,6 +86,13 @@ export type {
   IBidPortfolioReader,
 } from "./bid-portfolio.reader.js";
 export type {
+  AwaitingConsignmentAgreement,
+  ConsignmentAgreementProposalRow,
+  IConsignmentAgreementReader,
+  IConsignmentAgreementRepository,
+  IConsignmentAgreementWriter,
+} from "./consignment-agreement.repository.js";
+export type {
   AccountOnboardingStatusRow,
   CompleteAccountOnboardingInput,
   IAccountOnboardingRepository,

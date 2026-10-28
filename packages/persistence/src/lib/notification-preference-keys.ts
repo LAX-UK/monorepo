@@ -143,6 +143,20 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, NotificationTypeConfig> = {
     whatsapp: null,
     template: "submission-draft-reminder",
   },
+  submission_changes_requested: {
+    inApp: null,
+    push: "submissionUpdatesPush",
+    email: "submissionUpdatesEmail",
+    whatsapp: null,
+    template: "submission-changes-requested",
+  },
+  consignment_agreement_reminder: {
+    inApp: null,
+    push: "submissionUpdatesPush",
+    email: "submissionUpdatesEmail",
+    whatsapp: null,
+    template: "consignment-agreement-reminder",
+  },
 };
 
 export function emailPreferenceKey(type: string): keyof NotificationPreference | null {

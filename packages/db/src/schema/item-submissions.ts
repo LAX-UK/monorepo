@@ -20,6 +20,7 @@ export const itemSubmissionStatusEnum = pgEnum("item_submission_status", [
   "under_review",
   "approved",
   "rejected",
+  "changes_requested",
   "withdrawn",
   "converted",
 ]);
@@ -59,6 +60,9 @@ export const itemSubmission = pgTable(
     reviewedAt: timestamp("reviewed_at", { mode: "date", withTimezone: true }),
     reviewNotes: text("review_notes"),
     rejectionReason: text("rejection_reason"),
+    /** What the specialist asked the seller to change; kept after resubmission for the record. */
+    changesRequestedNote: text("changes_requested_note"),
+    changesRequestedAt: timestamp("changes_requested_at", { mode: "date", withTimezone: true }),
     convertedLotId: uuid("converted_lot_id").references(() => lot.id, { onDelete: "set null" }),
     assignedToUserId: text("assigned_to_user_id").references(() => user.id, {
       onDelete: "set null",
