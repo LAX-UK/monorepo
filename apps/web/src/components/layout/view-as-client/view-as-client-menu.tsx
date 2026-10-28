@@ -5,6 +5,7 @@ import { useClickOutside } from "@/hooks/use-click-outside";
 import { useEscapeKey } from "@/hooks/use-escape-key";
 import { endAdminImpersonationAction } from "@/lib/legal-entity/acting-context.actions";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronDown } from "lucide-react";
 import Link from "next/link";
@@ -93,9 +94,14 @@ export function ViewAsClientMenu({ name }: { name: string }) {
             ))}
           </div>
           <form action={endAdminImpersonationAction} className="py-1">
-            <button type="submit" role="menuitem" className={ITEM_CLASS}>
+            <Button
+              type="submit"
+              variant="ghost"
+              role="menuitem"
+              className={cn(ITEM_CLASS, "h-auto justify-start rounded-none")}
+            >
               Exit view as client
-            </button>
+            </Button>
           </form>
         </div>
       ) : null}
