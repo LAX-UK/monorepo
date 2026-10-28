@@ -556,6 +556,12 @@ export {
   type AccountSubNavCountTone,
   type AccountSubNavItem,
   type AccountSubNavProps,
+  AccountProgress,
+  type AccountProgressProps,
+  type AccountProgressStep,
+  type AccountViewTab,
+  AccountViewTabs,
+  type AccountViewTabsProps,
   accountSubNavCountText,
   visibleAccountSubNavCount,
 } from "./account/index.js";

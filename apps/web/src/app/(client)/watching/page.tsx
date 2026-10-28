@@ -1,63 +1,48 @@
-import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import { ArtistFollowSection } from "@/components/dashboard/artist-follow/artist-follow-section";
 import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
-import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
-import { DashboardEmptyState, DashboardSkeleton } from "@/components/dashboard/primitives";
-import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
-import { WatchlistBoard } from "@/components/dashboard/watchlist-board";
-import { type WatchlistBoardRow, estimateLabel } from "@/components/dashboard/watchlist-board-rows";
-import { WatchlistListToolbar } from "@/components/dashboard/watchlist/watchlist-list-toolbar";
-import type { WatchlistWithLotRow } from "@/lib/buyer-account";
-import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
+import { AccountListSkeleton } from "@/components/dashboard/primitives/account-list-skeleton";
 import {
-  type DashboardSliceFailure,
-  describeDashboardSliceFailure,
-} from "@/lib/dashboard/dashboard-fetch-errors";
+  ARTISTS_YOU_FOLLOW_HREF,
+  WatchingView,
+} from "@/components/dashboard/watchlist/watching-view";
 import {
-  buildWatchlistHref,
-  hasWatchlistActiveFilters,
-  parseWatchlistParams,
+  WATCHLIST_SORT_OPTIONS,
+  type WatchlistSortOption,
 } from "@/lib/dashboard/filters/watchlist/watchlist-filters";
-import { resolveArtistNames } from "@/lib/data/artist-names.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import type { Category } from "@auction/types";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { type WatchingVm, buildWatchingVm, parseWatchingTab } from "@/lib/watching/watching.vm";
 import { Button } from "@auction/ui/components/button";
-import { Surface } from "@auction/ui/components/surface";
-import { toLotCardTimingVM } from "@auction/validators";
+import { ChevronLeft } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
 
-function toWatchlistRows(rows: WatchlistWithLotRow[]): WatchlistBoardRow[] {
-  return rows.flatMap((row) => {
-    const lot = row.lot;
-    if (!lot) return [];
+export const metadata: Metadata = { title: "Watching" };
 
-    return [
-      {
-        watchlistId: row.watchlistId,
-        lotId: lot.id,
-        title: lot.title,
-        artistLabel: lot.artistId ?? "",
-        image: lot.images[0] ?? null,
-        medium: lot.medium,
-        lotNumber: lot.lotNumber,
-        estimateLabel: estimateLabel({
-          estimate: lot.marketingDetails.estimate,
-          fallback: lot.currentPrice,
-        }),
-        ...toLotCardTimingVM(lot),
-      },
-    ];
-  });
+type PageSearchParams = { sort?: string; tab?: string; q?: string; section?: string };
+
+/** Closing soonest first, unless the person chose another order. */
+function parseSort(raw: string | undefined): WatchlistSortOption {
+  return WATCHLIST_SORT_OPTIONS.find((option) => option.value === raw)?.value ?? "endingSoon";
 }
 
-type PageSearchParams = {
-  sort?: string;
-  status?: string;
-  categoryIds?: string;
-  q?: string;
-  section?: string;
-};
+async function loadWatching(sp: PageSearchParams, sort: WatchlistSortOption) {
+  const c = await getServerDataContainer();
+  const [rowsResult, bidsResult, userResult] = await Promise.allSettled([
+    c.watchlist.listMine({ sort, categoryIds: [] }),
+    c.bids.listMine(),
+    c.session.getCurrent(),
+  ]);
+  if (rowsResult.status === "rejected") return null;
+  return buildWatchingVm({
+    rows: rowsResult.value,
+    // Bids only add the person's standing to the pill; the page works without them.
+    bids: bidsResult.status === "fulfilled" ? bidsResult.value : [],
+    userId: userResult.status === "fulfilled" ? userResult.value?.id : undefined,
+    tab: parseWatchingTab(sp.tab),
+  });
+}
 
 export default async function DashboardWatchlistPage({
   searchParams,
@@ -65,34 +50,25 @@ export default async function DashboardWatchlistPage({
   searchParams: Promise<PageSearchParams>;
 }) {
   const sp = await searchParams;
-  const isArtistsSection = sp.section === "artists";
 
-  const tabs = (
-    <Surface variant="inset" padding="sm">
-      <SectionTabsNav
-        variant="underline"
-        ariaLabel="Watching sections"
-        sticky={false}
-        items={[
-          { href: "/watching", label: "Lots", isActive: !isArtistsSection },
-          {
-            href: "/watching?section=artists",
-            label: "Artists",
-            isActive: isArtistsSection,
-          },
-        ]}
-      />
-    </Surface>
-  );
-
-  if (isArtistsSection) {
+  if (sp.section === "artists") {
     return (
       <DashboardListPage
-        title="Watching"
-        description="Track lots and artists you are following from the saleroom."
-        tabs={tabs}
+        title="Artists you follow"
+        description="We'll tell you when their work comes to a sale."
+        meta={
+          <Link
+            href={CLIENT_ROUTES.watching}
+            className="inline-flex items-center gap-1 underline-offset-4 hover:underline"
+          >
+            <ChevronLeft className="size-4" aria-hidden />
+            Watching
+          </Link>
+        }
       >
-        <Suspense fallback={<DashboardSkeleton variant="list" />}>
+        <Suspense
+          fallback={<AccountListSkeleton label="Loading the artists you follow" tabs={false} />}
+        >
           <ArtistFollowSection
             searchParams={Promise.resolve({
               ...(sp.q ? { q: sp.q } : {}),
@@ -104,87 +80,19 @@ export default async function DashboardWatchlistPage({
     );
   }
 
-  const filters = parseWatchlistParams(sp);
-  const c = await getServerDataContainer();
-  let rows: Awaited<ReturnType<typeof c.watchlist.listMine>> = [];
-  let categories: Category[] = [];
-  let loadFailure: DashboardSliceFailure | null = null;
-  let categoriesFailure: DashboardSliceFailure | null = null;
-
-  try {
-    rows = await c.watchlist.listMine({
-      sort: filters.sort,
-      ...(filters.status ? { status: filters.status } : {}),
-      categoryIds: filters.categoryIds,
-    });
-  } catch (e) {
-    loadFailure = describeDashboardSliceFailure(e, "watchlist", "Could not load watchlist.");
-  }
-
-  try {
-    categories = await c.categories.list();
-  } catch (e) {
-    categoriesFailure = describeDashboardSliceFailure(
-      e,
-      "categories",
-      "Could not load categories.",
-    );
-  }
-
-  const tableRows = toWatchlistRows(rows);
-  const hasActiveFilters = hasWatchlistActiveFilters(filters);
-  const artistIds = rows.map((r) => r.lot?.artistId ?? null);
-  const artistNameById = await resolveArtistNames(artistIds);
-
+  const sort = parseSort(sp.sort);
+  const vm: WatchingVm | null = await loadWatching(sp, sort);
   return (
     <DashboardListPage
       title="Watching"
-      description="Track lots and artists you are following from the saleroom."
-      tabs={tabs}
-      toolbar={
-        !loadFailure ? <WatchlistListToolbar filters={filters} categories={categories} /> : null
-      }
-      errorAlert={
-        <>
-          {loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
-          {categoriesFailure ? <DashboardSliceErrorAlert failure={categoriesFailure} /> : null}
-        </>
+      description="Lots you're following. We'll remind you an hour before they close."
+      actions={
+        <Button variant="ghost" size="default" asChild>
+          <Link href={ARTISTS_YOU_FOLLOW_HREF}>Artists you follow</Link>
+        </Button>
       }
     >
-      {!loadFailure && tableRows.length === 0 ? (
-        hasActiveFilters ? (
-          <FilterEmptyState
-            segment="dashboard"
-            entity="watched lots"
-            clearFiltersHref="/watching"
-            browseHref="/search"
-            browseLabel={DASHBOARD_CTA.browseLiveAuctions}
-          />
-        ) : (
-          <DashboardEmptyState
-            variant="hero"
-            illustration="frame"
-            title={DASHBOARD_EMPTY.watchlist.title}
-            description={DASHBOARD_EMPTY.watchlist.description}
-            action={
-              <Button variant="primary" asChild>
-                <Link href="/search">{DASHBOARD_CTA.browseLiveAuctions}</Link>
-              </Button>
-            }
-          />
-        )
-      ) : null}
-
-      {!loadFailure && tableRows.length > 0 ? (
-        <Suspense fallback={<DashboardSkeleton variant="list" />}>
-          <WatchlistBoard
-            rows={tableRows}
-            artistNameById={artistNameById}
-            initialQ={filters.q}
-            clearSearchHref={buildWatchlistHref(filters, { q: null })}
-          />
-        </Suspense>
-      ) : null}
+      <WatchingView vm={vm} sort={sort} />
     </DashboardListPage>
   );
 }

@@ -1,6 +1,5 @@
-import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
+import { AccountPageLoading } from "@/components/dashboard/primitives/account-page-loading";
 
-/** Settings layout already provides outer `screen` chrome; keep this lightweight. */
-export default function DashboardSettingsLoading() {
-  return <DashboardSkeleton variant="list" />;
+export default function SettingsLoading() {
+  return <AccountPageLoading title="Bid settings" label="Loading your settings" tabs={false} />;
 }

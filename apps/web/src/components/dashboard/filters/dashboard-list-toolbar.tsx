@@ -91,7 +91,7 @@ export function DashboardFilterTrigger({
       type="button"
       variant="ghost"
       className={cn(
-        "inline-flex min-h-[var(--tap-target-min,44px)] shrink-0 items-center gap-1.5 rounded-full border border-outline-variant/50 bg-surface-container-lowest px-3 font-label text-[0.65rem] font-semibold text-on-surface transition-colors hover:border-link/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+        "inline-flex min-h-[var(--tap-target-min,44px)] shrink-0 items-center gap-1.5 rounded-full border border-outline-variant/50 bg-surface-container-lowest px-3 font-label text-xs font-semibold text-on-surface transition-colors hover:border-link/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
         className,
       )}
       onClick={onClick}
@@ -101,7 +101,7 @@ export function DashboardFilterTrigger({
       <span>Filters</span>
       {activeCount > 0 ? (
         <span
-          className="inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-primary px-1 font-label text-[0.6rem] font-bold leading-none text-on-primary"
+          className="inline-flex min-w-[1.125rem] items-center justify-center rounded-full bg-primary px-1 font-label text-xs font-semibold leading-none text-on-primary"
           aria-label={`${activeCount} active filters`}
         >
           {activeCount > 9 ? "9+" : activeCount}

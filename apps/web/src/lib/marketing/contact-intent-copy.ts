@@ -33,6 +33,24 @@ export function contactIntentFromSearchParams(input: {
     };
   }
 
+  if (intent === "purchase-problem") {
+    return {
+      topic: "buying",
+      headline:
+        "Report a problem with a purchase. Tell us the lot and what happened; client services reply within two business days.",
+      ...defaultSuccess,
+    };
+  }
+
+  if (intent === "bidding-limit") {
+    return {
+      topic: "buying",
+      headline:
+        "Ask to raise your bidding limit. Tell us which sale and the amount; client services reply within two business days.",
+      ...defaultSuccess,
+    };
+  }
+
   if (intent === "press") {
     return {
       topic: "press",

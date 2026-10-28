@@ -1,9 +1,5 @@
-import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
+import { AccountPageLoading } from "@/components/dashboard/primitives/account-page-loading";
 
-export default function DashboardBidsLoading() {
-  return (
-    <div className="mx-auto w-full max-w-[var(--container-inner,1376px)] py-6">
-      <DashboardSkeleton variant="listWithToolbar" />
-    </div>
-  );
+export default function BidsLoading() {
+  return <AccountPageLoading title="My bids" label="Loading your bids" />;
 }

@@ -1,158 +1,138 @@
-import { FilterEmptyState } from "@/components/app/filter-empty-state";
-import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
-import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
-import { DashboardFilterResultsAnnouncer } from "@/components/dashboard/filters";
-import { PaymentsMobileList } from "@/components/dashboard/list/payments-mobile-list";
-import { PaymentRowCard } from "@/components/dashboard/payments/payment-row-card";
-import { PortfolioLotGrid } from "@/components/dashboard/portfolio-lot-grid";
-import type { PortfolioLotCardVm } from "@/components/dashboard/portfolio-lot-grid";
 import { PortfolioNoticeToast } from "@/components/dashboard/portfolio-notice-toast";
-import { PortfolioListToolbar } from "@/components/dashboard/portfolio/portfolio-list-toolbar";
-import { DashboardEmptyState, DashboardSection } from "@/components/dashboard/primitives";
-import { DashboardDesktopList } from "@/components/dashboard/primitives/dashboard-list-row-card";
-import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
+import { AccountLoadError } from "@/components/dashboard/primitives/account-load-error";
+import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { PayNowBanner } from "@/components/dashboard/purchases/pay-now-banner";
-import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
-import type { DashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
+import { PurchaseCard } from "@/components/dashboard/purchases/purchase-card";
 import {
-  PORTFOLIO_BASE_PATH,
-  type PortfolioFilters,
-  hasPortfolioActiveFilters,
-} from "@/lib/dashboard/filters/portfolio/portfolio-filters";
-import { kpiCompareHint } from "@/lib/dashboard/kpi-slot-conventions";
-import type { PaymentDisplayRow } from "@/lib/data/view-models/dashboard-payments.vm";
-import type { PayNowVm, PortfolioAnalyticsVm } from "@/lib/data/view-models/dashboard-portfolio.vm";
+  PurchasesActiveFilters,
+  PurchasesFilters,
+} from "@/components/dashboard/purchases/purchases-filters";
+import { ACCOUNT_LOAD_ERROR, DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
+import type { PortfolioFilters } from "@/lib/dashboard/filters/portfolio/portfolio-filters";
+import { laxAccountUrl } from "@/lib/lax-account-url";
+import { calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import type { PurchaseTab } from "@/lib/purchases/purchase-progress";
+import type { PurchasesVm } from "@/lib/purchases/purchases.vm";
+import { AccountViewTabs } from "@auction/marketing-ui";
 import { Button } from "@auction/ui/components/button";
+import { Info } from "lucide-react";
 import Link from "next/link";
 
-type PurchasesViewProps = {
-  filters: PortfolioFilters;
-  /** Totals over everything the person has won, ignoring filters. */
-  analytics: PortfolioAnalyticsVm;
-  /** Totals the summary tiles show: the filtered subset while a filter is on. */
-  kpiAnalytics: PortfolioAnalyticsVm;
-  shownCount: number;
-  payNow: PayNowVm | null;
-  cards: PortfolioLotCardVm[];
-  payments: PaymentDisplayRow[];
-  loadFailure: DashboardSliceFailure | null;
-  paymentsFailure: DashboardSliceFailure | null;
+const EMPTY_VIEW: Record<PurchaseTab, { title: string; description: string }> = {
+  "to-pay": {
+    title: "Nothing to pay",
+    description: "Lots you win wait here until they are paid for.",
+  },
+  "in-progress": {
+    title: "Nothing on its way",
+    description: "Paid lots stay here while we prepare them for collection or delivery.",
+  },
+  completed: {
+    title: "Nothing completed yet",
+    description: "Lots move here once they are delivered or collected.",
+  },
 };
 
+function tabHref(tab: PurchaseTab): string {
+  return `${CLIENT_ROUTES.purchases}?tab=${tab}`;
+}
+
+function NothingWonYet() {
+  return (
+    <DashboardEmptyState
+      variant="hero"
+      illustration="parcel"
+      title={DASHBOARD_EMPTY.purchases.title}
+      description={DASHBOARD_EMPTY.purchases.description}
+      action={
+        <Button variant="secondaryOutline" asChild>
+          <Link href={calendarSalesHref({ tab: "live" })}>{DASHBOARD_CTA.seeWhatsOn}</Link>
+        </Button>
+      }
+    />
+  );
+}
+
+function PortfolioNote() {
+  return (
+    <p className="flex items-start gap-1.5 font-body text-sm text-on-surface-variant">
+      <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+      <span>
+        Your whole collection across LAX Bid, LAX Shop and lax.art is in{" "}
+        <a
+          href={laxAccountUrl("/account/portfolio")}
+          className="text-on-surface underline underline-offset-4 hover:decoration-2"
+        >
+          LAX Account, Portfolio
+        </a>
+        .
+      </span>
+    </p>
+  );
+}
+
 /**
- * The buyer's owned works and what they owe, in one page: a pinned "Pay now" while anything is
- * due, the won lots with their payment state, and the invoices below.
+ * The body of Purchases: "Pay now" while anything is due, the views (To pay, In progress,
+ * Completed) and a card per won lot. `vm` is `null` when the won lots could not be read.
  */
 export function PurchasesView({
+  vm,
   filters,
-  analytics,
-  kpiAnalytics,
-  shownCount,
-  payNow,
-  cards,
-  payments,
-  loadFailure,
-  paymentsFailure,
-}: PurchasesViewProps) {
-  const hasActiveFilters = hasPortfolioActiveFilters(filters);
-  const filteredHint = hasActiveFilters ? kpiCompareHint(`${shownCount} shown`) : {};
-
+}: {
+  vm: PurchasesVm | null;
+  filters: PortfolioFilters;
+}) {
+  if (!vm) return <AccountLoadError {...ACCOUNT_LOAD_ERROR.purchases} />;
+  const filtered = vm.shown < vm.total;
+  const empty = filtered
+    ? {
+        title: "No purchases match these filters",
+        description: "Clear a filter or choose another view to see more.",
+      }
+    : EMPTY_VIEW[vm.tab];
   return (
-    <DashboardListPage
-      title="Purchases"
-      description="Works you have won, what you owe and your invoices."
-      banner={
+    <div className="flex flex-col gap-6">
+      <PortfolioNoticeToast />
+      {vm.total === 0 ? (
+        <NothingWonYet />
+      ) : (
         <>
-          {payNow ? <PayNowBanner payNow={payNow} /> : null}
-          <PortfolioNoticeToast />
-        </>
-      }
-      toolbar={
-        !loadFailure && analytics.totalRows > 0 ? (
-          <PortfolioListToolbar filters={filters} years={analytics.years} />
-        ) : null
-      }
-      errorAlert={loadFailure ? <DashboardSliceErrorAlert failure={loadFailure} /> : null}
-      className="space-y-8"
-    >
-      {!loadFailure && analytics.totalRows > 0 ? (
-        <KpiRow
-          text="plain"
-          variant="hero"
-          columns={4}
-          stripClassName="md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-2"
-          aria-label="Purchases summary"
-          tiles={[
-            {
-              id: "spent",
-              label: "Total spent",
-              value: kpiAnalytics.totalSpentFormatted,
-              semanticTone: "emphasis",
-              ...filteredHint,
-            },
-            {
-              id: "outstanding",
-              label: "Outstanding",
-              value: kpiAnalytics.outstandingFormatted,
-              semanticTone: kpiAnalytics.hasOutstanding ? "warning" : "default",
-              // Jumps straight to paying when there is something that can be paid.
-              ...(payNow?.href ? { href: payNow.href } : {}),
-              ...filteredHint,
-            },
-          ]}
-        />
-      ) : null}
-
-      {!loadFailure ? (
-        <DashboardFilterResultsAnnouncer count={shownCount} entityLabel="works" />
-      ) : null}
-
-      {!loadFailure ? (
-        <DashboardSection id="purchased-works" title="Works you have won">
-          {shownCount === 0 ? (
-            hasActiveFilters ? (
-              <FilterEmptyState
-                segment="dashboard"
-                entity="works"
-                clearFiltersHref={PORTFOLIO_BASE_PATH}
-                browseHref="/search"
-                browseLabel={DASHBOARD_CTA.browseLiveAuctions}
+          {vm.payNow ? <PayNowBanner banner={vm.payNow} /> : null}
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <AccountViewTabs
+                label="Purchases"
+                currentId={vm.tab}
+                tabs={vm.tabs.map((tab) => ({ ...tab, href: tabHref(tab.id) }))}
               />
-            ) : (
-              <DashboardEmptyState
-                variant="hero"
-                illustration="parcel"
-                title={DASHBOARD_EMPTY.purchases.title}
-                description={DASHBOARD_EMPTY.purchases.description}
-                action={
-                  <Button variant="primary" asChild>
-                    <Link href="/search">{DASHBOARD_CTA.browseLiveAuctions}</Link>
-                  </Button>
-                }
-              />
-            )
-          ) : (
-            <div className="min-w-0">
-              <PortfolioLotGrid items={cards} variant="stacked" />
+              <div className="flex items-center gap-4 max-md:w-full max-md:justify-between">
+                <p className="whitespace-nowrap font-body text-xs text-on-surface-variant md:text-sm">
+                  {vm.total === 1 ? "1 purchase" : `${vm.total} purchases`} · {vm.spent} in total
+                </p>
+                <PurchasesFilters filters={filters} years={vm.years} />
+              </div>
             </div>
-          )}
-        </DashboardSection>
-      ) : null}
-
-      {paymentsFailure ? (
-        <DashboardSliceErrorAlert failure={paymentsFailure} />
-      ) : payments.length > 0 ? (
-        <DashboardSection id="payment-history" title="Payments and invoices">
-          <PaymentsMobileList rows={payments} />
-          <DashboardDesktopList>
-            <ul className="divide-y divide-outline-variant/10">
-              {payments.map((row) => (
-                <PaymentRowCard key={row.id} row={row} />
+            <PurchasesActiveFilters filters={filters} />
+          </div>
+          {vm.cards.length === 0 ? (
+            <DashboardEmptyState
+              illustration="parcel"
+              title={empty.title}
+              description={empty.description}
+            />
+          ) : (
+            <ul className="flex flex-col gap-4" aria-label="Your purchases">
+              {vm.cards.map((card) => (
+                <li key={card.lotId}>
+                  <PurchaseCard card={card} />
+                </li>
               ))}
             </ul>
-          </DashboardDesktopList>
-        </DashboardSection>
-      ) : null}
-    </DashboardListPage>
+          )}
+          <PortfolioNote />
+        </>
+      )}
+    </div>
   );
 }

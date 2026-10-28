@@ -14,8 +14,14 @@ export const DASHBOARD_META = {
 /** Shared CTA labels — use everywhere for consistency. */
 export const DASHBOARD_CTA = {
   browseLiveAuctions: "Browse live auctions",
+  browseUpcomingSales: "Browse upcoming sales",
+  howBiddingWorks: "How bidding works",
+  seeWhatsOn: "See what's on now",
+  browseLots: "Browse lots",
+  chooseWhatWeSend: "Choose what we send",
   browseCatalogue: "Browse catalogue",
   newSubmission: "New submission",
+  submitWork: "Submit a work",
   tryAgain: "Try again",
   openHome: "Go to My bids",
   signInAgain: "Sign in again",
@@ -72,15 +78,15 @@ export function supportMailto(subject: string): string {
 export const DASHBOARD_EMPTY = {
   bids: {
     title: "No bids yet",
-    description: "When you place bids on live lots, they will appear here.",
+    description: "When you bid on a lot it appears here, with live status as the sale closes.",
   },
   purchases: {
-    title: "No purchases yet",
-    description: "Lots you win at auction, and their invoices, will appear here.",
+    title: "Nothing won yet",
+    description: "Lots you win appear here with payment, delivery and your invoice.",
   },
   watchlist: {
-    title: "Your watchlist is empty",
-    description: "Save lots you are interested in to track them here.",
+    title: "Follow lots you like",
+    description: "Tap the heart on any lot. We'll remind you an hour before it closes.",
   },
   artistFollow: {
     title: "No followed artists",
@@ -97,8 +103,8 @@ export const DASHBOARD_EMPTY = {
       "Tell our specialists about an artwork or collectible. When approved, we draft the catalogue lot for you.",
   },
   sellerPayouts: {
-    title: "No payouts yet",
-    description: "Settlement batches appear here after your lots sell and buyers pay.",
+    title: "Nothing sold yet",
+    description: "Works appear here once they sell, and each payout with its statement.",
   },
   organisations: {
     title: "No organisations yet",
@@ -119,7 +125,45 @@ export const DASHBOARD_EMPTY = {
     description: "Add won lots from your purchases to pay in one session.",
   },
   notifications: {
-    title: "No notifications",
-    description: "Updates about bids, sales, and account activity will appear here.",
+    title: "You're all caught up",
+    description: "Outbid alerts, payment reminders and selling updates will appear here.",
   },
 } as const;
+
+/** What each account page says when its list does not load: on our side, and what is still safe. */
+export const ACCOUNT_LOAD_ERROR = {
+  bids: {
+    title: "We couldn't load your bids",
+    description: "This is on our side. Your bids are safe and still active in the sale.",
+  },
+  purchases: {
+    title: "We couldn't load your purchases",
+    description: "This is on our side. Your purchases, payments and invoices are safe.",
+  },
+  watching: {
+    title: "We couldn't load the lots you follow",
+    description: "This is on our side. The lots you follow are saved and reminders still go out.",
+  },
+  consignments: {
+    title: "We couldn't load your consignments",
+    description: "This is on our side. Your submissions are safe with your specialist.",
+  },
+  payouts: {
+    title: "We couldn't load your sales and payouts",
+    description: "This is on our side. Payouts still go to your bank account as scheduled.",
+  },
+  consignment: {
+    title: "We couldn't load this consignment",
+    description: "This is on our side. Your submission is safe with your specialist.",
+  },
+  notifications: {
+    title: "We couldn't load your notifications",
+    description: "This is on our side. Outbid and payment alerts still reach your email.",
+  },
+  settings: {
+    title: "We couldn't load your settings",
+    description: "This is on our side. Your saved choices have not changed.",
+  },
+} as const;
+
+export type AccountLoadErrorPage = keyof typeof ACCOUNT_LOAD_ERROR;

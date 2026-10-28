@@ -3,12 +3,13 @@
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
-import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
+import { DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import {
   buildNotificationsHref,
   hasNotificationsActiveFilters,
   type parseNotificationsParams,
 } from "@/lib/dashboard/filters/notifications/notifications-filters";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
@@ -17,7 +18,12 @@ type InboxEmptyStateProps = {
   filters: ReturnType<typeof parseNotificationsParams>;
 };
 
+/**
+ * What an empty notifications view says. "Choose what we send" is not repeated here: it sits in
+ * the toolbar above every view.
+ */
 export function InboxEmptyState({ tab, filters }: InboxEmptyStateProps) {
+  // A type is chosen and nothing of that type is in this view.
   if (hasNotificationsActiveFilters(filters) && filters.type) {
     return (
       <FilterEmptyState
@@ -27,39 +33,28 @@ export function InboxEmptyState({ tab, filters }: InboxEmptyStateProps) {
       />
     );
   }
-  if (tab === "unread") {
+  if (tab === "all") {
     return (
       <DashboardEmptyState
-        title="No unread notifications"
-        description="You're up to date. Switch to All to see your full history."
-        action={
-          <Button type="button" variant="secondaryOutline" asChild>
-            <Link href="/notifications">View all</Link>
-          </Button>
-        }
-      />
-    );
-  }
-  if (tab === "archived") {
-    return (
-      <DashboardEmptyState
-        title="Nothing archived"
-        description="Archived notifications appear here. Archive a row to move it out of the active inbox."
-        action={
-          <Button type="button" variant="secondaryOutline" asChild>
-            <Link href="/notifications">Back to All</Link>
-          </Button>
-        }
+        variant="hero"
+        illustration="plinth"
+        title={DASHBOARD_EMPTY.notifications.title}
+        description={DASHBOARD_EMPTY.notifications.description}
       />
     );
   }
   return (
     <DashboardEmptyState
-      title={DASHBOARD_EMPTY.notifications.title}
-      description={DASHBOARD_EMPTY.notifications.description}
+      illustration="plinth"
+      title={tab === "unread" ? "Nothing unread" : "Nothing archived"}
+      description={
+        tab === "unread"
+          ? "You're up to date. Everything we sent you is under All."
+          : "Archived notifications appear here."
+      }
       action={
-        <Button type="button" variant="secondaryOutline" asChild>
-          <Link href="/search">{DASHBOARD_CTA.browseLiveAuctions}</Link>
+        <Button variant="secondaryOutline" asChild>
+          <Link href={CLIENT_ROUTES.notifications}>Show all</Link>
         </Button>
       }
     />
@@ -69,13 +64,4 @@ export function InboxEmptyState({ tab, filters }: InboxEmptyStateProps) {
 export function parseInboxTab(raw: string | null): InboxTab {
   if (raw === "unread" || raw === "archived") return raw;
   return "all";
-}
-
-export function inboxTabHref(pathname: string, params: URLSearchParams, tab: InboxTab): string {
-  const next = new URLSearchParams(params.toString());
-  if (tab === "all") next.delete("tab");
-  else next.set("tab", tab);
-  next.delete("view");
-  const qs = next.toString();
-  return qs ? `${pathname}?${qs}` : pathname;
 }

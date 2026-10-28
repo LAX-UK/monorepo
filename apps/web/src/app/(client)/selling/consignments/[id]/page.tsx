@@ -1,13 +1,17 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
-import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboard-detail-header";
+import { AccountLoadError } from "@/components/dashboard/primitives/account-load-error";
 import { ConsignmentAgreementPanel } from "@/components/dashboard/seller/consignment-agreement-panel";
 import { ConsignmentChecklist } from "@/components/dashboard/seller/consignment-checklist";
+import {
+  AboutTheWork,
+  AskYourSpecialist,
+  ConsignmentDetailHead,
+} from "@/components/dashboard/seller/consignment-detail-parts";
 import { ConsignmentWithdrawPanel } from "@/components/dashboard/seller/consignment-withdraw-panel";
 import { SubmissionChangesRequestedPanel } from "@/components/dashboard/seller/submission-changes-requested-panel";
 import { UnsoldLotChoicePanel } from "@/components/dashboard/seller/unsold-lot-choice-panel";
 import { SubmissionDetailLiveRefresh } from "@/components/dashboard/submission-detail-live-refresh";
-import { SubmissionDetailSplit } from "@/components/dashboard/submission-detail-split";
 import { SubmissionLotReadyChecklist } from "@/components/dashboard/submission-lot-ready-checklist";
 import { SubmissionRejectionPanel } from "@/components/dashboard/submission-rejection-panel";
 import { SubmissionSellerDocumentsPanel } from "@/components/dashboard/submission-seller-documents-panel";
@@ -15,8 +19,9 @@ import { SubmissionWizard } from "@/components/dashboard/submission-wizard/submi
 import { SubmissionWorkflowActions } from "@/components/dashboard/submission-workflow-actions";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { ConsignmentStatusBadge } from "@/components/ui/consignment-status-badge";
+import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
+import { ACCOUNT_LOAD_ERROR, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
   describeDashboardSliceFailure,
   describeSettingsActionError,
@@ -39,21 +44,17 @@ import {
 } from "@/lib/legal/conditions-of-business-part-c";
 import { checklistItemView } from "@/lib/seller/consignment-checklist-copy";
 import { consignmentChecklistFacts } from "@/lib/seller/consignment-checklist-facts";
+import { buildConsignmentDetailVm } from "@/lib/seller/consignment-detail.vm";
 import { consignmentWithdrawalViewModel } from "@/lib/seller/consignment-withdrawal-view";
 import { loadSellerAccountFacts } from "@/lib/seller/seller-account-facts.server";
 import { unsoldChoiceViewModel } from "@/lib/seller/unsold-choice-view";
 import { lotPath } from "@/lib/seo/url";
 import {
-  SUBMISSION_TIMELINE_STAGES,
-  submissionTimelineActiveIndex,
-} from "@/lib/submissions/submission-timeline";
-import {
   computeConsignmentChecklist,
   evaluateSubmissionQuality,
   sellerCanEditSubmission,
 } from "@auction/domain";
-import { Surface } from "@auction/ui/components/surface";
-import { TimelineStages } from "@auction/ui/components/timeline-stages";
+import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -72,7 +73,9 @@ export default async function SubmissionDetailPage({
     loginNext: `/selling/consignments/${id}`,
   });
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
-  const { sellerEntityId } = sellerCtx;
+  const { sellerEntityId, sellingAsOrganisation } = sellerCtx;
+  // A person's consignments sit under Selling; an organisation's under Consignments.
+  const backLabel = sellingAsOrganisation ? "Consignments" : "Selling";
   const c = await getServerDataContainer();
 
   let s: Awaited<ReturnType<typeof c.submissions.getMineById>> = null;
@@ -124,14 +127,16 @@ export default async function SubmissionDetailPage({
 
   if (loadFailure) {
     return (
-      <DashboardPage className="mx-auto max-w-4xl space-y-8">
-        <DashboardDetailHeader
-          compactOnMobile
-          backHref={DASHBOARD_ROUTES.consignments}
-          backLabel="Consignments"
-          title="Could not load submission"
-        />
-        <DashboardSliceErrorAlert failure={loadFailure} />
+      <DashboardPage className="space-y-8">
+        <SetMobileShellTitle title="Consignment" />
+        <Link
+          href={DASHBOARD_ROUTES.consignments}
+          className="inline-flex w-fit items-center gap-1 font-body text-sm text-on-surface-variant underline-offset-4 hover:text-on-surface hover:underline"
+        >
+          <ChevronLeft aria-hidden className="size-4" />
+          {backLabel}
+        </Link>
+        <AccountLoadError {...ACCOUNT_LOAD_ERROR.consignment} />
       </DashboardPage>
     );
   }
@@ -199,138 +204,149 @@ export default async function SubmissionDetailPage({
   const wizardInitialStepIndex = readyToSubmit
     ? wizardStepIndex("review")
     : firstIncompleteWizardStepIndex(submissionFormValues);
+  const detail = buildConsignmentDetailVm({
+    submission,
+    lot: convertedLot,
+    agreementAccepted: Boolean(agreementView?.agreement?.acceptedAt),
+    listingHref: submission.convertedLotId
+      ? lotPath({ id: submission.convertedLotId, title: submission.title })
+      : null,
+  });
+  const photos = submission.images.filter((src): src is string => Boolean(src));
 
   return (
-    <DashboardPage className="mx-auto max-w-4xl space-y-8">
+    <DashboardPage className="space-y-8">
       <SetMobileShellTitle title={submission.title} />
-      <DashboardDetailHeader
-        compactOnMobile
-        backHref={DASHBOARD_ROUTES.consignments}
-        backLabel="Consignments"
+      <ConsignmentDetailHead
+        vm={detail}
         title={submission.title}
-        badges={<ConsignmentStatusBadge stage={afterSale?.stage ?? submission.status} />}
+        status={<ConsignmentStatusBadge stage={afterSale?.stage ?? submission.status} />}
+        backHref={DASHBOARD_ROUTES.consignments}
+        backLabel={backLabel}
       />
       {actionError ? (
         <DashboardSliceErrorAlert failure={describeSettingsActionError(actionError)} />
       ) : null}
       {categoriesFailure ? <DashboardSliceErrorAlert failure={categoriesFailure} /> : null}
       <SubmissionDetailLiveRefresh status={submission.status} />
-      <SubmissionChangesRequestedPanel submission={submission} />
-      {checklist?.applies && account ? (
-        <ConsignmentChecklist
-          items={checklist.items.map((item) =>
-            checklistItemView(item, {
-              accountKind: account.accountKind,
-              organisationName: account.organisationName,
-              agreementHref: "#agreement",
-            }),
-          )}
-          doneCount={checklist.doneCount}
-          totalCount={checklist.totalCount}
-        />
-      ) : null}
-      {unsoldView ? (
-        <UnsoldLotChoicePanel
-          submissionId={submission.id}
-          view={unsoldView}
-          current={unsoldCurrent}
-        />
-      ) : null}
-      {agreementView?.agreement && account ? (
-        <ConsignmentAgreementPanel
-          agreement={agreementView.agreement}
-          canAccept={agreementView.canAccept}
-          accountName={accountName}
-          accountKind={account.accountKind}
-          conditions={CONDITIONS_OF_BUSINESS_PART_C}
-        />
-      ) : null}
-      {!editable ? (
-        <>
-          <TimelineStages
-            stages={SUBMISSION_TIMELINE_STAGES}
-            activeIndex={submissionTimelineActiveIndex(
-              submission.status,
-              convertedLot?.status ?? null,
-            )}
-            className="mb-2"
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="flex min-w-0 flex-col gap-6">
+          <SubmissionChangesRequestedPanel submission={submission} />
+          {checklist?.applies && account ? (
+            <ConsignmentChecklist
+              items={checklist.items.map((item) =>
+                checklistItemView(item, {
+                  accountKind: account.accountKind,
+                  organisationName: account.organisationName,
+                  agreementHref: "#agreement",
+                }),
+              )}
+              doneCount={checklist.doneCount}
+              totalCount={checklist.totalCount}
+            />
+          ) : null}
+          {unsoldView ? (
+            <UnsoldLotChoicePanel
+              submissionId={submission.id}
+              view={unsoldView}
+              current={unsoldCurrent}
+            />
+          ) : null}
+          {agreementView?.agreement && account ? (
+            <ConsignmentAgreementPanel
+              agreement={agreementView.agreement}
+              canAccept={agreementView.canAccept}
+              accountName={accountName}
+              accountKind={account.accountKind}
+              conditions={CONDITIONS_OF_BUSINESS_PART_C}
+            />
+          ) : null}
+          <SubmissionRejectionPanel submission={submission} />
+          <SubmissionLotReadyChecklist
+            submission={submission}
+            lot={convertedLot}
+            connectRequired={connectRequired}
           />
-        </>
-      ) : null}
-      <SubmissionRejectionPanel submission={submission} />
-      <SubmissionLotReadyChecklist
-        submission={submission}
-        lot={convertedLot}
-        connectRequired={connectRequired}
-      />
-      <SubmissionSellerDocumentsPanel
-        submissionId={submission.id}
-        status={submission.status}
-        initialDocuments={submissionDocuments}
-        loadFailure={documentsFailure}
-      />
-      {editable ? (
-        <>
-          <SubmissionWizard
-            mode={{ kind: "edit", submissionId: submission.id }}
-            categories={categoriesFailure ? [] : categories}
-            initialValues={submissionFormValues}
-            initialStepIndex={wizardInitialStepIndex}
-            readyToSubmit={readyToSubmit}
-            {...(submission.status === "changes_requested"
-              ? { submitLabel: "Send back for review" }
-              : {})}
-          />
-        </>
-      ) : (
-        <SubmissionDetailSplit
-          title={submission.title}
-          status={submission.status}
-          images={submission.images}
-          metaSlot={
-            <div className="space-y-4">
-              <Surface
-                variant="section"
-                className="space-y-4 font-body text-sm text-on-surface-variant"
+          {editable ? (
+            <SubmissionWizard
+              mode={{ kind: "edit", submissionId: submission.id }}
+              categories={categoriesFailure ? [] : categories}
+              initialValues={submissionFormValues}
+              initialStepIndex={wizardInitialStepIndex}
+              readyToSubmit={readyToSubmit}
+              {...(submission.status === "changes_requested"
+                ? { submitLabel: "Send back for review" }
+                : {})}
+            />
+          ) : (
+            <section
+              aria-labelledby="your-submission-heading"
+              className="rounded-xl border border-outline-variant/60 bg-surface-container-lowest p-5"
+            >
+              <h2
+                id="your-submission-heading"
+                className="font-headline text-base font-semibold text-on-surface"
               >
-                <p>{submission.description ?? "No description."}</p>
-                {submission.status !== "rejected" && submission.reviewNotes ? (
-                  <p>
-                    <span className="font-label text-xs font-semibold text-on-surface">
-                      Reviewer notes
-                    </span>
-                    <br />
+                Your submission
+              </h2>
+              <p className="mt-2 whitespace-pre-line font-body text-sm text-on-surface-variant">
+                {submission.description?.trim() || "No description was added."}
+              </p>
+              {submission.status !== "rejected" && submission.reviewNotes ? (
+                <div className="mt-4 border-t border-outline-variant/50 pt-4">
+                  <h3 className="font-body text-sm font-semibold text-on-surface">
+                    Your specialist's notes
+                  </h3>
+                  <p className="mt-1 font-body text-sm text-on-surface-variant">
                     {submission.reviewNotes}
                   </p>
-                ) : null}
-                {submission.convertedLotId ? (
-                  <p>
-                    View listing:{" "}
-                    <Link
-                      href={lotPath({ id: submission.convertedLotId, title: submission.title })}
-                      className="text-link underline"
-                    >
-                      Open artwork page
-                    </Link>
-                  </p>
-                ) : null}
-              </Surface>
-              <SubmissionWorkflowActions
-                submissionId={submission.id}
-                canSubmit={canSubmit}
-                canWithdraw={false}
-              />
-              {withdrawalView ? (
-                <ConsignmentWithdrawPanel
-                  submissionId={submission.id}
-                  view={withdrawalView}
-                  terms={partCSection("withdrawal-by-seller")}
-                />
+                </div>
               ) : null}
-            </div>
-          }
-        />
-      )}
+              {photos.length > 1 ? (
+                <ul className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-6" aria-label="Photos">
+                  {photos.map((src, index) => (
+                    <li
+                      key={src}
+                      className="relative aspect-square overflow-hidden rounded-md bg-surface-container-high"
+                    >
+                      <MediaImage
+                        src={src}
+                        alt={`${submission.title}, photo ${index + 1}`}
+                        label="Photo"
+                        sizes="96px"
+                      />
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="mt-4">
+                <SubmissionWorkflowActions
+                  submissionId={submission.id}
+                  canSubmit={canSubmit}
+                  canWithdraw={false}
+                />
+              </div>
+            </section>
+          )}
+          <SubmissionSellerDocumentsPanel
+            submissionId={submission.id}
+            status={submission.status}
+            initialDocuments={submissionDocuments}
+            loadFailure={documentsFailure}
+          />
+        </div>
+        <aside className="flex flex-col gap-4" aria-label="About this consignment">
+          <AboutTheWork vm={detail} />
+          <AskYourSpecialist />
+          {!editable && withdrawalView ? (
+            <ConsignmentWithdrawPanel
+              submissionId={submission.id}
+              view={withdrawalView}
+              terms={partCSection("withdrawal-by-seller")}
+            />
+          ) : null}
+        </aside>
+      </div>
     </DashboardPage>
   );
 }

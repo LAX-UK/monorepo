@@ -20,22 +20,22 @@ type NavItem = {
  */
 const BID_SETTINGS: readonly NavItem[] = [
   {
-    href: "/settings/bidding",
+    href: "/settings#bidding",
     label: "Bidding limits",
     match: (pathname) => pathname.startsWith("/settings/bidding"),
   },
   {
-    href: "/settings/notifications",
+    href: "/settings#notifications",
     label: "Auction alerts and notifications",
     match: (pathname) => pathname.startsWith("/settings/notifications"),
   },
   {
-    href: "/settings/interests",
+    href: "/settings#interests",
     label: "Auction interests",
     match: (pathname) => pathname.startsWith("/settings/interests"),
   },
   {
-    href: "/settings/appearance",
+    href: "/settings#appearance",
     label: "Appearance and layout",
     match: (pathname) => pathname.startsWith("/settings/appearance"),
   },

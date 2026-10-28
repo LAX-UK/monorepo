@@ -66,7 +66,6 @@ describe("deriveClientAttention", () => {
       ],
       purchases: [],
       unreadNotifications: [],
-      now: NOW,
     });
     expect(attention.outbidLots).toEqual(["14", "22", null]);
   });
@@ -81,7 +80,6 @@ describe("deriveClientAttention", () => {
         { payment: { status: "requires_payment_method" } as never },
       ],
       unreadNotifications: [{ read: false }, { read: true }, { read: false }],
-      now: NOW,
     });
     expect(attention).toEqual({ outbidLots: [], paymentsDue: 2, unreadNotifications: 2 });
   });

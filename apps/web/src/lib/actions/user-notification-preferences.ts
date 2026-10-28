@@ -26,7 +26,7 @@ export async function updateNotificationPreferencesFromValuesAction(
     if (!r.ok) {
       return actionFailure(r.message, undefined, r.status);
     }
-    revalidatePath("/settings/notifications");
+    revalidatePath("/settings");
     return actionSuccess();
   });
 }

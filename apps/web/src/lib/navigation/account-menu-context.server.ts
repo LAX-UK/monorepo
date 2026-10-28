@@ -61,7 +61,6 @@ export async function loadAccountMenuContext(user: SessionUser): Promise<Account
       bids: settled(bids, []),
       purchases: settled(purchases, []),
       unreadNotifications: settled(unread, []),
-      now: Date.now(),
     }),
   };
 }

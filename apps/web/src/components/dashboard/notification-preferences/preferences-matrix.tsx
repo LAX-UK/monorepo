@@ -12,7 +12,6 @@ import {
   AccordionTrigger,
 } from "@auction/ui/components/accordion";
 import { Surface } from "@auction/ui/components/surface";
-import { LabelCaps } from "@auction/ui/components/typography";
 import type { useForm } from "react-hook-form";
 import { PreferenceCell } from "./preference-cell";
 
@@ -28,13 +27,15 @@ export function PreferencesMatrix({
           <thead>
             <tr className="border-b border-border-hairline">
               <th scope="col" className="w-[44%] px-5 py-3 text-left">
-                <LabelCaps>Event</LabelCaps>
+                <span className="font-body text-xs font-medium text-on-surface-variant">
+                  Tell me when
+                </span>
               </th>
               {NOTIFICATION_PREFERENCE_CHANNELS.map((channel) => (
                 <th key={channel.id} scope="col" className="px-2 py-3">
                   <div className="flex flex-col items-center gap-1 text-on-surface-variant">
                     <channel.Icon className="size-4" aria-hidden />
-                    <LabelCaps className="tracking-[0.18em]">{channel.label}</LabelCaps>
+                    <span className="font-body text-xs font-medium">{channel.label}</span>
                   </div>
                 </th>
               ))}
@@ -45,7 +46,7 @@ export function PreferencesMatrix({
               <tr key={event.id} className="border-b border-border-hairline last:border-0">
                 <th scope="row" className="px-5 py-4 text-left align-middle">
                   <div className="font-body text-sm font-medium text-on-surface">{event.label}</div>
-                  <p className="mt-1 font-body text-xs leading-5 text-on-surface-variant">
+                  <p className="mt-1 font-body text-xs leading-5 font-normal text-on-surface-variant">
                     {event.description}
                   </p>
                 </th>
