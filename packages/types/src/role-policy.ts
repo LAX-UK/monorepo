@@ -26,6 +26,7 @@ export {
 } from "./role-policy/staff-roles.js";
 export {
   type StaffRoleAssignment,
+  activeRolesOf,
   activeStaffRoles,
   isStaffRoleAssignmentActive,
   isStaffRoleAssignmentCurrent,
@@ -33,7 +34,23 @@ export {
   staffRoleAssignmentsOverlap,
 } from "./role-policy/staff-role-assignment.js";
 export {
+  type StaffRoleRuleTable,
+  type StaffRoleRules,
+  createStaffRoleRules,
+} from "./role-policy/staff-role-rule-engine.js";
+export {
+  FORBIDDEN_LAX_ADMIN_ROLE_COMBINATIONS,
+  LAX_ADMIN_ADMINISTRATOR_ROLE,
+  LAX_ADMIN_ROLE_RULES,
+  activeLaxAdminRoles,
+  isLaxAdminRole,
+  laxAdminRolesFromGrants,
+  normalizeLaxAdminRoles,
+  primaryLaxAdminRole,
+} from "./role-policy/lax-admin-role-rules.js";
+export {
   ADMINISTRATOR_STAFF_ROLE,
+  BID_STAFF_ROLE_RULES,
   FORBIDDEN_STAFF_ROLE_COMBINATIONS,
   type ForbiddenStaffRoleCombination,
   type StaffRoleAssignmentCheck,
