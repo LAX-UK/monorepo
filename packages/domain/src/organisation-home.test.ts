@@ -84,12 +84,12 @@ describe("buildOrganisationHome, per role", () => {
 
   it("finance: payouts and purchases to pay", () => {
     expect(taskKinds(busy("finance"))).toEqual(["payouts", "pay"]);
-    expect(homeShortcuts({ role: "finance" })).toEqual(["statements", "purchases_to_pay"]);
+    expect(homeShortcuts({ role: "finance" })).toEqual([]);
   });
 
   it("consignor: their identity, submissions sent back and unsold lots; never the agreement", () => {
     expect(taskKinds(busy("consignor"))).toEqual(["identity", "changes", "unsold"]);
-    expect(homeShortcuts({ role: "consignor" })).toEqual(["sell", "consignments"]);
+    expect(homeShortcuts({ role: "consignor" })).toEqual([]);
   });
 
   it("buyer agent: identity, sales to register in, and wins finance has to pay", () => {
@@ -98,13 +98,13 @@ describe("buildOrganisationHome, per role", () => {
       "won_awaiting_payment",
       "register",
     ]);
-    expect(homeShortcuts({ role: "buyer_agent" })).toEqual(["upcoming_sales", "bids"]);
+    expect(homeShortcuts({ role: "buyer_agent" })).toEqual([]);
   });
 
-  it("viewer: no Needs you section at all, and read-only shortcuts", () => {
+  it("viewer: no Needs you section at all", () => {
     expect(taskKinds(busy("viewer"))).toBeNull();
     expect(homeTaskKindsFor({ role: "viewer" })).toEqual([]);
-    expect(homeShortcuts({ role: "viewer" })).toEqual(["consignments", "works"]);
+    expect(homeShortcuts({ role: "viewer" })).toEqual([]);
   });
 
   it.each(["owner", "admin", "finance", "consignor", "buyer_agent"] as const)(
@@ -114,19 +114,11 @@ describe("buildOrganisationHome, per role", () => {
     },
   );
 
-  it("gives every role two to four shortcuts", () => {
-    for (const role of [
-      "owner",
-      "admin",
-      "finance",
-      "consignor",
-      "buyer_agent",
-      "viewer",
-    ] as const) {
-      const count = homeShortcuts({ role }).length;
-      expect(count).toBeGreaterThanOrEqual(2);
-      expect(count).toBeLessThanOrEqual(4);
-    }
+  it("keeps shortcuts for the people who run the organisation; other roles use the figures", () => {
+    const withShortcuts = (
+      ["owner", "admin", "finance", "consignor", "buyer_agent", "viewer"] as const
+    ).filter((role) => homeShortcuts({ role }).length > 0);
+    expect(withShortcuts).toEqual(["owner", "admin"]);
   });
 
   it("an impersonating platform admin is read-only: no tasks and no write shortcuts", () => {
