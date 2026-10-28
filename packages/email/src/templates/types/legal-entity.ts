@@ -6,6 +6,8 @@ const names = [
   "legal-entity-approved-notice",
   "legal-entity-rejected-notice",
   "legal-entity-docs-requested-notice",
+  "organisation-membership-ended-notice",
+  "organisation-bid-cancelled-notice",
 ] as const;
 
 type LegalEntityTemplateName = (typeof names)[number];
@@ -47,6 +49,21 @@ type LegalEntityTemplateVars = {
     docsUrl: string;
     supportContactEmail: string;
   };
+  /** Tells someone an owner or admin removed them from an organisation. */
+  "organisation-membership-ended-notice": {
+    recipientFirstName?: string | null;
+    entityName: string;
+    bidUrl: string;
+    supportContactEmail: string;
+  };
+  /** Tells a former member the organisation cancelled a bid they left standing for it. */
+  "organisation-bid-cancelled-notice": {
+    recipientFirstName?: string | null;
+    entityName: string;
+    lotTitle: string;
+    bidKind: "auto_bid" | "absentee";
+    supportContactEmail: string;
+  };
 };
 
 export const legalEntityTemplates = {
@@ -58,6 +75,8 @@ export const legalEntityTemplates = {
     "legal-entity-approved-notice": "live",
     "legal-entity-rejected-notice": "live",
     "legal-entity-docs-requested-notice": "live",
+    "organisation-membership-ended-notice": "live",
+    "organisation-bid-cancelled-notice": "live",
   },
 } satisfies TemplateDomainSlice<LegalEntityTemplateName, LegalEntityTemplateVars>;
 

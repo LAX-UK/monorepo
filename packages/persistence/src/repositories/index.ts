@@ -212,3 +212,5 @@ export {
 } from "./lot/lot-list-filters.js";
 export { DrizzleRememberedAccountStore } from "./drizzle-remembered-account.store.js";
 export { DrizzleRecordAccountReader } from "./drizzle-record-account.reader.js";
+export { DrizzleMemberWelcomeStore } from "./drizzle-member-welcome.store.js";
+export { DrizzleFormerMemberBidsRepository } from "./drizzle-former-member-bids.repository.js";

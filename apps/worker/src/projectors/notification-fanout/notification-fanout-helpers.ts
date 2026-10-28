@@ -30,6 +30,18 @@ export type ProxyCancelledPayload = {
   reason: string;
 };
 
+export type MemberRemovedPayload = {
+  member_user_id: string;
+  removed_by_user_id: string;
+  role_at_removal: string;
+};
+
+export type FormerMemberBidCancelledPayload = {
+  bid_kind: "auto_bid" | "absentee";
+  lot_id: string;
+  member_user_id: string;
+};
+
 export type LotVoidedPayload = {
   lotId?: string;
   reason: string;
@@ -50,6 +62,8 @@ export const SUPPORTED_EVENT_TYPES = [
   "lot.voided",
   "lot.withdrawal_declined",
   "payout.clawback_required",
+  "legal_entity.member_removed",
+  "legal_entity.former_member_bid_cancelled",
 ] as const;
 
 export function formatReason(reason: string): string {

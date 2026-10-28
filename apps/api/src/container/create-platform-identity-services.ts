@@ -64,7 +64,6 @@ export function createPlatformIdentityServices(
   const {
     legalEntityRepository,
     legalEntityOnboardingRepository,
-    repoFactory,
     uiPreferenceRepository,
     userSuspensionChecker,
     artistRegistryRepository,
@@ -101,7 +100,6 @@ export function createPlatformIdentityServices(
     core.transactionRunner,
     repos.legalEntityMemberRepository,
     core.domainEventSink,
-    repoFactory,
   );
   const transactionalMailer: ITransactionalMailer = createTransactionalMailer(env);
   const membershipInviteNotifier = new EmailMembershipInviteNotifier(

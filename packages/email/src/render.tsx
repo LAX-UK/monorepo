@@ -77,6 +77,12 @@ import NewDeviceLoginEmail, {
 import OAuthAccountResetAttemptEmail, {
   subject as oauthAccountResetAttemptSubject,
 } from "./templates/oauth-account-reset-attempt.js";
+import {
+  OrganisationBidCancelledNoticeEmail,
+  OrganisationMembershipEndedNoticeEmail,
+  bidCancelledSubject as organisationBidCancelledSubject,
+  membershipEndedSubject as organisationMembershipEndedSubject,
+} from "./templates/organisation-membership-notices.js";
 import PasswordChangedElsewhereEmail, {
   subject as passwordChangedElsewhereSubject,
 } from "./templates/password-changed-elsewhere.js";
@@ -337,6 +343,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "legal-entity-archived-notice": {
     subject: legalEntityArchivedNoticeSubject,
     component: (vars) => <LegalEntityArchivedNoticeEmail {...vars} />,
+  },
+  "organisation-membership-ended-notice": {
+    subject: organisationMembershipEndedSubject,
+    component: (vars) => <OrganisationMembershipEndedNoticeEmail {...vars} />,
+  },
+  "organisation-bid-cancelled-notice": {
+    subject: organisationBidCancelledSubject,
+    component: (vars) => <OrganisationBidCancelledNoticeEmail {...vars} />,
   },
   "legal-entity-submitted-admin-notice": {
     subject: legalEntitySubmittedAdminSubject,

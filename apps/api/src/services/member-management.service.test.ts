@@ -1,5 +1,4 @@
 import type { Database } from "@auction/db";
-import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import { DrizzleLegalEntityMemberRepository } from "@auction/persistence/repositories";
 import { describe, expect, it } from "vitest";
 import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
@@ -10,22 +9,6 @@ import { MemberManagementService } from "./member-management.service.js";
 
 const testPublisher = new DomainEventPublisher();
 const testDomainEventSink = new DomainEventSink(testPublisher, {} as Database);
-
-function testRepoFactory(): IRepositoryFactory {
-  const bid = {
-    listActiveProxyBidPairsForMemberOnEntity: async () =>
-      [] as { lotId: string; bidderId: string }[],
-    clearProxyAutoBidForBidderOnLot: async () => 0,
-  };
-  const conn = { lot: {}, bid };
-  return {
-    root: conn,
-    forConnection: () => conn,
-    forTransaction: () => ({ ...conn, sale: {}, itemSubmission: {} }),
-    runInTransaction: async <T>(fn: (r: typeof conn, tx: Database) => Promise<T>) =>
-      fn(conn, {} as Database),
-  } as unknown as IRepositoryFactory;
-}
 
 const ENTITY_ID = "00000000-0000-4000-8000-000000000001";
 const PRIMARY_USER_ID = "user-primary";
@@ -105,7 +88,6 @@ describe("MemberManagementService.transferPrimaryAdmin", () => {
       transactionRunnerFromDb(db),
       new DrizzleLegalEntityMemberRepository(db),
       testDomainEventSink,
-      testRepoFactory(),
     );
 
     let thrown: unknown;
@@ -125,7 +107,6 @@ describe("MemberManagementService.transferPrimaryAdmin", () => {
       transactionRunnerFromDb(db),
       new DrizzleLegalEntityMemberRepository(db),
       testDomainEventSink,
-      testRepoFactory(),
     );
 
     await expect(
@@ -143,7 +124,6 @@ describe("MemberManagementService.transferPrimaryAdmin", () => {
       transactionRunnerFromDb(db),
       new DrizzleLegalEntityMemberRepository(db),
       testDomainEventSink,
-      testRepoFactory(),
     );
 
     await expect(
@@ -182,7 +162,6 @@ describe("MemberManagementService.transferPrimaryAdmin", () => {
       transactionRunnerFromDb(db),
       new DrizzleLegalEntityMemberRepository(db),
       testDomainEventSink,
-      testRepoFactory(),
     );
     const result = await svc.transferPrimaryAdmin(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID);
 
@@ -215,7 +194,6 @@ describe("MemberManagementService.transferPrimaryAdmin", () => {
       transactionRunnerFromDb(db),
       new DrizzleLegalEntityMemberRepository(db),
       testDomainEventSink,
-      testRepoFactory(),
     );
     await expect(
       svc.transferPrimaryAdmin(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID),
@@ -238,12 +216,32 @@ describe("MemberManagementService.removeMember", () => {
       transactionRunnerFromDb(db),
       new DrizzleLegalEntityMemberRepository(db),
       testDomainEventSink,
-      testRepoFactory(),
     );
 
     await expect(
       svc.removeMember(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID),
     ).rejects.toMatchObject({ code: "cannot_remove_primary_admin" });
+  });
+
+  it("removes the member and records it, leaving their bids for the organisation standing", async () => {
+    const meRow = memberRow({});
+    const targetRow = memberRow({
+      id: TARGET_MEMBER_ID,
+      userId: TARGET_USER_ID,
+      role: "buyer_agent",
+      isPrimaryAdmin: false,
+    });
+    const { db, chains } = makeFluentDb([[meRow], [targetRow], [], []]);
+    const svc = new MemberManagementService(
+      transactionRunnerFromDb(db),
+      new DrizzleLegalEntityMemberRepository(db),
+      testDomainEventSink,
+    );
+
+    await svc.removeMember(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID);
+
+    // Actor check, target lookup, mark removed, then the member_removed event: no bid writes.
+    expect(chains.map((c) => c.op)).toEqual(["select", "select", "update", "insert"]);
   });
 });
 
@@ -261,7 +259,6 @@ describe("MemberManagementService.updateRole", () => {
       transactionRunnerFromDb(db),
       new DrizzleLegalEntityMemberRepository(db),
       testDomainEventSink,
-      testRepoFactory(),
     );
 
     await expect(

@@ -19,6 +19,8 @@ export class DrizzleLegalEntityMembershipReader implements ILegalEntityMembershi
         statusReason: legalEntity.statusReason,
         role: legalEntityMember.role,
         isPrimaryAdmin: legalEntityMember.isPrimaryAdmin,
+        invitedByUserId: legalEntityMember.invitedByUserId,
+        welcomeDismissedAt: legalEntityMember.welcomeDismissedAt,
       })
       .from(legalEntityMember)
       .innerJoin(legalEntity, eq(legalEntity.id, legalEntityMember.legalEntityId))
@@ -39,6 +41,12 @@ export class DrizzleLegalEntityMembershipReader implements ILegalEntityMembershi
       statusReason: r.statusReason ?? null,
       role: r.role,
       isPrimaryAdmin: r.isPrimaryAdmin,
+      // The person who set the organisation up is recorded as inviting themselves.
+      welcomePending:
+        r.kind === "organisation" &&
+        r.invitedByUserId !== null &&
+        r.invitedByUserId !== userId &&
+        r.welcomeDismissedAt === null,
     }));
   }
 

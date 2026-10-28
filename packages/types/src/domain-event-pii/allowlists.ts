@@ -216,6 +216,15 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "role_at_removal",
     "reason",
   ]),
+  /** an owner or admin cancelled a bid a former member left standing for the organisation. */
+  "legal_entity.former_member_bid_cancelled": new Set([
+    "bid_kind",
+    "bid_ref",
+    "lot_id",
+    "member_user_id",
+    "max_amount",
+    "cancelled_by_user_id",
+  ]),
   /** buyer agent authorised to bid for the organisation (by a member or by staff). */
   "legal_entity.buyer_agent_authorised": new Set([
     "authorisation_id",

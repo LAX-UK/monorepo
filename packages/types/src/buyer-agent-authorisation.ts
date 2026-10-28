@@ -60,3 +60,14 @@ export type BidAuthorityView =
       role: LegalEntityMemberRole | null;
       reason: "not_member" | "role_cannot_bid" | "authorisation_required";
     };
+
+/**
+ * One of the signed-in buyer agent's own authorisations that is in force now: for every sale
+ * (`sale` is `null`) or for one sale, with whether they have registered in it yet.
+ */
+export type MyBuyerAgentAuthorisation = {
+  sale: { id: string; title: string; startTime: string; registered: boolean } | null;
+  /** Decimal string in pounds, or `null` for no limit. */
+  bidLimit: string | null;
+  validUntil: string | null;
+};
