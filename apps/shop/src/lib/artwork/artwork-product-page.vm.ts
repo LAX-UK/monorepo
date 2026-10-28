@@ -1,3 +1,4 @@
+import { MIN_COLLECTION_SIZE } from "@/lib/home/home-browse-paths";
 import {
   type ArtworkPurchaseVm,
   artworkIncludedItems,
@@ -69,11 +70,19 @@ export type ArtworkProductPageVm = {
   included: string[];
   crossLinks: ArtworkCrossLinksVm;
   artist: ArtworkArtistBlockVm;
-  /** "More by {artist}": other editions, available ones first. */
-  related: { title: string; viewAllHref: string; items: PublicArtworkSummary[] };
+  /** "More by {artist}", or "You might also like" when the artist has too few; null when thin. */
+  related: ArtworkRelatedVm | null;
+};
+
+export type ArtworkRelatedVm = {
+  title: string;
+  viewAll: { label: string; href: string };
+  items: PublicArtworkSummary[];
 };
 
 export const RELATED_EDITIONS_LIMIT = 4;
+/** The home page's rule: a row needs three works, or it reads as missing rather than chosen. */
+export const MIN_RELATED_EDITIONS = MIN_COLLECTION_SIZE;
 
 export function artworkImageAlt(artwork: Pick<PublicArtworkDetail, "title" | "artistName">) {
   return `${artwork.title} by ${artwork.artistName}`;
@@ -126,6 +135,48 @@ export function buildArtworkKeyFacts(artwork: PublicArtworkDetail): ArtworkKeyFa
   return facts.length >= MIN_KEY_FACTS ? facts : [];
 }
 
+/**
+ * The row after the artist: their other editions when they have enough for a row; otherwise
+ * their few topped up with other editions on sale, as "You might also like"; nothing when even
+ * that is too thin.
+ */
+export function buildRelatedEditions(input: {
+  artwork: Pick<
+    PublicArtworkDetail,
+    "slug" | "artistName" | "artistSlug" | "availability" | "saleState"
+  >;
+  artistEditions: readonly PublicArtworkSummary[];
+  otherEditions: readonly PublicArtworkSummary[];
+}): ArtworkRelatedVm | null {
+  const { artwork } = input;
+  const soldOut = artwork.availability.state === "sold_out" || artwork.saleState === "sold";
+  const byArtist = selectRelatedEditions(artwork.slug, input.artistEditions, {
+    availableOnly: soldOut,
+  });
+  const artistHref = `/artists/${encodeURIComponent(artwork.artistSlug)}`;
+  if (byArtist.length >= MIN_RELATED_EDITIONS) {
+    return {
+      title: `More by ${artwork.artistName}`,
+      viewAll: { label: `View all editions by ${artwork.artistName}`, href: artistHref },
+      items: byArtist,
+    };
+  }
+  const seen = new Set([artwork.slug, ...byArtist.map((item) => item.slug)]);
+  const others = input.otherEditions.filter(
+    (item) =>
+      !seen.has(item.slug) &&
+      item.eligibleForEditionAllocation &&
+      item.availability.state === "available",
+  );
+  const items = [...byArtist, ...others].slice(0, RELATED_EDITIONS_LIMIT);
+  if (items.length < MIN_RELATED_EDITIONS) return null;
+  return {
+    title: "You might also like",
+    viewAll: { label: "View all editions", href: "/artworks?availability=available" },
+    items,
+  };
+}
+
 function artUrl(artBaseUrl: URL | null, path: string): string | null {
   return artBaseUrl ? new URL(path, artBaseUrl).toString() : null;
 }
@@ -134,6 +185,8 @@ export function buildArtworkProductPage(input: {
   artwork: PublicArtworkDetail;
   /** The artist's other Shop editions (may include this one). */
   artistEditions: readonly PublicArtworkSummary[];
+  /** Editions on sale by anyone, to fill the related row when the artist has too few. */
+  otherEditions?: readonly PublicArtworkSummary[];
   artBaseUrl: URL | null;
   /** The artist's Shop profile, when it could be read; the block falls back to the name. */
   artistDetail?: PublicArtistDetail | null;
@@ -167,12 +220,10 @@ export function buildArtworkProductPage(input: {
       editionsLabel: `Editions by ${artwork.artistName}`,
       laxArtHref: artUrl(artBaseUrl, `/artists/${artistSlug}`),
     },
-    related: {
-      title: `More by ${artwork.artistName}`,
-      viewAllHref: `/artists/${artistSlug}`,
-      items: selectRelatedEditions(artwork.slug, input.artistEditions, {
-        availableOnly: artwork.availability.state === "sold_out" || artwork.saleState === "sold",
-      }),
-    },
+    related: buildRelatedEditions({
+      artwork,
+      artistEditions: input.artistEditions,
+      otherEditions: input.otherEditions ?? [],
+    }),
   };
 }

@@ -1,10 +1,10 @@
 import type { PublicArtworkDetail } from "@auction/shop-contracts";
 import { FULFILMENT_SURCHARGE_PENCE } from "@auction/shop-domain";
-import { formatGbpPence } from "@auction/shop-portal/vm";
+import { formatGbpPenceForDisplay } from "@auction/shop-portal/vm";
 
 /** The buy block's copy: what it costs, how it arrives, and how to change your mind. */
 export type ArtworkPurchaseVm = {
-  /** "£120.00"; prices include VAT. */
+  /** "£120", whole pounds as on every display page; prices include VAT. */
   priceLabel: string;
   vatNote: string;
   /** "Limited edition of 24", never a remaining count. */
@@ -20,15 +20,16 @@ export type ArtworkPurchaseVm = {
 const LONDON_COLLECTION_OPTIONS = ["collect_new_cavendish", "collect_brunswick"] as const;
 
 /**
- * "UK insured delivery £15.00 · Collection in London free", from the surcharges checkout charges,
+ * "UK insured delivery £15 · Collection in London free", from the surcharges checkout charges,
  * so the product page and checkout never disagree.
  */
 export function shopDeliveryLine(): string {
-  const delivery = formatGbpPence(FULFILMENT_SURCHARGE_PENCE.uk_insured_delivery);
+  const delivery = formatGbpPenceForDisplay(FULFILMENT_SURCHARGE_PENCE.uk_insured_delivery);
   const collection = Math.min(
     ...LONDON_COLLECTION_OPTIONS.map((option) => FULFILMENT_SURCHARGE_PENCE[option]),
   );
-  const collectionLabel = collection === 0 ? "free" : `from ${formatGbpPence(collection)}`;
+  const collectionLabel =
+    collection === 0 ? "free" : `from ${formatGbpPenceForDisplay(collection)}`;
   return `UK insured delivery ${delivery} · Collection in London ${collectionLabel}`;
 }
 
@@ -44,7 +45,7 @@ export function presentArtworkPurchase(artwork: PublicArtworkDetail): ArtworkPur
   if (artwork.printPricePence === null) return null;
   const soldOut = artwork.saleState === "sold" || artwork.availability.state === "sold_out";
   return {
-    priceLabel: formatGbpPence(artwork.printPricePence),
+    priceLabel: formatGbpPenceForDisplay(artwork.printPricePence),
     vatNote: "Includes VAT",
     editionSize: editionSizeLabel(artwork),
     editionShort:

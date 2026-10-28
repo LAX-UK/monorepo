@@ -24,7 +24,7 @@ import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import type { MarketingProductDoorVm } from "@auction/marketing-ui";
 import type { PublicArtworkSummary } from "@auction/shop-contracts";
 import { FULFILMENT_SURCHARGE_PENCE } from "@auction/shop-domain";
-import { formatGbpPenceForCard } from "@auction/shop-portal/vm";
+import { formatGbpPenceForDisplay } from "@auction/shop-portal/vm";
 
 /** The new-editions row is one desktop row of four. */
 const NEW_EDITIONS_ROW = 4;
@@ -142,7 +142,7 @@ function toRelease(item: PublicArtworkSummary): HomeReleaseVm {
     priceLabel: soldOut
       ? "Sold out"
       : item.printPricePence !== null
-        ? formatGbpPenceForCard(item.printPricePence)
+        ? formatGbpPenceForDisplay(item.printPricePence)
         : null,
     factsLine: facts.length > 0 ? facts.join(" · ") : null,
     editionLine:
@@ -156,7 +156,8 @@ export function heroLead(artistCount: number | null, lowestPricePence: number | 
     artistCount !== null && artistCount >= MIN_ARTIST_COUNT_IN_LEAD
       ? ` by ${artistCount} gallery artists`
       : "";
-  const from = lowestPricePence !== null ? ` from ${formatGbpPenceForCard(lowestPricePence)}` : "";
+  const from =
+    lowestPricePence !== null ? ` from ${formatGbpPenceForDisplay(lowestPricePence)}` : "";
   const joiner = artists && from ? "," : "";
   return `Limited-edition prints${artists}${joiner}${from}. Prices include VAT.`;
 }
@@ -186,7 +187,7 @@ function policyLink(
 
 /** Four plain promises under the hero, each one checkout and the policies keep. */
 export function buildHomeTrust(context: HomePageContext): HomeTrustItemVm[] {
-  const delivery = formatGbpPenceForCard(FULFILMENT_SURCHARGE_PENCE.uk_insured_delivery);
+  const delivery = formatGbpPenceForDisplay(FULFILMENT_SURCHARGE_PENCE.uk_insured_delivery);
   const window = context.deliveryTimes.ukDelivery;
   const collection = FULFILMENT_SURCHARGE_PENCE.collect_new_cavendish === 0 ? "free " : "";
   return [

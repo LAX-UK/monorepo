@@ -12,7 +12,7 @@ describe("delivery estimate", () => {
         times: { ukDelivery: { min: 3, max: 5 }, collection: { min: 2, max: 2 } },
       }),
     ).toEqual({
-      delivery: "Arrives Mon 2 Nov – Wed 4 Nov with insured UK delivery, £15.00",
+      delivery: "Arrives Mon 2 Nov – Wed 4 Nov with insured UK delivery, £15",
       collection:
         "Free collection from 156 New Cavendish St, London W1W 6YW, ready from Fri 30 Oct",
     });
@@ -25,7 +25,7 @@ describe("delivery estimate", () => {
         now: friday,
         times: { ukDelivery: { min: 1, max: 1 }, collection: null },
       }),
-    ).toEqual({ delivery: "Arrives Mon 2 Nov with insured UK delivery, £15.00", collection: null });
+    ).toEqual({ delivery: "Arrives Mon 2 Nov with insured UK delivery, £15", collection: null });
   });
 
   it("gives no date when no delivery time is configured", () => {

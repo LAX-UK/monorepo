@@ -100,8 +100,11 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
       : undefined;
   const purchasable = isArtworkPurchasable(artwork);
   const unavailableReason = resolveArtworkUnavailableReason(artwork);
-  const [artistEditions, artistDetail, interestRead] = await Promise.all([
+  const [artistEditions, otherEditions, artistDetail, interestRead] = await Promise.all([
     fetchPublicArtworks({ artistSlug: artwork.artistSlug, limit: ARTIST_EDITIONS_FETCH })
+      .then((list) => list.items)
+      .catch(() => []),
+    fetchPublicArtworks({ availability: "available", limit: ARTIST_EDITIONS_FETCH })
       .then((list) => list.items)
       .catch(() => []),
     fetchPublicArtistBySlug(artwork.artistSlug).catch(() => null),
@@ -112,6 +115,7 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
   const vm = buildArtworkProductPage({
     artwork,
     artistEditions,
+    otherEditions,
     artistDetail,
     artBaseUrl: loadShopArtBaseUrl(),
   });
@@ -251,14 +255,14 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
 
         <ArtworkArtistBlock artist={vm.artist} />
 
-        {vm.related.items.length > 0 ? (
+        {vm.related ? (
           <section className="shop-product__related" aria-labelledby="related-heading">
             <div className="shop-product__related-header">
               <h2 id="related-heading">{vm.related.title}</h2>
               <Link
-                href={vm.related.viewAllHref}
+                href={vm.related.viewAll.href}
                 className={cn("shop-inline-link", FOCUS_RING)}
-                aria-label={`View all editions by ${vm.artistName}`}
+                aria-label={vm.related.viewAll.label}
               >
                 View all
               </Link>

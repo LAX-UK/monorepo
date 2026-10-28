@@ -270,3 +270,11 @@
 .shop-page--edition .shop-buy__action .shop-buy__button {
   width: 100%;
 }
+
+/* The work stays in view beside the details: the gallery column holds under the header while the
+   longer buy column scrolls past it. */
+@media (min-width: 64rem) {
+  .shop-page--edition .shop-product__media {
+    top: calc(7rem + var(--shop-space-4));
+  }
+}

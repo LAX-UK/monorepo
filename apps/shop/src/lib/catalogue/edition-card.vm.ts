@@ -1,7 +1,7 @@
 import { isCatalogueArtworkSoldOut } from "@/lib/catalogue/catalogue-artwork-card.vm";
 import { isNewRelease } from "@/lib/catalogue/edition-release";
 import type { PublicArtworkSummary } from "@auction/shop-contracts";
-import { formatGbpPenceForCard } from "@auction/shop-portal/vm";
+import { formatGbpPenceForDisplay } from "@auction/shop-portal/vm";
 
 /** The id of the sold-out alert on an edition page, so a card can link straight to it. */
 export const EDITION_ALERT_ANCHOR = "edition-alert";
@@ -73,7 +73,7 @@ export function toEditionCardVm(item: PublicArtworkSummary, now: Date): EditionC
     priceLabel:
       status?.kind === "sold_out" || item.printPricePence === null
         ? null
-        : formatGbpPenceForCard(item.printPricePence),
+        : formatGbpPenceForDisplay(item.printPricePence),
     status,
   };
 }
