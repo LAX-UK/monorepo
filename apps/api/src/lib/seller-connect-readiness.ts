@@ -3,6 +3,7 @@ import {
   isSellerConnectReady as isSellerConnectReadyImpl,
   shouldSkipConnect,
 } from "@auction/connect";
+import { type SellerWithoutPayouts, sellersWithoutPayouts } from "@auction/domain";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { LegalEntity } from "@auction/types";
 
@@ -76,4 +77,31 @@ export async function findLotsMissingSellerConnect(
     }
   }
   return blocked;
+}
+
+/**
+ * Sellers in `lots` who cannot be paid yet, each once with their name and lots: what stops a
+ * sale going live, in the words staff need to chase it.
+ */
+export async function findSellersWithoutPayouts(
+  lots: ReadonlyArray<{
+    id: string;
+    title: string;
+    sellerLegalEntityId?: string | null | undefined;
+  }>,
+  legalEntityRepository: ILegalEntityRepository,
+): Promise<Array<SellerWithoutPayouts & { displayName: string }>> {
+  const sellerIds = [
+    ...new Set(lots.map((l) => l.sellerLegalEntityId).filter((id): id is string => Boolean(id))),
+  ];
+  const sellers = sellerIds.length > 0 ? await legalEntityRepository.findByIds(sellerIds) : [];
+  const sellerById = new Map(sellers.map((s) => [s.id, s]));
+  const blocked = sellersWithoutPayouts(
+    lots,
+    (sellerId) => !isConnectBlockedForSeller(sellerById.get(sellerId)),
+  );
+  return blocked.map((entry) => ({
+    ...entry,
+    displayName: sellerById.get(entry.sellerLegalEntityId)?.displayName ?? "A seller",
+  }));
 }

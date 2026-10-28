@@ -1,38 +1,48 @@
+import { sellerSubmissionAccess } from "@auction/domain";
 import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../../lib/errors.js";
-import {
-  INDIVIDUAL_SUBMISSION_BLOCKED_STATUSES,
-  type ItemSubmissionServiceDeps,
-  SELLER_ENTITY_WRITE_STATUSES,
-} from "./submission-types.js";
+import type { ItemSubmissionServiceDeps } from "./submission-types.js";
 
-export async function assertSellerEntityAllowsSubmissions(
+type SellerWrite = "draft" | "submit";
+
+/**
+ * Whether the account may write submissions: `draft` to create and edit, `submit` to send one
+ * to a specialist. An organisation still under review may prepare drafts but not submit them.
+ */
+export async function assertSellerEntityAllows(
   deps: ItemSubmissionServiceDeps,
   legalEntityId: string,
+  write: SellerWrite,
 ): Promise<Result<void, SubmissionError>> {
   if (!deps.legalEntityRepository) return ok(undefined);
   const e = await deps.legalEntityRepository.findById(legalEntityId);
   if (!e) return err(new SubmissionError("Not found", 404));
+  const access = sellerSubmissionAccess(e);
+  const allowed = write === "draft" ? access.canDraft : access.canSubmit;
+  if (allowed) return ok(undefined);
   if (e.kind === "individual") {
-    if (INDIVIDUAL_SUBMISSION_BLOCKED_STATUSES.has(e.status)) {
-      return err(
-        new SubmissionError(
-          "Your account cannot submit items in its current verification state",
-          403,
-        ),
-      );
-    }
-    return ok(undefined);
-  }
-  if (!SELLER_ENTITY_WRITE_STATUSES.has(e.status)) {
     return err(
       new SubmissionError(
-        "This organisation is not permitted to create or edit submissions in its current verification state",
+        "Your account cannot submit items in its current verification state",
         403,
       ),
     );
   }
-  return ok(undefined);
+  return err(
+    new SubmissionError(
+      access.submitBlockedReason ??
+        "This organisation is not permitted to create or edit submissions in its current verification state",
+      403,
+    ),
+  );
+}
+
+/** Creating and editing drafts. */
+export function assertSellerEntityAllowsSubmissions(
+  deps: ItemSubmissionServiceDeps,
+  legalEntityId: string,
+): Promise<Result<void, SubmissionError>> {
+  return assertSellerEntityAllows(deps, legalEntityId, "draft");
 }
 
 export async function maybeLogRestrictedSellerWrite(

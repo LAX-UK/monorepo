@@ -1,18 +1,49 @@
-import { canTransition, evaluateSubmissionQuality, transitionErrorMessage } from "@auction/domain";
+import {
+  CONSIGNMENT_AGREEMENT_TERMS_VERSION,
+  canTransition,
+  evaluateSubmissionQuality,
+  transitionErrorMessage,
+} from "@auction/domain";
 import type { ItemSubmission, Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../../lib/errors.js";
-import type { ApproveSubmissionInput } from "../interfaces/item-submission-service.js";
+import type {
+  AcceptSubmissionInput,
+  ApproveSubmissionInput,
+} from "../interfaces/item-submission-service.js";
 import { resolveLegalEntityNotificationRecipients } from "../legal-entity-notification-routing.js";
 import { convert } from "./submission-convert-to-lot.js";
 import type { ItemSubmissionServiceDeps } from "./submission-types.js";
+
+/** Records the specialist's estimate and terms as the agreement the seller is asked to accept. */
+async function proposeAgreement(
+  deps: ItemSubmissionServiceDeps,
+  adminId: string,
+  submission: { id: string; legalEntityId: string },
+  input: AcceptSubmissionInput | undefined,
+  at: Date,
+): Promise<void> {
+  if (!deps.consignmentAgreements) return;
+  const proposal = input?.proposal;
+  await deps.consignmentAgreements.propose({
+    submissionId: submission.id,
+    legalEntityId: submission.legalEntityId,
+    termsVersion: CONSIGNMENT_AGREEMENT_TERMS_VERSION,
+    estimateLow: proposal?.estimateLow ?? null,
+    estimateHigh: proposal?.estimateHigh ?? null,
+    reservePrice: proposal?.reservePrice ?? null,
+    commissionPercent: proposal?.commissionPercent ?? null,
+    currency: proposal?.currency ?? "GBP",
+    proposedByUserId: adminId,
+    proposedAt: at,
+  });
+}
 
 export async function accept(
   deps: ItemSubmissionServiceDeps,
   adminId: string,
   id: string,
-  input: Pick<ApproveSubmissionInput, "reviewNotes"> | undefined = undefined,
-  options: { notifySeller?: boolean } = {},
+  input: AcceptSubmissionInput | undefined = undefined,
 ): Promise<Result<ItemSubmission, SubmissionError>> {
   const s = await deps.submissions.findById(id);
   if (!s) return err(new SubmissionError("Not found", 404));
@@ -28,26 +59,78 @@ export async function accept(
       new SubmissionError("Submission does not meet minimum requirements for acceptance", 400),
     );
   }
+  const now = new Date();
   const updated = await deps.submissions.update(id, {
     status: "approved",
     reviewedBy: adminId,
-    reviewedAt: new Date(),
+    reviewedAt: now,
     reviewNotes: input?.reviewNotes?.trim() ? input.reviewNotes.trim() : null,
     rejectionReason: null,
   });
-  if (options.notifySeller !== false) {
-    const recipients = await resolveLegalEntityNotificationRecipients(
-      deps.legalEntityNotificationRecipients,
-      { legalEntityId: s.legalEntityId, fallbackUserId: s.legalEntityId, audience: "seller" },
-    );
-    for (const recipientId of recipients) {
-      await deps.dispatcher.dispatch(recipientId, {
-        type: "submission_approved",
-        title: "Submission accepted",
-        message: `Your submission "${s.title}" was accepted for cataloguing. Our specialists are preparing your catalogue entry.`,
-        submissionId: id,
-      });
-    }
+  await proposeAgreement(deps, adminId, { id, legalEntityId: s.legalEntityId }, input, now);
+  const recipients = await resolveLegalEntityNotificationRecipients(
+    deps.legalEntityNotificationRecipients,
+    { legalEntityId: s.legalEntityId, fallbackUserId: s.legalEntityId, audience: "seller" },
+  );
+  for (const recipientId of recipients) {
+    await deps.dispatcher.dispatch(recipientId, {
+      type: "submission_approved",
+      title: "Your work was accepted",
+      message: `A specialist accepted "${s.title}" and proposed an estimate and terms. Review and accept the consignment agreement so we can catalogue it.`,
+      submissionId: id,
+    });
+  }
+  return ok(updated);
+}
+
+/**
+ * The specialist needs more from the seller before deciding. The note is shown on the
+ * consignment; the seller edits the same submission and sends it back.
+ */
+export async function requestChanges(
+  deps: ItemSubmissionServiceDeps,
+  adminId: string,
+  id: string,
+  note: string,
+): Promise<Result<ItemSubmission, SubmissionError>> {
+  const s = await deps.submissions.findById(id);
+  if (!s) return err(new SubmissionError("Not found", 404));
+  if (!canTransition(s.status, "requestChanges")) {
+    return err(new SubmissionError(transitionErrorMessage(s.status, "requestChanges")));
+  }
+  if (!s.legalEntityId) {
+    return err(new SubmissionError("Legal entity context missing", 400));
+  }
+  const trimmed = note.trim();
+  if (!trimmed) return err(new SubmissionError("Tell the seller what to change", 400));
+  const now = new Date();
+  const updated = await deps.submissions.update(id, {
+    status: "changes_requested",
+    changesRequestedNote: trimmed,
+    changesRequestedAt: now,
+    reviewedBy: adminId,
+    reviewedAt: now,
+  });
+  await deps.domainEventSink?.publish({
+    aggregateType: "submission",
+    aggregateId: id,
+    eventType: "submission.changes_requested",
+    payload: { submissionId: id, note: trimmed },
+    actorUserId: adminId,
+    actingLegalEntityId: null,
+    schemaVersion: 1,
+  });
+  const recipients = await resolveLegalEntityNotificationRecipients(
+    deps.legalEntityNotificationRecipients,
+    { legalEntityId: s.legalEntityId, fallbackUserId: s.legalEntityId, audience: "seller" },
+  );
+  for (const recipientId of recipients) {
+    await deps.dispatcher.dispatch(recipientId, {
+      type: "submission_changes_requested",
+      title: "Your submission needs changes",
+      message: `A specialist asked for changes to "${s.title}": ${trimmed}`,
+      submissionId: id,
+    });
   }
   return ok(updated);
 }
@@ -89,7 +172,7 @@ export async function reject(
   return ok(updated);
 }
 
-/** Backward-compatible: accept then convert in one call. */
+/** Catalogues an accepted submission (kept for older clients; same rules as convert). */
 export async function approve(
   deps: ItemSubmissionServiceDeps,
   adminId: string,
@@ -102,15 +185,15 @@ export async function approve(
   const s = await deps.submissions.findById(id);
   if (!s) return err(new SubmissionError("Not found", 404));
   if (s.status === "under_review") {
-    const accepted = await accept(
-      deps,
-      adminId,
-      id,
-      { reviewNotes: input?.reviewNotes },
-      { notifySeller: false },
+    // Accepting and cataloguing in one step would skip the seller's agreement.
+    return err(
+      new SubmissionError(
+        "Accept the submission first. It can be catalogued once the seller accepts the consignment agreement.",
+        409,
+      ),
     );
-    if (accepted.isErr()) return err(accepted.error);
-  } else if (s.status !== "approved") {
+  }
+  if (s.status !== "approved") {
     return err(new SubmissionError(transitionErrorMessage(s.status, "accept")));
   }
   const converted = await convert(deps, adminId, id, input);

@@ -1,9 +1,11 @@
 import {
+  acceptSubmissionBodySchema,
   adminAssignSubmissionBodySchema,
   adminBulkSubmissionsBodySchema,
   approveSubmissionBodySchema,
   listSubmissionsQuerySchema,
   rejectSubmissionBodySchema,
+  requestSubmissionChangesBodySchema,
   submissionIdParamSchema,
 } from "@auction/validators";
 import { respondSubmissionHttpJson } from "../../lib/submission-route-response.js";
@@ -14,6 +16,7 @@ import { type SubmissionHono, type SubmissionRouteDeps, viewerFromContext } from
 export function attachSubmissionAdminRoutes(r: SubmissionHono, deps: SubmissionRouteDeps): void {
   const { container, requireAuth } = deps;
   const adminHttp = container.submissionRoutes.adminHttp;
+  const agreementHttp = container.submissionRoutes.agreementHttp;
 
   r.get(
     "/",
@@ -65,11 +68,41 @@ export function attachSubmissionAdminRoutes(r: SubmissionHono, deps: SubmissionR
     requireAuth,
     requireSubmissionsAccess,
     zValidator("param", submissionIdParamSchema),
-    zValidator("json", approveSubmissionBodySchema),
+    zValidator("json", acceptSubmissionBodySchema),
     async (c) => {
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
       const response = await adminHttp.accept({
+        submissionId: id,
+        body,
+        viewer: viewerFromContext(c),
+      });
+      return respondSubmissionHttpJson(c, response);
+    },
+  );
+
+  r.get(
+    "/:id/agreement/staff",
+    requireAuth,
+    requireSubmissionsAccess,
+    zValidator("param", submissionIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const response = await agreementHttp.getForStaff(id, viewerFromContext(c));
+      return respondSubmissionHttpJson(c, response);
+    },
+  );
+
+  r.post(
+    "/:id/request-changes",
+    requireAuth,
+    requireSubmissionsAccess,
+    zValidator("param", submissionIdParamSchema),
+    zValidator("json", requestSubmissionChangesBodySchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const response = await adminHttp.requestChanges({
         submissionId: id,
         body,
         viewer: viewerFromContext(c),

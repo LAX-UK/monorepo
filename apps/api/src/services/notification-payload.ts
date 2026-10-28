@@ -42,6 +42,8 @@ const SELLER_SUBMISSION_FIRST_TYPES = new Set([
   "submission_rejected",
   "submission_converted",
   "submission_draft_reminder",
+  "submission_changes_requested",
+  "consignment_agreement_reminder",
 ]);
 
 /** Best deep link for push/email/in-app actions (seller submission → lot → staff queue). */

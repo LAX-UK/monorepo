@@ -218,6 +218,7 @@ export function createContainer(env: Env): Container {
     itemSubmissionSellerApi: catalog.itemSubmissionSellerApi,
     itemSubmissionAdminApi: catalog.itemSubmissionAdminApi,
     submissionDocumentService: complianceMedia.submissionDocumentService,
+    consignmentAgreementService: catalog.consignmentAgreementService,
   });
   const admin = createAdminServices({
     env,
@@ -382,6 +383,7 @@ export function createContainer(env: Env): Container {
     itemSubmissionService: catalog.itemSubmissionService,
     itemSubmissionSellerApi: catalog.itemSubmissionSellerApi,
     itemSubmissionAdminApi: catalog.itemSubmissionAdminApi,
+    consignmentAgreementService: catalog.consignmentAgreementService,
     legalEntityRepository: repos.legalEntityRepository,
     personalLegalEntityResolver: userMisc.personalLegalEntityResolver,
     legalEntityNotificationRecipients: repos.legalEntityNotificationRecipients,

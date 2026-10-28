@@ -1,3 +1,4 @@
+import type { IConsignmentAgreementHttpApplicationService } from "./consignment-agreement-http.js";
 import type { ISubmissionAdminHttpApplicationService } from "./submission-admin-http.js";
 import type { ISubmissionDocumentHttpApplicationService } from "./submission-document-http.js";
 import type { ISubmissionSellerHttpApplicationService } from "./submission-seller-http.js";
@@ -6,6 +7,7 @@ export type SubmissionRouteServices = {
   sellerHttp: ISubmissionSellerHttpApplicationService;
   adminHttp: ISubmissionAdminHttpApplicationService;
   documentHttp: ISubmissionDocumentHttpApplicationService;
+  agreementHttp: IConsignmentAgreementHttpApplicationService;
 };
 
 export type {
@@ -17,6 +19,10 @@ export type { ISubmissionSellerHttpApplicationService } from "./submission-selle
 export type { ISubmissionAdminHttpApplicationService } from "./submission-admin-http.js";
 export type { ISubmissionDocumentHttpApplicationService } from "./submission-document-http.js";
 export type { ISubmissionDocumentPort } from "./submission-document-port.js";
+export type {
+  AgreementSellerContext,
+  IConsignmentAgreementHttpApplicationService,
+} from "./consignment-agreement-http.js";
 
 export type {
   SubmissionAdminRoutesContainer,

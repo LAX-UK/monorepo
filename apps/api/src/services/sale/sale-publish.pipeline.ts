@@ -1,3 +1,4 @@
+import { goLivePayoutsRefusalMessage } from "@auction/domain";
 import type { Lot, Sale, UserRole } from "@auction/types";
 import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
 import {
@@ -9,7 +10,7 @@ import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../../lib/errors.js";
 import { assertLotPublishable } from "../../lib/lot-publish-policy.js";
 import { resolveLotTimingForSale } from "../../lib/lot-sale-timing.js";
-import { findLotsMissingSellerConnect } from "../../lib/seller-connect-readiness.js";
+import { findSellersWithoutPayouts } from "../../lib/seller-connect-readiness.js";
 import { assertCanPublishOnLax } from "../sale-channel-guards.js";
 import { recordLotLifecycle, txRepos } from "./sale-mutation-context.js";
 import { getByIdWithLots } from "./sale-read.js";
@@ -75,14 +76,11 @@ export async function validatePublishReadiness(
   }
 
   if (deps.enforceIndividualConnectOnPublish && deps.legalEntityRepository) {
-    const blocked = await findLotsMissingSellerConnect(lots, deps.legalEntityRepository);
-    if (blocked.length > 0) {
-      const titles = blocked.map((l) => `"${l.title}"`).join(", ");
+    const sellers = await findSellersWithoutPayouts(lots, deps.legalEntityRepository);
+    if (sellers.length > 0) {
       return err(
         new LotError(
-          blocked.length === 1
-            ? `This seller must complete Stripe Connect onboarding before the lot can be scheduled. (lot ${titles})`
-            : `Sellers must complete Stripe Connect onboarding before publish (${blocked.length} lots: ${titles})`,
+          goLivePayoutsRefusalMessage(sellers.map((seller) => seller.displayName)),
           409,
           "connect_required",
         ),

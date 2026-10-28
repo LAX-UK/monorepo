@@ -105,6 +105,8 @@ function itemSubmissionRow(
     reviewedAt: null,
     reviewNotes: null,
     rejectionReason: null,
+    changesRequestedNote: null,
+    changesRequestedAt: null,
     convertedLotId: null,
     assignedToUserId: null,
     draftReminderSentAt: null,

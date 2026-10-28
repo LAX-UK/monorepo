@@ -19,6 +19,7 @@ export function stubSubmissionRouteServices(
       bulkApproveOrReject: vi.fn(),
       startReview: vi.fn(),
       accept: vi.fn(),
+      requestChanges: vi.fn(),
       convert: vi.fn(),
       assign: vi.fn(),
       approve: vi.fn(),
@@ -31,6 +32,12 @@ export function stubSubmissionRouteServices(
       attachForStaff: vi.fn(),
       removeForViewer: vi.fn(),
       removeForStaff: vi.fn(),
+    },
+    agreementHttp: {
+      getForSeller: vi.fn(),
+      listForSeller: vi.fn(),
+      accept: vi.fn(),
+      getForStaff: vi.fn(),
     },
     ...overrides,
   };

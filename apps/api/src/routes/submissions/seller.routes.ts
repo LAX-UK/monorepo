@@ -1,4 +1,5 @@
 import {
+  acceptConsignmentAgreementBodySchema,
   attachSubmissionDocumentBodySchema,
   createItemSubmissionSchema,
   entityDocumentIdParamSchema,
@@ -15,6 +16,7 @@ import { requireEntityCapability } from "../../middleware/require-entity-capabil
 import {
   type SubmissionHono,
   type SubmissionRouteDeps,
+  agreementSellerFromContext,
   legalEntityFromContext,
   viewerFromContext,
 } from "./_shared.js";
@@ -23,6 +25,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
   const { container, requireAuth, requireAccountOnboarding, requireSubmissionEntityContext } = deps;
   const sellerHttp = container.submissionRoutes.sellerHttp;
   const documentHttp = container.submissionRoutes.documentHttp;
+  const agreementHttp = container.submissionRoutes.agreementHttp;
 
   r.post(
     "/",
@@ -64,6 +67,40 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
     });
     return respondSubmissionHttpJson(c, response);
   });
+
+  r.get("/mine/agreements", requireAuth, requireSubmissionEntityContext, async (c) => {
+    const response = await agreementHttp.listForSeller(agreementSellerFromContext(c));
+    return respondSubmissionHttpJson(c, response);
+  });
+
+  r.get(
+    "/:id/agreement",
+    requireAuth,
+    requireSubmissionEntityContext,
+    zValidator("param", submissionIdParamSchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const response = await agreementHttp.getForSeller(id, agreementSellerFromContext(c));
+      return respondSubmissionHttpJson(c, response);
+    },
+  );
+
+  // Who may accept is decided by the agreement rules, which also say why when they refuse.
+  r.post(
+    "/:id/agreement/accept",
+    requireAuth,
+    requireAccountOnboarding,
+    requireBuyerRole,
+    requireSubmissionEntityContext,
+    zValidator("param", submissionIdParamSchema),
+    zValidator("json", acceptConsignmentAgreementBodySchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const { termsVersion } = c.req.valid("json");
+      const response = await agreementHttp.accept(id, agreementSellerFromContext(c), termsVersion);
+      return respondSubmissionHttpJson(c, response);
+    },
+  );
 
   r.get(
     "/:id",

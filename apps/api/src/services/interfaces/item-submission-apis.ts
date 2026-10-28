@@ -8,7 +8,7 @@ import type {
 } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { SubmissionError } from "../../lib/errors.js";
-import type { ApproveSubmissionInput } from "./item-submission-shared.js";
+import type { AcceptSubmissionInput, ApproveSubmissionInput } from "./item-submission-shared.js";
 
 export type UpdateSubmissionActorInput = {
   actorId: string;
@@ -86,7 +86,7 @@ export interface IItemSubmissionAdminApi {
   accept(
     adminId: string,
     id: string,
-    input?: Pick<ApproveSubmissionInput, "reviewNotes"> | undefined,
+    input?: AcceptSubmissionInput | undefined,
   ): Promise<Result<ItemSubmission, SubmissionError>>;
   convert(
     adminId: string,
@@ -143,7 +143,13 @@ export interface IItemSubmissionAdminApi {
   acceptForAdminApi(
     adminId: string,
     id: string,
-    body: Pick<ApproveSubmissionInput, "reviewNotes">,
+    body: AcceptSubmissionInput,
+  ): Promise<Result<ItemSubmission, SubmissionError>>;
+  /** Asks the seller for changes; they edit the same submission and send it back. */
+  requestChangesForAdminApi(
+    adminId: string,
+    id: string,
+    note: string,
   ): Promise<Result<ItemSubmission, SubmissionError>>;
   convertForAdminApi(
     adminId: string,

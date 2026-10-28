@@ -227,6 +227,13 @@ export function createInternalCronRoutes(container: ContainerInternalCronRoutesS
     return c.json({ data });
   });
 
+  r.post("/consignment-agreement-reminders", async (c) => {
+    const gate = auth(c);
+    if (!gate.ok) return c.json(gate.body, gate.status);
+    const data = await container.platformCron.hygiene.sendConsignmentAgreementReminders();
+    return c.json({ data });
+  });
+
   r.post("/sentry-test", async (c) => {
     const gate = auth(c);
     if (!gate.ok) return c.json(gate.body, gate.status);

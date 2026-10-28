@@ -1,10 +1,12 @@
 import type { ItemSubmissionStatus } from "@auction/types";
 import type {
+  acceptSubmissionBodySchema,
   adminAssignSubmissionBodySchema,
   adminBulkSubmissionsBodySchema,
   approveSubmissionBodySchema,
   listSubmissionsQuerySchema,
   rejectSubmissionBodySchema,
+  requestSubmissionChangesBodySchema,
 } from "@auction/validators";
 import type { z } from "zod";
 import type { SubmissionHttpJson, SubmissionViewerContext } from "./submission-route-http.js";
@@ -27,7 +29,13 @@ export interface ISubmissionAdminHttpApplicationService {
 
   accept(input: {
     submissionId: string;
-    body: z.infer<typeof approveSubmissionBodySchema>;
+    body: z.infer<typeof acceptSubmissionBodySchema>;
+    viewer: SubmissionViewerContext;
+  }): Promise<SubmissionHttpJson>;
+
+  requestChanges(input: {
+    submissionId: string;
+    body: z.infer<typeof requestSubmissionChangesBodySchema>;
     viewer: SubmissionViewerContext;
   }): Promise<SubmissionHttpJson>;
 

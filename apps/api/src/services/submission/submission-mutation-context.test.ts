@@ -19,6 +19,7 @@ function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmi
     mediaAssetEnricher: undefined,
     lotLifecycleRecording: null,
     repoFactory: null,
+    consignmentAgreements: null,
     ...overrides,
   };
 }

@@ -7,6 +7,7 @@ import type {
   ItemSubmissionUpdatePatch,
 } from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
+import type { IConsignmentAgreementRepository } from "@auction/persistence/interfaces";
 import type { UpdateItemSubmissionInput } from "@auction/types";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ImageCleanupService } from "../image-cleanup.service.js";
@@ -34,6 +35,8 @@ export type ItemSubmissionServiceDeps = {
   mediaAssetEnricher: MediaAssetEnricher | undefined;
   lotLifecycleRecording: ILotLifecycleRecorder | null;
   repoFactory: IRepositoryFactory | null;
+  /** Consignment agreements: proposed on acceptance, required before cataloguing. */
+  consignmentAgreements: IConsignmentAgreementRepository | null;
 };
 
 export function sellerPatchToRepoPatch(

@@ -1,5 +1,6 @@
 import { probeSentryConnectivity } from "@auction/observability";
 import type { AmlService } from "../aml/aml.service.js";
+import type { IConsignmentAgreementService } from "../consignment-agreement/consignment-agreement.service.js";
 import type { IDisplayPairingService } from "../interfaces/display-pairing-service.js";
 import type { IItemSubmissionAdminApi } from "../interfaces/item-submission-apis.js";
 
@@ -8,10 +9,19 @@ export class HygieneCronService {
     private readonly itemSubmissionAdminApi: IItemSubmissionAdminApi,
     private readonly amlService: AmlService,
     private readonly displayPairingService: IDisplayPairingService,
+    private readonly consignmentAgreements: Pick<
+      IConsignmentAgreementService,
+      "sendDueReminders"
+    > | null = null,
   ) {}
 
   async sendStaleSubmissionDraftReminders(staleDays: number) {
     return this.itemSubmissionAdminApi.sendStaleDraftReminders({ staleDays });
+  }
+
+  /** Reminds sellers at 3 and 7 days to accept a proposed consignment agreement. */
+  async sendConsignmentAgreementReminders() {
+    return this.consignmentAgreements?.sendDueReminders() ?? { reminded: 0 };
   }
 
   async probeSentry(sentryDsn: string | undefined) {

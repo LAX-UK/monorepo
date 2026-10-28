@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import {
+  assertSellerEntityAllows,
   assertSellerEntityAllowsSubmissions,
   maybeLogRestrictedSellerWrite,
 } from "./submission-seller-gate.js";
@@ -24,6 +25,7 @@ function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmi
     mediaAssetEnricher: undefined,
     lotLifecycleRecording: null,
     repoFactory: null,
+    consignmentAgreements: null,
     ...overrides,
   };
 }
@@ -65,6 +67,26 @@ describe("assertSellerEntityAllowsSubmissions", () => {
     const result = await assertSellerEntityAllowsSubmissions(deps, "le-1");
     expect(result.isErr()).toBe(true);
     expect(result._unsafeUnwrapErr().status).toBe(403);
+  });
+});
+
+describe("assertSellerEntityAllows for an organisation under review", () => {
+  const deps = () =>
+    baseDeps({
+      legalEntityRepository: {
+        findById: vi.fn().mockResolvedValue({ kind: "organisation", status: "under_review" }),
+      } as unknown as ILegalEntityRepository,
+    });
+
+  it("lets it save drafts", async () => {
+    expect((await assertSellerEntityAllows(deps(), "le-1", "draft")).isOk()).toBe(true);
+  });
+
+  it("refuses submitting and says why", async () => {
+    const result = await assertSellerEntityAllows(deps(), "le-1", "submit");
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr().status).toBe(403);
+    expect(result._unsafeUnwrapErr().message).toMatch(/still checking/);
   });
 });
 
