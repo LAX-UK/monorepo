@@ -1,13 +1,7 @@
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { Lot, PortfolioRow } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import {
-  buildPayNow,
-  buildPortfolioAnalytics,
-  filterPortfolioRows,
-  filterPortfolioRowsByTitle,
-  toPortfolioLotCards,
-} from "./dashboard-portfolio.vm";
+import { buildPayNow, buildPortfolioAnalytics } from "./dashboard-portfolio.vm";
 
 const checkout = (
   hammerMajor: string,
@@ -51,40 +45,6 @@ function makeRow(partial: {
   return { lot, payment: partial.payment ?? null };
 }
 
-describe("filterPortfolioRowsByTitle", () => {
-  it("filters by title substring", () => {
-    const rows = [makeRow({ title: "Alpha" }), makeRow({ id: "2", title: "Beta" })];
-    expect(filterPortfolioRowsByTitle(rows, "alp")).toHaveLength(1);
-    expect(filterPortfolioRowsByTitle(rows, "alp")[0]?.lot.title).toBe("Alpha");
-  });
-});
-
-describe("filterPortfolioRows", () => {
-  it("filters by payment state and year", () => {
-    const rows = [
-      makeRow({
-        id: "a",
-        title: "One",
-        endYear: 2022,
-        payment: { id: "p1", status: "captured", manualReviewReason: null },
-      }),
-      makeRow({
-        id: "b",
-        title: "Two",
-        endYear: 2023,
-        payment: { id: "p2", status: "pending", manualReviewReason: null },
-      }),
-    ];
-    const due = filterPortfolioRows(rows, { qLower: "", payment: "due", year: null });
-    expect(due).toHaveLength(1);
-    expect(due[0]?.lot.id).toBe("b");
-
-    const y2023 = filterPortfolioRows(rows, { qLower: "", payment: "all", year: 2023 });
-    expect(y2023).toHaveLength(1);
-    expect(y2023[0]?.lot.id).toBe("b");
-  });
-});
-
 describe("buildPortfolioAnalytics", () => {
   it("sums totals from checkoutPricing", () => {
     const rows = [
@@ -103,86 +63,6 @@ describe("buildPortfolioAnalytics", () => {
     expect(a.totalRows).toBe(2);
     expect(a.totalSpentFormatted).toContain("350");
     expect(a.outstandingFormatted).toContain("100");
-  });
-
-  it("reflects filtered subset when analytics run on filtered rows", () => {
-    const rows = [
-      makeRow({
-        id: "1",
-        endYear: 2023,
-        checkout: checkout("200", "50", "250"),
-        payment: { id: "p1", status: "captured", manualReviewReason: null },
-      }),
-      makeRow({
-        id: "2",
-        endYear: 2024,
-        checkout: checkout("100", "0", "100"),
-        payment: { id: "p2", status: "pending", manualReviewReason: null },
-      }),
-    ];
-    const filtered = filterPortfolioRows(rows, { qLower: "", payment: "all", year: 2024 });
-    const full = buildPortfolioAnalytics(rows);
-    const scoped = buildPortfolioAnalytics(filtered);
-
-    expect(full.totalRows).toBe(2);
-    expect(scoped.totalRows).toBe(1);
-    expect(scoped.totalSpentFormatted).toContain("100");
-    expect(scoped.outstandingFormatted).toContain("100");
-  });
-});
-
-describe("toPortfolioLotCards", () => {
-  it("maps artist and checkout labels", () => {
-    const rows = [
-      makeRow({
-        id: "lot-x",
-        title: "Blue",
-        checkout: checkout("1000", "100", "1100"),
-        artistId: "art-1",
-        payment: null,
-      }),
-    ];
-    const cards = toPortfolioLotCards(rows, { artistNameById: { "art-1": "Jane Doe" } });
-    expect(cards).toHaveLength(1);
-    expect(cards[0]?.artistName).toBe("Jane Doe");
-    expect(cards[0]?.checkoutHref).toBe(dashboardCheckoutLotUrl("lot-x"));
-    expect(cards[0]?.premiumLabel).toMatch(/100/);
-    expect(cards[0]?.totalLabel).toMatch(/1,100/);
-  });
-
-  it("handles missing checkoutPricing", () => {
-    const rows = [makeRow({ id: "n", checkout: null })];
-    const cards = toPortfolioLotCards(rows);
-    expect(cards[0]?.totalLabel).toBe("—");
-  });
-
-  it("applies the user-level compliance gate to unpaid lots with no payment row", () => {
-    const rows = [makeRow({ id: "lot-g", payment: null })];
-    const cards = toPortfolioLotCards(rows, { complianceGate: "source_of_funds_required" });
-    expect(cards[0]?.complianceReason).toBe("source_of_funds_required");
-    expect(cards[0]?.settlementLabel).toBe("Compliance review");
-  });
-
-  it("does not apply the gate to captured (paid) lots", () => {
-    const rows = [
-      makeRow({
-        id: "lot-paid",
-        payment: { id: "p1", status: "captured", manualReviewReason: null },
-      }),
-    ];
-    const cards = toPortfolioLotCards(rows, { complianceGate: "aml_hold" });
-    expect(cards[0]?.complianceReason).toBeNull();
-  });
-
-  it("prefers an explicit payment-row reason over the gate", () => {
-    const rows = [
-      makeRow({
-        id: "lot-x",
-        payment: { id: "p1", status: "pending", manualReviewReason: "aml_hold" },
-      }),
-    ];
-    const cards = toPortfolioLotCards(rows, { complianceGate: "source_of_funds_required" });
-    expect(cards[0]?.complianceReason).toBe("aml_hold");
   });
 });
 

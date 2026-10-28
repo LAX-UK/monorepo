@@ -8,4 +8,10 @@ describe("contactIntentFromSearchParams", () => {
     expect(config.headline).toMatch(/Press & media enquiry/i);
     expect(config.successCtaHref).toBe("/press");
   });
+
+  it("frames a purchase problem as a buying enquiry", () => {
+    const config = contactIntentFromSearchParams({ intent: "purchase-problem" });
+    expect(config.topic).toBe("buying");
+    expect(config.headline).toMatch(/^Report a problem with a purchase/);
+  });
 });
