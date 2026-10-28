@@ -29,6 +29,8 @@ import { useTransition } from "react";
 export function PaymentQuickView({
   row,
   canWritePayments,
+  canOpenLot,
+  canOpenClient,
   onClose,
   onCapture,
   onRefund,
@@ -36,6 +38,8 @@ export function PaymentQuickView({
 }: {
   row: PaymentsStaffRow | null;
   canWritePayments: boolean;
+  canOpenLot: boolean;
+  canOpenClient: boolean;
   onClose: () => void;
   onCapture: (row: PaymentsStaffRow) => void;
   onRefund: (row: PaymentsStaffRow) => void;
@@ -59,20 +63,29 @@ export function PaymentQuickView({
               { label: "Platform fee", value: row.platformFee, numeric: true },
               {
                 label: "Buyer",
-                value: (
+                value: canOpenClient ? (
                   <CellLink href={`/admin/clients/${encodeURIComponent(row.buyerId)}`} Link={Link}>
                     {row.buyer}
                   </CellLink>
+                ) : (
+                  row.buyer
                 ),
               },
-              {
-                label: "Seller",
-                value: (
-                  <CellLink href={`/admin/clients/${encodeURIComponent(row.sellerId)}`} Link={Link}>
-                    Seller profile
-                  </CellLink>
-                ),
-              },
+              ...(canOpenClient
+                ? [
+                    {
+                      label: "Seller",
+                      value: (
+                        <CellLink
+                          href={`/admin/clients/${encodeURIComponent(row.sellerId)}`}
+                          Link={Link}
+                        >
+                          Seller profile
+                        </CellLink>
+                      ),
+                    },
+                  ]
+                : []),
               {
                 label: "Created",
                 value: row.createdAt ? <StaffDate value={row.createdAt} withTime /> : null,
@@ -106,7 +119,7 @@ export function PaymentQuickView({
         ) : null
       }
       headerActions={
-        row ? (
+        row && canOpenLot ? (
           <StaffButton asChild variant="ghost" size="sm" icon={<ArrowUpRight aria-hidden />}>
             <Link href={`/admin/lots/${row.lotId}`}>Open lot</Link>
           </StaffButton>
@@ -119,11 +132,15 @@ export function PaymentQuickView({
             label={`More actions for payment ${row.lotTitle}`}
             Link={Link}
             actions={[
-              {
-                id: "buyer",
-                label: "Open buyer",
-                href: `/admin/clients/${encodeURIComponent(row.buyerId)}`,
-              },
+              ...(canOpenClient
+                ? [
+                    {
+                      id: "buyer",
+                      label: "Open buyer",
+                      href: `/admin/clients/${encodeURIComponent(row.buyerId)}`,
+                    },
+                  ]
+                : []),
               ...moneyActions,
             ]}
           />

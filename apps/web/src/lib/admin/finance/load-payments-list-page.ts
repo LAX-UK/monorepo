@@ -5,6 +5,7 @@ import {
   type PaymentsListSearchParams,
   buildPaymentsListPageModel,
 } from "@/lib/admin/build-payments-list-page-model";
+import { paymentLinkAccess } from "@/lib/admin/finance/payment-link-access";
 import {
   type PaymentsListSearch,
   activePaymentsView,
@@ -43,13 +44,14 @@ const MANUAL_REVIEW_LOAD_ERROR =
 
 type SessionUser = Awaited<ReturnType<typeof getServerSessionUser>>;
 
-/** What the signed-in staff member may do to a payment, from the rules the API enforces. */
+/** What the signed-in staff member may do to a payment and open from it, from the rules the API enforces. */
 function paymentActionCapabilities(sessionUser: SessionUser) {
   const role = (sessionUser?.role ?? "client") as UserRole;
   const staffRoles = sessionUser?.staffRoles;
   return {
     canWritePayments: userHasAccessTo(role, staffRoles, PAYMENT_WRITE_ACCESS),
     canResolveManualReview: userHasAccessTo(role, staffRoles, PAYMENT_MANUAL_REVIEW_WRITE_ACCESS),
+    ...paymentLinkAccess(role, staffRoles),
   };
 }
 

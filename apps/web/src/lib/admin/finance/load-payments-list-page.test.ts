@@ -121,4 +121,25 @@ describe("loadAdminPaymentsListPage", () => {
     expect(result.mode).toBe("manual-review");
     expect(fetchPayments).not.toHaveBeenCalled();
   });
+
+  it.each([
+    ["payments", {}, "finance-only", ["finance"], false],
+    ["payments", {}, "an administrator", ["administrator"], true],
+    ["manual-review", { manualReview: "1" }, "finance-only", ["finance"], false],
+    ["manual-review", { manualReview: "1" }, "an administrator", ["administrator"], true],
+  ])("%s: lot and client links for %s are %s", async (mode, sp, _who, staffRoles, expected) => {
+    fetchPayments.mockResolvedValue({ rows: [], total: 0, paymentsSummary: undefined });
+    fetchManual.mockResolvedValue({
+      rows: [],
+      allRows: [],
+      summary: { total: 0, financeHolds: 0, complianceHolds: 0, amlHolds: 0, sofHolds: 0 },
+    });
+    getSessionUser.mockResolvedValue({ role: "staff", staffRoles });
+
+    const result = await loadAdminPaymentsListPage(sp);
+
+    expect(result.mode).toBe(mode);
+    expect(result.canOpenLot).toBe(expected);
+    expect(result.canOpenClient).toBe(expected);
+  });
 });

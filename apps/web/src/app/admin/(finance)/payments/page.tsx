@@ -28,6 +28,8 @@ export default async function AdminPaymentsPage({
         attentionCounts={page.attentionCounts}
         canOpenComplianceQueues={page.canOpenComplianceQueues}
         canResolveManualReview={page.canResolveManualReview}
+        canOpenLot={page.canOpenLot}
+        canOpenClient={page.canOpenClient}
         loadError={page.loadError}
       />
     );
@@ -41,6 +43,8 @@ export default async function AdminPaymentsPage({
       summary={page.summary}
       attentionCounts={page.attentionCounts}
       canWritePayments={page.canWritePayments}
+      canOpenLot={page.canOpenLot}
+      canOpenClient={page.canOpenClient}
       exportFilters={page.exportFilters}
       pageSize={page.pageSize}
       pagination={page.pagination}
