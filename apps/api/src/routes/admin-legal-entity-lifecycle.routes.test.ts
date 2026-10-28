@@ -1,4 +1,5 @@
 import { DrizzleLegalEntityLifecycleAdminRepository } from "@auction/persistence/repositories";
+import type { StaffRoles } from "@auction/types";
 import * as AuctionTypes from "@auction/types";
 import { Hono } from "hono";
 import { err } from "neverthrow";
@@ -27,17 +28,17 @@ function lifecycleApp(
   container: Container,
   userId: string,
   role: string,
-  staffRole?: string | null,
+  staffRoles?: StaffRoles | undefined,
 ) {
   const requirePlatformAdmin = createRequireCapability("platform.admin.full");
   const app = new Hono<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>();
-  const resolvedStaff = role === "client" ? null : (staffRole ?? "super_admin");
+  const resolvedStaff: StaffRoles = role === "client" ? [] : (staffRoles ?? ["super_admin"]);
   app.use("*", async (c, next) => {
     c.set("userId", userId);
     c.set("userRole", role);
-    c.set("userStaffRole", resolvedStaff);
+    c.set("userStaffRoles", resolvedStaff);
     await next();
   });
   app.use("*", requirePlatformAdmin);
@@ -55,7 +56,7 @@ function lifecycleApp(
 
 function denyCapabilityForSuperAdmin(deny: AuctionTypes.RoleCapability) {
   vi.spyOn(AuctionTypes, "roleHasCapability").mockImplementation((role, capability, staff) => {
-    if (role !== "staff" || staff !== "super_admin") {
+    if (role !== "staff" || !staff?.includes("super_admin")) {
       return AuctionTypes.roleHasCapability(role, capability, staff);
     }
     if (capability === "platform.admin.full") return true;
@@ -142,7 +143,7 @@ describe("POST /admin/legal-entities/:id/request-docs (legal_entity.write)", () 
       minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
       ADMIN_ID,
       "staff",
-      "finance_ops",
+      ["finance_ops"],
     );
     const res = await app.request(`http://test${path}`, { method: "POST" });
     expect(res.status).toBe(403);

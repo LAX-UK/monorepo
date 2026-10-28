@@ -1,4 +1,4 @@
-import type { CapabilityRequirement, UserRole, UserStaffRole } from "@auction/types";
+import type { CapabilityRequirement, StaffRoles, UserRole } from "@auction/types";
 
 export type ActingContext =
   | { kind: "self" }
@@ -10,7 +10,8 @@ export type ViewerWorkspace = "client" | "staff" | "finance";
 
 export type ViewerCapabilities = {
   role: UserRole;
-  staffRole: UserStaffRole | null;
+  /** Staff roles in force for the viewer. */
+  staffRoles: StaffRoles | undefined;
   workspace: ViewerWorkspace;
   acting: ActingContext;
   can: (requirement: CapabilityRequirement) => boolean;

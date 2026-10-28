@@ -37,7 +37,7 @@ export async function loadRecentActivitySlice(
   const canAccessLots = ctx.can(LOTS_ACCESS);
   const showActivity =
     canAccessLots &&
-    isWidgetAllowed(ctx.role, ctx.staffRole, "activity") &&
+    isWidgetAllowed(ctx.role, ctx.staffRoles, "activity") &&
     isDashboardWidgetVisible(ctx.widgets, "activity");
 
   if (!showActivity) {

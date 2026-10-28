@@ -186,6 +186,8 @@ export const WORKER_READ_TABLES = [
   "admin_review_task",
   /** SoF projectors read case status / exposure for emails and retention job. */
   "source_of_funds",
+  /** Compliance emails go to the staff whose roles in force include compliance. */
+  "staff_role_assignment",
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,

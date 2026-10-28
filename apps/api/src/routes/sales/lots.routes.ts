@@ -22,12 +22,12 @@ export function attachSaleLotsRoutes(r: SaleHono, deps: SaleLotMembershipRouteDe
     zValidator("json", createNestedLotForSaleSchema),
     async (c) => {
       const role = (c.get("userRole") ?? "client") as UserRole;
-      const staffRole = c.get("userStaffRole") ?? null;
+      const staffRoles = c.get("userStaffRoles");
       const { id } = c.req.valid("param");
       const body = c.req.valid("json");
       return respondCatalogRouteOutcome(
         c,
-        await http().addLot({ role, saleId: id, body, staffRole }),
+        await http().addLot({ role, saleId: id, body, staffRoles }),
         201,
       );
     },
@@ -40,7 +40,7 @@ export function attachSaleLotsRoutes(r: SaleHono, deps: SaleLotMembershipRouteDe
     zValidator("json", attachLotToSaleBodySchema.optional()),
     async (c) => {
       const role = (c.get("userRole") ?? "client") as UserRole;
-      const staffRole = c.get("userStaffRole") ?? null;
+      const staffRoles = c.get("userStaffRoles");
       const { id, lotId } = c.req.valid("param");
       const body = c.req.valid("json") ?? { via: "attach_endpoint" as const };
       return respondCatalogRouteOutcome(
@@ -49,7 +49,7 @@ export function attachSaleLotsRoutes(r: SaleHono, deps: SaleLotMembershipRouteDe
           role,
           saleId: id,
           lotId,
-          staffRole,
+          staffRoles,
           via: body.via ?? "attach_endpoint",
         }),
       );
@@ -62,9 +62,9 @@ export function attachSaleLotsRoutes(r: SaleHono, deps: SaleLotMembershipRouteDe
     zValidator("param", saleLotIdParamSchema),
     async (c) => {
       const role = (c.get("userRole") ?? "client") as UserRole;
-      const staffRole = c.get("userStaffRole") ?? null;
+      const staffRoles = c.get("userStaffRoles");
       const { id, lotId } = c.req.valid("param");
-      const outcome = await http().detachLot({ role, saleId: id, lotId, staffRole });
+      const outcome = await http().detachLot({ role, saleId: id, lotId, staffRoles });
       if (outcome.kind === "ok") return c.body(null, 204);
       return respondCatalogRouteOutcome(c, outcome);
     },
@@ -78,7 +78,7 @@ export function attachSaleLotsRoutes(r: SaleHono, deps: SaleLotMembershipRouteDe
     async (c) => {
       const userId = c.get("userId") as string;
       const role = (c.get("userRole") ?? "client") as UserRole;
-      const staffRole = c.get("userStaffRole") ?? null;
+      const staffRoles = c.get("userStaffRoles");
       const { id, lotId } = c.req.valid("param");
       const { reason } = c.req.valid("json");
       return respondCatalogRouteOutcome(
@@ -88,7 +88,7 @@ export function attachSaleLotsRoutes(r: SaleHono, deps: SaleLotMembershipRouteDe
           role,
           saleId: id,
           lotId,
-          staffRole,
+          staffRoles,
           ...(reason !== undefined ? { reason } : {}),
         }),
       );
@@ -102,7 +102,7 @@ export function attachSaleLotsRoutes(r: SaleHono, deps: SaleLotMembershipRouteDe
     zValidator("json", updateLotStatusBodySchema),
     async (c) => {
       const role = (c.get("userRole") ?? "client") as UserRole;
-      const staffRole = c.get("userStaffRole") ?? null;
+      const staffRoles = c.get("userStaffRoles");
       const userId = c.get("userId") as string;
       const { id, lotId } = c.req.valid("param");
       const { status, reason } = c.req.valid("json");
@@ -113,7 +113,7 @@ export function attachSaleLotsRoutes(r: SaleHono, deps: SaleLotMembershipRouteDe
           role,
           saleId: id,
           lotId,
-          staffRole,
+          staffRoles,
           status,
           ...(reason !== undefined ? { reason } : {}),
         }),

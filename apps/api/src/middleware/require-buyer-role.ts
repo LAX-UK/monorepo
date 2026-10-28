@@ -1,14 +1,14 @@
-import { normalizeUserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
+import { type StaffRoles, normalizeUserRole, roleHasCapability } from "@auction/types";
 import { createMiddleware } from "hono/factory";
 import type { RoleSource } from "./role-source.js";
 import { honoContextRoleSource } from "./role-source.js";
 
 export function createRequireBuyerRole(src: RoleSource = honoContextRoleSource) {
   return createMiddleware<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>(async (c, next) => {
     const role = normalizeUserRole(src.getRole(c) as string | null | undefined);
-    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+    const staff = c.get("userStaffRoles");
     if (role == null || !roleHasCapability(role, "bid.place", staff)) {
       return c.json({ error: "bidding_not_allowed_for_role" }, 403);
     }
@@ -25,7 +25,7 @@ export const requireBuyerRole = createRequireBuyerRole();
 export function createRequireBuyerRoleUnlessStaff(src: RoleSource = honoContextRoleSource) {
   const buyerOnly = createRequireBuyerRole(src);
   return createMiddleware<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>(async (c, next) => {
     const role = normalizeUserRole(src.getRole(c) as string | null | undefined);
     if (role === "staff") {

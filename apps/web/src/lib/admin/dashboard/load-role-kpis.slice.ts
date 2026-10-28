@@ -45,7 +45,7 @@ export async function loadRoleKpisSlice(
   // Each trend is asked for only when the API will answer this person. The trends live on the
   // platform admin routes, which the finance shell cannot reach, so it never triggers refused
   // requests; within the platform shell each trend follows its own permission.
-  const onPlatformShell = canAccessPlatformAdminRoutes(ctx.role, ctx.staffRole);
+  const onPlatformShell = canAccessPlatformAdminRoutes(ctx.role, ctx.staffRoles);
   const includeLots = onPlatformShell && ctx.can(ADMIN_DASHBOARD_ACCESS);
   const includeSubmissions = onPlatformShell && ctx.can(SUBMISSIONS_ACCESS);
   const includePayments = onPlatformShell && ctx.can(FINANCE_ACCESS);

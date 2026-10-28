@@ -11,7 +11,12 @@ function mountAuth(opts: {
   const authenticator: IAuthenticator = {
     getSessionUser:
       opts.getSessionUser ??
-      vi.fn(async () => ({ id: "u1", role: "client" as const, scopes: ["bid.read"] })),
+      vi.fn(async () => ({
+        id: "u1",
+        role: "client" as const,
+        staffRoles: [],
+        scopes: ["bid.read"],
+      })),
   };
   const authCredentialReader = {
     hasCredentialAccount: vi.fn(async () => opts.hasCredential ?? false),

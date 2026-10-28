@@ -21,6 +21,7 @@ function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmi
     repoFactory: null,
     consignmentAgreements: null,
     sellerIdentity: null,
+    staffRoles: null,
     ...overrides,
   };
 }

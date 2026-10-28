@@ -25,7 +25,7 @@ export function attachAdminTwoFactorResetRoutes(
         {
           userId: c.get("userId") as string,
           role: (c.get("userRole") as string | undefined) ?? "client",
-          staffRole: c.get("userStaffRole") as string | null | undefined,
+          staffRoles: c.get("userStaffRoles"),
         },
         c.req.valid("param").userId,
         c.req.valid("json").reason,

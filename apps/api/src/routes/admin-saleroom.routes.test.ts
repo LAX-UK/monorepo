@@ -33,7 +33,7 @@ describe("admin saleroom routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "clerk-1",
         role: "staff",
-        staffRole: "auction_manager",
+        staffRoles: ["auction_manager"],
         scopes: ["bid.read"],
       }),
     };
@@ -75,7 +75,7 @@ describe("admin saleroom routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "clerk-1",
         role: "staff",
-        staffRole: "auction_manager",
+        staffRoles: ["auction_manager"],
         scopes: ["bid.read"],
       }),
     };
@@ -97,7 +97,7 @@ describe("admin saleroom routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "clerk-1",
         role: "staff",
-        staffRole: "auction_manager",
+        staffRoles: ["auction_manager"],
         scopes: ["bid.read"],
       }),
     };
@@ -118,7 +118,7 @@ describe("admin saleroom routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "clerk-1",
         role: "staff",
-        staffRole: "auction_manager",
+        staffRoles: ["auction_manager"],
         scopes: ["bid.write"],
       }),
     };

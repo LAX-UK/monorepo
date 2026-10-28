@@ -1,4 +1,5 @@
 import { entityActorCan } from "@auction/domain";
+import type { StaffRoles } from "@auction/types";
 import {
   ADMIN_REFUND_BUYER_REASON_MIN,
   adminLotFulfilmentLotIdParamSchema,
@@ -78,7 +79,7 @@ export function createPaymentRoutes(
     Variables: {
       userId?: string;
       userRole?: string;
-      userStaffRole?: string | null;
+      userStaffRoles?: StaffRoles | undefined;
       legalEntityContext?: LegalEntityContext;
     } & MarketingConsentVars &
       MarketingClientContextVars;
@@ -86,8 +87,8 @@ export function createPaymentRoutes(
 
   r.get("/", requireAuth, async (c) => {
     const role = c.get("userRole") ?? "client";
-    const staffRole = c.get("userStaffRole") ?? null;
-    const result = await entityStaffPayment.listAllForAdmin(role, staffRole);
+    const staffRoles = c.get("userStaffRoles");
+    const result = await entityStaffPayment.listAllForAdmin(role, staffRoles);
     return result.match(
       (data) => c.json({ data }),
       (error) => c.json({ error: error.message }, asHttpStatus(error.status)),
@@ -270,7 +271,7 @@ export function createPaymentRoutes(
     async (c) => {
       const userId = c.get("userId") as string;
       const role = c.get("userRole") ?? "client";
-      const staffRole = c.get("userStaffRole") ?? null;
+      const staffRoles = c.get("userStaffRoles");
       const { id } = c.req.valid("param");
       const ctx = c.get("legalEntityContext") as LegalEntityContext | undefined;
       const result = await entityStaffPayment.markCapturedByAdmin(
@@ -278,7 +279,7 @@ export function createPaymentRoutes(
         role,
         id,
         ctx?.legalEntityId,
-        staffRole,
+        staffRoles,
       );
       return result.match(
         () => c.json({ ok: true }),
@@ -300,7 +301,7 @@ export function createPaymentRoutes(
     async (c) => {
       const userId = c.get("userId") as string;
       const role = c.get("userRole") ?? "client";
-      const staffRole = c.get("userStaffRole") ?? null;
+      const staffRoles = c.get("userStaffRoles");
       const { id } = c.req.valid("param");
       const ctx = c.get("legalEntityContext") as LegalEntityContext | undefined;
       // The body is optional: older callers send none. A reason, when sent, must be valid.
@@ -320,7 +321,7 @@ export function createPaymentRoutes(
         role,
         id,
         ctx?.legalEntityId,
-        staffRole,
+        staffRoles,
         ...(body.data.reason ? [body.data.reason] : []),
       );
       return result.match(

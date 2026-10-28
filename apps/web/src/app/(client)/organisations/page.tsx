@@ -45,7 +45,7 @@ export default async function OrganisationsHubPage() {
     shell: "client",
     loginNext: "/organisations",
   });
-  const { acting } = await resolveActingContext(user.role, user.staffRole ?? null);
+  const { acting } = await resolveActingContext(user.role, user.staffRoles);
 
   let loadFailure: DashboardSliceFailure | null = null;
   let memberships: HubMembership[] = [];

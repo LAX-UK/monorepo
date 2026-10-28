@@ -3,8 +3,8 @@ import { buildShellConfig } from "./build-shell-config";
 import { isNavGroup } from "./contracts";
 import { navEntriesToFlatItems, navEntriesToGroups } from "./nav-adapters";
 
-const clientUser = { role: "client" as const, staffRole: null };
-const staffUser = { role: "staff" as const, staffRole: "super_admin" as const };
+const clientUser = { role: "client" as const, staffRoles: [] };
+const staffUser = { role: "staff" as const, staffRoles: ["super_admin"] as const };
 
 describe("buildShellConfig", () => {
   it("builds flat nav for client role", () => {

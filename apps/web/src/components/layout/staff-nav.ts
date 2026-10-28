@@ -29,7 +29,7 @@ import {
   VENUES_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
 import type { NavBadgeTone } from "@/lib/shell/contracts";
-import type { CapabilityRequirement, UserRole, UserStaffRole } from "@auction/types";
+import type { CapabilityRequirement, StaffRoles, UserRole } from "@auction/types";
 import {
   AlertTriangle,
   Banknote,
@@ -91,21 +91,21 @@ export type StaffNavGroupSpec = {
 
 function filterNavItem(
   role: UserRole,
-  staffRole: UserStaffRole | null | undefined,
+  staffRoles: StaffRoles | undefined,
   item: StaffNavItemSpec,
 ): boolean {
-  return canOpenAdminRoute(role, staffRole, item.href, item.requirement);
+  return canOpenAdminRoute(role, staffRoles, item.href, item.requirement);
 }
 
 function filterGroups(
   role: UserRole,
-  staffRole: UserStaffRole | null | undefined,
+  staffRoles: StaffRoles | undefined,
   groups: readonly StaffNavGroupSpec[],
 ): StaffNavGroupSpec[] {
   return groups
     .map((g) => ({
       ...g,
-      items: g.items.filter((item) => filterNavItem(role, staffRole, item)),
+      items: g.items.filter((item) => filterNavItem(role, staffRoles, item)),
     }))
     .filter((g) => g.items.length > 0);
 }
@@ -386,13 +386,13 @@ function buildStaffNavGroupSpecs(
 export function getStaffNavGroups(
   role: UserRole,
   pendingSubmissionCount: number,
-  staffRole?: UserStaffRole | null,
+  staffRoles?: StaffRoles | undefined,
   pendingArtistCount = 0,
   navCounts?: AdminNavCounts,
 ): StaffNavGroupSpec[] {
   return filterGroups(
     role,
-    staffRole,
+    staffRoles,
     buildStaffNavGroupSpecs(pendingSubmissionCount, pendingArtistCount, navCounts),
   );
 }
@@ -400,7 +400,7 @@ export function getStaffNavGroups(
 /** Flat sidebar items (legacy / mobile bottom sheet). */
 export function getStaffNavItems(
   role: UserRole,
-  staffRole: UserStaffRole | null | undefined,
+  staffRoles: StaffRoles | undefined,
   pendingSubmissionCount = 0,
   pendingArtistCount = 0,
   navCounts?: AdminNavCounts,
@@ -408,7 +408,7 @@ export function getStaffNavItems(
   return getStaffNavGroups(
     role,
     pendingSubmissionCount,
-    staffRole,
+    staffRoles,
     pendingArtistCount,
     navCounts,
   ).flatMap((g) => g.items.map((spec) => staffNavItemToAppShellItem(spec)));
@@ -418,7 +418,7 @@ export function getStaffNavItems(
 export function getStaffNavParentLabel(
   pathname: string,
   role: UserRole,
-  staffRole: UserStaffRole | null | undefined,
+  staffRoles: StaffRoles | undefined,
   pendingSubmissionCount = 0,
   pendingArtistCount = 0,
   navCounts?: AdminNavCounts,
@@ -426,7 +426,7 @@ export function getStaffNavParentLabel(
   const items = getStaffNavGroups(
     role,
     pendingSubmissionCount,
-    staffRole,
+    staffRoles,
     pendingArtistCount,
     navCounts,
   ).flatMap((g) => g.items);
@@ -452,7 +452,7 @@ const FINANCE_MOBILE_TAB_IDS = ["payments", "disputes", "payouts", "xero"] as co
 /** Primary staff routes for the mobile bottom bar (max 5). */
 export function getStaffMobileBottomTabs(
   role: UserRole,
-  staffRole: UserStaffRole | null | undefined,
+  staffRoles: StaffRoles | undefined,
   pendingSubmissionCount = 0,
   pendingArtistCount = 0,
   financeOnly = false,
@@ -461,7 +461,7 @@ export function getStaffMobileBottomTabs(
   const allowed = new Set<string>(financeOnly ? FINANCE_MOBILE_TAB_IDS : STAFF_MOBILE_TAB_IDS);
   const items = getStaffNavItems(
     role,
-    staffRole,
+    staffRoles,
     pendingSubmissionCount,
     pendingArtistCount,
     navCounts,

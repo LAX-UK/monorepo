@@ -4,7 +4,7 @@ import type {
   ISaleChannelReader,
   ISaleRepository,
 } from "@auction/persistence/interfaces";
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, Sale, StaffRoles } from "@auction/types";
 import {
   bulkSaleDeleteConfirmationPhrase,
   saleDeleteConfirmationPhrase,
@@ -95,12 +95,12 @@ export class SaleSoftDeleteService implements ISaleSoftDeleteService {
     userRole: string,
     saleId: string,
     confirmationPhrase: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<void, LotError | AuthzError>> {
     const auth = this.orchestrator.assertAuctionManageCapability(
       userRole,
       "Only staff with auction.manage can delete sales",
-      userStaffRole,
+      userStaffRoles,
     );
     if (auth.isErr()) return err(auth.error);
 
@@ -120,12 +120,12 @@ export class SaleSoftDeleteService implements ISaleSoftDeleteService {
     userRole: string,
     ids: string[],
     confirmationPhrase: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<SaleBulkSoftDeleteResult, AuthzError | LotError>> {
     const auth = this.orchestrator.assertAuctionManageCapability(
       userRole,
       "Only staff with auction.manage can delete sales",
-      userStaffRole,
+      userStaffRoles,
     );
     if (auth.isErr()) return err(auth.error);
 

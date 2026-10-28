@@ -1,6 +1,6 @@
 import type { IUploadPersistenceRepository } from "@auction/persistence/interfaces";
-import type { UserRole, UserStaffRole } from "@auction/types";
-import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
+import type { StaffRoles, UserRole } from "@auction/types";
+import { roleHasCapability } from "@auction/types";
 import type { IUploadAuthorizationService } from "../interfaces/upload-service.js";
 import { type UploadKind, canUploadKind, isUploadKind, uploadPolicies } from "../upload.policy.js";
 
@@ -10,14 +10,14 @@ export class UploadAuthorizationService implements IUploadAuthorizationService {
   validatePresignedUploadRequest(input: {
     kind: string;
     userRole: UserRole;
-    userStaffRole?: string | null;
+    userStaffRoles?: StaffRoles | undefined;
     contentType: string;
     byteSize: number;
   }): { ok: true; kind: UploadKind } | { ok: false; status: number; error: string } {
     if (!isUploadKind(input.kind)) {
       return { ok: false, status: 400, error: "unsupported_upload_kind" };
     }
-    const staff = normalizeUserStaffRole(input.userStaffRole);
+    const staff = input.userStaffRoles;
     if (!canUploadKind(input.kind, input.userRole, staff)) {
       return { ok: false, status: 403, error: "forbidden_upload_kind" };
     }
@@ -39,18 +39,18 @@ export class UploadAuthorizationService implements IUploadAuthorizationService {
     uploadId: string;
     userId: string;
     userRole: UserRole;
-    userStaffRole?: UserStaffRole | null;
+    userStaffRoles?: StaffRoles | undefined;
   }) {
     if (!this.repo) return null;
-    const staff = normalizeUserStaffRole(input.userStaffRole ?? undefined);
+    const staff = input.userStaffRoles;
     if (roleHasCapability(input.userRole, "platform.admin.full", staff)) {
       return this.repo.findById(input.uploadId);
     }
     return this.repo.findByIdForOwner(input.uploadId, input.userId);
   }
 
-  isPlatformAdmin(userRole: UserRole, userStaffRole?: string | null): boolean {
-    const staff = normalizeUserStaffRole(userStaffRole);
+  isPlatformAdmin(userRole: UserRole, userStaffRoles?: StaffRoles | undefined): boolean {
+    const staff = userStaffRoles;
     return roleHasCapability(userRole, "platform.admin.full", staff);
   }
 }

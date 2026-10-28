@@ -1,5 +1,5 @@
 import { AML_REVIEW_ACCESS, MLRO_DECISION_ACCESS } from "@/lib/navigation/staff-nav-access";
-import { type UserRole, type UserStaffRole, userHasAccessTo } from "@auction/types";
+import { type StaffRoles, type UserRole, userHasAccessTo } from "@auction/types";
 
 export type ComplianceCapabilities = {
   canTriage: boolean;
@@ -8,10 +8,10 @@ export type ComplianceCapabilities = {
 
 export function resolveComplianceCapabilities(input: {
   role: UserRole;
-  staffRole: UserStaffRole | null;
+  staffRoles: StaffRoles | undefined;
 }): ComplianceCapabilities {
   return {
-    canTriage: userHasAccessTo(input.role, input.staffRole, AML_REVIEW_ACCESS),
-    canDecide: userHasAccessTo(input.role, input.staffRole, MLRO_DECISION_ACCESS),
+    canTriage: userHasAccessTo(input.role, input.staffRoles, AML_REVIEW_ACCESS),
+    canDecide: userHasAccessTo(input.role, input.staffRoles, MLRO_DECISION_ACCESS),
   };
 }

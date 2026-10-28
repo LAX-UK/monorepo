@@ -73,13 +73,9 @@ describe("PaymentService.refundPayment admin clawback", () => {
       payoutAdjustments,
     );
 
-    const result = await service.refundPayment(
-      "admin-1",
-      "staff",
-      pay.id,
-      undefined,
+    const result = await service.refundPayment("admin-1", "staff", pay.id, undefined, [
       "super_admin",
-    );
+    ]);
 
     expect(result.isOk()).toBe(true);
     expect(addClawback).toHaveBeenCalledWith(
@@ -152,12 +148,9 @@ describe("PaymentService.refundManualReviewPayment admin clawback", () => {
       payoutAdjustments,
     );
 
-    const result = await service.refundManualReviewPayment(
-      "admin-1",
-      "staff",
-      pay.id,
+    const result = await service.refundManualReviewPayment("admin-1", "staff", pay.id, [
       "super_admin",
-    );
+    ]);
 
     expect(result.isOk()).toBe(true);
     expect(addClawback).toHaveBeenCalledWith(

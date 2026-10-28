@@ -15,7 +15,7 @@ export default async function AdminSaleMediaPage({ params }: Props) {
   const page = await loadAdminSaleMediaPage(id);
   if (page.notFound) notFound();
 
-  const canManage = userHasAccessTo(user.role as UserRole, user.staffRole ?? null, SALES_ACCESS);
+  const canManage = userHasAccessTo(user.role as UserRole, user.staffRoles, SALES_ACCESS);
 
   return (
     <SaleDayPhotosTab

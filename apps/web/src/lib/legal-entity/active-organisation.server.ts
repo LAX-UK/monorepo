@@ -6,7 +6,7 @@ import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-modul
 import type { LegalEntitySummary } from "@auction/types";
 import { notFound } from "next/navigation";
 
-type Viewer = Pick<SessionUser, "role" | "staffRole">;
+type Viewer = Pick<SessionUser, "role" | "staffRoles">;
 
 /**
  * The organisation the person is using Bid as, or `null` for their personal account. Pages such
@@ -16,7 +16,7 @@ export async function resolveActiveOrganisation(
   viewer: Viewer,
 ): Promise<LegalEntitySummary | null> {
   if (!(await resolveOrgModuleEnabledFromRequest())) return null;
-  const { acting } = await resolveActingContext(viewer.role, viewer.staffRole ?? null);
+  const { acting } = await resolveActingContext(viewer.role, viewer.staffRoles);
   return acting?.kind === "organisation" ? acting : null;
 }
 

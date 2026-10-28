@@ -1,4 +1,4 @@
-import type { Lot, LotStatus, UserRole } from "@auction/types";
+import type { Lot, LotStatus, StaffRoles, UserRole } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError } from "../../../lib/errors.js";
 
@@ -10,14 +10,14 @@ export interface ILotLifecycleTransitionExecutor {
     lotId: string;
     status: LotStatus;
     reason?: string;
-    staffRole?: string | null;
+    staffRoles?: StaffRoles | undefined;
   }): Promise<Result<Lot, LotError | AuthzError>>;
 
   cancelLot(input: {
     userId: string;
     role: UserRole | string;
     lotId: string;
-    staffRole?: string | null;
+    staffRoles?: StaffRoles | undefined;
     cancelReason: "admin_override" | "manual";
   }): Promise<Result<Lot, LotError | AuthzError>>;
 }

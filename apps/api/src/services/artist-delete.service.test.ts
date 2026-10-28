@@ -96,7 +96,7 @@ describe("ArtistDeleteService.getDeleteEligibility", () => {
 describe("ArtistDeleteService.delete", () => {
   it("returns AuthzError when capability missing", async () => {
     const { svc } = createService({});
-    const result = await svc.delete("u1", "staff", "a1", "DELETE Test Artist", "specialist");
+    const result = await svc.delete("u1", "staff", "a1", "DELETE Test Artist", ["specialist"]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(AuthzError);
@@ -105,7 +105,7 @@ describe("ArtistDeleteService.delete", () => {
 
   it("returns phrase mismatch error", async () => {
     const { svc } = createService({});
-    const result = await svc.delete("u1", "staff", "a1", "DELETE Wrong", "catalogue_manager");
+    const result = await svc.delete("u1", "staff", "a1", "DELETE Wrong", ["catalogue_manager"]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(ArtistError);
@@ -123,7 +123,9 @@ describe("ArtistDeleteService.delete", () => {
         }),
       },
     });
-    const result = await svc.delete("u1", "staff", "a1", "DELETE Test Artist", "catalogue_manager");
+    const result = await svc.delete("u1", "staff", "a1", "DELETE Test Artist", [
+      "catalogue_manager",
+    ]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(ArtistError);
@@ -139,7 +141,9 @@ describe("ArtistDeleteService.delete", () => {
       repo: { deleteById },
       domainEvents: mockDomainEventSink(publish),
     });
-    const result = await svc.delete("u1", "staff", "a1", "DELETE Test Artist", "catalogue_manager");
+    const result = await svc.delete("u1", "staff", "a1", "DELETE Test Artist", [
+      "catalogue_manager",
+    ]);
     expect(result.isOk()).toBe(true);
     expect(deleteById).toHaveBeenCalledTimes(1);
     expect(publish).toHaveBeenCalledWith(
@@ -153,7 +157,9 @@ describe("ArtistDeleteService.delete", () => {
     const { svc } = createService({
       db: { transaction: vi.fn().mockRejectedValue(fkError) },
     });
-    const result = await svc.delete("u1", "staff", "a1", "DELETE Test Artist", "catalogue_manager");
+    const result = await svc.delete("u1", "staff", "a1", "DELETE Test Artist", [
+      "catalogue_manager",
+    ]);
     expect(result).toEqual(
       err(
         expect.objectContaining({

@@ -4,6 +4,7 @@ import {
   type userKycStatusEnum,
   type userStaffRoleEnum,
 } from "@auction/db/schema";
+import { normalizeStaffRoles } from "@auction/types";
 import {
   type SQL,
   and,
@@ -24,6 +25,7 @@ import type {
   AdminUserListSort,
 } from "../interfaces/admin-user.repository.js";
 import { activeIdentitySubject } from "../lib/bid-identity-directory-query.js";
+import { staffRolesInForceFor } from "../lib/staff-role-assignment-sql.js";
 
 export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | undefined {
   const clauses: SQL[] = [activeIdentitySubject()];
@@ -153,6 +155,7 @@ export const adminUserListSelect = {
   lastName: bidUserProfile.lastName,
   role: sql<string>`coalesce(${bidUserProfile.role}, 'client')`,
   staffRole: bidUserProfile.staffRole,
+  staffRoles: staffRolesInForceFor(bidIdentityDirectory.subjectId),
   createdAt: bidIdentityDirectory.identityCreatedAt,
   updatedAt: sql<Date>`greatest(${bidUserProfile.updatedAt}, ${bidIdentityDirectory.replicatedAt})`,
   suspendedAt: bidUserProfile.suspendedAt,
@@ -176,6 +179,7 @@ export function mapAdminUserListRow(r: {
   lastName: string | null;
   role: string;
   staffRole: (typeof userStaffRoleEnum.enumValues)[number] | null;
+  staffRoles: readonly string[];
   createdAt: Date;
   updatedAt: Date;
   suspendedAt: Date | null;
@@ -198,6 +202,7 @@ export function mapAdminUserListRow(r: {
     lastName: r.lastName ?? null,
     role: r.role,
     staffRole: r.staffRole ?? null,
+    staffRoles: normalizeStaffRoles(r.staffRoles),
     createdAt: r.createdAt,
     updatedAt: r.updatedAt,
     suspendedAt: r.suspendedAt ?? null,

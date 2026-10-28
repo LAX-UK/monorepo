@@ -1,4 +1,4 @@
-import type { Lot, LotStatus, UserRole } from "@auction/types";
+import type { Lot, LotStatus, StaffRoles, UserRole } from "@auction/types";
 import type { createNestedLotForSaleSchema } from "@auction/validators";
 import type { z } from "zod";
 import type { CatalogRouteOutcome } from "./catalog-route-http.js";
@@ -10,14 +10,14 @@ export interface ICatalogSaleLotMembershipHttpApplicationService {
     role: UserRole;
     saleId: string;
     body: z.infer<typeof createNestedLotForSaleSchema>;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteOutcome<PresentedLot>>;
 
   attachExistingLot(input: {
     role: UserRole;
     saleId: string;
     lotId: string;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
     via: "attach_endpoint" | "wizard";
   }): Promise<CatalogRouteOutcome<PresentedLot>>;
 
@@ -25,7 +25,7 @@ export interface ICatalogSaleLotMembershipHttpApplicationService {
     role: UserRole;
     saleId: string;
     lotId: string;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteOutcome<void>>;
 
   cancelLotOnSale(input: {
@@ -33,7 +33,7 @@ export interface ICatalogSaleLotMembershipHttpApplicationService {
     role: UserRole;
     saleId: string;
     lotId: string;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
     reason?: string;
   }): Promise<CatalogRouteOutcome<PresentedLot>>;
 
@@ -42,7 +42,7 @@ export interface ICatalogSaleLotMembershipHttpApplicationService {
     role: UserRole;
     saleId: string;
     lotId: string;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
     status: LotStatus;
     reason?: string;
   }): Promise<CatalogRouteOutcome<PresentedLot>>;

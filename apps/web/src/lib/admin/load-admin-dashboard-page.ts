@@ -26,12 +26,12 @@ import type { buildWorkInboxSlice } from "@/lib/admin/dashboard/work-inbox.slice
 import type { OnsiteSalesRadarRow } from "@/lib/admin/saleroom/map-operations-snapshot-to-radar-row";
 import type { AdminHomeKpiTrends } from "@/lib/data/http/admin-kpi-trends.server";
 import type { AdminTodayMetricsPayload } from "@/lib/data/http/admin.server";
-import { FINANCE_ACCESS, type UserRole, type UserStaffRole } from "@auction/types";
+import { FINANCE_ACCESS, type StaffRoles, type UserRole } from "@auction/types";
 
 export type AdminDashboardPageInput = {
   periodDays: AdminKpiPeriodDays;
   role: UserRole;
-  staffRole: UserStaffRole | null;
+  staffRoles: StaffRoles | undefined;
   actorUserId: string;
   workAssignment?: "mine" | "unassigned" | "all";
   widgets: readonly DashboardWidgetState[];

@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import { pressArchiveQuerySchema, pressDayMediaQuerySchema } from "@auction/validators";
 import { Hono } from "hono";
 import type { ContainerPressRoutesSlice } from "../container.js";
@@ -7,11 +8,12 @@ import { createOptionalAuth } from "../middleware/optional-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
 function viewerFromContext(c: {
-  get: (key: "userRole" | "userStaffRole") => string | null | undefined;
+  get(key: "userRole"): string | null | undefined;
+  get(key: "userStaffRoles"): StaffRoles | undefined;
 }) {
   return {
     role: c.get("userRole"),
-    staffRole: c.get("userStaffRole") ?? null,
+    staffRoles: c.get("userStaffRoles"),
   };
 }
 
@@ -22,7 +24,7 @@ export function createPressRoutes(
   const optionalAuth = createOptionalAuth(authenticator);
   const pressReadHttp = container.catalogRoutes.pressReadHttp;
   const r = new Hono<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>();
 
   r.get("/coverage", optionalAuth, zValidator("query", pressArchiveQuerySchema), async (c) => {

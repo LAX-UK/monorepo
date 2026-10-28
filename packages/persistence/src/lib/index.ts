@@ -131,3 +131,8 @@ export {
   rowToRecord,
   slugify,
 } from "../repositories/artist-registry.helpers.js";
+
+export {
+  staffRoleAssignmentInForceAt,
+  staffRolesInForceFor,
+} from "./staff-role-assignment-sql.js";

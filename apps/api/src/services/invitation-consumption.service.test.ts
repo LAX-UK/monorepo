@@ -1,95 +1,139 @@
-import type { IUserInvitationRepository } from "@auction/persistence/interfaces";
+import type { ConsumeInviteResult } from "@auction/persistence/interfaces";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { InvitationConsumptionService } from "./invitation-consumption.service.js";
+import {
+  type IInvitationAcceptanceUnitOfWork,
+  InvitationConsumptionService,
+  bidAccessFromInvite,
+} from "./invitation-consumption.service.js";
+import { StaffRoleAssignmentRefused } from "./staff/staff-role-assignment.service.js";
 
-function makeRepo() {
+type Accepted = Extract<ConsumeInviteResult, { outcome: "ok" }>;
+
+function accepted(overrides: Partial<Accepted> = {}): Accepted {
   return {
-    insert: vi.fn(),
-    findById: vi.fn(),
-    findPendingByTokenHash: vi.fn(),
-    findPendingPlatformByEmail: vi.fn(),
-    consumeForNewUser: vi.fn(),
-    acceptForExistingUser: vi.fn(),
-    listGrants: vi.fn(),
-    listAdmin: vi.fn(),
-    counts: vi.fn(),
-    updateStatus: vi.fn(),
-    markOpenedFirstTouch: vi.fn(),
-  } satisfies IUserInvitationRepository;
+    outcome: "ok",
+    invitationId: "inv-1",
+    invitedByUserId: "admin-1",
+    targetRole: "staff",
+    targetStaffRole: "specialist",
+    grants: [{ product: "bid", role: "specialist" }],
+    ...overrides,
+  };
 }
 
-describe("InvitationConsumptionService.consumeInviteForNewUser", () => {
-  let repo: ReturnType<typeof makeRepo>;
-  let svc: InvitationConsumptionService;
-  beforeEach(() => {
-    repo = makeRepo();
-    svc = new InvitationConsumptionService(repo);
-  });
+function setup() {
+  const invites = { findPendingByTokenHash: vi.fn(), updateStatus: vi.fn() };
+  const accept = vi.fn<(...args: unknown[]) => Promise<ConsumeInviteResult>>();
+  const setAccess = vi.fn().mockResolvedValue(undefined);
+  const committed: string[] = [];
+  const acceptance: IInvitationAcceptanceUnitOfWork = {
+    run: async (work) => {
+      const result = await work({ invitations: { accept }, staffAccess: { setAccess } });
+      committed.push("commit");
+      return result;
+    },
+  };
+  return {
+    svc: new InvitationConsumptionService(invites, acceptance),
+    invites,
+    accept,
+    setAccess,
+    committed,
+  };
+}
 
-  it("maps ok outcome to the target role", async () => {
-    vi.mocked(repo.consumeForNewUser).mockResolvedValue({
-      outcome: "ok",
-      targetRole: "staff",
-      grants: [{ product: "bid", role: "specialist" }],
+describe("bidAccessFromInvite", () => {
+  it("makes the person staff with the Bid grant's role", () => {
+    expect(bidAccessFromInvite(accepted(), "existing_user")).toEqual({
+      role: "staff",
+      staffRoles: ["specialist"],
     });
-    const res = await svc.consumeInviteForNewUser("tok", "user-1", "a@example.com");
+  });
+
+  it("gives a new account the invitation's base role and leaves an existing one alone", () => {
+    const shopOnly = accepted({
+      targetRole: "client",
+      targetStaffRole: null,
+      grants: [{ product: "shop", role: "broker" }],
+    });
+    expect(bidAccessFromInvite(shopOnly, "new_user")).toEqual({ role: "client", staffRoles: [] });
+    expect(bidAccessFromInvite(shopOnly, "existing_user")).toBeNull();
+  });
+});
+
+describe("InvitationConsumptionService.consumeInviteForNewUser", () => {
+  let s: ReturnType<typeof setup>;
+  beforeEach(() => {
+    s = setup();
+  });
+
+  it("applies the invitation's Bid roles through the staff roster in the same unit of work", async () => {
+    s.accept.mockResolvedValue(accepted());
+    const res = await s.svc.consumeInviteForNewUser("tok", "user-1", "a@example.com");
     expect(res.isOk() && res.value).toBe("staff");
+    expect(s.setAccess).toHaveBeenCalledWith({
+      userId: "user-1",
+      role: "staff",
+      staffRoles: ["specialist"],
+      actorUserId: "admin-1",
+      reason: "Accepted staff invitation",
+      invitationId: "inv-1",
+    });
   });
 
-  it("maps expired outcome to a 400 error", async () => {
-    vi.mocked(repo.consumeForNewUser).mockResolvedValue({ outcome: "expired" });
-    const res = await svc.consumeInviteForNewUser("tok", "user-1", "a@example.com");
-    expect(res.isErr() && res.error.status).toBe(400);
-    expect(res.isErr() && res.error.message).toBe("Invitation expired");
+  it.each([
+    ["expired", "Invitation expired"],
+    ["email_mismatch", "Email does not match invitation"],
+    ["invalid", "Invalid invitation"],
+  ] as const)("maps %s to a 400 error and changes no roles", async (outcome, message) => {
+    s.accept.mockResolvedValue({ outcome });
+    const res = await s.svc.consumeInviteForNewUser("tok", "user-1", "a@example.com");
+    expect(res.isErr() && res.error).toEqual({ message, status: 400 });
+    expect(s.setAccess).not.toHaveBeenCalled();
   });
 
-  it("maps email_mismatch outcome to a 400 error", async () => {
-    vi.mocked(repo.consumeForNewUser).mockResolvedValue({ outcome: "email_mismatch" });
-    const res = await svc.consumeInviteForNewUser("tok", "user-1", "a@example.com");
-    expect(res.isErr() && res.error.message).toBe("Email does not match invitation");
-  });
-
-  it("maps invalid outcome to a 400 error", async () => {
-    vi.mocked(repo.consumeForNewUser).mockResolvedValue({ outcome: "invalid" });
-    const res = await svc.consumeInviteForNewUser("tok", "user-1", "a@example.com");
-    expect(res.isErr() && res.error.message).toBe("Invalid invitation");
+  it("refuses with 409 and keeps the invitation when the roster refuses the role", async () => {
+    s.accept.mockResolvedValue(accepted());
+    s.setAccess.mockRejectedValue(
+      new StaffRoleAssignmentRefused("last_administrator", "super_admin"),
+    );
+    const res = await s.svc.consumeInviteForNewUser("tok", "user-1", "a@example.com");
+    expect(res.isErr() && res.error.status).toBe(409);
+    expect(s.committed).toEqual([]);
   });
 });
 
 describe("InvitationConsumptionService.acceptForExistingUser", () => {
-  let repo: ReturnType<typeof makeRepo>;
-  let svc: InvitationConsumptionService;
+  let s: ReturnType<typeof setup>;
   beforeEach(() => {
-    repo = makeRepo();
-    svc = new InvitationConsumptionService(repo);
+    s = setup();
   });
 
-  it("returns the applied grants", async () => {
-    vi.mocked(repo.findPendingByTokenHash).mockResolvedValue({
-      targetLegalEntityId: null,
-    } as never);
-    vi.mocked(repo.acceptForExistingUser).mockResolvedValue({
-      outcome: "ok",
-      targetRole: "client",
-      grants: [{ product: "shop", role: "broker" }],
-    });
-    const res = await svc.acceptForExistingUser("tok", "user-1", "a@example.com");
+  it("returns the grants and leaves Bid access alone without a Bid grant", async () => {
+    s.invites.findPendingByTokenHash.mockResolvedValue({ targetLegalEntityId: null });
+    s.accept.mockResolvedValue(
+      accepted({
+        targetRole: "client",
+        targetStaffRole: null,
+        grants: [{ product: "shop", role: "broker" }],
+      }),
+    );
+    const res = await s.svc.acceptForExistingUser("tok", "user-1", "a@example.com");
     expect(res.isOk() && res.value.grants).toEqual([{ product: "shop", role: "broker" }]);
+    expect(s.setAccess).not.toHaveBeenCalled();
   });
 
   it("refuses organisation invitations, which have their own accept flow", async () => {
-    vi.mocked(repo.findPendingByTokenHash).mockResolvedValue({
-      targetLegalEntityId: "le-1",
-    } as never);
-    const res = await svc.acceptForExistingUser("tok", "user-1", "a@example.com");
+    s.invites.findPendingByTokenHash.mockResolvedValue({ targetLegalEntityId: "le-1" });
+    const res = await s.svc.acceptForExistingUser("tok", "user-1", "a@example.com");
     expect(res.isErr() && res.error.message).toBe("Invalid invitation");
-    expect(repo.acceptForExistingUser).not.toHaveBeenCalled();
+    expect(s.accept).not.toHaveBeenCalled();
   });
 
   it("maps email mismatch from the locked accept", async () => {
-    vi.mocked(repo.findPendingByTokenHash).mockResolvedValue(null);
-    vi.mocked(repo.acceptForExistingUser).mockResolvedValue({ outcome: "email_mismatch" });
-    const res = await svc.acceptForExistingUser("tok", "user-1", "a@example.com");
+    s.invites.findPendingByTokenHash.mockResolvedValue(null);
+    s.accept.mockResolvedValue({ outcome: "email_mismatch" });
+    const res = await s.svc.acceptForExistingUser("tok", "user-1", "a@example.com");
     expect(res.isErr() && res.error.message).toBe("Email does not match invitation");
   });
 });

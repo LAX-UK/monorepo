@@ -44,7 +44,7 @@ function mountIdentity(options: { authenticated?: boolean } = {}) {
           : {
               id: "u1",
               role: "client" as const,
-              staffRole: null,
+              staffRoles: [],
               identitySessionId: "identity-session-1",
               scopes: ["bid.write"],
             },

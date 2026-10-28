@@ -47,13 +47,13 @@ export async function loadAdminPayoutsListPage(sp: PayoutsListSearch) {
     getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS),
   ]);
   const role = (sessionUser?.role ?? "client") as UserRole;
-  const staffRole = sessionUser?.staffRole ?? null;
+  const staffRoles = sessionUser?.staffRoles;
   const base = {
     search,
     view: activePayoutsView(search),
     capabilities: {
-      canProcess: userHasAccessTo(role, staffRole, PAYOUT_PROCESS_ACCESS),
-      canReverse: userHasAccessTo(role, staffRole, PAYOUT_REVERSE_ACCESS),
+      canProcess: userHasAccessTo(role, staffRoles, PAYOUT_PROCESS_ACCESS),
+      canReverse: userHasAccessTo(role, staffRoles, PAYOUT_REVERSE_ACCESS),
     },
     disputesOpen: navCounts.disputesOpen,
     exportFilters: payoutsListController.exportFilters?.(query) ?? {},

@@ -346,6 +346,7 @@ export function createLotCatalogServices(
     repoFactory,
     consignmentAgreementRepository,
     sellerIdentity,
+    repos.staffRoster,
   );
   const consignmentAgreementService = new ConsignmentAgreementService({
     agreements: consignmentAgreementRepository,

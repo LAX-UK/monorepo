@@ -149,14 +149,9 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
       true,
     );
 
-    const result = await svc.setLotStatus(
-      "staff",
-      saleId,
-      lotId,
-      "scheduled",
-      undefined,
+    const result = await svc.setLotStatus("staff", saleId, lotId, "scheduled", undefined, [
       "super_admin",
-    );
+    ]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toMatchObject({
@@ -196,14 +191,9 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
       true,
     );
 
-    const result = await svc.setLotStatus(
-      "staff",
-      saleId,
-      lotId,
-      "scheduled",
-      undefined,
+    const result = await svc.setLotStatus("staff", saleId, lotId, "scheduled", undefined, [
       "super_admin",
-    );
+    ]);
     expect(result.isOk()).toBe(true);
     expect(lotRepo.updateStatus).toHaveBeenCalledWith(lotId, "scheduled");
     expect(scheduleLot).toHaveBeenCalledWith(lotId, scheduled.startTime, scheduled.endTime);
@@ -232,14 +222,9 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
       false,
     );
 
-    const result = await svc.setLotStatus(
-      "staff",
-      saleId,
-      lotId,
-      "scheduled",
-      undefined,
+    const result = await svc.setLotStatus("staff", saleId, lotId, "scheduled", undefined, [
       "super_admin",
-    );
+    ]);
     expect(result.isErr()).toBe(true);
     if (result.isErr() && result.error instanceof LotError) {
       expect(result.error.code).toBe("use_sale_publish");
@@ -277,14 +262,9 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
       false,
     );
 
-    const result = await svc.setLotStatus(
-      "staff",
-      saleId,
-      lotId,
-      "scheduled",
-      undefined,
+    const result = await svc.setLotStatus("staff", saleId, lotId, "scheduled", undefined, [
       "super_admin",
-    );
+    ]);
     expect(result.isErr()).toBe(true);
     if (result.isErr() && result.error instanceof LotError) {
       expect(result.error.message).toContain("startTime must be in the future to publish");
@@ -320,14 +300,9 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
       false,
     );
 
-    const result = await svc.setLotStatus(
-      "staff",
-      saleId,
-      lotId,
-      "cancelled",
-      undefined,
+    const result = await svc.setLotStatus("staff", saleId, lotId, "cancelled", undefined, [
       "super_admin",
-    );
+    ]);
     expect(result.isErr()).toBe(true);
     if (result.isErr() && result.error instanceof LotError) {
       expect(result.error.code).toBe("use_dedicated_cancel");
@@ -364,14 +339,9 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
       true,
     );
 
-    const result = await svc.setLotStatus(
-      "staff",
-      saleId,
-      lotId,
-      "scheduled",
-      undefined,
+    const result = await svc.setLotStatus("staff", saleId, lotId, "scheduled", undefined, [
       "super_admin",
-    );
+    ]);
     expect(result.isErr()).toBe(true);
     if (result.isErr() && result.error instanceof LotError) {
       expect(result.error.code).toBe("schedule_jobs_failed");

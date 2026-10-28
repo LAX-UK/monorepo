@@ -64,6 +64,6 @@ export function createClientsProvider(
         }),
       );
     },
-    filterSummary: (_ctx, filters) => summarizeFilters(filters as Record<string, unknown>),
+    filterSummary: (filters) => summarizeFilters(filters as Record<string, unknown>),
   };
 }

@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import { declineLegalEntityInvitationBodySchema } from "@auction/validators";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -42,7 +43,7 @@ export function createLegalEntityRoutes(
   });
   const legalEntityHttp = container.identityRoutes.legalEntityHttp;
   const r = new Hono<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>();
 
   r.get("/me", requireAuth, async (c) => {
@@ -165,12 +166,12 @@ export function createLegalEntityRoutes(
   r.get("/:id", requireAuth, zValidator("param", legalEntityIdParamSchema), async (c) => {
     const userId = c.get("userId") as string;
     const userRole = c.get("userRole");
-    const userStaffRole = c.get("userStaffRole");
+    const userStaffRoles = c.get("userStaffRoles");
     const { id } = c.req.valid("param");
     const result = await legalEntityHttp.getLegalEntityDetail({
       userId,
       ...(userRole !== undefined ? { userRole } : {}),
-      ...(userStaffRole !== undefined ? { userStaffRole } : {}),
+      ...(userStaffRoles !== undefined ? { userStaffRoles } : {}),
       legalEntityId: id,
       actingLegalEntityCookie: parseActingLegalEntityCookieFromHeader(c.req.header("Cookie")),
     });

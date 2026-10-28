@@ -5,6 +5,7 @@ import type {
   INotificationWriteRepository,
   IQrCodeScanPersister,
   IRepositoryFactory,
+  IStaffRoleAssignmentReader,
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
 import type { QueueName } from "@auction/queues";
@@ -61,6 +62,7 @@ export type WorkerBootstrapDeps = {
   profileMarketingReader: IMarketingProfileReader;
   marketingEventOutboxWorker: IMarketingEventOutboxWorker;
   dataExportRepo: IDataExportJobRepository;
+  staffRoleReader: IStaffRoleAssignmentReader;
   newsletterSignupSyncRepo: INewsletterSignupSyncRepository;
   sourceOfFundsDocumentPurgeRepo: ISourceOfFundsDocumentPurgeRepository;
   marketingContactSyncRepo: IMarketingContactSyncRepository;

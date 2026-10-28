@@ -1,7 +1,6 @@
 import type { Database } from "@auction/db";
 import { bidIdentityDirectory, bidUserProfile, userStaffRoleEnum } from "@auction/db/schema";
-import { and, count, eq, inArray, isNull, sql } from "drizzle-orm";
-import { writeBidUserProfile } from "../bid-user-profile-sync.js";
+import { count, eq, inArray, sql } from "drizzle-orm";
 import type {
   AdminUserDetail,
   AdminUserListFilter,
@@ -9,16 +8,13 @@ import type {
   AdminUserListRow,
   AdminUserListSummary,
   IAdminUserReader,
-  IAdminUserRoleManager,
 } from "../interfaces/admin-user.repository.js";
-import { LastSuperAdminError } from "../interfaces/admin-user.repository.js";
 import {
   adminUserListSelect,
   buildAdminUserListOrderBy,
   buildAdminUserListWhere,
   mapAdminUserListRow,
 } from "./admin-user-list-sql.js";
-import { insertLaxStaffAccessEvents } from "./drizzle-lax-staff-access.repository.js";
 
 export class DrizzleAdminUserReader implements IAdminUserReader {
   constructor(private readonly db: Database) {}
@@ -126,99 +122,4 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
       .where(inArray(bidIdentityDirectory.subjectId, ids));
     return rows.map(mapAdminUserListRow);
   }
-}
-
-const STAFF_ROSTER_LOCK_KEY = "bid_staff_admin_roster";
-
-/** True when the change takes super_admin away from someone who holds it. */
-export function removesSuperAdmin(
-  previous: { role: string; staffRole: string | null } | undefined,
-  next: { role: string; staffRole: string | null },
-): boolean {
-  const heldSuperAdmin = previous?.role === "staff" && previous.staffRole === "super_admin";
-  const keepsSuperAdmin = next.role === "staff" && next.staffRole === "super_admin";
-  return heldSuperAdmin && !keepsSuperAdmin;
-}
-
-export class DrizzleAdminUserRoleManager implements IAdminUserRoleManager {
-  constructor(
-    private readonly db: Database,
-    private readonly producer = "apps/api",
-  ) {}
-
-  async setRoleAndStaff(
-    userId: string,
-    role: string,
-    staffRole: string | null,
-    actorUserId: string,
-  ): Promise<void> {
-    const nextStaffRole =
-      role === "client" || staffRole === null || staffRole === ""
-        ? null
-        : (staffRole as (typeof userStaffRoleEnum.enumValues)[number]);
-    await this.db.transaction(async (tx) => {
-      const [previous] = await tx
-        .select({ role: bidUserProfile.role, staffRole: bidUserProfile.staffRole })
-        .from(bidUserProfile)
-        .where(eq(bidUserProfile.userId, userId))
-        .for("update");
-      const nextRole = role === "client" ? "client" : "staff";
-      if (
-        removesSuperAdmin(previous, { role: nextRole, staffRole: nextStaffRole }) &&
-        !(await hasAnotherActiveSuperAdmin(tx, userId))
-      ) {
-        throw new LastSuperAdminError();
-      }
-      await writeBidUserProfile(tx, userId, {
-        role: nextRole,
-        staffRole: nextStaffRole,
-      });
-      const before = previous?.role === "staff" ? (previous.staffRole ?? "staff") : null;
-      const after = role === "client" ? null : (nextStaffRole ?? "staff");
-      if (before === after) return;
-      await insertLaxStaffAccessEvents(tx, this.producer, [
-        after === null
-          ? {
-              type: "lax.staff_access.revoked",
-              payload: {
-                schemaVersion: 1,
-                subjectId: userId,
-                product: "bid",
-                revokedBySubjectId: actorUserId,
-              },
-            }
-          : {
-              type: "lax.staff_access.granted",
-              payload: {
-                schemaVersion: 1,
-                subjectId: userId,
-                product: "bid",
-                role: after,
-                grantedBySubjectId: actorUserId,
-                invitationId: null,
-              },
-            },
-      ]);
-    });
-  }
-}
-
-/**
- * Serialises roster changes, then checks someone else still holds an active super_admin. The
- * lock means two admins demoting each other at once cannot both pass.
- */
-async function hasAnotherActiveSuperAdmin(tx: Database, excludingUserId: string): Promise<boolean> {
-  await tx.execute(sql`select pg_advisory_xact_lock(hashtext(${STAFF_ROSTER_LOCK_KEY}))`);
-  const [row] = await tx
-    .select({ n: count() })
-    .from(bidUserProfile)
-    .where(
-      and(
-        eq(bidUserProfile.role, "staff"),
-        eq(bidUserProfile.staffRole, "super_admin"),
-        isNull(bidUserProfile.suspendedAt),
-        sql`${bidUserProfile.userId} <> ${excludingUserId}`,
-      ),
-    );
-  return Number(row?.n ?? 0) > 0;
 }

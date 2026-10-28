@@ -4,7 +4,6 @@ import {
   type Lot,
   type UserRole,
   normalizeUserRoleOrClient,
-  normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
 import { isPublicCatalogLot, viewerCanSeeNonPublicCatalog } from "@auction/validators";
@@ -52,7 +51,7 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
   }): Promise<CatalogHttpJson> {
     const { query, viewer } = input;
     const viewerRole = normalizeUserRoleOrClient(viewer.role);
-    const staff = normalizeUserStaffRole(viewer.staffRole ?? undefined);
+    const staff = viewer.staffRoles;
 
     if (query.needsPhotos === "1" && !canManageCatalogue(viewerRole, staff)) {
       return { status: 403, body: { error: "Forbidden" } };
@@ -80,7 +79,7 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
           resolveImages,
         },
         viewer.role ?? undefined,
-        viewer.staffRole ?? undefined,
+        viewer.staffRoles ?? undefined,
       );
       const canSeeLifecycle =
         roleHasCapability(viewerRole, "catalogue.write", staff) ||
@@ -175,8 +174,8 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
   }): Promise<CatalogHttpJson> {
     const q = input.query;
     const viewerRole = (input.viewer.role ?? "client") as UserRole;
-    const viewerStaffRole = normalizeUserStaffRole(input.viewer.staffRole as string | null);
-    const canSeeNonPublic = viewerCanSeeNonPublicCatalog(viewerRole, viewerStaffRole);
+    const viewerStaffRoles = input.viewer.staffRoles;
+    const canSeeNonPublic = viewerCanSeeNonPublicCatalog(viewerRole, viewerStaffRoles);
     const count = await this.lotService.countMatching({
       ...(q.status ? { status: q.status } : {}),
       ...(q.statuses ? { statuses: q.statuses } : {}),
@@ -202,7 +201,7 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
     const sale = lot.saleId ? await this.saleService.getByIdForPublicCatalog(lot.saleId) : null;
     const canPreview = viewerCanSeeNonPublicCatalog(
       input.viewer.role ?? undefined,
-      input.viewer.staffRole,
+      input.viewer.staffRoles,
     );
     if (!canPreview && !isPublicCatalogLot(presented, sale)) {
       return { status: 404, body: { error: "Not found" } };
@@ -212,7 +211,7 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
       checkoutPricing: computeLotCheckoutPricing(presented, sale),
     };
     const viewerRole = normalizeUserRoleOrClient(input.viewer.role);
-    const staff = normalizeUserStaffRole(input.viewer.staffRole ?? undefined);
+    const staff = input.viewer.staffRoles;
     const deleteEligibility = roleHasCapability(viewerRole, "auction.manage", staff)
       ? await this.lotSoftDeleteService.getDeleteEligibility(input.lotId)
       : null;
@@ -223,7 +222,7 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
           ...maskLotForPublicView(
             withPricing,
             input.viewer.role ?? undefined,
-            input.viewer.staffRole,
+            input.viewer.staffRoles,
           ),
           ...(deleteEligibility ? { deleteEligibility } : {}),
         },

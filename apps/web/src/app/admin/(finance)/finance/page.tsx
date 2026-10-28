@@ -23,7 +23,7 @@ export default async function FinanceAdminHomePage() {
     user !== null &&
     canOpenAdminRoute(
       user.role as UserRole,
-      user.staffRole ?? null,
+      user.staffRoles,
       href,
       findStaffNavItemForPath(href)?.requirement,
     );

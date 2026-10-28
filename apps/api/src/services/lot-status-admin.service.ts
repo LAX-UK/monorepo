@@ -4,8 +4,8 @@ import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
-import type { Lot, LotStatus, UserRole } from "@auction/types";
-import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
+import type { Lot, LotStatus, StaffRoles, UserRole } from "@auction/types";
+import { roleHasCapability } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
 import { assertLotPublishable } from "../lib/lot-publish-policy.js";
@@ -45,15 +45,9 @@ export class LotStatusAdminService implements ILotStatusAdminService {
     lotId: string,
     status: LotStatus,
     _reason?: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    if (
-      !roleHasCapability(
-        userRole as UserRole,
-        "auction.manage",
-        normalizeUserStaffRole(userStaffRole ?? undefined),
-      )
-    ) {
+    if (!roleHasCapability(userRole as UserRole, "auction.manage", userStaffRoles)) {
       return err(new AuthzError("Only staff with auction.manage can change lot status", 403));
     }
     const sale = await this.saleRepo.findById(saleId);

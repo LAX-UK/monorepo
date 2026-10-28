@@ -13,8 +13,8 @@ export default async function AdminFinanceLayout({ children }: { children: React
     redirect(`/login?next=${encodeURIComponent(requested)}&auth=required`);
   }
   const role = user.role as UserRole;
-  if (!canAccessFinanceAdminRoutes(role, user.staffRole ?? null)) {
-    redirect(role === "staff" ? adminDenialDestination(role, user.staffRole, requested) : "/home");
+  if (!canAccessFinanceAdminRoutes(role, user.staffRoles)) {
+    redirect(role === "staff" ? adminDenialDestination(role, user.staffRoles, requested) : "/home");
   }
   return children;
 }

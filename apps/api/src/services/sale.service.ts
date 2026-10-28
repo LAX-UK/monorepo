@@ -3,7 +3,7 @@ import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { IVenueRepository } from "@auction/persistence/interfaces";
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, Sale, StaffRoles } from "@auction/types";
 import type {
   CreateNestedLotForSaleInput,
   CreateSaleInput as ValidatorCreateSale,
@@ -114,14 +114,14 @@ export class SaleService implements ISaleService {
   async getSaleDetailForPublicApi(
     saleId: string,
     viewerUserId: string | undefined,
-    viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
+    viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
   ): Promise<{ data: { sale: Sale; lots: Lot[]; viewer: { isFollowing: boolean } } } | null> {
     return getSaleDetailForPublicApi(this.deps, saleId, viewerUserId, viewer);
   }
 
   async listSalesForPublicApi(
     filter: Parameters<ISaleRepository["list"]>[0],
-    viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
+    viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
   ): Promise<{ data: { sale: Sale; lots: Lot[] }[] }> {
     return listSalesForPublicApi(this.deps, filter, viewer);
   }
@@ -129,7 +129,7 @@ export class SaleService implements ISaleService {
   async listSaleLotsPageForPublicApi(
     saleId: string,
     opts: { limit: number; offset: number; sort?: "lot" | "priceAsc" | "priceDesc" | "endingAsc" },
-    viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
+    viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
   ): Promise<{
     data: {
       items: Lot[];
@@ -159,64 +159,64 @@ export class SaleService implements ISaleService {
     userId: string,
     userRole: string,
     saleId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>> {
-    return this.publishService.publish(userId, userRole, saleId, userStaffRole);
+    return this.publishService.publish(userId, userRole, saleId, userStaffRoles);
   }
 
   async unpublish(
     userId: string,
     userRole: string,
     saleId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Sale, LotError | AuthzError>> {
-    return this.publishService.unpublish(userId, userRole, saleId, userStaffRole);
+    return this.publishService.unpublish(userId, userRole, saleId, userStaffRoles);
   }
 
   async cancel(
     userId: string,
     userRole: string,
     saleId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Sale, LotError | AuthzError>> {
-    return this.publishService.cancel(userId, userRole, saleId, userStaffRole);
+    return this.publishService.cancel(userId, userRole, saleId, userStaffRoles);
   }
 
   async addLot(
     userRole: string,
     saleId: string,
     row: CreateNestedLotForSaleInput,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    return addLotToSale(this.deps, userRole, saleId, row, userStaffRole);
+    return addLotToSale(this.deps, userRole, saleId, row, userStaffRoles);
   }
 
   async attachExistingLot(
     userRole: string,
     saleId: string,
     lotId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
     attachVia: LotAttachedToSalePayload["via"] = "attach_endpoint",
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    return attachExistingLotToSale(this.deps, userRole, saleId, lotId, userStaffRole, attachVia);
+    return attachExistingLotToSale(this.deps, userRole, saleId, lotId, userStaffRoles, attachVia);
   }
 
   async detachLot(
     userRole: string,
     saleId: string,
     lotId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<void, LotError | AuthzError>> {
-    return detachLotFromSale(this.deps, userRole, saleId, lotId, userStaffRole);
+    return detachLotFromSale(this.deps, userRole, saleId, lotId, userStaffRoles);
   }
 
   async updateDraft(
     userRole: string,
     saleId: string,
     patch: UpdateSaleBody,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Sale, LotError | AuthzError>> {
-    return updateDraftSale(this.deps, userRole, saleId, patch, userStaffRole);
+    return updateDraftSale(this.deps, userRole, saleId, patch, userStaffRoles);
   }
 
   async getById(id: string): Promise<Sale | null> {

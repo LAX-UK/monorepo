@@ -66,7 +66,7 @@ export class SubmissionAdminHttpApplicationService
   constructor(private readonly itemSubmissionAdminApi: IItemSubmissionAdminApi) {}
 
   private guardAdmin(viewer: SubmissionViewerContext): SubmissionHttpJson | null {
-    return requireSubmissionsAccessHttp(viewer.role, viewer.staffRole);
+    return requireSubmissionsAccessHttp(viewer.role, viewer.staffRoles);
   }
 
   async listSubmissions(input: {

@@ -2,7 +2,7 @@ import "server-only";
 
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { type EntityActor, type EntityCapability, entityActorCan } from "@auction/domain";
-import type { LegalEntitySummary } from "@auction/types";
+import type { LegalEntitySummary, StaffRoles } from "@auction/types";
 import { redirect } from "next/navigation";
 
 export type SellerWorkspaceContext = {
@@ -27,11 +27,11 @@ export type SellerWorkspaceContext = {
  */
 export async function resolveSellerWorkspaceContext(
   userRole?: string | null,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles,
 ): Promise<SellerWorkspaceContext> {
   const { acting, memberships, bootstrapFailed } = await resolveActingContext(
     userRole,
-    userStaffRole,
+    userStaffRoles,
   );
   const personalEntity = memberships.find((m) => m.kind === "individual") ?? null;
   const sellingAsOrganisation = acting?.kind === "organisation";

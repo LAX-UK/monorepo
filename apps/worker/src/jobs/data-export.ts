@@ -5,10 +5,11 @@ import { join } from "node:path";
 import { finished } from "node:stream/promises";
 import { type ExportFormat, formatCsvHeader, formatCsvRow } from "@auction/exports";
 import {
+  type ExportAuthContext,
   type IExportProviderDeps,
   createExportProviders,
-  exportAuthContextFromRow,
 } from "@auction/exports/providers";
+import type { IStaffRoleAssignmentReader } from "@auction/persistence/interfaces";
 import type { DataExportJobPayload } from "@auction/queues";
 import type { Job } from "bullmq";
 import type { Redis } from "ioredis";
@@ -53,6 +54,8 @@ function objectKey(exportId: string, format: ExportFormat): string {
 
 export type DataExportJobContext = {
   dataExportRepo: IDataExportJobRepository;
+  /** The requester's roles are read when the export runs, so a role removed since stops it. */
+  staffRoleReader: Pick<IStaffRoleAssignmentReader, "listActiveRoles">;
   redis: Redis;
   storage: UploadStorage;
   providerDeps: IExportProviderDeps;
@@ -71,7 +74,14 @@ export async function dataExportJob(
   const row = await ctx.dataExportRepo.findById(exportId);
   if (!row || row.status === "cancelled") return;
 
-  const authCtx = exportAuthContextFromRow(row);
+  const authCtx: ExportAuthContext = {
+    userId: row.userId,
+    userRole: row.userRole,
+    userStaffRoles:
+      row.userRole === "staff"
+        ? await ctx.staffRoleReader.listActiveRoles(row.userId, new Date())
+        : [],
+  };
   const filterRecord = row.filters as Record<string, unknown>;
 
   try {

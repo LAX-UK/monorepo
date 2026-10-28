@@ -6,11 +6,7 @@ import {
   transitionErrorMessage,
 } from "@auction/domain";
 import type { CreateItemSubmissionInput, ItemSubmission } from "@auction/types";
-import {
-  type UserRole,
-  canAccessAdminSubmissionNotesWrite,
-  normalizeUserStaffRole,
-} from "@auction/types";
+import { type UserRole, canAccessAdminSubmissionNotesWrite } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../../lib/errors.js";
 import type { UpdateSubmissionActorInput } from "../interfaces/item-submission-service.js";
@@ -37,11 +33,11 @@ export async function updateForActor(
   deps: ItemSubmissionServiceDeps,
   input: UpdateSubmissionActorInput,
 ): Promise<Result<ItemSubmission, SubmissionError>> {
-  const { actorId, role, staffRole, submissionId, sellerPatch, adminNotes } = input;
+  const { actorId, role, staffRoles, submissionId, sellerPatch, adminNotes } = input;
   const s = await deps.submissions.findById(submissionId);
   if (!s) return err(new SubmissionError("Not found", 404));
 
-  const staff = normalizeUserStaffRole(staffRole);
+  const staff = staffRoles;
   if (canAccessAdminSubmissionNotesWrite(role as UserRole, staff)) {
     if (!adminNotes) {
       return err(new SubmissionError("Invalid update body", 400));

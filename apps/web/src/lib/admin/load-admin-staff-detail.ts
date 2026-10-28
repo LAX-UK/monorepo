@@ -23,7 +23,7 @@ export const loadAdminStaffDetail = cache(
     }
     const sessionUser = await getServerSessionUser();
     const actorRole = (sessionUser?.role ?? "client") as UserRole;
-    const actorStaff = sessionUser?.staffRole ?? null;
+    const actorStaff = sessionUser?.staffRoles;
     const canManageRoles =
       sessionUser != null && userHasAccessTo(actorRole, actorStaff, USER_ROLE_MANAGEMENT_ACCESS);
     const canModerate =

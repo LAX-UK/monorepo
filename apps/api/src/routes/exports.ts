@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import {
   createExportBodySchema,
   exportIdParamSchema,
@@ -28,7 +29,7 @@ export function createExportRoutes(
     Variables: {
       userId?: string;
       userRole?: string;
-      userStaffRole?: string | null;
+      userStaffRoles?: StaffRoles | undefined;
     };
   }>();
 

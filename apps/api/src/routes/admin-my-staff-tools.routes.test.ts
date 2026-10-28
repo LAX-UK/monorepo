@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
@@ -8,7 +9,7 @@ import { createAdminMyStaffToolsRoutes } from "./admin/staff-access.routes.js";
 const SUBJECT = "8f1c2d3e-4a5b-4c6d-8e7f-9a0b1c2d3e4f";
 const T0 = new Date("2026-10-10T10:00:00.000Z");
 
-type SessionUser = { role: string; staffRole: string | null };
+type SessionUser = { role: string; staffRoles: StaffRoles | undefined };
 
 function buildApp(
   session: SessionUser | null,
@@ -58,7 +59,7 @@ const request = (app: Hono) =>
 
 describe("GET /admin/staff/my-tools", () => {
   it("lists both tools for a Bid super admin who also holds a Shop role", async () => {
-    const app = buildApp({ role: "staff", staffRole: "super_admin" }, [
+    const app = buildApp({ role: "staff", staffRoles: ["super_admin"] }, [
       { product: "bid", role: "super_admin" },
       { product: "shop", role: "shop_admin" },
     ]);
@@ -70,7 +71,7 @@ describe("GET /admin/staff/my-tools", () => {
   });
 
   it("lists only Bid admin for Bid staff without a Shop role", async () => {
-    const app = buildApp({ role: "staff", staffRole: "specialist" }, [
+    const app = buildApp({ role: "staff", staffRoles: ["specialist"] }, [
       { product: "bid", role: "specialist" },
     ]);
 
@@ -78,7 +79,7 @@ describe("GET /admin/staff/my-tools", () => {
   });
 
   it("answers finance staff, who fail the platform shell gate but open Bid admin", async () => {
-    const app = buildApp({ role: "staff", staffRole: "finance_ops" }, [
+    const app = buildApp({ role: "staff", staffRoles: ["finance_ops"] }, [
       { product: "bid", role: "finance_ops" },
     ]);
 
@@ -89,7 +90,7 @@ describe("GET /admin/staff/my-tools", () => {
   });
 
   it("follows the live Bid session rather than a stale directory row", async () => {
-    const app = buildApp({ role: "client", staffRole: null }, [
+    const app = buildApp({ role: "client", staffRoles: [] }, [
       { product: "bid", role: "specialist" },
     ]);
 
@@ -97,14 +98,14 @@ describe("GET /admin/staff/my-tools", () => {
   });
 
   it("lists only LAX Admin for Shop-only staff", async () => {
-    const app = buildApp({ role: "staff", staffRole: null }, [{ product: "shop", role: "broker" }]);
+    const app = buildApp({ role: "staff", staffRoles: [] }, [{ product: "shop", role: "broker" }]);
 
     expect(await (await request(app)).json()).toEqual({ data: { tools: ["lax-admin"] } });
   });
 
   it("answers LAX Admin's exchanged token, which carries only the staff tools scope", async () => {
     const app = buildApp(
-      { role: "staff", staffRole: "specialist" },
+      { role: "staff", staffRoles: ["specialist"] },
       [{ product: "shop", role: "broker" }],
       ["lax.staff.tools.read"],
     );
@@ -117,7 +118,7 @@ describe("GET /admin/staff/my-tools", () => {
 
   it("refuses tokens that carry neither bid.read nor the staff tools scope", async () => {
     for (const scopes of [["bid.write"], ["lax.portfolio.read"], []]) {
-      const app = buildApp({ role: "staff", staffRole: "specialist" }, [], scopes);
+      const app = buildApp({ role: "staff", staffRoles: ["specialist"] }, [], scopes);
 
       const res = await request(app);
 

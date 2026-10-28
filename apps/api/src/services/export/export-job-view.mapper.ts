@@ -13,14 +13,7 @@ export class ExportJobViewMapper {
   async toJobView(row: ExportJobRow): Promise<ExportJobView> {
     const provider = this.providers.get(row.entityType as ExportEntityType);
     const filterSummary = provider
-      ? provider.filterSummary(
-          {
-            userId: row.userId,
-            userRole: row.userRole,
-            userStaffRole: row.userStaffRole,
-          },
-          row.filters as Record<string, unknown>,
-        )
+      ? provider.filterSummary(row.filters as Record<string, unknown>)
       : undefined;
     return this.buildJobView(row, await this.progressStore.read(row.id), filterSummary);
   }

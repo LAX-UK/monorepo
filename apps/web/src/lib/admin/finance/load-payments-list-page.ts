@@ -46,10 +46,10 @@ type SessionUser = Awaited<ReturnType<typeof getServerSessionUser>>;
 /** What the signed-in staff member may do to a payment, from the rules the API enforces. */
 function paymentActionCapabilities(sessionUser: SessionUser) {
   const role = (sessionUser?.role ?? "client") as UserRole;
-  const staffRole = sessionUser?.staffRole ?? null;
+  const staffRoles = sessionUser?.staffRoles;
   return {
-    canWritePayments: userHasAccessTo(role, staffRole, PAYMENT_WRITE_ACCESS),
-    canResolveManualReview: userHasAccessTo(role, staffRole, PAYMENT_MANUAL_REVIEW_WRITE_ACCESS),
+    canWritePayments: userHasAccessTo(role, staffRoles, PAYMENT_WRITE_ACCESS),
+    canResolveManualReview: userHasAccessTo(role, staffRoles, PAYMENT_MANUAL_REVIEW_WRITE_ACCESS),
   };
 }
 
@@ -91,7 +91,7 @@ export async function loadAdminPaymentsListPage(sp: PaymentsListSearchParams) {
       loadError: manualResult.error,
       ...paymentActionCapabilities(sessionUser),
       canOpenComplianceQueues: sessionUser
-        ? canAccessPlatformAdminRoutes(sessionUser.role as UserRole, sessionUser.staffRole ?? null)
+        ? canAccessPlatformAdminRoutes(sessionUser.role as UserRole, sessionUser.staffRoles)
         : false,
       attentionCounts: {
         manualReviewCount: manualResult.allRows.length,

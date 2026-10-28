@@ -4,12 +4,12 @@ import { resolveFinanceCapabilities } from "./resolve-finance-capabilities";
 describe("resolveFinanceCapabilities", () => {
   it("grants finance staff payment and payout mutation", () => {
     expect(
-      resolveFinanceCapabilities({ role: "staff", staffRole: "finance_ops" }).canMutatePayments,
+      resolveFinanceCapabilities({ role: "staff", staffRoles: ["finance_ops"] }).canMutatePayments,
     ).toBe(true);
   });
 
   it("denies client users", () => {
-    expect(resolveFinanceCapabilities({ role: "client", staffRole: null }).canAccessFinance).toBe(
+    expect(resolveFinanceCapabilities({ role: "client", staffRoles: [] }).canAccessFinance).toBe(
       false,
     );
   });

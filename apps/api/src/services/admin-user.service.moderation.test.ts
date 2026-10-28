@@ -1,20 +1,24 @@
-import {
-  type AdminUserListRow,
-  type IAdminUserActivityReader,
-  type IAdminUserBidsReader,
-  type IAdminUserReader,
-  type IAdminUserRoleManager,
-  type IAdminUserSuspender,
-  LastSuperAdminError,
+import type {
+  AdminUserListRow,
+  IAdminUserActivityReader,
+  IAdminUserBidsReader,
+  IAdminUserReader,
+  IAdminUserSuspender,
 } from "@auction/persistence/interfaces";
+import { normalizeStaffRoles } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { AuthzError } from "../lib/errors.js";
 import { type AdminActor, AdminUserService } from "./admin-user.service.js";
+import { StaffRoleAssignmentRefused } from "./staff/staff-role-assignment.service.js";
 
 const REASON = "Repeated chargebacks and a failed identity check.";
 
-const SUPER_ADMIN: AdminActor = { userId: "admin-1", role: "staff", staffRole: "super_admin" };
-const SUPPORT: AdminActor = { userId: "support-1", role: "staff", staffRole: "support_concierge" };
+const SUPER_ADMIN: AdminActor = { userId: "admin-1", role: "staff", staffRoles: ["super_admin"] };
+const SUPPORT: AdminActor = {
+  userId: "support-1",
+  role: "staff",
+  staffRoles: ["support_concierge"],
+};
 
 function row(id: string, role: "client" | "staff", staffRole: string | null = null) {
   return { id, role, staffRole } as unknown as AdminUserListRow;
@@ -26,7 +30,7 @@ function setup(users: AdminUserListRow[] = [row("client-1", "client"), row("clie
     getById: vi.fn(async (id: string) => users.find((u) => u.id === id) ?? null),
     getByIds: vi.fn(async (ids: string[]) => users.filter((u) => ids.includes(u.id))),
   } as unknown as IAdminUserReader;
-  const roles = { setRoleAndStaff: vi.fn().mockResolvedValue(undefined) };
+  const roles = { setAccess: vi.fn().mockResolvedValue(undefined) };
   const suspender = {
     suspendMany: vi.fn().mockResolvedValue(undefined),
     unsuspendMany: vi.fn().mockResolvedValue(undefined),
@@ -34,7 +38,7 @@ function setup(users: AdminUserListRow[] = [row("client-1", "client"), row("clie
   const invalidate = vi.fn().mockResolvedValue(undefined);
   const service = new AdminUserService(
     reader,
-    roles as unknown as IAdminUserRoleManager,
+    roles,
     suspender as unknown as IAdminUserSuspender,
     { getRecentSessions: vi.fn() } as unknown as IAdminUserActivityReader,
     { listForUser: vi.fn() } as unknown as IAdminUserBidsReader,
@@ -89,7 +93,11 @@ describe("AdminUserService suspension", () => {
       const { service, suspender } = setup();
 
       const error = await failure(
-        service.suspend({ userId: "x", role: "staff", staffRole }, "client-1", REASON),
+        service.suspend(
+          { userId: "x", role: "staff", staffRoles: normalizeStaffRoles([staffRole]) },
+          "client-1",
+          REASON,
+        ),
       );
 
       expect(error.status).toBe(403);
@@ -162,7 +170,7 @@ describe("AdminUserService unsuspension", () => {
     const { service, suspender } = setup();
 
     const error = await failure(
-      service.unsuspend({ userId: "x", role: "staff", staffRole: "finance_ops" }, "client-1"),
+      service.unsuspend({ userId: "x", role: "staff", staffRoles: ["finance_ops"] }, "client-1"),
     );
 
     expect(error.status).toBe(403);
@@ -247,63 +255,66 @@ describe("AdminUserService bulk moderation", () => {
 });
 
 function superAdminAs(userId: string): AdminActor {
-  return { userId, role: "staff", staffRole: "super_admin" };
+  return { userId, role: "staff", staffRoles: ["super_admin"] };
 }
 
 describe("AdminUserService staff roles", () => {
   it("changes another person's staff role and records the actor", async () => {
     const { service, roles } = setup([row("staff-2", "staff", "operations")]);
 
-    await service.setStaffRole("staff", "admin-1", "staff-2", "auction_manager", "super_admin");
+    await service.setStaffRole("staff", "admin-1", "staff-2", "auction_manager", ["super_admin"]);
 
-    expect(roles.setRoleAndStaff).toHaveBeenCalledWith(
-      "staff-2",
-      "staff",
-      "auction_manager",
-      "admin-1",
-    );
+    expect(roles.setAccess).toHaveBeenCalledWith({
+      userId: "staff-2",
+      role: "staff",
+      staffRoles: ["auction_manager"],
+      actorUserId: "admin-1",
+      reason: null,
+    });
   });
 
   it("refuses changing your own staff role (self-demotion or escalation)", async () => {
     const { service, roles } = setup([row("admin-1", "staff", "super_admin")]);
 
     const error = await failure(
-      service.setStaffRole("staff", "admin-1", "admin-1", "operations", "super_admin"),
+      service.setStaffRole("staff", "admin-1", "admin-1", "operations", ["super_admin"]),
     );
 
     expect(error.status).toBe(403);
     expect(error.code).toBe("cannot_change_own_role");
-    expect(roles.setRoleAndStaff).not.toHaveBeenCalled();
+    expect(roles.setAccess).not.toHaveBeenCalled();
   });
 
   it("refuses demoting yourself to a customer through the set-role route", async () => {
     const { service, roles } = setup();
 
     const error = await failure(
-      service.setRole("staff", "admin-1", "admin-1", "client", "super_admin", null),
+      service.setRole("staff", "admin-1", "admin-1", "client", ["super_admin"], null),
     );
 
     expect(error.message).toBe("Cannot demote yourself");
-    expect(roles.setRoleAndStaff).not.toHaveBeenCalled();
+    expect(roles.setAccess).not.toHaveBeenCalled();
   });
 
   it("refuses changing your own staff role through the set-role route", async () => {
     const { service, roles } = setup();
 
     const error = await failure(
-      service.setRole("staff", "admin-1", "admin-1", "staff", "super_admin", "operations"),
+      service.setRole("staff", "admin-1", "admin-1", "staff", ["super_admin"], "operations"),
     );
 
     expect(error.code).toBe("cannot_change_own_role");
-    expect(roles.setRoleAndStaff).not.toHaveBeenCalled();
+    expect(roles.setAccess).not.toHaveBeenCalled();
   });
 
   it("turns the last-super_admin guard into a 409", async () => {
     const { service, roles } = setup([row("staff-2", "staff", "super_admin")]);
-    roles.setRoleAndStaff.mockRejectedValue(new LastSuperAdminError());
+    roles.setAccess.mockRejectedValue(
+      new StaffRoleAssignmentRefused("last_administrator", "super_admin"),
+    );
 
     const error = await failure(
-      service.setStaffRole("staff", "admin-1", "staff-2", "operations", "super_admin"),
+      service.setStaffRole("staff", "admin-1", "staff-2", "operations", ["super_admin"]),
     );
 
     expect(error.status).toBe(409);
@@ -312,10 +323,12 @@ describe("AdminUserService staff roles", () => {
 
   it("turns the last-super_admin guard into a 409 on the set-role route too", async () => {
     const { service, roles } = setup([row("staff-2", "staff", "super_admin")]);
-    roles.setRoleAndStaff.mockRejectedValue(new LastSuperAdminError());
+    roles.setAccess.mockRejectedValue(
+      new StaffRoleAssignmentRefused("last_administrator", "super_admin"),
+    );
 
     const error = await failure(
-      service.setRole("staff", "admin-1", "staff-2", "client", "super_admin", null),
+      service.setRole("staff", "admin-1", "staff-2", "client", ["super_admin"], null),
     );
 
     expect(error.status).toBe(409);
@@ -327,20 +340,26 @@ describe("AdminUserService staff roles", () => {
       const { service, roles } = setup([row("staff-2", "staff", "operations")]);
 
       const error = await failure(
-        service.setStaffRole("staff", "x", "staff-2", "auction_manager", staffRole),
+        service.setStaffRole(
+          "staff",
+          "x",
+          "staff-2",
+          "auction_manager",
+          normalizeStaffRoles([staffRole]),
+        ),
       );
 
       expect(error.status).toBe(403);
-      expect(roles.setRoleAndStaff).not.toHaveBeenCalled();
+      expect(roles.setAccess).not.toHaveBeenCalled();
     },
   );
 
   it("passes non-guard errors through unchanged", async () => {
     const { service, roles } = setup([row("staff-2", "staff", "operations")]);
-    roles.setRoleAndStaff.mockRejectedValue(new Error("db down"));
+    roles.setAccess.mockRejectedValue(new Error("db down"));
 
     await expect(
-      service.setStaffRole("staff", "admin-1", "staff-2", "auction_manager", "super_admin"),
+      service.setStaffRole("staff", "admin-1", "staff-2", "auction_manager", ["super_admin"]),
     ).rejects.toThrow("db down");
   });
 });

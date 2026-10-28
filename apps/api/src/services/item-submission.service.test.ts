@@ -555,7 +555,7 @@ describe("ItemSubmissionService", () => {
     const r = await svc.getSubmissionForViewerApi({
       submissionId: "s1",
       role: "staff",
-      staffRole: "super_admin",
+      staffRoles: ["super_admin"],
       sellerLegalEntityId: "wrong-entity",
     });
     expect(r.isOk()).toBe(true);

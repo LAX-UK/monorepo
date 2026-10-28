@@ -1,49 +1,51 @@
-import type { UserRole, UserStaffRole } from "../user.js";
-import { normalizeUserStaffRole } from "../user.js";
+import type { UserRole } from "../user.js";
 import type { RoleCapability } from "./role-capabilities.js";
 import { roleHasCapability } from "./role-capabilities.js";
+import {
+  NO_STAFF_ROLES,
+  type StaffRoles,
+  hasStaffRole,
+  holdsOnlyStaffRole,
+} from "./staff-roles.js";
 
 /**
  * Whether the user may enter the platform admin route group (not finance-only shell).
- * `finance_ops` uses the finance shell + default destination `/admin/payments`.
+ * Someone who holds only `finance_ops` uses the finance shell + default destination
+ * `/admin/finance`; any other role opens the platform shell.
  */
 export function canAccessPlatformAdminRoutes(
   role: UserRole,
-  staffRole?: UserStaffRole | null,
+  staffRoles: StaffRoles = NO_STAFF_ROLES,
 ): boolean {
   if (role !== "staff") return false;
-  const staff = normalizeUserStaffRole(staffRole ?? undefined);
-  if (staff == null) return false;
-  return staff !== "finance_ops";
+  return staffRoles.some((held) => held !== "finance_ops");
 }
 
 export function canAccessFinanceAdminRoutes(
   role: UserRole,
-  staffRole?: UserStaffRole | null,
+  staffRoles: StaffRoles = NO_STAFF_ROLES,
 ): boolean {
-  return roleHasCapability(role, "finance.read", staffRole);
+  return roleHasCapability(role, "finance.read", staffRoles);
 }
 
 /** Admin submission list/detail (read). */
 export function canAccessAdminSubmissionsRead(
   role: UserRole,
-  staffRole?: UserStaffRole | null,
+  staffRoles: StaffRoles = NO_STAFF_ROLES,
 ): boolean {
   if (role !== "staff") return false;
-  return roleHasCapability(role, "legal_entity.read", staffRole);
+  return roleHasCapability(role, "legal_entity.read", staffRoles);
 }
 
 /** Admin-only submission note patches while under review. */
 export function canAccessAdminSubmissionNotesWrite(
   role: UserRole,
-  staffRole?: UserStaffRole | null,
+  staffRoles: StaffRoles = NO_STAFF_ROLES,
 ): boolean {
   if (role !== "staff") return false;
-  return (
-    roleHasCapability(role, "platform.admin.full", staffRole) ||
-    roleHasCapability(role, "catalogue.write", staffRole) ||
-    roleHasCapability(role, "specialist.appraise", staffRole)
-  );
+  return userHasAccessTo(role, staffRoles, {
+    anyOf: ["platform.admin.full", "catalogue.write", "specialist.appraise"],
+  });
 }
 
 /** Nav / shell: capability requirement for a sidebar item. */
@@ -51,13 +53,13 @@ export type CapabilityRequirement = RoleCapability | { anyOf: RoleCapability[] }
 
 export function userHasAccessTo(
   role: UserRole,
-  staffRole: UserStaffRole | null | undefined,
+  staffRoles: StaffRoles | undefined,
   requirement: CapabilityRequirement,
 ): boolean {
   if (typeof requirement === "object" && requirement !== null && "anyOf" in requirement) {
-    return requirement.anyOf.some((c) => roleHasCapability(role, c, staffRole));
+    return requirement.anyOf.some((c) => roleHasCapability(role, c, staffRoles));
   }
-  return roleHasCapability(role, requirement as RoleCapability, staffRole);
+  return roleHasCapability(role, requirement as RoleCapability, staffRoles);
 }
 
 export type AppShellLayout = "client" | "platform" | "finance";
@@ -65,25 +67,23 @@ export type AppShellLayout = "client" | "platform" | "finance";
 /** Visual shell for staff: finance-only vs platform vs client. */
 export function staffRoleToShellLayout(
   role: UserRole,
-  staffRole: UserStaffRole | null | undefined,
+  staffRoles: StaffRoles = NO_STAFF_ROLES,
 ): AppShellLayout {
   if (role === "client") return "client";
-  const staff = normalizeUserStaffRole(staffRole ?? undefined);
-  if (staff === "finance_ops") return "finance";
+  if (holdsOnlyStaffRole(staffRoles, "finance_ops")) return "finance";
   return "platform";
 }
 
 /** First sensible admin URL for this staff user (post-login landing). */
 export function staffRoleDefaultDestination(
   role: UserRole,
-  staffRole: UserStaffRole | null | undefined,
+  staffRoles: StaffRoles = NO_STAFF_ROLES,
 ): string {
   if (role === "client") return "/home";
-  const staff = normalizeUserStaffRole(staffRole ?? undefined);
-  if (staff == null) return "/admin";
+  if (staffRoles.length === 0) return "/admin";
 
-  if (staff === "super_admin") return "/admin";
-  if (staff === "finance_ops") return "/admin/finance";
+  if (hasStaffRole(staffRoles, "super_admin")) return "/admin";
+  if (holdsOnlyStaffRole(staffRoles, "finance_ops")) return "/admin/finance";
 
   const ordered: Array<{ path: string; requirement: CapabilityRequirement }> = [
     { path: "/admin/sales", requirement: "auction.manage" },
@@ -110,7 +110,7 @@ export function staffRoleDefaultDestination(
   ];
 
   for (const { path, requirement } of ordered) {
-    if (userHasAccessTo(role, staff, requirement)) return path;
+    if (userHasAccessTo(role, staffRoles, requirement)) return path;
   }
 
   return "/admin";

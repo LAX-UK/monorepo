@@ -1,10 +1,6 @@
 import { canTransition, transitionErrorMessage } from "@auction/domain";
 import type { ItemSubmission } from "@auction/types";
-import {
-  type UserRole,
-  canAccessAdminSubmissionsRead,
-  normalizeUserStaffRole,
-} from "@auction/types";
+import { type UserRole, canAccessAdminSubmissionsRead } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../../lib/errors.js";
 import type { ItemSubmissionServiceDeps } from "./submission-types.js";
@@ -24,7 +20,11 @@ export async function assignForAdmin(
     const assignee = await deps.users.findById(assignedToUserId);
     if (!assignee) return err(new SubmissionError("Assignee not found", 404));
     const role = assignee.role as UserRole;
-    if (!canAccessAdminSubmissionsRead(role, normalizeUserStaffRole(assignee.staffRole))) {
+    const staffRoles =
+      role === "staff" && deps.staffRoles
+        ? await deps.staffRoles.listActiveRoles(assignedToUserId, new Date())
+        : [];
+    if (!canAccessAdminSubmissionsRead(role, staffRoles)) {
       return err(new SubmissionError("Assignee must be staff with submissions access", 400));
     }
   }

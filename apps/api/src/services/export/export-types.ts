@@ -37,11 +37,7 @@ export type ExportProgressSnapshot = {
   errorMessage?: string;
 };
 
-export type ExportAuthContext = {
-  userId: string;
-  userRole: string;
-  userStaffRole: string | null;
-};
+export type { ExportAuthContext } from "@auction/exports/providers";
 
 export function filtersHash(
   entityType: string,

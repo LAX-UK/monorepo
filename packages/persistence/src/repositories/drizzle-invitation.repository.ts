@@ -4,11 +4,9 @@ import {
   emailOutbox,
   userInvitation,
   userInvitationProductGrant,
-  type userStaffRoleEnum,
 } from "@auction/db/schema";
 import type { LaxStaffGrant, UserRole, UserStaffRole } from "@auction/types";
 import { type SQL, and, asc, desc, eq, ilike, inArray, isNull, sql } from "drizzle-orm";
-import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type {
   ConsumeInviteResult,
   IUserInvitationRepository,
@@ -109,8 +107,6 @@ function mapInvitationSummary(r: {
   };
 }
 
-type BidStaffRole = (typeof userStaffRoleEnum.enumValues)[number];
-
 async function selectGrants(
   db: Database,
   invitationIds: string[],
@@ -133,8 +129,6 @@ async function selectGrants(
   }
   return byInvitation;
 }
-
-type AcceptMode = { kind: "new_user" } | { kind: "existing_user" };
 
 export class DrizzleUserInvitationRepository implements IUserInvitationRepository {
   constructor(
@@ -212,28 +206,7 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
     return (await selectGrants(this.db, [invitationId])).get(invitationId) ?? [];
   }
 
-  consumeForNewUser(
-    tokenHash: string,
-    newUserId: string,
-    email: string,
-  ): Promise<ConsumeInviteResult> {
-    return this.accept(tokenHash, newUserId, email, { kind: "new_user" });
-  }
-
-  acceptForExistingUser(
-    tokenHash: string,
-    userId: string,
-    email: string,
-  ): Promise<ConsumeInviteResult> {
-    return this.accept(tokenHash, userId, email, { kind: "existing_user" });
-  }
-
-  private accept(
-    tokenHash: string,
-    userId: string,
-    email: string,
-    mode: AcceptMode,
-  ): Promise<ConsumeInviteResult> {
+  accept(tokenHash: string, userId: string, email: string): Promise<ConsumeInviteResult> {
     return this.db.transaction(async (tx) => {
       // Row lock serializes concurrent redemptions of the same token: the loser
       // blocks here and then sees status != 'pending'.
@@ -264,37 +237,34 @@ export class DrizzleUserInvitationRepository implements IUserInvitationRepositor
         .set({ status: "accepted", acceptedAt: now, acceptedUserId: userId, updatedAt: now })
         .where(eq(userInvitation.id, row.id));
 
-      const bidGrant = grants.find((g) => g.product === "bid");
-      if (bidGrant) {
-        await writeBidUserProfile(tx, userId, {
-          role: "staff",
-          staffRole: bidGrant.role as BidStaffRole,
-        });
-      } else if (mode.kind === "new_user") {
-        await writeBidUserProfile(tx, userId, {
-          role: targetRole,
-          staffRole:
-            targetRole === "staff" ? ((row.targetStaffRole ?? null) as BidStaffRole | null) : null,
-        });
-      }
-
+      // Bid access is applied by the caller through the staff roster in this same transaction;
+      // other platforms apply their roles from these events.
       await insertLaxStaffAccessEvents(
         tx,
         this.producer,
-        grants.map((g) => ({
-          type: "lax.staff_access.granted" as const,
-          payload: {
-            schemaVersion: 1 as const,
-            subjectId: userId,
-            product: g.product,
-            role: g.role,
-            grantedBySubjectId: row.createdByUserId,
-            invitationId: row.id,
-          },
-        })),
+        grants
+          .filter((g) => g.product !== "bid")
+          .map((g) => ({
+            type: "lax.staff_access.granted" as const,
+            payload: {
+              schemaVersion: 1 as const,
+              subjectId: userId,
+              product: g.product,
+              role: g.role,
+              grantedBySubjectId: row.createdByUserId,
+              invitationId: row.id,
+            },
+          })),
       );
 
-      return { outcome: "ok", targetRole: bidGrant ? "staff" : targetRole, grants };
+      return {
+        outcome: "ok",
+        invitationId: row.id,
+        invitedByUserId: row.createdByUserId,
+        targetRole,
+        targetStaffRole: (row.targetStaffRole ?? null) as UserStaffRole | null,
+        grants,
+      };
     });
   }
 

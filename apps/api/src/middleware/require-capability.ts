@@ -27,6 +27,7 @@ import {
   type RoleCapability,
   SALES_ACCESS,
   SUBMISSIONS_ACCESS,
+  type StaffRoles,
   USERS_DIRECTORY_ACCESS,
   USER_MODERATION_ACCESS,
   type UserRole,
@@ -34,7 +35,6 @@ import {
   WITHDRAWAL_DECISION_ACCESS,
   canAccessPlatformAdminRoutes,
   normalizeUserRoleOrClient,
-  normalizeUserStaffRole,
   roleHasCapability,
   userHasAccessTo,
 } from "@auction/types";
@@ -48,10 +48,10 @@ export function createRequireAccess(
   src: RoleSource = honoContextRoleSource,
 ) {
   return createMiddleware<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>(async (c, next) => {
     const role = src.getRole(c) as UserRole;
-    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+    const staff = c.get("userStaffRoles");
     if (!userHasAccessTo(role, staff, requirement)) {
       return c.json({ error: "Forbidden" }, 403);
     }
@@ -64,10 +64,10 @@ export function createRequireCapability(
   src: RoleSource = honoContextRoleSource,
 ) {
   return createMiddleware<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>(async (c, next) => {
     const role = src.getRole(c) as UserRole;
-    const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+    const staff = c.get("userStaffRoles");
     if (!roleHasCapability(role, capability, staff)) {
       return c.json({ error: "Forbidden" }, 403);
     }
@@ -80,10 +80,10 @@ export function createRequireCapability(
  * Not the same as `platform.admin.full` — use `requirePlatformAdminFull` for that.
  */
 export const requirePlatformShell = createMiddleware<{
-  Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+  Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
 }>(async (c, next) => {
   const role = normalizeUserRoleOrClient(c.get("userRole"));
-  const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+  const staff = c.get("userStaffRoles");
   if (!canAccessPlatformAdminRoutes(role, staff)) {
     return c.json({ error: "Forbidden" }, 403);
   }
@@ -144,10 +144,10 @@ export const requireConditionReportsAccess = createRequireAccess(CONDITION_REPOR
 
 /** Shared document/catalogue route requirement retained for non-condition-report routes. */
 export const requireSpecialistCatalogueOrAuctionManage = createMiddleware<{
-  Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+  Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
 }>(async (c, next) => {
   const role = honoContextRoleSource.getRole(c) as UserRole;
-  const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+  const staff = c.get("userStaffRoles");
   if (
     roleHasCapability(role, "specialist.appraise", staff) ||
     roleHasCapability(role, "catalogue.write", staff) ||
@@ -163,12 +163,12 @@ export const requireFinanceEntityWrite = createMiddleware<{
   Variables: {
     userId?: string;
     userRole?: string;
-    userStaffRole?: string | null;
+    userStaffRoles?: StaffRoles | undefined;
     legalEntityContext?: LegalEntityContext;
   };
 }>(async (c, next) => {
   const role = c.get("userRole") as UserRole | undefined;
-  const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+  const staff = c.get("userStaffRoles");
   if (role && userHasAccessTo(role, staff, PAYMENT_WRITE_ACCESS)) {
     await next();
     return;

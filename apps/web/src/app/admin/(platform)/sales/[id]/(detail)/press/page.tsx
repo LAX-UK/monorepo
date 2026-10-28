@@ -13,7 +13,7 @@ export default async function AdminSalePressPage({ params }: Props) {
   const user = await requireAdminCapability(SALE_CATALOG_ACCESS, `/admin/sales/${id}`);
   const page = await loadAdminSalePressPage(id);
 
-  const canManage = userHasAccessTo(user.role as UserRole, user.staffRole ?? null, SALES_ACCESS);
+  const canManage = userHasAccessTo(user.role as UserRole, user.staffRoles, SALES_ACCESS);
 
   return (
     <SalePressTab

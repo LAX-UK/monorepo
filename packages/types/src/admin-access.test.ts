@@ -30,7 +30,7 @@ function has(
   staffRole: UserStaffRole,
   requirement: Parameters<typeof userHasAccessTo>[2],
 ): boolean {
-  return userHasAccessTo("staff", staffRole, requirement);
+  return userHasAccessTo("staff", [staffRole], requirement);
 }
 
 describe("admin-access requirements", () => {

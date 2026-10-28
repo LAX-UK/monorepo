@@ -10,7 +10,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { IWatchlistRepository } from "@auction/persistence/interfaces";
-import type { CreateLotInput, Lot, PublicLotView, UserRole } from "@auction/types";
+import type { CreateLotInput, Lot, PublicLotView, StaffRoles, UserRole } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import { type Result, err } from "neverthrow";
 import type { LotCancelledPayload } from "../domain/lot-events.js";
@@ -109,7 +109,7 @@ export class LotService implements ILotService {
     userRole: string,
     lotId: string,
     input: Parameters<LotTransitionOrchestrator["returnToInventory"]>[3],
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ) {
     if (!this._lotTransitionOrchestrator) {
       return Promise.resolve(err(new LotError("Return to inventory is not configured", 500)));
@@ -119,7 +119,7 @@ export class LotService implements ILotService {
       userRole,
       lotId,
       input,
-      userStaffRole,
+      userStaffRoles,
     );
   }
 
@@ -131,37 +131,37 @@ export class LotService implements ILotService {
     _userId: string,
     userRole: string,
     lotId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    return publishLot(this.deps, _userId, userRole, lotId, userStaffRole);
+    return publishLot(this.deps, _userId, userRole, lotId, userStaffRoles);
   }
 
   cancel(
     _userId: string,
     userRole: string,
     lotId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
     cancelReason: LotCancelledPayload["reason"] = "manual",
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    return cancelLot(this.deps, _userId, userRole, lotId, userStaffRole, cancelReason);
+    return cancelLot(this.deps, _userId, userRole, lotId, userStaffRoles, cancelReason);
   }
 
   update(
     userRole: string,
     lotId: string,
     input: Partial<CreateLotInput>,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    return updateLot(this.deps, userRole, lotId, input, userStaffRole);
+    return updateLot(this.deps, userRole, lotId, input, userStaffRoles);
   }
 
   updateMarketingDetails(
     userRole: string,
     lotId: string,
     patch: UpdateLotMarketingDetailsInput,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    return updateLotMarketingDetails(this.deps, userRole, lotId, patch, userStaffRole);
+    return updateLotMarketingDetails(this.deps, userRole, lotId, patch, userStaffRoles);
   }
 
   getById(id: string): Promise<Lot | null> {
@@ -175,9 +175,9 @@ export class LotService implements ILotService {
   listLotsForPublicApi(
     filter: ListLotsFilter,
     viewerRole: string | undefined,
-    viewerStaffRole?: string | null,
+    viewerStaffRoles?: StaffRoles | undefined,
   ): Promise<{ data: (Lot | PublicLotView)[] }> {
-    return listLotsForPublicApi(this.deps, filter, viewerRole, viewerStaffRole);
+    return listLotsForPublicApi(this.deps, filter, viewerRole, viewerStaffRoles);
   }
 
   bulkPublishOrCancel(
@@ -185,7 +185,7 @@ export class LotService implements ILotService {
     userRole: string,
     ids: string[],
     op: "publish" | "cancel",
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
     reason?: string,
   ): Promise<
     Result<
@@ -197,13 +197,13 @@ export class LotService implements ILotService {
       AuthzError
     >
   > {
-    return bulkPublishOrCancel(this.deps, userId, userRole, ids, op, userStaffRole, reason);
+    return bulkPublishOrCancel(this.deps, userId, userRole, ids, op, userStaffRoles, reason);
   }
 
   listBidsForPublicApi(input: {
     lotId: string;
     viewerRole: UserRole;
-    viewerStaffRole?: string | null;
+    viewerStaffRoles?: StaffRoles | undefined;
     viewerId: string | undefined;
     limitQuery: string | undefined;
   }): Promise<ListBidsForPublicApiResult> {
@@ -235,9 +235,9 @@ export class LotService implements ILotService {
     adminUserId: string,
     adminRole: UserRole,
     lotId: string,
-    adminStaffRole?: string | null,
+    adminStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Lot, LotError | AuthzError>> {
-    return approveWithdrawalRequest(this.deps, adminUserId, adminRole, lotId, adminStaffRole);
+    return approveWithdrawalRequest(this.deps, adminUserId, adminRole, lotId, adminStaffRoles);
   }
 
   declineWithdrawalRequest(
@@ -245,7 +245,7 @@ export class LotService implements ILotService {
     adminRole: UserRole,
     lotId: string,
     reason: string,
-    adminStaffRole?: string | null,
+    adminStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<{ taskId: string }, LotError | AuthzError>> {
     return declineWithdrawalRequest(
       this.deps,
@@ -253,7 +253,7 @@ export class LotService implements ILotService {
       adminRole,
       lotId,
       reason,
-      adminStaffRole,
+      adminStaffRoles,
     );
   }
 }

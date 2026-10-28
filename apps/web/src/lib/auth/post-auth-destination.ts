@@ -18,7 +18,7 @@ export type ResolvePostAuthDestinationInput = {
   user: Pick<
     SessionUser,
     | "role"
-    | "staffRole"
+    | "staffRoles"
     | "suspended"
     | "emailVerified"
     | "email"
@@ -100,7 +100,7 @@ export function resolvePostAuthDestination(input: ResolvePostAuthDestinationInpu
   const eventualDestination =
     isSafeNextPath(requestedNext ?? undefined) && !(requestedIsClientArea && !usesBidAsClient(user))
       ? (requestedNext as string)
-      : staffRoleDefaultDestination(role, user.staffRole ?? null);
+      : staffRoleDefaultDestination(role, user.staffRoles);
   const destination = appendWelcomeBack(eventualDestination, withWelcomeBack);
 
   if (

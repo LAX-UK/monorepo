@@ -1,6 +1,6 @@
 import type { ListLotsFilter } from "@auction/persistence/interfaces";
-import type { Lot, PublicLotView, UserRole } from "@auction/types";
-import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
+import type { Lot, PublicLotView, StaffRoles, UserRole } from "@auction/types";
+import { roleHasCapability } from "@auction/types";
 import { resolvePublicLotListFilter, viewerCanSeeNonPublicCatalog } from "@auction/validators";
 import { lotBidderRef } from "../../lib/lot-bidder-ref.js";
 import { maskLotForPublicView } from "../../lib/lot-public-view.js";
@@ -17,9 +17,9 @@ export async function listLotsForPublicApi(
   deps: LotServiceDeps,
   filter: ListLotsFilter,
   viewerRole: string | undefined,
-  viewerStaffRole?: string | null,
+  viewerStaffRoles?: StaffRoles | undefined,
 ): Promise<{ data: (Lot | PublicLotView)[] }> {
-  const viewerCanSeeNonPublic = viewerCanSeeNonPublicCatalog(viewerRole, viewerStaffRole);
+  const viewerCanSeeNonPublic = viewerCanSeeNonPublicCatalog(viewerRole, viewerStaffRoles);
   const resolved = resolvePublicLotListFilter({
     status: filter.status,
     statuses: filter.statuses,
@@ -51,7 +51,7 @@ export async function listLotsForPublicApi(
     ? await presentLotsImages(deps.catalogueMediaUrlResolver, rows, deps.mediaAssetEnricher)
     : rows;
   return {
-    data: presented.map((lotRow) => maskLotForPublicView(lotRow, viewerRole, viewerStaffRole)),
+    data: presented.map((lotRow) => maskLotForPublicView(lotRow, viewerRole, viewerStaffRoles)),
   };
 }
 
@@ -60,13 +60,13 @@ export async function listBidsForPublicApi(
   input: {
     lotId: string;
     viewerRole: UserRole;
-    viewerStaffRole?: string | null;
+    viewerStaffRoles?: StaffRoles | undefined;
     viewerId: string | undefined;
     limitQuery: string | undefined;
   },
 ): Promise<ListBidsForPublicApiResult> {
-  const { lotId, viewerRole, viewerStaffRole, viewerId, limitQuery } = input;
-  const vStaff = normalizeUserStaffRole(viewerStaffRole ?? undefined);
+  const { lotId, viewerRole, viewerStaffRoles, viewerId, limitQuery } = input;
+  const vStaff = viewerStaffRoles;
   const lot = await deps.lotRepo.findById(lotId);
   if (!lot) {
     return { kind: "not_found" };

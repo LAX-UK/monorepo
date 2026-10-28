@@ -8,7 +8,7 @@ import {
 } from "@/lib/admin/dashboard-widgets.vm";
 import { notify } from "@/lib/ui/notify";
 import { ChoiceRow, DetailPanel, Notice, StaffButton, StaffCheckbox } from "@auction/staff-ui";
-import type { UserStaffRole } from "@auction/types";
+import type { StaffRoles } from "@auction/types";
 import { Settings2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -40,10 +40,10 @@ export const DASHBOARD_WIDGET_COPY: Record<
  */
 export function CustomisePanel({
   widgets,
-  staffRole = null,
+  staffRoles,
 }: {
   widgets: readonly DashboardWidgetState[];
-  staffRole?: UserStaffRole | null;
+  staffRoles?: StaffRoles | undefined;
 }) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -100,7 +100,7 @@ export function CustomisePanel({
             <StaffButton
               variant="ghost"
               disabled={saving}
-              onClick={() => setSelected([...defaultDashboardWidgetsForStaffRole(staffRole)])}
+              onClick={() => setSelected([...defaultDashboardWidgetsForStaffRole(staffRoles)])}
             >
               Reset to your role's layout
             </StaffButton>

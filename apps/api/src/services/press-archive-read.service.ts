@@ -1,4 +1,5 @@
 import type { IPressArchiveRepository } from "@auction/persistence/interfaces";
+import type { StaffRoles } from "@auction/types";
 import { PUBLIC_SALE_STATUSES, viewerCanSeeNonPublicCatalog } from "@auction/validators";
 import type {
   IPressArchiveReadService,
@@ -12,9 +13,9 @@ export class PressArchiveReadService implements IPressArchiveReadService {
 
   private resolveStatuses(viewer?: {
     role?: string | undefined;
-    staffRole?: string | null | undefined;
+    staffRoles?: StaffRoles | undefined;
   }) {
-    if (viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRole)) {
+    if (viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRoles)) {
       return [...PUBLIC_SALE_STATUSES, "draft"] as import("@auction/types").SaleStatus[];
     }
     return [...DEFAULT_ARCHIVE_STATUSES];
@@ -28,7 +29,7 @@ export class PressArchiveReadService implements IPressArchiveReadService {
       q?: string;
       mentionType?: import("@auction/types").SalePressMentionType;
     },
-    viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
+    viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
   ): Promise<PressArchiveListResult> {
     const statuses = this.resolveStatuses(viewer);
     const base = {
@@ -54,7 +55,7 @@ export class PressArchiveReadService implements IPressArchiveReadService {
 
   async listDayMediaSales(
     limit: number,
-    viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
+    viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
   ): Promise<import("@auction/types").PressDayMediaSaleSummary[]> {
     return this.pressArchiveRepo.listDayMediaSales({
       statuses: this.resolveStatuses(viewer),
@@ -64,7 +65,7 @@ export class PressArchiveReadService implements IPressArchiveReadService {
 
   async getSitemapFreshness(viewer?: {
     role?: string | undefined;
-    staffRole?: string | null | undefined;
+    staffRoles?: StaffRoles | undefined;
   }): Promise<import("@auction/types").PressSitemapSaleFreshness[]> {
     return this.pressArchiveRepo.listSitemapFreshness({
       statuses: this.resolveStatuses(viewer),

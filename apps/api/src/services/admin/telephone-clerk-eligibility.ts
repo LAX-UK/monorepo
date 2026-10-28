@@ -1,10 +1,5 @@
-import type { IUserRepository } from "@auction/persistence/interfaces";
-import {
-  SALEROOM_ACCESS,
-  normalizeUserRole,
-  normalizeUserStaffRole,
-  userHasAccessTo,
-} from "@auction/types";
+import type { IStaffRoleAssignmentReader, IUserRepository } from "@auction/persistence/interfaces";
+import { SALEROOM_ACCESS, normalizeUserRole, userHasAccessTo } from "@auction/types";
 
 /** Decides whether a user may be given a telephone line to take in the saleroom. */
 export interface ITelephoneClerkEligibility {
@@ -16,14 +11,19 @@ export interface ITelephoneClerkEligibility {
  * the picker), so a crafted request cannot hand a line to someone without that access.
  */
 export class SaleroomAccessClerkEligibility implements ITelephoneClerkEligibility {
-  constructor(private readonly users: Pick<IUserRepository, "findById">) {}
+  constructor(
+    private readonly users: Pick<IUserRepository, "findById">,
+    private readonly staffRoles: Pick<IStaffRoleAssignmentReader, "listActiveRoles">,
+    private readonly clock: () => Date = () => new Date(),
+  ) {}
 
   async canTakeTelephoneLines(userId: string): Promise<boolean> {
     const user = await this.users.findById(userId);
     if (!user) return false;
     const role = normalizeUserRole(user.role);
     if (!role) return false;
-    const staffRole = user.staffRole ? normalizeUserStaffRole(user.staffRole) : null;
-    return userHasAccessTo(role, staffRole, SALEROOM_ACCESS);
+    const staffRoles =
+      role === "staff" ? await this.staffRoles.listActiveRoles(userId, this.clock()) : [];
+    return userHasAccessTo(role, staffRoles, SALEROOM_ACCESS);
   }
 }

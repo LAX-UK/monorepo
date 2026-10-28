@@ -1,6 +1,12 @@
 import type { SessionUser } from "@/lib/data/contracts";
 import { toObjectRecord } from "@/lib/data/http/object-guards";
-import { type UserStaffRole, normalizeUserRoleOrClient, userStaffRoles } from "@auction/types";
+import {
+  type StaffRoles,
+  type UserStaffRole,
+  normalizeStaffRoles,
+  normalizeUserRoleOrClient,
+  userStaffRoles,
+} from "@auction/types";
 import { coerceToDate } from "./coerce";
 
 function optionalNullableDate(value: unknown): Date | null {
@@ -50,6 +56,22 @@ function parseUiPreferences(raw: unknown): SessionUser["uiPreferences"] | undefi
   return out;
 }
 
+/**
+ * The staff roles in force from `GET /users/me`. An API release from before role assignments
+ * sends only the single `staffRole`; that role is then the whole set, so admin access never
+ * drops when the web ships first. Remove the fallback one release after the API sends
+ * `staffRoles` everywhere.
+ */
+function staffRolesFromSession(
+  row: Record<string, unknown>,
+  parsed: Pick<SessionUser, "role" | "staffRole">,
+): StaffRoles {
+  if (Array.isArray(row.staffRoles)) {
+    return normalizeStaffRoles(row.staffRoles.filter((r): r is string => typeof r === "string"));
+  }
+  return parsed.role === "staff" && parsed.staffRole ? [parsed.staffRole] : [];
+}
+
 /** Row parser for `GET /users/me`. */
 export function parseSessionUser(raw: unknown): SessionUser {
   const row = toObjectRecord(raw);
@@ -66,6 +88,7 @@ export function parseSessionUser(raw: unknown): SessionUser {
   if (typeof staffRole === "string" && (userStaffRoles as readonly string[]).includes(staffRole)) {
     out.staffRole = staffRole as UserStaffRole;
   }
+  out.staffRoles = staffRolesFromSession(row, out);
   if (row.mobile != null && row.mobile !== "") out.mobile = String(row.mobile);
   if (row.phoneNumber != null && row.phoneNumber !== "") out.phoneNumber = String(row.phoneNumber);
   if (typeof row.phoneNumberVerified === "boolean")

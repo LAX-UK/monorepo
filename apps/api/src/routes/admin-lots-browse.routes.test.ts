@@ -45,7 +45,7 @@ describe("admin lots browse routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRole: "super_admin",
+        staffRoles: ["super_admin"],
         scopes: ["bid.read"],
       }),
     };

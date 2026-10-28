@@ -1,6 +1,6 @@
 import { goLivePayoutsRefusalMessage } from "@auction/domain";
-import type { Lot, Sale, UserRole } from "@auction/types";
-import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
+import type { Lot, Sale, StaffRoles, UserRole } from "@auction/types";
+import { roleHasCapability } from "@auction/types";
 import {
   getSaleModeCapabilities,
   isOnsiteLocationPopulated,
@@ -25,15 +25,9 @@ export type PublishReadinessBundle = {
 
 export async function assertCanPublishSale(
   userRole: string,
-  userStaffRole: string | null | undefined,
+  userStaffRoles: StaffRoles | undefined,
 ): Promise<Result<void, AuthzError>> {
-  if (
-    !roleHasCapability(
-      userRole as UserRole,
-      "auction.manage",
-      normalizeUserStaffRole(userStaffRole ?? undefined),
-    )
-  ) {
+  if (!roleHasCapability(userRole as UserRole, "auction.manage", userStaffRoles)) {
     return err(new AuthzError("Only staff with auction.manage can publish sales", 403));
   }
   return ok(undefined);

@@ -1,4 +1,4 @@
-import type { CreateLotInput, UserRole } from "@auction/types";
+import type { CreateLotInput, StaffRoles, UserRole } from "@auction/types";
 import type { LotBulkSoftDeleteResult } from "../lot-soft-delete.js";
 import type {
   CatalogRouteErr,
@@ -19,7 +19,7 @@ export interface ICatalogLotLifecycleHttpApplicationService {
   bulkLots(input: {
     userId: string;
     role: UserRole;
-    staffRole: string | null | undefined;
+    staffRoles: StaffRoles | undefined;
     ids: string[];
     op: "soft_delete" | "publish" | "cancel";
     confirmationPhrase?: string;
@@ -30,7 +30,7 @@ export interface ICatalogLotLifecycleHttpApplicationService {
     userId: string;
     role: UserRole;
     lotId: string;
-    staffRole: string | null | undefined;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteOutcome<PresentedLot>>;
 
   requestWithdrawal(input: {
@@ -42,7 +42,7 @@ export interface ICatalogLotLifecycleHttpApplicationService {
     userId: string;
     role: UserRole;
     lotId: string;
-    staffRole: string | null | undefined;
+    staffRoles: StaffRoles | undefined;
     cancelReason: "admin_override" | "manual";
   }): Promise<CatalogRouteOutcome<PresentedLot>>;
 
@@ -51,27 +51,27 @@ export interface ICatalogLotLifecycleHttpApplicationService {
     role: UserRole;
     lotId: string;
     confirmationPhrase: string;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteNoContent | CatalogRouteErr>;
 
   update(input: {
     role: UserRole;
     lotId: string;
     body: Partial<CreateLotInput>;
-    staffRole: string | null | undefined;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteOutcome<PresentedLot>>;
 
   updateMarketingDetails(input: {
     role: UserRole;
     lotId: string;
     body: Record<string, unknown>;
-    staffRole: string | null | undefined;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteOutcome<PresentedLot>>;
 
   create(input: {
     userId: string;
     role: UserRole;
-    staffRole: string | null | undefined;
+    staffRoles: StaffRoles | undefined;
     body: CreateLotInput;
   }): Promise<CatalogRouteOutcome<PresentedLot>>;
 }

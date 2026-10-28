@@ -21,7 +21,7 @@ export async function GET(request: Request) {
   if (await isImpersonating()) redirect(next);
 
   const [context, orgModuleEnabled] = await Promise.all([
-    resolveActingContext(user.role, user.staffRole ?? null),
+    resolveActingContext(user.role, user.staffRoles),
     resolveOrgModuleEnabledFromRequest(),
   ]);
   return carryOutHop(

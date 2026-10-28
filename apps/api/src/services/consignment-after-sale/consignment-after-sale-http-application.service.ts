@@ -94,7 +94,7 @@ export class ConsignmentAfterSaleHttpApplicationService
     submissionId: string,
     viewer: SubmissionViewerContext,
   ): Promise<SubmissionHttpJson> {
-    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRole);
+    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRoles);
     if (denied) return denied;
     const submission = await this.deps.submissions.findById(submissionId);
     if (!submission) return NOT_FOUND;
@@ -111,7 +111,7 @@ export class ConsignmentAfterSaleHttpApplicationService
     input: UnsoldLotChoiceDecisionInput,
     viewer: SubmissionViewerContext,
   ): Promise<SubmissionHttpJson> {
-    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRole);
+    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRoles);
     if (denied) return denied;
     return respond(await this.deps.unsold.decide(submissionId, viewer.userId, input));
   }
@@ -121,7 +121,7 @@ export class ConsignmentAfterSaleHttpApplicationService
     floor: string | null,
     viewer: SubmissionViewerContext,
   ): Promise<SubmissionHttpJson> {
-    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRole);
+    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRoles);
     if (denied) return denied;
     return respond(await this.deps.unsold.setReserveFloor(submissionId, floor));
   }
@@ -130,7 +130,7 @@ export class ConsignmentAfterSaleHttpApplicationService
     submissionId: string,
     viewer: SubmissionViewerContext,
   ): Promise<SubmissionHttpJson> {
-    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRole);
+    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRoles);
     if (denied) return denied;
     return respond(await this.deps.move.options(submissionId));
   }
@@ -140,7 +140,7 @@ export class ConsignmentAfterSaleHttpApplicationService
     legalEntityId: string,
     viewer: SubmissionViewerContext,
   ): Promise<SubmissionHttpJson> {
-    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRole);
+    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRoles);
     if (denied) return denied;
     return respond(await this.deps.move.move(submissionId, viewer.userId, legalEntityId));
   }
@@ -149,7 +149,7 @@ export class ConsignmentAfterSaleHttpApplicationService
     submissionId: string,
     viewer: SubmissionViewerContext,
   ): Promise<SubmissionHttpJson> {
-    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRole);
+    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRoles);
     if (denied) return denied;
     return respond(await this.deps.reminder.remind(submissionId, viewer.userId));
   }

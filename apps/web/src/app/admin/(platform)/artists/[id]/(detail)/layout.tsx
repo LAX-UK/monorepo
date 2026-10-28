@@ -25,14 +25,11 @@ export default async function AdminArtistDetailLayout({ params, children }: Prop
 
   const user = await getServerSessionUser();
   const canEdit =
-    user != null &&
-    userHasAccessTo(user.role as UserRole, user.staffRole ?? null, ARTIST_WRITE_ACCESS);
+    user != null && userHasAccessTo(user.role as UserRole, user.staffRoles, ARTIST_WRITE_ACCESS);
   const canManageDelete =
-    user != null &&
-    userHasAccessTo(user.role as UserRole, user.staffRole ?? null, ARTIST_DELETE_ACCESS);
+    user != null && userHasAccessTo(user.role as UserRole, user.staffRoles, ARTIST_DELETE_ACCESS);
   const canReview =
-    user != null &&
-    userHasAccessTo(user.role as UserRole, user.staffRole ?? null, ARTIST_REVIEW_ACCESS);
+    user != null && userHasAccessTo(user.role as UserRole, user.staffRoles, ARTIST_REVIEW_ACCESS);
   const deleteEligibility = canManageDelete
     ? await getAdminArtistDeleteEligibility(id).catch(() => null)
     : null;

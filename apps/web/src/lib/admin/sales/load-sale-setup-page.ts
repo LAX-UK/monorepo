@@ -27,8 +27,8 @@ import type {
   CategoryNode,
   Lot,
   Sale,
+  StaffRoles,
   UserRole,
-  UserStaffRole,
 } from "@auction/types";
 import { userHasAccessTo } from "@auction/types";
 
@@ -60,7 +60,7 @@ type LoadSaleSetupPageInput = {
   saleId: string;
   step?: string | undefined;
   role: UserRole;
-  staffRole: UserStaffRole | null;
+  staffRoles: StaffRoles | undefined;
 };
 
 /** Data/composition boundary for `/admin/sales/[id]/setup`. */
@@ -68,7 +68,7 @@ export async function loadAdminSaleSetupPage({
   saleId,
   step,
   role,
-  staffRole,
+  staffRoles,
 }: LoadSaleSetupPageInput): Promise<SaleSetupPageModel> {
   const bundle = await loadAdminSaleDetail(saleId);
   const { sale, lots } = bundle;
@@ -80,7 +80,7 @@ export async function loadAdminSaleSetupPage({
 
   const stepParam = firstString(step)?.trim() as SaleSetupStepId | undefined;
 
-  const canManageSale = userHasAccessTo(role, staffRole, SALES_ACCESS);
+  const canManageSale = userHasAccessTo(role, staffRoles, SALES_ACCESS);
   const [
     categories,
     artistResult,
@@ -131,7 +131,7 @@ export async function loadAdminSaleSetupPage({
     artists: artistResult.rows,
     englishOnlyAuctionsLocked: isEnglishOnlyAuctionsLocked(),
     canManageSale,
-    canEditCatalog: userHasAccessTo(role, staffRole, LOTS_ACCESS),
+    canEditCatalog: userHasAccessTo(role, staffRoles, LOTS_ACCESS),
     pendingRegistrationCount,
     connectRequiredByLotId,
     sellersWithoutPayouts,

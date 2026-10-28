@@ -44,7 +44,7 @@ export default async function DashboardCheckoutPage({ params, searchParams }: Pa
   const checkoutPath = `/purchases/checkout/${lotId}`;
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: checkoutPath });
   // A purchase is paid from the account it was won as; a link opened in another one switches.
-  const { acting } = await resolveActingContext(user.role, user.staffRole ?? null);
+  const { acting } = await resolveActingContext(user.role, user.staffRoles);
   await openRecordInItsAccount({
     kind: "purchase",
     id: lotId,

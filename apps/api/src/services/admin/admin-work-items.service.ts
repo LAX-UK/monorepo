@@ -14,7 +14,7 @@ import {
   SUBMISSIONS_ACCESS,
   userHasAccessTo,
 } from "@auction/types";
-import type { CapabilityRequirement, UserRole, UserStaffRole } from "@auction/types";
+import type { CapabilityRequirement, StaffRoles, UserRole } from "@auction/types";
 import type {
   AdminWorkItemActionDto,
   AdminWorkItemDto,
@@ -51,10 +51,10 @@ function compositeId(row: AdminWorkItemSourceRow): string {
 function stampActions(
   row: AdminWorkItemSourceRow,
   role: UserRole,
-  staffRole: UserStaffRole | null | undefined,
+  staffRoles: StaffRoles | undefined,
 ): AdminWorkItemActionDto[] {
   const actions: AdminWorkItemActionDto[] = [];
-  const can = (req: CapabilityRequirement) => userHasAccessTo(role, staffRole, req);
+  const can = (req: CapabilityRequirement) => userHasAccessTo(role, staffRoles, req);
 
   switch (row.kind) {
     case "submission_review":
@@ -137,10 +137,10 @@ export class AdminWorkItemsService {
   async listWorkItems(input: {
     actorUserId: string;
     actorRole: UserRole;
-    actorStaffRole: UserStaffRole | null | undefined;
+    actorStaffRoles: StaffRoles | undefined;
     query: AdminWorkItemsQuery;
   }): Promise<AdminWorkItemsListResult> {
-    const { actorUserId, actorRole, actorStaffRole, query } = input;
+    const { actorUserId, actorRole, actorStaffRoles, query } = input;
     const perSourceLimit = Math.min(50, Math.max(query.limit * 2, 25));
     const offset = decodeCursor(query.cursor);
 
@@ -186,9 +186,9 @@ export class AdminWorkItemsService {
     ];
 
     const canReviewTasks =
-      userHasAccessTo(actorRole, actorStaffRole, AML_REVIEW_ACCESS) ||
-      userHasAccessTo(actorRole, actorStaffRole, LOTS_ACCESS) ||
-      userHasAccessTo(actorRole, actorStaffRole, LEGAL_ENTITY_BROWSE_ACCESS);
+      userHasAccessTo(actorRole, actorStaffRoles, AML_REVIEW_ACCESS) ||
+      userHasAccessTo(actorRole, actorStaffRoles, LOTS_ACCESS) ||
+      userHasAccessTo(actorRole, actorStaffRoles, LEGAL_ENTITY_BROWSE_ACCESS);
 
     if (canReviewTasks) {
       sources.push({
@@ -202,13 +202,13 @@ export class AdminWorkItemsService {
         supportsAssignment: true,
         filterRow: (row) => {
           if (row.kind === "aml_screening" || row.kind === "sof_case") {
-            return userHasAccessTo(actorRole, actorStaffRole, AML_REVIEW_ACCESS);
+            return userHasAccessTo(actorRole, actorStaffRoles, AML_REVIEW_ACCESS);
           }
           if (row.kind === "legal_entity_kyb") {
-            return userHasAccessTo(actorRole, actorStaffRole, LEGAL_ENTITY_BROWSE_ACCESS);
+            return userHasAccessTo(actorRole, actorStaffRoles, LEGAL_ENTITY_BROWSE_ACCESS);
           }
           if (row.kind === "lot_withdrawal") {
-            return userHasAccessTo(actorRole, actorStaffRole, LOTS_ACCESS);
+            return userHasAccessTo(actorRole, actorStaffRoles, LOTS_ACCESS);
           }
           return false;
         },
@@ -217,7 +217,7 @@ export class AdminWorkItemsService {
 
     const enabledSources = sources.filter(
       (s) =>
-        userHasAccessTo(actorRole, actorStaffRole, s.access) &&
+        userHasAccessTo(actorRole, actorStaffRoles, s.access) &&
         (query.assignment !== "mine" || s.supportsAssignment === true),
     );
 
@@ -246,7 +246,7 @@ export class AdminWorkItemsService {
         isOverdue: sla.isOverdue,
         urgencyLabel: sla.urgencyLabel,
         assignedToUserId: row.assignedToUserId,
-        actions: stampActions(row, actorRole, actorStaffRole),
+        actions: stampActions(row, actorRole, actorStaffRoles),
       };
     });
 

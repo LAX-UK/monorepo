@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import type { ContainerSubmissionRoutesSlice } from "../container.js";
@@ -23,7 +24,7 @@ export function createSubmissionRoutes(
     Variables: {
       userId?: string;
       userRole?: string;
-      userStaffRole?: string | null;
+      userStaffRoles?: StaffRoles | undefined;
       legalEntityContext?: LegalEntityContext;
     };
   }>();

@@ -1,6 +1,6 @@
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { IPendingInvitationsReader } from "@auction/persistence/interfaces";
-import type { ActingContextCookieV1 } from "@auction/types";
+import type { ActingContextCookieV1, StaffRoles } from "@auction/types";
 import type { OrgModuleGate } from "../../lib/org-module-gate.js";
 import type { IIdentityLegalEntityHttpApplicationService } from "../interfaces/identity-routes/identity-legal-entity-http.js";
 import {
@@ -137,15 +137,15 @@ export class IdentityLegalEntityHttpApplicationService
   async getLegalEntityDetail(input: {
     userId: string;
     userRole?: string | undefined;
-    userStaffRole?: string | null | undefined;
+    userStaffRoles?: StaffRoles | undefined;
     legalEntityId: string;
     actingLegalEntityCookie: ActingContextCookieV1 | null;
   }): Promise<{ status: number; body: unknown }> {
-    const { userId, userRole, userStaffRole, legalEntityId, actingLegalEntityCookie } = input;
+    const { userId, userRole, userStaffRoles, legalEntityId, actingLegalEntityCookie } = input;
     return this.legalEntityAccessService.getLegalEntityDetailForUser({
       userId,
       userRole,
-      userStaffRole,
+      userStaffRoles,
       legalEntityId,
       actingLegalEntityCookie,
     });

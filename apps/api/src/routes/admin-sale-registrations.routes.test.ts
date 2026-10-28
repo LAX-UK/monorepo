@@ -35,7 +35,7 @@ describe("admin sale registration routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRole: "auction_manager",
+        staffRoles: ["auction_manager"],
         scopes: ["bid.read"],
       }),
     };
@@ -60,7 +60,7 @@ describe("admin sale registration routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRole: "auction_manager",
+        staffRoles: ["auction_manager"],
         scopes: ["bid.write"],
       }),
     };
@@ -95,7 +95,7 @@ describe("admin sale registration routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRole: "auction_manager",
+        staffRoles: ["auction_manager"],
         scopes: ["bid.write"],
       }),
     };
@@ -126,7 +126,7 @@ describe("admin sale registration routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRole: "auction_manager",
+        staffRoles: ["auction_manager"],
         scopes: ["bid.write"],
       }),
     };

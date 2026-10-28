@@ -10,6 +10,7 @@ import {
   type CapabilityRequirement,
   type UserRole,
   type UserStaffRole,
+  normalizeStaffRoles,
   userHasAccessTo,
 } from "@auction/types";
 import { useCallback, useEffect, useState } from "react";
@@ -19,7 +20,10 @@ type StaffRow = {
   name: string;
   email: string;
   role: string;
+  /** The one role shown next to the name. */
   staffRole?: string | null;
+  /** Roles in force; decide whether the person can do the work. */
+  staffRoles?: readonly string[];
 };
 
 function toOption(row: StaffRow): EntityOption {
@@ -34,11 +38,7 @@ function toOption(row: StaffRow): EntityOption {
 
 function canDo(row: StaffRow, access: CapabilityRequirement | undefined): boolean {
   if (!access) return true;
-  return userHasAccessTo(
-    row.role as UserRole,
-    (row.staffRole ?? null) as UserStaffRole | null,
-    access,
-  );
+  return userHasAccessTo(row.role as UserRole, normalizeStaffRoles(row.staffRoles), access);
 }
 
 /** The staff who can do the work, as picker options: name, then email, with their role. */

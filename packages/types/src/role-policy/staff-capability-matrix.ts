@@ -32,9 +32,9 @@ const ALL_STAFF_CAPABILITIES_EXCEPT_CLIENT: RoleCapability[] = [
   "compliance.mlro",
 ];
 
-const SUPER_ADMIN_CAPS = new Set<RoleCapability>(ALL_STAFF_CAPABILITIES_EXCEPT_CLIENT);
-
-const STAFF_MATRIX: Record<Exclude<UserStaffRole, "super_admin">, Set<RoleCapability>> = {
+/** What each staff role may do on its own. A person's permissions are the union over their roles. */
+const STAFF_MATRIX: Record<UserStaffRole, ReadonlySet<RoleCapability>> = {
+  super_admin: new Set(ALL_STAFF_CAPABILITIES_EXCEPT_CLIENT),
   auction_manager: new Set([
     "auction.manage",
     "legal_entity.read",
@@ -79,7 +79,6 @@ const STAFF_MATRIX: Record<Exclude<UserStaffRole, "super_admin">, Set<RoleCapabi
   ]),
 };
 
-export function staffRoleHasCapability(staff: UserStaffRole, capability: RoleCapability): boolean {
-  if (staff === "super_admin") return SUPER_ADMIN_CAPS.has(capability);
-  return STAFF_MATRIX[staff].has(capability);
+export function staffRoleCapabilities(role: UserStaffRole): ReadonlySet<RoleCapability> {
+  return STAFF_MATRIX[role];
 }

@@ -1,4 +1,4 @@
-import type { Sale, UserRole } from "@auction/types";
+import type { Sale, StaffRoles, UserRole } from "@auction/types";
 import type { createSaleSchema, updateSaleSchema } from "@auction/validators";
 import type { z } from "zod";
 import type { SaleBulkSoftDeleteResult } from "../sale-soft-delete.js";
@@ -22,13 +22,13 @@ export interface ICatalogSaleLifecycleHttpApplicationService {
     role: UserRole;
     ids: string[];
     confirmationPhrase: string;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteOutcome<BulkSoftDeleteSalesOutcome>>;
 
   createSale(input: {
     userId: string;
     role: UserRole;
-    staffRole: string | null | undefined;
+    staffRoles: StaffRoles | undefined;
     body: z.infer<typeof createSaleSchema>;
   }): Promise<CatalogRouteOutcome<PresentedSale>>;
 
@@ -36,28 +36,28 @@ export interface ICatalogSaleLifecycleHttpApplicationService {
     role: UserRole;
     saleId: string;
     patch: z.infer<typeof updateSaleSchema>;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteOutcome<PresentedSale>>;
 
   publish(input: {
     userId: string;
     role: UserRole;
     saleId: string;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteOutcome<PresentedSaleWithLots>>;
 
   unpublish(input: {
     userId: string;
     role: UserRole;
     saleId: string;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteOutcome<PresentedSale>>;
 
   cancel(input: {
     userId: string;
     role: UserRole;
     saleId: string;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteOutcome<PresentedSale>>;
 
   softDelete(input: {
@@ -65,7 +65,7 @@ export interface ICatalogSaleLifecycleHttpApplicationService {
     role: UserRole;
     saleId: string;
     confirmationPhrase: string;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteNoContent | CatalogRouteErr>;
 
   markOnsiteSaleEnded(input: {
@@ -73,6 +73,6 @@ export interface ICatalogSaleLifecycleHttpApplicationService {
     role: UserRole;
     saleId: string;
     reason: string;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteOutcome<PresentedSaleWithLots>>;
 }

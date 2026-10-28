@@ -8,7 +8,10 @@ export type AdminUserRow = {
   firstName: string | null;
   lastName: string | null;
   role: string;
+  /** The one role shown for the person. Display only. */
   staffRole: string | null;
+  /** Roles in force now; decide what the person may do. */
+  staffRoles?: string[];
   createdAt: string;
   updatedAt: string;
   suspendedAt: string | null;

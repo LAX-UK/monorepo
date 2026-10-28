@@ -25,15 +25,6 @@ vi.mock("@auction/exports/providers", () => ({
         },
       ],
     ]),
-  exportAuthContextFromRow: (row: {
-    userId: string;
-    userRole: string;
-    userStaffRole: string | null;
-  }) => ({
-    userId: row.userId,
-    userRole: row.userRole,
-    userStaffRole: row.userStaffRole,
-  }),
 }));
 
 import { dataExportJob } from "./data-export.js";
@@ -81,9 +72,12 @@ describe("dataExportJob", () => {
     authorize.mockClear();
     streamRows.mockClear();
 
+    const staffRoleReader = { listActiveRoles: vi.fn().mockResolvedValue(["finance_ops"]) };
+
     await dataExportJob(
       {
         dataExportRepo,
+        staffRoleReader,
         redis: { set: vi.fn().mockResolvedValue("OK") } as never,
         storage: storage as never,
         providerDeps: {} as never,
@@ -100,10 +94,12 @@ describe("dataExportJob", () => {
       } as unknown as Job<DataExportJobPayload>,
     );
 
+    // Authorised with the roles the requester holds when the export runs.
+    expect(staffRoleReader.listActiveRoles).toHaveBeenCalledWith(row.userId, expect.any(Date));
     const authCtx = {
       userId: row.userId,
       userRole: row.userRole,
-      userStaffRole: row.userStaffRole,
+      userStaffRoles: ["finance_ops"],
     };
     expect(authorize).toHaveBeenCalledWith(authCtx, rowFilters);
     expect(streamRows).toHaveBeenCalledWith(authCtx, rowFilters);

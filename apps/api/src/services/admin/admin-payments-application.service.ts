@@ -1,4 +1,5 @@
 import type { ListPaymentsAdminTableFilter } from "@auction/persistence/interfaces";
+import type { StaffRoles } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError } from "../../lib/errors.js";
 import type { IAdminPaymentsApplicationService } from "../interfaces/admin-routes.js";
@@ -15,13 +16,13 @@ export class AdminPaymentsApplicationService implements IAdminPaymentsApplicatio
     adminUserId: string,
     userRole: string,
     paymentId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<void, AuthzError>> {
     return this.payments.releaseManualReviewForCapture(
       adminUserId,
       userRole,
       paymentId,
-      userStaffRole,
+      userStaffRoles,
     );
   }
 
@@ -29,14 +30,14 @@ export class AdminPaymentsApplicationService implements IAdminPaymentsApplicatio
     adminUserId: string,
     userRole: string,
     paymentId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
     reason?: string,
   ): Promise<Result<void, AuthzError>> {
     return this.payments.refundManualReviewPayment(
       adminUserId,
       userRole,
       paymentId,
-      userStaffRole,
+      userStaffRoles,
       reason,
     );
   }
@@ -44,9 +45,9 @@ export class AdminPaymentsApplicationService implements IAdminPaymentsApplicatio
   syncPaymentFromXeroAsAdmin(
     userRole: string,
     paymentId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<{ ok: boolean; error?: string }, AuthzError>> {
-    return this.payments.syncPaymentFromXeroAsAdmin(userRole, paymentId, userStaffRole);
+    return this.payments.syncPaymentFromXeroAsAdmin(userRole, paymentId, userStaffRoles);
   }
 
   listPage(filter: ListPaymentsAdminTableFilter) {

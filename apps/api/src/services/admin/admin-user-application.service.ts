@@ -6,6 +6,7 @@ import type {
   AdminUserListRow,
   IAdminUserBrowseReader,
 } from "@auction/persistence/interfaces";
+import type { StaffRoles } from "@auction/types";
 import { AuthzError } from "../../lib/errors.js";
 import type { AdminActor, AdminUserService } from "../admin-user.service.js";
 import type {
@@ -29,27 +30,27 @@ export class AdminUserApplicationService implements IAdminUserApplicationService
 
   getPage(
     actorRole: string,
-    actorStaffRole: string | null | undefined,
+    actorStaffRoles: StaffRoles | undefined,
     filter: AdminUserListFilter,
   ): Promise<AdminUserListPage> {
-    this.adminUsers.ensureDirectoryAccess(actorRole, actorStaffRole);
+    this.adminUsers.ensureDirectoryAccess(actorRole, actorStaffRoles);
     return this.listQuery.getPage(filter);
   }
 
   getById(
     actorRole: string,
-    actorStaffRole: string | null | undefined,
+    actorStaffRoles: StaffRoles | undefined,
     id: string,
   ): Promise<AdminUserDetailResponse | null> {
-    return this.adminUsers.getById(actorRole, actorStaffRole, id);
+    return this.adminUsers.getById(actorRole, actorStaffRoles, id);
   }
 
   getByIds(
     actorRole: string,
-    actorStaffRole: string | null | undefined,
+    actorStaffRoles: StaffRoles | undefined,
     ids: string[],
   ): Promise<AdminUserListRow[]> {
-    return this.adminUsers.getByIds(actorRole, actorStaffRole, ids);
+    return this.adminUsers.getByIds(actorRole, actorStaffRoles, ids);
   }
 
   async setRole(
@@ -57,7 +58,7 @@ export class AdminUserApplicationService implements IAdminUserApplicationService
     actorUserId: string,
     targetUserId: string,
     role: string,
-    actorStaffRole?: string | null,
+    actorStaffRoles?: StaffRoles | undefined,
     targetStaffRole?: import("@auction/types").UserStaffRole | null,
   ): Promise<{ ok: true } | { ok: false; status: number; message: string }> {
     try {
@@ -66,7 +67,7 @@ export class AdminUserApplicationService implements IAdminUserApplicationService
         actorUserId,
         targetUserId,
         role,
-        actorStaffRole,
+        actorStaffRoles,
         targetStaffRole ?? null,
       );
       return { ok: true };
@@ -84,7 +85,7 @@ export class AdminUserApplicationService implements IAdminUserApplicationService
     actorUserId: string,
     targetUserId: string,
     staffRole: import("@auction/types").UserStaffRole | null,
-    actorStaffRole?: string | null,
+    actorStaffRoles?: StaffRoles | undefined,
   ): Promise<{ ok: true } | { ok: false; status: number; message: string }> {
     try {
       await this.adminUsers.setStaffRole(
@@ -92,7 +93,7 @@ export class AdminUserApplicationService implements IAdminUserApplicationService
         actorUserId,
         targetUserId,
         staffRole,
-        actorStaffRole,
+        actorStaffRoles,
       );
       return { ok: true };
     } catch (e) {
@@ -114,29 +115,29 @@ export class AdminUserApplicationService implements IAdminUserApplicationService
 
   activityFor(
     actorRole: string,
-    actorStaffRole: string | null | undefined,
+    actorStaffRoles: StaffRoles | undefined,
     userId: string,
     limit: number,
   ): Promise<AdminActivityEntry[]> {
-    return this.adminUsers.activityFor(actorRole, actorStaffRole, userId, limit);
+    return this.adminUsers.activityFor(actorRole, actorStaffRoles, userId, limit);
   }
 
   kycSessionsFor(
     actorRole: string,
-    actorStaffRole: string | null | undefined,
+    actorStaffRoles: StaffRoles | undefined,
     userId: string,
     limit?: number,
   ): Promise<AdminKycSession[]> {
-    return this.adminUsers.kycSessionsFor(actorRole, actorStaffRole, userId, limit);
+    return this.adminUsers.kycSessionsFor(actorRole, actorStaffRoles, userId, limit);
   }
 
   bidsFor(
     actorRole: string,
-    actorStaffRole: string | null | undefined,
+    actorStaffRoles: StaffRoles | undefined,
     userId: string,
     page: { limit: number; offset: number },
   ): Promise<AdminUserBidListResult> {
-    return this.adminUsers.bidsFor(actorRole, actorStaffRole, userId, page);
+    return this.adminUsers.bidsFor(actorRole, actorStaffRoles, userId, page);
   }
 
   async bulkSuspendOrUnsuspend(input: {

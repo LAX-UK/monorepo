@@ -2,17 +2,17 @@ import { deriveReserveStatus, hasConfiguredReserve } from "@auction/domain";
 import {
   type Lot,
   type PublicLotView,
+  type StaffRoles,
   normalizeUserRoleOrClient,
-  normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
 
 function viewerCanSeeStaffLotPricing(
   role: string | undefined,
-  staffRole?: string | null | undefined,
+  staffRoles?: StaffRoles | undefined,
 ): boolean {
   const r = normalizeUserRoleOrClient(role);
-  const staff = normalizeUserStaffRole(staffRole);
+  const staff = staffRoles;
   return (
     roleHasCapability(r, "auction.manage", staff) || roleHasCapability(r, "catalogue.write", staff)
   );
@@ -38,9 +38,9 @@ function toPublicLotView(lot: Lot, reservePriceRef?: string): PublicLotView {
 export function maskLotForPublicView(
   lot: Lot,
   role: string | undefined,
-  staffRole?: string | null | undefined,
+  staffRoles?: StaffRoles | undefined,
 ): Lot | PublicLotView {
-  const canManage = viewerCanSeeStaffLotPricing(role, staffRole);
+  const canManage = viewerCanSeeStaffLotPricing(role, staffRoles);
   // Preserve the real current price before any sealed-bid masking so reserveMet stays accurate.
   const realCurrentPrice = lot.currentPrice;
   let masked = lot;

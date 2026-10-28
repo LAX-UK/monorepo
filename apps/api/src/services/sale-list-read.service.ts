@@ -3,7 +3,7 @@ import type {
   ISaleChannelReader,
   ISaleRepository,
 } from "@auction/persistence/interfaces";
-import type { Lot, LotSummary, Sale } from "@auction/types";
+import type { Lot, LotSummary, Sale, StaffRoles } from "@auction/types";
 import {
   isPublicCatalogLot,
   isPublicCatalogSale,
@@ -27,7 +27,7 @@ export type SaleListItem = {
 export interface ISaleListReadService {
   listForPublicApi(
     filter: Parameters<ISaleRepository["list"]>[0],
-    viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
+    viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
   ): Promise<{ data: SaleListItem[] }>;
 }
 
@@ -42,9 +42,9 @@ export class SaleListReadService implements ISaleListReadService {
 
   async listForPublicApi(
     filter: Parameters<ISaleRepository["list"]>[0],
-    viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
+    viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
   ): Promise<{ data: SaleListItem[] }> {
-    const canPreview = viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRole);
+    const canPreview = viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRoles);
     const resolved = resolvePublicSaleListFilter({
       status: filter.status,
       statuses: filter.statuses,

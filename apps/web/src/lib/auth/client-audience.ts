@@ -5,14 +5,14 @@ import {
   staffRoleDefaultDestination,
 } from "@auction/types";
 
-type Person = Pick<SessionUser, "role" | "staffRole">;
+type Person = Pick<SessionUser, "role" | "staffRoles">;
 
 /**
  * Whether the person uses Bid as a client. Staff accounts never do: the API refuses them bids,
  * registrations, checkout and submissions, so the client area would only lead to dead ends.
  */
 export function usesBidAsClient(user: Person): boolean {
-  return roleHasCapability(normalizeUserRoleOrClient(user.role), "bid.place", user.staffRole);
+  return roleHasCapability(normalizeUserRoleOrClient(user.role), "bid.place", user.staffRoles);
 }
 
 /**
@@ -28,7 +28,7 @@ export function clientAreaRedirectFor(
   if (usesBidAsClient(user) || options.viewingAsClient) return null;
   const destination = staffRoleDefaultDestination(
     normalizeUserRoleOrClient(user.role),
-    user.staffRole ?? null,
+    user.staffRoles,
   );
   const pathOf = (href: string) => href.split(/[?#]/)[0] ?? href;
   return pathOf(destination) === pathOf(requestedPath) ? null : destination;

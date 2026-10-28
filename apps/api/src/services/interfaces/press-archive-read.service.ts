@@ -3,6 +3,7 @@ import type {
   PressDayMediaSaleSummary,
   PressHubMeta,
   PressSitemapSaleFreshness,
+  StaffRoles,
 } from "@auction/types";
 
 export type PressArchiveListResult = {
@@ -19,14 +20,14 @@ export interface IPressArchiveReadService {
       q?: string;
       mentionType?: import("@auction/types").SalePressMentionType;
     },
-    viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
+    viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
   ): Promise<PressArchiveListResult>;
   listDayMediaSales(
     limit: number,
-    viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
+    viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
   ): Promise<PressDayMediaSaleSummary[]>;
   getSitemapFreshness(viewer?: {
     role?: string | undefined;
-    staffRole?: string | null | undefined;
+    staffRoles?: StaffRoles | undefined;
   }): Promise<PressSitemapSaleFreshness[]>;
 }

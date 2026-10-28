@@ -12,11 +12,12 @@ export type RoleGateProps = {
 };
 
 export function RoleGate({ roles, staffRoles, children, fallback = null }: RoleGateProps) {
-  const { role, staffRole } = useViewerCapabilities();
-  if (roles && !roles.includes(role)) return fallback;
-  if (staffRoles && role === "staff" && staffRole && !staffRoles.includes(staffRole)) {
+  const viewer = useViewerCapabilities();
+  if (roles && !roles.includes(viewer.role)) return fallback;
+  // Staff pass when any role they hold is one of the allowed ones.
+  const held = viewer.staffRoles ?? [];
+  if (staffRoles && viewer.role === "staff" && !held.some((r) => staffRoles.includes(r))) {
     return fallback;
   }
-  if (staffRoles && role === "staff" && !staffRole) return fallback;
   return children;
 }

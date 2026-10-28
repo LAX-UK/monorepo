@@ -6,7 +6,7 @@ import type { SessionUser } from "@/lib/data/contracts";
 
 export type DashboardComplianceStripUser = Pick<
   SessionUser,
-  "emailVerified" | "emailStatus" | "kycStatus" | "role" | "staffRole"
+  "emailVerified" | "emailStatus" | "kycStatus" | "role" | "staffRoles"
 >;
 
 type DashboardComplianceStripProps = {
@@ -41,7 +41,7 @@ export async function DashboardComplianceStrip({
   if (includePayoutSetup) {
     payoutSetup = await resolveSellerPayoutSetupPill({
       role: user.role,
-      staffRole: user.staffRole ?? null,
+      staffRoles: user.staffRoles,
     });
   }
 

@@ -1,5 +1,5 @@
 import type { PaymentRecord } from "@auction/persistence/interfaces";
-import { type UserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
+import { type StaffRoles, type UserRole, roleHasCapability } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import type Stripe from "stripe";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
@@ -12,15 +12,9 @@ import type { PaymentServiceDeps } from "./payment-service-types.js";
 export async function listAllForAdmin(
   deps: PaymentServiceDeps,
   userRole: string,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
 ): Promise<Result<PaymentRecord[], AuthzError>> {
-  if (
-    !roleHasCapability(
-      userRole as UserRole,
-      "finance.read",
-      normalizeUserStaffRole(userStaffRole ?? undefined),
-    )
-  ) {
+  if (!roleHasCapability(userRole as UserRole, "finance.read", userStaffRoles)) {
     return err(new AuthzError("Forbidden", 403));
   }
   const rows = await deps.payments.listAll();
@@ -84,12 +78,12 @@ export async function markCapturedByAdmin(
   userRole: string,
   paymentId: string,
   actingLegalEntityId?: string | null,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
 ): Promise<Result<void, AuthzError | PaymentProviderError>> {
   const isPlatformFinanceWrite = roleHasCapability(
     userRole as UserRole,
     "finance.platform.write",
-    normalizeUserStaffRole(userStaffRole ?? undefined),
+    userStaffRoles,
   );
   if (!isPlatformFinanceWrite && !actingLegalEntityId) {
     return err(new AuthzError("Forbidden", 403));
@@ -168,15 +162,9 @@ export async function releaseManualReviewForCapture(
   adminUserId: string,
   userRole: string,
   paymentId: string,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
 ): Promise<Result<void, AuthzError>> {
-  if (
-    !roleHasCapability(
-      userRole as UserRole,
-      "finance.platform.write",
-      normalizeUserStaffRole(userStaffRole ?? undefined),
-    )
-  ) {
+  if (!roleHasCapability(userRole as UserRole, "finance.platform.write", userStaffRoles)) {
     return err(new AuthzError("Forbidden", 403));
   }
   const p = await deps.payments.findById(paymentId);
@@ -248,15 +236,9 @@ export async function syncPaymentFromXeroAsAdmin(
   deps: PaymentServiceDeps,
   userRole: string,
   paymentId: string,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
 ): Promise<Result<{ ok: boolean; error?: string }, AuthzError>> {
-  if (
-    !roleHasCapability(
-      userRole as UserRole,
-      "finance.platform.write",
-      normalizeUserStaffRole(userStaffRole ?? undefined),
-    )
-  ) {
+  if (!roleHasCapability(userRole as UserRole, "finance.platform.write", userStaffRoles)) {
     return err(new AuthzError("Forbidden", 403));
   }
   const r = await deps.accounting.syncPaymentFromProvider(paymentId);

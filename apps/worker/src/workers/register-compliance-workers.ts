@@ -40,6 +40,7 @@ export function registerComplianceWorkers(
     repoFactory,
     transactionRunner,
     dataExportRepo,
+    staffRoleReader,
     impersonationSweepRepo,
     legalEntityArchiveCascadeReader,
     domainEventSink,
@@ -63,7 +64,14 @@ export function registerComplianceWorkers(
         return;
       }
       await dataExportJob(
-        { dataExportRepo, redis, storage: uploadStorage, providerDeps: exportProviderDeps, log },
+        {
+          dataExportRepo,
+          staffRoleReader,
+          redis,
+          storage: uploadStorage,
+          providerDeps: exportProviderDeps,
+          log,
+        },
         job as Job<DataExportJobPayload>,
       );
       await heartbeat("data-export");

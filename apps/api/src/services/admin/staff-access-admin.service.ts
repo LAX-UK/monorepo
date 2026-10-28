@@ -7,11 +7,12 @@ import type {
 import {
   LAX_STAFF_PLATFORMS,
   type LaxStaffAccessProduct,
+  NO_STAFF_ROLES,
+  type StaffRoles,
   type StaffToolId,
   USERS_DIRECTORY_ACCESS,
   type UserRole,
   laxStaffRoleOption,
-  normalizeUserStaffRole,
   roleHasCapability,
   staffToolsFromGrants,
   userHasAccessTo,
@@ -22,7 +23,7 @@ import type { IIdentityTwoFactorPolicyClient } from "../interfaces/identity-issu
 export type StaffAccessActor = {
   userId: string;
   role: string;
-  staffRole: string | null | undefined;
+  staffRoles: StaffRoles | undefined;
 };
 
 export type StaffAccessError = { status: 400 | 403 | 404; message: string };
@@ -91,10 +92,10 @@ export class StaffAccessAdminService {
    */
   async myTools(actor: StaffAccessActor): Promise<StaffToolId[]> {
     const entries = await this.deps.access.listForSubjects([actor.userId]);
-    const bidRole = actor.role === "staff" ? normalizeUserStaffRole(actor.staffRole) : null;
+    const bidRoles = actor.role === "staff" ? (actor.staffRoles ?? NO_STAFF_ROLES) : NO_STAFF_ROLES;
     return staffToolsFromGrants([
       ...entries.filter((e) => e.product !== "bid"),
-      ...(bidRole ? [{ product: "bid" as const, role: bidRole }] : []),
+      ...bidRoles.map((role) => ({ product: "bid" as const, role })),
     ]);
   }
 
@@ -198,19 +199,11 @@ export class StaffAccessAdminService {
 }
 
 function canRead(actor: StaffAccessActor): boolean {
-  return userHasAccessTo(
-    actor.role as UserRole,
-    normalizeUserStaffRole(actor.staffRole),
-    USERS_DIRECTORY_ACCESS,
-  );
+  return userHasAccessTo(actor.role as UserRole, actor.staffRoles, USERS_DIRECTORY_ACCESS);
 }
 
 function canManage(actor: StaffAccessActor): boolean {
-  return roleHasCapability(
-    actor.role as UserRole,
-    "user.invite",
-    normalizeUserStaffRole(actor.staffRole),
-  );
+  return roleHasCapability(actor.role as UserRole, "user.invite", actor.staffRoles);
 }
 
 function groupBySubject(entries: LaxStaffAccessEntry[]): Map<string, LaxStaffAccessEntry[]> {

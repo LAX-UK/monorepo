@@ -1,4 +1,4 @@
-import type { UserRole } from "@auction/types";
+import type { StaffRoles, UserRole } from "@auction/types";
 import type {
   IBiddingLotBidHistoryHttpApplicationService,
   LotBidHistoryHttpData,
@@ -14,14 +14,14 @@ export class BiddingLotBidHistoryHttpApplicationService
   async listForLot(input: {
     lotId: string;
     viewerRole: UserRole;
-    viewerStaffRole?: string | null;
+    viewerStaffRoles?: StaffRoles | undefined;
     viewerId: string | undefined;
     limitQuery: string | undefined;
   }): Promise<BiddingRouteOutcome<LotBidHistoryHttpData> | { kind: "not_found" }> {
     const result = await this.lotService.listBidsForPublicApi({
       lotId: input.lotId,
       viewerRole: input.viewerRole,
-      viewerStaffRole: input.viewerStaffRole ?? null,
+      viewerStaffRoles: input.viewerStaffRoles,
       viewerId: input.viewerId,
       limitQuery: input.limitQuery,
     });

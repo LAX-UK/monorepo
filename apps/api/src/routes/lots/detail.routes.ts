@@ -1,4 +1,4 @@
-import { type UserRole, normalizeUserStaffRole } from "@auction/types";
+import type { StaffRoles, UserRole } from "@auction/types";
 import { lotIdParamSchema } from "@auction/validators";
 import { respondBiddingRouteOutcome } from "../../lib/bidding-route-response.js";
 import { respondCatalogHttpJson } from "../../lib/catalog-route-response.js";
@@ -6,12 +6,13 @@ import { zValidator } from "../../lib/z-validator.js";
 import type { LotHono, LotReadRouteDeps } from "./_shared.js";
 
 function viewerFromContext(c: {
-  get: (key: "userId" | "userRole" | "userStaffRole") => string | null | undefined;
+  get(key: "userId" | "userRole"): string | null | undefined;
+  get(key: "userStaffRoles"): StaffRoles | undefined;
 }) {
   return {
     userId: c.get("userId"),
     role: c.get("userRole"),
-    staffRole: c.get("userStaffRole") ?? null,
+    staffRoles: c.get("userStaffRoles"),
   };
 }
 
@@ -24,7 +25,7 @@ export function attachLotDetailRoutes(r: LotHono, deps: LotReadRouteDeps): void 
     const result = await container.bidding.lotBidHistoryHttp.listForLot({
       lotId: id,
       viewerRole: (c.get("userRole") ?? "client") as UserRole,
-      viewerStaffRole: normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined),
+      viewerStaffRoles: c.get("userStaffRoles"),
       viewerId: c.get("userId"),
       limitQuery: c.req.query("limit"),
     });

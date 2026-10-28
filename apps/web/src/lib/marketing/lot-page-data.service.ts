@@ -156,9 +156,7 @@ export class LotPageDataService {
     const [actingCtx, mySaleRegs, buyerConditionReportRequest, orgModuleEnabled] =
       await Promise.all([
         session
-          ? resolveActingContext(session.role, session.staffRole ?? null).catch(
-              () => EMPTY_ACTING_CTX,
-            )
+          ? resolveActingContext(session.role, session.staffRoles).catch(() => EMPTY_ACTING_CTX)
           : Promise.resolve(EMPTY_ACTING_CTX),
         session && auction.saleId && saleBundle
           ? getServerSaleMyRegistrations(auction.saleId).catch(() => [])

@@ -28,11 +28,7 @@ export default async function AdminSalesPage({
   searchParams: Promise<SalesSearch>;
 }) {
   const user = await requireAdminCapability(SALE_CATALOG_ACCESS, "/admin/sales");
-  const canManageSales = userHasAccessTo(
-    user.role as UserRole,
-    user.staffRole ?? null,
-    SALES_ACCESS,
-  );
+  const canManageSales = userHasAccessTo(user.role as UserRole, user.staffRoles, SALES_ACCESS);
   const sp = await searchParams;
   const page = await loadAdminSalesListPage(sp);
   const { model, salesSummary, err, boardRows, lensesItems, listPaginationTotal } = page;

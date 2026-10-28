@@ -1,5 +1,6 @@
 import type { IBidRepository, ILotRepository } from "@auction/persistence/interfaces";
 import type { IWatchlistRepository } from "@auction/persistence/interfaces";
+import type { StaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
@@ -13,7 +14,7 @@ const lotId = "11111111-1111-4111-8111-111111111111";
 const bidderId = "bidder-1";
 const RESOURCE_AUTHORIZATION = "Bearer test-lax-bid-api-token";
 
-function mount(user: { id: string; role: string; staffRole?: string } | null) {
+function mount(user: { id: string; role: string; staffRoles?: StaffRoles | undefined } | null) {
   const app = new Hono();
   const lotServiceCreate = vi.fn();
   const lotRepo: ILotRepository = {
@@ -116,10 +117,11 @@ describe("lot bid history privacy", () => {
   });
 
   it("keeps bidder user id visible to administrators", async () => {
-    const res = await mount({ id: "admin-1", role: "staff", staffRole: "super_admin" }).app.request(
-      `/lots/${lotId}/bids`,
-      { headers: { authorization: RESOURCE_AUTHORIZATION } },
-    );
+    const res = await mount({
+      id: "admin-1",
+      role: "staff",
+      staffRoles: ["super_admin"],
+    }).app.request(`/lots/${lotId}/bids`, { headers: { authorization: RESOURCE_AUTHORIZATION } });
     const body = (await res.json()) as { data: Array<{ placedByUserId: string | null }> };
 
     expect(res.status).toBe(200);
@@ -156,7 +158,7 @@ describe("POST /lots persists artistId from request body", () => {
     const { app, lotServiceCreate } = mount({
       id: "admin-1",
       role: "staff",
-      staffRole: "super_admin",
+      staffRoles: ["super_admin"],
     });
     lotServiceCreate.mockResolvedValue({
       isOk: () => true,

@@ -1,4 +1,5 @@
 import type { UpdateAddressInput } from "@auction/persistence/interfaces";
+import type { StaffRoles } from "@auction/types";
 import type { createAddressBodySchema, updateProfileSchema } from "@auction/validators";
 import type { z } from "zod";
 import type { UserHttpJson } from "./user-route-http.js";
@@ -23,7 +24,8 @@ export interface IUserProfileHttpApplicationService {
 
   setDefaultAddress(input: { userId: string; id: string }): Promise<UserHttpJson>;
 
-  getMe(input: { userId: string }): Promise<UserHttpJson>;
+  /** `staffRoles` are the roles in force for this request, loaded with the session. */
+  getMe(input: { userId: string; staffRoles: StaffRoles | undefined }): Promise<UserHttpJson>;
 }
 
 export type { UpdateAddressInput };

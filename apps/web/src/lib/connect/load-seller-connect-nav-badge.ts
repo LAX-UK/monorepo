@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import "server-only";
 
 import {
@@ -12,9 +13,9 @@ import type { SellerConnectNavBadgeInput } from "@/lib/shell/apply-seller-connec
 /** Resolve nav badge input for selling workspace shell (server-only). */
 export async function loadSellerConnectNavBadge(
   userRole?: string | null,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles,
 ): Promise<SellerConnectNavBadgeInput | null> {
-  const sellerCtx = await resolveSellerWorkspaceContext(userRole, userStaffRole);
+  const sellerCtx = await resolveSellerWorkspaceContext(userRole, userStaffRoles);
   if (!sellerCtx.sellerEntityId) return null;
 
   const hub = createOrganisationHubGateway();

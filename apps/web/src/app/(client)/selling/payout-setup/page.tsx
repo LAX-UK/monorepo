@@ -24,7 +24,7 @@ export default async function SellerStripeConnectPage() {
     shell: "client",
     loginNext: DASHBOARD_ROUTES.sellerConnect,
   });
-  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
+  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   const { sellerEntityId, sellingAsOrganisation, bootstrapFailed } = sellerCtx;
   // An organisation's payout setup is one of its settings pages.
   if (sellingAsOrganisation && sellerEntityId) {

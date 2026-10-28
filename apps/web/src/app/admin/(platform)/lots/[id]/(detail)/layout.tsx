@@ -23,10 +23,10 @@ export default async function AdminLotDetailLayout({ params, children }: Props) 
   const { id } = await params;
   const user = await requireAdminCapability(LOTS_ACCESS, `/admin/lots/${id}`);
   const role = user.role as UserRole;
-  const staffRole = user.staffRole ?? null;
-  const canManageCatalog = userHasAccessTo(role, staffRole, LOTS_ACCESS);
-  const canManageAuction = userHasAccessTo(role, staffRole, SALES_ACCESS);
-  const canDecideWithdrawals = userHasAccessTo(role, staffRole, WITHDRAWAL_DECISION_ACCESS);
+  const staffRoles = user.staffRoles;
+  const canManageCatalog = userHasAccessTo(role, staffRoles, LOTS_ACCESS);
+  const canManageAuction = userHasAccessTo(role, staffRoles, SALES_ACCESS);
+  const canDecideWithdrawals = userHasAccessTo(role, staffRoles, WITHDRAWAL_DECISION_ACCESS);
   const [bundle, bids, documents, connectRequired, withdrawalTasks] = await Promise.all([
     loadAdminLotDetail(id),
     getServerLotBids(id, 100).catch(() => []),

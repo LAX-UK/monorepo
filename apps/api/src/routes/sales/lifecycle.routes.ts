@@ -21,11 +21,11 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
   r.post("/bulk", requireAuth, zValidator("json", bulkSalesBodySchema), async (c) => {
     const userId = c.get("userId") as string;
     const role = (c.get("userRole") ?? "client") as UserRole;
-    const staffRole = c.get("userStaffRole") ?? null;
+    const staffRoles = c.get("userStaffRoles");
     const { ids, confirmationPhrase } = c.req.valid("json");
     return respondCatalogRouteOutcome(
       c,
-      await http().bulkSoftDelete({ userId, role, ids, confirmationPhrase, staffRole }),
+      await http().bulkSoftDelete({ userId, role, ids, confirmationPhrase, staffRoles }),
     );
   });
 
@@ -38,7 +38,7 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
       await http().createSale({
         userId,
         role,
-        staffRole: c.get("userStaffRole"),
+        staffRoles: c.get("userStaffRoles"),
         body,
       }),
       201,
@@ -52,12 +52,12 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
     zValidator("json", updateSaleSchema),
     async (c) => {
       const role = (c.get("userRole") ?? "client") as UserRole;
-      const staffRole = c.get("userStaffRole") ?? null;
+      const staffRoles = c.get("userStaffRoles");
       const { id } = c.req.valid("param");
       const patch = c.req.valid("json");
       return respondCatalogRouteOutcome(
         c,
-        await http().updateDraft({ role, saleId: id, patch, staffRole }),
+        await http().updateDraft({ role, saleId: id, patch, staffRoles }),
       );
     },
   );
@@ -65,22 +65,22 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
   r.post("/:id/publish", requireAuth, zValidator("param", saleIdParamSchema), async (c) => {
     const userId = c.get("userId") as string;
     const role = (c.get("userRole") ?? "client") as UserRole;
-    const staffRole = c.get("userStaffRole") ?? null;
+    const staffRoles = c.get("userStaffRoles");
     const { id } = c.req.valid("param");
     return respondCatalogRouteOutcome(
       c,
-      await http().publish({ userId, role, saleId: id, staffRole }),
+      await http().publish({ userId, role, saleId: id, staffRoles }),
     );
   });
 
   r.post("/:id/unpublish", requireAuth, zValidator("param", saleIdParamSchema), async (c) => {
     const userId = c.get("userId") as string;
     const role = (c.get("userRole") ?? "client") as UserRole;
-    const staffRole = c.get("userStaffRole") ?? null;
+    const staffRoles = c.get("userStaffRoles");
     const { id } = c.req.valid("param");
     return respondCatalogRouteOutcome(
       c,
-      await http().unpublish({ userId, role, saleId: id, staffRole }),
+      await http().unpublish({ userId, role, saleId: id, staffRoles }),
     );
   });
 
@@ -92,11 +92,11 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
     async (c) => {
       const userId = c.get("userId") as string;
       const role = (c.get("userRole") ?? "client") as UserRole;
-      const staffRole = c.get("userStaffRole") ?? null;
+      const staffRoles = c.get("userStaffRoles");
       const { id } = c.req.valid("param");
       return respondCatalogRouteOutcome(
         c,
-        await http().cancel({ userId, role, saleId: id, staffRole }),
+        await http().cancel({ userId, role, saleId: id, staffRoles }),
       );
     },
   );
@@ -109,7 +109,7 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
     async (c) => {
       const userId = c.get("userId") as string;
       const role = (c.get("userRole") ?? "client") as UserRole;
-      const staffRole = c.get("userStaffRole") ?? null;
+      const staffRoles = c.get("userStaffRoles");
       const { id } = c.req.valid("param");
       const { confirmationPhrase } = c.req.valid("json");
       const outcome = await http().softDelete({
@@ -117,7 +117,7 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
         role,
         saleId: id,
         confirmationPhrase,
-        staffRole,
+        staffRoles,
       });
       if (outcome.kind === "no_content") return c.body(null, 204);
       return c.json(
@@ -134,7 +134,7 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
     zValidator("json", markSaleEndedBodySchema),
     async (c) => {
       const role = (c.get("userRole") ?? "client") as UserRole;
-      const staffRole = c.get("userStaffRole") ?? null;
+      const staffRoles = c.get("userStaffRoles");
       const userId = c.get("userId") as string;
       const { id } = c.req.valid("param");
       const { reason } = c.req.valid("json");
@@ -145,7 +145,7 @@ export function attachSaleLifecycleRoutes(r: SaleHono, deps: SaleLifecycleWriteR
           role,
           saleId: id,
           reason: reason ?? "",
-          staffRole,
+          staffRoles,
         }),
       );
     },

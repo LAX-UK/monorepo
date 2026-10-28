@@ -1,3 +1,5 @@
+import { normalizeStaffRoles } from "@auction/types";
+import type { StaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it } from "vitest";
 import { AdminSavedViewService } from "../../services/admin/admin-saved-view.service.js";
@@ -8,11 +10,11 @@ import { attachAdminSavedViewRoutes } from "./saved-views.routes.js";
 const ALICE = "b2e48c7a-1f09-4d35-8a6e-5d3c9f7e2b14";
 const BOB = "6d1f0a52-8b3c-4e97-a4d6-2c9e7b1f5a08";
 
-type Session = { userId: string; role: string; staffRole: string | null };
-const staff = (userId: string, staffRole: string): Session => ({
+type Session = { userId: string; role: string; staffRoles: StaffRoles | undefined };
+const staff = (userId: string, staffRoles: StaffRoles | undefined): Session => ({
   userId,
   role: "staff",
-  staffRole,
+  staffRoles,
 });
 
 /** The platform shell authenticates upstream; here a header-selected stub supplies the identity. */
@@ -24,7 +26,7 @@ function setup() {
     const session = JSON.parse(c.req.header("x-test-session") ?? "{}") as Session;
     c.set("userId", session.userId);
     c.set("userRole", session.role);
-    c.set("userStaffRole", session.staffRole);
+    c.set("userStaffRoles", session.staffRoles);
     await next();
   });
   attachAdminSavedViewRoutes(platform, service);
@@ -69,9 +71,9 @@ describe("saved views by role", () => {
     ["catalogue manager", "catalogue_manager"],
     ["auction manager", "auction_manager"],
     ["operations", "operations"],
-  ])("lets a %s keep views for lots", async (_label, staffRole) => {
+  ])("lets a %s keep views for lots", async (_label, staffRoles) => {
     const { as } = setup();
-    const person = as(staff(ALICE, staffRole));
+    const person = as(staff(ALICE, normalizeStaffRoles([staffRoles])));
 
     await created(await person.create(lotView("Live")));
 
@@ -87,9 +89,9 @@ describe("saved views by role", () => {
     ["staff viewer", "staff_viewer"],
     ["finance ops", "finance_ops"],
     ["support concierge", "support_concierge"],
-  ])("keeps lots views away from a %s", async (_label, staffRole) => {
+  ])("keeps lots views away from a %s", async (_label, staffRoles) => {
     const { as, repository } = setup();
-    const person = as(staff(ALICE, staffRole));
+    const person = as(staff(ALICE, normalizeStaffRoles([staffRoles])));
 
     expect((await person.list("bid-admin.lots")).status).toBe(403);
     expect((await person.create(lotView("Live"))).status).toBe(403);
@@ -104,9 +106,9 @@ describe("saved views by role", () => {
     ["catalogue manager", "catalogue_manager", 403],
     ["auction manager", "auction_manager", 403],
     ["staff viewer", "staff_viewer", 403],
-  ])("clients views for a %s answer %i", async (_label, staffRole, status) => {
+  ])("clients views for a %s answer %i", async (_label, staffRoles, status) => {
     const { as } = setup();
-    const res = await as(staff(ALICE, staffRole)).list("bid-admin.clients");
+    const res = await as(staff(ALICE, normalizeStaffRoles([staffRoles]))).list("bid-admin.clients");
     expect(res.status).toBe(status);
   });
 
@@ -115,9 +117,11 @@ describe("saved views by role", () => {
     ["catalogue manager", "catalogue_manager", 200],
     ["auction manager", "auction_manager", 200],
     ["staff viewer", "staff_viewer", 403],
-  ])("submissions views for a %s answer %i", async (_label, staffRole, status) => {
+  ])("submissions views for a %s answer %i", async (_label, staffRoles, status) => {
     const { as } = setup();
-    const res = await as(staff(ALICE, staffRole)).list("bid-admin.submissions");
+    const res = await as(staff(ALICE, normalizeStaffRoles([staffRoles]))).list(
+      "bid-admin.submissions",
+    );
     expect(res.status).toBe(status);
   });
 
@@ -126,15 +130,17 @@ describe("saved views by role", () => {
     ["finance ops", "finance_ops", 200],
     ["staff viewer", "staff_viewer", 403],
     ["catalogue manager", "catalogue_manager", 403],
-  ])("payments views for a %s answer %i", async (_label, staffRole, status) => {
+  ])("payments views for a %s answer %i", async (_label, staffRoles, status) => {
     const { as } = setup();
-    const res = await as(staff(ALICE, staffRole)).list("bid-admin.payments");
+    const res = await as(staff(ALICE, normalizeStaffRoles([staffRoles]))).list(
+      "bid-admin.payments",
+    );
     expect(res.status).toBe(status);
   });
 
   it("refuses a customer", async () => {
     const { as } = setup();
-    const person = as({ userId: ALICE, role: "client", staffRole: null });
+    const person = as({ userId: ALICE, role: "client", staffRoles: [] });
     expect((await person.list("bid-admin.lots")).status).toBe(403);
   });
 });
@@ -142,8 +148,8 @@ describe("saved views by role", () => {
 describe("saved views by owner", () => {
   it("never shows one person's views to another", async () => {
     const { as } = setup();
-    const alice = as(staff(ALICE, "super_admin"));
-    const bob = as(staff(BOB, "super_admin"));
+    const alice = as(staff(ALICE, ["super_admin"]));
+    const bob = as(staff(BOB, ["super_admin"]));
     await created(await alice.create(lotView("Alice only")));
 
     const res = await bob.list("bid-admin.lots");
@@ -153,14 +159,14 @@ describe("saved views by owner", () => {
 
   it("lets two people use the same view name", async () => {
     const { as } = setup();
-    await created(await as(staff(ALICE, "super_admin")).create(lotView("Live")));
-    await created(await as(staff(BOB, "super_admin")).create(lotView("Live")));
+    await created(await as(staff(ALICE, ["super_admin"])).create(lotView("Live")));
+    await created(await as(staff(BOB, ["super_admin"])).create(lotView("Live")));
   });
 
   it("answers 404 when renaming or deleting someone else's view, and leaves it unchanged", async () => {
     const { as, repository } = setup();
-    const alice = as(staff(ALICE, "super_admin"));
-    const bob = as(staff(BOB, "super_admin"));
+    const alice = as(staff(ALICE, ["super_admin"]));
+    const bob = as(staff(BOB, ["super_admin"]));
     const view = await created(await alice.create(lotView("Alice only")));
 
     expect((await bob.rename(view.id, "Stolen")).status).toBe(404);
@@ -171,8 +177,8 @@ describe("saved views by owner", () => {
 
   it("does not let one person reorder using another's view ids", async () => {
     const { as } = setup();
-    const alice = as(staff(ALICE, "super_admin"));
-    const bob = as(staff(BOB, "super_admin"));
+    const alice = as(staff(ALICE, ["super_admin"]));
+    const bob = as(staff(BOB, ["super_admin"]));
     const view = await created(await alice.create(lotView("Alice only")));
     await created(await bob.create(lotView("Bob only")));
 
@@ -185,14 +191,14 @@ describe("saved views by owner", () => {
 describe("saved views rules", () => {
   it("rejects a list that is not in the allow-list", async () => {
     const { as } = setup();
-    const person = as(staff(ALICE, "super_admin"));
+    const person = as(staff(ALICE, ["super_admin"]));
     expect((await person.list("bid-admin.secrets")).status).toBe(400);
     expect((await person.create({ listKey: "other", label: "x", query: "" })).status).toBe(400);
   });
 
   it("rejects an empty or over-long name and an over-long query", async () => {
     const { as } = setup();
-    const person = as(staff(ALICE, "super_admin"));
+    const person = as(staff(ALICE, ["super_admin"]));
     expect((await person.create(lotView("   "))).status).toBe(400);
     expect((await person.create(lotView("x".repeat(41)))).status).toBe(400);
     expect((await person.create(lotView("Long", `q=${"a".repeat(1000)}`))).status).toBe(400);
@@ -200,7 +206,7 @@ describe("saved views rules", () => {
 
   it("trims the name and drops a leading question mark from the query", async () => {
     const { as } = setup();
-    const person = as(staff(ALICE, "super_admin"));
+    const person = as(staff(ALICE, ["super_admin"]));
     await created(await person.create(lotView("  Live  ", "?status=live")));
     const res = await person.list("bid-admin.lots");
     expect(await res.json()).toMatchObject({
@@ -210,7 +216,7 @@ describe("saved views rules", () => {
 
   it("answers 409 for a repeated name, with a code the admin can act on", async () => {
     const { as } = setup();
-    const person = as(staff(ALICE, "super_admin"));
+    const person = as(staff(ALICE, ["super_admin"]));
     await created(await person.create(lotView("Live")));
 
     const res = await person.create(lotView("Live", "status=ended"));
@@ -221,7 +227,7 @@ describe("saved views rules", () => {
 
   it("answers 409 on rename to a name already used in the list", async () => {
     const { as } = setup();
-    const person = as(staff(ALICE, "super_admin"));
+    const person = as(staff(ALICE, ["super_admin"]));
     await created(await person.create(lotView("Live")));
     const other = await created(await person.create(lotView("Ended", "status=ended")));
 
@@ -232,7 +238,7 @@ describe("saved views rules", () => {
 
   it("caps the views one person keeps for a list at 50", async () => {
     const { as } = setup();
-    const person = as(staff(ALICE, "super_admin"));
+    const person = as(staff(ALICE, ["super_admin"]));
     for (let n = 0; n < 50; n += 1) {
       await created(await person.create(lotView(`View ${n}`)));
     }
@@ -249,7 +255,7 @@ describe("saved views rules", () => {
 
   it("renames, reorders and deletes", async () => {
     const { as } = setup();
-    const person = as(staff(ALICE, "super_admin"));
+    const person = as(staff(ALICE, ["super_admin"]));
     const a = await created(await person.create(lotView("A")));
     const b = await created(await person.create(lotView("B", "status=ended")));
     const c = await created(await person.create(lotView("C", "status=draft")));
@@ -274,7 +280,7 @@ describe("saved views rules", () => {
 
   it("refuses a reorder that is not exactly the person's current views", async () => {
     const { as } = setup();
-    const person = as(staff(ALICE, "super_admin"));
+    const person = as(staff(ALICE, ["super_admin"]));
     const a = await created(await person.create(lotView("A")));
     await created(await person.create(lotView("B", "status=ended")));
 
@@ -286,6 +292,6 @@ describe("saved views rules", () => {
 
   it("answers 400 for an id that is not a uuid", async () => {
     const { as } = setup();
-    expect((await as(staff(ALICE, "super_admin")).remove("nope")).status).toBe(400);
+    expect((await as(staff(ALICE, ["super_admin"])).remove("nope")).status).toBe(400);
   });
 });

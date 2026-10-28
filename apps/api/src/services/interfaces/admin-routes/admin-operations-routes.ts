@@ -7,6 +7,7 @@ import type {
   ListSubmissionsFilter,
   RedactedDomainEventRow,
 } from "@auction/persistence/interfaces";
+import type { StaffRoles } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AdminReviewTaskRow } from "../../../admin/admin-route-dtos.js";
 import type {
@@ -247,7 +248,7 @@ export interface IAdminWorkItemsQueryService {
   listWorkItems(input: {
     actorUserId: string;
     actorRole: import("@auction/types").UserRole;
-    actorStaffRole: import("@auction/types").UserStaffRole | null | undefined;
+    actorStaffRoles: StaffRoles | undefined;
     query: import("@auction/validators").AdminWorkItemsQuery;
   }): Promise<import("@auction/validators").AdminWorkItemsResponseDto>;
 }

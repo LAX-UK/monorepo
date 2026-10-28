@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import { describe, expect, it, vi } from "vitest";
@@ -21,7 +22,7 @@ function stubLegalEntityMiddleware() {
 }
 
 function lotRoutesApp(opts: {
-  session: { id: string; role: string; staffRole: string | null } | null;
+  session: { id: string; role: string; staffRoles: StaffRoles | undefined } | null;
   conditionReportService?: {
     findForBuyerOnLot: ReturnType<typeof vi.fn>;
     createRequest: ReturnType<typeof vi.fn>;
@@ -103,7 +104,7 @@ describe("GET /lots/:id/condition-report-request", () => {
       createdAt: new Date(),
     };
     const { app, findForBuyerOnLot } = lotRoutesApp({
-      session: { id: "u1", role: "client", staffRole: null },
+      session: { id: "u1", role: "client", staffRoles: [] },
     });
     findForBuyerOnLot.mockResolvedValue(row);
 
@@ -128,7 +129,7 @@ describe("POST /lots/:id/condition-report-requests", () => {
       createdAt: new Date(),
     };
     const { app, createRequest } = lotRoutesApp({
-      session: { id: "u1", role: "client", staffRole: null },
+      session: { id: "u1", role: "client", staffRoles: [] },
     });
     createRequest.mockResolvedValue(ok(existing));
 
@@ -147,7 +148,7 @@ describe("POST /lots/:id/condition-report-requests", () => {
   it("returns 409 when buyer already requested for this lot", async () => {
     const { err } = await import("neverthrow");
     const { app, createRequest } = lotRoutesApp({
-      session: { id: "u1", role: "client", staffRole: null },
+      session: { id: "u1", role: "client", staffRoles: [] },
     });
     createRequest.mockResolvedValue(
       err({
@@ -171,7 +172,7 @@ describe("POST /lots/:id/condition-report-requests", () => {
   it("returns 403 when the buyer has not verified email", async () => {
     const { err } = await import("neverthrow");
     const { app, createRequest } = lotRoutesApp({
-      session: { id: "u1", role: "client", staffRole: null },
+      session: { id: "u1", role: "client", staffRoles: [] },
     });
     createRequest.mockResolvedValue(
       err({
@@ -195,7 +196,7 @@ describe("POST /lots/:id/condition-report-requests", () => {
   it("returns 402 when the buyer has not completed KYC", async () => {
     const { err } = await import("neverthrow");
     const { app, createRequest } = lotRoutesApp({
-      session: { id: "u1", role: "client", staffRole: null },
+      session: { id: "u1", role: "client", staffRoles: [] },
     });
     createRequest.mockResolvedValue(
       err({

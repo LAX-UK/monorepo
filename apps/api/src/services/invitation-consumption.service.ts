@@ -4,9 +4,14 @@ import type {
   IUserInvitationRepository,
   InvitationRow,
 } from "@auction/persistence/interfaces";
-import type { LaxStaffGrant, UserRole } from "@auction/types";
+import { type LaxStaffGrant, type UserRole, normalizeUserStaffRole } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import type { InvitationError } from "./invitation.service.js";
+import {
+  type IStaffAccessWriter,
+  type SetStaffAccessInput,
+  StaffRoleAssignmentRefused,
+} from "./staff/staff-role-assignment.service.js";
 
 function hashToken(token: string): string {
   return createHash("sha256").update(token, "utf8").digest("hex");
@@ -31,6 +36,39 @@ export interface IInvitationConsumption {
   ): Promise<Result<{ grants: LaxStaffGrant[] }, InvitationError>>;
 }
 
+export type InvitationAcceptanceScope = {
+  invitations: Pick<IUserInvitationRepository, "accept">;
+  staffAccess: IStaffAccessWriter;
+};
+
+/** Accepting an invitation and applying the Bid access it grants commit together or not at all. */
+export interface IInvitationAcceptanceUnitOfWork {
+  run<T>(work: (scope: InvitationAcceptanceScope) => Promise<T>): Promise<T>;
+}
+
+type AcceptedInvite = Extract<ConsumeInviteResult, { outcome: "ok" }>;
+type Acceptor = "new_user" | "existing_user";
+type BidAccess = Pick<SetStaffAccessInput, "role" | "staffRoles">;
+
+/**
+ * The Bid access an accepted invitation gives. A Bid grant makes the person staff with that
+ * role. Without one, a new account takes the invitation's base role, and an existing account
+ * keeps the access it has.
+ */
+export function bidAccessFromInvite(invite: AcceptedInvite, acceptor: Acceptor): BidAccess | null {
+  const bidGrant = invite.grants.find((g) => g.product === "bid");
+  if (bidGrant) {
+    const role = normalizeUserStaffRole(bidGrant.role);
+    return { role: "staff", staffRoles: role ? [role] : [] };
+  }
+  if (acceptor === "existing_user") return null;
+  return {
+    role: invite.targetRole,
+    staffRoles:
+      invite.targetRole === "staff" && invite.targetStaffRole ? [invite.targetStaffRole] : [],
+  };
+}
+
 function consumeError(result: Exclude<ConsumeInviteResult, { outcome: "ok" }>): InvitationError {
   switch (result.outcome) {
     case "expired":
@@ -42,13 +80,27 @@ function consumeError(result: Exclude<ConsumeInviteResult, { outcome: "ok" }>): 
   }
 }
 
+const refusedError = (error: StaffRoleAssignmentRefused): InvitationError => ({
+  message:
+    error.reason === "last_administrator"
+      ? "Accepting would remove the last active administrator"
+      : "This invitation's role cannot be combined with your current roles",
+  status: 409,
+});
+
 /**
  * Owns the registration side of invitations, separate from the admin lifecycle
- * ({@link InvitationService}). Persistence (including the consume transaction)
- * lives behind {@link IUserInvitationRepository}.
+ * ({@link InvitationService}). The invitation is consumed and its Bid access applied through the
+ * staff roster in one unit of work.
  */
 export class InvitationConsumptionService implements IInvitationConsumption {
-  constructor(private readonly invites: IUserInvitationRepository) {}
+  constructor(
+    private readonly invites: Pick<
+      IUserInvitationRepository,
+      "findPendingByTokenHash" | "updateStatus"
+    >,
+    private readonly acceptance: IInvitationAcceptanceUnitOfWork,
+  ) {}
 
   /** Validates an invite for a registration attempt and returns the invitation row snapshot. */
   async validateForRegistration(
@@ -73,8 +125,8 @@ export class InvitationConsumptionService implements IInvitationConsumption {
     newUserId: string,
     email: string,
   ): Promise<Result<UserRole, InvitationError>> {
-    const result = await this.invites.consumeForNewUser(hashToken(token), newUserId, email);
-    return result.outcome === "ok" ? ok(result.targetRole) : err(consumeError(result));
+    const accepted = await this.acceptAndApply(token, newUserId, email, "new_user");
+    return accepted.map(({ invite, access }) => access?.role ?? invite.targetRole);
   }
 
   async acceptForExistingUser(
@@ -86,7 +138,37 @@ export class InvitationConsumptionService implements IInvitationConsumption {
     if (row?.targetLegalEntityId != null) {
       return err({ message: "Invalid invitation", status: 400 });
     }
-    const result = await this.invites.acceptForExistingUser(hashToken(token), userId, email);
-    return result.outcome === "ok" ? ok({ grants: result.grants }) : err(consumeError(result));
+    const accepted = await this.acceptAndApply(token, userId, email, "existing_user");
+    return accepted.map(({ invite }) => ({ grants: invite.grants }));
+  }
+
+  private async acceptAndApply(
+    token: string,
+    userId: string,
+    email: string,
+    acceptor: Acceptor,
+  ): Promise<Result<{ invite: AcceptedInvite; access: BidAccess | null }, InvitationError>> {
+    try {
+      const outcome = await this.acceptance.run(async ({ invitations, staffAccess }) => {
+        const result = await invitations.accept(hashToken(token), userId, email);
+        if (result.outcome !== "ok") return { result, access: null };
+        const access = bidAccessFromInvite(result, acceptor);
+        if (access) {
+          await staffAccess.setAccess({
+            userId,
+            ...access,
+            actorUserId: result.invitedByUserId,
+            reason: "Accepted staff invitation",
+            invitationId: result.invitationId,
+          });
+        }
+        return { result, access };
+      });
+      if (outcome.result.outcome !== "ok") return err(consumeError(outcome.result));
+      return ok({ invite: outcome.result, access: outcome.access });
+    } catch (error) {
+      if (error instanceof StaffRoleAssignmentRefused) return err(refusedError(error));
+      throw error;
+    }
   }
 }

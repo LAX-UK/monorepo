@@ -8,7 +8,7 @@ import type {
   ISaleRepository,
   IUserRepository,
 } from "@auction/persistence/interfaces";
-import type { PaymentStatus } from "@auction/types";
+import type { PaymentStatus, StaffRoles } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError, PaymentProviderError } from "../lib/errors.js";
 import type { IXeroPaymentRecorder } from "./accounting/xero-payment-recorder.js";
@@ -148,9 +148,9 @@ export class PaymentService
 
   listAllForAdmin(
     userRole: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<PaymentRecord[], AuthzError>> {
-    return listAllForAdmin(this.deps, userRole, userStaffRole);
+    return listAllForAdmin(this.deps, userRole, userStaffRoles);
   }
 
   listForBuyer(buyerId: string): Promise<PaymentRecord[]> {
@@ -197,7 +197,7 @@ export class PaymentService
     userRole: string,
     paymentId: string,
     actingLegalEntityId?: string | null,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
     staffReason?: string,
   ): Promise<Result<void, AuthzError | PaymentProviderError>> {
     return refundPayment(
@@ -206,7 +206,7 @@ export class PaymentService
       userRole,
       paymentId,
       actingLegalEntityId,
-      userStaffRole,
+      userStaffRoles,
       staffReason,
     );
   }
@@ -220,7 +220,7 @@ export class PaymentService
     userRole: string,
     paymentId: string,
     actingLegalEntityId?: string | null,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<void, AuthzError | PaymentProviderError>> {
     return markCapturedByAdmin(
       this.deps,
@@ -228,7 +228,7 @@ export class PaymentService
       userRole,
       paymentId,
       actingLegalEntityId,
-      userStaffRole,
+      userStaffRoles,
     );
   }
 
@@ -236,14 +236,14 @@ export class PaymentService
     adminUserId: string,
     userRole: string,
     paymentId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<void, AuthzError>> {
     return releaseManualReviewForCapture(
       this.deps,
       adminUserId,
       userRole,
       paymentId,
-      userStaffRole,
+      userStaffRoles,
     );
   }
 
@@ -251,7 +251,7 @@ export class PaymentService
     adminUserId: string,
     userRole: string,
     paymentId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
     reason?: string,
   ): Promise<Result<void, AuthzError | PaymentProviderError>> {
     return refundManualReviewPayment(
@@ -259,7 +259,7 @@ export class PaymentService
       adminUserId,
       userRole,
       paymentId,
-      userStaffRole,
+      userStaffRoles,
       reason,
     );
   }
@@ -281,8 +281,8 @@ export class PaymentService
   syncPaymentFromXeroAsAdmin(
     userRole: string,
     paymentId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<{ ok: boolean; error?: string }, AuthzError>> {
-    return syncPaymentFromXeroAsAdmin(this.deps, userRole, paymentId, userStaffRole);
+    return syncPaymentFromXeroAsAdmin(this.deps, userRole, paymentId, userStaffRoles);
   }
 }

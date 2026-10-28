@@ -42,8 +42,7 @@ function makeDeps() {
     findById: vi.fn().mockResolvedValue(null),
     findPendingByTokenHash: vi.fn().mockResolvedValue(null),
     findPendingPlatformByEmail: vi.fn().mockResolvedValue(null),
-    consumeForNewUser: vi.fn(),
-    acceptForExistingUser: vi.fn(),
+    accept: vi.fn(),
     listGrants: vi.fn().mockResolvedValue([]),
     listAdmin: vi.fn().mockResolvedValue([]),
     counts: vi.fn().mockResolvedValue({ total: 0, pending: 0, accepted: 0 }),
@@ -64,8 +63,11 @@ function makeDeps() {
     enqueue: vi.fn().mockResolvedValue({ outboxId: "outbox-1" }),
   } as unknown as IEmailService;
 
-  const svc = new InvitationService(invites, users, email, "https://web.test");
-  return { svc, invites, users, email };
+  // The actor's permission follows the roles in force, not the profile's single role.
+  const staffRoles = { listActiveRoles: vi.fn().mockResolvedValue(["super_admin"]) };
+
+  const svc = new InvitationService(invites, users, email, "https://web.test", staffRoles);
+  return { svc, invites, users, email, staffRoles };
 }
 
 describe("InvitationService.create", () => {
@@ -75,10 +77,7 @@ describe("InvitationService.create", () => {
   });
 
   it("rejects when actor lacks user.invite", async () => {
-    vi.mocked(deps.users.findById).mockResolvedValue({
-      ...SUPER_ADMIN,
-      staffRole: "staff_viewer",
-    });
+    deps.staffRoles.listActiveRoles.mockResolvedValue(["staff_viewer"]);
     const res = await deps.svc.create({
       actorUserId: "actor-1",
       email: "x@example.com",

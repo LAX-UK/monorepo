@@ -35,6 +35,6 @@ export async function loadNoAccessPage(
   return {
     resource: item?.label ?? "this page",
     roles: path ? staffRolesThatCanOpen(path, item?.requirement) : [],
-    home: staffRoleDefaultDestination(user.role as UserRole, user.staffRole ?? null),
+    home: staffRoleDefaultDestination(user.role as UserRole, user.staffRoles),
   };
 }

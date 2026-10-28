@@ -5,10 +5,10 @@ import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import {
   type LegalEntitySummary,
+  type StaffRoles,
   canAccessPlatformAdminRoutes,
   decodeActingContextCookie,
   normalizeUserRoleOrClient,
-  normalizeUserStaffRole,
 } from "@auction/types";
 import { cookies } from "next/headers";
 import { ACTING_LEGAL_ENTITY_COOKIE, X_LEGAL_ENTITY_ID_HEADER } from "./client-acting-context";
@@ -49,7 +49,7 @@ export type ResolvedActingContext = {
  */
 export async function resolveActingContext(
   userRole?: string | null,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
 ): Promise<ResolvedActingContext> {
   const res = await authedServerFetch("/legal-entities/me", {
     cache: "no-store",
@@ -87,7 +87,7 @@ export async function resolveActingContext(
   const decoded = raw ? decodeActingContextCookie(raw) : null;
 
   const role = normalizeUserRoleOrClient(userRole);
-  const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+  const staff = userStaffRoles;
   if (decoded?.i?.sid && canAccessPlatformAdminRoutes(role, staff)) {
     const resEntity = await authedServerFetch(`/legal-entities/${decoded.e}`, {
       cache: "no-store",
@@ -174,9 +174,9 @@ export async function resolveActingContext(
  */
 export async function getActingLegalEntityHeader(
   userRole?: string | null,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
 ): Promise<Record<string, string>> {
-  const { acting } = await resolveActingContext(userRole, userStaffRole);
+  const { acting } = await resolveActingContext(userRole, userStaffRoles);
   if (!acting) return {};
   return { [X_LEGAL_ENTITY_ID_HEADER]: acting.id };
 }
@@ -187,10 +187,10 @@ export async function getActingLegalEntityHeader(
  */
 export async function isViewingAsClient(
   userRole?: string | null,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
 ): Promise<boolean> {
   const role = normalizeUserRoleOrClient(userRole);
-  const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+  const staff = userStaffRoles;
   if (!canAccessPlatformAdminRoutes(role, staff)) return false;
   const jar = await cookies();
   const cookieValue = jar.get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
