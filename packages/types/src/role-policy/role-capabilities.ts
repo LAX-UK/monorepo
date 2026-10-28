@@ -1,7 +1,8 @@
-import type { UserRole, UserStaffRole } from "../user.js";
-import { normalizeUserStaffRole, userRoles } from "../user.js";
+import type { UserRole } from "../user.js";
+import { userRoles } from "../user.js";
+import { staffRolesCapabilities } from "./effective-permissions.js";
 import type { RoleCapability } from "./role-capability.js";
-import { staffRoleHasCapability } from "./staff-capability-matrix.js";
+import { NO_STAFF_ROLES, type StaffRoles } from "./staff-roles.js";
 
 export type { RoleCapability } from "./role-capability.js";
 
@@ -25,30 +26,28 @@ export function isKnownUserRole(role: string | null | undefined): role is UserRo
   return normalizeUserRole(role) != null;
 }
 
-/** @param staffRole Required when `role` is `staff`; null/undefined => no staff capabilities. */
+const CLIENT_CAPABILITIES: ReadonlySet<RoleCapability> = new Set(["bid.place", "client.submit"]);
+
+/**
+ * Everything the person may do: a client's fixed set, or for staff the union over the roles they
+ * hold right now. A staff account with no role may do nothing, and staff never act as clients.
+ */
+export function effectiveCapabilities(
+  role: UserRole,
+  staffRoles: StaffRoles = NO_STAFF_ROLES,
+): ReadonlySet<RoleCapability> {
+  if (role === "client") return CLIENT_CAPABILITIES;
+  if (role === "staff") return staffRolesCapabilities(staffRoles);
+  return new Set();
+}
+
+/** @param staffRoles The roles in force for a staff account; ignored for clients. */
 export function roleHasCapability(
   role: UserRole,
   capability: RoleCapability,
-  staffRole?: UserStaffRole | null,
+  staffRoles: StaffRoles = NO_STAFF_ROLES,
 ): boolean {
-  const staff = staffRole === undefined ? null : normalizeUserStaffRole(staffRole ?? undefined);
-
-  if (role === "client") {
-    switch (capability) {
-      case "bid.place":
-      case "client.submit":
-        return true;
-      default:
-        return false;
-    }
-  }
-
-  if (role === "staff") {
-    if (staff == null) return false;
-    return staffRoleHasCapability(staff, capability);
-  }
-
-  return false;
+  return effectiveCapabilities(role, staffRoles).has(capability);
 }
 
 export function canAccessStaffAdminShell(role: UserRole): boolean {
