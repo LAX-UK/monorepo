@@ -49,6 +49,8 @@ export const PortalSellerAccessSchema = Type.Object({
   editions: Type.Boolean(),
   payouts: Type.Boolean(),
   artist: Type.Boolean(),
+  /** Has an application to join the gallery; optional so older shop-api responses parse. */
+  application: Type.Optional(Type.Boolean()),
 });
 
 export const PortalSaleAuthorityRequestSchema = Type.Object({

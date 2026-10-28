@@ -23,6 +23,18 @@ import AdminImpersonationNoticeEmail, {
 import AmlComplianceReviewNoticeEmail, {
   subject as amlComplianceReviewNoticeSubject,
 } from "./templates/aml-compliance-review-notice.js";
+import ArtArtistApplicationDeclinedEmail, {
+  subject as artArtistApplicationDeclinedSubject,
+} from "./templates/art-artist-application-declined.js";
+import ArtArtistApplicationMoreInfoEmail, {
+  subject as artArtistApplicationMoreInfoSubject,
+} from "./templates/art-artist-application-more-info.js";
+import ArtArtistApplicationReceivedEmail, {
+  subject as artArtistApplicationReceivedSubject,
+} from "./templates/art-artist-application-received.js";
+import ArtArtistApplicationWelcomeEmail, {
+  subject as artArtistApplicationWelcomeSubject,
+} from "./templates/art-artist-application-welcome.js";
 import ArtGeneralEnquiryAlertEmail, {
   subject as artGeneralEnquiryAlertSubject,
 } from "./templates/art-general-enquiry-alert.js";
@@ -435,6 +447,22 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "shop-artwork-enquiry-alert": {
     subject: shopArtworkEnquiryAlertSubject,
     component: (vars) => <ShopArtworkEnquiryAlertEmail {...vars} />,
+  },
+  "art-artist-application-received": {
+    subject: artArtistApplicationReceivedSubject,
+    component: (vars) => <ArtArtistApplicationReceivedEmail {...vars} />,
+  },
+  "art-artist-application-more-info": {
+    subject: artArtistApplicationMoreInfoSubject,
+    component: (vars) => <ArtArtistApplicationMoreInfoEmail {...vars} />,
+  },
+  "art-artist-application-declined": {
+    subject: artArtistApplicationDeclinedSubject,
+    component: (vars) => <ArtArtistApplicationDeclinedEmail {...vars} />,
+  },
+  "art-artist-application-welcome": {
+    subject: artArtistApplicationWelcomeSubject,
+    component: (vars) => <ArtArtistApplicationWelcomeEmail {...vars} />,
   },
   "art-general-enquiry-alert": {
     subject: artGeneralEnquiryAlertSubject,
