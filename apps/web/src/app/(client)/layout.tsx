@@ -1,6 +1,7 @@
 import { DashboardFetchWarningBanner } from "@/components/dashboard/dashboard-fetch-warning-banner";
 import { ExportShellClient } from "@/components/exports/export-shell-client";
 import { AccountNotice } from "@/components/layout/account-switcher/account-notice";
+import { BidSiteChrome } from "@/components/layout/bid-site-chrome";
 import { ReadOnlyBoundary } from "@/components/layout/view-as-client/read-only-boundary";
 import {
   READ_ONLY_REASON_ID,
@@ -9,6 +10,7 @@ import {
 import { ViewAsClientProvider } from "@/components/layout/view-as-client/view-as-client-context";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { ClientShell } from "@/components/shell/client-shell";
+import { ClientWebsiteFrame } from "@/components/shell/client-website-frame";
 import { clientAreaRedirectFor } from "@/lib/auth/client-audience";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { loadSellerConnectNavBadge } from "@/lib/connect/load-seller-connect-nav-badge";
@@ -25,7 +27,8 @@ import {
   decodeAccountNotice,
 } from "@/lib/navigation/account-notice";
 import { buildAccountChrome } from "@/lib/navigation/account-switcher-model";
-import type { ClientNavScope } from "@/lib/navigation/client-nav-model";
+import { chooseClientLayout } from "@/lib/navigation/client-layout";
+import { clientNavScopeFor } from "@/lib/navigation/client-nav-scope";
 import { resolveClientRequestPath } from "@/lib/navigation/client-request-path.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import {
@@ -103,12 +106,8 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
   const cookieDensity =
     fromUserDensity ?? parseDashboardDensityCookie(jar.get(DASHBOARD_DENSITY_COOKIE)?.value);
 
-  const navScope: ClientNavScope = {
-    context: actingOrganisation
-      ? { kind: "organisation", id: actingOrganisation.id, role: actingOrganisation.role }
-      : { kind: "personal" },
-    hasSubmissions,
-  };
+  const navScope = clientNavScopeFor(actingOrganisation, hasSubmissions);
+  const layout = chooseClientLayout(navScope.context);
   // Support viewing an account sees that account alone, as its client would.
   const viewingAs = actingContext.impersonation ? actingContext.acting : null;
   // A "view as client" session that ended leaves only the cookie: back to the staff area.
@@ -138,25 +137,44 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
     )),
   ];
 
+  const page = viewingAs ? (
+    <ReadOnlyBoundary reasonId={READ_ONLY_REASON_ID}>{children}</ReadOnlyBoundary>
+  ) : (
+    children
+  );
+  const banner = banners.length > 0 ? <>{banners}</> : undefined;
+
   const shell = (
     <ViewAsClientProvider viewingAs={viewingAs ? { name: viewingAs.displayName } : null}>
-      <ClientShell
-        user={user}
-        navScope={navScope}
-        account={account}
-        sellerConnectNavBadge={sellerConnectNavBadge}
-        cookieDensity={cookieDensity}
-        hideEmailStatusBanner
-        acting={acting}
-        contextBanner={banners.length > 0 ? <>{banners}</> : undefined}
-        topSlot={<WelcomeBackToast />}
-      >
-        {viewingAs ? (
-          <ReadOnlyBoundary reasonId={READ_ONLY_REASON_ID}>{children}</ReadOnlyBoundary>
-        ) : (
-          children
-        )}
-      </ClientShell>
+      {layout === "website" ? (
+        <BidSiteChrome>
+          <WelcomeBackToast />
+          <ClientWebsiteFrame
+            user={user}
+            navScope={navScope}
+            account={account}
+            acting={acting}
+            cookieDensity={cookieDensity}
+            banner={banner}
+          >
+            {page}
+          </ClientWebsiteFrame>
+        </BidSiteChrome>
+      ) : (
+        <ClientShell
+          user={user}
+          navScope={navScope}
+          account={account}
+          sellerConnectNavBadge={sellerConnectNavBadge}
+          cookieDensity={cookieDensity}
+          hideEmailStatusBanner
+          acting={acting}
+          contextBanner={banner}
+          topSlot={<WelcomeBackToast />}
+        >
+          {page}
+        </ClientShell>
+      )}
     </ViewAsClientProvider>
   );
 
