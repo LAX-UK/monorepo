@@ -8,6 +8,7 @@ import type {
   HeaderMenuLink,
 } from "@/lib/navigation/header-account-menu.vm";
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { ArrowRight, Check, ExternalLink, LogOut, Mail } from "lucide-react";
 import Link from "next/link";
 import { Fragment, type ReactNode } from "react";
@@ -191,20 +192,21 @@ function SignOutRow({
 }: { surface: AccountMenuSurface; onNavigate: () => void }) {
   const { logout, pending } = useLogout({ onBeforeNavigate: onNavigate });
   return (
-    <button
+    <Button
       type="button"
+      variant="ghost"
       disabled={pending}
       onClick={() => void logout()}
       className={cn(
         ROW_BASE,
         ROW[surface],
-        "text-left disabled:cursor-not-allowed disabled:opacity-60",
+        "h-auto justify-start border-0 font-normal shadow-none disabled:cursor-not-allowed disabled:opacity-60",
       )}
       {...itemProps(surface)}
     >
       <LogOut className="size-4 shrink-0 text-on-surface-variant" strokeWidth={1.75} aria-hidden />
       <span>{pending ? "Signing out…" : "Sign out"}</span>
-    </button>
+    </Button>
   );
 }
 
