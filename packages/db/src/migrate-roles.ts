@@ -46,6 +46,8 @@ const WORKER_READ_TABLES = [
   "item_submission",
   "category",
   "artist_profile",
+  /** The refund notice projector reads the refunded payment's lot and amount. */
+  "payment",
   /** Legal Entity Model - worker needs SELECT for projectors */
   "legal_entity",
   "legal_entity_member",
