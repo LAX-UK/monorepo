@@ -6,6 +6,7 @@ import {
   type LaxProductLinkVm,
   buildCrossProductFooterLinks,
   buildLaxFamilyLinksFromDirectory,
+  buildProductDirectoryLinks,
   isAllowedLaxProductUrl,
   isLocalProductFallbackAllowed,
   normalizeProductBaseUrl,
@@ -37,6 +38,12 @@ function shopDirectoryInput() {
     ...(shopStorefrontUrl ? { shopStorefrontUrl } : {}),
     ...(artPublicUrl ? { artPublicUrl } : {}),
   };
+}
+
+export function loadShopProductDirectoryLinks(): LaxProductLinkVm[] {
+  const resolved = resolveProductDirectoryConfig(shopDirectoryInput());
+  if (!resolved.ok) return [];
+  return buildProductDirectoryLinks(resolved.config);
 }
 
 export function loadShopCrossProductFooterLinks(): LaxProductLinkVm[] {
