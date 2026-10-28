@@ -146,6 +146,24 @@ const PROBES: Probe[] = [
     url: "/admin/v1/artists",
     allowed: ["shop_admin", "catalogue_editor"],
   },
+  {
+    name: "artist applications queue",
+    method: "GET",
+    url: "/admin/v1/artist-applications?view=new",
+    allowed: ["shop_admin", "catalogue_editor"],
+  },
+  {
+    name: "artist application reviewers",
+    method: "GET",
+    url: "/admin/v1/artist-applications/reviewers",
+    allowed: ["shop_admin", "catalogue_editor"],
+  },
+  {
+    name: "artist applications summary",
+    method: "GET",
+    url: "/admin/v1/artist-applications/summary",
+    allowed: ["shop_admin", "catalogue_editor"],
+  },
 ];
 
 function buildApp(

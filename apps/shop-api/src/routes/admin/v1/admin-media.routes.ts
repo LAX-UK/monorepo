@@ -2,7 +2,7 @@ import { SHOP_API_ERROR_CODES, ShopApiErrorBodySchema } from "@auction/shop-cont
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
-import { SHOP_MEDIA_KINDS } from "../../../domain/shop-media-upload-policy.js";
+import { STAFF_MEDIA_KINDS } from "../../../domain/shop-media-upload-policy.js";
 import { ShopApiError } from "../../../errors/shop-api-error.js";
 import {
   requireShopAdminSubject,
@@ -10,7 +10,7 @@ import {
 } from "../../../plugins/shop-admin-auth.js";
 
 const PresignBodySchema = Type.Object({
-  kind: Type.Union(SHOP_MEDIA_KINDS.map((kind) => Type.Literal(kind))),
+  kind: Type.Union(STAFF_MEDIA_KINDS.map((kind) => Type.Literal(kind))),
   contentType: Type.String({ minLength: 3, maxLength: 100 }),
   byteSize: Type.Integer({ minimum: 1 }),
 });
@@ -63,7 +63,7 @@ export async function registerAdminMediaRoutes(app: FastifyInstance, deps: Admin
         );
       }
       const body = request.body as {
-        kind: (typeof SHOP_MEDIA_KINDS)[number];
+        kind: (typeof STAFF_MEDIA_KINDS)[number];
         contentType: string;
         byteSize: number;
       };

@@ -1,4 +1,8 @@
 import { randomUUID } from "node:crypto";
+import {
+  ARTIST_APPLICATION_IMAGE_MAX_BYTES,
+  ARTIST_APPLICATION_IMAGE_TYPES,
+} from "@auction/shop-contracts";
 
 export const SHOP_MEDIA_KINDS = [
   "artwork_image",
@@ -7,9 +11,16 @@ export const SHOP_MEDIA_KINDS = [
   "editorial_cover",
   "editorial_inline",
   "venue_image",
+  "artist_application_image",
 ] as const;
 
 export type ShopMediaKind = (typeof SHOP_MEDIA_KINDS)[number];
+
+/** Kinds staff upload in LAX Admin. Application images arrive only through an artist's own form. */
+export const STAFF_MEDIA_KINDS = SHOP_MEDIA_KINDS.filter(
+  (kind): kind is Exclude<ShopMediaKind, "artist_application_image"> =>
+    kind !== "artist_application_image",
+);
 
 const POLICIES: Record<
   ShopMediaKind,
@@ -44,6 +55,12 @@ const POLICIES: Record<
     maxBytes: 10 * 1024 * 1024,
     allowedContentTypes: ["image/jpeg", "image/png", "image/webp"],
     keyPrefix: "shop/venue",
+  },
+  // Sent by artists applying to the gallery: the same image rules as artworks, its own prefix.
+  artist_application_image: {
+    maxBytes: ARTIST_APPLICATION_IMAGE_MAX_BYTES,
+    allowedContentTypes: ARTIST_APPLICATION_IMAGE_TYPES,
+    keyPrefix: "shop/artist-application",
   },
 };
 

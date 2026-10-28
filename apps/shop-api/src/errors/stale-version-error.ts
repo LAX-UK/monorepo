@@ -17,4 +17,8 @@ export class StaleVersionError extends ShopApiError {
     this.name = "StaleVersionError";
     this.currentVersion = currentVersion;
   }
+
+  override responseFields(): Record<string, unknown> {
+    return { currentVersion: this.currentVersion };
+  }
 }

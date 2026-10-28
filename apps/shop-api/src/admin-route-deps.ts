@@ -1,3 +1,4 @@
+import type { ArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
 import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import type { ShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
 import type { AdminReadPorts } from "./application/ports/admin-readers.js";
@@ -72,6 +73,7 @@ export type AdminRoutesDeps = {
   revokeStaffRole: ReturnType<typeof createRevokeStaffRoleHandler>;
   adminRead: AdminReadPorts;
   enquiryInbox: EnquiryInboxService;
+  artistApplicationReview: ArtistApplicationReviewService;
   productionTasks: ProductionTaskService;
   savedViews: SavedViewService;
   staffReader: ShopStaffMemberReader;

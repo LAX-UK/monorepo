@@ -50,7 +50,8 @@ function formatPence(pence: number): string {
   return `£${(pence / 100).toFixed(2)}`;
 }
 
-async function insertShopEmailOutbox(
+/** Queues one transactional email in the same transaction as the change it reports. */
+export async function insertShopEmailOutbox(
   tx: Database,
   input: {
     idempotencyKey: string;

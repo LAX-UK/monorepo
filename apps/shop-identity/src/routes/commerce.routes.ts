@@ -3,6 +3,7 @@ import { SHOP_BASKET_COOKIE_NAME } from "../basket-cookie.js";
 import { ensureCommerceCsrfCookie } from "../commerce-csrf.js";
 import { commerceRateLimitMiddleware } from "../commerce-rate-limit.js";
 import { shopStorefrontBaseUrl } from "../storefront-routes.js";
+import { registerCommerceArtistApplicationRoutes } from "./commerce/artist-application.routes.js";
 import { registerCommerceBasketRoutes } from "./commerce/basket.routes.js";
 import { registerCommerceCheckoutRoutes } from "./commerce/checkout.routes.js";
 import type { CommerceRoutesDeps } from "./commerce/commerce-route-types.js";
@@ -27,6 +28,7 @@ export function registerCommerceRoutes(app: Hono, deps: CommerceRoutesDeps): voi
   registerCommerceOrdersRoutes(app, deps);
   registerCommerceInterestRoutes(app, deps);
   registerCommerceMeRoutes(app, deps);
+  registerCommerceArtistApplicationRoutes(app, deps);
 }
 
 export { SHOP_BASKET_COOKIE_NAME };

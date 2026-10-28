@@ -11,6 +11,7 @@ import { registerPublicCatalogueCaching } from "./plugins/cache-control.js";
 import { registerErrorHandler } from "./plugins/error-handler.js";
 import { registerShopAdminScope } from "./plugins/shop-admin-auth.js";
 import { registerShopAuthPlugin } from "./plugins/shop-auth.js";
+import { registerAdminArtistApplicationRoutes } from "./routes/admin/v1/admin-artist-applications.routes.js";
 import { registerAdminArtistIdentityRoutes } from "./routes/admin/v1/admin-artist-identity.routes.js";
 import { registerAdminArtistRoutes } from "./routes/admin/v1/admin-artists.routes.js";
 import { registerAdminEditorialRoutes } from "./routes/admin/v1/admin-editorial.routes.js";
@@ -31,6 +32,7 @@ import { registerAdminSessionRoutes } from "./routes/admin/v1/session.routes.js"
 import { registerAdminThirdPartyRoutes } from "./routes/admin/v1/third-party.routes.js";
 import { registerHealthRoutes } from "./routes/health.routes.js";
 import { registerIdentityDeletionEligibilityRoutes } from "./routes/internal/identity-deletion-eligibility.routes.js";
+import { registerArtistApplicationRoutes } from "./routes/v1/artist-application.routes.js";
 import { registerArtistRoutes } from "./routes/v1/artists.routes.js";
 import { registerArtworkInterestRoutes } from "./routes/v1/artwork-interest.routes.js";
 import { registerArtworkRoutes } from "./routes/v1/artworks.routes.js";
@@ -137,6 +139,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   void registerOrderRoutes(app, options.deps.commerce);
   void registerCategoryRoutes(app, options.deps.catalogue);
   void registerArtistRoutes(app, options.deps.catalogue);
+  void registerArtistApplicationRoutes(app, options.deps.artistApplicant);
   if (options.deps.env.SHOP_EDITORIAL_ENABLED && options.deps.editorial) {
     void registerEditorialRoutes(app, options.deps.editorial);
     void registerHelpRoutes(app, options.deps.editorial.help);
@@ -166,6 +169,10 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminPeopleRoutes(adminScope, options.deps.admin);
         void registerAdminSavedViewRoutes(adminScope, options.deps.admin.savedViews);
         void registerAdminEnquiryRoutes(adminScope, options.deps.admin.enquiryInbox);
+        void registerAdminArtistApplicationRoutes(
+          adminScope,
+          options.deps.admin.artistApplicationReview,
+        );
         void registerAdminArtistIdentityRoutes(adminScope, options.deps.admin);
         void registerAdminArtistRoutes(adminScope, options.deps.admin);
         void registerAdminArtworkRoutes(adminScope, options.deps.admin);

@@ -948,3 +948,93 @@ describe("commerce order routes", () => {
     );
   });
 });
+
+describe("commerce artist application routes", () => {
+  const ID = "0b6a7c1e-2f3d-4a5b-8c9d-0e1f2a3b4c5d";
+
+  it("reads the signed-in artist's application", async () => {
+    const shopApiFetch = vi.fn(async () =>
+      Response.json({ application: null, next: "start", availableFrom: null }),
+    );
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request("/commerce/me/artist-application", {
+      headers: { cookie: AUTH_COOKIE },
+    });
+    expect(response.status).toBe(200);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        method: "GET",
+        path: "/v1/me/artist-application",
+        scopes: "shop.read",
+      }),
+    );
+  });
+
+  it("asks a visitor without a session to sign in", async () => {
+    const shopApiFetch = vi.fn();
+    const app = createGuestCommerceApp(shopApiFetch);
+    const response = await app.request("/commerce/me/artist-application");
+    expect(response.status).toBe(401);
+    expect(shopApiFetch).not.toHaveBeenCalled();
+  });
+
+  it("saves a draft with CSRF and passes the body through", async () => {
+    const shopApiFetch = vi.fn(async () => Response.json({ id: ID }));
+    const { app } = createCommerceApp(shopApiFetch);
+    const body = { expectedVersion: 2, artistName: "Ada Moreno" };
+    const response = await app.request(`/commerce/me/artist-application/${ID}`, {
+      method: "PUT",
+      headers: await authedCsrfHeaders(app),
+      body: JSON.stringify(body),
+    });
+    expect(response.status).toBe(200);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        method: "PUT",
+        path: `/v1/me/artist-application/${ID}`,
+        scopes: "shop.write",
+        body,
+      }),
+    );
+  });
+
+  it.each(["submit", "images/presign", "images/confirm"])("forwards %s", async (suffix) => {
+    const shopApiFetch = vi.fn(async () => Response.json({ ok: true }));
+    const { app } = createCommerceApp(shopApiFetch);
+    await app.request(`/commerce/me/artist-application/${ID}/${suffix}`, {
+      method: "POST",
+      headers: await authedCsrfHeaders(app),
+      body: JSON.stringify({ expectedVersion: 1 }),
+    });
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({ path: `/v1/me/artist-application/${ID}/${suffix}` }),
+    );
+  });
+
+  it("refuses a write without CSRF", async () => {
+    const shopApiFetch = vi.fn();
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request(`/commerce/me/artist-application/${ID}/submit`, {
+      method: "POST",
+      headers: { "content-type": "application/json", cookie: AUTH_COOKIE },
+      body: JSON.stringify({ expectedVersion: 1 }),
+    });
+    expect(response.status).toBe(403);
+    expect(shopApiFetch).not.toHaveBeenCalled();
+  });
+
+  it("never forwards an id that is not a UUID", async () => {
+    const shopApiFetch = vi.fn();
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request("/commerce/me/artist-application/not-an-id/submit", {
+      method: "POST",
+      headers: await authedCsrfHeaders(app),
+      body: "{}",
+    });
+    expect(response.status).toBe(404);
+    expect(shopApiFetch).not.toHaveBeenCalled();
+  });
+});
