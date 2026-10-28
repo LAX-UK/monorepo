@@ -40,7 +40,7 @@ export const STAFF_CAPABILITIES: readonly RoleCapability[] = [
  * not listed under a working role (reversing payouts, approving or archiving organisations,
  * merging artists, inviting staff and assigning roles) stay with the administrator.
  */
-const STAFF_MATRIX: Record<UserStaffRole, ReadonlySet<RoleCapability>> = {
+const STAFF_ROLE_PERMISSIONS: Record<UserStaffRole, ReadonlySet<RoleCapability>> = {
   administrator: new Set(STAFF_CAPABILITIES),
   sales_manager: new Set([
     "auction.manage",
@@ -80,12 +80,12 @@ const STAFF_MATRIX: Record<UserStaffRole, ReadonlySet<RoleCapability>> = {
 };
 
 export function staffRoleCapabilities(role: UserStaffRole): ReadonlySet<RoleCapability> {
-  return STAFF_MATRIX[role];
+  return STAFF_ROLE_PERMISSIONS[role];
 }
 
 /** Every staff role that grants at least one of `capabilities`, in canonical role order. */
 export function staffRolesGranting(capabilities: readonly RoleCapability[]): UserStaffRole[] {
   return userStaffRoles.filter((role) =>
-    capabilities.some((capability) => STAFF_MATRIX[role].has(capability)),
+    capabilities.some((capability) => STAFF_ROLE_PERMISSIONS[role].has(capability)),
   );
 }
