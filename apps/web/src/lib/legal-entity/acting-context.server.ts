@@ -181,6 +181,23 @@ export async function getActingLegalEntityHeader(
   return { [X_LEGAL_ENTITY_ID_HEADER]: acting.id };
 }
 
+/**
+ * Whether a platform admin has a "view as client" session open in this browser. Only the cookie
+ * is read; the API validates the session on every request and refuses every write in it.
+ */
+export async function isViewingAsClient(
+  userRole?: string | null,
+  userStaffRole?: string | null,
+): Promise<boolean> {
+  const role = normalizeUserRoleOrClient(userRole);
+  const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+  if (!canAccessPlatformAdminRoutes(role, staff)) return false;
+  const jar = await cookies();
+  const cookieValue = jar.get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
+  const raw = cookieValue ? decodeURIComponent(cookieValue) : "";
+  return Boolean(raw && decodeActingContextCookie(raw)?.i?.sid);
+}
+
 /** When the acting cookie references an admin impersonation session,
  * {@link resolveActingContext} must know the caller is an `administrator`
  * so it can validate via `GET /legal-entities/:id`. Fetch the role only in

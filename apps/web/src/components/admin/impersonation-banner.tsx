@@ -2,6 +2,8 @@
 
 import { ConfirmFormSubmit } from "@/components/admin/confirm-form-submit";
 import { endAdminImpersonationAction } from "@/lib/legal-entity/acting-context.actions";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 type Props = {
@@ -47,20 +49,32 @@ export function ImpersonationBanner({ entityName, expiresAtIso }: Props) {
             · Session ends in <span className="tabular-nums">{formatRemaining(remainingSec)}</span>
           </span>
         </p>
-        <form id="end-impersonation-form" action={endAdminImpersonationAction} className="shrink-0">
-          <ConfirmFormSubmit
-            formId="end-impersonation-form"
-            size="md"
-            variant="secondary"
-            className="w-full bg-on-error text-error hover:bg-error-container dark:bg-surface-container-highest dark:text-error dark:hover:bg-error/10 sm:w-auto"
-            confirmTitle="End impersonation?"
-            confirmBody="You will return to your staff session immediately."
-            confirmLabel="End now"
-            tone="warning"
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center">
+          <Link
+            href={CLIENT_ROUTES.home}
+            className="inline-flex h-10 items-center justify-center rounded-md border border-on-error/50 px-4 text-sm font-medium text-on-error transition-colors hover:bg-on-error/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-error"
           >
-            End now
-          </ConfirmFormSubmit>
-        </form>
+            View as client
+          </Link>
+          <form
+            id="end-impersonation-form"
+            action={endAdminImpersonationAction}
+            className="shrink-0"
+          >
+            <ConfirmFormSubmit
+              formId="end-impersonation-form"
+              size="md"
+              variant="secondary"
+              className="w-full bg-on-error text-error hover:bg-error-container dark:bg-surface-container-highest dark:text-error dark:hover:bg-error/10 sm:w-auto"
+              confirmTitle="End impersonation?"
+              confirmBody="You will return to your staff session immediately."
+              confirmLabel="End now"
+              tone="warning"
+            >
+              End now
+            </ConfirmFormSubmit>
+          </form>
+        </div>
       </div>
     </div>
   );

@@ -8,6 +8,7 @@ import { isSellerSubmissionPath, sellLoginRedirect } from "@/lib/auth/seller-sub
 import type { SessionUser } from "@/lib/data/contracts";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { laxAccountUrl } from "@/lib/lax-account-url";
+import { isViewingAsClient } from "@/lib/legal-entity/acting-context.server";
 import { type UserRole, canAccessStaffAdminShell } from "@auction/types";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -61,9 +62,11 @@ export async function requireAuthenticatedUser(opts: {
   const role = user.role as UserRole;
 
   // Staff never use Bid as a client, including the submission form: specialists work on a
-  // client's consignment from admin.
+  // client's consignment from admin. Support may view an account as its client, read-only.
   if (opts.shell === "client") {
-    const staffDestination = clientAreaRedirectFor(user, opts.loginNext);
+    const staffDestination = clientAreaRedirectFor(user, opts.loginNext, {
+      viewingAsClient: await isViewingAsClient(user.role, user.staffRole ?? null),
+    });
     if (staffDestination) redirect(staffDestination);
   }
 
