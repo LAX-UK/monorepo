@@ -48,8 +48,11 @@ const clientUser = {
   staffRole: null,
 };
 
-function renderBottomTabBar() {
-  const config = buildShellConfig({ user: clientUser, role: "client" });
+const staffUser = { ...clientUser, id: "staff-1", role: "staff" as const, staffRole: null };
+
+const SELLER_SCOPE = { context: { kind: "personal" as const }, hasSubmissions: true };
+
+function renderBottomTabBar(config = buildShellConfig({ user: clientUser, role: "client" })) {
   return render(
     <ShellConfigProvider config={config}>
       <BottomTabBar user={clientUser} />
@@ -72,5 +75,47 @@ describe("BottomTabBar", () => {
       expect(tab.className).toMatch(/min-h-\[var\(--tap-target-min,44px\)\]/);
     }
     expect(moreButton.className).toMatch(/min-h-\[var\(--tap-target-min,44px\)\]/);
+  });
+
+  it("gives every tab, More included, the same 44px-minimum box and type", () => {
+    renderBottomTabBar();
+    const tabs = [
+      ...screen.getAllByRole("link"),
+      screen.getByRole("button", { name: /open more dashboard actions/i }),
+    ];
+    for (const tab of tabs) {
+      expect(tab.className).toMatch(/min-w-\[var\(--tap-target-min,44px\)\]/);
+      expect(tab.className).toContain("text-xs");
+      expect(tab.className).toContain("[&_svg]:size-5");
+      // The button's own padding, gap and 16px icon size must not survive the merge.
+      expect(tab.className).not.toMatch(/\bpy-3\b|\bgap-2\b|\[&_svg\]:size-4|text-\[11px\]/);
+    }
+  });
+
+  it("names the selling tab after the menu's Selling section, not Lots", () => {
+    renderBottomTabBar(
+      buildShellConfig({ user: clientUser, role: "client", clientNavScope: SELLER_SCOPE }),
+    );
+    const selling = screen.getByRole("link", { name: "Selling" });
+    expect(selling).toHaveAttribute("href", "/selling/consignments");
+    expect(screen.queryByText("Lots")).not.toBeInTheDocument();
+  });
+
+  it("uses the visible label as each tab's accessible name", () => {
+    renderBottomTabBar(
+      buildShellConfig({ user: clientUser, role: "client", clientNavScope: SELLER_SCOPE }),
+    );
+    for (const tab of screen.getAllByRole("link")) {
+      expect(tab).toHaveAccessibleName(tab.textContent?.trim() ?? "");
+    }
+  });
+
+  it("never gives staff the client tabs", () => {
+    const config = buildShellConfig({ user: staffUser, role: "platform" });
+    const ids = config.mobileNav.map((item) => item.id);
+    expect(ids.length).toBeGreaterThan(0);
+    for (const clientId of ["bids", "purchases", "watchlist", "consignments", "payouts"]) {
+      expect(ids).not.toContain(clientId);
+    }
   });
 });

@@ -37,11 +37,11 @@ export function BottomTabBar({ user }: { user: Pick<SessionUser, "name" | "email
     <>
       <nav
         aria-label="Primary mobile dashboard navigation"
-        className="fixed inset-x-0 bottom-[var(--bottom-tab-bar-bottom,0px)] z-[var(--z-site-chrome,50)] border-t border-border-hairline bg-surface-container-lowest/95 px-2 pb-[max(0.5rem,var(--safe-area-bottom,env(safe-area-inset-bottom)))] pt-2 shadow-[0_-12px_30px_rgba(0,0,0,0.08)] backdrop-blur-sm lg:hidden"
+        className="fixed inset-x-0 bottom-[var(--bottom-tab-bar-bottom,0px)] z-[var(--z-site-chrome,50)] border-t border-border-hairline bg-surface-container-lowest/95 px-1 pb-[max(0.5rem,var(--safe-area-bottom,env(safe-area-inset-bottom)))] pt-2 shadow-[0_-12px_30px_rgba(0,0,0,0.08)] backdrop-blur-sm lg:hidden"
         style={{ minHeight: "var(--bottom-nav-height, 64px)" }}
       >
         <ul
-          className="grid gap-1"
+          className="grid"
           style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}
         >
           {tabs.map((item) => {
@@ -62,13 +62,12 @@ export function BottomTabBar({ user }: { user: Pick<SessionUser, "name" | "email
                     </span>
                   ) : null}
                 </span>
-                <span className="mt-1 max-w-full truncate text-[11px]">
-                  {item.shortLabel ?? item.label}
-                </span>
+                <span className="max-w-full truncate">{item.shortLabel ?? item.label}</span>
               </>
             );
             const tabClassName = cn(
-              "flex min-h-[var(--tap-target-min,44px)] w-full flex-col items-center justify-center rounded-lg px-1 font-label transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
+              // Links and the More button share one box: at least 44px each way, icon over a 12px label.
+              "flex h-auto min-h-[var(--tap-target-min,44px)] w-full min-w-[var(--tap-target-min,44px)] flex-col items-center justify-center gap-1 rounded-lg px-0.5 py-1 font-label text-xs font-normal transition-colors [&_svg]:size-5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary focus-visible:ring-0 focus-visible:ring-offset-0",
               active
                 ? "bg-primary-container/20 text-primary"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",
@@ -91,9 +90,10 @@ export function BottomTabBar({ user }: { user: Pick<SessionUser, "name" | "email
                     href={item.href}
                     aria-current={active ? "page" : undefined}
                     aria-label={
+                      // The name starts with the visible label, so voice control matches it.
                       item.id === "notifications"
-                        ? formatUnreadTabLabel(item.label, unread)
-                        : item.label
+                        ? formatUnreadTabLabel(item.shortLabel ?? item.label, unread)
+                        : undefined
                     }
                     className={tabClassName}
                   >
