@@ -151,6 +151,19 @@ describe("composeExhibitionsPage", () => {
     expect(services.editorial.listExhibitions).toHaveBeenCalledTimes(3);
   });
 
+  it("drops the hero when it would only repeat the shows in the grid", async () => {
+    const services = fakeArtServices();
+    services.editorial.listExhibitions.mockImplementation(async (status) => ({
+      status: "ok",
+      data: { items: status === "current" ? [exhibition({ slug: "now", featured: true })] : [] },
+    }));
+
+    const current = await composeExhibitionsPage(services, "current");
+
+    expect(current.status === "ok" && current.data.cards).toHaveLength(1);
+    expect(current.status === "ok" && current.data.featured).toEqual([]);
+  });
+
   it("keeps the grid when featured reads fail and passes through grid failures", async () => {
     const services = fakeArtServices();
     services.editorial.listExhibitions.mockImplementation(async (status) =>

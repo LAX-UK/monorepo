@@ -165,13 +165,22 @@ export async function composeExhibitionsPage(
       if (item.featured && !featuredBySlug.has(item.slug)) featuredBySlug.set(item.slug, item);
     }
   }
-  const featured = buildExhibitionReveals(
-    [...featuredBySlug.values()].slice(0, FEATURED_EXHIBITIONS_LIMIT),
-  );
+  const items = result.data.items;
+  const featured = heroRepeatsGrid(items, featuredBySlug)
+    ? []
+    : buildExhibitionReveals([...featuredBySlug.values()].slice(0, FEATURED_EXHIBITIONS_LIMIT));
   return {
     status: "ok",
-    data: { status, cards: result.data.items.map(exhibitionCard), featured },
+    data: { status, cards: items.map(exhibitionCard), featured },
   };
+}
+
+/** The hero adds nothing when every show in the grid is already one of its slides. */
+function heroRepeatsGrid(
+  items: readonly ArtEditorialExhibitionSummary[],
+  featuredBySlug: ReadonlyMap<string, ArtEditorialExhibitionSummary>,
+): boolean {
+  return items.length > 0 && items.every((item) => featuredBySlug.has(item.slug));
 }
 
 export type ExhibitionDetailVm = {
