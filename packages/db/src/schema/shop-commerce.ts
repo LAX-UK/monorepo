@@ -354,6 +354,28 @@ export const shopArtwork = pgTable(
       (): AnyPgColumn => shopArtwork.id,
       { onDelete: "set null" },
     ),
+    /**
+     * The print run this artwork sells (null for an original): kind, role, template, size and
+     * who holds the prints. See packages/shop-domain edition-run.ts for the rules.
+     */
+    runKind: text("run_kind").$type<"limited" | "open">(),
+    runRole: text("run_role").$type<"main" | "proof" | "companion">(),
+    runTemplate: text("run_template").$type<"lax_standard" | "custom">(),
+    runSize: integer("run_size"),
+    allocBuyer: integer("alloc_buyer"),
+    allocArtist: integer("alloc_artist"),
+    allocLax: integer("alloc_lax"),
+    /** Open runs: the default share of each new batch owned by the artist; LAX owns the rest. */
+    openDefaultArtistPct: integer("open_default_artist_pct"),
+    /** Proof and companion listings: the main run they belong to. */
+    mainRunArtworkId: uuid("main_run_artwork_id").references((): AnyPgColumn => shopArtwork.id, {
+      onDelete: "restrict",
+    }),
+    proofType: text("proof_type").$type<"ap" | "pp" | "hc">(),
+    proofsKeptAp: integer("proofs_kept_ap"),
+    proofsKeptPp: integer("proofs_kept_pp"),
+    proofsKeptHc: integer("proofs_kept_hc"),
+    proofsKeptBat: integer("proofs_kept_bat"),
     seoTitle: text("seo_title"),
     seoDescription: text("seo_description"),
     version: integer("version").default(1).notNull(),
@@ -373,9 +395,16 @@ export const shopArtwork = pgTable(
     index("shop_artwork_artist_idx").on(table.artistId),
     index("shop_artwork_created_id_idx").on(table.createdAt, table.id),
     index("shop_artwork_source_original_idx").on(table.sourceOriginalArtworkId),
+    index("shop_artwork_main_run_idx").on(table.mainRunArtworkId),
     check(
       "shop_artwork_source_original_not_self",
       sql`${table.sourceOriginalArtworkId} IS NULL OR ${table.sourceOriginalArtworkId} <> ${table.id}`,
+    ),
+    // The run rules live in migration 0246 (one named check per rule); they are repeated here
+    // only where drizzle-kit needs them to keep the schema and the database in step.
+    check(
+      "shop_artwork_run_size_ck",
+      sql`${table.runKind} IS DISTINCT FROM 'limited' OR (${table.runSize} IS NOT NULL AND ${table.runSize} BETWEEN CASE WHEN ${table.runRole} = 'proof' THEN 1 ELSE 2 END AND 500)`,
     ),
   ],
 );
@@ -463,7 +492,16 @@ export const shopEdition = pgTable(
     artworkId: uuid("artwork_id")
       .notNull()
       .references(() => shopArtwork.id, { onDelete: "restrict" }),
-    editionNumber: integer("edition_number").notNull(),
+    /** The printed number; null for open-edition prints and proofs (which use proofNumber). */
+    editionNumber: integer("edition_number"),
+    /**
+     * Identifies the print within its run and orders picking. Equal to editionNumber on numbered
+     * runs. A database trigger fills it from editionNumber for writers that omit it.
+     */
+    stockRef: integer("stock_ref").default(0).notNull(),
+    proofNumber: integer("proof_number"),
+    storageLocation: text("storage_location"),
+    labelCode: text("label_code"),
     allocation: shopEditionAllocationEnum("allocation").notNull(),
     ownerPartyId: uuid("owner_party_id").references(() => shopParty.id, { onDelete: "set null" }),
     reservedUntil: timestamp("reserved_until", { mode: "date", withTimezone: true }),
@@ -489,6 +527,88 @@ export const shopEdition = pgTable(
       table.editionNumber,
     ),
     index("shop_edition_reserved_by_order_idx").on(table.reservedByOrderId),
+    uniqueIndex("shop_edition_artwork_stock_ref_uid").on(table.artworkId, table.stockRef),
+    uniqueIndex("shop_edition_label_code_uid")
+      .on(table.labelCode)
+      .where(sql`${table.labelCode} IS NOT NULL`),
+    index("shop_edition_listing_sellable_stock_idx").on(
+      table.artworkId,
+      table.listingStatus,
+      table.saleAuthorisedAt,
+      table.stockRef,
+    ),
+    check("shop_edition_stock_ref_positive_ck", sql`${table.stockRef} > 0`),
+  ],
+);
+
+/**
+ * The facts staff confirm about a run: how it is numbered, how it is signed and what certificate
+ * comes with it. One row per run; every public sentence is written from it.
+ */
+export const shopEditionFacts = pgTable(
+  "shop_edition_facts",
+  {
+    artworkId: uuid("artwork_id")
+      .primaryKey()
+      .references(() => shopArtwork.id, { onDelete: "restrict" }),
+    numbering: text("numbering").$type<"on_print" | "on_certificate" | "none">().notNull(),
+    signatureKind: text("signature_kind")
+      .$type<"hand_signed" | "plate_signed" | "estate_stamped" | "estate_signed" | "unsigned">()
+      .notNull(),
+    signatureMedium: text("signature_medium").$type<"pencil" | "ink">(),
+    signaturePlace: text("signature_place").$type<"front_lower_margin" | "back">(),
+    certificateKind: text("certificate_kind").$type<"none" | "included">().notNull(),
+    certificateIssuer: text("certificate_issuer").$type<"artist" | "publisher" | "lax">(),
+    certificateForm: text("certificate_form").$type<"paper" | "digital" | "both">(),
+    certificateArrives: text("certificate_arrives").$type<"with_print" | "separately">(),
+    certificateWithinWeeks: integer("certificate_within_weeks"),
+    certificateNumberedToMatch: boolean("certificate_numbered_to_match"),
+    certificateNumberedToMatchReason: text("certificate_numbered_to_match_reason"),
+    confirmedBySubjectId: text("confirmed_by_subject_id"),
+    confirmedAt: timestamp("confirmed_at", { mode: "date", withTimezone: true }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    // Rules 6 to 8 and the certificate and confirmation shapes are enforced by the named checks
+    // in migration 0246; the confirmation pair is repeated here as the schema's own guard.
+    check(
+      "shop_edition_facts_confirmed_ck",
+      sql`(${table.confirmedBySubjectId} IS NULL) = (${table.confirmedAt} IS NULL)`,
+    ),
+  ],
+);
+
+/** One addition of unnumbered prints to an open edition, with the owner split it used. */
+export const shopEditionStockBatch = pgTable(
+  "shop_edition_stock_batch",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    artworkId: uuid("artwork_id")
+      .notNull()
+      .references(() => shopArtwork.id, { onDelete: "restrict" }),
+    firstStockRef: integer("first_stock_ref").notNull(),
+    quantity: integer("quantity").notNull(),
+    artistCount: integer("artist_count").notNull(),
+    laxCount: integer("lax_count").notNull(),
+    custodyStatus: shopEditionCustodyStatusEnum("custody_status").notNull(),
+    storageLocation: text("storage_location"),
+    addedBySubjectId: text("added_by_subject_id").notNull(),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("shop_edition_stock_batch_artwork_first_uid").on(
+      table.artworkId,
+      table.firstStockRef,
+    ),
+    check(
+      "shop_edition_stock_batch_quantity_ck",
+      sql`${table.quantity} > 0 AND ${table.firstStockRef} > 0`,
+    ),
+    check(
+      "shop_edition_stock_batch_split_ck",
+      sql`${table.artistCount} >= 0 AND ${table.laxCount} >= 0 AND ${table.artistCount} + ${table.laxCount} = ${table.quantity}`,
+    ),
   ],
 );
 
@@ -665,6 +785,15 @@ export const shopOrderLine = pgTable(
     vatPence: integer("vat_pence"),
     sellerPartyId: uuid("seller_party_id").references(() => shopParty.id, { onDelete: "restrict" }),
     editionNumber: integer("edition_number"),
+    /** The run and facts as they were when the order was paid; what the buyer was told. */
+    editionFactsSnapshot: jsonb("edition_facts_snapshot").$type<Record<string, unknown>>(),
+    /** The print's label at payment, such as "7/24", "AP 2/3" or "OE-0021". */
+    printLabel: text("print_label"),
+    packConfirmedAt: timestamp("pack_confirmed_at", { mode: "date", withTimezone: true }),
+    packConfirmedBy: text("pack_confirmed_by"),
+    swappedFromEditionId: uuid("swapped_from_edition_id").references(() => shopEdition.id, {
+      onDelete: "restrict",
+    }),
     unitPricePence: integer("unit_price_pence").notNull(),
     releasedAt: timestamp("released_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
@@ -1075,9 +1204,17 @@ export const shopCertificate = pgTable(
     orderLineId: uuid("order_line_id").references(() => shopOrderLine.id, { onDelete: "set null" }),
     documentId: uuid("document_id").references(() => shopDocument.id, { onDelete: "set null" }),
     issuedAt: timestamp("issued_at", { mode: "date", withTimezone: true }),
+    certificateReference: text("certificate_reference"),
+    issuer: text("issuer").$type<"artist" | "publisher" | "lax">(),
+    form: text("form").$type<"paper" | "digital" | "both">(),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
-  (table) => [uniqueIndex("shop_certificate_edition_uid").on(table.editionId)],
+  (table) => [
+    uniqueIndex("shop_certificate_edition_uid").on(table.editionId),
+    uniqueIndex("shop_certificate_reference_uid")
+      .on(table.certificateReference)
+      .where(sql`${table.certificateReference} IS NOT NULL`),
+  ],
 );
 
 export const shopRefund = pgTable(

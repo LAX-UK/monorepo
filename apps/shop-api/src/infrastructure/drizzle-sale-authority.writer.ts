@@ -23,6 +23,7 @@ import type {
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { notFound } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation, pgUniqueViolationConstraint } from "../lib/pg-errors.js";
+import { printedEditionNumber } from "./printed-edition-number.js";
 import { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
 
 export function createDrizzleSaleAuthorityWriter(
@@ -102,7 +103,7 @@ export function createDrizzleSaleAuthorityWriter(
 
           const ownedRows = await tx
             .select({
-              editionNumber: shopEdition.editionNumber,
+              editionNumber: printedEditionNumber,
               listingStatus: shopEdition.listingStatus,
               custodyStatus: shopEdition.custodyStatus,
               id: shopEdition.id,

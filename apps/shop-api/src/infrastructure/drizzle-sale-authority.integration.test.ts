@@ -225,7 +225,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("sale authority and checkout pick order",
       .from(shopEdition)
       .where(and(eq(shopEdition.artworkId, imported.artworkId), eq(shopEdition.allocation, "lax")))
       .orderBy(shopEdition.editionNumber);
-    const minLax = Math.min(...laxNumbers.map((row) => row.editionNumber));
+    const minLax = Math.min(...laxNumbers.map((row) => row.editionNumber ?? 0));
     expect(reserved?.editionNumber).toBe(minLax);
   });
 });

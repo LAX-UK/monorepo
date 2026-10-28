@@ -50,6 +50,7 @@ import {
   orderByMsTimestampId,
 } from "./admin-created-at-keyset.js";
 import { containsPattern } from "./drizzle-editorial-search.reader.js";
+import { printedEditionNumber } from "./printed-edition-number.js";
 
 /*
  * The staff work lists for sales and operations. Each one filters by its views' status, a search
@@ -321,7 +322,7 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
           .select({
             hold: shopStockHold,
             artworkTitle: shopArtwork.title,
-            editionNumber: shopEdition.editionNumber,
+            editionNumber: printedEditionNumber,
             clientName: clientParty.displayName,
             brokerName: brokerParty.displayName,
           })
@@ -409,7 +410,7 @@ export function createDrizzleAdminWorkListsReader(db: Database) {
           .select({
             sale: shopThirdPartySale,
             artworkTitle: shopArtwork.title,
-            editionNumber: shopEdition.editionNumber,
+            editionNumber: printedEditionNumber,
             sellerName: sellerParty.displayName,
             buyerName: buyerParty.displayName,
           })
