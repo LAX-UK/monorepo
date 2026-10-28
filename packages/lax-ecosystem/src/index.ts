@@ -68,3 +68,11 @@ export {
   buildMoney,
   moneySectionOf,
 } from "./portfolio-money.vm.js";
+export {
+  ARTIST_APPLICATION_JOURNEY,
+  type ArtistApplicationApplicantStatus,
+  type ArtistApplicationStatusTone,
+  type ArtistApplicationStatusVm,
+  artistApplicationJourneyStep,
+  presentArtistApplicationStatus,
+} from "./artist-application-status.vm.js";
