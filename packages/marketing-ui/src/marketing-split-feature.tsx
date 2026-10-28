@@ -8,7 +8,10 @@ export type MarketingSplitFeatureProps = {
   body?: ReactNode;
   /** Usually one button or link; rendered under the body. */
   action?: ReactNode;
-  /** Media filling its half (`absolute inset-0 size-full object-cover`). Omitted → text-only panel. */
+  /**
+   * Media filling its half (`absolute inset-0 size-full object-cover`). Without media the panel
+   * does not split: the copy is centred on the band, so no half is left empty.
+   */
   media?: ReactNode;
   /** Desktop side of the media; on small screens media always sits above the panel. */
   mediaSide?: "left" | "right";
@@ -18,7 +21,7 @@ export type MarketingSplitFeatureProps = {
   className?: string;
 };
 
-/** Full-bleed media + copy panel promo (Figma home guide promo, `299:4150`). */
+/** Full-bleed media + copy panel promo (Figma home guide promo, `299:4150`); centred text without media. */
 export function MarketingSplitFeature({
   title,
   eyebrow,
@@ -49,22 +52,44 @@ export function MarketingSplitFeature({
           {media}
         </div>
       ) : null}
-      <div className="flex flex-col justify-center gap-6 px-4 py-12 sm:px-10 md:py-16 lg:px-20">
-        <div className="flex max-w-[35rem] flex-col gap-4">
+      <div
+        className={cn(
+          "flex flex-col justify-center gap-6 px-4 py-12 sm:px-10 md:py-16 lg:px-20",
+          media ? null : "items-center text-center",
+        )}
+      >
+        <div
+          className={cn(
+            "flex flex-col gap-4",
+            media ? "max-w-[35rem]" : "max-w-[44rem] items-center",
+          )}
+        >
           {eyebrow ? (
             <p className="font-label text-xs font-medium uppercase tracking-[0.12em]">{eyebrow}</p>
           ) : null}
           <Heading
             id={headingId}
-            className="m-0 font-headline text-[length:var(--text-title-promo,clamp(1.75rem,3.2vw,2.75rem))] font-normal leading-[1.15]"
+            className="m-0 text-balance font-headline text-[length:var(--text-title-promo,clamp(1.75rem,3.2vw,2.75rem))] font-normal leading-[1.15]"
           >
             {title}
           </Heading>
           {body ? (
-            <div className={cn("text-base leading-relaxed", toneClass.body)}>{body}</div>
+            <div
+              className={cn(
+                "text-base leading-relaxed",
+                toneClass.body,
+                media ? null : "max-w-[52ch]",
+              )}
+            >
+              {body}
+            </div>
           ) : null}
         </div>
-        {action ? <div className="flex flex-wrap gap-3">{action}</div> : null}
+        {action ? (
+          <div className={cn("flex flex-wrap gap-3", media ? null : "justify-center")}>
+            {action}
+          </div>
+        ) : null}
       </div>
     </section>
   );

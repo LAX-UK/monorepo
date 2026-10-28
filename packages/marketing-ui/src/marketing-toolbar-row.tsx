@@ -42,10 +42,11 @@ export function MarketingToolbarRow({
     Boolean(trailing) &&
     (stackTrailingRequiresFilters ? Boolean(filters) : Boolean(mobileFilterTrigger || !filters));
 
+  // A count is never truncated ("8 availab…"): it keeps its width and the controls beside it wrap.
   const countClassName = hideFiltersOnMobile
-    ? "min-w-0 flex-1 truncate font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant tabular-nums sm:max-w-none lg:max-w-[10rem] lg:flex-none"
+    ? "shrink-0 whitespace-nowrap font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant tabular-nums"
     : countLabel
-      ? "min-w-0 max-w-[40%] shrink truncate font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant tabular-nums sm:max-w-[10rem]"
+      ? "shrink-0 whitespace-nowrap font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant tabular-nums"
       : "";
 
   return (

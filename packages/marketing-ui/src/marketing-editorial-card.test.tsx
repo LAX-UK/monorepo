@@ -68,4 +68,13 @@ describe("MarketingEditorialCard", () => {
     expect(screen.queryByRole("link")).toBeNull();
     expect(screen.getByRole("heading", { name: "Untitled" })).toBeInTheDocument();
   });
+
+  it("puts media and text side by side for a card alone in its row", () => {
+    const { container } = render(
+      <MarketingEditorialCard media={null} title="New Originals" layout="split" href="/x" />,
+    );
+    const article = container.querySelector("article");
+    expect(article).toHaveAttribute("data-layout", "split");
+    expect(article?.className).toContain("md:grid-cols-[7fr_5fr]");
+  });
 });

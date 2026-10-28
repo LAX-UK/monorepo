@@ -412,7 +412,7 @@ function MarketingMegaMenuPanelContent({
     return (
       <div
         className={cn(
-          "header-megamenu__panel-content mx-auto flex w-full max-w-[var(--container-max,90rem)] justify-between gap-12",
+          "header-megamenu__panel-content mx-auto flex w-full max-w-[var(--container-max,90rem)] items-start gap-16",
           MARKETING_PAGE_GUTTER_X,
         )}
       >
@@ -423,7 +423,7 @@ function MarketingMegaMenuPanelContent({
 
   return (
     <div
-      className="header-megamenu__panel-content flex w-max max-w-full flex-col items-start gap-4"
+      className="header-megamenu__panel-content flex w-[max-content] max-w-full flex-col items-start gap-4"
       style={{ marginLeft: `${leftPx}px` }}
     >
       {section.items.length > 0 ? (
@@ -448,7 +448,7 @@ function MegaMenuLinkList({
   onItemActive?: (item: MarketingMegaNavItem) => void;
 }) {
   return (
-    <ul className="flex w-max max-w-xl flex-col gap-3 self-start">
+    <ul className="flex w-[max-content] max-w-xl flex-col gap-3 self-start">
       {items.map((row) => (
         <li key={`${row.label}-${row.href}`}>
           <Link
@@ -468,7 +468,11 @@ function MegaMenuLinkList({
   );
 }
 
-/** Figma `521:7889` (Upcoming): name list with the hovered or focused name's image beside it. */
+/**
+ * Figma `521:7889` (Upcoming): name list with the hovered or focused name's image beside it. The
+ * image sits next to the list, not at the far edge of the panel, so a short list never leaves the
+ * width between them empty.
+ */
 function MegaMenuFeaturedList({
   section,
   onNavigate,
