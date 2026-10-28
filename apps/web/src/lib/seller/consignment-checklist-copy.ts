@@ -53,11 +53,17 @@ const WHY: Record<
     ctx.accountKind === "organisation"
       ? "We check the organisation's documents before a specialist accepts the work."
       : "We confirm who is selling before a specialist accepts the work. It takes about 3 minutes.",
-  agreement: (_ctx, state) =>
-    state === "not_yet"
-      ? "Your specialist proposes an estimate and terms after reviewing the work. You accept them here."
-      : "Read the specialist's estimate and the seller conditions, then accept them.",
-  payouts: () => "So we can pay you when the work sells. Your bank details stay with Stripe.",
+  agreement: (_ctx, state) => {
+    if (state === "not_yet") {
+      return "Your specialist proposes an estimate and terms after reviewing the work. You accept them here.";
+    }
+    if (state === "waiting") return "Your specialist proposed an estimate and terms for this work.";
+    return "Read the specialist's estimate and the seller conditions, then accept them.";
+  },
+  payouts: (ctx) =>
+    ctx.accountKind === "organisation"
+      ? "So we can pay the organisation when the work sells. Bank details stay with Stripe."
+      : "So we can pay you when the work sells. Your bank details stay with Stripe.",
 };
 
 function dueText(deadline: ConsignmentChecklistDeadline): string {

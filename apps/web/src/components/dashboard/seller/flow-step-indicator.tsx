@@ -13,7 +13,7 @@ type Props = {
  */
 export function FlowStepIndicator({ steps, current, className }: Props) {
   return (
-    <div className={cn("space-y-2", className)}>
+    <div className={cn("space-y-2 pt-2 sm:pt-4", className)}>
       <div className="flex gap-2" aria-hidden>
         {steps.map((label, index) => (
           <span

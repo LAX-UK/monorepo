@@ -87,9 +87,11 @@ export function AdminSubmissionDecisionPanel({
     [],
   );
   const agreementAccepted = Boolean(agreement?.acceptedAt);
+  // While the seller has not accepted there is nothing to convert, so no shortcut either.
+  const shortcutsActive = view.shortcutsActive && (view.mode !== "convert" || agreementAccepted);
 
   useSubmissionDecisionShortcuts({
-    active: view.shortcutsActive,
+    active: shortcutsActive,
     panelRootRef,
     approveFormRef: approveFormEl,
   });
@@ -177,7 +179,7 @@ export function AdminSubmissionDecisionPanel({
     >
       <div ref={panelRootRef} className="flex flex-col gap-6">
         {view.showChecklist ? <SubmissionQualityChecklist submission={submission} /> : null}
-        {view.shortcutsActive ? (
+        {shortcutsActive ? (
           <p className="text-staff-sm text-staff-muted">
             Shortcuts when not typing in a field: <Kbd>A</Kbd> {view.shortcutVerb}, <Kbd>R</Kbd>{" "}
             focus rejection, <Kbd>⌘ Enter</Kbd> submit.

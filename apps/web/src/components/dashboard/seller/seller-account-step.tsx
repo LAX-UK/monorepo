@@ -74,6 +74,8 @@ export function SellerAccountStep({
             legend="Who is selling?"
             value={selected?.id ?? ""}
             onValueChange={onSelect}
+            // The chosen account reads at a glance: the kit's radio is a button, not an input.
+            optionClassName="has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-primary/5"
             className="[&>legend]:font-headline [&>legend]:text-xl [&>legend]:font-semibold [&>legend]:tracking-tight"
             options={options.map((option) => ({
               value: option.id,
