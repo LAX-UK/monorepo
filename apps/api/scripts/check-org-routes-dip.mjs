@@ -1,6 +1,7 @@
 /**
  * Enforces DIP for platform identity and organisation HTTP routes: only application services on the
- * container (`identityRoutes`, `buyerAgents`, `organisationMembership`) plus middleware infra.
+ * container (`identityRoutes`, `buyerAgents`, `organisationMembership`, `organisationHome`) plus
+ * middleware infra.
  */
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -15,6 +16,7 @@ const files = [
   "src/routes/legal-entity-members.ts",
   "src/routes/legal-entity-buyer-agents.ts",
   "src/routes/organisation-membership.ts",
+  "src/routes/organisation-home.ts",
   "src/routes/organizations.ts",
   "src/routes/organization-onboarding.ts",
 ];
@@ -32,6 +34,8 @@ const ALLOWED_CONTAINER_KEYS = new Set([
   "buyerAgents",
   // Welcome card and stopped member bids: application services behind ports.
   "organisationMembership",
+  // Home's business figures: an application service over read-model ports.
+  "organisationHome",
 ]);
 
 const re = /(?<![\w./])container\.(\w+)\b/g;

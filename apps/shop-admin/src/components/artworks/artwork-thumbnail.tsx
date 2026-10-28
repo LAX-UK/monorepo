@@ -1,3 +1,6 @@
+"use client";
+
+import { useStaffCatalogueImage } from "@/components/artworks/staff-catalogue-image-provider.client";
 import { cn } from "@auction/staff-ui";
 import { ImageOff } from "@auction/staff-ui/icons";
 
@@ -20,6 +23,7 @@ export function ArtworkThumbnail({
   size?: keyof typeof SIZE;
   className?: string;
 }) {
+  const src = useStaffCatalogueImage()(url);
   return (
     <span
       className={cn(
@@ -28,8 +32,8 @@ export function ArtworkThumbnail({
         className,
       )}
     >
-      {url ? (
-        <img src={url} alt="" loading="lazy" className="size-full object-cover" />
+      {src ? (
+        <img src={src} alt="" loading="lazy" className="size-full object-cover" />
       ) : (
         <ImageOff aria-hidden className="size-4 text-staff-subtle" strokeWidth={1.75} />
       )}

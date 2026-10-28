@@ -18,6 +18,7 @@ import { createFinanceRouteServices } from "./container/create-finance-route-ser
 import { createIdentityRouteServices } from "./container/create-identity-route-services.js";
 import { createInfra } from "./container/create-infra.js";
 import { createLotLifecycle } from "./container/create-lot-lifecycle.js";
+import { createOrganisationHomeServices } from "./container/create-organisation-home-services.js";
 import { createOrganisationMembershipServices } from "./container/create-organisation-membership-services.js";
 import { createPaymentsServices } from "./container/create-payments-services.js";
 import { createPlatformCronRouteServices } from "./container/create-platform-cron-route-services.js";
@@ -275,6 +276,7 @@ export function createContainer(env: Env): Container {
     }),
   };
   const organisationMembership = createOrganisationMembershipServices({ db });
+  const organisationHome = createOrganisationHomeServices({ db });
 
   const atg = new AtgAdminService(
     repos.atgLinkReader,
@@ -532,6 +534,7 @@ export function createContainer(env: Env): Container {
     submissionRoutes,
     buyerAgents,
     organisationMembership,
+    organisationHome,
     queueAdmin: userMisc.queueAdmin,
     closeBullQueues: userMisc.closeBullQueues,
   };
@@ -573,6 +576,7 @@ export type {
   ContainerLegalEntityBuyerAgentRoutesSlice,
   ContainerLegalEntityMemberRoutesSlice,
   ContainerOrganisationMembershipRoutesSlice,
+  ContainerOrganisationHomeRoutesSlice,
   ContainerLegalEntityRoutesSlice,
   ContainerLotCatalogSlice,
   ContainerLotDocumentRoutesSlice,

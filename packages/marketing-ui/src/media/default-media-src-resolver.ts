@@ -29,3 +29,18 @@ export const defaultMediaSrcResolver: MediaSrcResolver = (value) => {
 
   return null;
 };
+
+/** Runs a host app's stored-URL rules first, then the same safety checks as the default. */
+export function mediaSrcResolverFrom(
+  resolve: (src: string | null | undefined) => string | null,
+): MediaSrcResolver {
+  return (value) => defaultMediaSrcResolver(resolve(value));
+}
+
+/**
+ * A source the resolver rewrote now points at another origin (the storefront that owns the
+ * seed image), which Next's image optimiser has no allowlist entry for, so it loads as is.
+ */
+export function isRewrittenMediaSrc(original: string | null | undefined, resolved: string | null) {
+  return resolved !== null && resolved !== original?.trim();
+}

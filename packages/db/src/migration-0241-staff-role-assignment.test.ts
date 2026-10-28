@@ -10,21 +10,21 @@ const url = process.env.MIGRATION_TEST_DATABASE_URL;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const sql = (file: string) => readFileSync(join(__dirname, "../drizzle", file), "utf8");
 
-describe.skipIf(!url)("migration 0240 staff role assignments", () => {
+describe.skipIf(!url)("migration 0241 staff role assignments", () => {
   it("gives each staff member their current role once, and rolls back cleanly", async () => {
     const client = new pg.Client({ connectionString: url });
     await client.connect();
     const run = randomUUID().slice(0, 8);
     const people = [
-      { id: `m0240_admin_${run}`, role: "staff", staffRole: "super_admin" },
-      { id: `m0240_finance_${run}`, role: "staff", staffRole: "finance_ops" },
-      { id: `m0240_legacy_${run}`, role: "staff", staffRole: null },
-      { id: `m0240_client_${run}`, role: "client", staffRole: null },
+      { id: `m0241_admin_${run}`, role: "staff", staffRole: "super_admin" },
+      { id: `m0241_finance_${run}`, role: "staff", staffRole: "finance_ops" },
+      { id: `m0241_legacy_${run}`, role: "staff", staffRole: null },
+      { id: `m0241_client_${run}`, role: "client", staffRole: null },
     ];
     const ids = people.map((p) => p.id);
     try {
-      const forward = sql("0240_staff_role_assignment.sql");
-      const rollback = sql("0240_rollback.sql");
+      const forward = sql("0241_staff_role_assignment.sql");
+      const rollback = sql("0241_rollback.sql");
       await client.query(forward);
 
       for (const p of people) {
@@ -58,7 +58,7 @@ describe.skipIf(!url)("migration 0240 staff role assignments", () => {
       );
       expect(rows.rows).toEqual([
         {
-          user_id: `m0240_admin_${run}`,
+          user_id: `m0241_admin_${run}`,
           role: "super_admin",
           ends_at: null,
           granted_by_user_id: null,
@@ -66,7 +66,7 @@ describe.skipIf(!url)("migration 0240 staff role assignments", () => {
           in_force: true,
         },
         {
-          user_id: `m0240_finance_${run}`,
+          user_id: `m0241_finance_${run}`,
           role: "finance_ops",
           ends_at: null,
           granted_by_user_id: null,
@@ -78,7 +78,7 @@ describe.skipIf(!url)("migration 0240 staff role assignments", () => {
       await expect(
         client.query(
           `insert into staff_role_assignment (user_id, role) values ($1, 'super_admin')`,
-          [`m0240_admin_${run}`],
+          [`m0241_admin_${run}`],
         ),
       ).rejects.toThrow(/staff_role_assignment_open_uidx/);
 

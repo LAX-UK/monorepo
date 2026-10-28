@@ -4,7 +4,11 @@ import {
 } from "@auction/ui/components/media-placeholder";
 import { cn } from "@auction/ui/lib/utils";
 import Image from "next/image";
-import { type MediaSrcResolver, defaultMediaSrcResolver } from "./default-media-src-resolver.js";
+import {
+  type MediaSrcResolver,
+  defaultMediaSrcResolver,
+  isRewrittenMediaSrc,
+} from "./default-media-src-resolver.js";
 
 export type MediaImageServerProps = {
   src: string | null | undefined;
@@ -83,6 +87,7 @@ export function MediaImageServer({
         src={normalizedSrc}
         alt={alt}
         fill
+        unoptimized={isRewrittenMediaSrc(src, normalizedSrc)}
         sizes={sizes}
         priority={priority}
         {...(useBlurPlaceholder && blurDataURL

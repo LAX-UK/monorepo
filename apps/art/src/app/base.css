@@ -82,7 +82,8 @@
   --color-cta-bg: var(--color-brand-obsidian);
   --color-cta-on: var(--color-brand-light-cream);
   --color-border-hairline: color-mix(in srgb, var(--color-brand-light-gray) 60%, white);
-  --color-input-border: var(--color-brand-light-gray);
+  /* Edge of a text field: 3.45:1 on white (WCAG 1.4.11), the same value LAX Account uses. */
+  --color-input-border: #8a8a8a;
 
   /* shadcn/ui variable bridge — selective @auction/ui on account and commerce flows */
   --color-foreground: var(--color-on-surface);
@@ -304,7 +305,8 @@ html.dark {
   --color-link: var(--color-brand-light-cream);
   --color-ring: var(--color-brand-light-cream);
   --color-border-hairline: color-mix(in srgb, var(--color-outline-variant) 40%, transparent);
-  --color-input-border: var(--color-brand-light-gray);
+  /* 3.9:1 on the dark page, the same value LAX Account uses. */
+  --color-input-border: #73736f;
   --color-footer-bg: #0d0f0f;
   --color-nav-border: #333534;
   --color-nav-text: var(--color-brand-light-cream);

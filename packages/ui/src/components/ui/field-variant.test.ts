@@ -13,4 +13,10 @@ describe("fieldVariantClasses", () => {
     expect(classes).toContain("rounded-none");
     expect(classes).not.toContain("shadow-sm");
   });
+
+  it("underline edge uses the 3:1 field border token", () => {
+    const classes = fieldVariantClasses("underline");
+    expect(classes).toContain("border-input-border");
+    expect(classes).not.toContain("outline-variant");
+  });
 });

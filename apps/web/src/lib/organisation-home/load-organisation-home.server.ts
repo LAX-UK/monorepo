@@ -3,6 +3,7 @@ import "server-only";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SessionUser } from "@/lib/data/contracts";
 import { listServerConsignmentAgreements } from "@/lib/data/http/consignment-agreements.server";
+import { getServerOrganisationDashboard } from "@/lib/data/http/organisation-dashboard.server";
 import {
   getServerMyBuyerAgentAuthorisations,
   getServerStoppedMemberBids,
@@ -16,9 +17,11 @@ import {
 } from "@/lib/seller/consignment-checklist-facts";
 import { loadSellerAccountFacts } from "@/lib/seller/seller-account-facts.server";
 import {
+  type DashboardFigures,
   type EntityActor,
   type EntityCapability,
   type OrganisationHomeFacts,
+  bidAuthorityFigure,
   buildOrganisationHome,
   computeConsignmentChecklist,
   entityActorCan,
@@ -77,45 +80,56 @@ export async function loadOrganisationHome(
   const followsConsignments = reads("entity.consignments.read");
   const needsIdentity = roleNeedsPersonalIdentity(actor.role);
 
-  const [submissions, lots, agreements, account, purchases, members, stoppedBids, mine, kyc] =
-    await Promise.all([
-      settle<ItemSubmission[]>(
-        followsConsignments,
-        () => c.submissions.listMine({ limit: PAGE_LIMIT, offset: 0 }),
-        [],
-      ),
-      settle<Lot[]>(
-        followsConsignments,
-        () => c.sellerLots.list({ sellerId: organisation.id, limit: PAGE_LIMIT }),
-        [],
-      ),
-      settle<ConsignmentAgreement[]>(followsConsignments, listServerConsignmentAgreements, []),
-      settle(true, () => loadSellerAccountFacts(sellerCtx), null),
-      settle<PortfolioRow[]>(
-        reads("entity.finance.read") || reads("entity.bid.place"),
-        () => c.portfolio.listMine(),
-        [],
-      ),
-      settle(
-        reads("entity.members.manage"),
-        async () => {
-          const result = await listMembersAction(organisation.id);
-          return result.ok ? result.data : [];
-        },
-        [],
-      ),
-      settle(
-        reads("entity.members.manage"),
-        async () => (await getServerStoppedMemberBids(organisation.id)) ?? [],
-        [],
-      ),
-      settle(
-        roleBidsThroughAuthorisation(actor.role),
-        () => getServerMyBuyerAgentAuthorisations(organisation.id),
-        [],
-      ),
-      settle(needsIdentity, () => c.kyc.getSummary(), null),
-    ]);
+  const [
+    submissions,
+    lots,
+    agreements,
+    account,
+    purchases,
+    members,
+    stoppedBids,
+    mine,
+    kyc,
+    dashboard,
+  ] = await Promise.all([
+    settle<ItemSubmission[]>(
+      followsConsignments,
+      () => c.submissions.listMine({ limit: PAGE_LIMIT, offset: 0 }),
+      [],
+    ),
+    settle<Lot[]>(
+      followsConsignments,
+      () => c.sellerLots.list({ sellerId: organisation.id, limit: PAGE_LIMIT }),
+      [],
+    ),
+    settle<ConsignmentAgreement[]>(followsConsignments, listServerConsignmentAgreements, []),
+    settle(true, () => loadSellerAccountFacts(sellerCtx), null),
+    settle<PortfolioRow[]>(
+      reads("entity.finance.read") || reads("entity.bid.place"),
+      () => c.portfolio.listMine(),
+      [],
+    ),
+    settle(
+      reads("entity.members.manage"),
+      async () => {
+        const result = await listMembersAction(organisation.id);
+        return result.ok ? result.data : [];
+      },
+      [],
+    ),
+    settle(
+      reads("entity.members.manage"),
+      async () => (await getServerStoppedMemberBids(organisation.id)) ?? [],
+      [],
+    ),
+    settle(
+      roleBidsThroughAuthorisation(actor.role),
+      () => getServerMyBuyerAgentAuthorisations(organisation.id),
+      [],
+    ),
+    settle(needsIdentity, () => c.kyc.getSummary(), null),
+    settle(true, () => getServerOrganisationDashboard(organisation.id), null),
+  ]);
 
   const agreementBySubmission = new Map(agreements.map((a) => [a.submissionId, a]));
   const lotById = new Map(lots.map((lot) => [lot.id, lot]));
@@ -185,7 +199,16 @@ export async function loadOrganisationHome(
       count: stopped.bids.length,
     })),
   });
-  const model = buildOrganisationHome(facts, activity);
+  // A buyer agent's authorisations are already loaded for their tasks; the figures reuse them.
+  const figures: DashboardFigures | null = dashboard
+    ? {
+        ...dashboard,
+        ...(roleBidsThroughAuthorisation(actor.role)
+          ? { bidAuthority: bidAuthorityFigure(mine) }
+          : {}),
+      }
+    : null;
+  const model = buildOrganisationHome(facts, activity, figures);
   const ctx = { organisationName: organisation.displayName };
 
   const welcome = welcomeCardFor({
@@ -207,6 +230,7 @@ export async function loadOrganisationHome(
         }
       : null,
     roleExplanation: roleExplanation(actor.role, organisation.displayName),
-    authority: buyerAgentAuthorityLine(mine),
+    // The bid limit figure says the same; the line stands in when the figures did not load.
+    authority: model.dashboard ? null : buyerAgentAuthorityLine(mine),
   };
 }

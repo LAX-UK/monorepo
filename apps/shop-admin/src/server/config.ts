@@ -19,6 +19,7 @@ const configSchema = z.object({
   release: z.string().optional(),
   bidPublicUrl: z.string().url().optional(),
   artPublicUrl: z.string().url().optional(),
+  shopStorefrontUrl: z.string().url().optional(),
   /**
    * Bid API's internal address, where LAX Admin asks which staff tools the signed-in person can
    * open. Unset leaves the product switcher on LAX Admin alone.
@@ -57,6 +58,9 @@ export function loadShopAdminConfig(source: NodeJS.ProcessEnv = process.env): Sh
     release: source.SENTRY_RELEASE ?? source.GITHUB_SHA,
     bidPublicUrl: source.LAX_BID_PUBLIC_URL?.trim().replace(/\/+$/, "") || undefined,
     artPublicUrl: source.LAX_ART_PUBLIC_URL?.trim().replace(/\/+$/, "") || undefined,
+    shopStorefrontUrl:
+      (source.LAX_SHOP_STOREFRONT_URL ?? source.SHOP_STOREFRONT_URL)?.trim().replace(/\/+$/, "") ||
+      undefined,
     bidApiInternalUrl: source.BID_API_INTERNAL_BASE_URL?.trim().replace(/\/+$/, "") || undefined,
   });
   if (!parsed.success) {

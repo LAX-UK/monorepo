@@ -8,6 +8,12 @@ export {
   stepUpPatternMatches,
 } from "./staff-step-up.js";
 export {
+  createCatalogueImageResolver,
+  type CatalogueImageOrigins,
+  type CatalogueImageResolver,
+  type CatalogueImageViewer,
+} from "./catalogue-image-url.js";
+export {
   PublicArtistDetailSchema,
   PublicArtistListSchema,
   PublicArtistSortSchema,

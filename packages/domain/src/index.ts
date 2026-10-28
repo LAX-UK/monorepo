@@ -321,14 +321,57 @@ export {
   type OrganisationHomeModel,
 } from "./organisation-home.js";
 export {
+  bidAuthorityFigure,
+  bidLimitSummary,
+  buildOrganisationDashboard,
+  dashboardFigureGroupsFor,
+  dashboardFigureScope,
+  dashboardSectionsFor,
+  dashboardTileKindsFor,
+  upcomingSaleFigures,
+  type AuthorisationInForce,
+  type BidAuthorityFigure,
+  type BidLimitSummary,
+  type DashboardFigureGroup,
+  type DashboardFigures,
+  type DashboardSection,
+  type DashboardTile,
+  type DashboardTileKind,
+  type FirstRunAction,
+  type OrganisationDashboardModel,
+  type UpcomingSaleFigure,
+  type UpcomingSaleRow,
+} from "./organisation-dashboard.js";
+export {
+  CONSIGNMENT_PROGRESS_STAGES,
+  consignmentProgressCounts,
+  consignmentsInProgress,
+  emptyConsignmentProgress,
+  lotProgressStage,
+  submissionProgressStage,
+  type ConsignmentProgressCounts,
+  type ConsignmentProgressRows,
+  type ConsignmentProgressStage,
+} from "./consignment-progress.js";
+export {
+  sumEstimatesByCurrency,
+  sumMoneyByCurrency,
+  type EstimateTotal,
+  type MoneyTotal,
+} from "./money-totals.js";
+export { BUSINESS_TIME_ZONE, londonCalendarYear, type CalendarYear } from "./calendar-year.js";
+export {
   MEMBER_REMOVED_STOP_REASON,
   stopsOnRemoval,
   type StandingInstructionCandidate,
   type StandingInstructionKind,
 } from "./member-removal.js";
 export {
+  canSeeConsignedLot,
   canSeeSubmission,
+  consignedLotScope,
   submissionSenderScope,
+  type ConsignedLotScope,
   type SubmissionSenderScope,
 } from "./submission-visibility.js";
 export {
