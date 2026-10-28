@@ -64,7 +64,7 @@ export function ArtFooter({ vm }: ArtFooterProps) {
           <Link href="/contact" className={cn(linkClass, "w-fit")}>
             Contact us
           </Link>
-          <MarketingFooterSocials />
+          <MarketingFooterSocials product="art" />
         </div>
       }
       copyright={productCopyrightLine("art")}

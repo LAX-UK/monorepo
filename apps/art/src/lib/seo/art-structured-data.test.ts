@@ -24,6 +24,15 @@ describe("Art structured data", () => {
     });
   });
 
+  it("never ties London Art Exchange to the auction company's social profiles", () => {
+    for (const node of artSiteJsonLd(SITE)) {
+      expect(node).not.toHaveProperty("sameAs");
+      expect(JSON.stringify(node)).not.toMatch(
+        /londonauctionxchange|lax\.bid|london-auction-xchange/,
+      );
+    }
+  });
+
   it("marks up an original without inventing a price", () => {
     const [artwork, breadcrumb] = artworkJsonLd(artworkDetail({ heightCm: 50 }), SITE);
     expect(artwork).toMatchObject({
