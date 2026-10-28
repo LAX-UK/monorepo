@@ -19,15 +19,18 @@ function setup(options: {
   role?: LegalEntityMemberRole;
   submissionEntityId?: string;
   accepted?: boolean;
+  incomplete?: boolean;
   userRole?: string;
+  status?: string;
 }) {
   const agreements = new InMemoryConsignmentAgreements();
   const submissionOwner = options.submissionEntityId ?? entityId;
   agreements.seed({
     submissionId,
     legalEntityId: submissionOwner,
-    estimateLow: "8000.00",
-    estimateHigh: "12000.00",
+    estimateLow: options.incomplete ? null : "8000.00",
+    estimateHigh: options.incomplete ? null : "12000.00",
+    commissionPercent: options.incomplete ? null : "15.00",
     ...(options.accepted
       ? { acceptedAt: new Date("2026-10-02T10:00:00Z"), acceptedByUserId: "first-user" }
       : {}),
@@ -39,13 +42,17 @@ function setup(options: {
       findById: vi.fn().mockResolvedValue({
         id: submissionId,
         legalEntityId: submissionOwner,
-        status: "approved",
+        status: options.status ?? "approved",
+        title: "Untitled (Blue)",
       } as ItemSubmission),
     },
     people: { findById: vi.fn().mockResolvedValue({ name: "Jane Smith" }) },
     dispatcher: { dispatch: vi.fn() },
     recipients: null,
     events,
+    sellerIdentity: {
+      factsFor: vi.fn().mockResolvedValue({ kind: "individual", kycStatus: "pending" }),
+    },
     now: () => new Date("2026-10-05T12:00:00Z"),
   });
   const container = {
@@ -66,6 +73,7 @@ function setup(options: {
     getSessionUser: vi.fn().mockResolvedValue({
       id: "u1",
       role: options.userRole ?? "client",
+      ...(options.userRole === "staff" ? { staffRole: "super_admin" } : {}),
       scopes: ["bid.read", "bid.write"],
     }),
   };
@@ -124,6 +132,16 @@ describe("POST /submissions/:id/agreement/accept", () => {
     expect(events.publish).not.toHaveBeenCalled();
   });
 
+  it("refuses a proposal that has no estimate or commission yet", async () => {
+    const { accept, agreements } = setup({ incomplete: true });
+    const res = await accept();
+    expect(res.status).toBe(409);
+    expect(((await res.json()) as { error: string }).error).toBe(
+      "Your specialist hasn't sent the estimate and terms yet.",
+    );
+    expect(agreements.acceptWrites).toBe(0);
+  });
+
   it("refuses a version other than the one proposed", async () => {
     const { accept } = setup({});
     const res = await accept({ termsVersion: "conditions-of-business-part-c-v0" });
@@ -151,7 +169,46 @@ describe("GET /submissions/:id/agreement", () => {
   });
 });
 
-describe("GET /submissions/:id/agreement/staff", () => {
+describe("staff routes", () => {
+  const staff = { userRole: "staff" };
+
+  it("show staff the agreement and whether the seller's identity is verified", async () => {
+    const { app } = setup({ ...staff });
+    const res = await app.request(`http://t/submissions/${submissionId}/agreement/staff`);
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      data: { sellerIdentityVerified: boolean; agreement: { estimateLow: string } };
+    };
+    expect(body.data.sellerIdentityVerified).toBe(false);
+    expect(body.data.agreement.estimateLow).toBe("8000.00");
+  });
+
+  it("let staff add the estimate and terms to an incomplete proposal", async () => {
+    const { app, agreements } = setup({ ...staff, incomplete: true });
+    const res = await app.request(`http://t/submissions/${submissionId}/agreement/terms`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estimateLow: "9000", estimateHigh: "14000", commissionPercent: "15" }),
+    });
+    expect(res.status).toBe(200);
+    const stored = await agreements.findBySubmissionId(submissionId);
+    expect(stored).toMatchObject({
+      estimateLow: "9000",
+      estimateHigh: "14000",
+      commissionPercent: "15",
+    });
+  });
+
+  it("never rewrite terms the seller already accepted", async () => {
+    const { app } = setup({ ...staff, accepted: true });
+    const res = await app.request(`http://t/submissions/${submissionId}/agreement/terms`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estimateLow: "9000", estimateHigh: "14000", commissionPercent: "15" }),
+    });
+    expect(res.status).toBe(409);
+  });
+
   it("is for staff with submissions access only", async () => {
     const client = setup({});
     expect(

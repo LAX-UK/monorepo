@@ -112,6 +112,7 @@ function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmi
     } as unknown as LotLifecycleRecording,
     repoFactory: testRepoFactory(),
     consignmentAgreements: null,
+    sellerIdentity: null,
     ...overrides,
   };
 }

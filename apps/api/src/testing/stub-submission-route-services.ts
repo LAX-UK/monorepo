@@ -38,6 +38,8 @@ export function stubSubmissionRouteServices(
       listForSeller: vi.fn(),
       accept: vi.fn(),
       getForStaff: vi.fn(),
+      listForStaff: vi.fn(),
+      proposeTerms: vi.fn(),
     },
     ...overrides,
   };

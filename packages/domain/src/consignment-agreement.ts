@@ -12,7 +12,21 @@ export type ConsignmentAgreementFacts = {
   legalEntityId: string;
   termsVersion: string;
   acceptedAt: Date | null;
+  estimateLow: string | null;
+  estimateHigh: string | null;
+  commissionPercent: string | null;
 };
+
+/**
+ * A seller is asked to accept only real terms: an estimate (low and high) and the seller's
+ * commission. Proposals recorded without them (for example works accepted before agreements
+ * existed) wait for the specialist to add them.
+ */
+export function agreementTermsComplete(
+  agreement: Pick<ConsignmentAgreementFacts, "estimateLow" | "estimateHigh" | "commissionPercent">,
+): boolean {
+  return Boolean(agreement.estimateLow && agreement.estimateHigh && agreement.commissionPercent);
+}
 
 export type AgreementAcceptanceInput = {
   agreement: ConsignmentAgreementFacts | null;
@@ -27,6 +41,7 @@ export type AgreementAcceptanceInput = {
 export type AgreementAcceptanceRefusal =
   | "not_found"
   | "not_proposed"
+  | "incomplete_terms"
   | "forbidden_role"
   | "stale_terms";
 
@@ -39,6 +54,7 @@ export type AgreementAcceptanceDecision =
 const REFUSAL_MESSAGES: Record<AgreementAcceptanceRefusal, string> = {
   not_found: "This consignment is not in the account you are using.",
   not_proposed: "The specialist has not proposed terms for this consignment yet.",
+  incomplete_terms: "Your specialist hasn't sent the estimate and terms yet.",
   forbidden_role: "Only an owner or admin can accept the consignment agreement.",
   stale_terms: "The agreement has changed since you opened it. Read it again before accepting.",
 };
@@ -63,6 +79,7 @@ export function decideAgreementAcceptance(
   if (!agreement) return refuse("not_proposed");
   if (!canAcceptConsignmentAgreement(input.actor)) return refuse("forbidden_role");
   if (agreement.acceptedAt) return { kind: "already_accepted" };
+  if (!agreementTermsComplete(agreement)) return refuse("incomplete_terms");
   if (agreement.termsVersion !== input.termsVersion) return refuse("stale_terms");
   return { kind: "accept" };
 }

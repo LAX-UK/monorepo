@@ -68,6 +68,7 @@ function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmi
     lotLifecycleRecording: null,
     repoFactory: null,
     consignmentAgreements: null,
+    sellerIdentity: null,
     ...overrides,
   };
 }
@@ -195,6 +196,45 @@ describe("accept proposes the consignment agreement", () => {
         message: expect.stringContaining("consignment agreement"),
       }),
     );
+  });
+});
+
+describe("accept waits for the seller's identity", () => {
+  function depsWithIdentity(facts: unknown) {
+    const update = vi.fn().mockResolvedValue(approved);
+    return {
+      update,
+      deps: baseDeps({
+        submissions: {
+          findById: vi.fn().mockResolvedValue(underReview),
+          update,
+        } as unknown as IItemSubmissionRepository,
+        sellerIdentity: { factsFor: vi.fn().mockResolvedValue(facts) },
+      }),
+    };
+  }
+
+  it("refuses with a clear code when the person has not verified their identity", async () => {
+    const { deps, update } = depsWithIdentity({ kind: "individual", kycStatus: "pending" });
+    const result = await accept(deps, "admin-1", "sub-1");
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr()).toMatchObject({
+      status: 409,
+      code: "identity_not_verified",
+      message: expect.stringMatching(/hasn't verified their identity/),
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("refuses an organisation whose documents are still being checked", async () => {
+    const { deps } = depsWithIdentity({ kind: "organisation", status: "under_review" });
+    expect((await accept(deps, "admin-1", "sub-1")).isErr()).toBe(true);
+  });
+
+  it("accepts once the identity is verified", async () => {
+    const { deps, update } = depsWithIdentity({ kind: "individual", kycStatus: "approved" });
+    expect((await accept(deps, "admin-1", "sub-1")).isOk()).toBe(true);
+    expect(update).toHaveBeenCalled();
   });
 });
 

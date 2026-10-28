@@ -15,6 +15,7 @@ import type { ILotLifecycleRecorder } from "../interfaces/lot-lifecycle-recorder
 import type { MediaAssetEnricher } from "../media-asset-enricher.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
+import type { ISellerIdentityReader } from "./seller-identity.reader.js";
 
 export {
   INDIVIDUAL_SUBMISSION_BLOCKED_STATUSES,
@@ -37,6 +38,8 @@ export type ItemSubmissionServiceDeps = {
   repoFactory: IRepositoryFactory | null;
   /** Consignment agreements: proposed on acceptance, required before cataloguing. */
   consignmentAgreements: IConsignmentAgreementRepository | null;
+  /** The seller's checked identity; a specialist accepts the work only once it is verified. */
+  sellerIdentity: ISellerIdentityReader | null;
 };
 
 export function sellerPatchToRepoPatch(

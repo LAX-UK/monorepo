@@ -4,9 +4,11 @@ import {
   adminBulkSubmissionsBodySchema,
   approveSubmissionBodySchema,
   listSubmissionsQuerySchema,
+  proposeConsignmentTermsBodySchema,
   rejectSubmissionBodySchema,
   requestSubmissionChangesBodySchema,
   submissionIdParamSchema,
+  submissionIdsQuerySchema,
 } from "@auction/validators";
 import { respondSubmissionHttpJson } from "../../lib/submission-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
@@ -77,6 +79,32 @@ export function attachSubmissionAdminRoutes(r: SubmissionHono, deps: SubmissionR
         body,
         viewer: viewerFromContext(c),
       });
+      return respondSubmissionHttpJson(c, response);
+    },
+  );
+
+  r.get(
+    "/agreements/staff",
+    requireAuth,
+    requireSubmissionsAccess,
+    zValidator("query", submissionIdsQuerySchema),
+    async (c) => {
+      const { ids } = c.req.valid("query");
+      const response = await agreementHttp.listForStaff(ids, viewerFromContext(c));
+      return respondSubmissionHttpJson(c, response);
+    },
+  );
+
+  r.post(
+    "/:id/agreement/terms",
+    requireAuth,
+    requireSubmissionsAccess,
+    zValidator("param", submissionIdParamSchema),
+    zValidator("json", proposeConsignmentTermsBodySchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const terms = c.req.valid("json");
+      const response = await agreementHttp.proposeTerms(id, terms, viewerFromContext(c));
       return respondSubmissionHttpJson(c, response);
     },
   );

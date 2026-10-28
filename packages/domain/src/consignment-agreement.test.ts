@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   CONSIGNMENT_AGREEMENT_TERMS_VERSION,
   agreementAllowsCataloguing,
+  agreementTermsComplete,
   canAcceptConsignmentAgreement,
   decideAgreementAcceptance,
   dueAgreementReminder,
@@ -13,6 +14,9 @@ const proposed = {
   legalEntityId: ENTITY,
   termsVersion: CONSIGNMENT_AGREEMENT_TERMS_VERSION,
   acceptedAt: null,
+  estimateLow: "8000.00",
+  estimateHigh: "12000.00",
+  commissionPercent: "15.00",
 };
 
 function decide(overrides: Partial<Parameters<typeof decideAgreementAcceptance>[0]> = {}) {
@@ -49,6 +53,26 @@ describe("who may accept the consignment agreement", () => {
 
   it("refuses before the specialist has proposed terms", () => {
     expect(decide({ agreement: null })).toMatchObject({ kind: "refused", reason: "not_proposed" });
+  });
+});
+
+describe("incomplete terms", () => {
+  it("never asks a seller to accept a proposal without an estimate and commission", () => {
+    for (const blank of [
+      { estimateLow: null },
+      { estimateHigh: null },
+      { commissionPercent: null },
+    ]) {
+      expect(decide({ agreement: { ...proposed, ...blank } })).toMatchObject({
+        kind: "refused",
+        reason: "incomplete_terms",
+      });
+    }
+  });
+
+  it("knows when the terms are complete", () => {
+    expect(agreementTermsComplete(proposed)).toBe(true);
+    expect(agreementTermsComplete({ ...proposed, estimateHigh: null })).toBe(false);
   });
 });
 

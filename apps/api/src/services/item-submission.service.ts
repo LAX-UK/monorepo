@@ -29,6 +29,7 @@ import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.
 import type { MediaAssetEnricher } from "./media-asset-enricher.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
+import type { ISellerIdentityReader } from "./submission/seller-identity.reader.js";
 import {
   accept,
   approve,
@@ -89,6 +90,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
     lotLifecycleRecording: ILotLifecycleRecorder | null = null,
     repoFactory: IRepositoryFactory | null = null,
     consignmentAgreements: IConsignmentAgreementRepository | null = null,
+    sellerIdentity: ISellerIdentityReader | null = null,
   ) {
     this.deps = {
       transactionRunner,
@@ -104,6 +106,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
       lotLifecycleRecording,
       repoFactory,
       consignmentAgreements,
+      sellerIdentity,
     };
   }
 

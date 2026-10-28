@@ -52,6 +52,7 @@ import { SaleSoftDeleteService } from "../services/sale-soft-delete.service.js";
 import { SaleStatusTransitionService } from "../services/sale-status-transition.service.js";
 import { SaleService } from "../services/sale.service.js";
 import { SalePublishService } from "../services/sale/sale-publish.service.js";
+import { SellerIdentityReader } from "../services/submission/seller-identity.reader.js";
 import { VenueService } from "../services/venue.service.js";
 import { createSelfServiceIdentityEligibilityGate } from "./create-bid-eligibility.js";
 import type { ContainerCatalogAdminReaders } from "./create-catalog-admin-readers.js";
@@ -323,6 +324,7 @@ export function createLotCatalogServices(
 
   const saleBiddersService = new SaleBiddersService(saleBiddersReader, saleRepo);
   const consignmentAgreementRepository = new DrizzleConsignmentAgreementRepository(db);
+  const sellerIdentity = new SellerIdentityReader(legalEntityRepository, repos.kycRepository);
   const itemSubmissionService = new ItemSubmissionService(
     transactionRunner,
     itemSubmissionRepository,
@@ -337,6 +339,7 @@ export function createLotCatalogServices(
     lotLifecycleRecording,
     repoFactory,
     consignmentAgreementRepository,
+    sellerIdentity,
   );
   const consignmentAgreementService = new ConsignmentAgreementService({
     agreements: consignmentAgreementRepository,
@@ -345,6 +348,7 @@ export function createLotCatalogServices(
     dispatcher: notificationDispatcher,
     recipients: legalEntityNotificationRecipients,
     events: domainEventSink,
+    sellerIdentity,
   });
 
   const categoryService = new CategoryService(categoryRepo, domainEventSink);

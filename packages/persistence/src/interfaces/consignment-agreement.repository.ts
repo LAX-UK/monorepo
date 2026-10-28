@@ -30,7 +30,12 @@ export type AwaitingConsignmentAgreement = {
 export interface IConsignmentAgreementReader {
   findBySubmissionId(submissionId: string): Promise<ConsignmentAgreement | null>;
   listByLegalEntity(legalEntityId: string): Promise<ConsignmentAgreement[]>;
-  /** Agreements proposed before `proposedBefore` that nobody has accepted, oldest first. */
+  /** Agreements for the given submissions, for staff lists. */
+  listBySubmissionIds(submissionIds: readonly string[]): Promise<ConsignmentAgreement[]>;
+  /**
+   * Agreements proposed before `proposedBefore` that nobody has accepted, oldest first. Only
+   * proposals with complete terms are listed: a seller is never reminded to accept blank terms.
+   */
   listAwaiting(proposedBefore: Date, limit: number): Promise<AwaitingConsignmentAgreement[]>;
 }
 

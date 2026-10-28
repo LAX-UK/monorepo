@@ -70,6 +70,7 @@ function deps(
     lotLifecycleRecording: null,
     repoFactory: null,
     consignmentAgreements: null,
+    sellerIdentity: null,
   };
   return { value, update, dispatch, publish };
 }

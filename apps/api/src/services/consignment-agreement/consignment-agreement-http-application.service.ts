@@ -1,3 +1,4 @@
+import type { ConsignmentAgreementProposalInput } from "@auction/types";
 import { requireSubmissionsAccessHttp } from "../../lib/submission-http-auth.js";
 import type {
   AgreementSellerContext,
@@ -48,7 +49,31 @@ export class ConsignmentAgreementHttpApplicationService
   ): Promise<SubmissionHttpJson> {
     const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRole);
     if (denied) return denied;
-    const agreement = await this.agreements.getForStaff(submissionId);
-    return { status: 200, body: { data: agreement } };
+    const view = await this.agreements.getForStaff(submissionId);
+    if (!view) return { status: 404, body: { error: "Not found" } };
+    return { status: 200, body: { data: view } };
+  }
+
+  async listForStaff(
+    submissionIds: readonly string[],
+    viewer: SubmissionViewerContext,
+  ): Promise<SubmissionHttpJson> {
+    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRole);
+    if (denied) return denied;
+    return { status: 200, body: { data: await this.agreements.listForStaff(submissionIds) } };
+  }
+
+  async proposeTerms(
+    submissionId: string,
+    terms: ConsignmentAgreementProposalInput,
+    viewer: SubmissionViewerContext,
+  ): Promise<SubmissionHttpJson> {
+    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRole);
+    if (denied) return denied;
+    const result = await this.agreements.proposeTerms(submissionId, viewer.userId, terms);
+    if (result.isErr()) {
+      return { status: result.error.status, body: { error: result.error.message } };
+    }
+    return { status: 200, body: { data: result.value } };
   }
 }

@@ -1,7 +1,10 @@
 import {
+  CONSIGNMENT_AGREEMENT_TERMS_VERSION,
   canAcceptConsignmentAgreement,
+  canTransition,
   decideAgreementAcceptance,
   dueAgreementReminder,
+  sellerIdentityVerified,
 } from "@auction/domain";
 import type {
   IConsignmentAgreementRepository,
@@ -9,8 +12,10 @@ import type {
 } from "@auction/persistence/interfaces";
 import type {
   ConsignmentAgreement,
+  ConsignmentAgreementProposalInput,
   ConsignmentAgreementView,
   ItemSubmission,
+  StaffConsignmentView,
 } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../../lib/errors.js";
@@ -18,6 +23,7 @@ import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { AgreementSellerContext } from "../interfaces/submission-routes/consignment-agreement-http.js";
 import { resolveLegalEntityNotificationRecipients } from "../legal-entity-notification-routing.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
+import type { ISellerIdentityReader } from "../submission/seller-identity.reader.js";
 
 /** The ports the agreement service needs, and nothing else. */
 export type ConsignmentAgreementServiceDeps = {
@@ -27,6 +33,7 @@ export type ConsignmentAgreementServiceDeps = {
   dispatcher: Pick<NotificationDispatcher, "dispatch">;
   recipients: ILegalEntityNotificationRecipientReader | null;
   events: IDomainEventSink | null;
+  sellerIdentity?: ISellerIdentityReader | null;
   now?: () => Date;
 };
 
@@ -35,7 +42,15 @@ export interface IConsignmentAgreementService {
     submissionId: string,
     seller: AgreementSellerContext,
   ): Promise<Result<ConsignmentAgreementView, SubmissionError>>;
-  getForStaff(submissionId: string): Promise<ConsignmentAgreement | null>;
+  getForStaff(submissionId: string): Promise<StaffConsignmentView | null>;
+  /** Staff list: the agreements of several submissions. */
+  listForStaff(submissionIds: readonly string[]): Promise<ConsignmentAgreement[]>;
+  /** Staff add (or correct) the estimate and terms of an accepted submission. */
+  proposeTerms(
+    submissionId: string,
+    staffUserId: string,
+    terms: ConsignmentAgreementProposalInput,
+  ): Promise<Result<ConsignmentAgreement, SubmissionError>>;
   listForSeller(legalEntityId: string): Promise<ConsignmentAgreement[]>;
   accept(
     submissionId: string,
@@ -48,6 +63,7 @@ export interface IConsignmentAgreementService {
 const REFUSAL_STATUS = {
   not_found: 404,
   not_proposed: 409,
+  incomplete_terms: 409,
   forbidden_role: 403,
   stale_terms: 409,
 } as const;
@@ -88,9 +104,69 @@ export class ConsignmentAgreementService implements IConsignmentAgreementService
     });
   }
 
-  async getForStaff(submissionId: string): Promise<ConsignmentAgreement | null> {
-    const agreement = await this.deps.agreements.findBySubmissionId(submissionId);
-    return agreement ? this.withAcceptorName(agreement) : null;
+  async getForStaff(submissionId: string): Promise<StaffConsignmentView | null> {
+    const submission = await this.deps.submissions.findById(submissionId);
+    if (!submission?.legalEntityId) return null;
+    const [agreement, identity] = await Promise.all([
+      this.deps.agreements.findBySubmissionId(submissionId),
+      this.deps.sellerIdentity?.factsFor(submission.legalEntityId) ?? Promise.resolve(null),
+    ]);
+    return {
+      agreement: agreement ? await this.withAcceptorName(agreement) : null,
+      // Without an identity reader nothing is checked, so nothing is held back.
+      sellerIdentityVerified: this.deps.sellerIdentity
+        ? identity !== null && sellerIdentityVerified(identity)
+        : true,
+    };
+  }
+
+  listForStaff(submissionIds: readonly string[]): Promise<ConsignmentAgreement[]> {
+    return this.deps.agreements.listBySubmissionIds(submissionIds);
+  }
+
+  async proposeTerms(
+    submissionId: string,
+    staffUserId: string,
+    terms: ConsignmentAgreementProposalInput,
+  ): Promise<Result<ConsignmentAgreement, SubmissionError>> {
+    const submission = await this.deps.submissions.findById(submissionId);
+    if (!submission?.legalEntityId) return err(new SubmissionError("Not found", 404));
+    // Terms are proposed for accepted work that is not yet catalogued.
+    if (!canTransition(submission.status, "convert")) {
+      return err(
+        new SubmissionError("Terms can be proposed once the work is accepted, before cataloguing"),
+      );
+    }
+    const existing = await this.deps.agreements.findBySubmissionId(submissionId);
+    if (existing?.acceptedAt) {
+      return err(new SubmissionError("The seller already accepted the agreement", 409));
+    }
+    const stored = await this.deps.agreements.propose({
+      submissionId,
+      legalEntityId: submission.legalEntityId,
+      termsVersion: CONSIGNMENT_AGREEMENT_TERMS_VERSION,
+      estimateLow: terms.estimateLow ?? null,
+      estimateHigh: terms.estimateHigh ?? null,
+      reservePrice: terms.reservePrice ?? null,
+      commissionPercent: terms.commissionPercent ?? null,
+      currency: terms.currency ?? "GBP",
+      proposedByUserId: staffUserId,
+      proposedAt: this.now(),
+    });
+    const recipients = await resolveLegalEntityNotificationRecipients(this.deps.recipients, {
+      legalEntityId: submission.legalEntityId,
+      fallbackUserId: submission.legalEntityId,
+      audience: "seller",
+    });
+    for (const recipientId of recipients) {
+      await this.deps.dispatcher.dispatch(recipientId, {
+        type: "consignment_agreement_reminder",
+        title: "Your consignment agreement is ready",
+        message: `Your specialist sent the estimate and terms for "${submission.title}". Accept the consignment agreement so we can catalogue it for sale.`,
+        submissionId,
+      });
+    }
+    return ok(stored);
   }
 
   listForSeller(legalEntityId: string): Promise<ConsignmentAgreement[]> {

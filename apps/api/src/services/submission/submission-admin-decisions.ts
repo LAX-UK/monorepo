@@ -1,7 +1,10 @@
 import {
   CONSIGNMENT_AGREEMENT_TERMS_VERSION,
+  SELLER_IDENTITY_REQUIRED_CODE,
+  SELLER_IDENTITY_REQUIRED_MESSAGE,
   canTransition,
   evaluateSubmissionQuality,
+  sellerIdentityVerified,
   transitionErrorMessage,
 } from "@auction/domain";
 import type { ItemSubmission, Lot } from "@auction/types";
@@ -58,6 +61,14 @@ export async function accept(
     return err(
       new SubmissionError("Submission does not meet minimum requirements for acceptance", 400),
     );
+  }
+  if (deps.sellerIdentity) {
+    const identity = await deps.sellerIdentity.factsFor(s.legalEntityId);
+    if (!identity || !sellerIdentityVerified(identity)) {
+      return err(
+        new SubmissionError(SELLER_IDENTITY_REQUIRED_MESSAGE, 409, SELLER_IDENTITY_REQUIRED_CODE),
+      );
+    }
   }
   const now = new Date();
   const updated = await deps.submissions.update(id, {

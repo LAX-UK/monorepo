@@ -37,3 +37,10 @@ export type ConsignmentAgreementView = {
   /** The person may accept it for this account (owner or admin, or their own profile). */
   canAccept: boolean;
 };
+
+/** What staff see about the seller's side of a submission. */
+export type StaffConsignmentView = {
+  agreement: ConsignmentAgreement | null;
+  /** The seller's identity (or organisation documents) is checked, so the work can be accepted. */
+  sellerIdentityVerified: boolean;
+};

@@ -183,6 +183,40 @@ export const acceptSubmissionBodySchema = z
 
 export type AcceptSubmissionBody = z.infer<typeof acceptSubmissionBodySchema>;
 
+/** Staff completing a proposal: the estimate and commission are what the seller accepts. */
+export const proposeConsignmentTermsBodySchema = z
+  .object({
+    estimateLow: decimalString,
+    estimateHigh: decimalString,
+    reservePrice: decimalString.optional(),
+    commissionPercent: commissionPercentString,
+  })
+  .superRefine((data, ctx) => {
+    if (moneyLt(data.estimateHigh, data.estimateLow)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "The high estimate must be at least the low estimate",
+        path: ["estimateHigh"],
+      });
+    }
+  });
+
+export type ProposeConsignmentTermsBody = z.infer<typeof proposeConsignmentTermsBodySchema>;
+
+/** Staff list: agreements for up to 100 submissions (comma-separated ids). */
+export const submissionIdsQuerySchema = z.object({
+  ids: z
+    .string()
+    .max(4000)
+    .transform((raw) =>
+      raw
+        .split(",")
+        .map((id) => id.trim())
+        .filter((id) => z.string().uuid().safeParse(id).success)
+        .slice(0, 100),
+    ),
+});
+
 /** The specialist's note to the seller when a submission needs changes. */
 export const requestSubmissionChangesBodySchema = z.object({
   note: z

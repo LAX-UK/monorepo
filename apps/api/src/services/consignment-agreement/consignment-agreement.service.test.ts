@@ -91,6 +91,21 @@ describe("consignment agreement reminders", () => {
     expect(t.dispatch).not.toHaveBeenCalled();
   });
 
+  it("never reminds a seller about a proposal without an estimate and terms", async () => {
+    const t = setup();
+    t.agreements.seed({
+      submissionId: "sub-1",
+      legalEntityId: "le-1",
+      proposedAt,
+      estimateLow: null,
+      estimateHigh: null,
+      commissionPercent: null,
+    });
+    t.at(8);
+    expect(await t.service.sendDueReminders()).toEqual({ reminded: 0 });
+    expect(t.dispatch).not.toHaveBeenCalled();
+  });
+
   it("is idempotent when two runs overlap", async () => {
     const t = setup();
     t.at(3);

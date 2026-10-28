@@ -26,6 +26,7 @@ function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmi
     lotLifecycleRecording: null,
     repoFactory: null,
     consignmentAgreements: null,
+    sellerIdentity: null,
     ...overrides,
   };
 }

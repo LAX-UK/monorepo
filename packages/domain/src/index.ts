@@ -78,6 +78,7 @@ export {
   AGREEMENT_REMINDER_DAYS,
   CONSIGNMENT_AGREEMENT_TERMS_VERSION,
   agreementAllowsCataloguing,
+  agreementTermsComplete,
   canAcceptConsignmentAgreement,
   decideAgreementAcceptance,
   dueAgreementReminder,
@@ -100,6 +101,12 @@ export {
   type ConsignmentChecklistRollupItem,
   type ConsignmentChecklistWaitingOn,
 } from "./consignment-checklist.js";
+export {
+  SELLER_IDENTITY_REQUIRED_CODE,
+  SELLER_IDENTITY_REQUIRED_MESSAGE,
+  sellerIdentityVerified,
+  type SellerIdentityFacts,
+} from "./seller-identity.js";
 export {
   goLivePayoutsRefusalMessage,
   sellersWithoutPayouts,

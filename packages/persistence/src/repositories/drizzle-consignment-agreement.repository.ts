@@ -2,7 +2,7 @@ import type { Database } from "@auction/db";
 import { consignmentAgreement, itemSubmission } from "@auction/db/schema";
 import type { AgreementReminderDay } from "@auction/domain";
 import type { ConsignmentAgreement } from "@auction/types";
-import { and, asc, eq, isNull, lte, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, lte, sql } from "drizzle-orm";
 import type {
   AwaitingConsignmentAgreement,
   ConsignmentAgreementProposalRow,
@@ -52,6 +52,15 @@ export class DrizzleConsignmentAgreementRepository implements IConsignmentAgreem
     return rows.map(mapAgreement);
   }
 
+  async listBySubmissionIds(submissionIds: readonly string[]): Promise<ConsignmentAgreement[]> {
+    if (submissionIds.length === 0) return [];
+    const rows = await this.db
+      .select()
+      .from(consignmentAgreement)
+      .where(inArray(consignmentAgreement.submissionId, [...submissionIds]));
+    return rows.map(mapAgreement);
+  }
+
   async listAwaiting(proposedBefore: Date, limit: number): Promise<AwaitingConsignmentAgreement[]> {
     const rows = await this.db
       .select({
@@ -70,6 +79,9 @@ export class DrizzleConsignmentAgreementRepository implements IConsignmentAgreem
           isNull(consignmentAgreement.acceptedAt),
           isNull(consignmentAgreement.reminderDay7SentAt),
           eq(itemSubmission.status, "approved"),
+          isNotNull(consignmentAgreement.estimateLow),
+          isNotNull(consignmentAgreement.estimateHigh),
+          isNotNull(consignmentAgreement.commissionPercent),
           lte(consignmentAgreement.proposedAt, proposedBefore),
         ),
       )

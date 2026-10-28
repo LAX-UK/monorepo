@@ -54,7 +54,8 @@ function mapSubmissionResult<T>(
   statusOk = 200,
 ): SubmissionHttpJson {
   if (result.isErr()) {
-    return { status: result.error.status, body: { error: result.error.message } };
+    const { status, message, code } = result.error;
+    return { status, body: { error: message, ...(code ? { code } : {}) } };
   }
   return { status: statusOk, body: { data: result.value } };
 }

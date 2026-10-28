@@ -1,4 +1,4 @@
-import type { AgreementReminderDay } from "@auction/domain";
+import { type AgreementReminderDay, agreementTermsComplete } from "@auction/domain";
 import type {
   AwaitingConsignmentAgreement,
   ConsignmentAgreementProposalRow,
@@ -26,10 +26,10 @@ export class InMemoryConsignmentAgreements implements IConsignmentAgreementRepos
     const row: Stored = {
       id: `agr-${agreement.submissionId}`,
       termsVersion: "conditions-of-business-part-c-v1",
-      estimateLow: null,
-      estimateHigh: null,
+      estimateLow: "8000.00",
+      estimateHigh: "12000.00",
       reservePrice: null,
-      commissionPercent: null,
+      commissionPercent: "15.00",
       currency: "GBP",
       proposedAt: new Date("2026-10-01T09:00:00Z"),
       acceptedAt: null,
@@ -64,12 +64,20 @@ export class InMemoryConsignmentAgreements implements IConsignmentAgreementRepos
       .map((row) => this.present(row));
   }
 
+  async listBySubmissionIds(submissionIds: readonly string[]) {
+    return submissionIds
+      .map((id) => this.rows.get(id))
+      .filter((row): row is Stored => row !== undefined)
+      .map((row) => this.present(row));
+  }
+
   async listAwaiting(proposedBefore: Date, limit: number): Promise<AwaitingConsignmentAgreement[]> {
     return [...this.rows.values()]
       .filter(
         (row) =>
           !row.acceptedAt &&
           !row.reminderDay7SentAt &&
+          agreementTermsComplete(row) &&
           row.proposedAt.getTime() <= proposedBefore.getTime(),
       )
       .slice(0, limit)
