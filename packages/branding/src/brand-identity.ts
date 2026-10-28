@@ -16,14 +16,14 @@ export const BRAND_COLORS = {
 } as const;
 
 /**
- * Shared surfaces built from the palette. Paper is the warm cream behind editorial bands on lax.art
- * and Shop; `paperOnDark` is its dark-mode equivalent. CSS: `--brand-paper` and
+ * Shared surfaces. Paper is the soft warm off-white behind artwork and editorial bands on lax.art
+ * and Shop, lighter than the palette's light cream; `paperOnDark` is its dark-mode equivalent. CSS: `--brand-paper` and
  * `--brand-paper-on-dark` in `brand-primitives.css`, which each product maps to
  * `--color-surface-paper`.
  */
 export const BRAND_SURFACES = {
-  paper: BRAND_COLORS.lightCream,
-  paperOnDark: "#24221c",
+  paper: "#f6f4ee",
+  paperOnDark: "#1a1b1a",
 } as const;
 
 export const BRAND_FONTS = {

@@ -106,9 +106,8 @@ describe("BRAND_SURFACES", () => {
     "utf8",
   );
 
-  it("makes paper the palette's light cream, as the CSS primitive does", () => {
-    expect(BRAND_SURFACES.paper).toBe(BRAND_COLORS.lightCream);
-    expect(primitives).toContain("--brand-paper: var(--brand-light-cream);");
+  it("mirrors the light paper in the CSS primitives", () => {
+    expect(primitives).toContain(`--brand-paper: ${BRAND_SURFACES.paper};`);
   });
 
   it("mirrors the dark-mode paper in the CSS primitives", () => {
@@ -120,5 +119,8 @@ describe("BRAND_SURFACES", () => {
     expect(contrast(BRAND_COLORS.lightCream, BRAND_SURFACES.paperOnDark)).toBeGreaterThanOrEqual(
       4.5,
     );
+    // Body and secondary text in both products: #474747 on light paper, #c9c5bc on dark paper.
+    expect(contrast("#474747", BRAND_SURFACES.paper)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast("#c9c5bc", BRAND_SURFACES.paperOnDark)).toBeGreaterThanOrEqual(4.5);
   });
 });

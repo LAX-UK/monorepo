@@ -10,11 +10,11 @@
   --brand-midnight-on-dark: #a5b7e9;
   --brand-light-gray: #b8b9c0;
   --brand-light-cream: #f2f1df;
-  /* Warm paper: the cream surface behind editorial bands on lax.art and Shop, and its dark-mode
-     equivalent, a warm near-black that keeps the band's character without a light block on a
-     dark page (BRAND_SURFACES in brand-identity.ts). Products map it to --color-surface-paper. */
-  --brand-paper: var(--brand-light-cream);
-  --brand-paper-on-dark: #24221c;
+  /* Warm paper: the soft off-white behind artwork and editorial bands on lax.art and Shop, and its
+     dark-mode equivalent, a quiet near-black (BRAND_SURFACES in brand-identity.ts). Products map
+     it to --color-surface-paper. */
+  --brand-paper: #f6f4ee;
+  --brand-paper-on-dark: #1a1b1a;
   --brand-accent-gold: #d4af37;
   --brand-ink: #191919;
   /* Status text and glyphs on the warning and danger tints (status pills), 4.5:1 or more on the
