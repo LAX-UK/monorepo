@@ -18,6 +18,7 @@ import {
   TooltipTrigger,
 } from "@auction/ui/components/tooltip";
 import type * as React from "react";
+import { type StaffPermission, useStaffCan } from "../access/staff-access.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { ShortcutKeys } from "./input.js";
 
@@ -74,6 +75,7 @@ export function StaffMenuItem({
   disabled,
   children,
   asChild,
+  requires,
   ...props
 }: React.ComponentPropsWithoutRef<typeof DropdownMenuItem> & {
   tone?: "default" | "danger";
@@ -81,7 +83,11 @@ export function StaffMenuItem({
   shortcut?: string;
   /** Disables the item and says why, on a line under its label. */
   disabledReason?: string;
+  /** What the action needs; left out of the menu for people who may never take it. */
+  requires?: StaffPermission;
 }) {
+  const permitted = useStaffCan(requires);
+  if (!permitted) return null;
   const extras = !asChild && Boolean(shortcut || disabledReason);
   return (
     <DropdownMenuItem

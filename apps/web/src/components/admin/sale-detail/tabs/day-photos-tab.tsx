@@ -1,10 +1,10 @@
 "use client";
 
-import { CsvExportMenu } from "@/components/admin/staff/csv-export-menu";
 import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import { MediaImage } from "@/components/ui/media-image";
 import { downloadSaleMediaCsv, matchesSaleMediaSearch } from "@/lib/admin/exports/sale-files-csv";
 import { notify } from "@/lib/ui/notify";
+import { CsvExportMenu } from "@auction/staff-ui";
 import {
   EmptyState,
   Field,

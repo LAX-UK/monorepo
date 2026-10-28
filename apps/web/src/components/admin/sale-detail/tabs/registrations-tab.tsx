@@ -4,7 +4,6 @@ import { ExpectedGuestsPanel } from "@/components/admin/expected-guests-panel";
 import { RelatedRecordsSection } from "@/components/admin/people/related-records-section";
 import { useSaleRegistrationActions } from "@/components/admin/sale-detail/tabs/use-sale-registration-actions";
 import { SaleroomCheckInPanel } from "@/components/admin/saleroom-check-in-panel";
-import { CsvExportMenu } from "@/components/admin/staff/csv-export-menu";
 import { downloadSaleRegistrationsCsv } from "@/lib/admin/export-sale-registrations-csv";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminExpectedGuestsSummary } from "@/lib/data/http/admin-expected-guests.server";
@@ -18,6 +17,7 @@ import {
   registrationCheckInStatus,
   saleRegistrationsFilters,
 } from "@/lib/data/view-models/sale-registrations-tab.vm";
+import { CsvExportMenu } from "@auction/staff-ui";
 import {
   type DataColumn,
   DataTableToolbar,

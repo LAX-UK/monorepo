@@ -1,11 +1,11 @@
 "use client";
 
 import { SaleDocumentsPanel } from "@/components/admin/sale-form/sale-documents-panel";
-import { CsvExportMenu } from "@/components/admin/staff/csv-export-menu";
 import {
   downloadSaleDocumentsCsv,
   matchesSaleDocumentSearch,
 } from "@/lib/admin/exports/sale-files-csv";
+import { CsvExportMenu } from "@auction/staff-ui";
 import { TableSearch } from "@auction/staff-ui";
 import type { EntityDocument } from "@auction/types";
 import { useState } from "react";

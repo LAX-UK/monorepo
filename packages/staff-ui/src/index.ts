@@ -229,6 +229,21 @@ export {
 export { RelatedRecordsSection } from "./data/related-records-section.js";
 export type { RelatedRecordsSectionProps } from "./data/related-records-section.js";
 
+// Access
+export {
+  Permitted,
+  StaffAccessProvider,
+  usePermittedItems,
+  useStaffAccess,
+  useStaffCan,
+  useStaffPageAccess,
+} from "./access/staff-access.js";
+export type { StaffAccess, StaffPermission } from "./access/staff-access.js";
+export { CsvExportMenu } from "./data/csv-export-menu.js";
+export type { CsvExportScope } from "./data/csv-export-menu.js";
+export { StaffChip } from "./display/staff-chip.js";
+export type { StaffChipProps } from "./display/staff-chip.js";
+
 // Page templates
 export { ListPage } from "./templates/list-page.js";
 export type { ListPageAccess, ListPageProps, ListPageTable } from "./templates/list-page.js";

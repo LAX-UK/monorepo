@@ -10,6 +10,7 @@ import { Slot, Slottable } from "@radix-ui/react-slot";
 import { type VariantProps, cva } from "class-variance-authority";
 import { LoaderCircle } from "lucide-react";
 import * as React from "react";
+import { type StaffPermission, useStaffCan } from "../access/staff-access.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 
 /**
@@ -89,6 +90,11 @@ export type StaffButtonProps = React.ButtonHTMLAttributes<HTMLButtonElement> &
      * focus, so keyboard and screen reader users can find out what blocks it.
      */
     disabledReason?: string;
+    /**
+     * What the action needs. People who may never take it do not see the button at all; the
+     * same rule guards the route behind it.
+     */
+    requires?: StaffPermission;
   };
 
 export const StaffButton = React.forwardRef<HTMLButtonElement, StaffButtonProps>(
@@ -102,12 +108,15 @@ export const StaffButton = React.forwardRef<HTMLButtonElement, StaffButtonProps>
       icon,
       disabled,
       disabledReason,
+      requires,
       children,
       type,
       ...props
     },
     ref,
   ) => {
+    const permitted = useStaffCan(requires);
+    if (!permitted) return null;
     const Comp = asChild ? Slot : "button";
     const leading = loading ? <LoaderCircle aria-hidden className="animate-spin" /> : icon;
     const explained = Boolean(disabledReason) && !loading;
