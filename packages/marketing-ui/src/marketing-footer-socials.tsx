@@ -8,6 +8,7 @@ import type { ReactNode, SVGProps } from "react";
 import {
   MarketingInstagramIcon,
   MarketingLinkedInIcon,
+  MarketingTiktokIcon,
   MarketingYoutubeIcon,
 } from "./marketing-social-icons.js";
 
@@ -16,6 +17,7 @@ type MarketingSocialIconProps = SVGProps<SVGSVGElement>;
 const SOCIAL_ICON: Record<LaxSocialNetwork, (props: MarketingSocialIconProps) => ReactNode> = {
   youtube: (props) => <MarketingYoutubeIcon {...props} />,
   instagram: (props) => <MarketingInstagramIcon {...props} />,
+  tiktok: (props) => <MarketingTiktokIcon {...props} />,
   linkedin: (props) => <MarketingLinkedInIcon {...props} />,
 };
 

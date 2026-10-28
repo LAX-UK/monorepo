@@ -54,7 +54,7 @@ export function artSiteJsonLd(siteUrl: URL): JsonLd[] {
   const url = siteUrl.origin;
   const logo = absolute(siteUrl, "/brand/lax-logo.svg");
   const operator = legalEntityFor("art");
-  // Only London Art Exchange's own profiles; none are listed until they are confirmed.
+  // Only London Art Exchange's own profiles, never the auction company's.
   const sameAs = socialProfilesFor("art").map((profile) => profile.href);
   const shared = {
     name: ART_SITE_NAME,

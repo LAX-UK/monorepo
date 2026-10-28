@@ -1,19 +1,20 @@
 import { type LaxOperatedProduct, type LegalEntityId, legalEntityFor } from "./legal-entity.js";
 
-export const LAX_SOCIAL_NETWORKS = ["youtube", "instagram", "linkedin"] as const;
+export const LAX_SOCIAL_NETWORKS = ["youtube", "instagram", "tiktok", "linkedin"] as const;
 export type LaxSocialNetwork = (typeof LAX_SOCIAL_NETWORKS)[number];
 
 const NETWORK_NAMES: Record<LaxSocialNetwork, string> = {
   youtube: "YouTube",
   instagram: "Instagram",
+  tiktok: "TikTok",
   linkedin: "LinkedIn",
 };
 
 /**
  * Each company's own social profiles. A profile belongs to the company that runs it, so a product
  * links only to its operator's accounts: footers and the structured data `sameAs` never tie one
- * company to the other's profiles. London Art Exchange's handles (lax.art and LAX Shop) are added
- * here once confirmed; until then those products show none.
+ * company to the other's profiles. London Art Exchange runs lax.art
+ * and LAX Shop, so both show its profiles.
  */
 const SOCIAL_PROFILES: Readonly<
   Record<LegalEntityId, Readonly<Partial<Record<LaxSocialNetwork, string>>>>
@@ -23,7 +24,11 @@ const SOCIAL_PROFILES: Readonly<
     instagram: "https://www.instagram.com/lax.bid",
     linkedin: "https://www.linkedin.com/company/london-auction-xchange/",
   },
-  "london-art-exchange": {},
+  "london-art-exchange": {
+    youtube: "https://www.youtube.com/@LondonArtExchange",
+    instagram: "https://www.instagram.com/thelondonartexchange/",
+    tiktok: "https://www.tiktok.com/@londonartexchange",
+  },
 };
 
 export type SocialProfileLink = {

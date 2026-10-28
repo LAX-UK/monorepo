@@ -22,10 +22,27 @@ describe("socialProfilesFor", () => {
     ]);
   });
 
-  it("never links lax.art or LAX Shop to the auction company's profiles", () => {
-    expect(socialProfilesFor("art")).toEqual([]);
-    expect(socialProfilesFor("shop")).toEqual([]);
-    expect(hasSocialProfiles("art")).toBe(false);
+  it("gives lax.art and LAX Shop London Art Exchange's profiles, never the auction company's", () => {
+    const londonArtExchange = [
+      {
+        network: "youtube",
+        href: "https://www.youtube.com/@LondonArtExchange",
+        label: "London Art Exchange on YouTube",
+      },
+      {
+        network: "instagram",
+        href: "https://www.instagram.com/thelondonartexchange/",
+        label: "London Art Exchange on Instagram",
+      },
+      {
+        network: "tiktok",
+        href: "https://www.tiktok.com/@londonartexchange",
+        label: "London Art Exchange on TikTok",
+      },
+    ];
+    expect(socialProfilesFor("art")).toEqual(londonArtExchange);
+    expect(socialProfilesFor("shop")).toEqual(londonArtExchange);
+    expect(hasSocialProfiles("art")).toBe(true);
     expect(hasSocialProfiles("bid")).toBe(true);
   });
 });
