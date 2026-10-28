@@ -27,6 +27,7 @@ import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
 import { notFound } from "../errors/shop-api-error.js";
 import { readClientCommerce } from "./admin-client-commerce.js";
 import { artworkStateSql } from "./artwork-visibility-sql.js";
+import { printedEditionNumber } from "./printed-edition-number.js";
 import { listArtistSalesForArtworkIds } from "./shop-artist-sales-query.js";
 
 const CLIENT_KINDS = ["person", "gallery"] as const;
@@ -61,7 +62,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           artworkId: shopArtwork.id,
           artworkSlug: shopArtwork.slug,
           artworkTitle: shopArtwork.title,
-          editionNumber: shopEdition.editionNumber,
+          editionNumber: printedEditionNumber,
           listingStatus: shopEdition.listingStatus,
           custodyStatus: shopEdition.custodyStatus,
         })
@@ -243,7 +244,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
             editionId: shopEdition.id,
             artworkId: shopEdition.artworkId,
             artworkTitle: shopArtwork.title,
-            editionNumber: shopEdition.editionNumber,
+            editionNumber: printedEditionNumber,
             listingStatus: shopEdition.listingStatus,
             ownerPartyId: shopEdition.ownerPartyId,
             ownerDisplayName: shopParty.displayName,

@@ -332,7 +332,7 @@ describe("printLabel", () => {
 });
 
 describe("linked listings", () => {
-  const main = { type: "lax_standard" as const, artistId: "a1", imageKey: "img-1" };
+  const main = { role: "main" as const, artistId: "a1", imageKey: "img-1" };
   it("accepts a main run by the same artist with the same image", () => {
     expect(() =>
       assertLinkableToMainRun({ artistId: "a1", imageKey: "img-1" }, main),
@@ -341,7 +341,7 @@ describe("linked listings", () => {
   it.each([
     [
       { artistId: "a1", imageKey: "img-1" },
-      { ...main, type: "proof" as const },
+      { ...main, role: "proof" as const },
       "linked to a proof",
     ],
     [{ artistId: "a2", imageKey: "img-1" }, main, "same artist"],

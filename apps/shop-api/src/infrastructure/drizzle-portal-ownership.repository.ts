@@ -26,6 +26,7 @@ import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
 import { ShopApiError, notFound } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation } from "../lib/pg-errors.js";
 import { resolvePortalPartyIds } from "./portal-party-ids.js";
+import { printedEditionNumber } from "./printed-edition-number.js";
 import { createShopDocumentDownloadUrl } from "./shop-document-download-url.js";
 import type { ShopDocumentStorageConfig } from "./shop-document-download-url.js";
 
@@ -58,7 +59,7 @@ export function createDrizzlePortalOwnershipRepository(
           artworkId: shopArtwork.id,
           artworkSlug: shopArtwork.slug,
           artworkTitle: shopArtwork.title,
-          editionNumber: shopEdition.editionNumber,
+          editionNumber: printedEditionNumber,
           listingStatus: shopEdition.listingStatus,
           custodyStatus: shopEdition.custodyStatus,
           salesChannel: shopArtwork.salesChannel,
@@ -402,7 +403,7 @@ export function createDrizzlePortalOwnershipRepository(
           artworkId: shopArtwork.id,
           artworkSlug: shopArtwork.slug,
           artworkTitle: shopArtwork.title,
-          editionNumber: shopEdition.editionNumber,
+          editionNumber: printedEditionNumber,
           listingStatus: shopEdition.listingStatus,
           custodyStatus: shopEdition.custodyStatus,
           salesChannel: shopArtwork.salesChannel,

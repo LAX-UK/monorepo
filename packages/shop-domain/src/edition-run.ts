@@ -348,9 +348,9 @@ export function printLabel(print: PrintIdentity, run: EditionRunSpec): string {
 /** Rule 10: a proof or companion links to a main run by the same artist and of the same image. */
 export function assertLinkableToMainRun(
   listing: { artistId: string; imageKey: string | null },
-  main: { type: EditionRunSpec["type"]; artistId: string; imageKey: string | null },
+  main: { role: "main" | "proof" | "companion"; artistId: string; imageKey: string | null },
 ): void {
-  if (main.type === "proof") {
+  if (main.role === "proof") {
     throw new ShopDomainError("A listing cannot be linked to a proof");
   }
   if (main.artistId !== listing.artistId) {

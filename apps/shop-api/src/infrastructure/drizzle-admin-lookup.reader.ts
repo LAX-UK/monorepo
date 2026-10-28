@@ -10,6 +10,7 @@ import {
 import { and, asc, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import type { AdminLookupReader } from "../application/ports/admin-readers.js";
 import { containsPattern } from "./drizzle-editorial-search.reader.js";
+import { printedEditionNumber } from "./printed-edition-number.js";
 
 /**
  * Small, name-first searches behind the staff pickers. Each returns one bounded page of the best
@@ -99,7 +100,7 @@ export function createDrizzleAdminLookupReader(db: Database): AdminLookupReader 
           artworkId: shopArtwork.id,
           artworkTitle: shopArtwork.title,
           artistName: shopParty.displayName,
-          editionNumber: shopEdition.editionNumber,
+          editionNumber: printedEditionNumber,
           listingStatus: shopEdition.listingStatus,
         })
         .from(shopEdition)

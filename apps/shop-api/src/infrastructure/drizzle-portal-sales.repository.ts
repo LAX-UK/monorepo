@@ -12,6 +12,7 @@ import { desc, eq, inArray } from "drizzle-orm";
 import type { PortalSalesReader } from "../application/ports/portal-ownership.reader.js";
 import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
 import { resolvePortalPartyIds } from "./portal-party-ids.js";
+import { printedEditionNumber } from "./printed-edition-number.js";
 
 export function createDrizzlePortalSalesRepository(db: Database): PortalSalesReader {
   return {
@@ -85,7 +86,7 @@ export function createDrizzlePortalSalesRepository(db: Database): PortalSalesRea
             artworkId: shopArtwork.id,
             artworkSlug: shopArtwork.slug,
             artworkTitle: shopArtwork.title,
-            editionNumber: shopEdition.editionNumber,
+            editionNumber: printedEditionNumber,
             recordedAt: shopThirdPartySale.recordedAt,
           })
           .from(shopThirdPartySale)

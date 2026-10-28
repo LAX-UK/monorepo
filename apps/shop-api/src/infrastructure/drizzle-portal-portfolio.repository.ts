@@ -25,6 +25,7 @@ import type {
 } from "../application/ports/portal-portfolio.reader.js";
 import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
 import { resolvePortalPartyIds } from "./portal-party-ids.js";
+import { printedEditionNumber } from "./printed-edition-number.js";
 
 const ORIGINAL_SALE_STATUSES = ["deposit_due", "invoiced", "paid", "assigned"] as const;
 
@@ -64,7 +65,7 @@ export function createDrizzlePortalPortfolioRepository(db: Database): PortalPort
       db
         .select({
           editionId: shopEdition.id,
-          editionNumber: shopEdition.editionNumber,
+          editionNumber: printedEditionNumber,
           listingStatus: shopEdition.listingStatus,
           createdAt: shopEdition.createdAt,
           artworkId: shopEdition.artworkId,
