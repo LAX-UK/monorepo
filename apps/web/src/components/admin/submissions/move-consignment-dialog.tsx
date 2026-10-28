@@ -88,6 +88,7 @@ export function MoveConsignmentDialog({
 
   const options = load.state === "ready" ? load.options : null;
   const target = options?.options.find((o) => o.legalEntityId === chosen) ?? null;
+  const nothingToMove = load.state === "failed" || options?.movable === false;
   const agreementNotice = options
     ? CONSIGNMENT_MOVE_AGREEMENT_NOTICE[options.agreementEffect]
     : null;
@@ -119,11 +120,13 @@ export function MoveConsignmentDialog({
       footer={
         <>
           <StaffButton variant="secondary" disabled={pending} onClick={() => onOpenChange(false)}>
-            Cancel
+            {nothingToMove ? "Close" : "Cancel"}
           </StaffButton>
-          <StaffButton variant="primary" loading={pending} disabled={!target} onClick={move}>
-            {target ? `Move to ${target.displayName}` : "Move"}
-          </StaffButton>
+          {nothingToMove ? null : (
+            <StaffButton variant="primary" loading={pending} disabled={!target} onClick={move}>
+              {target ? `Move to ${target.displayName}` : "Move"}
+            </StaffButton>
+          )}
         </>
       }
     >
@@ -159,7 +162,7 @@ export function MoveConsignmentDialog({
                       key={option.legalEntityId}
                       htmlFor={id}
                       label={option.displayName}
-                      description={`The seller is ${roleLabel(option.role).toLowerCase()} there`}
+                      description={`Their role there: ${roleLabel(option.role)}`}
                       control={<StaffRadio id={id} value={option.legalEntityId} />}
                     />
                   );

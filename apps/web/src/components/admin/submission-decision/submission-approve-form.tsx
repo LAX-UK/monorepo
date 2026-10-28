@@ -27,7 +27,7 @@ type Props = {
   /** Reports whether anything is typed, so the page can ask before it is lost. */
   onDirtyChange: (dirty: boolean) => void;
   /** Why the work cannot be accepted yet, with where staff can follow it up. */
-  blocked?: { title: string; body: string; actions: ReactNode } | null;
+  blocked?: { title: string; body: ReactNode; actions: ReactNode } | null;
 };
 
 /**

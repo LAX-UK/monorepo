@@ -57,7 +57,7 @@ describe("UnsoldChoiceStaffPanel", () => {
     vi.mocked(adminDecideUnsoldChoiceAction).mockResolvedValue({ ok: true });
     render(<UnsoldChoiceStaffPanel submissionId="s1" unsold={unsold} />);
     expect(screen.getByText("Have it returned")).toBeTruthy();
-    expect(screen.getByText("£3,000")).toBeTruthy();
+    expect(screen.getByText("£5,000")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Confirm and tell the seller" }));
     await waitFor(() =>
       expect(adminDecideUnsoldChoiceAction).toHaveBeenCalledWith("s1", {
@@ -86,9 +86,6 @@ describe("UnsoldChoiceStaffPanel", () => {
     );
     expect(screen.getByText("Confirmed: Have it returned")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "Confirm and tell the seller" })).toBeNull();
-    expect(screen.getByRole("link", { name: "Open lot" }).getAttribute("href")).toBe(
-      "/admin/lots/lot-1",
-    );
   });
 });
 
@@ -98,24 +95,20 @@ describe("RemindSellerButton", () => {
       ok: true,
       data: { sent: true },
     });
-    render(<RemindSellerButton submissionId="s1" view={{ canSend: true, status: null }} />);
+    render(<RemindSellerButton submissionId="s1" canSend />);
     fireEvent.click(screen.getByRole("button", { name: "Remind the seller" }));
     await waitFor(() => expect(adminRemindSellerIdentityAction).toHaveBeenCalledWith("s1"));
   });
 
-  it("is disabled until the next reminder may go out, and says when the last went", () => {
+  it("is disabled until the next reminder may go out, pointing to when the last went", () => {
     render(
-      <RemindSellerButton
-        submissionId="s1"
-        view={{
-          canSend: false,
-          status: "Last reminded 28 Oct, 09:00. You can send another from 29 Oct, 09:00.",
-        }}
-      />,
+      <>
+        <p id="last">Last reminded 28 Oct, 09:00.</p>
+        <RemindSellerButton submissionId="s1" canSend={false} describedBy="last" />
+      </>,
     );
     const button = screen.getByRole("button", { name: "Remind the seller" }) as HTMLButtonElement;
     expect(button.disabled).toBe(true);
-    expect(button.getAttribute("aria-describedby")).toBeTruthy();
-    expect(screen.getByText(/You can send another from 29 Oct/)).toBeTruthy();
+    expect(button.getAttribute("aria-describedby")).toBe("last");
   });
 });

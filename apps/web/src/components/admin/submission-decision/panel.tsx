@@ -108,13 +108,25 @@ export function AdminSubmissionDecisionPanel({
     [],
   );
   const agreementAccepted = Boolean(agreement?.acceptedAt);
+  const reminder = identityReminderView(identityReminder, new Date());
+  const reminderStatusId = `${submissionId}-identity-reminder`;
   const acceptBlocked = sellerIdentityVerified
     ? null
     : {
         title: "The seller hasn't verified their identity yet",
-        body: "A specialist can accept the work once they have. Meanwhile you can ask for changes or reject it.",
+        body: (
+          <>
+            A specialist can accept the work once they have. Meanwhile you can ask for changes or
+            reject it.
+            {reminder.status ? (
+              <span id={reminderStatusId} className="mt-1 block">
+                {reminder.status}
+              </span>
+            ) : null}
+          </>
+        ),
         actions: (
-          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-start">
+          <div className="flex flex-wrap items-center gap-2">
             {sellerLegalEntityId ? (
               <StaffButton asChild size="sm" variant="ghost">
                 <Link href={`/admin/legal-entities/${encodeURIComponent(sellerLegalEntityId)}`}>
@@ -124,7 +136,8 @@ export function AdminSubmissionDecisionPanel({
             ) : null}
             <RemindSellerButton
               submissionId={submissionId}
-              view={identityReminderView(identityReminder, new Date())}
+              canSend={reminder.canSend}
+              {...(reminder.status ? { describedBy: reminderStatusId } : {})}
             />
           </div>
         ),

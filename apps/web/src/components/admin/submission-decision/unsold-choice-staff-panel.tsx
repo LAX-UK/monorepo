@@ -31,7 +31,6 @@ import {
 } from "@auction/staff-ui";
 import type { StaffAfterSaleView } from "@auction/types";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { useForm } from "react-hook-form";
@@ -47,7 +46,8 @@ type Props = {
 
 const floorSchema = z.object({ floor: z.string() });
 
-function facts(unsold: Unsold): KeyValueItem[] {
+/** What the panel states; the floor is listed only once it can no longer be edited. */
+function facts(unsold: Unsold, withFloor: boolean): KeyValueItem[] {
   const { choice, currency } = unsold;
   const money = (value: string | null) => (value ? sellerMoney(value, currency) : null);
   return [
@@ -70,11 +70,15 @@ function facts(unsold: Unsold): KeyValueItem[] {
       value: money(unsold.currentReserve) ?? "No reserve",
       numeric: true,
     },
-    {
-      label: "Lowest reserve for a relist",
-      value: money(unsold.reserveFloor) ?? "Not set",
-      numeric: true,
-    },
+    ...(withFloor
+      ? [
+          {
+            label: "Lowest reserve for a relist",
+            value: money(unsold.reserveFloor) ?? "Not set",
+            numeric: true,
+          },
+        ]
+      : []),
   ];
 }
 
@@ -115,6 +119,7 @@ function FloorForm({ submissionId, floor }: { submissionId: string; floor: strin
         formId={RELIST_FLOOR_FORM_ID}
         name="floor"
         label="Lowest reserve for a relist"
+        className="max-w-md"
         description="The seller cannot ask for a relist reserve below this. Leave empty for no floor."
         optional
         disabled={pending}
@@ -184,6 +189,7 @@ function DecisionForm({ submissionId, unsold }: Props) {
           {...fieldProps}
           name="reserve"
           label="New reserve"
+          className="max-w-md"
           description="Leave empty to keep the reserve it ended with."
           optional
           disabled={pending}
@@ -223,16 +229,11 @@ export function UnsoldChoiceStaffPanel({ submissionId, unsold }: Props) {
       description="The lot did not sell. The seller chooses what happens next and you confirm it."
       bodyClassName="flex flex-col gap-5"
     >
-      <KeyValueList items={facts(unsold)} />
+      <KeyValueList items={facts(unsold, Boolean(confirmed))} />
       {confirmed?.decidedChoice ? (
         <Notice
           tone="success"
           title={`Confirmed: ${unsoldChoiceSummary(confirmed.decidedChoice, confirmed.decidedReserve, confirmed.currency)}`}
-          actions={
-            <StaffButton asChild size="sm" variant="secondary">
-              <Link href={`/admin/lots/${unsold.lotId}`}>Open lot</Link>
-            </StaffButton>
-          }
         >
           {confirmed.staffNote
             ? `Note to the seller: ${confirmed.staffNote}`
@@ -240,8 +241,12 @@ export function UnsoldChoiceStaffPanel({ submissionId, unsold }: Props) {
         </Notice>
       ) : (
         <>
-          <FloorForm submissionId={submissionId} floor={unsold.reserveFloor} />
-          <DecisionForm submissionId={submissionId} unsold={unsold} />
+          <div className="border-t border-staff-line-subtle pt-5">
+            <FloorForm submissionId={submissionId} floor={unsold.reserveFloor} />
+          </div>
+          <div className="border-t border-staff-line-subtle pt-5">
+            <DecisionForm submissionId={submissionId} unsold={unsold} />
+          </div>
         </>
       )}
     </Section>
