@@ -46,7 +46,7 @@ async function forwardStaffGrantFromServerAction(authAgeSeconds: number) {
     adminApi: { forward },
     clock: { nowMs: () => NOW_MS },
     sessionId: "session-1",
-    bffPath: "/api/admin/staff/grants",
+    bffPath: "/api/admin/refunds",
     method: "POST",
     origin: config.publicOrigin,
     csrfHeader: null,

@@ -23,38 +23,6 @@ export async function decideSaleAuthorityRequest(input: {
   });
 }
 
-/** Gives someone a LAX Admin role: a new person by the email on their LAX login, or a member. */
-export async function grantStaffRole(
-  input: ({ email: string } | { identitySubjectId: string }) & {
-    role: string;
-    idempotencyKey?: string;
-  },
-) {
-  return forwardAdminJsonMutation({
-    bffPath: "staff/grants",
-    method: "POST",
-    jsonBody:
-      "email" in input
-        ? { email: input.email, role: input.role }
-        : { identitySubjectId: input.identitySubjectId, role: input.role },
-    ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
-  });
-}
-
-/** Removes someone's LAX Admin access, with the reason kept in the audit log. */
-export async function revokeStaffRole(input: {
-  identitySubjectId: string;
-  reason: string;
-  idempotencyKey?: string;
-}) {
-  return forwardAdminJsonMutation({
-    bffPath: `staff/grants/${encodeURIComponent(input.identitySubjectId)}`,
-    method: "DELETE",
-    jsonBody: { reason: input.reason },
-    ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
-  });
-}
-
 export async function grantArtworkSaleAuthority(input: {
   artworkId: string;
   ownerPartyId: string;

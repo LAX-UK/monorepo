@@ -1,7 +1,5 @@
 "use client";
 
-import { AddStaffDialog } from "@/components/staff/add-staff-dialog.client";
-import { useStaffActions } from "@/components/staff/use-staff-actions.client";
 import { filterChip, useWorkList } from "@/components/use-work-list.client";
 import { createSavedViewsPort } from "@/lib/saved-views-port.client";
 import { staffList, staffTeamViews } from "@/server/domain/people-lists.vm";
@@ -9,9 +7,11 @@ import {
   STAFF_ROLE_OPTIONS,
   type StaffMemberRow,
   staffMemberName,
-  staffRoleAllows,
+  staffRoleChips,
+  staffRoleNames,
+  staffRolesAllow,
 } from "@/server/domain/staff-directory.vm";
-import { staffRoleLabel } from "@/server/domain/staff-role-label.vm";
+import { staffRoleLabel, staffRolesLabel } from "@/server/domain/staff-role-label.vm";
 import { staffStatus } from "@/server/domain/staff-status";
 import type { WorkListState } from "@/server/domain/work-list.vm";
 import type { AdminStaffMemberList } from "@auction/shop-contracts";
@@ -21,16 +21,17 @@ import {
   DetailPanel,
   FilterSheet,
   ListPage,
-  OverflowMenu,
+  PanelSection,
   PersonCell,
   StaffButton,
+  StaffChip,
   StaffDate,
   StatusBadge,
   formatStaffDateTime,
   useSavedViews,
 } from "@auction/staff-ui";
-import { PanelRight, UserPlus } from "@auction/staff-ui/icons";
-import { useMemo, useState } from "react";
+import { ExternalLink, PanelRight } from "@auction/staff-ui/icons";
+import { useMemo } from "react";
 
 const STAFF_LIST_KEY = "lax-admin.staff";
 
@@ -58,7 +59,7 @@ function filterQuery(state: StaffState): string {
 const VIEW_EMPTY: Record<string, { title: string; description: string }> = {
   all: {
     title: "No staff yet",
-    description: "Add the first person with a LAX login to give them access to LAX Admin.",
+    description: "People given a LAX Admin role in Bid admin appear here.",
   },
   active: {
     title: "No one can sign in",
@@ -66,15 +67,36 @@ const VIEW_EMPTY: Record<string, { title: string; description: string }> = {
   },
   disabled: {
     title: "No one has had access removed",
-    description: "When someone's access is removed they appear here, and can be given it again.",
+    description: "When someone's last LAX Admin role ends they appear here.",
   },
 };
 
+/** Managing staff needs the LAX Admin settings capability, which only Administrators hold. */
+const MANAGE_STAFF = "settings.write";
+
+/** A link to manage staff in Bid admin, shown only to people who may manage staff. */
+function ManageInBidAdmin({ href, size }: { href: string | undefined; size?: "sm" }) {
+  if (!href) return null;
+  return (
+    <StaffButton
+      asChild
+      variant="secondary"
+      {...(size ? { size } : {})}
+      requires={MANAGE_STAFF}
+      icon={<ExternalLink aria-hidden />}
+    >
+      <a href={href} target="_blank" rel="noreferrer">
+        Manage in Bid admin
+      </a>
+    </StaffButton>
+  );
+}
+
 /**
  * Who can sign in to LAX Admin, on the staff list template: views by access with counts, search
- * by name or email, a role filter (and team views by role), A to Z on the server, 50 a
- * page, and a record panel linked from the URL (`?staff=`). Every row's "…" menu changes the
- * role, removes access with a reason or gives it back, each confirmed first.
+ * by name or email, a role filter (and team views by role), A to Z on the server, 50 a page, and
+ * a record panel linked from the URL (`?staff=`) with each role and its period. Roles are given
+ * and removed in Bid admin, so this list only reads them.
  */
 export function StaffList({
   state,
@@ -96,8 +118,6 @@ export function StaffList({
     noun: { one: "staff member", other: "staff members" },
     search: { label: "Search staff", placeholder: "Search by name or email" },
   });
-  const staff = useStaffActions({ currentSubject });
-  const [adding, setAdding] = useState(false);
   const port = useMemo(() => createSavedViewsPort(STAFF_LIST_KEY), []);
   const saved = useSavedViews(STAFF_LIST_KEY, port);
   const team = useMemo(() => staffTeamViews(), []);
@@ -139,7 +159,7 @@ export function StaffList({
         header: "Role",
         width: "176px",
         mobile: "meta",
-        cell: (row) => staffRoleLabel(row.role),
+        cell: (row) => staffRolesLabel(staffRoleNames(row)),
       },
       {
         id: "lastActive",
@@ -168,26 +188,16 @@ export function StaffList({
   const roleChip = filterChip(staffList, state, list.navigate, "role", rolesLabel);
   const empty =
     VIEW_EMPTY[state.view] ?? (VIEW_EMPTY.all as { title: string; description: string });
-  const openedActions = opened ? staff.actionsFor(opened) : [];
-  const isSelf = opened?.identitySubjectId === currentSubject;
+  const now = new Date();
 
   return (
     <>
       <ListPage<StaffMemberRow>
         title="Staff"
-        description="Everyone who can sign in to LAX Admin, their role and when they were last active."
+        description="Everyone who can sign in to LAX Admin, their roles and when they were last active. Roles are managed in Bid admin."
         Link={list.Link}
         listKey={STAFF_LIST_KEY}
-        primaryAction={
-          <StaffButton
-            variant="primary"
-            size="sm"
-            icon={<UserPlus aria-hidden />}
-            onClick={() => setAdding(true)}
-          >
-            Add staff
-          </StaffButton>
-        }
+        secondaryActions={<ManageInBidAdmin href={bidStaffUrl} size="sm" />}
         views={
           <DataViews
             views={staffList.views(state, page.counts)}
@@ -253,7 +263,6 @@ export function StaffList({
                 icon: PanelRight,
                 onSelect: () => list.panel.show(row.staffMemberId),
               },
-              ...staff.actionsFor(row),
             ],
           },
         }}
@@ -271,7 +280,6 @@ export function StaffList({
           opened ? (
             <>
               <StatusBadge tone={accessOf(opened).tone}>{accessOf(opened).label}</StatusBadge>
-              <StatusBadge tone="neutral">{staffRoleLabel(opened.role)}</StatusBadge>
             </>
           ) : null
         }
@@ -287,22 +295,14 @@ export function StaffList({
               ]
             : []
         }
-        overflow={
-          opened && openedActions.length > 0 ? (
-            <OverflowMenu
-              label={`Access actions for ${staffMemberName(opened)}`}
-              actions={openedActions}
-            />
-          ) : null
-        }
         summary={
           opened
             ? [
                 ...(opened.email
                   ? [{ label: "Email", value: opened.email, copyValue: opened.email }]
                   : []),
-                ...(staffRoleAllows(opened.role)
-                  ? [{ label: "Can see and do", value: staffRoleAllows(opened.role) }]
+                ...(staffRolesAllow(staffRoleNames(opened))
+                  ? [{ label: "Can see and do", value: staffRolesAllow(staffRoleNames(opened)) }]
                   : []),
                 {
                   label: "Added",
@@ -325,30 +325,32 @@ export function StaffList({
             : []
         }
         footer={
-          opened && !isSelf ? (
-            opened.disabledAt ? (
-              <StaffButton
-                variant="primary"
-                onClick={() => staff.open({ kind: "restore", member: opened })}
-              >
-                Give access again
-              </StaffButton>
-            ) : (
-              <StaffButton
-                variant="secondary"
-                onClick={() => staff.open({ kind: "role", member: opened })}
-              >
-                Change role
-              </StaffButton>
-            )
+          opened && bidStaffUrl ? (
+            <ManageInBidAdmin
+              href={`${bidStaffUrl}/${encodeURIComponent(opened.identitySubjectId)}`}
+            />
           ) : null
         }
       >
-        {null}
+        {opened ? (
+          <PanelSection title="Roles">
+            {opened.roles.length === 0 ? (
+              <p className="text-staff-sm text-staff-muted">No LAX Admin roles in force.</p>
+            ) : (
+              <ul
+                aria-label={`${staffMemberName(opened)}'s roles`}
+                className="m-0 flex list-none flex-wrap gap-2 p-0"
+              >
+                {staffRoleChips(opened, now).map((chip) => (
+                  <li key={chip.key} className="max-w-full">
+                    <StaffChip label={chip.label} meta={chip.meta} />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </PanelSection>
+        ) : null}
       </DetailPanel>
-
-      {staff.dialogs}
-      <AddStaffDialog open={adding} onOpenChange={setAdding} bidStaffUrl={bidStaffUrl} />
     </>
   );
 }

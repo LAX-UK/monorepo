@@ -1,4 +1,9 @@
-import { type ShopStaffRole, capabilitiesForRole, clientListScope } from "@auction/shop-domain";
+import {
+  type ShopStaffRole,
+  capabilitiesForRole,
+  capabilitiesForRoles,
+  clientListScope,
+} from "@auction/shop-domain";
 import { describe, expect, it } from "vitest";
 import { buildAdminNavGroups, flattenAdminNav } from "./admin-nav.vm";
 
@@ -36,14 +41,38 @@ describe("buildAdminNavGroups", () => {
     expect(navHrefsFor(role)).toContain("/overview");
   });
 
-  it("shows catalogue editors the catalogue, applications and editorial areas only", () => {
+  it("shows catalogue editors the catalogue and applications, and editors the editorial areas", () => {
     expect(navHrefsFor("catalogue_editor")).toEqual([
+      "/overview",
+      "/artworks",
+      "/artists",
+      "/artist-applications",
+    ]);
+    expect(navHrefsFor("editor")).toEqual(["/overview", ...EDITORIAL_HREFS]);
+  });
+
+  it("shows someone with both roles everything either opens", () => {
+    const hrefs = flattenAdminNav(
+      buildAdminNavGroups({
+        capabilities: [...capabilitiesForRoles(["catalogue_editor", "editor"])],
+        features: ALL_FEATURES,
+      }),
+    ).map((item) => item.href);
+    expect(hrefs).toEqual([
       "/overview",
       "/artworks",
       "/artists",
       "/artist-applications",
       ...EDITORIAL_HREFS,
     ]);
+  });
+
+  it("shows Read-only staff the lists they may read and nothing else", () => {
+    expect(navHrefsFor("read_only")).toEqual(
+      expect.arrayContaining(["/overview", "/orders", "/enquiries"]),
+    );
+    expect(navHrefsFor("read_only")).not.toContain("/clients");
+    expect(navHrefsFor("read_only")).not.toContain("/audit");
   });
 
   it("lets operations view orders and enquiries but not editorial or the audit log", () => {

@@ -219,6 +219,7 @@ export function EditorialList({
     row.status === "published"
       ? {
           id: "unpublish",
+          requires: "editorial.publish",
           label: "Unpublish…",
           icon: EyeOff,
           tone: "danger",
@@ -226,6 +227,7 @@ export function EditorialList({
         }
       : {
           id: "publish",
+          requires: "editorial.publish",
           label: "Publish…",
           icon: Eye,
           onSelect: () => setConfirming({ row, publish: true }),
@@ -252,7 +254,12 @@ export function EditorialList({
         Link={list.Link}
         listKey={`lax-admin.editorial.${kind}`}
         primaryAction={
-          <StaffButton asChild variant="primary" icon={<Plus aria-hidden />}>
+          <StaffButton
+            asChild
+            variant="primary"
+            requires="editorial.write"
+            icon={<Plus aria-hidden />}
+          >
             <list.Link href={newHref}>{entity.newLabel}</list.Link>
           </StaffButton>
         }

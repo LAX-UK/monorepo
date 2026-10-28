@@ -1,16 +1,11 @@
 // @vitest-environment jsdom
 import type { AdminStaffMemberList } from "@auction/shop-contracts";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { capabilitiesForRoles } from "@auction/shop-domain";
+import { StaffAccessProvider } from "@auction/staff-ui";
+import { render, screen, within } from "@testing-library/react";
 import type * as React from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-const grantStaffRole = vi.fn();
-const revokeStaffRole = vi.fn();
-
-vi.mock("@/server/application/admin-people-actions.server", () => ({
-  grantStaffRole,
-  revokeStaffRole,
-}));
 vi.mock("@/lib/saved-views-port.client", () => ({
   createSavedViewsPort: () => ({
     load: async () => [],
@@ -54,6 +49,7 @@ const member = (overrides: Partial<AdminStaffMemberList["items"][number]> = {}) 
   email: "sam@lax.art",
   lastActiveAt: "2026-10-20T09:00:00.000Z",
   role: "operations",
+  roles: [{ role: "operations", startsAt: "2026-01-10T09:00:00.000Z", endsAt: null }],
   disabledAt: null,
   createdAt: "2026-01-10T09:00:00.000Z",
   ...overrides,
@@ -67,7 +63,15 @@ const page: AdminStaffMemberList = {
       identitySubjectId: "subject-me",
       displayName: "Eleanor Pereira",
       email: "eleanor@lax.art",
-      role: "shop_admin",
+      role: "catalogue_editor",
+      roles: [
+        { role: "catalogue_editor", startsAt: "2026-10-03T09:00:00.000Z", endsAt: null },
+        {
+          role: "editor",
+          startsAt: "2026-10-03T09:00:00.000Z",
+          endsAt: "2026-12-01T00:00:00.000Z",
+        },
+      ],
     }),
     member({
       staffMemberId: "33333333-3333-4333-8333-333333333333",
@@ -75,6 +79,7 @@ const page: AdminStaffMemberList = {
       displayName: "Theo Marsh",
       email: "theo@lax.art",
       role: "finance",
+      roles: [],
       disabledAt: "2026-09-01T09:00:00.000Z",
     }),
   ],
@@ -82,106 +87,75 @@ const page: AdminStaffMemberList = {
   counts: { active: 2, disabled: 1 },
 };
 
-function renderList(query: Record<string, string> = {}) {
+function renderList(
+  query: Record<string, string> = {},
+  roles: ("shop_admin" | "read_only")[] = ["shop_admin"],
+) {
+  const held = capabilitiesForRoles(roles);
   render(
-    <StaffList
-      state={staffList.parse(query)}
-      page={page}
-      currentSubject="subject-me"
-      bidStaffUrl="https://lax.bid/admin/staff"
-    />,
+    <StaffAccessProvider access={{ can: (p) => typeof p === "string" && held.has(p as never) }}>
+      <StaffList
+        state={staffList.parse(query)}
+        page={page}
+        currentSubject="subject-me"
+        bidStaffUrl="https://lax.bid/admin/staff"
+      />
+    </StaffAccessProvider>,
   );
 }
 
 const rowOf = (text: string) =>
   within(screen.getByRole("grid")).getByText(text).closest("tr") as HTMLElement;
-const choose = (text: string, name: RegExp) => {
-  fireEvent.click(within(rowOf(text)).getByRole("menuitem", { name }));
-};
-
-beforeEach(() => {
-  grantStaffRole.mockReset().mockResolvedValue({ ok: true, data: {} });
-  revokeStaffRole.mockReset().mockResolvedValue({ ok: true, data: undefined });
-});
 
 describe("the staff list", () => {
-  it("counts each view by access and shows access as words", () => {
+  it("counts each view by access and shows every role a person holds", () => {
     renderList();
     expect(screen.getByRole("link", { name: /^All\s*3/ })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Access removed\s*1/ })).toBeInTheDocument();
     expect(within(rowOf("Theo Marsh")).getByText("Access removed")).toBeInTheDocument();
     expect(within(rowOf("Sam Lee")).getByText("Operations")).toBeInTheDocument();
-  });
-
-  it("never lets someone change their own access", () => {
-    renderList();
-    const own = within(rowOf("Eleanor Pereira")).getByRole("menuitem", { name: /Remove access/ });
-    expect(own).toHaveAttribute("aria-disabled", "true");
-  });
-
-  it("changes a role from a picker that says what each role allows", async () => {
-    renderList();
-    choose("Sam Lee", /Change role/);
-    const dialog = await screen.findByRole("dialog", { name: "Change Sam Lee’s role?" });
-    expect(within(dialog).getByText("Operations (current role)")).toBeInTheDocument();
     expect(
-      within(dialog).getByText("Orders, refunds, payouts, edition prices and the audit log."),
+      within(rowOf("Eleanor Pereira")).getByText("Catalogue editor, Editor"),
     ).toBeInTheDocument();
-    fireEvent.click(within(dialog).getByRole("radio", { name: /Finance/ }));
-    fireEvent.click(within(dialog).getByRole("button", { name: "Make them Finance" }));
-    await waitFor(() => expect(grantStaffRole).toHaveBeenCalledTimes(1));
-    expect(grantStaffRole).toHaveBeenCalledWith({
-      identitySubjectId: "subject-sam",
-      role: "finance",
-      idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/),
-    });
   });
 
-  it("removes access only with a reason", async () => {
+  it("offers no way to change roles here, only a link to Bid admin for Administrators", () => {
     renderList();
-    choose("Sam Lee", /Remove access/);
-    const dialog = await screen.findByRole("dialog", { name: "Remove Sam Lee’s access?" });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Remove access" }));
-    expect(within(dialog).getByText("Say why their access is being removed.")).toBeInTheDocument();
-    expect(revokeStaffRole).not.toHaveBeenCalled();
-
-    fireEvent.change(within(dialog).getByLabelText("Reason"), {
-      target: { value: "Left the gallery team" },
-    });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Remove access" }));
-    await waitFor(() => expect(revokeStaffRole).toHaveBeenCalledTimes(1));
-    expect(revokeStaffRole).toHaveBeenCalledWith({
-      identitySubjectId: "subject-sam",
-      reason: "Left the gallery team",
-      idempotencyKey: expect.stringMatching(/^[0-9a-f-]{36}$/),
-    });
-  });
-
-  it("adds someone by email with a chosen role, checked on submit", async () => {
-    renderList();
-    fireEvent.click(screen.getByRole("button", { name: "Add staff" }));
-    const dialog = await screen.findByRole("dialog", { name: "Add staff" });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Add staff" }));
+    expect(screen.queryByRole("button", { name: "Add staff" })).toBeNull();
     expect(
-      within(dialog).getAllByText("Enter the email on their LAX login.").length,
-    ).toBeGreaterThan(0);
-    expect(grantStaffRole).not.toHaveBeenCalled();
-
-    fireEvent.change(within(dialog).getByLabelText("Email"), { target: { value: "ada@lax.art" } });
-    fireEvent.click(within(dialog).getByRole("radio", { name: /Catalogue editor/ }));
-    fireEvent.click(within(dialog).getByRole("button", { name: "Add as Catalogue editor" }));
-    await waitFor(() => expect(grantStaffRole).toHaveBeenCalledTimes(1));
-    expect(grantStaffRole).toHaveBeenCalledWith(
-      expect.objectContaining({ email: "ada@lax.art", role: "catalogue_editor" }),
+      within(rowOf("Sam Lee")).queryByRole("menuitem", { name: /Change role|Remove access/ }),
+    ).toBeNull();
+    expect(screen.getByRole("link", { name: "Manage in Bid admin" })).toHaveAttribute(
+      "href",
+      "https://lax.bid/admin/staff",
     );
   });
 
-  it("opens a person's panel from the URL with what their role allows", async () => {
+  it("hides the Bid admin link from people who may not manage staff", () => {
+    renderList({}, ["read_only"]);
+    expect(screen.queryByRole("link", { name: "Manage in Bid admin" })).toBeNull();
+  });
+
+  it("shows a person's roles read-only, each with its period, and what they allow together", async () => {
+    renderList({ staff: "22222222-2222-4222-8222-222222222222" });
+    const panel = await screen.findByRole("dialog", { name: /Eleanor Pereira/ });
+    const roles = within(panel).getByRole("list", { name: "Eleanor Pereira's roles" });
+    expect(within(roles).getByText("Catalogue editor")).toBeInTheDocument();
+    expect(within(roles).getByText(/Until 30 Nov 2026/)).toBeInTheDocument();
+    expect(within(roles).queryByRole("button")).toBeNull();
+    expect(
+      within(panel).getByText(/Editor: Stories, exhibitions, pages and help/),
+    ).toBeInTheDocument();
+    expect(within(panel).getByRole("link", { name: "Manage in Bid admin" })).toHaveAttribute(
+      "href",
+      "https://lax.bid/admin/staff/subject-me",
+    );
+  });
+
+  it("says when someone holds no role any more", async () => {
     renderList({ staff: "33333333-3333-4333-8333-333333333333" });
     const panel = await screen.findByRole("dialog", { name: /Theo Marsh/ });
-    expect(within(panel).getByRole("button", { name: "Give access again" })).toBeInTheDocument();
-    expect(
-      within(panel).getByText("Orders, refunds, payouts, edition prices and the audit log."),
-    ).toBeInTheDocument();
+    expect(within(panel).getByText("No LAX Admin roles in force.")).toBeInTheDocument();
+    expect(within(panel).queryByRole("button", { name: "Give access again" })).toBeNull();
   });
 });

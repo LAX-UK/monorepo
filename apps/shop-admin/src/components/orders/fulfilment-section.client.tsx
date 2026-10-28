@@ -92,6 +92,7 @@ export function FulfilmentSection({
             <StaffButton
               variant="ghost"
               size="sm"
+              requires="fulfilment.write"
               icon={<PenLine aria-hidden />}
               onClick={() => setEditing(true)}
             >

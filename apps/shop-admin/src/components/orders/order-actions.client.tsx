@@ -59,6 +59,7 @@ export function OrderHeaderActions({
         <>
           <StaffButton
             variant="primary"
+            requires="refund.write"
             icon={<Undo2 aria-hidden />}
             onClick={() => setRefunding(true)}
           >
@@ -89,6 +90,7 @@ export function SendToProductionButton({ line }: { line: Line }) {
     <StaffButton
       size="sm"
       variant="secondary"
+      requires="production.write"
       icon={<Factory aria-hidden />}
       loading={mutation.pending}
       onClick={async () => {
@@ -127,6 +129,7 @@ export function OrderLineMenu({ line, canCancel }: { line: Line; canCancel: bool
         actions={[
           {
             id: "cancel",
+            requires: "refund.write",
             label: "Cancel after possession…",
             icon: XCircle,
             tone: "danger",

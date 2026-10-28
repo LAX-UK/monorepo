@@ -145,6 +145,7 @@ export function HelpArticlesList({
     return {
       id: "publication",
       label: publish ? "Publish…" : "Unpublish…",
+      requires: "editorial.publish",
       icon: publish ? Eye : EyeOff,
       onSelect: () => setDialog({ kind: "publish", row, publish }),
     };

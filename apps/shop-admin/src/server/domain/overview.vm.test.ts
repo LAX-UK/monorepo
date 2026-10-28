@@ -1,7 +1,8 @@
 import {
   type ShopStaffRole,
   capabilitiesForRole,
-  overviewKpiKeysForRole,
+  capabilitiesForRoles,
+  overviewKpiKeysFor,
 } from "@auction/shop-domain";
 import { describe, expect, it } from "vitest";
 import { buildAdminNavGroups } from "./admin-nav.vm";
@@ -11,7 +12,9 @@ const FEATURES = { payouts: true, thirdPartySales: true, originalSales: true, me
 
 /** What the API sends a role: a count for each figure it may see. */
 function kpisFor(role: ShopStaffRole) {
-  return Object.fromEntries(overviewKpiKeysForRole(role).map((key) => [key, 3]));
+  return Object.fromEntries(
+    overviewKpiKeysFor(capabilitiesForRoles([role])).map((key) => [key, 3]),
+  );
 }
 
 function tilesFor(role: ShopStaffRole, features = FEATURES) {

@@ -187,7 +187,11 @@ export function useEnquiryActions({ currentSubject }: { currentSubject: string }
             icon: CircleCheck,
             onSelect: () => setClosing(target),
           };
-    return [...(target.status === "closed" ? [] : assignment), status];
+    // Every move changes the enquiry, so each needs the capability the API checks for it.
+    return [...(target.status === "closed" ? [] : assignment), status].map((action) => ({
+      ...action,
+      requires: "enquiry.write",
+    }));
   };
 
   const dialogs = closing ? (
