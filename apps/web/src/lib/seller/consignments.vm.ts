@@ -1,7 +1,9 @@
+import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import {
   type ReviewStage,
   parseReviewStage,
 } from "@/lib/organisation-home/consignment-stage-links";
+import { type ConsignmentJourney, consignmentJourney } from "@/lib/seller/consignment-journey";
 import { lotPath } from "@/lib/seo/url";
 import {
   type ConsignedLotScope,
@@ -60,7 +62,28 @@ export type ConsignmentRow = {
   href: string;
   /** ISO timestamp used to put the most recently changed first. */
   changedAtIso: string;
+  /** The work's first photograph, when there is one. */
+  image: string | null;
+  /** One line of context above the title ("Submitted 21 Oct 2026", "Lot 3 · sold for £3,800.00"). */
+  context: string;
+  /** Where it is on the six-step way to sale; `null` for drafts that left it and closed work. */
+  journey: ConsignmentJourney | null;
 };
+
+const CONTEXT_DATE = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+});
+
+function lotContext(lot: Lot): string {
+  const parts = [lot.lotNumber == null ? null : `Lot ${lot.lotNumber}`];
+  if (lot.status === "ended" && lot.winnerId) {
+    parts.push(`sold for ${formatMoney(lot.currentPrice, resolveLotCurrency(lot))}`);
+  }
+  const text = parts.filter(Boolean).join(" · ");
+  return text ? text.charAt(0).toUpperCase() + text.slice(1) : "Catalogued";
+}
 
 type StageView = { stage: ConsignmentStage; label: string; tone: DotStatusPillTone };
 
@@ -94,9 +117,22 @@ function lotStage(lot: Pick<Lot, "status" | "winnerId">): StageView {
   }
 }
 
-export function submissionToConsignmentRow(submission: ItemSubmission): ConsignmentRow {
+export function submissionToConsignmentRow(
+  submission: ItemSubmission,
+  agreementAccepted = false,
+): ConsignmentRow {
   const view = SUBMISSION_STAGES[submission.status];
   return {
+    image: submission.images[0] ?? null,
+    context:
+      submission.status === "draft"
+        ? `Started ${CONTEXT_DATE.format(submission.createdAt)}`
+        : `Submitted ${CONTEXT_DATE.format(submission.createdAt)}`,
+    journey: consignmentJourney({
+      submissionStatus: submission.status,
+      agreementAccepted,
+      lot: null,
+    }),
     key: `submission:${submission.id}`,
     kind: "submission",
     title: submission.title,
@@ -109,10 +145,24 @@ export function submissionToConsignmentRow(submission: ItemSubmission): Consignm
   };
 }
 
-export function lotToConsignmentRow(lot: Lot): ConsignmentRow {
+/**
+ * A catalogued work. When its submission is known the row opens the consignment (checklist,
+ * agreement, payout); otherwise the lot page.
+ */
+export function lotToConsignmentRow(
+  lot: Lot,
+  submission: ItemSubmission | null = null,
+): ConsignmentRow {
   const view = lotStage(lot);
   // A lot has no "updated" time of its own in this projection, so its end is the best anchor.
   return {
+    image: lot.images[0] ?? null,
+    context: lotContext(lot),
+    journey: consignmentJourney({
+      submissionStatus: submission?.status ?? null,
+      agreementAccepted: true,
+      lot: { status: lot.status, sold: Boolean(lot.winnerId) },
+    }),
     key: `lot:${lot.id}`,
     kind: "lot",
     title: lot.title,
@@ -120,7 +170,9 @@ export function lotToConsignmentRow(lot: Lot): ConsignmentRow {
     progress: lotProgressStage({ status: lot.status, sold: Boolean(lot.winnerId) }),
     statusLabel: view.label,
     statusTone: view.tone,
-    href: lotPath({ id: lot.id, title: lot.title }),
+    href: submission
+      ? `/selling/consignments/${submission.id}`
+      : lotPath({ id: lot.id, title: lot.title }),
     changedAtIso: lot.endTime.toISOString(),
   };
 }
@@ -132,12 +184,20 @@ export function lotToConsignmentRow(lot: Lot): ConsignmentRow {
 export function buildConsignmentRows(input: {
   submissions: readonly ItemSubmission[];
   lots: readonly Lot[];
+  /** Submissions whose consignment agreement is accepted. */
+  acceptedAgreements?: ReadonlySet<string>;
 }): ConsignmentRow[] {
   const lotIds = new Set(input.lots.map((lot) => lot.id));
+  const submissionByLot = new Map(
+    input.submissions.flatMap((s) => (s.convertedLotId ? [[s.convertedLotId, s] as const] : [])),
+  );
+  const accepted = input.acceptedAgreements ?? new Set<string>();
   const submissionRows = input.submissions
     .filter((s) => !(s.convertedLotId && lotIds.has(s.convertedLotId)))
-    .map(submissionToConsignmentRow);
-  const lotRows = input.lots.map(lotToConsignmentRow);
+    .map((s) => submissionToConsignmentRow(s, accepted.has(s.id)));
+  const lotRows = input.lots.map((lot) =>
+    lotToConsignmentRow(lot, submissionByLot.get(lot.id) ?? null),
+  );
   return [...submissionRows, ...lotRows].sort((a, b) =>
     b.changedAtIso.localeCompare(a.changedAtIso),
   );

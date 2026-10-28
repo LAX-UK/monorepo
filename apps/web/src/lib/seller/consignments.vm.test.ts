@@ -16,6 +16,8 @@ function submission(overrides: Partial<ItemSubmission>): ItemSubmission {
     title: "Untitled study",
     status: "draft",
     convertedLotId: null,
+    images: [],
+    createdAt: new Date("2026-09-21T10:00:00Z"),
     updatedAt: new Date("2026-10-01T10:00:00Z"),
     ...overrides,
   } as ItemSubmission;
@@ -27,6 +29,9 @@ function lot(overrides: Partial<Lot>): Lot {
     title: "Harbour at dusk",
     status: "active",
     winnerId: null,
+    lotNumber: 3,
+    currentPrice: "3800",
+    images: [],
     endTime: new Date("2026-10-10T10:00:00Z"),
     ...overrides,
   } as Lot;
@@ -208,5 +213,40 @@ describe("visibleConsignedLots", () => {
   it("shows an owner every lot the organisation sells", () => {
     const visible = visibleConsignedLots({ lots, submissions, scope: "all", viewerUserId: "me" });
     expect(visible.map((l) => l.id)).toEqual(["l-mine", "l-theirs", "l-staff"]);
+  });
+});
+
+describe("consignment rows for the list", () => {
+  it("say when a submission was sent and where it is on its way to sale", () => {
+    const [row] = buildConsignmentRows({
+      submissions: [submission({ status: "approved", images: ["/a.jpg"] })],
+      lots: [],
+    });
+    expect(row).toMatchObject({
+      image: "/a.jpg",
+      context: "Submitted 21 Sept 2026",
+      journey: { current: "agreement", finished: false },
+    });
+  });
+
+  it("move past the agreement once it is accepted", () => {
+    const [row] = buildConsignmentRows({
+      submissions: [submission({ id: "s9", status: "approved" })],
+      lots: [],
+      acceptedAgreements: new Set(["s9"]),
+    });
+    expect(row?.journey?.current).toBe("catalogued");
+  });
+
+  it("open a sold lot's consignment and say what it sold for", () => {
+    const [row] = buildConsignmentRows({
+      submissions: [submission({ id: "s3", status: "converted", convertedLotId: "l1" })],
+      lots: [lot({ status: "ended", winnerId: "buyer" })],
+    });
+    expect(row).toMatchObject({
+      href: "/selling/consignments/s3",
+      context: "Lot 3 · sold for £3,800.00",
+      journey: { current: "sold", finished: true },
+    });
   });
 });
