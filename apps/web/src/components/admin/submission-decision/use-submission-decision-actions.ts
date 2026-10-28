@@ -4,13 +4,16 @@ import { useStaffConfirm } from "@/components/admin/staff/use-staff-confirm";
 import {
   adminAcceptSubmissionResultAction,
   adminConvertSubmissionResultAction,
+  adminProposeSubmissionTermsResultAction,
   adminRejectSubmissionResultAction,
   adminRequestSubmissionChangesResultAction,
   adminStartSubmissionReviewResultAction,
 } from "@/lib/actions/admin-submissions";
 import {
   type AcceptProposalFormValues,
+  type TermsFormValues,
   acceptProposalBody,
+  proposeTermsBody,
 } from "@/lib/admin/submissions/accept-proposal-form";
 import { trackStaffAccept, trackStaffConvert } from "@/lib/analytics/sell-funnel";
 import { applyActionFieldErrors } from "@/lib/forms/apply-action-field-errors";
@@ -121,6 +124,27 @@ export function useSubmissionDecisionActions({
     [router, submissionId],
   );
 
+  const proposeTerms = useCallback(
+    (values: TermsFormValues, form: UseFormReturn<TermsFormValues>) => {
+      form.clearErrors("root.server");
+      startTransition(() => {
+        void (async () => {
+          const r = await adminProposeSubmissionTermsResultAction(
+            submissionId,
+            proposeTermsBody(values),
+          );
+          if (r.ok) {
+            notify.success("Terms sent. The seller has been asked to accept them.");
+            router.refresh();
+            return;
+          }
+          showFailure(form, r);
+        })();
+      });
+    },
+    [router, submissionId],
+  );
+
   const reject = useCallback(
     (values: RejectFormValues) =>
       ask({
@@ -171,6 +195,7 @@ export function useSubmissionDecisionActions({
     startReview,
     accept,
     requestChanges,
+    proposeTerms,
     reject,
     convert,
     dialog: confirm.dialog,

@@ -55,7 +55,7 @@ const WHY: Record<
       : "We confirm who is selling before a specialist accepts the work. It takes about 3 minutes.",
   agreement: (_ctx, state) => {
     if (state === "not_yet") {
-      return "Your specialist proposes an estimate and terms after reviewing the work. You accept them here.";
+      return "Your specialist will send the estimate and terms. You accept them here.";
     }
     if (state === "waiting") return "Your specialist proposed an estimate and terms for this work.";
     return "Read the specialist's estimate and the seller conditions, then accept them.";

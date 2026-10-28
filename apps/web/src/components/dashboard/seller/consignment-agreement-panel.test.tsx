@@ -110,6 +110,19 @@ describe("ConsignmentAgreementPanel", () => {
     ).toBeVisible();
   });
 
+  it("asks nothing of the seller until the specialist sends the estimate and terms", () => {
+    renderPanel({
+      agreement: { ...agreement, estimateLow: null, estimateHigh: null, commissionPercent: null },
+    });
+    expect(
+      screen.getByText(
+        "Your specialist will send the estimate and terms. You'll read and accept them here.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByRole("button", { name: "Accept agreement" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
   it("records who accepted, when and which version", () => {
     renderPanel({
       agreement: {

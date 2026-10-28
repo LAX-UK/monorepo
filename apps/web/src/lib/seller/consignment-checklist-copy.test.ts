@@ -74,7 +74,7 @@ describe("checklistItemView", () => {
     const agreement = views({ agreement: { proposed: false, accepted: false } })[1];
     expect(agreement?.state).toBe("not_yet");
     expect(agreement?.action).toBeNull();
-    expect(agreement?.why).toMatch(/proposes an estimate and terms/);
+    expect(agreement?.why).toMatch(/will send the estimate and terms/);
   });
 
   it("shows an organisation consignor who is waiting on others", () => {
@@ -111,6 +111,33 @@ describe("checklist facts", () => {
     expect(organisationIdentityFact("under_review")).toBe("checking");
   });
 
+  it("treats a proposal without an estimate and commission as not sent yet", () => {
+    const facts = consignmentChecklistFacts({
+      submission: { status: "approved" },
+      agreement: {
+        acceptedAt: null,
+        estimateLow: null,
+        estimateHigh: null,
+        commissionPercent: null,
+      },
+      account: {
+        accountKind: "personal",
+        identity: "verified",
+        payoutsReady: false,
+        viewer: { canAcceptAgreement: true, canSetUpPayouts: true },
+      },
+      lot: null,
+    });
+    expect(facts.agreement).toEqual({ proposed: false, accepted: false });
+    const [item] = computeConsignmentChecklist(facts).items.filter((i) => i.id === "agreement");
+    const view = checklistItemView(item as NonNullable<typeof item>, personalCtx);
+    expect(view.state).toBe("not_yet");
+    expect(view.action).toBeNull();
+    expect(view.why).toBe(
+      "Your specialist will send the estimate and terms. You accept them here.",
+    );
+  });
+
   it("uses the sale start only once the lot is in a sale", () => {
     const account = {
       accountKind: "personal" as const,
@@ -122,7 +149,12 @@ describe("checklist facts", () => {
     expect(
       consignmentChecklistFacts({
         submission: { status: "converted" },
-        agreement: { acceptedAt: new Date() },
+        agreement: {
+          acceptedAt: new Date(),
+          estimateLow: "8000",
+          estimateHigh: "12000",
+          commissionPercent: "15",
+        },
         account,
         lot: { saleId: "sale-1", startTime: start },
       }).saleStartsAt,

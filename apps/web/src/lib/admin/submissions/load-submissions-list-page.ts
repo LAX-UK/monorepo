@@ -15,14 +15,17 @@ import {
 import { getAdminUsersByIds } from "@/lib/data/http/admin-users.server";
 import { getAdminCategoryById, getAdminLegalEntityById } from "@/lib/data/http/admin.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { listAdminConsignmentAgreements } from "@/lib/data/http/consignment-agreements.server";
 import { toAdminSubmissionTableRows } from "@/lib/data/view-models/admin-submissions.vm";
-import type { CategoryNode } from "@auction/types";
+import type { CategoryNode, ConsignmentAgreement } from "@auction/types";
 
 export type AdminSubmissionsListPageViewModel = {
   model: ReturnType<typeof buildSubmissionsListPageModel>;
   summary: AdminSubmissionsListSummary;
   loadError: string | null;
   submissionRows: AdminSubmissionTableRow[];
+  /** Agreements of the accepted submissions on the page, by submission. */
+  agreementsBySubmissionId: Map<string, ConsignmentAgreement>;
   total: number;
   categories: CategoryNode[];
   activeFilterChips: ReturnType<typeof buildSubmissionsActiveFilterChips>;
@@ -65,7 +68,8 @@ export async function loadAdminSubmissionsListPage(input: {
     ),
   ];
 
-  const [summary, categories, sellerNameEntries, categoryNameEntries, assigneeUsers] =
+  const acceptedIds = rows.filter((s) => s.status === "approved").map((s) => s.id);
+  const [summary, categories, sellerNameEntries, categoryNameEntries, assigneeUsers, agreements] =
     await Promise.all([
       getAdminSubmissionsListSummary().catch(() => EMPTY_ADMIN_SUBMISSIONS_LIST_SUMMARY),
       (async () => {
@@ -88,6 +92,7 @@ export async function loadAdminSubmissionsListPage(input: {
         }),
       ),
       getAdminUsersByIds(assigneeIds).catch(() => []),
+      listAdminConsignmentAgreements(acceptedIds).catch(() => []),
     ]);
 
   const sellerNameById = new Map(sellerNameEntries);
@@ -120,6 +125,7 @@ export async function loadAdminSubmissionsListPage(input: {
     summary,
     loadError,
     submissionRows,
+    agreementsBySubmissionId: new Map(agreements.map((a) => [a.submissionId, a])),
     total,
     categories,
     activeFilterChips,

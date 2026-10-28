@@ -2,9 +2,35 @@ import { acceptSubmissionBodySchema } from "@auction/validators";
 import { describe, expect, it } from "vitest";
 import {
   EMPTY_ACCEPT_PROPOSAL,
+  EMPTY_TERMS,
   acceptProposalBody,
   acceptProposalFormSchema,
+  proposeTermsBody,
+  termsFormSchema,
 } from "./accept-proposal-form";
+
+describe("terms form", () => {
+  it("needs the estimate and the commission", () => {
+    const result = termsFormSchema.safeParse(EMPTY_TERMS);
+    expect(result.success).toBe(false);
+    expect(result.error?.issues.map((i) => i.path[0])).toEqual([
+      "estimateLow",
+      "estimateHigh",
+      "commissionRate",
+    ]);
+  });
+
+  it("sends complete terms", () => {
+    expect(
+      proposeTermsBody({
+        estimateLow: "8000.00",
+        estimateHigh: "12000.00",
+        reservePrice: "",
+        commissionRate: "0.15",
+      }),
+    ).toEqual({ estimateLow: "8000.00", estimateHigh: "12000.00", commissionPercent: "15" });
+  });
+});
 
 describe("accept proposal form", () => {
   it("sends the estimate, reserve and commission the specialist proposes", () => {

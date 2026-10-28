@@ -136,10 +136,17 @@ export function SubmissionsStaffList(props: SubmissionsStaffListProps) {
       {
         id: "status",
         header: "Status",
-        width: "140px",
+        width: "200px",
         mobile: "badge",
         truncate: false,
-        cell: (row) => <StatusBadge tone={row.status.tone}>{row.status.label}</StatusBadge>,
+        cell: (row) => (
+          <span className="flex flex-wrap items-center gap-1">
+            <StatusBadge tone={row.status.tone}>{row.status.label}</StatusBadge>
+            {row.sellerWait ? (
+              <StatusBadge tone={row.sellerWait.tone}>{row.sellerWait.label}</StatusBadge>
+            ) : null}
+          </span>
+        ),
       },
       {
         id: "seller",

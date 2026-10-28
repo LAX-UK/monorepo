@@ -1,5 +1,7 @@
 "use client";
 
+import type { NamedSellerWithoutPayouts } from "@/lib/admin/sale-setup/sellers-without-payouts";
+
 import { AdminFormWizard } from "@/components/admin/admin-form-wizard";
 import type { WizardDraftPayload } from "@/components/admin/admin-form-wizard/wizard-draft";
 import { CatalogPublishReadiness } from "@/components/admin/catalog/catalog-publish-readiness";
@@ -78,6 +80,8 @@ type Props = {
   canEditCatalog: boolean;
   pendingRegistrationCount?: number | null;
   connectRequiredByLotId?: ConnectRequiredByLotId;
+  /** Sellers who must set up payouts before the sale goes live, named once each. */
+  sellersWithoutPayouts?: readonly NamedSellerWithoutPayouts[];
 };
 
 export function SaleSetupWizard({
@@ -97,6 +101,7 @@ export function SaleSetupWizard({
   canEditCatalog,
   pendingRegistrationCount = null,
   connectRequiredByLotId,
+  sellersWithoutPayouts,
 }: Props) {
   const router = useRouter();
   const { guardedPush } = useGuardedNavigation();
@@ -474,6 +479,7 @@ export function SaleSetupWizard({
                     documentCount={initialSaleDocuments.length}
                     onEditSummary={() => wizardGoToRef.current(0)}
                     {...(connectRequiredByLotId ? { connectRequiredByLotId } : {})}
+                    {...(sellersWithoutPayouts ? { sellersWithoutPayouts } : {})}
                   />
                 ) : null}
               </div>

@@ -1,5 +1,7 @@
 "use client";
 
+import type { NamedSellerWithoutPayouts } from "@/lib/admin/sale-setup/sellers-without-payouts";
+
 import { buyerPremiumSummary } from "@/components/admin/sale-detail/sale-detail-helpers";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness-shared";
 import {
@@ -28,6 +30,8 @@ type Props = {
   pendingRegistrationCount?: number | null;
   canPublish: boolean;
   connectRequiredByLotId?: ConnectRequiredByLotId;
+  /** Sellers who must set up payouts, listed once each instead of once per lot. */
+  sellersWithoutPayouts?: readonly NamedSellerWithoutPayouts[];
   onEditSummary?: () => void;
   documentCount?: number;
 };
@@ -45,6 +49,7 @@ export function SaleSetupReviewStep({
   pendingRegistrationCount = null,
   canPublish,
   connectRequiredByLotId,
+  sellersWithoutPayouts,
   documentCount = 0,
 }: Props) {
   const router = useRouter();
@@ -54,6 +59,7 @@ export function SaleSetupReviewStep({
     lots,
     pendingRegistrationCount,
     ...(connectRequiredByLotId ? { connectRequiredByLotId } : {}),
+    ...(sellersWithoutPayouts ? { sellersWithoutPayouts } : {}),
     setupStepHref: (step) => saleSetupHref(saleId, step),
   });
   const failing = readiness.items.filter((item) => !item.ok);

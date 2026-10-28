@@ -13,6 +13,7 @@ import {
 import { STAFF_PARSE_PARAMS } from "@/lib/forms/staff-error-map";
 import { FormActions, Notice, Section, StaffButton } from "@auction/staff-ui";
 import { zodResolver } from "@hookform/resolvers/zod";
+import Link from "next/link";
 import { type RefObject, useEffect } from "react";
 import { type UseFormReturn, useForm } from "react-hook-form";
 import { SUBMISSION_APPROVE_FORM_ID } from "./form-ids";
@@ -26,13 +27,21 @@ type Props = {
   ) => void;
   /** Reports whether anything is typed, so the page can ask before it is lost. */
   onDirtyChange: (dirty: boolean) => void;
+  /** Why the work cannot be accepted yet, with where staff can follow it up. */
+  blocked?: { title: string; body: string; action: { label: string; href: string } | null } | null;
 };
 
 /**
  * Accepting a submission, with the estimate and terms the seller is asked to agree to. The
  * seller accepts them in the consignment agreement before the lot can be catalogued.
  */
-export function SubmissionApproveForm({ pending, formRef, onSubmit, onDirtyChange }: Props) {
+export function SubmissionApproveForm({
+  pending,
+  formRef,
+  onSubmit,
+  onDirtyChange,
+  blocked = null,
+}: Props) {
   const form = useForm<AcceptProposalFormValues>({
     resolver: zodResolver(acceptProposalFormSchema, STAFF_PARSE_PARAMS),
     defaultValues: EMPTY_ACCEPT_PROPOSAL,
@@ -60,6 +69,21 @@ export function SubmissionApproveForm({ pending, formRef, onSubmit, onDirtyChang
         className="flex flex-col gap-4"
         onSubmit={form.handleSubmit((values) => onSubmit(values, form))}
       >
+        {blocked ? (
+          <Notice
+            tone="warning"
+            title={blocked.title}
+            actions={
+              blocked.action ? (
+                <StaffButton asChild size="sm" variant="secondary">
+                  <Link href={blocked.action.href}>{blocked.action.label}</Link>
+                </StaffButton>
+              ) : null
+            }
+          >
+            {blocked.body}
+          </Notice>
+        ) : null}
         {failure ? (
           <Notice tone="danger" alert title="It was not accepted">
             {failure}
@@ -105,7 +129,12 @@ export function SubmissionApproveForm({ pending, formRef, onSubmit, onDirtyChang
           disabled={pending}
         />
         <FormActions>
-          <StaffButton type="submit" variant="primary" loading={pending}>
+          <StaffButton
+            type="submit"
+            variant="primary"
+            loading={pending}
+            disabled={Boolean(blocked)}
+          >
             Accept and send terms
           </StaffButton>
         </FormActions>

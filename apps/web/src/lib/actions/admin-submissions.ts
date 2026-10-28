@@ -19,6 +19,7 @@ import {
   acceptSubmissionBodySchema,
   adminAssignSubmissionBodySchema,
   approveSubmissionBodySchema,
+  proposeConsignmentTermsBodySchema,
   rejectSubmissionBodySchema,
   requestSubmissionChangesBodySchema,
 } from "@auction/validators";
@@ -149,6 +150,32 @@ export async function adminAcceptSubmissionResultAction(
       return actionFailure(r.message, undefined, r.status);
     }
     revalidatePath("/admin/submissions");
+    revalidatePath(`/admin/submissions/${id}`);
+    return actionSuccess();
+  });
+}
+
+/** Adds (or corrects) the estimate and terms the seller is asked to accept. */
+export async function adminProposeSubmissionTermsResultAction(
+  submissionId: string,
+  body: z.infer<typeof proposeConsignmentTermsBodySchema>,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminProposeSubmissionTermsResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(SUBMISSIONS_ACCESS);
+    if (denied) return denied;
+    const id = submissionId.trim();
+    if (!id) {
+      return actionFailure("Missing submission");
+    }
+    const parsed = proposeConsignmentTermsBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+    }
+    const { adminSubmissions } = getWriteContainer();
+    const r = await adminSubmissions.proposeTerms(id, parsed.data);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status);
+    }
     revalidatePath(`/admin/submissions/${id}`);
     return actionSuccess();
   });

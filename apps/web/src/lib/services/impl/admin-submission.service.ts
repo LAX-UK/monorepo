@@ -6,6 +6,7 @@ import type {
   ApproveSubmissionResult,
   ConvertSubmissionResult,
   IAdminSubmissionService,
+  ProposeConsignmentTermsBody,
   RejectSubmissionBody,
   RequestSubmissionChangesBody,
 } from "../interfaces/admin-submission-service";
@@ -36,6 +37,21 @@ export class AdminSubmissionService implements IAdminSubmissionService {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+  }
+
+  async proposeTerms(
+    id: string,
+    body: ProposeConsignmentTermsBody,
+  ): Promise<ServiceResult<Record<string, unknown>>> {
+    return this.api.json<Record<string, unknown>>(
+      `/submissions/${encodeURIComponent(id)}/agreement/terms`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        skipActingLegalEntityHeader: true,
+      },
+    );
   }
 
   async requestChanges(

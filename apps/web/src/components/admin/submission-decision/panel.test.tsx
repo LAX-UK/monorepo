@@ -3,6 +3,7 @@ import { searchAdminArtistsAction } from "@/lib/actions/admin-artists-search";
 import {
   adminAcceptSubmissionResultAction,
   adminConvertSubmissionResultAction,
+  adminProposeSubmissionTermsResultAction,
   adminRejectSubmissionResultAction,
   adminRequestSubmissionChangesResultAction,
   adminStartSubmissionReviewResultAction,
@@ -27,6 +28,7 @@ vi.mock("@/lib/actions/admin-submissions", () => ({
   adminRejectSubmissionResultAction: vi.fn(),
   adminConvertSubmissionResultAction: vi.fn(),
   adminRequestSubmissionChangesResultAction: vi.fn(),
+  adminProposeSubmissionTermsResultAction: vi.fn(),
 }));
 
 vi.mock("@/lib/actions/admin-artists-search", () => ({
@@ -504,6 +506,39 @@ describe("AdminSubmissionDecisionPanel", () => {
         });
         expect(notify.success).toHaveBeenCalledWith("The seller has been asked for changes.");
       });
+    });
+
+    it("disables accepting until the seller's identity is verified, and says what to do", () => {
+      renderPanel("under_review", { sellerIdentityVerified: false, sellerLegalEntityId: "le-9" });
+      expect(screen.getByText("The seller hasn't verified their identity yet")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Accept and send terms" })).toBeDisabled();
+      expect(screen.getByRole("link", { name: "Open the seller" })).toHaveAttribute(
+        "href",
+        "/admin/legal-entities/le-9",
+      );
+      expect(screen.getByRole("button", { name: "Ask for changes" })).toBeEnabled();
+      expect(screen.queryByText(/Shortcuts when not typing/)).not.toBeInTheDocument();
+    });
+
+    it("asks staff to add the estimate and terms to an incomplete proposal", async () => {
+      vi.mocked(adminProposeSubmissionTermsResultAction).mockResolvedValue(actionSuccess());
+      renderPanel("approved", {
+        agreement: {
+          ...ACCEPTED_AGREEMENT,
+          acceptedAt: null,
+          acceptedByUserId: null,
+          estimateLow: null,
+          estimateHigh: null,
+          commissionPercent: null,
+        },
+      });
+      expect(screen.getByText("Add the estimate and terms")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Convert to draft lot" }),
+      ).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Send the terms to the seller" }));
+      expect(await screen.findByText("Enter the low estimate")).toBeInTheDocument();
+      expect(adminProposeSubmissionTermsResultAction).not.toHaveBeenCalled();
     });
 
     it("shows that it waits for the seller's changes", () => {

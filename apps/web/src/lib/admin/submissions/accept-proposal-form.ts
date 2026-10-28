@@ -1,4 +1,4 @@
-import type { AcceptSubmissionBody } from "@auction/validators";
+import type { AcceptSubmissionBody, ProposeConsignmentTermsBody } from "@auction/validators";
 import { z } from "zod";
 
 /**
@@ -67,4 +67,53 @@ export function acceptProposalBody(values: AcceptProposalFormValues): AcceptSubm
   if (values.reservePrice) body.reservePrice = values.reservePrice;
   if (values.commissionRate) body.commissionPercent = rateToPercent(values.commissionRate);
   return body;
+}
+
+/** Completing a proposal: the estimate and commission are what the seller is asked to accept. */
+export const termsFormSchema = z
+  .object({
+    estimateLow: z.string().min(1, "Enter the low estimate"),
+    estimateHigh: z.string().min(1, "Enter the high estimate"),
+    reservePrice: z.string(),
+    commissionRate: z.string().min(1, "Enter the seller's commission"),
+  })
+  .superRefine((values, ctx) => {
+    if (values.estimateLow && values.estimateHigh) {
+      if (Number(values.estimateHigh) < Number(values.estimateLow)) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["estimateHigh"],
+          message: "The high estimate must be at least the low estimate",
+        });
+      }
+    }
+    if (values.commissionRate) {
+      const rate = Number(values.commissionRate);
+      if (!Number.isFinite(rate) || rate < 0 || rate >= 1) {
+        ctx.addIssue({
+          code: "custom",
+          path: ["commissionRate"],
+          message: "Enter a commission between 0% and 99.99%",
+        });
+      }
+    }
+  });
+
+export type TermsFormValues = z.infer<typeof termsFormSchema>;
+
+export const EMPTY_TERMS: TermsFormValues = {
+  estimateLow: "",
+  estimateHigh: "",
+  reservePrice: "",
+  commissionRate: "",
+};
+
+/** The completed terms as the request staff send. */
+export function proposeTermsBody(values: TermsFormValues): ProposeConsignmentTermsBody {
+  return {
+    estimateLow: values.estimateLow,
+    estimateHigh: values.estimateHigh,
+    ...(values.reservePrice ? { reservePrice: values.reservePrice } : {}),
+    commissionPercent: rateToPercent(values.commissionRate),
+  };
 }

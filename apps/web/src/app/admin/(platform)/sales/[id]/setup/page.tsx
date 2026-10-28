@@ -59,6 +59,7 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
         canEditCatalog={page.canEditCatalog}
         pendingRegistrationCount={page.pendingRegistrationCount}
         connectRequiredByLotId={page.connectRequiredByLotId}
+        sellersWithoutPayouts={page.sellersWithoutPayouts}
       />
     </FormPage>
   );

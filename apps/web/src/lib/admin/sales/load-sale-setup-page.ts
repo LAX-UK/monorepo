@@ -1,5 +1,8 @@
 import "server-only";
 
+import { loadSaleSellersWithoutPayouts } from "@/lib/admin/connect-readiness";
+import type { NamedSellerWithoutPayouts } from "@/lib/admin/sale-setup/sellers-without-payouts";
+
 import { firstString } from "@/lib/admin/admin-list-params";
 import { connectRequiredFromLots } from "@/lib/admin/connect-readiness";
 import {
@@ -47,6 +50,8 @@ export type SaleSetupPageModel = {
   canEditCatalog: boolean;
   pendingRegistrationCount: number | null;
   connectRequiredByLotId: Record<string, boolean>;
+  /** Sellers who must set up payouts before the sale can go live, each once by name. */
+  sellersWithoutPayouts: NamedSellerWithoutPayouts[];
   /** Set while ATG sync is on and the viewer manages sales; "atg" shows the edit alert. */
   sellingPlatform: AtgOwnershipState | null;
 };
@@ -105,6 +110,7 @@ export async function loadAdminSaleSetupPage({
       connectRequiredByLotId,
     });
 
+  const sellersWithoutPayouts = await loadSaleSellersWithoutPayouts(lots, connectRequiredByLotId);
   const defaultValues = saleToAdminSaleFormValues(sale);
   const saleWithCovers = bundle.sale as typeof sale & { coverImagePresentedUrls?: string[] };
   const previewUrlByKey = buildCoverImagePreviewMap(
@@ -128,6 +134,7 @@ export async function loadAdminSaleSetupPage({
     canEditCatalog: userHasAccessTo(role, staffRole, LOTS_ACCESS),
     pendingRegistrationCount,
     connectRequiredByLotId,
+    sellersWithoutPayouts,
     sellingPlatform,
   };
 }

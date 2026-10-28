@@ -1,5 +1,5 @@
 import type { KycStatusSummaryDto } from "@/lib/data/dto/dashboard-dtos";
-import type { ConsignmentChecklistFacts } from "@auction/domain";
+import { type ConsignmentChecklistFacts, agreementTermsComplete } from "@auction/domain";
 import type { ConsignmentAgreement, ItemSubmission, LegalEntityStatus, Lot } from "@auction/types";
 
 /** Facts about the account a consignment belongs to, shared by all its consignments. */
@@ -32,7 +32,10 @@ export function organisationIdentityFact(
 /** The facts for one consignment's checklist. */
 export function consignmentChecklistFacts(input: {
   submission: Pick<ItemSubmission, "status">;
-  agreement: Pick<ConsignmentAgreement, "acceptedAt"> | null;
+  agreement: Pick<
+    ConsignmentAgreement,
+    "acceptedAt" | "estimateLow" | "estimateHigh" | "commissionPercent"
+  > | null;
   account: SellerAccountFacts;
   lot: Pick<Lot, "saleId" | "startTime"> | null;
 }): ConsignmentChecklistFacts {
@@ -41,7 +44,8 @@ export function consignmentChecklistFacts(input: {
     accountKind: input.account.accountKind,
     identity: input.account.identity,
     agreement: {
-      proposed: input.agreement !== null,
+      // A proposal without an estimate and commission is not one the seller can accept yet.
+      proposed: input.agreement !== null && agreementTermsComplete(input.agreement),
       accepted: Boolean(input.agreement?.acceptedAt),
     },
     payoutsReady: input.account.payoutsReady,

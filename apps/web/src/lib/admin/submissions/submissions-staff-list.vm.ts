@@ -3,6 +3,7 @@ import { buildListHref } from "@/lib/admin/admin-list-params";
 import type { AdminSubmissionTableRow } from "@/lib/admin/catalog/submission-table-row";
 import type { CatalogActiveFilterChip } from "@/lib/admin/catalog/types";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
+import { submissionSellerWait } from "@/lib/admin/submissions/submission-seller-wait";
 import type { AdminSubmissionsListSummary } from "@/lib/data/http/admin-submissions-summary.server";
 import {
   type AttentionStripItem,
@@ -12,7 +13,7 @@ import {
   type TeamView,
   viewQuery,
 } from "@auction/staff-ui";
-import type { ItemSubmissionStatus } from "@auction/types";
+import type { ConsignmentAgreement, ItemSubmissionStatus } from "@auction/types";
 
 export const SUBMISSIONS_LIST_PATH = "/admin/submissions";
 
@@ -27,6 +28,8 @@ export type SubmissionsStaffRow = {
   seller: string;
   statusCode: ItemSubmissionStatus;
   status: StatusPresentation;
+  /** Accepted work waiting on terms or the seller's agreement before it can be catalogued. */
+  sellerWait: StatusPresentation | null;
   /** "9 days waiting", in the danger tone once it is over the review target. */
   waiting: StatusPresentation | null;
   waitingDays: number | null;
@@ -47,6 +50,7 @@ const count = new Intl.NumberFormat("en-GB");
 
 export function toSubmissionsStaffRows(
   rows: readonly AdminSubmissionTableRow[],
+  agreementsBySubmissionId: ReadonlyMap<string, ConsignmentAgreement> = new Map(),
 ): SubmissionsStaffRow[] {
   return rows.map((row) => ({
     id: row.id,
@@ -56,6 +60,7 @@ export function toSubmissionsStaffRows(
     seller: row.sellerPreview,
     statusCode: row.status,
     status: staffStatus("submission", row.status),
+    sellerWait: submissionSellerWait(row.status, agreementsBySubmissionId.get(row.id) ?? null),
     waiting:
       row.slaLabel && row.slaTone
         ? {

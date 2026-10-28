@@ -43,6 +43,10 @@ type Props = {
   submitterUserId?: string;
   /** The seller's consignment agreement; cataloguing waits for its acceptance. */
   agreement?: ConsignmentAgreement | null;
+  /** The seller's identity is checked; accepting the work waits for it. */
+  sellerIdentityVerified?: boolean;
+  /** The seller's account, for following up with them. */
+  sellerLegalEntityId?: string;
 };
 
 /**
@@ -57,6 +61,8 @@ export function AdminSubmissionDecisionPanel({
   submitterDisplayName,
   submitterUserId,
   agreement = null,
+  sellerIdentityVerified = true,
+  sellerLegalEntityId,
 }: Props) {
   const router = useRouter();
   const view = resolveSubmissionDecisionView(status);
@@ -64,7 +70,7 @@ export function AdminSubmissionDecisionPanel({
   const panelRootRef = useRef<HTMLDivElement | null>(null);
   const [dirty, setDirty] = useState({ approve: false, reject: false, changes: false });
 
-  const { pending, startReview, accept, requestChanges, reject, convert, dialog } =
+  const { pending, startReview, accept, requestChanges, proposeTerms, reject, convert, dialog } =
     useSubmissionDecisionActions({
       submissionId,
       title: submission.title,
@@ -87,8 +93,23 @@ export function AdminSubmissionDecisionPanel({
     [],
   );
   const agreementAccepted = Boolean(agreement?.acceptedAt);
-  // While the seller has not accepted there is nothing to convert, so no shortcut either.
-  const shortcutsActive = view.shortcutsActive && (view.mode !== "convert" || agreementAccepted);
+  const acceptBlocked = sellerIdentityVerified
+    ? null
+    : {
+        title: "The seller hasn't verified their identity yet",
+        body: "A specialist can accept the work once they have. Meanwhile you can ask for changes or reject it.",
+        action: sellerLegalEntityId
+          ? {
+              label: "Open the seller",
+              href: `/admin/legal-entities/${encodeURIComponent(sellerLegalEntityId)}`,
+            }
+          : null,
+      };
+  // While something is still owed by the seller there is nothing to submit by shortcut.
+  const shortcutsActive =
+    view.shortcutsActive &&
+    (view.mode !== "convert" || agreementAccepted) &&
+    (view.mode !== "review" || !acceptBlocked);
 
   useSubmissionDecisionShortcuts({
     active: shortcutsActive,
@@ -117,6 +138,7 @@ export function AdminSubmissionDecisionPanel({
               formRef={approveFormEl}
               onSubmit={accept}
               onDirtyChange={onApproveDirty}
+              blocked={acceptBlocked}
             />
             <SubmissionRequestChangesForm
               pending={pending}
@@ -133,7 +155,11 @@ export function AdminSubmissionDecisionPanel({
       case "convert":
         return (
           <>
-            <SubmissionAgreementStatus agreement={agreement} />
+            <SubmissionAgreementStatus
+              agreement={agreement}
+              pending={pending}
+              onProposeTerms={proposeTerms}
+            />
             {agreementAccepted ? (
               <SubmissionConvertForm
                 pending={pending}

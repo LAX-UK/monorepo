@@ -4,6 +4,7 @@ import { acceptConsignmentAgreementAction } from "@/lib/actions/consignment-agre
 import type { ConditionsSection } from "@/lib/legal/conditions-of-business-part-c";
 import { consignmentAgreementViewModel } from "@/lib/seller/consignment-agreement-view";
 import { notify } from "@/lib/ui/notify";
+import { agreementTermsComplete } from "@auction/domain";
 import type { ConsignmentAgreement } from "@auction/types";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
@@ -89,6 +90,25 @@ export function ConsignmentAgreementPanel({
       setFailure(result.error);
     });
   };
+
+  // No estimate and commission yet: nothing to read or accept until the specialist sends them.
+  if (!agreement.acceptedAt && !agreementTermsComplete(agreement)) {
+    return (
+      <section id="agreement" aria-labelledby="agreement-heading" className="scroll-mt-24">
+        <Surface variant="section" className="space-y-1" data-testid="agreement-pending-terms">
+          <h2
+            id="agreement-heading"
+            className="font-headline text-lg font-semibold tracking-tight text-on-surface"
+          >
+            Consignment agreement
+          </h2>
+          <p className="font-body text-sm text-on-surface-variant">
+            Your specialist will send the estimate and terms. You'll read and accept them here.
+          </p>
+        </Surface>
+      </section>
+    );
+  }
 
   return (
     <section id="agreement" aria-labelledby="agreement-heading" className="scroll-mt-24">

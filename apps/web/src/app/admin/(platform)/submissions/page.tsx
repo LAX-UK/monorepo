@@ -34,12 +34,12 @@ export default async function AdminSubmissionsPage({
     sp: Object.fromEntries(Object.entries(sp).map(([key, value]) => [key, first(value)])),
     currentUserId: user.id,
   });
-  const { model, summary, submissionRows, total } = vm;
+  const { model, summary, submissionRows, agreementsBySubmissionId, total } = vm;
   const { query } = model;
 
   return (
     <SubmissionsStaffList
-      rows={toSubmissionsStaffRows(submissionRows)}
+      rows={toSubmissionsStaffRows(submissionRows, agreementsBySubmissionId)}
       search={sp}
       views={submissionsViews(sp, vm.loadError ? null : summary)}
       activeQueue={model.activeQueue}

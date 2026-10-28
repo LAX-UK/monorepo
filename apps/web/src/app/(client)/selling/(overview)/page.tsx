@@ -123,7 +123,7 @@ export default async function SellerOverviewPage() {
   return (
     <DashboardPage className="space-y-8">
       {/* For an organisation this page is its Home until Home has a page of its own. */}
-      {sellingAsOrganisation ? <SetMobileShellTitle title="Home" /> : null}
+      <SetMobileShellTitle title={sellingAsOrganisation ? "Home" : "Overview"} />
       <DashboardPageHeader
         title={sellingAsOrganisation ? "Home" : "Overview"}
         hideTitleOnMobile

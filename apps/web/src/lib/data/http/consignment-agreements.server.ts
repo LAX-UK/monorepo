@@ -2,7 +2,11 @@ import "server-only";
 
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
 import { parseConsignmentAgreement } from "@/lib/seller/consignment-agreement-parse";
-import type { ConsignmentAgreement, ConsignmentAgreementView } from "@auction/types";
+import type {
+  ConsignmentAgreement,
+  ConsignmentAgreementView,
+  StaffConsignmentView,
+} from "@auction/types";
 
 async function readData(res: Response): Promise<unknown> {
   if (!res.ok) return null;
@@ -36,13 +40,37 @@ export async function listServerConsignmentAgreements(): Promise<ConsignmentAgre
     .filter((row): row is ConsignmentAgreement => row !== null);
 }
 
-/** Staff: the agreement on a submission, whoever's it is. */
-export async function getAdminConsignmentAgreement(
+/** Staff: the agreement on a submission and whether its seller's identity is verified. */
+export async function getAdminConsignmentView(
   submissionId: string,
-): Promise<ConsignmentAgreement | null> {
+): Promise<StaffConsignmentView | null> {
   const res = await authedServerFetch(
     `/submissions/${encodeURIComponent(submissionId)}/agreement/staff`,
     { skipActingLegalEntityHeader: true },
   );
-  return parseConsignmentAgreement(await readData(res));
+  const data = (await readData(res)) as {
+    agreement?: unknown;
+    sellerIdentityVerified?: unknown;
+  } | null;
+  if (!data) return null;
+  return {
+    agreement: parseConsignmentAgreement(data.agreement),
+    sellerIdentityVerified: data.sellerIdentityVerified === true,
+  };
+}
+
+/** Staff list: the agreements of the submissions on a page. */
+export async function listAdminConsignmentAgreements(
+  submissionIds: readonly string[],
+): Promise<ConsignmentAgreement[]> {
+  if (submissionIds.length === 0) return [];
+  const res = await authedServerFetch(
+    `/submissions/agreements/staff?ids=${encodeURIComponent(submissionIds.join(","))}`,
+    { skipActingLegalEntityHeader: true },
+  );
+  const data = await readData(res);
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((row) => parseConsignmentAgreement(row))
+    .filter((row): row is ConsignmentAgreement => row !== null);
 }
