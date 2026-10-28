@@ -35,7 +35,7 @@ export function AccountSwitcherPopover({
         align={align}
         side={side}
         sideOffset={6}
-        className="w-[19rem] rounded-xl border-outline-variant bg-surface-container-lowest p-0 shadow-lg"
+        className="w-[19rem] rounded-xl bg-surface-container-lowest p-0 shadow-lg"
       >
         <AccountSwitcherList
           switcher={switcher}
