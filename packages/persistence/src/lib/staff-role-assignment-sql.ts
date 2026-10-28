@@ -24,3 +24,13 @@ export function staffRolesInForceFor(userId: AnyColumn): SQL<string[]> {
       and ${staffRoleAssignmentInForceAt(sql`now()`)}
   ), '{}'::text[])`;
 }
+
+/** Whether the person in `userId` holds `role` in force now. For filters and counts over people. */
+export function holdsStaffRoleNow(userId: AnyColumn, role: string): SQL<boolean> {
+  return sql<boolean>`exists (
+    select 1 from ${staffRoleAssignment}
+    where ${staffRoleAssignment.userId} = ${userId}
+      and ${staffRoleAssignment.role}::text = ${role}
+      and ${staffRoleAssignmentInForceAt(sql`now()`)}
+  )`;
+}

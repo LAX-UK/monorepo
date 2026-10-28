@@ -54,7 +54,10 @@ describe("admin-user-list-sql", () => {
     expect(query.sql).toContain('"bid_identity_directory"."email" ilike');
     expect(query.sql).toContain('"bid_identity_directory"."name" ilike');
     expect(query.sql).toContain('"bid_user_profile"."mobile" ilike');
-    expect(query.sql).toContain('"bid_user_profile"."staff_role" =');
+    // A staff role filter matches everyone holding it now, not only the role shown for them.
+    expect(query.sql).toContain('from "staff_role_assignment"');
+    expect(query.sql).toContain('"staff_role_assignment"."role"::text =');
+    expect(query.sql).not.toContain('"bid_user_profile"."staff_role" =');
     expect(query.sql).toContain('"bid_user_profile"."suspended_at" is not null');
     expect(query.sql).toContain('"bid_identity_directory"."email_verified" =');
     expect(query.sql).toContain('"bid_user_profile"."kyc_status" in');
