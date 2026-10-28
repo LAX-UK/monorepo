@@ -112,7 +112,7 @@ Use this checklist before promoting Veriff KYC to production. Run against the **
 - [ ] Re-delivering the **same** watchlist payload does not double-process (content-hash idempotency)
 - [ ] Invalid / unsigned watchlist payload returns 400 / 401 (not 500)
 - [ ] An MLRO escalation email (`aml-compliance-review-notice`) is enqueued to compliance recipients (idempotent per screening + recipient)
-- [ ] MLRO (`compliance_officer`) sees pending screenings at `GET /admin/compliance/aml/screenings`
+- [ ] MLRO (`compliance`) sees pending screenings at `GET /admin/compliance/aml/screenings`
 - [ ] **Two-stage maker-checker**: analyst triages via `POST /admin/compliance/aml/screenings/:id/triage` (no hold change); MLRO decides via `POST /admin/compliance/aml/screenings/:id/decide`
 - [ ] MLRO **clear** (decide) lifts the hold and re-enrolls monitoring; **block** is terminal
 - [ ] `decide` without a prior triage → 409 `aml_triage_required`; same user triaging then deciding → 403 `aml_review_same_as_triager`

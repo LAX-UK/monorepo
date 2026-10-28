@@ -80,11 +80,11 @@ const actorOf = (session: Session) => ({
 
 describe("PATCH /admin/users/:userId/role (set-role)", () => {
   it("is registered at its own path and hands the actor and target on", async () => {
-    const { app, users } = usersFixture(staff(["super_admin"]));
+    const { app, users } = usersFixture(staff(["administrator"]));
 
     const res = await app.request(
       `/admin/users/${TARGET_ID}/role`,
-      json("PATCH", { role: "staff", staffRole: "operations" }),
+      json("PATCH", { role: "staff", staffRole: "sales_manager" }),
     );
 
     expect(res.status).toBe(200);
@@ -93,12 +93,12 @@ describe("PATCH /admin/users/:userId/role (set-role)", () => {
       ACTOR_ID,
       TARGET_ID,
       "staff",
-      ["super_admin"],
-      "operations",
+      ["administrator"],
+      "sales_manager",
     );
   });
 
-  it.each(["support_concierge", "client_advisor", "finance_ops", "staff_viewer"])(
+  it.each(["client_services", "client_services", "finance", "read_only"])(
     "refuses %s before asking for a sign-in",
     async (staffRoles) => {
       const { app, users } = usersFixture(staff(normalizeStaffRoles([staffRoles])), {
@@ -117,7 +117,7 @@ describe("PATCH /admin/users/:userId/role (set-role)", () => {
   );
 
   it("asks for a fresh sign-in, and changes nothing", async () => {
-    const { app, users } = usersFixture(staff(["super_admin"]), { recent: false });
+    const { app, users } = usersFixture(staff(["administrator"]), { recent: false });
 
     const res = await app.request(
       `/admin/users/${TARGET_ID}/role`,
@@ -130,8 +130,8 @@ describe("PATCH /admin/users/:userId/role (set-role)", () => {
   });
 
   it("passes the service's refusal through with its status", async () => {
-    const { app, users } = usersFixture(staff(["super_admin"]));
-    users.setRole.mockResolvedValue({ ok: false, status: 409, message: "last super admin" });
+    const { app, users } = usersFixture(staff(["administrator"]));
+    users.setRole.mockResolvedValue({ ok: false, status: 409, message: "last administrator" });
 
     const res = await app.request(
       `/admin/users/${TARGET_ID}/role`,
@@ -139,31 +139,31 @@ describe("PATCH /admin/users/:userId/role (set-role)", () => {
     );
 
     expect(res.status).toBe(409);
-    expect(await res.json()).toEqual({ error: "last super admin" });
+    expect(await res.json()).toEqual({ error: "last administrator" });
   });
 });
 
 describe("PATCH /admin/users/:userId/staff-role", () => {
-  it("changes the role for a super_admin with a fresh sign-in", async () => {
-    const { app, users } = usersFixture(staff(["super_admin"]));
+  it("changes the role for a administrator with a fresh sign-in", async () => {
+    const { app, users } = usersFixture(staff(["administrator"]));
 
     const res = await app.request(
       `/admin/users/${TARGET_ID}/staff-role`,
-      json("PATCH", { staffRole: "finance_ops" }),
+      json("PATCH", { staffRole: "finance" }),
     );
 
     expect(res.status).toBe(200);
-    expect(users.setStaffRole).toHaveBeenCalledWith("staff", ACTOR_ID, TARGET_ID, "finance_ops", [
-      "super_admin",
+    expect(users.setStaffRole).toHaveBeenCalledWith("staff", ACTOR_ID, TARGET_ID, "finance", [
+      "administrator",
     ]);
   });
 
   it("asks for a fresh sign-in, and changes nothing", async () => {
-    const { app, users } = usersFixture(staff(["super_admin"]), { recent: false });
+    const { app, users } = usersFixture(staff(["administrator"]), { recent: false });
 
     const res = await app.request(
       `/admin/users/${TARGET_ID}/staff-role`,
-      json("PATCH", { staffRole: "finance_ops" }),
+      json("PATCH", { staffRole: "finance" }),
     );
 
     expect(res.status).toBe(403);
@@ -171,24 +171,21 @@ describe("PATCH /admin/users/:userId/staff-role", () => {
     expect(users.setStaffRole).not.toHaveBeenCalled();
   });
 
-  it.each(["support_concierge", "client_advisor", "operations"])(
-    "refuses %s",
-    async (staffRoles) => {
-      const { app, users } = usersFixture(staff(normalizeStaffRoles([staffRoles])));
+  it.each(["client_services", "sales_manager"])("refuses %s", async (staffRoles) => {
+    const { app, users } = usersFixture(staff(normalizeStaffRoles([staffRoles])));
 
-      const res = await app.request(
-        `/admin/users/${TARGET_ID}/staff-role`,
-        json("PATCH", { staffRole: "finance_ops" }),
-      );
+    const res = await app.request(
+      `/admin/users/${TARGET_ID}/staff-role`,
+      json("PATCH", { staffRole: "finance" }),
+    );
 
-      expect(res.status).toBe(403);
-      expect(users.setStaffRole).not.toHaveBeenCalled();
-    },
-  );
+    expect(res.status).toBe(403);
+    expect(users.setStaffRole).not.toHaveBeenCalled();
+  });
 });
 
 describe("POST /admin/users/:userId/suspend and unsuspend", () => {
-  it.each(["super_admin", "support_concierge"])(
+  it.each(["administrator", "client_services"])(
     "lets %s suspend, with the actor and reason",
     async (staffRoles) => {
       const { app, users } = usersFixture(staff(normalizeStaffRoles([staffRoles])));
@@ -207,23 +204,20 @@ describe("POST /admin/users/:userId/suspend and unsuspend", () => {
     },
   );
 
-  it.each(["client_advisor", "finance_ops", "staff_viewer", "operations"])(
-    "refuses %s",
-    async (staffRoles) => {
-      const { app, users } = usersFixture(staff(normalizeStaffRoles([staffRoles])));
+  it.each(["finance", "read_only", "fulfilment"])("refuses %s", async (staffRoles) => {
+    const { app, users } = usersFixture(staff(normalizeStaffRoles([staffRoles])));
 
-      const suspend = await app.request(
-        `/admin/users/${TARGET_ID}/suspend`,
-        json("POST", { reason: REASON }),
-      );
-      const unsuspend = await app.request(`/admin/users/${TARGET_ID}/unsuspend`, json("POST"));
+    const suspend = await app.request(
+      `/admin/users/${TARGET_ID}/suspend`,
+      json("POST", { reason: REASON }),
+    );
+    const unsuspend = await app.request(`/admin/users/${TARGET_ID}/unsuspend`, json("POST"));
 
-      expect(suspend.status).toBe(403);
-      expect(unsuspend.status).toBe(403);
-      expect(users.suspend).not.toHaveBeenCalled();
-      expect(users.unsuspend).not.toHaveBeenCalled();
-    },
-  );
+    expect(suspend.status).toBe(403);
+    expect(unsuspend.status).toBe(403);
+    expect(users.suspend).not.toHaveBeenCalled();
+    expect(users.unsuspend).not.toHaveBeenCalled();
+  });
 
   it.each([
     ["no reason", {}],
@@ -231,7 +225,7 @@ describe("POST /admin/users/:userId/suspend and unsuspend", () => {
     ["a short reason", { reason: "spam" }],
     ["an over-long reason", { reason: "x".repeat(501) }],
   ])("rejects %s", async (_label, body) => {
-    const { app, users } = usersFixture(staff(["super_admin"]));
+    const { app, users } = usersFixture(staff(["administrator"]));
 
     const res = await app.request(`/admin/users/${TARGET_ID}/suspend`, json("POST", body));
 
@@ -240,7 +234,7 @@ describe("POST /admin/users/:userId/suspend and unsuspend", () => {
   });
 
   it("asks for a fresh sign-in before suspending or restoring", async () => {
-    const { app, users } = usersFixture(staff(["super_admin"]), { recent: false });
+    const { app, users } = usersFixture(staff(["administrator"]), { recent: false });
 
     const suspend = await app.request(
       `/admin/users/${TARGET_ID}/suspend`,
@@ -257,12 +251,12 @@ describe("POST /admin/users/:userId/suspend and unsuspend", () => {
   });
 
   it("unsuspends with the actor recorded", async () => {
-    const { app, users } = usersFixture(staff(["support_concierge"]));
+    const { app, users } = usersFixture(staff(["client_services"]));
 
     const res = await app.request(`/admin/users/${TARGET_ID}/unsuspend`, json("POST"));
 
     expect(res.status).toBe(200);
-    expect(users.unsuspend).toHaveBeenCalledWith(actorOf(staff(["support_concierge"])), TARGET_ID);
+    expect(users.unsuspend).toHaveBeenCalledWith(actorOf(staff(["client_services"])), TARGET_ID);
   });
 });
 
@@ -270,7 +264,7 @@ describe("POST /admin/users/bulk", () => {
   const ids = [TARGET_ID, "11111111-2222-4333-8444-555555555555"];
 
   it("suspends a batch with the actor and reason", async () => {
-    const { app, users } = usersFixture(staff(["support_concierge"]));
+    const { app, users } = usersFixture(staff(["client_services"]));
 
     const res = await app.request(
       "/admin/users/bulk",
@@ -279,7 +273,7 @@ describe("POST /admin/users/bulk", () => {
 
     expect(res.status).toBe(200);
     expect(users.bulkSuspendOrUnsuspend).toHaveBeenCalledWith({
-      actor: actorOf(staff(["support_concierge"])),
+      actor: actorOf(staff(["client_services"])),
       ids,
       op: "suspend",
       reason: REASON,
@@ -287,7 +281,7 @@ describe("POST /admin/users/bulk", () => {
   });
 
   it("requires a reason to suspend but not to restore", async () => {
-    const { app, users } = usersFixture(staff(["super_admin"]));
+    const { app, users } = usersFixture(staff(["administrator"]));
 
     const noReason = await app.request("/admin/users/bulk", json("POST", { ids, op: "suspend" }));
     const restore = await app.request("/admin/users/bulk", json("POST", { ids, op: "unsuspend" }));
@@ -298,7 +292,7 @@ describe("POST /admin/users/bulk", () => {
   });
 
   it("asks for a fresh sign-in, and changes nothing", async () => {
-    const { app, users } = usersFixture(staff(["super_admin"]), { recent: false });
+    const { app, users } = usersFixture(staff(["administrator"]), { recent: false });
 
     const res = await app.request(
       "/admin/users/bulk",
@@ -310,7 +304,7 @@ describe("POST /admin/users/bulk", () => {
     expect(users.bulkSuspendOrUnsuspend).not.toHaveBeenCalled();
   });
 
-  it.each(["client_advisor", "finance_ops"])("refuses %s", async (staffRoles) => {
+  it.each(["fulfilment", "finance"])("refuses %s", async (staffRoles) => {
     const { app, users } = usersFixture(staff(normalizeStaffRoles([staffRoles])));
 
     const res = await app.request(
@@ -334,28 +328,25 @@ describe("withdrawal decisions", () => {
     return { app, lots };
   }
 
-  it.each(["super_admin", "auction_manager", "operations"])(
-    "lets %s approve and decline",
-    async (staffRoles) => {
-      const { app, lots } = lotsFixture(staff(normalizeStaffRoles([staffRoles])));
+  it.each(["administrator", "sales_manager"])("lets %s approve and decline", async (staffRoles) => {
+    const { app, lots } = lotsFixture(staff(normalizeStaffRoles([staffRoles])));
 
-      const approve = await app.request(
-        `/admin/lots/${LOT_ID}/approve-withdrawal-request`,
-        json("POST"),
-      );
-      const decline = await app.request(
-        `/admin/lots/${LOT_ID}/decline-withdrawal-request`,
-        json("POST", { reason: "Already catalogued." }),
-      );
+    const approve = await app.request(
+      `/admin/lots/${LOT_ID}/approve-withdrawal-request`,
+      json("POST"),
+    );
+    const decline = await app.request(
+      `/admin/lots/${LOT_ID}/decline-withdrawal-request`,
+      json("POST", { reason: "Already catalogued." }),
+    );
 
-      expect(approve.status).toBe(200);
-      expect(decline.status).toBe(200);
-      expect(lots.approveWithdrawalRequest).toHaveBeenCalledOnce();
-      expect(lots.declineWithdrawalRequest).toHaveBeenCalledOnce();
-    },
-  );
+    expect(approve.status).toBe(200);
+    expect(decline.status).toBe(200);
+    expect(lots.approveWithdrawalRequest).toHaveBeenCalledOnce();
+    expect(lots.declineWithdrawalRequest).toHaveBeenCalledOnce();
+  });
 
-  it.each(["finance_ops", "client_advisor", "staff_viewer"])("refuses %s", async (staffRoles) => {
+  it.each(["finance", "client_services", "read_only"])("refuses %s", async (staffRoles) => {
     const { app, lots } = lotsFixture(staff(normalizeStaffRoles([staffRoles])));
 
     const res = await app.request(`/admin/lots/${LOT_ID}/approve-withdrawal-request`, json("POST"));
@@ -365,7 +356,7 @@ describe("withdrawal decisions", () => {
   });
 
   it("asks for a fresh sign-in before approving or declining", async () => {
-    const { app, lots } = lotsFixture(staff(["super_admin"]), { recent: false });
+    const { app, lots } = lotsFixture(staff(["administrator"]), { recent: false });
 
     const approve = await app.request(
       `/admin/lots/${LOT_ID}/approve-withdrawal-request`,
@@ -400,7 +391,7 @@ describe("manual-review payments", () => {
   }
   const key = (value: string) => ({ "idempotency-key": value });
 
-  it.each(["super_admin", "finance_ops"])(
+  it.each(["administrator", "finance"])(
     "lets %s capture and refund with a key",
     async (staffRoles) => {
       const { app, payments } = paymentsFixture(staff(normalizeStaffRoles([staffRoles])));
@@ -432,26 +423,23 @@ describe("manual-review payments", () => {
     },
   );
 
-  it.each(["auction_manager", "client_advisor", "staff_viewer"])(
-    "refuses %s",
-    async (staffRoles) => {
-      const { app, payments } = paymentsFixture(staff(normalizeStaffRoles([staffRoles])), {
-        recent: false,
-      });
+  it.each(["sales_manager", "client_services", "read_only"])("refuses %s", async (staffRoles) => {
+    const { app, payments } = paymentsFixture(staff(normalizeStaffRoles([staffRoles])), {
+      recent: false,
+    });
 
-      const res = await app.request(
-        `/admin/payments/${PAYMENT_ID}/refund-buyer`,
-        json("POST", { reason: REASON }, key("refund-key-0002")),
-      );
+    const res = await app.request(
+      `/admin/payments/${PAYMENT_ID}/refund-buyer`,
+      json("POST", { reason: REASON }, key("refund-key-0002")),
+    );
 
-      expect(res.status).toBe(403);
-      expect(await res.json()).not.toEqual(STEP_UP);
-      expect(payments.refundManualReviewPayment).not.toHaveBeenCalled();
-    },
-  );
+    expect(res.status).toBe(403);
+    expect(await res.json()).not.toEqual(STEP_UP);
+    expect(payments.refundManualReviewPayment).not.toHaveBeenCalled();
+  });
 
   it("asks for a fresh sign-in before anything else, including the key check", async () => {
-    const { app, payments } = paymentsFixture(staff(["finance_ops"]), { recent: false });
+    const { app, payments } = paymentsFixture(staff(["finance"]), { recent: false });
 
     const capture = await app.request(
       `/admin/payments/${PAYMENT_ID}/capture-and-process`,
@@ -471,7 +459,7 @@ describe("manual-review payments", () => {
   });
 
   it("refuses a capture or refund without an Idempotency-Key", async () => {
-    const { app, payments } = paymentsFixture(staff(["finance_ops"]));
+    const { app, payments } = paymentsFixture(staff(["finance"]));
 
     const capture = await app.request(
       `/admin/payments/${PAYMENT_ID}/capture-and-process`,
@@ -493,7 +481,7 @@ describe("manual-review payments", () => {
     ["a blank reason", { reason: "     " }],
     ["a short reason", { reason: "oops" }],
   ])("rejects a refund with %s", async (_label, body) => {
-    const { app, payments } = paymentsFixture(staff(["finance_ops"]));
+    const { app, payments } = paymentsFixture(staff(["finance"]));
 
     const res = await app.request(
       `/admin/payments/${PAYMENT_ID}/refund-buyer`,
@@ -505,7 +493,7 @@ describe("manual-review payments", () => {
   });
 
   it("refunds once when the same request is sent twice, and replays the answer", async () => {
-    const { app, payments } = paymentsFixture(staff(["finance_ops"]));
+    const { app, payments } = paymentsFixture(staff(["finance"]));
     const send = () =>
       app.request(
         `/admin/payments/${PAYMENT_ID}/refund-buyer`,
@@ -523,7 +511,7 @@ describe("manual-review payments", () => {
   });
 
   it("captures once when the same request is sent twice", async () => {
-    const { app, payments } = paymentsFixture(staff(["finance_ops"]));
+    const { app, payments } = paymentsFixture(staff(["finance"]));
     const send = () =>
       app.request(
         `/admin/payments/${PAYMENT_ID}/capture-and-process`,
@@ -538,7 +526,7 @@ describe("manual-review payments", () => {
   });
 
   it("does not replay a refund that failed, so it can be retried with the same key", async () => {
-    const { app, payments } = paymentsFixture(staff(["finance_ops"]));
+    const { app, payments } = paymentsFixture(staff(["finance"]));
     payments.refundManualReviewPayment.mockResolvedValueOnce({
       match: (_ok: () => unknown, onErr: (e: { message: string; status: number }) => unknown) =>
         onErr({ message: "Payment is not in manual review", status: 409 }),
@@ -582,8 +570,8 @@ describe("impersonation start", () => {
     return { app, impersonation };
   }
 
-  it("lets a super_admin with a fresh sign-in start", async () => {
-    const { app, impersonation } = impersonationFixture(staff(["super_admin"]));
+  it("lets a administrator with a fresh sign-in start", async () => {
+    const { app, impersonation } = impersonationFixture(staff(["administrator"]));
 
     const res = await app.request(
       "/admin/impersonation/start",
@@ -597,7 +585,9 @@ describe("impersonation start", () => {
   });
 
   it("asks for a fresh sign-in, but still allows the read-only lookup", async () => {
-    const { app, impersonation } = impersonationFixture(staff(["super_admin"]), { recent: false });
+    const { app, impersonation } = impersonationFixture(staff(["administrator"]), {
+      recent: false,
+    });
 
     const start = await app.request(
       "/admin/impersonation/start",
@@ -611,18 +601,15 @@ describe("impersonation start", () => {
     expect(lookup.status).toBe(200);
   });
 
-  it.each(["support_concierge", "auction_manager", "finance_ops"])(
-    "refuses %s",
-    async (staffRoles) => {
-      const { app, impersonation } = impersonationFixture(staff(normalizeStaffRoles([staffRoles])));
+  it.each(["client_services", "sales_manager", "finance"])("refuses %s", async (staffRoles) => {
+    const { app, impersonation } = impersonationFixture(staff(normalizeStaffRoles([staffRoles])));
 
-      const res = await app.request(
-        "/admin/impersonation/start",
-        json("POST", { legalEntityId: ENTITY_ID }),
-      );
+    const res = await app.request(
+      "/admin/impersonation/start",
+      json("POST", { legalEntityId: ENTITY_ID }),
+    );
 
-      expect(res.status).toBe(403);
-      expect(impersonation.startImpersonation).not.toHaveBeenCalled();
-    },
-  );
+    expect(res.status).toBe(403);
+    expect(impersonation.startImpersonation).not.toHaveBeenCalled();
+  });
 });

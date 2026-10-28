@@ -380,3 +380,10 @@ export {
   type ConsignmentStage,
   type ConsignmentStageFacts,
 } from "./consignment-stage.js";
+export {
+  complianceDecisionRefusal,
+  payoutReversalRefusal,
+  type ComplianceCaseParticipants,
+  type ComplianceDecisionRefusal,
+  type PayoutReversalRefusal,
+} from "./separation-of-duties.js";

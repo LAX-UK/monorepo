@@ -649,7 +649,7 @@ before production go-live.
 
 **Chosen.** Two-step verification (TOTP) is optional by default: each user turns it on or off in their own security settings. Two policies can make it mandatory:
 
-- **Staff policy** — a Bid super admin (`platform.admin.full`) requires it for everyone with a staff role on any LAX platform (Bid staff role, active Shop staff grant). Seeded **on** by the migration; the dev seed (`db:seed:dev`, used by hermetic CI) turns it off so password-only fixture logins keep working.
+- **Staff policy** — a Bid administrator (`platform.admin.full`) requires it for everyone with a staff role on any LAX platform (Bid staff role, active Shop staff grant). Seeded **on** by the migration; the dev seed (`db:seed:dev`, used by hermetic CI) turns it off so password-only fixture logins keep working.
 - **Organisation policy** — an organisation owner requires it for that organisation's members. Default **off**.
 
 Identity enforces the result at `/oauth2/authorize` for every relying party. Products still own roles (D13): SECURITY DEFINER triggers on `bid_user_profile`, `shop_staff_member` and `legal_entity_member` (organisations only) maintain `identity_access_marker`, a role-free "this subject is staff / belongs to org X" table that `auth_app` can read. Policies live in `identity_mfa_policy`. Both tables are denied to `api_app`; Bid reads and writes policy through Identity machine endpoints (`/internal/identity/two-factor-policies/*`, `/internal/identity/subjects/:id/two-factor-requirement`), and every change is audited as `auth.two_factor_policy_changed`.
@@ -668,7 +668,7 @@ Users manage two-step verification on the hosted `/two-factor/manage` page (link
 
 **Extends D13 and D35.**
 
-**Chosen.** A staff invitation is one LAX invitation with a list of grants, one per platform: `{ product: "bid" | "shop", role }`. The super admin picks, per platform, whether the person gets access and which role. The catalogue of platforms, roles, labels and summaries lives in `@auction/types` (`LAX_STAFF_PLATFORMS`), so Bid's invite form, badges and emails use the same names as Shop Admin. `user_invitation_product_grant` (migration **0206**) is the source of truth. `user_invitation.target_role` and `target_staff_role` are derived from it for older readers: a Bid grant makes the invitee Bid staff, and Shop-only invitees stay Bid clients.
+**Chosen.** A staff invitation is one LAX invitation with a list of grants, one per platform: `{ product: "bid" | "shop", role }`. The administrator picks, per platform, whether the person gets access and which role. The catalogue of platforms, roles, labels and summaries lives in `@auction/types` (`LAX_STAFF_PLATFORMS`), so Bid's invite form, badges and emails use the same names as Shop Admin. `user_invitation_product_grant` (migration **0206**) is the source of truth. `user_invitation.target_role` and `target_staff_role` are derived from it for older readers: a Bid grant makes the invitee Bid staff, and Shop-only invitees stay Bid clients.
 
 The same invitation works for new and existing accounts:
 
@@ -691,7 +691,7 @@ All invitation emails, including organisation invitations, use the `access-invit
 
 **Alternatives considered.** One global staff role across every LAX product (rejected — Shop and Bid roles differ, and D13 keeps roles product-owned). Bid writing `shop_staff_member` directly (rejected — crosses the product database boundary and bypasses Shop's roster rules). Separate invitations per product (rejected — several emails and sign-ups for one hire).
 
-**Why this wins.** One email and one acceptance give access everywhere the super admin chose. Each product still owns its role model and rules, and delivery to other products is idempotent and auditable.
+**Why this wins.** One email and one acceptance give access everywhere the administrator chose. Each product still owns its role model and rules, and delivery to other products is idempotent and auditable.
 
 **Status.** *Implemented.* Migrations **0206** `invitation_product_grants` and **0207** `lax_staff_access_directory`; access service: [apps/api/src/services/admin/staff-access-admin.service.ts](../../apps/api/src/services/admin/staff-access-admin.service.ts); repository: [packages/persistence/src/repositories/drizzle-invitation.repository.ts](../../packages/persistence/src/repositories/drizzle-invitation.repository.ts); Shop consumer: [apps/shop-api/src/infrastructure/scheduler/process-staff-access-inbox.runner.ts](../../apps/shop-api/src/infrastructure/scheduler/process-staff-access-inbox.runner.ts); catalogue: [packages/types/src/lax-staff-platforms.ts](../../packages/types/src/lax-staff-platforms.ts).
 

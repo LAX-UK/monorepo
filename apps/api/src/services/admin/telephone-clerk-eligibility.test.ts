@@ -26,7 +26,7 @@ function eligibilityFor(row: { role: string; staffRoles: UserStaffRole[] } | nul
 describe("SaleroomAccessClerkEligibility", () => {
   it("accepts staff whose roles in force can run the saleroom", async () => {
     expect(
-      await eligibilityFor({ role: "staff", staffRoles: ["super_admin"] }).canTakeTelephoneLines(
+      await eligibilityFor({ role: "staff", staffRoles: ["administrator"] }).canTakeTelephoneLines(
         "u1",
       ),
     ).toBe(true);

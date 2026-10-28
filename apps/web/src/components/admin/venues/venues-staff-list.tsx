@@ -11,6 +11,8 @@ import {
   venuePanelHref,
   venuesListHref,
 } from "@/lib/admin/venues/venues-staff-list.vm";
+import { useViewerCapabilities } from "@/lib/auth/capabilities/viewer-capabilities-context";
+import { VENUES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import {
   CellLink,
   type DataColumn,
@@ -61,6 +63,8 @@ async function searchOrganisations(query: string): Promise<EntityOption[]> {
 export function VenuesStaffList(props: VenuesStaffListProps) {
   const { rows, search, organisation } = props;
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
+  // Read-only staff see the list without creating, editing or archiving.
+  const canManage = useViewerCapabilities().can(VENUES_ACCESS);
   const panelHref = useCallback((id: string | null) => venuePanelHref(search, id), [search]);
   const panel = useListPanel({
     param: "venue",
@@ -143,7 +147,7 @@ export function VenuesStaffList(props: VenuesStaffListProps) {
         description="Reusable onsite gallery and branch locations. Only venues owned by the sale operator can be attached to a sale."
         Link={ListLink}
         listKey="bid-admin.venues"
-        access="full"
+        access={canManage ? "full" : "read-only"}
         primaryAction={
           <StaffButton asChild variant="primary" size="sm" icon={<Plus aria-hidden />}>
             <Link href="/admin/venues/new">New venue</Link>
@@ -220,9 +224,9 @@ export function VenuesStaffList(props: VenuesStaffListProps) {
             actions: (row) => [
               { id: "open", label: "Open details", onSelect: () => panel.show(row.id) },
               { id: "page", label: "Open venue page", href: row.href },
-              { id: "edit", label: "Edit venue", href: row.editHref },
+              ...(canManage ? [{ id: "edit", label: "Edit venue", href: row.editHref }] : []),
               { id: "organisation", label: "Open organisation", href: row.organisationHref },
-              ...venueActions.actionsFor(row),
+              ...(canManage ? venueActions.actionsFor(row) : []),
             ],
           },
         }}
@@ -235,7 +239,7 @@ export function VenuesStaffList(props: VenuesStaffListProps) {
       <VenueQuickView
         row={openRow}
         onClose={() => panel.show(null)}
-        actions={openRow ? venueActions.actionsFor(openRow) : []}
+        actions={openRow && canManage ? venueActions.actionsFor(openRow) : []}
       />
       {venueActions.dialogs}
     </>

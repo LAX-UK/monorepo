@@ -45,7 +45,7 @@ describe("admin impersonation routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: adminUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
         scopes: ["bid.write"],
         identitySessionId: "session-1",
       }),

@@ -24,20 +24,17 @@ function createPlatformCatalogRouteApp(
 }
 
 describe("GET /admin/platform-catalog/legal-entity-id", () => {
-  it("returns 403 for staff_viewer", async () => {
-    const app = createPlatformCatalogRouteApp(["staff_viewer"], vi.fn());
+  it("returns 403 for read_only", async () => {
+    const app = createPlatformCatalogRouteApp(["read_only"], vi.fn());
     const res = await app.request("http://test/admin/platform-catalog/legal-entity-id");
     expect(res.status).toBe(403);
   });
 
-  it("returns resolved id for catalogue_manager", async () => {
+  it("returns resolved id for cataloguer", async () => {
     const resolvePlatformCatalogLegalEntityId = vi
       .fn()
       .mockResolvedValue("30000000-0000-4000-9000-000000000001");
-    const app = createPlatformCatalogRouteApp(
-      ["catalogue_manager"],
-      resolvePlatformCatalogLegalEntityId,
-    );
+    const app = createPlatformCatalogRouteApp(["cataloguer"], resolvePlatformCatalogLegalEntityId);
     const res = await app.request("http://test/admin/platform-catalog/legal-entity-id");
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({

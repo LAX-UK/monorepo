@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { type ComplianceDecisionRefusal, complianceDecisionRefusal } from "@auction/domain";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type {
@@ -14,6 +15,12 @@ import type {
 } from "./source-of-funds.types.js";
 
 export const SOURCE_OF_FUNDS_REVIEWED_EVENT = "source_of_funds.reviewed";
+
+const SOURCE_OF_FUNDS_DECISION_REFUSAL_ERRORS: Record<ComplianceDecisionRefusal, string> = {
+  own_case: "source_of_funds_review_self_forbidden",
+  raised_case: "source_of_funds_review_same_as_requester",
+  triaged_case: "source_of_funds_review_same_as_triager",
+};
 
 /**
  * Admin triage: maker-checker review workflow and case listing.
@@ -81,17 +88,18 @@ export class SourceOfFundsReviewService implements ISourceOfFundsReviewService {
     const run = async (conn?: Database): Promise<SourceOfFundsCase> => {
       const existing = await this.repo.findById(command.caseId, conn);
       if (!existing) throw new Error("source_of_funds_not_found");
-      if (existing.userId === command.reviewerUserId) {
-        throw new Error("source_of_funds_review_self_forbidden");
-      }
+      // Whoever asked the client for documents raised the case.
+      const refusal = complianceDecisionRefusal(command.reviewerUserId, {
+        subjectUserId: existing.userId,
+        raisedByUserId: existing.documentsRequestedByUserId,
+        triagedByUserId: existing.triagedByUserId,
+      });
+      if (refusal) throw new Error(SOURCE_OF_FUNDS_DECISION_REFUSAL_ERRORS[refusal]);
       if (existing.status !== "pending") {
         throw new Error("source_of_funds_not_pending");
       }
       if (!existing.triagedByUserId || !existing.triageRecommendation) {
         throw new Error("source_of_funds_triage_required");
-      }
-      if (existing.triagedByUserId === command.reviewerUserId) {
-        throw new Error("source_of_funds_review_same_as_triager");
       }
       const status = command.decision === "approve" ? "approved" : "rejected";
       const updated = await this.repo.setReview(

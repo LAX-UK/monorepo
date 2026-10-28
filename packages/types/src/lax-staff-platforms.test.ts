@@ -47,7 +47,7 @@ describe("LAX staff platforms", () => {
     expect(
       staffToolsFromGrants([
         { product: "shop", role: "broker" },
-        { product: "bid", role: "finance_ops" },
+        { product: "bid", role: "finance" },
       ]),
     ).toEqual(["bid-admin", "lax-admin"]);
   });
@@ -56,16 +56,16 @@ describe("LAX staff platforms", () => {
     expect(staffToolsFromGrants([])).toEqual([]);
     // Bid records a staff user without a staff role as the plain word "staff".
     expect(staffToolsFromGrants([{ product: "bid", role: "staff" }])).toEqual([]);
-    expect(staffToolsFromGrants([{ product: "shop", role: "super_admin" }])).toEqual([]);
+    expect(staffToolsFromGrants([{ product: "shop", role: "administrator" }])).toEqual([]);
   });
 
   it("rejects unknown platforms, foreign roles and duplicates", () => {
     expect(normalizeLaxStaffGrants([{ product: "vault", role: "x" }]).ok).toBe(false);
-    expect(normalizeLaxStaffGrants([{ product: "shop", role: "super_admin" }]).ok).toBe(false);
+    expect(normalizeLaxStaffGrants([{ product: "shop", role: "administrator" }]).ok).toBe(false);
     expect(
       normalizeLaxStaffGrants([
         { product: "bid", role: "specialist" },
-        { product: "bid", role: "finance_ops" },
+        { product: "bid", role: "finance" },
       ]).ok,
     ).toBe(false);
   });

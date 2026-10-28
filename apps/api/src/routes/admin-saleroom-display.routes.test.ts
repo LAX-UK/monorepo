@@ -31,7 +31,7 @@ describe("admin saleroom display routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
         scopes: ["bid.read"],
       }),
     };
@@ -55,7 +55,7 @@ describe("admin saleroom display routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
         scopes: ["bid.write"],
       }),
     };
@@ -92,7 +92,7 @@ describe("admin saleroom display routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
         scopes: ["bid.write"],
       }),
     };

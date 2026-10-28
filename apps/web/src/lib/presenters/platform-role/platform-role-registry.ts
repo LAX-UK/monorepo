@@ -2,21 +2,7 @@ import type { UserRole, UserStaffRole } from "@auction/types";
 import { laxStaffPlatform, userStaffRoles } from "@auction/types";
 
 /** Categorical palette keys — one per displayed platform role (CSS in globals.css). */
-export type PlatformRolePaletteKey =
-  | "client"
-  | "super_admin"
-  | "auction_manager"
-  | "catalogue_manager"
-  | "specialist"
-  | "finance_ops"
-  | "operations_fulfilment"
-  | "content_marketing"
-  | "support_concierge"
-  | "staff_viewer"
-  | "compliance_officer"
-  | "client_advisor"
-  | "operations"
-  | "staff_legacy";
+export type PlatformRolePaletteKey = "client" | UserStaffRole | "staff_legacy";
 
 export type PlatformRolePresentation = {
   /** Short label for badges and compact UI. */
@@ -30,20 +16,11 @@ const STAFF_ROLE_LABELS = Object.fromEntries(
   laxStaffPlatform("bid").roles.map((r) => [r.value, r.label]),
 ) as Record<UserStaffRole, string>;
 
-const STAFF_ROLE_PALETTE: Record<UserStaffRole, PlatformRolePaletteKey> = {
-  super_admin: "super_admin",
-  auction_manager: "auction_manager",
-  catalogue_manager: "catalogue_manager",
-  specialist: "specialist",
-  finance_ops: "finance_ops",
-  operations_fulfilment: "operations_fulfilment",
-  content_marketing: "content_marketing",
-  support_concierge: "support_concierge",
-  staff_viewer: "staff_viewer",
-  compliance_officer: "compliance_officer",
-  client_advisor: "client_advisor",
-  operations: "operations",
-};
+/** Each staff role has its own badge colour, keyed by the role itself. */
+const STAFF_ROLE_PALETTE = Object.fromEntries(userStaffRoles.map((role) => [role, role])) as Record<
+  UserStaffRole,
+  PlatformRolePaletteKey
+>;
 
 const CLIENT_PRESENTATION: PlatformRolePresentation = {
   label: "Client",
@@ -106,18 +83,7 @@ export const staffRoleFilterOptions: { value: UserStaffRole; label: string }[] =
 
 export const platformRolePaletteKeys: PlatformRolePaletteKey[] = [
   "client",
-  "super_admin",
-  "auction_manager",
-  "catalogue_manager",
-  "specialist",
-  "finance_ops",
-  "operations_fulfilment",
-  "content_marketing",
-  "support_concierge",
-  "staff_viewer",
-  "compliance_officer",
-  "client_advisor",
-  "operations",
+  ...userStaffRoles,
   "staff_legacy",
 ];
 

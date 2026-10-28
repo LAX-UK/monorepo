@@ -49,7 +49,7 @@ describe("POST /sales/:id/delete", () => {
   }
 
   it("returns 204 when staff with auction.manage deletes a sale", async () => {
-    const { app, softDelete } = appWithAuth("staff", "auction_manager");
+    const { app, softDelete } = appWithAuth("staff", "sales_manager");
     softDelete.mockResolvedValue({ kind: "no_content" });
 
     const res = await app.request(`http://t/sales/${saleId}/delete`, {
@@ -65,7 +65,7 @@ describe("POST /sales/:id/delete", () => {
         role: "staff",
         saleId,
         confirmationPhrase: phrase,
-        staffRoles: ["auction_manager"],
+        staffRoles: ["sales_manager"],
       }),
     );
   });
@@ -89,7 +89,7 @@ describe("POST /sales/:id/delete", () => {
 
   it("returns 422 when sale cannot be deleted", async () => {
     const { LotError } = await import("../lib/errors.js");
-    const { app, softDelete } = appWithAuth("staff", "auction_manager");
+    const { app, softDelete } = appWithAuth("staff", "sales_manager");
     softDelete.mockResolvedValue({
       kind: "err",
       error: new LotError("Cannot delete: lots in this sale have bids", 422),
@@ -141,7 +141,7 @@ describe("POST /sales/bulk soft_delete", () => {
   }
 
   it("returns bulk result when staff soft-deletes draft sales", async () => {
-    const { app, bulkSoftDelete } = appWithAuth("staff", "auction_manager");
+    const { app, bulkSoftDelete } = appWithAuth("staff", "sales_manager");
     bulkSoftDelete.mockResolvedValue({
       kind: "ok",
       data: { attempted: 2, failed: 0, errors: [] },

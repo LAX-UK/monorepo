@@ -40,8 +40,8 @@ function buildApp(staffRole: string) {
 }
 
 describe("admin staff two-factor policy routes", () => {
-  it("lets a super admin read and change the staff policy", async () => {
-    const { app, twoFactorPolicy } = buildApp("super_admin");
+  it("lets an administrator read and change the staff policy", async () => {
+    const { app, twoFactorPolicy } = buildApp("administrator");
 
     const read = await app.request("http://test/admin/security/staff-two-factor");
     expect(read.status).toBe(200);

@@ -8,6 +8,8 @@ export type RoleCapability =
   | "finance.write"
   | "user.invite"
   | "auction.manage"
+  /** Run the live saleroom: telephone bids, paddles, check-in. Sale editing stays with auction.manage. */
+  | "saleroom.operate"
   | "bid.place"
   | "client.submit"
   | "legal_entity.read"
@@ -25,7 +27,6 @@ export type RoleCapability =
   | "catalogue.write"
   | "specialist.appraise"
   | "operations.fulfilment"
-  | "content.write"
   | "support.respond"
   /** Read client/staff directory and profile detail (no moderation or role changes). */
   | "client.read"
@@ -34,4 +35,9 @@ export type RoleCapability =
   /** Review and disposition AML/sanctions watchlist screenings. */
   | "aml.review"
   /** MLRO authority: lift/confirm AML holds and approve Source-of-Funds. */
-  | "compliance.mlro";
+  | "compliance.mlro"
+  /**
+   * Open admin list and record pages without acting on them. Personal data (`audit.read_pii`),
+   * client directories, money and every action stay with their own permissions.
+   */
+  | "admin.read";

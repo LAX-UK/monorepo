@@ -1,8 +1,10 @@
+import { type PayoutReversalRefusal, payoutReversalRefusal } from "@auction/domain";
 import type {
   IPayoutRepository,
   ReconcileStripeTransferPatch,
 } from "@auction/persistence/interfaces";
 import type { CreatePayoutAdjustmentInput, Payout, PayoutLineKind } from "@auction/types";
+import { roleHasCapability } from "@auction/types";
 import { addDecimal, subtractDecimal, sumDecimal } from "../../lib/decimal-money.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
 import type { AdminPayoutListPage } from "../admin/admin-payout-list-query.service.js";
@@ -13,7 +15,12 @@ import type {
   PayoutWithLines,
   StripeTransferReconciliationInput,
 } from "../interfaces/payout.js";
-import { PayoutNotFoundError, PayoutStatusTransitionError } from "../interfaces/payout.js";
+import {
+  PayoutNotFoundError,
+  PayoutPermissionError,
+  type PayoutReversalActor,
+  PayoutStatusTransitionError,
+} from "../interfaces/payout.js";
 import { DEFAULT_CURRENCY, type PayoutServiceDeps, settlementAmounts } from "./payout-helpers.js";
 
 export async function adminList(
@@ -272,18 +279,30 @@ export async function reconcileStripeTransfer(
   });
 }
 
+const PAYOUT_REVERSAL_REFUSAL_CODES: Record<PayoutReversalRefusal, string> = {
+  not_permitted: "payout_reversal_not_permitted",
+  processed_payout: "payout_reversal_by_processor",
+};
+
 export async function adminManualReverse(
   deps: PayoutServiceDeps,
-  actorUserId: string,
+  actor: PayoutReversalActor,
   payoutId: string,
   input: { reason: string },
 ): Promise<Payout> {
   const { runner, publisher } = requireTransactional(deps);
+  const actorUserId = actor.userId;
 
   return await runner.runInTransaction(async (tx) => {
     const r = deps.payoutRepoForTx(tx);
     const found = await r.findById(payoutId);
     if (!found) throw new PayoutNotFoundError();
+    const refusal = payoutReversalRefusal({
+      actorUserId,
+      actorMayReverse: roleHasCapability("staff", "payout.reverse", actor.staffRoles),
+      processedByUserIds: await deps.payoutProcessorsForTx(tx).listProcessorUserIds(payoutId),
+    });
+    if (refusal) throw new PayoutPermissionError(PAYOUT_REVERSAL_REFUSAL_CODES[refusal]);
     if (found.status === "reversed") {
       throw new PayoutStatusTransitionError("payout_already_reversed");
     }

@@ -8,6 +8,7 @@ import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
 import { getServerLotBids } from "@/lib/data/http/lots.server";
 import {
   LOTS_ACCESS,
+  LOTS_READ_ACCESS,
   SALES_ACCESS,
   WITHDRAWAL_DECISION_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
@@ -21,7 +22,7 @@ type Props = {
 
 export default async function AdminLotDetailLayout({ params, children }: Props) {
   const { id } = await params;
-  const user = await requireAdminCapability(LOTS_ACCESS, `/admin/lots/${id}`);
+  const user = await requireAdminCapability(LOTS_READ_ACCESS, `/admin/lots/${id}`);
   const role = user.role as UserRole;
   const staffRoles = user.staffRoles;
   const canManageCatalog = userHasAccessTo(role, staffRoles, LOTS_ACCESS);

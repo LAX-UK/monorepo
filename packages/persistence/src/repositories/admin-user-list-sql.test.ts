@@ -35,7 +35,7 @@ describe("admin-user-list-sql", () => {
       q: "person",
       limit: 25,
       offset: 0,
-      staffRole: "support_concierge",
+      staffRole: "client_services",
       accountStatus: "suspended",
       emailVerified: true,
       kycStatuses: ["approved", "declined"],

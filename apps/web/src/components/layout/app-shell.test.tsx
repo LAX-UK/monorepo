@@ -77,7 +77,7 @@ const adminUser = {
   email: "admin@example.com",
   name: "Admin User",
   role: "staff" as const,
-  staffRole: "super_admin" as const,
+  staffRole: "administrator" as const,
   image: null,
   emailVerified: true,
   emailStatus: "ok" as const,

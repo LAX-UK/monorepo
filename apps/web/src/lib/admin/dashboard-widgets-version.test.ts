@@ -17,12 +17,12 @@ describe("dashboard-widgets.vm versioning", () => {
 
   it("accepts legacy array cookies", () => {
     const legacy = JSON.stringify([{ id: "activity", order: 0, hidden: false }]);
-    const widgets = parseDashboardWidgetsCookie(legacy, ["super_admin"]);
+    const widgets = parseDashboardWidgetsCookie(legacy, ["administrator"]);
     expect(widgets.find((w) => w.id === "activity")?.hidden).toBe(false);
   });
 
   it("applies finance profile defaults when cookie is absent", () => {
-    const widgets = parseDashboardWidgetsCookie(null, ["finance_ops"]);
+    const widgets = parseDashboardWidgetsCookie(null, ["finance"]);
     expect(widgets.find((w) => w.id === "my-queue")?.hidden).toBe(false);
     expect(widgets.find((w) => w.id === "saleroom-live")?.hidden).toBe(true);
     expect(widgets.find((w) => w.id === "activity")?.hidden).toBe(true);

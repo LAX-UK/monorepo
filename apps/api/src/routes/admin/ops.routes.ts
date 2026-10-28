@@ -9,7 +9,7 @@ import { zValidator } from "../../lib/z-validator.js";
 import {
   requireAdminDashboard,
   requireFinanceAccess,
-  requireSubmissionsAccess,
+  requireSubmissionsRead,
 } from "../../middleware/require-capability.js";
 import { LotAttentionNotFoundError } from "../../services/admin/admin-lot-attention.service.js";
 import { SaleAttentionNotFoundError } from "../../services/admin/admin-sale-attention.service.js";
@@ -20,14 +20,14 @@ export function attachAdminOpsRoutes(
   platform: AdminHono,
   container: AdminOpsMetricsRoutesContainer,
 ): void {
-  platform.get("/submissions/quality-gaps-count", requireSubmissionsAccess, async (c) => {
+  platform.get("/submissions/quality-gaps-count", requireSubmissionsRead, async (c) => {
     const count = await container.admin.ops.countQualityGapsForAdminApi();
     return c.json({ data: { count } });
   });
 
   platform.get(
     "/submissions/pending-count",
-    requireSubmissionsAccess,
+    requireSubmissionsRead,
     zValidator("query", adminSubmissionCountQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
@@ -40,7 +40,7 @@ export function attachAdminOpsRoutes(
 
   platform.get(
     "/submissions/count-by-sellers",
-    requireSubmissionsAccess,
+    requireSubmissionsRead,
     zValidator("query", adminSubmissionCountBySellersQuerySchema),
     async (c) => {
       const { sellerIds } = c.req.valid("query");
@@ -110,7 +110,7 @@ export function attachAdminOpsRoutes(
 
   platform.get(
     "/kpi/submissions-trend",
-    requireSubmissionsAccess,
+    requireSubmissionsRead,
     zValidator("query", adminKpiTrendQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
@@ -151,7 +151,7 @@ export function attachAdminOpsRoutes(
     return c.json({ data });
   });
 
-  platform.get("/kpi/submissions-summary", requireSubmissionsAccess, async (c) => {
+  platform.get("/kpi/submissions-summary", requireSubmissionsRead, async (c) => {
     const userId = c.get("userId") as string;
     const data = await container.admin.listSummaries.getSubmissionsListSummary(userId);
     return c.json({ data });

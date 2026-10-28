@@ -42,7 +42,7 @@ describe("admin compliance routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["compliance_officer"],
+        staffRoles: ["compliance"],
         scopes: ["bid.read"],
       }),
     };
@@ -74,7 +74,7 @@ describe("admin compliance routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["compliance_officer"],
+        staffRoles: ["compliance"],
         scopes: ["bid.write"],
       }),
     };
@@ -109,7 +109,7 @@ describe("admin compliance routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["compliance_officer"],
+        staffRoles: ["compliance"],
         scopes: ["bid.read"],
       }),
     };
@@ -153,7 +153,7 @@ describe("admin compliance routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["compliance_officer"],
+        staffRoles: ["compliance"],
         scopes: ["bid.read"],
       }),
     };

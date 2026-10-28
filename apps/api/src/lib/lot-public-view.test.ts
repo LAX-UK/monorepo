@@ -56,7 +56,7 @@ describe("maskLotForPublicView", () => {
   });
 
   it("returns full Lot with reservePrice for catalogue staff", () => {
-    const result = maskLotForPublicView(baseLot(), "staff", ["catalogue_manager"]);
+    const result = maskLotForPublicView(baseLot(), "staff", ["cataloguer"]);
     expect(result).toHaveProperty("reservePrice", "27000.00");
     expect(result).not.toHaveProperty("hasReserve");
   });

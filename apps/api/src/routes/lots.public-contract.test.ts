@@ -171,7 +171,7 @@ describe("lots public contract", () => {
   });
 
   it("returns 200 for draft lot detail when catalogue staff", async () => {
-    const { app } = mount({ id: "staff-1", role: "staff", staffRoles: ["catalogue_manager"] });
+    const { app } = mount({ id: "staff-1", role: "staff", staffRoles: ["cataloguer"] });
     const res = await app.request(`http://t/lots/${lotId}`, {
       headers: { authorization: RESOURCE_AUTHORIZATION },
     });

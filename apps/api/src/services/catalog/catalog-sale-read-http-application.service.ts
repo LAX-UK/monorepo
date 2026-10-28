@@ -1,7 +1,12 @@
 import type { ILegalEntityRepository, IRepositoryFactory } from "@auction/persistence/interfaces";
-import { NO_STAFF_ROLES, type UserRole, roleHasCapability } from "@auction/types";
-import { canManageCatalogue } from "../../lib/catalogue-auth.js";
-import { CATALOGUE_WRITE_CAPABILITIES } from "../../lib/errors.js";
+import {
+  NO_STAFF_ROLES,
+  SALE_ADMIN_DETAIL_ACCESS,
+  type UserRole,
+  requirementCapabilities,
+  roleHasCapability,
+} from "@auction/types";
+import { canReadSaleAdminDetail } from "../../lib/catalogue-auth.js";
 import { missingCapabilityBody } from "../../lib/forbidden-response.js";
 import { buildConnectRequiredByLotId } from "../../lib/seller-connect-readiness.js";
 import type { CachedCatalogueListService } from "../cached-catalogue-list.service.js";
@@ -153,12 +158,12 @@ export class CatalogSaleReadHttpApplicationService
   }): Promise<CatalogHttpJson> {
     const role = (input.viewer.role ?? "client") as UserRole;
     const staff = input.viewer.staffRoles;
-    if (!canManageCatalogue(role, staff)) {
+    if (!canReadSaleAdminDetail(role, staff)) {
       return {
         status: 403,
         body: missingCapabilityBody(
-          "Only staff with auction.manage or catalogue.write can view catalogue admin detail",
-          [...CATALOGUE_WRITE_CAPABILITIES],
+          "Only catalogue, saleroom or read-only staff can view catalogue admin detail",
+          requirementCapabilities(SALE_ADMIN_DETAIL_ACCESS),
           { role, staffRoles: staff ?? NO_STAFF_ROLES },
         ),
       };

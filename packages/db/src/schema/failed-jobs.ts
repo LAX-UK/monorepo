@@ -8,7 +8,7 @@ export const failedJobs = pgTable(
     originalQueue: text("original_queue").notNull(),
     originalJobId: text("original_job_id"),
     originalJobName: text("original_job_name"),
-    /** Full job payload JSON for super_admin DLQ replay (not exposed via list APIs). */
+    /** Full job payload JSON for administrator DLQ replay (not exposed via list APIs). */
     payloadJson: text("payload_json"),
     errorMessage: text("error_message"),
     attempts: integer("attempts").notNull(),

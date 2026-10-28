@@ -254,7 +254,7 @@ const envSchema = z
       .preprocess((val) => val === "true" || val === true, z.boolean())
       .default(true),
     XERO_PROJECTOR_MODE: z.enum(["off", "shadow", "canary", "live"]).optional(),
-    /** Mount Bull Board at /admin/system/job-queues (super_admin only). Default false in production. */
+    /** Mount Bull Board at /admin/system/job-queues (administrator only). Default false in production. */
     ENABLE_BULL_BOARD: z.preprocess((v) => {
       if (v === undefined || v === "") return undefined;
       return v === "true" || v === true;

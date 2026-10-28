@@ -33,7 +33,7 @@ describe("admin saleroom routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "clerk-1",
         role: "staff",
-        staffRoles: ["auction_manager"],
+        staffRoles: ["sales_manager"],
         scopes: ["bid.read"],
       }),
     };
@@ -75,7 +75,7 @@ describe("admin saleroom routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "clerk-1",
         role: "staff",
-        staffRoles: ["auction_manager"],
+        staffRoles: ["sales_manager"],
         scopes: ["bid.read"],
       }),
     };
@@ -97,7 +97,7 @@ describe("admin saleroom routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "clerk-1",
         role: "staff",
-        staffRoles: ["auction_manager"],
+        staffRoles: ["sales_manager"],
         scopes: ["bid.read"],
       }),
     };
@@ -118,7 +118,7 @@ describe("admin saleroom routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "clerk-1",
         role: "staff",
-        staffRoles: ["auction_manager"],
+        staffRoles: ["sales_manager"],
         scopes: ["bid.write"],
       }),
     };
@@ -131,5 +131,49 @@ describe("admin saleroom routes (DIP facade)", () => {
 
     expect(res.status).toBe(200);
     expect(goLive).toHaveBeenCalledWith({ saleId: SALE_ID, actorUserId: "clerk-1" });
+  });
+});
+
+describe("saleroom clerk", () => {
+  function clerkApp(container: Container) {
+    const authenticator: IAuthenticator = {
+      getSessionUser: vi.fn().mockResolvedValue({
+        id: "clerk-1",
+        role: "staff",
+        staffRoles: ["saleroom_clerk"],
+        scopes: ["bid.read", "bid.write"],
+      }),
+    };
+    const app = new Hono();
+    app.route("/admin", createAdminRoutes(container, authenticator));
+    return app;
+  }
+
+  it("runs the saleroom", async () => {
+    const goLive = vi.fn().mockResolvedValue(ok({ sessionId: "sess-1" }));
+    const listOperationsRadar = vi.fn().mockResolvedValue([]);
+    const app = clerkApp(
+      createSaleroomContainer({ saleroom: { goLive, listOperationsRadar } as never }),
+    );
+
+    const radar = await app.request("http://test/admin/saleroom/operations-radar?limit=6");
+    const live = await app.request(`http://test/admin/sales/${SALE_ID}/saleroom/go-live`, {
+      method: "POST",
+    });
+
+    expect(radar.status).toBe(200);
+    expect(live.status).toBe(200);
+    expect(goLive).toHaveBeenCalledWith({ saleId: SALE_ID, actorUserId: "clerk-1" });
+  });
+
+  it("cannot manage the sale itself", async () => {
+    const app = clerkApp(createSaleroomContainer({}));
+
+    const res = await app.request(
+      `http://test/admin/sales/${SALE_ID}/registrations/${SALE_ID}/approve`,
+      { method: "POST" },
+    );
+
+    expect(res.status).toBe(403);
   });
 });

@@ -9,7 +9,7 @@ const SUPER_ADMIN = {
   email: "admin@example.com",
   name: "Admin",
   role: "staff",
-  staffRole: "super_admin",
+  staffRole: "administrator",
   image: null,
   hasSeenActingContextTooltip: false,
 };
@@ -64,7 +64,7 @@ function makeDeps() {
   } as unknown as IEmailService;
 
   // The actor's permission follows the roles in force, not the profile's single role.
-  const staffRoles = { listActiveRoles: vi.fn().mockResolvedValue(["super_admin"]) };
+  const staffRoles = { listActiveRoles: vi.fn().mockResolvedValue(["administrator"]) };
 
   const svc = new InvitationService(invites, users, email, "https://web.test", staffRoles);
   return { svc, invites, users, email, staffRoles };
@@ -77,7 +77,7 @@ describe("InvitationService.create", () => {
   });
 
   it("rejects when actor lacks user.invite", async () => {
-    deps.staffRoles.listActiveRoles.mockResolvedValue(["staff_viewer"]);
+    deps.staffRoles.listActiveRoles.mockResolvedValue(["read_only"]);
     const res = await deps.svc.create({
       actorUserId: "actor-1",
       email: "x@example.com",
@@ -128,7 +128,7 @@ describe("InvitationService.create", () => {
       actorUserId: "actor-1",
       email: "c@example.com",
       targetRole: "client",
-      targetStaffRole: "finance_ops",
+      targetStaffRole: "finance",
     });
     expect(res.isErr() && res.error.status).toBe(400);
   });
@@ -138,14 +138,14 @@ describe("InvitationService.create", () => {
       actorUserId: "actor-1",
       email: "  New@Example.com ",
       targetRole: "staff",
-      targetStaffRole: "finance_ops",
+      targetStaffRole: "finance",
     });
     expect(res.isOk()).toBe(true);
     expect(deps.invites.insert).toHaveBeenCalledWith(
       expect.objectContaining({
         email: "new@example.com",
-        targetStaffRole: "finance_ops",
-        grants: [{ product: "bid", role: "finance_ops" }],
+        targetStaffRole: "finance",
+        grants: [{ product: "bid", role: "finance" }],
       }),
     );
     expect(deps.email.enqueue).toHaveBeenCalledWith(
@@ -200,7 +200,7 @@ describe("InvitationService.create", () => {
     const res = await deps.svc.create({
       actorUserId: "actor-1",
       email: "bad@example.com",
-      grants: [{ product: "shop", role: "super_admin" }],
+      grants: [{ product: "shop", role: "administrator" }],
     });
     expect(res.isErr() && res.error.status).toBe(400);
     expect(deps.invites.insert).not.toHaveBeenCalled();

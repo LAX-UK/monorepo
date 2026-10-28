@@ -58,9 +58,9 @@ const request = (app: Hono) =>
   app.request("/admin/staff/my-tools", { headers: { cookie: "better-auth.session_token=test" } });
 
 describe("GET /admin/staff/my-tools", () => {
-  it("lists both tools for a Bid super admin who also holds a Shop role", async () => {
-    const app = buildApp({ role: "staff", staffRoles: ["super_admin"] }, [
-      { product: "bid", role: "super_admin" },
+  it("lists both tools for a Bid administrator who also holds a Shop role", async () => {
+    const app = buildApp({ role: "staff", staffRoles: ["administrator"] }, [
+      { product: "bid", role: "administrator" },
       { product: "shop", role: "shop_admin" },
     ]);
 
@@ -79,8 +79,8 @@ describe("GET /admin/staff/my-tools", () => {
   });
 
   it("answers finance staff, who fail the platform shell gate but open Bid admin", async () => {
-    const app = buildApp({ role: "staff", staffRoles: ["finance_ops"] }, [
-      { product: "bid", role: "finance_ops" },
+    const app = buildApp({ role: "staff", staffRoles: ["finance"] }, [
+      { product: "bid", role: "finance" },
     ]);
 
     const res = await request(app);

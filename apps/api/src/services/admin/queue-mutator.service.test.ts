@@ -38,7 +38,7 @@ describe("BullMQQueueMutator production policy", () => {
       "production",
     );
     await expect(
-      mutator.pause("email", { userId: "u1", staffRoles: ["super_admin"] }),
+      mutator.pause("email", { userId: "u1", staffRoles: ["administrator"] }),
     ).rejects.toThrow("mutations_disabled_in_prod");
     expect(mockQueue.pause).not.toHaveBeenCalled();
   });
@@ -52,7 +52,7 @@ describe("BullMQQueueMutator production policy", () => {
       "production",
     );
     await expect(
-      mutator.retry("validate-upload", "job-1", { userId: "u1", staffRoles: ["super_admin"] }),
+      mutator.retry("validate-upload", "job-1", { userId: "u1", staffRoles: ["administrator"] }),
     ).rejects.toThrow("retries_disabled");
   });
 
@@ -64,7 +64,7 @@ describe("BullMQQueueMutator production policy", () => {
       audit,
       "production",
     );
-    await mutator.pause("impersonation-sweeper", { userId: "u1", staffRoles: ["super_admin"] });
+    await mutator.pause("impersonation-sweeper", { userId: "u1", staffRoles: ["administrator"] });
     expect(mockQueue.pause).toHaveBeenCalledOnce();
   });
 });
@@ -103,7 +103,7 @@ describe("BullMQQueueMutator DLQ replay", () => {
       "development",
     );
     await expect(
-      mutator.replayFromDlq("dlq:email:1", { userId: "u1", staffRoles: ["super_admin"] }, true),
+      mutator.replayFromDlq("dlq:email:1", { userId: "u1", staffRoles: ["administrator"] }, true),
     ).rejects.toThrow("already_replayed");
   });
 
@@ -121,7 +121,7 @@ describe("BullMQQueueMutator DLQ replay", () => {
       "development",
     );
     await expect(
-      mutator.replayFromDlq("dlq:email:1", { userId: "u1", staffRoles: ["super_admin"] }, true),
+      mutator.replayFromDlq("dlq:email:1", { userId: "u1", staffRoles: ["administrator"] }, true),
     ).rejects.toThrow("already_replayed");
     expect(mockQueue.add).not.toHaveBeenCalled();
   });
@@ -140,7 +140,7 @@ describe("BullMQQueueMutator DLQ replay", () => {
       "development",
     );
     await expect(
-      mutator.replayFromDlq("dlq:email:1", { userId: "u1", staffRoles: ["super_admin"] }, true),
+      mutator.replayFromDlq("dlq:email:1", { userId: "u1", staffRoles: ["administrator"] }, true),
     ).rejects.toThrow("invalid_payload");
   });
 
@@ -160,7 +160,11 @@ describe("BullMQQueueMutator DLQ replay", () => {
       audit,
       "development",
     );
-    await mutator.replayFromDlq("dlq:email:1", { userId: "u1", staffRoles: ["super_admin"] }, true);
+    await mutator.replayFromDlq(
+      "dlq:email:1",
+      { userId: "u1", staffRoles: ["administrator"] },
+      true,
+    );
 
     expect(mockQueue.add).toHaveBeenCalledWith(
       "publish",
@@ -191,7 +195,7 @@ describe("BullMQQueueMutator DLQ replay", () => {
       "development",
     );
     await expect(
-      mutator.replayFromDlq("dlq:email:1", { userId: "u1", staffRoles: ["super_admin"] }, true),
+      mutator.replayFromDlq("dlq:email:1", { userId: "u1", staffRoles: ["administrator"] }, true),
     ).rejects.toThrow("redis down");
 
     expect(clearReplayClaim).toHaveBeenCalledWith("dlq:email:1");

@@ -23,23 +23,30 @@ function assign(role: StaffRoleAssignment["role"], startsAt = NOW, endsAt: Date 
 describe("forbidden combinations", () => {
   it("keeps the administrator and read-only roles alone", () => {
     for (const other of userStaffRoles) {
-      if (other !== "super_admin") {
-        expect(isForbiddenStaffRoleCombination("super_admin", other)).toBe(true);
+      if (other !== "administrator") {
+        expect(isForbiddenStaffRoleCombination("administrator", other)).toBe(true);
       }
-      if (other !== "staff_viewer") {
-        expect(isForbiddenStaffRoleCombination(other, "staff_viewer")).toBe(true);
+      if (other !== "read_only") {
+        expect(isForbiddenStaffRoleCombination(other, "read_only")).toBe(true);
       }
     }
   });
 
   it("separates finance and compliance in both directions", () => {
-    expect(isForbiddenStaffRoleCombination("finance_ops", "compliance_officer")).toBe(true);
-    expect(isForbiddenStaffRoleCombination("compliance_officer", "finance_ops")).toBe(true);
+    expect(isForbiddenStaffRoleCombination("finance", "compliance")).toBe(true);
+    expect(isForbiddenStaffRoleCombination("compliance", "finance")).toBe(true);
   });
 
   it("allows other pairs", () => {
-    expect(isForbiddenStaffRoleCombination("specialist", "client_advisor")).toBe(false);
-    expect(isForbiddenStaffRoleCombination("finance_ops", "auction_manager")).toBe(false);
+    expect(isForbiddenStaffRoleCombination("specialist", "client_services")).toBe(false);
+    expect(isForbiddenStaffRoleCombination("finance", "sales_manager")).toBe(false);
+  });
+
+  it("allows the four roles that replace Operations together", () => {
+    const replacement = ["sales_manager", "cataloguer", "client_services", "fulfilment"] as const;
+    for (const a of replacement) {
+      for (const b of replacement) expect(isForbiddenStaffRoleCombination(a, b)).toBe(false);
+    }
   });
 
   it("explains every rule", () => {
@@ -52,7 +59,7 @@ describe("checkStaffRoleAssignment: assign", () => {
   it("accepts a first role and a compatible second role", () => {
     expect(checkStaffRoleAssignment([], assign("specialist"), NOW, ROSTER)).toEqual({ ok: true });
     expect(
-      checkStaffRoleAssignment([held("specialist")], assign("client_advisor"), NOW, ROSTER),
+      checkStaffRoleAssignment([held("specialist")], assign("client_services"), NOW, ROSTER),
     ).toEqual({ ok: true });
   });
 
@@ -74,26 +81,28 @@ describe("checkStaffRoleAssignment: assign", () => {
   });
 
   it("refuses a forbidden combination and names the role in the way", () => {
+    expect(checkStaffRoleAssignment([held("finance")], assign("compliance"), NOW, ROSTER)).toEqual({
+      ok: false,
+      reason: "forbidden_combination",
+      conflictingRole: "finance",
+    });
     expect(
-      checkStaffRoleAssignment([held("finance_ops")], assign("compliance_officer"), NOW, ROSTER),
-    ).toEqual({ ok: false, reason: "forbidden_combination", conflictingRole: "finance_ops" });
-    expect(
-      checkStaffRoleAssignment([held("super_admin")], assign("specialist"), NOW, ROSTER),
+      checkStaffRoleAssignment([held("administrator")], assign("specialist"), NOW, ROSTER),
     ).toEqual({
       ok: false,
       reason: "forbidden_combination",
-      conflictingRole: "super_admin",
+      conflictingRole: "administrator",
     });
     expect(
-      checkStaffRoleAssignment([held("specialist")], assign("staff_viewer"), NOW, ROSTER),
+      checkStaffRoleAssignment([held("specialist")], assign("read_only"), NOW, ROSTER),
     ).toEqual({ ok: false, reason: "forbidden_combination", conflictingRole: "specialist" });
   });
 
   it("refuses a forbidden combination that only overlaps later", () => {
     expect(
       checkStaffRoleAssignment(
-        [held("finance_ops", at(5), null)],
-        assign("compliance_officer", NOW, at(10)),
+        [held("finance", at(5), null)],
+        assign("compliance", NOW, at(10)),
         NOW,
         ROSTER,
       ),
@@ -103,8 +112,8 @@ describe("checkStaffRoleAssignment: assign", () => {
   it("allows a forbidden pair in periods that do not overlap", () => {
     expect(
       checkStaffRoleAssignment(
-        [held("finance_ops", at(-1), at(2))],
-        assign("compliance_officer", at(2), null),
+        [held("finance", at(-1), at(2))],
+        assign("compliance", at(2), null),
         NOW,
         ROSTER,
       ),
@@ -150,12 +159,12 @@ describe("checkStaffRoleAssignment: remove", () => {
 
   it("never removes the last active administrator", () => {
     expect(
-      checkStaffRoleAssignment([held("super_admin")], remove("super_admin"), NOW, {
+      checkStaffRoleAssignment([held("administrator")], remove("administrator"), NOW, {
         otherActiveAdministrators: 0,
       }),
     ).toEqual({ ok: false, reason: "last_administrator" });
     expect(
-      checkStaffRoleAssignment([held("super_admin")], remove("super_admin"), NOW, {
+      checkStaffRoleAssignment([held("administrator")], remove("administrator"), NOW, {
         otherActiveAdministrators: 1,
       }),
     ).toEqual({ ok: true });
@@ -163,7 +172,7 @@ describe("checkStaffRoleAssignment: remove", () => {
 
   it("may withdraw an administrator role that has not started", () => {
     expect(
-      checkStaffRoleAssignment([held("super_admin", at(3))], remove("super_admin"), NOW, {
+      checkStaffRoleAssignment([held("administrator", at(3))], remove("administrator"), NOW, {
         otherActiveAdministrators: 0,
       }),
     ).toEqual({ ok: true });

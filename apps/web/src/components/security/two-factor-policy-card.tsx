@@ -25,7 +25,7 @@ const COPY = {
   staff: {
     title: "Require two-step verification for all LAX staff",
     audience: "staff",
-    readOnly: "Only a super admin can change this.",
+    readOnly: "Only an administrator can change this.",
   },
   org: {
     title: "Require two-step verification for members",

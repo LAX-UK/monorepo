@@ -41,8 +41,6 @@ export const legalEntityMemberRoles = [
   "finance",
   "buyer_agent",
   "viewer",
-  "specialist",
-  "staff",
 ] as const;
 export type LegalEntityMemberRole = (typeof legalEntityMemberRoles)[number];
 

@@ -49,7 +49,7 @@ function buildCheckInApp(checkInBidder?: ReturnType<typeof vi.fn>) {
     getSessionUser: vi.fn().mockResolvedValue({
       id: "clerk-1",
       role: "staff",
-      staffRoles: ["super_admin"],
+      staffRoles: ["administrator"],
       scopes: ["bid.read", "bid.write"],
     }),
   };

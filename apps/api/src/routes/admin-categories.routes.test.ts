@@ -12,7 +12,7 @@ function createApp(catalog: AdminCatalogRoutesContainer["admin"]["catalog"]) {
   app.use("*", async (c, next) => {
     c.set("userId", "staff-user");
     c.set("userRole", "staff");
-    c.set("userStaffRoles", ["catalogue_manager"]);
+    c.set("userStaffRoles", ["cataloguer"]);
     await next();
   });
   attachAdminCatalogRoutes(

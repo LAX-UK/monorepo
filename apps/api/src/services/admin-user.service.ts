@@ -62,7 +62,9 @@ export type AdminActor = {
 };
 
 const lastSuperAdminError = () =>
-  new AuthzError("Cannot remove the last active super admin", 409, { code: "last_super_admin" });
+  new AuthzError("Cannot remove the last active administrator", 409, {
+    code: "last_administrator",
+  });
 
 const cannotChangeOwnRoleError = () =>
   new AuthzError("You cannot change your own staff role", 403, { code: "cannot_change_own_role" });
@@ -205,7 +207,7 @@ export class AdminUserService {
 
   /**
    * Suspends every account in one transaction with the actor and reason on each audit event.
-   * You cannot suspend yourself, and only a super_admin can suspend a staff account.
+   * You cannot suspend yourself, and only a administrator can suspend a staff account.
    */
   async suspendMany(
     actor: AdminActor,
@@ -246,14 +248,14 @@ export class AdminUserService {
     await this.invalidateSuspension(ids);
   }
 
-  /** Every target must exist, and staff accounts are moderated by a super_admin only. */
+  /** Every target must exist, and staff accounts are moderated by a administrator only. */
   private async assertModeratable(actor: AdminActor, ids: string[]): Promise<void> {
     const targets = await this.reader.getByIds(ids);
     if (targets.length !== ids.length) throw new AuthzError("User not found", 404);
     const touchesStaff = targets.some((t) => normalizeUserRole(t.role) === "staff");
     if (touchesStaff && !hasStaffRole(actor.staffRoles, ADMINISTRATOR_STAFF_ROLE)) {
       throw new AuthzError("Only a platform admin can suspend or restore a staff account", 403, {
-        code: "staff_moderation_requires_super_admin",
+        code: "staff_moderation_requires_administrator",
       });
     }
   }

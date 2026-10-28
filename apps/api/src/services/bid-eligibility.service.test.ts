@@ -44,8 +44,8 @@ const saleId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 
 describe("BidEligibilityService.assertCanPlaceBid", () => {
   it.each([
-    ["staff account", "super_admin"],
-    ["saleroom clerk account", "auction_manager"],
+    ["staff account", "administrator"],
+    ["saleroom clerk account", "sales_manager"],
   ])("refuses a bid for a %s", async (_label, staffRole) => {
     // Staff never bid as clients, whichever roles they hold.
     const assignment = { role: staffRole, startsAt: new Date(0), endsAt: null };

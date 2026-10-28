@@ -29,12 +29,12 @@ describe("GET /users/me", () => {
   it("returns the session's roles in force and the capabilities they add up to", async () => {
     const res = await serviceFor({ role: "staff", staffRole: "specialist" }).getMe({
       userId: "u1",
-      staffRoles: ["specialist", "client_advisor"],
+      staffRoles: ["specialist", "client_services"],
     });
 
     const { data } = res.body as MeBody;
     expect(data.staffRole).toBe("specialist");
-    expect(data.staffRoles).toEqual(["specialist", "client_advisor"]);
+    expect(data.staffRoles).toEqual(["specialist", "client_services"]);
     expect(data.capabilities).toEqual(
       expect.arrayContaining(["specialist.appraise", "bids.read", "client.read"]),
     );

@@ -4,6 +4,7 @@ import type {
   PayoutLine,
   PayoutLineKind,
   PayoutStatus,
+  StaffRoles,
 } from "@auction/types";
 import type { InitiateTransferResult } from "./stripe-connect.js";
 
@@ -129,6 +130,12 @@ export type StripeTransferReconciliationInput = {
 /** Generic permission failure surfaced from the payout service. Mapped to a
  * 403 (`forbidden`) by the routes layer.
  */
+/** The staff member reversing a payout, with the roles in force for this request. */
+export type PayoutReversalActor = {
+  readonly userId: string;
+  readonly staffRoles: StaffRoles;
+};
+
 export class PayoutPermissionError extends Error {
   readonly code: string;
   constructor(code: string) {
@@ -200,9 +207,12 @@ export interface IPayoutAdminService {
    */
   markPaid(actorUserId: string, payoutId: string, input: MarkPaidInput): Promise<Payout>;
 
-  /** Admin-only manual reversal bookkeeping (does not call Stripe). */
+  /**
+   * Manual reversal bookkeeping (does not call Stripe). Needs `payout.reverse`, and the actor
+   * must not have processed the payout.
+   */
   adminManualReverse(
-    actorUserId: string,
+    actor: PayoutReversalActor,
     payoutId: string,
     input: { reason: string },
   ): Promise<Payout>;

@@ -35,26 +35,26 @@ function createAccessTestApp(middleware: MiddlewareHandler, staffRoles: StaffRol
 }
 
 describe("admin access middleware", () => {
-  it("requireUsersDirectory returns 403 for staff_viewer", async () => {
-    const app = createAccessTestApp(requireUsersDirectory, ["staff_viewer"]);
+  it("requireUsersDirectory returns 403 for read_only", async () => {
+    const app = createAccessTestApp(requireUsersDirectory, ["read_only"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(403);
   });
 
-  it("requireUsersDirectory allows super_admin", async () => {
-    const app = createAccessTestApp(requireUsersDirectory, ["super_admin"]);
+  it("requireUsersDirectory allows administrator", async () => {
+    const app = createAccessTestApp(requireUsersDirectory, ["administrator"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(200);
   });
 
-  it("requireUsersDirectory allows client_advisor", async () => {
-    const app = createAccessTestApp(requireUsersDirectory, ["client_advisor"]);
+  it("requireUsersDirectory allows client_services", async () => {
+    const app = createAccessTestApp(requireUsersDirectory, ["client_services"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(200);
   });
 
-  it("requireSubmissionsAccess returns 403 for staff_viewer", async () => {
-    const app = createAccessTestApp(requireSubmissionsAccess, ["staff_viewer"]);
+  it("requireSubmissionsAccess returns 403 for read_only", async () => {
+    const app = createAccessTestApp(requireSubmissionsAccess, ["read_only"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(403);
   });
@@ -65,26 +65,26 @@ describe("admin access middleware", () => {
     expect(res.status).toBe(200);
   });
 
-  it("requireCategoriesAccess returns 403 for staff_viewer", async () => {
-    const app = createAccessTestApp(requireCategoriesAccess, ["staff_viewer"]);
+  it("requireCategoriesAccess returns 403 for read_only", async () => {
+    const app = createAccessTestApp(requireCategoriesAccess, ["read_only"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(403);
   });
 
-  it("requireCategoriesAccess allows catalogue_manager", async () => {
-    const app = createAccessTestApp(requireCategoriesAccess, ["catalogue_manager"]);
+  it("requireCategoriesAccess allows cataloguer", async () => {
+    const app = createAccessTestApp(requireCategoriesAccess, ["cataloguer"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(200);
   });
 
-  it("requireVenuesAccess returns 403 for staff_viewer", async () => {
-    const app = createAccessTestApp(requireVenuesAccess, ["staff_viewer"]);
+  it("requireVenuesAccess returns 403 for read_only", async () => {
+    const app = createAccessTestApp(requireVenuesAccess, ["read_only"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(403);
   });
 
-  it("requireVenuesAccess allows catalogue_manager", async () => {
-    const app = createAccessTestApp(requireVenuesAccess, ["catalogue_manager"]);
+  it("requireVenuesAccess allows cataloguer", async () => {
+    const app = createAccessTestApp(requireVenuesAccess, ["cataloguer"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(200);
   });
@@ -95,32 +95,32 @@ describe("admin access middleware", () => {
     expect(res.status).toBe(200);
   });
 
-  it("requireArtistsAccess returns 403 for finance_ops", async () => {
-    const app = createAccessTestApp(requireArtistsAccess, ["finance_ops"]);
+  it("requireArtistsAccess returns 403 for finance", async () => {
+    const app = createAccessTestApp(requireArtistsAccess, ["finance"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(403);
   });
 
-  it("requireQrCodesAccess returns 403 for staff_viewer", async () => {
-    const app = createAccessTestApp(requireQrCodesAccess, ["staff_viewer"]);
+  it("requireQrCodesAccess returns 403 for read_only", async () => {
+    const app = createAccessTestApp(requireQrCodesAccess, ["read_only"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(403);
   });
 
-  it("requireQrCodesAccess allows catalogue_manager", async () => {
-    const app = createAccessTestApp(requireQrCodesAccess, ["catalogue_manager"]);
+  it("requireQrCodesAccess allows cataloguer", async () => {
+    const app = createAccessTestApp(requireQrCodesAccess, ["cataloguer"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(200);
   });
 
-  it("requireLotsAccess returns 403 for staff_viewer", async () => {
-    const app = createAccessTestApp(requireLotsAccess, ["staff_viewer"]);
+  it("requireLotsAccess returns 403 for read_only", async () => {
+    const app = createAccessTestApp(requireLotsAccess, ["read_only"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(403);
   });
 
-  it("requireLotsAccess allows auction_manager", async () => {
-    const app = createAccessTestApp(requireLotsAccess, ["auction_manager"]);
+  it("requireLotsAccess allows sales_manager", async () => {
+    const app = createAccessTestApp(requireLotsAccess, ["sales_manager"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(200);
   });
@@ -131,74 +131,74 @@ describe("admin access middleware", () => {
     expect(res.status).toBe(403);
   });
 
-  it("requirePlatformAdminFull allows super_admin", async () => {
-    const app = createAccessTestApp(requirePlatformAdminFull, ["super_admin"]);
+  it("requirePlatformAdminFull allows administrator", async () => {
+    const app = createAccessTestApp(requirePlatformAdminFull, ["administrator"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(200);
   });
 
-  it("requireEmailAdmin returns 403 for catalogue_manager", async () => {
-    const app = createAccessTestApp(requireEmailAdmin, ["catalogue_manager"]);
+  it("requireEmailAdmin returns 403 for cataloguer", async () => {
+    const app = createAccessTestApp(requireEmailAdmin, ["cataloguer"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(403);
   });
 
-  it("requireEmailAdmin allows super_admin", async () => {
-    const app = createAccessTestApp(requireEmailAdmin, ["super_admin"]);
+  it("requireEmailAdmin allows administrator", async () => {
+    const app = createAccessTestApp(requireEmailAdmin, ["administrator"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(200);
   });
 
-  it("requireEmailObservability allows content_marketing", async () => {
-    const app = createAccessTestApp(requireEmailObservability, ["content_marketing"]);
+  it("requireEmailObservability allows read_only", async () => {
+    const app = createAccessTestApp(requireEmailObservability, ["read_only"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(200);
   });
 
-  it("requireEmailObservability returns 403 for catalogue_manager", async () => {
-    const app = createAccessTestApp(requireEmailObservability, ["catalogue_manager"]);
+  it("requireEmailObservability returns 403 for cataloguer", async () => {
+    const app = createAccessTestApp(requireEmailObservability, ["cataloguer"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(403);
   });
 
-  it("requireClientBids allows client_advisor", async () => {
-    const app = createAccessTestApp(requireClientBids, ["client_advisor"]);
+  it("requireClientBids allows client_services", async () => {
+    const app = createAccessTestApp(requireClientBids, ["client_services"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(200);
   });
 
-  it("requireClientBids returns 403 for operations", async () => {
-    const app = createAccessTestApp(requireClientBids, ["operations"]);
+  it("requireClientBids returns 403 for fulfilment", async () => {
+    const app = createAccessTestApp(requireClientBids, ["fulfilment"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(403);
   });
 
-  it("requireClientKyc returns 403 for client_advisor (PII stays platform-admin only)", async () => {
-    const app = createAccessTestApp(requireClientKyc, ["client_advisor"]);
+  it("requireClientKyc returns 403 for client_services (PII stays platform-admin only)", async () => {
+    const app = createAccessTestApp(requireClientKyc, ["client_services"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(403);
   });
 
-  it("requireClientKyc allows super_admin", async () => {
-    const app = createAccessTestApp(requireClientKyc, ["super_admin"]);
+  it("requireClientKyc allows administrator", async () => {
+    const app = createAccessTestApp(requireClientKyc, ["administrator"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(200);
   });
 
-  it("requireClientActivity returns 403 for client_advisor", async () => {
-    const app = createAccessTestApp(requireClientActivity, ["client_advisor"]);
+  it("requireClientActivity returns 403 for client_services", async () => {
+    const app = createAccessTestApp(requireClientActivity, ["client_services"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(403);
   });
 
-  it("requireClientActivity allows super_admin", async () => {
-    const app = createAccessTestApp(requireClientActivity, ["super_admin"]);
+  it("requireClientActivity allows administrator", async () => {
+    const app = createAccessTestApp(requireClientActivity, ["administrator"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(200);
   });
 
-  it("requireAuditDomainEvents allows staff_viewer", async () => {
-    const app = createAccessTestApp(requireAuditDomainEvents, ["staff_viewer"]);
+  it("requireAuditDomainEvents allows read_only", async () => {
+    const app = createAccessTestApp(requireAuditDomainEvents, ["read_only"]);
     const res = await app.request("http://test/test");
     expect(res.status).toBe(200);
   });
@@ -228,7 +228,7 @@ describe("admin invitation routes", () => {
     expect(invitations.getPage).not.toHaveBeenCalled();
   });
 
-  it("GET /invitations allows super_admin", async () => {
+  it("GET /invitations allows administrator", async () => {
     const invitations = {
       getPage: vi.fn().mockResolvedValue({
         rows: [],
@@ -248,7 +248,7 @@ describe("admin invitation routes", () => {
     app.use("*", async (c, next) => {
       c.set("userId", "staff-user-id");
       c.set("userRole", "staff");
-      c.set("userStaffRoles", ["super_admin"]);
+      c.set("userStaffRoles", ["administrator"]);
       await next();
     });
     attachAdminInvitationRoutes(app, invitations as never);

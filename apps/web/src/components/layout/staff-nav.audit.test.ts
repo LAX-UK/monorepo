@@ -9,7 +9,7 @@ function labelsFor(role: "staff" | "client", staffRole: UserStaffRole | null) {
 }
 
 describe("staff nav: Audit log", () => {
-  it.each<UserStaffRole>(["super_admin", "staff_viewer", "finance_ops", "auction_manager"])(
+  it.each<UserStaffRole>(["administrator", "read_only", "finance", "sales_manager"])(
     "is offered to %s",
     (staffRole) => {
       expect(labelsFor("staff", staffRole)).toContain("Audit log");

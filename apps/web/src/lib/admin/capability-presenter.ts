@@ -50,6 +50,11 @@ const CAPABILITY_PRESENTATION: Record<RoleCapability, CapabilityPresentation> = 
     description: "Create sales, run the saleroom, and manage live auction operations.",
     group: "catalog",
   },
+  "saleroom.operate": {
+    label: "Run the saleroom",
+    description: "Telephone bids, paddles and check-in during a live sale, without editing sales.",
+    group: "operations",
+  },
   "bid.place": {
     label: "Place bids",
     description: "Client capability to bid in sales.",
@@ -135,11 +140,6 @@ const CAPABILITY_PRESENTATION: Record<RoleCapability, CapabilityPresentation> = 
     description: "Post-sale release, shipping, and collection workflows.",
     group: "operations",
   },
-  "content.write": {
-    label: "Marketing content",
-    description: "Edit marketing and content surfaces.",
-    group: "operations",
-  },
   "support.respond": {
     label: "Support & moderation",
     description: "Respond to clients and moderate user accounts.",
@@ -164,6 +164,11 @@ const CAPABILITY_PRESENTATION: Record<RoleCapability, CapabilityPresentation> = 
     label: "MLRO decisions",
     description: "Binding clear/block on AML holds and Source of Funds.",
     group: "compliance",
+  },
+  "admin.read": {
+    label: "Read admin pages",
+    description: "Open list and record pages without personal data, money or actions.",
+    group: "platform",
   },
 };
 

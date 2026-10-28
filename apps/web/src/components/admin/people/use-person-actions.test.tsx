@@ -112,7 +112,7 @@ describe("usePersonActions", () => {
 
   it("asks for a staff role before making someone staff, and keeps a failure in the dialog", async () => {
     roleAction.mockResolvedValue({ ok: false, error: "You cannot change your own role." });
-    render(<Harness target={{ ...ada, role: "staff", staffRole: "finance_ops" }} />);
+    render(<Harness target={{ ...ada, role: "staff", staffRole: "finance" }} />);
     fireEvent.click(screen.getByRole("button", { name: "Change role" }));
 
     expect(await screen.findByRole("dialog")).toHaveTextContent("Change Ada Lovelace's role");
@@ -120,7 +120,7 @@ describe("usePersonActions", () => {
     await waitFor(() =>
       expect(roleAction).toHaveBeenCalledWith("user_1", {
         role: "staff",
-        staffRole: "finance_ops",
+        staffRole: "finance",
       }),
     );
     expect(await screen.findByText("You cannot change your own role.")).toBeVisible();

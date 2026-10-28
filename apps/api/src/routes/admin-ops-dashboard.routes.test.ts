@@ -64,7 +64,7 @@ describe("admin ops dashboard routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["operations"],
+        staffRoles: ["sales_manager"],
         scopes: ["bid.read"],
       }),
     };
@@ -112,7 +112,7 @@ describe("admin ops dashboard routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["operations"],
+        staffRoles: ["sales_manager"],
         scopes: ["bid.read"],
       }),
     };
@@ -162,7 +162,7 @@ describe("admin ops dashboard routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["operations"],
+        staffRoles: ["sales_manager"],
         scopes: ["bid.read"],
       }),
     };

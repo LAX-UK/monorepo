@@ -150,7 +150,7 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
     );
 
     const result = await svc.setLotStatus("staff", saleId, lotId, "scheduled", undefined, [
-      "super_admin",
+      "administrator",
     ]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -192,7 +192,7 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
     );
 
     const result = await svc.setLotStatus("staff", saleId, lotId, "scheduled", undefined, [
-      "super_admin",
+      "administrator",
     ]);
     expect(result.isOk()).toBe(true);
     expect(lotRepo.updateStatus).toHaveBeenCalledWith(lotId, "scheduled");
@@ -223,7 +223,7 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
     );
 
     const result = await svc.setLotStatus("staff", saleId, lotId, "scheduled", undefined, [
-      "super_admin",
+      "administrator",
     ]);
     expect(result.isErr()).toBe(true);
     if (result.isErr() && result.error instanceof LotError) {
@@ -263,7 +263,7 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
     );
 
     const result = await svc.setLotStatus("staff", saleId, lotId, "scheduled", undefined, [
-      "super_admin",
+      "administrator",
     ]);
     expect(result.isErr()).toBe(true);
     if (result.isErr() && result.error instanceof LotError) {
@@ -301,7 +301,7 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
     );
 
     const result = await svc.setLotStatus("staff", saleId, lotId, "cancelled", undefined, [
-      "super_admin",
+      "administrator",
     ]);
     expect(result.isErr()).toBe(true);
     if (result.isErr() && result.error instanceof LotError) {
@@ -340,7 +340,7 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
     );
 
     const result = await svc.setLotStatus("staff", saleId, lotId, "scheduled", undefined, [
-      "super_admin",
+      "administrator",
     ]);
     expect(result.isErr()).toBe(true);
     if (result.isErr() && result.error instanceof LotError) {

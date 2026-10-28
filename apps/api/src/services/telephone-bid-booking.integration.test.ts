@@ -107,7 +107,7 @@ describe.skipIf(!HAS_DB)("TelephoneBidBookingService (integration)", () => {
       {
         userId: staffUserId,
         role: "staff",
-        staffRole: "super_admin",
+        staffRole: "administrator",
         createdAt: t,
         updatedAt: t,
       },

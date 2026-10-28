@@ -192,19 +192,17 @@ const PROFILES: Record<DashboardProfileId, DashboardProfile> = {
   },
 };
 
-const STAFF_ROLE_PROFILE: Partial<Record<UserStaffRole, DashboardProfileId>> = {
-  super_admin: "oversight",
-  auction_manager: "auction_operations",
-  operations: "auction_operations",
-  catalogue_manager: "catalogue",
+const STAFF_ROLE_PROFILE: Record<UserStaffRole, DashboardProfileId> = {
+  administrator: "oversight",
+  sales_manager: "auction_operations",
+  saleroom_clerk: "auction_operations",
+  cataloguer: "catalogue",
   specialist: "catalogue",
-  content_marketing: "catalogue",
-  finance_ops: "finance",
-  compliance_officer: "compliance",
-  operations_fulfilment: "service_fulfilment",
-  support_concierge: "service_fulfilment",
-  client_advisor: "service_fulfilment",
-  staff_viewer: "read_only",
+  finance: "finance",
+  compliance: "compliance",
+  fulfilment: "service_fulfilment",
+  client_services: "service_fulfilment",
+  read_only: "read_only",
 };
 
 const PROFILE_PRIORITY: readonly DashboardProfileId[] = [
@@ -226,7 +224,7 @@ export function dashboardProfileIdForStaffRoles(
 ): DashboardProfileId {
   const shown = primaryStaffRole(staffRoles ?? NO_STAFF_ROLES);
   if (shown == null) return "auction_operations";
-  return STAFF_ROLE_PROFILE[shown] ?? "auction_operations";
+  return STAFF_ROLE_PROFILE[shown];
 }
 
 export function getDashboardProfile(staffRoles: StaffRoles | undefined): DashboardProfile {

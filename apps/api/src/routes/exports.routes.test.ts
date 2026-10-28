@@ -30,7 +30,7 @@ describe("export routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: userId,
         role: "staff",
-        staffRoles: ["auction_manager"],
+        staffRoles: ["sales_manager"],
         scopes: ["bid.write"],
       }),
     };
@@ -73,7 +73,7 @@ describe("export routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: userId,
         role: "staff",
-        staffRoles: ["auction_manager"],
+        staffRoles: ["sales_manager"],
         scopes: ["bid.write"],
       }),
     };
@@ -132,7 +132,7 @@ describe("export routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: userId,
         role: "staff",
-        staffRoles: ["auction_manager"],
+        staffRoles: ["sales_manager"],
         scopes: ["bid.write"],
       }),
     };

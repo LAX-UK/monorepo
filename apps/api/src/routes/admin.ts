@@ -5,9 +5,9 @@ import type { ContainerAdminPlatformRoutesSlice } from "../container.js";
 import { createAdminIdempotency } from "../middleware/admin-idempotency.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
 import {
-  requireAuctionManage,
   requireFinanceAccess,
   requirePlatformShell,
+  requireSaleroomOperate,
 } from "../middleware/require-capability.js";
 import { createRequireRecentStaffAuth } from "../middleware/require-recent-staff-auth.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -98,14 +98,14 @@ export function createAdminRoutes(
   // registered after the sub-app's routes never guards them and instead gates every
   // platform route registered after the mount. Guards must be path-scoped and
   // registered before the routes they protect.
-  platform.use("/telephone-bookings", requireAuctionManage);
-  platform.use("/telephone-bookings/*", requireAuctionManage);
-  platform.use("/sales/:saleId/telephone-bookings", requireAuctionManage);
-  platform.use("/sales/:saleId/telephone-bookings/*", requireAuctionManage);
+  platform.use("/telephone-bookings", requireSaleroomOperate);
+  platform.use("/telephone-bookings/*", requireSaleroomOperate);
+  platform.use("/sales/:saleId/telephone-bookings", requireSaleroomOperate);
+  platform.use("/sales/:saleId/telephone-bookings/*", requireSaleroomOperate);
   platform.route("/", createAdminTelephoneBookingRoutes(container));
 
-  platform.use("/event-rsvps", requireAuctionManage);
-  platform.use("/event-rsvps/*", requireAuctionManage);
+  platform.use("/event-rsvps", requireSaleroomOperate);
+  platform.use("/event-rsvps/*", requireSaleroomOperate);
   platform.route("/event-rsvps", createAdminOnsiteEventRoutes(container));
 
   attachAdminSaleroomSessionRoutes(platform, container);
@@ -142,7 +142,7 @@ export function createAdminRoutes(
 
   attachAdminDeliveryOpsRoutes(platform, container);
 
-  // Finance-shell routes must stay reachable for finance_ops, who fails
+  // Finance-shell routes must stay reachable for finance, who fails
   // `requirePlatformShell`. Guards are path-scoped (not `use("*")`) so they don't
   // leak onto platform paths once this sub-app is merged into the parent router.
   const finance: AdminHono = new Hono();
@@ -151,7 +151,7 @@ export function createAdminRoutes(
   finance.use("/payments/:id/xero-sync", requireFinanceAccess);
   finance.use("/integrations/xero/*", requireFinanceAccess);
 
-  // Payments are a finance screen: finance_ops fails the platform shell, so these mount here.
+  // Payments are a finance screen: finance fails the platform shell, so these mount here.
   // Each route carries its own capability guard.
   attachAdminPaymentsListRoutes(finance, container);
   attachAdminPaymentsManualReviewRoutes(finance, container, guards);
@@ -159,7 +159,7 @@ export function createAdminRoutes(
   attachAdminFinanceRoutes(finance, container);
 
   // Mount finance first: its routes terminate the chain before platform's
-  // `use("*", requirePlatformShell)` wildcard can 403 finance_ops.
+  // `use("*", requirePlatformShell)` wildcard can 403 finance.
   r.route("/", finance);
   r.route("/", platform);
 

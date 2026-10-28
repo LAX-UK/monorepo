@@ -45,8 +45,8 @@ describe("artist admin routes — platform administrator gate", () => {
     expect(artistHttp.review).not.toHaveBeenCalled();
   });
 
-  it("returns 403 for POST /artists/:id/merge when user is finance staff (finance_ops)", async () => {
-    const { app, artistHttp } = mountApp("staff", "finance_ops");
+  it("returns 403 for POST /artists/:id/merge when user is finance staff (finance)", async () => {
+    const { app, artistHttp } = mountApp("staff", "finance");
 
     const res = await app.request(`/artists/${artistId}/merge`, {
       method: "POST",
@@ -61,8 +61,8 @@ describe("artist admin routes — platform administrator gate", () => {
     expect(artistHttp.mergeWithConfirmation).not.toHaveBeenCalled();
   });
 
-  it("allows POST /artists/:id/review for staff (super_admin)", async () => {
-    const { app, artistHttp } = mountApp("staff", "super_admin");
+  it("allows POST /artists/:id/review for staff (administrator)", async () => {
+    const { app, artistHttp } = mountApp("staff", "administrator");
     vi.mocked(artistHttp.review).mockResolvedValue({
       status: 200,
       body: { data: { id: artistId, status: "approved" } },
@@ -82,8 +82,8 @@ describe("artist admin routes — platform administrator gate", () => {
     });
   });
 
-  it("allows POST /artists/:id/merge for staff (super_admin)", async () => {
-    const { app, artistHttp } = mountApp("staff", "super_admin");
+  it("allows POST /artists/:id/merge for staff (administrator)", async () => {
+    const { app, artistHttp } = mountApp("staff", "administrator");
     vi.mocked(artistHttp.mergeWithConfirmation).mockResolvedValue({
       status: 200,
       body: {
@@ -117,7 +117,7 @@ describe("artist admin routes — platform administrator gate", () => {
   });
 
   it("returns 400 when merge confirmation phrase is wrong", async () => {
-    const { app, artistHttp } = mountApp("staff", "super_admin");
+    const { app, artistHttp } = mountApp("staff", "administrator");
     vi.mocked(artistHttp.mergeWithConfirmation).mockResolvedValue({
       status: 400,
       body: {
@@ -163,8 +163,8 @@ describe("artist admin routes — platform administrator gate", () => {
     expect(artistHttp.proposeMatchesForAdmin).not.toHaveBeenCalled();
   });
 
-  it("returns 403 for POST /artists/propose-matches when user is finance staff (finance_ops)", async () => {
-    const { app, artistHttp } = mountApp("staff", "finance_ops");
+  it("returns 403 for POST /artists/propose-matches when user is finance staff (finance)", async () => {
+    const { app, artistHttp } = mountApp("staff", "finance");
 
     const res = await app.request("/artists/propose-matches", {
       method: "POST",
@@ -176,8 +176,8 @@ describe("artist admin routes — platform administrator gate", () => {
     expect(artistHttp.proposeMatchesForAdmin).not.toHaveBeenCalled();
   });
 
-  it("allows POST /artists/propose-matches for staff (super_admin)", async () => {
-    const { app, artistHttp } = mountApp("staff", "super_admin");
+  it("allows POST /artists/propose-matches for staff (administrator)", async () => {
+    const { app, artistHttp } = mountApp("staff", "administrator");
     vi.mocked(artistHttp.proposeMatchesForAdmin).mockResolvedValue({
       status: 200,
       body: { data: { exact: [], alias: [], fuzzy: [] } },
@@ -209,8 +209,8 @@ describe("artist admin routes — platform administrator gate", () => {
     expect(artistHttp.addAlias).not.toHaveBeenCalled();
   });
 
-  it("returns 403 for POST /artists/:id/aliases when user is finance staff (finance_ops)", async () => {
-    const { app, artistHttp } = mountApp("staff", "finance_ops");
+  it("returns 403 for POST /artists/:id/aliases when user is finance staff (finance)", async () => {
+    const { app, artistHttp } = mountApp("staff", "finance");
 
     const res = await app.request(`/artists/${artistId}/aliases`, {
       method: "POST",
@@ -222,8 +222,8 @@ describe("artist admin routes — platform administrator gate", () => {
     expect(artistHttp.addAlias).not.toHaveBeenCalled();
   });
 
-  it("allows POST /artists/:id/aliases for staff (super_admin)", async () => {
-    const { app, artistHttp } = mountApp("staff", "super_admin");
+  it("allows POST /artists/:id/aliases for staff (administrator)", async () => {
+    const { app, artistHttp } = mountApp("staff", "administrator");
     vi.mocked(artistHttp.addAlias).mockResolvedValue({
       status: 201,
       body: { data: { id: "alias-1", alias: "Known As" } },
@@ -257,8 +257,8 @@ describe("artist admin routes — platform administrator gate", () => {
     expect(artistHttp.create).not.toHaveBeenCalled();
   });
 
-  it("returns 403 for POST /artists when user is finance staff (finance_ops)", async () => {
-    const { app, artistHttp } = mountApp("staff", "finance_ops");
+  it("returns 403 for POST /artists when user is finance staff (finance)", async () => {
+    const { app, artistHttp } = mountApp("staff", "finance");
 
     const res = await app.request("/artists", {
       method: "POST",
@@ -270,8 +270,8 @@ describe("artist admin routes — platform administrator gate", () => {
     expect(artistHttp.create).not.toHaveBeenCalled();
   });
 
-  it("allows POST /artists for staff super_admin (records creator id)", async () => {
-    const { app, artistHttp } = mountApp("staff", "super_admin");
+  it("allows POST /artists for staff administrator (records creator id)", async () => {
+    const { app, artistHttp } = mountApp("staff", "administrator");
     vi.mocked(artistHttp.create).mockResolvedValue({
       status: 201,
       body: {
@@ -313,8 +313,8 @@ describe("artist delete routes — artist.delete gate", () => {
     expect(artistHttp.delete).not.toHaveBeenCalled();
   });
 
-  it("allows DELETE /artists/:id for catalogue_manager", async () => {
-    const { app, artistHttp } = mountApp("staff", "catalogue_manager");
+  it("allows DELETE /artists/:id for cataloguer", async () => {
+    const { app, artistHttp } = mountApp("staff", "cataloguer");
     vi.mocked(artistHttp.delete).mockResolvedValue({ kind: "no_content" });
 
     const res = await app.request(`/artists/${artistId}`, {
@@ -327,8 +327,8 @@ describe("artist delete routes — artist.delete gate", () => {
     expect(artistHttp.delete).toHaveBeenCalled();
   });
 
-  it("returns 403 for GET delete-eligibility when user is staff_viewer", async () => {
-    const { app, artistHttp } = mountApp("staff", "staff_viewer");
+  it("returns 403 for GET delete-eligibility when user is read_only", async () => {
+    const { app, artistHttp } = mountApp("staff", "read_only");
 
     const res = await app.request(`/artists/${artistId}/delete-eligibility`);
 
@@ -336,8 +336,8 @@ describe("artist delete routes — artist.delete gate", () => {
     expect(artistHttp.getDeleteEligibility).not.toHaveBeenCalled();
   });
 
-  it("allows GET delete-eligibility for super_admin", async () => {
-    const { app, artistHttp } = mountApp("staff", "super_admin");
+  it("allows GET delete-eligibility for administrator", async () => {
+    const { app, artistHttp } = mountApp("staff", "administrator");
     vi.mocked(artistHttp.getDeleteEligibility).mockResolvedValue({
       status: 200,
       body: {
@@ -358,7 +358,7 @@ describe("artist delete routes — artist.delete gate", () => {
   });
 
   it("returns 400 when delete confirmation phrase is wrong", async () => {
-    const { app, artistHttp } = mountApp("staff", "catalogue_manager");
+    const { app, artistHttp } = mountApp("staff", "cataloguer");
     vi.mocked(artistHttp.delete).mockResolvedValue({
       kind: "err",
       error: new ArtistError(
@@ -380,7 +380,7 @@ describe("artist delete routes — artist.delete gate", () => {
   });
 
   it("returns 422 when delete is blocked by policy", async () => {
-    const { app, artistHttp } = mountApp("staff", "super_admin");
+    const { app, artistHttp } = mountApp("staff", "administrator");
     vi.mocked(artistHttp.delete).mockResolvedValue({
       kind: "err",
       error: new ArtistError("This artist is attributed to 2 lots", 422, "artist_delete_blocked", [

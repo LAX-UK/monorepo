@@ -4,10 +4,11 @@ import {
   type CapabilityRequirement,
   FINANCE_ACCESS,
   LOTS_ACCESS,
+  LOTS_READ_ACCESS,
   LOT_FULFILMENT_ACCESS,
   SALEROOM_ACCESS,
-  SALE_CATALOG_ACCESS,
-  SUBMISSIONS_ACCESS,
+  SALE_CATALOG_READ_ACCESS,
+  SUBMISSIONS_READ_ACCESS,
   type StaffRoles,
   USERS_DIRECTORY_ACCESS,
   type UserRole,
@@ -27,7 +28,7 @@ export const DASHBOARD_WIDGET_REQUIREMENTS: Record<
   "my-queue": null,
   "saleroom-live": SALEROOM_ACCESS,
   "onsite-radar": SALEROOM_ACCESS,
-  activity: LOTS_ACCESS,
+  activity: LOTS_READ_ACCESS,
 };
 
 /**
@@ -72,11 +73,11 @@ export type HubQuickLinkSpec = {
  */
 export const HUB_QUICK_LINK_SPECS: readonly HubQuickLinkSpec[] = [
   { href: "/admin/finance", label: "Finance", requirement: FINANCE_ACCESS },
-  { href: "/admin/sales", label: "Catalogue", requirement: SALE_CATALOG_ACCESS },
+  { href: "/admin/sales", label: "Catalogue", requirement: SALE_CATALOG_READ_ACCESS },
   { href: "/admin/compliance/aml", label: "Compliance", requirement: AML_REVIEW_ACCESS },
   { href: "/admin/clients", label: "Clients", requirement: USERS_DIRECTORY_ACCESS },
   { href: "/admin/lot-fulfilment", label: "Fulfilment", requirement: LOT_FULFILMENT_ACCESS },
-  { href: "/admin/submissions", label: "Submissions", requirement: SUBMISSIONS_ACCESS },
+  { href: "/admin/submissions", label: "Submissions", requirement: SUBMISSIONS_READ_ACCESS },
 ];
 
 export type HubQuickLink = {
@@ -116,7 +117,7 @@ export type DashboardQuickAction = {
 
 export const DASHBOARD_GREETING_ACTIONS: readonly DashboardQuickAction[] = [
   { href: "/admin/lots/new", label: "New lot", requirement: LOTS_ACCESS },
-  { href: "/admin/submissions", label: "Submissions", requirement: SUBMISSIONS_ACCESS },
+  { href: "/admin/submissions", label: "Submissions", requirement: SUBMISSIONS_READ_ACCESS },
 ];
 
 export function greetingActionsFor(
