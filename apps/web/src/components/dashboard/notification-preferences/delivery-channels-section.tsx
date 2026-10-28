@@ -6,7 +6,6 @@ import {
   buildNotificationPreset,
 } from "@/lib/notifications/notification-preferences-registry";
 import { Button } from "@auction/ui/components/button";
-import { LabelCaps } from "@auction/ui/components/typography";
 import type { useForm } from "react-hook-form";
 import { PreferencesMatrix } from "./preferences-matrix";
 
@@ -20,8 +19,10 @@ export function DeliveryChannelsSection({
   return (
     <section className="space-y-3">
       <div>
-        <LabelCaps>Delivery channels</LabelCaps>
-        <p className="mt-2 font-body text-sm text-on-surface-variant">
+        <h3 className="font-body text-base font-semibold text-on-surface">
+          Where alerts reach you
+        </h3>
+        <p className="mt-1 font-body text-sm text-on-surface-variant">
           Choose how each alert reaches you. WhatsApp is visible here so the setting is ready when
           delivery launches.
         </p>

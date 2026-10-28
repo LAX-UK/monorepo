@@ -2,6 +2,7 @@
 
 import type { AuctionInterestsSettingsActionState } from "@/app/(client)/settings/interests/action-state";
 import { replaceServerCategoryInterestPreferences } from "@/lib/data/http/category-interests.server";
+import { bidSettingsHref } from "@/lib/navigation/settings-links";
 import {
   describeCategoryInterestsSaveError,
   parseCategoryInterestIds,
@@ -31,10 +32,10 @@ export async function saveAuctionInterestPreferences(
     };
   }
   revalidatePath("/home");
-  revalidatePath("/settings/interests");
+  revalidatePath("/settings");
   return {
     error: null,
-    redirectTo: "/settings/interests?saved=1",
+    redirectTo: bidSettingsHref("interests"),
     savedCategoryIds,
   };
 }

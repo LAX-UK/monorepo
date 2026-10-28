@@ -12,10 +12,8 @@ export function QuietHoursSection({
 }) {
   return (
     <section>
-      <h2 className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        Quiet hours (UTC)
-      </h2>
-      <p className="mt-2 font-body text-sm text-on-surface-variant">
+      <h3 className="font-body text-base font-semibold text-on-surface">Quiet hours (UTC)</h3>
+      <p className="mt-1 font-body text-sm text-on-surface-variant">
         Quiet hours apply to push and WhatsApp. Email and in-app notifications can still be
         delivered. Times below are in UTC.
       </p>

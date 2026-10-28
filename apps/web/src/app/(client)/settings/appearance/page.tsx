@@ -1,49 +1,7 @@
-import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { SettingsFormHeader } from "@/components/dashboard/settings-form-header";
-import {
-  AppearanceLayoutPreferencesForm,
-  type AppearancePreferencesSnapshot,
-} from "@/components/settings/appearance-layout-preferences-form";
-import { ReduceMotionCard } from "@/components/settings/reduce-motion-card";
-import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { laxAccountHomeUrl } from "@/lib/lax-account-url";
-import type { DensityPreference, LayoutViewDefault, ThemePreference } from "@auction/validators";
-import type { Metadata } from "next";
+import { bidSettingsHref } from "@/lib/navigation/settings-links";
+import { redirect } from "next/navigation";
 
-export const metadata: Metadata = { title: "Appearance & layout" };
-
-export default async function AppearanceSettingsPage() {
-  const user = await requireAuthenticatedUser({
-    shell: "client",
-    loginNext: "/settings/appearance",
-  });
-
-  const p = user.uiPreferences;
-  const initial: AppearancePreferencesSnapshot = {
-    theme: (p?.theme ?? "system") as ThemePreference,
-    viewLotsDefault: (p?.viewLotsDefault ?? "auto") as LayoutViewDefault,
-    viewArtistsDefault: (p?.viewArtistsDefault ?? "auto") as LayoutViewDefault,
-    viewSalesDefault: (p?.viewSalesDefault ?? "auto") as LayoutViewDefault,
-    density: (p?.density ?? "comfortable") as DensityPreference,
-    viewSync: p?.viewSync ?? false,
-  };
-
-  return (
-    <DashboardPage className="space-y-8">
-      <SettingsFormHeader title="Appearance & layout" />
-      <AppearanceLayoutPreferencesForm initial={initial} />
-      <ReduceMotionCard />
-      <p className="text-sm text-on-surface-variant">
-        Quick theme toggle is also in the site header.{" "}
-        <a
-          href={laxAccountHomeUrl()}
-          rel="noopener noreferrer"
-          className="text-link underline-offset-4 hover:underline"
-        >
-          LAX Account
-        </a>{" "}
-        has your sign-in details.
-      </p>
-    </DashboardPage>
-  );
+/** Appearance settings now live on the one Bid settings page; older links open it at that section. */
+export default function AppearanceSettingsPage() {
+  redirect(bidSettingsHref("appearance"));
 }
