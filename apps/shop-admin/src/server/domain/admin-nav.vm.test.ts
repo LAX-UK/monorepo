@@ -35,11 +35,12 @@ describe("buildAdminNavGroups", () => {
     expect(navHrefsFor(role)).toContain("/overview");
   });
 
-  it("shows catalogue editors the catalogue and editorial areas only", () => {
+  it("shows catalogue editors the catalogue, applications and editorial areas only", () => {
     expect(navHrefsFor("catalogue_editor")).toEqual([
       "/overview",
       "/artworks",
       "/artists",
+      "/artist-applications",
       ...EDITORIAL_HREFS,
     ]);
   });
@@ -127,6 +128,7 @@ describe("buildAdminNavGroups", () => {
         [
           "Artworks",
           "Artists",
+          "Artist applications",
           "Exhibitions",
           "Stories",
           "Venues",
@@ -181,6 +183,29 @@ describe("buildAdminNavGroups", () => {
       expect(enquiriesItem("finance", 9)).toBeUndefined();
     });
   });
+});
+
+describe("Artist applications nav item", () => {
+  const applicationsItem = (role: ShopStaffRole, applicationAttentionCount?: number) =>
+    flattenAdminNav(
+      buildAdminNavGroups({
+        capabilities: capabilitiesForRole(role),
+        features: ALL_FEATURES,
+        ...(applicationAttentionCount !== undefined ? { applicationAttentionCount } : {}),
+      }),
+    ).find((item) => item.href === "/artist-applications");
+
+  it("is shown to the roles that review applications, with the new ones counted", () => {
+    expect(applicationsItem("catalogue_editor", 3)).toMatchObject({ attentionCount: 3 });
+    expect(applicationsItem("shop_admin")).toBeDefined();
+  });
+
+  it.each(["account_manager", "broker", "operations", "finance"] as const)(
+    "is hidden from %s",
+    (role) => {
+      expect(applicationsItem(role, 3)).toBeUndefined();
+    },
+  );
 });
 
 describe("Clients nav item", () => {

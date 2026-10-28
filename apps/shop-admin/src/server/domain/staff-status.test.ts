@@ -7,6 +7,7 @@ import {
   ADMIN_SALE_AUTHORITY_REQUEST_STATUSES,
   ADMIN_STOCK_HOLD_STATUSES,
   ADMIN_THIRD_PARTY_SALE_STATUSES,
+  ARTIST_APPLICATION_STATUS_VALUES,
   ENQUIRY_STATUSES,
   PRODUCTION_TASK_STATUSES,
 } from "@auction/shop-contracts";
@@ -29,6 +30,7 @@ const DOMAINS: [LaxStatusDomain, readonly string[]][] = [
   ["editorial", ["draft", "published"]],
   ["help", ["draft", "published"]],
   ["enquiry", ENQUIRY_STATUSES],
+  ["artistApplication", ARTIST_APPLICATION_STATUS_VALUES],
 ];
 
 describe("staffStatus", () => {
@@ -47,6 +49,7 @@ describe("staffStatus", () => {
     expect(staffStatus("saleRequest", "pending").tone).toBe("warning");
     expect(staffStatus("dispute", "opened").tone).toBe("warning");
     expect(staffStatus("fee", "pending").tone).toBe("warning");
+    expect(staffStatus("artistApplication", "submitted").tone).toBe("warning");
   });
 
   it("marks failures and losses as danger", () => {

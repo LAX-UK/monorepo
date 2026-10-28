@@ -30,6 +30,7 @@ export type LaxStatusDomain =
   | "editorial"
   | "help"
   | "enquiry"
+  | "artistApplication"
   | "staffAccess"
   | "custody";
 
@@ -159,6 +160,14 @@ const LAX_STATUS: Record<LaxStatusDomain, Readonly<Record<string, StatusPresenta
     new: { label: "New", tone: "warning" },
     in_progress: { label: "In progress", tone: "info" },
     closed: { label: "Closed", tone: "neutral" },
+  },
+  artistApplication: {
+    draft: { label: "Draft", tone: "neutral" },
+    submitted: { label: "New", tone: "warning" },
+    in_review: { label: "In review", tone: "info" },
+    more_info_needed: { label: "Waiting on artist", tone: "info" },
+    accepted: { label: "Accepted", tone: "success" },
+    declined: { label: "Declined", tone: "neutral" },
   },
 };
 

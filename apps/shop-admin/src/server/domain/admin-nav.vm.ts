@@ -8,6 +8,7 @@ export type AdminNavIcon =
   | "overview"
   | "artworks"
   | "artists"
+  | "applications"
   | "exhibitions"
   | "stories"
   | "venues"
@@ -53,6 +54,8 @@ export type AdminSessionNavInput = {
   };
   /** New enquiries nobody has picked up; 0 when unknown or the role cannot read enquiries. */
   enquiryAttentionCount?: number;
+  /** Artist applications nobody has picked up; 0 when unknown or the role cannot review. */
+  applicationAttentionCount?: number;
 };
 
 function hasCapability(
@@ -87,6 +90,15 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
           icon: "artists" as const,
           label: "Artists",
           capability: "catalogue.write",
+        },
+        {
+          href: "/artist-applications",
+          icon: "applications" as const,
+          label: "Artist applications",
+          capability: "artist_application.review",
+          ...(input.applicationAttentionCount
+            ? { attentionCount: input.applicationAttentionCount }
+            : {}),
         },
         {
           href: "/editorial/exhibitions",
