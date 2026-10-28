@@ -107,7 +107,7 @@ describe("composeArtHubPage", () => {
       "films",
       "collecting",
       "press",
-      "ecosystem",
+      "product-doors",
     ]);
     expect(result.data.heroImageUrl).toBe("/cover.webp");
     expect(result.data.stories[0]).toMatchObject({ kicker: "Article", kickerDetail: "5 MIN READ" });

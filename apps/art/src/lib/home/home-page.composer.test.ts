@@ -149,7 +149,7 @@ describe("composeArtHomePage sections", () => {
       "whats-on",
       "curators-picks",
       "featured-artists",
-      "ecosystem",
+      "product-doors",
       "stories",
       "guide",
       "galleries",
@@ -347,7 +347,7 @@ describe("composeArtHomePage editorial", () => {
 });
 
 describe("composeArtHomePage promo placements", () => {
-  it("dresses the LAX Bid card from home_promo_bid and keeps the directory link", async () => {
+  it("dresses the LAX Bid door from home_promo_bid and keeps the directory link", async () => {
     const services = fakeArtServices();
     services.ecosystem.crossProductLinks.mockReturnValue([
       { id: "bid", label: "LAX Bid", href: "https://bid.test", current: false, external: true },
@@ -373,10 +373,13 @@ describe("composeArtHomePage promo placements", () => {
 
     const vm = await composeArtHomePage(services);
 
-    expect(vm.ecosystem).toEqual([
+    expect(vm.productDoors).toEqual([
       expect.objectContaining({
+        product: "bid",
         title: "Live auctions",
-        cta: { label: "See auctions", href: "https://bid.test" },
+        promise: "Bid on works.",
+        actionLabel: "Visit LAX Bid",
+        href: "https://bid.test",
         imageUrl: "https://cdn.test/bid.jpg",
       }),
     ]);
@@ -391,6 +394,9 @@ describe("composeArtHomePage promo placements", () => {
 
     const vm = await composeArtHomePage(services);
 
-    expect(vm.ecosystem[0]).toMatchObject({ title: "Bid in auctions", imageUrl: null });
+    expect(vm.productDoors[0]).toMatchObject({
+      title: "Art and collectibles at auction",
+      imageUrl: null,
+    });
   });
 });

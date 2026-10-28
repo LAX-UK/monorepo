@@ -3,11 +3,11 @@ import { ArtArtistCard } from "@/components/catalogue/art-artist-grid";
 import { ArtArtworkRail } from "@/components/catalogue/art-artwork-rail";
 import { ArtEditorialCard } from "@/components/editorial/art-editorial-card";
 import { ArtGeneralEnquiryPanel } from "@/components/enquiry/art-general-enquiry-panel";
-import { ArtHomeEcosystemBand } from "@/components/home/art-home-ecosystem-band";
 import { ArtHomeHero } from "@/components/home/art-home-hero";
 import { ArtRail, ArtRailItem } from "@/components/layout/art-rail";
 import { ArtSection } from "@/components/layout/art-section";
 import { ArtMediaImage } from "@/components/media/art-media-image";
+import { ArtProductDoors } from "@/components/product-doors/art-product-doors";
 import { artServices } from "@/lib/art-services.server";
 import { buildArtHomeHeroVm } from "@/lib/home/art-home-hero.vm";
 import { ART_HOME_CLOSING_CTA } from "@/lib/home/art-home-promos.vm";
@@ -107,8 +107,8 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
           </ArtSection>
         </Shell>
       );
-    case "ecosystem":
-      return <ArtHomeEcosystemBand cards={vm.ecosystem} />;
+    case "product-doors":
+      return <ArtProductDoors doors={vm.productDoors} />;
     case "stories": {
       const [lead, ...rest] = vm.stories;
       if (!lead) return null;
