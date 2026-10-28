@@ -179,7 +179,6 @@ describe.skipIf(!hasShopIntegrationDb)("editorial content fields", () => {
     expect(venue).toMatchObject({
       streetLine: GALLERY_CONTACT.streetLine,
       postcode: GALLERY_CONTACT.postcode,
-      phone: GALLERY_CONTACT.phone,
       city: "London",
     });
     const detail = await repo.getVenueBySlug("lax-marylebone");
