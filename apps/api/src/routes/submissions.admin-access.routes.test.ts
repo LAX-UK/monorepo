@@ -36,23 +36,31 @@ function mount(staffRole: string | null) {
 }
 
 describe("submissions admin access", () => {
-  it("GET /submissions returns 403 for staff_viewer", async () => {
-    const { app, listSubmissions } = mount("staff_viewer");
-    const res = await app.request("http://t/submissions?limit=10&offset=0");
-    expect(res.status).toBe(403);
-    expect(listSubmissions).not.toHaveBeenCalled();
-  });
-
-  it("GET /submissions allows catalogue_manager", async () => {
-    const { app, listSubmissions } = mount("catalogue_manager");
+  it("GET /submissions opens the list read-only for read_only", async () => {
+    const { app, listSubmissions } = mount("read_only");
     listSubmissions.mockResolvedValue({ status: 200, body: { data: [], total: 0 } });
     const res = await app.request("http://t/submissions?limit=10&offset=0");
     expect(res.status).toBe(200);
     expect(listSubmissions).toHaveBeenCalled();
   });
 
-  it("POST /submissions/:id/review/start returns 403 for staff_viewer", async () => {
-    const { app, startReview } = mount("staff_viewer");
+  it("GET /submissions returns 403 for finance", async () => {
+    const { app, listSubmissions } = mount("finance");
+    const res = await app.request("http://t/submissions?limit=10&offset=0");
+    expect(res.status).toBe(403);
+    expect(listSubmissions).not.toHaveBeenCalled();
+  });
+
+  it("GET /submissions allows cataloguer", async () => {
+    const { app, listSubmissions } = mount("cataloguer");
+    listSubmissions.mockResolvedValue({ status: 200, body: { data: [], total: 0 } });
+    const res = await app.request("http://t/submissions?limit=10&offset=0");
+    expect(res.status).toBe(200);
+    expect(listSubmissions).toHaveBeenCalled();
+  });
+
+  it("POST /submissions/:id/review/start returns 403 for read_only", async () => {
+    const { app, startReview } = mount("read_only");
     const res = await app.request(`http://t/submissions/${submissionId}/review/start`, {
       method: "POST",
     });

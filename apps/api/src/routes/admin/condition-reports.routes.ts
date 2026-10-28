@@ -6,7 +6,10 @@ import {
 } from "@auction/validators";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
-import { requireConditionReportsAccess } from "../../middleware/require-capability.js";
+import {
+  requireConditionReportsAccess,
+  requireConditionReportsRead,
+} from "../../middleware/require-capability.js";
 import type { AdminCatalogSupportRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
 
@@ -16,7 +19,7 @@ export function attachAdminConditionReportsRoutes(
 ): void {
   platform.get(
     "/condition-report-requests",
-    requireConditionReportsAccess,
+    requireConditionReportsRead,
     zValidator("query", adminConditionReportListQuerySchema),
     async (c) => {
       const q = c.req.valid("query");

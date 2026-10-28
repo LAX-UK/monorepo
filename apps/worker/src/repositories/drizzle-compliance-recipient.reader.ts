@@ -1,10 +1,12 @@
 import type { Database } from "@auction/db";
 import { bidIdentityDirectory, bidUserProfile, staffRoleAssignment } from "@auction/db/schema";
 import { staffRoleAssignmentInForceAt } from "@auction/persistence/lib";
+import { MLRO_DECISION_ACCESS, requirementCapabilities, staffRolesGranting } from "@auction/types";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
 
-const COMPLIANCE_STAFF_ROLES = ["compliance_officer", "super_admin"] as const;
+/** Everyone who may make the binding compliance decision. */
+const COMPLIANCE_STAFF_ROLES = staffRolesGranting(requirementCapabilities(MLRO_DECISION_ACCESS));
 
 /** Active staff who hold a compliance role right now, each once. */
 export class DrizzleComplianceRecipientReader implements IComplianceRecipientReader {

@@ -10,7 +10,7 @@ import type { ContainerVenueRoutesSlice } from "../container.js";
 import { respondCatalogHttpJson } from "../lib/catalog-route-response.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
-import { requireVenuesAccess } from "../middleware/require-capability.js";
+import { requireVenuesAccessByMethod } from "../middleware/require-capability.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 
 export function createVenueRoutes(
@@ -25,7 +25,7 @@ export function createVenueRoutes(
     Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>();
 
-  r.use("*", requireAuth, requireVenuesAccess);
+  r.use("*", requireAuth, requireVenuesAccessByMethod);
 
   r.get("/", zValidator("query", listVenuesQuerySchema), async (c) => {
     const query = c.req.valid("query");
