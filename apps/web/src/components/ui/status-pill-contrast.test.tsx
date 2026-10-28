@@ -47,6 +47,15 @@ describe("status pill contrast in Bid", () => {
       expect(contrast(label, fill, theme)).toBeGreaterThanOrEqual(4.5);
     });
 
+    it.each(TONES.filter((tone) => tone !== "accent"))(
+      "%s tint sits with the page instead of glowing on it",
+      (tone) => {
+        // A tint close to the page colour: a light pill on a dark page fails this.
+        const { fill } = pillTokens(tone);
+        expect(contrast(fill, "surface", theme)).toBeLessThan(2);
+      },
+    );
+
     it.each(TONES)("%s glyph reads at 3:1 on its circle", (tone) => {
       const { glyphFill, glyph } = pillTokens(tone);
       expect(contrast(glyph, glyphFill, theme)).toBeGreaterThanOrEqual(3);

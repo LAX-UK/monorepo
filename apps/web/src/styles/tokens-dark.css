@@ -85,6 +85,8 @@ html.dark {
   --color-on-danger: oklch(0.15 0.02 25);
   --color-danger-container: oklch(0.28 0.08 25);
   --color-danger-on-surface: oklch(0.8 0.12 25);
+  --color-success-container: oklch(0.28 0.06 145);
+  --color-on-success-container: #c8efd4;
   --color-positive: oklch(0.72 0.12 145);
   --color-on-positive: oklch(0.15 0.02 145);
   --color-negative: oklch(0.72 0.14 25);
