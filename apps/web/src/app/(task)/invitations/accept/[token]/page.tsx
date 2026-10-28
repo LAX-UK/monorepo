@@ -60,7 +60,7 @@ export default async function AcceptStaffInvitationPage({
               const role = laxStaffRoleOption(grant.product, grant.role);
               return (
                 <li
-                  key={grant.product}
+                  key={`${grant.product}-${grant.role}`}
                   className="rounded-lg border border-border-soft bg-surface-container-lowest p-3"
                 >
                   <p className="font-body text-sm font-semibold text-on-surface">

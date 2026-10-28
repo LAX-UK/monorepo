@@ -9,6 +9,7 @@ import type {
   AdminUserListSummary,
   IAdminUserReader,
 } from "../interfaces/admin-user.repository.js";
+import { holdsStaffRoleNow } from "../lib/staff-role-assignment-sql.js";
 import {
   adminUserListSelect,
   buildAdminUserListOrderBy,
@@ -50,7 +51,8 @@ export class DrizzleAdminUserReader implements IAdminUserReader {
     const staffRoleCountSelect = Object.fromEntries(
       userStaffRoleEnum.enumValues.map((role) => [
         `role_${role}`,
-        sql<number>`count(*) filter (where ${bidUserProfile.staffRole} = ${role})::int`,
+        // Everyone holding the role now, not only those it is shown for.
+        sql<number>`count(*) filter (where ${holdsStaffRoleNow(bidIdentityDirectory.subjectId, role)})::int`,
       ]),
     );
     const countBase = this.db

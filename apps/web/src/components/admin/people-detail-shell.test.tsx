@@ -191,16 +191,21 @@ describe("PeopleDetailShell header facts", () => {
     expect(screen.queryByText("Two-step")).toBeNull();
   });
 
-  it("shows a staff member's role instead of an identity badge", () => {
+  it("shows every role a staff member holds instead of an identity badge", () => {
     render(
       shell(
         { canModerate: true, canManageRoles: true },
-        client({ role: "staff", staffRole: "finance", kycStatus: "unverified" }),
+        client({
+          role: "staff",
+          staffRole: "finance",
+          staffRoles: ["finance", "fulfilment"],
+          kycStatus: "unverified",
+        }),
         { showContextRail: false },
       ),
     );
 
-    expect(screen.getByText("Finance")).toBeInTheDocument();
+    expect(screen.getByText("Finance and Fulfilment")).toBeInTheDocument();
     expect(screen.queryByText("Not verified")).toBeNull();
   });
 

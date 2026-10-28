@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   LAX_STAFF_PLATFORMS,
+  bidStaffRolesFromGrants,
   laxStaffRoleOption,
   normalizeLaxStaffGrants,
   staffToolsFromGrants,
@@ -65,8 +66,41 @@ describe("LAX staff platforms", () => {
     expect(
       normalizeLaxStaffGrants([
         { product: "bid", role: "specialist" },
-        { product: "bid", role: "finance" },
-      ]).ok,
-    ).toBe(false);
+        { product: "bid", role: "specialist" },
+      ]),
+    ).toEqual({ ok: false, message: "Bid role chosen twice (Specialist)" });
+  });
+
+  it("allows several Bid roles, in role order, and one Shop role", () => {
+    expect(
+      normalizeLaxStaffGrants([
+        { product: "shop", role: "broker" },
+        { product: "bid", role: "fulfilment" },
+        { product: "bid", role: "sales_manager" },
+      ]),
+    ).toEqual({
+      ok: true,
+      grants: [
+        { product: "bid", role: "sales_manager" },
+        { product: "bid", role: "fulfilment" },
+        { product: "shop", role: "broker" },
+      ],
+    });
+    expect(
+      normalizeLaxStaffGrants([
+        { product: "shop", role: "broker" },
+        { product: "shop", role: "finance" },
+      ]),
+    ).toEqual({ ok: false, message: "Only one role per platform (Shop)" });
+  });
+
+  it("reads the Bid roles of a set of grants", () => {
+    expect(
+      bidStaffRolesFromGrants([
+        { product: "shop", role: "finance" },
+        { product: "bid", role: "fulfilment" },
+        { product: "bid", role: "cataloguer" },
+      ]),
+    ).toEqual(["cataloguer", "fulfilment"]);
   });
 });

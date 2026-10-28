@@ -34,6 +34,23 @@ describe("notificationHref", () => {
     ).toBe("/admin/submissions/sub-staff");
   });
 
+  it("sends an administrator's ended-role notice to staff access", () => {
+    const base = {
+      id: "n4",
+      userId: "admin-1",
+      title: "A staff role has ended",
+      message: "Body",
+      lotId: null,
+      submissionId: null,
+      read: false,
+      createdAt: new Date(),
+    };
+    expect(notificationHref({ ...base, type: "staff_role_expired_admin" })).toBe(
+      "/admin/staff/access",
+    );
+    expect(notificationHref({ ...base, type: "staff_role_expired" })).toBeNull();
+  });
+
   it("falls back to lot path when only lotId is set", () => {
     const href = notificationHref({
       id: "n2",

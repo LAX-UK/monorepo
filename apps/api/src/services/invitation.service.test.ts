@@ -185,6 +185,52 @@ describe("InvitationService.create", () => {
     );
   });
 
+  it("stores several Bid roles, with the first as the base role, and names them in one email row", async () => {
+    const res = await deps.svc.create({
+      actorUserId: "actor-1",
+      email: "several@example.com",
+      grants: [
+        { product: "bid", role: "fulfilment" },
+        { product: "bid", role: "sales_manager" },
+      ],
+    });
+    expect(res.isOk()).toBe(true);
+    expect(deps.invites.insert).toHaveBeenCalledWith(
+      expect.objectContaining({
+        targetRole: "staff",
+        targetStaffRole: "sales_manager",
+        grants: [
+          { product: "bid", role: "sales_manager" },
+          { product: "bid", role: "fulfilment" },
+        ],
+      }),
+    );
+    const call = vi.mocked(deps.email.enqueue).mock.calls[0]?.[0] as {
+      vars: { grants: { platform: string; role: string }[]; actionUrl: string };
+    };
+    expect(call.vars.grants.map((g) => `${g.platform}:${g.role}`)).toEqual([
+      "Bid:Sales manager and Fulfilment",
+    ]);
+    expect(call.vars.actionUrl).toMatch(/platforms%3Dbid$/);
+  });
+
+  it("refuses Bid roles one person may not hold together, before anything is stored", async () => {
+    const res = await deps.svc.create({
+      actorUserId: "actor-1",
+      email: "conflict@example.com",
+      grants: [
+        { product: "bid", role: "finance" },
+        { product: "bid", role: "compliance" },
+      ],
+    });
+    expect(res.isErr() && res.error).toEqual({
+      message:
+        "Compliance can't be combined with Finance. Moving money and clearing compliance checks are kept with different people.",
+      status: 400,
+    });
+    expect(deps.invites.insert).not.toHaveBeenCalled();
+  });
+
   it("a Shop-only invite keeps the Bid base role as client", async () => {
     await deps.svc.create({
       actorUserId: "actor-1",

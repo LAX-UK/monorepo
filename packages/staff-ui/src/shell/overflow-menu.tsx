@@ -3,6 +3,7 @@
 import type { LucideIcon } from "lucide-react";
 import { Ellipsis } from "lucide-react";
 import * as React from "react";
+import { type StaffPermission, usePermittedItems } from "../access/staff-access.js";
 import { useTableSelectionActive } from "../data/bulk-action-bar.js";
 import { StaffButton } from "../primitives/button.js";
 import {
@@ -26,6 +27,8 @@ export type OverflowAction = {
   disabledReason?: string;
   /** Its keyboard shortcut, shown right-aligned: "e". */
   shortcut?: string;
+  /** What the action needs; left out for people who may never take it. */
+  requires?: StaffPermission;
 };
 
 /**
@@ -45,9 +48,10 @@ export function OverflowMenu({
   size?: "icon-xs" | "icon-sm" | "icon-md";
 }) {
   const selectionActive = useTableSelectionActive();
-  if (actions.length === 0) return null;
-  const regular = actions.filter((action) => action.tone !== "danger");
-  const danger = actions.filter((action) => action.tone === "danger");
+  const permitted = usePermittedItems(actions);
+  if (permitted.length === 0) return null;
+  const regular = permitted.filter((action) => action.tone !== "danger");
+  const danger = permitted.filter((action) => action.tone === "danger");
   const render = (action: OverflowAction) => {
     const Icon = action.icon;
     const content = (

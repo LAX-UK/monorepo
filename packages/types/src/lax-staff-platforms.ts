@@ -24,6 +24,8 @@ export type LaxStaffPlatform = {
   label: string;
   description: string;
   roles: readonly LaxStaffRoleOption[];
+  /** One person may hold several of this platform's roles at once (Bid); otherwise one. */
+  multipleRoles: boolean;
 };
 
 export type LaxStaffGrant = { product: LaxStaffAccessProduct; role: string };
@@ -74,12 +76,14 @@ export const LAX_STAFF_PLATFORMS: readonly LaxStaffPlatform[] = [
     label: "Bid",
     description: "Auctions, consignments and the LAX admin console.",
     roles: userStaffRoles.map((value) => ({ value, ...BID_ROLE_OPTIONS[value] })),
+    multipleRoles: true,
   },
   {
     product: "shop",
     label: "Shop",
     description: "Editions, originals, orders and Shop Admin.",
     roles: laxShopStaffRoles.map((value) => ({ value, ...SHOP_ROLE_OPTIONS[value] })),
+    multipleRoles: false,
   },
 ];
 
@@ -97,31 +101,54 @@ export function laxStaffRoleOption(
 }
 
 /**
- * Validates a set of grants: known platforms, a valid role per platform and at most one
- * grant per platform. Returns the grants in catalogue order or a message for the caller.
+ * Validates a set of grants: known platforms, a valid role on each, no role twice, and one role
+ * per platform unless the platform allows several. Returns the grants in catalogue order
+ * (platform, then role) or a message for the caller. Which roles may be held together is a role
+ * rule, checked separately with `checkStaffRoleSet`.
  */
 export function normalizeLaxStaffGrants(
   grants: readonly { product: string; role: string }[],
 ): { ok: true; grants: LaxStaffGrant[] } | { ok: false; message: string } {
-  const byProduct = new Map<string, string>();
+  const byProduct = new Map<string, Set<string>>();
   for (const grant of grants) {
     const platform = LAX_STAFF_PLATFORMS.find((p) => p.product === grant.product);
     if (!platform) return { ok: false, message: `Unknown platform: ${grant.product}` };
-    if (byProduct.has(grant.product)) {
-      return { ok: false, message: `Only one role per platform (${platform.label})` };
-    }
-    if (!platform.roles.some((r) => r.value === grant.role)) {
+    const option = platform.roles.find((r) => r.value === grant.role);
+    if (!option) {
       return { ok: false, message: `Unknown ${platform.label} role: ${grant.role}` };
     }
-    byProduct.set(grant.product, grant.role);
+    const roles = byProduct.get(grant.product) ?? new Set<string>();
+    if (roles.has(grant.role)) {
+      return { ok: false, message: `${platform.label} role chosen twice (${option.label})` };
+    }
+    if (roles.size > 0 && !platform.multipleRoles) {
+      return { ok: false, message: `Only one role per platform (${platform.label})` };
+    }
+    roles.add(grant.role);
+    byProduct.set(grant.product, roles);
   }
   return {
     ok: true,
-    grants: LAX_STAFF_PLATFORMS.flatMap((p) => {
-      const role = byProduct.get(p.product);
-      return role ? [{ product: p.product, role }] : [];
+    grants: LAX_STAFF_PLATFORMS.flatMap((platform) => {
+      const roles = byProduct.get(platform.product);
+      if (!roles) return [];
+      return platform.roles
+        .filter((option) => roles.has(option.value))
+        .map((option) => ({ product: platform.product, role: option.value }));
     }),
   };
+}
+
+/** The most grants one invitation can carry: every role where several are allowed, else one. */
+export const MAX_LAX_STAFF_GRANTS = LAX_STAFF_PLATFORMS.reduce(
+  (total, platform) => total + (platform.multipleRoles ? platform.roles.length : 1),
+  0,
+);
+
+/** The Bid staff roles among `grants`, in catalogue order. */
+export function bidStaffRolesFromGrants(grants: readonly LaxStaffGrant[]): UserStaffRole[] {
+  const roles = new Set(grants.filter((grant) => grant.product === "bid").map((g) => g.role));
+  return userStaffRoles.filter((role) => roles.has(role));
 }
 
 /** The staff tools a person can switch between. Matches the staff kit's product ids. */

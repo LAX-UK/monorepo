@@ -47,3 +47,13 @@ export const staffRoleRemovedPayloadSchemaV1 = z
   })
   .strict();
 export type StaffRoleRemovedPayloadV1 = z.infer<typeof staffRoleRemovedPayloadSchemaV1>;
+
+/** A Bid staff role whose end date passed; recorded once by the daily expiry job. */
+export const staffRoleExpiredPayloadSchemaV1 = z
+  .object({
+    assignmentId: z.string().uuid(),
+    role: z.string().min(1),
+    endedAt: z.string().datetime({ offset: true }),
+  })
+  .strict();
+export type StaffRoleExpiredPayloadV1 = z.infer<typeof staffRoleExpiredPayloadSchemaV1>;

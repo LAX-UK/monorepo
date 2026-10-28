@@ -5,12 +5,6 @@ import { describe, expect, it, vi } from "vitest";
 import { StaffLaxAccessPanel } from "./staff-lax-access-panel";
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh: vi.fn() }) }));
-vi.mock("@/lib/actions/admin", () => ({
-  adminResetTwoFactorResultAction: vi.fn(),
-  adminSetUserRoleResultAction: vi.fn(),
-  adminSuspendUserResultAction: vi.fn(),
-  adminUnsuspendUserResultAction: vi.fn(),
-}));
 vi.mock("@/lib/admin/people/staff-access.actions", () => ({
   setShopStaffRoleAction: vi.fn(),
   revokeShopStaffAccessAction: vi.fn(),
@@ -18,14 +12,7 @@ vi.mock("@/lib/admin/people/staff-access.actions", () => ({
 vi.mock("@/lib/ui/notify", () => ({ notify: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/lib/auth/step-up/use-step-up-coordinator", () => ({ redirectToHostedReauth: vi.fn() }));
 
-const person = {
-  id: "user_1",
-  name: "Grace Hopper",
-  role: "staff" as const,
-  staffRole: "finance" as const,
-  suspended: false,
-  twoFactorEnabled: true,
-};
+const person = { id: "user_1", name: "Grace Hopper" };
 
 const detail: StaffAccessDetail = {
   subjectId: "user_1",
@@ -63,10 +50,11 @@ const renderPanel = (props: { canManage: boolean; detail?: StaffAccessDetail | n
   );
 
 describe("StaffLaxAccessPanel", () => {
-  it("shows the role on each platform and what is waiting to be applied", () => {
+  it("shows the role on the other platforms and what is waiting to be applied", () => {
     renderPanel({ canManage: false });
 
-    expect(screen.getByRole("region", { name: "Bid" })).toHaveTextContent("Finance");
+    // Bid roles have their own section on the staff record.
+    expect(screen.queryByRole("region", { name: "Bid" })).toBeNull();
     expect(screen.getByRole("region", { name: "Shop" })).toHaveTextContent("No access");
     expect(screen.getByText(/waiting for Shop to apply it/i)).toBeInTheDocument();
     expect(screen.getAllByText("Sara Khan").length).toBeGreaterThan(0);
@@ -77,13 +65,8 @@ describe("StaffLaxAccessPanel", () => {
     expect(screen.queryByRole("button", { name: /change|give|remove/i })).toBeNull();
   });
 
-  it("opens the role dialog for Bid and the Shop dialog for Shop, Cancel first", async () => {
+  it("opens the Shop dialog, Cancel first", async () => {
     renderPanel({ canManage: true });
-
-    fireEvent.click(screen.getByRole("button", { name: "Change role" }));
-    expect(await screen.findByText("Change Grace Hopper's role")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Cancel" })).toHaveFocus();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
 
     fireEvent.click(screen.getByRole("button", { name: "Change Shop role" }));
     expect(await screen.findByText("Change Grace Hopper's Shop role")).toBeInTheDocument();

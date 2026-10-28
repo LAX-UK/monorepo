@@ -25,7 +25,7 @@ import type {
   AdminUserListSort,
 } from "../interfaces/admin-user.repository.js";
 import { activeIdentitySubject } from "../lib/bid-identity-directory-query.js";
-import { staffRolesInForceFor } from "../lib/staff-role-assignment-sql.js";
+import { holdsStaffRoleNow, staffRolesInForceFor } from "../lib/staff-role-assignment-sql.js";
 
 export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | undefined {
   const clauses: SQL[] = [activeIdentitySubject()];
@@ -49,12 +49,8 @@ export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | unde
   }
 
   if (filter.staffRole) {
-    clauses.push(
-      eq(
-        bidUserProfile.staffRole,
-        filter.staffRole as (typeof userStaffRoleEnum.enumValues)[number],
-      ),
-    );
+    // Anyone holding the role now, not only those it is shown for.
+    clauses.push(holdsStaffRoleNow(bidIdentityDirectory.subjectId, filter.staffRole));
   }
 
   if (filter.accountStatus === "active") {

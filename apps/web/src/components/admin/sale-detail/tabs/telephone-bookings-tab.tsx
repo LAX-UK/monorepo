@@ -2,7 +2,6 @@
 
 import { RelatedRecordsSection } from "@/components/admin/people/related-records-section";
 import { useTelephoneBookingActions } from "@/components/admin/sale-detail/tabs/use-telephone-booking-actions";
-import { CsvExportMenu } from "@/components/admin/staff/csv-export-menu";
 import { downloadSaleTelephoneBookingsCsv } from "@/lib/admin/export-sale-telephone-bookings-csv";
 import { staffTelephoneBookingStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminTelephoneBookingRow } from "@/lib/data/http/admin.server";
@@ -14,6 +13,7 @@ import {
   matchesSaleTelephoneSearch,
   telephoneBidderLabel,
 } from "@/lib/data/view-models/sale-telephone-tab.vm";
+import { CsvExportMenu } from "@auction/staff-ui";
 import {
   CellLink,
   type DataColumn,

@@ -69,11 +69,13 @@ describe("AdminUserProfilePanel", () => {
     ).toBeInTheDocument();
   });
 
-  it("leaves identity facts out for a staff member", () => {
+  it("leaves identity facts and roles out for a staff member", () => {
     renderPanel({ ...user, role: "staff", staffRole: "finance" });
 
     const security = screen.getByRole("region", { name: "Security" });
     expect(within(security).queryByText("Identity")).toBeNull();
-    expect(screen.getByText("Finance")).toBeInTheDocument();
+    // Roles have their own section on the staff record.
+    expect(screen.queryByText("Finance")).toBeNull();
+    expect(screen.queryByText("Signed up as")).toBeNull();
   });
 });

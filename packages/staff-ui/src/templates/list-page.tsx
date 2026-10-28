@@ -2,6 +2,7 @@
 
 import type { LaxIllustrationName } from "@auction/ui/components/lax-illustration";
 import type * as React from "react";
+import { type StaffPermission, useStaffPageAccess } from "../access/staff-access.js";
 import { useColumnVisibility, visibleColumns } from "../data/columns-menu.js";
 import { DataTable, type DataTableProps } from "../data/data-table.js";
 import { DisplayMenu, type DisplayPageSize } from "../data/display-menu.js";
@@ -79,7 +80,12 @@ export type ListPageProps<T> = {
   listKey: string;
 
   access?: ListPageAccess;
-  /** The viewer's role, for "View only · Finance". */
+  /**
+   * What changing the list's records needs. Without an explicit `access`, the list is read-only
+   * for people who lack it: no primary action, "View only" with their roles in the header.
+   */
+  editRequires?: StaffPermission;
+  /** The viewer's role, for "View only · Finance"; defaults to the roles the kit was given. */
   roleLabel?: string;
   /** The role that can open the page, named when access is denied. */
   requiredRole?: string;
@@ -169,8 +175,9 @@ export function ListPage<T>({
   overflow,
   Link,
   listKey,
-  access = "full",
-  roleLabel,
+  access: accessProp,
+  editRequires,
+  roleLabel: roleLabelProp,
   requiredRole,
   attention,
   metrics,
@@ -203,6 +210,9 @@ export function ListPage<T>({
     selectAllMatching,
     ...tableProps
   } = table;
+  const page = useStaffPageAccess(accessProp, editRequires);
+  const access = page.access;
+  const roleLabel = roleLabelProp ?? page.roleLabel;
   const readOnly = access === "read-only";
   // An empty list offers the action that creates it in its empty state; the header does not
   // repeat it. The header action returns as soon as there is a row, a filter or an error.
@@ -235,7 +245,10 @@ export function ListPage<T>({
       {...(readOnly
         ? { status: <ViewOnlyBadge {...(roleLabel ? { role: roleLabel } : {})} /> }
         : {})}
-      {...(access !== "denied" && !readOnly && !emptyOffersAction && primaryAction
+      {...(access !== "denied" &&
+      (accessProp === undefined || !readOnly) &&
+      !emptyOffersAction &&
+      primaryAction
         ? { primaryAction }
         : {})}
       {...(access !== "denied" && headerSecondary ? { secondaryActions: headerSecondary } : {})}

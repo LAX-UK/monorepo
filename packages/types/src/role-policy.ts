@@ -29,6 +29,7 @@ export {
   activeStaffRoles,
   isStaffRoleAssignmentActive,
   isStaffRoleAssignmentCurrent,
+  staffRoleAssignmentEndsWithin,
   staffRoleAssignmentsOverlap,
 } from "./role-policy/staff-role-assignment.js";
 export {
@@ -38,8 +39,11 @@ export {
   type StaffRoleAssignmentCheck,
   type StaffRoleAssignmentRefusal,
   type StaffRoleChange,
+  type StaffRoleSetCheck,
   type StaffRosterFacts,
   checkStaffRoleAssignment,
+  checkStaffRoleSet,
+  forbiddenStaffRoleCombination,
   isForbiddenStaffRoleCombination,
 } from "./role-policy/staff-role-assignment-rules.js";
 export type { AppShellLayout, CapabilityRequirement } from "./role-policy/role-route-policy.js";

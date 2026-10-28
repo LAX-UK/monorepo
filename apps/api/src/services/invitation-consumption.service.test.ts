@@ -50,6 +50,21 @@ describe("bidAccessFromInvite", () => {
     });
   });
 
+  it("gives every Bid role the invitation grants", () => {
+    const several = accepted({
+      targetStaffRole: "sales_manager",
+      grants: [
+        { product: "bid", role: "sales_manager" },
+        { product: "bid", role: "fulfilment" },
+        { product: "shop", role: "broker" },
+      ],
+    });
+    expect(bidAccessFromInvite(several, "new_user")).toEqual({
+      role: "staff",
+      staffRoles: ["sales_manager", "fulfilment"],
+    });
+  });
+
   it("gives a new account the invitation's base role and leaves an existing one alone", () => {
     const shopOnly = accepted({
       targetRole: "client",

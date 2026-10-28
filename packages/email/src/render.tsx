@@ -171,6 +171,9 @@ import SourceOfFundsDocumentsRequestedEmail, {
 import SourceOfFundsRejectedEmail, {
   subject as sourceOfFundsRejectedSubject,
 } from "./templates/source-of-funds-rejected.js";
+import StaffRoleExpiredEmail, {
+  subject as staffRoleExpiredSubject,
+} from "./templates/staff-role-expired.js";
 import SubmissionApprovedEmail, {
   subject as submissionApprovedSubject,
 } from "./templates/submission-approved.js";
@@ -372,6 +375,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "kyc-resubmission-required": {
     subject: kycResubmissionRequiredSubject,
     component: (vars) => <KycResubmissionRequiredEmail {...vars} />,
+  },
+  "staff-role-expired": {
+    subject: staffRoleExpiredSubject,
+    component: (vars) => <StaffRoleExpiredEmail {...vars} />,
   },
   "aml-compliance-review-notice": {
     subject: amlComplianceReviewNoticeSubject,

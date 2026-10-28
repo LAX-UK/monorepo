@@ -234,7 +234,6 @@ export function LotsStaffList(props: LotsStaffListProps) {
         Link={ListLink}
         listKey="bid-admin.lots"
         access={access}
-        roleLabel="Catalogue"
         primaryAction={
           props.canManageCatalog ? (
             <StaffButton asChild variant="primary" size="sm" icon={<Plus aria-hidden />}>

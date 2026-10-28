@@ -1,4 +1,5 @@
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
+import { STAFF_ACCESS_REVIEW_PATH } from "@/lib/admin/people/staff-access-review.vm";
 import {
   type AdminNavCounts,
   EMPTY_ADMIN_NAV_COUNTS,
@@ -23,6 +24,7 @@ import {
   PLATFORM_ADMIN_ACCESS,
   SALEROOM_ACCESS,
   SALE_CATALOG_READ_ACCESS,
+  STAFF_ACCESS_REVIEW_ACCESS,
   STAFF_OVERVIEW_ACCESS,
   SUBMISSIONS_READ_ACCESS,
   USERS_DIRECTORY_ACCESS,
@@ -35,6 +37,7 @@ import {
   Banknote,
   Brush,
   Building2,
+  ClipboardCheck,
   ClipboardList,
   Gauge,
   History,
@@ -323,6 +326,18 @@ function buildStaffNavGroupSpecs(
           label: "Staff",
           icon: ShieldCheck,
           requirement: USERS_DIRECTORY_ACCESS,
+          // The directory and staff records; the access review has its own item.
+          match: (pathname) =>
+            exactOrNested("/admin/staff")(pathname) &&
+            !exactOrNested(STAFF_ACCESS_REVIEW_PATH)(pathname),
+        },
+        {
+          id: "staff-access",
+          href: STAFF_ACCESS_REVIEW_PATH,
+          label: "Access review",
+          match: exactOrNested(STAFF_ACCESS_REVIEW_PATH),
+          icon: ClipboardCheck,
+          requirement: STAFF_ACCESS_REVIEW_ACCESS,
         },
         {
           id: "legal-entities",

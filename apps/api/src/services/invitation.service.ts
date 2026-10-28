@@ -7,13 +7,17 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { IStaffRoleAssignmentReader, IUserRepository } from "@auction/persistence/interfaces";
 import {
+  LAX_STAFF_PLATFORMS,
   type LaxStaffGrant,
   type UserRole,
   type UserStaffRole,
-  laxStaffPlatform,
+  bidStaffRolesFromGrants,
+  checkStaffRoleSet,
   laxStaffRoleOption,
   normalizeLaxStaffGrants,
+  primaryStaffRole,
   roleHasCapability,
+  staffRoleRefusalMessage,
 } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 
@@ -51,7 +55,7 @@ function isUniqueViolation(e: unknown): boolean {
 
 /** Path the invitee lands on after accepting, listing the platforms they can now open. */
 export function invitationWelcomePath(grants: readonly LaxStaffGrant[]): string {
-  const platforms = grants.map((g) => g.product).join(",");
+  const platforms = [...new Set(grants.map((g) => g.product))].join(",");
   return platforms ? `/invitations/welcome?platforms=${platforms}` : "/invitations/welcome";
 }
 
@@ -61,10 +65,13 @@ function resolveInvitationAccess(
   if (input.grants && input.grants.length > 0) {
     const normalized = normalizeLaxStaffGrants(input.grants);
     if (!normalized.ok) return err({ message: normalized.message, status: 400 });
-    const bid = normalized.grants.find((g) => g.product === "bid");
+    const bidRoles = bidStaffRolesFromGrants(normalized.grants);
+    // The same role rules as giving the roles one by one on the staff record.
+    const together = checkStaffRoleSet(bidRoles);
+    if (!together.ok) return err({ message: staffRoleRefusalMessage(together), status: 400 });
     return ok({
-      targetRole: bid ? "staff" : "client",
-      targetStaffRole: bid ? (bid.role as UserStaffRole) : null,
+      targetRole: bidRoles.length > 0 ? "staff" : "client",
+      targetStaffRole: primaryStaffRole(bidRoles),
       grants: normalized.grants,
     });
   }
@@ -85,17 +92,25 @@ function resolveInvitationAccess(
   return ok({ targetRole, targetStaffRole: null, grants: [] });
 }
 
+const ROLE_LIST = new Intl.ListFormat("en-GB", { style: "long", type: "conjunction" });
+
+/** One email row per platform: its roles by name, and what the role does when there is one. */
 function emailGrantRows(grants: readonly LaxStaffGrant[]) {
   if (grants.length === 0) {
     return [{ platform: "London Art Exchange", role: "Client account" }];
   }
-  return grants.map((g) => {
-    const option = laxStaffRoleOption(g.product, g.role);
-    return {
-      platform: laxStaffPlatform(g.product).label,
-      role: option?.label ?? g.role,
-      summary: option?.summary ?? null,
-    };
+  return LAX_STAFF_PLATFORMS.flatMap((platform) => {
+    const options = grants
+      .filter((g) => g.product === platform.product)
+      .map((g) => laxStaffRoleOption(g.product, g.role) ?? { label: g.role, summary: null });
+    if (options.length === 0) return [];
+    return [
+      {
+        platform: platform.label,
+        role: ROLE_LIST.format(options.map((option) => option.label)),
+        summary: options.length === 1 ? (options[0]?.summary ?? null) : null,
+      },
+    ];
   });
 }
 

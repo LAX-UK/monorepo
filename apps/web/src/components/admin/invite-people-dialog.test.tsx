@@ -55,15 +55,53 @@ describe("InvitePeopleDialog", () => {
     expect(mockCreate).not.toHaveBeenCalled();
   });
 
-  it("sends staff grants once each ticked platform has a role", async () => {
+  it("asks for at least one role on each ticked platform", async () => {
     mockCreate.mockResolvedValue(actionSuccess());
     const onOpenChange = vi.fn();
     render(<InvitePeopleDialog open onOpenChange={onOpenChange} defaultRole="staff" />);
     await addEmail("ada@example.com");
-    fireEvent.click(screen.getByRole("checkbox", { name: /Bid/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /^Bid/ }));
     fireEvent.click(screen.getByRole("button", { name: "Send invitation" }));
 
-    expect(await screen.findAllByText("Choose a Bid role.")).toHaveLength(2);
+    expect(await screen.findAllByText("Choose at least one Bid role.")).toHaveLength(2);
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("sends every Bid role chosen as one grant each", async () => {
+    mockCreate.mockResolvedValue(actionSuccess());
+    const onOpenChange = vi.fn();
+    render(<InvitePeopleDialog open onOpenChange={onOpenChange} defaultRole="staff" />);
+    await addEmail("ada@example.com");
+    fireEvent.click(screen.getByRole("checkbox", { name: /^Bid/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /^Fulfilment/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /^Sales manager/ }));
+    fireEvent.click(screen.getByRole("button", { name: "Send invitation" }));
+
+    await waitFor(() =>
+      expect(mockCreate).toHaveBeenCalledWith({
+        email: "ada@example.com",
+        targetRole: "staff",
+        grants: [
+          { product: "bid", role: "sales_manager" },
+          { product: "bid", role: "fulfilment" },
+        ],
+      }),
+    );
+    await waitFor(() => expect(onOpenChange).toHaveBeenCalledWith(false));
+  });
+
+  it("explains a forbidden combination as soon as it is chosen and refuses to send", async () => {
+    render(<InvitePeopleDialog open onOpenChange={vi.fn()} defaultRole="staff" />);
+    await addEmail("ada@example.com");
+    fireEvent.click(screen.getByRole("checkbox", { name: /^Bid/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /^Finance/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /^Compliance/ }));
+
+    const message =
+      "Compliance can't be combined with Finance. Moving money and clearing compliance checks are kept with different people.";
+    expect(await screen.findByText(message)).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Send invitation" }));
+    expect(await screen.findAllByText(message)).toHaveLength(2);
     expect(mockCreate).not.toHaveBeenCalled();
   });
 

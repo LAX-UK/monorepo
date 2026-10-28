@@ -3,6 +3,8 @@ import { userStaffRoles } from "../user.js";
 import {
   FORBIDDEN_STAFF_ROLE_COMBINATIONS,
   checkStaffRoleAssignment,
+  checkStaffRoleSet,
+  forbiddenStaffRoleCombination,
   isForbiddenStaffRoleCombination,
 } from "./staff-role-assignment-rules.js";
 import type { StaffRoleAssignment } from "./staff-role-assignment.js";
@@ -176,5 +178,53 @@ describe("checkStaffRoleAssignment: remove", () => {
         otherActiveAdministrators: 0,
       }),
     ).toEqual({ ok: true });
+  });
+});
+
+describe("forbiddenStaffRoleCombination", () => {
+  it("names the rule that keeps two roles apart, either way round", () => {
+    expect(forbiddenStaffRoleCombination("compliance", "finance")?.role).toBe("finance");
+    expect(forbiddenStaffRoleCombination("specialist", "read_only")?.role).toBe("read_only");
+    expect(forbiddenStaffRoleCombination("specialist", "fulfilment")).toBeNull();
+    expect(forbiddenStaffRoleCombination("finance", "finance")).toBeNull();
+  });
+});
+
+describe("checkStaffRoleSet", () => {
+  it("accepts compatible roles given together", () => {
+    expect(checkStaffRoleSet(["sales_manager", "cataloguer", "fulfilment"])).toEqual({ ok: true });
+    expect(checkStaffRoleSet([])).toEqual({ ok: true });
+  });
+
+  it("names the role that cannot join the ones before it", () => {
+    expect(checkStaffRoleSet(["specialist", "finance", "compliance"])).toEqual({
+      ok: false,
+      reason: "forbidden_combination",
+      role: "compliance",
+      conflictingRole: "finance",
+    });
+    expect(checkStaffRoleSet(["administrator", "specialist"])).toEqual({
+      ok: false,
+      reason: "forbidden_combination",
+      role: "specialist",
+      conflictingRole: "administrator",
+    });
+  });
+
+  it("refuses a role given twice", () => {
+    expect(checkStaffRoleSet(["fulfilment", "fulfilment"])).toEqual({
+      ok: false,
+      reason: "duplicate",
+      role: "fulfilment",
+    });
+  });
+
+  it("refuses exactly the forbidden pairs", () => {
+    for (const a of userStaffRoles) {
+      for (const b of userStaffRoles) {
+        if (a === b) continue;
+        expect(checkStaffRoleSet([a, b]).ok).toBe(!isForbiddenStaffRoleCombination(a, b));
+      }
+    }
   });
 });

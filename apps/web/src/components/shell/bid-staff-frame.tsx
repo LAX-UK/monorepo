@@ -11,6 +11,7 @@ import { getStaffNavGroups } from "@/components/layout/staff-nav";
 import { StaffRouteRecentTracker } from "@/components/layout/staff-route-recent-tracker";
 import { ContextBannerSlot } from "@/components/shell/context-banner-slot";
 import { syncUiThemeFromClientAction } from "@/lib/actions/user-ui-preferences";
+import { staffRolesLabel } from "@/lib/admin/staff-role-presenter";
 import { useLogout } from "@/lib/auth/use-logout";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
@@ -20,7 +21,6 @@ import { laxAccountUrl } from "@/lib/lax-account-url";
 import { applyThemeDom } from "@/lib/preferences/apply-theme-dom";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import { readThemeCookieFromDocument } from "@/lib/preferences/theme-cookie";
-import { staffRoleLabel } from "@/lib/presenters/platform-role/platform-role-registry";
 import type { ShellConfig } from "@/lib/shell/contracts";
 import { ShellChromeProvider } from "@/lib/shell/shell-chrome-context";
 import { ShellConfigProvider } from "@/lib/shell/shell-config-context";
@@ -171,7 +171,7 @@ export function BidStaffFrame({
                   user={{
                     name: user.name || user.email,
                     email: user.email,
-                    roleLabel: staffRoleLabel(user.staffRole ?? null),
+                    roleLabel: staffRolesLabel(user.staffRoles),
                   }}
                   theme={theme}
                   onThemeChange={(next) => {

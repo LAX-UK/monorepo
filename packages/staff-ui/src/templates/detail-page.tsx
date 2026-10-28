@@ -1,4 +1,7 @@
+"use client";
+
 import type * as React from "react";
+import { type StaffPermission, useStaffPageAccess } from "../access/staff-access.js";
 import { type KeyValueItem, KeyValueList } from "../display/key-value-list.js";
 import { AccessDeniedState, ErrorState, Skeleton, ViewOnlyBadge } from "../display/states.js";
 import { cn } from "../lib/cn.js";
@@ -30,7 +33,12 @@ export type DetailPageProps = {
   overflow?: React.ReactNode;
 
   access?: ListPageAccess;
-  /** The viewer's role, for "View only · Finance". */
+  /**
+   * What changing this record needs. Without an explicit `access`, the page is read-only for
+   * people who lack it: actions hidden, "View only" with their roles in the header.
+   */
+  editRequires?: StaffPermission;
+  /** The viewer's role, for "View only · Finance"; defaults to the roles the kit was given. */
   roleLabel?: string;
   /** What the record is, for "You don't have access to Payments". */
   resource?: string;
@@ -66,8 +74,9 @@ export function DetailPage({
   primaryAction,
   secondaryActions,
   overflow,
-  access = "full",
-  roleLabel,
+  access: accessProp,
+  editRequires,
+  roleLabel: roleLabelProp,
   resource,
   requiredRole,
   summary,
@@ -78,6 +87,9 @@ export function DetailPage({
   loading = false,
   error,
 }: DetailPageProps) {
+  const page = useStaffPageAccess(accessProp, editRequires);
+  const access = page.access;
+  const roleLabel = roleLabelProp ?? page.roleLabel;
   const readOnly = access === "read-only";
   const crumbs =
     breadcrumbs || pager ? (
@@ -93,7 +105,10 @@ export function DetailPage({
         {readOnly ? <ViewOnlyBadge {...(roleLabel ? { role: roleLabel } : {})} /> : null}
       </>
     ) : null;
-  const actionable = access === "full" && !loading && !error;
+  // A page that reads its access from `editRequires` leaves each action to its own `requires`;
+  // an explicit read-only access hides the primary action outright.
+  const actionable =
+    (accessProp === undefined || access === "full") && access !== "denied" && !loading && !error;
 
   const header = (
     <PageHeader

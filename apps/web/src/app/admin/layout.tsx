@@ -1,3 +1,4 @@
+import { BidStaffAccessProvider } from "@/components/admin/access/bid-staff-access-provider";
 import { AdminShellHeaderActions } from "@/components/admin/admin-shell-header-actions";
 import { ImpersonationBanner } from "@/components/admin/impersonation-banner";
 import { ImpersonationEndWarningListener } from "@/components/admin/impersonation-end-warning-listener";
@@ -128,54 +129,56 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   );
 
   return (
-    <ExportShellClient>
-      <AdminNuqsAdapter>
-        <div
-          className={
-            showImpersonationBanner ? "pt-[var(--impersonation-banner-height,3.5rem)]" : undefined
-          }
-        >
-          <ImpersonationEndWarningListener />
-          <StaffToaster />
-          {impersonation && showImpersonationBanner ? (
-            <ImpersonationBanner
-              entityName={impersonation.displayName}
-              expiresAtIso={impersonation.expiresAtIso}
-            />
-          ) : null}
-          {role === "finance" ? (
-            <FinanceShell
-              user={user}
-              pendingSubmissionCount={pendingSubmissionCount}
-              navCounts={navCounts}
-              cookieDensity={cookieDensity}
-              acting={acting}
-              products={products}
-              defaultCollapsed={navCollapsed}
-              headerActionsSlot={headerActionsSlot}
-              topSlot={<WelcomeBackToast />}
-            >
-              {children}
-            </FinanceShell>
-          ) : (
-            <StaffShell
-              user={user}
-              pendingSubmissionCount={pendingSubmissionCount}
-              pendingArtistCount={pendingArtistCount}
-              navCounts={navCounts}
-              cookieDensity={cookieDensity}
-              acting={acting}
-              products={products}
-              defaultCollapsed={navCollapsed}
-              headerActionsSlot={headerActionsSlot}
-              contextBanner={<PlatformStaffContextBanners />}
-              topSlot={<WelcomeBackToast />}
-            >
-              {children}
-            </StaffShell>
-          )}
-        </div>
-      </AdminNuqsAdapter>
-    </ExportShellClient>
+    <BidStaffAccessProvider platformRole={userRole} staffRoles={staffRoles}>
+      <ExportShellClient>
+        <AdminNuqsAdapter>
+          <div
+            className={
+              showImpersonationBanner ? "pt-[var(--impersonation-banner-height,3.5rem)]" : undefined
+            }
+          >
+            <ImpersonationEndWarningListener />
+            <StaffToaster />
+            {impersonation && showImpersonationBanner ? (
+              <ImpersonationBanner
+                entityName={impersonation.displayName}
+                expiresAtIso={impersonation.expiresAtIso}
+              />
+            ) : null}
+            {role === "finance" ? (
+              <FinanceShell
+                user={user}
+                pendingSubmissionCount={pendingSubmissionCount}
+                navCounts={navCounts}
+                cookieDensity={cookieDensity}
+                acting={acting}
+                products={products}
+                defaultCollapsed={navCollapsed}
+                headerActionsSlot={headerActionsSlot}
+                topSlot={<WelcomeBackToast />}
+              >
+                {children}
+              </FinanceShell>
+            ) : (
+              <StaffShell
+                user={user}
+                pendingSubmissionCount={pendingSubmissionCount}
+                pendingArtistCount={pendingArtistCount}
+                navCounts={navCounts}
+                cookieDensity={cookieDensity}
+                acting={acting}
+                products={products}
+                defaultCollapsed={navCollapsed}
+                headerActionsSlot={headerActionsSlot}
+                contextBanner={<PlatformStaffContextBanners />}
+                topSlot={<WelcomeBackToast />}
+              >
+                {children}
+              </StaffShell>
+            )}
+          </div>
+        </AdminNuqsAdapter>
+      </ExportShellClient>
+    </BidStaffAccessProvider>
   );
 }

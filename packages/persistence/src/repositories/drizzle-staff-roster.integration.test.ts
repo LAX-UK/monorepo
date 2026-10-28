@@ -184,4 +184,94 @@ describe.skipIf(!HAS_DB)("staff roster (integration)", () => {
     );
     expect(second).toEqual({ role: "staff", primaryStaffRole: "specialist" });
   });
+
+  describe("recording ends", () => {
+    // Assignments belong to a Bid profile; other suites share the database, so only this
+    // person's rows are looked at.
+    const mine = <T extends { userId: string }>(rows: readonly T[]) =>
+      rows.filter((row) => row.userId === memberId);
+
+    beforeEach(async () => {
+      await roster.transact((tx) =>
+        tx.writeProfileRoles(memberId, { role: "staff", primaryStaffRole: null }),
+      );
+    });
+
+    const newAssignment = (
+      role: "specialist" | "finance",
+      startsAgo: number,
+      endsAgo: number | null,
+    ) => ({
+      userId: memberId,
+      role,
+      startsAt: new Date(Date.now() - startsAgo),
+      endsAt: endsAgo === null ? null : new Date(Date.now() - endsAgo),
+      grantedByUserId: actorId,
+      reason: null,
+    });
+
+    it("lists only ended assignments whose end is not recorded, and records them once", async () => {
+      const now = new Date();
+      const [expired, future, open] = await roster.transact(async (tx) => [
+        await tx.insert(newAssignment("specialist", 3 * HOUR, HOUR)),
+        await tx.insert({
+          ...newAssignment("finance", 3 * HOUR, null),
+          endsAt: new Date(now.getTime() + HOUR),
+        }),
+        await tx.insert(newAssignment("specialist", 5 * HOUR, null)),
+      ]);
+
+      const listed = mine(await roster.transact((tx) => tx.listUnrecordedEnds(now, 1000)));
+      expect(listed.map((a) => a.id)).toEqual([expired?.id]);
+
+      await roster.transact((tx) => tx.recordEnds([expired?.id ?? ""], now));
+      expect(mine(await roster.transact((tx) => tx.listUnrecordedEnds(now, 1000)))).toEqual([]);
+
+      const rows = await db
+        .select({ id: staffRoleAssignment.id, recorded: staffRoleAssignment.endRecordedAt })
+        .from(staffRoleAssignment)
+        .where(inArray(staffRoleAssignment.id, [future?.id, open?.id].filter(Boolean) as string[]));
+      expect(rows.every((r) => r.recorded === null)).toBe(true);
+    });
+
+    it("sets the recorded end when a role is removed, so it never counts as expired", async () => {
+      const now = new Date();
+      const record = await roster.transact((tx) =>
+        tx.insert(newAssignment("specialist", 3 * HOUR, null)),
+      );
+      await roster.transact((tx) => tx.end(record.id, now));
+      expect(mine(await roster.transact((tx) => tx.listUnrecordedEnds(new Date(), 1000)))).toEqual(
+        [],
+      );
+      const [row] = await db
+        .select({ recorded: staffRoleAssignment.endRecordedAt })
+        .from(staffRoleAssignment)
+        .where(eq(staffRoleAssignment.id, record.id));
+      expect(row?.recorded).toEqual(now);
+    });
+
+    it("stores a role expiry event with no acting user", async () => {
+      const record = await roster.transact((tx) =>
+        tx.insert(newAssignment("specialist", 3 * HOUR, HOUR)),
+      );
+      await roster.transact((tx) =>
+        tx.recordEvents([
+          {
+            type: "staff.role_expired",
+            userId: memberId,
+            payload: {
+              assignmentId: record.id,
+              role: "specialist",
+              endedAt: (record.endsAt ?? new Date()).toISOString(),
+            },
+          },
+        ]),
+      );
+      const events = await db
+        .select({ type: domainEvent.eventType, actor: domainEvent.actorUserId })
+        .from(domainEvent)
+        .where(eq(domainEvent.aggregateId, memberId));
+      expect(events).toEqual([{ type: "staff.role_expired", actor: null }]);
+    });
+  });
 });

@@ -225,6 +225,24 @@ export const INVITATIONS_ACCESS: CapabilityRequirement = {
 /** Set client/staff role and staff-role assignments (API uses user.invite). */
 export const USER_ROLE_MANAGEMENT_ACCESS: CapabilityRequirement = INVITATIONS_ACCESS;
 
+/**
+ * The access review: every staff member's roles and when each ends. Those who manage roles use
+ * it to act; read-only staff (auditors) see it without the actions.
+ */
+export const STAFF_ACCESS_REVIEW_ACCESS: CapabilityRequirement = readOrWrite(
+  USER_ROLE_MANAGEMENT_ACCESS,
+);
+
+/** One person's role assignments: on their staff record and in the access review. */
+export const STAFF_ROLES_READ_ACCESS: CapabilityRequirement = {
+  anyOf: [
+    ...new Set([
+      ...requirementCapabilities(USERS_DIRECTORY_ACCESS),
+      ...requirementCapabilities(STAFF_ACCESS_REVIEW_ACCESS),
+    ]),
+  ],
+};
+
 /** Legal entity browse and read-only admin views. */
 export const LEGAL_ENTITY_BROWSE_ACCESS: CapabilityRequirement = "legal_entity.read";
 

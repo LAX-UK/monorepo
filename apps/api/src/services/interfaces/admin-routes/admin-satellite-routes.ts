@@ -7,6 +7,7 @@ import type { StaffAccessAdminService } from "../../admin/staff-access-admin.ser
 import type { DeliveryOpsApplicationService } from "../../delivery-ops.application.service.js";
 import type { TwoFactorPolicyService } from "../../security/two-factor-policy.service.js";
 import type { IStaffStepUpGuard } from "../../staff-step-up.service.js";
+import type { StaffRolesAdminService } from "../../staff/staff-roles-admin.service.js";
 import type { IAtgAdminService } from "../atg-admin-service.js";
 import type { IBuyerAgentAuthorisationService } from "../buyer-agent-authorisation-service.js";
 import type { IIdempotencyStore } from "../idempotency-store.js";
@@ -68,6 +69,8 @@ export type AdminStaffSecurityRouteServices = {
     StaffAccessAdminService,
     "summaries" | "detail" | "setRemoteRole" | "revokeRemote" | "myTools"
   >;
+  /** A staff member's Bid roles, role changes and the access review. */
+  staffRoles: Pick<StaffRolesAdminService, "overview" | "assign" | "remove" | "accessReview">;
   savedViews: Pick<AdminSavedViewService, "list" | "create" | "rename" | "reorder" | "remove">;
   /** Whether the signed-in staff member's Identity session is recent enough (step-up). */
   stepUp: IStaffStepUpGuard;

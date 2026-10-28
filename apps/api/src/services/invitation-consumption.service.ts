@@ -4,7 +4,7 @@ import type {
   IUserInvitationRepository,
   InvitationRow,
 } from "@auction/persistence/interfaces";
-import { type LaxStaffGrant, type UserRole, normalizeUserStaffRole } from "@auction/types";
+import { type LaxStaffGrant, type UserRole, bidStaffRolesFromGrants } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import type { InvitationError } from "./invitation.service.js";
 import {
@@ -51,15 +51,14 @@ type Acceptor = "new_user" | "existing_user";
 type BidAccess = Pick<SetStaffAccessInput, "role" | "staffRoles">;
 
 /**
- * The Bid access an accepted invitation gives. A Bid grant makes the person staff with that
- * role. Without one, a new account takes the invitation's base role, and an existing account
+ * The Bid access an accepted invitation gives. Bid grants make the person staff with every role
+ * granted. Without one, a new account takes the invitation's base role, and an existing account
  * keeps the access it has.
  */
 export function bidAccessFromInvite(invite: AcceptedInvite, acceptor: Acceptor): BidAccess | null {
-  const bidGrant = invite.grants.find((g) => g.product === "bid");
-  if (bidGrant) {
-    const role = normalizeUserStaffRole(bidGrant.role);
-    return { role: "staff", staffRoles: role ? [role] : [] };
+  const bidRoles = bidStaffRolesFromGrants(invite.grants);
+  if (invite.grants.some((g) => g.product === "bid")) {
+    return { role: "staff", staffRoles: bidRoles };
   }
   if (acceptor === "existing_user") return null;
   return {
@@ -84,7 +83,7 @@ const refusedError = (error: StaffRoleAssignmentRefused): InvitationError => ({
   message:
     error.reason === "last_administrator"
       ? "Accepting would remove the last active administrator"
-      : "This invitation's role cannot be combined with your current roles",
+      : "This invitation's roles cannot be combined with your current roles",
   status: 409,
 });
 

@@ -54,7 +54,9 @@ export const notification = pgTable(
         'condition_report_declined',
         'source_of_funds_documents_requested',
         'source_of_funds_approved',
-        'source_of_funds_rejected'
+        'source_of_funds_rejected',
+        'staff_role_expired',
+        'staff_role_expired_admin'
       )`,
     ),
   ],

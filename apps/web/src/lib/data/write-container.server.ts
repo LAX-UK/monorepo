@@ -17,6 +17,7 @@ import { AdminSaleRegistrationsService } from "@/lib/services/impl/admin-sale-re
 import { AdminSaleService } from "@/lib/services/impl/admin-sale.service";
 import { AdminSaleroomService } from "@/lib/services/impl/admin-saleroom.service";
 import { AdminSavedViewService } from "@/lib/services/impl/admin-saved-view.service";
+import { AdminStaffRoleService } from "@/lib/services/impl/admin-staff-role.service";
 import { AdminStripeConnectService } from "@/lib/services/impl/admin-stripe-connect.service";
 import { AdminSubmissionService } from "@/lib/services/impl/admin-submission.service";
 import { AdminTelephoneService } from "@/lib/services/impl/admin-telephone.service";
@@ -49,6 +50,7 @@ import type { IAdminSaleRegistrationsService } from "@/lib/services/interfaces/a
 import type { IAdminSaleService } from "@/lib/services/interfaces/admin-sale-service";
 import type { IAdminSaleroomService } from "@/lib/services/interfaces/admin-saleroom-service";
 import type { IAdminSavedViewService } from "@/lib/services/interfaces/admin-saved-view-service";
+import type { IAdminStaffRoleService } from "@/lib/services/interfaces/admin-staff-role-service";
 import type { IAdminStripeConnectService } from "@/lib/services/interfaces/admin-stripe-connect-service";
 import type { IAdminSubmissionService } from "@/lib/services/interfaces/admin-submission-service";
 import type { IAdminTelephoneService } from "@/lib/services/interfaces/admin-telephone-service";
@@ -98,6 +100,7 @@ export type WriteServiceContainer = {
   adminPayments: IAdminPaymentOpsService;
   invitations: IAdminInvitationService;
   adminSavedViews: IAdminSavedViewService;
+  adminStaffRoles: IAdminStaffRoleService;
 };
 
 let cached: WriteServiceContainer | null = null;
@@ -140,6 +143,7 @@ export function getWriteContainer(): WriteServiceContainer {
     adminPayments: new AdminPaymentOpsService(api),
     invitations: new AdminInvitationService(api),
     adminSavedViews: new AdminSavedViewService(api),
+    adminStaffRoles: new AdminStaffRoleService(api),
   };
   return cached;
 }

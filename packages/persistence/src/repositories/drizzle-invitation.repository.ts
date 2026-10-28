@@ -121,7 +121,7 @@ async function selectGrants(
     })
     .from(userInvitationProductGrant)
     .where(inArray(userInvitationProductGrant.invitationId, invitationIds))
-    .orderBy(asc(userInvitationProductGrant.product));
+    .orderBy(asc(userInvitationProductGrant.product), asc(userInvitationProductGrant.role));
   for (const r of rows) {
     const list = byInvitation.get(r.invitationId) ?? [];
     list.push({ product: r.product, role: r.role });

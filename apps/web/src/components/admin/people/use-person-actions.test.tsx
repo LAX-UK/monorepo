@@ -110,20 +110,31 @@ describe("usePersonActions", () => {
     await waitFor(() => expect(notifySuccess).toHaveBeenCalledWith("Ada Lovelace suspended"));
   });
 
-  it("asks for a staff role before making someone staff, and keeps a failure in the dialog", async () => {
+  it("changes a client's role in a dialog that keeps a failure in view", async () => {
     roleAction.mockResolvedValue({ ok: false, error: "You cannot change your own role." });
-    render(<Harness target={{ ...ada, role: "staff", staffRole: "finance" }} />);
+    render(<Harness target={ada} />);
     fireEvent.click(screen.getByRole("button", { name: "Change role" }));
 
     expect(await screen.findByRole("dialog")).toHaveTextContent("Change Ada Lovelace's role");
     fireEvent.click(screen.getByRole("button", { name: "Save role" }));
     await waitFor(() =>
-      expect(roleAction).toHaveBeenCalledWith("user_1", {
-        role: "staff",
-        staffRole: "finance",
-      }),
+      expect(roleAction).toHaveBeenCalledWith("user_1", { role: "client", staffRole: null }),
     );
     expect(await screen.findByText("You cannot change your own role.")).toBeVisible();
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+
+  it("sends a staff member's role changes to their record, where each role is managed", () => {
+    const actions: { id: string; href?: string }[] = [];
+    function Probe() {
+      const person = usePersonActions(FULL);
+      actions.push(...person.actionsFor({ ...ada, role: "staff", staffRole: "finance" }));
+      return null;
+    }
+    render(<Probe />);
+    expect(actions.find((action) => action.id === "role")).toMatchObject({
+      label: "Manage roles",
+      href: "/admin/staff/user_1#roles",
+    });
   });
 });

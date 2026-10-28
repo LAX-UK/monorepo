@@ -3,6 +3,7 @@ import type {
   LaxStaffAccessRevokedPayloadV1,
   StaffRoleAssignedPayloadV1,
   StaffRoleAssignment,
+  StaffRoleExpiredPayloadV1,
   StaffRoleRemovedPayloadV1,
   StaffRoles,
   UserRole,
@@ -41,6 +42,12 @@ export type StaffRosterEvent =
       readonly actorUserId: string;
       readonly payload: StaffRoleRemovedPayloadV1;
     }
+  | {
+      /** Written by the daily expiry job, so there is no acting user. */
+      readonly type: "staff.role_expired";
+      readonly userId: string;
+      readonly payload: StaffRoleExpiredPayloadV1;
+    }
   | { readonly type: "lax.staff_access.granted"; readonly payload: LaxStaffAccessGrantedPayloadV1 }
   | { readonly type: "lax.staff_access.revoked"; readonly payload: LaxStaffAccessRevokedPayloadV1 };
 
@@ -58,6 +65,12 @@ export interface IStaffRoleAssignmentReader {
   listActiveRoles(userId: string, now: Date): Promise<StaffRoles>;
 }
 
+/** Facts about the rest of the roster a screen shows before a change, read outside one. */
+export interface IStaffRosterFactsReader {
+  /** People other than `userId` who are active staff and hold the administrator role at `now`. */
+  countOtherActiveAdministrators(userId: string, now: Date): Promise<number>;
+}
+
 /**
  * One roster change. Everything here commits together, and changes to the roster are serialised,
  * so two people changing roles at once cannot both pass the last-administrator rule.
@@ -68,8 +81,15 @@ export interface IStaffRosterTransaction {
   /** People other than `userId` who are active staff and hold the administrator role at `now`. */
   countOtherActiveAdministrators(userId: string, now: Date): Promise<number>;
   insert(assignment: NewStaffRoleAssignment): Promise<StaffRoleAssignmentRecord>;
-  /** Ends an assignment at `endsAt`; the row stays as history. */
+  /** Ends an assignment at `endsAt` and records that end; the row stays as history. */
   end(assignmentId: string, endsAt: Date): Promise<void>;
+  /**
+   * Assignments whose end date has passed at `now` and whose end is not recorded yet, oldest end
+   * first, locked for this change so a concurrent run skips them.
+   */
+  listUnrecordedEnds(now: Date, limit: number): Promise<StaffRoleAssignmentRecord[]>;
+  /** Marks these assignments' ends as recorded at `at`; already recorded ones are untouched. */
+  recordEnds(assignmentIds: readonly string[], at: Date): Promise<void>;
   /** Writes the profile's roles and returns what they were (null when there was no profile). */
   writeProfileRoles(userId: string, next: StaffProfileRoles): Promise<StaffProfileRoles | null>;
   recordEvents(events: readonly StaffRosterEvent[]): Promise<void>;

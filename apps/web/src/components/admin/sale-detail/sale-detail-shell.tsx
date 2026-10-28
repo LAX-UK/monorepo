@@ -28,6 +28,7 @@ import {
 } from "@/lib/admin/sales/sale-detail-page.vm";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import type { AdminSaleListRow } from "@/lib/data/http/admin.server";
+import { SALEROOM_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { deliveryModeShortLabel } from "@/lib/presenters/delivery-mode/delivery-mode-registry";
 import { salePath } from "@/lib/seo/url";
 import {
@@ -182,9 +183,13 @@ export function SaleDetailShell({
       icon: ExternalLink,
       onSelect: () => window.open(publicHref, "_blank", "noopener"),
     },
-    ...(canManageSales
-      ? [{ id: "qr", label: "Marketing QR code", icon: QrCode, onSelect: () => setQrOpen(true) }]
-      : []),
+    {
+      id: "qr",
+      label: "Marketing QR code",
+      icon: QrCode,
+      onSelect: () => setQrOpen(true),
+      requires: SALES_ACCESS,
+    },
     ...(linkedEventSlug
       ? [
           {
@@ -223,20 +228,21 @@ export function SaleDetailShell({
     notice,
   });
   const editButton = editLink ? (
-    <StaffButton asChild variant="secondary" icon={<Pencil aria-hidden />}>
+    <StaffButton asChild variant="secondary" icon={<Pencil aria-hidden />} requires={SALES_ACCESS}>
       <Link href={editLink.href}>{editLink.label}</Link>
     </StaffButton>
   ) : null;
   const primary = publish ? (
     <StaffButton
       variant="primary"
+      requires={SALES_ACCESS}
       {...(publish.disabledReason ? { disabledReason: publish.disabledReason } : {})}
       onClick={() => publish.onSelect?.()}
     >
       Publish sale
     </StaffButton>
   ) : liveish ? (
-    <StaffButton asChild variant="primary">
+    <StaffButton asChild variant="primary" requires={SALEROOM_ACCESS}>
       <Link href={adminSaleroomHref(saleId)}>Open saleroom</Link>
     </StaffButton>
   ) : null;
@@ -298,8 +304,7 @@ export function SaleDetailShell({
         primaryAction={primary}
         secondaryActions={editButton}
         overflow={<OverflowMenu label="More sale actions" Link={NextLink} actions={overflow} />}
-        access={canManageSales ? "full" : "read-only"}
-        roleLabel="Catalogue"
+        editRequires={SALES_ACCESS}
         notice={
           notice ? (
             <Notice

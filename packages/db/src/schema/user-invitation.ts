@@ -66,8 +66,9 @@ export const INVITATION_GRANT_PRODUCTS = ["bid", "shop"] as const;
 export type InvitationGrantProduct = (typeof INVITATION_GRANT_PRODUCTS)[number];
 
 /**
- * Staff role per platform carried by an invitation. Roles are validated against each
- * platform's role enum by the application; the database only pins the platform set.
+ * The staff roles an invitation grants, one row per role: several on Bid, one on Shop. Roles are
+ * validated against each platform's role list by the application; the database only pins the
+ * platform set.
  */
 export const userInvitationProductGrant = pgTable(
   "user_invitation_product_grant",
@@ -82,7 +83,7 @@ export const userInvitationProductGrant = pgTable(
   (table) => [
     primaryKey({
       name: "user_invitation_product_grant_pk",
-      columns: [table.invitationId, table.product],
+      columns: [table.invitationId, table.product, table.role],
     }),
     check("user_invitation_product_grant_product_check", sql`${table.product} IN ('bid', 'shop')`),
   ],

@@ -1,4 +1,9 @@
-import { laxStaffAccessProductSchema, userRoles, userStaffRoles } from "@auction/types";
+import {
+  MAX_LAX_STAFF_GRANTS,
+  laxStaffAccessProductSchema,
+  userRoles,
+  userStaffRoles,
+} from "@auction/types";
 import { z } from "zod";
 
 export const invitationTargetRoleSchema = z.enum(userRoles);
@@ -9,18 +14,16 @@ export const invitationGrantSchema = z.object({
 });
 
 /**
- * Either `grants` (one staff role per LAX platform) or the legacy Bid-only
- * `targetRole` / `targetStaffRole` pair. Roles per platform are validated by the API.
+ * Either `grants` (the staff roles on each LAX platform: several on Bid, one on Shop) or the
+ * legacy Bid-only `targetRole` / `targetStaffRole` pair. Roles per platform are validated by the
+ * API.
  */
 export const adminCreateInvitationBodySchema = z
   .object({
     email: z.string().email(),
     targetRole: invitationTargetRoleSchema.optional(),
     targetStaffRole: z.enum(userStaffRoles).optional(),
-    grants: z
-      .array(invitationGrantSchema)
-      .max(laxStaffAccessProductSchema.options.length)
-      .optional(),
+    grants: z.array(invitationGrantSchema).max(MAX_LAX_STAFF_GRANTS).optional(),
   })
   .superRefine((v, ctx) => {
     if (v.grants && v.grants.length > 0) {

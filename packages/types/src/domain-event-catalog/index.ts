@@ -75,8 +75,10 @@ export {
   type LaxStaffAccessProduct,
   type LaxStaffAccessRevokedPayloadV1,
   staffRoleAssignedPayloadSchemaV1,
+  staffRoleExpiredPayloadSchemaV1,
   staffRoleRemovedPayloadSchemaV1,
   type StaffRoleAssignedPayloadV1,
+  type StaffRoleExpiredPayloadV1,
   type StaffRoleRemovedPayloadV1,
 } from "./lax-staff-access-payload-schemas.js";
 export {

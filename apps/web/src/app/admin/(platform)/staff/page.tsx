@@ -35,6 +35,7 @@ export default async function AdminStaffPage({
       rows={toStaffDirectoryRows(rows, access, model.listReturnTarget)}
       search={sp}
       counts={{ total: summary.total, active: summary.active, suspended: summary.suspended }}
+      roleCounts={summary.byStaffRole}
       filterChips={model.activeFilterChips.map((chip) => ({
         id: chip.id,
         label: chip.label,

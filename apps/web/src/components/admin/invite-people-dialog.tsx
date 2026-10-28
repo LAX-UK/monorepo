@@ -2,8 +2,9 @@
 
 import { InviteEmailChipInput } from "@/components/admin/invite-email-chip-input";
 import {
-  type DraftPlatformGrant,
+  type DraftPlatformAccess,
   InvitePlatformAccessPicker,
+  draftGrants,
   platformGrantsIssue,
   platformRoleId,
 } from "@/components/admin/invite-platform-access-picker";
@@ -78,7 +79,7 @@ export function InvitePeopleDialog({
   const [emails, setEmails] = useState<string[]>([]);
   const [emailProblem, setEmailProblem] = useState<string | null>(null);
   const [role, setRole] = useState<InviteRole>(defaultRole);
-  const [grants, setGrants] = useState<DraftPlatformGrant[]>([]);
+  const [grants, setGrants] = useState<DraftPlatformAccess[]>([]);
   const [attempted, setAttempted] = useState(false);
   const [failedSubmits, setFailedSubmits] = useState(0);
   const [submitting, setSubmitting] = useState(false);
@@ -147,7 +148,7 @@ export function InvitePeopleDialog({
         const result = await adminCreateInvitationResultAction({
           email,
           targetRole: role,
-          ...(role === "staff" ? { grants } : {}),
+          ...(role === "staff" ? { grants: draftGrants(grants) } : {}),
         });
         if (result.ok) sentTo.add(email);
         else failures.push({ email, message: result.error });
@@ -263,7 +264,7 @@ export function InvitePeopleDialog({
             <Field
               label="Platform access"
               id={accessId}
-              description="One LAX account works on every platform. Choose where this person gets staff access and the role on each. People who already have an account can accept after signing in."
+              description="One LAX account works on every platform. Choose where this person gets staff access and their roles there. People who already have an account can accept after signing in."
               error={grantsIssue?.target === "access" ? grantsIssue.message : null}
               disabled={submitting}
             >

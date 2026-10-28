@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { useStaffCan } from "../access/staff-access.js";
 import { cn } from "../lib/cn.js";
 import { StaffButton, type StaffButtonProps } from "./button.js";
 
@@ -51,10 +52,12 @@ export const HoldButton = React.forwardRef<HTMLButtonElement, HoldButtonProps>(
       onKeyUp,
       onBlur,
       "aria-describedby": describedBy,
+      requires,
       ...props
     },
     ref,
   ) => {
+    const permitted = useStaffCan(requires);
     const hintId = React.useId();
     const [progress, setProgress] = React.useState(0);
     const [reduced, setReduced] = React.useState(false);
@@ -111,6 +114,7 @@ export const HoldButton = React.forwardRef<HTMLButtonElement, HoldButtonProps>(
       setProgress(0);
     };
 
+    if (!permitted) return null;
     return (
       <>
         <StaffButton

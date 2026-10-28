@@ -41,3 +41,17 @@ export function staffRoleAssignmentsOverlap(
   const bEnd = b.endsAt?.getTime() ?? Number.POSITIVE_INFINITY;
   return a.startsAt.getTime() < bEnd && b.startsAt.getTime() < aEnd;
 }
+
+const DAY_MS = 86_400_000;
+
+/** Has an end date within the next `days` days of `now` (and has not ended yet). */
+export function staffRoleAssignmentEndsWithin(
+  assignment: Pick<StaffRoleAssignment, "endsAt">,
+  now: Date,
+  days: number,
+): boolean {
+  if (assignment.endsAt === null) return false;
+  const end = assignment.endsAt.getTime();
+  const t = now.getTime();
+  return end > t && end <= t + days * DAY_MS;
+}
