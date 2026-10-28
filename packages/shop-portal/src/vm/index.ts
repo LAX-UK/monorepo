@@ -14,7 +14,7 @@ export {
 export { formatPortalSaleAuthorityRequestStatus } from "./portal-sale-authority-request-status.presenter.js";
 export { formatPortalSaleChannel } from "./portal-sale-channel.presenter.js";
 export { formatShopDate, formatShopDateTime } from "./shop-date.presenter.js";
-export { formatGbpPence } from "./shop-money.presenter.js";
+export { formatGbpPence, formatGbpPenceForCard } from "./shop-money.presenter.js";
 export {
   buildPortalEnquiryListViewModel,
   buildPortalEnquiryRowViewModel,
