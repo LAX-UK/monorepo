@@ -2,7 +2,6 @@
 
 import type { StepProps } from "@/components/dashboard/submission-wizard/step-props";
 import { UnderlineInput } from "@/components/ui/input";
-import { LabelCaps } from "@/components/ui/typography";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   FormControl,
@@ -13,9 +12,6 @@ import {
 } from "@auction/ui/components/form";
 import { Textarea } from "@auction/ui/components/textarea";
 
-const labelClass =
-  "font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
-
 export function DetailsStep({ form }: StepProps) {
   return (
     <div className="space-y-6" data-testid="submission-wizard-step-details">
@@ -25,9 +21,7 @@ export function DetailsStep({ form }: StepProps) {
           name="medium"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className={labelClass}>
-                <LabelCaps>Medium (optional)</LabelCaps>
-              </FormLabel>
+              <FormLabel>Medium (optional)</FormLabel>
               <FormControl>
                 <UnderlineInput placeholder="Oil on canvas" {...field} />
               </FormControl>
@@ -40,9 +34,7 @@ export function DetailsStep({ form }: StepProps) {
           name="dimensions"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className={labelClass}>
-                <LabelCaps>Dimensions (optional)</LabelCaps>
-              </FormLabel>
+              <FormLabel>Dimensions (optional)</FormLabel>
               <FormControl>
                 <UnderlineInput placeholder="120 × 80 cm" {...field} />
               </FormControl>
@@ -72,9 +64,7 @@ export function DetailsStep({ form }: StepProps) {
         name="signatureNote"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className={labelClass}>
-              <LabelCaps>Signature note (optional)</LabelCaps>
-            </FormLabel>
+            <FormLabel>Signature note (optional)</FormLabel>
             <FormControl>
               <UnderlineInput placeholder="Signed lower right, verso label…" {...field} />
             </FormControl>
@@ -87,9 +77,7 @@ export function DetailsStep({ form }: StepProps) {
         name="description"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className={labelClass}>
-              <LabelCaps>Description</LabelCaps>
-            </FormLabel>
+            <FormLabel>Description</FormLabel>
             <FormControl>
               <Textarea
                 rows={5}

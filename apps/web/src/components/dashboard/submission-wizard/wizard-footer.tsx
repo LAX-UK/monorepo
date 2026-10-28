@@ -46,7 +46,7 @@ export function WizardFooter({
         statusText ? (
           <p
             className={cn(
-              "min-h-5 font-label text-[10px] uppercase tracking-wider",
+              "min-h-5 font-label text-xs",
               autosaveStatus === "error" ? "text-live-red" : "text-on-surface-variant",
             )}
             aria-live="polite"

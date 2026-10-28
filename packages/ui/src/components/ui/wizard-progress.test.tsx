@@ -14,6 +14,17 @@ describe("WizardProgress", () => {
     expect(screen.getByText(/Step 2 of 3 · Details/)).toBeInTheDocument();
   });
 
+  it("sets the step header and step names in sentence case at 12px or more", () => {
+    render(<WizardProgress steps={STEPS} currentIndex={1} variant="chips" />);
+    const header = screen.getByText(/Step 2 of 3 · Details/);
+    const chipLabel = screen.getByText("Review");
+    for (const el of [header, chipLabel]) {
+      expect(el.className).not.toMatch(/uppercase|tracking-/);
+      expect(el.className).not.toMatch(/text-\[(9|10|11)px\]/);
+      expect(el).toHaveClass("text-xs");
+    }
+  });
+
   it("shows up-next hint when enabled and a next step exists", () => {
     render(<WizardProgress steps={STEPS} currentIndex={0} showUpNext />);
     expect(screen.getByText(/Up next: Details/)).toBeInTheDocument();
