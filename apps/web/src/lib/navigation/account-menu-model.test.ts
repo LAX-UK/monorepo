@@ -7,6 +7,7 @@ function facts(overrides: Partial<AccountMenuFacts> = {}): AccountMenuFacts {
   return {
     hasConsigned: false,
     isOrgMember: false,
+    pendingInvitations: 0,
     user: { role: "client", staffRole: null },
     ...overrides,
   };
@@ -35,6 +36,22 @@ describe("buildAccountMenu", () => {
 
   it("offers Selling and Your organisations to organisation members", () => {
     expect(labels({ isOrgMember: true })[1]).toEqual(["Selling", "Your organisations"]);
+  });
+
+  it("lets someone with invitations but no organisation answer them from the menu", () => {
+    expect(labels({ pendingInvitations: 2 })[1]).toEqual([
+      "Sell with LAX",
+      "Pending invitations (2)",
+    ]);
+    const entry = buildAccountMenu(facts({ pendingInvitations: 2 }))[1]?.[1];
+    expect(entry?.href).toBe("/organisations/invitations");
+  });
+
+  it("leaves invitations to the account switcher for organisation members", () => {
+    expect(labels({ isOrgMember: true, pendingInvitations: 2 })[1]).toEqual([
+      "Selling",
+      "Your organisations",
+    ]);
   });
 
   it("ends with LAX Account, Bid settings in that order", () => {

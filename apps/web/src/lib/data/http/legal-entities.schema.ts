@@ -14,5 +14,6 @@ export const legalEntitySummarySchema = z
       role: row.role as LegalEntityMemberRole,
       isPrimaryAdmin: Boolean(row.isPrimaryAdmin),
       ...(row.isImpersonation === true ? { isImpersonation: true as const } : {}),
+      ...(row.welcomePending === true ? { welcomePending: true as const } : {}),
     }),
   ) as z.ZodType<LegalEntitySummary>;

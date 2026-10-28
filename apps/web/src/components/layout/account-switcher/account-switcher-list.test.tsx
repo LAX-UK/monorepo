@@ -12,6 +12,7 @@ const switcher: NonNullable<AccountChrome["switcher"]> = {
       detail: "Jane Smith",
       initials: "JS",
       current: false,
+      underReview: false,
     },
     {
       id: "northbank",
@@ -20,6 +21,7 @@ const switcher: NonNullable<AccountChrome["switcher"]> = {
       detail: "Admin",
       initials: "NG",
       current: true,
+      underReview: false,
     },
   ],
   pendingInvitations: 2,
