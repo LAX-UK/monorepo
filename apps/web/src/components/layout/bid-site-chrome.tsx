@@ -2,6 +2,7 @@ import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import {
   loadBidCrossProductFooterLinks,
+  loadBidFamilyLinks,
   loadBidProductDirectoryLinks,
 } from "@/lib/ecosystem/product-directory.server";
 import { MarketingHeaderTitleProvider } from "@/lib/marketing/marketing-header-title-context";
@@ -11,7 +12,7 @@ import type { ReactNode } from "react";
 type BidSiteChromeProps = {
   /** Paths where the header starts transparent over a hero (the home page). */
   transparentPaths?: string[];
-  /** Site-wide extras that sit inside the header's context (quick look, hotkeys, palette). */
+  /** Wraps the header and page in site-wide extras (quick look, hotkeys, palette, toasts). */
   wrap?: (content: ReactNode) => ReactNode;
   children: ReactNode;
 };
@@ -28,6 +29,7 @@ export async function BidSiteChrome({
   const nav = await loadCachedMegaMenuSections();
   const laxProductLinks = loadBidProductDirectoryLinks();
   const crossProductFooterLinks = loadBidCrossProductFooterLinks();
+  const familyLinks = loadBidFamilyLinks();
 
   return (
     <>
@@ -38,6 +40,7 @@ export async function BidSiteChrome({
               <SiteHeader
                 nav={nav}
                 laxProductLinks={laxProductLinks}
+                familyLinks={familyLinks}
                 {...(transparentPaths ? { transparentPaths } : {})}
               />
               {children}
