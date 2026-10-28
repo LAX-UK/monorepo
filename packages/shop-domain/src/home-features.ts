@@ -159,6 +159,30 @@ export function featuredPrintRoles(items: readonly FeaturedPrintFacts[]): Featur
   });
 }
 
+/** A release has to be something to buy and something to see, on the Shop. */
+export function canLeadHomeRelease(facts: FeaturedPrintFacts): boolean {
+  return facts.live && !facts.soldOut && facts.hasImage;
+}
+
+/** The release the Shop home's first screen shows, and whether staff placed it there. */
+export type HomeReleaseChoice<T> = { item: T; featured: boolean };
+
+/**
+ * The Shop home release: the placed print `featuredPrintRoles` marks as the release, otherwise the
+ * newest edition that can lead. It is read from the same roles LAX Admin shows, so the admin
+ * status and the Shop never disagree. With nothing that can lead, there is no release.
+ */
+export function chooseHomeRelease<T>(
+  placed: readonly T[],
+  newest: readonly T[],
+  factsOf: (item: T) => FeaturedPrintFacts,
+): HomeReleaseChoice<T> | null {
+  const lead = placed[featuredPrintRoles(placed.map(factsOf)).indexOf("home_release")];
+  if (lead !== undefined) return { item: lead, featured: true };
+  const fallback = newest.find((item) => canLeadHomeRelease(factsOf(item)));
+  return fallback === undefined ? null : { item: fallback, featured: false };
+}
+
 /** Where a featured artist can appear: lax.art shows their originals, the Shop their editions. */
 export type FeaturedArtistFacts = {
   /** Not archived, with at least one original on lax.art. */

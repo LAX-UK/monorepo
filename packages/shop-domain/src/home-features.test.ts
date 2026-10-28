@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  type FeaturedPrintFacts,
   type HomeFeatureTargetFacts,
+  canLeadHomeRelease,
+  chooseHomeRelease,
   featuredArtistPresence,
   featuredPrintRoles,
   homeFeatureLimit,
@@ -134,6 +137,67 @@ describe("featuredPrintRoles", () => {
 
   it("has no release when no candidate qualifies", () => {
     expect(featuredPrintRoles([{ ...ready, soldOut: true }])).toEqual(["sold_out"]);
+  });
+});
+
+describe("chooseHomeRelease", () => {
+  type Item = { slug: string } & FeaturedPrintFacts;
+  const item = (slug: string, over: Partial<FeaturedPrintFacts> = {}): Item => ({
+    slug,
+    live: true,
+    soldOut: false,
+    hasImage: true,
+    ...over,
+  });
+  const soldOut = item("sold", { soldOut: true });
+  const noImage = item("no-image", { hasImage: false });
+  const choose = (placed: Item[], newest: Item[]) =>
+    chooseHomeRelease(placed, newest, (entry) => entry);
+
+  it("takes the first placed edition that can be bought and has an image", () => {
+    const live = item("live");
+    expect(choose([soldOut, noImage, live], [])).toEqual({ item: live, featured: true });
+  });
+
+  it("falls back to the newest edition on sale with an image", () => {
+    const newest = item("newest");
+    expect(choose([soldOut], [noImage, soldOut, newest])).toEqual({
+      item: newest,
+      featured: false,
+    });
+  });
+
+  it("never leads with a sold-out work or one without an image", () => {
+    expect(choose([soldOut, noImage], [soldOut, noImage])).toBeNull();
+  });
+
+  it("reads only the first placed prints, as the admin status says", () => {
+    const fifth = item("fifth");
+    const newest = item("newest");
+    expect(choose([soldOut, soldOut, noImage, noImage, fifth], [newest])).toEqual({
+      item: newest,
+      featured: false,
+    });
+  });
+
+  it("leads with the print the admin marks as the home release", () => {
+    const lists: Item[][] = [
+      [soldOut, item("a"), item("b")],
+      [item("draft", { live: false }), noImage, item("c")],
+      [soldOut, noImage],
+    ];
+    for (const placed of lists) {
+      const roles = featuredPrintRoles(placed);
+      const marked = placed[roles.indexOf("home_release")];
+      expect(choose(placed, [])?.item).toBe(marked);
+    }
+  });
+
+  it("agrees with canLeadHomeRelease", () => {
+    expect(canLeadHomeRelease(item("x"))).toBe(true);
+    expect(canLeadHomeRelease(soldOut)).toBe(false);
+    expect(canLeadHomeRelease(noImage)).toBe(false);
+    expect(canLeadHomeRelease(item("draft", { live: false }))).toBe(false);
   });
 });
 

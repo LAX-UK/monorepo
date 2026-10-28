@@ -98,6 +98,8 @@ export {
   HOME_FEATURES_EDIT_CAPABILITY,
   HOME_FEATURE_SLOTS,
   HOME_RELEASE_CANDIDATE_LIMIT,
+  canLeadHomeRelease,
+  chooseHomeRelease,
   featuredArtistPresence,
   featuredPrintRoles,
   homeFeatureLimit,
@@ -113,6 +115,7 @@ export {
   type HomeFeaturePlan,
   type HomeFeatureSlot,
   type HomeFeatureTargetFacts,
+  type HomeReleaseChoice,
 } from "./home-features.js";
 export {
   assertFeaturedOriginalArtwork,

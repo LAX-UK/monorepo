@@ -1,5 +1,6 @@
 "use client";
 
+import { useStaffCatalogueImage } from "@/components/artworks/staff-catalogue-image-provider.client";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
 import {
   HOME_FEATURE_SLOT_COPY,
@@ -71,11 +72,13 @@ function RowSummary({
   issue: string | undefined;
 }) {
   const view = homeFeatureRowView(slot, row);
+  // Seed pictures are storefront paths; the shared resolver loads them from their storefront.
+  const resolveImage = useStaffCatalogueImage();
   return (
     <div className="flex min-w-0 items-start gap-3">
       {view.image ? (
         <span className="hidden pt-0.5 sm:block">
-          <CellThumbnail src={view.image.src} label={view.image.missingLabel} />
+          <CellThumbnail src={resolveImage(view.image.src)} label={view.image.missingLabel} />
         </span>
       ) : null}
       <div className="flex min-w-0 flex-1 flex-col gap-1">

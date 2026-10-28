@@ -14,12 +14,14 @@ import type {
   PublicArtworkFacetCounts,
   PublicArtworkSummary,
 } from "@auction/shop-contracts";
+import { HOME_RELEASE_CANDIDATE_LIMIT } from "@auction/shop-domain";
 
 export type HomeSectionKey = "editions" | "artists";
 
 /** The release in the first screen and a row of four below it. */
 export const HOME_NEW_EDITIONS_LIMIT = 5;
-const FEATURED_LIMIT = 4;
+/** The placed prints the release is chosen from; LAX Admin reads the same limit. */
+const FEATURED_LIMIT = HOME_RELEASE_CANDIDATE_LIMIT;
 const COVERS_PER_COLLECTION = 2;
 /** Enough newest artists to fill the section after the featured ones are taken out. */
 const NEWEST_ARTISTS_LIMIT = HOME_ARTISTS_MAX * 2;

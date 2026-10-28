@@ -21,6 +21,9 @@ vi.mock("sonner", () => ({
 
 (await import("@/test/radix-stubs")).installLayoutStubs();
 const { HomeFeatureList } = await import("./home-feature-list.client");
+const { StaffCatalogueImageProvider } = await import(
+  "@/components/artworks/staff-catalogue-image-provider.client"
+);
 
 const id = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
@@ -211,6 +214,28 @@ describe("HomeFeatureList", () => {
       within(row).getByText("This artist no longer exists. Remove it to save."),
     ).toBeInTheDocument();
     expect(rowTexts("Featured artists")).toEqual(["Artist 1", "Artist 2"]);
+  });
+
+  it("loads seed pictures from the storefront that serves them, as artworks do", () => {
+    const { container } = render(
+      <StaffCatalogueImageProvider
+        origins={{ shop: "https://test-shop.lax.bid", art: "https://test-art.lax.bid" }}
+      >
+        <HomeFeatureList
+          slot="featured_artists"
+          saved={[
+            artist(1, { portraitUrl: "/art/seed/artist-elias.webp" }),
+            artist(2, { portraitUrl: "/shop/home/artist-juno.webp" }),
+            artist(3, { portraitUrl: null }),
+          ]}
+        />
+      </StaffCatalogueImageProvider>,
+    );
+    expect([...container.querySelectorAll("img")].map((img) => img.getAttribute("src"))).toEqual([
+      "https://test-art.lax.bid/art/seed/artist-elias.webp",
+      "https://test-shop.lax.bid/shop/home/artist-juno.webp",
+    ]);
+    expect(screen.getByRole("img", { name: "No portrait" })).toBeInTheDocument();
   });
 
   it("is read-only without actions: no handles, no search, no save", () => {
