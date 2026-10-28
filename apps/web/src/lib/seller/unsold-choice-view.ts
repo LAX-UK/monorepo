@@ -63,6 +63,27 @@ export type UnsoldChoiceViewModel =
       history: UnsoldChoiceHistoryEntry[];
     };
 
+/** The panel's heading and introduction for each state; a new state is a new entry. */
+export const UNSOLD_CHOICE_INTRO: Record<
+  UnsoldChoiceViewModel["mode"],
+  { heading: string; intro: string }
+> = {
+  choose: {
+    heading: "Choose what happens next",
+    intro:
+      "Your work did not sell this time. Tell us what you would like, and a specialist will confirm it with you.",
+  },
+  waiting_on_admin: {
+    heading: "What happens next",
+    intro: "Your work did not sell this time.",
+  },
+  requested: {
+    heading: "What happens next",
+    intro: "Your work did not sell this time. A specialist will confirm the choice with you.",
+  },
+  confirmed: { heading: "What happens next", intro: "Your specialist confirmed it." },
+};
+
 function reserveHint(view: SellerUnsoldLotView): string {
   const parts = [
     view.currentReserve

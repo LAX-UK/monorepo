@@ -2,6 +2,7 @@
 
 import { requestUnsoldChoiceAction } from "@/lib/actions/consignment-after-sale";
 import {
+  UNSOLD_CHOICE_INTRO,
   UNSOLD_CHOICE_OPTIONS,
   UNSOLD_CHOICE_ORDER,
   type UnsoldChoiceHistoryEntry,
@@ -147,6 +148,7 @@ function ChoiceForm({
  */
 export function UnsoldLotChoicePanel({ submissionId, view, current = null }: Props) {
   const [changing, setChanging] = useState(false);
+  const intro = UNSOLD_CHOICE_INTRO[changing ? "choose" : view.mode];
 
   return (
     <section
@@ -160,13 +162,9 @@ export function UnsoldLotChoicePanel({ submissionId, view, current = null }: Pro
             id="unsold-choice-heading"
             className="font-headline text-lg font-semibold tracking-tight text-on-surface"
           >
-            {view.mode === "confirmed" ? "What happens next" : "Choose what happens next"}
+            {intro.heading}
           </h2>
-          <p className="font-body text-sm text-on-surface-variant">
-            {view.mode === "confirmed"
-              ? "Your specialist confirmed it."
-              : "Your work did not sell this time. Tell us what you would like, and a specialist will confirm it with you."}
-          </p>
+          <p className="font-body text-sm text-on-surface-variant">{intro.intro}</p>
         </div>
 
         {view.mode === "choose" ? (

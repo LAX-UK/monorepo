@@ -19,9 +19,10 @@ type Props = {
   terms: ConditionsSection;
 };
 
-function WithdrawalTerms({ terms }: { terms: ConditionsSection }) {
+function WithdrawalTerms({ lead, terms }: { lead: string; terms: ConditionsSection }) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-3 pt-1 text-left">
+      <p className="font-body text-sm text-on-surface">{lead}</p>
       <p className="font-body text-sm font-semibold text-on-surface">{terms.title}</p>
       {terms.paragraphs.map((paragraph) => (
         <p key={paragraph} className="font-body text-sm leading-relaxed text-on-surface-variant">
@@ -52,7 +53,10 @@ export function ConsignmentWithdrawPanel({ submissionId, view, terms }: Props) {
 
   if (view.mode === "requested") {
     return (
-      <Surface variant="section" data-testid="withdrawal-requested">
+      <Surface variant="section" className="space-y-2" data-testid="withdrawal-requested">
+        <h2 className="font-headline text-base font-semibold tracking-tight text-on-surface">
+          Withdrawal requested
+        </h2>
         <p className="flex items-start gap-2 font-body text-sm text-on-surface">
           <Clock className="mt-0.5 size-4 shrink-0 text-on-surface-variant" aria-hidden />
           <span>{view.message}</span>
@@ -92,7 +96,7 @@ export function ConsignmentWithdrawPanel({ submissionId, view, terms }: Props) {
         {view.blockedReason ? (
           <p className="font-body text-sm text-on-surface-variant">{view.blockedReason}</p>
         ) : (
-          <Button type="button" variant="secondaryOutline" onClick={() => setOpen(true)}>
+          <Button type="button" variant="outline" onClick={() => setOpen(true)}>
             {view.copy.action}
           </Button>
         )}
@@ -101,7 +105,7 @@ export function ConsignmentWithdrawPanel({ submissionId, view, terms }: Props) {
         open={open}
         onOpenChange={setOpen}
         title={view.copy.confirmTitle}
-        body={<WithdrawalTerms terms={terms} />}
+        body={<WithdrawalTerms lead={view.copy.confirmLead} terms={terms} />}
         confirmLabel={view.copy.confirmLabel}
         cancelLabel="Keep it"
         tone="warning"

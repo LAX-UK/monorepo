@@ -67,7 +67,7 @@ const requestSchema = z
   .optional()
   .default(null);
 
-const sellerSchema = z.object({
+export const sellerAfterSaleSchema = z.object({
   unsold: unsoldSchema
     .extend({ canChoose: z.boolean().default(false) })
     .nullable()
@@ -78,21 +78,21 @@ const sellerSchema = z.object({
     canAct: z.boolean().default(false),
     request: requestSchema,
   }),
-});
+}) as z.ZodType<SellerAfterSaleView>;
 
-const staffSchema = z.object({
+export const staffAfterSaleSchema = z.object({
   unsold: unsoldSchema.nullable().optional().default(null),
   withdrawal: requestSchema,
-});
+}) as z.ZodType<StaffAfterSaleView>;
 
-const moveOptionsSchema = z.object({
+export const consignmentMoveOptionsSchema = z.object({
   movable: z.boolean(),
   reason: name,
   options: z.array(
     z.object({ legalEntityId: z.string(), displayName: z.string(), role: z.string() }),
   ),
   agreementEffect: z.enum(["none", "carried", "reset"]),
-});
+}) as z.ZodType<ConsignmentMoveOptions>;
 
 const reminderSchema = z.object({ lastSentAt: date, nextAllowedAt: date });
 
@@ -100,22 +100,6 @@ function parseWith<T>(schema: z.ZodType<T, z.ZodTypeDef, unknown>, raw: unknown)
   if (raw == null) return null;
   const parsed = schema.safeParse(raw);
   return parsed.success ? parsed.data : null;
-}
-
-export function parseUnsoldLotChoice(raw: unknown): UnsoldLotChoice | null {
-  return parseWith(choiceSchema, raw);
-}
-
-export function parseSellerAfterSaleView(raw: unknown): SellerAfterSaleView | null {
-  return parseWith(sellerSchema, raw);
-}
-
-export function parseStaffAfterSaleView(raw: unknown): StaffAfterSaleView | null {
-  return parseWith(staffSchema, raw);
-}
-
-export function parseConsignmentMoveOptions(raw: unknown): ConsignmentMoveOptions | null {
-  return parseWith(moveOptionsSchema, raw);
 }
 
 export function parseIdentityReminderState(raw: unknown): SellerIdentityReminderState | null {

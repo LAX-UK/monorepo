@@ -8,6 +8,8 @@ type Copy = {
   action: string;
   confirmTitle: string;
   confirmLabel: string;
+  /** Shown above the withdrawal conditions in the confirmation. */
+  confirmLead: string;
   done: string;
 };
 
@@ -15,10 +17,12 @@ type Copy = {
 const COPY: Record<Exclude<ConsignmentWithdrawalPathKind, "unavailable" | "requested">, Copy> = {
   withdraw_now: {
     title: "Withdraw this consignment",
-    body: "You can take the work back until it is catalogued. Your specialist is told.",
+    body: "You can take the work back until it is catalogued.",
     action: "Withdraw consignment",
     confirmTitle: "Withdraw this consignment?",
     confirmLabel: "Withdraw",
+    confirmLead:
+      "The work is not catalogued yet, so it is withdrawn straight away. These conditions apply:",
     done: "Consignment withdrawn",
   },
   request: {
@@ -27,6 +31,7 @@ const COPY: Record<Exclude<ConsignmentWithdrawalPathKind, "unavailable" | "reque
     action: "Ask to withdraw",
     confirmTitle: "Ask to withdraw this lot?",
     confirmLabel: "Send request",
+    confirmLead: "A specialist decides and replies. If they agree, these conditions apply:",
     done: "Request sent. A specialist will reply.",
   },
 };
