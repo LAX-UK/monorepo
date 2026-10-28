@@ -30,7 +30,7 @@ function FigureValue({ figure }: { figure: MyBidFigure }) {
 function Figures({ figures }: { figures: MyBidFigure[] }) {
   if (figures.length === 0) return null;
   return (
-    <dl className="grid grid-flow-col grid-cols-3 grid-rows-[auto_auto] gap-x-4 gap-y-1 max-lg:border-t max-lg:border-outline-variant/50 max-lg:pt-3 lg:w-[27rem] lg:shrink-0">
+    <dl className="grid grid-flow-col grid-cols-3 grid-rows-[auto_auto] gap-x-4 gap-y-1 max-xl:border-t max-xl:border-outline-variant/50 max-xl:pt-3 xl:w-[27rem] xl:shrink-0">
       {/* Labels share the first row and values the second, so values line up when a label wraps. */}
       {figures.map((figure) => [
         <dt
@@ -63,7 +63,7 @@ function Actions({
       className={cn(
         "flex justify-end gap-2",
         // Two steps share the full width on phones, side by side.
-        card.actions.length > 1 && "max-lg:w-full max-lg:[&>a]:flex-1",
+        card.actions.length > 1 && "max-sm:w-full max-sm:[&>a]:flex-1",
       )}
     >
       {onOpenHistory ? (
@@ -112,11 +112,11 @@ export function MyBidCard({
     <article
       aria-label={`${card.title}, ${card.statusLabel}`}
       className={cn(
-        "flex flex-col gap-4 rounded-xl border border-outline-variant/60 bg-surface-container-lowest p-4 lg:flex-row lg:items-center lg:gap-6",
+        "flex flex-col gap-4 rounded-xl border border-outline-variant/60 bg-surface-container-lowest p-4 xl:flex-row xl:items-center xl:gap-6",
         STATUS_EDGE[card.status],
       )}
     >
-      <div className="flex min-w-0 flex-1 items-start gap-4 lg:items-center">
+      <div className="flex min-w-0 flex-1 items-start gap-4 xl:items-center">
         <div className="relative size-18 shrink-0 overflow-hidden rounded-md bg-surface-container-high md:size-24">
           {card.href ? (
             <Link href={card.href} tabIndex={-1} aria-hidden className="absolute inset-0">
@@ -136,7 +136,7 @@ export function MyBidCard({
               {card.saleTitle}
             </p>
           ) : null}
-          <h3 className="mt-1 font-headline text-base font-semibold leading-snug text-on-surface md:text-lg">
+          <h2 className="mt-1 font-headline text-base font-semibold leading-snug text-on-surface md:text-lg">
             {card.href ? (
               <Link
                 href={card.href}
@@ -147,7 +147,7 @@ export function MyBidCard({
             ) : (
               card.title
             )}
-          </h3>
+          </h2>
           {card.details ? (
             <p className="mt-1 font-body text-sm text-on-surface-variant">{card.details}</p>
           ) : null}
@@ -157,7 +157,7 @@ export function MyBidCard({
         </div>
       </div>
       <Figures figures={card.figures} />
-      <div className="flex flex-wrap items-center justify-between gap-3 lg:min-w-56 lg:flex-nowrap lg:shrink-0 lg:flex-col lg:items-end lg:justify-center">
+      <div className="flex flex-wrap items-center justify-between gap-3 xl:w-[21rem] xl:flex-nowrap xl:shrink-0 xl:flex-col xl:items-end xl:justify-center">
         {status}
         <Actions card={card} onOpenHistory={onOpenHistory} />
       </div>

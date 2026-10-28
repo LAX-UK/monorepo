@@ -3,10 +3,13 @@
 import { fetchSessionUserAfterAuth } from "@/lib/auth/fetch-session-user.client";
 import { fetchLotBidHistoryRows } from "@/lib/bid/fetch-lot-bid-history.client";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
+import { formatDateTimeShort } from "@/lib/ui/format";
 import { Skeleton } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import { DrawerDetail } from "@auction/ui/components/drawer-detail";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import { useEffect, useState } from "react";
+import { RotateCw } from "lucide-react";
+import { useCallback, useEffect, useState } from "react";
 
 type BidHistoryRow = {
   id: string;
@@ -25,34 +28,34 @@ type BidHistoryDrawerProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-/** Bid history side panel — shows the full bid escalation timeline for a lot
- * with the signed-in user's bids highlighted.
+/**
+ * A lot's bid history in a side panel: every bid, newest first, with the signed-in person's own
+ * bids highlighted. A failed read says so calmly and offers to try again.
  */
 export function BidHistoryDrawer({ open, lotId, lotTitle, onOpenChange }: BidHistoryDrawerProps) {
   const [rows, setRows] = useState<BidHistoryRow[] | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [failed, setFailed] = useState(false);
   const [ownershipWarning, setOwnershipWarning] = useState(false);
 
-  useEffect(() => {
-    if (!open || !lotId) return;
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setOwnershipWarning(false);
-    setRows(null);
-    void (async () => {
+  /** Reads the lot's bids; `isStale` stops a slow answer from overwriting a newer one. */
+  const load = useCallback(
+    async (isStale: () => boolean) => {
+      if (!lotId) return;
+      setLoading(true);
+      setFailed(false);
+      setOwnershipWarning(false);
+      setRows(null);
       try {
         const body = await fetchLotBidHistoryRows(lotId, 200);
+        if (isStale()) return;
         if (!body) {
-          if (!cancelled) setError("Could not load bid history.");
+          setFailed(true);
           return;
         }
         const me = await fetchSessionUserAfterAuth();
-        if (cancelled) return;
-        if (!me) {
-          setOwnershipWarning(true);
-        }
+        if (isStale()) return;
+        setOwnershipWarning(!me);
         setRows(
           body.map((r) => ({
             id: r.id,
@@ -62,25 +65,30 @@ export function BidHistoryDrawer({ open, lotId, lotTitle, onOpenChange }: BidHis
             bidderRef: r.bidderRef ?? "Bidder",
           })),
         );
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : "Could not load bid history.");
-        }
+      } catch {
+        if (!isStale()) setFailed(true);
       } finally {
-        if (!cancelled) setLoading(false);
+        if (!isStale()) setLoading(false);
       }
-    })();
+    },
+    [lotId],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    let stale = false;
+    void load(() => stale);
     return () => {
-      cancelled = true;
+      stale = true;
     };
-  }, [open, lotId]);
+  }, [open, load]);
 
   return (
     <DrawerDetail
       open={open}
       onOpenChange={onOpenChange}
       title={lotTitle}
-      description="Bid history for this lot — your bids are highlighted."
+      description="Every bid on this lot, newest first. Yours are highlighted."
     >
       <div key={lotId ?? "none"} className="space-y-3 font-body text-sm">
         {loading ? (
@@ -89,10 +97,26 @@ export function BidHistoryDrawer({ open, lotId, lotTitle, onOpenChange }: BidHis
             <Skeleton className="h-10 w-full" />
             <Skeleton className="h-10 w-full" />
           </div>
-        ) : error ? (
-          <p role="alert" className="text-error">
-            {error}
-          </p>
+        ) : failed ? (
+          <EmptyState
+            variant="plain"
+            size="compact"
+            headingLevel="h3"
+            illustration="askew"
+            role="alert"
+            title="We couldn't load the bid history"
+            description="This is on our side. Your bids are safe and still active in the sale."
+            action={
+              <Button
+                type="button"
+                variant="secondaryOutline"
+                onClick={() => void load(() => false)}
+              >
+                <RotateCw aria-hidden />
+                Try again
+              </Button>
+            }
+          />
         ) : rows == null || rows.length === 0 ? (
           <EmptyState
             variant="plain"
@@ -105,7 +129,7 @@ export function BidHistoryDrawer({ open, lotId, lotTitle, onOpenChange }: BidHis
           <>
             {ownershipWarning ? (
               <p role="alert" className="text-xs text-on-surface-variant">
-                Could not verify your account — your own bids may not be highlighted.
+                We couldn't confirm your account, so your own bids may not be highlighted.
               </p>
             ) : null}
             <ol className="space-y-2">
@@ -120,7 +144,7 @@ export function BidHistoryDrawer({ open, lotId, lotTitle, onOpenChange }: BidHis
                 >
                   <span className="flex min-w-0 items-center gap-3">
                     <span
-                      className="grid size-7 shrink-0 place-items-center rounded-full bg-surface-container-high font-label text-[10px] uppercase tracking-wider text-on-surface-variant"
+                      className="grid size-7 shrink-0 place-items-center rounded-full bg-surface-container-high font-body text-xs tabular-nums text-on-surface-variant"
                       aria-hidden
                     >
                       {rows.length - index}
@@ -131,9 +155,9 @@ export function BidHistoryDrawer({ open, lotId, lotTitle, onOpenChange }: BidHis
                       </span>
                       <time
                         dateTime={row.createdAt}
-                        className="block font-label text-[10px] uppercase tracking-wider text-on-surface-variant"
+                        className="block font-body text-xs tabular-nums text-on-surface-variant"
                       >
-                        {new Date(row.createdAt).toLocaleString()}
+                        {formatDateTimeShort(row.createdAt)}
                       </time>
                     </span>
                   </span>
