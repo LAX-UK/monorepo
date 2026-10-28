@@ -49,6 +49,7 @@ export {
 } from "./marketing-social-icons.js";
 export {
   defaultMediaSrcResolver,
+  mediaSrcResolverFrom,
   type MediaSrcResolver,
 } from "./media/default-media-src-resolver.js";
 export { MediaImage, type MediaImageProps } from "./media/media-image.js";

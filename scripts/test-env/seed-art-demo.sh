@@ -31,7 +31,6 @@ readonly MEDIA_BUCKET="lax-media"
 readonly MEDIA_REGION="lon1"
 readonly MEDIA_PUBLIC_BASE_URL="https://lax-media.lon1.cdn.digitaloceanspaces.com"
 readonly ART_URL="https://test-art.lax.bid"
-readonly SHOP_URL="https://test-shop.lax.bid"
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 email=""
@@ -180,8 +179,7 @@ log "building shop-api and workspace dependencies"
 
 if runs catalogue; then
   log "[catalogue] foundation catalogue + Art originals"
-  # Seed images are stored under the storefront that serves them, so staff tools can load them.
-  shop_api seed:catalogue "SHOP_STOREFRONT_URL=$SHOP_URL" "LAX_ART_PUBLIC_URL=$ART_URL"
+  shop_api seed:catalogue
 fi
 
 if runs legacy; then

@@ -119,7 +119,6 @@ import { createDrizzleOriginalSaleWriter } from "./infrastructure/phase/drizzle-
 import { createRedisFixedWindowCounter } from "./infrastructure/redis-fixed-window-counter.js";
 import { seedAcceptancePortalFixtures } from "./infrastructure/seed/acceptance-portal-seed.js";
 import { seedShopFoundationCatalogue } from "./infrastructure/seed/catalogue-seed.js";
-import { withAbsoluteSeedAssetUrls } from "./infrastructure/seed/seed-asset-urls.js";
 import { seedShopStorefrontCuration } from "./infrastructure/seed/storefront-curation-seed.js";
 import { createSharpImageProbe } from "./infrastructure/sharp-image-probe.js";
 import { loadShopCancellationPolicy } from "./infrastructure/shop-cancellation-policy.js";
@@ -540,11 +539,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     grantStaffRole: (input) => grantShopStaffRole(db, input),
     grantSaleAuthority: (command) => saleAuthorityWriter.grantSaleAuthority(command),
     async seedCatalogue(): Promise<void> {
-      const seedImportArtwork = withAbsoluteSeedAssetUrls(importArtwork, {
-        shop: env.SHOP_STOREFRONT_URL,
-        art: env.LAX_ART_PUBLIC_URL,
-      });
-      await seedShopFoundationCatalogue(seedImportArtwork, db, (command) =>
+      await seedShopFoundationCatalogue(importArtwork, db, (command) =>
         saleAuthorityWriter.grantSaleAuthority(command),
       );
       await seedShopStorefrontCuration(db, createDrizzleStorefrontCurationWriter);

@@ -1,11 +1,13 @@
 export const dynamic = "force-dynamic";
 
+import { StaffCatalogueImageProvider } from "@/components/artworks/staff-catalogue-image-provider.client";
 import { ShopAdminShell } from "@/components/shop-admin-shell.client";
 import { loadAdminSession } from "@/lib/admin-data.server";
 import { resolveStaffLayoutRedirect, staffSignInHref } from "@/lib/staff-layout-redirect";
 import { loadEnquirySummary } from "@/server/application/load-enquiry-summary";
 import { loadStaffIdentity } from "@/server/application/load-staff-identity";
 import { loadStaffProducts } from "@/server/application/load-staff-products";
+import { getShopAdminContainer } from "@/server/container";
 import { buildAdminNavGroups } from "@/server/domain/admin-nav.vm";
 import { staffDisplayName } from "@/server/domain/staff-identity.vm";
 import { staffRoleLabel } from "@/server/domain/staff-role-label.vm";
@@ -50,21 +52,24 @@ export default async function StaffLayout({ children }: { children: ReactNode })
     enquiryAttentionCount: enquirySummary?.needsAttentionCount ?? 0,
   });
   const roleLabel = staffRoleLabel(session.role);
+  const { shopStorefrontUrl, artPublicUrl } = getShopAdminContainer().config;
   return (
     <>
-      <ShopAdminShell
-        navGroups={navGroups}
-        products={products}
-        user={{
-          name: staffDisplayName(identity, roleLabel),
-          ...(identity.email ? { email: identity.email } : {}),
-          roleLabel,
-        }}
-        initialTheme={parseStaffTheme(jar.get(STAFF_THEME_COOKIE)?.value)}
-        defaultCollapsed={jar.get(STAFF_NAV_COOKIE)?.value === "collapsed"}
-      >
-        {children}
-      </ShopAdminShell>
+      <StaffCatalogueImageProvider origins={{ shop: shopStorefrontUrl, art: artPublicUrl }}>
+        <ShopAdminShell
+          navGroups={navGroups}
+          products={products}
+          user={{
+            name: staffDisplayName(identity, roleLabel),
+            ...(identity.email ? { email: identity.email } : {}),
+            roleLabel,
+          }}
+          initialTheme={parseStaffTheme(jar.get(STAFF_THEME_COOKIE)?.value)}
+          defaultCollapsed={jar.get(STAFF_NAV_COOKIE)?.value === "collapsed"}
+        >
+          {children}
+        </ShopAdminShell>
+      </StaffCatalogueImageProvider>
       <StaffToaster />
     </>
   );

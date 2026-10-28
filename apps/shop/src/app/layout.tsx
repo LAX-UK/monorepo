@@ -11,6 +11,7 @@ import {
 } from "@/lib/ecosystem/product-directory.server";
 import { resolveShopSilentFedcmBootstrapProps } from "@/lib/fedcm/resolve-silent-fedcm-props.server";
 import { ShopSilentFedcmBootstrap } from "@/lib/fedcm/silent-fedcm-bootstrap.client";
+import { loadShopCatalogueImageOrigins } from "@/lib/media/catalogue-image.server";
 import { loadLinkableShopPolicies } from "@/lib/policies/shop-policy-publication.server";
 import { NOINDEX_ROBOTS } from "@/lib/seo/shop-indexing";
 import { toShopFooterAccountState } from "@/lib/shop-footer-account-state";
@@ -18,6 +19,7 @@ import { shopIdentityUrl } from "@/lib/shop-identity.server";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { SHOP_THEME_COOKIE, parseShopTheme } from "@/lib/theme/shop-theme";
 import { laxFaviconMetadataIcons } from "@auction/branding";
+import { CatalogueImageProvider } from "@auction/shop-portal/react";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { Suspense } from "react";
@@ -75,29 +77,31 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ShopThemeInit />
       </head>
       <body>
-        <ShopSmoothScroll>
-          <a href="#main-content" className="shop-skip-link">
-            Skip to content
-          </a>
-          <div className="overflow-x-clip">
-            <ShopHeader />
-            <Suspense fallback={null}>
-              <ShopSilentFedcmBootstrap fedcm={silentFedcmProps} />
-              <SilentSignInNotice
-                logoutActionUrl={shopIdentityUrl("/logout")}
-                displayName={viewer.kind === "authenticated" ? viewer.displayName : null}
-                email={viewer.kind === "authenticated" ? viewer.email : null}
-              />
-              <ShopTransientNotices />
-            </Suspense>
-            {children}
-          </div>
-          <ShopFooter
-            crossProductLinks={crossProductFooterLinks}
-            accountState={toShopFooterAccountState(viewer)}
-            linkablePolicies={loadLinkableShopPolicies()}
-          />
-        </ShopSmoothScroll>
+        <CatalogueImageProvider viewer="shop" origins={loadShopCatalogueImageOrigins()}>
+          <ShopSmoothScroll>
+            <a href="#main-content" className="shop-skip-link">
+              Skip to content
+            </a>
+            <div className="overflow-x-clip">
+              <ShopHeader />
+              <Suspense fallback={null}>
+                <ShopSilentFedcmBootstrap fedcm={silentFedcmProps} />
+                <SilentSignInNotice
+                  logoutActionUrl={shopIdentityUrl("/logout")}
+                  displayName={viewer.kind === "authenticated" ? viewer.displayName : null}
+                  email={viewer.kind === "authenticated" ? viewer.email : null}
+                />
+                <ShopTransientNotices />
+              </Suspense>
+              {children}
+            </div>
+            <ShopFooter
+              crossProductLinks={crossProductFooterLinks}
+              accountState={toShopFooterAccountState(viewer)}
+              linkablePolicies={loadLinkableShopPolicies()}
+            />
+          </ShopSmoothScroll>
+        </CatalogueImageProvider>
       </body>
     </html>
   );

@@ -85,6 +85,10 @@
       "types": "./dist/components/ui/dropdown-menu.d.ts",
       "default": "./dist/components/ui/dropdown-menu.js"
     },
+    "./lib/image-src-context": {
+      "types": "./dist/lib/image-src-context.d.ts",
+      "default": "./dist/lib/image-src-context.js"
+    },
     "./hooks/use-media-query": {
       "types": "./dist/hooks/use-media-query.d.ts",
       "default": "./dist/hooks/use-media-query.js"
