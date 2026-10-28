@@ -10,7 +10,7 @@ export function ArtSearchBrowseCard({ imageUrl }: { imageUrl: string | null }) {
   return (
     <section
       aria-labelledby="art-search-browse-title"
-      className="relative isolate flex min-h-60 overflow-hidden rounded-xl bg-brand-obsidian sm:min-h-72"
+      className="relative isolate flex min-h-60 overflow-hidden rounded-lg bg-brand-obsidian sm:min-h-72"
       data-testid="art-search-browse-card"
     >
       {imageUrl ? (
@@ -28,7 +28,7 @@ export function ArtSearchBrowseCard({ imageUrl }: { imageUrl: string | null }) {
       <div className="flex w-full flex-col justify-end gap-3 p-6">
         <h2
           id="art-search-browse-title"
-          className="font-headline text-lg font-medium uppercase text-brand-light-cream"
+          className="font-headline text-lg font-medium text-brand-light-cream"
         >
           Looking for something distinctive?
         </h2>

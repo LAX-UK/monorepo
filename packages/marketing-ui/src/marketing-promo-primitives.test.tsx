@@ -39,6 +39,22 @@ describe("MarketingSplitFeature", () => {
     expect(region.className).not.toContain("md:grid-cols-2");
     expect(region.className).toContain("--color-surface-inverse");
   });
+
+  it("centres the copy and its action when there is no media, so no half is left empty", () => {
+    render(
+      <MarketingSplitFeature
+        title="Finding your way into art"
+        action={<a href="/guide">Explore the guide</a>}
+      />,
+    );
+
+    const region = screen.getByRole("region", { name: "Finding your way into art" });
+    const panel = region.firstElementChild as HTMLElement;
+    expect(panel.className).toContain("items-center");
+    expect(panel.className).toContain("text-center");
+    const link = within(region).getByRole("link", { name: "Explore the guide" });
+    expect(link.parentElement?.className).toContain("justify-center");
+  });
 });
 
 describe("MarketingVenueCard", () => {
@@ -88,31 +104,54 @@ describe("MarketingVenueCard", () => {
 });
 
 describe("MarketingFeatureGrid", () => {
-  it("puts the lead first and wraps each secondary item in a list item", () => {
+  const renderGrid = (variant: "lead-plus-row" | "lead-plus-stack", labels: string[]) =>
     render(
-      <MarketingFeatureGrid variant="lead-plus-row" lead={<p>Lead</p>} aria-label="What's on">
-        <p key="a">One</p>
-        <p key="b">Two</p>
-        <p key="c">Three</p>
-      </MarketingFeatureGrid>,
+      <MarketingFeatureGrid
+        variant={variant}
+        aria-label="Grid"
+        items={labels}
+        getKey={(label) => label}
+        renderItem={(label, role) => <p data-role={role}>{label}</p>}
+      />,
     );
 
-    const list = screen.getByRole("list", { name: "What's on" });
+  const roles = () =>
+    within(screen.getByRole("list", { name: "Grid" }))
+      .getAllByRole("listitem")
+      .map((item) => item.querySelector("p")?.dataset.role);
+
+  it("puts the lead first across the row, with three items under it", () => {
+    renderGrid("lead-plus-row", ["Lead", "One", "Two", "Three"]);
+    const list = screen.getByRole("list", { name: "Grid" });
     const items = within(list).getAllByRole("listitem");
     expect(items.map((item) => item.textContent)).toEqual(["Lead", "One", "Two", "Three"]);
+    expect(list).toHaveAttribute("data-layout", "lead-plus-row");
     expect(items[0]?.className).toContain("lg:col-span-3");
+    expect(roles()).toEqual(["feature", "item", "item", "item"]);
   });
 
   it("spans the lead across the two stacked rows", () => {
-    render(
-      <MarketingFeatureGrid variant="lead-plus-stack" lead={<p>Lead</p>} aria-label="Stories">
-        <p key="a">One</p>
-        <p key="b">Two</p>
-      </MarketingFeatureGrid>,
-    );
-
-    const list = screen.getByRole("list", { name: "Stories" });
+    renderGrid("lead-plus-stack", ["Lead", "One", "Two"]);
+    const list = screen.getByRole("list", { name: "Grid" });
     expect(list).toHaveAttribute("data-variant", "lead-plus-stack");
     expect(within(list).getAllByRole("listitem")[0]?.className).toContain("lg:row-span-2");
+    expect(roles()).toEqual(["lead", "item", "item"]);
+  });
+
+  it("puts two items side by side instead of a lead and one small card", () => {
+    renderGrid("lead-plus-row", ["Lead", "One"]);
+    expect(screen.getByRole("list", { name: "Grid" })).toHaveAttribute("data-layout", "pair");
+    expect(roles()).toEqual(["item", "item"]);
+  });
+
+  it("gives a single item the full width", () => {
+    renderGrid("lead-plus-stack", ["Lead"]);
+    expect(screen.getByRole("list", { name: "Grid" })).toHaveAttribute("data-layout", "feature");
+    expect(roles()).toEqual(["solo"]);
+  });
+
+  it("renders nothing without items", () => {
+    const { container } = renderGrid("lead-plus-row", []);
+    expect(container).toBeEmptyDOMElement();
   });
 });

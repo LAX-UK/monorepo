@@ -56,7 +56,7 @@ export function MarketingAlphabetFilter({
 
   return (
     <nav aria-label={ariaLabel} className={cn("-mx-1 overflow-x-auto", className)}>
-      <ul className="flex min-w-max gap-0.5 px-1 lg:min-w-0 lg:flex-wrap">
+      <ul className="flex min-w-[max-content] gap-0.5 px-1 lg:min-w-0 lg:flex-wrap">
         {items.map((item) => {
           const isActive =
             item.letter === null

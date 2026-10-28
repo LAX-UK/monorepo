@@ -60,7 +60,7 @@ function SearchPanel({ vm }: { vm: SearchResultsVm }) {
         />
         {panel.nextPageHref ? (
           <nav aria-label="Pagination" className="flex justify-center">
-            <Button asChild variant="outline" className="min-h-11 font-label">
+            <Button asChild variant="secondaryOutline">
               <Link href={panel.nextPageHref}>Next page</Link>
             </Button>
           </nav>

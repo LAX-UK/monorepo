@@ -80,8 +80,8 @@
   --color-cta-bg: var(--color-brand-obsidian);
   --color-cta-on: var(--color-brand-light-cream);
   --color-border-hairline: color-mix(in srgb, var(--color-brand-light-gray) 60%, white);
-  /* Form controls: the resting border is at least 3:1 against every Shop surface (WCAG 1.4.11). */
-  --color-input-border: #808080;
+  /* Form controls: the shared field edge, at least 3:1 against every Shop surface (WCAG 1.4.11). */
+  --color-input-border: var(--brand-field-edge);
   --color-control-border-hover: #4d4d4d;
   --color-control-bg: var(--color-surface-container-lowest);
   --color-control-bg-disabled: var(--color-surface-container-low);
@@ -319,7 +319,7 @@ html.dark {
   --color-link: var(--color-product-accent);
   --color-ring: var(--color-product-accent);
   --color-border-hairline: color-mix(in srgb, var(--color-outline-variant) 40%, transparent);
-  --color-input-border: #858585;
+  --color-input-border: var(--brand-field-edge-on-dark);
   --color-control-border-hover: #b3b3b3;
   --color-control-border-disabled: #5c5a54;
   --color-footer-bg: #0d0f0f;

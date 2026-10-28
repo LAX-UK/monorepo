@@ -1,3 +1,4 @@
+import { ArtPageHeader } from "@/components/art-page-header";
 import { ArtStatusState } from "@/components/art-status-state";
 import { ArtEditorialCardGrid } from "@/components/editorial/art-editorial-card";
 import { ArtEditorialStatus } from "@/components/editorial/art-editorial-status";
@@ -32,15 +33,20 @@ type ExhibitionsPageProps = {
 export default async function ExhibitionsPage({ searchParams }: ExhibitionsPageProps) {
   const status = parseExhibitionStatus((await searchParams).status);
   const result = await composeExhibitionsPage(artServices, status);
+  const hasHero = result.status === "ok" && result.data.featured.length > 0;
 
   return (
     <div className="flex flex-col gap-8 pb-10">
-      {/* Figma has no page title here; the hero carries the visual title, so the h1 is for assistive tech. */}
-      <h1 className="sr-only">Exhibitions</h1>
-      {result.status === "ok" && result.data.featured.length > 0 ? (
-        <ArtExhibitionReveal items={result.data.featured} />
+      {/* Figma has no page title here: the hero carries the visual title, so the h1 is for
+          assistive tech. Without a hero the page shows its title, as the artworks index does. */}
+      {hasHero ? (
+        <>
+          <h1 className="sr-only">Exhibitions</h1>
+          <ArtExhibitionReveal items={result.data.featured} />
+        </>
       ) : null}
-      <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-8")}>
+      <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-8", !hasHero && "pt-6 lg:pt-10")}>
+        {hasHero ? null : <ArtPageHeader title="Exhibitions" />}
         {result.status === "disabled" ? null : (
           <MarketingSubNav
             ariaLabel="Exhibition dates"

@@ -134,12 +134,12 @@ export function MarketingArtistDirectory({
         query.cursor || nextCursor ? (
           <nav aria-label="Pages" className="flex flex-wrap items-center justify-center gap-3 pt-4">
             {query.cursor ? (
-              <Button asChild variant="outline" className="min-h-11">
+              <Button asChild variant="secondaryOutline">
                 <Link href={marketingArtistDirectoryHref(basePath, query)}>First page</Link>
               </Button>
             ) : null}
             {nextCursor ? (
-              <Button asChild variant="outline" className="min-h-11">
+              <Button asChild variant="secondaryOutline">
                 <Link href={marketingArtistDirectoryHref(basePath, query, { cursor: nextCursor })}>
                   Next page
                 </Link>

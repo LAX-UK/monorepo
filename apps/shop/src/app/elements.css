@@ -2,19 +2,15 @@
    Imported after the shared marketing styles so these rules set the Shop look for shared
    components too. Tokens live in base.css. */
 
+/* Labels are sentence case, as on lax.art. */
+@import "@auction/marketing-ui/marketing-sentence-case.css";
+
 /* Type roles: Montserrat for page titles and section headings, Outfit for everything else. */
 @layer base {
   h1,
   h2 {
     font-family: var(--font-headline);
   }
-}
-
-/* Labels are sentence case. Shared marketing components carry all-caps label utilities for
-   LAX Bid; Shop renders their text as written, with normal tracking. */
-.uppercase {
-  text-transform: none;
-  letter-spacing: normal;
 }
 
 /* Catalogue filter group titles and footer column titles read as labels, not eyebrows. */

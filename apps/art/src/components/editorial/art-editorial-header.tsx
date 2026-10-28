@@ -20,11 +20,7 @@ export function ArtEditorialHeader({
   return (
     <header className="flex flex-col gap-6">
       <div className="flex max-w-3xl flex-col gap-3">
-        {kicker ? (
-          <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking)] text-on-surface-variant">
-            {kicker}
-          </p>
-        ) : null}
+        {kicker ? <p className="font-label text-xs text-on-surface-variant">{kicker}</p> : null}
         <h1 className="font-headline text-[length:var(--text-display-md,2.5rem)] font-semibold leading-tight tracking-tight text-on-surface">
           {title}
         </h1>

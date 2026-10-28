@@ -99,16 +99,16 @@ export function ArtAnalyticsConsent({
             <div className="flex shrink-0 gap-2">
               <Button
                 type="button"
-                variant="outline"
-                className="min-h-11 flex-1 font-label sm:flex-none"
+                variant="secondaryOutline"
+                className="flex-1 sm:flex-none"
                 onClick={() => decide("denied")}
               >
                 Reject
               </Button>
               <Button
                 type="button"
-                variant="outline"
-                className="min-h-11 flex-1 font-label sm:flex-none"
+                variant="secondaryOutline"
+                className="flex-1 sm:flex-none"
                 onClick={() => decide("granted")}
               >
                 Accept

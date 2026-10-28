@@ -26,6 +26,17 @@ export const BRAND_SURFACES = {
   paperOnDark: "#1a1b1a",
 } as const;
 
+/**
+ * The edge of a text field, select or search box in every product: 3:1 or more (WCAG 1.4.11)
+ * against each product's page, surface and container tints, light and dark, so a field that has
+ * no other boundary is always visible. CSS: `--brand-field-edge` and `--brand-field-edge-on-dark`
+ * in `brand-primitives.css`, which each product maps to `--color-input-border`.
+ */
+export const BRAND_FIELD_EDGE = {
+  light: "#808080",
+  onDark: "#858585",
+} as const;
+
 export const BRAND_FONTS = {
   /** Primary typeface — headlines, body, labels */
   primary: "Montserrat",

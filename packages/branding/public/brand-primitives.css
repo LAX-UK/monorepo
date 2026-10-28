@@ -15,6 +15,11 @@
      it to --color-surface-paper. */
   --brand-paper: #f6f4ee;
   --brand-paper-on-dark: #1a1b1a;
+  /* Edge of a text field, select or search box: 3:1 or more on every product's page, surface and
+     container tints (BRAND_FIELD_EDGE in brand-identity.ts). Products map it to
+     --color-input-border. */
+  --brand-field-edge: #808080;
+  --brand-field-edge-on-dark: #858585;
   --brand-accent-gold: #d4af37;
   --brand-ink: #191919;
   /* Status text and glyphs on the info, warning and danger tints (status pills), 4.5:1 or more

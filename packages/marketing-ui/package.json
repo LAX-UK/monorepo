@@ -9,7 +9,8 @@
       "default": "./dist/index.js"
     },
     "./marketing-ui.css": "./src/marketing-ui.css",
-    "./marketing-header.css": "./src/marketing-header.css"
+    "./marketing-header.css": "./src/marketing-header.css",
+    "./marketing-sentence-case.css": "./src/marketing-sentence-case.css"
   },
   "scripts": {
     "build": "tsc -p tsconfig.json",

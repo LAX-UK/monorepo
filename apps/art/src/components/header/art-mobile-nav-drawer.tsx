@@ -19,11 +19,10 @@ import Link from "next/link";
  */
 const NO_SECTIONS: readonly MarketingMegaNavSection[] = [];
 
-const SECTION_LABEL =
-  "font-label text-xs font-semibold uppercase tracking-wide text-on-surface-variant";
+const SECTION_LABEL = "font-label text-xs font-semibold text-on-surface-variant";
 
 const ROW_LINK = cn(
-  "flex min-h-11 w-full items-center rounded-sm font-label text-sm font-medium uppercase tracking-wide transition-colors motion-reduce:transition-none",
+  "flex min-h-11 w-full items-center rounded-sm font-label text-sm font-medium transition-colors motion-reduce:transition-none",
   FOCUS_RING,
 );
 

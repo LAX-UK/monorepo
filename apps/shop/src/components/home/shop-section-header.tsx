@@ -21,7 +21,6 @@ export function ShopSectionHeader({
   return (
     <MarketingSectionHeader
       className="shop-home__section-header"
-      headingBlockClassName="shop-home__section-heading-block"
       subtitleClassName="shop-home__section-subtitle"
       heading={
         <DisplayHeading as="h2" id={headingId} size="sm" className="shop-home__section-title">

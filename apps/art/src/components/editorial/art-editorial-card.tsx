@@ -3,6 +3,7 @@ import { ArtMediaImage } from "@/components/media/art-media-image";
 import type { EditorialCardVm } from "@/lib/editorial/editorial-card.vm";
 import {
   MarketingCardReveal,
+  MarketingCardRow,
   MarketingEditorialCard,
   type MarketingEditorialCardProps,
 } from "@auction/marketing-ui";
@@ -10,13 +11,16 @@ import {
 type ArtEditorialCardProps = {
   card: EditorialCardVm;
   priority?: boolean;
-  /** `wide` is for a lead that spans the content width. */
+  /** `wide` is for a lead that spans the content width above other cards. */
   aspect?: Extract<MarketingEditorialCardProps["aspect"], "landscape" | "wide">;
+  /** `split` for a card alone in its row: media and text side by side. */
+  layout?: MarketingEditorialCardProps["layout"];
 };
 
 const SIZES = {
   landscape: "(min-width: 64rem) 30vw, (min-width: 40rem) 45vw, 100vw",
   wide: "(min-width: 90rem) 1360px, 100vw",
+  split: "(min-width: 48rem) 55vw, 100vw",
 } as const;
 
 /**
@@ -27,11 +31,13 @@ export function ArtEditorialCard({
   card,
   priority = false,
   aspect = "landscape",
+  layout = "stacked",
 }: ArtEditorialCardProps) {
   return (
     <MarketingEditorialCard
       data-testid="art-editorial-card"
       aspect={aspect}
+      layout={layout}
       href={card.href}
       linkAs={ArtEditorialLink}
       title={card.headline}
@@ -42,7 +48,7 @@ export function ArtEditorialCard({
           src={card.imageUrl}
           alt=""
           label={card.kicker ?? "lax.art"}
-          sizes={SIZES[aspect]}
+          sizes={layout === "split" ? SIZES.split : SIZES[aspect]}
           priority={priority}
           className="absolute inset-0 size-full"
           imgClassName="object-cover"
@@ -52,6 +58,10 @@ export function ArtEditorialCard({
   );
 }
 
+/**
+ * Editorial cards in a row that recomposes for its count: one card spans the width with a wide
+ * image, two sit side by side, three or more fill the grid.
+ */
 export function ArtEditorialCardGrid({
   cards,
   ariaLabel,
@@ -62,14 +72,19 @@ export function ArtEditorialCardGrid({
   priorityCount?: number;
 }) {
   return (
-    <ul className="grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3" aria-label={ariaLabel}>
-      {cards.map((card, index) => (
-        <li key={card.key}>
-          <MarketingCardReveal index={index}>
-            <ArtEditorialCard card={card} priority={index < priorityCount} />
-          </MarketingCardReveal>
-        </li>
-      ))}
-    </ul>
+    <MarketingCardRow
+      aria-label={ariaLabel}
+      items={cards}
+      getKey={(card) => card.key}
+      renderItem={(card, layout, index) => (
+        <MarketingCardReveal index={index}>
+          <ArtEditorialCard
+            card={card}
+            layout={layout === "feature" ? "split" : "stacked"}
+            priority={index < priorityCount}
+          />
+        </MarketingCardReveal>
+      )}
+    />
   );
 }

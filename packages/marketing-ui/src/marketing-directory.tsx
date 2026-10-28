@@ -95,7 +95,7 @@ export function MarketingDirectorySearch({
           defaultValue={defaultValue ?? ""}
           placeholder={placeholder}
           autoComplete="off"
-          className="h-11 min-w-0 flex-1 rounded-md border border-outline bg-surface px-4 text-base md:text-base"
+          className="h-11 min-w-0 flex-1 rounded-md border border-input-border bg-surface px-4 text-base md:text-base"
         />
         <Button type="submit" className="h-11 shrink-0 px-5 sm:px-8">
           Search

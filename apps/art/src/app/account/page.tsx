@@ -25,7 +25,13 @@ export default async function ArtAccountOverviewPage() {
               <AlertDescription className="flex flex-wrap items-center justify-between gap-3">
                 <p>{vm.banner.description}</p>
                 {vm.banner.action ? (
-                  <Button asChild variant="outline" className="min-h-11 bg-transparent">
+                  // On the inverse banner the secondary takes the banner's text colour for its
+                  // label and edge, so it stays legible in both themes.
+                  <Button
+                    asChild
+                    variant="secondaryOutline"
+                    className="border-current text-current hover:bg-[color-mix(in_srgb,currentColor_14%,transparent)] active:bg-[color-mix(in_srgb,currentColor_22%,transparent)]"
+                  >
                     <a href={vm.banner.action.href}>{vm.banner.action.label}</a>
                   </Button>
                 ) : null}

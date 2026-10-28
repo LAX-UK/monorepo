@@ -2,6 +2,8 @@
 @import "@auction/branding/brand-primitives.css" layer(base);
 @import "@auction/marketing-ui/marketing-ui.css";
 @import "@auction/marketing-ui/marketing-header.css" layer(base);
+/* Labels, tabs, buttons and navigation are sentence case on lax.art, as on Shop. */
+@import "@auction/marketing-ui/marketing-sentence-case.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
@@ -85,8 +87,10 @@
   --color-cta-bg: var(--color-brand-obsidian);
   --color-cta-on: var(--color-brand-light-cream);
   --color-border-hairline: color-mix(in srgb, var(--color-brand-light-gray) 60%, white);
-  /* Edge of a text field: 3.45:1 on white (WCAG 1.4.11), the same value LAX Account uses. */
-  --color-input-border: #8a8a8a;
+  /* Edge of a text field and of a secondary button: the shared field edge, 3:1 or more on every
+     surface (WCAG 1.4.11). */
+  --color-input-border: var(--brand-field-edge);
+  --color-button-secondary-border: var(--color-input-border);
 
   /* shadcn/ui variable bridge — selective @auction/ui on account and commerce flows */
   --color-foreground: var(--color-on-surface);
@@ -137,10 +141,13 @@
   --text-display-sm: clamp(1.125rem, 2vw, 1.375rem);
   /* Figma section title: Montserrat Medium 40/48 at 1440 (DM Sans in the file is set in Montserrat). */
   --text-title-section: clamp(1.5rem, 2.8vw, 2.5rem);
-  --text-label-caps-tracking: 0.22em;
+  /* Labels are sentence case with normal tracking (marketing-sentence-case.css). */
+  --text-label-caps-tracking: normal;
+  /* Montserrat is the display face (page titles and section headings). Outfit is the interface
+     face: body, controls, labels, navigation, meta and prices. */
   --font-headline: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
-  --font-label: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-label: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   --font-supporting: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
 
   /* Same motion as the Shop home hero (apps/shop/src/app/home.css). */
@@ -208,6 +215,14 @@ body {
   background: var(--color-page-bg);
   color: var(--color-on-surface);
   font-family: var(--font-body);
+}
+
+/* Type roles: Montserrat for page titles and section headings, Outfit for everything else. */
+@layer base {
+  h1,
+  h2 {
+    font-family: var(--font-headline);
+  }
 }
 
 .art-focus-ring:focus-visible {
@@ -311,8 +326,7 @@ html.dark {
   --color-link: var(--color-brand-light-cream);
   --color-ring: var(--color-brand-light-cream);
   --color-border-hairline: color-mix(in srgb, var(--color-outline-variant) 40%, transparent);
-  /* 3.9:1 on the dark page, the same value LAX Account uses. */
-  --color-input-border: #73736f;
+  --color-input-border: var(--brand-field-edge-on-dark);
   --color-footer-bg: #0d0f0f;
   --color-nav-border: #333534;
   --color-nav-text: var(--color-brand-light-cream);

@@ -1,0 +1,55 @@
+import { describe, expect, it } from "vitest";
+import {
+  marketingFeatureGridLayout,
+  marketingFeatureGridRole,
+  marketingRailHasEnough,
+  marketingRowLayout,
+} from "./marketing-row-layout.js";
+
+describe("marketingRowLayout", () => {
+  it.each([
+    [0, null],
+    [1, "feature"],
+    [2, "pair"],
+    [3, "grid"],
+    [9, "grid"],
+  ] as const)("composes %i items as %s", (count, layout) => {
+    expect(marketingRowLayout(count)).toBe(layout);
+  });
+});
+
+describe("marketingRailHasEnough", () => {
+  it("needs three items for a rail", () => {
+    expect(marketingRailHasEnough(2)).toBe(false);
+    expect(marketingRailHasEnough(3)).toBe(true);
+  });
+});
+
+describe("marketingFeatureGridLayout", () => {
+  it.each([
+    ["lead-plus-row", 1, "feature"],
+    ["lead-plus-row", 2, "pair"],
+    ["lead-plus-row", 3, "lead-plus-pair"],
+    ["lead-plus-row", 4, "lead-plus-row"],
+    ["lead-plus-stack", 1, "feature"],
+    ["lead-plus-stack", 2, "pair"],
+    ["lead-plus-stack", 3, "lead-plus-stack"],
+  ] as const)("%s with %i items is %s", (variant, count, layout) => {
+    expect(marketingFeatureGridLayout(variant, count)).toBe(layout);
+  });
+
+  it("hides an empty grid", () => {
+    expect(marketingFeatureGridLayout("lead-plus-row", 0)).toBeNull();
+  });
+});
+
+describe("marketingFeatureGridRole", () => {
+  it("gives the first item the wide role unless it leads a stack or sits in a pair", () => {
+    expect(marketingFeatureGridRole("feature", 0)).toBe("solo");
+    expect(marketingFeatureGridRole("lead-plus-pair", 0)).toBe("feature");
+    expect(marketingFeatureGridRole("lead-plus-row", 0)).toBe("feature");
+    expect(marketingFeatureGridRole("lead-plus-stack", 0)).toBe("lead");
+    expect(marketingFeatureGridRole("pair", 0)).toBe("item");
+    expect(marketingFeatureGridRole("lead-plus-row", 2)).toBe("item");
+  });
+});

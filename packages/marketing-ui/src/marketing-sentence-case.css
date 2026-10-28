@@ -1,0 +1,8 @@
+/* Sentence case for products whose interface never shouts (LAX Shop, lax.art). Shared marketing
+   components carry all-caps label utilities for LAX Bid; these products render the text as
+   written, with normal tracking. Import it unlayered, after Tailwind, so it wins over the
+   utilities. */
+.uppercase {
+  text-transform: none;
+  letter-spacing: normal;
+}

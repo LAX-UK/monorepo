@@ -69,7 +69,7 @@ export function ArtVenueLocation({
     <div className="flex flex-col items-start gap-8">
       <MarketingFactColumns ariaLabel="Venue details" layout="list" facts={facts} />
       {mapsHref ? (
-        <Button asChild variant="outline" size="lg" className="min-h-11 rounded-md">
+        <Button asChild variant="secondaryOutline" size="lg">
           <a href={mapsHref} target="_blank" rel="noreferrer noopener">
             View on Google Maps
             <span className="sr-only"> (opens in a new tab)</span>

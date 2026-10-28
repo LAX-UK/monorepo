@@ -47,9 +47,10 @@
   --color-product-shop: #5a2a5c;
   --color-product-art: var(--color-on-surface);
   --color-product-account: var(--color-product-accent);
-  /* Edge of a text field or select: 3.45:1 on white and 3.11:1 on the low surface, so the field
-     clears WCAG 1.4.11 without outweighing the hairline buttons beside it. */
-  --color-control-border: #8a8a8a;
+  /* Edge of a text field or select: the shared field edge, 3:1 or more on every surface, so the
+     field clears WCAG 1.4.11. The shared kit's fields read it as --color-input-border. */
+  --color-control-border: var(--brand-field-edge);
+  --color-input-border: var(--color-control-border);
   --color-surface-container: #eeeeee;
   --color-surface-container-low: #f3f3f3;
   --color-surface-container-lowest: #ffffff;
@@ -102,8 +103,7 @@ html.dark {
   --color-product-bid: var(--brand-midnight-on-dark);
   /* Light aubergine (PRODUCT_ACCENTS_ON_DARK.shop): 9.2:1 on #121414, 5.7:1 on #383a39. */
   --color-product-shop: #d6a8d4;
-  /* 3.60:1 on the dark surface. */
-  --color-control-border: #73736f;
+  --color-control-border: var(--brand-field-edge-on-dark);
   --color-surface-container: #333534;
   --color-surface-container-low: #2d2f2e;
   --color-surface-container-lowest: #0f1111;

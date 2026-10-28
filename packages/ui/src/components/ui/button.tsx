@@ -37,9 +37,13 @@ const buttonVariants = cva(
           "border border-outline-variant/25 bg-surface-container-lowest shadow-sm hover:bg-surface-container-low",
         secondary:
           "bg-secondary-container text-on-secondary-container shadow-sm hover:bg-[color-mix(in_srgb,var(--color-secondary-container)_88%,var(--color-on-secondary-container))] active:bg-[color-mix(in_srgb,var(--color-secondary-container)_78%,var(--color-on-secondary-container))]",
-        /** Bordered label-caps secondary (legacy app Button). */
+        /**
+         * The secondary action: a 1px edge, no fill and no shadow, so it sits on a page or a tinted
+         * band alike. The edge is the product's `--color-button-secondary-border` (lax.art uses its
+         * 3:1 field edge), falling back to the hairline. Hover and pressed tint the fill.
+         */
         secondaryOutline:
-          "rounded-md border border-border-hairline bg-transparent font-label font-semibold text-on-surface hover:bg-surface-container-low",
+          "rounded-md border border-[color:var(--color-button-secondary-border,var(--color-border-hairline))] bg-transparent font-label font-semibold text-on-surface shadow-none hover:bg-surface-container-low active:bg-surface-container",
         ghost: "hover:bg-surface-container-high hover:text-on-surface",
         link: "text-primary underline-offset-4 hover:underline",
         /** Text link with underline-on-hover (legacy app tertiary). */

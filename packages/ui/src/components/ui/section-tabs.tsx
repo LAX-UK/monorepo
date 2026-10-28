@@ -81,7 +81,7 @@ export function SectionTabs<Id extends string>({
 
   const inner =
     variant === "pill" ? (
-      <div className="flex min-w-max items-center gap-2">{renderItems()}</div>
+      <div className="flex min-w-[max-content] items-center gap-2">{renderItems()}</div>
     ) : (
       renderItems()
     );

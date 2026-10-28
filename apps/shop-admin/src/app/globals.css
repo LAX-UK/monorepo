@@ -14,6 +14,8 @@
    navy stays Bid's accent. Each value is a light/dark pair (see @auction/staff-ui/theme.css), so
    pages not yet on the staff kit follow the theme too. */
 @theme {
+  /* Shared @auction/ui fields draw their edge in this token: the staff control border (3:1). */
+  --color-input-border: var(--color-staff-control-border);
   --color-page-bg: light-dark(#f6f5f2, #111313);
   --color-background: light-dark(#ffffff, #181a1a);
   --color-surface: light-dark(#ffffff, #181a1a);

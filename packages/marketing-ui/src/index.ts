@@ -489,6 +489,23 @@ export {
   type MarketingFeatureGridProps,
   type MarketingFeatureGridVariant,
 } from "./marketing-feature-grid.js";
+export { MarketingCardRow, type MarketingCardRowProps } from "./marketing-card-row.js";
+export {
+  MARKETING_RAIL_MIN_ITEMS,
+  MARKETING_ROW_LAYOUT_CLASS,
+  type MarketingFeatureGridLayout,
+  type MarketingFeatureGridRole,
+  type MarketingRowLayout,
+  marketingFeatureGridLayout,
+  marketingFeatureGridRole,
+  marketingRailHasEnough,
+  marketingRowLayout,
+} from "./marketing-row-layout.js";
+export {
+  type MarketingBandSection,
+  type MarketingSectionSurface,
+  resolveBandSequence,
+} from "./marketing-band-sequence.js";
 export { MarketingFeatureCard, type MarketingFeatureCardProps } from "./marketing-feature-card.js";
 export { MarketingStepCard, type MarketingStepCardProps } from "./marketing-step-card.js";
 export {

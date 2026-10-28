@@ -97,7 +97,12 @@ export function MarketingShareButton({
       <output className="sr-only" aria-live="polite">
         {liveMessage}
       </output>
-      <Button type="button" variant="outline" className={className} onClick={() => void share()}>
+      <Button
+        type="button"
+        variant="secondaryOutline"
+        className={className}
+        onClick={() => void share()}
+      >
         <MarketingShareIcon className="size-4" />
         {triggerLabel}
       </Button>

@@ -10,6 +10,18 @@ const ASPECT_CLASS = {
   wide: "aspect-[21/10]",
 } as const;
 
+/**
+ * `stacked` puts the text under the media. `split` puts them side by side from `md` (media 7, text
+ * 5), for a card that is alone in its row and would otherwise be one very large image.
+ */
+const LAYOUT_CLASS = {
+  stacked: { card: "flex h-full flex-col gap-4", text: "flex flex-col gap-4" },
+  split: {
+    card: "flex h-full flex-col gap-4 md:grid md:grid-cols-[7fr_5fr] md:items-center md:gap-12",
+    text: "flex flex-col gap-4",
+  },
+} as const;
+
 type EditorialCardLinkProps = { href: string; className?: string; children: ReactNode };
 
 export type MarketingEditorialCardProps = {
@@ -20,6 +32,7 @@ export type MarketingEditorialCardProps = {
    * `wide` 21:10 for a full-width lead (Figma `285:3008`, drawn about 1200×568).
    */
   aspect?: "landscape" | "portrait" | "wide";
+  layout?: keyof typeof LAYOUT_CLASS;
   /** Uppercase parts divided by a rule, e.g. ["Exhibition", "London"] or ["Article", "16 Apr 2026"]. */
   kicker?: readonly string[];
   title: string;
@@ -41,6 +54,7 @@ export type MarketingEditorialCardProps = {
 export function MarketingEditorialCard({
   media,
   aspect = "landscape",
+  layout = "stacked",
   kicker = [],
   title,
   details = [],
@@ -50,55 +64,68 @@ export function MarketingEditorialCard({
   "data-testid": testId,
 }: MarketingEditorialCardProps) {
   return (
-    <article className="group relative flex h-full flex-col gap-4" data-testid={testId}>
+    <article
+      className={cn("group relative", LAYOUT_CLASS[layout].card)}
+      data-layout={layout}
+      data-testid={testId}
+    >
       <MarketingCardMedia className={cn("bg-surface-container", ASPECT_CLASS[aspect])}>
         {media}
       </MarketingCardMedia>
-      <div className="flex flex-col gap-1">
-        {kicker.length > 0 ? (
-          <p className="flex flex-wrap items-center font-label text-xs uppercase leading-[1.125rem] text-on-surface-variant">
-            {kicker.map((part, index) => (
-              <span
-                key={part}
-                className={cn(
-                  index > 0 && "pl-3",
-                  index < kicker.length - 1 && "border-r border-current pr-3",
-                )}
-              >
-                {part}
-              </span>
-            ))}
-          </p>
-        ) : null}
-        <div className="flex items-start gap-4">
-          <h3 className="min-w-0 flex-1 font-headline text-lg font-medium leading-7 text-on-surface md:text-xl">
-            {href ? (
-              <LinkComponent
-                href={href}
-                className={cn(
-                  "rounded-sm underline-offset-4 after:absolute after:inset-0 group-hover:underline",
-                  FOCUS_RING,
-                )}
-              >
-                {title}
-              </LinkComponent>
-            ) : (
-              title
-            )}
-          </h3>
-          {trailing ? <div className="relative z-[1] -mt-2 shrink-0">{trailing}</div> : null}
-        </div>
-      </div>
-      {details.length > 0 ? (
-        <div className="flex flex-col gap-1 text-sm text-on-surface-variant">
-          {details.map((line, index) => (
-            // biome-ignore lint/suspicious/noArrayIndexKey: detail lines are positional.
-            <p key={index} className="line-clamp-2">
-              {line}
+      <div className={LAYOUT_CLASS[layout].text}>
+        <div className="flex flex-col gap-1">
+          {kicker.length > 0 ? (
+            <p className="flex flex-wrap items-center font-label text-xs uppercase leading-[1.125rem] text-on-surface-variant">
+              {kicker.map((part, index) => (
+                <span
+                  key={part}
+                  className={cn(
+                    index > 0 && "pl-3",
+                    index < kicker.length - 1 && "border-r border-current pr-3",
+                  )}
+                >
+                  {part}
+                </span>
+              ))}
             </p>
-          ))}
+          ) : null}
+          <div className="flex items-start gap-4">
+            <h3
+              className={cn(
+                "min-w-0 flex-1 font-headline font-medium text-on-surface",
+                layout === "split"
+                  ? "text-xl leading-7 md:text-[1.75rem] md:leading-tight"
+                  : "text-lg leading-7 md:text-xl",
+              )}
+            >
+              {href ? (
+                <LinkComponent
+                  href={href}
+                  className={cn(
+                    "rounded-sm underline-offset-4 after:absolute after:inset-0 group-hover:underline",
+                    FOCUS_RING,
+                  )}
+                >
+                  {title}
+                </LinkComponent>
+              ) : (
+                title
+              )}
+            </h3>
+            {trailing ? <div className="relative z-[1] -mt-2 shrink-0">{trailing}</div> : null}
+          </div>
         </div>
-      ) : null}
+        {details.length > 0 ? (
+          <div className="flex flex-col gap-1 text-sm text-on-surface-variant">
+            {details.map((line, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: detail lines are positional.
+              <p key={index} className="line-clamp-2">
+                {line}
+              </p>
+            ))}
+          </div>
+        ) : null}
+      </div>
     </article>
   );
 }
