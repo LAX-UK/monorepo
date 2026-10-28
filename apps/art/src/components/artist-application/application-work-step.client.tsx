@@ -19,9 +19,9 @@ import {
 } from "@auction/marketing-ui";
 import type { MyArtistApplication } from "@auction/shop-contracts";
 import { ARTIST_APPLICATION_LIMITS, type ArtistApplicationWorkKind } from "@auction/shop-domain";
-import { RadioGroup, RadioGroupItem, cn } from "@auction/ui";
+import { FileUploadTrigger, RadioGroup, RadioGroupItem, cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { type DragEvent, useId, useRef, useState } from "react";
+import { type DragEvent, useId, useState } from "react";
 import { ApplicationTextField } from "./application-fields";
 import { useApplicationUploads } from "./use-application-uploads.client";
 
@@ -191,7 +191,6 @@ export function ApplicationWorkStep({
   onRemove: (index: number) => void;
   onUploaded: (application: MyArtistApplication) => void;
 }) {
-  const inputRef = useRef<HTMLInputElement>(null);
   const hintId = useId();
   const [dragging, setDragging] = useState(false);
   const { uploads, busy, add, dismiss } = useApplicationUploads({
@@ -212,8 +211,10 @@ export function ApplicationWorkStep({
   return (
     <div className="flex flex-col gap-8">
       <div
+        id={applicationFieldId("works")}
+        tabIndex={-1}
         className={cn(
-          "flex flex-col items-center gap-4 border border-dashed px-6 py-10 text-center transition-colors",
+          "flex flex-col items-center gap-4 border border-dashed px-6 py-10 text-center outline-none transition-colors",
           dragging ? "border-on-surface bg-surface-container-low" : "border-input-border",
           countError && "border-error",
         )}
@@ -234,33 +235,19 @@ export function ApplicationWorkStep({
             choose them from your device.
           </p>
         </div>
-        <input
-          ref={inputRef}
-          type="file"
+        <FileUploadTrigger
           accept={ARTIST_APPLICATION_IMAGE_ACCEPT}
           multiple
-          className="sr-only"
-          tabIndex={-1}
-          aria-hidden
-          onChange={(event) => {
-            const files = Array.from(event.target.files ?? []);
-            event.target.value = "";
-            if (files.length > 0) void add(files);
-          }}
-        />
-        <Button
-          id={applicationFieldId("works")}
-          type="button"
-          variant="outline"
-          size="lg"
-          className="min-h-11 gap-2 font-label"
           disabled={full}
-          aria-describedby={hintId}
-          onClick={() => inputRef.current?.click()}
+          busy={busy}
+          describedById={hintId}
+          dropzoneAriaLabel="Choose images of your work"
+          onFilesSelected={(files) => void add(Array.from(files))}
+          className="justify-items-center [&>button]:min-h-11 [&>button]:gap-2 [&>button]:px-6 [&>button]:font-label"
         >
           {busy ? <MarketingSpinnerIcon className="size-4" /> : null}
           {busy ? "Uploading…" : "Choose images"}
-        </Button>
+        </FileUploadTrigger>
       </div>
 
       <p

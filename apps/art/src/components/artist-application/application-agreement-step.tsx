@@ -8,6 +8,7 @@ import {
 } from "@/lib/artist-application/artist-application-form";
 import { MarketingFormField } from "@auction/marketing-ui";
 import type { ArtistApplicationStep } from "@auction/shop-domain";
+import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import Link from "next/link";
 
@@ -84,13 +85,15 @@ export function ApplicationAgreementStep({
               <h3 className="m-0 font-headline text-lg font-medium text-on-surface">
                 {step.label}
               </h3>
-              <button
+              <Button
                 type="button"
-                className="art-focus-ring min-h-11 rounded-sm px-1 font-label text-sm font-medium text-on-surface underline underline-offset-4 hover:decoration-2"
+                variant="underline"
+                size="inline"
+                className="px-1 text-sm font-medium"
                 onClick={() => onEditStep(step.id)}
               >
                 Change<span className="sr-only"> {step.label.toLowerCase()}</span>
-              </button>
+              </Button>
             </div>
             <div>
               <dl className="m-0 grid gap-2 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-x-6">

@@ -328,14 +328,16 @@ export function ArtistApplicationForm({
       />
 
       <div className="-mt-4 flex justify-center">
-        <button
+        <Button
           type="button"
-          className="art-focus-ring min-h-11 rounded-sm px-2 font-label text-sm text-on-surface-variant underline underline-offset-4 hover:text-on-surface disabled:cursor-not-allowed"
+          variant="underline"
+          size="inline"
+          className="px-2 text-sm font-medium text-on-surface-variant hover:text-on-surface"
           onClick={() => void saveForLater()}
           disabled={pending}
         >
           Save and finish later
-        </button>
+        </Button>
       </div>
     </div>
   );
