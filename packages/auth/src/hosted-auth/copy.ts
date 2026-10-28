@@ -27,7 +27,7 @@ export const HOSTED_COPY = {
     },
     signUp: {
       alone: "Create an account once and use it across LAX.",
-      toProduct: "Create an account once to continue to",
+      toProduct: "Create your account to continue to",
     },
   },
   /**

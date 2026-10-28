@@ -12,8 +12,8 @@ describe("leadWithDestination", () => {
     ["signIn", "lax-art-web", "Sign in with your LAX Account to continue to lax.art."],
     ["signIn", "lax-account-web", "Sign in with your LAX Account."],
     ["signUp", null, "Create an account once and use it across LAX."],
-    ["signUp", "lax-bid-web", "Create an account once to continue to LAX Bid."],
-    ["signUp", "lax-art-web", "Create an account once to continue to lax.art."],
+    ["signUp", "lax-bid-web", "Create your account to continue to LAX Bid."],
+    ["signUp", "lax-art-web", "Create your account to continue to lax.art."],
   ] as const)("%s from %s reads %s", (key, clientId, text) => {
     expect(textOf(leadWithDestination(key, selectHostedBrand(clientId).chip))).toBe(text);
   });

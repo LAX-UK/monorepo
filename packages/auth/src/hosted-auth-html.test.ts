@@ -451,7 +451,7 @@ describe("sign-up agreement and links", () => {
 
   it("merges the destination into the sign-up lead", () => {
     const shop = buildHostedSignUpHtml(hostedAuthViewFromSearch(shopSearch, shopCapabilities));
-    expect(textOf(shop)).toContain("Create an account once to continue to LAX Shop.");
+    expect(textOf(shop)).toContain("Create your account to continue to LAX Shop.");
     expect(shop).not.toContain('class="destination"');
     expect(textOf(buildHostedSignUpHtml())).toContain(
       "Create an account once and use it across LAX.",
