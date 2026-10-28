@@ -1,17 +1,13 @@
-import { venueMapsHref } from "@/lib/editorial/venue.vm";
 import type { ArtGeneralEnquiryTopic } from "@/lib/enquiry/submit-general-enquiry";
 import { GALLERY_CONTACT } from "@auction/branding";
+import {
+  type MarketingGalleryContact,
+  type MarketingGalleryTeamDetail,
+  marketingGalleryContactDetails,
+} from "@auction/marketing-ui";
 
 /** How visitors reach the gallery; `openingHours` is null when a contact has no published hours. */
-export type ArtGalleryContact = {
-  streetLine: string;
-  city: string;
-  postcode: string;
-  phone: string;
-  phoneHref: string;
-  email: string;
-  openingHours: string | null;
-};
+export type ArtGalleryContact = MarketingGalleryContact;
 
 /** Where the band closes a page; each place has its own invitation and enquiry topic. */
 export type ArtGalleryTeamContext =
@@ -28,11 +24,7 @@ export type ArtGalleryTeamContext =
 /** The work, exhibition, venue or page the enquiry is about, carried into the enquiry. */
 export type ArtGalleryTeamSubject = { slug: string; label: string };
 
-export type ArtGalleryTeamDetail = {
-  kind: "phone" | "email" | "address" | "hours";
-  text: string;
-  href?: string;
-};
+export type ArtGalleryTeamDetail = MarketingGalleryTeamDetail;
 
 export type ArtGalleryTeamVm = {
   eyebrow: string;
@@ -119,27 +111,6 @@ const REPLY_PROMISE = "We reply within one working day.";
 /** The same view of the gallery as LAX Shop's band, so both read as one place. */
 const GALLERY_IMAGE = "/art/gallery-team/gallery.webp";
 
-function directLines(contact: ArtGalleryContact): ArtGalleryTeamDetail[] {
-  const mapHref = venueMapsHref({
-    streetLine: contact.streetLine,
-    city: contact.city,
-    postcode: contact.postcode,
-    address: null,
-    mapUrl: null,
-  });
-  const hours = contact.openingHours?.trim();
-  return [
-    { kind: "phone", text: contact.phone, href: contact.phoneHref },
-    { kind: "email", text: contact.email, href: `mailto:${contact.email}` },
-    {
-      kind: "address",
-      text: `${contact.streetLine}, ${contact.city} ${contact.postcode}`,
-      ...(mapHref ? { href: mapHref } : {}),
-    },
-    ...(hours ? [{ kind: "hours" as const, text: hours }] : []),
-  ];
-}
-
 /**
  * The gallery team band for one place on lax.art: its invitation, the one enquiry action (with
  * the topic and subject carried into the enquiry), and the gallery's direct lines.
@@ -157,7 +128,7 @@ export function buildArtGalleryTeam(input: {
     body: copy.body,
     note: REPLY_PROMISE,
     imageUrl: GALLERY_IMAGE,
-    details: copy.directLines ? directLines(contact) : [],
+    details: copy.directLines ? marketingGalleryContactDetails(contact) : [],
     enquiry: { label: ENQUIRY_LABEL, topic: copy.topic, subject: input.subject ?? null },
   };
 }

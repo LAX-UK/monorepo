@@ -1,5 +1,9 @@
 import { MIN_COLLECTION_SIZE } from "@/lib/home/home-browse-paths";
 import {
+  type ShopSectionSurfaceRule,
+  resolveShopPageSections,
+} from "@/lib/layout/shop-page-sections";
+import {
   type ArtworkPurchaseVm,
   artworkIncludedItems,
   presentArtworkPurchase,
@@ -11,6 +15,7 @@ import {
   artworkSizeSummary,
   presentArtworkSpecs,
 } from "@/lib/presenters/artwork-specs.presenter";
+import type { MarketingSectionSurface } from "@auction/marketing-ui";
 import type {
   PublicArtistDetail,
   PublicArtworkDetail,
@@ -72,11 +77,41 @@ export type ArtworkProductPageVm = {
   artist: ArtworkArtistBlockVm;
   /** "More by {artist}", or "You might also like" when the artist has too few; null when thin. */
   related: ArtworkRelatedVm | null;
+  /** The surface each closing section renders on, so the two tinted bands never touch. */
+  closingSurfaces: Record<ArtworkClosingSectionId, MarketingSectionSurface>;
 };
+
+/** The sections after the buy column, in page order. */
+export type ArtworkClosingSectionId = "artist" | "related" | "gallery-team";
+
+/**
+ * The artist sits on the paper wall, but can stand on the plain page; the gallery team band is
+ * always tinted, so with no related row between them the artist gives way.
+ */
+const CLOSING_SECTION_SURFACE: Record<
+  ArtworkClosingSectionId,
+  ShopSectionSurfaceRule<ArtworkClosingSectionId>
+> = {
+  artist: { surface: "band", flexible: true },
+  related: { surface: "plain", flexible: false },
+  "gallery-team": { surface: "band", flexible: false },
+};
+
+/** Surfaces for the closing sections actually shown; the related row hides when it is thin. */
+export function resolveArtworkClosingSurfaces(input: {
+  hasRelated: boolean;
+}): Record<ArtworkClosingSectionId, MarketingSectionSurface> {
+  return resolveShopPageSections(CLOSING_SECTION_SURFACE, {
+    artist: true,
+    related: input.hasRelated,
+    "gallery-team": true,
+  }).surfaces;
+}
 
 export type ArtworkRelatedVm = {
   title: string;
-  viewAll: { label: string; href: string };
+  /** "View all", with where it leads for screen readers. */
+  viewAll: { srLabel: string; href: string };
   items: PublicArtworkSummary[];
 };
 
@@ -157,7 +192,7 @@ export function buildRelatedEditions(input: {
   if (byArtist.length >= MIN_RELATED_EDITIONS) {
     return {
       title: `More by ${artwork.artistName}`,
-      viewAll: { label: `View all editions by ${artwork.artistName}`, href: artistHref },
+      viewAll: { srLabel: `editions by ${artwork.artistName}`, href: artistHref },
       items: byArtist,
     };
   }
@@ -172,7 +207,7 @@ export function buildRelatedEditions(input: {
   if (items.length < MIN_RELATED_EDITIONS) return null;
   return {
     title: "You might also like",
-    viewAll: { label: "View all editions", href: "/artworks?availability=available" },
+    viewAll: { srLabel: "editions on sale", href: "/artworks?availability=available" },
     items,
   };
 }
@@ -193,6 +228,11 @@ export function buildArtworkProductPage(input: {
 }): ArtworkProductPageVm {
   const { artwork, artBaseUrl } = input;
   const artistSlug = encodeURIComponent(artwork.artistSlug);
+  const related = buildRelatedEditions({
+    artwork,
+    artistEditions: input.artistEditions,
+    otherEditions: input.otherEditions ?? [],
+  });
   return {
     slug: artwork.slug,
     title: artwork.title,
@@ -220,10 +260,7 @@ export function buildArtworkProductPage(input: {
       editionsLabel: `Editions by ${artwork.artistName}`,
       laxArtHref: artUrl(artBaseUrl, `/artists/${artistSlug}`),
     },
-    related: buildRelatedEditions({
-      artwork,
-      artistEditions: input.artistEditions,
-      otherEditions: input.otherEditions ?? [],
-    }),
+    related,
+    closingSurfaces: resolveArtworkClosingSurfaces({ hasRelated: related !== null }),
   };
 }

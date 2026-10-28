@@ -19,6 +19,8 @@ import {
   choosePriceBand,
 } from "@/lib/home/home-browse-paths";
 import type { HomePageComposerResult, HomeSectionKey } from "@/lib/home/home-page.composer";
+import { type HomeSectionId, resolveHomeSections } from "@/lib/home/home-sections";
+import type { ShopPageSections } from "@/lib/layout/shop-page-sections";
 import { legalEntityFor } from "@auction/branding";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import type { MarketingProductDoorVm } from "@auction/marketing-ui";
@@ -80,6 +82,8 @@ export type HomeArtistsVm = {
 };
 
 export type HomePageViewModel = {
+  /** The sections shown, in order, and the surface each renders on. */
+  layout: ShopPageSections<HomeSectionId>;
   hero: HomeHeroVm;
   trust: HomeTrustItemVm[];
   quickFilters: HomeQuickFilterVm[];
@@ -272,20 +276,35 @@ export function buildHomePageViewModel(
   const priceBand = choosePriceBand(input.priceBands, input.availableCount);
   const categories = chooseCollectionCategories(input.facets, priceBand ? 2 : 3);
 
+  const trust = buildHomeTrust(context);
+  const newEditions = buildNewEditions(input, releaseSlug);
+  const artists = buildArtists(input, context.artBaseUrl);
+  const collections = buildHomeCollections({
+    priceBand,
+    categories,
+    categoryCovers: input.categoryCovers,
+  });
+  const doors = buildShopProductDoors(context.productLinks);
+
   return {
-    hero,
-    trust: buildHomeTrust(context),
-    quickFilters: buildHomeQuickFilters({ facets: input.facets, priceBand }),
-    newEditions: buildNewEditions(input, releaseSlug),
-    story: input.story,
-    artists: buildArtists(input, context.artBaseUrl),
-    collections: buildHomeCollections({
-      priceBand,
-      categories,
-      categoryCovers: input.categoryCovers,
+    layout: resolveHomeSections({
+      trust: trust.length > 0,
+      // A failed read keeps the section, with its error state in place of the row.
+      "new-editions": newEditions !== null || Boolean(input.sectionErrors.editions),
+      story: input.story !== null,
+      artists: artists !== null,
+      collections: collections.length > 0,
+      "product-doors": doors.length > 0,
     }),
-    galleryTeam: buildGalleryTeam(),
-    doors: buildShopProductDoors(context.productLinks),
+    hero,
+    trust,
+    quickFilters: buildHomeQuickFilters({ facets: input.facets, priceBand }),
+    newEditions,
+    story: input.story,
+    artists,
+    collections,
+    galleryTeam: buildGalleryTeam({ context: "home" }),
+    doors,
     sectionErrors: input.sectionErrors,
   };
 }

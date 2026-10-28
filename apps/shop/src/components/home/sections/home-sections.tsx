@@ -1,6 +1,6 @@
 import { CatalogueGrid } from "@/components/catalogue-grid";
 import { ShopCatalogueState } from "@/components/home/shop-empty-state";
-import { ShopSectionHeader } from "@/components/home/shop-section-header";
+import { ShopSection } from "@/components/layout/shop-section";
 import { ShopMediaImage } from "@/components/media/shop-media-image";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { SHOP_HOME_CONTENT } from "@/content/home/shop-home-content";
@@ -26,15 +26,12 @@ export function NewEditionsSection({
   if (!editions && !errorMessage) return null;
   const copy = SHOP_HOME_CONTENT.newEditions;
   return (
-    <section className="shop-home__section" aria-labelledby="home-editions-heading">
-      <ShopSectionHeader
-        headingId="home-editions-heading"
-        title={copy.title}
-        subtitle={copy.subtitle}
-        {...(editions
-          ? { actionLabel: editions.viewAll.label, actionHref: editions.viewAll.href }
-          : {})}
-      />
+    <ShopSection
+      id="home-editions"
+      title={copy.title}
+      subtitle={copy.subtitle}
+      {...(editions ? { viewAll: editions.viewAll } : {})}
+    >
       {editions ? (
         <CatalogueGrid
           items={editions.items}
@@ -51,7 +48,7 @@ export function NewEditionsSection({
           browseLabel="Browse editions"
         />
       )}
-    </section>
+    </ShopSection>
   );
 }
 
@@ -98,23 +95,21 @@ export function HomeArtistsSection({ artists }: { artists: HomeArtistsVm | null 
   if (!artists) return null;
   const copy = SHOP_HOME_CONTENT.artists;
   return (
-    <section className="shop-home__section" aria-labelledby="home-artists-heading">
-      <ShopSectionHeader
-        headingId="home-artists-heading"
-        title={copy.title}
-        subtitle={
-          <>
-            {copy.subtitle}{" "}
-            {artists.laxArtHref ? (
-              <a href={artists.laxArtHref} className="shop-inline-link shop-focus-ring">
-                {copy.laxArtLabel}
-              </a>
-            ) : null}
-          </>
-        }
-        actionLabel="All artists"
-        actionHref="/artists"
-      />
+    <ShopSection
+      id="home-artists"
+      title={copy.title}
+      viewAll={{ href: "/artists", label: "All artists", srLabel: "with editions" }}
+      subtitle={
+        <>
+          {copy.subtitle}{" "}
+          {artists.laxArtHref ? (
+            <a href={artists.laxArtHref} className="shop-inline-link shop-focus-ring">
+              {copy.laxArtLabel}
+            </a>
+          ) : null}
+        </>
+      }
+    >
       <MarketingArtistGrid aria-label={copy.title} className="lg:grid-cols-4">
         {artists.cards.map((card) => (
           <MarketingArtistCard
@@ -141,7 +136,7 @@ export function HomeArtistsSection({ artists }: { artists: HomeArtistsVm | null 
           />
         ))}
       </MarketingArtistGrid>
-    </section>
+    </ShopSection>
   );
 }
 
@@ -178,17 +173,12 @@ export function HomeCollectionsSection({
   if (collections.length === 0) return null;
   const copy = SHOP_HOME_CONTENT.collections;
   return (
-    <section className="shop-home__section" aria-labelledby="home-collections-heading">
-      <ShopSectionHeader
-        headingId="home-collections-heading"
-        title={copy.title}
-        subtitle={copy.subtitle}
-      />
+    <ShopSection id="home-collections" title={copy.title} subtitle={copy.subtitle}>
       <ul className="shop-collections" data-count={collections.length}>
         {collections.map((tile) => (
           <CollectionTile key={tile.key} tile={tile} />
         ))}
       </ul>
-    </section>
+    </ShopSection>
   );
 }

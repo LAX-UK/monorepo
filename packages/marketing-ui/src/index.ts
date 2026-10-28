@@ -464,6 +464,10 @@ export {
   type MarketingGalleryTeamDetailKind,
 } from "./marketing-gallery-team-band.js";
 export {
+  type MarketingGalleryContact,
+  marketingGalleryContactDetails,
+} from "./marketing-gallery-contact-details.js";
+export {
   MarketingProductDoors,
   type MarketingProductDoorsProps,
 } from "./product-doors/marketing-product-doors.js";

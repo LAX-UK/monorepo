@@ -950,27 +950,11 @@
 }
 
 /* Editions by the artist */
+/* ShopSection lays out the shared header and the row; the page sets only the spacing. */
 .shop-product__related {
-  display: flex;
-  flex-direction: column;
-  gap: var(--shop-space-6);
   margin-top: var(--shop-space-16);
   padding-top: var(--shop-space-8);
   border-top: 1px solid var(--color-border-hairline);
-}
-
-.shop-product__related-header {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: var(--shop-space-3);
-}
-
-.shop-product__related-header h2 {
-  margin: 0;
-  font-size: clamp(1.25rem, 2.5vw, 1.5rem);
-  font-weight: 500;
 }
 
 @media (min-width: 64rem) {

@@ -15,8 +15,37 @@ import {
 } from "@/lib/ecosystem/product-directory.server";
 import { shopApiHomeCatalogueReader } from "@/lib/home/home-catalogue.adapter.server";
 import { composeHomePageData } from "@/lib/home/home-page.composer";
-import { buildHomePageViewModel } from "@/lib/home/home-page.vm";
+import { type HomePageViewModel, buildHomePageViewModel } from "@/lib/home/home-page.vm";
+import type { HomeSectionId } from "@/lib/home/home-sections";
 import { loadLinkableShopPolicies } from "@/lib/policies/shop-policy-publication.server";
+
+/** One home section; the view model decides which are shown and in what order. */
+function HomeSection({ id, vm, now }: { id: HomeSectionId; vm: HomePageViewModel; now: Date }) {
+  switch (id) {
+    case "hero":
+      return <HomeHero hero={vm.hero} quickFilters={vm.quickFilters} />;
+    case "trust":
+      return <HomeTrustStrip items={vm.trust} />;
+    case "new-editions":
+      return (
+        <NewEditionsSection
+          editions={vm.newEditions}
+          errorMessage={vm.sectionErrors.editions}
+          now={now}
+        />
+      );
+    case "story":
+      return <HomeStorySection story={vm.story} />;
+    case "artists":
+      return <HomeArtistsSection artists={vm.artists} />;
+    case "collections":
+      return <HomeCollectionsSection collections={vm.collections} />;
+    case "product-doors":
+      return <ShopProductDoors doors={vm.doors} />;
+    case "gallery-team":
+      return <ShopGalleryTeamBand team={vm.galleryTeam} />;
+  }
+}
 
 export async function ShopHomePage() {
   const now = new Date();
@@ -30,18 +59,9 @@ export async function ShopHomePage() {
 
   return (
     <>
-      <HomeHero hero={vm.hero} quickFilters={vm.quickFilters} />
-      <HomeTrustStrip items={vm.trust} />
-      <NewEditionsSection
-        editions={vm.newEditions}
-        errorMessage={vm.sectionErrors.editions}
-        now={now}
-      />
-      <HomeStorySection story={vm.story} />
-      <HomeArtistsSection artists={vm.artists} />
-      <HomeCollectionsSection collections={vm.collections} />
-      <ShopGalleryTeamBand team={vm.galleryTeam} />
-      <ShopProductDoors doors={vm.doors} />
+      {vm.layout.sections.map((id) => (
+        <HomeSection key={id} id={id} vm={vm} now={now} />
+      ))}
     </>
   );
 }

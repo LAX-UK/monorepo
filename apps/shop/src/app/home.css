@@ -531,59 +531,6 @@
   color: var(--color-on-surface-variant);
 }
 
-/* The section header's lax.art link reads as part of the sentence. */
-.shop-home__section-subtitle .shop-inline-link {
-  font-size: inherit;
-}
-
-.shop-home__section {
-  display: flex;
-  flex-direction: column;
-}
-
-/* MarketingSectionHeader lays out the row (title, and "View all" on its baseline) and the
-   subtitle under it; Shop sets only its spacing. */
-.shop-home__section-header {
-  gap: var(--shop-space-1);
-  padding-bottom: var(--shop-space-6);
-}
-
-.shop-home__section-subtitle {
-  margin: 0;
-  font-family: var(--font-body);
-  font-size: var(--shop-text-md);
-  line-height: 1.5rem;
-  color: var(--color-on-surface-variant);
-  max-width: 36rem;
-}
-
-.shop-home__section-title {
-  margin: 0;
-  font-size: clamp(1.75rem, 3.5vw, 2.25rem);
-  font-weight: 500;
-  line-height: 1.2;
-  color: var(--color-on-surface);
-}
-
-.shop-home__section-action {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--shop-space-1);
-  min-height: var(--shop-control-height);
-  font-family: var(--font-body);
-  font-size: var(--shop-text-sm);
-  font-weight: 500;
-  line-height: 1.25rem;
-  color: var(--color-on-surface);
-  text-decoration: none;
-  white-space: nowrap;
-}
-
-.shop-home__section-action:hover {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
 /* Category tiles on /categories. */
 .shop-home__category-card {
   display: flex;
