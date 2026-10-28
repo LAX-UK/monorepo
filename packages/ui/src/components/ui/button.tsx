@@ -21,14 +21,22 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-on-primary shadow hover:opacity-95",
+        /**
+         * Filled buttons never fade: hover and pressed mix the fill one and two steps toward its own
+         * label colour, the same rule as the primary, on each variant's own surface.
+         */
+        default:
+          "bg-primary text-on-primary shadow hover:bg-[color-mix(in_srgb,var(--color-primary)_85%,var(--color-on-primary))] active:bg-[color-mix(in_srgb,var(--color-primary)_72%,var(--color-on-primary))]",
         /** The primary action (see `PRIMARY_BUTTON`). */
         primary: PRIMARY_BUTTON,
-        destructive: "bg-error text-on-error shadow-sm hover:opacity-95",
-        success: "bg-success text-on-success shadow-sm hover:opacity-95",
+        destructive:
+          "bg-error text-on-error shadow-sm hover:bg-[color-mix(in_srgb,var(--color-error)_85%,var(--color-on-error))] active:bg-[color-mix(in_srgb,var(--color-error)_72%,var(--color-on-error))]",
+        success:
+          "bg-success text-on-success shadow-sm hover:bg-[color-mix(in_srgb,var(--color-success)_85%,var(--color-on-success))] active:bg-[color-mix(in_srgb,var(--color-success)_72%,var(--color-on-success))]",
         outline:
           "border border-outline-variant/25 bg-surface-container-lowest shadow-sm hover:bg-surface-container-low",
-        secondary: "bg-secondary-container text-on-secondary-container shadow-sm hover:opacity-95",
+        secondary:
+          "bg-secondary-container text-on-secondary-container shadow-sm hover:bg-[color-mix(in_srgb,var(--color-secondary-container)_88%,var(--color-on-secondary-container))] active:bg-[color-mix(in_srgb,var(--color-secondary-container)_78%,var(--color-on-secondary-container))]",
         /** Bordered label-caps secondary (legacy app Button). */
         secondaryOutline:
           "rounded-md border border-border-hairline bg-transparent font-label font-semibold text-on-surface hover:bg-surface-container-low",

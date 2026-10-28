@@ -92,3 +92,38 @@ describe("LoadingButton primary", () => {
     expect(button.querySelector("svg.animate-spin")).not.toBeNull();
   });
 });
+
+describe("Button filled variants", () => {
+  it.each([
+    ["default", "primary"],
+    ["destructive", "error"],
+    ["success", "success"],
+    ["secondary", "secondary-container"],
+  ] as const)("%s steps its own fill on hover and press instead of fading", (variant, fill) => {
+    render(<Button variant={variant}>Save</Button>);
+    const { className } = screen.getByRole("button", { name: "Save" });
+    expect(className).not.toMatch(/hover:opacity/);
+    expect(className).toContain(`hover:bg-[color-mix(in_srgb,var(--color-${fill})_`);
+    expect(className).toContain(`active:bg-[color-mix(in_srgb,var(--color-${fill})_`);
+    expect(className).not.toContain("cta-bg");
+  });
+
+  it("leaves no variant fading on hover", () => {
+    const variants = [
+      "default",
+      "primary",
+      "destructive",
+      "success",
+      "outline",
+      "secondary",
+      "secondaryOutline",
+      "ghost",
+      "cta",
+    ] as const;
+    for (const variant of variants) {
+      const { unmount } = render(<Button variant={variant}>Go</Button>);
+      expect(screen.getByRole("button", { name: "Go" }).className).not.toMatch(/opacity-9/);
+      unmount();
+    }
+  });
+});
