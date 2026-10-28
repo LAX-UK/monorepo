@@ -187,10 +187,10 @@ export async function getActingLegalEntityHeader(
  */
 export async function isViewingAsClient(
   userRole?: string | null,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
 ): Promise<boolean> {
   const role = normalizeUserRoleOrClient(userRole);
-  const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+  const staff = userStaffRoles;
   if (!canAccessPlatformAdminRoutes(role, staff)) return false;
   const jar = await cookies();
   const cookieValue = jar.get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
