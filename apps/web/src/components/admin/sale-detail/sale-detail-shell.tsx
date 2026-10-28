@@ -2,8 +2,8 @@
 
 import { AdminQrCodeButton } from "@/components/admin/qr-code/admin-qr-code-button";
 import { SaleDetailReadinessProvider } from "@/components/admin/sale-detail/sale-detail-readiness-context";
+import { SaleDetailSectionNav } from "@/components/admin/sale-detail/sale-detail-section-nav";
 import { type SaleActionTarget, useSaleActions } from "@/components/admin/sales/use-sale-actions";
-import { StaffDetailTabs } from "@/components/admin/staff/staff-detail-tabs";
 import { StaffEditableTitle } from "@/components/admin/staff/staff-editable-title";
 import {
   isPalettePinned,
@@ -19,7 +19,7 @@ import {
 } from "@/lib/admin/compute-sale-detail-readiness";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { saleSetupResumeHref } from "@/lib/admin/sale-setup";
-import { buildSaleDetailTabSpecs } from "@/lib/admin/sales/build-sale-detail-tab-specs";
+import { buildSaleDetailNav } from "@/lib/admin/sales/build-sale-detail-nav";
 import { isSaleLiveish, venueOneLiner } from "@/lib/admin/sales/sale-detail-helpers";
 import {
   firstBlockedSeller,
@@ -241,24 +241,18 @@ export function SaleDetailShell({
     </StaffButton>
   ) : null;
 
-  const tabs = buildSaleDetailTabSpecs({
+  const navGroups = buildSaleDetailNav({
     saleId,
     deliveryMode: sale.deliveryMode,
     liveish,
     lotCount: lots.length,
-    saleStatus: sale.status,
     registrationCount,
     pendingRegistrationCount: pendingRegs,
     pendingTelephoneBookingCount: pendingTelephoneBookingCount ?? 0,
     documentCount,
     overviewAttentionCount,
     canManageSales,
-  }).map((tab) => ({
-    id: tab.id,
-    label: typeof tab.label === "string" ? tab.label : tab.id,
-    href: tab.href,
-    ...(tab.count !== undefined ? { count: tab.count } : {}),
-  }));
+  });
 
   return (
     <>
@@ -324,7 +318,7 @@ export function SaleDetailShell({
             </Notice>
           ) : null
         }
-        tabs={<StaffDetailTabs label="Sale sections" items={tabs} />}
+        tabs={<SaleDetailSectionNav saleId={saleId} groups={navGroups} />}
       >
         <SaleDetailReadinessProvider
           draftSetupReadiness={setupReadiness}
