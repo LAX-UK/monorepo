@@ -1,6 +1,6 @@
 import type { Lot } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { mapLotToSummary } from "./mappers.js";
+import { mapLotToStaffListRow, mapLotToSummary } from "./mappers.js";
 
 const now = new Date("2026-06-01T12:00:00.000Z");
 
@@ -67,5 +67,20 @@ describe("mapLotToSummary", () => {
     expect(
       mapLotToSummary(baseLot({ status: "active", winnerId: null })).hasWinner,
     ).toBeUndefined();
+  });
+});
+
+describe("mapLotToStaffListRow", () => {
+  it("says whether an ended lot sold without naming the buyer", () => {
+    const sold = mapLotToStaffListRow(baseLot({ status: "ended", winnerId: "user-9" }));
+    expect(sold).toMatchObject({ hasWinner: true });
+    expect(sold).not.toHaveProperty("winnerId");
+
+    const unsold = mapLotToStaffListRow(baseLot({ status: "ended", winnerId: null }));
+    expect(unsold).toMatchObject({ hasWinner: false });
+  });
+
+  it("leaves the outcome out while the lot is still open", () => {
+    expect(mapLotToStaffListRow(baseLot({ status: "active" }))).not.toHaveProperty("hasWinner");
   });
 });

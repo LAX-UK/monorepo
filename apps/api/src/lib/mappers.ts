@@ -84,6 +84,8 @@ export function mapLotToStaffListRow(lot: Lot & LotStaffListExtras) {
     sellerLegalEntityId: base.sellerLegalEntityId,
     createdAt: base.createdAt,
     updatedAt: base.updatedAt,
+    // Whether an ended lot sold, without naming the buyer, so the list reads Sold or Unsold.
+    ...(base.status === "ended" ? { hasWinner: base.winnerId != null } : {}),
     ...(lot.lifecycleSummary ? { lifecycleSummary: lot.lifecycleSummary } : {}),
     ...(lot.deleteEligibility ? { deleteEligibility: lot.deleteEligibility } : {}),
     ...(lot.connectRequired !== undefined ? { connectRequired: lot.connectRequired } : {}),
