@@ -22,11 +22,18 @@ export type ArtEditorialPageViewProps = {
    * Figma's centred page title band (875:19061) instead of the breadcrumb header, for pages that
    * have a Figma frame; others keep `ArtPageHeader`.
    */
-  titleBand?: { subtitle?: string; chip?: MarketingPageTitleChip };
+  titleBand?: {
+    subtitle?: string;
+    chip?: MarketingPageTitleChip;
+    /** Short pages use the compact band, so the title does not float in empty space. */
+    density?: "standard" | "compact";
+  };
   /** Call to action rendered after the body (e.g. enquiry panel). */
   aside?: ReactNode;
   /** Full-width section between the body and `aside` (e.g. the guide card grid). */
   afterBody?: ReactNode;
+  /** Full-width band that closes the page, one section gap below the content. */
+  closing?: ReactNode;
   /** Slug routes 404 when editorial is off; fixed guide routes keep a "coming soon" state. */
   notFoundWhenDisabled?: boolean;
 };
@@ -39,6 +46,7 @@ export function ArtEditorialPageView({
   titleBand,
   aside,
   afterBody,
+  closing,
   notFoundWhenDisabled = false,
 }: ArtEditorialPageViewProps) {
   if (result.status !== "ok" && (result.status !== "disabled" || notFoundWhenDisabled)) {
@@ -86,6 +94,7 @@ export function ArtEditorialPageView({
           {aside}
         </div>
       ) : null}
+      {closing ? <div className="mt-8 lg:mt-16">{closing}</div> : null}
     </article>
   );
 }

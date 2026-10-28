@@ -1,20 +1,14 @@
 import { ArtStatusState } from "@/components/art-status-state";
 import { ArtEditorialStatus } from "@/components/editorial/art-editorial-status";
 import { ArtHubFeatureCard } from "@/components/editorial/art-hub-feature-card";
-import { ArtMediaImage } from "@/components/media/art-media-image";
+import { ArtGalleryTeamBand } from "@/components/gallery-team/art-gallery-team-band";
 import { artServices } from "@/lib/art-services.server";
 import { composeCollectorHubPage } from "@/lib/editorial/editorial-pages.composer";
+import { buildArtGalleryTeam } from "@/lib/gallery-team/art-gallery-team.vm";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
-import {
-  MarketingCardReveal,
-  MarketingCtaBand,
-  MarketingPageTitle,
-  MarketingReveal,
-} from "@auction/marketing-ui";
+import { MarketingCardReveal, MarketingPageTitle, MarketingReveal } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import type { Metadata } from "next";
-import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Collector Hub | lax.art",
@@ -23,7 +17,10 @@ export const metadata: Metadata = {
 };
 
 export default async function CollectorHubPage() {
-  const result = await composeCollectorHubPage(artServices);
+  const [result, viewer] = await Promise.all([
+    composeCollectorHubPage(artServices),
+    artServices.viewer.load(),
+  ]);
   if (result.status !== "ok") {
     return (
       <div className={cn(MARKETING_PAGE_SHELL, "py-10")}>
@@ -39,8 +36,6 @@ export default async function CollectorHubPage() {
   }
 
   const { cards } = result.data;
-  // The closing banner borrows the hub's own imagery; without any it falls back to a plain band.
-  const bannerImage = cards.find((card) => card.imageUrl)?.imageUrl ?? null;
 
   return (
     <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-10 pb-10 lg:pb-16")}>
@@ -70,32 +65,10 @@ export default async function CollectorHubPage() {
           </ul>
         </MarketingReveal>
       )}
-      <MarketingCtaBand
-        title="Curious to learn more?"
-        tone="feature"
-        {...(bannerImage
-          ? {
-              media: (
-                <ArtMediaImage
-                  src={bannerImage}
-                  alt=""
-                  sizes="100vw"
-                  className="absolute inset-0 size-full"
-                  imgClassName="object-cover"
-                />
-              ),
-            }
-          : {})}
-        action={
-          <Button
-            asChild
-            variant="outline"
-            size="lg"
-            className="min-h-11 border-current bg-transparent text-inherit hover:bg-transparent hover:text-inherit hover:underline"
-          >
-            <Link href="/contact">Get in touch</Link>
-          </Button>
-        }
+      <ArtGalleryTeamBand
+        team={buildArtGalleryTeam({ context: "advisory" })}
+        viewer={viewer}
+        className="mt-6 lg:mt-14"
       />
     </div>
   );

@@ -34,7 +34,7 @@ test.describe("lax.art accessibility @a11y", () => {
     { path: "/stories/podcast", heading: "Latest stories", editorial: true },
     { path: "/stories/press", heading: "Latest stories", editorial: true },
     { path: "/collector-hub", heading: "Collector Hub", editorial: true },
-    { path: "/visit", heading: "LAX's Locations", editorial: true },
+    { path: "/visit", heading: "Visit the gallery", editorial: true },
     { path: "/how-to-buy", heading: "How to buy", editorial: true },
     { path: "/help", heading: "Find your answer here", editorial: true },
     {

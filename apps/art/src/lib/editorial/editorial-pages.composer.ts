@@ -406,7 +406,7 @@ function venueFacts(venue: ArtEditorialVenueDetail): VenueFactsVm {
 
 const VISIT_VENUES_LIMIT = 6;
 const VISIT_PAGE_SLUG = "visit";
-const VISIT_DEFAULT_TITLE = "LAX's Locations";
+const VISIT_DEFAULT_TITLE = "Visit the gallery";
 
 /**
  * Published venues straight from the list (it carries the card address, so there are no

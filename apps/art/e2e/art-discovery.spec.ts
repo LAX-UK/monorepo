@@ -162,7 +162,9 @@ test.describe("lax.art discovery", () => {
     const card = page.getByTestId("art-venue-card").first();
     test.skip((await card.count()) === 0, "no venues seeded");
     const name = (await card.getByRole("heading", { level: 3 }).textContent())?.trim() ?? "";
-    await expect(page.getByRole("heading", { level: 2, name: "Our galleries" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { level: 2, name: /^Our galler(y|ies)$/ }),
+    ).toBeVisible();
     await card.getByRole("link").click();
     await expect(page).toHaveURL(/\/visit\/[^/]+$/);
     await expect(page.getByRole("heading", { level: 1, name })).toBeVisible();

@@ -1,9 +1,10 @@
 import { ArtStatusState } from "@/components/art-status-state";
 import { ArtEditorialStatus } from "@/components/editorial/art-editorial-status";
-import { ArtPrivateViewingSection } from "@/components/enquiry/art-private-viewing-section";
+import { ArtGalleryTeamBand } from "@/components/gallery-team/art-gallery-team-band";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import { artServices } from "@/lib/art-services.server";
 import { composeVisitPage } from "@/lib/editorial/editorial-pages.composer";
+import { buildArtGalleryTeam } from "@/lib/gallery-team/art-gallery-team.vm";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import {
   MarketingCardReveal,
@@ -40,10 +41,12 @@ export default async function VisitPage() {
   }
 
   const { title, intro, venues } = result.data;
+  // One gallery spans the row as a wide card rather than leaving half of it empty.
+  const single = venues.length === 1;
 
   return (
     <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-12 pb-10 lg:pb-16")}>
-      <MarketingPageTitle title={title} />
+      <MarketingPageTitle title={title} density="compact" />
 
       {intro ? (
         <p className="m-0 mx-auto max-w-3xl text-center text-base leading-relaxed text-on-surface md:text-xl">
@@ -64,10 +67,13 @@ export default async function VisitPage() {
               id="our-galleries"
               className="m-0 font-headline text-3xl font-medium text-on-surface md:text-4xl"
             >
-              Our galleries
+              {single ? "Our gallery" : "Our galleries"}
             </h2>
             <ul
-              className="m-0 grid list-none gap-x-6 gap-y-10 p-0 md:grid-cols-2"
+              className={cn(
+                "m-0 grid list-none gap-x-6 gap-y-10 p-0",
+                single ? null : "md:grid-cols-2",
+              )}
               aria-label="Galleries"
             >
               {venues.map((venue, index) => (
@@ -78,6 +84,8 @@ export default async function VisitPage() {
                       name={venue.name}
                       addressLines={venue.addressLines}
                       headingLevel="h3"
+                      layout={single ? "wide" : "tile"}
+                      cta="Plan your visit"
                       image={
                         <ArtMediaImage
                           src={venue.imageUrl}
@@ -85,7 +93,11 @@ export default async function VisitPage() {
                           label="Gallery"
                           placeholderTitle={venue.name}
                           priority={index === 0}
-                          sizes="(min-width: 48rem) 45vw, 100vw"
+                          sizes={
+                            single
+                              ? "(min-width: 48rem) 58vw, 100vw"
+                              : "(min-width: 48rem) 45vw, 100vw"
+                          }
                           className="absolute inset-0 size-full"
                           imgClassName="object-cover"
                         />
@@ -99,7 +111,11 @@ export default async function VisitPage() {
         </MarketingReveal>
       )}
 
-      <ArtPrivateViewingSection viewer={viewer} />
+      <ArtGalleryTeamBand
+        team={buildArtGalleryTeam({ context: "visit" })}
+        viewer={viewer}
+        className="mt-4 lg:mt-12"
+      />
     </div>
   );
 }

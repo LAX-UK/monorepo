@@ -120,6 +120,12 @@ test.describe("lax.art journeys", () => {
   test("a guest can send a general enquiry from the contact page", async ({ page }) => {
     await page.goto("/contact");
     await expect(page.getByTestId("art-general-enquire-sign-in")).toHaveCount(0);
+    const band = page.getByTestId("art-gallery-team-band");
+    await expect(band.getByRole("link", { name: /^\+44/ })).toHaveAttribute("href", /^tel:/);
+    await expect(band.getByRole("link", { name: /opens in a new tab/ })).toHaveAttribute(
+      "target",
+      "_blank",
+    );
     await page.getByTestId("art-general-enquire-trigger").click();
 
     const sheet = page.getByRole("dialog", { name: "Send an enquiry" });

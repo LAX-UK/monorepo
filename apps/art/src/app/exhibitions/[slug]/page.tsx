@@ -1,19 +1,20 @@
 import { EditorialBlockRenderer } from "@/components/editorial/editorial-block-renderer";
-import { ArtGeneralEnquiryPanel } from "@/components/enquiry/art-general-enquiry-panel";
 import { ArtExhibitionArtists } from "@/components/exhibition/art-exhibition-artists";
 import { ArtExhibitionFacts } from "@/components/exhibition/art-exhibition-facts";
 import { ArtExhibitionInstallationViews } from "@/components/exhibition/art-exhibition-installation-views";
 import { ArtExhibitionPress } from "@/components/exhibition/art-exhibition-press";
 import { ArtExhibitionSpecialist } from "@/components/exhibition/art-exhibition-specialist";
 import { ArtExhibitionWorks } from "@/components/exhibition/art-exhibition-works.client";
+import { ArtGalleryTeamBand } from "@/components/gallery-team/art-gallery-team-band";
 import { ArtMediaPageTitle } from "@/components/layout/art-media-page-title";
 import { ArtSection } from "@/components/layout/art-section";
 import { artServices } from "@/lib/art-services.server";
 import { exhibitionSectionTabs } from "@/lib/editorial/editorial-page-title.vm";
 import { composeExhibitionDetailPage } from "@/lib/editorial/editorial-pages.composer";
+import { buildArtGalleryTeam } from "@/lib/gallery-team/art-gallery-team.vm";
 import { notFoundOrUnavailable } from "@/lib/seo/page-status";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
-import { MarketingCtaBand, MarketingPageTitle, MarketingSubNav } from "@auction/marketing-ui";
+import { MarketingPageTitle, MarketingSubNav } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import { cache } from "react";
@@ -126,21 +127,14 @@ export default async function ExhibitionDetailPage({ params }: ExhibitionPagePro
             </ArtSection>
           </div>
         ) : null}
+        <ArtGalleryTeamBand
+          team={buildArtGalleryTeam({
+            context: ended ? "pastExhibition" : "exhibition",
+            subject: { slug: exhibition.slug, label: exhibition.title },
+          })}
+          viewer={viewer}
+        />
       </div>
-      <MarketingCtaBand
-        tone={ended ? "plain" : "feature"}
-        title="Experience the exhibition in person"
-        body="For further information or to arrange a private viewing, please contact our team. We are available to assist collectors, institutions and galleries."
-        action={
-          <ArtGeneralEnquiryPanel
-            viewer={viewer}
-            defaultTopic="private_viewing"
-            contextSlug={exhibition.slug}
-            contextLabel={exhibition.title}
-            triggerLabel="Request a private viewing"
-          />
-        }
-      />
     </article>
   );
 }

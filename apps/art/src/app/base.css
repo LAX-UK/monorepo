@@ -106,6 +106,8 @@
 
   --radius-md: 0.375rem;
   --radius-lg: 0.5rem;
+  /* Cards and panels from the shared kits (gallery team band, legal panels): 8px on lax.art. */
+  --radius-card: var(--radius-lg);
 
   --container-max: 90rem;
   --container-inner: 86rem;
