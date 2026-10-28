@@ -99,7 +99,54 @@ describe("product page view model", () => {
     });
     expect(vm.included[0]).toBe("Certificate of authenticity");
     expect(vm.gallery.scale).not.toBeNull();
-    expect(vm.related.title).toBe("Editions by Emmett King");
+    expect(vm.related.title).toBe("More by Emmett King");
+  });
+
+  it("shows edition, size and technique at a glance, or nothing with fewer than two", () => {
+    const vm = buildArtworkProductPage({ artwork: detail(), artistEditions: [], artBaseUrl: ART });
+    expect(vm.keyFacts).toEqual([
+      { label: "Edition", value: "Edition of 24" },
+      { label: "Size", value: "50 × 40 cm" },
+      { label: "Technique", value: "Giclée print" },
+    ]);
+    const thin = buildArtworkProductPage({
+      artwork: detail({ heightCm: null, widthCm: null, medium: null }),
+      artistEditions: [],
+      artBaseUrl: ART,
+    });
+    expect(thin.keyFacts).toEqual([]);
+  });
+
+  it("introduces the artist from their Shop profile, with their editions and lax.art story", () => {
+    const vm = buildArtworkProductPage({
+      artwork: detail(),
+      artistEditions: [],
+      artBaseUrl: ART,
+      artistDetail: {
+        slug: "emmett-king",
+        name: "Emmett King",
+        discipline: "Painter",
+        bio: "A long biography.",
+        shortBio: " Paints still lifes in Margate. ",
+        portraitUrl: "/emmett.webp",
+        artworkCount: 3,
+      },
+    });
+    expect(vm.artist).toEqual({
+      name: "Emmett King",
+      discipline: "Painter",
+      summary: "Paints still lifes in Margate.",
+      portraitUrl: "/emmett.webp",
+      editionsHref: "/artists/emmett-king",
+      editionsLabel: "Editions by Emmett King",
+      laxArtHref: "https://www.thelax.art/artists/emmett-king",
+    });
+    const unread = buildArtworkProductPage({
+      artwork: detail(),
+      artistEditions: [],
+      artBaseUrl: null,
+    });
+    expect(unread.artist).toMatchObject({ summary: null, portraitUrl: null, laxArtHref: null });
   });
 
   it("shows other editions by the artist, available first, and only available ones when sold out", () => {

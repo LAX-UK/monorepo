@@ -1,25 +1,36 @@
+import { ArtworkAboutEditions } from "@/components/artwork/artwork-about-editions";
+import { ArtworkArtistBlock } from "@/components/artwork/artwork-artist-block";
 import { ArtworkBuyBox } from "@/components/artwork/artwork-buy-box.client";
 import { ArtworkGallery } from "@/components/artwork/artwork-gallery.client";
+import { ArtworkKeyFacts } from "@/components/artwork/artwork-key-facts";
 import { ArtworkPurchaseFacts } from "@/components/artwork/artwork-purchase-facts";
 import { ArtworkSpecList } from "@/components/artwork/artwork-spec-list";
 import { ArtworkUnavailablePanel } from "@/components/artwork/artwork-unavailable-panel";
 import { CatalogueGrid } from "@/components/catalogue-grid";
+import { ShopGalleryTeamBand } from "@/components/gallery-team/shop-gallery-team-band";
 import { ShopJsonLd } from "@/components/seo/shop-json-ld";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
 import { SHOP_POLICY_PATHS, type ShopPolicySlug } from "@/content/policies/shop-policy-status";
 import { buildArtworkProductPage } from "@/lib/artwork/artwork-product-page.vm";
+import { loadCheckoutDeliveryTimes } from "@/lib/checkout/checkout-delivery.server";
 import {
   loadShopArtBaseUrl,
   loadShopStorefrontBaseUrl,
 } from "@/lib/ecosystem/product-directory.server";
+import { buildGalleryTeam } from "@/lib/gallery-team/gallery-team.vm";
 import { resolveOriginalArtworkUrl } from "@/lib/original-artwork-url.server";
 import { loadLinkableShopPolicies } from "@/lib/policies/shop-policy-publication.server";
 import {
   isArtworkPurchasable,
   resolveArtworkUnavailableReason,
 } from "@/lib/presenters/artwork-commerce.presenter";
+import { presentDeliveryEstimate } from "@/lib/presenters/delivery-estimate.presenter";
 import { artworkProductJsonLd } from "@/lib/seo/artwork-structured-data";
-import { fetchPublicArtworkBySlug, fetchPublicArtworks } from "@/lib/shop-api.server";
+import {
+  fetchPublicArtistBySlug,
+  fetchPublicArtworkBySlug,
+  fetchPublicArtworks,
+} from "@/lib/shop-api.server";
 import { fetchArtworkInterestStatus } from "@/lib/shop-artwork-interest.server";
 import { fetchShopBasket } from "@/lib/shop-commerce.server";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
@@ -71,15 +82,6 @@ function policyHref(linkable: readonly ShopPolicySlug[], slug: ShopPolicySlug): 
   return linkable.includes(slug) ? SHOP_POLICY_PATHS[slug] : null;
 }
 
-function OutboundLink({ href, children }: { href: string; children: string }) {
-  return (
-    <a href={href} className={cn("shop-product__outbound", FOCUS_RING)}>
-      {children}
-      <MarketingArrowUpRightIcon className="shop-product__outbound-icon" />
-    </a>
-  );
-}
-
 export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
   const { slug } = await params;
   const [artwork, viewer, basketResult] = await Promise.all([
@@ -98,21 +100,31 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
       : undefined;
   const purchasable = isArtworkPurchasable(artwork);
   const unavailableReason = resolveArtworkUnavailableReason(artwork);
-  const [artistEditions, interestRead] = await Promise.all([
+  const [artistEditions, artistDetail, interestRead] = await Promise.all([
     fetchPublicArtworks({ artistSlug: artwork.artistSlug, limit: ARTIST_EDITIONS_FETCH })
       .then((list) => list.items)
       .catch(() => []),
+    fetchPublicArtistBySlug(artwork.artistSlug).catch(() => null),
     viewer.kind === "authenticated" && unavailableReason === "edition_sold_out"
       ? fetchArtworkInterestStatus(slug)
       : Promise.resolve({ status: "guest" as const }),
   ]);
-  const vm = buildArtworkProductPage({ artwork, artistEditions, artBaseUrl: loadShopArtBaseUrl() });
+  const vm = buildArtworkProductPage({
+    artwork,
+    artistEditions,
+    artistDetail,
+    artBaseUrl: loadShopArtBaseUrl(),
+  });
+  const deliveryEstimate = presentDeliveryEstimate({
+    now: new Date(),
+    times: loadCheckoutDeliveryTimes(),
+  });
   const linkablePolicies = loadLinkableShopPolicies();
   const returnTo = `/artworks/${encodeURIComponent(artwork.slug)}`;
   const primaryImageUrl = vm.gallery.images[0]?.url ?? null;
 
   return (
-    <MarketingDetailShell shellClassName="shop-page shop-page--detail">
+    <MarketingDetailShell shellClassName="shop-page shop-page--detail shop-page--edition">
       <ShopJsonLd data={artworkProductJsonLd(artwork, loadShopStorefrontBaseUrl())} />
       <ShopCommercePageShell
         header={{
@@ -140,8 +152,11 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
                   {vm.artistName}
                 </Link>
               </p>
-              {vm.sizeSummary ? <p className="shop-product__size">{vm.sizeSummary}</p> : null}
+              {vm.keyFacts.length === 0 && vm.sizeSummary ? (
+                <p className="shop-product__size">{vm.sizeSummary}</p>
+              ) : null}
             </header>
+            <ArtworkKeyFacts facts={vm.keyFacts} />
 
             {purchasable && vm.purchase ? (
               <ArtworkBuyBox
@@ -156,6 +171,7 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
                 facts={
                   <ArtworkPurchaseFacts
                     deliveryLine={vm.purchase.deliveryLine}
+                    deliveryEstimate={deliveryEstimate}
                     returnsLine={vm.purchase.returnsLine}
                     deliveryHref={policyHref(linkablePolicies, "delivery")}
                     returnsHref={policyHref(linkablePolicies, "returns")}
@@ -195,6 +211,8 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
               </section>
             ) : null}
 
+            <ArtworkAboutEditions />
+
             {vm.description ? (
               <section className="shop-product__section" aria-labelledby="about-work-heading">
                 <h2 id="about-work-heading">About the work</h2>
@@ -215,28 +233,23 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
             </section>
 
             {vm.crossLinks.originalOnArtHref ? (
-              <section className="shop-product__section" aria-labelledby="original-heading">
-                <h2 id="original-heading">The original</h2>
-                <p className="shop-product__prose">
-                  This edition is made from an original work by {vm.artistName}, sold through
-                  lax.art.
-                </p>
-                <OutboundLink href={vm.crossLinks.originalOnArtHref}>
-                  See the original at lax.art
-                </OutboundLink>
-              </section>
-            ) : null}
-
-            {vm.crossLinks.artistOnArtHref ? (
-              <section className="shop-product__section" aria-labelledby="artist-heading">
-                <h2 id="artist-heading">The artist</h2>
-                <OutboundLink href={vm.crossLinks.artistOnArtHref}>
-                  About the artist on lax.art
-                </OutboundLink>
-              </section>
+              <a
+                href={vm.crossLinks.originalOnArtHref}
+                className={cn("shop-original-link", FOCUS_RING)}
+              >
+                <span className="shop-original-link__text">
+                  <span className="shop-original-link__title">See the original at lax.art</span>
+                  <span className="shop-original-link__body">
+                    This edition is made from an original work by {vm.artistName}.
+                  </span>
+                </span>
+                <MarketingArrowUpRightIcon className="shop-original-link__icon" />
+              </a>
             ) : null}
           </div>
         </article>
+
+        <ArtworkArtistBlock artist={vm.artist} />
 
         {vm.related.items.length > 0 ? (
           <section className="shop-product__related" aria-labelledby="related-heading">
@@ -257,6 +270,8 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
             />
           </section>
         ) : null}
+
+        <ShopGalleryTeamBand team={buildGalleryTeam()} />
       </ShopCommercePageShell>
     </MarketingDetailShell>
   );

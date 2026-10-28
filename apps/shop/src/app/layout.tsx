@@ -34,6 +34,7 @@ import "./footer.css";
 import "./header.css";
 import "./home.css";
 import "./product.css";
+import "./edition-page.css";
 import "./state.css";
 import "./elements.css";
 
