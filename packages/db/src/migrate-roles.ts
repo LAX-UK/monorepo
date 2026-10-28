@@ -105,6 +105,8 @@ export const SHOP_COMMERCE_TABLES = [
   /** Artists' applications to join the gallery, and the works they send with them. */
   "shop_artist_application",
   "shop_artist_application_work",
+  /** What staff confirm about each print run: numbering, signature and certificate. */
+  "shop_edition_facts",
 ] as const;
 
 /** Append-only Shop tables: shop_app may INSERT and SELECT only. */
@@ -114,6 +116,8 @@ export const SHOP_COMMERCE_APPEND_ONLY_TABLES = [
   "shop_edition_event",
   "shop_enquiry_note",
   "shop_artist_application_event",
+  /** Each addition of prints to an open edition; history is never edited. */
+  "shop_edition_stock_batch",
 ] as const;
 export const API_DENY_TABLES = [
   "user",
