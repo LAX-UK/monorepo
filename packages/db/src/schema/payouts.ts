@@ -118,7 +118,7 @@ export const payoutLine = pgTable(
       "payout_line_payment_required",
       sql`(
         ${table.kind} = 'adjustment'
-        OR ${table.kind} IN ('refund', 'dispute', 'chargeback')
+        OR ${table.kind} IN ('refund', 'dispute', 'chargeback', 'reversal')
         OR ${table.paymentId} IS NOT NULL
       )`,
     ),
