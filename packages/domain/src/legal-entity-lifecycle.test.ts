@@ -39,7 +39,7 @@ const ALLOWED: Record<LifecycleAdminOp, Partial<Record<LegalEntityStatus, Expect
   },
   start_review: { docs_received: { next: "under_review", requiresReason: false } },
   approve: { under_review: { next: "connect_pending", requiresReason: false } },
-  restrict: { approved: { next: "restricted", requiresReason: false } },
+  restrict: { approved: { next: "restricted", requiresReason: true } },
   lift_restriction: { restricted: { next: "connect_pending", requiresReason: true } },
   reject: Object.fromEntries(
     STATUSES.filter((s) => s !== "rejected" && s !== "archived").map((s) => [

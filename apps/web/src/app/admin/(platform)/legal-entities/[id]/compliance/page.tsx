@@ -9,6 +9,9 @@ export default async function AdminLegalEntityCompliancePage({ params }: Props) 
   const { id } = await params;
   const page = await loadAdminLegalEntityCompliancePage(id);
   return (
-    <LegalEntityComplianceTab entity={page.entity} canLiftRestriction={page.canLiftRestriction} />
+    <LegalEntityComplianceTab
+      entity={page.entity}
+      canManageRestriction={page.canManageRestriction}
+    />
   );
 }

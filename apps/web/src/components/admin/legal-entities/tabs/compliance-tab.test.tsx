@@ -5,12 +5,14 @@ import { LegalEntityComplianceTab } from "./compliance-tab";
 
 const refresh = vi.fn();
 const liftAction = vi.fn();
+const restrictAction = vi.fn();
 const notifySuccess = vi.fn();
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 vi.mock("@/lib/admin/legal-entity-lifecycle.actions", () => ({
   legalEntityLifecycleSimpleAction: vi.fn(),
   legalEntityLiftRestrictionResultAction: (...args: unknown[]) => liftAction(...args),
+  legalEntityRestrictResultAction: (...args: unknown[]) => restrictAction(...args),
   legalEntityRejectAction: vi.fn(),
   legalEntityArchiveAction: vi.fn(),
 }));
@@ -44,11 +46,11 @@ function lift() {
 
 describe("LegalEntityComplianceTab lift restriction", () => {
   beforeEach(() => {
-    for (const fn of [refresh, liftAction, notifySuccess]) fn.mockReset();
+    for (const fn of [refresh, liftAction, restrictAction, notifySuccess]) fn.mockReset();
   });
 
   it("shows the action to a restricted organisation for people who may use it", () => {
-    render(<LegalEntityComplianceTab entity={restricted} canLiftRestriction />);
+    render(<LegalEntityComplianceTab entity={restricted} canManageRestriction />);
     expect(lift()).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Restrict" })).not.toBeInTheDocument();
   });
@@ -62,7 +64,7 @@ describe("LegalEntityComplianceTab lift restriction", () => {
     render(
       <LegalEntityComplianceTab
         entity={{ ...restricted, status: "approved" } as LegalEntity}
-        canLiftRestriction
+        canManageRestriction
       />,
     );
     expect(lift()).not.toBeInTheDocument();
@@ -71,7 +73,7 @@ describe("LegalEntityComplianceTab lift restriction", () => {
 
   it("asks for a reason, then lifts and refreshes the page", async () => {
     liftAction.mockResolvedValue({ ok: true });
-    render(<LegalEntityComplianceTab entity={restricted} canLiftRestriction />);
+    render(<LegalEntityComplianceTab entity={restricted} canManageRestriction />);
     fireEvent.click(lift() as HTMLElement);
 
     expect(
@@ -94,7 +96,7 @@ describe("LegalEntityComplianceTab lift restriction", () => {
     render(
       <LegalEntityComplianceTab
         entity={{ ...restricted, stripeConnectPayoutsEnabled: false } as LegalEntity}
-        canLiftRestriction
+        canManageRestriction
       />,
     );
     fireEvent.click(lift() as HTMLElement);
@@ -103,7 +105,7 @@ describe("LegalEntityComplianceTab lift restriction", () => {
 
   it("keeps a failure in the dialog", async () => {
     liftAction.mockResolvedValue({ ok: false, error: "Cannot apply lift_restriction" });
-    render(<LegalEntityComplianceTab entity={restricted} canLiftRestriction />);
+    render(<LegalEntityComplianceTab entity={restricted} canManageRestriction />);
     fireEvent.click(lift() as HTMLElement);
     fireEvent.change(screen.getByLabelText("Reason for lifting"), { target: { value: REASON } });
     fireEvent.click(
@@ -111,5 +113,40 @@ describe("LegalEntityComplianceTab lift restriction", () => {
     );
     expect(await screen.findByText("Cannot apply lift_restriction")).toBeInTheDocument();
     expect(refresh).not.toHaveBeenCalled();
+  });
+});
+
+describe("LegalEntityComplianceTab restrict", () => {
+  const approved = { ...restricted, status: "approved" } as LegalEntity;
+  const restrictButton = () => screen.queryByRole("button", { name: "Restrict" });
+
+  beforeEach(() => {
+    for (const fn of [refresh, restrictAction, notifySuccess]) fn.mockReset();
+  });
+
+  it("hides Restrict from people without the capability", () => {
+    render(<LegalEntityComplianceTab entity={approved} />);
+    expect(restrictButton()).not.toBeInTheDocument();
+  });
+
+  it("asks for a reason, says what restriction does, then restricts and refreshes", async () => {
+    restrictAction.mockResolvedValue({ ok: true });
+    render(<LegalEntityComplianceTab entity={approved} canManageRestriction />);
+    fireEvent.click(restrictButton() as HTMLElement);
+
+    expect(screen.getByRole("heading", { name: "Restrict Gallery One?" })).toBeInTheDocument();
+    expect(screen.getByText(/can still bid and submit lots/)).toBeInTheDocument();
+
+    const confirm = screen.getByRole("button", { name: "Restrict organisation" });
+    fireEvent.click(confirm);
+    expect(restrictAction).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText("Reason for restricting"), {
+      target: { value: REASON },
+    });
+    fireEvent.click(confirm);
+    await waitFor(() => expect(restrictAction).toHaveBeenCalledWith("le_1", REASON));
+    await waitFor(() => expect(refresh).toHaveBeenCalled());
+    expect(notifySuccess).toHaveBeenCalledWith("Gallery One restricted");
   });
 });

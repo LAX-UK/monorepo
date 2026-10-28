@@ -306,8 +306,17 @@ describe("POST /admin/legal-entities/:id/approve (legal_entity.approve)", () => 
   });
 });
 
-describe("POST /admin/legal-entities/:id/restrict (legal_entity.write)", () => {
+describe("POST /admin/legal-entities/:id/restrict (legal_entity.write + step-up)", () => {
   const path = `/legal-entities/${ENTITY_ID}/restrict`;
+  const post = (
+    app: { request: (u: string, i: RequestInit) => Response | Promise<Response> },
+    body: unknown,
+  ) =>
+    app.request(`http://test${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
 
   it("returns 403 for client", async () => {
     const runTransition = vi.fn();
@@ -316,7 +325,8 @@ describe("POST /admin/legal-entities/:id/restrict (legal_entity.write)", () => {
       ADMIN_ID,
       "client",
     );
-    expect((await app.request(`http://test${path}`, { method: "POST" })).status).toBe(403);
+    expect((await post(app, { reason: "Ownership under review" })).status).toBe(403);
+    expect(runTransition).not.toHaveBeenCalled();
   });
 
   it("returns 403 when administrator lacks legal_entity.write", async () => {
@@ -327,16 +337,40 @@ describe("POST /admin/legal-entities/:id/restrict (legal_entity.write)", () => {
       ADMIN_ID,
       "staff",
     );
-    expect((await app.request(`http://test${path}`, { method: "POST" })).status).toBe(403);
+    expect((await post(app, { reason: "Ownership under review" })).status).toBe(403);
     expect(runTransition).not.toHaveBeenCalled();
   });
 
-  it("returns 200 and publishes legal_entity.restricted", async () => {
+  it("returns 403 step_up_required without a recent sign-in", async () => {
+    const { app, publish } = buildAppWithRealLifecycleService("approved", {}, false);
+    const res = await post(app, { reason: "Ownership under review" });
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { code: string }).code).toBe("step_up_required");
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when the reason is missing or too short", async () => {
+    const runTransition = vi.fn();
+    const app = lifecycleApp(
+      minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
+      ADMIN_ID,
+      "staff",
+    );
+    expect((await post(app, {})).status).toBe(400);
+    expect((await post(app, { reason: "ab" })).status).toBe(400);
+    expect(runTransition).not.toHaveBeenCalled();
+  });
+
+  it("returns 200 and publishes legal_entity.restricted with the reason", async () => {
     const { app, publish } = buildAppWithRealLifecycleService("approved");
-    const res = await app.request(`http://test${path}`, { method: "POST" });
+    const res = await post(app, { reason: "Ownership under review" });
     expect(res.status).toBe(200);
-    const event = publish.mock.calls[0]?.[0] as { eventType: string };
+    const event = publish.mock.calls[0]?.[0] as {
+      eventType: string;
+      payload: { reason?: string };
+    };
     expect(event.eventType).toBe("legal_entity.restricted");
+    expect(event.payload.reason).toBe("Ownership under review");
   });
 });
 

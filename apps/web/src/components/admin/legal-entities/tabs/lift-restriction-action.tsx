@@ -25,7 +25,7 @@ export function LiftRestrictionAction({ entity }: Props) {
     confirm.ask({
       title: `Lift the restriction on ${entity.displayName}?`,
       description: ready
-        ? "Stripe Connect is ready, so the organisation returns to approved and can sell again."
+        ? "Stripe Connect is ready, so the organisation returns to approved and its restrictions notice is removed."
         : "Stripe Connect is not ready, so the organisation moves to Connect pending until its account can take payouts.",
       confirmLabel: "Lift restriction",
       cancelLabel: "Keep restricted",

@@ -10,7 +10,7 @@ export type LegalEntityCompliancePageModel = Pick<
   "entity"
 > & {
   /** Whether the signed-in person may lift a restriction. */
-  canLiftRestriction: boolean;
+  canManageRestriction: boolean;
 };
 
 /** Data/composition boundary for `/admin/legal-entities/[id]/compliance`. */
@@ -23,7 +23,7 @@ export async function loadAdminLegalEntityCompliancePage(
   ]);
   return {
     entity: bundle.entity,
-    canLiftRestriction:
+    canManageRestriction:
       user != null &&
       userHasAccessTo(user.role as UserRole, user.staffRoles, LEGAL_ENTITY_WRITE_ACCESS),
   };

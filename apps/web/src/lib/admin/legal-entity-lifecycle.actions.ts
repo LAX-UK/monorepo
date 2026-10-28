@@ -52,7 +52,6 @@ const pathSegment: Record<string, string> = {
   request_docs: "request-docs",
   start_review: "start-review",
   approve: "approve",
-  restrict: "restrict",
 };
 
 async function readFailureMessage(res: Response): Promise<string> {
@@ -92,43 +91,71 @@ export async function legalEntityLifecycleSimpleAction(formData: FormData): Prom
   );
 }
 
-const LIFT_REASON_MIN = 3;
+const REASON_MIN = 3;
+
+/** Transitions that need a reason and a recent sign-in, by the API path segment they post to. */
+const REASONED_PATH = {
+  restrict: "restrict",
+  lift_restriction: "lift-restriction",
+} as const;
+
+/**
+ * Posts a transition that needs a reason. A stale sign-in comes back as the step-up code, so the
+ * dialog can ask the person to sign in again and retry.
+ */
+async function runReasonedTransition(
+  op: keyof typeof REASONED_PATH,
+  legalEntityId: string,
+  reason: string,
+): Promise<ActionResult<void>> {
+  const denied = await denyUnlessAdminCapability(LEGAL_ENTITY_WRITE_ACCESS);
+  if (denied) return denied;
+  const id = z.string().uuid().safeParse(legalEntityId.trim());
+  if (!id.success) return actionFailure("Missing organisation");
+  const trimmed = reason.trim();
+  if (trimmed.length < REASON_MIN) {
+    const message = `Enter a reason of at least ${REASON_MIN} characters.`;
+    return actionFailure(message, { reason: [message] }, 400);
+  }
+  const res = await authedServerFetch(
+    `/admin/legal-entities/${encodeURIComponent(id.data)}/${REASONED_PATH[op]}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ reason: trimmed }),
+    },
+  );
+  if (res.ok) {
+    revalidatePath(`/admin/legal-entities/${id.data}`);
+    return actionSuccess();
+  }
+  if (await isStaffStepUpResponse(res)) {
+    return actionFailure("Recent sign-in required", undefined, 403, STAFF_STEP_UP_REQUIRED);
+  }
+  return actionFailure(await readFailureMessage(res), undefined, res.status);
+}
+
+/** Restricts an approved organisation, with the reason kept in the audit log. */
+export async function legalEntityRestrictResultAction(
+  legalEntityId: string,
+  reason: string,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("legalEntityRestrictResultAction", () =>
+    runReasonedTransition("restrict", legalEntityId, reason),
+  );
+}
 
 /**
  * Lifts a restriction. The API moves the organisation to `approved` when Stripe Connect is ready
- * and to `connect_pending` otherwise; a stale sign-in comes back as the step-up code.
+ * and to `connect_pending` otherwise.
  */
 export async function legalEntityLiftRestrictionResultAction(
   legalEntityId: string,
   reason: string,
 ): Promise<ActionResult<void>> {
-  return instrumentServerAction("legalEntityLiftRestrictionResultAction", async () => {
-    const denied = await denyUnlessAdminCapability(LEGAL_ENTITY_WRITE_ACCESS);
-    if (denied) return denied;
-    const id = z.string().uuid().safeParse(legalEntityId.trim());
-    if (!id.success) return actionFailure("Missing organisation");
-    const trimmed = reason.trim();
-    if (trimmed.length < LIFT_REASON_MIN) {
-      const message = `Enter a reason of at least ${LIFT_REASON_MIN} characters.`;
-      return actionFailure(message, { reason: [message] }, 400);
-    }
-    const res = await authedServerFetch(
-      `/admin/legal-entities/${encodeURIComponent(id.data)}/lift-restriction`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ reason: trimmed }),
-      },
-    );
-    if (res.ok) {
-      revalidatePath(`/admin/legal-entities/${id.data}`);
-      return actionSuccess();
-    }
-    if (await isStaffStepUpResponse(res)) {
-      return actionFailure("Recent sign-in required", undefined, 403, STAFF_STEP_UP_REQUIRED);
-    }
-    return actionFailure(await readFailureMessage(res), undefined, res.status);
-  });
+  return instrumentServerAction("legalEntityLiftRestrictionResultAction", () =>
+    runReasonedTransition("lift_restriction", legalEntityId, reason),
+  );
 }
 
 export async function legalEntityRejectAction(formData: FormData): Promise<void> {

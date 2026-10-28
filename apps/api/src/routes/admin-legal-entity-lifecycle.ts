@@ -139,10 +139,13 @@ export function attachAdminLegalEntityLifecycleRoutes(
   platform.post(
     "/legal-entities/:id/restrict",
     requireLegalEntityWrite,
+    guards.requireStepUp,
     zValidator("param", legalEntityIdParamSchema),
+    zValidator("json", reasonBodySchema),
     async (c) => {
       const { id } = c.req.valid("param");
-      return runLifecycle(c, legalEntityLifecycle, id, "restrict");
+      const { reason } = c.req.valid("json");
+      return runLifecycle(c, legalEntityLifecycle, id, "restrict", reason);
     },
   );
 
