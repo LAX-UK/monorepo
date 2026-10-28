@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
-import type { Database } from "@auction/db";
 import {
   shopArtist,
   shopArtwork,
   shopArtworkImage,
   shopEdition,
+  shopEditionFacts,
   shopMediaAsset,
 } from "@auction/db/schema";
 import {
@@ -21,8 +21,9 @@ import {
   assertLivePriceKept,
   assertSourceOriginal,
 } from "@auction/shop-domain";
-import { and, asc, count, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNotNull, sql } from "drizzle-orm";
 import { withAdminIdempotency } from "../application/admin/with-admin-idempotency.js";
+import type { EditionRunRecorder } from "../application/edition-runs/edition-run-services.js";
 import type {
   ArtworkCatalogueWriter,
   ArtworkEditableFields,
@@ -33,7 +34,6 @@ import { ShopApiError, notFound } from "../errors/shop-api-error.js";
 import { StaleVersionError } from "../errors/stale-version-error.js";
 import { withCatalogueSlugConflict } from "./catalogue-unique-violation.js";
 import { shopPhaseDbSession } from "./drizzle-shop-transaction-effects.js";
-import { insertPlannedEditions } from "./insert-planned-editions.js";
 
 type ResolveMediaUrl = (value: string | null | undefined) => string | null;
 type ArtworkRow = typeof shopArtwork.$inferSelect;
@@ -120,6 +120,16 @@ async function assertLinkableOriginal(
     throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, "Choose an existing original", 400);
   }
   assertSourceOriginal({ ...artwork, source });
+}
+
+/** Whether the run's edition facts are recorded and confirmed, which publishing needs. */
+async function editionFactsConfirmed(tx: ShopTransactionEffects, artworkId: string) {
+  const [row] = await shopPhaseDbSession(tx)
+    .select({ artworkId: shopEditionFacts.artworkId })
+    .from(shopEditionFacts)
+    .where(and(eq(shopEditionFacts.artworkId, artworkId), isNotNull(shopEditionFacts.confirmedAt)))
+    .limit(1);
+  return row !== undefined;
 }
 
 async function imageKeysOf(tx: ShopTransactionEffects, artworkId: string): Promise<string[]> {
@@ -249,9 +259,10 @@ async function applyVisibility(
   switch (action) {
     case "publish": {
       if (artwork.archivedAt === null && artwork.publishedAt !== null) break;
-      const [artist, imageKeys] = await Promise.all([
+      const [artist, imageKeys, factsConfirmed] = await Promise.all([
         readArtist(tx, artwork.artistId),
         imageKeysOf(tx, artwork.id),
+        editionFactsConfirmed(tx, artwork.id),
       ]);
       const [blocker] = artworkPublishBlockers({
         archived: artwork.archivedAt !== null,
@@ -260,6 +271,7 @@ async function applyVisibility(
         eligibleForEditionAllocation: artwork.eligibleForEditionAllocation,
         saleState: artwork.saleState,
         printPricePence: artwork.printPricePence,
+        editionFactsConfirmed: factsConfirmed,
       });
       if (blocker)
         return { outcome: "refused", message: ARTWORK_PUBLISH_BLOCKER_MESSAGES[blocker] };
@@ -304,9 +316,9 @@ async function applyVisibility(
 
 export function createDrizzleArtworkCatalogueWriter(
   uow: ShopUnitOfWorkFactory,
-  options: { resolveMediaUrl: ResolveMediaUrl },
+  options: { resolveMediaUrl: ResolveMediaUrl; editionRuns: EditionRunRecorder },
 ): ArtworkCatalogueWriter {
-  const { resolveMediaUrl } = options;
+  const { resolveMediaUrl, editionRuns } = options;
   return {
     createArtwork: (input) =>
       uow.run((tx) =>
@@ -318,10 +330,8 @@ export function createDrizzleArtworkCatalogueWriter(
           requestPayload: input,
           run: async () => {
             if (input.printPricePence !== null && !input.canSetPrice) throw priceForbidden();
-            assertEditionPrice({
-              pricePence: input.printPricePence,
-              eligibleForEditionAllocation: input.eligibleForEditionAllocation,
-            });
+            const eligibleForEditionAllocation = input.run !== null;
+            assertEditionPrice({ pricePence: input.printPricePence, eligibleForEditionAllocation });
             const artist = await readArtist(tx, input.artistId);
             if (artist.archivedAt) {
               throw new ShopDomainError("The artist is archived; restore the artist first");
@@ -333,7 +343,7 @@ export function createDrizzleArtworkCatalogueWriter(
             const sourceOriginalArtworkId = input.sourceOriginalArtworkId ?? null;
             await assertLinkableOriginal(
               tx,
-              { artworkId: null, eligibleForEditionAllocation: input.eligibleForEditionAllocation },
+              { artworkId: null, eligibleForEditionAllocation },
               sourceOriginalArtworkId,
             );
             const session = shopPhaseDbSession(tx);
@@ -349,7 +359,7 @@ export function createDrizzleArtworkCatalogueWriter(
                   medium: input.medium,
                   dimensions: input.dimensions,
                   description: input.description,
-                  eligibleForEditionAllocation: input.eligibleForEditionAllocation,
+                  eligibleForEditionAllocation,
                   printPricePence: input.printPricePence,
                   saleState: input.saleState,
                   salesChannel: input.salesChannel,
@@ -382,11 +392,15 @@ export function createDrizzleArtworkCatalogueWriter(
                 eligibleForEditionAllocation: artwork.eligibleForEditionAllocation,
               },
             });
-            const editionCount = await insertPlannedEditions(session as Database, {
-              artworkId: artwork.id,
-              artistId: artwork.artistId,
-              eligibleForEditionAllocation: artwork.eligibleForEditionAllocation,
-            });
+            const editionCount = input.run
+              ? await editionRuns.recordNewRun(tx, {
+                  artworkId: artwork.id,
+                  artistId: artwork.artistId,
+                  sourceOriginalArtworkId,
+                  run: input.run,
+                  actorSubjectId: input.actorSubjectId,
+                })
+              : 0;
             if (editionCount > 0) {
               await tx.events.append({
                 aggregateType: "shop_artwork",

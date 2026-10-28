@@ -9,13 +9,12 @@ import {
 } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import {
-  BUYER_ENTITLEMENT_COUNT,
   assertOriginalSaleCanAssign,
   assertOriginalSaleCanIssueInvoice,
   assertOriginalSaleCanMarkPaid,
   computePayoutDueAt,
 } from "@auction/shop-domain";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, or } from "drizzle-orm";
 import { withAdminIdempotency } from "../../application/admin/with-admin-idempotency.js";
 import type { InvoiceGateway } from "../../application/ports/invoice.gateway.js";
 import type { OriginalSaleWriter } from "../../application/ports/original-sale.writer.js";
@@ -74,17 +73,24 @@ async function assignOriginalSaleInTransaction(
     throw new ShopApiError(SHOP_API_ERROR_CODES.INTERNAL, "Artist party missing for payout", 500);
   }
 
+  // The buyer's prints sit on the runs made from this original (linked by
+  // source_original_artwork_id), or on the original's own row in data from before the Shop and
+  // lax.art split. Every buyer print not already given to someone else goes to the buyer.
+  const runsOfOriginal = await tx
+    .select({ id: shopArtwork.id })
+    .from(shopArtwork)
+    .where(eq(shopArtwork.sourceOriginalArtworkId, sale.artworkId));
   const buyerEntitlements = await tx
     .select({ id: shopEdition.id })
     .from(shopEdition)
     .where(
       and(
-        eq(shopEdition.artworkId, sale.artworkId),
+        inArray(shopEdition.artworkId, [sale.artworkId, ...runsOfOriginal.map((run) => run.id)]),
         eq(shopEdition.allocation, "original_buyer_entitlement"),
+        or(isNull(shopEdition.ownerPartyId), eq(shopEdition.ownerPartyId, sale.buyerPartyId)),
       ),
     )
-    .orderBy(shopEdition.editionNumber)
-    .limit(BUYER_ENTITLEMENT_COUNT);
+    .orderBy(asc(shopEdition.artworkId), asc(shopEdition.stockRef));
 
   if (buyerEntitlements.length > 0) {
     await tx

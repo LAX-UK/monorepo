@@ -403,21 +403,17 @@ describe.skipIf(!migrationUrl)("migration 0246 edition runs", { timeout: 30_000 
   });
 
   describe("prints", () => {
+    /** Writers set the stock reference themselves since 0247; numbered prints use the number. */
     function insertEdition(artwork: string, columns: Record<string, unknown>) {
-      const values = { artwork_id: artwork, allocation: "artist", ...columns };
+      const numbered =
+        typeof columns.edition_number === "number" ? { stock_ref: columns.edition_number } : {};
+      const values = { artwork_id: artwork, allocation: "artist", ...numbered, ...columns };
       const names = Object.keys(values);
       return {
         sql: `insert into shop_edition (${names.join(", ")}) values (${names.map((_, i) => `$${i + 1}`).join(", ")}) returning stock_ref`,
         params: Object.values(values),
       };
     }
-
-    it("fills the stock reference from the edition number for writers that predate it", async () => {
-      const artwork = await insertArtwork({});
-      const probe = insertEdition(artwork, { edition_number: 7 });
-      const { rows } = await client.query(probe.sql, probe.params);
-      expect(rows[0].stock_ref).toBe(7);
-    });
 
     it("keeps an explicit stock reference and allows unnumbered prints", async () => {
       const artwork = await insertArtwork({});

@@ -16,6 +16,7 @@ import {
   AdminArtworkUpdateBodySchema,
   AdminArtworkVersionResponseSchema,
   CatalogueConflictBodySchema,
+  EDITION_RUN_MAX_SIZE,
   SALE_AUTHORITY_NOTE_MAX_LENGTH,
   SeoFieldsWriteProperties,
   ShopApiErrorBodySchema,
@@ -96,9 +97,10 @@ const ImportArtworkResponseSchema = Type.Object({
   editionCount: Type.Integer({ minimum: 0 }),
 });
 
+/** The count is capped by the prints the owner holds in the run, which shop-api checks. */
 const GrantSaleAuthorityBodySchema = Type.Object({
   ownerPartyId: Type.String({ format: "uuid" }),
-  authorisedCount: Type.Integer({ minimum: 0, maximum: 10 }),
+  authorisedCount: Type.Integer({ minimum: 0, maximum: EDITION_RUN_MAX_SIZE }),
   evidenceNote: Type.String({ minLength: 1, maxLength: SALE_AUTHORITY_NOTE_MAX_LENGTH }),
   requestId: Type.Optional(Type.String({ format: "uuid" })),
 });
@@ -107,7 +109,8 @@ const GrantSaleAuthorityResponseSchema = Type.Object({
   grantId: Type.String({ format: "uuid" }),
   artworkId: Type.String({ format: "uuid" }),
   ownerPartyId: Type.String({ format: "uuid" }),
-  authorisedCount: Type.Integer({ minimum: 0, maximum: 10 }),
+  authorisedCount: Type.Integer({ minimum: 0 }),
+  /** Stock references of the prints put on sale or taken off; equal to the number when numbered. */
   editionNumbersAuthorised: Type.Array(Type.Integer()),
   editionNumbersRevoked: Type.Array(Type.Integer()),
 });
@@ -171,7 +174,7 @@ export async function registerAdminArtworkRoutes(app: FastifyInstance, deps: Adm
         ...actor,
         ...cleanArtworkFields(body),
         slug: body.slug,
-        eligibleForEditionAllocation: body.eligibleForEditionAllocation,
+        run: body.run,
       });
       return afterArtCatalogueWrite(request, deps.artCache, "artworks", result);
     },

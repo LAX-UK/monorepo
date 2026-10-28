@@ -2,7 +2,11 @@ import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { fetchAdminJson, loadAdminSession } from "@/server/application/load-admin-data";
 import { loadEnquirySummary } from "@/server/application/load-enquiry-summary";
 import { buildAdminNavGroups } from "@/server/domain/admin-nav.vm";
-import { buildOverviewTiles, buildWelcomeSections } from "@/server/domain/overview.vm";
+import {
+  buildOverviewTiles,
+  buildWelcomeSections,
+  overviewNeedsAttention,
+} from "@/server/domain/overview.vm";
 import type { AdminOverviewKpis } from "@auction/shop-contracts";
 import { AttentionList, LinkList, PageHeader, type StaffLinkComponent } from "@auction/staff-ui";
 import Link from "next/link";
@@ -39,7 +43,7 @@ export default async function OverviewPage() {
     newEnquiryCount: enquiries?.newCount ?? null,
   });
   const sections = buildWelcomeSections(navGroups);
-  const nothingWaiting = !tiles.some((tile) => tile.value > 0);
+  const nothingWaiting = !overviewNeedsAttention(tiles);
 
   return (
     <div className="flex flex-col gap-6">
@@ -55,6 +59,8 @@ export default async function OverviewPage() {
             label: tile.label,
             count: tile.value,
             href: tile.href,
+            ...(tile.tone ? { tone: tile.tone } : {}),
+            ...(tile.keepWhenZero ? { keepWhenZero: true } : {}),
           }))}
         />
       ) : null}

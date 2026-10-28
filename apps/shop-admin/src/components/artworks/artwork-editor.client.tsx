@@ -8,6 +8,16 @@ import {
   ReadOnlyMedia,
   ReadOnlySearchListing,
 } from "@/components/artworks/artwork-read-only-sections";
+import { EditionFactsCard } from "@/components/artworks/edition-runs/edition-facts-card.client";
+import { EditionRunCard } from "@/components/artworks/edition-runs/edition-run-card.client";
+import { LinkedListingsCard } from "@/components/artworks/edition-runs/linked-listings-card.client";
+import { OpenStockCard } from "@/components/artworks/edition-runs/open-stock-card.client";
+import {
+  PrintsConfirmSection,
+  PrintsFactsSection,
+  PrintsRunSection,
+} from "@/components/artworks/edition-runs/prints-create-sections.client";
+import { ProofListingDialog } from "@/components/artworks/edition-runs/proof-listing-dialog.client";
 import { OriginalArtworkPicker } from "@/components/artworks/original-artwork-picker.client";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
 import {
@@ -22,8 +32,26 @@ import {
   emptyArtworkForm,
   isArtworkFormDirty,
   validateArtworkForm,
+  withArtworkKind,
   withTitle,
 } from "@/lib/artwork-form";
+import {
+  emptyFactsForm,
+  factsErrorSummary,
+  factsInput,
+  factsPreview,
+  validateFactsForm,
+  withRun,
+} from "@/lib/edition-facts-form";
+import {
+  emptyRunForm,
+  firstBatchInput,
+  previewSpec,
+  proofsKeptInput,
+  runErrorSummary,
+  runSpecInput,
+  validateRunForm,
+} from "@/lib/edition-run-form";
 import {
   createArtwork,
   getArtworkDetail,
@@ -31,10 +59,10 @@ import {
   saveArtworkPrice,
   setArtworkVisibility,
 } from "@/server/application/admin-artwork-actions.server";
+import { createCompanionListing } from "@/server/application/edition-run-actions.server";
 import {
   VISIBILITY_OUTCOME,
   artworkVisibilityActions,
-  editionAllocationSummary,
   editionRunFacts,
   publishBlockerMessages,
 } from "@/server/domain/artwork-editor.vm";
@@ -45,10 +73,18 @@ import {
   presentArtworkState,
 } from "@/server/domain/artwork-list.vm";
 import {
+  canHaveLinkedListings,
+  isOpenSpec,
+  mainRunLine,
+  proofsAvailable,
+} from "@/server/domain/edition-run.vm";
+import {
   ADMIN_ARTWORK_CHANNELS,
   ADMIN_ARTWORK_SALE_STATES,
   type AdminArtworkDetail,
   type AdminArtworkVisibilityAction,
+  type AdminEditionRunSpec,
+  type AdminNewRunInput,
   SEO_DESCRIPTION_MAX_LENGTH,
   SEO_TITLE_MAX_LENGTH,
 } from "@auction/shop-contracts";
@@ -81,7 +117,7 @@ import {
   toast,
   useUnsavedChanges,
 } from "@auction/staff-ui";
-import { Archive, ArchiveRestore, Eye, EyeOff, Save } from "@auction/staff-ui/icons";
+import { Archive, ArchiveRestore, Eye, EyeOff, Layers, Save, Stamp } from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -91,6 +127,19 @@ export type ArtworkEditorPermissions = {
   write: boolean;
   /** `artwork_price.write`: set or change the edition price. */
   setPrice: boolean;
+  /** `edition_facts.correct`: correct a run's facts after a sale (shop admins). */
+  correctFacts: boolean;
+  /** `hors_commerce.approve`: approve listing hors commerce proofs (shop admins). */
+  approveHorsCommerce: boolean;
+};
+
+/** For a companion listing: the main run it is another run of. */
+export type CompanionOf = {
+  artworkId: string;
+  title: string;
+  spec: AdminEditionRunSpec;
+  artistId: string;
+  artistName: string;
 };
 
 type Conflict = { currentVersion: string };
@@ -120,25 +169,30 @@ function counter(value: string, max: number) {
 export function ArtworkEditor({
   detail,
   initialArtist = null,
+  companionOf = null,
   permissions,
   currentYear,
 }: {
   detail: AdminArtworkDetail | null;
   /** For a new artwork started from an artist's page. */
   initialArtist?: { id: string; name: string } | null;
+  /** For a new companion listing started from its main run. */
+  companionOf?: CompanionOf | null;
   permissions: ArtworkEditorPermissions;
   currentYear: number;
 }) {
   const router = useRouter();
   const mode = detail ? "edit" : "create";
+  const companion = mode === "create" ? companionOf : null;
   const [record, setRecord] = useState(detail);
   const [values, setValues] = useState<ArtworkFormValues>(() =>
     detail
       ? artworkFormValues(detail)
       : {
           ...emptyArtworkForm(),
-          artistId: initialArtist?.id ?? null,
-          artistName: initialArtist?.name ?? null,
+          // A companion is by the main run's artist; the API copies the rest from it.
+          artistId: companionOf?.artistId ?? initialArtist?.id ?? null,
+          artistName: companionOf?.artistName ?? initialArtist?.name ?? null,
         },
   );
   const [baseline, setBaseline] = useState(values);
@@ -152,6 +206,10 @@ export function ArtworkEditor({
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [confirming, setConfirming] = useState<AdminArtworkVisibilityAction | null>(null);
   const [changingVisibility, setChangingVisibility] = useState(false);
+  // New prints: the run, its edition facts and the confirmation, checked with the rest on submit.
+  const [runValues, setRunValues] = useState(emptyRunForm);
+  const [factsValues, setFactsValues] = useState(emptyFactsForm);
+  const [listingProofs, setListingProofs] = useState(false);
 
   const live = record?.state === "live" || record?.state === "sold_out";
   const context = {
@@ -171,8 +229,46 @@ export function ArtworkEditor({
   });
   const attempted = failedSubmits > 0;
   const clientErrors = attempted ? validateArtworkForm(values, context) : {};
+  const prints = mode === "create" && values.editionRun === "editions";
+  const runContext = {
+    linkedToOriginal: companion
+      ? companion.spec.type === "custom_limited"
+        ? companion.spec.linkedToOriginal
+        : false
+      : values.sourceOriginalId !== null,
+  };
+  const chosenSpec = previewSpec(runValues, runContext);
+  const runErrors = prints && attempted ? validateRunForm(runValues, runContext) : {};
+  const factsErrors = prints && attempted ? validateFactsForm(factsValues, chosenSpec) : {};
+  const factsPreviewModel = chosenSpec
+    ? factsPreview(factsValues, chosenSpec, proofsKeptInput(runValues))
+    : null;
+
+  function updateFacts(patch: Partial<typeof factsValues>) {
+    setFactsValues((current) => withRun({ ...current, ...patch }, chosenSpec));
+  }
+
+  /** The run of new prints as the API takes it, or null while the run or its facts need fixing. */
+  function newRunInput(): AdminNewRunInput | null {
+    if (Object.keys(validateRunForm(runValues, runContext)).length > 0) return null;
+    const facts = factsInput(factsValues);
+    if (!facts || Object.keys(validateFactsForm(factsValues, chosenSpec)).length > 0) return null;
+    const firstBatch = firstBatchInput(runValues);
+    return {
+      spec: runSpecInput(runValues),
+      proofsKept: proofsKeptInput(runValues),
+      facts,
+      factsConfirmed: factsValues.confirmed,
+      ...(firstBatch ? { firstBatch } : {}),
+    };
+  }
   const errors = { ...serverErrors, ...clientErrors };
-  const summary = artworkErrorSummary(errors);
+  // In page order: the run and its facts come first for new prints.
+  const summary = [
+    ...runErrorSummary(runErrors),
+    ...factsErrorSummary(factsErrors),
+    ...artworkErrorSummary(errors),
+  ];
 
   function update(patch: Partial<ArtworkFormValues>) {
     setValues((current) => ({ ...current, ...patch }));
@@ -181,15 +277,44 @@ export function ArtworkEditor({
 
   async function submit(expectedVersion = version) {
     const found = validateArtworkForm(values, context);
-    if (Object.keys(found).length > 0) {
+    const run = prints ? newRunInput() : null;
+    if (Object.keys(found).length > 0 || (prints && !run)) {
       setFailedSubmits((count) => count + 1);
       return;
     }
     setFormError(null);
     setSaving(true);
+    if (mode === "create" && companion && run) {
+      const body = buildArtworkCreateBody(values, context, run);
+      const result = await createCompanionListing({
+        artworkId: companion.artworkId,
+        body: {
+          slug: body.slug,
+          title: body.title,
+          run,
+          ...(body.printPricePence ? { printPricePence: body.printPricePence } : {}),
+        },
+        idempotencyKey,
+      }).catch(() => ({ ok: false, kind: "failed", message: "Save failed. Try again." }) as const);
+      setSaving(false);
+      if (!result.ok) {
+        const field = result.kind === "conflict" ? artworkConflictField(result.message) : null;
+        if (result.kind === "conflict" && field) {
+          setServerErrors({ [field]: result.message });
+          setFailedSubmits((count) => count + 1);
+        } else setFormError(adminMutationErrorMessage(result));
+        toast.error("The companion listing was not created");
+        return;
+      }
+      setBaseline(values);
+      toast.success(`Created “${values.title.trim()}” as a draft`);
+      await guard.release();
+      router.replace(`/artworks/${result.data.artworkId}`);
+      return;
+    }
     if (mode === "create") {
       const result = await createArtwork({
-        body: buildArtworkCreateBody(values, context),
+        body: buildArtworkCreateBody(values, context, run),
         idempotencyKey,
       }).catch(() => ({ ok: false, kind: "failed", message: "Save failed. Try again." }) as const);
       setSaving(false);
@@ -285,7 +410,30 @@ export function ArtworkEditor({
   // The money field resets its text whenever `value` differs from what it last parsed, so it is
   // fed its own reading of the text; the form's stricter rules apply on validation.
   const typedPence = parsePoundsToPence(values.priceText);
-  const title = mode === "create" ? values.title.trim() || "New artwork" : record?.title;
+  const title =
+    mode === "create"
+      ? values.title.trim() || (companion ? "New companion listing" : "New artwork")
+      : record?.title;
+  const run = record?.run ?? null;
+  const linkedActions =
+    run && canHaveLinkedListings(run.spec) && permissions.write
+      ? [
+          {
+            id: "create-proof-listing",
+            label: "Create proof listing",
+            icon: Stamp,
+            disabled: dirty,
+            onSelect: () => setListingProofs(true),
+          },
+          {
+            id: "create-companion-listing",
+            label: "Create companion listing",
+            icon: Layers,
+            disabled: dirty,
+            onSelect: () => record && router.push(`/artworks/new?companionOf=${record.artworkId}`),
+          },
+        ]
+      : [];
 
   const visibilityButton = (
     action: AdminArtworkVisibilityAction,
@@ -323,16 +471,22 @@ export function ArtworkEditor({
           ) : undefined
         }
         overflow={
-          record && visibility && visibility.more.length > 0 && !readOnly ? (
+          record &&
+          visibility &&
+          (visibility.more.length > 0 || linkedActions.length > 0) &&
+          !readOnly ? (
             <OverflowMenu
-              actions={visibility.more.map((action) => ({
-                id: action,
-                label: VISIBILITY_ACTION_LABELS[action].verb,
-                icon: ACTION_ICON[action],
-                tone: action === "archive" ? ("danger" as const) : ("default" as const),
-                disabled: dirty,
-                onSelect: () => setConfirming(action),
-              }))}
+              actions={[
+                ...linkedActions,
+                ...visibility.more.map((action) => ({
+                  id: action,
+                  label: VISIBILITY_ACTION_LABELS[action].verb,
+                  icon: ACTION_ICON[action],
+                  tone: action === "archive" ? ("danger" as const) : ("default" as const),
+                  disabled: dirty,
+                  onSelect: () => setConfirming(action),
+                })),
+              ]}
             />
           ) : undefined
         }
@@ -405,6 +559,96 @@ export function ArtworkEditor({
       >
         <FormErrorSummary errors={attempted ? summary : []} focusKey={failedSubmits} />
 
+        {mode === "create" && !companion ? (
+          <FormSection
+            title="What are you adding?"
+            description="Prints sell on LAX Shop; an original is shown on lax.art and sold by enquiry."
+          >
+            <StaffRadioGroup
+              aria-label="What are you adding?"
+              value={values.editionRun}
+              onValueChange={(kind) =>
+                update(withArtworkKind(values, kind === "original" ? "original" : "editions"))
+              }
+            >
+              <ChoiceRow
+                htmlFor="artwork-kind-prints"
+                control={<StaffRadio id="artwork-kind-prints" value="editions" />}
+                label="Prints"
+                description="A run of prints of one image: LAX standard, a custom limited edition or an open edition."
+              />
+              <ChoiceRow
+                htmlFor="artwork-kind-original"
+                control={<StaffRadio id="artwork-kind-original" value="original" />}
+                label="Original"
+                description="A unique work on lax.art, sold by enquiry. It has no edition price."
+              />
+            </StaffRadioGroup>
+          </FormSection>
+        ) : null}
+        {companion ? (
+          <Notice title={`Main run: ${mainRunLine(companion)}`}>
+            The artist, details and images are copied from it. Choose this listing's own run and
+            edition facts, such as an unsigned open edition beside a signed one.
+          </Notice>
+        ) : null}
+
+        {prints ? (
+          <>
+            <PrintsRunSection
+              values={runValues}
+              errors={runErrors}
+              linkedToOriginal={runContext.linkedToOriginal}
+              onChange={(patch) => setRunValues((current) => ({ ...current, ...patch }))}
+              original={
+                companion ? null : (
+                  <Field
+                    label="Original on lax.art"
+                    optional={!runErrors.original}
+                    description="The original these prints were made from. Buyer prints go to its buyer."
+                    error={runErrors.original}
+                    id="run-original"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="w-full sm:max-w-80">
+                        <OriginalArtworkPicker
+                          value={values.sourceOriginalId}
+                          selectedTitle={values.sourceOriginalTitle}
+                          onChange={(original) =>
+                            update({
+                              sourceOriginalId: original?.id ?? null,
+                              sourceOriginalTitle: original?.label ?? null,
+                            })
+                          }
+                        />
+                      </div>
+                      {values.sourceOriginalId ? (
+                        <StaffButton
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            update({ sourceOriginalId: null, sourceOriginalTitle: null })
+                          }
+                        >
+                          Remove link
+                        </StaffButton>
+                      ) : null}
+                    </div>
+                  </Field>
+                )
+              }
+            />
+            <PrintsFactsSection
+              values={factsValues}
+              errors={factsErrors}
+              spec={chosenSpec}
+              preview={factsPreviewModel}
+              onChange={updateFacts}
+            />
+          </>
+        ) : null}
+
         {readOnly && record ? (
           <ReadOnlyDetails values={values} record={record} />
         ) : (
@@ -450,118 +694,95 @@ export function ArtworkEditor({
                 ]}
               />
             )}
-            <Field
-              label="Artist"
-              error={errors.artistId}
-              id={artworkFieldId("artistId")}
-              disabled={readOnly}
-            >
-              <ArtistPicker
-                value={values.artistId}
-                selectedName={values.artistName}
-                onChange={(artist) =>
-                  update({ artistId: artist?.id ?? null, artistName: artist?.label ?? null })
-                }
-              />
-            </Field>
-            <FieldRow>
-              <Field
-                label="Year"
-                optional
-                error={errors.yearCreated}
-                id={artworkFieldId("yearCreated")}
-                disabled={readOnly}
-              >
-                <TextInput
-                  inputMode="numeric"
-                  autoComplete="off"
-                  placeholder={String(currentYear)}
-                  value={values.yearCreated}
-                  onChange={(event) => update({ yearCreated: event.target.value })}
-                />
-              </Field>
-              <Field
-                label="Medium"
-                optional
-                error={errors.medium}
-                id={artworkFieldId("medium")}
-                disabled={readOnly}
-              >
-                <TextInput
-                  placeholder="Oil on linen"
-                  value={values.medium}
-                  onChange={(event) => update({ medium: event.target.value })}
-                />
-              </Field>
-            </FieldRow>
-            <Field
-              label="Dimensions"
-              optional
-              description="As it should read, such as 60 × 80 cm."
-              error={errors.dimensions}
-              id={artworkFieldId("dimensions")}
-              disabled={readOnly}
-            >
-              <TextInput
-                value={values.dimensions}
-                onChange={(event) => update({ dimensions: event.target.value })}
-              />
-            </Field>
-            <Field
-              label="Description"
-              optional
-              error={errors.description}
-              id={artworkFieldId("description")}
-              disabled={readOnly}
-            >
-              <TextArea
-                rows={6}
-                value={values.description}
-                onChange={(event) => update({ description: event.target.value })}
-              />
-            </Field>
+            {companion ? null : (
+              <>
+                <Field
+                  label="Artist"
+                  error={errors.artistId}
+                  id={artworkFieldId("artistId")}
+                  disabled={readOnly}
+                >
+                  <ArtistPicker
+                    value={values.artistId}
+                    selectedName={values.artistName}
+                    onChange={(artist) =>
+                      update({ artistId: artist?.id ?? null, artistName: artist?.label ?? null })
+                    }
+                  />
+                </Field>
+                <FieldRow>
+                  <Field
+                    label="Year"
+                    optional
+                    error={errors.yearCreated}
+                    id={artworkFieldId("yearCreated")}
+                    disabled={readOnly}
+                  >
+                    <TextInput
+                      inputMode="numeric"
+                      autoComplete="off"
+                      placeholder={String(currentYear)}
+                      value={values.yearCreated}
+                      onChange={(event) => update({ yearCreated: event.target.value })}
+                    />
+                  </Field>
+                  <Field
+                    label="Medium"
+                    optional
+                    error={errors.medium}
+                    id={artworkFieldId("medium")}
+                    disabled={readOnly}
+                  >
+                    <TextInput
+                      placeholder="Oil on linen"
+                      value={values.medium}
+                      onChange={(event) => update({ medium: event.target.value })}
+                    />
+                  </Field>
+                </FieldRow>
+                <Field
+                  label="Dimensions"
+                  optional
+                  description="As it should read, such as 60 × 80 cm."
+                  error={errors.dimensions}
+                  id={artworkFieldId("dimensions")}
+                  disabled={readOnly}
+                >
+                  <TextInput
+                    value={values.dimensions}
+                    onChange={(event) => update({ dimensions: event.target.value })}
+                  />
+                </Field>
+                <Field
+                  label="Description"
+                  optional
+                  error={errors.description}
+                  id={artworkFieldId("description")}
+                  disabled={readOnly}
+                >
+                  <TextArea
+                    rows={6}
+                    value={values.description}
+                    onChange={(event) => update({ description: event.target.value })}
+                  />
+                </Field>
+              </>
+            )}
           </FormSection>
         )}
 
         <FormSection
-          title="Editions and pricing"
-          description="Editions are sold at one price each. Counts here are for staff only; the storefront shows only whether editions are available."
+          title={prints ? "Price" : "Editions and pricing"}
+          description={
+            prints
+              ? "Every print in the run sells at one price."
+              : "Editions are sold at one price each. Counts here are for staff only; the storefront shows only whether editions are available."
+          }
         >
-          {mode === "create" ? (
-            <fieldset className="flex flex-col gap-1">
-              <legend className="mb-1 text-staff-sm font-medium text-staff-fg">Edition run</legend>
-              <StaffRadioGroup
-                value={values.editionRun}
-                onValueChange={(editionRun) =>
-                  update({ editionRun: editionRun === "original" ? "original" : "editions" })
-                }
-              >
-                <ChoiceRow
-                  htmlFor="edition-run-editions"
-                  control={<StaffRadio id="edition-run-editions" value="editions" />}
-                  label="Original with an edition of 24"
-                  description="10 for buyers of the original, 10 for the artist and 4 for LAX. Fixed once created."
-                />
-                <ChoiceRow
-                  htmlFor="edition-run-original"
-                  control={<StaffRadio id="edition-run-original" value="original" />}
-                  label="Original only"
-                  description="A unique work, sold by enquiry. It has no edition price."
-                />
-              </StaffRadioGroup>
-            </fieldset>
-          ) : record && record.editions.size > 0 ? (
-            <div className="flex flex-col gap-3">
-              <KeyValueList
-                items={[
-                  {
-                    label: "Edition run",
-                    value: `${record.editions.size} editions · ${editionAllocationSummary(record.editions)}`,
-                  },
-                ]}
-              />
+          {mode === "create" ? null : record?.run ? (
+            record.run.stock ? null : (
               <StatGrid label="Edition counts" items={editionRunFacts(record.editions)} />
-            </div>
+            )
           ) : (
             <KeyValueList
               items={[{ label: "Edition run", value: "Original only, sold by enquiry" }]}
@@ -591,7 +812,7 @@ export function ArtworkEditor({
             </Field>
           ) : null}
 
-          {values.editionRun === "editions" ? (
+          {values.editionRun === "editions" && mode === "edit" ? (
             readOnly ? (
               <KeyValueList
                 items={[
@@ -636,7 +857,7 @@ export function ArtworkEditor({
             )
           ) : null}
 
-          {readOnly ? (
+          {companion ? null : readOnly ? (
             <KeyValueList items={[{ label: "Sale", value: SALE_STATE_LABELS[values.saleState] }]} />
           ) : (
             <Field label="Sale" id="artwork-sale-state" disabled={readOnly}>
@@ -661,7 +882,7 @@ export function ArtworkEditor({
           )}
         </FormSection>
 
-        {readOnly && record ? (
+        {companion ? null : readOnly && record ? (
           <ReadOnlyMedia images={values.images} importedImageUrl={record.importedImageUrl} />
         ) : (
           <FormSection
@@ -679,70 +900,76 @@ export function ArtworkEditor({
           </FormSection>
         )}
 
-        <FormSection
-          title="Visibility"
-          description="Where the artwork is sold, and whether it is on the storefront."
-        >
-          {readOnly ? (
-            <KeyValueList
-              items={[{ label: "Sales channel", value: CHANNEL_LABELS[values.salesChannel] }]}
-            />
-          ) : (
-            <Field label="Sales channel" id="artwork-channel" disabled={readOnly}>
-              <SegmentedControl
-                label="Sales channel"
-                size="md"
-                value={values.salesChannel}
-                onValueChange={(salesChannel) => update({ salesChannel })}
-                options={ADMIN_ARTWORK_CHANNELS.map((value) => ({
-                  value,
-                  label: CHANNEL_LABELS[value],
-                }))}
+        {companion ? null : (
+          <FormSection
+            title="Visibility"
+            description="Where the artwork is sold, and whether it is on the storefront."
+          >
+            {readOnly ? (
+              <KeyValueList
+                items={[{ label: "Sales channel", value: CHANNEL_LABELS[values.salesChannel] }]}
               />
-            </Field>
-          )}
-          {record ? (
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap items-center gap-2 text-staff-sm text-staff-muted">
-                <span>Now</span>
-                <MappedStatusBadge status={record.state} present={presentArtworkState} />
-                {record.publishedAt && live ? (
-                  <span>since {formatStaffDateTime(record.publishedAt)}</span>
-                ) : null}
-              </div>
-              {record.state === "draft" && record.publishBlockers.length > 0 ? (
-                <Notice tone="warning" title="Not ready to publish">
-                  {publishBlockerMessages(record).join(" ")}
-                </Notice>
-              ) : null}
-              {visibility && !readOnly ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  {visibility.primary ? visibilityButton(visibility.primary, "secondary") : null}
-                  {visibility.more.map((action) => (
-                    <StaffButton
-                      key={action}
-                      variant={action === "archive" ? "danger-secondary" : "secondary"}
-                      icon={<ActionIcon action={action} />}
-                      disabled={dirty || changingVisibility}
-                      onClick={() => setConfirming(action)}
-                    >
-                      {VISIBILITY_ACTION_LABELS[action].verb}
-                    </StaffButton>
-                  ))}
-                  {dirty ? (
-                    <span className="text-staff-xs text-staff-muted">Save your changes first.</span>
+            ) : (
+              <Field label="Sales channel" id="artwork-channel" disabled={readOnly}>
+                <SegmentedControl
+                  label="Sales channel"
+                  size="md"
+                  value={values.salesChannel}
+                  onValueChange={(salesChannel) => update({ salesChannel })}
+                  options={ADMIN_ARTWORK_CHANNELS.map((value) => ({
+                    value,
+                    label: CHANNEL_LABELS[value],
+                  }))}
+                />
+              </Field>
+            )}
+            {record ? (
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-wrap items-center gap-2 text-staff-sm text-staff-muted">
+                  <span>Now</span>
+                  <MappedStatusBadge status={record.state} present={presentArtworkState} />
+                  {record.publishedAt && live ? (
+                    <span>since {formatStaffDateTime(record.publishedAt)}</span>
                   ) : null}
                 </div>
-              ) : null}
-            </div>
-          ) : (
-            <Notice title="New artworks start as drafts">
-              Create the draft first, then publish it from here when it has an image and a price.
-            </Notice>
-          )}
-        </FormSection>
+                {record.state === "draft" && record.publishBlockers.length > 0 ? (
+                  <Notice tone="warning" title="Not ready to publish">
+                    {publishBlockerMessages(record).join(" ")}
+                  </Notice>
+                ) : null}
+                {visibility && !readOnly ? (
+                  <div className="flex flex-wrap items-center gap-2">
+                    {visibility.primary ? visibilityButton(visibility.primary, "secondary") : null}
+                    {visibility.more.map((action) => (
+                      <StaffButton
+                        key={action}
+                        variant={action === "archive" ? "danger-secondary" : "secondary"}
+                        icon={<ActionIcon action={action} />}
+                        disabled={dirty || changingVisibility}
+                        onClick={() => setConfirming(action)}
+                      >
+                        {VISIBILITY_ACTION_LABELS[action].verb}
+                      </StaffButton>
+                    ))}
+                    {dirty ? (
+                      <span className="text-staff-xs text-staff-muted">
+                        Save your changes first.
+                      </span>
+                    ) : null}
+                  </div>
+                ) : null}
+              </div>
+            ) : (
+              <Notice title="New artworks start as drafts">
+                {prints
+                  ? "Create the draft first, then publish it from here when it has an image, a price and confirmed edition facts."
+                  : "Create the draft first, then publish it from here when it has an image."}
+              </Notice>
+            )}
+          </FormSection>
+        )}
 
-        {readOnly && record ? (
+        {companion ? null : readOnly && record ? (
           <ReadOnlySearchListing values={values} />
         ) : (
           <FormSection
@@ -780,22 +1007,85 @@ export function ArtworkEditor({
           </FormSection>
         )}
 
+        {prints ? (
+          <PrintsConfirmSection
+            preview={factsPreviewModel}
+            confirmed={factsValues.confirmed}
+            saving={saving}
+            onConfirmedChange={(confirmed) => updateFacts({ confirmed })}
+          />
+        ) : null}
+
         {!canSave ? null : (
           <FormActions className="border-t border-staff-line-subtle pt-4">
             <StaffButton asChild variant="secondary">
-              <Link href="/artworks">Cancel</Link>
+              <Link href={companion ? `/artworks/${companion.artworkId}` : "/artworks"}>
+                Cancel
+              </Link>
             </StaffButton>
-            <StaffButton
-              type="submit"
-              variant="primary"
-              loading={saving}
-              disabled={mode === "edit" && !dirty}
-            >
-              {mode === "create" ? "Create draft" : dirty ? "Save changes" : "Saved"}
-            </StaffButton>
+            {prints ? null : (
+              <StaffButton
+                type="submit"
+                variant="primary"
+                loading={saving}
+                disabled={mode === "edit" && !dirty}
+              >
+                {mode === "create" ? "Create draft" : dirty ? "Save changes" : "Saved"}
+              </StaffButton>
+            )}
           </FormActions>
         )}
       </form>
+
+      {record && run ? (
+        <>
+          <EditionRunCard
+            artworkId={record.artworkId}
+            run={run}
+            version={version ?? record.version}
+            linkedToOriginal={values.sourceOriginalId !== null}
+            canWrite={permissions.write}
+            onSaved={setVersion}
+          />
+          <EditionFactsCard
+            artworkId={record.artworkId}
+            title={record.title}
+            run={run}
+            permissions={{ write: permissions.write, correct: permissions.correctFacts }}
+          />
+          {run.stock && isOpenSpec(run.spec) ? (
+            <OpenStockCard
+              artworkId={record.artworkId}
+              title={record.title}
+              stock={run.stock}
+              defaultSplit={
+                run.spec.type === "open"
+                  ? run.spec.defaultSplit
+                  : run.spec.type === "companion" && run.spec.run.type === "open"
+                    ? run.spec.run.defaultSplit
+                    : { artistPct: 50, laxPct: 50 }
+              }
+              canWrite={permissions.write}
+            />
+          ) : null}
+          {canHaveLinkedListings(run.spec) ? (
+            <LinkedListingsCard listings={run.linkedListings} />
+          ) : null}
+          {canHaveLinkedListings(run.spec) && permissions.write ? (
+            <ProofListingDialog
+              open={listingProofs}
+              onOpenChange={setListingProofs}
+              artworkId={record.artworkId}
+              title={record.title}
+              available={proofsAvailable(run)}
+              permissions={{
+                setPrice: permissions.setPrice,
+                approveHorsCommerce: permissions.approveHorsCommerce,
+              }}
+            />
+          ) : null}
+        </>
+      ) : null}
 
       <ConfirmActionDialog
         open={confirming !== null}

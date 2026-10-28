@@ -182,9 +182,15 @@ function runName(run: EditionRunSpec): string {
   return size === null ? "Open edition" : `Limited edition of ${size}`;
 }
 
+/** Hors commerce proofs were made not to be sold, so their listing always says so. */
+const HORS_COMMERCE_NOTE = "originally not for sale";
+
 function editionRow(run: EditionRunSpec): string {
   if (run.type === "proof") {
-    return `${capitalise(PROOF_NAMES[run.proofType].singular)}, one of ${run.size}`;
+    const name = capitalise(PROOF_NAMES[run.proofType].singular);
+    return run.proofType === "hc"
+      ? `${name}, ${HORS_COMMERCE_NOTE}, one of ${run.size}`
+      : `${name}, one of ${run.size}`;
   }
   return runName(run);
 }

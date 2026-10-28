@@ -7,6 +7,7 @@ import type {
   AdminArtworkState,
   AdminArtworkVersionResponse,
   AdminArtworkVisibilityAction,
+  AdminNewRunInput,
 } from "@auction/shop-contracts";
 import type { CursorListInput, CursorListResult } from "./cursor-list.js";
 
@@ -18,6 +19,8 @@ export type AdminArtworkListInput = CursorListInput & {
   artistId?: string | undefined;
   saleState?: AdminArtworkSaleState | undefined;
   salesChannel?: AdminArtworkChannel | undefined;
+  /** Runs whose edition facts are not recorded or not confirmed yet. */
+  facts?: "needs_review" | undefined;
 };
 
 export type AdminArtworkListResult = CursorListResult<AdminArtworkListItem> & {
@@ -66,7 +69,8 @@ export type CreateArtworkInput = StaffWrite &
   ArtworkEditableFields &
   PriceAuthority & {
     slug: string;
-    eligibleForEditionAllocation: boolean;
+    /** The run of prints the artwork sells, recorded with it; null for an original. */
+    run: AdminNewRunInput | null;
   };
 
 export type UpdateArtworkInput = StaffWrite &

@@ -15,6 +15,8 @@ export type PortalSaleAuthorityRow = {
   ownerPartyId: string;
   authorisedCount: number;
   committedCount: number;
+  /** Prints the owner holds in the run, sold ones included (not withdrawn ones). */
+  ownedCount: number;
   lastGrantAt: string | null;
 };
 

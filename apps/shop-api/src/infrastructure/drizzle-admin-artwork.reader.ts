@@ -4,15 +4,23 @@ import {
   shopArtwork,
   shopArtworkImage,
   shopEdition,
+  shopEditionFacts,
+  shopOrder,
+  shopOrderLine,
   shopParty,
 } from "@auction/db/schema";
-import type { AdminArtworkDetail, AdminArtworkState } from "@auction/shop-contracts";
+import type {
+  AdminArtworkDetail,
+  AdminArtworkRunSummary,
+  AdminArtworkState,
+} from "@auction/shop-contracts";
 import {
   artworkCatalogueState,
   artworkPublishBlockers,
   summariseEditionRun,
 } from "@auction/shop-domain";
 import { type SQL, and, asc, count, eq, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import {
   decodeCatalogueCursor,
   encodeCatalogueCursor,
@@ -29,6 +37,68 @@ import {
   artworkStateSql,
 } from "./artwork-visibility-sql.js";
 import { containsPattern } from "./drizzle-editorial-search.reader.js";
+import { proofsKeptFromColumns, runFromColumns } from "./edition-run-columns.js";
+import { readEditionRunDetail } from "./edition-runs/drizzle-edition-run-detail.reader.js";
+
+const mainRun = alias(shopArtwork, "main_run");
+
+/** The run's facts are recorded and confirmed, which publishing needs. */
+const factsConfirmedSql = sql<boolean>`exists (
+  select 1 from ${shopEditionFacts}
+  where ${shopEditionFacts.artworkId} = ${shopArtwork.id}
+    and ${shopEditionFacts.confirmedAt} is not null
+)`;
+
+/** A print of the run has sold (a paid order or a sale outside one): its facts are fixed. */
+const factsLockedSql = sql<boolean>`(
+  exists (
+    select 1 from ${shopOrderLine}
+    join ${shopOrder} on ${shopOrder.id} = ${shopOrderLine.orderId}
+    where ${shopOrderLine.artworkId} = ${shopArtwork.id} and ${shopOrder.paidAt} is not null
+  )
+  or exists (
+    select 1 from ${shopEdition}
+    where ${shopEdition.artworkId} = ${shopArtwork.id} and ${shopEdition.listingStatus} = 'sold'
+  )
+)`;
+
+type ListRunColumns = Pick<
+  typeof shopArtwork.$inferSelect,
+  | "id"
+  | "sourceOriginalArtworkId"
+  | "runKind"
+  | "runRole"
+  | "runTemplate"
+  | "runSize"
+  | "allocBuyer"
+  | "allocArtist"
+  | "allocLax"
+  | "openDefaultArtistPct"
+  | "mainRunArtworkId"
+  | "proofType"
+  | "proofsKeptAp"
+  | "proofsKeptPp"
+  | "proofsKeptHc"
+  | "proofsKeptBat"
+>;
+
+/** The run label and facts status a list row carries; null for an original. */
+function runSummary(
+  row: ListRunColumns,
+  main: Parameters<typeof proofsKeptFromColumns>[0] | null,
+  facts: { confirmed: boolean; locked: boolean },
+): AdminArtworkRunSummary | null {
+  const stored = runFromColumns(
+    row,
+    main?.proofsKeptAp == null ? null : proofsKeptFromColumns(main),
+  );
+  if (!stored) return null;
+  return {
+    spec: stored.spec,
+    factsStatus: facts.confirmed ? "confirmed" : "needs_review",
+    factsLocked: facts.locked,
+  };
+}
 
 const DEFAULT_LIMIT = 25;
 const MAX_LIMIT = 100;
@@ -51,6 +121,11 @@ function listConditions(input: AdminArtworkListInput): SQL[] {
   if (input.artistId) conditions.push(eq(shopArtwork.artistId, input.artistId));
   if (input.saleState) conditions.push(eq(shopArtwork.saleState, input.saleState));
   if (input.salesChannel) conditions.push(eq(shopArtwork.salesChannel, input.salesChannel));
+  if (input.facts === "needs_review") {
+    conditions.push(
+      sql`${shopArtwork.eligibleForEditionAllocation} and not ${factsConfirmedSql}` as SQL,
+    );
+  }
   return conditions;
 }
 
@@ -90,10 +165,32 @@ export function createDrizzleAdminArtworkReader(
             updatedAt: shopArtwork.updatedAt,
             editionCount: artworkEditionCountSql,
             soldEditionCount: artworkSoldEditionCountSql,
+            sourceOriginalArtworkId: shopArtwork.sourceOriginalArtworkId,
+            runKind: shopArtwork.runKind,
+            runRole: shopArtwork.runRole,
+            runTemplate: shopArtwork.runTemplate,
+            runSize: shopArtwork.runSize,
+            allocBuyer: shopArtwork.allocBuyer,
+            allocArtist: shopArtwork.allocArtist,
+            allocLax: shopArtwork.allocLax,
+            openDefaultArtistPct: shopArtwork.openDefaultArtistPct,
+            mainRunArtworkId: shopArtwork.mainRunArtworkId,
+            proofType: shopArtwork.proofType,
+            proofsKeptAp: shopArtwork.proofsKeptAp,
+            proofsKeptPp: shopArtwork.proofsKeptPp,
+            proofsKeptHc: shopArtwork.proofsKeptHc,
+            proofsKeptBat: shopArtwork.proofsKeptBat,
+            mainProofsKeptAp: mainRun.proofsKeptAp,
+            mainProofsKeptPp: mainRun.proofsKeptPp,
+            mainProofsKeptHc: mainRun.proofsKeptHc,
+            mainProofsKeptBat: mainRun.proofsKeptBat,
+            factsConfirmed: factsConfirmedSql,
+            factsLocked: factsLockedSql,
           })
           .from(shopArtwork)
           .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
           .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+          .leftJoin(mainRun, eq(mainRun.id, shopArtwork.mainRunArtworkId))
           .where(
             and(
               ...filters,
@@ -127,6 +224,16 @@ export function createDrizzleAdminArtworkReader(
           artistName: row.artistName,
           thumbnailUrl: resolveMediaUrl(row.primaryImageUrl),
           editionSize: Number(row.editionCount),
+          run: runSummary(
+            row,
+            {
+              proofsKeptAp: row.mainProofsKeptAp,
+              proofsKeptPp: row.mainProofsKeptPp,
+              proofsKeptHc: row.mainProofsKeptHc,
+              proofsKeptBat: row.mainProofsKeptBat,
+            },
+            { confirmed: Boolean(row.factsConfirmed), locked: Boolean(row.factsLocked) },
+          ),
           soldEditionCount: Number(row.soldEditionCount),
           printPricePence: row.printPricePence,
           saleState: row.saleState,
@@ -167,7 +274,7 @@ export function createDrizzleAdminArtworkReader(
         .limit(1);
       if (!row) return null;
       const sourceOriginalId = row.artwork.sourceOriginalArtworkId;
-      const [images, editions, sourceOriginal] = await Promise.all([
+      const [images, editions, sourceOriginal, run] = await Promise.all([
         db
           .select({ mediaKey: shopArtworkImage.mediaKey, alt: shopArtworkImage.alt })
           .from(shopArtworkImage)
@@ -189,6 +296,7 @@ export function createDrizzleAdminArtworkReader(
               .limit(1)
               .then((rows) => rows[0] ?? null)
           : null,
+        readEditionRunDetail(db, row.artwork),
       ]);
       return toAdminArtworkDetail({
         artwork: row.artwork,
@@ -201,6 +309,7 @@ export function createDrizzleAdminArtworkReader(
         images: images.map((image) => ({ ...image, url: resolveMediaUrl(image.mediaKey) })),
         editions,
         sourceOriginal,
+        run,
         resolveMediaUrl,
       });
     },
@@ -215,6 +324,7 @@ export function toAdminArtworkDetail(input: {
   images: AdminArtworkDetail["images"];
   editions: Parameters<typeof summariseEditionRun>[0];
   sourceOriginal?: AdminArtworkDetail["sourceOriginal"];
+  run: AdminArtworkDetail["run"];
   resolveMediaUrl: ResolveMediaUrl;
 }): AdminArtworkDetail {
   const { artwork, images } = input;
@@ -230,7 +340,7 @@ export function toAdminArtworkDetail(input: {
     medium: artwork.medium,
     dimensions: artwork.dimensions,
     description: artwork.description,
-    eligibleForEditionAllocation: artwork.eligibleForEditionAllocation,
+    run: input.run,
     printPricePence: artwork.printPricePence,
     saleState: artwork.saleState,
     salesChannel: artwork.salesChannel,
@@ -260,6 +370,7 @@ export function toAdminArtworkDetail(input: {
       eligibleForEditionAllocation: artwork.eligibleForEditionAllocation,
       saleState: artwork.saleState,
       printPricePence: artwork.printPricePence,
+      editionFactsConfirmed: input.run?.factsConfirmed != null,
     }),
     publishedAt: artwork.publishedAt?.toISOString() ?? null,
     archivedAt: artwork.archivedAt?.toISOString() ?? null,

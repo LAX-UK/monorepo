@@ -1730,6 +1730,13 @@
       "when": 1796630400000,
       "tag": "0246_shop_edition_runs",
       "breakpoints": true
+    },
+    {
+      "idx": 247,
+      "version": "7",
+      "when": 1796716800000,
+      "tag": "0247_shop_edition_stock_ref_and_authority_cap",
+      "breakpoints": true
     }
   ]
 }

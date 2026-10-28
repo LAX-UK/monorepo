@@ -155,7 +155,7 @@ export function ArtworkQuickView({
                   label: "Edition price",
                   value:
                     detail.printPricePence === null
-                      ? detail.eligibleForEditionAllocation
+                      ? detail.run
                         ? "Not priced"
                         : "On enquiry"
                       : formatGbp(detail.printPricePence),

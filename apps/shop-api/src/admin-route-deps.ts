@@ -1,4 +1,5 @@
 import type { ArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
+import type { EditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import type { ShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
 import type { AdminReadPorts } from "./application/ports/admin-readers.js";
@@ -100,6 +101,8 @@ export type AdminRoutesDeps = {
   createMerchandiseProduct: ReturnType<typeof createCreateMerchandiseProductHandler>;
   merchandiseCatalogue: MerchandiseCatalogueWriter;
   artworkCatalogue: ArtworkCatalogueWriter;
+  /** Runs of prints: change a draft's run, edition facts, open edition stock, linked listings. */
+  editionRuns: Omit<EditionRunServices, "recorder">;
   artistCatalogue: ArtistCatalogueWriter;
   /** Refreshes lax.art after catalogue writes that change what it serves. */
   artCache: ArtCacheInvalidator;

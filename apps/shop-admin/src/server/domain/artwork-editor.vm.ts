@@ -37,16 +37,6 @@ export function editionRunFacts(editions: EditionRun): StatItem[] {
   ];
 }
 
-/** "10 buyer entitlement · 10 artist · 4 LAX" for an edition run. */
-export function editionAllocationSummary(editions: EditionRun): string {
-  const { byAllocation } = editions;
-  return [
-    `${byAllocation.original_buyer_entitlement} buyer entitlement`,
-    `${byAllocation.artist} artist`,
-    `${byAllocation.lax} LAX`,
-  ].join(" · ");
-}
-
 export function publishBlockerMessages(
   detail: Pick<AdminArtworkDetail, "publishBlockers">,
 ): string[] {
@@ -88,9 +78,13 @@ export const VISIBILITY_OUTCOME: Record<AdminArtworkVisibilityAction, string> = 
 export function artworkPermissions(capabilities: readonly string[]): {
   write: boolean;
   setPrice: boolean;
+  correctFacts: boolean;
+  approveHorsCommerce: boolean;
 } {
   return {
     write: capabilities.includes("catalogue.write"),
     setPrice: capabilities.includes("artwork_price.write"),
+    correctFacts: capabilities.includes("edition_facts.correct"),
+    approveHorsCommerce: capabilities.includes("hors_commerce.approve"),
   };
 }

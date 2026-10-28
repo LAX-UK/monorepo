@@ -1,12 +1,11 @@
 "use server";
 
-import type { PortalPayeeConnectSurface } from "@auction/shop-contracts";
+import { EDITION_RUN_MAX_SIZE, type PortalPayeeConnectSurface } from "@auction/shop-contracts";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getLaxAccountContainer } from "../container";
 import type { AccountActionResult } from "../domain/account-action-result";
 import {
-  MAX_AVAILABLE_TO_SELL,
   MIN_AVAILABLE_TO_SELL,
   SALE_REQUEST_NOTE_MAX,
 } from "../domain/selling/selling-editions.vm";
@@ -21,7 +20,8 @@ const UNAVAILABLE_MESSAGE =
 
 const requestSchema = z.object({
   artworkId: z.string().uuid(),
-  requestedCount: z.number().int().min(MIN_AVAILABLE_TO_SELL).max(MAX_AVAILABLE_TO_SELL),
+  // Shop checks the count against the prints the seller holds; this only bounds the input.
+  requestedCount: z.number().int().min(MIN_AVAILABLE_TO_SELL).max(EDITION_RUN_MAX_SIZE),
   note: z.string().trim().max(SALE_REQUEST_NOTE_MAX).optional(),
 });
 
@@ -67,7 +67,7 @@ export async function requestSaleChangeAction(input: {
   if (!parsed.success) {
     return {
       status: "error",
-      message: `Choose between ${MIN_AVAILABLE_TO_SELL} and ${MAX_AVAILABLE_TO_SELL} editions, with a note of up to ${SALE_REQUEST_NOTE_MAX} characters.`,
+      message: `Choose a whole number of editions, up to the prints you hold, with a note of up to ${SALE_REQUEST_NOTE_MAX} characters.`,
     };
   }
   const handle = await loadHandle();

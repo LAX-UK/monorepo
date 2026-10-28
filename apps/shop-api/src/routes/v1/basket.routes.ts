@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { BasketViewSchema, ShopApiErrorBodySchema } from "@auction/shop-contracts";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
+import { SHOP_BASKET_LINE_QUANTITY_MAX } from "@auction/shop-domain";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { BasketOwner, UpsertBasketLineInput } from "../../application/ports/commerce.ports.js";
@@ -19,14 +20,14 @@ const UpsertBasketLineBodySchema = Type.Union([
   Type.Object(
     {
       artworkSlug: Type.String({ minLength: 1 }),
-      quantity: Type.Integer({ minimum: 1, maximum: 24 }),
+      quantity: Type.Integer({ minimum: 1, maximum: SHOP_BASKET_LINE_QUANTITY_MAX }),
     },
     { additionalProperties: false },
   ),
   Type.Object(
     {
       productVariantId: Type.String({ format: "uuid" }),
-      quantity: Type.Integer({ minimum: 1, maximum: 24 }),
+      quantity: Type.Integer({ minimum: 1, maximum: SHOP_BASKET_LINE_QUANTITY_MAX }),
     },
     { additionalProperties: false },
   ),

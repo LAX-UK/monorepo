@@ -41,6 +41,8 @@ function filled(patch: Partial<ArtworkFormValues> = {}): ArtworkFormValues {
   };
 }
 
+const STANDARD = { spec: { type: "lax_standard" as const } };
+
 const detail: AdminArtworkDetail = {
   artworkId: "11111111-1111-4111-8111-111111111111",
   slug: "harbour-at-dusk",
@@ -50,7 +52,19 @@ const detail: AdminArtworkDetail = {
   medium: "Oil on linen",
   dimensions: null,
   description: null,
-  eligibleForEditionAllocation: true,
+  run: {
+    spec: { type: "lax_standard" },
+    proofsKept: { ap: 0, pp: 0, hc: 0, bat: 0 },
+    locks: { sizeAndAllocationLocked: false, factsLocked: false },
+    facts: null,
+    factsConfirmed: null,
+    factsVersion: null,
+    paidOrderCount: 0,
+    affectedOrders: [],
+    mainRun: null,
+    linkedListings: [],
+    stock: null,
+  },
   printPricePence: 125_000,
   saleState: "for_sale",
   salesChannel: "shop",
@@ -173,10 +187,11 @@ describe("artwork form payloads", () => {
       buildArtworkCreateBody(
         filled({ title: "  Harbour  ", medium: " ", yearCreated: "2024", priceText: "£450.50" }),
         create,
+        STANDARD,
       ),
     ).toEqual({
       slug: "harbour-at-dusk",
-      eligibleForEditionAllocation: true,
+      run: STANDARD,
       title: "Harbour",
       artistId: ARTIST,
       yearCreated: 2024,
@@ -196,9 +211,10 @@ describe("artwork form payloads", () => {
   it("links an edition to its original, and never sends a link for an original", () => {
     const ORIGINAL = "33333333-3333-4333-8333-333333333333";
     const linked = filled({ sourceOriginalId: ORIGINAL, sourceOriginalTitle: "Harbour, original" });
-    expect(buildArtworkCreateBody(linked, create).sourceOriginalArtworkId).toBe(ORIGINAL);
+    expect(buildArtworkCreateBody(linked, create, STANDARD).sourceOriginalArtworkId).toBe(ORIGINAL);
     expect(
-      buildArtworkCreateBody({ ...linked, editionRun: "original" }, create).sourceOriginalArtworkId,
+      buildArtworkCreateBody({ ...linked, editionRun: "original" }, create, STANDARD)
+        .sourceOriginalArtworkId,
     ).toBeNull();
 
     const stored = artworkFormValues({
@@ -212,10 +228,10 @@ describe("artwork form payloads", () => {
   });
 
   it("never sends a price for an original, and omits a blank one", () => {
-    expect(buildArtworkCreateBody(filled({ editionRun: "original" }), create)).not.toHaveProperty(
-      "printPricePence",
-    );
-    expect(buildArtworkCreateBody(filled({ priceText: "" }), create)).not.toHaveProperty(
+    expect(
+      buildArtworkCreateBody(filled({ editionRun: "original" }), create, null),
+    ).not.toHaveProperty("printPricePence");
+    expect(buildArtworkCreateBody(filled({ priceText: "" }), create, STANDARD)).not.toHaveProperty(
       "printPricePence",
     );
   });

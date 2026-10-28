@@ -13,6 +13,7 @@ import {
   type AdminArtworkDetail,
   type AdminArtworkSaleState,
   type AdminArtworkUpdateBody,
+  type AdminNewRunInput,
   CATALOGUE_SLUG_MAX_LENGTH,
   CATALOGUE_SLUG_PATTERN,
   SEO_DESCRIPTION_MAX_LENGTH,
@@ -40,7 +41,7 @@ export type ArtworkFormValues = {
   medium: string;
   dimensions: string;
   description: string;
-  /** Chosen at creation only: an original, or an original with a run of 24 editions. */
+  /** Chosen at creation only: prints for LAX Shop (a run), or an original for lax.art. */
   editionRun: "editions" | "original";
   /** What is in the price field, exactly as typed; pence is derived from it. */
   priceText: string;
@@ -126,7 +127,7 @@ export function artworkFormValues(detail: AdminArtworkDetail): ArtworkFormValues
     medium: detail.medium ?? "",
     dimensions: detail.dimensions ?? "",
     description: detail.description ?? "",
-    editionRun: detail.eligibleForEditionAllocation ? "editions" : "original",
+    editionRun: detail.run ? "editions" : "original",
     priceText: penceToText(detail.printPricePence),
     saleState: detail.saleState,
     salesChannel: detail.salesChannel,
@@ -303,14 +304,34 @@ function editablePayload(
   };
 }
 
+/** The new artwork with its run of prints (from the create steps), or none for an original. */
 export function buildArtworkCreateBody(
   values: ArtworkFormValues,
   context: Pick<ArtworkFormContext, "canSetPrice">,
+  run: AdminNewRunInput | null,
 ): AdminArtworkCreateBody {
   return {
     ...editablePayload(values, context, null),
     slug: values.slug.trim(),
-    eligibleForEditionAllocation: values.editionRun === "editions",
+    run: values.editionRun === "editions" ? run : null,
+  };
+}
+
+/** A new artwork's kind: prints sell on LAX Shop and originals on lax.art, unless staff change it. */
+export function withArtworkKind(
+  values: ArtworkFormValues,
+  editionRun: ArtworkFormValues["editionRun"],
+): ArtworkFormValues {
+  return {
+    ...values,
+    editionRun,
+    salesChannel: editionRun === "editions" ? "shop" : "art",
+    saleState:
+      editionRun === "original" && values.saleState === "for_sale"
+        ? "price_on_application"
+        : editionRun === "editions" && values.saleState === "price_on_application"
+          ? "for_sale"
+          : values.saleState,
   };
 }
 

@@ -85,30 +85,64 @@ export async function loadArtworkEditorPage(
   return { status: "ok", data: { detail: result.data, permissions } };
 }
 
+export type CompanionOfPage = {
+  artworkId: string;
+  title: string;
+  spec: NonNullable<AdminArtworkDetail["run"]>["spec"];
+  artistId: string;
+  artistName: string;
+};
+
 /**
- * A blank editor, optionally for one artist (from their page's New artwork). An archived or
- * unknown artist is simply not pre-filled.
+ * A blank editor, optionally for one artist (from their page's New artwork), or for a companion
+ * listing of a main run (from its Create companion listing). An archived or unknown artist, or
+ * a run that cannot have companions, is simply not pre-filled.
  */
-export async function loadNewArtworkPage(artistId: string | undefined): Promise<
+export async function loadNewArtworkPage(
+  artistId: string | undefined,
+  companionOfId?: string | undefined,
+): Promise<
   PageResult<{
     initialArtist: { id: string; name: string } | null;
+    companionOf: CompanionOfPage | null;
     permissions: ArtworkPermissions;
   }>
 > {
-  const [artist, permissions] = await Promise.all([
+  const [artist, main, permissions] = await Promise.all([
     artistId && UUID.test(artistId)
       ? fetchAdminJson<AdminArtistDetail>(`artists/${artistId}`)
       : Promise.resolve(null),
+    companionOfId && UUID.test(companionOfId)
+      ? fetchAdminJson<AdminArtworkDetail>(`artworks/${companionOfId}`)
+      : Promise.resolve(null),
     permissionsOrUnauthorized(),
   ]);
-  if (permissions === "unauthorized" || artist?.status === "unauthorized") {
+  if (
+    permissions === "unauthorized" ||
+    artist?.status === "unauthorized" ||
+    main?.status === "unauthorized"
+  ) {
     return { status: "unauthorized" };
   }
   const initialArtist =
     artist?.status === "ok" && !artist.data.artist.archived
       ? { id: artist.data.artist.artistId, name: artist.data.artist.displayName }
       : null;
-  return { status: "ok", data: { initialArtist, permissions } };
+  const mainRun = main?.status === "ok" ? main.data.run : null;
+  const companionOf =
+    main?.status === "ok" &&
+    mainRun &&
+    mainRun.spec.type !== "proof" &&
+    mainRun.spec.type !== "companion"
+      ? {
+          artworkId: main.data.artworkId,
+          title: main.data.title,
+          spec: mainRun.spec,
+          artistId: main.data.artist.artistId,
+          artistName: main.data.artist.displayName,
+        }
+      : null;
+  return { status: "ok", data: { initialArtist, companionOf, permissions } };
 }
 
 /**

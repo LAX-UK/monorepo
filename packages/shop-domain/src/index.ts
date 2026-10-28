@@ -104,6 +104,21 @@ export {
   assertOriginalSaleCanMarkPaid,
   type ShopOriginalSaleStatus,
 } from "./original-sale-lifecycle.js";
+export {
+  CORRECTION_REASON_MAX_LENGTH,
+  assertCorrectionReason,
+  assertProofListingApproved,
+  defaultProofOwner,
+  proofListingSlug,
+  proofListingTitle,
+  type ProofOwner,
+} from "./linked-listing.js";
+export {
+  OPEN_EDITION_LOW_STOCK_AT,
+  isOpenStockLow,
+  summariseOpenStock,
+  type OpenStockCounts,
+} from "./open-edition-stock.js";
 export { ShopDomainError } from "./shop-domain-error.js";
 export {
   ARTWORK_CATALOGUE_STATES,
@@ -149,6 +164,7 @@ export {
 } from "./edition-custody-state.js";
 export {
   assertAuthorityReductionAllowed,
+  authorisablePrintCount,
   selectEditionsToAuthorise,
   selectEditionsToRevokeAuthority,
   type EditionAuthorityRow,
@@ -157,6 +173,7 @@ export { compareEditionPickOrder, type EditionPickCandidate } from "./edition-as
 export {
   type ClientListScope,
   OVERVIEW_KPI_CAPABILITY,
+  OVERVIEW_LOW_STOCK_CAPABILITY,
   SHOP_STAFF_CAPABILITIES,
   capabilitiesForRole,
   clientListScope,

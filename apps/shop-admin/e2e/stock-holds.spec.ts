@@ -67,4 +67,52 @@ test.describe("stock holds @e2e", () => {
 
     expect(storefrontBaseUrl()).toMatch(/lax\.bid|localhost/);
   });
+
+  test("holds and releases one print of a custom run, which stays on sale", async ({
+    page,
+    request,
+  }) => {
+    test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 against deployed shop-admin");
+    skipStaffFeatureUnlessEnabled("thirdPartySales");
+    const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3030";
+    const credentials = requireStaffAcceptanceCredentials();
+    const session = await openStaffBrowserSession({
+      page,
+      baseUrl,
+      authBaseUrl,
+      email: credentials.email,
+      password: credentials.password,
+      totpSecret: credentials.totpSecret,
+    });
+    await requireFeatureOrSkip(request, session, "thirdPartySales");
+
+    const fixtures = loadStaffOperationsFixtures();
+    test.skip(
+      !fixtures.customRunHoldEditionId || !fixtures.customRunSlug,
+      "Re-run seed:acceptance-staff-operations to add the custom run fixture",
+    );
+    const editionId = fixtures.customRunHoldEditionId as string;
+    const slug = fixtures.customRunSlug as string;
+    const admin = createAdminApiClient(request, session.baseUrl);
+
+    const holdRes = await admin.post("holds", session.cookieHeader, session.csrfToken, {
+      editionId,
+      clientPartyId: fixtures.consignorPartyId,
+      expiresAt: new Date(Date.now() + 86_400_000).toISOString(),
+      note: "acceptance stock hold, custom run",
+    });
+    expect(holdRes.ok()).toBe(true);
+    const hold = (await holdRes.json()) as { id: string };
+
+    const releaseRes = await admin.post(
+      `holds/${hold.id}/release`,
+      session.cookieHeader,
+      session.csrfToken,
+      {},
+    );
+    expect(releaseRes.ok()).toBe(true);
+    await expect
+      .poll(async () => !(await printAppearsUnavailable(fetch, slug)), { timeout: 30_000 })
+      .toBe(true);
+  });
 });

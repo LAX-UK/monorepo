@@ -1,4 +1,5 @@
 import { type Static, Type } from "@sinclair/typebox";
+import { EDITION_RUN_MAX_SIZE } from "./edition-run-admin.js";
 
 export const PortalEditionSchema = Type.Object({
   editionId: Type.String({ format: "uuid" }),
@@ -21,6 +22,11 @@ export const PortalSaleAuthoritySchema = Type.Object({
   ownerPartyId: Type.String({ format: "uuid" }),
   authorisedCount: Type.Integer(),
   committedCount: Type.Integer(),
+  /**
+   * Prints this owner holds in the run, sold ones included. What they can offer for sale is this
+   * less those sold, reserved or held. Optional so older shop-api responses still parse.
+   */
+  ownedCount: Type.Optional(Type.Integer({ minimum: 0 })),
   lastGrantAt: Type.Union([Type.String(), Type.Null()]),
 });
 
@@ -30,7 +36,8 @@ export const PortalSaleAuthorityResponseSchema = Type.Object({
 
 export const SaleAuthorityRequestBodySchema = Type.Object({
   artworkId: Type.String({ format: "uuid" }),
-  requestedCount: Type.Integer({ minimum: 0, maximum: 10 }),
+  /** Up to the prints the owner holds in the run; shop-api checks the ownership. */
+  requestedCount: Type.Integer({ minimum: 0, maximum: EDITION_RUN_MAX_SIZE }),
   note: Type.Optional(Type.String()),
 });
 

@@ -99,6 +99,7 @@ function item(index: number, patch: Partial<AdminArtworkListItem> = {}): AdminAr
     artistName: "Ada Artist",
     thumbnailUrl: null,
     editionSize: 24,
+    run: { spec: { type: "lax_standard" }, factsStatus: "confirmed", factsLocked: false },
     soldEditionCount: 2,
     printPricePence: 45_000,
     saleState: "for_sale",
@@ -150,7 +151,7 @@ describe("artwork list", () => {
   it("shows staff the edition counts and the edition price", () => {
     renderList();
     expect(screen.getAllByText("£450.00").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("2 of 24").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("LAX standard 24 · 2 sold").length).toBeGreaterThan(0);
   });
 
   it("offers no selection to staff who cannot change the catalogue", () => {

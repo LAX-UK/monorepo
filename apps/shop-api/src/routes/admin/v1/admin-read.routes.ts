@@ -50,7 +50,13 @@ import {
   SHOP_API_ERROR_CODES,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
-import { capabilitiesForRole, clientListScope, overviewKpiKeysForRole } from "@auction/shop-domain";
+import {
+  OVERVIEW_LOW_STOCK_CAPABILITY,
+  capabilitiesForRole,
+  clientListScope,
+  overviewKpiKeysForRole,
+  roleHasCapability,
+} from "@auction/shop-domain";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
@@ -107,7 +113,14 @@ export async function registerAdminReadRoutes(
     async (request) => {
       // Open to any signed-in staff member; each figure is gated by the capability for its list.
       const auth = requireShopStaffAuth(request);
-      return deps.adminRead.overview.readOverviewKpis(overviewKpiKeysForRole(auth.role));
+      const overview = deps.adminRead.overview;
+      const [kpis, lowStockRuns] = await Promise.all([
+        overview.readOverviewKpis(overviewKpiKeysForRole(auth.role)),
+        roleHasCapability(auth.role, OVERVIEW_LOW_STOCK_CAPABILITY)
+          ? overview.listLowStockRuns()
+          : null,
+      ]);
+      return lowStockRuns ? { ...kpis, lowStockRuns } : kpis;
     },
   );
 

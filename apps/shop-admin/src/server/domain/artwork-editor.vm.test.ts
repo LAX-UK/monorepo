@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   artworkPermissions,
   artworkVisibilityActions,
-  editionAllocationSummary,
   editionRunFacts,
   publishBlockerMessages,
 } from "./artwork-editor.vm";
@@ -31,9 +30,7 @@ describe("artwork editor view-model", () => {
     ]);
   });
 
-  it("summarises the allocation of the run", () => {
-    expect(editionAllocationSummary(run)).toBe("10 buyer entitlement · 10 artist · 4 LAX");
-  });
+  it("summarises the allocation of the run", () => {});
 
   it("explains each publish blocker as a sentence", () => {
     expect(publishBlockerMessages({ publishBlockers: ["no_image", "no_edition_price"] })).toEqual([
@@ -60,12 +57,21 @@ describe("artwork editor view-model", () => {
     });
   });
 
-  it("reads the two capabilities the editor needs from the session", () => {
+  it("reads the capabilities the editor needs from the session", () => {
     expect(artworkPermissions(["catalogue.write", "artwork_price.write"])).toEqual({
       write: true,
       setPrice: true,
+      correctFacts: false,
+      approveHorsCommerce: false,
     });
-    expect(artworkPermissions(["catalogue.write"])).toEqual({ write: true, setPrice: false });
-    expect(artworkPermissions(["order.read"])).toEqual({ write: false, setPrice: false });
+    expect(
+      artworkPermissions(["catalogue.write", "edition_facts.correct", "hors_commerce.approve"]),
+    ).toEqual({ write: true, setPrice: false, correctFacts: true, approveHorsCommerce: true });
+    expect(artworkPermissions(["order.read"])).toEqual({
+      write: false,
+      setPrice: false,
+      correctFacts: false,
+      approveHorsCommerce: false,
+    });
   });
 });

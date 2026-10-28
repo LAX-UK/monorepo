@@ -65,6 +65,7 @@ function EditionRow({ row }: { row: EditionRowVm }) {
               artworkId={row.artworkId}
               artworkTitle={row.title}
               current={row.action.current}
+              max={row.action.max}
               triggerLabel={row.action.label}
             />
           ) : null}

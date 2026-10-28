@@ -68,13 +68,78 @@ vi.mock("@auction/ui/components/dropdown-menu", () => {
     DropdownMenuRadioItem: Pass,
   };
 });
-vi.mock("@auction/ui/components/radio-group", () => ({
-  RadioGroup: ({ children }: { children: React.ReactNode }) => (
-    <div role="radiogroup">{children}</div>
+vi.mock("@auction/ui/components/radio-group", async () => {
+  const { createContext, useContext } = await import("react");
+  const Group = createContext<{
+    value?: string | undefined;
+    onValueChange?: ((value: string) => void) | undefined;
+  }>({});
+  return {
+    RadioGroup: ({
+      children,
+      value,
+      onValueChange,
+    }: {
+      children: React.ReactNode;
+      value?: string;
+      onValueChange?: (value: string) => void;
+    }) => (
+      <Group.Provider value={{ value, onValueChange }}>
+        <div role="radiogroup">{children}</div>
+      </Group.Provider>
+    ),
+    RadioGroupItem: function RadioGroupItem({
+      id,
+      value,
+      disabled,
+    }: {
+      id?: string;
+      value: string;
+      disabled?: boolean;
+    }) {
+      const group = useContext(Group);
+      return (
+        <input
+          type="radio"
+          id={id}
+          value={value}
+          disabled={disabled}
+          checked={group.value === value}
+          onChange={() => group.onValueChange?.(value)}
+        />
+      );
+    },
+  };
+});
+vi.mock("@auction/ui/components/checkbox", () => ({
+  Checkbox: ({
+    id,
+    checked,
+    disabled,
+    onCheckedChange,
+  }: {
+    id?: string;
+    checked?: boolean;
+    disabled?: boolean;
+    onCheckedChange?: (checked: boolean) => void;
+  }) => (
+    <input
+      type="checkbox"
+      id={id}
+      checked={checked === true}
+      disabled={disabled}
+      onChange={(event) => onCheckedChange?.(event.target.checked)}
+    />
   ),
-  RadioGroupItem: ({ id, value }: { id?: string; value: string }) => (
-    <span role="radio" tabIndex={-1} aria-checked={false} id={id} data-value={value} />
-  ),
+}));
+vi.mock("@/server/application/edition-run-actions.server", () => ({
+  saveEditionRun: vi.fn(),
+  saveEditionFacts: vi.fn(),
+  correctEditionFacts: vi.fn(),
+  setEditionFactsForRuns: vi.fn(),
+  addOpenEditionStock: vi.fn(),
+  createProofListing: vi.fn(),
+  createCompanionListing: vi.fn(),
 }));
 vi.mock("@auction/ui/components/select", () => ({
   Select: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -101,7 +166,19 @@ const detail: AdminArtworkDetail = {
   medium: "Oil on linen",
   dimensions: null,
   description: null,
-  eligibleForEditionAllocation: true,
+  run: {
+    spec: { type: "lax_standard" },
+    proofsKept: { ap: 0, pp: 0, hc: 0, bat: 0 },
+    locks: { sizeAndAllocationLocked: false, factsLocked: false },
+    facts: null,
+    factsConfirmed: null,
+    factsVersion: null,
+    paidOrderCount: 0,
+    affectedOrders: [],
+    mainRun: null,
+    linkedListings: [],
+    stock: null,
+  },
   printPricePence: 45_000,
   saleState: "for_sale",
   salesChannel: "shop",
@@ -124,7 +201,7 @@ const detail: AdminArtworkDetail = {
   version: OPENED,
 };
 
-const admin = { write: true, setPrice: true };
+const admin = { write: true, setPrice: true, correctFacts: false, approveHorsCommerce: false };
 
 function renderEditor(props: Partial<React.ComponentProps<typeof ArtworkEditor>> = {}) {
   return render(
@@ -134,6 +211,12 @@ function renderEditor(props: Partial<React.ComponentProps<typeof ArtworkEditor>>
 
 function typeInto(label: string | RegExp, value: string) {
   const input = screen.getByLabelText(label);
+  fireEvent.input(input, { target: { value } });
+  fireEvent.change(input, { target: { value } });
+}
+
+function typeIntoId(id: string, value: string) {
+  const input = document.getElementById(id) as HTMLElement;
   fireEvent.input(input, { target: { value } });
   fireEvent.change(input, { target: { value } });
 }
@@ -168,6 +251,7 @@ describe("artwork editor", () => {
   describe("validation", () => {
     it("shows each problem beside its field and in a linked summary", () => {
       renderEditor({ detail: null });
+      fireEvent.click(document.getElementById("artwork-kind-original") as HTMLElement);
       fireEvent.click(screen.getAllByRole("button", { name: "Create draft" })[0] as HTMLElement);
 
       const summary = screen.getByRole("alert");
@@ -192,6 +276,7 @@ describe("artwork editor", () => {
 
     it("clears an error as soon as the field is fixed", () => {
       renderEditor({ detail: null, initialArtist: { id: ARTIST, name: "Ada Artist" } });
+      fireEvent.click(document.getElementById("artwork-kind-original") as HTMLElement);
       fireEvent.click(screen.getAllByRole("button", { name: "Create draft" })[0] as HTMLElement);
       expect(screen.getAllByText("Enter the artwork's title.").length).toBe(2);
       typeInto("Title", "Harbour at Dusk");
@@ -200,15 +285,26 @@ describe("artwork editor", () => {
   });
 
   describe("creating", () => {
-    it("creates a draft in pence with the slug from the title, then opens it", async () => {
+    /** The LAX standard run's facts: unsigned, unnumbered and with no certificate. */
+    function chooseFacts() {
+      fireEvent.click(screen.getByLabelText("Not signed"));
+      fireEvent.click(screen.getByLabelText("Not numbered"));
+      fireEvent.click(screen.getByLabelText("No certificate"));
+    }
+
+    it("creates prints in pence with the LAX standard run and its facts, then opens them", async () => {
       createArtwork.mockResolvedValue({
         ok: true,
         data: { artworkId: detail.artworkId, slug: "harbour-at-dusk", version: OPENED },
       });
       renderEditor({ detail: null, initialArtist: { id: ARTIST, name: "Ada Artist" } });
+      expect(screen.getByLabelText(/^LAX standard/)).toBeChecked();
       typeInto("Title", "Harbour at Dusk");
       typeInto(/Price per edition/, "1,250.50");
       expect(screen.getByLabelText(/Web address/)).toHaveValue("harbour-at-dusk");
+      chooseFacts();
+      expect(screen.getAllByText("Shoppers will see").length).toBeGreaterThan(0);
+      fireEvent.click(screen.getByLabelText(/I have checked these facts/));
       fireEvent.click(screen.getAllByRole("button", { name: "Create draft" })[0] as HTMLElement);
 
       await waitFor(() => expect(replace).toHaveBeenCalledWith(`/artworks/${detail.artworkId}`));
@@ -216,10 +312,50 @@ describe("artwork editor", () => {
         title: "Harbour at Dusk",
         slug: "harbour-at-dusk",
         artistId: ARTIST,
-        eligibleForEditionAllocation: true,
         printPricePence: 125_050,
+        run: {
+          spec: { type: "lax_standard" },
+          facts: {
+            numbering: "none",
+            signature: { kind: "unsigned" },
+            certificate: { kind: "none" },
+          },
+          factsConfirmed: true,
+        },
       });
       expect(toastSuccess).toHaveBeenCalledWith("Created “Harbour at Dusk” as a draft");
+    });
+
+    it("puts the run first and checks it on submit, with the staff wording", () => {
+      renderEditor({ detail: null, initialArtist: { id: ARTIST, name: "Ada Artist" } });
+      fireEvent.click(screen.getByLabelText(/^Custom limited edition/));
+      typeInto("Size", "24");
+      typeIntoId("run-allocation-buyer", "6");
+      typeIntoId("run-allocation-artist", "12");
+      typeIntoId("run-allocation-lax", "4");
+      expect(screen.getByText("22 of 24 allocated: 2 left")).toBeInTheDocument();
+      const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+      expect(headings.indexOf("Run")).toBe(headings.indexOf("What are you adding?") + 1);
+      expect(headings.indexOf("Edition facts")).toBe(headings.indexOf("Run") + 1);
+      expect(headings.at(-1)).toBe("Confirm");
+      fireEvent.click(screen.getAllByRole("button", { name: "Create draft" })[0] as HTMLElement);
+      const summary = screen.getByRole("alert");
+      expect(
+        within(summary).getByRole("link", { name: "Allocate every print: 2 are not allocated" }),
+      ).toBeInTheDocument();
+      expect(
+        within(summary).getByRole("link", {
+          name: "Buyer prints need an original on lax.art. Link the original or set buyers to 0",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        within(summary).getByRole("link", { name: "Choose how the prints are signed" }),
+      ).toBeInTheDocument();
+      expect(createArtwork).not.toHaveBeenCalled();
+      typeIntoId("run-allocation-buyer", "0");
+      typeIntoId("run-allocation-artist", "20");
+      expect(screen.getByText("24 of 24 allocated")).toBeInTheDocument();
+      expect(screen.getByText("Numbering: 1–20 artist · 21–24 LAX")).toBeInTheDocument();
     });
 
     it("shows a taken slug on the slug field", async () => {
@@ -230,6 +366,7 @@ describe("artwork editor", () => {
       });
       renderEditor({ detail: null, initialArtist: { id: ARTIST, name: "Ada Artist" } });
       typeInto("Title", "Harbour at Dusk");
+      chooseFacts();
       fireEvent.click(screen.getAllByRole("button", { name: "Create draft" })[0] as HTMLElement);
       await waitFor(() =>
         expect(screen.getByLabelText(/Web address/)).toHaveAttribute("aria-invalid", "true"),
@@ -318,7 +455,14 @@ describe("artwork editor", () => {
 
     it("keeps the price read-only, and unchanged, without price access", async () => {
       saveArtwork.mockResolvedValue({ ok: true, data: { version: THEIRS } });
-      renderEditor({ permissions: { write: true, setPrice: false } });
+      renderEditor({
+        permissions: {
+          write: true,
+          setPrice: false,
+          correctFacts: false,
+          approveHorsCommerce: false,
+        },
+      });
       const price = screen.getByLabelText(/Price per edition/);
       expect(price).toBeDisabled();
       expect(
@@ -393,7 +537,14 @@ describe("artwork editor", () => {
   });
 
   it("is read-only for staff who cannot change the catalogue", () => {
-    renderEditor({ permissions: { write: false, setPrice: false } });
+    renderEditor({
+      permissions: {
+        write: false,
+        setPrice: false,
+        correctFacts: false,
+        approveHorsCommerce: false,
+      },
+    });
     expect(screen.queryByRole("textbox", { name: "Title" })).toBeNull();
     expect(screen.getByText("Oil on linen")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Save/ })).toBeNull();
@@ -401,7 +552,14 @@ describe("artwork editor", () => {
 
   it("lets finance change only the price, through the price endpoint", async () => {
     saveArtworkPrice.mockResolvedValue({ ok: true, data: { version: THEIRS } });
-    renderEditor({ permissions: { write: false, setPrice: true } });
+    renderEditor({
+      permissions: {
+        write: false,
+        setPrice: true,
+        correctFacts: false,
+        approveHorsCommerce: false,
+      },
+    });
     expect(screen.queryByRole("textbox", { name: "Title" })).toBeNull();
     expect(screen.getByText("Oil on linen")).toBeInTheDocument();
     expect(screen.getByText("You can change the edition price")).toBeInTheDocument();

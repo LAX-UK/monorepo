@@ -37,13 +37,17 @@ describe("artwork admin contracts", () => {
 
     it("accepts a complete new artwork", () => {
       expect(
-        check.Check({ ...editable, slug: "harbour-at-dusk", eligibleForEditionAllocation: true }),
+        check.Check({
+          ...editable,
+          slug: "harbour-at-dusk",
+          run: { spec: { type: "lax_standard" } },
+        }),
       ).toBe(true);
     });
 
     it("refuses a slug that is not a clean URL segment", () => {
       for (const slug of ["Harbour", "harbour at dusk", "-harbour", "harbour--dusk"]) {
-        expect(check.Check({ ...editable, slug, eligibleForEditionAllocation: true })).toBe(false);
+        expect(check.Check({ ...editable, slug, run: null })).toBe(false);
       }
     });
 
@@ -54,7 +58,7 @@ describe("artwork admin contracts", () => {
             ...editable,
             printPricePence,
             slug: "harbour-at-dusk",
-            eligibleForEditionAllocation: true,
+            run: { spec: { type: "lax_standard" } },
           }),
         ).toBe(false);
       }
@@ -62,7 +66,7 @@ describe("artwork admin contracts", () => {
 
     it("takes no price as an omitted field, never as null", () => {
       const { printPricePence: _price, ...unpriced } = editable;
-      const base = { slug: "harbour-at-dusk", eligibleForEditionAllocation: true };
+      const base = { slug: "harbour-at-dusk", run: { spec: { type: "lax_standard" as const } } };
       expect(check.Check({ ...unpriced, ...base })).toBe(true);
       expect(check.Check({ ...unpriced, ...base, printPricePence: null })).toBe(false);
     });
@@ -72,7 +76,7 @@ describe("artwork admin contracts", () => {
         check.Check({
           ...editable,
           slug: "harbour-at-dusk",
-          eligibleForEditionAllocation: true,
+          run: null,
           publishedAt: VERSION,
         }),
       ).toBe(false);
@@ -89,9 +93,7 @@ describe("artwork admin contracts", () => {
 
     it("cannot change the slug or the edition run", () => {
       expect(check.Check({ ...editable, expectedVersion: VERSION, slug: "renamed" })).toBe(false);
-      expect(
-        check.Check({ ...editable, expectedVersion: VERSION, eligibleForEditionAllocation: false }),
-      ).toBe(false);
+      expect(check.Check({ ...editable, expectedVersion: VERSION, run: null })).toBe(false);
     });
 
     it("caps the gallery at twenty images", () => {
@@ -136,6 +138,11 @@ describe("artwork admin contracts", () => {
               artistName: "Ada Artist",
               thumbnailUrl: null,
               editionSize: 24,
+              run: {
+                spec: { type: "lax_standard" },
+                factsStatus: "needs_review",
+                factsLocked: false,
+              },
               soldEditionCount: 3,
               printPricePence: 45_000,
               saleState: "for_sale",
@@ -168,7 +175,7 @@ describe("artwork admin contracts", () => {
         medium: null,
         dimensions: null,
         description: null,
-        eligibleForEditionAllocation: true,
+        run: null,
         printPricePence: null,
         saleState: "for_sale",
         salesChannel: "shop",

@@ -496,9 +496,9 @@ export const shopEdition = pgTable(
     editionNumber: integer("edition_number"),
     /**
      * Identifies the print within its run and orders picking. Equal to editionNumber on numbered
-     * runs. A database trigger fills it from editionNumber for writers that omit it.
+     * runs. Every writer sets it; there is no default.
      */
-    stockRef: integer("stock_ref").default(0).notNull(),
+    stockRef: integer("stock_ref").notNull(),
     proofNumber: integer("proof_number"),
     storageLocation: text("storage_location"),
     labelCode: text("label_code"),
@@ -896,10 +896,7 @@ export const shopSaleAuthorityGrant = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    check(
-      "shop_sale_authority_grant_count_range",
-      sql`${table.authorisedCount} >= 0 AND ${table.authorisedCount} <= 10`,
-    ),
+    check("shop_sale_authority_grant_count_range", sql`${table.authorisedCount} >= 0`),
     uniqueIndex("shop_sale_authority_grant_request_uid")
       .on(table.requestId)
       .where(sql`${table.requestId} is not null`),
@@ -926,10 +923,7 @@ export const shopSaleAuthorityRequest = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    check(
-      "shop_sale_authority_request_count_range",
-      sql`${table.requestedCount} >= 0 AND ${table.requestedCount} <= 10`,
-    ),
+    check("shop_sale_authority_request_count_range", sql`${table.requestedCount} >= 0`),
     uniqueIndex("shop_sale_authority_request_pending_uid")
       .on(table.artworkId, table.ownerPartyId)
       .where(sql`${table.status} = 'pending'`),

@@ -5,7 +5,6 @@ import { FIELD } from "@/components/account-ui";
 import { requestSaleChangeAction } from "@/server/application/selling-actions.server";
 import { buildReauthHref } from "@/server/domain/account-reauth";
 import {
-  MAX_AVAILABLE_TO_SELL,
   MIN_AVAILABLE_TO_SELL,
   SALE_REQUEST_NOTE_MAX,
   clampAvailableToSell,
@@ -49,6 +48,8 @@ export type SaleRequestDialogProps = {
   artworkTitle: string;
   /** Editions available to sell now; the stepper starts one above it. */
   current: number;
+  /** The most that can be available: the prints the seller holds, less those sold or reserved. */
+  max: number;
   triggerLabel: string;
   /** Opens the dialog on first render; used to show the dialog on its own. */
   defaultOpen?: boolean;
@@ -63,6 +64,7 @@ export function SaleRequestDialog({
   artworkId,
   artworkTitle,
   current,
+  max,
   triggerLabel,
   defaultOpen = false,
 }: SaleRequestDialogProps) {
@@ -71,15 +73,13 @@ export function SaleRequestDialog({
   const noteId = useId();
   const hintId = `${countId}-hint`;
   const errorId = `${countId}-error`;
-  const initial = clampAvailableToSell(
-    current >= MAX_AVAILABLE_TO_SELL ? current - 1 : current + 1,
-  );
+  const initial = clampAvailableToSell(current >= max ? current - 1 : current + 1, max);
   const [open, setOpen] = useState(defaultOpen);
   const [count, setCount] = useState(initial);
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
-  const draft = describeSaleRequestDraft(count, current);
+  const draft = describeSaleRequestDraft(count, current, max);
 
   function reset(nextOpen: boolean) {
     if (pending) return;
@@ -148,7 +148,7 @@ export function SaleRequestDialog({
                 aria-label="One fewer"
                 aria-controls={countId}
                 disabled={pending || count <= MIN_AVAILABLE_TO_SELL}
-                onClick={() => setCount((value) => clampAvailableToSell(value - 1))}
+                onClick={() => setCount((value) => clampAvailableToSell(value - 1, max))}
               >
                 <StepIcon kind="minus" />
               </Button>
@@ -157,14 +157,14 @@ export function SaleRequestDialog({
                 type="number"
                 inputMode="numeric"
                 min={MIN_AVAILABLE_TO_SELL}
-                max={MAX_AVAILABLE_TO_SELL}
+                max={max}
                 step={1}
                 value={count}
                 disabled={pending}
                 aria-describedby={error ? `${hintId} ${errorId}` : hintId}
                 onChange={(event) => {
                   const value = Number(event.target.value);
-                  if (event.target.value !== "") setCount(clampAvailableToSell(value));
+                  if (event.target.value !== "") setCount(clampAvailableToSell(value, max));
                 }}
                 className={cn(
                   FIELD,
@@ -178,14 +178,15 @@ export function SaleRequestDialog({
                 className="rounded-md border-control-border"
                 aria-label="One more"
                 aria-controls={countId}
-                disabled={pending || count >= MAX_AVAILABLE_TO_SELL}
-                onClick={() => setCount((value) => clampAvailableToSell(value + 1))}
+                disabled={pending || count >= max}
+                onClick={() => setCount((value) => clampAvailableToSell(value + 1, max))}
               >
                 <StepIcon kind="plus" />
               </Button>
             </div>
             <p id={hintId} aria-live="polite" className="text-sm text-on-surface-variant">
-              {draft.changeText}. Between {MIN_AVAILABLE_TO_SELL} and {MAX_AVAILABLE_TO_SELL}.
+              {draft.changeText}. Between {MIN_AVAILABLE_TO_SELL} and {max}, the{" "}
+              {max === 1 ? "print" : "prints"} you hold that are not sold or reserved.
             </p>
           </div>
 

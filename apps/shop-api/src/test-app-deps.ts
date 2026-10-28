@@ -266,6 +266,7 @@ export function createMinimalShopApiTestDeps(
         },
         overview: {
           readOverviewKpis: async (keys) => Object.fromEntries(keys.map((key) => [key, 0])),
+          listLowStockRuns: async () => [],
         },
         lookups: {
           searchParties: async () => [],
@@ -349,6 +350,51 @@ export function createMinimalShopApiTestDeps(
           })),
           refreshesArt: false,
         }),
+      },
+      editionRuns: {
+        runs: {
+          record: async () => 0,
+          replace: async () => ({ version: "2026-01-01T00:00:00.000Z" }),
+        },
+        facts: {
+          apply: async () => "2026-01-01T00:00:00.000Z",
+          save: async (input) => ({
+            factsVersion: "2026-01-01T00:00:00.000Z",
+            confirmed: input.confirmed,
+          }),
+          correct: async () => ({
+            factsVersion: "2026-01-01T00:00:00.000Z",
+            confirmed: true,
+            affectedOrders: 0,
+          }),
+          setForRuns: async (input) => ({
+            results: input.artworkIds.map((artworkId) => ({
+              artworkId,
+              outcome: "changed" as const,
+            })),
+          }),
+        },
+        stock: {
+          apply: async () => ({ batchId: "", firstStockRef: 1, quantity: 0, laxPrintsOnSale: 0 }),
+          add: async (input) => ({
+            batchId: "00000000-0000-4000-8000-000000000030",
+            firstStockRef: 1,
+            quantity: input.batch.artistCount + input.batch.laxCount,
+            laxPrintsOnSale: input.batch.laxCount,
+          }),
+        },
+        listings: {
+          createProofListing: async () => ({
+            artworkId: "00000000-0000-4000-8000-000000000031",
+            slug: "test-artwork-artists-proof",
+            version: "2026-01-01T00:00:00.000Z",
+          }),
+          createCompanionListing: async (input) => ({
+            artworkId: "00000000-0000-4000-8000-000000000032",
+            slug: input.slug,
+            version: "2026-01-01T00:00:00.000Z",
+          }),
+        },
       },
       artistCatalogue: {
         createArtist: async () => ({

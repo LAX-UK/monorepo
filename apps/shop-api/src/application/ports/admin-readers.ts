@@ -279,6 +279,8 @@ export interface AdminCatalogueReader {
 export interface AdminOverviewReader {
   /** Reads only the requested figures; the caller decides which the role may see. */
   readOverviewKpis(keys: readonly OverviewKpiKey[]): Promise<AdminOverviewKpis>;
+  /** Live open editions with few or no prints on sale, fewest first. */
+  listLowStockRuns(): Promise<NonNullable<AdminOverviewKpis["lowStockRuns"]>>;
 }
 
 export interface AdminComplianceReader {

@@ -1,3 +1,4 @@
+import type { AdminArtworkListItem } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 import {
   artworkListApiQuery,
@@ -111,25 +112,52 @@ describe("artwork list columns", () => {
     expect(presentArtworkState("future_state").label).toBe("Future state");
   });
 
-  it("reads edition size and price for staff", () => {
-    expect(editionSizeLabel({ editionSize: 24 })).toBe("24");
-    expect(editionSizeLabel({ editionSize: 0 })).toBe("Original");
+  it("reads the run and price for staff", () => {
+    const run = (spec: NonNullable<AdminArtworkListItem["run"]>["spec"]) => ({
+      spec,
+      factsStatus: "needs_review" as const,
+      factsLocked: false,
+    });
+    const standard = run({ type: "lax_standard" });
+    expect(editionSizeLabel({ run: standard })).toBe("LAX standard 24");
     expect(
-      artworkPriceLabel({ printPricePence: 45_000, editionSize: 24, saleState: "for_sale" }),
+      editionSizeLabel({
+        run: run({
+          type: "custom_limited",
+          size: 40,
+          allocation: { buyer: 0, artist: 30, lax: 10 },
+          linkedToOriginal: false,
+        }),
+      }),
+    ).toBe("Custom 40");
+    expect(
+      editionSizeLabel({ run: run({ type: "open", defaultSplit: { artistPct: 50, laxPct: 50 } }) }),
+    ).toBe("Open");
+    expect(editionSizeLabel({ run: null })).toBe("Original");
+    expect(
+      artworkPriceLabel({ printPricePence: 45_000, run: standard, saleState: "for_sale" }),
     ).toBe("£450.00");
-    expect(
-      artworkPriceLabel({ printPricePence: null, editionSize: 24, saleState: "for_sale" }),
-    ).toBe("Not priced");
+    expect(artworkPriceLabel({ printPricePence: null, run: standard, saleState: "for_sale" })).toBe(
+      "Not priced",
+    );
     expect(
       artworkPriceLabel({
         printPricePence: null,
-        editionSize: 24,
+        run: standard,
         saleState: "price_on_application",
       }),
     ).toBe("On application");
-    expect(
-      artworkPriceLabel({ printPricePence: null, editionSize: 0, saleState: "for_sale" }),
-    ).toBe("On enquiry");
+    expect(artworkPriceLabel({ printPricePence: null, run: null, saleState: "for_sale" })).toBe(
+      "On enquiry",
+    );
+  });
+
+  it("keeps the edition facts filter in the URL and sends it to the API", () => {
+    const query = parseArtworkListQuery({ facts: "needs_review" });
+    expect(query.facts).toBe("needs_review");
+    expect(hasActiveArtworkFilters(query)).toBe(true);
+    expect(artworkListApiQuery(query)).toMatchObject({ facts: "needs_review" });
+    expect(parseArtworkListQuery({ facts: "anything" }).facts).toBeUndefined();
   });
 });
 

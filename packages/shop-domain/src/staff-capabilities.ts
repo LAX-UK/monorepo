@@ -26,6 +26,13 @@ export const SHOP_STAFF_CAPABILITIES = [
   "order.read",
   /** Reviewing artists' applications to join the gallery, and accepting or declining them. */
   "artist_application.review",
+  /**
+   * Correcting a run's edition facts after prints have sold. Shop admins only: the orders already
+   * paid were described the old way.
+   */
+  "edition_facts.correct",
+  /** Approving the listing of hors commerce proofs, which were not made to be sold. */
+  "hors_commerce.approve",
 ] as const;
 
 export type ShopStaffCapability = (typeof SHOP_STAFF_CAPABILITIES)[number];
@@ -92,6 +99,9 @@ export const OVERVIEW_KPI_CAPABILITY = {
 } as const satisfies Record<string, ShopStaffCapability>;
 
 export type OverviewKpiKey = keyof typeof OVERVIEW_KPI_CAPABILITY;
+
+/** Open editions low on stock are shown to the staff who can add prints to them. */
+export const OVERVIEW_LOW_STOCK_CAPABILITY: ShopStaffCapability = "catalogue.write";
 
 export function overviewKpiKeysForRole(role: ShopStaffRole): OverviewKpiKey[] {
   return (Object.keys(OVERVIEW_KPI_CAPABILITY) as OverviewKpiKey[]).filter((key) =>

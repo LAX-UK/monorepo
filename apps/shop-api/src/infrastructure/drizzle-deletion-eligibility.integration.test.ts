@@ -274,7 +274,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle deletion eligibility repository"
       const artworkId = await f.newArtwork();
       const [edition] = await f.db
         .insert(shopEdition)
-        .values({ artworkId, editionNumber: 1, allocation: "lax" })
+        .values({ artworkId, editionNumber: 1, stockRef: 1, allocation: "lax" })
         .returning({ id: shopEdition.id });
       const [broker] = await f.db
         .insert(shopParty)

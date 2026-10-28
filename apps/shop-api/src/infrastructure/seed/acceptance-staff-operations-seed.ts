@@ -19,6 +19,7 @@ import {
 } from "../../test-support/shop-fixtures.js";
 import { grantShopStaffRole } from "../grant-staff-role.js";
 import { SHOP_ACCEPTANCE_ENQUIRY_ARTWORK_SLUG } from "./acceptance-commerce-seed.js";
+import { seedAcceptanceCustomRunFixture } from "./acceptance-custom-run-seed.js";
 import { SHOP_SEED_BUYER_FIXTURE_SLUG } from "./catalogue-seed.js";
 
 /** Paid-order payout fixture — not the isolated Stripe checkout artwork. */
@@ -133,6 +134,10 @@ export type AcceptanceStaffOperationsSeedResult = {
   holdEditionId: string;
   holdArtworkId: string;
   originalArtworkId: string;
+  /** A custom run of 30 made from its own lax.art original, for the custom run acceptance runs. */
+  customRunOriginalArtworkId: string;
+  customRunSlug: string;
+  customRunHoldEditionId: string;
   merchandiseVariantId: string;
   paidOrderId: string;
   paidOrderLineId: string;
@@ -349,6 +354,7 @@ export async function seedAcceptanceStaffOperationsFixtures(
     );
   }
 
+  const customRun = await seedAcceptanceCustomRunFixture(db);
   const merchandise = await seedAcceptanceMerchandiseFixture(db);
   const payoutArtwork = await db
     .select({ id: shopArtwork.id })
@@ -374,6 +380,9 @@ export async function seedAcceptanceStaffOperationsFixtures(
     holdEditionId: holdEdition.id,
     holdArtworkId,
     originalArtworkId,
+    customRunOriginalArtworkId: customRun.originalArtworkId,
+    customRunSlug: customRun.runSlug,
+    customRunHoldEditionId: customRun.holdEditionId,
     merchandiseVariantId: merchandise.variantId,
     paidOrderId: paid.orderId,
     paidOrderLineId: paid.orderLineId,

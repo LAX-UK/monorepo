@@ -1,4 +1,4 @@
-import { shopProduct, shopStaffMember } from "@auction/db/schema";
+import { shopArtwork, shopEdition, shopProduct, shopStaffMember } from "@auction/db/schema";
 import { eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -49,6 +49,17 @@ describe.skipIf(!hasShopIntegrationDb)("acceptance staff operations seed", () =>
     });
 
     expect(second.holdEditionId).toBe(first.holdEditionId);
+    expect(second.customRunHoldEditionId).toBe(first.customRunHoldEditionId);
+    const customPrints = await db
+      .select({ allocation: shopEdition.allocation, listingStatus: shopEdition.listingStatus })
+      .from(shopEdition)
+      .innerJoin(shopArtwork, eq(shopArtwork.id, shopEdition.artworkId))
+      .where(eq(shopArtwork.slug, first.customRunSlug));
+    expect(customPrints).toHaveLength(30);
+    expect(customPrints.filter((p) => p.allocation === "original_buyer_entitlement")).toHaveLength(
+      6,
+    );
+    expect(customPrints.filter((p) => p.listingStatus === "authorised")).toHaveLength(6);
     expect(second.merchandiseVariantId).toBe(first.merchandiseVariantId);
 
     const staff = await db

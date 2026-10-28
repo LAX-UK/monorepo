@@ -120,6 +120,7 @@ describe("publishing", () => {
     eligibleForEditionAllocation: true,
     saleState: "for_sale" as const,
     printPricePence: 45_000,
+    editionFactsConfirmed: true,
   };
 
   it("has no blockers for a complete artwork", () => {
@@ -135,8 +136,32 @@ describe("publishing", () => {
         artistArchived: true,
         hasImage: false,
         printPricePence: null,
+        editionFactsConfirmed: false,
       }),
-    ).toEqual(["archived", "artist_archived", "no_image", "no_edition_price"]);
+    ).toEqual([
+      "archived",
+      "artist_archived",
+      "no_image",
+      "no_edition_price",
+      "edition_facts_incomplete",
+    ]);
+  });
+
+  it("blocks a run until its edition facts are confirmed, and never an original", () => {
+    expect(artworkPublishBlockers({ ...ready, editionFactsConfirmed: false })).toEqual([
+      "edition_facts_incomplete",
+    ]);
+    expect(() => assertArtworkPublishable({ ...ready, editionFactsConfirmed: false })).toThrow(
+      "Confirm the edition facts",
+    );
+    expect(
+      artworkPublishBlockers({
+        ...ready,
+        eligibleForEditionAllocation: false,
+        printPricePence: null,
+        editionFactsConfirmed: false,
+      }),
+    ).toEqual([]);
   });
 
   it("needs no price for an original or a price-on-application run", () => {

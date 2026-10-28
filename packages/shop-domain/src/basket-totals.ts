@@ -6,8 +6,11 @@ import {
 import { type MoneyPence, addPence, multiplyPence, pence, sumPence } from "./money.js";
 import { ShopDomainError } from "./shop-domain-error.js";
 
-/** The most of one item a basket line can hold, whatever the stock (the API's upper bound). */
-export const SHOP_BASKET_LINE_QUANTITY_MAX = 24;
+/**
+ * The most of one item a basket line can hold, whatever the stock (the API's upper bound). A
+ * product rule, not a run size: runs now hold up to 500 prints and open editions have no size.
+ */
+export const SHOP_BASKET_LINE_QUANTITY_MAX = 10;
 
 /**
  * The most a shopper can put on a basket line right now: the per-order limit when one applies
