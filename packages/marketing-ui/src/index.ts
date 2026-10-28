@@ -41,6 +41,7 @@ export {
   MarketingViewAllChevron,
   MarketingZoomInIcon,
   MarketingZoomOutIcon,
+  type MarketingIconProps,
 } from "./marketing-icons.js";
 export {
   MarketingInstagramIcon,

@@ -1,11 +1,12 @@
 import { ShopViewAllLink } from "@/components/home/shop-view-all-link";
 import { MarketingSectionHeader } from "@auction/marketing-ui";
 import { DisplayHeading } from "@auction/ui";
+import type { ReactNode } from "react";
 
 type ShopSectionHeaderProps = {
   headingId: string;
   title: string;
-  subtitle?: string;
+  subtitle?: ReactNode;
   actionLabel?: string;
   actionHref?: string;
 };

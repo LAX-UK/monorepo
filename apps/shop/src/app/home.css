@@ -15,20 +15,100 @@
   padding-bottom: var(--shop-space-24);
 }
 
-/* First screen: what Shop sells and one real edition on sale now. */
+@media (min-width: 64rem) {
+  .shop-home--marketing {
+    gap: var(--shop-space-24);
+  }
+}
+
+/* Sentence-case label above a title; the Shop accent marks it. */
+.shop-home-eyebrow {
+  margin: 0;
+  font-family: var(--font-label);
+  font-size: var(--shop-text-sm);
+  font-weight: 600;
+  line-height: 1.25rem;
+  color: var(--color-product-accent);
+}
+
+/* A quiet text action with an arrow, beside a primary button. */
+.shop-home-more {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shop-space-2);
+  min-height: var(--shop-control-height);
+  border-radius: var(--radius-control);
+  font-family: var(--font-body);
+  font-size: var(--shop-text-md);
+  font-weight: 600;
+  color: var(--color-on-surface);
+  text-decoration: none;
+  text-underline-offset: 4px;
+}
+
+.shop-home-more:hover {
+  text-decoration: underline;
+}
+
+.shop-home-more__icon {
+  width: 1rem;
+  height: 1rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .shop-home-more__icon {
+    transition: transform var(--motion-duration-sm) ease;
+  }
+
+  .shop-home-more:hover .shop-home-more__icon {
+    transform: translateX(2px);
+  }
+}
+
+/* ── First screen ────────────────────────────────────────────────────────────────────────────
+   The gallery's paper wall, edge to edge: the copy, and the release hung like a print with a
+   museum label. The wall is drawn past the container with a clipped shadow, so the page itself
+   never scrolls sideways. */
 .shop-home-hero {
+  --print-max-height: 18rem;
+  --release-max-width: calc(100vw - 2 * var(--shop-page-gutter));
   display: grid;
   gap: var(--shop-space-8);
   align-items: center;
-  padding-top: var(--shop-space-8);
+  padding-block: var(--shop-space-8) var(--shop-space-12);
+  background: var(--color-paper);
+  box-shadow: 0 0 0 100vmax var(--color-paper);
+  clip-path: inset(0 -100vmax);
+}
+
+.shop-home-hero__release {
+  order: -1;
+}
+
+@media (min-width: 48rem) {
+  .shop-home-hero {
+    --print-max-height: 26rem;
+    --release-max-width: 40rem;
+  }
 }
 
 @media (min-width: 64rem) {
   .shop-home-hero {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    --print-max-height: 28rem;
+    --release-max-width: 44rem;
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
     gap: var(--shop-space-16);
-    min-height: min(36rem, calc(100svh - var(--header-height, 7rem) - 4rem));
-    padding-top: var(--shop-space-12);
+    min-height: min(40rem, calc(100svh - var(--header-height, 7rem)));
+    padding-block: var(--shop-space-12);
+  }
+
+  .shop-home-hero__release {
+    order: 0;
+  }
+
+  .shop-home-hero[data-has-release="false"] {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
   }
 }
 
@@ -37,16 +117,16 @@
   flex-direction: column;
   align-items: flex-start;
   gap: var(--shop-space-6);
-  max-width: 36rem;
+  max-width: 35rem;
 }
 
 .shop-home-hero__title {
   margin: 0;
-  font-family: var(--font-headline, inherit);
-  font-size: clamp(2.25rem, 5vw, 3.75rem);
+  font-family: var(--font-headline);
+  font-size: clamp(2.25rem, 4.2vw, 3.5rem);
   font-weight: 500;
-  line-height: 1.05;
-  letter-spacing: -0.02em;
+  line-height: 1.1;
+  letter-spacing: -0.025em;
   color: var(--color-on-surface);
 }
 
@@ -54,110 +134,406 @@
   margin: 0;
   font-family: var(--font-body);
   font-size: var(--shop-text-lg);
-  line-height: 1.6;
-  color: var(--color-on-surface);
+  line-height: 1.75rem;
+  color: var(--color-on-surface-variant);
 }
 
 .shop-home-hero__actions {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--shop-space-3);
+  align-items: center;
+  gap: var(--shop-space-3) var(--shop-space-6);
+  margin-top: var(--shop-space-2);
 }
 
 @media (max-width: 39.99rem) {
   .shop-home-hero__actions {
-    flex-direction: column;
     align-self: stretch;
   }
 
-  .shop-home-hero__actions > * {
+  .shop-home-hero__actions > .shop-button {
     width: 100%;
   }
 }
 
-.shop-home-hero__facts {
+.shop-home-hero__filters {
+  margin-top: var(--shop-space-2);
+}
+
+/* Quick filters: sentence-case chips, each with its count. */
+.shop-quick-filters {
   display: flex;
-  flex-direction: column;
+  flex-wrap: wrap;
   gap: var(--shop-space-2);
   margin: 0;
   padding: 0;
   list-style: none;
-  font-size: var(--shop-text-sm);
-  line-height: 1.4;
-  color: var(--color-on-surface-variant);
 }
 
-.shop-home-hero__facts li {
-  display: flex;
-  align-items: flex-start;
+.shop-quick-filter {
+  display: inline-flex;
+  align-items: center;
   gap: var(--shop-space-2);
-}
-
-.shop-home-hero__fact-icon {
-  width: 1.25rem;
-  height: 1.25rem;
+  min-height: 2.25rem;
+  padding: 0 var(--shop-space-4);
+  border: 1px solid var(--color-input-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-surface);
+  font-family: var(--font-body);
+  font-size: var(--shop-text-sm);
+  font-weight: 500;
+  line-height: 1;
   color: var(--color-on-surface);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: border-color var(--motion-duration-sm) ease, background-color
+    var(--motion-duration-sm) ease;
 }
 
-.shop-home-hero__feature {
-  display: flex;
-  flex-direction: column;
-  gap: var(--shop-space-3);
-  margin: 0;
-  width: 100%;
-  max-width: 26rem;
-  justify-self: center;
-}
-
-/* The same 4:5 mat as the catalogue cards; the work is never cropped. */
-.shop-home-hero__mat {
-  position: relative;
-  display: block;
-  aspect-ratio: 4 / 5;
+.shop-quick-filter:hover {
+  border-color: var(--color-control-border-hover);
   background: var(--color-surface-container-low);
 }
 
-@media (max-width: 63.99rem) {
-  .shop-home-hero__mat {
-    aspect-ratio: 5 / 4;
-  }
+.shop-quick-filter:active {
+  background: var(--color-surface-container);
 }
 
-.shop-home-hero__frame {
-  position: absolute;
-  inset: 8%;
-}
-
-.shop-home-hero__caption {
-  display: flex;
-  flex-direction: column;
-  gap: var(--shop-space-1);
-  font-size: var(--shop-text-sm);
-  line-height: 1.4;
-}
-
-.shop-home-hero__caption-title {
-  align-self: flex-start;
-  border-radius: var(--radius-control);
-  color: var(--color-on-surface);
-  font-size: var(--shop-text-md);
-  font-weight: 500;
-  text-decoration: none;
-}
-
-.shop-home-hero__caption-title:hover {
-  text-decoration: underline;
-  text-underline-offset: 4px;
-}
-
-.shop-home-hero__caption-meta {
+.shop-quick-filter__count {
+  font-weight: 400;
+  font-variant-numeric: tabular-nums;
   color: var(--color-on-surface-variant);
 }
 
-.shop-home-hero__caption-price {
+/* The release: the print whole inside its white border, then the label under it. */
+.shop-home-hero__release {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-6);
+  justify-self: center;
+  width: fit-content;
+  max-width: 100%;
+  margin: 0;
+}
+
+.shop-home-hero__print-link {
+  display: block;
+}
+
+.shop-home-print {
+  --print-border: clamp(0.75rem, 1.6vw, 1.375rem);
+  display: block;
+  width: min(
+    var(--release-max-width),
+    calc(var(--print-max-height) * var(--print-aspect) + 2 * var(--print-border))
+  );
+  padding: var(--print-border);
+  background: var(--color-passe-partout);
+  box-shadow: var(--shadow-hung-print);
+}
+
+.shop-home-print__image {
+  position: relative;
+  display: block;
+  aspect-ratio: var(--print-aspect);
+}
+
+/* The museum label: artist and price, title and edition, then technique and size. */
+.shop-home-label {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--shop-space-1) var(--shop-space-8);
+  align-items: baseline;
+  font-family: var(--font-body);
+  font-size: var(--shop-text-sm);
+  line-height: 1.25rem;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-home-label__artist {
+  font-family: var(--font-headline);
+  font-size: var(--shop-text-md);
+  font-weight: 500;
+  line-height: 1.375rem;
   color: var(--color-on-surface);
+}
+
+.shop-home-label__price {
+  justify-self: end;
+  font-size: var(--shop-text-md);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
+  color: var(--color-on-surface);
+}
+
+.shop-home-label__edition {
+  justify-self: end;
+}
+
+.shop-home-label__facts {
+  grid-column: 1 / -1;
+}
+
+/* ── Trust strip ─────────────────────────────────────────────────────────────────────────── */
+.shop-home-trust {
+  margin-top: calc(-1 * var(--shop-space-8));
+}
+
+@media (min-width: 64rem) {
+  .shop-home-trust {
+    margin-top: calc(-1 * var(--shop-space-16));
+  }
+}
+
+.shop-home-trust__list {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-bottom: 1px solid var(--color-border-hairline);
+}
+
+/* Phones: one promise per row. Tablets: two by two. Desktop: four across. */
+.shop-home-trust__item {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--shop-space-3);
+  padding: var(--shop-space-4) 0;
+}
+
+.shop-home-trust__item + .shop-home-trust__item {
+  border-top: 1px solid var(--color-border-hairline);
+}
+
+@media (min-width: 40rem) and (max-width: 63.99rem) {
+  .shop-home-trust__list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .shop-home-trust__item {
+    padding: var(--shop-space-6) var(--shop-space-4) var(--shop-space-6) 0;
+  }
+
+  .shop-home-trust__item + .shop-home-trust__item {
+    border-top: 0;
+  }
+
+  .shop-home-trust__item:nth-child(even) {
+    padding-left: var(--shop-space-4);
+    border-left: 1px solid var(--color-border-hairline);
+  }
+
+  .shop-home-trust__item:nth-child(n + 3) {
+    border-top: 1px solid var(--color-border-hairline);
+  }
+}
+
+@media (min-width: 64rem) {
+  .shop-home-trust__list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .shop-home-trust__item {
+    padding: var(--shop-space-6) var(--shop-space-6) var(--shop-space-6) 0;
+  }
+
+  .shop-home-trust__item + .shop-home-trust__item {
+    padding-left: var(--shop-space-6);
+    border-top: 0;
+    border-left: 1px solid var(--color-border-hairline);
+  }
+}
+
+.shop-home-trust__icon {
+  flex: none;
+  width: 1.5rem;
+  height: 1.5rem;
+  margin-top: 0.125rem;
+  color: var(--color-product-accent);
+}
+
+.shop-home-trust__text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--shop-space-1);
+  min-width: 0;
+}
+
+.shop-home-trust__title {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--shop-text-md);
+  font-weight: 600;
+  line-height: 1.375rem;
+  color: var(--color-on-surface);
+}
+
+.shop-home-trust__body {
+  margin: 0;
+  font-size: var(--shop-text-sm);
+  line-height: 1.25rem;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-home-trust__text .shop-inline-link {
+  font-size: var(--shop-text-sm);
+}
+
+/* ── Behind the edition ──────────────────────────────────────────────────────────────────── */
+.shop-home-story {
+  display: grid;
+  gap: var(--shop-space-8);
+  align-items: center;
+}
+
+@media (min-width: 64rem) {
+  .shop-home-story {
+    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+    gap: var(--shop-space-16);
+  }
+}
+
+.shop-home-story__image {
+  position: relative;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  background: var(--color-surface-container-low);
+}
+
+.shop-home-story__body {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--shop-space-4);
+}
+
+.shop-home-story__title {
+  margin: 0;
+  font-family: var(--font-headline);
+  font-size: clamp(1.75rem, 3vw, 2.125rem);
+  font-weight: 500;
+  line-height: 1.25;
+  letter-spacing: -0.015em;
+}
+
+.shop-home-story__text {
+  margin: 0;
+  max-width: 52ch;
+  font-size: var(--shop-text-lg);
+  line-height: 1.75rem;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-home-story__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shop-space-3) var(--shop-space-6);
+}
+
+/* ── Start a collection ──────────────────────────────────────────────────────────────────── */
+.shop-collections {
+  display: grid;
+  gap: var(--shop-space-8) var(--shop-space-6);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 48rem) {
+  .shop-collections {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 64rem) {
+  .shop-collections {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.shop-collection {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-1);
+}
+
+.shop-collection__mat {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: var(--shop-space-3);
+  aspect-ratio: 3 / 2;
+  margin-bottom: var(--shop-space-3);
+  padding: var(--shop-space-8);
+  background: var(--color-paper);
+  outline: 2px solid transparent;
+  outline-offset: 4px;
+  transition: outline-color var(--motion-duration-sm) ease;
+}
+
+.shop-collection__print {
+  position: relative;
+  display: block;
+}
+
+.shop-collection__print img {
+  filter: var(--filter-artwork-lift);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .shop-collection__print {
+    transition: transform 0.35s var(--motion-ease-decelerate);
+  }
+
+  .shop-collection:hover .shop-collection__print {
+    transform: translateY(-4px);
+  }
+}
+
+.shop-collection__title {
+  margin: 0;
+  font-family: var(--font-headline);
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.625rem;
+}
+
+.shop-collection__link {
+  color: var(--color-on-surface);
+  text-decoration: none;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+  outline: none;
+}
+
+.shop-collection__link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+
+.shop-collection:hover .shop-collection__link {
+  text-decoration-line: underline;
+}
+
+.shop-collection:has(.shop-collection__link:focus-visible) .shop-collection__mat {
+  outline-color: var(--color-ring);
+}
+
+.shop-collection__count {
+  margin: 0;
+  font-size: var(--shop-text-sm);
+  line-height: 1.25rem;
+  color: var(--color-on-surface-variant);
+}
+
+/* The section header's lax.art link reads as part of the sentence. */
+.shop-home__section-subtitle .shop-inline-link {
+  font-size: inherit;
 }
 
 .shop-home__section {
@@ -215,59 +591,6 @@
 .shop-home__section-action:hover {
   text-decoration: underline;
   text-underline-offset: 4px;
-}
-
-/* How editions work: four short points, then the page ends. */
-.shop-home-steps {
-  display: grid;
-  gap: var(--shop-space-8) var(--shop-space-6);
-  margin: 0;
-  padding: var(--shop-space-8) 0 0;
-  list-style: none;
-  border-top: 1px solid var(--color-border-hairline);
-}
-
-@media (min-width: 40rem) {
-  .shop-home-steps {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 80rem) {
-  .shop-home-steps {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-}
-
-.shop-home-steps__item {
-  display: flex;
-  flex-direction: column;
-  gap: var(--shop-space-2);
-}
-
-.shop-home-steps__icon {
-  width: 1.5rem;
-  height: 1.5rem;
-  margin-bottom: var(--shop-space-1);
-  color: var(--color-on-surface);
-}
-
-.shop-home-steps__title {
-  margin: 0;
-  font-family: var(--font-headline, inherit);
-  font-size: var(--shop-text-lg);
-  font-weight: 600;
-  line-height: 1.3;
-  color: var(--color-on-surface);
-}
-
-.shop-home-steps__body {
-  margin: 0;
-  max-width: 32ch;
-  font-family: var(--font-body);
-  font-size: var(--shop-text-md);
-  line-height: 1.5;
-  color: var(--color-on-surface-variant);
 }
 
 /* Category tiles on /categories. */

@@ -44,6 +44,12 @@ export function parseWorkingDayWindow(raw: string | undefined): WorkingDayWindow
   return { min, max };
 }
 
+/** "3 to 5 working days", or "2 working days" for a single day count. */
+export function workingDaysLabel(window: WorkingDayWindow): string {
+  const span = window.min === window.max ? `${window.min}` : `${window.min} to ${window.max}`;
+  return `${span} working ${window.max === 1 ? "day" : "days"}`;
+}
+
 /** Today's calendar date in London, as a UTC midnight so day arithmetic ignores clock changes. */
 export function londonToday(now: Date): Date {
   const parts = new Intl.DateTimeFormat("en-GB", {
@@ -122,7 +128,7 @@ export function presentCheckoutDeliveryOptions(input: {
       label: "UK insured delivery",
       price: priceLabel(fulfilmentSurchargePence("uk_insured_delivery")),
       description: ukDelivery
-        ? `${ukDelivery.min === ukDelivery.max ? ukDelivery.min : `${ukDelivery.min} to ${ukDelivery.max}`} working days, packed and insured to your door`
+        ? `${workingDaysLabel(ukDelivery)}, packed and insured to your door`
         : "Packed and insured to your door",
       timing: ukDelivery ? arrivalLine(today, ukDelivery, "Arrives") : null,
     },

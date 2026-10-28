@@ -156,6 +156,9 @@
   /* Soft shadow that lifts a print off its mat; a filter, so it follows a contained image. */
   --filter-artwork-lift: drop-shadow(0 1px 1px rgb(20 16 10 / 0.1))
     drop-shadow(0 8px 14px rgb(20 16 10 / 0.16));
+  /* The white border of a print hung on the paper wall, and its shadow. */
+  --color-passe-partout: color-mix(in srgb, var(--color-brand-light-cream) 20%, white);
+  --shadow-hung-print: 0 1px 2px rgb(20 16 10 / 0.1), 0 10px 24px -8px rgb(20 16 10 / 0.22);
   /* Section spacing rhythm — parity with Bid marketing (docs/marketing-design-language.md). */
   --section-spacing: 5rem;
   --section-spacing-tight: 3rem;
@@ -323,6 +326,8 @@ html.dark {
   --color-paper: color-mix(in srgb, var(--color-brand-light-cream) 5%, var(--color-surface));
   --filter-artwork-lift: drop-shadow(0 1px 1px rgb(0 0 0 / 0.45))
     drop-shadow(0 10px 18px rgb(0 0 0 / 0.55));
+  --color-passe-partout: color-mix(in srgb, var(--color-brand-light-cream) 92%, black);
+  --shadow-hung-print: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 28px -8px rgb(0 0 0 / 0.7);
   --color-nav-border: #333534;
   --color-nav-text: var(--color-brand-light-cream);
   --color-hero-foreground: #fafafa;
