@@ -74,5 +74,6 @@ export {
   type ArtistApplicationStatusTone,
   type ArtistApplicationStatusVm,
   artistApplicationJourneyStep,
+  isArtistApplicationAwaitingReply,
   presentArtistApplicationStatus,
 } from "./artist-application-status.vm.js";

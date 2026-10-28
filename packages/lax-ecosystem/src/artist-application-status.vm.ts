@@ -30,12 +30,12 @@ const STATUS: Record<ArtistApplicationApplicantStatus, ArtistApplicationStatusVm
   submitted: {
     label: "Submitted",
     tone: "info",
-    next: "The gallery team has your application and will review it. We reply by email.",
+    next: "The gallery team has your application and will review it.",
   },
   in_review: {
     label: "In review",
     tone: "info",
-    next: "A member of the gallery team is looking at your work. We reply by email.",
+    next: "A member of the gallery team is looking at your work.",
   },
   more_info_needed: {
     label: "More information needed",
@@ -60,6 +60,11 @@ function isApplicantStatus(status: string): status is ArtistApplicationApplicant
 
 export function presentArtistApplicationStatus(status: string): ArtistApplicationStatusVm {
   return isApplicantStatus(status) ? STATUS[status] : STATUS.submitted;
+}
+
+/** Whether the gallery owes the artist a reply: sent and not yet decided or waiting on them. */
+export function isArtistApplicationAwaitingReply(status: string): boolean {
+  return status === "submitted" || status === "in_review";
 }
 
 /** The order the artist sees an application move through, for a progress line. */

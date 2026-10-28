@@ -80,7 +80,7 @@ export function SellingApplication({ view }: { view: SellingApplicationVm }) {
     );
   }
   return (
-    <AccountSection id="artist-application" title="Your application to the gallery">
+    <AccountSection id="artist-application" title="Where it stands">
       <div className={cn(CARD, CARD_PADDING, "flex flex-col gap-6")}>
         <div className="flex flex-wrap items-start justify-between gap-x-6 gap-y-3">
           <dl className="grid gap-x-8 gap-y-3 sm:grid-cols-2">

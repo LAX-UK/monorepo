@@ -26,7 +26,7 @@ export function formatApplicationDate(value: string | null): string | null {
 }
 
 const TONE_DOT: Record<ArtistApplicationStatusTone, string> = {
-  neutral: "bg-outline",
+  neutral: "bg-on-surface-variant",
   info: "bg-info",
   attention: "bg-warning",
   success: "bg-success",
@@ -80,7 +80,7 @@ function Journey({ status }: { status: string }) {
                 aria-hidden
                 className={cn(
                   "relative z-10 size-3 shrink-0 rounded-full border-2",
-                  reached ? "border-on-surface bg-on-surface" : "border-outline bg-surface",
+                  reached ? "border-on-surface bg-on-surface" : "border-input-border bg-surface",
                 )}
               />
               {index < ARTIST_APPLICATION_JOURNEY.length - 1 ? (
@@ -128,7 +128,6 @@ export function ApplicationSentView({
     <MarketingSuccessState
       title="Application sent"
       data-testid="artist-application-sent"
-      className="items-start text-left"
       description={
         <>
           Thank you. Your reference is{" "}
@@ -138,7 +137,7 @@ export function ApplicationSentView({
         </>
       }
       actions={
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-wrap justify-center gap-3">
           {accountHref ? (
             <Button asChild size="lg" className="min-h-11 font-label">
               <a href={accountHref}>Follow it in LAX Account</a>
@@ -165,7 +164,7 @@ export function ApplicationStatusView({
       <Facts application={application} />
       <Journey status={application.status} />
       <p className="m-0 max-w-[60ch] text-base leading-relaxed text-on-surface">
-        {vm.next} We reply within {ARTIST_APPLICATION_REVIEW_WEEKS} weeks of receiving it.
+        {vm.next} We reply by email within {ARTIST_APPLICATION_REVIEW_WEEKS} weeks of receiving it.
       </p>
       <div className="flex flex-wrap gap-3">
         {accountHref ? (

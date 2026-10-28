@@ -2,6 +2,7 @@ import {
   ARTIST_APPLICATION_JOURNEY,
   type ArtistApplicationStatusTone,
   artistApplicationJourneyStep,
+  isArtistApplicationAwaitingReply,
   presentArtistApplicationStatus,
 } from "@auction/lax-ecosystem";
 import type { MyArtistApplicationState } from "@auction/shop-contracts";
@@ -92,7 +93,9 @@ export function buildSellingApplication(
     kind: "application",
     reference: application.reference,
     status: { label: vm.label, tone: BADGE_TONE[vm.tone] },
-    next: vm.next,
+    next: isArtistApplicationAwaitingReply(application.status)
+      ? `${vm.next} We reply by email.`
+      : vm.next,
     sentOn: longDate(application.submittedAt),
     journey:
       application.status === "draft"

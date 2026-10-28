@@ -74,14 +74,16 @@ export function ApplicationAgreementStep({
   const consentId = applicationFieldId("consentToContact");
   return (
     <div className="flex flex-col gap-10">
-      <dl className="m-0 flex flex-col">
+      <div className="flex flex-col">
         {ARTIST_APPLICATION_FORM_STEPS.filter((step) => step.id !== "agreement").map((step) => (
           <div
             key={step.id}
             className="flex flex-col gap-3 border-t border-outline-variant py-5 last:border-b"
           >
             <div className="flex items-baseline justify-between gap-4">
-              <dt className="font-headline text-lg font-medium text-on-surface">{step.label}</dt>
+              <h3 className="m-0 font-headline text-lg font-medium text-on-surface">
+                {step.label}
+              </h3>
               <button
                 type="button"
                 className="art-focus-ring min-h-11 rounded-sm px-1 font-label text-sm font-medium text-on-surface underline underline-offset-4 hover:decoration-2"
@@ -90,7 +92,7 @@ export function ApplicationAgreementStep({
                 Change<span className="sr-only"> {step.label.toLowerCase()}</span>
               </button>
             </div>
-            <dd className="m-0">
+            <div>
               <dl className="m-0 grid gap-2 sm:grid-cols-[9rem_minmax(0,1fr)] sm:gap-x-6">
                 {rows[step.id as Exclude<ArtistApplicationStep, "agreement">].map((row) => (
                   <div key={row.label} className="contents">
@@ -99,10 +101,10 @@ export function ApplicationAgreementStep({
                   </div>
                 ))}
               </dl>
-            </dd>
+            </div>
           </div>
         ))}
-      </dl>
+      </div>
 
       <MarketingFormField id={consentId} label="Agreement" error={errors.consentToContact ?? null}>
         {(control) => (
