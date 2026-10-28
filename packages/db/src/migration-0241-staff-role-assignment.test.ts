@@ -10,6 +10,9 @@ const url = process.env.MIGRATION_TEST_DATABASE_URL;
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const sql = (file: string) => readFileSync(join(__dirname, "../drizzle", file), "utf8");
 
+/** Migrations after 0241 that change staff_role_assignment; each can be applied again safely. */
+const LATER_STAFF_ROLE_ASSIGNMENT_MIGRATIONS = ["0244_staff_role_screens.sql"];
+
 describe.skipIf(!url)("migration 0241 staff role assignments", () => {
   it("gives each staff member their current role once, and rolls back cleanly", async () => {
     const client = new pg.Client({ connectionString: url });
@@ -86,6 +89,9 @@ describe.skipIf(!url)("migration 0241 staff role assignments", () => {
       const gone = await client.query(`select to_regclass('public.staff_role_assignment') as t`);
       expect(gone.rows[0]?.t).toBeNull();
       await client.query(forward);
+      // The rollback dropped the table, so later migrations that change it run again and the
+      // shared test database stays at the latest schema for the packages tested after this one.
+      for (const later of LATER_STAFF_ROLE_ASSIGNMENT_MIGRATIONS) await client.query(sql(later));
       const again = await client.query(
         "select count(*)::int as n from staff_role_assignment where user_id = any($1)",
         [ids],

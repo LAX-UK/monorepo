@@ -186,6 +186,17 @@ describe.skipIf(!HAS_DB)("staff roster (integration)", () => {
   });
 
   describe("recording ends", () => {
+    // Assignments belong to a Bid profile; other suites share the database, so only this
+    // person's rows are looked at.
+    const mine = <T extends { userId: string }>(rows: readonly T[]) =>
+      rows.filter((row) => row.userId === memberId);
+
+    beforeEach(async () => {
+      await roster.transact((tx) =>
+        tx.writeProfileRoles(memberId, { role: "staff", primaryStaffRole: null }),
+      );
+    });
+
     const newAssignment = (
       role: "specialist" | "finance",
       startsAgo: number,
@@ -210,11 +221,11 @@ describe.skipIf(!HAS_DB)("staff roster (integration)", () => {
         await tx.insert(newAssignment("specialist", 5 * HOUR, null)),
       ]);
 
-      const listed = await roster.transact((tx) => tx.listUnrecordedEnds(now, 100));
+      const listed = mine(await roster.transact((tx) => tx.listUnrecordedEnds(now, 1000)));
       expect(listed.map((a) => a.id)).toEqual([expired?.id]);
 
       await roster.transact((tx) => tx.recordEnds([expired?.id ?? ""], now));
-      expect(await roster.transact((tx) => tx.listUnrecordedEnds(now, 100))).toEqual([]);
+      expect(mine(await roster.transact((tx) => tx.listUnrecordedEnds(now, 1000)))).toEqual([]);
 
       const rows = await db
         .select({ id: staffRoleAssignment.id, recorded: staffRoleAssignment.endRecordedAt })
@@ -229,7 +240,9 @@ describe.skipIf(!HAS_DB)("staff roster (integration)", () => {
         tx.insert(newAssignment("specialist", 3 * HOUR, null)),
       );
       await roster.transact((tx) => tx.end(record.id, now));
-      expect(await roster.transact((tx) => tx.listUnrecordedEnds(new Date(), 100))).toEqual([]);
+      expect(mine(await roster.transact((tx) => tx.listUnrecordedEnds(new Date(), 1000)))).toEqual(
+        [],
+      );
       const [row] = await db
         .select({ recorded: staffRoleAssignment.endRecordedAt })
         .from(staffRoleAssignment)
