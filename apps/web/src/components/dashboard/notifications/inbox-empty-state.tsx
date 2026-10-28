@@ -3,14 +3,13 @@
 import { FilterEmptyState } from "@/components/app/filter-empty-state";
 import type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
-import { DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
+import { DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import {
   buildNotificationsHref,
   hasNotificationsActiveFilters,
   type parseNotificationsParams,
 } from "@/lib/dashboard/filters/notifications/notifications-filters";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
-import { NOTIFICATION_SETTINGS_HREF } from "@/lib/navigation/settings-links";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
@@ -19,8 +18,12 @@ type InboxEmptyStateProps = {
   filters: ReturnType<typeof parseNotificationsParams>;
 };
 
+/**
+ * What an empty notifications view says. "Choose what we send" is not repeated here: it sits in
+ * the toolbar above every view.
+ */
 export function InboxEmptyState({ tab, filters }: InboxEmptyStateProps) {
-  // Older links may still carry a type filter.
+  // A type is chosen and nothing of that type is in this view.
   if (hasNotificationsActiveFilters(filters) && filters.type) {
     return (
       <FilterEmptyState
@@ -37,11 +40,6 @@ export function InboxEmptyState({ tab, filters }: InboxEmptyStateProps) {
         illustration="plinth"
         title={DASHBOARD_EMPTY.notifications.title}
         description={DASHBOARD_EMPTY.notifications.description}
-        action={
-          <Button variant="ghost" asChild>
-            <Link href={NOTIFICATION_SETTINGS_HREF}>{DASHBOARD_CTA.chooseWhatWeSend}</Link>
-          </Button>
-        }
       />
     );
   }

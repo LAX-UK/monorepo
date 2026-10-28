@@ -37,6 +37,7 @@ export function NotificationsInboxBoard({
 }) {
   const board = useNotificationsInboxBoard(initialPage);
   const failed = loadFailure || Boolean(board.error);
+  const canSelect = board.items.length > 0 && !board.loading;
 
   return (
     <DashboardListPage
@@ -68,9 +69,22 @@ export function NotificationsInboxBoard({
       ) : (
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-3 max-md:w-full">
               <AccountViewTabs label="Notifications" currentId={board.tab} tabs={board.views} />
-              <NotificationsTypeSelect filters={board.notificationFilters} />
+              <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
+                <NotificationsTypeSelect filters={board.notificationFilters} />
+                {canSelect && !board.selecting ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="default"
+                    onClick={board.startSelecting}
+                    className="max-md:-mr-4"
+                  >
+                    Select
+                  </Button>
+                ) : null}
+              </div>
             </div>
             <Link
               href={NOTIFICATION_SETTINGS_HREF}
@@ -80,20 +94,21 @@ export function NotificationsInboxBoard({
             </Link>
           </div>
 
-          {board.items.length > 0 && !board.loading ? (
-            board.selecting ? (
-              <section
-                aria-label="Selected notifications"
-                className="flex flex-wrap items-center gap-2 rounded-xl border border-outline-variant/60 bg-surface-container-low px-4 py-2.5"
+          {canSelect && board.selecting ? (
+            <section
+              aria-label="Selected notifications"
+              className="flex flex-wrap items-center gap-2 rounded-xl border border-outline-variant/60 bg-surface-container-low px-4 py-2.5"
+            >
+              <p
+                className="mr-auto font-body text-sm font-medium text-on-surface"
+                aria-live="polite"
               >
-                <p
-                  className="mr-auto font-body text-sm font-medium text-on-surface"
-                  aria-live="polite"
-                >
-                  {board.selected.size === 0
-                    ? "Choose notifications"
-                    : `${board.selected.size} selected`}
-                </p>
+                {board.selected.size === 0
+                  ? "Choose notifications"
+                  : `${board.selected.size} selected`}
+              </p>
+              {/* On phones the count and Done share the first row and the actions the second. */}
+              <div className="flex gap-2 max-sm:order-last max-sm:w-full max-sm:[&>button]:flex-1">
                 <Button
                   type="button"
                   variant="secondaryOutline"
@@ -114,17 +129,11 @@ export function NotificationsInboxBoard({
                     Archive
                   </Button>
                 )}
-                <Button type="button" variant="ghost" size="default" onClick={board.stopSelecting}>
-                  Done
-                </Button>
-              </section>
-            ) : (
-              <div className="-mt-2 flex justify-end">
-                <Button type="button" variant="ghost" size="default" onClick={board.startSelecting}>
-                  Select
-                </Button>
               </div>
-            )
+              <Button type="button" variant="ghost" size="default" onClick={board.stopSelecting}>
+                Done
+              </Button>
+            </section>
           ) : null}
 
           {board.loading ? (

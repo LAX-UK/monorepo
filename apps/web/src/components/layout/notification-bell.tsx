@@ -50,13 +50,13 @@ export function NotificationBell({ headerTone = "on-light" }: { headerTone?: Sit
 
   if (!loaded) {
     return (
-      <div
+      <output
         className="flex h-10 w-10 items-center justify-center"
         aria-busy="true"
         aria-label="Loading notifications"
       >
         <Bell className={cn("animate-pulse", headerChromeIconClass(headerTone))} aria-hidden />
-      </div>
+      </output>
     );
   }
 
