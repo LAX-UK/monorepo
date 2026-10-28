@@ -7,9 +7,11 @@ import {
   escapeHostedHtml,
   floatingInput,
   hostedButton,
+  newPasswordHint,
   passwordField,
   statusRegions,
   turnstileHost,
+  viewChrome,
 } from "../html.js";
 import { HOSTED_AUTH_POLICY } from "../policy.js";
 import { type HostedAuthView, hostedAuthViewFromSearch } from "../view.js";
@@ -25,8 +27,7 @@ export function buildHostedForgotPasswordHtml(
   return buildHostedAuthHtml({
     title: "Reset password",
     description: "Enter your email and we will send reset instructions.",
-    brand: view.brand,
-    config: view.config,
+    ...viewChrome(view),
     body: `<form id="forgot-form" class="auth-form" novalidate>
       ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username" })}
       ${hostedButton({ label: "Send reset link", loadingLabel: "Sending…" })}
@@ -44,8 +45,7 @@ export function buildHostedResetPasswordHtml(
   return buildHostedAuthHtml({
     title: "Choose new password",
     description: `Set a new password for your ${HOSTED_COPY.accountName}.`,
-    brand: view.brand,
-    config: view.config,
+    ...viewChrome(view),
     body: `<div class="auth-stack">
     <form id="reset-form" class="auth-form" novalidate>
       ${passwordField({
@@ -54,6 +54,7 @@ export function buildHostedResetPasswordHtml(
         autocomplete: "new-password",
         minlength: HOSTED_AUTH_POLICY.passwordMinLength,
         maxlength: HOSTED_AUTH_POLICY.passwordMaxLength,
+        hint: newPasswordHint(),
       })}
       ${hostedButton({ label: "Update password", loadingLabel: "Updating…" })}
     </form>

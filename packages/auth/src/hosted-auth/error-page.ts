@@ -1,4 +1,4 @@
-import { buildHostedAuthHtml, escapeHostedHtml } from "./html.js";
+import { buildHostedAuthHtml, escapeHostedHtml, viewChrome } from "./html.js";
 import type { HostedAuthView } from "./view.js";
 
 type HeaderReader = { get(name: string): string | null };
@@ -52,8 +52,8 @@ export function buildHostedErrorHtml(status: number, view: HostedAuthView): stri
   return buildHostedAuthHtml({
     title,
     description: message,
-    brand: view.brand,
-    config: view.config,
+    ...viewChrome(view),
+    showDestination: false,
     body: `<div class="auth-form">
       <a class="btn btn-primary" id="start-again" href="${escapeHostedHtml(view.config.restartUrl)}">Start again</a>
     </div>`,

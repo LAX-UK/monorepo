@@ -1,17 +1,21 @@
-import type { HostedBrandProfile, HostedProductChip } from "./brand.js";
+import type { HostedBrandProfile } from "./brand.js";
 import type { HostedFieldKind } from "./browser/constraints.js";
+import {
+  type HostedLeadKey,
+  destinationLine,
+  hostedFooter,
+  hostedHeader,
+  leadWithDestination,
+} from "./chrome.js";
 import { HOSTED_COPY } from "./copy.js";
+import { escapeHostedHtml, escapeJsonScript } from "./escape.js";
 import { hostedFaviconLinkTags } from "./favicons.js";
 import type { HostedAuthFlow } from "./flow-context.js";
 import { productHintHref } from "./flow-context.js";
-import {
-  HOSTED_FONT_FILES,
-  hostedFontPath,
-  hostedLockupPath,
-  hostedLockupWidth,
-} from "./lockups.js";
+import { type HostedFooterLinks, hostedFooterLinks } from "./legal-links.js";
+import { HOSTED_FONT_FILES, hostedFontPath } from "./lockups.js";
 import { HOSTED_AUTH_ASSET_VERSION, HOSTED_AUTH_POLICY } from "./policy.js";
-import type { HostedAuthPageConfig } from "./view.js";
+import type { HostedAuthPageConfig, HostedAuthView } from "./view.js";
 
 export { HOSTED_AUTH_STYLES } from "./styles.js";
 
@@ -28,18 +32,7 @@ const ALLOWED_AUTOCOMPLETE = new Set([
 ]);
 const ALLOWED_INPUTMODE = new Set(["text", "email", "tel", "numeric"]);
 
-export function escapeHostedHtml(value: string): string {
-  return value
-    .replaceAll("&", "&amp;")
-    .replaceAll("<", "&lt;")
-    .replaceAll(">", "&gt;")
-    .replaceAll('"', "&quot;")
-    .replaceAll("'", "&#39;");
-}
-
-export function escapeJsonScript(json: string): string {
-  return json.replaceAll("<", "\\u003c").replaceAll(">", "\\u003e").replaceAll("&", "\\u0026");
-}
+export { escapeHostedHtml, escapeJsonScript };
 
 function attr(name: string, value: string): string {
   return `${name}="${escapeHostedHtml(value)}"`;
@@ -52,8 +45,21 @@ export type HostedAuthPage = {
   scriptSrc?: string;
   brand: HostedBrandProfile;
   config: HostedAuthPageConfig;
+  /** LAX Account's privacy and help links; left out where the product origins are unknown. */
+  footer?: HostedFooterLinks;
+  /** "to continue to LAX Bid" under the heading. Off for error pages, which go nowhere yet. */
+  showDestination?: boolean;
+  /** A lead that names the destination itself, in place of the description and the separate line. */
+  lead?: HostedLeadKey;
   productBack?: { href: string; label: string };
 };
+
+/** What every page takes from its view: brand, client config and footer links. */
+export function viewChrome(
+  view: HostedAuthView,
+): Pick<HostedAuthPage, "brand" | "config" | "footer"> {
+  return { brand: view.brand, config: view.config, footer: hostedFooterLinks(view.capabilities) };
+}
 
 export type FloatingInputOptions = {
   id: string;
@@ -70,6 +76,8 @@ export type FloatingInputOptions = {
   kind?: HostedFieldKind;
   /** Codes and keys that must reach the server exactly as typed: no auto-capitalise, correct or spellcheck. */
   exactEntry?: boolean;
+  /** Guidance shown under the label before anything is typed. */
+  hint?: string;
 };
 
 export type HostedButtonOptions = {
@@ -113,10 +121,21 @@ function inferFieldKind(input: FloatingInputOptions): HostedFieldKind {
   return "text";
 }
 
+function fieldHint(id: string, hint: string | undefined): { html: string; id: string | null } {
+  if (!hint) return { html: "", id: null };
+  const hintId = `${id}-hint`;
+  return { html: `<p id="${hintId}" class="field-hint">${escapeHostedHtml(hint)}</p>`, id: hintId };
+}
+
+/**
+ * A labelled text field in LAX Account's field style: the label above a 44px box with a 3:1 edge,
+ * a hint under the label when there is one, and the error under the box.
+ */
 export function floatingInput(input: FloatingInputOptions): string {
   const id = escapeHostedHtml(input.id);
   const errorId = `${id}-error`;
-  const describedBy = [errorId, input.describedBy].filter(Boolean).join(" ");
+  const hint = fieldHint(id, input.hint);
+  const describedBy = [errorId, hint.id, input.describedBy].filter(Boolean).join(" ");
   const type = inputType(input.type);
   const autocomplete = autocompleteValue(input.autocomplete);
   const inputmode = inputModeValue(input.inputmode);
@@ -126,7 +145,6 @@ export function floatingInput(input: FloatingInputOptions): string {
     attr("name", name),
     attr("class", "field-input"),
     attr("type", type),
-    'placeholder=" "',
     attr("aria-describedby", describedBy),
     'aria-invalid="false"',
     attr("data-field-kind", inferFieldKind(input)),
@@ -144,9 +162,10 @@ export function floatingInput(input: FloatingInputOptions): string {
     .filter(Boolean)
     .join(" ");
   return `<div class="field">
+      <label class="field-label" for="${id}">${escapeHostedHtml(input.label)}</label>
+      ${hint.html}
       <div class="field-control">
         <input ${attrs}>
-        <label class="field-label" for="${id}">${escapeHostedHtml(input.label)}</label>
       </div>
       <p id="${errorId}" class="field-error" role="alert" hidden></p>
     </div>`;
@@ -155,6 +174,19 @@ export function floatingInput(input: FloatingInputOptions): string {
 /** @deprecated Use floatingInput. Kept as a stable presenter alias. */
 export const labeledInput = floatingInput;
 
+/** Lucide's eye and eye-off: the reveal button shows the one for what pressing it does. */
+const EYE_ICON = `<svg class="reveal-icon reveal-icon--show" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg>`;
+const EYE_OFF_ICON = `<svg class="reveal-icon reveal-icon--hide" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10.733 5.076a10.744 10.744 0 0 1 11.205 6.575 1 1 0 0 1 0 .696 10.747 10.747 0 0 1-1.444 2.49"/><path d="M14.084 14.158a3 3 0 0 1-4.242-4.242"/><path d="M17.479 17.499a10.75 10.75 0 0 1-15.417-5.151 1 1 0 0 1 0-.696 10.75 10.75 0 0 1 4.446-5.143"/><path d="m2 2 20 20"/></svg>`;
+
+/** What the issuer asks of a new password, said before anyone types one. */
+export function newPasswordHint(minLength: number = HOSTED_AUTH_POLICY.passwordMinLength): string {
+  return `Use at least ${minLength} characters. Passwords found in known data breaches can't be used.`;
+}
+
+/**
+ * A password field with a reveal toggle. The toggle keeps one name ("Show password") and reports
+ * its state through `aria-pressed`, which the runtime flips; the icon follows the state.
+ */
 export function passwordField(input: {
   id: string;
   label: string;
@@ -162,9 +194,11 @@ export function passwordField(input: {
   minlength?: number;
   maxlength?: number;
   required?: boolean;
+  hint?: string;
 }): string {
   const id = escapeHostedHtml(input.id);
   const errorId = `${id}-error`;
+  const hint = fieldHint(id, input.hint);
   const minlength = input.minlength ?? 0;
   const maxlength = input.maxlength ?? HOSTED_AUTH_POLICY.passwordMaxLength;
   const kind: HostedFieldKind = input.autocomplete === "new-password" ? "new-password" : "password";
@@ -173,9 +207,8 @@ export function passwordField(input: {
     attr("name", input.id),
     attr("class", "field-input"),
     'type="password"',
-    'placeholder=" "',
     attr("autocomplete", input.autocomplete),
-    attr("aria-describedby", errorId),
+    attr("aria-describedby", [errorId, hint.id].filter(Boolean).join(" ")),
     'aria-invalid="false"',
     attr("data-field-kind", kind),
     'autocapitalize="off"',
@@ -188,10 +221,11 @@ export function passwordField(input: {
     .filter(Boolean)
     .join(" ");
   return `<div class="field">
+      <label class="field-label" for="${id}">${escapeHostedHtml(input.label)}</label>
+      ${hint.html}
       <div class="field-control field-control-password">
         <input ${attrs}>
-        <label class="field-label" for="${id}">${escapeHostedHtml(input.label)}</label>
-        <button type="button" class="btn-reveal" data-password-toggle="${id}" aria-label="Show password" aria-pressed="false">Show</button>
+        <button type="button" class="btn-reveal" data-password-toggle="${id}" aria-label="Show password" aria-pressed="false">${EYE_ICON}${EYE_OFF_ICON}</button>
       </div>
       <p id="${errorId}" class="field-error" role="alert" hidden></p>
     </div>`;
@@ -239,41 +273,6 @@ export function continuationAnchor(label: string, path: string, flow: HostedAuth
 
 const PRODUCT_BACK_CHEVRON = `<svg class="product-back-chevron" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M10 12L6 8l4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
 
-const ACCOUNT_LOCKUP_HEIGHT = 44;
-const ACCOUNT_LOCKUP_WIDTH = hostedLockupWidth(ACCOUNT_LOCKUP_HEIGHT);
-
-function accountLockupPicture(assetSuffix: string): string {
-  const light = escapeHostedHtml(`${hostedLockupPath("light")}${assetSuffix}`);
-  const dark = escapeHostedHtml(`${hostedLockupPath("dark")}${assetSuffix}`);
-  return `<picture>
-      <source srcset="${dark}" media="(prefers-color-scheme: dark)">
-      <img class="brand-logo" src="${light}" alt="${escapeHostedHtml(HOSTED_COPY.accountName)}" width="${ACCOUNT_LOCKUP_WIDTH}" height="${ACCOUNT_LOCKUP_HEIGHT}">
-    </picture>`;
-}
-
-function productChipMarkup(chip: HostedProductChip | null): string {
-  if (!chip) return "";
-  return `<p class="product-chip">${escapeHostedHtml(HOSTED_COPY.continueTo)} <strong>${escapeHostedHtml(chip.label)}</strong></p>`;
-}
-
-function productName(product: "bid" | "shop" | "art", label: string): string {
-  return `<span class="product-name product-name--${product}">${escapeHostedHtml(label)}</span>`;
-}
-
-/** "One LAX Account for LAX Bid, LAX Shop and lax.art.", each product named in its own colour. */
-function oneAccountMarkup(): string {
-  const { bid, shop, art } = HOSTED_COPY.oneAccountProducts;
-  return `One LAX Account for ${productName("bid", bid)}, ${productName("shop", shop)} and ${productName("art", art)}.`;
-}
-
-/** The promise that one sign-in covers every LAX product, with a way to read more when Account is configured. */
-export function oneAccountNote(accountOrigin: string | undefined): string {
-  const learnMore = accountOrigin
-    ? ` <a class="text-link" href="${escapeHostedHtml(accountOrigin.replace(/\/$/, ""))}/">${escapeHostedHtml(HOSTED_COPY.learnMore)}</a>`
-    : "";
-  return `<p class="one-account">${oneAccountMarkup()}${learnMore}</p>`;
-}
-
 /** Only Montserrat is preloaded: every hosted page sets its text in it, as LAX Account does. */
 function fontPreloadTags(): string {
   return [HOSTED_FONT_FILES.montserrat]
@@ -286,15 +285,19 @@ function fontPreloadTags(): string {
 
 export function buildHostedAuthHtml(page: HostedAuthPage): string {
   const asset = `?v=${HOSTED_AUTH_ASSET_VERSION}`;
-  // Every hosted page is the LAX Account, whichever product the user came from.
-  const logo = accountLockupPicture(asset);
-  const brandTagline = page.brand.tagline
-    ? `<p class="brand-tagline">${escapeHostedHtml(page.brand.tagline)}</p>`
-    : "";
   const documentTitle = `${page.title} · ${HOSTED_COPY.accountName}`;
   const productBack = page.productBack
     ? `<p class="product-back"><a class="product-back-link" href="${escapeHostedHtml(page.productBack.href)}">${PRODUCT_BACK_CHEVRON}<span>${escapeHostedHtml(page.productBack.label)}</span></a></p>`
     : "";
+  const destination =
+    page.lead || page.showDestination === false ? "" : destinationLine(page.brand.chip);
+  const lead = page.lead
+    ? leadWithDestination(page.lead, page.brand.chip)
+    : page.description
+      ? escapeHostedHtml(page.description)
+      : "";
+  // Every hosted page is the LAX Account, whichever product the person came from. The theme
+  // script has no `defer`: it sets the theme class before the first paint.
   return `<!doctype html>
 <html lang="en-GB">
 <head>
@@ -304,23 +307,29 @@ export function buildHostedAuthHtml(page: HostedAuthPage): string {
 ${hostedFaviconLinkTags()}
 ${fontPreloadTags()}
   <link rel="stylesheet" href="/hosted-auth.css${asset}">
+  <script src="/hosted-theme.js${asset}"></script>
 </head>
 <body>
   <a class="skip-link" href="#main-content">Skip to content</a>
-  <main id="main-content">
-    ${productBack}
-    <div class="brand">
-      ${logo}
-      ${brandTagline}
+  <div class="auth-split">
+    <div class="auth-panel">
+      ${hostedHeader({ assetSuffix: asset, tagline: page.brand.tagline })}
+      <main id="main-content" class="auth-main">
+        <div class="auth-column">
+          ${productBack}
+          <div class="heading">
+            <h1>${escapeHostedHtml(page.title)}</h1>
+            ${destination}
+            ${lead ? `<p class="lead">${lead}</p>` : ""}
+          </div>
+          <div class="panel">${page.body}</div>
+          <noscript><p class="lead">Enable JavaScript to continue signing in.</p></noscript>
+        </div>
+      </main>
+      ${hostedFooter(page.footer ?? null, new Date().getFullYear())}
     </div>
-    <div class="heading">
-      <h1>${escapeHostedHtml(page.title)}</h1>
-      ${productChipMarkup(page.brand.chip)}
-      ${page.description ? `<p class="lead">${escapeHostedHtml(page.description)}</p>` : ""}
-    </div>
-    <div class="panel">${page.body}</div>
-    <noscript><p class="lead">Enable JavaScript to continue signing in.</p></noscript>
-  </main>
+    <div class="auth-art" aria-hidden="true"></div>
+  </div>
   <script type="application/json" id="hosted-auth-config">${escapeJsonScript(JSON.stringify(page.config))}</script>
   <script src="/hosted-auth-runtime.js${asset}" defer></script>
   ${page.scriptSrc ? `<script src="${escapeHostedHtml(page.scriptSrc)}${asset}" defer></script>` : ""}

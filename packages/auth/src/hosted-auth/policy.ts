@@ -12,4 +12,4 @@ export const HOSTED_AUTH_POLICY = {
  * Cache key for every hosted asset (CSS, runtime, lockups, fonts), which browsers and the CDN keep
  * for an hour. Change it whenever any of those files changes, or people keep the old one.
  */
-export const HOSTED_AUTH_ASSET_VERSION = "20261024a";
+export const HOSTED_AUTH_ASSET_VERSION = "20261028a";

@@ -5,6 +5,7 @@ import {
   floatingInput,
   hostedButton,
   statusRegions,
+  viewChrome,
 } from "../html.js";
 import { HOSTED_AUTH_POLICY } from "../policy.js";
 import { type HostedAuthView, hostedAuthViewFromSearch } from "../view.js";
@@ -60,8 +61,7 @@ export function buildHostedTwoFactorSetupHtml(
   return buildHostedAuthHtml({
     title: `Set up ${HOSTED_COPY.twoStep.name}`,
     description: setupDescription(view, requiredBy),
-    brand: view.brand,
-    config: view.config,
+    ...viewChrome(view),
     body: `<div class="auth-stack">
       <form id="setup-start" class="auth-form" novalidate>
         <p class="auth-hint">${escapeHostedHtml(passwordHint(requiredBy))}</p>
@@ -140,8 +140,7 @@ export function buildHostedTwoFactorManageHtml(
   return buildHostedAuthHtml({
     title: `${HOSTED_COPY.twoStep.title} is on`,
     description: `You'll be asked for a code from your ${HOSTED_COPY.twoStep.app} when you sign in. Lost your device? Use a backup code, or contact LAX support to reset it safely.`,
-    brand: view.brand,
-    config: view.config,
+    ...viewChrome(view),
     body: `<div class="auth-stack">
       ${turnOff}
       <div class="auth-form">

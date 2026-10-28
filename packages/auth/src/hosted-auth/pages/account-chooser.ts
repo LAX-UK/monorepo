@@ -1,5 +1,11 @@
 import { HOSTED_COPY } from "../copy.js";
-import { buildHostedAuthHtml, escapeHostedHtml, hostedButton, statusRegions } from "../html.js";
+import {
+  buildHostedAuthHtml,
+  escapeHostedHtml,
+  hostedButton,
+  statusRegions,
+  viewChrome,
+} from "../html.js";
 import { maskEmail } from "../mask-email.js";
 import { type HostedAuthView, hostedAuthViewFromSearch } from "../view.js";
 
@@ -32,8 +38,7 @@ export function buildHostedAccountChooserHtml(
   return buildHostedAuthHtml({
     title: `Continue as ${name}?`,
     description: `This device is signed in to ${maskEmail(input.email)}. Not you? Use a different account.`,
-    brand: view.brand,
-    config: view.config,
+    ...viewChrome(view),
     body: `<div id="account-chooser" class="auth-stack" data-intent="${escapeHostedHtml(input.intent)}" data-switch-href="${escapeHostedHtml(input.switchUrl)}">
       <div class="auth-form">
         <a class="btn btn-primary" id="chooser-continue" href="${escapeHostedHtml(input.continueUrl)}">Continue</a>

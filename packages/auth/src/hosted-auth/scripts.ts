@@ -3,6 +3,7 @@ import { readHostedAsset } from "./assets.js";
 export { readHostedAsset } from "./assets.js";
 
 export const HOSTED_AUTH_RUNTIME_SCRIPT = readHostedAsset("hosted-auth-runtime.js");
+export const HOSTED_THEME_SCRIPT = readHostedAsset("hosted-theme.js");
 export const HOSTED_LOGIN_SCRIPT = readHostedAsset("hosted-login.js");
 export const HOSTED_SIGN_UP_SCRIPT = readHostedAsset("hosted-sign-up.js");
 export const HOSTED_ACCOUNT_CHOOSER_SCRIPT = readHostedAsset("hosted-account-chooser.js");

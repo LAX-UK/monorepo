@@ -87,7 +87,9 @@ html.dark {
   --color-secondary-container: #333534;
   --color-on-secondary-container: #e8e7e7;
   --color-product-accent: #2dd4bf;
-  --color-cta-bg: var(--color-product-accent);
+  /* The primary button is a calmer teal than the bright accent, which glares as a filled block
+     on the dark page. Obsidian text on it is 8.4:1 and the button stands 7.4:1 off the page. */
+  --color-cta-bg: #14b8a6;
   --color-cta-on: var(--brand-obsidian);
   --color-accent-brand: var(--color-product-accent);
   --color-link: var(--brand-light-cream);
