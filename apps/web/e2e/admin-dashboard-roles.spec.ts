@@ -17,7 +17,7 @@ test.describe("admin dashboard oversight @roles", () => {
   test.use({ storageState: roleAuthState.staffRoles });
   test.skip(!e2eEnabled, e2eSkipReason);
 
-  test("super admin sees finance primary action and work inbox", async ({ page }) => {
+  test("administrator sees finance primary action and work inbox", async ({ page }) => {
     await openAdminHome(page);
     await expect(page.getByRole("heading", { name: /good day/i })).toBeVisible();
     await expect(page.getByRole("link", { name: /finance hub/i })).toBeVisible();

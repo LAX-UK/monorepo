@@ -31,7 +31,7 @@ describe.skipIf(!OWNER_URL || !API_URL)(
 
         await api.query(
           `update public.bid_user_profile
-         set role = 'staff', staff_role = 'operations', kyc_retry_count = 3, updated_at = now()
+         set role = 'staff', staff_role = 'sales_manager', kyc_retry_count = 3, updated_at = now()
          where user_id = $1`,
           [subjectId],
         );
@@ -46,7 +46,7 @@ describe.skipIf(!OWNER_URL || !API_URL)(
         );
         expect(profile.rows[0]).toEqual({
           role: "staff",
-          staff_role: "operations",
+          staff_role: "sales_manager",
           kyc_retry_count: 3,
         });
 

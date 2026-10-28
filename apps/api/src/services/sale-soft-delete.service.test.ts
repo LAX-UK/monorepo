@@ -146,7 +146,7 @@ describe("SaleSoftDeleteService", () => {
       "staff",
       "s1",
       saleDeleteConfirmationPhrase("Evening"),
-      ["auction_manager"],
+      ["sales_manager"],
     );
     expect(result.isOk()).toBe(true);
     expect(cancelLotJobs).toHaveBeenCalledWith("l1");
@@ -179,7 +179,7 @@ describe("SaleSoftDeleteService", () => {
       "staff",
       "missing",
       saleDeleteConfirmationPhrase("Evening"),
-      ["auction_manager"],
+      ["sales_manager"],
     );
     expect(result.isErr()).toBe(true);
     if (result.isErr()) expect(result.error).toBeInstanceOf(LotError);
@@ -190,7 +190,7 @@ describe("SaleSoftDeleteService", () => {
     const saleRepo = { findById: vi.fn().mockResolvedValue(saleRow) } as unknown as ISaleRepository;
     const svc = createService({ saleRepo });
     const result = await svc.softDelete("admin-1", "staff", "s1", "DELETE wrong title", [
-      "auction_manager",
+      "sales_manager",
     ]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -264,7 +264,7 @@ describe("SaleSoftDeleteService", () => {
       "staff",
       ["s1", "s2"],
       bulkSaleDeleteConfirmationPhrase(2),
-      ["auction_manager"],
+      ["sales_manager"],
     );
 
     expect(result.isOk()).toBe(true);
@@ -309,7 +309,7 @@ describe("SaleSoftDeleteService ATG guard", () => {
       "staff",
       "s1",
       saleDeleteConfirmationPhrase("Evening"),
-      ["auction_manager"],
+      ["sales_manager"],
     );
     expect(result._unsafeUnwrapErr()).toMatchObject({ status: 409, code: "sale_on_atg" });
     expect(softDeleteCascade).not.toHaveBeenCalled();

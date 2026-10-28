@@ -1,5 +1,6 @@
 import {
   type AtgOwnershipState,
+  CATALOGUE_READ_ACCESS,
   type Lot,
   type LotStatus,
   NO_STAFF_ROLES,
@@ -84,9 +85,7 @@ export function viewerCanSeeNonPublicCatalog(
   role: string | undefined,
   staffRoles: StaffRoles = NO_STAFF_ROLES,
 ): boolean {
-  return userHasAccessTo(normalizeUserRoleOrClient(role), staffRoles, {
-    anyOf: ["auction.manage", "catalogue.write"],
-  });
+  return userHasAccessTo(normalizeUserRoleOrClient(role), staffRoles, CATALOGUE_READ_ACCESS);
 }
 
 /** Maps explicit status query + viewer into repository list filters. */

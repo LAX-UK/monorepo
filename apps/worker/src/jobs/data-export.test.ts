@@ -36,7 +36,7 @@ describe("dataExportJob", () => {
       id: exportId,
       userId: "user-1",
       userRole: "staff",
-      userStaffRole: "finance_ops",
+      userStaffRole: "finance",
       entityType: "payments",
       format: "csv",
       filters: rowFilters,
@@ -72,7 +72,7 @@ describe("dataExportJob", () => {
     authorize.mockClear();
     streamRows.mockClear();
 
-    const staffRoleReader = { listActiveRoles: vi.fn().mockResolvedValue(["finance_ops"]) };
+    const staffRoleReader = { listActiveRoles: vi.fn().mockResolvedValue(["finance"]) };
 
     await dataExportJob(
       {
@@ -99,7 +99,7 @@ describe("dataExportJob", () => {
     const authCtx = {
       userId: row.userId,
       userRole: row.userRole,
-      userStaffRoles: ["finance_ops"],
+      userStaffRoles: ["finance"],
     };
     expect(authorize).toHaveBeenCalledWith(authCtx, rowFilters);
     expect(streamRows).toHaveBeenCalledWith(authCtx, rowFilters);

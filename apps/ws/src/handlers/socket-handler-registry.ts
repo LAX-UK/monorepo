@@ -1,10 +1,12 @@
 import { createHash } from "node:crypto";
 import { captureBackgroundError } from "@auction/observability";
 import {
+  type CapabilityRequirement,
+  SALEROOM_ACCESS,
   type UserRole,
   normalizeStaffRoles,
   normalizeUserRoleOrClient,
-  roleHasCapability,
+  userHasAccessTo,
 } from "@auction/types";
 import type { Server, Socket } from "socket.io";
 import type { WsEnv } from "../env.js";
@@ -104,13 +106,13 @@ async function resolveSessionUser(socket: Socket, ctx: HandlerContext): Promise<
 async function resolveCurrentCapability(
   socket: Socket,
   ctx: HandlerContext,
-  capability: "auction.manage" | "platform.admin.full",
+  capability: CapabilityRequirement,
 ): Promise<boolean> {
   const cached = await resolveSessionUser(socket, ctx);
   if (!cached) return false;
   const cachedRole = normalizeUserRoleOrClient(cached.role) as UserRole;
   const cachedStaff = normalizeStaffRoles(cached.staffRoles);
-  if (!roleHasCapability(cachedRole, capability, cachedStaff)) return false;
+  if (!userHasAccessTo(cachedRole, cachedStaff, capability)) return false;
 
   const token =
     typeof socket.data.privilegeToken === "string" ? socket.data.privilegeToken : undefined;
@@ -139,15 +141,15 @@ async function resolveCurrentCapability(
     }
     const role = normalizeUserRoleOrClient(body.data.role) as UserRole;
     // The API is the authority: the roles in force now, not those on the ticket.
-    return roleHasCapability(
+    return userHasAccessTo(
       role,
-      capability,
       normalizeStaffRoles(
         // An API from before role assignments sends only the single role; remove after one release.
         Array.isArray(body.data.staffRoles)
           ? rolesFrom(body.data.staffRoles)
           : [body.data.staffRole as string],
       ),
+      capability,
     );
   } catch {
     return false;
@@ -212,7 +214,7 @@ async function handleJoinSaleroomAsync(
   const me = await resolveSessionUser(socket, ctx);
   socket.data.userId = me?.id;
   const canManageSaleroom = me
-    ? await resolveCurrentCapability(socket, ctx, "auction.manage")
+    ? await resolveCurrentCapability(socket, ctx, SALEROOM_ACCESS)
     : false;
   await socket.join(roomForSale(saleId));
   if (canManageSaleroom) {

@@ -22,7 +22,7 @@ const person = {
   id: "user_1",
   name: "Grace Hopper",
   role: "staff" as const,
-  staffRole: "finance_ops" as const,
+  staffRole: "finance" as const,
   suspended: false,
   twoFactorEnabled: true,
 };
@@ -30,7 +30,7 @@ const person = {
 const detail: StaffAccessDetail = {
   subjectId: "user_1",
   platforms: [
-    { product: "bid", role: "finance_ops", updatedAt: null, pending: null },
+    { product: "bid", role: "finance", updatedAt: null, pending: null },
     {
       product: "shop",
       role: null,

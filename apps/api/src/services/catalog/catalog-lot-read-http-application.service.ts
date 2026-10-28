@@ -7,7 +7,7 @@ import {
   roleHasCapability,
 } from "@auction/types";
 import { isPublicCatalogLot, viewerCanSeeNonPublicCatalog } from "@auction/validators";
-import { canManageCatalogue } from "../../lib/catalogue-auth.js";
+import { canReadCatalogueAdmin } from "../../lib/catalogue-auth.js";
 import { listLotDocumentsPublic } from "../../lib/list-lot-documents-public.js";
 import { computeLotCheckoutPricing } from "../../lib/lot-checkout-pricing.js";
 import { maskLotForPublicView } from "../../lib/lot-public-view.js";
@@ -53,7 +53,7 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
     const viewerRole = normalizeUserRoleOrClient(viewer.role);
     const staff = viewer.staffRoles;
 
-    if (query.needsPhotos === "1" && !canManageCatalogue(viewerRole, staff)) {
+    if (query.needsPhotos === "1" && !canReadCatalogueAdmin(viewerRole, staff)) {
       return { status: 403, body: { error: "Forbidden" } };
     }
 
@@ -81,9 +81,7 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
         viewer.role ?? undefined,
         viewer.staffRoles ?? undefined,
       );
-      const canSeeLifecycle =
-        roleHasCapability(viewerRole, "catalogue.write", staff) ||
-        roleHasCapability(viewerRole, "auction.manage", staff);
+      const canSeeLifecycle = canReadCatalogueAdmin(viewerRole, staff);
       let rows = data;
       if (canSeeLifecycle && data.length > 0) {
         const snapshots = await this.lotLifecycleQueryService.getSnapshotsForLots(

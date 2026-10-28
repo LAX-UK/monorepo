@@ -138,7 +138,7 @@ describe("approveWithdrawalRequest", () => {
     });
 
     const result = await approveWithdrawalRequest(deps, "admin-1", "staff", "lot-1", [
-      "super_admin",
+      "administrator",
     ]);
     expect(result.isOk()).toBe(true);
     expect(resolveLotWithdrawal).toHaveBeenCalled();
@@ -169,7 +169,7 @@ describe("withdrawal decisions by role", () => {
     return { deps, declineLotWithdrawal, recordWithdrawalDeclined };
   }
 
-  it.each(["catalogue_manager", "finance_ops", "staff_viewer"])(
+  it.each(["cataloguer", "finance", "read_only"])(
     "refuses %s for both approve and decline",
     async (staffRoles) => {
       const { deps, declineLotWithdrawal } = decisionDeps();
@@ -194,7 +194,7 @@ describe("withdrawal decisions by role", () => {
     },
   );
 
-  it("records the decline, the reason and the event together for an auction manager", async () => {
+  it("records the decline, the reason and the event together for a sales manager", async () => {
     const { deps, declineLotWithdrawal, recordWithdrawalDeclined } = decisionDeps();
     const result = await declineWithdrawalRequest(
       deps,
@@ -202,7 +202,7 @@ describe("withdrawal decisions by role", () => {
       "staff",
       "lot-1",
       "  Already in the printed catalogue  ",
-      ["auction_manager"],
+      ["sales_manager"],
     );
     expect(result.isOk()).toBe(true);
     expect(declineLotWithdrawal).toHaveBeenCalledWith({
@@ -222,7 +222,7 @@ describe("withdrawal decisions by role", () => {
   it("requires a reason", async () => {
     const { deps, declineLotWithdrawal } = decisionDeps();
     const result = await declineWithdrawalRequest(deps, "admin-1", "staff", "lot-1", "   ", [
-      "super_admin",
+      "administrator",
     ]);
     expect(result.isErr()).toBe(true);
     expect(declineLotWithdrawal).not.toHaveBeenCalled();

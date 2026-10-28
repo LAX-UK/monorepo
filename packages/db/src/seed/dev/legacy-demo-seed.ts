@@ -584,6 +584,8 @@ export async function runLegacyDemoSeed() {
     mobileCountry?: string | null;
     role?: string;
     staffRole?: (typeof schema.userStaffRoleEnum.enumValues)[number] | null;
+    /** Roles held besides `staffRole`, which stays the one screens show. */
+    additionalStaffRoles?: (typeof schema.userStaffRoleEnum.enumValues)[number][];
     emailStatus?: string;
     emailStatusChangedAt?: Date | null;
     suspendedAt?: Date | null;
@@ -664,7 +666,7 @@ export async function runLegacyDemoSeed() {
       emailVerified: true,
       image: null,
       role: "staff",
-      staffRole: "super_admin",
+      staffRole: "administrator",
       kycStatus: "unverified",
       createdAt: new Date(now - 180 * day),
       updatedAt: stamp,
@@ -678,7 +680,7 @@ export async function runLegacyDemoSeed() {
       emailVerified: true,
       image: null,
       role: "staff",
-      staffRole: "finance_ops",
+      staffRole: "finance",
       kycStatus: "unverified",
       createdAt: new Date(now - 150 * day),
       updatedAt: stamp,
@@ -694,7 +696,7 @@ export async function runLegacyDemoSeed() {
       emailVerified: true,
       image: null,
       role: "staff",
-      staffRole: "auction_manager",
+      staffRole: "sales_manager",
       kycStatus: "unverified",
       createdAt: new Date(now - 140 * day),
       updatedAt: stamp,
@@ -708,7 +710,7 @@ export async function runLegacyDemoSeed() {
       emailVerified: true,
       image: null,
       role: "staff",
-      staffRole: "catalogue_manager",
+      staffRole: "cataloguer",
       kycStatus: "unverified",
       createdAt: new Date(now - 138 * day),
       updatedAt: stamp,
@@ -736,7 +738,7 @@ export async function runLegacyDemoSeed() {
       emailVerified: true,
       image: null,
       role: "staff",
-      staffRole: "operations_fulfilment",
+      staffRole: "fulfilment",
       kycStatus: "unverified",
       createdAt: new Date(now - 134 * day),
       updatedAt: stamp,
@@ -750,7 +752,7 @@ export async function runLegacyDemoSeed() {
       emailVerified: true,
       image: null,
       role: "staff",
-      staffRole: "content_marketing",
+      staffRole: "read_only",
       kycStatus: "unverified",
       createdAt: new Date(now - 132 * day),
       updatedAt: stamp,
@@ -764,7 +766,7 @@ export async function runLegacyDemoSeed() {
       emailVerified: true,
       image: null,
       role: "staff",
-      staffRole: "support_concierge",
+      staffRole: "client_services",
       kycStatus: "unverified",
       createdAt: new Date(now - 130 * day),
       updatedAt: stamp,
@@ -778,7 +780,7 @@ export async function runLegacyDemoSeed() {
       emailVerified: true,
       image: null,
       role: "staff",
-      staffRole: "staff_viewer",
+      staffRole: "read_only",
       kycStatus: "unverified",
       createdAt: new Date(now - 128 * day),
       updatedAt: stamp,
@@ -792,7 +794,7 @@ export async function runLegacyDemoSeed() {
       emailVerified: true,
       image: null,
       role: "staff",
-      staffRole: "client_advisor",
+      staffRole: "client_services",
       kycStatus: "unverified",
       createdAt: new Date(now - 126 * day),
       updatedAt: stamp,
@@ -806,7 +808,9 @@ export async function runLegacyDemoSeed() {
       emailVerified: true,
       image: null,
       role: "staff",
-      staffRole: "operations",
+      // Sales, catalogue, fulfilment and client work: the jobs the former Operations role bundled.
+      staffRole: "sales_manager",
+      additionalStaffRoles: ["cataloguer", "fulfilment", "client_services"],
       kycStatus: "unverified",
       createdAt: new Date(now - 124 * day),
       updatedAt: stamp,
@@ -1113,16 +1117,20 @@ export async function runLegacyDemoSeed() {
 
   await db.insert(user).values(seedUserRows.map(toIdentityUser));
   await db.insert(bidUserProfile).values(seedUserRows.map(toBidUserProfile));
-  // Permissions come from role assignments; each seeded staff login holds its one role.
-  await db
-    .insert(staffRoleAssignment)
-    .values(
-      seedUserRows.flatMap((row) =>
-        row.role === "staff" && row.staffRole
-          ? [{ userId: row.id, role: row.staffRole, startsAt: row.createdAt, reason: "seed" }]
-          : [],
-      ),
-    );
+  // Permissions come from role assignments: each seeded staff login holds its role, plus any
+  // additional roles.
+  await db.insert(staffRoleAssignment).values(
+    seedUserRows.flatMap((row) =>
+      row.role === "staff" && row.staffRole
+        ? [row.staffRole, ...(row.additionalStaffRoles ?? [])].map((role) => ({
+            userId: row.id,
+            role,
+            startsAt: row.createdAt,
+            reason: "seed",
+          }))
+        : [],
+    ),
+  );
   await db
     .insert(bidIdentityDirectory)
     .values(seedUserRows.map(toBidIdentityDirectory))
@@ -1952,11 +1960,11 @@ export async function runLegacyDemoSeed() {
       invitedAt: new Date(now - 18 * day),
       acceptedAt: new Date(now - 17 * day),
     },
-    /** specialist — LAX staff member invited by the gallery (opt-in). */
+    /** viewer — a LAX specialist the gallery invited to follow its consignments (opt-in). */
     {
       legalEntityId: LE.gallery,
       userId: SPECIALIST_ID,
-      role: "specialist",
+      role: "viewer",
       invitedByUserId: GALLERY_ADMIN_ID,
       invitedAt: new Date(now - 15 * day),
       acceptedAt: new Date(now - 14 * day),
@@ -2084,11 +2092,11 @@ export async function runLegacyDemoSeed() {
       isPrimaryAdmin: true,
       acceptedAt: new Date(now - 10 * day),
     },
-    /** staff — can submit on behalf of entity, limited lot editing. */
+    /** consignor — submits on the estate's behalf. */
     {
       legalEntityId: LEO.estateLead,
       userId: CONSIGNOR_ID,
-      role: "staff",
+      role: "consignor",
       invitedByUserId: ESTATE_OWNER_ID,
       invitedAt: new Date(now - 9 * day),
       acceptedAt: new Date(now - 8 * day),
@@ -2696,17 +2704,17 @@ export async function runLegacyDemoSeed() {
       id: INV.pendingPlatform,
       email: "new-accountant@example.com",
       targetRole: "staff",
-      targetStaffRole: "finance_ops",
+      targetStaffRole: "finance",
       tokenHash: "seed_hash_platform_pending_accountant_0000000000000001",
       status: "pending",
       expiresAt: new Date(now + 7 * day),
       createdByUserId: ADMIN_ID,
     },
-    /** accepted — the finance_ops invitation that created ACCOUNTANT_ID. */
+    /** accepted — the finance invitation that created ACCOUNTANT_ID. */
     {
       email: "accountant@lax.bid",
       targetRole: "staff",
-      targetStaffRole: "finance_ops",
+      targetStaffRole: "finance",
       tokenHash: "seed_hash_platform_accepted_accountant_000000000000002",
       status: "accepted",
       expiresAt: new Date(now + 7 * day),
@@ -2716,11 +2724,11 @@ export async function runLegacyDemoSeed() {
       createdAt: new Date(now - 151 * day),
       updatedAt: new Date(now - 149 * day),
     },
-    /** revoked — admin retracted a pending super_admin invite. */
+    /** revoked — admin retracted a pending administrator invite. */
     {
       email: "revoked-admin@example.com",
       targetRole: "staff",
-      targetStaffRole: "super_admin",
+      targetStaffRole: "administrator",
       tokenHash: "seed_hash_platform_revoked_admin_0000000000000000003",
       status: "revoked",
       expiresAt: new Date(now + 3 * day),
@@ -4933,27 +4941,19 @@ export async function runLegacyDemoSeed() {
   console.log("  ├──────────────────────────────┬──────────────────────┬───────────────────┤");
   console.log("  │  Email                        │  Name                │  Notes            │");
   console.log("  ├──────────────────────────────┼──────────────────────┼───────────────────┤");
-  console.log("  │  admin@lax.bid               │  Eleanor Pereira     │  staff · super_admin │");
-  console.log("  │  accountant@lax.bid          │  Erin Ledger         │  staff · finance_ops │");
-  console.log(
-    "  │  staff-auction-mgr@lax.bid   │  Alex Mercer         │  staff · auction_manager │",
-  );
-  console.log(
-    "  │  staff-catalogue@lax.bid     │  Blair Chen          │  staff · catalogue_manager │",
-  );
+  console.log("  │  admin@lax.bid               │  Eleanor Pereira     │  staff · administrator │");
+  console.log("  │  accountant@lax.bid          │  Erin Ledger         │  staff · finance │");
+  console.log("  │  staff-auction-mgr@lax.bid   │  Alex Mercer         │  staff · sales_manager │");
+  console.log("  │  staff-catalogue@lax.bid     │  Blair Chen          │  staff · cataloguer │");
   console.log("  │  platform-specialist@lax.bid │  Cameron Webb        │  staff · specialist │");
+  console.log("  │  staff-ops@lax.bid           │  Dana Ortiz          │  staff · fulfilment │");
+  console.log("  │  staff-content@lax.bid       │  Elliot Rhodes       │  staff · read_only │");
   console.log(
-    "  │  staff-ops@lax.bid           │  Dana Ortiz          │  staff · operations_fulfilment │",
+    "  │  staff-support@lax.bid       │  Fiona Nguyen        │  staff · client_services │",
   );
+  console.log("  │  staff-readonly@lax.bid      │  Graham Holt         │  staff · read_only │");
   console.log(
-    "  │  staff-content@lax.bid       │  Elliot Rhodes       │  staff · content_marketing │",
-  );
-  console.log(
-    "  │  staff-support@lax.bid       │  Fiona Nguyen        │  staff · support_concierge │",
-  );
-  console.log("  │  staff-readonly@lax.bid      │  Graham Holt         │  staff · staff_viewer │");
-  console.log(
-    "  │  staff-advisor@lax.bid       │  Hannah Price        │  staff · client_advisor │",
+    "  │  staff-advisor@lax.bid       │  Hannah Price        │  staff · client_services │",
   );
   console.log("  │  staff-operations@lax.bid    │  Ian Brooks          │  staff · operations │");
   console.log(

@@ -2,7 +2,10 @@ import type { ListSubmissionsFilter } from "@auction/persistence/interfaces";
 import type { ItemSubmissionStatus } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { SubmissionError } from "../../lib/errors.js";
-import { requireSubmissionsAccessHttp } from "../../lib/submission-http-auth.js";
+import {
+  requireSubmissionsAccessHttp,
+  requireSubmissionsReadAccessHttp,
+} from "../../lib/submission-http-auth.js";
 import type { IItemSubmissionAdminApi } from "../interfaces/item-submission-apis.js";
 import type { ISubmissionAdminHttpApplicationService } from "../interfaces/submission-routes/submission-admin-http.js";
 import type {
@@ -73,7 +76,7 @@ export class SubmissionAdminHttpApplicationService
     query: Parameters<ISubmissionAdminHttpApplicationService["listSubmissions"]>[0]["query"];
     viewer: Parameters<ISubmissionAdminHttpApplicationService["listSubmissions"]>[0]["viewer"];
   }): Promise<SubmissionHttpJson> {
-    const denied = this.guardAdmin(input.viewer);
+    const denied = requireSubmissionsReadAccessHttp(input.viewer.role, input.viewer.staffRoles);
     if (denied) return denied;
     const { data, total } = await this.itemSubmissionAdminApi.listSubmissionsForAdminApi(
       submissionsAdminListFilter(input.query, input.viewer.userId),

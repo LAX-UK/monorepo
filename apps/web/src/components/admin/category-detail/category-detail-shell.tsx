@@ -8,6 +8,8 @@ import { useCategoryActions } from "@/components/admin/category-detail/use-categ
 import { StaffDetailTabs } from "@/components/admin/staff/staff-detail-tabs";
 import { usePinPageAction } from "@/components/admin/staff/use-pin-page-action";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
+import { useViewerCapabilities } from "@/lib/auth/capabilities/viewer-capabilities-context";
+import { CATEGORIES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import {
   DetailPage,
   MetaItem,
@@ -55,6 +57,7 @@ export function CategoryDetailShell({
   const status = staffStatus("category", category.archived ? "archived" : "active");
   const pin = usePinPageAction(category.name);
   const actions = useCategoryActions(category);
+  const canManage = useViewerCapabilities().can(CATEGORIES_ACCESS);
   const nested = descendantCount ?? directChildCount ?? 0;
   const lots = lotCount ?? category.usage.lots;
   const sales = saleCount ?? category.usage.sales;
@@ -90,6 +93,7 @@ export function CategoryDetailShell({
           />
         }
         title={category.name}
+        access={canManage ? "full" : "read-only"}
         status={
           <StatusBadge tone={status.tone} live={status.live ?? false}>
             {status.label}

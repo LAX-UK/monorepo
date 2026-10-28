@@ -10,6 +10,9 @@ export function complianceErrorMessage(code: string): string {
     case "aml_review_same_as_triager":
     case "source_of_funds_review_same_as_triager":
       return "A different MLRO must make the binding decision (four-eyes).";
+    case "aml_review_same_as_raiser":
+    case "source_of_funds_review_same_as_requester":
+      return "You raised this case, so a different MLRO must make the binding decision.";
     case "aml_triage_required":
     case "source_of_funds_triage_required":
       return "Record analyst triage before the MLRO decision.";

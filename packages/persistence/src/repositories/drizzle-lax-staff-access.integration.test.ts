@@ -79,7 +79,7 @@ describe.skipIf(!HAS_DB)("LAX staff access directory and history (integration)",
 
   afterAll(cleanup);
 
-  async function setBidRole(primaryStaffRole: "specialist" | "finance_ops" | null) {
+  async function setBidRole(primaryStaffRole: "specialist" | "finance" | null) {
     await roster.transact(async (tx) => {
       await tx.writeProfileRoles(memberId, {
         role: primaryStaffRole ? "staff" : "client",
@@ -115,15 +115,15 @@ describe.skipIf(!HAS_DB)("LAX staff access directory and history (integration)",
     await setBidRole("specialist");
     expect(await directory()).toEqual([{ product: "bid", role: "specialist" }]);
 
-    await setBidRole("finance_ops");
-    expect(await directory()).toEqual([{ product: "bid", role: "finance_ops" }]);
+    await setBidRole("finance");
+    expect(await directory()).toEqual([{ product: "bid", role: "finance" }]);
 
     await setBidRole(null);
     expect(await directory()).toEqual([]);
 
     expect(await history()).toEqual([
       { product: "bid", action: "revoked", role: null, actorSubjectId: actorId },
-      { product: "bid", action: "granted", role: "finance_ops", actorSubjectId: actorId },
+      { product: "bid", action: "granted", role: "finance", actorSubjectId: actorId },
       { product: "bid", action: "granted", role: "specialist", actorSubjectId: actorId },
     ]);
   });

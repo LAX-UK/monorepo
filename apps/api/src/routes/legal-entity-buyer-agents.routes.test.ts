@@ -165,8 +165,8 @@ function mountAdmin(staffRoles: StaffRoles | undefined) {
 describe("admin buyer-agent authorisation routes", () => {
   const base = `/admin/legal-entities/${ENTITY_ID}/buyer-agent-authorisations`;
 
-  it("lets an auction manager authorise and records the staff actor", async () => {
-    const { app, publish } = mountAdmin(["auction_manager"]);
+  it("lets a sales manager authorise and records the staff actor", async () => {
+    const { app, publish } = mountAdmin(["sales_manager"]);
 
     const res = await post(app, base, body);
 
@@ -180,7 +180,7 @@ describe("admin buyer-agent authorisation routes", () => {
   });
 
   it("lets read-only staff see but not change authorisations", async () => {
-    const { app, store } = mountAdmin(["staff_viewer"]);
+    const { app, store } = mountAdmin(["read_only"]);
 
     expect((await app.request(base)).status).toBe(200);
     expect((await post(app, base, body)).status).toBe(403);
@@ -188,7 +188,7 @@ describe("admin buyer-agent authorisation routes", () => {
   });
 
   it("forbids staff without legal entity access", async () => {
-    const { app } = mountAdmin(["content_marketing"]);
+    const { app } = mountAdmin([]);
     expect((await app.request(base)).status).toBe(403);
   });
 });

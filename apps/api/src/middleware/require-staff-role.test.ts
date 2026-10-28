@@ -6,7 +6,7 @@ describe("requireSuperAdminStaffRole", () => {
     const next = vi.fn();
     const json = vi.fn((body: unknown, status?: number) => ({ body, status }));
     const c = {
-      get: (key: string) => (key === "userStaffRoles" ? "auction_manager" : undefined),
+      get: (key: string) => (key === "userStaffRoles" ? "sales_manager" : undefined),
       json,
     };
     await requireSuperAdminStaffRole(c as never, next as never);

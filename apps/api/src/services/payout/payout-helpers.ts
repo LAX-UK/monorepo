@@ -1,11 +1,16 @@
 import type { Database } from "@auction/db";
-import type { IPayoutRepository } from "@auction/persistence/interfaces";
+import type { IPayoutProcessorReader, IPayoutRepository } from "@auction/persistence/interfaces";
 import { DrizzlePayoutRepository } from "@auction/persistence/repositories";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
 
 /** Resolve payout repo for a transaction scope. */
 export function payoutRepoForTx(_rootRepo: IPayoutRepository, tx: Database): IPayoutRepository {
+  return new DrizzlePayoutRepository(tx);
+}
+
+/** Resolve who processed a payout, inside a transaction scope. */
+export function payoutProcessorReaderForTx(tx: Database): IPayoutProcessorReader {
   return new DrizzlePayoutRepository(tx);
 }
 
@@ -16,6 +21,7 @@ export type PayoutServiceDeps = {
   domainEventSink: IDomainEventSink | undefined;
   payoutAdjustments: IPayoutAdjustmentService | undefined;
   payoutRepoForTx: (tx: Database) => IPayoutRepository;
+  payoutProcessorsForTx: (tx: Database) => IPayoutProcessorReader;
 };
 
 export const DEFAULT_CURRENCY = "GBP";

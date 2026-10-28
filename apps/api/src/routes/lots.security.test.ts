@@ -120,7 +120,7 @@ describe("lot bid history privacy", () => {
     const res = await mount({
       id: "admin-1",
       role: "staff",
-      staffRoles: ["super_admin"],
+      staffRoles: ["administrator"],
     }).app.request(`/lots/${lotId}/bids`, { headers: { authorization: RESOURCE_AUTHORIZATION } });
     const body = (await res.json()) as { data: Array<{ placedByUserId: string | null }> };
 
@@ -158,7 +158,7 @@ describe("POST /lots persists artistId from request body", () => {
     const { app, lotServiceCreate } = mount({
       id: "admin-1",
       role: "staff",
-      staffRoles: ["super_admin"],
+      staffRoles: ["administrator"],
     });
     lotServiceCreate.mockResolvedValue({
       isOk: () => true,

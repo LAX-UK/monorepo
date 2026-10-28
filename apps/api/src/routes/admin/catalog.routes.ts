@@ -14,7 +14,7 @@ import {
   requireArtistWriteAccess,
   requireArtistsAccess,
   requireCatalogueWrite,
-  requireCategoriesAccess,
+  requireCategoriesRead,
 } from "../../middleware/require-capability.js";
 import type { AdminCatalogRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import { adminArtistSearchQuerySchema } from "./_schemas.js";
@@ -27,7 +27,7 @@ export function attachAdminCatalogRoutes(
 ): void {
   platform.get(
     "/categories",
-    requireCategoriesAccess,
+    requireCategoriesRead,
     zValidator("query", adminCategoryListQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
@@ -40,7 +40,7 @@ export function attachAdminCatalogRoutes(
 
   platform.get(
     "/categories/page",
-    requireCategoriesAccess,
+    requireCategoriesRead,
     zValidator("query", adminCategoryListQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
@@ -56,7 +56,7 @@ export function attachAdminCatalogRoutes(
 
   platform.get(
     "/categories/summary",
-    requireCategoriesAccess,
+    requireCategoriesRead,
     zValidator("query", adminCategoryListQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
@@ -80,7 +80,7 @@ export function attachAdminCatalogRoutes(
 
   platform.get(
     "/categories/:categoryId",
-    requireCategoriesAccess,
+    requireCategoriesRead,
     zValidator("param", categoryIdParamSchema),
     async (c) => {
       const { categoryId } = c.req.valid("param");

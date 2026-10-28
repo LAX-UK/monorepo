@@ -13,7 +13,7 @@ import type { ContentfulStatusCode } from "hono/utils/http-status";
 import { z } from "zod";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
-import { requireAuctionManage } from "../../middleware/require-capability.js";
+import { requireSaleroomOperate } from "../../middleware/require-capability.js";
 import type { AdminOperationsSaleroomRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
 
@@ -23,7 +23,7 @@ export function attachAdminSaleroomRoutes(
 ): void {
   platform.get(
     "/sales/readiness",
-    requireAuctionManage,
+    requireSaleroomOperate,
     zValidator("query", adminSaleReadinessQuerySchema),
     async (c) => {
       const { limit } = c.req.valid("query");
@@ -34,7 +34,7 @@ export function attachAdminSaleroomRoutes(
 
   platform.get(
     "/sales/:saleId/expected-guests",
-    requireAuctionManage,
+    requireSaleroomOperate,
     zValidator("param", z.object({ saleId: z.string().uuid() })),
     async (c) => {
       const { saleId } = c.req.valid("param");
@@ -45,7 +45,7 @@ export function attachAdminSaleroomRoutes(
 
   platform.get(
     "/sales/:saleId/registrations/check-in-candidates",
-    requireAuctionManage,
+    requireSaleroomOperate,
     zValidator("param", z.object({ saleId: z.string().uuid() })),
     zValidator("query", adminSaleroomCheckInCandidatesQuerySchema),
     async (c) => {
@@ -58,7 +58,7 @@ export function attachAdminSaleroomRoutes(
 
   platform.post(
     "/sales/:saleId/registrations/check-in",
-    requireAuctionManage,
+    requireSaleroomOperate,
     zValidator("param", z.object({ saleId: z.string().uuid() })),
     zValidator("json", adminSaleroomCheckInBodySchema),
     async (c) => {
@@ -93,7 +93,7 @@ export function attachAdminSaleroomRoutes(
 
   platform.post(
     "/saleroom/telephone-bids",
-    requireAuctionManage,
+    requireSaleroomOperate,
     zValidator("json", adminTelephonePlaceBidBodySchema),
     async (c) => {
       const body = c.req.valid("json");
@@ -131,7 +131,7 @@ export function attachAdminSaleroomRoutes(
 
   platform.post(
     "/saleroom/paddle-bids",
-    requireAuctionManage,
+    requireSaleroomOperate,
     zValidator("json", adminPaddlePlaceBidBodySchema),
     async (c) => {
       const body = c.req.valid("json");
@@ -156,7 +156,7 @@ export function attachAdminSaleroomRoutes(
 
   platform.post(
     "/sales/:saleId/registrations/:registrationId/paddle",
-    requireAuctionManage,
+    requireSaleroomOperate,
     zValidator("param", adminPaddleRegistrationParamsSchema),
     zValidator("json", adminPaddleAssignBodySchema),
     async (c) => {
@@ -179,7 +179,7 @@ export function attachAdminSaleroomRoutes(
 
   platform.delete(
     "/sales/:saleId/registrations/:registrationId/paddle",
-    requireAuctionManage,
+    requireSaleroomOperate,
     zValidator("param", adminPaddleRegistrationParamsSchema),
     async (c) => {
       const { saleId, registrationId } = c.req.valid("param");
@@ -199,7 +199,7 @@ export function attachAdminSaleroomRoutes(
 
   platform.get(
     "/sales/:saleId/paddles",
-    requireAuctionManage,
+    requireSaleroomOperate,
     zValidator("param", adminSalePaddleRosterParamsSchema),
     async (c) => {
       const { saleId } = c.req.valid("param");
@@ -210,7 +210,7 @@ export function attachAdminSaleroomRoutes(
 
   platform.get(
     "/saleroom/operations-radar",
-    requireAuctionManage,
+    requireSaleroomOperate,
     zValidator(
       "query",
       z.object({
@@ -226,7 +226,7 @@ export function attachAdminSaleroomRoutes(
 
   platform.get(
     "/sales/:saleId/operations-snapshot",
-    requireAuctionManage,
+    requireSaleroomOperate,
     zValidator("param", adminSaleroomSaleIdParamSchema),
     async (c) => {
       const { saleId } = c.req.valid("param");

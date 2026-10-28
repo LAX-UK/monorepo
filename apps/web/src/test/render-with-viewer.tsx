@@ -4,7 +4,7 @@ import type { ReactElement } from "react";
 
 const defaultViewer = {
   role: "staff" as const,
-  staffRoles: ["super_admin"] as const,
+  staffRoles: ["administrator"] as const,
   name: "Test staff",
 };
 

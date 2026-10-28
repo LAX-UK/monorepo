@@ -14,7 +14,7 @@ import { createAdminRoutes } from "./admin.js";
  *    and instead gates every route mounted later (locked all non-auction.manage
  *    staff out of /admin/users, /admin/clients, etc.).
  * 2. platform's `use("*", requirePlatformShell)` leaking onto the finance
- *    sub-app, locking finance_ops out of /admin/finance/*.
+ *    sub-app, locking finance out of /admin/finance/*.
  */
 
 function buildApp(staffRole: string) {
@@ -95,8 +95,8 @@ function buildApp(staffRole: string) {
 const get = (app: Hono, path: string) => app.request(`http://test${path}`);
 
 describe("admin route guard composition", () => {
-  it("client_advisor can list users but cannot reach auction.manage routes", async () => {
-    const app = buildApp("client_advisor");
+  it("client_services can list users but cannot reach auction.manage routes", async () => {
+    const app = buildApp("client_services");
 
     expect((await get(app, "/admin/users?limit=1")).status).toBe(200);
     expect((await get(app, "/admin/telephone-bookings/pending-count")).status).toBe(403);
@@ -108,8 +108,8 @@ describe("admin route guard composition", () => {
     ).toBe(403);
   });
 
-  it("super_admin can reach all of them", async () => {
-    const app = buildApp("super_admin");
+  it("administrator can reach all of them", async () => {
+    const app = buildApp("administrator");
 
     expect((await get(app, "/admin/users?limit=1")).status).toBe(200);
     expect((await get(app, "/admin/telephone-bookings/pending-count")).status).toBe(200);
@@ -121,8 +121,8 @@ describe("admin route guard composition", () => {
     ).toBe(200);
   });
 
-  it("finance_ops can reach finance routes but not the platform shell", async () => {
-    const app = buildApp("finance_ops");
+  it("finance can reach finance routes but not the platform shell", async () => {
+    const app = buildApp("finance");
 
     expect((await get(app, "/admin/finance/disputes/open-count")).status).toBe(200);
     expect((await get(app, "/admin/metrics/finance-issues")).status).toBe(200);

@@ -175,7 +175,7 @@ describe("createRequireLegalEntityContext (required)", () => {
     const app = appWithMiddleware(mw, {
       setUserId: USER_ID,
       setUserRole: "staff",
-      setUserStaffRoles: ["super_admin"],
+      setUserStaffRoles: ["administrator"],
     });
 
     const res = await app.request("/", {
@@ -217,7 +217,7 @@ describe("createRequireLegalEntityContext (required)", () => {
     const app = appWithMiddleware(mw, {
       setUserId: USER_ID,
       setUserRole: "staff",
-      setUserStaffRoles: ["super_admin"],
+      setUserStaffRoles: ["administrator"],
     });
 
     const res = await app.request("/", {
@@ -255,7 +255,7 @@ describe("createRequireLegalEntityContext (required)", () => {
     const app = appWithMiddleware(mw, {
       setUserId: USER_ID,
       setUserRole: "staff",
-      setUserStaffRoles: ["super_admin"],
+      setUserStaffRoles: ["administrator"],
     });
 
     const res = await app.request("/", {

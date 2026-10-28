@@ -40,10 +40,10 @@ describe("people list rows", () => {
 
   it("names a staff member's role and the LAX tools they use", () => {
     const [row] = toStaffDirectoryRows(
-      [user({ role: "staff", staffRole: "finance_ops" })],
+      [user({ role: "staff", staffRole: "finance" })],
       {
         user_1: {
-          platforms: [{ product: "bid", role: "finance_ops" }],
+          platforms: [{ product: "bid", role: "finance" }],
           twoFactorEnabled: true,
           lastSignInAt: "2026-10-24T08:00:00.000Z",
         },

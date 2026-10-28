@@ -7,7 +7,7 @@ import {
 } from "./staff-role-assignment.js";
 
 /** The role that holds every permission; Bid must always keep at least one active holder. */
-export const ADMINISTRATOR_STAFF_ROLE: UserStaffRole = "super_admin";
+export const ADMINISTRATOR_STAFF_ROLE: UserStaffRole = "administrator";
 
 export type ForbiddenStaffRoleCombination = {
   readonly role: UserStaffRole;
@@ -22,18 +22,18 @@ export type ForbiddenStaffRoleCombination = {
  */
 export const FORBIDDEN_STAFF_ROLE_COMBINATIONS: readonly ForbiddenStaffRoleCombination[] = [
   {
-    role: "super_admin",
+    role: "administrator",
     with: "any",
     why: "The administrator role already holds every permission.",
   },
   {
-    role: "staff_viewer",
+    role: "read_only",
     with: "any",
     why: "Read-only access stays read-only; any other role would widen it.",
   },
   {
-    role: "finance_ops",
-    with: ["compliance_officer"],
+    role: "finance",
+    with: ["compliance"],
     why: "Moving money and clearing compliance checks are kept with different people.",
   },
 ];

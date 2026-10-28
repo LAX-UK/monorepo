@@ -29,8 +29,6 @@ function memberRoleLabel(role: LegalEntityMemberRole): string {
     finance: "Finance",
     buyer_agent: "Buyer agent",
     viewer: "Viewer",
-    specialist: "Specialist",
-    staff: "Staff",
   };
   return labels[role];
 }

@@ -1,3 +1,4 @@
+import { type ComplianceDecisionRefusal, complianceDecisionRefusal } from "@auction/domain";
 import type { AmlServiceDeps } from "./aml-context.js";
 import type { AmlMonitoringService } from "./aml-monitoring.service.js";
 import { AML_SCREENING_EVALUATED_EVENT } from "./aml-webhook-ingest.service.js";
@@ -7,6 +8,12 @@ import type {
   IAmlReviewApplicationService,
   WatchlistScreeningRecord,
 } from "./ports.js";
+
+const AML_DECISION_REFUSAL_ERRORS: Record<ComplianceDecisionRefusal, string> = {
+  own_case: "aml_review_self_forbidden",
+  raised_case: "aml_review_same_as_raiser",
+  triaged_case: "aml_review_same_as_triager",
+};
 
 export class AmlReviewApplicationService implements IAmlReviewApplicationService {
   constructor(
@@ -59,17 +66,18 @@ export class AmlReviewApplicationService implements IAmlReviewApplicationService
     const updated = await this.deps.transactionRunner.runInTransaction(async (tx) => {
       const record = await this.deps.screeningReader.findById(input.screeningId, tx);
       if (!record) throw new Error("aml_screening_not_found");
-      if (record.userId === input.reviewerUserId) {
-        throw new Error("aml_review_self_forbidden");
-      }
+      // Screenings are raised by the provider, never by a person.
+      const refusal = complianceDecisionRefusal(input.reviewerUserId, {
+        subjectUserId: record.userId,
+        raisedByUserId: null,
+        triagedByUserId: record.triagedByUserId,
+      });
+      if (refusal) throw new Error(AML_DECISION_REFUSAL_ERRORS[refusal]);
       if (record.reviewStatus !== "pending") {
         throw new Error("aml_screening_not_pending");
       }
       if (!record.triagedByUserId || !record.triageRecommendation) {
         throw new Error("aml_triage_required");
-      }
-      if (record.triagedByUserId === input.reviewerUserId) {
-        throw new Error("aml_review_same_as_triager");
       }
 
       const reviewStatus = input.decision === "clear" ? "cleared" : "blocked";

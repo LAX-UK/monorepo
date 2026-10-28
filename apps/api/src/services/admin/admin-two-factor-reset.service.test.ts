@@ -10,17 +10,17 @@ const REASON = "Customer lost phone and backup codes; identity checked by video 
 const SUPER: TwoFactorResetActor = {
   userId: "b2e48c7a-1f09-4d35-8a6e-5d3c9f7e2b14",
   role: "staff",
-  staffRoles: ["super_admin"],
+  staffRoles: ["administrator"],
 };
 const SUPPORT: TwoFactorResetActor = {
   userId: "c8d0f3e1-5a27-4b69-9e14-7f2a6c8d0b35",
   role: "staff",
-  staffRoles: ["support_concierge"],
+  staffRoles: ["client_services"],
 };
-const ADVISOR: TwoFactorResetActor = {
+const FULFILMENT: TwoFactorResetActor = {
   userId: "d9e1a4f2-6b38-4c7a-8f25-8a3b7d9e1c46",
   role: "staff",
-  staffRoles: ["client_advisor"],
+  staffRoles: ["fulfilment"],
 };
 const CLIENT: TwoFactorResetActor = {
   userId: "e0f2b5a3-7c49-4d8b-9a36-9b4c8e0f2d57",
@@ -57,7 +57,7 @@ describe("AdminTwoFactorResetService", () => {
   });
 
   it.each([
-    ["a client advisor", ADVISOR],
+    ["a fulfilment member", FULFILMENT],
     ["a customer", CLIENT],
   ])("refuses %s without touching anything", async (_label, actor) => {
     const { service, identity, audit, users } = setup();

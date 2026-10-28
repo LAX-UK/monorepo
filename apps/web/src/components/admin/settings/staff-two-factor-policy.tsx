@@ -69,7 +69,7 @@ export function StaffTwoFactorPolicy({
           htmlFor="staff-two-factor"
           disabled={!canEdit}
           label="Require two-step verification for all staff"
-          description={`Staff then sign in with an authenticator app, Google or Apple. Anyone not set up is asked to add an authenticator at their next sign-in.${canEdit ? "" : " Only a super admin can change this."}`}
+          description={`Staff then sign in with an authenticator app, Google or Apple. Anyone not set up is asked to add an authenticator at their next sign-in.${canEdit ? "" : " Only an administrator can change this."}`}
           control={
             <StaffSwitch
               id="staff-two-factor"

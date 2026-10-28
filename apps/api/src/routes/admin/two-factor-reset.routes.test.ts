@@ -36,8 +36,8 @@ function setup(session: { role: string; staffRoles: StaffRoles | undefined }, re
 
 describe("POST /admin/users/:userId/two-factor/reset", () => {
   it.each([
-    ["super admin", "super_admin"],
-    ["support concierge", "support_concierge"],
+    ["administrator", "administrator"],
+    ["client services", "client_services"],
   ])("lets a %s reset and passes the actor, target and reason on", async (_label, staffRole) => {
     const { post, reset } = setup({ role: "staff", staffRoles: normalizeStaffRoles([staffRole]) });
 
@@ -53,10 +53,10 @@ describe("POST /admin/users/:userId/two-factor/reset", () => {
   });
 
   it.each([
-    ["client advisor", "client_advisor"],
-    ["finance ops", "finance_ops"],
-    ["staff viewer", "staff_viewer"],
-    ["compliance officer", "compliance_officer"],
+    ["fulfilment", "fulfilment"],
+    ["finance", "finance"],
+    ["read-only", "read_only"],
+    ["compliance", "compliance"],
   ])("refuses a %s", async (_label, staffRole) => {
     const { post, reset } = setup({ role: "staff", staffRoles: normalizeStaffRoles([staffRole]) });
 
@@ -81,7 +81,7 @@ describe("POST /admin/users/:userId/two-factor/reset", () => {
     ["a one-word reason", { reason: "lost" }],
     ["an over-long reason", { reason: "x".repeat(501) }],
   ])("rejects %s", async (_label, body) => {
-    const { post, reset } = setup({ role: "staff", staffRoles: ["super_admin"] });
+    const { post, reset } = setup({ role: "staff", staffRoles: ["administrator"] });
 
     const res = await post(body);
 
@@ -90,7 +90,7 @@ describe("POST /admin/users/:userId/two-factor/reset", () => {
   });
 
   it("asks for a fresh sign-in before resetting, and does not reset", async () => {
-    const { post, reset } = setup({ role: "staff", staffRoles: ["super_admin"] }, false);
+    const { post, reset } = setup({ role: "staff", staffRoles: ["administrator"] }, false);
 
     const res = await post({ reason: REASON });
 
@@ -103,7 +103,7 @@ describe("POST /admin/users/:userId/two-factor/reset", () => {
   });
 
   it("answers a person without the capability with forbidden, not a sign-in prompt", async () => {
-    const { post } = setup({ role: "staff", staffRoles: ["finance_ops"] }, false);
+    const { post } = setup({ role: "staff", staffRoles: ["finance"] }, false);
 
     const res = await post({ reason: REASON });
 

@@ -191,6 +191,15 @@ export interface IPayoutAnalyticsRepository {
   countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
 }
 
+/** Who processed a payout: the separation-of-duty facts its reversal depends on. */
+export interface IPayoutProcessorReader {
+  /**
+   * Everyone who acted on the payout before any reversal: created the settlement, adjusted it or
+   * marked it paid. Each person once; system actions are not listed.
+   */
+  listProcessorUserIds(payoutId: string): Promise<string[]>;
+}
+
 /** Full payout persistence port — composite of segregated read/write/lifecycle/analytics slices (ISP). */
 export interface IPayoutRepository
   extends IPayoutReadRepository,

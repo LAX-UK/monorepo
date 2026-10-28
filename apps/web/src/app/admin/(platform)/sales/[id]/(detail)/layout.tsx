@@ -18,7 +18,7 @@ import { getAdminTelephoneBookings } from "@/lib/data/http/admin.server";
 import { getAtgSaleSellingPlatform } from "@/lib/data/http/atg.server";
 import { getServerSaleDocuments } from "@/lib/data/http/sale-documents.server";
 import { buildSaleOverviewAttentionRows } from "@/lib/data/view-models/sale-overview.vm";
-import { SALES_ACCESS, SALE_CATALOG_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { SALES_ACCESS, SALE_CATALOG_READ_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { type UserRole, userHasAccessTo } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import type { ReactNode } from "react";
@@ -30,7 +30,7 @@ type Props = {
 
 export default async function AdminSaleDetailLayout({ params, children }: Props) {
   const { id } = await params;
-  const user = await requireAdminCapability(SALE_CATALOG_ACCESS, `/admin/sales/${id}`);
+  const user = await requireAdminCapability(SALE_CATALOG_READ_ACCESS, `/admin/sales/${id}`);
   const canManageSales = userHasAccessTo(user.role as UserRole, user.staffRoles, SALES_ACCESS);
   const bundle = await loadAdminSaleDetail(id);
   const isSaleroom = isSaleroomDeliveryMode(bundle.sale.deliveryMode);

@@ -28,7 +28,7 @@ test.describe("staff catalog lifecycle @journey", () => {
     await expect(page.getByRole("button", { name: /^publish$/i })).toBeVisible();
   });
 
-  test("auction manager sees destructive controls on deletable drafts", async ({ page }) => {
+  test("sales manager sees destructive controls on deletable drafts", async ({ page }) => {
     await page.goto("/admin/lots?status=draft");
     const firstLot = page.locator("table tbody tr").first().getByRole("link").first();
     if (!(await firstLot.isVisible({ timeout: 5_000 }).catch(() => false))) {

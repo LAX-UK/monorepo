@@ -10,10 +10,10 @@ describe("staff access presenter", () => {
     expect(
       staffPlatformBadges([
         { product: "shop", role: "broker" },
-        { product: "bid", role: "super_admin" },
+        { product: "bid", role: "administrator" },
       ]),
     ).toEqual([
-      { product: "bid", label: "Bid · Super admin" },
+      { product: "bid", label: "Bid · Administrator" },
       { product: "shop", label: "Shop · Broker" },
     ]);
   });

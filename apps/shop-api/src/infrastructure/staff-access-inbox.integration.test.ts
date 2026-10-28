@@ -117,7 +117,7 @@ describe.skipIf(!hasShopIntegrationDb)("shop staff access inbox (integration)", 
     const eventId = await emit(db, "lax.staff_access.granted", {
       subjectId,
       product: "shop",
-      role: "super_admin",
+      role: "administrator",
       grantedBySubjectId: "inviter",
       invitationId: null,
     });
@@ -125,7 +125,7 @@ describe.skipIf(!hasShopIntegrationDb)("shop staff access inbox (integration)", 
 
     expect(await inboxRow(db, eventId)).toEqual({
       status: "dead",
-      lastError: "unknown_shop_role:super_admin",
+      lastError: "unknown_shop_role:administrator",
     });
     expect(await staffRow(db, subjectId)).toBeUndefined();
   });

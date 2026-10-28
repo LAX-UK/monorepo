@@ -8,6 +8,8 @@ import {
 } from "@/components/admin/venue-detail/venue-detail-types";
 import { useVenueActions } from "@/components/admin/venues/use-venue-actions";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
+import { useViewerCapabilities } from "@/lib/auth/capabilities/viewer-capabilities-context";
+import { VENUES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import type { VenueDetail } from "@/lib/services/interfaces/admin-venue-service";
 import {
   DetailPage,
@@ -44,6 +46,7 @@ export function VenueDetailShell({ venueId, detail, children }: Props) {
   const status = staffStatus("venue", venue.status);
   const pin = usePinPageAction(venue.name);
   const venueActions = useVenueActions();
+  const canManage = useViewerCapabilities().can(VENUES_ACCESS);
   const overflow: OverflowAction[] = [
     pin,
     ...venueActions.actionsFor({ id: venueId, name: venue.name, archived }),
@@ -70,6 +73,7 @@ export function VenueDetailShell({ venueId, detail, children }: Props) {
           />
         }
         title={venue.name}
+        access={canManage ? "full" : "read-only"}
         status={
           <StatusBadge tone={status.tone} live={status.live ?? false}>
             {status.label}

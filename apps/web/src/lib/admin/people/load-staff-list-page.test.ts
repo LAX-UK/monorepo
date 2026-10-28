@@ -31,7 +31,7 @@ describe("loadAdminStaffListPage", () => {
     };
     getSummaries.mockResolvedValue(access);
 
-    const result = await loadAdminStaffListPage({ staffRole: "finance_ops" });
+    const result = await loadAdminStaffListPage({ staffRole: "finance" });
 
     expect(result.loadError).toBeNull();
     expect(result.summary.total).toBe(12);

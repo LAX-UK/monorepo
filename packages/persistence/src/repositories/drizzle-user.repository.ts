@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { bidIdentityDirectory, bidUserProfile, staffRoleAssignment } from "@auction/db/schema";
+import { SUBMISSIONS_ACCESS, requirementCapabilities, staffRolesGranting } from "@auction/types";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type { IUserRepository } from "../interfaces/user.repository.js";
@@ -98,13 +99,8 @@ export class DrizzleUserRepository implements IUserRepository {
   }
 
   async listStaffIdsForSubmissionNotifications(): Promise<string[]> {
-    const staffRoles = [
-      "super_admin",
-      "auction_manager",
-      "catalogue_manager",
-      "specialist",
-      "operations",
-    ] as const;
+    // Everyone who may work on submissions, as the submissions screens decide it.
+    const staffRoles = staffRolesGranting(requirementCapabilities(SUBMISSIONS_ACCESS));
     const rows = await this.db
       .selectDistinct({ id: bidUserProfile.userId })
       .from(bidUserProfile)

@@ -9,7 +9,7 @@ describe("buildSaleBoardMobileMenuItems", () => {
     canDelete: true,
   };
 
-  it("shows edit and setup for auction managers on draft sales", () => {
+  it("shows edit and setup for sales managers on draft sales", () => {
     const ids = buildSaleBoardMobileMenuItems(deletableDraft, { canManageSales: true }).map(
       (i) => i.id,
     );

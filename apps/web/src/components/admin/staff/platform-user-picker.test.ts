@@ -19,9 +19,9 @@ describe("userPickerOption", () => {
       name: " ",
       email: "cat@lax.bid",
       role: "staff",
-      staffRole: "catalogue_manager",
+      staffRole: "cataloguer",
     });
     expect(option.label).toBe("cat@lax.bid");
-    expect(option.meta).toBe("Catalogue manager");
+    expect(option.meta).toBe("Cataloguer");
   });
 });

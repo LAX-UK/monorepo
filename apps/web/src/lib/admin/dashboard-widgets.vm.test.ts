@@ -23,8 +23,8 @@ describe("dashboard-widgets.vm", () => {
     expect(widgets.find((w) => w.id === "my-queue")?.hidden).toBe(false);
   });
 
-  it("applies super_admin role defaults when cookie is absent", () => {
-    const widgets = parseDashboardWidgetsCookie(null, ["super_admin"]);
+  it("applies administrator role defaults when cookie is absent", () => {
+    const widgets = parseDashboardWidgetsCookie(null, ["administrator"]);
     expect(widgets.find((w) => w.id === "saleroom-live")?.hidden).toBe(true);
     expect(widgets.find((w) => w.id === "onsite-radar")?.hidden).toBe(true);
     expect(widgets.find((w) => w.id === "activity")?.hidden).toBe(false);

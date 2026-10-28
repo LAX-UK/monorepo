@@ -5,7 +5,7 @@ describe("resolveCatalogLifecycleCapabilities", () => {
   it("grants sale lifecycle to staff with sales access", () => {
     const caps = resolveCatalogLifecycleCapabilities({
       role: "staff",
-      staffRoles: ["auction_manager"],
+      staffRoles: ["sales_manager"],
     });
     expect(caps.canMutateSalesLifecycle).toBe(true);
     expect(caps.canMutateLotLifecycle).toBe(true);

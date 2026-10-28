@@ -7,6 +7,9 @@ import { PayoutService } from "../payout.service.js";
 
 const ENTITY_ID = "00000000-0000-4000-8000-000000000001";
 const ACTOR_ID = "user-actor";
+/** An administrator who did not process the payout, so the reversal rule lets them act. */
+const REVERSER = { userId: "user-reverser", staffRoles: ["administrator"] } as const;
+const NOBODY_PROCESSED = () => ({ listProcessorUserIds: async () => [] });
 
 function basePayout(overrides: Partial<Payout> = {}): Payout {
   return {
@@ -77,6 +80,7 @@ function serviceFor(repo: IPayoutRepository) {
     mockDomainEventSink(publish),
     undefined,
     () => repo,
+    NOBODY_PROCESSED,
   );
   return { svc, publish };
 }
@@ -113,7 +117,7 @@ describe("payout status transitions under concurrency", () => {
 
     const { won, lost } = await settle([
       svc.markPaid(ACTOR_ID, "po1", { stripeTransferId: "tr_a" }),
-      svc.adminManualReverse(ACTOR_ID, "po1", { reason: "bank returned the transfer" }),
+      svc.adminManualReverse(REVERSER, "po1", { reason: "bank returned the transfer" }),
     ]);
 
     expect(won).toHaveLength(1);
@@ -129,8 +133,8 @@ describe("payout status transitions under concurrency", () => {
     const { svc, publish } = serviceFor(repo);
 
     const { won, lost } = await settle([
-      svc.adminManualReverse(ACTOR_ID, "po1", { reason: "duplicate transfer sent" }),
-      svc.adminManualReverse(ACTOR_ID, "po1", { reason: "duplicate transfer sent" }),
+      svc.adminManualReverse(REVERSER, "po1", { reason: "duplicate transfer sent" }),
+      svc.adminManualReverse(REVERSER, "po1", { reason: "duplicate transfer sent" }),
     ]);
 
     expect(won).toHaveLength(1);
@@ -164,7 +168,7 @@ describe("payout status transitions under concurrency", () => {
     await expect(svc.markPaid(ACTOR_ID, "po1", { stripeTransferId: "tr_a" })).rejects.toThrow(
       "payout_transactions_not_configured",
     );
-    await expect(svc.adminManualReverse(ACTOR_ID, "po1", { reason: "no runner" })).rejects.toThrow(
+    await expect(svc.adminManualReverse(REVERSER, "po1", { reason: "no runner" })).rejects.toThrow(
       "payout_transactions_not_configured",
     );
   });

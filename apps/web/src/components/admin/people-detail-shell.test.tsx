@@ -195,7 +195,7 @@ describe("PeopleDetailShell header facts", () => {
     render(
       shell(
         { canModerate: true, canManageRoles: true },
-        client({ role: "staff", staffRole: "finance_ops", kycStatus: "unverified" }),
+        client({ role: "staff", staffRole: "finance", kycStatus: "unverified" }),
         { showContextRail: false },
       ),
     );

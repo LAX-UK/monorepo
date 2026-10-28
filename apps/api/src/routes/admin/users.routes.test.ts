@@ -41,7 +41,7 @@ describe("admin users routes — list page", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
         scopes: ["bid.read"],
       }),
     };
@@ -88,7 +88,7 @@ describe("admin users routes — set role", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
         scopes: ["bid.read", "bid.write"],
         identitySessionId: "session-1",
       }),
@@ -101,7 +101,7 @@ describe("admin users routes — set role", () => {
   const patch = (path: string) => ({
     method: "PATCH",
     headers: { "content-type": "application/json", origin: "http://test" },
-    body: JSON.stringify({ role: "staff", staffRole: "staff_viewer" }),
+    body: JSON.stringify({ role: "staff", staffRole: "read_only" }),
     path,
   });
 
@@ -116,8 +116,8 @@ describe("admin users routes — set role", () => {
       staffUserId,
       "target-user",
       "staff",
-      ["super_admin"],
-      "staff_viewer",
+      ["administrator"],
+      "read_only",
     );
   });
 

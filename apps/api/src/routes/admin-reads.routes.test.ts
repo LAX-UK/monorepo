@@ -44,7 +44,7 @@ describe("admin read routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
         scopes: ["bid.read"],
       }),
     };
@@ -85,7 +85,7 @@ describe("admin read routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
         scopes: ["bid.read"],
       }),
     };

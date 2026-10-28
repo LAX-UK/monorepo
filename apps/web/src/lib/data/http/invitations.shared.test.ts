@@ -14,7 +14,7 @@ describe("parseAdminInvitationsPageBody", () => {
             id: "inv-1",
             email: "alice@example.com",
             targetRole: "staff",
-            targetStaffRole: "super_admin",
+            targetStaffRole: "administrator",
             status: "pending",
             expiresAt: "2026-08-01T00:00:00.000Z",
             createdAt: "2026-07-01T00:00:00.000Z",

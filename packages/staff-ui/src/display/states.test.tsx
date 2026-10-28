@@ -19,12 +19,12 @@ describe("AccessDeniedState", () => {
     render(
       <AccessDeniedState
         resource="Lots"
-        requiredRoles={["Catalogue manager", "Auction manager", "Operations"]}
+        requiredRoles={["Cataloguer", "Sales manager", "Operations"]}
       />,
     );
     expect(
       screen.getByText(
-        "Lots is open to the Catalogue manager, Auction manager and Operations roles. Ask an admin on your team if you need it.",
+        "Lots is open to the Cataloguer, Sales manager and Operations roles. Ask an admin on your team if you need it.",
       ),
     ).toBeInTheDocument();
   });

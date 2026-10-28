@@ -176,7 +176,7 @@ describe("LotService.update", () => {
       },
     });
 
-    const result = await svc.update("staff", lotId, { saleId: saleBId }, ["catalogue_manager"]);
+    const result = await svc.update("staff", lotId, { saleId: saleBId }, ["cataloguer"]);
 
     expect(result._unsafeUnwrapErr()).toMatchObject({ status: 409, code: "lot_on_atg" });
     expect(update).not.toHaveBeenCalled();
@@ -200,7 +200,7 @@ describe("LotService.update", () => {
       imageCleanup: { enqueueRemovedMany } as unknown as ImageCleanupService,
     });
 
-    const result = await svc.update("staff", lotId, { images: ["new.jpg"] }, ["catalogue_manager"]);
+    const result = await svc.update("staff", lotId, { images: ["new.jpg"] }, ["cataloguer"]);
 
     expect(result.isOk()).toBe(true);
     expect(update).toHaveBeenCalledWith(lotId, { images: ["new.jpg"] });
@@ -225,7 +225,7 @@ describe("LotService.update", () => {
       imageCleanup: { enqueueRemovedMany } as unknown as ImageCleanupService,
     });
 
-    const result = await svc.update("staff", lotId, { images: [] }, ["catalogue_manager"]);
+    const result = await svc.update("staff", lotId, { images: [] }, ["cataloguer"]);
 
     expect(result.isOk()).toBe(true);
     expect(update).toHaveBeenCalledWith(lotId, { images: [] });
@@ -249,7 +249,7 @@ describe("LotService.update", () => {
     });
 
     const result = await svc.update("staff", lotId, { images: ["new.jpg"], title: "Renamed" }, [
-      "catalogue_manager",
+      "cataloguer",
     ]);
 
     expect(result.isOk()).toBe(true);
@@ -287,7 +287,7 @@ describe("LotService.update", () => {
       "staff",
       lotId,
       { title: "Renamed", startTime: nextStart, endTime: nextEnd },
-      ["catalogue_manager"],
+      ["cataloguer"],
     );
 
     expect(result.isOk()).toBe(true);
@@ -315,7 +315,7 @@ describe("LotService.update", () => {
       lotNotifications: null,
     });
 
-    const result = await svc.update("staff", lotId, { title: "Renamed" }, ["catalogue_manager"]);
+    const result = await svc.update("staff", lotId, { title: "Renamed" }, ["cataloguer"]);
 
     expect(result.isErr()).toBe(true);
     if (result.isErr())
@@ -372,7 +372,7 @@ describe("LotService.update", () => {
       lotNotifications: null,
     });
 
-    const result = await svc.update("staff", lotId, { saleId: saleBId }, ["catalogue_manager"]);
+    const result = await svc.update("staff", lotId, { saleId: saleBId }, ["cataloguer"]);
 
     expect(result.isOk()).toBe(true);
     expect(update).toHaveBeenCalledWith(lotId, {
@@ -408,7 +408,7 @@ describe("LotService.update", () => {
       lotNotifications: null,
     });
 
-    const result = await svc.update("staff", lotId, { saleId: saleBId }, ["catalogue_manager"]);
+    const result = await svc.update("staff", lotId, { saleId: saleBId }, ["cataloguer"]);
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -444,7 +444,7 @@ describe("LotService.update", () => {
     });
 
     const result = await svc.update("staff", lotId, { saleId: saleBId, lotNumber: 5 }, [
-      "catalogue_manager",
+      "cataloguer",
     ]);
 
     expect(result.isErr()).toBe(true);
@@ -497,7 +497,7 @@ describe("LotService.update", () => {
       lotNotifications: null,
     });
 
-    const result = await svc.update("staff", lotId, { saleId: saleBId }, ["catalogue_manager"]);
+    const result = await svc.update("staff", lotId, { saleId: saleBId }, ["cataloguer"]);
 
     expect(result.isOk()).toBe(true);
     expect(update).toHaveBeenCalledWith(lotId, {
@@ -541,7 +541,7 @@ describe("LotService.update", () => {
       lotNotifications: null,
     });
 
-    const result = await svc.update("staff", lotId, { saleId: saleBId }, ["catalogue_manager"]);
+    const result = await svc.update("staff", lotId, { saleId: saleBId }, ["cataloguer"]);
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -594,7 +594,7 @@ describe("LotService.update", () => {
         startTime: new Date("2026-05-31T10:00:00Z"),
         endTime: new Date("2026-06-03T18:00:00Z"),
       },
-      ["catalogue_manager"],
+      ["cataloguer"],
     );
 
     expect(result.isErr()).toBe(true);
@@ -619,7 +619,7 @@ describe("LotService.updateMarketingDetails", () => {
     const { svc, findById } = createSut({});
     findById.mockResolvedValueOnce(null);
     const r = await svc.updateMarketingDetails("staff", lotId, { artistNote: "z" }, [
-      "super_admin",
+      "administrator",
     ]);
     expect(r.isErr()).toBe(true);
     if (r.isErr() && r.error instanceof LotError) {
@@ -630,13 +630,13 @@ describe("LotService.updateMarketingDetails", () => {
   it("returns 400 for ended or cancelled", async () => {
     const { svc: s1 } = createSut({ lot: { status: "ended" } });
     const r1 = await s1.updateMarketingDetails("staff", lotId, { artistNote: "z" }, [
-      "super_admin",
+      "administrator",
     ]);
     expect(r1.isErr()).toBe(true);
 
     const { svc: s2 } = createSut({ lot: { status: "cancelled" } });
     const r2 = await s2.updateMarketingDetails("staff", lotId, { artistNote: "z" }, [
-      "super_admin",
+      "administrator",
     ]);
     expect(r2.isErr()).toBe(true);
   });
@@ -644,7 +644,7 @@ describe("LotService.updateMarketingDetails", () => {
   it("updates via repo for admin and allowed status", async () => {
     const { svc, updateMarketingDetails } = createSut({});
     const r = await svc.updateMarketingDetails("staff", lotId, { artistNote: "new" }, [
-      "super_admin",
+      "administrator",
     ]);
     expect(r.isOk()).toBe(true);
     expect(updateMarketingDetails).toHaveBeenCalledWith(lotId, { artistNote: "new" });
@@ -677,7 +677,7 @@ describe("LotService.cancel", () => {
       },
     });
 
-    const result = await svc.cancel("admin-1", "staff", lotId, ["super_admin"]);
+    const result = await svc.cancel("admin-1", "staff", lotId, ["administrator"]);
 
     expect(result._unsafeUnwrapErr()).toMatchObject({ status: 409, code: "lot_on_atg" });
     expect(lotRepo.updateStatus).not.toHaveBeenCalled();
@@ -719,7 +719,7 @@ describe("LotService.cancel", () => {
       legalEntityNotificationRecipients: legalEntityRecipients,
     });
 
-    const result = await svc.cancel("admin-1", "staff", lotId, ["super_admin"]);
+    const result = await svc.cancel("admin-1", "staff", lotId, ["administrator"]);
 
     expect(result.isOk()).toBe(true);
     expect(legalEntityRecipients.listUserIdsForAudience).toHaveBeenCalledWith(
@@ -757,7 +757,7 @@ describe("LotService.cancel", () => {
       lotNotifications: null,
     });
 
-    const result = await svc.cancel("admin-1", "staff", lotId, ["super_admin"]);
+    const result = await svc.cancel("admin-1", "staff", lotId, ["administrator"]);
     expect(result.isOk()).toBe(true);
     expect(updateStatus.mock.invocationCallOrder[0]).toBeLessThan(
       cancelLotJobs.mock.invocationCallOrder[0] ?? Number.MAX_SAFE_INTEGER,
@@ -807,7 +807,7 @@ describe("LotService.publish", () => {
       legalEntityRepository,
       enforceIndividualConnectOnPublish: true,
     });
-    const result = await svc.publish("admin", "staff", lotId, ["super_admin"]);
+    const result = await svc.publish("admin", "staff", lotId, ["administrator"]);
     expect(result.isErr()).toBe(true);
     if (result.isErr() && result.error instanceof LotError) {
       expect(result.error.code).toBe("connect_required");
@@ -838,7 +838,7 @@ describe("LotService.publish", () => {
       legalEntityRepository,
       enforceIndividualConnectOnPublish: true,
     });
-    const result = await svc.publish("admin", "staff", lotId, ["super_admin"]);
+    const result = await svc.publish("admin", "staff", lotId, ["administrator"]);
     expect(result.isErr()).toBe(true);
     if (result.isErr() && result.error instanceof LotError) {
       expect(result.error.code).toBe("connect_required");
@@ -871,7 +871,7 @@ describe("LotService.publish", () => {
       legalEntityRepository,
       enforceIndividualConnectOnPublish: true,
     });
-    const result = await svc.publish("admin", "staff", lotId, ["super_admin"]);
+    const result = await svc.publish("admin", "staff", lotId, ["administrator"]);
     expect(result.isOk()).toBe(true);
     expect(lotRepo.updateStatus).toHaveBeenCalledWith(lotId, "scheduled");
     expect(scheduler.scheduleLot).toHaveBeenCalled();
@@ -906,7 +906,7 @@ describe("LotService.publish", () => {
       legalEntityRepository,
       enforceIndividualConnectOnPublish: false,
     });
-    const result = await svc.publish("admin", "staff", lotId, ["super_admin"]);
+    const result = await svc.publish("admin", "staff", lotId, ["administrator"]);
     expect(result.isOk()).toBe(true);
   });
 
@@ -927,7 +927,7 @@ describe("LotService.publish", () => {
       },
       lotNotifications: null,
     });
-    const result = await svc.publish("admin", "staff", lotId, ["super_admin"]);
+    const result = await svc.publish("admin", "staff", lotId, ["administrator"]);
     expect(result.isErr()).toBe(true);
     if (result.isErr() && result.error instanceof LotError) {
       expect(result.error.message).toContain("image");
@@ -956,7 +956,7 @@ describe("LotService.publish", () => {
       },
       lotNotifications: null,
     });
-    const result = await svc.publish("admin", "staff", lotId, ["super_admin"]);
+    const result = await svc.publish("admin", "staff", lotId, ["administrator"]);
     expect(result.isErr()).toBe(true);
     if (result.isErr() && result.error instanceof LotError) {
       expect(result.error.message).toContain("description");
@@ -986,7 +986,7 @@ describe("LotService.publish", () => {
       },
       lotNotifications: null,
     });
-    const result = await svc.publish("admin", "staff", lotId, ["catalogue_manager"]);
+    const result = await svc.publish("admin", "staff", lotId, ["cataloguer"]);
     expect(result.isErr()).toBe(true);
     if (result.isErr() && result.error instanceof LotError) {
       expect(result.error.code).toBe("use_sale_publish");
@@ -1015,7 +1015,7 @@ describe("LotService.publish", () => {
       },
       lotNotifications: null,
     });
-    const result = await svc.publish("admin", "staff", lotId, ["super_admin"]);
+    const result = await svc.publish("admin", "staff", lotId, ["administrator"]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toMatchObject({
@@ -1107,7 +1107,7 @@ describe("LotService.listBidsForPublicApi", () => {
     const r = await svc.listBidsForPublicApi({
       lotId,
       viewerRole: "staff",
-      viewerStaffRoles: ["super_admin"],
+      viewerStaffRoles: ["administrator"],
       viewerId: "admin-1",
       limitQuery: "10",
     });
@@ -1177,7 +1177,7 @@ describe("LotService.listLotsForPublicApi", () => {
       lotNotifications: null,
     });
     await svc.listLotsForPublicApi({ limit: 20, offset: 0, needsPhotos: true }, "staff", [
-      "catalogue_manager",
+      "cataloguer",
     ]);
     expect(list).toHaveBeenCalledWith({ limit: 20, offset: 0, needsPhotos: true });
   });
@@ -1217,7 +1217,7 @@ describe("LotService.bulkPublishOrCancel", () => {
     if (r.isErr()) expect(r.error).toBeInstanceOf(AuthzError);
   });
 
-  it("allows catalogue_manager staff to run bulk publish", async () => {
+  it("allows cataloguer staff to run bulk publish", async () => {
     const lotRepo: ILotRepository = {
       findById: vi.fn().mockResolvedValue({
         id: lotId,
@@ -1245,14 +1245,12 @@ describe("LotService.bulkPublishOrCancel", () => {
       },
       lotNotifications: null,
     });
-    const r = await svc.bulkPublishOrCancel("u1", "staff", [lotId], "publish", [
-      "catalogue_manager",
-    ]);
+    const r = await svc.bulkPublishOrCancel("u1", "staff", [lotId], "publish", ["cataloguer"]);
     expect(r.isOk()).toBe(true);
     if (r.isOk()) expect(r.value.failed).toBe(0);
   });
 
-  it("returns AuthzError when catalogue_manager runs bulk cancel", async () => {
+  it("returns AuthzError when cataloguer runs bulk cancel", async () => {
     const lotRepo: ILotRepository = {} as unknown as ILotRepository;
     const svc = new LotService({
       lotRepo,
@@ -1261,9 +1259,7 @@ describe("LotService.bulkPublishOrCancel", () => {
       jobScheduler: null,
       lotNotifications: null,
     });
-    const r = await svc.bulkPublishOrCancel("u1", "staff", [lotId], "cancel", [
-      "catalogue_manager",
-    ]);
+    const r = await svc.bulkPublishOrCancel("u1", "staff", [lotId], "cancel", ["cataloguer"]);
     expect(r.isErr()).toBe(true);
     if (r.isErr()) expect(r.error).toBeInstanceOf(AuthzError);
   });
@@ -1303,9 +1299,7 @@ describe("LotService.bulkPublishOrCancel", () => {
       legalEntityRepository,
       enforceIndividualConnectOnPublish: true,
     });
-    const r = await svc.bulkPublishOrCancel("u1", "staff", [lotId], "publish", [
-      "catalogue_manager",
-    ]);
+    const r = await svc.bulkPublishOrCancel("u1", "staff", [lotId], "publish", ["cataloguer"]);
     expect(r.isOk()).toBe(true);
     if (r.isOk()) {
       expect(r.value.failed).toBe(1);
@@ -1349,9 +1343,7 @@ describe("LotService.bulkPublishOrCancel", () => {
       },
       lotNotifications: null,
     });
-    const r = await svc.bulkPublishOrCancel("u1", "staff", [lotId], "publish", [
-      "catalogue_manager",
-    ]);
+    const r = await svc.bulkPublishOrCancel("u1", "staff", [lotId], "publish", ["cataloguer"]);
     expect(r.isOk()).toBe(true);
     if (r.isOk()) {
       expect(r.value.failed).toBe(1);
@@ -1551,7 +1543,7 @@ describe("LotService English-only policy", () => {
       lotNotifications: null,
       englishOnlyAuctions: true,
     });
-    const r = await svc.update("staff", lotId, { auctionType: "dutch" }, ["super_admin"]);
+    const r = await svc.update("staff", lotId, { auctionType: "dutch" }, ["administrator"]);
     expect(r.isErr()).toBe(true);
     expect(lotRepo.update).not.toHaveBeenCalled();
   });

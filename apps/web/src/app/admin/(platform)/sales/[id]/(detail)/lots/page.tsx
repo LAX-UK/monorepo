@@ -3,7 +3,7 @@ import { SaleLotsTab } from "@/components/admin/sale-detail/tabs/lots-tab";
 import { loadAdminSaleLotsPage } from "@/lib/admin/sales/load-sale-lots-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
-import { SALES_ACCESS, SALE_CATALOG_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { SALES_ACCESS, SALE_CATALOG_READ_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { type UserRole, userHasAccessTo } from "@auction/types";
 
 type Props = {
@@ -14,7 +14,7 @@ type Props = {
 export default async function AdminSaleLotsPage({ params, searchParams }: Props) {
   const { id } = await params;
   const sp = await searchParams;
-  const user = await requireAdminCapability(SALE_CATALOG_ACCESS, `/admin/sales/${id}/lots`);
+  const user = await requireAdminCapability(SALE_CATALOG_READ_ACCESS, `/admin/sales/${id}/lots`);
   const canManageAuction = userHasAccessTo(user.role as UserRole, user.staffRoles, SALES_ACCESS);
   const page = await loadAdminSaleLotsPage(id);
 

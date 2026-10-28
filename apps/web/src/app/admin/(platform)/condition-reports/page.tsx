@@ -11,7 +11,7 @@ import {
 import { loadAdminConditionReportsListPage } from "@/lib/admin/load-condition-reports-list-page";
 import { safeDecodeAdminErrorParam } from "@/lib/admin/safe-decode-admin-error-param";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
-import { CONDITION_REPORTS_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { CONDITION_REPORTS_READ_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 
@@ -28,7 +28,7 @@ export default async function AdminConditionReportsPage({
   searchParams: Promise<Search>;
 }) {
   const sp = await searchParams;
-  await requireAdminCapability(CONDITION_REPORTS_ACCESS, "/admin/condition-reports");
+  await requireAdminCapability(CONDITION_REPORTS_READ_ACCESS, "/admin/condition-reports");
 
   const { model, rows, summary, total, loadError } = await loadAdminConditionReportsListPage(sp);
   const { query } = model;
