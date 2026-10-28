@@ -114,13 +114,48 @@ describe("composeArtHomePage sections", () => {
   it("keeps only static and catalogue sections when editorial, venues and products are empty", async () => {
     const vm = await composeArtHomePage(fakeArtServices());
 
-    expect(vm.sections).toEqual(["curators-picks", "guide", "closing-cta"]);
+    expect(vm.sections).toEqual(["guide", "closing-cta"]);
     expect(vm.guidePromo.imageUrl).toBeNull();
+  });
+
+  it("hides a rail with fewer than three items rather than leaving its row mostly empty", async () => {
+    const services = fakeArtServices();
+    services.catalogue.listArtworks.mockResolvedValue({
+      items: [artworkSummary({ slug: "a" }), artworkSummary({ slug: "b" })],
+    });
+    services.catalogue.listArtists.mockResolvedValue({
+      items: ["a", "b", "c"].map((slug) => artistSummary({ slug })),
+    });
+
+    const vm = await composeArtHomePage(services);
+
+    expect(vm.sections).not.toContain("curators-picks");
+    expect(vm.sections).toContain("featured-artists");
+  });
+
+  it("keeps Curators' picks for its inline error when the catalogue fails", async () => {
+    const services = fakeArtServices();
+    services.catalogue.listArtworks.mockRejectedValue(new Error("down"));
+
+    const vm = await composeArtHomePage(services);
+
+    expect(vm.sections).toContain("curators-picks");
+  });
+
+  it("puts the guide promo on the page when the gallery team band follows it", async () => {
+    const vm = await composeArtHomePage(fakeArtServices());
+
+    expect(vm.surfaces).toEqual({ guide: "plain", "closing-cta": "band" });
   });
 
   it("lists every section in Figma order when all data is present", async () => {
     const services = fakeArtServices();
-    services.catalogue.listArtists.mockResolvedValue({ items: [artistSummary()] });
+    services.catalogue.listArtworks.mockResolvedValue({
+      items: ["a", "b", "c"].map((slug) => artworkSummary({ slug })),
+    });
+    services.catalogue.listArtists.mockResolvedValue({
+      items: ["a", "b", "c"].map((slug) => artistSummary({ slug })),
+    });
     services.editorial.home.mockResolvedValue({
       status: "ok",
       data: {
@@ -151,6 +186,7 @@ describe("composeArtHomePage sections", () => {
       "galleries",
       "closing-cta",
     ]);
+    expect(vm.surfaces.guide).toBe("band");
   });
 
   it("caps What's on at a lead plus three and stories at a lead plus two", async () => {

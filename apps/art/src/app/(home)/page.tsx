@@ -18,6 +18,7 @@ import {
 } from "@/lib/home/home-page.composer";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import {
+  MarketingCardRow,
   MarketingFeatureGrid,
   MarketingReveal,
   MarketingSplitFeature,
@@ -42,25 +43,27 @@ function Shell({ children }: { children: ReactNode }) {
 
 function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
   switch (id) {
-    case "whats-on": {
-      const [lead, ...rest] = vm.whatsOn;
-      if (!lead) return null;
+    case "whats-on":
       return (
         <Shell>
           <ArtSection id="home-whats-on" title="What's on across LAX" viewAllHref="/exhibitions">
             <MarketingFeatureGrid
               variant="lead-plus-row"
               aria-label="What's on"
-              lead={<ArtEditorialCard card={lead} aspect="wide" priority />}
-            >
-              {rest.map((card) => (
-                <ArtEditorialCard key={card.key} card={card} />
-              ))}
-            </MarketingFeatureGrid>
+              items={vm.whatsOn}
+              getKey={(card) => card.key}
+              renderItem={(card, role) => (
+                <ArtEditorialCard
+                  card={card}
+                  aspect={role === "feature" ? "wide" : "landscape"}
+                  layout={role === "solo" ? "split" : "stacked"}
+                  priority={card.key === vm.whatsOn[0]?.key}
+                />
+              )}
+            />
           </ArtSection>
         </Shell>
       );
-    }
     case "curators-picks":
       return (
         <Shell>
@@ -73,13 +76,6 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
                 actions={
                   <ArtStatusStateLink href="/artworks">Browse all artworks</ArtStatusStateLink>
                 }
-              />
-            ) : vm.featuredArtworks.length === 0 ? (
-              <ArtStatusState
-                variant="empty"
-                title="New originals are on the way"
-                description="There are no featured originals right now. Browse the full catalogue in the meantime."
-                actions={<ArtStatusStateLink href="/artworks">Browse artworks</ArtStatusStateLink>}
               />
             ) : (
               <ArtArtworkRail
@@ -108,25 +104,26 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
       );
     case "product-doors":
       return <ArtProductDoors doors={vm.productDoors} />;
-    case "stories": {
-      const [lead, ...rest] = vm.stories;
-      if (!lead) return null;
+    case "stories":
       return (
         <Shell>
           <ArtSection id="home-stories" title="Featured stories" viewAllHref="/art-hub">
             <MarketingFeatureGrid
               variant="lead-plus-stack"
               aria-label="Featured stories"
-              lead={<ArtEditorialCard card={lead} />}
-            >
-              {rest.map((card) => (
-                <ArtEditorialCard key={card.key} card={card} />
-              ))}
-            </MarketingFeatureGrid>
+              items={vm.stories}
+              getKey={(card) => card.key}
+              renderItem={(card, role) => (
+                <ArtEditorialCard
+                  card={card}
+                  aspect={role === "feature" ? "wide" : "landscape"}
+                  layout={role === "solo" ? "split" : "stacked"}
+                />
+              )}
+            />
           </ArtSection>
         </Shell>
       );
-    }
     case "guide": {
       const { guidePromo } = vm;
       return (
@@ -134,7 +131,7 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
           title={guidePromo.title}
           body={<p>{guidePromo.body}</p>}
           mediaSide="right"
-          tone="feature"
+          tone={vm.surfaces.guide === "band" ? "feature" : "plain"}
           {...(guidePromo.imageUrl
             ? {
                 media: (
@@ -150,12 +147,7 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
               }
             : {})}
           action={
-            <Button
-              asChild
-              variant="outline"
-              size="lg"
-              className="min-h-11 border-current bg-transparent font-label text-on-surface-feature hover:bg-surface-container-low/40"
-            >
+            <Button asChild variant="secondaryOutline" size="lg">
               <Link href={guidePromo.cta.href}>{guidePromo.cta.label}</Link>
             </Button>
           }
@@ -166,28 +158,34 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
       return (
         <Shell>
           <ArtSection id="home-galleries" title="Our galleries">
-            <ul className="grid gap-x-10 gap-y-12 md:grid-cols-2" aria-label="Our galleries">
-              {vm.galleries.map((gallery) => (
-                <li key={gallery.key}>
-                  <MarketingVenueCard
-                    href={gallery.href}
-                    name={gallery.name}
-                    addressLines={gallery.addressLines}
-                    image={
-                      <ArtMediaImage
-                        src={gallery.imageUrl}
-                        alt=""
-                        label="Gallery"
-                        placeholderTitle={gallery.name}
-                        sizes="(min-width: 48rem) 45vw, 100vw"
-                        className="absolute inset-0 size-full"
-                        imgClassName="object-cover"
-                      />
-                    }
-                  />
-                </li>
-              ))}
-            </ul>
+            <MarketingCardRow
+              aria-label="Our galleries"
+              items={vm.galleries}
+              getKey={(gallery) => gallery.key}
+              renderItem={(gallery, layout) => (
+                <MarketingVenueCard
+                  href={gallery.href}
+                  name={gallery.name}
+                  addressLines={gallery.addressLines}
+                  layout={layout === "feature" ? "wide" : "tile"}
+                  image={
+                    <ArtMediaImage
+                      src={gallery.imageUrl}
+                      alt=""
+                      label="Gallery"
+                      placeholderTitle={gallery.name}
+                      sizes={
+                        layout === "feature"
+                          ? "(min-width: 48rem) 55vw, 100vw"
+                          : "(min-width: 48rem) 45vw, 100vw"
+                      }
+                      className="absolute inset-0 size-full"
+                      imgClassName="object-cover"
+                    />
+                  }
+                />
+              )}
+            />
           </ArtSection>
         </Shell>
       );

@@ -26,7 +26,13 @@ import type {
   ArtViewerPort,
 } from "@/lib/ports";
 import { buildArtProductDoors } from "@/lib/product-doors/art-product-doors.vm";
-import type { MarketingProductDoorVm } from "@auction/marketing-ui";
+import {
+  type MarketingBandSection,
+  type MarketingProductDoorVm,
+  type MarketingSectionSurface,
+  marketingRailHasEnough,
+  resolveBandSequence,
+} from "@auction/marketing-ui";
 
 type ArtHomeSection = "artworks" | "artists";
 
@@ -56,6 +62,8 @@ type ArtHomeEditorialVm =
 export type ArtHomePageVm = {
   /** Visible sections in render order; a section with no data is left out. */
   sections: ArtHomeSectionId[];
+  /** The surface each visible section renders on, so two tinted bands never sit together. */
+  surfaces: Record<ArtHomeSectionId, MarketingSectionSurface>;
   hero: EditorialCardVm | null;
   /** One lead plus up to three (Figma `285:3008`). */
   whatsOn: EditorialCardVm[];
@@ -70,6 +78,24 @@ export type ArtHomePageVm = {
   favoriteAuth: ArtFavoriteAuth;
   /** Sections whose upstream read failed; the page shows an inline error instead. */
   sectionErrors: ArtHomeSection[];
+};
+
+/**
+ * The surface each section asks for. The guide promo can render on the plain page; the gallery
+ * team panel is always tinted, so a band next to it gives way.
+ */
+const SECTION_SURFACE: Record<
+  ArtHomeSectionId,
+  Omit<MarketingBandSection<ArtHomeSectionId>, "id">
+> = {
+  "whats-on": { surface: "plain", flexible: false },
+  "curators-picks": { surface: "plain", flexible: false },
+  "featured-artists": { surface: "plain", flexible: false },
+  "product-doors": { surface: "plain", flexible: false },
+  stories: { surface: "plain", flexible: false },
+  guide: { surface: "band", flexible: true },
+  galleries: { surface: "plain", flexible: false },
+  "closing-cta": { surface: "band", flexible: false },
 };
 
 const WHATS_ON_LIMIT = 4;
@@ -163,11 +189,19 @@ export async function composeArtHomePage(services: {
   if (artworks.status === "rejected") sectionErrors.push("artworks");
   if (artists.status === "rejected") sectionErrors.push("artists");
 
-  // Curators' picks keeps its inline error / empty state; the guide promo and closing CTA are static copy.
+  const featuredArtworks =
+    artworks.status === "fulfilled"
+      ? buildCatalogueArtworkCards(artworks.value.items, favorites.savedArtworkSlugs)
+      : [];
+
+  // Rails need enough items to read as a rail; with fewer the section hides rather than leaving
+  // most of its row empty. Curators' picks keeps its inline error; the guide promo and closing
+  // CTA are static copy.
   const visible: Record<ArtHomeSectionId, boolean> = {
     "whats-on": whatsOn.length > 0,
-    "curators-picks": true,
-    "featured-artists": featuredArtists.length > 0,
+    "curators-picks":
+      sectionErrors.includes("artworks") || marketingRailHasEnough(featuredArtworks.length),
+    "featured-artists": marketingRailHasEnough(featuredArtists.length),
     "product-doors": productDoors.length > 0,
     stories: stories.length > 0,
     guide: true,
@@ -175,14 +209,14 @@ export async function composeArtHomePage(services: {
     "closing-cta": true,
   };
 
+  const sections = (Object.keys(visible) as ArtHomeSectionId[]).filter((id) => visible[id]);
+
   return {
-    sections: (Object.keys(visible) as ArtHomeSectionId[]).filter((id) => visible[id]),
+    sections,
+    surfaces: resolveBandSequence(sections.map((id) => ({ id, ...SECTION_SURFACE[id] }))),
     hero: editorial.kind === "ok" ? editorial.hero : null,
     whatsOn,
-    featuredArtworks:
-      artworks.status === "fulfilled"
-        ? buildCatalogueArtworkCards(artworks.value.items, favorites.savedArtworkSlugs)
-        : [],
+    featuredArtworks,
     featuredArtists,
     productDoors,
     stories,

@@ -10,7 +10,7 @@ import { composeVenuePage, venueHref } from "@/lib/editorial/editorial-pages.com
 import { buildArtGalleryTeam } from "@/lib/gallery-team/art-gallery-team.vm";
 import { notFoundOrUnavailable } from "@/lib/seo/page-status";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
-import { MarketingPageTitle, MarketingSubNav } from "@auction/marketing-ui";
+import { MarketingPageTitle, MarketingSubNav, resolveBandSequence } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 import { cache } from "react";
@@ -22,6 +22,12 @@ type VenuePageProps = {
 const loadVenue = cache((slug: string) => composeVenuePage(artServices, slug));
 
 const SECTION_HEADING = "m-0 font-headline text-3xl font-medium text-on-surface md:text-4xl";
+
+/** The gallery team panel is always tinted, so the related links that follow it give way. */
+const CLOSING_SURFACES = resolveBandSequence([
+  { id: "gallery-team", surface: "band", flexible: false },
+  { id: "related", surface: "band", flexible: true },
+]);
 
 export async function generateMetadata({ params }: VenuePageProps): Promise<Metadata> {
   const result = await loadVenue((await params).slug);
@@ -104,7 +110,7 @@ export default async function VenuePage({ params }: VenuePageProps) {
           viewer={viewer}
         />
       </div>
-      <ArtVenueRelatedLinks />
+      <ArtVenueRelatedLinks surface={CLOSING_SURFACES.related} />
     </article>
   );
 }

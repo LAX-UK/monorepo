@@ -13,7 +13,7 @@ describe("buildArtHomeGuidePromoVm", () => {
 
   it("links to the 101 guide and is text-only without a placement image", () => {
     expect(buildArtHomeGuidePromoVm([card(null)])).toEqual({
-      title: "Finding your way into art.",
+      title: "Finding your way into art",
       body: expect.stringContaining("how to look at it"),
       cta: { label: "Explore the guide", href: "/collector-hub/101-guide" },
       imageUrl: null,
