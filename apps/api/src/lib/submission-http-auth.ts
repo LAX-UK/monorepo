@@ -1,4 +1,5 @@
 import {
+  NO_STAFF_ROLES,
   SUBMISSIONS_ACCESS,
   type StaffRoles,
   type UserRole,
@@ -21,7 +22,7 @@ export function submissionsAccessDeniedResponse(
     body: missingCapabilityBody(
       "Only staff with specialist.appraise, catalogue.write, or auction.manage can access submissions",
       required,
-      { role: normalizedRole, staffRoles: staff },
+      { role: normalizedRole, staffRoles: staff ?? NO_STAFF_ROLES },
     ),
   };
 }

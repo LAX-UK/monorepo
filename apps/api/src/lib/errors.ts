@@ -3,12 +3,17 @@ export { LotError } from "@auction/persistence/lib";
  * `instanceof BidError` check (routes, classifiers, gates) shares one class. */
 export { BidError } from "@auction/bidding-runtime";
 
-import type { RoleCapability, StaffRoles, UserRole } from "@auction/types";
+import {
+  NO_STAFF_ROLES,
+  type RoleCapability,
+  type StaffRoles,
+  type UserRole,
+} from "@auction/types";
 
 export type AuthzErrorMeta = {
   code?: string;
   required?: RoleCapability[];
-  actor?: { role: UserRole | string; staffRoles: StaffRoles | undefined };
+  actor?: { role: UserRole | string; staffRoles: StaffRoles };
 };
 
 export class AuthzError extends Error {
@@ -43,7 +48,7 @@ export function missingCatalogueCapabilityError(
   return new AuthzError(message, 403, {
     code: "missing_capability",
     required: [...CATALOGUE_WRITE_CAPABILITIES],
-    actor: { role, staffRoles: staffRoles },
+    actor: { role, staffRoles: staffRoles ?? NO_STAFF_ROLES },
   });
 }
 

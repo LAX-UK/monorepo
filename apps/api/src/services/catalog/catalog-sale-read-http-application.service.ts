@@ -1,5 +1,5 @@
 import type { ILegalEntityRepository, IRepositoryFactory } from "@auction/persistence/interfaces";
-import { type UserRole, roleHasCapability } from "@auction/types";
+import { NO_STAFF_ROLES, type UserRole, roleHasCapability } from "@auction/types";
 import { canManageCatalogue } from "../../lib/catalogue-auth.js";
 import { CATALOGUE_WRITE_CAPABILITIES } from "../../lib/errors.js";
 import { missingCapabilityBody } from "../../lib/forbidden-response.js";
@@ -159,7 +159,7 @@ export class CatalogSaleReadHttpApplicationService
         body: missingCapabilityBody(
           "Only staff with auction.manage or catalogue.write can view catalogue admin detail",
           [...CATALOGUE_WRITE_CAPABILITIES],
-          { role, staffRoles: staff },
+          { role, staffRoles: staff ?? NO_STAFF_ROLES },
         ),
       };
     }

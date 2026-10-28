@@ -5,7 +5,7 @@ import type {
   IArtistDeleteRepository,
 } from "@auction/persistence/interfaces";
 import type { ArtistDeleteEligibility, StaffRoles, UserRole } from "@auction/types";
-import { roleHasCapability } from "@auction/types";
+import { NO_STAFF_ROLES, roleHasCapability } from "@auction/types";
 import { artistDeleteConfirmationPhrase } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { ArtistError, AuthzError } from "../lib/errors.js";
@@ -55,7 +55,7 @@ export class ArtistDeleteService {
         new AuthzError("Only staff with artist.delete can delete artist profiles", 403, {
           code: "missing_capability",
           required: ["artist.delete"],
-          actor: { role: userRole, staffRoles: userStaffRoles },
+          actor: { role: userRole, staffRoles: userStaffRoles ?? NO_STAFF_ROLES },
         }),
       );
     }

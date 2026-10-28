@@ -4,7 +4,8 @@ import { ArtistError, AuthzError, LotError, VenueError } from "./errors.js";
 
 export type MissingCapabilityActor = {
   role: UserRole | string;
-  staffRoles: StaffRoles | undefined;
+  /** The roles in force for the person refused; empty for clients. */
+  staffRoles: StaffRoles;
 };
 
 export type MissingCapabilityBody = {
