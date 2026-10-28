@@ -95,6 +95,26 @@ export {
   type PlacementTargetKind,
 } from "./placement-slot.js";
 export {
+  HOME_FEATURES_EDIT_CAPABILITY,
+  HOME_FEATURE_SLOTS,
+  HOME_RELEASE_CANDIDATE_LIMIT,
+  featuredArtistPresence,
+  featuredPrintRoles,
+  homeFeatureLimit,
+  homeFeatureListIssues,
+  isHomeFeatureSlot,
+  planHomeFeatures,
+  type FeaturedArtistFacts,
+  type FeaturedArtistPresence,
+  type FeaturedPrintFacts,
+  type FeaturedPrintRole,
+  type HomeFeatureIssue,
+  type HomeFeatureIssueReason,
+  type HomeFeaturePlan,
+  type HomeFeatureSlot,
+  type HomeFeatureTargetFacts,
+} from "./home-features.js";
+export {
   assertFeaturedOriginalArtwork,
   type FeaturedOriginalArtworkCandidate,
 } from "./featured-originals-placement.js";

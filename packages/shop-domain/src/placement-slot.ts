@@ -51,6 +51,7 @@ export function maxItemsForPlacement(slot: PlacementSlot): number {
 
 export function assertValidPlacementSet(placements: readonly PlannedPlacement[]): void {
   const positionsBySlot = new Map<PlacementSlot, Set<number>>();
+  const targetsBySlot = new Map<PlacementSlot, Set<string>>();
 
   for (const placement of placements) {
     assertValidPlacement(placement.slot, placement.target);
@@ -66,6 +67,15 @@ export function assertValidPlacementSet(placements: readonly PlannedPlacement[])
     }
     positions.add(placement.position);
     positionsBySlot.set(placement.slot, positions);
+
+    const targets = targetsBySlot.get(placement.slot) ?? new Set<string>();
+    if (targets.has(placement.target.id)) {
+      throw new ShopDomainError(
+        `Placement slot "${placement.slot}" lists ${placement.target.kind} ${placement.target.id} twice`,
+      );
+    }
+    targets.add(placement.target.id);
+    targetsBySlot.set(placement.slot, targets);
   }
 
   for (const [slot, positions] of positionsBySlot) {

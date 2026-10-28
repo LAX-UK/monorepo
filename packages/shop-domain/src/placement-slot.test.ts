@@ -52,4 +52,19 @@ describe("placement-slot", () => {
       ]),
     ).toThrow(/duplicate position/);
   });
+
+  it("refuses the same record twice in one slot, but allows it in another", () => {
+    expect(() =>
+      assertValidPlacementSet([
+        { slot: "featured_artists", position: 0, target: { kind: "artist", id: "artist-1" } },
+        { slot: "featured_artists", position: 1, target: { kind: "artist", id: "artist-1" } },
+      ]),
+    ).toThrow(/twice/);
+    expect(() =>
+      assertValidPlacementSet([
+        { slot: "featured_prints", position: 0, target: { kind: "artwork", id: "artwork-1" } },
+        { slot: "featured_originals", position: 0, target: { kind: "artwork", id: "artwork-1" } },
+      ]),
+    ).not.toThrow();
+  });
 });
