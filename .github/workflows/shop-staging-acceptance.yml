@@ -65,7 +65,8 @@ concurrency:
 
 jobs:
   resolve-context:
-    runs-on: ubuntu-latest
+    # Pinned: Playwright has no Chromium build for ubuntu-latest (26.04).
+    runs-on: ubuntu-24.04
     outputs:
       shop_sha: ${{ steps.coalesce.outputs.shop_sha }}
       shop_api_sha: ${{ steps.coalesce.outputs.shop_api_sha }}
@@ -134,7 +135,8 @@ jobs:
 
   commerce-contracts:
     needs: resolve-context
-    runs-on: ubuntu-latest
+    # Pinned: Playwright has no Chromium build for ubuntu-latest (26.04).
+    runs-on: ubuntu-24.04
     environment: test
     env:
       SHOP_SHA: ${{ needs.resolve-context.outputs.shop_sha }}

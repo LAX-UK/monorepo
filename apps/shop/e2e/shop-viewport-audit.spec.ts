@@ -58,7 +58,7 @@ test.describe("Shop viewport audit @a11y", () => {
     await page.goto("/");
     await expect(page.locator("#main-content")).toBeVisible();
 
-    const editions = page.getByRole("button", { name: "Editions" });
+    const editions = page.getByRole("button", { name: "Editions", exact: true });
     await editions.click();
     await expect(editions).toHaveAttribute("aria-expanded", "true");
     await expect(page.getByRole("link", { name: "View all editions" })).toBeVisible();

@@ -40,7 +40,10 @@ test.describe("Shop hosted authentication @a11y", () => {
     await openHostedLogin(page);
     await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible();
     await expect(page.getByRole("heading", { name: "Authorise LAX Shop Web" })).toHaveCount(0);
-    await expect(page.getByRole("img", { name: "LAX Shop" })).toBeVisible();
+    await expect(page.getByRole("img", { name: "LAX Account" })).toBeVisible();
+    // The Shop client_id reached the hosted page: it names the client it signs in to.
+    await expect(page.getByText("continue to LAX Shop")).toBeVisible();
+    await expect(page.getByRole("link", { name: /Back to LAX Shop/ })).toBeVisible();
     await expect(page.locator("#main-content")).toBeVisible();
     await expect(page.locator('[data-login-step="email"]')).toBeVisible();
 
