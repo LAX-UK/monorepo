@@ -20,8 +20,6 @@ export const legalEntityMemberRoleEnum = pgEnum("legal_entity_member_role", [
   "finance",
   "buyer_agent",
   "viewer",
-  "specialist",
-  "staff",
 ]);
 
 export const legalEntityMember = pgTable(

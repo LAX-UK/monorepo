@@ -2,20 +2,22 @@
 export const userRoles = ["staff", "client"] as const;
 export type UserRole = (typeof userRoles)[number];
 
-/** LAX internal staff role (`user.staff_role`); required when `user.role` is `staff`. */
+/**
+ * LAX internal staff roles, one per job. A person may hold several; their permissions are the
+ * union of the roles in force. The order is the display order and decides the single role
+ * screens show when there is room for one.
+ */
 export const userStaffRoles = [
-  "super_admin",
-  "auction_manager",
-  "catalogue_manager",
+  "administrator",
+  "sales_manager",
+  "saleroom_clerk",
+  "cataloguer",
   "specialist",
-  "finance_ops",
-  "operations_fulfilment",
-  "content_marketing",
-  "support_concierge",
-  "staff_viewer",
-  "compliance_officer",
-  "client_advisor",
-  "operations",
+  "client_services",
+  "finance",
+  "fulfilment",
+  "compliance",
+  "read_only",
 ] as const;
 export type UserStaffRole = (typeof userStaffRoles)[number];
 

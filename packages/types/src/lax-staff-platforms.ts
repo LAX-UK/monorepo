@@ -29,29 +29,30 @@ export type LaxStaffPlatform = {
 export type LaxStaffGrant = { product: LaxStaffAccessProduct; role: string };
 
 const BID_ROLE_OPTIONS: Record<UserStaffRole, Omit<LaxStaffRoleOption, "value">> = {
-  super_admin: {
-    label: "Super admin",
-    summary: "Full access, including staff access and security policy.",
+  administrator: {
+    label: "Administrator",
+    summary: "Runs the platform: full access, including staff, roles and security policy.",
   },
-  auction_manager: { label: "Auction manager", summary: "Runs sales and auction schedules." },
-  catalogue_manager: { label: "Catalogue manager", summary: "Edits lots and reviews artists." },
-  specialist: { label: "Specialist", summary: "Appraises consignments and reviews artists." },
-  finance_ops: { label: "Finance", summary: "Reads finance and processes payouts." },
-  operations_fulfilment: {
-    label: "Operations fulfilment",
-    summary: "Handles post-sale fulfilment.",
+  sales_manager: { label: "Sales manager", summary: "Sets up and runs sales." },
+  saleroom_clerk: {
+    label: "Saleroom clerk",
+    summary: "Runs the live saleroom: telephone bids, paddles and check-in.",
   },
-  content_marketing: { label: "Content & marketing", summary: "Edits site content." },
-  support_concierge: { label: "Support concierge", summary: "Responds to client support." },
-  staff_viewer: { label: "Staff viewer", summary: "Read-only access to entities and artists." },
-  compliance_officer: {
-    label: "Compliance officer",
-    summary: "AML review and source-of-funds decisions.",
+  cataloguer: { label: "Cataloguer", summary: "Lots, categories and artists." },
+  specialist: { label: "Specialist", summary: "Reviews and appraises submissions." },
+  client_services: {
+    label: "Client services",
+    summary: "Helps clients and follows their bids.",
   },
-  client_advisor: { label: "Client advisor", summary: "Reads clients and their bids." },
-  operations: {
-    label: "Operations",
-    summary: "Catalogue, auctions and fulfilment without finance.",
+  finance: { label: "Finance", summary: "Payments and payouts." },
+  fulfilment: { label: "Fulfilment", summary: "Shipping and collection." },
+  compliance: {
+    label: "Compliance",
+    summary: "Anti-money-laundering review and source-of-funds decisions.",
+  },
+  read_only: {
+    label: "Read-only",
+    summary: "Sees admin pages without personal data, money or actions.",
   },
 };
 

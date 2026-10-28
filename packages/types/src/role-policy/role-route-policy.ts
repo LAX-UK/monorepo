@@ -1,6 +1,7 @@
 import type { UserRole } from "../user.js";
 import type { RoleCapability } from "./role-capabilities.js";
 import { roleHasCapability } from "./role-capabilities.js";
+import { ADMINISTRATOR_STAFF_ROLE } from "./staff-role-assignment-rules.js";
 import {
   NO_STAFF_ROLES,
   type StaffRoles,
@@ -10,7 +11,7 @@ import {
 
 /**
  * Whether the user may enter the platform admin route group (not finance-only shell).
- * Someone who holds only `finance_ops` uses the finance shell + default destination
+ * Someone who holds only `finance` uses the finance shell + default destination
  * `/admin/finance`; any other role opens the platform shell.
  */
 export function canAccessPlatformAdminRoutes(
@@ -18,7 +19,7 @@ export function canAccessPlatformAdminRoutes(
   staffRoles: StaffRoles = NO_STAFF_ROLES,
 ): boolean {
   if (role !== "staff") return false;
-  return staffRoles.some((held) => held !== "finance_ops");
+  return staffRoles.some((held) => held !== "finance");
 }
 
 export function canAccessFinanceAdminRoutes(
@@ -51,6 +52,11 @@ export function canAccessAdminSubmissionNotesWrite(
 /** Nav / shell: capability requirement for a sidebar item. */
 export type CapabilityRequirement = RoleCapability | { anyOf: RoleCapability[] };
 
+/** The capabilities that each satisfy `requirement` on their own. */
+export function requirementCapabilities(requirement: CapabilityRequirement): RoleCapability[] {
+  return typeof requirement === "string" ? [requirement] : [...requirement.anyOf];
+}
+
 export function userHasAccessTo(
   role: UserRole,
   staffRoles: StaffRoles | undefined,
@@ -70,7 +76,7 @@ export function staffRoleToShellLayout(
   staffRoles: StaffRoles = NO_STAFF_ROLES,
 ): AppShellLayout {
   if (role === "client") return "client";
-  if (holdsOnlyStaffRole(staffRoles, "finance_ops")) return "finance";
+  if (holdsOnlyStaffRole(staffRoles, "finance")) return "finance";
   return "platform";
 }
 
@@ -82,11 +88,12 @@ export function staffRoleDefaultDestination(
   if (role === "client") return "/home";
   if (staffRoles.length === 0) return "/admin";
 
-  if (hasStaffRole(staffRoles, "super_admin")) return "/admin";
-  if (holdsOnlyStaffRole(staffRoles, "finance_ops")) return "/admin/finance";
+  if (hasStaffRole(staffRoles, ADMINISTRATOR_STAFF_ROLE)) return "/admin";
+  if (holdsOnlyStaffRole(staffRoles, "finance")) return "/admin/finance";
 
   const ordered: Array<{ path: string; requirement: CapabilityRequirement }> = [
     { path: "/admin/sales", requirement: "auction.manage" },
+    { path: "/admin/saleroom", requirement: "saleroom.operate" },
     { path: "/admin/lots", requirement: "catalogue.write" },
     { path: "/admin/submissions", requirement: "specialist.appraise" },
     { path: "/admin/lot-fulfilment", requirement: "operations.fulfilment" },
@@ -101,9 +108,9 @@ export function staffRoleDefaultDestination(
           "auction.manage",
           "catalogue.write",
           "specialist.appraise",
-          "content.write",
           "support.respond",
           "artist.read",
+          "admin.read",
         ],
       },
     },
