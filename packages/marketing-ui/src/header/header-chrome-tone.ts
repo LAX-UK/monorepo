@@ -43,7 +43,7 @@ export function headerSearchTriggerClass(tone: MarketingHeaderTone, extra?: stri
     "site-header-search-trigger bg-transparent hover:bg-transparent",
     tone === "on-dark"
       ? "border-hero-foreground/35 hover:border-hero-foreground/55"
-      : "border-brand-300 hover:border-brand-400 dark:border-outline-variant/50 dark:hover:border-outline-variant",
+      : "border-brand-300 hover:border-brand-400 dark:border-input-border dark:hover:border-on-surface-variant",
     extra,
   );
 }
