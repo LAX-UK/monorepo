@@ -28,6 +28,7 @@ export type {
   IItemSubmissionRepository,
   ItemSubmissionUpdatePatch,
   ListSubmissionsFilter,
+  SubmissionSenderFilter,
 } from "./item-submission.repository.js";
 
 export type {

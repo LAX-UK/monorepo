@@ -109,6 +109,7 @@ function itemSubmissionRow(
     changesRequestedAt: null,
     convertedLotId: null,
     assignedToUserId: null,
+    submittedByUserId: null,
     draftReminderSentAt: null,
     createdAt: now,
     updatedAt: now,

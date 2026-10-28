@@ -285,3 +285,8 @@ export {
   type StandingInstructionCandidate,
   type StandingInstructionKind,
 } from "./member-removal.js";
+export {
+  canSeeSubmission,
+  submissionSenderScope,
+  type SubmissionSenderScope,
+} from "./submission-visibility.js";

@@ -3,6 +3,7 @@ import { itemSubmission, submissionCategories } from "@auction/db/schema";
 import type { CreateItemSubmissionInput, ItemSubmissionStatus } from "@auction/types";
 import {
   type InferInsertModel,
+  type SQL,
   and,
   asc,
   count,
@@ -10,6 +11,7 @@ import {
   eq,
   ilike,
   inArray,
+  isNotNull,
   lt,
   sql,
 } from "drizzle-orm";
@@ -17,6 +19,7 @@ import type {
   IItemSubmissionRepository,
   ItemSubmissionUpdatePatch,
   ListSubmissionsFilter,
+  SubmissionSenderFilter,
 } from "../interfaces/index.js";
 import { mapItemSubmissionRow } from "../lib/entity-row-mappers.js";
 import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
@@ -45,8 +48,17 @@ function titleSearchSql(q: string | undefined) {
   return ilike(itemSubmission.title, `%${safe}%`);
 }
 
+/** The rows a viewer may see by who sent them; `all` adds nothing. */
+function senderSql(visibleTo: SubmissionSenderFilter | undefined): SQL | undefined {
+  if (!visibleTo || visibleTo.scope === "all") return undefined;
+  if (visibleTo.scope === "own") return eq(itemSubmission.submittedByUserId, visibleTo.userId);
+  return isNotNull(itemSubmission.submittedByUserId);
+}
+
 function sellerWhere(legalEntityId: string, f: Omit<ListSubmissionsFilter, "limit" | "offset">) {
   const parts = [eq(itemSubmission.legalEntityId, legalEntityId)];
+  const sender = senderSql(f.visibleTo);
+  if (sender) parts.push(sender);
   if (f.statuses && f.statuses.length > 0) {
     parts.push(inArray(itemSubmission.status, f.statuses));
   } else if (f.status) parts.push(eq(itemSubmission.status, f.status));
@@ -151,6 +163,7 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
           exhibitions: input.exhibitions ?? [],
           askingPrice: input.askingPrice ?? null,
           reservePrice: input.reservePrice ?? null,
+          submittedByUserId: input.submittedByUserId ?? null,
           submitterNotes: input.submitterNotes ?? null,
           status: "draft",
           createdAt: now,
@@ -210,6 +223,7 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
     }
     if (patch.convertedLotId !== undefined) rowPatch.convertedLotId = patch.convertedLotId;
     if (patch.assignedToUserId !== undefined) rowPatch.assignedToUserId = patch.assignedToUserId;
+    if (patch.submittedByUserId !== undefined) rowPatch.submittedByUserId = patch.submittedByUserId;
     if (patch.draftReminderSentAt !== undefined) {
       rowPatch.draftReminderSentAt = patch.draftReminderSentAt;
     }
@@ -260,11 +274,11 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
     return Number(row?.n ?? 0);
   }
 
-  async countStatusForLegalEntity(legalEntityId: string) {
+  async countStatusForLegalEntity(legalEntityId: string, visibleTo?: SubmissionSenderFilter) {
     const rows = await this.db
       .select({ status: itemSubmission.status, n: count() })
       .from(itemSubmission)
-      .where(eq(itemSubmission.legalEntityId, legalEntityId))
+      .where(and(eq(itemSubmission.legalEntityId, legalEntityId), senderSql(visibleTo)))
       .groupBy(itemSubmission.status);
     const out = {
       draft: 0,
