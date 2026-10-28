@@ -1,0 +1,91 @@
+import { cn } from "@auction/ui";
+import type { PageHeaderProps } from "@auction/ui/components/page-header";
+import type { ReactNode } from "react";
+
+export type WorkspacePageHeaderProps = Omit<PageHeaderProps, "title"> & {
+  title: ReactNode;
+  meta?: ReactNode;
+  /** `display` — larger welcome-style title on overview. */
+  titleScale?: "default" | "display";
+  /** Hide h1 below lg when shell breadcrumb shows the current page. */
+  hideTitleOnMobile?: boolean;
+  /** Hide description below lg to reduce vertical stack on list pages. */
+  hideDescriptionOnMobile?: boolean;
+  /** Hide meta eyebrow below lg when shell title already shows parent context. */
+  hideMetaOnMobile?: boolean;
+  listHeadingId?: string;
+};
+
+/** The workspace page header (organisation workspace and staff areas): single h1 per page. */
+export function WorkspacePageHeader({
+  meta,
+  title,
+  titleScale = "default",
+  hideTitleOnMobile = false,
+  hideDescriptionOnMobile = false,
+  hideMetaOnMobile = false,
+  listHeadingId,
+  className,
+  description,
+  breadcrumbs,
+  actions,
+}: WorkspacePageHeaderProps) {
+  const metaNode =
+    meta && typeof meta === "string" ? (
+      <span className="font-label text-[11px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+        {meta}
+      </span>
+    ) : (
+      meta
+    );
+
+  const titleClass =
+    titleScale === "display"
+      ? "font-headline text-3xl font-semibold tracking-tight text-on-surface lg:text-4xl"
+      : "font-headline text-xl font-semibold tracking-tight text-on-surface sm:text-2xl lg:text-[1.75rem]";
+
+  return (
+    <div
+      className={cn(
+        "mb-6 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between lg:gap-6",
+        "mb-0 border-0 pb-0",
+        className,
+      )}
+    >
+      <div className="w-full lg:flex-1 lg:pr-8">
+        {breadcrumbs ? (
+          <div className="mb-4 text-on-surface-variant [&_a]:text-primary [&_a]:underline-offset-4 hover:[&_a]:underline">
+            {breadcrumbs}
+          </div>
+        ) : null}
+        {metaNode ? (
+          <div
+            className={cn("mb-2 text-on-surface-variant", hideMetaOnMobile && "hidden lg:block")}
+          >
+            {metaNode}
+          </div>
+        ) : null}
+        {hideTitleOnMobile ? (
+          <h1 id={listHeadingId} className={cn(titleClass, "hidden lg:block")}>
+            {title}
+          </h1>
+        ) : (
+          <h1 id={listHeadingId} className={titleClass}>
+            {title}
+          </h1>
+        )}
+        {description ? (
+          <p
+            className={cn(
+              "mt-2 max-w-xl font-body text-sm leading-relaxed text-on-surface-variant",
+              hideDescriptionOnMobile && "hidden lg:block",
+            )}
+          >
+            {description}
+          </p>
+        ) : null}
+      </div>
+      {actions ? <div className="flex shrink-0 flex-wrap items-center gap-2">{actions}</div> : null}
+    </div>
+  );
+}

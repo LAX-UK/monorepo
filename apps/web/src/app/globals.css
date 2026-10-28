@@ -37,6 +37,8 @@
   --color-ink: var(--color-brand-obsidian);
   --color-paper: var(--color-brand-light-cream);
   --color-link: var(--color-brand-midnight);
+  /* Bid's product accent, the shared name every LAX product defines (Shop aubergine, Account teal). */
+  --color-product-accent: var(--color-brand-midnight);
 
   --color-accent-gold: #d4af37;
   /** Web accent: blue in light mode; the `.dark` root override maps brand accent to gold. */

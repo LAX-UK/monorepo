@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import type { ComponentProps, ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { HeaderAuthChip } from "./header-auth-chip";
@@ -55,10 +55,13 @@ vi.mock("next/link", () => ({
 }));
 
 vi.mock("@/lib/navigation/use-account-menu-context.client", () => ({
-  useAccountMenuContext: () => ({
-    hasConsigned: false,
-    isOrgMember: false,
-  }),
+  useAccountMenuContext: () => null,
+}));
+
+const { isLgMock } = vi.hoisted(() => ({ isLgMock: vi.fn(() => true) }));
+
+vi.mock("@/hooks/use-is-lg", () => ({
+  useIsLg: () => isLgMock(),
 }));
 
 vi.mock("./notification-bell", () => ({
@@ -91,19 +94,42 @@ describe("HeaderAuthChip", () => {
     expect(screen.queryByRole("link", { name: /log in/i })).not.toBeInTheDocument();
   });
 
-  it("renders the account menu from SSR fallback without waiting on client session", () => {
+  it("opens the grouped account menu on wide screens before the person's facts load", () => {
+    isLgMock.mockReturnValue(true);
     useAppSessionMock.mockReturnValue({ user: clientUser, pending: false });
 
     render(<HeaderAuthChip variant="account" />);
 
     fireEvent.click(screen.getByRole("button", { name: /account menu/i }));
 
-    expect(screen.getAllByText("Client User")).toHaveLength(2);
+    expect(screen.getByText("Client User")).toBeInTheDocument();
     expect(screen.getByText("client@example.com")).toBeInTheDocument();
-    expect(screen.getByText("Client")).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "My bids" })).toHaveAttribute("href", "/bids");
-    expect(screen.queryByRole("menuitem", { name: /home/i })).not.toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Sell with LAX" })).toBeInTheDocument();
-    expect(screen.getByRole("menuitem", { name: "Sign out" })).toBeInTheDocument();
+    const menu = screen.getByRole("menu", { name: "Account" });
+    expect(within(menu).getByRole("group", { name: "Buying" })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: "My bids" })).toHaveAttribute(
+      "href",
+      "/bids",
+    );
+    expect(within(menu).queryByRole("menuitem", { name: /home/i })).not.toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: "Sell with LAX" })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: "Sign out" })).toBeInTheDocument();
+    expect(within(menu).queryByRole("group", { name: "Your accounts" })).not.toBeInTheDocument();
+  });
+
+  it("opens an account-only sheet on phones", () => {
+    isLgMock.mockReturnValue(false);
+    useAppSessionMock.mockReturnValue({ user: clientUser, pending: false });
+
+    render(<HeaderAuthChip variant="account" />);
+
+    fireEvent.click(screen.getByRole("button", { name: /account menu/i }));
+
+    const sheet = screen.getByRole("dialog", { name: "Your account" });
+    expect(within(sheet).getByRole("link", { name: "Purchases" })).toHaveAttribute(
+      "href",
+      "/purchases",
+    );
+    expect(within(sheet).queryByRole("menu")).not.toBeInTheDocument();
+    expect(within(sheet).queryByText(/auctions/i)).not.toBeInTheDocument();
   });
 });

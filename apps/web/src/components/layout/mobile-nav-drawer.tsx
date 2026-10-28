@@ -56,7 +56,7 @@ export function MobileNavDrawer({
       topSlot={<HeaderSearchPaletteTrigger variant="drawer" onOpen={() => onOpenChange(false)} />}
       themeSlot={
         <>
-          <span className="font-label text-xs font-semibold uppercase text-brand-400 dark:text-on-surface-variant">
+          <span className="font-label text-xs font-semibold text-brand-400 dark:text-on-surface-variant">
             Theme
           </span>
           <ThemeToggle />

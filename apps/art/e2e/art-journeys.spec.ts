@@ -171,12 +171,8 @@ test.describe("lax.art journeys", () => {
   });
 
   test("payouts tab exists only when the payouts flag is on", async ({ page }) => {
-    if (artPayoutsEnabled) {
-      await expectSignInRedirect(page, "/account/payouts", "/account/payouts");
-    } else {
-      await page.goto("/account/payouts");
-      await expect(page.getByRole("heading", { level: 1, name: "Page not found" })).toBeVisible();
-    }
+    // Signed-out visitors are sent to sign-in before the page decides whether the tab exists.
+    await expectSignInRedirect(page, "/account/payouts", "/account/payouts");
 
     const credentials = artBuyerCredentials();
     test.skip(!credentials, "nav assertion needs ART_E2E_BUYER_EMAIL and ART_E2E_BUYER_PASSWORD");

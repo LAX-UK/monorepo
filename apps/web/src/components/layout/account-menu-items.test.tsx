@@ -1,6 +1,8 @@
 import type { SessionUser } from "@/lib/data/contracts";
 import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import type { AccountMenuContext } from "@/lib/navigation/account-menu-context";
+import { NO_ATTENTION } from "@/lib/navigation/client-attention";
+import { PERSONAL_NAV_SCOPE } from "@/lib/navigation/client-nav-model";
 import { render, screen } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -41,6 +43,9 @@ const withContext = (overrides: Partial<AccountMenuContext> = {}) =>
     hasConsigned: false,
     isOrgMember: false,
     pendingInvitations: 0,
+    scope: PERSONAL_NAV_SCOPE,
+    accounts: null,
+    attention: NO_ATTENTION,
     ...overrides,
   });
 
