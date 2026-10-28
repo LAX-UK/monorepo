@@ -1,7 +1,7 @@
 import { ChevronRight, CircleCheck } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
-import { formatCount } from "../primitives/tabs.js";
+import { formatCount } from "../lib/count.js";
 import type { StaffLinkComponent } from "../shell/link.js";
 import type { StaffStatusTone } from "../tokens.js";
 
