@@ -5,6 +5,10 @@ import {
   lotConnectRequired,
 } from "@/lib/admin/connect-readiness-shared";
 import { loadAdminLotDetail } from "@/lib/admin/load-lot-detail";
+import {
+  type NamedSellerWithoutPayouts,
+  nameSellersWithoutPayouts,
+} from "@/lib/admin/sale-setup/sellers-without-payouts";
 import { getAdminLegalEntityById } from "@/lib/data/http/admin.server";
 import { getServerStripeConnectClientConfig } from "@/lib/data/http/stripe-connect.server";
 import {
@@ -105,3 +109,17 @@ export const loadSaleConnectRequiredByLotId = cache(
     return buildConnectRequiredByLotId(bundle.lots);
   },
 );
+
+/**
+ * Sellers in a sale who cannot be paid yet, each once with their name: the sale's checklist names
+ * them, since the sale cannot go live until they set up payouts.
+ */
+export async function loadSaleSellersWithoutPayouts(
+  lots: readonly Lot[],
+  connectRequiredByLotId: ConnectRequiredByLotId,
+): Promise<NamedSellerWithoutPayouts[]> {
+  return nameSellersWithoutPayouts(lots, connectRequiredByLotId, async (id) => {
+    const entity = await getAdminLegalEntityById(id).catch(() => null);
+    return entity?.displayName ?? null;
+  });
+}

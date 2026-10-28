@@ -13,6 +13,7 @@ import type { Lot, Sale } from "@auction/types";
 import { isStartInFutureForPublish } from "@auction/validators";
 import { readinessLabel } from "./field-copy";
 import type { SaleSetupStepId } from "./sale-setup-step-ids";
+import { type NamedSellerWithoutPayouts, sellerPayoutsItem } from "./sellers-without-payouts";
 
 function pct(complete: number, total: number): number {
   if (total === 0) return 100;
@@ -37,6 +38,11 @@ export type BuildSaleSetupReadinessInput = {
   lots: Lot[];
   pendingRegistrationCount?: number | null;
   connectRequiredByLotId?: ConnectRequiredByLotId;
+  /**
+   * Sellers who cannot be paid yet, by name. When given, the checklist lists each of them once
+   * (the sale cannot go live until they set up payouts) instead of one line per lot.
+   */
+  sellersWithoutPayouts?: readonly NamedSellerWithoutPayouts[];
   /** When set, readiness links point to wizard step instead of detail tabs. */
   setupStepHref?: SetupStepHrefFn;
 };
@@ -103,6 +109,7 @@ export function buildSaleSetupReadiness(
     lots,
     pendingRegistrationCount = null,
     connectRequiredByLotId,
+    sellersWithoutPayouts,
     setupStepHref,
   } = input;
 
@@ -140,6 +147,8 @@ export function buildSaleSetupReadiness(
     for (const lotItem of lotReady.items) {
       if (lotItem.ok) continue;
       if (lotItem.id === "sale") continue;
+      // Named once per seller below, rather than once per lot.
+      if (lotItem.id === "seller" && connectRequired && sellersWithoutPayouts) continue;
       items.push({
         id: `lot:${lot.id}:${lotItem.id}`,
         label: lotItem.id === "seller" ? lotItem.label : readinessLabel(lotItem.id, { lotTitle }),
@@ -148,6 +157,10 @@ export function buildSaleSetupReadiness(
         href: setupStepHref?.("catalog-prep") ?? lotItem.href ?? `/admin/lots/${lot.id}`,
       });
     }
+  }
+
+  for (const seller of sellersWithoutPayouts ?? []) {
+    items.push(sellerPayoutsItem(seller));
   }
 
   const completeCount = items.filter((i) => i.ok).length;

@@ -1,11 +1,13 @@
 import type { IAuthedApiClient } from "../http/authed-api-client";
 import { type ServiceResult, serviceSuccess } from "../http/service-result";
 import type {
+  AcceptSubmissionBody,
   ApproveSubmissionBody,
   ApproveSubmissionResult,
   ConvertSubmissionResult,
   IAdminSubmissionService,
   RejectSubmissionBody,
+  RequestSubmissionChangesBody,
 } from "../interfaces/admin-submission-service";
 
 function readLotIdFromApprove(body: unknown): string | undefined {
@@ -27,13 +29,27 @@ export class AdminSubmissionService implements IAdminSubmissionService {
 
   async accept(
     id: string,
-    body: ApproveSubmissionBody,
+    body: AcceptSubmissionBody,
   ): Promise<ServiceResult<Record<string, unknown>>> {
     return this.api.json<Record<string, unknown>>(`/submissions/${encodeURIComponent(id)}/accept`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
+  }
+
+  async requestChanges(
+    id: string,
+    body: RequestSubmissionChangesBody,
+  ): Promise<ServiceResult<Record<string, unknown>>> {
+    return this.api.json<Record<string, unknown>>(
+      `/submissions/${encodeURIComponent(id)}/request-changes`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
   }
 
   async convert(

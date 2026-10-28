@@ -1,27 +1,41 @@
 "use client";
 
-import { StaffTextAreaField } from "@/components/admin/forms/staff-form-fields";
+import {
+  StaffMoneyField,
+  StaffPercentField,
+  StaffTextAreaField,
+} from "@/components/admin/forms/staff-form-fields";
+import {
+  type AcceptProposalFormValues,
+  EMPTY_ACCEPT_PROPOSAL,
+  acceptProposalFormSchema,
+} from "@/lib/admin/submissions/accept-proposal-form";
 import { STAFF_PARSE_PARAMS } from "@/lib/forms/staff-error-map";
 import { FormActions, Notice, Section, StaffButton } from "@auction/staff-ui";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { type RefObject, useEffect } from "react";
 import { type UseFormReturn, useForm } from "react-hook-form";
 import { SUBMISSION_APPROVE_FORM_ID } from "./form-ids";
-import { type ApproveFormValues, approveFormSchema } from "./use-submission-decision-actions";
 
 type Props = {
   pending: boolean;
   formRef: RefObject<HTMLFormElement | null>;
-  onSubmit: (values: ApproveFormValues, form: UseFormReturn<ApproveFormValues>) => void;
+  onSubmit: (
+    values: AcceptProposalFormValues,
+    form: UseFormReturn<AcceptProposalFormValues>,
+  ) => void;
   /** Reports whether anything is typed, so the page can ask before it is lost. */
   onDirtyChange: (dirty: boolean) => void;
 };
 
-/** Accepting a submission for cataloguing, with optional notes that stay with staff. */
+/**
+ * Accepting a submission, with the estimate and terms the seller is asked to agree to. The
+ * seller accepts them in the consignment agreement before the lot can be catalogued.
+ */
 export function SubmissionApproveForm({ pending, formRef, onSubmit, onDirtyChange }: Props) {
-  const form = useForm<ApproveFormValues>({
-    resolver: zodResolver(approveFormSchema, STAFF_PARSE_PARAMS),
-    defaultValues: { reviewNotes: "", artistId: null },
+  const form = useForm<AcceptProposalFormValues>({
+    resolver: zodResolver(acceptProposalFormSchema, STAFF_PARSE_PARAMS),
+    defaultValues: EMPTY_ACCEPT_PROPOSAL,
     mode: "onSubmit",
     reValidateMode: "onChange",
   });
@@ -31,17 +45,18 @@ export function SubmissionApproveForm({ pending, formRef, onSubmit, onDirtyChang
     return () => onDirtyChange(false);
   }, [dirty, onDirtyChange]);
   const failure = form.formState.errors.root?.server?.message;
+  const fieldProps = { control: form.control, formId: SUBMISSION_APPROVE_FORM_ID } as const;
 
   return (
     <Section
-      title="Accept for cataloguing"
-      description="The seller is told it was accepted. You create the draft lot next."
+      title="Accept and propose terms"
+      description="The seller is told it was accepted and asked to accept the consignment agreement with these terms. You create the draft lot once they accept."
     >
       <form
         id={SUBMISSION_APPROVE_FORM_ID}
         ref={formRef}
         noValidate
-        aria-label="Accept for cataloguing"
+        aria-label="Accept and propose terms"
         className="flex flex-col gap-4"
         onSubmit={form.handleSubmit((values) => onSubmit(values, form))}
       >
@@ -50,9 +65,38 @@ export function SubmissionApproveForm({ pending, formRef, onSubmit, onDirtyChang
             {failure}
           </Notice>
         ) : null}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <StaffMoneyField
+            {...fieldProps}
+            name="estimateLow"
+            label="Low estimate"
+            optional
+            disabled={pending}
+          />
+          <StaffMoneyField
+            {...fieldProps}
+            name="estimateHigh"
+            label="High estimate"
+            optional
+            disabled={pending}
+          />
+          <StaffMoneyField
+            {...fieldProps}
+            name="reservePrice"
+            label="Reserve"
+            optional
+            disabled={pending}
+          />
+          <StaffPercentField
+            {...fieldProps}
+            name="commissionRate"
+            label="Seller's commission"
+            optional
+            disabled={pending}
+          />
+        </div>
         <StaffTextAreaField
-          control={form.control}
-          formId={SUBMISSION_APPROVE_FORM_ID}
+          {...fieldProps}
           name="reviewNotes"
           label="Internal review notes"
           description="Only staff see these."
@@ -62,7 +106,7 @@ export function SubmissionApproveForm({ pending, formRef, onSubmit, onDirtyChang
         />
         <FormActions>
           <StaffButton type="submit" variant="primary" loading={pending}>
-            Accept for cataloguing
+            Accept and send terms
           </StaffButton>
         </FormActions>
       </form>

@@ -11,14 +11,16 @@ import {
   UnsavedChangesDialog,
   useUnsavedChanges,
 } from "@auction/staff-ui";
-import type { ItemSubmission, ItemSubmissionStatus } from "@auction/types";
+import type { ConsignmentAgreement, ItemSubmission, ItemSubmissionStatus } from "@auction/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
+import { SubmissionAgreementStatus } from "./submission-agreement-status";
 import { SubmissionApproveForm } from "./submission-approve-form";
 import { SubmissionConvertForm } from "./submission-convert-form";
 import { SubmissionQualityChecklist } from "./submission-quality-checklist";
 import { SubmissionRejectForm } from "./submission-reject-form";
+import { SubmissionRequestChangesForm } from "./submission-request-changes-form";
 import { useSubmissionDecisionActions } from "./use-submission-decision-actions";
 import { useSubmissionDecisionShortcuts } from "./use-submission-decision-shortcuts";
 
@@ -39,6 +41,8 @@ type Props = {
   submitterDisplayName?: string;
   /** The account behind the seller. When present, an artist created here is linked to it. */
   submitterUserId?: string;
+  /** The seller's consignment agreement; cataloguing waits for its acceptance. */
+  agreement?: ConsignmentAgreement | null;
 };
 
 /**
@@ -52,19 +56,21 @@ export function AdminSubmissionDecisionPanel({
   submission,
   submitterDisplayName,
   submitterUserId,
+  agreement = null,
 }: Props) {
   const router = useRouter();
   const view = resolveSubmissionDecisionView(status);
   const approveFormEl = useRef<HTMLFormElement | null>(null);
   const panelRootRef = useRef<HTMLDivElement | null>(null);
-  const [dirty, setDirty] = useState({ approve: false, reject: false });
+  const [dirty, setDirty] = useState({ approve: false, reject: false, changes: false });
 
-  const { pending, startReview, accept, reject, convert, dialog } = useSubmissionDecisionActions({
-    submissionId,
-    title: submission.title,
-  });
+  const { pending, startReview, accept, requestChanges, reject, convert, dialog } =
+    useSubmissionDecisionActions({
+      submissionId,
+      title: submission.title,
+    });
 
-  const guard = useUnsavedChanges(dirty.approve || dirty.reject, {
+  const guard = useUnsavedChanges(dirty.approve || dirty.reject || dirty.changes, {
     label: submission.title,
     navigate: (href) => router.push(href),
   });
@@ -76,6 +82,11 @@ export function AdminSubmissionDecisionPanel({
     (next: boolean) => setDirty((c) => ({ ...c, reject: next })),
     [],
   );
+  const onChangesDirty = useCallback(
+    (next: boolean) => setDirty((c) => ({ ...c, changes: next })),
+    [],
+  );
+  const agreementAccepted = Boolean(agreement?.acceptedAt);
 
   useSubmissionDecisionShortcuts({
     active: view.shortcutsActive,
@@ -105,6 +116,11 @@ export function AdminSubmissionDecisionPanel({
               onSubmit={accept}
               onDirtyChange={onApproveDirty}
             />
+            <SubmissionRequestChangesForm
+              pending={pending}
+              onSubmit={requestChanges}
+              onDirtyChange={onChangesDirty}
+            />
             <SubmissionRejectForm
               pending={pending}
               onSubmit={reject}
@@ -114,14 +130,26 @@ export function AdminSubmissionDecisionPanel({
         );
       case "convert":
         return (
-          <SubmissionConvertForm
-            pending={pending}
-            formRef={approveFormEl}
-            submitterDisplayName={submitterDisplayName}
-            submitterUserId={submitterUserId}
-            onSubmit={convert}
-            onDirtyChange={onApproveDirty}
-          />
+          <>
+            <SubmissionAgreementStatus agreement={agreement} />
+            {agreementAccepted ? (
+              <SubmissionConvertForm
+                pending={pending}
+                formRef={approveFormEl}
+                submitterDisplayName={submitterDisplayName}
+                submitterUserId={submitterUserId}
+                onSubmit={convert}
+                onDirtyChange={onApproveDirty}
+              />
+            ) : null}
+          </>
+        );
+      case "awaiting-changes":
+        return (
+          <Notice tone="info" title="Waiting for the seller's changes">
+            The seller was asked for changes. The submission comes back to the review queue when
+            they send it again.
+          </Notice>
         );
       case "converted":
         return submission.convertedLotId ? (

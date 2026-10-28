@@ -1,7 +1,10 @@
 import { isSaleLiveish } from "@/components/admin/sale-detail/sale-detail-helpers";
 import { SaleDetailShell } from "@/components/admin/sale-detail/sale-detail-shell";
 import { computeSaleDetailReadiness } from "@/lib/admin/compute-sale-detail-readiness";
-import { loadSaleConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
+import {
+  loadSaleConnectRequiredByLotId,
+  loadSaleSellersWithoutPayouts,
+} from "@/lib/admin/connect-readiness";
 import { countSaleOverviewAttentionRows } from "@/lib/admin/detail-board/merge-sale-overview-attention";
 import {
   loadAdminSaleDetail,
@@ -54,6 +57,10 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
     getAdminSaleAttention(id).catch(() => null),
     canManageSales ? getAtgSaleSellingPlatform(bundle.sale) : Promise.resolve(null),
   ]);
+  const sellersWithoutPayouts =
+    bundle.sale.status === "draft"
+      ? await loadSaleSellersWithoutPayouts(bundle.lots, connectRequiredByLotId)
+      : [];
   const liveish = isSaleLiveish(bundle.sale);
   const pendingRegs =
     liveish && pendingRegistrationCount != null && pendingRegistrationCount > 0
@@ -65,6 +72,7 @@ export default async function AdminSaleDetailLayout({ params, children }: Props)
     lots: bundle.lots,
     pendingRegistrationCount: pendingRegs,
     connectRequiredByLotId,
+    sellersWithoutPayouts,
   });
 
   const deleteBlockers =

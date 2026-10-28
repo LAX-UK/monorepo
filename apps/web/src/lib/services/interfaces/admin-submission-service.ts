@@ -1,9 +1,16 @@
-import type { approveSubmissionBodySchema, rejectSubmissionBodySchema } from "@auction/validators";
+import type {
+  acceptSubmissionBodySchema,
+  approveSubmissionBodySchema,
+  rejectSubmissionBodySchema,
+  requestSubmissionChangesBodySchema,
+} from "@auction/validators";
 import type { z } from "zod";
 import type { ServiceResult } from "../http/service-result";
 
 export type ApproveSubmissionBody = z.infer<typeof approveSubmissionBodySchema>;
 export type RejectSubmissionBody = z.infer<typeof rejectSubmissionBodySchema>;
+export type AcceptSubmissionBody = z.infer<typeof acceptSubmissionBodySchema>;
+export type RequestSubmissionChangesBody = z.infer<typeof requestSubmissionChangesBodySchema>;
 
 export type ApproveSubmissionResult = { lotId: string | undefined };
 
@@ -13,7 +20,11 @@ export type ConvertSubmissionResult = ApproveSubmissionResult & {
 
 export interface IAdminSubmissionService {
   startReview(id: string): Promise<ServiceResult<Record<string, unknown>>>;
-  accept(id: string, body: ApproveSubmissionBody): Promise<ServiceResult<Record<string, unknown>>>;
+  accept(id: string, body: AcceptSubmissionBody): Promise<ServiceResult<Record<string, unknown>>>;
+  requestChanges(
+    id: string,
+    body: RequestSubmissionChangesBody,
+  ): Promise<ServiceResult<Record<string, unknown>>>;
   convert(id: string, body: ApproveSubmissionBody): Promise<ServiceResult<ConvertSubmissionResult>>;
   approve(id: string, body: ApproveSubmissionBody): Promise<ServiceResult<ApproveSubmissionResult>>;
   reject(id: string, body: RejectSubmissionBody): Promise<ServiceResult<Record<string, unknown>>>;

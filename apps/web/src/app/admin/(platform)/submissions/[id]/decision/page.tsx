@@ -3,6 +3,7 @@ import { StaffActionError } from "@/components/admin/staff/staff-action-error";
 import { SubmissionDecisionTab } from "@/components/admin/submission-detail/tabs/decision-tab";
 import { loadAdminSubmissionDecisionPage } from "@/lib/admin/submissions/load-submission-decision-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
+import { getAdminConsignmentAgreement } from "@/lib/data/http/consignment-agreements.server";
 import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notFound } from "next/navigation";
 
@@ -19,6 +20,11 @@ export default async function AdminSubmissionDecisionPage({ params, searchParams
   if (!loaded) notFound();
 
   const { submission, submitterDisplayName, submitterUserId } = loaded;
+  // Cataloguing waits for the seller to accept the agreement proposed with the acceptance.
+  const agreement =
+    submission.status === "approved"
+      ? await getAdminConsignmentAgreement(submission.id).catch(() => null)
+      : null;
 
   const decision = (
     <AdminSubmissionDecisionPanel
@@ -35,6 +41,7 @@ export default async function AdminSubmissionDecisionPage({ params, searchParams
       }}
       {...(submitterDisplayName ? { submitterDisplayName } : {})}
       {...(submitterUserId ? { submitterUserId } : {})}
+      agreement={agreement}
     />
   );
 

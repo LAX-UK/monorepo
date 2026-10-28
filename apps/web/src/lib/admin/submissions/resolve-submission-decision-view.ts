@@ -5,6 +5,7 @@ export type SubmissionDecisionViewMode =
   | "review"
   | "convert"
   | "converted"
+  | "awaiting-changes"
   | "terminal"
   | "idle";
 
@@ -51,6 +52,14 @@ export function resolveSubmissionDecisionView(
         shortcutsActive,
         shortcutSubmitAction,
         shortcutVerb,
+      };
+    case "changes_requested":
+      return {
+        mode: "awaiting-changes",
+        showChecklist: false,
+        shortcutsActive: false,
+        shortcutSubmitAction: null,
+        shortcutVerb: "accept",
       };
     case "converted":
       return {

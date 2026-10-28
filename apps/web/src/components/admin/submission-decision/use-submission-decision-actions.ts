@@ -5,12 +5,21 @@ import {
   adminAcceptSubmissionResultAction,
   adminConvertSubmissionResultAction,
   adminRejectSubmissionResultAction,
+  adminRequestSubmissionChangesResultAction,
   adminStartSubmissionReviewResultAction,
 } from "@/lib/actions/admin-submissions";
+import {
+  type AcceptProposalFormValues,
+  acceptProposalBody,
+} from "@/lib/admin/submissions/accept-proposal-form";
 import { trackStaffAccept, trackStaffConvert } from "@/lib/analytics/sell-funnel";
 import { applyActionFieldErrors } from "@/lib/forms/apply-action-field-errors";
 import { notify } from "@/lib/ui/notify";
-import { type ApproveSubmissionBody, rejectSubmissionBodySchema } from "@auction/validators";
+import {
+  type ApproveSubmissionBody,
+  type RequestSubmissionChangesBody,
+  rejectSubmissionBodySchema,
+} from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { useCallback, useTransition } from "react";
 import type { FieldValues, UseFormReturn } from "react-hook-form";
@@ -73,17 +82,35 @@ export function useSubmissionDecisionActions({
   }, [router, submissionId]);
 
   const accept = useCallback(
-    (values: ApproveFormValues, form: UseFormReturn<ApproveFormValues>) => {
+    (values: AcceptProposalFormValues, form: UseFormReturn<AcceptProposalFormValues>) => {
       form.clearErrors("root.server");
       startTransition(() => {
         void (async () => {
-          const body: ApproveSubmissionBody = {};
-          const trimmed = values.reviewNotes.trim();
-          if (trimmed) body.reviewNotes = trimmed;
-          const r = await adminAcceptSubmissionResultAction(submissionId, body);
+          const r = await adminAcceptSubmissionResultAction(
+            submissionId,
+            acceptProposalBody(values),
+          );
           if (r.ok) {
             trackStaffAccept(submissionId);
-            notify.success("Accepted for cataloguing");
+            notify.success("Accepted. The seller has been asked to accept the terms.");
+            router.refresh();
+            return;
+          }
+          showFailure(form, r);
+        })();
+      });
+    },
+    [router, submissionId],
+  );
+
+  const requestChanges = useCallback(
+    (values: RequestSubmissionChangesBody, form: UseFormReturn<RequestSubmissionChangesBody>) => {
+      form.clearErrors("root.server");
+      startTransition(() => {
+        void (async () => {
+          const r = await adminRequestSubmissionChangesResultAction(submissionId, values);
+          if (r.ok) {
+            notify.success("The seller has been asked for changes.");
             router.refresh();
             return;
           }
@@ -143,6 +170,7 @@ export function useSubmissionDecisionActions({
     pending,
     startReview,
     accept,
+    requestChanges,
     reject,
     convert,
     dialog: confirm.dialog,
