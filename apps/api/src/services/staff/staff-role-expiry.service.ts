@@ -5,7 +5,11 @@ import type {
   StaffRosterEvent,
 } from "@auction/persistence/interfaces";
 import type { UserStaffRole } from "@auction/types";
-import type { IPlatformStaffRolesCronApplicationService } from "../interfaces/platform-cron-routes/platform-staff-roles-cron.js";
+import type {
+  IPlatformStaffRolesCronApplicationService,
+  StaffRoleExpiryResult,
+} from "../interfaces/platform-cron-routes/platform-staff-roles-cron.js";
+
 import { profileRolesFor, staffAccessHistoryEvent } from "./staff-profile-roles.js";
 
 /** One staff role whose end date passed and whose end was recorded by this run. */
@@ -20,8 +24,6 @@ export type EndedStaffRole = {
 export interface IStaffRoleExpiryNotifier {
   notifyEnded(ended: readonly EndedStaffRole[], now: Date): Promise<void>;
 }
-
-export type StaffRoleExpiryResult = { readonly expired: number; readonly people: number };
 
 const DEFAULT_BATCH_SIZE = 200;
 
