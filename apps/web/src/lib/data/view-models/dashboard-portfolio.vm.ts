@@ -5,6 +5,39 @@ import { portfolioComplianceReason } from "@/lib/portfolio-settlement";
 import type { ManualReviewReason, PortfolioRow } from "@auction/types";
 import { lotTotalMajorUnits } from "./lot-pricing-helpers";
 
+export function filterPortfolioRowsByTitle(rows: PortfolioRow[], qLower: string): PortfolioRow[] {
+  if (qLower.length === 0) return rows;
+  return rows.filter((row) => row.lot.title.toLowerCase().includes(qLower));
+}
+
+export type PortfolioPaymentFilter = "all" | "due" | "paid" | "authorized" | "refunded";
+
+/** Apply payment-state and year filters in addition to title search. */
+export function filterPortfolioRows(
+  rows: PortfolioRow[],
+  filters: {
+    qLower: string;
+    payment: PortfolioPaymentFilter;
+    year: number | null;
+  },
+): PortfolioRow[] {
+  const titled = filterPortfolioRowsByTitle(rows, filters.qLower);
+  return titled.filter((row) => {
+    if (filters.year != null && row.lot.endTime.getUTCFullYear() !== filters.year) {
+      return false;
+    }
+    if (filters.payment === "all") return true;
+    const status = row.payment?.status ?? null;
+    if (filters.payment === "due") {
+      return status !== "captured" && status !== "refunded";
+    }
+    if (filters.payment === "paid") return status === "captured";
+    if (filters.payment === "authorized") return status === "authorized";
+    if (filters.payment === "refunded") return status === "refunded";
+    return true;
+  });
+}
+
 export type PortfolioAnalyticsVm = {
   totalRows: number;
   totalSpentFormatted: string;

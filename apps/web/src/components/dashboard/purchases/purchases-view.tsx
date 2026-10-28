@@ -3,7 +3,9 @@ import { AccountLoadError } from "@/components/dashboard/primitives/account-load
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { PayNowBanner } from "@/components/dashboard/purchases/pay-now-banner";
 import { PurchaseCard } from "@/components/dashboard/purchases/purchase-card";
+import { PurchasesFilters } from "@/components/dashboard/purchases/purchases-filters";
 import { ACCOUNT_LOAD_ERROR, DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
+import type { PortfolioFilters } from "@/lib/dashboard/filters/portfolio/portfolio-filters";
 import { laxAccountUrl } from "@/lib/lax-account-url";
 import { calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
@@ -71,9 +73,21 @@ function PortfolioNote() {
  * The body of Purchases: "Pay now" while anything is due, the views (To pay, In progress,
  * Completed) and a card per won lot. `vm` is `null` when the won lots could not be read.
  */
-export function PurchasesView({ vm }: { vm: PurchasesVm | null }) {
+export function PurchasesView({
+  vm,
+  filters,
+}: {
+  vm: PurchasesVm | null;
+  filters: PortfolioFilters;
+}) {
   if (!vm) return <AccountLoadError {...ACCOUNT_LOAD_ERROR.purchases} />;
-  const empty = EMPTY_VIEW[vm.tab];
+  const filtered = vm.shown < vm.total;
+  const empty = filtered
+    ? {
+        title: "No purchases match these filters",
+        description: "Clear a filter or choose another view to see more.",
+      }
+    : EMPTY_VIEW[vm.tab];
   return (
     <div className="flex flex-col gap-6">
       <PortfolioNoticeToast />
@@ -87,6 +101,12 @@ export function PurchasesView({ vm }: { vm: PurchasesVm | null }) {
             currentId={vm.tab}
             tabs={vm.tabs.map((tab) => ({ ...tab, href: tabHref(tab.id) }))}
           />
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <PurchasesFilters filters={filters} years={vm.years} />
+            <p className="pt-2.5 font-body text-sm text-on-surface-variant">
+              {vm.total === 1 ? "1 purchase" : `${vm.total} purchases`} · {vm.spent} in total
+            </p>
+          </div>
           {vm.cards.length === 0 ? (
             <DashboardEmptyState
               illustration="parcel"

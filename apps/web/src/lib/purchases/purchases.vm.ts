@@ -2,8 +2,13 @@ import {
   dashboardCheckoutLotUrl,
   dashboardSofRequirementsUrl,
 } from "@/lib/dashboard/dashboard-copy";
+import type { PortfolioFilters } from "@/lib/dashboard/filters/portfolio/portfolio-filters";
 import type { ComplianceGateStatus, LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
-import { buildPayNow } from "@/lib/data/view-models/dashboard-portfolio.vm";
+import {
+  buildPayNow,
+  buildPortfolioAnalytics,
+  filterPortfolioRows,
+} from "@/lib/data/view-models/dashboard-portfolio.vm";
 import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { portfolioComplianceReason } from "@/lib/portfolio-settlement";
 import { lotPath } from "@/lib/seo/url";
@@ -90,7 +95,14 @@ export type PurchasesVm = {
   tabs: { id: PurchaseTab; label: string; count: number }[];
   cards: PurchaseCardVm[];
   payNow: PayNowBannerVm | null;
+  /** Every won lot, before filters. */
   total: number;
+  /** Won lots the filters leave in view, across every view. */
+  shown: number;
+  /** What every purchase came to, before filters: not shown anywhere else on the page. */
+  spent: string;
+  /** Years with a purchase, newest first, for the year filter. */
+  years: number[];
 };
 
 export type PurchaseSources = {
@@ -297,19 +309,32 @@ function payNowBanner(
 export function buildPurchasesVm(
   sources: PurchaseSources,
   requestedTab: PurchaseTab | null,
+  filters: Pick<PortfolioFilters, "q" | "payment" | "year"> | null = null,
 ): PurchasesVm {
-  const cards = [...sources.rows]
+  const visible = filters
+    ? filterPortfolioRows([...sources.rows], {
+        qLower: filters.q.trim().toLowerCase(),
+        payment: filters.payment,
+        year: filters.year,
+      })
+    : sources.rows;
+  const cards = [...visible]
     .sort((a, b) => b.lot.endTime.getTime() - a.lot.endTime.getTime())
     .map((row) => toCard(row, sources));
   const counts = Object.fromEntries(
     PURCHASE_TABS.map((tab) => [tab, cards.filter((card) => card.tab === tab).length]),
   ) as Record<PurchaseTab, number>;
   const tab = requestedTab ?? defaultPurchaseTab(counts);
+  const analytics = buildPortfolioAnalytics(sources.rows);
   return {
     tab,
     tabs: PURCHASE_TABS.map((id) => ({ id, label: PURCHASE_TAB_LABEL[id], count: counts[id] })),
     cards: cards.filter((card) => card.tab === tab).map(({ tab: _tab, ...card }) => card),
+    // The banner is about money owed, so filters never hide it.
     payNow: payNowBanner(sources.rows, sources.complianceGate),
-    total: cards.length,
+    total: sources.rows.length,
+    shown: visible.length,
+    spent: analytics.totalSpentFormatted,
+    years: analytics.years,
   };
 }

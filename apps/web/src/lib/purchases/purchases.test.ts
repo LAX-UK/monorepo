@@ -200,4 +200,19 @@ describe("buildPurchasesVm", () => {
       primaryAction: { label: "Provide documents" },
     });
   });
+
+  it("narrows the views with the filters but keeps the banner and the total", () => {
+    const vm = buildPurchasesVm(sources(), null, { q: "work 7", payment: "all", year: null });
+    expect(vm.tabs.map((tab) => tab.count)).toEqual([0, 0, 1]);
+    expect(vm.tab).toBe("completed");
+    expect(vm).toMatchObject({ total: 3, shown: 1, spent: "£24,000.00" });
+    expect(vm.payNow?.href).toBe("/purchases/checkout/lot-5");
+    expect(vm.years).toEqual([2026]);
+  });
+
+  it("filters by payment state", () => {
+    const vm = buildPurchasesVm(sources(), null, { q: "", payment: "paid", year: null });
+    expect(vm.shown).toBe(2);
+    expect(vm.tabs[0]?.count).toBe(0);
+  });
 });

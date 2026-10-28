@@ -1,7 +1,12 @@
 import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { Lot, PortfolioRow } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { buildPayNow, buildPortfolioAnalytics } from "./dashboard-portfolio.vm";
+import {
+  buildPayNow,
+  buildPortfolioAnalytics,
+  filterPortfolioRows,
+  filterPortfolioRowsByTitle,
+} from "./dashboard-portfolio.vm";
 
 const checkout = (
   hammerMajor: string,
@@ -44,6 +49,40 @@ function makeRow(partial: {
   } as unknown as Lot;
   return { lot, payment: partial.payment ?? null };
 }
+
+describe("filterPortfolioRowsByTitle", () => {
+  it("filters by title substring", () => {
+    const rows = [makeRow({ title: "Alpha" }), makeRow({ id: "2", title: "Beta" })];
+    expect(filterPortfolioRowsByTitle(rows, "alp")).toHaveLength(1);
+    expect(filterPortfolioRowsByTitle(rows, "alp")[0]?.lot.title).toBe("Alpha");
+  });
+});
+
+describe("filterPortfolioRows", () => {
+  it("filters by payment state and year", () => {
+    const rows = [
+      makeRow({
+        id: "a",
+        title: "One",
+        endYear: 2022,
+        payment: { id: "p1", status: "captured", manualReviewReason: null },
+      }),
+      makeRow({
+        id: "b",
+        title: "Two",
+        endYear: 2023,
+        payment: { id: "p2", status: "pending", manualReviewReason: null },
+      }),
+    ];
+    const due = filterPortfolioRows(rows, { qLower: "", payment: "due", year: null });
+    expect(due).toHaveLength(1);
+    expect(due[0]?.lot.id).toBe("b");
+
+    const y2023 = filterPortfolioRows(rows, { qLower: "", payment: "all", year: 2023 });
+    expect(y2023).toHaveLength(1);
+    expect(y2023[0]?.lot.id).toBe("b");
+  });
+});
 
 describe("buildPortfolioAnalytics", () => {
   it("sums totals from checkoutPricing", () => {
