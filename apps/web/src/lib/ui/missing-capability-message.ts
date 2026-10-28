@@ -5,12 +5,11 @@ export function missingCapabilityNotifyMessage(
 ): string {
   if (!meta || meta.code !== "missing_capability") return fallback;
   const required = Array.isArray(meta.required) ? meta.required.join(", ") : "catalogue access";
-  const actor = meta.actor as { role?: string; staffRole?: string | null } | undefined;
-  const staffRole =
-    actor && typeof actor.staffRole === "string"
-      ? actor.staffRole
-      : actor?.staffRole === null
-        ? "none"
-        : "unknown";
-  return `${fallback} (required: ${required}; your staff role: ${staffRole}). Try signing out and back in.`;
+  const actor = meta.actor as { role?: string; staffRoles?: unknown } | undefined;
+  const held = Array.isArray(actor?.staffRoles)
+    ? actor.staffRoles.filter((r): r is string => typeof r === "string")
+    : null;
+  const staffRoles = held === null ? "unknown" : held.length === 0 ? "none" : held.join(", ");
+  const noun = held && held.length > 1 ? "staff roles" : "staff role";
+  return `${fallback} (required: ${required}; your ${noun}: ${staffRoles}). Try signing out and back in.`;
 }

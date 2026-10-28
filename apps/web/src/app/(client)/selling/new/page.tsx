@@ -36,7 +36,7 @@ export default async function NewSubmissionPage({
     shell: "client",
     loginNext,
   });
-  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
+  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   // Who may sell as which account comes from each account's capabilities; a finance member of a
   // gallery can still sell under their own name.
   const choice = sellerAccountChoice({

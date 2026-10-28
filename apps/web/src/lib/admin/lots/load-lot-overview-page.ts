@@ -60,7 +60,7 @@ export async function loadAdminLotOverviewPage(
     getServerSessionUser().catch(() => null),
   ]);
   const canSeeAtg =
-    user != null && userHasAccessTo(user.role as UserRole, user.staffRole ?? null, SALES_ACCESS);
+    user != null && userHasAccessTo(user.role as UserRole, user.staffRoles, SALES_ACCESS);
   const atgLot = canSeeAtg ? await getAtgLotSyncView(bundle.auction.saleId, lotId) : null;
 
   return {

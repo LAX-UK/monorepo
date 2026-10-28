@@ -23,7 +23,7 @@ export default async function AdminClientsPage({
 }) {
   const user = await requireAdminCapability(USERS_DIRECTORY_ACCESS, "/admin/clients");
   const role = user.role as UserRole;
-  const staffRole = user.staffRole ?? null;
+  const staffRoles = user.staffRoles;
   const sp = await searchParams;
   const { model, rows, summary, total, loadError, pagination } = await loadAdminClientsListPage(sp);
 
@@ -50,8 +50,8 @@ export default async function AdminClientsPage({
             }
           : null
       }
-      canModerate={userHasAccessTo(role, staffRole, USER_MODERATION_ACCESS)}
-      canManageRoles={userHasAccessTo(role, staffRole, USER_ROLE_MANAGEMENT_ACCESS)}
+      canModerate={userHasAccessTo(role, staffRoles, USER_MODERATION_ACCESS)}
+      canManageRoles={userHasAccessTo(role, staffRoles, USER_ROLE_MANAGEMENT_ACCESS)}
       exportFilters={model.exportFilters}
       loadError={loadError}
       filtered={model.hasFilters}

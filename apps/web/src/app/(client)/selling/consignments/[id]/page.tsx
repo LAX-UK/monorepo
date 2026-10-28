@@ -71,7 +71,7 @@ export default async function SubmissionDetailPage({
     shell: "client",
     loginNext: `/selling/consignments/${id}`,
   });
-  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
+  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   const { sellerEntityId } = sellerCtx;
   const c = await getServerDataContainer();
 

@@ -65,7 +65,7 @@ export async function loadAdminLotEditPage(lotId: string): Promise<LotEditPageMo
   if (auction.saleId && isDraft) {
     const user = await getServerSessionUser().catch(() => null);
     const canSeeAtg =
-      user != null && userHasAccessTo(user.role as UserRole, user.staffRole ?? null, SALES_ACCESS);
+      user != null && userHasAccessTo(user.role as UserRole, user.staffRoles, SALES_ACCESS);
     if (
       canSeeAtg &&
       (await getAtgSaleSellingPlatform({ id: auction.saleId, status: "draft" })) === "atg"

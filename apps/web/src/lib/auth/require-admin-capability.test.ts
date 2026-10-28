@@ -57,7 +57,7 @@ describe("requireAdminCapability", () => {
   });
 
   it("explains the refusal instead of bouncing to another page", async () => {
-    getServerSessionUser.mockResolvedValue({ role: "staff", staffRole: "staff_viewer" });
+    getServerSessionUser.mockResolvedValue({ role: "staff", staffRoles: ["staff_viewer"] });
     resolveAdminReturnPath.mockResolvedValueOnce("/admin/lots?status=draft");
     await expect(requireAdminCapability(LOTS_ACCESS, "/admin/lots")).rejects.toThrow(
       `REDIRECT:/admin/no-access?from=${encodeURIComponent("/admin/lots?status=draft")}`,
@@ -65,7 +65,7 @@ describe("requireAdminCapability", () => {
   });
 
   it("keeps finance out of platform sections it holds a capability for", async () => {
-    getServerSessionUser.mockResolvedValue({ role: "staff", staffRole: "finance_ops" });
+    getServerSessionUser.mockResolvedValue({ role: "staff", staffRoles: ["finance_ops"] });
     resolveAdminReturnPath.mockResolvedValueOnce("/admin/legal-entities");
     await expect(
       requireAdminCapability("legal_entity.read", "/admin/legal-entities"),
@@ -75,16 +75,16 @@ describe("requireAdminCapability", () => {
   it("allows catalogue_manager for lots", async () => {
     getServerSessionUser.mockResolvedValue({
       role: "staff",
-      staffRole: "catalogue_manager",
+      staffRoles: ["catalogue_manager"],
     });
     const user = await requireAdminCapability(LOTS_ACCESS, "/admin/lots");
-    expect(user.staffRole).toBe("catalogue_manager");
+    expect(user.staffRoles).toEqual(["catalogue_manager"]);
   });
 
   it("redirects staff_viewer away from lots", async () => {
     getServerSessionUser.mockResolvedValue({
       role: "staff",
-      staffRole: "staff_viewer",
+      staffRoles: ["staff_viewer"],
     });
     await expect(requireAdminCapability(LOTS_ACCESS, "/admin/lots")).rejects.toThrow("REDIRECT:");
   });
@@ -92,7 +92,7 @@ describe("requireAdminCapability", () => {
   it("redirects staff_viewer away from clients directory", async () => {
     getServerSessionUser.mockResolvedValue({
       role: "staff",
-      staffRole: "staff_viewer",
+      staffRoles: ["staff_viewer"],
     });
     await expect(requireAdminCapability(USERS_DIRECTORY_ACCESS, "/admin/clients")).rejects.toThrow(
       "REDIRECT:",
@@ -102,18 +102,40 @@ describe("requireAdminCapability", () => {
   it("allows client_advisor for clients directory", async () => {
     getServerSessionUser.mockResolvedValue({
       role: "staff",
-      staffRole: "client_advisor",
+      staffRoles: ["client_advisor"],
     });
     const user = await requireAdminCapability(USERS_DIRECTORY_ACCESS, "/admin/clients");
-    expect(user.staffRole).toBe("client_advisor");
+    expect(user.staffRoles).toEqual(["client_advisor"]);
   });
 
   it("allows client_advisor for client bids access", async () => {
     getServerSessionUser.mockResolvedValue({
       role: "staff",
-      staffRole: "client_advisor",
+      staffRoles: ["client_advisor"],
     });
     const user = await requireAdminCapability(CLIENT_BIDS_ACCESS, "/admin/clients");
-    expect(user.staffRole).toBe("client_advisor");
+    expect(user.staffRoles).toEqual(["client_advisor"]);
+  });
+
+  it("lets a person with two roles open what either role opens", async () => {
+    getServerSessionUser.mockResolvedValue({
+      role: "staff",
+      staffRole: "specialist",
+      staffRoles: ["specialist", "client_advisor"],
+    });
+    await expect(
+      requireAdminCapability(CLIENT_BIDS_ACCESS, "/admin/clients"),
+    ).resolves.toBeTruthy();
+  });
+
+  it("ignores the single display role when the session has no roles in force", async () => {
+    getServerSessionUser.mockResolvedValue({
+      role: "staff",
+      staffRole: "super_admin",
+      staffRoles: [],
+    });
+    await expect(requireAdminCapability(CLIENT_BIDS_ACCESS, "/admin/clients")).rejects.toThrow(
+      /REDIRECT/,
+    );
   });
 });

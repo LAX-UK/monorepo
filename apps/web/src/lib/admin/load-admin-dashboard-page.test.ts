@@ -69,13 +69,13 @@ describe("loadAdminDashboardPage", () => {
     const result = await loadAdminDashboardPage({
       periodDays: 30,
       role: "staff",
-      staffRole: "super_admin",
+      staffRoles: ["super_admin"],
       actorUserId: "user-1",
       widgets: mergeDashboardWidgets(
         DEFAULT_DASHBOARD_WIDGETS.map((w) =>
           w.id === "greeting" ? { ...w, hidden: false } : { ...w, hidden: true },
         ),
-        "super_admin",
+        ["super_admin"],
       ),
       dataSources: {
         getMetricsToday,
@@ -103,7 +103,7 @@ describe("loadAdminDashboardPage", () => {
     await loadAdminDashboardPage({
       periodDays: 7,
       role: "staff",
-      staffRole: "auction_manager",
+      staffRoles: ["auction_manager"],
       actorUserId: "user-1",
       widgets: [
         { id: "onsite-radar", order: 0, hidden: false },
@@ -131,7 +131,7 @@ describe("loadAdminDashboardPage", () => {
     await loadAdminDashboardPage({
       periodDays: 7,
       role: "staff",
-      staffRole: "catalogue_manager",
+      staffRoles: ["catalogue_manager"],
       actorUserId: "user-1",
       widgets: [],
       dataSources: {
@@ -160,7 +160,7 @@ describe("loadAdminDashboardPage", () => {
     await loadAdminDashboardPage({
       periodDays: 7,
       role: "staff",
-      staffRole: "finance_ops",
+      staffRoles: ["finance_ops"],
       actorUserId: "user-1",
       widgets: [],
       dataSources: {
@@ -193,7 +193,7 @@ describe("loadAdminDashboardPage", () => {
     const result = await loadAdminDashboardPage({
       periodDays: 7,
       role: "staff",
-      staffRole: null,
+      staffRoles: [],
       actorUserId: "user-1",
       widgets: [],
       dataSources: {
@@ -219,7 +219,7 @@ describe("loadAdminDashboardPage", () => {
     const result = await loadAdminDashboardPage({
       periodDays: 7,
       role: "staff",
-      staffRole: "super_admin",
+      staffRoles: ["super_admin"],
       actorUserId: "user-1",
       widgets: [{ id: "kpi-band", order: 0, hidden: false }],
       dataSources: {
@@ -247,7 +247,7 @@ describe("loadAdminDashboardPage", () => {
     const result = await loadAdminDashboardPage({
       periodDays: 7,
       role: "staff",
-      staffRole: "auction_manager",
+      staffRoles: ["auction_manager"],
       actorUserId: "user-1",
       widgets: [
         { id: "my-queue", order: 0, hidden: false },
@@ -319,7 +319,7 @@ describe("loadAdminDashboardPage", () => {
     const result = await loadAdminDashboardPage({
       periodDays: 7,
       role: "staff",
-      staffRole: "catalogue_manager",
+      staffRoles: ["catalogue_manager"],
       actorUserId: "user-1",
       workAssignment: "mine",
       widgets: [{ id: "my-queue", order: 0, hidden: false }],

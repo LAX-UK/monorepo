@@ -59,7 +59,7 @@ describe("resolveSellerWorkspaceContext", () => {
 
   it("sells as the person when no organisation is chosen", async () => {
     acting(personal, [personal, gallery("owner")]);
-    const ctx = await resolveSellerWorkspaceContext("client", null);
+    const ctx = await resolveSellerWorkspaceContext("client", []);
     expect(ctx).toMatchObject({
       sellerEntityId: "me",
       sellingAsOrganisation: false,
@@ -69,7 +69,7 @@ describe("resolveSellerWorkspaceContext", () => {
 
   it("sells as the organisation chosen in the picker, with the member's role", async () => {
     acting(gallery("finance"), [personal, gallery("finance")]);
-    const ctx = await resolveSellerWorkspaceContext("client", null);
+    const ctx = await resolveSellerWorkspaceContext("client", []);
     expect(ctx).toMatchObject({
       sellerEntityId: "org-1",
       sellingAsOrganisation: true,
@@ -86,7 +86,7 @@ describe("resolveSellerWorkspaceContext", () => {
       bootstrapFailed: true,
       needsRestore: false,
     });
-    const ctx = await resolveSellerWorkspaceContext("client", null);
+    const ctx = await resolveSellerWorkspaceContext("client", []);
     expect(ctx.sellerEntityId).toBeNull();
     expect(ctx.bootstrapFailed).toBe(true);
   });
@@ -95,12 +95,12 @@ describe("resolveSellerWorkspaceContext", () => {
 describe("sellerCan and requireSellerCapability", () => {
   async function ctxFor(role: LegalEntitySummary["role"], extra: Partial<LegalEntitySummary> = {}) {
     acting(gallery(role, extra), [personal, gallery(role, extra)]);
-    return resolveSellerWorkspaceContext("client", null);
+    return resolveSellerWorkspaceContext("client", []);
   }
 
   it("gives a person every capability on their own profile", async () => {
     acting(personal, [personal]);
-    const ctx = await resolveSellerWorkspaceContext("client", null);
+    const ctx = await resolveSellerWorkspaceContext("client", []);
     expect(sellerCan(ctx, "entity.payouts.read")).toBe(true);
     expect(sellerCan(ctx, "entity.security.manage")).toBe(true);
   });

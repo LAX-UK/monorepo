@@ -21,7 +21,7 @@ import { loadAdminDashboardPage } from "@/lib/admin/load-admin-dashboard-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import { ADMIN_HOME_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import type { UserRole, UserStaffRole } from "@auction/types";
+import type { UserRole } from "@auction/types";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 
@@ -49,26 +49,26 @@ export default async function AdminHomePage({
   const jar = await cookies();
 
   const role = (user.role ?? "staff") as UserRole;
-  const staffRole = (user.staffRole ?? null) as UserStaffRole | null;
+  const staffRoles = user.staffRoles;
   const widgets = allowedDashboardWidgets(
     role,
-    staffRole,
-    parseDashboardWidgetsCookie(jar.get(ADMIN_DASHBOARD_WIDGETS_COOKIE)?.value, staffRole),
+    staffRoles,
+    parseDashboardWidgetsCookie(jar.get(ADMIN_DASHBOARD_WIDGETS_COOKIE)?.value, staffRoles),
   );
   const showGreeting = isDashboardWidgetVisible(widgets, "greeting");
 
   const dashboard = await loadAdminDashboardPage({
     periodDays,
     role,
-    staffRole,
+    staffRoles,
     actorUserId: user.id,
     workAssignment: assignment,
     widgets,
   });
-  const workAreas = workAreasFor(getDashboardProfile(staffRole).queueDomains);
+  const workAreas = workAreasFor(getDashboardProfile(staffRoles).queueDomains);
   const area = parseWorkArea(sp.area);
   const recent = dashboard.recentActivity;
-  const quick = greetingActionsFor(role, staffRole).find(
+  const quick = greetingActionsFor(role, staffRoles).find(
     (action) => action.href !== dashboard.primaryAction.href,
   );
   const quickLink = quick ? { href: quick.href, label: quick.label } : null;
@@ -77,7 +77,7 @@ export default async function AdminHomePage({
     <PersonalDashboard
       title={showGreeting ? greeting(user.name) : "Overview"}
       actorUserId={user.id}
-      staffRole={staffRole}
+      staffRoles={staffRoles}
       widgets={widgets}
       primaryAction={dashboard.primaryAction}
       quickLink={showGreeting ? quickLink : null}

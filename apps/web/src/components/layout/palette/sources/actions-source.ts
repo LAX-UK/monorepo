@@ -21,7 +21,7 @@ export function buildActionPaletteItems(
   if (
     variant === "admin" &&
     sessionUser &&
-    canAccessPlatformAdminRoutes(sessionUser.role as UserRole, sessionUser.staffRole ?? null)
+    canAccessPlatformAdminRoutes(sessionUser.role as UserRole, sessionUser.staffRoles)
   ) {
     actionItems.push(
       {

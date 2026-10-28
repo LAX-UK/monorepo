@@ -15,11 +15,7 @@ export default async function AdminSaleLotsPage({ params, searchParams }: Props)
   const { id } = await params;
   const sp = await searchParams;
   const user = await requireAdminCapability(SALE_CATALOG_ACCESS, `/admin/sales/${id}/lots`);
-  const canManageAuction = userHasAccessTo(
-    user.role as UserRole,
-    user.staffRole ?? null,
-    SALES_ACCESS,
-  );
+  const canManageAuction = userHasAccessTo(user.role as UserRole, user.staffRoles, SALES_ACCESS);
   const page = await loadAdminSaleLotsPage(id);
 
   return (

@@ -31,11 +31,7 @@ type Props = {
 export default async function AdminSaleDetailLayout({ params, children }: Props) {
   const { id } = await params;
   const user = await requireAdminCapability(SALE_CATALOG_ACCESS, `/admin/sales/${id}`);
-  const canManageSales = userHasAccessTo(
-    user.role as UserRole,
-    user.staffRole ?? null,
-    SALES_ACCESS,
-  );
+  const canManageSales = userHasAccessTo(user.role as UserRole, user.staffRoles, SALES_ACCESS);
   const bundle = await loadAdminSaleDetail(id);
   const isSaleroom = isSaleroomDeliveryMode(bundle.sale.deliveryMode);
   const [

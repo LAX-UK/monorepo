@@ -34,7 +34,7 @@ export default async function AdminLotsPage({
 }: { searchParams: Promise<LotsSearch> }) {
   const user = await requireAdminCapability(LOTS_ACCESS, "/admin/lots");
   const role = user.role as UserRole;
-  const staffRole = user.staffRole ?? null;
+  const staffRoles = user.staffRoles;
   const sp = await searchParams;
   if (sp.view === "pipeline") {
     redirect(buildListHref("/admin/lots", sp, { view: "", offset: 0 }));
@@ -92,9 +92,9 @@ export default async function AdminLotsPage({
             }
           : null
       }
-      canManageCatalog={userHasAccessTo(role, staffRole, LOTS_ACCESS)}
-      canManageAuction={userHasAccessTo(role, staffRole, SALES_ACCESS)}
-      canDecideWithdrawals={userHasAccessTo(role, staffRole, WITHDRAWAL_DECISION_ACCESS)}
+      canManageCatalog={userHasAccessTo(role, staffRoles, LOTS_ACCESS)}
+      canManageAuction={userHasAccessTo(role, staffRoles, SALES_ACCESS)}
+      canDecideWithdrawals={userHasAccessTo(role, staffRoles, WITHDRAWAL_DECISION_ACCESS)}
       exportFilters={model.exportFilters}
       listError={vm.listError}
       filtered={model.hasListFilters && model.activeLens !== "withdrawals"}

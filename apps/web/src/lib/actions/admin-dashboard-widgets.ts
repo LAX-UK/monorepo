@@ -1,7 +1,7 @@
 "use server";
 
 import { allowedDashboardWidgets } from "@/lib/admin/dashboard-access";
-import { dashboardProfileIdForStaffRole } from "@/lib/admin/dashboard-profile-registry";
+import { dashboardProfileIdForStaffRoles } from "@/lib/admin/dashboard-profile-registry";
 import {
   ADMIN_DASHBOARD_WIDGETS_COOKIE,
   type DashboardWidgetState,
@@ -12,7 +12,7 @@ import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capabi
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { ADMIN_HOME_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
-import type { UserRole, UserStaffRole } from "@auction/types";
+import type { StaffRoles, UserRole } from "@auction/types";
 import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 
@@ -21,9 +21,9 @@ const MAX_WIDGETS = 20;
 function sanitizeWidgets(
   widgets: readonly DashboardWidgetState[],
   role: UserRole,
-  staffRole: UserStaffRole | null,
+  staffRoles: StaffRoles | undefined,
 ): DashboardWidgetState[] {
-  const allowed = allowedDashboardWidgets(role, staffRole, widgets.slice(0, MAX_WIDGETS));
+  const allowed = allowedDashboardWidgets(role, staffRoles, widgets.slice(0, MAX_WIDGETS));
   const seen = new Set<string>();
   return allowed.filter((widget) => {
     if (seen.has(widget.id)) return false;
@@ -43,9 +43,9 @@ export async function persistAdminDashboardWidgetsAction(
 
     const user = await requireAuthenticatedUser({ shell: "staff", loginNext: "/admin" });
     const role = (user.role ?? "staff") as UserRole;
-    const staffRole = (user.staffRole ?? null) as UserStaffRole | null;
-    const profileId = dashboardProfileIdForStaffRole(staffRole);
-    const sanitized = sanitizeWidgets(widgets, role, staffRole);
+    const staffRoles = user.staffRoles;
+    const profileId = dashboardProfileIdForStaffRoles(staffRoles);
+    const sanitized = sanitizeWidgets(widgets, role, staffRoles);
 
     if (sanitized.length === 0) {
       throw new Error("At least one dashboard module must remain visible.");

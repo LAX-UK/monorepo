@@ -27,7 +27,7 @@ export async function loadAdminArtistsListPage(sp: AdminArtistsListSearchParams)
   const queue = artistsQueue(sp);
   const user = await getServerSessionUser().catch(() => null);
   const can = (access: Parameters<typeof userHasAccessTo>[2]) =>
-    user != null && userHasAccessTo(user.role as UserRole, user.staffRole ?? null, access);
+    user != null && userHasAccessTo(user.role as UserRole, user.staffRoles, access);
   const permissions = {
     canWrite: can(ARTIST_WRITE_ACCESS),
     canReview: can(ARTIST_REVIEW_ACCESS),

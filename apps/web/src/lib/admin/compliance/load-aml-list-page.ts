@@ -36,10 +36,10 @@ export async function loadAdminAmlListPage(sp: AmlListSearchParams, user: Sessio
   const model = buildAmlListPageModel(sp);
   const search = plainSearch(sp);
   const role = user.role as UserRole;
-  const staffRole = user.staffRole ?? null;
+  const staffRoles = user.staffRoles;
   const capabilities = {
-    canTriage: userHasAccessTo(role, staffRole, AML_REVIEW_ACCESS),
-    canDecide: userHasAccessTo(role, staffRole, MLRO_DECISION_ACCESS),
+    canTriage: userHasAccessTo(role, staffRoles, AML_REVIEW_ACCESS),
+    canDecide: userHasAccessTo(role, staffRoles, MLRO_DECISION_ACCESS),
     currentUserId: user.id,
   };
   const navCounts = await getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS);

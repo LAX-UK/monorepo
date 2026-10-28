@@ -1,6 +1,11 @@
 import type { SessionUser } from "@/lib/data/contracts";
 import { toObjectRecord } from "@/lib/data/http/object-guards";
-import { type UserStaffRole, normalizeUserRoleOrClient, userStaffRoles } from "@auction/types";
+import {
+  type UserStaffRole,
+  normalizeStaffRoles,
+  normalizeUserRoleOrClient,
+  userStaffRoles,
+} from "@auction/types";
 import { coerceToDate } from "./coerce";
 
 function optionalNullableDate(value: unknown): Date | null {
@@ -65,6 +70,11 @@ export function parseSessionUser(raw: unknown): SessionUser {
   const staffRole = row.staffRole;
   if (typeof staffRole === "string" && (userStaffRoles as readonly string[]).includes(staffRole)) {
     out.staffRole = staffRole as UserStaffRole;
+  }
+  if (Array.isArray(row.staffRoles)) {
+    out.staffRoles = normalizeStaffRoles(
+      row.staffRoles.filter((r): r is string => typeof r === "string"),
+    );
   }
   if (row.mobile != null && row.mobile !== "") out.mobile = String(row.mobile);
   if (row.phoneNumber != null && row.phoneNumber !== "") out.phoneNumber = String(row.phoneNumber);

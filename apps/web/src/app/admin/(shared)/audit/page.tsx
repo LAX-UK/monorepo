@@ -20,10 +20,7 @@ export default async function AdminAuditLogPage({
   const user = await requireAdminCapability(AUDIT_DOMAIN_EVENTS_ACCESS, "/admin/audit");
   const sp = await searchParams;
   const { model, rows, pagination, loadError } = await loadAdminAuditLogPage(sp, {
-    canOpenPlatformRoutes: canAccessPlatformAdminRoutes(
-      user.role as UserRole,
-      user.staffRole ?? null,
-    ),
+    canOpenPlatformRoutes: canAccessPlatformAdminRoutes(user.role as UserRole, user.staffRoles),
   });
 
   return (

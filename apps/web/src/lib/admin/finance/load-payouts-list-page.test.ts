@@ -61,7 +61,7 @@ const payout = {
 describe("loadAdminPayoutsListPage", () => {
   beforeEach(() => {
     for (const fn of [getPage, getEntity, getSession, getNavCounts]) fn.mockReset();
-    getSession.mockResolvedValue({ role: "staff", staffRole: "finance_ops" });
+    getSession.mockResolvedValue({ role: "staff", staffRoles: ["finance_ops"] });
     getNavCounts.mockResolvedValue({ disputesOpen: 2 });
     getEntity.mockResolvedValue({ displayName: "Gallery One" });
   });

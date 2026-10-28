@@ -36,7 +36,7 @@ const PATH = "/selling/works";
  */
 export default async function SellerWorksPage() {
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: PATH });
-  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
+  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   const canViewMoney = sellerCan(sellerCtx, "entity.finance.read");
   if (
     !sellerCtx.sellingAsOrganisation ||

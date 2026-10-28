@@ -1,4 +1,4 @@
-import type { RoleCapability, UserStaffRole } from "@auction/types";
+import type { RoleCapability, StaffRoles } from "@auction/types";
 import { roleHasCapability } from "@auction/types";
 
 const ALL_STAFF_CAPABILITIES: RoleCapability[] = [
@@ -32,8 +32,7 @@ const ALL_STAFF_CAPABILITIES: RoleCapability[] = [
   "compliance.mlro",
 ];
 
-/** Capabilities granted to a staff user for read-only admin display. */
-export function listCapabilitiesForStaffRole(staffRole: UserStaffRole | null): RoleCapability[] {
-  if (staffRole == null) return [];
-  return ALL_STAFF_CAPABILITIES.filter((cap) => roleHasCapability("staff", cap, staffRole));
+/** What a set of staff roles may do together, for read-only admin display. */
+export function listCapabilitiesForStaffRoles(staffRoles: StaffRoles): RoleCapability[] {
+  return ALL_STAFF_CAPABILITIES.filter((cap) => roleHasCapability("staff", cap, staffRoles));
 }

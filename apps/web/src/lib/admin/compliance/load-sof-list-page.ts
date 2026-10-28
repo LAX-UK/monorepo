@@ -34,7 +34,7 @@ export async function loadAdminSofListPage(sp: SofListSearchParams, user: Sessio
   const search = plainSearch(sp);
   const { status, offset, limit } = model.query;
   const capabilities = {
-    canReopen: userHasAccessTo(user.role as UserRole, user.staffRole ?? null, MLRO_DECISION_ACCESS),
+    canReopen: userHasAccessTo(user.role as UserRole, user.staffRoles, MLRO_DECISION_ACCESS),
   };
   const navCounts = await getAdminNavCounts().catch(() => EMPTY_ADMIN_NAV_COUNTS);
   const attentionCounts = {

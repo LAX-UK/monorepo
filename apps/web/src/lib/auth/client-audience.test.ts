@@ -2,11 +2,11 @@ import { resolveLegacyDashboardRedirect } from "@/lib/navigation/legacy-dashboar
 import { describe, expect, it } from "vitest";
 import { clientAreaRedirectFor, usesBidAsClient } from "./client-audience";
 
-const client = { role: "client" as const, staffRole: null };
-const superAdmin = { role: "staff" as const, staffRole: "super_admin" as const };
-const finance = { role: "staff" as const, staffRole: "finance_ops" as const };
-const clerk = { role: "staff" as const, staffRole: "auction_manager" as const };
-const noStaffRole = { role: "staff" as const, staffRole: null };
+const client = { role: "client" as const, staffRoles: [] };
+const superAdmin = { role: "staff" as const, staffRoles: ["super_admin"] as const };
+const finance = { role: "staff" as const, staffRoles: ["finance_ops"] as const };
+const clerk = { role: "staff" as const, staffRoles: ["auction_manager"] as const };
+const noStaffRole = { role: "staff" as const, staffRoles: [] };
 
 describe("usesBidAsClient", () => {
   it("is true for clients and false for every staff account", () => {

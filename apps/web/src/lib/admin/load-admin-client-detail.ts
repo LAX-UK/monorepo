@@ -83,7 +83,7 @@ export const loadAdminClientDetail = cache(
 
     const sessionUser = await getServerSessionUser();
     const actorRole = (sessionUser?.role ?? "client") as UserRole;
-    const actorStaff = sessionUser?.staffRole ?? null;
+    const actorStaff = sessionUser?.staffRoles;
     const canViewAml =
       sessionUser != null && userHasAccessTo(actorRole, actorStaff, AML_REVIEW_ACCESS);
     const canViewSof = canViewAml;

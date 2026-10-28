@@ -23,7 +23,7 @@ export async function loadAdminLegalEntityBuyerAgentsPage(
     getServerSessionUser(),
   ]);
   const canManage = user
-    ? userHasAccessTo(user.role as UserRole, user.staffRole ?? null, "legal_entity.write")
+    ? userHasAccessTo(user.role as UserRole, user.staffRoles, "legal_entity.write")
     : false;
   return { entity: bundle.entity, overview, canManage };
 }

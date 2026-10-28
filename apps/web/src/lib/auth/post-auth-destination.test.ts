@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 
 const clientUser = {
   role: "client" as const,
-  staffRole: null,
+  staffRoles: [],
   email: "a@b.com",
   emailVerified: true,
   kycStatus: "approved" as const,
@@ -48,15 +48,15 @@ describe("isSafeNextPath", () => {
 
 describe("staffRoleDefaultDestination", () => {
   it("maps staff specializations", () => {
-    expect(staffRoleDefaultDestination("staff", "super_admin")).toBe("/admin");
-    expect(staffRoleDefaultDestination("staff", "finance_ops")).toBe("/admin/finance");
-    expect(staffRoleDefaultDestination("staff", "content_marketing")).toBe("/admin/artists");
-    expect(staffRoleDefaultDestination("client", null)).toBe("/home");
+    expect(staffRoleDefaultDestination("staff", ["super_admin"])).toBe("/admin");
+    expect(staffRoleDefaultDestination("staff", ["finance_ops"])).toBe("/admin/finance");
+    expect(staffRoleDefaultDestination("staff", ["content_marketing"])).toBe("/admin/artists");
+    expect(staffRoleDefaultDestination("client", [])).toBe("/home");
   });
 
   it("never sends staff to /home", () => {
-    expect(staffRoleDefaultDestination("staff", null)).toBe("/admin");
-    expect(staffRoleDefaultDestination("staff", "content_marketing")).not.toBe("/home");
+    expect(staffRoleDefaultDestination("staff", [])).toBe("/admin");
+    expect(staffRoleDefaultDestination("staff", ["content_marketing"])).not.toBe("/home");
   });
 });
 
@@ -77,7 +77,7 @@ describe("resolvePostAuthDestination", () => {
         user: {
           ...clientUser,
           role: "staff",
-          staffRole: "super_admin",
+          staffRoles: ["super_admin"],
           accountOnboardingComplete: false,
         },
         context: "sign-in",
@@ -239,7 +239,7 @@ describe("resolvePostAuthDestination", () => {
     ).toBe("/home");
     expect(
       resolvePostAuthDestination({
-        user: { ...clientUser, role: "staff", staffRole: "super_admin" },
+        user: { ...clientUser, role: "staff", staffRoles: ["super_admin"] },
         requestedNext: "//evil",
         context: "sign-in",
       }),
@@ -252,7 +252,7 @@ describe("resolvePostAuthDestination", () => {
         user: {
           ...clientUser,
           role: "staff",
-          staffRole: "content_marketing",
+          staffRoles: ["content_marketing"],
         },
         context: "sign-in",
         withWelcomeBack: true,
@@ -264,7 +264,7 @@ describe("resolvePostAuthDestination", () => {
     const staffMarketing = {
       ...clientUser,
       role: "staff" as const,
-      staffRole: "content_marketing" as const,
+      staffRoles: ["content_marketing"] as const,
     };
     expect(
       resolvePostAuthDestination({
@@ -295,7 +295,7 @@ describe("resolvePostAuthDestination", () => {
     const staffMarketing = {
       ...clientUser,
       role: "staff" as const,
-      staffRole: "content_marketing" as const,
+      staffRoles: ["content_marketing"] as const,
     };
     expect(
       resolvePostAuthDestination({

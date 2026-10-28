@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
       cache: "no-store",
     });
     const me = (await meResponse.json()) as {
-      data?: { id?: string; role?: string; staffRole?: string | null };
+      data?: { id?: string; role?: string; staffRoles?: unknown };
     };
     if (
       !meResponse.ok ||
@@ -46,7 +46,8 @@ export async function POST(request: NextRequest) {
         audience: WS_AUDIENCE,
         scopes: ["bid.read"],
         role: me.data.role,
-        staffRole: me.data.staffRole ?? null,
+        // Roles in force when the ticket is issued; the socket server re-checks them live.
+        staffRoles: Array.isArray(me.data.staffRoles) ? me.data.staffRoles : [],
         apiResourceToken: apiResource.token,
       }),
       "EX",

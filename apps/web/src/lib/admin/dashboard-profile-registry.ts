@@ -6,9 +6,12 @@ import {
   type CapabilityRequirement,
   FINANCE_ACCESS,
   LOTS_ACCESS,
+  NO_STAFF_ROLES,
   SALEROOM_ACCESS,
   SUBMISSIONS_ACCESS,
+  type StaffRoles,
   type UserStaffRole,
+  primaryStaffRole,
 } from "@auction/types";
 
 export type DashboardProfileId =
@@ -214,15 +217,20 @@ const PROFILE_PRIORITY: readonly DashboardProfileId[] = [
   "read_only",
 ];
 
-export function dashboardProfileIdForStaffRole(
-  staffRole: UserStaffRole | null,
+/**
+ * The dashboard layout for someone holding `staffRoles`: the profile of the role screens show
+ * for them. Layout only; each widget still checks the whole set of roles before it shows.
+ */
+export function dashboardProfileIdForStaffRoles(
+  staffRoles: StaffRoles | undefined,
 ): DashboardProfileId {
-  if (staffRole == null) return "auction_operations";
-  return STAFF_ROLE_PROFILE[staffRole] ?? "auction_operations";
+  const shown = primaryStaffRole(staffRoles ?? NO_STAFF_ROLES);
+  if (shown == null) return "auction_operations";
+  return STAFF_ROLE_PROFILE[shown] ?? "auction_operations";
 }
 
-export function getDashboardProfile(staffRole: UserStaffRole | null): DashboardProfile {
-  return PROFILES[dashboardProfileIdForStaffRole(staffRole)];
+export function getDashboardProfile(staffRoles: StaffRoles | undefined): DashboardProfile {
+  return PROFILES[dashboardProfileIdForStaffRoles(staffRoles)];
 }
 
 export function listDashboardProfiles(): readonly DashboardProfile[] {

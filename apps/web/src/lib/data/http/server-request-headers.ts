@@ -71,7 +71,7 @@ export function withOrigin(deriveOrigin: () => Promise<string> = deriveSsrOrigin
 export function withActingLegalEntity(): HeaderDecorator {
   return async (headers) => {
     const user = await getServerSessionUser();
-    const acting = await getActingLegalEntityHeader(user?.role ?? null, user?.staffRole ?? null);
+    const acting = await getActingLegalEntityHeader(user?.role ?? null, user?.staffRoles);
     for (const [k, v] of Object.entries(acting)) {
       if (!headers.has(k)) headers.set(k, v);
     }

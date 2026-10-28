@@ -37,7 +37,7 @@ export default async function SellerPayoutsPage() {
     shell: "client",
     loginNext: DASHBOARD_ROUTES.sellerPayouts,
   });
-  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
+  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   // Payouts settle the whole organisation's sales, so consignors and viewers do not see them.
   requireSellerCapability(sellerCtx, "entity.payouts.read");
   const { sellerEntityId, bootstrapFailed } = sellerCtx;

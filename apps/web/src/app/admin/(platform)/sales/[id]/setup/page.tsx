@@ -22,7 +22,7 @@ export default async function AdminSaleSetupPage({ params, searchParams }: Props
     saleId: id,
     step: sp.step,
     role: user.role as UserRole,
-    staffRole: user.staffRole ?? null,
+    staffRoles: user.staffRoles,
   });
 
   if (page.redirectTo) {

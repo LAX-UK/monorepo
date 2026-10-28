@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { getStaffNavGroups } from "./staff-nav";
 
 function labelsFor(role: "staff" | "client", staffRole: UserStaffRole | null) {
-  return getStaffNavGroups(role, 0, staffRole).flatMap((group) =>
+  return getStaffNavGroups(role, 0, staffRole ? [staffRole] : []).flatMap((group) =>
     group.items.map((item) => item.label),
   );
 }

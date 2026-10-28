@@ -9,6 +9,7 @@ import type {
   PressHubMeta,
   PressSitemapSaleFreshness,
   PublicLotView,
+  StaffRoles,
   UserRole,
   UserStaffRole,
 } from "@auction/types";
@@ -138,7 +139,10 @@ export type SessionUser = {
   email: string;
   name: string;
   role: UserRole;
+  /** The one staff role screens show for the person. Display only, never for permissions. */
   staffRole?: UserStaffRole | null;
+  /** Staff roles in force for this session; every permission check uses these. */
+  staffRoles?: StaffRoles;
   /** Profile / OAuth avatar when present. */
   image?: string | null;
   /** E.164 contact phone from GET /users/me. */

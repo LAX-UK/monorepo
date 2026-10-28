@@ -34,7 +34,7 @@ import {
   StaffShell,
   type StaffTheme,
 } from "@auction/staff-ui";
-import type { UserRole, UserStaffRole } from "@auction/types";
+import type { UserRole } from "@auction/types";
 import { UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -73,7 +73,7 @@ async function searchRecords(query: string): Promise<StaffCommand[]> {
 }
 
 function toStaffNav(
-  user: Pick<SessionUser, "role" | "staffRole">,
+  user: Pick<SessionUser, "role" | "staffRoles">,
   pendingSubmissionCount: number,
   pendingArtistCount: number,
   navCounts: AdminNavCounts | undefined,
@@ -81,7 +81,7 @@ function toStaffNav(
   return getStaffNavGroups(
     user.role as UserRole,
     pendingSubmissionCount,
-    (user.staffRole ?? null) as UserStaffRole | null,
+    user.staffRoles,
     pendingArtistCount,
     navCounts,
   ).map((group) => ({
@@ -171,7 +171,7 @@ export function BidStaffFrame({
                   user={{
                     name: user.name || user.email,
                     email: user.email,
-                    roleLabel: staffRoleLabel((user.staffRole ?? null) as UserStaffRole | null),
+                    roleLabel: staffRoleLabel(user.staffRole ?? null),
                   }}
                   theme={theme}
                   onThemeChange={(next) => {

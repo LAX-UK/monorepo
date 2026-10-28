@@ -3,7 +3,7 @@ import {
   capabilityLabel,
   groupCapabilitiesForDisplay,
 } from "@/lib/admin/capability-presenter";
-import { listCapabilitiesForStaffRole } from "@/lib/admin/staff-capabilities";
+import { listCapabilitiesForStaffRoles } from "@/lib/admin/staff-capabilities";
 import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import { EmptyState, KeyValueList, Notice, Section } from "@auction/staff-ui";
 import type { UserStaffRole } from "@auction/types";
@@ -18,7 +18,7 @@ export function AdminUserCapabilitiesPanel({ staffRole }: { staffRole: UserStaff
     );
   }
 
-  const groups = groupCapabilitiesForDisplay(listCapabilitiesForStaffRole(staffRole));
+  const groups = groupCapabilitiesForDisplay(listCapabilitiesForStaffRoles([staffRole]));
 
   if (groups.length === 0) {
     return (
