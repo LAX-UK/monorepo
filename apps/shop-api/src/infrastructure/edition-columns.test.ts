@@ -182,6 +182,26 @@ describe("run columns", () => {
 
 const NOW = new Date("2026-10-28T09:00:00Z");
 
+const HAND_SIGNED_FACTS: EditionFacts = {
+  numbering: "on_print",
+  signature: { kind: "hand_signed", medium: "pencil", place: "front_lower_margin" },
+  certificate: {
+    kind: "included",
+    issuer: "artist",
+    form: "paper",
+    arrives: { kind: "with_print" },
+    numberedToMatch: true,
+  },
+  confirmed: { by: "staff-1", at: NOW },
+};
+
+const UNSIGNED_FACTS: EditionFacts = {
+  numbering: "none",
+  signature: { kind: "unsigned" },
+  certificate: { kind: "none" },
+  confirmed: null,
+};
+
 const facts: Array<[string, EditionFacts]> = [
   [
     "hand-signed with a paper certificate",
@@ -255,7 +275,7 @@ describe("facts columns", () => {
   });
 
   it("leaves unused signature and certificate columns empty", () => {
-    expect(factsToColumns(facts[3][1])).toMatchObject({
+    expect(factsToColumns(UNSIGNED_FACTS)).toMatchObject({
       signatureKind: "unsigned",
       signatureMedium: null,
       signaturePlace: null,
@@ -267,12 +287,12 @@ describe("facts columns", () => {
   });
 
   it("reports stored facts that are incomplete", () => {
-    const hand = factsToColumns(facts[0][1]);
+    const hand = factsToColumns(HAND_SIGNED_FACTS);
     expect(() => factsFromColumns({ ...hand, signatureMedium: null })).toThrow(
       "signature is incomplete",
     );
     expect(() =>
-      factsFromColumns({ ...factsToColumns(facts[3][1]), certificateKind: "included" }),
+      factsFromColumns({ ...factsToColumns(UNSIGNED_FACTS), certificateKind: "included" }),
     ).toThrow("certificate is incomplete");
   });
 });
