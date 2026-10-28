@@ -100,14 +100,14 @@ export function createAddOpenEditionStockService(deps: { uow: EditionRunUnitOfWo
             if (!artwork) throw notFound("Artwork not found");
             const run = await tx.runs.getRun(command.artworkId);
             if (!run) throw new ShopDomainError("Prints can only be added to an open edition");
-            const result = await apply(tx, {
+            // Stock is not one of the artwork's edited fields, so its version is left alone and
+            // an open editor can still save.
+            return apply(tx, {
               artworkId: command.artworkId,
               run: run.spec,
               batch: command.batch,
               actorSubjectId: command.actorSubjectId,
             });
-            await tx.prints.touch(command.artworkId);
-            return result;
           },
         }),
       );
