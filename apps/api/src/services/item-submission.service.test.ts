@@ -116,9 +116,9 @@ describe("ItemSubmissionService", () => {
     expect(r.isOk()).toBe(true);
   });
 
-  it("createDraft still blocks organisation entity before approved or restricted", async () => {
+  it("createDraft lets an organisation under review save a draft", async () => {
     const submissions: IItemSubmissionRepository = {
-      create: vi.fn(),
+      create: vi.fn().mockResolvedValue(mkSubmission({ id: "sub-1", status: "draft" })),
     } as unknown as IItemSubmissionRepository;
     const legalEntityRepository: ILegalEntityRepository = {
       findById: vi.fn().mockResolvedValue({ kind: "organisation", status: "lead" }),
@@ -134,10 +134,29 @@ describe("ItemSubmissionService", () => {
       legalEntityRepository,
       null,
     );
-    const r = await svc.createDraft("ent-1", {
-      title: "Work",
-      categoryId: catId,
-    });
+    const r = await svc.createDraft("ent-1", { title: "Work", categoryId: catId });
+    expect(r.isOk()).toBe(true);
+  });
+
+  it("createDraft still blocks a rejected organisation", async () => {
+    const submissions: IItemSubmissionRepository = {
+      create: vi.fn(),
+    } as unknown as IItemSubmissionRepository;
+    const legalEntityRepository: ILegalEntityRepository = {
+      findById: vi.fn().mockResolvedValue({ kind: "organisation", status: "rejected" }),
+    } as unknown as ILegalEntityRepository;
+    const dispatcher = { dispatch: vi.fn() } as unknown as NotificationDispatcher;
+    const svc = new ItemSubmissionService(
+      transactionRunnerFromDb(stubDb),
+      submissions,
+      {} as IUserRepository,
+      dispatcher,
+      undefined,
+      null,
+      legalEntityRepository,
+      null,
+    );
+    const r = await svc.createDraft("ent-1", { title: "Work", categoryId: catId });
     expect(r.isErr()).toBe(true);
     expect(submissions.create).not.toHaveBeenCalled();
   });
@@ -171,7 +190,7 @@ describe("ItemSubmissionService", () => {
     );
   });
 
-  it("approve creates lot with submitter sellerId and marks converted", async () => {
+  it("approve catalogues an accepted submission with the submitter as seller", async () => {
     const under = mkSubmission({
       id: "sub-1",
       status: "under_review",
@@ -236,7 +255,7 @@ describe("ItemSubmissionService", () => {
     };
 
     const submissions: IItemSubmissionRepository = {
-      findById: vi.fn().mockResolvedValue(under),
+      findById: vi.fn().mockResolvedValue({ ...under, status: "approved" as const }),
       update: vi.fn().mockResolvedValue(approved),
     } as unknown as IItemSubmissionRepository;
 
@@ -344,7 +363,7 @@ describe("ItemSubmissionService", () => {
     };
 
     const submissions: IItemSubmissionRepository = {
-      findById: vi.fn().mockResolvedValue(under),
+      findById: vi.fn().mockResolvedValue({ ...under, status: "approved" as const }),
       update: vi.fn().mockResolvedValue(approved),
     } as unknown as IItemSubmissionRepository;
 
@@ -383,7 +402,7 @@ describe("ItemSubmissionService", () => {
       transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn({})),
     } as unknown as Database;
     const submissions: IItemSubmissionRepository = {
-      findById: vi.fn().mockResolvedValue(under),
+      findById: vi.fn().mockResolvedValue({ ...under, status: "approved" as const }),
     } as unknown as IItemSubmissionRepository;
     const svc = new ItemSubmissionService(
       transactionRunnerFromDb(db),

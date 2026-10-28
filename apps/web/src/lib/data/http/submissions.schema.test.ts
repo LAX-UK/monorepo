@@ -58,6 +58,14 @@ function legacyParseItemSubmission(raw: unknown): ItemSubmission {
     reviewNotes: o.reviewNotes == null || o.reviewNotes === "" ? null : String(o.reviewNotes),
     rejectionReason:
       o.rejectionReason == null || o.rejectionReason === "" ? null : String(o.rejectionReason),
+    changesRequestedNote:
+      o.changesRequestedNote == null || o.changesRequestedNote === ""
+        ? null
+        : String(o.changesRequestedNote),
+    changesRequestedAt:
+      o.changesRequestedAt == null || o.changesRequestedAt === ""
+        ? null
+        : toDate(o.changesRequestedAt),
     convertedLotId:
       o.convertedLotId == null || o.convertedLotId === "" ? null : String(o.convertedLotId),
     assignedToUserId:
