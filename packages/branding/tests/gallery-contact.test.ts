@@ -15,7 +15,9 @@ describe("GALLERY_CONTACT", () => {
     );
   });
 
-  it("publishes no opening hours until the gallery supplies them", () => {
-    expect(GALLERY_CONTACT.openingHours).toBeNull();
+  it("publishes the gallery's opening hours", () => {
+    expect(GALLERY_CONTACT.openingHours).toBe(
+      "Monday to Friday, 10:00 to 19:00. Closed at weekends.",
+    );
   });
 });

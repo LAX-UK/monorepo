@@ -55,8 +55,7 @@ describe("Shop policy pages", () => {
     const text = shopPolicyTexts(help).join("\n");
     for (const detail of [
       "info(@)lax.art",
-      "Sales Office: +44 0800 208 4800",
-      "General Enquiries: +44 020 804 41334",
+      "Phone: +44 800 208 4800",
       "156 New Cavendish St, London W1W 6YW",
       "[Your orders](/account/orders)",
       "[LAX Account](https://account.example/account)",

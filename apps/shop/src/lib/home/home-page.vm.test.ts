@@ -154,7 +154,7 @@ describe("sections that hide when the catalogue is thin", () => {
     expect(vm.artists).toBeNull();
     expect(vm.collections).toEqual([]);
     expect(vm.quickFilters).toEqual([]);
-    expect(vm.galleryTeam.phone).toEqual({ label: "020 804 41334", href: "tel:+442080441334" });
+    expect(vm.galleryTeam.phone).toEqual({ label: "+44 800 208 4800", href: "tel:+448002084800" });
   });
 
   it("shows artists with editions only, four at most, and points to their stories on lax.art", () => {

@@ -148,10 +148,10 @@ const SEED_COVER = {
   guide: "/art/seed/original-2.webp",
 } as const;
 
+/** The gallery's published hours, in the venue editor's row format. */
 const OPENING_HOURS = [
-  { label: "Tue – Sat", hours: "10:00 – 18:00" },
-  { label: "Sun", hours: "12:00 – 17:00" },
-  { label: "Mon", hours: "Closed" },
+  { label: "Mon – Fri", hours: "10:00 – 19:00" },
+  { label: "Sat – Sun", hours: "Closed" },
 ];
 
 /** Card address lines and map pin for the seeded gallery. */

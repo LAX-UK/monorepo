@@ -7,11 +7,8 @@ import { LEGAL_ENTITIES } from "./legal-entity.js";
  */
 const { postal } = LEGAL_ENTITIES["london-art-exchange"].registeredAddress;
 
-/**
- * When the gallery is open, as one line ("Tuesday to Saturday, 10:00 to 18:00"). Null until the
- * gallery publishes its hours: pages then show no hours at all rather than a guess.
- */
-const OPENING_HOURS: string | null = null;
+/** When the gallery is open, as one line. */
+const OPENING_HOURS = "Monday to Friday, 10:00 to 19:00. Closed at weekends.";
 
 export const GALLERY_CONTACT = {
   name: "LAX Marylebone",
@@ -20,8 +17,8 @@ export const GALLERY_CONTACT = {
   postcode: postal.postalCode,
   /** "156 New Cavendish Street, London". */
   address: `${postal.streetAddress}, ${postal.addressLocality}`,
-  phone: "+44 20 8044 1334",
-  phoneHref: "tel:+442080441334",
-  email: "info@thelax.art",
+  phone: "+44 800 208 4800",
+  phoneHref: "tel:+448002084800",
+  email: "info@lax.art",
   openingHours: OPENING_HOURS,
 } as const;

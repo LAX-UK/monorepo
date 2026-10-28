@@ -2,7 +2,7 @@ import { venueMapsHref } from "@/lib/editorial/venue.vm";
 import type { ArtGeneralEnquiryTopic } from "@/lib/enquiry/submit-general-enquiry";
 import { GALLERY_CONTACT } from "@auction/branding";
 
-/** How visitors reach the gallery; `openingHours` is null until the gallery publishes them. */
+/** How visitors reach the gallery; `openingHours` is null when a contact has no published hours. */
 export type ArtGalleryContact = {
   streetLine: string;
   city: string;

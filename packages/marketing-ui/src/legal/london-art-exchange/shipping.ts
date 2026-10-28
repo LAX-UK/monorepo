@@ -41,7 +41,7 @@ export const SHIPPING_POLICY: LegalPolicyDocument<"shipping"> = {
         },
         {
           type: "paragraph",
-          text: "2.3 We use a carrier and packaging method suitable for the work, destination and declared value. We confirm the service, handling arrangements, coverage position and material exclusions for the individual delivery. We describe a shipment as insured only where written cover applies to that work, declared value, route and carrier. Delivery issues must be escalated through Customer Services at info@thelax.art or +44 20 8044 1334.",
+          text: "2.3 We use a carrier and packaging method suitable for the work, destination and declared value. We confirm the service, handling arrangements, coverage position and material exclusions for the individual delivery. We describe a shipment as insured only where written cover applies to that work, declared value, route and carrier. Delivery issues must be escalated through Customer Services at info@lax.art or +44 800 208 4800.",
         },
       ],
     },

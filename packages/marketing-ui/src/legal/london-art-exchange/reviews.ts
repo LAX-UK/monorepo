@@ -55,7 +55,7 @@ export const REVIEWS_POLICY: LegalPolicyDocument<"reviews"> = {
       blocks: [
         {
           type: "paragraph",
-          text: "Suspected fake, incentivised without disclosure, or unlawful reviews can be reported to info@thelax.art. We will investigate, record the decision and correct or remove content where appropriate.",
+          text: "Suspected fake, incentivised without disclosure, or unlawful reviews can be reported to info@lax.art. We will investigate, record the decision and correct or remove content where appropriate.",
         },
       ],
     },

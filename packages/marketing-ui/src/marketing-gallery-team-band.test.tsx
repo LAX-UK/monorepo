@@ -50,20 +50,20 @@ describe("MarketingGalleryTeamBand", () => {
 
   it("names each detail and links the ones it is given a target for", () => {
     renderBand([
-      { kind: "phone", text: "+44 20 8044 1334", href: "tel:+442080441334" },
-      { kind: "email", text: "info@thelax.art", href: "mailto:info@thelax.art" },
+      { kind: "phone", text: "+44 800 208 4800", href: "tel:+448002084800" },
+      { kind: "email", text: "info@lax.art", href: "mailto:info@lax.art" },
       {
         kind: "address",
         text: "156 New Cavendish Street, London W1W 6YW",
         href: "https://www.google.com/maps/search/?api=1&query=156",
       },
     ]);
-    const phone = screen.getByRole("link", { name: "+44 20 8044 1334" });
-    expect(phone).toHaveAttribute("href", "tel:+442080441334");
+    const phone = screen.getByRole("link", { name: "+44 800 208 4800" });
+    expect(phone).toHaveAttribute("href", "tel:+448002084800");
     expect(phone).not.toHaveAttribute("target");
-    expect(screen.getByRole("link", { name: "info@thelax.art" })).toHaveAttribute(
+    expect(screen.getByRole("link", { name: "info@lax.art" })).toHaveAttribute(
       "href",
-      "mailto:info@thelax.art",
+      "mailto:info@lax.art",
     );
     const map = screen.getByRole("link", { name: /156 New Cavendish Street.*opens in a new tab/ });
     expect(map).toHaveAttribute("target", "_blank");

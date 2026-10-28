@@ -6,9 +6,9 @@ const CONTACT: ArtGalleryContact = {
   streetLine: "156 New Cavendish Street",
   city: "London",
   postcode: "W1W 6YW",
-  phone: "+44 20 8044 1334",
-  phoneHref: "tel:+442080441334",
-  email: "info@thelax.art",
+  phone: "+44 800 208 4800",
+  phoneHref: "tel:+448002084800",
+  email: "info@lax.art",
   openingHours: null,
 };
 
@@ -44,8 +44,8 @@ describe("buildArtGalleryTeam", () => {
   it("lists the phone, email and address with a map link", () => {
     const { details } = buildArtGalleryTeam({ context: "contact", contact: CONTACT });
     expect(details).toEqual([
-      { kind: "phone", text: "+44 20 8044 1334", href: "tel:+442080441334" },
-      { kind: "email", text: "info@thelax.art", href: "mailto:info@thelax.art" },
+      { kind: "phone", text: "+44 800 208 4800", href: "tel:+448002084800" },
+      { kind: "email", text: "info@lax.art", href: "mailto:info@lax.art" },
       {
         kind: "address",
         text: "156 New Cavendish Street, London W1W 6YW",
