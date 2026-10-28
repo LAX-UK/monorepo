@@ -22,10 +22,10 @@ Canonical rules for presentation logic in `apps/web` before and during UI redesi
 ## Examples
 
 ```typescript
-// Good — lib/admin builds tab specs from domain inputs
-import type { CatalogDetailTabSpec } from "@/lib/admin/catalog/catalog-detail-tab.types";
+// Good — lib/admin builds the tab model from domain inputs and the kit's item type
+import type { TabNavItem } from "@auction/staff-ui";
 
-export function buildSaleDetailTabSpecs(input: BuildSaleDetailTabSpecsInput): CatalogDetailTabSpec[] {
+export function buildSaleDetailNav(input: BuildSaleDetailNavInput): SaleDetailNavGroup[] {
   // ...
 }
 ```
