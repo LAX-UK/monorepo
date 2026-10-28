@@ -57,6 +57,16 @@ export interface IConsignmentAgreementWriter {
    * then never sent. Returns false when another run already marked it.
    */
   markReminderSent(id: string, day: AgreementReminderDay, sentAt: Date): Promise<boolean>;
+  /**
+   * Sets (or clears, with `null`) the lowest reserve the specialist accepts for a relist. It is
+   * not part of the accepted terms, so it may change after acceptance. `null` when there is no
+   * agreement for the submission.
+   */
+  setRelistReserveFloor(
+    submissionId: string,
+    floor: string | null,
+    at: Date,
+  ): Promise<ConsignmentAgreement | null>;
 }
 
 export type IConsignmentAgreementRepository = IConsignmentAgreementReader &

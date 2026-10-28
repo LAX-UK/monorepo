@@ -24,6 +24,8 @@ export const consignmentAgreement = pgTable(
     estimateHigh: numeric("estimate_high", { precision: 18, scale: 2 }),
     reservePrice: numeric("reserve_price", { precision: 18, scale: 2 }),
     commissionPercent: numeric("commission_percent", { precision: 5, scale: 2 }),
+    /** The lowest reserve the specialist accepts if the lot is relisted after not selling. */
+    relistReserveFloor: numeric("relist_reserve_floor", { precision: 18, scale: 2 }),
     currency: text("currency").notNull().default("GBP"),
     proposedByUserId: text("proposed_by_user_id").references(() => user.id, {
       onDelete: "set null",

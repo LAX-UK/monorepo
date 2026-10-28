@@ -1,7 +1,10 @@
 import type { Database } from "@auction/db";
 import { adminReviewTask } from "@auction/db/schema";
-import { and, eq } from "drizzle-orm";
-import type { IAdminReviewTaskRepository } from "../interfaces/admin-review-task.repository.js";
+import { and, desc, eq } from "drizzle-orm";
+import type {
+  IAdminReviewTaskRepository,
+  LotWithdrawalTaskSnapshot,
+} from "../interfaces/admin-review-task.repository.js";
 
 export class DrizzleAdminReviewTaskRepository implements IAdminReviewTaskRepository {
   constructor(private readonly db: Database) {}
@@ -21,6 +24,27 @@ export class DrizzleAdminReviewTaskRepository implements IAdminReviewTaskReposit
           eq(adminReviewTask.status, "pending"),
         ),
       )
+      .limit(1);
+    return row ?? null;
+  }
+
+  async findLatestLotWithdrawal(lotId: string): Promise<LotWithdrawalTaskSnapshot | null> {
+    const [row] = await this.db
+      .select({
+        id: adminReviewTask.id,
+        status: adminReviewTask.status,
+        createdAt: adminReviewTask.createdAt,
+        resolvedAt: adminReviewTask.resolvedAt,
+        resolutionNotes: adminReviewTask.resolutionNotes,
+      })
+      .from(adminReviewTask)
+      .where(
+        and(
+          eq(adminReviewTask.targetLotId, lotId),
+          eq(adminReviewTask.kind, "lot_withdrawal_request"),
+        ),
+      )
+      .orderBy(desc(adminReviewTask.createdAt))
       .limit(1);
     return row ?? null;
   }

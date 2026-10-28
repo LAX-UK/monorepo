@@ -38,6 +38,7 @@ export * from "./artist-watchlist.js";
 export * from "./saved-search.js";
 export * from "./artist.js";
 export * from "./item-submission.js";
+export * from "./consignment-after-sale.js";
 export * from "./money-compare.js";
 export * from "./password-change.js";
 export * from "./two-factor.js";

@@ -1660,6 +1660,13 @@
       "when": 1795766400000,
       "tag": "0236_consignment_agreement_and_needs_changes",
       "breakpoints": true
+    },
+    {
+      "idx": 237,
+      "version": "7",
+      "when": 1795852800000,
+      "tag": "0237_consignment_after_sale",
+      "breakpoints": true
     }
   ]
 }

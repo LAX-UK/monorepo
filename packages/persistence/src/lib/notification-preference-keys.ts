@@ -157,6 +157,14 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, NotificationTypeConfig> = {
     whatsapp: null,
     template: "consignment-agreement-reminder",
   },
+  /** After-sale and account changes on a consignment, each worded by the service that sends it. */
+  consignment_update: {
+    inApp: null,
+    push: "submissionUpdatesPush",
+    email: "submissionUpdatesEmail",
+    whatsapp: null,
+    template: "consignment-update",
+  },
 };
 
 export function emailPreferenceKey(type: string): keyof NotificationPreference | null {
