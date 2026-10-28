@@ -55,7 +55,7 @@ describe("LegalEntityLifecycleAdminService", () => {
       entityStatus: "approved",
       eventType: "legal_entity.restricted",
       next: "restricted",
-      reason: undefined,
+      reason: "Ownership under review",
     },
     {
       op: "reject" as const,

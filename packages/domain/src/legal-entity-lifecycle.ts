@@ -43,7 +43,7 @@ export function nextStatusForLifecycleOp(
       return { next: "connect_pending", requiresReason: false };
     case "restrict":
       if (current !== "approved") return null;
-      return { next: "restricted", requiresReason: false };
+      return { next: "restricted", requiresReason: true };
     case "lift_restriction":
       if (current !== "restricted") return null;
       return {

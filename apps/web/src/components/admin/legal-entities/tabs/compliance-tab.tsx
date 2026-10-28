@@ -1,4 +1,5 @@
 import { LiftRestrictionAction } from "@/components/admin/legal-entities/tabs/lift-restriction-action";
+import { RestrictAction } from "@/components/admin/legal-entities/tabs/restrict-action";
 import {
   LegalEntityArchiveForm,
   LegalEntityRejectForm,
@@ -15,20 +16,20 @@ function simpleTransitionButtons(status: LegalEntityStatus): { op: string; label
   }
   if (status === "docs_received") out.push({ op: "start_review", label: "Start review" });
   if (status === "under_review") out.push({ op: "approve", label: "Approve and move to Connect" });
-  if (status === "approved") out.push({ op: "restrict", label: "Restrict" });
   return out;
 }
 
 type Props = {
   entity: LegalEntity;
-  /** Whether the signed-in person may move organisations through their lifecycle. */
-  canLiftRestriction?: boolean;
+  /** Whether the signed-in person may restrict an organisation or lift its restriction. */
+  canManageRestriction?: boolean;
 };
 
 /** Where the organisation is in its compliance lifecycle, the next steps, and the final ones. */
-export function LegalEntityComplianceTab({ entity, canLiftRestriction = false }: Props) {
+export function LegalEntityComplianceTab({ entity, canManageRestriction = false }: Props) {
   const simple = simpleTransitionButtons(entity.status);
-  const showLift = canLiftRestriction && entity.status === "restricted";
+  const showRestrict = canManageRestriction && entity.status === "approved";
+  const showLift = canManageRestriction && entity.status === "restricted";
   const canReject = entity.status !== "rejected" && entity.status !== "archived";
   const canArchive = entity.status !== "archived";
   const facts = [
@@ -48,7 +49,7 @@ export function LegalEntityComplianceTab({ entity, canLiftRestriction = false }:
       >
         <div className="flex flex-col gap-4">
           {facts.length > 0 ? <KeyValueList items={facts} /> : null}
-          {simple.length > 0 || showLift ? (
+          {simple.length > 0 || showRestrict || showLift ? (
             <div className="flex flex-wrap gap-2">
               {simple.map((b) => (
                 <form key={b.op} action={legalEntityLifecycleSimpleAction}>
@@ -59,6 +60,7 @@ export function LegalEntityComplianceTab({ entity, canLiftRestriction = false }:
                   </StaffButton>
                 </form>
               ))}
+              {showRestrict ? <RestrictAction entity={entity} /> : null}
               {showLift ? <LiftRestrictionAction entity={entity} /> : null}
             </div>
           ) : (
