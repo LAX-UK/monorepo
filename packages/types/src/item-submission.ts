@@ -4,6 +4,7 @@ export const itemSubmissionStatuses = [
   "under_review",
   "approved",
   "rejected",
+  "changes_requested",
   "withdrawn",
   "converted",
 ] as const;
@@ -46,6 +47,9 @@ export type ItemSubmission = {
   reviewedAt: Date | null;
   reviewNotes: string | null;
   rejectionReason: string | null;
+  /** What the specialist asked the seller to change, kept after resubmission for the record. */
+  changesRequestedNote?: string | null;
+  changesRequestedAt?: Date | null;
   convertedLotId: string | null;
   assignedToUserId?: string | null;
   createdAt: Date;

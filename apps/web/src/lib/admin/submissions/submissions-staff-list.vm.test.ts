@@ -63,6 +63,30 @@ describe("submissions staff list view model", () => {
     expect(submission?.decisionHref).toBe("/admin/submissions/sub_1/decision");
   });
 
+  it("marks accepted work that waits for the seller's agreement", () => {
+    const agreement = {
+      id: "agr-1",
+      submissionId: "sub_1",
+      legalEntityId: "le-1",
+      termsVersion: "conditions-of-business-part-c-v1",
+      estimateLow: "8000.00",
+      estimateHigh: "12000.00",
+      reservePrice: null,
+      commissionPercent: "15.00",
+      currency: "GBP",
+      proposedAt: new Date(),
+      acceptedAt: null,
+      acceptedByUserId: null,
+    };
+    const [waiting] = toSubmissionsStaffRows(
+      [{ ...row, status: "approved" }],
+      new Map([["sub_1", agreement]]),
+    );
+    expect(waiting?.sellerWait).toEqual({ label: "Waiting for the seller", tone: "info" });
+    const [underReview] = toSubmissionsStaffRows([row], new Map([["sub_1", agreement]]));
+    expect(underReview?.sellerWait).toBeNull();
+  });
+
   it("shows no assignee for an unassigned submission", () => {
     const [submission] = toSubmissionsStaffRows([{ ...row, isUnassigned: true }]);
     expect(submission?.assignee).toBeNull();

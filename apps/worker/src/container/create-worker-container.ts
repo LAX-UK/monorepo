@@ -426,6 +426,7 @@ export function createWorkerContainer(): WorkerContainer {
       ? [
           heartbeat("payout-settlement"),
           heartbeat("stale-submission-draft-reminders"),
+          heartbeat("consignment-agreement-reminders"),
           heartbeat("lot-lifecycle-tick"),
           heartbeat("expire-stale-payments"),
           heartbeat("retry-xero-webhook-failures"),

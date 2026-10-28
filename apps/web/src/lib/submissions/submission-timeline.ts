@@ -20,6 +20,7 @@ export function submissionTimelineActiveIndex(
     case "submitted":
       return 1;
     case "under_review":
+    case "changes_requested":
       return 2;
     case "approved":
       return 3;

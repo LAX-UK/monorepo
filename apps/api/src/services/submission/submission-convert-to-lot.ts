@@ -1,4 +1,10 @@
-import { canTransition, evaluateLotReadiness, transitionErrorMessage } from "@auction/domain";
+import {
+  AGREEMENT_NOT_ACCEPTED_MESSAGE,
+  agreementAllowsCataloguing,
+  canTransition,
+  evaluateLotReadiness,
+  transitionErrorMessage,
+} from "@auction/domain";
 import type { ItemSubmission, Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../../lib/errors.js";
@@ -8,6 +14,21 @@ import { resolveLegalEntityNotificationRecipients } from "../legal-entity-notifi
 import { submissionToCreateLotInput } from "../submission-to-lot.mapper.js";
 import { txRepos } from "./submission-mutation-context.js";
 import type { ItemSubmissionServiceDeps } from "./submission-types.js";
+
+/** A lot is catalogued only once the seller has accepted the consignment agreement. */
+async function waitingForSellerAgreement(
+  deps: ItemSubmissionServiceDeps,
+  id: string,
+): Promise<SubmissionError | null> {
+  if (!deps.consignmentAgreements) return null;
+  const s = await deps.submissions.findById(id);
+  // Other states are refused by the transition table with their own reason.
+  if (!s || !canTransition(s.status, "convert")) return null;
+  const agreement = await deps.consignmentAgreements.findBySubmissionId(id);
+  return agreementAllowsCataloguing(agreement)
+    ? null
+    : new SubmissionError(AGREEMENT_NOT_ACCEPTED_MESSAGE, 409);
+}
 
 export async function convert(
   deps: ItemSubmissionServiceDeps,
@@ -23,6 +44,8 @@ export async function convert(
   if (requestedArtistId && newArtist) {
     return err(new SubmissionError("Provide either artistId or newArtist, not both", 400));
   }
+  const blocked = await waitingForSellerAgreement(deps, id);
+  if (blocked) return err(blocked);
   try {
     const { lot, submission, legalEntityId, title, readinessPercent } =
       await deps.transactionRunner.runInTransaction(async (tx) => {

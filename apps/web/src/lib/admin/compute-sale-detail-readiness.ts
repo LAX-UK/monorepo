@@ -1,6 +1,7 @@
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import type { ConnectRequiredByLotId } from "@/lib/admin/connect-readiness";
 import { buildSaleSetupReadiness, saleSetupHref } from "@/lib/admin/sale-setup";
+import type { NamedSellerWithoutPayouts } from "@/lib/admin/sale-setup/sellers-without-payouts";
 import type { Lot, Sale } from "@auction/types";
 
 export type SaleDetailReadinessInput = {
@@ -9,6 +10,7 @@ export type SaleDetailReadinessInput = {
   lots: Lot[];
   pendingRegistrationCount?: number | null;
   connectRequiredByLotId?: ConnectRequiredByLotId;
+  sellersWithoutPayouts?: readonly NamedSellerWithoutPayouts[];
 };
 
 export function computeSaleDetailReadiness(
@@ -27,6 +29,7 @@ export function computeSaleDetailReadiness(
     ...(input.connectRequiredByLotId
       ? { connectRequiredByLotId: input.connectRequiredByLotId }
       : {}),
+    ...(input.sellersWithoutPayouts ? { sellersWithoutPayouts: input.sellersWithoutPayouts } : {}),
     setupStepHref: (step) => saleSetupHref(input.saleId, step),
   });
 }

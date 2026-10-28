@@ -1653,6 +1653,13 @@
       "when": 1795680000000,
       "tag": "0235_bid_last_acting_account",
       "breakpoints": true
+    },
+    {
+      "idx": 236,
+      "version": "7",
+      "when": 1795766400000,
+      "tag": "0236_consignment_agreement_and_needs_changes",
+      "breakpoints": true
     }
   ]
 }

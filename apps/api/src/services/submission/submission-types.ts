@@ -7,6 +7,7 @@ import type {
   ItemSubmissionUpdatePatch,
 } from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
+import type { IConsignmentAgreementRepository } from "@auction/persistence/interfaces";
 import type { UpdateItemSubmissionInput } from "@auction/types";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ImageCleanupService } from "../image-cleanup.service.js";
@@ -14,6 +15,7 @@ import type { ILotLifecycleRecorder } from "../interfaces/lot-lifecycle-recorder
 import type { MediaAssetEnricher } from "../media-asset-enricher.js";
 import type { MediaUrlResolver } from "../media-url-resolver.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
+import type { ISellerIdentityReader } from "./seller-identity.reader.js";
 
 export {
   INDIVIDUAL_SUBMISSION_BLOCKED_STATUSES,
@@ -34,6 +36,10 @@ export type ItemSubmissionServiceDeps = {
   mediaAssetEnricher: MediaAssetEnricher | undefined;
   lotLifecycleRecording: ILotLifecycleRecorder | null;
   repoFactory: IRepositoryFactory | null;
+  /** Consignment agreements: proposed on acceptance, required before cataloguing. */
+  consignmentAgreements: IConsignmentAgreementRepository | null;
+  /** The seller's checked identity; a specialist accepts the work only once it is verified. */
+  sellerIdentity: ISellerIdentityReader | null;
 };
 
 export function sellerPatchToRepoPatch(

@@ -77,9 +77,24 @@ function rejectedItem(
     detail: recent.rejectionReason
       ? `Reason given: ${recent.rejectionReason}`
       : "You can submit a revised version with updated details.",
-    status: "Needs changes",
+    status: "Not accepted",
     href: `/selling/new?fromRejected=${encodeURIComponent(recent.id)}`,
   };
+}
+
+/** Each submission a specialist sent back: the seller edits it and sends it again. */
+function changesRequestedItems(submissions: readonly ItemSubmission[]): SellerAttentionItem[] {
+  return submissions
+    .filter((s) => s.status === "changes_requested")
+    .map((s) => ({
+      id: `changes:${s.id}`,
+      title: `"${s.title}" needs changes`,
+      detail: s.changesRequestedNote
+        ? `Your specialist asked: ${s.changesRequestedNote}`
+        : "Your specialist asked for a few changes before deciding.",
+      status: "Needs changes",
+      href: `${CONSIGNMENTS}/${s.id}`,
+    }));
 }
 
 function unsoldItem(lots: readonly Lot[]): SellerAttentionItem | null {
@@ -103,7 +118,10 @@ function unsoldItem(lots: readonly Lot[]): SellerAttentionItem | null {
  * list stays short however much the seller has consigned.
  */
 export function buildSellerAttentionItems(input: Input): SellerAttentionItem[] {
-  const items: SellerAttentionItem[] = [...draftItems(input.submissions)];
+  const items: SellerAttentionItem[] = [
+    ...changesRequestedItems(input.submissions),
+    ...draftItems(input.submissions),
+  ];
 
   if (input.identityVerificationNeeded) {
     items.push({

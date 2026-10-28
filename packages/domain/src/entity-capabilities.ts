@@ -50,6 +50,11 @@ const ENTITY_CAPABILITY_RULES = {
    * consignments but not start them; a person's own profile always has an owner's rights.
    */
   "entity.submissions.create": { access: "write", roles: ["owner", "admin", "consignor"] },
+  /**
+   * Accept the consignment agreement (the specialist's estimate and the seller conditions) for
+   * the organisation. It binds the organisation, so only the people who run it may accept.
+   */
+  "entity.consignments.accept_agreement": { access: "write", roles: ["owner", "admin"] },
   /** Ask for a consigned lot to be withdrawn from sale. */
   "entity.consignments.withdraw": { access: "write", roles: ["owner", "admin"] },
   /**

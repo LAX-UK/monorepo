@@ -1,3 +1,5 @@
+import { ConsignmentAgreementHttpApplicationService } from "../services/consignment-agreement/consignment-agreement-http-application.service.js";
+import type { IConsignmentAgreementService } from "../services/consignment-agreement/consignment-agreement.service.js";
 import type {
   IItemSubmissionAdminApi,
   IItemSubmissionSellerApi,
@@ -12,6 +14,7 @@ export type CreateSubmissionRouteServicesInput = {
   itemSubmissionSellerApi: IItemSubmissionSellerApi;
   itemSubmissionAdminApi: IItemSubmissionAdminApi;
   submissionDocumentService: ISubmissionDocumentPort;
+  consignmentAgreementService: IConsignmentAgreementService;
 };
 
 export function createSubmissionRouteServices(
@@ -24,6 +27,9 @@ export function createSubmissionRouteServices(
       input.itemSubmissionSellerApi,
       input.itemSubmissionAdminApi,
       input.submissionDocumentService,
+    ),
+    agreementHttp: new ConsignmentAgreementHttpApplicationService(
+      input.consignmentAgreementService,
     ),
   };
 }

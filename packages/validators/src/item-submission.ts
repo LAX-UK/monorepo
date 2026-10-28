@@ -146,6 +146,95 @@ export const approveSubmissionBodySchema = z
 
 export type ApproveSubmissionBody = z.infer<typeof approveSubmissionBodySchema>;
 
+const commissionPercentString = z
+  .string()
+  .regex(/^\d{1,2}(\.\d{1,2})?$/, "Enter a percentage between 0 and 99.99");
+
+/**
+ * Accepting a submission is also the specialist's proposal to the seller: the estimate and the
+ * terms the seller reads and accepts in the consignment agreement. All figures are optional so
+ * a proposal can follow the decision, but an estimate is given as a pair, low to high.
+ */
+export const acceptSubmissionBodySchema = z
+  .object({
+    reviewNotes: z.string().max(5000).optional(),
+    estimateLow: decimalString.optional(),
+    estimateHigh: decimalString.optional(),
+    reservePrice: decimalString.optional(),
+    commissionPercent: commissionPercentString.optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (Boolean(data.estimateLow) !== Boolean(data.estimateHigh)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "Give both the low and the high estimate",
+        path: [data.estimateLow ? "estimateHigh" : "estimateLow"],
+      });
+      return;
+    }
+    if (data.estimateLow && data.estimateHigh && moneyLt(data.estimateHigh, data.estimateLow)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "The high estimate must be at least the low estimate",
+        path: ["estimateHigh"],
+      });
+    }
+  });
+
+export type AcceptSubmissionBody = z.infer<typeof acceptSubmissionBodySchema>;
+
+/** Staff completing a proposal: the estimate and commission are what the seller accepts. */
+export const proposeConsignmentTermsBodySchema = z
+  .object({
+    estimateLow: decimalString,
+    estimateHigh: decimalString,
+    reservePrice: decimalString.optional(),
+    commissionPercent: commissionPercentString,
+  })
+  .superRefine((data, ctx) => {
+    if (moneyLt(data.estimateHigh, data.estimateLow)) {
+      ctx.addIssue({
+        code: "custom",
+        message: "The high estimate must be at least the low estimate",
+        path: ["estimateHigh"],
+      });
+    }
+  });
+
+export type ProposeConsignmentTermsBody = z.infer<typeof proposeConsignmentTermsBodySchema>;
+
+/** Staff list: agreements for up to 100 submissions (comma-separated ids). */
+export const submissionIdsQuerySchema = z.object({
+  ids: z
+    .string()
+    .max(4000)
+    .transform((raw) =>
+      raw
+        .split(",")
+        .map((id) => id.trim())
+        .filter((id) => z.string().uuid().safeParse(id).success)
+        .slice(0, 100),
+    ),
+});
+
+/** The specialist's note to the seller when a submission needs changes. */
+export const requestSubmissionChangesBodySchema = z.object({
+  note: z
+    .string()
+    .trim()
+    .min(1, "Tell the seller what to change")
+    .max(2000, "Keep the note under 2,000 characters"),
+});
+
+export type RequestSubmissionChangesBody = z.infer<typeof requestSubmissionChangesBodySchema>;
+
+/** The seller accepts the version of the agreement they read. */
+export const acceptConsignmentAgreementBodySchema = z.object({
+  termsVersion: z.string().trim().min(1).max(100),
+});
+
+export type AcceptConsignmentAgreementBody = z.infer<typeof acceptConsignmentAgreementBodySchema>;
+
 export const rejectSubmissionBodySchema = z.object({
   rejectionReason: z.string().trim().min(1, "Rejection reason is required").max(2000),
   reviewNotes: z.string().max(5000).optional(),

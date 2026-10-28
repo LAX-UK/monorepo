@@ -10,6 +10,7 @@ import type { FormController } from "@/lib/forms/shared/form-controller";
 import { EMPTY_SUBMISSION_FORM_VALUES } from "@/lib/forms/submission/item-submission-form-defaults";
 import { allWizardFieldPaths } from "@/lib/forms/submission/step-validation";
 import { sanitizeSubmissionFormValues } from "@/lib/forms/submission/submission-form-data";
+import type { SubmissionAccountScope } from "@/lib/services/interfaces/submission-service";
 import { notify } from "@/lib/ui/notify";
 import { evaluateSubmissionQuality } from "@auction/domain";
 import { type ItemSubmissionFormValues, itemSubmissionFormSchema } from "@auction/validators";
@@ -19,6 +20,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { type FieldPath, useForm, useFormState } from "react-hook-form";
 
 export type WizardMode = { kind: "create" } | { kind: "edit"; submissionId: string };
+
+export type SubmissionWizardControllerOptions = {
+  /**
+   * The account the work is sold as, read at the moment of each save. "Sell with LAX" asks
+   * for it in its second step; without it writes use the account in use.
+   */
+  accountScope?: () => SubmissionAccountScope;
+};
 
 export type AutosaveStatus = "idle" | "dirty" | "saving" | "saved" | "error";
 
@@ -48,7 +57,11 @@ function applyFieldErrors(
 export function useSubmissionWizardController(
   mode: WizardMode,
   initial?: ItemSubmissionFormValues,
+  options: SubmissionWizardControllerOptions = {},
 ): SubmissionWizardController {
+  const accountScopeRef = useRef(options.accountScope);
+  accountScopeRef.current = options.accountScope;
+  const scope = useCallback(() => accountScopeRef.current?.() ?? {}, []);
   const router = useRouter();
   const [submitInFlight, setSubmitInFlight] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState<AutosaveStatus>("idle");
@@ -69,7 +82,7 @@ export function useSubmissionWizardController(
 
   const persistUpdate = useCallback(
     async (values: ItemSubmissionFormValues, id: string): Promise<boolean> => {
-      const r = await updateSubmissionFromValuesAction(id, values);
+      const r = await updateSubmissionFromValuesAction(id, values, scope());
       if (r.ok) {
         setLastSavedAt(new Date());
         setAutosaveStatus("saved");
@@ -81,7 +94,7 @@ export function useSubmissionWizardController(
       notify.error(r.error);
       return false;
     },
-    [form],
+    [form, scope],
   );
 
   const saveDraft = useCallback(
@@ -107,7 +120,7 @@ export function useSubmissionWizardController(
         return ok;
       }
 
-      const r = await createSubmissionFromValuesAction(parsed.data);
+      const r = await createSubmissionFromValuesAction(parsed.data, scope());
       saveInFlight.current = false;
       if (!r.ok) {
         applyFieldErrors(form, r.fieldErrors);
@@ -134,7 +147,7 @@ export function useSubmissionWizardController(
       }
       return true;
     },
-    [form, mode, persistUpdate, router, submissionId],
+    [form, mode, persistUpdate, router, scope, submissionId],
   );
 
   const submitForReview = useCallback(async () => {
@@ -178,7 +191,7 @@ export function useSubmissionWizardController(
       let id = submissionId ?? (mode.kind === "edit" ? mode.submissionId : null);
 
       if (!id) {
-        const r = await createSubmissionFromValuesAction(parsed.data);
+        const r = await createSubmissionFromValuesAction(parsed.data, scope());
         if (!r.ok) {
           applyFieldErrors(form, r.fieldErrors);
           setAutosaveStatus("error");
@@ -193,7 +206,7 @@ export function useSubmissionWizardController(
         }
         setSubmissionId(id);
       } else {
-        const updated = await updateSubmissionFromValuesAction(id, parsed.data);
+        const updated = await updateSubmissionFromValuesAction(id, parsed.data, scope());
         if (!updated.ok) {
           applyFieldErrors(form, updated.fieldErrors);
           setAutosaveStatus("error");
@@ -202,7 +215,7 @@ export function useSubmissionWizardController(
         }
       }
 
-      const submitted = await submitForReviewFromValuesAction(id);
+      const submitted = await submitForReviewFromValuesAction(id, scope());
       if (!submitted.ok) {
         setAutosaveStatus("error");
         notify.error(submitted.error);
@@ -219,7 +232,7 @@ export function useSubmissionWizardController(
       saveInFlight.current = false;
       setSubmitInFlight(false);
     }
-  }, [form, mode, router, submissionId, submitInFlight]);
+  }, [form, mode, router, scope, submissionId, submitInFlight]);
 
   useEffect(() => {
     if (mode.kind !== "edit" && !submissionId) return;

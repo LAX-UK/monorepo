@@ -11,14 +11,16 @@ import {
   UnsavedChangesDialog,
   useUnsavedChanges,
 } from "@auction/staff-ui";
-import type { ItemSubmission, ItemSubmissionStatus } from "@auction/types";
+import type { ConsignmentAgreement, ItemSubmission, ItemSubmissionStatus } from "@auction/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
+import { SubmissionAgreementStatus } from "./submission-agreement-status";
 import { SubmissionApproveForm } from "./submission-approve-form";
 import { SubmissionConvertForm } from "./submission-convert-form";
 import { SubmissionQualityChecklist } from "./submission-quality-checklist";
 import { SubmissionRejectForm } from "./submission-reject-form";
+import { SubmissionRequestChangesForm } from "./submission-request-changes-form";
 import { useSubmissionDecisionActions } from "./use-submission-decision-actions";
 import { useSubmissionDecisionShortcuts } from "./use-submission-decision-shortcuts";
 
@@ -39,6 +41,12 @@ type Props = {
   submitterDisplayName?: string;
   /** The account behind the seller. When present, an artist created here is linked to it. */
   submitterUserId?: string;
+  /** The seller's consignment agreement; cataloguing waits for its acceptance. */
+  agreement?: ConsignmentAgreement | null;
+  /** The seller's identity is checked; accepting the work waits for it. */
+  sellerIdentityVerified?: boolean;
+  /** The seller's account, for following up with them. */
+  sellerLegalEntityId?: string;
 };
 
 /**
@@ -52,19 +60,23 @@ export function AdminSubmissionDecisionPanel({
   submission,
   submitterDisplayName,
   submitterUserId,
+  agreement = null,
+  sellerIdentityVerified = true,
+  sellerLegalEntityId,
 }: Props) {
   const router = useRouter();
   const view = resolveSubmissionDecisionView(status);
   const approveFormEl = useRef<HTMLFormElement | null>(null);
   const panelRootRef = useRef<HTMLDivElement | null>(null);
-  const [dirty, setDirty] = useState({ approve: false, reject: false });
+  const [dirty, setDirty] = useState({ approve: false, reject: false, changes: false });
 
-  const { pending, startReview, accept, reject, convert, dialog } = useSubmissionDecisionActions({
-    submissionId,
-    title: submission.title,
-  });
+  const { pending, startReview, accept, requestChanges, proposeTerms, reject, convert, dialog } =
+    useSubmissionDecisionActions({
+      submissionId,
+      title: submission.title,
+    });
 
-  const guard = useUnsavedChanges(dirty.approve || dirty.reject, {
+  const guard = useUnsavedChanges(dirty.approve || dirty.reject || dirty.changes, {
     label: submission.title,
     navigate: (href) => router.push(href),
   });
@@ -76,9 +88,31 @@ export function AdminSubmissionDecisionPanel({
     (next: boolean) => setDirty((c) => ({ ...c, reject: next })),
     [],
   );
+  const onChangesDirty = useCallback(
+    (next: boolean) => setDirty((c) => ({ ...c, changes: next })),
+    [],
+  );
+  const agreementAccepted = Boolean(agreement?.acceptedAt);
+  const acceptBlocked = sellerIdentityVerified
+    ? null
+    : {
+        title: "The seller hasn't verified their identity yet",
+        body: "A specialist can accept the work once they have. Meanwhile you can ask for changes or reject it.",
+        action: sellerLegalEntityId
+          ? {
+              label: "Open the seller",
+              href: `/admin/legal-entities/${encodeURIComponent(sellerLegalEntityId)}`,
+            }
+          : null,
+      };
+  // While something is still owed by the seller there is nothing to submit by shortcut.
+  const shortcutsActive =
+    view.shortcutsActive &&
+    (view.mode !== "convert" || agreementAccepted) &&
+    (view.mode !== "review" || !acceptBlocked);
 
   useSubmissionDecisionShortcuts({
-    active: view.shortcutsActive,
+    active: shortcutsActive,
     panelRootRef,
     approveFormRef: approveFormEl,
   });
@@ -104,6 +138,12 @@ export function AdminSubmissionDecisionPanel({
               formRef={approveFormEl}
               onSubmit={accept}
               onDirtyChange={onApproveDirty}
+              blocked={acceptBlocked}
+            />
+            <SubmissionRequestChangesForm
+              pending={pending}
+              onSubmit={requestChanges}
+              onDirtyChange={onChangesDirty}
             />
             <SubmissionRejectForm
               pending={pending}
@@ -114,14 +154,30 @@ export function AdminSubmissionDecisionPanel({
         );
       case "convert":
         return (
-          <SubmissionConvertForm
-            pending={pending}
-            formRef={approveFormEl}
-            submitterDisplayName={submitterDisplayName}
-            submitterUserId={submitterUserId}
-            onSubmit={convert}
-            onDirtyChange={onApproveDirty}
-          />
+          <>
+            <SubmissionAgreementStatus
+              agreement={agreement}
+              pending={pending}
+              onProposeTerms={proposeTerms}
+            />
+            {agreementAccepted ? (
+              <SubmissionConvertForm
+                pending={pending}
+                formRef={approveFormEl}
+                submitterDisplayName={submitterDisplayName}
+                submitterUserId={submitterUserId}
+                onSubmit={convert}
+                onDirtyChange={onApproveDirty}
+              />
+            ) : null}
+          </>
+        );
+      case "awaiting-changes":
+        return (
+          <Notice tone="info" title="Waiting for the seller's changes">
+            The seller was asked for changes. The submission comes back to the review queue when
+            they send it again.
+          </Notice>
         );
       case "converted":
         return submission.convertedLotId ? (
@@ -149,7 +205,7 @@ export function AdminSubmissionDecisionPanel({
     >
       <div ref={panelRootRef} className="flex flex-col gap-6">
         {view.showChecklist ? <SubmissionQualityChecklist submission={submission} /> : null}
-        {view.shortcutsActive ? (
+        {shortcutsActive ? (
           <p className="text-staff-sm text-staff-muted">
             Shortcuts when not typing in a field: <Kbd>A</Kbd> {view.shortcutVerb}, <Kbd>R</Kbd>{" "}
             focus rejection, <Kbd>⌘ Enter</Kbd> submit.

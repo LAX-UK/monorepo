@@ -16,9 +16,12 @@ import { adminSubmissionNotesSchema, updateItemSubmissionSchema } from "@auction
 import { type Result, ok } from "neverthrow";
 import type { SubmissionError } from "../../lib/errors.js";
 import { presentSubmissionImages, presentSubmissionsImages } from "../../lib/media-presenters.js";
-import type { ApproveSubmissionInput } from "../interfaces/item-submission-service.js";
+import type {
+  AcceptSubmissionInput,
+  ApproveSubmissionInput,
+} from "../interfaces/item-submission-service.js";
 import { resolveLegalEntityNotificationRecipients } from "../legal-entity-notification-routing.js";
-import { accept, approve, reject } from "./submission-admin-decisions.js";
+import { accept, approve, reject, requestChanges } from "./submission-admin-decisions.js";
 import { assignForAdmin, startReview } from "./submission-admin-review.js";
 import { convert } from "./submission-convert-to-lot.js";
 import { getForAdmin, getForSeller, listForAdmin, listForSeller } from "./submission-read.js";
@@ -276,7 +279,7 @@ export async function acceptForAdminApi(
   deps: ItemSubmissionServiceDeps,
   adminId: string,
   id: string,
-  body: Pick<ApproveSubmissionInput, "reviewNotes">,
+  body: AcceptSubmissionInput,
 ): Promise<Result<ItemSubmission, SubmissionError>> {
   const result = await accept(deps, adminId, id, body);
   if (result.isErr()) return result;
@@ -321,6 +324,19 @@ export async function approveForAdminApi(
     deps.mediaAssetEnricher,
   );
   return ok({ submission, lot: result.value.lot });
+}
+
+export async function requestChangesForAdminApi(
+  deps: ItemSubmissionServiceDeps,
+  adminId: string,
+  id: string,
+  note: string,
+): Promise<Result<ItemSubmission, SubmissionError>> {
+  const result = await requestChanges(deps, adminId, id, note);
+  if (result.isErr()) return result;
+  return ok(
+    await presentSubmissionImages(deps.mediaUrlResolver, result.value, deps.mediaAssetEnricher),
+  );
 }
 
 export async function rejectForAdminApi(

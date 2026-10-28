@@ -1,4 +1,4 @@
-import type { ArtistKind } from "@auction/types";
+import type { ArtistKind, ConsignmentAgreementProposalInput } from "@auction/types";
 
 /** Inline-create artist payload accepted on submission approval. Mirrors
  * `inlineCreateArtistSchema` in `@auction/validators`. */
@@ -16,4 +16,10 @@ export type ApproveSubmissionInput = {
   reviewNotes?: string | undefined;
   artistId?: string | null | undefined;
   newArtist?: ApproveSubmissionNewArtist | undefined;
+};
+
+/** Body for accepting a submission: optional staff notes and the specialist's proposal. */
+export type AcceptSubmissionInput = {
+  reviewNotes?: string | undefined;
+  proposal?: ConsignmentAgreementProposalInput | undefined;
 };

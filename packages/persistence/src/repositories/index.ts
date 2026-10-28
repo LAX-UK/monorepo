@@ -14,6 +14,7 @@ export { DrizzleSavedSearchRepository } from "./drizzle-saved-search.repository.
 export { DrizzleAccountDeletionEligibilityReader } from "./drizzle-account-deletion-eligibility.reader.js";
 export { DrizzleBidPortfolioReader } from "./drizzle-bid-portfolio.reader.js";
 export { DrizzleAccountOnboardingRepository } from "./drizzle-account-onboarding.repository.js";
+export { DrizzleConsignmentAgreementRepository } from "./drizzle-consignment-agreement.repository.js";
 export { DrizzleAbsenteeBidRepository } from "./drizzle-absentee-bid.repository.js";
 export { DrizzleBidLotRulesReader } from "./drizzle-bid-lot-rules.reader.js";
 export { DrizzleBidBidderRoleReader } from "./drizzle-bid-bidder-role.reader.js";

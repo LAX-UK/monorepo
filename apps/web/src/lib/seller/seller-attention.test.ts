@@ -112,7 +112,7 @@ describe("buildSellerAttentionItems", () => {
     expect(items[0]).toMatchObject({
       title: '"Quiet pier" was not accepted',
       detail: "Reason given: Needs a clearer signature photo",
-      status: "Needs changes",
+      status: "Not accepted",
       href: "/selling/new?fromRejected=new",
     });
   });
@@ -155,5 +155,26 @@ describe("buildSellerAttentionItems", () => {
       ],
     });
     expect(items.map((i) => i.id)).toEqual(["draft:d", "payout-setup", "rejected:r", "unsold"]);
+  });
+
+  it("puts submissions that need changes first, with the specialist's note", () => {
+    const items = build({
+      submissions: [
+        submission({ id: "d1", status: "draft" }),
+        submission({
+          id: "c1",
+          title: "Blue",
+          status: "changes_requested",
+          changesRequestedNote: "Add a photo of the back.",
+        }),
+      ],
+    });
+    expect(items[0]).toEqual({
+      id: "changes:c1",
+      title: '"Blue" needs changes',
+      detail: "Your specialist asked: Add a photo of the back.",
+      status: "Needs changes",
+      href: "/selling/consignments/c1",
+    });
   });
 });

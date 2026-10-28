@@ -54,7 +54,8 @@ function mapSubmissionResult<T>(
   statusOk = 200,
 ): SubmissionHttpJson {
   if (result.isErr()) {
-    return { status: result.error.status, body: { error: result.error.message } };
+    const { status, message, code } = result.error;
+    return { status, body: { error: message, ...(code ? { code } : {}) } };
   }
   return { status: statusOk, body: { data: result.value } };
 }
@@ -123,10 +124,29 @@ export class SubmissionAdminHttpApplicationService
   }): Promise<SubmissionHttpJson> {
     const denied = this.guardAdmin(input.viewer);
     if (denied) return denied;
+    const { reviewNotes, estimateLow, estimateHigh, reservePrice, commissionPercent } = input.body;
     const result = await this.itemSubmissionAdminApi.acceptForAdminApi(
       input.viewer.userId,
       input.submissionId,
-      input.body,
+      {
+        reviewNotes,
+        proposal: { estimateLow, estimateHigh, reservePrice, commissionPercent },
+      },
+    );
+    return mapSubmissionResult(result);
+  }
+
+  async requestChanges(input: {
+    submissionId: string;
+    body: Parameters<ISubmissionAdminHttpApplicationService["requestChanges"]>[0]["body"];
+    viewer: Parameters<ISubmissionAdminHttpApplicationService["requestChanges"]>[0]["viewer"];
+  }): Promise<SubmissionHttpJson> {
+    const denied = this.guardAdmin(input.viewer);
+    if (denied) return denied;
+    const result = await this.itemSubmissionAdminApi.requestChangesForAdminApi(
+      input.viewer.userId,
+      input.submissionId,
+      input.body.note,
     );
     return mapSubmissionResult(result);
   }

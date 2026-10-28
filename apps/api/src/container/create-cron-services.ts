@@ -106,6 +106,7 @@ export function createCronServices(input: CreateCronServicesInput): ContainerCro
     catalog.itemSubmissionAdminApi,
     complianceMedia.amlService,
     biddingSaleroom.displayPairingService,
+    catalog.consignmentAgreementService,
   );
 
   const accountDeletionEligibilityService = new AccountDeletionEligibilityService(

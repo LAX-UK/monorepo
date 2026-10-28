@@ -2,29 +2,29 @@ import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SellerProfileUnavailableAlert } from "@/components/dashboard/seller-profile-unavailable-alert";
+import { ConsignmentChecklistRollup } from "@/components/dashboard/seller/consignment-checklist-rollup";
 import { SellerAttentionList } from "@/components/dashboard/seller/seller-attention-list";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import {
-  legalEntityToConnectFields,
-  resolveSellerConnectPresentation,
-} from "@/lib/connect/resolve-seller-connect-presentation";
 import { DASHBOARD_CTA, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
   type DashboardSliceFailure,
   describeDashboardSliceFailure,
 } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import { getServerStripeConnectClientConfig } from "@/lib/data/http/stripe-connect.server";
-import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
+import { listServerConsignmentAgreements } from "@/lib/data/http/consignment-agreements.server";
 import {
   resolveSellerWorkspaceContext,
   sellerCan,
 } from "@/lib/legal-entity/seller-acting-context.server";
 import { submissionsFailureFromCaught } from "@/lib/legal-entity/submissions-access-errors";
 import { organisationHref } from "@/lib/navigation/client-routes";
+import { consignmentChecklistFacts } from "@/lib/seller/consignment-checklist-facts";
+import { checklistRollupRows } from "@/lib/seller/consignment-checklist-rollup-view";
+import { loadSellerAccountFacts } from "@/lib/seller/seller-account-facts.server";
 import { buildSellerAttentionItems } from "@/lib/seller/seller-attention";
-import type { ItemSubmission, Lot } from "@auction/types";
+import { computeConsignmentChecklist, rollupConsignmentChecklists } from "@auction/domain";
+import type { ConsignmentAgreement, ItemSubmission, Lot } from "@auction/types";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Plus } from "lucide-react";
@@ -49,13 +49,12 @@ export default async function SellerOverviewPage() {
   const failures: DashboardSliceFailure[] = [];
   let submissions: ItemSubmission[] = [];
   let lots: Lot[] = [];
-  let payoutSetupIncomplete = false;
-  let identityVerificationNeeded = false;
+  let agreements: ConsignmentAgreement[] = [];
+  let account: Awaited<ReturnType<typeof loadSellerAccountFacts>> = null;
 
   if (canSell && sellerEntityId) {
     const c = await getServerDataContainer();
-    const hub = createOrganisationHubGateway();
-    const [submissionsResult, lotsResult, clientConfig, entity, kyc] = await Promise.all([
+    const [submissionsResult, lotsResult, agreementsResult, accountResult] = await Promise.all([
       c.submissions.listMine({ limit: PAGE_LIMIT, offset: 0 }).then(
         (value) => ({ ok: true as const, value }),
         (reason: unknown) => ({ ok: false as const, reason }),
@@ -64,9 +63,8 @@ export default async function SellerOverviewPage() {
         (value) => ({ ok: true as const, value }),
         (reason: unknown) => ({ ok: false as const, reason }),
       ),
-      getServerStripeConnectClientConfig(),
-      hub.getEntityDetail(sellerEntityId).catch(() => null),
-      c.kyc.getSummary().catch(() => null),
+      listServerConsignmentAgreements().catch(() => []),
+      loadSellerAccountFacts(sellerCtx).catch(() => null),
     ]);
 
     if (submissionsResult.ok) submissions = submissionsResult.value;
@@ -77,25 +75,46 @@ export default async function SellerOverviewPage() {
         describeDashboardSliceFailure(lotsResult.reason, "sellerLots", "Could not load your lots."),
       );
     }
-
-    payoutSetupIncomplete = resolveSellerConnectPresentation({
-      connectEnforced: clientConfig.connectEnforced,
-      entity: entity ? legalEntityToConnectFields(entity) : null,
-    }).showBanner;
-    // Identity checks belong to a person; an organisation is checked through its documents.
-    identityVerificationNeeded =
-      !sellingAsOrganisation &&
-      kyc !== null &&
-      kyc.status !== "approved" &&
-      (kyc.requiresKyc || payoutSetupIncomplete);
+    agreements = agreementsResult;
+    account = accountResult;
   }
+
+  // "Before your works can go to sale", across every consignment on its way.
+  const agreementBySubmission = new Map(agreements.map((a) => [a.submissionId, a]));
+  const lotById = new Map(lots.map((lot) => [lot.id, lot]));
+  const rollup = account
+    ? rollupConsignmentChecklists(
+        submissions.map((submission) => ({
+          id: submission.id,
+          title: submission.title,
+          checklist: computeConsignmentChecklist(
+            consignmentChecklistFacts({
+              submission,
+              agreement: agreementBySubmission.get(submission.id) ?? null,
+              account,
+              lot: submission.convertedLotId
+                ? (lotById.get(submission.convertedLotId) ?? null)
+                : null,
+            }),
+          ),
+        })),
+      )
+    : [];
+  const rollupRows = account
+    ? checklistRollupRows(rollup, {
+        accountKind: account.accountKind,
+        organisationName: account.organisationName,
+      })
+    : [];
+  const rollupCovers = new Set(rollup.map((row) => row.id));
 
   const loadedNothing = failures.length === 2;
   const attention = buildSellerAttentionItems({
     submissions,
     lots,
-    payoutSetupIncomplete,
-    identityVerificationNeeded,
+    // The roll-up already asks for these when a consignment needs them.
+    payoutSetupIncomplete: !rollupCovers.has("payouts") && account?.payoutsReady === false,
+    identityVerificationNeeded: !rollupCovers.has("identity") && account?.identity === "required",
     payoutSetupHref: payoutSetupHref(sellerEntityId, sellingAsOrganisation),
     canOpenPayoutSetup: sellerCan(sellerCtx, "entity.connect.operate"),
     now: new Date(),
@@ -104,7 +123,7 @@ export default async function SellerOverviewPage() {
   return (
     <DashboardPage className="space-y-8">
       {/* For an organisation this page is its Home until Home has a page of its own. */}
-      {sellingAsOrganisation ? <SetMobileShellTitle title="Home" /> : null}
+      <SetMobileShellTitle title={sellingAsOrganisation ? "Home" : "Overview"} />
       <DashboardPageHeader
         title={sellingAsOrganisation ? "Home" : "Overview"}
         hideTitleOnMobile
@@ -136,7 +155,10 @@ export default async function SellerOverviewPage() {
           </AlertDescription>
         </Alert>
       ) : loadedNothing ? null : (
-        <SellerAttentionList items={attention} />
+        <>
+          <ConsignmentChecklistRollup rows={rollupRows} />
+          <SellerAttentionList items={attention} />
+        </>
       )}
     </DashboardPage>
   );

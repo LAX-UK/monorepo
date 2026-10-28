@@ -7,6 +7,7 @@ import type {
   ListSubmissionsFilter,
 } from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
+import type { IConsignmentAgreementRepository } from "@auction/persistence/interfaces";
 import type {
   CreateItemSubmissionInput,
   ItemSubmission,
@@ -19,6 +20,7 @@ import type { SubmissionError } from "../lib/errors.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type {
+  AcceptSubmissionInput,
   ApproveSubmissionInput,
   IItemSubmissionService,
   UpdateSubmissionActorInput,
@@ -27,6 +29,7 @@ import type { ILotLifecycleRecorder } from "./interfaces/lot-lifecycle-recorder.
 import type { MediaAssetEnricher } from "./media-asset-enricher.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import type { NotificationDispatcher } from "./notification.dispatcher.js";
+import type { ISellerIdentityReader } from "./submission/seller-identity.reader.js";
 import {
   accept,
   approve,
@@ -48,6 +51,7 @@ import {
   listSubmissionsForSellerApi,
   patchSubmissionFromRequestBody,
   rejectForAdminApi,
+  requestChangesForAdminApi,
   sendStaleDraftReminders,
   startReviewForAdminApi,
   submitForReviewForSellerApi,
@@ -85,6 +89,8 @@ export class ItemSubmissionService implements IItemSubmissionService {
     mediaAssetEnricher: MediaAssetEnricher | undefined = undefined,
     lotLifecycleRecording: ILotLifecycleRecorder | null = null,
     repoFactory: IRepositoryFactory | null = null,
+    consignmentAgreements: IConsignmentAgreementRepository | null = null,
+    sellerIdentity: ISellerIdentityReader | null = null,
   ) {
     this.deps = {
       transactionRunner,
@@ -99,6 +105,8 @@ export class ItemSubmissionService implements IItemSubmissionService {
       mediaAssetEnricher,
       lotLifecycleRecording,
       repoFactory,
+      consignmentAgreements,
+      sellerIdentity,
     };
   }
 
@@ -164,7 +172,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
   accept(
     adminId: string,
     id: string,
-    input?: Pick<ApproveSubmissionInput, "reviewNotes"> | undefined,
+    input?: AcceptSubmissionInput | undefined,
   ): Promise<Result<ItemSubmission, SubmissionError>> {
     return accept(this.deps, adminId, id, input);
   }
@@ -308,9 +316,17 @@ export class ItemSubmissionService implements IItemSubmissionService {
   acceptForAdminApi(
     adminId: string,
     id: string,
-    body: Pick<ApproveSubmissionInput, "reviewNotes">,
+    body: AcceptSubmissionInput,
   ): Promise<Result<ItemSubmission, SubmissionError>> {
     return acceptForAdminApi(this.deps, adminId, id, body);
+  }
+
+  requestChangesForAdminApi(
+    adminId: string,
+    id: string,
+    note: string,
+  ): Promise<Result<ItemSubmission, SubmissionError>> {
+    return requestChangesForAdminApi(this.deps, adminId, id, note);
   }
 
   convertForAdminApi(

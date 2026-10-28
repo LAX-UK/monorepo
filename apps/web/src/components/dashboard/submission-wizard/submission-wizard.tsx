@@ -23,6 +23,7 @@ import {
 import { submissionExitGuardActive } from "@/lib/forms/submission/submission-exit-guard";
 import { sanitizeSubmissionFormValues } from "@/lib/forms/submission/submission-form-data";
 import {
+  type SubmissionWizardController,
   type WizardMode,
   useSubmissionWizardController,
 } from "@/lib/forms/submission/use-submission-wizard-controller";
@@ -56,6 +57,20 @@ type Props = {
   initialStepIndex?: number;
   /** Show ready-to-submit toast instead of generic resume toast. */
   readyToSubmit?: boolean;
+  /** Label of the final button, for example "Send back for review" after changes. */
+  submitLabel?: string;
+};
+
+/**
+ * What the review step's primary button does. By default it submits; "Sell with LAX" makes it
+ * continue to "Who is selling?" instead, and submits from there.
+ */
+export type SubmissionWizardPrimaryAction = { label: string; onActivate: () => void };
+
+type ViewProps = Omit<Props, "initialValues" | "submitLabel"> & {
+  controller: SubmissionWizardController;
+  primaryAction?: SubmissionWizardPrimaryAction;
+  submitLabel?: string;
 };
 
 function renderStep(
@@ -67,6 +82,7 @@ function renderStep(
     onJumpTo: (index: number) => void;
     finishLater: () => void;
     submitForReview: () => void;
+    submitLabel: string;
   },
 ) {
   const base = { form: props.form, isSubmitting: props.isSubmitting };
@@ -89,6 +105,7 @@ function renderStep(
           canSubmitForReview
           onFinishLater={props.finishLater}
           onSubmitForReview={props.submitForReview}
+          submitLabel={props.submitLabel}
         />
       );
     default:
@@ -96,17 +113,26 @@ function renderStep(
   }
 }
 
-export function SubmissionWizard({
+/** The submission form, owning its own save and submit. */
+export function SubmissionWizard({ initialValues, ...props }: Props) {
+  const controller = useSubmissionWizardController(props.mode, initialValues);
+  return <SubmissionWizardView {...props} controller={controller} />;
+}
+
+/** The submission form around a controller the caller owns (see "Sell with LAX"). */
+export function SubmissionWizardView({
   mode,
   categories,
-  initialValues,
   initialStepIndex = 0,
   readyToSubmit = false,
-}: Props) {
+  controller,
+  primaryAction,
+  submitLabel = SUBMISSION_SUBMIT_LABEL,
+}: ViewProps) {
   const router = useRouter();
-  const controller = useSubmissionWizardController(mode, initialValues);
   const { form, isSubmitting, autosaveStatus, lastSavedAt, saveDraft, submitForReview } =
     controller;
+  const primaryLabel = primaryAction?.label ?? submitLabel;
 
   const clampedInitial = Math.max(0, Math.min(initialStepIndex, WIZARD_STEP_COUNT - 1));
   const [stepIndex, setStepIndex] = useState(clampedInitial);
@@ -180,6 +206,14 @@ export function SubmissionWizard({
     submittedThisSession.current = true;
     void submitForReview();
   }, [submitForReview]);
+
+  const handlePrimary = useCallback(() => {
+    if (primaryAction) {
+      primaryAction.onActivate();
+      return;
+    }
+    handleSubmitForReview();
+  }, [handleSubmitForReview, primaryAction]);
 
   const requestLeaveWithoutSaving = useCallback(() => {
     if (exitGuardActive) {
@@ -289,10 +323,10 @@ export function SubmissionWizard({
               disabled={isSubmitting}
               onClick={() => {
                 setExitGuardOpen(false);
-                handleSubmitForReview();
+                handlePrimary();
               }}
             >
-              {SUBMISSION_SUBMIT_LABEL}
+              {primaryLabel}
             </Button>
             <Button
               type="button"
@@ -384,7 +418,8 @@ export function SubmissionWizard({
                   categories,
                   onJumpTo: goToStep,
                   finishLater: handleFinishLater,
-                  submitForReview: handleSubmitForReview,
+                  submitForReview: handlePrimary,
+                  submitLabel: primaryLabel,
                 })
               : null}
           </Surface>

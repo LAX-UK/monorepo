@@ -1,11 +1,16 @@
-import type { ILegalEntityNotificationRecipientReader } from "@auction/persistence/interfaces";
 import type { IItemSubmissionRepository } from "@auction/persistence/interfaces";
 import type { ItemSubmission } from "@auction/types";
 import { err } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import { SubmissionError } from "../../lib/errors.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
-import { accept, approve, bulkApproveOrReject, reject } from "./submission-admin-decisions.js";
+import {
+  accept,
+  approve,
+  bulkApproveOrReject,
+  reject,
+  requestChanges,
+} from "./submission-admin-decisions.js";
 import { convert } from "./submission-convert-to-lot.js";
 import type { ItemSubmissionServiceDeps } from "./submission-types.js";
 
@@ -62,36 +67,28 @@ function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmi
     mediaAssetEnricher: undefined,
     lotLifecycleRecording: null,
     repoFactory: null,
+    consignmentAgreements: null,
+    sellerIdentity: null,
     ...overrides,
   };
 }
 
 describe("approve", () => {
-  it("calls accept with notifySeller false then convert for under_review", async () => {
-    const dispatch = vi.fn().mockResolvedValue(undefined);
-    const findById = vi.fn().mockResolvedValue(underReview);
-    const update = vi.fn().mockResolvedValue(approved);
-    vi.mocked(convert).mockResolvedValue({
-      isOk: () => true,
-      isErr: () => false,
-      value: { submission: approved, lot: { id: "lot-1" } as never, readinessPercent: 80 },
-    } as never);
-    const legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader = {
-      listUserIdsForAudience: vi.fn().mockResolvedValue(["seller-user-1"]),
-    };
+  it("refuses to accept and catalogue in one step, which would skip the seller's agreement", async () => {
+    vi.mocked(convert).mockClear();
+    const update = vi.fn();
     const deps = baseDeps({
-      submissions: { findById, update } as unknown as IItemSubmissionRepository,
-      dispatcher: { dispatch } as unknown as NotificationDispatcher,
-      legalEntityNotificationRecipients,
+      submissions: {
+        findById: vi.fn().mockResolvedValue(underReview),
+        update,
+      } as unknown as IItemSubmissionRepository,
     });
     const result = await approve(deps, "admin-1", "sub-1", { reviewNotes: "ok" });
-    expect(result.isOk()).toBe(true);
-    expect(update).toHaveBeenCalledWith("sub-1", expect.objectContaining({ status: "approved" }));
-    expect(convert).toHaveBeenCalledWith(deps, "admin-1", "sub-1", { reviewNotes: "ok" });
-    expect(dispatch).not.toHaveBeenCalledWith(
-      expect.anything(),
-      expect.objectContaining({ type: "submission_approved" }),
-    );
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr().status).toBe(409);
+    expect(result._unsafeUnwrapErr().message).toMatch(/consignment agreement/);
+    expect(update).not.toHaveBeenCalled();
+    expect(convert).not.toHaveBeenCalled();
   });
 
   it("skips accept when status is already approved", async () => {
@@ -110,17 +107,14 @@ describe("approve", () => {
     expect(convert).toHaveBeenCalled();
   });
 
-  it("returns err when convert fails after accept succeeded", async () => {
-    const findById = vi.fn().mockResolvedValue(underReview);
-    const update = vi.fn().mockResolvedValue(approved);
+  it("returns err when convert fails", async () => {
+    const findById = vi.fn().mockResolvedValue(approved);
     vi.mocked(convert).mockResolvedValue(err(new SubmissionError("Lot creation failed", 500)));
     const deps = baseDeps({
-      submissions: { findById, update } as unknown as IItemSubmissionRepository,
+      submissions: { findById, update: vi.fn() } as unknown as IItemSubmissionRepository,
     });
     const result = await approve(deps, "admin-1", "sub-1");
     expect(result.isErr()).toBe(true);
-    expect(update).toHaveBeenCalledWith("sub-1", expect.objectContaining({ status: "approved" }));
-    expect(convert).toHaveBeenCalled();
   });
 });
 
@@ -154,6 +148,150 @@ describe("accept", () => {
         message: expect.stringContaining("Pre-update title"),
       }),
     );
+  });
+});
+
+describe("accept proposes the consignment agreement", () => {
+  it("records the specialist's estimate and terms on the current version", async () => {
+    const propose = vi.fn().mockResolvedValue({});
+    const deps = baseDeps({
+      submissions: {
+        findById: vi.fn().mockResolvedValue(underReview),
+        update: vi.fn().mockResolvedValue(approved),
+      } as unknown as IItemSubmissionRepository,
+      consignmentAgreements: { propose } as never,
+    });
+    await accept(deps, "admin-1", "sub-1", {
+      proposal: { estimateLow: "8000", estimateHigh: "12000", commissionPercent: "15" },
+    });
+    expect(propose).toHaveBeenCalledWith(
+      expect.objectContaining({
+        submissionId: "sub-1",
+        legalEntityId: "le-1",
+        termsVersion: "conditions-of-business-part-c-v1",
+        estimateLow: "8000",
+        estimateHigh: "12000",
+        reservePrice: null,
+        commissionPercent: "15",
+        currency: "GBP",
+        proposedByUserId: "admin-1",
+      }),
+    );
+  });
+
+  it("tells the seller to review the agreement", async () => {
+    const dispatch = vi.fn().mockResolvedValue(undefined);
+    const deps = baseDeps({
+      submissions: {
+        findById: vi.fn().mockResolvedValue(underReview),
+        update: vi.fn().mockResolvedValue(approved),
+      } as unknown as IItemSubmissionRepository,
+      dispatcher: { dispatch } as unknown as NotificationDispatcher,
+    });
+    await accept(deps, "admin-1", "sub-1");
+    expect(dispatch).toHaveBeenCalledWith(
+      "le-1",
+      expect.objectContaining({
+        type: "submission_approved",
+        message: expect.stringContaining("consignment agreement"),
+      }),
+    );
+  });
+});
+
+describe("accept waits for the seller's identity", () => {
+  function depsWithIdentity(facts: unknown) {
+    const update = vi.fn().mockResolvedValue(approved);
+    return {
+      update,
+      deps: baseDeps({
+        submissions: {
+          findById: vi.fn().mockResolvedValue(underReview),
+          update,
+        } as unknown as IItemSubmissionRepository,
+        sellerIdentity: { factsFor: vi.fn().mockResolvedValue(facts) },
+      }),
+    };
+  }
+
+  it("refuses with a clear code when the person has not verified their identity", async () => {
+    const { deps, update } = depsWithIdentity({ kind: "individual", kycStatus: "pending" });
+    const result = await accept(deps, "admin-1", "sub-1");
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr()).toMatchObject({
+      status: 409,
+      code: "identity_not_verified",
+      message: expect.stringMatching(/hasn't verified their identity/),
+    });
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("refuses an organisation whose documents are still being checked", async () => {
+    const { deps } = depsWithIdentity({ kind: "organisation", status: "under_review" });
+    expect((await accept(deps, "admin-1", "sub-1")).isErr()).toBe(true);
+  });
+
+  it("accepts once the identity is verified", async () => {
+    const { deps, update } = depsWithIdentity({ kind: "individual", kycStatus: "approved" });
+    expect((await accept(deps, "admin-1", "sub-1")).isOk()).toBe(true);
+    expect(update).toHaveBeenCalled();
+  });
+});
+
+describe("requestChanges", () => {
+  it("moves a reviewed submission to needs changes with the note, and tells the seller", async () => {
+    const dispatch = vi.fn().mockResolvedValue(undefined);
+    const publish = vi.fn().mockResolvedValue(undefined);
+    const update = vi.fn().mockResolvedValue({ ...underReview, status: "changes_requested" });
+    const deps = baseDeps({
+      submissions: {
+        findById: vi.fn().mockResolvedValue(underReview),
+        update,
+      } as unknown as IItemSubmissionRepository,
+      dispatcher: { dispatch } as unknown as NotificationDispatcher,
+      domainEventSink: { publish } as never,
+    });
+    const result = await requestChanges(deps, "admin-1", "sub-1", "  Add a photo of the back.  ");
+    expect(result.isOk()).toBe(true);
+    expect(update).toHaveBeenCalledWith(
+      "sub-1",
+      expect.objectContaining({
+        status: "changes_requested",
+        changesRequestedNote: "Add a photo of the back.",
+        reviewedBy: "admin-1",
+      }),
+    );
+    expect(publish).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "submission.changes_requested" }),
+    );
+    expect(dispatch).toHaveBeenCalledWith(
+      "le-1",
+      expect.objectContaining({
+        type: "submission_changes_requested",
+        message: expect.stringContaining("Add a photo of the back."),
+      }),
+    );
+  });
+
+  it("refuses outside review", async () => {
+    const deps = baseDeps({
+      submissions: {
+        findById: vi.fn().mockResolvedValue(approved),
+      } as unknown as IItemSubmissionRepository,
+    });
+    const result = await requestChanges(deps, "admin-1", "sub-1", "More photos");
+    expect(result.isErr()).toBe(true);
+    expect(result._unsafeUnwrapErr().message).toMatch(/under review/);
+  });
+
+  it("refuses an empty note", async () => {
+    const deps = baseDeps({
+      submissions: {
+        findById: vi.fn().mockResolvedValue(underReview),
+      } as unknown as IItemSubmissionRepository,
+    });
+    const result = await requestChanges(deps, "admin-1", "sub-1", "   ");
+    expect(result._unsafeUnwrapErr().status).toBe(400);
   });
 });
 

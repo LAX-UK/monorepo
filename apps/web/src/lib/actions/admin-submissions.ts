@@ -16,9 +16,12 @@ import {
 } from "@/lib/forms/form-result";
 import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import {
+  acceptSubmissionBodySchema,
   adminAssignSubmissionBodySchema,
   approveSubmissionBodySchema,
+  proposeConsignmentTermsBodySchema,
   rejectSubmissionBodySchema,
+  requestSubmissionChangesBodySchema,
 } from "@auction/validators";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -128,7 +131,7 @@ export async function adminStartSubmissionReviewResultAction(
 
 export async function adminAcceptSubmissionResultAction(
   submissionId: string,
-  body: z.infer<typeof approveSubmissionBodySchema>,
+  body: z.infer<typeof acceptSubmissionBodySchema>,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("adminAcceptSubmissionResultAction", async () => {
     const denied = await denyUnlessAdminCapability(SUBMISSIONS_ACCESS);
@@ -137,12 +140,65 @@ export async function adminAcceptSubmissionResultAction(
     if (!id) {
       return actionFailure("Missing submission");
     }
-    const parsed = approveSubmissionBodySchema.safeParse(body);
+    const parsed = acceptSubmissionBodySchema.safeParse(body);
     if (!parsed.success) {
       return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
     }
     const { adminSubmissions } = getWriteContainer();
     const r = await adminSubmissions.accept(id, parsed.data);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status);
+    }
+    revalidatePath("/admin/submissions");
+    revalidatePath(`/admin/submissions/${id}`);
+    return actionSuccess();
+  });
+}
+
+/** Adds (or corrects) the estimate and terms the seller is asked to accept. */
+export async function adminProposeSubmissionTermsResultAction(
+  submissionId: string,
+  body: z.infer<typeof proposeConsignmentTermsBodySchema>,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminProposeSubmissionTermsResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(SUBMISSIONS_ACCESS);
+    if (denied) return denied;
+    const id = submissionId.trim();
+    if (!id) {
+      return actionFailure("Missing submission");
+    }
+    const parsed = proposeConsignmentTermsBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+    }
+    const { adminSubmissions } = getWriteContainer();
+    const r = await adminSubmissions.proposeTerms(id, parsed.data);
+    if (!r.ok) {
+      return actionFailure(r.message, undefined, r.status);
+    }
+    revalidatePath(`/admin/submissions/${id}`);
+    return actionSuccess();
+  });
+}
+
+/** Sends the submission back to the seller with what to change. */
+export async function adminRequestSubmissionChangesResultAction(
+  submissionId: string,
+  body: z.infer<typeof requestSubmissionChangesBodySchema>,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("adminRequestSubmissionChangesResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(SUBMISSIONS_ACCESS);
+    if (denied) return denied;
+    const id = submissionId.trim();
+    if (!id) {
+      return actionFailure("Missing submission");
+    }
+    const parsed = requestSubmissionChangesBodySchema.safeParse(body);
+    if (!parsed.success) {
+      return actionFailure(firstZodErrorMessage(parsed.error), zodErrorToFieldErrors(parsed.error));
+    }
+    const { adminSubmissions } = getWriteContainer();
+    const r = await adminSubmissions.requestChanges(id, parsed.data);
     if (!r.ok) {
       return actionFailure(r.message, undefined, r.status);
     }

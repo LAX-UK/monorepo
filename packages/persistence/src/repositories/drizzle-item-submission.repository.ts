@@ -202,6 +202,12 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
     if (patch.reviewedAt !== undefined) rowPatch.reviewedAt = patch.reviewedAt;
     if (patch.reviewNotes !== undefined) rowPatch.reviewNotes = patch.reviewNotes;
     if (patch.rejectionReason !== undefined) rowPatch.rejectionReason = patch.rejectionReason;
+    if (patch.changesRequestedNote !== undefined) {
+      rowPatch.changesRequestedNote = patch.changesRequestedNote;
+    }
+    if (patch.changesRequestedAt !== undefined) {
+      rowPatch.changesRequestedAt = patch.changesRequestedAt;
+    }
     if (patch.convertedLotId !== undefined) rowPatch.convertedLotId = patch.convertedLotId;
     if (patch.assignedToUserId !== undefined) rowPatch.assignedToUserId = patch.assignedToUserId;
     if (patch.draftReminderSentAt !== undefined) {
@@ -266,6 +272,7 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
       under_review: 0,
       approved: 0,
       rejected: 0,
+      changes_requested: 0,
       withdrawn: 0,
       converted: 0,
     } satisfies Record<ItemSubmissionStatus, number>;

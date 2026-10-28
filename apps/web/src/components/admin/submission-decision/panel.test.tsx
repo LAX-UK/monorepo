@@ -3,14 +3,16 @@ import { searchAdminArtistsAction } from "@/lib/actions/admin-artists-search";
 import {
   adminAcceptSubmissionResultAction,
   adminConvertSubmissionResultAction,
+  adminProposeSubmissionTermsResultAction,
   adminRejectSubmissionResultAction,
+  adminRequestSubmissionChangesResultAction,
   adminStartSubmissionReviewResultAction,
 } from "@/lib/actions/admin-submissions";
 import { trackStaffAccept, trackStaffConvert } from "@/lib/analytics/sell-funnel";
 import { actionSuccess } from "@/lib/forms/form-result";
 import { notify } from "@/lib/ui/notify";
 import { renderWithViewer } from "@/test/render-with-viewer";
-import type { ItemSubmissionStatus } from "@auction/types";
+import type { ConsignmentAgreement, ItemSubmissionStatus } from "@auction/types";
 import { fireEvent, screen, waitFor, within } from "@testing-library/react";
 import type { ComponentProps } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -25,6 +27,8 @@ vi.mock("@/lib/actions/admin-submissions", () => ({
   adminAcceptSubmissionResultAction: vi.fn(),
   adminRejectSubmissionResultAction: vi.fn(),
   adminConvertSubmissionResultAction: vi.fn(),
+  adminRequestSubmissionChangesResultAction: vi.fn(),
+  adminProposeSubmissionTermsResultAction: vi.fn(),
 }));
 
 vi.mock("@/lib/actions/admin-artists-search", () => ({
@@ -72,6 +76,22 @@ const baseSubmission: ComponentProps<typeof AdminSubmissionDecisionPanel>["submi
   convertedLotId: null,
 };
 
+const ACCEPTED_AGREEMENT: ConsignmentAgreement = {
+  id: "agr-1",
+  submissionId: SUBMISSION_ID,
+  legalEntityId: "le-1",
+  termsVersion: "conditions-of-business-part-c-v1",
+  estimateLow: "8000.00",
+  estimateHigh: "12000.00",
+  reservePrice: null,
+  commissionPercent: "15.00",
+  currency: "GBP",
+  proposedAt: new Date("2026-10-04T10:00:00Z"),
+  acceptedAt: new Date("2026-10-05T12:00:00Z"),
+  acceptedByUserId: "u1",
+  acceptedByName: "Jane Smith",
+};
+
 function renderPanel(
   status: ItemSubmissionStatus,
   overrides: Partial<ComponentProps<typeof AdminSubmissionDecisionPanel>> = {},
@@ -111,7 +131,7 @@ describe("AdminSubmissionDecisionPanel", () => {
       renderPanel("submitted");
       expect(screen.getByRole("button", { name: "Start review" })).toBeInTheDocument();
       expect(
-        screen.queryByRole("button", { name: "Accept for cataloguing" }),
+        screen.queryByRole("button", { name: "Accept and send terms" }),
       ).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Reject submission" })).not.toBeInTheDocument();
       expect(
@@ -121,7 +141,7 @@ describe("AdminSubmissionDecisionPanel", () => {
 
     it("under_review shows accept and reject forms with checklist and shortcut hint", () => {
       renderPanel("under_review");
-      expect(screen.getByRole("button", { name: "Accept for cataloguing" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Accept and send terms" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Reject submission" })).toBeInTheDocument();
       expect(document.getElementById(SUBMISSION_APPROVE_FORM_ID)).toBeInTheDocument();
       expect(document.getElementById(SUBMISSION_REJECT_FORM_ID)).toBeInTheDocument();
@@ -129,7 +149,10 @@ describe("AdminSubmissionDecisionPanel", () => {
     });
 
     it("approved shows convert form with artist combobox and checklist", () => {
-      renderPanel("approved", { submitterDisplayName: "Jane Maker" });
+      renderPanel("approved", {
+        submitterDisplayName: "Jane Maker",
+        agreement: ACCEPTED_AGREEMENT,
+      });
       expect(screen.getByRole("button", { name: "Convert to draft lot" })).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Use submitter as artist" })).toBeInTheDocument();
       expect(screen.getByText(/Shortcuts when not typing in a field/)).toBeInTheDocument();
@@ -196,12 +219,14 @@ describe("AdminSubmissionDecisionPanel", () => {
     it("happy path omits empty notes and tracks accept", async () => {
       vi.mocked(adminAcceptSubmissionResultAction).mockResolvedValue(actionSuccess());
       renderPanel("under_review");
-      fireEvent.click(screen.getByRole("button", { name: "Accept for cataloguing" }));
+      fireEvent.click(screen.getByRole("button", { name: "Accept and send terms" }));
 
       await waitFor(() => {
         expect(adminAcceptSubmissionResultAction).toHaveBeenCalledWith(SUBMISSION_ID, {});
         expect(trackStaffAccept).toHaveBeenCalledWith(SUBMISSION_ID);
-        expect(notify.success).toHaveBeenCalledWith("Accepted for cataloguing");
+        expect(notify.success).toHaveBeenCalledWith(
+          "Accepted. The seller has been asked to accept the terms.",
+        );
         expect(mockRefresh).toHaveBeenCalled();
       });
     });
@@ -212,7 +237,7 @@ describe("AdminSubmissionDecisionPanel", () => {
       fireEvent.change(document.getElementById(NOTES_ID) as HTMLTextAreaElement, {
         target: { value: "  Looks good  " },
       });
-      fireEvent.click(screen.getByRole("button", { name: "Accept for cataloguing" }));
+      fireEvent.click(screen.getByRole("button", { name: "Accept and send terms" }));
 
       await waitFor(() => {
         expect(adminAcceptSubmissionResultAction).toHaveBeenCalledWith(SUBMISSION_ID, {
@@ -228,7 +253,7 @@ describe("AdminSubmissionDecisionPanel", () => {
         fieldErrors: { reviewNotes: ["Too long"] },
       });
       renderPanel("under_review");
-      fireEvent.click(screen.getByRole("button", { name: "Accept for cataloguing" }));
+      fireEvent.click(screen.getByRole("button", { name: "Accept and send terms" }));
 
       expect(await screen.findByText("Too long")).toBeInTheDocument();
       expect(notify.error).not.toHaveBeenCalled();
@@ -303,7 +328,7 @@ describe("AdminSubmissionDecisionPanel", () => {
       vi.mocked(adminConvertSubmissionResultAction).mockResolvedValue(
         actionSuccess({ lotId: LOT_ID, readinessPercent: 75 }),
       );
-      renderPanel("approved");
+      renderPanel("approved", { agreement: ACCEPTED_AGREEMENT });
       fireEvent.click(screen.getByRole("button", { name: "Convert to draft lot" }));
 
       await waitFor(() => {
@@ -319,7 +344,7 @@ describe("AdminSubmissionDecisionPanel", () => {
       vi.mocked(adminConvertSubmissionResultAction).mockResolvedValue(
         actionSuccess({ lotId: undefined }),
       );
-      renderPanel("approved");
+      renderPanel("approved", { agreement: ACCEPTED_AGREEMENT });
       fireEvent.click(screen.getByRole("button", { name: "Convert to draft lot" }));
 
       await waitFor(() => {
@@ -335,7 +360,7 @@ describe("AdminSubmissionDecisionPanel", () => {
         error: "Convert failed",
         fieldErrors: { artistId: ["Choose an artist"] },
       });
-      renderPanel("approved");
+      renderPanel("approved", { agreement: ACCEPTED_AGREEMENT });
       fireEvent.click(screen.getByRole("button", { name: "Convert to draft lot" }));
 
       expect(await screen.findByText("Choose an artist")).toBeInTheDocument();
@@ -345,7 +370,10 @@ describe("AdminSubmissionDecisionPanel", () => {
 
   describe("create artist dialog", () => {
     it("opens seeded with submitter display name", () => {
-      renderPanel("approved", { submitterDisplayName: "Jane Maker" });
+      renderPanel("approved", {
+        submitterDisplayName: "Jane Maker",
+        agreement: ACCEPTED_AGREEMENT,
+      });
       fireEvent.click(screen.getByRole("button", { name: "Use submitter as artist" }));
       expect(screen.getByRole("dialog", { name: "Create artist" })).toBeInTheDocument();
       expect(screen.getByDisplayValue("Jane Maker")).toBeInTheDocument();
@@ -383,7 +411,7 @@ describe("AdminSubmissionDecisionPanel", () => {
       fireEvent.change(document.getElementById(NOTES_ID) as HTMLTextAreaElement, {
         target: { value: "Looks fine" },
       });
-      fireEvent.click(screen.getByRole("button", { name: "Accept for cataloguing" }));
+      fireEvent.click(screen.getByRole("button", { name: "Accept and send terms" }));
 
       expect(await screen.findByText("Required details are missing")).toBeInTheDocument();
       expect((document.getElementById(NOTES_ID) as HTMLTextAreaElement).value).toBe("Looks fine");
@@ -428,6 +456,94 @@ describe("AdminSubmissionDecisionPanel", () => {
         expect(adminStartSubmissionReviewResultAction).not.toHaveBeenCalled();
         expect(adminAcceptSubmissionResultAction).not.toHaveBeenCalled();
       });
+    });
+  });
+
+  describe("consignment agreement and needs changes", () => {
+    it("waits for the seller before cataloguing, without a convert button", () => {
+      renderPanel("approved", {
+        agreement: { ...ACCEPTED_AGREEMENT, acceptedAt: null, acceptedByUserId: null },
+      });
+      expect(screen.getByText("Waiting for the seller")).toBeInTheDocument();
+      expect(screen.getByText("£8,000 – £12,000")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Convert to draft lot" }),
+      ).not.toBeInTheDocument();
+    });
+
+    it("says who accepted, when and which version", () => {
+      renderPanel("approved", { agreement: ACCEPTED_AGREEMENT });
+      expect(screen.getByText("Accepted by the seller")).toBeInTheDocument();
+      expect(screen.getByText("Jane Smith accepted on 5 Oct 2026 · Version 1")).toBeInTheDocument();
+    });
+
+    it("sends the estimate and commission with the acceptance", async () => {
+      vi.mocked(adminAcceptSubmissionResultAction).mockResolvedValue(actionSuccess());
+      renderPanel("under_review");
+      fireEvent.change(
+        document.getElementById(`${SUBMISSION_APPROVE_FORM_ID}-reviewNotes`) as HTMLTextAreaElement,
+        { target: { value: "Strong" } },
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Accept and send terms" }));
+      await waitFor(() =>
+        expect(adminAcceptSubmissionResultAction).toHaveBeenCalledWith(SUBMISSION_ID, {
+          reviewNotes: "Strong",
+        }),
+      );
+    });
+
+    it("asks the seller for changes with a note", async () => {
+      vi.mocked(adminRequestSubmissionChangesResultAction).mockResolvedValue(actionSuccess());
+      renderPanel("under_review");
+      fireEvent.change(
+        document.getElementById("submission-request-changes-note") as HTMLTextAreaElement,
+        { target: { value: "Add a photo of the back" } },
+      );
+      fireEvent.click(screen.getByRole("button", { name: "Ask for changes" }));
+      await waitFor(() => {
+        expect(adminRequestSubmissionChangesResultAction).toHaveBeenCalledWith(SUBMISSION_ID, {
+          note: "Add a photo of the back",
+        });
+        expect(notify.success).toHaveBeenCalledWith("The seller has been asked for changes.");
+      });
+    });
+
+    it("disables accepting until the seller's identity is verified, and says what to do", () => {
+      renderPanel("under_review", { sellerIdentityVerified: false, sellerLegalEntityId: "le-9" });
+      expect(screen.getByText("The seller hasn't verified their identity yet")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Accept and send terms" })).toBeDisabled();
+      expect(screen.getByRole("link", { name: "Open the seller" })).toHaveAttribute(
+        "href",
+        "/admin/legal-entities/le-9",
+      );
+      expect(screen.getByRole("button", { name: "Ask for changes" })).toBeEnabled();
+      expect(screen.queryByText(/Shortcuts when not typing/)).not.toBeInTheDocument();
+    });
+
+    it("asks staff to add the estimate and terms to an incomplete proposal", async () => {
+      vi.mocked(adminProposeSubmissionTermsResultAction).mockResolvedValue(actionSuccess());
+      renderPanel("approved", {
+        agreement: {
+          ...ACCEPTED_AGREEMENT,
+          acceptedAt: null,
+          acceptedByUserId: null,
+          estimateLow: null,
+          estimateHigh: null,
+          commissionPercent: null,
+        },
+      });
+      expect(screen.getByText("Add the estimate and terms")).toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Convert to draft lot" }),
+      ).not.toBeInTheDocument();
+      fireEvent.click(screen.getByRole("button", { name: "Send the terms to the seller" }));
+      expect(await screen.findByText("Enter the low estimate")).toBeInTheDocument();
+      expect(adminProposeSubmissionTermsResultAction).not.toHaveBeenCalled();
+    });
+
+    it("shows that it waits for the seller's changes", () => {
+      renderPanel("changes_requested");
+      expect(screen.getByText("Waiting for the seller's changes")).toBeInTheDocument();
     });
   });
 });

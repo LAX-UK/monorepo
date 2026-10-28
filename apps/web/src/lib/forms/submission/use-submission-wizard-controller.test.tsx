@@ -110,8 +110,32 @@ describe("useSubmissionWizardController", () => {
 
     await waitFor(() => {
       expect(createSubmissionFromValuesAction).toHaveBeenCalledTimes(1);
-      expect(submitForReviewFromValuesAction).toHaveBeenCalledWith("sub-new");
+      expect(submitForReviewFromValuesAction).toHaveBeenCalledWith("sub-new", {});
       expect(push).toHaveBeenCalledWith("/selling/consignments/sub-new");
+    });
+  });
+
+  it("creates and submits as the account chosen in Who is selling", async () => {
+    let chosen = "personal-1";
+    const { result } = renderHook(() =>
+      useSubmissionWizardController({ kind: "create" }, validSubmissionValues(), {
+        accountScope: () => ({ legalEntityId: chosen }),
+      }),
+    );
+    // The choice can change after the hook mounts; the latest one is used.
+    chosen = "gallery-1";
+
+    await act(async () => {
+      await result.current.submitForReview();
+    });
+
+    await waitFor(() => {
+      expect(createSubmissionFromValuesAction).toHaveBeenCalledWith(expect.anything(), {
+        legalEntityId: "gallery-1",
+      });
+      expect(submitForReviewFromValuesAction).toHaveBeenCalledWith("sub-new", {
+        legalEntityId: "gallery-1",
+      });
     });
   });
 });

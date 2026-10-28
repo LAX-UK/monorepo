@@ -10,6 +10,10 @@ export class PlatformHygieneCronApplicationService
     return this.hygieneCronService.sendStaleSubmissionDraftReminders(staleDays);
   }
 
+  sendConsignmentAgreementReminders() {
+    return this.hygieneCronService.sendConsignmentAgreementReminders();
+  }
+
   probeSentry(sentryDsn: string | undefined) {
     return this.hygieneCronService.probeSentry(sentryDsn);
   }

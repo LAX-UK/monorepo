@@ -38,6 +38,7 @@ export function ReviewStep({
   canSubmitForReview,
   onFinishLater,
   onSubmitForReview,
+  submitLabel = SUBMISSION_SUBMIT_LABEL,
 }: ReviewStepProps) {
   const v = form.getValues();
   const quality = evaluateSubmissionQuality({
@@ -197,7 +198,7 @@ export function ReviewStep({
             onClick={onSubmitForReview}
             data-testid="wizard-submit-for-review"
           >
-            {isSubmitting ? "Submitting…" : SUBMISSION_SUBMIT_LABEL}
+            {isSubmitting ? "Submitting…" : submitLabel}
           </Button>
         ) : null}
         <Button

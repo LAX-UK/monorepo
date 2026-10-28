@@ -111,6 +111,8 @@ function baseDeps(overrides: Partial<ItemSubmissionServiceDeps> = {}): ItemSubmi
       recordCreated: hoisted.recordCreated.mockResolvedValue(undefined),
     } as unknown as LotLifecycleRecording,
     repoFactory: testRepoFactory(),
+    consignmentAgreements: null,
+    sellerIdentity: null,
     ...overrides,
   };
 }
@@ -122,6 +124,43 @@ describe("convert", () => {
       itemSubmission: { findById: hoisted.txSubFindById, update: hoisted.txSubUpdate },
       lot: { create: hoisted.txLotCreate },
     }));
+  });
+
+  describe("the seller's consignment agreement", () => {
+    function withAgreement(acceptedAt: Date | null) {
+      const submission = mkApprovedSubmission({ id: "sub-1" });
+      return baseDeps({
+        submissions: { findById: vi.fn().mockResolvedValue(submission) } as never,
+        consignmentAgreements: {
+          findBySubmissionId: vi.fn().mockResolvedValue({ submissionId: "sub-1", acceptedAt }),
+        } as never,
+      });
+    }
+
+    it("refuses to catalogue before the seller accepts, with a clear reason", async () => {
+      const result = await convert(withAgreement(null), "admin-1", "sub-1");
+      expect(result.isErr()).toBe(true);
+      expect(result._unsafeUnwrapErr().status).toBe(409);
+      expect(result._unsafeUnwrapErr().message).toMatch(/^Waiting for the seller to accept/);
+      expect(hoisted.txLotCreate).not.toHaveBeenCalled();
+    });
+
+    it("refuses when no agreement was ever proposed", async () => {
+      const deps = withAgreement(null);
+      deps.consignmentAgreements = {
+        findBySubmissionId: vi.fn().mockResolvedValue(null),
+      } as never;
+      expect((await convert(deps, "admin-1", "sub-1")).isErr()).toBe(true);
+    });
+
+    it("catalogues once accepted", async () => {
+      const submission = mkApprovedSubmission({ id: "sub-1" });
+      hoisted.txSubFindById.mockResolvedValue(submission);
+      hoisted.txLotCreate.mockResolvedValue(mkCreatedLot({ id: "lot-1", title: submission.title }));
+      hoisted.txSubUpdate.mockResolvedValue({ ...submission, status: "converted" });
+      const result = await convert(withAgreement(new Date()), "admin-1", "sub-1");
+      expect(result.isOk()).toBe(true);
+    });
   });
 
   it("uses forTransaction for both submission and lot repos", async () => {

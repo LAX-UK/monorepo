@@ -3,6 +3,7 @@ import type { Hono } from "hono";
 import type { ContainerSubmissionRoutesSlice } from "../../container.js";
 import type { createRequireAuth } from "../../middleware/require-auth.js";
 import type { LegalEntityContext } from "../../middleware/require-legal-entity-context.js";
+import type { AgreementSellerContext } from "../../services/interfaces/submission-routes/consignment-agreement-http.js";
 import type {
   SubmissionLegalEntityContext,
   SubmissionViewerContext,
@@ -39,4 +40,17 @@ export function legalEntityFromContext(c: {
 }): SubmissionLegalEntityContext {
   const ctx = c.get("legalEntityContext") as LegalEntityContext;
   return { legalEntityId: ctx.legalEntityId };
+}
+
+/** The signed-in person, the account they act for and their standing with it. */
+export function agreementSellerFromContext(c: {
+  get: ((key: "legalEntityContext") => LegalEntityContext | undefined) &
+    ((key: "userId") => string | undefined);
+}): AgreementSellerContext {
+  const ctx = c.get("legalEntityContext") as LegalEntityContext;
+  return {
+    userId: c.get("userId") as string,
+    legalEntityId: ctx.legalEntityId,
+    actor: { role: ctx.role, isImpersonation: ctx.isImpersonation },
+  };
 }

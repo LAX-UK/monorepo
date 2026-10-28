@@ -1297,12 +1297,16 @@ describe("SaleService.publish domain events", () => {
       findBySaleId: vi.fn().mockResolvedValue([lot]),
     } as unknown as ILotRepository;
 
+    const seller = {
+      id: "seller-1",
+      displayName: "Jane Smith",
+      status: "approved",
+      stripeConnectPayoutsEnabled: false,
+      stripeConnectRequirementsCurrentlyDue: [],
+    };
     const legalEntityRepository = {
-      findById: vi.fn().mockResolvedValue({
-        status: "approved",
-        stripeConnectPayoutsEnabled: false,
-        stripeConnectRequirementsCurrentlyDue: [],
-      }),
+      findById: vi.fn().mockResolvedValue(seller),
+      findByIds: vi.fn().mockResolvedValue([seller]),
     } as unknown as ILegalEntityRepository;
 
     const svc = new SaleService(
@@ -1320,6 +1324,8 @@ describe("SaleService.publish domain events", () => {
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(LotError);
       expect(result.error.code).toBe("connect_required");
+      // Staff are told which seller to chase.
+      expect(result.error.message).toMatch(/^Jane Smith has not set up payouts yet/);
     }
   });
 

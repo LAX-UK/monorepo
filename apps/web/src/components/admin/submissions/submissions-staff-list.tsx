@@ -136,10 +136,16 @@ export function SubmissionsStaffList(props: SubmissionsStaffListProps) {
       {
         id: "status",
         header: "Status",
-        width: "140px",
-        mobile: "badge",
+        width: "180px",
+        // On a phone the status sits on the line under the title, so a longer status such as
+        // "Waiting for the seller" never squeezes the title.
+        mobile: "meta",
         truncate: false,
-        cell: (row) => <StatusBadge tone={row.status.tone}>{row.status.label}</StatusBadge>,
+        // Accepted work shows what it waits on, which says more than "Approved".
+        cell: (row) => {
+          const status = row.sellerWait ?? row.status;
+          return <StatusBadge tone={status.tone}>{status.label}</StatusBadge>;
+        },
       },
       {
         id: "seller",

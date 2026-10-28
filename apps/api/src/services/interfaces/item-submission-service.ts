@@ -1,4 +1,5 @@
 export type {
+  AcceptSubmissionInput,
   ApproveSubmissionInput,
   ApproveSubmissionNewArtist,
 } from "./item-submission-shared.js";

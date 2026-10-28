@@ -92,6 +92,8 @@ export class SubmissionError extends Error {
   constructor(
     message: string,
     readonly status: number = 400,
+    /** Stable reason for clients, e.g. "identity_not_verified". */
+    readonly code?: string,
   ) {
     super(message);
     this.name = "SubmissionError";

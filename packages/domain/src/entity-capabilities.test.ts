@@ -15,6 +15,7 @@ const EXPECTED: Record<EntityCapability, LegalEntityMemberRole[]> = {
   "entity.connect.operate": ["owner", "admin", "finance"],
   "entity.consignments.read": ["owner", "admin", "finance", "consignor", "viewer"],
   "entity.submissions.create": ["owner", "admin", "consignor"],
+  "entity.consignments.accept_agreement": ["owner", "admin"],
   "entity.consignments.withdraw": ["owner", "admin"],
   "entity.bid.place": ["owner", "admin", "buyer_agent"],
   "entity.bid.place_without_authorisation": ["owner", "admin"],

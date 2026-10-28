@@ -41,6 +41,8 @@ export function mapItemSubmissionRow(
     reviewedAt: row.reviewedAt ?? null,
     reviewNotes: row.reviewNotes,
     rejectionReason: row.rejectionReason,
+    changesRequestedNote: row.changesRequestedNote ?? null,
+    changesRequestedAt: row.changesRequestedAt ?? null,
     convertedLotId: row.convertedLotId,
     assignedToUserId: row.assignedToUserId ?? null,
     createdAt: row.createdAt,

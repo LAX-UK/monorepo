@@ -4,6 +4,9 @@ export interface IPlatformHygieneCronApplicationService {
   sendStaleSubmissionDraftReminders(
     staleDays: number,
   ): ReturnType<HygieneCronService["sendStaleSubmissionDraftReminders"]>;
+  sendConsignmentAgreementReminders(): ReturnType<
+    HygieneCronService["sendConsignmentAgreementReminders"]
+  >;
   probeSentry(sentryDsn: string | undefined): ReturnType<HygieneCronService["probeSentry"]>;
   reconcileAmlWatchlist(
     providerSessionId: string,

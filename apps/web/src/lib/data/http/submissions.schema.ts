@@ -52,6 +52,8 @@ const itemSubmissionRowSchema = z
     reviewedAt: z.unknown().optional(),
     reviewNotes: z.unknown().optional(),
     rejectionReason: z.unknown().optional(),
+    changesRequestedNote: z.unknown().optional(),
+    changesRequestedAt: z.unknown().optional(),
     convertedLotId: z.unknown().optional(),
     assignedToUserId: z.unknown().optional(),
     createdAt: z.unknown(),
@@ -90,6 +92,11 @@ const itemSubmissionRowSchema = z
           : zCoerceDate.parse(row.reviewedAt),
       reviewNotes: zNullableStringFromEmpty.parse(row.reviewNotes),
       rejectionReason: zNullableStringFromEmpty.parse(row.rejectionReason),
+      changesRequestedNote: zNullableStringFromEmpty.parse(row.changesRequestedNote),
+      changesRequestedAt:
+        zNullableStringFromEmpty.parse(row.changesRequestedAt) == null
+          ? null
+          : zCoerceDate.parse(row.changesRequestedAt),
       convertedLotId: zNullableStringFromEmpty.parse(row.convertedLotId),
       assignedToUserId: zNullableStringFromEmpty.parse(row.assignedToUserId),
       createdAt: zCoerceDate.parse(row.createdAt),

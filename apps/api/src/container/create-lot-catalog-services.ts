@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import type { ILotCancelledLifecycleRecorder } from "@auction/persistence/interfaces";
+import { DrizzleConsignmentAgreementRepository } from "@auction/persistence/repositories";
 import {
   DrizzleLotSoftDeleteGuardReader,
   DrizzleLotSoftDeleteSideEffects,
@@ -21,6 +22,10 @@ import { ArtistProfileService } from "../services/artist-profile.service.js";
 import { CatalogSoftDeleteOrchestrator } from "../services/catalog/catalog-soft-delete-orchestrator.js";
 import { CategoryService } from "../services/category.service.js";
 import { ConditionReportService } from "../services/condition-report.service.js";
+import {
+  ConsignmentAgreementService,
+  type IConsignmentAgreementService,
+} from "../services/consignment-agreement/consignment-agreement.service.js";
 import type {
   IItemSubmissionAdminApi,
   IItemSubmissionSellerApi,
@@ -47,6 +52,7 @@ import { SaleSoftDeleteService } from "../services/sale-soft-delete.service.js";
 import { SaleStatusTransitionService } from "../services/sale-status-transition.service.js";
 import { SaleService } from "../services/sale.service.js";
 import { SalePublishService } from "../services/sale/sale-publish.service.js";
+import { SellerIdentityReader } from "../services/submission/seller-identity.reader.js";
 import { VenueService } from "../services/venue.service.js";
 import { createSelfServiceIdentityEligibilityGate } from "./create-bid-eligibility.js";
 import type { ContainerCatalogAdminReaders } from "./create-catalog-admin-readers.js";
@@ -84,6 +90,7 @@ export type ContainerLotCatalogServices = {
   itemSubmissionService: IItemSubmissionService;
   itemSubmissionSellerApi: IItemSubmissionSellerApi;
   itemSubmissionAdminApi: IItemSubmissionAdminApi;
+  consignmentAgreementService: IConsignmentAgreementService;
   categoryService: CategoryService;
   venueService: VenueService;
   artistProfileService: ArtistProfileService;
@@ -316,6 +323,8 @@ export function createLotCatalogServices(
   );
 
   const saleBiddersService = new SaleBiddersService(saleBiddersReader, saleRepo);
+  const consignmentAgreementRepository = new DrizzleConsignmentAgreementRepository(db);
+  const sellerIdentity = new SellerIdentityReader(legalEntityRepository, repos.kycRepository);
   const itemSubmissionService = new ItemSubmissionService(
     transactionRunner,
     itemSubmissionRepository,
@@ -329,7 +338,18 @@ export function createLotCatalogServices(
     mediaAssetEnricher,
     lotLifecycleRecording,
     repoFactory,
+    consignmentAgreementRepository,
+    sellerIdentity,
   );
+  const consignmentAgreementService = new ConsignmentAgreementService({
+    agreements: consignmentAgreementRepository,
+    submissions: itemSubmissionRepository,
+    people: userRepo,
+    dispatcher: notificationDispatcher,
+    recipients: legalEntityNotificationRecipients,
+    events: domainEventSink,
+    sellerIdentity,
+  });
 
   const categoryService = new CategoryService(categoryRepo, domainEventSink);
   const venueService = new VenueService(venueRepo, domainEventSink);
@@ -358,6 +378,7 @@ export function createLotCatalogServices(
     itemSubmissionService,
     itemSubmissionSellerApi: itemSubmissionService,
     itemSubmissionAdminApi: itemSubmissionService,
+    consignmentAgreementService,
     categoryService,
     venueService,
     artistProfileService,
