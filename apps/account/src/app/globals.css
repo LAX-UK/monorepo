@@ -31,6 +31,10 @@
   --color-product-accent: #0f766e;
   --color-cta-bg: var(--color-product-accent);
   --color-cta-on: #ffffff;
+  /* The shared primary button steps its fill on hover and press. Toward white would thin the
+     white label's contrast, so Account's teal darkens instead, in both themes. */
+  --color-cta-bg-hover: color-mix(in srgb, var(--color-cta-bg) 88%, black);
+  --color-cta-bg-pressed: color-mix(in srgb, var(--color-cta-bg) 78%, black);
   --color-accent-brand: var(--color-product-accent);
   /* Links stay neutral and underlined (they share the text colour), so colour is never the only cue. */
   --color-link: var(--brand-obsidian);

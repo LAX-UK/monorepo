@@ -1,4 +1,5 @@
 import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -54,27 +55,18 @@ export function SegmentNotFound({
       </h1>
       <p className="mb-10 max-w-md font-body text-sm text-on-surface-variant">{description}</p>
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <Link
-          href={primaryHref}
-          className="inline-flex items-center justify-center bg-gradient-to-br from-primary to-primary-container px-10 py-4 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-primary shadow-md transition-opacity hover:opacity-95"
-        >
-          {primaryLabel}
-        </Link>
+        <Button asChild variant="primary" size="lg">
+          <Link href={primaryHref}>{primaryLabel}</Link>
+        </Button>
         {secondaryHref && secondaryLabel ? (
-          <Link
-            href={secondaryHref}
-            className="inline-flex items-center justify-center rounded-md border border-outline-variant/30 bg-transparent px-10 py-4 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface transition-colors hover:bg-surface-container-low"
-          >
-            {secondaryLabel}
-          </Link>
+          <Button asChild variant="outline" size="lg">
+            <Link href={secondaryHref}>{secondaryLabel}</Link>
+          </Button>
         ) : null}
         {searchHref ? (
-          <Link
-            href={searchHref}
-            className="inline-flex items-center justify-center rounded-md border border-outline-variant/30 bg-transparent px-10 py-4 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface transition-colors hover:bg-surface-container-low"
-          >
-            {searchLabel}
-          </Link>
+          <Button asChild variant="outline" size="lg">
+            <Link href={searchHref}>{searchLabel}</Link>
+          </Button>
         ) : null}
       </div>
     </section>

@@ -5,15 +5,25 @@ import { type VariantProps, cva } from "class-variance-authority";
 import * as React from "react";
 import { cn } from "../../lib/utils.js";
 
+/**
+ * The one primary button of every LAX product: a flat fill in the product's `--color-cta-bg` with
+ * `--color-cta-on` text (ink on Bid, Shop and lax.art, teal on LAX Account). Hover and pressed
+ * move the fill one and two steps through `--color-cta-bg-hover` and `--color-cta-bg-pressed`;
+ * a product may set those tokens, and the defaults mix the fill toward its text colour so the
+ * step shows in light and dark alike. The focus ring is the product's `--color-ring`; disabled
+ * and loading (`LoadingButton`) come from the shared base.
+ */
+const PRIMARY_BUTTON =
+  "rounded-md bg-cta-bg text-cta-on shadow-none hover:bg-[var(--color-cta-bg-hover,color-mix(in_srgb,var(--color-cta-bg)_82%,var(--color-cta-on)))] active:bg-[var(--color-cta-bg-pressed,color-mix(in_srgb,var(--color-cta-bg)_70%,var(--color-cta-on)))] focus-visible:ring-ring";
+
 const buttonVariants = cva(
   "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
   {
     variants: {
       variant: {
         default: "bg-primary text-on-primary shadow hover:opacity-95",
-        /** Gradient primary CTA (dashboard / auth flows). */
-        primary:
-          "rounded-md bg-gradient-to-br from-primary to-primary-container font-label font-semibold text-on-primary shadow-sm hover:opacity-95",
+        /** The primary action (see `PRIMARY_BUTTON`). */
+        primary: PRIMARY_BUTTON,
         destructive: "bg-error text-on-error shadow-sm hover:opacity-95",
         success: "bg-success text-on-success shadow-sm hover:opacity-95",
         outline:
@@ -32,8 +42,8 @@ const buttonVariants = cva(
         /** Underlined label-caps text action with a 44px tap target (card “Enquire”, inline actions). */
         underline:
           "rounded-none bg-transparent font-label text-xs font-semibold text-on-surface underline decoration-1 underline-offset-4 shadow-none hover:decoration-2",
-        /** Primary marketing CTA (solid) */
-        cta: "rounded bg-cta-bg text-cta-on shadow-none hover:opacity-95 focus-visible:ring-accent-brand",
+        /** The same primary action under its earlier marketing name. */
+        cta: PRIMARY_BUTTON,
         /** “Join live” style — border + label caps */
         liveJoin:
           "rounded border border-brand-100 bg-transparent font-label text-base font-semibold text-brand-100 shadow-none hover:bg-white/5 dark:border-on-surface-variant dark:text-on-surface-variant",
