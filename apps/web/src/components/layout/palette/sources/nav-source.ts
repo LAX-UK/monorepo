@@ -18,7 +18,7 @@ import {
 } from "@/lib/navigation/staff-nav-access";
 import { buildClientPaletteSections } from "@/lib/shell/client-nav-palette";
 import type { ShellRole } from "@/lib/shell/contracts";
-import { type UserRole, type UserStaffRole, userHasAccessTo } from "@auction/types";
+import { type UserRole, userHasAccessTo } from "@auction/types";
 import {
   Brush,
   ClipboardList,
@@ -175,11 +175,11 @@ function buildStaffAdminPaletteSections(
   navCounts?: AdminNavCounts,
 ): PaletteSection[] {
   const role = sessionUser.role as UserRole;
-  const staffRole = (sessionUser.staffRole ?? null) as UserStaffRole | null;
+  const staffRoles = sessionUser.staffRoles;
   const groups = getStaffNavGroups(
     role,
     pendingSubmissionCount,
-    staffRole,
+    staffRoles,
     pendingArtistCount,
     navCounts,
   );
@@ -192,7 +192,7 @@ export function buildQuickActionsSection(
   pendingArtistCount = 0,
 ): PaletteSection {
   const role = sessionUser.role as UserRole;
-  const staffRole = (sessionUser.staffRole ?? null) as UserStaffRole | null;
+  const staffRoles = sessionUser.staffRoles;
   const isFinanceShell = shellRole === "finance";
 
   const items: PaletteItem[] = [];
@@ -200,8 +200,8 @@ export function buildQuickActionsSection(
     if (spec.platformOnly && isFinanceShell) continue;
     if (spec.financeOnly && !isFinanceShell) continue;
     if (spec.href.startsWith("/admin")) {
-      if (!canOpenAdminRoute(role, staffRole, spec.href, spec.requirement)) continue;
-    } else if (spec.requirement && !userHasAccessTo(role, staffRole, spec.requirement)) continue;
+      if (!canOpenAdminRoute(role, staffRoles, spec.href, spec.requirement)) continue;
+    } else if (spec.requirement && !userHasAccessTo(role, staffRoles, spec.requirement)) continue;
     if (spec.id === "qa-pending-artists" && pendingArtistCount <= 0) continue;
 
     const item: PaletteItem = {

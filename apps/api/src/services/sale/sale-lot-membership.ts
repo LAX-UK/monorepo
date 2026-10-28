@@ -4,8 +4,8 @@ import {
   canAttachLotToSale,
   canDetachLotFromSale,
 } from "@auction/domain";
-import type { Lot } from "@auction/types";
-import { normalizeUserRoleOrClient, normalizeUserStaffRole } from "@auction/types";
+import type { Lot, StaffRoles } from "@auction/types";
+import { normalizeUserRoleOrClient } from "@auction/types";
 import type { CreateNestedLotForSaleInput } from "@auction/validators";
 import { englishOnlyAdminLotAuctionTypeViolation } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
@@ -29,10 +29,10 @@ export async function addLotToSale(
   userRole: string,
   saleId: string,
   row: CreateNestedLotForSaleInput,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
 ): Promise<Result<Lot, LotError | AuthzError>> {
   const role = normalizeUserRoleOrClient(userRole);
-  const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+  const staff = userStaffRoles;
   if (!canManageCatalogue(role, staff)) {
     return err(
       missingCatalogueCapabilityError(
@@ -123,11 +123,11 @@ export async function attachExistingLotToSale(
   userRole: string,
   saleId: string,
   lotId: string,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
   attachVia: LotAttachedToSalePayload["via"] = "attach_endpoint",
 ): Promise<Result<Lot, LotError | AuthzError>> {
   const role = normalizeUserRoleOrClient(userRole);
-  const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+  const staff = userStaffRoles;
   if (!canManageCatalogue(role, staff)) {
     return err(
       missingCatalogueCapabilityError(
@@ -199,10 +199,10 @@ export async function detachLotFromSale(
   userRole: string,
   saleId: string,
   lotId: string,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
 ): Promise<Result<void, LotError | AuthzError>> {
   const role = normalizeUserRoleOrClient(userRole);
-  const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+  const staff = userStaffRoles;
   if (!canManageCatalogue(role, staff)) {
     return err(
       missingCatalogueCapabilityError(

@@ -94,7 +94,10 @@ export function attachUserProfileRoutes(r: UserHono, deps: UserRouteDeps): void 
 
   r.get("/me", requireAuthAllowSuspended, async (c) => {
     const userId = c.get("userId") as string;
-    const response = await container.userRoutes.profileHttp.getMe({ userId });
+    const response = await container.userRoutes.profileHttp.getMe({
+      userId,
+      staffRoles: c.get("userStaffRoles"),
+    });
     return respondUserHttpJson(c, response);
   });
 }

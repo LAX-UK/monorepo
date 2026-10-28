@@ -17,11 +17,11 @@ import type {
   IAdminUserBidsReader,
   IAdminUserKycReader,
   IAdminUserReader,
-  IAdminUserRoleManager,
   IAdminWorkItemsReader,
   IFailedJobRepository,
   ILegalEntityDocumentAdminRepository,
   ILegalEntityLifecycleAdminRepository,
+  IStaffRoster,
 } from "@auction/persistence/interfaces";
 import {
   DrizzleAdminDisputeCaseEnrichmentReader,
@@ -40,17 +40,17 @@ import {
   DrizzleAdminUserBidsReader,
   DrizzleAdminUserKycReader,
   DrizzleAdminUserReader,
-  DrizzleAdminUserRoleManager,
   DrizzleAdminWorkItemsReader,
   DrizzleFailedJobRepository,
   DrizzleLegalEntityDocumentAdminRepository,
   DrizzleLegalEntityLifecycleAdminRepository,
+  DrizzleStaffRoster,
 } from "@auction/persistence/repositories";
 
 export type AdminRepositories = {
   adminUserReader: IAdminUserReader;
   adminUserKycReader: IAdminUserKycReader;
-  adminRoleManager: IAdminUserRoleManager;
+  staffRoster: IStaffRoster;
   adminActivityReader: IAdminUserActivityReader;
   adminUserBidsReader: IAdminUserBidsReader;
   adminSaleOperationsSnapshotReader: IAdminSaleOperationsSnapshotReader;
@@ -78,7 +78,7 @@ export function createAdminRepositories(
 ): AdminRepositories {
   const adminUserReader = new DrizzleAdminUserReader(db);
   const adminUserKycReader = new DrizzleAdminUserKycReader(db);
-  const adminRoleManager = new DrizzleAdminUserRoleManager(db);
+  const staffRoster = new DrizzleStaffRoster(db);
   const adminUserBidsReader = new DrizzleAdminUserBidsReader(db);
   const adminSaleOperationsSnapshotReader = new DrizzleAdminSaleOperationsSnapshotReader(db);
   const adminSaleReadinessReader = new DrizzleAdminSaleReadinessReader(db);
@@ -102,7 +102,7 @@ export function createAdminRepositories(
   return {
     adminUserReader,
     adminUserKycReader,
-    adminRoleManager,
+    staffRoster,
     adminActivityReader,
     adminUserBidsReader,
     adminSaleOperationsSnapshotReader,

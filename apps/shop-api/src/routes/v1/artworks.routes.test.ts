@@ -77,6 +77,7 @@ describe("artworks routes", () => {
     const body = response.json() as { items: Array<Record<string, unknown>> };
     expect(body.items[0]).not.toHaveProperty("ownerPartyId");
     expect(body.items[0]).not.toHaveProperty("allocation");
+    expect(body.items[0]).toMatchObject({ listedAt: "2026-01-01T00:00:00.000Z" });
     expect(response.headers["cache-control"]).toMatch(/public/);
     await app.close();
   });

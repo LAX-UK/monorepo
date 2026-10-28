@@ -203,7 +203,7 @@ describe("PaymentService", () => {
       "staff",
       payment.id,
       lot.sellerLegalEntityId,
-      "finance_ops",
+      ["finance_ops"],
     );
 
     expect(result.isOk()).toBe(true);
@@ -284,13 +284,9 @@ describe("PaymentService", () => {
       paymentCapture,
     );
 
-    const result = await service.markCapturedByAdmin(
-      "admin-1",
-      "staff",
-      pay.id,
-      undefined,
+    const result = await service.markCapturedByAdmin("admin-1", "staff", pay.id, undefined, [
       "super_admin",
-    );
+    ]);
 
     expect(result.isOk()).toBe(true);
     expect(stripe.capturePaymentIntent).toHaveBeenCalledWith("pi_test_capture");
@@ -340,13 +336,9 @@ describe("PaymentService", () => {
       stripe,
     );
 
-    const result = await service.markCapturedByAdmin(
-      "admin-1",
-      "staff",
-      pay.id,
-      undefined,
+    const result = await service.markCapturedByAdmin("admin-1", "staff", pay.id, undefined, [
       "super_admin",
-    );
+    ]);
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -408,7 +400,7 @@ describe("PaymentService", () => {
       "staff",
       pay.id,
       undefined,
-      "super_admin",
+      ["super_admin"],
       "Buyer withdrew within the cooling-off period",
     );
     expect(result.isOk()).toBe(true);
@@ -469,13 +461,9 @@ describe("PaymentService", () => {
       stripe,
     );
 
-    const result = await service.refundPayment(
-      "admin-1",
-      "staff",
-      pay.id,
-      undefined,
+    const result = await service.refundPayment("admin-1", "staff", pay.id, undefined, [
       "super_admin",
-    );
+    ]);
     expect(result.isErr()).toBe(true);
     expect(db.transaction).not.toHaveBeenCalled();
     expect(payments.applyRefundedInTransaction).not.toHaveBeenCalled();
@@ -516,13 +504,9 @@ describe("PaymentService", () => {
       stripe,
     );
 
-    const result = await service.refundPayment(
-      "admin-1",
-      "staff",
-      pay.id,
-      undefined,
+    const result = await service.refundPayment("admin-1", "staff", pay.id, undefined, [
       "super_admin",
-    );
+    ]);
     expect(result.isOk()).toBe(true);
     expect(payments.applyRefundedInTransaction).toHaveBeenCalledWith(tx, pay.id, null);
     expect(publisher.publish).toHaveBeenCalledWith(
@@ -551,7 +535,7 @@ describe("PaymentService", () => {
       "staff",
       payment.id,
       "00000000-0000-4000-8000-000000000099",
-      "finance_ops",
+      ["finance_ops"],
     );
 
     expect(result.isErr()).toBe(true);
@@ -847,7 +831,7 @@ describe("PaymentService", () => {
       "finance-1",
       "staff",
       manualReviewPayment.id,
-      "finance_ops",
+      ["finance_ops"],
     );
 
     expect(result.isErr()).toBe(true);
@@ -901,12 +885,9 @@ describe("PaymentService", () => {
       settlementCompliance,
     );
 
-    const result = await service.releaseManualReviewForCapture(
-      "finance-1",
-      "staff",
-      payment.id,
+    const result = await service.releaseManualReviewForCapture("finance-1", "staff", payment.id, [
       "finance_ops",
-    );
+    ]);
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -938,12 +919,9 @@ describe("PaymentService", () => {
       publisher as never,
     );
 
-    const result = await service.refundManualReviewPayment(
-      "admin-1",
-      "staff",
-      payment.id,
+    const result = await service.refundManualReviewPayment("admin-1", "staff", payment.id, [
       "super_admin",
-    );
+    ]);
 
     expect(result.isOk()).toBe(true);
     expect(payments.applyRefundedInTransaction).toHaveBeenCalledWith(tx, payment.id, null);

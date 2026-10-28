@@ -58,7 +58,7 @@ describe("loadAdminSaleSetupPage", () => {
     const model = await loadAdminSaleSetupPage({
       saleId: "sale-1",
       role: "staff",
-      staffRole: null,
+      staffRoles: [],
     });
     expect(model.redirectTo).toBeNull();
     expect(model.sale.title).toBe("Draft sale");
@@ -73,7 +73,7 @@ describe("loadAdminSaleSetupPage", () => {
     const model = await loadAdminSaleSetupPage({
       saleId: "sale-1",
       role: "staff",
-      staffRole: null,
+      staffRoles: [],
     });
     expect(decodeURIComponent(model.redirectTo ?? "")).toContain(
       "Setup is only available for draft sales",

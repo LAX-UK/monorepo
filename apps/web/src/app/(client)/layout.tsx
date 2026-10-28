@@ -61,7 +61,7 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
   if (!canAccessStaffAdminShell(user.role) && user.accountOnboardingComplete === false) {
     redirect(`/onboarding/account?next=${encodeURIComponent(CLIENT_ROUTES.home)}`);
   }
-  const actingContext = await resolveActingContext(user.role, user.staffRole ?? null);
+  const actingContext = await resolveActingContext(user.role, user.staffRoles);
   // A new device, or an organisation the person has left: open the account they used last.
   if (actingContext.needsRestore) {
     redirect(restoreAccountHref(await resolveClientRequestPath()));
@@ -79,7 +79,7 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
           )
       : Promise.resolve({ ok: true as const, value: [] }),
     actingOrganisation ? Promise.resolve(false) : hasPersonalSubmissions(),
-    loadSellerConnectNavBadge(user.role, user.staffRole ?? null),
+    loadSellerConnectNavBadge(user.role, user.staffRoles),
   ]);
   const pendingInvites = pendingR.ok ? pendingR.value : [];
   const layoutWarnings: { title: string; message: string }[] = [];

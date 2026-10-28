@@ -1,7 +1,8 @@
 import {
+  ADMINISTRATOR_STAFF_ROLE,
   type CapabilityRequirement,
+  type StaffRoles,
   type UserRole,
-  type UserStaffRole,
   canAccessFinanceAdminRoutes,
   canAccessPlatformAdminRoutes,
   laxStaffRoleOption,
@@ -18,7 +19,7 @@ export type AdminRouteArea = "platform" | "finance" | "shared";
 
 const AREA_ACCESS: Record<
   AdminRouteArea,
-  (role: UserRole, staffRole: UserStaffRole | null | undefined) => boolean
+  (role: UserRole, staffRoles: StaffRoles | undefined) => boolean
 > = {
   platform: canAccessPlatformAdminRoutes,
   finance: canAccessFinanceAdminRoutes,
@@ -50,20 +51,20 @@ export function adminRouteArea(href: string): AdminRouteArea {
  */
 export function canOpenAdminRoute(
   role: UserRole,
-  staffRole: UserStaffRole | null | undefined,
+  staffRoles: StaffRoles | undefined,
   href: string,
   requirement?: CapabilityRequirement,
 ): boolean {
-  if (!AREA_ACCESS[adminRouteArea(href)](role, staffRole ?? null)) return false;
-  return requirement === undefined || userHasAccessTo(role, staffRole ?? null, requirement);
+  if (!AREA_ACCESS[adminRouteArea(href)](role, staffRoles)) return false;
+  return requirement === undefined || userHasAccessTo(role, staffRoles, requirement);
 }
 
-/** The Bid staff roles (other than super admin) that can open a page, by their display name. */
+/** The Bid staff roles (other than super admin) that each alone can open a page, by display name. */
 export function staffRolesThatCanOpen(href: string, requirement?: CapabilityRequirement): string[] {
   return userStaffRoles
-    .filter((staffRole) => staffRole !== "super_admin")
-    .filter((staffRole) => canOpenAdminRoute("staff", staffRole, href, requirement))
-    .map((staffRole) => laxStaffRoleOption("bid", staffRole)?.label ?? staffRole);
+    .filter((role) => role !== ADMINISTRATOR_STAFF_ROLE)
+    .filter((role) => canOpenAdminRoute("staff", [role], href, requirement))
+    .map((role) => laxStaffRoleOption("bid", role)?.label ?? role);
 }
 
 export const ADMIN_NO_ACCESS_PATH = "/admin/no-access";
@@ -74,11 +75,11 @@ export const ADMIN_NO_ACCESS_PATH = "/admin/no-access";
  */
 export function adminDenialDestination(
   role: UserRole,
-  staffRole: UserStaffRole | null | undefined,
+  staffRoles: StaffRoles | undefined,
   requestedPath: string,
 ): string {
   const path = requestedPath.split(/[?#]/)[0] ?? requestedPath;
-  const home = staffRoleDefaultDestination(role, staffRole);
+  const home = staffRoleDefaultDestination(role, staffRoles);
   // A role whose overview is the admin home itself has nowhere better to go than the explanation.
   if (path === "/admin" && home !== "/admin") return home;
   return `${ADMIN_NO_ACCESS_PATH}?from=${encodeURIComponent(requestedPath)}`;

@@ -14,8 +14,8 @@ export async function denyUnlessAdminCapability(
     return actionFailure("Sign in required", undefined, 401);
   }
   const role = user.role as UserRole;
-  const staffRole = user.staffRole ?? null;
-  if (!userHasAccessTo(role, staffRole, req)) {
+  const staffRoles = user.staffRoles;
+  if (!userHasAccessTo(role, staffRoles, req)) {
     return actionFailure("You do not have permission to perform this action", undefined, 403);
   }
   return null;
@@ -30,8 +30,8 @@ export async function assertAdminCapabilityForRedirect(
     return { ok: false, message: "Sign in required" };
   }
   const role = user.role as UserRole;
-  const staffRole = user.staffRole ?? null;
-  if (!userHasAccessTo(role, staffRole, req)) {
+  const staffRoles = user.staffRoles;
+  if (!userHasAccessTo(role, staffRoles, req)) {
     return { ok: false, message: "You do not have permission to perform this action" };
   }
   return { ok: true };

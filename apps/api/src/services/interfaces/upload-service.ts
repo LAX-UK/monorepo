@@ -1,10 +1,10 @@
-import type { UserRole, UserStaffRole } from "@auction/types";
+import type { StaffRoles, UserRole } from "@auction/types";
 
 export interface IUploadAuthorizationService {
   validatePresignedUploadRequest(input: {
     kind: string;
     userRole: UserRole;
-    userStaffRole?: string | null;
+    userStaffRoles?: StaffRoles | undefined;
     contentType: string;
     byteSize: number;
   }):
@@ -15,10 +15,10 @@ export interface IUploadAuthorizationService {
     uploadId: string;
     userId: string;
     userRole: UserRole;
-    userStaffRole?: UserStaffRole | null;
+    userStaffRoles?: StaffRoles | undefined;
   }): Promise<import("@auction/persistence/interfaces").UploadObjectRow | null>;
 
-  isPlatformAdmin(userRole: UserRole, userStaffRole?: string | null): boolean;
+  isPlatformAdmin(userRole: UserRole, userStaffRoles?: StaffRoles | undefined): boolean;
 }
 
 export interface IUploadService {
@@ -27,7 +27,7 @@ export interface IUploadService {
   createPresignedUpload(input: {
     userId: string;
     userRole: UserRole;
-    userStaffRole?: string | null;
+    userStaffRoles?: StaffRoles | undefined;
     kind: string;
     contentType: string;
     byteSize: number;
@@ -49,7 +49,7 @@ export interface IUploadService {
     uploadId: string;
     userId: string;
     userRole: UserRole;
-    userStaffRole?: UserStaffRole | null;
+    userStaffRoles?: StaffRoles | undefined;
   }): Promise<
     | { ok: true; value: { status: "queued"; key: string; publicUrl: string } }
     | { ok: false; status: number; error: string }
@@ -59,7 +59,7 @@ export interface IUploadService {
     uploadId: string;
     userId: string;
     userRole: UserRole;
-    userStaffRole?: UserStaffRole | null;
+    userStaffRoles?: StaffRoles | undefined;
   }): Promise<
     | {
         ok: true;

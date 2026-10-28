@@ -22,10 +22,12 @@ import { PersonalLegalEntityResolver } from "../services/legal-entity/personal-l
 import { ProfileService } from "../services/profile.service.js";
 import { SavedSearchService } from "../services/saved-search.service.js";
 import { StaffInvitationAcceptService } from "../services/staff-invitation-accept.service.js";
+import { StaffRoleAssignmentService } from "../services/staff/staff-role-assignment.service.js";
 import { UserDashboardReadService } from "../services/user-dashboard-read.service.js";
 import { UserService } from "../services/user.service.js";
 import { WatchlistService } from "../services/watchlist.service.js";
 import { DrizzleAdminUserSuspender } from "./adapters/drizzle-admin-user-suspender.js";
+import { DrizzleInvitationAcceptanceUnitOfWork } from "./adapters/drizzle-invitation-acceptance.unit-of-work.js";
 import type { ContainerCatalogServices } from "./create-catalog-services.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
 import type { ContainerInfra } from "./create-infra.js";
@@ -91,7 +93,7 @@ export function createUserProfileServices(
     addressRepo,
     invitationRepository,
     adminUserReader,
-    adminRoleManager,
+    staffRoster,
     adminActivityReader,
     adminUserBidsReader,
     adminUserKycReader,
@@ -163,8 +165,13 @@ export function createUserProfileServices(
     userRepo,
     emailService,
     env.WEB_ORIGIN,
+    staffRoster,
   );
-  const invitationConsumptionService = new InvitationConsumptionService(invitationRepository);
+  const staffRoleAssignments = new StaffRoleAssignmentService(staffRoster);
+  const invitationConsumptionService = new InvitationConsumptionService(
+    invitationRepository,
+    new DrizzleInvitationAcceptanceUnitOfWork(db),
+  );
   const staffInvitationAccept = new StaffInvitationAcceptService(
     userRepo,
     invitationConsumptionService,
@@ -188,7 +195,7 @@ export function createUserProfileServices(
   });
   const adminUserService = new AdminUserService(
     adminUserReader,
-    adminRoleManager,
+    staffRoleAssignments,
     adminSuspender,
     adminActivityReader,
     adminUserBidsReader,

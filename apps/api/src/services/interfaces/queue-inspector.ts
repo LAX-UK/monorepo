@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 export type QueueJobStatus = "waiting" | "active" | "completed" | "failed" | "delayed" | "paused";
 
 export type QueueOverview = {
@@ -28,7 +29,7 @@ export type JobDetail = JobSummary & {
 
 export type ActorContext = {
   userId: string;
-  staffRole: string | null;
+  staffRoles: StaffRoles | undefined;
   requestId?: string | undefined;
 };
 

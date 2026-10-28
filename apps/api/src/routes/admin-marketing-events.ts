@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import {
   adminMarketingEventsReplayBodySchema,
   adminMarketingEventsStatsQuerySchema,
@@ -9,7 +10,7 @@ import { zValidator } from "../lib/z-validator.js";
 
 export function attachAdminMarketingEventsRoutes(
   platform: Hono<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>,
   container: ContainerAdminMarketingEventsRoutesSlice,
 ) {

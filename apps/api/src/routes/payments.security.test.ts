@@ -1,6 +1,5 @@
 import type { PaymentRecord } from "@auction/persistence/interfaces";
-import type { UserRole } from "@auction/types";
-import type { UserStaffRole } from "@auction/types";
+import { type StaffRoles, type UserRole, normalizeStaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { ContainerPaymentHttpRoutesSlice } from "../container.js";
@@ -16,7 +15,7 @@ const entityId = "22222222-2222-4222-8222-222222222222";
 
 type MountOptions = {
   membershipRole?: string;
-  staffRole?: string;
+  staffRoles?: StaffRoles | undefined;
   /** Whether the session's sign-in is recent enough for money actions; defaults to true. */
   recentSignIn?: boolean;
   /** Authenticator session id; defaults to "u1". */
@@ -111,7 +110,7 @@ function mount(role: string, opts: MountOptions = {}) {
             id: sessionUserId,
             identitySessionId: "session-1",
             role: role as UserRole,
-            staffRole: (opts.staffRole ?? null) as UserStaffRole | null,
+            staffRoles: opts.staffRoles ?? [],
             scopes: ["bid.read", "bid.write"],
           }
         : null,
@@ -126,7 +125,7 @@ function mount(role: string, opts: MountOptions = {}) {
 
 describe("payment finance entity authorization", () => {
   it("lets finance_ops refund platform-wide without an acting entity", async () => {
-    const { app, entityStaffPayment } = mount("staff", { staffRole: "finance_ops" });
+    const { app, entityStaffPayment } = mount("staff", { staffRoles: ["finance_ops"] });
 
     const res = await app.request(`/payments/${paymentId}/refund`, { method: "POST" });
 
@@ -136,12 +135,12 @@ describe("payment finance entity authorization", () => {
       "staff",
       paymentId,
       undefined,
-      "finance_ops",
+      ["finance_ops"],
     );
   });
 
   it("passes the staff member's refund reason through for the audit event", async () => {
-    const { app, entityStaffPayment } = mount("staff", { staffRole: "finance_ops" });
+    const { app, entityStaffPayment } = mount("staff", { staffRoles: ["finance_ops"] });
 
     const res = await app.request(`/payments/${paymentId}/refund`, {
       method: "POST",
@@ -155,14 +154,14 @@ describe("payment finance entity authorization", () => {
       "staff",
       paymentId,
       undefined,
-      "finance_ops",
+      ["finance_ops"],
       "Buyer withdrew within the cooling-off period",
     );
   });
 
   it("asks staff for a recent sign-in before a refund", async () => {
     const { app, entityStaffPayment } = mount("staff", {
-      staffRole: "finance_ops",
+      staffRoles: ["finance_ops"],
       recentSignIn: false,
     });
 
@@ -178,7 +177,7 @@ describe("payment finance entity authorization", () => {
   });
 
   it("refuses a refund reason that is too short to explain anything", async () => {
-    const { app, entityStaffPayment } = mount("staff", { staffRole: "finance_ops" });
+    const { app, entityStaffPayment } = mount("staff", { staffRoles: ["finance_ops"] });
 
     const res = await app.request(`/payments/${paymentId}/refund`, {
       method: "POST",
@@ -191,7 +190,7 @@ describe("payment finance entity authorization", () => {
   });
 
   it("lets finance_ops capture platform-wide without an acting entity", async () => {
-    const { app, entityStaffPayment } = mount("staff", { staffRole: "finance_ops" });
+    const { app, entityStaffPayment } = mount("staff", { staffRoles: ["finance_ops"] });
 
     const res = await app.request(`/payments/${paymentId}/capture`, { method: "POST" });
 
@@ -202,7 +201,9 @@ describe("payment finance entity authorization", () => {
   it.each(["auction_manager", "catalogue_manager", "staff_viewer"])(
     "returns 403 for %s refund without an acting entity",
     async (staffRole) => {
-      const { app, entityStaffPayment } = mount("staff", { staffRole });
+      const { app, entityStaffPayment } = mount("staff", {
+        staffRoles: normalizeStaffRoles([staffRole]),
+      });
 
       const res = await app.request(`/payments/${paymentId}/refund`, { method: "POST" });
 
@@ -214,7 +215,7 @@ describe("payment finance entity authorization", () => {
   it("returns 403 for a non-finance staff capture with only a viewer membership", async () => {
     const { app, entityStaffPayment } = mount("staff", {
       membershipRole: "viewer",
-      staffRole: "auction_manager",
+      staffRoles: ["auction_manager"],
     });
 
     const res = await app.request(`/payments/${paymentId}/capture`, {
@@ -229,7 +230,7 @@ describe("payment finance entity authorization", () => {
   it("allows finance member refund for their acting entity", async () => {
     const { app, entityStaffPayment } = mount("staff", {
       membershipRole: "finance",
-      staffRole: "finance_ops",
+      staffRoles: ["finance_ops"],
     });
 
     const res = await app.request(`/payments/${paymentId}/refund`, {
@@ -243,12 +244,12 @@ describe("payment finance entity authorization", () => {
       "staff",
       paymentId,
       entityId,
-      "finance_ops",
+      ["finance_ops"],
     );
   });
 
   it("allows staff (super_admin) capture without entity context", async () => {
-    const { app, entityStaffPayment } = mount("staff", { staffRole: "super_admin" });
+    const { app, entityStaffPayment } = mount("staff", { staffRoles: ["super_admin"] });
 
     const res = await app.request(`/payments/${paymentId}/capture`, { method: "POST" });
 
@@ -258,7 +259,7 @@ describe("payment finance entity authorization", () => {
       "staff",
       paymentId,
       undefined,
-      "super_admin",
+      ["super_admin"],
     );
   });
 });
@@ -423,7 +424,7 @@ describe("GET /payments/me/lot/:lotId/fulfilment", () => {
   it("returns 403 for roles that are not buyers", async () => {
     const { app, buyerPaymentHttp } = mount("staff", {
       sessionUserId: "u1",
-      staffRole: "finance_ops",
+      staffRoles: ["finance_ops"],
     });
     const res = await app.request(`/payments/me/lot/${lotUuid}/fulfilment`);
     expect(res.status).toBe(403);
@@ -482,7 +483,7 @@ describe("POST /payments/me/:id/cancel-pending", () => {
   it("returns 403 for roles that cannot place bids", async () => {
     const { app, buyerPaymentHttp } = mount("staff", {
       sessionUserId: "u1",
-      staffRole: "finance_ops",
+      staffRoles: ["finance_ops"],
     });
     const res = await app.request(`/payments/me/${paymentId}/cancel-pending`, { method: "POST" });
     expect(res.status).toBe(403);

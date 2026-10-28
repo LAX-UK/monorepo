@@ -42,7 +42,7 @@ function mountPaymentRoutes(
     getSessionUser: vi.fn(async () => ({
       id: "buyer-1",
       role: "client" as UserRole,
-      staffRole: null,
+      staffRoles: [],
       scopes: ["bid.read", "bid.write"],
     })),
   };

@@ -49,7 +49,7 @@ export class ExportHttpApplicationService implements IExportHttpApplicationServi
       const result = await this.exportService.createExport({
         userId: input.viewer.userId,
         userRole: input.viewer.role as string,
-        userStaffRole: input.viewer.staffRole ?? null,
+        userStaffRoles: input.viewer.staffRoles,
         body: input.body,
       });
 
@@ -85,7 +85,7 @@ export class ExportHttpApplicationService implements IExportHttpApplicationServi
       const preview = await this.exportService.previewExport({
         userId: input.viewer.userId,
         userRole: input.viewer.role as string,
-        userStaffRole: input.viewer.staffRole ?? null,
+        userStaffRoles: input.viewer.staffRoles,
         body: input.body,
       });
       return { status: 200, body: preview };

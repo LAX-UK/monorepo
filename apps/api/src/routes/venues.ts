@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import {
   createVenueSchema,
   listVenuesQuerySchema,
@@ -21,7 +22,7 @@ export function createVenueRoutes(
   });
   const http = () => container.catalogRoutes.venueHttp;
   const r = new Hono<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>();
 
   r.use("*", requireAuth, requireVenuesAccess);

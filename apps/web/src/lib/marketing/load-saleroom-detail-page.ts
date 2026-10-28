@@ -66,7 +66,7 @@ export async function loadSaleroomDetailPage(input: {
     items: loaded.lotsPage.items.map((lot) => atgDisplayLot(lot, shell.sale)),
   };
 
-  const canPreviewCatalog = viewerCanSeeNonPublicCatalog(session?.role, session?.staffRole);
+  const canPreviewCatalog = viewerCanSeeNonPublicCatalog(session?.role, session?.staffRoles);
   if (!canPreviewCatalog && !isPublicCatalogSale(shell.sale)) {
     notFound();
   }
@@ -80,9 +80,7 @@ export async function loadSaleroomDetailPage(input: {
   }
 
   const secondary = await saleroomPageDataService.loadSecondary(input.id, shell.sale, session);
-  const actingCtx = session
-    ? await resolveActingContext(session.role, session.staffRole ?? null)
-    : null;
+  const actingCtx = session ? await resolveActingContext(session.role, session.staffRoles) : null;
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
   const mySaleRegs = session ? await getServerSaleMyRegistrations(input.id).catch(() => []) : [];
 

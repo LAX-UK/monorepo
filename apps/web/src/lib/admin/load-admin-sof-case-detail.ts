@@ -15,8 +15,8 @@ export const loadAdminSofCaseDetail = cache(async (caseId: string) => {
     `/admin/compliance/source-of-funds/${caseId}`,
   );
   const role = user.role as UserRole;
-  const staffRole = user.staffRole ?? null;
-  const { canTriage, canDecide } = resolveComplianceCapabilities({ role, staffRole });
+  const staffRoles = user.staffRoles;
+  const { canTriage, canDecide } = resolveComplianceCapabilities({ role, staffRoles });
 
   const detail = await getAdminSourceOfFundsDetail(caseId);
   if (!detail) return null;

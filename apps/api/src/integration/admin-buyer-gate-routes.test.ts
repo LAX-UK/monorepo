@@ -16,7 +16,7 @@ const adminAuth: IAuthenticator = {
   getSessionUser: async () => ({
     id: "admin-user",
     role: "staff",
-    staffRole: "super_admin",
+    staffRoles: ["super_admin"],
     scopes: ["bid.read", "bid.write"],
   }),
 };

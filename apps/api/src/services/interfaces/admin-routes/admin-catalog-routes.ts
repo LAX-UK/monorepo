@@ -8,8 +8,8 @@ import type {
   ArtistProfile,
   Category,
   Lot,
+  StaffRoles,
   UserRole,
-  UserStaffRole,
 } from "@auction/types";
 import type { ResolvedQrCodeAnalyticsQuery } from "@auction/validators";
 import type { Result } from "neverthrow";
@@ -71,7 +71,7 @@ export interface IAdminLotsApplicationService {
     adminUserId: string,
     adminRole: UserRole,
     lotId: string,
-    adminStaffRole?: UserStaffRole | null,
+    adminStaffRoles?: StaffRoles | undefined,
   ): Promise<
     | { ok: true; data: Lot }
     | { ok: false; status: number; error: string; code?: string | undefined }
@@ -81,7 +81,7 @@ export interface IAdminLotsApplicationService {
     adminRole: UserRole,
     lotId: string,
     reason: string,
-    adminStaffRole?: UserStaffRole | null,
+    adminStaffRoles?: StaffRoles | undefined,
   ): Promise<
     | { ok: true; data: { taskId: string } }
     | { ok: false; status: number; error: string; code?: string | undefined }

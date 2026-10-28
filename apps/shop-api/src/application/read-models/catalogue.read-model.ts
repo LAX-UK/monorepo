@@ -56,6 +56,8 @@ export type ArtworkSummaryReadModel = {
   printPricePence: number | null;
   availability: EditionAvailabilityReadModel;
   updatedAt: string;
+  /** When the work was first listed. */
+  listedAt: string;
 };
 
 export type ArtworkDetailReadModel = ArtworkSummaryReadModel & {

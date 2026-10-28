@@ -45,7 +45,7 @@ type PageProps = {
 
 export default async function SellerConsignmentsPage({ searchParams }: PageProps) {
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: PATH });
-  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
+  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   requireSellerCapability(sellerCtx, "entity.consignments.read");
   const { sellerEntityId, bootstrapFailed } = sellerCtx;
   const canCreateSubmission = sellerCan(sellerCtx, "entity.submissions.create");

@@ -41,7 +41,8 @@ export class JwtAuthenticator implements IAuthenticator {
           ? verified.payload.scope.split(/\s+/).filter(Boolean)
           : [],
       role,
-      staffRole,
+
+      staffRoles: staffRole ? [staffRole] : [],
       ...(typeof verified.payload.sid === "string"
         ? { identitySessionId: verified.payload.sid }
         : {}),

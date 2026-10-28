@@ -1,5 +1,9 @@
 import type { ActiveMembership, ILegalEntityRepository } from "@auction/persistence/interfaces";
-import { ACTING_LEGAL_ENTITY_COOKIE_NAME, encodeActingContextCookie } from "@auction/types";
+import {
+  ACTING_LEGAL_ENTITY_COOKIE_NAME,
+  type StaffRoles,
+  encodeActingContextCookie,
+} from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { PersonalLegalEntityUnavailableError } from "../services/legal-entity/personal-legal-entity-resolver.service.js";
@@ -53,20 +57,24 @@ function submissionsMiddleware(
 
 function appWithMiddleware(
   mw: ReturnType<typeof createRequireLegalEntityContext>,
-  opts: { setUserId?: string | undefined; setUserRole?: string; setUserStaffRole?: string } = {},
+  opts: {
+    setUserId?: string | undefined;
+    setUserRole?: string;
+    setUserStaffRoles?: StaffRoles;
+  } = {},
 ) {
   const app = new Hono<{
     Variables: {
       userId?: string;
       userRole?: string;
-      userStaffRole?: string | null;
+      userStaffRoles?: StaffRoles | undefined;
       legalEntityContext?: ActiveMembership;
     };
   }>();
   app.use("*", async (c, next) => {
     if (opts.setUserId !== undefined) c.set("userId", opts.setUserId);
     if (opts.setUserRole !== undefined) c.set("userRole", opts.setUserRole);
-    if (opts.setUserStaffRole !== undefined) c.set("userStaffRole", opts.setUserStaffRole);
+    if (opts.setUserStaffRoles !== undefined) c.set("userStaffRoles", opts.setUserStaffRoles);
     await next();
   });
   app.use("*", mw);
@@ -167,7 +175,7 @@ describe("createRequireLegalEntityContext (required)", () => {
     const app = appWithMiddleware(mw, {
       setUserId: USER_ID,
       setUserRole: "staff",
-      setUserStaffRole: "super_admin",
+      setUserStaffRoles: ["super_admin"],
     });
 
     const res = await app.request("/", {
@@ -209,7 +217,7 @@ describe("createRequireLegalEntityContext (required)", () => {
     const app = appWithMiddleware(mw, {
       setUserId: USER_ID,
       setUserRole: "staff",
-      setUserStaffRole: "super_admin",
+      setUserStaffRoles: ["super_admin"],
     });
 
     const res = await app.request("/", {
@@ -247,7 +255,7 @@ describe("createRequireLegalEntityContext (required)", () => {
     const app = appWithMiddleware(mw, {
       setUserId: USER_ID,
       setUserRole: "staff",
-      setUserStaffRole: "super_admin",
+      setUserStaffRoles: ["super_admin"],
     });
 
     const res = await app.request("/", {

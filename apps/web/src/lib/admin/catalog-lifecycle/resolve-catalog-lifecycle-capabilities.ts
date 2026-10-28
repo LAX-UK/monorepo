@@ -1,5 +1,5 @@
 import { LOTS_ACCESS, SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
-import { type UserRole, type UserStaffRole, userHasAccessTo } from "@auction/types";
+import { type StaffRoles, type UserRole, userHasAccessTo } from "@auction/types";
 
 export type CatalogLifecycleCapabilities = {
   canMutateSalesLifecycle: boolean;
@@ -9,10 +9,10 @@ export type CatalogLifecycleCapabilities = {
 
 export function resolveCatalogLifecycleCapabilities(input: {
   role: UserRole;
-  staffRole: UserStaffRole | null;
+  staffRoles: StaffRoles | undefined;
 }): CatalogLifecycleCapabilities {
-  const canMutateSalesLifecycle = userHasAccessTo(input.role, input.staffRole, SALES_ACCESS);
-  const canMutateLotMembership = userHasAccessTo(input.role, input.staffRole, LOTS_ACCESS);
+  const canMutateSalesLifecycle = userHasAccessTo(input.role, input.staffRoles, SALES_ACCESS);
+  const canMutateLotMembership = userHasAccessTo(input.role, input.staffRoles, LOTS_ACCESS);
   return {
     canMutateSalesLifecycle,
     canMutateLotMembership,

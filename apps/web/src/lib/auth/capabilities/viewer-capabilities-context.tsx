@@ -3,8 +3,8 @@
 import type { SessionUser } from "@/lib/data/contracts";
 import {
   type CapabilityRequirement,
+  type StaffRoles,
   type UserRole,
-  type UserStaffRole,
   staffRoleToShellLayout,
   userHasAccessTo,
 } from "@auction/types";
@@ -14,14 +14,14 @@ import type { ActingContext, ViewerCapabilities, ViewerWorkspace } from "./types
 const ViewerCapabilitiesContext = createContext<ViewerCapabilities | null>(null);
 
 export type ViewerCapabilitiesProviderProps = {
-  user: Pick<SessionUser, "role" | "staffRole" | "name">;
+  user: Pick<SessionUser, "role" | "staffRoles" | "name">;
   acting?: ActingContext;
   children: ReactNode;
 };
 
-function resolveWorkspace(role: UserRole, staffRole: UserStaffRole | null): ViewerWorkspace {
+function resolveWorkspace(role: UserRole, staffRoles: StaffRoles | undefined): ViewerWorkspace {
   if (role === "client") return "client";
-  const shell = staffRoleToShellLayout(role, staffRole);
+  const shell = staffRoleToShellLayout(role, staffRoles);
   return shell === "finance" ? "finance" : "staff";
 }
 
@@ -31,22 +31,22 @@ export function ViewerCapabilitiesProvider({
   children,
 }: ViewerCapabilitiesProviderProps) {
   const role = user.role as UserRole;
-  const staffRole = (user.staffRole ?? null) as UserStaffRole | null;
+  const staffRoles = user.staffRoles;
 
   const can = useCallback(
-    (requirement: CapabilityRequirement) => userHasAccessTo(role, staffRole, requirement),
-    [role, staffRole],
+    (requirement: CapabilityRequirement) => userHasAccessTo(role, staffRoles, requirement),
+    [role, staffRoles],
   );
 
   const value = useMemo<ViewerCapabilities>(
     () => ({
       role,
-      staffRole,
-      workspace: resolveWorkspace(role, staffRole),
+      staffRoles,
+      workspace: resolveWorkspace(role, staffRoles),
       acting,
       can,
     }),
-    [role, staffRole, acting, can],
+    [role, staffRoles, acting, can],
   );
 
   return (

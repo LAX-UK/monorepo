@@ -34,7 +34,7 @@ export async function loadLotDetailPage(input: {
 
   const canPreviewCatalog = viewerCanSeeNonPublicCatalog(
     shell.session?.role,
-    shell.session?.staffRole,
+    shell.session?.staffRoles,
   );
   if (!canPreviewCatalog && !isPublicCatalogLot(shell.auction, shell.saleBundle?.sale ?? null)) {
     notFound();

@@ -36,7 +36,7 @@ describe("sales public GET /:id contract", () => {
     expect(getSaleDetail).toHaveBeenCalledWith(
       expect.objectContaining({
         saleId,
-        viewer: expect.objectContaining({ role: undefined, staffRole: null }),
+        viewer: expect.objectContaining({ role: undefined, staffRoles: undefined }),
       }),
     );
   });

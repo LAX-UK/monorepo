@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import type { Hono, MiddlewareHandler } from "hono";
 import type { RequireRecentStaffAuth } from "../../middleware/require-recent-staff-auth.js";
 
@@ -5,7 +6,7 @@ export type AdminHono = Hono<{
   Variables: {
     userId?: string;
     userRole?: string;
-    userStaffRole?: string | null;
+    userStaffRoles?: StaffRoles | undefined;
     identitySessionId?: string;
   };
 }>;

@@ -10,8 +10,9 @@ import {
 } from "@auction/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { DrizzleAdminUserRoleManager } from "./drizzle-admin-user.reader.js";
+
 import { DrizzleLaxStaffAccessRepository } from "./drizzle-lax-staff-access.repository.js";
+import { DrizzleStaffRoster } from "./drizzle-staff-roster.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
 
@@ -23,7 +24,7 @@ describe.skipIf(!HAS_DB)("LAX staff access directory and history (integration)",
 
   // biome-ignore lint/style/noNonNullAssertion: gated by HAS_DB
   const db = createDb(process.env.DATABASE_URL!);
-  const roles = new DrizzleAdminUserRoleManager(db);
+  const roster = new DrizzleStaffRoster(db);
   const access = new DrizzleLaxStaffAccessRepository(db);
 
   async function cleanup(): Promise<void> {
@@ -78,15 +79,46 @@ describe.skipIf(!HAS_DB)("LAX staff access directory and history (integration)",
 
   afterAll(cleanup);
 
-  it("mirrors Bid role changes and records each change once", async () => {
-    await roles.setRoleAndStaff(memberId, "staff", "specialist", actorId);
-    await roles.setRoleAndStaff(memberId, "staff", "specialist", actorId);
+  async function setBidRole(primaryStaffRole: "specialist" | "finance_ops" | null) {
+    await roster.transact(async (tx) => {
+      await tx.writeProfileRoles(memberId, {
+        role: primaryStaffRole ? "staff" : "client",
+        primaryStaffRole,
+      });
+      await tx.recordEvents([
+        primaryStaffRole
+          ? {
+              type: "lax.staff_access.granted",
+              payload: {
+                schemaVersion: 1,
+                subjectId: memberId,
+                product: "bid",
+                role: primaryStaffRole,
+                grantedBySubjectId: actorId,
+                invitationId: null,
+              },
+            }
+          : {
+              type: "lax.staff_access.revoked",
+              payload: {
+                schemaVersion: 1,
+                subjectId: memberId,
+                product: "bid",
+                revokedBySubjectId: actorId,
+              },
+            },
+      ]);
+    });
+  }
+
+  it("mirrors the Bid profile role and lists each recorded change", async () => {
+    await setBidRole("specialist");
     expect(await directory()).toEqual([{ product: "bid", role: "specialist" }]);
 
-    await roles.setRoleAndStaff(memberId, "staff", "finance_ops", actorId);
+    await setBidRole("finance_ops");
     expect(await directory()).toEqual([{ product: "bid", role: "finance_ops" }]);
 
-    await roles.setRoleAndStaff(memberId, "client", null, actorId);
+    await setBidRole(null);
     expect(await directory()).toEqual([]);
 
     expect(await history()).toEqual([

@@ -74,6 +74,11 @@ export const PublicArtworkSummarySchema = Type.Object(
     availability: PublicEditionAvailabilitySchema,
     /** Sitemap `lastmod`; optional so storefronts parse responses from an older shop-api. */
     updatedAt: Type.Optional(Type.String({ format: "date-time" })),
+    /**
+     * When the work was first listed, which the storefront uses to mark new releases. Optional so
+     * storefronts parse responses from an older shop-api.
+     */
+    listedAt: Type.Optional(Type.String({ format: "date-time" })),
   },
   { additionalProperties: false },
 );

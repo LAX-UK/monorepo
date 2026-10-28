@@ -38,7 +38,7 @@ function props(overrides: Partial<PersonalDashboardProps> = {}): PersonalDashboa
   return {
     title: "Good day, Sam",
     actorUserId: "user-1",
-    staffRole: "super_admin",
+    staffRoles: ["super_admin"],
     widgets: DEFAULT_DASHBOARD_WIDGETS,
     primaryAction: { href: "/admin/payments", label: "Review payments" },
     workInbox: {

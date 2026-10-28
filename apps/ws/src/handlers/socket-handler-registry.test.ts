@@ -46,7 +46,7 @@ describe("registerSocketHandlers joinLot", () => {
         subject: "user-1",
         sid: "identity-session-1",
         role: "staff",
-        staffRole: "super_admin",
+        staffRoles: ["super_admin"],
         audience: "lax-ws",
         scopes: ["bid.read"],
         apiResourceToken: "api-token",
@@ -57,7 +57,7 @@ describe("registerSocketHandlers joinLot", () => {
       vi.fn().mockResolvedValue(
         new Response(
           JSON.stringify({
-            data: { id: "user-1", role: "staff", staffRole: "super_admin" },
+            data: { id: "user-1", role: "staff", staffRoles: ["super_admin"] },
           }),
           { status: 200 },
         ),
@@ -108,7 +108,7 @@ describe("registerSocketHandlers joinLot", () => {
     const socket = {
       handshake: { auth: {}, headers: {} },
       data: {
-        ticketUser: { id: "user-1", role: "staff", staff_role: "super_admin" },
+        ticketUser: { id: "user-1", role: "staff", staffRoles: ["super_admin"] },
         privilegeToken: "api-token",
       },
       join: vi.fn().mockResolvedValue(undefined),
@@ -133,7 +133,7 @@ describe("registerSocketHandlers joinLot", () => {
     const handlers = new Map<string, (payload: unknown, ack: (result: unknown) => void) => void>();
     const socket = {
       handshake: { auth: {}, headers: {} },
-      data: { ticketUser: { id: "user-1", role: "staff", staff_role: "super_admin" } },
+      data: { ticketUser: { id: "user-1", role: "staff", staffRoles: ["super_admin"] } },
       join: vi.fn().mockResolvedValue(undefined),
       on: vi.fn(
         (event: string, handler: (payload: unknown, ack: (result: unknown) => void) => void) => {

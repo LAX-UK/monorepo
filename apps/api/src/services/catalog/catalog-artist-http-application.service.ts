@@ -1,5 +1,5 @@
-import { type UserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
-import type { ArtistKind } from "@auction/types";
+import { type UserRole, roleHasCapability } from "@auction/types";
+import type { ArtistKind, StaffRoles } from "@auction/types";
 import { ArtistError } from "../../lib/errors.js";
 import type { ArtistDeleteService } from "../artist-delete.service.js";
 import type { ArtistProfileService } from "../artist-profile.service.js";
@@ -36,9 +36,9 @@ export class CatalogArtistHttpApplicationService implements ICatalogArtistHttpAp
     q: string;
     limit: number;
     role: UserRole;
-    staffRole: import("@auction/types").UserStaffRole | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogHttpJson> {
-    const staff = normalizeUserStaffRole(input.staffRole ?? undefined);
+    const staff = input.staffRoles;
     const hits = await this.artistRegistryService.search(input.q, input.limit);
     const data = roleHasCapability(input.role, "artist.read", staff)
       ? hits
@@ -101,9 +101,9 @@ export class CatalogArtistHttpApplicationService implements ICatalogArtistHttpAp
   async getBySlug(input: {
     slug: string;
     role: UserRole;
-    staffRole: import("@auction/types").UserStaffRole | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogHttpJson> {
-    const staff = normalizeUserStaffRole(input.staffRole ?? undefined);
+    const staff = input.staffRoles;
     const found = await this.artistRegistryService.findBySlug(input.slug);
     if (!found) return notFoundJson();
     if (!roleHasCapability(input.role, "artist.read", staff) && found.status !== "approved") {
@@ -115,9 +115,9 @@ export class CatalogArtistHttpApplicationService implements ICatalogArtistHttpAp
   async getById(input: {
     id: string;
     role: UserRole;
-    staffRole: import("@auction/types").UserStaffRole | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogHttpJson> {
-    const staff = normalizeUserStaffRole(input.staffRole ?? undefined);
+    const staff = input.staffRoles;
     const found = await this.artistRegistryService.findById(input.id);
     if (!found) return notFoundJson();
     if (!roleHasCapability(input.role, "artist.read", staff) && found.status !== "approved") {
@@ -187,7 +187,7 @@ export class CatalogArtistHttpApplicationService implements ICatalogArtistHttpAp
   async delete(input: {
     userId: string;
     role: UserRole;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
     id: string;
     confirmationPhrase: string;
   }): Promise<CatalogRouteOutcome<void>> {
@@ -196,7 +196,7 @@ export class CatalogArtistHttpApplicationService implements ICatalogArtistHttpAp
       input.role,
       input.id,
       input.confirmationPhrase,
-      input.staffRole,
+      input.staffRoles,
     );
     if (result.isErr()) {
       const error = result.error;

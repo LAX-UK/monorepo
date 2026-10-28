@@ -62,7 +62,7 @@ describe("resolveActingContext", () => {
     });
     mockGet.mockReturnValue(undefined);
 
-    await expect(resolveActingContext("client", null)).resolves.toMatchObject({
+    await expect(resolveActingContext("client", [])).resolves.toMatchObject({
       acting: expect.objectContaining({ id: "11111111-1111-4111-8111-111111111111" }),
       memberships: expect.arrayContaining([
         expect.objectContaining({ id: "11111111-1111-4111-8111-111111111111" }),
@@ -79,7 +79,7 @@ describe("resolveActingContext", () => {
     });
     mockGet.mockReturnValue({ value: ORG.id });
 
-    await expect(resolveActingContext("client", null)).resolves.toMatchObject({
+    await expect(resolveActingContext("client", [])).resolves.toMatchObject({
       acting: expect.objectContaining({ id: PERSONAL.id }),
       needsRestore: true,
     });
@@ -92,7 +92,7 @@ describe("resolveActingContext", () => {
     });
     mockGet.mockReturnValue({ value: "22222222-2222-4222-8222-222222222222" });
 
-    await expect(resolveActingContext("client", null)).resolves.toMatchObject({
+    await expect(resolveActingContext("client", [])).resolves.toMatchObject({
       acting: expect.objectContaining({
         id: "22222222-2222-4222-8222-222222222222",
         kind: "organisation",
@@ -109,7 +109,7 @@ describe("resolveActingContext", () => {
     });
     mockGet.mockReturnValue({ value: "22222222-2222-4222-8222-222222222222" });
 
-    await expect(resolveActingContext("client", null)).resolves.toMatchObject({
+    await expect(resolveActingContext("client", [])).resolves.toMatchObject({
       acting: expect.objectContaining({
         id: "11111111-1111-4111-8111-111111111111",
         kind: "individual",
@@ -125,7 +125,7 @@ describe("resolveActingContext", () => {
     });
     mockGet.mockReturnValue({ value: "11111111-1111-4111-8111-111111111111" });
 
-    await expect(resolveActingContext("client", null)).resolves.toMatchObject({
+    await expect(resolveActingContext("client", [])).resolves.toMatchObject({
       acting: expect.objectContaining({
         id: "11111111-1111-4111-8111-111111111111",
         kind: "individual",

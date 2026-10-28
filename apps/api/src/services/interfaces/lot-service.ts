@@ -1,5 +1,5 @@
 import type { ArchiveEndedAggregateFilter, ListLotsFilter } from "@auction/persistence/interfaces";
-import type { CreateLotInput, Lot, PublicLotView, UserRole } from "@auction/types";
+import type { CreateLotInput, Lot, PublicLotView, StaffRoles, UserRole } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import type { Result } from "neverthrow";
 import type { LotCancelledPayload } from "../../domain/lot-events.js";
@@ -15,13 +15,13 @@ export interface ILotReadService {
   listLotsForPublicApi(
     filter: ListLotsFilter,
     viewerRole: string | undefined,
-    viewerStaffRole?: string | null,
+    viewerStaffRoles?: StaffRoles | undefined,
   ): Promise<{ data: (Lot | PublicLotView)[] }>;
 
   listBidsForPublicApi(input: {
     lotId: string;
     viewerRole: UserRole;
-    viewerStaffRole?: string | null;
+    viewerStaffRoles?: StaffRoles | undefined;
     viewerId: string | undefined;
     limitQuery: string | undefined;
   }): Promise<ListBidsForPublicApiResult>;
@@ -44,14 +44,14 @@ export interface ILotWriteService {
     userRole: string,
     lotId: string,
     input: Partial<CreateLotInput>,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Lot, LotError | AuthzError>>;
 
   updateMarketingDetails(
     userRole: string,
     lotId: string,
     patch: UpdateLotMarketingDetailsInput,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Lot, LotError | AuthzError>>;
 }
 
@@ -60,14 +60,14 @@ export interface ILotLifecycleService {
     userId: string,
     userRole: string,
     lotId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Lot, LotError | AuthzError>>;
 
   cancel(
     userId: string,
     userRole: string,
     lotId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
     cancelReason?: LotCancelledPayload["reason"],
   ): Promise<Result<Lot, LotError | AuthzError>>;
 
@@ -76,7 +76,7 @@ export interface ILotLifecycleService {
     userRole: string,
     ids: string[],
     op: "publish" | "cancel",
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
     reason?: string,
   ): Promise<
     Result<
@@ -94,7 +94,7 @@ export interface ILotLifecycleService {
     userRole: string,
     lotId: string,
     input: ReturnToInventoryInput,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Lot, LotError | AuthzError>>;
 
   requestWithdrawal(
@@ -106,7 +106,7 @@ export interface ILotLifecycleService {
     adminUserId: string,
     adminRole: UserRole,
     lotId: string,
-    adminStaffRole?: string | null,
+    adminStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Lot, LotError | AuthzError>>;
 
   declineWithdrawalRequest(
@@ -114,7 +114,7 @@ export interface ILotLifecycleService {
     adminRole: UserRole,
     lotId: string,
     reason: string,
-    adminStaffRole?: string | null,
+    adminStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<{ taskId: string }, LotError | AuthzError>>;
 }
 

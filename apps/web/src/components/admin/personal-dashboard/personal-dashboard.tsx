@@ -26,7 +26,7 @@ import {
   StaffButton,
   type StaffLinkComponent,
 } from "@auction/staff-ui";
-import type { UserStaffRole } from "@auction/types";
+import type { StaffRoles } from "@auction/types";
 import Link from "next/link";
 
 const NextLink: StaffLinkComponent = Link;
@@ -34,7 +34,7 @@ const NextLink: StaffLinkComponent = Link;
 export type PersonalDashboardProps = {
   title: string;
   actorUserId: string;
-  staffRole: UserStaffRole | null;
+  staffRoles: StaffRoles | undefined;
   widgets: readonly DashboardWidgetState[];
   /** The role's usual next step, the page's one primary action. */
   primaryAction: { href: string; label: string };
@@ -85,7 +85,7 @@ export function PersonalDashboard(props: PersonalDashboardProps) {
                 <Link href={props.quickLink.href}>{props.quickLink.label}</Link>
               </StaffButton>
             ) : null}
-            <CustomisePanel widgets={props.widgets} staffRole={props.staffRole} />
+            <CustomisePanel widgets={props.widgets} staffRoles={props.staffRoles} />
           </>
         }
       />

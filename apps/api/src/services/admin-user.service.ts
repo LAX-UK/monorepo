@@ -1,23 +1,26 @@
-import {
-  type AdminKycSession,
-  type AdminUserListFilter,
-  type IAdminUserActivityReader,
-  type IAdminUserBidsReader,
-  type IAdminUserKycReader,
-  type IAdminUserReader,
-  type IAdminUserRoleManager,
-  type IAdminUserSuspender,
-  LastSuperAdminError,
+import type {
+  AdminKycSession,
+  AdminUserListFilter,
+  IAdminUserActivityReader,
+  IAdminUserBidsReader,
+  IAdminUserKycReader,
+  IAdminUserReader,
+  IAdminUserSuspender,
 } from "@auction/persistence/interfaces";
 import {
+  ADMINISTRATOR_STAFF_ROLE,
   CLIENT_ACTIVITY_ACCESS,
   CLIENT_BIDS_ACCESS,
   CLIENT_KYC_ACCESS,
   type CapabilityRequirement,
+  NO_STAFF_ROLES,
+  type StaffRoles,
   USERS_DIRECTORY_ACCESS,
   USER_MODERATION_ACCESS,
   type UserRole,
   type UserStaffRole,
+  hasStaffRole,
+  holdsOnlyStaffRole,
   normalizeUserRole,
   normalizeUserStaffRole,
   roleHasCapability,
@@ -30,24 +33,32 @@ import type {
   IdentitySecurityStatus,
 } from "./interfaces/identity-issuer-client.js";
 import type { IUserSuspensionCacheInvalidator } from "./interfaces/user-suspension.js";
+import {
+  type IStaffAccessWriter,
+  StaffRoleAssignmentRefused,
+} from "./staff/staff-role-assignment.service.js";
 
 function assertAdminAccess(
   actorRole: string,
-  actorStaffRole: string | null | undefined,
+  actorStaffRoles: StaffRoles | undefined,
   requirement: CapabilityRequirement,
 ): void {
-  const role = actorRole as UserRole;
-  const staff = normalizeUserStaffRole(actorStaffRole);
-  if (!userHasAccessTo(role, staff, requirement)) {
+  if (!userHasAccessTo(actorRole as UserRole, actorStaffRoles, requirement)) {
     throw new AuthzError("Forbidden", 403);
   }
+}
+
+/** Whether setting `target` on yourself leaves your roles as they are. */
+function keepsOwnRoles(own: StaffRoles | undefined, target: UserStaffRole | null): boolean {
+  const held = own ?? NO_STAFF_ROLES;
+  return target === null ? held.length === 0 : holdsOnlyStaffRole(held, target);
 }
 
 /** The signed-in staff member performing a moderation or role action. */
 export type AdminActor = {
   userId: string;
   role: string;
-  staffRole: string | null | undefined;
+  staffRoles: StaffRoles;
 };
 
 const lastSuperAdminError = () =>
@@ -59,7 +70,7 @@ const cannotChangeOwnRoleError = () =>
 export class AdminUserService {
   constructor(
     private readonly reader: IAdminUserReader,
-    private readonly roles: IAdminUserRoleManager,
+    private readonly staffAccess: IStaffAccessWriter,
     private readonly suspender: IAdminUserSuspender,
     private readonly activity: IAdminUserActivityReader,
     private readonly bids: IAdminUserBidsReader,
@@ -68,17 +79,17 @@ export class AdminUserService {
     private readonly identitySecurity?: IIdentitySecurityClient,
   ) {}
 
-  list(actorRole: string, actorStaffRole: string | null | undefined, filter: AdminUserListFilter) {
-    assertAdminAccess(actorRole, actorStaffRole, USERS_DIRECTORY_ACCESS);
+  list(actorRole: string, actorStaffRoles: StaffRoles | undefined, filter: AdminUserListFilter) {
+    assertAdminAccess(actorRole, actorStaffRoles, USERS_DIRECTORY_ACCESS);
     return this.reader.list(filter);
   }
 
-  ensureDirectoryAccess(actorRole: string, actorStaffRole: string | null | undefined): void {
-    assertAdminAccess(actorRole, actorStaffRole, USERS_DIRECTORY_ACCESS);
+  ensureDirectoryAccess(actorRole: string, actorStaffRoles: StaffRoles | undefined): void {
+    assertAdminAccess(actorRole, actorStaffRoles, USERS_DIRECTORY_ACCESS);
   }
 
-  async getById(actorRole: string, actorStaffRole: string | null | undefined, id: string) {
-    assertAdminAccess(actorRole, actorStaffRole, USERS_DIRECTORY_ACCESS);
+  async getById(actorRole: string, actorStaffRoles: StaffRoles | undefined, id: string) {
+    assertAdminAccess(actorRole, actorStaffRoles, USERS_DIRECTORY_ACCESS);
     const detail = await this.reader.getById(id);
     if (!detail) return null;
     if (!this.identitySecurity) return { ...detail, securityStatusAvailable: false };
@@ -98,8 +109,8 @@ export class AdminUserService {
     };
   }
 
-  getByIds(actorRole: string, actorStaffRole: string | null | undefined, ids: string[]) {
-    assertAdminAccess(actorRole, actorStaffRole, USERS_DIRECTORY_ACCESS);
+  getByIds(actorRole: string, actorStaffRoles: StaffRoles | undefined, ids: string[]) {
+    assertAdminAccess(actorRole, actorStaffRoles, USERS_DIRECTORY_ACCESS);
     return this.reader.getByIds(ids);
   }
 
@@ -108,7 +119,7 @@ export class AdminUserService {
     actorUserId: string,
     targetUserId: string,
     role: string,
-    actorStaffRole: string | null | undefined,
+    actorStaffRoles: StaffRoles | undefined,
     targetStaffRole: UserStaffRole | null | undefined,
   ) {
     const normalizedRole = normalizeUserRole(role);
@@ -118,11 +129,10 @@ export class AdminUserService {
     if (targetUserId === actorUserId && normalizedRole !== "staff") {
       throw new AuthzError("Cannot demote yourself");
     }
-    const actorStaff = normalizeUserStaffRole(actorStaffRole);
-    if (targetUserId === actorUserId && targetStaff !== actorStaff) {
+    if (targetUserId === actorUserId && !keepsOwnRoles(actorStaffRoles, targetStaff)) {
       throw cannotChangeOwnRoleError();
     }
-    if (!roleHasCapability(actorRole as UserRole, "user.invite", actorStaff)) {
+    if (!roleHasCapability(actorRole as UserRole, "user.invite", actorStaffRoles)) {
       throw new AuthzError("Forbidden");
     }
 
@@ -130,27 +140,35 @@ export class AdminUserService {
       if (targetStaff == null) {
         throw new AuthzError("staffRole is required when role is staff", 400);
       }
-      await this.applyRoles(targetUserId, "staff", targetStaff, actorUserId);
+      await this.applyAccess(targetUserId, "staff", [targetStaff], actorUserId);
       return;
     }
 
     if (targetStaff != null) {
       throw new AuthzError("staffRole must be omitted when role is client", 400);
     }
-    await this.applyRoles(targetUserId, "client", null, actorUserId);
+    await this.applyAccess(targetUserId, "client", [], actorUserId);
   }
 
-  /** Persists a role change; the last active super_admin guard runs under a roster lock. */
-  private async applyRoles(
+  /** Persists a role change through the roster, which refuses removing the last administrator. */
+  private async applyAccess(
     targetUserId: string,
-    role: string,
-    staffRole: string | null,
+    role: UserRole,
+    staffRoles: readonly UserStaffRole[],
     actorUserId: string,
   ): Promise<void> {
     try {
-      await this.roles.setRoleAndStaff(targetUserId, role, staffRole, actorUserId);
+      await this.staffAccess.setAccess({
+        userId: targetUserId,
+        role,
+        staffRoles,
+        actorUserId,
+        reason: null,
+      });
     } catch (error) {
-      if (error instanceof LastSuperAdminError) throw lastSuperAdminError();
+      if (error instanceof StaffRoleAssignmentRefused && error.reason === "last_administrator") {
+        throw lastSuperAdminError();
+      }
       throw error;
     }
   }
@@ -160,10 +178,9 @@ export class AdminUserService {
     actorUserId: string,
     targetUserId: string,
     staffRole: UserStaffRole | null,
-    actorStaffRole?: string | null,
+    actorStaffRoles: StaffRoles | undefined,
   ) {
-    const actorStaff = normalizeUserStaffRole(actorStaffRole);
-    if (!roleHasCapability(actorRole as UserRole, "user.invite", actorStaff)) {
+    if (!roleHasCapability(actorRole as UserRole, "user.invite", actorStaffRoles)) {
       throw new AuthzError("Forbidden");
     }
     if (targetUserId === actorUserId) throw cannotChangeOwnRoleError();
@@ -175,7 +192,7 @@ export class AdminUserService {
     if (staffRole == null) {
       throw new AuthzError("staffRole is required for staff accounts", 400);
     }
-    await this.applyRoles(targetUserId, "staff", staffRole, actorUserId);
+    await this.applyAccess(targetUserId, "staff", [staffRole], actorUserId);
   }
 
   async suspend(actor: AdminActor, userId: string, reason: string): Promise<void> {
@@ -196,7 +213,7 @@ export class AdminUserService {
     reason: string,
     bulk: boolean,
   ): Promise<void> {
-    assertAdminAccess(actor.role, actor.staffRole, USER_MODERATION_ACCESS);
+    assertAdminAccess(actor.role, actor.staffRoles, USER_MODERATION_ACCESS);
     const trimmed = reason.trim();
     if (trimmed.length < ADMIN_SUSPEND_REASON_MIN) {
       throw new AuthzError(
@@ -222,7 +239,7 @@ export class AdminUserService {
   }
 
   async unsuspendMany(actor: AdminActor, userIds: string[], bulk: boolean): Promise<void> {
-    assertAdminAccess(actor.role, actor.staffRole, USER_MODERATION_ACCESS);
+    assertAdminAccess(actor.role, actor.staffRoles, USER_MODERATION_ACCESS);
     const ids = [...new Set(userIds)];
     await this.assertModeratable(actor, ids);
     await this.suspender.unsuspendMany({ userIds: ids, actorUserId: actor.userId, bulk });
@@ -234,7 +251,7 @@ export class AdminUserService {
     const targets = await this.reader.getByIds(ids);
     if (targets.length !== ids.length) throw new AuthzError("User not found", 404);
     const touchesStaff = targets.some((t) => normalizeUserRole(t.role) === "staff");
-    if (touchesStaff && normalizeUserStaffRole(actor.staffRole) !== "super_admin") {
+    if (touchesStaff && !hasStaffRole(actor.staffRoles, ADMINISTRATOR_STAFF_ROLE)) {
       throw new AuthzError("Only a platform admin can suspend or restore a staff account", 403, {
         code: "staff_moderation_requires_super_admin",
       });
@@ -248,32 +265,32 @@ export class AdminUserService {
 
   activityFor(
     actorRole: string,
-    actorStaffRole: string | null | undefined,
+    actorStaffRoles: StaffRoles | undefined,
     userId: string,
     limit: number,
   ) {
-    assertAdminAccess(actorRole, actorStaffRole, CLIENT_ACTIVITY_ACCESS);
+    assertAdminAccess(actorRole, actorStaffRoles, CLIENT_ACTIVITY_ACCESS);
     return this.activity.getRecentSessions(userId, limit);
   }
 
   kycSessionsFor(
     actorRole: string,
-    actorStaffRole: string | null | undefined,
+    actorStaffRoles: StaffRoles | undefined,
     userId: string,
     limit?: number,
   ): Promise<AdminKycSession[]> {
-    assertAdminAccess(actorRole, actorStaffRole, CLIENT_KYC_ACCESS);
+    assertAdminAccess(actorRole, actorStaffRoles, CLIENT_KYC_ACCESS);
     if (!this.kyc) return Promise.resolve([]);
     return this.kyc.listSessionsForUser(userId, limit);
   }
 
   bidsFor(
     actorRole: string,
-    actorStaffRole: string | null | undefined,
+    actorStaffRoles: StaffRoles | undefined,
     userId: string,
     page: { limit: number; offset: number },
   ) {
-    assertAdminAccess(actorRole, actorStaffRole, CLIENT_BIDS_ACCESS);
+    assertAdminAccess(actorRole, actorStaffRoles, CLIENT_BIDS_ACCESS);
     return this.bids.listForUser(userId, page);
   }
 }

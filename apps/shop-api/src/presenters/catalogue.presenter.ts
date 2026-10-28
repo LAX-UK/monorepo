@@ -48,6 +48,7 @@ export function presentArtworkSummary(model: ArtworkSummaryReadModel): PublicArt
       state: model.availability.state,
     },
     updatedAt: model.updatedAt,
+    listedAt: model.listedAt,
   };
 }
 

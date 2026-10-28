@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { IUploadPersistenceRepository } from "@auction/persistence/interfaces";
-import type { UserRole } from "@auction/types";
+import type { StaffRoles, UserRole } from "@auction/types";
 import type { Queue } from "bullmq";
 import type { Redis } from "ioredis";
 import type { IObjectStorage } from "./interfaces/object-storage.js";
@@ -72,7 +72,7 @@ export class UploadService implements IUploadService {
   async createPresignedUpload(input: {
     userId: string;
     userRole: UserRole;
-    userStaffRole?: string | null;
+    userStaffRoles?: StaffRoles | undefined;
     kind: string;
     contentType: string;
     byteSize: number;
@@ -95,7 +95,7 @@ export class UploadService implements IUploadService {
     const authResult = this.auth.validatePresignedUploadRequest(input);
     if (!authResult.ok) return authResult;
 
-    if (!this.auth.isPlatformAdmin(input.userRole, input.userStaffRole)) {
+    if (!this.auth.isPlatformAdmin(input.userRole, input.userStaffRoles)) {
       const quota = await this.rateLimit.checkQuota(input.userId, input.byteSize);
       if (!quota.ok) {
         return { ok: false, status: 429, error: "quota_exceeded", resetAt: quota.resetAt };
@@ -137,7 +137,7 @@ export class UploadService implements IUploadService {
     uploadId: string;
     userId: string;
     userRole: UserRole;
-    userStaffRole?: import("@auction/types").UserStaffRole | null;
+    userStaffRoles?: StaffRoles | undefined;
   }): Promise<
     | { ok: true; value: { status: "queued"; key: string; publicUrl: string } }
     | { ok: false; status: number; error: string }
@@ -163,7 +163,7 @@ export class UploadService implements IUploadService {
     uploadId: string;
     userId: string;
     userRole: UserRole;
-    userStaffRole?: import("@auction/types").UserStaffRole | null;
+    userStaffRoles?: StaffRoles | undefined;
   }): Promise<
     | {
         ok: true;

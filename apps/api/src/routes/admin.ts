@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { ContainerAdminPlatformRoutesSlice } from "../container.js";
@@ -62,7 +63,7 @@ export function createAdminRoutes(
   });
 
   const r = new Hono<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>();
   r.use("*", requireAuth);
 
@@ -76,7 +77,7 @@ export function createAdminRoutes(
   platform.use(
     "*",
     createMiddleware<{
-      Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+      Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
     }>(async (c, next) => {
       await container.admin.requestLifecycle.reconcileAdminRequestCookie({
         actorUserId: c.get("userId") as string,

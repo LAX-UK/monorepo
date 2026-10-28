@@ -1,4 +1,4 @@
-import type { Lot, LotStatus } from "@auction/types";
+import type { Lot, LotStatus, StaffRoles } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError } from "../../lib/errors.js";
 
@@ -10,6 +10,6 @@ export interface ILotStatusAdminService {
     lotId: string,
     status: LotStatus,
     reason?: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Lot, LotError | AuthzError>>;
 }

@@ -38,7 +38,7 @@ describe("admin QR code routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "staff-user-id",
         role: "staff",
-        staffRole: "super_admin",
+        staffRoles: ["super_admin"],
         scopes: ["bid.read"],
       }),
     };
@@ -76,7 +76,7 @@ describe("admin QR code routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "staff-user-id",
         role: "staff",
-        staffRole: "super_admin",
+        staffRoles: ["super_admin"],
         scopes: ["bid.read"],
       }),
     };
@@ -101,7 +101,7 @@ describe("admin QR code routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "staff-user-id",
         role: "staff",
-        staffRole: "super_admin",
+        staffRoles: ["super_admin"],
         scopes: ["bid.read"],
       }),
     };
@@ -136,7 +136,7 @@ describe("admin QR code routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "staff-user-id",
         role: "staff",
-        staffRole: "super_admin",
+        staffRoles: ["super_admin"],
         scopes: ["bid.write"],
       }),
     };

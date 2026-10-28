@@ -1,6 +1,5 @@
 import type { ILotRepository } from "@auction/persistence/interfaces";
-import type { CreateSaleInput, Sale, UserRole } from "@auction/types";
-import { normalizeUserStaffRole } from "@auction/types";
+import type { CreateSaleInput, Sale, StaffRoles, UserRole } from "@auction/types";
 import {
   HERO_VIDEO_URL_REQUIRED,
   applyHeroPresentationPatch,
@@ -25,10 +24,10 @@ export async function updateDraftSale(
   userRole: string,
   saleId: string,
   patch: UpdateSaleBody,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
 ): Promise<Result<Sale, LotError | AuthzError>> {
   const role = userRole as UserRole;
-  const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+  const staff = userStaffRoles;
   if (!canManageCatalogue(role, staff)) {
     return err(
       missingCatalogueCapabilityError(

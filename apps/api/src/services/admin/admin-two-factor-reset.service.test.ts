@@ -1,25 +1,32 @@
 import { describe, expect, it, vi } from "vitest";
-import { AdminTwoFactorResetService } from "./admin-two-factor-reset.service.js";
+import {
+  AdminTwoFactorResetService,
+  type TwoFactorResetActor,
+} from "./admin-two-factor-reset.service.js";
 
 const TARGET_ID = "6d1f0a52-8b3c-4e97-a4d6-2c9e7b1f5a08";
 const REASON = "Customer lost phone and backup codes; identity checked by video call.";
 
-const SUPER = {
+const SUPER: TwoFactorResetActor = {
   userId: "b2e48c7a-1f09-4d35-8a6e-5d3c9f7e2b14",
   role: "staff",
-  staffRole: "super_admin",
+  staffRoles: ["super_admin"],
 };
-const SUPPORT = {
+const SUPPORT: TwoFactorResetActor = {
   userId: "c8d0f3e1-5a27-4b69-9e14-7f2a6c8d0b35",
   role: "staff",
-  staffRole: "support_concierge",
+  staffRoles: ["support_concierge"],
 };
-const ADVISOR = {
+const ADVISOR: TwoFactorResetActor = {
   userId: "d9e1a4f2-6b38-4c7a-8f25-8a3b7d9e1c46",
   role: "staff",
-  staffRole: "client_advisor",
+  staffRoles: ["client_advisor"],
 };
-const CLIENT = { userId: "e0f2b5a3-7c49-4d8b-9a36-9b4c8e0f2d57", role: "client", staffRole: null };
+const CLIENT: TwoFactorResetActor = {
+  userId: "e0f2b5a3-7c49-4d8b-9a36-9b4c8e0f2d57",
+  role: "client",
+  staffRoles: [],
+};
 
 function setup(target: { role: string } | null = { role: "client" }) {
   const identity = { resetTwoFactor: vi.fn().mockResolvedValue(undefined) };

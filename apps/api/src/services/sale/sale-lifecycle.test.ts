@@ -60,7 +60,7 @@ describe("cancelSale event payload", () => {
       domainEventSink: mockDomainEventSink(publish) as unknown as IDomainEventSink,
     });
 
-    const result = await cancelSale(deps, "admin-1", "staff", "sale-1", "super_admin");
+    const result = await cancelSale(deps, "admin-1", "staff", "sale-1", ["super_admin"]);
     expect(result.isOk()).toBe(true);
     expect(publish).toHaveBeenCalledWith(
       expect.objectContaining({

@@ -1,4 +1,5 @@
 import { ArtworkEditionAlert } from "@/components/artwork/artwork-edition-alert";
+import { EDITION_ALERT_ANCHOR } from "@/lib/catalogue/edition-card.vm";
 import type { ArtworkUnavailableReason } from "@/lib/presenters/artwork-commerce.presenter";
 import type { ShopInterestReadResult } from "@/lib/shop-fetch-result";
 import type { ShopViewerState } from "@/lib/shop-viewer-state";
@@ -28,7 +29,11 @@ export function ArtworkUnavailablePanel({ viewer, artworkSlug, reason, interestR
   const titleId = `alert-title-${artworkSlug}`;
 
   return (
-    <section className="shop-detail__interest-panel" aria-labelledby={titleId}>
+    <section
+      id={EDITION_ALERT_ANCHOR}
+      className="shop-detail__interest-panel"
+      aria-labelledby={titleId}
+    >
       <h2 id={titleId} className="shop-detail__interest-panel-title">
         {title}
       </h2>

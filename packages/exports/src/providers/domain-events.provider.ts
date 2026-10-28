@@ -58,6 +58,6 @@ export function createDomainEventsProvider(domainEvents: IExportDomainEventsQuer
         }),
       );
     },
-    filterSummary: (_ctx, filters) => summarizeFilters(filters as Record<string, unknown>),
+    filterSummary: (filters) => summarizeFilters(filters as Record<string, unknown>),
   };
 }

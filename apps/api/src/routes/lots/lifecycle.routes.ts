@@ -28,7 +28,7 @@ export function attachLotLifecycleRoutes(r: LotHono, deps: LotRouteDeps): void {
       role,
       ids,
       op,
-      staffRole: c.get("userStaffRole"),
+      staffRoles: c.get("userStaffRoles"),
       ...(reason !== undefined ? { reason } : {}),
       ...("confirmationPhrase" in body && body.confirmationPhrase !== undefined
         ? { confirmationPhrase: body.confirmationPhrase }
@@ -43,7 +43,7 @@ export function attachLotLifecycleRoutes(r: LotHono, deps: LotRouteDeps): void {
     const { id } = c.req.valid("param");
     return respondCatalogRouteOutcome(
       c,
-      await http().publish({ userId, role, lotId: id, staffRole: c.get("userStaffRole") }),
+      await http().publish({ userId, role, lotId: id, staffRoles: c.get("userStaffRoles") }),
     );
   });
 
@@ -73,7 +73,7 @@ export function attachLotLifecycleRoutes(r: LotHono, deps: LotRouteDeps): void {
           userId,
           role,
           lotId: id,
-          staffRole: c.get("userStaffRole"),
+          staffRoles: c.get("userStaffRoles"),
           cancelReason: body.reason?.trim() ? "admin_override" : "manual",
         }),
       );
@@ -88,7 +88,7 @@ export function attachLotLifecycleRoutes(r: LotHono, deps: LotRouteDeps): void {
     async (c) => {
       const userId = c.get("userId") as string;
       const role = (c.get("userRole") ?? "client") as UserRole;
-      const staffRole = c.get("userStaffRole") ?? null;
+      const staffRoles = c.get("userStaffRoles");
       const { id } = c.req.valid("param");
       const { confirmationPhrase } = c.req.valid("json");
       const outcome = await http().softDelete({
@@ -96,7 +96,7 @@ export function attachLotLifecycleRoutes(r: LotHono, deps: LotRouteDeps): void {
         role,
         lotId: id,
         confirmationPhrase,
-        staffRole,
+        staffRoles,
       });
       if (outcome.kind === "no_content") return c.body(null, 204);
       return c.json(
@@ -117,7 +117,7 @@ export function attachLotLifecycleRoutes(r: LotHono, deps: LotRouteDeps): void {
       const body = c.req.valid("json") as Partial<CreateLotInput>;
       return respondCatalogRouteOutcome(
         c,
-        await http().update({ role, lotId: id, body, staffRole: c.get("userStaffRole") }),
+        await http().update({ role, lotId: id, body, staffRoles: c.get("userStaffRoles") }),
       );
     },
   );
@@ -137,7 +137,7 @@ export function attachLotLifecycleRoutes(r: LotHono, deps: LotRouteDeps): void {
           role,
           lotId: id,
           body,
-          staffRole: c.get("userStaffRole"),
+          staffRoles: c.get("userStaffRoles"),
         }),
       );
     },
@@ -149,7 +149,7 @@ export function attachLotLifecycleRoutes(r: LotHono, deps: LotRouteDeps): void {
     const body = c.req.valid("json") as CreateLotInput;
     return respondCatalogRouteOutcome(
       c,
-      await http().create({ userId, role, body, staffRole: c.get("userStaffRole") }),
+      await http().create({ userId, role, body, staffRoles: c.get("userStaffRoles") }),
       201,
     );
   });

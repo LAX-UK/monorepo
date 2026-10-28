@@ -65,7 +65,7 @@ export async function requireAuthenticatedUser(opts: {
   // client's consignment from admin. Support may view an account as its client, read-only.
   if (opts.shell === "client") {
     const staffDestination = clientAreaRedirectFor(user, opts.loginNext, {
-      viewingAsClient: await isViewingAsClient(user.role, user.staffRole ?? null),
+      viewingAsClient: await isViewingAsClient(user.role, user.staffRoles),
     });
     if (staffDestination) redirect(staffDestination);
   }

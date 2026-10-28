@@ -3,7 +3,7 @@ import { getStaffNavItems, getStaffNavParentLabel } from "@/components/layout/st
 import type { SessionUser } from "@/lib/data/contracts";
 import { type ClientNavScope, getClientNavItems } from "@/lib/navigation/client-nav-model";
 import { type AppShellRole, sessionUserToShellRole } from "@/lib/shell/session-user-shell-role";
-import type { UserRole, UserStaffRole } from "@auction/types";
+import type { UserRole } from "@auction/types";
 
 export type { AppShellRole, AppShellNavItem };
 export { sessionUserToShellRole };
@@ -50,7 +50,7 @@ export { getStaffNavItems };
 
 export function getAppShellNavItems(
   shell: AppShellRole,
-  sessionUser: Pick<SessionUser, "role" | "staffRole">,
+  sessionUser: Pick<SessionUser, "role" | "staffRoles">,
   pendingSubmissionCount = 0,
   pendingArtistCount = 0,
   navCounts?: import("@/lib/data/http/admin-nav-counts.types").AdminNavCounts,
@@ -59,7 +59,7 @@ export function getAppShellNavItems(
   if (shell === "client") return getClientNavItems(clientScope);
   return getStaffNavItems(
     sessionUser.role as UserRole,
-    sessionUser.staffRole ?? null,
+    sessionUser.staffRoles,
     pendingSubmissionCount,
     pendingArtistCount,
     navCounts,
@@ -69,12 +69,12 @@ export function getAppShellNavItems(
 export function getRouteLabel(
   pathname: string,
   shell: AppShellRole,
-  sessionUser?: Pick<SessionUser, "role" | "staffRole"> | null,
+  sessionUser?: Pick<SessionUser, "role" | "staffRoles"> | null,
 ): string {
-  const navUser: Pick<SessionUser, "role" | "staffRole"> =
+  const navUser: Pick<SessionUser, "role" | "staffRoles"> =
     shell === "client"
-      ? { role: "client", staffRole: null }
-      : (sessionUser ?? { role: "staff", staffRole: "super_admin" });
+      ? { role: "client", staffRoles: [] }
+      : (sessionUser ?? { role: "staff", staffRoles: ["super_admin"] });
   const items = getAppShellNavItems(shell, navUser);
   const active = items.find((item) =>
     item.match ? item.match(pathname) : exactOrNested(item.href)(pathname),
@@ -89,14 +89,14 @@ export function getRouteLabel(
 export function getRouteParentLabel(
   pathname: string,
   shell: AppShellRole,
-  sessionUser?: Pick<SessionUser, "role" | "staffRole"> | null,
+  sessionUser?: Pick<SessionUser, "role" | "staffRoles"> | null,
 ): string | null {
   if (shell !== "client" && pathname.startsWith("/admin")) {
     const u = sessionUser ?? {
       role: "staff" as UserRole,
-      staffRole: "super_admin" as UserStaffRole,
+      staffRoles: ["super_admin"],
     };
-    return getStaffNavParentLabel(pathname, u.role as UserRole, u.staffRole ?? null, 0);
+    return getStaffNavParentLabel(pathname, u.role as UserRole, u.staffRoles, 0);
   }
   return null;
 }

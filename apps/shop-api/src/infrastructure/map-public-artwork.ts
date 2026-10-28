@@ -35,6 +35,8 @@ export type ArtworkCatalogueRow = {
   seoTitle: string | null;
   seoDescription: string | null;
   updatedAt: Date;
+  /** When the work was first listed. */
+  listedAt: Date;
   salesChannel: "shop" | "art";
   eligibleForEditionAllocation: boolean;
   printPricePence: number | null;
@@ -87,6 +89,7 @@ export function toPublicArtworkSummary(row: ArtworkCatalogueRow): ArtworkSummary
     eligibleForEditionAllocation: row.eligibleForEditionAllocation,
     printPricePence: row.printPricePence,
     updatedAt: row.updatedAt.toISOString(),
+    listedAt: row.listedAt.toISOString(),
     availability: publicEditionAvailability({
       eligibleForEditionAllocation: row.eligibleForEditionAllocation,
       totalEditionCount: row.totalEditionCount,

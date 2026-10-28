@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import { captureBackgroundError } from "@auction/observability";
 import {
   type UserRole,
+  normalizeStaffRoles,
   normalizeUserRoleOrClient,
-  normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
 import type { Server, Socket } from "socket.io";
@@ -17,7 +17,11 @@ export type HandlerContext = {
   ticketStore: { getdel(key: string): Promise<string | null> };
 };
 
-type TicketUser = { id: string; sid?: string; role: string; staff_role?: string };
+type TicketUser = { id: string; sid?: string; role: string; staffRoles: readonly string[] };
+
+function rolesFrom(value: unknown): readonly string[] {
+  return Array.isArray(value) ? value.filter((r): r is string => typeof r === "string") : [];
+}
 
 /** Consume and bind the one-time BFF ticket during the Socket.IO handshake. */
 export async function consumeSocketTicket(
@@ -37,6 +41,7 @@ export async function consumeSocketTicket(
       sid?: unknown;
       role?: unknown;
       staffRole?: unknown;
+      staffRoles?: unknown;
       audience?: unknown;
       scopes?: unknown;
       apiResourceToken?: unknown;
@@ -51,10 +56,14 @@ export async function consumeSocketTicket(
     ) {
       return "invalid";
     }
-    const user: TicketUser =
-      typeof value.staffRole === "string"
-        ? { id: value.subject, role: value.role, staff_role: value.staffRole }
-        : { id: value.subject, role: value.role };
+    const user: TicketUser = {
+      id: value.subject,
+      role: value.role,
+      // A ticket from a web release before role assignments carries one role; remove after one release.
+      staffRoles: Array.isArray(value.staffRoles)
+        ? rolesFrom(value.staffRoles)
+        : rolesFrom([value.staffRole]),
+    };
     socket.data.ticketUser = user;
     socket.data.authSubject = value.subject;
     socket.data.authSid = value.sid;
@@ -85,10 +94,7 @@ function roomForDisplay(saleId: string): string {
 
 type AckFn = ((result: unknown) => void) | undefined;
 
-async function resolveSessionUser(
-  socket: Socket,
-  ctx: HandlerContext,
-): Promise<{ id: string; role: string; staff_role?: string } | null> {
+async function resolveSessionUser(socket: Socket, ctx: HandlerContext): Promise<TicketUser | null> {
   const cached = socket.data.ticketUser as TicketUser | undefined;
   if (cached) return cached;
   const consumed = await consumeSocketTicket(socket, ctx.ticketStore);
@@ -103,7 +109,7 @@ async function resolveCurrentCapability(
   const cached = await resolveSessionUser(socket, ctx);
   if (!cached) return false;
   const cachedRole = normalizeUserRoleOrClient(cached.role) as UserRole;
-  const cachedStaff = normalizeUserStaffRole(cached.staff_role);
+  const cachedStaff = normalizeStaffRoles(cached.staffRoles);
   if (!roleHasCapability(cachedRole, capability, cachedStaff)) return false;
 
   const token =
@@ -120,6 +126,7 @@ async function resolveCurrentCapability(
         id?: unknown;
         role?: unknown;
         staffRole?: unknown;
+        staffRoles?: unknown;
         suspended?: unknown;
       };
     };
@@ -131,11 +138,17 @@ async function resolveCurrentCapability(
       return false;
     }
     const role = normalizeUserRoleOrClient(body.data.role) as UserRole;
-    const staff =
-      typeof body.data.staffRole === "string"
-        ? normalizeUserStaffRole(body.data.staffRole)
-        : undefined;
-    return roleHasCapability(role, capability, staff);
+    // The API is the authority: the roles in force now, not those on the ticket.
+    return roleHasCapability(
+      role,
+      capability,
+      normalizeStaffRoles(
+        // An API from before role assignments sends only the single role; remove after one release.
+        Array.isArray(body.data.staffRoles)
+          ? rolesFrom(body.data.staffRoles)
+          : [body.data.staffRole as string],
+      ),
+    );
   } catch {
     return false;
   }

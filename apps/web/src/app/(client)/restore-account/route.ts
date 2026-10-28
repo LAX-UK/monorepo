@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 
   const [restored, context] = await Promise.all([
     restoreAccount(await browserAccountId()),
-    resolveActingContext(user.role, user.staffRole ?? null),
+    resolveActingContext(user.role, user.staffRoles),
   ]);
   const personalId = context.memberships.find((m) => m.kind === "individual")?.id ?? null;
   return carryOutHop(planRestoreHop({ next, restored, personalId }));

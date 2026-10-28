@@ -6,6 +6,7 @@ import type {
   CreateItemSubmissionInput,
   ItemSubmission,
   ItemSubmissionStatus,
+  StaffRoles,
   UpdateItemSubmissionInput,
   UserRole,
 } from "@auction/types";
@@ -17,7 +18,7 @@ export type UpdateSubmissionActorInput = {
   actorId: string;
   role: string;
   /** Actor LAX staff role when `role` is administrator. */
-  staffRole?: string | null;
+  staffRoles?: StaffRoles | undefined;
   submissionId: string;
   /** Seller draft edits (validated with updateItemSubmissionSchema). */
   sellerPatch?: UpdateItemSubmissionInput | undefined;
@@ -48,14 +49,14 @@ export interface IItemSubmissionSellerApi {
   getSubmissionForViewerApi(input: {
     submissionId: string;
     role: UserRole;
-    staffRole?: string | null;
+    staffRoles?: StaffRoles | undefined;
     sellerLegalEntityId: string;
   }): Promise<Result<ItemSubmission, SubmissionError>>;
   patchSubmissionFromRequestBody(input: {
     rawBody: unknown;
     submissionId: string;
     role: UserRole;
-    staffRole?: string | null;
+    staffRoles?: StaffRoles | undefined;
     userId: string;
     sellerLegalEntityId: string;
   }): Promise<

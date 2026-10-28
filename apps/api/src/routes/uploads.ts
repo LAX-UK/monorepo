@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import type { ContainerUploadRoutesSlice } from "../container.js";
 import {
@@ -16,7 +17,7 @@ export function createUploadRoutes(
   });
   const uploadHttp = container.compliance.uploadHttp;
   const r = new Hono<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>();
 
   r.put("/local/:token", async (c) => {

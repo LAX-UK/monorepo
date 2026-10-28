@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import type { Hono } from "hono";
 import type { MiddlewareHandler } from "hono";
 import type {
@@ -16,7 +17,7 @@ export type SaleHono = Hono<{
   Variables: {
     userId?: string;
     userRole?: string;
-    userStaffRole?: string | null;
+    userStaffRoles?: StaffRoles | undefined;
     legalEntityContext?: { legalEntityId: string };
   };
 }>;

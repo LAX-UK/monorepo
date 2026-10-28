@@ -15,7 +15,7 @@ import {
 } from "@/lib/navigation/client-nav-model";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
-import type { UserRole, UserStaffRole } from "@auction/types";
+import type { UserRole } from "@auction/types";
 import type { ReactNode } from "react";
 import {
   type SellerConnectNavBadgeInput,
@@ -25,7 +25,7 @@ import type { NavSection, ShellConfig } from "./contracts";
 import { appShellNavItemsToNavItems, staffNavGroupsToNavEntries } from "./nav-adapters";
 
 export type BuildShellConfigInput = {
-  user: Pick<SessionUser, "role" | "staffRole">;
+  user: Pick<SessionUser, "role" | "staffRoles">;
   role: AppShellRole;
   density?: DashboardDensity;
   headerActionsSlot?: ReactNode;
@@ -94,7 +94,7 @@ export function buildShellConfig({
           getStaffNavGroups(
             user.role as UserRole,
             pendingSubmissionCount,
-            (user.staffRole ?? null) as UserStaffRole | null,
+            user.staffRoles,
             pendingArtistCount,
             navCounts,
           ),
@@ -108,7 +108,7 @@ export function buildShellConfig({
       : appShellNavItemsToNavItems(
           getStaffMobileBottomTabs(
             user.role as UserRole,
-            (user.staffRole ?? null) as UserStaffRole | null,
+            user.staffRoles,
             pendingSubmissionCount,
             pendingArtistCount,
             role === "finance",
@@ -126,7 +126,7 @@ export function buildShellConfig({
         ? appShellNavItemsToNavItems(
             getStaffNavItems(
               user.role as UserRole,
-              (user.staffRole ?? null) as UserStaffRole | null,
+              user.staffRoles,
               pendingSubmissionCount,
               pendingArtistCount,
               navCounts,

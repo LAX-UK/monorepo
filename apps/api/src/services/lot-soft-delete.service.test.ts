@@ -143,7 +143,7 @@ describe("LotSoftDeleteService", () => {
       "staff",
       "l1",
       lotDeleteConfirmationPhrase("Evening lot"),
-      "auction_manager",
+      ["auction_manager"],
     );
     expect(result.isOk()).toBe(true);
     expect(cancelLotJobs).toHaveBeenCalledWith("l1");
@@ -162,7 +162,7 @@ describe("LotSoftDeleteService", () => {
       "client",
       "l1",
       lotDeleteConfirmationPhrase("Evening lot"),
-      null,
+      [],
     );
     expect(result.isErr()).toBe(true);
     if (result.isErr()) expect(result.error).toBeInstanceOf(AuthzError);
@@ -176,7 +176,7 @@ describe("LotSoftDeleteService", () => {
       "staff",
       "missing",
       lotDeleteConfirmationPhrase("Evening lot"),
-      "auction_manager",
+      ["auction_manager"],
     );
     expect(result.isErr()).toBe(true);
     if (result.isErr()) expect(result.error).toBeInstanceOf(LotError);
@@ -186,13 +186,9 @@ describe("LotSoftDeleteService", () => {
     const lotRow = baseLot({ title: "Evening lot" });
     const lotRepo = { findById: vi.fn().mockResolvedValue(lotRow) } as unknown as ILotRepository;
     const svc = createService({ lotRepo });
-    const result = await svc.softDelete(
-      "admin-1",
-      "staff",
-      "l1",
-      "DELETE wrong title",
+    const result = await svc.softDelete("admin-1", "staff", "l1", "DELETE wrong title", [
       "auction_manager",
-    );
+    ]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(LotError);
@@ -237,7 +233,7 @@ describe("LotSoftDeleteService", () => {
       "staff",
       "l1",
       lotDeleteConfirmationPhrase("Evening lot"),
-      "auction_manager",
+      ["auction_manager"],
     );
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -314,7 +310,7 @@ describe("LotSoftDeleteService", () => {
       "staff",
       ["l1", "l2"],
       bulkLotDeleteConfirmationPhrase(2),
-      "auction_manager",
+      ["auction_manager"],
     );
 
     expect(result.isOk()).toBe(true);
@@ -328,13 +324,9 @@ describe("LotSoftDeleteService", () => {
 
   it("bulkSoftDelete rejects wrong confirmation phrase", async () => {
     const svc = createService({});
-    const result = await svc.bulkSoftDelete(
-      "admin-1",
-      "staff",
-      ["l1"],
-      "DELETE 1 DRAFT LOT",
+    const result = await svc.bulkSoftDelete("admin-1", "staff", ["l1"], "DELETE 1 DRAFT LOT", [
       "auction_manager",
-    );
+    ]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.status).toBe(400);
@@ -391,7 +383,7 @@ describe("LotSoftDeleteService ATG guard", () => {
       "staff",
       "l1",
       lotDeleteConfirmationPhrase("Evening lot"),
-      "auction_manager",
+      ["auction_manager"],
     );
     expect(single._unsafeUnwrapErr()).toMatchObject({ status: 409, code: "lot_on_atg" });
 
@@ -400,7 +392,7 @@ describe("LotSoftDeleteService ATG guard", () => {
       "staff",
       ["l1"],
       bulkLotDeleteConfirmationPhrase(1),
-      "auction_manager",
+      ["auction_manager"],
     );
     expect(bulk._unsafeUnwrap()).toMatchObject({
       failed: 1,
@@ -416,7 +408,7 @@ describe("LotSoftDeleteService ATG guard", () => {
       "staff",
       "l1",
       lotDeleteConfirmationPhrase("Evening lot"),
-      "auction_manager",
+      ["auction_manager"],
     );
     expect(result.isOk()).toBe(true);
     expect(softDeleteLot).toHaveBeenCalled();

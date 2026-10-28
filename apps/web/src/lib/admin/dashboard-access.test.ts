@@ -19,7 +19,7 @@ describe("dashboard-access", () => {
 
   describe("allowedDashboardWidgets", () => {
     it("super_admin can access all widgets", () => {
-      const result = allowedDashboardWidgets("staff", "super_admin", allWidgets);
+      const result = allowedDashboardWidgets("staff", ["super_admin"], allWidgets);
       expect(result).toHaveLength(6);
       expect(result.map((w) => w.id)).toEqual([
         "greeting",
@@ -32,50 +32,50 @@ describe("dashboard-access", () => {
     });
 
     it("client_advisor cannot access saleroom-live, onsite-radar, or activity", () => {
-      const result = allowedDashboardWidgets("staff", "client_advisor", allWidgets);
+      const result = allowedDashboardWidgets("staff", ["client_advisor"], allWidgets);
       expect(result.map((w) => w.id)).toEqual(["greeting", "kpi-band", "my-queue"]);
     });
 
     it("specialist cannot access saleroom-live or onsite-radar but can access activity", () => {
-      const result = allowedDashboardWidgets("staff", "specialist", allWidgets);
+      const result = allowedDashboardWidgets("staff", ["specialist"], allWidgets);
       expect(result.map((w) => w.id)).not.toContain("saleroom-live");
       expect(result.map((w) => w.id)).not.toContain("onsite-radar");
     });
 
     it("operations can access saleroom-live, onsite-radar, and activity", () => {
-      const result = allowedDashboardWidgets("staff", "operations", allWidgets);
+      const result = allowedDashboardWidgets("staff", ["operations"], allWidgets);
       expect(result.map((w) => w.id)).toContain("saleroom-live");
       expect(result.map((w) => w.id)).toContain("onsite-radar");
       expect(result.map((w) => w.id)).toContain("activity");
     });
 
     it("staff_viewer cannot access saleroom-live, onsite-radar, or activity", () => {
-      const result = allowedDashboardWidgets("staff", "staff_viewer", allWidgets);
+      const result = allowedDashboardWidgets("staff", ["staff_viewer"], allWidgets);
       expect(result.map((w) => w.id)).toEqual(["greeting", "kpi-band", "my-queue"]);
     });
   });
 
   describe("isWidgetAllowed", () => {
     it("returns true for universally allowed widgets", () => {
-      expect(isWidgetAllowed("staff", "client_advisor", "greeting")).toBe(true);
-      expect(isWidgetAllowed("staff", "client_advisor", "kpi-band")).toBe(true);
-      expect(isWidgetAllowed("staff", "client_advisor", "my-queue")).toBe(true);
+      expect(isWidgetAllowed("staff", ["client_advisor"], "greeting")).toBe(true);
+      expect(isWidgetAllowed("staff", ["client_advisor"], "kpi-band")).toBe(true);
+      expect(isWidgetAllowed("staff", ["client_advisor"], "my-queue")).toBe(true);
     });
 
     it("returns false for saleroom-live when lacking SALEROOM_ACCESS", () => {
-      expect(isWidgetAllowed("staff", "client_advisor", "saleroom-live")).toBe(false);
-      expect(isWidgetAllowed("staff", "specialist", "saleroom-live")).toBe(false);
+      expect(isWidgetAllowed("staff", ["client_advisor"], "saleroom-live")).toBe(false);
+      expect(isWidgetAllowed("staff", ["specialist"], "saleroom-live")).toBe(false);
     });
 
     it("returns true for saleroom-live when having SALEROOM_ACCESS", () => {
-      expect(isWidgetAllowed("staff", "super_admin", "saleroom-live")).toBe(true);
-      expect(isWidgetAllowed("staff", "operations", "saleroom-live")).toBe(true);
+      expect(isWidgetAllowed("staff", ["super_admin"], "saleroom-live")).toBe(true);
+      expect(isWidgetAllowed("staff", ["operations"], "saleroom-live")).toBe(true);
     });
   });
 
   describe("hubQuickLinksFor", () => {
     it("super_admin sees all hub links", () => {
-      const links = hubQuickLinksFor("staff", "super_admin");
+      const links = hubQuickLinksFor("staff", ["super_admin"]);
       expect(links.length).toBeGreaterThanOrEqual(5);
       expect(links.map((l) => l.href)).toContain("/admin/finance");
       expect(links.map((l) => l.href)).toContain("/admin/sales");
@@ -85,7 +85,7 @@ describe("dashboard-access", () => {
     });
 
     it("client_advisor sees only clients and submissions (if they have access)", () => {
-      const links = hubQuickLinksFor("staff", "client_advisor");
+      const links = hubQuickLinksFor("staff", ["client_advisor"]);
       expect(links.map((l) => l.href)).toContain("/admin/clients");
       expect(links.map((l) => l.href)).not.toContain("/admin/finance");
       expect(links.map((l) => l.href)).not.toContain("/admin/sales");
@@ -93,14 +93,14 @@ describe("dashboard-access", () => {
     });
 
     it("finance_ops sees finance but not catalog or compliance", () => {
-      const links = hubQuickLinksFor("staff", "finance_ops");
+      const links = hubQuickLinksFor("staff", ["finance_ops"]);
       expect(links.map((l) => l.href)).toContain("/admin/finance");
       expect(links.map((l) => l.href)).not.toContain("/admin/sales");
       expect(links.map((l) => l.href)).not.toContain("/admin/compliance/aml");
     });
 
     it("operations sees catalog, fulfilment, submissions, and clients", () => {
-      const links = hubQuickLinksFor("staff", "operations");
+      const links = hubQuickLinksFor("staff", ["operations"]);
       expect(links.map((l) => l.href)).toContain("/admin/sales");
       expect(links.map((l) => l.href)).toContain("/admin/lot-fulfilment");
       expect(links.map((l) => l.href)).toContain("/admin/submissions");
@@ -110,12 +110,12 @@ describe("dashboard-access", () => {
 
   describe("greetingActionsFor", () => {
     it("hides New lot for staff without lots access", () => {
-      const actions = greetingActionsFor("staff", "finance_ops");
+      const actions = greetingActionsFor("staff", ["finance_ops"]);
       expect(actions.map((a) => a.label)).not.toContain("New lot");
     });
 
     it("includes submissions for catalogue roles", () => {
-      const actions = greetingActionsFor("staff", "catalogue_manager");
+      const actions = greetingActionsFor("staff", ["catalogue_manager"]);
       expect(actions.map((a) => a.label)).toContain("Submissions");
     });
   });

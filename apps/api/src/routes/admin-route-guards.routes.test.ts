@@ -1,3 +1,4 @@
+import { normalizeStaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
@@ -78,9 +79,12 @@ function buildApp(staffRole: string) {
   } as unknown as Container;
 
   const authenticator: IAuthenticator = {
-    getSessionUser: vi
-      .fn()
-      .mockResolvedValue({ id: "staff-user-id", role: "staff", staffRole, scopes: ["bid.read"] }),
+    getSessionUser: vi.fn().mockResolvedValue({
+      id: "staff-user-id",
+      role: "staff",
+      staffRoles: normalizeStaffRoles([staffRole]),
+      scopes: ["bid.read"],
+    }),
   };
 
   const app = new Hono();

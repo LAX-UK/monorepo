@@ -8,9 +8,9 @@ import {
   SALEROOM_ACCESS,
   SALE_CATALOG_ACCESS,
   SUBMISSIONS_ACCESS,
+  type StaffRoles,
   USERS_DIRECTORY_ACCESS,
   type UserRole,
-  type UserStaffRole,
   userHasAccessTo,
 } from "@auction/types";
 
@@ -37,13 +37,13 @@ export const DASHBOARD_WIDGET_REQUIREMENTS: Record<
  */
 export function allowedDashboardWidgets(
   role: UserRole,
-  staffRole: UserStaffRole | null,
+  staffRoles: StaffRoles | undefined,
   widgets: readonly DashboardWidgetState[],
 ): DashboardWidgetState[] {
   return widgets.filter((w) => {
     const req = DASHBOARD_WIDGET_REQUIREMENTS[w.id];
     if (req === null) return true;
-    return userHasAccessTo(role, staffRole, req);
+    return userHasAccessTo(role, staffRoles, req);
   });
 }
 
@@ -52,12 +52,12 @@ export function allowedDashboardWidgets(
  */
 export function isWidgetAllowed(
   role: UserRole,
-  staffRole: UserStaffRole | null,
+  staffRoles: StaffRoles | undefined,
   widgetId: DashboardWidgetId,
 ): boolean {
   const req = DASHBOARD_WIDGET_REQUIREMENTS[widgetId];
   if (req === null) return true;
-  return userHasAccessTo(role, staffRole, req);
+  return userHasAccessTo(role, staffRoles, req);
 }
 
 export type HubQuickLinkSpec = {
@@ -87,9 +87,12 @@ export type HubQuickLink = {
 /**
  * Get the hub quick links that the viewer can access.
  */
-export function hubQuickLinksFor(role: UserRole, staffRole: UserStaffRole | null): HubQuickLink[] {
+export function hubQuickLinksFor(
+  role: UserRole,
+  staffRoles: StaffRoles | undefined,
+): HubQuickLink[] {
   return HUB_QUICK_LINK_SPECS.filter((spec) =>
-    userHasAccessTo(role, staffRole, spec.requirement),
+    userHasAccessTo(role, staffRoles, spec.requirement),
   ).map(({ href, label }) => ({ href, label }));
 }
 
@@ -99,10 +102,10 @@ export function hubQuickLinksFor(role: UserRole, staffRole: UserStaffRole | null
  */
 export function canAccess(
   role: UserRole,
-  staffRole: UserStaffRole | null,
+  staffRoles: StaffRoles | undefined,
   requirement: CapabilityRequirement,
 ): boolean {
-  return userHasAccessTo(role, staffRole, requirement);
+  return userHasAccessTo(role, staffRoles, requirement);
 }
 
 export type DashboardQuickAction = {
@@ -118,9 +121,9 @@ export const DASHBOARD_GREETING_ACTIONS: readonly DashboardQuickAction[] = [
 
 export function greetingActionsFor(
   role: UserRole,
-  staffRole: UserStaffRole | null,
+  staffRoles: StaffRoles | undefined,
 ): DashboardQuickAction[] {
   return DASHBOARD_GREETING_ACTIONS.filter(
-    (action) => action.requirement == null || userHasAccessTo(role, staffRole, action.requirement),
+    (action) => action.requirement == null || userHasAccessTo(role, staffRoles, action.requirement),
   );
 }

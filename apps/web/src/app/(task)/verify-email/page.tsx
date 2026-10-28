@@ -56,10 +56,7 @@ export default async function VerifyEmailPage({
   const destination =
     sessionUser && canAccessStaffAdminShell(sessionUser.role as UserRole)
       ? {
-          href: staffRoleDefaultDestination(
-            sessionUser.role as UserRole,
-            sessionUser.staffRole ?? null,
-          ),
+          href: staffRoleDefaultDestination(sessionUser.role as UserRole, sessionUser.staffRoles),
           label: "Continue to admin",
         }
       : resolvePostVerifyDestination({

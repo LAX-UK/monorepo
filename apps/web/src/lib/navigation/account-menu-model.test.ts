@@ -8,7 +8,7 @@ function facts(overrides: Partial<AccountMenuFacts> = {}): AccountMenuFacts {
     hasConsigned: false,
     isOrgMember: false,
     pendingInvitations: 0,
-    user: { role: "client", staffRole: null },
+    user: { role: "client", staffRoles: [] },
     ...overrides,
   };
 }
@@ -80,7 +80,12 @@ describe("buildAccountMenu", () => {
 
 describe("buildAccountMenu for staff", () => {
   const menuFor = (staffRole: UserStaffRole | null) =>
-    buildAccountMenu(facts({ user: { role: "staff", staffRole }, isOrgMember: true }));
+    buildAccountMenu(
+      facts({
+        user: { role: "staff", staffRoles: staffRole ? [staffRole] : [] },
+        isOrgMember: true,
+      }),
+    );
 
   it("gives a super admin the admin panel and LAX Account, nothing from the client area", () => {
     const groups = menuFor("super_admin");

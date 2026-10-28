@@ -3,6 +3,7 @@ import type {
   StripeConnectRequirementEntityRow,
 } from "@auction/persistence/interfaces";
 import type { ListPaymentsAdminTableFilter } from "@auction/persistence/interfaces";
+import type { StaffRoles } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError } from "../../../lib/errors.js";
 import type { AdminNavCounts } from "../../admin/admin-nav-counts.service.js";
@@ -14,20 +15,20 @@ export interface IAdminPaymentsApplicationService {
     adminUserId: string,
     userRole: string,
     paymentId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<void, AuthzError>>;
   refundManualReviewPayment(
     adminUserId: string,
     userRole: string,
     paymentId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
     /** Why the buyer is being refunded; recorded on the refund's audit event. */
     reason?: string,
   ): Promise<Result<void, AuthzError>>;
   syncPaymentFromXeroAsAdmin(
     userRole: string,
     paymentId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<{ ok: boolean; error?: string }, AuthzError>>;
   listPage(
     filter: ListPaymentsAdminTableFilter,

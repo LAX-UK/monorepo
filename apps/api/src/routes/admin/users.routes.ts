@@ -1,3 +1,4 @@
+import { NO_STAFF_ROLES, type StaffRoles } from "@auction/types";
 import {
   adminBulkUsersBodySchema,
   adminPatchStaffRoleBodySchema,
@@ -30,7 +31,7 @@ function actorOf(c: Context): AdminActor {
   return {
     userId: c.get("userId") as string,
     role: (c.get("userRole") as string | undefined) ?? "client",
-    staffRole: c.get("userStaffRole") as string | null | undefined,
+    staffRoles: (c.get("userStaffRoles") as StaffRoles | undefined) ?? NO_STAFF_ROLES,
   };
 }
 
@@ -46,7 +47,7 @@ export function attachAdminUsersDirectoryRoutes(
     async (c) => {
       const q = c.req.valid("query");
       const actorRole = c.get("userRole") ?? "client";
-      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      const actorStaff = c.get("userStaffRoles") as StaffRoles | undefined;
       const page = await container.admin.users.getPage(
         actorRole,
         actorStaff,
@@ -71,7 +72,7 @@ export function attachAdminUsersDirectoryRoutes(
     async (c) => {
       const { ids } = c.req.valid("query");
       const actorRole = c.get("userRole") ?? "client";
-      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      const actorStaff = c.get("userStaffRoles") as StaffRoles | undefined;
       const data = await container.admin.users.getByIds(actorRole, actorStaff, ids);
       return c.json({ data });
     },
@@ -101,7 +102,7 @@ export function attachAdminUsersDirectoryRoutes(
     async (c) => {
       const { userId } = c.req.valid("param");
       const actorRole = c.get("userRole") ?? "client";
-      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      const actorStaff = c.get("userStaffRoles") as StaffRoles | undefined;
       const row = await container.admin.users.getById(actorRole, actorStaff, userId);
       if (!row) return c.json({ error: "Not found" }, 404);
       return c.json({ data: row });
@@ -115,7 +116,7 @@ export function attachAdminUsersDirectoryRoutes(
     async (c) => {
       const { userId } = c.req.valid("param");
       const actorRole = c.get("userRole") ?? "client";
-      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      const actorStaff = c.get("userStaffRoles") as StaffRoles | undefined;
       const data = await container.admin.users.kycSessionsFor(actorRole, actorStaff, userId);
       return c.json({ data });
     },
@@ -160,7 +161,7 @@ export function attachAdminUsersManagementRoutes(
       const { role, staffRole: targetStaffRole } = c.req.valid("json");
       const actorRole = c.get("userRole") ?? "client";
       const actorId = c.get("userId") as string;
-      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      const actorStaff = c.get("userStaffRoles") as StaffRoles | undefined;
       const setOut = await container.admin.users.setRole(
         actorRole,
         actorId,
@@ -186,7 +187,7 @@ export function attachAdminUsersManagementRoutes(
       const { userId } = c.req.valid("param");
       const { staffRole } = c.req.valid("json");
       const actorRole = c.get("userRole") ?? "client";
-      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      const actorStaff = c.get("userStaffRoles") as StaffRoles | undefined;
       const setOut = await container.admin.users.setStaffRole(
         actorRole,
         c.get("userId") as string,
@@ -236,7 +237,7 @@ export function attachAdminUsersManagementRoutes(
       const { userId } = c.req.valid("param");
       const { limit } = c.req.valid("query");
       const actorRole = c.get("userRole") ?? "client";
-      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      const actorStaff = c.get("userStaffRoles") as StaffRoles | undefined;
       const data = await container.admin.users.activityFor(actorRole, actorStaff, userId, limit);
       return c.json({ data });
     },
@@ -251,7 +252,7 @@ export function attachAdminUsersManagementRoutes(
       const { userId } = c.req.valid("param");
       const { limit, offset } = c.req.valid("query");
       const actorRole = c.get("userRole") ?? "client";
-      const actorStaff = c.get("userStaffRole") as string | null | undefined;
+      const actorStaff = c.get("userStaffRoles") as StaffRoles | undefined;
       const data = await container.admin.users.bidsFor(actorRole, actorStaff, userId, {
         limit,
         offset,

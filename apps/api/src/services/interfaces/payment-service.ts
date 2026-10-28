@@ -1,5 +1,5 @@
 import type { PaymentRecord } from "@auction/persistence/interfaces";
-import type { PaymentStatus } from "@auction/types";
+import type { PaymentStatus, StaffRoles } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError, PaymentProviderError } from "../../lib/errors.js";
 import type { MyPaymentRowDTO } from "../payment-me-presenter.js";
@@ -45,7 +45,7 @@ export interface IPaymentBuyerService {
 export interface IPaymentAdminService {
   listAllForAdmin(
     userRole: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<PaymentRecord[], AuthzError>>;
 
   markCapturedByAdmin(
@@ -53,14 +53,14 @@ export interface IPaymentAdminService {
     userRole: string,
     paymentId: string,
     actingLegalEntityId?: string | null,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<void, AuthzError | PaymentProviderError>>;
 
   releaseManualReviewForCapture(
     adminUserId: string,
     userRole: string,
     paymentId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<void, AuthzError>>;
 
   refundPayment(
@@ -68,7 +68,7 @@ export interface IPaymentAdminService {
     userRole: string,
     paymentId: string,
     actingLegalEntityId?: string | null,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
     /** The staff member's written reason, kept on the audit event. */
     staffReason?: string,
   ): Promise<Result<void, AuthzError | PaymentProviderError>>;
@@ -77,14 +77,14 @@ export interface IPaymentAdminService {
     adminUserId: string,
     userRole: string,
     paymentId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
     reason?: string,
   ): Promise<Result<void, AuthzError | PaymentProviderError>>;
 
   syncPaymentFromXeroAsAdmin(
     userRole: string,
     paymentId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<{ ok: boolean; error?: string }, AuthzError>>;
 }
 

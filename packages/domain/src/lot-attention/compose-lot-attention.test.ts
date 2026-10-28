@@ -3,7 +3,7 @@ import { composeLotAttention } from "./compose-lot-attention.js";
 import { DEFAULT_LOT_ATTENTION_CONTRIBUTORS } from "./lot-attention-registry.js";
 import type { LotAttentionSignals } from "./lot-attention-types.js";
 
-const principal = { role: "staff" as const, staffRole: "super_admin" };
+const principal = { role: "staff" as const, staffRoles: ["super_admin"] as const };
 
 describe("composeLotAttention", () => {
   it("returns empty when lot is missing", () => {

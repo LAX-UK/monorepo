@@ -1,4 +1,4 @@
-import type { UserRole } from "@auction/types";
+import type { StaffRoles, UserRole } from "@auction/types";
 import { LotError } from "../../lib/errors.js";
 import { presentLotImages } from "../../lib/media-presenters.js";
 import type { ILotLifecycleTransitionExecutor } from "../interfaces/catalog-routes/catalog-lot-lifecycle-transition-executor.js";
@@ -34,13 +34,13 @@ export class CatalogSaleLotMembershipHttpApplicationService
     role: UserRole;
     saleId: string;
     body: Parameters<ISaleService["addLot"]>[2];
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteOutcome<PresentedLot>> {
     const result = await this.saleService.addLot(
       input.role,
       input.saleId,
       input.body,
-      input.staffRole,
+      input.staffRoles,
     );
     if (result.isErr()) return catalogRouteFromResult(result);
     return { kind: "ok", data: await this.present(result.value), status: 201 };
@@ -50,14 +50,14 @@ export class CatalogSaleLotMembershipHttpApplicationService
     role: UserRole;
     saleId: string;
     lotId: string;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
     via: "attach_endpoint" | "wizard";
   }): Promise<CatalogRouteOutcome<PresentedLot>> {
     const result = await this.saleService.attachExistingLot(
       input.role,
       input.saleId,
       input.lotId,
-      input.staffRole,
+      input.staffRoles,
       input.via,
     );
     if (result.isErr()) return catalogRouteFromResult(result);
@@ -68,13 +68,13 @@ export class CatalogSaleLotMembershipHttpApplicationService
     role: UserRole;
     saleId: string;
     lotId: string;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteOutcome<void>> {
     const result = await this.saleService.detachLot(
       input.role,
       input.saleId,
       input.lotId,
-      input.staffRole,
+      input.staffRoles,
     );
     return catalogRouteFromResult(result);
   }
@@ -84,7 +84,7 @@ export class CatalogSaleLotMembershipHttpApplicationService
     role: UserRole;
     saleId: string;
     lotId: string;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
     reason?: string;
   }): Promise<CatalogRouteOutcome<PresentedLot>> {
     const lot = await this.lotService.getById(input.lotId);
@@ -95,7 +95,7 @@ export class CatalogSaleLotMembershipHttpApplicationService
       userId: input.userId,
       role: input.role,
       lotId: input.lotId,
-      staffRole: input.staffRole,
+      staffRoles: input.staffRoles,
       cancelReason: input.reason?.trim() ? "admin_override" : "manual",
     });
     if (result.isErr()) return catalogRouteFromResult(result);
@@ -107,7 +107,7 @@ export class CatalogSaleLotMembershipHttpApplicationService
     role: UserRole;
     saleId: string;
     lotId: string;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
     status: Parameters<ILotLifecycleTransitionExecutor["applyStaffLotStatus"]>[0]["status"];
     reason?: string;
   }): Promise<CatalogRouteOutcome<PresentedLot>> {
@@ -117,7 +117,7 @@ export class CatalogSaleLotMembershipHttpApplicationService
         role: input.role,
         saleId: input.saleId,
         lotId: input.lotId,
-        staffRole: input.staffRole,
+        staffRoles: input.staffRoles,
         ...(input.reason !== undefined ? { reason: input.reason } : {}),
       });
     }
@@ -126,7 +126,7 @@ export class CatalogSaleLotMembershipHttpApplicationService
       saleId: input.saleId,
       lotId: input.lotId,
       status: input.status,
-      staffRole: input.staffRole,
+      staffRoles: input.staffRoles,
       ...(input.reason !== undefined ? { reason: input.reason } : {}),
     });
     if (result.isErr()) return catalogRouteFromResult(result);

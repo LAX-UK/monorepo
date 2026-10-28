@@ -4,6 +4,7 @@ import {
   PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
   PAYMENT_WRITE_ACCESS,
   SALES_ACCESS,
+  type StaffRoles,
   type UserRole,
   type UserStaffRole,
   WITHDRAWAL_DECISION_ACCESS,
@@ -30,7 +31,7 @@ const SALE_ID = "00000000-0000-4000-8000-000000000001";
 const LOT_ID = "00000000-0000-4000-8000-000000000002";
 const PAYMENT_ID = "00000000-0000-4000-8000-000000000003";
 
-function buildApp(staffRole: UserStaffRole) {
+function buildApp(staffRoles: StaffRoles | undefined) {
   const container = {
     env: { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
     admin: {
@@ -47,7 +48,7 @@ function buildApp(staffRole: UserStaffRole) {
     getSessionUser: vi.fn().mockResolvedValue({
       id: "staff-user-id",
       role: "staff",
-      staffRole,
+      staffRoles,
       scopes: ["bid.read", "bid.write"],
       identitySessionId: "session-1",
     }),
@@ -130,7 +131,7 @@ const ACTIONS: AdminAction[] = [
 ];
 
 async function statusFor(action: AdminAction, role: UserStaffRole): Promise<number> {
-  const res = await buildApp(role).request(`http://test${action.path}`, {
+  const res = await buildApp([role]).request(`http://test${action.path}`, {
     method: action.method,
     ...(action.body !== undefined
       ? { headers: { "Content-Type": "application/json" }, body: JSON.stringify(action.body) }
@@ -144,14 +145,14 @@ describe("admin action rules match the API routes", () => {
     describe(action.name, () => {
       it.each(userStaffRoles)("%s: the route answers as the shared rule says", async (role) => {
         const status = await statusFor(action, role);
-        const uiShowsAction = userHasAccessTo("staff" as UserRole, role, action.rule);
+        const uiShowsAction = userHasAccessTo("staff" as UserRole, [role], action.rule);
         const apiRefuses = status === 401 || status === 403;
         expect(apiRefuses).toBe(!uiShowsAction);
       });
 
       it("allows exactly the documented roles", () => {
         const allowed = userStaffRoles.filter((role) =>
-          userHasAccessTo("staff" as UserRole, role, action.rule),
+          userHasAccessTo("staff" as UserRole, [role], action.rule),
         );
         expect([...allowed].sort()).toEqual([...action.expectedRoles].sort());
       });
@@ -159,19 +160,21 @@ describe("admin action rules match the API routes", () => {
   }
 
   it("lets finance_ops reach the payments list through the finance shell", async () => {
-    const res = await buildApp("finance_ops").request("http://test/admin/payments");
+    const res = await buildApp(["finance_ops"]).request("http://test/admin/payments");
     expect([401, 403]).not.toContain(res.status);
-    const denied = await buildApp("auction_manager").request("http://test/admin/payments");
+    const denied = await buildApp(["auction_manager"]).request("http://test/admin/payments");
     expect(denied.status).toBe(403);
   });
 });
 
 describe("payment capture and refund gate", () => {
-  function paymentApp(staffRole: UserStaffRole) {
-    const app = new Hono<{ Variables: { userRole?: string; userStaffRole?: string | null } }>();
+  function paymentApp(staffRoles: StaffRoles | undefined) {
+    const app = new Hono<{
+      Variables: { userRole?: string; userStaffRoles?: StaffRoles | undefined };
+    }>();
     app.use("*", async (c, next) => {
       c.set("userRole", "staff");
-      c.set("userStaffRole", staffRole);
+      c.set("userStaffRoles", staffRoles);
       await next();
     });
     app.post("/payments/:id/refund", requireFinanceEntityWrite, (c) => c.json({ ok: true }));
@@ -179,14 +182,14 @@ describe("payment capture and refund gate", () => {
   }
 
   it.each(userStaffRoles)("%s: the gate answers as PAYMENT_WRITE_ACCESS says", async (role) => {
-    const res = await paymentApp(role).request("/payments/pay-1/refund", { method: "POST" });
+    const res = await paymentApp([role]).request("/payments/pay-1/refund", { method: "POST" });
     expect(res.status === 200).toBe(
-      userHasAccessTo("staff" as UserRole, role, PAYMENT_WRITE_ACCESS),
+      userHasAccessTo("staff" as UserRole, [role], PAYMENT_WRITE_ACCESS),
     );
   });
 
   it("allows finance_ops, who the finance screens are built for", async () => {
-    const res = await paymentApp("finance_ops").request("/payments/pay-1/refund", {
+    const res = await paymentApp(["finance_ops"]).request("/payments/pay-1/refund", {
       method: "POST",
     });
     expect(res.status).toBe(200);

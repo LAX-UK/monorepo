@@ -1,9 +1,8 @@
 import { entityRoleCan } from "@auction/domain";
-import type { Lot, UserRole } from "@auction/types";
+import type { Lot, StaffRoles, UserRole } from "@auction/types";
 import {
   WITHDRAWAL_DECISION_ACCESS,
   normalizeUserRoleOrClient,
-  normalizeUserStaffRole,
   userHasAccessTo,
 } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
@@ -86,14 +85,14 @@ export async function approveWithdrawalRequest(
   adminUserId: string,
   adminRole: UserRole,
   lotId: string,
-  adminStaffRole?: string | null,
+  adminStaffRoles?: StaffRoles | undefined,
 ): Promise<Result<Lot, LotError | AuthzError>> {
   const adminReviewTaskRepository = deps.adminReviewTaskRepository;
   if (!adminReviewTaskRepository) {
     return err(new LotError("Withdrawal approvals are not available", 503));
   }
   const role = normalizeUserRoleOrClient(adminRole);
-  const staff = normalizeUserStaffRole(adminStaffRole ?? undefined);
+  const staff = adminStaffRoles;
   if (!userHasAccessTo(role, staff, WITHDRAWAL_DECISION_ACCESS)) {
     return err(new AuthzError("Only staff with auction.manage can approve withdrawals", 403));
   }
@@ -106,7 +105,7 @@ export async function approveWithdrawalRequest(
     adminUserId,
     adminRole,
     lotId,
-    adminStaffRole,
+    adminStaffRoles,
     "withdrawal",
   );
   if (cancelRes.isErr()) return cancelRes;
@@ -131,7 +130,7 @@ export async function declineWithdrawalRequest(
   adminRole: UserRole,
   lotId: string,
   reason: string,
-  adminStaffRole?: string | null,
+  adminStaffRoles?: StaffRoles | undefined,
 ): Promise<Result<{ taskId: string }, LotError | AuthzError>> {
   const adminReviewTaskRepository = deps.adminReviewTaskRepository;
   const publisher = deps.domainEventSink;
@@ -143,7 +142,7 @@ export async function declineWithdrawalRequest(
     return err(new LotError("Withdrawal decisions are not available", 503));
   }
   const role = normalizeUserRoleOrClient(adminRole);
-  const staff = normalizeUserStaffRole(adminStaffRole ?? undefined);
+  const staff = adminStaffRoles;
   if (!userHasAccessTo(role, staff, WITHDRAWAL_DECISION_ACCESS)) {
     return err(new AuthzError("Only staff with auction.manage can decline withdrawals", 403));
   }

@@ -1,12 +1,11 @@
 "use server";
 
-import { dashboardProfileIdForStaffRole } from "@/lib/admin/dashboard-profile-registry";
+import { dashboardProfileIdForStaffRoles } from "@/lib/admin/dashboard-profile-registry";
 import { recordDashboardTelemetry } from "@/lib/admin/dashboard/dashboard-telemetry";
 import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { ADMIN_HOME_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
-import type { UserStaffRole } from "@auction/types";
 
 const ALLOWED_PROFILE_IDS = new Set([
   "oversight",
@@ -85,9 +84,7 @@ export async function logDashboardCustomizeSaveAction(widgetCount: number): Prom
     if (denied && !denied.ok) return;
 
     const user = await requireAuthenticatedUser({ shell: "staff", loginNext: "/admin" });
-    const profileId = dashboardProfileIdForStaffRole(
-      (user.staffRole ?? null) as UserStaffRole | null,
-    );
+    const profileId = dashboardProfileIdForStaffRoles(user.staffRoles);
 
     recordDashboardTelemetry({
       kind: "customize_save",

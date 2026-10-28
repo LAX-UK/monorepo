@@ -1,4 +1,4 @@
-import type { UserEmailStatus, UserKycStatus } from "@auction/types";
+import type { StaffRoles, UserEmailStatus, UserKycStatus } from "@auction/types";
 
 export type AdminUserListSort =
   | "created_desc"
@@ -39,7 +39,10 @@ export type AdminUserListRow = {
   firstName: string | null;
   lastName: string | null;
   role: string;
+  /** The one role shown for the person. Display only. */
   staffRole: string | null;
+  /** Roles in force now; decides what the person may do. */
+  staffRoles: StaffRoles;
   createdAt: Date;
   updatedAt: Date;
   suspendedAt: Date | null;
@@ -161,28 +164,6 @@ export interface IAdminUserReader extends IAdminUserBrowseReader, IAdminUserDeta
 
 export interface IAdminUserKycReader {
   listSessionsForUser(userId: string, limit?: number): Promise<AdminKycSession[]>;
-}
-
-export interface IAdminUserRoleManager {
-  /**
-   * Atomically sets `role` and `staff_role` (`staff_role` null iff `role` is `client`) and,
-   * when the Bid staff role changes, records `lax.staff_access.*` for the access history.
-   */
-  setRoleAndStaff(
-    userId: string,
-    role: string,
-    staffRole: string | null,
-    actorUserId: string,
-  ): Promise<void>;
-}
-
-/** Thrown when a staff-role change would leave Bid admin without an active super_admin. */
-export class LastSuperAdminError extends Error {
-  readonly code = "last_super_admin" as const;
-  constructor() {
-    super("Cannot remove the last active super admin");
-    this.name = "LastSuperAdminError";
-  }
 }
 
 export interface IAdminUserSuspender {

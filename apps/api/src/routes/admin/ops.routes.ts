@@ -1,3 +1,4 @@
+import { NO_STAFF_ROLES } from "@auction/types";
 import {
   adminKpiTrendQuerySchema,
   adminSubmissionCountBySellersQuerySchema,
@@ -180,11 +181,11 @@ export function attachAdminOpsRoutes(
   platform.get("/sales/:saleId/attention", requireAdminDashboard, async (c) => {
     const saleId = c.req.param("saleId");
     const role = (c.get("userRole") ?? "client") as "client" | "staff" | "seller";
-    const staffRole = c.get("userStaffRole") ?? null;
+    const staffRoles = c.get("userStaffRoles") ?? NO_STAFF_ROLES;
     try {
       const data = await container.admin.saleDetailBoard.getAttention(saleId, {
         role,
-        staffRole,
+        staffRoles,
       });
       return c.json({ data });
     } catch (err) {
@@ -222,11 +223,11 @@ export function attachAdminOpsRoutes(
   platform.get("/lots/:lotId/attention", requireAdminDashboard, async (c) => {
     const lotId = c.req.param("lotId");
     const role = (c.get("userRole") ?? "client") as "client" | "staff" | "seller";
-    const staffRole = c.get("userStaffRole") ?? null;
+    const staffRoles = c.get("userStaffRoles") ?? NO_STAFF_ROLES;
     try {
       const data = await container.admin.lotDetailBoard.getAttention(lotId, {
         role,
-        staffRole,
+        staffRoles,
       });
       return c.json({ data });
     } catch (err) {
@@ -256,11 +257,11 @@ export function attachAdminOpsRoutes(
       const q = c.req.valid("query");
       const userId = c.get("userId") as string;
       const role = (c.get("userRole") ?? "client") as import("@auction/types").UserRole;
-      const staffRole = c.get("userStaffRole") as import("@auction/types").UserStaffRole | null;
+      const staffRoles = c.get("userStaffRoles");
       const data = await container.admin.workItems.listWorkItems({
         actorUserId: userId,
         actorRole: role,
-        actorStaffRole: staffRole,
+        actorStaffRoles: staffRoles,
         query: q,
       });
       return c.json({ data });

@@ -1,12 +1,16 @@
-import { normalizeUserStaffRole } from "@auction/types";
+import {
+  ADMINISTRATOR_STAFF_ROLE,
+  NO_STAFF_ROLES,
+  type StaffRoles,
+  hasStaffRole,
+} from "@auction/types";
 import { createMiddleware } from "hono/factory";
 
-/** Engineering ops: only super_admin may access BullMQ admin surfaces. */
+/** Engineering ops: only an administrator may access BullMQ admin surfaces. */
 export const requireSuperAdminStaffRole = createMiddleware<{
-  Variables: { userStaffRole?: string | null };
+  Variables: { userStaffRoles?: StaffRoles | undefined };
 }>(async (c, next) => {
-  const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-  if (staff !== "super_admin") {
+  if (!hasStaffRole(c.get("userStaffRoles") ?? NO_STAFF_ROLES, ADMINISTRATOR_STAFF_ROLE)) {
     return c.json({ error: "Forbidden" }, 403);
   }
   await next();

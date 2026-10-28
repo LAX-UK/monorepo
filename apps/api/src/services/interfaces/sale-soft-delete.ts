@@ -1,5 +1,5 @@
 import type { SaleSoftDeleteGuardCounts } from "@auction/persistence/interfaces";
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, Sale, StaffRoles } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError } from "../../lib/errors.js";
 
@@ -36,13 +36,13 @@ export interface ISaleSoftDeleteService {
     userRole: string,
     saleId: string,
     confirmationPhrase: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<void, LotError | AuthzError>>;
   bulkSoftDelete(
     actorUserId: string,
     userRole: string,
     ids: string[],
     confirmationPhrase: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<SaleBulkSoftDeleteResult, AuthzError | LotError>>;
 }

@@ -41,7 +41,7 @@ function payoutSetupHref(sellerEntityId: string | null, sellingAsOrganisation: b
 
 export default async function SellerOverviewPage() {
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/selling" });
-  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
+  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   const { sellerEntityId, sellingAsOrganisation, bootstrapFailed } = sellerCtx;
   const canSell = sellerCan(sellerCtx, "entity.consignments.read");
   const canCreateSubmission = sellerCan(sellerCtx, "entity.submissions.create");

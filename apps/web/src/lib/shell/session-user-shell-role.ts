@@ -7,7 +7,7 @@ export type AppShellRole = AppShellLayout;
 
 /** Maps session user to shell layout (client vs platform admin vs finance). */
 export function sessionUserToShellRole(
-  user: Pick<SessionUser, "role" | "staffRole">,
+  user: Pick<SessionUser, "role" | "staffRoles">,
 ): AppShellRole {
-  return staffRoleToShellLayout(user.role as UserRole, user.staffRole ?? null);
+  return staffRoleToShellLayout(user.role as UserRole, user.staffRoles);
 }

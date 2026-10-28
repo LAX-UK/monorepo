@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import { createMiddleware } from "hono/factory";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { hasBidScope, requiredBidScope } from "./bid-scope-policy.js";
@@ -18,7 +19,7 @@ export function createRequireAuth(authenticator: IAuthenticator, opts?: RequireA
     Variables: {
       userId?: string;
       userRole?: string;
-      userStaffRole?: string | null;
+      userStaffRoles?: StaffRoles | undefined;
       identitySessionId?: string;
     };
   }>(async (c, next) => {
@@ -42,7 +43,7 @@ export function createRequireAuth(authenticator: IAuthenticator, opts?: RequireA
     }
     c.set("userId", user.id);
     c.set("userRole", user.role);
-    c.set("userStaffRole", user.staffRole ?? null);
+    c.set("userStaffRoles", user.staffRoles);
     if (user.identitySessionId) c.set("identitySessionId", user.identitySessionId);
     await next();
   });

@@ -7,7 +7,7 @@ import { ViewerCapabilitiesProvider } from "./viewer-capabilities-context";
 describe("Can", () => {
   it("renders children when capability passes", () => {
     render(
-      <ViewerCapabilitiesProvider user={{ role: "staff", staffRole: "super_admin", name: "A" }}>
+      <ViewerCapabilitiesProvider user={{ role: "staff", staffRoles: ["super_admin"], name: "A" }}>
         <Can requirement={PLATFORM_ADMIN_ACCESS}>
           <span>allowed</span>
         </Can>

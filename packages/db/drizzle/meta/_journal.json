@@ -1688,6 +1688,13 @@
       "when": 1796112000000,
       "tag": "0240_absentee_bid_buyer_entity_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 241,
+      "version": "7",
+      "when": 1796198400000,
+      "tag": "0241_staff_role_assignment",
+      "breakpoints": true
     }
   ]
 }

@@ -59,13 +59,13 @@ export function attachAdminPaymentsManualReviewRoutes(
     async (c) => {
       const userId = c.get("userId") as string;
       const role = c.get("userRole") ?? "client";
-      const staffRole = c.get("userStaffRole") ?? null;
+      const staffRoles = c.get("userStaffRoles");
       const { id } = c.req.valid("param");
       const result = await container.admin.payments.releaseManualReviewForCapture(
         userId,
         role,
         id,
-        staffRole,
+        staffRoles,
       );
       return result.match(
         () => c.json({ ok: true }),
@@ -88,14 +88,14 @@ export function attachAdminPaymentsManualReviewRoutes(
     async (c) => {
       const userId = c.get("userId") as string;
       const role = c.get("userRole") ?? "client";
-      const staffRole = c.get("userStaffRole") ?? null;
+      const staffRoles = c.get("userStaffRoles");
       const { id } = c.req.valid("param");
       const { reason } = c.req.valid("json");
       const result = await container.admin.payments.refundManualReviewPayment(
         userId,
         role,
         id,
-        staffRole,
+        staffRoles,
         reason,
       );
       return result.match(

@@ -70,7 +70,14 @@ export type InvitationAdminListFilters = {
 
 /** Outcome of the atomic single-use consume transaction. */
 export type ConsumeInviteResult =
-  | { outcome: "ok"; targetRole: UserRole; grants: LaxStaffGrant[] }
+  | {
+      outcome: "ok";
+      invitationId: string;
+      invitedByUserId: string;
+      targetRole: UserRole;
+      targetStaffRole: UserStaffRole | null;
+      grants: LaxStaffGrant[];
+    }
   | { outcome: "invalid" }
   | { outcome: "expired" }
   | { outcome: "email_mismatch" };
@@ -82,25 +89,11 @@ export interface IUserInvitationRepository {
   /** Pending platform invite (entity invites excluded) for an email, case-insensitive. */
   findPendingPlatformByEmail(email: string): Promise<InvitationRow | null>;
   /**
-   * Atomically consumes a pending invite for a freshly registered user: marks it
-   * accepted, applies the target role and grants, in one transaction with a row lock
-   * so a token can never be redeemed twice.
+   * Marks a pending invite accepted by `userId` under a row lock, so a token can never be
+   * redeemed twice, and records `lax.staff_access.granted` for every platform other than Bid.
+   * Bid access is the caller's to apply through the staff roster in the same transaction.
    */
-  consumeForNewUser(
-    tokenHash: string,
-    newUserId: string,
-    email: string,
-  ): Promise<ConsumeInviteResult>;
-  /**
-   * Accepts a pending invite for a signed-in existing user. Applies the Bid grant (if any)
-   * and records `lax.staff_access.granted` for every other platform in the same
-   * transaction; never downgrades an existing user to the invitation's base role.
-   */
-  acceptForExistingUser(
-    tokenHash: string,
-    userId: string,
-    email: string,
-  ): Promise<ConsumeInviteResult>;
+  accept(tokenHash: string, userId: string, email: string): Promise<ConsumeInviteResult>;
   listGrants(invitationId: string): Promise<LaxStaffGrant[]>;
   listAdmin(
     filters: InvitationAdminListFilters,

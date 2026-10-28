@@ -1,3 +1,5 @@
+import { normalizeStaffRoles } from "@auction/types";
+import type { StaffRoles } from "@auction/types";
 import {
   bulkSaleDeleteConfirmationPhrase,
   saleDeleteConfirmationPhrase,
@@ -16,7 +18,7 @@ describe("POST /sales/:id/delete", () => {
 
   function appWithAuth(role: string, staffRole: string | null) {
     const app = new Hono<{
-      Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+      Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
     }>();
     const softDelete = vi.fn();
     const bulkSoftDelete = vi.fn();
@@ -37,7 +39,7 @@ describe("POST /sales/:id/delete", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "staff-1",
         role,
-        staffRole,
+        staffRoles: normalizeStaffRoles([staffRole]),
 
         scopes: ["bid.write"],
       }),
@@ -63,7 +65,7 @@ describe("POST /sales/:id/delete", () => {
         role: "staff",
         saleId,
         confirmationPhrase: phrase,
-        staffRole: "auction_manager",
+        staffRoles: ["auction_manager"],
       }),
     );
   });
@@ -109,7 +111,7 @@ describe("POST /sales/bulk soft_delete", () => {
 
   function appWithAuth(role: string, staffRole: string | null) {
     const app = new Hono<{
-      Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+      Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
     }>();
     const bulkSoftDelete = vi.fn();
     const base = stubCatalogRouteServices();
@@ -129,7 +131,7 @@ describe("POST /sales/bulk soft_delete", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "staff-1",
         role,
-        staffRole,
+        staffRoles: normalizeStaffRoles([staffRole]),
 
         scopes: ["bid.write"],
       }),

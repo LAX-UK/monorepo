@@ -23,10 +23,10 @@ export async function requireAdminCapability(
     redirect(`/login?next=${encodeURIComponent(next)}&auth=required`);
   }
   const role = user.role as UserRole;
-  const staffRole = user.staffRole ?? null;
-  if (!canOpenAdminRoute(role, staffRole, section, req)) {
+  const staffRoles = user.staffRoles;
+  if (!canOpenAdminRoute(role, staffRoles, section, req)) {
     const requested = resume.startsWith(section) ? resume : section;
-    redirect(adminDenialDestination(role, staffRole, requested));
+    redirect(adminDenialDestination(role, staffRoles, requested));
   }
   return user;
 }

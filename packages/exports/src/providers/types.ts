@@ -1,9 +1,11 @@
+import type { StaffRoles } from "@auction/types";
 import type { ExportColumn, ExportEntityType, ExportRow } from "../types.js";
 
+/** The person an export runs for, with the staff roles in force when it is authorised. */
 export type ExportAuthContext = {
   userId: string;
   userRole: string;
-  userStaffRole?: string | null;
+  userStaffRoles: StaffRoles;
 };
 
 export type ExportProvider<TFilters extends Record<string, unknown> = Record<string, unknown>> = {
@@ -12,7 +14,7 @@ export type ExportProvider<TFilters extends Record<string, unknown> = Record<str
   columns(ctx: ExportAuthContext, filters: TFilters): ExportColumn[];
   estimateCount(ctx: ExportAuthContext, filters: TFilters): Promise<number>;
   streamRows(ctx: ExportAuthContext, filters: TFilters): AsyncGenerator<ExportRow>;
-  filterSummary(_ctx: ExportAuthContext, filters: TFilters): string;
+  filterSummary(filters: TFilters): string;
 };
 
 export async function* batchedRows<T>(

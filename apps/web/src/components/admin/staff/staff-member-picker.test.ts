@@ -14,6 +14,7 @@ const rows = [
     email: "hannah@lax.bid",
     role: "staff",
     staffRole: "auction_manager",
+    staffRoles: ["auction_manager"],
   },
   {
     id: "u2",
@@ -21,8 +22,16 @@ const rows = [
     email: "cat@lax.bid",
     role: "staff",
     staffRole: "catalogue_manager",
+    staffRoles: ["catalogue_manager"],
   },
-  { id: "u3", name: "", email: "viewer@lax.bid", role: "staff", staffRole: "staff_viewer" },
+  {
+    id: "u3",
+    name: "",
+    email: "viewer@lax.bid",
+    role: "staff",
+    staffRole: "staff_viewer",
+    staffRoles: ["staff_viewer"],
+  },
 ];
 
 describe("staffPickerOptions", () => {

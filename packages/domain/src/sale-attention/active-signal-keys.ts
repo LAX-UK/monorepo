@@ -9,11 +9,7 @@ function contributorAuthorized(
 ): boolean {
   if (!contributor.requiredCapability) return true;
   if (principal.role !== "staff") return false;
-  return userHasAccessTo(
-    principal.role,
-    principal.staffRole as Parameters<typeof userHasAccessTo>[1],
-    contributor.requiredCapability,
-  );
+  return userHasAccessTo(principal.role, principal.staffRoles, contributor.requiredCapability);
 }
 
 export function resolveApplicableContributors(

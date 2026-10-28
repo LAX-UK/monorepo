@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { UserRole, UserStaffRole } from "@auction/types";
+import type { StaffRoles, UserRole } from "@auction/types";
 import { roleHasCapability } from "@auction/types";
 
 export const uploadKinds = [
@@ -95,54 +95,54 @@ export function isUploadKind(value: string): value is UploadKind {
 export function canUploadKind(
   kind: UploadKind,
   role: UserRole,
-  staffRole?: UserStaffRole | null,
+  staffRoles?: StaffRoles | undefined,
 ): boolean {
   switch (kind) {
     case "avatar":
       return true;
     case "submission_image":
       return (
-        roleHasCapability(role, "client.submit", staffRole) ||
-        roleHasCapability(role, "legal_entity.read", staffRole)
+        roleHasCapability(role, "client.submit", staffRoles) ||
+        roleHasCapability(role, "legal_entity.read", staffRoles)
       );
     case "lot_image":
     case "sale_cover":
     case "sale_day":
       return (
-        roleHasCapability(role, "platform.admin.full", staffRole) ||
-        roleHasCapability(role, "auction.manage", staffRole) ||
-        roleHasCapability(role, "catalogue.write", staffRole)
+        roleHasCapability(role, "platform.admin.full", staffRoles) ||
+        roleHasCapability(role, "auction.manage", staffRoles) ||
+        roleHasCapability(role, "catalogue.write", staffRoles)
       );
     case "legal_entity_document":
       return (
-        roleHasCapability(role, "client.submit", staffRole) ||
-        roleHasCapability(role, "legal_entity.read", staffRole)
+        roleHasCapability(role, "client.submit", staffRoles) ||
+        roleHasCapability(role, "legal_entity.read", staffRoles)
       );
     case "lot_document":
     case "sale_document":
       return (
-        roleHasCapability(role, "platform.admin.full", staffRole) ||
-        roleHasCapability(role, "auction.manage", staffRole) ||
-        roleHasCapability(role, "catalogue.write", staffRole)
+        roleHasCapability(role, "platform.admin.full", staffRoles) ||
+        roleHasCapability(role, "auction.manage", staffRoles) ||
+        roleHasCapability(role, "catalogue.write", staffRoles)
       );
     case "submission_document":
       return (
-        roleHasCapability(role, "platform.admin.full", staffRole) ||
-        roleHasCapability(role, "auction.manage", staffRole) ||
-        roleHasCapability(role, "catalogue.write", staffRole)
+        roleHasCapability(role, "platform.admin.full", staffRoles) ||
+        roleHasCapability(role, "auction.manage", staffRoles) ||
+        roleHasCapability(role, "catalogue.write", staffRoles)
       );
     case "source_of_funds_document":
       return (
-        roleHasCapability(role, "client.read", staffRole) ||
-        roleHasCapability(role, "aml.review", staffRole) ||
-        roleHasCapability(role, "platform.admin.full", staffRole)
+        roleHasCapability(role, "client.read", staffRoles) ||
+        roleHasCapability(role, "aml.review", staffRoles) ||
+        roleHasCapability(role, "platform.admin.full", staffRoles)
       );
     case "artist_image":
     case "category_image":
       return (
-        roleHasCapability(role, "platform.admin.full", staffRole) ||
-        roleHasCapability(role, "auction.manage", staffRole) ||
-        roleHasCapability(role, "catalogue.write", staffRole)
+        roleHasCapability(role, "platform.admin.full", staffRoles) ||
+        roleHasCapability(role, "auction.manage", staffRoles) ||
+        roleHasCapability(role, "catalogue.write", staffRoles)
       );
   }
 }

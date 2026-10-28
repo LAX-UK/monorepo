@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import type { MiddlewareHandler } from "hono";
 import type { Hono } from "hono";
 import type { ContainerLotReadRoutesSlice, ContainerLotRouteDepsSlice } from "../../container.js";
@@ -9,7 +10,7 @@ export type LotHono = Hono<{
   Variables: {
     userId?: string;
     userRole?: string;
-    userStaffRole?: string | null;
+    userStaffRoles?: StaffRoles | undefined;
     legalEntityContext?: { legalEntityId: string };
   };
 }>;

@@ -1,4 +1,4 @@
-import type { LegalEntityMemberRole } from "@auction/types";
+import type { LegalEntityMemberRole, StaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { ContainerLegalEntityBuyerAgentRoutesSlice } from "../container.js";
@@ -147,13 +147,13 @@ describe("client buyer-agent authorisation routes", () => {
   });
 });
 
-function mountAdmin(staffRole: string) {
+function mountAdmin(staffRoles: StaffRoles | undefined) {
   const built = buildBuyerAgentAuthorisationService();
   const platform: AdminHono = new Hono();
   platform.use("*", async (c, next) => {
     c.set("userId", "staff-1");
     c.set("userRole", "staff");
-    c.set("userStaffRole", staffRole);
+    c.set("userStaffRoles", staffRoles);
     await next();
   });
   attachAdminLegalEntityBuyerAgentRoutes(platform, built.service);
@@ -166,7 +166,7 @@ describe("admin buyer-agent authorisation routes", () => {
   const base = `/admin/legal-entities/${ENTITY_ID}/buyer-agent-authorisations`;
 
   it("lets an auction manager authorise and records the staff actor", async () => {
-    const { app, publish } = mountAdmin("auction_manager");
+    const { app, publish } = mountAdmin(["auction_manager"]);
 
     const res = await post(app, base, body);
 
@@ -180,7 +180,7 @@ describe("admin buyer-agent authorisation routes", () => {
   });
 
   it("lets read-only staff see but not change authorisations", async () => {
-    const { app, store } = mountAdmin("staff_viewer");
+    const { app, store } = mountAdmin(["staff_viewer"]);
 
     expect((await app.request(base)).status).toBe(200);
     expect((await post(app, base, body)).status).toBe(403);
@@ -188,7 +188,7 @@ describe("admin buyer-agent authorisation routes", () => {
   });
 
   it("forbids staff without legal entity access", async () => {
-    const { app } = mountAdmin("content_marketing");
+    const { app } = mountAdmin(["content_marketing"]);
     expect((await app.request(base)).status).toBe(403);
   });
 });

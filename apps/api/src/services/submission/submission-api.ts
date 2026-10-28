@@ -7,14 +7,11 @@ import type {
   ItemSubmission,
   ItemSubmissionStatus,
   Lot,
+  StaffRoles,
   UpdateItemSubmissionInput,
   UserRole,
 } from "@auction/types";
-import {
-  canAccessAdminSubmissionNotesWrite,
-  canAccessAdminSubmissionsRead,
-  normalizeUserStaffRole,
-} from "@auction/types";
+import { canAccessAdminSubmissionNotesWrite, canAccessAdminSubmissionsRead } from "@auction/types";
 import { adminSubmissionNotesSchema, updateItemSubmissionSchema } from "@auction/validators";
 import { type Result, ok } from "neverthrow";
 import type { SubmissionError } from "../../lib/errors.js";
@@ -90,12 +87,12 @@ export async function getSubmissionForViewerApi(
   input: {
     submissionId: string;
     role: UserRole;
-    staffRole?: string | null;
+    staffRoles?: StaffRoles | undefined;
     sellerLegalEntityId: string;
   },
 ): Promise<Result<ItemSubmission, SubmissionError>> {
-  const { submissionId, role, staffRole, sellerLegalEntityId } = input;
-  const staff = normalizeUserStaffRole(staffRole);
+  const { submissionId, role, staffRoles, sellerLegalEntityId } = input;
+  const staff = staffRoles;
   const result = canAccessAdminSubmissionsRead(role, staff)
     ? await getForAdmin(deps, submissionId)
     : await getForSeller(deps, sellerLegalEntityId, submissionId);
@@ -111,7 +108,7 @@ export async function patchSubmissionFromRequestBody(
     rawBody: unknown;
     submissionId: string;
     role: UserRole;
-    staffRole?: string | null;
+    staffRoles?: StaffRoles | undefined;
     userId: string;
     sellerLegalEntityId: string;
   },
@@ -120,8 +117,8 @@ export async function patchSubmissionFromRequestBody(
   | { kind: "bad_request"; details: unknown }
   | { kind: "err"; error: SubmissionError }
 > {
-  const { rawBody, submissionId, role, staffRole, userId, sellerLegalEntityId } = input;
-  const staff = normalizeUserStaffRole(staffRole);
+  const { rawBody, submissionId, role, staffRoles, userId, sellerLegalEntityId } = input;
+  const staff = staffRoles;
   if (canAccessAdminSubmissionNotesWrite(role, staff)) {
     const parsed = adminSubmissionNotesSchema.safeParse(rawBody);
     if (!parsed.success) {
@@ -130,7 +127,7 @@ export async function patchSubmissionFromRequestBody(
     const result = await updateForActor(deps, {
       actorId: userId,
       role,
-      staffRole: staffRole ?? null,
+      staffRoles: staffRoles,
       submissionId,
       adminNotes: parsed.data,
     });
@@ -151,7 +148,7 @@ export async function patchSubmissionFromRequestBody(
   const result = await updateForActor(deps, {
     actorId: sellerLegalEntityId,
     role,
-    staffRole: staffRole ?? null,
+    staffRoles: staffRoles,
     submissionId,
     sellerPatch: parsed.data as UpdateItemSubmissionInput,
   });

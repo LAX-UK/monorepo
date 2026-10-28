@@ -1,8 +1,11 @@
 import type { IAdminUserDetailReader } from "@auction/persistence/interfaces";
 import {
+  ADMINISTRATOR_STAFF_ROLE,
+  NO_STAFF_ROLES,
+  type StaffRoles,
   USER_MODERATION_ACCESS,
   type UserRole,
-  normalizeUserStaffRole,
+  hasStaffRole,
   userHasAccessTo,
 } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
@@ -14,7 +17,7 @@ const TWO_FACTOR_RESET_EVENT = "auth.two_factor_reset_by_staff";
 export type TwoFactorResetActor = {
   userId: string;
   role: string;
-  staffRole: string | null | undefined;
+  staffRoles: StaffRoles | undefined;
 };
 
 export type TwoFactorResetError = { status: 403 | 404 | 502; message: string };
@@ -41,13 +44,16 @@ export class AdminTwoFactorResetService {
     targetUserId: string,
     reason: string,
   ): Promise<Result<void, TwoFactorResetError>> {
-    const staffRole = normalizeUserStaffRole(actor.staffRole);
-    if (!userHasAccessTo(actor.role as UserRole, staffRole, USER_MODERATION_ACCESS)) {
+    const staffRoles = actor.staffRoles;
+    if (!userHasAccessTo(actor.role as UserRole, staffRoles, USER_MODERATION_ACCESS)) {
       return err({ status: 403, message: "Forbidden" });
     }
     const target = await this.deps.users.getById(targetUserId);
     if (!target) return err({ status: 404, message: "User not found" });
-    if (target.role === "staff" && actor.staffRole !== "super_admin") {
+    if (
+      target.role === "staff" &&
+      !hasStaffRole(actor.staffRoles ?? NO_STAFF_ROLES, ADMINISTRATOR_STAFF_ROLE)
+    ) {
       return err({ status: 403, message: "Only a platform admin can reset a staff account" });
     }
     await this.deps.audit.publish({

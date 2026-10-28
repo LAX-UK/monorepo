@@ -30,7 +30,6 @@ import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { STAFF_NAV_COOKIE, StaffToaster } from "@auction/staff-ui";
 import {
   type UserRole,
-  type UserStaffRole,
   canAccessFinanceAdminRoutes,
   canAccessPlatformAdminRoutes,
   userHasAccessTo,
@@ -44,11 +43,11 @@ export async function generateMetadata(): Promise<Metadata> {
     shell: "staff",
     loginNext: await resolveAdminReturnPath(),
   });
-  const { impersonation } = await resolveActingContext(user.role, user.staffRole ?? null);
+  const { impersonation } = await resolveActingContext(user.role, user.staffRoles);
   const base = metadataForPrivate("Admin");
   if (
     !impersonation ||
-    !userHasAccessTo(user.role as UserRole, user.staffRole ?? null, PLATFORM_ADMIN_ACCESS)
+    !userHasAccessTo(user.role as UserRole, user.staffRoles, PLATFORM_ADMIN_ACCESS)
   ) {
     return {
       ...base,
@@ -70,14 +69,14 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     shell: "staff",
     loginNext: await resolveAdminReturnPath(),
   });
-  const { impersonation } = await resolveActingContext(user.role, user.staffRole ?? null);
+  const { impersonation } = await resolveActingContext(user.role, user.staffRoles);
 
   let pendingSubmissionCount = 0;
   let pendingArtistCount = 0;
   let navCounts = EMPTY_ADMIN_NAV_COUNTS;
-  const staffRole = (user.staffRole ?? null) as UserStaffRole | null;
+  const staffRoles = user.staffRoles;
   const userRole = user.role as UserRole;
-  if (canAccessPlatformAdminRoutes(userRole, staffRole)) {
+  if (canAccessPlatformAdminRoutes(userRole, staffRoles)) {
     try {
       navCounts = await getAdminNavCounts();
       pendingSubmissionCount = navCounts.submissionsPending;
@@ -95,7 +94,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
         pendingArtistCount = 0;
       }
     }
-  } else if (canAccessFinanceAdminRoutes(userRole, staffRole)) {
+  } else if (canAccessFinanceAdminRoutes(userRole, staffRoles)) {
     try {
       navCounts = await getFinanceAdminNavCounts();
     } catch {
@@ -112,7 +111,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   const showImpersonationBanner =
     Boolean(impersonation) &&
-    userHasAccessTo(user.role as UserRole, user.staffRole ?? null, PLATFORM_ADMIN_ACCESS);
+    userHasAccessTo(user.role as UserRole, user.staffRoles, PLATFORM_ADMIN_ACCESS);
 
   const acting: ActingContext = impersonation
     ? {
@@ -124,7 +123,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
 
   const headerActionsSlot = (
     <AdminShellHeaderActions
-      items={buildStaffHeaderAttentionItems(navCounts, userRole, staffRole)}
+      items={buildStaffHeaderAttentionItems(navCounts, userRole, staffRoles)}
     />
   );
 

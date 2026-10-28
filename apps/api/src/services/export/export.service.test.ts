@@ -96,7 +96,7 @@ describe("ExportService", () => {
     const result = await service.createExport({
       userId: "user-1",
       userRole: "staff",
-      userStaffRole: "auction_manager",
+      userStaffRoles: ["auction_manager"],
       body: { entityType: "lots", format: "csv", filters: {} },
     });
 
@@ -105,6 +105,7 @@ describe("ExportService", () => {
       expect.objectContaining({
         userId: "user-1",
         userRole: "staff",
+        // The audit row records the one role shown for the requester.
         userStaffRole: "auction_manager",
         status: "processing",
       }),
@@ -122,7 +123,7 @@ describe("ExportService", () => {
       id: "exp-async",
       userId: "user-1",
       userRole: "staff",
-      userStaffRole: "auction_manager",
+      userStaffRoles: "auction_manager",
       entityType: "lots",
       format: "csv",
       filters: {},
@@ -149,7 +150,7 @@ describe("ExportService", () => {
     const result = await service.createExport({
       userId: "user-1",
       userRole: "staff",
-      userStaffRole: "auction_manager",
+      userStaffRoles: ["auction_manager"],
       body: { entityType: "lots", format: "csv", filters: {} },
     });
 
@@ -162,7 +163,7 @@ describe("ExportService", () => {
       id: "exp-1",
       userId: "user-1",
       userRole: "staff",
-      userStaffRole: "auction_manager",
+      userStaffRoles: "auction_manager",
       entityType: "lots",
       format: "csv",
       filters: {},
@@ -185,7 +186,7 @@ describe("ExportService", () => {
     const result = await service.createExport({
       userId: "user-1",
       userRole: "staff",
-      userStaffRole: "auction_manager",
+      userStaffRoles: ["auction_manager"],
       body: { entityType: "lots", format: "csv", filters: {} },
     });
 
@@ -200,7 +201,7 @@ describe("ExportService", () => {
       id: "exp-1",
       userId: "user-1",
       userRole: "staff",
-      userStaffRole: "auction_manager",
+      userStaffRoles: "auction_manager",
       entityType: "lots",
       format: "csv",
       filters: {},
@@ -224,7 +225,7 @@ describe("ExportService", () => {
     const result = await service.createExport({
       userId: "user-1",
       userRole: "staff",
-      userStaffRole: "auction_manager",
+      userStaffRoles: ["auction_manager"],
       body: { entityType: "lots", format: "csv", filters: {} },
     });
 
@@ -237,7 +238,7 @@ describe("ExportService", () => {
       id: "exp-stale",
       userId: "user-1",
       userRole: "staff",
-      userStaffRole: "auction_manager",
+      userStaffRoles: "auction_manager",
       entityType: "lots",
       format: "csv",
       filters: {},
@@ -265,7 +266,7 @@ describe("ExportService", () => {
     const result = await service.createExport({
       userId: "user-1",
       userRole: "staff",
-      userStaffRole: "auction_manager",
+      userStaffRoles: ["auction_manager"],
       body: { entityType: "lots", format: "csv", filters: {} },
     });
 
@@ -283,7 +284,7 @@ describe("ExportService", () => {
     await service.createExport({
       userId: "user-1",
       userRole: "staff",
-      userStaffRole: "auction_manager",
+      userStaffRoles: ["auction_manager"],
       body: { entityType: "lots", format: "csv", filters: {} },
     });
 
@@ -302,7 +303,7 @@ describe("ExportService", () => {
       id: "exp-1",
       userId: "user-1",
       userRole: "staff",
-      userStaffRole: "auction_manager",
+      userStaffRoles: "auction_manager",
       entityType: "lots",
       format: "csv",
       filters: {},
@@ -328,7 +329,7 @@ describe("ExportService", () => {
     await service.createExport({
       userId: "user-1",
       userRole: "staff",
-      userStaffRole: "auction_manager",
+      userStaffRoles: ["auction_manager"],
       body: { entityType: "lots", format: "csv", filters: {} },
     });
 
@@ -342,7 +343,7 @@ describe("ExportService", () => {
     const preview = await service.previewExport({
       userId: "user-1",
       userRole: "staff",
-      userStaffRole: "auction_manager",
+      userStaffRoles: ["auction_manager"],
       body: { entityType: "lots", filters: {} },
     });
 
@@ -356,7 +357,7 @@ describe("ExportService", () => {
       id: "exp-completed",
       userId: "user-1",
       userRole: "staff",
-      userStaffRole: "auction_manager",
+      userStaffRoles: "auction_manager",
       entityType: "lots",
       format: "csv",
       filters: {},
@@ -415,7 +416,7 @@ describe("ExportService", () => {
       service.createExport({
         userId: "user-1",
         userRole: "staff",
-        userStaffRole: "auction_manager",
+        userStaffRoles: ["auction_manager"],
         body: { entityType: "lots", format: "csv", filters: {} },
       }),
     ).rejects.toThrow(AuthzError);

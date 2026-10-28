@@ -1,4 +1,4 @@
-import { type UserRole, normalizeUserStaffRole } from "@auction/types";
+import type { StaffRoles, UserRole } from "@auction/types";
 import {
   hasSubmissionsAccess,
   requireSubmissionsAccessHttp,
@@ -18,10 +18,10 @@ import type {
 
 function canStaffManageSubmissionDocuments(
   role: UserRole,
-  staffRole: ReturnType<typeof normalizeUserStaffRole>,
+  staffRoles: StaffRoles | undefined,
 ): boolean {
   if (role !== "staff") return false;
-  return hasSubmissionsAccess(role, staffRole);
+  return hasSubmissionsAccess(role, staffRoles);
 }
 
 export class SubmissionDocumentHttpApplicationService
@@ -77,7 +77,7 @@ export class SubmissionDocumentHttpApplicationService
     >[0]["legalEntity"];
   }): Promise<SubmissionHttpJson> {
     const role = (input.viewer.role ?? "client") as UserRole;
-    const staff = normalizeUserStaffRole(input.viewer.staffRole ?? undefined);
+    const staff = input.viewer.staffRoles;
     if (hasSubmissionsAccess(role, staff)) {
       const denied = await this.assertStaffSubmissionExists(input.submissionId);
       if (denied) return denied;
@@ -93,7 +93,7 @@ export class SubmissionDocumentHttpApplicationService
     submissionId: string;
     viewer: Parameters<ISubmissionDocumentHttpApplicationService["listForStaff"]>[0]["viewer"];
   }): Promise<SubmissionHttpJson> {
-    const denied = requireSubmissionsAccessHttp(input.viewer.role, input.viewer.staffRole);
+    const denied = requireSubmissionsAccessHttp(input.viewer.role, input.viewer.staffRoles);
     if (denied) return denied;
     const missing = await this.assertStaffSubmissionExists(input.submissionId);
     if (missing) return missing;
@@ -110,7 +110,7 @@ export class SubmissionDocumentHttpApplicationService
     >[0]["legalEntity"];
   }): Promise<SubmissionHttpJson> {
     const role = (input.viewer.role ?? "client") as UserRole;
-    const staff = normalizeUserStaffRole(input.viewer.staffRole ?? undefined);
+    const staff = input.viewer.staffRoles;
     if (!canStaffManageSubmissionDocuments(role, staff)) {
       const denied = await this.assertSellerOwnsSubmission(input.legalEntity, input.submissionId);
       if (denied) return denied;
@@ -139,7 +139,7 @@ export class SubmissionDocumentHttpApplicationService
     body: Parameters<ISubmissionDocumentHttpApplicationService["attachForStaff"]>[0]["body"];
     viewer: Parameters<ISubmissionDocumentHttpApplicationService["attachForStaff"]>[0]["viewer"];
   }): Promise<SubmissionHttpJson> {
-    const denied = requireSubmissionsAccessHttp(input.viewer.role, input.viewer.staffRole);
+    const denied = requireSubmissionsAccessHttp(input.viewer.role, input.viewer.staffRoles);
     if (denied) return denied;
     const missing = await this.assertStaffSubmissionExists(input.submissionId);
     if (missing) return missing;
@@ -168,7 +168,7 @@ export class SubmissionDocumentHttpApplicationService
     >[0]["legalEntity"];
   }): Promise<SubmissionHttpJson> {
     const role = (input.viewer.role ?? "client") as UserRole;
-    const staff = normalizeUserStaffRole(input.viewer.staffRole ?? undefined);
+    const staff = input.viewer.staffRoles;
     if (!canStaffManageSubmissionDocuments(role, staff)) {
       const denied = await this.assertSellerOwnsSubmission(input.legalEntity, input.submissionId);
       if (denied) return denied;
@@ -185,7 +185,7 @@ export class SubmissionDocumentHttpApplicationService
     documentId: string;
     viewer: Parameters<ISubmissionDocumentHttpApplicationService["removeForStaff"]>[0]["viewer"];
   }): Promise<SubmissionHttpJson> {
-    const denied = requireSubmissionsAccessHttp(input.viewer.role, input.viewer.staffRole);
+    const denied = requireSubmissionsAccessHttp(input.viewer.role, input.viewer.staffRoles);
     if (denied) return denied;
     const missing = await this.assertStaffSubmissionExists(input.submissionId);
     if (missing) return missing;

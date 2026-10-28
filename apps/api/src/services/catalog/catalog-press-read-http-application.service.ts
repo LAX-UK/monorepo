@@ -1,4 +1,3 @@
-import { normalizeUserStaffRole } from "@auction/types";
 import type { ICatalogPressReadHttpApplicationService } from "../interfaces/catalog-routes/catalog-press-read-http.js";
 import type { CatalogHttpJson } from "../interfaces/catalog-routes/catalog-read-http.js";
 import type {
@@ -38,7 +37,7 @@ export class CatalogPressReadHttpApplicationService
     const query = input.query;
     const viewer = {
       role: input.viewer.role ?? undefined,
-      staffRole: normalizeUserStaffRole(input.viewer.staffRole ?? undefined),
+      staffRoles: input.viewer.staffRoles,
     };
     const result = await this.pressArchiveReadService.listCoverage(
       {
@@ -59,7 +58,7 @@ export class CatalogPressReadHttpApplicationService
   }): Promise<CatalogHttpJson> {
     const viewer = {
       role: input.viewer.role ?? undefined,
-      staffRole: normalizeUserStaffRole(input.viewer.staffRole ?? undefined),
+      staffRoles: input.viewer.staffRoles,
     };
     const data = await this.pressArchiveReadService.listDayMediaSales(input.query.limit, viewer);
     return {
@@ -78,7 +77,7 @@ export class CatalogPressReadHttpApplicationService
   }): Promise<CatalogHttpJson> {
     const viewer = {
       role: input.viewer.role ?? undefined,
-      staffRole: normalizeUserStaffRole(input.viewer.staffRole ?? undefined),
+      staffRoles: input.viewer.staffRoles,
     };
     const data = await this.pressArchiveReadService.getSitemapFreshness(viewer);
     return {

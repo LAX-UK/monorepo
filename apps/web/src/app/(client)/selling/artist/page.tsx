@@ -13,10 +13,7 @@ export default async function SellerArtistProfilePage() {
     shell: "client",
     loginNext: "/selling/artist",
   });
-  const { sellingAsOrganisation } = await resolveSellerWorkspaceContext(
-    user.role,
-    user.staffRole ?? null,
-  );
+  const { sellingAsOrganisation } = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   // The artist profile belongs to a person, not to an organisation they sell for.
   if (sellingAsOrganisation) redirect("/selling");
 

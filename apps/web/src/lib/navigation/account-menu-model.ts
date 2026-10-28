@@ -26,7 +26,7 @@ export type AccountMenuFacts = {
   isOrgMember: boolean;
   /** Organisation invitations waiting for an answer. */
   pendingInvitations: number;
-  user: Pick<SessionUser, "role" | "staffRole">;
+  user: Pick<SessionUser, "role" | "staffRoles">;
 };
 
 const PRIMARY: readonly AccountMenuEntry[] = [
@@ -47,7 +47,7 @@ function sellingEntry(facts: AccountMenuFacts): AccountMenuEntry {
 /** The admin area this staff member works in, or `null` when their role opens none. */
 function staffEntry(user: AccountMenuFacts["user"]): AccountMenuEntry | null {
   const role = user.role as UserRole;
-  const staff = user.staffRole ?? null;
+  const staff = user.staffRoles;
   const href = staffRoleDefaultDestination(role, staff);
   if (canAccessPlatformAdminRoutes(role, staff)) {
     return { id: "admin", label: "Admin panel", href };

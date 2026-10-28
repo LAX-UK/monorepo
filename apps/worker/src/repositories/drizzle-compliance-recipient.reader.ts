@@ -1,16 +1,18 @@
 import type { Database } from "@auction/db";
-import { bidIdentityDirectory, bidUserProfile } from "@auction/db/schema";
+import { bidIdentityDirectory, bidUserProfile, staffRoleAssignment } from "@auction/db/schema";
+import { staffRoleAssignmentInForceAt } from "@auction/persistence/lib";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
 
 const COMPLIANCE_STAFF_ROLES = ["compliance_officer", "super_admin"] as const;
 
+/** Active staff who hold a compliance role right now, each once. */
 export class DrizzleComplianceRecipientReader implements IComplianceRecipientReader {
   constructor(private readonly db: Database) {}
 
   async listRecipients() {
     return this.db
-      .select({
+      .selectDistinct({
         id: bidIdentityDirectory.subjectId,
         email: bidIdentityDirectory.email,
         firstName: sql<
@@ -19,11 +21,13 @@ export class DrizzleComplianceRecipientReader implements IComplianceRecipientRea
       })
       .from(bidIdentityDirectory)
       .innerJoin(bidUserProfile, eq(bidUserProfile.userId, bidIdentityDirectory.subjectId))
+      .innerJoin(staffRoleAssignment, eq(staffRoleAssignment.userId, bidUserProfile.userId))
       .where(
         and(
           eq(bidUserProfile.role, "staff"),
           isNull(bidUserProfile.suspendedAt),
-          inArray(bidUserProfile.staffRole, [...COMPLIANCE_STAFF_ROLES]),
+          inArray(staffRoleAssignment.role, [...COMPLIANCE_STAFF_ROLES]),
+          staffRoleAssignmentInForceAt(new Date()),
         ),
       );
   }

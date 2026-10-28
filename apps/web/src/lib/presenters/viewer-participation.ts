@@ -10,7 +10,7 @@ export type ViewerParticipation = {
 /** True when the user lacks `bid.place` (staff accounts). Guests are not blocked. */
 export function isAdminBuyerBlocked(user: SessionUser | null | undefined): boolean {
   if (!user) return false;
-  return !roleHasCapability(user.role as UserRole, "bid.place", user.staffRole ?? null);
+  return !roleHasCapability(user.role as UserRole, "bid.place", user.staffRoles);
 }
 
 /** Derives marketing viewer participation flags from the session (single source of truth). */

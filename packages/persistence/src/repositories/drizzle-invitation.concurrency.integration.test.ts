@@ -100,8 +100,8 @@ describe.skipIf(!HAS_DB)("invitation redemption concurrency (integration)", () =
     await seedUsersAndInvite();
 
     const [a, b] = await Promise.all([
-      repo.consumeForNewUser(tokenHash, redeemer1Id, email),
-      repo.consumeForNewUser(tokenHash, redeemer2Id, email),
+      repo.accept(tokenHash, redeemer1Id, email),
+      repo.accept(tokenHash, redeemer2Id, email),
     ]);
 
     const outcomes = [a.outcome, b.outcome].sort();
@@ -115,14 +115,11 @@ describe.skipIf(!HAS_DB)("invitation redemption concurrency (integration)", () =
     expect(row?.status).toBe("accepted");
     const winnerId = a.outcome === "ok" ? redeemer1Id : redeemer2Id;
     expect(row?.acceptedUserId).toBe(winnerId);
-
-    const [winner] = await db
-      .select()
-      .from(bidUserProfile)
-      .where(eq(bidUserProfile.userId, winnerId))
-      .limit(1);
-    expect(winner?.role).toBe("staff");
-    expect(winner?.staffRole).toBe("specialist");
+    expect(a.outcome === "ok" ? a : b).toMatchObject({
+      outcome: "ok",
+      targetRole: "staff",
+      targetStaffRole: "specialist",
+    });
   });
 
   it("rejects a second pending platform invite for the same email (partial unique index)", async () => {

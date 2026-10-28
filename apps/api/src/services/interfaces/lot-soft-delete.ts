@@ -1,4 +1,4 @@
-import type { Lot } from "@auction/types";
+import type { Lot, StaffRoles } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError } from "../../lib/errors.js";
 
@@ -33,13 +33,13 @@ export interface ILotSoftDeleteService {
     userRole: string,
     lotId: string,
     confirmationPhrase: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<void, LotError | AuthzError>>;
   bulkSoftDelete(
     actorUserId: string,
     userRole: string,
     ids: string[],
     confirmationPhrase: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<LotBulkSoftDeleteResult, AuthzError | LotError>>;
 }

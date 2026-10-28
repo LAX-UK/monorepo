@@ -121,7 +121,7 @@ describe("LegalEntityAccessService.getLegalEntityDetailForUser", () => {
     const r = await svc.getLegalEntityDetailForUser({
       userId,
       userRole: "staff",
-      userStaffRole: "super_admin",
+      userStaffRoles: ["super_admin"],
       legalEntityId: entityId,
       actingLegalEntityCookie: {
         v: 1,
@@ -154,7 +154,7 @@ describe("LegalEntityAccessService.getLegalEntityDetailForUser", () => {
     const r = await svc.getLegalEntityDetailForUser({
       userId,
       userRole: "staff",
-      userStaffRole: "super_admin",
+      userStaffRoles: ["super_admin"],
       legalEntityId: entityId,
       actingLegalEntityCookie: {
         v: 1,

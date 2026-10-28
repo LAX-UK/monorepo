@@ -67,7 +67,7 @@ function settle<T>(enabled: boolean, load: () => Promise<T>, fallback: T): Promi
  * into words and links. Every list degrades to empty on failure.
  */
 export async function loadOrganisationHome(
-  user: Pick<SessionUser, "role" | "staffRole">,
+  user: Pick<SessionUser, "role" | "staffRoles">,
   organisation: LegalEntitySummary,
 ): Promise<LoadedOrganisationHome> {
   const actor: EntityActor = {
@@ -76,7 +76,7 @@ export async function loadOrganisationHome(
   };
   const reads = (capability: EntityCapability) => entityActorCan({ role: actor.role }, capability);
   const c = await getServerDataContainer();
-  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
+  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   const followsConsignments = reads("entity.consignments.read");
   const needsIdentity = roleNeedsPersonalIdentity(actor.role);
 

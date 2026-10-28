@@ -1,4 +1,4 @@
-import type { IBidBidderRoleReader } from "@auction/persistence/interfaces";
+import type { BidderRoleRow, IBidBidderRoleReader } from "@auction/persistence/interfaces";
 import { ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import { createBidEligibilityContext, createBidEligibilityRules } from "./bid-eligibility.rules.js";
@@ -10,12 +10,12 @@ const CLIENT = "client-1";
 const CLERK = "clerk-1";
 const STAFF = "staff-1";
 
-const profiles: Record<string, { role: string; staffRole: string | null }> = {
-  [CLIENT]: { role: "client", staffRole: null },
-  [CLERK]: { role: "staff", staffRole: "saleroom_clerk" },
-  [STAFF]: { role: "staff", staffRole: "super_admin" },
-  "legacy-admin": { role: "admin", staffRole: null },
-  odd: { role: "wizard", staffRole: null },
+const profiles: Record<string, BidderRoleRow> = {
+  [CLIENT]: { role: "client", staffRoles: [] },
+  [CLERK]: { role: "staff", staffRoles: ["auction_manager"] },
+  [STAFF]: { role: "staff", staffRoles: ["super_admin"] },
+  "legacy-admin": { role: "admin", staffRoles: [] },
+  odd: { role: "wizard", staffRoles: [] },
 };
 
 const roleReader: IBidBidderRoleReader = {

@@ -4,8 +4,8 @@ import {
   AML_REVIEW_ACCESS,
   type CapabilityRequirement,
   FINANCE_ACCESS,
+  type StaffRoles,
   type UserRole,
-  type UserStaffRole,
   userHasAccessTo,
 } from "@auction/types";
 
@@ -76,14 +76,14 @@ export const STAFF_HEADER_ATTENTION_SPECS: readonly StaffHeaderAttentionSpec[] =
 export function buildStaffHeaderAttentionItems(
   navCounts: AdminNavCounts,
   role: UserRole = "staff",
-  staffRole: UserStaffRole | null = null,
+  staffRoles: StaffRoles | undefined = undefined,
 ): StaffAttentionItem[] {
   const items: StaffAttentionItem[] = [];
 
   for (const spec of STAFF_HEADER_ATTENTION_SPECS) {
     const count = navCounts[spec.countKey];
     if (count <= 0) continue;
-    if (!userHasAccessTo(role, staffRole, spec.requirement)) continue;
+    if (!userHasAccessTo(role, staffRoles, spec.requirement)) continue;
 
     const { label, href, hint } = spec.buildItem(count);
     items.push({

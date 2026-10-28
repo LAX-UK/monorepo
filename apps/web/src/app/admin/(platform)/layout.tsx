@@ -13,8 +13,8 @@ export default async function AdminPlatformLayout({ children }: { children: Reac
     redirect(`/login?next=${encodeURIComponent(requested)}&auth=required`);
   }
   const role = user.role as UserRole;
-  if (!canAccessPlatformAdminRoutes(role, user.staffRole ?? null)) {
-    redirect(adminDenialDestination(role, user.staffRole, requested));
+  if (!canAccessPlatformAdminRoutes(role, user.staffRoles)) {
+    redirect(adminDenialDestination(role, user.staffRoles, requested));
   }
   return children;
 }

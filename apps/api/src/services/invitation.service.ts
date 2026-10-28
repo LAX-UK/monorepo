@@ -5,7 +5,7 @@ import type {
   InvitationAdminListFilters,
   InvitationAdminListRow,
 } from "@auction/persistence/interfaces";
-import type { IUserRepository } from "@auction/persistence/interfaces";
+import type { IStaffRoleAssignmentReader, IUserRepository } from "@auction/persistence/interfaces";
 import {
   type LaxStaffGrant,
   type UserRole,
@@ -13,7 +13,6 @@ import {
   laxStaffPlatform,
   laxStaffRoleOption,
   normalizeLaxStaffGrants,
-  normalizeUserStaffRole,
   roleHasCapability,
 } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
@@ -110,6 +109,7 @@ export class InvitationService {
     private readonly users: IUserRepository,
     private readonly email: IEmailService,
     private readonly webOrigin: string,
+    private readonly staffRoles: Pick<IStaffRoleAssignmentReader, "listActiveRoles">,
   ) {}
 
   private inviteLink(token: string, grants: readonly LaxStaffGrant[], existingAccount: boolean) {
@@ -126,7 +126,8 @@ export class InvitationService {
   ): Promise<Result<{ name: string | null }, InvitationError>> {
     const actor = await this.users.findById(actorUserId);
     const actorRole = (actor?.role ?? "client") as UserRole;
-    const actorStaff = normalizeUserStaffRole(actor?.staffRole ?? undefined);
+    const actorStaff =
+      actorRole === "staff" ? await this.staffRoles.listActiveRoles(actorUserId, new Date()) : [];
     if (!roleHasCapability(actorRole, "user.invite", actorStaff)) {
       return err({ message: "Forbidden", status: 403 });
     }

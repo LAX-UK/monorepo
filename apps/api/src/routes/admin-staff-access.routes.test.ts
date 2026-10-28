@@ -30,7 +30,7 @@ function buildApp(options: { recent?: boolean } = {}) {
     getSessionUser: vi.fn().mockResolvedValue({
       id: "usr_admin",
       role: "staff",
-      staffRole: "super_admin",
+      staffRoles: ["super_admin"],
       scopes: ["bid.read", "bid.write"],
       identitySessionId: "session-1",
     }),
@@ -40,7 +40,7 @@ function buildApp(options: { recent?: boolean } = {}) {
   return { app, staffAccess };
 }
 
-const ACTOR = { userId: "usr_admin", role: "staff", staffRole: "super_admin" };
+const ACTOR = { userId: "usr_admin", role: "staff", staffRoles: ["super_admin"] };
 const json = (method: string, body?: unknown) => ({
   method,
   headers: {

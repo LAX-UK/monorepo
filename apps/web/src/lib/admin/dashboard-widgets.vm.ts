@@ -1,5 +1,5 @@
 import { getDashboardProfile } from "@/lib/admin/dashboard-profile-registry";
-import type { UserStaffRole } from "@auction/types";
+import type { StaffRoles } from "@auction/types";
 
 export const ADMIN_DASHBOARD_WIDGETS_COOKIE = "lax_admin_dashboard_widgets";
 export const ADMIN_DASHBOARD_WIDGETS_COOKIE_VERSION = 3 as const;
@@ -38,8 +38,8 @@ const SECONDARY_WIDGET_IDS = new Set<DashboardWidgetId>([
   "activity",
 ]);
 
-function widgetsFromProfile(staffRole: UserStaffRole | null | undefined): DashboardWidgetState[] {
-  const profile = getDashboardProfile(staffRole ?? null);
+function widgetsFromProfile(staffRoles: StaffRoles | undefined): DashboardWidgetState[] {
+  const profile = getDashboardProfile(staffRoles);
   const secondary = new Set(profile.secondaryWidgets);
   return DEFAULT_DASHBOARD_WIDGETS.map((widget) => ({
     ...widget,
@@ -49,16 +49,16 @@ function widgetsFromProfile(staffRole: UserStaffRole | null | undefined): Dashbo
 
 /** Role-specific first-visit layout when no saved cookie exists. */
 export function defaultDashboardWidgetsForStaffRole(
-  staffRole: UserStaffRole | null | undefined,
+  staffRoles: StaffRoles | undefined,
 ): readonly DashboardWidgetState[] {
-  return widgetsFromProfile(staffRole);
+  return widgetsFromProfile(staffRoles);
 }
 
 export function mergeDashboardWidgets(
   saved: readonly Partial<DashboardWidgetState>[] | null | undefined,
-  staffRole?: UserStaffRole | null,
+  staffRoles?: StaffRoles | undefined,
 ): DashboardWidgetState[] {
-  const base = defaultDashboardWidgetsForStaffRole(staffRole);
+  const base = defaultDashboardWidgetsForStaffRole(staffRoles);
   const byId = new Map<DashboardWidgetId, DashboardWidgetState>();
   for (const def of base) {
     byId.set(def.id, { ...def });
@@ -98,17 +98,17 @@ function parseVersionedCookie(raw: string): Partial<DashboardWidgetState>[] | nu
 
 export function parseDashboardWidgetsCookie(
   raw: string | null | undefined,
-  staffRole?: UserStaffRole | null,
+  staffRoles?: StaffRoles | undefined,
 ): DashboardWidgetState[] {
-  if (!raw?.trim()) return mergeDashboardWidgets(null, staffRole);
+  if (!raw?.trim()) return mergeDashboardWidgets(null, staffRoles);
   try {
     const versioned = parseVersionedCookie(raw);
-    if (versioned) return mergeDashboardWidgets(versioned, staffRole);
+    if (versioned) return mergeDashboardWidgets(versioned, staffRoles);
     const legacy = parseLegacyCookieArray(raw);
-    if (legacy) return mergeDashboardWidgets(legacy, staffRole);
-    return mergeDashboardWidgets(null, staffRole);
+    if (legacy) return mergeDashboardWidgets(legacy, staffRoles);
+    return mergeDashboardWidgets(null, staffRoles);
   } catch {
-    return mergeDashboardWidgets(null, staffRole);
+    return mergeDashboardWidgets(null, staffRoles);
   }
 }
 

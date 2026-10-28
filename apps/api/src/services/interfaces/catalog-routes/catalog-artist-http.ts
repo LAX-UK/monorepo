@@ -1,4 +1,4 @@
-import type { UserRole, UserStaffRole } from "@auction/types";
+import type { StaffRoles, UserRole } from "@auction/types";
 import type {
   CreateArtistInput,
   MergeArtistRouteInput,
@@ -32,7 +32,7 @@ export interface ICatalogArtistHttpApplicationService {
     q: string;
     limit: number;
     role: UserRole;
-    staffRole: UserStaffRole | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogHttpJson>;
 
   listPublic(input: { limit: number; offset: number }): Promise<CatalogHttpJson>;
@@ -51,13 +51,13 @@ export interface ICatalogArtistHttpApplicationService {
   getBySlug(input: {
     slug: string;
     role: UserRole;
-    staffRole: UserStaffRole | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogHttpJson>;
 
   getById(input: {
     id: string;
     role: UserRole;
-    staffRole: UserStaffRole | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogHttpJson>;
 
   create(input: { userId: string; body: CreateArtistInput }): Promise<CatalogHttpJson>;
@@ -86,7 +86,7 @@ export interface ICatalogArtistHttpApplicationService {
   delete(input: {
     userId: string;
     role: UserRole;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
     id: string;
     confirmationPhrase: string;
   }): Promise<CatalogRouteOutcome<void>>;

@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository } from "@auction/persistence/interfaces";
+import { normalizeStaffRoles } from "@auction/types";
 import type { Lot } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
@@ -136,7 +137,9 @@ describe("approveWithdrawalRequest", () => {
       } as unknown as ILotRepository,
     });
 
-    const result = await approveWithdrawalRequest(deps, "admin-1", "staff", "lot-1", "super_admin");
+    const result = await approveWithdrawalRequest(deps, "admin-1", "staff", "lot-1", [
+      "super_admin",
+    ]);
     expect(result.isOk()).toBe(true);
     expect(resolveLotWithdrawal).toHaveBeenCalled();
   });
@@ -168,16 +171,22 @@ describe("withdrawal decisions by role", () => {
 
   it.each(["catalogue_manager", "finance_ops", "staff_viewer"])(
     "refuses %s for both approve and decline",
-    async (staffRole) => {
+    async (staffRoles) => {
       const { deps, declineLotWithdrawal } = decisionDeps();
-      const approve = await approveWithdrawalRequest(deps, "admin-1", "staff", "lot-1", staffRole);
+      const approve = await approveWithdrawalRequest(
+        deps,
+        "admin-1",
+        "staff",
+        "lot-1",
+        normalizeStaffRoles([staffRoles]),
+      );
       const decline = await declineWithdrawalRequest(
         deps,
         "admin-1",
         "staff",
         "lot-1",
         "Keep it in the sale",
-        staffRole,
+        normalizeStaffRoles([staffRoles]),
       );
       expect(approve.isErr()).toBe(true);
       expect(decline.isErr()).toBe(true);
@@ -193,7 +202,7 @@ describe("withdrawal decisions by role", () => {
       "staff",
       "lot-1",
       "  Already in the printed catalogue  ",
-      "auction_manager",
+      ["auction_manager"],
     );
     expect(result.isOk()).toBe(true);
     expect(declineLotWithdrawal).toHaveBeenCalledWith({
@@ -212,14 +221,9 @@ describe("withdrawal decisions by role", () => {
 
   it("requires a reason", async () => {
     const { deps, declineLotWithdrawal } = decisionDeps();
-    const result = await declineWithdrawalRequest(
-      deps,
-      "admin-1",
-      "staff",
-      "lot-1",
-      "   ",
+    const result = await declineWithdrawalRequest(deps, "admin-1", "staff", "lot-1", "   ", [
       "super_admin",
-    );
+    ]);
     expect(result.isErr()).toBe(true);
     expect(declineLotWithdrawal).not.toHaveBeenCalled();
   });

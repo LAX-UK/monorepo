@@ -4,7 +4,7 @@ import type {
   ISaleChannelReader,
   ISaleRepository,
 } from "@auction/persistence/interfaces";
-import type { Lot } from "@auction/types";
+import type { Lot, StaffRoles } from "@auction/types";
 import { bulkLotDeleteConfirmationPhrase, lotDeleteConfirmationPhrase } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { type AuthzError, LotError } from "../lib/errors.js";
@@ -96,12 +96,12 @@ export class LotSoftDeleteService implements ILotSoftDeleteService {
     userRole: string,
     lotId: string,
     confirmationPhrase: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<void, LotError | AuthzError>> {
     const auth = this.orchestrator.assertAuctionManageCapability(
       userRole,
       "Only staff with auction.manage can delete lots",
-      userStaffRole,
+      userStaffRoles,
     );
     if (auth.isErr()) return err(auth.error);
 
@@ -121,12 +121,12 @@ export class LotSoftDeleteService implements ILotSoftDeleteService {
     userRole: string,
     ids: string[],
     confirmationPhrase: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<LotBulkSoftDeleteResult, AuthzError | LotError>> {
     const auth = this.orchestrator.assertAuctionManageCapability(
       userRole,
       "Only staff with auction.manage can delete lots",
-      userStaffRole,
+      userStaffRoles,
     );
     if (auth.isErr()) return err(auth.error);
 

@@ -5,6 +5,7 @@ import {
   adminQueueNameParamSchema,
   adminQueueReplayDlqBodySchema,
 } from "@auction/queues";
+import type { StaffRoles } from "@auction/types";
 import type { Hono } from "hono";
 import type { ContainerAdminQueuesRoutesSlice } from "../container.js";
 import {
@@ -20,20 +21,21 @@ import { requireSuperAdminStaffRole } from "../middleware/require-staff-role.js"
 import type { ActorContext } from "../services/interfaces/queue-inspector.js";
 
 function actorFromContext(c: {
-  get: (key: "userId" | "userStaffRole") => string | null | undefined;
+  get(key: "userId"): string | null | undefined;
+  get(key: "userStaffRoles"): StaffRoles | undefined;
   req: { header: (name: string) => string | undefined };
 }): ActorContext {
   const requestId = c.req.header("x-request-id");
   return {
     userId: c.get("userId") as string,
-    staffRole: (c.get("userStaffRole") as string | null | undefined) ?? null,
+    staffRoles: c.get("userStaffRoles"),
     ...(requestId !== undefined ? { requestId } : {}),
   };
 }
 
 export function attachAdminQueuesRoutes(
   platform: Hono<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>,
   container: ContainerAdminQueuesRoutesSlice,
 ) {

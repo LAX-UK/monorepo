@@ -4,6 +4,7 @@ import type {
   IDomainEventDeliveryRepository,
   INotificationWriteRepository,
   IQrCodeScanPersister,
+  IStaffRoleAssignmentReader,
   ITransactionRunner,
 } from "@auction/persistence/interfaces";
 import {
@@ -16,6 +17,7 @@ import {
   DrizzleDomainEventDeliveryRepository,
   DrizzleNotificationWriteRepository,
   DrizzleQrCodeScanPersister,
+  DrizzleStaffRoleAssignmentReader,
 } from "@auction/persistence/repositories";
 import type { IAdminImpersonationNotifyReader } from "../interfaces/admin-impersonation-notify.reader.js";
 import type { IAdminReviewTaskProjectorRepository } from "../interfaces/admin-review-task-projector.repository.js";
@@ -104,6 +106,7 @@ export type WorkerRepositories = {
   profileMarketingReader: IMarketingProfileReader;
   marketingEventOutboxWorker: IMarketingEventOutboxWorker;
   dataExportRepo: IDataExportJobRepository;
+  staffRoleReader: IStaffRoleAssignmentReader;
   newsletterSignupSyncRepo: INewsletterSignupSyncRepository;
   sourceOfFundsDocumentPurgeRepo: ISourceOfFundsDocumentPurgeRepository;
   marketingContactSyncRepo: IMarketingContactSyncRepository;
@@ -158,6 +161,7 @@ export function createWorkerRepositories(
     profileMarketingReader: new DrizzleProfileMarketingReader(db),
     marketingEventOutboxWorker: new DrizzleMarketingEventOutboxWorker(db),
     dataExportRepo: new DrizzleDataExportJobRepository(db),
+    staffRoleReader: new DrizzleStaffRoleAssignmentReader(db),
     newsletterSignupSyncRepo: new DrizzleNewsletterSignupSyncRepository(db),
     sourceOfFundsDocumentPurgeRepo: new DrizzleSourceOfFundsDocumentPurgeRepository(db),
     marketingContactSyncRepo: new DrizzleMarketingContactSyncRepository(db),

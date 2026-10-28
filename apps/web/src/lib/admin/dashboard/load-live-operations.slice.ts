@@ -29,11 +29,11 @@ export async function loadLiveOperationsSlice(
   const showLiveOps =
     ctx.profile.showLiveOperations &&
     canAccessSaleroom &&
-    isWidgetAllowed(ctx.role, ctx.staffRole, "onsite-radar") &&
+    isWidgetAllowed(ctx.role, ctx.staffRoles, "onsite-radar") &&
     isDashboardWidgetVisible(ctx.widgets, "onsite-radar");
 
   const showSaleroomLive =
-    isWidgetAllowed(ctx.role, ctx.staffRole, "saleroom-live") &&
+    isWidgetAllowed(ctx.role, ctx.staffRoles, "saleroom-live") &&
     isDashboardWidgetVisible(ctx.widgets, "saleroom-live");
 
   let bidsPerMinute = 0;
