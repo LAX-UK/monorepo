@@ -3,8 +3,19 @@ import {
   countdownTier,
   formatCountdownAriaLabel,
   formatCountdownForDisplay,
+  formatCountdownShort,
   parseCountdownSegments,
 } from "./format-countdown";
+
+describe("formatCountdownShort", () => {
+  it("shows the two largest units, down to seconds", () => {
+    expect(formatCountdownShort(2 * 86_400_000 + 3 * 3_600_000 + 5 * 60_000)).toBe("2d 3h");
+    expect(formatCountdownShort(72 * 60_000 + 30_000)).toBe("1h 12m");
+    expect(formatCountdownShort(4 * 60_000 + 12_000)).toBe("4m 12s");
+    expect(formatCountdownShort(45_000)).toBe("45s");
+    expect(formatCountdownShort(-1)).toBe("0s");
+  });
+});
 
 describe("countdownTier", () => {
   it("is critical under 10 minutes", () => {

@@ -20,6 +20,18 @@ export function formatCountdownForDisplay(ms: number): string {
   return `${days}D ${formatCountdownClock(remainder)}`;
 }
 
+/**
+ * Countdown in words for lists and cards, two units at most: `2d 3h`, `1h 12m`, `4m 12s`, `45s`.
+ * Shorter than the clock face, so it reads at a glance beside a price.
+ */
+export function formatCountdownShort(ms: number): string {
+  const { days, hours, minutes, seconds } = parseCountdownSegments(ms);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
 export type CountdownTier = "normal" | "urgent" | "critical";
 
 export type CountdownSegments = {
@@ -50,6 +62,11 @@ export function countdownTier(ms: number): CountdownTier {
 /** Screen reader label for the closing countdown. */
 export function formatCountdownAriaLabel(ms: number): string {
   if (ms <= 0) return "This lot has closed";
+  return `Closes in ${formatCountdownSpoken(ms)}`;
+}
+
+/** Time left in words for screen readers, to the minute: "1 hour, 12 minutes". */
+export function formatCountdownSpoken(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
   const days = Math.floor(totalSec / 86_400);
   const hours = Math.floor((totalSec % 86_400) / 3600);
@@ -60,5 +77,5 @@ export function formatCountdownAriaLabel(ms: number): string {
   if (minutes > 0 || parts.length === 0) {
     parts.push(`${minutes} minute${minutes === 1 ? "" : "s"}`);
   }
-  return `Closes in ${parts.join(", ")}`;
+  return parts.join(", ");
 }
