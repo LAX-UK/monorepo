@@ -40,6 +40,7 @@ export async function consumeSocketTicket(
       subject?: unknown;
       sid?: unknown;
       role?: unknown;
+      staffRole?: unknown;
       staffRoles?: unknown;
       audience?: unknown;
       scopes?: unknown;
@@ -58,7 +59,10 @@ export async function consumeSocketTicket(
     const user: TicketUser = {
       id: value.subject,
       role: value.role,
-      staffRoles: rolesFrom(value.staffRoles),
+      // A ticket from a web release before role assignments carries one role; remove after one release.
+      staffRoles: Array.isArray(value.staffRoles)
+        ? rolesFrom(value.staffRoles)
+        : rolesFrom([value.staffRole]),
     };
     socket.data.ticketUser = user;
     socket.data.authSubject = value.subject;
@@ -121,6 +125,7 @@ async function resolveCurrentCapability(
       data?: {
         id?: unknown;
         role?: unknown;
+        staffRole?: unknown;
         staffRoles?: unknown;
         suspended?: unknown;
       };
@@ -137,7 +142,12 @@ async function resolveCurrentCapability(
     return roleHasCapability(
       role,
       capability,
-      normalizeStaffRoles(rolesFrom(body.data.staffRoles)),
+      normalizeStaffRoles(
+        // An API from before role assignments sends only the single role; remove after one release.
+        Array.isArray(body.data.staffRoles)
+          ? rolesFrom(body.data.staffRoles)
+          : [body.data.staffRole as string],
+      ),
     );
   } catch {
     return false;

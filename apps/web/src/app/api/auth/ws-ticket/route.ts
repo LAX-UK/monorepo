@@ -4,6 +4,7 @@ import { ensureBffRedisConnected, getBffRedis } from "@/lib/bff/redis.server";
 import { readBidSessionId } from "@/lib/bff/session-cookie.server";
 import { BidBffTokenService } from "@/lib/bff/token-service.server";
 import { fetchBidApi } from "@/lib/data/http/bid-api.server";
+import { parseSessionUser } from "@/lib/data/http/parse/session.parse";
 import { type NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
@@ -27,7 +28,7 @@ export async function POST(request: NextRequest) {
       cache: "no-store",
     });
     const me = (await meResponse.json()) as {
-      data?: { id?: string; role?: string; staffRoles?: unknown };
+      data?: { id?: string; role?: string; staffRole?: unknown; staffRoles?: unknown };
     };
     if (
       !meResponse.ok ||
@@ -47,7 +48,7 @@ export async function POST(request: NextRequest) {
         scopes: ["bid.read"],
         role: me.data.role,
         // Roles in force when the ticket is issued; the socket server re-checks them live.
-        staffRoles: Array.isArray(me.data.staffRoles) ? me.data.staffRoles : [],
+        staffRoles: parseSessionUser(me.data).staffRoles ?? [],
         apiResourceToken: apiResource.token,
       }),
       "EX",
