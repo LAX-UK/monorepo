@@ -11,7 +11,7 @@ import {
   TextInput,
 } from "@auction/staff-ui";
 import { type FormEvent, useEffect, useId, useRef, useState } from "react";
-import type { ArtistApplicationTarget } from "./use-artist-application-actions.client";
+import type { ArtistApplicationTarget } from "./artist-application-target";
 
 export type AcceptChoices = { artistSlug: string; importWorksAsDrafts: boolean };
 

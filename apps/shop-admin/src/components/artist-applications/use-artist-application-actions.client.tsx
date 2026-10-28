@@ -16,19 +16,13 @@ import { ARTIST_APPLICATION_LIMITS } from "@auction/shop-domain";
 import { ConfirmActionDialog, toast } from "@auction/staff-ui";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import type { ArtistApplicationTarget } from "./artist-application-target";
+
+export type { ArtistApplicationTarget } from "./artist-application-target";
 import {
   AcceptArtistApplicationDialog,
   type AcceptChoices,
 } from "./accept-artist-application-dialog.client";
-
-/** What an action needs to know about an application, from a list row or the record page. */
-export type ArtistApplicationTarget = {
-  id: string;
-  version: number;
-  title: string;
-  workCount: number;
-  artistName: string | null;
-};
 
 type Result = AdminMutationResult<AdminArtistApplicationActionResponse>;
 type Dialog = "accept" | "decline" | "request_info" | null;
