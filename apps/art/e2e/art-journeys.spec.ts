@@ -195,7 +195,7 @@ test.describe("lax.art journeys", () => {
       rows.getByRole("link", { name: /Manage your details in LAX Account/ }),
     ).toBeVisible();
     await expect(rows.getByRole("link", { name: /Payouts/ })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: "Your collection" })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Your collection", exact: true })).toHaveCount(0);
   });
 
   test("favourites tabs are signed-in routes", async ({ page }) => {

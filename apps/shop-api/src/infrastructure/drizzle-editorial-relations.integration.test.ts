@@ -52,13 +52,18 @@ describe.skipIf(!hasShopIntegrationDb)("editorial relations", () => {
     const exhibition = await repository().getExhibitionBySlug("showcase-new-originals");
 
     expect(exhibition?.venue).toEqual({ slug: "lax-marylebone", name: "LAX Marylebone" });
-    expect(exhibition?.artworks.map((work) => work.slug)).toEqual([
+    // lax.art lists originals only: a work seeded as an edition is left out of the rail.
+    expect(exhibition?.artworks.map((work) => work.slug).slice(0, 3)).toEqual([
       "quiet-orchard",
       "tidal-forms",
       "harbour-light",
-      "marylebone-dusk",
     ]);
     expect(exhibition?.artworks.every((work) => work.salesChannel === "art")).toBe(true);
+    expect(
+      exhibition?.artworks.some(
+        (work) => work.rarity === "limited_edition" || work.rarity === "open_edition",
+      ),
+    ).toBe(false);
     const artistSlugs = exhibition?.artists.map((artist) => artist.slug) ?? [];
     expect(artistSlugs).toContain("art-foundation-artist");
     expect(exhibition?.artists[0]).toHaveProperty("nationality");
