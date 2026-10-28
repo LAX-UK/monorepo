@@ -19,6 +19,7 @@ const parsedSessionUser = {
   email: "a@b.com",
   name: "a@b.com",
   role: "client" as const,
+  staffRoles: [],
 };
 
 function okResponse() {
