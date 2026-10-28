@@ -83,6 +83,7 @@ import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerLotCatalogServices } from "./create-lot-catalog-services.js";
 import type { ContainerLotLifecycle } from "./create-lot-lifecycle.js";
 import type { ContainerOnsiteEventServices } from "./create-onsite-event-services.js";
+import type { OrganisationHomeServices } from "./create-organisation-home-services.js";
 import type { OrganisationMembershipServices } from "./create-organisation-membership-services.js";
 import type { ContainerPaymentsServices } from "./create-payments-services.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
@@ -330,6 +331,11 @@ export type ContainerOrganisationMembershipSlice = {
   organisationMembership: OrganisationMembershipServices;
 };
 
+/** The business figures on an organisation's Home (`container.organisationHome`). */
+export type ContainerOrganisationHomeSlice = {
+  organisationHome: OrganisationHomeServices;
+};
+
 /** Route-facing buyer user account bag (mirrors `container.userRoutes`). */
 export type ContainerUserRouteServicesSlice = {
   userRoutes: UserRouteServices;
@@ -361,6 +367,7 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerIdentityRoutesSlice &
   ContainerBuyerAgentsSlice &
   ContainerOrganisationMembershipSlice &
+  ContainerOrganisationHomeSlice &
   ContainerUserRouteServicesSlice;
 
 export type Container = ContainerComposedSlices;
@@ -585,6 +592,12 @@ export type ContainerLegalEntityBuyerAgentRoutesSlice = Pick<
 export type ContainerOrganisationMembershipRoutesSlice = Pick<
   Container,
   "userSuspensionChecker" | "requireLegalEntityContext" | "organisationMembership"
+>;
+
+/** The business figures on the acting organisation's Home. */
+export type ContainerOrganisationHomeRoutesSlice = Pick<
+  Container,
+  "userSuspensionChecker" | "requireLegalEntityContext" | "organisationHome"
 >;
 
 /** Item submission seller + admin APIs. */

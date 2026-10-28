@@ -1,0 +1,222 @@
+import type { LegalEntityMemberRole } from "@auction/types";
+import { describe, expect, it, vi } from "vitest";
+import { buyerPurchaseTotal } from "./buyer-purchase-total.js";
+import {
+  type OrganisationDashboardReaders,
+  OrganisationDashboardService,
+} from "./organisation-dashboard.service.js";
+
+const ENTITY = "00000000-0000-4000-8000-000000000001";
+const NOW = new Date("2026-12-31T23:59:00Z");
+
+/** In-memory read models with something in every group. */
+function fakeReaders() {
+  return {
+    consignmentStatus: {
+      count: vi.fn(async () => ({
+        submissions: [
+          { status: "under_review" as const, count: 2 },
+          { status: "changes_requested" as const, count: 1 },
+        ],
+        lots: [{ status: "ended" as const, sold: true, count: 3 }],
+      })),
+    },
+    upcomingSaleWorks: {
+      list: vi.fn(async () => [
+        {
+          saleId: "s1",
+          title: "Modern British",
+          startsAt: new Date("2027-01-20T10:00:00Z"),
+          currency: "GBP",
+          works: 2,
+          estimatedWorks: 2,
+          estimateLow: "1000",
+          estimateHigh: "1500",
+        },
+      ]),
+    },
+    soldWorks: {
+      soldBetween: vi.fn(async () => [
+        { currency: "GBP", count: 2, amount: "5000.00" },
+        { currency: "EUR", count: 1, amount: "3000.00" },
+      ]),
+    },
+    payoutsDue: {
+      listDue: vi.fn(async () => [
+        {
+          currency: "GBP",
+          count: 2,
+          amount: "1000.00",
+          nextDate: new Date("2027-01-04T00:00:00Z"),
+        },
+      ]),
+    },
+    openBids: {
+      summarise: vi.fn(async () => [{ currency: "GBP", count: 3, amount: "24000.00" }]),
+    },
+    unpaidPurchases: {
+      list: vi.fn(async () => [
+        {
+          lotId: "l1",
+          hammer: "400.00",
+          lotPremiumRate: "0.2500",
+          saleTiers: null,
+          currency: "GBP",
+        },
+        {
+          lotId: "l2",
+          hammer: "1000.00",
+          lotPremiumRate: "0.2500",
+          saleTiers: null,
+          currency: "EUR",
+        },
+      ]),
+    },
+  } satisfies OrganisationDashboardReaders;
+}
+
+function load(role: LegalEntityMemberRole, isImpersonation = false) {
+  const readers = fakeReaders();
+  const service = new OrganisationDashboardService({
+    readers,
+    purchaseTotal: buyerPurchaseTotal,
+    now: () => NOW,
+  });
+  const figures = service.figures({
+    userId: "member-1",
+    legalEntityId: ENTITY,
+    role,
+    isImpersonation,
+  });
+  return { readers, figures };
+}
+
+function calls(readers: ReturnType<typeof fakeReaders>) {
+  return {
+    consignmentStatus: readers.consignmentStatus.count.mock.calls.length,
+    upcomingSaleWorks: readers.upcomingSaleWorks.list.mock.calls.length,
+    soldWorks: readers.soldWorks.soldBetween.mock.calls.length,
+    payoutsDue: readers.payoutsDue.listDue.mock.calls.length,
+    openBids: readers.openBids.summarise.mock.calls.length,
+    unpaidPurchases: readers.unpaidPurchases.list.mock.calls.length,
+  };
+}
+
+describe("OrganisationDashboardService", () => {
+  it("reads each figure group an owner uses exactly once, and nothing else", async () => {
+    const { readers, figures } = load("owner");
+    expect(Object.keys(await figures).sort()).toEqual([
+      "consignmentProgress",
+      "openBids",
+      "payoutsDue",
+      "soldThisYear",
+      "upcomingSales",
+    ]);
+    expect(calls(readers)).toEqual({
+      consignmentStatus: 1,
+      upcomingSaleWorks: 1,
+      soldWorks: 1,
+      payoutsDue: 1,
+      openBids: 1,
+      unpaidPurchases: 0,
+    });
+    expect(readers.consignmentStatus.count).toHaveBeenCalledWith({
+      legalEntityId: ENTITY,
+      visibleTo: undefined,
+    });
+    expect(readers.openBids.summarise).toHaveBeenCalledWith(ENTITY, null);
+  });
+
+  it("narrows a consignor to their own submissions and reads no money", async () => {
+    const { readers, figures } = load("consignor");
+    await figures;
+    const own = { legalEntityId: ENTITY, visibleTo: { scope: "own", userId: "member-1" } };
+    expect(readers.consignmentStatus.count).toHaveBeenCalledWith(own);
+    expect(readers.upcomingSaleWorks.list).toHaveBeenCalledWith(own, NOW, 100);
+    expect(calls(readers)).toMatchObject({
+      soldWorks: 0,
+      payoutsDue: 0,
+      openBids: 0,
+      unpaidPurchases: 0,
+    });
+  });
+
+  it("gives finance the organisation's money and purchases to pay, not its bids", async () => {
+    const { readers, figures } = load("finance");
+    const result = await figures;
+    expect(calls(readers)).toMatchObject({ soldWorks: 1, payoutsDue: 1, unpaidPurchases: 1 });
+    expect(calls(readers).openBids).toBe(0);
+    expect(result.purchasesToPay).toEqual({
+      purchases: 2,
+      totals: [
+        { currency: "EUR", amount: "1250.00" },
+        { currency: "GBP", amount: "500.00" },
+      ],
+    });
+  });
+
+  it("reads only a buyer agent's own open bids", async () => {
+    const { readers, figures } = load("buyer_agent");
+    expect(Object.keys(await figures)).toEqual(["openBids"]);
+    expect(readers.openBids.summarise).toHaveBeenCalledWith(ENTITY, "member-1");
+  });
+
+  it("follows a viewer's read-only scope", async () => {
+    const { readers, figures } = load("viewer");
+    await figures;
+    expect(readers.consignmentStatus.count).toHaveBeenCalledWith({
+      legalEntityId: ENTITY,
+      visibleTo: { scope: "attributed", userId: "member-1" },
+    });
+  });
+
+  it("an impersonating admin reads the same figures as the role", async () => {
+    const real = load("owner");
+    const impersonated = load("owner", true);
+    expect(Object.keys(await impersonated.figures).sort()).toEqual(
+      Object.keys(await real.figures).sort(),
+    );
+  });
+
+  it("counts this year on UK time and keeps currencies apart", async () => {
+    const { readers, figures } = load("owner");
+    const result = await figures;
+    expect(readers.soldWorks.soldBetween).toHaveBeenCalledWith(
+      ENTITY,
+      new Date("2026-01-01T00:00:00Z"),
+      new Date("2027-01-01T00:00:00Z"),
+    );
+    expect(result.soldThisYear).toEqual({
+      year: 2026,
+      works: 3,
+      totals: [
+        { currency: "EUR", amount: "3000.00" },
+        { currency: "GBP", amount: "5000.00" },
+      ],
+    });
+    expect(result.payoutsDue).toEqual({
+      payouts: 2,
+      totals: [{ currency: "GBP", amount: "1000.00" }],
+      nextDate: new Date("2027-01-04T00:00:00Z"),
+    });
+    expect(result.consignmentProgress).toMatchObject({
+      under_review: 2,
+      needs_changes: 1,
+      sold: 3,
+    });
+    expect(result.upcomingSales?.[0]).toMatchObject({ id: "s1", works: 2 });
+  });
+});
+
+describe("buyerPurchaseTotal", () => {
+  it("adds the buyer's premium the checkout charges, a sale's tiers first", () => {
+    const base = { lotId: "l", hammer: "1000.00", lotPremiumRate: "0.2500", currency: "GBP" };
+    expect(buyerPurchaseTotal({ ...base, saleTiers: null })).toBe("1250.00");
+    expect(
+      buyerPurchaseTotal({
+        ...base,
+        saleTiers: [{ hammerThresholdMinor: 0, rate: "0.1000" }],
+      }),
+    ).toBe("1100.00");
+  });
+});
