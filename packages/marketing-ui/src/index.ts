@@ -462,6 +462,7 @@ export {
   MarketingGalleryTeamBand,
   type MarketingGalleryTeamBandProps,
   type MarketingGalleryTeamDetail,
+  type MarketingGalleryTeamDetailKind,
 } from "./marketing-gallery-team-band.js";
 export {
   MarketingProductDoors,

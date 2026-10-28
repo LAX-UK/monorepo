@@ -14,4 +14,8 @@ describe("GALLERY_CONTACT", () => {
       GALLERY_CONTACT.phone.replaceAll(" ", ""),
     );
   });
+
+  it("publishes no opening hours until the gallery supplies them", () => {
+    expect(GALLERY_CONTACT.openingHours).toBeNull();
+  });
 });

@@ -73,4 +73,15 @@ describe("MarketingPageTitle", () => {
     );
     expect(screen.getByRole("button", { name: "Follow" })).toBeVisible();
   });
+
+  it("keeps the standard height by default and trims it when compact", () => {
+    const { container, rerender } = render(<MarketingPageTitle title="Contact" />);
+    const header = container.querySelector("header");
+    expect(header).toHaveAttribute("data-density", "standard");
+    expect(header?.className).toContain("min-h-[240px]");
+
+    rerender(<MarketingPageTitle title="Contact" density="compact" />);
+    expect(header).toHaveAttribute("data-density", "compact");
+    expect(header?.className).not.toContain("min-h-[240px]");
+  });
 });

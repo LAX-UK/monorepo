@@ -3,19 +3,57 @@ import { type ComponentType, type ReactNode, useId } from "react";
 import {
   MarketingClockIcon,
   type MarketingIconProps,
+  MarketingMailIcon,
   MarketingMapPinIcon,
+  MarketingPhoneIcon,
 } from "./marketing-icons.js";
 
-/** A plain fact under the ways to get in touch: where the gallery is, or when it is open. */
-export type MarketingGalleryTeamDetail = { kind: "address" | "hours"; text: string };
+export type MarketingGalleryTeamDetailKind = "phone" | "email" | "address" | "hours";
 
-const DETAIL_ICONS: Record<
-  MarketingGalleryTeamDetail["kind"],
-  ComponentType<MarketingIconProps>
-> = {
-  address: MarketingMapPinIcon,
-  hours: MarketingClockIcon,
+/**
+ * A direct way to reach the gallery, or a plain fact about it. With `href` the line is a link:
+ * `tel:` and `mailto:` open in place; a web link (such as a map) opens in a new tab.
+ */
+export type MarketingGalleryTeamDetail = {
+  kind: MarketingGalleryTeamDetailKind;
+  text: string;
+  href?: string;
 };
+
+/** One icon and one spoken label per kind, so every product lists its details the same way. */
+const DETAIL_KINDS: Record<
+  MarketingGalleryTeamDetailKind,
+  { icon: ComponentType<MarketingIconProps>; label: string }
+> = {
+  phone: { icon: MarketingPhoneIcon, label: "Phone" },
+  email: { icon: MarketingMailIcon, label: "Email" },
+  address: { icon: MarketingMapPinIcon, label: "Address" },
+  hours: { icon: MarketingClockIcon, label: "Opening hours" },
+};
+
+const DETAIL_LINK =
+  "inline-block rounded-sm text-on-surface underline decoration-1 underline-offset-4 hover:decoration-2 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";
+
+function isNewTabHref(href: string): boolean {
+  return href.startsWith("https://") || href.startsWith("http://");
+}
+
+function DetailText({ detail }: { detail: MarketingGalleryTeamDetail }) {
+  if (!detail.href) return <span>{detail.text}</span>;
+  if (!isNewTabHref(detail.href)) {
+    return (
+      <a href={detail.href} className={DETAIL_LINK}>
+        {detail.text}
+      </a>
+    );
+  }
+  return (
+    <a href={detail.href} target="_blank" rel="noopener noreferrer" className={DETAIL_LINK}>
+      {detail.text}
+      <span className="sr-only"> (opens in a new tab)</span>
+    </a>
+  );
+}
 
 export type MarketingGalleryTeamBandProps = {
   /** Short sentence-case label above the title, e.g. "The gallery team". */
@@ -27,8 +65,10 @@ export type MarketingGalleryTeamBandProps = {
    * object-cover`). Decorative: the copy says who the team is.
    */
   media: ReactNode;
-  /** The ways to reach the team (phone, email), as the host's own secondary buttons. */
+  /** The host's own buttons: one primary action, or the direct lines as secondary buttons. */
   actions: ReactNode;
+  /** A short promise under the actions, e.g. who replies and how soon. */
+  note?: string;
   details?: readonly MarketingGalleryTeamDetail[];
   className?: string;
   "data-testid"?: string;
@@ -47,6 +87,7 @@ export function MarketingGalleryTeamBand({
   body,
   media,
   actions,
+  note,
   details = [],
   className,
   "data-testid": testId = "marketing-gallery-team-band",
@@ -77,15 +118,23 @@ export function MarketingGalleryTeamBand({
         <p className="m-0 max-w-[52ch] font-body text-base leading-7 text-on-surface-variant">
           {body}
         </p>
-        <div className="mt-2 flex flex-wrap gap-3">{actions}</div>
+        <div className="mt-2 flex flex-col gap-3">
+          <div className="flex flex-wrap gap-3">{actions}</div>
+          {note ? (
+            <p className="m-0 font-body text-sm leading-5 text-on-surface-variant">{note}</p>
+          ) : null}
+        </div>
         {details.length > 0 ? (
-          <ul className="m-0 mt-1 flex list-none flex-wrap gap-x-6 gap-y-2 p-0 font-body text-sm leading-5 text-on-surface-variant">
+          <ul className="m-0 mt-1 flex list-none flex-col gap-1 p-0 font-body text-sm leading-6 text-on-surface-variant">
             {details.map((detail) => {
-              const Icon = DETAIL_ICONS[detail.kind];
+              const { icon: Icon, label } = DETAIL_KINDS[detail.kind];
               return (
-                <li key={detail.kind} className="inline-flex items-center gap-2">
-                  <Icon className="size-4" />
-                  {detail.text}
+                <li key={detail.kind} className="flex items-start gap-2">
+                  <Icon className="mt-1 size-4" />
+                  <span className="min-w-0">
+                    <span className="sr-only">{label}: </span>
+                    <DetailText detail={detail} />
+                  </span>
                 </li>
               );
             })}
