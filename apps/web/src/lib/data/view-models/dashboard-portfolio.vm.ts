@@ -80,7 +80,8 @@ export function buildPortfolioAnalytics(rows: readonly PortfolioRow[]): Portfoli
 }
 
 /** A won lot still needs checkout when it is not yet captured or refunded. */
-function isAwaitingCheckout(row: PortfolioRow): boolean {
+/** A won lot that still has to be paid for. */
+export function isAwaitingCheckout(row: Pick<PortfolioRow, "payment">): boolean {
   const status = row.payment?.status ?? null;
   return status !== "captured" && status !== "refunded";
 }

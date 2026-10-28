@@ -1,4 +1,7 @@
-import type { ListSubmissionsFilter } from "@auction/persistence/interfaces";
+import type {
+  ListSubmissionsFilter,
+  SubmissionSenderFilter,
+} from "@auction/persistence/interfaces";
 import type {
   CreateItemSubmissionInput,
   ItemSubmission,
@@ -40,6 +43,7 @@ export interface IItemSubmissionSellerApi {
   ): Promise<{ data: ItemSubmission[]; total: number }>;
   getSubmissionSummaryForSellerApi(
     legalEntityId: string,
+    visibleTo?: SubmissionSenderFilter,
   ): Promise<{ counts: Record<ItemSubmissionStatus, number>; total: number }>;
   getSubmissionForViewerApi(input: {
     submissionId: string;
@@ -66,6 +70,7 @@ export interface IItemSubmissionSellerApi {
   submitForReviewForSellerApi(
     legalEntityId: string,
     id: string,
+    sentByUserId?: string,
   ): Promise<Result<ItemSubmission, SubmissionError>>;
   withdrawForSellerApi(
     legalEntityId: string,

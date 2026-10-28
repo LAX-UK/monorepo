@@ -18,6 +18,7 @@ import { createFinanceRouteServices } from "./container/create-finance-route-ser
 import { createIdentityRouteServices } from "./container/create-identity-route-services.js";
 import { createInfra } from "./container/create-infra.js";
 import { createLotLifecycle } from "./container/create-lot-lifecycle.js";
+import { createOrganisationMembershipServices } from "./container/create-organisation-membership-services.js";
 import { createPaymentsServices } from "./container/create-payments-services.js";
 import { createPlatformCronRouteServices } from "./container/create-platform-cron-route-services.js";
 import { createPlatformServices } from "./container/create-platform-services.js";
@@ -41,10 +42,12 @@ import {
   BidAuthorityQueryService,
   BuyerAgentAuthorisationService,
 } from "./services/buyer-agents/buyer-agent-authorisation.service.js";
+import { MyBuyerAgentAuthorisationsService } from "./services/buyer-agents/my-buyer-agent-authorisations.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
 import { TwoFactorPolicyService } from "./services/security/two-factor-policy.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
 import { StaffStepUpService } from "./services/staff-step-up.service.js";
+import { SubmissionAccessGuard } from "./services/submission/submission-access-guard.js";
 
 export type { Container, ContainerComposedSlices };
 
@@ -219,6 +222,7 @@ export function createContainer(env: Env): Container {
     itemSubmissionAdminApi: catalog.itemSubmissionAdminApi,
     submissionDocumentService: complianceMedia.submissionDocumentService,
     consignmentAgreementService: catalog.consignmentAgreementService,
+    submissionAccess: new SubmissionAccessGuard(repos.itemSubmissionRepository),
     consignmentAfterSaleHttp: catalog.consignmentAfterSaleHttp,
   });
   const admin = createAdminServices({
@@ -264,7 +268,13 @@ export function createContainer(env: Env): Container {
   const buyerAgents = {
     authorisations: buyerAgentAuthorisations,
     bidAuthority: new BidAuthorityQueryService(catalog.bidAuthority),
+    mine: new MyBuyerAgentAuthorisationsService({
+      directory: buyerAgentAuthorisationRepository,
+      sales: repos.saleRepo,
+      registrations: repos.saleRegistrationRepository,
+    }),
   };
+  const organisationMembership = createOrganisationMembershipServices({ db });
 
   const atg = new AtgAdminService(
     repos.atgLinkReader,
@@ -521,6 +531,7 @@ export function createContainer(env: Env): Container {
     catalogRoutes,
     submissionRoutes,
     buyerAgents,
+    organisationMembership,
     queueAdmin: userMisc.queueAdmin,
     closeBullQueues: userMisc.closeBullQueues,
   };
@@ -561,6 +572,7 @@ export type {
   ContainerKycRoutesSlice,
   ContainerLegalEntityBuyerAgentRoutesSlice,
   ContainerLegalEntityMemberRoutesSlice,
+  ContainerOrganisationMembershipRoutesSlice,
   ContainerLegalEntityRoutesSlice,
   ContainerLotCatalogSlice,
   ContainerLotDocumentRoutesSlice,

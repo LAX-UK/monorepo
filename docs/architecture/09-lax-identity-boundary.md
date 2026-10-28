@@ -347,7 +347,7 @@ collected on the RP after first login. Primary credential endpoints
 `trustedOrigins` credentialed CORS for `lax.bid` remains on account-management
 and session APIs. Shared
 HTML and CSS live in `packages/auth/src/hosted-auth/` (`buildHostedAuthHtml`,
-`HOSTED_AUTH_STYLES`, floating-label primitives, and `hosted-auth/browser/`
+`HOSTED_AUTH_STYLES`, field primitives, the split-frame chrome in `chrome.ts`, and `hosted-auth/browser/`
 controllers) and are served as `/hosted-auth.css`, `/hosted-auth/lax-shop-logo.svg`,
 and bundled page scripts so HTML CSP can stay `style-src 'self' https://fonts.googleapis.com`
 without `unsafe-inline`. Browser controllers are compiled to IIFE assets; tests
@@ -386,8 +386,18 @@ authority, so live client disablement and secret rotation cannot change who is
 pre-authorized.
 
 Identity extractability forbids importing `@auction/branding`. Hosted pages
-therefore copy Brand Identity literals in `hosted-auth/tokens.ts`; branding
-tests fail the suite if those values or the Shop logo copy drift.
+therefore copy Brand Identity literals in `hosted-auth/tokens.ts`, and vendor the
+Account and product lockups, the sign-in painting and the company line
+(`HOSTED_COPY.accountOperators`); branding tests fail the suite if any copy drifts.
+
+The hosted pages wear the same split frame as LAX Account's signed-out page
+(`SignInSplit` in `apps/account`): panel on the left with the Account lockup, a
+theme toggle and the company footer; the gallery painting on the right from
+64rem, drawn as a stylesheet background so phones never download it. The two
+implementations share tokens, not code, because hosted pages are framework-free
+HTML and may not import the React UI packages. LAX Account's `/` has no page of
+its own: it redirects signed-out visitors to sign-in and signed-in visitors to
+Home, and only renders when a sign-in callback returns `?error=`.
 
 ## Source and image portability proof
 

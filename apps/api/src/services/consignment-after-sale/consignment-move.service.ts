@@ -163,6 +163,7 @@ export class ConsignmentMoveService implements IConsignmentMoveService {
       toLegalEntityId: target.id,
       movableStatuses: CONSIGNMENT_MOVABLE_STATUSES,
       resetAgreementAcceptance: decision.agreement === "reset",
+      sellerUserId: personId,
       movedAt,
     });
     // It changed between our read and our write (catalogued, withdrawn or moved already).

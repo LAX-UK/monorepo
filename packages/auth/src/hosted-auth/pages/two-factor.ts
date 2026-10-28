@@ -6,6 +6,7 @@ import {
   floatingInput,
   hostedButton,
   statusRegions,
+  viewChrome,
 } from "../html.js";
 import { HOSTED_AUTH_POLICY } from "../policy.js";
 import { type HostedAuthView, hostedAuthViewFromSearch } from "../view.js";
@@ -21,8 +22,7 @@ export function buildHostedTwoFactorHtml(
   return buildHostedAuthHtml({
     title: HOSTED_COPY.twoStep.title,
     description: `Enter the 6-digit code from your ${HOSTED_COPY.twoStep.app}.`,
-    brand: view.brand,
-    config: view.config,
+    ...viewChrome(view),
     body: `<div class="auth-stack">
       <form id="totp-form" class="auth-form" novalidate>
         ${floatingInput({

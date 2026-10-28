@@ -39,7 +39,10 @@ export function legalEntityFromContext(c: {
   get: (key: "legalEntityContext") => LegalEntityContext | undefined;
 }): SubmissionLegalEntityContext {
   const ctx = c.get("legalEntityContext") as LegalEntityContext;
-  return { legalEntityId: ctx.legalEntityId };
+  return {
+    legalEntityId: ctx.legalEntityId,
+    member: { userId: ctx.userId, actor: { role: ctx.role, isImpersonation: ctx.isImpersonation } },
+  };
 }
 
 /** The signed-in person, the account they act for and their standing with it. */

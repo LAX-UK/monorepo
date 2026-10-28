@@ -45,6 +45,14 @@ function chrome(overrides: Partial<Parameters<typeof buildAccountChrome>[0]> = {
 }
 
 describe("buildAccountChrome", () => {
+  it("marks an organisation whose documents are under review", () => {
+    const reviewing = { ...estate, status: "under_review" as const };
+    const result = chrome({ memberships: [personal, gallery, reviewing] });
+    const option = result.switcher?.options.find((o) => o.id === "holloway");
+    expect(option).toMatchObject({ detail: "Consignor · Under review", underReview: true });
+    expect(result.switcher?.options.find((o) => o.id === "northbank")?.underReview).toBe(false);
+  });
+
   it("hides the switcher and the strip for someone with no organisation", () => {
     const result = chrome({ memberships: [personal] });
     expect(result.switcher).toBeNull();

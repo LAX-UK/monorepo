@@ -5,10 +5,12 @@ import { fanoutPayoutClawbackRequired } from "./notification-fanout/clawback-fan
 import { fanoutDisputeClosed, fanoutDisputeOpened } from "./notification-fanout/dispute-fanout.js";
 import { fanoutLotVoided } from "./notification-fanout/lot-voided-fanout.js";
 import { fanoutPaymentManualReview } from "./notification-fanout/manual-review-fanout.js";
+import { fanoutMemberRemoved } from "./notification-fanout/membership-fanout.js";
 import {
   type LotVoidedPayload,
   type LotWithdrawalDeclinedPayload,
   type ManualReviewPayload,
+  type MemberRemovedPayload,
   type ProxyCancelledPayload,
   SUPPORTED_EVENT_TYPES,
   type SellerMoneyPayload,
@@ -138,6 +140,17 @@ export async function processNotificationFanout(options: {
           eventId: row.id,
           lotId: row.aggregateId,
           payload: row.payload as LotWithdrawalDeclinedPayload,
+        });
+      }
+      if (row.eventType === "legal_entity.member_removed") {
+        await fanoutMemberRemoved({
+          notificationFanoutReader,
+          emailService,
+          supportContactEmail,
+          eventId: row.id,
+          legalEntityId: row.aggregateId,
+          payload: row.payload as MemberRemovedPayload,
+          webOrigin: ctx.webOrigin,
         });
       }
       if (row.eventType === "payout.clawback_required") {

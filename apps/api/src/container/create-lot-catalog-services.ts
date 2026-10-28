@@ -54,6 +54,7 @@ import { SaleStatusTransitionService } from "../services/sale-status-transition.
 import { SaleService } from "../services/sale.service.js";
 import { SalePublishService } from "../services/sale/sale-publish.service.js";
 import { SellerIdentityReader } from "../services/submission/seller-identity.reader.js";
+import { SubmissionAccessGuard } from "../services/submission/submission-access-guard.js";
 import { VenueService } from "../services/venue.service.js";
 import { createSelfServiceIdentityEligibilityGate } from "./create-bid-eligibility.js";
 import type { ContainerCatalogAdminReaders } from "./create-catalog-admin-readers.js";
@@ -357,6 +358,7 @@ export function createLotCatalogServices(
   });
 
   const consignmentAfterSaleHttp = createConsignmentAfterSaleServices({
+    access: new SubmissionAccessGuard(itemSubmissionRepository),
     db,
     submissions: itemSubmissionRepository,
     lots: lotRepo,

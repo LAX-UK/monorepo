@@ -17,8 +17,19 @@ export type ListSubmissionsFilter = {
   assignedToUserId?: string | undefined;
   /** Admin list ordering. */
   sort?: "newest" | "oldest" | "sla" | undefined;
+  /** Seller lists: which senders' submissions the viewer may see (see `/domain`). */
+  visibleTo?: SubmissionSenderFilter | undefined;
   limit: number;
   offset: number;
+};
+
+/**
+ * Whose submissions a seller list includes: every one, those with a recorded sender (any member),
+ * or only the viewer's own.
+ */
+export type SubmissionSenderFilter = {
+  scope: "all" | "attributed" | "own";
+  userId: string;
 };
 
 export type ItemSubmissionUpdatePatch = {
@@ -48,6 +59,7 @@ export type ItemSubmissionUpdatePatch = {
   changesRequestedAt?: Date | null;
   convertedLotId?: string | null;
   assignedToUserId?: string | null;
+  submittedByUserId?: string | null;
   draftReminderSentAt?: Date | null;
 };
 
@@ -60,7 +72,10 @@ export interface IItemSubmissionRepository {
     legalEntityId: string,
     f: Omit<ListSubmissionsFilter, "limit" | "offset">,
   ): Promise<number>;
-  countStatusForLegalEntity(legalEntityId: string): Promise<Record<ItemSubmissionStatus, number>>;
+  countStatusForLegalEntity(
+    legalEntityId: string,
+    visibleTo?: SubmissionSenderFilter,
+  ): Promise<Record<ItemSubmissionStatus, number>>;
   listForAdmin(f: ListSubmissionsFilter): Promise<ItemSubmission[]>;
   countAdmin(f: Omit<ListSubmissionsFilter, "limit" | "offset">): Promise<number>;
   countAdminForLegalEntityIds(legalEntityIds: readonly string[]): Promise<number>;

@@ -1,29 +1,16 @@
-import signInGallery from "@/assets/signin-gallery.webp";
 import { Button } from "@/components/account-button";
-import { NOTICE, NoticeTitle } from "@/components/account-ui";
-import { ProductName } from "@/components/product-name";
-import { AccountFooter } from "@/components/shell/account-frame";
-import { AccountThemeToggle } from "@/components/shell/account-theme-toggle.client";
-import { SignInProducts } from "@/components/sign-in-products";
+import { SignInSplit } from "@/components/sign-in-split";
 import { loadAccountSession } from "@/server/application/load-account-session";
 import { getLaxAccountContainer } from "@/server/container";
+import { ACCOUNT_SIGN_IN_HREF, decideAccountLanding } from "@/server/domain/account-landing";
 import { buildAccountLinks } from "@/server/domain/account-links";
-import { buildAccountProducts } from "@/server/domain/account-products.vm";
-import { signInNotice } from "@/server/domain/sign-in-notice.vm";
-import { LaxLockup } from "@auction/marketing-ui";
-import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
-const LOGIN_HREF = "/api/auth/login?returnTo=/account";
-
-/** `next/image` hands back an object; Vite, in tests, hands back the URL. */
-const galleryUrl = typeof signInGallery === "string" ? signInGallery : signInGallery.src;
-
 /**
- * Sign-in: the panel on the left and a gallery painting on the right, the way Art and Shop open
- * their own sign-up. On a phone the painting becomes a short banner above the panel.
+ * `/` only speaks when a sign-in came back with an error; otherwise it sends people on (see
+ * `decideAccountLanding`). The notice keeps the sign-in pages' frame so the flow stays one piece.
  */
 export default async function LandingPage({
   searchParams,
@@ -31,87 +18,25 @@ export default async function LandingPage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
-  const notice = signInNotice(error);
-  const session = await loadAccountSession();
-  if (session.status === "ok" && !notice) redirect("/account");
+  const decision = await decideAccountLanding(
+    error,
+    async () => (await loadAccountSession()).status,
+  );
+  if (decision.kind === "redirect") redirect(decision.to);
 
-  const { config } = getLaxAccountContainer();
-  const products = buildAccountProducts(config);
-  const { support } = buildAccountLinks(config);
-
+  const { notice } = decision;
+  const { support } = buildAccountLinks(getLaxAccountContainer().config);
   return (
-    <div className="flex min-h-screen flex-col bg-page-bg lg:grid lg:grid-cols-2">
-      {/* The painting is decoration: the headline says everything the page means. */}
-      <div className="relative h-40 w-full shrink-0 overflow-hidden bg-surface-container sm:h-56 lg:order-2 lg:h-auto">
-        <img
-          src={galleryUrl}
-          alt=""
-          fetchPriority="high"
-          className="absolute inset-0 size-full object-cover object-[50%_40%]"
-        />
+    <SignInSplit support={support}>
+      <div className="flex flex-col gap-3" role={notice.tone === "error" ? "alert" : "status"}>
+        <h1 className="font-headline text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+          {notice.title}
+        </h1>
+        <p className="text-base leading-7 text-on-surface-variant">{notice.message}</p>
       </div>
-
-      <div className="flex flex-1 flex-col lg:order-1">
-        <div className="flex items-center justify-between px-4 pt-6 sm:px-10 lg:px-16 lg:pt-10">
-          <a href="/" className="flex min-h-11 items-center rounded-sm">
-            <LaxLockup kind="account" className="block h-9 w-auto sm:h-10" />
-          </a>
-          <AccountThemeToggle />
-        </div>
-
-        <main
-          id="main"
-          className="flex flex-1 flex-col justify-center gap-8 px-4 py-10 sm:px-10 lg:px-16"
-        >
-          <div className="flex max-w-lg flex-col gap-4">
-            <h1 className="font-headline text-4xl font-semibold tracking-tight text-balance sm:text-5xl">
-              One account for all of LAX
-            </h1>
-            <p className="text-base leading-7 text-on-surface-variant">
-              Sign in once to manage your details, security and works across{" "}
-              <ProductName product="bid">LAX Bid</ProductName>,{" "}
-              <ProductName product="shop">LAX Shop</ProductName> and{" "}
-              <ProductName product="art">lax.art</ProductName>.
-            </p>
-          </div>
-          {notice ? (
-            <Alert
-              variant={notice.tone === "error" ? "destructive" : "default"}
-              role={notice.tone === "error" ? "alert" : "status"}
-              className={`max-w-lg ${NOTICE}`}
-            >
-              <NoticeTitle>{notice.title}</NoticeTitle>
-              <AlertDescription className="text-on-surface-variant">
-                {notice.message}
-              </AlertDescription>
-            </Alert>
-          ) : null}
-          <div className="flex max-w-lg flex-col gap-4">
-            <Button
-              asChild
-              variant="cta"
-              size="lg"
-              className="min-h-12 w-full sm:w-auto sm:self-start sm:px-10"
-            >
-              <a href={LOGIN_HREF}>{notice ? "Try signing in again" : "Sign in"}</a>
-            </Button>
-            <p className="flex flex-wrap items-center gap-x-1 text-sm text-on-surface-variant">
-              New to LAX?
-              <a
-                href={LOGIN_HREF}
-                className="inline-flex min-h-11 items-center rounded-sm font-medium text-on-surface underline underline-offset-4"
-              >
-                Create an account
-              </a>
-            </p>
-          </div>
-          <SignInProducts products={products} />
-        </main>
-
-        <div className="px-4 sm:px-10 lg:px-16">
-          <AccountFooter support={support} bare />
-        </div>
-      </div>
-    </div>
+      <Button asChild variant="cta" className="w-full">
+        <a href={ACCOUNT_SIGN_IN_HREF}>Try signing in again</a>
+      </Button>
+    </SignInSplit>
   );
 }

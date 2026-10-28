@@ -46,6 +46,7 @@ export function mapItemSubmissionRow(
     identityReminderSentAt: row.identityReminderSentAt ?? null,
     convertedLotId: row.convertedLotId,
     assignedToUserId: row.assignedToUserId ?? null,
+    submittedByUserId: row.submittedByUserId ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

@@ -290,6 +290,48 @@ export {
   type UsableAccount,
 } from "./opening-account.js";
 export {
+  organisationApprovalWaits,
+  organisationSetupState,
+  organisationUnderReview,
+  type OrganisationSetupState,
+} from "./organisation-setup.js";
+export {
+  memberAbilities,
+  roleNeedsPersonalIdentity,
+  welcomeCardFor,
+  type MemberAbility,
+  type WelcomeCard,
+} from "./member-role-guide.js";
+export {
+  buildOrganisationHome,
+  homeActivity,
+  homeActivityArchive,
+  homeSetupState,
+  homeShortcuts,
+  homeTaskKindsFor,
+  homeTasks,
+  type HomeActivityArchive,
+  type HomeActivityEvent,
+  type HomeActivityKind,
+  type HomeShortcut,
+  type HomeSubject,
+  type HomeTask,
+  type HomeTaskKind,
+  type OrganisationHomeFacts,
+  type OrganisationHomeModel,
+} from "./organisation-home.js";
+export {
+  MEMBER_REMOVED_STOP_REASON,
+  stopsOnRemoval,
+  type StandingInstructionCandidate,
+  type StandingInstructionKind,
+} from "./member-removal.js";
+export {
+  canSeeSubmission,
+  submissionSenderScope,
+  type SubmissionSenderScope,
+} from "./submission-visibility.js";
+export {
   consignmentStage,
   type ConsignmentAfterSaleStage,
   type ConsignmentStage,

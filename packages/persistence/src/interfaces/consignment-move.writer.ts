@@ -11,6 +11,11 @@ export type ConsignmentMoveRow = {
    * cleared and the same terms are proposed again to the organisation.
    */
   resetAgreementAcceptance: boolean;
+  /**
+   * The person the personal consignment belongs to. A consignment with no recorded sender is
+   * attributed to them, so it stays visible to them as a member of the organisation.
+   */
+  sellerUserId: string | null;
   movedAt: Date;
 };
 

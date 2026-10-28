@@ -9,15 +9,15 @@ import { unsoldLotChoice } from "./schema/unsold-lot-choices.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const migration = readFileSync(
-  join(__dirname, "../drizzle/0237_consignment_after_sale.sql"),
+  join(__dirname, "../drizzle/0239_consignment_after_sale.sql"),
   "utf8",
 );
-const rollback = readFileSync(join(__dirname, "../drizzle/0237_rollback.sql"), "utf8");
+const rollback = readFileSync(join(__dirname, "../drizzle/0239_rollback.sql"), "utf8");
 const journal = JSON.parse(
   readFileSync(join(__dirname, "../drizzle/meta/_journal.json"), "utf8"),
 ) as { entries: { tag: string; when: number }[] };
 
-describe("migration 0237 consignment after sale contract", () => {
+describe("migration 0239 consignment after sale contract", () => {
   it("is additive and idempotent", () => {
     expect(migration).not.toMatch(/\bDROP (TABLE|COLUMN)\b/);
     expect(migration).toMatch(/CREATE TABLE IF NOT EXISTS "unsold_lot_choice"/);
@@ -56,11 +56,11 @@ describe("migration 0237 consignment after sale contract", () => {
     );
   });
 
-  it("follows 0236 in the journal with a later stamp", () => {
+  it("follows 0238 in the journal with a later stamp", () => {
     const entries = journal.entries;
-    const at = entries.findIndex((e) => e.tag === "0237_consignment_after_sale");
-    expect(entries[at - 1]?.tag).toBe("0236_consignment_agreement_and_needs_changes");
-    expect(entries[at]?.when).toBe(1795852800000);
+    const at = entries.findIndex((e) => e.tag === "0239_consignment_after_sale");
+    expect(entries[at - 1]?.tag).toBe("0238_submission_submitted_by");
+    expect(entries[at]?.when).toBe(1796025600000);
     expect(entries[at]?.when).toBeGreaterThan(entries[at - 1]?.when ?? Number.POSITIVE_INFINITY);
   });
 });

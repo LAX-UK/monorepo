@@ -1,6 +1,6 @@
 import { HOSTED_COPY } from "../copy.js";
 import { continuationHref } from "../flow-context.js";
-import { buildHostedAuthHtml, escapeHostedHtml } from "../html.js";
+import { buildHostedAuthHtml, escapeHostedHtml, viewChrome } from "../html.js";
 import { type HostedAuthView, hostedAuthViewFromSearch } from "../view.js";
 
 /** Bid's contact page, as LAX Account's help links to it. */
@@ -19,8 +19,7 @@ export function buildHostedTwoFactorHelpHtml(
   return buildHostedAuthHtml({
     title: `Lost access to your ${HOSTED_COPY.twoStep.app}?`,
     description: `If you can't get a code and have no backup codes left, LAX support can reset ${HOSTED_COPY.twoStep.name} for you.`,
-    brand: view.brand,
-    config: view.config,
+    ...viewChrome(view),
     body: `<div class="auth-stack">
       <ol class="auth-hint">
         <li>Contact LAX support from the email address on your account.</li>

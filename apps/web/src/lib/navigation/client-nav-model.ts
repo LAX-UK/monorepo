@@ -82,8 +82,7 @@ const HOME: NavSpec = {
     label: "Home",
     href: CLIENT_ROUTES.home,
     icon: House,
-    // Until organisations have a Home page, Home opens the selling overview.
-    match: (pathname) => pathname === CLIENT_ROUTES.home || pathname === CLIENT_ROUTES.selling,
+    match: (pathname) => pathname === CLIENT_ROUTES.home,
   }),
 };
 

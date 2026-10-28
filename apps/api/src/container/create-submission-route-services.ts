@@ -6,6 +6,7 @@ import type {
 } from "../services/interfaces/item-submission-apis.js";
 import type { IConsignmentAfterSaleHttpApplicationService } from "../services/interfaces/submission-routes/consignment-after-sale-http.js";
 import type { SubmissionRouteServices } from "../services/interfaces/submission-routes/index.js";
+import type { ISubmissionAccessGuard } from "../services/interfaces/submission-routes/submission-access.js";
 import type { ISubmissionDocumentPort } from "../services/interfaces/submission-routes/submission-document-port.js";
 import { SubmissionAdminHttpApplicationService } from "../services/submission/submission-admin-http-application.service.js";
 import { SubmissionDocumentHttpApplicationService } from "../services/submission/submission-document-http-application.service.js";
@@ -16,6 +17,8 @@ export type CreateSubmissionRouteServicesInput = {
   itemSubmissionAdminApi: IItemSubmissionAdminApi;
   submissionDocumentService: ISubmissionDocumentPort;
   consignmentAgreementService: IConsignmentAgreementService;
+  /** Decides which of an account's submissions the signed-in member may reach. */
+  submissionAccess: ISubmissionAccessGuard;
   consignmentAfterSaleHttp: IConsignmentAfterSaleHttpApplicationService;
 };
 
@@ -23,15 +26,20 @@ export function createSubmissionRouteServices(
   input: CreateSubmissionRouteServicesInput,
 ): SubmissionRouteServices {
   return {
-    sellerHttp: new SubmissionSellerHttpApplicationService(input.itemSubmissionSellerApi),
+    sellerHttp: new SubmissionSellerHttpApplicationService(
+      input.itemSubmissionSellerApi,
+      input.submissionAccess,
+    ),
     adminHttp: new SubmissionAdminHttpApplicationService(input.itemSubmissionAdminApi),
     documentHttp: new SubmissionDocumentHttpApplicationService(
       input.itemSubmissionSellerApi,
       input.itemSubmissionAdminApi,
       input.submissionDocumentService,
+      input.submissionAccess,
     ),
     agreementHttp: new ConsignmentAgreementHttpApplicationService(
       input.consignmentAgreementService,
+      input.submissionAccess,
     ),
     afterSaleHttp: input.consignmentAfterSaleHttp,
   };

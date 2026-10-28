@@ -65,6 +65,17 @@ export function createLegalEntityBuyerAgentRoutes(
     );
   });
 
+  // A buyer agent's own authorisations in force now; empty for every other role.
+  r.get("/buyer-agent-authorisations/mine", requireAuth, requireContext, async (c) => {
+    const ctx = c.get("legalEntityContext") as LegalEntityContext;
+    const data = await container.buyerAgents.mine.list({
+      userId: ctx.userId,
+      legalEntityId: ctx.legalEntityId,
+      role: ctx.role,
+    });
+    return c.json({ data });
+  });
+
   r.post(
     "/buyer-agent-authorisations",
     requireAuth,

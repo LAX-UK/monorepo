@@ -389,10 +389,8 @@ export function installHostedAuthRuntime(): HostedAuthApi {
       if (!input) return;
       const next = input.getAttribute("type") === "password" ? "text" : "password";
       input.setAttribute("type", next);
-      const hidden = next === "password";
-      node.setAttribute("aria-label", hidden ? "Show password" : "Hide password");
-      node.setAttribute("aria-pressed", hidden ? "false" : "true");
-      node.textContent = hidden ? "Show" : "Hide";
+      // A toggle button keeps one name; its state is aria-pressed, and the icon follows it.
+      node.setAttribute("aria-pressed", next === "text" ? "true" : "false");
     });
   }
 

@@ -1,14 +1,15 @@
-import { HOSTED_COPY } from "../copy.js";
+import { oneAccountSection } from "../chrome.js";
 import {
   buildHostedAuthHtml,
   continuationAnchor,
   floatingInput,
   hostedButton,
-  oneAccountNote,
   passwordField,
   statusRegions,
   turnstileHost,
+  viewChrome,
 } from "../html.js";
+import { HOSTED_AUTH_ASSET_VERSION } from "../policy.js";
 import { socialActions } from "../social-actions.js";
 import {
   type HostedAuthView,
@@ -24,7 +25,7 @@ function phoneAndSignUp(view: HostedAuthView): string {
   }
   const signUp = `<p class="links-secondary">Don't have an account? ${continuationAnchor("Sign up", "/sign-up", view.flow)}</p>`;
   return `<div class="links links--stacked" data-login-chrome="footer">${signUp}</div>
-    ${oneAccountNote(view.capabilities.accountOrigin)}`;
+    ${oneAccountSection(`?v=${HOSTED_AUTH_ASSET_VERSION}`)}`;
 }
 
 function magicLinkInsteadButton(view: HostedAuthView): string {
@@ -101,15 +102,15 @@ function combinedBody(view: HostedAuthView): string {
 
 export function buildHostedLoginHtml(view: HostedAuthView = hostedAuthViewFromSearch("")): string {
   const productBack = resolveHostedProductBackLink(view);
-  const description =
+  // Staff sign-in names its tool in the lead; customers are told where they are heading.
+  const lead =
     view.flow.audience === "staff"
-      ? "Staff sign-in for LAX Shop Admin."
-      : `Sign in with your ${HOSTED_COPY.accountName}.`;
+      ? { description: "Staff sign-in for LAX Shop Admin.", showDestination: false }
+      : { lead: "signIn" as const };
   return buildHostedAuthHtml({
     title: "Sign in",
-    description,
-    brand: view.brand,
-    config: view.config,
+    ...lead,
+    ...viewChrome(view),
     body: view.capabilities.emailFirst ? emailFirstBody(view) : combinedBody(view),
     scriptSrc: "/hosted-login.js",
     ...(productBack ? { productBack } : {}),

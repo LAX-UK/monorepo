@@ -22,10 +22,13 @@ import type { IDomainEventSink } from "../services/domain-event-sink.js";
 import type { IItemSubmissionSellerApi } from "../services/interfaces/item-submission-apis.js";
 import type { ILotService } from "../services/interfaces/lot-service.js";
 import type { IConsignmentAfterSaleHttpApplicationService } from "../services/interfaces/submission-routes/consignment-after-sale-http.js";
+import type { ISubmissionAccessGuard } from "../services/interfaces/submission-routes/submission-access.js";
 import type { NotificationDispatcher } from "../services/notification.dispatcher.js";
 import type { ISellerIdentityReader } from "../services/submission/seller-identity.reader.js";
 
 export type CreateConsignmentAfterSaleServicesInput = {
+  /** Hides submissions a member may not reach. */
+  access: ISubmissionAccessGuard;
   db: Database;
   submissions: IItemSubmissionRepository;
   lots: ILotRepository;
@@ -97,5 +100,6 @@ export function createConsignmentAfterSaleServices(
     withdrawal,
     move,
     reminder,
+    access: input.access,
   });
 }

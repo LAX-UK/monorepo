@@ -5,9 +5,13 @@ import {
 } from "@auction/identity-contracts";
 import { HOSTED_COPY } from "./copy.js";
 
-/** The destination product, shown as a text chip under the heading. */
+/** A product that sets its own name in its own colour on the hosted pages. */
+export type HostedNamedProduct = "bid" | "shop" | "art";
+
+/** The destination product, named in a quiet line under the heading ("to continue to LAX Bid"). */
 export type HostedProductChip = {
   label: string;
+  product: HostedNamedProduct;
 };
 
 export type HostedBrandProfile = {
@@ -28,22 +32,22 @@ const PRODUCT_BRANDS: Partial<Record<RegisteredOidcClientId, HostedBrandProfile>
   [REGISTERED_OIDC_CLIENT_IDS.LAX_BID_WEB]: {
     productName: HOSTED_COPY.products.bid,
     tagline: null,
-    chip: { label: HOSTED_COPY.products.bid },
+    chip: { label: HOSTED_COPY.products.bid, product: "bid" },
   },
   [REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_WEB]: {
     productName: HOSTED_COPY.products.shop,
     tagline: null,
-    chip: { label: HOSTED_COPY.products.shop },
+    chip: { label: HOSTED_COPY.products.shop, product: "shop" },
   },
   [REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN]: {
     productName: HOSTED_COPY.products.shopAdmin,
     tagline: "Shop Admin",
-    chip: { label: HOSTED_COPY.products.shopAdmin },
+    chip: { label: HOSTED_COPY.products.shopAdmin, product: "shop" },
   },
   [REGISTERED_OIDC_CLIENT_IDS.LAX_ART_WEB]: {
     productName: HOSTED_COPY.products.art,
     tagline: null,
-    chip: { label: HOSTED_COPY.products.art },
+    chip: { label: HOSTED_COPY.products.art, product: "art" },
   },
 };
 

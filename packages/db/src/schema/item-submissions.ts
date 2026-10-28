@@ -64,6 +64,11 @@ export const itemSubmission = pgTable(
     changesRequestedNote: text("changes_requested_note"),
     changesRequestedAt: timestamp("changes_requested_at", { mode: "date", withTimezone: true }),
     convertedLotId: uuid("converted_lot_id").references(() => lot.id, { onDelete: "set null" }),
+    /** The member who created or last sent the submission; `null` for submissions from before it
+     * was recorded. Organisations show a consignor only their own. */
+    submittedByUserId: text("submitted_by_user_id").references(() => user.id, {
+      onDelete: "set null",
+    }),
     assignedToUserId: text("assigned_to_user_id").references(() => user.id, {
       onDelete: "set null",
     }),
@@ -83,6 +88,10 @@ export const itemSubmission = pgTable(
     index("item_submission_legal_entity_id_idx").on(table.legalEntityId),
     index("item_submission_status_created_at_idx").on(table.status, table.createdAt),
     index("item_submission_converted_lot_id_idx").on(table.convertedLotId),
+    index("item_submission_entity_submitted_by_idx").on(
+      table.legalEntityId,
+      table.submittedByUserId,
+    ),
     index("item_submission_assigned_to_idx")
       .on(table.assignedToUserId)
       .where(sql`${table.assignedToUserId} IS NOT NULL`),

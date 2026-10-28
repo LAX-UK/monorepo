@@ -8,11 +8,42 @@
  */
 export const HOSTED_COPY = {
   accountName: "LAX Account",
-  oneAccount: "One LAX Account for LAX Bid, LAX Shop and lax.art.",
-  /** The product names inside `oneAccount`, which the note sets in each product's colour. */
+  /** The one-account promise, as LAX Account words it. */
+  oneAccountTitle: "One account for all of LAX",
+  oneAccountLead: "Sign in once to manage your details, security and works across",
+  /** The product names the promise lists, each set in its own product's colour. */
   oneAccountProducts: { bid: "LAX Bid", shop: "LAX Shop", art: "lax.art" },
-  learnMore: "Learn more",
-  continueTo: "Continue to",
+  /** Quiet line under the heading when the person came from a product: "to continue to LAX Bid". */
+  continueTo: "to continue to",
+  /**
+   * The line under sign-in and sign-up headings: on its own, or naming the product the person is
+   * heading to ("Sign in with your LAX Account to continue to LAX Bid."), so the page never says
+   * the same thing twice.
+   */
+  leads: {
+    signIn: {
+      alone: "Sign in with your LAX Account.",
+      toProduct: "Sign in with your LAX Account to continue to",
+    },
+    signUp: {
+      alone: "Create an account once and use it across LAX.",
+      toProduct: "Create your account to continue to",
+    },
+  },
+  /**
+   * Who provides the account, for the footer. The issuer may not import `@auction/branding`, so
+   * this is a copy of `legalOperatorSentence("account")`; `packages/branding/tests` fails when it
+   * drifts from the registry.
+   */
+  accountOperators:
+    "LAX Account is provided by London Auction Xchange LTD and London Art Exchange Ltd.",
+  footer: { privacy: "Privacy", help: "Help" },
+  signUpAgreement: {
+    lead: "By creating an account you agree to the",
+    terms: "Terms",
+    privacy: "Privacy notice",
+  },
+  theme: { toDark: "Switch to dark theme", toLight: "Switch to light theme" },
   products: {
     bid: "LAX Bid",
     shop: "LAX Shop",

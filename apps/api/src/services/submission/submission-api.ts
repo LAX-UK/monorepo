@@ -1,4 +1,7 @@
-import type { ListSubmissionsFilter } from "@auction/persistence/interfaces";
+import type {
+  ListSubmissionsFilter,
+  SubmissionSenderFilter,
+} from "@auction/persistence/interfaces";
 import type {
   CreateItemSubmissionInput,
   ItemSubmission,
@@ -42,6 +45,7 @@ export async function listSubmissionsForSellerApi(
     ...(f.status ? { status: f.status } : {}),
     ...(f.statuses && f.statuses.length > 0 ? { statuses: f.statuses } : {}),
     ...(f.q ? { q: f.q } : {}),
+    ...(f.visibleTo ? { visibleTo: f.visibleTo } : {}),
   };
   const [rows, total] = await Promise.all([
     listForSeller(deps, legalEntityId, f),
@@ -54,8 +58,9 @@ export async function listSubmissionsForSellerApi(
 export async function getSubmissionSummaryForSellerApi(
   deps: ItemSubmissionServiceDeps,
   legalEntityId: string,
+  visibleTo?: SubmissionSenderFilter,
 ): Promise<{ counts: Record<ItemSubmissionStatus, number>; total: number }> {
-  const counts = await deps.submissions.countStatusForLegalEntity(legalEntityId);
+  const counts = await deps.submissions.countStatusForLegalEntity(legalEntityId, visibleTo);
   const total = Object.values(counts).reduce((sum, n) => sum + n, 0);
   return { counts, total };
 }
@@ -177,8 +182,9 @@ export async function submitForReviewForSellerApi(
   deps: ItemSubmissionServiceDeps,
   legalEntityId: string,
   id: string,
+  sentByUserId?: string,
 ): Promise<Result<ItemSubmission, SubmissionError>> {
-  const result = await submitForReview(deps, legalEntityId, id);
+  const result = await submitForReview(deps, legalEntityId, id, sentByUserId);
   if (result.isErr()) return result;
   return ok(
     await presentSubmissionImages(deps.mediaUrlResolver, result.value, deps.mediaAssetEnricher),

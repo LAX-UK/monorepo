@@ -15,6 +15,7 @@ import type {
   IXeroWebhookEventRepository,
 } from "@auction/persistence/interfaces";
 import type { Env } from "../env.js";
+import type { IMyBuyerAgentAuthorisationsService } from "../services/buyer-agents/my-buyer-agent-authorisations.service.js";
 import type {
   AdminIntegrationRouteServices,
   AdminRouteServices,
@@ -82,6 +83,7 @@ import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerLotCatalogServices } from "./create-lot-catalog-services.js";
 import type { ContainerLotLifecycle } from "./create-lot-lifecycle.js";
 import type { ContainerOnsiteEventServices } from "./create-onsite-event-services.js";
+import type { OrganisationMembershipServices } from "./create-organisation-membership-services.js";
 import type { ContainerPaymentsServices } from "./create-payments-services.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
@@ -318,7 +320,14 @@ export type ContainerBuyerAgentsSlice = {
   buyerAgents: {
     authorisations: IBuyerAgentAuthorisationService;
     bidAuthority: IBidAuthorityQueryService;
+    /** A buyer agent's own authorisations, for their Home. */
+    mine: IMyBuyerAgentAuthorisationsService;
   };
+};
+
+/** The welcome card and former members' bids (`container.organisationMembership`). */
+export type ContainerOrganisationMembershipSlice = {
+  organisationMembership: OrganisationMembershipServices;
 };
 
 /** Route-facing buyer user account bag (mirrors `container.userRoutes`). */
@@ -351,6 +360,7 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerBiddingRoutesSlice &
   ContainerIdentityRoutesSlice &
   ContainerBuyerAgentsSlice &
+  ContainerOrganisationMembershipSlice &
   ContainerUserRouteServicesSlice;
 
 export type Container = ContainerComposedSlices;
@@ -569,6 +579,12 @@ export type ContainerLegalEntityMemberRoutesSlice = Pick<
 export type ContainerLegalEntityBuyerAgentRoutesSlice = Pick<
   Container,
   "userSuspensionChecker" | "requireLegalEntityContext" | "buyerAgents"
+>;
+
+/** The welcome card and former members' bids, for the acting organisation. */
+export type ContainerOrganisationMembershipRoutesSlice = Pick<
+  Container,
+  "userSuspensionChecker" | "requireLegalEntityContext" | "organisationMembership"
 >;
 
 /** Item submission seller + admin APIs. */

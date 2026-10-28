@@ -16,6 +16,7 @@ const option = {
   detail: "Jane Smith",
   initials: "JS",
   current: true,
+  underReview: false,
 };
 
 function renderWith(switcher: AccountChrome["switcher"]) {

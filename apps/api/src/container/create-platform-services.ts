@@ -35,6 +35,7 @@ export function createPlatformServices(
     core,
     identitySubjects,
     stripeConnectService: payout.stripeConnectService,
+    proxyRealtime: notification.notificationService,
   });
 
   return {

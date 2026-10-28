@@ -10,6 +10,7 @@ import type { SubmissionError } from "../../lib/errors.js";
 import { requireSubmissionsAccessHttp } from "../../lib/submission-http-auth.js";
 import type { IConsignmentAfterSaleHttpApplicationService } from "../interfaces/submission-routes/consignment-after-sale-http.js";
 import type { AgreementSellerContext } from "../interfaces/submission-routes/consignment-agreement-http.js";
+import type { ISubmissionAccessGuard } from "../interfaces/submission-routes/submission-access.js";
 import type {
   SubmissionHttpJson,
   SubmissionViewerContext,
@@ -25,6 +26,8 @@ export type ConsignmentAfterSaleHttpDeps = {
   withdrawal: IConsignmentWithdrawalService;
   move: IConsignmentMoveService;
   reminder: ISellerIdentityReminderService;
+  /** Hides submissions the member may not reach, exactly like ones in another account. */
+  access: ISubmissionAccessGuard;
 };
 
 function respond<T>(result: Result<T, SubmissionError>): SubmissionHttpJson {
@@ -43,10 +46,22 @@ export class ConsignmentAfterSaleHttpApplicationService
 {
   constructor(private readonly deps: ConsignmentAfterSaleHttpDeps) {}
 
+  /** Whether the seller may not reach this submission (another member's, by sender scope). */
+  private hidden(submissionId: string, seller: AgreementSellerContext): Promise<boolean> {
+    return this.deps.access.hides(
+      {
+        legalEntityId: seller.legalEntityId,
+        member: { userId: seller.userId, actor: seller.actor },
+      },
+      submissionId,
+    );
+  }
+
   async getForSeller(
     submissionId: string,
     seller: AgreementSellerContext,
   ): Promise<SubmissionHttpJson> {
+    if (await this.hidden(submissionId, seller)) return NOT_FOUND;
     const submission = await this.deps.submissions.findById(submissionId);
     if (!submission || submission.legalEntityId !== seller.legalEntityId) return NOT_FOUND;
     const [stage, unsold, withdrawal] = await Promise.all([
@@ -63,6 +78,7 @@ export class ConsignmentAfterSaleHttpApplicationService
     seller: AgreementSellerContext,
     input: UnsoldLotChoiceRequestInput,
   ): Promise<SubmissionHttpJson> {
+    if (await this.hidden(submissionId, seller)) return NOT_FOUND;
     return respond(await this.deps.unsold.request(submissionId, seller, input));
   }
 
@@ -70,6 +86,7 @@ export class ConsignmentAfterSaleHttpApplicationService
     submissionId: string,
     seller: AgreementSellerContext,
   ): Promise<SubmissionHttpJson> {
+    if (await this.hidden(submissionId, seller)) return NOT_FOUND;
     return respond(await this.deps.withdrawal.withdraw(submissionId, seller));
   }
 

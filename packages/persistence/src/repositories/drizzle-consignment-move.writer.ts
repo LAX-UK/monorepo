@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { consignmentAgreement, itemSubmission } from "@auction/db/schema";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import type {
   ConsignmentMoveRow,
   IConsignmentMoveWriter,
@@ -13,7 +13,15 @@ export class DrizzleConsignmentMoveWriter implements IConsignmentMoveWriter {
     return this.db.transaction(async (tx) => {
       const moved = await tx
         .update(itemSubmission)
-        .set({ legalEntityId: row.toLegalEntityId, updatedAt: row.movedAt })
+        .set({
+          legalEntityId: row.toLegalEntityId,
+          updatedAt: row.movedAt,
+          ...(row.sellerUserId
+            ? {
+                submittedByUserId: sql`coalesce(${itemSubmission.submittedByUserId}, ${row.sellerUserId})`,
+              }
+            : {}),
+        })
         .where(
           and(
             eq(itemSubmission.id, row.submissionId),

@@ -5,6 +5,7 @@ import type {
   IItemSubmissionRepository,
   IUserRepository,
   ListSubmissionsFilter,
+  SubmissionSenderFilter,
 } from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { IConsignmentAgreementRepository } from "@auction/persistence/interfaces";
@@ -213,8 +214,9 @@ export class ItemSubmissionService implements IItemSubmissionService {
 
   getSubmissionSummaryForSellerApi(
     legalEntityId: string,
+    visibleTo?: SubmissionSenderFilter,
   ): Promise<{ counts: Record<ItemSubmissionStatus, number>; total: number }> {
-    return getSubmissionSummaryForSellerApi(this.deps, legalEntityId);
+    return getSubmissionSummaryForSellerApi(this.deps, legalEntityId, visibleTo);
   }
 
   listSubmissionsForAdminApi(
@@ -271,8 +273,9 @@ export class ItemSubmissionService implements IItemSubmissionService {
   submitForReviewForSellerApi(
     legalEntityId: string,
     id: string,
+    sentByUserId?: string,
   ): Promise<Result<ItemSubmission, SubmissionError>> {
-    return submitForReviewForSellerApi(this.deps, legalEntityId, id);
+    return submitForReviewForSellerApi(this.deps, legalEntityId, id, sentByUserId);
   }
 
   withdrawForSellerApi(

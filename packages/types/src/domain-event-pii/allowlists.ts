@@ -215,6 +215,18 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "removed_by_user_id",
     "role_at_removal",
     "reason",
+    "stopped_bids",
+  ]),
+  /** an automatic bid (auto-bid ceiling or absentee bid) stopped because its member was removed. */
+  "legal_entity.member_bid_stopped": new Set([
+    "bid_kind",
+    "bid_ref",
+    "lot_id",
+    "lot_title",
+    "lot_number",
+    "max_amount",
+    "member_user_id",
+    "reason",
   ]),
   /** buyer agent authorised to bid for the organisation (by a member or by staff). */
   "legal_entity.buyer_agent_authorised": new Set([

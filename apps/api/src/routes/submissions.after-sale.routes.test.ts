@@ -18,6 +18,7 @@ import { ConsignmentWithdrawalService } from "../services/consignment-after-sale
 import { SellerIdentityReminderService } from "../services/consignment-after-sale/seller-identity-reminder.service.js";
 import { UnsoldLotChoiceService } from "../services/consignment-after-sale/unsold-lot-choice.service.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import type { ISubmissionAccessGuard } from "../services/interfaces/submission-routes/submission-access.js";
 import { InMemoryConsignmentAgreements } from "../testing/in-memory-consignment-agreements.js";
 import { InMemoryUnsoldLotChoices } from "../testing/in-memory-unsold-lot-choices.js";
 import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
@@ -45,6 +46,8 @@ type Setup = {
   galleryRole?: LegalEntityMemberRole;
   identityReminderSentAt?: Date | null;
   identityVerified?: boolean;
+  /** The submission access guard hides it from this member. */
+  hidden?: boolean;
 };
 
 function setup(options: Setup = {}) {
@@ -129,6 +132,9 @@ function setup(options: Setup = {}) {
 
   const http = new ConsignmentAfterSaleHttpApplicationService({
     submissions,
+    access: {
+      hides: vi.fn(async () => options.hidden ?? false),
+    } as unknown as ISubmissionAccessGuard,
     unsold: new UnsoldLotChoiceService({
       choices,
       submissions,
@@ -268,6 +274,19 @@ describe("POST /submissions/:id/unsold-choice", () => {
   it("treats a consignment in another account as not found", async () => {
     const { post } = setup({ submissionEntityId: otherEntityId });
     expect((await post("/unsold-choice", { choice: "collect" })).status).toBe(404);
+  });
+
+  it("answers Not found for a submission the member may not reach, on every seller endpoint", async () => {
+    const s = setup({
+      role: "consignor",
+      hidden: true,
+      submissionStatus: "submitted",
+      lotStatus: null,
+    });
+    expect((await s.get("/after-sale")).status).toBe(404);
+    expect((await s.post("/unsold-choice", { choice: "collect" })).status).toBe(404);
+    expect((await s.post("/withdrawal")).status).toBe(404);
+    expect(s.withdrawSubmission).not.toHaveBeenCalled();
   });
 
   it("refuses while the lot has not ended unsold", async () => {
@@ -449,6 +468,7 @@ describe("staff move a personal consignment", () => {
         fromLegalEntityId: entityId,
         toLegalEntityId: galleryId,
         resetAgreementAcceptance: true,
+        sellerUserId: "u1",
       }),
     );
     expect(s.events.publish).toHaveBeenCalledWith(
@@ -543,6 +563,7 @@ describe("refusals carry the service's message", () => {
       withdrawal: {} as never,
       move: {} as never,
       reminder: {} as never,
+      access: { hides: vi.fn(async () => false) } as unknown as ISubmissionAccessGuard,
     });
     const res = await http.requestUnsoldChoice(
       submissionId,
