@@ -859,3 +859,9 @@ export type {
 export type { ITransactionRunner } from "../transaction-runner.js";
 export type { IRememberedAccountStore } from "./remembered-account.store.js";
 export type { AccountRecordKind, IRecordAccountReader } from "./record-account.reader.js";
+export type { IMemberWelcomeStore } from "./member-welcome.store.js";
+export type {
+  FormerMemberBidRef,
+  FormerMemberOpenBid,
+  IFormerMemberBidsRepository,
+} from "./former-member-bids.repository.js";

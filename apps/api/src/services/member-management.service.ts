@@ -1,6 +1,5 @@
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { ILegalEntityMemberRepository } from "@auction/persistence/interfaces";
-import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { LegalEntityMember } from "@auction/types";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import {
@@ -15,7 +14,6 @@ export class MemberManagementService implements IMemberManagementService {
     private readonly transactionRunner: ITransactionRunner,
     private readonly memberRepo: ILegalEntityMemberRepository,
     private readonly domainEventSink: IDomainEventSink,
-    private readonly repoFactory: IRepositoryFactory,
   ) {}
 
   listMembers(legalEntityId: string): Promise<MemberWithUser[]> {
@@ -72,33 +70,10 @@ export class MemberManagementService implements IMemberManagementService {
       throw new MemberPermissionError("cannot_remove_primary_admin");
     }
 
+    // Bids the member placed for the organisation stay standing; owners and admins can cancel
+    // them afterwards (see FormerMemberBidsService). The removed person is emailed from the
+    // member_removed event.
     await this.transactionRunner.runInTransaction(async (tx) => {
-      const bids = this.repoFactory.forConnection(tx).bid;
-      const pairs = await bids.listActiveProxyBidPairsForMemberOnEntity(
-        target.userId,
-        legalEntityId,
-      );
-      for (const { lotId, bidderId } of pairs) {
-        const cleared = await bids.clearProxyAutoBidForBidderOnLot(lotId, bidderId);
-        if (cleared > 0) {
-          await this.domainEventSink.withTx(tx).publish({
-            aggregateType: "lot",
-            aggregateId: lotId,
-            eventType: "bid.proxy_cancelled",
-            payload: {
-              lotId,
-              bidderUserId: bidderId,
-              buyerLegalEntityId: legalEntityId,
-              reason: "member_removed",
-            },
-            actorUserId: actingUserId,
-            actingLegalEntityId: legalEntityId,
-            schemaVersion: 1,
-            producer: "apps/api",
-          });
-        }
-      }
-
       await this.memberRepo.markRemoved(tx, memberId);
 
       await this.domainEventSink.withTx(tx).publish({

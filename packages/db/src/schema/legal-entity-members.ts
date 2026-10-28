@@ -42,6 +42,8 @@ export const legalEntityMember = pgTable(
     invitedAt: timestamp("invited_at", { mode: "date", withTimezone: true }),
     acceptedAt: timestamp("accepted_at", { mode: "date", withTimezone: true }),
     removedAt: timestamp("removed_at", { mode: "date", withTimezone: true }),
+    /** When the member closed the one-time welcome card shown after accepting an invitation. */
+    welcomeDismissedAt: timestamp("welcome_dismissed_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [

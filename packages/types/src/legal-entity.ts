@@ -91,6 +91,11 @@ export type LegalEntitySummary = {
   isPrimaryAdmin: boolean;
   /** synthetic acting row when a platform admin impersonates. */
   isImpersonation?: boolean;
+  /**
+   * The person joined by accepting an invitation and has not closed the one-time welcome card.
+   * Never true for the person who set the organisation up.
+   */
+  welcomePending?: boolean;
 };
 
 /** Legal Entity Member - user membership in an entity */
