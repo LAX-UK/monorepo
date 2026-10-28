@@ -1,5 +1,9 @@
 import { loadArtEnv, loadArtStorefrontBaseUrl } from "@/env.server";
+import { shopBaseUrl } from "@/lib/artwork/shop-editions.vm";
+import { loadArtCrossProductFooterLinks } from "@/lib/ecosystem/product-directory.server";
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import { ART_REQUEST_PATH_HEADER } from "@/lib/request-path-header";
+import { resolveRetiredArtRoute } from "@/lib/routing/retired-art-routes";
 import {
   X_ROBOTS_TAG_NOINDEX,
   isArtIndexingAllowedForHost,
@@ -10,6 +14,14 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
+  const retired = resolveRetiredArtRoute(request.nextUrl.pathname, {
+    laxAccountUrl,
+    shopBaseUrl: shopBaseUrl(loadArtCrossProductFooterLinks()),
+  });
+  if (retired) {
+    return NextResponse.redirect(new URL(retired, request.url), 308);
+  }
+
   const resolution = resolveLegacyRedirect(request.nextUrl, loadArtStorefrontBaseUrl);
   if (resolution?.kind === "redirect") {
     return NextResponse.redirect(resolution.location, 301);

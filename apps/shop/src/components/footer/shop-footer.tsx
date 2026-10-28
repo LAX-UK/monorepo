@@ -3,7 +3,7 @@ import type { ShopPolicySlug } from "@/content/policies/shop-policy-status";
 import { isShopAuthHref } from "@/lib/is-shop-auth-href";
 import type { ShopFooterAccountState } from "@/lib/shop-footer-account-state";
 import { buildShopFooterVm } from "@/lib/shop-footer.vm";
-import { FOCUS_RING, productCopyrightLine } from "@auction/branding";
+import { FOCUS_RING, hasSocialProfiles, productCopyrightLine } from "@auction/branding";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { LaxLogo } from "@auction/marketing-ui";
 import {
@@ -63,7 +63,7 @@ export function ShopFooter({
         </Link>
       }
       columns={vm.columns}
-      socials={<MarketingFooterSocials />}
+      socials={hasSocialProfiles("shop") ? <MarketingFooterSocials product="shop" /> : undefined}
       copyright={productCopyrightLine("shop")}
       renderLink={renderLink}
     />

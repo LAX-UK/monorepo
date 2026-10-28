@@ -79,6 +79,7 @@ html.dark {
   --color-product-accent: var(--color-link);
 
   --color-warning: oklch(0.78 0.12 85);
+  --color-info-on-surface: var(--status-info-ink-on-dark);
   --color-warning-on-surface: var(--status-warning-ink-on-dark);
   --color-on-warning: oklch(0.18 0.03 85);
   --color-warning-container: oklch(0.28 0.06 85);

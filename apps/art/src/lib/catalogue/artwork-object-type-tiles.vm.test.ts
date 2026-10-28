@@ -9,7 +9,7 @@ const FACETS = [
 
 describe("buildArtworkObjectTypeTiles", () => {
   it("links each medium into the current filters and drops pagination", () => {
-    const state = parseArtworkCatalogueParams({ type: "original", cursor: "c2" });
+    const state = parseArtworkCatalogueParams({ sort: "titleAsc", cursor: "c2" });
     const tiles = buildArtworkObjectTypeTiles(FACETS, state);
 
     expect(tiles).toEqual([
@@ -18,7 +18,7 @@ describe("buildArtworkObjectTypeTiles", () => {
         label: "Paintings",
         countLabel: "12 works",
         imageUrl: "https://cdn.test/p.webp",
-        href: "/paintings?type=original",
+        href: "/paintings?sort=titleAsc",
         active: false,
       },
       {
@@ -26,7 +26,7 @@ describe("buildArtworkObjectTypeTiles", () => {
         label: "Sculpture",
         countLabel: "1 work",
         imageUrl: null,
-        href: "/sculptures?type=original",
+        href: "/sculptures?sort=titleAsc",
         active: false,
       },
     ]);

@@ -62,11 +62,6 @@ const ListQuerySchema = Type.Object({
   q: Type.Optional(Type.String({ minLength: 1, maxLength: 120 })),
 });
 
-/** The Shop channel sells limited editions only; originals are served to the lax.art channel. */
-function isShopChannel(salesChannel: "shop" | "art" | undefined): boolean {
-  return salesChannel === "shop";
-}
-
 type ListQuery = Static<typeof ListQuerySchema>;
 
 /** The catalogue filters a list or facet request asks for. */
@@ -83,11 +78,7 @@ function filterFromQuery(query: ListQuery) {
     ...(query.saleState !== undefined ? { saleState: query.saleState } : {}),
     ...(query.availability !== undefined ? { availability: query.availability } : {}),
     ...(query.editionEligible !== undefined ? { editionEligible: query.editionEligible } : {}),
-    ...(isShopChannel(query.salesChannel)
-      ? { artworkType: "edition" as const }
-      : query.type !== undefined
-        ? { artworkType: query.type }
-        : {}),
+    ...(query.type !== undefined ? { artworkType: query.type } : {}),
     ...(query.minPrice !== undefined ? { minPricePence: query.minPrice } : {}),
     ...(query.maxPrice !== undefined ? { maxPricePence: query.maxPrice } : {}),
     ...(query.sort !== undefined ? { sort: query.sort } : {}),
@@ -178,12 +169,8 @@ export async function registerArtworkRoutes(app: FastifyInstance, catalogue: Cat
     async (request) => {
       const { slug } = request.params as { slug: string };
       const { salesChannel } = request.query as { salesChannel?: "shop" | "art" };
-      const artwork = await catalogue.getPublicArtwork(slug);
-      if (
-        !artwork ||
-        (salesChannel !== undefined && artwork.salesChannel !== salesChannel) ||
-        (isShopChannel(salesChannel) && !artwork.eligibleForEditionAllocation)
-      ) {
+      const artwork = await catalogue.getPublicArtwork(slug, salesChannel);
+      if (!artwork) {
         throw notFound("Artwork not found");
       }
       return presentArtworkDetail(artwork);

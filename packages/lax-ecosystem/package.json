@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./lax-account-origin": {
+      "types": "./dist/lax-account-origin.d.ts",
+      "default": "./dist/lax-account-origin.js"
     }
   },
   "scripts": {

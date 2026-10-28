@@ -11,8 +11,16 @@ import {
 } from "./artwork-catalogue-params.js";
 
 describe("artwork catalogue params", () => {
-  it("maps legacy editionEligible to type=edition", () => {
-    expect(parseArtworkCatalogueParams({ editionEligible: "true" }).type).toBe("edition");
+  it("ignores the retired type, rarity and editionEligible parameters: lax.art lists originals", () => {
+    const state = parseArtworkCatalogueParams({
+      type: "edition",
+      rarity: "limited_edition",
+      editionEligible: "true",
+    });
+    expect(state).toEqual(parseArtworkCatalogueParams({}));
+    expect(artworkCatalogueHref(state)).toBe("/artworks");
+    expect(artworkCatalogueFetchQuery(state)).toEqual({});
+    expect(countActiveArtworkCatalogueFilters(state)).toBe(0);
   });
 
   it("clears cursor when building filter hrefs", () => {
@@ -21,7 +29,7 @@ describe("artwork catalogue params", () => {
       back: "def",
       categorySlug: "painting",
     });
-    expect(artworkCatalogueFilterHref(state, { type: "original" })).not.toContain("cursor=");
+    expect(artworkCatalogueFilterHref(state, { sort: "titleAsc" })).not.toContain("cursor=");
   });
 
   it("converts URL pounds to API pence", () => {
@@ -36,51 +44,41 @@ describe("artwork catalogue params", () => {
     const state = parseArtworkCatalogueParams({
       artistSlug: "flora-powers",
       objectType: "sculpture",
-      rarity: "unique",
     });
     const href = artworkCatalogueFilterHref(state, {
       artistSlugs: null,
       objectTypes: [],
-      rarities: null,
     });
     expect(href).toBe("/artworks");
     expect(artworkCatalogueClearHref()).toBe("/artworks");
   });
 
-  it("round-trips single medium and rarity links and ignores unknown values", () => {
-    const state = parseArtworkCatalogueParams({ objectType: "sculpture", rarity: "unique" });
-    expect(artworkCatalogueFetchQuery(state)).toMatchObject({
-      objectTypes: ["sculpture"],
-      rarities: ["unique"],
-    });
-    expect(artworkCatalogueFilterHref(state)).toBe("/sculptures?rarity=unique");
+  it("round-trips a single medium link and ignores unknown values", () => {
+    const state = parseArtworkCatalogueParams({ objectType: "sculpture" });
+    expect(artworkCatalogueFetchQuery(state)).toMatchObject({ objectTypes: ["sculpture"] });
+    expect(artworkCatalogueFilterHref(state)).toBe("/sculptures");
     expect(
       buildArtworkCatalogueActiveChips(state, { categories: [], artists: [] }).map((c) => c.label),
-    ).toEqual(["Sculpture", "Unique"]);
+    ).toEqual(["Sculpture"]);
 
-    const bogus = parseArtworkCatalogueParams({ objectType: "nft", rarity: "rare" });
-    expect(bogus.objectTypes).toEqual([]);
-    expect(bogus.rarities).toEqual([]);
+    expect(parseArtworkCatalogueParams({ objectType: "nft" }).objectTypes).toEqual([]);
   });
 
   it("reads comma lists and repeated params, and writes comma lists", () => {
     const state = parseArtworkCatalogueParams({
       objectType: ["painting,print", "painting", "nft"],
-      rarity: "unique,open_edition",
       artistSlug: ["ada", "bo"],
     });
     expect(state.objectTypes).toEqual(["painting", "print"]);
-    expect(state.rarities).toEqual(["unique", "open_edition"]);
     expect(state.artistSlugs).toEqual(["ada", "bo"]);
     expect(artworkCatalogueHref(state)).toBe(
-      "/artworks?artistSlug=ada,bo&objectType=painting,print&rarity=unique,open_edition",
+      "/artworks?artistSlug=ada,bo&objectType=painting,print",
     );
     expect(artworkCatalogueFetchQuery(state)).toMatchObject({
       artistSlugs: ["ada", "bo"],
       objectTypes: ["painting", "print"],
-      rarities: ["unique", "open_edition"],
     });
-    expect(countActiveArtworkCatalogueFilters(state)).toBe(6);
+    expect(countActiveArtworkCatalogueFilters(state)).toBe(4);
   });
 
   it("gives every selected value its own removable chip", () => {
@@ -90,7 +88,7 @@ describe("artwork catalogue params", () => {
       artists: [{ slug: "ada", label: "Ada Lane" }],
     });
     expect(chips.map((chip) => [chip.label, chip.removeHref])).toEqual([
-      ["Paintings", "/prints?artistSlug=ada"],
+      ["Paintings", "/artworks?artistSlug=ada&objectType=print"],
       ["Prints", "/paintings?artistSlug=ada"],
       ["Ada Lane", "/artworks?objectType=painting,print"],
     ]);

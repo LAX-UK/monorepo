@@ -48,7 +48,6 @@ export function buildArtFooterVm(input: {
     accountLinks.push(
       { label: "Your account", href: "/account" },
       { label: "Favourites", href: "/account/favourites" },
-      { label: "Collection", href: "/account/collection" },
     );
   } else if (input.accountState.kind === "disabled") {
     accountLinks.push({ label: "Account status", href: input.accountState.accountHref });

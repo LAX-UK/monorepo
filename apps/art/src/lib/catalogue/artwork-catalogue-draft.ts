@@ -1,10 +1,8 @@
 import type {
   ArtworkCatalogueFilterPatch,
   ArtworkCatalogueSort,
-  ArtworkCatalogueType,
   ArtworkCatalogueUrlState,
   ArtworkObjectType,
-  ArtworkRarity,
 } from "./artwork-catalogue-params";
 
 /**
@@ -12,11 +10,9 @@ import type {
  * and only Apply turns it into a navigation. Search (`q`) is not part of it; the header owns search.
  */
 export type ArtworkCatalogueDraft = {
-  type: ArtworkCatalogueType;
   sort: ArtworkCatalogueSort;
   artistSlugs: string[];
   objectTypes: ArtworkObjectType[];
-  rarities: ArtworkRarity[];
   categorySlug: string;
   saleState: NonNullable<ArtworkCatalogueUrlState["saleState"]> | "";
   /** Whole pounds as typed. */
@@ -25,11 +21,9 @@ export type ArtworkCatalogueDraft = {
 };
 
 export const EMPTY_ARTWORK_CATALOGUE_DRAFT: ArtworkCatalogueDraft = {
-  type: "all",
   sort: "newest",
   artistSlugs: [],
   objectTypes: [],
-  rarities: [],
   categorySlug: "",
   saleState: "",
   minPrice: "",
@@ -38,11 +32,9 @@ export const EMPTY_ARTWORK_CATALOGUE_DRAFT: ArtworkCatalogueDraft = {
 
 export function artworkDraftFromState(state: ArtworkCatalogueUrlState): ArtworkCatalogueDraft {
   return {
-    type: state.type,
     sort: state.sort,
     artistSlugs: [...state.artistSlugs],
     objectTypes: [...state.objectTypes],
-    rarities: [...state.rarities],
     categorySlug: state.categorySlug ?? "",
     saleState: state.saleState ?? "",
     minPrice: state.minPrice !== undefined ? String(state.minPrice) : "",
@@ -58,11 +50,9 @@ function parsePounds(value: string): number | null {
 
 export function artworkDraftToPatch(draft: ArtworkCatalogueDraft): ArtworkCatalogueFilterPatch {
   return {
-    type: draft.type,
     sort: draft.sort,
     artistSlugs: draft.artistSlugs,
     objectTypes: draft.objectTypes,
-    rarities: draft.rarities,
     categorySlug: draft.categorySlug || null,
     saleState: draft.saleState || null,
     minPrice: parsePounds(draft.minPrice),

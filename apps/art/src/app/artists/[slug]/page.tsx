@@ -82,23 +82,6 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
         </ArtSection>
       </div>
 
-      {vm.originals.length > 0 ? (
-        <div
-          id={ARTIST_SECTION_IDS.originals}
-          className="bg-[var(--color-surface-feature,var(--color-surface-container-low))] text-[var(--color-on-surface-feature,var(--color-on-surface))]"
-        >
-          <div className={SECTION}>
-            <ArtSection
-              id="artist-originals-list"
-              title="Originals"
-              viewAllHref={`${worksHref}&type=original`}
-            >
-              <ArtArtworkGrid cards={vm.originals} favoriteAuth={vm.favoriteAuth} />
-            </ArtSection>
-          </div>
-        </div>
-      ) : null}
-
       {vm.exhibitions.length > 0 ? (
         <div id={ARTIST_SECTION_IDS.exhibitions} className={SECTION}>
           <ArtSection id="artist-exhibitions-list" title="Exhibitions">

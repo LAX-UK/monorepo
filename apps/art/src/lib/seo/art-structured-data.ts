@@ -4,12 +4,12 @@ import { helpArticleHref, helpCategoryHref } from "@/lib/help/help.vm";
 import {
   type JsonLd,
   LAX_PRODUCT_NAMES,
-  LAX_SOCIAL_LINKS,
   breadcrumbJsonLd,
   legalEntityFor,
   localBusinessJsonLd,
   organizationJsonLd,
   personJsonLd,
+  socialProfilesFor,
   websiteJsonLd,
 } from "@auction/branding";
 import {
@@ -54,6 +54,8 @@ export function artSiteJsonLd(siteUrl: URL): JsonLd[] {
   const url = siteUrl.origin;
   const logo = absolute(siteUrl, "/brand/lax-logo.svg");
   const operator = legalEntityFor("art");
+  // Only London Art Exchange's own profiles, never the auction company's.
+  const sameAs = socialProfilesFor("art").map((profile) => profile.href);
   const shared = {
     name: ART_SITE_NAME,
     legalName: operator.name,
@@ -62,7 +64,7 @@ export function artSiteJsonLd(siteUrl: URL): JsonLd[] {
     description: ART_SITE_DESCRIPTION,
     logo,
     address: operator.registeredAddress.postal,
-    sameAs: Object.values(LAX_SOCIAL_LINKS),
+    ...(sameAs.length > 0 ? { sameAs } : {}),
   };
   return [
     organizationJsonLd(shared),

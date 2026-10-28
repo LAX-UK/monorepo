@@ -24,6 +24,24 @@ describe("Art structured data", () => {
     });
   });
 
+  it("links London Art Exchange's own social profiles and never the auction company's", () => {
+    const nodes = artSiteJsonLd(SITE);
+    const withProfiles = nodes.filter((node) => "sameAs" in node);
+    expect(withProfiles.length).toBeGreaterThan(0);
+    for (const node of withProfiles) {
+      expect(node.sameAs).toEqual([
+        "https://www.youtube.com/@LondonArtExchange",
+        "https://www.instagram.com/thelondonartexchange/",
+        "https://www.tiktok.com/@londonartexchange",
+      ]);
+    }
+    for (const node of nodes) {
+      expect(JSON.stringify(node)).not.toMatch(
+        /londonauctionxchange|lax\.bid|london-auction-xchange/,
+      );
+    }
+  });
+
   it("marks up an original without inventing a price", () => {
     const [artwork, breadcrumb] = artworkJsonLd(artworkDetail({ heightCm: 50 }), SITE);
     expect(artwork).toMatchObject({

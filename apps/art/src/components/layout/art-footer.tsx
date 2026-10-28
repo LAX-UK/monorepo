@@ -59,7 +59,7 @@ export function ArtFooter({ vm }: ArtFooterProps) {
         </Link>
       }
       columns={vm.columns}
-      socials={<MarketingFooterSocials />}
+      socials={<MarketingFooterSocials product="art" />}
       copyright={productCopyrightLine("art")}
       renderLink={renderLink}
     />

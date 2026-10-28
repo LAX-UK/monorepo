@@ -7,35 +7,20 @@
  * - in local development and tests it goes to the Account dev server (`localhost:3040`);
  * - in a production build without the setting it goes to the live portal.
  *
- * Plain data with no imports, so server code and client components agree on one value.
+ * The origin rule and the page paths are shared with every product; they are plain data, so
+ * server code and client components agree on one value.
  */
-export const LOCAL_LAX_ACCOUNT_ORIGIN = "http://localhost:3040";
-export const DEFAULT_LAX_ACCOUNT_ORIGIN = "https://account.lax.bid";
+import {
+  LAX_ACCOUNT_PATHS,
+  resolveLaxAccountOrigin,
+} from "@auction/lax-ecosystem/lax-account-origin";
 
-/** LAX Account pages that replace the retired Shop account tabs. */
-export const LAX_ACCOUNT_PATHS = {
-  home: "/account",
-  /** The LAX-wide address book checkout reads saved addresses from. */
-  addresses: "/account/profile#addresses",
-  /** Every work the person owns or is selling, with each work's documents. */
-  portfolio: "/account/portfolio",
-  /** The portfolio filtered to works bought through LAX Shop. */
-  shopPortfolio: "/account/portfolio?product=shop",
-  /** Seller tools: editions a person may sell, the sales statement, payouts, an artist's works. */
-  sellingEditions: "/account/selling/editions",
-  sellingSales: "/account/selling/sales",
-  sellingPayouts: "/account/selling/payouts",
-  sellingArtworks: "/account/selling/artworks",
-} as const;
-
-export function resolveLaxAccountOrigin(
-  configured: string | undefined,
-  nodeEnv: string | undefined,
-): string {
-  const origin = configured?.trim().replace(/\/+$/, "");
-  if (origin) return origin;
-  return nodeEnv === "production" ? DEFAULT_LAX_ACCOUNT_ORIGIN : LOCAL_LAX_ACCOUNT_ORIGIN;
-}
+export {
+  DEFAULT_LAX_ACCOUNT_ORIGIN,
+  LAX_ACCOUNT_PATHS,
+  LOCAL_LAX_ACCOUNT_ORIGIN,
+  resolveLaxAccountOrigin,
+} from "@auction/lax-ecosystem/lax-account-origin";
 
 /** An absolute LAX Account URL for a path such as `/account/portfolio`. */
 export function laxAccountUrl(path: string = LAX_ACCOUNT_PATHS.home): string {

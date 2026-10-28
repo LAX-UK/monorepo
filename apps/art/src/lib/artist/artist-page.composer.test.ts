@@ -28,14 +28,11 @@ describe("composeArtistPage", () => {
     const result = await composeArtistPage(services, "flora-powers", SITE_URL);
 
     if (result.kind !== "ok") throw new Error("expected ok");
+    // lax.art lists originals only, so one read gives the featured works.
+    expect(services.catalogue.listArtworks).toHaveBeenCalledTimes(1);
     expect(services.catalogue.listArtworks).toHaveBeenCalledWith({
       artistSlugs: ["flora-powers"],
       limit: 8,
-    });
-    expect(services.catalogue.listArtworks).toHaveBeenCalledWith({
-      artistSlugs: ["flora-powers"],
-      type: "original",
-      limit: 4,
     });
     expect(services.favorites.followedArtistSlugs).not.toHaveBeenCalled();
     expect(result.vm).toMatchObject({
@@ -108,10 +105,8 @@ describe("composeArtistPage", () => {
     });
     expect(result.vm.exhibitions.map((card) => card.headline)).toEqual(["Water Lilies"]);
     expect(result.vm.stories.map((card) => card.headline)).toEqual(["In the studio"]);
-    expect(result.vm.originals).toHaveLength(1);
     expect(result.vm.sectionTabs.map((tab) => tab.label)).toEqual([
       "Featured works",
-      "Originals",
       "Exhibitions",
       "Films & stories",
     ]);
@@ -160,23 +155,20 @@ describe("composeArtistPage", () => {
     expect(services.catalogue.listShopEditionsByArtist).toHaveBeenCalledWith("flora-powers", 1);
     expect(some.vm.crossLinks).toEqual([
       expect.objectContaining({
-        label: "Editions in LAX Shop",
+        label: "Editions by Flora Powers in LAX Shop",
         href: "https://shop.example/artists/flora-powers",
       }),
     ]);
   });
 
-  it("hides the originals band when the artist has none", async () => {
+  it("shows no section tabs when the works are the only section", async () => {
     const services = fakeArtServices();
     services.catalogue.getArtist.mockResolvedValue(artist);
-    services.catalogue.listArtworks.mockImplementation(async (query: { type?: string }) => ({
-      items: query.type === "original" ? [] : [artworkSummary()],
-    }));
+    services.catalogue.listArtworks.mockResolvedValue({ items: [artworkSummary()] });
 
     const result = await composeArtistPage(services, "flora-powers", SITE_URL);
 
     if (result.kind !== "ok") throw new Error("expected ok");
-    expect(result.vm.originals).toEqual([]);
     expect(result.vm.sectionTabs).toEqual([]);
   });
 

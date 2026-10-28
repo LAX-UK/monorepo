@@ -15,15 +15,12 @@ import type {
 } from "../application/ports/category-catalogue.reader.js";
 import { publicArtworkVisible } from "./artwork-visibility-sql.js";
 import { toPublicCategorySummary } from "./map-public-category.js";
+import { listedOnSalesChannelSql } from "./sales-channel-listing-sql.js";
 import { publishedHomePlacementForSlot } from "./shop-home-placement-queries.js";
 
-/** A live artwork in the channel: published, not archived, and in Shop a limited edition. */
+/** A live artwork the channel lists: published, not archived, and of the channel's kind. */
 function liveChannelArtwork(channel: CategorySalesChannel): SQL[] {
-  return [
-    eq(shopArtwork.salesChannel, channel),
-    ...(channel === "shop" ? [eq(shopArtwork.eligibleForEditionAllocation, true)] : []),
-    publicArtworkVisible(),
-  ];
+  return [listedOnSalesChannelSql(channel), publicArtworkVisible()];
 }
 
 /** The outer category has at least one live artwork in the channel. */

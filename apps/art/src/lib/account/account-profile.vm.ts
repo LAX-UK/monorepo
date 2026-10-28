@@ -76,14 +76,14 @@ export const ART_ACCOUNT_PROMOS: readonly ArtAccountPromoVm[] = [
   },
   {
     title: "How to sell",
-    description: "Thinking of selling a work? Talk to our specialists.",
+    description: "Collectors sell through LAX Bid. Artists join through the artist portal.",
     href: "/how-to-sell",
     label: "Learn more",
   },
   {
     title: "FAQs",
     description: "Answers to the questions collectors ask most.",
-    href: "/contact",
-    label: "Get in touch",
+    href: "/help",
+    label: "Read the FAQs",
   },
 ];

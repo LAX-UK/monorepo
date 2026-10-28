@@ -256,6 +256,25 @@ describe("commerce artwork interest routes", () => {
     );
   });
 
+  it("proxies authenticated GET seller access with shop.read scope", async () => {
+    const shopApiFetch = vi.fn(async () =>
+      Response.json({ editions: false, payouts: true, artist: false }),
+    );
+    const { app } = createCommerceApp(shopApiFetch);
+    const response = await app.request("/commerce/me/seller-access", {
+      headers: { cookie: AUTH_COOKIE },
+    });
+    expect(response.status).toBe(200);
+    expect(shopApiFetch).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        path: "/v1/me/seller-access",
+        method: "GET",
+        scopes: "shop.read",
+      }),
+    );
+  });
+
   it("proxies authenticated GET artist artworks with shop.read scope", async () => {
     const shopApiFetch = vi.fn(async () =>
       Response.json({

@@ -3,7 +3,6 @@ import {
   artBuyerCredentials,
   artE2eEnabled,
   artE2eSkipReason,
-  artPayoutsEnabled,
   expectSignInRedirect,
   firstArtworkHref,
   signInArtBuyer,
@@ -26,11 +25,14 @@ test.describe("lax.art journeys", () => {
         .click();
     const drawer = page.getByRole("dialog", { name: "Filters" });
     await openFilters();
-    await drawer.getByRole("radio", { name: "Originals", exact: true }).check();
+    // lax.art lists originals only: no Department or Rarity choice to make.
+    await expect(drawer.getByRole("button", { name: "Department" })).toHaveCount(0);
+    await expect(drawer.getByRole("button", { name: "Rarity" })).toHaveCount(0);
+    await drawer.getByRole("radio", { name: "Title (A–Z)", exact: true }).check();
     await drawer.getByRole("button", { name: "Apply" }).click();
-    await expect(page).toHaveURL(/[?&]type=original/);
+    await expect(page).toHaveURL(/[?&]sort=titleAsc/);
     await openFilters();
-    await expect(drawer.getByRole("radio", { name: "Originals", exact: true })).toBeChecked();
+    await expect(drawer.getByRole("radio", { name: "Title (A–Z)", exact: true })).toBeChecked();
     await drawer.getByRole("button", { name: "Cancel" }).click();
 
     const cards = page.getByTestId("art-artwork-card");
@@ -170,21 +172,30 @@ test.describe("lax.art journeys", () => {
     await expect(reloaded).toHaveAttribute("aria-pressed", String(initiallySaved));
   });
 
-  test("payouts tab exists only when the payouts flag is on", async ({ page }) => {
-    // Signed-out visitors are sent to sign-in before the page decides whether the tab exists.
-    await expectSignInRedirect(page, "/account/payouts", "/account/payouts");
+  test("collection and payouts live in LAX Account, not on lax.art", async ({ request }) => {
+    for (const path of ["/account/collection", "/account/payouts"]) {
+      const response = await request.get(path, { maxRedirects: 0 });
+      expect(response.status(), path).toBe(308);
+      expect(response.headers().location, path).toMatch(/\/account\/(portfolio|selling\/payouts)$/);
+    }
+  });
 
+  test("a buyer's account overview leads with enquiries and has no seller tools", async ({
+    page,
+  }) => {
     const credentials = artBuyerCredentials();
     test.skip(!credentials, "nav assertion needs ART_E2E_BUYER_EMAIL and ART_E2E_BUYER_PASSWORD");
     await signInArtBuyer(page, credentials as NonNullable<typeof credentials>, "/account");
     const accountNav = page.getByRole("navigation", { name: "Account sections" });
-    await expect(accountNav.getByRole("link", { name: "Profile" })).toBeVisible();
+    await expect(accountNav.getByRole("link", { name: "Overview" })).toBeVisible();
     await expect(accountNav.getByRole("link", { name: "Enquiries" })).toBeVisible();
-    // Collection and Payouts are not tabs; the profile links to them.
-    await expect(page.getByRole("link", { name: "Your collection" })).toBeVisible();
-    await expect(page.getByRole("link", { name: "Payouts" })).toHaveCount(
-      artPayoutsEnabled ? 1 : 0,
-    );
+    await expect(page.getByRole("heading", { level: 2, name: "Your enquiries" })).toBeVisible();
+    const rows = page.getByTestId("art-account-destinations");
+    await expect(
+      rows.getByRole("link", { name: /Manage your details in LAX Account/ }),
+    ).toBeVisible();
+    await expect(rows.getByRole("link", { name: /Payouts/ })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: "Your collection", exact: true })).toHaveCount(0);
   });
 
   test("favourites tabs are signed-in routes", async ({ page }) => {

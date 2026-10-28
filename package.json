@@ -44,7 +44,7 @@
     "ci:staging-acceptance": "node scripts/ci/run-staging-acceptance-preflight.mjs",
     "ci:identity-acceptance-preflight": "node scripts/ci/run-identity-acceptance-preflight.mjs",
     "ci:docker-patches": "node --test scripts/ci/verify-docker-patched-dependencies.test.mjs",
-    "ci:shop-architecture": "node --test scripts/ci/verify-shop-architecture.test.mjs && node --test scripts/ci/verify-shop-theme.test.mjs && node --test scripts/ci/verify-art-theme.test.mjs && node --test scripts/ci/verify-account-theme.test.mjs && node --test scripts/ci/verify-lax-ecosystem.test.mjs && node scripts/ci/verify-shop-assets.mjs",
+    "ci:shop-architecture": "node --test scripts/ci/verify-status-pill-contrast.test.mjs && node --test scripts/ci/verify-shop-architecture.test.mjs && node --test scripts/ci/verify-shop-theme.test.mjs && node --test scripts/ci/verify-art-theme.test.mjs && node --test scripts/ci/verify-account-theme.test.mjs && node --test scripts/ci/verify-lax-ecosystem.test.mjs && node scripts/ci/verify-shop-assets.mjs",
     "ci:lax-ecosystem": "node --test scripts/ci/verify-lax-ecosystem.test.mjs",
     "ci:seo-migration": "node --test scripts/seo/legacy-thelax.test.mjs",
     "seo:crawl-legacy": "node scripts/seo/crawl-legacy-thelax.mjs",

@@ -175,3 +175,13 @@ export {
   type FulfilmentStageColumn,
   type OrderProblemWindow,
 } from "./order-progress.js";
+export {
+  ARTWORK_RARITIES,
+  SALES_CHANNELS,
+  SALES_CHANNEL_LISTINGS,
+  isListedOnSalesChannel,
+  type ArtworkRarity,
+  type SalesChannel,
+  type SalesChannelListing,
+  type SalesChannelListingCandidate,
+} from "./sales-channel-listing.js";

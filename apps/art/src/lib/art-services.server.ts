@@ -10,14 +10,12 @@ import {
 } from "@/lib/art-catalogue.server";
 import { artIdentityUrl } from "@/lib/art-identity.server";
 import {
-  fetchPortalCollection,
   fetchPortalEnquiries,
   fetchPortalFollowedArtists,
   fetchPortalGeneralEnquiries,
-  fetchPortalPayeeConnect,
   fetchPortalSavedArtworks,
+  fetchPortalSellerAccess,
 } from "@/lib/art-portal.server";
-import { isArtPayoutsEnabled } from "@/lib/art-runtime-flags";
 import { loadArtViewerState } from "@/lib/art-viewer-state.server";
 import { loadArtCrossProductFooterLinks } from "@/lib/ecosystem/product-directory.server";
 import {
@@ -47,7 +45,7 @@ import {
   fetchHelpArticles,
   fetchHelpCategories,
 } from "@/lib/help/art-help.server";
-import { laxAccountPortalHref } from "@/lib/lax-account-url";
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import type {
   ArtAccountConfigPort,
   ArtCataloguePort,
@@ -94,13 +92,11 @@ export const artServices: ArtServices = {
   portal: {
     listEnquiries: fetchPortalEnquiries,
     listGeneralEnquiries: fetchPortalGeneralEnquiries,
-    listCollection: fetchPortalCollection,
-    loadPayeeConnect: fetchPortalPayeeConnect,
+    loadSellerAccess: fetchPortalSellerAccess,
   },
   account: {
-    laxAccountHref: () => laxAccountPortalHref(),
+    laxAccountUrl,
     verifyEmailHref: () => artIdentityUrl("/auth/verify-email"),
-    payoutsEnabled: isArtPayoutsEnabled,
   },
   editorial: {
     enabled: artEditorialFeatureEnabled,

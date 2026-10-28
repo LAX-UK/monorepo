@@ -1,9 +1,14 @@
-import { LAX_SOCIAL_ARIA_LABELS, LAX_SOCIAL_LINKS, type LaxSocialNetwork } from "@auction/branding";
+import {
+  type LaxOperatedProduct,
+  type LaxSocialNetwork,
+  socialProfilesFor,
+} from "@auction/branding";
 import { cn } from "@auction/ui";
 import type { ReactNode, SVGProps } from "react";
 import {
   MarketingInstagramIcon,
   MarketingLinkedInIcon,
+  MarketingTiktokIcon,
   MarketingYoutubeIcon,
 } from "./marketing-social-icons.js";
 
@@ -12,33 +17,35 @@ type MarketingSocialIconProps = SVGProps<SVGSVGElement>;
 const SOCIAL_ICON: Record<LaxSocialNetwork, (props: MarketingSocialIconProps) => ReactNode> = {
   youtube: (props) => <MarketingYoutubeIcon {...props} />,
   instagram: (props) => <MarketingInstagramIcon {...props} />,
+  tiktok: (props) => <MarketingTiktokIcon {...props} />,
   linkedin: (props) => <MarketingLinkedInIcon {...props} />,
 };
 
-const DEFAULT_ORDER: LaxSocialNetwork[] = ["youtube", "instagram", "linkedin"];
-
 export type MarketingFooterSocialsProps = {
+  /** Whose profiles to show: the product's operating company's, never another company's. */
+  product: LaxOperatedProduct;
   className?: string;
   linkClassName?: string;
-  networks?: readonly LaxSocialNetwork[];
 };
 
-/** Footer social row — shared LAX destinations and brand glyphs from marketing-ui. */
+/** Footer social row with brand glyphs; renders nothing while the company has no profiles. */
 export function MarketingFooterSocials({
+  product,
   className,
   linkClassName,
-  networks = DEFAULT_ORDER,
 }: MarketingFooterSocialsProps) {
+  const profiles = socialProfilesFor(product);
+  if (profiles.length === 0) return null;
   return (
     <div className={cn("flex flex-row items-center gap-4", className)}>
-      {networks.map((network) => {
+      {profiles.map(({ network, href, label }) => {
         const Icon = SOCIAL_ICON[network];
         return (
           <a
             key={network}
-            href={LAX_SOCIAL_LINKS[network]}
+            href={href}
             className={linkClassName}
-            aria-label={LAX_SOCIAL_ARIA_LABELS[network]}
+            aria-label={label}
             rel="noreferrer noopener"
             target="_blank"
           >

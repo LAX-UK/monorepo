@@ -1,19 +1,16 @@
 import { GUEST_VIEWER, SIGNED_IN_VIEWER, fakeArtServices } from "@/lib/testing/fake-art-services";
 import { describe, expect, it } from "vitest";
 import {
-  buildArtCollectionRows,
-  composeArtAccountCollectionPage,
   composeArtAccountEnquiriesPage,
   composeArtAccountFollowsPage,
-  composeArtAccountPayoutsPage,
-  composeArtAccountProfilePage,
+  composeArtAccountOverviewPage,
   composeArtAccountSavesPage,
   mergeEnquiryStates,
 } from "./account-page.composer.js";
 
 describe("account page composers", () => {
   it("redirects guests to sign in with a return path", async () => {
-    await expect(composeArtAccountProfilePage(fakeArtServices(GUEST_VIEWER))).resolves.toEqual({
+    await expect(composeArtAccountOverviewPage(fakeArtServices(GUEST_VIEWER))).resolves.toEqual({
       kind: "redirect",
       to: "/login?returnTo=%2Faccount",
     });
@@ -29,23 +26,19 @@ describe("account page composers", () => {
 
   it("reports unavailable identity without redirecting", async () => {
     const services = fakeArtServices({ kind: "unavailable", message: "Account offline" });
-    await expect(composeArtAccountProfilePage(services)).resolves.toEqual({
+    await expect(composeArtAccountOverviewPage(services)).resolves.toEqual({
       kind: "unavailable",
       message: "Account offline",
     });
   });
 
-  it("builds a read-only profile with the env-provided LAX Account link", async () => {
-    const result = await composeArtAccountProfilePage(fakeArtServices(SIGNED_IN_VIEWER));
+  it("leads with enquiries and links profile things to LAX Account", async () => {
+    const result = await composeArtAccountOverviewPage(fakeArtServices(SIGNED_IN_VIEWER));
     if (result.kind !== "ok") throw new Error("expected ok");
     expect(result.vm).toMatchObject({
-      name: "Ada Collector",
-      email: "ada@example.com",
-      phone: "+447700900123",
-      emailVerified: true,
-      laxAccountHref: "https://account.example.test/account",
-      verifyEmailHref: null,
       banner: null,
+      enquiries: { kind: "empty" },
+      moreEnquiries: false,
     });
     expect(result.identity).toEqual({
       name: "Ada Collector",
@@ -53,53 +46,112 @@ describe("account page composers", () => {
       initials: "AC",
     });
     expect(result.nav.map((item) => [item.label, item.active])).toEqual([
-      ["Profile", true],
+      ["Overview", true],
       ["Enquiries", false],
+    ]);
+    expect(result.vm.destinations.map((row) => [row.title, row.href])).toEqual([
+      ["Favourites", "/account/favourites"],
+      ["Following", "/account/favourites/follows"],
+      ["Manage your details in LAX Account", "https://account.example.test/home"],
     ]);
     expect(result.vm.promos.map((promo) => promo.href)).toEqual([
       "/how-to-buy",
       "/how-to-sell",
-      "/contact",
+      "/help",
     ]);
   });
 
-  it("keeps collection reachable from the profile and adds payouts behind the flag", async () => {
-    const services = fakeArtServices(SIGNED_IN_VIEWER);
-    services.account.payoutsEnabled.mockReturnValue(true);
-    const result = await composeArtAccountProfilePage(services);
+  it("never shows a plain buyer Collection or Payouts", async () => {
+    const result = await composeArtAccountOverviewPage(fakeArtServices(SIGNED_IN_VIEWER));
     if (result.kind !== "ok") throw new Error("expected ok");
-    expect(result.vm.secondaryLinks.map((link) => link.href)).toEqual([
-      "/account/collection",
-      "/account/favourites",
-      "/account/payouts",
-    ]);
+    const titles = result.vm.destinations.map((row) => row.title);
+    expect(titles).not.toContain("Payouts");
+    expect(titles.join(" ")).not.toMatch(/collection$/i);
+  });
+
+  it("shows Payouts, in LAX Account, to a payee", async () => {
+    const services = fakeArtServices(SIGNED_IN_VIEWER);
+    services.portal.loadSellerAccess.mockResolvedValue({
+      status: "ok",
+      data: { editions: true, payouts: true, artist: false },
+    });
+    const result = await composeArtAccountOverviewPage(services);
+    if (result.kind !== "ok") throw new Error("expected ok");
+    expect(result.vm.destinations.find((row) => row.id === "payouts")).toMatchObject({
+      href: "https://account.example.test/sellingPayouts",
+      external: true,
+    });
+  });
+
+  it("keeps Payouts hidden when the seller lookup fails", async () => {
+    const services = fakeArtServices(SIGNED_IN_VIEWER);
+    services.portal.loadSellerAccess.mockResolvedValue({ status: "failed" });
+    const result = await composeArtAccountOverviewPage(services);
+    if (result.kind !== "ok") throw new Error("expected ok");
+    expect(result.vm.destinations.map((row) => row.id)).not.toContain("payouts");
+  });
+
+  it("shows the latest three enquiries and offers the rest", async () => {
+    const services = fakeArtServices(SIGNED_IN_VIEWER);
+    services.portal.listGeneralEnquiries.mockResolvedValue({
+      status: "ok",
+      data: [1, 2, 3, 4].map((day) => ({
+        enquiryId: `g${day}`,
+        topic: "general" as const,
+        contextSlug: null,
+        message: "Hello",
+        phone: null,
+        createdAt: `2026-04-0${day}T10:00:00.000Z`,
+      })),
+    });
+    const result = await composeArtAccountOverviewPage(services);
+    if (result.kind !== "ok") throw new Error("expected ok");
+    expect(result.vm.enquiries).toMatchObject({
+      kind: "ok",
+      items: [{ id: "g4" }, { id: "g3" }, { id: "g2" }],
+    });
+    expect(result.vm.moreEnquiries).toBe(true);
+  });
+
+  it("counts saved works and followed artists on their rows", async () => {
+    const services = fakeArtServices(SIGNED_IN_VIEWER);
+    services.favorites.listSavedArtworks.mockResolvedValue({
+      status: "ok",
+      data: [
+        {
+          artworkSlug: "a",
+          artworkTitle: "A",
+          artistName: "Artist",
+          artistSlug: "artist",
+          imageUrl: null,
+          salesChannel: "art",
+          savedAt: "2026-01-01T00:00:00.000Z",
+        },
+      ],
+    });
+    services.favorites.listFollowedArtists.mockResolvedValue({ status: "failed" });
+    const result = await composeArtAccountOverviewPage(services);
+    if (result.kind !== "ok") throw new Error("expected ok");
+    expect(result.vm.destinations.slice(0, 2).map((row) => row.countLabel)).toEqual(["1", null]);
   });
 
   it("shows the incomplete-profile banner for an unverified email", async () => {
-    const result = await composeArtAccountProfilePage(
+    const result = await composeArtAccountOverviewPage(
       fakeArtServices({ ...SIGNED_IN_VIEWER, emailVerified: false }),
     );
     if (result.kind !== "ok") throw new Error("expected ok");
     expect(result.vm.banner).toMatchObject({ title: "You're almost ready" });
   });
 
-  it("sends a missing name to LAX Account through the banner", async () => {
-    const result = await composeArtAccountProfilePage(
-      fakeArtServices({ ...SIGNED_IN_VIEWER, displayName: null }),
+  it("sends a missing phone number to the LAX Account profile through the banner", async () => {
+    const result = await composeArtAccountOverviewPage(
+      fakeArtServices({ ...SIGNED_IN_VIEWER, verifiedPhone: null }),
     );
     if (result.kind !== "ok") throw new Error("expected ok");
     expect(result.vm.banner?.action).toEqual({
-      label: "Add your name",
-      href: "https://account.example.test/account",
+      label: "Add phone number",
+      href: "https://account.example.test/profile",
     });
-  });
-
-  it("hides the LAX Account link when the env var is missing", async () => {
-    const services = fakeArtServices(SIGNED_IN_VIEWER);
-    services.account.laxAccountHref.mockReturnValue(null);
-    const result = await composeArtAccountProfilePage(services);
-    if (result.kind !== "ok") throw new Error("expected ok");
-    expect(result.vm.laxAccountHref).toBeNull();
   });
 
   it("maps saved artworks into cards on the Saves tab", async () => {
@@ -215,73 +267,6 @@ describe("account page composers", () => {
       kind: "sign_in",
       loginHref: "/login?returnTo=%2Faccount%2Fenquiries",
     });
-  });
-
-  it("reports failed collection reads", async () => {
-    const services = fakeArtServices(SIGNED_IN_VIEWER);
-    services.portal.listCollection.mockResolvedValue({ status: "commerce_unavailable" });
-    const result = await composeArtAccountCollectionPage(services);
-    if (result.kind !== "ok") throw new Error("expected ok");
-    expect(result.vm.collection).toEqual({ kind: "failed" });
-  });
-
-  it("hides payouts unless the flag is on", async () => {
-    await expect(composeArtAccountPayoutsPage(fakeArtServices(SIGNED_IN_VIEWER))).resolves.toEqual({
-      kind: "not_found",
-    });
-    const services = fakeArtServices(SIGNED_IN_VIEWER);
-    services.account.payoutsEnabled.mockReturnValue(true);
-    const result = await composeArtAccountPayoutsPage(services);
-    if (result.kind !== "ok") throw new Error("expected ok");
-    expect(result.vm.payouts).toEqual({ kind: "failed" });
-    expect(result.nav).toEqual([]);
-  });
-});
-
-describe("buildArtCollectionRows", () => {
-  it("links only lax.art works and labels editions", () => {
-    expect(
-      buildArtCollectionRows([
-        {
-          kind: "edition",
-          editionId: "e1",
-          artworkId: "a1",
-          artworkSlug: "print",
-          artworkTitle: "Print",
-          salesChannel: "shop",
-          editionNumber: 4,
-          listingStatus: "unlisted",
-          custodyStatus: "held",
-        },
-        {
-          kind: "original",
-          originalSaleId: "s1",
-          artworkId: "a2",
-          artworkSlug: "oil",
-          artworkTitle: "Oil",
-          salesChannel: "art",
-          status: "completed",
-          acquiredAt: "2026-01-01T00:00:00.000Z",
-        },
-      ]),
-    ).toEqual([
-      {
-        key: "edition-e1",
-        title: "Print",
-        href: null,
-        kindLabel: "Edition #4",
-        sourceLabel: "LAX Shop",
-        detail: null,
-      },
-      {
-        key: "original-s1",
-        title: "Oil",
-        href: "/artworks/oil",
-        kindLabel: "Original",
-        sourceLabel: "lax.art",
-        detail: "Acquired 1 Jan 2026",
-      },
-    ]);
   });
 });
 

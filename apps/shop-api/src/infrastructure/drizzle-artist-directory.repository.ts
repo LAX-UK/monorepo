@@ -11,6 +11,7 @@ import type {
 import { publicArtistVisible, publicArtworkVisible } from "./artwork-visibility-sql.js";
 import { toPublicArtistDetail, toPublicArtistSummary } from "./map-public-artist.js";
 import { artworkCountByArtistId, mapArtistRow } from "./public-artist-rows.js";
+import { listedOnSalesChannelSql } from "./sales-channel-listing-sql.js";
 import { publishedHomePlacementForSlot } from "./shop-home-placement-queries.js";
 
 type ArtistDirectoryRepositoryOptions = {
@@ -53,7 +54,7 @@ export function createDrizzleArtistDirectoryRepository(
               .where(
                 and(
                   eq(shopArtwork.artistId, shopArtist.id),
-                  eq(shopArtwork.salesChannel, input.salesChannel),
+                  listedOnSalesChannelSql(input.salesChannel),
                   publicArtworkVisible(),
                 ),
               ),

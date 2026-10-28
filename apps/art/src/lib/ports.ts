@@ -16,16 +16,17 @@ import type {
 } from "@/lib/editorial/art-editorial.types";
 import type { ArtHelpArticleFilter } from "@/lib/help/art-help.types";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
+import type { LaxAccountDestination } from "@auction/lax-ecosystem/lax-account-origin";
 import type {
   EditorialHomeResponse,
   GeneralEnquiryRow,
   HelpArticleDetail,
   HelpArticleSummary,
   HelpCategorySummary,
-  PortalCollectionItem,
   PortalEnquiry,
   PortalFollowedArtist,
   PortalSavedArtwork,
+  PortalSellerAccess,
   PublicArtistDetail,
   PublicArtistList,
   PublicArtworkDetail,
@@ -33,25 +34,21 @@ import type {
   PublicArtworkObjectTypeFacetList,
   PublicCategoryList,
 } from "@auction/shop-contracts";
-import type { PortalPayeeConnectView, ShopPortalFetchResult } from "@auction/shop-portal/portal";
+import type { ShopPortalFetchResult } from "@auction/shop-portal/portal";
 
 export type ArtArtworkListQuery = {
   limit?: number;
   cursor?: string;
-  placement?: "featured_originals" | "featured_prints";
+  placement?: "featured_originals";
   categorySlug?: string;
   /** Works by any of these artists. */
   artistSlugs?: readonly string[];
   /** `available` is every work that is not sold: for sale or price on request. */
   saleState?: "for_sale" | "price_on_application" | "sold" | "available";
-  editionEligible?: boolean;
-  type?: "all" | "original" | "edition";
   /** Works of any of these media. */
   objectTypes?: ReadonlyArray<
     "painting" | "work_on_paper" | "sculpture" | "photography" | "print" | "mixed_media"
   >;
-  /** Works of any of these rarities. */
-  rarities?: ReadonlyArray<"unique" | "limited_edition" | "open_edition">;
   /** Works sharing a category with this artwork slug (the anchor itself is excluded). */
   relatedTo?: string;
   minPrice?: number;
@@ -70,7 +67,7 @@ export type ArtArtistListQuery = {
   letter?: string;
 };
 
-/** Public lax.art catalogue reads (shop-api, salesChannel=art). */
+/** Public lax.art catalogue reads (shop-api, salesChannel=art): originals only, by shop-api's rule. */
 export type ArtCataloguePort = {
   listArtworks(query: ArtArtworkListQuery): Promise<PublicArtworkList>;
   getArtwork(slug: string): Promise<PublicArtworkDetail | null>;
@@ -100,15 +97,14 @@ export type ArtFavoritesReadPort = {
 export type ArtPortalReadPort = {
   listEnquiries(): Promise<ShopPortalFetchResult<PortalEnquiry[]>>;
   listGeneralEnquiries(): Promise<ShopPortalFetchResult<GeneralEnquiryRow[]>>;
-  listCollection(): Promise<ShopPortalFetchResult<PortalCollectionItem[]>>;
-  loadPayeeConnect(): Promise<ShopPortalFetchResult<PortalPayeeConnectView>>;
+  /** Which seller tools the person can use, so Payouts shows only to payees. */
+  loadSellerAccess(): Promise<ShopPortalFetchResult<PortalSellerAccess>>;
 };
 
 export type ArtAccountConfigPort = {
-  /** LAX Account profile editor; null hides the link (env-only, no hardcoded fallback). */
-  laxAccountHref(): string | null;
+  /** A LAX Account page: profile, collection and money live there, not on lax.art. */
+  laxAccountUrl(page: LaxAccountDestination): string;
   verifyEmailHref(): string;
-  payoutsEnabled(): boolean;
 };
 
 /** Editorial reads from shop-api `/v1/editorial/*`; every read reports `disabled` when `ART_EDITORIAL_ENABLED` is off. */

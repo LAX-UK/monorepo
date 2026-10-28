@@ -7,20 +7,15 @@ import {
 } from "./art-account-nav.vm.js";
 
 describe("art account navigation view model", () => {
-  it("lists favorites, inquiries, and collection for the desktop menu", () => {
-    expect(ART_ACCOUNT_LINKS.map((link) => link.label)).toEqual([
-      "Favourites",
-      "Enquiries",
-      "Collection",
-    ]);
+  it("lists lax.art's own pages only, never the collection, for the desktop menu", () => {
+    expect(ART_ACCOUNT_LINKS.map((link) => link.label)).toEqual(["Enquiries", "Favourites"]);
   });
 
   it("puts My account first in the drawer list", () => {
     expect(buildArtMobileAccountLinks("/account", "/").map((link) => link.label)).toEqual([
       "My account",
-      "Favourites",
       "Enquiries",
-      "Collection",
+      "Favourites",
     ]);
   });
 

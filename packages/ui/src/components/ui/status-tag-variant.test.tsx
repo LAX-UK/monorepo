@@ -9,6 +9,15 @@ describe("status pill tones", () => {
     expect(STATUS_TAG_VARIANT[tone].shell).not.toMatch(/text-live-red|text-danger(\s|$)/);
   });
 
+  it.each(["info", "pending", "draft", "public"] as const)(
+    "%s labels and glyph circles use the readable info ink, not the bright info fill",
+    (tone) => {
+      expect(STATUS_TAG_VARIANT[tone].shell).toContain("text-info-on-surface");
+      expect(STATUS_TAG_VARIANT[tone].shell).not.toMatch(/text-info(\s|$)/);
+      expect(STATUS_TAG_VARIANT[tone].iconBg).toBe("bg-info-on-surface");
+    },
+  );
+
   it("draws the warning glyph on the dark amber text token, not the bright fill", () => {
     expect(STATUS_TAG_VARIANT.warning.shell).toContain("text-warning-on-surface");
     expect(STATUS_TAG_VARIANT.warning.iconBg).toBe("bg-warning-on-surface");

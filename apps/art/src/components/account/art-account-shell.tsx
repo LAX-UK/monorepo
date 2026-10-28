@@ -1,4 +1,3 @@
-import { ArtPageHeader } from "@/components/art-page-header";
 import { ArtStatusState, ArtStatusStateLink } from "@/components/art-status-state";
 import type { ArtAccountNavItem } from "@/lib/account/account-nav.vm";
 import type {
@@ -9,14 +8,11 @@ import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import { MarketingPageTitle, MarketingSubNav } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { Avatar, AvatarFallback } from "@auction/ui/components/avatar";
-import { notFound, redirect } from "next/navigation";
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
-/**
- * `account`: monogram band (Figma 867:16367). `favourites`: centred title band (867:15986).
- * `standalone`: breadcrumb header for routes Figma omits (collection, payouts).
- */
-export type ArtAccountLayout = "account" | "favourites" | "standalone";
+/** `account`: monogram band (Figma 867:16367). `favourites`: centred title band (867:15986). */
+export type ArtAccountLayout = "account" | "favourites";
 
 export type ArtAccountShellProps = {
   layout: ArtAccountLayout;
@@ -52,17 +48,6 @@ function AccountBand({ identity }: { identity: ArtAccountIdentityVm }) {
 }
 
 export function ArtAccountShell({ layout, title, nav, identity, children }: ArtAccountShellProps) {
-  if (layout === "standalone") {
-    return (
-      <div className={cn(MARKETING_PAGE_SHELL, "py-6 lg:py-10")}>
-        <ArtPageHeader
-          title={title}
-          breadcrumbs={[{ label: "Account", href: "/account" }, { label: title }]}
-        />
-        <div className="mt-8 min-w-0">{children}</div>
-      </div>
-    );
-  }
   const active = nav.find((item) => item.active)?.id ?? "";
   return (
     <div className={cn(MARKETING_PAGE_SHELL, "pb-12 lg:pb-16")}>
@@ -82,7 +67,7 @@ export function ArtAccountShell({ layout, title, nav, identity, children }: ArtA
   );
 }
 
-/** Applies gate outcomes (redirect, 404, identity outage) and renders the shell for `ok`. */
+/** Applies gate outcomes (redirect, identity outage) and renders the shell for `ok`. */
 export function ArtAccountPage<T>({
   result,
   title,
@@ -95,7 +80,6 @@ export function ArtAccountPage<T>({
   children: (vm: T) => ReactNode;
 }) {
   if (result.kind === "redirect") redirect(result.to);
-  if (result.kind === "not_found") notFound();
   if (result.kind === "unavailable") {
     return (
       <div className={cn(MARKETING_PAGE_SHELL, "py-10")}>

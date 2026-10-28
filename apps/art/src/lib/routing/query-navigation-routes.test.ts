@@ -34,7 +34,7 @@ describe("query-navigated routes", () => {
     const cataloguePages = pages(appDir).filter((page) =>
       readFileSync(page, "utf8").includes("<ArtArtworksCataloguePage"),
     );
-    expect(cataloguePages.length).toBeGreaterThanOrEqual(4);
+    expect(cataloguePages.length).toBeGreaterThanOrEqual(3);
     for (const page of cataloguePages) expectNoLoadingAbove(page);
   });
 

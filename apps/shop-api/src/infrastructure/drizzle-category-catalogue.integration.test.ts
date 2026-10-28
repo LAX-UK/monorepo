@@ -92,7 +92,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle category catalogue", () => {
       published: false,
     });
     await artwork("original", originals.id, { edition: false, channel: "shop", published: true });
-    await artwork("art-edition", artOnly.id, { edition: true, channel: "art", published: true });
+    await artwork("art-original", artOnly.id, { edition: false, channel: "art", published: true });
     const archivedId = await artwork("archived-edition", archived.id, {
       edition: true,
       channel: "shop",

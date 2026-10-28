@@ -10,7 +10,7 @@ import type { DotStatusPillTone } from "./dot-status-pill.js";
  * - critical: danger ban — rejected, cancelled, failed
  * - neutral: grey x — ended, inactive, archived
  *
- * Labels on the warning and danger tints, and the warning glyph circle, use the `*-on-surface`
+ * Labels on the info, warning and danger tints, and the info and warning glyph circles, use the `*-on-surface`
  * tokens, which every product theme defines to reach 4.5:1 on the tint in light and dark.
  * Bright `live-red` stays on the live glyph circle only.
  */
@@ -53,17 +53,17 @@ const SUCCESS_VARIANT: StatusTagVariant = {
 };
 
 const INFO_VARIANT: StatusTagVariant = {
-  shell: iconShell("bg-info-container", "text-info"),
-  iconColor: "text-info",
-  iconBg: "bg-info",
+  shell: iconShell("bg-info-container", "text-info-on-surface"),
+  iconColor: "text-info-on-surface",
+  iconBg: "bg-info-on-surface",
   glyph: "info",
   useIcon: true,
 };
 
 const PUBLIC_VARIANT: StatusTagVariant = {
-  shell: iconShell("bg-info-container", "text-info"),
-  iconColor: "text-info",
-  iconBg: "bg-info",
+  shell: iconShell("bg-info-container", "text-info-on-surface"),
+  iconColor: "text-info-on-surface",
+  iconBg: "bg-info-on-surface",
   glyph: "eye",
   useIcon: true,
 };
@@ -95,17 +95,17 @@ export const STATUS_TAG_VARIANT: Record<DotStatusPillTone, StatusTagVariant> = {
     useIcon: true,
   },
   pending: {
-    shell: iconShell("bg-info-container", "text-info"),
-    iconColor: "text-info",
-    iconBg: "bg-info",
+    shell: iconShell("bg-info-container", "text-info-on-surface"),
+    iconColor: "text-info-on-surface",
+    iconBg: "bg-info-on-surface",
     glyph: "clock",
     useIcon: true,
   },
   info: INFO_VARIANT,
   draft: {
-    shell: iconShell("bg-info-container", "text-info"),
-    iconColor: "text-info",
-    iconBg: "bg-info",
+    shell: iconShell("bg-info-container", "text-info-on-surface"),
+    iconColor: "text-info-on-surface",
+    iconBg: "bg-info-on-surface",
     glyph: "file",
     useIcon: true,
   },
