@@ -116,21 +116,30 @@ export function ImageGallery({
         title={current?.title ?? label}
         description={current?.caption}
         footer={
-          total > 1 && openIndex !== null ? (
-            <div className="flex w-full items-center justify-between gap-3">
-              <StaffButton
-                variant="secondary"
-                icon={<ChevronLeft aria-hidden />}
-                onClick={() => step(-1)}
-              >
-                Previous
-              </StaffButton>
-              <span className="text-staff-sm text-staff-muted" aria-live="polite">
-                {openIndex + 1} of {total}
-              </span>
-              <StaffButton variant="secondary" onClick={() => step(1)}>
-                Next
-                <ChevronRight aria-hidden />
+          openIndex !== null ? (
+            <div className="flex w-full flex-wrap items-center justify-between gap-3">
+              {total > 1 ? (
+                <div className="flex items-center gap-2">
+                  <StaffButton
+                    variant="secondary"
+                    icon={<ChevronLeft aria-hidden />}
+                    onClick={() => step(-1)}
+                  >
+                    Previous
+                  </StaffButton>
+                  <StaffButton variant="secondary" onClick={() => step(1)}>
+                    Next
+                    <ChevronRight aria-hidden />
+                  </StaffButton>
+                  <span className="ml-2 text-staff-sm text-staff-muted" aria-live="polite">
+                    {openIndex + 1} of {total}
+                  </span>
+                </div>
+              ) : (
+                <span />
+              )}
+              <StaffButton variant="secondary" onClick={() => setOpenIndex(null)}>
+                Close
               </StaffButton>
             </div>
           ) : null

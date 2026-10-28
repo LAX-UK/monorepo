@@ -46,5 +46,6 @@ describe("ImageGallery", () => {
     render(<ImageGallery items={ITEMS.slice(0, 1)} label="Works" />);
     fireEvent.click(screen.getByRole("button", { name: "View Morning tide, 1 of 1" }));
     expect(screen.queryByRole("button", { name: "Next" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Close" }).length).toBeGreaterThan(0);
   });
 });
