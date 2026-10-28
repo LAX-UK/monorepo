@@ -125,6 +125,7 @@ export function ArtGeneralEnquirySheet({
                   >
                     <SelectTrigger
                       id={topicId}
+                      variant="underline"
                       className="min-h-11"
                       aria-invalid={topicError ? true : undefined}
                     >
