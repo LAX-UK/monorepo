@@ -17,6 +17,7 @@ import {
   formatGbp,
   parseStaffPageSize,
 } from "@auction/staff-ui";
+import { runListLabel } from "./edition-run.vm";
 import { type RawSearchParams, listHref, oneOf, singleParam } from "./list-url-state";
 
 export const ARTWORK_LIST_PATH = "/artworks";
@@ -30,6 +31,8 @@ export type ArtworkListQuery = {
   artist?: string;
   sale?: AdminArtworkSaleState;
   channel?: AdminArtworkChannel;
+  /** Runs whose edition facts are not recorded or not confirmed yet. */
+  facts?: "needs_review";
   /** Oldest change first; absent for the default, last changed first. */
   sort?: "updated_asc";
   /** Rows per page, absent for the default of 50. */
@@ -80,6 +83,7 @@ export function parseArtworkListQuery(params: RawSearchParams): ArtworkListQuery
   const artist = artistParam && UUID.test(artistParam) ? artistParam : undefined;
   const sale = oneOf(singleParam(params.sale), ADMIN_ARTWORK_SALE_STATES);
   const channel = oneOf(singleParam(params.channel), ADMIN_ARTWORK_CHANNELS);
+  const facts = oneOf(singleParam(params.facts), ["needs_review"] as const);
   const sort = oneOf(singleParam(params.sort), ["updated_asc"] as const);
   const limit = parseStaffPageSize(singleParam(params.limit));
   const cursor = singleParam(params.cursor);
@@ -91,6 +95,7 @@ export function parseArtworkListQuery(params: RawSearchParams): ArtworkListQuery
     ...(artist ? { artist } : {}),
     ...(sale ? { sale } : {}),
     ...(channel ? { channel } : {}),
+    ...(facts ? { facts } : {}),
     ...(sort ? { sort } : {}),
     ...(limit !== STAFF_DEFAULT_PAGE_SIZE ? { limit: String(limit) } : {}),
     ...(cursor ? { cursor } : {}),
@@ -118,7 +123,7 @@ export function artworkPageSize(query: ArtworkListQuery): number {
 
 /** True when a search or filter narrows the list; the view and paging do not count. */
 export function hasActiveArtworkFilters(query: ArtworkListQuery): boolean {
-  return Boolean(query.q || query.artist || query.sale || query.channel);
+  return Boolean(query.q || query.artist || query.sale || query.channel || query.facts);
 }
 
 /**
@@ -155,6 +160,7 @@ export function artworkListApiQuery(query: ArtworkListQuery): Record<string, str
     artistId: query.artist,
     saleState: query.sale,
     salesChannel: query.channel,
+    facts: query.facts,
     sort: query.sort,
     limit: query.limit,
   };
@@ -164,19 +170,22 @@ export function artworkListApiQuery(query: ArtworkListQuery): Record<string, str
   >;
 }
 
-/** "24" for an edition run, "Original" for a unique work. */
-export function editionSizeLabel(item: Pick<AdminArtworkListItem, "editionSize">): string {
-  return item.editionSize > 0 ? String(item.editionSize) : "Original";
+/** The run column: "LAX standard 24", "Custom 40", "Open", "AP 3", or "Original". */
+export function editionSizeLabel(item: Pick<AdminArtworkListItem, "run">): string {
+  return item.run ? runListLabel(item.run.spec) : "Original";
 }
+
+/** The facts filter's label, for the chip and the filter menu. */
+export const FACTS_FILTER_LABEL = "Edition facts: needs review";
 
 /** What the price column says: the edition price, or why there is none. */
 export function artworkPriceLabel(item: {
   printPricePence: number | null;
-  editionSize: number;
+  run: AdminArtworkListItem["run"];
   saleState: AdminArtworkSaleState;
 }): string {
   if (item.printPricePence !== null) return formatGbp(item.printPricePence);
-  if (item.editionSize === 0) return "On enquiry";
+  if (!item.run) return "On enquiry";
   return item.saleState === "price_on_application" ? "On application" : "Not priced";
 }
 

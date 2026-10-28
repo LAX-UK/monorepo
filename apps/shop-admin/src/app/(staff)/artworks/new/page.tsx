@@ -11,7 +11,11 @@ export default async function NewArtworkPage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const result = await loadNewArtworkPage(singleParam((await searchParams).artist));
+  const params = await searchParams;
+  const result = await loadNewArtworkPage(
+    singleParam(params.artist),
+    singleParam(params.companionOf),
+  );
   if (result.status === "unauthorized") redirect("/login");
   if (result.status !== "ok") return <AdminFailedPage title="New artwork" status={result.status} />;
   if (!result.data.permissions.write) {
@@ -21,6 +25,7 @@ export default async function NewArtworkPage({
     <ArtworkEditor
       detail={null}
       initialArtist={result.data.initialArtist}
+      companionOf={result.data.companionOf}
       permissions={result.data.permissions}
       currentYear={new Date().getFullYear()}
     />

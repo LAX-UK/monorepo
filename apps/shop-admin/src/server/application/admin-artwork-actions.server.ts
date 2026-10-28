@@ -169,7 +169,7 @@ export async function searchOriginalArtworkOptions(
   const result = await fetchAdminJson<AdminArtworkList>(`artworks?${params.toString()}`);
   if (result.status !== "ok") return [];
   return result.data.items
-    .filter((artwork) => artwork.editionSize === 0 && artwork.state !== "archived")
+    .filter((artwork) => artwork.run === null && artwork.state !== "archived")
     .slice(0, 20)
     .map((artwork) => ({
       id: artwork.artworkId,

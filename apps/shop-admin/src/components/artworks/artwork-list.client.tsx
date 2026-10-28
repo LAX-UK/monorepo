@@ -2,6 +2,7 @@
 
 import { ArtworkQuickView } from "@/components/artworks/artwork-quick-view.client";
 import { ArtworkThumbnail } from "@/components/artworks/artwork-thumbnail";
+import { SetFactsDialog } from "@/components/artworks/edition-runs/set-facts-dialog.client";
 import { useListNavigation } from "@/components/use-list-navigation.client";
 import { useListPanel } from "@/components/use-list-panel.client";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
@@ -15,6 +16,7 @@ import {
   ARTWORK_VIEW_ORDER,
   type ArtworkListQuery,
   CHANNEL_LABELS,
+  FACTS_FILTER_LABEL,
   SALE_STATE_LABELS,
   VISIBILITY_ACTION_LABELS,
   artworkListHref,
@@ -30,6 +32,7 @@ import {
   summariseBulkVisibility,
   visibilityConfirmCopy,
 } from "@/server/domain/artwork-list.vm";
+import { factsListLabel } from "@/server/domain/edition-run.vm";
 import { presentStatus } from "@/server/domain/staff-status";
 import { pageSummary } from "@/server/domain/work-list.vm";
 import {
@@ -55,6 +58,7 @@ import {
   StaffButton,
   StaffDate,
   type StaffLinkComponent,
+  StatusBadge,
   TableSearch,
   searchChipLabel,
   toast,
@@ -62,6 +66,7 @@ import {
 import {
   Archive,
   ArchiveRestore,
+  ClipboardCheck,
   Eye,
   EyeOff,
   FileInput,
@@ -121,6 +126,7 @@ export function ArtworkList({
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [change, setChange] = useState<PendingChange | null>(null);
   const [running, setRunning] = useState(false);
+  const [settingFacts, setSettingFacts] = useState<AdminArtworkListItem[] | null>(null);
   const filtered = hasActiveArtworkFilters(query);
   const counts = page.counts;
   const total = counts ? Object.values(counts).reduce((sum, count) => sum + count, 0) : undefined;
@@ -196,15 +202,28 @@ export function ArtworkList({
       },
       {
         id: "edition",
-        header: "Editions sold",
-        width: "128px",
-        numeric: true,
+        header: "Run",
+        width: "168px",
         hideBelow: "lg",
         mobile: "meta",
         cell: (row) =>
-          row.editionSize > 0
-            ? `${row.soldEditionCount} of ${editionSizeLabel(row)}`
+          row.run && row.soldEditionCount > 0
+            ? `${editionSizeLabel(row)} · ${row.soldEditionCount} sold`
             : editionSizeLabel(row),
+      },
+      {
+        id: "facts",
+        header: "Edition facts",
+        width: "136px",
+        hideBelow: "xl",
+        mobile: "hidden",
+        truncate: false,
+        cell: (row) =>
+          row.run ? (
+            <StatusBadge tone={row.run.factsStatus === "confirmed" ? "neutral" : "warning"}>
+              {factsListLabel(row.run)}
+            </StatusBadge>
+          ) : null,
       },
       {
         id: "price",
@@ -293,6 +312,15 @@ export function ArtworkList({
           },
         ]
       : []),
+    ...(query.facts
+      ? [
+          {
+            id: "facts",
+            label: FACTS_FILTER_LABEL,
+            onRemove: () => navigate(artworkListHref(query, { facts: null })),
+          },
+        ]
+      : []),
   ];
 
   const newArtwork = permissions.write ? (
@@ -378,6 +406,14 @@ export function ArtworkList({
                 })),
                 value: query.channel ?? "",
               },
+              {
+                kind: "radio",
+                id: "facts",
+                label: "Edition facts",
+                anyLabel: "Any",
+                options: [{ value: "needs_review", label: "Needs review" }],
+                value: query.facts ?? "",
+              },
             ]}
             onApply={(values) =>
               navigate(
@@ -385,6 +421,7 @@ export function ArtworkList({
                   artist: (values.artist as string) || null,
                   sale: ((values.sale as string) || null) as AdminArtworkSaleState | null,
                   channel: ((values.channel as string) || null) as AdminArtworkChannel | null,
+                  facts: values.facts === "needs_review" ? "needs_review" : null,
                 }),
               )
             }
@@ -454,8 +491,8 @@ export function ArtworkList({
                 selectedIds: selected,
                 onSelectedIdsChange: setSelected,
                 bulkNoun: { one: "artwork", other: "artworks" },
-                bulkActions: (rows: AdminArtworkListItem[]) =>
-                  bulkVisibilityActions(rows).map((action) => {
+                bulkActions: (rows: AdminArtworkListItem[]) => [
+                  ...bulkVisibilityActions(rows).map((action) => {
                     const Icon = ACTION_ICON[action];
                     return (
                       <StaffButton
@@ -470,6 +507,21 @@ export function ArtworkList({
                       </StaffButton>
                     );
                   }),
+                  ...(rows.some((row) => row.run !== null)
+                    ? [
+                        <StaffButton
+                          key="set-facts"
+                          size="sm"
+                          variant="ghost"
+                          icon={<ClipboardCheck aria-hidden />}
+                          disabled={running}
+                          onClick={() => setSettingFacts(rows)}
+                        >
+                          Set edition facts…
+                        </StaffButton>,
+                      ]
+                    : []),
+                ],
               }
             : {}),
         }}
@@ -489,6 +541,19 @@ export function ArtworkList({
             : null
         }
       />
+      {settingFacts ? (
+        <SetFactsDialog
+          open
+          onOpenChange={(open) => {
+            if (!open) setSettingFacts(null);
+          }}
+          rows={settingFacts}
+          onDone={() => {
+            setSelected(new Set());
+            router.refresh();
+          }}
+        />
+      ) : null}
       <ArtworkQuickView
         artworkId={panel.openId}
         reloadKey={(() => {
