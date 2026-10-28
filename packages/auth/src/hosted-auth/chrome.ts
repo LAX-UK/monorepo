@@ -65,6 +65,15 @@ export function productName(product: HostedNamedProduct, label: string): string 
   return `<span class="product-name product-name--${product}">${escapeHostedHtml(label)}</span>`;
 }
 
+export type HostedLeadKey = keyof typeof HOSTED_COPY.leads;
+
+/** A page's lead, naming the destination product in its own colour when there is one. */
+export function leadWithDestination(key: HostedLeadKey, chip: HostedProductChip | null): string {
+  const lead = HOSTED_COPY.leads[key];
+  if (!chip) return escapeHostedHtml(lead.alone);
+  return `${escapeHostedHtml(lead.toProduct)} ${productName(chip.product, chip.label)}.`;
+}
+
 /** "to continue to LAX Bid", under the heading, when the person came from a product. */
 export function destinationLine(chip: HostedProductChip | null): string {
   if (!chip) return "";

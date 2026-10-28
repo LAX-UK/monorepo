@@ -1,6 +1,12 @@
 import type { HostedBrandProfile } from "./brand.js";
 import type { HostedFieldKind } from "./browser/constraints.js";
-import { destinationLine, hostedFooter, hostedHeader } from "./chrome.js";
+import {
+  type HostedLeadKey,
+  destinationLine,
+  hostedFooter,
+  hostedHeader,
+  leadWithDestination,
+} from "./chrome.js";
 import { HOSTED_COPY } from "./copy.js";
 import { escapeHostedHtml, escapeJsonScript } from "./escape.js";
 import { hostedFaviconLinkTags } from "./favicons.js";
@@ -43,6 +49,8 @@ export type HostedAuthPage = {
   footer?: HostedFooterLinks;
   /** "to continue to LAX Bid" under the heading. Off for error pages, which go nowhere yet. */
   showDestination?: boolean;
+  /** A lead that names the destination itself, in place of the description and the separate line. */
+  lead?: HostedLeadKey;
   productBack?: { href: string; label: string };
 };
 
@@ -281,7 +289,13 @@ export function buildHostedAuthHtml(page: HostedAuthPage): string {
   const productBack = page.productBack
     ? `<p class="product-back"><a class="product-back-link" href="${escapeHostedHtml(page.productBack.href)}">${PRODUCT_BACK_CHEVRON}<span>${escapeHostedHtml(page.productBack.label)}</span></a></p>`
     : "";
-  const destination = page.showDestination === false ? "" : destinationLine(page.brand.chip);
+  const destination =
+    page.lead || page.showDestination === false ? "" : destinationLine(page.brand.chip);
+  const lead = page.lead
+    ? leadWithDestination(page.lead, page.brand.chip)
+    : page.description
+      ? escapeHostedHtml(page.description)
+      : "";
   // Every hosted page is the LAX Account, whichever product the person came from. The theme
   // script has no `defer`: it sets the theme class before the first paint.
   return `<!doctype html>
@@ -306,7 +320,7 @@ ${fontPreloadTags()}
           <div class="heading">
             <h1>${escapeHostedHtml(page.title)}</h1>
             ${destination}
-            ${page.description ? `<p class="lead">${escapeHostedHtml(page.description)}</p>` : ""}
+            ${lead ? `<p class="lead">${lead}</p>` : ""}
           </div>
           <div class="panel">${page.body}</div>
           <noscript><p class="lead">Enable JavaScript to continue signing in.</p></noscript>

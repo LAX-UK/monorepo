@@ -269,13 +269,12 @@ body {
     padding-top: 2.5rem;
   }
 
-  /* Decoration only, so it is a background: a phone never downloads it. */
+  /* Decoration only, so it is a background: a phone never downloads it. It stretches with the
+     panel, so a long form never leaves an empty strip below the painting. */
   .auth-art {
-    position: sticky;
-    top: 0;
     display: block;
     flex: 1;
-    height: 100vh;
+    min-height: 100vh;
     background: var(--color-surface-container) url("${GALLERY_URL}") 50% 40% / cover no-repeat;
   }
 }

@@ -1,5 +1,4 @@
 import { oneAccountSection } from "../chrome.js";
-import { HOSTED_COPY } from "../copy.js";
 import {
   buildHostedAuthHtml,
   continuationAnchor,
@@ -103,13 +102,14 @@ function combinedBody(view: HostedAuthView): string {
 
 export function buildHostedLoginHtml(view: HostedAuthView = hostedAuthViewFromSearch("")): string {
   const productBack = resolveHostedProductBackLink(view);
-  const description =
+  // Staff sign-in names its tool in the lead; customers are told where they are heading.
+  const lead =
     view.flow.audience === "staff"
-      ? "Staff sign-in for LAX Shop Admin."
-      : `Sign in with your ${HOSTED_COPY.accountName}.`;
+      ? { description: "Staff sign-in for LAX Shop Admin.", showDestination: false }
+      : { lead: "signIn" as const };
   return buildHostedAuthHtml({
     title: "Sign in",
-    description,
+    ...lead,
     ...viewChrome(view),
     body: view.capabilities.emailFirst ? emailFirstBody(view) : combinedBody(view),
     scriptSrc: "/hosted-login.js",

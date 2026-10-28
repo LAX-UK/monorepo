@@ -238,10 +238,11 @@ describe("issuer-hosted credential HTML", () => {
     const view = hostedAuthViewFromSearch(shopSearch, shopCapabilities);
     const html = buildHostedLoginHtml(view);
     expect(html).toContain("/hosted-auth/lockups/lax-account.svg");
+    // One line says both: the account to use and where it leads.
     expect(html).toContain(
-      '<p class="destination">to continue to <span class="product-name product-name--shop">LAX Shop</span></p>',
+      '<p class="lead">Sign in with your LAX Account to continue to <span class="product-name product-name--shop">LAX Shop</span>.</p>',
     );
-    expect(html).toContain("Sign in with your LAX Account.");
+    expect(html).not.toContain('class="destination"');
     expect(textOf(html)).toContain("One account for all of LAX");
     expect(html).toContain("Continue with Google");
     expect(html).toContain('class="btn-mark"');
@@ -448,6 +449,15 @@ describe("sign-up agreement and links", () => {
     expect(html).toContain(`<a class="text-link" href="${privacy}">Privacy notice</a>`);
   });
 
+  it("merges the destination into the sign-up lead", () => {
+    const shop = buildHostedSignUpHtml(hostedAuthViewFromSearch(shopSearch, shopCapabilities));
+    expect(textOf(shop)).toContain("Create an account once to continue to LAX Shop.");
+    expect(shop).not.toContain('class="destination"');
+    expect(textOf(buildHostedSignUpHtml())).toContain(
+      "Create an account once and use it across LAX.",
+    );
+  });
+
   it("offers Sign in with the verb as the link, mirroring sign-in's Sign up", () => {
     const html = buildHostedSignUpHtml(hostedAuthViewFromSearch(shopSearch, shopCapabilities));
     expect(html).toContain(
@@ -500,6 +510,7 @@ describe("Shop Admin hosted login", () => {
     expect(html).toContain("brand-tagline");
     expect(html).toContain("Shop Admin");
     expect(html).toContain("Staff sign-in for LAX Shop Admin.");
+    expect(html).not.toContain("to continue to");
     expect(html).toContain("staff-access-note");
     expect(html).not.toContain("Continue with Google");
     expect(html).not.toContain("Email me a sign-in link instead");

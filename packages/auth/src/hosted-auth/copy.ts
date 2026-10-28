@@ -16,6 +16,21 @@ export const HOSTED_COPY = {
   /** Quiet line under the heading when the person came from a product: "to continue to LAX Bid". */
   continueTo: "to continue to",
   /**
+   * The line under sign-in and sign-up headings: on its own, or naming the product the person is
+   * heading to ("Sign in with your LAX Account to continue to LAX Bid."), so the page never says
+   * the same thing twice.
+   */
+  leads: {
+    signIn: {
+      alone: "Sign in with your LAX Account.",
+      toProduct: "Sign in with your LAX Account to continue to",
+    },
+    signUp: {
+      alone: "Create an account once and use it across LAX.",
+      toProduct: "Create an account once to continue to",
+    },
+  },
+  /**
    * Who provides the account, for the footer. The issuer may not import `@auction/branding`, so
    * this is a copy of `legalOperatorSentence("account")`; `packages/branding/tests` fails when it
    * drifts from the registry.

@@ -36,7 +36,7 @@ export function buildHostedSignUpHtml(view: HostedAuthView = hostedAuthViewFromS
   const productBack = resolveHostedProductBackLink(view);
   return buildHostedAuthHtml({
     title: `Create your ${HOSTED_COPY.accountName}`,
-    description: "Create an account once and use it across LAX.",
+    lead: "signUp",
     ...viewChrome(view),
     body: `<div id="signup-root" class="auth-stack">
       ${socialActions(view)}
