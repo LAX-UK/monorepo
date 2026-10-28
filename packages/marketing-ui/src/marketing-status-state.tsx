@@ -5,7 +5,11 @@ import { Slot } from "@radix-ui/react-slot";
 import type { ComponentPropsWithoutRef, ReactNode } from "react";
 import { MarketingCircleAlertIcon } from "./marketing-icons.js";
 
-export type MarketingStatusStateLayout = "inline" | "page" | "banner" | "compact";
+/**
+ * `inline` is a panel with a border; `open` is the same content on the page itself, with no box;
+ * `page` fills the view; `compact` fits a table or short list; `banner` is a one-line notice.
+ */
+export type MarketingStatusStateLayout = "inline" | "open" | "page" | "banner" | "compact";
 export type MarketingStatusStateVariant = "empty" | "error";
 /**
  * A drawing from the LAX illustration set. The older names stay as aliases: `gallery` is the

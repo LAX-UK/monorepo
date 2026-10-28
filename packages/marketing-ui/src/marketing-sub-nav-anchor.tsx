@@ -105,7 +105,13 @@ function useScrollSpy(
         for (const entry of entries) visible.set(entry.target.id, entry.isIntersecting);
         if (pausedRef.current) return;
         const first = ids.find((id) => visible.get(id));
-        if (first) setActiveId(first);
+        if (first) {
+          setActiveId(first);
+          return;
+        }
+        // Scrolled back above every section: the first tab is the true position again.
+        const top = sections[0];
+        if (top && top.getBoundingClientRect().top > offset()) setActiveId(top.id);
       },
       { rootMargin: `-${Math.round(offset())}px 0px -55% 0px` },
     );

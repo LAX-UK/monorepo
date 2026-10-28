@@ -1,3 +1,4 @@
+import { GALLERY_CONTACT } from "@auction/branding";
 import {
   shopArtist,
   shopEditorialExhibition,
@@ -176,12 +177,12 @@ describe.skipIf(!hasShopIntegrationDb)("editorial content fields", () => {
     const repo = repository();
     const [venue] = await repo.listVenues();
     expect(venue).toMatchObject({
-      streetLine: "12 Example Mews",
-      postcode: "W1U 1AA",
+      streetLine: GALLERY_CONTACT.streetLine,
+      postcode: GALLERY_CONTACT.postcode,
       city: "London",
     });
     const detail = await repo.getVenueBySlug("lax-marylebone");
-    expect(detail?.latitude).toBeCloseTo(51.5203, 4);
+    expect(detail?.latitude).toBeCloseTo(51.5201, 4);
 
     const exhibition = await repo.getExhibitionBySlug("showcase-new-originals");
     expect(exhibition?.subtitle).toBe("Selling exhibition");
@@ -191,9 +192,9 @@ describe.skipIf(!hasShopIntegrationDb)("editorial content fields", () => {
     });
 
     const placements = await repo.getHomePlacements();
-    expect(placements.find((p) => p.slot === "home_promo_bid")).toMatchObject({
-      headline: "Bid in auctions",
-      ctaLabel: "Explore auctions",
+    expect(placements.find((p) => p.slot === "home_hero")).toMatchObject({
+      headline: "New Originals, now on in Marylebone",
     });
+    expect(placements.some((p) => p.slot.startsWith("home_promo_"))).toBe(false);
   });
 });

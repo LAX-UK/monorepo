@@ -6,13 +6,12 @@ export type PolicyRoute = {
   sidebarLabel: string;
   /** Verbose label used in the footer + /legal index (defaults to `label`). */
   footerLabel?: string;
-  /** Part of the legal policy cluster (footer "Legal" column + /legal index). */
+  /** Part of the legal policy cluster (/legal index). */
   legal?: boolean;
 };
 
-/** Canonical manifest for every policy-hub surface. The hub nav, the footer
- * "Legal" column, and the /legal index are all derived from this list so the
- * order and labels stay in lock-step. */
+/** Canonical manifest for every policy-hub surface. The hub nav and the /legal
+ * index are derived from this list so the order and labels stay in lock-step. */
 export const policyRoutes: readonly PolicyRoute[] = [
   { href: "/about", label: "About", sidebarLabel: "About" },
   { href: "/legal", label: "Legal", sidebarLabel: "Legal hub", footerLabel: "Legal" },
@@ -53,19 +52,10 @@ export const policyRoutes: readonly PolicyRoute[] = [
 
 export type PolicyRouteHref = (typeof policyRoutes)[number]["href"];
 
-const byHref = (href: string): PolicyRoute | undefined =>
-  policyRoutes.find((route) => route.href === href);
-
 /** Legal policy documents, in canonical order (terms → privacy → cookies → shipping). */
 export const legalPolicyRoutes: readonly PolicyRoute[] = policyRoutes.filter(
   (route) => route.legal,
 );
-
-/** Footer "Legal" column: the legal documents plus the /legal hub entry. */
-export const footerLegalRoutes: readonly PolicyRoute[] = [
-  ...legalPolicyRoutes,
-  ...(byHref("/legal") ? [byHref("/legal") as PolicyRoute] : []),
-];
 
 /** Resolve the display label used in the footer / legal index. */
 export function policyRouteLabel(route: PolicyRoute): string {

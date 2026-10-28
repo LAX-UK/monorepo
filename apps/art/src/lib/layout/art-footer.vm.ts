@@ -2,17 +2,20 @@ import { ART_COOKIE_SETTINGS_HASH } from "@/lib/analytics/art-consent";
 import type { ArtFooterAccountState } from "@/lib/layout/art-footer-account-state";
 import { ART_LEGAL_INDEX_HREF, artLegalLinks } from "@/lib/layout/art-legal-links";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
-import { LAX_ART_LEGAL_INDEX, type LaxArtPolicySlug } from "@auction/marketing-ui";
-import type { MarketingFooterColumn } from "@auction/marketing-ui";
+import {
+  type LaxArtPolicySlug,
+  type MarketingFooterColumn,
+  buildFooterLegalColumn,
+} from "@auction/marketing-ui";
 
 export type ArtFooterVm = {
   columns: MarketingFooterColumn[];
 };
 
 /**
- * Figma footer (`235:226`) content inside the shared LAX column order: site navigation (About us,
- * Our services), Account, LAX products, Legal (Figma "Policies"), then Connect, which the footer
- * component appends. Figma links without an Art route (Our history, Careers, Press, Sitemap,
+ * Figma footer (`235:226`) content inside the shared LAX column order: site navigation (Gallery,
+ * Our services), Account, LAX products, Legal (the shared short column), then Connect, which the
+ * footer component appends. Figma links without an Art route (Our history, Careers, Press, Sitemap,
  * Bidding policy) are left out.
  */
 export function buildArtFooterVm(input: {
@@ -23,7 +26,7 @@ export function buildArtFooterVm(input: {
   /** Policies that can be linked; drafts hidden on production are left out. */
   linkablePolicies: readonly LaxArtPolicySlug[];
 }): ArtFooterVm {
-  const aboutLinks = [
+  const galleryLinks = [
     { label: "Visit", href: "/visit" },
     { label: "Contact", href: "/contact" },
   ];
@@ -57,7 +60,7 @@ export function buildArtFooterVm(input: {
   }));
 
   const columns: MarketingFooterColumn[] = [
-    { id: "about", title: "About us", links: aboutLinks },
+    { id: "gallery", title: "Gallery", links: galleryLinks },
     { id: "services", title: "Our services", links: servicesLinks },
   ];
 
@@ -69,14 +72,16 @@ export function buildArtFooterVm(input: {
     columns.push({ id: "lax-products", title: "LAX products", links: laxProductLinks });
   }
 
-  const legalLinks: Array<{ label: string; href: string }> = [
-    { label: LAX_ART_LEGAL_INDEX.title, href: ART_LEGAL_INDEX_HREF },
-    ...artLegalLinks(input.linkablePolicies).map(({ label, href }) => ({ label, href })),
-  ];
-  if (input.cookieSettings) {
-    legalLinks.push({ label: "Cookie preferences", href: ART_COOKIE_SETTINGS_HASH });
-  }
-  columns.push({ id: "legal", title: "Legal", links: legalLinks });
+  const policyHref = (slug: LaxArtPolicySlug) =>
+    artLegalLinks(input.linkablePolicies).find((link) => link.slug === slug)?.href;
+  const legal = buildFooterLegalColumn({
+    index: ART_LEGAL_INDEX_HREF,
+    terms: policyHref("terms"),
+    privacy: policyHref("privacy"),
+    cookies: policyHref("cookies"),
+    cookiePreferences: input.cookieSettings ? ART_COOKIE_SETTINGS_HASH : undefined,
+  });
+  if (legal) columns.push(legal);
 
   return { columns };
 }

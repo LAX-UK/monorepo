@@ -15,6 +15,7 @@ vi.mock("@/lib/art-runtime-flags", () => ({ isArtEditorialEnabled }));
 import {
   fetchEditorialArtistRelations,
   fetchEditorialExhibitionBySlug,
+  fetchEditorialPreview,
   fetchEditorialStories,
   fetchEditorialStoryBySlug,
 } from "@/lib/editorial/art-editorial.server";
@@ -52,6 +53,21 @@ describe("art editorial BFF", () => {
   beforeEach(() => {
     artCatalogueFetch.mockReset();
     isArtEditorialEnabled.mockReturnValue(true);
+  });
+
+  it.each([400, 404, 410])(
+    "treats a preview link answered with %i as not found",
+    async (status) => {
+      artCatalogueFetch.mockResolvedValue(jsonResponse({ message: "no" }, status));
+      await expect(fetchEditorialPreview("bad-token")).resolves.toEqual({ status: "not_found" });
+    },
+  );
+
+  it("reports a failing preview service as an error, not a wrong link", async () => {
+    artCatalogueFetch.mockResolvedValue(jsonResponse({ message: "boom" }, 500));
+    await expect(fetchEditorialPreview("a-valid-looking-token")).resolves.toEqual({
+      status: "error",
+    });
   });
 
   it("reads an artist's exhibitions and stories fresh", async () => {

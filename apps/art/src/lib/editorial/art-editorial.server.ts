@@ -45,11 +45,12 @@ export async function fetchEditorial<S extends TSchema>(
   path: string,
   schema: S,
   init: RequestInit = PUBLISHED_CACHE,
+  notFoundStatuses: readonly number[] = [404],
 ): Promise<ArtEditorialFetchResult<S["static"]>> {
   if (!isArtEditorialEnabled()) return { status: "disabled" };
   try {
     const response = await artCatalogueFetch(path, init);
-    if (response.status === 404) return { status: "not_found" };
+    if (notFoundStatuses.includes(response.status)) return { status: "not_found" };
     if (!response.ok) return { status: "error" };
     const body: unknown = await response.json();
     if (!Value.Check(schema, body)) return { status: "error" };
@@ -147,6 +148,9 @@ const PreviewSchema = Type.Union([
   EditorialPageDetailSchema,
 ]);
 
+/** A malformed or expired token is a link that is wrong, whatever status the API answers with. */
+const PREVIEW_NOT_FOUND_STATUSES = [400, 404, 410] as const;
+
 export async function fetchEditorialPreview(
   token: string,
 ): Promise<ArtEditorialFetchResult<ArtEditorialPreview>> {
@@ -154,6 +158,7 @@ export async function fetchEditorialPreview(
     slugPath("/v1/editorial/preview", token),
     PreviewSchema,
     DRAFT_CACHE,
+    PREVIEW_NOT_FOUND_STATUSES,
   );
   if (result.status !== "ok") return result;
   const entity = result.data;
