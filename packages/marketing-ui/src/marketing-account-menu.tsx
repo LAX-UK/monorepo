@@ -13,6 +13,7 @@ import {
 } from "@auction/ui/components/dropdown-menu";
 import Link from "next/link";
 import { type ReactNode, useRef } from "react";
+import { accountTriggerName } from "./account-display-name.js";
 import { MARKETING_HEADER_CHROME, type MarketingHeaderTone } from "./header/header-chrome-tone.js";
 import { MarketingChromeIconButton } from "./header/marketing-chrome-icon-button.js";
 import { MarketingChevronDownIcon, MarketingUserIcon } from "./marketing-icons.js";
@@ -85,7 +86,7 @@ export function MarketingGuestAccountMenu({
           <span
             className={cn(
               MARKETING_HEADER_CHROME,
-              "hidden font-label text-xs font-medium uppercase tracking-[0.18em] xl:inline",
+              "hidden font-label text-sm font-medium xl:inline",
               headerTone === "on-dark" ? "text-hero-foreground/85" : "text-on-surface-variant",
             )}
           >
@@ -188,13 +189,13 @@ export function MarketingAuthenticatedAccountMenu({
             </span>
             <span
               className={cn(
-                "hidden min-w-0 truncate font-label text-sm font-medium uppercase leading-tight sm:inline",
+                "hidden min-w-0 truncate font-label text-sm font-medium leading-tight sm:inline",
                 headerTone === "on-dark"
                   ? "text-hero-foreground"
                   : "text-brand-900 dark:text-on-surface",
               )}
             >
-              {displayName}
+              {accountTriggerName(displayName, email)}
             </span>
             <MarketingChevronDownIcon
               className={cn(

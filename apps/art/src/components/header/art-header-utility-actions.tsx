@@ -13,7 +13,7 @@ import Link from "next/link";
 
 const actionClass = (headerTone: MarketingHeaderTone) =>
   cn(
-    headerProductLinkClass(headerTone, false),
+    headerProductLinkClass(headerTone, false, "normal-case tracking-normal"),
     "inline-flex min-h-11 items-center rounded-sm",
     FOCUS_RING,
   );
@@ -26,7 +26,7 @@ type ArtHeaderUtilityActionsProps = {
 };
 
 /**
- * Right side of the utility row (Figma `521:7889`): Log in, or the account menu once signed in,
+ * Right side of the utility row (Figma `521:7889`): Sign in, or the account menu once signed in,
  * then Enquire. Signed-in viewers send a general enquiry from the sheet with their details
  * prefilled; everyone else is taken to /contact, where guests can write to the gallery too.
  */
@@ -43,7 +43,7 @@ export function ArtHeaderUtilityActions({
     <>
       {account.kind === "guest" ? (
         <ArtAuthLink href={loginHref} className={actionClassName}>
-          Log in
+          Sign in
         </ArtAuthLink>
       ) : (
         <div data-testid="art-header-desktop-account">
