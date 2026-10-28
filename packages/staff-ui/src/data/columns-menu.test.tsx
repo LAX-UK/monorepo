@@ -117,4 +117,17 @@ describe("fitViewTabs", () => {
     expect(fit.overflow.length).toBeGreaterThan(0);
     expect(fit.visible).toEqual([...fit.visible].sort((a, b) => a - b));
   });
+
+  it("reserves exactly the measured More width, so one more tab fits when the button is narrow", () => {
+    const widths = [100, 100, 100, 100];
+    // 3 tabs (306 with gaps) plus a 60px button and its gap fit in 370; an 88px reservation does not.
+    expect(fitViewTabs(widths, 370, 0, 2, 60).visible).toEqual([0, 1, 2]);
+    expect(fitViewTabs(widths, 370, 0, 2, 88).visible).toEqual([0, 1]);
+  });
+
+  it("keeps the active tab visible whatever the More width", () => {
+    const fit = fitViewTabs([100, 100, 100, 100], 370, 3, 2, 60);
+    expect(fit.visible).toContain(3);
+    expect(fit.overflow.length).toBeGreaterThan(0);
+  });
 });
