@@ -1,5 +1,10 @@
 import { type Static, Type } from "@sinclair/typebox";
 import { createCursorListResponseSchema } from "./cursor-list.js";
+import {
+  AdminArtworkRunSummarySchema,
+  AdminEditionRunDetailSchema,
+  AdminNewRunInputSchema,
+} from "./edition-run-admin.js";
 import { SEO_DESCRIPTION_MAX_LENGTH, SEO_TITLE_MAX_LENGTH } from "./seo-fields.js";
 
 /**
@@ -110,8 +115,11 @@ const EditableArtworkFields = {
 export const AdminArtworkCreateBodySchema = Type.Object(
   {
     slug: SlugSchema,
-    /** True plans the run of 24 editions (10 buyer entitlement, 10 artist, 4 LAX). */
-    eligibleForEditionAllocation: Type.Boolean(),
+    /**
+     * The run of prints this artwork sells, or null for an original. LAX standard is 24 prints:
+     * 10 for buyers of the original, 10 for the artist and 4 for LAX.
+     */
+    run: Type.Union([AdminNewRunInputSchema, Type.Null()]),
     ...EditableArtworkFields,
   },
   { additionalProperties: false },
@@ -209,6 +217,8 @@ export const AdminArtworkListQuerySchema = Type.Object({
   salesChannel: Type.Optional(AdminArtworkChannelSchema),
   /** Last changed first by default; the artwork id breaks ties. */
   sort: Type.Optional(Type.Union(ADMIN_ARTWORK_SORTS.map((sort) => Type.Literal(sort)))),
+  /** Runs whose edition facts are not recorded or not confirmed yet. */
+  facts: Type.Optional(Type.Literal("needs_review")),
 });
 export type AdminArtworkListQuery = Static<typeof AdminArtworkListQuerySchema>;
 
@@ -219,8 +229,10 @@ export const AdminArtworkListItemSchema = Type.Object({
   artistId: Type.String({ format: "uuid" }),
   artistName: Type.String(),
   thumbnailUrl: Type.Union([Type.String(), Type.Null()]),
-  /** 24 for an edition run, 0 for an original. */
+  /** Prints in the run so far: 24 for LAX standard, 0 for an original or an unstocked open run. */
   editionSize: Type.Integer({ minimum: 0 }),
+  /** The run and whether its facts need review; null for an original. */
+  run: Type.Union([AdminArtworkRunSummarySchema, Type.Null()]),
   soldEditionCount: Type.Integer({ minimum: 0 }),
   printPricePence: Type.Union([Type.Integer(), Type.Null()]),
   saleState: AdminArtworkSaleStateSchema,
@@ -263,6 +275,7 @@ export const AdminArtworkPublishBlockerSchema = Type.Union([
   Type.Literal("artist_archived"),
   Type.Literal("no_image"),
   Type.Literal("no_edition_price"),
+  Type.Literal("edition_facts_incomplete"),
 ]);
 
 export const AdminArtworkDetailSchema = Type.Object({
@@ -279,7 +292,8 @@ export const AdminArtworkDetailSchema = Type.Object({
   medium: Type.Union([Type.String(), Type.Null()]),
   dimensions: Type.Union([Type.String(), Type.Null()]),
   description: Type.Union([Type.String(), Type.Null()]),
-  eligibleForEditionAllocation: Type.Boolean(),
+  /** The run of prints, its facts and stock; null for an original. */
+  run: Type.Union([AdminEditionRunDetailSchema, Type.Null()]),
   printPricePence: Type.Union([Type.Integer(), Type.Null()]),
   saleState: AdminArtworkSaleStateSchema,
   salesChannel: AdminArtworkChannelSchema,

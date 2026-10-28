@@ -28,7 +28,10 @@ export const shopEditionReservedPayloadSchemaV1 = z.object({
   schemaVersion: z.literal(1),
   orderId: z.string().uuid(),
   artworkId: z.string().uuid(),
-  editionNumber: z.number().int().positive(),
+  /** Null for an unnumbered print (open editions, and proofs, which carry a proof number). */
+  editionNumber: z.number().int().positive().nullable(),
+  /** Identifies the print in its run; optional so events recorded before it still parse. */
+  stockRef: z.number().int().positive().optional(),
 });
 
 export const shopEditionReleasedPayloadSchemaV1 = z.object({
