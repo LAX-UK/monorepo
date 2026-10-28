@@ -3,6 +3,7 @@ import {
   BidAuthorityService,
   BidEligibilityService,
   BidIdentityEligibilityGate,
+  BidderRoleGate,
   type IBidEligibility,
   type IBidIdentityEligibilityGate,
   type IKycThresholdGate,
@@ -18,6 +19,7 @@ import type { IAmlHoldStore } from "@auction/persistence/interfaces";
 import {
   DrizzleAmlHoldStore,
   DrizzleBidActorEligibilityReader,
+  DrizzleBidBidderRoleReader,
   DrizzleBidLotRulesReader,
   DrizzleBidMembershipReader,
   DrizzleBuyerAgentAuthorisationReader,
@@ -66,6 +68,7 @@ export function createWorkerBidEligibility(
     ),
     new OperatorPlacementPolicy(operatorReader),
     new SaleRegistrationBidGate(new DrizzleSaleRegistrationBidReader(db)),
+    new BidderRoleGate(new DrizzleBidBidderRoleReader(db)),
   );
 }
 

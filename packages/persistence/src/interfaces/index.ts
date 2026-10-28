@@ -97,6 +97,8 @@ export type { BidLotRulesRow, IBidLotRulesReader } from "./bid-lot-rules.reader.
 
 export type { IBidMembershipReader } from "./bid-membership.reader.js";
 
+export type { BidderRoleRow, IBidBidderRoleReader } from "./bid-bidder-role.reader.js";
+
 export type {
   BidActorEligibilityRow,
   IBidActorEligibilityReader,
