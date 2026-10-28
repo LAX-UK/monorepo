@@ -3,6 +3,8 @@ import {
   marketingFeatureGridLayout,
   marketingFeatureGridRole,
   marketingRailHasEnough,
+  marketingRowCap,
+  marketingRowColumns,
   marketingRowLayout,
 } from "./marketing-row-layout.js";
 
@@ -15,6 +17,46 @@ describe("marketingRowLayout", () => {
     [9, "grid"],
   ] as const)("composes %i items as %s", (count, layout) => {
     expect(marketingRowLayout(count)).toBe(layout);
+  });
+});
+
+describe("marketingRowCap", () => {
+  it.each([
+    [0, 0],
+    [1, 1],
+    [2, 2],
+    [3, 3],
+    [4, 4],
+    [5, 4],
+    [12, 4],
+  ] as const)("shows %i items as %i in one row of four", (count, shown) => {
+    expect(marketingRowCap(count)).toBe(shown);
+  });
+
+  it.each([
+    [2, 3, 2],
+    [5, 3, 3],
+    [7, 8, 4],
+    [8, 8, 8],
+    [11, 8, 8],
+  ] as const)(
+    "with %i items and a max of %i shows %i, never a partial second row",
+    (count, max, shown) => {
+      expect(marketingRowCap(count, max)).toBe(shown);
+    },
+  );
+
+  it("shows nothing for a negative count or max", () => {
+    expect(marketingRowCap(-1)).toBe(0);
+    expect(marketingRowCap(5, 0)).toBe(0);
+  });
+});
+
+describe("marketingRowColumns", () => {
+  it("lays three items as a row of three and more as rows of four", () => {
+    expect(marketingRowColumns(3)).toBe(3);
+    expect(marketingRowColumns(4)).toBe(4);
+    expect(marketingRowColumns(8)).toBe(4);
   });
 });
 

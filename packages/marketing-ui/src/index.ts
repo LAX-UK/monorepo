@@ -492,13 +492,17 @@ export {
 export { MarketingCardRow, type MarketingCardRowProps } from "./marketing-card-row.js";
 export {
   MARKETING_RAIL_MIN_ITEMS,
+  MARKETING_ROW_COLUMNS_CLASS,
   MARKETING_ROW_LAYOUT_CLASS,
+  MARKETING_ROW_MAX_COLUMNS,
   type MarketingFeatureGridLayout,
   type MarketingFeatureGridRole,
   type MarketingRowLayout,
   marketingFeatureGridLayout,
   marketingFeatureGridRole,
   marketingRailHasEnough,
+  marketingRowCap,
+  marketingRowColumns,
   marketingRowLayout,
 } from "./marketing-row-layout.js";
 export {

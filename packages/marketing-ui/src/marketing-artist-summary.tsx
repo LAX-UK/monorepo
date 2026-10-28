@@ -11,8 +11,10 @@ export type MarketingArtistSummaryProps = {
   href: string;
   /** Portrait rendered inside the 48px round frame; initials are shown when omitted. */
   avatar?: ReactNode;
-  /** Trailing control, typically a Follow button. */
+  /** Trailing control beside the name, typically a Follow button. */
   action?: ReactNode;
+  /** Links or buttons under the bio, e.g. "Editions by …" and a profile link. */
+  actions?: ReactNode;
   bio?: string | null;
   className?: string;
 };
@@ -26,13 +28,17 @@ function initials(name: string): string {
     .join("");
 }
 
-/** Artist card for detail pages: avatar, linked name, an action slot and a clamped bio. */
+/**
+ * Artist card for detail pages: avatar, linked name, an action beside the name, a clamped bio
+ * and a row of actions under it.
+ */
 export function MarketingArtistSummary({
   title,
   name,
   href,
   avatar,
   action,
+  actions,
   bio,
   className,
 }: MarketingArtistSummaryProps) {
@@ -64,6 +70,14 @@ export function MarketingArtistSummary({
         <MarketingReadMore>
           <p className="whitespace-pre-line text-sm leading-6 text-on-surface-variant">{bio}</p>
         </MarketingReadMore>
+      ) : null}
+      {actions ? (
+        <div
+          data-slot="artist-summary-actions"
+          className="flex flex-wrap items-center gap-x-5 gap-y-3"
+        >
+          {actions}
+        </div>
       ) : null}
     </section>
   );

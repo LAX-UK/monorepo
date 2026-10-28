@@ -19,6 +19,33 @@ export const MARKETING_ROW_LAYOUT_CLASS: Record<MarketingRowLayout, string> = {
   grid: "grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3",
 };
 
+/** The widest a row of cards gets: four columns on large screens. */
+export const MARKETING_ROW_MAX_COLUMNS = 4;
+
+/**
+ * How many of `count` items a capped row shows: all of them up to `max` (default one row of
+ * four), and beyond one row only whole rows, so a section never starts a partial second row.
+ * Zero means the section hides. The host links to the rest ("View all N").
+ */
+export function marketingRowCap(count: number, max: number = MARKETING_ROW_MAX_COLUMNS): number {
+  const available = Math.max(0, Math.min(Math.floor(count), Math.floor(max)));
+  if (available <= MARKETING_ROW_MAX_COLUMNS) return available;
+  return available - (available % MARKETING_ROW_MAX_COLUMNS);
+}
+
+/**
+ * Large-screen columns for a capped row in the grid layout: three items sit as a row of three,
+ * four or more as rows of four.
+ */
+export function marketingRowColumns(shown: number): 3 | 4 {
+  return shown === 3 ? 3 : MARKETING_ROW_MAX_COLUMNS;
+}
+
+export const MARKETING_ROW_COLUMNS_CLASS: Record<3 | 4, string> = {
+  3: "grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-3",
+  4: "grid gap-x-6 gap-y-10 sm:grid-cols-2 lg:grid-cols-4",
+};
+
 /**
  * A horizontal rail reads as a rail only with enough items to fill the width it scrolls; with
  * fewer it is a short row ending in empty space, so the section hides instead.
