@@ -4,18 +4,27 @@
  */
 export const SHOP_HOME_CONTENT = {
   hero: {
-    title: "Limited editions by our gallery artists",
+    title: "Limited-edition prints from our Marylebone gallery",
     primaryLabel: "Browse editions",
+    browseByLabel: "Browse by",
+    emptyTitle: "New editions are on their way",
+    emptyLeadSoldOut:
+      "Every edition has found a home for now. The gallery’s artists are preparing the next releases.",
+    emptyLeadFirst: "The gallery’s artists are preparing the first releases.",
+    emptyArtLabel: "See original works on lax.art",
+    emptyHelpLabel: "Ask the gallery",
   },
   newEditions: {
     title: "New editions",
-    subtitle: "The newest editions on sale now.",
+    subtitle: "Released by artists the gallery represents.",
+    seeLabel: "See the edition",
   },
-  story: { eyebrow: "Behind the edition" },
   artists: {
-    title: "Artists with editions",
-    subtitle: "The artists behind the editions.",
-    laxArtLabel: "Their full stories are on lax.art",
+    title: "Artists",
+    subtitle: "The gallery’s artists with editions in the Shop.",
+    laxArtLabel: "Read their full stories on lax.art",
+    soloEyebrow: "The artist",
+    profileLabel: "Read the profile on lax.art",
   },
   collections: {
     title: "Start a collection",

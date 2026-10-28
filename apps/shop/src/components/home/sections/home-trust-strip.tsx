@@ -1,44 +1,36 @@
-import type { HomeTrustItemVm } from "@/lib/home/home-page.vm";
-import {
-  MarketingCertificateIcon,
-  type MarketingIconProps,
-  MarketingMapPinIcon,
-  MarketingReturnIcon,
-  MarketingTruckIcon,
-} from "@auction/marketing-ui";
+import type { HomeTrustVm } from "@/lib/home/home-trust";
 import Link from "next/link";
-import type { ComponentType } from "react";
 
-const TRUST_ICONS: Record<HomeTrustItemVm["id"], ComponentType<MarketingIconProps>> = {
-  editions: MarketingCertificateIcon,
-  gallery: MarketingMapPinIcon,
-  delivery: MarketingTruckIcon,
-  returns: MarketingReturnIcon,
-};
-
-/** Four plain promises right under the first screen, each linked to its detail where one exists. */
-export function HomeTrustStrip({ items }: { items: readonly HomeTrustItemVm[] }) {
+/**
+ * Four plain text columns under the first screen, divided by hairlines: delivery, collection,
+ * changing your mind and a person to ask. Phones show one line in their place.
+ */
+export function HomeTrustStrip({ trust }: { trust: HomeTrustVm }) {
   return (
     <section className="shop-home-trust" aria-label="Buying from LAX Shop">
       <ul className="shop-home-trust__list">
-        {items.map((item) => {
-          const Icon = TRUST_ICONS[item.id];
-          return (
-            <li key={item.id} className="shop-home-trust__item">
-              <Icon className="shop-home-trust__icon" />
-              <div className="shop-home-trust__text">
-                <p className="shop-home-trust__title">{item.title}</p>
-                <p className="shop-home-trust__body">{item.body}</p>
-                {item.link ? (
-                  <Link href={item.link.href} className="shop-inline-link shop-focus-ring">
-                    {item.link.label}
-                  </Link>
-                ) : null}
-              </div>
-            </li>
-          );
-        })}
+        {trust.columns.map((column) => (
+          <li key={column.id} className="shop-home-trust__item">
+            <p className="shop-home-trust__title">{column.title}</p>
+            {column.href ? (
+              <a
+                href={column.href}
+                className="shop-home-trust__line shop-inline-link shop-focus-ring"
+              >
+                {column.line}
+              </a>
+            ) : (
+              <p className="shop-home-trust__line">{column.line}</p>
+            )}
+          </li>
+        ))}
       </ul>
+      <p className="shop-home-trust__phone">
+        {trust.phone.text} ·{" "}
+        <Link href={trust.phone.link.href} className="shop-inline-link shop-focus-ring">
+          {trust.phone.link.label}
+        </Link>
+      </p>
     </section>
   );
 }

@@ -4,7 +4,11 @@ import type {
   ArtistSummaryReadModel,
 } from "../read-models/catalogue.read-model.js";
 
-export type PublicArtistSort = "newest" | "nameAsc" | "nameDesc";
+/**
+ * `latestEdition` orders artists by their most recently listed work (in the sales channel, and
+ * among works on sale now when `hasAvailableEditions` is set). It returns one page, no cursor.
+ */
+export type PublicArtistSort = "newest" | "nameAsc" | "nameDesc" | "latestEdition";
 
 export type ListPublicArtistsInput = {
   limit: number;
@@ -20,6 +24,11 @@ export type ListPublicArtistsInput = {
   sort?: PublicArtistSort;
   /** Only artists with at least one artwork in this channel; counts are scoped to it too. */
   salesChannel?: "shop" | "art";
+  /**
+   * Only artists with at least one work that can be bought now (in `salesChannel` when given).
+   * Applies to curated placements too, so a featured artist with nothing on sale drops out.
+   */
+  hasAvailableEditions?: boolean;
 };
 
 export type ListPublicArtistsResult = {

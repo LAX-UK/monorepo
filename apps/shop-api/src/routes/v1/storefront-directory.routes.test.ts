@@ -113,6 +113,33 @@ describe("storefront directory routes", () => {
     await app.close();
   });
 
+  it("forwards the available-editions filter and the latest-edition sort", async () => {
+    const deps = createDeps();
+    const inputs: unknown[] = [];
+    deps.catalogue.listPublicArtists = async (input) => {
+      inputs.push(input);
+      return { items: [] };
+    };
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+
+    const ok = await app.inject({
+      method: "GET",
+      url: "/v1/artists?hasAvailableEditions=true&sort=latestEdition&salesChannel=shop&limit=8",
+    });
+    const off = await app.inject({ method: "GET", url: "/v1/artists?hasAvailableEditions=false" });
+    const bad = await app.inject({ method: "GET", url: "/v1/artists?hasAvailableEditions=maybe" });
+
+    expect(ok.statusCode).toBe(200);
+    expect(off.statusCode).toBe(200);
+    expect(inputs).toEqual([
+      { limit: 8, sort: "latestEdition", salesChannel: "shop", hasAvailableEditions: true },
+      { limit: 20 },
+    ]);
+    expect(bad.statusCode).toBe(400);
+    await app.close();
+  });
+
   it("rejects slot types owned by another resource", async () => {
     const app = createShopApiApp({ deps: createDeps(), logger: false });
     await app.ready();

@@ -3,6 +3,7 @@ import { ShopApiBffError } from "@/lib/shop-api-bff-error";
 import {
   type PublicArtistDetail,
   type PublicArtistList,
+  type PublicArtistSort,
   type PublicArtworkDetail,
   type PublicArtworkFacetCounts,
   type PublicArtworkList,
@@ -206,7 +207,9 @@ export async function fetchPublicArtists(input: {
   placement?: "featured_artists";
   q?: string;
   letter?: string;
-  sort?: "newest" | "nameAsc" | "nameDesc";
+  sort?: PublicArtistSort;
+  /** Only artists with an edition on sale now. */
+  hasAvailableEditions?: boolean;
 }): Promise<PublicArtistList> {
   const params = new URLSearchParams();
   params.set("limit", String(input.limit ?? 24));
@@ -216,6 +219,7 @@ export async function fetchPublicArtists(input: {
   if (input.q) params.set("q", input.q);
   if (input.letter) params.set("letter", input.letter);
   if (input.sort) params.set("sort", input.sort);
+  if (input.hasAvailableEditions) params.set("hasAvailableEditions", "true");
   const response = await shopApiFetch(`/v1/artists?${params.toString()}`);
   if (!response.ok) {
     throw new ShopApiBffError("upstream", `Shop artists request failed (${response.status})`);

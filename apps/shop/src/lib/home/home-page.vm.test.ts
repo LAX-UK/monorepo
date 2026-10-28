@@ -7,11 +7,18 @@ import {
   buildHomePageViewModel,
   buildShopProductDoors,
   heroLead,
-  selectHomeRelease,
 } from "./home-page.vm";
 
 const NOW = new Date("2026-10-28T12:00:00.000Z");
 const OLD = "2026-01-01T00:00:00.000Z";
+
+const art = {
+  id: "art" as const,
+  label: "lax.art",
+  href: "https://art.test",
+  current: false,
+  external: true,
+};
 
 const context: HomePageContext = {
   now: NOW,
@@ -28,10 +35,11 @@ const empty: HomePageComposerResult = {
   lowestPricePence: null,
   facets: null,
   priceBands: [],
+  priceRanges: [],
   categoryCovers: {},
   artists: [],
   artistCount: null,
-  story: null,
+  soloArtist: null,
   sectionErrors: {},
 };
 
@@ -40,12 +48,12 @@ const editions = (count: number): PublicArtworkSummary[] =>
     artworkSummary({ slug: `edition-${index + 1}`, title: `Edition ${index + 1}`, listedAt: OLD }),
   );
 
-const artist = (slug: string, artworkCount = 2): PublicArtistSummary => ({
+const artist = (slug: string): PublicArtistSummary => ({
   slug,
   name: slug,
   discipline: null,
   portraitUrl: null,
-  artworkCount,
+  artworkCount: 2,
 });
 
 function build(overrides: Partial<HomePageComposerResult> = {}, ctx = context) {
@@ -53,111 +61,118 @@ function build(overrides: Partial<HomePageComposerResult> = {}, ctx = context) {
 }
 
 describe("home hero", () => {
-  it("leads with the newest featured edition that can still be bought", () => {
+  it("leads with the featured release on sale, and names it beside the primary action", () => {
     const soldOut = artworkSummary({
       slug: "sold",
       availability: { totalEditions: 10, state: "sold_out" },
     });
     const live = artworkSummary({ slug: "live", title: "Harbour light", yearCreated: 2026 });
-    expect(selectHomeRelease([soldOut, live], [])).toEqual({ item: live, featured: true });
-
-    const hero = build({ featured: [soldOut, live] }).hero;
+    const hero = build({ featured: [soldOut, live], availableCount: 1 }).hero;
+    expect(hero.title).toBe("Limited-edition prints from our Marylebone gallery");
     expect(hero.eyebrow).toBe("New release · 1 Oct 2026");
     expect(hero.workLink).toEqual({ label: "See Harbour light", href: "/artworks/live" });
     expect(hero.release).toMatchObject({
-      artistName: "Mara Ellison",
-      titleLine: "Harbour light, 2026",
-      priceLabel: "£340",
-      factsLine: "Giclée print",
-      editionLine: "Edition of 50",
+      href: "/artworks/live",
+      line: "Now released: Harbour light, 2026 · £340",
     });
   });
 
-  it("falls back to the newest edition on sale, and says so", () => {
-    const hero = build({ editions: [artworkSummary({ listedAt: OLD })] }).hero;
-    expect(hero.eyebrow).toBe("On sale now");
+  it("gives no eyebrow to an older edition chosen by the rule", () => {
+    const hero = build({ editions: [artworkSummary({ listedAt: OLD })], availableCount: 1 }).hero;
+    expect(hero.eyebrow).toBeNull();
     expect(hero.release?.href).toBe("/artworks/harbour-light");
   });
 
-  it("calls an older featured edition featured, not new", () => {
-    expect(build({ featured: [artworkSummary({ listedAt: OLD })] }).hero.eyebrow).toBe(
-      "Featured edition",
-    );
-  });
-
-  it("still names what Shop sells when there is no release with an image", () => {
-    const hero = build({ editions: [artworkSummary({ imageUrl: null })] }).hero;
+  it("still names what Shop sells when no release has an image", () => {
+    const hero = build({ editions: [artworkSummary({ imageUrl: null })], availableCount: 1 }).hero;
     expect(hero.release).toBeNull();
-    expect(hero.eyebrow).toBeNull();
     expect(hero.workLink).toBeNull();
-    expect(hero.title).toBe("Limited editions by our gallery artists");
     expect(hero.primary).toEqual({ label: "Browse editions", href: "/artworks" });
   });
 
-  it("gives the artist count and lowest price only when they are known and worth saying", () => {
-    expect(heroLead(12, 9500)).toBe(
-      "Limited-edition prints by 12 gallery artists, from £95. Prices include VAT.",
+  it("names up to two artists, then counts them, and gives the lowest price", () => {
+    expect(
+      heroLead({ artistNames: ["Flora Powers"], artistCount: 1, lowestPricePence: 4200 }),
+    ).toBe("Editions by Flora Powers, from £42. Prices include VAT.");
+    expect(heroLead({ artistNames: ["A", "B"], artistCount: 2, lowestPricePence: null })).toBe(
+      "Editions by A and B. Prices include VAT.",
     );
-    expect(heroLead(1, 9500)).toBe("Limited-edition prints from £95. Prices include VAT.");
-    expect(heroLead(null, null)).toBe("Limited-edition prints. Prices include VAT.");
+    expect(
+      heroLead({ artistNames: ["A", "B", "C"], artistCount: 12, lowestPricePence: 9500 }),
+    ).toBe("Editions by 12 gallery artists, from £95. Prices include VAT.");
+    expect(heroLead({ artistNames: [], artistCount: null, lowestPricePence: null })).toBe(
+      "Editions by the gallery’s artists. Prices include VAT.",
+    );
+  });
+
+  it("makes no claim about signing or numbering", () => {
+    const vm = build({ editions: editions(3), availableCount: 3, artists: [artist("a")] });
+    const words = `${vm.hero.eyebrow} ${vm.hero.title} ${vm.hero.lead}`.toLowerCase();
+    expect(words).not.toMatch(/sign|number/);
   });
 });
 
-describe("trust strip", () => {
-  it("states delivery from the surcharge and the configured window, linked to its policy", () => {
-    const trust = build().trust;
-    expect(trust.map((item) => item.id)).toEqual(["editions", "gallery", "delivery", "returns"]);
-    expect(trust[1]?.body).toBe(
-      "Sold by London Art Exchange, 156 New Cavendish St, London W1W 6YW.",
+describe("with nothing on sale", () => {
+  const soldOutFacets = {
+    availability: { available: 0, soldOut: 4 },
+    categories: [],
+    artists: [],
+  };
+
+  it("says new editions are on their way and keeps only the doors and the gallery team", () => {
+    const vm = build(
+      { availableCount: 0, facets: soldOutFacets, artists: [artist("a")] },
+      { ...context, productLinks: [art] },
     );
-    expect(trust[2]).toMatchObject({
-      title: "Insured UK delivery, £15",
-      body: "3 to 5 working days, or free collection from the gallery.",
-      link: { label: "Delivery", href: "/delivery" },
+    expect(vm.hero).toMatchObject({
+      title: "New editions are on their way",
+      primary: null,
+      release: null,
+      browseRows: [],
+      emptyAction: { label: "See original works on lax.art", href: "https://art.test" },
     });
+    expect(vm.hero.lead).toMatch(/^Every edition has found a home/);
+    expect(vm.layout.sections).toEqual(["hero", "product-doors", "gallery-team"]);
   });
 
-  it("drops a link whose policy page is not published here", () => {
-    const trust = build({}, { ...context, linkablePolicies: [] }).trust;
-    expect(trust.every((item) => item.link === null)).toBe(true);
+  it("does not claim the Shop is empty when the editions read failed", () => {
+    const vm = build({ sectionErrors: { editions: "down" } });
+    expect(vm.hero.title).toBe("Limited-edition prints from our Marylebone gallery");
+    expect(vm.layout.sections).toContain("new-editions");
   });
 });
 
 describe("new editions", () => {
-  it("shows a row of four, leaving out the release already in the first screen", () => {
-    const items = editions(6);
-    const vm = build({ editions: items, availableCount: 12 });
+  it("leaves out the release already in the first screen", () => {
+    const vm = build({ editions: editions(6), availableCount: 12 });
     expect(vm.newEditions?.items.map((item) => item.slug)).toEqual([
       "edition-2",
       "edition-3",
       "edition-4",
       "edition-5",
     ]);
-    expect(vm.newEditions?.viewAll.label).toBe("View all 12");
+    expect(vm.newEditions?.viewAll.label).toBe("View all 12 editions");
   });
 
-  it("repeats the release rather than leave the row short", () => {
-    const vm = build({ editions: editions(3) });
-    expect(vm.newEditions?.items).toHaveLength(3);
-    expect(vm.newEditions?.viewAll.label).toBe("View all");
+  it("is hidden when the release is the only edition on sale", () => {
+    const vm = build({ editions: editions(1), availableCount: 1 });
+    expect(vm.newEditions).toBeNull();
+    expect(vm.layout.sections).not.toContain("new-editions");
   });
+});
 
-  it("is left out with fewer than three editions, so no row looks empty", () => {
-    expect(build({ editions: editions(2) }).newEditions).toBeNull();
+describe("artists", () => {
+  it("shows a single artist rather than hiding the section below three", () => {
+    const vm = build({ editions: editions(2), availableCount: 2, artists: [artist("a")] });
+    expect(vm.artists?.layout).toBe("feature");
+    expect(vm.layout.sections).toContain("artists");
   });
 });
 
 describe("the home page's band sequence", () => {
   it("lists every section with content in page order, the product doors before the gallery team", () => {
-    const art = {
-      id: "art" as const,
-      label: "lax.art",
-      href: "https://art.test",
-      current: false,
-      external: true,
-    };
     const vm = build(
-      { editions: editions(5), artists: [artist("a"), artist("b"), artist("c")] },
+      { editions: editions(5), availableCount: 5, artists: [artist("a"), artist("b")] },
       { ...context, productLinks: [art] },
     );
     expect(vm.layout.sections).toEqual([
@@ -168,78 +183,19 @@ describe("the home page's band sequence", () => {
       "product-doors",
       "gallery-team",
     ]);
-    expect(vm.layout.surfaces.hero).toBe("band");
-    expect(vm.layout.surfaces["new-editions"]).toBe("plain");
+    expect(vm.layout.surfaces.hero).toBe("plain");
     expect(vm.layout.surfaces["gallery-team"]).toBe("band");
-  });
-
-  it("keeps new editions when their read failed, so the error state shows", () => {
-    const vm = build({ editions: [], sectionErrors: { editions: "down" } });
-    expect(vm.layout.sections).toContain("new-editions");
-  });
-
-  it("never sets two tinted bands next to each other", () => {
-    const vm = build({ editions: [] });
-    const tints = vm.layout.sections.map((id) => vm.layout.surfaces[id]);
-    tints.forEach((tint, index) => {
-      if (index > 0) expect(tint === "band" && tints[index - 1] === "band").toBe(false);
-    });
-  });
-});
-
-describe("sections that hide when the catalogue is thin", () => {
-  it("hides the story, artists and collections, and keeps the gallery team", () => {
-    const vm = build({ editions: editions(1), artists: [artist("a"), artist("b")] });
-    expect(vm.story).toBeNull();
-    expect(vm.artists).toBeNull();
-    expect(vm.collections).toEqual([]);
-    expect(vm.quickFilters).toEqual([]);
     expect(vm.galleryTeam.title).toBe("Help choosing a size, a frame or a gift");
-    expect(vm.layout.sections).toEqual(["hero", "trust", "gallery-team"]);
-  });
-
-  it("shows artists with editions only, four at most, and points to their stories on lax.art", () => {
-    const vm = build({
-      artists: [artist("a"), artist("none", 0), artist("b"), artist("c"), artist("d"), artist("e")],
-    });
-    expect(vm.artists?.cards.map((card) => card.name)).toEqual(["a", "b", "c", "d"]);
-    expect(vm.artists?.laxArtHref).toBe("https://art.test/artists");
-  });
-
-  it("shows a story when there is one to tell", () => {
-    const story = {
-      title: "Proofing Harbour light",
-      body: "Three weeks at the press.",
-      imageUrl: "/proof.webp",
-      edition: { title: "Harbour light", href: "/artworks/harbour-light" },
-      readMoreHref: null,
-    };
-    expect(build({ story }).story).toEqual(story);
   });
 });
 
 describe("product doors", () => {
   it("opens lax.art first, then LAX Bid, and leaves out a product without a link", () => {
-    const links = [
-      {
-        id: "bid" as const,
-        label: "LAX Bid",
-        href: "https://bid.test",
-        current: false,
-        external: true,
-      },
-      {
-        id: "art" as const,
-        label: "lax.art",
-        href: "https://art.test",
-        current: false,
-        external: true,
-      },
-    ];
-    expect(buildShopProductDoors(links).map((door) => [door.product, door.href])).toEqual([
+    const bid = { ...art, id: "bid" as const, label: "LAX Bid", href: "https://bid.test" };
+    expect(buildShopProductDoors([bid, art]).map((door) => [door.product, door.href])).toEqual([
       ["art", "https://art.test"],
       ["bid", "https://bid.test"],
     ]);
-    expect(buildShopProductDoors(links.slice(0, 1)).map((door) => door.product)).toEqual(["bid"]);
+    expect(buildShopProductDoors([bid]).map((door) => door.product)).toEqual(["bid"]);
   });
 });

@@ -94,7 +94,7 @@ describe("Shop commerce architecture SSOT", () => {
     assert.doesNotMatch(shopHomeCss, /shop-home__card-interactive/);
 
     assert.match(
-      readFileSync(join(root, "apps/shop/src/components/home/sections/home-sections.tsx"), "utf8"),
+      readFileSync(join(root, "apps/shop/src/components/home/sections/home-artists.tsx"), "utf8"),
       /MarketingArtistCard/,
       "Shop home artists must use the shared LAX artist card",
     );

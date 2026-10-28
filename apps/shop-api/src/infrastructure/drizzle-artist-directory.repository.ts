@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { shopArtist, shopArtwork, shopHomePlacement, shopParty } from "@auction/db/schema";
 import { maxItemsForPlacement } from "@auction/shop-domain";
-import { and, asc, desc, eq, exists, gt, ilike, lt, or, sql } from "drizzle-orm";
+import { type SQL, and, asc, desc, eq, exists, gt, ilike, lt, or, sql } from "drizzle-orm";
 import type {
   ArtistDirectoryReader,
   ListPublicArtistsInput,
@@ -12,18 +12,32 @@ import { publicArtistVisible, publicArtworkVisible } from "./artwork-visibility-
 import { toPublicArtistDetail, toPublicArtistSummary } from "./map-public-artist.js";
 import { artworkCountByArtistId, mapArtistRow } from "./public-artist-rows.js";
 import { listedOnSalesChannelSql } from "./sales-channel-listing-sql.js";
+import { artworkAvailableNowSql } from "./shop-edition-availability.js";
 import { publishedHomePlacementForSlot } from "./shop-home-placement-queries.js";
 
 type ArtistDirectoryRepositoryOptions = {
   resolveMediaUrl: (value: string | null | undefined) => string | null;
 };
 
-function orderByForArtistSort(sort: PublicArtistSort | undefined) {
+/**
+ * The artist's works a list is scoped to: visible on the storefront, in the sales channel when
+ * one is asked for, and on sale now when only artists with available editions are wanted.
+ */
+function artistWorksConditions(input: ListPublicArtistsInput): SQL[] {
+  const conditions: SQL[] = [eq(shopArtwork.artistId, shopArtist.id), publicArtworkVisible()];
+  if (input.salesChannel) conditions.push(listedOnSalesChannelSql(input.salesChannel));
+  if (input.hasAvailableEditions) conditions.push(artworkAvailableNowSql);
+  return conditions;
+}
+
+function orderByForArtistSort(sort: PublicArtistSort | undefined, latestListed: SQL) {
   switch (sort) {
     case "nameAsc":
       return [asc(shopParty.displayName), asc(shopArtist.id)];
     case "nameDesc":
       return [desc(shopParty.displayName), desc(shopArtist.id)];
+    case "latestEdition":
+      return [sql`${latestListed} desc nulls last`, desc(shopArtist.id)];
     default:
       return [desc(shopArtist.createdAt), desc(shopArtist.id)];
   }
@@ -46,20 +60,20 @@ export function createDrizzleArtistDirectoryRepository(
       const nameCursor = input.nameCursor;
       const sort = input.sort ?? "newest";
       const letter = input.letter?.trim().slice(0, 1).toUpperCase();
-      const channelFilter = input.salesChannel
-        ? exists(
-            db
-              .select({ one: sql`1` })
-              .from(shopArtwork)
-              .where(
-                and(
-                  eq(shopArtwork.artistId, shopArtist.id),
-                  listedOnSalesChannelSql(input.salesChannel),
-                  publicArtworkVisible(),
-                ),
-              ),
-          )
-        : undefined;
+      const worksConditions = artistWorksConditions(input);
+      const worksFilter =
+        input.salesChannel || input.hasAvailableEditions
+          ? exists(
+              db
+                .select({ one: sql`1` })
+                .from(shopArtwork)
+                .where(and(...worksConditions)),
+            )
+          : undefined;
+      const latestListed = sql`(${db
+        .select({ latest: sql`max(${shopArtwork.createdAt})` })
+        .from(shopArtwork)
+        .where(and(...worksConditions))})`;
 
       const artistSelect = {
         artistId: shopArtist.id,
@@ -85,7 +99,7 @@ export function createDrizzleArtistDirectoryRepository(
           .where(
             and(
               publishedHomePlacementForSlot("featured_artists"),
-              channelFilter,
+              worksFilter,
               publicArtistVisible(),
             ),
           )
@@ -127,7 +141,7 @@ export function createDrizzleArtistDirectoryRepository(
         letter && /^[A-Z]$/.test(letter)
           ? sql`upper(substr(${shopParty.displayName}, 1, 1)) = ${letter}`
           : undefined,
-        channelFilter,
+        worksFilter,
         publicArtistVisible(),
       ];
 
@@ -165,7 +179,7 @@ export function createDrizzleArtistDirectoryRepository(
               ...listFilters,
             ),
           )
-          .orderBy(...orderByForArtistSort(sort))
+          .orderBy(...orderByForArtistSort(sort, latestListed))
           .limit(limit + 1),
         db
           .select({ total: sql<number>`count(*)::int` })
