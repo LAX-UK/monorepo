@@ -24,8 +24,8 @@ const FIGURES: DashboardFigures = {
     year: 2026,
     works: 5,
     totals: [
-      { currency: "EUR", amount: "12500.00" },
       { currency: "GBP", amount: "48200.00" },
+      { currency: "EUR", amount: "12500.00" },
     ],
   },
   payoutsDue: {
@@ -37,8 +37,8 @@ const FIGURES: DashboardFigures = {
   purchasesToPay: {
     purchases: 2,
     totals: [
-      { currency: "EUR", amount: "1250.00" },
       { currency: "GBP", amount: "500.00" },
+      { currency: "EUR", amount: "1250.00" },
     ],
   },
   bidAuthority: bidAuthorityFigure([
@@ -71,25 +71,25 @@ describe("At a glance words and links", () => {
       {
         label: "In upcoming sales",
         figures: ["2 works"],
-        supporting: "Estimate £8,000.00 – £12,000.00",
+        supporting: ["Est. £8,000–£12,000"],
         href: "/selling/consignments?tab=in-sale",
       },
       {
         label: "Sold this year",
-        figures: ["€12,500.00", "£48,200.00"],
-        supporting: "5 works since 1 January",
+        figures: ["£48,200.00", "€12,500.00"],
+        supporting: ["5 works since 1 Jan"],
         href: "/selling/consignments?tab=sold",
       },
       {
         label: "Payouts due",
         figures: ["£9,100.00"],
-        supporting: "Next on 3 Nov 2026",
+        supporting: ["Next on 3 Nov 2026"],
         href: "/selling/payouts",
       },
       {
         label: "Open bids",
         figures: ["3 lots"],
-        supporting: "Up to £24,000.00 in all",
+        supporting: ["Up to £24,000.00"],
         href: "/bids",
       },
     ]);
@@ -99,8 +99,8 @@ describe("At a glance words and links", () => {
     const tile = view("finance").tiles.find((t) => t.id === "purchases_to_pay");
     expect(tile).toMatchObject({
       label: "Purchases to pay",
-      figures: ["€1,250.00", "£500.00"],
-      supporting: "2 purchases",
+      figures: ["£500.00", "€1,250.00"],
+      supporting: ["2 purchases"],
       href: "/purchases",
     });
   });
@@ -117,7 +117,7 @@ describe("At a glance words and links", () => {
     expect(works).toMatchObject({
       label: "Your works in progress",
       figures: ["6 works"],
-      supporting: "3 in sale · 2 under review",
+      supporting: ["3 in sale · 2 under review"],
     });
     expect(works?.description).toMatch(/^Works you sent/);
   });
@@ -130,9 +130,9 @@ describe("At a glance words and links", () => {
         supporting,
       ]),
     ).toEqual([
-      ["Open bids", ["3 lots"], "Up to £24,000.00 in all"],
-      ["Your bid limit", ["£10,000.00"], "In the sales you're authorised for"],
-      ["Sales you can bid in", ["1 sale"], "1 sale to register for"],
+      ["Open bids", ["3 lots"], ["Up to £24,000.00"]],
+      ["Your bid limit", ["£10,000.00"], ["In the sales you're authorised for"]],
+      ["Sales you can bid in", ["1 sale"], ["1 sale to register for"]],
     ]);
   });
 
@@ -141,7 +141,7 @@ describe("At a glance words and links", () => {
       ...FIGURES,
       payoutsDue: { payouts: 0, totals: [], nextDate: null },
     }).tiles.find((t) => t.id === "payouts_due");
-    expect(empty).toMatchObject({ figures: [], emptyText: "No payouts due", supporting: null });
+    expect(empty).toMatchObject({ figures: [], emptyText: "No payouts due", supporting: [] });
   });
 });
 

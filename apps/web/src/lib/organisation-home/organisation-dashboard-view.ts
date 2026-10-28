@@ -1,9 +1,9 @@
-import { formatEstimateRange } from "@/lib/money/currency";
 import { CLIENT_ROUTES, organisationHref } from "@/lib/navigation/client-routes";
-import { formatDate, formatMoney } from "@/lib/ui/format";
+import { formatDate, formatKpiMoney, formatMoney } from "@/lib/ui/format";
 import {
   CONSIGNMENT_PROGRESS_STAGES,
   type DashboardTile,
+  type EstimateTotal,
   type FirstRunAction,
   type MoneyTotal,
   type OrganisationDashboardModel,
@@ -20,7 +20,8 @@ export type DashboardTileView = {
   figures: string[];
   /** Said plainly when there is nothing to show, instead of a zero. */
   emptyText: string | null;
-  supporting: string | null;
+  /** Supporting lines under the figure; one per currency where they carry money. */
+  supporting: string[];
   /** Read to assistive technology with the tile: what exactly the figure counts. */
   description: string;
   href: string;
@@ -65,6 +66,10 @@ const plural = (count: number, one: string, many = `${one}s`) =>
 const money = (totals: readonly MoneyTotal[]) =>
   totals.map((total) => formatMoney(total.amount, total.currency));
 
+/** Estimates read in whole units, as a catalogue prints them ("£18,000–£26,000"). */
+const estimateRange = (estimate: EstimateTotal) =>
+  `${formatKpiMoney(estimate.low, estimate.currency)}–${formatKpiMoney(estimate.high, estimate.currency)}`;
+
 type TileViewBuilder<K extends DashboardTile["kind"]> = (
   tile: Extract<DashboardTile, { kind: K }>,
   ctx: Ctx,
@@ -79,9 +84,13 @@ const TILE_VIEWS: { [K in DashboardTile["kind"]]: TileViewBuilder<K> } = {
     label: tile.own ? "Your works in progress" : "Works in progress",
     figures: [plural(tile.total, "work")],
     supporting:
-      tile.busiest
-        .map(({ stage, count }) => `${count} ${CONSIGNMENT_STAGE_LABEL[stage].toLowerCase()}`)
-        .join(" · ") || null,
+      tile.busiest.length > 0
+        ? [
+            tile.busiest
+              .map(({ stage, count }) => `${count} ${CONSIGNMENT_STAGE_LABEL[stage].toLowerCase()}`)
+              .join(" · "),
+          ]
+        : [],
     emptyText: "No works in progress",
     description: `${tile.own ? "Works you sent" : "Works"}, from first review to sale. Drafts and closed works are not counted.`,
     href: CLIENT_ROUTES.consignments,
@@ -91,8 +100,8 @@ const TILE_VIEWS: { [K in DashboardTile["kind"]]: TileViewBuilder<K> } = {
     figures: [plural(tile.works, "work")],
     supporting:
       tile.estimates.length > 0
-        ? `Estimate ${tile.estimates.map((estimate) => formatEstimateRange(estimate)).join(" · ")}`
-        : "Estimates to follow",
+        ? tile.estimates.map((estimate) => `Est. ${estimateRange(estimate)}`)
+        : ["Estimates to follow"],
     emptyText: "No works in a sale yet",
     description: `${tile.own ? "Works you sent" : "Works"} in sales that have not ended, with their combined estimates.`,
     href: consignmentStageHref("in_sale"),
@@ -100,7 +109,7 @@ const TILE_VIEWS: { [K in DashboardTile["kind"]]: TileViewBuilder<K> } = {
   sold_this_year: (tile) => ({
     label: "Sold this year",
     figures: money(tile.totals),
-    supporting: `${plural(tile.works, "work")} since 1 January`,
+    supporting: [`${plural(tile.works, "work")} since 1 Jan`],
     emptyText: "Nothing sold yet this year",
     description: `Hammer prices of works sold from 1 January to 31 December ${tile.year}, UK time.`,
     href: consignmentStageHref("sold"),
@@ -108,7 +117,7 @@ const TILE_VIEWS: { [K in DashboardTile["kind"]]: TileViewBuilder<K> } = {
   payouts_due: (tile) => ({
     label: "Payouts due",
     figures: money(tile.totals),
-    supporting: tile.nextDate ? `Next on ${formatDate(tile.nextDate)}` : null,
+    supporting: tile.nextDate ? [`Next on ${formatDate(tile.nextDate)}`] : [],
     emptyText: "No payouts due",
     description: "Payouts scheduled or on their way to the bank account, after fees.",
     href: CLIENT_ROUTES.payouts,
@@ -116,8 +125,7 @@ const TILE_VIEWS: { [K in DashboardTile["kind"]]: TileViewBuilder<K> } = {
   open_bids: (tile, ctx) => ({
     label: "Open bids",
     figures: [plural(tile.lots, "lot")],
-    supporting:
-      tile.totalMax.length > 0 ? `Up to ${money(tile.totalMax).join(" · ")} in all` : null,
+    supporting: money(tile.totalMax).map((amount) => `Up to ${amount}`),
     emptyText: "No open bids",
     description: tile.own
       ? `Lots still open where you've bid for ${ctx.organisationName}, and the most you've committed on each: your highest bid, automatic bid or absentee maximum.`
@@ -127,7 +135,7 @@ const TILE_VIEWS: { [K in DashboardTile["kind"]]: TileViewBuilder<K> } = {
   purchases_to_pay: (tile) => ({
     label: "Purchases to pay",
     figures: money(tile.totals),
-    supporting: plural(tile.purchases, "purchase"),
+    supporting: [plural(tile.purchases, "purchase")],
     emptyText: "Nothing to pay",
     description: "Won lots awaiting payment, with the buyer's premium.",
     href: CLIENT_ROUTES.purchases,
@@ -151,7 +159,7 @@ const TILE_VIEWS: { [K in DashboardTile["kind"]]: TileViewBuilder<K> } = {
     return {
       label: "Your bid limit",
       figures: figure ? [figure] : [],
-      supporting,
+      supporting: supporting ? [supporting] : [],
       emptyText: "Not authorised yet",
       description: "The most you may bid for the organisation, set by its owners.",
       href: CLIENT_ROUTES.bids,
@@ -160,12 +168,13 @@ const TILE_VIEWS: { [K in DashboardTile["kind"]]: TileViewBuilder<K> } = {
   authorised_sales: (tile) => ({
     label: "Sales you can bid in",
     figures: [tile.everySale ? "Every sale" : plural(tile.sales, "sale")],
-    supporting:
+    supporting: [
       tile.toRegister > 0
         ? `${plural(tile.toRegister, "sale")} to register for`
         : tile.sales > 0
           ? "Registered for all"
           : "Register for each sale you join",
+    ],
     emptyText: "No sales yet",
     description: "Upcoming sales you're authorised to bid in for the organisation.",
     href: "/sales?filter=scheduled",
@@ -180,7 +189,7 @@ export function dashboardTileView(tile: DashboardTile, ctx: Ctx): DashboardTileV
     ...view,
     figures: tile.empty ? [] : view.figures,
     emptyText: tile.empty ? view.emptyText : null,
-    supporting: tile.empty ? null : view.supporting,
+    supporting: tile.empty ? [] : view.supporting,
   };
 }
 

@@ -112,15 +112,22 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
       {loadedNothing ? null : (
         <>
           <SubmissionsListAutoRefresh enabled={counts["in-review"] > 0} />
-          <ConsignmentTabs tabs={tabItems} />
-          {reviewStage && reviewStageLabel ? (
-            <CatalogActiveFilterChips
-              className="mb-0 md:mb-0"
-              chips={[
-                { key: reviewStage, label: reviewStageLabel, removeHref: `${PATH}?tab=in-review` },
-              ]}
-            />
-          ) : null}
+          {/* The stage chip belongs to the tabs it narrows, so it sits right under them. */}
+          <div className="space-y-3">
+            <ConsignmentTabs tabs={tabItems} />
+            {reviewStage && reviewStageLabel ? (
+              <CatalogActiveFilterChips
+                className="mb-0 md:mb-0"
+                chips={[
+                  {
+                    key: reviewStage,
+                    label: reviewStageLabel,
+                    removeHref: `${PATH}?tab=in-review`,
+                  },
+                ]}
+              />
+            ) : null}
+          </div>
           {rows.length === 0 ? (
             <DashboardEmptyState
               variant="hero"

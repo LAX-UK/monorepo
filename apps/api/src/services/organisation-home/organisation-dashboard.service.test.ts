@@ -149,8 +149,8 @@ describe("OrganisationDashboardService", () => {
     expect(result.purchasesToPay).toEqual({
       purchases: 2,
       totals: [
-        { currency: "EUR", amount: "1250.00" },
         { currency: "GBP", amount: "500.00" },
+        { currency: "EUR", amount: "1250.00" },
       ],
     });
   });
@@ -190,8 +190,8 @@ describe("OrganisationDashboardService", () => {
       year: 2026,
       works: 3,
       totals: [
-        { currency: "EUR", amount: "3000.00" },
         { currency: "GBP", amount: "5000.00" },
+        { currency: "EUR", amount: "3000.00" },
       ],
     });
     expect(result.payoutsDue).toEqual({

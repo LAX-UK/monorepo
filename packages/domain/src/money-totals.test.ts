@@ -11,8 +11,8 @@ describe("money totals", () => {
         { currency: "EUR", amount: "250.55" },
       ]),
     ).toEqual([
-      { currency: "EUR", amount: "1750.55" },
       { currency: "GBP", amount: "0.30" },
+      { currency: "EUR", amount: "1750.55" },
     ]);
   });
 

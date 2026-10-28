@@ -8,6 +8,14 @@ export type EstimateTotal = { currency: string; low: string; high: string };
 
 const DEFAULT_CURRENCY = "GBP";
 
+/** Pounds first (the platform's currency), then the others by code, so output is stable. */
+function byPlatformCurrencyFirst(a: { currency: string }, b: { currency: string }): number {
+  if (a.currency === b.currency) return 0;
+  if (a.currency === DEFAULT_CURRENCY) return -1;
+  if (b.currency === DEFAULT_CURRENCY) return 1;
+  return a.currency.localeCompare(b.currency);
+}
+
 function currencyCode(raw: string | null | undefined): string {
   const code = raw?.trim().toUpperCase() ?? "";
   return /^[A-Z]{3}$/.test(code) ? code : DEFAULT_CURRENCY;
@@ -20,14 +28,14 @@ function byCurrency<T extends { currency: string }>(rows: Iterable<T>, reduce: (
     const current = totals.get(keyed.currency);
     totals.set(keyed.currency, current ? reduce(current, keyed) : keyed);
   }
-  return [...totals.values()].sort((a, b) => a.currency.localeCompare(b.currency));
+  return [...totals.values()].sort(byPlatformCurrencyFirst);
 }
 
 const add = (a: string, b: string) =>
   minorUnitsToMoneyString(parseMoneyToMinorUnits(a) + parseMoneyToMinorUnits(b));
 
 /**
- * Totals per currency, sorted by code. Currencies are never converted or combined, so a figure
+ * Totals per currency, pounds first. Currencies are never converted or combined, so a figure
  * never mixes them; zero totals are dropped so "nothing" reads as nothing, not "£0.00".
  */
 export function sumMoneyByCurrency(rows: Iterable<MoneyTotal>): MoneyTotal[] {
@@ -37,7 +45,7 @@ export function sumMoneyByCurrency(rows: Iterable<MoneyTotal>): MoneyTotal[] {
   ).filter((total) => parseMoneyToMinorUnits(total.amount) !== 0n);
 }
 
-/** Estimate ranges per currency, sorted by code. */
+/** Estimate ranges per currency, pounds first. */
 export function sumEstimatesByCurrency(rows: Iterable<EstimateTotal>): EstimateTotal[] {
   return byCurrency(
     [...rows].map((row) => ({

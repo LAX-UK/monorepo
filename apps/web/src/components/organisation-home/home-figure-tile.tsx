@@ -35,8 +35,12 @@ export function HomeFigureTile({ tile }: { tile: DashboardTileView }) {
       ) : (
         <span className="font-body text-base font-medium text-on-surface">{tile.emptyText}</span>
       )}
-      {tile.supporting ? (
-        <span className="mt-auto font-body text-xs text-on-surface-variant">{tile.supporting}</span>
+      {tile.supporting.length > 0 ? (
+        <span className="mt-auto flex flex-col gap-0.5 pt-1 font-body text-xs text-on-surface-variant">
+          {tile.supporting.map((line) => (
+            <span key={line}>{line}</span>
+          ))}
+        </span>
       ) : null}
       <span id={descriptionId} className="sr-only">
         {tile.description}

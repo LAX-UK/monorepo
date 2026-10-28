@@ -268,8 +268,8 @@ describe("tile figures", () => {
     ]);
     expect(sales[0]?.estimates).toEqual([]);
     expect(sales[1]?.estimates).toEqual([
-      { currency: "EUR", low: "3000.00", high: "4000.00" },
       { currency: "GBP", low: "8000.00", high: "12000.00" },
+      { currency: "EUR", low: "3000.00", high: "4000.00" },
     ]);
 
     const [tile] = buildOrganisationDashboard(
@@ -282,8 +282,8 @@ describe("tile figures", () => {
       own: false,
       works: 4,
       estimates: [
-        { currency: "EUR", low: "3000.00", high: "4000.00" },
         { currency: "GBP", low: "8000.00", high: "12000.00" },
+        { currency: "EUR", low: "3000.00", high: "4000.00" },
       ],
     });
   });
