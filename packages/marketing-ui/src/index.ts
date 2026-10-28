@@ -104,6 +104,8 @@ export {
   type MarketingUtilityBarProps,
   type MarketingUtilityBarItem,
 } from "./marketing-utility-bar.js";
+export { LaxFamilyBar, type LaxFamilyBarLink, type LaxFamilyBarProps } from "./lax-family-bar.js";
+export { LaxFamilyMenuLinks, type LaxFamilyMenuLinksProps } from "./lax-family-menu-links.js";
 export { LaxLockup, type LaxLockupProps } from "./lax-lockup.js";
 export { LaxLogo, type LaxLogoProps } from "./lax-logo.js";
 export { MarketingHero, type MarketingHeroProps } from "./marketing-hero.js";
