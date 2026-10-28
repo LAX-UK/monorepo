@@ -27,7 +27,7 @@ const TONES: Readonly<Record<MarketingHeaderTone, ToneClasses>> = {
     link: "text-on-surface-variant hover:text-on-surface",
     current: "text-on-surface",
     muted: "text-on-surface-variant",
-    divider: "border-border-hairline",
+    divider: "border-on-surface-variant/35",
   },
   "on-dark": {
     link: "text-hero-foreground/80 hover:text-hero-foreground",

@@ -86,7 +86,7 @@ function SiteHeaderShell({
       >
         <div
           className={cn(
-            "mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-4 py-2 lg:gap-4 lg:pt-3 lg:pb-4",
+            "mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-4 py-2 lg:gap-4 lg:pt-0 lg:pb-4",
             MARKETING_PAGE_GUTTER_X,
           )}
         >
