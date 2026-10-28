@@ -367,8 +367,11 @@ export {
   type StandingInstructionKind,
 } from "./member-removal.js";
 export {
+  canSeeConsignedLot,
   canSeeSubmission,
+  consignedLotScope,
   submissionSenderScope,
+  type ConsignedLotScope,
   type SubmissionSenderScope,
 } from "./submission-visibility.js";
 export {

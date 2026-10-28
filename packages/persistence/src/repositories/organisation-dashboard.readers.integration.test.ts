@@ -311,6 +311,7 @@ describe.skipIf(!HAS_DB)("organisation dashboard read models (integration)", () 
       const own = await reader.count({
         legalEntityId: ORG,
         visibleTo: { scope: "own", userId: CONSIGNOR_A },
+        lotsSentBy: CONSIGNOR_A,
       });
       expect(byStatus(own.submissions, (r) => r.status)).toEqual({
         under_review: 1,
@@ -324,12 +325,8 @@ describe.skipIf(!HAS_DB)("organisation dashboard read models (integration)", () 
         visibleTo: { scope: "attributed", userId: OWNER },
       });
       expect(byStatus(attributed.submissions, (r) => r.status)).not.toHaveProperty("submitted");
-      expect(byStatus(attributed.lots, lotKey)).toEqual({
-        "scheduled:false": 1,
-        "active:false": 1,
-        "ended:true": 1,
-        "ended:false": 1,
-      });
+      // Members who follow consignments without sending them see every lot.
+      expect(byStatus(attributed.lots, lotKey)).toEqual(byStatus(all.lots, lotKey));
     });
   });
 
@@ -361,7 +358,11 @@ describe.skipIf(!HAS_DB)("organisation dashboard read models (integration)", () 
       ]);
 
       const own = await reader.list(
-        { legalEntityId: ORG, visibleTo: { scope: "own", userId: CONSIGNOR_A } },
+        {
+          legalEntityId: ORG,
+          visibleTo: { scope: "own", userId: CONSIGNOR_A },
+          lotsSentBy: CONSIGNOR_A,
+        },
         NOW,
         50,
       );

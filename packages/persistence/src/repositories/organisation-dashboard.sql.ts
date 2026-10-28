@@ -13,11 +13,13 @@ export function lotEstimateSql(end: "low" | "high"): SQL<string | null> {
 }
 
 /**
- * The organisation's lots a member may see. Members who see every consignment see every lot the
- * organisation sells; the others see the lots made from the submissions they may see.
+ * The organisation's lots a member may see: every lot it sells, or only the lots made from the
+ * submissions one member sent (`lotsSentBy`), as the domain decides.
  */
 export function consignedLotsWhere(scope: ConsignmentReadScope): SQL | undefined {
-  const sender = submissionSenderSql(scope.visibleTo);
+  const sender = scope.lotsSentBy
+    ? submissionSenderSql({ scope: "own", userId: scope.lotsSentBy })
+    : undefined;
   return and(
     eq(lot.sellerLegalEntityId, scope.legalEntityId),
     isNull(lot.deletedAt),

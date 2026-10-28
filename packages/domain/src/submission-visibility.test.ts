@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { canSeeSubmission, submissionSenderScope } from "./submission-visibility.js";
+import {
+  canSeeConsignedLot,
+  canSeeSubmission,
+  consignedLotScope,
+  submissionSenderScope,
+} from "./submission-visibility.js";
 
 describe("submissionSenderScope", () => {
   it("lets owners and admins see every submission", () => {
@@ -37,5 +42,25 @@ describe("canSeeSubmission", () => {
     expect(see("own", me)).toBe(true);
     expect(see("own", "someone")).toBe(false);
     expect(see("own", null)).toBe(false);
+  });
+});
+
+describe("consigned lots", () => {
+  it("narrows lots only for members who see just their own submissions", () => {
+    expect(consignedLotScope({ role: "consignor" })).toBe("own");
+    for (const role of ["owner", "admin", "finance", "viewer"] as const) {
+      expect(consignedLotScope({ role })).toBe("all");
+    }
+    expect(consignedLotScope(null)).toBe("all");
+  });
+
+  it("shows a consignor the lots from their own submissions, and an owner every lot", () => {
+    const see = (scope: "all" | "own", sender: string | null | undefined) =>
+      canSeeConsignedLot({ scope, submittedByUserId: sender, viewerUserId: "me" });
+    expect(see("own", "me")).toBe(true);
+    expect(see("own", "colleague")).toBe(false);
+    expect(see("own", undefined)).toBe(false);
+    expect(see("all", "colleague")).toBe(true);
+    expect(see("all", undefined)).toBe(true);
   });
 });

@@ -123,6 +123,7 @@ describe("OrganisationDashboardService", () => {
     expect(readers.consignmentStatus.count).toHaveBeenCalledWith({
       legalEntityId: ENTITY,
       visibleTo: undefined,
+      lotsSentBy: undefined,
     });
     expect(readers.openBids.summarise).toHaveBeenCalledWith(ENTITY, null);
   });
@@ -130,7 +131,11 @@ describe("OrganisationDashboardService", () => {
   it("narrows a consignor to their own submissions and reads no money", async () => {
     const { readers, figures } = load("consignor");
     await figures;
-    const own = { legalEntityId: ENTITY, visibleTo: { scope: "own", userId: "member-1" } };
+    const own = {
+      legalEntityId: ENTITY,
+      visibleTo: { scope: "own", userId: "member-1" },
+      lotsSentBy: "member-1",
+    };
     expect(readers.consignmentStatus.count).toHaveBeenCalledWith(own);
     expect(readers.upcomingSaleWorks.list).toHaveBeenCalledWith(own, NOW, 100);
     expect(calls(readers)).toMatchObject({
@@ -167,6 +172,7 @@ describe("OrganisationDashboardService", () => {
     expect(readers.consignmentStatus.count).toHaveBeenCalledWith({
       legalEntityId: ENTITY,
       visibleTo: { scope: "attributed", userId: "member-1" },
+      lotsSentBy: undefined,
     });
   });
 

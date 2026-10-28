@@ -7,10 +7,12 @@ import type { SubmissionSenderFilter } from "./item-submission.repository.js";
  * the domain from these rows.
  */
 
-/** The organisation's consignments, narrowed by who sent them when `visibleTo` is set. */
+/** The organisation's consignments: submissions narrowed by `visibleTo`, lots by `lotsSentBy`. */
 export type ConsignmentReadScope = {
   legalEntityId: string;
   visibleTo?: SubmissionSenderFilter | undefined;
+  /** Set when the member sees only the lots made from the submissions they sent. */
+  lotsSentBy?: string | undefined;
 };
 
 /** Submissions without a lot by status, and the organisation's lots by status and outcome. */

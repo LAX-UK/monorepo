@@ -2,6 +2,7 @@ import {
   type DashboardFigureGroup,
   type DashboardFigures,
   type EntityActor,
+  consignedLotScope,
   consignmentProgressCounts,
   dashboardFigureGroupsFor,
   dashboardFigureScope,
@@ -68,6 +69,7 @@ function consignmentScope(ctx: LoadContext, group: ServerGroup): ConsignmentRead
   return {
     legalEntityId: ctx.member.legalEntityId,
     visibleTo: scope === "all" ? undefined : { scope, userId: ctx.member.userId },
+    lotsSentBy: consignedLotScope(ctx.actor) === "own" ? ctx.member.userId : undefined,
   };
 }
 
