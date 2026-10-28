@@ -123,7 +123,10 @@ function SiteHeaderShell({
                 <div className="hidden lg:flex">
                   <ThemeToggle headerTone={headerTone} />
                 </div>
-                <HeaderAuthChip variant="notifications" headerTone={headerTone} />
+                {/* Phones reach notifications from the account sheet, which keeps room for the chip. */}
+                <div className="hidden sm:flex">
+                  <HeaderAuthChip variant="notifications" headerTone={headerTone} />
+                </div>
                 <HeaderAuthChip
                   variant="account"
                   headerTone={headerTone}

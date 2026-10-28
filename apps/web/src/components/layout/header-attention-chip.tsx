@@ -18,7 +18,7 @@ function Chip({ chip }: { chip: AttentionChip }) {
     <Link
       href={chip.href}
       className={cn(
-        "relative inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 font-body text-[0.8125rem] font-medium whitespace-nowrap transition-colors",
+        "relative inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 font-body text-[0.8125rem] font-medium whitespace-nowrap transition-colors max-sm:h-7 max-sm:gap-1 max-sm:px-2 max-sm:text-xs",
         "after:absolute after:-inset-y-1.5 after:inset-x-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring",
         TONE[chip.kind],
       )}
