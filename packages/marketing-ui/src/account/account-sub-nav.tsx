@@ -36,13 +36,14 @@ const COUNT_TONE: Record<AccountSubNavCount["tone"], string> = {
 
 /** Scrolls the band sideways (never the page) so the current link is fully visible. */
 function keepInView(scroller: HTMLElement, link: HTMLElement) {
-  const start = link.offsetLeft - scroller.offsetLeft;
-  const end = start + link.offsetWidth;
-  const fade = 32;
-  if (start < scroller.scrollLeft) {
-    scroller.scrollLeft = Math.max(0, start - fade);
-  } else if (end > scroller.scrollLeft + scroller.clientWidth) {
-    scroller.scrollLeft = end - scroller.clientWidth + fade;
+  const box = scroller.getBoundingClientRect();
+  const item = link.getBoundingClientRect();
+  // The row fades out over its last 15% on phones; keep the link clear of the fade.
+  const fade = box.width * 0.15 + 8;
+  if (item.left < box.left) {
+    scroller.scrollLeft += item.left - box.left - 8;
+  } else if (item.right > box.right - fade) {
+    scroller.scrollLeft += item.right - (box.right - fade);
   }
 }
 

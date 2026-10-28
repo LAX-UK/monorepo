@@ -238,7 +238,7 @@ export function HeaderUserMenu({
         // Who is signed in sits above the menu: only menu items live inside role="menu".
         <ChromePopoverPanel
           ref={panelRef}
-          className="w-[min(100vw-2rem,20.5rem)] overflow-hidden rounded-xl border-outline-variant/60 py-0 shadow-[var(--shadow-pop,0_12px_32px_-8px_rgb(0_0_0/0.18))] dark:border-outline-variant/60"
+          className="w-[min(100vw-2rem,22rem)] overflow-hidden rounded-xl border-outline-variant/60 py-0 shadow-[var(--shadow-pop,0_12px_32px_-8px_rgb(0_0_0/0.18))] dark:border-outline-variant/60"
           onKeyDown={onPanelKeyDown}
         >
           <div className="border-b border-outline-variant/60 p-4">
