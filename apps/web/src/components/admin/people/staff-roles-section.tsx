@@ -218,7 +218,7 @@ export function LaxAdminRolesSection(props: {
         id: "lax-admin-roles",
         title: "LAX Admin roles",
         description:
-          "What they can do in LAX Admin, the Shop and gallery tool: every role's permissions added together. LAX Admin applies a change within a minute.",
+          "What they can do in LAX Admin: the permissions of every role added together. Changes apply within a minute.",
         empty: (name) => `No LAX Admin roles. ${name} cannot sign in to LAX Admin.`,
       }}
     />

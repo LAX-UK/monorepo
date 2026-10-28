@@ -59,7 +59,7 @@ function RolesCell({ row }: { row: AccessReviewRowView }) {
     return <span className="text-staff-muted">No roles</span>;
   }
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex w-full flex-col gap-3 py-2">
       {row.roleGroups.map((group) => (
         <div key={group.product} className="flex min-w-0 flex-col gap-1">
           <span className="text-staff-xs font-medium text-staff-muted">{group.label}</span>
