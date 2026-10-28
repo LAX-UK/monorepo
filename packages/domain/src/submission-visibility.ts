@@ -50,3 +50,27 @@ export function canSeeSubmission(input: {
       return sender === input.viewerUserId;
   }
 }
+
+/**
+ * Which of the organisation's lots (catalogued consignments) a member sees: `own` only for members
+ * who see just the submissions they sent, and then only the lots made from those; everyone else
+ * who follows consignments sees all of the organisation's lots. Derived from the submission rule
+ * above, so the two never disagree.
+ */
+export type ConsignedLotScope = "all" | "own";
+
+export function consignedLotScope(actor: EntityActor | null): ConsignedLotScope {
+  return submissionSenderScope(actor) === "own" ? "own" : "all";
+}
+
+/**
+ * Whether a lot is visible, given who sent the submission it was made from (`undefined` for a
+ * lot that did not come from a submission the member can see).
+ */
+export function canSeeConsignedLot(input: {
+  scope: ConsignedLotScope;
+  submittedByUserId: string | null | undefined;
+  viewerUserId: string;
+}): boolean {
+  return canSeeSubmission(input);
+}

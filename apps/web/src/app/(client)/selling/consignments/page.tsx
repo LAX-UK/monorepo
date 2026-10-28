@@ -5,6 +5,7 @@ import { SellerProfileUnavailableAlert } from "@/components/dashboard/seller-pro
 import { ConsignmentTabs } from "@/components/dashboard/seller/consignment-tabs";
 import { ConsignmentsList } from "@/components/dashboard/seller/consignments-list";
 import { SubmissionsListAutoRefresh } from "@/components/dashboard/submissions/submissions-list-auto-refresh";
+import { CatalogActiveFilterChips } from "@/components/marketing/catalog-active-filter-chips";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_CTA, DASHBOARD_EMPTY, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
@@ -18,6 +19,8 @@ import {
   sellerCan,
 } from "@/lib/legal-entity/seller-acting-context.server";
 import { submissionsFailureFromCaught } from "@/lib/legal-entity/submissions-access-errors";
+import { CONSIGNMENT_STAGE_LABEL } from "@/lib/organisation-home/consignment-stage-links";
+import { consignedLotScope } from "@auction/domain";
 import type { ItemSubmission, Lot } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Plus } from "lucide-react";
@@ -28,7 +31,8 @@ import {
   consignmentTabLabel,
   countConsignmentsByTab,
   filterConsignmentRows,
-  parseConsignmentTab,
+  parseConsignmentFilter,
+  visibleConsignedLots,
 } from "./consignments.vm";
 
 const PATH = "/selling/consignments";
@@ -36,7 +40,7 @@ const PATH = "/selling/consignments";
 const PAGE_LIMIT = 100;
 
 type PageProps = {
-  searchParams: Promise<{ tab?: string; status?: string }>;
+  searchParams: Promise<{ tab?: string; status?: string; stage?: string }>;
 };
 
 export default async function SellerConsignmentsPage({ searchParams }: PageProps) {
@@ -45,7 +49,7 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
   requireSellerCapability(sellerCtx, "entity.consignments.read");
   const { sellerEntityId, bootstrapFailed } = sellerCtx;
   const canCreateSubmission = sellerCan(sellerCtx, "entity.submissions.create");
-  const tab = parseConsignmentTab(await searchParams);
+  const { tab, reviewStage } = parseConsignmentFilter(await searchParams);
 
   const c = await getServerDataContainer();
   const [submissionsResult, lotsResult] = await Promise.allSettled([
@@ -71,9 +75,17 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
     );
   }
 
-  const rows = buildConsignmentRows({ submissions, lots });
+  // A consignor sees only the lots made from their own submissions, as on Home.
+  const visibleLots = visibleConsignedLots({
+    lots,
+    submissions,
+    scope: consignedLotScope(sellerCtx.actor),
+    viewerUserId: user.id,
+  });
+  const rows = buildConsignmentRows({ submissions, lots: visibleLots });
   const counts = countConsignmentsByTab(rows);
-  const visible = filterConsignmentRows(rows, tab);
+  const visible = filterConsignmentRows(rows, tab, reviewStage);
+  const reviewStageLabel = reviewStage ? CONSIGNMENT_STAGE_LABEL[reviewStage] : null;
   const truncated = submissions.length >= PAGE_LIMIT || lots.length >= PAGE_LIMIT;
   const loadedNothing = failures.length === 2;
 
@@ -109,7 +121,22 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
       {loadedNothing ? null : (
         <>
           <SubmissionsListAutoRefresh enabled={counts["in-review"] > 0} />
-          <ConsignmentTabs tabs={tabItems} />
+          {/* The stage chip belongs to the tabs it narrows, so it sits right under them. */}
+          <div className="space-y-3">
+            <ConsignmentTabs tabs={tabItems} />
+            {reviewStage && reviewStageLabel ? (
+              <CatalogActiveFilterChips
+                className="mb-0 md:mb-0"
+                chips={[
+                  {
+                    key: reviewStage,
+                    label: reviewStageLabel,
+                    removeHref: `${PATH}?tab=in-review`,
+                  },
+                ]}
+              />
+            ) : null}
+          </div>
           {rows.length === 0 ? (
             <DashboardEmptyState
               variant="hero"
@@ -130,7 +157,11 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
             />
           ) : visible.length === 0 ? (
             <DashboardEmptyState
-              title={`Nothing in ${consignmentTabLabel(tab).toLowerCase()}`}
+              title={
+                reviewStageLabel
+                  ? `Nothing ${reviewStageLabel.toLowerCase()}`
+                  : `Nothing in ${consignmentTabLabel(tab).toLowerCase()}`
+              }
               description="Nothing has reached this stage yet."
               action={
                 <Button variant="secondaryOutline" asChild>

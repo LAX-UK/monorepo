@@ -11,6 +11,10 @@ import type {
   OrganisationSetupState,
 } from "@auction/domain";
 import { type MyBuyerAgentAuthorisation, salePath } from "@auction/types";
+import {
+  type OrganisationDashboardView,
+  organisationDashboardView,
+} from "./organisation-dashboard-view";
 
 /** One "Needs you" row as it reads, with its single button. */
 export type HomeTaskView = {
@@ -52,6 +56,8 @@ export type OrganisationHomeView = {
   shortcuts: HomeLinkView[];
   activity: HomeActivityView[];
   seeAllHref: string | null;
+  /** The business figures after the tasks; `null` when they could not be loaded. */
+  dashboard: OrganisationDashboardView | null;
 };
 
 type Ctx = { organisationName: string };
@@ -177,11 +183,6 @@ const SHORTCUTS: Record<HomeShortcut, Omit<HomeLinkView, "id">> = {
   sell: { label: "Sell a work", href: CLIENT_ROUTES.sellingNew },
   invite: { label: "Invite someone", href: organisationHref("members") },
   statements: { label: "Statements", href: CLIENT_ROUTES.payouts },
-  purchases_to_pay: { label: "Purchases to pay", href: CLIENT_ROUTES.purchases },
-  consignments: { label: "Consignments", href: CLIENT_ROUTES.consignments },
-  works: { label: "Works", href: CLIENT_ROUTES.works },
-  upcoming_sales: { label: "Upcoming sales", href: "/sales?filter=scheduled" },
-  bids: { label: "My bids", href: CLIENT_ROUTES.bids },
 };
 
 const ACTIVITY_TEXT: Record<HomeActivityKind, (event: HomeActivityEvent) => string> = {
@@ -237,5 +238,6 @@ export function organisationHomeView(model: OrganisationHomeModel, ctx: Ctx): Or
     shortcuts: model.shortcuts.map((id) => ({ id, ...SHORTCUTS[id] })),
     activity: model.activity.map(activityView),
     seeAllHref: model.activityArchive ? ARCHIVE_HREF[model.activityArchive] : null,
+    dashboard: model.dashboard ? organisationDashboardView(model.dashboard, ctx) : null,
   };
 }

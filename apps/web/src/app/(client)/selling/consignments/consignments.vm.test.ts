@@ -5,7 +5,9 @@ import {
   buildConsignmentRows,
   countConsignmentsByTab,
   filterConsignmentRows,
+  parseConsignmentFilter,
   parseConsignmentTab,
+  visibleConsignedLots,
 } from "./consignments.vm";
 
 function submission(overrides: Partial<ItemSubmission>): ItemSubmission {
@@ -136,5 +138,75 @@ describe("parseConsignmentTab", () => {
 
   it("prefers the new tab over the retired status", () => {
     expect(parseConsignmentTab({ tab: "sold", status: "draft" })).toBe("sold");
+  });
+});
+
+describe("narrowing In review to one stage", () => {
+  const rows = buildConsignmentRows({
+    submissions: [
+      submission({ id: "a", status: "under_review" }),
+      submission({ id: "b", status: "changes_requested" }),
+      submission({ id: "c", status: "approved" }),
+      submission({ id: "d", status: "converted", convertedLotId: "l1" }),
+    ],
+    lots: [lot({ id: "l1", status: "draft" })],
+  });
+
+  it("keeps only the works at that stage, as Home counts them", () => {
+    const keys = (stage: "under_review" | "needs_changes" | "accepted") =>
+      filterConsignmentRows(rows, "in-review", stage).map((row) => row.key);
+    expect(keys("under_review")).toEqual(["submission:a"]);
+    expect(keys("needs_changes")).toEqual(["submission:b"]);
+    expect(keys("accepted").sort()).toEqual(["lot:l1", "submission:c"]);
+    expect(filterConsignmentRows(rows, "in-review")).toHaveLength(4);
+  });
+
+  it("reads the stage only for In review, and a stage alone opens that tab", () => {
+    expect(parseConsignmentFilter({ tab: "in-review", stage: "needs_changes" })).toEqual({
+      tab: "in-review",
+      reviewStage: "needs_changes",
+    });
+    expect(parseConsignmentFilter({ stage: "accepted" })).toEqual({
+      tab: "in-review",
+      reviewStage: "accepted",
+    });
+    expect(parseConsignmentFilter({ tab: "sold", stage: "accepted" })).toEqual({
+      tab: "sold",
+      reviewStage: null,
+    });
+    expect(parseConsignmentFilter({ tab: "in-review", stage: "sold" })).toEqual({
+      tab: "in-review",
+      reviewStage: null,
+    });
+  });
+});
+
+describe("visibleConsignedLots", () => {
+  const submissions = [
+    submission({
+      id: "mine",
+      status: "converted",
+      convertedLotId: "l-mine",
+      submittedByUserId: "me",
+    }),
+    submission({
+      id: "theirs",
+      status: "converted",
+      convertedLotId: "l-theirs",
+      submittedByUserId: "colleague",
+    }),
+  ];
+  const lots = [lot({ id: "l-mine" }), lot({ id: "l-theirs" }), lot({ id: "l-staff" })];
+
+  it("shows a consignor only the lots from their own submissions", () => {
+    const visible = visibleConsignedLots({ lots, submissions, scope: "own", viewerUserId: "me" });
+    expect(visible.map((l) => l.id)).toEqual(["l-mine"]);
+    const rows = buildConsignmentRows({ submissions, lots: visible });
+    expect(countConsignmentsByTab(rows)["in-sale"]).toBe(1);
+  });
+
+  it("shows an owner every lot the organisation sells", () => {
+    const visible = visibleConsignedLots({ lots, submissions, scope: "all", viewerUserId: "me" });
+    expect(visible.map((l) => l.id)).toEqual(["l-mine", "l-theirs", "l-staff"]);
   });
 });

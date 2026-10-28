@@ -3,6 +3,11 @@ import { roleBidsThroughAuthorisation } from "./bid-authority.js";
 import type { ConsignmentChecklist } from "./consignment-checklist.js";
 import { type EntityActor, type EntityCapability, entityActorCan } from "./entity-capabilities.js";
 import { roleNeedsPersonalIdentity } from "./member-role-guide.js";
+import {
+  type DashboardFigures,
+  type OrganisationDashboardModel,
+  buildOrganisationDashboard,
+} from "./organisation-dashboard.js";
 import { type OrganisationSetupState, organisationSetupState } from "./organisation-setup.js";
 
 /** A thing on Home that a task or an activity line is about. */
@@ -150,16 +155,8 @@ export function homeTasks(facts: OrganisationHomeFacts): HomeTask[] {
   );
 }
 
-/** A shortcut on Home: a page the role uses often. */
-export type HomeShortcut =
-  | "sell"
-  | "invite"
-  | "statements"
-  | "purchases_to_pay"
-  | "consignments"
-  | "works"
-  | "upcoming_sales"
-  | "bids";
+/** A shortcut on Home: a page the people who run the organisation use often. */
+export type HomeShortcut = "sell" | "invite" | "statements";
 
 type ShortcutSpec = { shortcut: HomeShortcut; applies: (actor: EntityActor) => boolean };
 
@@ -168,40 +165,23 @@ const can = (actor: EntityActor, name: EntityCapability) => entityActorCan(actor
 const canRead = (actor: EntityActor, name: EntityCapability) =>
   entityActorCan({ role: actor.role }, name);
 
-/** Shortcuts in order; the first four that apply are shown. */
+/**
+ * Shortcuts belong to the people who run the organisation. Every other role reaches its pages
+ * from the figures on Home, each of which links to the page behind it.
+ */
+const SHORTCUTS_AUDIENCE: EntityCapability = "entity.members.manage";
+
+/** Shortcuts in order; writes are hidden from an impersonating admin. */
 const SHORTCUT_SPECS: readonly ShortcutSpec[] = [
   { shortcut: "sell", applies: (a) => can(a, "entity.submissions.create") },
   { shortcut: "invite", applies: (a) => can(a, "entity.members.manage") },
   { shortcut: "statements", applies: (a) => canRead(a, "entity.payouts.read") },
-  {
-    // Finance pays; the people who run the organisation find purchases in "Needs you".
-    shortcut: "purchases_to_pay",
-    applies: (a) => can(a, "entity.finance.write") && !canRead(a, "entity.members.manage"),
-  },
-  {
-    // People who follow consignments without settling them.
-    shortcut: "consignments",
-    applies: (a) => canRead(a, "entity.consignments.read") && !canRead(a, "entity.payouts.read"),
-  },
-  {
-    shortcut: "works",
-    applies: (a) =>
-      canRead(a, "entity.holdings.read") &&
-      canRead(a, "entity.consignments.read") &&
-      !canRead(a, "entity.submissions.create") &&
-      !canRead(a, "entity.payouts.read"),
-  },
-  { shortcut: "upcoming_sales", applies: (a) => roleBidsThroughAuthorisation(a.role) },
-  { shortcut: "bids", applies: (a) => roleBidsThroughAuthorisation(a.role) },
 ];
 
-const MAX_SHORTCUTS = 4;
-
-/** Two to four shortcuts for the role. */
+/** The role's shortcuts: Sell a work, Invite someone and Statements for owners and admins. */
 export function homeShortcuts(actor: EntityActor): HomeShortcut[] {
-  return SHORTCUT_SPECS.filter((spec) => spec.applies(actor))
-    .map((spec) => spec.shortcut)
-    .slice(0, MAX_SHORTCUTS);
+  if (!canRead(actor, SHORTCUTS_AUDIENCE)) return [];
+  return SHORTCUT_SPECS.filter((spec) => spec.applies(actor)).map((spec) => spec.shortcut);
 }
 
 /** Something that happened in the organisation, for "Recent activity". */
@@ -293,18 +273,27 @@ export type OrganisationHomeModel = {
   shortcuts: HomeShortcut[];
   activity: HomeActivityEvent[];
   activityArchive: HomeActivityArchive | null;
+  /** The business figures after the tasks; `null` when they could not be loaded. */
+  dashboard: OrganisationDashboardModel | null;
 };
 
+/**
+ * Home for one member: tasks first, then the business figures, shortcuts and activity. A new
+ * organisation's first steps replace the shortcuts, which would only repeat them.
+ */
 export function buildOrganisationHome(
   facts: OrganisationHomeFacts,
   activity: readonly HomeActivityEvent[],
+  figures: DashboardFigures | null = null,
 ): OrganisationHomeModel {
   const askable = homeTaskKindsFor(facts.actor).length > 0;
+  const dashboard = figures ? buildOrganisationDashboard(facts.actor, figures) : null;
   return {
     tasks: askable ? homeTasks(facts) : null,
     setup: homeSetupState(facts),
-    shortcuts: homeShortcuts(facts.actor),
+    shortcuts: dashboard?.firstRun ? [] : homeShortcuts(facts.actor),
     activity: homeActivity(activity, facts.actor),
     activityArchive: homeActivityArchive(facts.actor),
+    dashboard,
   };
 }

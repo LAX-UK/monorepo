@@ -49,6 +49,7 @@ import { createLotRoutes } from "./routes/lots.js";
 import { createMarketingRoutes } from "./routes/marketing.js";
 import { createNewsletterRoutes } from "./routes/newsletter.js";
 import { createOnsiteEventRoutes } from "./routes/onsite-events.js";
+import { createOrganisationHomeRoutes } from "./routes/organisation-home.js";
 import { createOrganisationMembershipRoutes } from "./routes/organisation-membership.js";
 import { createOrganizationRoutes } from "./routes/organizations.js";
 import { createPaymentRoutes } from "./routes/payments.js";
@@ -231,6 +232,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/legal-entities", createLegalEntityMemberRoutes(container, authenticator))
     .route("/legal-entities", createLegalEntityBuyerAgentRoutes(container, authenticator))
     .route("/legal-entities", createOrganisationMembershipRoutes(container, authenticator))
+    .route("/legal-entities", createOrganisationHomeRoutes(container, authenticator))
     .route("/legal-entities", createLegalEntityRoutes(container, authenticator))
     .route("/kyc", createKycRoutes(container, authenticator))
     .route(

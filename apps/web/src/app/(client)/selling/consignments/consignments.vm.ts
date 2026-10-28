@@ -1,4 +1,15 @@
+import {
+  type ReviewStage,
+  parseReviewStage,
+} from "@/lib/organisation-home/consignment-stage-links";
 import { lotPath } from "@/lib/seo/url";
+import {
+  type ConsignedLotScope,
+  type ConsignmentProgressStage,
+  canSeeConsignedLot,
+  lotProgressStage,
+  submissionProgressStage,
+} from "@auction/domain";
 import type { ItemSubmission, ItemSubmissionStatus, Lot } from "@auction/types";
 import type { DotStatusPillTone } from "@auction/ui";
 
@@ -42,6 +53,8 @@ export type ConsignmentRow = {
   kind: "submission" | "lot";
   title: string;
   stage: ConsignmentStage;
+  /** Where it is between first review and sale, or `null` for drafts and closed work. */
+  progress: ConsignmentProgressStage | null;
   statusLabel: string;
   statusTone: DotStatusPillTone;
   href: string;
@@ -88,6 +101,7 @@ export function submissionToConsignmentRow(submission: ItemSubmission): Consignm
     kind: "submission",
     title: submission.title,
     stage: view.stage,
+    progress: submissionProgressStage(submission.status),
     statusLabel: view.label,
     statusTone: view.tone,
     href: `/selling/consignments/${submission.id}`,
@@ -103,6 +117,7 @@ export function lotToConsignmentRow(lot: Lot): ConsignmentRow {
     kind: "lot",
     title: lot.title,
     stage: view.stage,
+    progress: lotProgressStage({ status: lot.status, sold: Boolean(lot.winnerId) }),
     statusLabel: view.label,
     statusTone: view.tone,
     href: lotPath({ id: lot.id, title: lot.title }),
@@ -128,11 +143,14 @@ export function buildConsignmentRows(input: {
   );
 }
 
+/** The rows in a tab, narrowed to one review stage when one is chosen. */
 export function filterConsignmentRows(
   rows: readonly ConsignmentRow[],
   tab: ConsignmentTab,
+  reviewStage: ReviewStage | null = null,
 ): ConsignmentRow[] {
-  return tab === "all" ? [...rows] : rows.filter((row) => row.stage === tab);
+  const inTab = tab === "all" ? [...rows] : rows.filter((row) => row.stage === tab);
+  return reviewStage ? inTab.filter((row) => row.progress === reviewStage) : inTab;
 }
 
 export function countConsignmentsByTab(
@@ -167,4 +185,46 @@ export function parseConsignmentTab(params: { tab?: string; status?: string }): 
   const tab = CONSIGNMENT_TABS.find((candidate) => candidate === params.tab);
   if (tab) return tab;
   return (params.status ? LEGACY_STATUS_TABS[params.status] : undefined) ?? "all";
+}
+
+/** The list's filter: a tab, and within "In review" optionally one stage (`?stage=`). */
+export type ConsignmentListFilter = { tab: ConsignmentTab; reviewStage: ReviewStage | null };
+
+/** Reads the tab and the review stage; a stage alone opens the In review tab. */
+export function parseConsignmentFilter(params: {
+  tab?: string;
+  status?: string;
+  stage?: string;
+}): ConsignmentListFilter {
+  const reviewStage = parseReviewStage(params.stage);
+  const tab = parseConsignmentTab(params);
+  if (!reviewStage) return { tab, reviewStage: null };
+  return tab === "in-review" || params.tab === undefined
+    ? { tab: "in-review", reviewStage }
+    : { tab, reviewStage: null };
+}
+
+/**
+ * The lots a member may see (the domain's consigned-lot rule): all of the organisation's, or only
+ * those made from the submissions they sent. A lot's sender comes from its submission.
+ */
+export function visibleConsignedLots(input: {
+  lots: readonly Lot[];
+  submissions: readonly ItemSubmission[];
+  scope: ConsignedLotScope;
+  viewerUserId: string;
+}): Lot[] {
+  if (input.scope === "all") return [...input.lots];
+  const senderByLot = new Map(
+    input.submissions.flatMap((s) =>
+      s.convertedLotId ? [[s.convertedLotId, s.submittedByUserId ?? null] as const] : [],
+    ),
+  );
+  return input.lots.filter((lot) =>
+    canSeeConsignedLot({
+      scope: input.scope,
+      submittedByUserId: senderByLot.get(lot.id),
+      viewerUserId: input.viewerUserId,
+    }),
+  );
 }
