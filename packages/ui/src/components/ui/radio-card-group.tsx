@@ -30,6 +30,19 @@ export type RadioCardGroupProps = {
 };
 
 /**
+ * One card per state, keyed on the Radix radio inside it (`data-state="checked"`, `:disabled`,
+ * `:focus-visible`), so the card always agrees with its radio. Selected: an ink border doubled by
+ * an inset ring, on the raised fill. Focus: the same ring as buttons, outside the card.
+ */
+const RADIO_CARD_CLASS = cn(
+  "flex cursor-pointer items-start gap-3 rounded-lg border border-outline-variant p-4 transition-colors",
+  "hover:border-on-surface-variant/50 hover:bg-surface-container-low",
+  "has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-surface-container-low has-[[data-state=checked]]:inset-ring-1 has-[[data-state=checked]]:inset-ring-primary has-[[data-state=checked]]:hover:border-primary",
+  "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background",
+  "has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 has-[:disabled]:hover:border-outline-variant has-[:disabled]:hover:bg-transparent",
+);
+
+/**
  * Accessible card-style single-select built on {@link RadioGroup}. Each card has the stable
  * hooks `radio-card__label`, `radio-card__meta` and `radio-card__description` for product styling.
  */
@@ -66,16 +79,12 @@ export function RadioCardGroup({
             <Label
               key={option.value}
               htmlFor={id}
-              className={cn(
-                "flex cursor-pointer items-start gap-3 rounded-lg border border-outline-variant/40 p-4 transition-colors hover:bg-surface-container-low/60 has-[:checked]:border-primary has-[:checked]:bg-primary/5",
-                option.disabled && "cursor-not-allowed opacity-50",
-                optionClassName,
-              )}
+              className={cn(RADIO_CARD_CLASS, optionClassName)}
             >
               <RadioGroupItem
                 id={id}
                 value={option.value}
-                className="mt-0.5"
+                className="mt-0.5 focus-visible:ring-0"
                 disabled={option.disabled}
                 ref={index === 0 ? inputRef : undefined}
               />

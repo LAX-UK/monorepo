@@ -63,3 +63,61 @@ describe("RadioCardGroup", () => {
     expect(screen.getByRole("alert")).toHaveTextContent("Required");
   });
 });
+
+describe("RadioCardGroup card states", () => {
+  function cardFor(name: RegExp) {
+    const radio = screen.getByRole("radio", { name });
+    const card = radio.closest("label");
+    if (!card) throw new Error("radio is not inside its card");
+    return { radio, card };
+  }
+
+  it("styles the chosen card from the radio's own checked state", () => {
+    render(
+      <RadioCardGroup
+        legend="Who is selling?"
+        value="organisation"
+        onValueChange={vi.fn()}
+        options={OPTIONS}
+      />,
+    );
+    const { radio, card } = cardFor(/organisation/i);
+    // Radix renders a button with data-state, not a native input, so :checked never matches.
+    expect(radio).toHaveAttribute("data-state", "checked");
+    expect(card.className).toContain("has-[[data-state=checked]]:border-primary");
+    expect(card.className).toContain("has-[[data-state=checked]]:bg-surface-container-low");
+    expect(card.className).toContain("has-[[data-state=checked]]:inset-ring-primary");
+    expect(card.className).not.toContain("has-[:checked]");
+  });
+
+  it("has hover, focus-visible and disabled states on the card", () => {
+    render(
+      <RadioCardGroup
+        legend="Who is selling?"
+        value="individual"
+        onValueChange={vi.fn()}
+        options={[...OPTIONS, { value: "trust", label: "Trust", disabled: true }]}
+      />,
+    );
+    const { card } = cardFor(/an individual/i);
+    expect(card.className).toContain("hover:bg-surface-container-low");
+    expect(card.className).toContain("has-[:focus-visible]:ring-primary");
+    const disabled = cardFor(/trust/i);
+    expect(disabled.radio).toBeDisabled();
+    expect(disabled.card.className).toContain("has-[:disabled]:cursor-not-allowed");
+  });
+
+  it("keeps a product's own card class last so it can restyle the card", () => {
+    render(
+      <RadioCardGroup
+        legend="Delivery"
+        value="individual"
+        onValueChange={vi.fn()}
+        options={OPTIONS}
+        optionClassName="shop-radio-card"
+      />,
+    );
+    const { card } = cardFor(/an individual/i);
+    expect(card.className.endsWith("shop-radio-card")).toBe(true);
+  });
+});
