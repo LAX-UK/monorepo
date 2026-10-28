@@ -1,8 +1,10 @@
 import {
+  CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
   SHOP_STOCK_RECONCILIATION_QUEUE_NAME,
   STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME,
 } from "@auction/queues";
 import { Queue, Worker } from "bullmq";
+import { runConsignmentAgreementRemindersJob } from "../jobs/consignment-agreement-reminders.js";
 import { runShopStockReconciliationJob } from "../jobs/shop-stock-reconciliation.job.js";
 import { runStaleSubmissionDraftRemindersJob } from "../jobs/stale-submission-draft-reminders.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
@@ -84,6 +86,48 @@ export function registerCronWorkers(deps: WorkerBootstrapDeps): CronWorkersHandl
     queue: STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME,
   });
   closables.push(staleSubmissionDraftRemindersWorker, staleSubmissionDraftRemindersQueue);
+
+  const agreementRemindersQueue = new Queue(
+    CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
+    bullConnection,
+  );
+  const agreementRemindersWorker = new Worker(
+    CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
+    async () => {
+      await withSentryCronMonitor(
+        CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
+        sentryMonitorSlugs,
+        async () => {
+          await runConsignmentAgreementRemindersJob({
+            apiBaseUrl: env.API_INTERNAL_BASE_URL,
+            cronSecret,
+            log,
+          });
+          await heartbeat(CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME);
+        },
+      );
+    },
+    bullConnection,
+  );
+  agreementRemindersWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME, job, err);
+  });
+  // Hourly: a reminder goes out within an hour of day 3 and day 7; the API sends each once.
+  void agreementRemindersQueue.add(
+    CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
+    {},
+    {
+      jobId: "hourly-consignment-agreement-reminders",
+      repeat: { every: 60 * 60 * 1000 },
+      removeOnComplete: 50,
+    },
+  );
+  log.info("consignment-agreement-reminders repeat registered (hourly)");
+  errorHandlers.push({
+    worker: agreementRemindersWorker,
+    queue: CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
+  });
+  closables.push(agreementRemindersWorker, agreementRemindersQueue);
 
   const shopStockReconciliationQueue = new Queue(
     SHOP_STOCK_RECONCILIATION_QUEUE_NAME,

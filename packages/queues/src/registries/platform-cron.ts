@@ -1,4 +1,5 @@
 import {
+  CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
   LOT_LIFECYCLE_TICK_QUEUE_NAME,
   PROCESS_NOTIFICATION_OUTBOX_QUEUE_NAME,
   SHOP_STOCK_RECONCILIATION_QUEUE_NAME,
@@ -61,6 +62,24 @@ export const PLATFORM_CRON_QUEUE_REGISTRY = {
       removeOnFail: 50,
     },
     description: "Nudge sellers with stale draft submissions",
+  },
+  [CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "background",
+    pauseOrder: null,
+    heartbeatKey: "consignment-agreement-reminders",
+    dlq: false,
+    showInUi: false,
+    allowUiRetries: false,
+    repeatable: true,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 120_000 },
+      removeOnComplete: 50,
+      removeOnFail: 50,
+    },
+    description: "Remind sellers to accept a proposed consignment agreement (days 3 and 7)",
   },
   [SHOP_STOCK_RECONCILIATION_QUEUE_NAME]: {
     producers: ["worker"],
