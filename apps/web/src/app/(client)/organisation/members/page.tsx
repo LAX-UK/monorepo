@@ -3,10 +3,12 @@ import { DashboardErrorAlert } from "@/components/dashboard/primitives";
 import { BuyerAgentsSection } from "@/components/legal-entity/buyer-agents/buyer-agents-section";
 import { InviteMemberForm } from "@/components/legal-entity/invite-member-form";
 import { MemberList } from "@/components/legal-entity/member-list";
+import { StoppedMemberBidsSection } from "@/components/legal-entity/stopped-member-bids-section";
 import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { buildDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerBuyerAgentOverview } from "@/lib/data/http/buyer-agent-authorisations.server";
+import { getServerStoppedMemberBids } from "@/lib/data/http/organisation-membership.server";
 import { getServerOrgTwoFactorPolicy } from "@/lib/data/http/two-factor-policy.server";
 import { requireActiveOrganisationId } from "@/lib/legal-entity/active-organisation.server";
 import {
@@ -74,6 +76,11 @@ export default async function OrganisationMembersPage() {
   const buyerAgentOverview = canSeeBuyerAgents
     ? await getServerBuyerAgentOverview(acting.id).catch(() => null)
     : null;
+  // What stopped when members left, for the people who manage members (read-only).
+  const stoppedMemberBids =
+    acting.kind === "organisation" && viewerIsAdmin
+      ? ((await getServerStoppedMemberBids(acting.id).catch(() => null)) ?? [])
+      : [];
   const twoFactorByUserId = twoFactorPolicy
     ? Object.fromEntries(twoFactorPolicy.members.map((m) => [m.userId, m.twoFactorEnabled]))
     : undefined;
@@ -136,6 +143,8 @@ export default async function OrganisationMembersPage() {
           overview={buyerAgentOverview}
         />
       ) : null}
+
+      <StoppedMemberBidsSection entityName={acting.displayName} stopped={stoppedMemberBids} />
     </div>
   );
 }

@@ -38,6 +38,7 @@ export function useAccountMenuGroups(user: SessionUser, enabled: boolean): Accou
     const facts: AccountMenuFacts = {
       hasConsigned: context?.hasConsigned ?? false,
       isOrgMember: context?.isOrgMember ?? false,
+      pendingInvitations: context?.pendingInvitations ?? 0,
       user,
     };
     return buildAccountMenu(facts);

@@ -21,6 +21,7 @@ export function buildSubmissionHeaderBadges(submission: ItemSubmission): Submiss
   const sla = buildSubmissionSlaPresentation({
     status: submission.status,
     updatedAt: submission.updatedAt,
+    convertedLotId: submission.convertedLotId,
   });
   const hasRequiredQualityGaps = quality.checks.some((c) => c.severity === "required" && !c.ok);
 

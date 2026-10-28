@@ -28,6 +28,7 @@ export type {
   IItemSubmissionRepository,
   ItemSubmissionUpdatePatch,
   ListSubmissionsFilter,
+  SubmissionSenderFilter,
 } from "./item-submission.repository.js";
 
 export type {
@@ -859,3 +860,13 @@ export type {
 export type { ITransactionRunner } from "../transaction-runner.js";
 export type { IRememberedAccountStore } from "./remembered-account.store.js";
 export type { AccountRecordKind, IRecordAccountReader } from "./record-account.reader.js";
+export type { IMemberWelcomeStore } from "./member-welcome.store.js";
+export type {
+  IMemberBidInstructionsRepository,
+  StandingBidInstruction,
+} from "./member-bid-instructions.repository.js";
+export type {
+  IStoppedMemberBidsReader,
+  StoppedMemberBid,
+  StoppedMemberBids,
+} from "./stopped-member-bids.reader.js";

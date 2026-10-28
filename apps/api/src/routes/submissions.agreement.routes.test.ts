@@ -5,6 +5,7 @@ import type { Container } from "../container.js";
 import { ConsignmentAgreementHttpApplicationService } from "../services/consignment-agreement/consignment-agreement-http-application.service.js";
 import { ConsignmentAgreementService } from "../services/consignment-agreement/consignment-agreement.service.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import { SubmissionAccessGuard } from "../services/submission/submission-access-guard.js";
 import { InMemoryConsignmentAgreements } from "../testing/in-memory-consignment-agreements.js";
 import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
 import { stubSubmissionRouteServices } from "../testing/stub-submission-route-services.js";
@@ -36,16 +37,21 @@ function setup(options: {
       : {}),
   });
   const events = { publish: vi.fn().mockResolvedValue(undefined), withTx: vi.fn() };
+  // Sent by the signed-in member (u1), so a consignor sees it.
+  const submission = {
+    id: submissionId,
+    legalEntityId: submissionOwner,
+    status: options.status ?? "approved",
+    title: "Untitled (Blue)",
+    submittedByUserId: "u1",
+  } as ItemSubmission;
+  const submissions = {
+    findById: vi.fn().mockResolvedValue(submission),
+    listForLegalEntity: vi.fn().mockResolvedValue([submission]),
+  };
   const service = new ConsignmentAgreementService({
     agreements,
-    submissions: {
-      findById: vi.fn().mockResolvedValue({
-        id: submissionId,
-        legalEntityId: submissionOwner,
-        status: options.status ?? "approved",
-        title: "Untitled (Blue)",
-      } as ItemSubmission),
-    },
+    submissions,
     people: { findById: vi.fn().mockResolvedValue({ name: "Jane Smith" }) },
     dispatcher: { dispatch: vi.fn() },
     recipients: null,
@@ -66,7 +72,10 @@ function setup(options: {
       return next();
     }),
     submissionRoutes: stubSubmissionRouteServices({
-      agreementHttp: new ConsignmentAgreementHttpApplicationService(service),
+      agreementHttp: new ConsignmentAgreementHttpApplicationService(
+        service,
+        new SubmissionAccessGuard(submissions),
+      ),
     }),
   } as unknown as Container;
   const authenticator: IAuthenticator = {

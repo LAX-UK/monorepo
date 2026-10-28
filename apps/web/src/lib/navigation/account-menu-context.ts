@@ -2,4 +2,6 @@
 export type AccountMenuContext = {
   hasConsigned: boolean;
   isOrgMember: boolean;
+  /** Organisation invitations waiting for an answer. */
+  pendingInvitations: number;
 };

@@ -7,6 +7,7 @@ import {
   canAccessPlatformAdminRoutes,
   staffRoleDefaultDestination,
 } from "@auction/types";
+import { pendingInvitationsLabel } from "./account-switcher-model";
 import { CLIENT_ROUTES } from "./client-routes";
 
 export type AccountMenuEntry = {
@@ -23,6 +24,8 @@ export type AccountMenuFacts = {
   hasConsigned: boolean;
   /** They belong to at least one organisation and organisations are switched on. */
   isOrgMember: boolean;
+  /** Organisation invitations waiting for an answer. */
+  pendingInvitations: number;
   user: Pick<SessionUser, "role" | "staffRole">;
 };
 
@@ -81,6 +84,13 @@ export function buildAccountMenu(facts: AccountMenuFacts): AccountMenuEntry[][] 
       id: "organisations",
       label: "Your organisations",
       href: "/organisations",
+    });
+  } else if (facts.pendingInvitations > 0) {
+    // Members answer invitations from the account switcher; everyone else needs a way in here.
+    switches.push({
+      id: "pending-invitations",
+      label: pendingInvitationsLabel(facts.pendingInvitations),
+      href: CLIENT_ROUTES.invitations,
     });
   }
 

@@ -15,6 +15,11 @@ vi.mock("@/lib/legal-entity/active-organisation.server", () => ({
   resolveActiveOrganisation: async () => activeOrganisation(),
 }));
 
+const loadOrganisationHome = vi.fn(async () => ({}));
+vi.mock("@/lib/organisation-home/load-organisation-home.server", () => ({
+  loadOrganisationHome: (...args: unknown[]) => loadOrganisationHome(...(args as [])),
+}));
+
 vi.mock("@/lib/auth/guards.server", () => ({
   requireAuthenticatedUser: async () => ({ id: "user-1" }),
 }));
@@ -59,15 +64,14 @@ describe("/home", () => {
     expect(await visit()).toBe("/bids");
   });
 
-  it("opens the selling overview for members who follow consignments", async () => {
-    activeOrganisation.mockReturnValue({ id: "org-1", role: "admin" });
-    expect(await visit()).toBe("/selling");
-  });
-
-  it("opens Bids for a buyer agent", async () => {
-    activeOrganisation.mockReturnValue({ id: "org-1", role: "buyer_agent" });
-    expect(await visit()).toBe("/bids");
-  });
+  it.each(["admin", "buyer_agent", "viewer"])(
+    "shows the organisation's Home to a member with the %s role, without redirecting",
+    async (role) => {
+      activeOrganisation.mockReturnValue({ id: "org-1", role });
+      expect(await visit()).toBeNull();
+      expect(loadOrganisationHome).toHaveBeenCalledWith({ id: "user-1" }, { id: "org-1", role });
+    },
+  );
 
   it("keeps the query string so toast and analytics parameters survive", async () => {
     expect(await visit({ welcome: "back", utm_source: ["a", "b"] })).toBe(

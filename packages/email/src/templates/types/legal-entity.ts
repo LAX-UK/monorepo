@@ -6,6 +6,7 @@ const names = [
   "legal-entity-approved-notice",
   "legal-entity-rejected-notice",
   "legal-entity-docs-requested-notice",
+  "organisation-membership-ended-notice",
 ] as const;
 
 type LegalEntityTemplateName = (typeof names)[number];
@@ -47,6 +48,15 @@ type LegalEntityTemplateVars = {
     docsUrl: string;
     supportContactEmail: string;
   };
+  /** Tells someone an owner or admin removed them from an organisation. */
+  "organisation-membership-ended-notice": {
+    recipientFirstName?: string | null;
+    entityName: string;
+    bidUrl: string;
+    supportContactEmail: string;
+    /** The automatic bids for the organisation that stopped with the removal. */
+    stoppedBids?: { lotTitle: string; kind: "auto_bid" | "absentee" }[];
+  };
 };
 
 export const legalEntityTemplates = {
@@ -58,6 +68,7 @@ export const legalEntityTemplates = {
     "legal-entity-approved-notice": "live",
     "legal-entity-rejected-notice": "live",
     "legal-entity-docs-requested-notice": "live",
+    "organisation-membership-ended-notice": "live",
   },
 } satisfies TemplateDomainSlice<LegalEntityTemplateName, LegalEntityTemplateVars>;
 

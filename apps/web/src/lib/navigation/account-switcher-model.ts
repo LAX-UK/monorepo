@@ -1,5 +1,6 @@
 import { initials } from "@/components/organisations/initials";
 import { roleLabel } from "@/lib/organisations/legal-entity-labels";
+import { organisationUnderReview } from "@auction/domain";
 import type { LegalEntitySummary } from "@auction/types";
 import { CLIENT_ROUTES } from "./client-routes";
 
@@ -13,6 +14,8 @@ export type AccountOption = {
   detail: string;
   initials: string;
   current: boolean;
+  /** LAX is checking the organisation's documents; bidding as it and sending its submissions wait. */
+  underReview: boolean;
 };
 
 /** What the Bid menu shows about whose account is in use. */
@@ -58,17 +61,21 @@ function personalOption(personName: string, id: string, current: boolean): Accou
     detail: personName,
     initials: initials(personName),
     current,
+    underReview: false,
   };
 }
 
 function organisationOption(member: LegalEntitySummary, current: boolean): AccountOption {
+  const underReview = organisationUnderReview(member.status);
+  const role = roleLabel(member.role);
   return {
     id: member.id,
     kind: "organisation",
     name: member.displayName,
-    detail: roleLabel(member.role),
+    detail: underReview ? `${role} · Under review` : role,
     initials: initials(member.displayName),
     current,
+    underReview,
   };
 }
 

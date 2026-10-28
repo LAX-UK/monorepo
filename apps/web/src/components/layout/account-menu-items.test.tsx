@@ -40,6 +40,7 @@ const withContext = (overrides: Partial<AccountMenuContext> = {}) =>
   contextMock.mockReturnValue({
     hasConsigned: false,
     isOrgMember: false,
+    pendingInvitations: 0,
     ...overrides,
   });
 

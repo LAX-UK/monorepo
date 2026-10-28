@@ -8,9 +8,13 @@ import type {
   IItemSubmissionAdminApi,
   IItemSubmissionSellerApi,
 } from "../interfaces/item-submission-apis.js";
+import type { ISubmissionAccessGuard } from "../interfaces/submission-routes/submission-access.js";
 import type { ISubmissionDocumentHttpApplicationService } from "../interfaces/submission-routes/submission-document-http.js";
 import type { ISubmissionDocumentPort } from "../interfaces/submission-routes/submission-document-port.js";
-import type { SubmissionHttpJson } from "../interfaces/submission-routes/submission-route-http.js";
+import type {
+  SubmissionHttpJson,
+  SubmissionLegalEntityContext,
+} from "../interfaces/submission-routes/submission-route-http.js";
 
 function canStaffManageSubmissionDocuments(
   role: UserRole,
@@ -27,6 +31,7 @@ export class SubmissionDocumentHttpApplicationService
     private readonly itemSubmissionSellerApi: IItemSubmissionSellerApi,
     private readonly itemSubmissionAdminApi: IItemSubmissionAdminApi,
     private readonly submissionDocumentService: ISubmissionDocumentPort,
+    private readonly access: ISubmissionAccessGuard,
   ) {}
 
   private async assertStaffSubmissionExists(
@@ -39,13 +44,20 @@ export class SubmissionDocumentHttpApplicationService
     return null;
   }
 
+  /** The submission is the account's and the member may see it (who sent it); else Not found. */
   private async assertSellerOwnsSubmission(
-    legalEntityId: string,
+    legalEntity: SubmissionLegalEntityContext,
     submissionId: string,
   ): Promise<SubmissionHttpJson | null> {
-    const owned = await this.itemSubmissionSellerApi.getForSeller(legalEntityId, submissionId);
+    const owned = await this.itemSubmissionSellerApi.getForSeller(
+      legalEntity.legalEntityId,
+      submissionId,
+    );
     if (owned.isErr()) {
       return { status: owned.error.status, body: { error: owned.error.message } };
+    }
+    if (await this.access.hides(legalEntity, submissionId)) {
+      return { status: 404, body: { error: "Not found" } };
     }
     return null;
   }
@@ -70,10 +82,7 @@ export class SubmissionDocumentHttpApplicationService
       const denied = await this.assertStaffSubmissionExists(input.submissionId);
       if (denied) return denied;
     } else {
-      const denied = await this.assertSellerOwnsSubmission(
-        input.legalEntity.legalEntityId,
-        input.submissionId,
-      );
+      const denied = await this.assertSellerOwnsSubmission(input.legalEntity, input.submissionId);
       if (denied) return denied;
     }
     const data = await this.submissionDocumentService.list(input.submissionId);
@@ -103,10 +112,7 @@ export class SubmissionDocumentHttpApplicationService
     const role = (input.viewer.role ?? "client") as UserRole;
     const staff = normalizeUserStaffRole(input.viewer.staffRole ?? undefined);
     if (!canStaffManageSubmissionDocuments(role, staff)) {
-      const denied = await this.assertSellerOwnsSubmission(
-        input.legalEntity.legalEntityId,
-        input.submissionId,
-      );
+      const denied = await this.assertSellerOwnsSubmission(input.legalEntity, input.submissionId);
       if (denied) return denied;
     } else {
       const denied = await this.assertStaffSubmissionExists(input.submissionId);
@@ -164,10 +170,7 @@ export class SubmissionDocumentHttpApplicationService
     const role = (input.viewer.role ?? "client") as UserRole;
     const staff = normalizeUserStaffRole(input.viewer.staffRole ?? undefined);
     if (!canStaffManageSubmissionDocuments(role, staff)) {
-      const denied = await this.assertSellerOwnsSubmission(
-        input.legalEntity.legalEntityId,
-        input.submissionId,
-      );
+      const denied = await this.assertSellerOwnsSubmission(input.legalEntity, input.submissionId);
       if (denied) return denied;
     } else {
       const denied = await this.assertStaffSubmissionExists(input.submissionId);

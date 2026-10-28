@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { DrizzleMemberBidInstructionsRepository } from "@auction/persistence/repositories";
 import { LEGAL_ENTITY_ARCHIVE_JOB_NAME } from "@auction/queues";
 import type { Env } from "../env.js";
 import { CachedUserSuspensionChecker } from "../infrastructure/cached-user-suspension.checker.js";
@@ -13,6 +14,7 @@ import type { IArtistRegistryService } from "../services/interfaces/artist-regis
 import type { IIdentitySubjectClient } from "../services/interfaces/identity-issuer-client.js";
 import type { IInvitationLifecycleService } from "../services/interfaces/invitation-lifecycle.js";
 import type { IMemberManagementService } from "../services/interfaces/member-management.js";
+import type { IProxyCancelledRealtime } from "../services/interfaces/organisation-membership-service.js";
 import type { IOrganizationOnboardingService } from "../services/interfaces/organization-onboarding.js";
 import type { IStripeConnectService } from "../services/interfaces/stripe-connect.js";
 import type { ITransactionalMailer } from "../services/interfaces/transactional-mail.js";
@@ -22,6 +24,7 @@ import { LegalEntityLifecycleAdminService } from "../services/legal-entity-lifec
 import { LegalEntityMembershipGuard } from "../services/legal-entity-membership.guard.js";
 import { MemberManagementService } from "../services/member-management.service.js";
 import { EmailMembershipInviteNotifier } from "../services/membership-invite-notifier.js";
+import { RemovedMemberBidStopper } from "../services/organisation-membership/removed-member-bid-stopper.js";
 import { OrganizationOnboardingService } from "../services/organization-onboarding.service.js";
 import { OrganizationOnboardingFlowService } from "../services/organization-onboarding/organization-onboarding-flow.service.js";
 import { UiPreferenceService } from "../services/ui-preference.service.js";
@@ -54,6 +57,8 @@ export type CreatePlatformIdentityServicesInput = {
   core: ContainerPlatformCore;
   identitySubjects: IIdentitySubjectClient;
   stripeConnectService: IStripeConnectService;
+  /** Open lot pages drop a removed member's auto-bid ceilings straight away. */
+  proxyRealtime: IProxyCancelledRealtime;
 };
 
 export function createPlatformIdentityServices(
@@ -64,7 +69,6 @@ export function createPlatformIdentityServices(
   const {
     legalEntityRepository,
     legalEntityOnboardingRepository,
-    repoFactory,
     uiPreferenceRepository,
     userSuspensionChecker,
     artistRegistryRepository,
@@ -101,7 +105,8 @@ export function createPlatformIdentityServices(
     core.transactionRunner,
     repos.legalEntityMemberRepository,
     core.domainEventSink,
-    repoFactory,
+    new RemovedMemberBidStopper(new DrizzleMemberBidInstructionsRepository(), core.domainEventSink),
+    input.proxyRealtime,
   );
   const transactionalMailer: ITransactionalMailer = createTransactionalMailer(env);
   const membershipInviteNotifier = new EmailMembershipInviteNotifier(

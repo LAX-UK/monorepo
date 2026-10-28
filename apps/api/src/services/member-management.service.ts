@@ -1,6 +1,6 @@
+import { MEMBER_REMOVED_STOP_REASON } from "@auction/domain";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { ILegalEntityMemberRepository } from "@auction/persistence/interfaces";
-import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { LegalEntityMember } from "@auction/types";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import {
@@ -9,13 +9,19 @@ import {
   type MemberWithUser,
   type UpdateMemberRoleInput,
 } from "./interfaces/member-management.js";
+import type {
+  IProxyCancelledRealtime,
+  IRemovedMemberBidStopper,
+  StoppedInstruction,
+} from "./interfaces/organisation-membership-service.js";
 
 export class MemberManagementService implements IMemberManagementService {
   constructor(
     private readonly transactionRunner: ITransactionRunner,
     private readonly memberRepo: ILegalEntityMemberRepository,
     private readonly domainEventSink: IDomainEventSink,
-    private readonly repoFactory: IRepositoryFactory,
+    private readonly bidStopper: IRemovedMemberBidStopper,
+    private readonly realtime: IProxyCancelledRealtime,
   ) {}
 
   listMembers(legalEntityId: string): Promise<MemberWithUser[]> {
@@ -65,41 +71,33 @@ export class MemberManagementService implements IMemberManagementService {
   async removeMember(actingUserId: string, legalEntityId: string, memberId: string): Promise<void> {
     await this.memberRepo.findActiveAdminMembership(actingUserId, legalEntityId);
     const target = await this.memberRepo.findMemberById(memberId);
-    if (!target || target.legalEntityId !== legalEntityId || target.removedAt) {
+    if (!target || target.legalEntityId !== legalEntityId) {
       throw new MemberPermissionError("member_not_found");
     }
     if (target.isPrimaryAdmin) {
       throw new MemberPermissionError("cannot_remove_primary_admin");
     }
+    const stopInput = {
+      legalEntityId,
+      memberUserId: target.userId,
+      actorUserId: actingUserId,
+    };
 
-    await this.transactionRunner.runInTransaction(async (tx) => {
-      const bids = this.repoFactory.forConnection(tx).bid;
-      const pairs = await bids.listActiveProxyBidPairsForMemberOnEntity(
-        target.userId,
-        legalEntityId,
+    // A retried removal is a no-op apart from stopping anything still left running; the
+    // removal itself, and its email, are recorded once.
+    if (target.removedAt) {
+      const stopped = await this.transactionRunner.runInTransaction((tx) =>
+        this.bidStopper.stopFor(tx, stopInput),
       );
-      for (const { lotId, bidderId } of pairs) {
-        const cleared = await bids.clearProxyAutoBidForBidderOnLot(lotId, bidderId);
-        if (cleared > 0) {
-          await this.domainEventSink.withTx(tx).publish({
-            aggregateType: "lot",
-            aggregateId: lotId,
-            eventType: "bid.proxy_cancelled",
-            payload: {
-              lotId,
-              bidderUserId: bidderId,
-              buyerLegalEntityId: legalEntityId,
-              reason: "member_removed",
-            },
-            actorUserId: actingUserId,
-            actingLegalEntityId: legalEntityId,
-            schemaVersion: 1,
-            producer: "apps/api",
-          });
-        }
-      }
+      await this.announceStopped(stopped, target.userId);
+      return;
+    }
 
+    // Placed bids stand; the member's automatic bids for the organisation stop with the
+    // removal, atomically, as the bidding engine would refuse them anyway.
+    const stopped = await this.transactionRunner.runInTransaction(async (tx) => {
       await this.memberRepo.markRemoved(tx, memberId);
+      const stoppedInTx = await this.bidStopper.stopFor(tx, stopInput);
 
       await this.domainEventSink.withTx(tx).publish({
         aggregateType: "legal_entity",
@@ -110,13 +108,26 @@ export class MemberManagementService implements IMemberManagementService {
           removed_by_user_id: actingUserId,
           role_at_removal: target.role,
           reason: null,
+          stopped_bids: stoppedInTx.map((s) => ({ kind: s.kind, lot_id: s.lotId })),
         },
         actorUserId: actingUserId,
         actingLegalEntityId: legalEntityId,
         schemaVersion: 1,
         producer: "apps/api",
       });
+      return stoppedInTx;
     });
+    await this.announceStopped(stopped, target.userId);
+  }
+
+  /** Open lot pages drop the ceilings straight away; a failed notice only delays that. */
+  private async announceStopped(stopped: readonly StoppedInstruction[], bidderUserId: string) {
+    for (const instruction of stopped) {
+      if (instruction.kind !== "auto_bid") continue;
+      await this.realtime
+        .notifyProxyCancelled(instruction.lotId, bidderUserId, MEMBER_REMOVED_STOP_REASON)
+        .catch(() => undefined);
+    }
   }
 
   async transferPrimaryAdmin(actingUserId: string, legalEntityId: string, toMemberId: string) {

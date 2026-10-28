@@ -1,9 +1,15 @@
-import type { CreateItemSubmissionInput } from "@auction/types";
+import type { CreateItemSubmissionInput, UserRole } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { SubmissionError } from "../../lib/errors.js";
 import type { IItemSubmissionSellerApi } from "../interfaces/item-submission-apis.js";
-import type { SubmissionHttpJson } from "../interfaces/submission-routes/submission-route-http.js";
+import type { ISubmissionAccessGuard } from "../interfaces/submission-routes/submission-access.js";
+import type {
+  SubmissionHttpJson,
+  SubmissionLegalEntityContext,
+} from "../interfaces/submission-routes/submission-route-http.js";
 import type { ISubmissionSellerHttpApplicationService } from "../interfaces/submission-routes/submission-seller-http.js";
+
+const NOT_FOUND: SubmissionHttpJson = { status: 404, body: { error: "Not found" } };
 
 function mapSubmissionResult<T>(
   result: Result<T, SubmissionError>,
@@ -18,17 +24,24 @@ function mapSubmissionResult<T>(
 export class SubmissionSellerHttpApplicationService
   implements ISubmissionSellerHttpApplicationService
 {
-  constructor(private readonly itemSubmissionSellerApi: IItemSubmissionSellerApi) {}
+  constructor(
+    private readonly itemSubmissionSellerApi: IItemSubmissionSellerApi,
+    private readonly access: ISubmissionAccessGuard,
+  ) {}
+
+  /** A submission the member may not see answers "Not found", like one in another account. */
+  private async visible(legalEntity: SubmissionLegalEntityContext, submissionId: string) {
+    return !(await this.access.hides(legalEntity, submissionId));
+  }
 
   async createDraft(input: {
     body: Parameters<ISubmissionSellerHttpApplicationService["createDraft"]>[0]["body"];
-    legalEntity: Parameters<
-      ISubmissionSellerHttpApplicationService["createDraft"]
-    >[0]["legalEntity"];
+    legalEntity: SubmissionLegalEntityContext;
   }): Promise<SubmissionHttpJson> {
     const payload = {
       ...input.body,
       legalEntityId: input.legalEntity.legalEntityId,
+      submittedByUserId: input.legalEntity.member?.userId ?? null,
     } as CreateItemSubmissionInput;
     const result = await this.itemSubmissionSellerApi.createDraftForSellerApi(
       input.legalEntity.legalEntityId,
@@ -39,8 +52,9 @@ export class SubmissionSellerHttpApplicationService
 
   async listMine(input: {
     query: Parameters<ISubmissionSellerHttpApplicationService["listMine"]>[0]["query"];
-    legalEntity: Parameters<ISubmissionSellerHttpApplicationService["listMine"]>[0]["legalEntity"];
+    legalEntity: SubmissionLegalEntityContext;
   }): Promise<SubmissionHttpJson> {
+    const visibleTo = this.access.senderFilter(input.legalEntity);
     const { data, total } = await this.itemSubmissionSellerApi.listSubmissionsForSellerApi(
       input.legalEntity.legalEntityId,
       {
@@ -48,18 +62,18 @@ export class SubmissionSellerHttpApplicationService
         q: input.query.q,
         limit: input.query.limit,
         offset: input.query.offset,
+        ...(visibleTo ? { visibleTo } : {}),
       },
     );
     return { status: 200, body: { data, total } };
   }
 
   async getMineSummary(input: {
-    legalEntity: Parameters<
-      ISubmissionSellerHttpApplicationService["getMineSummary"]
-    >[0]["legalEntity"];
+    legalEntity: SubmissionLegalEntityContext;
   }): Promise<SubmissionHttpJson> {
     const summary = await this.itemSubmissionSellerApi.getSubmissionSummaryForSellerApi(
       input.legalEntity.legalEntityId,
+      this.access.senderFilter(input.legalEntity),
     );
     return { status: 200, body: { data: summary } };
   }
@@ -67,14 +81,17 @@ export class SubmissionSellerHttpApplicationService
   async getById(input: {
     submissionId: string;
     viewer: Parameters<ISubmissionSellerHttpApplicationService["getById"]>[0]["viewer"];
-    legalEntity: Parameters<ISubmissionSellerHttpApplicationService["getById"]>[0]["legalEntity"];
+    legalEntity: SubmissionLegalEntityContext;
   }): Promise<SubmissionHttpJson> {
     const result = await this.itemSubmissionSellerApi.getSubmissionForViewerApi({
       submissionId: input.submissionId,
-      role: (input.viewer.role ?? "client") as import("@auction/types").UserRole,
+      role: (input.viewer.role ?? "client") as UserRole,
       staffRole: input.viewer.staffRole ?? null,
       sellerLegalEntityId: input.legalEntity.legalEntityId,
     });
+    if (result.isOk() && !this.access.canSee(input.legalEntity, result.value)) {
+      return NOT_FOUND;
+    }
     return mapSubmissionResult(result);
   }
 
@@ -82,12 +99,13 @@ export class SubmissionSellerHttpApplicationService
     submissionId: string;
     rawBody: unknown;
     viewer: Parameters<ISubmissionSellerHttpApplicationService["patch"]>[0]["viewer"];
-    legalEntity: Parameters<ISubmissionSellerHttpApplicationService["patch"]>[0]["legalEntity"];
+    legalEntity: SubmissionLegalEntityContext;
   }): Promise<SubmissionHttpJson> {
+    if (!(await this.visible(input.legalEntity, input.submissionId))) return NOT_FOUND;
     const out = await this.itemSubmissionSellerApi.patchSubmissionFromRequestBody({
       rawBody: input.rawBody,
       submissionId: input.submissionId,
-      role: (input.viewer.role ?? "client") as import("@auction/types").UserRole,
+      role: (input.viewer.role ?? "client") as UserRole,
       staffRole: input.viewer.staffRole ?? null,
       userId: input.viewer.userId,
       sellerLegalEntityId: input.legalEntity.legalEntityId,
@@ -103,21 +121,22 @@ export class SubmissionSellerHttpApplicationService
 
   async submitForReview(input: {
     submissionId: string;
-    legalEntity: Parameters<
-      ISubmissionSellerHttpApplicationService["submitForReview"]
-    >[0]["legalEntity"];
+    legalEntity: SubmissionLegalEntityContext;
   }): Promise<SubmissionHttpJson> {
+    if (!(await this.visible(input.legalEntity, input.submissionId))) return NOT_FOUND;
     const result = await this.itemSubmissionSellerApi.submitForReviewForSellerApi(
       input.legalEntity.legalEntityId,
       input.submissionId,
+      input.legalEntity.member?.userId,
     );
     return mapSubmissionResult(result);
   }
 
   async withdraw(input: {
     submissionId: string;
-    legalEntity: Parameters<ISubmissionSellerHttpApplicationService["withdraw"]>[0]["legalEntity"];
+    legalEntity: SubmissionLegalEntityContext;
   }): Promise<SubmissionHttpJson> {
+    if (!(await this.visible(input.legalEntity, input.submissionId))) return NOT_FOUND;
     const result = await this.itemSubmissionSellerApi.withdrawForSellerApi(
       input.legalEntity.legalEntityId,
       input.submissionId,

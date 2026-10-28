@@ -52,12 +52,16 @@ export type ItemSubmission = {
   changesRequestedAt?: Date | null;
   convertedLotId: string | null;
   assignedToUserId?: string | null;
+  /** The member who created or last sent it; `null` for submissions from before it was recorded. */
+  submittedByUserId?: string | null;
   createdAt: Date;
   updatedAt: Date;
 };
 
 export type CreateItemSubmissionInput = {
   title: string;
+  /** The person creating it, recorded so an organisation can show consignors their own. */
+  submittedByUserId?: string | null | undefined;
   description?: string | undefined;
   medium?: string | undefined;
   dimensions?: string | undefined;

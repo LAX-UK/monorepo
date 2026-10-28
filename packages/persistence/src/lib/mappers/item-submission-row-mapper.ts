@@ -45,6 +45,7 @@ export function mapItemSubmissionRow(
     changesRequestedAt: row.changesRequestedAt ?? null,
     convertedLotId: row.convertedLotId,
     assignedToUserId: row.assignedToUserId ?? null,
+    submittedByUserId: row.submittedByUserId ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

@@ -81,6 +81,8 @@ export async function submitForReview(
   deps: ItemSubmissionServiceDeps,
   legalEntityId: string,
   id: string,
+  /** Who is sending it; recorded as its sender so consignors see their own. */
+  sentByUserId?: string,
 ): Promise<Result<ItemSubmission, SubmissionError>> {
   const s = await deps.submissions.findById(id);
   if (!s || s.legalEntityId !== legalEntityId) return err(new SubmissionError("Not found", 404));
@@ -99,7 +101,10 @@ export async function submitForReview(
       ),
     );
   }
-  const updated = await deps.submissions.update(id, { status: "submitted" });
+  const updated = await deps.submissions.update(id, {
+    status: "submitted",
+    ...(sentByUserId ? { submittedByUserId: sentByUserId } : {}),
+  });
   await maybeLogRestrictedSellerWrite(deps, legalEntityId, id, "submit_for_review");
   const resubmitted = transition === "resubmit";
   if (resubmitted) {
