@@ -67,6 +67,7 @@ const ACTION_LABELS: Record<string, string> = {
   // Editorial and help
   "editorial.preview_token.issue": "Preview link created",
   "editorial.placement.replace": "Home page placements changed",
+  "home_features.replace": "Featured on home changed",
   "editorial.exhibition.links.replace": "Exhibition links changed",
   "editorial.story.links.replace": "Story links changed",
 };
@@ -122,6 +123,7 @@ const RECORD_LABELS: Record<string, string> = {
   editorial_page: "Page",
   editorial_venue: "Venue",
   editorial_placement: "Home page placement",
+  shop_home_placement: "Featured on home list",
   help_article: "Help question",
   help_category: "Help category",
 };

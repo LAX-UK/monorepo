@@ -11,21 +11,10 @@ const soldOut = artworkSummary({
 const noImage = artworkSummary({ slug: "no-image", imageUrl: null });
 
 describe("selectHomeRelease", () => {
-  it("takes the first featured edition that can be bought and has an image", () => {
+  it("reads stock and the image from each listing for the shop-domain rule", () => {
     const live = artworkSummary({ slug: "live" });
     expect(selectHomeRelease([soldOut, noImage, live], [])).toEqual({ item: live, featured: true });
-  });
-
-  it("falls back to the newest edition on sale with an image", () => {
-    const newest = artworkSummary({ slug: "newest" });
-    expect(selectHomeRelease([soldOut], [noImage, soldOut, newest])).toEqual({
-      item: newest,
-      featured: false,
-    });
-  });
-
-  it("never leads with a sold-out work or one without an image", () => {
-    expect(selectHomeRelease([soldOut, noImage], [soldOut, noImage])).toBeNull();
+    expect(selectHomeRelease([soldOut, noImage], [])).toBeNull();
   });
 });
 

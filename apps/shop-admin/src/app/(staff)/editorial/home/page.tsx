@@ -9,7 +9,7 @@ import { redirect } from "next/navigation";
 
 type RowList = { items: EditorialAdminRow[] };
 
-export const metadata = { title: "Home placements" };
+export const metadata = { title: "lax.art home" };
 
 export default async function HomePlacementsPage() {
   const [pages, venues, exhibitions, stories, placements] = await Promise.all([
@@ -33,7 +33,7 @@ export default async function HomePlacementsPage() {
       : results.some((result) => result.status === "not_found")
         ? "not_found"
         : "failed";
-    return <AdminFailedPage title="Home placements" status={status} />;
+    return <AdminFailedPage title="lax.art home" status={status} />;
   }
 
   return (
@@ -42,10 +42,10 @@ export default async function HomePlacementsPage() {
         breadcrumbs={
           <AdminBreadcrumbs
             list={{ label: "Editorial", href: "/editorial" }}
-            current="Home placements"
+            current="lax.art home"
           />
         }
-        title="Home placements"
+        title="lax.art home"
         description="What lax.art features on its home and hub pages, slot by slot. Each slot is saved on its own and replaces everything in it; rows show in the order listed."
       />
       <EditorialPlacementsTab

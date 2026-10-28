@@ -7,7 +7,8 @@ export type AdminMutationResult<T> =
   | { ok: false; kind: "csrf" }
   | { ok: false; kind: "step_up_required"; message: string }
   | { ok: false; kind: "conflict"; message: string; currentVersion?: string }
-  | { ok: false; kind: "validation"; message: string }
+  /** `issues` lists the rows at fault when the API names them (Featured on home). */
+  | { ok: false; kind: "validation"; message: string; issues?: unknown[] }
   /** 422: the request named records that do not exist, so nothing was written. */
   | { ok: false; kind: "unknown_ids"; message: string; missingIds: string[] }
   | { ok: false; kind: "failed"; message: string };
@@ -50,10 +51,12 @@ export function mapAdminMutationErrorBody(
     }
   }
   if (status === 400) {
+    const issues = readArray(body, "issues");
     return {
       ok: false,
       kind: "validation",
       message: readErrorMessage(body) ?? fallbackMessage,
+      ...(issues ? { issues } : {}),
     };
   }
   return { ok: false, kind: "failed", message: readErrorMessage(body) ?? fallbackMessage };
@@ -78,6 +81,12 @@ function readStringArray(body: unknown, field: string): string[] {
   return Array.isArray(value)
     ? value.filter((entry): entry is string => typeof entry === "string")
     : [];
+}
+
+function readArray(body: unknown, field: string): unknown[] | undefined {
+  if (!body || typeof body !== "object") return undefined;
+  const value = (body as Record<string, unknown>)[field];
+  return Array.isArray(value) ? value : undefined;
 }
 
 function readErrorMessage(body: unknown): string | undefined {
