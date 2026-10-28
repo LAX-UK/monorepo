@@ -26,6 +26,8 @@ export const LAX_ACCOUNT_PATHS = {
   sellingSales: "/account/selling/sales",
   sellingPayouts: "/account/selling/payouts",
   sellingArtworks: "/account/selling/artworks",
+  /** An artist's application to join the gallery, and where it stands. */
+  sellingApplication: "/account/selling/application",
 } as const;
 
 export type LaxAccountDestination = keyof typeof LAX_ACCOUNT_PATHS;

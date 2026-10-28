@@ -13,7 +13,7 @@ import { artServices } from "@/lib/art-services.server";
 import { type ApplyPageView, decideApplyPageView } from "@/lib/artist-application/apply-page.vm";
 import { artistApplicationGateway } from "@/lib/artist-application/artist-application.services.server";
 import { ARTIST_APPLY_PATH, FOR_ARTISTS_PATH } from "@/lib/artist-application/for-artists.content";
-import { laxAccountPortalHref } from "@/lib/lax-account-url";
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import { cn } from "@auction/ui";
 import Link from "next/link";
@@ -21,8 +21,6 @@ import type { ReactNode } from "react";
 
 export const dynamic = "force-dynamic";
 export const metadata = artPrivatePageTitle("Apply to join");
-
-const ACCOUNT_APPLICATION_PATH = "/account/selling/application";
 
 type Props = { searchParams: Promise<{ sent?: string | string[] }> };
 
@@ -113,7 +111,7 @@ export default async function ArtistApplyPage({ searchParams }: Props) {
     justSent: sent === "1",
     returnPath: ARTIST_APPLY_PATH,
   });
-  const accountHref = laxAccountPortalHref(ACCOUNT_APPLICATION_PATH);
+  const accountHref = laxAccountUrl("sellingApplication");
   const { title, intro } = TITLES[view.kind];
 
   return (

@@ -5,12 +5,7 @@ import {
   FOR_ARTISTS_HERO_IMAGE,
 } from "@/lib/artist-application/for-artists.content";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
-import {
-  MarketingCtaBand,
-  MarketingPageTitle,
-  MarketingReveal,
-  MarketingSplitFeature,
-} from "@auction/marketing-ui";
+import { MarketingPageTitle, MarketingReveal, MarketingSplitFeature } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -142,12 +137,16 @@ export function ForArtistsPage({ teamBand }: { teamBand?: ReactNode }) {
         </section>
       </MarketingReveal>
 
-      <MarketingCtaBand
-        title={content.apply.heading}
-        body={<p className="m-0 max-w-[52ch]">{content.apply.body}</p>}
-        action={<ApplyButton />}
-        className="py-0 md:py-0"
-      />
+      <section
+        aria-labelledby="for-artists-apply"
+        className={cn(MARKETING_PAGE_SHELL, "flex flex-col items-center gap-6 text-center")}
+      >
+        <SectionHeading id="for-artists-apply">{content.apply.heading}</SectionHeading>
+        <p className="m-0 max-w-[52ch] text-base leading-relaxed text-on-surface-variant sm:text-lg">
+          {content.apply.body}
+        </p>
+        <ApplyButton />
+      </section>
 
       {teamBand ? <div className={MARKETING_PAGE_SHELL}>{teamBand}</div> : null}
     </div>

@@ -36,6 +36,7 @@ describe("buildArtGalleryTeam", () => {
     ["pastExhibition", "exhibition"],
     ["advisory", "art_advisory"],
     ["howToBuy", "general"],
+    ["forArtists", "general"],
   ] as const)("opens the %s enquiry on the %s topic", (context, topic) => {
     expect(buildArtGalleryTeam({ context, contact: CONTACT }).enquiry.topic).toBe(topic);
   });
