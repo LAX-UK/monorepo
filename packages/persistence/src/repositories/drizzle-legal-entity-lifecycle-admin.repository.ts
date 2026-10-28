@@ -8,6 +8,24 @@ import type {
   LegalEntityLifecycleTransitionUpdate,
 } from "../interfaces/legal-entity-lifecycle-admin.repository.js";
 
+const lifecycleColumns = {
+  id: legalEntity.id,
+  status: legalEntity.status,
+  stripeConnectAccountId: legalEntity.stripeConnectAccountId,
+  stripeConnectChargesEnabled: legalEntity.stripeConnectChargesEnabled,
+  stripeConnectPayoutsEnabled: legalEntity.stripeConnectPayoutsEnabled,
+  stripeConnectRequirementsCurrentlyDue: legalEntity.stripeConnectRequirementsCurrentlyDue,
+  stripeConnectRequirementsErrors: legalEntity.stripeConnectRequirementsErrors,
+  stripeConnectDisabledReason: legalEntity.stripeConnectDisabledReason,
+  isLaxManaged: legalEntity.isLaxManaged,
+};
+
+function toRow(
+  row: { status: string } & Omit<LegalEntityLifecycleRow, "status">,
+): LegalEntityLifecycleRow {
+  return { ...row, status: row.status as LegalEntityStatus };
+}
+
 export class DrizzleLegalEntityLifecycleAdminRepository
   implements ILegalEntityLifecycleAdminRepository
 {
@@ -15,25 +33,25 @@ export class DrizzleLegalEntityLifecycleAdminRepository
 
   async findById(entityId: string): Promise<LegalEntityLifecycleRow | null> {
     const preRows = await this.db
-      .select({ id: legalEntity.id, status: legalEntity.status })
+      .select(lifecycleColumns)
       .from(legalEntity)
       .where(eq(legalEntity.id, entityId))
       .limit(1);
     const pre = preRows[0];
     if (!pre) return null;
-    return { id: pre.id, status: pre.status as LegalEntityStatus };
+    return toRow(pre);
   }
 
   async findByIdForUpdate(tx: Database, entityId: string): Promise<LegalEntityLifecycleRow | null> {
     const lockedRows = await tx
-      .select({ id: legalEntity.id, status: legalEntity.status })
+      .select(lifecycleColumns)
       .from(legalEntity)
       .where(eq(legalEntity.id, entityId))
       .for("update")
       .limit(1);
     const row = lockedRows[0];
     if (!row) return null;
-    return { id: row.id, status: row.status as LegalEntityStatus };
+    return toRow(row);
   }
 
   async applyTransitionUpdate(

@@ -5,6 +5,7 @@ export const LIFECYCLE_DOMAIN_EVENT_TYPE_BY_OP: Record<LifecycleAdminOp, string>
   start_review: "legal_entity.review_started",
   approve: "legal_entity.approved",
   restrict: "legal_entity.restricted",
+  lift_restriction: "legal_entity.restriction_lifted",
   reject: "legal_entity.rejected",
   archive: "legal_entity.archived",
 };

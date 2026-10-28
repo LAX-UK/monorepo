@@ -9,6 +9,7 @@ import {
   requireLegalEntityBrowse,
 } from "../middleware/require-capability.js";
 import type { IAdminLegalEntityLifecycleApplicationService } from "../services/interfaces/admin-routes.js";
+import type { AdminStaffMutationGuards } from "./admin/_shared.js";
 
 const legalEntityIdParamSchema = z.object({
   id: z.string().uuid(),
@@ -58,6 +59,7 @@ async function runLifecycle(
 export function attachAdminLegalEntityLifecycleRoutes(
   platform: Hono<{ Variables: { userId?: string; userRole?: string } }>,
   legalEntityLifecycle: IAdminLegalEntityLifecycleApplicationService,
+  guards: Pick<AdminStaffMutationGuards, "requireStepUp">,
 ) {
   platform.get(
     "/legal-entities/:id",
@@ -141,6 +143,19 @@ export function attachAdminLegalEntityLifecycleRoutes(
     async (c) => {
       const { id } = c.req.valid("param");
       return runLifecycle(c, legalEntityLifecycle, id, "restrict");
+    },
+  );
+
+  platform.post(
+    "/legal-entities/:id/lift-restriction",
+    requireLegalEntityWrite,
+    guards.requireStepUp,
+    zValidator("param", legalEntityIdParamSchema),
+    zValidator("json", reasonBodySchema),
+    async (c) => {
+      const { id } = c.req.valid("param");
+      const { reason } = c.req.valid("json");
+      return runLifecycle(c, legalEntityLifecycle, id, "lift_restriction", reason);
     },
   );
 

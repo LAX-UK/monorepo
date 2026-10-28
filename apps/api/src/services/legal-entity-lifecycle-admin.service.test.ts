@@ -14,6 +14,7 @@ describe("lifecycleDomainEventTypeForOp", () => {
     ["start_review", "legal_entity.review_started"],
     ["approve", "legal_entity.approved"],
     ["restrict", "legal_entity.restricted"],
+    ["lift_restriction", "legal_entity.restriction_lifted"],
     ["reject", "legal_entity.rejected"],
     ["archive", "legal_entity.archived"],
   ] as const satisfies ReadonlyArray<[LifecycleAdminOp, string]>)(

@@ -243,6 +243,9 @@ export const STAFF_ROLES_READ_ACCESS: CapabilityRequirement = {
   ],
 };
 
+/** Moving a legal entity through its compliance lifecycle (restrict, lift a restriction). */
+export const LEGAL_ENTITY_WRITE_ACCESS: CapabilityRequirement = "legal_entity.write";
+
 /** Legal entity browse and read-only admin views. */
 export const LEGAL_ENTITY_BROWSE_ACCESS: CapabilityRequirement = "legal_entity.read";
 

@@ -64,6 +64,7 @@ export {
   nextStatusForSelfOp,
   type LifecycleAdminOp,
   type LifecycleSelfOp,
+  type LifecycleTransitionContext,
   type LifecycleTransitionResult,
 } from "./legal-entity-lifecycle.js";
 export {

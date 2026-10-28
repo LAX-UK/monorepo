@@ -76,6 +76,7 @@ const LABELS: Record<string, string> = {
   "legal_entity.review_started": "Review started",
   "legal_entity.approved": "Legal entity approved",
   "legal_entity.restricted": "Legal entity restricted",
+  "legal_entity.restriction_lifted": "Legal entity restriction lifted",
   "legal_entity.rejected": "Legal entity rejected",
   "legal_entity.archived": "Legal entity archived",
   "legal_entity.archive_cascaded": "Archive cascade completed",

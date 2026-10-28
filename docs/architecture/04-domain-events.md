@@ -111,6 +111,7 @@ See [Identity boundary](./09-lax-identity-boundary.md) and
 | `legal_entity.review_started` | `from_status`, `to_status`, `reason` |
 | `legal_entity.approved` | `from_status`, `to_status`, `reason` |
 | `legal_entity.restricted` | `from_status`, `to_status`, `reason` |
+| `legal_entity.restriction_lifted` | `from_status`, `to_status` (`approved` or `connect_pending`, by Stripe Connect readiness), `reason` |
 | `legal_entity.rejected` | `from_status`, `to_status`, `reason` |
 | `legal_entity.archived` | `from_status`, `to_status`, `reason` |
 

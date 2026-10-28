@@ -53,6 +53,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   "legal_entity.review_started": new Set(["from_status", "to_status", "reason"]),
   "legal_entity.approved": new Set(["from_status", "to_status", "reason"]),
   "legal_entity.restricted": new Set(["from_status", "to_status", "reason"]),
+  "legal_entity.restriction_lifted": new Set(["from_status", "to_status", "reason"]),
   "legal_entity.rejected": new Set(["from_status", "to_status", "reason"]),
   "legal_entity.archived": new Set(["from_status", "to_status", "reason"]),
   /** Stripe transfer initiation success — all fields are safe operational data. */

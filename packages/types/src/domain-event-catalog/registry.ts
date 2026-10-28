@@ -133,6 +133,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "legal_entity.member_role_changed",
   "legal_entity.rejected",
   "legal_entity.restricted",
+  "legal_entity.restriction_lifted",
   "legal_entity.review_started",
   "lot.activated",
   "lot.attached_to_sale",

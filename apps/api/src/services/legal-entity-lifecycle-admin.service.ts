@@ -1,8 +1,10 @@
+import { isStripeAccountConfigured } from "@auction/connect";
 import type { IEmailService } from "@auction/email";
 import type {
   ILegalEntityLifecycleAdminRepository,
   ILegalEntityMemberRepository,
   ITransactionRunner,
+  LegalEntityLifecycleRow,
 } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { LegalEntityStatus } from "@auction/types";
@@ -43,13 +45,18 @@ function resolveStatusReason(
   if (navLocked.requiresReason && reason?.trim()) {
     return reason.trim();
   }
-  if (op === "request_docs" && reason?.trim()) {
+  if ((op === "request_docs" || op === "lift_restriction") && reason?.trim()) {
     return reason.trim();
   }
   if (op === "reject") {
     return reason?.trim() ?? null;
   }
   return null;
+}
+
+/** The Connect promoter's readiness rule, so a lifted restriction never outruns Stripe. */
+function isConnectReady(row: LegalEntityLifecycleRow): boolean {
+  return isStripeAccountConfigured(row);
 }
 
 export class LegalEntityLifecycleAdminService {
@@ -72,7 +79,7 @@ export class LegalEntityLifecycleAdminService {
     }
 
     const preStatus = pre.status;
-    const nav = nextStatusForLifecycleOp(preStatus, op);
+    const nav = nextStatusForLifecycleOp(preStatus, op, { connectReady: isConnectReady(pre) });
     if (!nav) {
       return err({
         code: "invalid_transition",
@@ -105,7 +112,9 @@ export class LegalEntityLifecycleAdminService {
         });
       }
 
-      const navLocked = nextStatusForLifecycleOp(lockedStatus, op);
+      const navLocked = nextStatusForLifecycleOp(lockedStatus, op, {
+        connectReady: isConnectReady(row),
+      });
       if (!navLocked) {
         return err({
           code: "invalid_transition",

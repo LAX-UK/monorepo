@@ -10,6 +10,7 @@ import { AdminLegalEntityLifecycleApplicationService } from "../services/admin/a
 import { LegalEntityLifecycleAdminService } from "../services/legal-entity-lifecycle-admin.service.js";
 import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
+import { createTestStaffGuards } from "../testing/staff-mutation-guards.js";
 import { attachAdminLegalEntityLifecycleRoutes } from "./admin-legal-entity-lifecycle.js";
 
 const ENTITY_ID = "00000000-0000-4000-8000-000000000001";
@@ -29,16 +30,23 @@ function lifecycleApp(
   userId: string,
   role: string,
   staffRoles?: StaffRoles | undefined,
+  recentSignIn = true,
 ) {
   const requirePlatformAdmin = createRequireCapability("platform.admin.full");
   const app = new Hono<{
-    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
+    Variables: {
+      userId?: string;
+      userRole?: string;
+      userStaffRoles?: StaffRoles | undefined;
+      identitySessionId?: string;
+    };
   }>();
   const resolvedStaff: StaffRoles = role === "client" ? [] : (staffRoles ?? ["administrator"]);
   app.use("*", async (c, next) => {
     c.set("userId", userId);
     c.set("userRole", role);
     c.set("userStaffRoles", resolvedStaff);
+    c.set("identitySessionId", "session-1");
     await next();
   });
   app.use("*", requirePlatformAdmin);
@@ -50,7 +58,11 @@ function lifecycleApp(
       reviewDocument: vi.fn(),
     } as never,
   );
-  attachAdminLegalEntityLifecycleRoutes(app, legalEntityLifecycle);
+  attachAdminLegalEntityLifecycleRoutes(
+    app,
+    legalEntityLifecycle,
+    createTestStaffGuards({ recent: recentSignIn }),
+  );
   return app;
 }
 
@@ -66,12 +78,26 @@ function denyCapabilityForSuperAdmin(deny: AuctionTypes.RoleCapability) {
 }
 
 /** Real service + mocked Drizzle tx so HTTP layer asserts concrete `event_type` values. */
-function buildAppWithRealLifecycleService(entityStatus: string) {
-  return buildAppWithRealLifecycleServiceStatusPair(entityStatus, entityStatus);
+function buildAppWithRealLifecycleService(
+  entityStatus: string,
+  rowExtras: Record<string, unknown> = {},
+  recentSignIn = true,
+) {
+  return buildAppWithRealLifecycleServiceStatusPair(
+    entityStatus,
+    entityStatus,
+    rowExtras,
+    recentSignIn,
+  );
 }
 
 /** Outer read vs `FOR UPDATE` read disagree — exercises row-lock concurrent_modification guard. */
-function buildAppWithRealLifecycleServiceStatusPair(outerStatus: string, lockedRowStatus: string) {
+function buildAppWithRealLifecycleServiceStatusPair(
+  outerStatus: string,
+  lockedRowStatus: string,
+  rowExtras: Record<string, unknown> = {},
+  recentSignIn = true,
+) {
   const legalEntityRepository = {
     findById: vi.fn().mockResolvedValue({
       id: ENTITY_ID,
@@ -83,7 +109,9 @@ function buildAppWithRealLifecycleServiceStatusPair(outerStatus: string, lockedR
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
           for: vi.fn().mockReturnValue({
-            limit: vi.fn().mockResolvedValue([{ id: ENTITY_ID, status: lockedRowStatus }]),
+            limit: vi
+              .fn()
+              .mockResolvedValue([{ id: ENTITY_ID, status: lockedRowStatus, ...rowExtras }]),
           }),
         }),
       }),
@@ -99,7 +127,7 @@ function buildAppWithRealLifecycleServiceStatusPair(outerStatus: string, lockedR
     select: vi.fn().mockReturnValue({
       from: vi.fn().mockReturnValue({
         where: vi.fn().mockReturnValue({
-          limit: vi.fn().mockResolvedValue([{ id: ENTITY_ID, status: outerStatus }]),
+          limit: vi.fn().mockResolvedValue([{ id: ENTITY_ID, status: outerStatus, ...rowExtras }]),
         }),
       }),
     }),
@@ -114,6 +142,8 @@ function buildAppWithRealLifecycleServiceStatusPair(outerStatus: string, lockedR
     minimalContainer({ legalEntityLifecycleAdminService: service, legalEntityRepository }),
     ADMIN_ID,
     "staff",
+    undefined,
+    recentSignIn,
   );
   return { app, publish };
 }
@@ -477,5 +507,107 @@ describe("POST /admin/legal-entities/:id/archive (legal_entity.archive)", () => 
     });
     expect(res.status).toBe(400);
     expect(runTransition).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /admin/legal-entities/:id/lift-restriction (legal_entity.write + step-up)", () => {
+  const path = `/legal-entities/${ENTITY_ID}/lift-restriction`;
+  const connectReady = {
+    stripeConnectAccountId: "acct_1",
+    stripeConnectChargesEnabled: true,
+    stripeConnectPayoutsEnabled: true,
+    stripeConnectRequirementsCurrentlyDue: [],
+    stripeConnectRequirementsErrors: [],
+    stripeConnectDisabledReason: null,
+    isLaxManaged: false,
+  };
+  const post = (
+    app: { request: (u: string, i: RequestInit) => Response | Promise<Response> },
+    body: unknown,
+  ) =>
+    app.request(`http://test${path}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+
+  it("returns 403 for client", async () => {
+    const runTransition = vi.fn();
+    const app = lifecycleApp(
+      minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
+      ADMIN_ID,
+      "client",
+    );
+    expect((await post(app, { reason: "Cleared by compliance" })).status).toBe(403);
+    expect(runTransition).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 when administrator lacks legal_entity.write", async () => {
+    denyCapabilityForSuperAdmin("legal_entity.write");
+    const runTransition = vi.fn();
+    const app = lifecycleApp(
+      minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
+      ADMIN_ID,
+      "staff",
+    );
+    expect((await post(app, { reason: "Cleared by compliance" })).status).toBe(403);
+    expect(runTransition).not.toHaveBeenCalled();
+  });
+
+  it("returns 403 step_up_required without a recent sign-in", async () => {
+    const { app, publish } = buildAppWithRealLifecycleService("restricted", connectReady, false);
+    const res = await post(app, { reason: "Cleared by compliance" });
+    expect(res.status).toBe(403);
+    expect(((await res.json()) as { code: string }).code).toBe("step_up_required");
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("returns 400 when the reason is missing or too short", async () => {
+    const runTransition = vi.fn();
+    const app = lifecycleApp(
+      minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
+      ADMIN_ID,
+      "staff",
+    );
+    expect((await post(app, {})).status).toBe(400);
+    expect((await post(app, { reason: "ab" })).status).toBe(400);
+    expect(runTransition).not.toHaveBeenCalled();
+  });
+
+  it("returns 422 from a status other than restricted", async () => {
+    const { app, publish } = buildAppWithRealLifecycleService("approved", connectReady);
+    expect((await post(app, { reason: "Cleared by compliance" })).status).toBe(422);
+    expect(publish).not.toHaveBeenCalled();
+  });
+
+  it("returns 200 approved and publishes legal_entity.restriction_lifted when Connect is ready", async () => {
+    const { app, publish } = buildAppWithRealLifecycleService("restricted", connectReady);
+    const res = await post(app, { reason: "Cleared by compliance" });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { data: { status: string } }).data.status).toBe("approved");
+    const event = publish.mock.calls[0]?.[0] as {
+      eventType: string;
+      payload: Record<string, unknown>;
+      actorUserId: string;
+    };
+    expect(event.eventType).toBe("legal_entity.restriction_lifted");
+    expect(event.payload).toMatchObject({
+      from_status: "restricted",
+      to_status: "approved",
+      reason: "Cleared by compliance",
+    });
+    expect(event.actorUserId).toBe(ADMIN_ID);
+  });
+
+  it("returns 200 connect_pending when Connect is not ready", async () => {
+    const { app } = buildAppWithRealLifecycleService("restricted", {
+      ...connectReady,
+      stripeConnectPayoutsEnabled: false,
+    });
+    const res = await post(app, { reason: "Cleared by compliance" });
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { data: { status: string } }).data.status).toBe(
+      "connect_pending",
+    );
   });
 });
