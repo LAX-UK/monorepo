@@ -1,5 +1,5 @@
 import type { UserNotification } from "@auction/types";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
@@ -7,7 +7,7 @@ vi.mock("server-only", () => ({}));
 let searchParams = new URLSearchParams();
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ replace: vi.fn() }),
+  useRouter: () => ({ replace: vi.fn(), refresh: vi.fn() }),
   usePathname: () => "/notifications",
   useSearchParams: () => searchParams,
 }));
@@ -101,7 +101,7 @@ describe("NotificationsInboxBoard", () => {
     render(<NotificationsInboxBoard />);
 
     const views = screen.getByRole("navigation", { name: "Notifications" });
-    expect(views.querySelectorAll("a")).toHaveLength(2);
+    expect(views.querySelectorAll("a")).toHaveLength(3);
     expect(screen.getByRole("link", { name: /^All/ })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: /^Unread\W+1$/ })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Mark all as read" })).toBeEnabled();
@@ -116,5 +116,37 @@ describe("NotificationsInboxBoard", () => {
       screen.getByRole("heading", { name: "We couldn't load your notifications" }),
     ).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
+  });
+
+  it("offers All, Unread and Archived with a type filter beside them", () => {
+    searchParams = new URLSearchParams();
+    inboxState = { ...emptyInbox, items: bandedItems };
+    render(<NotificationsInboxBoard />);
+    expect(screen.getByRole("link", { name: "Archived" })).toHaveAttribute(
+      "href",
+      "/notifications?tab=archived",
+    );
+    expect(screen.getAllByRole("combobox", { name: "Type" }).length).toBeGreaterThan(0);
+  });
+
+  it("archives a selection of notifications at once", async () => {
+    searchParams = new URLSearchParams();
+    const archiveMany = vi.fn().mockResolvedValue({ fulfilled: 2, rejected: 0 });
+    inboxState = { ...emptyInbox, items: bandedItems, archiveMany };
+    render(<NotificationsInboxBoard />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Select" }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /Today notice/ }));
+    fireEvent.click(screen.getByRole("checkbox", { name: /Earlier notice/ }));
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Archive" }));
+    await vi.waitFor(() => expect(archiveMany).toHaveBeenCalledWith(["n-today", "n-old"]));
+  });
+
+  it("gives each notification a menu to archive it", () => {
+    searchParams = new URLSearchParams();
+    inboxState = { ...emptyInbox, items: bandedItems };
+    render(<NotificationsInboxBoard />);
+    expect(screen.getByRole("button", { name: "More for Today notice" })).toBeInTheDocument();
   });
 });

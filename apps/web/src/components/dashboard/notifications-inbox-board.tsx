@@ -14,11 +14,13 @@ import Link from "next/link";
 import { notificationTypePresenter } from "./notifications/notification-presenters";
 import { NotificationRow } from "./notifications/notification-row";
 import { NotificationsSkeleton } from "./notifications/notifications-skeleton";
+import { NotificationsTypeSelect } from "./notifications/notifications-type-select";
 import { useNotificationsInboxBoard } from "./notifications/use-notifications-inbox-board";
 
 /**
- * Notifications: All and Unread, grouped by day with unread first, each opening what it is about
- * and marking itself read. "Mark all as read" sits in the page head.
+ * Notifications: All, Unread and Archived, grouped by day with unread first, each opening what it
+ * is about and marking itself read. A type filter sits beside the views; Select picks several to
+ * mark read or archive at once. "Mark all as read" sits in the page head.
  */
 export function NotificationsInboxBoard({
   loadFailure = false,
@@ -66,7 +68,10 @@ export function NotificationsInboxBoard({
       ) : (
         <div className="flex flex-col gap-6">
           <div className="flex flex-wrap items-center justify-between gap-3">
-            <AccountViewTabs label="Notifications" currentId={board.tab} tabs={board.views} />
+            <div className="flex flex-wrap items-center gap-3">
+              <AccountViewTabs label="Notifications" currentId={board.tab} tabs={board.views} />
+              <NotificationsTypeSelect filters={board.notificationFilters} />
+            </div>
             <Link
               href={NOTIFICATION_SETTINGS_HREF}
               className="font-body text-sm text-on-surface underline underline-offset-4 hover:decoration-2"
@@ -74,6 +79,53 @@ export function NotificationsInboxBoard({
               {DASHBOARD_CTA.chooseWhatWeSend}
             </Link>
           </div>
+
+          {board.items.length > 0 && !board.loading ? (
+            board.selecting ? (
+              <section
+                aria-label="Selected notifications"
+                className="flex flex-wrap items-center gap-2 rounded-xl border border-outline-variant/60 bg-surface-container-low px-4 py-2.5"
+              >
+                <p
+                  className="mr-auto font-body text-sm font-medium text-on-surface"
+                  aria-live="polite"
+                >
+                  {board.selected.size === 0
+                    ? "Choose notifications"
+                    : `${board.selected.size} selected`}
+                </p>
+                <Button
+                  type="button"
+                  variant="secondaryOutline"
+                  size="default"
+                  disabled={board.selected.size === 0}
+                  onClick={() => void board.handleBulkMarkRead()}
+                >
+                  Mark as read
+                </Button>
+                {board.tab === "archived" ? null : (
+                  <Button
+                    type="button"
+                    variant="secondaryOutline"
+                    size="default"
+                    disabled={board.selected.size === 0}
+                    onClick={() => void board.handleBulkArchive()}
+                  >
+                    Archive
+                  </Button>
+                )}
+                <Button type="button" variant="ghost" size="default" onClick={board.stopSelecting}>
+                  Done
+                </Button>
+              </section>
+            ) : (
+              <div className="-mt-2 flex justify-end">
+                <Button type="button" variant="ghost" size="default" onClick={board.startSelecting}>
+                  Select
+                </Button>
+              </div>
+            )
+          ) : null}
 
           {board.loading ? (
             <NotificationsSkeleton rows={6} />
@@ -96,6 +148,11 @@ export function NotificationsInboxBoard({
                         item={item}
                         presentation={notificationTypePresenter(item.type)}
                         onMarkRead={board.handleMarkRead}
+                        onArchive={(id) => void board.handleArchive(id)}
+                        selecting={board.selecting}
+                        selected={board.selected.has(item.id)}
+                        onToggleSelect={board.toggleSelect}
+                        archived={board.tab === "archived"}
                       />
                     ))}
                   </ul>

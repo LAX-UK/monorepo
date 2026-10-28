@@ -4,6 +4,14 @@ import { notificationHref } from "@/lib/notifications/notification-link";
 import type { UserNotification } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
+import { Checkbox } from "@auction/ui/components/checkbox";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@auction/ui/components/dropdown-menu";
+import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
 import type { NotificationPresentation, NotificationTone } from "./notification-presenters";
 import { relativeTime } from "./notification-presenters";
@@ -21,18 +29,39 @@ export type NotificationRowProps = {
   item: UserNotification;
   presentation: NotificationPresentation;
   onMarkRead: (id: string) => void;
+  onArchive: (id: string) => void;
+  /** Selection mode: a checkbox leads the row and the whole row toggles it. */
+  selecting?: boolean;
+  selected?: boolean;
+  onToggleSelect?: (id: string) => void;
+  /** Archived notifications cannot be archived again. */
+  archived?: boolean;
 };
 
 /**
  * One notification: its type disc, the title (bold while unread), what happened, when, and an
- * unread dot. Opening a notification marks it read; the dot itself also marks it read, for the
- * notifications that lead nowhere.
+ * unread dot that marks it read. Its menu marks it read or archives it. In selection mode a
+ * checkbox leads the row instead of the link.
  */
-export function NotificationRow({ item, presentation, onMarkRead }: NotificationRowProps) {
+export function NotificationRow({
+  item,
+  presentation,
+  onMarkRead,
+  onArchive,
+  selecting = false,
+  selected = false,
+  onToggleSelect,
+  archived = false,
+}: NotificationRowProps) {
   const unread = !item.read;
   const { Icon } = presentation;
-  const href = notificationHref(item);
-  const title = href ? (
+  const href = selecting ? null : notificationHref(item);
+  const checkboxId = `select-${item.id}`;
+  const title = selecting ? (
+    <label htmlFor={checkboxId} className="cursor-pointer after:absolute after:inset-0">
+      {item.title}
+    </label>
+  ) : href ? (
     <Link
       href={href}
       className="after:absolute after:inset-0 focus-visible:outline-none"
@@ -50,10 +79,19 @@ export function NotificationRow({ item, presentation, onMarkRead }: Notification
     <li
       className={cn(
         "group relative flex items-start gap-3.5 px-4 py-4 md:px-5",
-        href &&
+        (href || selecting) &&
           "motion-safe:transition-colors hover:bg-surface-container-low has-[a:focus-visible]:outline has-[a:focus-visible]:outline-2 has-[a:focus-visible]:-outline-offset-2 has-[a:focus-visible]:outline-ring",
+        selected && "bg-surface-container-low",
       )}
     >
+      {selecting ? (
+        <Checkbox
+          id={checkboxId}
+          checked={selected}
+          onCheckedChange={() => onToggleSelect?.(item.id)}
+          className="relative z-[1] mt-2.5 size-5"
+        />
+      ) : null}
       <span
         aria-hidden
         className={cn(
@@ -100,6 +138,29 @@ export function NotificationRow({ item, presentation, onMarkRead }: Notification
           </Button>
         ) : (
           <span aria-hidden className="size-4" />
+        )}
+        {selecting ? null : (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="link"
+                aria-label={`More for ${item.title}`}
+                className="relative z-[1] size-8 rounded-full text-on-surface-variant hover:text-on-surface focus-visible:ring-offset-0"
+              >
+                <MoreHorizontal aria-hidden />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem disabled={!unread} onSelect={() => onMarkRead(item.id)}>
+                Mark as read
+              </DropdownMenuItem>
+              {archived ? null : (
+                <DropdownMenuItem onSelect={() => onArchive(item.id)}>Archive</DropdownMenuItem>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
     </li>
