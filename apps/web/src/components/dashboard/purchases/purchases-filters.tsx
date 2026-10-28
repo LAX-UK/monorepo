@@ -41,7 +41,7 @@ function withTab(href: string, tab: string | null): string {
 
 /**
  * Purchases' filters behind one "Filters" button with a count: title, payment and year, in the
- * shared filter sheet. Choices apply together; the ones in use show as removable chips.
+ * shared filter sheet. Choices apply together and keep the view.
  */
 export function PurchasesFilters({
   filters,
@@ -51,21 +51,11 @@ export function PurchasesFilters({
   years: readonly number[];
 }) {
   const router = useRouter();
-  const pathname = usePathname();
   const searchParams = useSearchParams();
   const tab = searchParams?.get("tab") ?? null;
   const searchId = useId();
   const [open, setOpen] = useState(false);
   const [draft, setDraft] = useState<PortfolioFilters>(filters);
-  const active = useMemo(
-    () =>
-      getPortfolioActiveFilters(filters).map((chip) => ({
-        ...chip,
-        href: withTab(chip.href, tab),
-      })),
-    [filters, tab],
-  );
-
   const onOpenChange = (next: boolean) => {
     if (next) setDraft(filters);
     setOpen(next);
@@ -76,75 +66,93 @@ export function PurchasesFilters({
   };
 
   return (
-    <div className="flex flex-col gap-3">
-      <DashboardFilterSheet
-        open={open}
-        onOpenChange={onOpenChange}
-        title="Filter purchases"
-        onApply={apply}
-        onReset={() => setDraft({ q: "", payment: "all", year: null })}
-        trigger={
-          <DashboardFilterTrigger
-            activeCount={countPurchaseFilters(filters)}
-            className="w-fit text-sm"
+    <DashboardFilterSheet
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Filter purchases"
+      onApply={apply}
+      onReset={() => setDraft({ q: "", payment: "all", year: null })}
+      trigger={
+        <DashboardFilterTrigger
+          activeCount={countPurchaseFilters(filters)}
+          className="w-fit text-sm"
+        />
+      }
+    >
+      <div className="flex flex-col gap-7">
+        <div className="flex flex-col gap-2">
+          <label htmlFor={searchId} className="font-body text-sm font-semibold text-on-surface">
+            Title
+          </label>
+          <Input
+            id={searchId}
+            type="search"
+            value={draft.q}
+            placeholder="Search your purchases"
+            onChange={(event) => setDraft({ ...draft, q: event.target.value })}
           />
-        }
-      >
-        <div className="flex flex-col gap-7">
-          <div className="flex flex-col gap-2">
-            <label htmlFor={searchId} className="font-body text-sm font-semibold text-on-surface">
-              Title
-            </label>
-            <Input
-              id={searchId}
-              type="search"
-              value={draft.q}
-              placeholder="Search your purchases"
-              onChange={(event) => setDraft({ ...draft, q: event.target.value })}
-            />
+        </div>
+        <Group legend="Payment">
+          <div className="flex flex-wrap gap-2">
+            {PORTFOLIO_PAYMENT_OPTIONS.map((option) => (
+              <FilterChip
+                key={option.id}
+                className={CHIP}
+                pressed={draft.payment === option.id}
+                onClick={() => setDraft({ ...draft, payment: option.id })}
+              >
+                {option.label}
+              </FilterChip>
+            ))}
           </div>
-          <Group legend="Payment">
+        </Group>
+        {years.length > 0 ? (
+          <Group legend="Won in">
             <div className="flex flex-wrap gap-2">
-              {PORTFOLIO_PAYMENT_OPTIONS.map((option) => (
+              <FilterChip
+                className={CHIP}
+                pressed={draft.year == null}
+                onClick={() => setDraft({ ...draft, year: null })}
+              >
+                Any year
+              </FilterChip>
+              {years.map((year) => (
                 <FilterChip
-                  key={option.id}
+                  key={year}
                   className={CHIP}
-                  pressed={draft.payment === option.id}
-                  onClick={() => setDraft({ ...draft, payment: option.id })}
+                  pressed={draft.year === year}
+                  onClick={() => setDraft({ ...draft, year })}
                 >
-                  {option.label}
+                  {year}
                 </FilterChip>
               ))}
             </div>
           </Group>
-          {years.length > 0 ? (
-            <Group legend="Won in">
-              <div className="flex flex-wrap gap-2">
-                <FilterChip
-                  className={CHIP}
-                  pressed={draft.year == null}
-                  onClick={() => setDraft({ ...draft, year: null })}
-                >
-                  Any year
-                </FilterChip>
-                {years.map((year) => (
-                  <FilterChip
-                    key={year}
-                    className={CHIP}
-                    pressed={draft.year === year}
-                    onClick={() => setDraft({ ...draft, year })}
-                  >
-                    {year}
-                  </FilterChip>
-                ))}
-              </div>
-            </Group>
-          ) : null}
-        </div>
-      </DashboardFilterSheet>
-      {active.length > 0 ? (
-        <DashboardActiveFilters filters={active} clearAllHref={withTab(pathname, tab)} />
-      ) : null}
-    </div>
+        ) : null}
+      </div>
+    </DashboardFilterSheet>
+  );
+}
+
+/** The purchase filters in use, as removable chips that keep the view; nothing when none are. */
+export function PurchasesActiveFilters({ filters }: { filters: PortfolioFilters }) {
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const tab = searchParams?.get("tab") ?? null;
+  const active = useMemo(
+    () =>
+      getPortfolioActiveFilters(filters).map((chip) => ({
+        ...chip,
+        href: withTab(chip.href, tab),
+      })),
+    [filters, tab],
+  );
+  if (active.length === 0) return null;
+  return (
+    <DashboardActiveFilters
+      filters={active}
+      clearAllHref={withTab(pathname, tab)}
+      className="mb-0 md:mb-0"
+    />
   );
 }

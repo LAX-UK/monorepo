@@ -100,14 +100,14 @@ export function PurchaseCard({ card }: { card: PurchaseCardVm }) {
                 {card.saleTitle}
               </p>
             ) : null}
-            <h3 className="mt-1 font-headline text-base font-semibold leading-snug text-on-surface md:text-lg">
+            <h2 className="mt-1 font-headline text-base font-semibold leading-snug text-on-surface md:text-lg">
               <Link
                 href={card.href}
                 className="underline-offset-4 hover:underline focus-visible:underline"
               >
                 {card.title}
               </Link>
-            </h3>
+            </h2>
             <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5">
               <DotStatusPill label={card.statusLabel} tone={STATE_TONE[card.state]} />
               {card.statusNote ? (

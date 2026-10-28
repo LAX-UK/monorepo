@@ -3,7 +3,10 @@ import { AccountLoadError } from "@/components/dashboard/primitives/account-load
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { PayNowBanner } from "@/components/dashboard/purchases/pay-now-banner";
 import { PurchaseCard } from "@/components/dashboard/purchases/purchase-card";
-import { PurchasesFilters } from "@/components/dashboard/purchases/purchases-filters";
+import {
+  PurchasesActiveFilters,
+  PurchasesFilters,
+} from "@/components/dashboard/purchases/purchases-filters";
 import { ACCOUNT_LOAD_ERROR, DASHBOARD_CTA, DASHBOARD_EMPTY } from "@/lib/dashboard/dashboard-copy";
 import type { PortfolioFilters } from "@/lib/dashboard/filters/portfolio/portfolio-filters";
 import { laxAccountUrl } from "@/lib/lax-account-url";
@@ -96,16 +99,21 @@ export function PurchasesView({
       ) : (
         <>
           {vm.payNow ? <PayNowBanner banner={vm.payNow} /> : null}
-          <AccountViewTabs
-            label="Purchases"
-            currentId={vm.tab}
-            tabs={vm.tabs.map((tab) => ({ ...tab, href: tabHref(tab.id) }))}
-          />
-          <div className="flex flex-wrap items-start justify-between gap-3">
-            <PurchasesFilters filters={filters} years={vm.years} />
-            <p className="pt-2.5 font-body text-sm text-on-surface-variant">
-              {vm.total === 1 ? "1 purchase" : `${vm.total} purchases`} · {vm.spent} in total
-            </p>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <AccountViewTabs
+                label="Purchases"
+                currentId={vm.tab}
+                tabs={vm.tabs.map((tab) => ({ ...tab, href: tabHref(tab.id) }))}
+              />
+              <div className="flex items-center gap-4 max-md:w-full max-md:justify-between">
+                <p className="whitespace-nowrap font-body text-xs text-on-surface-variant md:text-sm">
+                  {vm.total === 1 ? "1 purchase" : `${vm.total} purchases`} · {vm.spent} in total
+                </p>
+                <PurchasesFilters filters={filters} years={vm.years} />
+              </div>
+            </div>
+            <PurchasesActiveFilters filters={filters} />
           </div>
           {vm.cards.length === 0 ? (
             <DashboardEmptyState
