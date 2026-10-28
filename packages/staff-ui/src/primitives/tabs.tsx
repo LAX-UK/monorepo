@@ -20,13 +20,18 @@ export function formatCount(value: number): string {
   return value > 99_999 ? COMPACT_COUNT.format(value) : COUNT.format(value);
 }
 
+export type CountTone = "neutral" | "attention";
+
 export function Count({
   value,
   tone = "neutral",
+  label,
   className,
 }: {
   value: number;
-  tone?: "neutral" | "attention";
+  tone?: CountTone;
+  /** Read after the number by assistive technology: "3 waiting". */
+  label?: string;
   className?: string;
 }) {
   return (
@@ -40,6 +45,7 @@ export function Count({
       )}
     >
       {formatCount(value)}
+      {label ? <span className="sr-only"> {label}</span> : null}
     </span>
   );
 }
@@ -49,7 +55,23 @@ export type TabNavItem = {
   label: string;
   href: string;
   count?: number;
+  /** `attention` fills the count in ink, for work waiting on staff. */
+  countTone?: CountTone;
+  /** What the count means, for assistive technology ("waiting"). */
+  countLabel?: string;
 };
+
+/** A tab's count, in the tone and with the meaning its item gives. */
+function TabCount({ item }: { item: TabNavItem }) {
+  if (item.count === undefined) return null;
+  return (
+    <Count
+      value={item.count}
+      {...(item.countTone ? { tone: item.countTone } : {})}
+      {...(item.countLabel ? { label: item.countLabel } : {})}
+    />
+  );
+}
 
 /**
  * Page-level tabs that are links (record sections): each is a real URL, so it can be opened in a
@@ -143,7 +165,7 @@ export function OverflowTabs({
   const navRef = React.useRef<HTMLElement>(null);
   const listRef = React.useRef<HTMLUListElement>(null);
   const activeIndex = tabs.findIndex((tab) => tab.id === currentId);
-  const signature = `${tabs.map((tab) => `${tab.id}:${tab.label}:${tab.count ?? ""}`).join("|")}#${activeIndex}`;
+  const signature = `${tabs.map((tab) => `${tab.id}:${tab.label}:${tab.count ?? ""}:${tab.countTone ?? ""}`).join("|")}#${activeIndex}`;
   const widths = React.useRef<{ signature: string; values: number[] } | null>(null);
   const [fit, setFit] = React.useState<{
     signature: string;
@@ -192,7 +214,7 @@ export function OverflowTabs({
   const content = (view: TabNavItem) => (
     <>
       {view.label}
-      {view.count !== undefined ? <Count value={view.count} /> : null}
+      <TabCount item={view} />
     </>
   );
 
@@ -245,6 +267,60 @@ export function OverflowTabs({
             </StaffMenu>
           </li>
         ) : null}
+      </ul>
+    </nav>
+  );
+}
+
+/**
+ * The pages inside one record tab, as a quieter row of links under it: a sale's "Bidders" tab
+ * holds Registrations and Telephone bookings. Each is a real URL. The current one sits on a
+ * selected fill rather than an underline, so the two levels never read as one row. A group holds
+ * two or three pages, which fit at 375px; a longer row scrolls sideways rather than wrapping.
+ */
+export function SecondaryTabNav({
+  items,
+  activeId,
+  label,
+  Link,
+  className,
+}: {
+  items: readonly TabNavItem[];
+  activeId: string;
+  label: string;
+  Link: StaffLinkComponent;
+  className?: string;
+}) {
+  return (
+    <nav
+      aria-label={label}
+      className={cn(
+        // The scroll box clips; 4px of padding (cancelled by the margin) keeps the focus ring whole.
+        "-m-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        className,
+      )}
+    >
+      <ul className="flex w-max items-center gap-1">
+        {items.map((item) => {
+          const active = item.id === activeId;
+          return (
+            <li key={item.id} className="shrink-0">
+              <Link
+                href={item.href}
+                {...(active ? { "aria-current": "page" as const } : {})}
+                className={cn(
+                  "staff-focus staff-target inline-flex h-control-sm items-center justify-center gap-1.5 rounded-staff-sm px-3 text-staff-sm font-medium whitespace-nowrap transition-colors",
+                  active
+                    ? "staff-overlay-selected text-staff-fg ring-1 ring-staff-line ring-inset"
+                    : "text-staff-muted hover:text-staff-fg active:staff-overlay-pressed",
+                )}
+              >
+                {item.label}
+                <TabCount item={item} />
+              </Link>
+            </li>
+          );
+        })}
       </ul>
     </nav>
   );

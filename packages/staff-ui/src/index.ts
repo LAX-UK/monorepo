@@ -42,8 +42,14 @@ export {
   StaffTooltip,
   StaffTooltipProvider,
 } from "./primitives/menu.js";
-export { Count, OverflowTabs, SegmentedControl, TabNav } from "./primitives/tabs.js";
-export type { SegmentOption, TabNavItem } from "./primitives/tabs.js";
+export {
+  Count,
+  OverflowTabs,
+  SecondaryTabNav,
+  SegmentedControl,
+  TabNav,
+} from "./primitives/tabs.js";
+export type { CountTone, SegmentOption, TabNavItem } from "./primitives/tabs.js";
 
 // Display
 export {
