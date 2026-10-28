@@ -117,13 +117,13 @@
   /* Semantic trend / status (oklch — perceptually even in light + dark) */
   --color-warning: oklch(0.72 0.14 55);
   /* Status text and glyphs on warning and danger tints; at least 4.5:1 on the tint and the page. */
-  --color-warning-on-surface: oklch(0.4 0.13 52);
+  --color-warning-on-surface: var(--status-warning-ink);
   --color-on-warning: oklch(0.22 0.04 55);
   --color-warning-container: oklch(0.94 0.06 85);
   --color-danger: oklch(0.55 0.2 25);
   --color-on-danger: oklch(0.98 0.01 25);
   --color-danger-container: oklch(0.94 0.04 25);
-  --color-danger-on-surface: oklch(0.5 0.2 25);
+  --color-danger-on-surface: var(--status-danger-ink);
   --color-success-container: oklch(0.94 0.06 145);
   --color-on-success-container: #0b3d1a;
   --color-positive: oklch(0.55 0.14 145);

@@ -78,13 +78,13 @@ html.dark {
   --color-link: color-mix(in srgb, var(--color-brand-midnight) 45%, white);
 
   --color-warning: oklch(0.78 0.12 85);
-  --color-warning-on-surface: oklch(0.82 0.12 85);
+  --color-warning-on-surface: var(--status-warning-ink-on-dark);
   --color-on-warning: oklch(0.18 0.03 85);
   --color-warning-container: oklch(0.28 0.06 85);
   --color-danger: oklch(0.72 0.14 25);
   --color-on-danger: oklch(0.15 0.02 25);
   --color-danger-container: oklch(0.28 0.08 25);
-  --color-danger-on-surface: oklch(0.8 0.12 25);
+  --color-danger-on-surface: var(--status-danger-ink-on-dark);
   --color-success-container: oklch(0.28 0.06 145);
   --color-on-success-container: #c8efd4;
   --color-positive: oklch(0.72 0.12 145);

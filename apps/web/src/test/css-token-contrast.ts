@@ -3,8 +3,9 @@ import path from "node:path";
 
 /**
  * Reads Bid's colour tokens from the real stylesheets, so contrast tests check what ships.
- * Light values come from the `@theme` block in globals.css; dark values from `html.dark` in
- * tokens-dark.css, falling back to light for tokens dark mode does not override.
+ * Light values come from the shared brand primitives and the `@theme` block in globals.css;
+ * dark values from `html.dark` in tokens-dark.css, falling back to light for tokens dark mode
+ * does not override.
  */
 
 type Rgb = readonly [number, number, number];
@@ -35,7 +36,14 @@ function readDeclarations(css: string, selector: RegExp): TokenMap {
 function loadThemes(): { light: TokenMap; dark: TokenMap } {
   const globals = readFileSync(path.join(SRC_DIR, "app/globals.css"), "utf8");
   const darkCss = readFileSync(path.join(SRC_DIR, "styles/tokens-dark.css"), "utf8");
-  const light = readDeclarations(globals, /@theme\s*\{/);
+  const primitives = readFileSync(
+    path.join(SRC_DIR, "../../../packages/branding/public/brand-primitives.css"),
+    "utf8",
+  );
+  const light = new Map([
+    ...readDeclarations(primitives, /:root\s*\{/),
+    ...readDeclarations(globals, /@theme\s*\{/),
+  ]);
   const dark = new Map([...light, ...readDeclarations(darkCss, /html\.dark\s*\{/)]);
   return { light, dark };
 }
