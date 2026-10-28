@@ -27,8 +27,8 @@ export const SHOP_STAFF_CAPABILITIES = [
   /** Reviewing artists' applications to join the gallery, and accepting or declining them. */
   "artist_application.review",
   /**
-   * Correcting a run's edition facts after prints have sold. Shop admins only: the orders already
-   * paid were described the old way.
+   * Correcting a run's edition facts after prints have sold. Administrators only: the orders
+   * already paid were described the old way.
    */
   "edition_facts.correct",
   /** Approving the listing of hors commerce proofs, which were not made to be sold. */
@@ -37,13 +37,30 @@ export const SHOP_STAFF_CAPABILITIES = [
 
 export type ShopStaffCapability = (typeof SHOP_STAFF_CAPABILITIES)[number];
 
-export type ShopStaffRole =
-  | "shop_admin"
-  | "account_manager"
-  | "broker"
-  | "operations"
-  | "finance"
-  | "catalogue_editor";
+/** LAX Admin's staff roles. `shop_admin` is the Administrator. Mirrors `shop_staff_role`. */
+export const SHOP_STAFF_ROLES = [
+  "shop_admin",
+  "account_manager",
+  "broker",
+  "operations",
+  "finance",
+  "catalogue_editor",
+  "editor",
+  "read_only",
+] as const;
+
+export type ShopStaffRole = (typeof SHOP_STAFF_ROLES)[number];
+
+/**
+ * What the Read-only role sees: the order, enquiry and merchandise lists and records, with every
+ * action closed. No client lists or records, no buying prices and no audit log, whose entries
+ * carry prices and personal details.
+ */
+export const READ_ONLY_CAPABILITIES = [
+  "order.read",
+  "enquiry.read",
+  "merchandise.read",
+] as const satisfies readonly ShopStaffCapability[];
 
 const ROLE_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]> = {
   shop_admin: SHOP_STAFF_CAPABILITIES,
@@ -78,18 +95,44 @@ const ROLE_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]> =
     "order.read",
     "artwork_price.write",
   ],
-  catalogue_editor: [
-    "catalogue.write",
-    "editorial.write",
-    "editorial.publish",
-    "artist_application.review",
-  ],
+  /** Artworks, edition runs and stock, artists, and artists' applications. */
+  catalogue_editor: ["catalogue.write", "artist_application.review"],
+  /** Stories, exhibitions, venues, pages and help, written and published. */
+  editor: ["editorial.write", "editorial.publish"],
+  read_only: READ_ONLY_CAPABILITIES,
 };
+
+export function capabilitiesForRole(role: ShopStaffRole): readonly ShopStaffCapability[] {
+  return ROLE_CAPABILITIES[role];
+}
+
+/** What a person holding `roles` may do: the union of each role's capabilities. */
+export function capabilitiesForRoles(
+  roles: readonly ShopStaffRole[],
+): ReadonlySet<ShopStaffCapability> {
+  const capabilities = new Set<ShopStaffCapability>();
+  for (const role of roles)
+    for (const capability of ROLE_CAPABILITIES[role]) capabilities.add(capability);
+  return capabilities;
+}
+
+/** Whether any of `roles` holds `capability`. */
+export function rolesHaveCapability(
+  roles: readonly ShopStaffRole[],
+  capability: ShopStaffCapability,
+): boolean {
+  return roles.some((role) => ROLE_CAPABILITIES[role].includes(capability));
+}
+
+/** The roles that hold `capability`, in role order: for "who can do this" lists. */
+export function rolesGranting(capability: ShopStaffCapability): ShopStaffRole[] {
+  return SHOP_STAFF_ROLES.filter((role) => ROLE_CAPABILITIES[role].includes(capability));
+}
 
 /**
  * The capability that lets staff open the list behind each overview figure. A figure is shown to
- * a role only when it holds the capability, so a count never reaches someone who cannot see the
- * records it counts.
+ * a person only when they hold the capability, so a count never reaches someone who cannot see
+ * the records it counts.
  */
 export const OVERVIEW_KPI_CAPABILITY = {
   fulfilmentOpenCount: "fulfilment.write",
@@ -103,18 +146,11 @@ export type OverviewKpiKey = keyof typeof OVERVIEW_KPI_CAPABILITY;
 /** Open editions low on stock are shown to the staff who can add prints to them. */
 export const OVERVIEW_LOW_STOCK_CAPABILITY: ShopStaffCapability = "catalogue.write";
 
-export function overviewKpiKeysForRole(role: ShopStaffRole): OverviewKpiKey[] {
+/** The overview figures a person with `capabilities` may see. */
+export function overviewKpiKeysFor(capabilities: ReadonlySet<string>): OverviewKpiKey[] {
   return (Object.keys(OVERVIEW_KPI_CAPABILITY) as OverviewKpiKey[]).filter((key) =>
-    roleHasCapability(role, OVERVIEW_KPI_CAPABILITY[key]),
+    capabilities.has(OVERVIEW_KPI_CAPABILITY[key]),
   );
-}
-
-export function capabilitiesForRole(role: ShopStaffRole): readonly ShopStaffCapability[] {
-  return ROLE_CAPABILITIES[role];
-}
-
-export function roleHasCapability(role: ShopStaffRole, capability: ShopStaffCapability): boolean {
-  return capabilitiesForRole(role).includes(capability);
 }
 
 /** Which clients a staff member can list: everyone, only those assigned to them, or nobody. */
@@ -124,8 +160,9 @@ export type ClientListScope = "all" | "assigned" | "none";
  * The one rule for the Clients page. The nav shows the page and the API answers `GET /clients`
  * from this same scope, so a link is shown exactly when the list behind it will load.
  */
-export function clientListScope(capabilities: readonly string[]): ClientListScope {
-  if (capabilities.includes("client.read_all")) return "all";
-  if (capabilities.includes("client.read_assigned")) return "assigned";
+export function clientListScope(capabilities: Iterable<string>): ClientListScope {
+  const held = new Set(capabilities);
+  if (held.has("client.read_all")) return "all";
+  if (held.has("client.read_assigned")) return "assigned";
   return "none";
 }
