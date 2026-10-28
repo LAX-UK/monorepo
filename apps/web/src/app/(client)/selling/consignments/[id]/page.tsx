@@ -119,7 +119,6 @@ export default async function SubmissionDetailPage({
       <DashboardPage className="mx-auto max-w-4xl space-y-8">
         <DashboardDetailHeader
           compactOnMobile
-          track="selling"
           backHref={DASHBOARD_ROUTES.consignments}
           backLabel="Consignments"
           title="Could not load submission"
@@ -186,7 +185,6 @@ export default async function SubmissionDetailPage({
       <SetMobileShellTitle title={submission.title} />
       <DashboardDetailHeader
         compactOnMobile
-        track="selling"
         backHref={DASHBOARD_ROUTES.consignments}
         backLabel="Consignments"
         title={submission.title}
@@ -271,7 +269,7 @@ export default async function SubmissionDetailPage({
                 <p>{submission.description ?? "No description."}</p>
                 {submission.status !== "rejected" && submission.reviewNotes ? (
                   <p>
-                    <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)]">
+                    <span className="font-label text-xs font-semibold text-on-surface">
                       Reviewer notes
                     </span>
                     <br />

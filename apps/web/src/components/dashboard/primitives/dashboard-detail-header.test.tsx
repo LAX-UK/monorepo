@@ -12,25 +12,26 @@ vi.mock("next/link", () => ({
   ),
 }));
 
-describe("DashboardDetailHeader back link", () => {
-  it.each(["buying", "selling", "live"] as const)(
-    "uses the neutral link treatment on the %s track",
-    (track) => {
-      render(
-        <DashboardDetailHeader
-          track={track}
-          backHref="/selling/consignments"
-          backLabel="Consignments"
-          title="Blue study"
-        />,
-      );
-      const link = screen.getByRole("link", { name: "Consignments" });
-      expect(link).toHaveAttribute("href", "/selling/consignments");
-      expect(link.className).toContain("text-on-surface-variant");
-      expect(link.className).toContain("hover:text-on-surface");
-      expect(link.className).not.toMatch(/lot-orange|live-red|text-link/);
-    },
-  );
+describe("DashboardDetailHeader back link and eyebrow", () => {
+  it("uses the neutral treatment for the back link and the eyebrow", () => {
+    render(
+      <DashboardDetailHeader
+        eyebrow="Consignment"
+        backHref="/selling/consignments"
+        backLabel="Consignments"
+        title="Blue study"
+      />,
+    );
+    const link = screen.getByRole("link", { name: "Consignments" });
+    expect(link).toHaveAttribute("href", "/selling/consignments");
+    expect(link.className).toContain("text-on-surface-variant");
+    expect(link.className).toContain("hover:text-on-surface");
+    const eyebrow = screen.getByText("Consignment");
+    for (const el of [link, eyebrow]) {
+      expect(el.className).not.toMatch(/lot-orange|live-red|accent-buying|text-link|uppercase/);
+    }
+    expect(eyebrow).toHaveClass("text-on-surface-variant", "text-xs");
+  });
 
   it("passes 4.5:1 on the page and on the header in light and dark", () => {
     const contrast = createTokenContrast();
