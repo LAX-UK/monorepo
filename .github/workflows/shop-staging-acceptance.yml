@@ -182,13 +182,15 @@ jobs:
                 release="$(echo "$body" | jq -r '.release // empty')"
                 identity_release="$(echo "$body" | jq -r '.dependencies.shopIdentity.release // empty')"
                 shop_api_release="$(echo "$body" | jq -r '.dependencies.shopApi.release // empty')"
+                # Deploys only roll out changed components, so shop-identity can
+                # legitimately run an older commit than the storefront.
                 if test "$release" = "$SHOP_SHA" \
-                  && test "$identity_release" = "$SHOP_SHA" \
+                  && [[ "$identity_release" =~ ^[0-9a-f]{40}$ ]] \
                   && test "$shop_api_release" = "$SHOP_API_SHA"; then
                   echo "Shop release pinned: storefront=$release identity=$identity_release shop-api=$shop_api_release"
                   exit 0
                 fi
-                echo "Attempt ${attempt}: storefront=${release:-unknown} identity=${identity_release:-unknown} shop-api=${shop_api_release:-unknown}; want storefront/identity=$SHOP_SHA shop-api=$SHOP_API_SHA"
+                echo "Attempt ${attempt}: storefront=${release:-unknown} identity=${identity_release:-unknown} shop-api=${shop_api_release:-unknown}; want storefront=$SHOP_SHA shop-api=$SHOP_API_SHA and an identity release"
               else
                 echo "Attempt ${attempt}: health/ready status not ok"
               fi
