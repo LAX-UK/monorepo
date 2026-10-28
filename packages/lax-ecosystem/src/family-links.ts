@@ -31,6 +31,23 @@ export function buildLaxFamilyLinks(input: LaxFamilyLinksInput): LaxFamilyLinkVm
   });
 }
 
+export const LOCAL_LAX_ACCOUNT_ORIGIN = "http://localhost:3040";
+export const DEFAULT_LAX_ACCOUNT_ORIGIN = "https://account.lax.bid";
+
+/**
+ * Where LAX Account lives for a product's links: the configured origin, or, when unset, the local
+ * Account dev server outside production and the live portal in production, as every product and
+ * the sign-in service resolve it.
+ */
+export function resolveLaxAccountOrigin(
+  configured: string | undefined,
+  nodeEnv: string | undefined,
+): string {
+  const origin = configured?.trim().replace(/\/+$/, "");
+  if (origin) return origin;
+  return nodeEnv === "production" ? DEFAULT_LAX_ACCOUNT_ORIGIN : LOCAL_LAX_ACCOUNT_ORIGIN;
+}
+
 /**
  * The top bar's links for a product whose sibling URLs come from the product directory, with
  * that product's link to LAX Account.

@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildLaxFamilyLinks, buildLaxFamilyLinksFromDirectory } from "./family-links.js";
+import {
+  buildLaxFamilyLinks,
+  buildLaxFamilyLinksFromDirectory,
+  resolveLaxAccountOrigin,
+} from "./family-links.js";
 
 const HREFS = {
   bid: "https://lax.bid",
@@ -55,5 +59,18 @@ describe("buildLaxFamilyLinksFromDirectory", () => {
       { id: "shop", href: HREFS.shop, current: false },
       { id: "account", href: "https://account.lax.bid/account?from=bid", current: false },
     ]);
+  });
+});
+
+describe("resolveLaxAccountOrigin", () => {
+  it("uses the configured origin without a trailing slash", () => {
+    expect(resolveLaxAccountOrigin(" https://account.test.lax/ ", "production")).toBe(
+      "https://account.test.lax",
+    );
+  });
+
+  it("falls back to the live portal in production and the local server otherwise", () => {
+    expect(resolveLaxAccountOrigin(undefined, "production")).toBe("https://account.lax.bid");
+    expect(resolveLaxAccountOrigin("", "development")).toBe("http://localhost:3040");
   });
 });

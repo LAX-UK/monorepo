@@ -32,6 +32,7 @@ export {
   type LaxFamilyMemberId,
   buildLaxFamilyLinks,
   buildLaxFamilyLinksFromDirectory,
+  resolveLaxAccountOrigin,
 } from "./family-links.js";
 export {
   type ProductUrlValidationOptions,
