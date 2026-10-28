@@ -1,5 +1,5 @@
-import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
+import { AccountPageLoading } from "@/components/dashboard/primitives/account-page-loading";
 
 export default function NotificationsLoading() {
-  return <DashboardSkeleton variant="listWithToolbar" />;
+  return <AccountPageLoading title="Notifications" label="Loading your notifications" />;
 }

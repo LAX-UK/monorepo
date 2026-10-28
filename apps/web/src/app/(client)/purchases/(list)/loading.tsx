@@ -1,10 +1,5 @@
-import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
+import { AccountPageLoading } from "@/components/dashboard/primitives/account-page-loading";
 
-export default function DashboardPurchasesLoading() {
-  return (
-    <DashboardPage className="space-y-8">
-      <DashboardSkeleton variant="portfolio" />
-    </DashboardPage>
-  );
+export default function PurchasesLoading() {
+  return <AccountPageLoading title="Purchases" label="Loading your purchases" />;
 }

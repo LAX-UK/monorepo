@@ -1,10 +1,5 @@
-import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
+import { AccountPageLoading } from "@/components/dashboard/primitives/account-page-loading";
 
-export default function DashboardWatchlistLoading() {
-  return (
-    <DashboardPage>
-      <DashboardSkeleton variant="listWithToolbar" />
-    </DashboardPage>
-  );
+export default function WatchingLoading() {
+  return <AccountPageLoading title="Watching" label="Loading the lots you follow" shape="tiles" />;
 }

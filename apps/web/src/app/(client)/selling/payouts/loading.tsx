@@ -1,5 +1,5 @@
-import { PayoutsPageSkeleton } from "@/components/dashboard/seller/payouts-page-skeleton";
+import { AccountPageLoading } from "@/components/dashboard/primitives/account-page-loading";
 
 export default function SellerPayoutsLoading() {
-  return <PayoutsPageSkeleton />;
+  return <AccountPageLoading label="Loading your sales and payouts" />;
 }

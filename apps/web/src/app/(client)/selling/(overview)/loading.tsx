@@ -1,10 +1,5 @@
-import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardSkeleton } from "@/components/dashboard/primitives/dashboard-skeleton";
+import { AccountPageLoading } from "@/components/dashboard/primitives/account-page-loading";
 
-export default function DashboardSellerLoading() {
-  return (
-    <DashboardPage>
-      <DashboardSkeleton variant="dashboard" />
-    </DashboardPage>
-  );
+export default function SellingLoading() {
+  return <AccountPageLoading label="Loading selling" tabs={false} />;
 }
