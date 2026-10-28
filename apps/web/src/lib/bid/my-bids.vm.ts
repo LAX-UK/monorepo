@@ -180,3 +180,20 @@ export function buildMyBidsVm(input: {
     ),
   };
 }
+
+/** A view longer than this gets a search field; shorter ones are read at a glance. */
+export const MY_BIDS_SEARCH_THRESHOLD = 8;
+
+export function showsMyBidsSearch(cardCount: number): boolean {
+  return cardCount > MY_BIDS_SEARCH_THRESHOLD;
+}
+
+/** Cards whose title, lot or sale contains every word of the query, ignoring case. */
+export function filterMyBidCards(cards: readonly MyBidCardVm[], query: string): MyBidCardVm[] {
+  const words = query.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return [...cards];
+  return cards.filter((card) => {
+    const text = [card.title, card.lotLabel, card.saleTitle].join(" ").toLowerCase();
+    return words.every((word) => text.includes(word));
+  });
+}

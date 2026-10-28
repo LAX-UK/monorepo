@@ -3,6 +3,7 @@ import {
   TelephoneBidsSection,
 } from "@/app/(client)/bids/bids-extra-sections";
 import { BidsPageContent } from "@/app/(client)/bids/bids-page-content";
+import { MyBidsMoreMenu } from "@/components/dashboard/bids/my-bids-more-menu";
 import { BROWSE_UPCOMING_SALES_HREF } from "@/components/dashboard/bids/my-bids-view";
 import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
 import { AccountListSkeleton } from "@/components/dashboard/primitives/account-list-skeleton";
@@ -24,9 +25,12 @@ export default async function DashboardBidsPage({ searchParams }: PageProps) {
       title="My bids"
       description="Your bids in current and past sales. Prices update live."
       actions={
-        <Button variant="secondaryOutline" size="default" asChild>
-          <Link href={BROWSE_UPCOMING_SALES_HREF}>{DASHBOARD_CTA.browseUpcomingSales}</Link>
-        </Button>
+        <div className="flex gap-2 max-md:[&>a]:flex-1">
+          <Button variant="secondaryOutline" size="default" asChild>
+            <Link href={BROWSE_UPCOMING_SALES_HREF}>{DASHBOARD_CTA.browseUpcomingSales}</Link>
+          </Button>
+          <MyBidsMoreMenu />
+        </div>
       }
     >
       <Suspense fallback={<AccountListSkeleton label="Loading your bids" />}>

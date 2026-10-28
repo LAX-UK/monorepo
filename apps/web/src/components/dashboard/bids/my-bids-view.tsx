@@ -9,7 +9,7 @@ import { AccountViewTabs } from "@auction/marketing-ui";
 import { Button } from "@auction/ui/components/button";
 import { Info } from "lucide-react";
 import Link from "next/link";
-import { MyBidCard } from "./my-bid-card";
+import { MyBidsList } from "./my-bids-list";
 import { MyBidsLiveUpdates } from "./my-bids-live-updates";
 
 /** A view with nothing in it while other views have lots: a quiet line, not the full invitation. */
@@ -97,13 +97,7 @@ export function MyBidsView({ vm, userId }: MyBidsViewProps) {
           description={empty.description}
         />
       ) : (
-        <ul className="flex flex-col gap-3" aria-label="Lots you have bid on">
-          {vm.cards.map((card) => (
-            <li key={card.id}>
-              <MyBidCard card={card} />
-            </li>
-          ))}
-        </ul>
+        <MyBidsList cards={vm.cards} />
       )}
       {userId ? <MyBidsLiveUpdates userId={userId} lots={vm.liveLots} /> : null}
     </div>

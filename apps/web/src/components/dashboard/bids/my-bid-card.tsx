@@ -4,6 +4,7 @@ import type { MyBidCardVm, MyBidFigure } from "@/lib/bid/my-bids.vm";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { DotStatusPill, type DotStatusPillTone } from "@auction/ui/components/dot-status-pill";
+import { History } from "lucide-react";
 import Link from "next/link";
 import { BidCloseCountdown } from "./bid-close-countdown";
 
@@ -49,16 +50,35 @@ function Figures({ figures }: { figures: MyBidFigure[] }) {
   );
 }
 
-function Actions({ card }: { card: MyBidCardVm }) {
-  if (card.actions.length === 0) return null;
+function Actions({
+  card,
+  onOpenHistory,
+}: {
+  card: MyBidCardVm;
+  onOpenHistory: (() => void) | null;
+}) {
+  if (card.actions.length === 0 && !onOpenHistory) return null;
   return (
     <div
       className={cn(
         "flex justify-end gap-2",
         // Two steps share the full width on phones, side by side.
-        card.actions.length > 1 && "max-lg:w-full max-lg:*:flex-1",
+        card.actions.length > 1 && "max-lg:w-full max-lg:[&>a]:flex-1",
       )}
     >
+      {onOpenHistory ? (
+        <Button
+          type="button"
+          variant="ghost"
+          size="default"
+          onClick={onOpenHistory}
+          aria-label={`Bid history for ${card.title}`}
+          className="px-3"
+        >
+          <History aria-hidden />
+          <span className="max-sm:sr-only">History</span>
+        </Button>
+      ) : null}
       {card.actions.map((action) => (
         <Button
           key={action.kind}
@@ -79,7 +99,14 @@ function Actions({ card }: { card: MyBidCardVm }) {
  * One lot the person has bid on: the work, three figures that say where the bid stands, its
  * status and the one next step. Stacks on phones with the status beside the step.
  */
-export function MyBidCard({ card }: { card: MyBidCardVm }) {
+export function MyBidCard({
+  card,
+  onOpenHistory = null,
+}: {
+  card: MyBidCardVm;
+  /** Opens the lot's full bid history; `null` for a lot that has left the catalogue. */
+  onOpenHistory?: (() => void) | null;
+}) {
   const status = <DotStatusPill label={card.statusLabel} tone={STATUS_TONE[card.status]} />;
   return (
     <article
@@ -132,7 +159,7 @@ export function MyBidCard({ card }: { card: MyBidCardVm }) {
       <Figures figures={card.figures} />
       <div className="flex flex-wrap items-center justify-between gap-3 lg:min-w-56 lg:flex-nowrap lg:shrink-0 lg:flex-col lg:items-end lg:justify-center">
         {status}
-        <Actions card={card} />
+        <Actions card={card} onOpenHistory={onOpenHistory} />
       </div>
     </article>
   );
