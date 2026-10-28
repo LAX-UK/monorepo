@@ -28,6 +28,7 @@ export * from "./domain-event-pii.js";
 export * from "./audit-log.js";
 export * from "./domain-event-catalog/index.js";
 export * from "./lax-staff-platforms.js";
+export * from "./staff-role-refusal.js";
 export * from "./onboarding-steps.js";
 export * from "./document.js";
 export * from "./marketing-events.js";

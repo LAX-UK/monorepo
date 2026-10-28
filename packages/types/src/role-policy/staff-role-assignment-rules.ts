@@ -42,12 +42,22 @@ function ruleForbids(rule: ForbiddenStaffRoleCombination, a: UserStaffRole, b: U
   return rule.role === a && (rule.with === "any" || rule.with.includes(b));
 }
 
+/** The rule that keeps `a` and `b` apart, or null when one person may hold both. */
+export function forbiddenStaffRoleCombination(
+  a: UserStaffRole,
+  b: UserStaffRole,
+): ForbiddenStaffRoleCombination | null {
+  if (a === b) return null;
+  return (
+    FORBIDDEN_STAFF_ROLE_COMBINATIONS.find(
+      (rule) => ruleForbids(rule, a, b) || ruleForbids(rule, b, a),
+    ) ?? null
+  );
+}
+
 /** Whether one person may not hold `a` and `b` at the same time. */
 export function isForbiddenStaffRoleCombination(a: UserStaffRole, b: UserStaffRole): boolean {
-  if (a === b) return false;
-  return FORBIDDEN_STAFF_ROLE_COMBINATIONS.some(
-    (rule) => ruleForbids(rule, a, b) || ruleForbids(rule, b, a),
-  );
+  return forbiddenStaffRoleCombination(a, b) !== null;
 }
 
 export type StaffRoleChange =
@@ -144,4 +154,44 @@ export function checkStaffRoleAssignment(
   return requested.kind === "assign"
     ? checkAssign(current, requested, now)
     : checkRemove(current, requested, now, roster);
+}
+
+export type StaffRoleSetCheck =
+  | { readonly ok: true }
+  | {
+      readonly ok: false;
+      readonly reason: Extract<StaffRoleAssignmentRefusal, "duplicate" | "forbidden_combination">;
+      /** The role that cannot join the ones before it. */
+      readonly role: UserStaffRole;
+      readonly conflictingRole?: UserStaffRole;
+    };
+
+/** Any fixed instant works: every role in a set starts together and stays open. */
+const SET_START = new Date(0);
+
+/**
+ * Whether one person may be given every role in `roles` at once, as an invitation does: the same
+ * rules as {@link checkStaffRoleAssignment}, applied to each role after the ones before it.
+ */
+export function checkStaffRoleSet(roles: readonly UserStaffRole[]): StaffRoleSetCheck {
+  const granted: StaffRoleAssignment[] = [];
+  for (const role of roles) {
+    const result = checkStaffRoleAssignment(
+      granted,
+      { kind: "assign", role, startsAt: SET_START, endsAt: null },
+      SET_START,
+      { otherActiveAdministrators: 0 },
+    );
+    if (!result.ok) {
+      const reason = result.reason === "duplicate" ? "duplicate" : "forbidden_combination";
+      return {
+        ok: false,
+        reason,
+        role,
+        ...(result.conflictingRole ? { conflictingRole: result.conflictingRole } : {}),
+      };
+    }
+    granted.push({ role, startsAt: SET_START, endsAt: null });
+  }
+  return { ok: true };
 }
