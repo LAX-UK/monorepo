@@ -285,13 +285,11 @@ describe("artwork editor", () => {
   });
 
   describe("creating", () => {
-    /** Steps 1 and 2 with the LAX standard run, unsigned, unnumbered and with no certificate. */
-    function completeSteps() {
-      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+    /** The LAX standard run's facts: unsigned, unnumbered and with no certificate. */
+    function chooseFacts() {
       fireEvent.click(screen.getByLabelText("Not signed"));
       fireEvent.click(screen.getByLabelText("Not numbered"));
       fireEvent.click(screen.getByLabelText("No certificate"));
-      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
     }
 
     it("creates prints in pence with the LAX standard run and its facts, then opens them", async () => {
@@ -304,8 +302,8 @@ describe("artwork editor", () => {
       typeInto("Title", "Harbour at Dusk");
       typeInto(/Price per edition/, "1,250.50");
       expect(screen.getByLabelText(/Web address/)).toHaveValue("harbour-at-dusk");
-      completeSteps();
-      expect(screen.getByText("Shoppers will see")).toBeInTheDocument();
+      chooseFacts();
+      expect(screen.getAllByText("Shoppers will see").length).toBeGreaterThan(0);
       fireEvent.click(screen.getByLabelText(/I have checked these facts/));
       fireEvent.click(screen.getAllByRole("button", { name: "Create draft" })[0] as HTMLElement);
 
@@ -328,7 +326,7 @@ describe("artwork editor", () => {
       expect(toastSuccess).toHaveBeenCalledWith("Created “Harbour at Dusk” as a draft");
     });
 
-    it("checks the run on Continue, with the staff wording, before the facts", () => {
+    it("puts the run first and checks it on submit, with the staff wording", () => {
       renderEditor({ detail: null, initialArtist: { id: ARTIST, name: "Ada Artist" } });
       fireEvent.click(screen.getByLabelText(/^Custom limited edition/));
       typeInto("Size", "24");
@@ -336,7 +334,11 @@ describe("artwork editor", () => {
       typeIntoId("run-allocation-artist", "12");
       typeIntoId("run-allocation-lax", "4");
       expect(screen.getByText("22 of 24 allocated: 2 left")).toBeInTheDocument();
-      fireEvent.click(screen.getByRole("button", { name: "Continue" }));
+      const headings = screen.getAllByRole("heading", { level: 2 }).map((h) => h.textContent);
+      expect(headings.indexOf("Run")).toBe(headings.indexOf("What are you adding?") + 1);
+      expect(headings.indexOf("Edition facts")).toBe(headings.indexOf("Run") + 1);
+      expect(headings.at(-1)).toBe("Confirm");
+      fireEvent.click(screen.getAllByRole("button", { name: "Create draft" })[0] as HTMLElement);
       const summary = screen.getByRole("alert");
       expect(
         within(summary).getByRole("link", { name: "Allocate every print: 2 are not allocated" }),
@@ -346,7 +348,10 @@ describe("artwork editor", () => {
           name: "Buyer prints need an original on lax.art. Link the original or set buyers to 0",
         }),
       ).toBeInTheDocument();
-      expect(screen.queryByText("Signature")).toBeNull();
+      expect(
+        within(summary).getByRole("link", { name: "Choose how the prints are signed" }),
+      ).toBeInTheDocument();
+      expect(createArtwork).not.toHaveBeenCalled();
       typeIntoId("run-allocation-buyer", "0");
       typeIntoId("run-allocation-artist", "20");
       expect(screen.getByText("24 of 24 allocated")).toBeInTheDocument();
@@ -361,7 +366,7 @@ describe("artwork editor", () => {
       });
       renderEditor({ detail: null, initialArtist: { id: ARTIST, name: "Ada Artist" } });
       typeInto("Title", "Harbour at Dusk");
-      completeSteps();
+      chooseFacts();
       fireEvent.click(screen.getAllByRole("button", { name: "Create draft" })[0] as HTMLElement);
       await waitFor(() =>
         expect(screen.getByLabelText(/Web address/)).toHaveAttribute("aria-invalid", "true"),

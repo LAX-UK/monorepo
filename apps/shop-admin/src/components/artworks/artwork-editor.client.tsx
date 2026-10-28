@@ -13,9 +13,10 @@ import { EditionRunCard } from "@/components/artworks/edition-runs/edition-run-c
 import { LinkedListingsCard } from "@/components/artworks/edition-runs/linked-listings-card.client";
 import { OpenStockCard } from "@/components/artworks/edition-runs/open-stock-card.client";
 import {
-  PrintsCreateSteps,
-  type PrintsStep,
-} from "@/components/artworks/edition-runs/prints-create-steps.client";
+  PrintsConfirmSection,
+  PrintsFactsSection,
+  PrintsRunSection,
+} from "@/components/artworks/edition-runs/prints-create-sections.client";
 import { ProofListingDialog } from "@/components/artworks/edition-runs/proof-listing-dialog.client";
 import { OriginalArtworkPicker } from "@/components/artworks/original-artwork-picker.client";
 import { adminMutationErrorMessage } from "@/lib/admin-mutation-message";
@@ -34,12 +35,20 @@ import {
   withArtworkKind,
   withTitle,
 } from "@/lib/artwork-form";
-import { emptyFactsForm, factsInput, validateFactsForm, withRun } from "@/lib/edition-facts-form";
+import {
+  emptyFactsForm,
+  factsErrorSummary,
+  factsInput,
+  factsPreview,
+  validateFactsForm,
+  withRun,
+} from "@/lib/edition-facts-form";
 import {
   emptyRunForm,
   firstBatchInput,
   previewSpec,
   proofsKeptInput,
+  runErrorSummary,
   runSpecInput,
   validateRunForm,
 } from "@/lib/edition-run-form";
@@ -197,12 +206,9 @@ export function ArtworkEditor({
   const [idempotencyKey, setIdempotencyKey] = useState(() => crypto.randomUUID());
   const [confirming, setConfirming] = useState<AdminArtworkVisibilityAction | null>(null);
   const [changingVisibility, setChangingVisibility] = useState(false);
-  // The prints steps of a new artwork: run, edition facts, confirm.
+  // New prints: the run, its edition facts and the confirmation, checked with the rest on submit.
   const [runValues, setRunValues] = useState(emptyRunForm);
   const [factsValues, setFactsValues] = useState(emptyFactsForm);
-  const [step, setStep] = useState<PrintsStep>(0);
-  const [failedContinues, setFailedContinues] = useState(0);
-  const [stepsChecked, setStepsChecked] = useState({ run: false, facts: false });
   const [listingProofs, setListingProofs] = useState(false);
 
   const live = record?.state === "live" || record?.state === "sold_out";
@@ -232,55 +238,37 @@ export function ArtworkEditor({
       : values.sourceOriginalId !== null,
   };
   const chosenSpec = previewSpec(runValues, runContext);
-  const runErrors = stepsChecked.run ? validateRunForm(runValues, runContext) : {};
-  const factsErrors = stepsChecked.facts ? validateFactsForm(factsValues, chosenSpec) : {};
+  const runErrors = prints && attempted ? validateRunForm(runValues, runContext) : {};
+  const factsErrors = prints && attempted ? validateFactsForm(factsValues, chosenSpec) : {};
+  const factsPreviewModel = chosenSpec
+    ? factsPreview(factsValues, chosenSpec, proofsKeptInput(runValues))
+    : null;
 
   function updateFacts(patch: Partial<typeof factsValues>) {
     setFactsValues((current) => withRun({ ...current, ...patch }, chosenSpec));
   }
 
-  /** Continue: checks the current step and moves on, or shows what to fix in it. */
-  function continueSteps() {
-    if (step === 0) {
-      setStepsChecked((current) => ({ ...current, run: true }));
-      if (Object.keys(validateRunForm(runValues, runContext)).length > 0) {
-        setFailedContinues((count) => count + 1);
-        return;
-      }
-      setFactsValues((current) => withRun(current, chosenSpec));
-      setStep(1);
-      return;
-    }
-    if (step === 1) {
-      setStepsChecked((current) => ({ ...current, facts: true }));
-      if (Object.keys(validateFactsForm(factsValues, chosenSpec)).length > 0) {
-        setFailedContinues((count) => count + 1);
-        return;
-      }
-      setStep(2);
-    }
-  }
-
-  /** The run of a new artwork as the API takes it; null with the step to go back to. */
-  function newRunInput(): { run: AdminNewRunInput } | { step: PrintsStep } {
-    if (Object.keys(validateRunForm(runValues, runContext)).length > 0) return { step: 0 };
+  /** The run of new prints as the API takes it, or null while the run or its facts need fixing. */
+  function newRunInput(): AdminNewRunInput | null {
+    if (Object.keys(validateRunForm(runValues, runContext)).length > 0) return null;
     const facts = factsInput(factsValues);
-    if (!facts || Object.keys(validateFactsForm(factsValues, chosenSpec)).length > 0) {
-      return { step: 1 };
-    }
+    if (!facts || Object.keys(validateFactsForm(factsValues, chosenSpec)).length > 0) return null;
     const firstBatch = firstBatchInput(runValues);
     return {
-      run: {
-        spec: runSpecInput(runValues),
-        proofsKept: proofsKeptInput(runValues),
-        facts,
-        factsConfirmed: factsValues.confirmed,
-        ...(firstBatch ? { firstBatch } : {}),
-      },
+      spec: runSpecInput(runValues),
+      proofsKept: proofsKeptInput(runValues),
+      facts,
+      factsConfirmed: factsValues.confirmed,
+      ...(firstBatch ? { firstBatch } : {}),
     };
   }
   const errors = { ...serverErrors, ...clientErrors };
-  const summary = artworkErrorSummary(errors);
+  // In page order: the run and its facts come first for new prints.
+  const summary = [
+    ...runErrorSummary(runErrors),
+    ...factsErrorSummary(factsErrors),
+    ...artworkErrorSummary(errors),
+  ];
 
   function update(patch: Partial<ArtworkFormValues>) {
     setValues((current) => ({ ...current, ...patch }));
@@ -288,26 +276,11 @@ export function ArtworkEditor({
   }
 
   async function submit(expectedVersion = version) {
-    if (prints && step < 2) {
-      // Enter in a step's field moves on like Continue; the draft is created from Confirm.
-      continueSteps();
-      return;
-    }
     const found = validateArtworkForm(values, context);
-    if (Object.keys(found).length > 0) {
+    const run = prints ? newRunInput() : null;
+    if (Object.keys(found).length > 0 || (prints && !run)) {
       setFailedSubmits((count) => count + 1);
       return;
-    }
-    let run: AdminNewRunInput | null = null;
-    if (prints) {
-      const built = newRunInput();
-      if ("step" in built) {
-        setStepsChecked({ run: true, facts: built.step === 1 });
-        setStep(built.step);
-        setFailedContinues((count) => count + 1);
-        return;
-      }
-      run = built.run;
     }
     setFormError(null);
     setSaving(true);
@@ -523,7 +496,7 @@ export function ArtworkEditor({
             : undefined
         }
         primaryAction={
-          !canSave || (prints && step < 2) ? undefined : (
+          !canSave ? undefined : (
             <StaffButton
               type="submit"
               form="artwork-form"
@@ -618,6 +591,62 @@ export function ArtworkEditor({
             The artist, details and images are copied from it. Choose this listing's own run and
             edition facts, such as an unsigned open edition beside a signed one.
           </Notice>
+        ) : null}
+
+        {prints ? (
+          <>
+            <PrintsRunSection
+              values={runValues}
+              errors={runErrors}
+              linkedToOriginal={runContext.linkedToOriginal}
+              onChange={(patch) => setRunValues((current) => ({ ...current, ...patch }))}
+              original={
+                companion ? null : (
+                  <Field
+                    label="Original on lax.art"
+                    optional={!runErrors.original}
+                    description="The original these prints were made from. Buyer prints go to its buyer."
+                    error={runErrors.original}
+                    id="run-original"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="w-full sm:max-w-80">
+                        <OriginalArtworkPicker
+                          value={values.sourceOriginalId}
+                          selectedTitle={values.sourceOriginalTitle}
+                          onChange={(original) =>
+                            update({
+                              sourceOriginalId: original?.id ?? null,
+                              sourceOriginalTitle: original?.label ?? null,
+                            })
+                          }
+                        />
+                      </div>
+                      {values.sourceOriginalId ? (
+                        <StaffButton
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() =>
+                            update({ sourceOriginalId: null, sourceOriginalTitle: null })
+                          }
+                        >
+                          Remove link
+                        </StaffButton>
+                      ) : null}
+                    </div>
+                  </Field>
+                )
+              }
+            />
+            <PrintsFactsSection
+              values={factsValues}
+              errors={factsErrors}
+              spec={chosenSpec}
+              preview={factsPreviewModel}
+              onChange={updateFacts}
+            />
+          </>
         ) : null}
 
         {readOnly && record ? (
@@ -979,61 +1008,11 @@ export function ArtworkEditor({
         )}
 
         {prints ? (
-          <PrintsCreateSteps
-            step={step}
-            onStepChange={setStep}
+          <PrintsConfirmSection
+            preview={factsPreviewModel}
+            confirmed={factsValues.confirmed}
             saving={saving}
-            failedContinues={failedContinues}
-            onContinue={continueSteps}
-            run={{
-              values: runValues,
-              errors: runErrors,
-              linkedToOriginal: runContext.linkedToOriginal,
-              proofsKept: proofsKeptInput(runValues),
-              onChange: (patch) => setRunValues((current) => ({ ...current, ...patch })),
-              original: companion ? null : (
-                <Field
-                  label="Original on lax.art"
-                  optional={!runErrors.original}
-                  description="The original these prints were made from. Buyer prints go to its buyer."
-                  error={runErrors.original}
-                  id="run-original"
-                >
-                  <div className="flex flex-wrap items-center gap-2">
-                    <div className="w-full sm:max-w-80">
-                      <OriginalArtworkPicker
-                        value={values.sourceOriginalId}
-                        selectedTitle={values.sourceOriginalTitle}
-                        onChange={(original) =>
-                          update({
-                            sourceOriginalId: original?.id ?? null,
-                            sourceOriginalTitle: original?.label ?? null,
-                          })
-                        }
-                      />
-                    </div>
-                    {values.sourceOriginalId ? (
-                      <StaffButton
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() =>
-                          update({ sourceOriginalId: null, sourceOriginalTitle: null })
-                        }
-                      >
-                        Remove link
-                      </StaffButton>
-                    ) : null}
-                  </div>
-                </Field>
-              ),
-            }}
-            facts={{
-              values: factsValues,
-              errors: factsErrors,
-              spec: chosenSpec,
-              onChange: updateFacts,
-            }}
+            onConfirmedChange={(confirmed) => updateFacts({ confirmed })}
           />
         ) : null}
 
