@@ -80,7 +80,7 @@ export function PressFilterForm({
     "h-11 min-h-11 rounded-none border-0 border-b-2 border-input-border bg-transparent px-0 shadow-none focus-visible:border-input-border-focus focus-visible:ring-1 focus-visible:ring-input-border-focus",
   );
   const selectClassName = cn(
-    "h-11 min-h-11 w-full rounded-md border border-outline-variant/50 bg-surface font-body text-sm text-on-surface lg:w-[10rem]",
+    "h-11 min-h-11 w-full rounded-md bg-surface font-body text-sm text-on-surface lg:w-[10rem]",
   );
   const fieldClassName = "space-y-2";
   const resultCountLabel = resultCount != null ? formatPressArticleCount(resultCount) : null;

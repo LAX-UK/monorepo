@@ -54,7 +54,7 @@ export function SaleroomCatalogSearch({ className }: Props) {
         onChange={(e) => setValue(e.target.value)}
         placeholder="Search this sale…"
         aria-label="Search lots in this sale"
-        className="h-10 min-h-10 w-full rounded-full border-outline-variant/40 bg-surface-container-lowest pl-9 pr-9 font-body text-sm shadow-none focus-visible:ring-primary"
+        className="h-10 min-h-10 w-full rounded-full bg-surface-container-lowest pl-9 pr-9 font-body text-sm shadow-none focus-visible:ring-primary"
       />
       {current ? (
         <Button
