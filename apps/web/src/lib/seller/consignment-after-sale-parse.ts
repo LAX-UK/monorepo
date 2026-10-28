@@ -4,6 +4,8 @@ import {
   type SellerIdentityReminderState,
   type StaffAfterSaleView,
   type UnsoldLotChoice,
+  consignmentAfterSaleStages,
+  itemSubmissionStatuses,
   unsoldLotChoiceKinds,
   unsoldLotChoiceStatuses,
 } from "@auction/types";
@@ -68,6 +70,7 @@ const requestSchema = z
   .default(null);
 
 export const sellerAfterSaleSchema = z.object({
+  stage: z.enum([...itemSubmissionStatuses, ...consignmentAfterSaleStages]),
   unsold: unsoldSchema
     .extend({ canChoose: z.boolean().default(false) })
     .nullable()

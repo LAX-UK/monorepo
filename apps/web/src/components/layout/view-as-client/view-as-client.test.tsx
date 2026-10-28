@@ -1,7 +1,8 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ReadOnlyBoundary } from "./read-only-boundary";
 import { READ_ONLY_REASON_ID, ViewAsClientBanner } from "./view-as-client-banner";
+import { ViewAsClientMenu } from "./view-as-client-menu";
 
 vi.mock("@/lib/legal-entity/acting-context.actions", () => ({
   endAdminImpersonationAction: vi.fn(),
@@ -38,5 +39,22 @@ describe("view as client", () => {
     expect(document.getElementById(READ_ONLY_REASON_ID)?.textContent).toBe(
       "Actions are turned off while you view as this client.",
     );
+  });
+});
+
+describe("ViewAsClientMenu", () => {
+  it("names the viewed client and offers only pages to look at and Exit", () => {
+    render(<ViewAsClientMenu name="Jane Smith" />);
+    fireEvent.click(screen.getByRole("button", { name: "Viewing as Jane Smith" }));
+    const items = screen.getAllByRole("menuitem").map((item) => item.textContent);
+    expect(items).toEqual([
+      "Home",
+      "My bids",
+      "Purchases",
+      "Watching",
+      "Consignments",
+      "Exit view as client",
+    ]);
+    expect(screen.getByText("Read-only view")).toBeTruthy();
   });
 });

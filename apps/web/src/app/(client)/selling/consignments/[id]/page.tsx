@@ -14,7 +14,7 @@ import { SubmissionSellerDocumentsPanel } from "@/components/dashboard/submissio
 import { SubmissionWizard } from "@/components/dashboard/submission-wizard/submission-wizard";
 import { SubmissionWorkflowActions } from "@/components/dashboard/submission-workflow-actions";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
-import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
+import { ConsignmentStatusBadge } from "@/components/ui/consignment-status-badge";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
@@ -208,7 +208,7 @@ export default async function SubmissionDetailPage({
         backHref={DASHBOARD_ROUTES.consignments}
         backLabel="Consignments"
         title={submission.title}
-        badges={<SubmissionStatusBadge status={submission.status} />}
+        badges={<ConsignmentStatusBadge stage={afterSale?.stage ?? submission.status} />}
       />
       {actionError ? (
         <DashboardSliceErrorAlert failure={describeSettingsActionError(actionError)} />

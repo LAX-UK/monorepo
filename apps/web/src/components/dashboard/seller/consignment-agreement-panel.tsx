@@ -1,11 +1,13 @@
 "use client";
 
+import { useReadOnlyView } from "@/components/layout/view-as-client/read-only-boundary";
 import { acceptConsignmentAgreementAction } from "@/lib/actions/consignment-agreement";
 import type { ConditionsSection } from "@/lib/legal/conditions-of-business-part-c";
 import { consignmentAgreementViewModel } from "@/lib/seller/consignment-agreement-view";
 import { notify } from "@/lib/ui/notify";
 import { agreementTermsComplete } from "@auction/domain";
 import type { ConsignmentAgreement } from "@auction/types";
+import { cn } from "@auction/ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
@@ -74,6 +76,7 @@ export function ConsignmentAgreementPanel({
   const [pending, startTransition] = useTransition();
   const checkboxId = useId();
   const termsId = useId();
+  const readOnlyView = useReadOnlyView();
 
   const accept = () => {
     setFailure(null);
@@ -141,12 +144,16 @@ export function ConsignmentAgreementPanel({
           <p id={termsId} className="font-body text-sm font-semibold text-on-surface">
             Conditions for Sellers and Consignors
           </p>
-          {/* A long legal text reads in its own scrolling region, reachable by keyboard. */}
+          {/* A long legal text reads in its own scrolling region, reachable by keyboard. In a
+              read-only view, where every control is off, it is shown in full instead. */}
           <section
             aria-labelledby={termsId}
-            // biome-ignore lint/a11y/noNoninteractiveTabindex: scrollable region must be focusable
-            tabIndex={0}
-            className="max-h-72 overflow-y-auto rounded-lg border border-border-hairline bg-surface-container-low p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            tabIndex={readOnlyView ? undefined : 0}
+            className={cn(
+              "rounded-lg border border-border-hairline bg-surface-container-low p-4",
+              !readOnlyView &&
+                "max-h-72 overflow-y-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+            )}
           >
             <ConditionsText conditions={conditions} />
           </section>

@@ -4,6 +4,8 @@ import { AccountHeaderButton } from "@/components/layout/account-switcher/accoun
 import { AppShellBreadcrumbs } from "@/components/layout/app-shell-breadcrumbs";
 import type { AppShellRole } from "@/components/layout/app-shell-nav";
 import { ShellUserMenu } from "@/components/layout/shell-user-menu";
+import { useViewingAsClient } from "@/components/layout/view-as-client/view-as-client-context";
+import { ViewAsClientMenu } from "@/components/layout/view-as-client/view-as-client-menu";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
 import { ExternalLink } from "lucide-react";
@@ -26,6 +28,7 @@ export function ClientShellHeader({
   actionsSlot,
   extraSlot,
 }: ClientShellHeaderProps) {
+  const viewingAs = useViewingAsClient();
   return (
     <>
       <div className="flex min-w-0 flex-1 items-center gap-3">
@@ -47,7 +50,11 @@ export function ClientShellHeader({
         {actionsSlot}
         {extraSlot}
         {account ? <AccountHeaderButton account={account} /> : null}
-        <ShellUserMenu user={user} role={role} />
+        {viewingAs ? (
+          <ViewAsClientMenu name={viewingAs.name} />
+        ) : (
+          <ShellUserMenu user={user} role={role} />
+        )}
       </div>
     </>
   );

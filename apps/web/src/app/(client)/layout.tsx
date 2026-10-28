@@ -6,6 +6,7 @@ import {
   READ_ONLY_REASON_ID,
   ViewAsClientBanner,
 } from "@/components/layout/view-as-client/view-as-client-banner";
+import { ViewAsClientProvider } from "@/components/layout/view-as-client/view-as-client-context";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { ClientShell } from "@/components/shell/client-shell";
 import { clientAreaRedirectFor } from "@/lib/auth/client-audience";
@@ -138,23 +139,25 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
   ];
 
   const shell = (
-    <ClientShell
-      user={user}
-      navScope={navScope}
-      account={account}
-      sellerConnectNavBadge={sellerConnectNavBadge}
-      cookieDensity={cookieDensity}
-      hideEmailStatusBanner
-      acting={acting}
-      contextBanner={banners.length > 0 ? <>{banners}</> : undefined}
-      topSlot={<WelcomeBackToast />}
-    >
-      {viewingAs ? (
-        <ReadOnlyBoundary reasonId={READ_ONLY_REASON_ID}>{children}</ReadOnlyBoundary>
-      ) : (
-        children
-      )}
-    </ClientShell>
+    <ViewAsClientProvider viewingAs={viewingAs ? { name: viewingAs.displayName } : null}>
+      <ClientShell
+        user={user}
+        navScope={navScope}
+        account={account}
+        sellerConnectNavBadge={sellerConnectNavBadge}
+        cookieDensity={cookieDensity}
+        hideEmailStatusBanner
+        acting={acting}
+        contextBanner={banners.length > 0 ? <>{banners}</> : undefined}
+        topSlot={<WelcomeBackToast />}
+      >
+        {viewingAs ? (
+          <ReadOnlyBoundary reasonId={READ_ONLY_REASON_ID}>{children}</ReadOnlyBoundary>
+        ) : (
+          children
+        )}
+      </ClientShell>
+    </ViewAsClientProvider>
   );
 
   return (

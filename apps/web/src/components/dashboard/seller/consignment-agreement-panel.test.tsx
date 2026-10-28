@@ -1,3 +1,4 @@
+import { ReadOnlyBoundary } from "@/components/layout/view-as-client/read-only-boundary";
 import { acceptConsignmentAgreementAction } from "@/lib/actions/consignment-agreement";
 import { CONDITIONS_OF_BUSINESS_PART_C } from "@/lib/legal/conditions-of-business-part-c";
 import type { ConsignmentAgreement } from "@auction/types";
@@ -136,5 +137,25 @@ describe("ConsignmentAgreementPanel", () => {
       "Accepted by Jane Smith on 5 Oct 2026 · Version 1",
     );
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+  });
+
+  it("shows the conditions in full, with every control off, in a read-only view", () => {
+    render(
+      <ReadOnlyBoundary reasonId="reason">
+        <ConsignmentAgreementPanel
+          agreement={agreement}
+          canAccept
+          accountName="Jane Smith"
+          accountKind="personal"
+          conditions={CONDITIONS_OF_BUSINESS_PART_C}
+        />
+      </ReadOnlyBoundary>,
+    );
+    const region = screen.getByRole("region", { name: "Conditions for Sellers and Consignors" });
+    expect(region.getAttribute("tabindex")).toBeNull();
+    expect(region.className).not.toContain("overflow-y-auto");
+    expect(screen.getByRole("button", { name: "Accept agreement" }).matches(":disabled")).toBe(
+      true,
+    );
   });
 });

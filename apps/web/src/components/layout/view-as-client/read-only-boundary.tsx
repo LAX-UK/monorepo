@@ -1,4 +1,13 @@
-import type { ReactNode } from "react";
+"use client";
+
+import { type ReactNode, createContext, useContext } from "react";
+
+const ReadOnlyViewContext = createContext(false);
+
+/** True inside a read-only view, for the few things that read differently there (long scrolling text). */
+export function useReadOnlyView(): boolean {
+  return useContext(ReadOnlyViewContext);
+}
 
 type Props = {
   /** The id of the element that says why actions are off. */
@@ -14,8 +23,10 @@ type Props = {
  */
 export function ReadOnlyBoundary({ reasonId, children }: Props) {
   return (
-    <fieldset disabled aria-describedby={reasonId} data-read-only="true" className="contents">
-      {children}
-    </fieldset>
+    <ReadOnlyViewContext.Provider value>
+      <fieldset disabled aria-describedby={reasonId} data-read-only="true" className="contents">
+        {children}
+      </fieldset>
+    </ReadOnlyViewContext.Provider>
   );
 }
