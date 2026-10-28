@@ -122,6 +122,7 @@ export {
   MarketingFooterSocials,
   type MarketingFooterSocialsProps,
 } from "./marketing-footer-socials.js";
+export { FOOTER_LEGAL, buildFooterLegalColumn } from "./footer-legal-column.js";
 export {
   MarketingFooter,
   type MarketingFooterColumn,

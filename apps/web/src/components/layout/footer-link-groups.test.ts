@@ -25,11 +25,10 @@ describe("buildBidFooterColumns", () => {
   it("ends the legal column with cookie preferences", () => {
     const legal = buildBidFooterColumns([]).find((column) => column.id === "legal");
     expect(legal?.links.map((link) => link.label)).toEqual([
-      "Conditions of business",
-      "Privacy notice",
-      "Cookie policy",
-      "Shipping & logistics",
-      "Legal",
+      "Legal and policies",
+      "Terms",
+      "Privacy",
+      "Cookies",
       "Cookie preferences",
     ]);
     expect(legal?.links.at(-1)?.href).toBe(BID_COOKIE_PREFERENCES_HREF);

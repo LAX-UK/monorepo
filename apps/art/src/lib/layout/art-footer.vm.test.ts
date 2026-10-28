@@ -39,7 +39,7 @@ describe("buildArtFooterVm", () => {
       linkablePolicies: ALL_POLICIES,
     });
     expect(vm.columns.map((column) => column.id)).toEqual([
-      "about",
+      "gallery",
       "services",
       "account",
       "lax-products",
@@ -60,12 +60,12 @@ describe("buildArtFooterVm", () => {
     });
     const linksOf = (id: string) => vm.columns.find((column) => column.id === id)?.links ?? [];
     expect(vm.columns.map((column) => column.title)).toEqual([
-      "About us",
+      "Gallery",
       "Our services",
       "Account",
       "Legal",
     ]);
-    expect(linksOf("about")).toEqual([
+    expect(linksOf("gallery")).toEqual([
       { label: "Visit", href: "/visit" },
       { label: "Contact", href: "/contact" },
     ]);
@@ -75,18 +75,11 @@ describe("buildArtFooterVm", () => {
       "/collector-hub",
       "/help",
     ]);
-    expect(linksOf("legal").map((link) => link.href)).toEqual([
-      "/legal",
-      "/legal/terms",
-      "/legal/returns",
-      "/legal/shipping",
-      "/legal/privacy",
-      "/legal/cookies",
-      "/legal/complaints",
-      "/legal/accessibility",
-      "/legal/aml-identity-checks",
-      "/legal/reviews",
-      "/legal/ethical-sourcing",
+    expect(linksOf("legal")).toEqual([
+      { label: "Legal and policies", href: "/legal" },
+      { label: "Terms", href: "/legal/terms" },
+      { label: "Privacy", href: "/legal/privacy" },
+      { label: "Cookies", href: "/legal/cookies" },
     ]);
   });
 

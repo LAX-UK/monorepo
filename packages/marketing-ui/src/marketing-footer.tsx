@@ -1,6 +1,7 @@
 import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@auction/branding";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
+import { FOOTER_HEADING_CLASS, MarketingFooterSection } from "./marketing-footer-section.js";
 
 export type MarketingFooterColumn = {
   id: string;
@@ -42,8 +43,6 @@ export function MarketingFooter({
   headingId = "marketing-footer-heading",
   renderLink,
 }: MarketingFooterProps) {
-  const headingClass =
-    "marketing-footer__heading font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant";
   const linkClass = cn(
     "rounded-sm font-footer-links text-base font-medium leading-6 text-on-surface/90 transition-colors hover:text-link",
     FOCUS_RING,
@@ -70,16 +69,17 @@ export function MarketingFooter({
         />
         <div
           className={cn(
-            "grid max-w-[var(--container-inner,86rem)] grid-cols-1 gap-x-8 gap-y-12 sm:grid-cols-2 md:grid-cols-3",
+            "grid max-w-[var(--container-inner,86rem)] grid-cols-1 gap-x-8 gap-y-0 sm:grid-cols-2 sm:gap-y-12 md:grid-cols-3",
             DESKTOP_GRID_COLUMNS[Math.min(columns.length + (socials ? 1 : 0), 6)],
           )}
         >
           {columns.map((column) => (
-            <nav key={column.id} aria-labelledby={`${headingId}-${column.id}`}>
-              <h3 id={`${headingId}-${column.id}`} className={headingClass}>
-                {column.title}
-              </h3>
-              <ul className="mt-4 flex flex-col gap-3">
+            <MarketingFooterSection
+              key={column.id}
+              headingId={`${headingId}-${column.id}`}
+              title={column.title}
+            >
+              <ul className="flex flex-col gap-3">
                 {column.links.map((link) => (
                   <li key={link.href}>
                     {renderLink ? (
@@ -99,11 +99,11 @@ export function MarketingFooter({
                   </li>
                 ) : null}
               </ul>
-            </nav>
+            </MarketingFooterSection>
           ))}
           {socials ? (
-            <div>
-              <h3 className={headingClass}>Connect</h3>
+            <div className="pt-8 sm:pt-0">
+              <h3 className={FOOTER_HEADING_CLASS}>Connect</h3>
               <div className="mt-4">{socials}</div>
             </div>
           ) : null}
