@@ -3,6 +3,7 @@ import { StaffActionError } from "@/components/admin/staff/staff-action-error";
 import { SubmissionDecisionTab } from "@/components/admin/submission-detail/tabs/decision-tab";
 import { loadAdminSubmissionDecisionPage } from "@/lib/admin/submissions/load-submission-decision-page";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
+import { getAdminConsignmentAfterSale } from "@/lib/data/http/consignment-after-sale.server";
 import { getAdminConsignmentView } from "@/lib/data/http/consignment-agreements.server";
 import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { notFound } from "next/navigation";
@@ -21,10 +22,15 @@ export default async function AdminSubmissionDecisionPage({ params, searchParams
 
   const { submission, submitterDisplayName, submitterUserId } = loaded;
   // Accepting waits for the seller's identity; cataloguing for their acceptance of the terms.
-  const sellerView =
+  const [sellerView, afterSale] = await Promise.all([
     submission.status === "under_review" || submission.status === "approved"
-      ? await getAdminConsignmentView(submission.id).catch(() => null)
-      : null;
+      ? getAdminConsignmentView(submission.id).catch(() => null)
+      : null,
+    // After the sale: what happens to a lot that did not sell.
+    submission.status === "converted"
+      ? getAdminConsignmentAfterSale(submission.id).catch(() => null)
+      : null,
+  ]);
 
   const decision = (
     <AdminSubmissionDecisionPanel
@@ -44,6 +50,8 @@ export default async function AdminSubmissionDecisionPage({ params, searchParams
       agreement={sellerView?.agreement ?? null}
       sellerIdentityVerified={sellerView?.sellerIdentityVerified ?? true}
       {...(submission.legalEntityId ? { sellerLegalEntityId: submission.legalEntityId } : {})}
+      {...(sellerView?.identityReminder ? { identityReminder: sellerView.identityReminder } : {})}
+      unsold={afterSale?.unsold ?? null}
     />
   );
 

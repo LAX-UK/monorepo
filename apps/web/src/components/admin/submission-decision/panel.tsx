@@ -1,5 +1,6 @@
 "use client";
 
+import { identityReminderView } from "@/lib/admin/submissions/identity-reminder-view";
 import { resolveSubmissionDecisionView } from "@/lib/admin/submissions/resolve-submission-decision-view";
 import { Can } from "@/lib/auth/capabilities";
 import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
@@ -11,16 +12,24 @@ import {
   UnsavedChangesDialog,
   useUnsavedChanges,
 } from "@auction/staff-ui";
-import type { ConsignmentAgreement, ItemSubmission, ItemSubmissionStatus } from "@auction/types";
+import type {
+  ConsignmentAgreement,
+  ItemSubmission,
+  ItemSubmissionStatus,
+  SellerIdentityReminderState,
+  StaffAfterSaleView,
+} from "@auction/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState } from "react";
+import { RemindSellerButton } from "./remind-seller-button";
 import { SubmissionAgreementStatus } from "./submission-agreement-status";
 import { SubmissionApproveForm } from "./submission-approve-form";
 import { SubmissionConvertForm } from "./submission-convert-form";
 import { SubmissionQualityChecklist } from "./submission-quality-checklist";
 import { SubmissionRejectForm } from "./submission-reject-form";
 import { SubmissionRequestChangesForm } from "./submission-request-changes-form";
+import { UnsoldChoiceStaffPanel } from "./unsold-choice-staff-panel";
 import { useSubmissionDecisionActions } from "./use-submission-decision-actions";
 import { useSubmissionDecisionShortcuts } from "./use-submission-decision-shortcuts";
 
@@ -47,6 +56,10 @@ type Props = {
   sellerIdentityVerified?: boolean;
   /** The seller's account, for following up with them. */
   sellerLegalEntityId?: string;
+  /** When the seller was last reminded to verify, while acceptance waits for it. */
+  identityReminder?: SellerIdentityReminderState;
+  /** The unsold lot and its choice, once the lot ended without selling. */
+  unsold?: StaffAfterSaleView["unsold"];
 };
 
 /**
@@ -63,6 +76,8 @@ export function AdminSubmissionDecisionPanel({
   agreement = null,
   sellerIdentityVerified = true,
   sellerLegalEntityId,
+  identityReminder,
+  unsold = null,
 }: Props) {
   const router = useRouter();
   const view = resolveSubmissionDecisionView(status);
@@ -98,12 +113,21 @@ export function AdminSubmissionDecisionPanel({
     : {
         title: "The seller hasn't verified their identity yet",
         body: "A specialist can accept the work once they have. Meanwhile you can ask for changes or reject it.",
-        action: sellerLegalEntityId
-          ? {
-              label: "Open the seller",
-              href: `/admin/legal-entities/${encodeURIComponent(sellerLegalEntityId)}`,
-            }
-          : null,
+        actions: (
+          <div className="flex flex-col items-start gap-2 sm:flex-row sm:items-start">
+            {sellerLegalEntityId ? (
+              <StaffButton asChild size="sm" variant="ghost">
+                <Link href={`/admin/legal-entities/${encodeURIComponent(sellerLegalEntityId)}`}>
+                  Open the seller
+                </Link>
+              </StaffButton>
+            ) : null}
+            <RemindSellerButton
+              submissionId={submissionId}
+              view={identityReminderView(identityReminder, new Date())}
+            />
+          </div>
+        ),
       };
   // While something is still owed by the seller there is nothing to submit by shortcut.
   const shortcutsActive =
@@ -180,13 +204,18 @@ export function AdminSubmissionDecisionPanel({
           </Notice>
         );
       case "converted":
-        return submission.convertedLotId ? (
-          <Section title="Converted" description="This submission became a draft lot.">
-            <StaffButton asChild variant="primary">
-              <Link href={`/admin/lots/${submission.convertedLotId}`}>Open draft lot</Link>
-            </StaffButton>
-          </Section>
-        ) : null;
+        return (
+          <>
+            {unsold ? <UnsoldChoiceStaffPanel submissionId={submissionId} unsold={unsold} /> : null}
+            {submission.convertedLotId ? (
+              <Section title="Converted" description="This submission became a draft lot.">
+                <StaffButton asChild variant={unsold ? "secondary" : "primary"}>
+                  <Link href={`/admin/lots/${submission.convertedLotId}`}>Open draft lot</Link>
+                </StaffButton>
+              </Section>
+            ) : null}
+          </>
+        );
       case "terminal":
         return <Notice tone="info" title="No further actions for this status." />;
       case "idle":

@@ -13,8 +13,7 @@ import {
 import { STAFF_PARSE_PARAMS } from "@/lib/forms/staff-error-map";
 import { FormActions, Notice, Section, StaffButton } from "@auction/staff-ui";
 import { zodResolver } from "@hookform/resolvers/zod";
-import Link from "next/link";
-import { type RefObject, useEffect } from "react";
+import { type ReactNode, type RefObject, useEffect } from "react";
 import { type UseFormReturn, useForm } from "react-hook-form";
 import { SUBMISSION_APPROVE_FORM_ID } from "./form-ids";
 
@@ -28,7 +27,7 @@ type Props = {
   /** Reports whether anything is typed, so the page can ask before it is lost. */
   onDirtyChange: (dirty: boolean) => void;
   /** Why the work cannot be accepted yet, with where staff can follow it up. */
-  blocked?: { title: string; body: string; action: { label: string; href: string } | null } | null;
+  blocked?: { title: string; body: string; actions: ReactNode } | null;
 };
 
 /**
@@ -70,17 +69,7 @@ export function SubmissionApproveForm({
         onSubmit={form.handleSubmit((values) => onSubmit(values, form))}
       >
         {blocked ? (
-          <Notice
-            tone="warning"
-            title={blocked.title}
-            actions={
-              blocked.action ? (
-                <StaffButton asChild size="sm" variant="secondary">
-                  <Link href={blocked.action.href}>{blocked.action.label}</Link>
-                </StaffButton>
-              ) : null
-            }
-          >
+          <Notice tone="warning" title={blocked.title} actions={blocked.actions}>
             {blocked.body}
           </Notice>
         ) : null}
