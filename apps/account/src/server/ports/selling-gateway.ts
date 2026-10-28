@@ -1,4 +1,5 @@
 import type {
+  MyArtistApplicationState,
   PortalPayeeConnectConfig,
   PortalPayeeConnectStatus,
   PortalPayeeConnectSurface,
@@ -52,6 +53,8 @@ export type SellingGateway = {
   readPayoutAccount(handle: SessionHandle): Promise<SellingRead<PayoutAccountRead>>;
   readArtistArtworks(handle: SessionHandle): Promise<SellingRead<PortalArtistArtworks>>;
   readArtistSales(handle: SessionHandle): Promise<SellingRead<PortalArtistSales>>;
+  /** The person's latest application to join the gallery as an artist. */
+  readArtistApplication(handle: SessionHandle): Promise<SellingRead<MyArtistApplicationState>>;
   requestSaleChange(
     handle: SessionHandle,
     request: SaleChangeRequest,
