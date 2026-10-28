@@ -2,6 +2,7 @@ import {
   ADMIN_STAFF_REVOKE_REASON_MIN_LENGTH,
   type AdminStaffRevokeBody,
   AdminStaffRevokeBodySchema,
+  EDITION_RUN_MAX_SIZE,
   SALE_AUTHORITY_NOTE_MAX_LENGTH,
   SHOP_API_ERROR_CODES,
   ShopApiErrorBodySchema,
@@ -19,7 +20,8 @@ import {
 
 const SaleAuthorityDecisionBodySchema = Type.Object({
   decision: Type.Union([Type.Literal("approve"), Type.Literal("decline")]),
-  authorisedCount: Type.Optional(Type.Integer({ minimum: 0, maximum: 10 })),
+  /** Capped by the prints the owner holds in the run, which shop-api checks. */
+  authorisedCount: Type.Optional(Type.Integer({ minimum: 0, maximum: EDITION_RUN_MAX_SIZE })),
   evidenceNote: Type.Optional(
     Type.String({ minLength: 1, maxLength: SALE_AUTHORITY_NOTE_MAX_LENGTH }),
   ),

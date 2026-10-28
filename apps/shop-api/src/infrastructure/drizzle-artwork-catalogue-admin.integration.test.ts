@@ -4,6 +4,7 @@ import { eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { normalizeArtworkCatalogueFilters } from "../application/artwork-catalogue-filters.js";
+import { createEditionRunServices } from "../application/edition-runs/edition-run-services.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { StaleVersionError } from "../errors/stale-version-error.js";
 import { integrationSuffix, requireDefined } from "../test-support/shop-fixtures.js";
@@ -17,10 +18,22 @@ import { createDrizzleArtistCatalogueWriter } from "./drizzle-artist-catalogue.w
 import { createDrizzleArtworkCatalogueRepository } from "./drizzle-artwork-catalogue.repository.js";
 import { createDrizzleArtworkCatalogueWriter } from "./drizzle-artwork-catalogue.writer.js";
 import { createDrizzleShopUnitOfWork } from "./drizzle-shop-transaction-effects.js";
+import { createDrizzleEditionRunUnitOfWork } from "./edition-runs/drizzle-edition-run.unit-of-work.js";
 
 const ACTOR = "artwork-catalogue-it-staff";
 const key = () => `idem-${integrationSuffix("a")}`;
 const resolveMediaUrl = (value: string | null | undefined) => (value ? `/${value}` : null);
+
+/** Facts that let a LAX standard run be published: unsigned, not numbered, no certificate. */
+const CONFIRMED_FACTS = {
+  spec: { type: "lax_standard" as const },
+  facts: {
+    numbering: "none" as const,
+    signature: { kind: "unsigned" as const },
+    certificate: { kind: "none" as const },
+  },
+  factsConfirmed: true,
+};
 
 describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () => {
   let shopPool: pg.Pool;
@@ -40,7 +53,13 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
     const uow = createDrizzleShopUnitOfWork(db, "off");
     return {
       db,
-      writer: createDrizzleArtworkCatalogueWriter(uow, { resolveMediaUrl }),
+      writer: createDrizzleArtworkCatalogueWriter(uow, {
+        resolveMediaUrl,
+        editionRuns: createEditionRunServices({
+          uow: createDrizzleEditionRunUnitOfWork(uow),
+          clock: { now: () => new Date() },
+        }).recorder,
+      }),
       artists: createDrizzleArtistCatalogueWriter(uow),
       reader: createDrizzleAdminArtworkReader(db, { resolveMediaUrl }),
       storefront: createDrizzleArtworkCatalogueRepository(db, { resolveMediaUrl }),
@@ -86,7 +105,7 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
       medium: "Oil on linen",
       dimensions: null,
       description: null,
-      eligibleForEditionAllocation: options.editions ?? true,
+      run: (options.editions ?? true) ? CONFIRMED_FACTS : null,
       printPricePence: null,
       saleState: "for_sale",
       salesChannel: "shop",
@@ -139,7 +158,7 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
     });
     expect(detail.publishBlockers).toEqual(["no_image", "no_edition_price"]);
     expect(await storefront.getPublicArtworkBySlug(artwork.slug)).toBeNull();
-    expect(await auditActions(artwork.artworkId)).toEqual(["create_artwork"]);
+    expect(await auditActions(artwork.artworkId)).toEqual(["record_edition_run", "create_artwork"]);
   });
 
   it("publishes once it has an image and a price, then unpublishes and archives", async () => {
@@ -192,6 +211,7 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
     });
     expect(archived.state).toBe("archived");
     expect(await auditActions(artwork.artworkId)).toEqual([
+      "record_edition_run",
       "create_artwork",
       "update_artwork",
       "publish_artwork",
@@ -334,7 +354,11 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
     });
     expect(saved.refreshesArt).toBe(false);
     expect((await detailOf(artwork.artworkId)).printPricePence).toBe(52_000);
-    expect(await auditActions(artwork.artworkId)).toEqual(["create_artwork", "set_artwork_price"]);
+    expect(await auditActions(artwork.artworkId)).toEqual([
+      "record_edition_run",
+      "create_artwork",
+      "set_artwork_price",
+    ]);
 
     const original = await newArtwork("price-only-original", { editions: false });
     await expect(
@@ -360,7 +384,7 @@ describe.skipIf(!hasShopIntegrationDb)("artwork catalogue administration", () =>
       medium: "Oil on linen",
       dimensions: null,
       description: null,
-      eligibleForEditionAllocation: false,
+      run: null,
       saleState: "price_on_application",
       salesChannel: "art",
       images: [{ mediaKey: await uploadedImage(), alt: null }],

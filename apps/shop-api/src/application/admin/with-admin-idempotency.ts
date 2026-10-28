@@ -4,7 +4,7 @@ import type { ShopTransactionEffects } from "../ports/shop-unit-of-work.js";
 import { hashAdminRequest } from "./hash-request.js";
 
 export async function withAdminIdempotency<T>(input: {
-  tx: ShopTransactionEffects;
+  tx: Pick<ShopTransactionEffects, "commands">;
   commandType: string;
   idempotencyKey: string;
   actorSubjectId: string;

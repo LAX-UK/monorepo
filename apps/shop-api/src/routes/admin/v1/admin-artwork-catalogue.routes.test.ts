@@ -119,7 +119,7 @@ const writes = [
   {
     method: "POST",
     url: "/admin/v1/artworks",
-    payload: { ...editable, slug: "harbour-at-dusk", eligibleForEditionAllocation: true },
+    payload: { ...editable, slug: "harbour-at-dusk", run: { spec: { type: "lax_standard" } } },
   },
   {
     method: "PUT",
@@ -326,7 +326,7 @@ describe("admin artwork catalogue routes", () => {
         medium: null,
         dimensions: null,
         description: null,
-        eligibleForEditionAllocation: true,
+        run: null,
         printPricePence: 45_000,
         saleState: "for_sale",
         salesChannel: "shop",
@@ -379,7 +379,7 @@ describe("admin artwork catalogue routes", () => {
       expect(createArtwork).toHaveBeenCalledWith({
         ...cleaned,
         slug: "harbour-at-dusk",
-        eligibleForEditionAllocation: true,
+        run: { spec: { type: "lax_standard" } },
         canSetPrice: true,
         actorSubjectId: "shop_admin-subject",
         idempotencyKey: IDEMPOTENCY_KEY,

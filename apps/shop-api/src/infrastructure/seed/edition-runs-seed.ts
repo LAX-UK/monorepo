@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { shopArtwork, shopEdition } from "@auction/db/schema";
 import type { EditionFacts, EditionRunSpec, ProofsKept } from "@auction/shop-domain";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import type { ImportArtworkHandler } from "../../application/handlers/import-artwork.handler.js";
 import { createDrizzleEditionFactsRepository } from "../drizzle-edition-facts.repository.js";
 import { createDrizzleEditionRunRepository } from "../drizzle-edition-run.repository.js";
@@ -228,19 +228,6 @@ const FIXTURES: readonly RunFixture[] = [
   },
 ];
 
-async function authoriseAllOwned(db: Database, artworkId: string): Promise<void> {
-  await db
-    .update(shopEdition)
-    .set({ listingStatus: "authorised", saleAuthorisedAt: new Date() })
-    .where(
-      and(
-        eq(shopEdition.artworkId, artworkId),
-        eq(shopEdition.listingStatus, "not_authorised"),
-        isNotNull(shopEdition.ownerPartyId),
-      ),
-    );
-}
-
 /** Gives each print in storage the short code printed on its stock label, such as NG0001. */
 async function labelStoredPrints(db: Database, artworkId: string, slug: string): Promise<void> {
   const prefix = slug
@@ -326,12 +313,11 @@ export async function seedEditionRuns(
       await runs.addStockBatch({ artworkId, ...batch, addedBySubjectId: SEED_CONFIRMED_BY });
     }
     await labelStoredPrints(db, artworkId, fixture.slug);
-    if (spec.type === "lax_standard" || spec.type === "custom_limited") {
-      if (grantSaleAuthority) {
-        await grantSeedAuthorityForArtwork(db, grantSaleAuthority, artworkId);
-      }
-    } else {
-      await authoriseAllOwned(db, artworkId);
+    if (grantSaleAuthority) {
+      // Open, proof and companion prints are offered by every owner, by stock reference.
+      const owners =
+        spec.type === "lax_standard" || spec.type === "custom_limited" ? "lax" : "every_owner";
+      await grantSeedAuthorityForArtwork(db, grantSaleAuthority, artworkId, { owners });
     }
   }
 

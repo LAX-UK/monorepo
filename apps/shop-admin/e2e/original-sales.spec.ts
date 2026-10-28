@@ -45,4 +45,41 @@ test.describe("original sales @e2e", () => {
     const reservation = (await reservationRes.json()) as { id: string; status: string };
     expect(reservation.id).toBeTruthy();
   });
+
+  test("reserves an original whose prints are a custom run", async ({ page, request }) => {
+    test.skip(!enabled, "Set PLAYWRIGHT_E2E=1 against deployed shop-admin");
+    skipStaffFeatureUnlessEnabled("originalSales");
+    const baseUrl = process.env.PLAYWRIGHT_BASE_URL ?? "http://localhost:3030";
+    const credentials = requireStaffAcceptanceCredentials();
+    const session = await openStaffBrowserSession({
+      page,
+      baseUrl,
+      authBaseUrl,
+      email: credentials.email,
+      password: credentials.password,
+      totpSecret: credentials.totpSecret,
+    });
+    await requireFeatureOrSkip(request, session, "originalSales");
+
+    const fixtures = loadStaffOperationsFixtures();
+    test.skip(
+      !fixtures.customRunOriginalArtworkId,
+      "Re-run seed:acceptance-staff-operations to add the custom run fixture",
+    );
+    const admin = createAdminApiClient(request, session.baseUrl);
+    const reservationRes = await admin.post(
+      "original-sales",
+      session.cookieHeader,
+      session.csrfToken,
+      {
+        artworkId: fixtures.customRunOriginalArtworkId,
+        buyerPartyId: fixtures.buyerPartyId,
+        salePricePence: 240_000,
+        reservationExpiresAt: new Date(Date.now() + 7 * 86_400_000).toISOString(),
+      },
+    );
+    expect(reservationRes.ok()).toBe(true);
+    const reservation = (await reservationRes.json()) as { id: string; status: string };
+    expect(reservation.status).toBe("reserved");
+  });
 });

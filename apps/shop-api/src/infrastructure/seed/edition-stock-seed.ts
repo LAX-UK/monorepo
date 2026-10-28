@@ -30,15 +30,21 @@ export async function depleteEditionStockForSlug(db: Database, slug: string): Pr
     .where(eq(shopEdition.artworkId, artworkId));
 }
 
+/**
+ * Puts an artwork's prints on sale through recorded sale authority: LAX's prints by default, or
+ * every owner's (open editions and proofs in the demo catalogue). Each owner offers every print
+ * they hold that is free to sell.
+ */
 export async function grantSeedAuthorityForArtwork(
   db: Database,
   grantSaleAuthority: GrantSaleAuthorityFn,
   artworkId: string,
+  options: { owners: "lax" | "every_owner" } = { owners: "lax" },
 ): Promise<void> {
   const owners = await db
     .select({
       ownerPartyId: shopEdition.ownerPartyId,
-      eligibleCount: sql<number>`count(*) filter (where "shop_edition"."listing_status" <> 'sold')::int`,
+      eligibleCount: sql<number>`count(*) filter (where "shop_edition"."listing_status" not in ('sold', 'reserved', 'held', 'withdrawn'))::int`,
     })
     .from(shopEdition)
     .innerJoin(shopParty, eq(shopParty.id, shopEdition.ownerPartyId))
@@ -46,7 +52,7 @@ export async function grantSeedAuthorityForArtwork(
       and(
         eq(shopEdition.artworkId, artworkId),
         isNotNull(shopEdition.ownerPartyId),
-        eq(shopParty.kind, "lax"),
+        options.owners === "lax" ? eq(shopParty.kind, "lax") : undefined,
       ),
     )
     .groupBy(shopEdition.ownerPartyId);
@@ -67,7 +73,8 @@ export async function grantSeedAuthorityForArtwork(
     await grantSaleAuthority({
       artworkId,
       ownerPartyId: row.ownerPartyId,
-      authorisedCount: Math.min(Number(row.eligibleCount), 10),
+      // Every print LAX holds goes on sale; the cap is what the owner holds, not a fixed 10.
+      authorisedCount: Number(row.eligibleCount),
       recordedBySubjectId: "seed:catalogue",
       evidenceNote: "Foundation catalogue seed explicit grant",
     });

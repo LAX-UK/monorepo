@@ -24,10 +24,13 @@ export async function reserveEditionsForCheckoutOrder(
         id: shopEdition.id,
         ownerPartyId: shopEdition.ownerPartyId,
         editionNumber: shopEdition.editionNumber,
+        stockRef: shopEdition.stockRef,
       })
       .from(shopEdition)
       .where(and(eq(shopEdition.artworkId, line.artworkId), sellableEditionCondition()))
-      .orderBy(shopEdition.saleAuthorisedAt, shopEdition.editionNumber)
+      // Earliest authority first, then stock order: the number on numbered runs, and the
+      // only order an unnumbered open edition or proof listing has.
+      .orderBy(shopEdition.saleAuthorisedAt, shopEdition.stockRef)
       .limit(1)
       .for("update", { skipLocked: true });
     const edition = picked[0];
@@ -68,6 +71,7 @@ export async function reserveEditionsForCheckoutOrder(
         orderId: input.orderId,
         artworkId: line.artworkId,
         editionNumber: edition.editionNumber,
+        stockRef: edition.stockRef,
       },
     });
   }

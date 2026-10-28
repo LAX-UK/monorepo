@@ -9,6 +9,10 @@ const fixturesSchema = z.object({
   holdEditionId: z.string(),
   holdArtworkId: z.string(),
   originalArtworkId: z.string(),
+  /** Optional so fixture files written before custom runs still load. */
+  customRunOriginalArtworkId: z.string().optional(),
+  customRunSlug: z.string().optional(),
+  customRunHoldEditionId: z.string().optional(),
   merchandiseVariantId: z.string(),
   paidOrderId: z.string(),
   paidOrderLineId: z.string(),

@@ -11,6 +11,12 @@ import {
   shopSaleAuthorityRequest,
 } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
+import {
+  type EditionAuthorityRow,
+  ShopDomainError,
+  assertAuthorityWithinOwnership,
+  authorisablePrintCount,
+} from "@auction/shop-domain";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type {
   CreateSaleAuthorityRequestCommand,
@@ -104,6 +110,7 @@ export function createDrizzlePortalOwnershipRepository(
           ownerPartyId: shopEdition.ownerPartyId,
           authorisedCount: sql<number>`count(*) filter (where ${shopEdition.listingStatus} = 'authorised')`,
           committedCount: sql<number>`count(*) filter (where ${shopEdition.listingStatus} in ('reserved', 'held', 'sold'))`,
+          ownedCount: sql<number>`count(*) filter (where ${shopEdition.listingStatus} <> 'withdrawn')`,
         })
         .from(shopEdition)
         .where(
@@ -145,6 +152,7 @@ export function createDrizzlePortalOwnershipRepository(
           {
             authorisedCount: Number(row.authorisedCount),
             committedCount: Number(row.committedCount),
+            ownedCount: Number(row.ownedCount),
           },
         ]),
       );
@@ -162,6 +170,7 @@ export function createDrizzlePortalOwnershipRepository(
         const stats = statsByArtworkOwner.get(key) ?? {
           authorisedCount: 0,
           committedCount: 0,
+          ownedCount: 0,
         };
         const grant = grantByArtworkOwner.get(key);
         rows.push({
@@ -171,6 +180,7 @@ export function createDrizzlePortalOwnershipRepository(
           ownerPartyId: pair.ownerPartyId,
           authorisedCount: stats.authorisedCount,
           committedCount: stats.committedCount,
+          ownedCount: stats.ownedCount,
           lastGrantAt: grant?.createdAt.toISOString() ?? null,
         });
       }
@@ -181,10 +191,10 @@ export function createDrizzlePortalOwnershipRepository(
     async createSaleAuthorityRequest(
       command: CreateSaleAuthorityRequestCommand,
     ): Promise<CreateSaleAuthorityRequestResult> {
-      if (command.requestedCount < 0 || command.requestedCount > 10) {
+      if (!Number.isInteger(command.requestedCount) || command.requestedCount < 0) {
         throw new ShopApiError(
           SHOP_API_ERROR_CODES.VALIDATION,
-          "Requested count must be between 0 and 10",
+          "Requested count must be a whole number, 0 or more",
           400,
         );
       }
@@ -232,6 +242,32 @@ export function createDrizzlePortalOwnershipRepository(
           "You do not own editions on this artwork",
           403,
         );
+      }
+
+      // Rule 14: an owner can ask to sell at most the prints they hold that are not yet taken.
+      const ownedRows = await db
+        .select({
+          stockRef: shopEdition.stockRef,
+          listingStatus: shopEdition.listingStatus,
+          custodyStatus: shopEdition.custodyStatus,
+        })
+        .from(shopEdition)
+        .where(
+          and(
+            eq(shopEdition.artworkId, command.artworkId),
+            eq(shopEdition.ownerPartyId, ownerPartyId),
+          ),
+        );
+      try {
+        assertAuthorityWithinOwnership(
+          command.requestedCount,
+          authorisablePrintCount(ownedRows as EditionAuthorityRow[]),
+        );
+      } catch (error) {
+        if (error instanceof ShopDomainError) {
+          throw new ShopApiError(SHOP_API_ERROR_CODES.VALIDATION, error.message, 400);
+        }
+        throw error;
       }
 
       const [existingPending] = await db

@@ -4,6 +4,7 @@ import { Redis } from "ioredis";
 import type { AdminRoutesDeps } from "./admin-route-deps.js";
 import type { ArtistApplicantService } from "./application/artist-applications/artist-applicant.service.js";
 import { createShopDeletionEligibilityService } from "./application/deletion-eligibility.service.js";
+import { createEditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import { createEditorialLinksService } from "./application/editorial-links.service.js";
 import { createEnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import {
@@ -91,6 +92,7 @@ import { createDrizzleShopReadinessAdapter } from "./infrastructure/drizzle-shop
 import { createDrizzleShopStaffMemberReader } from "./infrastructure/drizzle-shop-staff-member.reader.js";
 import { createDrizzleShopUnitOfWork } from "./infrastructure/drizzle-shop-transaction-effects.js";
 import { createDrizzleStorefrontCurationWriter } from "./infrastructure/drizzle-storefront-curation.repository.js";
+import { createDrizzleEditionRunUnitOfWork } from "./infrastructure/edition-runs/drizzle-edition-run.unit-of-work.js";
 import { grantShopStaffRole } from "./infrastructure/grant-staff-role.js";
 import { createAdjustMerchandiseStockHandler } from "./infrastructure/handlers/admin/adjust-merchandise-stock.handler.js";
 import { createCancelAfterPossessionHandler } from "./infrastructure/handlers/admin/cancel-after-possession.handler.js";
@@ -341,7 +343,14 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   );
   const merchandiseStock = createDrizzleMerchandiseStockWriter(shopUow);
   const merchandiseCatalogue = createDrizzleMerchandiseCatalogueWriter(shopUow);
-  const artworkCatalogue = createDrizzleArtworkCatalogueWriter(shopUow, { resolveMediaUrl });
+  const editionRuns = createEditionRunServices({
+    uow: createDrizzleEditionRunUnitOfWork(shopUow),
+    clock: { now: () => new Date() },
+  });
+  const artworkCatalogue = createDrizzleArtworkCatalogueWriter(shopUow, {
+    resolveMediaUrl,
+    editionRuns: editionRuns.recorder,
+  });
   const artistCatalogue = createDrizzleArtistCatalogueWriter(shopUow);
   const artCache =
     env.ART_REVALIDATE_URL && env.ART_REVALIDATE_SECRET
@@ -505,6 +514,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         createMerchandiseProduct,
         merchandiseCatalogue,
         artworkCatalogue,
+        editionRuns,
         artistCatalogue,
         artCache,
         thirdPartySales,

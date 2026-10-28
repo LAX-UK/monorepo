@@ -11,6 +11,7 @@ import {
   type EditionAuthorityRow,
   ShopDomainError,
   assertAuthorityReductionAllowed,
+  authorisablePrintCount,
   selectEditionsToAuthorise,
   selectEditionsToRevokeAuthority,
 } from "@auction/shop-domain";
@@ -23,7 +24,6 @@ import type {
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { notFound } from "../errors/shop-api-error.js";
 import { isPgUniqueViolation, pgUniqueViolationConstraint } from "../lib/pg-errors.js";
-import { printedEditionNumber } from "./printed-edition-number.js";
 import { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
 
 export function createDrizzleSaleAuthorityWriter(
@@ -103,7 +103,7 @@ export function createDrizzleSaleAuthorityWriter(
 
           const ownedRows = await tx
             .select({
-              editionNumber: printedEditionNumber,
+              stockRef: shopEdition.stockRef,
               listingStatus: shopEdition.listingStatus,
               custodyStatus: shopEdition.custodyStatus,
               id: shopEdition.id,
@@ -117,8 +117,9 @@ export function createDrizzleSaleAuthorityWriter(
             )
             .for("update");
 
+          // Prints are picked by stock reference, so unnumbered open and proof prints work too.
           const authorityRows: EditionAuthorityRow[] = ownedRows.map((row) => ({
-            editionNumber: row.editionNumber,
+            stockRef: row.stockRef,
             listingStatus: row.listingStatus as EditionAuthorityRow["listingStatus"],
             custodyStatus: row.custodyStatus as EditionAuthorityRow["custodyStatus"],
           }));
@@ -128,6 +129,7 @@ export function createDrizzleSaleAuthorityWriter(
           ).length;
           assertAuthorityReductionAllowed({
             newAuthorisedCount: command.authorisedCount,
+            authorisableCount: authorisablePrintCount(authorityRows),
           });
 
           const toAuthorise =
@@ -153,7 +155,7 @@ export function createDrizzleSaleAuthorityWriter(
           const recordedAuthorisedCount = currentAuthorised - toRevoke.length + toAuthorise.length;
 
           const now = new Date();
-          for (const editionNumber of toAuthorise) {
+          for (const stockRef of toAuthorise) {
             await tx
               .update(shopEdition)
               .set({
@@ -163,12 +165,12 @@ export function createDrizzleSaleAuthorityWriter(
               .where(
                 and(
                   eq(shopEdition.artworkId, command.artworkId),
-                  eq(shopEdition.editionNumber, editionNumber),
+                  eq(shopEdition.stockRef, stockRef),
                   eq(shopEdition.ownerPartyId, command.ownerPartyId),
                 ),
               );
           }
-          for (const editionNumber of toRevoke) {
+          for (const stockRef of toRevoke) {
             await tx
               .update(shopEdition)
               .set({
@@ -178,7 +180,7 @@ export function createDrizzleSaleAuthorityWriter(
               .where(
                 and(
                   eq(shopEdition.artworkId, command.artworkId),
-                  eq(shopEdition.editionNumber, editionNumber),
+                  eq(shopEdition.stockRef, stockRef),
                   eq(shopEdition.ownerPartyId, command.ownerPartyId),
                 ),
               );
