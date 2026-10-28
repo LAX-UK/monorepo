@@ -15,6 +15,7 @@ export type AdminNavIcon =
   | "pages"
   | "help"
   | "placements"
+  | "featured"
   | "enquiries"
   | "products"
   | "orders"
@@ -133,7 +134,13 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
         {
           href: "/editorial/home",
           icon: "placements" as const,
-          label: "Home placements",
+          label: "lax.art home",
+          capability: "editorial.write",
+        },
+        {
+          href: "/editorial/featured",
+          icon: "featured" as const,
+          label: "Featured on home",
           capability: "editorial.write",
         },
         {

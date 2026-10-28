@@ -17,6 +17,7 @@
     { "page": "lax-admin:overview/page.tsx", "reason": "Overview: work inbox" },
     { "page": "lax-admin:editorial/page.tsx", "reason": "Editorial hub" },
     { "page": "lax-admin:editorial/home/page.tsx", "reason": "Home placements editor" },
+    { "page": "lax-admin:editorial/featured/page.tsx", "reason": "Featured on home list editor" },
     { "page": "lax-admin:settings/page.tsx", "reason": "Settings" }
   ],
   "pending": []

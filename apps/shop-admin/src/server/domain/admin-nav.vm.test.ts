@@ -9,6 +9,7 @@ const EDITORIAL_HREFS = [
   "/editorial/pages",
   "/help",
   "/editorial/home",
+  "/editorial/featured",
 ];
 
 const ALL_FEATURES = {
@@ -134,7 +135,8 @@ describe("buildAdminNavGroups", () => {
           "Venues",
           "Pages",
           "Help centre",
-          "Home placements",
+          "lax.art home",
+          "Featured on home",
           "Enquiries",
         ],
       ],

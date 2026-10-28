@@ -48,8 +48,15 @@ export default async function EditorialLandingPage() {
   links.push({
     id: "home-placements",
     href: "/editorial/home",
-    label: "Home placements",
-    description: "What the lax.art home page features, slot by slot.",
+    label: "lax.art home",
+    description: "The hero, what is on and the stories the lax.art home features, slot by slot.",
+  });
+  links.push({
+    id: "featured-on-home",
+    href: "/editorial/featured",
+    label: "Featured on home",
+    description:
+      "The prints, artists and categories the LAX Shop home features. The artists also lead on lax.art.",
   });
 
   return (
