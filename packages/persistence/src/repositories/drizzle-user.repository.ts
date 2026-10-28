@@ -7,7 +7,7 @@ import {
   activeIdentitySubject,
   normalizedIdentityEmailEquals,
 } from "../lib/bid-identity-directory-query.js";
-import { staffRoleAssignmentInForceAt } from "./drizzle-staff-roster.js";
+import { staffRoleAssignmentInForceAt } from "./staff-role-assignment-sql.js";
 
 export class DrizzleUserRepository implements IUserRepository {
   constructor(private readonly db: Database) {}

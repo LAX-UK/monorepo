@@ -9,6 +9,7 @@ import {
 } from "@auction/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { DrizzleAdminUserReader } from "./drizzle-admin-user.reader.js";
 import { DrizzleBidBidderRoleReader } from "./drizzle-bid-bidder-role.reader.js";
 import { DrizzleStaffRoster } from "./drizzle-staff-roster.js";
 
@@ -110,6 +111,9 @@ describe.skipIf(!HAS_DB)("staff roster (integration)", () => {
       role: "staff",
       staffRoles: ["specialist"],
     });
+
+    const [listed] = await new DrizzleAdminUserReader(db).getByIds([memberId]);
+    expect(listed).toMatchObject({ staffRole: "specialist", staffRoles: ["specialist"] });
 
     await roster.transact((tx) => tx.end(assigned.id, now));
     expect(await roster.listActiveRoles(memberId, now)).toEqual([]);

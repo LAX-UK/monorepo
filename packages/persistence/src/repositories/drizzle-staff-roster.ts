@@ -6,7 +6,7 @@ import {
   activeStaffRoles,
   normalizeUserRoleOrClient,
 } from "@auction/types";
-import { and, countDistinct, eq, gt, isNull, lte, ne, or, sql } from "drizzle-orm";
+import { and, countDistinct, eq, isNull, ne, sql } from "drizzle-orm";
 import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type {
   IStaffRoleAssignmentReader,
@@ -21,6 +21,10 @@ import {
   type LaxStaffAccessEvent,
   insertLaxStaffAccessEvents,
 } from "./drizzle-lax-staff-access.repository.js";
+import {
+  staffRoleAssignmentInForceAt,
+  staffRoleAssignmentNotEndedAt,
+} from "./staff-role-assignment-sql.js";
 
 /** Shared with every roster change so concurrent changes run one after another. */
 const STAFF_ROSTER_LOCK_KEY = "bid_staff_admin_roster";
@@ -49,18 +53,6 @@ function isStaffRoleEvent(event: StaffRosterEvent): event is StaffRoleEvent {
   return event.type === "staff.role_assigned" || event.type === "staff.role_removed";
 }
 
-function notEndedAt(now: Date) {
-  return or(isNull(staffRoleAssignment.endsAt), gt(staffRoleAssignment.endsAt, now));
-}
-
-/**
- * SQL form of `isStaffRoleAssignmentActive`, for queries over many people (recipient lists,
- * the administrator count). Single-person reads load rows and let the domain decide.
- */
-export function staffRoleAssignmentInForceAt(now: Date) {
-  return and(lte(staffRoleAssignment.startsAt, now), notEndedAt(now));
-}
-
 async function selectCurrent(
   db: Database,
   userId: string,
@@ -69,7 +61,7 @@ async function selectCurrent(
   const rows = await db
     .select()
     .from(staffRoleAssignment)
-    .where(and(eq(staffRoleAssignment.userId, userId), notEndedAt(now)))
+    .where(and(eq(staffRoleAssignment.userId, userId), staffRoleAssignmentNotEndedAt(now)))
     .orderBy(staffRoleAssignment.startsAt);
   return rows.map(toRecord);
 }

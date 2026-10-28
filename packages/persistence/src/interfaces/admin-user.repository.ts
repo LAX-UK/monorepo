@@ -1,4 +1,4 @@
-import type { UserEmailStatus, UserKycStatus } from "@auction/types";
+import type { StaffRoles, UserEmailStatus, UserKycStatus } from "@auction/types";
 
 export type AdminUserListSort =
   | "created_desc"
@@ -39,7 +39,10 @@ export type AdminUserListRow = {
   firstName: string | null;
   lastName: string | null;
   role: string;
+  /** The one role shown for the person. Display only. */
   staffRole: string | null;
+  /** Roles in force now; decides what the person may do. */
+  staffRoles: StaffRoles;
   createdAt: Date;
   updatedAt: Date;
   suspendedAt: Date | null;
