@@ -38,6 +38,28 @@ describe("dashboard-profile-registry", () => {
     expect(action.href).toBe(profile.primaryAction.href);
   });
 
+  it("adds up the queues, numbers and widgets of every role held", () => {
+    const profile = getDashboardProfile(["fulfilment", "cataloguer", "saleroom_clerk"]);
+    // The most senior profile leads.
+    expect(profile.id).toBe("auction_operations");
+    expect(dashboardProfileIdForStaffRoles(["fulfilment", "saleroom_clerk"])).toBe(
+      "auction_operations",
+    );
+    expect(profile.queueDomains).toEqual(
+      expect.arrayContaining(["Operations", "Catalog", "Finance", "People"]),
+    );
+    expect(new Set(profile.queueDomains).size).toBe(profile.queueDomains.length);
+    expect(profile.kpiIds.length).toBeLessThanOrEqual(4);
+    expect(profile.showLiveOperations).toBe(true);
+    expect(profile.secondaryWidgets).toContain("saleroom-live");
+  });
+
+  it("keeps a single role's profile as it is", () => {
+    expect(getDashboardProfile(["cataloguer", "specialist"])).toEqual(
+      getDashboardProfile(["cataloguer"]),
+    );
+  });
+
   it("exposes role-relevant KPI ids per profile", () => {
     const finance = getDashboardProfile(["finance"]);
     expect(finance.kpiIds).toContain("stale-payments");

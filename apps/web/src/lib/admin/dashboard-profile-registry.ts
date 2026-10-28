@@ -11,7 +11,7 @@ import {
   SUBMISSIONS_ACCESS,
   type StaffRoles,
   type UserStaffRole,
-  primaryStaffRole,
+  normalizeStaffRoles,
 } from "@auction/types";
 
 export type DashboardProfileId =
@@ -215,20 +215,51 @@ const PROFILE_PRIORITY: readonly DashboardProfileId[] = [
   "read_only",
 ];
 
+/** The profiles of every role in force, each once, most senior first. */
+function profilesForStaffRoles(staffRoles: StaffRoles | undefined): DashboardProfileId[] {
+  const held = new Set(
+    normalizeStaffRoles(staffRoles ?? NO_STAFF_ROLES).map((r) => STAFF_ROLE_PROFILE[r]),
+  );
+  return PROFILE_PRIORITY.filter((id) => held.has(id));
+}
+
+function union<T>(lists: readonly (readonly T[])[]): T[] {
+  return [...new Set(lists.flat())];
+}
+
+/** The KPI strip holds at most this many numbers. */
+const MAX_DASHBOARD_KPIS = 4;
+
 /**
- * The dashboard layout for someone holding `staffRoles`: the profile of the role screens show
- * for them. Layout only; each widget still checks the whole set of roles before it shows.
+ * One layout for several roles: the most senior role's profile leads (its primary action and
+ * framing), and the queues, numbers and widgets of every role are added after its own.
+ */
+export function mergeDashboardProfiles(ids: readonly DashboardProfileId[]): DashboardProfile {
+  const profiles = ids.map((id) => PROFILES[id]);
+  const lead = profiles[0] ?? PROFILES.auction_operations;
+  if (profiles.length <= 1) return lead;
+  return {
+    ...lead,
+    queueDomains: union(profiles.map((p) => p.queueDomains)),
+    kpiIds: union(profiles.map((p) => p.kpiIds)).slice(0, MAX_DASHBOARD_KPIS),
+    showLiveOperations: profiles.some((p) => p.showLiveOperations),
+    secondaryWidgets: union(profiles.map((p) => p.secondaryWidgets)),
+  };
+}
+
+/**
+ * The dashboard layout for someone holding `staffRoles`: the profile of their most senior role.
+ * Each widget still checks the whole set of roles before it shows.
  */
 export function dashboardProfileIdForStaffRoles(
   staffRoles: StaffRoles | undefined,
 ): DashboardProfileId {
-  const shown = primaryStaffRole(staffRoles ?? NO_STAFF_ROLES);
-  if (shown == null) return "auction_operations";
-  return STAFF_ROLE_PROFILE[shown];
+  return profilesForStaffRoles(staffRoles)[0] ?? "auction_operations";
 }
 
+/** The dashboard for every role a person holds, merged into one layout. */
 export function getDashboardProfile(staffRoles: StaffRoles | undefined): DashboardProfile {
-  return PROFILES[dashboardProfileIdForStaffRoles(staffRoles)];
+  return mergeDashboardProfiles(profilesForStaffRoles(staffRoles));
 }
 
 export function listDashboardProfiles(): readonly DashboardProfile[] {

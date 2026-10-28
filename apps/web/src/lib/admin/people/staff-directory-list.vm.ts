@@ -3,10 +3,14 @@ import { defineListSort } from "@/lib/admin/define-list-sort";
 import { STAFF_LIST_PATH } from "@/lib/admin/people/build-staff-list-page-model";
 import { accountStanding } from "@/lib/admin/people/clients-staff-list.vm";
 import { staffPlatformBadges } from "@/lib/admin/people/staff-access-presenter";
-import { staffRoleFilterOptions, staffRoleLabel } from "@/lib/admin/staff-role-presenter";
+import { staffRoleFilterOptions, staffRolesLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserRow } from "@/lib/data/http/admin-users.types";
 import type { StatusPresentation } from "@auction/staff-ui";
-import type { LaxStaffAccessProduct, UserStaffRole } from "@auction/types";
+import {
+  type LaxStaffAccessProduct,
+  type UserStaffRole,
+  normalizeStaffRoles,
+} from "@auction/types";
 
 export type StaffListSearch = Record<string, string | string[] | undefined>;
 
@@ -17,6 +21,7 @@ export type StaffDirectoryRow = {
   email: string;
   account: StatusPresentation;
   staffRole: UserStaffRole | null;
+  /** Every role they hold now: "Cataloguer and Fulfilment". */
   staffRoleLabel: string;
   /** "Bid · Finance", one per LAX tool they can use. */
   access: string[];
@@ -48,7 +53,7 @@ export function toStaffDirectoryRows(
       email: row.email,
       account: accountStanding(row),
       staffRole,
-      staffRoleLabel: staffRole ? staffRoleLabel(staffRole) : "No staff role",
+      staffRoleLabel: staffRolesLabel(normalizeStaffRoles(row.staffRoles ?? [])),
       access: summary ? staffPlatformBadges(summary.platforms).map((badge) => badge.label) : [],
       twoFactor: summary?.twoFactorEnabled ?? row.twoFactorEnabled,
       lastSignInAt: summary?.lastSignInAt ?? null,
@@ -77,6 +82,14 @@ export function staffPanelHref(current: StaffListSearch, id: string | null): str
 }
 
 export const STAFF_ROLE_FILTERS = staffRoleFilterOptions;
+
+/** The role filter's choices, each with how many people hold that role among the matches. */
+export function staffRoleFilterChoices(byStaffRole: Readonly<Record<string, number>>) {
+  return STAFF_ROLE_FILTERS.map((option) => ({
+    ...option,
+    ...(byStaffRole[option.value] !== undefined ? { count: byStaffRole[option.value] } : {}),
+  }));
+}
 
 /** Newest first, unless the person sorts by name or oldest first. */
 export const staffSort = defineListSort(

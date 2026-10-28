@@ -9,13 +9,14 @@ import { useListPanel } from "@/components/admin/staff/use-list-panel";
 import { useStaffListNavigation } from "@/components/admin/staff/use-staff-list-navigation";
 import { getUserBulkOperations } from "@/lib/admin/bulk-ops/users";
 import {
-  STAFF_ROLE_FILTERS,
   type StaffDirectoryRow,
   type StaffListSearch,
   staffListHref,
   staffPanelHref,
+  staffRoleFilterChoices,
   staffSort,
 } from "@/lib/admin/people/staff-directory-list.vm";
+import { STAFF_ACCESS_REVIEW_ACCESS } from "@/lib/navigation/staff-nav-access";
 import {
   type DataColumn,
   DataViews,
@@ -39,6 +40,8 @@ export type StaffDirectoryListProps = {
   rows: StaffDirectoryRow[];
   search: StaffListSearch;
   counts: { total: number; active: number; suspended: number };
+  /** How many people hold each role now, among the matches. */
+  roleCounts: Readonly<Record<string, number>>;
   filterChips: Array<{ id: string; label: string; clearHref: string }>;
   pageSize: number;
   pagination: { summary: string; prevHref: string | null; nextHref: string | null } | null;
@@ -149,7 +152,7 @@ export function StaffDirectoryList(props: StaffDirectoryListProps) {
       },
       {
         id: "staffRole",
-        header: "Staff role",
+        header: "Roles",
         width: "176px",
         mobile: "meta",
         cell: (row) => row.staffRoleLabel,
@@ -215,7 +218,12 @@ export function StaffDirectoryList(props: StaffDirectoryListProps) {
     <>
       <ListPage<StaffDirectoryRow>
         title="Staff"
-        description="Everyone who works in the staff tools, their role and the LAX tools they can use."
+        description="Everyone who works in the staff tools, their roles and the LAX tools they can use."
+        secondaryActions={
+          <StaffButton asChild variant="secondary" size="sm" requires={STAFF_ACCESS_REVIEW_ACCESS}>
+            <Link href="/admin/staff/access">Access review</Link>
+          </StaffButton>
+        }
         Link={ListLink}
         listKey="bid-admin.staff"
         primaryAction={
@@ -245,7 +253,7 @@ export function StaffDirectoryList(props: StaffDirectoryListProps) {
                 id: "staffRole",
                 label: "Staff role",
                 anyLabel: "Any staff role",
-                options: STAFF_ROLE_FILTERS,
+                options: staffRoleFilterChoices(props.roleCounts),
                 value: str(search.staffRole),
               },
             ]}
@@ -363,7 +371,7 @@ export function StaffQuickView({
       }
       overflow={
         row && actions.length > 0 ? (
-          <OverflowMenu label={`Account actions for ${row.name}`} actions={actions} />
+          <OverflowMenu label={`Account actions for ${row.name}`} actions={actions} Link={Link} />
         ) : null
       }
       summary={
