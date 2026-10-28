@@ -70,6 +70,9 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   if (type === "consignment_agreement_reminder") {
     return { label: "Agreement waiting", Icon: Clock, tone: "warn" };
   }
+  if (type === "consignment_update") {
+    return { label: "Consignment update", Icon: FileText, tone: "neutral" };
+  }
   if (type === "source_of_funds_documents_requested") {
     return { label: "Source of funds", Icon: ShieldAlert, tone: "warn" };
   }
