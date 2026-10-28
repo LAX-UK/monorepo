@@ -2,10 +2,10 @@ import { ArtArtistCard } from "@/components/catalogue/art-artist-grid";
 import { ArtEditorialCard } from "@/components/editorial/art-editorial-card";
 import { ArtEditorialStatus } from "@/components/editorial/art-editorial-status";
 import { ArtHubPressBand } from "@/components/editorial/art-hub-press-band";
-import { ArtHomeEcosystemBand } from "@/components/home/art-home-ecosystem-band";
 import { ArtRail, ArtRailItem } from "@/components/layout/art-rail";
 import { ArtSection } from "@/components/layout/art-section";
 import { ArtMediaImage } from "@/components/media/art-media-image";
+import { ArtProductDoors } from "@/components/product-doors/art-product-doors";
 import { artServices } from "@/lib/art-services.server";
 import {
   type ArtHubPageVm,
@@ -215,16 +215,8 @@ function HubSection({ id, vm }: { id: ArtHubSectionId; vm: ArtHubPageVm }) {
       );
     case "press":
       return <ArtHubPressBand rows={vm.press} />;
-    case "ecosystem":
-      return (
-        <ArtHomeEcosystemBand
-          cards={vm.ecosystem}
-          heading={{
-            title: ART_HUB_HEADINGS.ecosystem,
-            subtitle: ART_HUB_HEADINGS.ecosystemSubtitle,
-          }}
-        />
-      );
+    case "product-doors":
+      return <ArtProductDoors doors={vm.productDoors} />;
   }
 }
 

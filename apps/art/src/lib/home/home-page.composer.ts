@@ -12,10 +12,6 @@ import { type EditorialCardVm, buildPlacementCards } from "@/lib/editorial/edito
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
 import {
-  type ArtHomeEcosystemCardVm,
-  buildArtHomeEcosystemCards,
-} from "@/lib/home/art-home-ecosystem.vm";
-import {
   type ArtHomeGalleryCardVm,
   type ArtHomeVenueEntry,
   buildArtHomeGalleryCards,
@@ -29,6 +25,8 @@ import type {
   ArtFavoritesReadPort,
   ArtViewerPort,
 } from "@/lib/ports";
+import { buildArtProductDoors } from "@/lib/product-doors/art-product-doors.vm";
+import type { MarketingProductDoorVm } from "@auction/marketing-ui";
 
 type ArtHomeSection = "artworks" | "artists";
 
@@ -37,7 +35,7 @@ export type ArtHomeSectionId =
   | "whats-on"
   | "curators-picks"
   | "featured-artists"
-  | "ecosystem"
+  | "product-doors"
   | "stories"
   | "guide"
   | "galleries"
@@ -63,7 +61,7 @@ export type ArtHomePageVm = {
   whatsOn: EditorialCardVm[];
   featuredArtworks: CatalogueArtworkCardVm[];
   featuredArtists: CatalogueArtistCardVm[];
-  ecosystem: ArtHomeEcosystemCardVm[];
+  productDoors: MarketingProductDoorVm[];
   /** One lead plus up to two (Figma `285:3061`). */
   stories: EditorialCardVm[];
   guidePromo: ArtHomeGuidePromoVm;
@@ -160,7 +158,7 @@ export async function composeArtHomePage(services: {
     artists.status === "fulfilled"
       ? buildCatalogueArtistCards(artists.value.items, favorites.followedArtistSlugs)
       : [];
-  const ecosystem = buildArtHomeEcosystemCards(
+  const productDoors = buildArtProductDoors(
     services.ecosystem.crossProductLinks(),
     editorial.kind === "ok" ? editorial.promos : [],
   );
@@ -175,7 +173,7 @@ export async function composeArtHomePage(services: {
     "whats-on": whatsOn.length > 0,
     "curators-picks": true,
     "featured-artists": featuredArtists.length > 0,
-    ecosystem: ecosystem.length > 0,
+    "product-doors": productDoors.length > 0,
     stories: stories.length > 0,
     guide: true,
     galleries: galleries.length > 0,
@@ -191,7 +189,7 @@ export async function composeArtHomePage(services: {
         ? buildCatalogueArtworkCards(artworks.value.items, favorites.savedArtworkSlugs)
         : [],
     featuredArtists,
-    ecosystem,
+    productDoors,
     stories,
     guidePromo: buildArtHomeGuidePromoVm(editorial.kind === "ok" ? editorial.guide : []),
     galleries,

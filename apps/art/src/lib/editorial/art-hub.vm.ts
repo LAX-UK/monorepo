@@ -26,9 +26,6 @@ export const ART_HUB_HEADINGS = {
   stories: "Ways of seeing, from where we stand.",
   spotlight: "In the spotlight",
   press: "Press",
-  ecosystem: "There is more to the world of LAX.",
-  ecosystemSubtitle:
-    "Two doors into one exchange. Each is its own experience, and the same standard of care runs through all of them.",
 } as const;
 
 /** Collecting 101 panel (Figma Arthub `980:26767`). */

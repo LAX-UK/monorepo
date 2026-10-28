@@ -26,10 +26,6 @@ import {
 } from "@/lib/editorial/editorial-story.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
-import {
-  type ArtHomeEcosystemCardVm,
-  buildArtHomeEcosystemCards,
-} from "@/lib/home/art-home-ecosystem.vm";
 import { curatedOrNewest } from "@/lib/home/home-page.composer";
 import type {
   ArtCataloguePort,
@@ -38,6 +34,8 @@ import type {
   ArtFavoritesReadPort,
   ArtViewerPort,
 } from "@/lib/ports";
+import { buildArtProductDoors } from "@/lib/product-doors/art-product-doors.vm";
+import type { MarketingProductDoorVm } from "@auction/marketing-ui";
 
 /** Sections in Figma order (Arthub `980:26767`). */
 export type ArtHubSectionId =
@@ -49,7 +47,7 @@ export type ArtHubSectionId =
   | "films"
   | "collecting"
   | "press"
-  | "ecosystem";
+  | "product-doors";
 
 export type ArtHubPageVm = {
   /** Visible sections in render order; a section with no data is left out. */
@@ -62,7 +60,7 @@ export type ArtHubPageVm = {
   podcast: ArtHubPodcastVm | null;
   film: ArtHubFilmVm | null;
   press: ArtHubPressRowVm[];
-  ecosystem: ArtHomeEcosystemCardVm[];
+  productDoors: MarketingProductDoorVm[];
 };
 
 type ArtHubServices = {
@@ -142,7 +140,7 @@ export async function composeArtHubPage(
   const podcast = buildHubPodcast(podcastStory);
   const film = buildHubFilm(filmStory);
   const pressRows = buildHubPressRows(newestFirst(okItems(press)).slice(0, ART_HUB_LIMITS.press));
-  const ecosystem = buildArtHomeEcosystemCards(services.ecosystem.crossProductLinks());
+  const productDoors = buildArtProductDoors(services.ecosystem.crossProductLinks(), placements);
 
   // Copy-only panels (hero, Collecting 101) always show; the rest need data.
   const visible: Record<ArtHubSectionId, boolean> = {
@@ -154,7 +152,7 @@ export async function composeArtHubPage(
     films: film !== null,
     collecting: true,
     press: pressRows.length > 0,
-    ecosystem: ecosystem.length > 0,
+    "product-doors": productDoors.length > 0,
   };
 
   return {
@@ -169,7 +167,7 @@ export async function composeArtHubPage(
       podcast,
       film,
       press: pressRows,
-      ecosystem,
+      productDoors,
     },
   };
 }
