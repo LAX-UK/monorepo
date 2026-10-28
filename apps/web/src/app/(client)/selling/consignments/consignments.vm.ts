@@ -55,6 +55,7 @@ const SUBMISSION_STAGES: Record<ItemSubmissionStatus, StageView> = {
   draft: { stage: "drafts", label: "Draft", tone: "draft" },
   submitted: { stage: "in-review", label: "Submitted", tone: "pending" },
   under_review: { stage: "in-review", label: "Under review", tone: "pending" },
+  changes_requested: { stage: "in-review", label: "Needs changes", tone: "warning" },
   approved: { stage: "in-review", label: "Accepted", tone: "success" },
   converted: { stage: "in-review", label: "Preparing catalogue", tone: "info" },
   rejected: { stage: "closed", label: "Not accepted", tone: "critical" },

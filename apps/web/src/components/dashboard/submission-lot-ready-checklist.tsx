@@ -1,5 +1,5 @@
 import { lotPath } from "@/lib/seo/url";
-import { evaluateLotReadiness, evaluateSubmissionQuality } from "@auction/domain";
+import { evaluateLotReadiness } from "@auction/domain";
 import type { ItemSubmission, Lot } from "@auction/types";
 import { CheckCircle2, CircleAlert } from "lucide-react";
 import Link from "next/link";
@@ -20,61 +20,8 @@ type Props = {
 };
 
 export function SubmissionLotReadyChecklist({ submission, lot, connectRequired = false }: Props) {
-  if (submission.status !== "approved" && submission.status !== "converted") {
-    return null;
-  }
-
-  if (submission.status === "approved") {
-    const quality = evaluateSubmissionQuality(submission);
-    const connectCheck = {
-      id: "connect",
-      label: "Stripe Connect for payouts",
-      ok: !connectRequired,
-      severity: "warning" as const,
-    };
-    const checks = [...quality.checks, connectCheck];
-    const percent = Math.round((checks.filter((c) => c.ok).length / checks.length) * 100);
-
-    return (
-      <div className="space-y-3 rounded-lg border border-border-hairline bg-surface-container-low/50 p-4">
-        <div className="flex items-baseline justify-between gap-3">
-          <h3 className="font-headline text-base text-on-surface">Next steps</h3>
-          <span className="font-label text-xs font-semibold uppercase tracking-wider text-secondary">
-            {percent}%
-          </span>
-        </div>
-        <p className="font-body text-sm text-on-surface-variant">
-          Your submission was accepted. Complete the items below while specialists prepare your
-          catalogue entry.
-        </p>
-        <ul className="space-y-2">
-          {checks
-            .filter((c) => !c.ok)
-            .map((check) => (
-              <li key={check.id} className="font-body text-sm text-on-surface">
-                {check.label}
-                {check.id === "connect" ? (
-                  <>
-                    {" — "}
-                    <Link
-                      href="/selling/payout-setup"
-                      className="text-link underline-offset-4 hover:underline"
-                    >
-                      Complete Connect
-                    </Link>
-                  </>
-                ) : check.id === "images-recommended" ? (
-                  <span className="text-on-surface-variant">
-                    {" — "}
-                    Add photos via your specialist while catalogue entry is prepared
-                  </span>
-                ) : null}
-              </li>
-            ))}
-        </ul>
-      </div>
-    );
-  }
+  // Before cataloguing, "Before your work can go to sale" covers what the seller does next.
+  if (submission.status !== "converted") return null;
 
   if (!lot) return null;
 

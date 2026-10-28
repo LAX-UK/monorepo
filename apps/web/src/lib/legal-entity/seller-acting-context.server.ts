@@ -16,6 +16,8 @@ export type SellerWorkspaceContext = {
   actor: EntityActor | null;
   /** Personal entity bootstrap failed on the API. */
   bootstrapFailed: boolean;
+  /** Every account the person belongs to, for choosing who sells a new work. */
+  memberships: readonly LegalEntitySummary[];
 };
 
 /**
@@ -42,6 +44,7 @@ export async function resolveSellerWorkspaceContext(
       ? { role: acting.role, isImpersonation: acting.isImpersonation }
       : null,
     bootstrapFailed,
+    memberships,
   };
 }
 

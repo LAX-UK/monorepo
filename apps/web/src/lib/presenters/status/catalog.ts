@@ -30,6 +30,7 @@ export const submissionStatusLabel: Record<ItemSubmissionStatus, string> = {
   draft: "Draft",
   submitted: "Submitted",
   under_review: "Under review",
+  changes_requested: "Needs changes",
   approved: "Approved",
   rejected: "Rejected",
   withdrawn: "Withdrawn",
@@ -80,6 +81,7 @@ export const submissionStatusBadgeVariant: Partial<
   converted: "success",
   submitted: "info",
   under_review: "warning",
+  changes_requested: "warning",
   rejected: "danger",
 };
 

@@ -27,6 +27,7 @@ type Props = {
 const UPLOAD_STATUSES = new Set<ItemSubmission["status"]>([
   "submitted",
   "under_review",
+  "changes_requested",
   "approved",
   "converted",
 ]);

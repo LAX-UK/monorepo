@@ -64,6 +64,12 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   if (type === "submission_draft_reminder") {
     return { label: "Submission reminder", Icon: Clock, tone: "info" };
   }
+  if (type === "submission_changes_requested") {
+    return { label: "Needs changes", Icon: FileText, tone: "warn" };
+  }
+  if (type === "consignment_agreement_reminder") {
+    return { label: "Agreement waiting", Icon: Clock, tone: "warn" };
+  }
   if (type === "source_of_funds_documents_requested") {
     return { label: "Source of funds", Icon: ShieldAlert, tone: "warn" };
   }

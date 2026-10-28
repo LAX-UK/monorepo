@@ -15,6 +15,7 @@ import {
   formValuesToCreateItemSubmissionInput,
   formValuesToUpdateItemSubmissionInput,
 } from "@/lib/forms/submission/submission-form-data";
+import type { SubmissionAccountScope } from "@/lib/services/interfaces/submission-service";
 import {
   createItemSubmissionSchema,
   itemSubmissionFormSchema,
@@ -95,6 +96,7 @@ function parseFormDataToUpdateInput(formData: FormData) {
  */
 export async function createSubmissionFromValuesAction(
   values: ItemSubmissionFormValues,
+  scope?: SubmissionAccountScope,
 ): Promise<ActionResult<{ redirectTo: string; id: string }>> {
   return instrumentServerAction("createSubmissionFromValuesAction", async () => {
     const formParsed = itemSubmissionFormSchema.safeParse(values);
@@ -117,7 +119,7 @@ export async function createSubmissionFromValuesAction(
       return actionFailure("Invalid create payload");
     }
     const { submissions } = getWriteContainer();
-    const r = await submissions.create(payload);
+    const r = await submissions.create(payload, scope);
     if (!r.ok) {
       return actionFailure(r.message, undefined, r.status);
     }
@@ -165,6 +167,7 @@ export async function createSubmissionAction(formData: FormData): Promise<void> 
 export async function updateSubmissionFromValuesAction(
   submissionId: string,
   values: ItemSubmissionFormValues,
+  scope?: SubmissionAccountScope,
 ): Promise<ActionResult<{ redirectTo: string }>> {
   return instrumentServerAction("updateSubmissionFromValuesAction", async () => {
     const id = submissionId.trim();
@@ -189,7 +192,7 @@ export async function updateSubmissionFromValuesAction(
       return actionFailure("Invalid update payload");
     }
     const { submissions } = getWriteContainer();
-    const r = await submissions.update(id, patch);
+    const r = await submissions.update(id, patch, scope);
     if (!r.ok) {
       return actionFailure(r.message, undefined, r.status);
     }
@@ -238,12 +241,13 @@ export async function updateSubmissionAction(formData: FormData): Promise<void> 
 
 export async function submitForReviewFromValuesAction(
   submissionId: string,
+  scope?: SubmissionAccountScope,
 ): Promise<ActionResult<void>> {
   return instrumentServerAction("submitForReviewFromValuesAction", async () => {
     const id = submissionId.trim();
     if (!id) return actionFailure("Missing submission");
     const { submissions } = getWriteContainer();
-    const r = await submissions.submitForReview(id);
+    const r = await submissions.submitForReview(id, scope);
     const mapped = mapServiceToActionVoid(r);
     if (mapped.ok) {
       revalidatePath("/selling/consignments");

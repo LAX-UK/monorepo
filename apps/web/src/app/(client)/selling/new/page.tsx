@@ -1,8 +1,8 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import { SellWithLaxFlow } from "@/components/dashboard/seller/sell-with-lax-flow";
 import { SubmissionResubmitBanner } from "@/components/dashboard/submission-resubmit-banner";
-import { SubmissionWizard } from "@/components/dashboard/submission-wizard/submission-wizard";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
@@ -14,10 +14,9 @@ import {
   itemSubmissionToFormValues,
 } from "@/lib/forms/submission/item-submission-form-defaults";
 import { findCategoryIdBySlug } from "@/lib/forms/submission/resolve-category-slug";
-import {
-  resolveSellerWorkspaceContext,
-  sellerCan,
-} from "@/lib/legal-entity/seller-acting-context.server";
+import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
+import { REGISTER_ORGANISATION_HREF } from "@/lib/navigation/account-switcher-model";
+import { sellerAccountChoice } from "@/lib/seller/seller-account-options";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
@@ -37,9 +36,15 @@ export default async function NewSubmissionPage({
     shell: "client",
     loginNext,
   });
-  // Finance members and viewers can follow an organisation's consignments but not start one.
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
-  if (!sellerCan(sellerCtx, "entity.submissions.create")) redirect(DASHBOARD_ROUTES.consignments);
+  // Who may sell as which account comes from each account's capabilities; a finance member of a
+  // gallery can still sell under their own name.
+  const choice = sellerAccountChoice({
+    memberships: sellerCtx.memberships,
+    personalName: user.name,
+    actingId: sellerCtx.sellerEntityId,
+  });
+  if (choice.options.length === 0) redirect(DASHBOARD_ROUTES.consignments);
   const c = await getServerDataContainer();
   const categories = await c.categories.tree();
   const fromRejectedId =
@@ -59,27 +64,24 @@ export default async function NewSubmissionPage({
   const preselectedCategoryId = categorySlug
     ? findCategoryIdBySlug(categories, categorySlug)
     : null;
-  const categoryPreselect =
-    !resubmitFrom && preselectedCategoryId
-      ? {
-          ...EMPTY_SUBMISSION_FORM_VALUES,
-          categoryIds: [preselectedCategoryId],
-        }
-      : null;
+  const initialValues =
+    resubmitFrom?.initialValues ??
+    (preselectedCategoryId
+      ? { ...EMPTY_SUBMISSION_FORM_VALUES, categoryIds: [preselectedCategoryId] }
+      : undefined);
 
   return (
     <DashboardPage className={`mx-auto w-full space-y-6 ${SETTINGS_CONTENT_MAX_WIDTH}`}>
       <DashboardPageHeader
-        title="New submission"
+        title="Sell with LAX"
         hideTitleOnMobile
-        hideDescriptionOnMobile
-        description="Tell our specialists about an artwork or collectible. After your first save, progress syncs automatically on the submission page."
+        description="Tell us about the work. A specialist reviews every submission, and there's no obligation to sell."
         actions={
           <Link
             href={DASHBOARD_ROUTES.consignments}
-            className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link underline-offset-4 hover:underline"
+            className="font-body text-sm text-link underline-offset-4 hover:underline"
           >
-            ← Consignments
+            Consignments
           </Link>
         }
       />
@@ -90,15 +92,12 @@ export default async function NewSubmissionPage({
           reviewNotes={resubmitFrom.reviewNotes}
         />
       ) : null}
-      <SetMobileShellTitle title="New submission" />
-      <SubmissionWizard
-        mode={{ kind: "create" }}
+      <SetMobileShellTitle title="Sell with LAX" />
+      <SellWithLaxFlow
         categories={categories}
-        {...(resubmitFrom
-          ? { initialValues: resubmitFrom.initialValues }
-          : categoryPreselect
-            ? { initialValues: categoryPreselect }
-            : {})}
+        choice={choice}
+        registerHref={REGISTER_ORGANISATION_HREF}
+        {...(initialValues ? { initialValues } : {})}
       />
     </DashboardPage>
   );

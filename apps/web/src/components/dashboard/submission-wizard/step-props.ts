@@ -16,4 +16,6 @@ export type ReviewStepProps = StepProps & {
   canSubmitForReview: boolean;
   onFinishLater: () => void;
   onSubmitForReview: () => void;
+  /** Label of the primary button; "Submit for review" unless the flow continues elsewhere. */
+  submitLabel?: string;
 };

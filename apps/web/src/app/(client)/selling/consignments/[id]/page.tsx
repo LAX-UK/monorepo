@@ -1,6 +1,9 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboard-detail-header";
+import { ConsignmentAgreementPanel } from "@/components/dashboard/seller/consignment-agreement-panel";
+import { ConsignmentChecklist } from "@/components/dashboard/seller/consignment-checklist";
+import { SubmissionChangesRequestedPanel } from "@/components/dashboard/seller/submission-changes-requested-panel";
 import { SubmissionDetailLiveRefresh } from "@/components/dashboard/submission-detail-live-refresh";
 import { SubmissionDetailSplit } from "@/components/dashboard/submission-detail-split";
 import { SubmissionLotReadyChecklist } from "@/components/dashboard/submission-lot-ready-checklist";
@@ -17,6 +20,7 @@ import {
   describeSettingsActionError,
 } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { getServerConsignmentAgreement } from "@/lib/data/http/consignment-agreements.server";
 import { getServerStripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
 import { getServerSubmissionDocuments } from "@/lib/data/http/submission-documents.server";
 import { itemSubmissionToFormValues } from "@/lib/forms/submission/item-submission-form-defaults";
@@ -26,12 +30,21 @@ import {
 } from "@/lib/forms/submission/step-validation";
 import { openRecordInItsAccount } from "@/lib/legal-entity/open-record-in-account.server";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
+import { CONDITIONS_OF_BUSINESS_PART_C } from "@/lib/legal/conditions-of-business-part-c";
+import { checklistItemView } from "@/lib/seller/consignment-checklist-copy";
+import { consignmentChecklistFacts } from "@/lib/seller/consignment-checklist-facts";
+import { loadSellerAccountFacts } from "@/lib/seller/seller-account-facts.server";
 import { lotPath } from "@/lib/seo/url";
 import {
   SUBMISSION_TIMELINE_STAGES,
   submissionTimelineActiveIndex,
 } from "@/lib/submissions/submission-timeline";
-import { evaluateSubmissionQuality } from "@auction/domain";
+import {
+  canTransition,
+  computeConsignmentChecklist,
+  evaluateSubmissionQuality,
+  sellerCanEditSubmission,
+} from "@auction/domain";
 import { Surface } from "@auction/ui/components/surface";
 import { TimelineStages } from "@auction/ui/components/timeline-stages";
 import Link from "next/link";
@@ -51,7 +64,8 @@ export default async function SubmissionDetailPage({
     shell: "client",
     loginNext: `/selling/consignments/${id}`,
   });
-  const { sellerEntityId } = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
+  const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRole ?? null);
+  const { sellerEntityId } = sellerCtx;
   const c = await getServerDataContainer();
 
   let s: Awaited<ReturnType<typeof c.submissions.getMineById>> = null;
@@ -59,11 +73,14 @@ export default async function SubmissionDetailPage({
   let categoriesFailure = null as ReturnType<typeof describeDashboardSliceFailure> | null;
   let categories: Awaited<ReturnType<typeof c.categories.tree>> = [];
 
-  const [submissionRes, categoriesRes, documentsRes] = await Promise.allSettled([
-    c.submissions.getMineById(id),
-    c.categories.tree(),
-    getServerSubmissionDocuments(id),
-  ]);
+  const [submissionRes, categoriesRes, documentsRes, agreementRes, accountRes] =
+    await Promise.allSettled([
+      c.submissions.getMineById(id),
+      c.categories.tree(),
+      getServerSubmissionDocuments(id),
+      getServerConsignmentAgreement(id),
+      loadSellerAccountFacts(sellerCtx),
+    ]);
 
   if (submissionRes.status === "fulfilled") {
     s = submissionRes.value;
@@ -141,9 +158,22 @@ export default async function SubmissionDetailPage({
       connectStatus == null || !connectStatus.ok || !connectStatus.data.payoutsEnabled;
   }
 
-  const editable = submission.status === "draft";
+  const editable = sellerCanEditSubmission(submission.status);
   const canSubmit = submission.status === "draft";
-  const canWithdraw = submission.status === "draft" || submission.status === "submitted";
+  const canWithdraw = canTransition(submission.status, "withdraw");
+  const agreementView = agreementRes.status === "fulfilled" ? agreementRes.value : null;
+  const account = accountRes.status === "fulfilled" ? accountRes.value : null;
+  const checklist = account
+    ? computeConsignmentChecklist(
+        consignmentChecklistFacts({
+          submission,
+          agreement: agreementView?.agreement ?? null,
+          account,
+          lot: convertedLot,
+        }),
+      )
+    : null;
+  const accountName = account?.organisationName ?? user.name;
   const submissionFormValues = itemSubmissionToFormValues(submission);
   const submissionQuality = evaluateSubmissionQuality(submission);
   const readyToSubmit = editable && submissionQuality.canSubmit;
@@ -167,6 +197,29 @@ export default async function SubmissionDetailPage({
       ) : null}
       {categoriesFailure ? <DashboardSliceErrorAlert failure={categoriesFailure} /> : null}
       <SubmissionDetailLiveRefresh status={submission.status} />
+      <SubmissionChangesRequestedPanel submission={submission} />
+      {checklist?.applies && account ? (
+        <ConsignmentChecklist
+          items={checklist.items.map((item) =>
+            checklistItemView(item, {
+              accountKind: account.accountKind,
+              organisationName: account.organisationName,
+              agreementHref: "#agreement",
+            }),
+          )}
+          doneCount={checklist.doneCount}
+          totalCount={checklist.totalCount}
+        />
+      ) : null}
+      {agreementView?.agreement && account ? (
+        <ConsignmentAgreementPanel
+          agreement={agreementView.agreement}
+          canAccept={agreementView.canAccept}
+          accountName={accountName}
+          accountKind={account.accountKind}
+          conditions={CONDITIONS_OF_BUSINESS_PART_C}
+        />
+      ) : null}
       {!editable ? (
         <>
           <TimelineStages
@@ -199,6 +252,9 @@ export default async function SubmissionDetailPage({
             initialValues={submissionFormValues}
             initialStepIndex={wizardInitialStepIndex}
             readyToSubmit={readyToSubmit}
+            {...(submission.status === "changes_requested"
+              ? { submitLabel: "Send back for review" }
+              : {})}
           />
         </>
       ) : (

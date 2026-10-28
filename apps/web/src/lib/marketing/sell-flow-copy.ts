@@ -5,6 +5,7 @@ export const SELLER_SUBMISSION_STATUS_LABELS: Record<ItemSubmissionStatus, strin
   draft: "Draft",
   submitted: "Submitted",
   under_review: "Under review",
+  changes_requested: "Needs changes",
   approved: "Accepted",
   converted: "Catalogue prep",
   rejected: "Not accepted",
@@ -69,7 +70,9 @@ export const SUBMISSION_STATUS_HINTS: Partial<Record<ItemSubmissionStatus, strin
   draft: "Complete your submission and submit for specialist review.",
   submitted: "Our specialists will start review within 24 hours.",
   under_review: "Our specialists are reviewing your submission.",
-  approved: "Accepted — we are preparing your catalogue entry. Complete Connect when prompted.",
+  changes_requested:
+    "A specialist asked for a few changes. Edit this submission and send it back for review.",
+  approved: "Accepted. Read and accept the consignment agreement so we can catalogue your work.",
   converted: "Catalogue entry in progress — finish checklist items below.",
   rejected:
     "Not accepted — read the reason below and start a new submission if you wish to resubmit.",
