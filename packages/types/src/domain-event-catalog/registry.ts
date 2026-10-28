@@ -8,6 +8,8 @@ import {
 import {
   laxStaffAccessGrantedPayloadSchemaV1,
   laxStaffAccessRevokedPayloadSchemaV1,
+  staffRoleAssignedPayloadSchemaV1,
+  staffRoleRemovedPayloadSchemaV1,
 } from "./lax-staff-access-payload-schemas.js";
 import { LotEventSchemas } from "./lot-payload-schemas.js";
 import {
@@ -99,6 +101,8 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "bid.proxy_cancelled",
   "lax.staff_access.granted",
   "lax.staff_access.revoked",
+  "staff.role_assigned",
+  "staff.role_removed",
   "category.archived",
   "category.created",
   "category.deleted",
@@ -489,6 +493,20 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     consumers: ["shop_staff_access"],
     idempotencyPolicy: "none",
     piiClassification: "none",
+  },
+  "staff.role_assigned": {
+    schema: staffRoleAssignedPayloadSchemaV1,
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "operational",
+  },
+  "staff.role_removed": {
+    schema: staffRoleRemovedPayloadSchemaV1,
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "operational",
   },
   "shop.order.paid": {
     schema: shopOrderPaidPayloadSchemaV1,

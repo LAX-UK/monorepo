@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { bidIdentityDirectory, bidUserProfile } from "@auction/db/schema";
+import { bidIdentityDirectory, bidUserProfile, staffRoleAssignment } from "@auction/db/schema";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type { IUserRepository } from "../interfaces/user.repository.js";
@@ -7,6 +7,7 @@ import {
   activeIdentitySubject,
   normalizedIdentityEmailEquals,
 } from "../lib/bid-identity-directory-query.js";
+import { staffRoleAssignmentInForceAt } from "./drizzle-staff-roster.js";
 
 export class DrizzleUserRepository implements IUserRepository {
   constructor(private readonly db: Database) {}
@@ -105,10 +106,15 @@ export class DrizzleUserRepository implements IUserRepository {
       "operations",
     ] as const;
     const rows = await this.db
-      .select({ id: bidUserProfile.userId })
+      .selectDistinct({ id: bidUserProfile.userId })
       .from(bidUserProfile)
+      .innerJoin(staffRoleAssignment, eq(staffRoleAssignment.userId, bidUserProfile.userId))
       .where(
-        and(eq(bidUserProfile.role, "staff"), inArray(bidUserProfile.staffRole, [...staffRoles])),
+        and(
+          eq(bidUserProfile.role, "staff"),
+          inArray(staffRoleAssignment.role, [...staffRoles]),
+          staffRoleAssignmentInForceAt(new Date()),
+        ),
       );
     return rows.map((r) => r.id);
   }

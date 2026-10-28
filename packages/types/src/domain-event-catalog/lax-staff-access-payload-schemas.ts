@@ -25,3 +25,25 @@ export const laxStaffAccessRevokedPayloadSchemaV1 = z.object({
   revokedBySubjectId: z.string().min(1),
 });
 export type LaxStaffAccessRevokedPayloadV1 = z.infer<typeof laxStaffAccessRevokedPayloadSchemaV1>;
+
+/** A Bid staff role given to a person (the aggregate). The actor is the event's. */
+export const staffRoleAssignedPayloadSchemaV1 = z
+  .object({
+    assignmentId: z.string().uuid(),
+    role: z.string().min(1),
+    startsAt: z.string().datetime({ offset: true }),
+    endsAt: z.string().datetime({ offset: true }).nullable(),
+    reason: z.string().max(500).nullable(),
+  })
+  .strict();
+export type StaffRoleAssignedPayloadV1 = z.infer<typeof staffRoleAssignedPayloadSchemaV1>;
+
+/** A Bid staff role taken away from a person (the aggregate); the assignment ends then. */
+export const staffRoleRemovedPayloadSchemaV1 = z
+  .object({
+    assignmentId: z.string().uuid(),
+    role: z.string().min(1),
+    reason: z.string().max(500).nullable(),
+  })
+  .strict();
+export type StaffRoleRemovedPayloadV1 = z.infer<typeof staffRoleRemovedPayloadSchemaV1>;

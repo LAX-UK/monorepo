@@ -95,7 +95,7 @@ describe.skipIf(!HAS_DB)("invitation product grants (integration)", () => {
 
   afterAll(cleanup);
 
-  it("applies the Bid grant and records a granted event per platform for an existing account", async () => {
+  it("accepts the invitation, returns its Bid access and records a granted event per other platform", async () => {
     const { id, tokenHash } = await invite(
       [
         { product: "bid", role: "specialist" },
@@ -108,14 +108,25 @@ describe.skipIf(!HAS_DB)("invitation product grants (integration)", () => {
       { product: "shop", role: "broker" },
     ]);
 
-    const result = await repo.acceptForExistingUser(tokenHash, memberId, memberEmail.toUpperCase());
+    const result = await repo.accept(tokenHash, memberId, memberEmail.toUpperCase());
 
-    expect(result).toMatchObject({ outcome: "ok", targetRole: "staff" });
-    const [profile] = await db
-      .select({ role: bidUserProfile.role, staffRole: bidUserProfile.staffRole })
+    expect(result).toEqual({
+      outcome: "ok",
+      invitationId: id,
+      invitedByUserId: inviterId,
+      targetRole: "staff",
+      targetStaffRole: "specialist",
+      grants: [
+        { product: "bid", role: "specialist" },
+        { product: "shop", role: "broker" },
+      ],
+    });
+    // Bid access is the staff roster's to apply; the repository leaves the profile alone.
+    const profiles = await db
+      .select({ role: bidUserProfile.role })
       .from(bidUserProfile)
       .where(eq(bidUserProfile.userId, memberId));
-    expect(profile).toEqual({ role: "staff", staffRole: "specialist" });
+    expect(profiles).toEqual([]);
     const events = await grantedEvents(id);
     const grant = (product: "bid" | "shop", role: string) => ({
       producer: "apps/api",
@@ -128,10 +139,7 @@ describe.skipIf(!HAS_DB)("invitation product grants (integration)", () => {
         invitationId: id,
       },
     });
-    expect(events).toHaveLength(2);
-    expect(events).toEqual(
-      expect.arrayContaining([grant("bid", "specialist"), grant("shop", "broker")]),
-    );
+    expect(events).toEqual([grant("shop", "broker")]);
     const [row] = await db
       .select({ status: userInvitation.status, acceptedUserId: userInvitation.acceptedUserId })
       .from(userInvitation)
@@ -139,24 +147,19 @@ describe.skipIf(!HAS_DB)("invitation product grants (integration)", () => {
     expect(row).toEqual({ status: "accepted", acceptedUserId: memberId });
   });
 
-  it("keeps a new user's Bid profile as client for a Shop-only invitation", async () => {
+  it("returns a client invitation for a Shop-only grant", async () => {
     const { id, tokenHash } = await invite([{ product: "shop", role: "finance" }], "client");
 
-    const result = await repo.consumeForNewUser(tokenHash, memberId, memberEmail);
+    const result = await repo.accept(tokenHash, memberId, memberEmail);
 
-    expect(result).toMatchObject({ outcome: "ok", targetRole: "client" });
-    const [profile] = await db
-      .select({ role: bidUserProfile.role, staffRole: bidUserProfile.staffRole })
-      .from(bidUserProfile)
-      .where(eq(bidUserProfile.userId, memberId));
-    expect(profile).toEqual({ role: "client", staffRole: null });
+    expect(result).toMatchObject({ outcome: "ok", targetRole: "client", targetStaffRole: null });
     expect(await grantedEvents(id)).toHaveLength(1);
   });
 
   it("leaves everything untouched when the email does not match", async () => {
     const { id, tokenHash } = await invite([{ product: "shop", role: "broker" }], "client");
 
-    const result = await repo.acceptForExistingUser(tokenHash, memberId, "someone@else.test");
+    const result = await repo.accept(tokenHash, memberId, "someone@else.test");
 
     expect(result).toEqual({ outcome: "email_mismatch" });
     expect(await grantedEvents(id)).toHaveLength(0);

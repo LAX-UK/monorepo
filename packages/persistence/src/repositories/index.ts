@@ -115,7 +115,10 @@ export { DrizzlePaymentExternalRefRepository } from "./drizzle-payment-external-
 export { DrizzleXeroConnectionRepository } from "./drizzle-xero-connection.repository.js";
 export { DrizzleXeroWebhookEventRepository } from "./drizzle-xero-webhook-event.repository.js";
 export { DrizzleAdminUserReader } from "./drizzle-admin-user.reader.js";
-export { DrizzleAdminUserRoleManager } from "./drizzle-admin-user.reader.js";
+export {
+  DrizzleStaffRoleAssignmentReader,
+  DrizzleStaffRoster,
+} from "./drizzle-staff-roster.js";
 export {
   adminUserListSelect,
   buildAdminUserListOrderBy,

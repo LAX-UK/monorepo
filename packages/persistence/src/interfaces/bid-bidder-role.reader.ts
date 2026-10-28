@@ -1,6 +1,9 @@
+import type { StaffRoles } from "@auction/types";
+
 export type BidderRoleRow = {
   role: string;
-  staffRole: string | null;
+  /** Staff roles in force now; empty for clients. */
+  staffRoles: StaffRoles;
 };
 
 /** Reads the platform role of the account a bid is placed for. */

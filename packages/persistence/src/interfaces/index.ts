@@ -117,6 +117,15 @@ export type { BidLotRulesRow, IBidLotRulesReader } from "./bid-lot-rules.reader.
 export type { IBidMembershipReader } from "./bid-membership.reader.js";
 
 export type { BidderRoleRow, IBidBidderRoleReader } from "./bid-bidder-role.reader.js";
+export type {
+  IStaffRoleAssignmentReader,
+  IStaffRoster,
+  IStaffRosterTransaction,
+  NewStaffRoleAssignment,
+  StaffProfileRoles,
+  StaffRoleAssignmentRecord,
+  StaffRosterEvent,
+} from "./staff-role-assignment.repository.js";
 
 export type {
   BidActorEligibilityRow,
@@ -234,7 +243,6 @@ export type {
 } from "./saleroom-check-in.repository.js";
 
 export { PaddleTakenError } from "./saleroom-check-in.repository.js";
-export { LastSuperAdminError } from "./admin-user.repository.js";
 
 export type {
   IOnsiteEventClientReader,
@@ -630,7 +638,6 @@ export type {
   IAdminUserDetailReader,
   IAdminUserKycReader,
   IAdminUserReader,
-  IAdminUserRoleManager,
   IAdminUserSuspender,
 } from "./admin-user.repository.js";
 
