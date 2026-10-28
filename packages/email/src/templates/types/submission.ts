@@ -7,6 +7,7 @@ const names = [
   "submission-draft-reminder",
   "submission-changes-requested",
   "consignment-agreement-reminder",
+  "consignment-update",
 ] as const;
 
 type SubmissionTemplateName = (typeof names)[number];
@@ -52,6 +53,14 @@ type SubmissionTemplateVars = {
     submissionUrl: string;
     unsubscribeUrl: string;
   };
+  "consignment-update": {
+    userName?: string | null;
+    /** What changed, as a heading, and what it means for the seller. */
+    heading: string;
+    message: string;
+    submissionUrl: string;
+    unsubscribeUrl: string;
+  };
 };
 
 export const submissionTemplates = {
@@ -64,6 +73,7 @@ export const submissionTemplates = {
     "submission-draft-reminder": "live",
     "submission-changes-requested": "live",
     "consignment-agreement-reminder": "live",
+    "consignment-update": "live",
   },
 } satisfies TemplateDomainSlice<SubmissionTemplateName, SubmissionTemplateVars>;
 
