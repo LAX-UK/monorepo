@@ -221,7 +221,12 @@ export function usePersonActions(access: PersonActionAccess) {
     (person: PersonActionTarget): OverflowAction[] => {
       const actions: OverflowAction[] = [];
       if (access.canManageRoles) {
-        actions.push({ id: "role", label: "Change role", onSelect: () => setRoleTarget(person) });
+        // Staff hold several roles, each given and removed on their record; a client is made staff.
+        actions.push(
+          person.role === "staff"
+            ? { id: "role", label: "Manage roles", href: `/admin/staff/${person.id}#roles` }
+            : { id: "role", label: "Change role", onSelect: () => setRoleTarget(person) },
+        );
       }
       if (access.canModerate) {
         actions.push({

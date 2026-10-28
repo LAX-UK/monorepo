@@ -3,27 +3,16 @@
 import { RelatedRecordsSection } from "@/components/admin/people/related-records-section";
 import { ShopStaffAccessControl } from "@/components/admin/people/shop-staff-access-control";
 import {
-  type PersonActionTarget,
-  usePersonActions,
-} from "@/components/admin/people/use-person-actions";
-import {
   pendingChangeLabel,
   staffRoleOnPlatformLabel,
 } from "@/lib/admin/people/staff-access-presenter";
 import type { StaffAccessDetail } from "@/lib/data/http/staff-access.server";
-import {
-  type DataColumn,
-  KeyValueList,
-  Notice,
-  Section,
-  StaffButton,
-  StaffDate,
-} from "@auction/staff-ui";
+import { type DataColumn, KeyValueList, Notice, Section, StaffDate } from "@auction/staff-ui";
 import { laxStaffPlatform } from "@auction/types";
 import { useMemo } from "react";
 
 type Props = {
-  person: PersonActionTarget;
+  person: { id: string; name: string };
   detail: StaffAccessDetail | null;
   /** May change this person's access on each platform. */
   canManage: boolean;
@@ -74,9 +63,11 @@ const historyColumns: DataColumn<HistoryRow>[] = [
   },
 ];
 
-/** What this person can do on each LAX platform, who changed it, and the way to change it. */
+/**
+ * This person's access on the other LAX platforms, the way to change it, and the access history
+ * on every platform. Bid roles have their own section on the staff record.
+ */
 export function StaffLaxAccessPanel({ person, detail, canManage }: Props) {
-  const actions = usePersonActions({ canModerate: false, canManageRoles: canManage });
   const history = useMemo<HistoryRow[]>(
     () =>
       (detail?.history ?? []).map((entry, index) => ({
@@ -96,61 +87,54 @@ export function StaffLaxAccessPanel({ person, detail, canManage }: Props) {
 
   return (
     <>
-      {detail.platforms.map((view) => {
-        const platform = laxStaffPlatform(view.product);
-        const shopRole = view.pending?.action === "granted" ? view.pending.role : view.role;
-        return (
-          <Section
-            key={view.product}
-            id={`access-${view.product}`}
-            title={platform.label}
-            description={platform.description}
-            className="scroll-mt-20"
-            {...(canManage
-              ? {
-                  action:
-                    view.product === "bid" ? (
-                      <StaffButton
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => actions.changeRole(person)}
-                      >
-                        Change role
-                      </StaffButton>
-                    ) : (
+      {detail.platforms
+        .filter((view) => view.product !== "bid")
+        .map((view) => {
+          const platform = laxStaffPlatform(view.product);
+          const shopRole = view.pending?.action === "granted" ? view.pending.role : view.role;
+          return (
+            <Section
+              key={view.product}
+              id={`access-${view.product}`}
+              title={platform.label}
+              description={platform.description}
+              className="scroll-mt-20"
+              {...(canManage
+                ? {
+                    action: (
                       <ShopStaffAccessControl
                         userId={person.id}
                         userName={person.name}
                         currentRole={shopRole}
                       />
                     ),
-                }
-              : {})}
-          >
-            <KeyValueList
-              items={[
-                {
-                  label: "Role",
-                  value: view.role
-                    ? staffRoleOnPlatformLabel(view.product, view.role)
-                    : "No access",
-                },
-                ...(view.pending
-                  ? [{ label: "Waiting", value: pendingChangeLabel(view.product, view.pending) }]
-                  : []),
-                ...(view.updatedAt
-                  ? [
-                      {
-                        label: "Last changed",
-                        value: <StaffDate value={view.updatedAt} withTime />,
-                      },
-                    ]
-                  : []),
-              ]}
-            />
-          </Section>
-        );
-      })}
+                  }
+                : {})}
+            >
+              <KeyValueList
+                items={[
+                  {
+                    label: "Role",
+                    value: view.role
+                      ? staffRoleOnPlatformLabel(view.product, view.role)
+                      : "No access",
+                  },
+                  ...(view.pending
+                    ? [{ label: "Waiting", value: pendingChangeLabel(view.product, view.pending) }]
+                    : []),
+                  ...(view.updatedAt
+                    ? [
+                        {
+                          label: "Last changed",
+                          value: <StaffDate value={view.updatedAt} withTime />,
+                        },
+                      ]
+                    : []),
+                ]}
+              />
+            </Section>
+          );
+        })}
       <RelatedRecordsSection
         id="access-history"
         title="Access history"
@@ -165,7 +149,6 @@ export function StaffLaxAccessPanel({ person, detail, canManage }: Props) {
           description: "Grants and removals appear here with who made them.",
         }}
       />
-      {actions.dialogs}
     </>
   );
 }

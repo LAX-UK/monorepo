@@ -10,7 +10,7 @@ import { UserDetailContextRail } from "@/components/admin/user-detail-context-ra
 import { adminUpdateClientDisplayNameFieldAction } from "@/lib/actions/admin/field-updates";
 import type { UserAttentionItem } from "@/lib/admin/admin-user-readiness.vm";
 import { staffIdentityStatus, staffStatus } from "@/lib/admin/staff-kit-status";
-import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
+import { staffRolesLabel } from "@/lib/admin/staff-role-presenter";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
 import { notify } from "@/lib/ui/notify";
 import {
@@ -28,7 +28,12 @@ import {
   StatusBadge,
   TabNav,
 } from "@auction/staff-ui";
-import type { LegalEntity, UserRole, UserStaffRole } from "@auction/types";
+import {
+  type LegalEntity,
+  type UserRole,
+  type UserStaffRole,
+  normalizeStaffRoles,
+} from "@auction/types";
 import { Copy, Mail } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
@@ -159,7 +164,9 @@ export function PeopleDetailShell({
           <>
             <StatusBadge tone={standing.tone}>{standing.label}</StatusBadge>
             {isStaff ? (
-              <StatusBadge tone="neutral">{staffRoleLabel(staffRole)}</StatusBadge>
+              <StatusBadge tone="neutral">
+                {staffRolesLabel(normalizeStaffRoles(user.staffRoles))}
+              </StatusBadge>
             ) : (
               <StatusBadge tone={identity.tone}>{identity.label}</StatusBadge>
             )}
@@ -174,7 +181,8 @@ export function PeopleDetailShell({
           </>
         }
         secondaryActions={
-          access.canManageRoles ? (
+          // A staff member's roles are managed in their roles section; this turns a client into staff.
+          access.canManageRoles && !isStaff ? (
             <StaffButton variant="secondary" onClick={() => actions.changeRole(target)}>
               Change role
             </StaffButton>
@@ -182,7 +190,6 @@ export function PeopleDetailShell({
         }
         overflow={<OverflowMenu label="More account actions" Link={NextLink} actions={overflow} />}
         access={canAct ? "full" : "read-only"}
-        roleLabel="Accounts"
         notice={
           issues.length > 0 ? <IssueList items={issues} Link={NextLink} allClear={null} /> : null
         }
