@@ -16,7 +16,7 @@ export const COMPLAINTS_POLICY: LegalPolicyDocument<"complaints"> = {
       blocks: [
         {
           type: "paragraph",
-          text: "Contact Customer Services at info@thelax.art, by telephone on +44 20 8044 1334, or by post to the registered office. Include your name, contact details, order number if relevant, what happened and the outcome you seek. We will make reasonable adjustments and accept an authorised representative.",
+          text: "Contact Customer Services at info@thelax.art, by telephone on +44 800 208 4800, or by post to the registered office. Include your name, contact details, order number if relevant, what happened and the outcome you seek. We will make reasonable adjustments and accept an authorised representative.",
         },
       ],
     },

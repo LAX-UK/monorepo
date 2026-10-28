@@ -52,7 +52,7 @@ export const ACCESSIBILITY_POLICY: LegalPolicyDocument<"accessibility"> = {
       blocks: [
         {
           type: "paragraph",
-          text: "Contact info@thelax.art or +44 20 8044 1334 and describe the page, format or gallery adjustment needed. We will not charge a disabled customer for a reasonable adjustment. Alternative formats may include structured HTML, large print, a read-aloud appointment or another practical format.",
+          text: "Contact info@thelax.art or +44 800 208 4800 and describe the page, format or gallery adjustment needed. We will not charge a disabled customer for a reasonable adjustment. Alternative formats may include structured HTML, large print, a read-aloud appointment or another practical format.",
         },
       ],
     },

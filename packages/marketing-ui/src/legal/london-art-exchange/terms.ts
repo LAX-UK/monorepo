@@ -30,7 +30,7 @@ export const TERMS_POLICY: LegalPolicyDocument<"terms"> = {
           type: "list",
           items: [
             "by email at info@thelax.art;",
-            "by telephone at +44 20 8044 1334; or",
+            "by telephone at +44 800 208 4800; or",
             "by post at the registered office above, marked for the attention of Customer Services.",
           ],
         },

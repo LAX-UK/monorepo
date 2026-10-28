@@ -24,7 +24,7 @@ export const PRIVACY_POLICY: LegalPolicyDocument<"privacy"> = {
         },
         {
           type: "paragraph",
-          text: "Privacy contact: info@thelax.art; telephone +44 20 8044 1334; postal address: the registered office above, marked Privacy.",
+          text: "Privacy contact: info@thelax.art; telephone +44 800 208 4800; postal address: the registered office above, marked Privacy.",
         },
       ],
     },
