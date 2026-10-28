@@ -4,7 +4,6 @@ import type { BasicsStepProps } from "@/components/dashboard/submission-wizard/s
 import { CategoryPicker } from "@/components/forms/category-picker";
 import { SellPrerequisitesInline } from "@/components/marketing/sell-journey/sell-prerequisites-inline";
 import { UnderlineInput } from "@/components/ui/input";
-import { LabelCaps } from "@/components/ui/typography";
 import {
   FormControl,
   FormField,
@@ -12,9 +11,6 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
-
-const labelClass =
-  "font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
 
 export function BasicsStep({ form, categories }: BasicsStepProps) {
   return (
@@ -25,9 +21,7 @@ export function BasicsStep({ form, categories }: BasicsStepProps) {
         name="title"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className={labelClass}>
-              <LabelCaps>Title</LabelCaps>
-            </FormLabel>
+            <FormLabel>Title</FormLabel>
             <FormControl>
               <UnderlineInput placeholder="Work title" {...field} />
             </FormControl>
@@ -40,9 +34,7 @@ export function BasicsStep({ form, categories }: BasicsStepProps) {
         name="categoryIds"
         render={({ field }) => (
           <FormItem>
-            <FormLabel className={labelClass}>
-              <LabelCaps>Categories</LabelCaps>
-            </FormLabel>
+            <FormLabel>Categories</FormLabel>
             <FormControl>
               <CategoryPicker
                 categories={categories}
@@ -60,9 +52,7 @@ export function BasicsStep({ form, categories }: BasicsStepProps) {
           name="yearOfWork"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className={labelClass}>
-                <LabelCaps>Year of work</LabelCaps>
-              </FormLabel>
+              <FormLabel>Year of work</FormLabel>
               <FormControl>
                 <UnderlineInput
                   placeholder="2024 or circa 1990"
@@ -80,9 +70,7 @@ export function BasicsStep({ form, categories }: BasicsStepProps) {
           name="edition"
           render={({ field }) => (
             <FormItem>
-              <FormLabel className={labelClass}>
-                <LabelCaps>Edition (optional)</LabelCaps>
-              </FormLabel>
+              <FormLabel>Edition (optional)</FormLabel>
               <FormControl>
                 <UnderlineInput placeholder="3/8, AP, unique…" {...field} />
               </FormControl>

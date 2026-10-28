@@ -2,7 +2,6 @@
 
 import type { StepProps } from "@/components/dashboard/submission-wizard/step-props";
 import { ImageGalleryManager } from "@/components/forms/image-gallery-manager";
-import { LabelCaps } from "@/components/ui/typography";
 import {
   FormControl,
   FormField,
@@ -11,9 +10,6 @@ import {
   FormMessage,
 } from "@auction/ui/components/form";
 import Link from "next/link";
-
-const labelClass =
-  "font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
 
 export function PhotosStep({ form }: StepProps) {
   const imageCount = form.watch("images").length;
@@ -26,10 +22,8 @@ export function PhotosStep({ form }: StepProps) {
         render={({ field }) => (
           <FormItem>
             <div className="flex flex-wrap items-center justify-between gap-2">
-              <FormLabel className={labelClass}>
-                <LabelCaps>Images</LabelCaps>
-              </FormLabel>
-              <span className="rounded-full border border-border-hairline bg-surface-container-low px-2.5 py-0.5 font-label text-[10px] font-semibold uppercase tracking-wider text-on-surface-variant">
+              <FormLabel>Images</FormLabel>
+              <span className="rounded-full border border-border-hairline bg-surface-container-low px-2.5 py-0.5 font-label text-xs font-semibold text-on-surface-variant">
                 {imageCount} / 20
                 {imageCount < 3 ? " · 3+ recommended" : ""}
               </span>

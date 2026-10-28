@@ -3,7 +3,7 @@
 import { HydrationDeferred } from "@/components/layout/hydration-deferred";
 import { useSplitOverlayOpen } from "@/hooks/use-split-overlay-open";
 import type { CategoryNode } from "@auction/types";
-import { cn } from "@auction/ui";
+import { cn, fieldVariantUnderline } from "@auction/ui";
 import {
   BottomSheet,
   BottomSheetContent,
@@ -29,8 +29,11 @@ type FlatCategory = CategoryNode & {
   path: string;
 };
 
-const fieldAppearanceTriggerClassName =
-  "flex h-10 w-full items-center justify-start rounded-md border border-outline-variant/25 bg-surface-container-lowest px-3 text-left font-body text-sm normal-case tracking-normal shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background";
+/** The underline field look (UnderlineInput) on a button: same rule, type and focus. */
+const TRIGGER_CLASS = cn(
+  fieldVariantUnderline,
+  "h-auto min-h-12 w-full justify-start py-3 text-left font-headline text-2xl font-normal normal-case tracking-normal hover:bg-transparent md:text-sm",
+);
 
 type Props = {
   categories: CategoryNode[];
@@ -42,8 +45,6 @@ type Props = {
   triggerClassName?: string;
   /** When true, omits extra vertical spacing and selected chips below the trigger. */
   compact?: boolean;
-  /** `field` matches boxed drawer controls; `button` keeps legacy caps outline trigger. */
-  appearance?: "button" | "field";
 };
 
 function flattenCategories(categories: CategoryNode[], parentPath = "", depth = 0): FlatCategory[] {
@@ -92,12 +93,10 @@ function CategoryPickerTrigger({
   selectedNames,
   selected,
   className,
-  appearance = "button",
 }: {
   selectedNames: string;
   selected: FlatCategory[];
   className?: string;
-  appearance?: "button" | "field";
 }) {
   const label = (
     <span className={selected.length ? "text-on-surface" : "text-on-surface-variant"}>
@@ -105,24 +104,8 @@ function CategoryPickerTrigger({
     </span>
   );
 
-  if (appearance === "field") {
-    return (
-      <Button
-        type="button"
-        variant="ghost"
-        className={cn(fieldAppearanceTriggerClassName, className)}
-      >
-        {label}
-      </Button>
-    );
-  }
-
   return (
-    <Button
-      type="button"
-      variant="secondaryOutline"
-      className={cn("min-h-12 w-full justify-start text-left", className)}
-    >
+    <Button type="button" variant="ghost" className={cn(TRIGGER_CLASS, className)}>
       {label}
     </Button>
   );
@@ -137,7 +120,6 @@ function CategoryPickerOverlays({
   selectedNames,
   selected,
   triggerClassName,
-  appearance = "button",
 }: {
   flat: FlatCategory[];
   value: string[];
@@ -147,14 +129,12 @@ function CategoryPickerOverlays({
   selectedNames: string;
   selected: FlatCategory[];
   triggerClassName?: string;
-  appearance?: "button" | "field";
 }) {
   const list = <CategoryCommandList flat={flat} value={value} onToggle={toggle} />;
   const { mobile, desktop } = useSplitOverlayOpen(open, onOpenChange);
   const triggerProps = {
     selectedNames,
     selected,
-    appearance,
     ...(triggerClassName ? { className: triggerClassName } : {}),
   };
 
@@ -198,7 +178,6 @@ export function CategoryPicker({
   multiple = true,
   triggerClassName,
   compact = false,
-  appearance = "button",
 }: Props) {
   const [open, setOpen] = useState(false);
   const flat = useMemo(() => flattenCategories(categories), [categories]);
@@ -228,13 +207,11 @@ export function CategoryPicker({
       <CategoryPickerTrigger
         selectedNames={selectedNames}
         selected={selected}
-        appearance={appearance}
         className={cn("hidden md:inline-flex", triggerClassName)}
       />
       <CategoryPickerTrigger
         selectedNames={selectedNames}
         selected={selected}
-        appearance={appearance}
         className={cn("md:hidden", triggerClassName)}
       />
     </>
@@ -248,7 +225,6 @@ export function CategoryPicker({
     onOpenChange: setOpen,
     selectedNames,
     selected,
-    appearance,
     ...(triggerClassName ? { triggerClassName } : {}),
   };
 

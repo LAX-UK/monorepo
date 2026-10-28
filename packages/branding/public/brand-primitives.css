@@ -12,6 +12,12 @@
   --brand-light-cream: #f2f1df;
   --brand-accent-gold: #d4af37;
   --brand-ink: #191919;
+  /* Status text and glyphs on the warning and danger tints (status pills), 4.5:1 or more on the
+     tint. Every product maps --color-*-on-surface to these, light and dark. */
+  --status-warning-ink: oklch(0.4 0.13 52);
+  --status-warning-ink-on-dark: oklch(0.82 0.12 85);
+  --status-danger-ink: oklch(0.5 0.2 25);
+  --status-danger-ink-on-dark: oklch(0.8 0.12 25);
   --font-primary: Montserrat, Helvetica, Arial, sans-serif;
   --font-secondary: Outfit, Montserrat, Helvetica, Arial, sans-serif;
 }

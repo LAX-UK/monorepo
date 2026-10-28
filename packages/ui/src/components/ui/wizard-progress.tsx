@@ -52,7 +52,7 @@ function StepHeader({
   stepCount: number;
 }) {
   return (
-    <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+    <p className="font-label text-xs font-medium text-on-surface-variant">
       Step {currentIndex + 1} of {stepCount}
       {current?.label ? ` · ${current.label}` : ""}
       {current?.estimatedMinutes != null ? ` · ~${current.estimatedMinutes} min` : ""}
@@ -89,7 +89,7 @@ function WizardStepChips({
           <>
             <span
               className={cn(
-                "flex size-6 shrink-0 items-center justify-center rounded-full font-label text-[10px] font-bold",
+                "flex size-6 shrink-0 items-center justify-center rounded-full font-label text-xs font-bold",
                 active && "bg-primary text-on-primary",
                 done && !active && "bg-success/15 text-success",
                 !active && !done && "bg-surface-container-high text-on-surface-variant",
@@ -98,9 +98,7 @@ function WizardStepChips({
             >
               {done ? "✓" : index + 1}
             </span>
-            <span className="font-label text-[11px] font-semibold uppercase tracking-wide">
-              {step.label}
-            </span>
+            <span className="font-label text-xs font-semibold">{step.label}</span>
           </>
         );
 

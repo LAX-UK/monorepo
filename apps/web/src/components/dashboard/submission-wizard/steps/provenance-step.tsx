@@ -2,7 +2,6 @@
 
 import type { StepProps } from "@/components/dashboard/submission-wizard/step-props";
 import { UnderlineInput } from "@/components/ui/input";
-import { LabelCaps } from "@/components/ui/typography";
 import { Button } from "@auction/ui/components/button";
 import {
   FormControl,
@@ -14,9 +13,6 @@ import {
 import { Textarea } from "@auction/ui/components/textarea";
 import { Plus, Trash2 } from "lucide-react";
 import { useFieldArray } from "react-hook-form";
-
-const labelClass =
-  "font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
 
 export function ProvenanceStep({ form }: StepProps) {
   const provenanceFields = useFieldArray({ control: form.control, name: "provenance" });
@@ -43,7 +39,7 @@ export function ProvenanceStep({ form }: StepProps) {
                 className="space-y-3 rounded-lg border border-border-hairline bg-surface-container-low/40 p-4"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
+                  <span className="font-label text-xs font-semibold text-on-surface-variant">
                     Entry {index + 1}
                   </span>
                   <Button
@@ -62,9 +58,7 @@ export function ProvenanceStep({ form }: StepProps) {
                   name={`provenance.${index}.period`}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className={labelClass}>
-                        <LabelCaps>Period (optional)</LabelCaps>
-                      </FormLabel>
+                      <FormLabel>Period (optional)</FormLabel>
                       <FormControl>
                         <UnderlineInput placeholder="e.g. 2022" {...field} />
                       </FormControl>
@@ -77,9 +71,7 @@ export function ProvenanceStep({ form }: StepProps) {
                   name={`provenance.${index}.note`}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className={labelClass}>
-                        <LabelCaps>Note</LabelCaps>
-                      </FormLabel>
+                      <FormLabel>Note</FormLabel>
                       <FormControl>
                         <Textarea rows={2} className="font-body text-sm" {...field} />
                       </FormControl>
@@ -119,7 +111,7 @@ export function ProvenanceStep({ form }: StepProps) {
                 className="space-y-3 rounded-lg border border-border-hairline bg-surface-container-low/40 p-4"
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
+                  <span className="font-label text-xs font-semibold text-on-surface-variant">
                     Exhibition {index + 1}
                   </span>
                   <Button
@@ -139,9 +131,7 @@ export function ProvenanceStep({ form }: StepProps) {
                     name={`exhibitions.${index}.year`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className={labelClass}>
-                          <LabelCaps>Year (optional)</LabelCaps>
-                        </FormLabel>
+                        <FormLabel>Year (optional)</FormLabel>
                         <FormControl>
                           <UnderlineInput placeholder="2023" {...field} />
                         </FormControl>
@@ -154,9 +144,7 @@ export function ProvenanceStep({ form }: StepProps) {
                     name={`exhibitions.${index}.venue`}
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel className={labelClass}>
-                          <LabelCaps>Venue</LabelCaps>
-                        </FormLabel>
+                        <FormLabel>Venue</FormLabel>
                         <FormControl>
                           <UnderlineInput placeholder="Gallery or museum" {...field} />
                         </FormControl>
@@ -170,9 +158,7 @@ export function ProvenanceStep({ form }: StepProps) {
                   name={`exhibitions.${index}.note`}
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel className={labelClass}>
-                        <LabelCaps>Note (optional)</LabelCaps>
-                      </FormLabel>
+                      <FormLabel>Note (optional)</FormLabel>
                       <FormControl>
                         <Textarea rows={2} className="font-body text-sm" {...field} />
                       </FormControl>

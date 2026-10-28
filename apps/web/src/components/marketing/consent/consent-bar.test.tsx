@@ -2,6 +2,7 @@ import { ConsentBar } from "@/components/marketing/consent/consent-bar";
 import { ConsentPreferencesDialog } from "@/components/marketing/consent/consent-dialog";
 import { ConsentProvider } from "@/lib/analytics/consent/context";
 import { buildConsentSnapshot } from "@/lib/analytics/consent/cookie";
+import { createTokenContrast } from "@/test/css-token-contrast";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type { ReactNode } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -90,5 +91,21 @@ describe("ConsentBar", () => {
     );
     fireEvent.click(screen.getByRole("button", { name: /customise/i }));
     expect(await screen.findByRole("heading", { name: /cookie preferences/i })).toBeInTheDocument();
+  });
+
+  it("underlines the policy links at rest, so they stand out from the paragraph", () => {
+    tree(<ConsentBar />);
+    for (const name of [/cookie policy/i, /privacy notice/i]) {
+      const link = screen.getByRole("link", { name });
+      expect(link).toHaveClass("underline");
+      expect(link.className).not.toMatch(/(^|\s)hover:underline/);
+    }
+  });
+
+  it("keeps the policy links at 4.5:1 on the banner card in light and dark", () => {
+    const contrast = createTokenContrast();
+    for (const theme of ["light", "dark"] as const) {
+      expect(contrast("link", "surface-container-lowest", theme)).toBeGreaterThanOrEqual(4.5);
+    }
   });
 });

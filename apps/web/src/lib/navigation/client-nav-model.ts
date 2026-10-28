@@ -143,7 +143,8 @@ const CONSIGNMENTS: NavSpec = {
   item: (scope) => ({
     id: "consignments",
     label: "Consignments",
-    shortLabel: "Lots",
+    // "Consignments" does not fit a phone tab, so the tab takes the menu section's name.
+    shortLabel: "Selling",
     href: CLIENT_ROUTES.consignments,
     icon: Upload,
     // Submissions are consignments before they are accepted, so a new one belongs here too, and

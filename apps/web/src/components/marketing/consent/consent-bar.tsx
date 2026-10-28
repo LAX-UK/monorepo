@@ -5,6 +5,9 @@ import { useSignInNoticeActive } from "@/lib/ui/first-visit-overlays";
 import { Button, Card, CardContent } from "@auction/ui";
 import Link from "next/link";
 
+/** Underlined at rest: colour alone does not set a link apart from the paragraph around it. */
+const POLICY_LINK = "text-link underline underline-offset-4 hover:decoration-2";
+
 /** First-visit cookie banner: Accept all + Customise (reject via preferences dialog). */
 export function ConsentBar() {
   const { showBanner, acceptAll, openPreferences } = useConsent();
@@ -28,11 +31,11 @@ export function ConsentBar() {
               We use strictly necessary cookies to run the site. With your permission we use
               analytics (Google Tag Manager / Google Analytics) to understand how the platform is
               used. Read our{" "}
-              <Link href="/cookies" className="text-link underline-offset-4 hover:underline">
+              <Link href="/cookies" className={POLICY_LINK}>
                 Cookie policy
               </Link>{" "}
               and{" "}
-              <Link href="/privacy" className="text-link underline-offset-4 hover:underline">
+              <Link href="/privacy" className={POLICY_LINK}>
                 Privacy notice
               </Link>
               .

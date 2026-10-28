@@ -41,6 +41,11 @@ export {
   useFormField,
 } from "./components/ui/form.js";
 export { Input } from "./components/ui/input.js";
+export {
+  type FieldVariant,
+  fieldVariantBoxed,
+  fieldVariantUnderline,
+} from "./components/ui/field-variant.js";
 export { Label } from "./components/ui/label.js";
 export {
   Select,

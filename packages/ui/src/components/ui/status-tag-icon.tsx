@@ -29,7 +29,13 @@ const GLYPH_ICONS: Record<StatusTagGlyph, LucideIcon> = {
 /** Figma Tag-Review 16px status glyphs (Lucide on colored circle). */
 export function StatusTagIcon({ tone }: { tone: DotStatusPillTone }) {
   const variant = STATUS_TAG_VARIANT[tone];
-  return <TagGlyphBadge icon={GLYPH_ICONS[variant.glyph]} iconBg={variant.iconBg} />;
+  return (
+    <TagGlyphBadge
+      icon={GLYPH_ICONS[variant.glyph]}
+      iconBg={variant.iconBg}
+      {...(variant.glyphColor ? { glyphColor: variant.glyphColor } : {})}
+    />
+  );
 }
 
 export { STATUS_TAG_ICON_TONES } from "./status-tag-variant.js";

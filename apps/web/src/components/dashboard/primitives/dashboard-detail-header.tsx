@@ -1,8 +1,4 @@
-import {
-  type AccentTrack,
-  accentEyebrowClass,
-  accentLinkClass,
-} from "@/lib/dashboard/accent-track";
+import { BACK_LINK_CLASS, EYEBROW_CLASS } from "@/lib/dashboard/accent-track";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronLeft } from "lucide-react";
@@ -21,7 +17,6 @@ export type DashboardDetailHeaderProps = {
   sticky?: boolean;
   /** Hide back/title on mobile — shell MobileShellTitle owns navigation. */
   compactOnMobile?: boolean;
-  track?: AccentTrack;
   className?: string;
 };
 
@@ -36,7 +31,6 @@ export function DashboardDetailHeader({
   description,
   sticky = false,
   compactOnMobile = false,
-  track = "buying",
   className,
 }: DashboardDetailHeaderProps) {
   const compact = compactOnMobile;
@@ -63,7 +57,7 @@ export function DashboardDetailHeader({
             asChild
             className={cn(
               "min-h-11 w-fit gap-1 px-2 font-label text-xs font-semibold",
-              accentLinkClass(track),
+              BACK_LINK_CLASS,
               compact && "hidden lg:inline-flex",
             )}
           >
@@ -76,15 +70,7 @@ export function DashboardDetailHeader({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 space-y-1">
             {eyebrow ? (
-              <p
-                className={cn(
-                  "font-label text-xs font-semibold uppercase tracking-[0.22em]",
-                  accentEyebrowClass(track),
-                  compact && "hidden lg:block",
-                )}
-              >
-                {eyebrow}
-              </p>
+              <p className={cn(EYEBROW_CLASS, compact && "hidden lg:block")}>{eyebrow}</p>
             ) : null}
             {compact ? (
               <h1 className="hidden font-headline text-2xl font-semibold tracking-tight text-on-surface sm:text-3xl lg:block">
