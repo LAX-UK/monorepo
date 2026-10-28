@@ -114,6 +114,7 @@ export function BottomTabBar({ user }: { user: Pick<SessionUser, "name" | "email
           user={user}
           sections={config.navSections}
           account={config.clientAccount}
+          familyLinks={config.familyLinks}
         />
       ) : null}
     </>

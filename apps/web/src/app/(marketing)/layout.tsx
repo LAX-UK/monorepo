@@ -1,39 +1,29 @@
+import { BidSiteChrome } from "@/components/layout/bid-site-chrome";
 import { CommandPaletteLazy } from "@/components/layout/command-palette-lazy";
 import { MarketingSmoothScroll } from "@/components/layout/marketing-smooth-scroll.client";
-import { SiteFooter } from "@/components/layout/site-footer";
-import { SiteHeader } from "@/components/layout/site-header";
 import { AuthRequiredToast } from "@/components/marketing/auth-required-toast";
 import { MarketingLotQuickLookShell } from "@/components/marketing/lot-quick-look/marketing-lot-quick-look-shell";
 import { MarketingPromptOrchestrator } from "@/components/marketing/marketing-prompt-orchestrator";
-import {
-  loadBidCrossProductFooterLinks,
-  loadBidProductDirectoryLinks,
-} from "@/lib/ecosystem/product-directory.server";
 import { MarketingGlobalHotkeys } from "@/lib/hotkeys/marketing-global-hotkeys";
-import { MarketingHeaderTitleProvider } from "@/lib/marketing/marketing-header-title-context";
-import { loadCachedMegaMenuSections } from "@/lib/marketing/mega-menu-sections.server";
 import { areMarketingPromptsEnabled } from "@/lib/marketing/prompts/rollout.server";
 import { type ReactNode, Suspense } from "react";
 
 export default async function MarketingLayout({ children }: { children: ReactNode }) {
-  const nav = await loadCachedMegaMenuSections();
-  const laxProductLinks = loadBidProductDirectoryLinks();
-  const crossProductFooterLinks = loadBidCrossProductFooterLinks();
-
   return (
     <MarketingSmoothScroll>
-      <div className="overflow-x-clip">
-        <MarketingLotQuickLookShell>
-          <MarketingHeaderTitleProvider>
+      <BidSiteChrome
+        transparentPaths={["/"]}
+        wrap={(content) => (
+          <MarketingLotQuickLookShell>
             <CommandPaletteLazy variant="marketing" />
             <MarketingGlobalHotkeys />
-            <SiteHeader nav={nav} transparentPaths={["/"]} laxProductLinks={laxProductLinks} />
-            {children}
+            {content}
             <AuthRequiredToast />
-          </MarketingHeaderTitleProvider>
-        </MarketingLotQuickLookShell>
-      </div>
-      <SiteFooter crossProductLinks={crossProductFooterLinks} />
+          </MarketingLotQuickLookShell>
+        )}
+      >
+        {children}
+      </BidSiteChrome>
       <Suspense fallback={null}>
         <MarketingPromptOrchestrator enabled={areMarketingPromptsEnabled()} />
       </Suspense>

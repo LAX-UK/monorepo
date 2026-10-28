@@ -65,6 +65,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             <ArtHeaderClient
               account={chrome.account}
               productLinks={chrome.productLinks}
+              familyLinks={chrome.familyLinks}
               headerNav={chrome.headerNav}
             />
             <main

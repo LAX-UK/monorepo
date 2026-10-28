@@ -1,3 +1,4 @@
+import { type LaxFamilyLinkVm, buildLaxFamilyLinks } from "@auction/lax-ecosystem";
 import type { LaxAccountConfig } from "../config";
 import type { AccountLinksVm } from "./account-links";
 import { ACCOUNT_ROUTES } from "./account-settings.vm";
@@ -40,25 +41,22 @@ export function buildAccountNav(
   return items;
 }
 
-export type ProductBarItemVm = { id: string; label: string; href: string; current: boolean };
-
 /**
- * The product bar above every header in the LAX family: Bid, Art, Shop, then this product,
- * which is the current one. A product without a configured URL is left out rather than linking
- * nowhere.
+ * The LAX top bar on Account: LAX Bid, lax.art and LAX Shop, then LAX Account as the current
+ * member. A product without a configured URL is left out rather than linking nowhere.
  */
 export function buildProductBar(
   config: Pick<LaxAccountConfig, "bidPublicUrl" | "shopPublicUrl" | "laxArtPublicUrl">,
-): ProductBarItemVm[] {
-  const others: Array<[string, string, string | undefined]> = [
-    ["bid", "LAX Bid", config.bidPublicUrl],
-    ["art", "lax.art", config.laxArtPublicUrl],
-    ["shop", "LAX Shop", config.shopPublicUrl],
-  ];
-  return [
-    ...others.flatMap(([id, label, href]) => (href ? [{ id, label, href, current: false }] : [])),
-    { id: "account", label: "LAX Account", href: "/", current: true },
-  ];
+): LaxFamilyLinkVm[] {
+  return buildLaxFamilyLinks({
+    current: "account",
+    hrefs: {
+      bid: config.bidPublicUrl,
+      art: config.laxArtPublicUrl,
+      shop: config.shopPublicUrl,
+      account: "/",
+    },
+  });
 }
 
 const startsWithPath = (pathname: string, href: string) =>

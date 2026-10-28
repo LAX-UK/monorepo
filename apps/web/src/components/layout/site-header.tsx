@@ -8,19 +8,19 @@ import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-
 import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
 import { useMarketingHeaderTitle } from "@/lib/marketing/marketing-header-title-context";
 import { restoreMegaMenuAuthedHrefs } from "@/lib/marketing/mega-menu-href-rewrite";
-import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
-import { headerChromeClassName, useHeaderChrome } from "@auction/marketing-ui";
+import type { LaxFamilyLinkVm, LaxProductLinkVm } from "@auction/lax-ecosystem";
+import { LaxFamilyBar, headerChromeClassName, useHeaderChrome } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { HeaderAttentionChip } from "./header-attention-chip";
 import { HeaderAuthChip } from "./header-auth-chip";
 import { HeaderMegaNav } from "./header-mega-nav";
 import { HeaderSearchTrigger } from "./header-search";
 import { HeaderUtilityBar } from "./header-utility-bar";
 import { LaxLogo } from "./lax-logo";
-import { LaxProductSwitcher } from "./lax-product-switcher";
 import { MobileNavDrawer } from "./mobile-nav-drawer";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -31,6 +31,8 @@ type SiteHeaderProps = {
   transparentPaths?: string[];
   chromeVariant?: SiteHeaderChromeVariant;
   laxProductLinks?: LaxProductLinkVm[];
+  /** The LAX top bar: the products, then LAX Account. */
+  familyLinks?: LaxFamilyLinkVm[];
 };
 
 type SiteHeaderShellProps = SiteHeaderProps & {
@@ -43,6 +45,7 @@ function SiteHeaderShell({
   chromeVariant,
   searchParams,
   laxProductLinks = [],
+  familyLinks = [],
 }: SiteHeaderShellProps) {
   const { user } = useAppSession();
   const nav = useMemo(() => {
@@ -84,14 +87,15 @@ function SiteHeaderShell({
       >
         <div
           className={cn(
-            "mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-4 py-2 lg:gap-4 lg:pt-3 lg:pb-4",
+            "mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-4 py-2 lg:gap-4 lg:pt-0 lg:pb-4",
             MARKETING_PAGE_GUTTER_X,
           )}
         >
-          <div className="hidden lg:flex lg:items-center lg:justify-between lg:gap-6">
-            <LaxProductSwitcher links={laxProductLinks} />
-            <HeaderUtilityBar headerTone={headerTone} />
-          </div>
+          <LaxFamilyBar
+            links={familyLinks}
+            tone={headerTone}
+            actions={<HeaderUtilityBar headerTone={headerTone} />}
+          />
 
           <HeaderMegaNav
             sections={nav}
@@ -114,6 +118,7 @@ function SiteHeaderShell({
             }
             trailing={
               <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 lg:gap-3">
+                <HeaderAttentionChip />
                 <HeaderSearchTrigger tone={headerTone} layout="both" fullBarFrom="2xl" />
                 <div className="hidden lg:flex">
                   <ThemeToggle headerTone={headerTone} />
@@ -147,6 +152,7 @@ function SiteHeaderShell({
           pathname={pathname}
           searchParams={searchParams}
           sections={nav}
+          familyLinks={familyLinks}
         />
       </header>
     </>

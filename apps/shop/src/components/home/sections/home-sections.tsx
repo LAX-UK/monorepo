@@ -2,36 +2,46 @@ import { CatalogueGrid } from "@/components/catalogue-grid";
 import { ShopCatalogueState } from "@/components/home/shop-empty-state";
 import { ShopSectionHeader } from "@/components/home/shop-section-header";
 import { ShopMediaImage } from "@/components/media/shop-media-image";
-import type { HomeEditionStepVm, HomePageViewModel } from "@/lib/home/home-page.vm";
+import { ShopCommerceButton } from "@/components/shop-commerce-button";
+import { SHOP_HOME_CONTENT } from "@/content/home/shop-home-content";
+import type { HomeCollectionVm } from "@/lib/home/home-browse-paths";
+import type { HomeArtistsVm, HomeNewEditionsVm, HomeStoryVm } from "@/lib/home/home-page.vm";
 import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
 import {
+  MarketingArrowUpRightIcon,
   MarketingArtistCard,
   MarketingArtistGrid,
-  MarketingCertificateIcon,
-  MarketingCheckIcon,
-  MarketingGridIcon,
-  MarketingTruckIcon,
 } from "@auction/marketing-ui";
+import Link from "next/link";
 
 export function NewEditionsSection({
   editions,
   errorMessage,
+  now,
 }: {
-  editions: HomePageViewModel["editions"];
+  editions: HomeNewEditionsVm | null;
   errorMessage?: string | undefined;
+  now: Date;
 }) {
-  if (editions.length === 0 && !errorMessage) return null;
+  if (!editions && !errorMessage) return null;
+  const copy = SHOP_HOME_CONTENT.newEditions;
   return (
     <section className="shop-home__section" aria-labelledby="home-editions-heading">
       <ShopSectionHeader
         headingId="home-editions-heading"
-        title="New editions"
-        subtitle="On sale now"
-        actionLabel="View all"
-        actionHref="/artworks?availability=available"
+        title={copy.title}
+        subtitle={copy.subtitle}
+        {...(editions
+          ? { actionLabel: editions.viewAll.label, actionHref: editions.viewAll.href }
+          : {})}
       />
-      {editions.length > 0 ? (
-        <CatalogueGrid items={editions} titleLevel={3} className="shop-home__grid" />
+      {editions ? (
+        <CatalogueGrid
+          items={editions.items}
+          titleLevel={3}
+          now={now}
+          className="shop-home__grid"
+        />
       ) : (
         <ShopCatalogueState
           variant="error"
@@ -45,18 +55,68 @@ export function NewEditionsSection({
   );
 }
 
-export function HomeArtistsSection({ artists }: { artists: HomePageViewModel["artists"] }) {
-  if (artists.length === 0) return null;
+/** One story about how an edition was made; shown only when there is a real one to tell. */
+export function HomeStorySection({ story }: { story: HomeStoryVm | null }) {
+  if (!story) return null;
+  return (
+    <section className="shop-home-story" aria-labelledby="home-story-heading">
+      <div className="shop-home-story__image">
+        <ShopMediaImage
+          src={story.imageUrl}
+          alt=""
+          label={SHOP_MEDIA_LABELS.artwork}
+          sizes="(min-width: 64rem) 55vw, 100vw"
+          className="absolute inset-0 size-full"
+          imgClassName="object-cover"
+        />
+      </div>
+      <div className="shop-home-story__body">
+        <p className="shop-home-eyebrow">{SHOP_HOME_CONTENT.story.eyebrow}</p>
+        <h2 id="home-story-heading" className="shop-home-story__title">
+          {story.title}
+        </h2>
+        <p className="shop-home-story__text">{story.body}</p>
+        <div className="shop-home-story__actions">
+          {story.edition ? (
+            <ShopCommerceButton href={story.edition.href} variant="outline" scale="standard">
+              {`Shop ${story.edition.title}`}
+            </ShopCommerceButton>
+          ) : null}
+          {story.readMoreHref ? (
+            <a href={story.readMoreHref} className="shop-home-more shop-focus-ring">
+              Read the story on lax.art
+              <MarketingArrowUpRightIcon className="shop-home-more__icon" />
+            </a>
+          ) : null}
+        </div>
+      </div>
+    </section>
+  );
+}
+
+export function HomeArtistsSection({ artists }: { artists: HomeArtistsVm | null }) {
+  if (!artists) return null;
+  const copy = SHOP_HOME_CONTENT.artists;
   return (
     <section className="shop-home__section" aria-labelledby="home-artists-heading">
       <ShopSectionHeader
         headingId="home-artists-heading"
-        title="Artists with editions"
+        title={copy.title}
+        subtitle={
+          <>
+            {copy.subtitle}{" "}
+            {artists.laxArtHref ? (
+              <a href={artists.laxArtHref} className="shop-inline-link shop-focus-ring">
+                {copy.laxArtLabel}
+              </a>
+            ) : null}
+          </>
+        }
         actionLabel="All artists"
         actionHref="/artists"
       />
-      <MarketingArtistGrid aria-label="Artists with editions">
-        {artists.map((card) => (
+      <MarketingArtistGrid aria-label={copy.title} className="lg:grid-cols-4">
+        {artists.cards.map((card) => (
           <MarketingArtistCard
             key={card.id}
             href={card.href}
@@ -85,31 +145,49 @@ export function HomeArtistsSection({ artists }: { artists: HomePageViewModel["ar
   );
 }
 
-const STEP_ICONS: Record<HomeEditionStepVm["id"], typeof MarketingGridIcon> = {
-  size: MarketingGridIcon,
-  number: MarketingCheckIcon,
-  certificate: MarketingCertificateIcon,
-  delivery: MarketingTruckIcon,
-};
-
-export function HowEditionsWorkSection({ steps }: { steps: HomeEditionStepVm[] }) {
+function CollectionTile({ tile }: { tile: HomeCollectionVm }) {
   return (
-    <section
-      className="shop-home__section shop-home__section--steps"
-      aria-labelledby="home-steps-heading"
-    >
-      <ShopSectionHeader headingId="home-steps-heading" title="How editions work" />
-      <ul className="shop-home-steps">
-        {steps.map((step) => {
-          const Icon = STEP_ICONS[step.id];
-          return (
-            <li key={step.id} className="shop-home-steps__item">
-              <Icon className="shop-home-steps__icon" />
-              <h3 className="shop-home-steps__title">{step.title}</h3>
-              <p className="shop-home-steps__body">{step.body}</p>
-            </li>
-          );
-        })}
+    <li className="shop-collection">
+      <div className="shop-collection__mat" aria-hidden="true">
+        {tile.covers.map((cover) => (
+          <span key={cover.slug} className="shop-collection__print">
+            <ShopMediaImage
+              src={cover.imageUrl}
+              alt=""
+              label={SHOP_MEDIA_LABELS.artwork}
+              sizes="(min-width: 64rem) 14vw, 40vw"
+              className="absolute inset-0 size-full"
+              imgClassName="object-contain"
+            />
+          </span>
+        ))}
+      </div>
+      <h3 className="shop-collection__title">
+        <Link href={tile.href} className="shop-collection__link">
+          {tile.title}
+        </Link>
+      </h3>
+      <p className="shop-collection__count">{tile.countLabel}</p>
+    </li>
+  );
+}
+
+export function HomeCollectionsSection({
+  collections,
+}: { collections: readonly HomeCollectionVm[] }) {
+  if (collections.length === 0) return null;
+  const copy = SHOP_HOME_CONTENT.collections;
+  return (
+    <section className="shop-home__section" aria-labelledby="home-collections-heading">
+      <ShopSectionHeader
+        headingId="home-collections-heading"
+        title={copy.title}
+        subtitle={copy.subtitle}
+      />
+      <ul className="shop-collections" data-count={collections.length}>
+        {collections.map((tile) => (
+          <CollectionTile key={tile.key} tile={tile} />
+        ))}
       </ul>
     </section>
   );

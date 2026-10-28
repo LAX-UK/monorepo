@@ -1,0 +1,178 @@
+/* The Shop product card, for every list of editions. The work sits whole on a warm paper mat
+   (never cropped, never rounded) and lifts a little on hover; the title is the card's one link
+   and covers the whole card. */
+
+.shop-edition-grid {
+  row-gap: var(--shop-space-12);
+}
+
+.shop-edition-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-4);
+  height: 100%;
+  color: var(--color-on-surface);
+}
+
+.shop-edition-card__mat {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  background: var(--color-paper);
+  outline: 2px solid transparent;
+  outline-offset: 4px;
+  transition: outline-color var(--motion-duration-sm) ease;
+}
+
+.shop-edition-card__print {
+  position: absolute;
+  inset: 13%;
+  display: block;
+}
+
+.shop-edition-card__print img {
+  filter: var(--filter-artwork-lift);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .shop-edition-card__print {
+    transition: transform 0.35s var(--motion-ease-decelerate);
+  }
+
+  .shop-edition-card:hover .shop-edition-card__print {
+    transform: translateY(-4px);
+  }
+}
+
+.shop-edition-card[data-status="sold_out"] .shop-edition-card__print img {
+  opacity: 0.8;
+}
+
+.shop-edition-card__body {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.shop-edition-card__artist {
+  display: flex;
+  align-items: baseline;
+  gap: var(--shop-space-2);
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: var(--shop-text-sm);
+  font-weight: 500;
+  line-height: 1.25rem;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-edition-card__artist-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.shop-edition-card__new {
+  flex: none;
+  margin-left: auto;
+  font-size: var(--shop-text-xs);
+  font-weight: 600;
+  line-height: 1rem;
+  color: var(--color-product-accent);
+}
+
+.shop-edition-card__title {
+  display: -webkit-box;
+  margin: var(--shop-space-1) 0 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-family: var(--font-headline);
+  font-size: var(--shop-text-lg);
+  font-weight: 500;
+  line-height: 1.5rem;
+  letter-spacing: -0.01em;
+  color: var(--color-on-surface);
+}
+
+.shop-edition-card__link {
+  color: inherit;
+  text-decoration: none;
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+  outline: none;
+}
+
+/* The title's link covers the whole card, so the mat and the text are one target. */
+.shop-edition-card__link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+
+.shop-edition-card:hover .shop-edition-card__link {
+  text-decoration-line: underline;
+}
+
+/* Keyboard focus rings the mat, where the eye already is. */
+.shop-edition-card:has(.shop-edition-card__link:focus-visible) .shop-edition-card__mat {
+  outline-color: var(--color-ring);
+}
+
+.shop-edition-card__facts {
+  margin: var(--shop-space-2) 0 0;
+  font-size: var(--shop-text-sm);
+  line-height: 1.25rem;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-edition-card__price,
+.shop-edition-card__sold {
+  margin: auto 0 0;
+  padding-top: var(--shop-space-2);
+  font-size: var(--shop-text-md);
+  line-height: 1.5rem;
+}
+
+.shop-edition-card__price {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.shop-edition-card__sold {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shop-space-1) var(--shop-space-4);
+  font-weight: 500;
+  color: var(--color-on-surface-variant);
+}
+
+/* Above the stretched title link, so it is a target of its own. */
+.shop-edition-card__alert {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shop-space-1);
+  min-height: 1.5rem;
+  border-radius: var(--radius-control);
+  font-size: var(--shop-text-sm);
+  font-weight: 500;
+  color: var(--color-link);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-link) 45%, transparent);
+  text-underline-offset: 3px;
+}
+
+.shop-edition-card__alert:hover {
+  text-decoration-color: currentColor;
+}
+
+.shop-edition-card__alert-icon {
+  width: 1rem;
+  height: 1rem;
+}

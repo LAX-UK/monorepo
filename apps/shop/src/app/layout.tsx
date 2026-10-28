@@ -29,10 +29,12 @@ import "./commerce.css";
 import { montserrat, outfit } from "./fonts";
 import "./base.css";
 import "./catalogue.css";
+import "./edition-card.css";
 import "./footer.css";
 import "./header.css";
 import "./home.css";
 import "./product.css";
+import "./edition-page.css";
 import "./state.css";
 import "./elements.css";
 

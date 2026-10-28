@@ -1,6 +1,5 @@
 "use client";
 
-import { LaxProductSwitcher } from "@/components/ecosystem/lax-product-switcher";
 import type { ShopHeaderNavData } from "@/components/header/header-nav.config";
 import { ShopHeaderAccountUtility } from "@/components/header/shop-header-account-utility";
 import { ShopHeaderBasketLink } from "@/components/header/shop-header-basket-link";
@@ -9,8 +8,8 @@ import { ShopMegaMenu } from "@/components/header/shop-mega-menu.client";
 import { ShopMobileNavDrawer } from "@/components/header/shop-mobile-nav-drawer";
 import { ShopThemeToggle } from "@/components/header/shop-theme-toggle";
 import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@auction/branding";
-import type { AccountChromeState, LaxProductLinkVm } from "@auction/lax-ecosystem";
-import { LaxLogo } from "@auction/marketing-ui";
+import type { AccountChromeState, LaxFamilyLinkVm } from "@auction/lax-ecosystem";
+import { LaxFamilyBar, LaxLogo } from "@auction/marketing-ui";
 import {
   MarketingChromeIconButton,
   MarketingCloseIcon,
@@ -27,7 +26,10 @@ import { useEffect, useRef, useState } from "react";
 
 type ShopHeaderClientProps = {
   account: AccountChromeState;
-  productLinks: LaxProductLinkVm[];
+  /** The LAX top bar: the products, then LAX Account. */
+  familyLinks?: LaxFamilyLinkVm[];
+  /** The note on the right of the top bar. */
+  topBarMessage?: string;
   basketCount: number;
   merchandiseEnabled: boolean;
   navData?: ShopHeaderNavData | null;
@@ -35,7 +37,8 @@ type ShopHeaderClientProps = {
 
 export function ShopHeaderClient({
   account,
-  productLinks,
+  familyLinks = [],
+  topBarMessage,
   basketCount,
   merchandiseEnabled,
   navData = null,
@@ -78,13 +81,15 @@ export function ShopHeaderClient({
       >
         <div
           className={cn(
-            "mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-4 py-2 lg:gap-4 lg:pt-2 lg:pb-[0.8125rem]",
+            "mx-auto flex max-w-[var(--container-max,1440px)] flex-col gap-4 py-2 lg:gap-4 lg:pt-0 lg:pb-[0.8125rem]",
             MARKETING_PAGE_GUTTER_X,
           )}
         >
-          <div className="hidden lg:block">
-            <LaxProductSwitcher links={productLinks} headerTone={headerTone} />
-          </div>
+          <LaxFamilyBar
+            links={familyLinks}
+            tone={headerTone}
+            {...(topBarMessage ? { message: topBarMessage } : {})}
+          />
 
           <ShopMegaMenu
             pathname={pathname}
@@ -157,7 +162,7 @@ export function ShopHeaderClient({
             onOpenChange={setMenuOpen}
             pathname={pathname}
             account={account}
-            productLinks={productLinks}
+            familyLinks={familyLinks}
             merchandiseEnabled={merchandiseEnabled}
             navData={navData}
           />

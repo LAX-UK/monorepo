@@ -2,6 +2,7 @@ import { DashboardFetchWarningBanner } from "@/components/dashboard/dashboard-fe
 import { ExportShellClient } from "@/components/exports/export-shell-client";
 import { AccountNotice } from "@/components/layout/account-switcher/account-notice";
 import { BidSiteChrome } from "@/components/layout/bid-site-chrome";
+import { CommandPaletteLazy } from "@/components/layout/command-palette-lazy";
 import { ReadOnlyBoundary } from "@/components/layout/view-as-client/read-only-boundary";
 import {
   READ_ONLY_REASON_ID,
@@ -16,6 +17,7 @@ import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { loadSellerConnectNavBadge } from "@/lib/connect/load-seller-connect-nav-badge";
 import { dashboardSliceFailureMessage } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { loadBidFamilyLinks } from "@/lib/ecosystem/product-directory.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { deriveActingContext } from "@/lib/legal-entity/derive-acting-context";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
@@ -147,7 +149,14 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
   const shell = (
     <ViewAsClientProvider viewingAs={viewingAs ? { name: viewingAs.displayName } : null}>
       {layout === "website" ? (
-        <BidSiteChrome>
+        <BidSiteChrome
+          wrap={(content) => (
+            <>
+              <CommandPaletteLazy variant="marketing" />
+              {content}
+            </>
+          )}
+        >
           <WelcomeBackToast />
           <ClientWebsiteFrame
             user={user}
@@ -165,6 +174,7 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
           user={user}
           navScope={navScope}
           account={account}
+          familyLinks={loadBidFamilyLinks()}
           sellerConnectNavBadge={sellerConnectNavBadge}
           cookieDensity={cookieDensity}
           hideEmailStatusBanner
