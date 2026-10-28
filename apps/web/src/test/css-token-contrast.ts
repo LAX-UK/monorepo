@@ -88,7 +88,7 @@ function resolve(value: string, tokens: TokenMap, depth = 0): Rgb {
   if (v === "black") return [0, 0, 0];
   const ok = v.match(/^oklch\(([\d.]+)\s+([\d.]+)\s+([\d.]+)\)$/);
   if (ok) return oklchToLinear(Number(ok[1]), Number(ok[2]), Number(ok[3]));
-  const mix = v.match(/^color-mix\(in srgb,\s*(.+?)\s+([\d.]+)%,\s*(.+)\)$/);
+  const mix = v.match(/^color-mix\(\s*in srgb,\s*(.+?)\s+([\d.]+)%,\s*(.+?)\s*\)$/);
   if (mix) {
     // color-mix in srgb interpolates gamma-encoded channels.
     const a = resolve(mix[1] as string, tokens, depth + 1).map(linearToSrgb);

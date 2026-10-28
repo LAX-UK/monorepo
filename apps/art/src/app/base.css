@@ -62,6 +62,8 @@
   --color-info-container: #e4f2ff;
   --color-warning: oklch(0.48 0.14 55);
   --color-warning-container: oklch(0.94 0.06 85);
+  --color-warning-on-surface: oklch(0.4 0.13 52);
+  --color-danger-on-surface: oklch(0.5 0.2 25);
   --color-danger: oklch(0.55 0.2 25);
   --color-danger-container: oklch(0.94 0.04 25);
   --color-alert-surface: color-mix(
@@ -280,6 +282,8 @@ html.dark {
   );
   --color-warning: oklch(0.78 0.12 85);
   --color-warning-container: oklch(0.28 0.06 85);
+  --color-warning-on-surface: oklch(0.82 0.12 85);
+  --color-danger-on-surface: oklch(0.8 0.12 25);
   --color-danger: oklch(0.72 0.14 25);
   --color-danger-container: oklch(0.28 0.08 25);
   --color-error: #ffb4ab;
