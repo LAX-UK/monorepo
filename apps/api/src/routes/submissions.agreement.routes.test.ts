@@ -82,7 +82,7 @@ function setup(options: {
     getSessionUser: vi.fn().mockResolvedValue({
       id: "u1",
       role: options.userRole ?? "client",
-      ...(options.userRole === "staff" ? { staffRoles: ["super_admin"] } : {}),
+      ...(options.userRole === "staff" ? { staffRoles: ["administrator"] } : {}),
       scopes: ["bid.read", "bid.write"],
     }),
   };

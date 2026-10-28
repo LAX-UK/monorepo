@@ -57,7 +57,7 @@ describe("staff permissions in a request come from every role in force", () => {
   it("allows what any held role allows and refuses the rest", async () => {
     const { app, reader } = appFor([
       { role: "specialist", endsAt: null },
-      { role: "client_advisor", endsAt: null },
+      { role: "client_services", endsAt: null },
     ]);
 
     expect((await app.request("/bids")).status).toBe(200);
@@ -69,7 +69,7 @@ describe("staff permissions in a request come from every role in force", () => {
   it("drops a role once it has ended", async () => {
     const { app } = appFor([
       { role: "specialist", endsAt: null },
-      { role: "catalogue_manager", endsAt: PAST },
+      { role: "cataloguer", endsAt: PAST },
     ]);
 
     expect((await app.request("/catalogue")).status).toBe(403);
@@ -77,20 +77,20 @@ describe("staff permissions in a request come from every role in force", () => {
   });
 
   it("never lets staff act as clients", async () => {
-    const { app } = appFor([{ role: "super_admin", endsAt: null }]);
+    const { app } = appFor([{ role: "administrator", endsAt: null }]);
 
     expect((await app.request("/place-bid")).status).toBe(403);
   });
 
   it("opens the platform shell for finance staff who hold another role, not for finance alone", async () => {
     expect(
-      (await appFor([{ role: "finance_ops", endsAt: null }]).app.request("/platform")).status,
+      (await appFor([{ role: "finance", endsAt: null }]).app.request("/platform")).status,
     ).toBe(403);
     expect(
       (
         await appFor([
-          { role: "finance_ops", endsAt: null },
-          { role: "auction_manager", endsAt: null },
+          { role: "finance", endsAt: null },
+          { role: "sales_manager", endsAt: null },
         ]).app.request("/platform")
       ).status,
     ).toBe(200);
@@ -98,7 +98,7 @@ describe("staff permissions in a request come from every role in force", () => {
 
   it("keeps engineering tools to administrators", async () => {
     expect(
-      (await appFor([{ role: "super_admin", endsAt: null }]).app.request("/queues")).status,
+      (await appFor([{ role: "administrator", endsAt: null }]).app.request("/queues")).status,
     ).toBe(200);
     expect(
       (await appFor([{ role: "specialist", endsAt: null }]).app.request("/queues")).status,

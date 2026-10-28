@@ -34,7 +34,7 @@ describe("POST /sales/:id/lots/:lotId/status", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "staff-1",
         role: "staff",
-        staffRoles: ["auction_manager"],
+        staffRoles: ["sales_manager"],
 
         scopes: ["bid.write"],
       }),

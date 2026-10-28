@@ -4,7 +4,7 @@ import { resolveFinanceCapabilities } from "./resolve-finance-capabilities";
 describe("resolveFinanceCapabilities", () => {
   it("grants finance staff payment and payout mutation", () => {
     expect(
-      resolveFinanceCapabilities({ role: "staff", staffRoles: ["finance_ops"] }).canMutatePayments,
+      resolveFinanceCapabilities({ role: "staff", staffRoles: ["finance"] }).canMutatePayments,
     ).toBe(true);
   });
 

@@ -41,7 +41,7 @@ describe("admin lot fulfilment routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "staff-1",
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
         scopes: ["bid.read"],
       }),
     };
@@ -80,7 +80,7 @@ describe("admin lot fulfilment routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "staff-1",
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
         scopes: ["bid.read"],
       }),
     };
@@ -104,7 +104,7 @@ describe("admin lot fulfilment routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "staff-1",
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
         scopes: ["bid.write"],
       }),
     };

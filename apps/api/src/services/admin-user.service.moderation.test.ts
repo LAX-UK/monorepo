@@ -13,11 +13,11 @@ import { StaffRoleAssignmentRefused } from "./staff/staff-role-assignment.servic
 
 const REASON = "Repeated chargebacks and a failed identity check.";
 
-const SUPER_ADMIN: AdminActor = { userId: "admin-1", role: "staff", staffRoles: ["super_admin"] };
+const SUPER_ADMIN: AdminActor = { userId: "admin-1", role: "staff", staffRoles: ["administrator"] };
 const SUPPORT: AdminActor = {
   userId: "support-1",
   role: "staff",
-  staffRoles: ["support_concierge"],
+  staffRoles: ["client_services"],
 };
 
 function row(id: string, role: "client" | "staff", staffRole: string | null = null) {
@@ -87,7 +87,7 @@ describe("AdminUserService suspension", () => {
     expect(suspender.suspendMany).not.toHaveBeenCalled();
   });
 
-  it.each(["client_advisor", "finance_ops", "staff_viewer", "operations"])(
+  it.each(["finance", "read_only", "fulfilment", "saleroom_clerk"])(
     "refuses %s, who may not moderate",
     async (staffRole) => {
       const { service, suspender } = setup();
@@ -105,8 +105,8 @@ describe("AdminUserService suspension", () => {
     },
   );
 
-  it("refuses suspending yourself, even as a super_admin", async () => {
-    const { service, suspender } = setup([row("admin-1", "staff", "super_admin")]);
+  it("refuses suspending yourself, even as a administrator", async () => {
+    const { service, suspender } = setup([row("admin-1", "staff", "administrator")]);
 
     const error = await failure(service.suspend(SUPER_ADMIN, "admin-1", REASON));
 
@@ -115,18 +115,18 @@ describe("AdminUserService suspension", () => {
     expect(suspender.suspendMany).not.toHaveBeenCalled();
   });
 
-  it("refuses suspending a staff account unless the actor is a super_admin", async () => {
-    const { service, suspender } = setup([row("staff-2", "staff", "operations")]);
+  it("refuses suspending a staff account unless the actor is a administrator", async () => {
+    const { service, suspender } = setup([row("staff-2", "staff", "sales_manager")]);
 
     const error = await failure(service.suspend(SUPPORT, "staff-2", REASON));
 
     expect(error.status).toBe(403);
-    expect(error.code).toBe("staff_moderation_requires_super_admin");
+    expect(error.code).toBe("staff_moderation_requires_administrator");
     expect(suspender.suspendMany).not.toHaveBeenCalled();
   });
 
-  it("lets a super_admin suspend another staff account", async () => {
-    const { service, suspender } = setup([row("staff-2", "staff", "operations")]);
+  it("lets a administrator suspend another staff account", async () => {
+    const { service, suspender } = setup([row("staff-2", "staff", "sales_manager")]);
 
     await service.suspend(SUPER_ADMIN, "staff-2", REASON);
 
@@ -157,8 +157,8 @@ describe("AdminUserService unsuspension", () => {
     expect(invalidate).toHaveBeenCalledWith("client-1");
   });
 
-  it("refuses restoring a staff account unless the actor is a super_admin", async () => {
-    const { service, suspender } = setup([row("staff-2", "staff", "operations")]);
+  it("refuses restoring a staff account unless the actor is a administrator", async () => {
+    const { service, suspender } = setup([row("staff-2", "staff", "sales_manager")]);
 
     const error = await failure(service.unsuspend(SUPPORT, "staff-2"));
 
@@ -170,7 +170,7 @@ describe("AdminUserService unsuspension", () => {
     const { service, suspender } = setup();
 
     const error = await failure(
-      service.unsuspend({ userId: "x", role: "staff", staffRoles: ["finance_ops"] }, "client-1"),
+      service.unsuspend({ userId: "x", role: "staff", staffRoles: ["finance"] }, "client-1"),
     );
 
     expect(error.status).toBe(403);
@@ -197,7 +197,7 @@ describe("AdminUserService bulk moderation", () => {
   it("suspends nobody when the batch includes yourself", async () => {
     const { service, suspender } = setup([
       row("client-1", "client"),
-      row("support-1", "staff", "support_concierge"),
+      row("support-1", "staff", "client_services"),
     ]);
 
     const error = await failure(
@@ -208,10 +208,10 @@ describe("AdminUserService bulk moderation", () => {
     expect(suspender.suspendMany).not.toHaveBeenCalled();
   });
 
-  it("suspends nobody when one account in the batch is staff and the actor is not a super_admin", async () => {
+  it("suspends nobody when one account in the batch is staff and the actor is not a administrator", async () => {
     const { service, suspender } = setup([
       row("client-1", "client"),
-      row("staff-2", "staff", "operations"),
+      row("staff-2", "staff", "sales_manager"),
     ]);
 
     const error = await failure(
@@ -255,29 +255,29 @@ describe("AdminUserService bulk moderation", () => {
 });
 
 function superAdminAs(userId: string): AdminActor {
-  return { userId, role: "staff", staffRoles: ["super_admin"] };
+  return { userId, role: "staff", staffRoles: ["administrator"] };
 }
 
 describe("AdminUserService staff roles", () => {
   it("changes another person's staff role and records the actor", async () => {
-    const { service, roles } = setup([row("staff-2", "staff", "operations")]);
+    const { service, roles } = setup([row("staff-2", "staff", "sales_manager")]);
 
-    await service.setStaffRole("staff", "admin-1", "staff-2", "auction_manager", ["super_admin"]);
+    await service.setStaffRole("staff", "admin-1", "staff-2", "sales_manager", ["administrator"]);
 
     expect(roles.setAccess).toHaveBeenCalledWith({
       userId: "staff-2",
       role: "staff",
-      staffRoles: ["auction_manager"],
+      staffRoles: ["sales_manager"],
       actorUserId: "admin-1",
       reason: null,
     });
   });
 
   it("refuses changing your own staff role (self-demotion or escalation)", async () => {
-    const { service, roles } = setup([row("admin-1", "staff", "super_admin")]);
+    const { service, roles } = setup([row("admin-1", "staff", "administrator")]);
 
     const error = await failure(
-      service.setStaffRole("staff", "admin-1", "admin-1", "operations", ["super_admin"]),
+      service.setStaffRole("staff", "admin-1", "admin-1", "sales_manager", ["administrator"]),
     );
 
     expect(error.status).toBe(403);
@@ -289,7 +289,7 @@ describe("AdminUserService staff roles", () => {
     const { service, roles } = setup();
 
     const error = await failure(
-      service.setRole("staff", "admin-1", "admin-1", "client", ["super_admin"], null),
+      service.setRole("staff", "admin-1", "admin-1", "client", ["administrator"], null),
     );
 
     expect(error.message).toBe("Cannot demote yourself");
@@ -300,51 +300,51 @@ describe("AdminUserService staff roles", () => {
     const { service, roles } = setup();
 
     const error = await failure(
-      service.setRole("staff", "admin-1", "admin-1", "staff", ["super_admin"], "operations"),
+      service.setRole("staff", "admin-1", "admin-1", "staff", ["administrator"], "sales_manager"),
     );
 
     expect(error.code).toBe("cannot_change_own_role");
     expect(roles.setAccess).not.toHaveBeenCalled();
   });
 
-  it("turns the last-super_admin guard into a 409", async () => {
-    const { service, roles } = setup([row("staff-2", "staff", "super_admin")]);
+  it("turns the last-administrator guard into a 409", async () => {
+    const { service, roles } = setup([row("staff-2", "staff", "administrator")]);
     roles.setAccess.mockRejectedValue(
-      new StaffRoleAssignmentRefused("last_administrator", "super_admin"),
+      new StaffRoleAssignmentRefused("last_administrator", "administrator"),
     );
 
     const error = await failure(
-      service.setStaffRole("staff", "admin-1", "staff-2", "operations", ["super_admin"]),
+      service.setStaffRole("staff", "admin-1", "staff-2", "sales_manager", ["administrator"]),
     );
 
     expect(error.status).toBe(409);
-    expect(error.code).toBe("last_super_admin");
+    expect(error.code).toBe("last_administrator");
   });
 
-  it("turns the last-super_admin guard into a 409 on the set-role route too", async () => {
-    const { service, roles } = setup([row("staff-2", "staff", "super_admin")]);
+  it("turns the last-administrator guard into a 409 on the set-role route too", async () => {
+    const { service, roles } = setup([row("staff-2", "staff", "administrator")]);
     roles.setAccess.mockRejectedValue(
-      new StaffRoleAssignmentRefused("last_administrator", "super_admin"),
+      new StaffRoleAssignmentRefused("last_administrator", "administrator"),
     );
 
     const error = await failure(
-      service.setRole("staff", "admin-1", "staff-2", "client", ["super_admin"], null),
+      service.setRole("staff", "admin-1", "staff-2", "client", ["administrator"], null),
     );
 
     expect(error.status).toBe(409);
   });
 
-  it.each(["support_concierge", "client_advisor", "finance_ops", "operations"])(
+  it.each(["client_services", "finance", "sales_manager"])(
     "refuses %s changing anyone's role",
     async (staffRole) => {
-      const { service, roles } = setup([row("staff-2", "staff", "operations")]);
+      const { service, roles } = setup([row("staff-2", "staff", "sales_manager")]);
 
       const error = await failure(
         service.setStaffRole(
           "staff",
           "x",
           "staff-2",
-          "auction_manager",
+          "sales_manager",
           normalizeStaffRoles([staffRole]),
         ),
       );
@@ -355,11 +355,11 @@ describe("AdminUserService staff roles", () => {
   );
 
   it("passes non-guard errors through unchanged", async () => {
-    const { service, roles } = setup([row("staff-2", "staff", "operations")]);
+    const { service, roles } = setup([row("staff-2", "staff", "sales_manager")]);
     roles.setAccess.mockRejectedValue(new Error("db down"));
 
     await expect(
-      service.setStaffRole("staff", "admin-1", "staff-2", "auction_manager", ["super_admin"]),
+      service.setStaffRole("staff", "admin-1", "staff-2", "sales_manager", ["administrator"]),
     ).rejects.toThrow("db down");
   });
 });

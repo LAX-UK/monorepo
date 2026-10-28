@@ -12,7 +12,7 @@ describe("buildStaffHeaderAttentionItems", () => {
         amlScreeningsPending: 3,
       },
       "staff",
-      ["super_admin"],
+      ["administrator"],
     );
 
     expect(items.map((i) => i.id)).toEqual([
@@ -35,7 +35,7 @@ describe("buildStaffHeaderAttentionItems", () => {
         manualReviewCount: 1,
       },
       "staff",
-      ["super_admin"],
+      ["administrator"],
     );
 
     expect(items.map((i) => i.id)).not.toContain("nav-submissions");
@@ -50,7 +50,7 @@ describe("buildStaffHeaderAttentionItems", () => {
         amlScreeningsPending: 2,
       },
       "staff",
-      ["client_advisor"],
+      ["client_services"],
     );
 
     expect(items).toHaveLength(0);
@@ -58,7 +58,7 @@ describe("buildStaffHeaderAttentionItems", () => {
 
   it("returns empty list when all counts are zero", () => {
     expect(
-      buildStaffHeaderAttentionItems(EMPTY_ADMIN_NAV_COUNTS, "staff", ["super_admin"]),
+      buildStaffHeaderAttentionItems(EMPTY_ADMIN_NAV_COUNTS, "staff", ["administrator"]),
     ).toEqual([]);
   });
 });

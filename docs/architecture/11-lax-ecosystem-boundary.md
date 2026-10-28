@@ -21,7 +21,7 @@ prose when they diverge.
 | Global | Legal name, email display, password/MFA entry points, global marketing consent, locale | LAX Account portal (linked from each product) |
 | Product-local | Bidding limits, paddle/KYC, bag/checkout, edition alerts, artist-growth controls | Product settings routes/APIs only |
 | Organization-scoped | Auction house staff roles, seller org memberships | Owning product unless a platform entitlement exists |
-| Security policy | "Require two-step verification" for all LAX staff (super admin) or for an organisation's members (owner) | Decided in the owning product (Bid admin, Bid organisation members page), stored and enforced by Identity (D35) |
+| Security policy | "Require two-step verification" for all LAX staff (administrator) or for an organisation's members (owner) | Decided in the owning product (Bid admin, Bid organisation members page), stored and enforced by Identity (D35) |
 
 Personal two-step verification stays a global setting: users turn it on or off from LAX
 Account (hosted `/two-factor/manage`) or Bid security settings. When a policy requires it,
@@ -29,7 +29,7 @@ both surfaces say who requires it and hide **Turn off**.
 
 ## Staff access across platforms
 
-One identity, separate roles per platform. A Bid super admin invites a person once and
+One identity, separate roles per platform. A Bid administrator invites a person once and
 chooses, for each platform, whether they get access and which role (D36). Bid applies its
 own grant. Other platforms receive `lax.staff_access.granted` / `.revoked` domain events
 and apply them with their own roster rules, so no product writes another product's role

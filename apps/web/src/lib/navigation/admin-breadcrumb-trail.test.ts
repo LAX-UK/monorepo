@@ -7,7 +7,7 @@ const sessionUser = {
   name: "Staff",
   email: "staff@example.com",
   role: "staff",
-  staffRoles: ["super_admin"],
+  staffRoles: ["administrator"],
 } as SessionUser;
 
 describe("buildAdminBreadcrumbTrail", () => {

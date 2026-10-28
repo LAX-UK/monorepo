@@ -74,7 +74,7 @@ describe("PaymentService.refundPayment admin clawback", () => {
     );
 
     const result = await service.refundPayment("admin-1", "staff", pay.id, undefined, [
-      "super_admin",
+      "administrator",
     ]);
 
     expect(result.isOk()).toBe(true);
@@ -149,7 +149,7 @@ describe("PaymentService.refundManualReviewPayment admin clawback", () => {
     );
 
     const result = await service.refundManualReviewPayment("admin-1", "staff", pay.id, [
-      "super_admin",
+      "administrator",
     ]);
 
     expect(result.isOk()).toBe(true);

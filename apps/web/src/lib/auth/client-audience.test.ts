@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import { clientAreaRedirectFor, usesBidAsClient } from "./client-audience";
 
 const client = { role: "client" as const, staffRoles: [] };
-const superAdmin = { role: "staff" as const, staffRoles: ["super_admin"] as const };
-const finance = { role: "staff" as const, staffRoles: ["finance_ops"] as const };
-const clerk = { role: "staff" as const, staffRoles: ["auction_manager"] as const };
+const superAdmin = { role: "staff" as const, staffRoles: ["administrator"] as const };
+const finance = { role: "staff" as const, staffRoles: ["finance"] as const };
+const clerk = { role: "staff" as const, staffRoles: ["sales_manager"] as const };
 const noStaffRole = { role: "staff" as const, staffRoles: [] };
 
 describe("usesBidAsClient", () => {

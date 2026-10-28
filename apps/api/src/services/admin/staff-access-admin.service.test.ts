@@ -6,11 +6,15 @@ import {
   platformView,
 } from "./staff-access-admin.service.js";
 
-const SUPER: StaffAccessActor = { userId: "usr_super", role: "staff", staffRoles: ["super_admin"] };
+const SUPER: StaffAccessActor = {
+  userId: "usr_super",
+  role: "staff",
+  staffRoles: ["administrator"],
+};
 const ADVISOR: StaffAccessActor = {
   userId: "usr_advisor",
   role: "staff",
-  staffRoles: ["client_advisor"],
+  staffRoles: ["client_services"],
 };
 const SPECIALIST: StaffAccessActor = {
   userId: "usr_spec",
@@ -121,7 +125,7 @@ describe("StaffAccessAdminService", () => {
     expect(detail.history[0]).toMatchObject({ actorName: "Sam Super", viaInvitation: false });
   });
 
-  it("only lets super admins request Shop changes, with a known role", async () => {
+  it("only lets administrators request Shop changes, with a known role", async () => {
     const { service, access } = setup();
 
     expect(

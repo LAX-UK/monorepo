@@ -48,15 +48,15 @@ describe("isSafeNextPath", () => {
 
 describe("staffRoleDefaultDestination", () => {
   it("maps staff specializations", () => {
-    expect(staffRoleDefaultDestination("staff", ["super_admin"])).toBe("/admin");
-    expect(staffRoleDefaultDestination("staff", ["finance_ops"])).toBe("/admin/finance");
-    expect(staffRoleDefaultDestination("staff", ["content_marketing"])).toBe("/admin/artists");
+    expect(staffRoleDefaultDestination("staff", ["administrator"])).toBe("/admin");
+    expect(staffRoleDefaultDestination("staff", ["finance"])).toBe("/admin/finance");
+    expect(staffRoleDefaultDestination("staff", ["read_only"])).toBe("/admin/legal-entities");
     expect(staffRoleDefaultDestination("client", [])).toBe("/home");
   });
 
   it("never sends staff to /home", () => {
     expect(staffRoleDefaultDestination("staff", [])).toBe("/admin");
-    expect(staffRoleDefaultDestination("staff", ["content_marketing"])).not.toBe("/home");
+    expect(staffRoleDefaultDestination("staff", ["read_only"])).not.toBe("/home");
   });
 });
 
@@ -77,7 +77,7 @@ describe("resolvePostAuthDestination", () => {
         user: {
           ...clientUser,
           role: "staff",
-          staffRoles: ["super_admin"],
+          staffRoles: ["administrator"],
           accountOnboardingComplete: false,
         },
         context: "sign-in",
@@ -239,32 +239,32 @@ describe("resolvePostAuthDestination", () => {
     ).toBe("/home");
     expect(
       resolvePostAuthDestination({
-        user: { ...clientUser, role: "staff", staffRoles: ["super_admin"] },
+        user: { ...clientUser, role: "staff", staffRoles: ["administrator"] },
         requestedNext: "//evil",
         context: "sign-in",
       }),
     ).toBe("/admin");
   });
 
-  it("routes content_marketing staff to /admin/artists after OAuth-style sign-in", () => {
+  it("routes read_only staff to /admin/legal-entities after OAuth-style sign-in", () => {
     expect(
       resolvePostAuthDestination({
         user: {
           ...clientUser,
           role: "staff",
-          staffRoles: ["content_marketing"],
+          staffRoles: ["read_only"],
         },
         context: "sign-in",
         withWelcomeBack: true,
       }),
-    ).toBe("/admin/artists?welcome=back");
+    ).toBe("/admin/legal-entities?welcome=back");
   });
 
   it("ignores default client dashboard next for staff users", () => {
     const staffMarketing = {
       ...clientUser,
       role: "staff" as const,
-      staffRoles: ["content_marketing"] as const,
+      staffRoles: ["read_only"] as const,
     };
     expect(
       resolvePostAuthDestination({
@@ -273,7 +273,7 @@ describe("resolvePostAuthDestination", () => {
         context: "sign-in",
         withWelcomeBack: true,
       }),
-    ).toBe("/admin/artists?welcome=back");
+    ).toBe("/admin/legal-entities?welcome=back");
     expect(
       resolvePostAuthDestination({
         user: staffMarketing,
@@ -281,7 +281,7 @@ describe("resolvePostAuthDestination", () => {
         context: "sign-in",
         withWelcomeBack: true,
       }),
-    ).toBe("/admin/artists?welcome=back");
+    ).toBe("/admin/legal-entities?welcome=back");
     expect(
       resolvePostAuthDestination({
         user: staffMarketing,
@@ -295,7 +295,7 @@ describe("resolvePostAuthDestination", () => {
     const staffMarketing = {
       ...clientUser,
       role: "staff" as const,
-      staffRoles: ["content_marketing"] as const,
+      staffRoles: ["read_only"] as const,
     };
     expect(
       resolvePostAuthDestination({
@@ -304,14 +304,14 @@ describe("resolvePostAuthDestination", () => {
         context: "sign-in",
         withWelcomeBack: true,
       }),
-    ).toBe("/admin/artists?welcome=back");
+    ).toBe("/admin/legal-entities?welcome=back");
     expect(
       resolvePostAuthDestination({
         user: staffMarketing,
         requestedNext: "/selling/new?categorySlug=motor-cars",
         context: "redirect-if-authed",
       }),
-    ).toBe("/admin/artists");
+    ).toBe("/admin/legal-entities");
   });
 
   it("preserves client dashboard deep links", () => {

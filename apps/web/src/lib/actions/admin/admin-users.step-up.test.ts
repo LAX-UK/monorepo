@@ -50,7 +50,7 @@ describe("admin user actions pass the step-up code to the page", () => {
   it.each([
     [
       "staff role",
-      () => adminSetUserStaffRoleResultAction(USER_ID, { staffRole: "support_concierge" }),
+      () => adminSetUserStaffRoleResultAction(USER_ID, { staffRole: "client_services" }),
       "setStaffRole",
     ],
     ["role", () => adminSetUserRoleResultAction(USER_ID, { role: "client" }), "setRole"],
@@ -71,7 +71,7 @@ describe("admin user actions pass the step-up code to the page", () => {
     adminUsers.setStaffRole.mockResolvedValue({ ok: false, message: "Forbidden", status: 403 });
 
     const result = await adminSetUserStaffRoleResultAction(USER_ID, {
-      staffRole: "support_concierge",
+      staffRole: "client_services",
     });
 
     expect(result).not.toHaveProperty("errorCode");

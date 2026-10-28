@@ -55,7 +55,7 @@ const post = (app: Hono, path: string, body: unknown, headers: Record<string, st
 const key = (value: string) => ({ "idempotency-key": value });
 
 describe("POST /admin/payouts/:payoutId/mark-paid", () => {
-  it.each(["super_admin", "finance_ops"])(
+  it.each(["administrator", "finance"])(
     "lets %s mark a payout paid with the actor recorded",
     async (staffRole) => {
       const { app, payouts } = mount(staffRole);
@@ -74,26 +74,23 @@ describe("POST /admin/payouts/:payoutId/mark-paid", () => {
     },
   );
 
-  it.each(["auction_manager", "client_advisor", "staff_viewer"])(
-    "refuses %s",
-    async (staffRole) => {
-      const { app, payouts } = mount(staffRole, { recent: false });
+  it.each(["sales_manager", "client_services", "read_only"])("refuses %s", async (staffRole) => {
+    const { app, payouts } = mount(staffRole, { recent: false });
 
-      const res = await post(
-        app,
-        `/${PAYOUT_ID}/mark-paid`,
-        { stripeTransferId: TRANSFER_REF },
-        key("mark-paid-key-2"),
-      );
+    const res = await post(
+      app,
+      `/${PAYOUT_ID}/mark-paid`,
+      { stripeTransferId: TRANSFER_REF },
+      key("mark-paid-key-2"),
+    );
 
-      expect(res.status).toBe(403);
-      expect(await res.json()).not.toEqual(STEP_UP);
-      expect(payouts.markPaid).not.toHaveBeenCalled();
-    },
-  );
+    expect(res.status).toBe(403);
+    expect(await res.json()).not.toEqual(STEP_UP);
+    expect(payouts.markPaid).not.toHaveBeenCalled();
+  });
 
   it("asks for a fresh sign-in, and marks nothing", async () => {
-    const { app, payouts } = mount("finance_ops", { recent: false });
+    const { app, payouts } = mount("finance", { recent: false });
 
     const res = await post(
       app,
@@ -108,7 +105,7 @@ describe("POST /admin/payouts/:payoutId/mark-paid", () => {
   });
 
   it("refuses a request without an Idempotency-Key", async () => {
-    const { app, payouts } = mount("finance_ops");
+    const { app, payouts } = mount("finance");
 
     const res = await post(app, `/${PAYOUT_ID}/mark-paid`, { stripeTransferId: TRANSFER_REF });
 
@@ -117,7 +114,7 @@ describe("POST /admin/payouts/:payoutId/mark-paid", () => {
   });
 
   it("marks paid once when the same request is replayed", async () => {
-    const { app, payouts } = mount("finance_ops");
+    const { app, payouts } = mount("finance");
     const send = () =>
       post(
         app,
@@ -136,7 +133,7 @@ describe("POST /admin/payouts/:payoutId/mark-paid", () => {
   });
 
   it("refuses the same key for a different transfer reference", async () => {
-    const { app, payouts } = mount("finance_ops");
+    const { app, payouts } = mount("finance");
     await post(
       app,
       `/${PAYOUT_ID}/mark-paid`,
@@ -156,7 +153,7 @@ describe("POST /admin/payouts/:payoutId/mark-paid", () => {
   });
 
   it("does not cache a conflict, so a corrected retry with the same key runs", async () => {
-    const { app, payouts } = mount("finance_ops");
+    const { app, payouts } = mount("finance");
     const { PayoutStatusTransitionError } = await import("../services/interfaces/payout.js");
     payouts.markPaid.mockRejectedValueOnce(new PayoutStatusTransitionError("payout_already_paid"));
     const send = () =>
@@ -178,7 +175,7 @@ describe("POST /admin/payouts/:payoutId/mark-paid", () => {
 
 describe("payout transition conflicts", () => {
   it("answers 409 with the conflict code when mark-paid loses a race", async () => {
-    const { app, payouts } = mount("finance_ops");
+    const { app, payouts } = mount("finance");
     const { PayoutStatusTransitionError } = await import("../services/interfaces/payout.js");
     payouts.markPaid.mockRejectedValueOnce(new PayoutStatusTransitionError("payout_state_changed"));
 
@@ -194,7 +191,7 @@ describe("payout transition conflicts", () => {
   });
 
   it("answers 409 when a reversal loses a race", async () => {
-    const { app, payouts } = mount("super_admin");
+    const { app, payouts } = mount("administrator");
     const { PayoutStatusTransitionError } = await import("../services/interfaces/payout.js");
     payouts.adminManualReverse.mockRejectedValueOnce(
       new PayoutStatusTransitionError("payout_already_reversed"),
@@ -216,7 +213,7 @@ describe("POST /admin/payouts/:payoutId/reverse", () => {
   const body = { reason: REVERSE_REASON, confirmationPhrase: `REVERSE PAYOUT ${PAYOUT_ID}` };
 
   it("asks for a fresh sign-in, and reverses nothing", async () => {
-    const { app, payouts } = mount("super_admin", { recent: false });
+    const { app, payouts } = mount("administrator", { recent: false });
 
     const res = await post(app, `/${PAYOUT_ID}/reverse`, body, key("reverse-key-001"));
 
@@ -226,7 +223,7 @@ describe("POST /admin/payouts/:payoutId/reverse", () => {
   });
 
   it("reverses once when the same request is replayed", async () => {
-    const { app, payouts } = mount("super_admin");
+    const { app, payouts } = mount("administrator");
     const send = () => post(app, `/${PAYOUT_ID}/reverse`, body, key("reverse-key-002"));
 
     await send();
@@ -237,7 +234,7 @@ describe("POST /admin/payouts/:payoutId/reverse", () => {
   });
 
   it("refuses a request without an Idempotency-Key", async () => {
-    const { app, payouts } = mount("super_admin");
+    const { app, payouts } = mount("administrator");
 
     const res = await post(app, `/${PAYOUT_ID}/reverse`, body);
 
@@ -249,7 +246,7 @@ describe("POST /admin/payouts/:payoutId/reverse", () => {
 describe("POST /admin/payouts/run-settlement", () => {
   const run = { legalEntityId: ENTITY_ID, dryRun: false };
 
-  it.each(["super_admin", "finance_ops"])(
+  it.each(["administrator", "finance"])(
     "lets %s run a settlement for one entity",
     async (staffRole) => {
       const { app, payouts } = mount(staffRole);
@@ -265,7 +262,7 @@ describe("POST /admin/payouts/run-settlement", () => {
     },
   );
 
-  it.each(["auction_manager", "client_advisor"])("refuses %s", async (staffRole) => {
+  it.each(["sales_manager", "client_services"])("refuses %s", async (staffRole) => {
     const { app, payouts } = mount(staffRole);
 
     const res = await post(app, "/run-settlement", run, key("settlement-key-2"));
@@ -275,7 +272,7 @@ describe("POST /admin/payouts/run-settlement", () => {
   });
 
   it("asks for a fresh sign-in, and settles nothing", async () => {
-    const { app, payouts } = mount("finance_ops", { recent: false });
+    const { app, payouts } = mount("finance", { recent: false });
 
     const res = await post(app, "/run-settlement", run, key("settlement-key-3"));
 
@@ -285,7 +282,7 @@ describe("POST /admin/payouts/run-settlement", () => {
   });
 
   it("refuses a request without an Idempotency-Key", async () => {
-    const { app, payouts } = mount("finance_ops");
+    const { app, payouts } = mount("finance");
 
     const res = await post(app, "/run-settlement", run);
 
@@ -294,7 +291,7 @@ describe("POST /admin/payouts/run-settlement", () => {
   });
 
   it("requires a legal entity", async () => {
-    const { app, payouts } = mount("finance_ops");
+    const { app, payouts } = mount("finance");
 
     const res = await post(app, "/run-settlement", { dryRun: false }, key("settlement-key-4"));
 
@@ -303,7 +300,7 @@ describe("POST /admin/payouts/run-settlement", () => {
   });
 
   it("creates one payout when the same request is replayed", async () => {
-    const { app, payouts } = mount("finance_ops");
+    const { app, payouts } = mount("finance");
     const send = () => post(app, "/run-settlement", run, key("settlement-key-5"));
 
     const first = await send();
@@ -317,7 +314,7 @@ describe("POST /admin/payouts/run-settlement", () => {
   });
 
   it("answers 409 when nothing is pending, so a second run under a new key is a no-op", async () => {
-    const { app, payouts } = mount("finance_ops");
+    const { app, payouts } = mount("finance");
     payouts.createSettlement.mockResolvedValueOnce({
       ok: true,
       payout: { id: PAYOUT_ID, lines: [] },
@@ -333,7 +330,7 @@ describe("POST /admin/payouts/run-settlement", () => {
   });
 
   it("refuses a concurrent run for the same entity and lets the same entity run again afterwards", async () => {
-    const { app, payouts } = mount("finance_ops");
+    const { app, payouts } = mount("finance");
     let release!: () => void;
     const gate = new Promise<void>((resolve) => {
       release = resolve;
@@ -359,7 +356,7 @@ describe("POST /admin/payouts/run-settlement", () => {
   });
 
   it("releases the entity lock when the settlement throws", async () => {
-    const { app, payouts, store } = mount("finance_ops");
+    const { app, payouts, store } = mount("finance");
     payouts.createSettlement.mockRejectedValueOnce(new Error("db down"));
 
     const failed = await post(app, "/run-settlement", run, key("settlement-key-11"));

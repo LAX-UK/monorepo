@@ -392,7 +392,7 @@ describe("SaleService.updateDraft", () => {
     );
 
     const result = await svc.updateDraft("staff", sale.id, { coverImages: ["new.jpg"] }, [
-      "catalogue_manager",
+      "cataloguer",
     ]);
 
     expect(result.isOk()).toBe(true);
@@ -417,9 +417,7 @@ describe("SaleService.updateDraft", () => {
       }),
     );
 
-    const result = await svc.updateDraft("staff", sale.id, { coverImages: [] }, [
-      "catalogue_manager",
-    ]);
+    const result = await svc.updateDraft("staff", sale.id, { coverImages: [] }, ["cataloguer"]);
 
     expect(result.isOk()).toBe(true);
     expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { coverImages: [] });
@@ -447,7 +445,7 @@ describe("SaleService.updateDraft", () => {
       "staff",
       sale.id,
       { coverImages: ["new.jpg"], title: "Renamed" },
-      ["catalogue_manager"],
+      ["cataloguer"],
     );
 
     expect(result.isOk()).toBe(true);
@@ -472,9 +470,7 @@ describe("SaleService.updateDraft", () => {
       }),
     );
 
-    const result = await svc.updateDraft("staff", sale.id, { title: "Renamed" }, [
-      "catalogue_manager",
-    ]);
+    const result = await svc.updateDraft("staff", sale.id, { title: "Renamed" }, ["cataloguer"]);
 
     expect(result.isOk()).toBe(true);
     expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { title: "Renamed" });
@@ -498,9 +494,7 @@ describe("SaleService.updateDraft", () => {
       }),
     );
 
-    const result = await svc.updateDraft("staff", sale.id, { title: "Renamed" }, [
-      "catalogue_manager",
-    ]);
+    const result = await svc.updateDraft("staff", sale.id, { title: "Renamed" }, ["cataloguer"]);
 
     expect(result.isOk()).toBe(true);
     expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { title: "Renamed" });
@@ -525,7 +519,7 @@ describe("SaleService.updateDraft", () => {
     );
 
     const result = await svc.updateDraft("staff", sale.id, { heroPresentation: "video" }, [
-      "catalogue_manager",
+      "cataloguer",
     ]);
 
     expect(result.isOk()).toBe(true);
@@ -550,9 +544,7 @@ describe("SaleService.updateDraft", () => {
       }),
     );
 
-    const result = await svc.updateDraft("staff", sale.id, { heroVideoUrl: null }, [
-      "catalogue_manager",
-    ]);
+    const result = await svc.updateDraft("staff", sale.id, { heroVideoUrl: null }, ["cataloguer"]);
 
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
@@ -582,7 +574,7 @@ describe("SaleService.updateDraft", () => {
       "staff",
       sale.id,
       { startTime: new Date("2030-01-02T12:00:00Z") },
-      ["catalogue_manager"],
+      ["cataloguer"],
     );
 
     expect(result.isErr()).toBe(true);
@@ -611,7 +603,7 @@ describe("SaleService.updateDraft", () => {
       }),
     );
 
-    const result = await svc.updateDraft("staff", sale.id, { streamUrl }, ["catalogue_manager"]);
+    const result = await svc.updateDraft("staff", sale.id, { streamUrl }, ["cataloguer"]);
 
     expect(result.isOk()).toBe(true);
     expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { streamUrl });
@@ -636,9 +628,7 @@ describe("SaleService.updateDraft", () => {
       }),
     );
 
-    const result = await svc.updateDraft("staff", sale.id, { streamUrl: null }, [
-      "catalogue_manager",
-    ]);
+    const result = await svc.updateDraft("staff", sale.id, { streamUrl: null }, ["cataloguer"]);
 
     expect(result.isOk()).toBe(true);
     expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { streamUrl: null });
@@ -666,7 +656,7 @@ describe("SaleService.updateDraft", () => {
       "staff",
       sale.id,
       { streamUrl: "https://vimeo.com/event/1/embed/x" },
-      ["catalogue_manager"],
+      ["cataloguer"],
     );
 
     expect(result.isErr()).toBe(true);
@@ -695,7 +685,7 @@ describe("SaleService.updateDraft", () => {
       }),
     );
 
-    const result = await svc.updateDraft("staff", sale.id, { streamUrl }, ["catalogue_manager"]);
+    const result = await svc.updateDraft("staff", sale.id, { streamUrl }, ["cataloguer"]);
 
     expect(result.isOk()).toBe(true);
     expect(saleRepo.update).toHaveBeenCalledWith(sale.id, { streamUrl });
@@ -715,7 +705,7 @@ describe("SaleService.updateDraft", () => {
       }),
     );
 
-    const result = await svc.updateDraft("staff", sale.id, { title: "Renamed" }, ["staff_viewer"]);
+    const result = await svc.updateDraft("staff", sale.id, { title: "Renamed" }, ["read_only"]);
 
     expect(result.isErr()).toBe(true);
     if (result.isOk()) return;
@@ -813,7 +803,7 @@ describe("SaleService.updateDraft", () => {
       "staff",
       sale.id,
       { endTime: new Date("2030-06-06T18:00:00Z") },
-      ["super_admin"],
+      ["administrator"],
     );
 
     expect(result.isErr()).toBe(true);
@@ -886,7 +876,7 @@ describe("SaleService.updateDraft", () => {
       "staff",
       sale.id,
       { startTime: newStart, endTime: newEnd },
-      ["super_admin"],
+      ["administrator"],
     );
 
     expect(result.isOk()).toBe(true);
@@ -959,7 +949,7 @@ describe("SaleService.updateDraft", () => {
       "staff",
       sale.id,
       { startTime: newStart, endTime: newEnd },
-      ["super_admin"],
+      ["administrator"],
     );
 
     expect(result.isOk()).toBe(true);
@@ -1037,7 +1027,7 @@ describe("SaleService.updateDraft", () => {
       "staff",
       sale.id,
       { startTime: newStart, endTime: newEnd },
-      ["super_admin"],
+      ["administrator"],
     );
 
     expect(result.isOk()).toBe(true);
@@ -1116,7 +1106,7 @@ describe("SaleService.updateDraft", () => {
       "staff",
       sale.id,
       { startTime: newStart, endTime: newEnd },
-      ["super_admin"],
+      ["administrator"],
     );
 
     expect(result.isOk()).toBe(true);
@@ -1125,7 +1115,7 @@ describe("SaleService.updateDraft", () => {
 });
 
 describe("SaleService.publish authorization", () => {
-  it("returns 403 when catalogue_manager staff tries to publish a sale", async () => {
+  it("returns 403 when cataloguer staff tries to publish a sale", async () => {
     const svc = new SaleService(
       saleServiceOpts({
         saleRepo: {} as ISaleRepository,
@@ -1133,7 +1123,7 @@ describe("SaleService.publish authorization", () => {
         jobScheduler: null,
       }),
     );
-    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s1", ["catalogue_manager"]);
+    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s1", ["cataloguer"]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(AuthzError);
@@ -1216,7 +1206,7 @@ describe("SaleService.publish domain events", () => {
       }),
     );
 
-    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s-pub", ["super_admin"]);
+    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s-pub", ["administrator"]);
     if (result.isErr()) {
       throw new Error(`publish failed: ${result.error.message}`);
     }
@@ -1298,7 +1288,7 @@ describe("SaleService.publish domain events", () => {
       }),
     );
 
-    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s-connect", ["super_admin"]);
+    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s-connect", ["administrator"]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toBeInstanceOf(LotError);
@@ -1372,7 +1362,9 @@ describe("SaleService.publish domain events", () => {
       }),
     );
 
-    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s-sched-fail", ["super_admin"]);
+    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s-sched-fail", [
+      "administrator",
+    ]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error).toMatchObject({
@@ -1485,7 +1477,7 @@ describe("SaleService.addLot emergency add", () => {
         description: "Catalogue description",
         images: ["img.jpg"],
       },
-      ["super_admin"],
+      ["administrator"],
     );
 
     expect(result.isOk()).toBe(true);
@@ -1538,7 +1530,7 @@ describe("SaleService.addLot emergency add", () => {
         startTime: lotStart,
         endTime: lotEnd,
       },
-      ["super_admin"],
+      ["administrator"],
     );
 
     expect(result.isErr()).toBe(true);
@@ -1592,7 +1584,7 @@ describe("SaleService.detachLot", () => {
     } as unknown as ILotRepository;
     const svc = new SaleService(saleServiceOpts({ saleRepo, lotRepo, jobScheduler: null }));
 
-    const result = await svc.detachLot("staff", sale.id, lot.id, ["super_admin"]);
+    const result = await svc.detachLot("staff", sale.id, lot.id, ["administrator"]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.message).toContain("Only draft lots");
@@ -1775,7 +1767,7 @@ describe("SaleService.listSaleLotsPageForPublicApi", () => {
     await svc.listSaleLotsPageForPublicApi(
       "s1",
       { limit: 10, offset: 0, sort: "lot" },
-      { role: "staff", staffRoles: ["catalogue_manager"] },
+      { role: "staff", staffRoles: ["cataloguer"] },
     );
     expect(listCatalogLotsBySalePage).toHaveBeenCalledWith({
       saleId: "s1",
@@ -1937,7 +1929,7 @@ describe("SaleService venue assignment", () => {
       "staff",
       sale.id,
       { locationName: "Renamed Hall", venueId: "venue-1" },
-      ["super_admin"],
+      ["administrator"],
     );
 
     expect(result.isOk()).toBe(true);
@@ -2026,7 +2018,7 @@ describe("SaleService venue assignment", () => {
       }),
     );
 
-    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s-pub", ["super_admin"]);
+    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s-pub", ["administrator"]);
     if (result.isErr()) {
       throw new Error(`publish failed: ${result.error.message}`);
     }
@@ -2098,7 +2090,7 @@ describe("SaleService venue assignment", () => {
       }),
     );
 
-    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s-empty", ["super_admin"]);
+    const result = await svc.publish(TEST_ADMIN_USER_ID, "staff", "s-empty", ["administrator"]);
     expect(result.isErr()).toBe(true);
     if (result.isErr()) {
       expect(result.error.code).toBe("onsite_location_required");
@@ -2137,7 +2129,7 @@ describe("SaleService.updateDraft — auction-day photos", () => {
       "staff",
       endedSale.id,
       { dayImages: [{ key: "day-photo-1.jpg", caption: "Lot 1 on the block" }] },
-      ["super_admin"],
+      ["administrator"],
     );
     expect(result.isErr()).toBe(false);
     expect(update).toHaveBeenCalledWith(
@@ -2163,7 +2155,7 @@ describe("SaleService.updateDraft — auction-day photos", () => {
       "staff",
       endedHybrid.id,
       { dayImages: [{ key: "day-2.jpg" }] },
-      ["super_admin"],
+      ["administrator"],
     );
     expect(result.isErr()).toBe(false);
     expect(update).toHaveBeenCalledWith(
@@ -2187,7 +2179,7 @@ describe("SaleService.updateDraft — auction-day photos", () => {
       "staff",
       endedOnline.id,
       { dayImages: [{ key: "day-3.jpg" }] },
-      ["super_admin"],
+      ["administrator"],
     );
     expect(result.isErr()).toBe(true);
     expect(update).not.toHaveBeenCalled();
@@ -2208,7 +2200,7 @@ describe("SaleService.updateDraft — auction-day photos", () => {
       "staff",
       scheduledSale.id,
       { dayImages: [{ key: "day-4.jpg" }] },
-      ["super_admin"],
+      ["administrator"],
     );
     expect(result.isErr()).toBe(true);
     expect(update).not.toHaveBeenCalled();
@@ -2234,7 +2226,7 @@ describe("SaleService.updateDraft — auction-day photos", () => {
     );
 
     await svc.updateDraft("staff", endedSale.id, { dayImages: [{ key: "keep-key.jpg" }] }, [
-      "super_admin",
+      "administrator",
     ]);
     expect(enqueueRemovedMany).toHaveBeenCalledWith(
       ["old-key.jpg", "keep-key.jpg"],
@@ -2286,14 +2278,14 @@ describe("SaleService one-platform-per-sale guards", () => {
 
   it("refuses to publish on lax.bid while the sale is live on ATG", async () => {
     const { svc, saleRepo } = setup();
-    const result = await svc.publish("admin-1", "staff", "s1", ["super_admin"]);
+    const result = await svc.publish("admin-1", "staff", "s1", ["administrator"]);
     expect(result._unsafeUnwrapErr()).toMatchObject({ status: 409, code: "sale_on_atg" });
     expect(saleRepo.updateStatus).not.toHaveBeenCalled();
   });
 
   it("refuses to cancel the sale while it is live on ATG", async () => {
     const { svc, saleRepo, lotRepo } = setup();
-    const result = await svc.cancel("admin-1", "staff", "s1", ["super_admin"]);
+    const result = await svc.cancel("admin-1", "staff", "s1", ["administrator"]);
     expect(result._unsafeUnwrapErr()).toMatchObject({ status: 409, code: "sale_on_atg" });
     expect(lotRepo.updateStatus).not.toHaveBeenCalled();
     expect(saleRepo.updateStatus).not.toHaveBeenCalled();
@@ -2302,12 +2294,12 @@ describe("SaleService one-platform-per-sale guards", () => {
   it("refuses to detach a lot with ATG bids but allows one without", async () => {
     const blocked = setup({ linked: true, numberOfBids: 2, sold: false });
     expect(
-      (await blocked.svc.detachLot("staff", "s1", "lot-1", ["super_admin"]))._unsafeUnwrapErr(),
+      (await blocked.svc.detachLot("staff", "s1", "lot-1", ["administrator"]))._unsafeUnwrapErr(),
     ).toMatchObject({ status: 409, code: "lot_on_atg" });
     expect(blocked.lotRepo.clearSaleId).not.toHaveBeenCalled();
 
     const allowed = setup({ linked: true, numberOfBids: 0, sold: false });
-    expect((await allowed.svc.detachLot("staff", "s1", "lot-1", ["super_admin"])).isOk()).toBe(
+    expect((await allowed.svc.detachLot("staff", "s1", "lot-1", ["administrator"])).isOk()).toBe(
       true,
     );
     expect(allowed.lotRepo.clearSaleId).toHaveBeenCalledWith("lot-1");

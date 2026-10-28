@@ -75,21 +75,21 @@ const ACTIONS: AdminAction[] = [
     rule: PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
     method: "POST",
     path: `/admin/payments/${PAYMENT_ID}/capture-and-process`,
-    expectedRoles: ["super_admin", "finance_ops"],
+    expectedRoles: ["administrator", "finance"],
   },
   {
     name: "refund a manual-review payment",
     rule: PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
     method: "POST",
     path: `/admin/payments/${PAYMENT_ID}/refund-buyer`,
-    expectedRoles: ["super_admin", "finance_ops"],
+    expectedRoles: ["administrator", "finance"],
   },
   {
     name: "approve a withdrawal request",
     rule: WITHDRAWAL_DECISION_ACCESS,
     method: "POST",
     path: `/admin/lots/${LOT_ID}/approve-withdrawal-request`,
-    expectedRoles: ["super_admin", "auction_manager", "operations"],
+    expectedRoles: ["administrator", "sales_manager"],
   },
   {
     name: "decline a withdrawal request",
@@ -97,14 +97,14 @@ const ACTIONS: AdminAction[] = [
     method: "POST",
     path: `/admin/lots/${LOT_ID}/decline-withdrawal-request`,
     body: { reason: "The lot is already in a catalogue." },
-    expectedRoles: ["super_admin", "auction_manager", "operations"],
+    expectedRoles: ["administrator", "sales_manager"],
   },
   {
     name: "replay a dead-lettered delivery",
     rule: DELIVERY_REPLAY_ACCESS,
     method: "POST",
     path: "/admin/system/delivery/42/replay",
-    expectedRoles: ["super_admin"],
+    expectedRoles: ["administrator"],
   },
   {
     name: "retry a webhook delivery",
@@ -112,21 +112,21 @@ const ACTIONS: AdminAction[] = [
     method: "POST",
     path: "/admin/system/delivery/webhook/retry",
     body: { eventKey: "evt_1" },
-    expectedRoles: ["super_admin"],
+    expectedRoles: ["administrator"],
   },
   {
     name: "list sale registrations",
     rule: SALES_ACCESS,
     method: "GET",
     path: `/admin/sales/${SALE_ID}/registrations`,
-    expectedRoles: ["super_admin", "auction_manager", "operations"],
+    expectedRoles: ["administrator", "sales_manager"],
   },
   {
     name: "approve a sale registration",
     rule: SALES_ACCESS,
     method: "POST",
     path: `/admin/sales/${SALE_ID}/registrations/${PAYMENT_ID}/approve`,
-    expectedRoles: ["super_admin", "auction_manager", "operations"],
+    expectedRoles: ["administrator", "sales_manager"],
   },
 ];
 
@@ -159,10 +159,10 @@ describe("admin action rules match the API routes", () => {
     });
   }
 
-  it("lets finance_ops reach the payments list through the finance shell", async () => {
-    const res = await buildApp(["finance_ops"]).request("http://test/admin/payments");
+  it("lets finance reach the payments list through the finance shell", async () => {
+    const res = await buildApp(["finance"]).request("http://test/admin/payments");
     expect([401, 403]).not.toContain(res.status);
-    const denied = await buildApp(["auction_manager"]).request("http://test/admin/payments");
+    const denied = await buildApp(["sales_manager"]).request("http://test/admin/payments");
     expect(denied.status).toBe(403);
   });
 });
@@ -188,8 +188,8 @@ describe("payment capture and refund gate", () => {
     );
   });
 
-  it("allows finance_ops, who the finance screens are built for", async () => {
-    const res = await paymentApp(["finance_ops"]).request("/payments/pay-1/refund", {
+  it("allows finance, who the finance screens are built for", async () => {
+    const res = await paymentApp(["finance"]).request("/payments/pay-1/refund", {
       method: "POST",
     });
     expect(res.status).toBe(200);

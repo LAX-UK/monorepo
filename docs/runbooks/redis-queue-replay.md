@@ -14,13 +14,13 @@ redis-cli -u "$REDIS_URL" LLEN "bull:email:wait"
 
 Inspect worker logs (`apps/worker`) for BullMQ `error` events. Confirm `CRON_INTERNAL_SECRET` matches API if heartbeat calls fail with 401.
 
-## Engineering UI (super_admin)
+## Engineering UI (administrator)
 
 When `ENABLE_BULL_BOARD=true`, open **Bull Board** at:
 
 `/admin/system/job-queues`
 
-Programmatic inspection (same auth — super_admin session):
+Programmatic inspection (same auth — administrator session):
 
 - `GET /admin/system/job-queues/summary`
 - `GET /admin/system/job-queues/:name/jobs?status=failed&limit=50`

@@ -158,7 +158,7 @@ describe("filterLotsForPublicCatalog", () => {
 
 describe("viewerCanSeeNonPublicCatalog", () => {
   it("is true for catalogue.write staff", () => {
-    expect(viewerCanSeeNonPublicCatalog("staff", ["catalogue_manager"])).toBe(true);
+    expect(viewerCanSeeNonPublicCatalog("staff", ["cataloguer"])).toBe(true);
   });
 
   it("is false for anonymous clients", () => {

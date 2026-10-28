@@ -39,7 +39,7 @@ function makeService(
 }
 
 describe("AdminUserService.bidsFor", () => {
-  it("allows client_advisor and returns paginated rows", async () => {
+  it("allows client_services and returns paginated rows", async () => {
     const listForUser = vi.fn().mockResolvedValue({
       rows: [
         {
@@ -58,7 +58,7 @@ describe("AdminUserService.bidsFor", () => {
       total: 1,
     });
     const svc = makeService({ listForUser } as unknown as IAdminUserBidsReader);
-    const result = await svc.bidsFor("staff", ["client_advisor"], "user-1", {
+    const result = await svc.bidsFor("staff", ["client_services"], "user-1", {
       limit: 25,
       offset: 0,
     });
@@ -66,11 +66,11 @@ describe("AdminUserService.bidsFor", () => {
     expect(listForUser).toHaveBeenCalledWith("user-1", { limit: 25, offset: 0 });
   });
 
-  it("denies operations without bids.read", async () => {
+  it("denies a sales manager without bids.read", async () => {
     const svc = makeService({ listForUser: vi.fn() } as unknown as IAdminUserBidsReader);
     let err: unknown;
     try {
-      await svc.bidsFor("staff", ["operations"], "user-1", { limit: 25, offset: 0 });
+      await svc.bidsFor("staff", ["sales_manager"], "user-1", { limit: 25, offset: 0 });
     } catch (e) {
       err = e;
     }
@@ -80,14 +80,14 @@ describe("AdminUserService.bidsFor", () => {
 });
 
 describe("AdminUserService PII least-privilege", () => {
-  it("denies client_advisor from reading KYC sessions", () => {
+  it("denies client_services from reading KYC sessions", () => {
     const svc = makeService({ listForUser: vi.fn() } as unknown as IAdminUserBidsReader);
-    expect(() => svc.kycSessionsFor("staff", ["client_advisor"], "user-1")).toThrow(AuthzError);
+    expect(() => svc.kycSessionsFor("staff", ["client_services"], "user-1")).toThrow(AuthzError);
   });
 
-  it("denies client_advisor from reading session activity", () => {
+  it("denies client_services from reading session activity", () => {
     const svc = makeService({ listForUser: vi.fn() } as unknown as IAdminUserBidsReader);
-    expect(() => svc.activityFor("staff", ["client_advisor"], "user-1", 20)).toThrow(AuthzError);
+    expect(() => svc.activityFor("staff", ["client_services"], "user-1", 20)).toThrow(AuthzError);
   });
 });
 
@@ -111,7 +111,7 @@ describe("AdminUserService.getById", () => {
       },
     });
 
-    await expect(service.getById("staff", ["client_advisor"], "user-1")).resolves.toMatchObject({
+    await expect(service.getById("staff", ["client_services"], "user-1")).resolves.toMatchObject({
       securityStatusAvailable: true,
       twoFactorEnabled: true,
       pendingNewEmail: "new@example.com",
@@ -132,7 +132,7 @@ describe("AdminUserService.getById", () => {
       identitySecurity: { readSecurityStatus },
     });
 
-    await expect(service.getById("staff", ["client_advisor"], "user-1")).resolves.toEqual({
+    await expect(service.getById("staff", ["client_services"], "user-1")).resolves.toEqual({
       ...detail,
       securityStatusAvailable: false,
     });
@@ -149,7 +149,7 @@ describe("AdminUserService.getById", () => {
       identitySecurity: { readSecurityStatus },
     });
 
-    await expect(service.getById("staff", ["client_advisor"], "missing")).resolves.toBeNull();
+    await expect(service.getById("staff", ["client_services"], "missing")).resolves.toBeNull();
     expect(readSecurityStatus).not.toHaveBeenCalled();
   });
 });

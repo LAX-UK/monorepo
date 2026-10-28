@@ -57,7 +57,7 @@ setup("authenticate staff @setup-staff", async ({ page, browser }) => {
   }
 });
 
-setup("authenticate catalogue manager @setup-catalogue", async ({ page }) => {
+setup("authenticate cataloguer @setup-catalogue", async ({ page }) => {
   setup.skip(
     !e2eEnabled || !hasCatalogueManagerCredentials(),
     "Seeded catalogue-manager credentials are required.",
