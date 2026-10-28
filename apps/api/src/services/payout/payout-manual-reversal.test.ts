@@ -6,7 +6,8 @@ import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { PayoutService } from "../payout.service.js";
 import { bridgePayoutAdjustmentService } from "./finance-payout-bridge.js";
 
-const ACTOR_ID = "user-actor";
+/** An administrator who did not process the payout, so the reversal rule lets them act. */
+const REVERSER = { userId: "user-reverser", staffRoles: ["administrator"] } as const;
 
 function paidPayout(): Payout {
   return {
@@ -81,6 +82,7 @@ function serviceFor(repo: IPayoutRepository) {
     mockDomainEventSink(vi.fn().mockResolvedValue(undefined)),
     adjustments,
     () => repo,
+    () => ({ listProcessorUserIds: async () => [] }),
   );
 }
 
@@ -88,14 +90,14 @@ describe("manual payout reversal", () => {
   it("records one payment-less reversal line for the whole net amount", async () => {
     const { repo, lines } = makeRepo(paidPayout());
 
-    await serviceFor(repo).adminManualReverse(ACTOR_ID, "po1", { reason: "bank returned it" });
+    await serviceFor(repo).adminManualReverse(REVERSER, "po1", { reason: "bank returned it" });
 
     const reversal = lines.filter((l) => l.kind === "reversal");
     expect(reversal).toEqual([
       expect.objectContaining({
         paymentId: null,
         amount: "-950.00",
-        createdByUserId: ACTOR_ID,
+        createdByUserId: REVERSER.userId,
         note: "Admin reversal: bank returned it",
       }),
     ]);
@@ -104,7 +106,7 @@ describe("manual payout reversal", () => {
   it("leaves nothing owed once the payout is reversed", async () => {
     const { repo, current } = makeRepo(paidPayout());
 
-    const updated = await serviceFor(repo).adminManualReverse(ACTOR_ID, "po1", {
+    const updated = await serviceFor(repo).adminManualReverse(REVERSER, "po1", {
       reason: "bank returned it",
     });
 
