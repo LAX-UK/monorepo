@@ -83,6 +83,13 @@ const adminUser = {
   emailStatus: "ok" as const,
 };
 
+const FAMILY_LINKS = [
+  { id: "bid", label: "LAX Bid", href: "https://lax.bid", current: true },
+  { id: "art", label: "lax.art", href: "https://lax.art", current: false },
+  { id: "shop", label: "LAX Shop", href: "https://shop.lax.art", current: false },
+  { id: "account", label: "LAX Account", href: "https://account.lax.bid/account", current: false },
+] as const;
+
 describe("AppShell", () => {
   it("renders public-site affordances for client dashboards", () => {
     render(
@@ -113,6 +120,37 @@ describe("AppShell", () => {
 
     expect(screen.queryByRole("link", { name: /view public lax site/i })).not.toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /browse lax\.bid/i })).not.toBeInTheDocument();
+  });
+
+  it("runs the LAX top bar across a client shell, with Bid marked current", () => {
+    render(
+      <AppShell
+        user={clientUser}
+        config={buildShellConfig({ user: clientUser, role: "client", familyLinks: FAMILY_LINKS })}
+      >
+        <p>Dashboard content</p>
+      </AppShell>,
+    );
+
+    const bar = screen.getByTestId("lax-family-bar");
+    expect(within(bar).getByRole("link", { name: "LAX Bid" })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+    expect(within(bar).getByRole("link", { name: "LAX Account" })).toBeInTheDocument();
+  });
+
+  it("keeps the LAX top bar off staff shells", () => {
+    render(
+      <AppShell
+        user={adminUser}
+        config={buildShellConfig({ user: adminUser, role: "platform", familyLinks: FAMILY_LINKS })}
+      >
+        <p>Admin content</p>
+      </AppShell>,
+    );
+
+    expect(screen.queryByTestId("lax-family-bar")).not.toBeInTheDocument();
   });
 
   it("renders shell config slots in main landmark order", () => {

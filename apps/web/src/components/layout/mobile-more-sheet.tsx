@@ -15,6 +15,8 @@ import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { NavSection } from "@/lib/shell/contracts";
 import { formatUnreadTabLabel } from "@/lib/shell/format-unread-tab-label";
+import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
+import { LaxFamilyMenuLinks } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import {
   BottomSheet,
@@ -38,6 +40,8 @@ type Props = {
   sections?: readonly NavSection[] | undefined;
   /** Client account in use; with organisations, its switcher heads the sheet. */
   account?: AccountChrome | undefined;
+  /** The other LAX products and LAX Account; the top bar is hidden on a phone. */
+  familyLinks?: readonly LaxFamilyLinkVm[] | undefined;
 };
 
 function navGroupLabel(item: AppShellNavItem, variant: "client" | "staff"): string {
@@ -193,6 +197,7 @@ export function MobileMoreSheet({
   user,
   sections,
   account,
+  familyLinks,
 }: Props) {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const pathname = usePathname();
@@ -298,6 +303,9 @@ export function MobileMoreSheet({
                   </div>
                 ))}
               </div>
+            ) : null}
+            {familyLinks ? (
+              <LaxFamilyMenuLinks links={familyLinks} onNavigate={() => onOpenChange(false)} />
             ) : null}
             <div className="rounded-lg border border-border-hairline bg-surface-container-low/40 p-4">
               <DensityTweakSection />

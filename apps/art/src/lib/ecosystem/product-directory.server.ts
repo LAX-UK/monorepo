@@ -1,7 +1,10 @@
 import { loadArtEnv } from "@/env.server";
+import { laxAccountPortalHref } from "@/lib/lax-account-url";
 import {
+  type LaxFamilyLinkVm,
   type LaxProductLinkVm,
   buildCrossProductFooterLinks,
+  buildLaxFamilyLinksFromDirectory,
   buildProductDirectoryLinks,
   isLocalProductFallbackAllowed,
   resolveProductDirectoryConfig,
@@ -45,4 +48,11 @@ export function loadArtCrossProductFooterLinks(): LaxProductLinkVm[] {
   const resolved = resolveProductDirectoryConfig(artDirectoryInput());
   if (!resolved.ok) return [];
   return buildCrossProductFooterLinks(resolved.config);
+}
+
+/** The LAX top bar's links on lax.art: the products, then LAX Account when it is configured. */
+export function loadArtFamilyLinks(): LaxFamilyLinkVm[] {
+  const resolved = resolveProductDirectoryConfig(artDirectoryInput());
+  if (!resolved.ok) return [];
+  return buildLaxFamilyLinksFromDirectory(resolved.config, laxAccountPortalHref() ?? undefined);
 }

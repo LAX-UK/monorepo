@@ -8,8 +8,8 @@ import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-
 import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
 import { useMarketingHeaderTitle } from "@/lib/marketing/marketing-header-title-context";
 import { restoreMegaMenuAuthedHrefs } from "@/lib/marketing/mega-menu-href-rewrite";
-import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
-import { headerChromeClassName, useHeaderChrome } from "@auction/marketing-ui";
+import type { LaxFamilyLinkVm, LaxProductLinkVm } from "@auction/lax-ecosystem";
+import { LaxFamilyBar, headerChromeClassName, useHeaderChrome } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
@@ -20,7 +20,6 @@ import { HeaderMegaNav } from "./header-mega-nav";
 import { HeaderSearchTrigger } from "./header-search";
 import { HeaderUtilityBar } from "./header-utility-bar";
 import { LaxLogo } from "./lax-logo";
-import { LaxProductSwitcher } from "./lax-product-switcher";
 import { MobileNavDrawer } from "./mobile-nav-drawer";
 import { ThemeToggle } from "./theme-toggle";
 
@@ -31,6 +30,8 @@ type SiteHeaderProps = {
   transparentPaths?: string[];
   chromeVariant?: SiteHeaderChromeVariant;
   laxProductLinks?: LaxProductLinkVm[];
+  /** The LAX top bar: the products, then LAX Account. */
+  familyLinks?: LaxFamilyLinkVm[];
 };
 
 type SiteHeaderShellProps = SiteHeaderProps & {
@@ -43,6 +44,7 @@ function SiteHeaderShell({
   chromeVariant,
   searchParams,
   laxProductLinks = [],
+  familyLinks = [],
 }: SiteHeaderShellProps) {
   const { user } = useAppSession();
   const nav = useMemo(() => {
@@ -88,10 +90,11 @@ function SiteHeaderShell({
             MARKETING_PAGE_GUTTER_X,
           )}
         >
-          <div className="hidden lg:flex lg:items-center lg:justify-between lg:gap-6">
-            <LaxProductSwitcher links={laxProductLinks} />
-            <HeaderUtilityBar headerTone={headerTone} />
-          </div>
+          <LaxFamilyBar
+            links={familyLinks}
+            tone={headerTone}
+            actions={<HeaderUtilityBar headerTone={headerTone} />}
+          />
 
           <HeaderMegaNav
             sections={nav}
@@ -147,6 +150,7 @@ function SiteHeaderShell({
           pathname={pathname}
           searchParams={searchParams}
           sections={nav}
+          familyLinks={familyLinks}
         />
       </header>
     </>

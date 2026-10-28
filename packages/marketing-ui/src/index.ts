@@ -99,11 +99,6 @@ export {
   type MarketingHorizontalRailProps,
   type MarketingHorizontalRailScrollerTag,
 } from "./marketing-horizontal-rail.js";
-export {
-  MarketingUtilityBar,
-  type MarketingUtilityBarProps,
-  type MarketingUtilityBarItem,
-} from "./marketing-utility-bar.js";
 export { LaxFamilyBar, type LaxFamilyBarLink, type LaxFamilyBarProps } from "./lax-family-bar.js";
 export { LaxFamilyMenuLinks, type LaxFamilyMenuLinksProps } from "./lax-family-menu-links.js";
 export { LaxLockup, type LaxLockupProps } from "./lax-lockup.js";

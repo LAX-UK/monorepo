@@ -12,6 +12,7 @@ import type { ClientNavScope } from "@/lib/navigation/client-nav-model";
 import type { DashboardDensity } from "@/lib/preferences/density";
 import type { SellerConnectNavBadgeInput } from "@/lib/shell/apply-seller-connect-nav-badges";
 import { buildShellConfig } from "@/lib/shell/build-shell-config";
+import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useMemo } from "react";
 
@@ -21,6 +22,8 @@ type Props = {
   navScope: ClientNavScope;
   /** The account in use, its switcher and the header strip. */
   account: AccountChrome;
+  /** The LAX top bar: the other products and LAX Account. */
+  familyLinks?: readonly LaxFamilyLinkVm[];
   cookieDensity?: DashboardDensity | null;
   hideEmailStatusBanner?: boolean;
   contextBanner?: ReactNode;
@@ -35,6 +38,7 @@ export function ClientShell({
   user,
   navScope,
   account,
+  familyLinks,
   cookieDensity,
   hideEmailStatusBanner,
   contextBanner,
@@ -52,6 +56,7 @@ export function ClientShell({
         role: "client",
         clientNavScope: navScope,
         clientAccount: account,
+        ...(familyLinks ? { familyLinks } : {}),
         ...(contextBanner ? { contextBanner } : {}),
         ...(topSlot ? { topSlot } : {}),
         ...(hideEmailStatusBanner ? { hideEmailStatusBanner: true } : {}),
@@ -62,6 +67,7 @@ export function ClientShell({
       user,
       navScope,
       account,
+      familyLinks,
       contextBanner,
       topSlot,
       hideEmailStatusBanner,

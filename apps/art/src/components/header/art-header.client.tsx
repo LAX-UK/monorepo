@@ -14,8 +14,9 @@ import {
   resolveArtNavKey,
 } from "@/lib/layout/art-nav.vm";
 import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@auction/branding";
-import type { AccountChromeState, LaxProductLinkVm } from "@auction/lax-ecosystem";
+import type { AccountChromeState, LaxFamilyLinkVm, LaxProductLinkVm } from "@auction/lax-ecosystem";
 import {
+  LaxFamilyBar,
   LaxLogo,
   MARKETING_HEADER_CHROME,
   MarketingChromeIconButton,
@@ -24,11 +25,8 @@ import {
   MarketingHeaderSearch,
   MarketingMenuIcon,
   MarketingSearchIcon,
-  MarketingUtilityBar,
-  type MarketingUtilityBarItem,
   headerChromeClassName,
   headerChromeIconClass,
-  headerProductNameClass,
   useHeaderChrome,
 } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
@@ -41,10 +39,16 @@ const RECENT_SEARCHES_KEY = "lax-art:recent-searches";
 type ArtHeaderClientProps = {
   account: AccountChromeState;
   productLinks: LaxProductLinkVm[];
+  familyLinks: LaxFamilyLinkVm[];
   headerNav: ArtHeaderNavData | null;
 };
 
-export function ArtHeaderClient({ account, productLinks, headerNav }: ArtHeaderClientProps) {
+export function ArtHeaderClient({
+  account,
+  productLinks,
+  familyLinks,
+  headerNav,
+}: ArtHeaderClientProps) {
   const pathname = usePathname();
   const nav = buildArtNavItems(pathname);
   const activeKey = resolveArtNavKey(pathname);
@@ -73,12 +77,6 @@ export function ArtHeaderClient({ account, productLinks, headerNav }: ArtHeaderC
     wasMenuOpenRef.current = menuOpen;
   }, [menuOpen]);
 
-  const utilityItems = productLinks.map((link) => ({
-    label: link.label,
-    href: link.href,
-    current: link.current,
-  }));
-
   return (
     <header
       ref={attachHeader}
@@ -94,27 +92,22 @@ export function ArtHeaderClient({ account, productLinks, headerNav }: ArtHeaderC
           MARKETING_PAGE_GUTTER_X,
         )}
       >
-        <div className="hidden lg:block">
-          <MarketingUtilityBar
-            className="justify-start"
-            items={utilityItems}
-            resolveLinkClassName={(item: MarketingUtilityBarItem) =>
-              headerProductNameClass(headerTone, item.current ?? false)
-            }
-            trailing={
-              <>
-                {/* Figma has no theme control; the utility row keeps it out of the busy nav row. */}
-                <ArtThemeToggle headerTone={headerTone} />
-                <ArtHeaderUtilityActions
-                  account={account}
-                  productLinks={productLinks}
-                  pathname={pathname}
-                  headerTone={headerTone}
-                />
-              </>
-            }
-          />
-        </div>
+        <LaxFamilyBar
+          links={familyLinks}
+          tone={headerTone}
+          actions={
+            <>
+              {/* Figma has no theme control; the utility row keeps it out of the busy nav row. */}
+              <ArtThemeToggle headerTone={headerTone} />
+              <ArtHeaderUtilityActions
+                account={account}
+                productLinks={productLinks}
+                pathname={pathname}
+                headerTone={headerTone}
+              />
+            </>
+          }
+        />
 
         <div className="flex h-14 items-center lg:h-auto">
           <MarketingHeaderMegaNav
@@ -181,7 +174,7 @@ export function ArtHeaderClient({ account, productLinks, headerNav }: ArtHeaderC
           pathname={pathname}
           navItems={nav}
           account={account}
-          productLinks={productLinks}
+          familyLinks={familyLinks}
         />
       </div>
     </header>

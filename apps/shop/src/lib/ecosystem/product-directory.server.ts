@@ -1,9 +1,11 @@
 import { loadShopEnv } from "@/env";
+import { laxAccountUrl } from "@/lib/lax-account-url";
 import { isShopIndexingAllowedForHost } from "@/lib/seo/shop-indexing";
 import {
+  type LaxFamilyLinkVm,
   type LaxProductLinkVm,
   buildCrossProductFooterLinks,
-  buildProductDirectoryLinks,
+  buildLaxFamilyLinksFromDirectory,
   isAllowedLaxProductUrl,
   isLocalProductFallbackAllowed,
   normalizeProductBaseUrl,
@@ -37,16 +39,17 @@ function shopDirectoryInput() {
   };
 }
 
-export function loadShopProductDirectoryLinks(): LaxProductLinkVm[] {
-  const resolved = resolveProductDirectoryConfig(shopDirectoryInput());
-  if (!resolved.ok) return [];
-  return buildProductDirectoryLinks(resolved.config);
-}
-
 export function loadShopCrossProductFooterLinks(): LaxProductLinkVm[] {
   const resolved = resolveProductDirectoryConfig(shopDirectoryInput());
   if (!resolved.ok) return [];
   return buildCrossProductFooterLinks(resolved.config);
+}
+
+/** The LAX top bar's links on Shop: the products, then LAX Account. */
+export function loadShopFamilyLinks(): LaxFamilyLinkVm[] {
+  const resolved = resolveProductDirectoryConfig(shopDirectoryInput());
+  if (!resolved.ok) return [];
+  return buildLaxFamilyLinksFromDirectory(resolved.config, laxAccountUrl());
 }
 
 /** The lax.art base URL, or null when it is not configured for this environment. */

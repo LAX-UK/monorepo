@@ -1,6 +1,7 @@
 import type { AdminNavCounts } from "@/lib/data/http/admin-nav-counts.types";
 import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
 import type { DashboardDensity } from "@/lib/preferences/density";
+import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
 import type { CapabilityRequirement } from "@auction/types";
 import type { LucideIcon } from "lucide-react";
 import type { ReactNode } from "react";
@@ -69,6 +70,8 @@ export type ShellConfig = {
   navSections?: readonly NavSection[];
   /** Client only: the account in use, its switcher and the header strip. */
   clientAccount?: AccountChrome;
+  /** Client only: the LAX top bar (other products, LAX Account); staff shells have none. */
+  familyLinks?: readonly LaxFamilyLinkVm[];
   pendingSubmissionCount?: number;
   pendingArtistCount?: number;
   navCounts?: AdminNavCounts;
