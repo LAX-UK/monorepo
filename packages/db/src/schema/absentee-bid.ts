@@ -52,6 +52,10 @@ export const absenteeBid = pgTable(
     index("absentee_bid_lot_status_idx")
       .on(table.lotId, table.status)
       .where(sql`${table.status} = 'scheduled'`),
+    /** An organisation's scheduled absentee bids, for the open-bids figure on its Home. */
+    index("absentee_bid_buyer_entity_scheduled_idx")
+      .on(table.buyerLegalEntityId)
+      .where(sql`${table.status} = 'scheduled'`),
     index("absentee_bid_executing_lease_idx")
       .on(table.executingAt)
       .where(sql`${table.status} = 'executing'`),

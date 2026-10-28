@@ -1681,6 +1681,13 @@
       "when": 1796025600000,
       "tag": "0239_consignment_after_sale",
       "breakpoints": true
+    },
+    {
+      "idx": 240,
+      "version": "7",
+      "when": 1796112000000,
+      "tag": "0240_absentee_bid_buyer_entity_idx",
+      "breakpoints": true
     }
   ]
 }

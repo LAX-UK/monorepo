@@ -3,7 +3,6 @@ import { itemSubmission, submissionCategories } from "@auction/db/schema";
 import type { CreateItemSubmissionInput, ItemSubmissionStatus } from "@auction/types";
 import {
   type InferInsertModel,
-  type SQL,
   and,
   asc,
   count,
@@ -11,7 +10,6 @@ import {
   eq,
   ilike,
   inArray,
-  isNotNull,
   lt,
   sql,
 } from "drizzle-orm";
@@ -23,6 +21,7 @@ import type {
 } from "../interfaces/index.js";
 import { mapItemSubmissionRow } from "../lib/entity-row-mappers.js";
 import { queryCreatedAtDailyCounts } from "./created-at-daily-count.query.js";
+import { submissionSenderSql } from "./submission-sender.sql.js";
 
 function qualityGapsSql() {
   return sql`(
@@ -48,16 +47,9 @@ function titleSearchSql(q: string | undefined) {
   return ilike(itemSubmission.title, `%${safe}%`);
 }
 
-/** The rows a viewer may see by who sent them; `all` adds nothing. */
-function senderSql(visibleTo: SubmissionSenderFilter | undefined): SQL | undefined {
-  if (!visibleTo || visibleTo.scope === "all") return undefined;
-  if (visibleTo.scope === "own") return eq(itemSubmission.submittedByUserId, visibleTo.userId);
-  return isNotNull(itemSubmission.submittedByUserId);
-}
-
 function sellerWhere(legalEntityId: string, f: Omit<ListSubmissionsFilter, "limit" | "offset">) {
   const parts = [eq(itemSubmission.legalEntityId, legalEntityId)];
-  const sender = senderSql(f.visibleTo);
+  const sender = submissionSenderSql(f.visibleTo);
   if (sender) parts.push(sender);
   if (f.statuses && f.statuses.length > 0) {
     parts.push(inArray(itemSubmission.status, f.statuses));
@@ -278,7 +270,7 @@ export class DrizzleItemSubmissionRepository implements IItemSubmissionRepositor
     const rows = await this.db
       .select({ status: itemSubmission.status, n: count() })
       .from(itemSubmission)
-      .where(and(eq(itemSubmission.legalEntityId, legalEntityId), senderSql(visibleTo)))
+      .where(and(eq(itemSubmission.legalEntityId, legalEntityId), submissionSenderSql(visibleTo)))
       .groupBy(itemSubmission.status);
     const out = {
       draft: 0,
