@@ -16,11 +16,6 @@ vi.mock("@/lib/actions/admin-consignment-after-sale", () => ({
 vi.mock("@/lib/ui/notify", () => ({ notify: { success: vi.fn(), error: vi.fn() } }));
 const refresh = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
-vi.mock("next/link", () => ({
-  default: ({ href, children }: { href: string; children: React.ReactNode }) => (
-    <a href={href}>{children}</a>
-  ),
-}));
 
 const unsold: NonNullable<StaffAfterSaleView["unsold"]> = {
   lotId: "lot-1",
