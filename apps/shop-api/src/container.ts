@@ -27,6 +27,7 @@ import { createListPublicMerchandiseProductsHandler } from "./application/handle
 import { createPortalFavoritesHandlers } from "./application/handlers/portal-favorites.handler.js";
 import { createRegisterArtworkInterestHandler } from "./application/handlers/register-artwork-interest.handler.js";
 import { createShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
+import { createHomeFeaturesService } from "./application/home-features/home-features.service.js";
 import { createLaxPortfolioHandlers } from "./application/lax-portfolio/lax-portfolio.handler.js";
 import type { ImportArtworkCommand } from "./application/ports/artwork-import.writer.js";
 import type { CreateOriginalSaleCommand } from "./application/ports/original-sale.writer.js";
@@ -113,6 +114,8 @@ import { createRejectSaleAuthorityRequestHandler } from "./infrastructure/handle
 import { createRequestRefundHandler } from "./infrastructure/handlers/admin/request-refund.handler.js";
 import { createUpdateFulfilmentHandler } from "./infrastructure/handlers/admin/update-fulfilment.handler.js";
 import { createSyncConnectAccountHandler } from "./infrastructure/handlers/webhooks/sync-connect-account.handler.js";
+import { createDrizzleHomeFeatureListReader } from "./infrastructure/home-features/drizzle-home-feature.reader.js";
+import { createDrizzleHomeFeaturesUnitOfWork } from "./infrastructure/home-features/drizzle-home-features.unit-of-work.js";
 import {
   createHttpArtCacheInvalidator,
   noopArtCacheInvalidator,
@@ -352,6 +355,11 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     editionRuns: editionRuns.recorder,
   });
   const artistCatalogue = createDrizzleArtistCatalogueWriter(shopUow);
+  const homeFeatures = createHomeFeaturesService({
+    uow: createDrizzleHomeFeaturesUnitOfWork(shopUow, { resolveMediaUrl }),
+    lists: createDrizzleHomeFeatureListReader(db, { resolveMediaUrl }),
+    clock: { now: () => new Date() },
+  });
   const artCache =
     env.ART_REVALIDATE_URL && env.ART_REVALIDATE_SECRET
       ? createHttpArtCacheInvalidator({
@@ -517,6 +525,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         editionRuns,
         artistCatalogue,
         artCache,
+        homeFeatures,
         thirdPartySales,
         originalSales: adminOriginalSales,
         linkArtistIdentity,

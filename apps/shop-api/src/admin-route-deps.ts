@@ -2,6 +2,7 @@ import type { ArtistApplicationReviewService } from "./application/artist-applic
 import type { EditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import type { ShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
+import type { HomeFeaturesService } from "./application/home-features/home-features.service.js";
 import type { AdminReadPorts } from "./application/ports/admin-readers.js";
 import type { ArtCacheInvalidator } from "./application/ports/art-cache-invalidator.js";
 import type { ArtistSeoWriter } from "./application/ports/artist-seo.writer.js";
@@ -106,6 +107,8 @@ export type AdminRoutesDeps = {
   artistCatalogue: ArtistCatalogueWriter;
   /** Refreshes lax.art after catalogue writes that change what it serves. */
   artCache: ArtCacheInvalidator;
+  /** Featured on home: the prints, artists and categories the home pages feature. */
+  homeFeatures: HomeFeaturesService;
   thirdPartySales: {
     recordSale(
       command: RecordThirdPartySaleCommand,

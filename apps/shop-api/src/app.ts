@@ -27,6 +27,7 @@ import { registerArtCacheInvalidation } from "./routes/admin/v1/art-cache-invali
 import { registerAdminArtworkRoutes } from "./routes/admin/v1/artworks.routes.js";
 import { registerAdminEditionRunRoutes } from "./routes/admin/v1/edition-runs.routes.js";
 import { registerAdminHealthRoutes } from "./routes/admin/v1/health.routes.js";
+import { registerAdminHomeFeatureRoutes } from "./routes/admin/v1/home-features.routes.js";
 import { registerAdminOperationsRoutes } from "./routes/admin/v1/operations.routes.js";
 import { registerAdminOriginalSaleRoutes } from "./routes/admin/v1/original-sales.routes.js";
 import { registerAdminSessionRoutes } from "./routes/admin/v1/session.routes.js";
@@ -178,6 +179,7 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
         void registerAdminArtistRoutes(adminScope, options.deps.admin);
         void registerAdminArtworkRoutes(adminScope, options.deps.admin);
         void registerAdminEditionRunRoutes(adminScope, options.deps.admin);
+        void registerAdminHomeFeatureRoutes(adminScope, options.deps.admin);
         void registerAdminMediaRoutes(adminScope, options.deps.admin);
         if (options.deps.env.SHOP_EDITORIAL_ENABLED && options.deps.editorial) {
           const editorialDeps = options.deps.editorial;

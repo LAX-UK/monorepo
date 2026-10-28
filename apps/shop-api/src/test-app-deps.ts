@@ -7,6 +7,7 @@ import {
   createEditionAlertRateLimiter,
   createEnquiryRateLimiter,
 } from "./application/enquiry-rate-limit.js";
+import { createHomeFeaturesService } from "./application/home-features/home-features.service.js";
 import { createProductionTaskService } from "./application/production-task.service.js";
 import { createSavedViewService } from "./application/saved-view.service.js";
 import type { ShopApiAppDeps } from "./container.js";
@@ -408,6 +409,18 @@ export function createMinimalShopApiTestDeps(
         }),
       },
       artCache: { invalidateEditorial: async () => {}, invalidateCatalogue: async () => {} },
+      homeFeatures: createHomeFeaturesService({
+        uow: { run: () => Promise.reject(new Error("No featured lists store in this test")) },
+        lists: {
+          list: async () => ({
+            featured_prints: [],
+            featured_artists: [],
+            featured_categories: [],
+          }),
+          searchCandidates: async () => [],
+        },
+        clock: { now: () => new Date() },
+      }),
       requestRefund: async () => ({
         refundId: "00000000-0000-4000-8000-000000000012",
         status: "pending" as const,
