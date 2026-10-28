@@ -374,7 +374,7 @@ function MarketingMegaMenuPanelContent({
         href={viewAllHref}
         data-megamenu-link
         className={cn(
-          "w-fit rounded-sm font-label text-xs font-semibold uppercase tracking-wide text-brand-900 underline-offset-4 transition-colors hover:underline motion-reduce:transition-none dark:text-on-surface",
+          "w-fit rounded-sm font-label text-sm font-semibold text-brand-900 underline-offset-4 transition-colors hover:underline motion-reduce:transition-none dark:text-on-surface",
           FOCUS_RING,
         )}
         onClick={onNavigate}
@@ -396,7 +396,7 @@ function MarketingMegaMenuPanelContent({
         <div className="grid grid-cols-3 gap-x-12 gap-y-8">
           {section.columns.map((column) => (
             <div key={column.id} className="flex flex-col gap-4">
-              <h3 className="font-label text-xs font-semibold uppercase tracking-wide text-on-surface-variant">
+              <h3 className="font-label text-xs font-semibold text-on-surface-variant">
                 {column.title}
               </h3>
               <MegaMenuLinkList items={column.items} onNavigate={onNavigate} />

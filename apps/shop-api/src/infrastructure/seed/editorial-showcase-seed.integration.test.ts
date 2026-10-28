@@ -57,6 +57,29 @@ describe.skipIf(!hasShopIntegrationDb)("editorial showcase seed", () => {
     expect(hubCards.filter((card) => card.refKind === "page")).toHaveLength(2);
   });
 
+  it("fills the Art Hub podcast, film and press slots and retires the product promo copy", async () => {
+    const db = createShopDb(shopPool);
+    await db.insert(shopEditorialPlacement).values({
+      slot: "home_promo_bid",
+      position: 0,
+      refKind: "external",
+      headline: "Old promo",
+      linkUrl: "https://lax.bid",
+      publishedAt: new Date(),
+    });
+    await seedEditorialShowcase(db);
+
+    const slots = await db
+      .select({ slot: shopEditorialPlacement.slot })
+      .from(shopEditorialPlacement);
+    const present = new Set(slots.map((row) => row.slot));
+    for (const slot of ["art_hub_podcast", "art_hub_films", "art_hub_press"] as const) {
+      expect(present.has(slot)).toBe(true);
+    }
+    expect(present.has("home_promo_bid")).toBe(false);
+    expect(present.has("home_promo_shop")).toBe(false);
+  });
+
   it("seeds five published help categories with their questions (idempotent)", async () => {
     const db = createShopDb(shopPool);
     await seedEditorialShowcase(db);

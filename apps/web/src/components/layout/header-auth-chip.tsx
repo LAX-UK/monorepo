@@ -1,11 +1,10 @@
 "use client";
 
-import { AccountRolePill } from "@/components/layout/account-role-pill";
-import { HeaderBidUrgencyChip } from "@/components/layout/header-bid-urgency-chip";
+import { AccountMenuIdentity } from "@/components/layout/account-menu/account-menu-identity";
+import { HeaderAttentionChip } from "@/components/layout/header-attention-chip";
 import { HeaderGuestMenu } from "@/components/layout/header-guest-menu";
 import { HeaderUserMenu } from "@/components/layout/header-user-menu";
 import { NotificationBell } from "@/components/layout/notification-bell";
-import { usesBidAsClient } from "@/lib/auth/client-audience";
 import { useAppSession } from "@/lib/auth/use-app-session";
 import { useAuthHeaderLinks } from "@/lib/auth/use-auth-header-links";
 import type { SessionUser } from "@/lib/data/contracts";
@@ -14,7 +13,6 @@ import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { AccountMenuItems, useAccountMenuGroups } from "./account-menu-items";
 import { LogoutButton } from "./logout-button";
 
 type HeaderAuthChipVariant = "account" | "notifications" | "full";
@@ -62,7 +60,7 @@ export function HeaderAuthChip({
 
   return (
     <div className="flex items-center gap-2">
-      <HeaderBidUrgencyChip />
+      <HeaderAttentionChip />
       <NotificationBell headerTone={headerTone} />
       <HeaderUserMenu user={user} headerTone={headerTone} laxProductLinks={laxProductLinks} />
     </div>
@@ -112,28 +110,17 @@ export function MobileAuthSection({ onNavigate }: { onNavigate: () => void }) {
   return <MobileSignedInSection user={user} onNavigate={onNavigate} />;
 }
 
+/**
+ * Signed in, the site menu only says who is signed in and offers Sign out: the account's own
+ * pages open from the avatar, so the two menus never repeat each other.
+ */
 function MobileSignedInSection({
   user,
   onNavigate,
 }: { user: SessionUser; onNavigate: () => void }) {
-  const groups = useAccountMenuGroups(user, true);
   return (
     <div className="flex flex-col gap-3 border-t border-nav-border pt-4">
-      <p className="font-label text-xs font-medium text-brand-400 dark:text-on-surface-variant">
-        Account
-      </p>
-      <div className="rounded-md border border-nav-border bg-page-bg px-3 py-2 dark:border-border-hairline dark:bg-surface-container-low">
-        <p className="font-body text-sm font-medium text-brand-900 dark:text-on-surface">
-          {user.name.trim() || "Signed in"}
-        </p>
-        <p className="mt-0.5 truncate font-body text-xs text-brand-400 dark:text-on-surface-variant">
-          {user.email}
-        </p>
-        {usesBidAsClient(user) ? null : <AccountRolePill user={user} className="mt-2" />}
-      </div>
-      <div className="flex flex-col">
-        <AccountMenuItems groups={groups} variant="drawer" menu={false} onNavigate={onNavigate} />
-      </div>
+      <AccountMenuIdentity user={user} />
       <LogoutButton
         onBeforeNavigate={onNavigate}
         className="block w-full rounded-md border border-nav-border py-3 text-center font-label text-sm font-medium text-brand-900 transition-colors hover:bg-page-bg disabled:cursor-not-allowed disabled:opacity-50 dark:border-border-hairline dark:text-on-surface dark:hover:bg-surface-container-low"

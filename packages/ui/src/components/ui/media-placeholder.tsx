@@ -28,10 +28,11 @@ const LINE_CLASS = {
   auto: "text-brand-100 dark:text-brand-400",
 } as const;
 
+/** The label follows the theme's secondary text colour, which keeps 4.5:1 on the hatched surface. */
 const LABEL_CLASS = {
-  light: "text-brand-300",
-  dark: "text-brand-400",
-  auto: "text-brand-300 dark:text-brand-400",
+  light: "text-on-surface-variant",
+  dark: "text-on-surface-variant",
+  auto: "text-on-surface-variant",
 } as const;
 
 export function MediaPlaceholder({

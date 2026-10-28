@@ -46,41 +46,44 @@ export function MarketingFactColumns({
       data-testid="marketing-fact-columns"
     >
       {shown.map((fact) => (
+        // A definition-list group holds only its term and description; the icon sits inside the term.
         <div
           key={fact.id}
           className={cn(
-            "flex",
-            stacked ? "items-start gap-4" : "flex-col items-center",
+            "flex min-w-0 flex-col",
+            stacked ? "relative gap-1 pl-10" : "items-center gap-3",
             fact.className,
           )}
         >
-          {stacked ? <span className="mt-0.5 text-on-surface-variant">{fact.icon}</span> : null}
-          <div className={cn("flex min-w-0 flex-col", stacked ? "gap-1" : "items-center gap-3")}>
-            <dt
-              className={cn(
-                "flex font-label text-xs uppercase",
-                stacked
-                  ? "tracking-widest text-on-surface-variant"
-                  : "flex-col items-center gap-2 tracking-wider text-on-surface",
-              )}
-            >
-              {stacked ? null : fact.icon}
-              {fact.label}
-            </dt>
-            <dd
-              className={cn(
-                "m-0 flex flex-col gap-1",
-                stacked
-                  ? "text-base text-on-surface md:text-lg"
-                  : "items-center text-sm text-on-surface-variant",
-              )}
-            >
-              {fact.lines.map((line, index) => (
-                // biome-ignore lint/suspicious/noArrayIndexKey: fact lines are positional.
-                <span key={index}>{line}</span>
-              ))}
-            </dd>
-          </div>
+          <dt
+            className={cn(
+              "flex font-label text-sm font-medium",
+              stacked ? "text-on-surface-variant" : "flex-col items-center gap-2 text-on-surface",
+            )}
+          >
+            {fact.icon ? (
+              <span
+                aria-hidden
+                className={stacked ? "absolute left-0 top-0.5 text-on-surface-variant" : undefined}
+              >
+                {fact.icon}
+              </span>
+            ) : null}
+            {fact.label}
+          </dt>
+          <dd
+            className={cn(
+              "m-0 flex flex-col gap-1",
+              stacked
+                ? "text-base text-on-surface md:text-lg"
+                : "items-center text-sm text-on-surface-variant",
+            )}
+          >
+            {fact.lines.map((line, index) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: fact lines are positional.
+              <span key={index}>{line}</span>
+            ))}
+          </dd>
         </div>
       ))}
     </dl>

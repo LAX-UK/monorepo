@@ -68,8 +68,8 @@ test.describe("lax.art journeys", () => {
 
     await page.goto("/search?q=zzqx-no-such-artwork-9271");
     await expect(page.getByTestId("art-search-no-results")).toBeVisible();
-    await expect(page.getByText("No available items")).toBeVisible();
-    await expect(page.getByRole("link", { name: "Browse all artworks" })).toHaveAttribute(
+    await expect(page.getByRole("heading", { level: 1, name: /^No results for/ })).toBeVisible();
+    await expect(page.getByRole("link", { name: "Browse artworks" })).toHaveAttribute(
       "href",
       "/artworks",
     );
@@ -244,13 +244,13 @@ test.describe("lax.art journeys", () => {
     await expect.poll(() => html.evaluate((el) => el.classList.contains("dark"))).toBe(startedDark);
   });
 
-  test("desktop header offers Log in, Enquire and keyboard mega menus", async ({
+  test("desktop header offers Sign in, Enquire and keyboard mega menus", async ({
     page,
   }, testInfo) => {
     test.skip(testInfo.project.name !== "chromium-desktop", "mega menus are lg+ only");
     await page.goto("/artworks");
     const header = page.getByTestId("art-header");
-    await expect(header.getByRole("link", { name: "Log in" })).toHaveAttribute(
+    await expect(header.getByRole("link", { name: "Sign in" })).toHaveAttribute(
       "href",
       "/login?returnTo=%2Fartworks",
     );
@@ -344,16 +344,15 @@ test.describe("lax.art journeys", () => {
     const footer = page.getByRole("contentinfo");
     // Account and LAX products depend on sign-in and product directory config.
     const titles = await footer.getByRole("heading", { level: 3 }).allTextContents();
-    expect(titles.slice(0, 2)).toEqual(["About us", "Our services"]);
+    expect(titles.slice(0, 2)).toEqual(["Gallery", "Our services"]);
     expect(titles.slice(-2)).toEqual(["Legal", "Connect"]);
-    await expect(footer.getByRole("link", { name: "How to sell" })).toHaveAttribute(
-      "href",
-      "/how-to-sell",
-    );
-    await expect(footer.getByRole("link", { name: "Contact us" })).toHaveAttribute(
-      "href",
-      "/contact",
-    );
+    // Columns fold on phones, so links are checked whether or not their column is open.
+    await expect(
+      footer.getByRole("link", { name: "How to sell", includeHidden: true }),
+    ).toHaveAttribute("href", "/how-to-sell");
+    await expect(
+      footer.getByRole("link", { name: "Contact", includeHidden: true }),
+    ).toHaveAttribute("href", "/contact");
   });
 
   test("mobile bottom nav marks the current tab", async ({ page }, testInfo) => {

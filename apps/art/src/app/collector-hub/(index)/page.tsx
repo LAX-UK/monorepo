@@ -51,7 +51,6 @@ export default async function CollectorHubPage() {
       {cards.length === 0 ? (
         <ArtStatusState
           variant="empty"
-          layout="inline"
           title="Collector resources on the way"
           description="Guides and advisory notes will appear here when they are published."
         />

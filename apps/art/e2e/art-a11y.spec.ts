@@ -25,7 +25,7 @@ test.describe("lax.art accessibility @a11y", () => {
     },
     { path: "/artworks", heading: "Artworks" },
     { path: "/search", heading: "Search by artist or artwork" },
-    { path: "/search?q=zzqx-no-such-artwork-9271", heading: "Showing results for" },
+    { path: "/search?q=zzqx-no-such-artwork-9271", heading: "No results for" },
     { path: "/artworks?view=list", heading: "Artworks" },
     { path: "/artists", heading: "Artists" },
     { path: "/exhibitions", heading: "Exhibitions", editorial: true },

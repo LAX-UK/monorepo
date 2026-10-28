@@ -24,6 +24,12 @@ describe("MarketingStatusMotif", () => {
 });
 
 describe("MarketingStatusState", () => {
+  it("offers an open layout that sits on the page without a box", () => {
+    const { container } = render(<MarketingStatusState layout="open" title="No questions yet" />);
+    expect(container.firstElementChild).toHaveClass("marketing-status-state--open");
+    expect(container.firstElementChild).not.toHaveClass("marketing-status-state--inline");
+  });
+
   it("renders a no-results state with the search-remove motif", () => {
     render(
       <MarketingStatusState

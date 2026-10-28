@@ -2,6 +2,7 @@ import { loadArtEnv, loadArtStorefrontBaseUrl } from "@/env.server";
 import { shopBaseUrl } from "@/lib/artwork/shop-editions.vm";
 import { loadArtCrossProductFooterLinks } from "@/lib/ecosystem/product-directory.server";
 import { laxAccountUrl } from "@/lib/lax-account-url";
+import { ART_REQUEST_PATH_HEADER } from "@/lib/request-path-header";
 import { resolveRetiredArtRoute } from "@/lib/routing/retired-art-routes";
 import {
   X_ROBOTS_TAG_NOINDEX,
@@ -36,7 +37,12 @@ export function middleware(request: NextRequest) {
     );
   }
 
-  const response = NextResponse.next();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set(
+    ART_REQUEST_PATH_HEADER,
+    `${request.nextUrl.pathname}${request.nextUrl.search}`,
+  );
+  const response = NextResponse.next({ request: { headers: requestHeaders } });
   const host = publicRequestHost(request.headers);
   if (!isArtIndexingAllowedForHost(host, loadArtEnv().ART_ALLOW_INDEXING)) {
     response.headers.set("X-Robots-Tag", X_ROBOTS_TAG_NOINDEX);

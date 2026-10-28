@@ -68,4 +68,32 @@ describe.skipIf(!hasShopIntegrationDb)("foundation catalogue seed", () => {
     );
     expect(featured.every((row) => row.position < 8)).toBe(true);
   });
+
+  it("links one on-sale and one sold-out Shop edition to a lax.art original (idempotent)", async () => {
+    const db = createShopDb(shopPool);
+    const importWriter = createPublishedArtworkImportWriter(db, "off");
+    const authorityWriter = createDrizzleSaleAuthorityWriter(db, "off");
+    const seed = () =>
+      seedShopFoundationCatalogue(
+        importWriter.importArtwork.bind(importWriter),
+        db,
+        authorityWriter.grantSaleAuthority.bind(authorityWriter),
+      );
+    await seed();
+    await seed();
+
+    const [original] = await db
+      .select({ id: shopArtwork.id })
+      .from(shopArtwork)
+      .where(eq(shopArtwork.slug, "harbour-light"));
+    const editions = await db
+      .select({ slug: shopArtwork.slug, channel: shopArtwork.salesChannel })
+      .from(shopArtwork)
+      .where(eq(shopArtwork.sourceOriginalArtworkId, original?.id ?? ""));
+    expect(editions.map((edition) => edition.slug).sort()).toEqual([
+      "harbour-light-edition",
+      "harbour-light-edition-large",
+    ]);
+    expect(editions.every((edition) => edition.channel === "shop")).toBe(true);
+  });
 });

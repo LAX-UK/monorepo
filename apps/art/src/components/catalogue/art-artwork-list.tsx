@@ -47,7 +47,7 @@ export function ArtArtworkList({
           subtitle={
             <Link
               href={card.artistHref}
-              className="art-focus-ring w-fit rounded-sm hover:text-on-surface"
+              className="art-focus-ring inline-flex min-h-6 w-fit items-center rounded-sm hover:text-on-surface"
             >
               {card.artistName}
             </Link>

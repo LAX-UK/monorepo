@@ -139,6 +139,37 @@ describe("MarketingSubNav anchor mode", () => {
     expect(overview).not.toHaveAttribute("aria-current");
   });
 
+  it("returns to the first tab when the page is scrolled back above every section", () => {
+    render(
+      <>
+        <MarketingSubNav
+          mode="anchor"
+          ariaLabel="Exhibition sections"
+          items={[
+            { id: "overview", label: "Overview" },
+            { id: "installation", label: "Installation views" },
+          ]}
+        />
+        <Sections />
+      </>,
+    );
+    const overview = document.getElementById("overview") as HTMLElement;
+    const installation = document.getElementById("installation") as HTMLElement;
+    const spy = observers.find((o) => o.targets.some((t) => t.id === "installation"));
+    fire(spy as ObserverRecord, [
+      { target: overview, isIntersecting: false },
+      { target: installation, isIntersecting: true },
+    ]);
+    expect(screen.getByRole("link", { name: "Installation views" })).toHaveAttribute(
+      "aria-current",
+      "true",
+    );
+
+    vi.spyOn(overview, "getBoundingClientRect").mockReturnValue({ top: 400 } as DOMRect);
+    fire(spy as ObserverRecord, [{ target: installation, isIntersecting: false }]);
+    expect(screen.getByRole("link", { name: "Overview" })).toHaveAttribute("aria-current", "true");
+  });
+
   it("scrolls to the section past the sticky offset, instantly under reduced motion", () => {
     mockReducedMotion(true);
     const scrollTo = vi.fn(() => Promise.resolve());

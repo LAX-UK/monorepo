@@ -24,7 +24,7 @@ export function headerUtilityLinkClass(
 ): string {
   return cn(
     MARKETING_HEADER_CHROME,
-    "rounded-sm font-label text-sm font-medium uppercase leading-[21px] transition-colors",
+    "rounded-sm font-label text-sm font-medium leading-[21px] transition-colors",
     FOCUS_RING,
     tone === "on-dark"
       ? current
@@ -57,7 +57,7 @@ export function headerMegaNavTriggerClass(
   return cn(
     MARKETING_HEADER_CHROME,
     "site-header-mega-trigger",
-    "group h-auto gap-1 rounded-none border-b-2 bg-transparent px-0 pb-1 font-label text-sm font-medium uppercase leading-[21px] hover:bg-transparent motion-reduce:transition-none",
+    "group h-auto gap-1 rounded-none border-b-2 bg-transparent px-0 pb-1 font-label text-sm font-medium leading-[21px] hover:bg-transparent motion-reduce:transition-none",
     tone === "on-dark"
       ? active || open
         ? "border-hero-foreground text-hero-foreground"

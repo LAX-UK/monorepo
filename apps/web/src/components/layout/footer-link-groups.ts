@@ -1,9 +1,8 @@
-import { footerLegalRoutes, policyRouteLabel } from "@/components/marketing/policy-routes";
 import { calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
 import { sellDepartmentsAnchorHref } from "@/lib/marketing/sell-departments";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
-import type { MarketingFooterColumn } from "@auction/marketing-ui";
+import { type MarketingFooterColumn, buildFooterLegalColumn } from "@auction/marketing-ui";
 
 /** Footer entry rendered as the button that reopens the cookie preferences dialog. */
 export const BID_COOKIE_PREFERENCES_HREF = "#cookie-preferences";
@@ -51,13 +50,13 @@ export function buildBidFooterColumns(
       links: crossProductLinks.map((link) => ({ href: link.href, label: link.label })),
     });
   }
-  columns.push({
-    id: "legal",
-    title: "Legal",
-    links: [
-      ...footerLegalRoutes.map((route) => ({ href: route.href, label: policyRouteLabel(route) })),
-      { href: BID_COOKIE_PREFERENCES_HREF, label: "Cookie preferences" },
-    ],
+  const legal = buildFooterLegalColumn({
+    index: "/legal",
+    terms: "/terms",
+    privacy: "/privacy",
+    cookies: "/cookies",
+    cookiePreferences: BID_COOKIE_PREFERENCES_HREF,
   });
+  if (legal) columns.push(legal);
   return columns;
 }

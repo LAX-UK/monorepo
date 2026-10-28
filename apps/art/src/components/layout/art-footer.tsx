@@ -59,14 +59,7 @@ export function ArtFooter({ vm }: ArtFooterProps) {
         </Link>
       }
       columns={vm.columns}
-      socials={
-        <div className="flex flex-col gap-4">
-          <Link href="/contact" className={cn(linkClass, "w-fit")}>
-            Contact us
-          </Link>
-          <MarketingFooterSocials product="art" />
-        </div>
-      }
+      socials={<MarketingFooterSocials product="art" />}
       copyright={productCopyrightLine("art")}
       renderLink={renderLink}
     />

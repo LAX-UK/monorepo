@@ -21,8 +21,8 @@ type ArtStatusStateProps = {
   description: string;
   actions?: ReactNode;
   titleAs?: "h1" | "h2" | "p";
-  /** `page` for full-route empties, `inline` for grids and sections. */
-  layout?: MarketingStatusStateLayout;
+  /** `page` for full-route empties, `open` (default) for grids and sections; never boxed. */
+  layout?: Exclude<MarketingStatusStateLayout, "inline">;
   announcement?: MarketingStatusStateAnnouncement;
   className?: string;
 };
@@ -45,7 +45,7 @@ export function ArtStatusState({
   description,
   actions,
   titleAs = "p",
-  layout = "inline",
+  layout = "open",
   announcement,
   className,
 }: ArtStatusStateProps) {

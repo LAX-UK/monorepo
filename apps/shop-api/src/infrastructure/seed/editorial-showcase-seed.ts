@@ -1,3 +1,4 @@
+import { GALLERY_CONTACT } from "@auction/branding";
 import type { Database } from "@auction/db";
 import {
   shopArtist,
@@ -32,6 +33,7 @@ const STORY_SLUG = "showcase-welcome";
 const GUIDE_SLUG = "showcase-collecting-guide";
 const PODCAST_SLUG = "showcase-podcast-studio-light";
 const PRESS_SLUG = "showcase-press-new-originals";
+const FILM_SLUG = "showcase-film-inside-the-studio";
 /** Works and artist from `seed:catalogue`; rails skip slugs that are missing. */
 const SEED_ARTWORK_SLUGS = ["quiet-orchard", "tidal-forms", "harbour-light", "marylebone-dusk"];
 const SCULPTURE_ARTWORK_SLUGS = ["bronze-tide", "vessel-form-ii"];
@@ -53,7 +55,7 @@ const STORY_BODY = blocks([
     spans: [
       { text: "lax.art is the London Art Exchange’s home for " },
       { text: "original works", marks: ["bold"] },
-      { text: " — each one sold directly by our gallery team. Browse the " },
+      { text: ", each one sold directly by our gallery team. Browse the " },
       { text: "full collection", marks: ["link"], href: "/artworks" },
       { text: " or read on for how buying works." },
     ],
@@ -70,7 +72,7 @@ const STORY_BODY = blocks([
   {
     type: "quote",
     text: "We want collectors to meet the work before they live with it.",
-    attribution: "lax.art gallery team",
+    attribution: "The gallery team",
   },
   { type: "artworkRail", headline: "Available now", artworkSlugs: SEED_ARTWORK_SLUGS },
   {
@@ -154,10 +156,19 @@ const OPENING_HOURS = [
 
 /** Card address lines and map pin for the seeded gallery. */
 const VENUE_LOCATION = {
-  streetLine: "12 Example Mews",
-  city: "London",
-  latitude: 51.520_3,
-  longitude: -0.153_2,
+  streetLine: GALLERY_CONTACT.streetLine,
+  city: GALLERY_CONTACT.city,
+  latitude: 51.520_1,
+  longitude: -0.143_6,
+};
+
+/** Contact details shown on the venue page and the gallery card, from the shared gallery source. */
+const VENUE_DETAILS = {
+  address: GALLERY_CONTACT.address,
+  postcode: GALLERY_CONTACT.postcode,
+  phone: GALLERY_CONTACT.phone,
+  email: GALLERY_CONTACT.email,
+  mapUrl: `https://maps.google.com/?q=${encodeURIComponent(`${GALLERY_CONTACT.address} ${GALLERY_CONTACT.postcode}`)}`,
 };
 
 async function upsertVenue(db: Database, now: Date): Promise<string | undefined> {
@@ -168,14 +179,14 @@ async function upsertVenue(db: Database, now: Date): Promise<string | undefined>
       status: "published",
       publishedAt: now,
       updatedBy: SEED_ACTOR,
-      name: "LAX Marylebone",
-      address: "12 Example Mews, London",
-      postcode: "W1U 1AA",
+      name: GALLERY_CONTACT.name,
+      address: VENUE_DETAILS.address,
+      postcode: VENUE_DETAILS.postcode,
       ...VENUE_LOCATION,
       openingHours: OPENING_HOURS,
-      phone: "+44 20 0000 0000",
-      email: "gallery@lax.art",
-      mapUrl: "https://maps.google.com/?q=Marylebone+London",
+      phone: VENUE_DETAILS.phone,
+      email: VENUE_DETAILS.email,
+      mapUrl: VENUE_DETAILS.mapUrl,
       coverMediaKey: SEED_COVER.venue,
       bodyBlocks: [],
     })
@@ -187,6 +198,7 @@ async function upsertVenue(db: Database, now: Date): Promise<string | undefined>
         updatedBy: SEED_ACTOR,
         openingHours: OPENING_HOURS,
         coverMediaKey: SEED_COVER.venue,
+        ...VENUE_DETAILS,
         ...VENUE_LOCATION,
         updatedAt: now,
       },
@@ -222,8 +234,8 @@ const EXHIBITIONS: readonly SeedExhibition[] = [
     contact: {
       name: "Elena Wendy",
       role: "Exhibition specialist",
-      email: "gallery@lax.art",
-      phone: "+44 20 0000 0001",
+      email: GALLERY_CONTACT.email,
+      phone: GALLERY_CONTACT.phone,
     },
   },
   {
@@ -439,6 +451,7 @@ type SeedStory = {
   durationSeconds?: number;
   publicationName?: string;
   externalUrl?: string;
+  videoUrl?: string;
 };
 
 async function upsertStory(db: Database, story: SeedStory, now: Date): Promise<string | undefined> {
@@ -461,6 +474,7 @@ async function upsertStory(db: Database, story: SeedStory, now: Date): Promise<s
     durationSeconds: story.durationSeconds ?? null,
     publicationName: story.publicationName ?? null,
     externalUrl: story.externalUrl ?? null,
+    videoUrl: story.videoUrl ?? null,
   };
   const [row] = await db
     .insert(shopEditorialStory)
@@ -582,6 +596,15 @@ async function seedEditorialJoins(
   });
 }
 
+/** The old promo copy for Shop and Bid; the product doors carry their own copy now. */
+const RETIRED_PROMO_SLOTS = ["home_promo_bid", "home_promo_shop"] as const;
+
+async function retireProductPromoPlacements(db: Database): Promise<void> {
+  await db
+    .delete(shopEditorialPlacement)
+    .where(inArray(shopEditorialPlacement.slot, [...RETIRED_PROMO_SLOTS]));
+}
+
 /** Idempotent venue, exhibitions, stories, pages, placements, joins and Help centre for local lax.art demos. */
 export async function seedEditorialShowcase(db: Database): Promise<void> {
   const now = new Date();
@@ -654,6 +677,20 @@ export async function seedEditorialShowcase(db: Database): Promise<void> {
     },
     now,
   );
+  const filmId = await upsertStory(
+    db,
+    {
+      slug: FILM_SLUG,
+      kind: "film",
+      title: "Inside the studio with Theo Marsh",
+      standfirst: "A week in the studio as bronze and stoneware forms take shape for Form & Fold.",
+      cover: SEED_COVER.upcoming,
+      body: blocks([prose("A short film shot over a week in the studio, from clay to cast.")]),
+      durationSeconds: 4 * 60 + 12,
+      videoUrl: "https://media.lax.art/film/inside-the-studio",
+    },
+    now,
+  );
   if (
     !exhibitionId ||
     !upcomingId ||
@@ -661,6 +698,7 @@ export async function seedEditorialShowcase(db: Database): Promise<void> {
     !guideId ||
     !podcastId ||
     !pressId ||
+    !filmId ||
     !collectingGuideId ||
     !advisoryId
   ) {
@@ -674,7 +712,7 @@ export async function seedEditorialShowcase(db: Database): Promise<void> {
       position: 0,
       refKind: "exhibition",
       refId: exhibitionId,
-      headline: "New Originals — now on in Marylebone",
+      headline: "New Originals, now on in Marylebone",
       linkUrl: `/exhibitions/${EXHIBITION_SLUG}`,
     },
     {
@@ -746,32 +784,19 @@ export async function seedEditorialShowcase(db: Database): Promise<void> {
       linkUrl: null,
     },
     {
-      slot: "home_promo_bid",
-      position: 0,
-      refKind: "external",
-      refId: null,
-      headline: "Bid in auctions",
-      body: "Discover works through the auction room.",
-      ctaLabel: "Explore auctions",
-      linkUrl: "https://lax.bid",
-    },
-    {
-      slot: "home_promo_shop",
-      position: 0,
-      refKind: "external",
-      refId: null,
-      headline: "Collect with certainty",
-      body: "Editions and prints made to be lived with.",
-      ctaLabel: "Explore editions",
-      // Local Shop storefront; lax.art resolves the real cross-product links from the LAX product directory.
-      linkUrl: "http://localhost:3020",
-    },
-    {
       slot: "art_hub_podcast",
       position: 0,
       refKind: "story",
       refId: podcastId,
       headline: "LAX's Podcast",
+      linkUrl: null,
+    },
+    {
+      slot: "art_hub_films",
+      position: 0,
+      refKind: "story",
+      refId: filmId,
+      headline: "Films",
       linkUrl: null,
     },
     {
@@ -803,5 +828,6 @@ export async function seedEditorialShowcase(db: Database): Promise<void> {
       });
   }
 
+  await retireProductPromoPlacements(db);
   await seedHelpCentre(db);
 }
