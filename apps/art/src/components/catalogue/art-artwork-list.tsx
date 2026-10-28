@@ -73,11 +73,7 @@ export function ArtArtworkList({
                 />
               </div>
               {card.enquireHref ? (
-                <Button
-                  variant="outline"
-                  className="hidden min-h-11 w-full text-sm font-medium md:inline-flex"
-                  asChild
-                >
+                <Button variant="secondaryOutline" className="hidden w-full md:inline-flex" asChild>
                   <Link href={card.enquireHref}>
                     Enquire<span className="sr-only"> about {card.title}</span>
                   </Link>

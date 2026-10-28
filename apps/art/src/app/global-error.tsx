@@ -26,7 +26,7 @@ export default function ArtGlobalError({
             <Button type="button" variant="default" onClick={reset}>
               Try again
             </Button>
-            <Button variant="outline" asChild>
+            <Button variant="secondaryOutline" asChild>
               <a href="/">Return home</a>
             </Button>
           </p>

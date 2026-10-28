@@ -16,12 +16,11 @@ import Link from "next/link";
 import { type MouseEvent, useEffect, useState } from "react";
 
 const DRAWER_LINK = cn(
-  "flex min-h-11 items-center rounded-sm font-label text-sm font-medium uppercase tracking-wide text-on-surface underline-offset-4 transition-colors hover:text-on-surface-variant aria-[current=page]:underline motion-reduce:transition-none",
+  "flex min-h-11 items-center rounded-sm font-label text-sm font-medium text-on-surface underline-offset-4 transition-colors hover:text-on-surface-variant aria-[current=page]:underline motion-reduce:transition-none",
   FOCUS_RING,
 );
 
-const SECTION_LABEL =
-  "font-label text-xs font-semibold uppercase tracking-wide text-on-surface-variant";
+const SECTION_LABEL = "font-label text-xs font-semibold text-on-surface-variant";
 
 type GuestAuthAction = "register" | "login";
 

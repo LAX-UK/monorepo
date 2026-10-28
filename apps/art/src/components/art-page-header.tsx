@@ -26,7 +26,7 @@ export function ArtPageHeader({ title, breadcrumbs, description, action }: ArtPa
     <header className="flex flex-col gap-3">
       {breadcrumbs && breadcrumbs.length > 0 ? (
         <Breadcrumb>
-          <BreadcrumbList className="font-label text-xs uppercase tracking-wide text-on-surface-variant">
+          <BreadcrumbList className="font-label text-xs text-on-surface-variant">
             {breadcrumbs.map((item, index) => {
               const isLast = index === breadcrumbs.length - 1;
               return (

@@ -29,9 +29,7 @@ export function ArtExhibitionSpecialist({ contact }: { contact: ExhibitionFactsV
         <AvatarFallback aria-hidden="true">{initials(name)}</AvatarFallback>
       </Avatar>
       <div className="flex min-w-0 flex-col gap-1 text-sm">
-        <p className="font-label text-xs uppercase tracking-wider text-on-surface-variant">
-          Exhibition specialist
-        </p>
+        <p className="font-label text-xs text-on-surface-variant">Exhibition specialist</p>
         <p className="text-base font-medium text-on-surface">{name}</p>
         {role ? <p className="text-on-surface-variant">{role}</p> : null}
         {contactLinkLines(contact)}

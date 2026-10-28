@@ -37,10 +37,9 @@ export function ArtExhibitionWorks({ cards, favoriteAuth }: ArtExhibitionWorksPr
       {hasMore ? (
         <Button
           type="button"
-          variant="outline"
+          variant="secondaryOutline"
           aria-expanded={expanded}
           aria-controls={gridId}
-          className="min-h-11 font-label"
           onClick={() => setExpanded((open) => !open)}
         >
           {expanded ? "Show fewer" : `View more (${cards.length - EXHIBITION_WORKS_PREVIEW_COUNT})`}

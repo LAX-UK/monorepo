@@ -130,7 +130,7 @@ function SearchResults({
                 <span className="font-headline text-lg font-medium text-on-surface underline-offset-4 group-hover:underline">
                   {result.question}
                 </span>
-                <span className="font-label text-xs uppercase tracking-wide text-on-surface-variant">
+                <span className="font-label text-xs text-on-surface-variant">
                   {result.categoryTitle}
                 </span>
               </Link>

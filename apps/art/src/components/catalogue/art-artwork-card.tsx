@@ -58,7 +58,7 @@ export function ArtArtworkCard({ card, favoriteAuth, priority = false }: ArtArtw
         ? {
             details: (
               <div className="hidden md:block" data-testid="art-artwork-card-details">
-                <p className="line-clamp-1">{card.metaLine}</p>
+                <p>{card.metaLine}</p>
               </div>
             ),
           }

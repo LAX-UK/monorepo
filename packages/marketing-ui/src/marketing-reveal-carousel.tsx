@@ -69,7 +69,7 @@ function RevealSlide({ slide }: { slide: MarketingRevealSlide }) {
             {summary}
           </p>
         ) : null}
-        <Button asChild variant="outline" size="lg" className="min-h-11 font-label">
+        <Button asChild variant="secondaryOutline" size="lg">
           <Link href={cta.href}>{cta.label}</Link>
         </Button>
       </div>

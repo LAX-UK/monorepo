@@ -91,8 +91,8 @@ export function ArtGeneralEnquirySheet({
             actions={
               <Button
                 type="button"
-                variant="outline"
-                className="min-h-11 w-full font-label"
+                variant="secondaryOutline"
+                className="w-full"
                 onClick={() => setOpen(false)}
               >
                 Close

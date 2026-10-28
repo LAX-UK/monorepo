@@ -79,12 +79,7 @@ export async function ArtStoriesIndex({ tab }: { tab: StoriesTabId }) {
                   </div>
                 }
                 action={
-                  <Button
-                    asChild
-                    variant="outline"
-                    size="lg"
-                    className="min-h-11 border-current bg-transparent font-label text-on-surface-feature hover:bg-surface-container-low/40"
-                  >
+                  <Button asChild variant="secondaryOutline" size="lg">
                     <Link href={episode.href}>Explore the episode</Link>
                   </Button>
                 }
