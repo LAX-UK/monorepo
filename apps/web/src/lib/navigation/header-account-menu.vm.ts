@@ -20,8 +20,10 @@ export type HeaderMenuAccount = {
   /** "Bids, purchases and selling", or "Organisation workspace · Buyer". */
   detail: string;
   initials: string;
-  /** `null` for the account in use ("Here"); otherwise the hop that opens it. */
-  openHref: string | null;
+  /** The account in use ("Here"). */
+  here: boolean;
+  /** Its first page when in use; otherwise the hop that switches to it and opens that page. */
+  href: string;
 };
 
 /** One page in the menu, with whatever is due there. */
@@ -70,7 +72,8 @@ function menuAccount(option: AccountOption): HeaderMenuAccount {
     detail:
       option.kind === "personal" ? PERSONAL_DETAIL : `Organisation workspace · ${option.detail}`,
     initials: option.initials,
-    openHref: option.current ? null : switchAccountHref(option.id, destination),
+    here: option.current,
+    href: option.current ? destination : switchAccountHref(option.id, destination),
   };
 }
 

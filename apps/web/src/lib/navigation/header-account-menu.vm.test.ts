@@ -80,7 +80,8 @@ describe("buildHeaderAccountMenu", () => {
         name: "Personal",
         detail: "Bids, purchases and selling",
         initials: "JH",
-        openHref: null,
+        here: true,
+        href: "/bids",
       },
       {
         id: "org-1",
@@ -88,16 +89,18 @@ describe("buildHeaderAccountMenu", () => {
         name: "Northgate Collection Ltd",
         detail: "Organisation workspace · Buyer",
         initials: "NC",
-        openHref: "/switch-account?to=org-1&next=%2Fhome",
+        here: false,
+        href: "/switch-account?to=org-1&next=%2Fhome",
       },
     ]);
   });
 
   it("opens the personal pages at My bids from an organisation", () => {
     const fromOrg = ACCOUNTS.map((option) => ({ ...option, current: option.kind !== "personal" }));
-    expect(menu({ accounts: fromOrg }).accounts?.[0]?.openHref).toBe(
-      "/switch-account?to=me&next=%2Fbids",
-    );
+    expect(menu({ accounts: fromOrg }).accounts?.[0]).toMatchObject({
+      here: false,
+      href: "/switch-account?to=me&next=%2Fbids",
+    });
   });
 
   it("carries what is due to the matching pages", () => {
