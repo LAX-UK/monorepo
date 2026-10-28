@@ -6,7 +6,7 @@ import {
   activeStaffRoles,
   normalizeUserRoleOrClient,
 } from "@auction/types";
-import { and, countDistinct, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, asc, countDistinct, eq, inArray, isNotNull, isNull, lte, ne, sql } from "drizzle-orm";
 import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type {
   IStaffRoleAssignmentReader,
@@ -46,11 +46,15 @@ function toRecord(row: AssignmentRow): StaffRoleAssignmentRecord {
 
 type StaffRoleEvent = Extract<
   StaffRosterEvent,
-  { type: "staff.role_assigned" | "staff.role_removed" }
+  { type: "staff.role_assigned" | "staff.role_removed" | "staff.role_expired" }
 >;
 
 function isStaffRoleEvent(event: StaffRosterEvent): event is StaffRoleEvent {
-  return event.type === "staff.role_assigned" || event.type === "staff.role_removed";
+  return (
+    event.type === "staff.role_assigned" ||
+    event.type === "staff.role_removed" ||
+    event.type === "staff.role_expired"
+  );
 }
 
 async function selectCurrent(
@@ -125,8 +129,38 @@ class DrizzleStaffRosterTransaction implements IStaffRosterTransaction {
   async end(assignmentId: string, endsAt: Date): Promise<void> {
     await this.tx
       .update(staffRoleAssignment)
-      .set({ endsAt })
+      .set({ endsAt, endRecordedAt: endsAt })
       .where(eq(staffRoleAssignment.id, assignmentId));
+  }
+
+  async listUnrecordedEnds(now: Date, limit: number): Promise<StaffRoleAssignmentRecord[]> {
+    const rows = await this.tx
+      .select()
+      .from(staffRoleAssignment)
+      .where(
+        and(
+          isNotNull(staffRoleAssignment.endsAt),
+          lte(staffRoleAssignment.endsAt, now),
+          isNull(staffRoleAssignment.endRecordedAt),
+        ),
+      )
+      .orderBy(asc(staffRoleAssignment.endsAt), asc(staffRoleAssignment.id))
+      .limit(limit)
+      .for("update", { skipLocked: true });
+    return rows.map(toRecord);
+  }
+
+  async recordEnds(assignmentIds: readonly string[], at: Date): Promise<void> {
+    if (assignmentIds.length === 0) return;
+    await this.tx
+      .update(staffRoleAssignment)
+      .set({ endRecordedAt: at })
+      .where(
+        and(
+          inArray(staffRoleAssignment.id, [...assignmentIds]),
+          isNull(staffRoleAssignment.endRecordedAt),
+        ),
+      );
   }
 
   async writeProfileRoles(
@@ -157,7 +191,7 @@ class DrizzleStaffRosterTransaction implements IStaffRosterTransaction {
           eventType: event.type,
           producer: this.producer,
           payload: event.payload,
-          actorUserId: event.actorUserId,
+          actorUserId: "actorUserId" in event ? event.actorUserId : null,
           schemaVersion: 1,
         })),
       );

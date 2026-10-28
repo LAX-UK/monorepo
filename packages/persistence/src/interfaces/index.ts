@@ -118,6 +118,10 @@ export type { IBidMembershipReader } from "./bid-membership.reader.js";
 
 export type { BidderRoleRow, IBidBidderRoleReader } from "./bid-bidder-role.reader.js";
 export type {
+  IStaffNoticeRecipientReader,
+  StaffNoticeRecipient,
+} from "./staff-notice-recipient.reader.js";
+export type {
   IStaffRoleAssignmentReader,
   IStaffRoster,
   IStaffRosterTransaction,

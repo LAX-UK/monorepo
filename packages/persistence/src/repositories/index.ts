@@ -115,6 +115,7 @@ export { DrizzlePaymentExternalRefRepository } from "./drizzle-payment-external-
 export { DrizzleXeroConnectionRepository } from "./drizzle-xero-connection.repository.js";
 export { DrizzleXeroWebhookEventRepository } from "./drizzle-xero-webhook-event.repository.js";
 export { DrizzleAdminUserReader } from "./drizzle-admin-user.reader.js";
+export { DrizzleStaffNoticeRecipientReader } from "./drizzle-staff-notice-recipient.reader.js";
 export {
   DrizzleStaffRoleAssignmentReader,
   DrizzleStaffRoster,

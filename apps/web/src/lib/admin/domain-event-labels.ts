@@ -67,6 +67,7 @@ const LABELS: Record<string, string> = {
   "lax.staff_access.revoked": "LAX staff access revoked",
   "staff.role_assigned": "Staff role given",
   "staff.role_removed": "Staff role removed",
+  "staff.role_expired": "Staff role ended",
 
   "legal_entity.created": "Legal entity created",
   "legal_entity.updated": "Legal entity updated",

@@ -3,6 +3,7 @@ import {
   DrizzleAdminSavedViewRepository,
   DrizzleBuyerAgentAuthorisationRepository,
   DrizzleLaxStaffAccessRepository,
+  DrizzleStaffNoticeRecipientReader,
 } from "@auction/persistence/repositories";
 import type { Container, ContainerComposedSlices } from "./container/container-slices.js";
 import { createAdminServices } from "./container/create-admin-services.js";
@@ -191,6 +192,11 @@ export function createContainer(env: Env): Container {
     redis: infra.redis,
     lifecycleCronService: cron.lifecycleCronService,
     hygieneCronService: cron.hygieneCronService,
+    staffRoster: repos.staffRoster,
+    staffNoticeRecipients: new DrizzleStaffNoticeRecipientReader(db),
+    notificationDispatcher: platform.notificationDispatcher,
+    emailService: infra.emailService,
+    webOrigin: env.WEB_ORIGIN,
   });
   const catalogRoutes = createCatalogRouteServices({
     saleService: catalog.saleService,

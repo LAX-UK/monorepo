@@ -1,11 +1,13 @@
 import {
   CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
   SHOP_STOCK_RECONCILIATION_QUEUE_NAME,
+  STAFF_ROLE_EXPIRY_QUEUE_NAME,
   STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME,
 } from "@auction/queues";
 import { Queue, Worker } from "bullmq";
 import { runConsignmentAgreementRemindersJob } from "../jobs/consignment-agreement-reminders.js";
 import { runShopStockReconciliationJob } from "../jobs/shop-stock-reconciliation.job.js";
+import { runStaffRoleExpiryJob } from "../jobs/staff-role-expiry.js";
 import { runStaleSubmissionDraftRemindersJob } from "../jobs/stale-submission-draft-reminders.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
 import { registerFinanceAndLifecycleCronWorkers } from "./register-finance-cron-workers.js";
@@ -128,6 +130,38 @@ export function registerCronWorkers(deps: WorkerBootstrapDeps): CronWorkersHandl
     queue: CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
   });
   closables.push(agreementRemindersWorker, agreementRemindersQueue);
+
+  const staffRoleExpiryQueue = new Queue(STAFF_ROLE_EXPIRY_QUEUE_NAME, bullConnection);
+  const staffRoleExpiryWorker = new Worker(
+    STAFF_ROLE_EXPIRY_QUEUE_NAME,
+    async () => {
+      await withSentryCronMonitor(STAFF_ROLE_EXPIRY_QUEUE_NAME, sentryMonitorSlugs, async () => {
+        await runStaffRoleExpiryJob({
+          apiBaseUrl: env.API_INTERNAL_BASE_URL,
+          cronSecret,
+          log,
+        });
+        await heartbeat(STAFF_ROLE_EXPIRY_QUEUE_NAME);
+      });
+    },
+    bullConnection,
+  );
+  staffRoleExpiryWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(STAFF_ROLE_EXPIRY_QUEUE_NAME, job, err);
+  });
+  // Daily: the API records each ended role once, so a repeat or overlap sends nothing twice.
+  void staffRoleExpiryQueue.add(
+    STAFF_ROLE_EXPIRY_QUEUE_NAME,
+    {},
+    {
+      jobId: "daily-staff-role-expiry",
+      repeat: { every: 24 * 60 * 60 * 1000 },
+      removeOnComplete: 50,
+    },
+  );
+  log.info("staff-role-expiry repeat registered (daily)");
+  errorHandlers.push({ worker: staffRoleExpiryWorker, queue: STAFF_ROLE_EXPIRY_QUEUE_NAME });
+  closables.push(staffRoleExpiryWorker, staffRoleExpiryQueue);
 
   const shopStockReconciliationQueue = new Queue(
     SHOP_STOCK_RECONCILIATION_QUEUE_NAME,

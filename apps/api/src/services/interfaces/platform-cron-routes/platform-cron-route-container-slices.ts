@@ -6,3 +6,4 @@ type PlatformCronRoutePick<K extends keyof PlatformCronRouteServices> = {
 
 export type PlatformLifecycleCronRoutesContainer = PlatformCronRoutePick<"lifecycle">;
 export type PlatformHygieneCronRoutesContainer = PlatformCronRoutePick<"hygiene">;
+export type PlatformStaffRolesCronRoutesContainer = PlatformCronRoutePick<"staffRoles">;

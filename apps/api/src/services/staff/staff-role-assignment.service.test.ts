@@ -87,6 +87,8 @@ class FakeRoster implements IStaffRoster {
       end: async (id, endsAt) => {
         this.assignments = this.assignments.map((a) => (a.id === id ? { ...a, endsAt } : a));
       },
+      listUnrecordedEnds: async () => [],
+      recordEnds: async () => undefined,
       writeProfileRoles: async (userId, next) => {
         const previous = this.profiles.get(userId) ?? null;
         this.profiles.set(userId, next);

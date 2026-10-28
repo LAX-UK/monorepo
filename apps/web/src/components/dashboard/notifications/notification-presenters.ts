@@ -11,6 +11,7 @@ import {
   type LucideIcon,
   ShieldAlert,
   Trophy,
+  UserRoundX,
   XCircle,
 } from "lucide-react";
 
@@ -48,6 +49,9 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   }
   if (type === "kyc_resubmission_required") {
     return { label: "Identity", Icon: ShieldAlert, tone: "warn" };
+  }
+  if (type === "staff_role_expired" || type === "staff_role_expired_admin") {
+    return { label: "Staff role", Icon: UserRoundX, tone: "neutral" };
   }
   if (type === "submission_received_for_review") {
     return { label: "Submission", Icon: BellRing, tone: "info" };

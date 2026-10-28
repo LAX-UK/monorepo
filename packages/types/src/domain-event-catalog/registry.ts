@@ -9,6 +9,7 @@ import {
   laxStaffAccessGrantedPayloadSchemaV1,
   laxStaffAccessRevokedPayloadSchemaV1,
   staffRoleAssignedPayloadSchemaV1,
+  staffRoleExpiredPayloadSchemaV1,
   staffRoleRemovedPayloadSchemaV1,
 } from "./lax-staff-access-payload-schemas.js";
 import { LotEventSchemas } from "./lot-payload-schemas.js";
@@ -102,6 +103,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "lax.staff_access.granted",
   "lax.staff_access.revoked",
   "staff.role_assigned",
+  "staff.role_expired",
   "staff.role_removed",
   "category.archived",
   "category.created",
@@ -503,6 +505,13 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "staff.role_removed": {
     schema: staffRoleRemovedPayloadSchemaV1,
+    producers: ["apps/api"],
+    consumers: [],
+    idempotencyPolicy: "none",
+    piiClassification: "operational",
+  },
+  "staff.role_expired": {
+    schema: staffRoleExpiredPayloadSchemaV1,
     producers: ["apps/api"],
     consumers: [],
     idempotencyPolicy: "none",

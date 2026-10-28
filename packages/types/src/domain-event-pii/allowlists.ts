@@ -292,6 +292,7 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   /** The reason is a staff-typed operational note; the person is the aggregate, not a field. */
   "staff.role_assigned": new Set(["assignmentId", "role", "startsAt", "endsAt", "reason"]),
   "staff.role_removed": new Set(["assignmentId", "role", "reason"]),
+  "staff.role_expired": new Set(["assignmentId", "role", "endedAt"]),
 };
 
 export function isExceptionPath(eventType: string, path: string): boolean {

@@ -1,7 +1,6 @@
 import type {
   IStaffRoster,
   IStaffRosterTransaction,
-  StaffProfileRoles,
   StaffRoleAssignmentRecord,
   StaffRosterEvent,
 } from "@auction/persistence/interfaces";
@@ -9,12 +8,11 @@ import {
   type StaffRoleAssignmentRefusal,
   type UserRole,
   type UserStaffRole,
-  activeStaffRoles,
   checkStaffRoleAssignment,
   isStaffRoleAssignmentCurrent,
   normalizeStaffRoles,
-  primaryStaffRole,
 } from "@auction/types";
+import { profileRolesFor, staffAccessHistoryEvent } from "./staff-profile-roles.js";
 
 /** A requested role change broke a roster rule; nothing was written. */
 export class StaffRoleAssignmentRefused extends Error {
@@ -137,49 +135,14 @@ class PersonRosterChange {
 
   /** Writes the profile's roles and the audit trail; the access history notes a changed role. */
   async commit(platformRole: UserRole, invitationId: string | null): Promise<void> {
-    const next: StaffProfileRoles = {
-      role: platformRole,
-      primaryStaffRole:
-        platformRole === "staff"
-          ? primaryStaffRole(activeStaffRoles(this.current, this.now))
-          : null,
-    };
+    const next = profileRolesFor(platformRole, this.current, this.now);
     const previous = await this.tx.writeProfileRoles(this.who.userId, next);
-    const accessEvent = this.accessHistoryEvent(previous, next, invitationId);
+    const accessEvent = staffAccessHistoryEvent(previous, next, {
+      userId: this.who.userId,
+      actorUserId: this.who.actorUserId,
+      invitationId,
+    });
     await this.tx.recordEvents(accessEvent ? [...this.events, accessEvent] : this.events);
-  }
-
-  private accessHistoryEvent(
-    previous: StaffProfileRoles | null,
-    next: StaffProfileRoles,
-    invitationId: string | null,
-  ): StaffRosterEvent | null {
-    const shown = (roles: StaffProfileRoles | null) =>
-      roles?.role === "staff" ? (roles.primaryStaffRole ?? "staff") : null;
-    const before = shown(previous);
-    const after = shown(next);
-    if (before === after) return null;
-    return after === null
-      ? {
-          type: "lax.staff_access.revoked",
-          payload: {
-            schemaVersion: 1,
-            subjectId: this.who.userId,
-            product: "bid",
-            revokedBySubjectId: this.who.actorUserId,
-          },
-        }
-      : {
-          type: "lax.staff_access.granted",
-          payload: {
-            schemaVersion: 1,
-            subjectId: this.who.userId,
-            product: "bid",
-            role: after,
-            grantedBySubjectId: this.who.actorUserId,
-            invitationId,
-          },
-        };
   }
 
   private check(change: Parameters<typeof checkStaffRoleAssignment>[1], role: UserStaffRole): void {
