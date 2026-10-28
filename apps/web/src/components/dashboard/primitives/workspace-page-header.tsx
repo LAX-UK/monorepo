@@ -2,7 +2,7 @@ import { cn } from "@auction/ui";
 import type { PageHeaderProps } from "@auction/ui/components/page-header";
 import type { ReactNode } from "react";
 
-export type DashboardPageHeaderProps = Omit<PageHeaderProps, "title"> & {
+export type WorkspacePageHeaderProps = Omit<PageHeaderProps, "title"> & {
   title: ReactNode;
   meta?: ReactNode;
   /** `display` — larger welcome-style title on overview. */
@@ -16,8 +16,8 @@ export type DashboardPageHeaderProps = Omit<PageHeaderProps, "title"> & {
   listHeadingId?: string;
 };
 
-/** Opinionated dashboard page header — single h1 source per page. */
-export function DashboardPageHeader({
+/** The workspace page header (organisation workspace and staff areas): single h1 per page. */
+export function WorkspacePageHeader({
   meta,
   title,
   titleScale = "default",
@@ -29,7 +29,7 @@ export function DashboardPageHeader({
   description,
   breadcrumbs,
   actions,
-}: DashboardPageHeaderProps) {
+}: WorkspacePageHeaderProps) {
   const metaNode =
     meta && typeof meta === "string" ? (
       <span className="font-label text-[11px] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
