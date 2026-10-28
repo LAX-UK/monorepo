@@ -124,4 +124,11 @@ export class InMemoryConsignmentAgreements implements IConsignmentAgreementRepos
     row.reminderDay3SentAt ??= sentAt;
     return true;
   }
+
+  async setRelistReserveFloor(submissionId: string, floor: string | null, _at: Date) {
+    const row = this.rows.get(submissionId);
+    if (!row) return null;
+    row.relistReserveFloor = floor;
+    return this.present(row);
+  }
 }

@@ -4,6 +4,7 @@ import {
   canTransition,
   decideAgreementAcceptance,
   dueAgreementReminder,
+  sellerIdentityReminderState,
   sellerIdentityVerified,
 } from "@auction/domain";
 import type {
@@ -117,6 +118,7 @@ export class ConsignmentAgreementService implements IConsignmentAgreementService
       sellerIdentityVerified: this.deps.sellerIdentity
         ? identity !== null && sellerIdentityVerified(identity)
         : true,
+      identityReminder: sellerIdentityReminderState(submission.identityReminderSentAt ?? null),
     };
   }
 

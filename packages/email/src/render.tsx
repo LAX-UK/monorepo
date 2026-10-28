@@ -34,6 +34,9 @@ import ChangeEmail, { subject as changeEmailSubject } from "./templates/change-e
 import ConsignmentAgreementReminderEmail, {
   subject as consignmentAgreementReminderSubject,
 } from "./templates/consignment-agreement-reminder.js";
+import ConsignmentUpdateEmail, {
+  subject as consignmentUpdateSubject,
+} from "./templates/consignment-update.js";
 import DisputeClosedNoticeEmail, {
   subject as disputeClosedNoticeSubject,
 } from "./templates/dispute-closed-notice.js";
@@ -397,6 +400,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "consignment-agreement-reminder": {
     subject: consignmentAgreementReminderSubject,
     component: (vars) => <ConsignmentAgreementReminderEmail {...vars} />,
+  },
+  "consignment-update": {
+    subject: consignmentUpdateSubject,
+    component: (vars) => <ConsignmentUpdateEmail {...vars} />,
   },
   "source-of-funds-buyer-notice": {
     subject: sourceOfFundsBuyerNoticeSubject,

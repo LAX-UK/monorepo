@@ -12,6 +12,7 @@ const files = [
   "src/routes/submissions.ts",
   "src/routes/submissions/seller.routes.ts",
   "src/routes/submissions/admin.routes.ts",
+  "src/routes/submissions/after-sale.routes.ts",
   "src/routes/submission-documents.ts",
 ];
 

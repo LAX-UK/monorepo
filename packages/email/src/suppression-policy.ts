@@ -17,6 +17,7 @@ export const OPTIONAL_EMAIL_TEMPLATES = [
   "submission-draft-reminder",
   "submission-changes-requested",
   "consignment-agreement-reminder",
+  "consignment-update",
   "shop-edition-available-notify",
 ] as const satisfies readonly TemplateName[];
 

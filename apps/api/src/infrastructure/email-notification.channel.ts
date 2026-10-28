@@ -171,6 +171,15 @@ export class EmailNotificationChannel implements INotificationChannel {
           unsubscribeUrl,
         };
       }
+      case "consignment-update": {
+        return {
+          userName,
+          heading: payload.title,
+          message: payload.message,
+          submissionUrl: this.absoluteWebPath(payload),
+          unsubscribeUrl,
+        };
+      }
       case "submission-draft-reminder": {
         const staleMatch = payload.message.match(/(\d+) days/);
         return {

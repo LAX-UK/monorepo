@@ -21,4 +21,5 @@ export const emailSubjects = {
   submissionDraftReminder: `Reminder: finish your ${SITE_NAME} submission`,
   submissionChangesRequested: `Your ${SITE_NAME} submission needs changes`,
   consignmentAgreementReminder: `Reminder: accept your ${SITE_NAME} consignment agreement`,
+  consignmentUpdate: `An update on your ${SITE_NAME} consignment`,
 } as const;

@@ -1,6 +1,7 @@
 import "server-only";
 
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { parseIdentityReminderState } from "@/lib/seller/consignment-after-sale-parse";
 import { parseConsignmentAgreement } from "@/lib/seller/consignment-agreement-parse";
 import type {
   ConsignmentAgreement,
@@ -51,11 +52,14 @@ export async function getAdminConsignmentView(
   const data = (await readData(res)) as {
     agreement?: unknown;
     sellerIdentityVerified?: unknown;
+    identityReminder?: unknown;
   } | null;
   if (!data) return null;
+  const identityReminder = parseIdentityReminderState(data.identityReminder);
   return {
     agreement: parseConsignmentAgreement(data.agreement),
     sellerIdentityVerified: data.sellerIdentityVerified === true,
+    ...(identityReminder ? { identityReminder } : {}),
   };
 }
 

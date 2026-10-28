@@ -41,6 +41,17 @@ export function stubSubmissionRouteServices(
       listForStaff: vi.fn(),
       proposeTerms: vi.fn(),
     },
+    afterSaleHttp: {
+      getForSeller: vi.fn(),
+      requestUnsoldChoice: vi.fn(),
+      withdraw: vi.fn(),
+      getForStaff: vi.fn(),
+      decideUnsoldChoice: vi.fn(),
+      setRelistReserveFloor: vi.fn(),
+      moveOptions: vi.fn(),
+      move: vi.fn(),
+      remindSeller: vi.fn(),
+    },
     ...overrides,
   };
 }

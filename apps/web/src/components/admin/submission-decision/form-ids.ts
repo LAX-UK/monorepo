@@ -6,3 +6,7 @@ export const SUBMISSION_REJECT_FORM_ID = "submission-reject";
 export const SUBMISSION_REQUEST_CHANGES_FORM_ID = "submission-request-changes";
 /** Adding the estimate and terms to an accepted submission. */
 export const SUBMISSION_TERMS_FORM_ID = "submission-terms";
+/** Confirming what happens to a lot that did not sell. */
+export const UNSOLD_CHOICE_DECISION_FORM_ID = "unsold-choice-decision";
+/** The lowest reserve the specialist accepts for a relist. */
+export const RELIST_FLOOR_FORM_ID = "relist-floor";

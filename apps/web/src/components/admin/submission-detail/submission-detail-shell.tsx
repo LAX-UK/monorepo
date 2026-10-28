@@ -3,13 +3,14 @@
 import { StaffDetailTabs } from "@/components/admin/staff/staff-detail-tabs";
 import { usePinPageAction } from "@/components/admin/staff/use-pin-page-action";
 import { submissionDetailTabHref } from "@/components/admin/submission-detail/submission-detail-types";
+import { MoveConsignmentDialog } from "@/components/admin/submissions/move-consignment-dialog";
 import { SubmissionReassignDialog } from "@/components/admin/submissions/submission-reassign-dialog";
 import { useSubmissionActions } from "@/components/admin/submissions/use-submission-actions";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { buildSubmissionHeaderBadges } from "@/lib/admin/submissions/submission-header-badges";
 import { useViewerCapabilities } from "@/lib/auth/capabilities/viewer-capabilities-context";
 import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
-import { evaluateSubmissionQuality } from "@auction/domain";
+import { consignmentStatusMovable, evaluateSubmissionQuality } from "@auction/domain";
 import {
   DetailPage,
   MetaItem,
@@ -23,7 +24,7 @@ import {
   staffCellLinkClass,
 } from "@auction/staff-ui";
 import type { ItemSubmission } from "@auction/types";
-import { UserPlus } from "lucide-react";
+import { Building2, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useMemo, useState } from "react";
@@ -71,6 +72,9 @@ export function SubmissionDetailShell({
   const assignable = submission.status === "submitted" || submission.status === "under_review";
   const pin = usePinPageAction(title);
   const [reassignOpen, setReassignOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
+  // Only work that is not catalogued yet can move; the dialog says if it is not personal.
+  const movable = consignmentStatusMovable(submission.status);
 
   const actions = useSubmissionActions({ currentUserId });
   const required = evaluateSubmissionQuality(submission).checks.some(
@@ -134,6 +138,16 @@ export function SubmissionDetailShell({
             label: assigned ? "Reassign…" : "Assign to someone…",
             icon: UserPlus,
             onSelect: () => setReassignOpen(true),
+          },
+        ]
+      : []),
+    ...(canReview && movable
+      ? [
+          {
+            id: "move-to-organisation",
+            label: "Move to an organisation…",
+            icon: Building2,
+            onSelect: () => setMoveOpen(true),
           },
         ]
       : []),
@@ -226,6 +240,12 @@ export function SubmissionDetailShell({
       >
         {children}
       </DetailPage>
+      <MoveConsignmentDialog
+        open={moveOpen}
+        onOpenChange={setMoveOpen}
+        submissionId={submissionId}
+        title={title}
+      />
       <SubmissionReassignDialog
         open={reassignOpen}
         onOpenChange={setReassignOpen}

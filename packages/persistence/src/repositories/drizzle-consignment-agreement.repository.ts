@@ -25,6 +25,7 @@ function mapAgreement(row: AgreementRow): ConsignmentAgreement {
     estimateHigh: money(row.estimateHigh),
     reservePrice: money(row.reservePrice),
     commissionPercent: money(row.commissionPercent),
+    relistReserveFloor: money(row.relistReserveFloor),
     currency: row.currency,
     proposedAt: row.proposedAt,
     acceptedAt: row.acceptedAt ?? null,
@@ -137,6 +138,18 @@ export class DrizzleConsignmentAgreementRepository implements IConsignmentAgreem
         ),
       );
     return this.findBySubmissionId(input.submissionId);
+  }
+
+  async setRelistReserveFloor(
+    submissionId: string,
+    floor: string | null,
+    at: Date,
+  ): Promise<ConsignmentAgreement | null> {
+    await this.db
+      .update(consignmentAgreement)
+      .set({ relistReserveFloor: floor, updatedAt: at })
+      .where(eq(consignmentAgreement.submissionId, submissionId));
+    return this.findBySubmissionId(submissionId);
   }
 
   async markReminderSent(id: string, day: AgreementReminderDay, sentAt: Date): Promise<boolean> {

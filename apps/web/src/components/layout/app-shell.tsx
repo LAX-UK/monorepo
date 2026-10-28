@@ -63,7 +63,7 @@ function AppShellFrame({ user, config, children }: Props) {
 
   return (
     <div
-      className="flex h-[100dvh] overflow-hidden bg-shell-page-bg font-body text-on-surface"
+      className="flex h-[calc(100dvh-var(--view-as-client-banner-height,0px))] overflow-hidden bg-shell-page-bg font-body text-on-surface"
       style={{
         ["--sidebar-width" as string]: collapsed ? "4.5rem" : expandedSidebarWidth,
       }}

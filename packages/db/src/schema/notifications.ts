@@ -49,6 +49,7 @@ export const notification = pgTable(
         'submission_draft_reminder',
         'submission_changes_requested',
         'consignment_agreement_reminder',
+        'consignment_update',
         'condition_report_ready',
         'condition_report_declined',
         'source_of_funds_documents_requested',

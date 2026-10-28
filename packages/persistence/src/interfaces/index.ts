@@ -94,6 +94,17 @@ export type {
   IConsignmentAgreementWriter,
 } from "./consignment-agreement.repository.js";
 export type {
+  IUnsoldLotChoiceReader,
+  IUnsoldLotChoiceRepository,
+  IUnsoldLotChoiceWriter,
+  OpenUnsoldLotChoice,
+  UnsoldLotChoiceDecisionRow,
+  UnsoldLotChoiceRequestRow,
+  UnsoldLotOutcomeKey,
+} from "./unsold-lot-choice.repository.js";
+export type { ConsignmentMoveRow, IConsignmentMoveWriter } from "./consignment-move.writer.js";
+export type { ISellerIdentityReminderStore } from "./seller-identity-reminder.store.js";
+export type {
   AccountOnboardingStatusRow,
   CompleteAccountOnboardingInput,
   IAccountOnboardingRepository,
@@ -582,7 +593,10 @@ export type {
 } from "./admin-sale-readiness.reader.js";
 
 export type { IAdminReviewTaskReader } from "./admin-review-task.reader.js";
-export type { IAdminReviewTaskRepository } from "./admin-review-task.repository.js";
+export type {
+  IAdminReviewTaskRepository,
+  LotWithdrawalTaskSnapshot,
+} from "./admin-review-task.repository.js";
 export type { IMediaAssetReader, MediaAssetRecord } from "./media-asset.reader.js";
 export type { IQrCodeScanPersister, QrCodeScanInput } from "./qr-code-scan.persister.js";
 export type {

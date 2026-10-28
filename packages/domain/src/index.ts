@@ -108,6 +108,47 @@ export {
   type SellerIdentityFacts,
 } from "./seller-identity.js";
 export {
+  SELLER_IDENTITY_REMINDER_INTERVAL_MS,
+  SELLER_IDENTITY_REMINDER_NOT_NEEDED_MESSAGE,
+  decideSellerIdentityReminder,
+  sellerIdentityReminderState,
+  type SellerIdentityReminderDecision,
+} from "./seller-identity-reminder.js";
+export {
+  canChooseUnsoldOutcome,
+  canTransitionUnsoldChoice,
+  decideUnsoldChoiceConfirmation,
+  decideUnsoldChoiceRequest,
+  lotEndedUnsold,
+  nextUnsoldChoiceStatus,
+  relistReserveRefusal,
+  unsoldChoiceAwaitingSeller,
+  unsoldChoiceRefusalMessage,
+  type RelistReserveRefusal,
+  type UnsoldChoiceDecision,
+  type UnsoldChoiceRefusal,
+  type UnsoldChoiceState,
+  type UnsoldChoiceTransition,
+  type UnsoldLotFacts,
+} from "./unsold-lot-choice.js";
+export {
+  WITHDRAWAL_FORBIDDEN_MESSAGE,
+  canActOnConsignmentWithdrawal,
+  consignmentWithdrawalPath,
+} from "./consignment-withdrawal.js";
+export {
+  CONSIGNMENT_MOVABLE_STATUSES,
+  CONSIGNMENT_MOVE_REFUSAL_MESSAGES,
+  consignmentMoveAgreementEffect,
+  consignmentMoveSourceRefusal,
+  consignmentStatusMovable,
+  consignmentMoveTargetRefusal,
+  decideConsignmentMove,
+  type ConsignmentMoveAgreementEffect,
+  type ConsignmentMoveDecision,
+  type ConsignmentMoveFacts,
+} from "./consignment-move.js";
+export {
   goLivePayoutsRefusalMessage,
   sellersWithoutPayouts,
   type GoLiveLot,
@@ -290,3 +331,9 @@ export {
   submissionSenderScope,
   type SubmissionSenderScope,
 } from "./submission-visibility.js";
+export {
+  consignmentStage,
+  type ConsignmentAfterSaleStage,
+  type ConsignmentStage,
+  type ConsignmentStageFacts,
+} from "./consignment-stage.js";

@@ -4,6 +4,7 @@ import type {
   IItemSubmissionAdminApi,
   IItemSubmissionSellerApi,
 } from "../services/interfaces/item-submission-apis.js";
+import type { IConsignmentAfterSaleHttpApplicationService } from "../services/interfaces/submission-routes/consignment-after-sale-http.js";
 import type { SubmissionRouteServices } from "../services/interfaces/submission-routes/index.js";
 import type { ISubmissionAccessGuard } from "../services/interfaces/submission-routes/submission-access.js";
 import type { ISubmissionDocumentPort } from "../services/interfaces/submission-routes/submission-document-port.js";
@@ -18,6 +19,7 @@ export type CreateSubmissionRouteServicesInput = {
   consignmentAgreementService: IConsignmentAgreementService;
   /** Decides which of an account's submissions the signed-in member may reach. */
   submissionAccess: ISubmissionAccessGuard;
+  consignmentAfterSaleHttp: IConsignmentAfterSaleHttpApplicationService;
 };
 
 export function createSubmissionRouteServices(
@@ -39,5 +41,6 @@ export function createSubmissionRouteServices(
       input.consignmentAgreementService,
       input.submissionAccess,
     ),
+    afterSaleHttp: input.consignmentAfterSaleHttp,
   };
 }

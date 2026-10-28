@@ -17,10 +17,15 @@ export function usesBidAsClient(user: Person): boolean {
 
 /**
  * Where someone who does not use Bid as a client goes instead of a client-area page (their admin
- * area), or `null` when they may stay.
+ * area), or `null` when they may stay. Support staff viewing an account as its client stay: the
+ * page is read-only for them, and every write is refused by the API.
  */
-export function clientAreaRedirectFor(user: Person, requestedPath: string): string | null {
-  if (usesBidAsClient(user)) return null;
+export function clientAreaRedirectFor(
+  user: Person,
+  requestedPath: string,
+  options: { viewingAsClient?: boolean } = {},
+): string | null {
+  if (usesBidAsClient(user) || options.viewingAsClient) return null;
   const destination = staffRoleDefaultDestination(
     normalizeUserRoleOrClient(user.role),
     user.staffRole ?? null,

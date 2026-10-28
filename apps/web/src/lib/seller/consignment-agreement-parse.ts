@@ -22,6 +22,7 @@ const agreementSchema = z.object({
   estimateHigh: optionalMoney,
   reservePrice: optionalMoney,
   commissionPercent: optionalMoney,
+  relistReserveFloor: optionalMoney,
   currency: z.string().default("GBP"),
   proposedAt: z.union([z.string(), z.date()]).transform((value) => new Date(value)),
   acceptedAt: optionalDate,

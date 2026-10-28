@@ -35,6 +35,13 @@ describe("clientAreaRedirectFor", () => {
     expect(clientAreaRedirectFor(superAdmin, newPath)).toBe("/admin");
   });
 
+  it("lets support staff stay while they view an account as its client", () => {
+    expect(clientAreaRedirectFor(superAdmin, "/selling", { viewingAsClient: true })).toBeNull();
+    expect(clientAreaRedirectFor(superAdmin, "/selling", { viewingAsClient: false })).toBe(
+      "/admin",
+    );
+  });
+
   it("never redirects a page to itself", () => {
     expect(clientAreaRedirectFor(superAdmin, "/admin")).toBeNull();
   });

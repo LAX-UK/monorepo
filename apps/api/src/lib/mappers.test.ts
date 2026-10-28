@@ -111,6 +111,7 @@ function itemSubmissionRow(
     assignedToUserId: null,
     submittedByUserId: null,
     draftReminderSentAt: null,
+    identityReminderSentAt: null,
     createdAt: now,
     updatedAt: now,
     ...overrides,

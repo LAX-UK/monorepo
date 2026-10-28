@@ -1674,6 +1674,13 @@
       "when": 1795939200000,
       "tag": "0238_submission_submitted_by",
       "breakpoints": true
+    },
+    {
+      "idx": 239,
+      "version": "7",
+      "when": 1796025600000,
+      "tag": "0239_consignment_after_sale",
+      "breakpoints": true
     }
   ]
 }

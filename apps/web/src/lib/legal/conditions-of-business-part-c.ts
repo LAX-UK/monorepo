@@ -90,6 +90,7 @@ export const CONDITIONS_OF_BUSINESS_PART_C: readonly ConditionsSection[] = [
     ],
   },
   {
+    id: "withdrawal-by-seller",
     title: "28. Withdrawal by Seller",
     paragraphs: [
       "A seller may not withdraw a lot once it has been catalogued, marketed, listed, promoted, or entered into an auction without LAX.BID’s written consent.",
@@ -98,6 +99,7 @@ export const CONDITIONS_OF_BUSINESS_PART_C: readonly ConditionsSection[] = [
     ],
   },
   {
+    id: "unsold-lots",
     title: "29. Unsold Lots",
     paragraphs: [
       "If a lot does not sell, LAX.BID may, with seller authorisation or under the relevant consignment agreement, re-offer the lot in a future auction, offer the lot by private sale, adjust the estimate or reserve, return the lot to the seller, continue marketing the lot for a defined post-auction period, or recommend alternative sale strategies.",
@@ -144,3 +146,10 @@ export const CONDITIONS_OF_BUSINESS_PART_C: readonly ConditionsSection[] = [
     ],
   },
 ];
+
+/** One clause of Part C by its anchor, to show it where it applies. */
+export function partCSection(id: "withdrawal-by-seller" | "unsold-lots"): ConditionsSection {
+  const section = CONDITIONS_OF_BUSINESS_PART_C.find((s) => s.id === id);
+  if (!section) throw new Error(`Part C has no section ${id}`);
+  return section;
+}

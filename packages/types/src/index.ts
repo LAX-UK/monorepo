@@ -16,6 +16,7 @@ export * from "./auth-permissions.js";
 export * from "./admin-access.js";
 export * from "./item-submission.js";
 export * from "./consignment-agreement.js";
+export * from "./consignment-after-sale.js";
 /** Legal Entity Model types */
 export * from "./legal-entity.js";
 export * from "./buyer-agent-authorisation.js";

@@ -24,6 +24,10 @@ import { AdminUserService } from "@/lib/services/impl/admin-user.service";
 import { AdminVenueService } from "@/lib/services/impl/admin-venue.service";
 import { BiddingPrefsService } from "@/lib/services/impl/bidding-prefs.service";
 import { BuyerSofService } from "@/lib/services/impl/buyer-sof.service";
+import {
+  AdminConsignmentAfterSaleService,
+  ConsignmentAfterSaleService,
+} from "@/lib/services/impl/consignment-after-sale.service";
 import { NotificationPrefsService } from "@/lib/services/impl/notification-prefs.service";
 import { PaymentService } from "@/lib/services/impl/payment.service";
 import { ProfileService } from "@/lib/services/impl/profile.service";
@@ -52,6 +56,10 @@ import type { IAdminUserService } from "@/lib/services/interfaces/admin-user-ser
 import type { IAdminVenueService } from "@/lib/services/interfaces/admin-venue-service";
 import type { IBiddingPrefsService } from "@/lib/services/interfaces/bidding-prefs-service";
 import type { IBuyerSofService } from "@/lib/services/interfaces/buyer-sof-service";
+import type {
+  IAdminConsignmentAfterSaleService,
+  IConsignmentAfterSaleService,
+} from "@/lib/services/interfaces/consignment-after-sale-service";
 import type { INotificationPrefsService } from "@/lib/services/interfaces/notification-prefs-service";
 import type { IPaymentService } from "@/lib/services/interfaces/payment-service";
 import type { IProfileService } from "@/lib/services/interfaces/profile-service";
@@ -62,6 +70,7 @@ export type WriteServiceContainer = {
   api: IAuthedApiClient;
   account: IAccountService;
   submissions: ISubmissionService;
+  consignmentAfterSale: IConsignmentAfterSaleService;
   profile: IProfileService;
   biddingPrefs: IBiddingPrefsService;
   notificationPrefs: INotificationPrefsService;
@@ -84,6 +93,7 @@ export type WriteServiceContainer = {
   adminSales: IAdminSaleService;
   adminVenues: IAdminVenueService;
   adminSubmissions: IAdminSubmissionService;
+  adminConsignmentAfterSale: IAdminConsignmentAfterSaleService;
   adminUsers: IAdminUserService;
   adminPayments: IAdminPaymentOpsService;
   invitations: IAdminInvitationService;
@@ -102,6 +112,7 @@ export function getWriteContainer(): WriteServiceContainer {
     api,
     account: new AccountService(api),
     submissions: new SubmissionService(api),
+    consignmentAfterSale: new ConsignmentAfterSaleService(api),
     profile: new ProfileService(api),
     biddingPrefs: new BiddingPrefsService(api),
     notificationPrefs: new NotificationPrefsService(api),
@@ -124,6 +135,7 @@ export function getWriteContainer(): WriteServiceContainer {
     adminSales: new AdminSaleService(api),
     adminVenues: new AdminVenueService(api),
     adminSubmissions: new AdminSubmissionService(api),
+    adminConsignmentAfterSale: new AdminConsignmentAfterSaleService(api),
     adminUsers: new AdminUserService(api),
     adminPayments: new AdminPaymentOpsService(api),
     invitations: new AdminInvitationService(api),

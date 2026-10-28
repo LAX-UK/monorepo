@@ -43,6 +43,7 @@ export function mapItemSubmissionRow(
     rejectionReason: row.rejectionReason,
     changesRequestedNote: row.changesRequestedNote ?? null,
     changesRequestedAt: row.changesRequestedAt ?? null,
+    identityReminderSentAt: row.identityReminderSentAt ?? null,
     convertedLotId: row.convertedLotId,
     assignedToUserId: row.assignedToUserId ?? null,
     submittedByUserId: row.submittedByUserId ?? null,

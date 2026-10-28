@@ -1,8 +1,15 @@
 import { DashboardFetchWarningBanner } from "@/components/dashboard/dashboard-fetch-warning-banner";
 import { ExportShellClient } from "@/components/exports/export-shell-client";
 import { AccountNotice } from "@/components/layout/account-switcher/account-notice";
+import { ReadOnlyBoundary } from "@/components/layout/view-as-client/read-only-boundary";
+import {
+  READ_ONLY_REASON_ID,
+  ViewAsClientBanner,
+} from "@/components/layout/view-as-client/view-as-client-banner";
+import { ViewAsClientProvider } from "@/components/layout/view-as-client/view-as-client-context";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
 import { ClientShell } from "@/components/shell/client-shell";
+import { clientAreaRedirectFor } from "@/lib/auth/client-audience";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { loadSellerConnectNavBadge } from "@/lib/connect/load-seller-connect-nav-badge";
 import { dashboardSliceFailureMessage } from "@/lib/dashboard/dashboard-fetch-errors";
@@ -102,9 +109,15 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
       : { kind: "personal" },
     hasSubmissions,
   };
+  // Support viewing an account sees that account alone, as its client would.
+  const viewingAs = actingContext.impersonation ? actingContext.acting : null;
+  // A "view as client" session that ended leaves only the cookie: back to the staff area.
+  const staffDestination = viewingAs ? null : clientAreaRedirectFor(user, CLIENT_ROUTES.home);
+  if (staffDestination) redirect(staffDestination);
   const account = buildAccountChrome({
-    personName: user.name.trim() || user.email,
-    memberships: actingContext.memberships,
+    personName:
+      viewingAs?.kind === "individual" ? viewingAs.displayName : user.name.trim() || user.email,
+    memberships: viewingAs ? [viewingAs] : actingContext.memberships,
     actingId: safeActing?.id ?? null,
     orgModuleEnabled,
     pendingInvitations: pendingInvites.length,
@@ -125,8 +138,8 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
     )),
   ];
 
-  return (
-    <ExportShellClient>
+  const shell = (
+    <ViewAsClientProvider viewingAs={viewingAs ? { name: viewingAs.displayName } : null}>
       <ClientShell
         user={user}
         navScope={navScope}
@@ -138,8 +151,25 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
         contextBanner={banners.length > 0 ? <>{banners}</> : undefined}
         topSlot={<WelcomeBackToast />}
       >
-        {children}
+        {viewingAs ? (
+          <ReadOnlyBoundary reasonId={READ_ONLY_REASON_ID}>{children}</ReadOnlyBoundary>
+        ) : (
+          children
+        )}
       </ClientShell>
+    </ViewAsClientProvider>
+  );
+
+  return (
+    <ExportShellClient>
+      {viewingAs ? (
+        <div className="[--view-as-client-banner-height:3rem]">
+          <ViewAsClientBanner accountName={viewingAs.displayName} />
+          {shell}
+        </div>
+      ) : (
+        shell
+      )}
     </ExportShellClient>
   );
 }

@@ -76,6 +76,11 @@ export const itemSubmission = pgTable(
       mode: "date",
       withTimezone: true,
     }),
+    /** When staff last reminded the seller to verify their identity (at most once a day). */
+    identityReminderSentAt: timestamp("identity_reminder_sent_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },

@@ -3,7 +3,9 @@ import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice
 import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboard-detail-header";
 import { ConsignmentAgreementPanel } from "@/components/dashboard/seller/consignment-agreement-panel";
 import { ConsignmentChecklist } from "@/components/dashboard/seller/consignment-checklist";
+import { ConsignmentWithdrawPanel } from "@/components/dashboard/seller/consignment-withdraw-panel";
 import { SubmissionChangesRequestedPanel } from "@/components/dashboard/seller/submission-changes-requested-panel";
+import { UnsoldLotChoicePanel } from "@/components/dashboard/seller/unsold-lot-choice-panel";
 import { SubmissionDetailLiveRefresh } from "@/components/dashboard/submission-detail-live-refresh";
 import { SubmissionDetailSplit } from "@/components/dashboard/submission-detail-split";
 import { SubmissionLotReadyChecklist } from "@/components/dashboard/submission-lot-ready-checklist";
@@ -12,7 +14,7 @@ import { SubmissionSellerDocumentsPanel } from "@/components/dashboard/submissio
 import { SubmissionWizard } from "@/components/dashboard/submission-wizard/submission-wizard";
 import { SubmissionWorkflowActions } from "@/components/dashboard/submission-workflow-actions";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
-import { SubmissionStatusBadge } from "@/components/ui/submission-status-badge";
+import { ConsignmentStatusBadge } from "@/components/ui/consignment-status-badge";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
@@ -20,6 +22,7 @@ import {
   describeSettingsActionError,
 } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { getServerConsignmentAfterSale } from "@/lib/data/http/consignment-after-sale.server";
 import { getServerConsignmentAgreement } from "@/lib/data/http/consignment-agreements.server";
 import { getServerStripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
 import { getServerSubmissionDocuments } from "@/lib/data/http/submission-documents.server";
@@ -30,17 +33,21 @@ import {
 } from "@/lib/forms/submission/step-validation";
 import { openRecordInItsAccount } from "@/lib/legal-entity/open-record-in-account.server";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
-import { CONDITIONS_OF_BUSINESS_PART_C } from "@/lib/legal/conditions-of-business-part-c";
+import {
+  CONDITIONS_OF_BUSINESS_PART_C,
+  partCSection,
+} from "@/lib/legal/conditions-of-business-part-c";
 import { checklistItemView } from "@/lib/seller/consignment-checklist-copy";
 import { consignmentChecklistFacts } from "@/lib/seller/consignment-checklist-facts";
+import { consignmentWithdrawalViewModel } from "@/lib/seller/consignment-withdrawal-view";
 import { loadSellerAccountFacts } from "@/lib/seller/seller-account-facts.server";
+import { unsoldChoiceViewModel } from "@/lib/seller/unsold-choice-view";
 import { lotPath } from "@/lib/seo/url";
 import {
   SUBMISSION_TIMELINE_STAGES,
   submissionTimelineActiveIndex,
 } from "@/lib/submissions/submission-timeline";
 import {
-  canTransition,
   computeConsignmentChecklist,
   evaluateSubmissionQuality,
   sellerCanEditSubmission,
@@ -73,13 +80,14 @@ export default async function SubmissionDetailPage({
   let categoriesFailure = null as ReturnType<typeof describeDashboardSliceFailure> | null;
   let categories: Awaited<ReturnType<typeof c.categories.tree>> = [];
 
-  const [submissionRes, categoriesRes, documentsRes, agreementRes, accountRes] =
+  const [submissionRes, categoriesRes, documentsRes, agreementRes, accountRes, afterSaleRes] =
     await Promise.allSettled([
       c.submissions.getMineById(id),
       c.categories.tree(),
       getServerSubmissionDocuments(id),
       getServerConsignmentAgreement(id),
       loadSellerAccountFacts(sellerCtx),
+      getServerConsignmentAfterSale(id),
     ]);
 
   if (submissionRes.status === "fulfilled") {
@@ -159,7 +167,6 @@ export default async function SubmissionDetailPage({
 
   const editable = sellerCanEditSubmission(submission.status);
   const canSubmit = submission.status === "draft";
-  const canWithdraw = canTransition(submission.status, "withdraw");
   const agreementView = agreementRes.status === "fulfilled" ? agreementRes.value : null;
   const account = accountRes.status === "fulfilled" ? accountRes.value : null;
   const checklist = account
@@ -173,6 +180,19 @@ export default async function SubmissionDetailPage({
       )
     : null;
   const accountName = account?.organisationName ?? user.name;
+  const afterSale = afterSaleRes.status === "fulfilled" ? afterSaleRes.value : null;
+  const unsoldView = afterSale?.unsold
+    ? unsoldChoiceViewModel(afterSale.unsold, {
+        organisationName: account?.organisationName ?? null,
+      })
+    : null;
+  const unsoldCurrent = afterSale?.unsold?.choice?.requestedChoice
+    ? {
+        choice: afterSale.unsold.choice.requestedChoice,
+        reserve: afterSale.unsold.choice.requestedReserve,
+      }
+    : null;
+  const withdrawalView = afterSale ? consignmentWithdrawalViewModel(afterSale.withdrawal) : null;
   const submissionFormValues = itemSubmissionToFormValues(submission);
   const submissionQuality = evaluateSubmissionQuality(submission);
   const readyToSubmit = editable && submissionQuality.canSubmit;
@@ -188,7 +208,7 @@ export default async function SubmissionDetailPage({
         backHref={DASHBOARD_ROUTES.consignments}
         backLabel="Consignments"
         title={submission.title}
-        badges={<SubmissionStatusBadge status={submission.status} />}
+        badges={<ConsignmentStatusBadge stage={afterSale?.stage ?? submission.status} />}
       />
       {actionError ? (
         <DashboardSliceErrorAlert failure={describeSettingsActionError(actionError)} />
@@ -207,6 +227,13 @@ export default async function SubmissionDetailPage({
           )}
           doneCount={checklist.doneCount}
           totalCount={checklist.totalCount}
+        />
+      ) : null}
+      {unsoldView ? (
+        <UnsoldLotChoicePanel
+          submissionId={submission.id}
+          view={unsoldView}
+          current={unsoldCurrent}
         />
       ) : null}
       {agreementView?.agreement && account ? (
@@ -291,8 +318,15 @@ export default async function SubmissionDetailPage({
               <SubmissionWorkflowActions
                 submissionId={submission.id}
                 canSubmit={canSubmit}
-                canWithdraw={canWithdraw}
+                canWithdraw={false}
               />
+              {withdrawalView ? (
+                <ConsignmentWithdrawPanel
+                  submissionId={submission.id}
+                  view={withdrawalView}
+                  terms={partCSection("withdrawal-by-seller")}
+                />
+              ) : null}
             </div>
           }
         />

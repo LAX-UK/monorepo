@@ -12,6 +12,7 @@ export const adminWorkItemKindSchema = z.enum([
   "legal_entity_kyb",
   "lot_withdrawal",
   "lot_draft_past_start",
+  "unsold_lot_choice",
 ]);
 
 export const adminWorkItemDomainSchema = z.enum([

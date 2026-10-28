@@ -44,10 +44,15 @@ const SELLER_SUBMISSION_FIRST_TYPES = new Set([
   "submission_draft_reminder",
   "submission_changes_requested",
   "consignment_agreement_reminder",
+  "consignment_update",
 ]);
 
 /** Best deep link for push/email/in-app actions (seller submission → lot → staff queue). */
 export function notificationWebPath(payload: NotificationPayload): string | undefined {
+  // A consignment update for a specialist opens the submission in Bid admin.
+  if (payload.submissionId && payload.meta?.audience === "staff") {
+    return `/admin/submissions/${payload.submissionId}`;
+  }
   if (payload.submissionId && SELLER_SUBMISSION_FIRST_TYPES.has(payload.type)) {
     return notificationSubmissionWebPath(payload);
   }

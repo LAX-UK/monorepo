@@ -1,3 +1,5 @@
+import type { SellerIdentityReminderState } from "./consignment-after-sale.js";
+
 /**
  * The consignment agreement for one submission: the specialist's estimate and terms, proposed
  * when the work is accepted, and the seller's acceptance of them under a versioned set of
@@ -20,6 +22,8 @@ export type ConsignmentAgreement = {
   acceptedByUserId: string | null;
   /** Display name of the person who accepted, when known. */
   acceptedByName?: string | null;
+  /** The lowest reserve the specialist accepts if the lot is relisted unsold, when set. */
+  relistReserveFloor?: string | null;
 };
 
 /** The specialist's proposal, made with the decision to accept the work. */
@@ -43,4 +47,6 @@ export type StaffConsignmentView = {
   agreement: ConsignmentAgreement | null;
   /** The seller's identity (or organisation documents) is checked, so the work can be accepted. */
   sellerIdentityVerified: boolean;
+  /** When the seller was last reminded to verify, while acceptance waits for it. */
+  identityReminder?: SellerIdentityReminderState;
 };

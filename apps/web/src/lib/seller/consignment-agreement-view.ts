@@ -18,8 +18,8 @@ export type ConsignmentAgreementViewModel = {
   accepted: { by: string; on: string } | null;
 };
 
-function money(value: string, currency: string): string {
-  // Whole pounds read better in an estimate; pence are kept when there are any.
+/** An amount for sellers: whole pounds without pence, pence kept when there are any. */
+export function sellerMoney(value: string, currency: string): string {
   const amount = Number.parseFloat(value);
   if (Number.isFinite(amount) && Number.isInteger(amount)) {
     return formatMoney(amount, currency).replace(/\.00$/, "");
@@ -39,11 +39,14 @@ export function consignmentAgreementViewModel(
   if (agreement.estimateLow && agreement.estimateHigh) {
     terms.push({
       label: "Estimate",
-      value: `${money(agreement.estimateLow, agreement.currency)} – ${money(agreement.estimateHigh, agreement.currency)}`,
+      value: `${sellerMoney(agreement.estimateLow, agreement.currency)} – ${sellerMoney(agreement.estimateHigh, agreement.currency)}`,
     });
   }
   if (agreement.reservePrice) {
-    terms.push({ label: "Reserve", value: money(agreement.reservePrice, agreement.currency) });
+    terms.push({
+      label: "Reserve",
+      value: sellerMoney(agreement.reservePrice, agreement.currency),
+    });
   }
   if (agreement.commissionPercent) {
     terms.push({ label: "Seller's commission", value: percent(agreement.commissionPercent) });

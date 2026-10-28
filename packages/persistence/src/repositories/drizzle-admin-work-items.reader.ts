@@ -11,6 +11,7 @@ import {
   sale,
   saleRegistration,
   telephoneBidBooking,
+  unsoldLotChoice,
 } from "@auction/db/schema";
 import { and, desc, eq, inArray, isNull, lt, or } from "drizzle-orm";
 import type {
@@ -396,4 +397,42 @@ export class DrizzleAdminWorkItemsReader implements IAdminWorkItemsReader {
       assignedToUserId: null,
     }));
   }
+
+  async listUnsoldLotChoices(limit: number): Promise<AdminWorkItemSourceRow[]> {
+    const rows = await this.db
+      .select({
+        id: unsoldLotChoice.id,
+        submissionId: unsoldLotChoice.submissionId,
+        requestedChoice: unsoldLotChoice.requestedChoice,
+        requestedAt: unsoldLotChoice.requestedAt,
+        createdAt: unsoldLotChoice.createdAt,
+        updatedAt: unsoldLotChoice.updatedAt,
+        lotTitle: lot.title,
+        lotNumber: lot.lotNumber,
+      })
+      .from(unsoldLotChoice)
+      .innerJoin(lot, eq(unsoldLotChoice.lotId, lot.id))
+      .where(eq(unsoldLotChoice.status, "requested"))
+      .orderBy(desc(unsoldLotChoice.updatedAt))
+      .limit(limit);
+
+    return rows.map((row) => ({
+      sourceId: row.id,
+      kind: "unsold_lot_choice" as const,
+      domain: "catalogue" as const,
+      title: lotWorkItemTitle("Unsold lot choice", row.lotNumber, row.lotTitle),
+      subtitle: UNSOLD_CHOICE_SUBTITLES[row.requestedChoice ?? ""] ?? null,
+      href: `/admin/submissions/${row.submissionId}/decision`,
+      saleId: null,
+      createdAt: row.requestedAt ?? row.createdAt,
+      sourceUpdatedAt: row.updatedAt,
+      assignedToUserId: null,
+    }));
+  }
 }
+
+const UNSOLD_CHOICE_SUBTITLES: Record<string, string> = {
+  relist: "Seller asks to relist",
+  private_sale: "Seller asks for a private sale",
+  collect: "Seller asks to collect",
+};

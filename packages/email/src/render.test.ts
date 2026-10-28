@@ -2,6 +2,20 @@ import { describe, expect, it } from "vitest";
 import { renderEmail } from "./render.js";
 
 describe("renderEmail", () => {
+  it("renders a consignment update with the heading and message its sender wrote", async () => {
+    const rendered = await renderEmail("consignment-update", {
+      userName: "Jane",
+      heading: "Your specialist confirmed what happens next",
+      message: '"Untitled (Blue)" will be relisted with a reserve of £4,000.',
+      submissionUrl: "https://lax.bid/selling/consignments/abc",
+      unsubscribeUrl: "https://lax.bid/unsubscribe",
+    });
+    expect(rendered.subject).toBe("An update on your LAX.BID consignment");
+    expect(rendered.html).toContain("Your specialist confirmed what happens next");
+    expect(rendered.text).toContain("will be relisted with a reserve of £4,000.");
+    expect(rendered.html).toContain("https://lax.bid/selling/consignments/abc");
+  });
+
   it("brands artwork enquiry alerts by storefront, defaulting to Shop", async () => {
     const vars = {
       artworkTitle: "Tidal Forms",
