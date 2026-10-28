@@ -1,9 +1,10 @@
 import type { Database } from "@auction/db";
-import { legalEntity, payment, payout, payoutLine } from "@auction/db/schema";
+import { domainEvent, legalEntity, payment, payout, payoutLine } from "@auction/db/schema";
 import type { Payout, PayoutLine, PayoutLineKind, PayoutStatus } from "@auction/types";
-import { and, desc, eq, isNotNull, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, ne, sql } from "drizzle-orm";
 import type {
   CreatePayoutInput,
+  IPayoutProcessorReader,
   IPayoutRepository,
   InsertPayoutLineInput,
   ListPayoutsFilter,
@@ -50,7 +51,7 @@ function rowToLine(row: PayoutLineRow): PayoutLine {
   };
 }
 
-export class DrizzlePayoutRepository implements IPayoutRepository {
+export class DrizzlePayoutRepository implements IPayoutRepository, IPayoutProcessorReader {
   constructor(private readonly db: Database) {}
 
   async create(input: CreatePayoutInput): Promise<Payout> {
@@ -290,6 +291,33 @@ export class DrizzlePayoutRepository implements IPayoutRepository {
       .where(eq(payout.stripeTransferId, stripeTransferId))
       .limit(1);
     return rows[0] ? rowToPayout(rows[0]) : null;
+  }
+
+  async listProcessorUserIds(payoutId: string): Promise<string[]> {
+    const actedOn = await this.db
+      .selectDistinct({ userId: domainEvent.actorUserId })
+      .from(domainEvent)
+      .where(
+        and(
+          eq(domainEvent.aggregateType, "payout"),
+          eq(domainEvent.aggregateId, payoutId),
+          isNotNull(domainEvent.actorUserId),
+          ne(domainEvent.eventType, "payout.reversed"),
+        ),
+      );
+    const wroteLines = await this.db
+      .selectDistinct({ userId: payoutLine.createdByUserId })
+      .from(payoutLine)
+      .where(
+        and(
+          eq(payoutLine.payoutId, payoutId),
+          isNotNull(payoutLine.createdByUserId),
+          ne(payoutLine.kind, "reversal"),
+        ),
+      );
+    const ids = new Set<string>();
+    for (const row of [...actedOn, ...wroteLines]) if (row.userId) ids.add(row.userId);
+    return [...ids];
   }
 
   async listLines(payoutId: string): Promise<PayoutLine[]> {

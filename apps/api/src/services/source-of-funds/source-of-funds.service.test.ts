@@ -476,6 +476,26 @@ describe("SourceOfFundsService two-stage maker-checker", () => {
     ).rejects.toThrow("source_of_funds_review_same_as_triager");
   });
 
+  it("decide forbids whoever raised the case by asking for documents", async () => {
+    const state: FakeState = {
+      cases: [makeCase({ id: "sof_1", userId: "u1", documentsRequestedByUserId: "mlro_1" })],
+      linkedPence: 0,
+    };
+    const svc = new SourceOfFundsService(fakeRepo(state), config);
+    await svc.triage({
+      caseId: "sof_1",
+      analystUserId: "analyst_1",
+      recommendation: "approve",
+      notes: null,
+    });
+    await expect(
+      svc.decide({ caseId: "sof_1", reviewerUserId: "mlro_1", decision: "approve", notes: null }),
+    ).rejects.toThrow("source_of_funds_review_same_as_requester");
+    await expect(
+      svc.decide({ caseId: "sof_1", reviewerUserId: "mlro_2", decision: "approve", notes: null }),
+    ).resolves.toMatchObject({ status: "approved", reviewedByUserId: "mlro_2" });
+  });
+
   it("decide forbids the subject from finalising their own case", async () => {
     const state: FakeState = {
       cases: [makeCase({ id: "sof_1", userId: "u1" })],

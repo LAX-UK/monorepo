@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { IPayoutRepository } from "@auction/persistence/interfaces";
+import type { IPayoutProcessorReader, IPayoutRepository } from "@auction/persistence/interfaces";
 import type { CreatePayoutAdjustmentInput, Payout, PayoutLineKind } from "@auction/types";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
@@ -17,7 +17,11 @@ import type {
   PendingPayoutPreview,
   StripeTransferReconciliationInput,
 } from "./interfaces/payout.js";
-import { PayoutNotFoundError, PayoutPermissionError } from "./interfaces/payout.js";
+import {
+  PayoutNotFoundError,
+  PayoutPermissionError,
+  type PayoutReversalActor,
+} from "./interfaces/payout.js";
 
 export type {
   IPayoutAdminService,
@@ -37,7 +41,11 @@ import {
   reconcileStripeTransfer,
 } from "./payout/payout-admin.js";
 import { runBulkSettlementWithTransfers } from "./payout/payout-bulk-transfer.js";
-import { type PayoutServiceDeps, payoutRepoForTx } from "./payout/payout-helpers.js";
+import {
+  type PayoutServiceDeps,
+  payoutProcessorReaderForTx,
+  payoutRepoForTx,
+} from "./payout/payout-helpers.js";
 import { createSettlement, runBulkSettlement } from "./payout/payout-settlement.js";
 
 export class PayoutService implements IPayoutService {
@@ -49,6 +57,7 @@ export class PayoutService implements IPayoutService {
     domainEventSink?: IDomainEventSink,
     payoutAdjustments?: IPayoutAdjustmentService,
     repoForTx?: (tx: Database) => IPayoutRepository,
+    processorsForTx: (tx: Database) => IPayoutProcessorReader = payoutProcessorReaderForTx,
   ) {
     this.deps = {
       repo,
@@ -57,6 +66,7 @@ export class PayoutService implements IPayoutService {
       payoutAdjustments,
       payoutRepoForTx:
         repoForTx ?? (transactionRunner ? (tx) => payoutRepoForTx(repo, tx) : () => repo),
+      payoutProcessorsForTx: processorsForTx,
     };
   }
 
@@ -140,10 +150,10 @@ export class PayoutService implements IPayoutService {
   }
 
   adminManualReverse(
-    actorUserId: string,
+    actor: PayoutReversalActor,
     payoutId: string,
     input: { reason: string },
   ): Promise<Payout> {
-    return adminManualReverse(this.deps, actorUserId, payoutId, input);
+    return adminManualReverse(this.deps, actor, payoutId, input);
   }
 }

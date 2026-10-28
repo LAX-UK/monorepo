@@ -130,12 +130,12 @@ describe("StaffRoleAssignmentService.assign", () => {
 
     await service.assign({
       userId: "u1",
-      role: "client_advisor",
+      role: "client_services",
       actorUserId: ACTOR,
       reason: "Cover",
     });
 
-    expect(await roster.listActiveRoles("u1", NOW)).toEqual(["specialist", "client_advisor"]);
+    expect(await roster.listActiveRoles("u1", NOW)).toEqual(["specialist", "client_services"]);
     expect(roster.profiles.get("u1")).toEqual({ role: "staff", primaryStaffRole: "specialist" });
     expect(roster.events).toEqual([
       {
@@ -144,14 +144,14 @@ describe("StaffRoleAssignmentService.assign", () => {
         actorUserId: ACTOR,
         payload: {
           assignmentId: expect.any(String),
-          role: "client_advisor",
+          role: "client_services",
           startsAt: NOW.toISOString(),
           endsAt: null,
           reason: "Cover",
         },
       },
     ]);
-    const granted = roster.assignments.find((a) => a.role === "client_advisor");
+    const granted = roster.assignments.find((a) => a.role === "client_services");
     expect(granted).toMatchObject({ grantedByUserId: ACTOR, reason: "Cover", endsAt: null });
   });
 
@@ -162,25 +162,25 @@ describe("StaffRoleAssignmentService.assign", () => {
 
     await service.assign({
       userId: "u1",
-      role: "catalogue_manager",
+      role: "cataloguer",
       actorUserId: ACTOR,
       reason: null,
       endsAt,
     });
 
-    expect(await roster.listActiveRoles("u1", NOW)).toContain("catalogue_manager");
+    expect(await roster.listActiveRoles("u1", NOW)).toContain("cataloguer");
     expect(await roster.listActiveRoles("u1", endsAt)).toEqual(["specialist"]);
   });
 
   it.each([
     ["specialist", "specialist", "duplicate"],
-    ["finance_ops", "compliance_officer", "forbidden_combination"],
-    ["super_admin", "specialist", "forbidden_combination"],
-    ["staff_viewer", "client_advisor", "forbidden_combination"],
+    ["finance", "compliance", "forbidden_combination"],
+    ["administrator", "specialist", "forbidden_combination"],
+    ["read_only", "client_services", "forbidden_combination"],
   ] as const)("holding %s, refuses %s (%s) and writes nothing", async (held, requested, reason) => {
     const { roster, service } = setup();
     roster.hold("u1", held);
-    roster.hold("other-admin", "super_admin");
+    roster.hold("other-admin", "administrator");
     const before = roster.assignments.length;
 
     const error = await refusal(
@@ -197,7 +197,7 @@ describe("StaffRoleAssignmentService.remove", () => {
   it("ends the assignment, keeps it as history and audits the removal", async () => {
     const { roster, service } = setup();
     roster.hold("u1", "specialist");
-    roster.hold("u1", "client_advisor");
+    roster.hold("u1", "client_services");
 
     await service.remove({
       userId: "u1",
@@ -206,11 +206,11 @@ describe("StaffRoleAssignmentService.remove", () => {
       reason: "Moved team",
     });
 
-    expect(await roster.listActiveRoles("u1", NOW)).toEqual(["client_advisor"]);
+    expect(await roster.listActiveRoles("u1", NOW)).toEqual(["client_services"]);
     expect(roster.assignments.find((a) => a.role === "specialist")?.endsAt).toEqual(NOW);
     expect(roster.profiles.get("u1")).toEqual({
       role: "staff",
-      primaryStaffRole: "client_advisor",
+      primaryStaffRole: "client_services",
     });
     expect(roster.events.map((e) => e.type)).toEqual([
       "staff.role_removed",
@@ -220,16 +220,16 @@ describe("StaffRoleAssignmentService.remove", () => {
 
   it("never removes the last active administrator", async () => {
     const { roster, service } = setup();
-    roster.hold("u1", "super_admin");
-    roster.hold("suspended-admin", "super_admin");
+    roster.hold("u1", "administrator");
+    roster.hold("suspended-admin", "administrator");
     roster.suspended.add("suspended-admin");
 
     const error = await refusal(
-      service.remove({ userId: "u1", role: "super_admin", actorUserId: ACTOR, reason: null }),
+      service.remove({ userId: "u1", role: "administrator", actorUserId: ACTOR, reason: null }),
     );
 
     expect(error.reason).toBe("last_administrator");
-    expect(await roster.listActiveRoles("u1", NOW)).toEqual(["super_admin"]);
+    expect(await roster.listActiveRoles("u1", NOW)).toEqual(["administrator"]);
   });
 
   it("refuses removing a role the person does not hold", async () => {
@@ -237,7 +237,7 @@ describe("StaffRoleAssignmentService.remove", () => {
     roster.hold("u1", "specialist");
 
     const error = await refusal(
-      service.remove({ userId: "u1", role: "auction_manager", actorUserId: ACTOR, reason: null }),
+      service.remove({ userId: "u1", role: "sales_manager", actorUserId: ACTOR, reason: null }),
     );
 
     expect(error.reason).toBe("not_assigned");
@@ -247,21 +247,21 @@ describe("StaffRoleAssignmentService.remove", () => {
 describe("StaffRoleAssignmentService.setAccess (existing role-change paths)", () => {
   it("swaps one role for another: removes first so the new role never combines with it", async () => {
     const { roster, service } = setup();
-    roster.hold("u1", "super_admin");
-    roster.hold("u2", "super_admin");
+    roster.hold("u1", "administrator");
+    roster.hold("u2", "administrator");
 
     await service.setAccess({
       userId: "u1",
       role: "staff",
-      staffRoles: ["auction_manager"],
+      staffRoles: ["sales_manager"],
       actorUserId: ACTOR,
       reason: null,
     });
 
-    expect(await roster.listActiveRoles("u1", NOW)).toEqual(["auction_manager"]);
+    expect(await roster.listActiveRoles("u1", NOW)).toEqual(["sales_manager"]);
     expect(roster.profiles.get("u1")).toEqual({
       role: "staff",
-      primaryStaffRole: "auction_manager",
+      primaryStaffRole: "sales_manager",
     });
     expect(roster.events.map((e) => e.type)).toEqual([
       "staff.role_removed",
@@ -308,7 +308,7 @@ describe("StaffRoleAssignmentService.setAccess (existing role-change paths)", ()
 
   it("refuses demoting the last administrator and rolls the whole change back", async () => {
     const { roster, service } = setup();
-    roster.hold("u1", "super_admin");
+    roster.hold("u1", "administrator");
 
     const error = await refusal(
       service.setAccess({
@@ -321,7 +321,7 @@ describe("StaffRoleAssignmentService.setAccess (existing role-change paths)", ()
     );
 
     expect(error.reason).toBe("last_administrator");
-    expect(roster.profiles.get("u1")).toEqual({ role: "staff", primaryStaffRole: "super_admin" });
+    expect(roster.profiles.get("u1")).toEqual({ role: "staff", primaryStaffRole: "administrator" });
     expect(roster.events).toEqual([]);
   });
 
@@ -355,7 +355,7 @@ describe("StaffRoleAssignmentService.list", () => {
   it("lists roles in force and those starting later, not those that ended", async () => {
     const { roster, service } = setup();
     roster.hold("u1", "specialist");
-    roster.hold("u1", "catalogue_manager", EARLIER);
+    roster.hold("u1", "cataloguer", EARLIER);
 
     expect((await service.list("u1")).map((a) => a.role)).toEqual(["specialist"]);
   });

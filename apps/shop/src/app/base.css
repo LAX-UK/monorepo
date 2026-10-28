@@ -43,6 +43,8 @@
   --color-surface-container-low: #f3f3f3;
   --color-surface-container-lowest: #ffffff;
   --color-surface-container-high: #e8e8e8;
+  /* Warm paper, shared with lax.art (--brand-paper in @auction/branding). */
+  --color-surface-paper: var(--brand-paper);
   --color-outline-variant: color-mix(in srgb, var(--color-brand-light-gray) 50%, white);
   --color-error: #ba1a1a;
   --color-on-error: #ffffff;
@@ -145,14 +147,9 @@
   --auth-column: 528px;
   --color-cta-bg: var(--color-brand-obsidian);
   --color-cta-on: var(--color-brand-light-cream);
-  /* Warm paper: the mat behind artwork and the gallery-wall bands. The family is moving this tone
-     into a shared token for Shop and lax.art; until it lands, it is mixed from the palette's
-     light cream here, and this is the one line to point at the shared token. */
-  --color-paper: color-mix(
-    in srgb,
-    var(--color-brand-light-cream) 45%,
-    var(--color-surface-container-low)
-  );
+  /* Warm paper: the mat behind artwork and the gallery-wall bands. The family's shared paper
+     (--color-surface-paper, from --brand-paper), so Shop and lax.art match in both themes. */
+  --color-paper: var(--color-surface-paper);
   /* Soft shadow that lifts a print off its mat; a filter, so it follows a contained image. */
   --filter-artwork-lift: drop-shadow(0 1px 1px rgb(20 16 10 / 0.1))
     drop-shadow(0 8px 14px rgb(20 16 10 / 0.16));
@@ -287,6 +284,7 @@ html.dark {
   --color-surface-container-low: #2d2f2e;
   --color-surface-container-lowest: #0f1111;
   --color-surface-container-high: #383a39;
+  --color-surface-paper: var(--brand-paper-on-dark);
   --color-outline-variant: #5c5a54;
   --color-brand-100: #5c5a54;
   --color-live-red: #ff6b6b;
@@ -323,7 +321,6 @@ html.dark {
   --color-control-border-hover: #b3b3b3;
   --color-control-border-disabled: #5c5a54;
   --color-footer-bg: #0d0f0f;
-  --color-paper: color-mix(in srgb, var(--color-brand-light-cream) 5%, var(--color-surface));
   --filter-artwork-lift: drop-shadow(0 1px 1px rgb(0 0 0 / 0.45))
     drop-shadow(0 10px 18px rgb(0 0 0 / 0.55));
   --color-passe-partout: color-mix(in srgb, var(--color-brand-light-cream) 92%, black);

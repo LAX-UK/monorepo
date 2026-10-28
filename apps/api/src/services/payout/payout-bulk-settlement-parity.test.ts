@@ -40,6 +40,7 @@ describe("API payout bulk settlement parity (finance-runtime bridge)", () => {
       domainEventSink: mockDomainEventSink(),
       payoutAdjustments: undefined,
       payoutRepoForTx: () => repo,
+      payoutProcessorsForTx: () => ({ listProcessorUserIds: async () => [] }),
     };
     const [direct, viaApi] = [
       await runBulkSettlementParity(settlementDeps(repo), initiateTransfer),

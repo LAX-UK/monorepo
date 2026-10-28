@@ -5,7 +5,7 @@ describe("buildStaffListPageModel", () => {
   it("fixes role=staff and preserves preview drawer param", () => {
     const model = buildStaffListPageModel({
       q: "bob",
-      staffRole: "finance_ops",
+      staffRole: "finance",
       offset: "0",
       limit: "25",
       staff: "staff-123",
@@ -16,7 +16,7 @@ describe("buildStaffListPageModel", () => {
       offset: 0,
       role: "staff",
       q: "bob",
-      staffRole: "finance_ops",
+      staffRole: "finance",
     });
     expect(model.selectedStaffId).toBe("staff-123");
     expect(model.buildDrawerHref("staff-456")).toContain("staff=staff-456");

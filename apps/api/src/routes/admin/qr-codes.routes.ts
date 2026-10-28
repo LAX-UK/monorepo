@@ -9,10 +9,7 @@ import {
   resolveQrCodeAnalyticsQuery,
 } from "@auction/validators";
 import { zValidator } from "../../lib/z-validator.js";
-import {
-  requireCatalogueWrite,
-  requireQrCodesAccess,
-} from "../../middleware/require-capability.js";
+import { requireCatalogueWrite, requireQrCodesRead } from "../../middleware/require-capability.js";
 import type { AdminCatalogSupportRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
 import type { AdminHono } from "./_shared.js";
 
@@ -22,7 +19,7 @@ export function attachAdminQrCodesRoutes(
 ): void {
   platform.get(
     "/qr-codes",
-    requireQrCodesAccess,
+    requireQrCodesRead,
     zValidator("query", adminQrCodeEntityQuerySchema),
     async (c) => {
       const q = c.req.valid("query");
@@ -93,7 +90,7 @@ export function attachAdminQrCodesRoutes(
 
   platform.get(
     "/qr-codes/:id/analytics",
-    requireQrCodesAccess,
+    requireQrCodesRead,
     zValidator("param", adminQrCodeIdParamSchema),
     zValidator("query", adminQrCodeAnalyticsQuerySchema),
     async (c) => {

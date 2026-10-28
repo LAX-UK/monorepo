@@ -1,13 +1,21 @@
-import type { CapabilityRequirement } from "./role-policy.js";
+import { type CapabilityRequirement, requirementCapabilities } from "./role-policy.js";
+
+/**
+ * The read rule for a page whose write rule is `write`: anyone who may change what the page shows
+ * may open it, and so may anyone holding `admin.read`. The write rule still guards every action.
+ */
+export function readOrWrite(write: CapabilityRequirement): CapabilityRequirement {
+  return { anyOf: [...requirementCapabilities(write), "admin.read"] };
+}
 
 /** Minimum access to show the staff admin home link in the shell. */
 export const STAFF_OVERVIEW_ACCESS: CapabilityRequirement = {
   anyOf: [
     "auction.manage",
+    "saleroom.operate",
     "catalogue.write",
     "specialist.appraise",
     "operations.fulfilment",
-    "content.write",
     "support.respond",
     "finance.read",
     "platform.admin.full",
@@ -15,6 +23,7 @@ export const STAFF_OVERVIEW_ACCESS: CapabilityRequirement = {
     "artist.read",
     "client.read",
     "aml.review",
+    "admin.read",
   ],
 };
 
@@ -38,23 +47,50 @@ export const ADMIN_DASHBOARD_ACCESS: CapabilityRequirement = STAFF_OVERVIEW_ACCE
 export const SUBMISSIONS_ACCESS: CapabilityRequirement = {
   anyOf: ["specialist.appraise", "catalogue.write", "auction.manage"],
 };
+export const SUBMISSIONS_READ_ACCESS: CapabilityRequirement = readOrWrite(SUBMISSIONS_ACCESS);
 
 export const CONDITION_REPORTS_ACCESS: CapabilityRequirement = {
   anyOf: ["catalogue.write", "specialist.appraise", "platform.admin.full"],
 };
+export const CONDITION_REPORTS_READ_ACCESS: CapabilityRequirement =
+  readOrWrite(CONDITION_REPORTS_ACCESS);
 
 export const LOTS_ACCESS: CapabilityRequirement = {
   anyOf: ["catalogue.write", "auction.manage", "platform.admin.full"],
 };
+export const LOTS_READ_ACCESS: CapabilityRequirement = readOrWrite(LOTS_ACCESS);
 
 export const SALES_ACCESS: CapabilityRequirement = {
   anyOf: ["auction.manage", "platform.admin.full"],
 };
+export const SALES_READ_ACCESS: CapabilityRequirement = readOrWrite(SALES_ACCESS);
 
 /** View draft sales and work on catalog prep / lots in sale setup. */
 export const SALE_CATALOG_ACCESS: CapabilityRequirement = {
   anyOf: ["auction.manage", "catalogue.write", "platform.admin.full"],
 };
+export const SALE_CATALOG_READ_ACCESS: CapabilityRequirement = readOrWrite(SALE_CATALOG_ACCESS);
+
+/** Change catalogue records (sales, lots, media). Matches the catalogue upload policy. */
+export const CATALOGUE_WRITE_ACCESS: CapabilityRequirement = {
+  anyOf: ["auction.manage", "catalogue.write"],
+};
+/** See catalogue records that are not public yet (drafts, withdrawn, admin detail). */
+export const CATALOGUE_READ_ACCESS: CapabilityRequirement = readOrWrite(CATALOGUE_WRITE_ACCESS);
+
+/**
+ * A sale's admin record with its lots: catalogue readers, and the saleroom, whose console is
+ * built on it.
+ */
+export const SALE_ADMIN_DETAIL_ACCESS: CapabilityRequirement = {
+  anyOf: [...requirementCapabilities(CATALOGUE_READ_ACCESS), "saleroom.operate"],
+};
+
+/** Lot documents, lifecycle and the staff lot browser. */
+export const LOT_WORK_ACCESS: CapabilityRequirement = {
+  anyOf: ["specialist.appraise", "catalogue.write", "auction.manage"],
+};
+export const LOT_WORK_READ_ACCESS: CapabilityRequirement = readOrWrite(LOT_WORK_ACCESS);
 
 export const ARTISTS_ACCESS: CapabilityRequirement = {
   anyOf: ["artist.read", "artist.review", "catalogue.write", "platform.admin.full"],
@@ -79,13 +115,19 @@ export const ARTIST_DELETE_ACCESS: CapabilityRequirement = {
 export const CATEGORIES_ACCESS: CapabilityRequirement = {
   anyOf: ["catalogue.write", "platform.admin.full"],
 };
+export const CATEGORIES_READ_ACCESS: CapabilityRequirement = readOrWrite(CATEGORIES_ACCESS);
 
 export const VENUES_ACCESS: CapabilityRequirement = {
   anyOf: ["auction.manage", "catalogue.write", "platform.admin.full"],
 };
+export const VENUES_READ_ACCESS: CapabilityRequirement = readOrWrite(VENUES_ACCESS);
 
+/**
+ * The live saleroom: its pages and its actions (telephone bids, paddles, check-in). A saleroom
+ * clerk runs it without `auction.manage`, so cannot edit sales.
+ */
 export const SALEROOM_ACCESS: CapabilityRequirement = {
-  anyOf: ["auction.manage", "platform.admin.full"],
+  anyOf: ["auction.manage", "saleroom.operate", "platform.admin.full"],
 };
 
 export const LOT_FULFILMENT_ACCESS: CapabilityRequirement = {
@@ -96,8 +138,8 @@ export const LOT_FULFILMENT_ACCESS: CapabilityRequirement = {
 export const FINANCE_ACCESS: CapabilityRequirement = "finance.read";
 
 /**
- * Capture and refund a payment from the admin payments screens. `finance_ops` holds
- * `finance.platform.write`; super admin also holds `finance.entity.write`. The API route
+ * Capture and refund a payment from the admin payments screens. Finance holds
+ * `finance.platform.write`; the administrator also holds `finance.entity.write`. The API route
  * additionally lets a seller entity's own finance members act on their own payments.
  */
 export const PAYMENT_WRITE_ACCESS: CapabilityRequirement = {
@@ -132,6 +174,7 @@ export const PAYOUT_REVERSE_ACCESS: CapabilityRequirement = {
 
 /** QR code list/read on lot and sale detail pages. */
 export const QR_CODES_ACCESS: CapabilityRequirement = LOTS_ACCESS;
+export const QR_CODES_READ_ACCESS: CapabilityRequirement = LOTS_READ_ACCESS;
 
 /** Admin home dashboard and widget preferences. */
 export const ADMIN_HOME_ACCESS: CapabilityRequirement = STAFF_OVERVIEW_ACCESS;
@@ -146,9 +189,7 @@ export const AUDIT_DOMAIN_EVENTS_ACCESS: CapabilityRequirement = ADMIN_DASHBOARD
 export const EMAIL_ADMIN_ACCESS: CapabilityRequirement = PLATFORM_ADMIN_ACCESS;
 
 /** Read-only email outbox, events, and suppression list (no mutations). */
-export const EMAIL_OBSERVABILITY_ACCESS: CapabilityRequirement = {
-  anyOf: ["platform.admin.full", "content.write"],
-};
+export const EMAIL_OBSERVABILITY_ACCESS: CapabilityRequirement = readOrWrite(EMAIL_ADMIN_ACCESS);
 
 /** Client/staff directory list and detail reads. */
 export const USERS_DIRECTORY_ACCESS: CapabilityRequirement = {
@@ -163,7 +204,7 @@ export const CLIENT_BIDS_ACCESS: CapabilityRequirement = {
 /**
  * KYC verification sessions expose identity PII (name, DOB, ID number, nationality).
  * Deliberately decoupled from {@link USERS_DIRECTORY_ACCESS} so relaxing directory
- * reads (e.g. for client_advisor) never leaks PII. Platform admin only.
+ * reads (e.g. for client services) never leaks PII. Platform admin only.
  */
 export const CLIENT_KYC_ACCESS: CapabilityRequirement = PLATFORM_ADMIN_ACCESS;
 

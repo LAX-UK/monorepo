@@ -12,8 +12,8 @@ const STAFF = "staff-1";
 
 const profiles: Record<string, BidderRoleRow> = {
   [CLIENT]: { role: "client", staffRoles: [] },
-  [CLERK]: { role: "staff", staffRoles: ["auction_manager"] },
-  [STAFF]: { role: "staff", staffRoles: ["super_admin"] },
+  [CLERK]: { role: "staff", staffRoles: ["sales_manager"] },
+  [STAFF]: { role: "staff", staffRoles: ["administrator"] },
   "legacy-admin": { role: "admin", staffRoles: [] },
   odd: { role: "wizard", staffRoles: [] },
 };

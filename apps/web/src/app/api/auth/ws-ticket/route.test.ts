@@ -49,7 +49,7 @@ describe("Bid BFF WS ticket reservation", () => {
       });
     fetchBidApi.mockResolvedValue(
       new Response(
-        JSON.stringify({ data: { id: "user-1", role: "staff", staffRole: "super_admin" } }),
+        JSON.stringify({ data: { id: "user-1", role: "staff", staffRole: "administrator" } }),
         { status: 200 },
       ),
     );

@@ -10,11 +10,12 @@ import { DensityTweakSection } from "@/components/layout/tweaks-popover";
 import { PersonAvatar } from "@/components/ui/person-avatar";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import type { SessionUser } from "@/lib/data/contracts";
-import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { NavSection } from "@/lib/shell/contracts";
 import { formatUnreadTabLabel } from "@/lib/shell/format-unread-tab-label";
+import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
+import { LaxFamilyMenuLinks } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import {
   BottomSheet,
@@ -23,7 +24,7 @@ import {
   BottomSheetTitle,
 } from "@auction/ui/components/bottom-sheet";
 import { Button } from "@auction/ui/components/button";
-import { ArrowUpRight, ChevronRight, ChevronsUpDown, Compass } from "lucide-react";
+import { ChevronRight, ChevronsUpDown, Compass } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -38,6 +39,8 @@ type Props = {
   sections?: readonly NavSection[] | undefined;
   /** Client account in use; with organisations, its switcher heads the sheet. */
   account?: AccountChrome | undefined;
+  /** The other LAX products and LAX Account; the top bar is hidden on a phone. */
+  familyLinks?: readonly LaxFamilyLinkVm[] | undefined;
 };
 
 function navGroupLabel(item: AppShellNavItem, variant: "client" | "staff"): string {
@@ -139,20 +142,6 @@ function MobileProfileStrip({
           Bid settings
           <ChevronRight className="size-4 shrink-0 text-on-surface-variant" aria-hidden />
         </Link>
-        <a
-          href={laxAccountHomeUrl()}
-          rel="noopener noreferrer"
-          onClick={onNavigate}
-          className="flex min-h-11 items-center justify-between gap-2 rounded-md border border-primary/30 bg-primary-container/10 px-3 py-2 text-sm font-medium text-primary hover:bg-primary-container/20"
-        >
-          <span className="min-w-0">
-            LAX Account
-            <span className="block text-xs font-normal text-on-surface-variant">
-              Manage your LAX Account: profile, security, addresses
-            </span>
-          </span>
-          <ArrowUpRight className="size-4 shrink-0" aria-hidden />
-        </a>
       </div>
     </div>
   );
@@ -193,11 +182,13 @@ export function MobileMoreSheet({
   user,
   sections,
   account,
+  familyLinks,
 }: Props) {
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const pathname = usePathname();
   const { unread } = useUnreadNotifications();
-  // The profile strip already links to Bid settings and LAX Account, so the list does not repeat them.
+  // The profile strip links to Bid settings and the LAX products list to LAX Account, so the menu
+  // list repeats neither.
   const showsProfileStrip = variant === "client" && Boolean(user);
   const listed = showsProfileStrip
     ? items.filter((item) => item.id !== "lax-account" && item.id !== "settings")
@@ -298,6 +289,9 @@ export function MobileMoreSheet({
                   </div>
                 ))}
               </div>
+            ) : null}
+            {familyLinks ? (
+              <LaxFamilyMenuLinks links={familyLinks} onNavigate={() => onOpenChange(false)} />
             ) : null}
             <div className="rounded-lg border border-border-hairline bg-surface-container-low/40 p-4">
               <DensityTweakSection />

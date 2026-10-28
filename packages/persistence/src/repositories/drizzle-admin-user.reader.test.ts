@@ -15,18 +15,16 @@ describe("DrizzleAdminUserReader.summarize", () => {
         emailVerified: 3,
         kycVerified: 2,
         legacyStaffRole: 0,
-        role_super_admin: 1,
-        role_auction_manager: 2,
-        role_catalogue_manager: 0,
+        role_administrator: 1,
+        role_sales_manager: 2,
+        role_saleroom_clerk: 0,
+        role_cataloguer: 0,
         role_specialist: 0,
-        role_finance_ops: 0,
-        role_operations_fulfilment: 0,
-        role_content_marketing: 0,
-        role_support_concierge: 0,
-        role_staff_viewer: 0,
-        role_compliance_officer: 0,
-        role_client_advisor: 0,
-        role_operations: 0,
+        role_client_services: 0,
+        role_finance: 0,
+        role_fulfilment: 0,
+        role_compliance: 0,
+        role_read_only: 0,
       },
     ]);
     const leftJoin = vi.fn().mockReturnValue({ where });
@@ -41,8 +39,8 @@ describe("DrizzleAdminUserReader.summarize", () => {
     });
 
     expect(summary.total).toBe(5);
-    expect(summary.byStaffRole.super_admin).toBe(1);
-    expect(summary.byStaffRole.auction_manager).toBe(2);
+    expect(summary.byStaffRole.administrator).toBe(1);
+    expect(summary.byStaffRole.sales_manager).toBe(2);
     expect(where).toHaveBeenCalledOnce();
   });
 });

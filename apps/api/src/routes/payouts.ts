@@ -1,3 +1,4 @@
+import { NO_STAFF_ROLES, type StaffRoles } from "@auction/types";
 import {
   adminManualReversePayoutSchema,
   createPayoutAdjustmentSchema,
@@ -115,7 +116,12 @@ export function createAdminPayoutRoutes(
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
   const r = new Hono<{
-    Variables: { userId?: string; userRole?: string; identitySessionId?: string };
+    Variables: {
+      userId?: string;
+      userRole?: string;
+      userStaffRoles?: StaffRoles;
+      identitySessionId?: string;
+    };
   }>();
   const adminRead = requirePayoutRead;
   const adminMutate = requirePayoutProcess;
@@ -275,7 +281,8 @@ export function createAdminPayoutRoutes(
         );
       }
       try {
-        const result = await container.admin.payouts.adminManualReverse(userId, payoutId, {
+        const actor = { userId, staffRoles: c.get("userStaffRoles") ?? NO_STAFF_ROLES };
+        const result = await container.admin.payouts.adminManualReverse(actor, payoutId, {
           reason: body.reason,
         });
         return c.json({ data: result });

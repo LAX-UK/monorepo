@@ -59,7 +59,7 @@ export function canOpenAdminRoute(
   return requirement === undefined || userHasAccessTo(role, staffRoles, requirement);
 }
 
-/** The Bid staff roles (other than super admin) that each alone can open a page, by display name. */
+/** The Bid staff roles (other than administrator) that each alone can open a page, by display name. */
 export function staffRolesThatCanOpen(href: string, requirement?: CapabilityRequirement): string[] {
   return userStaffRoles
     .filter((role) => role !== ADMINISTRATOR_STAFF_ROLE)

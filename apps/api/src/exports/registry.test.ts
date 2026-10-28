@@ -43,26 +43,29 @@ describe("export auth helpers", () => {
   it("blocks includePii without audit.read_pii", () => {
     expect(() =>
       resolveIncludePii(
-        { userId: "u1", userRole: "staff", userStaffRoles: ["auction_manager"] },
+        { userId: "u1", userRole: "staff", userStaffRoles: ["sales_manager"] },
         true,
       ),
     ).toThrow(AuthzError);
   });
 
-  it("allows includePii for super_admin staff", () => {
+  it("allows includePii for administrator staff", () => {
     expect(
-      resolveIncludePii({ userId: "u1", userRole: "staff", userStaffRoles: ["super_admin"] }, true),
+      resolveIncludePii(
+        { userId: "u1", userRole: "staff", userStaffRoles: ["administrator"] },
+        true,
+      ),
     ).toBe(true);
   });
 });
 
 describe("createExportProviders", () => {
-  it("allows finance_ops to export payments", () => {
+  it("allows finance to export payments", () => {
     const deps = baseDeps();
     const providers = createExportProviders(deps);
     const payments = providers.get("payments");
     expect(() =>
-      payments?.authorize({ userId: "u1", userRole: "staff", userStaffRoles: ["finance_ops"] }, {}),
+      payments?.authorize({ userId: "u1", userRole: "staff", userStaffRoles: ["finance"] }, {}),
     ).not.toThrow();
   });
 
@@ -99,7 +102,7 @@ describe("createExportProviders", () => {
     const providers = createExportProviders(deps);
     const payments = providers.get("payments");
     await payments?.estimateCount(
-      { userId: "u1", userRole: "staff", userStaffRoles: ["finance_ops"] },
+      { userId: "u1", userRole: "staff", userStaffRoles: ["finance"] },
       { status: "captured", q: " golden ", fulfilment: "in_transit,delivered", xero: "linked" },
     );
     expect(countForAdminTable).toHaveBeenCalledWith({
@@ -115,7 +118,7 @@ describe("createExportProviders", () => {
     const deps = baseDeps({ paymentRepo: { countForAdminTable, listForAdminTable: vi.fn() } });
     const payments = createExportProviders(deps).get("payments");
     await payments?.estimateCount(
-      { userId: "u1", userRole: "staff", userStaffRoles: ["finance_ops"] },
+      { userId: "u1", userRole: "staff", userStaffRoles: ["finance"] },
       { status: "everything", xero: "maybe", fulfilment: "" },
     );
     expect(countForAdminTable).toHaveBeenCalledWith({});
@@ -127,7 +130,7 @@ describe("createExportProviders", () => {
     const providers = createExportProviders(deps);
     const payments = providers.get("payments");
     await payments?.estimateCount(
-      { userId: "u1", userRole: "staff", userStaffRoles: ["finance_ops"] },
+      { userId: "u1", userRole: "staff", userStaffRoles: ["finance"] },
       { manualReview: true },
     );
     expect(countForAdminTable).toHaveBeenCalledWith({ status: "requires_manual_review" });
@@ -139,7 +142,7 @@ describe("createExportProviders", () => {
     const domainEvents = providers.get("domain-events");
     expect(() =>
       domainEvents?.authorize(
-        { userId: "u1", userRole: "staff", userStaffRoles: ["catalogue_manager"] },
+        { userId: "u1", userRole: "staff", userStaffRoles: ["cataloguer"] },
         { aggregateType: "lot", aggregateId: "lot-1" },
       ),
     ).not.toThrow();
@@ -150,10 +153,7 @@ describe("createExportProviders", () => {
     const providers = createExportProviders(deps);
     const domainEvents = providers.get("domain-events");
     expect(() =>
-      domainEvents?.authorize(
-        { userId: "u1", userRole: "staff", userStaffRoles: ["finance_ops"] },
-        {},
-      ),
+      domainEvents?.authorize({ userId: "u1", userRole: "staff", userStaffRoles: ["finance"] }, {}),
     ).toThrow(AuthzError);
   });
 
@@ -164,7 +164,7 @@ describe("createExportProviders", () => {
       payoutRepo: { countMatching, list } as unknown as IExportProviderDeps["payoutRepo"],
     });
     const payouts = createExportProviders(deps).get("payouts");
-    const ctx = { userId: "u1", userRole: "staff", userStaffRoles: ["finance_ops"] } as const;
+    const ctx = { userId: "u1", userRole: "staff", userStaffRoles: ["finance"] } as const;
     const filters = {
       status: "failed" as const,
       legalEntityId: "11111111-1111-4111-8111-111111111111",

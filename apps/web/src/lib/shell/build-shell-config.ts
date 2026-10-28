@@ -14,6 +14,7 @@ import {
   getClientNavSections,
 } from "@/lib/navigation/client-nav-model";
 import type { DashboardDensity } from "@/lib/preferences/density";
+import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
 import type { UserRole } from "@auction/types";
 import type { ReactNode } from "react";
 import {
@@ -39,6 +40,8 @@ export type BuildShellConfigInput = {
   clientNavScope?: ClientNavScope;
   /** Client only: the account in use, its switcher and the header strip. */
   clientAccount?: AccountChrome;
+  /** Client only: the LAX top bar's links. Ignored for staff shells. */
+  familyLinks?: readonly LaxFamilyLinkVm[];
   /** Payout setup incomplete while it is required — server-resolved nav badge. */
   sellerConnectNavBadge?: SellerConnectNavBadgeInput | null;
   /** Hide mobile bottom tab bar (wizard, checkout). */
@@ -59,6 +62,7 @@ export function buildShellConfig({
   navCounts,
   clientNavScope = PERSONAL_NAV_SCOPE,
   clientAccount,
+  familyLinks,
   sellerConnectNavBadge = null,
   hideBottomTabBar = false,
 }: BuildShellConfigInput): ShellConfig {
@@ -150,6 +154,7 @@ export function buildShellConfig({
     ...(hideEmailStatusBanner ? { hideEmailStatusBanner: true } : {}),
     ...(navSections ? { navSections } : {}),
     ...(role === "client" && clientAccount ? { clientAccount } : {}),
+    ...(role === "client" && familyLinks && familyLinks.length > 0 ? { familyLinks } : {}),
     pendingSubmissionCount,
     pendingArtistCount,
     ...(navCounts ? { navCounts } : {}),

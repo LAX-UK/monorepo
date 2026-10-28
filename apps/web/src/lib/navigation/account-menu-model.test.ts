@@ -87,21 +87,21 @@ describe("buildAccountMenu for staff", () => {
       }),
     );
 
-  it("gives a super admin the admin panel and LAX Account, nothing from the client area", () => {
-    const groups = menuFor("super_admin");
+  it("gives an administrator the admin panel and LAX Account, nothing from the client area", () => {
+    const groups = menuFor("administrator");
     expect(groups.map((g) => g.map((e) => e.label))).toEqual([["Admin panel"], ["LAX Account"]]);
     expect(groups[0]?.[0]?.href).toBe("/admin");
   });
 
   it("sends finance-only staff to Finance admin", () => {
-    expect(menuFor("finance_ops")[0]?.[0]).toMatchObject({
+    expect(menuFor("finance")[0]?.[0]).toMatchObject({
       label: "Finance admin",
       href: "/admin/finance",
     });
   });
 
   it("sends a clerk to the admin area their role opens first", () => {
-    expect(menuFor("auction_manager")[0]?.[0]).toMatchObject({
+    expect(menuFor("sales_manager")[0]?.[0]).toMatchObject({
       label: "Admin panel",
       href: "/admin/sales",
     });
@@ -112,7 +112,7 @@ describe("buildAccountMenu for staff", () => {
   });
 
   it("never offers buying, selling, watching, notifications or Bid settings to staff", () => {
-    const labels = menuFor("super_admin")
+    const labels = menuFor("administrator")
       .flat()
       .map((e) => e.label);
     for (const clientEntry of [

@@ -7,7 +7,11 @@ export {
   normalizeUserRoleOrClient,
   roleHasCapability,
 } from "./role-policy/role-capabilities.js";
-export { staffRoleCapabilities } from "./role-policy/staff-capability-matrix.js";
+export {
+  STAFF_CAPABILITIES,
+  staffRoleCapabilities,
+  staffRolesGranting,
+} from "./role-policy/staff-capability-matrix.js";
 export {
   effectivePermissions,
   staffRolesCapabilities,
@@ -44,6 +48,7 @@ export {
   canAccessAdminSubmissionsRead,
   canAccessFinanceAdminRoutes,
   canAccessPlatformAdminRoutes,
+  requirementCapabilities,
   staffRoleDefaultDestination,
   staffRoleToShellLayout,
   userHasAccessTo,

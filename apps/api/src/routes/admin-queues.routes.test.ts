@@ -33,8 +33,8 @@ function createQueueTestApp(staffRoles: StaffRoles | undefined) {
 }
 
 describe("admin queue routes", () => {
-  it("GET /system/job-queues/summary returns inspector list for super_admin", async () => {
-    const { app, list } = createQueueTestApp(["super_admin"]);
+  it("GET /system/job-queues/summary returns inspector list for administrator", async () => {
+    const { app, list } = createQueueTestApp(["administrator"]);
     const res = await app.request("http://test/system/job-queues/summary");
     expect(res.status).toBe(200);
     const body = (await res.json()) as { data: Array<{ name: string }> };
@@ -43,7 +43,7 @@ describe("admin queue routes", () => {
   });
 
   it("returns 403 for non-super-admin staff", async () => {
-    const { app } = createQueueTestApp(["auction_manager"]);
+    const { app } = createQueueTestApp(["sales_manager"]);
     const res = await app.request("http://test/system/job-queues/summary");
     expect(res.status).toBe(403);
   });
@@ -69,7 +69,7 @@ describe("admin queue routes", () => {
     }>();
     app.use("*", async (c, next) => {
       c.set("userId", "admin-user-id");
-      c.set("userStaffRoles", ["super_admin"]);
+      c.set("userStaffRoles", ["administrator"]);
       await next();
     });
     attachAdminQueuesRoutes(app, container as never);
@@ -98,7 +98,7 @@ describe("admin queue routes", () => {
     }>();
     app.use("*", async (c, next) => {
       c.set("userId", "admin-user-id");
-      c.set("userStaffRoles", ["super_admin"]);
+      c.set("userStaffRoles", ["administrator"]);
       await next();
     });
     attachAdminQueuesRoutes(app, container as never);

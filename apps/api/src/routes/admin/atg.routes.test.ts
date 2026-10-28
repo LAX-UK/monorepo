@@ -24,9 +24,9 @@ function buildApp(staffRoles: StaffRoles | undefined, atgAdmin: Partial<IAtgAdmi
 }
 
 describe("admin ATG routes", () => {
-  it("lets auction managers enqueue a push and returns 202", async () => {
+  it("lets sales managers enqueue a push and returns 202", async () => {
     const enqueueSaleAction = vi.fn().mockResolvedValue({ ok: true, jobId: "job-1" });
-    const app = buildApp(["auction_manager"], { enqueueSaleAction });
+    const app = buildApp(["sales_manager"], { enqueueSaleAction });
 
     const res = await app.request(`http://test/admin/integrations/atg/sales/${SALE_ID}/push`, {
       method: "POST",
@@ -40,7 +40,7 @@ describe("admin ATG routes", () => {
   it("forbids staff without auction.manage", async () => {
     const enqueueSaleAction = vi.fn();
     const status = vi.fn();
-    const app = buildApp(["finance_ops"], { enqueueSaleAction, status });
+    const app = buildApp(["finance"], { enqueueSaleAction, status });
 
     const post = await app.request(`http://test/admin/integrations/atg/sales/${SALE_ID}/push`, {
       method: "POST",
@@ -53,9 +53,9 @@ describe("admin ATG routes", () => {
     expect(status).not.toHaveBeenCalled();
   });
 
-  it("reports job state to auction managers and 503 when ATG is off", async () => {
+  it("reports job state to sales managers and 503 when ATG is off", async () => {
     const getJobState = vi.fn().mockResolvedValue("active");
-    const app = buildApp(["auction_manager"], { getJobState });
+    const app = buildApp(["sales_manager"], { getJobState });
 
     const res = await app.request("http://test/admin/integrations/atg/jobs/atg.push-sale__abc");
     expect(res.status).toBe(200);
@@ -69,7 +69,7 @@ describe("admin ATG routes", () => {
 
   it("forbids job status for staff without auction.manage", async () => {
     const getJobState = vi.fn();
-    const app = buildApp(["finance_ops"], { getJobState });
+    const app = buildApp(["finance"], { getJobState });
 
     const res = await app.request("http://test/admin/integrations/atg/jobs/atg.push-sale__abc");
     expect(res.status).toBe(403);
@@ -81,7 +81,7 @@ describe("admin ATG routes", () => {
       ok: false,
       error: { status: 503, code: "atg_disabled", message: "off" },
     });
-    const app = buildApp(["super_admin"], { enqueueSaleAction });
+    const app = buildApp(["administrator"], { enqueueSaleAction });
 
     const res = await app.request(`http://test/admin/integrations/atg/sales/${SALE_ID}/publish`, {
       method: "POST",
@@ -93,7 +93,7 @@ describe("admin ATG routes", () => {
 
   it("rejects unknown actions and malformed ids before reaching the service", async () => {
     const enqueueSaleAction = vi.fn();
-    const app = buildApp(["super_admin"], { enqueueSaleAction });
+    const app = buildApp(["administrator"], { enqueueSaleAction });
 
     const badAction = await app.request(
       `http://test/admin/integrations/atg/sales/${SALE_ID}/unpublish`,
@@ -113,7 +113,7 @@ describe("admin ATG routes", () => {
       .fn()
       .mockResolvedValueOnce({ saleId: SALE_ID, linked: true, lots: [] })
       .mockResolvedValueOnce(null);
-    const app = buildApp(["auction_manager"], { getSale });
+    const app = buildApp(["sales_manager"], { getSale });
 
     const found = await app.request(`http://test/admin/integrations/atg/sales/${SALE_ID}`);
     const missing = await app.request(`http://test/admin/integrations/atg/sales/${SALE_ID}`);
@@ -137,7 +137,7 @@ describe("admin ATG routes", () => {
         settings: { auctionType: "Live", distribution: "private_test" },
         pushJobId: null,
       });
-      const app = buildApp(["auction_manager"], { updateSaleSettings });
+      const app = buildApp(["sales_manager"], { updateSaleSettings });
 
       const res = await put(app, { auctionType: "Live", distribution: "private_test" });
 
@@ -154,7 +154,7 @@ describe("admin ATG routes", () => {
 
     it("rejects auction types ATG doesn't allow and unknown fields", async () => {
       const updateSaleSettings = vi.fn();
-      const app = buildApp(["super_admin"], { updateSaleSettings });
+      const app = buildApp(["administrator"], { updateSaleSettings });
 
       for (const body of [
         { auctionType: "CatalogueTimed", distribution: "private_test" },
@@ -171,7 +171,7 @@ describe("admin ATG routes", () => {
         ok: false,
         error: { status: 409, code: "atg_settings_locked", message: "locked" },
       });
-      const locked = await put(buildApp(["auction_manager"], { updateSaleSettings }), {
+      const locked = await put(buildApp(["sales_manager"], { updateSaleSettings }), {
         auctionType: "Live",
         distribution: "private_test",
       });
@@ -179,13 +179,10 @@ describe("admin ATG routes", () => {
       expect(await locked.json()).toEqual({ error: "locked", code: "atg_settings_locked" });
 
       const forbiddenUpdate = vi.fn();
-      const forbidden = await put(
-        buildApp(["finance_ops"], { updateSaleSettings: forbiddenUpdate }),
-        {
-          auctionType: "Live",
-          distribution: "private_test",
-        },
-      );
+      const forbidden = await put(buildApp(["finance"], { updateSaleSettings: forbiddenUpdate }), {
+        auctionType: "Live",
+        distribution: "private_test",
+      });
       expect(forbidden.status).toBe(403);
       expect(forbiddenUpdate).not.toHaveBeenCalled();
     });
@@ -193,7 +190,7 @@ describe("admin ATG routes", () => {
 
   it("enqueues ATG lot deletion", async () => {
     const enqueueLotDelete = vi.fn().mockResolvedValue({ ok: true, jobId: "job-2" });
-    const app = buildApp(["operations"], { enqueueLotDelete });
+    const app = buildApp(["sales_manager"], { enqueueLotDelete });
 
     const res = await app.request(`http://test/admin/integrations/atg/lots/${LOT_ID}`, {
       method: "DELETE",

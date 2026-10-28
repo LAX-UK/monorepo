@@ -10,6 +10,8 @@ import {
   categoriesListHref,
   categoryPanelHref,
 } from "@/lib/admin/categories/categories-staff-list.vm";
+import { useViewerCapabilities } from "@/lib/auth/capabilities/viewer-capabilities-context";
+import { CATEGORIES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import {
   type DataColumn,
   DataViews,
@@ -56,6 +58,8 @@ export function CategoriesStaffList(props: CategoriesStaffListProps) {
     hrefFor: panelHref,
   });
   const categoryActions = useCategoryActions();
+  // Read-only staff see the list without creating, editing, archiving or deleting.
+  const canManage = useViewerCapabilities().can(CATEGORIES_ACCESS);
   const q = typeof search.q === "string" ? search.q : "";
 
   const columns = useMemo<DataColumn<CategoriesStaffRow>[]>(
@@ -141,7 +145,7 @@ export function CategoriesStaffList(props: CategoriesStaffListProps) {
         description="The taxonomy behind sales, lots and submissions. Archive a category in use instead of deleting it."
         Link={ListLink}
         listKey="bid-admin.categories"
-        access="full"
+        access={canManage ? "full" : "read-only"}
         primaryAction={
           <StaffButton asChild variant="primary" size="sm" icon={<Plus aria-hidden />}>
             <Link href="/admin/categories/new">New category</Link>
@@ -213,8 +217,12 @@ export function CategoriesStaffList(props: CategoriesStaffListProps) {
             actions: (row) => [
               { id: "open", label: "Open details", onSelect: () => panel.show(row.id) },
               { id: "page", label: "Open category page", href: row.href },
-              { id: "edit", label: "Edit category", href: row.editHref },
-              ...categoryActions.actionsFor(row),
+              ...(canManage
+                ? [
+                    { id: "edit", label: "Edit category", href: row.editHref },
+                    ...categoryActions.actionsFor(row),
+                  ]
+                : []),
             ],
           },
         }}
@@ -227,7 +235,7 @@ export function CategoriesStaffList(props: CategoriesStaffListProps) {
       <CategoryQuickView
         row={openRow}
         onClose={() => panel.show(null)}
-        actions={openRow ? categoryActions.actionsFor(openRow) : []}
+        actions={openRow && canManage ? categoryActions.actionsFor(openRow) : []}
       />
       {categoryActions.dialogs}
     </>

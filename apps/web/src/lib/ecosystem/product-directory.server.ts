@@ -1,6 +1,9 @@
+import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import {
+  type LaxFamilyLinkVm,
   type LaxProductLinkVm,
   buildCrossProductFooterLinks,
+  buildLaxFamilyLinksFromDirectory,
   buildProductDirectoryLinks,
   isLocalProductFallbackAllowed,
   resolveProductDirectoryConfig,
@@ -50,4 +53,11 @@ export function loadBidCrossProductFooterLinks(): LaxProductLinkVm[] {
   const resolved = resolveProductDirectoryConfig(bidDirectoryInput());
   if (!resolved.ok) return [];
   return buildCrossProductFooterLinks(resolved.config);
+}
+
+/** The LAX top bar's links on Bid: the products, then LAX Account. */
+export function loadBidFamilyLinks(): LaxFamilyLinkVm[] {
+  const resolved = resolveProductDirectoryConfig(bidDirectoryInput());
+  if (!resolved.ok) return [];
+  return buildLaxFamilyLinksFromDirectory(resolved.config, laxAccountHomeUrl());
 }

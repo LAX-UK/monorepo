@@ -12,7 +12,10 @@ import {
 } from "@auction/validators";
 import { respondSubmissionHttpJson } from "../../lib/submission-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
-import { requireSubmissionsAccess } from "../../middleware/require-capability.js";
+import {
+  requireSubmissionsAccess,
+  requireSubmissionsRead,
+} from "../../middleware/require-capability.js";
 import { type SubmissionHono, type SubmissionRouteDeps, viewerFromContext } from "./_shared.js";
 
 export function attachSubmissionAdminRoutes(r: SubmissionHono, deps: SubmissionRouteDeps): void {
@@ -23,7 +26,7 @@ export function attachSubmissionAdminRoutes(r: SubmissionHono, deps: SubmissionR
   r.get(
     "/",
     requireAuth,
-    requireSubmissionsAccess,
+    requireSubmissionsRead,
     zValidator("query", listSubmissionsQuerySchema),
     async (c) => {
       const query = c.req.valid("query");

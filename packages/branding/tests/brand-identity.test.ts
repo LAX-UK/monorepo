@@ -1,5 +1,12 @@
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { BRAND_COLORS, PRODUCT_ACCENTS, PRODUCT_ACCENTS_ON_DARK } from "../src/brand-identity.js";
+import {
+  BRAND_COLORS,
+  BRAND_SURFACES,
+  PRODUCT_ACCENTS,
+  PRODUCT_ACCENTS_ON_DARK,
+} from "../src/brand-identity.js";
 
 function channel(value: number): number {
   const scaled = value / 255;
@@ -90,5 +97,30 @@ describe("PRODUCT_ACCENTS", () => {
       if (accent === BRAND_COLORS.midnight) expect(product).toBe("bid");
       if (accent === "#0f766e") expect(product).toBe("account");
     }
+  });
+});
+
+describe("BRAND_SURFACES", () => {
+  const primitives = readFileSync(
+    fileURLToPath(new URL("../public/brand-primitives.css", import.meta.url)),
+    "utf8",
+  );
+
+  it("mirrors the light paper in the CSS primitives", () => {
+    expect(primitives).toContain(`--brand-paper: ${BRAND_SURFACES.paper};`);
+  });
+
+  it("mirrors the dark-mode paper in the CSS primitives", () => {
+    expect(primitives).toContain(`--brand-paper-on-dark: ${BRAND_SURFACES.paperOnDark};`);
+  });
+
+  it("keeps ink text readable on paper and cream text readable on dark paper", () => {
+    expect(contrast(BRAND_COLORS.obsidian, BRAND_SURFACES.paper)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(BRAND_COLORS.lightCream, BRAND_SURFACES.paperOnDark)).toBeGreaterThanOrEqual(
+      4.5,
+    );
+    // Body and secondary text in both products: #474747 on light paper, #c9c5bc on dark paper.
+    expect(contrast("#474747", BRAND_SURFACES.paper)).toBeGreaterThanOrEqual(4.5);
+    expect(contrast("#c9c5bc", BRAND_SURFACES.paperOnDark)).toBeGreaterThanOrEqual(4.5);
   });
 });

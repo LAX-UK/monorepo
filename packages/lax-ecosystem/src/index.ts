@@ -26,6 +26,15 @@ export {
   resolveProductDirectoryConfig,
 } from "./product-directory.js";
 export {
+  LAX_FAMILY_IDS,
+  type LaxFamilyLinkVm,
+  type LaxFamilyLinksInput,
+  type LaxFamilyMemberId,
+  buildLaxFamilyLinks,
+  buildLaxFamilyLinksFromDirectory,
+  resolveLaxAccountOrigin,
+} from "./family-links.js";
+export {
   type ProductUrlValidationOptions,
   isAllowedLaxProductUrl,
   normalizeProductBaseUrl,

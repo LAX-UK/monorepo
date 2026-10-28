@@ -49,12 +49,12 @@ describe("DrizzleBidUserContextLoader", () => {
   it("loads a staff member's roles in force once, for this request", async () => {
     const { loader: subject, staffRoles } = loader({ ...lifecycle, role: "staff" }, [
       "specialist",
-      "client_advisor",
+      "client_services",
     ]);
 
     const context = await subject.loadContext("staff-1");
 
-    expect(context?.staffRoles).toEqual(["specialist", "client_advisor"]);
+    expect(context?.staffRoles).toEqual(["specialist", "client_services"]);
     expect(staffRoles.listActiveRoles).toHaveBeenCalledTimes(1);
     expect(staffRoles.listActiveRoles).toHaveBeenCalledWith("staff-1", NOW);
   });

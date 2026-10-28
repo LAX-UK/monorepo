@@ -6,18 +6,18 @@ This runbook describes **operator steps** for KYC / KYB on the platform. It is *
 
 | Role | Responsibility |
 |------|------------------|
-| **MLRO / Compliance officer** (`compliance_officer` staff role) | Reviews flagged watchlist screenings and Source-of-Funds cases; final clear/block; SAR decisions. Holds `aml.review` + `compliance.mlro` capabilities. |
+| **MLRO / Compliance** (`compliance` staff role) | Reviews flagged watchlist screenings and Source-of-Funds cases; final clear/block; SAR decisions. Holds `aml.review` + `compliance.mlro` capabilities. |
 | **Ops reviewer** | Day-to-day queue (`requires_manual_review`, Veriff resubmission / review) |
 | **Engineering** | Maintains audit logs, access controls, data exports |
 
-Three-lines-of-defence: AML capabilities live on a **dedicated** `compliance_officer` role, not bundled into money-path roles (`finance_ops`, `auction_manager`).
+Three-lines-of-defence: AML capabilities live on a **dedicated** `compliance` role, not bundled into money-path roles (`finance`, `sales_manager`).
 
 **Two-stage maker–checker (enforced in code).** Disposition is split into a *triage* (maker) and a *decision* (checker):
 
 - **Triage** (`aml.review` → `AML_REVIEW_ACCESS`): a first-line analyst records an advisory recommendation (`recommend_clear`/`recommend_block`, or `recommend_approve`/`recommend_reject` for SoF). Triage does **not** change the hold or case status.
 - **Decision** (`compliance.mlro` → `MLRO_DECISION_ACCESS`): the MLRO makes the binding clear/block (or approve/reject) call.
 
-The service enforces three distinct users: the **subject** ≠ the **triager** ≠ the **decider**, and a decision requires a prior triage (`aml_triage_required` / `source_of_funds_triage_required`; same-user attempts → `aml_review_same_as_triager` / `source_of_funds_review_same_as_triager`). `compliance_officer` holds both capabilities, so any two distinct compliance officers can complete the flow; a fresh provider result clears prior triage so it must be re-triaged.
+The service enforces distinct users: the **subject**, whoever **raised** the case (asked the client for source-of-funds documents) and the **triager** may not be the **decider** (`complianceDecisionRefusal` in `@auction/domain`; a raiser deciding → `source_of_funds_review_same_as_requester`), and a decision requires a prior triage (`aml_triage_required` / `source_of_funds_triage_required`; same-user attempts → `aml_review_same_as_triager` / `source_of_funds_review_same_as_triager`). `compliance` holds both capabilities, so any two distinct compliance staff can complete the flow; a fresh provider result clears prior triage so it must be re-triaged.
 
 ## Customer due diligence (CDD)
 
@@ -36,7 +36,7 @@ Pipeline (event-driven, idempotent — see `apps/api/src/services/aml/`):
    - `clear` → no hold; subject enrolled into ongoing monitoring.
    - `review` (possible match / PEP / adverse media) → **soft hold** (`user.aml_hold_status = hold`): blocks settlement, escalates to MLRO; account otherwise usable (**bidding allowed**).
    - `block` (confirmed sanctions / OFSI) → **hard block** (`aml_hold_status = blocked`): freeze + OFSI reporting path; **bidding blocked** (`aml_blocked` on `POST /bids` and `PUT /lots/:id/auto-bid`).
-3. **Escalate** — the worker projector `processAmlMatchReview` consumes `aml.match_flagged`, creates an `admin_review_task` of kind `aml_screening_review` (idempotent per screening id), **and** enqueues an MLRO escalation email (`aml-compliance-review-notice`) to compliance recipients (`listComplianceRecipients` → `compliance_officer` + `super_admin`; falls back to `ADMIN_EMAIL_ADDRESS`). The email is idempotent (`idempotencyKey` per screening + recipient), so retries never double-send.
+3. **Escalate** — the worker projector `processAmlMatchReview` consumes `aml.match_flagged`, creates an `admin_review_task` of kind `aml_screening_review` (idempotent per screening id), **and** enqueues an MLRO escalation email (`aml-compliance-review-notice`) to compliance recipients (`listComplianceRecipients` → `compliance` + `administrator`; falls back to `ADMIN_EMAIL_ADDRESS`). The email is idempotent (`idempotencyKey` per screening + recipient), so retries never double-send.
 4. **Triage then decide (two-stage)** — analyst triages via `POST /admin/compliance/aml/screenings/:id/triage`; the MLRO finalises via `POST /admin/compliance/aml/screenings/:id/decide`. Clearing lifts the hold and re-enrolls monitoring; blocking is terminal.
 
 ## Ongoing monitoring

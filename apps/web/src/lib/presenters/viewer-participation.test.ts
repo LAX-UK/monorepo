@@ -21,9 +21,7 @@ describe("isAdminBuyerBlocked", () => {
   });
 
   it("returns true for staff users", () => {
-    expect(isAdminBuyerBlocked(session({ role: "staff", staffRole: "catalogue_manager" }))).toBe(
-      true,
-    );
+    expect(isAdminBuyerBlocked(session({ role: "staff", staffRole: "cataloguer" }))).toBe(true);
   });
 });
 
@@ -45,12 +43,12 @@ describe("resolveViewerParticipation", () => {
   });
 
   it("staff cannot participate as buyer", () => {
-    expect(
-      resolveViewerParticipation(session({ role: "staff", staffRole: "catalogue_manager" })),
-    ).toEqual({
-      isAuthenticated: true,
-      isStaff: true,
-      canParticipateAsBuyer: false,
-    });
+    expect(resolveViewerParticipation(session({ role: "staff", staffRole: "cataloguer" }))).toEqual(
+      {
+        isAuthenticated: true,
+        isStaff: true,
+        canParticipateAsBuyer: false,
+      },
+    );
   });
 });

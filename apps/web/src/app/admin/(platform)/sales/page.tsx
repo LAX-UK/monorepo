@@ -10,7 +10,7 @@ import {
   toSalesStaffRows,
 } from "@/lib/admin/sales/sales-staff-list.vm";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
-import { SALES_ACCESS, SALE_CATALOG_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { SALES_ACCESS, SALE_CATALOG_READ_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { type UserRole, userHasAccessTo } from "@auction/types";
 import type { Metadata } from "next";
@@ -27,7 +27,7 @@ export default async function AdminSalesPage({
 }: {
   searchParams: Promise<SalesSearch>;
 }) {
-  const user = await requireAdminCapability(SALE_CATALOG_ACCESS, "/admin/sales");
+  const user = await requireAdminCapability(SALE_CATALOG_READ_ACCESS, "/admin/sales");
   const canManageSales = userHasAccessTo(user.role as UserRole, user.staffRoles, SALES_ACCESS);
   const sp = await searchParams;
   const page = await loadAdminSalesListPage(sp);

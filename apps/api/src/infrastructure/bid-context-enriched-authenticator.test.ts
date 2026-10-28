@@ -19,7 +19,7 @@ describe("BidContextEnrichedAuthenticator", () => {
     const bidContext: IBidUserContextLoader = {
       loadContext: vi.fn().mockResolvedValue({
         role: "staff",
-        staffRoles: ["auction_manager", "client_advisor"],
+        staffRoles: ["sales_manager", "client_services"],
         suspendedAt: null,
         identityDisabledAt: null,
         mergedIntoSubjectId: null,
@@ -36,7 +36,7 @@ describe("BidContextEnrichedAuthenticator", () => {
       id: "user_1",
       scopes: [],
       role: "staff",
-      staffRoles: ["auction_manager", "client_advisor"],
+      staffRoles: ["sales_manager", "client_services"],
     });
   });
 

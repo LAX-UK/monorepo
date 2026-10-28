@@ -41,8 +41,10 @@
   --color-surface-container-low: #f3f3f3;
   --color-surface-container-lowest: #ffffff;
   --color-surface-container-high: #e8e8e8;
+  /* Warm paper, shared with Shop (--brand-paper in @auction/branding). */
+  --color-surface-paper: var(--brand-paper);
   /* Promo bands (Figma Cream/100 behind the LAX Bid and LAX Shop band and the guide promo). */
-  --color-surface-feature: var(--color-brand-light-cream);
+  --color-surface-feature: var(--color-surface-paper);
   --color-on-surface-feature: var(--color-on-surface);
   --color-surface-inverse: var(--color-brand-obsidian);
   --color-on-surface-inverse: var(--color-brand-light-cream);
@@ -264,7 +266,7 @@ html.dark {
   --color-surface-container-lowest: #0f1111;
   --color-surface-container-high: #383a39;
   /* Warm dark keeps the cream band's character without a light block on a dark page. */
-  --color-surface-feature: #24221c;
+  --color-surface-paper: var(--brand-paper-on-dark);
   --color-on-surface-feature: var(--color-brand-light-cream);
   --color-surface-inverse: var(--color-brand-light-cream);
   --color-on-surface-inverse: var(--color-brand-obsidian);

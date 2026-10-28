@@ -203,7 +203,7 @@ describe("PaymentService", () => {
       "staff",
       payment.id,
       lot.sellerLegalEntityId,
-      ["finance_ops"],
+      ["finance"],
     );
 
     expect(result.isOk()).toBe(true);
@@ -285,7 +285,7 @@ describe("PaymentService", () => {
     );
 
     const result = await service.markCapturedByAdmin("admin-1", "staff", pay.id, undefined, [
-      "super_admin",
+      "administrator",
     ]);
 
     expect(result.isOk()).toBe(true);
@@ -337,7 +337,7 @@ describe("PaymentService", () => {
     );
 
     const result = await service.markCapturedByAdmin("admin-1", "staff", pay.id, undefined, [
-      "super_admin",
+      "administrator",
     ]);
 
     expect(result.isErr()).toBe(true);
@@ -400,7 +400,7 @@ describe("PaymentService", () => {
       "staff",
       pay.id,
       undefined,
-      ["super_admin"],
+      ["administrator"],
       "Buyer withdrew within the cooling-off period",
     );
     expect(result.isOk()).toBe(true);
@@ -462,7 +462,7 @@ describe("PaymentService", () => {
     );
 
     const result = await service.refundPayment("admin-1", "staff", pay.id, undefined, [
-      "super_admin",
+      "administrator",
     ]);
     expect(result.isErr()).toBe(true);
     expect(db.transaction).not.toHaveBeenCalled();
@@ -505,7 +505,7 @@ describe("PaymentService", () => {
     );
 
     const result = await service.refundPayment("admin-1", "staff", pay.id, undefined, [
-      "super_admin",
+      "administrator",
     ]);
     expect(result.isOk()).toBe(true);
     expect(payments.applyRefundedInTransaction).toHaveBeenCalledWith(tx, pay.id, null);
@@ -535,7 +535,7 @@ describe("PaymentService", () => {
       "staff",
       payment.id,
       "00000000-0000-4000-8000-000000000099",
-      ["finance_ops"],
+      ["finance"],
     );
 
     expect(result.isErr()).toBe(true);
@@ -831,7 +831,7 @@ describe("PaymentService", () => {
       "finance-1",
       "staff",
       manualReviewPayment.id,
-      ["finance_ops"],
+      ["finance"],
     );
 
     expect(result.isErr()).toBe(true);
@@ -886,7 +886,7 @@ describe("PaymentService", () => {
     );
 
     const result = await service.releaseManualReviewForCapture("finance-1", "staff", payment.id, [
-      "finance_ops",
+      "finance",
     ]);
 
     expect(result.isErr()).toBe(true);
@@ -920,7 +920,7 @@ describe("PaymentService", () => {
     );
 
     const result = await service.refundManualReviewPayment("admin-1", "staff", payment.id, [
-      "super_admin",
+      "administrator",
     ]);
 
     expect(result.isOk()).toBe(true);

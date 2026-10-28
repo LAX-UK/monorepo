@@ -17,7 +17,7 @@ describe("platform-role-registry", () => {
 
   it("assigns a unique palette key for every platform role case", () => {
     expect(new Set(platformRolePaletteKeys).size).toBe(platformRolePaletteKeys.length);
-    expect(platformRolePaletteKeys).toHaveLength(14);
+    expect(platformRolePaletteKeys).toHaveLength(userStaffRoles.length + 2);
   });
 
   it("resolves client presentation", () => {
@@ -36,12 +36,12 @@ describe("platform-role-registry", () => {
 
   it("preserves invitationRoleLabel compatibility", () => {
     expect(invitationRoleLabel("client", null)).toBe("Client");
-    expect(invitationRoleLabel("staff", "catalogue_manager")).toBe("Staff – Catalogue manager");
+    expect(invitationRoleLabel("staff", "cataloguer")).toBe("Staff – Cataloguer");
     expect(invitationRoleLabel("staff", null)).toBe("Staff – Default (legacy full)");
   });
 
   it("maps staffRoleLabel for all roles", () => {
-    expect(staffRoleLabel("finance_ops")).toBe("Finance");
+    expect(staffRoleLabel("finance")).toBe("Finance");
     expect(staffRoleLabel(null)).toBe("Default (legacy full)");
   });
 });

@@ -1695,6 +1695,13 @@
       "when": 1796198400000,
       "tag": "0241_staff_role_assignment",
       "breakpoints": true
+    },
+    {
+      "idx": 242,
+      "version": "7",
+      "when": 1796284800000,
+      "tag": "0242_staff_role_cleanup",
+      "breakpoints": true
     }
   ]
 }

@@ -8,6 +8,7 @@ import { LaxLogo } from "@/components/layout/lax-logo";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { linkIsCurrent } from "@/lib/nav/is-current";
+import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
 import { MarketingMobileNavDrawer } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import Link from "next/link";
@@ -18,6 +19,8 @@ type MobileNavDrawerProps = {
   pathname: string;
   searchParams: Pick<URLSearchParams, "get"> | null;
   sections: MegaMenuSection[];
+  /** The other LAX products and LAX Account, which the hidden top bar would show. */
+  familyLinks?: readonly LaxFamilyLinkVm[];
 };
 
 export function MobileNavDrawer({
@@ -26,6 +29,7 @@ export function MobileNavDrawer({
   pathname,
   searchParams,
   sections,
+  familyLinks = [],
 }: MobileNavDrawerProps) {
   const searchKey = searchParams == null ? "" : searchParams.toString();
   const resetKey = `${pathname}:${searchKey}`;
@@ -39,6 +43,7 @@ export function MobileNavDrawer({
       isSectionActive={(section) => megaMenuSectionActive(pathname, section, searchParams)}
       isLinkCurrent={(href) => linkIsCurrent(pathname, href)}
       utilityLinks={utilityNav}
+      familyLinks={familyLinks}
       logo={
         <Link
           href="/"

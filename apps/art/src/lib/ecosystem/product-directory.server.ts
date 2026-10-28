@@ -1,9 +1,12 @@
 import { loadArtEnv } from "@/env.server";
 import {
+  type LaxFamilyLinkVm,
   type LaxProductLinkVm,
   buildCrossProductFooterLinks,
+  buildLaxFamilyLinksFromDirectory,
   buildProductDirectoryLinks,
   isLocalProductFallbackAllowed,
+  resolveLaxAccountOrigin,
   resolveProductDirectoryConfig,
 } from "@auction/lax-ecosystem";
 
@@ -45,4 +48,19 @@ export function loadArtCrossProductFooterLinks(): LaxProductLinkVm[] {
   const resolved = resolveProductDirectoryConfig(artDirectoryInput());
   if (!resolved.ok) return [];
   return buildCrossProductFooterLinks(resolved.config);
+}
+
+/** LAX Account's home, with the same default as Bid and Shop when the origin is not set. */
+function artLaxAccountHref(): string {
+  return `${resolveLaxAccountOrigin(
+    process.env.NEXT_PUBLIC_LAX_ACCOUNT_ORIGIN,
+    process.env.NODE_ENV,
+  )}/account`;
+}
+
+/** The LAX top bar's links on lax.art: the products, then LAX Account. */
+export function loadArtFamilyLinks(): LaxFamilyLinkVm[] {
+  const resolved = resolveProductDirectoryConfig(artDirectoryInput());
+  if (!resolved.ok) return [];
+  return buildLaxFamilyLinksFromDirectory(resolved.config, artLaxAccountHref());
 }

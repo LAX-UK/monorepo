@@ -7,10 +7,12 @@ import {
   ARTIST_WRITE_ACCESS,
   AUDIT_DOMAIN_EVENTS_ACCESS,
   CATEGORIES_ACCESS,
+  CATEGORIES_READ_ACCESS,
   CLIENT_ACTIVITY_ACCESS,
   CLIENT_BIDS_ACCESS,
   CLIENT_KYC_ACCESS,
   CONDITION_REPORTS_ACCESS,
+  CONDITION_REPORTS_READ_ACCESS,
   type CapabilityRequirement,
   DELIVERY_REPLAY_ACCESS,
   EMAIL_ADMIN_ACCESS,
@@ -18,20 +20,27 @@ import {
   INVITATIONS_ACCESS,
   LEGAL_ENTITY_BROWSE_ACCESS,
   LOTS_ACCESS,
+  LOTS_READ_ACCESS,
+  LOT_WORK_ACCESS,
+  LOT_WORK_READ_ACCESS,
   MLRO_DECISION_ACCESS,
   ONBOARDING_QUEUES_ACCESS,
   PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
   PAYMENT_WRITE_ACCESS,
   PLATFORM_ADMIN_ACCESS,
   QR_CODES_ACCESS,
+  QR_CODES_READ_ACCESS,
   type RoleCapability,
+  SALEROOM_ACCESS,
   SALES_ACCESS,
   SUBMISSIONS_ACCESS,
+  SUBMISSIONS_READ_ACCESS,
   type StaffRoles,
   USERS_DIRECTORY_ACCESS,
   USER_MODERATION_ACCESS,
   type UserRole,
   VENUES_ACCESS,
+  VENUES_READ_ACCESS,
   WITHDRAWAL_DECISION_ACCESS,
   canAccessPlatformAdminRoutes,
   normalizeUserRoleOrClient,
@@ -76,7 +85,7 @@ export function createRequireCapability(
 }
 
 /**
- * Platform admin **shell** gate: excludes finance_ops only.
+ * Platform admin **shell** gate: excludes someone who holds only the finance role.
  * Not the same as `platform.admin.full` — use `requirePlatformAdminFull` for that.
  */
 export const requirePlatformShell = createMiddleware<{
@@ -143,20 +152,40 @@ export const requireMlroDecision = createRequireAccess(MLRO_DECISION_ACCESS);
 export const requireConditionReportsAccess = createRequireAccess(CONDITION_REPORTS_ACCESS);
 
 /** Shared document/catalogue route requirement retained for non-condition-report routes. */
-export const requireSpecialistCatalogueOrAuctionManage = createMiddleware<{
-  Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
-}>(async (c, next) => {
-  const role = honoContextRoleSource.getRole(c) as UserRole;
-  const staff = c.get("userStaffRoles");
-  if (
-    roleHasCapability(role, "specialist.appraise", staff) ||
-    roleHasCapability(role, "catalogue.write", staff) ||
-    roleHasCapability(role, "auction.manage", staff)
-  ) {
-    await next();
-    return;
-  }
-  return c.json({ error: "Forbidden" }, 403);
+export const requireSpecialistCatalogueOrAuctionManage = createRequireAccess(LOT_WORK_ACCESS);
+
+/** The live saleroom and its actions: `auction.manage` or `saleroom.operate`. */
+export const requireSaleroomOperate = createRequireAccess(SALEROOM_ACCESS);
+
+/**
+ * Read rules for list and record pages: whoever may change the records, or anyone holding
+ * `admin.read`. Mount them on GET routes only; every action keeps its write rule.
+ */
+export const requireLotsRead = createRequireAccess(LOTS_READ_ACCESS);
+export const requireLotWorkRead = createRequireAccess(LOT_WORK_READ_ACCESS);
+export const requireSubmissionsRead = createRequireAccess(SUBMISSIONS_READ_ACCESS);
+export const requireCategoriesRead = createRequireAccess(CATEGORIES_READ_ACCESS);
+export const requireConditionReportsRead = createRequireAccess(CONDITION_REPORTS_READ_ACCESS);
+export const requireQrCodesRead = createRequireAccess(QR_CODES_READ_ACCESS);
+
+/** Reads (GET, HEAD) use `read`; every other method uses `write`. For path-wide guards. */
+export function createRequireAccessByMethod(
+  rules: { read: CapabilityRequirement; write: CapabilityRequirement },
+  src: RoleSource = honoContextRoleSource,
+) {
+  const read = createRequireAccess(rules.read, src);
+  const write = createRequireAccess(rules.write, src);
+  return createMiddleware<{
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
+  }>(async (c, next) => {
+    const isRead = c.req.method === "GET" || c.req.method === "HEAD";
+    return (isRead ? read : write)(c, next);
+  });
+}
+
+export const requireVenuesAccessByMethod = createRequireAccessByMethod({
+  read: VENUES_READ_ACCESS,
+  write: VENUES_ACCESS,
 });
 
 export const requireFinanceEntityWrite = createMiddleware<{

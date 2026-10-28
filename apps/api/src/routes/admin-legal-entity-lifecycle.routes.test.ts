@@ -34,7 +34,7 @@ function lifecycleApp(
   const app = new Hono<{
     Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>();
-  const resolvedStaff: StaffRoles = role === "client" ? [] : (staffRoles ?? ["super_admin"]);
+  const resolvedStaff: StaffRoles = role === "client" ? [] : (staffRoles ?? ["administrator"]);
   app.use("*", async (c, next) => {
     c.set("userId", userId);
     c.set("userRole", role);
@@ -56,7 +56,7 @@ function lifecycleApp(
 
 function denyCapabilityForSuperAdmin(deny: AuctionTypes.RoleCapability) {
   vi.spyOn(AuctionTypes, "roleHasCapability").mockImplementation((role, capability, staff) => {
-    if (role !== "staff" || !staff?.includes("super_admin")) {
+    if (role !== "staff" || !staff?.includes("administrator")) {
       return AuctionTypes.roleHasCapability(role, capability, staff);
     }
     if (capability === "platform.admin.full") return true;
@@ -137,13 +137,13 @@ describe("POST /admin/legal-entities/:id/request-docs (legal_entity.write)", () 
     expect(runTransition).not.toHaveBeenCalled();
   });
 
-  it("returns 403 for finance_ops (non-platform-admin shell)", async () => {
+  it("returns 403 for finance (non-platform-admin shell)", async () => {
     const runTransition = vi.fn();
     const app = lifecycleApp(
       minimalContainer({ legalEntityLifecycleAdminService: { runTransition } }),
       ADMIN_ID,
       "staff",
-      ["finance_ops"],
+      ["finance"],
     );
     const res = await app.request(`http://test${path}`, { method: "POST" });
     expect(res.status).toBe(403);

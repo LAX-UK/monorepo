@@ -4,7 +4,7 @@ import { ArtMobileAuthSection } from "@/components/header/art-mobile-auth-sectio
 import { ArtThemeToggle } from "@/components/header/art-theme-toggle";
 import type { ArtNavItem } from "@/lib/layout/art-nav.vm";
 import { FOCUS_RING } from "@auction/branding";
-import type { AccountChromeState, LaxProductLinkVm } from "@auction/lax-ecosystem";
+import type { AccountChromeState, LaxFamilyLinkVm } from "@auction/lax-ecosystem";
 import {
   LaxLogo,
   type MarketingMegaNavSection,
@@ -33,7 +33,8 @@ type ArtMobileNavDrawerProps = {
   pathname: string;
   navItems: readonly ArtNavItem[];
   account: AccountChromeState;
-  productLinks: readonly LaxProductLinkVm[];
+  /** The other LAX products and LAX Account, which the hidden top bar would show. */
+  familyLinks: readonly LaxFamilyLinkVm[];
 };
 
 export function ArtMobileNavDrawer({
@@ -42,10 +43,9 @@ export function ArtMobileNavDrawer({
   pathname,
   navItems,
   account,
-  productLinks,
+  familyLinks,
 }: ArtMobileNavDrawerProps) {
   const close = () => onOpenChange(false);
-  const otherProducts = productLinks.filter((link) => !link.current);
 
   return (
     <MarketingMobileNavDrawer
@@ -89,26 +89,9 @@ export function ArtMobileNavDrawer({
               ))}
             </ul>
           </nav>
-          {otherProducts.length > 0 ? (
-            <div className="flex flex-col gap-1">
-              <p className={SECTION_LABEL}>LAX products</p>
-              <ul className="flex flex-col">
-                {otherProducts.map((link) => (
-                  <li key={link.id}>
-                    <a
-                      href={link.href}
-                      rel="noopener noreferrer"
-                      className={cn(ROW_LINK, "text-on-surface hover:text-on-surface-variant")}
-                    >
-                      {link.label}
-                    </a>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
         </>
       }
+      familyLinks={familyLinks}
       footerSlot={<ArtMobileAuthSection account={account} pathname={pathname} onNavigate={close} />}
     />
   );

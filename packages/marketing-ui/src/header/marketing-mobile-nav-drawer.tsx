@@ -12,6 +12,8 @@ import {
 } from "@auction/ui/components/dialog";
 import Link from "next/link";
 import { type ReactNode, useEffect, useState } from "react";
+import type { LaxFamilyBarLink } from "../lax-family-bar.js";
+import { LaxFamilyMenuLinks } from "../lax-family-menu-links.js";
 import { MarketingChevronDownIcon, MarketingCloseIcon } from "../marketing-icons.js";
 import type { MarketingMegaNavSection } from "./marketing-header-mega-nav.js";
 
@@ -31,6 +33,8 @@ export type MarketingMobileNavDrawerProps<TSection extends MarketingMegaNavSecti
   topSlot?: ReactNode;
   themeSlot?: ReactNode;
   utilityLinks?: readonly MarketingMobileNavUtilityLink[];
+  /** The LAX top bar's links, listed here because the bar is hidden below `lg`. */
+  familyLinks?: readonly LaxFamilyBarLink[];
   footerSlot?: ReactNode;
 };
 
@@ -45,6 +49,7 @@ export function MarketingMobileNavDrawer<TSection extends MarketingMegaNavSectio
   topSlot,
   themeSlot,
   utilityLinks,
+  familyLinks,
   footerSlot,
 }: MarketingMobileNavDrawerProps<TSection>) {
   const [expandedIndex, setExpandedIndex] = useState<number | null>(null);
@@ -199,6 +204,14 @@ export function MarketingMobileNavDrawer<TSection extends MarketingMegaNavSectio
                 </li>
               ))}
             </ul>
+          ) : null}
+
+          {familyLinks ? (
+            <LaxFamilyMenuLinks
+              links={familyLinks}
+              onNavigate={close}
+              className="border-t border-nav-border pt-4"
+            />
           ) : null}
 
           {footerSlot}

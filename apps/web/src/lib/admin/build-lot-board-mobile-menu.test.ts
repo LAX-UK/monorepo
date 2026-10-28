@@ -12,7 +12,7 @@ describe("buildLotBoardMobileMenuItems", () => {
     expect(ids).toEqual(["open", "edit", "images", "publish", "site", "copy-id"]);
   });
 
-  it("includes delete for auction managers when server marks row deletable", () => {
+  it("includes delete for sales managers when server marks row deletable", () => {
     const ids = buildLotBoardMobileMenuItems(row, auctionManager).map((i) => i.id);
     expect(ids).toContain("delete");
   });

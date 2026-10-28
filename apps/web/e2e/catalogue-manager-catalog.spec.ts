@@ -18,7 +18,7 @@ async function openCatalogueLotsDraft(page: Page): Promise<void> {
   });
 }
 
-test.describe("catalogue manager catalog access @roles", () => {
+test.describe("cataloguer catalog access @roles", () => {
   test.describe.configure({ mode: "serial", timeout: 90_000 });
   test.skip(!e2eEnabled, e2eSkipReason);
 

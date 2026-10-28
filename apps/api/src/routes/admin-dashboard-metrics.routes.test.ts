@@ -75,7 +75,7 @@ describe("admin dashboard metrics routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
 
         scopes: ["bid.read"],
       }),
@@ -101,7 +101,7 @@ describe("admin dashboard metrics routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["catalogue_manager"],
+        staffRoles: ["cataloguer"],
 
         scopes: ["bid.read"],
       }),
@@ -127,7 +127,7 @@ describe("admin dashboard metrics routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
 
         scopes: ["bid.read"],
       }),
@@ -153,7 +153,7 @@ describe("admin dashboard metrics routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
 
         scopes: ["bid.read"],
       }),
@@ -178,7 +178,7 @@ describe("admin dashboard metrics routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
         scopes: ["bid.read"],
       }),
     };
@@ -205,7 +205,7 @@ describe("admin dashboard metrics routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
 
         scopes: ["bid.read"],
       }),
@@ -246,7 +246,7 @@ describe("admin dashboard metrics routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
 
         scopes: ["bid.read"],
       }),
@@ -287,7 +287,7 @@ describe("admin dashboard metrics routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
 
         scopes: ["bid.read"],
       }),
@@ -328,7 +328,7 @@ describe("admin dashboard metrics routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
 
         scopes: ["bid.read"],
       }),
@@ -367,7 +367,7 @@ describe("admin dashboard metrics routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
 
         scopes: ["bid.read"],
       }),
@@ -383,7 +383,7 @@ describe("admin dashboard metrics routes", () => {
     expect(body.data).toEqual(attention);
     expect(getAttention).toHaveBeenCalledWith("sale-1", {
       role: "staff",
-      staffRoles: ["super_admin"],
+      staffRoles: ["administrator"],
     });
   });
 
@@ -398,7 +398,7 @@ describe("admin dashboard metrics routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
 
         scopes: ["bid.read"],
       }),
@@ -430,7 +430,7 @@ describe("admin dashboard metrics routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
 
         scopes: ["bid.read"],
       }),
@@ -455,7 +455,7 @@ describe("admin dashboard metrics routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
 
         scopes: ["bid.read"],
       }),
@@ -511,7 +511,7 @@ describe("admin dashboard metrics routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRoles: ["super_admin"],
+        staffRoles: ["administrator"],
 
         scopes: ["bid.read"],
       }),
@@ -585,7 +585,7 @@ describe("admin dashboard metrics routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "catalogue-1",
         role: "staff",
-        staffRoles: ["catalogue_manager"],
+        staffRoles: ["cataloguer"],
 
         scopes: ["bid.read"],
       }),

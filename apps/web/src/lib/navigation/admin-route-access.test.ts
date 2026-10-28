@@ -42,24 +42,15 @@ describe("admin route areas", () => {
 describe("canOpenAdminRoute", () => {
   it("keeps finance out of platform pages even where it holds the capability", () => {
     expect(
-      canOpenAdminRoute(
-        "staff",
-        ["finance_ops"],
-        "/admin/legal-entities",
-        LEGAL_ENTITY_BROWSE_ACCESS,
-      ),
+      canOpenAdminRoute("staff", ["finance"], "/admin/legal-entities", LEGAL_ENTITY_BROWSE_ACCESS),
     ).toBe(false);
-    expect(canOpenAdminRoute("staff", ["finance_ops"], "/admin/payments", FINANCE_ACCESS)).toBe(
-      true,
-    );
-    expect(canOpenAdminRoute("staff", ["finance_ops"], "/admin/audit")).toBe(true);
+    expect(canOpenAdminRoute("staff", ["finance"], "/admin/payments", FINANCE_ACCESS)).toBe(true);
+    expect(canOpenAdminRoute("staff", ["finance"], "/admin/audit")).toBe(true);
   });
 
   it("needs both the route group and the capability", () => {
-    expect(canOpenAdminRoute("staff", ["staff_viewer"], "/admin/lots", LOTS_ACCESS)).toBe(false);
-    expect(canOpenAdminRoute("staff", ["catalogue_manager"], "/admin/lots", LOTS_ACCESS)).toBe(
-      true,
-    );
+    expect(canOpenAdminRoute("staff", ["read_only"], "/admin/lots", LOTS_ACCESS)).toBe(false);
+    expect(canOpenAdminRoute("staff", ["cataloguer"], "/admin/lots", LOTS_ACCESS)).toBe(true);
     expect(canOpenAdminRoute("client", [], "/admin/audit")).toBe(false);
   });
 });
@@ -67,26 +58,24 @@ describe("canOpenAdminRoute", () => {
 describe("staffRolesThatCanOpen", () => {
   it("names the roles that can open a page", () => {
     expect(staffRolesThatCanOpen("/admin/payments", FINANCE_ACCESS)).toEqual(["Finance"]);
-    expect(staffRolesThatCanOpen("/admin/lots", LOTS_ACCESS)).toContain("Catalogue manager");
-    expect(staffRolesThatCanOpen("/admin/lots", LOTS_ACCESS)).not.toContain("Super admin");
+    expect(staffRolesThatCanOpen("/admin/lots", LOTS_ACCESS)).toContain("Cataloguer");
+    expect(staffRolesThatCanOpen("/admin/lots", LOTS_ACCESS)).not.toContain("Administrator");
   });
 });
 
 describe("adminDenialDestination", () => {
   it("sends a role that cannot use the admin home to its own overview", () => {
-    expect(adminDenialDestination("staff", ["finance_ops"], "/admin")).toBe("/admin/finance");
-    expect(adminDenialDestination("staff", ["finance_ops"], "/admin?period=7")).toBe(
-      "/admin/finance",
-    );
+    expect(adminDenialDestination("staff", ["finance"], "/admin")).toBe("/admin/finance");
+    expect(adminDenialDestination("staff", ["finance"], "/admin?period=7")).toBe("/admin/finance");
   });
 
   it("explains any other page, keeping the address asked for", () => {
-    expect(adminDenialDestination("staff", ["finance_ops"], "/admin/sales?status=live")).toBe(
+    expect(adminDenialDestination("staff", ["finance"], "/admin/sales?status=live")).toBe(
       `/admin/no-access?from=${encodeURIComponent("/admin/sales?status=live")}`,
     );
   });
 
   it("never loops back to the admin home when that is the role's overview", () => {
-    expect(adminDenialDestination("staff", ["staff_viewer"], "/admin")).not.toBe("/admin");
+    expect(adminDenialDestination("staff", ["read_only"], "/admin")).not.toBe("/admin");
   });
 });

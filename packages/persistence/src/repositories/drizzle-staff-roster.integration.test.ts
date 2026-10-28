@@ -79,7 +79,7 @@ describe.skipIf(!HAS_DB)("staff roster (integration)", () => {
       });
       await tx.insert({
         userId: memberId,
-        role: "client_advisor",
+        role: "client_services",
         startsAt: new Date(now.getTime() + HOUR),
         endsAt: null,
         grantedByUserId: actorId,
@@ -105,7 +105,7 @@ describe.skipIf(!HAS_DB)("staff roster (integration)", () => {
     expect(await roster.listActiveRoles(memberId, now)).toEqual(["specialist"]);
     expect((await roster.listCurrent(memberId, now)).map((a) => a.role)).toEqual([
       "specialist",
-      "client_advisor",
+      "client_services",
     ]);
     expect(await new DrizzleBidBidderRoleReader(db).findBidderRole(memberId)).toEqual({
       role: "staff",
@@ -154,10 +154,10 @@ describe.skipIf(!HAS_DB)("staff roster (integration)", () => {
     const now = new Date();
     await roster.transact(async (tx) => {
       for (const id of [memberId, otherAdminId]) {
-        await tx.writeProfileRoles(id, { role: "staff", primaryStaffRole: "super_admin" });
+        await tx.writeProfileRoles(id, { role: "staff", primaryStaffRole: "administrator" });
         await tx.insert({
           userId: id,
-          role: "super_admin",
+          role: "administrator",
           startsAt: new Date(now.getTime() - HOUR),
           endsAt: null,
           grantedByUserId: actorId,

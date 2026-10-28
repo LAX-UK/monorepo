@@ -188,7 +188,7 @@ It is omitted when the method is not reliably known.
 
 ## Two-step verification policy
 
-Two-step verification is optional per user. A staff policy (Bid super admin) and
+Two-step verification is optional per user. A staff policy (Bid administrator) and
 per-organisation policies (organisation owner) can require it; Identity evaluates
 them at `/oauth2/authorize` from `identity_access_marker` (written by product
 triggers, no roles) and `identity_mfa_policy`. A required session passes after

@@ -26,7 +26,7 @@ function mountApp(staffRoles: StaffRoles | undefined) {
 
 describe("admin invitation routes — list page", () => {
   it("returns paginated rows with summary meta", async () => {
-    const { app, invitations } = mountApp(["super_admin"]);
+    const { app, invitations } = mountApp(["administrator"]);
     invitations.getPage.mockResolvedValue({
       rows: [{ id: "inv-1", email: "alice@example.com", status: "pending" }],
       total: 1,
@@ -60,7 +60,7 @@ describe("admin invitation routes — list page", () => {
   });
 
   it("returns filter-coherent summary meta when status filter is applied", async () => {
-    const { app, invitations } = mountApp(["super_admin"]);
+    const { app, invitations } = mountApp(["administrator"]);
     invitations.getPage.mockResolvedValue({
       rows: [{ id: "inv-1", email: "alice@example.com", status: "pending" }],
       total: 1,
@@ -82,7 +82,7 @@ describe("admin invitation routes — list page", () => {
   });
 
   it("passes sort to the page and omits it when absent", async () => {
-    const { app, invitations } = mountApp(["super_admin"]);
+    const { app, invitations } = mountApp(["administrator"]);
     invitations.getPage.mockResolvedValue({
       rows: [],
       total: 0,
@@ -102,7 +102,7 @@ describe("admin invitation routes — list page", () => {
   });
 
   it("rejects an unknown sort", async () => {
-    const { app, invitations } = mountApp(["super_admin"]);
+    const { app, invitations } = mountApp(["administrator"]);
     const res = await app.request("http://test/invitations?sort=name_asc");
     expect(res.status).toBe(400);
     expect(invitations.getPage).not.toHaveBeenCalled();

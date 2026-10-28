@@ -70,7 +70,7 @@ describe("AdminUserProfilePanel", () => {
   });
 
   it("leaves identity facts out for a staff member", () => {
-    renderPanel({ ...user, role: "staff", staffRole: "finance_ops" });
+    renderPanel({ ...user, role: "staff", staffRole: "finance" });
 
     const security = screen.getByRole("region", { name: "Security" });
     expect(within(security).queryByText("Identity")).toBeNull();

@@ -95,7 +95,7 @@ describe("InvitationConsumptionService.consumeInviteForNewUser", () => {
   it("refuses with 409 and keeps the invitation when the roster refuses the role", async () => {
     s.accept.mockResolvedValue(accepted());
     s.setAccess.mockRejectedValue(
-      new StaffRoleAssignmentRefused("last_administrator", "super_admin"),
+      new StaffRoleAssignmentRefused("last_administrator", "administrator"),
     );
     const res = await s.svc.consumeInviteForNewUser("tok", "user-1", "a@example.com");
     expect(res.isErr() && res.error.status).toBe(409);

@@ -141,7 +141,7 @@ export interface IAdminPayoutApplicationService {
     body: { stripeTransferId: string },
   ): Promise<unknown>;
   adminManualReverse(
-    actorUserId: string,
+    actor: import("../payout.js").PayoutReversalActor,
     payoutId: string,
     input: { reason: string },
   ): Promise<unknown>;

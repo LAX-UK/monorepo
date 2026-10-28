@@ -7,7 +7,7 @@ import { isShopAuthHref } from "@/lib/is-shop-auth-href";
 import { laxAccountUrl } from "@/lib/lax-account-url";
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { FOCUS_RING } from "@auction/branding";
-import type { AccountChromeState, LaxProductLinkVm } from "@auction/lax-ecosystem";
+import type { AccountChromeState } from "@auction/lax-ecosystem";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -16,7 +16,6 @@ import { type MouseEvent, useEffect, useRef, useState } from "react";
 
 type ShopMobileAuthSectionProps = {
   account: AccountChromeState;
-  productLinks?: LaxProductLinkVm[];
   onNavigate?: () => void;
 };
 
@@ -94,17 +93,14 @@ function MobileAuthenticatedAuthSection({
   displayName,
   email,
   logoutHref,
-  productLinks,
   onNavigate,
 }: {
   displayName: string;
   email: string;
   logoutHref: string;
-  productLinks: LaxProductLinkVm[];
   onNavigate?: () => void;
 }) {
   const signOutFormRef = useRef<HTMLFormElement>(null);
-  const otherProducts = productLinks.filter((link) => !link.current);
 
   const linkClass = cn(
     "block min-h-11 rounded-sm py-2 font-label text-sm font-medium uppercase tracking-wide",
@@ -129,18 +125,6 @@ function MobileAuthenticatedAuthSection({
         ) : null}
       </div>
       <ul className="flex flex-col gap-0.5">
-        {otherProducts.map((item) => (
-          <li key={item.id}>
-            <a
-              href={item.href}
-              className={linkClass}
-              rel="noopener noreferrer"
-              {...(onNavigate ? { onClick: onNavigate } : {})}
-            >
-              {item.label}
-            </a>
-          </li>
-        ))}
         <li>
           <Link
             href={SHOP_ORDERS_HREF}
@@ -178,11 +162,7 @@ function MobileAuthenticatedAuthSection({
 }
 
 /** Mobile drawer footer auth — inline actions like Bid, no nested account dropdown. */
-export function ShopMobileAuthSection({
-  account,
-  productLinks = [],
-  onNavigate,
-}: ShopMobileAuthSectionProps) {
+export function ShopMobileAuthSection({ account, onNavigate }: ShopMobileAuthSectionProps) {
   const pathname = usePathname();
 
   return (
@@ -199,7 +179,6 @@ export function ShopMobileAuthSection({
           displayName={account.displayName}
           email={account.email}
           logoutHref={account.logoutHref}
-          productLinks={productLinks}
           {...(onNavigate ? { onNavigate } : {})}
         />
       ) : null}

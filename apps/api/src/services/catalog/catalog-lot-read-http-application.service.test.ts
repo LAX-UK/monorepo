@@ -52,11 +52,11 @@ describe("CatalogLotReadHttpApplicationService", () => {
 
     await lotReadHttp.listLots({
       query: { limit: 5, offset: 0, needsPhotos: "1", resolveImages: "1" },
-      viewer: { role: "staff", staffRoles: ["catalogue_manager"] },
+      viewer: { role: "staff", staffRoles: ["cataloguer"] },
     });
     await lotReadHttp.listLots({
       query: { limit: 5, offset: 0, needsPhotos: "1", resolveImages: "1" },
-      viewer: { role: "staff", staffRoles: ["catalogue_manager"] },
+      viewer: { role: "staff", staffRoles: ["cataloguer"] },
     });
 
     expect(listLotsForPublicApi).toHaveBeenCalledTimes(2);

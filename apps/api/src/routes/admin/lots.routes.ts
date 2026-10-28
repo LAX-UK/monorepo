@@ -10,8 +10,8 @@ import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import {
   requireAuctionManage,
-  requireLotsAccess,
-  requireSpecialistCatalogueOrAuctionManage,
+  requireLotWorkRead,
+  requireLotsRead,
   requireWithdrawalDecision,
 } from "../../middleware/require-capability.js";
 import type { AdminLotsRoutesContainer } from "../../services/interfaces/admin-routes/admin-route-container-slices.js";
@@ -25,7 +25,7 @@ export function attachAdminLotsRoutes(
   /** GET /admin/lots/browse — attachable draft lots for sale setup picker. */
   platform.get(
     "/lots/browse",
-    requireSpecialistCatalogueOrAuctionManage,
+    requireLotWorkRead,
     zValidator("query", adminLotBrowseQuerySchema),
     async (c) => {
       const query = c.req.valid("query");
@@ -46,7 +46,7 @@ export function attachAdminLotsRoutes(
   /** GET /admin/lots/:lotId/lifecycle — snapshot + recent events for journey strip. */
   platform.get(
     "/lots/:lotId/lifecycle",
-    requireSpecialistCatalogueOrAuctionManage,
+    requireLotWorkRead,
     zValidator("param", lotIdOnlyParamSchema),
     async (c) => {
       const { lotId } = c.req.valid("param");
@@ -104,14 +104,14 @@ export function attachAdminLotsRoutes(
   );
 
   /** GET /admin/lots/artist-backfill-review — pending `lot_artist_backfill` tasks (SE-P23). */
-  platform.get("/lots/artist-backfill-review", requireLotsAccess, async (c) => {
+  platform.get("/lots/artist-backfill-review", requireLotsRead, async (c) => {
     const rows =
       await container.admin.reviewTasks.listPendingAdminReviewTasks("lot_artist_backfill");
     return c.json({ data: rows });
   });
 
   /** GET /admin/lots/withdrawal-requests — pending seller withdrawal tasks (B3). */
-  platform.get("/lots/withdrawal-requests", requireLotsAccess, async (c) => {
+  platform.get("/lots/withdrawal-requests", requireLotsRead, async (c) => {
     const rows =
       await container.admin.reviewTasks.listPendingAdminReviewTasks("lot_withdrawal_request");
     return c.json({ data: rows });

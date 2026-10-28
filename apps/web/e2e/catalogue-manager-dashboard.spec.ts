@@ -7,7 +7,7 @@ import {
 } from "./helpers/auth";
 import { expect, test } from "./helpers/auth.fixture";
 
-test.describe("catalogue manager dashboard @roles", () => {
+test.describe("cataloguer dashboard @roles", () => {
   test.setTimeout(90_000);
   test.skip(!e2eEnabled, e2eSkipReason);
 

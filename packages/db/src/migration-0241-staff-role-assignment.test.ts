@@ -16,8 +16,8 @@ describe.skipIf(!url)("migration 0241 staff role assignments", () => {
     await client.connect();
     const run = randomUUID().slice(0, 8);
     const people = [
-      { id: `m0241_admin_${run}`, role: "staff", staffRole: "super_admin" },
-      { id: `m0241_finance_${run}`, role: "staff", staffRole: "finance_ops" },
+      { id: `m0241_admin_${run}`, role: "staff", staffRole: "administrator" },
+      { id: `m0241_finance_${run}`, role: "staff", staffRole: "finance" },
       { id: `m0241_legacy_${run}`, role: "staff", staffRole: null },
       { id: `m0241_client_${run}`, role: "client", staffRole: null },
     ];
@@ -59,7 +59,7 @@ describe.skipIf(!url)("migration 0241 staff role assignments", () => {
       expect(rows.rows).toEqual([
         {
           user_id: `m0241_admin_${run}`,
-          role: "super_admin",
+          role: "administrator",
           ends_at: null,
           granted_by_user_id: null,
           reason: "migrated from single role",
@@ -67,7 +67,7 @@ describe.skipIf(!url)("migration 0241 staff role assignments", () => {
         },
         {
           user_id: `m0241_finance_${run}`,
-          role: "finance_ops",
+          role: "finance",
           ends_at: null,
           granted_by_user_id: null,
           reason: "migrated from single role",
@@ -77,7 +77,7 @@ describe.skipIf(!url)("migration 0241 staff role assignments", () => {
 
       await expect(
         client.query(
-          `insert into staff_role_assignment (user_id, role) values ($1, 'super_admin')`,
+          `insert into staff_role_assignment (user_id, role) values ($1, 'administrator')`,
           [`m0241_admin_${run}`],
         ),
       ).rejects.toThrow(/staff_role_assignment_open_uidx/);

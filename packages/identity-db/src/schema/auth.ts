@@ -18,20 +18,18 @@ export const userKycStatusEnum = pgEnum("user_kyc_status", [
   "rejected",
 ]);
 
-/** LAX internal staff role when `bid_user_profile.role` is `staff`. */
+/** LAX internal staff role when `bid_user_profile.role` is `staff`. Mirrors `userStaffRoles`. */
 export const userStaffRoleEnum = pgEnum("user_staff_role", [
-  "super_admin",
-  "auction_manager",
-  "catalogue_manager",
+  "administrator",
+  "sales_manager",
+  "saleroom_clerk",
+  "cataloguer",
   "specialist",
-  "finance_ops",
-  "operations_fulfilment",
-  "content_marketing",
-  "support_concierge",
-  "staff_viewer",
-  "compliance_officer",
-  "client_advisor",
-  "operations",
+  "client_services",
+  "finance",
+  "fulfilment",
+  "compliance",
+  "read_only",
 ]);
 
 /**
