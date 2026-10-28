@@ -25,7 +25,7 @@ import type {
   AdminUserListSort,
 } from "../interfaces/admin-user.repository.js";
 import { activeIdentitySubject } from "../lib/bid-identity-directory-query.js";
-import { staffRolesInForceFor } from "./staff-role-assignment-sql.js";
+import { staffRolesInForceFor } from "../lib/staff-role-assignment-sql.js";
 
 export function buildAdminUserListWhere(filter: AdminUserListFilter): SQL | undefined {
   const clauses: SQL[] = [activeIdentitySubject()];

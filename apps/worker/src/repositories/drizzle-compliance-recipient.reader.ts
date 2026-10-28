@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
 import { bidIdentityDirectory, bidUserProfile, staffRoleAssignment } from "@auction/db/schema";
-import { staffRoleAssignmentInForceAt } from "@auction/persistence/repositories";
+import { staffRoleAssignmentInForceAt } from "@auction/persistence/lib";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
 

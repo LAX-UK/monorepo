@@ -119,7 +119,6 @@ export {
   DrizzleStaffRoleAssignmentReader,
   DrizzleStaffRoster,
 } from "./drizzle-staff-roster.js";
-export { staffRoleAssignmentInForceAt } from "./staff-role-assignment-sql.js";
 export {
   adminUserListSelect,
   buildAdminUserListOrderBy,

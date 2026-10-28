@@ -18,13 +18,13 @@ import type {
   StaffRosterEvent,
 } from "../interfaces/staff-role-assignment.repository.js";
 import {
+  staffRoleAssignmentInForceAt,
+  staffRoleAssignmentNotEndedAt,
+} from "../lib/staff-role-assignment-sql.js";
+import {
   type LaxStaffAccessEvent,
   insertLaxStaffAccessEvents,
 } from "./drizzle-lax-staff-access.repository.js";
-import {
-  staffRoleAssignmentInForceAt,
-  staffRoleAssignmentNotEndedAt,
-} from "./staff-role-assignment-sql.js";
 
 /** Shared with every roster change so concurrent changes run one after another. */
 const STAFF_ROSTER_LOCK_KEY = "bid_staff_admin_roster";
