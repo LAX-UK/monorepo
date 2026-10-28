@@ -30,3 +30,21 @@ export function resolveRetiredArtRoute(
   const route = RETIRED_ART_ROUTES[path];
   return route ? route(destinations) : null;
 }
+
+/**
+ * A lax.art location whose page has moved on resolves to that page's new home, query kept, so a
+ * legacy URL mapped to a retired page still takes a single hop. Other locations are unchanged.
+ */
+export function followRetiredArtRoute(
+  location: string,
+  artBaseUrl: URL,
+  destinations: RetiredArtRouteDestinations,
+): string {
+  const url = new URL(location, artBaseUrl);
+  if (url.origin !== artBaseUrl.origin) return location;
+  const moved = resolveRetiredArtRoute(url.pathname, destinations);
+  if (!moved) return location;
+  const target = new URL(moved, url);
+  target.search = url.search;
+  return target.toString();
+}

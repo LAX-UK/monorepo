@@ -16,18 +16,28 @@ export const GENERIC_DESTINATIONS = new Set([
   "/art-hub",
 ]);
 
+/**
+ * lax.art pages that moved to another LAX product, keyed by their old path, with the path they
+ * now have there. Mirrors the Shop entries of RETIRED_ART_ROUTES in
+ * apps/art/src/lib/routing/retired-art-routes.ts; the product's origin differs per environment.
+ */
+export const PAGES_MOVED_TO_ANOTHER_PRODUCT = new Map([["/prints", "/artworks"]]);
+
 export function isExternalTarget(target) {
   return /^https?:\/\//.test(target);
 }
 
 /**
  * Expected final URL for a legacy path (query ignored, the old CMS params are dropped).
- * Unmapped paths must be served in place by a real route (e.g. `/`, `/paintings`).
+ * Unmapped paths must be served in place by a real route (e.g. `/`, `/paintings`). A path, mapped
+ * or not, that lands on a page now in another product redirects there in the same single hop.
  */
 export function expectedLegacyTarget(legacyPath, redirects) {
   const pathname = new URL(legacyPath, "https://legacy.invalid").pathname;
   const path = pathname.length > 1 && pathname.endsWith("/") ? pathname.slice(0, -1) : pathname;
   const target = redirects[path] ?? redirects[path.toLowerCase()];
+  const moved = PAGES_MOVED_TO_ANOTHER_PRODUCT.get(target ?? path);
+  if (moved) return { path: moved, redirect: true, anotherProduct: true };
   return target ? { path: target, redirect: true } : { path, redirect: false };
 }
 
@@ -63,6 +73,8 @@ const fail = (issue) => ({ outcome: "fail", issues: [issue] });
  */
 export function checkRedirectHop(response, target, canonicalOrigin) {
   const { expected } = target;
+  if (expected.anotherProduct)
+    return checkMovedToAnotherProduct(response, expected, canonicalOrigin);
   if (!expected.redirect) {
     if (response.status === 200) return { outcome: "pass", issues: [] };
     if (response.status === 404 || response.status === 410) {
@@ -89,6 +101,25 @@ export function checkRedirectHop(response, target, canonicalOrigin) {
     return { outcome: "pass", issues: [] };
   }
   return fail(`redirects to ${location.toString()}, expected ${want.toString()}`);
+}
+
+/** One permanent redirect (301 or 308) to the page's path on another product's origin. */
+function checkMovedToAnotherProduct(response, expected, canonicalOrigin) {
+  if (response.status !== 301 && response.status !== 308) {
+    return fail(
+      `expected a permanent redirect to another product, got ${response.status}${response.location ? ` -> ${response.location}` : ""}`,
+    );
+  }
+  if (!response.location) return fail(`${response.status} without Location`);
+  const location = new URL(response.location, canonicalOrigin);
+  if (
+    location.origin !== new URL(canonicalOrigin).origin &&
+    location.pathname === expected.path &&
+    location.search === ""
+  ) {
+    return { outcome: "pass", issues: [] };
+  }
+  return fail(`redirects to ${location.toString()}, expected ${expected.path} on another product`);
 }
 
 function hasNoindex(value) {

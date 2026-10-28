@@ -174,7 +174,12 @@ const results = await mapConcurrent(targets, Number(args.concurrency), async (ta
   try {
     const hop = await request(target.path, { readBody: false });
     const { outcome, issues } = checkRedirectHop(hop, target, canonicalOrigin);
-    if (outcome !== "pass" || isExternalTarget(target.expected.path) || !wantsDestination(target)) {
+    if (
+      outcome !== "pass" ||
+      target.expected.anotherProduct ||
+      isExternalTarget(target.expected.path) ||
+      !wantsDestination(target)
+    ) {
       return { ...target, outcome, issues };
     }
     const destinationIssues = await verifyDestination(target.expected.path);
