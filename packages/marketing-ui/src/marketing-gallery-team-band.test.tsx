@@ -47,4 +47,46 @@ describe("MarketingGalleryTeamBand", () => {
     renderBand();
     expect(screen.getByRole("presentation")).toHaveAttribute("alt", "");
   });
+
+  it("names each detail and links the ones it is given a target for", () => {
+    renderBand([
+      { kind: "phone", text: "+44 20 8044 1334", href: "tel:+442080441334" },
+      { kind: "email", text: "info@thelax.art", href: "mailto:info@thelax.art" },
+      {
+        kind: "address",
+        text: "156 New Cavendish Street, London W1W 6YW",
+        href: "https://www.google.com/maps/search/?api=1&query=156",
+      },
+    ]);
+    const phone = screen.getByRole("link", { name: "+44 20 8044 1334" });
+    expect(phone).toHaveAttribute("href", "tel:+442080441334");
+    expect(phone).not.toHaveAttribute("target");
+    expect(screen.getByRole("link", { name: "info@thelax.art" })).toHaveAttribute(
+      "href",
+      "mailto:info@thelax.art",
+    );
+    const map = screen.getByRole("link", { name: /156 New Cavendish Street.*opens in a new tab/ });
+    expect(map).toHaveAttribute("target", "_blank");
+    expect(map).toHaveAttribute("rel", "noopener noreferrer");
+    expect(screen.getByRole("list")).toHaveTextContent("Phone:");
+    expect(screen.getByRole("list")).toHaveTextContent("Address:");
+  });
+
+  it("shows the promise under the actions only when it is given one", () => {
+    const { unmount } = render(
+      <MarketingGalleryTeamBand
+        eyebrow="The gallery team"
+        title="Speak to the gallery team"
+        body="We will help you find the work."
+        media={<img src="/gallery.webp" alt="" />}
+        actions={<button type="button">Begin a private enquiry</button>}
+        note="The gallery team replies within one working day."
+      />,
+    );
+    expect(screen.getByText("The gallery team replies within one working day.")).toBeVisible();
+    unmount();
+
+    renderBand();
+    expect(screen.queryByText(/replies within/)).not.toBeInTheDocument();
+  });
 });

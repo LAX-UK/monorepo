@@ -19,6 +19,11 @@ type MarketingPageTitleContent = {
   meta?: readonly string[];
   /** Controls under the text (e.g. a Follow button); they inherit the band's foreground colour. */
   actions?: ReactNode;
+  /**
+   * `compact` trims the plain band's air for short pages (a title and at most one line); the
+   * media band keeps its height.
+   */
+  density?: "standard" | "compact";
   className?: string;
 };
 
@@ -69,9 +74,14 @@ function TitleChip({ chip, onMedia }: { chip: MarketingPageTitleChip; onMedia: b
   );
 }
 
+const PLAIN_DENSITY: Record<NonNullable<MarketingPageTitleContent["density"]>, string> = {
+  standard: "min-h-[240px] lg:min-h-[300px]",
+  compact: "pt-10 pb-6 sm:gap-6 lg:pt-14 lg:pb-8",
+};
+
 /** Centred page title band: `plain` (300px) or `media` (image with scrim, 400px mobile / 500px desktop). */
 export function MarketingPageTitle(props: MarketingPageTitleProps) {
-  const { title, eyebrow, subtitle, chip, meta, actions, className } = props;
+  const { title, eyebrow, subtitle, chip, meta, actions, density = "standard", className } = props;
   const media = props.variant === "media" ? props : null;
   const lines = meta?.filter((line) => line.trim()) ?? [];
 
@@ -79,10 +89,11 @@ export function MarketingPageTitle(props: MarketingPageTitleProps) {
     <header
       className={cn(
         "relative isolate flex flex-col items-center justify-center gap-6 overflow-hidden px-4 py-8 text-center sm:gap-8",
-        media ? cn("min-h-[400px] lg:min-h-[500px]", MEDIA_TEXT) : "min-h-[240px] lg:min-h-[300px]",
+        media ? cn("min-h-[400px] lg:min-h-[500px]", MEDIA_TEXT) : PLAIN_DENSITY[density],
         className,
       )}
       data-variant={media ? "media" : "plain"}
+      data-density={media ? undefined : density}
     >
       {media ? (
         <>

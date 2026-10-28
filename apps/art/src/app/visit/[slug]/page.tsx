@@ -2,11 +2,12 @@ import { ArtEditorialCardGrid } from "@/components/editorial/art-editorial-card"
 import { ArtVenueLocation } from "@/components/editorial/art-venue-location";
 import { ArtVenueRelatedLinks } from "@/components/editorial/art-venue-related-links";
 import { EditorialBlockRenderer } from "@/components/editorial/editorial-block-renderer";
-import { ArtPrivateViewingSection } from "@/components/enquiry/art-private-viewing-section";
+import { ArtGalleryTeamBand } from "@/components/gallery-team/art-gallery-team-band";
 import { ArtMediaPageTitle } from "@/components/layout/art-media-page-title";
 import { artServices } from "@/lib/art-services.server";
 import { venueMetaLines } from "@/lib/editorial/editorial-page-title.vm";
 import { composeVenuePage, venueHref } from "@/lib/editorial/editorial-pages.composer";
+import { buildArtGalleryTeam } from "@/lib/gallery-team/art-gallery-team.vm";
 import { notFoundOrUnavailable } from "@/lib/seo/page-status";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import { MarketingPageTitle, MarketingSubNav } from "@auction/marketing-ui";
@@ -95,7 +96,13 @@ export default async function VenuePage({ params }: VenuePageProps) {
             <ArtEditorialCardGrid cards={exhibitions} ariaLabel="Current exhibitions" />
           </section>
         ) : null}
-        <ArtPrivateViewingSection viewer={viewer} venue={{ slug: venue.slug, name: venue.name }} />
+        <ArtGalleryTeamBand
+          team={buildArtGalleryTeam({
+            context: "venue",
+            subject: { slug: venue.slug, label: venue.name },
+          })}
+          viewer={viewer}
+        />
       </div>
       <ArtVenueRelatedLinks />
     </article>

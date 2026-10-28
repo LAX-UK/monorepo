@@ -364,7 +364,7 @@ describe("composeVisitPage", () => {
     expect(result).toEqual({
       status: "ok",
       data: {
-        title: "LAX's Locations",
+        title: "Visit the gallery",
         intro: null,
         venues: [
           {

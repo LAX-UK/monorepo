@@ -457,11 +457,11 @@ export {
   MarketingSplitFeature,
   type MarketingSplitFeatureProps,
 } from "./marketing-split-feature.js";
-export { MarketingCtaBand, type MarketingCtaBandProps } from "./marketing-cta-band.js";
 export {
   MarketingGalleryTeamBand,
   type MarketingGalleryTeamBandProps,
   type MarketingGalleryTeamDetail,
+  type MarketingGalleryTeamDetailKind,
 } from "./marketing-gallery-team-band.js";
 export {
   MarketingProductDoors,

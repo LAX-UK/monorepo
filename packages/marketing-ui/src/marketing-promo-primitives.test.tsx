@@ -1,6 +1,5 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { MarketingCtaBand } from "./marketing-cta-band.js";
 import { MarketingFeatureGrid } from "./marketing-feature-grid.js";
 import { MarketingSplitFeature } from "./marketing-split-feature.js";
 import { MarketingVenueCard } from "./marketing-venue-card.js";
@@ -42,31 +41,6 @@ describe("MarketingSplitFeature", () => {
   });
 });
 
-describe("MarketingCtaBand", () => {
-  it("renders a labelled band with body and action on the plain surface by default", () => {
-    render(
-      <MarketingCtaBand
-        title="Take the conversation further"
-        body="Speak with our team."
-        action={<button type="button">Begin a private enquiry</button>}
-      />,
-    );
-
-    const region = screen.getByRole("region", { name: "Take the conversation further" });
-    expect(region).toHaveTextContent("Speak with our team.");
-    expect(within(region).getByRole("button", { name: "Begin a private enquiry" })).toBeVisible();
-    expect(region.className).toContain("bg-surface");
-  });
-
-  it("uses the feature surface with a fallback for themes without the token", () => {
-    render(<MarketingCtaBand title="Visit" tone="feature" />);
-
-    expect(screen.getByRole("region", { name: "Visit" }).className).toContain(
-      "bg-[var(--color-surface-feature,var(--color-surface-container-low))]",
-    );
-  });
-});
-
 describe("MarketingVenueCard", () => {
   it("links the whole card and lists non-empty address lines", () => {
     render(
@@ -91,6 +65,25 @@ describe("MarketingVenueCard", () => {
     render(<MarketingVenueCard href="/visit/soho" name="Soho" addressLines={[]} image={null} />);
 
     expect(screen.getByRole("link").querySelector("address")).toBeNull();
+  });
+
+  it("lays a single gallery out wide, with a visible cue inside the one link", () => {
+    render(
+      <MarketingVenueCard
+        href="/visit/marylebone"
+        name="Marylebone"
+        addressLines={["156 New Cavendish Street"]}
+        image={null}
+        layout="wide"
+        cta="Plan your visit"
+      />,
+    );
+
+    const link = screen.getByRole("link");
+    expect(link).toHaveAttribute("data-layout", "wide");
+    expect(link.className).toContain("md:grid-cols-[7fr_5fr]");
+    expect(link).toHaveTextContent("Plan your visit");
+    expect(screen.getAllByRole("link")).toHaveLength(1);
   });
 });
 

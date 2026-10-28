@@ -2,15 +2,15 @@ import { ArtStatusState, ArtStatusStateLink } from "@/components/art-status-stat
 import { ArtArtistCard } from "@/components/catalogue/art-artist-grid";
 import { ArtArtworkRail } from "@/components/catalogue/art-artwork-rail";
 import { ArtEditorialCard } from "@/components/editorial/art-editorial-card";
-import { ArtGeneralEnquiryPanel } from "@/components/enquiry/art-general-enquiry-panel";
+import { ArtGalleryTeamBand } from "@/components/gallery-team/art-gallery-team-band";
 import { ArtHomeHero } from "@/components/home/art-home-hero";
 import { ArtRail, ArtRailItem } from "@/components/layout/art-rail";
 import { ArtSection } from "@/components/layout/art-section";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import { ArtProductDoors } from "@/components/product-doors/art-product-doors";
 import { artServices } from "@/lib/art-services.server";
+import { buildArtGalleryTeam } from "@/lib/gallery-team/art-gallery-team.vm";
 import { buildArtHomeHeroVm } from "@/lib/home/art-home-hero.vm";
-import { ART_HOME_CLOSING_CTA } from "@/lib/home/art-home-promos.vm";
 import {
   type ArtHomePageVm,
   type ArtHomeSectionId,
@@ -18,7 +18,6 @@ import {
 } from "@/lib/home/home-page.composer";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import {
-  MarketingCtaBand,
   MarketingFeatureGrid,
   MarketingReveal,
   MarketingSplitFeature,
@@ -194,16 +193,9 @@ function HomeSection({ id, vm }: { id: ArtHomeSectionId; vm: ArtHomePageVm }) {
       );
     case "closing-cta":
       return (
-        <MarketingCtaBand
-          title={ART_HOME_CLOSING_CTA.title}
-          body={<p>{ART_HOME_CLOSING_CTA.body}</p>}
-          action={
-            <ArtGeneralEnquiryPanel
-              viewer={vm.viewer}
-              triggerLabel={ART_HOME_CLOSING_CTA.triggerLabel}
-            />
-          }
-        />
+        <Shell>
+          <ArtGalleryTeamBand team={buildArtGalleryTeam({ context: "home" })} viewer={vm.viewer} />
+        </Shell>
       );
   }
 }

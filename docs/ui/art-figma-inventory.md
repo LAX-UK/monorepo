@@ -220,7 +220,7 @@ Every new or extended component in `@auction/marketing-ui` and `@auction/ui` fro
 | `MarketingPageTitle` (`plain` \| `media`, eyebrow, subtitle, chip, byline, `actions` slot) | marketing-ui | Collector hub, 101 guide, visit, how to buy and sell, contact, exhibition detail, stories, artist hero, account | Shop, Bid |
 | `MarketingSubNav` (link and anchor modes, sticky identity bar, reading progress) | marketing-ui | Exhibitions index and detail, stories (reading bar), artist profile, account and favourites tabs | Bid (replace local `marketing-underline-tabs`), Shop |
 | `MarketingSplitFeature` (tone, media side, `h1` option) | marketing-ui | Home promos and guide promo, artist sell prompt, Art hub (#552) | Shop, Bid |
-| `MarketingCtaBand` (tone cream / plain, `media` option from #551) | marketing-ui | Home closing band, exhibition private viewing, collector hub closing band | Shop, Bid |
+| `MarketingGalleryTeamBand` (photograph, actions, reply promise, linked details) | marketing-ui | Home, contact, visit and venues, exhibition detail, Collector Hub and its service pages, how to buy | Shop (home, edition page), Bid |
 | `MarketingFeatureGrid` (`lead-plus-row`, `lead-plus-stack`) | marketing-ui | Home What's on and Featured stories | Shop journal, Bid press |
 | `MarketingVenueCard` | marketing-ui | Home galleries, `/visit` | Bid venues |
 | `MarketingEditorialCard` (aspects `landscape`, `portrait`, `wide`; kicker, detail lines, trailing slot) | marketing-ui | Home, exhibitions, stories, related content | Shop journal, Bid press |
