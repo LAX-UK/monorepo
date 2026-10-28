@@ -20,6 +20,12 @@ describe("notificationTypePresenter", () => {
     }
   });
 
+  it("labels both role change notices as a staff role", () => {
+    for (const type of ["staff_role_changed", "staff_role_changed_admin"]) {
+      expect(notificationTypePresenter(type)).toMatchObject({ label: "Staff role", tone: "info" });
+    }
+  });
+
   it("maps condition_report_declined", () => {
     const p = notificationTypePresenter("condition_report_declined");
     expect(p.label).toBe("Condition report");

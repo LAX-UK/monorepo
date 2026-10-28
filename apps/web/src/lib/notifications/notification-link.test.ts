@@ -49,6 +49,10 @@ describe("notificationHref", () => {
       "/admin/staff/access",
     );
     expect(notificationHref({ ...base, type: "staff_role_expired" })).toBeNull();
+    expect(notificationHref({ ...base, type: "staff_role_changed_admin" })).toBe(
+      "/admin/staff/access",
+    );
+    expect(notificationHref({ ...base, type: "staff_role_changed" })).toBeNull();
   });
 
   it("falls back to lot path when only lotId is set", () => {

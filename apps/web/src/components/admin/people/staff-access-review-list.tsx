@@ -5,9 +5,12 @@ import { downloadCsv } from "@/lib/admin/exports/download-csv";
 import type { StaffAccessReviewPageModel } from "@/lib/admin/people/load-staff-access-review-page";
 import {
   ACCESS_REVIEW_CSV_COLUMNS,
+  ACCESS_REVIEW_PRODUCTS,
   type AccessReviewRowView,
   type AccessReviewSearch,
   accessReviewHref,
+  accessReviewProductLabel,
+  accessReviewRoleLabel,
   accessReviewSort,
 } from "@/lib/admin/people/staff-access-review.vm";
 import { STAFF_ROLE_FILTERS } from "@/lib/admin/people/staff-directory-list.vm";
@@ -25,7 +28,7 @@ import {
   StatusBadge,
   TableSearch,
 } from "@auction/staff-ui";
-import { bidStaffRoleLabel } from "@auction/types";
+import { laxStaffPlatform } from "@auction/types";
 import { useMemo } from "react";
 
 type Props = { model: StaffAccessReviewPageModel; search: AccessReviewSearch };
@@ -41,36 +44,53 @@ const VIEW_EMPTY = {
   },
 } as const;
 
-/** Each role on its own line: its name, since when, and until when; ending soon in amber. */
+/** LAX Admin's roles, offered when the review is narrowed to LAX Admin. */
+const LAX_ADMIN_ROLE_FILTERS = laxStaffPlatform("shop").roles.map((role) => ({
+  value: role.value,
+  label: role.label,
+}));
+
+/**
+ * Each admin's roles under its name, each role on its own line: its name, since when, and until
+ * when; ending soon (or waiting for LAX Admin) in amber.
+ */
 function RolesCell({ row }: { row: AccessReviewRowView }) {
-  if (row.roles.length === 0) {
+  if (row.roleGroups.length === 0) {
     return <span className="text-staff-muted">No roles</span>;
   }
   return (
-    <ul className="m-0 flex list-none flex-col gap-1 p-0">
-      {row.roles.map((role) => (
-        <li key={role.id} className="flex min-w-0 flex-col leading-snug">
-          <span className="truncate font-medium text-staff-fg">{role.label}</span>
-          <span
-            className={
-              role.endingSoon
-                ? "truncate text-staff-xs font-medium text-staff-warning-fg"
-                : "truncate text-staff-xs text-staff-muted"
-            }
-          >
-            {role.meta}
-          </span>
-        </li>
+    <div className="flex flex-col gap-2">
+      {row.roleGroups.map((group) => (
+        <div key={group.product} className="flex min-w-0 flex-col gap-1">
+          <span className="text-staff-xs font-medium text-staff-muted">{group.label}</span>
+          <ul aria-label={`${group.label} roles`} className="m-0 flex list-none flex-col gap-1 p-0">
+            {group.roles.map((role) => (
+              <li key={role.id} className="flex min-w-0 flex-col leading-snug">
+                <span className="truncate font-medium text-staff-fg">{role.label}</span>
+                <span
+                  className={
+                    role.endingSoon
+                      ? "truncate text-staff-xs font-medium text-staff-warning-fg"
+                      : "truncate text-staff-xs text-staff-muted"
+                  }
+                >
+                  {role.meta}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
       ))}
-    </ul>
+    </div>
   );
 }
 
 /**
- * The access review on the staff list template: every staff member with their Bid roles, since
- * when and until when, and their last sign-in. Views for everyone and for roles ending within 30
- * days, a role filter, search and a CSV export of what is shown. Read-only staff see the same
- * review without the export or links to records they cannot open.
+ * The access review on the staff list template: every staff member with their roles in Bid admin
+ * and LAX Admin, since when and until when, and their last sign-in. Views for everyone and for
+ * roles ending within 30 days, filters by admin and role, search and a CSV export of what is
+ * shown. Read-only staff see the same review without the export or links to records they cannot
+ * open.
  */
 export function StaffAccessReviewList({ model, search }: Props) {
   const { pending, navigate, Link: ListLink } = useStaffListNavigation();
@@ -160,12 +180,13 @@ export function StaffAccessReviewList({ model, search }: Props) {
     count: view.count,
     href: accessReviewHref(search, { view: view.view }),
   }));
-  const filtered = filters.role !== null || filters.q !== "";
+  const filtered = filters.product !== null || filters.role !== null || filters.q !== "";
+  const roleLabel = accessReviewRoleLabel(filters);
 
   return (
     <ListPage<AccessReviewRowView>
       title="Access review"
-      description="Every staff member's Bid roles, when each started and ends, and when they last signed in."
+      description="Every staff member's roles in Bid admin and LAX Admin, when each started and ends, and when they last signed in."
       Link={ListLink}
       listKey="bid-admin.staff-access-review"
       editRequires={USER_ROLE_MANAGEMENT_ACCESS}
@@ -201,30 +222,52 @@ export function StaffAccessReviewList({ model, search }: Props) {
           sections={[
             {
               kind: "radio",
+              id: "product",
+              label: "Admin",
+              anyLabel: "Both admins",
+              options: ACCESS_REVIEW_PRODUCTS.map((p) => ({ value: p.value, label: p.label })),
+              value: filters.product ?? "",
+            },
+            {
+              kind: "radio",
               id: "role",
-              label: "Role",
+              label: filters.product === "shop" ? "LAX Admin role" : "Bid admin role",
               anyLabel: "Any role",
-              options: STAFF_ROLE_FILTERS,
+              options: filters.product === "shop" ? LAX_ADMIN_ROLE_FILTERS : STAFF_ROLE_FILTERS,
               value: filters.role ?? "",
             },
           ]}
-          onApply={(values) =>
-            navigate(accessReviewHref(search, { role: (values.role as string) || null }))
-          }
+          onApply={(values) => {
+            const product = (values.product as string) || null;
+            // A role belongs to one admin: changing the admin clears it.
+            const role = product === filters.product ? (values.role as string) || null : null;
+            navigate(accessReviewHref(search, { product, role }));
+          }}
         />
       }
-      activeFilters={
-        filters.role
+      activeFilters={[
+        ...(filters.product
+          ? [
+              {
+                id: "product",
+                label: `Admin: ${accessReviewProductLabel(filters.product)}`,
+                onRemove: () => navigate(accessReviewHref(search, { product: null, role: null })),
+              },
+            ]
+          : []),
+        ...(roleLabel
           ? [
               {
                 id: "role",
-                label: `Role: ${bidStaffRoleLabel(filters.role)}`,
+                label: `Role: ${roleLabel}`,
                 onRemove: () => navigate(accessReviewHref(search, { role: null })),
               },
             ]
-          : []
+          : []),
+      ]}
+      onClearFilters={() =>
+        navigate(accessReviewHref(search, { product: null, role: null, q: null }))
       }
-      onClearFilters={() => navigate(accessReviewHref(search, { role: null, q: null }))}
       loading={pending}
       filtered={filtered}
       error={
@@ -257,7 +300,7 @@ export function StaffAccessReviewList({ model, search }: Props) {
                   {
                     id: "roles",
                     label: "Manage roles",
-                    href: `${row.href}#roles`,
+                    href: `${row.href}#${filters.product === "shop" ? "lax-admin-roles" : "roles"}`,
                     requires: USER_ROLE_MANAGEMENT_ACCESS,
                   },
                 ]

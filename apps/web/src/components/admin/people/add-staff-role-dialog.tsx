@@ -1,14 +1,16 @@
 "use client";
 
-import { adminAssignStaffRoleAction } from "@/lib/actions/admin/admin-staff-roles";
+import type { StaffRoleActions } from "@/components/admin/people/staff-role-actions";
 import {
+  type StaffRoleHeld,
+  type StaffRoleProduct,
   addStaffRoleIssue,
   addableStaffRoleOptions,
   earliestStaffRoleLastDay,
   staffRoleEndsAtFromLastDay,
+  staffRoleName,
 } from "@/lib/admin/people/staff-roles.vm";
 import { handleStaffStepUp } from "@/lib/auth/step-up/staff-step-up.client";
-import type { StaffRoleAssignmentView } from "@/lib/data/http/staff-roles.server";
 import { notify } from "@/lib/ui/notify";
 import {
   DateInput,
@@ -20,14 +22,16 @@ import {
   StaffDialog,
   TextArea,
 } from "@auction/staff-ui";
-import { type UserStaffRole, bidStaffRoleLabel } from "@auction/types";
 import { STAFF_ROLE_REASON_MAX, STAFF_ROLE_REASON_MIN } from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { useId, useRef, useState, useTransition } from "react";
 
-type Props = {
+type Props<R extends string> = {
   person: { id: string; name: string };
-  held: readonly StaffRoleAssignmentView[];
+  /** Which admin's roles: the names, the jobs and the rules. */
+  product: StaffRoleProduct<R>;
+  actions: Pick<StaffRoleActions<R>, "assign">;
+  held: readonly StaffRoleHeld<R>[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
   /** The moment the page was built, so every date reads the same on server and client. */
@@ -37,27 +41,36 @@ type Props = {
 const REASON_MESSAGE = `Give a reason of at least ${STAFF_ROLE_REASON_MIN} characters.`;
 
 /**
- * Gives a staff member one more Bid role: the role (each with what the job does), an optional
+ * Gives a person one more role on one admin: the role (each with what the job does), an optional
  * last day, and a reason for the audit log. A role that cannot join the ones they hold says why
  * as soon as it is chosen, in the same words the API would use.
  */
-export function AddStaffRoleDialog({ person, held, open, onOpenChange, now }: Props) {
+export function AddStaffRoleDialog<R extends string>({
+  person,
+  product,
+  actions,
+  held,
+  open,
+  onOpenChange,
+  now,
+}: Props<R>) {
   const router = useRouter();
   const ids = useId();
   const roleId = `${ids}-role`;
   const lastDayId = `${ids}-last-day`;
   const reasonId = `${ids}-reason`;
   const cancelRef = useRef<HTMLButtonElement>(null);
-  const [role, setRole] = useState<UserStaffRole | null>(null);
+  const [role, setRole] = useState<R | null>(null);
   const [lastDay, setLastDay] = useState<string | null>(null);
   const [reason, setReason] = useState("");
   const [attempts, setAttempts] = useState(0);
   const [failure, setFailure] = useState<string | null>(null);
   const [busy, startTransition] = useTransition();
+  const remote = product.product !== "bid";
 
   const endsAt = staffRoleEndsAtFromLastDay(lastDay);
   // The role rule is shown as soon as a role is chosen; the rest only after a failed submit.
-  const ruleIssue = role ? addStaffRoleIssue(held, role, endsAt, now) : null;
+  const ruleIssue = role ? addStaffRoleIssue(held, role, endsAt, now, product) : null;
   const roleError =
     ruleIssue?.field === "role"
       ? ruleIssue.message
@@ -90,13 +103,16 @@ export function AddStaffRoleDialog({ person, held, open, onOpenChange, now }: Pr
       return;
     }
     startTransition(async () => {
-      const result = await adminAssignStaffRoleAction(person.id, {
-        role,
-        endsAt,
-        reason: reason.trim(),
-      });
+      const result = await actions.assign(person.id, { role, endsAt, reason: reason.trim() });
       if (result.ok) {
-        notify.success(`${bidStaffRoleLabel(role)} role given to ${person.name}`);
+        const label = staffRoleName(product, role);
+        if (remote) {
+          notify.success(`${label} role requested for ${person.name}`, {
+            description: `It shows as waiting until ${product.toolLabel} applies it, usually within a minute.`,
+          });
+        } else {
+          notify.success(`${label} role given to ${person.name}`);
+        }
         close();
         router.refresh();
         return;
@@ -109,15 +125,19 @@ export function AddStaffRoleDialog({ person, held, open, onOpenChange, now }: Pr
     });
   }
 
-  const options = addableStaffRoleOptions(held);
+  const options = addableStaffRoleOptions(held, product);
 
   return (
     <StaffDialog
       open={open}
       onOpenChange={(next) => (next ? onOpenChange(true) : close())}
       size="md"
-      title={`Add a role for ${person.name}`}
-      description="Their permissions become the sum of their roles the next time they load a page."
+      title={
+        remote
+          ? `Add a ${product.toolLabel} role for ${person.name}`
+          : `Add a role for ${person.name}`
+      }
+      description={`Their permissions in ${product.toolLabel} become the sum of their roles the next time they load a page.`}
       initialFocusRef={cancelRef}
       footer={
         <>
@@ -147,7 +167,7 @@ export function AddStaffRoleDialog({ person, held, open, onOpenChange, now }: Pr
           </Notice>
         ) : null}
         <Field label="Role" id={roleId} error={roleError} disabled={busy}>
-          <EnumSelect<UserStaffRole>
+          <EnumSelect<R>
             value={role}
             onValueChange={setRole}
             options={options}

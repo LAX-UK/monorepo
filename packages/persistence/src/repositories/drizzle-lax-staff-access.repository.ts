@@ -102,7 +102,7 @@ export class DrizzleLaxStaffAccessRepository implements ILaxStaffAccessRepositor
           at: row.occurredAt,
           product: parsed.data.product,
           action: "revoked",
-          role: null,
+          role: parsed.data.role ?? null,
           actorSubjectId: parsed.data.revokedBySubjectId,
           invitationId: null,
         },

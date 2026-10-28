@@ -2,13 +2,16 @@ import { AdminUserCapabilitiesPanel } from "@/components/admin/admin-user-capabi
 import { AdminUserProfilePanel } from "@/components/admin/admin-user-profile-panel";
 import { PeopleDetailShell } from "@/components/admin/people-detail-shell";
 import { StaffLaxAccessPanel } from "@/components/admin/people/staff-lax-access-panel";
-import { StaffRolesSection } from "@/components/admin/people/staff-roles-section";
+import {
+  LaxAdminRolesSection,
+  StaffRolesSection,
+} from "@/components/admin/people/staff-roles-section";
 import { parseAdminListReturnTarget } from "@/lib/admin/admin-list-return-context";
 import { loadAdminStaffDetail } from "@/lib/admin/load-admin-staff-detail";
 import { staffRolesLabel } from "@/lib/admin/staff-role-presenter";
 import { getAdminUserById } from "@/lib/data/http/admin.server";
 import { getServerStaffAccessDetail } from "@/lib/data/http/staff-access.server";
-import { getServerStaffRoles } from "@/lib/data/http/staff-roles.server";
+import { getServerLaxAdminRoles, getServerStaffRoles } from "@/lib/data/http/staff-roles.server";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { normalizeStaffRoles } from "@auction/types";
 import type { Metadata } from "next";
@@ -33,11 +36,13 @@ export default async function AdminStaffDetailPage({ params, searchParams }: Pro
   const { id } = await params;
   const sp = await searchParams;
   const listHref = parseAdminListReturnTarget(sp.returnTo, "/admin/staff");
-  const [{ user, canManageRoles, canModerate }, accessDetail, roles] = await Promise.all([
-    loadAdminStaffDetail(id),
-    getServerStaffAccessDetail(id).catch(() => null),
-    getServerStaffRoles(id).catch(() => null),
-  ]);
+  const [{ user, canManageRoles, canModerate }, accessDetail, roles, laxAdminRoles] =
+    await Promise.all([
+      loadAdminStaffDetail(id),
+      getServerStaffAccessDetail(id).catch(() => null),
+      getServerStaffRoles(id).catch(() => null),
+      getServerLaxAdminRoles(id).catch(() => null),
+    ]);
   const nowIso = new Date().toISOString();
   const person = { id: user.id, name: user.name?.trim() || user.email };
 
@@ -56,11 +61,8 @@ export default async function AdminStaffDetailPage({ params, searchParams }: Pro
             <>
               <AdminUserProfilePanel user={user} />
               <StaffRolesSection person={person} overview={roles} nowIso={nowIso} />
-              <StaffLaxAccessPanel
-                person={person}
-                detail={accessDetail}
-                canManage={canManageRoles}
-              />
+              <LaxAdminRolesSection person={person} overview={laxAdminRoles} nowIso={nowIso} />
+              <StaffLaxAccessPanel detail={accessDetail} />
               <AdminUserCapabilitiesPanel staffRoles={normalizeStaffRoles(user.staffRoles)} />
             </>
           ),

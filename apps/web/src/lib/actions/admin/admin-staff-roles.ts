@@ -14,9 +14,13 @@ import { USER_ROLE_MANAGEMENT_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import type { ServiceResult } from "@/lib/services/http/service-result";
 import {
+  type AdminAssignLaxAdminRoleBody,
   type AdminAssignStaffRoleBody,
+  type AdminRemoveLaxAdminRoleBody,
   type AdminRemoveStaffRoleBody,
+  adminAssignLaxAdminRoleBodySchema,
   adminAssignStaffRoleBodySchema,
+  adminRemoveLaxAdminRoleBodySchema,
   adminRemoveStaffRoleBodySchema,
 } from "@auction/validators";
 import { revalidatePath } from "next/cache";
@@ -67,5 +71,33 @@ export async function adminRemoveStaffRoleAction(
 ): Promise<ActionResult<void>> {
   return run("adminRemoveStaffRoleAction", userId, adminRemoveStaffRoleBodySchema, body, (id, b) =>
     getWriteContainer().adminStaffRoles.remove(id, b),
+  );
+}
+
+/** Asks LAX Admin to give a person one more role, with an optional end date and a reason. */
+export async function adminAssignLaxAdminRoleAction(
+  userId: string,
+  body: AdminAssignLaxAdminRoleBody,
+): Promise<ActionResult<void>> {
+  return run(
+    "adminAssignLaxAdminRoleAction",
+    userId,
+    adminAssignLaxAdminRoleBodySchema,
+    body,
+    (id, b) => getWriteContainer().adminLaxAdminRoles.assign(id, b),
+  );
+}
+
+/** Asks LAX Admin to end one of a person's roles now, with a reason. */
+export async function adminRemoveLaxAdminRoleAction(
+  userId: string,
+  body: AdminRemoveLaxAdminRoleBody,
+): Promise<ActionResult<void>> {
+  return run(
+    "adminRemoveLaxAdminRoleAction",
+    userId,
+    adminRemoveLaxAdminRoleBodySchema,
+    body,
+    (id, b) => getWriteContainer().adminLaxAdminRoles.remove(id, b),
   );
 }

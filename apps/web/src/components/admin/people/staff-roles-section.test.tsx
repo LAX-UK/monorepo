@@ -1,20 +1,25 @@
-import type { StaffRolesOverview } from "@/lib/data/http/staff-roles.server";
+import type { LaxAdminRolesOverview, StaffRolesOverview } from "@/lib/data/http/staff-roles.server";
 import { StaffAccessProvider, StaffTooltipProvider } from "@auction/staff-ui";
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { StaffRolesSection } from "./staff-roles-section";
+import { LaxAdminRolesSection, StaffRolesSection } from "./staff-roles-section";
 
-const { refresh, assignAction, removeAction, notifySuccess } = vi.hoisted(() => ({
-  refresh: vi.fn(),
-  assignAction: vi.fn(),
-  removeAction: vi.fn(),
-  notifySuccess: vi.fn(),
-}));
+const { refresh, assignAction, removeAction, laxAssignAction, laxRemoveAction, notifySuccess } =
+  vi.hoisted(() => ({
+    refresh: vi.fn(),
+    assignAction: vi.fn(),
+    removeAction: vi.fn(),
+    laxAssignAction: vi.fn(),
+    laxRemoveAction: vi.fn(),
+    notifySuccess: vi.fn(),
+  }));
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 vi.mock("@/lib/actions/admin/admin-staff-roles", () => ({
   adminAssignStaffRoleAction: (...args: unknown[]) => assignAction(...args),
   adminRemoveStaffRoleAction: (...args: unknown[]) => removeAction(...args),
+  adminAssignLaxAdminRoleAction: (...args: unknown[]) => laxAssignAction(...args),
+  adminRemoveLaxAdminRoleAction: (...args: unknown[]) => laxRemoveAction(...args),
 }));
 vi.mock("@/lib/ui/notify", () => ({ notify: { success: notifySuccess, error: vi.fn() } }));
 vi.mock("@/lib/auth/step-up/use-step-up-coordinator", () => ({ redirectToHostedReauth: vi.fn() }));
@@ -178,5 +183,105 @@ describe("StaffRolesSection", () => {
         reason: "Moved to finance",
       }),
     );
+  });
+});
+
+function laxOverview(
+  roles: { role: string; pending?: "assign" | "remove" | null }[],
+  otherActiveAdministrators = 1,
+): LaxAdminRolesOverview {
+  return {
+    userId: "user_1",
+    otherActiveAdministrators,
+    assignments: roles.map(({ role, pending = null }) => ({
+      id: `lax-${role}`,
+      role: role as LaxAdminRolesOverview["assignments"][number]["role"],
+      startsAt: "2026-10-03T09:00:00.000Z",
+      endsAt: null,
+      grantedAt: "2026-10-03T09:00:00.000Z",
+      reason: null,
+      pending,
+    })),
+  };
+}
+
+function renderLax(data: LaxAdminRolesOverview | null, access = manager) {
+  return render(
+    <StaffTooltipProvider>
+      <StaffAccessProvider access={access}>
+        <LaxAdminRolesSection person={person} overview={data} nowIso={NOW} />
+      </StaffAccessProvider>
+    </StaffTooltipProvider>,
+  );
+}
+
+describe("LaxAdminRolesSection", () => {
+  beforeEach(() => {
+    for (const fn of [refresh, laxAssignAction, laxRemoveAction, notifySuccess]) fn.mockReset();
+  });
+
+  it("says when someone holds no LAX Admin role", () => {
+    renderLax(laxOverview([]));
+    expect(
+      screen.getByText("No LAX Admin roles. Grace Hopper cannot sign in to LAX Admin."),
+    ).toBeVisible();
+  });
+
+  it("shows several roles, with a change LAX Admin has not applied yet as waiting", () => {
+    renderLax(laxOverview([{ role: "catalogue_editor" }, { role: "editor", pending: "assign" }]));
+    const roles = screen.getByRole("list", { name: "Grace Hopper's LAX Admin roles" });
+    expect(within(roles).getByText("Catalogue editor")).toBeInTheDocument();
+    expect(within(roles).getByText("Waiting for LAX Admin to add it")).toBeVisible();
+    expect(screen.getByRole("button", { name: "Remove the Editor role" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+  });
+
+  it("explains a LAX Admin forbidden combination as soon as the role is chosen", async () => {
+    renderLax(laxOverview([{ role: "broker" }]));
+    fireEvent.click(screen.getByRole("button", { name: "Add role" }));
+    chooseRole("Finance");
+    expect(
+      await screen.findByText(
+        "Finance can't be combined with Broker. Moving money and selling to clients are kept with different people.",
+      ),
+    ).toBeInTheDocument();
+    expect(laxAssignAction).not.toHaveBeenCalled();
+  });
+
+  it("asks LAX Admin for the role and says it is waiting", async () => {
+    laxAssignAction.mockResolvedValue({ ok: true });
+    renderLax(laxOverview([{ role: "catalogue_editor" }]));
+    fireEvent.click(screen.getByRole("button", { name: "Add role" }));
+    chooseRole("Editor");
+    fireEvent.change(screen.getByLabelText("Reason"), { target: { value: "Autumn exhibitions" } });
+    fireEvent.click(screen.getAllByRole("button", { name: "Add role" }).at(-1) as HTMLElement);
+    await waitFor(() =>
+      expect(laxAssignAction).toHaveBeenCalledWith("user_1", {
+        role: "editor",
+        endsAt: null,
+        reason: "Autumn exhibitions",
+      }),
+    );
+    expect(notifySuccess).toHaveBeenCalledWith("Editor role requested for Grace Hopper", {
+      description: "It shows as waiting until LAX Admin applies it, usually within a minute.",
+    });
+  });
+
+  it("keeps the last LAX Admin Administrator, and shows read-only viewers no controls", () => {
+    renderLax(laxOverview([{ role: "shop_admin" }], 0));
+    expect(screen.getByRole("button", { name: "Remove the Administrator role" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    expect(screen.getByText(/is the only LAX Admin administrator/)).toBeInTheDocument();
+  });
+
+  it("shows read-only viewers the roles without any controls", () => {
+    renderLax(laxOverview([{ role: "editor" }]), readOnly);
+    expect(screen.getByText("Editor")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Add role" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Remove/ })).toBeNull();
   });
 });

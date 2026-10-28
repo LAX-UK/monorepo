@@ -1,29 +1,22 @@
 "use client";
 
 import { RelatedRecordsSection } from "@/components/admin/people/related-records-section";
-import { ShopStaffAccessControl } from "@/components/admin/people/shop-staff-access-control";
-import {
-  pendingChangeLabel,
-  staffRoleOnPlatformLabel,
-} from "@/lib/admin/people/staff-access-presenter";
+import { staffRoleOnPlatformLabel } from "@/lib/admin/people/staff-access-presenter";
 import type { StaffAccessDetail } from "@/lib/data/http/staff-access.server";
-import { type DataColumn, KeyValueList, Notice, Section, StaffDate } from "@auction/staff-ui";
+import { type DataColumn, Notice, StaffDate } from "@auction/staff-ui";
 import { laxStaffPlatform } from "@auction/types";
 import { useMemo } from "react";
 
 type Props = {
-  person: { id: string; name: string };
   detail: StaffAccessDetail | null;
-  /** May change this person's access on each platform. */
-  canManage: boolean;
 };
 
 type HistoryRow = StaffAccessDetail["history"][number] & { rowId: string };
 
 function changeLabel(entry: StaffAccessDetail["history"][number]): string {
-  return entry.action === "granted" && entry.role
-    ? `Given ${staffRoleOnPlatformLabel(entry.product, entry.role)}`
-    : "Access removed";
+  if (!entry.role) return entry.action === "granted" ? "Access given" : "Access removed";
+  const role = staffRoleOnPlatformLabel(entry.product, entry.role);
+  return entry.action === "granted" ? `Given ${role}` : `Removed ${role}`;
 }
 
 const historyColumns: DataColumn<HistoryRow>[] = [
@@ -64,10 +57,10 @@ const historyColumns: DataColumn<HistoryRow>[] = [
 ];
 
 /**
- * This person's access on the other LAX platforms, the way to change it, and the access history
- * on every platform. Bid roles have their own section on the staff record.
+ * The access history on every platform: who gave or removed access, and when. Each admin's roles
+ * have their own section on the staff record.
  */
-export function StaffLaxAccessPanel({ person, detail, canManage }: Props) {
+export function StaffLaxAccessPanel({ detail }: Props) {
   const history = useMemo<HistoryRow[]>(
     () =>
       (detail?.history ?? []).map((entry, index) => ({
@@ -86,69 +79,19 @@ export function StaffLaxAccessPanel({ person, detail, canManage }: Props) {
   }
 
   return (
-    <>
-      {detail.platforms
-        .filter((view) => view.product !== "bid")
-        .map((view) => {
-          const platform = laxStaffPlatform(view.product);
-          const shopRole = view.pending?.action === "granted" ? view.pending.role : view.role;
-          return (
-            <Section
-              key={view.product}
-              id={`access-${view.product}`}
-              title={platform.label}
-              description={platform.description}
-              className="scroll-mt-20"
-              {...(canManage
-                ? {
-                    action: (
-                      <ShopStaffAccessControl
-                        userId={person.id}
-                        userName={person.name}
-                        currentRole={shopRole}
-                      />
-                    ),
-                  }
-                : {})}
-            >
-              <KeyValueList
-                items={[
-                  {
-                    label: "Role",
-                    value: view.role
-                      ? staffRoleOnPlatformLabel(view.product, view.role)
-                      : "No access",
-                  },
-                  ...(view.pending
-                    ? [{ label: "Waiting", value: pendingChangeLabel(view.product, view.pending) }]
-                    : []),
-                  ...(view.updatedAt
-                    ? [
-                        {
-                          label: "Last changed",
-                          value: <StaffDate value={view.updatedAt} withTime />,
-                        },
-                      ]
-                    : []),
-                ]}
-              />
-            </Section>
-          );
-        })}
-      <RelatedRecordsSection
-        id="access-history"
-        title="Access history"
-        description="Grants and removals on every platform."
-        label="Access history"
-        columns={historyColumns}
-        data={history}
-        getRowId={(entry) => entry.rowId}
-        defaultSort={{ columnId: "at", direction: "desc" }}
-        empty={{
-          title: "No changes recorded yet",
-          description: "Grants and removals appear here with who made them.",
-        }}
-      />
-    </>
+    <RelatedRecordsSection
+      id="access-history"
+      title="Access history"
+      description="Grants and removals on every platform."
+      label="Access history"
+      columns={historyColumns}
+      data={history}
+      getRowId={(entry) => entry.rowId}
+      defaultSort={{ columnId: "at", direction: "desc" }}
+      empty={{
+        title: "No changes recorded yet",
+        description: "Grants and removals appear here with who made them.",
+      }}
+    />
   );
 }
