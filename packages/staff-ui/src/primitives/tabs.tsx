@@ -105,24 +105,25 @@ const tabClass = (active: boolean) =>
     active ? "text-staff-fg after:bg-staff-ink" : "text-staff-muted hover:text-staff-fg",
   );
 
-/** Room kept for the "More" button when some tabs do not fit. */
-const MORE_WIDTH = 88;
+/** Width assumed for the "More" button until it has been rendered and measured. */
+const ESTIMATED_MORE_WIDTH = 76;
 
 /**
  * Which tabs fit on one line. The active tab always stays visible, taking the place of the last
- * one that fits; the rest go into "More". Before the first measurement (and where nothing can be
- * measured) every tab shows.
+ * one that fits; the rest go into "More", whose measured width (`moreWidth`) is kept free. Before
+ * the first measurement (and where nothing can be measured) every tab shows.
  */
 export function fitViewTabs(
   widths: readonly number[],
   available: number,
   activeIndex: number,
   gap = 2,
+  moreWidth = ESTIMATED_MORE_WIDTH,
 ): { visible: number[]; overflow: number[] } {
   const all = widths.map((_, index) => index);
   const total = widths.reduce((sum, width) => sum + width + gap, 0);
   if (available <= 0 || total <= available) return { visible: all, overflow: [] };
-  const room = available - MORE_WIDTH;
+  const room = available - moreWidth - gap;
   const visible: number[] = [];
   let used = 0;
   for (const index of all) {
@@ -164,6 +165,8 @@ export function OverflowTabs({
 }) {
   const navRef = React.useRef<HTMLElement>(null);
   const listRef = React.useRef<HTMLUListElement>(null);
+  const moreRef = React.useRef<HTMLLIElement>(null);
+  const [moreWidth, setMoreWidth] = React.useState(ESTIMATED_MORE_WIDTH);
   const activeIndex = tabs.findIndex((tab) => tab.id === currentId);
   const signature = `${tabs.map((tab) => `${tab.id}:${tab.label}:${tab.count ?? ""}:${tab.countTone ?? ""}`).join("|")}#${activeIndex}`;
   const widths = React.useRef<{ signature: string; values: number[] } | null>(null);
@@ -192,7 +195,13 @@ export function OverflowTabs({
     }
     const update = () => {
       if (!widths.current) return;
-      const next = fitViewTabs(widths.current.values, nav.clientWidth, activeIndex);
+      const next = fitViewTabs(
+        widths.current.values,
+        nav.clientWidth,
+        activeIndex,
+        undefined,
+        moreWidth,
+      );
       setFit((previous) =>
         previous?.signature === signature &&
         previous.visible.join() === next.visible.join() &&
@@ -206,7 +215,14 @@ export function OverflowTabs({
     const observer = new ResizeObserver(update);
     observer.observe(nav);
     return () => observer.disconnect();
-  }, [signature]);
+  }, [signature, moreWidth]);
+
+  // The button only exists while something overflows, so its real width is read once it is there
+  // and the fit runs again with exactly that room.
+  React.useLayoutEffect(() => {
+    const width = moreRef.current?.offsetWidth;
+    if (width && width !== moreWidth) setMoreWidth(width);
+  });
 
   const visible = current?.visible ?? tabs.map((_, index) => index);
   const overflow = current?.overflow ?? [];
@@ -238,7 +254,7 @@ export function OverflowTabs({
           );
         })}
         {overflow.length > 0 ? (
-          <li>
+          <li ref={moreRef}>
             <StaffMenu>
               <StaffMenuTrigger asChild>
                 <StaffButton
