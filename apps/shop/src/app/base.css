@@ -43,6 +43,8 @@
   --color-surface-container-low: #f3f3f3;
   --color-surface-container-lowest: #ffffff;
   --color-surface-container-high: #e8e8e8;
+  /* Warm paper, shared with lax.art (--brand-paper in @auction/branding). */
+  --color-surface-paper: var(--brand-paper);
   --color-outline-variant: color-mix(in srgb, var(--color-brand-light-gray) 50%, white);
   --color-error: #ba1a1a;
   --color-on-error: #ffffff;
@@ -273,6 +275,7 @@ html.dark {
   --color-surface-container-low: #2d2f2e;
   --color-surface-container-lowest: #0f1111;
   --color-surface-container-high: #383a39;
+  --color-surface-paper: var(--brand-paper-on-dark);
   --color-outline-variant: #5c5a54;
   --color-brand-100: #5c5a54;
   --color-live-red: #ff6b6b;
