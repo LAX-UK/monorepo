@@ -24,7 +24,7 @@ export function ArtArtworkGallery({ images, priority = false }: Props) {
 
   return (
     <div className="flex flex-col gap-3" data-testid="art-artwork-gallery">
-      <div className="relative aspect-[3/4] overflow-hidden bg-surface-container">
+      <div className="marketing-work-mat relative aspect-[3/4] overflow-hidden">
         <ArtMediaImage
           src={active.url}
           alt={active.alt}

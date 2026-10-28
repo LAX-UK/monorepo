@@ -1,5 +1,6 @@
-/* The Shop product card, for every list of editions. The work sits whole on a warm paper mat
-   (never cropped, never rounded) and lifts a little on hover; the title is the card's one link
+/* The Shop product card, for every list of editions. The work sits whole on the shared work
+   mat (.marketing-work-mat: the paper, with a hairline edge in dark mode), never cropped or
+   rounded, fills about 86% of it and lifts a little on hover; the title is the card's one link
    and covers the whole card. */
 
 .shop-edition-grid {
@@ -18,7 +19,6 @@
 .shop-edition-card__mat {
   position: relative;
   aspect-ratio: 4 / 5;
-  background: var(--color-paper);
   outline: 2px solid transparent;
   outline-offset: 4px;
   transition: outline-color var(--motion-duration-sm) ease;
@@ -26,12 +26,8 @@
 
 .shop-edition-card__print {
   position: absolute;
-  inset: 13%;
+  inset: 7%;
   display: block;
-}
-
-.shop-edition-card__print img {
-  filter: var(--filter-artwork-lift);
 }
 
 @media (prefers-reduced-motion: no-preference) {

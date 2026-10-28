@@ -6,14 +6,6 @@
   max-width: var(--container-max, 90rem);
 }
 
-.shop-page--edition .shop-gallery__stage {
-  background: var(--color-paper);
-}
-
-.shop-page--edition .shop-gallery__mat img {
-  filter: var(--filter-artwork-lift);
-}
-
 @media (min-width: 64rem) {
   .shop-page--edition .shop-gallery__stage {
     aspect-ratio: 5 / 4;

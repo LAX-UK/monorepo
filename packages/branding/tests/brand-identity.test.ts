@@ -124,6 +124,19 @@ describe("BRAND_SURFACES", () => {
     expect(contrast("#474747", BRAND_SURFACES.paper)).toBeGreaterThanOrEqual(4.5);
     expect(contrast("#c9c5bc", BRAND_SURFACES.paperOnDark)).toBeGreaterThanOrEqual(4.5);
   });
+
+  it("mirrors the dark mat edge in the CSS primitives", () => {
+    expect(primitives).toContain(
+      `--brand-work-mat-edge-on-dark: ${BRAND_SURFACES.workMatEdgeOnDark};`,
+    );
+  });
+
+  it("draws the dark mat edge visibly lighter than the dark paper and the dark page", () => {
+    expect(contrast(BRAND_SURFACES.workMatEdgeOnDark, BRAND_SURFACES.paperOnDark)).toBeGreaterThan(
+      1.3,
+    );
+    expect(contrast(BRAND_SURFACES.workMatEdgeOnDark, "#121414")).toBeGreaterThan(1.3);
+  });
 });
 
 describe("BRAND_FIELD_EDGE", () => {

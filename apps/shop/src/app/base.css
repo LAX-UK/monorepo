@@ -45,6 +45,8 @@
   --color-surface-container-high: #e8e8e8;
   /* Warm paper, shared with lax.art (--brand-paper in @auction/branding). */
   --color-surface-paper: var(--brand-paper);
+  /* Works sit on the paper, as on lax.art (cards, the edition stage, basket thumbnails). */
+  --color-work-mat: var(--color-surface-paper);
   --color-outline-variant: color-mix(in srgb, var(--color-brand-light-gray) 50%, white);
   --color-error: #ba1a1a;
   --color-on-error: #ffffff;
@@ -154,6 +156,7 @@
   /* Soft shadow that lifts a print off its mat; a filter, so it follows a contained image. */
   --filter-artwork-lift: drop-shadow(0 1px 1px rgb(20 16 10 / 0.1))
     drop-shadow(0 8px 14px rgb(20 16 10 / 0.16));
+  --filter-work-mat-image: var(--filter-artwork-lift);
   /* The white border of a print hung on the paper wall, and its shadow. */
   --color-passe-partout: color-mix(in srgb, var(--color-brand-light-cream) 20%, white);
   --shadow-hung-print: 0 1px 2px rgb(20 16 10 / 0.1), 0 10px 24px -8px rgb(20 16 10 / 0.22);
@@ -323,8 +326,9 @@ html.dark {
   --color-control-border-hover: #b3b3b3;
   --color-control-border-disabled: #5c5a54;
   --color-footer-bg: #0d0f0f;
-  --filter-artwork-lift: drop-shadow(0 1px 1px rgb(0 0 0 / 0.45))
-    drop-shadow(0 10px 18px rgb(0 0 0 / 0.55));
+  --filter-artwork-lift: var(--brand-work-lift-on-dark);
+  /* The dark paper sits almost on the page tone: a hairline keeps each work's edge. */
+  --color-work-mat-edge: var(--brand-work-mat-edge-on-dark);
   --color-passe-partout: color-mix(in srgb, var(--color-brand-light-cream) 92%, black);
   --shadow-hung-print: 0 1px 2px rgb(0 0 0 / 0.5), 0 12px 28px -8px rgb(0 0 0 / 0.7);
   --color-nav-border: #333534;

@@ -47,6 +47,8 @@
   --color-surface-paper: var(--brand-paper);
   /* Promo bands (Figma Cream/100 behind the LAX Bid and LAX Shop band and the guide promo). */
   --color-surface-feature: var(--color-surface-paper);
+  /* Works sit on the paper, as on Shop, so the same work shows in the same frame on both. */
+  --color-work-mat: var(--color-surface-paper);
   --color-on-surface-feature: var(--color-on-surface);
   --color-surface-inverse: var(--color-brand-obsidian);
   --color-on-surface-inverse: var(--color-brand-light-cream);
@@ -285,6 +287,10 @@ html.dark {
   --color-surface-container-high: #383a39;
   /* Warm dark keeps the cream band's character without a light block on a dark page. */
   --color-surface-paper: var(--brand-paper-on-dark);
+  /* The dark paper sits almost on the page tone: a hairline and a soft shadow keep each work's
+     edge. */
+  --color-work-mat-edge: var(--brand-work-mat-edge-on-dark);
+  --filter-work-mat-image: var(--brand-work-lift-on-dark);
   --color-on-surface-feature: var(--color-brand-light-cream);
   --color-surface-inverse: var(--color-brand-light-cream);
   --color-on-surface-inverse: var(--color-brand-obsidian);

@@ -178,6 +178,28 @@ html.lenis {
 }
 
 /* Shared marketing / storefront status & empty states */
+/* The mat a work sits on: work cards, artwork stages and basket thumbnails. Each product sets
+   the tone (--color-work-mat), the dark-mode hairline (--color-work-mat-edge) and the soft
+   shadow under the image (--filter-work-mat-image); without them the mat is the quiet container
+   tint with no edge, as on Bid. The edge is drawn above the image so it holds where the work
+   meets the mat. The host is positioned. */
+.marketing-work-mat {
+  background-color: var(--color-work-mat, var(--color-surface-container-low));
+}
+
+.marketing-work-mat::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px var(--color-work-mat-edge, transparent);
+}
+
+.marketing-work-mat img {
+  filter: var(--filter-work-mat-image, none);
+}
+
 .marketing-status-state {
   display: flex;
   flex-direction: column;

@@ -20,10 +20,15 @@ export const BRAND_COLORS = {
  * and Shop, lighter than the palette's light cream; `paperOnDark` is its dark-mode equivalent. CSS: `--brand-paper` and
  * `--brand-paper-on-dark` in `brand-primitives.css`, which each product maps to
  * `--color-surface-paper`.
+ *
+ * `workMatEdgeOnDark` is the hairline drawn inside a work's mat in dark mode, where the dark paper
+ * sits almost on the page tone; it keeps every work's edge. CSS: `--brand-work-mat-edge-on-dark`,
+ * which Shop and lax.art map to `--color-work-mat-edge`.
  */
 export const BRAND_SURFACES = {
   paper: "#f6f4ee",
   paperOnDark: "#1a1b1a",
+  workMatEdgeOnDark: "#2f302f",
 } as const;
 
 /**

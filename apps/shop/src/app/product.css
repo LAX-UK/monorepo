@@ -531,7 +531,6 @@
   position: relative;
   aspect-ratio: 4 / 5;
   overflow: hidden;
-  background: var(--color-surface-container-low);
   touch-action: pan-y;
 }
 
