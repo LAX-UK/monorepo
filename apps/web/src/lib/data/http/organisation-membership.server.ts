@@ -5,21 +5,24 @@ import { X_LEGAL_ENTITY_ID_HEADER } from "@/lib/legal-entity/client-acting-conte
 import type { MyBuyerAgentAuthorisation } from "@auction/types";
 import { z } from "zod";
 
-import type { FormerMemberOpenBidRow } from "./organisation-membership.types";
+import type { StoppedMemberBidsRow } from "./organisation-membership.types";
 
-export type { FormerMemberOpenBidRow };
+export type { StoppedMemberBidsRow };
 
-const formerMemberBidSchema = z.object({
-  kind: z.enum(["auto_bid", "absentee"]),
-  id: z.string(),
-  lotId: z.string(),
-  lotTitle: z.string(),
-  lotNumber: z.number().nullable(),
-  endsAt: z.string(),
+const stoppedMemberBidsSchema = z.object({
   memberUserId: z.string(),
   memberName: z.string(),
-  maxAmount: z.string(),
-}) satisfies z.ZodType<FormerMemberOpenBidRow>;
+  stoppedAt: z.string(),
+  bids: z.array(
+    z.object({
+      kind: z.enum(["auto_bid", "absentee"]),
+      lotId: z.string(),
+      lotTitle: z.string(),
+      lotNumber: z.number().nullable(),
+      maxAmount: z.string(),
+    }),
+  ),
+}) satisfies z.ZodType<StoppedMemberBidsRow>;
 
 const myAuthorisationSchema = z.object({
   sale: z
@@ -46,11 +49,14 @@ async function readList<T>(path: string, legalEntityId: string, schema: z.ZodTyp
   return parsed.success ? parsed.data : null;
 }
 
-/** Former members' open bids; `null` for members who may not see them or on failure. */
-export function getServerFormerMemberBids(
+/**
+ * Automatic bids that stopped when members left, in the last 30 days; `null` for members who may
+ * not see them or on failure.
+ */
+export function getServerStoppedMemberBids(
   legalEntityId: string,
-): Promise<FormerMemberOpenBidRow[] | null> {
-  return readList("/legal-entities/former-member-bids", legalEntityId, formerMemberBidSchema);
+): Promise<StoppedMemberBidsRow[] | null> {
+  return readList("/legal-entities/stopped-member-bids", legalEntityId, stoppedMemberBidsSchema);
 }
 
 /** The signed-in buyer agent's own authorisations in force; empty for other roles. */

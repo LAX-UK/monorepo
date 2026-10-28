@@ -271,12 +271,7 @@ export function createContainer(env: Env): Container {
       registrations: repos.saleRegistrationRepository,
     }),
   };
-  const organisationMembership = createOrganisationMembershipServices({
-    db,
-    transactionRunner: platform.transactionRunner,
-    domainEventSink: platform.domainEventSink,
-    realtime: platform.notificationService,
-  });
+  const organisationMembership = createOrganisationMembershipServices({ db });
 
   const atg = new AtgAdminService(
     repos.atgLinkReader,

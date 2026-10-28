@@ -1,4 +1,8 @@
-import type { FormerMemberBidRef, FormerMemberOpenBid } from "@auction/persistence/interfaces";
+import type {
+  DbTransaction,
+  StandingBidInstruction,
+  StoppedMemberBids,
+} from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
 import type { Result } from "neverthrow";
 
@@ -23,18 +27,31 @@ export interface IMemberWelcomeService {
   dismiss(actor: OrganisationMemberActor): Promise<Result<void, OrganisationMembershipError>>;
 }
 
-/** Bids that former members left standing for the organisation, and cancelling them. */
-export interface IFormerMemberBidsService {
-  list(
-    actor: OrganisationMemberActor,
-  ): Promise<Result<FormerMemberOpenBid[], OrganisationMembershipError>>;
-  cancel(
-    actor: OrganisationMemberActor,
-    ref: FormerMemberBidRef,
-  ): Promise<Result<FormerMemberOpenBid, OrganisationMembershipError>>;
+/** An automatic bid that stopped because its member was removed. */
+export type StoppedInstruction = Pick<
+  StandingBidInstruction,
+  "kind" | "id" | "lotId" | "lotTitle" | "lotNumber" | "maxAmount"
+>;
+
+/**
+ * Stops a removed member's standing instructions for the organisation, inside the removal's
+ * transaction, with an audit entry for each one. Placed bids stand.
+ */
+export interface IRemovedMemberBidStopper {
+  stopFor(
+    tx: DbTransaction,
+    input: { legalEntityId: string; memberUserId: string; actorUserId: string },
+  ): Promise<StoppedInstruction[]>;
 }
 
-/** Realtime notice that a bidder's auto-bid maximum is gone, so open lot pages update. */
+/** What stopped when members left, for the people who run the organisation. */
+export interface IStoppedMemberBidsQuery {
+  listRecent(
+    actor: OrganisationMemberActor,
+  ): Promise<Result<StoppedMemberBids[], OrganisationMembershipError>>;
+}
+
+/** Realtime notice that a bidder's auto-bid ceiling is gone, so open lot pages update. */
 export interface IProxyCancelledRealtime {
   notifyProxyCancelled(lotId: string, bidderUserId: string, reason?: string): Promise<void>;
 }

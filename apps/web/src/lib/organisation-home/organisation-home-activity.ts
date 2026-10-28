@@ -11,6 +11,13 @@ export type HomeActivitySources = {
   purchases: readonly Pick<PortfolioRow, "lot">[];
   /** Members who joined, from the Members list. */
   members: readonly { id: string; name: string; acceptedAt: Date | null; invited: boolean }[];
+  /** Automatic bids that stopped when members left, grouped per member. */
+  stoppedMemberBids: readonly {
+    memberUserId: string;
+    memberName: string;
+    stoppedAt: Date;
+    count: number;
+  }[];
 };
 
 const SENT = new Set<ItemSubmission["status"]>([
@@ -67,5 +74,11 @@ export function homeActivityEvents(sources: HomeActivitySources): HomeActivityEv
         at: member.acceptedAt as Date,
         subject: { id: member.id, title: member.name },
       })),
+    ...sources.stoppedMemberBids.map((stopped) => ({
+      kind: "member_bids_stopped" as const,
+      at: stopped.stoppedAt,
+      subject: { id: stopped.memberUserId, title: stopped.memberName },
+      count: stopped.count,
+    })),
   ];
 }

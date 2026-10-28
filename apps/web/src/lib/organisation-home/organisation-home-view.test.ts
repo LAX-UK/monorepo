@@ -25,7 +25,6 @@ const EVERY_TASK: HomeTask[] = [
     startsAt: new Date("2026-11-04T18:00:00Z"),
     bidLimit: "10000.00",
   },
-  { kind: "former_member_bids", count: 2 },
 ];
 
 describe("homeTaskView", () => {
@@ -49,7 +48,6 @@ describe("homeTaskView", () => {
       payouts: "/organisation/payouts",
       identity: "/verify-identity",
       register: "/sales/contemporary/sale1",
-      former_member_bids: "/organisation/members#former-member-bids",
     });
   });
 
@@ -114,6 +112,32 @@ describe("buyerAgentAuthorityLine", () => {
   });
 });
 
+describe("stopped bids activity", () => {
+  it("names who left and how many lots, linking to the details", () => {
+    const view = organisationHomeView(
+      {
+        tasks: [],
+        setup: null,
+        shortcuts: [],
+        activity: [
+          {
+            kind: "member_bids_stopped",
+            at: new Date("2026-10-28T09:00:00Z"),
+            subject: { id: "sam", title: "Sam Lee" },
+            count: 2,
+          },
+        ],
+        activityArchive: null,
+      },
+      ctx,
+    );
+    expect(view.activity[0]).toMatchObject({
+      text: "Sam Lee's automatic bids stopped when they left: 2 lots",
+      href: "/organisation/members#stopped-member-bids",
+    });
+  });
+});
+
 describe("member role copy", () => {
   it("explains a role in one paragraph from its abilities", () => {
     expect(roleExplanation("consignor", "Northbank Gallery")).toBe(
@@ -168,12 +192,16 @@ describe("homeActivityEvents", () => {
         { id: "m1", name: "Priya Shah", acceptedAt: new Date("2026-10-05"), invited: true },
         { id: "m2", name: "Founder", acceptedAt: new Date("2026-01-01"), invited: false },
       ],
+      stoppedMemberBids: [
+        { memberUserId: "sam", memberName: "Sam Lee", stoppedAt: new Date("2026-10-06"), count: 2 },
+      ],
     });
     expect(events.map((e) => `${e.kind}:${e.subject.id}`)).toEqual([
       "submission_sent:s1",
       "changes_requested:s1",
       "lot_unsold:l1",
       "member_joined:m1",
+      "member_bids_stopped:sam",
     ]);
   });
 });

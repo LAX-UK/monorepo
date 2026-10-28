@@ -71,11 +71,6 @@ const ENTITY_CAPABILITY_RULES = {
   "entity.buyer_agents.read": { access: "read", roles: ["owner", "admin"] },
   /** Authorise buyer agents to bid for the organisation, and revoke those authorisations. */
   "entity.buyer_agents.manage": { access: "write", roles: ["owner", "admin"] },
-  /**
-   * See and cancel the bids a former member left standing for the organisation (auto-bid
-   * maximums and absentee bids). Removal does not cancel them; the people who run it decide.
-   */
-  "entity.member_bids.cancel": { access: "write", roles: ["owner", "admin"] },
   /** See the works the organisation owns, without any prices. */
   "entity.holdings.read": {
     access: "read",

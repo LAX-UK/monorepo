@@ -27,8 +27,6 @@ export type OrganisationHomeFacts = {
   viewerIdentity: "verified" | "checking" | "required";
   /** Sales a buyer agent is authorised for and has not registered in yet. */
   salesToRegister: ReadonlyArray<HomeSubject & { startsAt: Date; bidLimit: string | null }>;
-  /** Auto-bid maximums and absentee bids former members left standing. */
-  formerMemberOpenBids: number;
   /** Something is sold or on its way to sale, so payouts are needed. */
   hasWorkAwaitingPayout: boolean;
 };
@@ -43,8 +41,7 @@ export type HomeTask =
   | { kind: "pay"; purchases: HomeSubject[] }
   | { kind: "won_awaiting_payment"; purchases: HomeSubject[] }
   | { kind: "identity" }
-  | { kind: "register"; sale: HomeSubject; startsAt: Date; bidLimit: string | null }
-  | { kind: "former_member_bids"; count: number };
+  | { kind: "register"; sale: HomeSubject; startsAt: Date; bidLimit: string | null };
 
 export type HomeTaskKind = HomeTask["kind"];
 
@@ -139,14 +136,6 @@ const TASK_SPECS: readonly TaskSpec[] = [
         bidLimit,
       })),
   },
-  {
-    kind: "former_member_bids",
-    allowed: capability("entity.member_bids.cancel"),
-    collect: (facts) =>
-      facts.formerMemberOpenBids > 0
-        ? [{ kind: "former_member_bids", count: facts.formerMemberOpenBids }]
-        : [],
-  },
 ];
 
 /** Which "Needs you" kinds a role can ever see; Home hides the section for the others. */
@@ -224,12 +213,15 @@ export type HomeActivityKind =
   | "lot_unsold"
   | "purchase_won"
   | "payout_sent"
-  | "member_joined";
+  | "member_joined"
+  | "member_bids_stopped";
 
 export type HomeActivityEvent = {
   kind: HomeActivityKind;
   at: Date;
   subject: HomeSubject;
+  /** How many things the line covers (the lots whose automatic bids stopped). */
+  count?: number;
 };
 
 /** Who sees each kind of activity: members holding any of these capabilities. */
@@ -242,6 +234,7 @@ const ACTIVITY_AUDIENCE: Record<HomeActivityKind, readonly EntityCapability[]> =
   purchase_won: ["entity.finance.read", "entity.bid.place"],
   payout_sent: ["entity.payouts.read"],
   member_joined: ["entity.members.manage"],
+  member_bids_stopped: ["entity.members.manage"],
 };
 
 const ACTIVITY_LIMIT = 5;

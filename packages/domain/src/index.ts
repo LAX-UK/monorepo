@@ -279,3 +279,9 @@ export {
   type OrganisationHomeFacts,
   type OrganisationHomeModel,
 } from "./organisation-home.js";
+export {
+  MEMBER_REMOVED_STOP_REASON,
+  stopsOnRemoval,
+  type StandingInstructionCandidate,
+  type StandingInstructionKind,
+} from "./member-removal.js";

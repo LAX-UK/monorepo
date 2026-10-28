@@ -45,7 +45,16 @@ export function HomeActivity({ activity, seeAllHref }: Props) {
               key={item.key}
               className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-3"
             >
-              <span className="min-w-0 font-body text-sm text-on-surface">{item.text}</span>
+              {item.href ? (
+                <Link
+                  href={item.href}
+                  className="min-w-0 rounded-sm font-body text-sm text-on-surface underline decoration-outline-variant underline-offset-4 hover:decoration-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                >
+                  {item.text}
+                </Link>
+              ) : (
+                <span className="min-w-0 font-body text-sm text-on-surface">{item.text}</span>
+              )}
               <time
                 dateTime={item.at}
                 className="shrink-0 font-body text-xs text-on-surface-variant"

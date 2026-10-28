@@ -78,9 +78,7 @@ import OAuthAccountResetAttemptEmail, {
   subject as oauthAccountResetAttemptSubject,
 } from "./templates/oauth-account-reset-attempt.js";
 import {
-  OrganisationBidCancelledNoticeEmail,
   OrganisationMembershipEndedNoticeEmail,
-  bidCancelledSubject as organisationBidCancelledSubject,
   membershipEndedSubject as organisationMembershipEndedSubject,
 } from "./templates/organisation-membership-notices.js";
 import PasswordChangedElsewhereEmail, {
@@ -347,10 +345,6 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "organisation-membership-ended-notice": {
     subject: organisationMembershipEndedSubject,
     component: (vars) => <OrganisationMembershipEndedNoticeEmail {...vars} />,
-  },
-  "organisation-bid-cancelled-notice": {
-    subject: organisationBidCancelledSubject,
-    component: (vars) => <OrganisationBidCancelledNoticeEmail {...vars} />,
   },
   "legal-entity-submitted-admin-notice": {
     subject: legalEntitySubmittedAdminSubject,

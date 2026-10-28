@@ -13,7 +13,7 @@ const ERRORS: Record<OrganisationMembershipErrorCode, OrganisationMembershipErro
   not_found: {
     code: "not_found",
     status: 404,
-    message: "That bid is no longer open",
+    message: "Your membership of this organisation was not found",
   },
 };
 

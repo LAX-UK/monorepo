@@ -4,8 +4,8 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SessionUser } from "@/lib/data/contracts";
 import { listServerConsignmentAgreements } from "@/lib/data/http/consignment-agreements.server";
 import {
-  getServerFormerMemberBids,
   getServerMyBuyerAgentAuthorisations,
+  getServerStoppedMemberBids,
 } from "@/lib/data/http/organisation-membership.server";
 import { isAwaitingCheckout } from "@/lib/data/view-models/dashboard-portfolio.vm";
 import { listMembersAction } from "@/lib/legal-entity/member-management.actions";
@@ -77,7 +77,7 @@ export async function loadOrganisationHome(
   const followsConsignments = reads("entity.consignments.read");
   const needsIdentity = roleNeedsPersonalIdentity(actor.role);
 
-  const [submissions, lots, agreements, account, purchases, members, formerBids, mine, kyc] =
+  const [submissions, lots, agreements, account, purchases, members, stoppedBids, mine, kyc] =
     await Promise.all([
       settle<ItemSubmission[]>(
         followsConsignments,
@@ -105,8 +105,8 @@ export async function loadOrganisationHome(
         [],
       ),
       settle(
-        reads("entity.member_bids.cancel"),
-        async () => (await getServerFormerMemberBids(organisation.id)) ?? [],
+        reads("entity.members.manage"),
+        async () => (await getServerStoppedMemberBids(organisation.id)) ?? [],
         [],
       ),
       settle(
@@ -163,7 +163,6 @@ export async function loadOrganisationHome(
           ]
         : [],
     ),
-    formerMemberOpenBids: formerBids.length,
     hasWorkAwaitingPayout:
       lots.length > 0 ||
       submissions.some((s) => s.status === "approved" || s.status === "converted"),
@@ -178,6 +177,12 @@ export async function loadOrganisationHome(
       name: member.user.name || member.user.email,
       acceptedAt: member.acceptedAt ? new Date(member.acceptedAt) : null,
       invited: !member.isPrimaryAdmin,
+    })),
+    stoppedMemberBids: stoppedBids.map((stopped) => ({
+      memberUserId: stopped.memberUserId,
+      memberName: stopped.memberName,
+      stoppedAt: new Date(stopped.stoppedAt),
+      count: stopped.bids.length,
     })),
   });
   const model = buildOrganisationHome(facts, activity);

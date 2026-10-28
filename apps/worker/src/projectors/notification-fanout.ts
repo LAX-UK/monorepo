@@ -5,12 +5,8 @@ import { fanoutPayoutClawbackRequired } from "./notification-fanout/clawback-fan
 import { fanoutDisputeClosed, fanoutDisputeOpened } from "./notification-fanout/dispute-fanout.js";
 import { fanoutLotVoided } from "./notification-fanout/lot-voided-fanout.js";
 import { fanoutPaymentManualReview } from "./notification-fanout/manual-review-fanout.js";
+import { fanoutMemberRemoved } from "./notification-fanout/membership-fanout.js";
 import {
-  fanoutFormerMemberBidCancelled,
-  fanoutMemberRemoved,
-} from "./notification-fanout/membership-fanout.js";
-import {
-  type FormerMemberBidCancelledPayload,
   type LotVoidedPayload,
   type LotWithdrawalDeclinedPayload,
   type ManualReviewPayload,
@@ -155,16 +151,6 @@ export async function processNotificationFanout(options: {
           legalEntityId: row.aggregateId,
           payload: row.payload as MemberRemovedPayload,
           webOrigin: ctx.webOrigin,
-        });
-      }
-      if (row.eventType === "legal_entity.former_member_bid_cancelled") {
-        await fanoutFormerMemberBidCancelled({
-          notificationFanoutReader,
-          emailService,
-          supportContactEmail,
-          eventId: row.id,
-          legalEntityId: row.aggregateId,
-          payload: row.payload as FormerMemberBidCancelledPayload,
         });
       }
       if (row.eventType === "payout.clawback_required") {

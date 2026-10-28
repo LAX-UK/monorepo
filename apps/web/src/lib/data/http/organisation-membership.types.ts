@@ -1,12 +1,14 @@
-/** A bid a former member left standing for the organisation, as the Members tab shows it. */
-export type FormerMemberOpenBidRow = {
-  kind: "auto_bid" | "absentee";
-  id: string;
-  lotId: string;
-  lotTitle: string;
-  lotNumber: number | null;
-  endsAt: string;
+/** Automatic bids that stopped when one member left the organisation. */
+export type StoppedMemberBidsRow = {
   memberUserId: string;
   memberName: string;
-  maxAmount: string;
+  /** ISO 8601. */
+  stoppedAt: string;
+  bids: {
+    kind: "auto_bid" | "absentee";
+    lotId: string;
+    lotTitle: string;
+    lotNumber: number | null;
+    maxAmount: string;
+  }[];
 };

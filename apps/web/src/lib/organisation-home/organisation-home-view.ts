@@ -29,7 +29,14 @@ export type HomeSetupView = {
 
 export type HomeLinkView = { id: string; label: string; href: string };
 
-export type HomeActivityView = { key: string; text: string; when: string; at: string };
+export type HomeActivityView = {
+  key: string;
+  text: string;
+  /** Where to review it, for lines that lead somewhere. */
+  href: string | null;
+  when: string;
+  at: string;
+};
 
 /** The one-time welcome card after accepting an invitation. */
 export type WelcomeCardView = {
@@ -122,14 +129,6 @@ const TASK_VIEWS: { [K in HomeTask["kind"]]: TaskViewBuilder<K> } = {
       : "You're authorised to bid with no limit",
     action: { label: "Register", href: salePath({ id: task.sale.id, title: task.sale.title }) },
   }),
-  former_member_bids: (task) => ({
-    title:
-      task.count === 1
-        ? "A former member's bid is still open"
-        : `${task.count} bids from former members are still open`,
-    detail: "They can still bid for the organisation. Keep them or cancel them.",
-    action: { label: "Review", href: `${organisationHref("members")}#former-member-bids` },
-  }),
 };
 
 function taskKey(task: HomeTask): string {
@@ -185,15 +184,22 @@ const SHORTCUTS: Record<HomeShortcut, Omit<HomeLinkView, "id">> = {
   bids: { label: "My bids", href: CLIENT_ROUTES.bids },
 };
 
-const ACTIVITY_TEXT: Record<HomeActivityKind, (subject: HomeSubject) => string> = {
-  submission_sent: (s) => `${quoted(s)} was sent to our specialists`,
-  changes_requested: (s) => `A specialist asked for changes to ${quoted(s)}`,
-  submission_accepted: (s) => `${quoted(s)} was accepted for sale`,
-  lot_sold: (s) => `${quoted(s)} sold`,
-  lot_unsold: (s) => `${quoted(s)} did not sell`,
-  purchase_won: (s) => `${quoted(s)} was won`,
-  payout_sent: (s) => `Payout ${s.title} was sent`,
-  member_joined: (s) => `${s.title} joined`,
+const ACTIVITY_TEXT: Record<HomeActivityKind, (event: HomeActivityEvent) => string> = {
+  submission_sent: ({ subject: s }) => `${quoted(s)} was sent to our specialists`,
+  changes_requested: ({ subject: s }) => `A specialist asked for changes to ${quoted(s)}`,
+  submission_accepted: ({ subject: s }) => `${quoted(s)} was accepted for sale`,
+  lot_sold: ({ subject: s }) => `${quoted(s)} sold`,
+  lot_unsold: ({ subject: s }) => `${quoted(s)} did not sell`,
+  purchase_won: ({ subject: s }) => `${quoted(s)} was won`,
+  payout_sent: ({ subject: s }) => `Payout ${s.title} was sent`,
+  member_joined: ({ subject: s }) => `${s.title} joined`,
+  member_bids_stopped: ({ subject, count = 1 }) =>
+    `${subject.title}'s automatic bids stopped when they left: ${count} ${count === 1 ? "lot" : "lots"}`,
+};
+
+/** Lines that lead somewhere to review; the rest are plain. */
+const ACTIVITY_HREF: Partial<Record<HomeActivityKind, string>> = {
+  member_bids_stopped: `${organisationHref("members")}#stopped-member-bids`,
 };
 
 const ARCHIVE_HREF: Record<HomeActivityArchive, string> = {
@@ -205,7 +211,8 @@ const ARCHIVE_HREF: Record<HomeActivityArchive, string> = {
 function activityView(event: HomeActivityEvent, index: number): HomeActivityView {
   return {
     key: `${event.kind}:${event.subject.id}:${index}`,
-    text: ACTIVITY_TEXT[event.kind](event.subject),
+    text: ACTIVITY_TEXT[event.kind](event),
+    href: ACTIVITY_HREF[event.kind] ?? null,
     when: formatRelativeTime(event.at),
     at: new Date(event.at).toISOString(),
   };

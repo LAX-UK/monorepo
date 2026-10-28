@@ -32,7 +32,6 @@ function busy(role: LegalEntityMemberRole): OrganisationHomeFacts {
     salesToRegister: [
       { id: "sale1", title: "Contemporary", startsAt: new Date("2026-11-04"), bidLimit: "10000" },
     ],
-    formerMemberOpenBids: 2,
     hasWorkAwaitingPayout: true,
   };
 }
@@ -48,7 +47,6 @@ function quiet(role: LegalEntityMemberRole): OrganisationHomeFacts {
     purchasesAwaitingPayment: [],
     viewerIdentity: "verified",
     salesToRegister: [],
-    formerMemberOpenBids: 0,
     hasWorkAwaitingPayout: false,
   };
 }
@@ -57,6 +55,12 @@ const ACTIVITY: HomeActivityEvent[] = [
   { kind: "submission_sent", at: new Date("2026-10-01"), subject: { id: "a", title: "A" } },
   { kind: "lot_sold", at: new Date("2026-10-02"), subject: { id: "b", title: "B" } },
   { kind: "member_joined", at: new Date("2026-10-03"), subject: { id: "c", title: "Priya" } },
+  {
+    kind: "member_bids_stopped",
+    at: new Date("2026-10-02T12:00:00Z"),
+    subject: { id: "sam", title: "Sam Lee" },
+    count: 2,
+  },
   { kind: "purchase_won", at: new Date("2026-10-04"), subject: { id: "d", title: "D" } },
   { kind: "payout_sent", at: new Date("2026-10-05"), subject: { id: "e", title: "E" } },
   { kind: "changes_requested", at: new Date("2026-10-06"), subject: { id: "f", title: "F" } },
@@ -69,14 +73,7 @@ function taskKinds(facts: OrganisationHomeFacts) {
 
 describe("buildOrganisationHome, per role", () => {
   it("owner: everything that keeps the organisation selling and buying", () => {
-    expect(taskKinds(busy("owner"))).toEqual([
-      "agreement",
-      "changes",
-      "payouts",
-      "unsold",
-      "pay",
-      "former_member_bids",
-    ]);
+    expect(taskKinds(busy("owner"))).toEqual(["agreement", "changes", "payouts", "unsold", "pay"]);
     expect(homeShortcuts({ role: "owner" })).toEqual(["sell", "invite", "statements"]);
   });
 
@@ -210,6 +207,17 @@ describe("recent activity", () => {
       "submission_sent",
     ]);
     expect(kinds("buyer_agent")).toEqual(["purchase_won"]);
+  });
+
+  it("tells owners and admins whose automatic bids stopped when they left", () => {
+    const admin = buildOrganisationHome(quiet("admin"), ACTIVITY).activity;
+    expect(admin.find((e) => e.kind === "member_bids_stopped")).toBeUndefined();
+    const recent = buildOrganisationHome(
+      quiet("admin"),
+      ACTIVITY.filter((e) => e.kind === "member_bids_stopped"),
+    ).activity;
+    expect(recent).toEqual([expect.objectContaining({ kind: "member_bids_stopped", count: 2 })]);
+    expect(kinds("finance")).not.toContain("member_bids_stopped");
   });
 
   it("leads See all to the role's main list", () => {

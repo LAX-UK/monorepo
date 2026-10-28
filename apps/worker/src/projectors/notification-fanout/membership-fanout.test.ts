@@ -1,7 +1,7 @@
 import type { EmailEnqueueInput, IEmailService, TemplateName } from "@auction/email";
 import { describe, expect, it } from "vitest";
 import type { INotificationFanoutReader } from "../../interfaces/notification-fanout.reader.js";
-import { fanoutFormerMemberBidCancelled, fanoutMemberRemoved } from "./membership-fanout.js";
+import { fanoutMemberRemoved } from "./membership-fanout.js";
 
 const ENTITY_ID = "5d4c3b2a-1f0e-4d9c-8b7a-6f5e4d3c2b1a";
 const LOT_ID = "1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d";
@@ -64,25 +64,23 @@ describe("fanoutMemberRemoved", () => {
   });
 });
 
-describe("fanoutFormerMemberBidCancelled", () => {
-  it("tells the former member which bid the organisation cancelled", async () => {
+describe("fanoutMemberRemoved with stopped bids", () => {
+  it("lists the automatic bids that stopped with the removal", async () => {
     const { sent, deps } = harness(SAM);
-    await fanoutFormerMemberBidCancelled({
+    await fanoutMemberRemoved({
       ...deps,
       eventId: 21,
       legalEntityId: ENTITY_ID,
-      payload: { bid_kind: "absentee", lot_id: LOT_ID, member_user_id: "sam" },
+      webOrigin: "https://lax.bid",
+      payload: {
+        member_user_id: "sam",
+        removed_by_user_id: "owner",
+        role_at_removal: "buyer_agent",
+        stopped_bids: [{ kind: "auto_bid", lot_id: LOT_ID }, { kind: "nonsense" }],
+      },
     });
-    expect(sent).toEqual([
-      expect.objectContaining({
-        template: "organisation-bid-cancelled-notice",
-        idempotencyKey: "organisation-bid-cancelled:21:sam",
-        vars: expect.objectContaining({
-          entityName: "Northbank Gallery",
-          lotTitle: "Harbour at Dusk",
-          bidKind: "absentee",
-        }),
-      }),
-    ]);
+    expect(sent[0]?.vars).toMatchObject({
+      stoppedBids: [{ kind: "auto_bid", lotTitle: "Harbour at Dusk" }],
+    });
   });
 });
