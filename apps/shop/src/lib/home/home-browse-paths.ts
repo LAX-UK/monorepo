@@ -2,19 +2,19 @@ import { artworkCatalogueHref } from "@/lib/catalogue/artwork-catalogue-params";
 import type { PublicArtworkFacetCounts, PublicArtworkSummary } from "@auction/shop-contracts";
 
 /*
- * The ways into the catalogue the home page offers: quick filters under the hero and the
- * "Start a collection" tiles. Every path is built from real counts, and a path that would lead to
- * too few works is left out, so the home page never sends anyone to a thin or empty page.
+ * The ways into the catalogue the home page offers: the "Browse by" rows in the first screen and
+ * the "Start a collection" tiles. Every path is built from real counts, and a path that would lead
+ * to too few works is left out, so the home page never sends anyone to a thin or empty page.
  */
 
 /** Gift price ceilings, in pounds, tried from the lowest. */
 export const HOME_PRICE_BANDS_POUNDS = [150, 300, 500] as const;
 /** A collection needs this many works to be worth a tile. */
 export const MIN_COLLECTION_SIZE = 3;
-export const MAX_COLLECTIONS = 3;
-/** Fewer quick filters than this read as an afterthought, so the row is left out. */
-export const MIN_QUICK_FILTERS = 2;
-export const MAX_QUICK_FILTERS = 6;
+/** A pair at two tiles, one row at three or four. */
+export const MAX_COLLECTIONS = 4;
+/** Fewer tiles than this is not a choice; the first screen's "Browse by" rows cover it. */
+export const MIN_COLLECTIONS = 2;
 
 /** Editions on sale at or under a price, with a couple of them to show on the tile. */
 export type PriceBandCount = {
@@ -22,8 +22,6 @@ export type PriceBandCount = {
   count: number;
   covers: readonly PublicArtworkSummary[];
 };
-
-export type HomeQuickFilterVm = { key: string; label: string; count: number; href: string };
 
 export type HomeCollectionVm = {
   key: string;
@@ -81,13 +79,9 @@ function categoryHref(slug: string): string {
   return artworkCatalogueHref({ sort: "newest", categorySlug: slug });
 }
 
-function priceBandLabel(band: PriceBandCount): string {
-  return `Up to £${band.maxPounds}`;
-}
-
 /**
  * "Start a collection": the price band first (gift buyers start there), then the largest
- * categories, three at most. Fewer than two tiles is not a choice, so none are shown.
+ * categories, four at most. Fewer than two tiles is not a choice, so none are shown.
  */
 export function buildHomeCollections(input: {
   priceBand: PriceBandCount | null;
@@ -114,44 +108,66 @@ export function buildHomeCollections(input: {
       covers: (input.categoryCovers[category.slug] ?? []).slice(0, 2),
     });
   }
-  return tiles.length >= 2 ? tiles : [];
+  return tiles.length >= MIN_COLLECTIONS ? tiles : [];
 }
 
+/** A price range the first screen offers, in whole pounds as the catalogue's filter takes them. */
+export type HomePriceRange = {
+  key: string;
+  label: string;
+  minPounds?: number;
+  maxPounds?: number;
+};
+
+/** "Under £100" and "£100 to £300", the two ranges a first-time buyer starts from. */
+export const HOME_HERO_PRICE_RANGES: readonly HomePriceRange[] = [
+  { key: "under-100", label: "Under £100", maxPounds: 99 },
+  { key: "100-300", label: "£100 to £300", minPounds: 100, maxPounds: 300 },
+];
+
+/** How many editions on sale fall in a range. */
+export type HomePriceRangeCount = { key: string; count: number };
+
+/** One "Browse by" row under the first screen's actions. */
+export type HomeBrowseRowVm = { key: string; label: string; count: number; href: string };
+
 /**
- * Quick filters under the hero, each with its count: on sale now (only when some editions are
- * sold out, otherwise it is the whole catalogue), the price band, then categories.
+ * "Browse by" in the first screen: available now, the two price ranges, and the artist with the
+ * most editions. Each row carries its count; a row that would lead to nothing is left out.
  */
-export function buildHomeQuickFilters(input: {
+export function buildHomeBrowseRows(input: {
   facets: PublicArtworkFacetCounts | null;
-  priceBand: PriceBandCount | null;
-}): HomeQuickFilterVm[] {
-  const { facets, priceBand } = input;
-  const filters: HomeQuickFilterVm[] = [];
-  if (facets && facets.availability.available > 0 && facets.availability.soldOut > 0) {
-    filters.push({
+  priceRanges: readonly HomePriceRangeCount[];
+}): HomeBrowseRowVm[] {
+  const rows: HomeBrowseRowVm[] = [
+    {
       key: "available",
       label: "Available now",
-      count: facets.availability.available,
+      count: input.facets?.availability.available ?? 0,
       href: artworkCatalogueHref({ sort: "newest", availability: "available" }),
+    },
+  ];
+  for (const range of HOME_HERO_PRICE_RANGES) {
+    rows.push({
+      key: `price-${range.key}`,
+      label: range.label,
+      count: input.priceRanges.find((counted) => counted.key === range.key)?.count ?? 0,
+      href: artworkCatalogueHref({
+        sort: "newest",
+        availability: "available",
+        ...(range.minPounds !== undefined ? { minPrice: range.minPounds } : {}),
+        ...(range.maxPounds !== undefined ? { maxPrice: range.maxPounds } : {}),
+      }),
     });
   }
-  if (priceBand) {
-    filters.push({
-      key: `price-${priceBand.maxPounds}`,
-      label: priceBandLabel(priceBand),
-      count: priceBand.count,
-      href: priceBandHref(priceBand),
+  const topArtist = [...(input.facets?.artists ?? [])].sort((a, b) => b.count - a.count)[0];
+  if (topArtist) {
+    rows.push({
+      key: `artist-${topArtist.slug}`,
+      label: topArtist.name,
+      count: topArtist.count,
+      href: `/artists/${encodeURIComponent(topArtist.slug)}`,
     });
   }
-  for (const category of facets?.categories ?? []) {
-    if (filters.length >= MAX_QUICK_FILTERS) break;
-    if (category.count < 1) continue;
-    filters.push({
-      key: `category-${category.slug}`,
-      label: category.label,
-      count: category.count,
-      href: categoryHref(category.slug),
-    });
-  }
-  return filters.length >= MIN_QUICK_FILTERS ? filters : [];
+  return rows.filter((row) => row.count > 0);
 }

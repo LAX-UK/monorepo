@@ -65,77 +65,132 @@
   }
 }
 
-/* ── First screen ────────────────────────────────────────────────────────────────────────────
-   The gallery's paper wall, edge to edge: the copy, and the release hung like a print with a
-   museum label. The wall is drawn past the container with a clipped shadow, so the page itself
-   never scrolls sideways. */
-.shop-home-hero {
-  --print-max-height: 18rem;
-  --release-max-width: calc(100vw - 2 * var(--shop-page-gutter));
-  display: grid;
-  gap: var(--shop-space-8);
-  align-items: center;
-  padding-block: var(--shop-space-8) var(--shop-space-12);
-  background: var(--color-paper);
-  box-shadow: 0 0 0 100vmax var(--color-paper);
-  clip-path: inset(0 -100vmax);
+/* ── Split features: the first screen, a single new edition and a single artist ──────────────
+   The shared split feature, on the plain page. Its media half holds one work (or portrait)
+   whole on a 4:5 mat against the page edge, so a landscape work or a missing image never
+   changes the split. On phones the media sits above the copy at the mat's own shape, and the
+   copy lines up with the page's other sections instead of the feature's own inset. */
+/* The plain tone's surface is a step lighter than the page in dark mode; these features stand on
+   the page itself, so only the mat reads as a frame. */
+.shop-home-feature {
+  background-color: transparent;
 }
 
-.shop-home-hero__release {
-  order: -1;
+.shop-home-feature[data-media-side] > :first-child {
+  aspect-ratio: 4 / 5;
+}
+
+.shop-home-feature > :last-child {
+  padding-inline: 0;
+}
+
+@media (min-width: 48rem) {
+  .shop-home-feature {
+    gap: var(--shop-space-12);
+  }
+
+  .shop-home-feature[data-media-side] > :first-child {
+    aspect-ratio: auto;
+  }
+
+  .shop-home-feature[data-media-side] > :last-child {
+    padding-inline: 0 var(--shop-space-8);
+  }
+}
+
+/* A single artist on phones: the portrait stays a portrait, not the whole first screen. */
+@media (max-width: 47.99rem) {
+  .shop-home-feature--portrait[data-media-side] > :first-child {
+    width: min(60%, 16rem);
+  }
+}
+
+.shop-home-feature__media {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.shop-home-feature__mat {
+  width: 100%;
+  max-height: 100%;
+}
+
+@media (min-width: 48rem) {
+  .shop-home-feature__mat {
+    width: auto;
+    height: 100%;
+    max-width: 100%;
+  }
+}
+
+.shop-home-feature__caption {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--shop-space-2);
+}
+
+.shop-home-feature__caption > p {
+  margin: 0;
+}
+
+.shop-home-feature__facts {
+  font-size: var(--shop-text-sm);
+}
+
+.shop-home-feature__price,
+.shop-home-feature__count {
+  padding-top: var(--shop-space-1);
+  font-size: var(--shop-text-lg);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-on-surface);
+}
+
+.shop-home-feature__bio {
+  display: -webkit-box;
+  max-width: 34rem;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--color-on-surface);
+}
+
+.shop-home-feature__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shop-space-3) var(--shop-space-6);
+}
+
+/* ── First screen ──────────────────────────────────────────────────────────────────────────── */
+.shop-home-hero {
+  padding-top: var(--shop-space-6);
 }
 
 @media (min-width: 48rem) {
   .shop-home-hero {
-    --print-max-height: 26rem;
-    --release-max-width: 40rem;
+    padding-top: var(--shop-space-8);
   }
-}
 
-@media (min-width: 64rem) {
-  .shop-home-hero {
-    --print-max-height: 28rem;
-    --release-max-width: 44rem;
-    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
-    gap: var(--shop-space-16);
+  .shop-home-hero[data-media-side] > :first-child {
     min-height: min(40rem, calc(100svh - var(--header-height, 7rem)));
-    padding-block: var(--shop-space-12);
   }
-
-  .shop-home-hero__release {
-    order: 0;
-  }
-
-  .shop-home-hero[data-has-release="false"] {
-    grid-template-columns: minmax(0, 1fr);
-    min-height: 0;
-  }
-}
-
-.shop-home-hero__copy {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--shop-space-6);
-  max-width: 35rem;
-}
-
-.shop-home-hero__title {
-  margin: 0;
-  font-family: var(--font-headline);
-  font-size: clamp(2.25rem, 4.2vw, 3.5rem);
-  font-weight: 500;
-  line-height: 1.1;
-  letter-spacing: -0.025em;
-  color: var(--color-on-surface);
 }
 
 .shop-home-hero__lead {
   margin: 0;
-  font-family: var(--font-body);
   font-size: var(--shop-text-lg);
   line-height: 1.75rem;
-  color: var(--color-on-surface-variant);
+}
+
+.shop-home-hero__now {
+  margin: var(--shop-space-3) 0 0;
+  font-size: var(--shop-text-md);
+  color: var(--color-on-surface);
 }
 
 .shop-home-hero__actions {
@@ -143,140 +198,87 @@
   flex-wrap: wrap;
   align-items: center;
   gap: var(--shop-space-3) var(--shop-space-6);
-  margin-top: var(--shop-space-2);
+  width: 100%;
 }
 
 @media (max-width: 39.99rem) {
-  .shop-home-hero__actions {
-    align-self: stretch;
-  }
-
   .shop-home-hero__actions > .shop-button {
     width: 100%;
   }
 }
 
-.shop-home-hero__filters {
-  margin-top: var(--shop-space-2);
+/* "Browse by": one hairline row per way in, its count and an arrow on the right. */
+.shop-home-browse {
+  width: 100%;
+  margin-top: var(--shop-space-6);
 }
 
-/* Quick filters: sentence-case chips, each with its count. */
-.shop-quick-filters {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--shop-space-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.shop-quick-filter {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--shop-space-2);
-  min-height: 2.25rem;
-  padding: 0 var(--shop-space-4);
-  border: 1px solid var(--color-input-border);
-  border-radius: var(--radius-pill);
-  background: var(--color-surface);
-  font-family: var(--font-body);
+.shop-home-browse__label {
+  margin: 0 0 var(--shop-space-2);
+  font-family: var(--font-label);
   font-size: var(--shop-text-sm);
-  font-weight: 500;
-  line-height: 1;
-  color: var(--color-on-surface);
-  text-decoration: none;
-  white-space: nowrap;
-  transition: border-color var(--motion-duration-sm) ease, background-color
-    var(--motion-duration-sm) ease;
-}
-
-.shop-quick-filter:hover {
-  border-color: var(--color-control-border-hover);
-  background: var(--color-surface-container-low);
-}
-
-.shop-quick-filter:active {
-  background: var(--color-surface-container);
-}
-
-.shop-quick-filter__count {
-  font-weight: 400;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-on-surface-variant);
-}
-
-/* The release: the print whole inside its white border, then the label under it. */
-.shop-home-hero__release {
-  display: flex;
-  flex-direction: column;
-  gap: var(--shop-space-6);
-  justify-self: center;
-  width: fit-content;
-  max-width: 100%;
-  margin: 0;
-}
-
-.shop-home-hero__print-link {
-  display: block;
-}
-
-.shop-home-print {
-  --print-border: clamp(0.75rem, 1.6vw, 1.375rem);
-  display: block;
-  width: min(
-    var(--release-max-width),
-    calc(var(--print-max-height) * var(--print-aspect) + 2 * var(--print-border))
-  );
-  padding: var(--print-border);
-  background: var(--color-passe-partout);
-  box-shadow: var(--shadow-hung-print);
-}
-
-.shop-home-print__image {
-  position: relative;
-  display: block;
-  aspect-ratio: var(--print-aspect);
-}
-
-/* The museum label: artist and price, title and edition, then technique and size. */
-.shop-home-label {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--shop-space-1) var(--shop-space-8);
-  align-items: baseline;
-  font-family: var(--font-body);
-  font-size: var(--shop-text-sm);
+  font-weight: 600;
   line-height: 1.25rem;
   color: var(--color-on-surface-variant);
 }
 
-.shop-home-label__artist {
-  font-family: var(--font-headline);
-  font-size: var(--shop-text-md);
-  font-weight: 500;
-  line-height: 1.375rem;
-  color: var(--color-on-surface);
+.shop-home-browse__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  border-bottom: 1px solid var(--color-border-hairline);
 }
 
-.shop-home-label__price {
-  justify-self: end;
+.shop-home-browse__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--shop-space-4);
+  min-height: 3rem;
+  border-top: 1px solid var(--color-border-hairline);
   font-size: var(--shop-text-md);
-  font-weight: 600;
+  color: var(--color-on-surface);
+  text-decoration: none;
+  text-underline-offset: 4px;
+}
+
+.shop-home-browse__row:hover .shop-home-browse__name {
+  text-decoration: underline;
+}
+
+.shop-home-browse__name {
+  min-width: 0;
+}
+
+.shop-home-browse__count {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: var(--shop-space-3);
   font-variant-numeric: tabular-nums;
-  color: var(--color-on-surface);
+  color: var(--color-on-surface-variant);
 }
 
-.shop-home-label__edition {
-  justify-self: end;
+.shop-home-browse__icon {
+  width: 1rem;
+  height: 1rem;
 }
 
-.shop-home-label__facts {
-  grid-column: 1 / -1;
+@media (prefers-reduced-motion: no-preference) {
+  .shop-home-browse__icon {
+    transition: transform var(--motion-duration-sm) ease;
+  }
+
+  .shop-home-browse__row:hover .shop-home-browse__icon {
+    transform: translateX(2px);
+  }
 }
 
-/* ── Trust strip ─────────────────────────────────────────────────────────────────────────── */
+/* ── Trust strip ───────────────────────────────────────────────────────────────────────────
+   Four plain text columns between hairlines on larger screens; one line on phones. */
 .shop-home-trust {
   margin-top: calc(-1 * var(--shop-space-8));
+  border-block: 1px solid var(--color-border-hairline);
 }
 
 @media (min-width: 64rem) {
@@ -286,41 +288,50 @@
 }
 
 .shop-home-trust__list {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  display: none;
   margin: 0;
   padding: 0;
   list-style: none;
-  border-bottom: 1px solid var(--color-border-hairline);
 }
 
-/* Phones: one promise per row. Tablets: two by two. Desktop: four across. */
-.shop-home-trust__item {
-  display: flex;
-  align-items: flex-start;
-  gap: var(--shop-space-3);
-  padding: var(--shop-space-4) 0;
+.shop-home-trust__phone {
+  margin: 0;
+  padding-block: var(--shop-space-4);
+  font-size: var(--shop-text-sm);
+  line-height: 1.25rem;
+  color: var(--color-on-surface);
 }
 
-.shop-home-trust__item + .shop-home-trust__item {
-  border-top: 1px solid var(--color-border-hairline);
-}
-
-@media (min-width: 40rem) and (max-width: 63.99rem) {
+@media (min-width: 40rem) {
   .shop-home-trust__list {
+    display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .shop-home-trust__item {
-    padding: var(--shop-space-6) var(--shop-space-4) var(--shop-space-6) 0;
+  .shop-home-trust__phone {
+    display: none;
   }
+}
 
-  .shop-home-trust__item + .shop-home-trust__item {
-    border-top: 0;
+@media (min-width: 64rem) {
+  .shop-home-trust__list {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
+}
 
+.shop-home-trust__item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--shop-space-1);
+  min-width: 0;
+  padding: var(--shop-space-6) var(--shop-space-6) var(--shop-space-6) 0;
+}
+
+/* Tablets: two by two, divided down the middle and across. */
+@media (min-width: 40rem) and (max-width: 63.99rem) {
   .shop-home-trust__item:nth-child(even) {
-    padding-left: var(--shop-space-4);
+    padding-left: var(--shop-space-6);
     border-left: 1px solid var(--color-border-hairline);
   }
 
@@ -330,30 +341,87 @@
 }
 
 @media (min-width: 64rem) {
-  .shop-home-trust__list {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
-
-  .shop-home-trust__item {
-    padding: var(--shop-space-6) var(--shop-space-6) var(--shop-space-6) 0;
-  }
-
   .shop-home-trust__item + .shop-home-trust__item {
     padding-left: var(--shop-space-6);
-    border-top: 0;
     border-left: 1px solid var(--color-border-hairline);
   }
 }
 
-.shop-home-trust__icon {
-  flex: none;
-  width: 1.5rem;
-  height: 1.5rem;
-  margin-top: 0.125rem;
-  color: var(--color-product-accent);
+.shop-home-trust__title {
+  margin: 0;
+  font-size: var(--shop-text-md);
+  font-weight: 600;
+  line-height: 1.375rem;
+  color: var(--color-on-surface);
 }
 
-.shop-home-trust__text {
+.shop-home-trust__line {
+  margin: 0;
+  font-size: var(--shop-text-sm);
+  line-height: 1.25rem;
+  color: var(--color-on-surface-variant);
+}
+
+a.shop-home-trust__line {
+  color: var(--color-on-surface);
+}
+
+/* ── Artists ───────────────────────────────────────────────────────────────────────────────── */
+.shop-artist-portrait {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  aspect-ratio: 4 / 5;
+  background: var(--color-surface-container-low);
+}
+
+.shop-artist-portrait__initials {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-headline);
+  font-size: 2.25rem;
+  font-weight: 500;
+  letter-spacing: -0.025em;
+  color: var(--color-on-surface-variant);
+}
+
+/* Two artists: each a portrait beside its caption, so the row has no empty half. */
+.shop-home-artist-pairs {
+  display: grid;
+  gap: var(--shop-space-8) var(--shop-space-12);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+@media (min-width: 48rem) {
+  .shop-home-artist-pairs {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+.shop-home-artist-pair {
+  display: grid;
+  grid-template-columns: 7rem minmax(0, 1fr);
+  gap: var(--shop-space-4);
+  align-items: center;
+}
+
+@media (min-width: 64rem) {
+  .shop-home-artist-pair {
+    grid-template-columns: 10rem minmax(0, 1fr);
+    gap: var(--shop-space-6);
+  }
+}
+
+.shop-home-artist-pair__portrait {
+  display: block;
+}
+
+.shop-home-artist-pair__body {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -361,76 +429,72 @@
   min-width: 0;
 }
 
-.shop-home-trust__title {
+.shop-home-artist-pair__name {
+  display: -webkit-box;
   margin: 0;
-  font-family: var(--font-body);
-  font-size: var(--shop-text-md);
-  font-weight: 600;
-  line-height: 1.375rem;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-family: var(--font-headline);
+  font-size: 1.25rem;
+  font-weight: 500;
+  line-height: 1.75rem;
   color: var(--color-on-surface);
 }
 
-.shop-home-trust__body {
+.shop-home-artist-pair__facts {
   margin: 0;
   font-size: var(--shop-text-sm);
   line-height: 1.25rem;
   color: var(--color-on-surface-variant);
 }
 
-.shop-home-trust__text .shop-inline-link {
+.shop-home-artist-pair__count {
+  margin: var(--shop-space-1) 0 0;
+  font-size: var(--shop-text-sm);
+  font-weight: 500;
+  line-height: 1.25rem;
+  color: var(--color-on-surface);
+}
+
+.shop-home-artist-pair__link {
+  margin-top: var(--shop-space-2);
   font-size: var(--shop-text-sm);
 }
 
-/* ── Behind the edition ──────────────────────────────────────────────────────────────────── */
-.shop-home-story {
-  display: grid;
-  gap: var(--shop-space-8);
-  align-items: center;
+/* Five to eight artists: a rail with 2.2 cards in view on phones and 4.5 on large screens, so
+   the next card always shows there is more. */
+.shop-home-artist-rail {
+  display: flex;
+  gap: var(--shop-space-4);
+  margin: 0;
+  padding: 0 0 var(--shop-space-2);
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  list-style: none;
+  scrollbar-width: none;
 }
 
-@media (min-width: 64rem) {
-  .shop-home-story {
-    grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
-    gap: var(--shop-space-16);
+.shop-home-artist-rail__item {
+  flex: none;
+  width: calc((100% - 2 * var(--shop-space-4)) / 2.2);
+  scroll-snap-align: start;
+}
+
+@media (min-width: 40rem) {
+  .shop-home-artist-rail__item {
+    width: calc((100% - 3 * var(--shop-space-4)) / 3.3);
   }
 }
 
-.shop-home-story__image {
-  position: relative;
-  aspect-ratio: 4 / 3;
-  overflow: hidden;
-  background: var(--color-surface-container-low);
-}
+@media (min-width: 64rem) {
+  .shop-home-artist-rail {
+    gap: var(--shop-space-6);
+  }
 
-.shop-home-story__body {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--shop-space-4);
-}
-
-.shop-home-story__title {
-  margin: 0;
-  font-family: var(--font-headline);
-  font-size: clamp(1.75rem, 3vw, 2.125rem);
-  font-weight: 500;
-  line-height: 1.25;
-  letter-spacing: -0.015em;
-}
-
-.shop-home-story__text {
-  margin: 0;
-  max-width: 52ch;
-  font-size: var(--shop-text-lg);
-  line-height: 1.75rem;
-  color: var(--color-on-surface-variant);
-}
-
-.shop-home-story__actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--shop-space-3) var(--shop-space-6);
+  .shop-home-artist-rail__item {
+    width: calc((100% - 4 * var(--shop-space-6)) / 4.5);
+  }
 }
 
 /* ── Start a collection ──────────────────────────────────────────────────────────────────── */
@@ -449,8 +513,12 @@
 }
 
 @media (min-width: 64rem) {
-  .shop-collections {
+  .shop-collections[data-count="3"] {
     grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .shop-collections[data-count="4"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 }
 

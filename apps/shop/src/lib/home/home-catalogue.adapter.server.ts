@@ -1,5 +1,6 @@
 import type { HomeCatalogueReader } from "@/lib/home/home-catalogue.port";
 import {
+  fetchPublicArtistBySlug,
   fetchPublicArtists,
   fetchPublicArtworkFacets,
   fetchPublicArtworks,
@@ -10,4 +11,5 @@ export const shopApiHomeCatalogueReader: HomeCatalogueReader = {
   listEditions: (query) => fetchPublicArtworks(query),
   countFacets: () => fetchPublicArtworkFacets({}),
   listArtists: (query) => fetchPublicArtists(query),
+  getArtist: (slug) => fetchPublicArtistBySlug(slug),
 };

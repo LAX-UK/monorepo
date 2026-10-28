@@ -13,7 +13,14 @@ export type ShopEditionCardProps = {
   /** Above-the-fold cards load their image first. */
   priority?: boolean;
   sizes?: string;
+  /**
+   * `side` sets the mat beside the caption (five parts to four), for a pair of editions that
+   * would otherwise leave half a row empty; the caption ends with a "See the edition" cue.
+   */
+  layout?: "stacked" | "side";
 };
+
+const SEE_EDITION_CUE = "See the edition";
 
 const DEFAULT_SIZES = "(min-width: 80rem) 22vw, (min-width: 48rem) 30vw, 50vw";
 
@@ -29,10 +36,15 @@ export function ShopEditionCard({
   hideArtist = false,
   priority = false,
   sizes = DEFAULT_SIZES,
+  layout = "stacked",
 }: ShopEditionCardProps) {
   const status = card.status;
   return (
-    <article className="shop-edition-card" data-status={status?.kind ?? "none"}>
+    <article
+      className="shop-edition-card"
+      data-status={status?.kind ?? "none"}
+      data-layout={layout}
+    >
       <div className="shop-edition-card__mat marketing-work-mat">
         <span className="shop-edition-card__print">
           <ShopMediaImage
@@ -77,6 +89,12 @@ export function ShopEditionCard({
           </p>
         ) : card.priceLabel ? (
           <p className="shop-edition-card__price">{card.priceLabel}</p>
+        ) : null}
+        {layout === "side" ? (
+          // The title's link already covers the card; this only says where it leads.
+          <span className="shop-edition-card__cue" aria-hidden="true">
+            {SEE_EDITION_CUE}
+          </span>
         ) : null}
       </div>
     </article>

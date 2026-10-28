@@ -1,95 +1,61 @@
 import { SHOP_HOME_CONTENT } from "@/content/home/shop-home-content";
-import { SHOP_HELP_CONTACT } from "@/content/policies/help";
-import { SHOP_POLICY_PATHS, type ShopPolicySlug } from "@/content/policies/shop-policy-status";
-import {
-  type CatalogueArtistCardVm,
-  buildCatalogueArtistCards,
-} from "@/lib/catalogue/catalogue-artist-card.vm";
-import { isCatalogueArtworkSoldOut } from "@/lib/catalogue/catalogue-artwork-card.vm";
-import { formatReleaseDate, isNewRelease } from "@/lib/catalogue/edition-release";
-import { type CheckoutDeliveryTimes, workingDaysLabel } from "@/lib/checkout/checkout-delivery";
+import type { ShopPolicySlug } from "@/content/policies/shop-policy-status";
+import type { CheckoutDeliveryTimes } from "@/lib/checkout/checkout-delivery";
 import { type GalleryTeamVm, buildGalleryTeam } from "@/lib/gallery-team/gallery-team.vm";
+import { type HomeArtistsVm, buildHomeArtists } from "@/lib/home/home-artists";
 import {
+  type HomeBrowseRowVm,
   type HomeCollectionVm,
-  type HomeQuickFilterVm,
-  MIN_COLLECTION_SIZE,
+  MAX_COLLECTIONS,
+  buildHomeBrowseRows,
   buildHomeCollections,
-  buildHomeQuickFilters,
   chooseCollectionCategories,
   choosePriceBand,
 } from "@/lib/home/home-browse-paths";
+import { type HomeNewEditionsVm, buildHomeNewEditions } from "@/lib/home/home-new-editions";
 import type { HomePageComposerResult, HomeSectionKey } from "@/lib/home/home-page.composer";
+import { homeReleaseEyebrow, selectHomeRelease } from "@/lib/home/home-release";
 import { type HomeSectionId, resolveHomeSections } from "@/lib/home/home-sections";
+import { type HomeTrustVm, buildHomeTrust } from "@/lib/home/home-trust";
 import type { ShopPageSections } from "@/lib/layout/shop-page-sections";
-import { legalEntityFor } from "@auction/branding";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import type { MarketingProductDoorVm } from "@auction/marketing-ui";
 import type { PublicArtworkSummary } from "@auction/shop-contracts";
-import { FULFILMENT_SURCHARGE_PENCE } from "@auction/shop-domain";
 import { formatGbpPenceForDisplay } from "@auction/shop-portal/vm";
 
-/** The new-editions row is one desktop row of four. */
-const NEW_EDITIONS_ROW = 4;
-/** An artists row needs this many to look chosen rather than missing. */
-const MIN_HOME_ARTISTS = 3;
-/** "by {n} gallery artists" only reads as a strength from this many. */
+/** "by {n} gallery artists" only reads as a strength from this many; below it, names read better. */
 const MIN_ARTIST_COUNT_IN_LEAD = 3;
 
 export type HomeReleaseVm = {
   href: string;
   imageUrl: string;
   imageAlt: string;
-  artistName: string;
-  /** "Harbour light, 2026". */
-  titleLine: string;
-  /** "£340", or "Sold out" in its place. */
-  priceLabel: string | null;
-  /** "Giclée print · 60 × 40 cm"; null when neither is catalogued. */
-  factsLine: string | null;
-  /** "Edition of 50"; null when the size is not catalogued. */
-  editionLine: string | null;
+  /** "Now released: Vessel Study, 2014 · £120". */
+  line: string;
 };
 
 export type HomeHeroVm = {
-  /** "New release · 28 Oct 2026", "Featured edition", or null without a release. */
+  /** "New release · 28 Oct 2026", "Featured edition", or null. */
   eyebrow: string | null;
   title: string;
   lead: string;
-  primary: { label: string; href: string };
-  /** "See Harbour light", beside the primary action; null without a release. */
+  /** "Browse editions"; null when nothing is on sale. */
+  primary: { label: string; href: string } | null;
+  /** "See Vessel Study", beside the primary action; null without a release. */
   workLink: { label: string; href: string } | null;
   release: HomeReleaseVm | null;
-};
-
-export type HomeTrustItemVm = {
-  id: "editions" | "gallery" | "delivery" | "returns";
-  title: string;
-  body: string;
-  link: { label: string; href: string } | null;
-};
-
-export type HomeNewEditionsVm = {
-  items: PublicArtworkSummary[];
-  viewAll: { label: string; href: string };
-};
-
-export type HomeStoryVm = NonNullable<HomePageComposerResult["story"]>;
-
-export type HomeArtistsVm = {
-  cards: CatalogueArtistCardVm[];
-  /** lax.art's artist directory, where the full stories are; null when lax.art is not linked. */
-  laxArtHref: string | null;
+  browseRows: HomeBrowseRowVm[];
+  /** With nothing on sale, the one way on from the first screen. */
+  emptyAction: { label: string; href: string } | null;
 };
 
 export type HomePageViewModel = {
   /** The sections shown, in order, and the surface each renders on. */
   layout: ShopPageSections<HomeSectionId>;
   hero: HomeHeroVm;
-  trust: HomeTrustItemVm[];
-  quickFilters: HomeQuickFilterVm[];
-  /** Null when there are too few editions for a row; the error state shows instead if it failed. */
+  trust: HomeTrustVm;
+  /** Null when no edition is left after the release; the error state shows if the read failed. */
   newEditions: HomeNewEditionsVm | null;
-  story: HomeStoryVm | null;
   artists: HomeArtistsVm | null;
   collections: HomeCollectionVm[];
   galleryTeam: GalleryTeamVm;
@@ -110,142 +76,88 @@ function editionHref(slug: string): string {
   return `/artworks/${encodeURIComponent(slug)}`;
 }
 
+function listNames(names: readonly string[]): string {
+  if (names.length <= 1) return names[0] ?? "";
+  return `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+}
+
 /**
- * The release in the first screen: the first featured edition with an image that can still be
- * bought, then any featured edition with an image, then the newest edition on sale.
+ * "Editions by Flora Powers, from £42. Prices include VAT." From three artists the names give way
+ * to "by 12 gallery artists". It says nothing about signing or numbering: each edition states
+ * those facts for itself.
  */
-export function selectHomeRelease(
-  featured: readonly PublicArtworkSummary[],
-  newest: readonly PublicArtworkSummary[],
-): { item: PublicArtworkSummary; featured: boolean } | null {
-  const withImage = (item: PublicArtworkSummary) => item.imageUrl !== null;
-  const onSale = featured.find((item) => withImage(item) && !isCatalogueArtworkSoldOut(item));
-  if (onSale) return { item: onSale, featured: true };
-  const anyFeatured = featured.find(withImage);
-  if (anyFeatured) return { item: anyFeatured, featured: true };
-  const fallback = newest.find(withImage);
-  return fallback ? { item: fallback, featured: false } : null;
-}
-
-function releaseEyebrow(item: PublicArtworkSummary, featured: boolean, now: Date): string {
-  const date = formatReleaseDate(item.listedAt);
-  if (date && isNewRelease(item.listedAt, now)) return `New release · ${date}`;
-  return featured ? "Featured edition" : "On sale now";
-}
-
-function toRelease(item: PublicArtworkSummary): HomeReleaseVm {
-  const soldOut = isCatalogueArtworkSoldOut(item);
-  const size = item.dimensionsCmDisplay ?? item.dimensions;
-  const facts = [item.medium, size].filter((part): part is string => Boolean(part?.trim()));
-  return {
-    href: editionHref(item.slug),
-    imageUrl: item.imageUrl ?? "",
-    imageAlt: `${item.title} by ${item.artistName}`,
-    artistName: item.artistName,
-    titleLine: item.yearCreated ? `${item.title}, ${item.yearCreated}` : item.title,
-    priceLabel: soldOut
-      ? "Sold out"
-      : item.printPricePence !== null
-        ? formatGbpPenceForDisplay(item.printPricePence)
-        : null,
-    factsLine: facts.length > 0 ? facts.join(" · ") : null,
-    editionLine:
-      item.availability.totalEditions > 0 ? `Edition of ${item.availability.totalEditions}` : null,
-  };
-}
-
-/** "Limited-edition prints by 12 gallery artists, from £95. Prices include VAT." */
-export function heroLead(artistCount: number | null, lowestPricePence: number | null): string {
-  const artists =
-    artistCount !== null && artistCount >= MIN_ARTIST_COUNT_IN_LEAD
-      ? ` by ${artistCount} gallery artists`
-      : "";
+export function heroLead(input: {
+  artistNames: readonly string[];
+  artistCount: number | null;
+  lowestPricePence: number | null;
+}): string {
+  const count = input.artistCount ?? input.artistNames.length;
+  const by =
+    count >= MIN_ARTIST_COUNT_IN_LEAD
+      ? ` by ${count} gallery artists`
+      : input.artistNames.length > 0
+        ? ` by ${listNames(input.artistNames)}`
+        : " by the gallery’s artists";
   const from =
-    lowestPricePence !== null ? ` from ${formatGbpPenceForDisplay(lowestPricePence)}` : "";
-  const joiner = artists && from ? "," : "";
-  return `Limited-edition prints${artists}${joiner}${from}. Prices include VAT.`;
+    input.lowestPricePence !== null
+      ? `, from ${formatGbpPenceForDisplay(input.lowestPricePence)}`
+      : "";
+  return `Editions${by}${from}. Prices include VAT.`;
 }
 
-function buildHero(input: HomePageComposerResult, now: Date): HomeHeroVm {
-  const selected = selectHomeRelease(input.featured, input.editions);
-  const release = selected ? toRelease(selected.item) : null;
+function releaseLine(item: PublicArtworkSummary): string {
+  const title = item.yearCreated ? `${item.title}, ${item.yearCreated}` : item.title;
+  const parts = [title];
+  if (item.printPricePence !== null) parts.push(formatGbpPenceForDisplay(item.printPricePence));
+  return `Now released: ${parts.join(" · ")}`;
+}
+
+/** True only when the catalogue answered and holds nothing that can be bought now. */
+function nothingOnSale(input: HomePageComposerResult): boolean {
+  return input.availableCount === 0 && !input.sectionErrors.editions;
+}
+
+function buildHero(input: HomePageComposerResult, context: HomePageContext): HomeHeroVm {
+  const copy = SHOP_HOME_CONTENT.hero;
+  if (nothingOnSale(input)) {
+    const art = context.productLinks.find((link) => link.id === "art");
+    return {
+      eyebrow: null,
+      title: copy.emptyTitle,
+      lead:
+        (input.facets?.availability.soldOut ?? 0) > 0 ? copy.emptyLeadSoldOut : copy.emptyLeadFirst,
+      primary: null,
+      workLink: null,
+      release: null,
+      browseRows: [],
+      emptyAction: art
+        ? { label: copy.emptyArtLabel, href: art.href }
+        : { label: copy.emptyHelpLabel, href: "/help" },
+    };
+  }
+  const choice = selectHomeRelease(input.featured, input.editions);
   return {
-    eyebrow: selected ? releaseEyebrow(selected.item, selected.featured, now) : null,
-    title: SHOP_HOME_CONTENT.hero.title,
-    lead: heroLead(input.artistCount, input.lowestPricePence),
-    primary: { label: SHOP_HOME_CONTENT.hero.primaryLabel, href: "/artworks" },
-    workLink: selected
-      ? { label: `See ${selected.item.title}`, href: editionHref(selected.item.slug) }
+    eyebrow: choice ? homeReleaseEyebrow(choice, context.now) : null,
+    title: copy.title,
+    lead: heroLead({
+      artistNames: input.artists.map((artist) => artist.name),
+      artistCount: input.artistCount,
+      lowestPricePence: input.lowestPricePence,
+    }),
+    primary: { label: copy.primaryLabel, href: "/artworks" },
+    workLink: choice
+      ? { label: `See ${choice.item.title}`, href: editionHref(choice.item.slug) }
       : null,
-    release,
-  };
-}
-
-function policyLink(
-  linkable: readonly ShopPolicySlug[],
-  slug: ShopPolicySlug,
-  label: string,
-): HomeTrustItemVm["link"] {
-  return linkable.includes(slug) ? { label, href: SHOP_POLICY_PATHS[slug] } : null;
-}
-
-/** Four plain promises under the hero, each one checkout and the policies keep. */
-export function buildHomeTrust(context: HomePageContext): HomeTrustItemVm[] {
-  const delivery = formatGbpPenceForDisplay(FULFILMENT_SURCHARGE_PENCE.uk_insured_delivery);
-  const window = context.deliveryTimes.ukDelivery;
-  const collection = FULFILMENT_SURCHARGE_PENCE.collect_new_cavendish === 0 ? "free " : "";
-  return [
-    {
-      id: "editions",
-      title: "Limited editions",
-      body: "Every work states its edition size. Your print’s number is given when your order is fulfilled.",
-      link: null,
-    },
-    {
-      id: "gallery",
-      title: "From our Marylebone gallery",
-      body: `Sold by ${legalEntityFor("shop").tradingName}, ${SHOP_HELP_CONTACT.address}.`,
-      link: policyLink(context.linkablePolicies, "help", "Help and contact"),
-    },
-    {
-      id: "delivery",
-      title: `Insured UK delivery, ${delivery}`,
-      body: `${window ? `${workingDaysLabel(window)}, or ` : "Or "}${collection}collection from the gallery.`,
-      link: policyLink(context.linkablePolicies, "delivery", "Delivery"),
-    },
-    {
-      id: "returns",
-      title: "14-day cancellation",
-      body: "Change your mind within 14 days of delivery.",
-      link: policyLink(context.linkablePolicies, "returns", "Returns"),
-    },
-  ];
-}
-
-function buildNewEditions(
-  input: HomePageComposerResult,
-  releaseSlug: string | null,
-): HomeNewEditionsVm | null {
-  const others = input.editions.filter((item) => item.slug !== releaseSlug);
-  // The release may repeat below when leaving it out would leave the row short.
-  const pool = others.length >= MIN_COLLECTION_SIZE ? others : input.editions;
-  if (pool.length < MIN_COLLECTION_SIZE) return null;
-  const total = input.availableCount;
-  return {
-    items: pool.slice(0, NEW_EDITIONS_ROW),
-    viewAll: {
-      label: total !== null && total > NEW_EDITIONS_ROW ? `View all ${total}` : "View all",
-      href: "/artworks?availability=available",
-    },
-  };
-}
-
-function buildArtists(input: HomePageComposerResult, artBaseUrl: URL | null): HomeArtistsVm | null {
-  const withEditions = input.artists.filter((artist) => artist.artworkCount > 0);
-  if (withEditions.length < MIN_HOME_ARTISTS) return null;
-  return {
-    cards: buildCatalogueArtistCards(withEditions.slice(0, 4)),
-    laxArtHref: artBaseUrl ? new URL("/artists", artBaseUrl).toString() : null,
+    release: choice
+      ? {
+          href: editionHref(choice.item.slug),
+          imageUrl: choice.item.imageUrl ?? "",
+          imageAlt: `${choice.item.title} by ${choice.item.artistName}`,
+          line: releaseLine(choice.item),
+        }
+      : null,
+    browseRows: buildHomeBrowseRows({ facets: input.facets, priceRanges: input.priceRanges }),
+    emptyAction: null,
   };
 }
 
@@ -263,44 +175,59 @@ export function buildShopProductDoors(
 }
 
 /**
- * The Shop home page: one release told well, the promises that matter, a short curated
- * selection and the ways in, then the gallery team and the rest of LAX. Every section is built
- * from what the catalogue holds now, and a section with too little to show is left out.
+ * The Shop home page: one release told well, the promises that matter, the newest editions and
+ * the artists behind them, the ways in, then the rest of LAX and the gallery team. Every section is
+ * built from what the catalogue holds now; a section with nothing to show is left out, and with
+ * nothing on sale only the first screen, the doors and the gallery team remain.
  */
 export function buildHomePageViewModel(
   input: HomePageComposerResult,
   context: HomePageContext,
 ): HomePageViewModel {
-  const hero = buildHero(input, context.now);
-  const releaseSlug = selectHomeRelease(input.featured, input.editions)?.item.slug ?? null;
+  const empty = nothingOnSale(input);
+  const hero = buildHero(input, context);
+  const releaseSlug = empty
+    ? null
+    : (selectHomeRelease(input.featured, input.editions)?.item.slug ?? null);
   const priceBand = choosePriceBand(input.priceBands, input.availableCount);
-  const categories = chooseCollectionCategories(input.facets, priceBand ? 2 : 3);
+  const categories = chooseCollectionCategories(
+    input.facets,
+    MAX_COLLECTIONS - (priceBand ? 1 : 0),
+  );
 
   const trust = buildHomeTrust(context);
-  const newEditions = buildNewEditions(input, releaseSlug);
-  const artists = buildArtists(input, context.artBaseUrl);
-  const collections = buildHomeCollections({
-    priceBand,
-    categories,
-    categoryCovers: input.categoryCovers,
-  });
+  const newEditions = empty
+    ? null
+    : buildHomeNewEditions({
+        editions: input.editions,
+        releaseSlug,
+        availableCount: input.availableCount,
+      });
+  const artists = empty
+    ? null
+    : buildHomeArtists({
+        artists: input.artists,
+        total: input.artistCount,
+        soloDetail: input.soloArtist,
+        artBaseUrl: context.artBaseUrl,
+      });
+  const collections = empty
+    ? []
+    : buildHomeCollections({ priceBand, categories, categoryCovers: input.categoryCovers });
   const doors = buildShopProductDoors(context.productLinks);
 
   return {
     layout: resolveHomeSections({
-      trust: trust.length > 0,
+      trust: !empty,
       // A failed read keeps the section, with its error state in place of the row.
       "new-editions": newEditions !== null || Boolean(input.sectionErrors.editions),
-      story: input.story !== null,
       artists: artists !== null,
       collections: collections.length > 0,
       "product-doors": doors.length > 0,
     }),
     hero,
     trust,
-    quickFilters: buildHomeQuickFilters({ facets: input.facets, priceBand }),
     newEditions,
-    story: input.story,
     artists,
     collections,
     galleryTeam: buildGalleryTeam({ context: "home" }),

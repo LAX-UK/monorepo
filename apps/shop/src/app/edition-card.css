@@ -172,3 +172,46 @@
   width: 1rem;
   height: 1rem;
 }
+
+/* Side by side, for a pair: the mat (five parts) beside the caption (four parts), the caption
+   resting on the mat's foot so the price lines up across the pair. */
+.shop-edition-card[data-layout="side"] {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 4fr);
+  gap: var(--shop-space-6);
+  align-items: end;
+}
+
+.shop-edition-card[data-layout="side"] .shop-edition-card__body {
+  flex: none;
+  padding-bottom: var(--shop-space-1);
+}
+
+.shop-edition-card__cue {
+  margin-top: var(--shop-space-3);
+  font-size: var(--shop-text-sm);
+  font-weight: 600;
+  line-height: 1.25rem;
+  color: var(--color-on-surface);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 35%, transparent);
+  text-underline-offset: 4px;
+}
+
+.shop-edition-card:hover .shop-edition-card__cue {
+  text-decoration-color: currentColor;
+}
+
+/* One work standing on its own on the same mat as the card: the first screen's release and a
+   single new edition. */
+.shop-work-mat {
+  position: relative;
+  display: block;
+  aspect-ratio: 4 / 5;
+}
+
+.shop-work-mat__print {
+  position: absolute;
+  inset: 7%;
+  display: block;
+}

@@ -1,4 +1,5 @@
 import type {
+  PublicArtistDetail,
   PublicArtistList,
   PublicArtworkFacetCounts,
   PublicArtworkList,
@@ -10,11 +11,21 @@ export type HomeEditionQuery = {
   placement?: "featured_prints";
   availability?: "available";
   categorySlug?: string;
+  minPrice?: number;
   maxPrice?: number;
   sort?: "priceAsc";
 };
 
-export type HomeArtistQuery = { limit: number; placement?: "featured_artists" };
+/**
+ * Artists with Shop editions. `hasAvailableEditions` keeps only artists with an edition on sale
+ * now; `latestEdition` orders them by their newest listing.
+ */
+export type HomeArtistQuery = {
+  limit: number;
+  placement?: "featured_artists";
+  hasAvailableEditions?: true;
+  sort?: "latestEdition";
+};
 
 /**
  * What the home page reads from the catalogue. The composer depends on this, not on the HTTP
@@ -25,4 +36,6 @@ export type HomeCatalogueReader = {
   /** Counts by availability, category and artist across the Shop channel. */
   countFacets(): Promise<PublicArtworkFacetCounts>;
   listArtists(query: HomeArtistQuery): Promise<PublicArtistList>;
+  /** One artist's profile, for the section that features a single artist. */
+  getArtist(slug: string): Promise<PublicArtistDetail | null>;
 };

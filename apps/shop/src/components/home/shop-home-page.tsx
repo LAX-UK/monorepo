@@ -1,11 +1,8 @@
 import { ShopGalleryTeamBand } from "@/components/gallery-team/shop-gallery-team-band";
+import { HomeArtistsSection } from "@/components/home/sections/home-artists";
+import { HomeCollectionsSection } from "@/components/home/sections/home-collections";
 import { HomeHero } from "@/components/home/sections/home-hero";
-import {
-  HomeArtistsSection,
-  HomeCollectionsSection,
-  HomeStorySection,
-  NewEditionsSection,
-} from "@/components/home/sections/home-sections";
+import { NewEditionsSection } from "@/components/home/sections/home-new-editions";
 import { HomeTrustStrip } from "@/components/home/sections/home-trust-strip";
 import { ShopProductDoors } from "@/components/product-doors/shop-product-doors";
 import { loadCheckoutDeliveryTimes } from "@/lib/checkout/checkout-delivery.server";
@@ -23,9 +20,9 @@ import { loadLinkableShopPolicies } from "@/lib/policies/shop-policy-publication
 function HomeSection({ id, vm, now }: { id: HomeSectionId; vm: HomePageViewModel; now: Date }) {
   switch (id) {
     case "hero":
-      return <HomeHero hero={vm.hero} quickFilters={vm.quickFilters} />;
+      return <HomeHero hero={vm.hero} />;
     case "trust":
-      return <HomeTrustStrip items={vm.trust} />;
+      return <HomeTrustStrip trust={vm.trust} />;
     case "new-editions":
       return (
         <NewEditionsSection
@@ -34,8 +31,6 @@ function HomeSection({ id, vm, now }: { id: HomeSectionId; vm: HomePageViewModel
           now={now}
         />
       );
-    case "story":
-      return <HomeStorySection story={vm.story} />;
     case "artists":
       return <HomeArtistsSection artists={vm.artists} />;
     case "collections":

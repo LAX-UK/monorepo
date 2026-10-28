@@ -3,8 +3,8 @@ import type { PublicArtworkFacetCounts } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 import {
   type PriceBandCount,
+  buildHomeBrowseRows,
   buildHomeCollections,
-  buildHomeQuickFilters,
   chooseCollectionCategories,
   choosePriceBand,
 } from "./home-browse-paths";
@@ -72,48 +72,36 @@ describe("collections", () => {
   });
 });
 
-describe("quick filters", () => {
-  it("offers on sale now, the price band and categories, each with its count", () => {
-    const filters = buildHomeQuickFilters({
-      facets: facets([{ slug: "portraits", label: "Portraits", count: 9 }]),
-      priceBand: band(150, 5),
+describe("browse by rows", () => {
+  it("offers available now, the two price ranges and the artist with most editions", () => {
+    const rows = buildHomeBrowseRows({
+      facets: {
+        availability: { available: 3, soldOut: 1 },
+        categories: [],
+        artists: [
+          { slug: "juno", name: "Juno Frost", count: 1 },
+          { slug: "flora-powers", name: "Flora Powers", count: 4 },
+        ],
+      },
+      priceRanges: [
+        { key: "under-100", count: 2 },
+        { key: "100-300", count: 1 },
+      ],
     });
-    expect(filters.map((filter) => [filter.label, filter.count, filter.href])).toEqual([
-      ["Available now", 20, "/artworks?availability=available"],
-      ["Up to £150", 5, "/artworks?availability=available&maxPrice=150"],
-      ["Portraits", 9, "/artworks?categorySlug=portraits"],
+    expect(rows.map((row) => [row.label, row.count, row.href])).toEqual([
+      ["Available now", 3, "/artworks?availability=available"],
+      ["Under £100", 2, "/artworks?availability=available&maxPrice=99"],
+      ["£100 to £300", 1, "/artworks?availability=available&minPrice=100&maxPrice=300"],
+      ["Flora Powers", 4, "/artists/flora-powers"],
     ]);
   });
 
-  it("leaves out on sale now when nothing is sold out, since it is the whole catalogue", () => {
-    const filters = buildHomeQuickFilters({
-      facets: facets(
-        [
-          { slug: "portraits", label: "Portraits", count: 9 },
-          { slug: "prints", label: "Prints", count: 4 },
-        ],
-        { available: 13, soldOut: 0 },
-      ),
-      priceBand: null,
+  it("hides every row that would lead to nothing", () => {
+    const rows = buildHomeBrowseRows({
+      facets: facets([], { available: 2, soldOut: 0 }),
+      priceRanges: [{ key: "under-100", count: 0 }],
     });
-    expect(filters.map((filter) => filter.label)).toEqual(["Portraits", "Prints"]);
-  });
-
-  it("shows six at most, and none when there would be only one", () => {
-    const many = Array.from({ length: 10 }, (_, index) => ({
-      slug: `c${index}`,
-      label: `C${index}`,
-      count: 4,
-    }));
-    expect(buildHomeQuickFilters({ facets: facets(many), priceBand: null })).toHaveLength(6);
-    expect(
-      buildHomeQuickFilters({
-        facets: facets([{ slug: "portraits", label: "Portraits", count: 9 }], {
-          available: 9,
-          soldOut: 0,
-        }),
-        priceBand: null,
-      }),
-    ).toEqual([]);
+    expect(rows.map((row) => row.label)).toEqual(["Available now"]);
+    expect(buildHomeBrowseRows({ facets: null, priceRanges: [] })).toEqual([]);
   });
 });
