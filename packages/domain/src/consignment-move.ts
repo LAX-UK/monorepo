@@ -15,13 +15,15 @@ import { sellerSubmissionAccess } from "./submission-policy.js";
  * Only work that is not yet catalogued moves. A catalogued lot already carries its seller into
  * the sale, invoices and payouts, so it stays with the account it was catalogued for.
  */
-const MOVABLE_STATUSES: ReadonlySet<ItemSubmissionStatus> = new Set([
+export const CONSIGNMENT_MOVABLE_STATUSES: readonly ItemSubmissionStatus[] = [
   "draft",
   "submitted",
   "under_review",
   "changes_requested",
   "approved",
-]);
+];
+
+const MOVABLE_STATUSES: ReadonlySet<ItemSubmissionStatus> = new Set(CONSIGNMENT_MOVABLE_STATUSES);
 
 /** Statuses that finished without becoming a lot. */
 const CLOSED_STATUSES: ReadonlySet<ItemSubmissionStatus> = new Set(["rejected", "withdrawn"]);
@@ -77,6 +79,11 @@ export function consignmentMoveAgreementEffect(
 ): ConsignmentMoveAgreementEffect {
   if (!agreement) return "none";
   return agreement.acceptedAt ? "reset" : "carried";
+}
+
+/** Whether a consignment in this status is still before cataloguing, so it could move. */
+export function consignmentStatusMovable(status: ItemSubmissionStatus): boolean {
+  return MOVABLE_STATUSES.has(status);
 }
 
 /** Whether the consignment itself can move, before an organisation is chosen. */

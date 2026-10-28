@@ -137,9 +137,11 @@ export {
   consignmentWithdrawalPath,
 } from "./consignment-withdrawal.js";
 export {
+  CONSIGNMENT_MOVABLE_STATUSES,
   CONSIGNMENT_MOVE_REFUSAL_MESSAGES,
   consignmentMoveAgreementEffect,
   consignmentMoveSourceRefusal,
+  consignmentStatusMovable,
   consignmentMoveTargetRefusal,
   decideConsignmentMove,
   type ConsignmentMoveAgreementEffect,

@@ -1,4 +1,5 @@
 import {
+  CONSIGNMENT_MOVABLE_STATUSES,
   CONSIGNMENT_MOVE_REFUSAL_MESSAGES,
   type ConsignmentMoveAgreementEffect,
   consignmentMoveAgreementEffect,
@@ -12,7 +13,6 @@ import type {
   ConsignmentMoveOptions,
   ConsignmentMoveRefusal,
   ItemSubmission,
-  ItemSubmissionStatus,
   LegalEntity,
   LegalEntitySummary,
 } from "@auction/types";
@@ -48,14 +48,6 @@ export interface IConsignmentMoveService {
     targetLegalEntityId: string,
   ): Promise<Result<ConsignmentMoveResult, SubmissionError>>;
 }
-
-const MOVABLE: readonly ItemSubmissionStatus[] = [
-  "draft",
-  "submitted",
-  "under_review",
-  "changes_requested",
-  "approved",
-];
 
 const REFUSAL_STATUS: Record<ConsignmentMoveRefusal, number> = {
   not_found: 404,
@@ -169,7 +161,7 @@ export class ConsignmentMoveService implements IConsignmentMoveService {
       submissionId: submission.id,
       fromLegalEntityId: entity.id,
       toLegalEntityId: target.id,
-      movableStatuses: MOVABLE,
+      movableStatuses: CONSIGNMENT_MOVABLE_STATUSES,
       resetAgreementAcceptance: decision.agreement === "reset",
       movedAt,
     });
