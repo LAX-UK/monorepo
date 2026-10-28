@@ -308,6 +308,7 @@ export function createWorkerContainer(): WorkerContainer {
     profileMarketingReader: repositories.profileMarketingReader,
     marketingEventOutboxWorker: repositories.marketingEventOutboxWorker,
     dataExportRepo: repositories.dataExportRepo,
+    staffRoleReader: repositories.staffRoleReader,
     newsletterSignupSyncRepo: repositories.newsletterSignupSyncRepo,
     sourceOfFundsDocumentPurgeRepo: repositories.sourceOfFundsDocumentPurgeRepo,
     marketingContactSyncRepo: repositories.marketingContactSyncRepo,

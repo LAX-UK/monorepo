@@ -1,9 +1,11 @@
+import type { StaffRoles } from "@auction/types";
 import type { ExportColumn, ExportEntityType, ExportRow } from "../types.js";
 
+/** The person an export runs for, with the staff roles in force when it is authorised. */
 export type ExportAuthContext = {
   userId: string;
   userRole: string;
-  userStaffRole?: string | null;
+  userStaffRoles: StaffRoles;
 };
 
 export type ExportProvider<TFilters extends Record<string, unknown> = Record<string, unknown>> = {

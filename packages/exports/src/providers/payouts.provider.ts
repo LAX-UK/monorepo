@@ -1,12 +1,5 @@
-import {
-  type PayoutStatus,
-  type UserRole,
-  canAccessPlatformAdminRoutes,
-  normalizeUserRoleOrClient,
-  normalizeUserStaffRole,
-  roleHasCapability,
-} from "@auction/types";
-import { requirePayoutRead } from "./auth.js";
+import { type PayoutStatus, normalizeUserRoleOrClient } from "@auction/types";
+import { canReadAllPayouts, requirePayoutRead } from "./auth.js";
 import { AuthzError } from "./authz-error.js";
 import { formatPayoutDate, summarizeFilters } from "./export-shared.js";
 import type { ILegalEntityRepository } from "./ports/legal-entity-repository.js";
@@ -31,14 +24,10 @@ async function resolvePayoutScope(
   filters: PayoutExportFilters,
   legalEntityRepo: Pick<ILegalEntityRepository, "findActiveMembership">,
 ): Promise<{ legalEntityId?: string; status?: PayoutStatus }> {
-  const role = normalizeUserRoleOrClient(ctx.userRole) as UserRole;
-  const staff = normalizeUserStaffRole(ctx.userStaffRole ?? undefined);
-  const isStaffReader =
-    roleHasCapability(role, "payout.read", staff) || canAccessPlatformAdminRoutes(role, staff);
-
+  const role = normalizeUserRoleOrClient(ctx.userRole);
   const statusScope = filters.status ? { status: filters.status } : {};
 
-  if (isStaffReader) {
+  if (canReadAllPayouts(ctx)) {
     return {
       ...(filters.legalEntityId ? { legalEntityId: filters.legalEntityId } : {}),
       ...statusScope,

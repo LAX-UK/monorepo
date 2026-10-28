@@ -118,6 +118,7 @@ export { DrizzleAdminUserReader } from "./drizzle-admin-user.reader.js";
 export {
   DrizzleStaffRoleAssignmentReader,
   DrizzleStaffRoster,
+  staffRoleAssignmentInForceAt,
 } from "./drizzle-staff-roster.js";
 export {
   adminUserListSelect,
