@@ -1,15 +1,15 @@
 import { Button } from "@/components/account-button";
 import type { SupportLinksVm } from "@/server/domain/account-links";
-import type { AccountNavItemVm, ProductBarItemVm } from "@/server/domain/account-nav.vm";
+import type { AccountNavItemVm } from "@/server/domain/account-nav.vm";
 import { legalOperatorSentence, siteCopyrightYear } from "@auction/branding";
-import { LaxLockup } from "@auction/marketing-ui";
+import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
+import { LaxFamilyBar, LaxLockup } from "@auction/marketing-ui";
 import type { ReactNode } from "react";
 import { AccountAvatarMenu } from "./account-avatar-menu.client";
 import { AccountMenuSheet } from "./account-menu-sheet.client";
 import { AccountNav } from "./account-nav.client";
 import { AccountThemeToggle } from "./account-theme-toggle.client";
 import type { AccountViewer } from "./account-viewer";
-import { ProductBar } from "./product-bar";
 
 /**
  * The page widths, defined once. `narrow` is the column for forms and settings (Personal details,
@@ -33,14 +33,15 @@ export type AccountFrameProps = {
   /** The signed-in person; null on pages a signed-out visitor can reach. */
   viewer: AccountViewer | null;
   nav: AccountNavItemVm[];
-  products: ProductBarItemVm[];
+  /** The LAX top bar: the products, then LAX Account (current). */
+  products: LaxFamilyLinkVm[];
   support: SupportLinksVm | null;
   width?: PageWidth;
   children: ReactNode;
 };
 
 /**
- * The shell every page after sign-in wears, in the pattern of the other LAX products: the product
+ * The shell every page after sign-in wears, in the pattern of the other LAX products: the LAX top
  * bar, a compact lockup, a theme toggle and the avatar menu across the top, and the menu down the
  * left on desktop (a sheet opened from the header on a phone).
  */
@@ -57,7 +58,7 @@ export function AccountFrame({
     <div className="flex min-h-screen flex-col bg-page-bg">
       <header className="border-b border-border-hairline bg-surface">
         <div className={`${CONTAINER} flex flex-col`}>
-          <ProductBar items={products} className="hidden pt-3 pb-1 lg:flex" />
+          <LaxFamilyBar links={products} />
           <div className="flex h-16 items-center gap-4 lg:h-[72px]">
             <a href="/" className="flex min-h-11 shrink-0 items-center rounded-sm">
               <LaxLockup kind="account" className="block h-8 w-auto sm:h-10" />

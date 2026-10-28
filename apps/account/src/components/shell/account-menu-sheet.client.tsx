@@ -1,7 +1,12 @@
 "use client";
 
-import type { AccountNavItemVm, ProductBarItemVm } from "@/server/domain/account-nav.vm";
-import { MarketingChromeIconButton, MarketingMenuIcon } from "@auction/marketing-ui";
+import type { AccountNavItemVm } from "@/server/domain/account-nav.vm";
+import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
+import {
+  LaxFamilyMenuLinks,
+  MarketingChromeIconButton,
+  MarketingMenuIcon,
+} from "@auction/marketing-ui";
 import {
   Sheet,
   SheetContent,
@@ -27,10 +32,9 @@ export function AccountMenuSheet({
 }: {
   viewer: AccountViewer;
   items: AccountNavItemVm[];
-  products: ProductBarItemVm[];
+  products: LaxFamilyLinkVm[];
 }) {
   const [open, setOpen] = useState(false);
-  const otherProducts = products.filter((product) => !product.current);
   return (
     <Sheet open={open} onOpenChange={setOpen}>
       <SheetTrigger asChild>
@@ -52,25 +56,11 @@ export function AccountMenuSheet({
           </div>
         </div>
         <AccountNav items={items} onNavigate={() => setOpen(false)} />
-        {otherProducts.length > 0 ? (
-          <nav
-            aria-label="LAX products"
-            className="flex flex-col gap-1 border-t border-border-hairline pt-4"
-          >
-            <p className="px-3 pb-1 font-label text-xs uppercase tracking-[0.22em] text-on-surface-variant">
-              LAX products
-            </p>
-            {otherProducts.map((product) => (
-              <a
-                key={product.id}
-                href={product.href}
-                className="flex min-h-11 items-center rounded-lg px-3 text-sm font-medium text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface"
-              >
-                {product.label}
-              </a>
-            ))}
-          </nav>
-        ) : null}
+        <LaxFamilyMenuLinks
+          links={products}
+          onNavigate={() => setOpen(false)}
+          className="border-t border-border-hairline px-3 pt-4"
+        />
         <SignOutForm className="mt-auto" />
       </SheetContent>
     </Sheet>

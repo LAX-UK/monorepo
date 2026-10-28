@@ -234,7 +234,7 @@ Every new or extended component in `@auction/marketing-ui` and `@auction/ui` fro
 | `MarketingFilterDropdown`, `MarketingFilterFacetGroup` (draft state, Cancel / Apply, Reset all / Show results) | marketing-ui | Artworks catalogue drawer and toolbar, search filters | Shop, Bid |
 | `MarketingHeaderSearch` (inline field, recent searches, suggestions) | marketing-ui | Header | Shop, Bid |
 | `MarketingHeaderMegaNav` extended (`columns`, `linkHref`, item `media`) | marketing-ui | Header (Shop and Bid already use it) | Shop, Bid |
-| `MarketingUtilityBar` `trailing`, `MarketingBottomTabBar` `variant="floating"` | marketing-ui | Header utility row, mobile tab bar | Bid (still local bar) |
+| `LaxFamilyBar` `actions`, `MarketingBottomTabBar` `variant="floating"` | marketing-ui | Header utility row (LAX top bar), mobile tab bar | Bid, Shop and LAX Account use the same top bar |
 | `MarketingHeartToggle` extended (`appearance`, `size`, saved colour token) | marketing-ui | Artwork cards, list rows, artwork detail | Bid watch hearts |
 | `MarketingCatalogListRow` extended (`size="lg"`, `aside` slot) | marketing-ui | Artworks list view | Bid, Shop |
 | `MarketingSpecList` | marketing-ui | Artwork detail | Bid lot, Shop product page |

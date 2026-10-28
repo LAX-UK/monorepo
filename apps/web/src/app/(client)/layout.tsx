@@ -14,6 +14,7 @@ import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { loadSellerConnectNavBadge } from "@/lib/connect/load-seller-connect-nav-badge";
 import { dashboardSliceFailureMessage } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { loadBidFamilyLinks } from "@/lib/ecosystem/product-directory.server";
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { deriveActingContext } from "@/lib/legal-entity/derive-acting-context";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
@@ -144,6 +145,7 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
         user={user}
         navScope={navScope}
         account={account}
+        familyLinks={loadBidFamilyLinks()}
         sellerConnectNavBadge={sellerConnectNavBadge}
         cookieDensity={cookieDensity}
         hideEmailStatusBanner

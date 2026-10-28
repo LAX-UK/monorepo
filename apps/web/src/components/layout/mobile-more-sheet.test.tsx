@@ -1,5 +1,4 @@
 import { MobileMoreSheet } from "@/components/layout/mobile-more-sheet";
-import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import { render, screen } from "@testing-library/react";
 import { Bell } from "lucide-react";
 import { describe, expect, it, vi } from "vitest";
@@ -39,6 +38,18 @@ vi.mock("@/hooks/use-unread-notifications", () => ({
   useUnreadNotifications: () => ({ unread: 2 }),
 }));
 
+const FAMILY_LINKS = [
+  { id: "bid", label: "LAX Bid", href: "https://lax.bid", current: true },
+  { id: "art", label: "lax.art", href: "https://lax.art", current: false },
+  { id: "shop", label: "LAX Shop", href: "https://shop.lax.art", current: false },
+  {
+    id: "account",
+    label: "LAX Account",
+    href: "https://account.lax.bid/account?from=bid",
+    current: false,
+  },
+] as const;
+
 describe("MobileMoreSheet", () => {
   it("renders profile strip for client users", () => {
     render(
@@ -52,15 +63,18 @@ describe("MobileMoreSheet", () => {
           email: "jane@example.com",
           image: null,
         }}
+        familyLinks={FAMILY_LINKS}
       />,
     );
 
     expect(screen.getByText("Jane Doe")).toBeInTheDocument();
     expect(screen.getByText("jane@example.com")).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Bid settings" })).toHaveAttribute("href", "/settings");
-    const account = screen.getByRole("link", { name: /LAX Account/ });
-    expect(account).toHaveAttribute("href", laxAccountHomeUrl());
-    expect(account).toHaveTextContent("Manage your LAX Account: profile, security, addresses");
+    // LAX Account is listed once, with the other LAX products.
+    const accounts = screen.getAllByRole("link", { name: /LAX Account/ });
+    expect(accounts).toHaveLength(1);
+    expect(accounts[0]).toHaveAttribute("href", "https://account.lax.bid/account?from=bid");
+    expect(accounts[0]?.closest("nav")).toHaveAttribute("aria-label", "LAX products");
     expect(screen.queryByRole("link", { name: "Profile" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Account settings" })).toBeNull();
   });

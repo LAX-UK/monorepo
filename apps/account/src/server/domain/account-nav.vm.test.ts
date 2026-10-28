@@ -54,7 +54,7 @@ describe("buildAccountNav", () => {
 });
 
 describe("buildProductBar", () => {
-  it("lists Bid, Art and Shop, then Account as the current product", () => {
+  it("lists Bid, lax.art and Shop, then Account as the current member", () => {
     const bar = buildProductBar({
       bidPublicUrl: "https://lax.bid",
       laxArtPublicUrl: "https://lax.art",

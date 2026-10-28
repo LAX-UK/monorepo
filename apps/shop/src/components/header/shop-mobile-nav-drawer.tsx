@@ -8,7 +8,7 @@ import { shopMegaMenuSectionActive } from "@/components/header/shop-mega-menu-ac
 import { ShopMobileAuthSection } from "@/components/header/shop-mobile-auth-section";
 import { ShopThemeToggle } from "@/components/header/shop-theme-toggle";
 import { FOCUS_RING } from "@auction/branding";
-import type { AccountChromeState, LaxProductLinkVm } from "@auction/lax-ecosystem";
+import type { AccountChromeState, LaxFamilyLinkVm } from "@auction/lax-ecosystem";
 import { LaxLogo } from "@auction/marketing-ui";
 import { MarketingMobileNavDrawer } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
@@ -19,7 +19,8 @@ type ShopMobileNavDrawerProps = {
   onOpenChange: (open: boolean) => void;
   pathname: string;
   account: AccountChromeState;
-  productLinks: LaxProductLinkVm[];
+  /** The other LAX products and LAX Account, which the hidden top bar would show. */
+  familyLinks: readonly LaxFamilyLinkVm[];
   merchandiseEnabled: boolean;
   navData?: ShopHeaderNavData | null;
 };
@@ -29,7 +30,7 @@ export function ShopMobileNavDrawer({
   onOpenChange,
   pathname,
   account,
-  productLinks,
+  familyLinks,
   merchandiseEnabled,
   navData = null,
 }: ShopMobileNavDrawerProps) {
@@ -59,9 +60,8 @@ export function ShopMobileNavDrawer({
           <ShopThemeToggle />
         </>
       }
-      footerSlot={
-        <ShopMobileAuthSection account={account} productLinks={productLinks} onNavigate={close} />
-      }
+      familyLinks={familyLinks}
+      footerSlot={<ShopMobileAuthSection account={account} onNavigate={close} />}
     />
   );
 }

@@ -7,6 +7,7 @@ import { MarketingLotQuickLookShell } from "@/components/marketing/lot-quick-loo
 import { MarketingPromptOrchestrator } from "@/components/marketing/marketing-prompt-orchestrator";
 import {
   loadBidCrossProductFooterLinks,
+  loadBidFamilyLinks,
   loadBidProductDirectoryLinks,
 } from "@/lib/ecosystem/product-directory.server";
 import { MarketingGlobalHotkeys } from "@/lib/hotkeys/marketing-global-hotkeys";
@@ -19,6 +20,7 @@ export default async function MarketingLayout({ children }: { children: ReactNod
   const nav = await loadCachedMegaMenuSections();
   const laxProductLinks = loadBidProductDirectoryLinks();
   const crossProductFooterLinks = loadBidCrossProductFooterLinks();
+  const familyLinks = loadBidFamilyLinks();
 
   return (
     <MarketingSmoothScroll>
@@ -27,7 +29,12 @@ export default async function MarketingLayout({ children }: { children: ReactNod
           <MarketingHeaderTitleProvider>
             <CommandPaletteLazy variant="marketing" />
             <MarketingGlobalHotkeys />
-            <SiteHeader nav={nav} transparentPaths={["/"]} laxProductLinks={laxProductLinks} />
+            <SiteHeader
+              nav={nav}
+              transparentPaths={["/"]}
+              laxProductLinks={laxProductLinks}
+              familyLinks={familyLinks}
+            />
             {children}
             <AuthRequiredToast />
           </MarketingHeaderTitleProvider>

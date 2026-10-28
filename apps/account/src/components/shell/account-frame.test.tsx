@@ -70,7 +70,7 @@ describe("AccountFrame signed in", () => {
     for (const label of ["LAX Bid", "lax.art", "LAX Shop", "LAX Account"]) {
       expect(html).toContain(label);
     }
-    expect(html).toMatch(/aria-current="page"[^>]*>LAX Account</);
+    expect(html).toMatch(/aria-current="true"[^>]*>LAX Account</);
   });
 
   it("wears the Account Centre lockup, a theme toggle and the avatar menu", () => {
