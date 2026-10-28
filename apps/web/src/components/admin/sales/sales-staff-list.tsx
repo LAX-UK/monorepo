@@ -18,6 +18,7 @@ import {
   salesSortHref,
   salesSortState,
 } from "@/lib/admin/sales/sales-staff-list.vm";
+import { SALES_ACCESS } from "@/lib/navigation/staff-nav-access";
 import {
   type AttentionStripItem,
   type DataColumn,
@@ -174,8 +175,7 @@ export function SalesStaffList(props: SalesStaffListProps) {
         description="Auction sales. Plan and publish them, follow them live and close them out."
         Link={ListLink}
         listKey="bid-admin.sales"
-        access={props.canManageSales ? "full" : "read-only"}
-        roleLabel="Catalogue"
+        editRequires={SALES_ACCESS}
         primaryAction={
           props.canManageSales ? (
             <StaffButton asChild variant="primary" size="sm" icon={<Plus aria-hidden />}>

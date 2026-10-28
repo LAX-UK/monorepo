@@ -194,7 +194,6 @@ export function PayoutsStaffList(props: PayoutsStaffListProps) {
         Link={ListLink}
         listKey="bid-admin.payouts"
         access={capabilities.canProcess || capabilities.canReverse ? "full" : "read-only"}
-        roleLabel="Finance"
         primaryAction={
           capabilities.canProcess ? (
             <StaffButton asChild variant="primary" size="sm">

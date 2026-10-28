@@ -184,7 +184,6 @@ export function ArtistsStaffList(props: ArtistsStaffListProps) {
         Link={ListLink}
         listKey="bid-admin.artists"
         access={permissions.canWrite || permissions.canReview ? "full" : "read-only"}
-        roleLabel="Catalogue"
         primaryAction={
           permissions.canWrite ? (
             <StaffButton asChild variant="primary" size="sm" icon={<Plus aria-hidden />}>

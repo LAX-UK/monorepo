@@ -167,7 +167,6 @@ export function ArtistDetailShell({
         secondaryActions={reviewButton ? editButton : null}
         overflow={<OverflowMenu label="More artist actions" Link={NextLink} actions={overflow} />}
         access={canEdit || canReview ? "full" : "read-only"}
-        roleLabel="Catalogue"
         notice={
           merged ? (
             <Notice

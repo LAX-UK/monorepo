@@ -245,7 +245,10 @@ export function ListPage<T>({
       {...(readOnly
         ? { status: <ViewOnlyBadge {...(roleLabel ? { role: roleLabel } : {})} /> }
         : {})}
-      {...(access !== "denied" && !readOnly && !emptyOffersAction && primaryAction
+      {...(access !== "denied" &&
+      (accessProp === undefined || !readOnly) &&
+      !emptyOffersAction &&
+      primaryAction
         ? { primaryAction }
         : {})}
       {...(access !== "denied" && headerSecondary ? { secondaryActions: headerSecondary } : {})}

@@ -14,6 +14,7 @@ import { computeLotDetailReadiness } from "@/lib/admin/compute-lot-detail-readin
 import type { AdminLotDetailBundle } from "@/lib/admin/load-lot-detail";
 import { lotDetailNotice, lotEditLink } from "@/lib/admin/lots/lot-detail-page.vm";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
+import { LOTS_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { lotAuctionTypeLabel } from "@/lib/presenters/lot-auction-type/lot-auction-type-registry";
 import { lotPath } from "@/lib/seo/url";
 import { notify } from "@/lib/ui/notify";
@@ -250,8 +251,7 @@ export function LotDetailShell({
         primaryAction={publishButton ?? editButton}
         secondaryActions={publishButton ? editButton : null}
         overflow={<OverflowMenu label="More lot actions" Link={NextLink} actions={overflow} />}
-        access={canManageCatalog || canManageAuction ? "full" : "read-only"}
-        roleLabel="Catalogue"
+        editRequires={LOTS_ACCESS}
         notice={
           notice ? (
             <Notice

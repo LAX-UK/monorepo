@@ -105,7 +105,10 @@ export function DetailPage({
         {readOnly ? <ViewOnlyBadge {...(roleLabel ? { role: roleLabel } : {})} /> : null}
       </>
     ) : null;
-  const actionable = access === "full" && !loading && !error;
+  // A page that reads its access from `editRequires` leaves each action to its own `requires`;
+  // an explicit read-only access hides the primary action outright.
+  const actionable =
+    (accessProp === undefined || access === "full") && access !== "denied" && !loading && !error;
 
   const header = (
     <PageHeader

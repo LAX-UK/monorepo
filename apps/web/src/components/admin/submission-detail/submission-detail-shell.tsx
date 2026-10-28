@@ -235,7 +235,6 @@ export function SubmissionDetailShell({
           ) : null
         }
         access={canReview ? "full" : "read-only"}
-        roleLabel="Catalogue"
         tabs={<StaffDetailTabs label="Submission sections" items={tabs} />}
       >
         {children}

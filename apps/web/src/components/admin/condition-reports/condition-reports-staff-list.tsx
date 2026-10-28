@@ -136,7 +136,6 @@ export function ConditionReportsStaffList(props: ConditionReportsStaffListProps)
         description="Buyer requests for a condition report. Fulfilling one publishes it on the lot page."
         Link={ListLink}
         listKey="bid-admin.condition-reports"
-        roleLabel="Catalogue"
         attention={props.attention}
         {...(props.metrics
           ? { metrics: { label: "Request summary", period: "All time", items: props.metrics } }

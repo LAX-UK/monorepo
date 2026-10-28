@@ -1,3 +1,4 @@
+import { BidStaffAccessProvider } from "@/components/admin/access/bid-staff-access-provider";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
 import type { AdminLotDetailBundle } from "@/lib/admin/load-lot-detail";
 import { StaffTooltipProvider } from "@auction/staff-ui";
@@ -117,5 +118,18 @@ describe("LotDetailShell", () => {
       </LotDetailShell>,
     );
     expect(screen.queryByRole("button", { name: /^publish$/i })).toBeNull();
+  });
+
+  it("shows read-only staff the lot view only, with their role and no actions", () => {
+    render(
+      <BidStaffAccessProvider platformRole="staff" staffRoles={["read_only"]}>
+        <LotDetailShell lotId="lot_1" bundle={bundle()} publishReadiness={ready}>
+          <p>Overview</p>
+        </LotDetailShell>
+      </BidStaffAccessProvider>,
+    );
+    expect(screen.getByText("View only · Read-only")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^publish$/i })).toBeNull();
+    expect(screen.queryByRole("link", { name: /edit/i })).toBeNull();
   });
 });

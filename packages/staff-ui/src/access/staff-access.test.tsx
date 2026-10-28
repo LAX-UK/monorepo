@@ -119,7 +119,7 @@ describe("page templates read their access from the kit", () => {
       <DetailPage
         title="Autumn sale"
         editRequires="auction.manage"
-        primaryAction={<StaffButton>Publish sale</StaffButton>}
+        primaryAction={<StaffButton requires="auction.manage">Publish sale</StaffButton>}
       >
         Body
       </DetailPage>,
@@ -134,7 +134,7 @@ describe("page templates read their access from the kit", () => {
         <DetailPage
           title="Autumn sale"
           editRequires="auction.manage"
-          primaryAction={<StaffButton>Publish sale</StaffButton>}
+          primaryAction={<StaffButton requires="auction.manage">Publish sale</StaffButton>}
         >
           Body
         </DetailPage>
@@ -151,7 +151,7 @@ describe("page templates read their access from the kit", () => {
         Link={Link}
         listKey="test.sales"
         editRequires="auction.manage"
-        primaryAction={<StaffButton>New sale</StaffButton>}
+        primaryAction={<StaffButton requires="auction.manage">New sale</StaffButton>}
         filtered={false}
         empty={{ title: "No sales yet" }}
         noResults={{ noun: "sales" }}
@@ -160,5 +160,30 @@ describe("page templates read their access from the kit", () => {
     );
     expect(screen.getByText("View only · Read-only")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "New sale" })).toBeNull();
+  });
+
+  it("keeps a permitted primary action on a record the person cannot edit", () => {
+    const clerk = {
+      can: (permission: string | { readonly anyOf: readonly string[] }) =>
+        (typeof permission === "string" ? [permission] : permission.anyOf).includes(
+          "saleroom.operate",
+        ),
+      roleLabel: "Saleroom clerk",
+    };
+    render(
+      <StaffAccessProvider access={clerk}>
+        <DetailPage
+          title="Autumn sale"
+          editRequires="auction.manage"
+          primaryAction={<StaffButton requires="saleroom.operate">Open saleroom</StaffButton>}
+          secondaryActions={<StaffButton requires="auction.manage">Edit sale</StaffButton>}
+        >
+          Body
+        </DetailPage>
+      </StaffAccessProvider>,
+    );
+    expect(screen.getByText("View only · Saleroom clerk")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Open saleroom" })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit sale" })).toBeNull();
   });
 });
