@@ -41,6 +41,7 @@ export {
   MarketingViewAllChevron,
   MarketingZoomInIcon,
   MarketingZoomOutIcon,
+  type MarketingIconProps,
 } from "./marketing-icons.js";
 export {
   MarketingInstagramIcon,
@@ -459,6 +460,11 @@ export {
   type MarketingSplitFeatureProps,
 } from "./marketing-split-feature.js";
 export { MarketingCtaBand, type MarketingCtaBandProps } from "./marketing-cta-band.js";
+export {
+  MarketingGalleryTeamBand,
+  type MarketingGalleryTeamBandProps,
+  type MarketingGalleryTeamDetail,
+} from "./marketing-gallery-team-band.js";
 export {
   MarketingProductDoors,
   type MarketingProductDoorsProps,

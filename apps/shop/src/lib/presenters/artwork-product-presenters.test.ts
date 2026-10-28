@@ -76,13 +76,13 @@ describe("Details list", () => {
 describe("buy block copy", () => {
   it("quotes delivery from the checkout surcharges and the 14-day cancellation", () => {
     expect(FULFILMENT_SURCHARGE_PENCE.uk_insured_delivery).toBe(1500);
-    expect(shopDeliveryLine()).toBe("UK insured delivery £15.00 · Collection in London free");
+    expect(shopDeliveryLine()).toBe("UK insured delivery £15 · Collection in London free");
     expect(SHOP_RETURNS_LINE).toBe("14-day cancellation");
   });
 
   it("shows the price with VAT included and the edition size, never a count", () => {
     expect(presentArtworkPurchase(detail())).toEqual({
-      priceLabel: "£120.00",
+      priceLabel: "£120",
       vatNote: "Includes VAT",
       editionSize: "Limited edition of 24",
       editionShort: "Edition of 24",

@@ -39,6 +39,7 @@ const artworkSummary = {
   printPricePence: null,
   availability: { totalEditions: 0, state: "sold_out" as const },
   updatedAt: "2026-03-01T10:00:00.000Z",
+  listedAt: "2026-03-01T10:00:00.000Z",
 };
 
 const artistDetail = {

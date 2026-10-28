@@ -127,6 +127,7 @@ export function toArtworkCatalogueRow(
     seoTitle: row.seoTitle,
     seoDescription: row.seoDescription,
     updatedAt: row.updatedAt,
+    listedAt: row.createdAt,
     salesChannel: row.salesChannel,
     eligibleForEditionAllocation: row.eligibleForEditionAllocation,
     printPricePence: row.printPricePence,

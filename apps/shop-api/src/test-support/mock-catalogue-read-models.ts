@@ -24,6 +24,7 @@ export function mockArtworkSummary(
     printPricePence: 12000,
     availability: { totalEditions: 24, state: "available" },
     updatedAt: "2026-01-01T00:00:00.000Z",
+    listedAt: "2026-01-01T00:00:00.000Z",
     ...overrides,
   };
 }

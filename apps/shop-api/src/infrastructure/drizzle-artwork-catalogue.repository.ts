@@ -393,6 +393,7 @@ export function createDrizzleArtworkCatalogueRepository(
           seoTitle: shopArtwork.seoTitle,
           seoDescription: shopArtwork.seoDescription,
           updatedAt: shopArtwork.updatedAt,
+          createdAt: shopArtwork.createdAt,
           salesChannel: shopArtwork.salesChannel,
           artistName: shopParty.displayName,
           artistSlug: shopArtist.slug,
@@ -417,7 +418,7 @@ export function createDrizzleArtworkCatalogueRepository(
         sourceOriginalArtworkId ? loadLinkableOriginalSlug(db, sourceOriginalArtworkId) : null,
       ]);
       return toPublicArtworkDetail({
-        ...toArtworkCatalogueRow({ ...selected, createdAt: new Date() }, editionCounts, images),
+        ...toArtworkCatalogueRow(selected, editionCounts, images),
         printPaper,
         printSize,
         sourceOriginalSlug,

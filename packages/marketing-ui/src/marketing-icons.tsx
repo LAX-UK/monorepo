@@ -45,7 +45,7 @@ import {
   ZoomOut,
 } from "lucide-react";
 
-type MarketingIconProps = Omit<LucideProps, "aria-hidden">;
+export type MarketingIconProps = Omit<LucideProps, "aria-hidden">;
 
 /** Chevron for section “View all” actions — matches Bid marketing rails. */
 export function MarketingViewAllChevron({ className, ...props }: MarketingIconProps) {
