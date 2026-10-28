@@ -62,6 +62,7 @@ export type { StatusPresentation } from "./display/status-badge.js";
 export { KeyValueList } from "./display/key-value-list.js";
 export { Notice } from "./display/notice.js";
 export { RecordImage } from "./display/record-image.js";
+export { ImageGallery, type ImageGalleryItem } from "./display/image-gallery.js";
 export { StatGrid } from "./display/stat-grid.js";
 export type { StatItem } from "./display/stat-grid.js";
 export type { KeyValueItem } from "./display/key-value-list.js";

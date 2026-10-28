@@ -12,6 +12,14 @@ import type { TemplateName, TemplateVarsByName } from "./types.js";
 export const EmailProductContext = createContext<LaxBrandProduct>("account");
 
 const ACCOUNT_TEMPLATES: ReadonlySet<string> = new Set(authTemplates.names);
+/** lax.art mail: London Art Exchange's gallery, named as lax.art in the footer. */
+const ART_TEMPLATES: ReadonlySet<string> = new Set([
+  "art-general-enquiry-alert",
+  "art-artist-application-received",
+  "art-artist-application-more-info",
+  "art-artist-application-declined",
+  "art-artist-application-welcome",
+] satisfies TemplateName[]);
 const SHOP_TEMPLATES: ReadonlySet<string> = new Set(shopTemplates.names);
 
 /** Every template that is neither LAX Account nor Shop/lax.art mail is sent by LAX Bid. */
@@ -22,7 +30,7 @@ export function emailProductFor<T extends TemplateName>(
   if (ACCOUNT_TEMPLATES.has(template)) {
     return (vars as EmailProductVars).product ?? "account";
   }
-  if (template === "art-general-enquiry-alert") return "art";
+  if (ART_TEMPLATES.has(template)) return "art";
   if (template === "shop-artwork-enquiry-alert") {
     return (vars as TemplateVarsByName["shop-artwork-enquiry-alert"]).storefront === "art"
       ? "art"

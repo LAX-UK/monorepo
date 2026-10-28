@@ -3,7 +3,6 @@ import { ShopDomainError } from "@auction/shop-domain";
 import type { FastifyInstance } from "fastify";
 import { InvalidCatalogueCursorError } from "../application/catalogue-cursor.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
-import { StaleVersionError } from "../errors/stale-version-error.js";
 
 function isValidationError(error: unknown): error is { validation: unknown } {
   return typeof error === "object" && error !== null && "validation" in error;
@@ -29,7 +28,7 @@ export function registerErrorHandler(app: FastifyInstance): void {
         code: error.code,
         message: error.message,
         requestId: request.id,
-        ...(error instanceof StaleVersionError ? { currentVersion: error.currentVersion } : {}),
+        ...error.responseFields(),
       });
     }
     if (error instanceof ShopDomainError) {

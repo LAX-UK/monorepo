@@ -1,4 +1,8 @@
 import { getLaxAccountContainer } from "../container";
+import {
+  type SellingApplicationVm,
+  buildSellingApplication,
+} from "../domain/selling/selling-application.vm";
 import { type ArtistPageVm, buildArtistPage } from "../domain/selling/selling-artworks.vm";
 import { type EditionsPageVm, buildEditionsPage } from "../domain/selling/selling-editions.vm";
 import {
@@ -93,4 +97,18 @@ export async function loadArtistSection(handle: SessionHandle): Promise<SectionL
       sales.status === "ok" ? sales.data : null,
     ),
   };
+}
+
+/** The person's application to join the gallery, read from Shop's record of it. */
+export async function loadApplicationSection(
+  handle: SessionHandle,
+): Promise<SectionLoad<SellingApplicationVm>> {
+  const { selling, config } = getLaxAccountContainer();
+  const read = await selling.readArtistApplication(handle);
+  if (read.status === "unavailable") return { status: "unavailable" };
+  const state =
+    read.status === "ok"
+      ? read.data
+      : { application: null, next: "start" as const, availableFrom: null };
+  return { status: "ok", view: buildSellingApplication(state, config.laxArtPublicUrl) };
 }

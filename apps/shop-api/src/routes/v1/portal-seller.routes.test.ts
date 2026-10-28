@@ -278,7 +278,12 @@ describe("GET /v1/me/seller-access", () => {
     await app.ready();
     asScope("lax.selling.read");
     const response = await app.inject({ method: "GET", url: "/v1/me/seller-access", headers });
-    expect(response.json()).toEqual({ editions: false, payouts: false, artist: false });
+    expect(response.json()).toEqual({
+      editions: false,
+      payouts: false,
+      artist: false,
+      application: false,
+    });
     await app.close();
   });
 
@@ -316,7 +321,12 @@ describe("GET /v1/me/seller-access", () => {
     await app.ready();
     asScope("shop.read");
     const response = await app.inject({ method: "GET", url: "/v1/me/seller-access", headers });
-    expect(response.json()).toEqual({ editions: true, payouts: true, artist: true });
+    expect(response.json()).toEqual({
+      editions: true,
+      payouts: true,
+      artist: true,
+      application: false,
+    });
     await app.close();
   });
 
@@ -344,7 +354,12 @@ describe("GET /v1/me/seller-access", () => {
     await app.ready();
     asScope("shop.read");
     const response = await app.inject({ method: "GET", url: "/v1/me/seller-access", headers });
-    expect(response.json()).toEqual({ editions: true, payouts: false, artist: false });
+    expect(response.json()).toEqual({
+      editions: true,
+      payouts: false,
+      artist: false,
+      application: false,
+    });
     await app.close();
   });
 });

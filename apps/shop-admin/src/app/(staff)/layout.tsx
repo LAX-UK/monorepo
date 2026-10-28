@@ -4,6 +4,7 @@ import { StaffCatalogueImageProvider } from "@/components/artworks/staff-catalog
 import { ShopAdminShell } from "@/components/shop-admin-shell.client";
 import { loadAdminSession } from "@/lib/admin-data.server";
 import { resolveStaffLayoutRedirect, staffSignInHref } from "@/lib/staff-layout-redirect";
+import { loadArtistApplicationSummary } from "@/server/application/load-artist-application-summary";
 import { loadEnquirySummary } from "@/server/application/load-enquiry-summary";
 import { loadStaffIdentity } from "@/server/application/load-staff-identity";
 import { loadStaffProducts } from "@/server/application/load-staff-products";
@@ -40,8 +41,9 @@ export default async function StaffLayout({ children }: { children: ReactNode })
   }
 
   const session = sessionResult.data;
-  const [enquirySummary, identity, products, jar] = await Promise.all([
+  const [enquirySummary, applicationSummary, identity, products, jar] = await Promise.all([
     loadEnquirySummary(session.capabilities),
+    loadArtistApplicationSummary(session.capabilities),
     loadStaffIdentity(),
     loadStaffProducts(),
     cookies(),
@@ -50,6 +52,7 @@ export default async function StaffLayout({ children }: { children: ReactNode })
     capabilities: session.capabilities,
     features: session.features,
     enquiryAttentionCount: enquirySummary?.needsAttentionCount ?? 0,
+    applicationAttentionCount: applicationSummary?.newCount ?? 0,
   });
   const roleLabel = staffRoleLabel(session.role);
   const { shopStorefrontUrl, artPublicUrl } = getShopAdminContainer().config;

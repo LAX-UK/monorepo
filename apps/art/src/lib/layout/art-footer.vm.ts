@@ -34,6 +34,7 @@ export function buildArtFooterVm(input: {
   const servicesLinks = [
     { label: "How to buy", href: "/how-to-buy" },
     { label: "How to sell", href: "/how-to-sell" },
+    { label: "For artists", href: "/for-artists" },
     { label: "Collector Hub", href: "/collector-hub" },
     { label: "Help centre", href: "/help" },
   ];

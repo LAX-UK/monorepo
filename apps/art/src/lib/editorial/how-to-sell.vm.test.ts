@@ -12,7 +12,7 @@ const bid: LaxProductLinkVm = {
 const laxAccountUrl = (page: string) => `https://account.test/${page}`;
 
 describe("buildSellingRoutes", () => {
-  it("sends collectors to Sell with LAX on LAX Bid and artists to the artist portal", () => {
+  it("sends collectors to Sell with LAX on LAX Bid and artists to For artists", () => {
     expect(
       buildSellingRoutes({ crossProductLinks: [bid], laxAccountUrl }).map((route) => [
         route.id,
@@ -21,15 +21,15 @@ describe("buildSellingRoutes", () => {
       ]),
     ).toEqual([
       ["collector", "Sell with LAX", "https://bid.test/sell"],
-      ["artist", "Open the artist portal", "https://account.test/sellingArtworks"],
+      ["artist", "Apply to join", "/for-artists"],
     ]);
   });
 
   it("never offers a consignment on lax.art itself", () => {
-    const hrefs = buildSellingRoutes({ crossProductLinks: [bid], laxAccountUrl }).map(
-      (route) => route.action.href,
+    const collector = buildSellingRoutes({ crossProductLinks: [bid], laxAccountUrl }).find(
+      (route) => route.id === "collector",
     );
-    expect(hrefs.every((href) => href.startsWith("https://"))).toBe(true);
+    expect(collector?.action.href.startsWith("https://bid.test")).toBe(true);
   });
 
   it("leaves the collector route out when LAX Bid is not configured", () => {

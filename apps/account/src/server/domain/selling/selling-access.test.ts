@@ -63,3 +63,31 @@ describe("buildSellingTabs", () => {
     expect(buildSellingTabs(UNKNOWN_SELLER_ACCESS, "payouts")).toEqual([]);
   });
 });
+
+describe("artist applicants", () => {
+  const applicant = sellerAccessFromRead({
+    status: "ok",
+    data: { editions: false, payouts: false, artist: false, application: true },
+  });
+
+  it("shows Selling to someone who applied, opening on their application", () => {
+    expect(showsSelling(applicant)).toBe(true);
+    expect(firstSellingTool(applicant)).toBe("application");
+  });
+
+  it("reads an older shop API without the field as no application", () => {
+    expect(buyer.application).toBe("no");
+    expect(opensSellingTool(buyer, "application")).toBe(false);
+  });
+
+  it("puts the application tab after an accepted artist's artworks", () => {
+    const accepted = sellerAccessFromRead({
+      status: "ok",
+      data: { editions: false, payouts: false, artist: true, application: true },
+    });
+    expect(buildSellingTabs(accepted, "artworks").map((tab) => tab.label)).toEqual([
+      "Artworks",
+      "Application",
+    ]);
+  });
+});

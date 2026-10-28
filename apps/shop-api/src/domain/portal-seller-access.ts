@@ -5,6 +5,8 @@ export type PortalSellerAccessFacts = {
   hasPayout: boolean;
   hasSalesStatement: boolean;
   hasLinkedArtist: boolean;
+  /** Has an application to join the gallery as an artist, in any status. */
+  hasArtistApplication: boolean;
   payoutsEnabled: boolean;
 };
 
@@ -12,6 +14,7 @@ export type PortalSellerAccessDecision = {
   editions: boolean;
   payouts: boolean;
   artist: boolean;
+  application: boolean;
 };
 
 /**
@@ -26,5 +29,10 @@ export function decidePortalSellerAccess(
     facts.hasSaleAuthorityRequest ||
     facts.saleAuthority.some((row) => row.lastGrantAt !== null || row.authorisedCount > 0);
   const payouts = facts.payoutsEnabled && (editions || facts.hasPayout || facts.hasSalesStatement);
-  return { editions, payouts, artist: facts.hasLinkedArtist };
+  return {
+    editions,
+    payouts,
+    artist: facts.hasLinkedArtist,
+    application: facts.hasArtistApplication,
+  };
 }

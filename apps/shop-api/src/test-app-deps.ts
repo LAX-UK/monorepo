@@ -1,4 +1,7 @@
 import { legalEntityFor } from "@auction/branding";
+import { createArtistApplicantService } from "./application/artist-applications/artist-applicant.service.js";
+import { createArtistApplicationRateLimiters } from "./application/artist-applications/artist-application-rate-limits.js";
+import { createArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
 import { createEnquiryInboxService } from "./application/enquiry-inbox.service.js";
 import {
   createEditionAlertRateLimiter,
@@ -8,6 +11,7 @@ import { createProductionTaskService } from "./application/production-task.servi
 import { createSavedViewService } from "./application/saved-view.service.js";
 import type { ShopApiAppDeps } from "./container.js";
 import { createInMemoryFixedWindowCounter } from "./infrastructure/in-memory-fixed-window-counter.js";
+import { createInMemoryArtistApplications } from "./test-support/in-memory-artist-applications.js";
 import { createInMemorySavedViewRepository } from "./test-support/in-memory-saved-view-repository.js";
 import { createStubEnquiryInboxRepository } from "./test-support/stub-enquiry-inbox-repository.js";
 import { createStubProductionTaskRepository } from "./test-support/stub-production-task-repository.js";
@@ -15,6 +19,8 @@ import { createStubProductionTaskRepository } from "./test-support/stub-producti
 export function createMinimalShopApiTestDeps(
   overrides: Partial<ShopApiAppDeps> = {},
 ): ShopApiAppDeps {
+  const artistApplications = createInMemoryArtistApplications();
+  const clock = { now: () => new Date() };
   return {
     env: {
       NODE_ENV: "test",
@@ -114,6 +120,12 @@ export function createMinimalShopApiTestDeps(
       listPublicMerchandiseProducts: async () => ({ items: [] }),
       getPublicMerchandiseProduct: async () => null,
     },
+    artistApplicant: createArtistApplicantService({
+      uow: artistApplications.uow,
+      uploads: artistApplications.uploads,
+      rateLimiters: createArtistApplicationRateLimiters(createInMemoryFixedWindowCounter()),
+      clock,
+    }),
     interest: {
       registerArtworkInterest: async () => "registered" as const,
       getArtworkInterest: async () => ({ subscribed: false }),
@@ -171,6 +183,20 @@ export function createMinimalShopApiTestDeps(
       }),
       grantStaffRole: async () => ({ subject: "sub_test" }),
       revokeStaffRole: async () => undefined,
+      artistApplicationReview: createArtistApplicationReviewService({
+        uow: artistApplications.uow,
+        queue: {
+          list: async () => ({
+            items: [],
+            nextCursor: null,
+            counts: { all: 0, new: 0, in_review: 0, waiting: 0, decided: 0 },
+          }),
+          getDetail: async () => null,
+          countNew: async () => 0,
+        },
+        reviewers: { list: async () => [], canReview: async () => false },
+        clock,
+      }),
       productionTasks: createProductionTaskService({
         repository: createStubProductionTaskRepository(),
         staffReader: {
@@ -414,6 +440,7 @@ export function createMinimalShopApiTestDeps(
     },
     editorial: null,
     portal: {
+      artistApplications: { hasApplication: async () => false },
       portalOwnership: {
         listOwnedEditions: async () => [],
         listSaleAuthority: async () => [],

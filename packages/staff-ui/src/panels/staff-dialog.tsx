@@ -20,9 +20,16 @@ export type StaffDialogProps = {
   description?: React.ReactNode;
   children?: React.ReactNode;
   footer?: React.ReactNode;
-  size?: "sm" | "md";
+  /** 440px; `md` 560px for forms; `lg` 960px for looking at images. */
+  size?: "sm" | "md" | "lg";
   /** Where focus lands when the dialog opens; by default the first focusable element. */
   initialFocusRef?: React.RefObject<HTMLElement | null>;
+};
+
+const DIALOG_WIDTH: Record<NonNullable<StaffDialogProps["size"]>, string> = {
+  sm: "max-w-[440px]",
+  md: "max-w-[560px]",
+  lg: "max-w-[960px]",
 };
 
 /**
@@ -58,7 +65,7 @@ export function StaffDialog({
           : {})}
         className={cn(
           "flex max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] flex-col gap-0 overflow-hidden rounded-staff-lg border border-staff-line bg-staff-raised p-0 text-staff-fg shadow-staff-lg sm:rounded-staff-lg",
-          size === "md" ? "max-w-[560px]" : "max-w-[440px]",
+          DIALOG_WIDTH[size],
         )}
       >
         <div className="flex shrink-0 flex-col gap-1.5 px-5 pt-5 pb-4">

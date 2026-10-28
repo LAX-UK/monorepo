@@ -9,6 +9,8 @@ export type SellingRouteVm = {
   action: { label: string; href: string; productName: string };
 };
 
+import { FOR_ARTISTS_PATH } from "@/lib/artist-application/for-artists.content";
+
 /** Bid's own path for a consignment ("Sell with LAX"). */
 const BID_SELL_PATH = "/sell";
 
@@ -50,12 +52,8 @@ export function buildSellingRoutes(input: {
     id: "artist",
     title: "You are an artist",
     description:
-      "Artists the gallery represents manage their works, editions and sales in the artist portal.",
-    action: {
-      label: "Open the artist portal",
-      href: input.laxAccountUrl("sellingArtworks"),
-      productName: "LAX Account",
-    },
+      "Apply to be represented by the gallery. Artists we represent manage their works, editions and sales in the artist portal.",
+    action: { label: "Apply to join", href: FOR_ARTISTS_PATH, productName: "lax.art" },
   });
   return routes;
 }

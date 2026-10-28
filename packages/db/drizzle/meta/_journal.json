@@ -1716,6 +1716,13 @@
       "when": 1796457600000,
       "tag": "0244_staff_role_screens",
       "breakpoints": true
+    },
+    {
+      "idx": 245,
+      "version": "7",
+      "when": 1796544000000,
+      "tag": "0245_shop_artist_application",
+      "breakpoints": true
     }
   ]
 }

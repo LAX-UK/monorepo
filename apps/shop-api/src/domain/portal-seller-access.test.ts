@@ -7,6 +7,7 @@ const buyer: PortalSellerAccessFacts = {
   hasPayout: false,
   hasSalesStatement: false,
   hasLinkedArtist: false,
+  hasArtistApplication: false,
   payoutsEnabled: true,
 };
 
@@ -16,6 +17,7 @@ describe("decidePortalSellerAccess", () => {
       editions: false,
       payouts: false,
       artist: false,
+      application: false,
     });
   });
 
@@ -24,7 +26,12 @@ describe("decidePortalSellerAccess", () => {
       ...buyer,
       saleAuthority: [{ lastGrantAt: null, authorisedCount: 0 }],
     });
-    expect(access).toEqual({ editions: false, payouts: false, artist: false });
+    expect(access).toEqual({
+      editions: false,
+      payouts: false,
+      artist: false,
+      application: false,
+    });
   });
 
   it("offers editions once staff granted authority or editions are authorised", () => {
@@ -47,6 +54,7 @@ describe("decidePortalSellerAccess", () => {
       editions: true,
       payouts: true,
       artist: false,
+      application: false,
     });
   });
 
@@ -63,10 +71,16 @@ describe("decidePortalSellerAccess", () => {
         hasSaleAuthorityRequest: true,
         hasPayout: true,
       }),
-    ).toEqual({ editions: true, payouts: false, artist: false });
+    ).toEqual({ editions: true, payouts: false, artist: false, application: false });
   });
 
   it("reports a linked artist profile", () => {
     expect(decidePortalSellerAccess({ ...buyer, hasLinkedArtist: true }).artist).toBe(true);
+  });
+
+  it("offers the application page to anyone who has applied to join the gallery", () => {
+    expect(decidePortalSellerAccess({ ...buyer, hasArtistApplication: true }).application).toBe(
+      true,
+    );
   });
 });

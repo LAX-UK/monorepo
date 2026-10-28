@@ -30,6 +30,7 @@ const STATIC_PATHS = [
   "/collector-hub",
   "/contact",
   "/visit",
+  "/for-artists",
   "/help",
 ];
 

@@ -10,6 +10,11 @@ export class ShopApiError extends Error {
     this.code = code;
     this.statusCode = statusCode;
   }
+
+  /** Fields an error adds to the response body beside its code and message. */
+  responseFields(): Record<string, unknown> {
+    return {};
+  }
 }
 
 export function notFound(message: string): ShopApiError {

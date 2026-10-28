@@ -2,6 +2,7 @@ import { type Database, closeDb, createDb } from "@auction/db";
 import { sql } from "drizzle-orm";
 import { Redis } from "ioredis";
 import type { AdminRoutesDeps } from "./admin-route-deps.js";
+import type { ArtistApplicantService } from "./application/artist-applications/artist-applicant.service.js";
 import { createShopDeletionEligibilityService } from "./application/deletion-eligibility.service.js";
 import { createEditorialLinksService } from "./application/editorial-links.service.js";
 import { createEnquiryInboxService } from "./application/enquiry-inbox.service.js";
@@ -48,6 +49,7 @@ import { resolveStorefrontOrigins } from "./domain/storefront-origins.js";
 import type { EditorialRoutesDeps } from "./editorial-route-deps.js";
 import type { ShopApiEnv } from "./env.js";
 import type { IdentityDeletionRouteDeps } from "./identity-route-deps.js";
+import { createArtistApplicationServices } from "./infrastructure/artist-applications/create-artist-application-services.js";
 import { createDrizzleAdminReadRepository } from "./infrastructure/drizzle-admin-read.repository.js";
 import { createDrizzleArtistCatalogueWriter } from "./infrastructure/drizzle-artist-catalogue.writer.js";
 import { createDrizzleArtistDirectoryRepository } from "./infrastructure/drizzle-artist-directory.repository.js";
@@ -144,6 +146,8 @@ export type ShopApiAppDeps = {
   catalogue: CatalogueRoutesDeps;
   merchandise: MerchandiseRoutesDeps;
   interest: InterestRoutesDeps;
+  /** The signed-in artist's own application to join the gallery. */
+  artistApplicant: ArtistApplicantService;
   commerce: CommerceRoutesDeps;
   stripeWebhook: StripeWebhookDeps;
   auth: {
@@ -394,13 +398,28 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     checkConnectivity: () => readiness.checkConnectivity(),
     checkCatalogueSchema: () => readiness.checkCatalogueSchema(),
   };
+  const shopMediaAssets = createDrizzleShopMediaAssetRepository(db);
   const shopMediaUpload = shopMediaStorage
     ? createShopMediaUploadHandlers({
         storage: shopMediaStorage.storage,
-        repository: createDrizzleShopMediaAssetRepository(db),
+        repository: shopMediaAssets,
         imageProbe: createSharpImageProbe(),
       })
     : null;
+  const artistApplications = createArtistApplicationServices({
+    db,
+    uow: shopUow,
+    resolveMediaUrl,
+    mediaUploads: shopMediaUpload,
+    mediaAssets: shopMediaAssets,
+    staffReader,
+    rateLimitCounter,
+    artPublicUrl: env.LAX_ART_PUBLIC_URL ?? env.SHOP_STOREFRONT_URL,
+    onRateLimitUnavailable: (error) =>
+      console.warn("artist_application_rate_limit_unavailable", {
+        reason: error instanceof Error ? error.name : "unknown",
+      }),
+  });
   const previewSecret =
     env.SHOP_EDITORIAL_PREVIEW_SECRET ??
     (env.NODE_ENV !== "production" ? env.SHOP_API_BFF_TOKEN : undefined);
@@ -462,6 +481,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         grantStaffRole: grantStaffRoleHandler,
         revokeStaffRole: revokeStaffRoleHandler,
         adminRead,
+        artistApplicationReview: artistApplications.review,
         enquiryInbox: createEnquiryInboxService({
           repository: createDrizzleEnquiryInboxRepository(db, { resolveMediaUrl }),
           staffReader,
@@ -494,7 +514,14 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         updateArtistSeo: (artistId, fields) => artistSeoWriter.updateArtistSeo(artistId, fields),
         shopMediaUpload,
       },
-      portal: { portalOwnership, portalSales, portalArtist, portalFavorites, laxPortfolio },
+      portal: {
+        portalOwnership,
+        portalSales,
+        portalArtist,
+        portalFavorites,
+        laxPortfolio,
+        artistApplications: artistApplications.applicant,
+      },
       identityDeletion: {
         eligibility: createShopDeletionEligibilityService({
           reader: createDrizzleDeletionEligibilityRepository(db),
@@ -526,6 +553,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           createListPublicMerchandiseProductsHandler(merchandiseReader),
         getPublicMerchandiseProduct: createGetPublicMerchandiseProductHandler(merchandiseReader),
       },
+      artistApplicant: artistApplications.applicant,
       interest: {
         registerArtworkInterest: createRegisterArtworkInterestHandler(artworkInterestWriter),
         getArtworkInterest: createGetArtworkInterestHandler(artworkInterestWriter),

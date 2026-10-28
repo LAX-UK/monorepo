@@ -15,15 +15,23 @@ export type SellerAccess = {
   payouts: SellerProbe;
   /** Is linked to an artist profile. */
   artist: SellerProbe;
+  /** Has applied to join the gallery as an artist. */
+  application: SellerProbe;
 };
 
 export const UNKNOWN_SELLER_ACCESS: SellerAccess = {
   editions: "unknown",
   payouts: "unknown",
   artist: "unknown",
+  application: "unknown",
 };
 
-const NO_SELLER_ACCESS: SellerAccess = { editions: "no", payouts: "no", artist: "no" };
+const NO_SELLER_ACCESS: SellerAccess = {
+  editions: "no",
+  payouts: "no",
+  artist: "no",
+  application: "no",
+};
 
 const probe = (value: boolean): SellerProbe => (value ? "yes" : "no");
 
@@ -35,6 +43,8 @@ export function sellerAccessFromRead(read: SellingRead<PortalSellerAccess>): Sel
         editions: probe(read.data.editions),
         payouts: probe(read.data.payouts),
         artist: probe(read.data.artist),
+        // Absent from shop APIs older than artist applications: nobody has applied there.
+        application: probe(read.data.application ?? false),
       };
     case "off":
       return NO_SELLER_ACCESS;
@@ -43,15 +53,22 @@ export function sellerAccessFromRead(read: SellingRead<PortalSellerAccess>): Sel
   }
 }
 
-export type SellingTool = "editions" | "sales" | "payouts" | "artworks";
+export type SellingTool = "editions" | "sales" | "payouts" | "artworks" | "application";
 
-export const SELLING_TOOLS: readonly SellingTool[] = ["editions", "sales", "payouts", "artworks"];
+export const SELLING_TOOLS: readonly SellingTool[] = [
+  "editions",
+  "sales",
+  "payouts",
+  "artworks",
+  "application",
+];
 
 const TOOL_ROLE: Record<SellingTool, keyof SellerAccess> = {
   editions: "editions",
   sales: "payouts",
   payouts: "payouts",
   artworks: "artist",
+  application: "application",
 };
 
 /** Whether the tool is offered in the Selling tabs. */

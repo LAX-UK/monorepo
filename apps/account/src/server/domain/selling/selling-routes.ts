@@ -11,6 +11,7 @@ export const SELLING_ROUTES = {
   sales: "/account/selling/sales",
   payouts: "/account/selling/payouts",
   artworks: "/account/selling/artworks",
+  application: "/account/selling/application",
   salesCsv: "/account/selling/sales/statement.csv",
 } as const satisfies Record<SellingTool | "overview" | "salesCsv", string>;
 
@@ -20,6 +21,7 @@ export const SELLING_TOOL_LABELS: Record<SellingTool, string> = {
   sales: "Sales",
   payouts: "Payouts",
   artworks: "Artworks",
+  application: "Application",
 };
 
 export type SellingTabVm = { tool: SellingTool; label: string; href: string; current: boolean };

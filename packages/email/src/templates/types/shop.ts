@@ -11,6 +11,10 @@ const names = [
   "shop-refund-issued",
   "shop-cancellation-confirmed",
   "art-general-enquiry-alert",
+  "art-artist-application-received",
+  "art-artist-application-more-info",
+  "art-artist-application-declined",
+  "art-artist-application-welcome",
 ] as const;
 
 type ShopTemplateName = (typeof names)[number];
@@ -95,6 +99,35 @@ type ShopTemplateVars = {
     contextSlug?: string;
     contactPhone?: string;
   };
+  /** The applicant's copy of an artist application they sent. */
+  "art-artist-application-received": {
+    artistName: string;
+    reference: string;
+    /** How long the gallery takes to reply, in weeks. */
+    replyWeeks: number;
+    applicationUrl: string;
+  };
+  /** The gallery asks the applicant something before deciding. */
+  "art-artist-application-more-info": {
+    artistName: string;
+    reference: string;
+    message: string;
+    applicationUrl: string;
+  };
+  "art-artist-application-declined": {
+    artistName: string;
+    reference: string;
+    reason: string;
+    /** The date a new application may be sent, written out ("28 April 2027"). */
+    reapplyFrom: string;
+    applicationUrl: string;
+  };
+  /** Acceptance: the artist portal is open to the applicant's account. */
+  "art-artist-application-welcome": {
+    artistName: string;
+    reference: string;
+    portalUrl: string;
+  };
 };
 
 export const shopTemplates = {
@@ -111,6 +144,10 @@ export const shopTemplates = {
     "shop-refund-issued": "snapshot",
     "shop-cancellation-confirmed": "snapshot",
     "art-general-enquiry-alert": "snapshot",
+    "art-artist-application-received": "snapshot",
+    "art-artist-application-more-info": "snapshot",
+    "art-artist-application-declined": "snapshot",
+    "art-artist-application-welcome": "snapshot",
   },
 } satisfies TemplateDomainSlice<ShopTemplateName, ShopTemplateVars>;
 

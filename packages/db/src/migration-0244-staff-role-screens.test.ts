@@ -14,10 +14,9 @@ const journal = JSON.parse(read("meta/_journal.json")) as {
 };
 
 describe("migration 0244 staff role screens", () => {
-  it("is the latest journal entry", () => {
-    const last = journal.entries.at(-1);
-    expect(last?.tag).toBe("0244_staff_role_screens");
-    expect(last?.idx).toBe(244);
+  it("is journal entry 244", () => {
+    const entry = journal.entries.find((e) => e.tag === "0244_staff_role_screens");
+    expect(entry?.idx).toBe(244);
   });
 
   it("adds the end-recorded column the schema declares, and the rollback drops it", () => {

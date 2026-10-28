@@ -184,12 +184,13 @@ export async function registerPortalMeRoutes(app: FastifyInstance, deps: PortalM
     async (request) => {
       requireAnyShopScope(request, SELLER_READ_SCOPES);
       const subject = requireShopSubject(request);
-      const [saleAuthority, requests, artist, payouts, sales] = await Promise.all([
+      const [saleAuthority, requests, artist, payouts, sales, applied] = await Promise.all([
         deps.portalOwnership.listSaleAuthority(subject),
         deps.portalOwnership.listSaleAuthorityRequests(subject),
         deps.portalArtist.getLinkedArtist(subject),
         deps.payoutsEnabled ? deps.portalOwnership.listPayouts(subject) : [],
         deps.payoutsEnabled ? deps.portalSales.listSales(subject) : [],
+        deps.artistApplications.hasApplication(subject),
       ]);
       return decidePortalSellerAccess({
         saleAuthority,
@@ -197,6 +198,7 @@ export async function registerPortalMeRoutes(app: FastifyInstance, deps: PortalM
         hasPayout: payouts.length > 0,
         hasSalesStatement: sales.length > 0,
         hasLinkedArtist: artist !== null,
+        hasArtistApplication: applied,
         payoutsEnabled: deps.payoutsEnabled,
       });
     },

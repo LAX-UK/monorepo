@@ -72,6 +72,7 @@ describe("buildArtFooterVm", () => {
     expect(linksOf("services").map((link) => link.href)).toEqual([
       "/how-to-buy",
       "/how-to-sell",
+      "/for-artists",
       "/collector-hub",
       "/help",
     ]);

@@ -102,6 +102,9 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_staff_saved_view",
   /** The last invoice number issued; the payment that marks an order paid takes the next one. */
   "shop_invoice_counter",
+  /** Artists' applications to join the gallery, and the works they send with them. */
+  "shop_artist_application",
+  "shop_artist_application_work",
 ] as const;
 
 /** Append-only Shop tables: shop_app may INSERT and SELECT only. */
@@ -110,6 +113,7 @@ export const SHOP_COMMERCE_APPEND_ONLY_TABLES = [
   "shop_sale_authority_grant",
   "shop_edition_event",
   "shop_enquiry_note",
+  "shop_artist_application_event",
 ] as const;
 export const API_DENY_TABLES = [
   "user",

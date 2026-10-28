@@ -1,5 +1,6 @@
 import {
   SHOP_API_ERROR_CODES,
+  parseMyArtistApplicationState,
   parsePortalArtistArtworks,
   parsePortalArtistSales,
   parsePortalPayeeConnectConfig,
@@ -167,6 +168,8 @@ export function createShopSellingGateway(deps: {
     readArtistArtworks: (handle) =>
       read(handle, "/v1/me/artist/artworks", parsePortalArtistArtworks),
     readArtistSales: (handle) => read(handle, "/v1/me/artist/sales", parsePortalArtistSales),
+    readArtistApplication: (handle) =>
+      read(handle, "/v1/me/artist-application", parseMyArtistApplicationState),
     requestSaleChange: (handle, request) =>
       write(handle, "/v1/me/sale-authority-requests", request, (body) => {
         const requestId = (body as { requestId?: unknown } | null)?.requestId;

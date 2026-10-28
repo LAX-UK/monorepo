@@ -6,10 +6,14 @@ import type {
   PortalSalesReader,
 } from "./application/ports/portal-ownership.reader.js";
 
+/** Whether the person has applied to join the gallery, for the seller tools they are offered. */
+export type ArtistApplicationPresence = { hasApplication(subject: string): Promise<boolean> };
+
 export type PortalRoutesDeps = {
   portalOwnership: PortalOwnershipReader;
   portalSales: PortalSalesReader;
   portalArtist: PortalArtistReader;
   portalFavorites: PortalFavoritesHandlers;
   laxPortfolio: LaxPortfolioHandlers;
+  artistApplications: ArtistApplicationPresence;
 };
