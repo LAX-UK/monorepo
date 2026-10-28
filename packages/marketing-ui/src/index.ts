@@ -460,6 +460,11 @@ export {
 } from "./marketing-split-feature.js";
 export { MarketingCtaBand, type MarketingCtaBandProps } from "./marketing-cta-band.js";
 export {
+  MarketingGalleryTeamBand,
+  type MarketingGalleryTeamBandProps,
+  type MarketingGalleryTeamDetail,
+} from "./marketing-gallery-team-band.js";
+export {
   MarketingProductDoors,
   type MarketingProductDoorsProps,
 } from "./product-doors/marketing-product-doors.js";
