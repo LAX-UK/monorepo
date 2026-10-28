@@ -86,7 +86,8 @@ describe("RadioCardGroup card states", () => {
     expect(radio).toHaveAttribute("data-state", "checked");
     expect(card.className).toContain("has-[[data-state=checked]]:border-primary");
     expect(card.className).toContain("has-[[data-state=checked]]:bg-surface-container-low");
-    expect(card.className).toContain("has-[[data-state=checked]]:inset-ring-primary");
+    expect(card.className).toContain("has-[[data-state=checked]]:border-2");
+    expect(card.className).not.toContain("inset-ring");
     expect(card.className).not.toContain("has-[:checked]");
   });
 

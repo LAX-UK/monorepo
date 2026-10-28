@@ -31,13 +31,14 @@ export type RadioCardGroupProps = {
 
 /**
  * One card per state, keyed on the Radix radio inside it (`data-state="checked"`, `:disabled`,
- * `:focus-visible`), so the card always agrees with its radio. Selected: an ink border doubled by
- * an inset ring, on the raised fill. Focus: the same ring as buttons, outside the card.
+ * `:focus-visible`), so the card always agrees with its radio. Selected: a single 2px ink border
+ * (padding drops 1px so nothing shifts) on the raised fill. Keyboard focus alone adds the
+ * button focus ring, offset outside the card.
  */
 const RADIO_CARD_CLASS = cn(
   "flex cursor-pointer items-start gap-3 rounded-lg border border-outline-variant p-4 transition-colors",
   "hover:border-on-surface-variant/50 hover:bg-surface-container-low",
-  "has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:bg-surface-container-low has-[[data-state=checked]]:inset-ring-1 has-[[data-state=checked]]:inset-ring-primary has-[[data-state=checked]]:hover:border-primary",
+  "has-[[data-state=checked]]:border-2 has-[[data-state=checked]]:border-primary has-[[data-state=checked]]:p-[15px] has-[[data-state=checked]]:bg-surface-container-low has-[[data-state=checked]]:hover:border-primary",
   "has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-primary has-[:focus-visible]:ring-offset-2 has-[:focus-visible]:ring-offset-background",
   "has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60 has-[:disabled]:hover:border-outline-variant has-[:disabled]:hover:bg-transparent",
 );
