@@ -3,7 +3,7 @@ import { shopBaseUrl } from "@/lib/artwork/shop-editions.vm";
 import { loadArtCrossProductFooterLinks } from "@/lib/ecosystem/product-directory.server";
 import { laxAccountUrl } from "@/lib/lax-account-url";
 import { ART_REQUEST_PATH_HEADER } from "@/lib/request-path-header";
-import { resolveRetiredArtRoute } from "@/lib/routing/retired-art-routes";
+import { followRetiredArtRoute, resolveRetiredArtRoute } from "@/lib/routing/retired-art-routes";
 import {
   X_ROBOTS_TAG_NOINDEX,
   isArtIndexingAllowedForHost,
@@ -14,17 +14,23 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 export function middleware(request: NextRequest) {
-  const retired = resolveRetiredArtRoute(request.nextUrl.pathname, {
+  const destinations = {
     laxAccountUrl,
     shopBaseUrl: shopBaseUrl(loadArtCrossProductFooterLinks()),
-  });
+  };
+  const retired = resolveRetiredArtRoute(request.nextUrl.pathname, destinations);
   if (retired) {
     return NextResponse.redirect(new URL(retired, request.url), 308);
   }
 
   const resolution = resolveLegacyRedirect(request.nextUrl, loadArtStorefrontBaseUrl);
   if (resolution?.kind === "redirect") {
-    return NextResponse.redirect(resolution.location, 301);
+    const location = followRetiredArtRoute(
+      resolution.location,
+      loadArtStorefrontBaseUrl(),
+      destinations,
+    );
+    return NextResponse.redirect(location, 301);
   }
   if (resolution?.kind === "miss") {
     console.warn(

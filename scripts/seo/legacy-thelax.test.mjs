@@ -287,6 +287,7 @@ describe("legacy redirect verification", () => {
     "/collections/mr-phantom.html": "/artists/mr-phantom",
     "/glossary": "/collector-hub/glossary",
     "/prev-auction": "https://lax.bid/archive",
+    "/all-prints": "/prints",
   };
   const ORIGIN = "https://www.thelax.art";
   const page = ({ canonical, robots = "index, follow", title = "T", description = "D" }) =>
@@ -355,6 +356,31 @@ describe("legacy redirect verification", () => {
       "pass",
     );
     assert.equal(hop({ status: 200 }, "/").outcome, "pass");
+  });
+
+  it("expects pages that moved to another product to redirect there in one permanent hop", () => {
+    const hop = (response, path) =>
+      checkRedirectHop(
+        response,
+        { sources: ["inventory"], expected: expectedLegacyTarget(path, redirects) },
+        ORIGIN,
+      );
+    assert.deepEqual(expectedLegacyTarget("/prints", redirects), {
+      path: "/artworks",
+      redirect: true,
+      anotherProduct: true,
+    });
+    const shop = "https://shop.lax.art/artworks";
+    for (const path of ["/prints", "/all-prints"]) {
+      assert.equal(hop({ status: 308, location: shop }, path).outcome, "pass");
+      assert.equal(hop({ status: 301, location: shop }, path).outcome, "pass");
+    }
+    assert.match(hop({ status: 200 }, "/prints").issues[0], /permanent redirect/);
+    assert.match(
+      hop({ status: 301, location: `${ORIGIN}/prints` }, "/all-prints").issues[0],
+      /expected \/artworks on another product/,
+    );
+    assert.equal(hop({ status: 301, location: `${ORIGIN}/artworks` }, "/prints").outcome, "fail");
   });
 
   it("treats unmapped 404s as retired unless the URL is on the gold list", () => {

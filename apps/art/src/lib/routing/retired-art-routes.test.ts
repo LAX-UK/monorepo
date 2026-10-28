@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { type RetiredArtRouteDestinations, resolveRetiredArtRoute } from "./retired-art-routes";
+import {
+  type RetiredArtRouteDestinations,
+  followRetiredArtRoute,
+  resolveRetiredArtRoute,
+} from "./retired-art-routes";
 
 const destinations: RetiredArtRouteDestinations = {
   laxAccountUrl: (destination) => `https://account.test/${destination}`,
@@ -31,5 +35,24 @@ describe("resolveRetiredArtRoute", () => {
     for (const path of ["/", "/account", "/account/enquiries", "/paintings", "/prints/x"]) {
       expect(resolveRetiredArtRoute(path, destinations)).toBeNull();
     }
+  });
+});
+
+describe("followRetiredArtRoute", () => {
+  const art = new URL("https://lax.art");
+
+  it("sends a location on a retired page straight to its new home, query kept", () => {
+    expect(followRetiredArtRoute("https://lax.art/prints?utm_source=x", art, destinations)).toBe(
+      "https://shop.test/artworks?utm_source=x",
+    );
+  });
+
+  it("leaves other lax.art locations and other origins alone", () => {
+    expect(followRetiredArtRoute("https://lax.art/paintings", art, destinations)).toBe(
+      "https://lax.art/paintings",
+    );
+    expect(followRetiredArtRoute("https://lax.bid/prints", art, destinations)).toBe(
+      "https://lax.bid/prints",
+    );
   });
 });
