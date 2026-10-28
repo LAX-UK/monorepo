@@ -517,6 +517,7 @@ export type {
   InsertPayoutLineInput,
   IPayoutAnalyticsRepository,
   IPayoutLifecycleRepository,
+  IPayoutProcessorReader,
   IPayoutReadRepository,
   IPayoutRepository,
   IPayoutWriteRepository,

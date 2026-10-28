@@ -1,7 +1,11 @@
 import type { CreatePayoutAdjustmentInput } from "@auction/validators";
 import type { IAdminPayoutApplicationService } from "../interfaces/admin-routes/admin-finance-routes.js";
 import type { IPayoutStatementApplicationService } from "../interfaces/finance-routes/finance-payout-statement.js";
-import type { IPayoutAdminService, IPayoutSettlementService } from "../interfaces/payout.js";
+import type {
+  IPayoutAdminService,
+  IPayoutSettlementService,
+  PayoutReversalActor,
+} from "../interfaces/payout.js";
 import type { AdminListPayoutsFilter } from "../interfaces/payout.js";
 import type { AdminPayoutListPage } from "./admin-payout-list-query.service.js";
 
@@ -37,8 +41,8 @@ export class AdminPayoutApplicationService implements IAdminPayoutApplicationSer
     return this.payouts.markPaid(actorUserId, payoutId, body);
   }
 
-  adminManualReverse(actorUserId: string, payoutId: string, input: { reason: string }) {
-    return this.payouts.adminManualReverse(actorUserId, payoutId, input);
+  adminManualReverse(actor: PayoutReversalActor, payoutId: string, input: { reason: string }) {
+    return this.payouts.adminManualReverse(actor, payoutId, input);
   }
 
   resolveStatementPdf(payoutId: string) {
