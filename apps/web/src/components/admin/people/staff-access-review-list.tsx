@@ -12,6 +12,7 @@ import {
 } from "@/lib/admin/people/staff-access-review.vm";
 import { STAFF_ROLE_FILTERS } from "@/lib/admin/people/staff-directory-list.vm";
 import { staffRoleLastDay } from "@/lib/admin/people/staff-roles.vm";
+import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { USER_ROLE_MANAGEMENT_ACCESS } from "@/lib/navigation/staff-nav-access";
 import {
   CsvExportMenu,
@@ -120,8 +121,19 @@ export function StaffAccessReviewList({ model, search }: Props) {
         hideBelow: "lg",
         mobile: "meta",
         truncate: false,
+        // Stacked on a phone the column header is gone, so the line names itself.
         cell: (row) =>
-          row.lastSignInAt ? <StaffDate value={row.lastSignInAt} withTime /> : "Not known",
+          row.lastSignInAt ? (
+            <span>
+              <span className="md:hidden">Last sign-in </span>
+              <StaffDate value={row.lastSignInAt} withTime />
+            </span>
+          ) : (
+            <>
+              <span className="md:hidden">Last sign-in not known</span>
+              <span className="hidden md:inline">Not known</span>
+            </>
+          ),
       },
       {
         id: "account",
@@ -130,7 +142,10 @@ export function StaffAccessReviewList({ model, search }: Props) {
         hideBelow: "xl",
         mobile: "badge",
         truncate: false,
-        cell: (row) => (row.suspended ? <StatusBadge tone="danger">Suspended</StatusBadge> : null),
+        cell: (row) => {
+          const standing = staffStatus("user", row.suspended ? "suspended" : "active");
+          return <StatusBadge tone={standing.tone}>{standing.label}</StatusBadge>;
+        },
       },
     ],
     [ListLink],

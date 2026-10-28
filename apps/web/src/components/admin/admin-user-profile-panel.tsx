@@ -1,7 +1,6 @@
 import { formatEmailDeliverabilityStatus, formatUserRole } from "@/lib/admin/admin-user-presenters";
 import { formatBirthDate } from "@/lib/admin/people/format-birth-date";
 import { staffStatus } from "@/lib/admin/staff-kit-status";
-import { staffRoleLabel } from "@/lib/admin/staff-role-presenter";
 import { formatAmlHoldReason } from "@/lib/admin/status-badge-variants";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
 import { formatSignupPersona } from "@/lib/presenters/signup-persona/signup-persona-registry";
@@ -12,7 +11,6 @@ import {
   StaffDate,
   StatusBadge,
 } from "@auction/staff-ui";
-import type { UserStaffRole } from "@auction/types";
 import { formatPhoneDisplay } from "@auction/validators";
 
 const LINK = "underline underline-offset-2";
@@ -35,9 +33,8 @@ export function AdminUserProfilePanel({ user }: { user: AdminUserDetailPayload }
     },
     { label: "Date of birth", value: formatBirthDate(user.dateOfBirth) },
     { label: "Account type", value: formatUserRole(user.role) },
-    ...(isStaff
-      ? [{ label: "Staff role", value: staffRoleLabel(user.staffRole as UserStaffRole | null) }]
-      : [{ label: "Signed up as", value: formatSignupPersona(user.signupPersona) }]),
+    // A staff member's roles have their own section on the record.
+    ...(isStaff ? [] : [{ label: "Signed up as", value: formatSignupPersona(user.signupPersona) }]),
     { label: "Last updated", value: dateTime(user.updatedAt) },
     ...(user.suspendedAt ? [{ label: "Suspended", value: dateTime(user.suspendedAt) }] : []),
     ...(user.suspendedReason ? [{ label: "Suspension reason", value: user.suspendedReason }] : []),
