@@ -28,7 +28,8 @@ export function WatchedLotCard({ card }: { card: WatchedLotCardVm }) {
       className="h-full"
       lotId={card.lotId}
       href={card.href}
-      topLeft={<DotStatusPill label={card.badgeLabel} tone={BADGE_TONE[card.badge]} />}
+      // Status sits bottom-left on the image, as on catalogue cards, clear of the heart.
+      bottomLeft={<DotStatusPill label={card.badgeLabel} tone={BADGE_TONE[card.badge]} />}
       imageOverlays={
         <MarketingWatchlistHeart
           lotId={card.lotId}
@@ -62,10 +63,8 @@ export function WatchedLotCard({ card }: { card: WatchedLotCardVm }) {
         </>
       }
       meta={
-        <p className="mt-2 flex items-baseline justify-between gap-2 font-body text-sm">
-          <span className="min-w-0 truncate font-medium tabular-nums text-on-surface">
-            {card.figure}
-          </span>
+        <p className="mt-2 flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 font-body text-sm">
+          <span className="font-medium tabular-nums text-on-surface">{card.figure}</span>
           <span className="shrink-0 text-on-surface-variant">
             {card.timing.kind === "countdown" ? (
               <BidCloseCountdown endsAt={card.timing.endsAt} />

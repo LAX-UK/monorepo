@@ -25,4 +25,16 @@ describe("AccountProgress", () => {
     expect(screen.getByText(", not started")).toBeInTheDocument();
     expect(screen.getByText("Due 7 Nov")).toBeInTheDocument();
   });
+
+  it("names only the current step on phones when there are more than four", () => {
+    const six = ["a", "b", "c", "d", "e", "f"].map((id, index) => ({
+      id,
+      label: `Step ${id}`,
+      progress:
+        index < 2 ? ("done" as const) : index === 2 ? ("current" as const) : ("upcoming" as const),
+    }));
+    render(<AccountProgress label="Consignment progress" steps={six} />);
+    expect(screen.getByText("Step a")).toHaveClass("max-sm:sr-only");
+    expect(screen.getByText("Step c")).not.toHaveClass("max-sm:sr-only");
+  });
 });

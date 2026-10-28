@@ -36,6 +36,8 @@ const PROGRESS_TEXT: Record<AccountProgressStep["progress"], string> = {
  * its own column at every width, so the line never wraps.
  */
 export function AccountProgress({ label, steps, className }: AccountProgressProps) {
+  // Six steps do not fit six labels on a phone: there only the current step is named.
+  const crowded = steps.length > 4;
   return (
     <ol aria-label={label} className={cn("grid", COLUMNS[steps.length], className)}>
       {steps.map((step, index) => {
@@ -73,13 +75,20 @@ export function AccountProgress({ label, steps, className }: AccountProgressProp
                 step.progress === "current"
                   ? "font-medium text-on-surface"
                   : "text-on-surface-variant",
+                crowded &&
+                  (step.progress === "current" ? "max-sm:overflow-visible" : "max-sm:sr-only"),
               )}
             >
               {step.label}
               <span className="sr-only">, {PROGRESS_TEXT[step.progress]}</span>
             </p>
             {step.date ? (
-              <p className="mt-0.5 truncate font-body text-xs text-on-surface-variant">
+              <p
+                className={cn(
+                  "mt-0.5 truncate font-body text-xs text-on-surface-variant",
+                  crowded && step.progress !== "current" && "max-sm:sr-only",
+                )}
+              >
                 {step.date}
               </p>
             ) : null}

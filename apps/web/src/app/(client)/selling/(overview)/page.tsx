@@ -4,6 +4,7 @@ import { AccountLoadError } from "@/components/dashboard/primitives/account-load
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { SellerProfileUnavailableAlert } from "@/components/dashboard/seller-profile-unavailable-alert";
 import { NeedsYouCard } from "@/components/dashboard/seller/needs-you-card";
+import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import {
   ACCOUNT_LOAD_ERROR,
@@ -64,6 +65,7 @@ export default async function SellerOverviewPage() {
             ))
       }
     >
+      <SetMobileShellTitle title="Selling" />
       {!canSell ? (
         <Alert>
           <AlertTitle>No selling pages for your role</AlertTitle>
