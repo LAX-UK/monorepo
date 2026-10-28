@@ -61,10 +61,20 @@ type NavSpec = {
   personalWhen?: (scope: ClientNavScope) => boolean;
 };
 
+/**
+ * How a section appears in the account sub-navigation under the public header:
+ * - `entries`: one link per entry;
+ * - `one-link`: a single link named after the section, current anywhere under `prefix`;
+ * - `hidden`: not in the sub-navigation (workspace-only sections).
+ * External entries (LAX Account) never appear there: the band is for Bid's own pages.
+ */
+type SubNavShape = { kind: "entries" } | { kind: "one-link"; prefix: string } | { kind: "hidden" };
+
 type SectionSpec = {
   id: ClientNavSectionId;
   label: string | null;
   specs: readonly NavSpec[];
+  subNav: SubNavShape;
 };
 
 function exactOrNested(href: string) {
@@ -231,15 +241,31 @@ const LAX_ACCOUNT: NavSpec = {
 
 /** The whole menu, in order. Adding or moving an entry is one edit here. */
 const SECTIONS: readonly SectionSpec[] = [
-  { id: "home", label: null, specs: [HOME] },
-  { id: "buying", label: "Buying", specs: [BIDS, PURCHASES, WATCHING] },
+  { id: "home", label: null, specs: [HOME], subNav: { kind: "hidden" } },
+  {
+    id: "buying",
+    label: "Buying",
+    specs: [BIDS, PURCHASES, WATCHING],
+    subNav: { kind: "entries" },
+  },
   {
     id: "selling",
     label: "Selling",
     specs: [SELL_WITH_LAX, CONSIGNMENTS, WORKS, SOLD_AND_PAYOUTS],
+    subNav: { kind: "one-link", prefix: CLIENT_ROUTES.selling },
   },
-  { id: "organisation", label: "Organisation", specs: [ORGANISATION_SETTINGS] },
-  { id: "account", label: null, specs: [NOTIFICATIONS, BID_SETTINGS, LAX_ACCOUNT] },
+  {
+    id: "organisation",
+    label: "Organisation",
+    specs: [ORGANISATION_SETTINGS],
+    subNav: { kind: "hidden" },
+  },
+  {
+    id: "account",
+    label: null,
+    specs: [NOTIFICATIONS, BID_SETTINGS, LAX_ACCOUNT],
+    subNav: { kind: "entries" },
+  },
 ];
 
 function isVisible(spec: NavSpec, scope: ClientNavScope): boolean {
@@ -260,6 +286,68 @@ export function getClientNavSections(scope: ClientNavScope): ClientNavSection[] 
     label: section.label,
     items: section.specs.filter((spec) => isVisible(spec, scope)).map((spec) => spec.item(scope)),
   })).filter((section) => section.items.length > 0);
+}
+
+/** Whether a menu entry is the page at `pathname` (its own rule, else its exact address). */
+export function navItemMatches(
+  item: Pick<AppShellNavItem, "href" | "match">,
+  pathname: string,
+): boolean {
+  return item.match ? item.match(pathname) : item.href === pathname;
+}
+
+/** One link in the account sub-navigation. */
+export type ClientSubNavEntry = {
+  id: string;
+  label: string;
+  href: string;
+  match: (pathname: string) => boolean;
+};
+
+function subNavEntries(section: SectionSpec, items: AppShellNavItem[]): ClientSubNavEntry[] {
+  const shape = section.subNav;
+  const own = items.filter((item) => !item.external);
+  if (shape.kind === "hidden" || own.length === 0) return [];
+  if (shape.kind === "entries") {
+    return own.map((item) => ({
+      id: item.id,
+      label: item.label,
+      href: item.href,
+      match: (pathname) => navItemMatches(item, pathname),
+    }));
+  }
+  const [first] = own;
+  if (!first || !section.label) return [];
+  return [
+    {
+      id: section.id,
+      label: section.label,
+      href: first.href,
+      match: (pathname) =>
+        exactOrNested(shape.prefix)(pathname) || own.some((item) => navItemMatches(item, pathname)),
+    },
+  ];
+}
+
+/**
+ * The account sub-navigation for one account: Bid's own pages in one row, with a section that
+ * holds several pages (Selling) reached through a single link.
+ */
+export function getClientSubNav(scope: ClientNavScope): ClientSubNavEntry[] {
+  return SECTIONS.flatMap((section) =>
+    subNavEntries(
+      section,
+      section.specs.filter((spec) => isVisible(spec, scope)).map((spec) => spec.item(scope)),
+    ),
+  );
+}
+
+/** The id of the entry for `pathname`, or `null` when the page is not one of them. */
+export function currentNavEntryId(
+  entries: readonly { id: string; match: (pathname: string) => boolean }[],
+  pathname: string,
+): string | null {
+  return entries.find((entry) => entry.match(pathname))?.id ?? null;
 }
 
 /** Every menu entry for one account, in order. */
