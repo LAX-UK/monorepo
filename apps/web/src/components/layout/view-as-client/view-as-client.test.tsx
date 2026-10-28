@@ -10,7 +10,8 @@ vi.mock("@/lib/legal-entity/acting-context.actions", () => ({
 describe("view as client", () => {
   it("names the account, says it is read-only and offers Exit", () => {
     render(<ViewAsClientBanner accountName="Jane Smith" />);
-    expect(screen.getByText("Viewing as Jane Smith — read-only")).toBeTruthy();
+    expect(screen.getByText("Viewing as Jane Smith")).toBeTruthy();
+    expect(screen.getByText("— read-only", { exact: false })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Exit" })).toBeTruthy();
   });
 

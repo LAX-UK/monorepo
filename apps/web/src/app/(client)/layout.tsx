@@ -114,7 +114,8 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
   const staffDestination = viewingAs ? null : clientAreaRedirectFor(user, CLIENT_ROUTES.home);
   if (staffDestination) redirect(staffDestination);
   const account = buildAccountChrome({
-    personName: viewingAs?.displayName ?? (user.name.trim() || user.email),
+    personName:
+      viewingAs?.kind === "individual" ? viewingAs.displayName : user.name.trim() || user.email,
     memberships: viewingAs ? [viewingAs] : actingContext.memberships,
     actingId: safeActing?.id ?? null,
     orgModuleEnabled,
@@ -159,7 +160,7 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
   return (
     <ExportShellClient>
       {viewingAs ? (
-        <div className="[--view-as-client-banner-height:3.5rem] sm:[--view-as-client-banner-height:3rem]">
+        <div className="[--view-as-client-banner-height:3rem]">
           <ViewAsClientBanner accountName={viewingAs.displayName} />
           {shell}
         </div>

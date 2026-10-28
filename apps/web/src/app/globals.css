@@ -444,3 +444,9 @@
     color: var(--color-persona-unset-fg);
   }
 }
+
+/* Viewing Bid as a client: everything that would act shows that it cannot. */
+[data-read-only] :disabled,
+[data-read-only] label:has(:disabled) {
+  cursor: not-allowed;
+}

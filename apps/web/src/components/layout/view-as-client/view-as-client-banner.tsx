@@ -22,9 +22,14 @@ export function ViewAsClientBanner({ accountName }: Props) {
     >
       <div className="mx-auto flex w-full max-w-[var(--container-inner,1376px)] items-center gap-3">
         <Eye className="size-4 shrink-0" aria-hidden />
-        <p className="min-w-0 flex-1 font-body text-sm leading-snug">
-          <span className="font-semibold">Viewing as {accountName} — read-only</span>
-          <span id={READ_ONLY_REASON_ID} className="block text-xs opacity-80 sm:ml-2 sm:inline">
+        <p className="flex min-w-0 flex-1 items-baseline font-body text-sm leading-snug">
+          <span className="truncate font-semibold">Viewing as {accountName}</span>
+          <span className="shrink-0 whitespace-pre font-semibold"> — read-only</span>
+          {/* On a phone the title says it; the reason stays for assistive technology. */}
+          <span
+            id={READ_ONLY_REASON_ID}
+            className="sr-only truncate text-xs opacity-80 sm:not-sr-only sm:ml-2"
+          >
             Actions are turned off while you view as this client.
           </span>
         </p>
