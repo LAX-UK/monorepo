@@ -67,7 +67,7 @@ describe("presentBasketLine", () => {
       ...older
     } = edition;
     const vm = presentBasketLine(older);
-    expect(vm.maxQuantity).toBe(24);
+    expect(vm.maxQuantity).toBe(10);
     expect(vm.limitHint).toBeNull();
     expect(vm.artistName).toBeNull();
     expect(vm.detail).toBeNull();

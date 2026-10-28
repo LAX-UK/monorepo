@@ -26,6 +26,13 @@ export const SHOP_STAFF_CAPABILITIES = [
   "order.read",
   /** Reviewing artists' applications to join the gallery, and accepting or declining them. */
   "artist_application.review",
+  /**
+   * Correcting a run's edition facts after prints have sold. Shop admins only: the orders already
+   * paid were described the old way.
+   */
+  "edition_facts.correct",
+  /** Approving the listing of hors commerce proofs, which were not made to be sold. */
+  "hors_commerce.approve",
 ] as const;
 
 export type ShopStaffCapability = (typeof SHOP_STAFF_CAPABILITIES)[number];

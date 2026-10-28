@@ -79,6 +79,7 @@ export const ARTWORK_PUBLISH_BLOCKERS = [
   "artist_archived",
   "no_image",
   "no_edition_price",
+  "edition_facts_incomplete",
 ] as const;
 export type ArtworkPublishBlocker = (typeof ARTWORK_PUBLISH_BLOCKERS)[number];
 
@@ -87,11 +88,14 @@ export const ARTWORK_PUBLISH_BLOCKER_MESSAGES: Record<ArtworkPublishBlocker, str
   artist_archived: "The artist is archived; restore the artist first",
   no_image: "Add an image before publishing",
   no_edition_price: "Set the edition price before publishing",
+  edition_facts_incomplete: "Confirm the edition facts",
 };
 
 /**
  * What stops an artwork going on the storefront. An edition run on sale needs a price, because
  * the storefront sells editions at that price; an original or a price-on-application run does not.
+ * A run is never published until its edition facts are complete and confirmed (rule 12), because
+ * the facts are what its page states about every print.
  */
 export function artworkPublishBlockers(input: {
   archived: boolean;
@@ -100,6 +104,8 @@ export function artworkPublishBlockers(input: {
   eligibleForEditionAllocation: boolean;
   saleState: ArtworkSaleState;
   printPricePence: number | null;
+  /** Whether the run's facts are recorded and confirmed. Ignored for an original. */
+  editionFactsConfirmed: boolean;
 }): ArtworkPublishBlocker[] {
   const blockers: ArtworkPublishBlocker[] = [];
   if (input.archived) blockers.push("archived");
@@ -111,6 +117,9 @@ export function artworkPublishBlockers(input: {
     input.printPricePence === null
   ) {
     blockers.push("no_edition_price");
+  }
+  if (input.eligibleForEditionAllocation && !input.editionFactsConfirmed) {
+    blockers.push("edition_facts_incomplete");
   }
   return blockers;
 }
@@ -141,8 +150,9 @@ export function assertLivePriceKept(input: {
 }
 
 /**
- * The edition run (1 to 24, split 10/10/4) is planned when the artwork is created and cannot be
- * added or removed later: editions are owned, authorised and sold one by one.
+ * Whether an artwork sells prints is decided when it is created: an original never gains a run
+ * and a run is never removed. Its size and allocation can still change until a print is offered
+ * for sale (see `runLocks`).
  */
 export function assertEditionRunUnchanged(input: {
   current: boolean;

@@ -361,7 +361,7 @@ describe("describeEditionFacts: eyebrow, card and basket", () => {
     expect(pp.eyebrow).toBe("Printer's proof");
     expect(pp.rows.edition).toBe("Printer's proof, one of 3");
     expect(describeEditionFacts({ ...ap3, proofType: "hc" }, facts()).rows.edition).toBe(
-      "Hors commerce proof, one of 3",
+      "Hors commerce proof, originally not for sale, one of 3",
     );
     expect(describeEditionFacts(ap3, facts()).rows.edition).toBe("Artist's proof, one of 3");
   });
