@@ -1,16 +1,14 @@
 import type { Database } from "@auction/db";
 import { domainEvent, shopStaffAccessInbox } from "@auction/db/schema";
-import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
-import type { ShopStaffRole } from "@auction/shop-domain";
 import {
-  laxShopStaffRoles,
+  isLaxAdminRole,
   laxStaffAccessGrantedPayloadSchemaV1,
   laxStaffAccessRevokedPayloadSchemaV1,
 } from "@auction/types";
 import { and, asc, eq, gt, inArray, notExists, sql } from "drizzle-orm";
-import { ShopApiError } from "../../errors/shop-api-error.js";
+import { ShopStaffRoleRefused } from "../../application/admin/shop-staff-roster.service.js";
 import { createDrizzleShopNotificationPublisher } from "../drizzle-shop-notification.publisher.js";
-import { grantShopStaffRoleInTx, revokeShopStaffRoleInTx } from "../grant-staff-role.js";
+import { shopStaffRosterOn } from "../grant-staff-role.js";
 
 const STAFF_ACCESS_EVENT_TYPES = ["lax.staff_access.granted", "lax.staff_access.revoked"] as const;
 const INGEST_BATCH = 100;
@@ -20,59 +18,59 @@ const INGEST_WINDOW_DAYS = 7;
 
 type Outcome = { dead: false } | { dead: true; reason: string };
 
-function isShopRole(role: string): role is ShopStaffRole {
-  return (laxShopStaffRoles as readonly string[]).includes(role);
-}
-
-function isRosterConflict(error: unknown): error is ShopApiError {
-  return error instanceof ShopApiError && error.code === SHOP_API_ERROR_CODES.CONFLICT;
-}
-
 /**
- * Applies one Bid-emitted staff access event. Roster conflicts (removing the last Shop
- * admin) can never succeed on retry, so they are dead-lettered for a human instead.
+ * Applies one Bid-emitted staff access event to LAX Admin's roster: a grant adds the role, a
+ * revocation ends one role (or every role), and a revocation naming an assignment records that
+ * its end date passed. Bid checks the role rules before it asks; the roster checks them again,
+ * and a refusal (a forbidden pair, the last Administrator) can never succeed on retry, so it is
+ * dead-lettered for a human instead.
  */
 async function applyStaffAccessEvent(
   tx: Database,
+  eventId: number,
   eventType: (typeof STAFF_ACCESS_EVENT_TYPES)[number],
   payload: unknown,
 ): Promise<Outcome> {
-  if (eventType === "lax.staff_access.granted") {
-    const parsed = laxStaffAccessGrantedPayloadSchemaV1.safeParse(payload);
-    if (!parsed.success) return { dead: true, reason: "invalid_payload" };
-    if (!isShopRole(parsed.data.role)) {
-      return { dead: true, reason: `unknown_shop_role:${parsed.data.role}` };
-    }
-    const role = parsed.data.role;
-    try {
-      await tx.transaction(async (sp) =>
-        grantShopStaffRoleInTx(sp as Database, {
-          subject: parsed.data.subjectId,
-          role,
-          operatorSubjectId: parsed.data.grantedBySubjectId,
-        }),
-      );
-    } catch (error) {
-      if (isRosterConflict(error)) return { dead: true, reason: error.message };
-      throw error;
-    }
-    return { dead: false };
-  }
-
-  const parsed = laxStaffAccessRevokedPayloadSchemaV1.safeParse(payload);
-  if (!parsed.success) return { dead: true, reason: "invalid_payload" };
+  const roster = shopStaffRosterOn(tx);
   try {
-    await tx.transaction(async (sp) =>
-      revokeShopStaffRoleInTx(sp as Database, {
-        subject: parsed.data.subjectId,
-        operatorSubjectId: parsed.data.revokedBySubjectId,
-      }),
-    );
+    if (eventType === "lax.staff_access.granted") {
+      const parsed = laxStaffAccessGrantedPayloadSchemaV1.safeParse(payload);
+      if (!parsed.success) return { dead: true, reason: "invalid_payload" };
+      const role = parsed.data.role;
+      if (!isLaxAdminRole(role)) return { dead: true, reason: `unknown_shop_role:${role}` };
+      await roster.assign({
+        subjectId: parsed.data.subjectId,
+        role,
+        endsAt: parsed.data.endsAt ? new Date(parsed.data.endsAt) : null,
+        actorSubjectId: parsed.data.grantedBySubjectId,
+        reason: parsed.data.reason ?? null,
+        eventId,
+      });
+      return { dead: false };
+    }
+
+    const parsed = laxStaffAccessRevokedPayloadSchemaV1.safeParse(payload);
+    if (!parsed.success) return { dead: true, reason: "invalid_payload" };
+    const attribution = {
+      subjectId: parsed.data.subjectId,
+      actorSubjectId: parsed.data.revokedBySubjectId,
+      reason: parsed.data.reason ?? null,
+      eventId,
+    };
+    if (parsed.data.assignmentId) {
+      await roster.recordExpiry({ ...attribution, assignmentId: parsed.data.assignmentId });
+      return { dead: false };
+    }
+    const role = parsed.data.role ?? null;
+    if (role !== null && !isLaxAdminRole(role)) {
+      return { dead: true, reason: `unknown_shop_role:${role}` };
+    }
+    await roster.remove({ ...attribution, role });
+    return { dead: false };
   } catch (error) {
-    if (isRosterConflict(error)) return { dead: true, reason: error.message };
+    if (error instanceof ShopStaffRoleRefused) return { dead: true, reason: error.message };
     throw error;
   }
-  return { dead: false };
 }
 
 async function ingestStaffAccessEvents(db: Database): Promise<number> {
@@ -185,7 +183,12 @@ export function createProcessStaffAccessInboxRunner(
           claimed = row.eventId;
 
           const attempts = row.attempts + 1;
-          const outcome = await applyStaffAccessEvent(tx as Database, row.eventType, row.payload);
+          const outcome = await applyStaffAccessEvent(
+            tx as Database,
+            row.eventId,
+            row.eventType,
+            row.payload,
+          );
           if (outcome.dead) {
             await deadLetter(tx as Database, row.eventId, attempts, outcome.reason);
           } else {

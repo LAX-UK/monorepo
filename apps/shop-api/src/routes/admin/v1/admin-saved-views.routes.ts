@@ -19,8 +19,8 @@ const CREATE_BODY_LIMIT_BYTES = 4096;
 
 /** The signed-in person, read from the session and never from the request. */
 function actorOf(request: FastifyRequest) {
-  const { subject, role } = requireShopStaffAuth(request);
-  return { subject, role };
+  const { subject, capabilities } = requireShopStaffAuth(request);
+  return { subject, capabilities };
 }
 
 /**

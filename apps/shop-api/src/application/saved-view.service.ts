@@ -6,15 +6,14 @@ import {
   type AdminSavedViewListKey,
   SHOP_API_ERROR_CODES,
 } from "@auction/shop-contracts";
-import {
-  type ShopStaffCapability,
-  type ShopStaffRole,
-  roleHasCapability,
-} from "@auction/shop-domain";
+import type { ShopStaffCapability } from "@auction/shop-domain";
 import { ShopApiError, notFound } from "../errors/shop-api-error.js";
 import type { SavedViewRecord, SavedViewRepository } from "./ports/saved-view.repository.js";
 
-export type SavedViewActor = { subject: string; role: ShopStaffRole };
+export type SavedViewActor = {
+  subject: string;
+  capabilities: ReadonlySet<ShopStaffCapability>;
+};
 
 /**
  * Who may keep views for each list: the people who may open that list. A view is only a saved
@@ -68,7 +67,7 @@ export function createSavedViewService(deps: { repository: SavedViewRepository }
   const { repository } = deps;
 
   function requireListAccess(actor: SavedViewActor, listKey: AdminSavedViewListKey): void {
-    if (!roleHasCapability(actor.role, LIST_CAPABILITY[listKey])) {
+    if (!actor.capabilities.has(LIST_CAPABILITY[listKey])) {
       throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Insufficient capability", 403);
     }
   }

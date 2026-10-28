@@ -39,7 +39,7 @@ describe("admin media routes", () => {
       },
       staffReader: {
         findActiveByIdentitySubject: async (s) =>
-          s === "catalogue-editor" ? { role: "catalogue_editor", identitySubjectId: s } : null,
+          s === "catalogue-editor" ? { roles: ["catalogue_editor"], identitySubjectId: s } : null,
         brokerCanAccessClientParty: async () => false,
       },
     });
@@ -76,7 +76,7 @@ describe("admin media routes", () => {
       },
       staffReader: {
         findActiveByIdentitySubject: async (s) =>
-          s === "catalogue-editor" ? { role: "catalogue_editor", identitySubjectId: s } : null,
+          s === "catalogue-editor" ? { roles: ["catalogue_editor"], identitySubjectId: s } : null,
         brokerCanAccessClientParty: async () => false,
       },
     });

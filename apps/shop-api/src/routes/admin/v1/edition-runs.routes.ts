@@ -20,7 +20,6 @@ import {
   CatalogueConflictBodySchema,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
-import { roleHasCapability } from "@auction/shop-domain";
 import { type Static, Type } from "@sinclair/typebox";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
@@ -33,6 +32,7 @@ import { requireIdempotencyKey } from "../../../plugins/require-idempotency-key.
 import {
   requireShopAdminSubject,
   requireShopStaffCapability,
+  staffCan,
 } from "../../../plugins/shop-admin-auth.js";
 
 const ArtworkParams = Type.Object({ id: Type.String({ format: "uuid" }) });
@@ -214,8 +214,8 @@ export async function registerAdminEditionRunRoutes(
         owner: body.owner,
         printPricePence: body.printPricePence ?? null,
         horsCommerceApproved: body.horsCommerceApproved ?? false,
-        canSetPrice: roleHasCapability(auth.role, "artwork_price.write"),
-        canApproveHorsCommerce: roleHasCapability(auth.role, "hors_commerce.approve"),
+        canSetPrice: staffCan(auth, "artwork_price.write"),
+        canApproveHorsCommerce: staffCan(auth, "hors_commerce.approve"),
       });
     },
   );
@@ -241,7 +241,7 @@ export async function registerAdminEditionRunRoutes(
         title: body.title.trim(),
         run: body.run,
         printPricePence: body.printPricePence ?? null,
-        canSetPrice: roleHasCapability(auth.role, "artwork_price.write"),
+        canSetPrice: staffCan(auth, "artwork_price.write"),
       });
     },
   );

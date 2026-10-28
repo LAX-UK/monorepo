@@ -21,7 +21,6 @@ import {
   SeoFieldsWriteProperties,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
-import { roleHasCapability } from "@auction/shop-domain";
 import { type Static, Type } from "@sinclair/typebox";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
@@ -34,6 +33,7 @@ import {
   requireRecentAuthentication,
   requireShopAdminSubject,
   requireShopStaffCapability,
+  staffCan,
 } from "../../../plugins/shop-admin-auth.js";
 import { afterArtCatalogueWrite } from "./art-cache-invalidation.js";
 
@@ -62,7 +62,7 @@ function catalogueWriter(request: FastifyRequest) {
   return {
     actorSubjectId: requireShopAdminSubject(request),
     idempotencyKey: requireIdempotencyKey(request),
-    canSetPrice: roleHasCapability(auth.role, "artwork_price.write"),
+    canSetPrice: staffCan(auth, "artwork_price.write"),
   };
 }
 

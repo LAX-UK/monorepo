@@ -401,7 +401,7 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle production task repository", () 
   });
 
   describe("assignees", () => {
-    it("lists active staff who can work on production, not disabled or unrelated roles", async () => {
+    it("lists active staff whose roles in force include production, not disabled or ended ones", async () => {
       const { repo, marker } = setup();
       for (const [suffix, role, disabled] of [
         ["ops", "operations", false],
@@ -413,11 +413,32 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle production task repository", () 
            values ($1, $2::shop_staff_role, $3)`,
           [`${marker}-${suffix}`, role, disabled ? new Date() : null],
         );
+        await ownerPool.query(
+          `insert into shop_staff_role_assignment (identity_subject_id, role, starts_at)
+           values ($1, $2::shop_staff_role, now() - interval '1 day')`,
+          [`${marker}-${suffix}`, role],
+        );
       }
+      // Production work comes from any role in force, not only the primary one.
+      await ownerPool.query(
+        `insert into shop_staff_role_assignment (identity_subject_id, role, starts_at)
+         values ($1, 'operations', now() - interval '1 day')`,
+        [`${marker}-fin`],
+      );
+      await ownerPool.query(
+        `insert into shop_staff_member (identity_subject_id, role) values ($1, 'operations')`,
+        [`${marker}-ended`],
+      );
+      await ownerPool.query(
+        `insert into shop_staff_role_assignment (identity_subject_id, role, starts_at, ends_at)
+         values ($1, 'operations', now() - interval '2 days', now() - interval '1 day')`,
+        [`${marker}-ended`],
+      );
       const subjects = (await repo.listAssignees()).map((member) => member.subject);
       expect(subjects).toContain(`${marker}-ops`);
+      expect(subjects).toContain(`${marker}-fin`);
       expect(subjects).not.toContain(`${marker}-off`);
-      expect(subjects).not.toContain(`${marker}-fin`);
+      expect(subjects).not.toContain(`${marker}-ended`);
     });
   });
 });

@@ -38,7 +38,7 @@ async function call(role: ShopStaffRole, url: string, wire: (deps: Deps) => unkn
     },
     staffReader: {
       findActiveByIdentitySubject: async (s) =>
-        s === subject ? { role, identitySubjectId: s } : null,
+        s === subject ? { roles: [role], identitySubjectId: s } : null,
       brokerCanAccessClientParty: async () => false,
     },
   });

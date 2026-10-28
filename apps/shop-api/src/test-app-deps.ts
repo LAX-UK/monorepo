@@ -182,8 +182,6 @@ export function createMinimalShopApiTestDeps(
         requestId: "00000000-0000-4000-8000-000000000004",
         status: "rejected" as const,
       }),
-      grantStaffRole: async () => ({ subject: "sub_test" }),
-      revokeStaffRole: async () => undefined,
       artistApplicationReview: createArtistApplicationReviewService({
         uow: artistApplications.uow,
         queue: {

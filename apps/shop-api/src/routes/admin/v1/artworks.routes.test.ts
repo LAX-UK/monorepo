@@ -39,7 +39,7 @@ async function buildApp() {
       env: { ...base.env, SHOP_ADMIN_ENABLED: true },
       staffReader: {
         findActiveByIdentitySubject: async (subject) => ({
-          role: "catalogue_editor" as const,
+          roles: ["catalogue_editor"],
           identitySubjectId: subject,
         }),
         brokerCanAccessClientParty: async () => false,

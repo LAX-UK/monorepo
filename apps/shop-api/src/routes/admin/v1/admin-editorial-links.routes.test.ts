@@ -38,7 +38,10 @@ async function buildApp(role: ShopStaffRole, links: Partial<EditorialLinksReposi
     deps: createMinimalShopApiTestDeps({
       env: { ...baseEnv, SHOP_ADMIN_ENABLED: true, SHOP_EDITORIAL_ENABLED: true },
       staffReader: {
-        findActiveByIdentitySubject: async (subject) => ({ role, identitySubjectId: subject }),
+        findActiveByIdentitySubject: async (subject) => ({
+          roles: [role],
+          identitySubjectId: subject,
+        }),
         brokerCanAccessClientParty: async () => false,
       },
       editorial: {
@@ -84,7 +87,7 @@ describe("admin editorial links routes", () => {
     });
 
     it.each(routes)("rejects an unauthenticated $method $url", async (route) => {
-      const app = await buildApp("catalogue_editor");
+      const app = await buildApp("editor");
       const response = await app.inject({ method: route.method, url: route.url });
       expect(response.statusCode).toBe(401);
       await app.close();
@@ -93,7 +96,7 @@ describe("admin editorial links routes", () => {
 
   describe("reads", () => {
     it("returns exhibition links with their version", async () => {
-      const app = await buildApp("catalogue_editor", {
+      const app = await buildApp("editor", {
         getExhibitionLinks: async () => emptyExhibitionLinks,
       });
       const response = await app.inject({
@@ -107,7 +110,7 @@ describe("admin editorial links routes", () => {
     });
 
     it.each(["exhibitions", "stories"])("returns 404 for a missing parent on %s", async (kind) => {
-      const app = await buildApp("catalogue_editor");
+      const app = await buildApp("editor");
       const response = await app.inject({
         method: "GET",
         url: `/admin/v1/editorial/${kind}/${PARENT}/links`,
@@ -118,7 +121,7 @@ describe("admin editorial links routes", () => {
     });
 
     it("rejects a malformed id", async () => {
-      const app = await buildApp("catalogue_editor");
+      const app = await buildApp("editor");
       const response = await app.inject({
         method: "GET",
         url: "/admin/v1/editorial/exhibitions/not-a-uuid/links",
@@ -135,7 +138,7 @@ describe("admin editorial links routes", () => {
         status: "replaced" as const,
         version: "v2",
       }));
-      const app = await buildApp("catalogue_editor", { replaceExhibitionLinks });
+      const app = await buildApp("editor", { replaceExhibitionLinks });
       const response = await app.inject({
         method: "PUT",
         url: `/admin/v1/editorial/exhibitions/${PARENT}/links/artworks`,
@@ -149,7 +152,7 @@ describe("admin editorial links routes", () => {
         list: "artworks",
         ids: [ID_B, ID_A],
         expectedVersion: "v1",
-        actorSubjectId: "catalogue_editor-subject",
+        actorSubjectId: "editor-subject",
       });
       await app.close();
     });
@@ -159,7 +162,7 @@ describe("admin editorial links routes", () => {
         status: "replaced" as const,
         version: "v2",
       }));
-      const app = await buildApp("catalogue_editor", { replaceExhibitionLinks });
+      const app = await buildApp("editor", { replaceExhibitionLinks });
       const maxIds = Array.from(
         { length: 200 },
         (_, i) => `aaaaaaaa-aaaa-4aaa-8aaa-${String(i).padStart(12, "0")}`,
@@ -179,7 +182,7 @@ describe("admin editorial links routes", () => {
         status: "replaced" as const,
         version: "v2",
       }));
-      const app = await buildApp("catalogue_editor", { replaceStoryLinks });
+      const app = await buildApp("editor", { replaceStoryLinks });
       const response = await app.inject({
         method: "PUT",
         url: `/admin/v1/editorial/stories/${PARENT}/links/exhibitions`,
@@ -216,7 +219,7 @@ describe("admin editorial links routes", () => {
       ["an unknown list", { ids: [ID_A], expectedVersion: "v1" }, "exhibitions"],
     ])("rejects %s with 400 and writes nothing", async (_name, payload, list) => {
       const replaceExhibitionLinks = vi.fn();
-      const app = await buildApp("catalogue_editor", { replaceExhibitionLinks });
+      const app = await buildApp("editor", { replaceExhibitionLinks });
       const response = await app.inject({
         method: "PUT",
         url: `/admin/v1/editorial/exhibitions/${PARENT}/links/${list}`,
@@ -230,7 +233,7 @@ describe("admin editorial links routes", () => {
     });
 
     it("returns 404 when the parent does not exist", async () => {
-      const app = await buildApp("catalogue_editor");
+      const app = await buildApp("editor");
       const response = await app.inject({
         method: "PUT",
         url: `/admin/v1/editorial/stories/${PARENT}/links/artworks`,
@@ -243,7 +246,7 @@ describe("admin editorial links routes", () => {
     });
 
     it("returns 409 with the current version for a stale write", async () => {
-      const app = await buildApp("catalogue_editor", {
+      const app = await buildApp("editor", {
         replaceExhibitionLinks: async () => ({ status: "stale", currentVersion: "v9" }),
       });
       const response = await app.inject({
@@ -261,7 +264,7 @@ describe("admin editorial links routes", () => {
     });
 
     it("returns 422 naming the missing ids", async () => {
-      const app = await buildApp("catalogue_editor", {
+      const app = await buildApp("editor", {
         replaceStoryLinks: async () => ({ status: "unknown_ids", missingIds: [ID_B] }),
       });
       const response = await app.inject({
@@ -279,7 +282,7 @@ describe("admin editorial links routes", () => {
   describe("candidates", () => {
     it("passes the search through with the default limit", async () => {
       const searchCandidates = vi.fn(async () => ({ items: [], nextCursor: null }));
-      const app = await buildApp("catalogue_editor", { searchCandidates });
+      const app = await buildApp("editor", { searchCandidates });
       const response = await app.inject({
         method: "GET",
         url: "/admin/v1/editorial/link-candidates?kind=artist&q=%20theo%20",
@@ -301,7 +304,7 @@ describe("admin editorial links routes", () => {
       ["a limit above the maximum", "kind=story&limit=51"],
       ["a zero limit", "kind=story&limit=0"],
     ])("rejects %s", async (_name, query) => {
-      const app = await buildApp("catalogue_editor");
+      const app = await buildApp("editor");
       const response = await app.inject({
         method: "GET",
         url: `/admin/v1/editorial/link-candidates?${query}`,

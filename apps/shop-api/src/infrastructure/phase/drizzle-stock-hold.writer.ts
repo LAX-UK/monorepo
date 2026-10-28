@@ -63,7 +63,7 @@ export function createDrizzleStockHoldWriter(
       try {
         return await db.transaction(async (tx) => {
           let brokerPartyId: string;
-          if (command.actorRole === "broker") {
+          if (!command.actorMayOverride) {
             const [assignment] = await tx
               .select({ brokerSubjectId: shopClientAssignment.brokerSubjectId })
               .from(shopClientAssignment)
@@ -219,7 +219,7 @@ export function createDrizzleStockHoldWriter(
         if (hold.status !== "active") {
           throw new ShopApiError(SHOP_API_ERROR_CODES.CONFLICT, "Hold is not active", 409);
         }
-        if (command.actorRole === "broker") {
+        if (!command.actorMayOverride) {
           const [brokerParty] = await tx
             .select({ id: shopParty.id })
             .from(shopParty)

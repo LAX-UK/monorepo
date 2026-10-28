@@ -67,7 +67,10 @@ async function buildApp(role: ShopStaffRole, overrides: Overrides = {}) {
     deps: createMinimalShopApiTestDeps({
       env: { ...base.env, SHOP_ADMIN_ENABLED: true, SHOP_MERCHANDISE_ENABLED: true },
       staffReader: {
-        findActiveByIdentitySubject: async (subject) => ({ role, identitySubjectId: subject }),
+        findActiveByIdentitySubject: async (subject) => ({
+          roles: [role],
+          identitySubjectId: subject,
+        }),
         brokerCanAccessClientParty: async () => false,
       },
       admin: {

@@ -63,9 +63,9 @@ async function buildApp(role: ShopStaffRole, repository: Partial<ProductionTaskR
   } as never);
   const staffReader = {
     findActiveByIdentitySubject: async (subject: string) => {
-      if (subject === `${role}-subject`) return { role, identitySubjectId: subject };
+      if (subject === `${role}-subject`) return { roles: [role], identitySubjectId: subject };
       const colleague = ACTIVE_STAFF[subject];
-      return colleague ? { role: colleague, identitySubjectId: subject } : null;
+      return colleague ? { roles: [colleague], identitySubjectId: subject } : null;
     },
     brokerCanAccessClientParty: async () => false,
   };

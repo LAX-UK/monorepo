@@ -6,7 +6,7 @@ import {
 import {
   type ShopProductionTaskStatus,
   canTransitionProductionTask,
-  roleHasCapability,
+  rolesHaveCapability,
 } from "@auction/shop-domain";
 import { ShopApiError, notFound } from "../errors/shop-api-error.js";
 import { decodeCatalogueCursor, encodeCatalogueCursor } from "./catalogue-cursor.js";
@@ -99,7 +99,7 @@ export function createProductionTaskService(deps: {
       }
       if (typeof command.assigneeSubject === "string") {
         const member = await staffReader.findActiveByIdentitySubject(command.assigneeSubject);
-        if (!member || !roleHasCapability(member.role, "production.write")) {
+        if (!member || !rolesHaveCapability(member.roles, "production.write")) {
           throw validation(
             "The assignee must be an active staff member who can work on production",
           );

@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
-import { shopStaffMember, shopUserProfile } from "@auction/db/schema";
-import { roleHasCapability } from "@auction/shop-domain";
-import { eq, isNull } from "drizzle-orm";
+import { shopUserProfile } from "@auction/db/schema";
+import { rolesHaveCapability } from "@auction/shop-domain";
+import { eq } from "drizzle-orm";
 import type {
   ApplicantDirectory,
   ApplicantImageUploads,
@@ -11,6 +11,7 @@ import type { ShopMediaUploadHandlers } from "../../application/handlers/shop-me
 import type { ShopMediaAssetRepository } from "../../application/ports/shop-media-asset.repository.js";
 import type { ShopStaffMemberReader } from "../../application/ports/staff-member.reader.js";
 import { ShopApiError } from "../../errors/shop-api-error.js";
+import { listStaffHoldingCapability } from "../shop-staff-active-roles.sql.js";
 
 const REVIEW_CAPABILITY = "artist_application.review";
 
@@ -39,21 +40,8 @@ export function createDrizzleArtistApplicationReviewers(
 ): ArtistApplicationReviewers {
   return {
     async list() {
-      const staff = await db
-        .select({
-          subject: shopStaffMember.identitySubjectId,
-          role: shopStaffMember.role,
-          name: shopUserProfile.name,
-          email: shopUserProfile.email,
-        })
-        .from(shopStaffMember)
-        .leftJoin(
-          shopUserProfile,
-          eq(shopUserProfile.identitySubjectId, shopStaffMember.identitySubjectId),
-        )
-        .where(isNull(shopStaffMember.disabledAt));
+      const staff = await listStaffHoldingCapability(db, REVIEW_CAPABILITY);
       return staff
-        .filter((member) => roleHasCapability(member.role, REVIEW_CAPABILITY))
         .map((member) => ({
           subject: member.subject,
           label: member.name?.trim() || member.email?.trim() || null,
@@ -63,7 +51,7 @@ export function createDrizzleArtistApplicationReviewers(
     },
     async canReview(subject) {
       const member = await staffReader.findActiveByIdentitySubject(subject);
-      return member !== null && roleHasCapability(member.role, REVIEW_CAPABILITY);
+      return member !== null && rolesHaveCapability(member.roles, REVIEW_CAPABILITY);
     },
   };
 }

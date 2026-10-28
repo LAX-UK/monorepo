@@ -1,5 +1,4 @@
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
-import { type ShopStaffRole, roleHasCapability } from "@auction/shop-domain";
 import type { ShopStaffMemberReader } from "../../../application/ports/staff-member.reader.js";
 import type {
   CreateStockHoldCommand,
@@ -14,7 +13,8 @@ export type CreateStockHoldHandlerCommand = {
   expiresAt: string;
   note?: string;
   actorSubjectId: string;
-  actorRole: ShopStaffRole;
+  /** Holds `stock_hold.override`: may hold for clients not assigned to them. */
+  actorMayOverride: boolean;
   idempotencyKey: string;
 };
 
@@ -30,15 +30,7 @@ export function createCreateStockHoldHandler(deps: {
       command.actorSubjectId,
       command.clientPartyId,
     );
-    if (command.actorRole === "broker") {
-      if (!assigned) {
-        throw new ShopApiError(
-          SHOP_API_ERROR_CODES.STAFF_FORBIDDEN,
-          "Broker is not assigned to this client",
-          403,
-        );
-      }
-    } else if (!assigned && !roleHasCapability(command.actorRole, "stock_hold.override")) {
+    if (!assigned && !command.actorMayOverride) {
       throw new ShopApiError(
         SHOP_API_ERROR_CODES.STAFF_FORBIDDEN,
         "Not assigned to this client; stock_hold.override required",
@@ -51,8 +43,8 @@ export function createCreateStockHoldHandler(deps: {
         clientPartyId: command.clientPartyId,
         expiresAt: command.expiresAt,
         actorSubjectId: command.actorSubjectId,
-        actorRole: command.actorRole,
-        usedOverride: command.actorRole !== "broker" && !assigned,
+        actorMayOverride: command.actorMayOverride,
+        usedOverride: command.actorMayOverride && !assigned,
         ...(command.note !== undefined ? { note: command.note } : {}),
       },
       { idempotencyKey: command.idempotencyKey, actorSubjectId: command.actorSubjectId },

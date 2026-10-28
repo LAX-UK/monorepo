@@ -1,6 +1,10 @@
 #!/usr/bin/env node
-import type { ShopStaffCapability, ShopStaffRole } from "@auction/shop-domain";
-import { roleHasCapability } from "@auction/shop-domain";
+import type {
+  SeparateApproverAction,
+  ShopStaffCapability,
+  ShopStaffRole,
+} from "@auction/shop-domain";
+import { checkSeparateApprover, rolesHaveCapability } from "@auction/shop-domain";
 import { createShopApiContainer } from "../container.js";
 import { loadShopApiEnv } from "../env.js";
 
@@ -56,12 +60,35 @@ async function assertFinanceCliEnabled(): Promise<void> {
 async function assertOperatorCapability(
   subjectId: string,
   capability: ShopStaffCapability,
-): Promise<ShopStaffRole> {
+): Promise<void> {
   const staff = await container.app.staffReader.findActiveByIdentitySubject(subjectId);
-  if (!staff || !roleHasCapability(staff.role, capability)) {
+  if (!staff || !rolesHaveCapability(staff.roles, capability)) {
     throw new Error(`Operator ${subjectId} lacks capability ${capability}`);
   }
-  return staff.role;
+}
+
+/**
+ * Above the dual-control amount, a refund or a payout marked paid needs an approver who is not
+ * the operator who asked for it, and who holds the same capability.
+ */
+async function requireSeparateApprover(
+  action: SeparateApproverAction,
+  approvedBy: string | undefined,
+  amountPence: number,
+): Promise<void> {
+  const approvalRequired = amountPence > env.SHOP_OPS_DUAL_CONTROL_PENCE;
+  const check = checkSeparateApprover({
+    action,
+    requestedBy: operator as string,
+    approvedBy,
+    approvalRequired,
+  });
+  if (!check.ok) {
+    throw new Error(
+      `--approved-by <different finance operator> required above ${env.SHOP_OPS_DUAL_CONTROL_PENCE} pence`,
+    );
+  }
+  if (approvalRequired && approvedBy) await assertOperatorCapability(approvedBy, action);
 }
 
 function hostIdentity(): string {
@@ -125,14 +152,7 @@ try {
       usage();
     }
     await assertOperatorCapability(operator, "refund.write");
-    if (amountPence > env.SHOP_OPS_DUAL_CONTROL_PENCE) {
-      if (!approvedBy || approvedBy === operator) {
-        throw new Error(
-          `--approved-by <different finance operator> required above ${env.SHOP_OPS_DUAL_CONTROL_PENCE} pence`,
-        );
-      }
-      await assertOperatorCapability(approvedBy, "refund.write");
-    }
+    await requireSeparateApprover("refund.write", approvedBy, amountPence);
     const result = await container.app.admin.requestRefund({
       orderId,
       amountPence,
@@ -177,14 +197,7 @@ try {
     if (!payoutRow) {
       throw new Error(`Payout ${payoutId} not found`);
     }
-    if (payoutRow.netPence > env.SHOP_OPS_DUAL_CONTROL_PENCE) {
-      if (!approvedBy || approvedBy === operator) {
-        throw new Error(
-          `--approved-by <different finance operator> required above ${env.SHOP_OPS_DUAL_CONTROL_PENCE} pence`,
-        );
-      }
-      await assertOperatorCapability(approvedBy, "payout.mark_paid");
-    }
+    await requireSeparateApprover("payout.mark_paid", approvedBy, payoutRow.netPence);
     const payoutLineId = payoutRow.orderLineId;
     const orderLine =
       payoutLineId !== null && payoutLineId !== undefined

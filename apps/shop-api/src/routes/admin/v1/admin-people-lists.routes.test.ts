@@ -32,7 +32,7 @@ async function call(role: ShopStaffRole, url: string, wire: (deps: Deps) => unkn
     env: { ...createMinimalShopApiTestDeps().env, SHOP_ADMIN_ENABLED: true },
     staffReader: {
       findActiveByIdentitySubject: async (s) =>
-        s === subject ? { role, identitySubjectId: s } : null,
+        s === subject ? { roles: [role], identitySubjectId: s } : null,
       brokerCanAccessClientParty: async () => false,
     },
   });

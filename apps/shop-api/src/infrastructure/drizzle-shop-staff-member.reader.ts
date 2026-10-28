@@ -1,11 +1,12 @@
 import type { Database } from "@auction/db";
 import { shopClientAssignment, shopStaffMember } from "@auction/db/schema";
-import type { ShopStaffRole } from "@auction/shop-domain";
+import { normalizeLaxAdminRoles } from "@auction/types";
 import { and, eq, isNull } from "drizzle-orm";
 import type {
   ActiveShopStaffMember,
   ShopStaffMemberReader,
 } from "../application/ports/staff-member.reader.js";
+import { activeShopStaffRolesSql } from "./shop-staff-active-roles.sql.js";
 
 export function createDrizzleShopStaffMemberReader(db: Database): ShopStaffMemberReader {
   return {
@@ -13,18 +14,16 @@ export function createDrizzleShopStaffMemberReader(db: Database): ShopStaffMembe
       const [row] = await db
         .select({
           identitySubjectId: shopStaffMember.identitySubjectId,
-          role: shopStaffMember.role,
+          roles: activeShopStaffRolesSql(shopStaffMember.identitySubjectId),
         })
         .from(shopStaffMember)
         .where(
           and(eq(shopStaffMember.identitySubjectId, subject), isNull(shopStaffMember.disabledAt)),
         )
         .limit(1);
-      if (!row) return null;
-      return {
-        identitySubjectId: row.identitySubjectId,
-        role: row.role as ShopStaffRole,
-      };
+      const roles = normalizeLaxAdminRoles(row?.roles ?? []);
+      if (!row || roles.length === 0) return null;
+      return { identitySubjectId: row.identitySubjectId, roles };
     },
 
     async brokerCanAccessClientParty(

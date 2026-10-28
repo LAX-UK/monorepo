@@ -3,14 +3,13 @@ import {
   shopArtwork,
   shopOrder,
   shopSaleAuthorityRequest,
-  shopStaffMember,
   shopUserProfile,
 } from "@auction/db/schema";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import { and, eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { ShopApiError } from "../errors/shop-api-error.js";
+import { ShopStaffRoleRefused } from "../application/admin/shop-staff-roster.service.js";
 import {
   importTestArtwork,
   insertTestStaffMember,
@@ -26,11 +25,7 @@ import {
 import { createDrizzleAdminReadRepository } from "./drizzle-admin-read.repository.js";
 import { createDrizzlePortalOwnershipRepository } from "./drizzle-portal-ownership.repository.js";
 import { createDrizzleShopUnitOfWork } from "./drizzle-shop-transaction-effects.js";
-import { revokeShopStaffRoleInTx } from "./grant-staff-role.js";
-import {
-  createGrantStaffRoleHandler,
-  createRevokeStaffRoleHandler,
-} from "./handlers/admin/grant-staff-role.handler.js";
+import { shopStaffRosterOn } from "./grant-staff-role.js";
 import {
   createLinkArtistIdentityHandler,
   createUnlinkArtistIdentityHandler,
@@ -198,48 +193,8 @@ describe.skipIf(!hasShopIntegrationDb)("shop audit remediation integration", () 
     expect(row?.id).toBe(created.requestId);
   });
 
-  it("grants a staff role by email through the shop login profile", async () => {
+  it("refuses one of two concurrent removals that would leave no Administrator", async () => {
     const db = createShopDb(shopPool);
-    const grantStaff = createGrantStaffRoleHandler({ uow: createDrizzleShopUnitOfWork(db, "off") });
-    const suffix = integrationSuffix("grant-email");
-    const identitySubjectId = `staff-email-${suffix}`;
-    const email = `staff-${suffix}@example.test`;
-    await db.insert(shopUserProfile).values({ identitySubjectId, email, name: "Staff By Email" });
-
-    const granted = await grantStaff({
-      email: email.toUpperCase(),
-      role: "broker",
-      operatorSubjectId: `operator-${suffix}`,
-      idempotencyKey: `grant-email-${suffix}`,
-    });
-
-    expect(granted).toEqual({ subject: identitySubjectId });
-    const [member] = await db
-      .select({ role: shopStaffMember.role })
-      .from(shopStaffMember)
-      .where(eq(shopStaffMember.identitySubjectId, identitySubjectId));
-    expect(member?.role).toBe("broker");
-  });
-
-  it("refuses an email grant when no shop login exists", async () => {
-    const db = createShopDb(shopPool);
-    const grantStaff = createGrantStaffRoleHandler({ uow: createDrizzleShopUnitOfWork(db, "off") });
-    const suffix = integrationSuffix("grant-missing");
-
-    await expect(
-      grantStaff({
-        email: `nobody-${suffix}@example.test`,
-        role: "broker",
-        operatorSubjectId: `operator-${suffix}`,
-        idempotencyKey: `grant-missing-${suffix}`,
-      }),
-    ).rejects.toMatchObject({ statusCode: 404 });
-  });
-
-  it("returns 409 when concurrent revokes would remove the last shop admin", async () => {
-    const db = createShopDb(shopPool);
-    const uow = createDrizzleShopUnitOfWork(db, "off");
-    const revokeStaff = createRevokeStaffRoleHandler({ uow });
     const suffix = integrationSuffix("dual-revoke");
     const adminA = `admin-a-${suffix}`;
     const adminB = `admin-b-${suffix}`;
@@ -248,32 +203,27 @@ describe.skipIf(!hasShopIntegrationDb)("shop audit remediation integration", () 
 
     await withIsolatedShopAdmins(db, [adminA, adminB], async () => {
       const operator = `operator-${suffix}`;
-      const results = await Promise.allSettled([
-        revokeStaff({
-          subject: adminA,
+      const remove = (subjectId: string) =>
+        shopStaffRosterOn(db).remove({
+          subjectId,
+          role: "shop_admin",
+          actorSubjectId: operator,
           reason: "Leaving the team",
-          operatorSubjectId: operator,
-          idempotencyKey: `revoke-a-${suffix}`,
-        }),
-        revokeStaff({
-          subject: adminB,
-          reason: "Leaving the team",
-          operatorSubjectId: operator,
-          idempotencyKey: `revoke-b-${suffix}`,
-        }),
-      ]);
+          eventId: null,
+        });
+      const results = await Promise.allSettled([remove(adminA), remove(adminB)]);
 
       const fulfilled = results.filter((r) => r.status === "fulfilled");
       const rejected = results.filter((r) => r.status === "rejected");
       expect(fulfilled.length).toBe(1);
       expect(rejected.length).toBe(1);
       const rejectedErr = (rejected[0] as PromiseRejectedResult).reason;
-      expect(rejectedErr).toBeInstanceOf(ShopApiError);
-      expect((rejectedErr as ShopApiError).code).toBe(SHOP_API_ERROR_CODES.CONFLICT);
+      expect(rejectedErr).toBeInstanceOf(ShopStaffRoleRefused);
+      expect((rejectedErr as ShopStaffRoleRefused).reason).toBe("last_administrator");
     });
   });
 
-  it("refuses revoking the last active shop admin inside a transaction guard", async () => {
+  it("refuses removing every role from the last active Administrator", async () => {
     const db = createShopDb(shopPool);
     const suffix = integrationSuffix("last-admin");
     const soleAdmin = `sole-admin-${suffix}`;
@@ -281,13 +231,14 @@ describe.skipIf(!hasShopIntegrationDb)("shop audit remediation integration", () 
 
     await withIsolatedShopAdmins(db, [soleAdmin], async () => {
       await expect(
-        db.transaction(async (tx) =>
-          revokeShopStaffRoleInTx(tx, {
-            subject: soleAdmin,
-            operatorSubjectId: `operator-${suffix}`,
-          }),
-        ),
-      ).rejects.toMatchObject({ code: SHOP_API_ERROR_CODES.CONFLICT });
+        shopStaffRosterOn(db).remove({
+          subjectId: soleAdmin,
+          role: null,
+          actorSubjectId: `operator-${suffix}`,
+          reason: "Leaving",
+          eventId: null,
+        }),
+      ).rejects.toMatchObject({ reason: "last_administrator" });
     });
   });
 });

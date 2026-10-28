@@ -1,7 +1,4 @@
 import {
-  ADMIN_STAFF_REVOKE_REASON_MIN_LENGTH,
-  type AdminStaffRevokeBody,
-  AdminStaffRevokeBodySchema,
   EDITION_RUN_MAX_SIZE,
   SALE_AUTHORITY_NOTE_MAX_LENGTH,
   SHOP_API_ERROR_CODES,
@@ -33,32 +30,6 @@ const SaleAuthorityDecisionBodySchema = Type.Object({
 const SaleAuthorityDecisionResponseSchema = Type.Object({
   requestId: Type.String({ format: "uuid" }),
   status: Type.String(),
-});
-
-const StaffGrantRoleSchema = Type.Union([
-  Type.Literal("shop_admin"),
-  Type.Literal("account_manager"),
-  Type.Literal("broker"),
-  Type.Literal("operations"),
-  Type.Literal("finance"),
-  Type.Literal("catalogue_editor"),
-]);
-
-const StaffGrantBodySchema = Type.Union([
-  Type.Object(
-    { identitySubjectId: Type.String({ minLength: 1 }), role: StaffGrantRoleSchema },
-    { additionalProperties: false },
-  ),
-  Type.Object(
-    { email: Type.String({ format: "email", maxLength: 320 }), role: StaffGrantRoleSchema },
-    { additionalProperties: false },
-  ),
-]);
-
-const StaffGrantResponseSchema = Type.Object({
-  identitySubjectId: Type.String(),
-  role: Type.String(),
-  status: Type.Literal("active"),
 });
 
 export async function registerAdminPeopleRoutes(app: FastifyInstance, deps: AdminRoutesDeps) {
@@ -123,83 +94,6 @@ export async function registerAdminPeopleRoutes(app: FastifyInstance, deps: Admi
         { idempotencyKey, actorSubjectId: subject },
       );
       return { requestId, status: "approved" };
-    },
-  );
-
-  app.post(
-    "/staff/grants",
-    {
-      schema: {
-        tags: ["shop-admin"],
-        body: StaffGrantBodySchema,
-        response: {
-          200: StaffGrantResponseSchema,
-          403: ShopApiErrorBodySchema,
-          404: ShopApiErrorBodySchema,
-          409: ShopApiErrorBodySchema,
-        },
-      },
-    },
-    async (request) => {
-      requireShopStaffCapability(request, "settings.write");
-      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
-      const subject = requireShopAdminSubject(request);
-      const idempotencyKey = requireIdempotencyKey(request);
-      const body = request.body as { role: import("@auction/shop-domain").ShopStaffRole } & (
-        | { identitySubjectId: string }
-        | { email: string }
-      );
-      const granted = await deps.grantStaffRole({
-        ...("email" in body ? { email: body.email } : { subject: body.identitySubjectId }),
-        role: body.role,
-        operatorSubjectId: subject,
-        idempotencyKey,
-      });
-      return {
-        identitySubjectId: granted.subject,
-        role: body.role,
-        status: "active" as const,
-      };
-    },
-  );
-
-  app.delete(
-    "/staff/grants/:identitySubjectId",
-    {
-      schema: {
-        tags: ["shop-admin"],
-        params: Type.Object({ identitySubjectId: Type.String({ minLength: 1 }) }),
-        // Removing someone's access is audited with why it was removed.
-        body: AdminStaffRevokeBodySchema,
-        response: {
-          204: Type.Null(),
-          400: ShopApiErrorBodySchema,
-          403: ShopApiErrorBodySchema,
-          409: ShopApiErrorBodySchema,
-        },
-      },
-    },
-    async (request, reply) => {
-      requireShopStaffCapability(request, "settings.write");
-      requireRecentAuthentication(request, deps.stepUpMaxAuthAgeSeconds);
-      const subject = requireShopAdminSubject(request);
-      const idempotencyKey = requireIdempotencyKey(request);
-      const { identitySubjectId } = request.params as { identitySubjectId: string };
-      const reason = (request.body as AdminStaffRevokeBody).reason.trim();
-      if (reason.length < ADMIN_STAFF_REVOKE_REASON_MIN_LENGTH) {
-        throw new ShopApiError(
-          SHOP_API_ERROR_CODES.VALIDATION,
-          "Say why their access is being removed",
-          400,
-        );
-      }
-      await deps.revokeStaffRole({
-        subject: identitySubjectId,
-        reason,
-        operatorSubjectId: subject,
-        idempotencyKey,
-      });
-      return reply.status(204).send();
     },
   );
 }

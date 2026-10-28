@@ -64,7 +64,7 @@ async function buildApp(
     },
     staffReader: {
       findActiveByIdentitySubject: async (subject: string) =>
-        subject === `${role}-subject` ? { role, identitySubjectId: subject } : null,
+        subject === `${role}-subject` ? { roles: [role], identitySubjectId: subject } : null,
       brokerCanAccessClientParty: async () => false,
     },
   });

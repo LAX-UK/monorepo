@@ -40,7 +40,10 @@ async function buildApp(role: ShopStaffRole) {
   const deps = createMinimalShopApiTestDeps({
     env: { ...createMinimalShopApiTestDeps().env, SHOP_ADMIN_ENABLED: true },
     staffReader: {
-      findActiveByIdentitySubject: async (subject) => ({ role, identitySubjectId: subject }),
+      findActiveByIdentitySubject: async (subject) => ({
+        roles: [role],
+        identitySubjectId: subject,
+      }),
       brokerCanAccessClientParty: async () => false,
     },
   });

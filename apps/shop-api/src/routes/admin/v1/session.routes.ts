@@ -3,11 +3,12 @@ import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
 import { getStaffSessionView } from "../../../application/admin/get-staff-session.js";
 import type { ShopFeatureFlagsReader } from "../../../application/ports/shop-feature-flags.js";
-import { requireShopAdminSubject } from "../../../plugins/shop-admin-auth.js";
+import { requireShopStaffAuth } from "../../../plugins/shop-admin-auth.js";
 
 const StaffSessionSchema = Type.Object({
   subject: Type.String(),
   role: Type.String(),
+  roles: Type.Array(Type.String()),
   capabilities: Type.Array(Type.String()),
   features: Type.Object({
     payouts: Type.Boolean(),
@@ -33,11 +34,11 @@ export async function registerAdminSessionRoutes(
       },
     },
     async (request) => {
-      const subject = requireShopAdminSubject(request);
-      const role = request.shopAdminAuth?.role ?? "shop_admin";
+      const auth = requireShopStaffAuth(request);
       return getStaffSessionView({
-        subject,
-        role,
+        subject: auth.subject,
+        roles: auth.roles,
+        capabilities: auth.capabilities,
         featureFlags: deps.featureFlags,
       });
     },

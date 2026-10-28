@@ -52,10 +52,8 @@ import {
 } from "@auction/shop-contracts";
 import {
   OVERVIEW_LOW_STOCK_CAPABILITY,
-  capabilitiesForRole,
   clientListScope,
-  overviewKpiKeysForRole,
-  roleHasCapability,
+  overviewKpiKeysFor,
 } from "@auction/shop-domain";
 import { Type } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
@@ -68,6 +66,7 @@ import {
   requireShopAdminSubject,
   requireShopStaffAuth,
   requireShopStaffCapability,
+  staffCan,
 } from "../../../plugins/shop-admin-auth.js";
 import { requireClientPartyReadAccess } from "./admin-client-access.js";
 
@@ -115,10 +114,8 @@ export async function registerAdminReadRoutes(
       const auth = requireShopStaffAuth(request);
       const overview = deps.adminRead.overview;
       const [kpis, lowStockRuns] = await Promise.all([
-        overview.readOverviewKpis(overviewKpiKeysForRole(auth.role)),
-        roleHasCapability(auth.role, OVERVIEW_LOW_STOCK_CAPABILITY)
-          ? overview.listLowStockRuns()
-          : null,
+        overview.readOverviewKpis(overviewKpiKeysFor(auth.capabilities)),
+        staffCan(auth, OVERVIEW_LOW_STOCK_CAPABILITY) ? overview.listLowStockRuns() : null,
       ]);
       return lowStockRuns ? { ...kpis, lowStockRuns } : kpis;
     },
@@ -224,13 +221,12 @@ export async function registerAdminReadRoutes(
         },
       },
       async (request) => {
-        requireShopStaffCapability(request, "stock_hold.write");
-        const subject = requireShopAdminSubject(request);
-        const role = request.shopAdminAuth?.role;
+        const auth = requireShopStaffCapability(request, "stock_hold.write");
         const query = request.query as AdminStockHoldListQuery;
+        // Staff who may only hold for their own clients see only their own holds.
         return deps.adminRead.sales.listStockHolds({
           ...query,
-          ...(role === "broker" ? { brokerSubjectId: subject } : {}),
+          ...(staffCan(auth, "stock_hold.override") ? {} : { brokerSubjectId: auth.subject }),
         });
       },
     );
@@ -299,7 +295,7 @@ export async function registerAdminReadRoutes(
     },
     async (request) => {
       const auth = requireShopStaffAuth(request);
-      const scope = clientListScope(capabilitiesForRole(auth.role));
+      const scope = clientListScope(auth.capabilities);
       if (scope === "none") {
         throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Insufficient capability", 403);
       }
@@ -381,7 +377,7 @@ export async function registerAdminReadRoutes(
       const auth = requireAnyShopStaffCapability(request, [...PARTY_LOOKUP_CAPABILITIES]);
       const query = request.query as AdminLookupQuery;
       // A broker finds only the clients assigned to them, as on the Clients page.
-      const scope = clientListScope(capabilitiesForRole(auth.role));
+      const scope = clientListScope(auth.capabilities);
       return {
         items: await deps.adminRead.lookups.searchParties({
           q: query.q,

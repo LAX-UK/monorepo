@@ -41,7 +41,7 @@ async function buildApp(
       },
       staffReader: {
         findActiveByIdentitySubject: async (subject) => ({
-          role: "catalogue_editor",
+          roles: ["editor"],
           identitySubjectId: subject,
         }),
         brokerCanAccessClientParty: async () => false,

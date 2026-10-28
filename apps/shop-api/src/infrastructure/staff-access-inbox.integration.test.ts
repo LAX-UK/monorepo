@@ -3,8 +3,9 @@ import {
   shopAdminAudit,
   shopStaffAccessInbox,
   shopStaffMember,
+  shopStaffRoleAssignment,
 } from "@auction/db/schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { integrationSuffix, requireDefined } from "../test-support/shop-fixtures.js";
@@ -67,7 +68,20 @@ describe.skipIf(!hasShopIntegrationDb)("shop staff access inbox (integration)", 
     return row;
   }
 
-  it("grants then revokes Shop staff access with the inviter recorded as operator", async () => {
+  async function heldRoles(db: ReturnType<typeof createShopDb>, subject: string) {
+    const rows = await db
+      .select({ role: shopStaffRoleAssignment.role })
+      .from(shopStaffRoleAssignment)
+      .where(
+        and(
+          eq(shopStaffRoleAssignment.identitySubjectId, subject),
+          isNull(shopStaffRoleAssignment.endsAt),
+        ),
+      );
+    return rows.map((r) => r.role).sort();
+  }
+
+  it("adds roles, ends one, then ends the rest, with the Bid actor in the audit log", async () => {
     const db = createShopDb(shopPool);
     const run = createProcessStaffAccessInboxRunner(db, null);
     const suffix = integrationSuffix("staff-access");
@@ -80,31 +94,142 @@ describe.skipIf(!hasShopIntegrationDb)("shop staff access inbox (integration)", 
       role: "broker",
       grantedBySubjectId: inviterId,
       invitationId: null,
+      reason: "Covers the Marylebone clients",
+    });
+    const editorId = await emit(db, "lax.staff_access.granted", {
+      subjectId,
+      product: "shop",
+      role: "editor",
+      grantedBySubjectId: inviterId,
+      invitationId: null,
+      endsAt: new Date(Date.now() + 86_400_000).toISOString(),
     });
     await run();
 
     expect(await inboxRow(db, grantId)).toEqual({ status: "completed", lastError: null });
-    const granted = requireDefined(await staffRow(db, subjectId), "staff row");
-    expect(granted).toMatchObject({ role: "broker", disabledAt: null });
+    expect(await inboxRow(db, editorId)).toEqual({ status: "completed", lastError: null });
+    expect(await heldRoles(db, subjectId)).toEqual(["broker"]);
+    const [editor] = await db
+      .select()
+      .from(shopStaffRoleAssignment)
+      .where(
+        and(
+          eq(shopStaffRoleAssignment.identitySubjectId, subjectId),
+          eq(shopStaffRoleAssignment.role, "editor"),
+        ),
+      );
+    expect(editor?.endsAt).toBeInstanceOf(Date);
+    expect(editor?.grantedEventId).toBe(editorId);
+    expect(requireDefined(await staffRow(db, subjectId), "staff row")).toMatchObject({
+      role: "broker",
+      disabledAt: null,
+    });
     const audits = await db
       .select({ actor: shopAdminAudit.actorSubjectId, action: shopAdminAudit.action })
       .from(shopAdminAudit)
       .where(
         and(
-          eq(shopAdminAudit.targetId, granted.id),
-          eq(shopAdminAudit.action, "staff_grant_create"),
+          eq(shopAdminAudit.targetType, "shop_staff_role_assignment"),
+          eq(shopAdminAudit.actorSubjectId, inviterId),
         ),
       );
-    expect(audits).toEqual([{ actor: inviterId, action: "staff_grant_create" }]);
+    expect(audits).toHaveLength(2);
+    expect(audits.every((a) => a.action === "staff_role_assign")).toBe(true);
 
-    const revokeId = await emit(db, "lax.staff_access.revoked", {
+    const removeBroker = await emit(db, "lax.staff_access.revoked", {
+      subjectId,
+      product: "shop",
+      role: "broker",
+      revokedBySubjectId: inviterId,
+      reason: "Moved to the editorial team",
+    });
+    await run();
+    expect(await inboxRow(db, removeBroker)).toEqual({ status: "completed", lastError: null });
+    expect(await heldRoles(db, subjectId)).toEqual([]);
+    expect((await staffRow(db, subjectId))?.role).toBe("editor");
+
+    const revokeAll = await emit(db, "lax.staff_access.revoked", {
       subjectId,
       product: "shop",
       revokedBySubjectId: inviterId,
     });
     await run();
+    expect(await inboxRow(db, revokeAll)).toEqual({ status: "completed", lastError: null });
+    expect((await staffRow(db, subjectId))?.disabledAt).toBeInstanceOf(Date);
+  });
 
-    expect(await inboxRow(db, revokeId)).toEqual({ status: "completed", lastError: null });
+  it("dead-letters a forbidden pair and completes a role already held without a change", async () => {
+    const db = createShopDb(shopPool);
+    const run = createProcessStaffAccessInboxRunner(db, null);
+    const suffix = integrationSuffix("staff-access-pair");
+    const subjectId = `staff-access-pair-${suffix}`;
+    const grant = (role: string) =>
+      emit(db, "lax.staff_access.granted", {
+        subjectId,
+        product: "shop",
+        role,
+        grantedBySubjectId: "inviter",
+        invitationId: null,
+      });
+
+    await grant("broker");
+    await run();
+    const again = await grant("broker");
+    const finance = await grant("finance");
+    await run();
+
+    expect(await inboxRow(db, again)).toEqual({ status: "completed", lastError: null });
+    expect(await inboxRow(db, finance)).toEqual({
+      status: "dead",
+      lastError: "shop_staff_role_refused:forbidden_combination:finance:broker",
+    });
+    expect(await heldRoles(db, subjectId)).toEqual(["broker"]);
+  });
+
+  it("records the end of a role whose end date passed, once", async () => {
+    const db = createShopDb(shopPool);
+    const run = createProcessStaffAccessInboxRunner(db, null);
+    const suffix = integrationSuffix("staff-access-expiry");
+    const subjectId = `staff-access-expiry-${suffix}`;
+    await emit(db, "lax.staff_access.granted", {
+      subjectId,
+      product: "shop",
+      role: "operations",
+      grantedBySubjectId: "inviter",
+      invitationId: null,
+    });
+    await run();
+    const [assignment] = await db
+      .update(shopStaffRoleAssignment)
+      .set({ endsAt: new Date(Date.now() - 1_000) })
+      .where(eq(shopStaffRoleAssignment.identitySubjectId, subjectId))
+      .returning({ id: shopStaffRoleAssignment.id });
+    const assignmentId = requireDefined(assignment?.id, "assignment id");
+
+    const expiry = () =>
+      emit(db, "lax.staff_access.revoked", {
+        subjectId,
+        product: "shop",
+        revokedBySubjectId: subjectId,
+        role: "operations",
+        assignmentId,
+      });
+    const first = await expiry();
+    const second = await expiry();
+    await run();
+
+    expect(await inboxRow(db, first)).toEqual({ status: "completed", lastError: null });
+    expect(await inboxRow(db, second)).toEqual({ status: "completed", lastError: null });
+    const expired = await db
+      .select({ id: shopAdminAudit.id })
+      .from(shopAdminAudit)
+      .where(
+        and(
+          eq(shopAdminAudit.targetId, assignmentId),
+          eq(shopAdminAudit.action, "staff_role_expire"),
+        ),
+      );
+    expect(expired).toHaveLength(1);
     expect((await staffRow(db, subjectId))?.disabledAt).toBeInstanceOf(Date);
   });
 
