@@ -4,7 +4,12 @@ import { fieldVariantClasses } from "./field-variant.js";
 describe("fieldVariantClasses", () => {
   it("defaults to boxed styles", () => {
     expect(fieldVariantClasses(undefined)).toContain("rounded-md");
-    expect(fieldVariantClasses(undefined)).toContain("border-outline-variant");
+  });
+
+  it("boxed edge uses the 3:1 field border token, not the faint outline", () => {
+    const classes = fieldVariantClasses("boxed");
+    expect(classes).toContain("border-input-border");
+    expect(classes).not.toContain("outline-variant");
   });
 
   it("underline variant removes box and uses bottom border", () => {

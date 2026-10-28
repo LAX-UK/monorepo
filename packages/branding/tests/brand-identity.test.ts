@@ -3,6 +3,7 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import {
   BRAND_COLORS,
+  BRAND_FIELD_EDGE,
   BRAND_SURFACES,
   PRODUCT_ACCENTS,
   PRODUCT_ACCENTS_ON_DARK,
@@ -122,5 +123,37 @@ describe("BRAND_SURFACES", () => {
     // Body and secondary text in both products: #474747 on light paper, #c9c5bc on dark paper.
     expect(contrast("#474747", BRAND_SURFACES.paper)).toBeGreaterThanOrEqual(4.5);
     expect(contrast("#c9c5bc", BRAND_SURFACES.paperOnDark)).toBeGreaterThanOrEqual(4.5);
+  });
+});
+
+describe("BRAND_FIELD_EDGE", () => {
+  const primitives = readFileSync(
+    fileURLToPath(new URL("../public/brand-primitives.css", import.meta.url)),
+    "utf8",
+  );
+
+  it("mirrors both edges in the CSS primitives", () => {
+    expect(primitives).toContain(`--brand-field-edge: ${BRAND_FIELD_EDGE.light};`);
+    expect(primitives).toContain(`--brand-field-edge-on-dark: ${BRAND_FIELD_EDGE.onDark};`);
+  });
+
+  // Page, surface, paper and container tints of Bid, Shop, lax.art, LAX Account and LAX Admin.
+  const LIGHT_SURFACES = ["#ffffff", "#f3f3f3", "#eeeeee", "#e8e8e8", "#f6f5f2"] as const;
+  const DARK_SURFACES = [
+    "#121414",
+    "#1a1c1c",
+    "#0f1111",
+    "#2d2f2e",
+    "#333534",
+    "#181a1a",
+    "#111313",
+  ] as const;
+
+  it.each([...LIGHT_SURFACES, BRAND_SURFACES.paper])("clears 3:1 on light %s", (surface) => {
+    expect(contrast(BRAND_FIELD_EDGE.light, surface)).toBeGreaterThanOrEqual(3);
+  });
+
+  it.each([...DARK_SURFACES, BRAND_SURFACES.paperOnDark])("clears 3:1 on dark %s", (surface) => {
+    expect(contrast(BRAND_FIELD_EDGE.onDark, surface)).toBeGreaterThanOrEqual(3);
   });
 });

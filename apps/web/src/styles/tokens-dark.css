@@ -21,7 +21,7 @@ html.dark {
   --color-scrim-hero-strong: rgba(0, 0, 0, 0.72);
   --color-scrim-hero-soft: rgba(0, 0, 0, 0.5);
   --color-scrim-auth: rgba(255, 255, 255, 0.06);
-  --color-input-border: var(--color-brand-light-gray);
+  --color-input-border: var(--brand-field-edge-on-dark);
   --color-input-border-focus: var(--color-brand-light-cream);
   --color-hero-foreground: #fafafa;
   --color-success: #56d364;
