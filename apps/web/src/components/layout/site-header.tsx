@@ -15,6 +15,7 @@ import { Menu, X } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useMemo, useState } from "react";
+import { HeaderAttentionChip } from "./header-attention-chip";
 import { HeaderAuthChip } from "./header-auth-chip";
 import { HeaderMegaNav } from "./header-mega-nav";
 import { HeaderSearchTrigger } from "./header-search";
@@ -117,11 +118,15 @@ function SiteHeaderShell({
             }
             trailing={
               <div className="flex shrink-0 items-center justify-end gap-1 sm:gap-2 lg:gap-3">
+                <HeaderAttentionChip />
                 <HeaderSearchTrigger tone={headerTone} layout="both" fullBarFrom="2xl" />
                 <div className="hidden lg:flex">
                   <ThemeToggle headerTone={headerTone} />
                 </div>
-                <HeaderAuthChip variant="notifications" headerTone={headerTone} />
+                {/* Phones reach notifications from the account sheet, which keeps room for the chip. */}
+                <div className="hidden sm:flex">
+                  <HeaderAuthChip variant="notifications" headerTone={headerTone} />
+                </div>
                 <HeaderAuthChip
                   variant="account"
                   headerTone={headerTone}

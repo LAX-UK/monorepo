@@ -1,4 +1,5 @@
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import { ClientLayoutProvider } from "@/components/layout/client-layout-context";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
@@ -50,5 +51,29 @@ describe("DashboardPageHeader", () => {
 
     const description = screen.getByText("Your acquired lots and settlement status.");
     expect(description.className).toMatch(/hidden lg:block/);
+  });
+});
+
+describe("DashboardPageHeader on the public site", () => {
+  it("uses the shared account page header, always showing title and description", () => {
+    render(
+      <ClientLayoutProvider layout="website">
+        <DashboardPageHeader
+          title="My bids"
+          hideTitleOnMobile
+          hideDescriptionOnMobile
+          description="Your bids in current and past sales."
+          actions={<a href="/auctions">Browse upcoming sales</a>}
+        />
+      </ClientLayoutProvider>,
+    );
+
+    const heading = screen.getByRole("heading", { level: 1, name: "My bids" });
+    expect(heading.className).not.toMatch(/hidden/);
+    expect(heading.className).toMatch(/md:text-\[2rem\]/);
+    expect(screen.getByText("Your bids in current and past sales.").className).not.toMatch(
+      /hidden/,
+    );
+    expect(screen.getByRole("link", { name: "Browse upcoming sales" })).toBeInTheDocument();
   });
 });

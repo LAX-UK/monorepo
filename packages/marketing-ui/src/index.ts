@@ -543,3 +543,18 @@ export {
   isLaxArtPolicySlug,
 } from "./legal/london-art-exchange/index.js";
 export { LegalPolicyIndex, type LegalPolicyIndexProps } from "./legal/legal-policy-index.js";
+export {
+  AccountArea,
+  type AccountAreaProps,
+  AccountPage,
+  AccountPageHeader,
+  type AccountPageHeaderProps,
+  type AccountPageProps,
+  AccountSubNav,
+  type AccountSubNavCount,
+  type AccountSubNavCountTone,
+  type AccountSubNavItem,
+  type AccountSubNavProps,
+  accountSubNavCountText,
+  visibleAccountSubNavCount,
+} from "./account/index.js";

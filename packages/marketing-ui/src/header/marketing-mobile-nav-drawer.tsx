@@ -116,7 +116,7 @@ export function MarketingMobileNavDrawer<TSection extends MarketingMegaNavSectio
                       <Button
                         type="button"
                         variant="ghost"
-                        className="h-auto min-h-11 w-full justify-between gap-2 rounded-none px-0 py-2 text-left font-label text-sm font-medium uppercase tracking-wide hover:bg-transparent"
+                        className="h-auto min-h-11 w-full justify-between gap-2 rounded-none px-0 py-2 text-left font-label text-sm font-medium hover:bg-transparent"
                         aria-expanded={expanded}
                         aria-controls={panelId}
                         onClick={() => setExpandedIndex(expanded ? null : index)}
@@ -169,7 +169,7 @@ export function MarketingMobileNavDrawer<TSection extends MarketingMegaNavSectio
                             <Link
                               href={section.viewAllHref}
                               className={cn(
-                                "rounded-sm py-2 font-label text-xs font-semibold uppercase tracking-wide text-brand-900 dark:text-on-surface",
+                                "rounded-sm py-2 font-label text-sm font-semibold text-brand-900 dark:text-on-surface",
                                 FOCUS_RING,
                               )}
                               onClick={close}
@@ -194,7 +194,7 @@ export function MarketingMobileNavDrawer<TSection extends MarketingMegaNavSectio
                     href={item.href}
                     aria-current={isLinkCurrent?.(item.href) ? "page" : undefined}
                     className={cn(
-                      "block rounded-sm py-2 font-label text-sm font-medium uppercase tracking-wide text-brand-900 aria-[current=page]:underline dark:text-on-surface",
+                      "block rounded-sm py-2 font-label text-sm font-medium text-brand-900 aria-[current=page]:underline dark:text-on-surface",
                       FOCUS_RING,
                     )}
                     onClick={close}
