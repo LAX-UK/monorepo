@@ -3,16 +3,27 @@ import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import type { ArtworkArtistBlockVm } from "@/lib/artwork/artwork-product-page.vm";
 import { artistInitials } from "@/lib/catalogue/catalogue-artist-card.vm";
 import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
-import { MarketingArrowUpRightIcon } from "@auction/marketing-ui";
+import { MarketingArrowUpRightIcon, type MarketingSectionSurface } from "@auction/marketing-ui";
 import { MediaPlaceholder } from "@auction/ui/components/media-placeholder";
 
 /**
  * The artist, on the gallery's paper wall: their portrait, a line about them, their editions here
  * and their full story on lax.art. Without a portrait, the shared placeholder carries initials.
+ * On the `plain` surface it stands on the page, so it never touches another tinted band.
  */
-export function ArtworkArtistBlock({ artist }: { artist: ArtworkArtistBlockVm }) {
+export function ArtworkArtistBlock({
+  artist,
+  surface = "band",
+}: {
+  artist: ArtworkArtistBlockVm;
+  surface?: MarketingSectionSurface;
+}) {
   return (
-    <section className="shop-artist-block" aria-labelledby="artist-block-heading">
+    <section
+      className="shop-artist-block"
+      data-surface={surface}
+      aria-labelledby="artist-block-heading"
+    >
       <div className="shop-artist-block__portrait">
         {artist.portraitUrl ? (
           <ShopMediaImage

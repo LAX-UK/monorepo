@@ -5,6 +5,7 @@ import {
   buildArtworkProductPage,
   buildGalleryImages,
   buildRelatedEditions,
+  resolveArtworkClosingSurfaces,
   selectRelatedEditions,
 } from "./artwork-product-page.vm";
 
@@ -179,7 +180,7 @@ describe("related editions row", () => {
     });
     expect(related?.title).toBe("More by Emmett King");
     expect(related?.viewAll).toEqual({
-      label: "View all editions by Emmett King",
+      srLabel: "editions by Emmett King",
       href: "/artists/emmett-king",
     });
     expect(related?.items.map((i) => i.slug)).toEqual(["one", "two", "three"]);
@@ -241,5 +242,21 @@ describe("add to basket errors", () => {
     expect(addToBasketErrorMessage(null).message).toBe(
       "We could not add this edition to your basket. Try again.",
     );
+  });
+});
+
+describe("resolveArtworkClosingSurfaces", () => {
+  it("keeps the artist on the paper wall when the related row sits before the gallery team", () => {
+    expect(resolveArtworkClosingSurfaces({ hasRelated: true })).toEqual({
+      artist: "band",
+      related: "plain",
+      "gallery-team": "band",
+    });
+  });
+
+  it("puts the artist on the plain page when it would touch the gallery team band", () => {
+    const surfaces = resolveArtworkClosingSurfaces({ hasRelated: false });
+    expect(surfaces.artist).toBe("plain");
+    expect(surfaces["gallery-team"]).toBe("band");
   });
 });

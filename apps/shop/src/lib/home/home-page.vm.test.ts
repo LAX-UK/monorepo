@@ -147,6 +147,46 @@ describe("new editions", () => {
   });
 });
 
+describe("the home page's band sequence", () => {
+  it("lists every section with content in page order, the product doors before the gallery team", () => {
+    const art = {
+      id: "art" as const,
+      label: "lax.art",
+      href: "https://art.test",
+      current: false,
+      external: true,
+    };
+    const vm = build(
+      { editions: editions(5), artists: [artist("a"), artist("b"), artist("c")] },
+      { ...context, productLinks: [art] },
+    );
+    expect(vm.layout.sections).toEqual([
+      "hero",
+      "trust",
+      "new-editions",
+      "artists",
+      "product-doors",
+      "gallery-team",
+    ]);
+    expect(vm.layout.surfaces.hero).toBe("band");
+    expect(vm.layout.surfaces["new-editions"]).toBe("plain");
+    expect(vm.layout.surfaces["gallery-team"]).toBe("band");
+  });
+
+  it("keeps new editions when their read failed, so the error state shows", () => {
+    const vm = build({ editions: [], sectionErrors: { editions: "down" } });
+    expect(vm.layout.sections).toContain("new-editions");
+  });
+
+  it("never sets two tinted bands next to each other", () => {
+    const vm = build({ editions: [] });
+    const tints = vm.layout.sections.map((id) => vm.layout.surfaces[id]);
+    tints.forEach((tint, index) => {
+      if (index > 0) expect(tint === "band" && tints[index - 1] === "band").toBe(false);
+    });
+  });
+});
+
 describe("sections that hide when the catalogue is thin", () => {
   it("hides the story, artists and collections, and keeps the gallery team", () => {
     const vm = build({ editions: editions(1), artists: [artist("a"), artist("b")] });
@@ -154,7 +194,8 @@ describe("sections that hide when the catalogue is thin", () => {
     expect(vm.artists).toBeNull();
     expect(vm.collections).toEqual([]);
     expect(vm.quickFilters).toEqual([]);
-    expect(vm.galleryTeam.phone).toEqual({ label: "+44 800 208 4800", href: "tel:+448002084800" });
+    expect(vm.galleryTeam.title).toBe("Help choosing a size, a frame or a gift");
+    expect(vm.layout.sections).toEqual(["hero", "trust", "gallery-team"]);
   });
 
   it("shows artists with editions only, four at most, and points to their stories on lax.art", () => {

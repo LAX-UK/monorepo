@@ -185,6 +185,12 @@
   }
 }
 
+/* With no related row, the artist stands on the page so the gallery team band never touches it. */
+.shop-artist-block[data-surface="plain"] {
+  padding: 0;
+  background: transparent;
+}
+
 .shop-artist-block__portrait {
   position: relative;
   aspect-ratio: 4 / 5;

@@ -8,6 +8,7 @@ import { ArtworkSpecList } from "@/components/artwork/artwork-spec-list";
 import { ArtworkUnavailablePanel } from "@/components/artwork/artwork-unavailable-panel";
 import { CatalogueGrid } from "@/components/catalogue-grid";
 import { ShopGalleryTeamBand } from "@/components/gallery-team/shop-gallery-team-band";
+import { ShopSection } from "@/components/layout/shop-section";
 import { ShopJsonLd } from "@/components/seo/shop-json-ld";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
 import { SHOP_POLICY_PATHS, type ShopPolicySlug } from "@/content/policies/shop-policy-status";
@@ -253,29 +254,24 @@ export default async function ArtworkDetailPage({ params }: ArtworkPageProps) {
           </div>
         </article>
 
-        <ArtworkArtistBlock artist={vm.artist} />
+        <ArtworkArtistBlock artist={vm.artist} surface={vm.closingSurfaces.artist} />
 
         {vm.related ? (
-          <section className="shop-product__related" aria-labelledby="related-heading">
-            <div className="shop-product__related-header">
-              <h2 id="related-heading">{vm.related.title}</h2>
-              <Link
-                href={vm.related.viewAll.href}
-                className={cn("shop-inline-link", FOCUS_RING)}
-                aria-label={vm.related.viewAll.label}
-              >
-                View all
-              </Link>
-            </div>
+          <ShopSection
+            id="related"
+            title={vm.related.title}
+            viewAll={{ href: vm.related.viewAll.href, srLabel: vm.related.viewAll.srLabel }}
+            className="shop-product__related"
+          >
             <CatalogueGrid
               items={vm.related.items}
               titleLevel={3}
               className="shop-catalogue__list--four"
             />
-          </section>
+          </ShopSection>
         ) : null}
 
-        <ShopGalleryTeamBand team={buildGalleryTeam()} />
+        <ShopGalleryTeamBand team={buildGalleryTeam({ context: "edition" })} />
       </ShopCommercePageShell>
     </MarketingDetailShell>
   );

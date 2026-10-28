@@ -133,7 +133,7 @@
   --text-display-lg: clamp(2rem, 4vw, 3rem);
   --text-display-md: clamp(1.5rem, 3vw, 2rem);
   --text-display-sm: clamp(1.125rem, 2vw, 1.375rem);
-  --text-title-section: clamp(1.25rem, 2.5vw, 1.75rem);
+  --text-title-section: clamp(1.5rem, 2.8vw, 2.5rem);
   /* Shop labels are sentence case with normal tracking. */
   --text-label-caps-tracking: normal;
   --text-label-caps-tracking-tight: normal;
