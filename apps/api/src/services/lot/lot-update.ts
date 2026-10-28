@@ -1,5 +1,5 @@
-import type { CreateLotInput, Lot } from "@auction/types";
-import { normalizeUserRoleOrClient, normalizeUserStaffRole } from "@auction/types";
+import type { CreateLotInput, Lot, StaffRoles } from "@auction/types";
+import { normalizeUserRoleOrClient } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
 import {
   englishOnlyAdminLotAuctionTypeViolation,
@@ -20,10 +20,10 @@ export async function updateLot(
   userRole: string,
   lotId: string,
   input: Partial<CreateLotInput>,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
 ): Promise<Result<Lot, LotError | AuthzError>> {
   const role = normalizeUserRoleOrClient(userRole);
-  const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+  const staff = userStaffRoles;
   if (!canManageCatalogue(role, staff)) {
     return err(
       missingCatalogueCapabilityError(
@@ -150,10 +150,10 @@ export async function updateLotMarketingDetails(
   userRole: string,
   lotId: string,
   patch: UpdateLotMarketingDetailsInput,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
 ): Promise<Result<Lot, LotError | AuthzError>> {
   const role = normalizeUserRoleOrClient(userRole);
-  const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+  const staff = userStaffRoles;
   if (!canManageCatalogue(role, staff)) {
     return err(
       missingCatalogueCapabilityError(

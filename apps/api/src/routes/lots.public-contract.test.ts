@@ -1,4 +1,4 @@
-import type { Lot } from "@auction/types";
+import type { Lot, StaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
@@ -54,7 +54,7 @@ function activeLot(): Lot {
 }
 
 function mount(
-  user: { id: string; role: string; staffRole?: string } | null,
+  user: { id: string; role: string; staffRoles?: StaffRoles | undefined } | null,
   lot: Lot = draftLot(),
 ) {
   const app = new Hono();
@@ -171,7 +171,7 @@ describe("lots public contract", () => {
   });
 
   it("returns 200 for draft lot detail when catalogue staff", async () => {
-    const { app } = mount({ id: "staff-1", role: "staff", staffRole: "catalogue_manager" });
+    const { app } = mount({ id: "staff-1", role: "staff", staffRoles: ["catalogue_manager"] });
     const res = await app.request(`http://t/lots/${lotId}`, {
       headers: { authorization: RESOURCE_AUTHORIZATION },
     });

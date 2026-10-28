@@ -1,11 +1,12 @@
 import type { EntityActor } from "@auction/domain";
+import type { StaffRoles } from "@auction/types";
 
 export type SubmissionHttpJson = { status: number; body: unknown };
 
 export type SubmissionViewerContext = {
   userId: string;
   role?: string | null | undefined;
-  staffRole?: string | null | undefined;
+  staffRoles?: StaffRoles | undefined;
 };
 
 export type SubmissionLegalEntityContext = {

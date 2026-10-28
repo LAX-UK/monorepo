@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import type { Context } from "hono";
 import { stream } from "hono/streaming";
 import type { ComplianceExportCreateResult } from "../services/interfaces/compliance-routes/compliance-export-http.js";
@@ -34,11 +35,12 @@ export function respondComplianceExportDownload(
 }
 
 export function complianceViewerFromContext(c: {
-  get: (key: "userId" | "userRole" | "userStaffRole") => string | null | undefined;
+  get(key: "userId" | "userRole"): string | null | undefined;
+  get(key: "userStaffRoles"): StaffRoles | undefined;
 }) {
   return {
     userId: c.get("userId") as string,
     role: c.get("userRole"),
-    staffRole: c.get("userStaffRole"),
+    staffRoles: c.get("userStaffRoles"),
   };
 }

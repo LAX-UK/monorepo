@@ -1,5 +1,5 @@
 import type { ILegalEntityRepository, IRepositoryFactory } from "@auction/persistence/interfaces";
-import { type UserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
+import { type UserRole, roleHasCapability } from "@auction/types";
 import { canManageCatalogue } from "../../lib/catalogue-auth.js";
 import { CATALOGUE_WRITE_CAPABILITIES } from "../../lib/errors.js";
 import { missingCapabilityBody } from "../../lib/forbidden-response.js";
@@ -37,7 +37,7 @@ export class CatalogSaleReadHttpApplicationService
     viewer: CatalogViewerContext;
   }): Promise<CatalogHttpJson> {
     const query = input.query;
-    const staff = normalizeUserStaffRole(input.viewer.staffRole ?? undefined);
+    const staff = input.viewer.staffRoles;
     const listFilter = {
       status: query.statuses ? undefined : query.status,
       statuses: query.statuses,
@@ -58,7 +58,7 @@ export class CatalogSaleReadHttpApplicationService
     const buildPublicPayload = async () => {
       const { data: rows } = await this.saleListReadService.listForPublicApi(listFilter, {
         role: input.viewer.role ?? undefined,
-        staffRole: staff,
+        staffRoles: staff,
       });
       return {
         data: rows.map(({ sale, lotCount, previewLots }) => ({
@@ -80,7 +80,7 @@ export class CatalogSaleReadHttpApplicationService
 
     const { data: rows } = await this.saleListReadService.listForPublicApi(listFilter, {
       role: input.viewer.role ?? undefined,
-      staffRole: staff,
+      staffRoles: staff,
     });
 
     const data = await (async () => {
@@ -140,7 +140,7 @@ export class CatalogSaleReadHttpApplicationService
       input.viewer.userId ?? undefined,
       {
         role: input.viewer.role ?? undefined,
-        staffRole: input.viewer.staffRole,
+        staffRoles: input.viewer.staffRoles,
       },
     );
     if (!detail) return { status: 404, body: { error: "Not found" } };
@@ -152,14 +152,14 @@ export class CatalogSaleReadHttpApplicationService
     viewer: CatalogViewerContext;
   }): Promise<CatalogHttpJson> {
     const role = (input.viewer.role ?? "client") as UserRole;
-    const staff = normalizeUserStaffRole(input.viewer.staffRole as string | null | undefined);
+    const staff = input.viewer.staffRoles;
     if (!canManageCatalogue(role, staff)) {
       return {
         status: 403,
         body: missingCapabilityBody(
           "Only staff with auction.manage or catalogue.write can view catalogue admin detail",
           [...CATALOGUE_WRITE_CAPABILITIES],
-          { role, staffRole: staff },
+          { role, staffRoles: staff },
         ),
       };
     }
@@ -202,7 +202,7 @@ export class CatalogSaleReadHttpApplicationService
         offset: input.query.offset,
         sort: input.query.sort,
       },
-      { role: input.viewer.role ?? undefined, staffRole: input.viewer.staffRole },
+      { role: input.viewer.role ?? undefined, staffRoles: input.viewer.staffRoles },
     );
     if (!page) return { status: 404, body: { error: "Not found" } };
     return { status: 200, body: page };

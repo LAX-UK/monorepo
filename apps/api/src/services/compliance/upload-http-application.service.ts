@@ -1,4 +1,4 @@
-import { type UserRole, normalizeUserStaffRole } from "@auction/types";
+import type { UserRole } from "@auction/types";
 import type {
   ComplianceHttpJson,
   ComplianceViewerContext,
@@ -39,11 +39,11 @@ export class UploadHttpApplicationService implements IUploadHttpApplicationServi
     const auth = this.requireViewer(input.viewer);
     if (auth) return auth;
 
-    const staff = normalizeUserStaffRole(input.viewer.staffRole ?? undefined);
+    const staff = input.viewer.staffRoles;
     const result = await this.uploadService.createPresignedUpload({
       userId: input.viewer.userId,
       userRole: input.viewer.role as UserRole,
-      userStaffRole: staff,
+      userStaffRoles: staff,
       kind: input.kind,
       contentType: input.contentType,
       byteSize: input.byteSize,
@@ -67,12 +67,12 @@ export class UploadHttpApplicationService implements IUploadHttpApplicationServi
       return { status: 400, body: { error: "uploadId is required" } };
     }
 
-    const staff = normalizeUserStaffRole(input.viewer.staffRole ?? undefined);
+    const staff = input.viewer.staffRoles;
     const result = await this.uploadService.confirmUpload({
       uploadId: input.uploadId,
       userId: input.viewer.userId,
       userRole: input.viewer.role as UserRole,
-      userStaffRole: staff,
+      userStaffRoles: staff,
     });
     if (!result.ok) {
       return { status: result.status, body: { error: result.error } };
@@ -87,12 +87,12 @@ export class UploadHttpApplicationService implements IUploadHttpApplicationServi
     const auth = this.requireViewer(input.viewer);
     if (auth) return auth;
 
-    const staff = normalizeUserStaffRole(input.viewer.staffRole ?? undefined);
+    const staff = input.viewer.staffRoles;
     const result = await this.uploadService.getUploadStatus({
       uploadId: input.uploadId,
       userId: input.viewer.userId,
       userRole: input.viewer.role as UserRole,
-      userStaffRole: staff,
+      userStaffRoles: staff,
     });
     if (!result.ok) {
       return { status: result.status, body: { error: result.error } };

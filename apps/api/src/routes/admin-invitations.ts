@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import {
   adminBulkInvitationsBodySchema,
   adminCreateInvitationBodySchema,
@@ -12,7 +13,9 @@ import { requireInvitationsAccess } from "../middleware/require-capability.js";
 import type { IAdminInvitationApplicationService } from "../services/interfaces/admin-routes.js";
 
 export function attachAdminInvitationRoutes(
-  r: Hono<{ Variables: { userId?: string; userRole?: string; userStaffRole?: string | null } }>,
+  r: Hono<{
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
+  }>,
   invitations: IAdminInvitationApplicationService,
 ): void {
   r.post(

@@ -66,7 +66,7 @@ export class ConsignmentAgreementHttpApplicationService
     submissionId: string,
     viewer: SubmissionViewerContext,
   ): Promise<SubmissionHttpJson> {
-    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRole);
+    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRoles);
     if (denied) return denied;
     const view = await this.agreements.getForStaff(submissionId);
     if (!view) return { status: 404, body: { error: "Not found" } };
@@ -77,7 +77,7 @@ export class ConsignmentAgreementHttpApplicationService
     submissionIds: readonly string[],
     viewer: SubmissionViewerContext,
   ): Promise<SubmissionHttpJson> {
-    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRole);
+    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRoles);
     if (denied) return denied;
     return { status: 200, body: { data: await this.agreements.listForStaff(submissionIds) } };
   }
@@ -87,7 +87,7 @@ export class ConsignmentAgreementHttpApplicationService
     terms: ConsignmentAgreementProposalInput,
     viewer: SubmissionViewerContext,
   ): Promise<SubmissionHttpJson> {
-    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRole);
+    const denied = requireSubmissionsAccessHttp(viewer.role, viewer.staffRoles);
     if (denied) return denied;
     const result = await this.agreements.proposeTerms(submissionId, viewer.userId, terms);
     if (result.isErr()) {

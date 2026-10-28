@@ -1,3 +1,4 @@
+import { type StaffRoles, normalizeStaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { AdminHono } from "./_shared.js";
@@ -6,7 +7,7 @@ import { attachAdminAuditRoutes } from "./audit.routes.js";
 const ACTOR_ID = "b2e48c7a-1f09-4d35-8a6e-5d3c9f7e2b14";
 
 /** The platform shell authenticates upstream; here a stub supplies the identity. */
-function setup(session: { role: string; staffRole: string | null }) {
+function setup(session: { role: string; staffRoles: StaffRoles | undefined }) {
   const search = vi.fn().mockResolvedValue({ rows: [], total: 0 });
   const searchActors = vi.fn().mockResolvedValue([]);
   const listRedacted = vi.fn().mockResolvedValue([]);
@@ -14,7 +15,7 @@ function setup(session: { role: string; staffRole: string | null }) {
   platform.use("*", async (c, next) => {
     c.set("userId", ACTOR_ID);
     c.set("userRole", session.role);
-    c.set("userStaffRole", session.staffRole);
+    c.set("userStaffRoles", session.staffRoles);
     await next();
   });
   attachAdminAuditRoutes(platform, {
@@ -33,7 +34,10 @@ describe("GET /admin/audit/log and /admin/audit/actors", () => {
     ["staff viewer", "staff_viewer"],
     ["auction manager", "auction_manager"],
   ])("lets a %s read the log and the actors", async (_label, staffRole) => {
-    const { get, search, searchActors } = setup({ role: "staff", staffRole });
+    const { get, search, searchActors } = setup({
+      role: "staff",
+      staffRoles: normalizeStaffRoles([staffRole]),
+    });
 
     expect((await get("/log")).status).toBe(200);
     expect((await get("/actors")).status).toBe(200);
@@ -42,10 +46,10 @@ describe("GET /admin/audit/log and /admin/audit/actors", () => {
   });
 
   it.each([
-    ["customer", "client", null],
-    ["staff without a staff role", "staff", null],
-  ])("refuses a %s", async (_label, role, staffRole) => {
-    const { get, search, searchActors } = setup({ role, staffRole });
+    ["customer", "client", []],
+    ["staff without a staff role", "staff", []],
+  ])("refuses a %s", async (_label, role, staffRoles) => {
+    const { get, search, searchActors } = setup({ role, staffRoles });
 
     expect((await get("/log")).status).toBe(403);
     expect((await get("/actors")).status).toBe(403);
@@ -54,7 +58,7 @@ describe("GET /admin/audit/log and /admin/audit/actors", () => {
   });
 
   it("passes every filter to the service and returns its page", async () => {
-    const { get, search } = setup({ role: "staff", staffRole: "super_admin" });
+    const { get, search } = setup({ role: "staff", staffRoles: ["super_admin"] });
     search.mockResolvedValue({ rows: [{ id: "1" }], total: 41 });
 
     const res = await get(
@@ -79,7 +83,7 @@ describe("GET /admin/audit/log and /admin/audit/actors", () => {
   });
 
   it("passes a sort to the service and rejects an unknown one", async () => {
-    const { get, search } = setup({ role: "staff", staffRole: "super_admin" });
+    const { get, search } = setup({ role: "staff", staffRoles: ["super_admin"] });
 
     expect((await get("/log?sort=at_asc")).status).toBe(200);
     expect(search).toHaveBeenCalledWith({
@@ -95,7 +99,7 @@ describe("GET /admin/audit/log and /admin/audit/actors", () => {
   });
 
   it("defaults to the first page of 50", async () => {
-    const { get, search } = setup({ role: "staff", staffRole: "staff_viewer" });
+    const { get, search } = setup({ role: "staff", staffRoles: ["staff_viewer"] });
 
     await get("/log");
 
@@ -109,18 +113,18 @@ describe("GET /admin/audit/log and /admin/audit/actors", () => {
     ["a wildcard event type", "eventTypes=lot.%25"],
     ["a page that is too large", "limit=500"],
   ])("rejects %s", async (_label, query) => {
-    const { get, search } = setup({ role: "staff", staffRole: "super_admin" });
+    const { get, search } = setup({ role: "staff", staffRoles: ["super_admin"] });
 
     expect((await get(`/log?${query}`)).status).toBe(400);
     expect(search).not.toHaveBeenCalled();
   });
 
   it("serves unredacted fields only to roles that may read PII, and only when asked", async () => {
-    const viewer = setup({ role: "staff", staffRole: "staff_viewer" });
+    const viewer = setup({ role: "staff", staffRoles: ["staff_viewer"] });
     await viewer.get("/log?includePii=1");
     expect(viewer.search).toHaveBeenCalledWith(expect.objectContaining({ includePii: false }));
 
-    const admin = setup({ role: "staff", staffRole: "super_admin" });
+    const admin = setup({ role: "staff", staffRoles: ["super_admin"] });
     await admin.get("/log");
     expect(admin.search).toHaveBeenLastCalledWith(expect.objectContaining({ includePii: false }));
     await admin.get("/log?includePii=1");
@@ -128,7 +132,7 @@ describe("GET /admin/audit/log and /admin/audit/actors", () => {
   });
 
   it("searches actors by text with a bounded page", async () => {
-    const { get, searchActors } = setup({ role: "staff", staffRole: "super_admin" });
+    const { get, searchActors } = setup({ role: "staff", staffRoles: ["super_admin"] });
 
     await get("/actors?q=ada&limit=10");
 
@@ -137,7 +141,7 @@ describe("GET /admin/audit/log and /admin/audit/actors", () => {
   });
 
   it("keeps the existing domain-events feed behind the same access", async () => {
-    const { get, listRedacted } = setup({ role: "client", staffRole: null });
+    const { get, listRedacted } = setup({ role: "client", staffRoles: [] });
 
     expect((await get("/domain-events")).status).toBe(403);
     expect(listRedacted).not.toHaveBeenCalled();

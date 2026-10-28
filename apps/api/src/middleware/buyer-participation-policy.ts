@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { createMiddleware } from "hono/factory";
 import type { Redis } from "ioredis";
@@ -72,7 +73,7 @@ export function createOptionalKycGate(
 export type BuyerParticipationVariables = {
   userId?: string;
   userRole?: string;
-  userStaffRole?: string | null;
+  userStaffRoles?: StaffRoles | undefined;
   legalEntityContext?: { legalEntityId: string };
 };
 

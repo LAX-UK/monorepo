@@ -1,4 +1,4 @@
-import { type UserRole, normalizeUserStaffRole, roleHasCapability } from "@auction/types";
+import { type StaffRoles, type UserRole, roleHasCapability } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { gbpAmountToPence } from "../../lib/decimal-money.js";
 import { AuthzError, PaymentProviderError } from "../../lib/errors.js";
@@ -12,13 +12,13 @@ export async function refundPayment(
   userRole: string,
   paymentId: string,
   actingLegalEntityId?: string | null,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
   staffReason?: string,
 ): Promise<Result<void, AuthzError | PaymentProviderError>> {
   const isPlatformFinanceWrite = roleHasCapability(
     userRole as UserRole,
     "finance.platform.write",
-    normalizeUserStaffRole(userStaffRole ?? undefined),
+    userStaffRoles,
   );
   if (!isPlatformFinanceWrite && !actingLegalEntityId) {
     return err(new AuthzError("Forbidden", 403));
@@ -98,16 +98,10 @@ export async function refundManualReviewPayment(
   adminUserId: string,
   userRole: string,
   paymentId: string,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
   reason?: string,
 ): Promise<Result<void, AuthzError | PaymentProviderError>> {
-  if (
-    !roleHasCapability(
-      userRole as UserRole,
-      "finance.platform.write",
-      normalizeUserStaffRole(userStaffRole ?? undefined),
-    )
-  ) {
+  if (!roleHasCapability(userRole as UserRole, "finance.platform.write", userStaffRoles)) {
     return err(new AuthzError("Forbidden", 403));
   }
   const p = await deps.payments.findById(paymentId);

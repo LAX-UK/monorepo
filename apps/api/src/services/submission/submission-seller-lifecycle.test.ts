@@ -71,6 +71,7 @@ function deps(
     repoFactory: null,
     consignmentAgreements: null,
     sellerIdentity: null,
+    staffRoles: null,
   };
   return { value, update, dispatch, publish };
 }

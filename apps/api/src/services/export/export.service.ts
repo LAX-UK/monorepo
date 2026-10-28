@@ -4,6 +4,7 @@ import { AuthzError } from "@auction/exports/providers";
 import type { ExportProvider } from "@auction/exports/providers";
 import type { IExportJobRepository } from "@auction/persistence/interfaces";
 import { DATA_EXPORT_QUEUE_NAME } from "@auction/queues";
+import { NO_STAFF_ROLES, type StaffRoles, primaryStaffRole } from "@auction/types";
 import type { CreateExportBody, ExportPreviewBody } from "@auction/validators";
 import type { Queue } from "bullmq";
 import type { IDomainEventSink } from "../domain-event-sink.js";
@@ -50,9 +51,9 @@ export class ExportService {
   private authContext(
     userId: string,
     userRole: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): ExportAuthContext {
-    return { userId, userRole, userStaffRole: userStaffRole ?? null };
+    return { userId, userRole, userStaffRoles: userStaffRoles ?? NO_STAFF_ROLES };
   }
 
   async assertRateLimits(userId: string): Promise<void> {
@@ -62,7 +63,7 @@ export class ExportService {
   async createExport(input: {
     userId: string;
     userRole: string;
-    userStaffRole?: string | null;
+    userStaffRoles?: StaffRoles | undefined;
     body: CreateExportBody;
   }): Promise<
     | {
@@ -74,8 +75,8 @@ export class ExportService {
     | { mode: "async"; job: ExportJobView }
     | { mode: "existing"; job: ExportJobView }
   > {
-    const { body, userId, userRole, userStaffRole } = input;
-    const ctx = this.authContext(userId, userRole, userStaffRole);
+    const { body, userId, userRole, userStaffRoles } = input;
+    const ctx = this.authContext(userId, userRole, userStaffRoles);
     const provider = this.provider(body.entityType);
     const filters = body.filters as Record<string, unknown>;
 
@@ -98,7 +99,7 @@ export class ExportService {
         id: exportId,
         userId,
         userRole,
-        userStaffRole: userStaffRole ?? null,
+        userStaffRole: primaryStaffRole(userStaffRoles ?? NO_STAFF_ROLES),
         entityType: body.entityType,
         format: body.format,
         filters,
@@ -142,7 +143,7 @@ export class ExportService {
       id: exportId,
       userId,
       userRole,
-      userStaffRole: userStaffRole ?? null,
+      userStaffRole: primaryStaffRole(userStaffRoles ?? NO_STAFF_ROLES),
       entityType: body.entityType,
       format: body.format,
       filters,
@@ -192,11 +193,11 @@ export class ExportService {
   async previewExport(input: {
     userId: string;
     userRole: string;
-    userStaffRole?: string | null;
+    userStaffRoles?: StaffRoles | undefined;
     body: ExportPreviewBody;
   }): Promise<{ estimatedRows: number; syncMaxRows: number }> {
-    const { body, userId, userRole, userStaffRole } = input;
-    const ctx = this.authContext(userId, userRole, userStaffRole);
+    const { body, userId, userRole, userStaffRoles } = input;
+    const ctx = this.authContext(userId, userRole, userStaffRoles);
     const provider = this.provider(body.entityType);
     const filters = body.filters as Record<string, unknown>;
     await provider.authorize(ctx, filters);

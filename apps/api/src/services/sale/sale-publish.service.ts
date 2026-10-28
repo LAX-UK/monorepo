@@ -1,5 +1,5 @@
-import type { Lot, Sale, UserRole } from "@auction/types";
-import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
+import type { Lot, Sale, StaffRoles, UserRole } from "@auction/types";
+import { roleHasCapability } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../../lib/errors.js";
 import {
@@ -31,9 +31,9 @@ export class SalePublishService implements ISalePublishService {
     userId: string,
     userRole: string,
     saleId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>> {
-    const authz = await assertCanPublishSale(userRole, userStaffRole);
+    const authz = await assertCanPublishSale(userRole, userStaffRoles);
     if (authz.isErr()) return err(authz.error);
 
     const readiness = await validatePublishReadiness(this.deps, saleId);
@@ -80,15 +80,9 @@ export class SalePublishService implements ISalePublishService {
     userId: string,
     userRole: string,
     saleId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Sale, LotError | AuthzError>> {
-    if (
-      !roleHasCapability(
-        userRole as UserRole,
-        "auction.manage",
-        normalizeUserStaffRole(userStaffRole ?? undefined),
-      )
-    ) {
+    if (!roleHasCapability(userRole as UserRole, "auction.manage", userStaffRoles)) {
       return err(new AuthzError("Only staff with auction.manage can unpublish sales", 403));
     }
     const sale = await this.deps.saleRepo.findById(saleId);
@@ -149,15 +143,9 @@ export class SalePublishService implements ISalePublishService {
     userId: string,
     userRole: string,
     saleId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Sale, LotError | AuthzError>> {
-    if (
-      !roleHasCapability(
-        userRole as UserRole,
-        "auction.manage",
-        normalizeUserStaffRole(userStaffRole ?? undefined),
-      )
-    ) {
+    if (!roleHasCapability(userRole as UserRole, "auction.manage", userStaffRoles)) {
       return err(new AuthzError("Only staff with auction.manage can cancel sales", 403));
     }
     const sale = await this.deps.saleRepo.findById(saleId);

@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import type { MiddlewareHandler } from "hono";
 import type { Hono } from "hono";
 import type { ContainerSubmissionRoutesSlice } from "../../container.js";
@@ -13,7 +14,7 @@ export type SubmissionHono = Hono<{
   Variables: {
     userId?: string;
     userRole?: string;
-    userStaffRole?: string | null;
+    userStaffRoles?: StaffRoles | undefined;
     legalEntityContext?: LegalEntityContext;
   };
 }>;
@@ -26,12 +27,13 @@ export type SubmissionRouteDeps = {
 };
 
 export function viewerFromContext(c: {
-  get: (key: "userId" | "userRole" | "userStaffRole") => string | null | undefined;
+  get(key: "userId" | "userRole"): string | null | undefined;
+  get(key: "userStaffRoles"): StaffRoles | undefined;
 }): SubmissionViewerContext {
   return {
     userId: c.get("userId") as string,
     role: c.get("userRole"),
-    staffRole: c.get("userStaffRole") ?? null,
+    staffRoles: c.get("userStaffRoles"),
   };
 }
 

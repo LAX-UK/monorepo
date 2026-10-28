@@ -1,4 +1,4 @@
-import type { UserRole, UserStaffRole } from "@auction/types";
+import type { StaffRoles, UserRole } from "@auction/types";
 
 /** ISP: middleware depends only on session resolution, not the full auth stack. */
 export type AuthenticatedUser = {
@@ -8,8 +8,8 @@ export type AuthenticatedUser = {
   /** Identity session id carried as OIDC `sid`; used for server-side step-up correlation. */
   identitySessionId?: string;
   role: UserRole;
-  /** LAX internal staff specialization when `role` is `staff`. */
-  staffRole?: UserStaffRole | null;
+  /** Staff roles in force for this request; every permission check uses these. */
+  staffRoles: StaffRoles;
 };
 
 export interface IAuthenticator {

@@ -190,6 +190,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     xeroWebhookEventRepository,
     paymentExternalRefRepository: paymentExtRepo,
     userRepository: userRepo,
+    staffRoleReader: repos.staffRoster,
     displayPairingService,
     displayOverlayService,
     qrCodeService,

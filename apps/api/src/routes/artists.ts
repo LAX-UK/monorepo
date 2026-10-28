@@ -1,4 +1,4 @@
-import { type UserRole, normalizeUserStaffRole } from "@auction/types";
+import type { StaffRoles, UserRole } from "@auction/types";
 import {
   artistAddAliasBodySchema,
   artistCheckNameQuerySchema,
@@ -44,14 +44,14 @@ export function createArtistRoutes(
   const optionalAuth = createOptionalAuth(authenticator);
   const http = () => container.catalogRoutes.artistHttp;
   const r = new Hono<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>();
 
   r.get("/search", optionalAuth, zValidator("query", artistSearchQuerySchema), async (c) => {
     const { q, limit } = c.req.valid("query");
     const role = (c.get("userRole") ?? "client") as UserRole;
-    const staffRole = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-    return respondCatalogHttpJson(c, await http().search({ q, limit, role, staffRole }));
+    const staffRoles = c.get("userStaffRoles");
+    return respondCatalogHttpJson(c, await http().search({ q, limit, role, staffRoles }));
   });
 
   r.get("/public", zValidator("query", artistPublicListQuerySchema), async (c) => {
@@ -113,8 +113,8 @@ export function createArtistRoutes(
   r.get("/by-slug/:slug", optionalAuth, zValidator("param", artistSlugParamSchema), async (c) => {
     const { slug } = c.req.valid("param");
     const role = (c.get("userRole") ?? "client") as UserRole;
-    const staffRole = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-    return respondCatalogHttpJson(c, await http().getBySlug({ slug, role, staffRole }));
+    const staffRoles = c.get("userStaffRoles");
+    return respondCatalogHttpJson(c, await http().getBySlug({ slug, role, staffRoles }));
   });
 
   r.get(
@@ -124,8 +124,8 @@ export function createArtistRoutes(
     async (c) => {
       const { id } = c.req.valid("param");
       const role = (c.get("userRole") ?? "client") as UserRole;
-      const staffRole = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
-      return respondCatalogHttpJson(c, await http().getById({ id, role, staffRole }));
+      const staffRoles = c.get("userStaffRoles");
+      return respondCatalogHttpJson(c, await http().getById({ id, role, staffRoles }));
     },
   );
 
@@ -214,7 +214,7 @@ export function createArtistRoutes(
     async (c) => {
       const userId = c.get("userId") as string;
       const role = (c.get("userRole") ?? "client") as UserRole;
-      const staffRole = c.get("userStaffRole") ?? null;
+      const staffRoles = c.get("userStaffRoles");
       const { id } = c.req.valid("param");
       const { confirmationPhrase } = c.req.valid("json");
       return respondCatalogRouteOutcome(
@@ -222,7 +222,7 @@ export function createArtistRoutes(
         await http().delete({
           userId,
           role,
-          staffRole,
+          staffRoles,
           id,
           confirmationPhrase,
         }),

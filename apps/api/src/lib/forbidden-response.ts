@@ -1,10 +1,10 @@
-import type { RoleCapability, UserRole, UserStaffRole } from "@auction/types";
+import type { RoleCapability, StaffRoles, UserRole } from "@auction/types";
 import type { Context } from "hono";
 import { ArtistError, AuthzError, LotError, VenueError } from "./errors.js";
 
 export type MissingCapabilityActor = {
   role: UserRole | string;
-  staffRole: UserStaffRole | string | null;
+  staffRoles: StaffRoles | undefined;
 };
 
 export type MissingCapabilityBody = {

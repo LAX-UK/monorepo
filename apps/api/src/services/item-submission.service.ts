@@ -3,6 +3,7 @@ import type { ILegalEntityNotificationRecipientReader } from "@auction/persisten
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type {
   IItemSubmissionRepository,
+  IStaffRoleAssignmentReader,
   IUserRepository,
   ListSubmissionsFilter,
   SubmissionSenderFilter,
@@ -14,6 +15,7 @@ import type {
   ItemSubmission,
   ItemSubmissionStatus,
   Lot,
+  StaffRoles,
 } from "@auction/types";
 import type { UserRole } from "@auction/types";
 import type { Result } from "neverthrow";
@@ -92,6 +94,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
     repoFactory: IRepositoryFactory | null = null,
     consignmentAgreements: IConsignmentAgreementRepository | null = null,
     sellerIdentity: ISellerIdentityReader | null = null,
+    staffRoles: Pick<IStaffRoleAssignmentReader, "listActiveRoles"> | null = null,
   ) {
     this.deps = {
       transactionRunner,
@@ -108,6 +111,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
       repoFactory,
       consignmentAgreements,
       sellerIdentity,
+      staffRoles,
     };
   }
 
@@ -228,7 +232,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
   getSubmissionForViewerApi(input: {
     submissionId: string;
     role: UserRole;
-    staffRole?: string | null;
+    staffRoles?: StaffRoles | undefined;
     sellerLegalEntityId: string;
   }): Promise<Result<ItemSubmission, SubmissionError>> {
     return getSubmissionForViewerApi(this.deps, input);
@@ -238,7 +242,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
     rawBody: unknown;
     submissionId: string;
     role: UserRole;
-    staffRole?: string | null;
+    staffRoles?: StaffRoles | undefined;
     userId: string;
     sellerLegalEntityId: string;
   }): Promise<

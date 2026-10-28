@@ -39,7 +39,7 @@ function mount(membership: { role: LegalEntityMemberRole } | null) {
     getSessionUser: vi.fn(async () => ({
       id: "user-1",
       role: "client" as const,
-      staffRole: null,
+      staffRoles: [],
       scopes: ["bid.read", "bid.write"],
     })),
   };

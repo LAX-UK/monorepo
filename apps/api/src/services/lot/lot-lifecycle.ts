@@ -1,9 +1,5 @@
-import type { Lot, Sale } from "@auction/types";
-import {
-  normalizeUserRoleOrClient,
-  normalizeUserStaffRole,
-  roleHasCapability,
-} from "@auction/types";
+import type { Lot, Sale, StaffRoles } from "@auction/types";
+import { normalizeUserRoleOrClient, roleHasCapability } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import type { LotCancelledPayload } from "../../domain/lot-events.js";
 import { canManageCatalogue } from "../../lib/catalogue-auth.js";
@@ -21,10 +17,10 @@ export async function publishLot(
   _userId: string,
   userRole: string,
   lotId: string,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
 ): Promise<Result<Lot, LotError | AuthzError>> {
   const role = normalizeUserRoleOrClient(userRole);
-  const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+  const staff = userStaffRoles;
   if (!canManageCatalogue(role, staff)) {
     return err(
       missingCatalogueCapabilityError(
@@ -111,13 +107,13 @@ export async function cancelLot(
   _userId: string,
   userRole: string,
   lotId: string,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
   cancelReason: LotCancelledPayload["reason"] = "manual",
 ): Promise<Result<Lot, LotError | AuthzError>> {
   const a = await deps.lotRepo.findById(lotId);
   if (!a) return err(new LotError("Lot not found", 404));
   const role = normalizeUserRoleOrClient(userRole);
-  const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+  const staff = userStaffRoles;
   if (!roleHasCapability(role, "auction.manage", staff)) {
     return err(new AuthzError("Only staff with auction.manage can cancel lots", 403));
   }
@@ -179,7 +175,7 @@ export async function bulkPublishOrCancel(
   userRole: string,
   ids: string[],
   op: "publish" | "cancel",
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
   reason?: string,
 ): Promise<
   Result<
@@ -192,7 +188,7 @@ export async function bulkPublishOrCancel(
   >
 > {
   const role = normalizeUserRoleOrClient(userRole);
-  const staff = normalizeUserStaffRole(userStaffRole ?? undefined);
+  const staff = userStaffRoles;
   if (op === "cancel") {
     if (!roleHasCapability(role, "auction.manage", staff)) {
       return err(new AuthzError("Only staff with auction.manage can bulk cancel lots", 403));
@@ -211,7 +207,7 @@ export async function bulkPublishOrCancel(
     op === "cancel" && reason?.trim() ? ("admin_override" as const) : ("manual" as const);
   for (const id of ids) {
     if (op === "publish") {
-      const res = await publishLot(deps, userId, userRole, id, userStaffRole);
+      const res = await publishLot(deps, userId, userRole, id, userStaffRoles);
       if (res.isErr()) {
         const error = res.error;
         errors.push({
@@ -221,7 +217,7 @@ export async function bulkPublishOrCancel(
         });
       }
     } else {
-      const res = await cancelLot(deps, userId, userRole, id, userStaffRole, cancelReason);
+      const res = await cancelLot(deps, userId, userRole, id, userStaffRoles, cancelReason);
       if (res.isErr()) {
         const error = res.error;
         errors.push({

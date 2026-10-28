@@ -5,7 +5,7 @@ import { createRequireAuth } from "./require-auth.js";
 
 function appWithScopes(scopes: readonly string[]) {
   const authenticator: IAuthenticator = {
-    getSessionUser: async () => ({ id: "user-1", role: "client", scopes }),
+    getSessionUser: async () => ({ id: "user-1", role: "client", staffRoles: [], scopes }),
   };
   const app = new Hono();
   app.use("/protected", createRequireAuth(authenticator));

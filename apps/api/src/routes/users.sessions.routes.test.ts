@@ -49,7 +49,7 @@ function sessionsTestApp(opts: {
     getSessionUser: vi.fn().mockResolvedValue({
       id: "u1",
       role: "client",
-      staffRole: null,
+      staffRoles: [],
       identitySessionId: "identity-session-1",
 
       scopes: ["bid.write"],
@@ -170,7 +170,7 @@ describe("POST /users/me/delete step-up", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "u1",
         role: "client",
-        staffRole: null,
+        staffRoles: [],
         identitySessionId: "identity-session-1",
 
         scopes: ["bid.write"],

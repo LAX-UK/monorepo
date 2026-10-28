@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import {
   attachSubmissionDocumentBodySchema,
   entityDocumentIdParamSchema,
@@ -26,7 +27,7 @@ export function createSubmissionDocumentRoutes(
   const documentHttp = container.submissionRoutes.documentHttp;
 
   const r = new Hono<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>();
 
   r.use("*", requireAuth, requireSubmissionsAccess);

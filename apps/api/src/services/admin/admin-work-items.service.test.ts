@@ -63,7 +63,7 @@ describe("AdminWorkItemsService", () => {
     const result = await service.listWorkItems({
       actorUserId: "u1",
       actorRole: "staff",
-      actorStaffRole: "finance_ops",
+      actorStaffRoles: ["finance_ops"],
       query: { limit: 25, assignment: "all", urgentOnly: false },
     });
 
@@ -99,7 +99,7 @@ describe("AdminWorkItemsService", () => {
     const result = await service.listWorkItems({
       actorUserId: "u1",
       actorRole: "staff",
-      actorStaffRole: "super_admin",
+      actorStaffRoles: ["super_admin"],
       query: { limit: 25, assignment: "all", urgentOnly: false },
     });
 
@@ -131,7 +131,7 @@ describe("AdminWorkItemsService", () => {
     const result = await service.listWorkItems({
       actorUserId: "u1",
       actorRole: "staff",
-      actorStaffRole: "catalogue_manager",
+      actorStaffRoles: ["catalogue_manager"],
       query: { limit: 25, assignment: "mine", urgentOnly: false },
     });
 
@@ -182,7 +182,7 @@ describe("AdminWorkItemsService", () => {
     const result = await service.listWorkItems({
       actorUserId: "u1",
       actorRole: "staff",
-      actorStaffRole: "super_admin",
+      actorStaffRoles: ["super_admin"],
       query: { limit: 25, assignment: "all", urgentOnly: false },
     });
 
@@ -205,7 +205,7 @@ describe("AdminWorkItemsService", () => {
       service.listWorkItems({
         actorUserId: "u1",
         actorRole: "staff",
-        actorStaffRole: "catalogue_manager",
+        actorStaffRoles: ["catalogue_manager"],
         query: { limit: 25, assignment: "all", urgentOnly: false },
       }),
     ).rejects.toThrow("database unavailable");

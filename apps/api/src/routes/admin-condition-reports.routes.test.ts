@@ -29,7 +29,7 @@ describe("admin condition report routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRole: "auction_manager",
+        staffRoles: ["auction_manager"],
         scopes: ["bid.read"],
       }),
     };
@@ -62,7 +62,7 @@ describe("admin condition report routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRole: "super_admin",
+        staffRoles: ["super_admin"],
         scopes: ["bid.read"],
       }),
     };
@@ -107,7 +107,7 @@ describe("admin condition report routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRole: "super_admin",
+        staffRoles: ["super_admin"],
         scopes: ["bid.write"],
       }),
     };
@@ -142,7 +142,7 @@ describe("admin condition report routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRole: "super_admin",
+        staffRoles: ["super_admin"],
         scopes: ["bid.write"],
       }),
     };

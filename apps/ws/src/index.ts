@@ -132,7 +132,7 @@ io.use(async (socket, next) => {
         id: principal.subject,
         ...(principal.sid ? { sid: principal.sid } : {}),
         role: principal.role ?? "client",
-        ...(principal.staffRole ? { staff_role: principal.staffRole } : {}),
+        staffRoles: principal.staffRole ? [principal.staffRole] : [],
       };
       socket.data.authSubject = principal.subject;
       socket.data.authSid = principal.sid;

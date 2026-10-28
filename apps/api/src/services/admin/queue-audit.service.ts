@@ -33,7 +33,7 @@ export class StructuredQueueAuditService implements IQueueAuditService {
       {
         action,
         actorId: input.actor.userId,
-        actorStaffRole: input.actor.staffRole,
+        actorStaffRoles: input.actor.staffRoles,
         queue: input.queue,
         jobId: input.jobId,
         requestId: input.actor.requestId,

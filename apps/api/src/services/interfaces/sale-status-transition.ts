@@ -1,4 +1,4 @@
-import type { Lot, LotStatus, Sale } from "@auction/types";
+import type { Lot, LotStatus, Sale, StaffRoles } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError } from "../../lib/errors.js";
 
@@ -22,7 +22,7 @@ export interface ISaleStatusTransitionService {
     userRole: string,
     saleId: string,
     reason?: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
     actorUserId?: string | null,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>>;
 
@@ -36,6 +36,6 @@ export interface ISaleStatusTransitionService {
     lotId: string,
     status: LotStatus,
     reason?: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Lot, LotError | AuthzError>>;
 }

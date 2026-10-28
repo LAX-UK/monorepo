@@ -1,3 +1,5 @@
+import { normalizeStaffRoles } from "@auction/types";
+import type { StaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { createTestStaffGuards } from "../../testing/staff-mutation-guards.js";
@@ -21,8 +23,8 @@ const ENTITY_ID = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
 const REASON = "Repeated chargebacks and a failed identity check.";
 const STEP_UP = { error: "Recent sign-in required", code: "step_up_required" };
 
-type Session = { role: string; staffRole: string | null };
-const staff = (staffRole: string): Session => ({ role: "staff", staffRole });
+type Session = { role: string; staffRoles: StaffRoles | undefined };
+const staff = (staffRoles: StaffRoles | undefined): Session => ({ role: "staff", staffRoles });
 
 function mount(session: Session, options: { recent?: boolean } = {}) {
   const guards = createTestStaffGuards({ recent: options.recent ?? true });
@@ -30,7 +32,7 @@ function mount(session: Session, options: { recent?: boolean } = {}) {
   platform.use("*", async (c, next) => {
     c.set("userId", ACTOR_ID);
     c.set("userRole", session.role);
-    c.set("userStaffRole", session.staffRole);
+    c.set("userStaffRoles", session.staffRoles);
     c.set("identitySessionId", "session-1");
     await next();
   });
@@ -73,12 +75,12 @@ function usersFixture(session: Session, options: { recent?: boolean } = {}) {
 const actorOf = (session: Session) => ({
   userId: ACTOR_ID,
   role: session.role,
-  staffRole: session.staffRole,
+  staffRoles: session.staffRoles,
 });
 
 describe("PATCH /admin/users/:userId/role (set-role)", () => {
   it("is registered at its own path and hands the actor and target on", async () => {
-    const { app, users } = usersFixture(staff("super_admin"));
+    const { app, users } = usersFixture(staff(["super_admin"]));
 
     const res = await app.request(
       `/admin/users/${TARGET_ID}/role`,
@@ -91,15 +93,17 @@ describe("PATCH /admin/users/:userId/role (set-role)", () => {
       ACTOR_ID,
       TARGET_ID,
       "staff",
-      "super_admin",
+      ["super_admin"],
       "operations",
     );
   });
 
   it.each(["support_concierge", "client_advisor", "finance_ops", "staff_viewer"])(
     "refuses %s before asking for a sign-in",
-    async (staffRole) => {
-      const { app, users } = usersFixture(staff(staffRole), { recent: false });
+    async (staffRoles) => {
+      const { app, users } = usersFixture(staff(normalizeStaffRoles([staffRoles])), {
+        recent: false,
+      });
 
       const res = await app.request(
         `/admin/users/${TARGET_ID}/role`,
@@ -113,7 +117,7 @@ describe("PATCH /admin/users/:userId/role (set-role)", () => {
   );
 
   it("asks for a fresh sign-in, and changes nothing", async () => {
-    const { app, users } = usersFixture(staff("super_admin"), { recent: false });
+    const { app, users } = usersFixture(staff(["super_admin"]), { recent: false });
 
     const res = await app.request(
       `/admin/users/${TARGET_ID}/role`,
@@ -126,7 +130,7 @@ describe("PATCH /admin/users/:userId/role (set-role)", () => {
   });
 
   it("passes the service's refusal through with its status", async () => {
-    const { app, users } = usersFixture(staff("super_admin"));
+    const { app, users } = usersFixture(staff(["super_admin"]));
     users.setRole.mockResolvedValue({ ok: false, status: 409, message: "last super admin" });
 
     const res = await app.request(
@@ -141,7 +145,7 @@ describe("PATCH /admin/users/:userId/role (set-role)", () => {
 
 describe("PATCH /admin/users/:userId/staff-role", () => {
   it("changes the role for a super_admin with a fresh sign-in", async () => {
-    const { app, users } = usersFixture(staff("super_admin"));
+    const { app, users } = usersFixture(staff(["super_admin"]));
 
     const res = await app.request(
       `/admin/users/${TARGET_ID}/staff-role`,
@@ -149,17 +153,13 @@ describe("PATCH /admin/users/:userId/staff-role", () => {
     );
 
     expect(res.status).toBe(200);
-    expect(users.setStaffRole).toHaveBeenCalledWith(
-      "staff",
-      ACTOR_ID,
-      TARGET_ID,
-      "finance_ops",
+    expect(users.setStaffRole).toHaveBeenCalledWith("staff", ACTOR_ID, TARGET_ID, "finance_ops", [
       "super_admin",
-    );
+    ]);
   });
 
   it("asks for a fresh sign-in, and changes nothing", async () => {
-    const { app, users } = usersFixture(staff("super_admin"), { recent: false });
+    const { app, users } = usersFixture(staff(["super_admin"]), { recent: false });
 
     const res = await app.request(
       `/admin/users/${TARGET_ID}/staff-role`,
@@ -173,8 +173,8 @@ describe("PATCH /admin/users/:userId/staff-role", () => {
 
   it.each(["support_concierge", "client_advisor", "operations"])(
     "refuses %s",
-    async (staffRole) => {
-      const { app, users } = usersFixture(staff(staffRole));
+    async (staffRoles) => {
+      const { app, users } = usersFixture(staff(normalizeStaffRoles([staffRoles])));
 
       const res = await app.request(
         `/admin/users/${TARGET_ID}/staff-role`,
@@ -190,8 +190,8 @@ describe("PATCH /admin/users/:userId/staff-role", () => {
 describe("POST /admin/users/:userId/suspend and unsuspend", () => {
   it.each(["super_admin", "support_concierge"])(
     "lets %s suspend, with the actor and reason",
-    async (staffRole) => {
-      const { app, users } = usersFixture(staff(staffRole));
+    async (staffRoles) => {
+      const { app, users } = usersFixture(staff(normalizeStaffRoles([staffRoles])));
 
       const res = await app.request(
         `/admin/users/${TARGET_ID}/suspend`,
@@ -199,14 +199,18 @@ describe("POST /admin/users/:userId/suspend and unsuspend", () => {
       );
 
       expect(res.status).toBe(200);
-      expect(users.suspend).toHaveBeenCalledWith(actorOf(staff(staffRole)), TARGET_ID, REASON);
+      expect(users.suspend).toHaveBeenCalledWith(
+        actorOf(staff(normalizeStaffRoles([staffRoles]))),
+        TARGET_ID,
+        REASON,
+      );
     },
   );
 
   it.each(["client_advisor", "finance_ops", "staff_viewer", "operations"])(
     "refuses %s",
-    async (staffRole) => {
-      const { app, users } = usersFixture(staff(staffRole));
+    async (staffRoles) => {
+      const { app, users } = usersFixture(staff(normalizeStaffRoles([staffRoles])));
 
       const suspend = await app.request(
         `/admin/users/${TARGET_ID}/suspend`,
@@ -227,7 +231,7 @@ describe("POST /admin/users/:userId/suspend and unsuspend", () => {
     ["a short reason", { reason: "spam" }],
     ["an over-long reason", { reason: "x".repeat(501) }],
   ])("rejects %s", async (_label, body) => {
-    const { app, users } = usersFixture(staff("super_admin"));
+    const { app, users } = usersFixture(staff(["super_admin"]));
 
     const res = await app.request(`/admin/users/${TARGET_ID}/suspend`, json("POST", body));
 
@@ -236,7 +240,7 @@ describe("POST /admin/users/:userId/suspend and unsuspend", () => {
   });
 
   it("asks for a fresh sign-in before suspending or restoring", async () => {
-    const { app, users } = usersFixture(staff("super_admin"), { recent: false });
+    const { app, users } = usersFixture(staff(["super_admin"]), { recent: false });
 
     const suspend = await app.request(
       `/admin/users/${TARGET_ID}/suspend`,
@@ -253,12 +257,12 @@ describe("POST /admin/users/:userId/suspend and unsuspend", () => {
   });
 
   it("unsuspends with the actor recorded", async () => {
-    const { app, users } = usersFixture(staff("support_concierge"));
+    const { app, users } = usersFixture(staff(["support_concierge"]));
 
     const res = await app.request(`/admin/users/${TARGET_ID}/unsuspend`, json("POST"));
 
     expect(res.status).toBe(200);
-    expect(users.unsuspend).toHaveBeenCalledWith(actorOf(staff("support_concierge")), TARGET_ID);
+    expect(users.unsuspend).toHaveBeenCalledWith(actorOf(staff(["support_concierge"])), TARGET_ID);
   });
 });
 
@@ -266,7 +270,7 @@ describe("POST /admin/users/bulk", () => {
   const ids = [TARGET_ID, "11111111-2222-4333-8444-555555555555"];
 
   it("suspends a batch with the actor and reason", async () => {
-    const { app, users } = usersFixture(staff("support_concierge"));
+    const { app, users } = usersFixture(staff(["support_concierge"]));
 
     const res = await app.request(
       "/admin/users/bulk",
@@ -275,7 +279,7 @@ describe("POST /admin/users/bulk", () => {
 
     expect(res.status).toBe(200);
     expect(users.bulkSuspendOrUnsuspend).toHaveBeenCalledWith({
-      actor: actorOf(staff("support_concierge")),
+      actor: actorOf(staff(["support_concierge"])),
       ids,
       op: "suspend",
       reason: REASON,
@@ -283,7 +287,7 @@ describe("POST /admin/users/bulk", () => {
   });
 
   it("requires a reason to suspend but not to restore", async () => {
-    const { app, users } = usersFixture(staff("super_admin"));
+    const { app, users } = usersFixture(staff(["super_admin"]));
 
     const noReason = await app.request("/admin/users/bulk", json("POST", { ids, op: "suspend" }));
     const restore = await app.request("/admin/users/bulk", json("POST", { ids, op: "unsuspend" }));
@@ -294,7 +298,7 @@ describe("POST /admin/users/bulk", () => {
   });
 
   it("asks for a fresh sign-in, and changes nothing", async () => {
-    const { app, users } = usersFixture(staff("super_admin"), { recent: false });
+    const { app, users } = usersFixture(staff(["super_admin"]), { recent: false });
 
     const res = await app.request(
       "/admin/users/bulk",
@@ -306,8 +310,8 @@ describe("POST /admin/users/bulk", () => {
     expect(users.bulkSuspendOrUnsuspend).not.toHaveBeenCalled();
   });
 
-  it.each(["client_advisor", "finance_ops"])("refuses %s", async (staffRole) => {
-    const { app, users } = usersFixture(staff(staffRole));
+  it.each(["client_advisor", "finance_ops"])("refuses %s", async (staffRoles) => {
+    const { app, users } = usersFixture(staff(normalizeStaffRoles([staffRoles])));
 
     const res = await app.request(
       "/admin/users/bulk",
@@ -332,8 +336,8 @@ describe("withdrawal decisions", () => {
 
   it.each(["super_admin", "auction_manager", "operations"])(
     "lets %s approve and decline",
-    async (staffRole) => {
-      const { app, lots } = lotsFixture(staff(staffRole));
+    async (staffRoles) => {
+      const { app, lots } = lotsFixture(staff(normalizeStaffRoles([staffRoles])));
 
       const approve = await app.request(
         `/admin/lots/${LOT_ID}/approve-withdrawal-request`,
@@ -351,8 +355,8 @@ describe("withdrawal decisions", () => {
     },
   );
 
-  it.each(["finance_ops", "client_advisor", "staff_viewer"])("refuses %s", async (staffRole) => {
-    const { app, lots } = lotsFixture(staff(staffRole));
+  it.each(["finance_ops", "client_advisor", "staff_viewer"])("refuses %s", async (staffRoles) => {
+    const { app, lots } = lotsFixture(staff(normalizeStaffRoles([staffRoles])));
 
     const res = await app.request(`/admin/lots/${LOT_ID}/approve-withdrawal-request`, json("POST"));
 
@@ -361,7 +365,7 @@ describe("withdrawal decisions", () => {
   });
 
   it("asks for a fresh sign-in before approving or declining", async () => {
-    const { app, lots } = lotsFixture(staff("super_admin"), { recent: false });
+    const { app, lots } = lotsFixture(staff(["super_admin"]), { recent: false });
 
     const approve = await app.request(
       `/admin/lots/${LOT_ID}/approve-withdrawal-request`,
@@ -398,8 +402,8 @@ describe("manual-review payments", () => {
 
   it.each(["super_admin", "finance_ops"])(
     "lets %s capture and refund with a key",
-    async (staffRole) => {
-      const { app, payments } = paymentsFixture(staff(staffRole));
+    async (staffRoles) => {
+      const { app, payments } = paymentsFixture(staff(normalizeStaffRoles([staffRoles])));
 
       const capture = await app.request(
         `/admin/payments/${PAYMENT_ID}/capture-and-process`,
@@ -416,13 +420,13 @@ describe("manual-review payments", () => {
         ACTOR_ID,
         "staff",
         PAYMENT_ID,
-        staffRole,
+        normalizeStaffRoles([staffRoles]),
       );
       expect(payments.refundManualReviewPayment).toHaveBeenCalledWith(
         ACTOR_ID,
         "staff",
         PAYMENT_ID,
-        staffRole,
+        normalizeStaffRoles([staffRoles]),
         REASON,
       );
     },
@@ -430,8 +434,10 @@ describe("manual-review payments", () => {
 
   it.each(["auction_manager", "client_advisor", "staff_viewer"])(
     "refuses %s",
-    async (staffRole) => {
-      const { app, payments } = paymentsFixture(staff(staffRole), { recent: false });
+    async (staffRoles) => {
+      const { app, payments } = paymentsFixture(staff(normalizeStaffRoles([staffRoles])), {
+        recent: false,
+      });
 
       const res = await app.request(
         `/admin/payments/${PAYMENT_ID}/refund-buyer`,
@@ -445,7 +451,7 @@ describe("manual-review payments", () => {
   );
 
   it("asks for a fresh sign-in before anything else, including the key check", async () => {
-    const { app, payments } = paymentsFixture(staff("finance_ops"), { recent: false });
+    const { app, payments } = paymentsFixture(staff(["finance_ops"]), { recent: false });
 
     const capture = await app.request(
       `/admin/payments/${PAYMENT_ID}/capture-and-process`,
@@ -465,7 +471,7 @@ describe("manual-review payments", () => {
   });
 
   it("refuses a capture or refund without an Idempotency-Key", async () => {
-    const { app, payments } = paymentsFixture(staff("finance_ops"));
+    const { app, payments } = paymentsFixture(staff(["finance_ops"]));
 
     const capture = await app.request(
       `/admin/payments/${PAYMENT_ID}/capture-and-process`,
@@ -487,7 +493,7 @@ describe("manual-review payments", () => {
     ["a blank reason", { reason: "     " }],
     ["a short reason", { reason: "oops" }],
   ])("rejects a refund with %s", async (_label, body) => {
-    const { app, payments } = paymentsFixture(staff("finance_ops"));
+    const { app, payments } = paymentsFixture(staff(["finance_ops"]));
 
     const res = await app.request(
       `/admin/payments/${PAYMENT_ID}/refund-buyer`,
@@ -499,7 +505,7 @@ describe("manual-review payments", () => {
   });
 
   it("refunds once when the same request is sent twice, and replays the answer", async () => {
-    const { app, payments } = paymentsFixture(staff("finance_ops"));
+    const { app, payments } = paymentsFixture(staff(["finance_ops"]));
     const send = () =>
       app.request(
         `/admin/payments/${PAYMENT_ID}/refund-buyer`,
@@ -517,7 +523,7 @@ describe("manual-review payments", () => {
   });
 
   it("captures once when the same request is sent twice", async () => {
-    const { app, payments } = paymentsFixture(staff("finance_ops"));
+    const { app, payments } = paymentsFixture(staff(["finance_ops"]));
     const send = () =>
       app.request(
         `/admin/payments/${PAYMENT_ID}/capture-and-process`,
@@ -532,7 +538,7 @@ describe("manual-review payments", () => {
   });
 
   it("does not replay a refund that failed, so it can be retried with the same key", async () => {
-    const { app, payments } = paymentsFixture(staff("finance_ops"));
+    const { app, payments } = paymentsFixture(staff(["finance_ops"]));
     payments.refundManualReviewPayment.mockResolvedValueOnce({
       match: (_ok: () => unknown, onErr: (e: { message: string; status: number }) => unknown) =>
         onErr({ message: "Payment is not in manual review", status: 409 }),
@@ -577,7 +583,7 @@ describe("impersonation start", () => {
   }
 
   it("lets a super_admin with a fresh sign-in start", async () => {
-    const { app, impersonation } = impersonationFixture(staff("super_admin"));
+    const { app, impersonation } = impersonationFixture(staff(["super_admin"]));
 
     const res = await app.request(
       "/admin/impersonation/start",
@@ -591,7 +597,7 @@ describe("impersonation start", () => {
   });
 
   it("asks for a fresh sign-in, but still allows the read-only lookup", async () => {
-    const { app, impersonation } = impersonationFixture(staff("super_admin"), { recent: false });
+    const { app, impersonation } = impersonationFixture(staff(["super_admin"]), { recent: false });
 
     const start = await app.request(
       "/admin/impersonation/start",
@@ -607,8 +613,8 @@ describe("impersonation start", () => {
 
   it.each(["support_concierge", "auction_manager", "finance_ops"])(
     "refuses %s",
-    async (staffRole) => {
-      const { app, impersonation } = impersonationFixture(staff(staffRole));
+    async (staffRoles) => {
+      const { app, impersonation } = impersonationFixture(staff(normalizeStaffRoles([staffRoles])));
 
       const res = await app.request(
         "/admin/impersonation/start",

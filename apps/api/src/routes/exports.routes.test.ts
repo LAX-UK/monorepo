@@ -30,7 +30,7 @@ describe("export routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: userId,
         role: "staff",
-        staffRole: "auction_manager",
+        staffRoles: ["auction_manager"],
         scopes: ["bid.write"],
       }),
     };
@@ -73,7 +73,7 @@ describe("export routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: userId,
         role: "staff",
-        staffRole: "auction_manager",
+        staffRoles: ["auction_manager"],
         scopes: ["bid.write"],
       }),
     };
@@ -105,7 +105,7 @@ describe("export routes", () => {
     const authenticator: IAuthenticator = {
       getSessionUser: vi
         .fn()
-        .mockResolvedValue({ id: userId, role: "client", staffRole: null, scopes: ["bid.write"] }),
+        .mockResolvedValue({ id: userId, role: "client", staffRoles: [], scopes: ["bid.write"] }),
     };
 
     const app = new Hono();
@@ -132,7 +132,7 @@ describe("export routes", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: userId,
         role: "staff",
-        staffRole: "auction_manager",
+        staffRoles: ["auction_manager"],
         scopes: ["bid.write"],
       }),
     };

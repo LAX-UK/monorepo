@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import type { Context } from "hono";
 import type { Result } from "neverthrow";
@@ -28,7 +29,7 @@ function actorOf(c: Context): StaffAccessActor {
   return {
     userId: c.get("userId") as string,
     role: (c.get("userRole") as string | undefined) ?? "client",
-    staffRole: c.get("userStaffRole") as string | null | undefined,
+    staffRoles: c.get("userStaffRoles"),
   };
 }
 
@@ -54,7 +55,7 @@ export function createAdminMyStaffToolsRoutes(
     acceptedScopes: ["bid.read", STAFF_TOOLS_READ_SCOPE],
   });
   const routes = new Hono<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>();
   routes.get("/", requireStaffToolsRead, async (c) =>
     c.json({ data: { tools: await container.admin.staffAccess.myTools(actorOf(c)) } }),

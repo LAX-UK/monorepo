@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import {
   archiveCountQuerySchema,
   archiveSummaryQuerySchema,
@@ -9,12 +10,13 @@ import { zValidator } from "../../lib/z-validator.js";
 import type { LotHono, LotReadRouteDeps } from "./_shared.js";
 
 function viewerFromContext(c: {
-  get: (key: "userId" | "userRole" | "userStaffRole") => string | null | undefined;
+  get(key: "userId" | "userRole"): string | null | undefined;
+  get(key: "userStaffRoles"): StaffRoles | undefined;
 }) {
   return {
     userId: c.get("userId"),
     role: c.get("userRole"),
-    staffRole: c.get("userStaffRole") ?? null,
+    staffRoles: c.get("userStaffRoles"),
   };
 }
 

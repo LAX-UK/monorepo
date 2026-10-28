@@ -3,6 +3,7 @@ import type { ILegalEntityNotificationRecipientReader } from "@auction/persisten
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type {
   IItemSubmissionRepository,
+  IStaffRoleAssignmentReader,
   IUserRepository,
   ItemSubmissionUpdatePatch,
 } from "@auction/persistence/interfaces";
@@ -40,6 +41,8 @@ export type ItemSubmissionServiceDeps = {
   consignmentAgreements: IConsignmentAgreementRepository | null;
   /** The seller's checked identity; a specialist accepts the work only once it is verified. */
   sellerIdentity: ISellerIdentityReader | null;
+  /** Roles in force of the staff member a submission is assigned to. */
+  staffRoles: Pick<IStaffRoleAssignmentReader, "listActiveRoles"> | null;
 };
 
 export function sellerPatchToRepoPatch(

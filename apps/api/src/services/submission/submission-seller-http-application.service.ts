@@ -86,7 +86,7 @@ export class SubmissionSellerHttpApplicationService
     const result = await this.itemSubmissionSellerApi.getSubmissionForViewerApi({
       submissionId: input.submissionId,
       role: (input.viewer.role ?? "client") as UserRole,
-      staffRole: input.viewer.staffRole ?? null,
+      staffRoles: input.viewer.staffRoles,
       sellerLegalEntityId: input.legalEntity.legalEntityId,
     });
     if (result.isOk() && !this.access.canSee(input.legalEntity, result.value)) {
@@ -106,7 +106,7 @@ export class SubmissionSellerHttpApplicationService
       rawBody: input.rawBody,
       submissionId: input.submissionId,
       role: (input.viewer.role ?? "client") as UserRole,
-      staffRole: input.viewer.staffRole ?? null,
+      staffRoles: input.viewer.staffRoles,
       userId: input.viewer.userId,
       sellerLegalEntityId: input.legalEntity.legalEntityId,
     });

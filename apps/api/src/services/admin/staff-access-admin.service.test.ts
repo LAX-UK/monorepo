@@ -1,11 +1,23 @@
 import type { LaxStaffAccessHistoryEntry } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
-import { StaffAccessAdminService, platformView } from "./staff-access-admin.service.js";
+import {
+  type StaffAccessActor,
+  StaffAccessAdminService,
+  platformView,
+} from "./staff-access-admin.service.js";
 
-const SUPER = { userId: "usr_super", role: "staff", staffRole: "super_admin" };
-const ADVISOR = { userId: "usr_advisor", role: "staff", staffRole: "client_advisor" };
-const SPECIALIST = { userId: "usr_spec", role: "staff", staffRole: "specialist" };
-const CLIENT = { userId: "usr_client", role: "client", staffRole: null };
+const SUPER: StaffAccessActor = { userId: "usr_super", role: "staff", staffRoles: ["super_admin"] };
+const ADVISOR: StaffAccessActor = {
+  userId: "usr_advisor",
+  role: "staff",
+  staffRoles: ["client_advisor"],
+};
+const SPECIALIST: StaffAccessActor = {
+  userId: "usr_spec",
+  role: "staff",
+  staffRoles: ["specialist"],
+};
+const CLIENT: StaffAccessActor = { userId: "usr_client", role: "client", staffRoles: [] };
 const T0 = new Date("2026-10-10T10:00:00.000Z");
 const T1 = new Date("2026-10-10T11:00:00.000Z");
 

@@ -8,7 +8,7 @@ describe("createAuditAccessMiddleware", () => {
     const next = vi.fn().mockResolvedValue(undefined);
     const c = {
       get: (key: string) =>
-        key === "userId" ? "admin-1" : key === "userStaffRole" ? "super_admin" : undefined,
+        key === "userId" ? "admin-1" : key === "userStaffRoles" ? "super_admin" : undefined,
       req: {
         method: "GET",
         path: "/admin/system/job-queues",

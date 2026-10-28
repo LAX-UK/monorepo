@@ -3,8 +3,8 @@ import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository, ISaleRepository } from "@auction/persistence/interfaces";
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
-import type { Lot, LotStatus, Sale, UserRole } from "@auction/types";
-import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
+import type { Lot, LotStatus, Sale, StaffRoles, UserRole } from "@auction/types";
+import { roleHasCapability } from "@auction/types";
 import { saleModeAllowsBidding } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
@@ -60,16 +60,10 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     userRole: string,
     saleId: string,
     reason?: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
     actorUserId?: string | null,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>> {
-    if (
-      !roleHasCapability(
-        userRole as UserRole,
-        "auction.manage",
-        normalizeUserStaffRole(userStaffRole ?? undefined),
-      )
-    ) {
+    if (!roleHasCapability(userRole as UserRole, "auction.manage", userStaffRoles)) {
       return err(new AuthzError("Only staff with auction.manage can change sale status", 403));
     }
     const sale = await this.saleRepo.findById(saleId);
@@ -166,8 +160,15 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     lotId: string,
     status: LotStatus,
     reason?: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ) {
-    return this.lotStatusAdmin.setLotStatus(userRole, saleId, lotId, status, reason, userStaffRole);
+    return this.lotStatusAdmin.setLotStatus(
+      userRole,
+      saleId,
+      lotId,
+      status,
+      reason,
+      userStaffRoles,
+    );
   }
 }

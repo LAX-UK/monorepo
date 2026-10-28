@@ -1,3 +1,4 @@
+import { type StaffRoles, normalizeStaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { createTestStaffGuards } from "../../testing/staff-mutation-guards.js";
@@ -9,7 +10,7 @@ const ACTOR_ID = "b2e48c7a-1f09-4d35-8a6e-5d3c9f7e2b14";
 const REASON = "Customer lost phone and backup codes; identity checked by video call.";
 
 /** The platform shell authenticates upstream; here a stub supplies the identity. */
-function setup(session: { role: string; staffRole: string | null }, recent = true) {
+function setup(session: { role: string; staffRoles: StaffRoles | undefined }, recent = true) {
   const reset = vi.fn().mockResolvedValue({
     match: (ok: () => unknown) => ok(),
   });
@@ -17,7 +18,7 @@ function setup(session: { role: string; staffRole: string | null }, recent = tru
   platform.use("*", async (c, next) => {
     c.set("userId", ACTOR_ID);
     c.set("userRole", session.role);
-    c.set("userStaffRole", session.staffRole);
+    c.set("userStaffRoles", session.staffRoles);
     c.set("identitySessionId", "session-1");
     await next();
   });
@@ -38,14 +39,14 @@ describe("POST /admin/users/:userId/two-factor/reset", () => {
     ["super admin", "super_admin"],
     ["support concierge", "support_concierge"],
   ])("lets a %s reset and passes the actor, target and reason on", async (_label, staffRole) => {
-    const { post, reset } = setup({ role: "staff", staffRole });
+    const { post, reset } = setup({ role: "staff", staffRoles: normalizeStaffRoles([staffRole]) });
 
     const res = await post({ reason: REASON });
 
     expect(res.status).toBe(200);
     expect(await res.json()).toEqual({ ok: true });
     expect(reset).toHaveBeenCalledWith(
-      { userId: ACTOR_ID, role: "staff", staffRole },
+      { userId: ACTOR_ID, role: "staff", staffRoles: normalizeStaffRoles([staffRole]) },
       TARGET_ID,
       REASON,
     );
@@ -57,7 +58,7 @@ describe("POST /admin/users/:userId/two-factor/reset", () => {
     ["staff viewer", "staff_viewer"],
     ["compliance officer", "compliance_officer"],
   ])("refuses a %s", async (_label, staffRole) => {
-    const { post, reset } = setup({ role: "staff", staffRole });
+    const { post, reset } = setup({ role: "staff", staffRoles: normalizeStaffRoles([staffRole]) });
 
     const res = await post({ reason: REASON });
 
@@ -66,7 +67,7 @@ describe("POST /admin/users/:userId/two-factor/reset", () => {
   });
 
   it("refuses a customer", async () => {
-    const { post, reset } = setup({ role: "client", staffRole: null });
+    const { post, reset } = setup({ role: "client", staffRoles: [] });
 
     const res = await post({ reason: REASON });
 
@@ -80,7 +81,7 @@ describe("POST /admin/users/:userId/two-factor/reset", () => {
     ["a one-word reason", { reason: "lost" }],
     ["an over-long reason", { reason: "x".repeat(501) }],
   ])("rejects %s", async (_label, body) => {
-    const { post, reset } = setup({ role: "staff", staffRole: "super_admin" });
+    const { post, reset } = setup({ role: "staff", staffRoles: ["super_admin"] });
 
     const res = await post(body);
 
@@ -89,7 +90,7 @@ describe("POST /admin/users/:userId/two-factor/reset", () => {
   });
 
   it("asks for a fresh sign-in before resetting, and does not reset", async () => {
-    const { post, reset } = setup({ role: "staff", staffRole: "super_admin" }, false);
+    const { post, reset } = setup({ role: "staff", staffRoles: ["super_admin"] }, false);
 
     const res = await post({ reason: REASON });
 
@@ -102,7 +103,7 @@ describe("POST /admin/users/:userId/two-factor/reset", () => {
   });
 
   it("answers a person without the capability with forbidden, not a sign-in prompt", async () => {
-    const { post } = setup({ role: "staff", staffRole: "finance_ops" }, false);
+    const { post } = setup({ role: "staff", staffRoles: ["finance_ops"] }, false);
 
     const res = await post({ reason: REASON });
 

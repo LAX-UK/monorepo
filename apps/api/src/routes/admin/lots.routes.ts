@@ -1,4 +1,4 @@
-import { type UserRole, normalizeUserRoleOrClient, normalizeUserStaffRole } from "@auction/types";
+import { type UserRole, normalizeUserRoleOrClient } from "@auction/types";
 import {
   adminLotBrowseQuerySchema,
   declineWithdrawalRequestBodySchema,
@@ -81,7 +81,7 @@ export function attachAdminLotsRoutes(
     async (c) => {
       const userId = c.get("userId") as string;
       const role = normalizeUserRoleOrClient(c.get("userRole")) as UserRole;
-      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+      const staff = c.get("userStaffRoles");
       const { lotId } = c.req.valid("param");
       const body = c.req.valid("json");
       const result = await container.admin.lots.returnToInventory(
@@ -127,7 +127,7 @@ export function attachAdminLotsRoutes(
       const userId = c.get("userId") as string;
       const role = normalizeUserRoleOrClient(c.get("userRole")) as UserRole;
       const { id } = c.req.valid("param");
-      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+      const staff = c.get("userStaffRoles");
       const out = await container.admin.lots.approveWithdrawalRequest(userId, role, id, staff);
       if (!out.ok) {
         return c.json(
@@ -151,7 +151,7 @@ export function attachAdminLotsRoutes(
       const role = normalizeUserRoleOrClient(c.get("userRole")) as UserRole;
       const { id } = c.req.valid("param");
       const { reason } = c.req.valid("json");
-      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+      const staff = c.get("userStaffRoles");
       const out = await container.admin.lots.declineWithdrawalRequest(
         userId,
         role,

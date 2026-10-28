@@ -7,9 +7,9 @@ import {
   FINANCE_ACCESS,
   LOTS_ACCESS,
   SUBMISSIONS_ACCESS,
+  type StaffRoles,
   USERS_DIRECTORY_ACCESS,
   type UserRole,
-  normalizeUserStaffRole,
   userHasAccessTo,
 } from "@auction/types";
 import {
@@ -22,7 +22,7 @@ import { type Result, err, ok } from "neverthrow";
 export type SavedViewActor = {
   userId: string;
   role: string;
-  staffRole: string | null | undefined;
+  staffRoles: StaffRoles | undefined;
 };
 
 export type SavedViewError = {
@@ -62,11 +62,7 @@ export class AdminSavedViewService {
   constructor(private readonly repository: IAdminSavedViewRepository) {}
 
   private canUse(actor: SavedViewActor, listKey: AdminSavedViewListKey): boolean {
-    return userHasAccessTo(
-      actor.role as UserRole,
-      normalizeUserStaffRole(actor.staffRole),
-      LIST_ACCESS[listKey],
-    );
+    return userHasAccessTo(actor.role as UserRole, actor.staffRoles, LIST_ACCESS[listKey]);
   }
 
   async list(

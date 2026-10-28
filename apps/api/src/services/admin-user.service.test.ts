@@ -2,7 +2,6 @@ import type {
   IAdminUserActivityReader,
   IAdminUserBidsReader,
   IAdminUserReader,
-  IAdminUserRoleManager,
   IAdminUserSuspender,
 } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
@@ -24,12 +23,12 @@ function makeService(
       getById: vi.fn(),
       getByIds: vi.fn(),
     } as unknown as IAdminUserReader);
-  const roles = { setRoleAndStaff: vi.fn() } as unknown as IAdminUserRoleManager;
+  const staffAccess = { setAccess: vi.fn() };
   const suspender = { suspend: vi.fn(), unsuspend: vi.fn() } as unknown as IAdminUserSuspender;
   const activity = { getRecentSessions: vi.fn() } as unknown as IAdminUserActivityReader;
   return new AdminUserService(
     reader,
-    roles,
+    staffAccess,
     suspender,
     activity,
     bids,
@@ -59,7 +58,7 @@ describe("AdminUserService.bidsFor", () => {
       total: 1,
     });
     const svc = makeService({ listForUser } as unknown as IAdminUserBidsReader);
-    const result = await svc.bidsFor("staff", "client_advisor", "user-1", {
+    const result = await svc.bidsFor("staff", ["client_advisor"], "user-1", {
       limit: 25,
       offset: 0,
     });
@@ -71,7 +70,7 @@ describe("AdminUserService.bidsFor", () => {
     const svc = makeService({ listForUser: vi.fn() } as unknown as IAdminUserBidsReader);
     let err: unknown;
     try {
-      await svc.bidsFor("staff", "operations", "user-1", { limit: 25, offset: 0 });
+      await svc.bidsFor("staff", ["operations"], "user-1", { limit: 25, offset: 0 });
     } catch (e) {
       err = e;
     }
@@ -83,12 +82,12 @@ describe("AdminUserService.bidsFor", () => {
 describe("AdminUserService PII least-privilege", () => {
   it("denies client_advisor from reading KYC sessions", () => {
     const svc = makeService({ listForUser: vi.fn() } as unknown as IAdminUserBidsReader);
-    expect(() => svc.kycSessionsFor("staff", "client_advisor", "user-1")).toThrow(AuthzError);
+    expect(() => svc.kycSessionsFor("staff", ["client_advisor"], "user-1")).toThrow(AuthzError);
   });
 
   it("denies client_advisor from reading session activity", () => {
     const svc = makeService({ listForUser: vi.fn() } as unknown as IAdminUserBidsReader);
-    expect(() => svc.activityFor("staff", "client_advisor", "user-1", 20)).toThrow(AuthzError);
+    expect(() => svc.activityFor("staff", ["client_advisor"], "user-1", 20)).toThrow(AuthzError);
   });
 });
 
@@ -112,7 +111,7 @@ describe("AdminUserService.getById", () => {
       },
     });
 
-    await expect(service.getById("staff", "client_advisor", "user-1")).resolves.toMatchObject({
+    await expect(service.getById("staff", ["client_advisor"], "user-1")).resolves.toMatchObject({
       securityStatusAvailable: true,
       twoFactorEnabled: true,
       pendingNewEmail: "new@example.com",
@@ -133,7 +132,7 @@ describe("AdminUserService.getById", () => {
       identitySecurity: { readSecurityStatus },
     });
 
-    await expect(service.getById("staff", "client_advisor", "user-1")).resolves.toEqual({
+    await expect(service.getById("staff", ["client_advisor"], "user-1")).resolves.toEqual({
       ...detail,
       securityStatusAvailable: false,
     });
@@ -150,7 +149,7 @@ describe("AdminUserService.getById", () => {
       identitySecurity: { readSecurityStatus },
     });
 
-    await expect(service.getById("staff", "client_advisor", "missing")).resolves.toBeNull();
+    await expect(service.getById("staff", ["client_advisor"], "missing")).resolves.toBeNull();
     expect(readSecurityStatus).not.toHaveBeenCalled();
   });
 });

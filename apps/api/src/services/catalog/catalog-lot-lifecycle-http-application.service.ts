@@ -1,4 +1,4 @@
-import { type CreateLotInput, type UserRole, normalizeUserStaffRole } from "@auction/types";
+import type { CreateLotInput, StaffRoles, UserRole } from "@auction/types";
 import { canManageCatalogue } from "../../lib/catalogue-auth.js";
 import { LotError, missingCatalogueCapabilityError } from "../../lib/errors.js";
 import { presentLotImages } from "../../lib/media-presenters.js";
@@ -37,13 +37,13 @@ export class CatalogLotLifecycleHttpApplicationService
   async bulkLots(input: {
     userId: string;
     role: UserRole;
-    staffRole: string | null | undefined;
+    staffRoles: StaffRoles | undefined;
     ids: string[];
     op: "soft_delete" | "publish" | "cancel";
     confirmationPhrase?: string;
     reason?: string;
   }): Promise<CatalogRouteOutcome<BulkLotsOutcome>> {
-    const staff = normalizeUserStaffRole(input.staffRole);
+    const staff = input.staffRoles;
     if (input.op === "soft_delete") {
       const result = await this.lotSoftDeleteService.bulkSoftDelete(
         input.userId,
@@ -71,9 +71,9 @@ export class CatalogLotLifecycleHttpApplicationService
     userId: string;
     role: UserRole;
     lotId: string;
-    staffRole: string | null | undefined;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteOutcome<PresentedLot>> {
-    const staff = normalizeUserStaffRole(input.staffRole);
+    const staff = input.staffRoles;
     const result = await this.lotService.publish(input.userId, input.role, input.lotId, staff);
     if (result.isErr()) return catalogRouteFromResult(result);
     return { kind: "ok", data: await this.present(result.value) };
@@ -92,14 +92,14 @@ export class CatalogLotLifecycleHttpApplicationService
     userId: string;
     role: UserRole;
     lotId: string;
-    staffRole: string | null | undefined;
+    staffRoles: StaffRoles | undefined;
     cancelReason: "admin_override" | "manual";
   }): Promise<CatalogRouteOutcome<PresentedLot>> {
     const result = await this.lotLifecycleTransitionExecutor.cancelLot({
       userId: input.userId,
       role: input.role,
       lotId: input.lotId,
-      staffRole: input.staffRole ?? null,
+      staffRoles: input.staffRoles,
       cancelReason: input.cancelReason,
     });
     if (result.isErr()) return catalogRouteFromResult(result);
@@ -111,14 +111,14 @@ export class CatalogLotLifecycleHttpApplicationService
     role: UserRole;
     lotId: string;
     confirmationPhrase: string;
-    staffRole: string | null;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteNoContent | CatalogRouteErr> {
     const result = await this.lotSoftDeleteService.softDelete(
       input.userId,
       input.role,
       input.lotId,
       input.confirmationPhrase,
-      input.staffRole,
+      input.staffRoles,
     );
     if (result.isErr()) return { kind: "err", error: result.error };
     return { kind: "no_content" };
@@ -128,9 +128,9 @@ export class CatalogLotLifecycleHttpApplicationService
     role: UserRole;
     lotId: string;
     body: Partial<CreateLotInput>;
-    staffRole: string | null | undefined;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteOutcome<PresentedLot>> {
-    const staff = normalizeUserStaffRole(input.staffRole);
+    const staff = input.staffRoles;
     const result = await this.lotService.update(input.role, input.lotId, input.body, staff);
     if (result.isErr()) return catalogRouteFromResult(result);
     return { kind: "ok", data: await this.present(result.value) };
@@ -140,9 +140,9 @@ export class CatalogLotLifecycleHttpApplicationService
     role: UserRole;
     lotId: string;
     body: Record<string, unknown>;
-    staffRole: string | null | undefined;
+    staffRoles: StaffRoles | undefined;
   }): Promise<CatalogRouteOutcome<PresentedLot>> {
-    const staff = normalizeUserStaffRole(input.staffRole);
+    const staff = input.staffRoles;
     const result = await this.lotService.updateMarketingDetails(
       input.role,
       input.lotId,
@@ -156,10 +156,10 @@ export class CatalogLotLifecycleHttpApplicationService
   async create(input: {
     userId: string;
     role: UserRole;
-    staffRole: string | null | undefined;
+    staffRoles: StaffRoles | undefined;
     body: CreateLotInput;
   }): Promise<CatalogRouteOutcome<PresentedLot>> {
-    const staff = normalizeUserStaffRole(input.staffRole);
+    const staff = input.staffRoles;
     if (!canManageCatalogue(input.role, staff)) {
       const e = missingCatalogueCapabilityError(
         "Only staff with auction.manage or catalogue.write can create lots",

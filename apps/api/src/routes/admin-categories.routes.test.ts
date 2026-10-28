@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { AdminCatalogRoutesContainer } from "../services/interfaces/admin-routes/admin-route-container-slices.js";
@@ -6,12 +7,12 @@ import { attachAdminCatalogRoutes } from "./admin/catalog.routes.js";
 
 function createApp(catalog: AdminCatalogRoutesContainer["admin"]["catalog"]) {
   const app = new Hono<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>();
   app.use("*", async (c, next) => {
     c.set("userId", "staff-user");
     c.set("userRole", "staff");
-    c.set("userStaffRole", "catalogue_manager");
+    c.set("userStaffRoles", ["catalogue_manager"]);
     await next();
   });
   attachAdminCatalogRoutes(

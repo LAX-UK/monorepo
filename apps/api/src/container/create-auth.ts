@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { DrizzleStaffRoleAssignmentReader } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import {
   BidContextEnrichedAuthenticator,
@@ -32,7 +33,10 @@ export function createContainerAuthenticator(input: CreateAuthenticatorInput): I
       );
     },
   });
-  const bidContextLoader = new DrizzleBidUserContextLoader(db);
+  const bidContextLoader = new DrizzleBidUserContextLoader(
+    db,
+    new DrizzleStaffRoleAssignmentReader(db),
+  );
   return new BidContextEnrichedAuthenticator(
     new IdentityPrincipalAuthenticator(identityResolver),
     bidContextLoader,

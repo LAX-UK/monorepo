@@ -1,5 +1,5 @@
 import type { ISaleRepository } from "@auction/persistence/interfaces";
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, Sale, StaffRoles } from "@auction/types";
 import {
   isPublicCatalogLot,
   isPublicCatalogSale,
@@ -52,13 +52,13 @@ export async function getSaleDetailForPublicApi(
   deps: SaleServiceDeps,
   saleId: string,
   viewerUserId: string | undefined,
-  viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
+  viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
 ): Promise<{ data: { sale: Sale; lots: Lot[]; viewer: { isFollowing: boolean } } } | null> {
   const bundle = await getByIdWithLots(deps, saleId);
   if (!bundle) return null;
 
   const saleWithPlatform = await withSellingPlatform(deps.saleChannelReader, bundle.sale);
-  const canPreview = viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRole);
+  const canPreview = viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRoles);
   if (!canPreview && !isPublicCatalogSale(saleWithPlatform)) return null;
 
   const isFollowing =
@@ -97,9 +97,9 @@ export async function list(
 export async function listSalesForPublicApi(
   deps: SaleServiceDeps,
   filter: Parameters<ISaleRepository["list"]>[0],
-  viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
+  viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
 ): Promise<{ data: { sale: Sale; lots: Lot[] }[] }> {
-  const canPreview = viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRole);
+  const canPreview = viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRoles);
   const resolved = resolvePublicSaleListFilter({
     status: filter.status,
     statuses: filter.statuses,
@@ -140,7 +140,7 @@ export async function listSaleLotsPageForPublicApi(
   deps: SaleServiceDeps,
   saleId: string,
   opts: { limit: number; offset: number; sort?: "lot" | "priceAsc" | "priceDesc" | "endingAsc" },
-  viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
+  viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
 ): Promise<{
   data: {
     items: Lot[];
@@ -154,7 +154,7 @@ export async function listSaleLotsPageForPublicApi(
   if (!saleRow) return null;
   const sale = await withSellingPlatform(deps.saleChannelReader, saleRow);
 
-  const canPreview = viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRole);
+  const canPreview = viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRoles);
   if (!canPreview && !isPublicCatalogSale(sale)) return null;
 
   const page = await deps.lotRepo.listCatalogLotsBySalePage({

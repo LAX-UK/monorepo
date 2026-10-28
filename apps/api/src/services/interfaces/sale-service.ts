@@ -1,5 +1,5 @@
 import type { ISaleRepository } from "@auction/persistence/interfaces";
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, Sale, StaffRoles } from "@auction/types";
 import type {
   CreateNestedLotForSaleInput,
   CreateSaleInput as ValidatorCreateSale,
@@ -27,18 +27,18 @@ export interface ISaleReadService {
   getSaleDetailForPublicApi(
     saleId: string,
     viewerUserId: string | undefined,
-    viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
+    viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
   ): Promise<{ data: { sale: Sale; lots: Lot[]; viewer: { isFollowing: boolean } } } | null>;
 
   listSalesForPublicApi(
     filter: Parameters<ISaleRepository["list"]>[0],
-    viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
+    viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
   ): Promise<{ data: { sale: Sale; lots: Lot[] }[] }>;
 
   listSaleLotsPageForPublicApi(
     saleId: string,
     opts: { limit: number; offset: number; sort?: "lot" | "priceAsc" | "priceDesc" | "endingAsc" },
-    viewer?: { role?: string | undefined; staffRole?: string | null | undefined },
+    viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
   ): Promise<{
     data: {
       items: Lot[];
@@ -64,7 +64,7 @@ export interface ISaleWriteService {
     userRole: string,
     saleId: string,
     patch: UpdateSaleBody,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Sale, LotError | AuthzError>>;
 }
 
@@ -73,21 +73,21 @@ export interface ISaleLifecycleService {
     userId: string,
     userRole: string,
     saleId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>>;
 
   unpublish(
     userId: string,
     userRole: string,
     saleId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Sale, LotError | AuthzError>>;
 
   cancel(
     userId: string,
     userRole: string,
     saleId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Sale, LotError | AuthzError>>;
 }
 
@@ -96,14 +96,14 @@ export interface ISaleLotMembershipService {
     userRole: string,
     saleId: string,
     row: CreateNestedLotForSaleInput,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<Lot, LotError | AuthzError>>;
 
   attachExistingLot(
     userRole: string,
     saleId: string,
     lotId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
     attachVia?: LotAttachedToSalePayload["via"],
   ): Promise<Result<Lot, LotError | AuthzError>>;
 
@@ -111,7 +111,7 @@ export interface ISaleLotMembershipService {
     userRole: string,
     saleId: string,
     lotId: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Promise<Result<void, LotError | AuthzError>>;
 }
 

@@ -40,7 +40,7 @@ describe("admin misc routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRole: "specialist",
+        staffRoles: ["specialist"],
         scopes: ["bid.read"],
       }),
     };
@@ -63,7 +63,7 @@ describe("admin misc routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRole: "specialist",
+        staffRoles: ["specialist"],
         scopes: ["bid.read"],
       }),
     };
@@ -88,7 +88,7 @@ describe("admin misc routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRole: "super_admin",
+        staffRoles: ["super_admin"],
         scopes: ["bid.write"],
       }),
     };
@@ -117,7 +117,7 @@ describe("admin misc routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRole: "catalogue_manager",
+        staffRoles: ["catalogue_manager"],
         scopes: ["bid.read"],
       }),
     };
@@ -144,7 +144,7 @@ describe("admin misc routes (DIP facade)", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: staffUserId,
         role: "staff",
-        staffRole: "super_admin",
+        staffRoles: ["super_admin"],
         scopes: ["bid.write"],
       }),
     };

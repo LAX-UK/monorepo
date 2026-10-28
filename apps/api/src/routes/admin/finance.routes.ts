@@ -1,8 +1,4 @@
-import {
-  normalizeUserRoleOrClient,
-  normalizeUserStaffRole,
-  roleHasCapability,
-} from "@auction/types";
+import { normalizeUserRoleOrClient, roleHasCapability } from "@auction/types";
 import {
   adminFinanceDisputeDomainEventsQuerySchema,
   adminFinanceDisputesQuerySchema,
@@ -25,7 +21,7 @@ export function attachAdminFinanceRoutes(
     async (c) => {
       const { limit, offset } = c.req.valid("query");
       const role = normalizeUserRoleOrClient(c.get("userRole"));
-      const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+      const staff = c.get("userStaffRoles");
       const includePii =
         c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii", staff);
       const data = await container.admin.domainEvents.listRedacted({
@@ -65,9 +61,9 @@ export function attachAdminFinanceRoutes(
 
   finance.post("/payments/:id/xero-sync", zValidator("param", paymentIdParamSchema), async (c) => {
     const role = c.get("userRole") ?? "client";
-    const staffRole = c.get("userStaffRole") ?? null;
+    const staffRoles = c.get("userStaffRoles");
     const { id } = c.req.valid("param");
-    const result = await container.admin.payments.syncPaymentFromXeroAsAdmin(role, id, staffRole);
+    const result = await container.admin.payments.syncPaymentFromXeroAsAdmin(role, id, staffRoles);
     return result.match(
       (data) => c.json({ data }),
       (error) => c.json({ error: error.message }, asHttpStatus(error.status)),

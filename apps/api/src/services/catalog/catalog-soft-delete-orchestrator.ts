@@ -1,5 +1,5 @@
-import type { Lot, Sale, UserRole } from "@auction/types";
-import { normalizeUserStaffRole, roleHasCapability } from "@auction/types";
+import type { Lot, Sale, StaffRoles, UserRole } from "@auction/types";
+import { roleHasCapability } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../../lib/errors.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
@@ -18,15 +18,9 @@ export class CatalogSoftDeleteOrchestrator {
   assertAuctionManageCapability(
     userRole: string,
     deniedMessage: string,
-    userStaffRole?: string | null,
+    userStaffRoles?: StaffRoles | undefined,
   ): Result<void, AuthzError> {
-    if (
-      !roleHasCapability(
-        userRole as UserRole,
-        "auction.manage",
-        normalizeUserStaffRole(userStaffRole ?? undefined),
-      )
-    ) {
+    if (!roleHasCapability(userRole as UserRole, "auction.manage", userStaffRoles)) {
       return err(new AuthzError(deniedMessage, 403));
     }
     return ok(undefined);

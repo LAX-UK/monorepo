@@ -1,3 +1,4 @@
+import type { StaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
@@ -11,7 +12,7 @@ const lotId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 describe("POST /sales/:id/lots/:lotId/status", () => {
   function appWithMocks() {
     const app = new Hono<{
-      Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+      Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
     }>();
     const setLotStatus = vi.fn();
     const container = {
@@ -33,7 +34,7 @@ describe("POST /sales/:id/lots/:lotId/status", () => {
       getSessionUser: vi.fn().mockResolvedValue({
         id: "staff-1",
         role: "staff",
-        staffRole: "auction_manager",
+        staffRoles: ["auction_manager"],
 
         scopes: ["bid.write"],
       }),

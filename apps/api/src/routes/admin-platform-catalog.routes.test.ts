@@ -1,18 +1,19 @@
+import type { StaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { requireVenuesAccess } from "../middleware/require-capability.js";
 
 function createPlatformCatalogRouteApp(
-  staffRole: string | null,
+  staffRoles: StaffRoles | undefined,
   resolvePlatformCatalogLegalEntityId: () => Promise<string | null>,
 ) {
   const app = new Hono<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>();
   app.use("*", async (c, next) => {
     c.set("userId", "staff-user-id");
     c.set("userRole", "staff");
-    c.set("userStaffRole", staffRole);
+    c.set("userStaffRoles", staffRoles);
     await next();
   });
   app.get("/admin/platform-catalog/legal-entity-id", requireVenuesAccess, async (c) => {
@@ -24,7 +25,7 @@ function createPlatformCatalogRouteApp(
 
 describe("GET /admin/platform-catalog/legal-entity-id", () => {
   it("returns 403 for staff_viewer", async () => {
-    const app = createPlatformCatalogRouteApp("staff_viewer", vi.fn());
+    const app = createPlatformCatalogRouteApp(["staff_viewer"], vi.fn());
     const res = await app.request("http://test/admin/platform-catalog/legal-entity-id");
     expect(res.status).toBe(403);
   });
@@ -34,7 +35,7 @@ describe("GET /admin/platform-catalog/legal-entity-id", () => {
       .fn()
       .mockResolvedValue("30000000-0000-4000-9000-000000000001");
     const app = createPlatformCatalogRouteApp(
-      "catalogue_manager",
+      ["catalogue_manager"],
       resolvePlatformCatalogLegalEntityId,
     );
     const res = await app.request("http://test/admin/platform-catalog/legal-entity-id");

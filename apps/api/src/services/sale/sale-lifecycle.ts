@@ -1,4 +1,4 @@
-import type { Lot, Sale } from "@auction/types";
+import type { Lot, Sale, StaffRoles } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError } from "../../lib/errors.js";
 import { SalePublishService } from "./sale-publish.service.js";
@@ -9,9 +9,9 @@ export async function publishSale(
   userId: string,
   userRole: string,
   saleId: string,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
 ): Promise<Result<{ sale: Sale; lots: Lot[] }, LotError | AuthzError>> {
-  return new SalePublishService(deps).publish(userId, userRole, saleId, userStaffRole);
+  return new SalePublishService(deps).publish(userId, userRole, saleId, userStaffRoles);
 }
 
 /** Revert a scheduled sale (and its scheduled lots) back to draft. */
@@ -20,9 +20,9 @@ export async function unpublishSale(
   userId: string,
   userRole: string,
   saleId: string,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
 ): Promise<Result<Sale, LotError | AuthzError>> {
-  return new SalePublishService(deps).unpublish(userId, userRole, saleId, userStaffRole);
+  return new SalePublishService(deps).unpublish(userId, userRole, saleId, userStaffRoles);
 }
 
 export async function cancelSale(
@@ -30,7 +30,7 @@ export async function cancelSale(
   userId: string,
   userRole: string,
   saleId: string,
-  userStaffRole?: string | null,
+  userStaffRoles?: StaffRoles | undefined,
 ): Promise<Result<Sale, LotError | AuthzError>> {
-  return new SalePublishService(deps).cancel(userId, userRole, saleId, userStaffRole);
+  return new SalePublishService(deps).cancel(userId, userRole, saleId, userStaffRoles);
 }

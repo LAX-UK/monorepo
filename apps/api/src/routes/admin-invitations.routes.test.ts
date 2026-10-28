@@ -1,8 +1,9 @@
+import type { StaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import { attachAdminInvitationRoutes } from "./admin-invitations.js";
 
-function mountApp(staffRole: string | null) {
+function mountApp(staffRoles: StaffRoles | undefined) {
   const invitations = {
     getPage: vi.fn(),
     create: vi.fn(),
@@ -11,12 +12,12 @@ function mountApp(staffRole: string | null) {
     preview: vi.fn(),
   };
   const app = new Hono<{
-    Variables: { userId?: string; userRole?: string; userStaffRole?: string | null };
+    Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>();
   app.use("*", async (c, next) => {
     c.set("userId", "staff-user-id");
     c.set("userRole", "staff");
-    c.set("userStaffRole", staffRole);
+    c.set("userStaffRoles", staffRoles);
     await next();
   });
   attachAdminInvitationRoutes(app, invitations as never);
@@ -25,7 +26,7 @@ function mountApp(staffRole: string | null) {
 
 describe("admin invitation routes — list page", () => {
   it("returns paginated rows with summary meta", async () => {
-    const { app, invitations } = mountApp("super_admin");
+    const { app, invitations } = mountApp(["super_admin"]);
     invitations.getPage.mockResolvedValue({
       rows: [{ id: "inv-1", email: "alice@example.com", status: "pending" }],
       total: 1,
@@ -52,14 +53,14 @@ describe("admin invitation routes — list page", () => {
   });
 
   it("GET /invitations returns 403 for specialist without user.invite", async () => {
-    const { app, invitations } = mountApp("specialist");
+    const { app, invitations } = mountApp(["specialist"]);
     const res = await app.request("http://test/invitations");
     expect(res.status).toBe(403);
     expect(invitations.getPage).not.toHaveBeenCalled();
   });
 
   it("returns filter-coherent summary meta when status filter is applied", async () => {
-    const { app, invitations } = mountApp("super_admin");
+    const { app, invitations } = mountApp(["super_admin"]);
     invitations.getPage.mockResolvedValue({
       rows: [{ id: "inv-1", email: "alice@example.com", status: "pending" }],
       total: 1,
@@ -81,7 +82,7 @@ describe("admin invitation routes — list page", () => {
   });
 
   it("passes sort to the page and omits it when absent", async () => {
-    const { app, invitations } = mountApp("super_admin");
+    const { app, invitations } = mountApp(["super_admin"]);
     invitations.getPage.mockResolvedValue({
       rows: [],
       total: 0,
@@ -101,7 +102,7 @@ describe("admin invitation routes — list page", () => {
   });
 
   it("rejects an unknown sort", async () => {
-    const { app, invitations } = mountApp("super_admin");
+    const { app, invitations } = mountApp(["super_admin"]);
     const res = await app.request("http://test/invitations?sort=name_asc");
     expect(res.status).toBe(400);
     expect(invitations.getPage).not.toHaveBeenCalled();

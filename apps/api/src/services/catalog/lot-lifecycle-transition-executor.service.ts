@@ -1,4 +1,4 @@
-import type { Lot, UserRole } from "@auction/types";
+import type { Lot, StaffRoles, UserRole } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AuthzError, LotError } from "../../lib/errors.js";
 import type { ILotLifecycleTransitionExecutor } from "../interfaces/catalog-routes/catalog-lot-lifecycle-transition-executor.js";
@@ -17,7 +17,7 @@ export class LotLifecycleTransitionExecutor implements ILotLifecycleTransitionEx
     lotId: string;
     status: Parameters<ISaleStatusTransitionService["setLotStatus"]>[3];
     reason?: string;
-    staffRole?: string | null;
+    staffRoles?: StaffRoles | undefined;
   }): Promise<Result<Lot, LotError | AuthzError>> {
     return this.saleStatusTransitionService.setLotStatus(
       input.role,
@@ -25,7 +25,7 @@ export class LotLifecycleTransitionExecutor implements ILotLifecycleTransitionEx
       input.lotId,
       input.status,
       input.reason,
-      input.staffRole,
+      input.staffRoles,
     );
   }
 
@@ -33,14 +33,14 @@ export class LotLifecycleTransitionExecutor implements ILotLifecycleTransitionEx
     userId: string;
     role: UserRole | string;
     lotId: string;
-    staffRole?: string | null;
+    staffRoles?: StaffRoles | undefined;
     cancelReason: "admin_override" | "manual";
   }): Promise<Result<Lot, LotError | AuthzError>> {
     return this.lotService.cancel(
       input.userId,
       input.role,
       input.lotId,
-      input.staffRole ?? null,
+      input.staffRoles,
       input.cancelReason,
     );
   }

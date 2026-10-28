@@ -45,7 +45,7 @@ export class BidContextEnrichedAuthenticator implements IAuthenticator {
       scopes: principal.scopes ?? [],
       ...(principal.identitySessionId ? { identitySessionId: principal.identitySessionId } : {}),
       role: context.role,
-      staffRole: context.staffRole ?? null,
+      staffRoles: context.staffRoles,
     };
   }
 }

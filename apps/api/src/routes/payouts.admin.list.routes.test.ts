@@ -19,7 +19,7 @@ function mountApp() {
     getSessionUser: vi.fn().mockResolvedValue({
       id: "u1",
       role: "staff",
-      staffRole: "finance_ops",
+      staffRoles: ["finance_ops"],
       scopes: ["bid.read"],
     }),
   };

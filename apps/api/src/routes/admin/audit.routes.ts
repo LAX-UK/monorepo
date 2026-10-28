@@ -1,8 +1,4 @@
-import {
-  normalizeUserRoleOrClient,
-  normalizeUserStaffRole,
-  roleHasCapability,
-} from "@auction/types";
+import { normalizeUserRoleOrClient, roleHasCapability } from "@auction/types";
 import {
   adminAuditActorsQuerySchema,
   adminAuditLogQuerySchema,
@@ -17,7 +13,7 @@ import type { AdminHono } from "./_shared.js";
 /** Unredacted fields are opt-in (`includePii=1`) and only for roles holding `audit.read_pii`. */
 function wantsPii(c: Context): boolean {
   const role = normalizeUserRoleOrClient(c.get("userRole"));
-  const staff = normalizeUserStaffRole(c.get("userStaffRole") as string | null | undefined);
+  const staff = c.get("userStaffRoles");
   return c.req.query("includePii") === "1" && roleHasCapability(role, "audit.read_pii", staff);
 }
 

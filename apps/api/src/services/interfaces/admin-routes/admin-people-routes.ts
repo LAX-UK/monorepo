@@ -4,7 +4,7 @@ import type {
   AdminUserListFilter,
   AdminUserListRow,
 } from "@auction/persistence/interfaces";
-import type { UserRole, UserStaffRole } from "@auction/types";
+import type { StaffRoles, UserRole, UserStaffRole } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { AdminActor } from "../../admin-user.service.js";
 import type { AdminInvitationListPage } from "../../admin/admin-invitation-list-query.service.js";
@@ -61,17 +61,17 @@ export interface IAdminImpersonationService {
 export interface IAdminUserApplicationService {
   getPage(
     actorRole: string,
-    actorStaffRole: string | null | undefined,
+    actorStaffRoles: StaffRoles | undefined,
     filter: AdminUserListFilter,
   ): Promise<AdminUserListPage>;
   getById(
     actorRole: string,
-    actorStaffRole: string | null | undefined,
+    actorStaffRoles: StaffRoles | undefined,
     id: string,
   ): Promise<AdminUserDetailResponse | null>;
   getByIds(
     actorRole: string,
-    actorStaffRole: string | null | undefined,
+    actorStaffRoles: StaffRoles | undefined,
     ids: string[],
   ): Promise<AdminUserListRow[]>;
   setRole(
@@ -79,7 +79,7 @@ export interface IAdminUserApplicationService {
     actorUserId: string,
     targetUserId: string,
     role: string,
-    actorStaffRole?: string | null,
+    actorStaffRoles?: StaffRoles | undefined,
     targetStaffRole?: import("@auction/types").UserStaffRole | null,
   ): Promise<{ ok: true } | { ok: false; status: number; message: string }>;
   setStaffRole(
@@ -87,25 +87,25 @@ export interface IAdminUserApplicationService {
     actorUserId: string,
     targetUserId: string,
     staffRole: import("@auction/types").UserStaffRole | null,
-    actorStaffRole?: string | null,
+    actorStaffRoles?: StaffRoles | undefined,
   ): Promise<{ ok: true } | { ok: false; status: number; message: string }>;
   suspend(actor: AdminActor, userId: string, reason: string): Promise<void>;
   unsuspend(actor: AdminActor, userId: string): Promise<void>;
   activityFor(
     actorRole: string,
-    actorStaffRole: string | null | undefined,
+    actorStaffRoles: StaffRoles | undefined,
     userId: string,
     limit: number,
   ): Promise<AdminActivityEntry[]>;
   kycSessionsFor(
     actorRole: string,
-    actorStaffRole: string | null | undefined,
+    actorStaffRoles: StaffRoles | undefined,
     userId: string,
     limit?: number,
   ): Promise<import("@auction/persistence/interfaces").AdminKycSession[]>;
   bidsFor(
     actorRole: string,
-    actorStaffRole: string | null | undefined,
+    actorStaffRoles: StaffRoles | undefined,
     userId: string,
     page: { limit: number; offset: number },
   ): Promise<import("@auction/persistence/interfaces").AdminUserBidListResult>;

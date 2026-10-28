@@ -1,4 +1,4 @@
-import type { UserRole } from "@auction/types";
+import type { StaffRoles, UserRole } from "@auction/types";
 import type { Lot } from "@auction/types";
 import { AuthzError, LotError } from "../../lib/errors.js";
 import type { IAdminLotsApplicationService } from "../interfaces/admin-routes.js";
@@ -19,7 +19,7 @@ export class AdminLotsApplicationService implements IAdminLotsApplicationService
     adminUserId: string,
     adminRole: UserRole,
     lotId: string,
-    adminStaffRole?: import("@auction/types").UserStaffRole | null,
+    adminStaffRoles?: StaffRoles | undefined,
   ): Promise<
     | { ok: true; data: Lot }
     | { ok: false; status: number; error: string; code?: string | undefined }
@@ -28,7 +28,7 @@ export class AdminLotsApplicationService implements IAdminLotsApplicationService
       adminUserId,
       adminRole,
       lotId,
-      adminStaffRole,
+      adminStaffRoles,
     );
     if (result.isOk()) {
       return { ok: true, data: result.value };
@@ -48,7 +48,7 @@ export class AdminLotsApplicationService implements IAdminLotsApplicationService
     adminRole: UserRole,
     lotId: string,
     reason: string,
-    adminStaffRole?: import("@auction/types").UserStaffRole | null,
+    adminStaffRoles?: StaffRoles | undefined,
   ): Promise<
     | { ok: true; data: { taskId: string } }
     | { ok: false; status: number; error: string; code?: string | undefined }
@@ -58,7 +58,7 @@ export class AdminLotsApplicationService implements IAdminLotsApplicationService
       adminRole,
       lotId,
       reason,
-      adminStaffRole,
+      adminStaffRoles,
     );
     if (result.isOk()) {
       return { ok: true, data: result.value };

@@ -78,7 +78,7 @@ describe("cancelLot", () => {
       lotRepo: { findById, updateStatus } as unknown as ILotRepository,
       lotNotifications: { notifyLotCancelled } as unknown as ILotNotificationCoordinator,
     });
-    const result = await cancelLot(deps, "admin-1", "staff", "lot-1", "super_admin");
+    const result = await cancelLot(deps, "admin-1", "staff", "lot-1", ["super_admin"]);
     expect(result.isOk()).toBe(true);
     expect(notifyLotCancelled).toHaveBeenCalledWith(
       expect.objectContaining({ title: "Pre-cancel title" }),
@@ -101,7 +101,7 @@ describe("cancelLot", () => {
       } as never,
       lotLifecycleRecording: { recordCancelled } as unknown as LotLifecycleRecording,
     });
-    await cancelLot(deps, "admin-1", "staff", "lot-1", "super_admin", "withdrawal");
+    await cancelLot(deps, "admin-1", "staff", "lot-1", ["super_admin"], "withdrawal");
     expect(recordCancelled).toHaveBeenCalledWith(
       expect.anything(),
       cancelledLot,
@@ -143,7 +143,15 @@ describe("bulkPublishOrCancel", () => {
       } as never,
       lotLifecycleRecording: { recordCancelled } as unknown as LotLifecycleRecording,
     });
-    await bulkPublishOrCancel(deps, "admin-1", "staff", ["lot-1"], "cancel", "super_admin", "ops");
+    await bulkPublishOrCancel(
+      deps,
+      "admin-1",
+      "staff",
+      ["lot-1"],
+      "cancel",
+      ["super_admin"],
+      "ops",
+    );
     expect(recordCancelled).toHaveBeenCalledWith(
       expect.anything(),
       cancelledLot,

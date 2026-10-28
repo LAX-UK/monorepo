@@ -21,7 +21,7 @@ function acceptTestApp(accept: ReturnType<typeof vi.fn>) {
   const authenticator: IAuthenticator = {
     getSessionUser: vi
       .fn()
-      .mockResolvedValue({ id: "u1", role: "client", staffRole: null, scopes: ["bid.write"] }),
+      .mockResolvedValue({ id: "u1", role: "client", staffRoles: [], scopes: ["bid.write"] }),
   };
   const app = new Hono();
   app.route("/users", createUserRoutes(container, authenticator));

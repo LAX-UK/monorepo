@@ -21,7 +21,7 @@ import type { IImpersonationDomainEventReader } from "@auction/persistence/inter
 import type { IAttentionFeedReader } from "@auction/persistence/interfaces";
 import type { IEmailObservabilityRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
-import type { IUserRepository } from "@auction/persistence/interfaces";
+import type { IStaffRoleAssignmentReader, IUserRepository } from "@auction/persistence/interfaces";
 import type {
   IPaymentExternalRefRepository,
   IXeroConnectionRepository,
@@ -145,6 +145,7 @@ export type CreateAdminRouteServicesInput = {
   xeroWebhookEventRepository: IXeroWebhookEventRepository;
   paymentExternalRefRepository: IPaymentExternalRefRepository;
   userRepository: IUserRepository;
+  staffRoleReader: Pick<IStaffRoleAssignmentReader, "listActiveRoles">;
   displayPairingService: IDisplayPairingService;
   displayOverlayService: IDisplayOverlayService;
   qrCodeService: QrCodeService;
@@ -218,6 +219,7 @@ export function createAdminRouteServices(
     paddleService: input.paddleService,
     telephoneBidBookingService: input.telephoneBidBookingService,
     userRepository: input.userRepository,
+    staffRoleReader: input.staffRoleReader,
     redis: input.redis,
     findLotById: input.findLotById,
     adminDomainEventReader: input.adminDomainEventReader,

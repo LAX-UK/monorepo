@@ -1,4 +1,10 @@
 import type { UpdateAddressInput } from "@auction/persistence/interfaces";
+import {
+  NO_STAFF_ROLES,
+  type StaffRoles,
+  effectiveCapabilities,
+  normalizeUserRoleOrClient,
+} from "@auction/types";
 import { formatPhoneDisplay, isAccountOnboardingComplete } from "@auction/validators";
 import type { AddressService } from "../address.service.js";
 import type { IMediaUrlResolver } from "../interfaces/media-url-resolver.js";
@@ -63,13 +69,18 @@ export class UserProfileHttpApplicationService implements IUserProfileHttpApplic
     return { status: 200, body: { ok: true } };
   }
 
-  async getMe(input: { userId: string }): Promise<UserHttpJson> {
+  async getMe(input: {
+    userId: string;
+    staffRoles: StaffRoles | undefined;
+  }): Promise<UserHttpJson> {
     const [row, uiPrefs] = await Promise.all([
       this.deps.profileService.getProfile(input.userId),
       this.deps.uiPreferenceService.getForUser(input.userId),
     ]);
     if (!row) return { status: 404, body: { error: "User not found" } };
     const image = await this.deps.mediaUrlResolver.resolve(row.image);
+    const role = normalizeUserRoleOrClient(row.role);
+    const staffRoles = role === "staff" ? (input.staffRoles ?? NO_STAFF_ROLES) : NO_STAFF_ROLES;
     return {
       status: 200,
       body: {
@@ -83,7 +94,11 @@ export class UserProfileHttpApplicationService implements IUserProfileHttpApplic
           phoneNumberVerified: row.phoneNumberVerified,
           mobileDisplay: formatPhoneDisplay(row.phoneNumber ?? row.mobile),
           role: row.role,
+          /** Shown where a screen has room for one role. Display only. */
           staffRole: row.staffRole,
+          /** Roles in force now; every permission check uses these. */
+          staffRoles,
+          capabilities: [...effectiveCapabilities(role, staffRoles)].sort(),
           image,
           emailVerified: row.emailVerified,
           emailStatus: row.emailStatus,

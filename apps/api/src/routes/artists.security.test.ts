@@ -1,3 +1,4 @@
+import { normalizeStaffRoles } from "@auction/types";
 import { Hono } from "hono";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
@@ -20,7 +21,7 @@ function mountApp(role: string, staffRole?: string) {
     getSessionUser: vi.fn().mockResolvedValue({
       id: "u1",
       role,
-      ...(staffRole ? { staffRole } : {}),
+      staffRoles: normalizeStaffRoles([staffRole]),
       scopes: ["bid.read", "bid.write"],
     }),
   };

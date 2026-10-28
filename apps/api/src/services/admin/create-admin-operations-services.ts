@@ -1,5 +1,9 @@
 import type { SaleroomOnBlockPolicy } from "@auction/bidding-runtime";
-import type { IBidRepository, IUserRepository } from "@auction/persistence/interfaces";
+import type {
+  IBidRepository,
+  IStaffRoleAssignmentReader,
+  IUserRepository,
+} from "@auction/persistence/interfaces";
 import type { IAdminDomainEventReader } from "@auction/persistence/interfaces";
 import type { IAdminFinanceIssueSnapshotReader } from "@auction/persistence/interfaces";
 import type { IAdminManualReviewPaymentEnrichmentReader } from "@auction/persistence/interfaces";
@@ -62,6 +66,7 @@ export type CreateAdminOperationsServicesInput = {
   paddleService: PaddleService;
   telephoneBidBookingService: TelephoneBidBookingServicePort;
   userRepository: IUserRepository;
+  staffRoleReader: Pick<IStaffRoleAssignmentReader, "listActiveRoles">;
   redis: Redis;
   findLotById: (lotId: string) => Promise<{ id: string; saleId: string } | null>;
   adminDomainEventReader: IAdminDomainEventReader;
@@ -126,7 +131,7 @@ export function createAdminOperationsServices(
     telephoneBookings: new AdminTelephoneBookingApplicationService(
       input.telephoneBidBookingService,
       input.telephoneBidBookingService,
-      new SaleroomAccessClerkEligibility(input.userRepository),
+      new SaleroomAccessClerkEligibility(input.userRepository, input.staffRoleReader),
     ),
     ...saleroomRoutes,
   };
