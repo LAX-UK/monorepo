@@ -74,7 +74,7 @@ function RowSummary({
   return (
     <div className="flex min-w-0 items-start gap-3">
       {view.image ? (
-        <span className="pt-0.5">
+        <span className="hidden pt-0.5 sm:block">
           <CellThumbnail src={view.image.src} label={view.image.missingLabel} />
         </span>
       ) : null}

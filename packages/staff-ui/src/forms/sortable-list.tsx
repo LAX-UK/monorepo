@@ -25,7 +25,8 @@ export type SortableListProps<T> = {
 /**
  * An ordered list of chosen records, one row each: its position, what it is, and controls to
  * reorder and remove it. Reorder by dragging the handle, by the arrow keys on the handle, or by
- * Move up and Move down; every move is announced and the handle keeps focus. Without `onMove`
+ * Move up and Move down; every move is announced and the handle keeps focus. On a phone the
+ * controls sit under the row so its content keeps the width. Without `onMove`
  * and `onRemove` it is a read-only list.
  */
 export function SortableList<T>({
@@ -116,7 +117,7 @@ export function SortableList<T>({
               onDragEnd={endDrag}
               data-invalid={isInvalid || undefined}
               className={cn(
-                "relative flex items-center gap-2 px-2 py-2 sm:gap-3 sm:px-3",
+                "relative flex flex-wrap items-center gap-x-2 gap-y-1 px-2 py-2 sm:flex-nowrap sm:gap-3 sm:px-3",
                 dragFrom === index && "bg-staff-sunken",
                 dropAt === index &&
                   dragFrom !== null &&
@@ -162,7 +163,7 @@ export function SortableList<T>({
               </span>
               <div className="min-w-0 flex-1">{renderItem(item, index)}</div>
               {editable ? (
-                <span className="flex shrink-0 items-center gap-0.5">
+                <span className="-mb-1 flex w-full shrink-0 items-center justify-end gap-0.5 sm:mb-0 sm:w-auto">
                   {onMove ? (
                     <>
                       <StaffButton
