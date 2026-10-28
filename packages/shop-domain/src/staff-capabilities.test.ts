@@ -72,6 +72,11 @@ describe("staff capabilities matrix", () => {
     expect([...held].sort()).toEqual([...expected].sort());
   });
 
+  it("lets only admins and catalogue editors review artist applications", () => {
+    const reviewers = ROLES.filter((role) => roleHasCapability(role, "artist_application.review"));
+    expect(reviewers).toEqual(["shop_admin", "catalogue_editor"]);
+  });
+
   it("keeps editorial publishing out of every role except admins and catalogue editors", () => {
     for (const role of ["account_manager", "broker", "operations", "finance"] as ShopStaffRole[]) {
       expect(roleHasCapability(role, "editorial.publish")).toBe(false);
