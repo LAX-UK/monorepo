@@ -1709,6 +1709,13 @@
       "when": 1796371200000,
       "tag": "0243_payout_line_reversal_payment",
       "breakpoints": true
+    },
+    {
+      "idx": 244,
+      "version": "7",
+      "when": 1796457600000,
+      "tag": "0244_staff_role_screens",
+      "breakpoints": true
     }
   ]
 }

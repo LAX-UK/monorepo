@@ -25,6 +25,11 @@ export const staffRoleAssignment = pgTable(
     }),
     grantedAt: timestamp("granted_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     reason: text("reason"),
+    /**
+     * When the end was recorded: at removal, or by the daily expiry job once `ends_at` passed.
+     * Null while the assignment is open or its end date is still to come.
+     */
+    endRecordedAt: timestamp("end_recorded_at", { mode: "date", withTimezone: true }),
   },
   (table) => [
     uniqueIndex("staff_role_assignment_open_uidx")
@@ -32,5 +37,8 @@ export const staffRoleAssignment = pgTable(
       .where(sql`${table.endsAt} IS NULL`),
     index("staff_role_assignment_user_idx").on(table.userId),
     index("staff_role_assignment_role_idx").on(table.role),
+    index("staff_role_assignment_unrecorded_end_idx")
+      .on(table.endsAt)
+      .where(sql`${table.endsAt} IS NOT NULL AND ${table.endRecordedAt} IS NULL`),
   ],
 );
