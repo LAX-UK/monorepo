@@ -14,7 +14,7 @@ export function HomeFigureTile({ tile }: { tile: DashboardTileView }) {
       href={tile.href}
       aria-describedby={descriptionId}
       data-testid={`home-tile-${tile.id}`}
-      className="group flex h-full min-h-11 flex-col gap-1.5 rounded-lg border border-border-hairline bg-surface-container-lowest p-3 text-on-surface transition-colors hover:border-outline-variant hover:bg-surface-container-low focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:p-4"
+      className="group flex min-h-11 w-full flex-col gap-1.5 rounded-lg border border-border-hairline bg-surface-container-lowest p-3 text-on-surface transition-colors hover:border-outline-variant hover:bg-surface-container-low focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:p-4"
     >
       <span className="flex items-start justify-between gap-2">
         <span className="font-body text-sm text-on-surface-variant">{tile.label}</span>
@@ -36,7 +36,10 @@ export function HomeFigureTile({ tile }: { tile: DashboardTileView }) {
         <span className="font-body text-base font-medium text-on-surface">{tile.emptyText}</span>
       )}
       {tile.supporting.length > 0 ? (
-        <span className="mt-auto flex flex-col gap-0.5 pt-1 font-body text-xs text-on-surface-variant">
+        <span
+          data-tile-footer
+          className="mt-auto flex flex-col gap-0.5 pt-1 font-body text-xs text-on-surface-variant"
+        >
           {tile.supporting.map((line) => (
             <span key={line}>{line}</span>
           ))}

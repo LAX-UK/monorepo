@@ -27,7 +27,7 @@ export function HomeAtAGlance({ tiles }: { tiles: readonly DashboardTileView[] }
         )}
       >
         {tiles.map((tile) => (
-          <li key={tile.id} className="min-w-0">
+          <li key={tile.id} className="flex min-w-0">
             <HomeFigureTile tile={tile} />
           </li>
         ))}

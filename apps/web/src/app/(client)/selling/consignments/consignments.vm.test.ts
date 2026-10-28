@@ -7,6 +7,7 @@ import {
   filterConsignmentRows,
   parseConsignmentFilter,
   parseConsignmentTab,
+  visibleConsignedLots,
 } from "./consignments.vm";
 
 function submission(overrides: Partial<ItemSubmission>): ItemSubmission {
@@ -177,5 +178,35 @@ describe("narrowing In review to one stage", () => {
       tab: "in-review",
       reviewStage: null,
     });
+  });
+});
+
+describe("visibleConsignedLots", () => {
+  const submissions = [
+    submission({
+      id: "mine",
+      status: "converted",
+      convertedLotId: "l-mine",
+      submittedByUserId: "me",
+    }),
+    submission({
+      id: "theirs",
+      status: "converted",
+      convertedLotId: "l-theirs",
+      submittedByUserId: "colleague",
+    }),
+  ];
+  const lots = [lot({ id: "l-mine" }), lot({ id: "l-theirs" }), lot({ id: "l-staff" })];
+
+  it("shows a consignor only the lots from their own submissions", () => {
+    const visible = visibleConsignedLots({ lots, submissions, scope: "own", viewerUserId: "me" });
+    expect(visible.map((l) => l.id)).toEqual(["l-mine"]);
+    const rows = buildConsignmentRows({ submissions, lots: visible });
+    expect(countConsignmentsByTab(rows)["in-sale"]).toBe(1);
+  });
+
+  it("shows an owner every lot the organisation sells", () => {
+    const visible = visibleConsignedLots({ lots, submissions, scope: "all", viewerUserId: "me" });
+    expect(visible.map((l) => l.id)).toEqual(["l-mine", "l-theirs", "l-staff"]);
   });
 });

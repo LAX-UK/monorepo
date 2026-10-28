@@ -20,6 +20,7 @@ import {
 } from "@/lib/legal-entity/seller-acting-context.server";
 import { submissionsFailureFromCaught } from "@/lib/legal-entity/submissions-access-errors";
 import { CONSIGNMENT_STAGE_LABEL } from "@/lib/organisation-home/consignment-stage-links";
+import { consignedLotScope } from "@auction/domain";
 import type { ItemSubmission, Lot } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Plus } from "lucide-react";
@@ -31,6 +32,7 @@ import {
   countConsignmentsByTab,
   filterConsignmentRows,
   parseConsignmentFilter,
+  visibleConsignedLots,
 } from "./consignments.vm";
 
 const PATH = "/selling/consignments";
@@ -73,7 +75,14 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
     );
   }
 
-  const rows = buildConsignmentRows({ submissions, lots });
+  // A consignor sees only the lots made from their own submissions, as on Home.
+  const visibleLots = visibleConsignedLots({
+    lots,
+    submissions,
+    scope: consignedLotScope(sellerCtx.actor),
+    viewerUserId: user.id,
+  });
+  const rows = buildConsignmentRows({ submissions, lots: visibleLots });
   const counts = countConsignmentsByTab(rows);
   const visible = filterConsignmentRows(rows, tab, reviewStage);
   const reviewStageLabel = reviewStage ? CONSIGNMENT_STAGE_LABEL[reviewStage] : null;

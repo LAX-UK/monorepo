@@ -61,6 +61,14 @@ describe("HomeDashboard", () => {
     expect(payouts.textContent).not.toMatch(/£0/);
   });
 
+  it("pins each tile's supporting lines to its bottom, so footers line up across a row", () => {
+    render(<HomeDashboard dashboard={DASHBOARD} />);
+    const sold = screen.getByTestId("home-tile-sold_this_year");
+    expect(sold.parentElement?.className).toContain("flex");
+    expect(sold.className).toContain("flex-col");
+    expect(sold.querySelector("[data-tile-footer]")?.className).toContain("mt-auto");
+  });
+
   it("lists upcoming sales as links, and stages with works as links", () => {
     render(<HomeDashboard dashboard={DASHBOARD} />);
     expect(screen.getByRole("link", { name: /Modern British/ })).toHaveAttribute(

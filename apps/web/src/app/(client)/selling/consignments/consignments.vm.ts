@@ -4,7 +4,9 @@ import {
 } from "@/lib/organisation-home/consignment-stage-links";
 import { lotPath } from "@/lib/seo/url";
 import {
+  type ConsignedLotScope,
   type ConsignmentProgressStage,
+  canSeeConsignedLot,
   lotProgressStage,
   submissionProgressStage,
 } from "@auction/domain";
@@ -200,4 +202,29 @@ export function parseConsignmentFilter(params: {
   return tab === "in-review" || params.tab === undefined
     ? { tab: "in-review", reviewStage }
     : { tab, reviewStage: null };
+}
+
+/**
+ * The lots a member may see (the domain's consigned-lot rule): all of the organisation's, or only
+ * those made from the submissions they sent. A lot's sender comes from its submission.
+ */
+export function visibleConsignedLots(input: {
+  lots: readonly Lot[];
+  submissions: readonly ItemSubmission[];
+  scope: ConsignedLotScope;
+  viewerUserId: string;
+}): Lot[] {
+  if (input.scope === "all") return [...input.lots];
+  const senderByLot = new Map(
+    input.submissions.flatMap((s) =>
+      s.convertedLotId ? [[s.convertedLotId, s.submittedByUserId ?? null] as const] : [],
+    ),
+  );
+  return input.lots.filter((lot) =>
+    canSeeConsignedLot({
+      scope: input.scope,
+      submittedByUserId: senderByLot.get(lot.id),
+      viewerUserId: input.viewerUserId,
+    }),
+  );
 }
