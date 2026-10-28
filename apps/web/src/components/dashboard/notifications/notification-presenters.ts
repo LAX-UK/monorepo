@@ -149,9 +149,8 @@ export type NotificationGroup = {
   items: UserNotification[];
 };
 
-/** Groups items into the {@link DATE_BANDS} preserving insertion order.
- * The list is assumed to be sorted newest-first by the server; we do not
- * re-sort to avoid surprising the caller.
+/** Groups items into the {@link DATE_BANDS}, unread first within each day, otherwise in the
+ * server's newest-first order (the sort is stable).
  */
 export function groupByDateBand(
   items: ReadonlyArray<UserNotification>,
@@ -167,7 +166,9 @@ export function groupByDateBand(
   const result: NotificationGroup[] = [];
   for (const band of DATE_BANDS) {
     const list = buckets.get(band);
-    if (list && list.length > 0) result.push({ band, items: list });
+    if (list && list.length > 0) {
+      result.push({ band, items: [...list].sort((a, b) => Number(a.read) - Number(b.read)) });
+    }
   }
   return result;
 }

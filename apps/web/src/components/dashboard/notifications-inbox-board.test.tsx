@@ -58,12 +58,8 @@ vi.mock("@/components/dashboard/notifications/use-notifications-inbox", () => ({
   useNotificationsInbox: () => inboxState,
 }));
 
-vi.mock("@/components/dashboard/notifications/notifications-type-filter-toolbar", () => ({
-  NotificationsTypeFilterToolbar: () => null,
-}));
-
-vi.mock("@/components/dashboard/section-tabs-nav", () => ({
-  SectionTabsNav: () => null,
+vi.mock("@/components/layout/client-layout-context", () => ({
+  useClientLayout: () => "website",
 }));
 
 import { NotificationsInboxBoard } from "@/components/dashboard/notifications-inbox-board";
@@ -81,39 +77,44 @@ describe("NotificationsInboxBoard", () => {
     );
   });
 
-  it("renders date band headers outside notification row list items", () => {
+  it("groups by day, unread first, with the day heading outside each list", () => {
     searchParams = new URLSearchParams();
     inboxState = { ...emptyInbox, items: bandedItems };
     vi.useFakeTimers();
     vi.setSystemTime(new Date("2026-05-28T15:00:00.000Z"));
 
-    const { container } = render(<NotificationsInboxBoard />);
+    render(<NotificationsInboxBoard />);
 
-    const todayHeading = screen.getByRole("heading", { name: "Today" });
-    const earlierHeading = screen.getByRole("heading", { name: "Earlier" });
-
-    const todaySection = todayHeading.closest("section");
-    const todayCard = todaySection?.querySelector(":scope > div.overflow-hidden");
-    const todayList = todayCard?.querySelector("ul");
-
-    expect(todayCard).toBeTruthy();
-    expect(todayHeading.compareDocumentPosition(todayCard as Element)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
-    expect(todayList?.contains(todayHeading)).toBe(false);
-    expect(todayList?.textContent).toContain("Today notice");
-
-    const earlierSection = earlierHeading.closest("section");
-    const earlierCard = earlierSection?.querySelector(":scope > div.overflow-hidden");
-    expect(earlierCard).toBeTruthy();
-    expect(earlierHeading.compareDocumentPosition(earlierCard as Element)).toBe(
-      Node.DOCUMENT_POSITION_FOLLOWING,
-    );
-    expect(earlierCard?.querySelector("ul")?.contains(earlierHeading)).toBe(false);
-
-    const groups = container.querySelector('[aria-label="Notification groups"]');
-    expect(groups?.querySelectorAll("section")).toHaveLength(2);
+    const today = screen.getByRole("heading", { name: "Today" }).closest("section");
+    const list = today?.querySelector("ul");
+    expect(list?.textContent).toContain("Today notice");
+    expect(list?.contains(screen.getByRole("heading", { name: "Today" }))).toBe(false);
+    expect(screen.getByRole("heading", { name: "Earlier" })).toBeInTheDocument();
+    expect(screen.getByText("Unread:", { exact: false })).toBeInTheDocument();
 
     vi.useRealTimers();
+  });
+
+  it("offers All and Unread, the unread count and a way to mark everything read", () => {
+    searchParams = new URLSearchParams();
+    inboxState = { ...emptyInbox, items: bandedItems };
+    render(<NotificationsInboxBoard />);
+
+    const views = screen.getByRole("navigation", { name: "Notifications" });
+    expect(views.querySelectorAll("a")).toHaveLength(2);
+    expect(screen.getByRole("link", { name: /^All/ })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: /^Unread\W+1$/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Mark all as read" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Mark as read: Today notice" })).toBeInTheDocument();
+  });
+
+  it("says calmly when the inbox could not load", () => {
+    searchParams = new URLSearchParams();
+    inboxState = { ...emptyInbox, items: [] };
+    render(<NotificationsInboxBoard loadFailure />);
+    expect(
+      screen.getByRole("heading", { name: "We couldn't load your notifications" }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeInTheDocument();
   });
 });

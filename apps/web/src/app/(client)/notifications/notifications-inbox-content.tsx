@@ -1,10 +1,6 @@
 import { NotificationsInboxBoard } from "@/components/dashboard/notifications-inbox-board";
 import type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
 import { NOTIFICATIONS_PAGE_SIZE } from "@/components/dashboard/notifications/notifications-inbox.constants";
-import {
-  type DashboardSliceFailure,
-  describeDashboardSliceFailure,
-} from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 
 function parseTab(raw: string | undefined): InboxTab {
@@ -23,7 +19,7 @@ export async function NotificationsInboxContent({
   const type = (sp.type ?? "").trim();
   const c = await getServerDataContainer();
   let items: Awaited<ReturnType<typeof c.notifications.listMine>> = [];
-  let loadFailure: DashboardSliceFailure | null = null;
+  let loadFailure = false;
   try {
     items = await c.notifications.listMine({
       tab,
@@ -31,12 +27,8 @@ export async function NotificationsInboxContent({
       offset: 0,
       ...(type ? { type } : {}),
     });
-  } catch (e) {
-    loadFailure = describeDashboardSliceFailure(
-      e,
-      "notifications",
-      "Could not load notifications.",
-    );
+  } catch {
+    loadFailure = true;
   }
   const hasMore = !loadFailure && items.length === NOTIFICATIONS_PAGE_SIZE;
 
