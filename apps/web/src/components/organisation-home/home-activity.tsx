@@ -28,6 +28,7 @@ export function HomeActivity({ activity, seeAllHref }: Props) {
       </div>
       {activity.length === 0 ? (
         <EmptyState
+          variant="plain"
           size="compact"
           headingLevel="h3"
           illustration="ledger"

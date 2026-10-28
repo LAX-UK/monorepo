@@ -265,6 +265,7 @@ export {
   buildOrganisationHome,
   homeActivity,
   homeActivityArchive,
+  homeSetupState,
   homeShortcuts,
   homeTaskKindsFor,
   homeTasks,

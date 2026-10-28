@@ -97,7 +97,7 @@ const TASK_VIEWS: { [K in HomeTask["kind"]]: TaskViewBuilder<K> } = {
   }),
   payouts: () => ({
     title: "Set up payouts",
-    detail: "Lots can't go live in a sale until a bank account is added.",
+    detail: "Needed before the organisation's lots can go live in a sale.",
     action: { label: "Set up", href: organisationHref("payouts") },
   }),
   unsold: (task) => ({

@@ -168,6 +168,21 @@ describe("setup state on Home", () => {
     expect(buildOrganisationHome(facts, []).setup).toBe("payouts_not_set_up");
   });
 
+  it("does not tell a buyer agent about payouts", () => {
+    const organisation = { status: "approved" as const, payoutsReady: false };
+    expect(buildOrganisationHome({ ...quiet("buyer_agent"), organisation }, []).setup).toBeNull();
+    expect(buildOrganisationHome({ ...quiet("viewer"), organisation }, []).setup).toBe(
+      "payouts_not_set_up",
+    );
+  });
+
+  it("tells every role that documents are under review", () => {
+    const organisation = { status: "under_review" as const, payoutsReady: false };
+    expect(buildOrganisationHome({ ...quiet("buyer_agent"), organisation }, []).setup).toBe(
+      "documents_under_review",
+    );
+  });
+
   it("shows no setup line once everything is done", () => {
     expect(buildOrganisationHome(quiet("owner"), []).setup).toBeNull();
   });

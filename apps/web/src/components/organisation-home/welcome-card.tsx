@@ -1,11 +1,9 @@
 "use client";
 
 import { dismissWelcomeAction } from "@/lib/legal-entity/organisation-membership.actions";
-import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { WelcomeCardView } from "@/lib/organisation-home/organisation-home-view";
 import { Button } from "@auction/ui/components/button";
 import { ArrowUpLeft, Loader2, ShieldCheck } from "lucide-react";
-import Link from "next/link";
 import { useState, useTransition } from "react";
 
 type Props = {
@@ -36,7 +34,7 @@ export function WelcomeCard({ welcome, organisationName }: Props) {
   return (
     <section
       aria-labelledby="welcome-card-heading"
-      className="rounded-xl bg-primary p-5 text-on-primary shadow-sm sm:p-6"
+      className="rounded-xl bg-secondary p-5 text-on-secondary shadow-sm sm:p-6"
       data-testid="welcome-card"
     >
       <h2
@@ -62,21 +60,13 @@ export function WelcomeCard({ welcome, organisationName }: Props) {
       </p>
 
       {welcome.identityStep ? (
-        <div className="mt-4 flex flex-col gap-3 rounded-lg bg-on-primary/10 p-4 sm:flex-row sm:items-center sm:justify-between">
-          <p className="flex items-start gap-2 font-body text-sm">
-            <ShieldCheck className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} aria-hidden />
-            <span>
-              <strong className="font-semibold">One step first: verify your identity.</strong> Your
-              role acts in your name, so we check who you are. It takes about 3 minutes.
-            </span>
-          </p>
-          <Link
-            href={CLIENT_ROUTES.verifyIdentity}
-            className="inline-flex min-h-10 shrink-0 items-center justify-center self-start rounded-md border border-on-primary/60 px-4 font-label text-sm font-semibold text-on-primary transition-colors hover:bg-on-primary/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-on-primary sm:self-center"
-          >
-            Verify identity
-          </Link>
-        </div>
+        <p className="mt-4 flex items-start gap-2 rounded-lg bg-on-secondary/10 p-3 font-body text-sm sm:p-4">
+          <ShieldCheck className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} aria-hidden />
+          <span>
+            <strong className="font-semibold">One step first: verify your identity.</strong> Your
+            role acts in your name, so we check who you are. You'll find it under Needs you below.
+          </span>
+        </p>
       ) : null}
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
@@ -85,7 +75,7 @@ export function WelcomeCard({ welcome, organisationName }: Props) {
           size="sm"
           onClick={dismiss}
           disabled={pending}
-          className="bg-on-primary text-primary shadow-none hover:bg-on-primary/90 focus-visible:ring-on-primary focus-visible:ring-offset-primary"
+          className="bg-on-secondary text-secondary shadow-none hover:bg-on-secondary/90 focus-visible:ring-on-secondary focus-visible:ring-offset-secondary"
         >
           {pending ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
           Got it

@@ -20,7 +20,16 @@ export function OrganisationHome({ home }: { home: LoadedOrganisationHome }) {
     <DashboardPage>
       <SetMobileShellTitle title="Home" />
       <div className="mx-auto max-w-4xl space-y-6">
-        <DashboardPageHeader title="Home" description={home.organisationName} />
+        {/* Phones show the title in the shell header. The wrapper keeps the section rhythm, as the
+            header sets its own margins. */}
+        <div className="hidden lg:block">
+          <DashboardPageHeader
+            title="Home"
+            description={home.organisationName}
+            hideTitleOnMobile
+            hideDescriptionOnMobile
+          />
+        </div>
         {home.welcome ? (
           <WelcomeCard welcome={home.welcome} organisationName={home.organisationName} />
         ) : null}

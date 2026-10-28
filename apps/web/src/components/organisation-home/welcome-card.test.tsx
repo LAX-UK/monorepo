@@ -22,17 +22,14 @@ describe("WelcomeCard", () => {
     render(<WelcomeCard welcome={welcome} organisationName="Northbank Gallery" />);
     expect(screen.getByRole("heading", { name: "Welcome to Northbank Gallery" })).toBeVisible();
     expect(screen.getByText(/send works to sell/)).toBeVisible();
-    expect(screen.getByRole("link", { name: "Verify identity" })).toHaveAttribute(
-      "href",
-      "/verify-identity",
-    );
+    expect(screen.getByText("One step first: verify your identity.")).toBeVisible();
   });
 
   it("leaves the identity step out when it is not needed", () => {
     render(
       <WelcomeCard welcome={{ ...welcome, identityStep: false }} organisationName="Northbank" />,
     );
-    expect(screen.queryByRole("link", { name: "Verify identity" })).toBeNull();
+    expect(screen.queryByText("One step first: verify your identity.")).toBeNull();
   });
 
   it("closes for good on Got it", async () => {
