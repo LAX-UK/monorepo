@@ -4,7 +4,7 @@ import { composeSaleAttention } from "./compose-sale-attention.js";
 import { DEFAULT_SALE_ATTENTION_CONTRIBUTORS } from "./sale-attention-registry.js";
 import type { SaleAttentionSignals } from "./sale-attention-types.js";
 
-const principal = { role: "staff" as const, staffRole: "super_admin" };
+const principal = { role: "staff" as const, staffRoles: ["super_admin"] as const };
 
 function draftSignals(overrides: Partial<SaleAttentionSignals> = {}): SaleAttentionSignals {
   return {
@@ -46,7 +46,7 @@ describe("composeSaleAttention", () => {
       financeReviewCount: 2,
     };
     const result = composeSaleAttention(signals, DEFAULT_SALE_ATTENTION_CONTRIBUTORS, {
-      principal: { role: "staff", staffRole: "catalogue_manager" },
+      principal: { role: "staff", staffRoles: ["catalogue_manager"] },
     });
     expect(result.items).toHaveLength(0);
   });

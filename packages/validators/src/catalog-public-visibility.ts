@@ -2,11 +2,12 @@ import {
   type AtgOwnershipState,
   type Lot,
   type LotStatus,
+  NO_STAFF_ROLES,
   type Sale,
   type SaleStatus,
+  type StaffRoles,
   normalizeUserRoleOrClient,
-  normalizeUserStaffRole,
-  roleHasCapability,
+  userHasAccessTo,
 } from "@auction/types";
 
 export type PublicCatalogSaleContext = Pick<Sale, "status"> & {
@@ -81,13 +82,11 @@ export function isPublicCatalogLot(
 
 export function viewerCanSeeNonPublicCatalog(
   role: string | undefined,
-  staffRole?: string | null,
+  staffRoles: StaffRoles = NO_STAFF_ROLES,
 ): boolean {
-  const r = normalizeUserRoleOrClient(role);
-  const staff = normalizeUserStaffRole(staffRole ?? undefined);
-  return (
-    roleHasCapability(r, "auction.manage", staff) || roleHasCapability(r, "catalogue.write", staff)
-  );
+  return userHasAccessTo(normalizeUserRoleOrClient(role), staffRoles, {
+    anyOf: ["auction.manage", "catalogue.write"],
+  });
 }
 
 /** Maps explicit status query + viewer into repository list filters. */

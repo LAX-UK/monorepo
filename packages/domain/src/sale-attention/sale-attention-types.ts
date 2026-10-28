@@ -1,4 +1,4 @@
-import type { Lot, Sale, SaleStatus } from "@auction/types";
+import type { Lot, Sale, SaleStatus, StaffRoles } from "@auction/types";
 
 export type SaleAttentionSeverity = "critical" | "high" | "medium" | "low";
 
@@ -123,7 +123,7 @@ export type SaleAttentionSignals = {
 
 export type SaleAttentionPrincipal = {
   role: "client" | "staff" | "seller";
-  staffRole: string | null;
+  staffRoles: StaffRoles;
 };
 
 export const SALE_ATTENTION_SEVERITY_RANK: Record<SaleAttentionSeverity, number> = {

@@ -506,6 +506,7 @@ export async function runLegacyDemoSeed() {
     artistCategories,
     artistProfile,
     bidUserProfile,
+    staffRoleAssignment,
     bidIdentityDirectory,
     user,
     account,
@@ -1112,6 +1113,16 @@ export async function runLegacyDemoSeed() {
 
   await db.insert(user).values(seedUserRows.map(toIdentityUser));
   await db.insert(bidUserProfile).values(seedUserRows.map(toBidUserProfile));
+  // Permissions come from role assignments; each seeded staff login holds its one role.
+  await db
+    .insert(staffRoleAssignment)
+    .values(
+      seedUserRows.flatMap((row) =>
+        row.role === "staff" && row.staffRole
+          ? [{ userId: row.id, role: row.staffRole, startsAt: row.createdAt, reason: "seed" }]
+          : [],
+      ),
+    );
   await db
     .insert(bidIdentityDirectory)
     .values(seedUserRows.map(toBidIdentityDirectory))

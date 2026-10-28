@@ -1,3 +1,5 @@
+import type { StaffRoles } from "@auction/types";
+
 export type LotAttentionSeverity = "critical" | "high" | "medium" | "low";
 
 export const LOT_ATTENTION_SEVERITY_RANK: Record<LotAttentionSeverity, number> = {
@@ -50,5 +52,5 @@ export type LotAttentionResult = {
 
 export type LotAttentionPrincipal = {
   role: "client" | "staff" | "seller";
-  staffRole: string | null;
+  staffRoles: StaffRoles;
 };
