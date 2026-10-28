@@ -66,6 +66,7 @@ export function createConsignmentAfterSaleServices(
       return result.mapErr((e) => ({ message: e.message, status: e.status }));
     },
     notifier,
+    staffNotifier: notifier,
     events: input.events,
   });
   const recipients = input.recipients;

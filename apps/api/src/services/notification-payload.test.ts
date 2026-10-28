@@ -3,7 +3,18 @@ import {
   notificationLotTitle,
   notificationLotWebPath,
   notificationRowToPayload,
+  notificationWebPath,
 } from "./notification-payload.js";
+
+describe("notificationWebPath for consignment updates", () => {
+  it("opens the consignment for the seller and the submission in Bid admin for staff", () => {
+    const update = { type: "consignment_update", title: "t", message: "m", submissionId: "s1" };
+    expect(notificationWebPath(update)).toBe("/selling/consignments/s1");
+    expect(notificationWebPath({ ...update, meta: { audience: "staff" } })).toBe(
+      "/admin/submissions/s1",
+    );
+  });
+});
 
 describe("notificationLotWebPath", () => {
   it("returns canonical slugged path when lot title is in meta", () => {

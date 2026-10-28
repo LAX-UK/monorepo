@@ -71,6 +71,18 @@ export function withdrawnUpdate(input: { submissionId: string; title: string }):
   };
 }
 
+/** The specialist reviewing a consignment learns the seller took it back. */
+export function withdrawnForSpecialistUpdate(input: {
+  submissionId: string;
+  title: string;
+}): ConsignmentUpdate {
+  return {
+    submissionId: input.submissionId,
+    title: "A seller withdrew a consignment",
+    message: `The seller withdrew "${input.title}" before it was catalogued. It has left your review queue.`,
+  };
+}
+
 export function withdrawalRequestedUpdate(input: {
   submissionId: string;
   title: string;

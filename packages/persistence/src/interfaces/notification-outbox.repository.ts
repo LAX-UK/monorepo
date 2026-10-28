@@ -30,7 +30,7 @@ export type NotificationPayload = {
     /** Currency (ISO 4217) of every amount in this payload; the platform default when absent. */
     currency?: string;
     /** Who the notification is for, where one event notifies both sides of a sale. */
-    audience?: "buyer" | "seller";
+    audience?: "buyer" | "seller" | "staff";
     /** Canonical lot title for deep links (push/email). */
     lotTitle?: string;
     /** Outbox idempotency key — used by in-app channel to skip duplicate retries. */

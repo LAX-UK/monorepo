@@ -14,8 +14,15 @@ import type {
 import { type Result, err, ok } from "neverthrow";
 import { SubmissionError } from "../../lib/errors.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
-import { withdrawalRequestedUpdate, withdrawnUpdate } from "./after-sale-copy.js";
-import type { IConsignmentUpdateNotifier } from "./consignment-update-notifier.js";
+import {
+  withdrawalRequestedUpdate,
+  withdrawnForSpecialistUpdate,
+  withdrawnUpdate,
+} from "./after-sale-copy.js";
+import type {
+  IConsignmentUpdateNotifier,
+  IStaffConsignmentNotifier,
+} from "./consignment-update-notifier.js";
 import type { AfterSaleSeller } from "./unsold-lot-choice.service.js";
 
 export type ConsignmentWithdrawalServiceDeps = {
@@ -35,6 +42,8 @@ export type ConsignmentWithdrawalServiceDeps = {
     lotId: string,
   ): Promise<Result<{ alreadyPending: boolean }, { message: string; status?: number }>>;
   notifier: IConsignmentUpdateNotifier;
+  /** Tells the specialist assigned to the submission. */
+  staffNotifier: IStaffConsignmentNotifier;
   events: IDomainEventSink | null;
 };
 
@@ -161,6 +170,12 @@ export class ConsignmentWithdrawalService implements IConsignmentWithdrawalServi
       [{ legalEntityId: seller.legalEntityId, audience: "seller" }],
       withdrawnUpdate({ submissionId: submission.id, title: submission.title }),
     );
+    if (submission.assignedToUserId) {
+      await this.deps.staffNotifier.notifyStaff(
+        submission.assignedToUserId,
+        withdrawnForSpecialistUpdate({ submissionId: submission.id, title: submission.title }),
+      );
+    }
     return ok({ kind: "withdrawn" });
   }
 
