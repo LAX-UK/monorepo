@@ -64,6 +64,7 @@ describe("organisationHomeView", () => {
     shortcuts: ["sell", "invite", "statements"],
     activity: [],
     activityArchive: "consignments",
+    dashboard: null,
   };
 
   it("keeps an empty Needs you, and hides it for roles with nothing to do", () => {
@@ -128,6 +129,7 @@ describe("stopped bids activity", () => {
           },
         ],
         activityArchive: null,
+        dashboard: null,
       },
       ctx,
     );

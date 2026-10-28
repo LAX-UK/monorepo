@@ -4,6 +4,7 @@ import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title"
 import type { LoadedOrganisationHome } from "@/lib/organisation-home/load-organisation-home.server";
 import { Info } from "lucide-react";
 import { HomeActivity } from "./home-activity";
+import { HomeDashboard } from "./home-dashboard";
 import { HomeNeedsYou } from "./home-needs-you";
 import { HomeRoleGuide } from "./home-role-guide";
 import { HomeSetupLine } from "./home-setup-line";
@@ -12,7 +13,8 @@ import { WelcomeCard } from "./welcome-card";
 
 /**
  * An organisation's Home: the same layout for every member, each section shown only when the
- * role has something in it. No charts and no totals; money lives in Sold & payouts.
+ * role has something in it. Tasks come first, then the business figures, each linking to the page
+ * behind it; there are no charts or trends.
  */
 export function OrganisationHome({ home }: { home: LoadedOrganisationHome }) {
   const { view } = home;
@@ -41,6 +43,7 @@ export function OrganisationHome({ home }: { home: LoadedOrganisationHome }) {
           </p>
         ) : null}
         {view.needsYou ? <HomeNeedsYou tasks={view.needsYou} /> : null}
+        {view.dashboard ? <HomeDashboard dashboard={view.dashboard} /> : null}
         <HomeShortcuts shortcuts={view.shortcuts} />
         <HomeActivity activity={view.activity} seeAllHref={view.seeAllHref} />
         <HomeRoleGuide explanation={home.roleExplanation} />
