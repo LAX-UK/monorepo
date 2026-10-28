@@ -47,6 +47,7 @@ import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure
 import { TwoFactorPolicyService } from "./services/security/two-factor-policy.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
 import { StaffStepUpService } from "./services/staff-step-up.service.js";
+import { SubmissionAccessGuard } from "./services/submission/submission-access-guard.js";
 
 export type { Container, ContainerComposedSlices };
 
@@ -221,6 +222,7 @@ export function createContainer(env: Env): Container {
     itemSubmissionAdminApi: catalog.itemSubmissionAdminApi,
     submissionDocumentService: complianceMedia.submissionDocumentService,
     consignmentAgreementService: catalog.consignmentAgreementService,
+    submissionAccess: new SubmissionAccessGuard(repos.itemSubmissionRepository),
   });
   const admin = createAdminServices({
     env,

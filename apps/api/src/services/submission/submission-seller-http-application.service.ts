@@ -2,12 +2,12 @@ import type { CreateItemSubmissionInput, UserRole } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { SubmissionError } from "../../lib/errors.js";
 import type { IItemSubmissionSellerApi } from "../interfaces/item-submission-apis.js";
+import type { ISubmissionAccessGuard } from "../interfaces/submission-routes/submission-access.js";
 import type {
   SubmissionHttpJson,
   SubmissionLegalEntityContext,
 } from "../interfaces/submission-routes/submission-route-http.js";
 import type { ISubmissionSellerHttpApplicationService } from "../interfaces/submission-routes/submission-seller-http.js";
-import { memberCanSeeSubmission, submissionSenderFilter } from "./submission-sender-visibility.js";
 
 const NOT_FOUND: SubmissionHttpJson = { status: 404, body: { error: "Not found" } };
 
@@ -24,22 +24,14 @@ function mapSubmissionResult<T>(
 export class SubmissionSellerHttpApplicationService
   implements ISubmissionSellerHttpApplicationService
 {
-  constructor(private readonly itemSubmissionSellerApi: IItemSubmissionSellerApi) {}
+  constructor(
+    private readonly itemSubmissionSellerApi: IItemSubmissionSellerApi,
+    private readonly access: ISubmissionAccessGuard,
+  ) {}
 
-  /**
-   * Whether the member may open this submission. A submission they may not see answers "Not
-   * found", exactly like one in another account.
-   */
-  private async visible(
-    legalEntity: SubmissionLegalEntityContext,
-    submissionId: string,
-  ): Promise<boolean> {
-    if (!submissionSenderFilter(legalEntity)) return true;
-    const found = await this.itemSubmissionSellerApi.getForSeller(
-      legalEntity.legalEntityId,
-      submissionId,
-    );
-    return found.isOk() && memberCanSeeSubmission(legalEntity, found.value);
+  /** A submission the member may not see answers "Not found", like one in another account. */
+  private async visible(legalEntity: SubmissionLegalEntityContext, submissionId: string) {
+    return !(await this.access.hides(legalEntity, submissionId));
   }
 
   async createDraft(input: {
@@ -62,7 +54,7 @@ export class SubmissionSellerHttpApplicationService
     query: Parameters<ISubmissionSellerHttpApplicationService["listMine"]>[0]["query"];
     legalEntity: SubmissionLegalEntityContext;
   }): Promise<SubmissionHttpJson> {
-    const visibleTo = submissionSenderFilter(input.legalEntity);
+    const visibleTo = this.access.senderFilter(input.legalEntity);
     const { data, total } = await this.itemSubmissionSellerApi.listSubmissionsForSellerApi(
       input.legalEntity.legalEntityId,
       {
@@ -81,7 +73,7 @@ export class SubmissionSellerHttpApplicationService
   }): Promise<SubmissionHttpJson> {
     const summary = await this.itemSubmissionSellerApi.getSubmissionSummaryForSellerApi(
       input.legalEntity.legalEntityId,
-      submissionSenderFilter(input.legalEntity),
+      this.access.senderFilter(input.legalEntity),
     );
     return { status: 200, body: { data: summary } };
   }
@@ -97,7 +89,7 @@ export class SubmissionSellerHttpApplicationService
       staffRole: input.viewer.staffRole ?? null,
       sellerLegalEntityId: input.legalEntity.legalEntityId,
     });
-    if (result.isOk() && !memberCanSeeSubmission(input.legalEntity, result.value)) {
+    if (result.isOk() && !this.access.canSee(input.legalEntity, result.value)) {
       return NOT_FOUND;
     }
     return mapSubmissionResult(result);
