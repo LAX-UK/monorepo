@@ -42,6 +42,6 @@ export function createLotsProvider(lotRepo: ILotRepository): ExportProvider<List
         }),
       );
     },
-    filterSummary: (_ctx, filters) => summarizeFilters(filters as Record<string, unknown>),
+    filterSummary: (filters) => summarizeFilters(filters as Record<string, unknown>),
   };
 }

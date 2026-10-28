@@ -53,7 +53,7 @@ export type CapabilityRequirement = RoleCapability | { anyOf: RoleCapability[] }
 
 export function userHasAccessTo(
   role: UserRole,
-  staffRoles: StaffRoles,
+  staffRoles: StaffRoles | undefined,
   requirement: CapabilityRequirement,
 ): boolean {
   if (typeof requirement === "object" && requirement !== null && "anyOf" in requirement) {
@@ -65,14 +65,20 @@ export function userHasAccessTo(
 export type AppShellLayout = "client" | "platform" | "finance";
 
 /** Visual shell for staff: finance-only vs platform vs client. */
-export function staffRoleToShellLayout(role: UserRole, staffRoles: StaffRoles): AppShellLayout {
+export function staffRoleToShellLayout(
+  role: UserRole,
+  staffRoles: StaffRoles = NO_STAFF_ROLES,
+): AppShellLayout {
   if (role === "client") return "client";
   if (holdsOnlyStaffRole(staffRoles, "finance_ops")) return "finance";
   return "platform";
 }
 
 /** First sensible admin URL for this staff user (post-login landing). */
-export function staffRoleDefaultDestination(role: UserRole, staffRoles: StaffRoles): string {
+export function staffRoleDefaultDestination(
+  role: UserRole,
+  staffRoles: StaffRoles = NO_STAFF_ROLES,
+): string {
   if (role === "client") return "/home";
   if (staffRoles.length === 0) return "/admin";
 

@@ -14,7 +14,7 @@ export type ExportProvider<TFilters extends Record<string, unknown> = Record<str
   columns(ctx: ExportAuthContext, filters: TFilters): ExportColumn[];
   estimateCount(ctx: ExportAuthContext, filters: TFilters): Promise<number>;
   streamRows(ctx: ExportAuthContext, filters: TFilters): AsyncGenerator<ExportRow>;
-  filterSummary(_ctx: ExportAuthContext, filters: TFilters): string;
+  filterSummary(filters: TFilters): string;
 };
 
 export async function* batchedRows<T>(
