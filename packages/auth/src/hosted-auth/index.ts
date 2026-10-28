@@ -1,6 +1,7 @@
 export { HOSTED_AUTH_TOKENS } from "./tokens.js";
 export { HOSTED_AUTH_STYLES } from "./styles.js";
 export { HOSTED_AUTH_RUNTIME_SCRIPT } from "./runtime.js";
+export { HOSTED_THEME_SCRIPT } from "./scripts.js";
 export {
   selectHostedBrand,
   selectHostedBrandFromClientName,
@@ -30,6 +31,10 @@ export {
   HOSTED_FONT_ASSET_DIR,
   HOSTED_FONT_BASE_PATH,
   hostedLockupFilename,
+  HOSTED_LOCKUP_FILES,
+  HOSTED_IMAGE_ASSET_DIR,
+  HOSTED_IMAGE_BASE_PATH,
+  HOSTED_GALLERY_IMAGE,
 } from "./lockups.js";
 export {
   HOSTED_AUTH_FAVICON_BASE_PATH,

@@ -35,6 +35,7 @@ export { OIDC_CONSENT_SCRIPT, buildOidcConsentHtml } from "./hosted-auth/index.j
 export {
   HOSTED_AUTH_STYLES,
   HOSTED_AUTH_RUNTIME_SCRIPT,
+  HOSTED_THEME_SCRIPT,
   HOSTED_LOGIN_SCRIPT,
   HOSTED_ACCOUNT_CHOOSER_SCRIPT,
   HOSTED_SIGN_UP_SCRIPT,
@@ -75,6 +76,10 @@ export {
   HOSTED_FONT_ASSET_DIR,
   HOSTED_FONT_BASE_PATH,
   hostedLockupFilename,
+  HOSTED_LOCKUP_FILES,
+  HOSTED_IMAGE_ASSET_DIR,
+  HOSTED_IMAGE_BASE_PATH,
+  HOSTED_GALLERY_IMAGE,
   buildHostedErrorHtml,
   isBrowserNavigation,
   readHostedFaviconBytes,

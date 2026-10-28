@@ -4,6 +4,7 @@ import {
   floatingInput,
   hostedButton,
   statusRegions,
+  viewChrome,
 } from "../html.js";
 import { type HostedAuthView, hostedAuthViewFromSearch } from "../view.js";
 
@@ -18,8 +19,7 @@ export function buildHostedVerifyEmailHtml(
   return buildHostedAuthHtml({
     title: "Verify your email",
     description: "Open the verification link from your inbox or request a new one below.",
-    brand: view.brand,
-    config: view.config,
+    ...viewChrome(view),
     body: `<div class="auth-stack">
       <div id="pending" hidden>
         <p class="lead">Verifying your email…</p>
@@ -40,8 +40,7 @@ export function buildHostedResendVerificationHtml(
   return buildHostedAuthHtml({
     title: "Resend verification",
     description: "Enter your email address and we will send a fresh verification link.",
-    brand: view.brand,
-    config: view.config,
+    ...viewChrome(view),
     body: `<form id="resend-form" class="auth-form" novalidate>
       ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username" })}
       ${hostedButton({ label: "Send verification email", loadingLabel: "Sending…" })}

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { buildHostedErrorHtml } from "./hosted-auth/error-page.js";
 import { HOSTED_AUTH_RUNTIME_SCRIPT } from "./hosted-auth/runtime.js";
 import { HOSTED_AUTH_STYLES } from "./hosted-auth/styles.js";
 import { hostedAuthViewFromSearch } from "./hosted-auth/view.js";
@@ -24,6 +25,9 @@ const textOf = (html: string) => html.replace(/<[^>]+>/g, "");
 
 const shopSearch =
   "response_type=code&client_id=lax-shop-web&redirect_uri=http://localhost:3010/auth/callback&scope=openid&state=abc&nonce=def&code_challenge=challenge&code_challenge_method=S256";
+
+const shopAdminSearch =
+  "response_type=code&client_id=lax-shop-admin&redirect_uri=http://localhost:3030/api/auth/callback&scope=openid&state=abc&nonce=def&code_challenge=challenge&code_challenge_method=S256";
 
 const shopCapabilities = {
   googleEnabled: true,
@@ -218,13 +222,14 @@ describe("issuer-hosted credential HTML", () => {
     expect(html).toContain("btn btn-primary");
     expect(html).toContain("btn btn-secondary");
     expect(html).toContain('<script src="/oidc-consent.js');
-    expect(html).toContain("Continue to <strong>LAX Shop</strong>");
+    expect(textOf(html)).toContain("to continue to LAX Shop");
   });
 
   it("uses the shared hosted tokens for CTA and page shell", () => {
     expect(HOSTED_AUTH_STYLES).toContain("--color-cta-bg: #0f766e");
+    expect(HOSTED_AUTH_STYLES).toContain("--color-cta-bg: #14b8a6");
     expect(HOSTED_AUTH_STYLES).toContain("--color-page-bg: #ffffff");
-    expect(HOSTED_AUTH_STYLES).toContain("--auth-column: 528px");
+    expect(HOSTED_AUTH_STYLES).toContain("--auth-column: 28rem");
     expect(HOSTED_AUTH_STYLES).toContain("Montserrat");
     expect(HOSTED_AUTH_STYLES).toContain("--control-min: 2.75rem");
   });
@@ -233,10 +238,11 @@ describe("issuer-hosted credential HTML", () => {
     const view = hostedAuthViewFromSearch(shopSearch, shopCapabilities);
     const html = buildHostedLoginHtml(view);
     expect(html).toContain("/hosted-auth/lockups/lax-account.svg");
-    expect(html).toContain('<p class="product-chip">Continue to <strong>LAX Shop</strong></p>');
-    expect(html).not.toContain("lax-shop.svg");
+    expect(html).toContain(
+      '<p class="destination">to continue to <span class="product-name product-name--shop">LAX Shop</span></p>',
+    );
     expect(html).toContain("Sign in with your LAX Account.");
-    expect(textOf(html)).toContain("One LAX Account for LAX Bid, LAX Shop and lax.art.");
+    expect(textOf(html)).toContain("One account for all of LAX");
     expect(html).toContain("Continue with Google");
     expect(html).toContain('class="btn-mark"');
     expect(html).toContain('class="btn-label"');
@@ -318,20 +324,135 @@ describe("issuer-hosted credential HTML", () => {
 });
 
 describe("one-account message", () => {
-  const accountCapabilities = { ...shopCapabilities, accountOrigin: "https://account.example/" };
-
-  it("links Learn more to the Account landing page on sign-in and sign-up", () => {
-    const view = hostedAuthViewFromSearch(shopSearch, accountCapabilities);
+  it("carries LAX Account's promise and product marks on sign-in and sign-up", () => {
+    const view = hostedAuthViewFromSearch(shopSearch, shopCapabilities);
     for (const html of [buildHostedLoginHtml(view), buildHostedSignUpHtml(view)]) {
-      expect(textOf(html)).toContain("One LAX Account for LAX Bid, LAX Shop and lax.art.");
-      expect(html).toContain('href="https://account.example/">Learn more</a>');
+      expect(textOf(html)).toContain("One account for all of LAX");
+      expect(textOf(html)).toContain(
+        "Sign in once to manage your details, security and works across LAX Bid, LAX Shop and lax.art.",
+      );
+      expect(html).toContain('<ul class="product-marks" aria-hidden="true">');
+      for (const file of ["lax-bid-compact", "lax-shop", "lax-art"]) {
+        expect(html).toContain(`/hosted-auth/lockups/${file}.svg`);
+        expect(html).toContain(`/hosted-auth/lockups/${file}-dark.svg`);
+      }
     }
   });
 
-  it("omits the link, not the message, when the Account origin is not configured", () => {
+  it("is left out of staff sign-in and of every other page", () => {
+    const staff = buildHostedLoginHtml(hostedAuthViewFromSearch(shopAdminSearch, shopCapabilities));
+    expect(staff).not.toContain("One account for all of LAX");
+    expect(buildHostedForgotPasswordHtml()).not.toContain("One account for all of LAX");
+  });
+});
+
+describe("split frame", () => {
+  const view = hostedAuthViewFromSearch(shopSearch, shopCapabilities);
+
+  it.each([
+    ["sign-in", buildHostedLoginHtml(view)],
+    ["sign-up", buildHostedSignUpHtml(view)],
+    ["forgot-password", buildHostedForgotPasswordHtml(view)],
+    ["reset-password", buildHostedResetPasswordHtml(view)],
+    ["verify-email", buildHostedVerifyEmailHtml(view)],
+    ["two-factor", buildHostedTwoFactorHtml(view)],
+    ["two-factor-help", buildHostedTwoFactorHelpHtml(view)],
+    ["error", buildHostedErrorHtml(404, view)],
+  ])("gives %s the panel, painting, theme toggle and footer", (_label, html) => {
+    expect(html).toContain('<div class="auth-split">');
+    expect(html).toContain('<div class="auth-art" aria-hidden="true"></div>');
+    expect(html).toMatch(
+      /<button type="button" class="theme-toggle" data-theme-toggle[^>]*hidden>/,
+    );
+    expect(html).toMatch(/<script src="\/hosted-theme\.js\?v=[^"]+"><\/script>\n<\/head>/);
+    expect(textOf(html)).toContain(
+      "LAX Account is provided by London Auction Xchange LTD and London Art Exchange Ltd.",
+    );
+    expect(html).toContain('<a href="http://localhost:3000/privacy">Privacy</a>');
+    expect(html).toContain('<a href="http://localhost:3000/faq">Help</a>');
+  });
+
+  it("keeps the footer to the legal line where product origins are unknown", () => {
+    const html = buildOidcConsentHtml({ clientName: "LAX Shop Web", scopes: [], code: "x" });
+    expect(textOf(html)).toContain("LAX Account is provided by");
+    expect(html).not.toContain('aria-label="Legal and help"');
+  });
+
+  it("does not promise a destination on an error page", () => {
+    expect(textOf(buildHostedErrorHtml(500, view))).not.toContain("to continue to");
+  });
+
+  it("puts the painting in the stylesheet, only from 64rem, so phones never fetch it", () => {
+    const wide = HOSTED_AUTH_STYLES.slice(HOSTED_AUTH_STYLES.indexOf("@media (min-width: 64rem)"));
+    expect(wide).toContain('url("/hosted-auth/images/signin-gallery.webp?v=');
+    expect(HOSTED_AUTH_STYLES.indexOf("signin-gallery.webp")).toBe(
+      HOSTED_AUTH_STYLES.lastIndexOf("signin-gallery.webp"),
+    );
+  });
+});
+
+describe("hosted fields", () => {
+  const signUp = buildHostedSignUpHtml(hostedAuthViewFromSearch(shopSearch, shopCapabilities));
+
+  it("labels each field above its box and ties errors to it", () => {
+    expect(signUp).toMatch(
+      /<label class="field-label" for="email">Email address<\/label>\s*<div class="field-control">\s*<input id="email"[^>]*aria-describedby="email-error"/,
+    );
+    expect(signUp).not.toContain('placeholder=" "');
+  });
+
+  it("states the password rules up front, from the issuer's policy", () => {
+    expect(signUp).toContain(
+      '<p id="password-hint" class="field-hint">Use at least 12 characters. Passwords found in known data breaches can&#39;t be used.</p>',
+    );
+    expect(signUp).toMatch(
+      /<input id="password"[^>]*aria-describedby="password-error password-hint"/,
+    );
+    expect(signUp).toContain('minlength="12"');
+    expect(buildHostedResetPasswordHtml()).toContain('id="password-hint"');
+  });
+
+  it("makes Show password a toggle button with one name and a pressed state", () => {
+    expect(signUp).toMatch(
+      /<button type="button" class="btn-reveal" data-password-toggle="password" aria-label="Show password" aria-pressed="false">/,
+    );
+    expect(HOSTED_AUTH_RUNTIME_SCRIPT).toContain("aria-pressed");
+    expect(HOSTED_AUTH_RUNTIME_SCRIPT).not.toContain("Hide password");
+  });
+
+  it("writes the divider in sentence case with lines that clear 3:1", () => {
+    expect(signUp).toContain('<p class="auth-divider"><span>or</span></p>');
+    expect(HOSTED_AUTH_STYLES).not.toMatch(/\.auth-divider \{[^}]*text-transform: uppercase/);
+    expect(HOSTED_AUTH_STYLES).toMatch(
+      /\.auth-divider::after \{[^}]*border-top: 1px solid var\(--color-input-border\)/,
+    );
+  });
+});
+
+describe("sign-up agreement and links", () => {
+  it.each([
+    ["client_id=lax-shop-web", "http://localhost:3020/terms", "http://localhost:3020/privacy"],
+    [
+      "client_id=lax-art-web",
+      "http://localhost:3050/legal/terms",
+      "http://localhost:3050/legal/privacy",
+    ],
+    ["client_id=lax-bid-web", "http://localhost:3000/terms", "http://localhost:3000/privacy"],
+    ["", "http://localhost:3000/terms", "http://localhost:3000/privacy"],
+  ])("links the Terms and Privacy notice of the company behind %s", (search, terms, privacy) => {
+    const html = buildHostedSignUpHtml(hostedAuthViewFromSearch(search, shopCapabilities));
+    expect(textOf(html)).toContain(
+      "By creating an account you agree to the Terms and Privacy notice.",
+    );
+    expect(html).toContain(`<a class="text-link" href="${terms}">Terms</a>`);
+    expect(html).toContain(`<a class="text-link" href="${privacy}">Privacy notice</a>`);
+  });
+
+  it("offers Sign in with the verb as the link, mirroring sign-in's Sign up", () => {
     const html = buildHostedSignUpHtml(hostedAuthViewFromSearch(shopSearch, shopCapabilities));
-    expect(textOf(html)).toContain("One LAX Account for LAX Bid, LAX Shop and lax.art.");
-    expect(html).not.toContain("Learn more");
+    expect(html).toContain(
+      'Already have an account? <a class="text-link" href="/login?client_id=lax-shop-web">Sign in</a>',
+    );
   });
 });
 
@@ -347,9 +468,11 @@ describe("one-account product names", () => {
 describe("hosted colour rule", () => {
   it("never uses Bid's navy for links or focus rings", () => {
     // Navy appears once per theme, as the colour of Bid's name in the one-account note.
+    // The dark value is written twice: for the toggle's class and for the system setting.
     const navy = HOSTED_AUTH_STYLES.split("\n").filter((line) => /#091f5b|#a5b7e9/i.test(line));
     expect(navy.map((line) => line.trim())).toEqual([
       "--color-product-bid: #091f5b;",
+      "--color-product-bid: #a5b7e9;",
       "--color-product-bid: #a5b7e9;",
     ]);
     expect(HOSTED_AUTH_STYLES).not.toMatch(/#202759|midnight/i);
@@ -358,19 +481,16 @@ describe("hosted colour rule", () => {
     expect(HOSTED_AUTH_STYLES).toContain("--color-link: #191919");
   });
 
-  it("looks the same for Bid except for the chip", () => {
+  it("looks the same for Bid except for the destination line", () => {
     const bid = buildHostedLoginHtml(
       hostedAuthViewFromSearch("client_id=lax-bid-web", shopCapabilities),
     );
     expect(bid).toContain("/hosted-auth/lockups/lax-account.svg");
-    expect(bid).toContain("Continue to <strong>LAX Bid</strong>");
+    expect(textOf(bid)).toContain("to continue to LAX Bid");
     expect(bid).not.toContain("lax-bid.svg");
     expect(bid).not.toContain("theme-bid");
   });
 });
-
-const shopAdminSearch =
-  "response_type=code&client_id=lax-shop-admin&redirect_uri=http://localhost:3030/api/auth/callback&scope=openid&state=abc&nonce=def&code_challenge=challenge&code_challenge_method=S256";
 
 describe("Shop Admin hosted login", () => {
   it("renders staff-only login chrome with logo and tagline", () => {

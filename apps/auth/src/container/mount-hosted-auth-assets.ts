@@ -8,20 +8,24 @@ import {
   HOSTED_FONT_BASE_PATH,
   HOSTED_FONT_FILES,
   HOSTED_FORGOT_PASSWORD_SCRIPT,
+  HOSTED_GALLERY_IMAGE,
+  HOSTED_IMAGE_ASSET_DIR,
+  HOSTED_IMAGE_BASE_PATH,
   HOSTED_LOCKUP_ASSET_DIR,
   HOSTED_LOCKUP_BASE_PATH,
+  HOSTED_LOCKUP_FILES,
   HOSTED_LOGIN_SCRIPT,
   HOSTED_MAGIC_LINK_SCRIPT,
   HOSTED_RESEND_VERIFICATION_SCRIPT,
   HOSTED_RESET_PASSWORD_SCRIPT,
   HOSTED_SIGN_UP_SCRIPT,
+  HOSTED_THEME_SCRIPT,
   HOSTED_TWO_FACTOR_MANAGE_SCRIPT,
   HOSTED_TWO_FACTOR_SCRIPT,
   HOSTED_TWO_FACTOR_SETUP_SCRIPT,
   HOSTED_VERIFY_EMAIL_SCRIPT,
   OIDC_CONSENT_SCRIPT,
   hostedFaviconContentType,
-  hostedLockupFilename,
   readHostedAssetBytes,
   readHostedFaviconBytes,
 } from "@auction/auth";
@@ -31,6 +35,7 @@ export function mountHostedAuthAssets(app: Hono): void {
   const cache = "public, max-age=3600";
   const scripts: Array<[string, string]> = [
     ["/hosted-auth-runtime.js", HOSTED_AUTH_RUNTIME_SCRIPT],
+    ["/hosted-theme.js", HOSTED_THEME_SCRIPT],
     ["/hosted-login.js", HOSTED_LOGIN_SCRIPT],
     ["/hosted-sign-up.js", HOSTED_SIGN_UP_SCRIPT],
     ["/hosted-account-chooser.js", HOSTED_ACCOUNT_CHOOSER_SCRIPT],
@@ -50,8 +55,7 @@ export function mountHostedAuthAssets(app: Hono): void {
       "Content-Type": "text/css; charset=utf-8",
     });
   });
-  const lockupFiles = [hostedLockupFilename("light"), hostedLockupFilename("dark")];
-  for (const file of lockupFiles) {
+  for (const file of HOSTED_LOCKUP_FILES) {
     app.get(`${HOSTED_LOCKUP_BASE_PATH}/${file}`, (c) => {
       c.header("Cache-Control", cache);
       return c.body(
@@ -63,6 +67,14 @@ export function mountHostedAuthAssets(app: Hono): void {
       );
     });
   }
+  app.get(`${HOSTED_IMAGE_BASE_PATH}/${HOSTED_GALLERY_IMAGE}`, (c) => {
+    c.header("Cache-Control", cache);
+    return c.body(
+      new Uint8Array(readHostedAssetBytes(`${HOSTED_IMAGE_ASSET_DIR}/${HOSTED_GALLERY_IMAGE}`)),
+      200,
+      { "Content-Type": "image/webp" },
+    );
+  });
   for (const file of Object.values(HOSTED_FONT_FILES)) {
     app.get(`${HOSTED_FONT_BASE_PATH}/${file}`, (c) => {
       c.header("Cache-Control", cache);

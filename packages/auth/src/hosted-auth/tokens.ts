@@ -12,6 +12,11 @@ export const HOSTED_AUTH_TOKENS = {
   accent: "#0f766e",
   accentOnDark: "#2dd4bf",
   /**
+   * The primary button on dark: a calmer teal than the bright accent, as on LAX Account
+   * (`--color-cta-bg` in apps/account). Obsidian text on it is 8.4:1; it stands 7.4:1 off the page.
+   */
+  ctaOnDark: "#14b8a6",
+  /**
    * LAX Bid's navy and its dark-surface value (PRODUCT_ACCENTS.bid and PRODUCT_ACCENTS_ON_DARK.bid),
    * used only to set Bid's name in the one-account note. Nothing else on these pages is navy.
    */
@@ -31,9 +36,15 @@ export const HOSTED_AUTH_TOKENS = {
   /** Darker red and green for text on white: the brand values fall under 4.5:1 there. */
   errorOnLight: "#b3261e",
   successOnLight: "#1a7f37",
-  /** Form-control boundaries need 3:1 against the surface (WCAG 1.4.11). */
-  inputBorder: "#767676",
-  darkInputBorder: "#8c8c88",
+  /**
+   * Form-control edges, LAX Account's `--color-control-border`: 3.45:1 on white and 3.6:1 on the
+   * dark surface, so fields and the divider clear WCAG 1.4.11.
+   */
+  inputBorder: "#8a8a8a",
+  darkInputBorder: "#73736f",
+  /** Behind the painting while it loads (Account's `--color-surface-container`). */
+  surfaceContainer: "#eeeeee",
+  darkSurfaceContainer: "#333534",
   darkPageBg: "#121414",
   darkSurface: "#1a1c1c",
   darkTextSecondary: "#c9c5bc",

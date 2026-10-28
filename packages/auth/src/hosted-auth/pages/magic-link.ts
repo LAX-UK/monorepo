@@ -5,6 +5,7 @@ import {
   hostedButton,
   statusRegions,
   turnstileHost,
+  viewChrome,
 } from "../html.js";
 import { type HostedAuthView, hostedAuthViewFromSearch } from "../view.js";
 
@@ -16,8 +17,7 @@ export function buildHostedMagicLinkHtml(
   return buildHostedAuthHtml({
     title: "Email sign-in link",
     description: "We will email you a one-time link to continue.",
-    brand: view.brand,
-    config: view.config,
+    ...viewChrome(view),
     body: `<form id="magic-link-form" class="auth-form" novalidate>
       ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username" })}
       ${hostedButton({ label: "Send sign-in link", loadingLabel: "Sending…" })}

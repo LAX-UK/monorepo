@@ -108,6 +108,10 @@ describe("auth HTTP app composition", () => {
     expect(paths).toContain("/hosted-auth-runtime.js");
     expect(paths).toContain("/hosted-auth/lockups/lax-account.svg");
     expect(paths).toContain("/hosted-auth/lockups/lax-account-dark.svg");
+    expect(paths).toContain("/hosted-auth/lockups/lax-bid-compact.svg");
+    expect(paths).toContain("/hosted-auth/lockups/lax-art-dark.svg");
+    expect(paths).toContain("/hosted-auth/images/signin-gallery.webp");
+    expect(paths).toContain("/hosted-theme.js");
     expect(paths).toContain("/hosted-auth/fonts/montserrat-latin-wght-normal.woff2");
     expect(paths).toContain("/hosted-auth/favicons/favicon-32x32.png");
   });
@@ -120,7 +124,9 @@ describe("auth HTTP app composition", () => {
     expect(response.status).toBe(200);
     const html = await response.text();
     expect(html).toContain("/hosted-auth/lockups/lax-account.svg");
-    expect(html).toContain("Continue to <strong>LAX Shop</strong>");
+    expect(html).toContain(
+      'to continue to <span class="product-name product-name--shop">LAX Shop</span>',
+    );
     expect(html).toContain("/hosted-auth/favicons/favicon.ico");
     expect(html).toContain("Sign in");
     expect(html).toContain("field-control");
@@ -132,14 +138,16 @@ describe("auth HTTP app composition", () => {
     expect(html).not.toContain('params.get("callbackURL")');
   });
 
-  it("renders the same LAX Account frame for Bid with the Bid chip", async () => {
+  it("renders the same LAX Account frame for Bid, naming Bid as the destination", async () => {
     const app = buildApp();
     const response = await app.request("https://auth.test/login?client_id=lax-bid-web");
     expect(response.status).toBe(200);
     const html = await response.text();
     expect(html).toContain("/hosted-auth/lockups/lax-account.svg");
-    expect(html).toContain("Continue to <strong>LAX Bid</strong>");
-    expect(html).toContain('media="(prefers-color-scheme: dark)"');
+    expect(html).toContain(
+      'to continue to <span class="product-name product-name--bid">LAX Bid</span>',
+    );
+    expect(html).toContain('class="brand-logo only-dark"');
     expect(html).toContain("/hosted-auth/lockups/lax-account-dark.svg");
     expect(html).toContain("product-back-link");
     expect(html).toContain("Back to LAX Bid");
@@ -150,6 +158,12 @@ describe("auth HTTP app composition", () => {
     const lockup = await app.request("https://auth.test/hosted-auth/lockups/lax-account-dark.svg");
     expect(lockup.status).toBe(200);
     expect(lockup.headers.get("content-type")).toContain("image/svg+xml");
+    const painting = await app.request("https://auth.test/hosted-auth/images/signin-gallery.webp");
+    expect(painting.status).toBe(200);
+    expect(painting.headers.get("content-type")).toBe("image/webp");
+    const theme = await app.request("https://auth.test/hosted-theme.js");
+    expect(theme.status).toBe(200);
+    expect(theme.headers.get("content-type")).toContain("text/javascript");
     const font = await app.request(
       "https://auth.test/hosted-auth/fonts/outfit-latin-wght-normal.woff2",
     );
@@ -249,16 +263,16 @@ describe("auth HTTP app composition", () => {
     expect(await response.text()).toContain("Sign in");
   });
 
-  it("serves scoped hosted CSS without global button or boxed input rules", async () => {
+  it("serves scoped hosted CSS without global button or input rules", async () => {
     const app = buildApp();
     const response = await app.request("https://auth.test/hosted-auth.css");
     expect(response.status).toBe(200);
     const css = await response.text();
-    expect(css).toContain("--auth-column: 528px");
+    expect(css).toContain("--auth-column: 28rem");
     expect(css).toContain(".field-control");
     expect(css).toContain(".btn-reveal");
-    expect(css).toContain("border-bottom: 1px solid var(--color-input-border)");
-    expect(css).toContain(".field-input:focus + .field-label");
+    expect(css).toContain("border: 1px solid var(--color-input-border)");
+    expect(css).toContain(".field-input:focus-visible");
     expect(css).toContain(".field-input:-webkit-autofill");
     expect(css).not.toContain("input:not([type=");
     expect(css).not.toContain("button {");
