@@ -289,3 +289,9 @@ export {
   type OpeningAccountInput,
   type UsableAccount,
 } from "./opening-account.js";
+export {
+  consignmentStage,
+  type ConsignmentAfterSaleStage,
+  type ConsignmentStage,
+  type ConsignmentStageFacts,
+} from "./consignment-stage.js";

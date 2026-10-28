@@ -1,3 +1,5 @@
+import type { ItemSubmissionStatus } from "./item-submission.js";
+
 /** What a seller can ask for when a consigned lot ends without selling. */
 export const unsoldLotChoiceKinds = ["relist", "private_sale", "collect"] as const;
 export type UnsoldLotChoiceKind = (typeof unsoldLotChoiceKinds)[number];
@@ -87,6 +89,8 @@ export type SellerUnsoldLotView = {
 
 /** After-sale facts for one consignment, for the seller. */
 export type SellerAfterSaleView = {
+  /** The consignment's stage, for its status pill. */
+  stage: ConsignmentStage;
   unsold: SellerUnsoldLotView | null;
   withdrawal: {
     path: ConsignmentWithdrawalPathKind;
@@ -136,3 +140,18 @@ export type SellerIdentityReminderState = {
   /** The earliest time another reminder may go out. */
   nextAllowedAt: Date | null;
 };
+
+/** After the sale, a consignment's stage follows its lot and the unsold choice. */
+export const consignmentAfterSaleStages = [
+  "unsold",
+  "relist_requested",
+  "private_sale_requested",
+  "collect_requested",
+  "relist_confirmed",
+  "private_sale_confirmed",
+  "collect_confirmed",
+] as const;
+export type ConsignmentAfterSaleStage = (typeof consignmentAfterSaleStages)[number];
+
+/** What a seller sees as a consignment's stage: its submission status, or where it is after the sale. */
+export type ConsignmentStage = ItemSubmissionStatus | ConsignmentAfterSaleStage;

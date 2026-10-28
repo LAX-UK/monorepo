@@ -55,6 +55,7 @@ function setup(options: Setup = {}) {
     status: options.submissionStatus ?? "converted",
     convertedLotId: options.lotStatus === null ? null : lotId,
     identityReminderSentAt: options.identityReminderSentAt ?? null,
+    assignedToUserId: "specialist-1",
   } as ItemSubmission;
   const lot = {
     id: lotId,
@@ -79,7 +80,10 @@ function setup(options: Setup = {}) {
       : {}),
   });
   const choices = new InMemoryUnsoldLotChoices();
-  const notifier = { notify: vi.fn().mockResolvedValue(undefined) };
+  const notifier = {
+    notify: vi.fn().mockResolvedValue(undefined),
+    notifyStaff: vi.fn().mockResolvedValue(undefined),
+  };
   const events = { publish: vi.fn().mockResolvedValue(undefined), withTx: vi.fn() };
   const withdrawSubmission = vi.fn().mockResolvedValue(ok(submission));
   const requestLotWithdrawal = vi.fn().mockResolvedValue(ok({ alreadyPending: false }));
@@ -142,6 +146,7 @@ function setup(options: Setup = {}) {
       withdrawSubmission,
       requestLotWithdrawal,
       notifier,
+      staffNotifier: notifier,
       events,
     }),
     move: new ConsignmentMoveService({
@@ -291,6 +296,7 @@ describe("GET /submissions/:id/after-sale", () => {
     }>(await setup({ role: "owner" }).get("/after-sale"));
     expect(owner.data.unsold).toMatchObject({ canChoose: true, reserveFloor: "3000.00" });
     expect(owner.data.withdrawal.path).toBe("unavailable");
+    expect((owner.data as unknown as { stage: string }).stage).toBe("unsold");
     const consignor = await json<{ data: { unsold: { canChoose: boolean } } }>(
       await setup({ role: "consignor" }).get("/after-sale"),
     );
@@ -387,6 +393,10 @@ describe("POST /submissions/:id/withdrawal", () => {
       expect(s.withdrawSubmission).toHaveBeenCalledWith(entityId, submissionId);
       expect(s.events.publish).toHaveBeenCalledWith(
         expect.objectContaining({ eventType: "submission.withdrawn" }),
+      );
+      expect(s.notifier.notifyStaff).toHaveBeenCalledWith(
+        "specialist-1",
+        expect.objectContaining({ title: "A seller withdrew a consignment" }),
       );
     },
   );

@@ -1,8 +1,10 @@
 import {
+  type ConsignmentStage,
   type EntityActor,
   type UnsoldChoiceRefusal,
   type UnsoldChoiceState,
   canChooseUnsoldOutcome,
+  consignmentStage,
   decideUnsoldChoiceConfirmation,
   decideUnsoldChoiceRequest,
   lotEndedUnsold,
@@ -54,6 +56,8 @@ export interface IUnsoldLotChoiceService {
     actor: EntityActor | null,
   ): Promise<SellerUnsoldLotView | null>;
   staffView(submission: ItemSubmission): Promise<Omit<SellerUnsoldLotView, "canChoose"> | null>;
+  /** Where the consignment is after the sale (or its submission status before it). */
+  stageOf(submission: ItemSubmission): Promise<ConsignmentStage>;
   request(
     submissionId: string,
     seller: AfterSaleSeller,
@@ -148,6 +152,17 @@ export class UnsoldLotChoiceService implements IUnsoldLotChoiceService {
     const context = await this.unsoldContext(submission);
     if (!context) return null;
     return { ...(await this.view(context)), canChoose: canChooseUnsoldOutcome(actor) };
+  }
+
+  async stageOf(submission: ItemSubmission): Promise<ConsignmentStage> {
+    const lot = submission.convertedLotId
+      ? await this.deps.lots.findById(submission.convertedLotId)
+      : null;
+    const choice =
+      lot && lotEndedUnsold(lot)
+        ? await this.deps.choices.findForOutcome({ lotId: lot.id, lotEndTime: lot.endTime })
+        : null;
+    return consignmentStage({ submissionStatus: submission.status, lot, unsoldChoice: choice });
   }
 
   async staffView(

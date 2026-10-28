@@ -49,11 +49,12 @@ export class ConsignmentAfterSaleHttpApplicationService
   ): Promise<SubmissionHttpJson> {
     const submission = await this.deps.submissions.findById(submissionId);
     if (!submission || submission.legalEntityId !== seller.legalEntityId) return NOT_FOUND;
-    const [unsold, withdrawal] = await Promise.all([
+    const [stage, unsold, withdrawal] = await Promise.all([
+      this.deps.unsold.stageOf(submission),
       this.deps.unsold.sellerView(submission, seller.actor),
       this.deps.withdrawal.sellerView(submission, seller),
     ]);
-    const data: SellerAfterSaleView = { unsold, withdrawal };
+    const data: SellerAfterSaleView = { stage, unsold, withdrawal };
     return { status: 200, body: { data } };
   }
 
