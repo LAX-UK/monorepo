@@ -163,6 +163,8 @@ export { ChoiceFieldset } from "./forms/choice-fieldset.js";
 export type { ChoiceFieldsetProps } from "./forms/choice-fieldset.js";
 export { ReviewSection, StepHeader, StepIndicator } from "./forms/wizard.js";
 export { ListEditor } from "./forms/list-editor.js";
+export { SortableList } from "./forms/sortable-list.js";
+export type { SortableListProps } from "./forms/sortable-list.js";
 export { RichTextField } from "./forms/rich-text-field.js";
 export type { RichTextFieldProps } from "./forms/rich-text-field.js";
 export {
