@@ -30,7 +30,7 @@ describe("DotStatusPill", () => {
     const { container: live } = render(<DotStatusPill label="Live" tone="live" />);
     const liveShell = live.firstChild as HTMLElement;
     expect(liveShell.className).toMatch(/bg-danger-container/);
-    expect(liveShell.className).toMatch(/text-live-red/);
+    expect(liveShell.className).toMatch(/text-danger-on-surface/);
     expect(liveShell.querySelector("svg.lucide-radio")).not.toBeNull();
   });
 

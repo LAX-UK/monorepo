@@ -2,19 +2,12 @@ import { EMPTY_SUBMISSION_FORM_VALUES } from "@/lib/forms/submission/item-submis
 import { Form } from "@auction/ui/components/form";
 import type { ItemSubmissionFormValues } from "@auction/validators";
 import { render } from "@testing-library/react";
-import type { ReactNode } from "react";
 import { useForm } from "react-hook-form";
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import { BasicsStep } from "./basics-step";
 import { DetailsStep } from "./details-step";
 import { PricingStep } from "./pricing-step";
 import { ProvenanceStep } from "./provenance-step";
-
-vi.mock("next/link", () => ({
-  default: ({ href, children }: { href: string; children: ReactNode }) => (
-    <a href={href}>{children}</a>
-  ),
-}));
 
 type Step = typeof DetailsStep;
 

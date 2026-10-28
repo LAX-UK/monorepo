@@ -24,7 +24,7 @@ function pillTokens(tone: DotStatusPillTone) {
   const glyph = pill.firstElementChild as HTMLElement;
   const token = (el: Element, prefix: "bg" | "text") => {
     // The colour class comes after size classes such as text-xs.
-    const match = [...el.classList].findLast((c) => c.startsWith(`${prefix}-`));
+    const match = [...el.classList].filter((c) => c.startsWith(`${prefix}-`)).at(-1);
     if (!match) throw new Error(`${tone}: no ${prefix} class`);
     return match.slice(prefix.length + 1);
   };
