@@ -279,6 +279,7 @@ describe("tile figures", () => {
     expect(tile).toEqual({
       kind: "in_upcoming_sales",
       empty: false,
+      own: false,
       works: 4,
       estimates: [
         { currency: "EUR", low: "3000.00", high: "4000.00" },
@@ -292,12 +293,26 @@ describe("tile figures", () => {
     expect(tile).toEqual({
       kind: "works_by_stage",
       empty: false,
+      own: false,
       total: 10,
       busiest: [
         { stage: "sold", count: 4 },
         { stage: "in_sale", count: 3 },
       ],
     });
+  });
+
+  it("says when a figure counts only the member's own records", () => {
+    const own = (role: LegalEntityMemberRole) =>
+      buildOrganisationDashboard({ role }, BUSY).tiles.map((tile) =>
+        "own" in tile ? [tile.kind, tile.own] : [tile.kind],
+      );
+    expect(own("consignor")).toEqual([
+      ["works_by_stage", true],
+      ["in_upcoming_sales", true],
+    ]);
+    expect(own("buyer_agent")[0]).toEqual(["open_bids", true]);
+    expect(own("owner")).toContainEqual(["open_bids", false]);
   });
 
   it("counts the sales a buyer agent may bid in and still has to register for", () => {

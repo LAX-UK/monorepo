@@ -116,11 +116,19 @@ export type DashboardTile =
   | {
       kind: "works_by_stage";
       empty: boolean;
+      /** Only the member's own submissions are counted. */
+      own: boolean;
       total: number;
       /** The two busiest stages, largest first. */
       busiest: { stage: ConsignmentProgressStage; count: number }[];
     }
-  | { kind: "in_upcoming_sales"; empty: boolean; works: number; estimates: EstimateTotal[] }
+  | {
+      kind: "in_upcoming_sales";
+      empty: boolean;
+      own: boolean;
+      works: number;
+      estimates: EstimateTotal[];
+    }
   | { kind: "sold_this_year"; empty: boolean; year: number; works: number; totals: MoneyTotal[] }
   | {
       kind: "payouts_due";
@@ -129,7 +137,7 @@ export type DashboardTile =
       totals: MoneyTotal[];
       nextDate: Date | null;
     }
-  | { kind: "open_bids"; empty: boolean; lots: number; totalMax: MoneyTotal[] }
+  | { kind: "open_bids"; empty: boolean; own: boolean; lots: number; totalMax: MoneyTotal[] }
   | { kind: "purchases_to_pay"; empty: boolean; purchases: number; totals: MoneyTotal[] }
   | { kind: "bid_limit"; empty: boolean; limit: BidLimitSummary }
   | {
@@ -172,7 +180,8 @@ type TileSpec<G extends DashboardFigureGroup> = {
   kind: DashboardTileKind;
   group: G;
   applies: (actor: EntityActor) => boolean;
-  build: (figure: NonNullable<DashboardFigures[G]>) => DashboardTile;
+  /** `own` is set when the figure counts only the member's own records. */
+  build: (figure: NonNullable<DashboardFigures[G]>, own: boolean) => DashboardTile;
 };
 
 function tile<G extends DashboardFigureGroup>(spec: TileSpec<G>): TileSpec<DashboardFigureGroup> {
@@ -193,20 +202,27 @@ const TILE_SPECS: readonly TileSpec<DashboardFigureGroup>[] = [
     kind: "works_by_stage",
     group: "consignmentProgress",
     applies: (a) => reads(a, "entity.consignments.read") && !reads(a, "entity.payouts.read"),
-    build: (counts) => {
+    build: (counts, own) => {
       const total = consignmentsInProgress(counts);
-      return { kind: "works_by_stage", empty: total === 0, total, busiest: busiestStages(counts) };
+      return {
+        kind: "works_by_stage",
+        empty: total === 0,
+        own,
+        total,
+        busiest: busiestStages(counts),
+      };
     },
   }),
   tile({
     kind: "in_upcoming_sales",
     group: "upcomingSales",
     applies: (a) => reads(a, "entity.submissions.create"),
-    build: (sales) => {
+    build: (sales, own) => {
       const works = sales.reduce((sum, sale) => sum + sale.works, 0);
       return {
         kind: "in_upcoming_sales",
         empty: works === 0,
+        own,
         works,
         estimates: sumEstimatesByCurrency(sales.flatMap((sale) => sale.estimates)),
       };
@@ -228,7 +244,7 @@ const TILE_SPECS: readonly TileSpec<DashboardFigureGroup>[] = [
     kind: "open_bids",
     group: "openBids",
     applies: (a) => reads(a, "entity.bid.place"),
-    build: (bids) => ({ kind: "open_bids", empty: bids.lots === 0, ...bids }),
+    build: (bids, own) => ({ kind: "open_bids", empty: bids.lots === 0, own, ...bids }),
   }),
   tile({
     // Finance pays; the people who run the organisation see purchases in "Needs you".
@@ -359,7 +375,8 @@ export function buildOrganisationDashboard(
   }
   const tiles = tileSpecsFor(actor).flatMap((spec) => {
     const figure = figures[spec.group];
-    return figure === undefined ? [] : [spec.build(figure)];
+    const own = dashboardFigureScope(actor, spec.group) === "own";
+    return figure === undefined ? [] : [spec.build(figure, own)];
   });
   const sections = new Set(dashboardSectionsFor(actor));
   const progress = figures.consignmentProgress;
