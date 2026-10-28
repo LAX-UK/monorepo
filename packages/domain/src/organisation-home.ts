@@ -270,6 +270,28 @@ export function homeActivityArchive(actor: EntityActor): HomeActivityArchive | n
   return ARCHIVE_SPECS.find((spec) => canRead(actor, spec.capability))?.archive ?? null;
 }
 
+/**
+ * Who each setup state concerns. Documents and approval concern everyone in the organisation;
+ * payouts concern only the people who sell or settle, so a buyer agent is not told about them.
+ */
+const SETUP_AUDIENCE: Record<OrganisationSetupState, readonly EntityCapability[] | "everyone"> = {
+  documents_requested: "everyone",
+  documents_under_review: "everyone",
+  not_approved: "everyone",
+  payouts_not_set_up: ["entity.consignments.read", "entity.connect.operate"],
+};
+
+/** The setup line this member sees, or `null`. */
+export function homeSetupState(
+  facts: Pick<OrganisationHomeFacts, "actor" | "organisation">,
+): OrganisationSetupState | null {
+  const state = organisationSetupState(facts.organisation);
+  if (!state) return null;
+  const audience = SETUP_AUDIENCE[state];
+  if (audience === "everyone") return state;
+  return audience.some((name) => canRead(facts.actor, name)) ? state : null;
+}
+
 /** Home for one member, built from facts alone. */
 export type OrganisationHomeModel = {
   /** `null` when the role has nothing it could ever be asked to do (the section is hidden). */
@@ -287,7 +309,7 @@ export function buildOrganisationHome(
   const askable = homeTaskKindsFor(facts.actor).length > 0;
   return {
     tasks: askable ? homeTasks(facts) : null,
-    setup: organisationSetupState(facts.organisation),
+    setup: homeSetupState(facts),
     shortcuts: homeShortcuts(facts.actor),
     activity: homeActivity(activity, facts.actor),
     activityArchive: homeActivityArchive(facts.actor),
