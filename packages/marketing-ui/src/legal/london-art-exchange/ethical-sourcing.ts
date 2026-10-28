@@ -47,7 +47,7 @@ export const ETHICAL_SOURCING_POLICY: LegalPolicyDocument<"ethical-sourcing"> = 
       blocks: [
         {
           type: "paragraph",
-          text: "A concern about our operations or supply relationships may be reported to info@thelax.art or by post to the registered office, marked Confidential - Ethical Sourcing.",
+          text: "A concern about our operations or supply relationships may be reported to info@lax.art or by post to the registered office, marked Confidential - Ethical Sourcing.",
         },
         {
           type: "paragraph",

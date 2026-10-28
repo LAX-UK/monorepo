@@ -66,7 +66,7 @@ export const AML_IDENTITY_CHECKS_POLICY: LegalPolicyDocument<"aml-identity-check
       blocks: [
         {
           type: "paragraph",
-          text: "Questions about identity checks may be sent to info@thelax.art. Do not email passports, bank statements or other sensitive documents. We will provide secure upload or verified in-person instructions when documents are required.",
+          text: "Questions about identity checks may be sent to info@lax.art. Do not email passports, bank statements or other sensitive documents. We will provide secure upload or verified in-person instructions when documents are required.",
         },
       ],
     },

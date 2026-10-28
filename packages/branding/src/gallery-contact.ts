@@ -19,6 +19,6 @@ export const GALLERY_CONTACT = {
   address: `${postal.streetAddress}, ${postal.addressLocality}`,
   phone: "+44 800 208 4800",
   phoneHref: "tel:+448002084800",
-  email: "info@thelax.art",
+  email: "info@lax.art",
   openingHours: OPENING_HOURS,
 } as const;

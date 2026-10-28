@@ -24,7 +24,7 @@ export const PRIVACY_POLICY: LegalPolicyDocument<"privacy"> = {
         },
         {
           type: "paragraph",
-          text: "Privacy contact: info@thelax.art; telephone +44 800 208 4800; postal address: the registered office above, marked Privacy.",
+          text: "Privacy contact: info@lax.art; telephone +44 800 208 4800; postal address: the registered office above, marked Privacy.",
         },
       ],
     },
@@ -309,7 +309,7 @@ export const PRIVACY_POLICY: LegalPolicyDocument<"privacy"> = {
         },
         {
           type: "paragraph",
-          text: "Contact info@thelax.art. We may request proportionate identity evidence. We normally respond without undue delay and within one month; a lawful extension may apply to a complex or numerous request, with notice.",
+          text: "Contact info@lax.art. We may request proportionate identity evidence. We normally respond without undue delay and within one month; a lawful extension may apply to a complex or numerous request, with notice.",
         },
       ],
     },

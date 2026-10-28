@@ -2,13 +2,10 @@ import { GALLERY_CONTACT } from "@auction/branding";
 import { LAX_ART_POLICIES, type LegalPolicyDocument } from "@auction/marketing-ui";
 import { SHOP_POLICY_PATHS, SHOP_POLICY_SOURCES } from "./shop-policy-status";
 
-/** The gallery's address for email, written out on the help page as www.thelax.art does. */
-const GALLERY_EMAIL = "info@lax.art";
-
-/** Contact details for the help page; the phone is the gallery's, from the shared contact. */
+/** Contact details for the help page; the phone and email are the gallery's, from the shared contact. */
 export const SHOP_HELP_CONTACT = {
-  email: GALLERY_EMAIL.replace("@", "(@)"),
-  emailHref: `mailto:${GALLERY_EMAIL}`,
+  email: GALLERY_CONTACT.email.replace("@", "(@)"),
+  emailHref: `mailto:${GALLERY_CONTACT.email}`,
   phone: `Phone: ${GALLERY_CONTACT.phone}`,
   address: "156 New Cavendish St, London W1W 6YW",
 } as const;

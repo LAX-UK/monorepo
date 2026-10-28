@@ -34,7 +34,7 @@ export const RETURNS_POLICY: LegalPolicyDocument<"returns"> = {
         },
         {
           type: "paragraph",
-          text: "2.3 Tell us before the deadline by a clear statement sent to info@thelax.art, by post to the registered office, or by another contact method we state. A reason is optional. You may use the model form below.",
+          text: "2.3 Tell us before the deadline by a clear statement sent to info@lax.art, by post to the registered office, or by another contact method we state. A reason is optional. You may use the model form below.",
         },
         {
           type: "paragraph",
@@ -137,7 +137,7 @@ export const RETURNS_POLICY: LegalPolicyDocument<"returns"> = {
         },
         {
           type: "paragraph",
-          text: "To: London Art Exchange Ltd, London Art Exchange, 156 New Cavendish Street, London, United Kingdom, W1W 6YW; email: info@thelax.art",
+          text: "To: London Art Exchange Ltd, London Art Exchange, 156 New Cavendish Street, London, United Kingdom, W1W 6YW; email: info@lax.art",
         },
         {
           type: "paragraph",
