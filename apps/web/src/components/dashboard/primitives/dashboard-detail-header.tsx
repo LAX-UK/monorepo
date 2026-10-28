@@ -1,7 +1,7 @@
 import {
   type AccentTrack,
+  BACK_LINK_CLASS,
   accentEyebrowClass,
-  accentLinkClass,
 } from "@/lib/dashboard/accent-track";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -63,7 +63,7 @@ export function DashboardDetailHeader({
             asChild
             className={cn(
               "min-h-11 w-fit gap-1 px-2 font-label text-xs font-semibold",
-              accentLinkClass(track),
+              BACK_LINK_CLASS,
               compact && "hidden lg:inline-flex",
             )}
           >

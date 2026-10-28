@@ -6,11 +6,12 @@ export function accentEyebrowClass(track: AccentTrack = "buying"): string {
   return "text-accent-buying";
 }
 
-export function accentLinkClass(track: AccentTrack = "buying"): string {
-  if (track === "selling") return "text-lot-orange hover:underline";
-  if (track === "live") return "text-live-red hover:underline";
-  return "text-link hover:underline";
-}
+/**
+ * Back links ("‹ Consignments") are navigation, not an accent: one neutral treatment on every
+ * track, at least 4.5:1 on the page in light and dark.
+ */
+export const BACK_LINK_CLASS =
+  "text-on-surface-variant underline-offset-4 hover:text-on-surface hover:underline";
 
 export function accentHeroBorderClass(track: AccentTrack = "buying"): string {
   if (track === "selling") return "border-lot-orange/30";
