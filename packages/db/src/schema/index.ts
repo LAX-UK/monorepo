@@ -5,6 +5,7 @@ export * from "./staff-role-assignment.js";
 export * from "./shop-user-profile.js";
 export * from "./shop-session.js";
 export * from "./shop-commerce.js";
+export * from "./shop-artist-application.js";
 export * from "./shop-editorial.js";
 export * from "./user-invitation.js";
 export * from "./lots.js";

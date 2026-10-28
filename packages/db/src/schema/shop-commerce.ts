@@ -1483,6 +1483,8 @@ export const shopMediaKindEnum = pgEnum("shop_media_kind", [
   "editorial_cover",
   "editorial_inline",
   "venue_image",
+  /** An image an artist uploads with an application; seen only by the applicant and staff. */
+  "artist_application_image",
 ]);
 
 export const shopMediaAssetStatusEnum = pgEnum("shop_media_asset_status", [
