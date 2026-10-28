@@ -178,7 +178,7 @@ describe("InvitationService.create", () => {
     };
     expect(call.vars.grants.map((g) => `${g.platform}:${g.role}`)).toEqual([
       "Bid:Specialist",
-      "Shop:Broker",
+      "LAX Admin:Broker",
     ]);
     expect(call.vars.actionUrl).toMatch(
       /^https:\/\/web\.test\/register\?invite=[^&]+&next=%2Finvitations%2Fwelcome%3Fplatforms%3Dbid%2Cshop$/,
@@ -240,6 +240,31 @@ describe("InvitationService.create", () => {
     expect(deps.invites.insert).toHaveBeenCalledWith(
       expect.objectContaining({ targetRole: "client", targetStaffRole: null }),
     );
+  });
+
+  it("invites to several LAX Admin roles, and refuses a forbidden pair", async () => {
+    const ok = await deps.svc.create({
+      actorUserId: "actor-1",
+      email: "editor@example.com",
+      grants: [
+        { product: "shop", role: "editor" },
+        { product: "shop", role: "catalogue_editor" },
+      ],
+    });
+    expect(ok.isOk()).toBe(true);
+    const refused = await deps.svc.create({
+      actorUserId: "actor-1",
+      email: "mixed@example.com",
+      grants: [
+        { product: "shop", role: "broker" },
+        { product: "shop", role: "finance" },
+      ],
+    });
+    expect(refused.isErr() && refused.error).toEqual({
+      status: 400,
+      message:
+        "Finance can't be combined with Broker. Moving money and selling to clients are kept with different people.",
+    });
   });
 
   it("rejects roles that do not exist on the platform", async () => {

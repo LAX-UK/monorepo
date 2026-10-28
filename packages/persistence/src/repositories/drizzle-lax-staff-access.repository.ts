@@ -11,15 +11,18 @@ import type {
   ILaxStaffAccessRepository,
   LaxStaffAccessEntry,
   LaxStaffAccessHistoryEntry,
-  LaxStaffAccessRequest,
 } from "../interfaces/lax-staff-access.repository.js";
 
 const GRANTED = "lax.staff_access.granted";
 const REVOKED = "lax.staff_access.revoked";
 
-export type LaxStaffAccessEvent =
+export type LaxStaffAccessEvent = (
   | { type: typeof GRANTED; payload: LaxStaffAccessGrantedPayloadV1 }
-  | { type: typeof REVOKED; payload: LaxStaffAccessRevokedPayloadV1 };
+  | { type: typeof REVOKED; payload: LaxStaffAccessRevokedPayloadV1 }
+) & {
+  /** Who acted; null when nobody did (an end date passing). Defaults to the payload's actor. */
+  actorUserId?: string | null;
+};
 
 /** Inserts staff access events inside the caller's transaction (aggregate = subject). */
 export async function insertLaxStaffAccessEvents(
@@ -36,19 +39,18 @@ export async function insertLaxStaffAccessEvents(
       producer,
       payload: event.payload,
       actorUserId:
-        event.type === GRANTED
-          ? event.payload.grantedBySubjectId
-          : event.payload.revokedBySubjectId,
+        event.actorUserId !== undefined
+          ? event.actorUserId
+          : event.type === GRANTED
+            ? event.payload.grantedBySubjectId
+            : event.payload.revokedBySubjectId,
       schemaVersion: 1,
     })),
   );
 }
 
 export class DrizzleLaxStaffAccessRepository implements ILaxStaffAccessRepository {
-  constructor(
-    private readonly db: Database,
-    private readonly producer = "apps/api",
-  ) {}
+  constructor(private readonly db: Database) {}
 
   async listForSubjects(subjectIds: readonly string[]): Promise<LaxStaffAccessEntry[]> {
     if (subjectIds.length === 0) return [];
@@ -106,35 +108,5 @@ export class DrizzleLaxStaffAccessRepository implements ILaxStaffAccessRepositor
         },
       ];
     });
-  }
-
-  async requestGrant(input: LaxStaffAccessRequest & { role: string }): Promise<void> {
-    await insertLaxStaffAccessEvents(this.db, this.producer, [
-      {
-        type: GRANTED,
-        payload: {
-          schemaVersion: 1,
-          subjectId: input.subjectId,
-          product: input.product,
-          role: input.role,
-          grantedBySubjectId: input.actorSubjectId,
-          invitationId: null,
-        },
-      },
-    ]);
-  }
-
-  async requestRevoke(input: LaxStaffAccessRequest): Promise<void> {
-    await insertLaxStaffAccessEvents(this.db, this.producer, [
-      {
-        type: REVOKED,
-        payload: {
-          schemaVersion: 1,
-          subjectId: input.subjectId,
-          product: input.product,
-          revokedBySubjectId: input.actorSubjectId,
-        },
-      },
-    ]);
   }
 }

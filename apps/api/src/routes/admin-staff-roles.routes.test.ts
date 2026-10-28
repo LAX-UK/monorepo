@@ -22,6 +22,13 @@ function buildApp(options: { staffRoles?: StaffRoles; recent?: boolean } = {}) {
     ),
     accessReview: vi.fn().mockResolvedValue([]),
   };
+  const laxAdminRoles = {
+    overview: vi
+      .fn()
+      .mockResolvedValue(ok({ userId: "usr_a", roles: [], otherActiveAdministrators: 1 })),
+    assign: vi.fn().mockResolvedValue(ok(undefined)),
+    remove: vi.fn().mockResolvedValue(ok(undefined)),
+  };
   const container = {
     env: { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
     admin: {
@@ -32,6 +39,7 @@ function buildApp(options: { staffRoles?: StaffRoles; recent?: boolean } = {}) {
       staffTwoFactorPolicy: { readStaffPolicy: vi.fn(), setStaffPolicy: vi.fn() },
       staffAccess: {},
       staffRoles,
+      laxAdminRoles,
       stepUp: stubStepUpGuard(options.recent ?? true),
       idempotencyStore: new InMemoryIdempotencyStore(),
     },
@@ -47,7 +55,7 @@ function buildApp(options: { staffRoles?: StaffRoles; recent?: boolean } = {}) {
   };
   const app = new Hono();
   app.route("/admin", createAdminRoutes(container, authenticator));
-  return { app, staffRoles };
+  return { app, staffRoles, laxAdminRoles };
 }
 
 const request = (method: string, body?: unknown) => ({
@@ -125,5 +133,74 @@ describe("admin staff roles routes", () => {
   it("keeps the access review from roles without staff access", async () => {
     const { app } = buildApp({ staffRoles: ["saleroom_clerk"] });
     expect((await app.request("/admin/staff/access-review", request("GET"))).status).toBe(403);
+  });
+});
+
+describe("admin LAX Admin roles routes", () => {
+  it("gives a LAX Admin role with its end date and reason", async () => {
+    const { app, laxAdminRoles } = buildApp();
+    const res = await app.request(
+      "/admin/staff/usr_a/lax-admin-roles",
+      request("POST", {
+        role: "editor",
+        endsAt: "2026-12-01T00:00:00.000Z",
+        reason: "Autumn exhibitions",
+      }),
+    );
+    expect(res.status).toBe(200);
+    expect(laxAdminRoles.assign).toHaveBeenCalledWith({
+      userId: "usr_a",
+      actorUserId: "usr_admin",
+      role: "editor",
+      endsAt: new Date("2026-12-01T00:00:00.000Z"),
+      reason: "Autumn exhibitions",
+    });
+  });
+
+  it("removes a LAX Admin role with a reason", async () => {
+    const { app, laxAdminRoles } = buildApp();
+    const res = await app.request(
+      "/admin/staff/usr_a/lax-admin-roles/remove",
+      request("POST", { role: "broker", reason: "Moved team" }),
+    );
+    expect(res.status).toBe(200);
+    expect(laxAdminRoles.remove).toHaveBeenCalledWith({
+      userId: "usr_a",
+      actorUserId: "usr_admin",
+      role: "broker",
+      reason: "Moved team",
+    });
+  });
+
+  it("refuses a role LAX Admin does not have, and a Bid role name", async () => {
+    const { app, laxAdminRoles } = buildApp();
+    for (const role of ["administrator", "cataloguer"]) {
+      const res = await app.request(
+        "/admin/staff/usr_a/lax-admin-roles",
+        request("POST", { role, reason: "Cover" }),
+      );
+      expect(res.status).toBe(400);
+    }
+    expect(laxAdminRoles.assign).not.toHaveBeenCalled();
+  });
+
+  it("asks for a fresh sign-in, and lets read-only staff read but change nothing", async () => {
+    const stale = buildApp({ recent: false });
+    const res = await stale.app.request(
+      "/admin/staff/usr_a/lax-admin-roles",
+      request("POST", { role: "editor", reason: "Cover" }),
+    );
+    expect(res.status).toBe(403);
+
+    const reader = buildApp({ staffRoles: ["read_only"] });
+    expect(
+      (await reader.app.request("/admin/staff/usr_a/lax-admin-roles", request("GET"))).status,
+    ).toBe(200);
+    const change = await reader.app.request(
+      "/admin/staff/usr_a/lax-admin-roles/remove",
+      request("POST", { role: "editor", reason: "Cover" }),
+    );
+    expect(change.status).toBe(403);
+    expect(reader.laxAdminRoles.remove).not.toHaveBeenCalled();
   });
 });

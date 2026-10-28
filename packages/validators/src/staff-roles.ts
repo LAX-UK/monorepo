@@ -1,4 +1,4 @@
-import { userStaffRoles } from "@auction/types";
+import { laxShopStaffRoles, userStaffRoles } from "@auction/types";
 import { z } from "zod";
 
 /** Every role change is audited with a reason someone else can follow later. */
@@ -20,5 +20,20 @@ export const adminRemoveStaffRoleBodySchema = z.object({
   reason: reasonSchema,
 });
 
+/** Give a person one more LAX Admin role, until removed or until `endsAt`. */
+export const adminAssignLaxAdminRoleBodySchema = z.object({
+  role: z.enum(laxShopStaffRoles),
+  endsAt: z.string().datetime({ offset: true }).nullable().optional(),
+  reason: reasonSchema,
+});
+
+/** End a LAX Admin role a person holds, now. */
+export const adminRemoveLaxAdminRoleBodySchema = z.object({
+  role: z.enum(laxShopStaffRoles),
+  reason: reasonSchema,
+});
+
+export type AdminAssignLaxAdminRoleBody = z.infer<typeof adminAssignLaxAdminRoleBodySchema>;
+export type AdminRemoveLaxAdminRoleBody = z.infer<typeof adminRemoveLaxAdminRoleBodySchema>;
 export type AdminAssignStaffRoleBody = z.infer<typeof adminAssignStaffRoleBodySchema>;
 export type AdminRemoveStaffRoleBody = z.infer<typeof adminRemoveStaffRoleBodySchema>;

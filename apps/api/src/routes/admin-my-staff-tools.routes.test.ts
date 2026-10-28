@@ -21,8 +21,6 @@ function buildApp(
       directory.map((d) => ({ subjectId: SUBJECT, ...d, updatedAt: T0 })),
     ),
     history: vi.fn(async () => []),
-    requestGrant: vi.fn(async () => {}),
-    requestRevoke: vi.fn(async () => {}),
   };
   const staffAccess = new StaffAccessAdminService({
     access,

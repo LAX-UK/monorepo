@@ -1,4 +1,8 @@
-import type { StaffRoleAssignmentRecord } from "@auction/persistence/interfaces";
+import type {
+  LaxAdminRoleAssignmentRecord,
+  StaffRoleAssignmentRecord,
+} from "@auction/persistence/interfaces";
+import type { LaxShopStaffRole } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { StaffRoleAssignmentRefused } from "./staff-role-assignment.service.js";
 import { StaffRolesAdminService } from "./staff-roles-admin.service.js";
@@ -19,6 +23,22 @@ function assignment(overrides: Partial<StaffRoleAssignmentRecord> = {}): StaffRo
   };
 }
 
+function laxAssignment(subjectId: string, role: LaxShopStaffRole): LaxAdminRoleAssignmentRecord {
+  return {
+    id: `lax-${subjectId}-${role}`,
+    subjectId,
+    role,
+    startsAt: new Date("2026-10-01T09:00:00Z"),
+    endsAt: null,
+    grantedBySubjectId: "admin-1",
+    grantedAt: new Date("2026-10-01T09:00:00Z"),
+    reason: null,
+    endRecordedAt: null,
+    grantedEventId: 1,
+    endedEventId: null,
+  };
+}
+
 function setup(role: "staff" | "client" = "staff") {
   const changes = { assign: vi.fn().mockResolvedValue(undefined), remove: vi.fn() };
   const roles = {
@@ -26,7 +46,23 @@ function setup(role: "staff" | "client" = "staff") {
     listActiveRoles: vi.fn(),
     countOtherActiveAdministrators: vi.fn().mockResolvedValue(2),
   };
-  const users = { getById: vi.fn().mockResolvedValue({ id: "ada", role }) };
+  const users = {
+    getById: vi.fn().mockResolvedValue({ id: "ada", role }),
+    getByIds: vi
+      .fn()
+      .mockResolvedValue([
+        { id: "cy", name: "Cy Twombly", email: "cy@lax.test", suspendedAt: null },
+      ]),
+  };
+  const laxAdminRoles = {
+    listAllCurrent: vi
+      .fn()
+      .mockResolvedValue([
+        laxAssignment("ada", "editor"),
+        laxAssignment("cy", "catalogue_editor"),
+        laxAssignment("cy", "editor"),
+      ]),
+  };
   const review = {
     listStaff: vi.fn().mockResolvedValue([
       {
@@ -54,6 +90,7 @@ function setup(role: "staff" | "client" = "staff") {
     // biome-ignore lint/suspicious/noExplicitAny: the fake returns only the fields read.
     users: users as any,
     review,
+    laxAdminRoles,
     // biome-ignore lint/suspicious/noExplicitAny: the fake returns only the fields read.
     identity: identity as any,
     clock: () => NOW,
@@ -151,8 +188,22 @@ describe("StaffRolesAdminService.accessReview", () => {
     expect(rows.map((row) => [row.userId, row.lastSignInAt, row.roles.length])).toEqual([
       ["ada", "2026-10-27T08:00:00.000Z", 1],
       ["bo", null, 0],
+      ["cy", null, 0],
     ]);
     expect(rows[1]?.suspended).toBe(true);
+  });
+
+  it("lists LAX Admin roles beside Bid ones, and people with LAX Admin roles only", async () => {
+    const { svc } = setup();
+    const rows = await svc.accessReview();
+    expect(
+      rows.map((row) => [row.userId, row.roles.length, row.laxAdminRoles.map((r) => r.role)]),
+    ).toEqual([
+      ["ada", 1, ["editor"]],
+      ["bo", 0, []],
+      ["cy", 0, ["catalogue_editor", "editor"]],
+    ]);
+    expect(rows[2]).toMatchObject({ name: "Cy Twombly", email: "cy@lax.test", suspended: false });
   });
 
   it("shows sign-ins as unknown when identity cannot say", async () => {

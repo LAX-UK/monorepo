@@ -1,5 +1,7 @@
 import {
+  adminAssignLaxAdminRoleBodySchema,
   adminAssignStaffRoleBodySchema,
+  adminRemoveLaxAdminRoleBodySchema,
   adminRemoveStaffRoleBodySchema,
   userIdParamSchema,
 } from "@auction/validators";
@@ -11,6 +13,7 @@ import {
   requireStaffRolesRead,
   requireUserInvite,
 } from "../../middleware/require-capability.js";
+import type { LaxAdminRolesService } from "../../services/staff/lax-admin-roles.service.js";
 import type {
   StaffRolesAdminService,
   StaffRolesError,
@@ -79,6 +82,66 @@ export function attachAdminStaffRolesRoutes(
       return respond(
         c,
         await staffRoles.remove({ userId, actorUserId: c.get("userId") as string, role, reason }),
+      );
+    },
+  );
+}
+
+/**
+ * LAX Admin roles on the same staff record: one person's roles and what is waiting for LAX Admin
+ * to apply, and giving or removing a role, with the same guards as Bid roles.
+ */
+export function attachAdminLaxAdminRolesRoutes(
+  platform: AdminHono,
+  laxAdminRoles: Pick<LaxAdminRolesService, "overview" | "assign" | "remove">,
+  guards: AdminStaffMutationGuards,
+): void {
+  platform.get(
+    "/staff/:userId/lax-admin-roles",
+    requireStaffRolesRead,
+    zValidator("param", userIdParamSchema),
+    async (c) => respond(c, await laxAdminRoles.overview(c.req.valid("param").userId)),
+  );
+
+  platform.post(
+    "/staff/:userId/lax-admin-roles",
+    requireUserInvite,
+    guards.requireStepUp,
+    zValidator("param", userIdParamSchema),
+    zValidator("json", adminAssignLaxAdminRoleBodySchema),
+    async (c) => {
+      const { userId } = c.req.valid("param");
+      const { role, endsAt, reason } = c.req.valid("json");
+      return respond(
+        c,
+        await laxAdminRoles.assign({
+          userId,
+          actorUserId: c.get("userId") as string,
+          role,
+          endsAt: endsAt ? new Date(endsAt) : null,
+          reason,
+        }),
+      );
+    },
+  );
+
+  platform.post(
+    "/staff/:userId/lax-admin-roles/remove",
+    requireUserInvite,
+    guards.requireStepUp,
+    zValidator("param", userIdParamSchema),
+    zValidator("json", adminRemoveLaxAdminRoleBodySchema),
+    async (c) => {
+      const { userId } = c.req.valid("param");
+      const { role, reason } = c.req.valid("json");
+      return respond(
+        c,
+        await laxAdminRoles.remove({
+          userId,
+          actorUserId: c.get("userId") as string,
+          role,
+          reason,
+        }),
       );
     },
   );

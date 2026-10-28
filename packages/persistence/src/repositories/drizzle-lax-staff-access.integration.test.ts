@@ -6,11 +6,13 @@ import {
   domainEvent,
   laxStaffAccessDirectory,
   shopStaffMember,
+  shopStaffRoleAssignment,
   user,
 } from "@auction/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
+import { DrizzleLaxAdminRolesRepository } from "./drizzle-lax-admin-roles.repository.js";
 import { DrizzleLaxStaffAccessRepository } from "./drizzle-lax-staff-access.repository.js";
 import { DrizzleStaffRoster } from "./drizzle-staff-roster.js";
 
@@ -26,6 +28,7 @@ describe.skipIf(!HAS_DB)("LAX staff access directory and history (integration)",
   const db = createDb(process.env.DATABASE_URL!);
   const roster = new DrizzleStaffRoster(db);
   const access = new DrizzleLaxStaffAccessRepository(db);
+  const laxRoles = new DrizzleLaxAdminRolesRepository(db);
 
   async function cleanup(): Promise<void> {
     await db
@@ -128,14 +131,20 @@ describe.skipIf(!HAS_DB)("LAX staff access directory and history (integration)",
     ]);
   });
 
-  it("records Shop requests without touching the directory until Shop applies them", async () => {
-    await access.requestGrant({
+  it("records LAX Admin requests without touching the directories until LAX Admin applies them", async () => {
+    const t0 = new Date(Date.now() - 1_000);
+    await laxRoles.requestGrant({
       subjectId: memberId,
-      product: "shop",
       role: "broker",
+      endsAt: null,
+      reason: "Covers the Marylebone clients",
       actorSubjectId: actorId,
     });
     expect(await directory()).toEqual([]);
+    expect(await laxRoles.listCurrent(memberId, new Date())).toEqual([]);
+    expect(await laxRoles.listRequestsSince(memberId, t0)).toMatchObject([
+      { kind: "assign", role: "broker", endsAt: null },
+    ]);
     expect((await history())[0]).toEqual({
       product: "shop",
       action: "granted",
@@ -143,8 +152,36 @@ describe.skipIf(!HAS_DB)("LAX staff access directory and history (integration)",
       actorSubjectId: actorId,
     });
 
+    // LAX Admin applies it: the staff record and the assignment, which both directories mirror.
     await db.insert(shopStaffMember).values({ identitySubjectId: memberId, role: "broker" });
+    const [assignment] = await db
+      .insert(shopStaffRoleAssignment)
+      .values({ identitySubjectId: memberId, role: "broker", startsAt: t0 })
+      .returning({ id: shopStaffRoleAssignment.id });
     expect(await directory()).toEqual([{ product: "shop", role: "broker" }]);
+    expect((await laxRoles.listCurrent(memberId, new Date())).map((a) => a.role)).toEqual([
+      "broker",
+    ]);
+    expect(
+      await laxRoles.countOtherActiveAdministrators(memberId, new Date()),
+    ).toBeGreaterThanOrEqual(0);
+
+    // Its end date passes: the expiry asks LAX Admin to record the end once.
+    await db
+      .update(shopStaffRoleAssignment)
+      .set({ endsAt: new Date(Date.now() - 500) })
+      .where(eq(shopStaffRoleAssignment.id, assignment?.id ?? ""));
+    const [first, second] = await Promise.all([
+      laxRoles.requestDueEnds(new Date(), 500),
+      laxRoles.requestDueEnds(new Date(), 500),
+    ]);
+    const asked = [...(first ?? []), ...(second ?? [])].filter((e) => e.subjectId === memberId);
+    expect(asked).toEqual([
+      expect.objectContaining({ assignmentId: assignment?.id, role: "broker" }),
+    ]);
+    expect(
+      (await laxRoles.requestDueEnds(new Date(), 500)).filter((e) => e.subjectId === memberId),
+    ).toEqual([]);
 
     await db
       .update(shopStaffMember)
