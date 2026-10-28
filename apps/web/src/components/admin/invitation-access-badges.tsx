@@ -15,16 +15,21 @@ type Props = {
   grants: readonly LaxStaffGrant[];
 };
 
-/** "Client" for a client invitation; one "Platform · Role" badge per platform for staff. */
+/** "Client" for a client invitation; for staff, one "Platform · Roles" badge per platform. */
 export function InvitationAccessBadges({ targetRole, targetStaffRole, grants }: Props) {
   if (targetRole !== "staff") return <StatusBadge tone="neutral">Client</StatusBadge>;
 
   const labels = LAX_STAFF_PLATFORMS.flatMap((platform) => {
-    const role =
-      grants.find((g) => g.product === platform.product)?.role ??
-      (platform.product === "bid" ? targetStaffRole : null);
-    if (!role) return [];
-    return [`${platform.label} · ${laxStaffRoleOption(platform.product, role)?.label ?? role}`];
+    const granted = grants.filter((g) => g.product === platform.product).map((g) => g.role);
+    const roles =
+      granted.length > 0
+        ? granted
+        : platform.product === "bid" && targetStaffRole
+          ? [targetStaffRole]
+          : [];
+    if (roles.length === 0) return [];
+    const names = roles.map((role) => laxStaffRoleOption(platform.product, role)?.label ?? role);
+    return [`${platform.label} · ${names.join(", ")}`];
   });
 
   if (labels.length === 0) return <StatusBadge tone="neutral">Staff</StatusBadge>;
