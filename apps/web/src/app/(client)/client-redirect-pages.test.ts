@@ -1,5 +1,8 @@
 import { laxAccountUrl } from "@/lib/lax-account-url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import HomePage from "./home/page";
+import SettingsPage from "./settings/page";
+import VerifyIdentityPage from "./verify-identity/page";
 
 const redirectMock = vi.fn((target: string) => {
   throw new Error(`NEXT_REDIRECT:${target}`);
@@ -56,7 +59,7 @@ beforeEach(() => {
 
 describe("/home", () => {
   async function visit(query: Record<string, string | string[]> = {}) {
-    const { default: Page } = await import("./home/page");
+    const Page = HomePage;
     return redirectTarget(() => Page({ searchParams: Promise.resolve(query) }));
   }
 
@@ -82,7 +85,7 @@ describe("/home", () => {
 
 describe("/settings", () => {
   async function visit(query: Record<string, string> = {}) {
-    const { default: Page } = await import("./settings/page");
+    const Page = SettingsPage;
     return redirectTarget(() => Page({ searchParams: Promise.resolve(query) }));
   }
 
@@ -93,7 +96,7 @@ describe("/settings", () => {
 
 describe("/verify-identity", () => {
   async function visit(next?: string) {
-    const { default: Page } = await import("./verify-identity/page");
+    const Page = VerifyIdentityPage;
     return redirectTarget(() => Page({ searchParams: Promise.resolve(next ? { next } : {}) }));
   }
 
