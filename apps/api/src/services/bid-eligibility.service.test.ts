@@ -40,6 +40,27 @@ const lotId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
 const saleId = "cccccccc-cccc-4ccc-8ccc-cccccccccccc";
 
 describe("BidEligibilityService.assertCanPlaceBid", () => {
+  it.each([
+    ["staff account", { role: "staff", staffRole: "super_admin" }],
+    ["saleroom clerk account", { role: "staff", staffRole: "saleroom_clerk" }],
+  ])("refuses a bid for a %s", async (_label, profile) => {
+    const db = createSequentialDb([{ kind: "limit", rows: [profile] }]);
+    const svc = createBidEligibilityForTest(db);
+    const r = await svc.assertCanPlaceBid({
+      placedByUserId: userId,
+      buyerLegalEntityId: buyerLeId,
+      lotId,
+      amount: 100,
+      placedVia: "saleroom",
+      paddleNumber: 7,
+      saleId,
+    });
+    expect(r.isErr()).toBe(true);
+    if (r.isErr()) {
+      expect([r.error.status, r.error.code]).toEqual([403, "bidding_not_allowed_for_role"]);
+    }
+  });
+
   it("returns aml_blocked when buyer has hard AML block", async () => {
     const db = createSequentialDb([]);
     const amlHoldStore = {
@@ -62,6 +83,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("allows bidding when buyer has soft AML hold", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       {
         kind: "limit",
         rows: [
@@ -94,6 +116,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("returns kyc_required when threshold exceeded", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId: null }] },
       { kind: "limit", rows: [{ role: "owner" }] },
     ]);
@@ -135,6 +158,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("allows owner without sale registration when sale exists", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "owner" }] },
       { kind: "limit", rows: [] },
@@ -151,6 +175,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("allows admin role without sale registration", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "admin" }] },
       { kind: "limit", rows: [] },
@@ -169,6 +194,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
     "refuses a %s bidding for the organisation",
     async (role) => {
       const db = createSequentialDb([
+        { kind: "limit", rows: [{ role: "client", staffRole: null }] },
         { kind: "limit", rows: [{ saleId }] },
         { kind: "limit", rows: [{ role }] },
       ]);
@@ -189,6 +215,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
     ["absentee", {}],
   ] as const)("refuses a viewer on the %s channel too", async (placedVia, extra) => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "viewer" }] },
     ]);
@@ -206,6 +233,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("refuses a viewer setting an auto-bid", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       {
         kind: "limit",
         rows: [
@@ -234,6 +262,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("caps a telephone bid at the buyer agent's authorisation limit", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "all", rows: [{ saleId, bidLimit: "800.00" }] },
@@ -257,6 +286,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("returns membership_required when user is not a member", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [] },
     ]);
@@ -275,6 +305,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("requires sale registration for buyer_agent when none exists", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
@@ -295,6 +326,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("requires sale registration for buyer_agent when status is pending", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
@@ -315,6 +347,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("requires buyer agent authorisation when registration approved", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "all", rows: [] },
@@ -334,6 +367,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("enforces registration bid limit for buyer_agent", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
@@ -354,6 +388,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("allows buyer_agent with approved registration and blanket authorisation", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
@@ -371,6 +406,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("enforces buyer agent authorisation cap", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "all", rows: [{ saleId, bidLimit: "50.00" }] },
@@ -391,6 +427,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("enforces approved registration bid limit for owner after staff check-in", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "owner" }] },
       { kind: "limit", rows: [{ status: "approved", bidLimit: "100.00" }] },
@@ -410,6 +447,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 
   it("allows owner with approved registration when under limit", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "owner" }] },
       { kind: "limit", rows: [{ status: "approved", bidLimit: "500.00" }] },
@@ -491,6 +529,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
 describe("BidEligibilityService auto-bid", () => {
   it("rejects proxy fields when auto-bid disabled on lot", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       {
         kind: "limit",
         rows: [
@@ -523,6 +562,7 @@ describe("BidEligibilityService auto-bid", () => {
 
   it("uses max auto-bid amount against sale registration cap", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       {
         kind: "limit",
         rows: [
@@ -557,6 +597,7 @@ describe("BidEligibilityService auto-bid", () => {
 
   it("rejects invalid auto-bid step against lot presets", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       {
         kind: "limit",
         rows: [
@@ -589,6 +630,7 @@ describe("BidEligibilityService auto-bid", () => {
 
   it("bypasses sale registration for telephone operator with active booking", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
@@ -612,6 +654,7 @@ describe("BidEligibilityService auto-bid", () => {
 
   it("preserves threshold KYC for a positively validated telephone operator", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
@@ -663,6 +706,7 @@ describe("BidEligibilityService auto-bid", () => {
 
   it("enforces authorized max for telephone operator bids", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
@@ -689,6 +733,7 @@ describe("BidEligibilityService auto-bid", () => {
 
   it("enforces the saleroom paddle cap", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "all", rows: [{ saleId: null, bidLimit: null }] },
@@ -711,6 +756,7 @@ describe("BidEligibilityService auto-bid", () => {
 
   it("rejects a saleroom paddle that is not registered", async () => {
     const db = createSequentialDb([
+      { kind: "limit", rows: [{ role: "client", staffRole: null }] },
       { kind: "limit", rows: [{ saleId }] },
       { kind: "limit", rows: [{ role: "buyer_agent" }] },
       { kind: "all", rows: [{ saleId: null, bidLimit: null }] },

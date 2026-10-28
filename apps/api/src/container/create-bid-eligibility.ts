@@ -3,6 +3,7 @@ import {
   BidAuthorityService,
   BidEligibilityService,
   BidIdentityEligibilityGate,
+  BidderRoleGate,
   type IBidAuthority,
   type IBidIdentityEligibilityGate,
   type ISelfServiceIdentityEligibilityGate,
@@ -16,6 +17,7 @@ import {
 import type { Database } from "@auction/db";
 import {
   DrizzleBidActorEligibilityReader,
+  DrizzleBidBidderRoleReader,
   DrizzleBidLotRulesReader,
   DrizzleBidMembershipReader,
   DrizzleBuyerAgentAuthorisationReader,
@@ -51,6 +53,7 @@ export function createBidEligibility(input: CreateBidEligibilityInput): IBidElig
     input.bidAuthority ?? createBidAuthority(db),
     new OperatorPlacementPolicy(operatorReader),
     new SaleRegistrationBidGate(new DrizzleSaleRegistrationBidReader(db)),
+    new BidderRoleGate(new DrizzleBidBidderRoleReader(db)),
   );
 }
 
@@ -96,5 +99,6 @@ export function createBidEligibilityForTest(
     createBidAuthority(db),
     new OperatorPlacementPolicy(operatorReader),
     new SaleRegistrationBidGate(new DrizzleSaleRegistrationBidReader(db)),
+    new BidderRoleGate(new DrizzleBidBidderRoleReader(db)),
   );
 }

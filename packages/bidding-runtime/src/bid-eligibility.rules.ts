@@ -7,6 +7,7 @@ import { BidError } from "./bid-error.js";
 import type { IAmlBidGate } from "./bid/aml-bid.gate.js";
 import { bidAuthorityError } from "./bid/bid-authority-error.js";
 import type { IBidAuthority } from "./bid/bid-authority.service.js";
+import type { IBidderRoleGate } from "./bid/bidder-role.gate.js";
 import type { IBidIdentityEligibilityGate } from "./bid/identity-bid-eligibility.gate.js";
 import type { OperatorPlacementPolicy } from "./bid/operator-placement-policy.js";
 import type { SaleRegistrationBidGate } from "./bid/sale-registration-bid.gate.js";
@@ -35,6 +36,7 @@ export type BidEligibilityRuleDeps = {
   bidAuthority: IBidAuthority;
   operatorPolicy: OperatorPlacementPolicy;
   saleRegistrationGate: SaleRegistrationBidGate;
+  bidderRoleGate: IBidderRoleGate;
 };
 
 function selfServiceIdentityRule(deps: BidEligibilityRuleDeps): BidEligibilityRule {
@@ -119,6 +121,20 @@ function bidAuthorityRule(deps: BidEligibilityRuleDeps): BidEligibilityRule {
       ctx.authority = decision;
       ctx.memberRole = decision.role;
       return decision.allowed ? ok(undefined) : err(bidAuthorityError(decision.reason));
+    },
+  };
+}
+
+/**
+ * The account the bid is for must be allowed to bid at all (clients; staff are not bidders).
+ * `placedByUserId` is always that bidder, so a clerk placing a bid on a client's behalf passes
+ * when the client does. Applies to every channel.
+ */
+function bidderRoleRule(deps: BidEligibilityRuleDeps): BidEligibilityRule {
+  return {
+    name: "bidder_role",
+    apply(ctx) {
+      return deps.bidderRoleGate.assertCanBid(ctx.input.placedByUserId);
     },
   };
 }
@@ -209,6 +225,7 @@ export function createBidEligibilityRules(deps: BidEligibilityRuleDeps): BidElig
   return [
     selfServiceIdentityRule(deps),
     amlRule(deps),
+    bidderRoleRule(deps),
     lotExistsRule(deps),
     autoBidRulesRule(),
     bidAuthorityRule(deps),
