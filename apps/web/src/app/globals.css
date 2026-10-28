@@ -117,6 +117,7 @@
   /* Semantic trend / status (oklch — perceptually even in light + dark) */
   --color-warning: oklch(0.72 0.14 55);
   /* Status text and glyphs on warning and danger tints; at least 4.5:1 on the tint and the page. */
+  --color-info-on-surface: var(--status-info-ink);
   --color-warning-on-surface: var(--status-warning-ink);
   --color-on-warning: oklch(0.22 0.04 55);
   --color-warning-container: oklch(0.94 0.06 85);
