@@ -40,7 +40,7 @@ export function ArtFollowedArtistList({
                 name={card.name}
                 initialFollowing={card.following}
                 auth={favoriteAuth}
-                followingVariant="outline"
+                followingVariant="secondaryOutline"
                 className="min-w-24 px-4 text-sm font-medium normal-case tracking-normal"
               />
             }

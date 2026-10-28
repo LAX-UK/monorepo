@@ -33,7 +33,7 @@ export function ArtSellingRoutes({ routes }: { routes: readonly SellingRouteVm[]
             </div>
             <Button
               asChild
-              variant={index === 0 ? "default" : "outline"}
+              variant={index === 0 ? "default" : "secondaryOutline"}
               className="min-h-11 w-full justify-center gap-2 sm:w-fit"
             >
               <a href={route.action.href}>
