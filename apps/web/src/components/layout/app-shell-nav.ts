@@ -74,7 +74,7 @@ export function getRouteLabel(
   const navUser: Pick<SessionUser, "role" | "staffRoles"> =
     shell === "client"
       ? { role: "client", staffRoles: [] }
-      : (sessionUser ?? { role: "staff", staffRoles: ["super_admin"] });
+      : (sessionUser ?? { role: "staff", staffRoles: ["administrator"] });
   const items = getAppShellNavItems(shell, navUser);
   const active = items.find((item) =>
     item.match ? item.match(pathname) : exactOrNested(item.href)(pathname),
@@ -94,7 +94,7 @@ export function getRouteParentLabel(
   if (shell !== "client" && pathname.startsWith("/admin")) {
     const u = sessionUser ?? {
       role: "staff" as UserRole,
-      staffRoles: ["super_admin"],
+      staffRoles: ["administrator"],
     };
     return getStaffNavParentLabel(pathname, u.role as UserRole, u.staffRoles, 0);
   }

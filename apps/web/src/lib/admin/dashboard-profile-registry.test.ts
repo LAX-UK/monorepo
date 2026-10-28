@@ -1,4 +1,4 @@
-import type { UserStaffRole } from "@auction/types";
+import { type UserStaffRole, userStaffRoles } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
   dashboardProfileIdForStaffRoles,
@@ -7,20 +7,7 @@ import {
   resolvePrimaryActionForProfile,
 } from "./dashboard-profile-registry";
 
-const STAFF_ROLES: UserStaffRole[] = [
-  "super_admin",
-  "auction_manager",
-  "operations",
-  "catalogue_manager",
-  "specialist",
-  "content_marketing",
-  "finance_ops",
-  "compliance_officer",
-  "operations_fulfilment",
-  "support_concierge",
-  "client_advisor",
-  "staff_viewer",
-];
+const STAFF_ROLES: readonly UserStaffRole[] = userStaffRoles;
 
 describe("dashboard-profile-registry", () => {
   it.each(STAFF_ROLES)("maps %s to a documented profile", (staffRole) => {
@@ -39,24 +26,24 @@ describe("dashboard-profile-registry", () => {
   });
 
   it("falls back primary action when capability is missing", () => {
-    const profile = getDashboardProfile(["finance_ops"]);
+    const profile = getDashboardProfile(["finance"]);
     const action = resolvePrimaryActionForProfile(profile, () => false);
     expect(action.href).toBe(profile.primaryAction.fallbackHref);
     expect(action.label).toBe(profile.primaryAction.fallbackLabel);
   });
 
   it("keeps read-only browse action without requirements", () => {
-    const profile = getDashboardProfile(["staff_viewer"]);
+    const profile = getDashboardProfile(["read_only"]);
     const action = resolvePrimaryActionForProfile(profile, () => false);
     expect(action.href).toBe(profile.primaryAction.href);
   });
 
   it("exposes role-relevant KPI ids per profile", () => {
-    const finance = getDashboardProfile(["finance_ops"]);
+    const finance = getDashboardProfile(["finance"]);
     expect(finance.kpiIds).toContain("stale-payments");
     expect(finance.kpiIds).not.toContain("bids-per-minute");
 
-    const catalogue = getDashboardProfile(["catalogue_manager"]);
+    const catalogue = getDashboardProfile(["cataloguer"]);
     expect(catalogue.kpiIds).toContain("submissions");
     expect(catalogue.showLiveOperations).toBe(false);
   });

@@ -12,7 +12,7 @@ import {
   toSubmissionsStaffRows,
 } from "@/lib/admin/submissions/submissions-staff-list.vm";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
-import { SUBMISSIONS_ACCESS } from "@/lib/navigation/staff-nav-access";
+import { SUBMISSIONS_READ_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import type { Metadata } from "next";
 
@@ -28,7 +28,7 @@ function first(value: string | string[] | undefined): string | undefined {
 export default async function AdminSubmissionsPage({
   searchParams,
 }: { searchParams: Promise<SubmissionsListSearch> }) {
-  const user = await requireAdminCapability(SUBMISSIONS_ACCESS, "/admin/submissions");
+  const user = await requireAdminCapability(SUBMISSIONS_READ_ACCESS, "/admin/submissions");
   const sp = await searchParams;
   const vm = await loadAdminSubmissionsListPage({
     sp: Object.fromEntries(Object.entries(sp).map(([key, value]) => [key, first(value)])),

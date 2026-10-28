@@ -23,8 +23,6 @@ const ROLE_LABELS: Record<LegalEntityMemberRole, string> = {
   finance: "Finance",
   buyer_agent: "Buyer agent",
   viewer: "Viewer",
-  specialist: "Specialist",
-  staff: "Staff",
 };
 
 const STATUS_LABELS: Record<LegalEntityStatus, string> = {

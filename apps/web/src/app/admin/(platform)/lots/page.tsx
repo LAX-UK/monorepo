@@ -16,6 +16,7 @@ import { staffStatus } from "@/lib/admin/staff-kit-status";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import {
   LOTS_ACCESS,
+  LOTS_READ_ACCESS,
   SALES_ACCESS,
   WITHDRAWAL_DECISION_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
@@ -32,7 +33,7 @@ type LotsSearch = Record<string, string | undefined>;
 export default async function AdminLotsPage({
   searchParams,
 }: { searchParams: Promise<LotsSearch> }) {
-  const user = await requireAdminCapability(LOTS_ACCESS, "/admin/lots");
+  const user = await requireAdminCapability(LOTS_READ_ACCESS, "/admin/lots");
   const role = user.role as UserRole;
   const staffRoles = user.staffRoles;
   const sp = await searchParams;

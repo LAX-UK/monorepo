@@ -3,10 +3,13 @@ import { shellRolePillLabel, staffRoleLabel } from "./staff-role-presenter";
 
 describe("staffRoleLabel", () => {
   it("maps curated labels for all staff roles", () => {
-    expect(staffRoleLabel("operations")).toBe("Operations");
-    expect(staffRoleLabel("finance_ops")).toBe("Finance");
-    expect(staffRoleLabel("operations_fulfilment")).toBe("Operations fulfilment");
-    expect(staffRoleLabel("content_marketing")).toBe("Content & marketing");
+    expect(staffRoleLabel("administrator")).toBe("Administrator");
+    expect(staffRoleLabel("sales_manager")).toBe("Sales manager");
+    expect(staffRoleLabel("saleroom_clerk")).toBe("Saleroom clerk");
+    expect(staffRoleLabel("client_services")).toBe("Client services");
+    expect(staffRoleLabel("finance")).toBe("Finance");
+    expect(staffRoleLabel("fulfilment")).toBe("Fulfilment");
+    expect(staffRoleLabel("read_only")).toBe("Read-only");
   });
 
   it("returns legacy label when staffRole is null", () => {
@@ -20,13 +23,11 @@ describe("shellRolePillLabel", () => {
   });
 
   it("returns exact staff role for platform staff", () => {
-    expect(shellRolePillLabel({ role: "staff", staffRole: "catalogue_manager" })).toBe(
-      "Catalogue manager",
-    );
+    expect(shellRolePillLabel({ role: "staff", staffRole: "cataloguer" })).toBe("Cataloguer");
   });
 
-  it("returns Finance for finance_ops", () => {
-    expect(shellRolePillLabel({ role: "staff", staffRole: "finance_ops" })).toBe("Finance");
+  it("returns Finance for finance", () => {
+    expect(shellRolePillLabel({ role: "staff", staffRole: "finance" })).toBe("Finance");
   });
 
   it("falls back to Staff when staffRole is missing", () => {

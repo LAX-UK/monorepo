@@ -12,21 +12,21 @@ import {
   AML_REVIEW_ACCESS,
   ARTISTS_ACCESS,
   AUDIT_DOMAIN_EVENTS_ACCESS,
-  CATEGORIES_ACCESS,
-  CONDITION_REPORTS_ACCESS,
+  CATEGORIES_READ_ACCESS,
+  CONDITION_REPORTS_READ_ACCESS,
   FINANCE_ACCESS,
   INVITATIONS_ACCESS,
   LEGAL_ENTITY_BROWSE_ACCESS,
-  LOTS_ACCESS,
+  LOTS_READ_ACCESS,
   LOT_FULFILMENT_ACCESS,
   ONBOARDING_QUEUES_ACCESS,
   PLATFORM_ADMIN_ACCESS,
   SALEROOM_ACCESS,
-  SALE_CATALOG_ACCESS,
+  SALE_CATALOG_READ_ACCESS,
   STAFF_OVERVIEW_ACCESS,
-  SUBMISSIONS_ACCESS,
+  SUBMISSIONS_READ_ACCESS,
   USERS_DIRECTORY_ACCESS,
-  VENUES_ACCESS,
+  VENUES_READ_ACCESS,
 } from "@/lib/navigation/staff-nav-access";
 import type { NavBadgeTone } from "@/lib/shell/contracts";
 import type { CapabilityRequirement, StaffRoles, UserRole } from "@auction/types";
@@ -123,14 +123,14 @@ function buildStaffNavGroupSpecs(
           label: "Submissions",
           icon: Upload,
           badge: pendingSubmissionCount,
-          requirement: SUBMISSIONS_ACCESS,
+          requirement: SUBMISSIONS_READ_ACCESS,
         }
       : {
           id: "submissions",
           href: "/admin/submissions",
           label: "Submissions",
           icon: Upload,
-          requirement: SUBMISSIONS_ACCESS,
+          requirement: SUBMISSIONS_READ_ACCESS,
         };
 
   return [
@@ -159,7 +159,7 @@ function buildStaffNavGroupSpecs(
           href: "/admin/sales",
           label: "Sales",
           icon: ScrollText,
-          requirement: SALE_CATALOG_ACCESS,
+          requirement: SALE_CATALOG_READ_ACCESS,
         },
         {
           id: "lots",
@@ -167,7 +167,7 @@ function buildStaffNavGroupSpecs(
           label: "Lots",
           icon: Package,
           match: (pathname) => pathname === "/admin/lots" || pathname.startsWith("/admin/lots/"),
-          requirement: LOTS_ACCESS,
+          requirement: LOTS_READ_ACCESS,
           ...navBadge(navCounts.withdrawalsPending, "warning"),
         },
         submissions,
@@ -176,7 +176,7 @@ function buildStaffNavGroupSpecs(
           href: "/admin/condition-reports",
           label: "Condition reports",
           icon: ClipboardList,
-          requirement: CONDITION_REPORTS_ACCESS,
+          requirement: CONDITION_REPORTS_READ_ACCESS,
           ...navBadge(navCounts.conditionReportsPending, "warning"),
         },
       ],
@@ -360,7 +360,7 @@ function buildStaffNavGroupSpecs(
           href: "/admin/categories",
           label: "Categories",
           icon: ListTree,
-          requirement: CATEGORIES_ACCESS,
+          requirement: CATEGORIES_READ_ACCESS,
         },
         {
           id: "venues",
@@ -368,7 +368,7 @@ function buildStaffNavGroupSpecs(
           label: "Venues",
           icon: MapPin,
           match: (pathname) => pathname.startsWith("/admin/venues"),
-          requirement: VENUES_ACCESS,
+          requirement: VENUES_READ_ACCESS,
         },
         {
           id: "artists",
