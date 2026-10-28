@@ -19,4 +19,6 @@ export const emailSubjects = {
   submissionConverted: `Draft lot created for your ${SITE_NAME} submission`,
   submissionRejected: `Update on your ${SITE_NAME} submission`,
   submissionDraftReminder: `Reminder: finish your ${SITE_NAME} submission`,
+  submissionChangesRequested: `Your ${SITE_NAME} submission needs changes`,
+  consignmentAgreementReminder: `Reminder: accept your ${SITE_NAME} consignment agreement`,
 } as const;

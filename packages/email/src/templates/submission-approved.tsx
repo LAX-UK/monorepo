@@ -22,10 +22,10 @@ export default function SubmissionApprovedEmail({
     >
       <TextBlock>Hi {userName || "there"},</TextBlock>
       <TextBlock>
-        Your submission <strong>{submissionTitle}</strong> was accepted for cataloguing. Our
-        specialists are preparing your catalogue entry.
+        A specialist accepted <strong>{submissionTitle}</strong> and proposed an estimate and terms.
+        Read and accept the consignment agreement so we can catalogue your work for sale.
       </TextBlock>
-      <Button href={submissionUrl}>View submission</Button>
+      <Button href={submissionUrl}>Review the agreement</Button>
     </Layout>
   );
 }

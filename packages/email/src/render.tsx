@@ -31,6 +31,9 @@ import BackupCodesRegeneratedEmail, {
 } from "./templates/backup-codes-regenerated.js";
 import BidOutbidEmail, { subject as bidOutbidSubject } from "./templates/bid-outbid.js";
 import ChangeEmail, { subject as changeEmailSubject } from "./templates/change-email.js";
+import ConsignmentAgreementReminderEmail, {
+  subject as consignmentAgreementReminderSubject,
+} from "./templates/consignment-agreement-reminder.js";
 import DisputeClosedNoticeEmail, {
   subject as disputeClosedNoticeSubject,
 } from "./templates/dispute-closed-notice.js";
@@ -164,6 +167,9 @@ import SourceOfFundsRejectedEmail, {
 import SubmissionApprovedEmail, {
   subject as submissionApprovedSubject,
 } from "./templates/submission-approved.js";
+import SubmissionChangesRequestedEmail, {
+  subject as submissionChangesRequestedSubject,
+} from "./templates/submission-changes-requested.js";
 import SubmissionConvertedEmail, {
   subject as submissionConvertedSubject,
 } from "./templates/submission-converted.js";
@@ -375,6 +381,14 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "submission-draft-reminder": {
     subject: submissionDraftReminderSubject,
     component: (vars) => <SubmissionDraftReminderEmail {...vars} />,
+  },
+  "submission-changes-requested": {
+    subject: submissionChangesRequestedSubject,
+    component: (vars) => <SubmissionChangesRequestedEmail {...vars} />,
+  },
+  "consignment-agreement-reminder": {
+    subject: consignmentAgreementReminderSubject,
+    component: (vars) => <ConsignmentAgreementReminderEmail {...vars} />,
   },
   "source-of-funds-buyer-notice": {
     subject: sourceOfFundsBuyerNoticeSubject,
