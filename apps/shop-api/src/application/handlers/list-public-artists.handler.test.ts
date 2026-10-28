@@ -54,4 +54,18 @@ describe("createListPublicArtistsHandler", () => {
       { limit: 24, cursor: { createdAt, id: "a-2" } },
     ]);
   });
+
+  it("forwards the available-editions filter and reads no cursor for the latest-edition sort", async () => {
+    const { reader, inputs } = recordingReader();
+    await createListPublicArtistsHandler(reader)({
+      limit: 8,
+      sort: "latestEdition",
+      hasAvailableEditions: true,
+      salesChannel: "shop",
+      cursor: encodeCatalogueCursor({ createdAt: new Date(), id: "a-3" }),
+    });
+    expect(inputs).toEqual([
+      { limit: 8, sort: "latestEdition", salesChannel: "shop", hasAvailableEditions: true },
+    ]);
+  });
 });

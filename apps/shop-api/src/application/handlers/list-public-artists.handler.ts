@@ -13,6 +13,7 @@ export type ListPublicArtistsQuery = {
   letter?: string;
   sort?: PublicArtistSort;
   salesChannel?: "shop" | "art";
+  hasAvailableEditions?: boolean;
 };
 
 export type ListPublicArtistsHandler = (
@@ -24,7 +25,9 @@ export function createListPublicArtistsHandler(
 ): ListPublicArtistsHandler {
   return (input) => {
     const byName = input.sort === "nameAsc" || input.sort === "nameDesc";
-    const cursor = byName ? null : decodeCatalogueCursor(input.cursor);
+    // The latest-edition order is one page, so a cursor means nothing to it.
+    const paged = input.sort !== "latestEdition";
+    const cursor = byName || !paged ? null : decodeCatalogueCursor(input.cursor);
     const nameCursor = byName ? decodeNameCursor(input.cursor) : null;
     const q = input.q?.trim();
     const letter = input.letter?.trim().toUpperCase();
@@ -37,6 +40,7 @@ export function createListPublicArtistsHandler(
       ...(letter && /^[A-Z]$/.test(letter) ? { letter } : {}),
       ...(input.sort ? { sort: input.sort } : {}),
       ...(input.salesChannel ? { salesChannel: input.salesChannel } : {}),
+      ...(input.hasAvailableEditions ? { hasAvailableEditions: true } : {}),
     });
   };
 }

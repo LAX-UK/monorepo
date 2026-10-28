@@ -1,6 +1,7 @@
 import {
   PublicArtistDetailSchema,
   PublicArtistListSchema,
+  type PublicArtistSort,
   PublicArtistSortSchema,
   PublicArtworkSalesChannelSchema,
   ShopApiErrorBodySchema,
@@ -19,6 +20,8 @@ const ListQuerySchema = Type.Object({
   letter: Type.Optional(Type.String({ pattern: "^[A-Za-z]$" })),
   sort: Type.Optional(PublicArtistSortSchema),
   salesChannel: Type.Optional(PublicArtworkSalesChannelSchema),
+  /** Only artists with a work on sale now. */
+  hasAvailableEditions: Type.Optional(Type.Boolean()),
 });
 
 export async function registerArtistRoutes(app: FastifyInstance, catalogue: CatalogueRoutesDeps) {
@@ -41,8 +44,9 @@ export async function registerArtistRoutes(app: FastifyInstance, catalogue: Cata
         placement?: "featured_artists";
         q?: string;
         letter?: string;
-        sort?: "newest" | "nameAsc" | "nameDesc";
+        sort?: PublicArtistSort;
         salesChannel?: "shop" | "art";
+        hasAvailableEditions?: boolean;
       };
       const input = {
         limit: query.limit ?? 20,
@@ -52,6 +56,7 @@ export async function registerArtistRoutes(app: FastifyInstance, catalogue: Cata
         ...(query.letter !== undefined ? { letter: query.letter } : {}),
         ...(query.sort !== undefined ? { sort: query.sort } : {}),
         ...(query.salesChannel !== undefined ? { salesChannel: query.salesChannel } : {}),
+        ...(query.hasAvailableEditions ? { hasAvailableEditions: true } : {}),
       };
       return presentArtistList(await catalogue.listPublicArtists(input));
     },

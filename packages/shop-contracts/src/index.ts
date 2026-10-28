@@ -20,6 +20,7 @@ export {
   PublicArtistSummarySchema,
   type PublicArtistDetail,
   type PublicArtistList,
+  type PublicArtistSort,
   type PublicArtistSummary,
 } from "./artist-public.js";
 export {
