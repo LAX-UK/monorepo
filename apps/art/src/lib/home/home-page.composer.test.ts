@@ -18,7 +18,6 @@ describe("composeArtHomePage", () => {
     expect(services.catalogue.listArtworks).toHaveBeenCalledWith({
       limit: 8,
       placement: "featured_originals",
-      type: "original",
     });
     expect(services.favorites.savedArtworkSlugs).not.toHaveBeenCalled();
     expect(services.favorites.followedArtistSlugs).not.toHaveBeenCalled();
@@ -71,10 +70,7 @@ describe("composeArtHomePage", () => {
 
     const vm = await composeArtHomePage(services);
 
-    expect(services.catalogue.listArtworks).toHaveBeenLastCalledWith({
-      limit: 8,
-      type: "original",
-    });
+    expect(services.catalogue.listArtworks).toHaveBeenLastCalledWith({ limit: 8 });
     expect(services.catalogue.listArtists).toHaveBeenLastCalledWith({ limit: 6 });
     expect(vm.featuredArtworks).toHaveLength(1);
     expect(vm.featuredArtists).toHaveLength(1);

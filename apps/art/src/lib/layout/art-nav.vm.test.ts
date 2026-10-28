@@ -107,17 +107,9 @@ describe("art navigation view model", () => {
       ]);
     });
 
-    it("builds artwork columns from types and stocked media, never placeholder departments", () => {
+    it("builds artwork columns from stocked media only: every work on lax.art is an original", () => {
       const artworks = buildArtMegaNavSections(DATA)[1];
       expect(artworks?.columns).toEqual([
-        {
-          id: "type",
-          title: "By type",
-          items: [
-            { href: "/artworks?type=original", label: "Originals" },
-            { href: "/artworks?type=edition", label: "Prints & editions" },
-          ],
-        },
         {
           id: "medium",
           title: "By medium",
@@ -128,7 +120,8 @@ describe("art navigation view model", () => {
         },
       ]);
       const withoutStock = buildArtMegaNavSections({ ...DATA, objectTypes: [] })[1];
-      expect(withoutStock?.columns?.map((column) => column.id)).toEqual(["type"]);
+      expect(withoutStock).toMatchObject({ linkHref: "/artworks", items: [] });
+      expect(withoutStock?.columns).toBeUndefined();
     });
 
     it("links exhibitions by status and keeps the hubs as plain links", () => {

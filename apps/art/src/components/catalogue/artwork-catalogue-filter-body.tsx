@@ -3,10 +3,8 @@
 import type { ArtworkCatalogueDraft } from "@/lib/catalogue/artwork-catalogue-draft";
 import {
   ARTWORK_FILTER_DEFAULT_OPEN,
-  ARTWORK_RARITY_OPTIONS,
   ARTWORK_SALE_STATE_OPTIONS,
   ARTWORK_SORT_OPTIONS,
-  ARTWORK_TYPE_OPTIONS,
   type ArtworkFilterOption,
 } from "@/lib/catalogue/artwork-catalogue-filter-config";
 import { MarketingFilterAccordionSection, MarketingFilterFacetGroup } from "@auction/marketing-ui";
@@ -66,7 +64,8 @@ function PriceInput({
 
 /**
  * Drawer facets (Figma 541:6507). Every choice edits the draft; the drawer's Apply commits it.
- * Multi-select where shop-api accepts several values (artist, medium, rarity), radio otherwise.
+ * Multi-select where shop-api accepts several values (artist, medium), radio otherwise. lax.art
+ * lists originals only, so Figma's Department and Rarity sections have nothing to choose between.
  */
 export function ArtworkCatalogueFilterBody({
   draft,
@@ -80,17 +79,6 @@ export function ArtworkCatalogueFilterBody({
 
   return (
     <Accordion type="multiple" value={openSections} onValueChange={setOpenSections}>
-      <MarketingFilterFacetGroup
-        value="type"
-        title="Department"
-        idPrefix={`${ID_PREFIX}-type`}
-        selection="single"
-        options={ARTWORK_TYPE_OPTIONS}
-        selected={[draft.type]}
-        onChange={([type]) =>
-          onDraftChange({ ...draft, type: type as ArtworkCatalogueDraft["type"] })
-        }
-      />
       <MarketingFilterFacetGroup
         value="sort"
         title="Sort by"
@@ -123,16 +111,6 @@ export function ArtworkCatalogueFilterBody({
             ...draft,
             objectTypes: objectTypes as ArtworkCatalogueDraft["objectTypes"],
           })
-        }
-      />
-      <MarketingFilterFacetGroup
-        value="rarity"
-        title="Rarity"
-        idPrefix={`${ID_PREFIX}-rarity`}
-        options={ARTWORK_RARITY_OPTIONS}
-        selected={draft.rarities}
-        onChange={(rarities) =>
-          onDraftChange({ ...draft, rarities: rarities as ArtworkCatalogueDraft["rarities"] })
         }
       />
       {categories.length > 0 ? (

@@ -25,7 +25,6 @@ export type ArtistSectionTab = { id: string; label: string };
 
 export const ARTIST_SECTION_IDS = {
   works: "artist-works",
-  originals: "artist-originals",
   exhibitions: "artist-exhibitions",
   stories: "artist-stories",
 } as const;
@@ -33,13 +32,11 @@ export const ARTIST_SECTION_IDS = {
 /** Anchor tabs for the sections that render, in page order; none when fewer than two. */
 export function artistSectionTabs(sections: {
   works: boolean;
-  originals: boolean;
   exhibitions: boolean;
   stories: boolean;
 }): ArtistSectionTab[] {
   const candidates: (ArtistSectionTab | null)[] = [
     sections.works ? { id: ARTIST_SECTION_IDS.works, label: "Featured works" } : null,
-    sections.originals ? { id: ARTIST_SECTION_IDS.originals, label: "Originals" } : null,
     sections.exhibitions ? { id: ARTIST_SECTION_IDS.exhibitions, label: "Exhibitions" } : null,
     sections.stories ? { id: ARTIST_SECTION_IDS.stories, label: "Films & stories" } : null,
   ];

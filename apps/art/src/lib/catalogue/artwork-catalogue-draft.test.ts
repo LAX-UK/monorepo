@@ -13,11 +13,9 @@ describe("artwork catalogue draft", () => {
   it("round-trips applied filters through the draft without touching search", () => {
     const state = parseArtworkCatalogueParams({
       q: "vessel",
-      type: "original",
       sort: "priceAsc",
       artistSlug: "ada,bo",
       objectType: "painting,print",
-      rarity: "unique",
       categorySlug: "abstract",
       saleState: "for_sale",
       minPrice: "100",
@@ -29,7 +27,7 @@ describe("artwork catalogue draft", () => {
       artworkDraftToPatch(artworkDraftFromState(state)),
     );
     expect(href).toBe(
-      "/artworks?q=vessel&categorySlug=abstract&artistSlug=ada,bo&saleState=for_sale&type=original&objectType=painting,print&rarity=unique&minPrice=100&maxPrice=500&sort=priceAsc",
+      "/artworks?q=vessel&categorySlug=abstract&artistSlug=ada,bo&saleState=for_sale&objectType=painting,print&minPrice=100&maxPrice=500&sort=priceAsc",
     );
   });
 
@@ -38,7 +36,6 @@ describe("artwork catalogue draft", () => {
       q: "vessel",
       artistSlug: "ada",
       objectType: "sculpture",
-      rarity: "unique",
       saleState: "sold",
       categorySlug: "abstract",
       minPrice: "100",
@@ -60,9 +57,9 @@ describe("artwork catalogue draft", () => {
   });
 
   it("copies list facets so draft edits never mutate the applied state", () => {
-    const state = parseArtworkCatalogueParams({ rarity: "unique" });
+    const state = parseArtworkCatalogueParams({ objectType: "painting" });
     const draft = artworkDraftFromState(state);
-    draft.rarities.push("open_edition");
-    expect(state.rarities).toEqual(["unique"]);
+    draft.objectTypes.push("sculpture");
+    expect(state.objectTypes).toEqual(["painting"]);
   });
 });

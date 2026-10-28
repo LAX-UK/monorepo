@@ -1,24 +1,22 @@
 import {
   ARTWORK_OBJECT_TYPES,
   ARTWORK_OBJECT_TYPE_LABELS,
-  ARTWORK_RARITIES,
-  ARTWORK_RARITY_LABELS,
   type ArtworkCatalogueFilterPatch,
   type ArtworkCatalogueSort,
-  type ArtworkCatalogueType,
   type ArtworkCatalogueUrlState,
   type ArtworkObjectType,
 } from "./artwork-catalogue-params";
 
 export type ArtworkFilterOption<T extends string = string> = { value: T; label: string };
 
-/** Drawer order follows Figma 541:6507 (Department, Sort, Artist), then the facets with data. */
+/**
+ * Drawer order follows Figma 541:6507 (Sort, Artist), then the facets with data. Figma's
+ * Department and Rarity sections are left out: lax.art lists originals only.
+ */
 export const ARTWORK_FILTER_GROUPS = [
-  { value: "type", title: "Department" },
   { value: "sort", title: "Sort by" },
   { value: "artist", title: "Artist" },
   { value: "objectType", title: "Medium" },
-  { value: "rarity", title: "Rarity" },
   { value: "category", title: "Category" },
   { value: "availability", title: "Availability" },
   { value: "price", title: "Price" },
@@ -28,18 +26,10 @@ export type ArtworkFilterGroupValue = (typeof ARTWORK_FILTER_GROUPS)[number]["va
 
 /** Figma draws every section expanded; Artist and Category can run long, so they start closed. */
 export const ARTWORK_FILTER_DEFAULT_OPEN: ArtworkFilterGroupValue[] = [
-  "type",
   "sort",
   "objectType",
-  "rarity",
   "availability",
   "price",
-];
-
-export const ARTWORK_TYPE_OPTIONS: ReadonlyArray<ArtworkFilterOption<ArtworkCatalogueType>> = [
-  { value: "all", label: "All artworks" },
-  { value: "original", label: "Originals" },
-  { value: "edition", label: "Prints & multiples" },
 ];
 
 /** `""` means "no filter" in the single-select facets. */
@@ -62,11 +52,6 @@ export const ARTWORK_SORT_OPTIONS: ReadonlyArray<ArtworkFilterOption<ArtworkCata
 
 export const ARTWORK_OBJECT_TYPE_OPTIONS: ReadonlyArray<ArtworkFilterOption<ArtworkObjectType>> =
   ARTWORK_OBJECT_TYPES.map((value) => ({ value, label: ARTWORK_OBJECT_TYPE_LABELS[value] }));
-
-export const ARTWORK_RARITY_OPTIONS = ARTWORK_RARITIES.map((value) => ({
-  value,
-  label: ARTWORK_RARITY_LABELS[value],
-}));
 
 type PriceBand = { value: string; label: string; minPrice?: number; maxPrice?: number };
 

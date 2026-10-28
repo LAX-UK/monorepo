@@ -132,13 +132,8 @@ export async function composeArtHomePage(services: {
   const venuesPromise = loadGalleryEntries(services.editorial);
   const [artworks, artists] = await Promise.allSettled([
     curatedOrNewest(
-      () =>
-        services.catalogue.listArtworks({
-          limit: 8,
-          placement: "featured_originals",
-          type: "original",
-        }),
-      () => services.catalogue.listArtworks({ limit: 8, type: "original" }),
+      () => services.catalogue.listArtworks({ limit: 8, placement: "featured_originals" }),
+      () => services.catalogue.listArtworks({ limit: 8 }),
     ),
     curatedOrNewest(
       () => services.catalogue.listArtists({ limit: 6, placement: "featured_artists" }),

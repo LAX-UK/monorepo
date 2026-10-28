@@ -41,12 +41,10 @@ export type ArtistPageVm = {
   lifeLine: string | null;
   works: CatalogueArtworkCardVm[];
   worksFailed: boolean;
-  /** Works sold as originals; empty hides the band. */
-  originals: CatalogueArtworkCardVm[];
   exhibitions: EditorialCardVm[];
   /** Stories, films and press that feature the artist. */
   stories: EditorialCardVm[];
-  /** "Editions in LAX Shop" when the Shop has editions by this artist (one shared artist list). */
+  /** "Editions by {artist} in LAX Shop" when the Shop has editions by them (one artist list). */
   crossLinks: MarketingArtistCrossLink[];
   sectionTabs: ArtistSectionTab[];
   viewer: ArtViewerState;
@@ -61,16 +59,16 @@ export type ArtistPageResult =
   | { kind: "unavailable" };
 
 const FEATURED_WORKS_LIMIT = 8;
-const ORIGINALS_LIMIT = 4;
 
 /**
- * "Editions in LAX Shop" when the Shop has live editions by the artist. LAX Shop and lax.art
- * read the same artist list, so the slug is the same artist in both.
+ * "Editions by {artist} in LAX Shop" when the Shop has live editions by the artist. LAX Shop and
+ * lax.art read the same artist list, so the slug is the same artist in both.
  */
 async function loadShopEditionsLink(
   services: { catalogue: ArtCataloguePort; ecosystem: ArtEcosystemPort },
-  slug: string,
+  artist: { slug: string; name: string },
 ): Promise<MarketingArtistCrossLink[]> {
+  const { slug } = artist;
   const shop = shopBaseUrl(services.ecosystem.crossProductLinks());
   if (!shop) return [];
   const editions = await services.catalogue
@@ -80,7 +78,7 @@ async function loadShopEditionsLink(
   return [
     {
       id: "shop",
-      label: "Editions in LAX Shop",
+      label: `Editions by ${artist.name} in LAX Shop`,
       description: "Limited editions and prints",
       href: new URL(`/artists/${encodeURIComponent(slug)}`, shop).toString(),
     },
@@ -102,14 +100,10 @@ export async function composeArtistPage(
     savedArtworks: true,
     followedArtists: true,
   });
-  const [artist, works, originals, relations] = await Promise.allSettled([
+  // lax.art lists originals only, so the featured works are the artist's originals.
+  const [artist, works, relations] = await Promise.allSettled([
     services.catalogue.getArtist(slug),
     services.catalogue.listArtworks({ artistSlugs: [slug], limit: FEATURED_WORKS_LIMIT }),
-    services.catalogue.listArtworks({
-      artistSlugs: [slug],
-      type: "original",
-      limit: ORIGINALS_LIMIT,
-    }),
     services.editorial.getArtistRelations(slug),
   ]);
   const favorites = await favoritesPromise;
@@ -121,10 +115,6 @@ export async function composeArtistPage(
     works.status === "fulfilled"
       ? buildCatalogueArtworkCards(works.value.items, favorites.savedArtworkSlugs)
       : [];
-  const originalCards =
-    originals.status === "fulfilled"
-      ? buildCatalogueArtworkCards(originals.value.items, favorites.savedArtworkSlugs)
-      : [];
   // A failed or disabled editorial read hides only the exhibition and story sections.
   const related =
     relations.status === "fulfilled" && relations.value.status === "ok"
@@ -132,7 +122,7 @@ export async function composeArtistPage(
       : null;
   const exhibitions = related?.exhibitions.map(exhibitionCard) ?? [];
   const stories = related?.stories.map(storyCard) ?? [];
-  const crossLinks = await loadShopEditionsLink(services, detail.slug);
+  const crossLinks = await loadShopEditionsLink(services, detail);
 
   return {
     kind: "ok",
@@ -153,13 +143,11 @@ export async function composeArtistPage(
       lifeLine: formatArtistLifeLine(detail),
       works: workCards,
       worksFailed: works.status === "rejected",
-      originals: originalCards,
       exhibitions,
       stories,
       crossLinks,
       sectionTabs: artistSectionTabs({
         works: true,
-        originals: originalCards.length > 0,
         exhibitions: exhibitions.length > 0,
         stories: stories.length > 0,
       }),

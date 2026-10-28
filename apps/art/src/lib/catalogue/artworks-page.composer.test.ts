@@ -15,23 +15,25 @@ describe("composeArtworksPage", () => {
     });
 
     const vm = await composeArtworksPage(services, {
-      type: "original",
+      saleState: "for_sale",
       minPrice: "100",
       sort: "priceAsc",
     });
 
     expect(services.catalogue.listArtworks).toHaveBeenCalledWith({
       limit: 24,
-      type: "original",
+      saleState: "for_sale",
       minPrice: 10000,
       sort: "priceAsc",
     });
     expect(vm.resultCount).toBe(30);
     expect(vm.hasActiveFilters).toBe(true);
     expect(vm.categories).toEqual([{ slug: "painting", label: "Painting" }]);
-    expect(vm.nextPageHref).toBe("/artworks?type=original&minPrice=100&sort=priceAsc&cursor=c2");
+    expect(vm.nextPageHref).toBe(
+      "/artworks?saleState=for_sale&minPrice=100&sort=priceAsc&cursor=c2",
+    );
     expect(vm.favoriteAuth.loginHref).toBe(
-      "/login?returnTo=%2Fartworks%3Ftype%3Doriginal%26minPrice%3D100%26sort%3DpriceAsc",
+      "/login?returnTo=%2Fartworks%3FsaleState%3Dfor_sale%26minPrice%3D100%26sort%3DpriceAsc",
     );
   });
 
@@ -93,26 +95,27 @@ describe("composeArtworksPage", () => {
       objectTypes: ["painting"],
     });
 
-    const prints = await composeArtworksPage(services, { objectType: "print" });
-    expect(prints.landingHero).toBeNull();
-    expect(prints.title).toBe("Prints");
+    const sculptures = await composeArtworksPage(services, { objectType: "sculpture" });
+    expect(sculptures.landingHero).toBeNull();
+    expect(sculptures.title).toBe("Sculptures");
   });
 });
 
 describe("composeArtworksPageMetadata", () => {
   it("canonicalises landing media to their legacy URL with their own copy", () => {
-    expect(composeArtworksPageMetadata({ objectType: "print", sort: "priceAsc" })).toEqual({
-      title: "Art Prints for Sale | lax.art",
-      description: expect.stringContaining("art prints"),
-      canonical: "/prints",
+    expect(composeArtworksPageMetadata({ objectType: "sculpture", sort: "priceAsc" })).toEqual({
+      title: "Sculptures for Sale | lax.art",
+      description: expect.stringContaining("sculpture"),
+      canonical: "/sculptures",
     });
   });
 
-  it("keeps every other view on /artworks", () => {
+  it("keeps every other view on /artworks, prints included: prints are LAX Shop's", () => {
     expect(composeArtworksPageMetadata({ type: "edition" })).toEqual({
-      title: "Prints & Multiples | lax.art",
+      title: "Artworks | lax.art",
       canonical: "/artworks",
     });
+    expect(composeArtworksPageMetadata({ objectType: "print" }).canonical).toBe("/artworks");
     expect(composeArtworksPageMetadata({ objectType: "photography" }).canonical).toBe("/artworks");
   });
 });

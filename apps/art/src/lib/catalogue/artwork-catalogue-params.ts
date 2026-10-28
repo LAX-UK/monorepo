@@ -10,9 +10,6 @@ export const ARTWORK_CATALOGUE_SORTS = ["newest", "titleAsc", "priceAsc", "price
 
 export type ArtworkCatalogueSort = (typeof ARTWORK_CATALOGUE_SORTS)[number];
 
-export const ARTWORK_CATALOGUE_TYPES = ["all", "original", "edition"] as const;
-export type ArtworkCatalogueType = (typeof ARTWORK_CATALOGUE_TYPES)[number];
-
 export const ARTWORK_OBJECT_TYPES = [
   "painting",
   "work_on_paper",
@@ -23,8 +20,8 @@ export const ARTWORK_OBJECT_TYPES = [
 ] as const;
 export type ArtworkObjectType = (typeof ARTWORK_OBJECT_TYPES)[number];
 
-export const ARTWORK_RARITIES = ["unique", "limited_edition", "open_edition"] as const;
-export type ArtworkRarity = (typeof ARTWORK_RARITIES)[number];
+/** Rarity as the artwork page describes it; lax.art lists unique works and unrecorded ones. */
+export type ArtworkRarity = "unique" | "limited_edition" | "open_edition";
 
 export const ARTWORK_OBJECT_TYPE_LABELS: Record<ArtworkObjectType, string> = {
   painting: "Paintings",
@@ -54,14 +51,6 @@ export const ARTWORK_MEDIUM_LANDINGS = [
       "Original paintings for sale from emerging and established artists, available to view at lax.art in London.",
   },
   {
-    path: "/prints",
-    objectType: "print",
-    title: "Prints",
-    metaTitle: "Art Prints for Sale | lax.art",
-    metaDescription:
-      "Limited edition and open edition art prints for sale, chosen by the lax.art gallery in London.",
-  },
-  {
     path: "/sculptures",
     objectType: "sculpture",
     title: "Sculptures",
@@ -85,17 +74,16 @@ export const ARTWORK_RARITY_LABELS: Record<ArtworkRarity, string> = {
 };
 
 /**
- * Medium, rarity and artist are multi-select (any of, via shop-api comma lists); the URL keeps
- * the singular `objectType` / `rarity` / `artistSlug` names so existing links stay valid.
+ * Medium and artist are multi-select (any of, via shop-api comma lists); the URL keeps the
+ * singular `objectType` / `artistSlug` names so existing links stay valid. lax.art lists originals
+ * only, so the old `type` and `rarity` parameters are ignored.
  */
 export type ArtworkCatalogueUrlState = {
   q?: string;
   categorySlug?: string;
   artistSlugs: string[];
   saleState?: "for_sale" | "price_on_application" | "sold";
-  type: ArtworkCatalogueType;
   objectTypes: ArtworkObjectType[];
-  rarities: ArtworkRarity[];
   minPrice?: number;
   maxPrice?: number;
   sort: ArtworkCatalogueSort;
@@ -148,17 +136,6 @@ function parseSort(value: string | undefined): ArtworkCatalogueSort {
   return "newest";
 }
 
-function parseType(
-  typeRaw: string | undefined,
-  editionEligibleRaw: string | undefined,
-): ArtworkCatalogueType {
-  if (typeRaw && (ARTWORK_CATALOGUE_TYPES as readonly string[]).includes(typeRaw)) {
-    return typeRaw as ArtworkCatalogueType;
-  }
-  if (editionEligibleRaw === "true") return "edition";
-  return "all";
-}
-
 function normalizePriceBounds(
   minPrice: number | undefined,
   maxPrice: number | undefined,
@@ -180,11 +157,9 @@ export function parseArtworkCatalogueParams(
     parseOptionalInt(firstString(searchParams.maxPrice)),
   );
   const state: ArtworkCatalogueUrlState = {
-    type: parseType(firstString(searchParams.type), firstString(searchParams.editionEligible)),
     sort: parseSort(firstString(searchParams.sort)),
     artistSlugs: parseList<string>(searchParams.artistSlug),
     objectTypes: parseList(searchParams.objectType, ARTWORK_OBJECT_TYPES),
-    rarities: parseList(searchParams.rarity, ARTWORK_RARITIES),
   };
   const q = firstString(searchParams.q)?.trim();
   if (q) state.q = q;
@@ -212,11 +187,9 @@ export function artworkCatalogueHref(
   if (next.categorySlug) params.set("categorySlug", next.categorySlug);
   if (next.artistSlugs.length > 0) params.set("artistSlug", next.artistSlugs.join(","));
   if (next.saleState) params.set("saleState", next.saleState);
-  if (next.type !== "all") params.set("type", next.type);
   if (next.objectTypes.length > 0 && !landing) {
     params.set("objectType", next.objectTypes.join(","));
   }
-  if (next.rarities.length > 0) params.set("rarity", next.rarities.join(","));
   if (next.minPrice !== undefined) params.set("minPrice", String(next.minPrice));
   if (next.maxPrice !== undefined) params.set("maxPrice", String(next.maxPrice));
   if (next.sort !== "newest") params.set("sort", next.sort);
@@ -235,7 +208,7 @@ export type ArtworkCatalogueFilterPatch = {
   [K in keyof ArtworkCatalogueFilterFields]?: ArtworkCatalogueFilterFields[K] | null | undefined;
 };
 
-const EMPTY_LISTS = { artistSlugs: [], objectTypes: [], rarities: [] } as const;
+const EMPTY_LISTS = { artistSlugs: [], objectTypes: [] } as const;
 
 /** Filter/sort changes clear cursor history. */
 export function artworkCatalogueFilterHref(
@@ -259,7 +232,7 @@ export function artworkCatalogueFilterHref(
 
 /** The unfiltered catalogue; a fresh object each call so callers may extend its lists. */
 export function emptyArtworkCatalogueState(): ArtworkCatalogueUrlState {
-  return { type: "all", sort: "newest", artistSlugs: [], objectTypes: [], rarities: [] };
+  return { sort: "newest", artistSlugs: [], objectTypes: [] };
 }
 
 export function artworkCatalogueClearHref(): string {
@@ -272,9 +245,7 @@ export function countActiveArtworkCatalogueFilters(state: ArtworkCatalogueUrlSta
   if (state.categorySlug) count += 1;
   count += state.artistSlugs.length;
   if (state.saleState) count += 1;
-  if (state.type !== "all") count += 1;
   count += state.objectTypes.length;
-  count += state.rarities.length;
   if (state.minPrice !== undefined) count += 1;
   if (state.maxPrice !== undefined) count += 1;
   return count;
@@ -284,12 +255,6 @@ const SALE_STATE_LABELS: Record<NonNullable<ArtworkCatalogueUrlState["saleState"
   for_sale: "For sale",
   price_on_application: "Price on request",
   sold: "Sold",
-};
-
-const TYPE_LABELS: Record<ArtworkCatalogueType, string> = {
-  all: "All artworks",
-  original: "Originals",
-  edition: "Prints & multiples",
 };
 
 export function buildArtworkCatalogueActiveChips(
@@ -307,13 +272,6 @@ export function buildArtworkCatalogueActiveChips(
       removeHref: artworkCatalogueFilterHref(state, { q: null }),
     });
   }
-  if (state.type !== "all") {
-    chips.push({
-      key: "type",
-      label: TYPE_LABELS[state.type],
-      removeHref: artworkCatalogueFilterHref(state, { type: "all" }),
-    });
-  }
   if (state.saleState) {
     chips.push({
       key: "saleState",
@@ -327,15 +285,6 @@ export function buildArtworkCatalogueActiveChips(
       label: ARTWORK_OBJECT_TYPE_LABELS[objectType],
       removeHref: artworkCatalogueFilterHref(state, {
         objectTypes: state.objectTypes.filter((value) => value !== objectType),
-      }),
-    });
-  }
-  for (const rarity of state.rarities) {
-    chips.push({
-      key: `rarity:${rarity}`,
-      label: ARTWORK_RARITY_LABELS[rarity],
-      removeHref: artworkCatalogueFilterHref(state, {
-        rarities: state.rarities.filter((value) => value !== rarity),
       }),
     });
   }
@@ -381,9 +330,7 @@ export function artworkCatalogueHasActiveFilters(state: ArtworkCatalogueUrlState
 
 export function artworkCataloguePageTitle(state: ArtworkCatalogueUrlState): string {
   const landing = artworkMediumLanding(state.objectTypes);
-  if (landing) return landing.title;
-  if (state.type === "edition") return "Prints & Multiples";
-  return "Artworks";
+  return landing?.title ?? "Artworks";
 }
 
 export type ArtworkCatalogueFetchInput = {
@@ -392,9 +339,7 @@ export type ArtworkCatalogueFetchInput = {
   categorySlug?: string;
   artistSlugs?: string[];
   saleState?: "for_sale" | "price_on_application" | "sold";
-  type?: ArtworkCatalogueType;
   objectTypes?: ArtworkObjectType[];
-  rarities?: ArtworkRarity[];
   minPrice?: number;
   maxPrice?: number;
   sort?: ArtworkCatalogueSort;
@@ -409,9 +354,7 @@ export function artworkCatalogueFetchQuery(
   if (state.categorySlug) query.categorySlug = state.categorySlug;
   if (state.artistSlugs.length > 0) query.artistSlugs = state.artistSlugs;
   if (state.saleState) query.saleState = state.saleState;
-  if (state.type !== "all") query.type = state.type;
   if (state.objectTypes.length > 0) query.objectTypes = state.objectTypes;
-  if (state.rarities.length > 0) query.rarities = state.rarities;
   if (state.minPrice !== undefined) query.minPrice = state.minPrice * 100;
   if (state.maxPrice !== undefined) query.maxPrice = state.maxPrice * 100;
   if (state.sort !== "newest") query.sort = state.sort;

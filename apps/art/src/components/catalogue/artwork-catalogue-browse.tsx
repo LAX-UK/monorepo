@@ -12,7 +12,6 @@ import {
 } from "@/lib/catalogue/artwork-catalogue-draft";
 import {
   ARTWORK_PRICE_BAND_OPTIONS,
-  ARTWORK_RARITY_OPTIONS,
   type ArtworkFilterOption,
   artworkPriceBandPatch,
   artworkPriceBandValue,
@@ -59,7 +58,7 @@ const KEEP_CURSOR: readonly string[] = [];
 
 /**
  * Figma 538:4885 browse pattern: Filters opens a drawer on every breakpoint, and the toolbar
- * carries Medium / Rarity / Price range dropdowns from `lg`. The URL is the only applied state;
+ * carries Medium and Price range dropdowns from `lg`. The URL is the only applied state;
  * every apply builds a new href, which also drops the pagination cursor.
  */
 export function ArtworkCatalogueBrowse({
@@ -111,15 +110,6 @@ export function ArtworkCatalogueBrowse({
         selected={state.objectTypes}
         onApply={(values) =>
           applyPatch({ objectTypes: values as ArtworkCatalogueUrlState["objectTypes"] })
-        }
-      />
-      <MarketingFilterDropdown
-        label="Rarity"
-        idPrefix="art-toolbar-rarity"
-        options={ARTWORK_RARITY_OPTIONS}
-        selected={state.rarities}
-        onApply={(values) =>
-          applyPatch({ rarities: values as ArtworkCatalogueUrlState["rarities"] })
         }
       />
       <MarketingFilterDropdown

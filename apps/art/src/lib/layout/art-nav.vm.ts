@@ -101,30 +101,22 @@ function artistsSection(
   };
 }
 
+/** Every work on lax.art is an original, so the menu browses by medium; none means a plain link. */
 function artworksSection(
   base: Omit<ArtNavItem, "active">,
   objectTypes: readonly ArtworkObjectType[],
 ): ArtMegaNavSection {
+  if (objectTypes.length === 0) return plainSection(base);
   const columns: MarketingMegaNavColumn[] = [
     {
-      id: "type",
-      title: "By type",
-      items: [
-        { href: catalogueHref({ type: "original" }), label: "Originals" },
-        { href: catalogueHref({ type: "edition" }), label: "Prints & editions" },
-      ],
-    },
-  ];
-  if (objectTypes.length > 0) {
-    columns.push({
       id: "medium",
       title: "By medium",
       items: objectTypes.map((objectType) => ({
         href: catalogueHref({ objectTypes: [objectType] }),
         label: ARTWORK_OBJECT_TYPE_LABELS[objectType],
       })),
-    });
-  }
+    },
+  ];
   return {
     key: base.key,
     id: base.key,
