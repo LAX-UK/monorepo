@@ -5,7 +5,7 @@ import {
 } from "@auction/shop-domain";
 import { describe, expect, it } from "vitest";
 import { buildAdminNavGroups } from "./admin-nav.vm";
-import { buildOverviewTiles, buildWelcomeSections } from "./overview.vm";
+import { buildOverviewTiles, buildWelcomeSections, overviewNeedsAttention } from "./overview.vm";
 
 const FEATURES = { payouts: true, thirdPartySales: true, originalSales: true, merchandise: true };
 
@@ -86,6 +86,41 @@ describe("buildOverviewTiles", () => {
       newEnquiryCount: null,
     });
     expect(tile).toMatchObject({ label: "Payouts due", value: 0 });
+  });
+});
+
+describe("open editions low on stock", () => {
+  const NIGHT = "11111111-1111-4111-8111-111111111111";
+  const lowStockRuns = [
+    { artworkId: NIGHT, title: "Night garden", onSale: 2 },
+    { artworkId: "22222222-2222-4222-8222-222222222222", title: "Dune", onSale: 0 },
+  ];
+  const tiles = (role: ShopStaffRole) =>
+    buildOverviewTiles({
+      navGroups: buildAdminNavGroups({
+        capabilities: capabilitiesForRole(role),
+        features: FEATURES,
+      }),
+      kpis: { lowStockRuns },
+      newEnquiryCount: null,
+    });
+
+  it("lists each run with its prints on sale, linking to its stock, kept even at none", () => {
+    const [night, dune] = tiles("catalogue_editor");
+    expect(night).toEqual({
+      key: `low-stock-${NIGHT}`,
+      label: "Night garden: prints on sale",
+      value: 2,
+      href: `/artworks/${NIGHT}#stock`,
+      tone: "warning",
+      keepWhenZero: true,
+    });
+    expect(dune?.value).toBe(0);
+    expect(overviewNeedsAttention(tiles("catalogue_editor"))).toBe(true);
+  });
+
+  it("is not shown to staff who cannot open artworks", () => {
+    expect(tiles("operations")).toEqual([]);
   });
 });
 

@@ -173,6 +173,7 @@ export { compareEditionPickOrder, type EditionPickCandidate } from "./edition-as
 export {
   type ClientListScope,
   OVERVIEW_KPI_CAPABILITY,
+  OVERVIEW_LOW_STOCK_CAPABILITY,
   SHOP_STAFF_CAPABILITIES,
   capabilitiesForRole,
   clientListScope,

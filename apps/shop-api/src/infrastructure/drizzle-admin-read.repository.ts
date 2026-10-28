@@ -12,7 +12,7 @@ import {
   shopStockHold,
   shopUserProfile,
 } from "@auction/db/schema";
-import type { OverviewKpiKey } from "@auction/shop-domain";
+import { OPEN_EDITION_LOW_STOCK_AT, type OverviewKpiKey } from "@auction/shop-domain";
 import {
   type SQL,
   and,
@@ -524,6 +524,28 @@ export function createDrizzleAdminReadRepository(
           keys.map(async (key) => [key, await counters[key]()] as const),
         );
         return Object.fromEntries(entries);
+      },
+
+      async listLowStockRuns() {
+        // Written qualified: the correlated count reads the outer artwork row.
+        const onSale = sql<number>`(
+          select count(*)::int from "shop_edition" e
+          where e."artwork_id" = "shop_artwork"."id" and e."listing_status" = 'authorised'
+        )`;
+        const rows = await db
+          .select({ artworkId: shopArtwork.id, title: shopArtwork.title, onSale })
+          .from(shopArtwork)
+          .where(
+            and(
+              eq(shopArtwork.runKind, "open"),
+              isNotNull(shopArtwork.publishedAt),
+              isNull(shopArtwork.archivedAt),
+              sql`${onSale} <= ${OPEN_EDITION_LOW_STOCK_AT}`,
+            ),
+          )
+          .orderBy(asc(onSale), asc(shopArtwork.title))
+          .limit(20);
+        return rows.map((row) => ({ ...row, onSale: Number(row.onSale) }));
       },
     },
     lookups: createDrizzleAdminLookupReader(db),

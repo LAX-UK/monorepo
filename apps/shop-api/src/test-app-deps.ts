@@ -266,6 +266,7 @@ export function createMinimalShopApiTestDeps(
         },
         overview: {
           readOverviewKpis: async (keys) => Object.fromEntries(keys.map((key) => [key, 0])),
+          listLowStockRuns: async () => [],
         },
         lookups: {
           searchParties: async () => [],

@@ -277,6 +277,19 @@ export const AdminOverviewKpisSchema = Type.Object({
   payoutsDueCount: Type.Optional(Type.Integer()),
   activeHoldsCount: Type.Optional(Type.Integer()),
   pendingAuthorityRequestsCount: Type.Optional(Type.Integer()),
+  /**
+   * Live open editions with 3 or fewer prints on sale, for staff who can add prints. Absent for
+   * everyone else, and from an older shop-api.
+   */
+  lowStockRuns: Type.Optional(
+    Type.Array(
+      Type.Object({
+        artworkId: Type.String({ format: "uuid" }),
+        title: Type.String(),
+        onSale: Type.Integer({ minimum: 0 }),
+      }),
+    ),
+  ),
 });
 
 export type AdminOverviewKpis = Static<typeof AdminOverviewKpisSchema>;

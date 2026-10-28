@@ -17,6 +17,11 @@ export type AttentionItem = {
   oldest?: string;
   /** `warning` or `danger` for queues past their target; neutral otherwise. */
   tone?: Extract<StaffStatusTone, "neutral" | "warning" | "danger">;
+  /**
+   * Keep the item at a count of 0, for figures where nothing left is the problem (an open
+   * edition with no prints on sale), not a cleared queue.
+   */
+  keepWhenZero?: boolean;
 };
 
 const countTone = {
@@ -43,7 +48,7 @@ export function AttentionList({
   allClear?: React.ReactNode;
   className?: string;
 }) {
-  const waiting = items.filter((item) => item.count > 0);
+  const waiting = items.filter((item) => item.count > 0 || item.keepWhenZero);
   return (
     <section
       aria-label={title}

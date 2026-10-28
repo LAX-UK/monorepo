@@ -100,6 +100,9 @@ export const OVERVIEW_KPI_CAPABILITY = {
 
 export type OverviewKpiKey = keyof typeof OVERVIEW_KPI_CAPABILITY;
 
+/** Open editions low on stock are shown to the staff who can add prints to them. */
+export const OVERVIEW_LOW_STOCK_CAPABILITY: ShopStaffCapability = "catalogue.write";
+
 export function overviewKpiKeysForRole(role: ShopStaffRole): OverviewKpiKey[] {
   return (Object.keys(OVERVIEW_KPI_CAPABILITY) as OverviewKpiKey[]).filter((key) =>
     roleHasCapability(role, OVERVIEW_KPI_CAPABILITY[key]),

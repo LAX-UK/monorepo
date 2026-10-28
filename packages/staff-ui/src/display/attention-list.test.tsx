@@ -31,6 +31,26 @@ describe("AttentionList", () => {
     expect(within(card).queryByText("KYC reviews waiting")).not.toBeInTheDocument();
   });
 
+  it("keeps an item at zero when nothing left is the problem", () => {
+    render(
+      <AttentionList
+        Link={PlainLink}
+        items={[
+          {
+            id: "low",
+            label: "Night garden: prints on sale",
+            count: 0,
+            href: "/artworks/a#stock",
+            tone: "warning",
+            keepWhenZero: true,
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByRole("link")).toHaveTextContent("0Night garden: prints on sale");
+    expect(screen.queryByText("Nothing needs you right now.")).not.toBeInTheDocument();
+  });
+
   it("says when nothing needs anyone, rather than showing zeros", () => {
     render(
       <AttentionList Link={PlainLink} items={[{ id: "a", label: "x", count: 0, href: "/" }]} />,

@@ -74,8 +74,32 @@ describe("admin read routes", () => {
     ] as const)("%s staff are sent, and the database is asked for, only %j", async (role, keys) => {
       const { response, readOverviewKpis } = await readKpis(role);
       expect(response.statusCode).toBe(200);
-      expect(Object.keys(response.json()).sort()).toEqual([...keys].sort());
+      const { lowStockRuns: _low, ...figures } = response.json();
+      expect(Object.keys(figures).sort()).toEqual([...keys].sort());
       expect([...(readOverviewKpis.mock.calls[0]?.[0] ?? [])].sort()).toEqual([...keys].sort());
+    });
+
+    it.each([
+      ["catalogue_editor", true],
+      ["shop_admin", true],
+      ["finance", false],
+      ["operations", false],
+    ] as const)("%s staff see open editions low on stock: %s", async (role, sees) => {
+      const deps = mockAdminAuth(`${role}-subject`, role);
+      const listLowStockRuns = vi.fn(async () => [
+        { artworkId: "11111111-1111-4111-8111-111111111111", title: "Night garden", onSale: 2 },
+      ]);
+      deps.admin.adminRead.overview.listLowStockRuns = listLowStockRuns;
+      const app = createShopApiApp({ deps, logger: false });
+      await app.ready();
+      const response = await app.inject({
+        method: "GET",
+        url: "/admin/v1/overview/kpis",
+        headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+      });
+      await app.close();
+      expect(response.json().lowStockRuns?.[0]?.title).toBe(sees ? "Night garden" : undefined);
+      expect(listLowStockRuns).toHaveBeenCalledTimes(sees ? 1 : 0);
     });
   });
 
