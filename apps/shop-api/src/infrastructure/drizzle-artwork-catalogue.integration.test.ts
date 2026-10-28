@@ -365,4 +365,57 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork catalogue", () => {
     expect(await repository.getPublicArtworkBySlug(slugs.draft)).toBeNull();
     expect(await repository.getPublicArtworkBySlug(slugs.archived)).toBeNull();
   });
+
+  it("lists originals only on lax.art and editions only in Shop", async () => {
+    const db = createDbFromPool(shopPool);
+    const ownerDb = createDbFromPool(ownerPool);
+    const writer = createPublishedArtworkImportWriter(db);
+    const repository = createDrizzleArtworkCatalogueRepository(db);
+    const suffix = `${Date.now()}-${crypto.randomUUID()}`;
+    const artist = `Channel Artist ${suffix}`;
+    const works = {
+      unique: { rarity: "unique", edition: false },
+      unrecorded: { rarity: null, edition: false },
+      editioned: { rarity: "limited_edition", edition: false },
+      run: { rarity: "limited_edition", edition: true },
+    } as const;
+    for (const [key, { rarity, edition }] of Object.entries(works)) {
+      const created = await writer.importArtwork({
+        importKey: `integration:channel:${suffix}:${key}`,
+        slug: `integration-channel-${suffix}-${key}`,
+        title: `Channel ${key}`,
+        description: null,
+        primaryImageUrl: null,
+        artistSlug: `integration-channel-artist-${suffix}`,
+        artistDisplayName: artist,
+        eligibleForEditionAllocation: edition,
+        ...(edition ? { printPricePence: 5_000 } : {}),
+      });
+      await ownerDb
+        .update(shopArtwork)
+        .set({ salesChannel: edition ? "shop" : "art", rarity, objectType: "photography" })
+        .where(eq(shopArtwork.id, created.artworkId));
+    }
+    const slugsOn = async (salesChannel: "shop" | "art") =>
+      (
+        await repository.listPublicArtworks({
+          limit: 10,
+          filter: { q: artist, salesChannel, artworkType: "all", sort: "titleAsc" },
+        })
+      ).items.map((item) => item.slug);
+
+    // Fixtures stay: the run has editions, and the search term is unique to this test.
+    expect(await slugsOn("art")).toEqual([
+      `integration-channel-${suffix}-unique`,
+      `integration-channel-${suffix}-unrecorded`,
+    ]);
+    expect(await slugsOn("shop")).toEqual([`integration-channel-${suffix}-run`]);
+    const facets = await repository.countFacets({
+      q: artist,
+      salesChannel: "art",
+      artworkType: "all",
+      sort: "newest",
+    });
+    expect(facets.availability.available + facets.availability.soldOut).toBe(2);
+  });
 });

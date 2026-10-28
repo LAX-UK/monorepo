@@ -49,6 +49,7 @@ import {
   toArtworkCatalogueRow,
   toPublicArtworkSummaries,
 } from "./public-artwork-rows.js";
+import { listedOnSalesChannelSql } from "./sales-channel-listing-sql.js";
 import { artworkAvailableNowSql } from "./shop-edition-availability.js";
 import { publishedHomePlacementForSlot } from "./shop-home-placement-queries.js";
 
@@ -97,12 +98,7 @@ async function loadLinkableOriginalSlug(db: Database, artworkId: string): Promis
     .select({ slug: shopArtwork.slug })
     .from(shopArtwork)
     .where(
-      and(
-        eq(shopArtwork.id, artworkId),
-        eq(shopArtwork.salesChannel, "art"),
-        eq(shopArtwork.eligibleForEditionAllocation, false),
-        publicArtworkVisible(),
-      ),
+      and(eq(shopArtwork.id, artworkId), listedOnSalesChannelSql("art"), publicArtworkVisible()),
     )
     .limit(1);
   return original?.slug ?? null;
@@ -131,7 +127,7 @@ function buildArtworkFilters(filter: NormalizedArtworkCatalogueFilters | undefin
     conditions.push(sql`not ${artworkAvailableNowSql}`);
   }
   if (filter.salesChannel) {
-    conditions.push(eq(shopArtwork.salesChannel, filter.salesChannel));
+    conditions.push(listedOnSalesChannelSql(filter.salesChannel));
   }
   if (filter.artistSlugs) {
     conditions.push(inArray(shopArtist.slug, filter.artistSlugs));
@@ -481,11 +477,7 @@ export function createDrizzleArtworkCatalogueRepository(
         .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
         .where(
           and(
-            eq(shopArtwork.salesChannel, salesChannel),
-            // The Shop channel sells limited editions only.
-            ...(salesChannel === "shop"
-              ? [eq(shopArtwork.eligibleForEditionAllocation, true)]
-              : []),
+            listedOnSalesChannelSql(salesChannel),
             isNotNull(shopArtwork.objectType),
             publicArtworkVisible(),
           ),
