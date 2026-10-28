@@ -1,5 +1,8 @@
+"use client";
+
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import { useClientLayout } from "@/components/layout/client-layout-context";
 import { cn } from "@auction/ui";
 import type { ReactNode } from "react";
 
@@ -17,7 +20,11 @@ export type DashboardListPageProps = {
   className?: string;
 };
 
-/** Standard client dashboard list layout — header, tabs, toolbar, content. */
+/**
+ * Standard client list layout: header, tabs, toolbar, content. In the workspace a page-level
+ * notice (Pay now) sits above the header; on the public site the shared account template puts
+ * the title first and the notice under it, as the first thing in the content.
+ */
 export function DashboardListPage({
   meta,
   title,
@@ -30,9 +37,10 @@ export function DashboardListPage({
   children,
   className,
 }: DashboardListPageProps) {
+  const bannerFirst = useClientLayout() === "workspace";
   return (
     <DashboardPage className={cn("space-y-5", className)}>
-      {banner}
+      {bannerFirst ? banner : null}
       <DashboardPageHeader
         meta={meta}
         title={title}
@@ -41,6 +49,7 @@ export function DashboardListPage({
         {...(description ? { description } : {})}
         {...(actions ? { actions } : {})}
       />
+      {bannerFirst ? null : banner}
       {tabs}
       {errorAlert}
       {toolbar}

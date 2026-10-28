@@ -153,7 +153,7 @@ function AccountRow({
     <Link
       href={account.href}
       aria-current={account.here ? "true" : undefined}
-      className={cn(ROW_BASE, "group gap-3 py-2", surface === "sheet" && "py-2.5")}
+      className={cn(ROW_BASE, ROW[surface], "group gap-3 py-2", surface === "sheet" && "py-2.5")}
       onClick={onNavigate}
       {...itemProps(surface)}
     >

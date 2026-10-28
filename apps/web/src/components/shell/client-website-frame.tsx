@@ -10,10 +10,12 @@ import type { SessionUser } from "@/lib/data/contracts";
 import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
 import type { ClientNavScope } from "@/lib/navigation/client-nav-model";
 import type { DashboardDensity } from "@/lib/preferences/density";
+import { buildShellConfig } from "@/lib/shell/build-shell-config";
 import { ShellChromeProvider } from "@/lib/shell/shell-chrome-context";
+import { ShellConfigProvider } from "@/lib/shell/shell-config-context";
 import { AccountArea } from "@auction/marketing-ui";
 import { TooltipProvider } from "@auction/ui/components/tooltip";
-import type { ReactNode } from "react";
+import { type ReactNode, useMemo } from "react";
 
 type Props = {
   user: SessionUser;
@@ -40,30 +42,40 @@ export function ClientWebsiteFrame({
   banner,
   children,
 }: Props) {
+  // Shared page parts (list density, mobile titles, tooltips) read the client shell's config
+  // and chrome; the same builder as the workspace keeps them identical.
+  const config = useMemo(
+    () =>
+      buildShellConfig({ user, role: "client", clientNavScope: navScope, clientAccount: account }),
+    [user, navScope, account],
+  );
   return (
     <ClientLayoutProvider layout="website">
       <ViewerCapabilitiesProvider user={user} acting={acting}>
         <ContextualKycReturnTracker kycApproved={user.kycStatus === "approved"} />
         <AccountChromeProvider account={account}>
-          {/* Shared page parts (density toggles, mobile titles, tooltips) expect these. */}
-          <ShellChromeProvider>
-            <TooltipProvider delayDuration={200}>
-              <DensityProvider cookieDensity={cookieDensity}>
-                <AccountArea
-                  subNav={
-                    <BidAccountSubNav
-                      userId={user.id}
-                      scope={navScope}
-                      initials={account.current.initials}
-                    />
-                  }
-                  banner={banner}
-                >
-                  {children}
-                </AccountArea>
-              </DensityProvider>
-            </TooltipProvider>
-          </ShellChromeProvider>
+          <ShellConfigProvider config={config}>
+            <ShellChromeProvider>
+              <TooltipProvider delayDuration={200}>
+                <DensityProvider cookieDensity={cookieDensity}>
+                  {/* The public header is fixed; the page starts below it. */}
+                  <div aria-hidden className="h-[var(--header-height)]" />
+                  <AccountArea
+                    subNav={
+                      <BidAccountSubNav
+                        userId={user.id}
+                        scope={navScope}
+                        initials={account.current.initials}
+                      />
+                    }
+                    banner={banner}
+                  >
+                    {children}
+                  </AccountArea>
+                </DensityProvider>
+              </TooltipProvider>
+            </ShellChromeProvider>
+          </ShellConfigProvider>
         </AccountChromeProvider>
       </ViewerCapabilitiesProvider>
     </ClientLayoutProvider>
