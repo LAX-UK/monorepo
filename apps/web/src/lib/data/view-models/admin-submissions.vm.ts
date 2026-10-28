@@ -52,6 +52,7 @@ export function toAdminSubmissionTableRow(
   const sla = buildSubmissionSlaPresentation({
     status: row.status,
     updatedAt: row.updatedAt,
+    convertedLotId: row.convertedLotId,
     ...(options.now != null ? { now: options.now } : {}),
   });
   const assignee = buildSubmissionAssigneePresentation({
