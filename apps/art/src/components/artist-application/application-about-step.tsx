@@ -59,10 +59,10 @@ export function ApplicationAboutStep({
         onChange={(event) => onChange({ website: event.target.value })}
       />
       <fieldset className="m-0 flex min-w-0 flex-col gap-4 border-0 p-0">
-        <legend className="mb-1 p-0 font-body text-sm font-semibold text-on-surface">
+        <legend className="mb-1.5 p-0 font-body text-sm font-semibold text-on-surface">
           Social media <span className="font-normal text-on-surface-variant">(optional)</span>
         </legend>
-        <p className="m-0 -mt-3 text-sm leading-5 text-on-surface-variant">
+        <p className="m-0 text-sm leading-5 text-on-surface-variant">
           Up to {ARTIST_APPLICATION_LIMITS.maxSocialLinks} profiles where you share your work. A new
           box appears as you fill one.
         </p>
