@@ -1,8 +1,8 @@
 "use client";
 
+import { useStaffCatalogueImage } from "@/components/artworks/staff-catalogue-image-provider.client";
 import { cn } from "@auction/staff-ui";
 import { ImageOff } from "@auction/staff-ui/icons";
-import { useImageSrcResolver } from "@auction/ui/lib/image-src-context";
 
 const SIZE = {
   sm: "size-10",
@@ -23,7 +23,7 @@ export function ArtworkThumbnail({
   size?: keyof typeof SIZE;
   className?: string;
 }) {
-  const src = useImageSrcResolver()(url);
+  const src = useStaffCatalogueImage()(url);
   return (
     <span
       className={cn(
