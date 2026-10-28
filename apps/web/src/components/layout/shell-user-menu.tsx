@@ -142,11 +142,10 @@ export function ShellUserMenu({ user, role }: ShellUserMenuProps) {
       </Button>
 
       {open ? (
+        // The panel holds who is signed in and display settings, then the menu proper: only
+        // menu items sit inside role="menu", so assistive tech gets a valid menu.
         <div
           ref={panelRef}
-          id={MENU_ID}
-          role="menu"
-          aria-label="Account"
           className="absolute right-0 top-[calc(100%+0.5rem)] z-50 max-h-[calc(100dvh-5rem)] w-[min(100vw-2rem,18rem)] overflow-y-auto overscroll-contain rounded-lg border border-shell-stroke bg-surface-container-lowest shadow-[var(--shadow-rest)]"
           onKeyDown={onPanelKeyDown}
         >
@@ -162,9 +161,7 @@ export function ShellUserMenu({ user, role }: ShellUserMenuProps) {
               )}
             >
               <span className={cn("size-1.5 rounded-full", roleMeta.dotClassName)} aria-hidden />
-              <span className="font-label text-[10px] font-bold uppercase tracking-[0.12em]">
-                {rolePillLabel}
-              </span>
+              <span className="font-label text-xs font-semibold">{rolePillLabel}</span>
             </div>
           </div>
 
@@ -181,12 +178,6 @@ export function ShellUserMenu({ user, role }: ShellUserMenuProps) {
           ) : null}
 
           {isClient ? (
-            <div className="border-b border-shell-stroke py-1">
-              <AccountMenuItems groups={groups} variant="shell" menu onNavigate={closeMenu} />
-            </div>
-          ) : null}
-
-          {isClient ? (
             // The client header has no theme toggle, so keep dark mode one click away.
             <div className="flex items-center justify-between border-b border-shell-stroke px-4 py-1.5">
               <span className="font-label text-sm font-medium text-on-surface">Dark mode</span>
@@ -194,13 +185,20 @@ export function ShellUserMenu({ user, role }: ShellUserMenuProps) {
             </div>
           ) : null}
 
-          <div className="py-1">
-            <LogoutButton
-              onBeforeNavigate={closeMenu}
-              role="menuitem"
-              data-account-menu-item=""
-              className="block w-full px-4 py-2.5 text-left font-label text-sm font-medium text-on-surface transition-colors hover:bg-surface-container-low focus-visible:bg-surface-container-low focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
-            />
+          <div id={MENU_ID} role="menu" aria-label="Account">
+            {isClient ? (
+              <div className="border-b border-shell-stroke py-1">
+                <AccountMenuItems groups={groups} variant="shell" menu onNavigate={closeMenu} />
+              </div>
+            ) : null}
+            <div className="py-1">
+              <LogoutButton
+                onBeforeNavigate={closeMenu}
+                role="menuitem"
+                data-account-menu-item=""
+                className="block w-full px-4 py-2.5 text-left font-label text-sm font-medium text-on-surface transition-colors hover:bg-surface-container-low focus-visible:bg-surface-container-low focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+              />
+            </div>
           </div>
         </div>
       ) : null}
