@@ -124,6 +124,14 @@ FROM "shop_staff_member" m
 WHERE m."disabled_at" IS NULL AND m."role" = 'catalogue_editor'
 ON CONFLICT ("identity_subject_id", "role") WHERE "ends_at" IS NULL DO NOTHING;
 --> statement-breakpoint
+-- A pending invitation to Catalogue editor gives Editor too, as the invitation meant both.
+INSERT INTO "user_invitation_product_grant" ("invitation_id", "product", "role")
+SELECT g."invitation_id", 'shop', 'editor'
+FROM "user_invitation_product_grant" g
+JOIN "user_invitation" i ON i."id" = g."invitation_id"
+WHERE g."product" = 'shop' AND g."role" = 'catalogue_editor' AND i."status" = 'pending'
+ON CONFLICT DO NOTHING;
+--> statement-breakpoint
 -- Staff are told in the product when someone changes their roles.
 ALTER TABLE notification DROP CONSTRAINT IF EXISTS notification_type_check;
 --> statement-breakpoint

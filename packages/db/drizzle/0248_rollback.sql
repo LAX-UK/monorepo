@@ -19,6 +19,19 @@ WHERE "role" = 'read_only';
 
 DROP TABLE IF EXISTS "shop_staff_role_assignment";
 
+-- An invitation keeps one LAX Admin role, as the previous release accepts: Editor and
+-- Read-only grants go (Catalogue editor held editorial work before), then the first role in
+-- role order stays.
+DELETE FROM "user_invitation_product_grant"
+WHERE "product" = 'shop' AND "role" IN ('editor', 'read_only');
+
+DELETE FROM "user_invitation_product_grant" g
+USING "user_invitation_product_grant" other
+WHERE g."product" = 'shop' AND other."product" = 'shop'
+  AND g."invitation_id" = other."invitation_id"
+  AND array_position(ARRAY['shop_admin', 'account_manager', 'broker', 'operations', 'finance', 'catalogue_editor'], g."role")
+    > array_position(ARRAY['shop_admin', 'account_manager', 'broker', 'operations', 'finance', 'catalogue_editor'], other."role");
+
 DROP TRIGGER IF EXISTS lax_staff_access_directory_shop_staff ON public."shop_staff_member";
 
 ALTER TYPE "shop_staff_role" RENAME TO "shop_staff_role_multi";
