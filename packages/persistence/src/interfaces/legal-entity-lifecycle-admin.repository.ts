@@ -1,9 +1,16 @@
 import type { Database } from "@auction/db";
-import type { LegalEntityStatus } from "@auction/types";
+import type { LegalEntityStatus, StripeConnectRequirementError } from "@auction/types";
 
 export type LegalEntityLifecycleRow = {
   id: string;
   status: LegalEntityStatus;
+  stripeConnectAccountId: string | null;
+  stripeConnectChargesEnabled: boolean;
+  stripeConnectPayoutsEnabled: boolean;
+  stripeConnectRequirementsCurrentlyDue: string[];
+  stripeConnectRequirementsErrors: StripeConnectRequirementError[];
+  stripeConnectDisabledReason: string | null;
+  isLaxManaged: boolean;
 };
 
 export type LegalEntityLifecycleTransitionUpdate = {

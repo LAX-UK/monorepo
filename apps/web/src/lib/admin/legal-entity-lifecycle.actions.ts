@@ -1,9 +1,14 @@
 "use server";
 
+import { denyUnlessAdminCapability } from "@/lib/auth/assert-admin-action-capability";
+import { isStaffStepUpResponse } from "@/lib/auth/step-up/staff-step-up.server";
 import type { AdminLegalEntityDocument } from "@/lib/data/http/admin.server";
 import { getAdminLegalEntityById } from "@/lib/data/http/admin.server";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
+import { type ActionResult, actionFailure, actionSuccess } from "@/lib/forms/form-result";
+import { LEGAL_ENTITY_WRITE_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
+import { STAFF_STEP_UP_REQUIRED } from "@auction/identity-contracts/staff-step-up";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
@@ -85,6 +90,45 @@ export async function legalEntityLifecycleSimpleAction(formData: FormData): Prom
     },
     { formData },
   );
+}
+
+const LIFT_REASON_MIN = 3;
+
+/**
+ * Lifts a restriction. The API moves the organisation to `approved` when Stripe Connect is ready
+ * and to `connect_pending` otherwise; a stale sign-in comes back as the step-up code.
+ */
+export async function legalEntityLiftRestrictionResultAction(
+  legalEntityId: string,
+  reason: string,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("legalEntityLiftRestrictionResultAction", async () => {
+    const denied = await denyUnlessAdminCapability(LEGAL_ENTITY_WRITE_ACCESS);
+    if (denied) return denied;
+    const id = z.string().uuid().safeParse(legalEntityId.trim());
+    if (!id.success) return actionFailure("Missing organisation");
+    const trimmed = reason.trim();
+    if (trimmed.length < LIFT_REASON_MIN) {
+      const message = `Enter a reason of at least ${LIFT_REASON_MIN} characters.`;
+      return actionFailure(message, { reason: [message] }, 400);
+    }
+    const res = await authedServerFetch(
+      `/admin/legal-entities/${encodeURIComponent(id.data)}/lift-restriction`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ reason: trimmed }),
+      },
+    );
+    if (res.ok) {
+      revalidatePath(`/admin/legal-entities/${id.data}`);
+      return actionSuccess();
+    }
+    if (await isStaffStepUpResponse(res)) {
+      return actionFailure("Recent sign-in required", undefined, 403, STAFF_STEP_UP_REQUIRED);
+    }
+    return actionFailure(await readFailureMessage(res), undefined, res.status);
+  });
 }
 
 export async function legalEntityRejectAction(formData: FormData): Promise<void> {

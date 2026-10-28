@@ -100,6 +100,7 @@ describe("redactDomainEventPayload", () => {
     "legal_entity.review_started",
     "legal_entity.approved",
     "legal_entity.restricted",
+    "legal_entity.restriction_lifted",
     "legal_entity.rejected",
     "legal_entity.archived",
   ] as const;

@@ -127,7 +127,7 @@ export function createAdminRoutes(
   attachAdminTwoFactorResetRoutes(platform, container.admin.twoFactorReset, guards);
   attachAdminSavedViewRoutes(platform, container.admin.savedViews);
 
-  attachAdminLegalEntityLifecycleRoutes(platform, container.admin.legalEntityLifecycle);
+  attachAdminLegalEntityLifecycleRoutes(platform, container.admin.legalEntityLifecycle, guards);
   attachAdminLegalEntityBuyerAgentRoutes(platform, container.admin.buyerAgentAuthorisations);
 
   if (container.admin.stripeConnect) {

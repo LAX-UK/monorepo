@@ -1,3 +1,4 @@
+import { LiftRestrictionAction } from "@/components/admin/legal-entities/tabs/lift-restriction-action";
 import {
   LegalEntityArchiveForm,
   LegalEntityRejectForm,
@@ -20,11 +21,14 @@ function simpleTransitionButtons(status: LegalEntityStatus): { op: string; label
 
 type Props = {
   entity: LegalEntity;
+  /** Whether the signed-in person may move organisations through their lifecycle. */
+  canLiftRestriction?: boolean;
 };
 
 /** Where the organisation is in its compliance lifecycle, the next steps, and the final ones. */
-export function LegalEntityComplianceTab({ entity }: Props) {
+export function LegalEntityComplianceTab({ entity, canLiftRestriction = false }: Props) {
   const simple = simpleTransitionButtons(entity.status);
+  const showLift = canLiftRestriction && entity.status === "restricted";
   const canReject = entity.status !== "rejected" && entity.status !== "archived";
   const canArchive = entity.status !== "archived";
   const facts = [
@@ -44,7 +48,7 @@ export function LegalEntityComplianceTab({ entity }: Props) {
       >
         <div className="flex flex-col gap-4">
           {facts.length > 0 ? <KeyValueList items={facts} /> : null}
-          {simple.length > 0 ? (
+          {simple.length > 0 || showLift ? (
             <div className="flex flex-wrap gap-2">
               {simple.map((b) => (
                 <form key={b.op} action={legalEntityLifecycleSimpleAction}>
@@ -55,6 +59,7 @@ export function LegalEntityComplianceTab({ entity }: Props) {
                   </StaffButton>
                 </form>
               ))}
+              {showLift ? <LiftRestrictionAction entity={entity} /> : null}
             </div>
           ) : (
             <p className="text-staff-sm text-staff-muted">

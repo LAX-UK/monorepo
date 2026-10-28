@@ -5,6 +5,7 @@ export type LifecycleAdminOp =
   | "start_review"
   | "approve"
   | "restrict"
+  | "lift_restriction"
   | "reject"
   | "archive";
 
@@ -13,10 +14,20 @@ export type LifecycleTransitionResult = {
   requiresReason: boolean;
 };
 
+export type LifecycleTransitionContext = {
+  /**
+   * Whether the Stripe Connect account can take payouts with nothing outstanding. The caller
+   * derives it with the same rule the Connect promoter uses, so lifting a restriction cannot
+   * grant `approved` ahead of Stripe.
+   */
+  connectReady?: boolean;
+};
+
 /** Deterministic admin status transitions. Returns null when disallowed. */
 export function nextStatusForLifecycleOp(
   current: LegalEntityStatus,
   op: LifecycleAdminOp,
+  context: LifecycleTransitionContext = {},
 ): LifecycleTransitionResult | null {
   switch (op) {
     case "request_docs":
@@ -33,6 +44,12 @@ export function nextStatusForLifecycleOp(
     case "restrict":
       if (current !== "approved") return null;
       return { next: "restricted", requiresReason: false };
+    case "lift_restriction":
+      if (current !== "restricted") return null;
+      return {
+        next: context.connectReady === true ? "approved" : "connect_pending",
+        requiresReason: true,
+      };
     case "reject":
       if (current === "rejected" || current === "archived") return null;
       return { next: "rejected", requiresReason: true };
