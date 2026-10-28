@@ -1,5 +1,8 @@
+"use client";
+
 import { cn } from "@auction/staff-ui";
 import { ImageOff } from "@auction/staff-ui/icons";
+import { useImageSrcResolver } from "@auction/ui/lib/image-src-context";
 
 const SIZE = {
   sm: "size-10",
@@ -20,6 +23,7 @@ export function ArtworkThumbnail({
   size?: keyof typeof SIZE;
   className?: string;
 }) {
+  const src = useImageSrcResolver()(url);
   return (
     <span
       className={cn(
@@ -28,8 +32,8 @@ export function ArtworkThumbnail({
         className,
       )}
     >
-      {url ? (
-        <img src={url} alt="" loading="lazy" className="size-full object-cover" />
+      {src ? (
+        <img src={src} alt="" loading="lazy" className="size-full object-cover" />
       ) : (
         <ImageOff aria-hidden className="size-4 text-staff-subtle" strokeWidth={1.75} />
       )}

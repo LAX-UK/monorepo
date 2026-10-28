@@ -4,10 +4,15 @@ import {
   MediaPlaceholder,
   type MediaPlaceholderProps,
 } from "@auction/ui/components/media-placeholder";
+import { useImageSrcResolver } from "@auction/ui/lib/image-src-context";
 import { cn } from "@auction/ui/lib/utils";
 import Image from "next/image";
 import { type Ref, useEffect, useState } from "react";
-import { type MediaSrcResolver, defaultMediaSrcResolver } from "./default-media-src-resolver.js";
+import {
+  type MediaSrcResolver,
+  isRewrittenMediaSrc,
+  mediaSrcResolverFrom,
+} from "./default-media-src-resolver.js";
 
 export type MediaImageProps = {
   src: string | null | undefined;
@@ -53,9 +58,11 @@ export function MediaImage({
   blurDataURL,
   width,
   height,
-  resolveSrc = defaultMediaSrcResolver,
+  resolveSrc,
 }: MediaImageProps) {
-  const normalizedSrc = resolveSrc(src);
+  const hostResolver = useImageSrcResolver();
+  const resolve = resolveSrc ?? mediaSrcResolverFrom(hostResolver);
+  const normalizedSrc = resolve(src);
   const [status, setStatus] = useState<"loading" | "loaded" | "error">(
     normalizedSrc ? "loading" : "error",
   );
@@ -102,6 +109,7 @@ export function MediaImage({
           src={normalizedSrc}
           alt={alt}
           fill
+          unoptimized={isRewrittenMediaSrc(src, normalizedSrc)}
           sizes={sizes}
           priority={priority}
           {...(useBlurPlaceholder && blurDataURL

@@ -8,10 +8,12 @@ import { ArtJsonLd } from "@/components/seo/art-json-ld";
 import { isArtIndexingAllowed, loadArtEnv, loadArtStorefrontBaseUrl } from "@/env.server";
 import { ART_CONSENT_COOKIE, parseArtConsent } from "@/lib/analytics/art-consent";
 import { composeArtChrome } from "@/lib/layout/art-chrome.composer";
+import { loadArtCatalogueImageOrigins } from "@/lib/media/catalogue-image.server";
 import { NOINDEX_ROBOTS } from "@/lib/seo/art-indexing";
 import { artSiteJsonLd } from "@/lib/seo/art-structured-data";
 import { ART_THEME_COOKIE, parseArtTheme } from "@/lib/theme/art-theme";
 import { laxFaviconMetadataIcons } from "@auction/branding";
+import { CatalogueImageProvider } from "@auction/shop-portal/react";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { montserrat, outfit } from "./fonts";
@@ -55,32 +57,34 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <ArtJsonLd data={artSiteJsonLd(loadArtStorefrontBaseUrl())} />
       </head>
       <body className="bg-page-bg text-on-surface">
-        <ArtSmoothScroll>
-          <a href="#main-content" className="art-skip-link">
-            Skip to content
-          </a>
-          <ArtHeaderClient
-            account={chrome.account}
-            productLinks={chrome.productLinks}
-            headerNav={chrome.headerNav}
-          />
-          <main
-            id="main-content"
-            tabIndex={-1}
-            className="min-h-[calc(100dvh-var(--header-height))] pb-12 pt-[calc(var(--header-height)+env(safe-area-inset-top,0px))] outline-none"
-          >
-            {children}
-          </main>
-          <ArtFooter vm={chrome.footer} />
-          <ArtMobileBottomNav />
-          {measurementId ? (
-            <ArtAnalyticsConsent
-              measurementId={measurementId}
-              initialChoice={parseArtConsent(cookieStore.get(ART_CONSENT_COOKIE)?.value)}
-              cookiePolicyLinked={chrome.linkablePolicies.includes("cookies")}
+        <CatalogueImageProvider viewer="art" origins={loadArtCatalogueImageOrigins()}>
+          <ArtSmoothScroll>
+            <a href="#main-content" className="art-skip-link">
+              Skip to content
+            </a>
+            <ArtHeaderClient
+              account={chrome.account}
+              productLinks={chrome.productLinks}
+              headerNav={chrome.headerNav}
             />
-          ) : null}
-        </ArtSmoothScroll>
+            <main
+              id="main-content"
+              tabIndex={-1}
+              className="min-h-[calc(100dvh-var(--header-height))] pb-12 pt-[calc(var(--header-height)+env(safe-area-inset-top,0px))] outline-none"
+            >
+              {children}
+            </main>
+            <ArtFooter vm={chrome.footer} />
+            <ArtMobileBottomNav />
+            {measurementId ? (
+              <ArtAnalyticsConsent
+                measurementId={measurementId}
+                initialChoice={parseArtConsent(cookieStore.get(ART_CONSENT_COOKIE)?.value)}
+                cookiePolicyLinked={chrome.linkablePolicies.includes("cookies")}
+              />
+            ) : null}
+          </ArtSmoothScroll>
+        </CatalogueImageProvider>
       </body>
     </html>
   );
