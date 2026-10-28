@@ -53,10 +53,12 @@ const TRANSITIONS: Record<SubmissionTransition, TransitionRule> = {
     to: "converted",
     error: "Submission must be accepted before converting to a lot",
   },
+  // Until it is catalogued the work is still the seller's to take back, even while a
+  // specialist reviews it or after they accept it. A catalogued lot needs a withdrawal request.
   withdraw: {
-    from: ["draft", "submitted", "changes_requested"],
+    from: ["draft", "submitted", "under_review", "changes_requested", "approved"],
     to: "withdrawn",
-    error: "This submission cannot be withdrawn",
+    error: "Once a work is catalogued, ask us to withdraw it instead",
   },
 };
 

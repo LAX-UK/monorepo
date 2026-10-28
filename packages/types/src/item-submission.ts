@@ -50,6 +50,8 @@ export type ItemSubmission = {
   /** What the specialist asked the seller to change, kept after resubmission for the record. */
   changesRequestedNote?: string | null;
   changesRequestedAt?: Date | null;
+  /** When staff last reminded the seller to verify their identity. */
+  identityReminderSentAt?: Date | null;
   convertedLotId: string | null;
   assignedToUserId?: string | null;
   createdAt: Date;

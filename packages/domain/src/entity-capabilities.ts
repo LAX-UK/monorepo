@@ -58,6 +58,12 @@ const ENTITY_CAPABILITY_RULES = {
   /** Ask for a consigned lot to be withdrawn from sale. */
   "entity.consignments.withdraw": { access: "write", roles: ["owner", "admin"] },
   /**
+   * Choose what happens to a lot that did not sell (relist, private sale or collection). It
+   * changes the organisation's terms of sale, so only the people who run it choose; consignors
+   * see the choice and who can make it.
+   */
+  "entity.consignments.after_sale": { access: "write", roles: ["owner", "admin"] },
+  /**
    * Place bids, auto-bids, absentee and telephone bids, or check in at the saleroom, for the
    * organisation. Finance, consignors and viewers bid only in their own name.
    */

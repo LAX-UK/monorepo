@@ -59,6 +59,27 @@ describe("submission-state-machine", () => {
     });
   });
 
+  describe("withdraw", () => {
+    it("lets the seller withdraw at any point before cataloguing", () => {
+      for (const from of [
+        "draft",
+        "submitted",
+        "under_review",
+        "changes_requested",
+        "approved",
+      ] as const) {
+        expect(nextStatus(from, "withdraw")).toBe("withdrawn");
+      }
+    });
+
+    it("refuses once catalogued or closed, pointing to a withdrawal request", () => {
+      for (const from of ["converted", "rejected", "withdrawn"] as const) {
+        expect(canTransition(from, "withdraw")).toBe(false);
+      }
+      expect(transitionErrorMessage("converted", "withdraw")).toMatch(/ask us to withdraw/);
+    });
+  });
+
   it("throws on an invalid transition", () => {
     expect(() => nextStatus("rejected", "submit")).toThrow(/Invalid transition/);
   });
