@@ -15,6 +15,12 @@
      it to --color-surface-paper. */
   --brand-paper: #f6f4ee;
   --brand-paper-on-dark: #1a1b1a;
+  /* Dark mode keeps a work's edge on its mat: a hairline inside the mat and a soft shadow under
+     the image (BRAND_SURFACES.workMatEdgeOnDark). Products map them to --color-work-mat-edge and
+     --filter-work-mat-image. */
+  --brand-work-mat-edge-on-dark: #2f302f;
+  --brand-work-lift-on-dark: drop-shadow(0 1px 1px rgb(0 0 0 / 0.45))
+    drop-shadow(0 10px 18px rgb(0 0 0 / 0.55));
   /* Edge of a text field, select or search box: 3:1 or more on every product's page, surface and
      container tints (BRAND_FIELD_EDGE in brand-identity.ts). Products map it to
      --color-input-border. */

@@ -92,7 +92,7 @@ export function ArtArtworkMobileGallery({
                 className="pl-0"
                 aria-label={`${index + 1} of ${images.length}`}
               >
-                <div className="relative aspect-square bg-surface-container">
+                <div className="marketing-work-mat relative aspect-square">
                   <ArtMediaImage
                     src={image.url}
                     alt={image.alt}

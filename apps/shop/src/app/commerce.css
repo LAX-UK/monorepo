@@ -733,13 +733,12 @@ a.shop-checkout-steps__link:hover .shop-checkout-steps__label {
   }
 }
 
-/* The whole work on a mat, never cropped (as on the catalogue cards). */
+/* The whole work on the shared work mat, never cropped (as on the catalogue cards). */
 .shop-basket__thumb {
   position: relative;
   flex-shrink: 0;
   width: 5rem;
   aspect-ratio: 4 / 5;
-  background: var(--color-surface-container-low);
 }
 
 .shop-basket__thumb img {

@@ -49,11 +49,16 @@ function BasketLineThumbnail({ vm }: { vm: BasketLineVm }) {
   // The title link carries the name; the picture repeats it, so it is skipped by keyboard and
   // screen reader.
   return vm.href ? (
-    <Link href={vm.href} className="shop-basket__thumb" tabIndex={-1} aria-hidden>
+    <Link
+      href={vm.href}
+      className="shop-basket__thumb marketing-work-mat"
+      tabIndex={-1}
+      aria-hidden
+    >
       {image}
     </Link>
   ) : (
-    <div className="shop-basket__thumb" aria-hidden>
+    <div className="shop-basket__thumb marketing-work-mat" aria-hidden>
       {image}
     </div>
   );

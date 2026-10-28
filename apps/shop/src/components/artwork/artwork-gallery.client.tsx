@@ -76,7 +76,7 @@ export function ArtworkGallery({ title, gallery }: { title: string; gallery: Art
   if (!slide) {
     return (
       <div className="shop-gallery">
-        <div className="shop-gallery__stage">
+        <div className="shop-gallery__stage marketing-work-mat">
           <ShopMediaImage
             src={null}
             alt={title}
@@ -95,7 +95,7 @@ export function ArtworkGallery({ title, gallery }: { title: string; gallery: Art
   return (
     <section className="shop-gallery" aria-label={`Images of ${title}`}>
       <div
-        className="shop-gallery__stage"
+        className="shop-gallery__stage marketing-work-mat"
         data-kind={slide.kind}
         onPointerDown={onStagePointerDown}
         onPointerUp={onStagePointerUp}

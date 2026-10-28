@@ -12,7 +12,9 @@ export type MarketingWorkCardProps = {
   titleAs?: "h2" | "h3";
   /**
    * Image filling the mat (absolutely positioned). It is shown whole with `object-contain`, so
-   * a work is never cropped; the mat shows around it.
+   * a work is never cropped; the mat shows around it. The mat's tone, dark edge and image shadow
+   * come from the product's `--color-work-mat`, `--color-work-mat-edge` and
+   * `--filter-work-mat-image` (`.marketing-work-mat`).
    */
   media: ReactNode;
   /** Badge over the top-left of the mat, e.g. "Yours". */
@@ -57,7 +59,7 @@ export function MarketingWorkCard({
       className={cn("group relative flex h-full min-w-0 flex-col", className)}
       data-testid={testId}
     >
-      <MarketingCardMedia className="aspect-[4/5] bg-surface-container-low">
+      <MarketingCardMedia className="marketing-work-mat aspect-[4/5]">
         <Link href={href} tabIndex={-1} aria-hidden className="absolute inset-0 block p-[7%]">
           <span className="relative block size-full [&_img]:!object-contain">{media}</span>
         </Link>

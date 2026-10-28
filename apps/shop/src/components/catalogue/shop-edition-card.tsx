@@ -33,7 +33,7 @@ export function ShopEditionCard({
   const status = card.status;
   return (
     <article className="shop-edition-card" data-status={status?.kind ?? "none"}>
-      <div className="shop-edition-card__mat">
+      <div className="shop-edition-card__mat marketing-work-mat">
         <span className="shop-edition-card__print">
           <ShopMediaImage
             src={card.imageUrl}
