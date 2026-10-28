@@ -1,10 +1,12 @@
 export type ArtAccountLink = { href: string; label: string };
 
-/** Signed-in destinations shared by the desktop account menu and the mobile drawer. */
+/**
+ * Signed-in destinations shared by the desktop account menu and the mobile drawer: lax.art's own
+ * data only. The collection is a LAX Account page, reached from the account overview.
+ */
 export const ART_ACCOUNT_LINKS: readonly ArtAccountLink[] = [
-  { href: "/account/favourites", label: "Favourites" },
   { href: "/account/enquiries", label: "Enquiries" },
-  { href: "/account/collection", label: "Collection" },
+  { href: "/account/favourites", label: "Favourites" },
 ];
 
 export type ArtMobileAccountLink = ArtAccountLink & { current: boolean };

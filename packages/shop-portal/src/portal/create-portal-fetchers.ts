@@ -27,6 +27,7 @@ import {
   parsePortalSaleAuthorityRequests,
   parsePortalSales,
   parsePortalSavedArtworks,
+  parsePortalSellerAccess,
 } from "@auction/shop-contracts";
 import type { CommerceBffClient } from "../bff/create-commerce-bff-client.js";
 import type { ShopPortalFetchResult } from "./fetch-result.js";
@@ -212,6 +213,11 @@ export function createPortalFetchers(deps: {
     return fetchPortalObject("/commerce/me/artist/sales", parsePortalArtistSales);
   }
 
+  /** Which seller tools the signed-in person can use, decided by Shop from their own records. */
+  async function fetchPortalSellerAccess() {
+    return fetchPortalObject("/commerce/me/seller-access", parsePortalSellerAccess);
+  }
+
   async function fetchPortalPayeeConnect(): Promise<ShopPortalFetchResult<PortalPayeeConnectView>> {
     const [status, config] = await Promise.all([
       fetchPortalObject("/commerce/me/connect/status", parsePortalPayeeConnectStatus),
@@ -252,6 +258,7 @@ export function createPortalFetchers(deps: {
     fetchPortalArtistArtworks,
     fetchPortalArtistSales,
     fetchPortalPayeeConnect,
+    fetchPortalSellerAccess,
     resolveShopArtistPortalLinked,
   };
 }

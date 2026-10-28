@@ -61,3 +61,34 @@ describe("resolveShopPortalOwnershipEnabled", () => {
     await expect(createResolver()()).resolves.toBe(false);
   });
 });
+
+describe("fetchPortalSellerAccess", () => {
+  function fetcherFor(response: Response) {
+    const commerceRequest = vi.fn(async () => response);
+    const { fetchPortalSellerAccess } = createPortalFetchers({
+      commerceRequest,
+      shopApiServerUrl: (path: string) => `http://shop-api.test${path}`,
+    });
+    return { fetchPortalSellerAccess, commerceRequest };
+  }
+
+  it("reads the signed-in person's seller tools", async () => {
+    const { fetchPortalSellerAccess, commerceRequest } = fetcherFor(
+      Response.json({ editions: false, payouts: true, artist: false }),
+    );
+    await expect(fetchPortalSellerAccess()).resolves.toEqual({
+      status: "ok",
+      data: { editions: false, payouts: true, artist: false },
+    });
+    expect(commerceRequest).toHaveBeenCalledWith("/commerce/me/seller-access", expect.anything());
+  });
+
+  it("reports a lapsed session and a malformed answer", async () => {
+    await expect(
+      fetcherFor(new Response(null, { status: 401 })).fetchPortalSellerAccess(),
+    ).resolves.toEqual({ status: "unauthorized" });
+    await expect(
+      fetcherFor(Response.json({ payouts: "yes" })).fetchPortalSellerAccess(),
+    ).resolves.toEqual({ status: "failed" });
+  });
+});

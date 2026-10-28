@@ -157,6 +157,15 @@ export function registerCommerceMeRoutes(app: Hono, deps: CommerceRoutesDeps): v
     }),
   );
 
+  /** Which seller tools the person can use, so a storefront shows Payouts only to payees. */
+  app.get("/commerce/me/seller-access", (c) =>
+    proxyAuthenticatedCommerce(c, deps, {
+      method: "GET",
+      path: "/v1/me/seller-access",
+      scopes: "shop.read",
+    }),
+  );
+
   app.get("/commerce/me/sales", (c) =>
     proxyAuthenticatedCommerce(c, deps, {
       method: "GET",

@@ -34,6 +34,7 @@ export const {
   fetchPortalArtistArtworks,
   fetchPortalArtistSales,
   fetchPortalPayeeConnect,
+  fetchPortalSellerAccess,
 } = portalFetchers;
 
 export const resolveArtPortalOwnershipEnabled = cache(

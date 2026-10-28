@@ -5,10 +5,10 @@ import {
   mergeEnquiryItems,
 } from "@/lib/account/account-enquiries.vm";
 import {
+  type ArtAccountDestinationVm,
   type ArtAccountNavHref,
   type ArtAccountNavItem,
-  type ArtAccountSecondaryLink,
-  buildArtAccountSecondaryLinks,
+  buildArtAccountDestinations,
   buildArtAccountTabs,
   buildArtFavouritesTabs,
 } from "@/lib/account/account-nav.vm";
@@ -19,6 +19,7 @@ import {
   accountInitials,
   buildProfileIncompleteBanner,
 } from "@/lib/account/account-profile.vm";
+import { artAccountCapabilitiesFrom } from "@/lib/account/art-account-capabilities";
 import { artStorefrontLoginHref, gateArtAuthenticatedRoute } from "@/lib/art-viewer-state";
 import {
   type CatalogueArtistCardVm,
@@ -26,7 +27,6 @@ import {
 } from "@/lib/catalogue/catalogue-artist-card.vm";
 import {
   type CatalogueArtworkCardVm,
-  artworkHref,
   buildSavedArtworkCards,
 } from "@/lib/catalogue/catalogue-artwork-card.vm";
 import { type ArtFavoriteAuth, buildArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
@@ -36,13 +36,7 @@ import type {
   ArtPortalReadPort,
   ArtViewerPort,
 } from "@/lib/ports";
-import type { PortalCollectionItem } from "@auction/shop-contracts";
 import type { ShopPortalFetchResult } from "@auction/shop-portal/portal";
-import {
-  type PayoutAccountViewModel,
-  buildPayoutAccountViewModel,
-  formatShopDate,
-} from "@auction/shop-portal/vm";
 
 type AuthenticatedViewer = Extract<
   Awaited<ReturnType<ArtViewerPort["load"]>>,
@@ -59,8 +53,7 @@ export type ArtAccountIdentityVm = {
 export type ArtAccountPageResult<T> =
   | { kind: "ok"; nav: ArtAccountNavItem[]; identity: ArtAccountIdentityVm; vm: T }
   | { kind: "redirect"; to: string }
-  | { kind: "unavailable"; message: string }
-  | { kind: "not_found" };
+  | { kind: "unavailable"; message: string };
 
 /** Per-section list state; `sign_in` covers a session that lapsed between gate and read. */
 export type ArtAccountListState<T> =
@@ -120,42 +113,99 @@ export function toAccountListState<T, R>(
   }
 }
 
-export type ArtAccountProfileVm = {
-  name: string | null;
-  email: string | null;
-  phone: string | null;
-  emailVerified: boolean | null;
-  /** Hidden when NEXT_PUBLIC_LAX_ACCOUNT_ORIGIN is not configured. */
-  laxAccountHref: string | null;
-  verifyEmailHref: string | null;
+/**
+ * Both reads feed one list. A failure on one side only matters when nothing else can be shown;
+ * a lapsed session on either side asks for sign-in because the other read shares the session.
+ */
+export function mergeEnquiryStates(
+  artwork: ArtAccountListState<ArtEnquiryItemVm>,
+  general: ArtAccountListState<ArtEnquiryItemVm>,
+): ArtAccountListState<ArtEnquiryItemVm> {
+  const signIn = [artwork, general].find((state) => state.kind === "sign_in");
+  if (signIn) return signIn;
+  const items = mergeEnquiryItems(
+    artwork.kind === "ok" ? artwork.items : [],
+    general.kind === "ok" ? general.items : [],
+  );
+  if (items.length > 0) return { kind: "ok", items };
+  return artwork.kind === "failed" || general.kind === "failed"
+    ? { kind: "failed" }
+    : { kind: "empty" };
+}
+
+/** Artwork and general enquiries as one list, newest first. */
+async function loadEnquiries(
+  portal: Pick<ArtPortalReadPort, "listEnquiries" | "listGeneralEnquiries">,
+  returnTo: string,
+): Promise<ArtAccountListState<ArtEnquiryItemVm>> {
+  const [artwork, general] = await Promise.all([
+    portal.listEnquiries(),
+    portal.listGeneralEnquiries(),
+  ]);
+  return mergeEnquiryStates(
+    toAccountListState(artwork, returnTo, (rows) => rows.map(buildArtworkEnquiryItem)),
+    toAccountListState(general, returnTo, (rows) => rows.map(buildGeneralEnquiryItem)),
+  );
+}
+
+/** How many enquiries the overview shows before "View all". */
+export const OVERVIEW_ENQUIRY_LIMIT = 3;
+
+export type ArtAccountOverviewVm = {
   banner: ArtProfileBannerVm | null;
-  secondaryLinks: ArtAccountSecondaryLink[];
+  /** The latest enquiries; the full list is the Enquiries tab. */
+  enquiries: ArtAccountListState<ArtEnquiryItemVm>;
+  /** True when the overview shows only some of the enquiries. */
+  moreEnquiries: boolean;
+  /** Favourites, Following, Payouts for payees, and LAX Account, as rows. */
+  destinations: ArtAccountDestinationVm[];
   promos: readonly ArtAccountPromoVm[];
 };
 
-export function composeArtAccountProfilePage(
-  services: AccountServices,
-): Promise<ArtAccountPageResult<ArtAccountProfileVm>> {
-  return gateAccountPage(services, "/account", buildArtAccountTabs("/account"), async (viewer) => {
-    const laxAccountHref = services.account.laxAccountHref();
+function countOf<T>(result: ShopPortalFetchResult<T[]>): number | undefined {
+  if (result.status === "ok") return result.data.length;
+  return result.status === "empty" ? 0 : undefined;
+}
+
+/**
+ * The collector's desk: what needs a reply first (enquiries), then saved works and followed
+ * artists. Profile, addresses, security, the collection and money are LAX Account pages, so the
+ * overview links there instead of repeating them; Payouts appear only for payees.
+ */
+export function composeArtAccountOverviewPage(
+  services: AccountServices & {
+    portal: ArtPortalReadPort;
+    favorites: Pick<ArtFavoritesReadPort, "listSavedArtworks" | "listFollowedArtists">;
+  },
+): Promise<ArtAccountPageResult<ArtAccountOverviewVm>> {
+  const path = "/account";
+  return gateAccountPage(services, path, buildArtAccountTabs(path), async (viewer) => {
+    const [enquiries, sellerAccess, saved, followed] = await Promise.all([
+      loadEnquiries(services.portal, path),
+      services.portal.loadSellerAccess(),
+      services.favorites.listSavedArtworks(),
+      services.favorites.listFollowedArtists(),
+    ]);
     const verifyEmailHref =
       viewer.emailVerified === false ? services.account.verifyEmailHref() : null;
+    const latest =
+      enquiries.kind === "ok"
+        ? { kind: "ok" as const, items: enquiries.items.slice(0, OVERVIEW_ENQUIRY_LIMIT) }
+        : enquiries;
     return {
-      name: viewer.displayName ?? null,
-      email: viewer.email ?? null,
-      phone: viewer.verifiedPhone ?? null,
-      emailVerified: viewer.emailVerified ?? null,
-      laxAccountHref,
-      verifyEmailHref,
       banner: buildProfileIncompleteBanner({
         name: viewer.displayName ?? null,
         emailVerified: viewer.emailVerified ?? null,
         phone: viewer.verifiedPhone ?? null,
         verifyEmailHref,
-        laxAccountHref,
+        laxAccountHref: services.account.laxAccountUrl("profile"),
       }),
-      secondaryLinks: buildArtAccountSecondaryLinks({
-        payoutsEnabled: services.account.payoutsEnabled(),
+      enquiries: latest,
+      moreEnquiries: enquiries.kind === "ok" && enquiries.items.length > OVERVIEW_ENQUIRY_LIMIT,
+      destinations: buildArtAccountDestinations({
+        capabilities: artAccountCapabilitiesFrom(sellerAccess),
+        laxAccountUrl: services.account.laxAccountUrl,
+        counts: { favourites: countOf(saved), following: countOf(followed) },
       }),
       promos: ART_ACCOUNT_PROMOS,
     };
@@ -204,124 +254,11 @@ export type ArtAccountEnquiriesVm = {
   enquiries: ArtAccountListState<ArtEnquiryItemVm>;
 };
 
-/**
- * Both reads feed one list. A failure on one side only matters when nothing else can be shown;
- * a lapsed session on either side asks for sign-in because the other read shares the session.
- */
-export function mergeEnquiryStates(
-  artwork: ArtAccountListState<ArtEnquiryItemVm>,
-  general: ArtAccountListState<ArtEnquiryItemVm>,
-): ArtAccountListState<ArtEnquiryItemVm> {
-  const signIn = [artwork, general].find((state) => state.kind === "sign_in");
-  if (signIn) return signIn;
-  const items = mergeEnquiryItems(
-    artwork.kind === "ok" ? artwork.items : [],
-    general.kind === "ok" ? general.items : [],
-  );
-  if (items.length > 0) return { kind: "ok", items };
-  return artwork.kind === "failed" || general.kind === "failed"
-    ? { kind: "failed" }
-    : { kind: "empty" };
-}
-
 export function composeArtAccountEnquiriesPage(
   services: AccountServices & { portal: ArtPortalReadPort },
 ): Promise<ArtAccountPageResult<ArtAccountEnquiriesVm>> {
   const path = "/account/enquiries";
-  return gateAccountPage(services, path, buildArtAccountTabs(path), async () => {
-    const [artwork, general] = await Promise.all([
-      services.portal.listEnquiries(),
-      services.portal.listGeneralEnquiries(),
-    ]);
-    return {
-      enquiries: mergeEnquiryStates(
-        toAccountListState(artwork, path, (rows) => rows.map(buildArtworkEnquiryItem)),
-        toAccountListState(general, path, (rows) => rows.map(buildGeneralEnquiryItem)),
-      ),
-    };
-  });
-}
-
-export type ArtCollectionRowVm = {
-  key: string;
-  title: string;
-  /** Only lax.art works link back into this storefront. */
-  href: string | null;
-  kindLabel: string;
-  sourceLabel: string;
-  detail: string | null;
-};
-
-export function buildArtCollectionRows(
-  items: readonly PortalCollectionItem[],
-): ArtCollectionRowVm[] {
-  return items.map((item) => {
-    const base = {
-      title: item.artworkTitle,
-      href: item.salesChannel === "art" ? artworkHref(item.artworkSlug) : null,
-      sourceLabel: item.salesChannel === "art" ? "lax.art" : "LAX Shop",
-    };
-    if (item.kind === "edition") {
-      return {
-        ...base,
-        key: `edition-${item.editionId}`,
-        kindLabel: `Edition #${item.editionNumber}`,
-        detail: null,
-      };
-    }
-    const acquired = Date.parse(item.acquiredAt);
-    return {
-      ...base,
-      key: `original-${item.originalSaleId}`,
-      kindLabel: "Original",
-      detail: Number.isNaN(acquired) ? null : `Acquired ${formatShopDate(item.acquiredAt)}`,
-    };
-  });
-}
-
-export type ArtAccountCollectionVm = {
-  collection: ArtAccountListState<ArtCollectionRowVm>;
-};
-
-export function composeArtAccountCollectionPage(
-  services: AccountServices & { portal: ArtPortalReadPort },
-): Promise<ArtAccountPageResult<ArtAccountCollectionVm>> {
-  const path = "/account/collection";
-  return gateAccountPage(services, path, [], async () => ({
-    collection: toAccountListState(
-      await services.portal.listCollection(),
-      path,
-      buildArtCollectionRows,
-    ),
+  return gateAccountPage(services, path, buildArtAccountTabs(path), async () => ({
+    enquiries: await loadEnquiries(services.portal, path),
   }));
-}
-
-export type ArtAccountPayoutsVm = {
-  payouts:
-    | { kind: "ok"; viewModel: PayoutAccountViewModel; publishableKey: string | null }
-    | { kind: "sign_in"; loginHref: string }
-    | { kind: "failed" };
-};
-
-export async function composeArtAccountPayoutsPage(
-  services: AccountServices & { portal: ArtPortalReadPort },
-): Promise<ArtAccountPageResult<ArtAccountPayoutsVm>> {
-  if (!services.account.payoutsEnabled()) return { kind: "not_found" };
-  const path = "/account/payouts";
-  return gateAccountPage(services, path, [], async () => {
-    const connect = await services.portal.loadPayeeConnect();
-    if (connect.status === "ok") {
-      return {
-        payouts: {
-          kind: "ok",
-          viewModel: buildPayoutAccountViewModel(connect.data.status),
-          publishableKey: connect.data.config.publishableKey,
-        },
-      };
-    }
-    if (connect.status === "unauthorized") {
-      return { payouts: { kind: "sign_in", loginHref: artStorefrontLoginHref(path) } };
-    }
-    return { payouts: { kind: "failed" } };
-  });
 }

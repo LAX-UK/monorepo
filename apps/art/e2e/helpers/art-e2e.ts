@@ -13,9 +13,6 @@ export function artBuyerCredentials(): ArtBuyerCredentials | null {
   return email && password ? { email, password } : null;
 }
 
-/** Mirrors the deployment flag (`SHOP_PAYOUTS_ENABLED`) the Art server was started with. */
-export const artPayoutsEnabled = process.env.SHOP_PAYOUTS_ENABLED === "true";
-
 export async function signInArtBuyer(
   page: Page,
   credentials: ArtBuyerCredentials,

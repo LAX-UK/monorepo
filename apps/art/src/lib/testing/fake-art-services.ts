@@ -96,13 +96,14 @@ export function fakeArtServices(viewer: ArtViewerState = GUEST_VIEWER) {
     portal: {
       listEnquiries: vi.fn().mockResolvedValue({ status: "empty" }),
       listGeneralEnquiries: vi.fn().mockResolvedValue({ status: "empty" }),
-      listCollection: vi.fn().mockResolvedValue({ status: "empty" }),
-      loadPayeeConnect: vi.fn().mockResolvedValue({ status: "failed" }),
+      loadSellerAccess: vi.fn().mockResolvedValue({
+        status: "ok",
+        data: { editions: false, payouts: false, artist: false },
+      }),
     },
     account: {
-      laxAccountHref: vi.fn().mockReturnValue("https://account.example.test/account"),
+      laxAccountUrl: vi.fn((page: string) => `https://account.example.test/${page}`),
       verifyEmailHref: vi.fn().mockReturnValue("http://localhost:3051/auth/verify-email"),
-      payoutsEnabled: vi.fn().mockReturnValue(false),
     },
     editorial: {
       enabled: vi.fn().mockReturnValue(false),
