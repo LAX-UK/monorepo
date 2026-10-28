@@ -38,6 +38,7 @@ import type { ILotStatusAdminService } from "../services/interfaces/lot-status-a
 import type { ISalePublishService } from "../services/interfaces/sale-publish.js";
 import type { ISaleService } from "../services/interfaces/sale-service.js";
 import type { ISaleSoftDeleteService } from "../services/interfaces/sale-soft-delete.js";
+import type { IConsignmentAfterSaleHttpApplicationService } from "../services/interfaces/submission-routes/consignment-after-sale-http.js";
 import { ItemSubmissionService } from "../services/item-submission.service.js";
 import { LotNotificationCoordinator } from "../services/lot-notification-coordinator.js";
 import { LotSoftDeleteService } from "../services/lot-soft-delete.service.js";
@@ -57,6 +58,7 @@ import { VenueService } from "../services/venue.service.js";
 import { createSelfServiceIdentityEligibilityGate } from "./create-bid-eligibility.js";
 import type { ContainerCatalogAdminReaders } from "./create-catalog-admin-readers.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
+import { createConsignmentAfterSaleServices } from "./create-consignment-after-sale-services.js";
 import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerLotLifecycle } from "./create-lot-lifecycle.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
@@ -91,6 +93,7 @@ export type ContainerLotCatalogServices = {
   itemSubmissionSellerApi: IItemSubmissionSellerApi;
   itemSubmissionAdminApi: IItemSubmissionAdminApi;
   consignmentAgreementService: IConsignmentAgreementService;
+  consignmentAfterSaleHttp: IConsignmentAfterSaleHttpApplicationService;
   categoryService: CategoryService;
   venueService: VenueService;
   artistProfileService: ArtistProfileService;
@@ -201,6 +204,8 @@ export function createLotCatalogServices(
     telephoneBidBookingService,
     repoFactory,
     saleChannelReader,
+    // Seller withdrawal requests and the staff decisions on them are review tasks.
+    adminReviewTaskRepository: repos.adminReviewTaskRepository,
   });
 
   const conditionReportService = new ConditionReportService(
@@ -351,6 +356,22 @@ export function createLotCatalogServices(
     sellerIdentity,
   });
 
+  const consignmentAfterSaleHttp = createConsignmentAfterSaleServices({
+    db,
+    submissions: itemSubmissionRepository,
+    lots: lotRepo,
+    agreements: consignmentAgreementRepository,
+    legalEntities: legalEntityRepository,
+    people: userRepo,
+    recipients: legalEntityNotificationRecipients,
+    reviewTasks: repos.adminReviewTaskRepository,
+    dispatcher: notificationDispatcher,
+    events: domainEventSink,
+    sellerIdentity,
+    sellerApi: itemSubmissionService,
+    lotService,
+  });
+
   const categoryService = new CategoryService(categoryRepo, domainEventSink);
   const venueService = new VenueService(venueRepo, domainEventSink);
   const artistProfileService = new ArtistProfileService(artistProfileRepo, artistRegistryService);
@@ -379,6 +400,7 @@ export function createLotCatalogServices(
     itemSubmissionSellerApi: itemSubmissionService,
     itemSubmissionAdminApi: itemSubmissionService,
     consignmentAgreementService,
+    consignmentAfterSaleHttp,
     categoryService,
     venueService,
     artistProfileService,

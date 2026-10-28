@@ -23,6 +23,7 @@ const PUSH_TYPES = new Set([
   "submission_draft_reminder",
   "submission_changes_requested",
   "consignment_agreement_reminder",
+  "consignment_update",
   "submission_received_for_review",
 ]);
 

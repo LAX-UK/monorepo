@@ -99,6 +99,8 @@ function stampActions(
       break;
     case "lot_draft_past_start":
       break;
+    case "unsold_lot_choice":
+      break;
   }
 
   return actions;
@@ -176,6 +178,10 @@ export class AdminWorkItemsService {
       {
         access: LOTS_ACCESS,
         fetch: () => this.reader.listDraftLotsPastStart(perSourceLimit),
+      },
+      {
+        access: SUBMISSIONS_ACCESS,
+        fetch: () => this.reader.listUnsoldLotChoices(perSourceLimit),
       },
     ];
 

@@ -51,7 +51,7 @@ export class NotificationFactory implements INotificationFactory {
       title: sold ? "Your lot has sold" : "Your lot closed unsold",
       message: sold
         ? `"${lot.title}" sold with a hammer price of ${opts?.hammerPrice} GBP.`
-        : `"${lot.title}" closed without a sale.`,
+        : `"${lot.title}" closed without a sale. Choose what happens next: relist it, offer it by private sale, or have it returned.`,
       lotId: lot.id,
       meta: {
         lotTitle: lot.title,

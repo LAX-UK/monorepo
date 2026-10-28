@@ -4,6 +4,7 @@ import type {
   IItemSubmissionAdminApi,
   IItemSubmissionSellerApi,
 } from "../services/interfaces/item-submission-apis.js";
+import type { IConsignmentAfterSaleHttpApplicationService } from "../services/interfaces/submission-routes/consignment-after-sale-http.js";
 import type { SubmissionRouteServices } from "../services/interfaces/submission-routes/index.js";
 import type { ISubmissionDocumentPort } from "../services/interfaces/submission-routes/submission-document-port.js";
 import { SubmissionAdminHttpApplicationService } from "../services/submission/submission-admin-http-application.service.js";
@@ -15,6 +16,7 @@ export type CreateSubmissionRouteServicesInput = {
   itemSubmissionAdminApi: IItemSubmissionAdminApi;
   submissionDocumentService: ISubmissionDocumentPort;
   consignmentAgreementService: IConsignmentAgreementService;
+  consignmentAfterSaleHttp: IConsignmentAfterSaleHttpApplicationService;
 };
 
 export function createSubmissionRouteServices(
@@ -31,5 +33,6 @@ export function createSubmissionRouteServices(
     agreementHttp: new ConsignmentAgreementHttpApplicationService(
       input.consignmentAgreementService,
     ),
+    afterSaleHttp: input.consignmentAfterSaleHttp,
   };
 }
