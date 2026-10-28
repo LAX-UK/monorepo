@@ -23,11 +23,17 @@ Bid and Shop remain **purpose-built products** with recognizable shared DNA:
 |---------|-----------------|---------------|
 | Product naming | “LAX Bid”, “LAX Shop” in switcher and footers | Primary nav, mega-menu, commerce rails |
 | Account entry | Guest vs signed-in header; `/account` on Shop; Bid account chip | Account page layout beyond identity summary |
-| Product switcher | Validated env URLs via `@auction/lax-ecosystem` | Placement inside each header utility row |
+| LAX top bar | `LaxFamilyBar` (`@auction/marketing-ui`) fed by `buildLaxFamilyLinks` (`@auction/lax-ecosystem`): LAX Bid · lax.art · LAX Shop, then LAX Account | The optional right-side message or actions |
 | Focus / targets | `FOCUS_RING` from `@auction/branding`; 44×44 minimum interactive targets | BEM vs Tailwind composition |
 | Loading / errors | Discriminated account states (`unavailable` ≠ guest) | Product-specific error copy |
 
 Wayfinding must use configuration (`LAX_BID_PUBLIC_URL`, `LAX_SHOP_STOREFRONT_URL`), not hardcoded production hosts in components.
+
+### One family: shared primary button, top bar and paper
+
+- **Primary button.** `Button` `variant="primary"` (and its alias `cta`) is the one primary button of every client-facing product: a flat fill in the product's `--color-cta-bg` with `--color-cta-on` text (ink on Bid, Shop and lax.art; teal on LAX Account). Hover and pressed step the fill through `--color-cta-bg-hover` / `--color-cta-bg-pressed`, which a product may set (Account darkens its teal); the defaults mix the fill toward its label colour. The focus ring is the product's `--color-ring`. No gradients or shadows. Staff tools keep the staff kit's neutral primary.
+- **LAX top bar.** Every client-facing product (Bid site and client area, Shop, lax.art, LAX Account) renders `LaxFamilyBar` as the first row of its header: the products in that order, the current one semibold in full ink with `aria-current="true"`, then LAX Account after a divider. The right side takes an optional `message` (Shop's collection and delivery note) or the product's existing utility `actions`. It is 36px tall, 12px sentence-case names, hidden below `lg`; there, each product's menu lists the same siblings with `LaxFamilyMenuLinks` (the shared mobile drawer takes `familyLinks`). Never on staff shells.
+- **Paper.** `--brand-paper` / `--brand-paper-on-dark` (`BRAND_SURFACES`) are the warm cream surface and its dark equivalent; lax.art and Shop map them to `--color-surface-paper`. lax.art's feature bands read from it.
 
 ## Multi-product UI stack
 
@@ -104,7 +110,7 @@ Counts are files importing the primitive (excluding tests). Rows from the origin
 | Section header / status state | `@auction/marketing-ui` | 1 / 1 | 11 / 1 | 1 / 2 | |
 | Detail shell | `@auction/marketing-ui` `MarketingDetailShell` | 11 | 8 | — | Renders its own `<main id="main-content">`; Art avoids it to keep a single landmark inside the root layout |
 | Page gutter | `@auction/branding` `MARKETING_PAGE_SHELL` | 2 | 25 | 11 | |
-| Product switcher | `@auction/lax-ecosystem` via product wrapper | 2 | 2 | 2 | |
+| LAX top bar | `@auction/marketing-ui` `LaxFamilyBar` / `LaxFamilyMenuLinks` + `@auction/lax-ecosystem` `buildLaxFamilyLinks` | 1 | 2 (site header, client shell) | 1 | LAX Account uses it too; the per-product switchers and `MarketingUtilityBar` are removed |
 | Money / date presenters | `@auction/shop-portal/vm` (`formatGbpPence`, `formatShopDate`) | 12 / 5 | — | 2 / 1 | Art's former copies of Shop presenters were deleted |
 | Grid / list view | `@auction/marketing-ui` `MarketingCatalogViewSwitcher` + `MarketingCatalogView` (`useCatalogViewNavigation`) | 1 (artworks) | local `CatalogViewSwitcher` (same `ViewSwitcher`) | 1 (artworks) | Bid's contract: `?view=` is the source of truth, `lax_view_<routeKey>` cookie remembers it, default view drops the param. Art/Shop pass `clearParams={[]}` so cursor pagination survives a switch |
 | List row | `@auction/marketing-ui` `MarketingCatalogListRow` | 1 | lot list rows (local) | 1 | Thumbnail, title, artist, meta, price and trailing actions in one row. `size="lg"` (large landscape media) and an `aside` slot (price, heart, Enquire) are Art's |
