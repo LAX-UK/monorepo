@@ -1737,6 +1737,13 @@
       "when": 1796716800000,
       "tag": "0247_shop_edition_stock_ref_and_authority_cap",
       "breakpoints": true
+    },
+    {
+      "idx": 248,
+      "version": "7",
+      "when": 1796803200000,
+      "tag": "0248_lax_admin_staff_roles",
+      "breakpoints": true
     }
   ]
 }

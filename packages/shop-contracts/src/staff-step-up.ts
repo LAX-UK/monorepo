@@ -20,7 +20,6 @@ export const SHOP_ADMIN_STEP_UP_PATHS = [
   "/admin/v1/sale-fees",
   "/admin/v1/fulfilment/possession",
   "/admin/v1/cancellations",
-  "/admin/v1/staff/grants",
   "/admin/v1/original-sales/:originalSaleId/invoice",
   "/admin/v1/sale-authority-requests/:requestId/decision",
   "/admin/v1/artworks/:artworkId/sale-authority",

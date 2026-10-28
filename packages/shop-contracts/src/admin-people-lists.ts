@@ -52,6 +52,8 @@ export const ADMIN_STAFF_ROLES = [
   "operations",
   "finance",
   "catalogue_editor",
+  "editor",
+  "read_only",
 ] as const;
 
 /** The first is the default. */

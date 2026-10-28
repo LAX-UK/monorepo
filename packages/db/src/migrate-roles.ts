@@ -78,6 +78,8 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_product_variant",
   "shop_sale_authority_request",
   "shop_staff_member",
+  /** Each LAX Admin role a staff member holds, with its period. */
+  "shop_staff_role_assignment",
   "shop_admin_command",
   "shop_identity_merge_inbox",
   "shop_staff_access_inbox",
@@ -147,8 +149,15 @@ export const API_DENY_TABLES = [
   ...SHOP_COMMERCE_APPEND_ONLY_TABLES,
 ] as const;
 /** Identity-backed read models exposed to the Bid API without write privileges. */
-/** `lax_staff_access_directory` is trigger-maintained (D36); Bid reads Shop roles from it. */
-export const API_READ_TABLES = ["bid_identity_directory", "lax_staff_access_directory"] as const;
+/**
+ * `lax_staff_access_directory` and `lax_staff_role_directory` are trigger-maintained (D36); Bid
+ * reads LAX Admin roles from them.
+ */
+export const API_READ_TABLES = [
+  "bid_identity_directory",
+  "lax_staff_access_directory",
+  "lax_staff_role_directory",
+] as const;
 /** Product-local profile tables owned by apps/api (Bid). */
 export const API_PRODUCT_PROFILE_TABLES = ["bid_user_profile"] as const;
 export const API_SSF_RECEIVER_TABLES = ["bid_ssf_replay"] as const;

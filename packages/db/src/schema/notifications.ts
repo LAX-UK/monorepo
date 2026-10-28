@@ -56,7 +56,9 @@ export const notification = pgTable(
         'source_of_funds_approved',
         'source_of_funds_rejected',
         'staff_role_expired',
-        'staff_role_expired_admin'
+        'staff_role_expired_admin',
+        'staff_role_changed',
+        'staff_role_changed_admin'
       )`,
     ),
   ],

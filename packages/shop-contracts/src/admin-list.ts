@@ -262,7 +262,16 @@ export const AdminStaffMemberListItemSchema = Type.Object({
   email: Type.Union([Type.String(), Type.Null()]),
   /** Their latest recorded admin action, as a proxy for last active; null if none. */
   lastActiveAt: Type.Union([Type.String(), Type.Null()]),
+  /** The primary role, for places with room for one. */
   role: Type.String(),
+  /** Every role held or starting later, with its period; capabilities are their union. */
+  roles: Type.Array(
+    Type.Object({
+      role: Type.String(),
+      startsAt: Type.String(),
+      endsAt: Type.Union([Type.String(), Type.Null()]),
+    }),
+  ),
   disabledAt: Type.Union([Type.String(), Type.Null()]),
   createdAt: Type.String(),
 });
