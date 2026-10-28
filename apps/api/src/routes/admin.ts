@@ -47,6 +47,7 @@ import { attachAdminSaleroomRoutes } from "./admin/saleroom.routes.js";
 import { attachAdminSavedViewRoutes } from "./admin/saved-views.routes.js";
 import { attachAdminSecurityRoutes } from "./admin/security.routes.js";
 import { attachAdminStaffAccessRoutes } from "./admin/staff-access.routes.js";
+import { attachAdminStaffRolesRoutes } from "./admin/staff-roles.routes.js";
 import { attachAdminTwoFactorResetRoutes } from "./admin/two-factor-reset.routes.js";
 import {
   attachAdminUsersDirectoryRoutes,
@@ -122,6 +123,7 @@ export function createAdminRoutes(
   attachAdminImpersonationRoutes(platform, container, guards);
   attachAdminSecurityRoutes(platform, container.admin.staffTwoFactorPolicy);
   attachAdminStaffAccessRoutes(platform, container.admin.staffAccess, guards);
+  attachAdminStaffRolesRoutes(platform, container.admin.staffRoles, guards);
   attachAdminTwoFactorResetRoutes(platform, container.admin.twoFactorReset, guards);
   attachAdminSavedViewRoutes(platform, container.admin.savedViews);
 

@@ -3,7 +3,10 @@ import {
   DrizzleAdminSavedViewRepository,
   DrizzleBuyerAgentAuthorisationRepository,
   DrizzleLaxStaffAccessRepository,
+  DrizzleStaffAccessReviewReader,
   DrizzleStaffNoticeRecipientReader,
+  DrizzleStaffRoleAssignmentReader,
+  DrizzleStaffRoster,
 } from "@auction/persistence/repositories";
 import type { Container, ContainerComposedSlices } from "./container/container-slices.js";
 import { createAdminServices } from "./container/create-admin-services.js";
@@ -49,6 +52,8 @@ import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure
 import { TwoFactorPolicyService } from "./services/security/two-factor-policy.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
 import { StaffStepUpService } from "./services/staff-step-up.service.js";
+import { StaffRoleAssignmentService } from "./services/staff/staff-role-assignment.service.js";
+import { StaffRolesAdminService } from "./services/staff/staff-roles-admin.service.js";
 import { SubmissionAccessGuard } from "./services/submission/submission-access-guard.js";
 
 export type { Container, ContainerComposedSlices };
@@ -259,6 +264,14 @@ export function createContainer(env: Env): Container {
   const staffAccess = new StaffAccessAdminService({
     access: new DrizzleLaxStaffAccessRepository(db),
     users: repos.adminUserReader,
+    identity: identityIssuer,
+  });
+
+  const staffRoles = new StaffRolesAdminService({
+    changes: new StaffRoleAssignmentService(new DrizzleStaffRoster(db)),
+    roles: new DrizzleStaffRoleAssignmentReader(db),
+    users: repos.adminUserReader,
+    review: new DrizzleStaffAccessReviewReader(db),
     identity: identityIssuer,
   });
 
@@ -527,6 +540,7 @@ export function createContainer(env: Env): Container {
       staffTwoFactorPolicy: twoFactorPolicy,
       twoFactorReset,
       staffAccess,
+      staffRoles,
       savedViews,
       atg,
       buyerAgentAuthorisations,

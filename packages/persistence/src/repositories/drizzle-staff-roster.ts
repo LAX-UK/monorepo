@@ -11,6 +11,7 @@ import { writeBidUserProfile } from "../bid-user-profile-sync.js";
 import type {
   IStaffRoleAssignmentReader,
   IStaffRoster,
+  IStaffRosterFactsReader,
   IStaffRosterTransaction,
   NewStaffRoleAssignment,
   StaffProfileRoles,
@@ -31,7 +32,8 @@ const STAFF_ROSTER_LOCK_KEY = "bid_staff_admin_roster";
 
 type AssignmentRow = typeof staffRoleAssignment.$inferSelect;
 
-function toRecord(row: AssignmentRow): StaffRoleAssignmentRecord {
+/** A stored assignment row as the roster ports return it. */
+export function toStaffRoleAssignmentRecord(row: AssignmentRow): StaffRoleAssignmentRecord {
   return {
     id: row.id,
     userId: row.userId,
@@ -67,11 +69,35 @@ async function selectCurrent(
     .from(staffRoleAssignment)
     .where(and(eq(staffRoleAssignment.userId, userId), staffRoleAssignmentNotEndedAt(now)))
     .orderBy(staffRoleAssignment.startsAt);
-  return rows.map(toRecord);
+  return rows.map(toStaffRoleAssignmentRecord);
+}
+
+/** People other than `userId` who are active, unsuspended staff holding the administrator role. */
+async function countOtherActiveAdministrators(
+  db: Database,
+  userId: string,
+  now: Date,
+): Promise<number> {
+  const [row] = await db
+    .select({ n: countDistinct(staffRoleAssignment.userId) })
+    .from(staffRoleAssignment)
+    .innerJoin(bidUserProfile, eq(bidUserProfile.userId, staffRoleAssignment.userId))
+    .where(
+      and(
+        eq(staffRoleAssignment.role, ADMINISTRATOR_STAFF_ROLE),
+        ne(staffRoleAssignment.userId, userId),
+        staffRoleAssignmentInForceAt(now),
+        eq(bidUserProfile.role, "staff"),
+        isNull(bidUserProfile.suspendedAt),
+      ),
+    );
+  return Number(row?.n ?? 0);
 }
 
 /** Reads assignments for sessions; works on a pool or inside a caller's transaction. */
-export class DrizzleStaffRoleAssignmentReader implements IStaffRoleAssignmentReader {
+export class DrizzleStaffRoleAssignmentReader
+  implements IStaffRoleAssignmentReader, IStaffRosterFactsReader
+{
   constructor(private readonly db: Database) {}
 
   listCurrent(userId: string, now: Date): Promise<StaffRoleAssignmentRecord[]> {
@@ -80,6 +106,10 @@ export class DrizzleStaffRoleAssignmentReader implements IStaffRoleAssignmentRea
 
   async listActiveRoles(userId: string, now: Date): Promise<StaffRoles> {
     return activeStaffRoles(await selectCurrent(this.db, userId, now), now);
+  }
+
+  countOtherActiveAdministrators(userId: string, now: Date): Promise<number> {
+    return countOtherActiveAdministrators(this.db, userId, now);
   }
 }
 
@@ -93,21 +123,8 @@ class DrizzleStaffRosterTransaction implements IStaffRosterTransaction {
     return selectCurrent(this.tx, userId, now);
   }
 
-  async countOtherActiveAdministrators(userId: string, now: Date): Promise<number> {
-    const [row] = await this.tx
-      .select({ n: countDistinct(staffRoleAssignment.userId) })
-      .from(staffRoleAssignment)
-      .innerJoin(bidUserProfile, eq(bidUserProfile.userId, staffRoleAssignment.userId))
-      .where(
-        and(
-          eq(staffRoleAssignment.role, ADMINISTRATOR_STAFF_ROLE),
-          ne(staffRoleAssignment.userId, userId),
-          staffRoleAssignmentInForceAt(now),
-          eq(bidUserProfile.role, "staff"),
-          isNull(bidUserProfile.suspendedAt),
-        ),
-      );
-    return Number(row?.n ?? 0);
+  countOtherActiveAdministrators(userId: string, now: Date): Promise<number> {
+    return countOtherActiveAdministrators(this.tx, userId, now);
   }
 
   async insert(assignment: NewStaffRoleAssignment): Promise<StaffRoleAssignmentRecord> {
@@ -123,7 +140,7 @@ class DrizzleStaffRosterTransaction implements IStaffRosterTransaction {
       })
       .returning();
     if (!row) throw new Error("staff_role_assignment_insert_failed");
-    return toRecord(row);
+    return toStaffRoleAssignmentRecord(row);
   }
 
   async end(assignmentId: string, endsAt: Date): Promise<void> {
@@ -147,7 +164,7 @@ class DrizzleStaffRosterTransaction implements IStaffRosterTransaction {
       .orderBy(asc(staffRoleAssignment.endsAt), asc(staffRoleAssignment.id))
       .limit(limit)
       .for("update", { skipLocked: true });
-    return rows.map(toRecord);
+    return rows.map(toStaffRoleAssignmentRecord);
   }
 
   async recordEnds(assignmentIds: readonly string[], at: Date): Promise<void> {

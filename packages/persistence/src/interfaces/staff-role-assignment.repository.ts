@@ -65,6 +65,12 @@ export interface IStaffRoleAssignmentReader {
   listActiveRoles(userId: string, now: Date): Promise<StaffRoles>;
 }
 
+/** Facts about the rest of the roster a screen shows before a change, read outside one. */
+export interface IStaffRosterFactsReader {
+  /** People other than `userId` who are active staff and hold the administrator role at `now`. */
+  countOtherActiveAdministrators(userId: string, now: Date): Promise<number>;
+}
+
 /**
  * One roster change. Everything here commits together, and changes to the roster are serialised,
  * so two people changing roles at once cannot both pass the last-administrator rule.

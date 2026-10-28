@@ -28,6 +28,7 @@ export * from "./password-policy.js";
 export * from "./register.js";
 export * from "./account-onboarding.js";
 export * from "./invitation.js";
+export * from "./staff-roles.js";
 export * from "./forgot-password.js";
 export * from "./reset-password.js";
 export * from "./newsletter.js";

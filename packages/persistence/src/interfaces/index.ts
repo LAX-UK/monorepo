@@ -122,7 +122,12 @@ export type {
   StaffNoticeRecipient,
 } from "./staff-notice-recipient.reader.js";
 export type {
+  IStaffAccessReviewReader,
+  StaffAccessReviewPerson,
+} from "./staff-access-review.reader.js";
+export type {
   IStaffRoleAssignmentReader,
+  IStaffRosterFactsReader,
   IStaffRoster,
   IStaffRosterTransaction,
   NewStaffRoleAssignment,
