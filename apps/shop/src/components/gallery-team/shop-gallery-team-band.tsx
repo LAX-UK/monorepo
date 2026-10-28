@@ -1,13 +1,12 @@
 import { ShopMediaImage } from "@/components/media/shop-media-image";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import type { GalleryTeamVm } from "@/lib/gallery-team/gallery-team.vm";
-import {
-  MarketingGalleryTeamBand,
-  MarketingMailIcon,
-  MarketingPhoneIcon,
-} from "@auction/marketing-ui";
+import { MarketingGalleryTeamBand } from "@auction/marketing-ui";
 
-/** The shared gallery team band, with Shop's own secondary buttons for the phone and email. */
+/**
+ * The shared gallery team band on Shop: the same photograph, reply note and four details as
+ * lax.art, with one outline action into help and contact.
+ */
 export function ShopGalleryTeamBand({ team }: { team: GalleryTeamVm }) {
   return (
     <MarketingGalleryTeamBand
@@ -15,6 +14,9 @@ export function ShopGalleryTeamBand({ team }: { team: GalleryTeamVm }) {
       eyebrow={team.eyebrow}
       title={team.title}
       body={team.body}
+      note={team.note}
+      details={team.details}
+      data-testid="shop-gallery-team-band"
       media={
         <ShopMediaImage
           src={team.imageUrl}
@@ -25,18 +27,16 @@ export function ShopGalleryTeamBand({ team }: { team: GalleryTeamVm }) {
         />
       }
       actions={
-        <>
-          <ShopCommerceButton variant="outline" scale="standard" href={team.phone.href}>
-            <MarketingPhoneIcon className="size-4" />
-            {team.phone.label}
-          </ShopCommerceButton>
-          <ShopCommerceButton variant="outline" scale="standard" href={team.email.href}>
-            <MarketingMailIcon className="size-4" />
-            {team.email.label}
-          </ShopCommerceButton>
-        </>
+        // On phones the one action spans the panel, so it is easy to reach with a thumb.
+        <ShopCommerceButton
+          variant="outline"
+          scale="standard"
+          href={team.action.href}
+          className="w-full sm:w-fit"
+        >
+          {team.action.label}
+        </ShopCommerceButton>
       }
-      details={[{ kind: "address", text: team.address }]}
     />
   );
 }
