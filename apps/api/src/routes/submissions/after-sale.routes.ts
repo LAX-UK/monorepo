@@ -4,6 +4,7 @@ import {
   submissionIdParamSchema,
   unsoldLotChoiceDecisionBodySchema,
   unsoldLotChoiceRequestBodySchema,
+  unsoldOutcomesQuerySchema,
 } from "@auction/validators";
 import { respondSubmissionHttpJson } from "../../lib/submission-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
@@ -28,6 +29,21 @@ export function attachSubmissionAfterSaleRoutes(
 ): void {
   const { container, requireAuth, requireSubmissionEntityContext } = deps;
   const http = container.submissionRoutes.afterSaleHttp;
+
+  // The account's lots that ended unsold, with what was chosen, so Home can list only those
+  // still waiting for a choice in one read.
+  r.get(
+    "/mine/unsold-lots",
+    requireAuth,
+    requireSubmissionEntityContext,
+    zValidator("query", unsoldOutcomesQuerySchema),
+    async (c) => {
+      return respondSubmissionHttpJson(
+        c,
+        await http.listUnsoldOutcomes(agreementSellerFromContext(c), c.req.valid("query")),
+      );
+    },
+  );
 
   r.get(
     "/:id/after-sale",

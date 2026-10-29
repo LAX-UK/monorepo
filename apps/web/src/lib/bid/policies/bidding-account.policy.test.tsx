@@ -55,6 +55,43 @@ describe("biddingAccountPolicy", () => {
     expect(screen.getByRole("button", { name: "Switch to personal" })).toBeTruthy();
   });
 
+  it.each([
+    [
+      "documents_under_review",
+      "Bidding for Northbank Gallery isn't open yet",
+      "Bidding for Northbank Gallery opens once we've checked its documents. You can still bid in your own name.",
+    ],
+    [
+      "documents_requested",
+      "Bidding for Northbank Gallery isn't open yet",
+      "It opens once Northbank Gallery has sent its documents and we've checked them. You can still bid in your own name.",
+    ],
+    [
+      "restricted",
+      "Bidding for Northbank Gallery is paused",
+      "Contact us to find out more. You can still bid in your own name.",
+    ],
+  ] as const)("says why bidding is closed while the organisation is %s", (state, title, detail) => {
+    const decision = biddingAccountPolicy.evaluate(
+      policyContext({
+        biddingAccount: {
+          kind: "organisation",
+          name: "Northbank Gallery",
+          allowed: false,
+          reason: "organisation_state",
+          state,
+          canSwitchToPersonal: true,
+        },
+      }),
+    );
+    expect(decision.kind).toBe("block");
+    if (decision.kind !== "block") return;
+    expect(decision.presentation).toMatchObject({ tone: "info", title, detail });
+    expect(`${decision.presentation.title} ${decision.presentation.detail}`).not.toMatch(
+      /can bid now/i,
+    );
+  });
+
   it("leaves out the switch when there is no personal account", () => {
     const decision = biddingAccountPolicy.evaluate(
       policyContext({

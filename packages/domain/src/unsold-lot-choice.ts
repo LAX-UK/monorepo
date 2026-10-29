@@ -53,7 +53,9 @@ export type UnsoldLotFacts = {
 };
 
 /** Statuses in which a lot has finished without a buyer, once it has no winner. */
-const ENDED_STATUSES: ReadonlySet<LotStatus> = new Set(["ended", "voided"]);
+export const UNSOLD_LOT_END_STATUSES: readonly LotStatus[] = ["ended", "voided"];
+
+const ENDED_STATUSES: ReadonlySet<LotStatus> = new Set(UNSOLD_LOT_END_STATUSES);
 
 /** A lot ended without a sale: closed with no winner, or voided at close. */
 export function lotEndedUnsold(lot: Pick<UnsoldLotFacts, "status" | "winnerId">): boolean {

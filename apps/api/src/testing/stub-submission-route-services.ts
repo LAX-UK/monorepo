@@ -43,6 +43,7 @@ export function stubSubmissionRouteServices(
     },
     afterSaleHttp: {
       getForSeller: vi.fn(),
+      listUnsoldOutcomes: vi.fn(),
       requestUnsoldChoice: vi.fn(),
       withdraw: vi.fn(),
       getForStaff: vi.fn(),

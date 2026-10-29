@@ -14,6 +14,7 @@ import {
 import {
   resolveSellerWorkspaceContext,
   sellerCan,
+  sellerCanStartSubmission,
 } from "@/lib/legal-entity/seller-acting-context.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { loadSellingOverview } from "@/lib/seller/selling-overview.server";
@@ -37,7 +38,7 @@ export default async function SellerOverviewPage() {
 
   const { sellerEntityId } = sellerCtx;
   const canSell = sellerCan(sellerCtx, "entity.consignments.read");
-  const canCreateSubmission = sellerCan(sellerCtx, "entity.submissions.create");
+  const canCreateSubmission = sellerCanStartSubmission(sellerCtx);
   const overview = await loadSellingOverview(sellerCtx, user.id);
 
   return (

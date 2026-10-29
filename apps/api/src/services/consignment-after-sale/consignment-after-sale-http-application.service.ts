@@ -1,3 +1,4 @@
+import { entityActorCan } from "@auction/domain";
 import type {
   ItemSubmission,
   SellerAfterSaleView,
@@ -5,6 +6,7 @@ import type {
   UnsoldLotChoiceDecisionInput,
   UnsoldLotChoiceRequestInput,
 } from "@auction/types";
+import type { UnsoldOutcomesQuery } from "@auction/validators";
 import type { Result } from "neverthrow";
 import type { SubmissionError } from "../../lib/errors.js";
 import { requireSubmissionsAccessHttp } from "../../lib/submission-http-auth.js";
@@ -40,6 +42,14 @@ function respond<T>(result: Result<T, SubmissionError>): SubmissionHttpJson {
 
 const NOT_FOUND: SubmissionHttpJson = { status: 404, body: { error: "Not found" } };
 
+const FORBIDDEN_CONSIGNMENTS: SubmissionHttpJson = {
+  status: 403,
+  body: {
+    error: "Your role can't see this organisation's consignments.",
+    code: "insufficient_entity_role",
+  },
+};
+
 /** Maps the after-sale use cases to HTTP responses; staff calls need submissions access. */
 export class ConsignmentAfterSaleHttpApplicationService
   implements IConsignmentAfterSaleHttpApplicationService
@@ -71,6 +81,29 @@ export class ConsignmentAfterSaleHttpApplicationService
     ]);
     const data: SellerAfterSaleView = { stage, unsold, withdrawal };
     return { status: 200, body: { data } };
+  }
+
+  /**
+   * The account's consigned lots that ended unsold, with what was chosen, for anyone who follows
+   * its consignments; a consignor sees only the lots they sent. Others are refused, never shown
+   * an empty list.
+   */
+  async listUnsoldOutcomes(
+    seller: AgreementSellerContext,
+    query: UnsoldOutcomesQuery,
+  ): Promise<SubmissionHttpJson> {
+    if (seller.actor && !entityActorCan(seller.actor, "entity.consignments.read")) {
+      return FORBIDDEN_CONSIGNMENTS;
+    }
+    const visibleTo = this.deps.access.senderFilter({
+      legalEntityId: seller.legalEntityId,
+      member: seller.actor ? { userId: seller.userId, actor: seller.actor } : undefined,
+    });
+    const { rows, total } = await this.deps.unsold.listOutcomes(
+      { legalEntityId: seller.legalEntityId, visibleTo },
+      query,
+    );
+    return { status: 200, body: { data: rows, total } };
   }
 
   async requestUnsoldChoice(

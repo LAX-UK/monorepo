@@ -305,10 +305,20 @@ describe("InvitationAcceptanceService.preview", () => {
     ).resolves.toEqual({ state: "expired", organisationName: "Northbank Gallery" });
   });
 
-  it("calls an invitation to a restricted, rejected or archived organisation closed", async () => {
-    for (const status of ["restricted", "rejected", "archived"] as const) {
+  it("says a restricted organisation can't add members right now", async () => {
+    await expect(preview({ findLegalEntityStatus: async () => "restricted" })).resolves.toEqual({
+      state: "organisation_closed",
+      organisationName: "Northbank Gallery",
+      message: "This organisation can't add members right now.",
+    });
+  });
+
+  it("says a rejected or archived organisation is closed to new members", async () => {
+    for (const status of ["rejected", "archived"] as const) {
       await expect(preview({ findLegalEntityStatus: async () => status })).resolves.toEqual({
-        state: "closed",
+        state: "organisation_closed",
+        organisationName: "Northbank Gallery",
+        message: "This organisation is closed and isn't taking new members.",
       });
     }
   });

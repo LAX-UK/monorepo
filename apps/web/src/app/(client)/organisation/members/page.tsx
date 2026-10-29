@@ -23,11 +23,12 @@ import {
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { organisationHref } from "@/lib/navigation/client-routes";
 import { requireOrganisationTab } from "@/lib/navigation/organisation-tabs";
-import { entityActorCan } from "@auction/domain";
+import { entityActorCan, organisationJoinRefusal } from "@auction/domain";
 import { DisplayHeading } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { Surface } from "@auction/ui/components/surface";
+import { Info } from "lucide-react";
 import { notFound } from "next/navigation";
 
 export default async function OrganisationMembersPage() {
@@ -77,6 +78,9 @@ export default async function OrganisationMembersPage() {
     controls: memberRowControls(changeActor, row, members),
   }));
   const inviteRoles = inviteRoleOptions(changeActor);
+  // The organisation's state can close it to new members whatever the role; say so, in the
+  // server's words, instead of offering a form the server would refuse.
+  const invitesClosed = organisationJoinRefusal(acting.status);
   const viewOnlyReason = memberViewOnlyReason(changeActor);
   const isOrganisation = acting.kind === "organisation";
   // Owners and admins see which members have two-step verification on; the policy is its own tab.
@@ -116,7 +120,15 @@ export default async function OrganisationMembersPage() {
         </Alert>
       ) : null}
 
-      {inviteRoles.length > 0 ? (
+      {inviteRoles.length > 0 && invitesClosed ? (
+        <p
+          className="flex items-start gap-2 font-body text-sm text-on-surface-variant"
+          data-testid="invites-closed"
+        >
+          <Info className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} aria-hidden />
+          {invitesClosed.message}
+        </p>
+      ) : inviteRoles.length > 0 ? (
         <Surface variant="section" padding="md" className="space-y-4">
           <div className="space-y-1">
             <h3 className="text-base font-semibold text-on-surface">Invite someone</h3>

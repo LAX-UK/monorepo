@@ -1,7 +1,9 @@
 import "server-only";
 
+import { throwIfNotOk } from "@/lib/dashboard/dashboard-fetch-errors";
 import { authedServerFetch } from "@/lib/data/http/authed-server-fetch";
-import { safeReadData } from "@/lib/data/http/envelope";
+import { readJsonBody, readListEnvelope, safeReadData } from "@/lib/data/http/envelope";
+import type { ListPage } from "@/lib/data/paging/read-all-pages";
 import {
   consignmentMoveOptionsSchema,
   sellerAfterSaleSchema,
@@ -10,8 +12,10 @@ import {
 import type {
   ConsignmentMoveOptions,
   SellerAfterSaleView,
+  SellerUnsoldOutcome,
   StaffAfterSaleView,
 } from "@auction/types";
+import { z } from "zod";
 
 const path = (submissionId: string, rest: string) =>
   `/submissions/${encodeURIComponent(submissionId)}/${rest}`;
@@ -24,6 +28,33 @@ export async function getServerConsignmentAfterSale(
 ): Promise<SellerAfterSaleView | null> {
   const res = await authedServerFetch(path(submissionId, "after-sale"));
   return safeReadData(res, sellerAfterSaleSchema);
+}
+
+const unsoldOutcomeSchema = z.object({
+  lotId: z.string(),
+  submissionId: z.string(),
+  title: z.string(),
+  endedAt: z.string(),
+  choice: z.enum(["none", "requested", "confirmed"]),
+});
+
+/**
+ * One page of the acting account's consigned lots that ended unsold, with what was chosen. The
+ * API narrows it to what the member may see (a consignor's own lots) and refuses other roles.
+ */
+export async function listServerUnsoldOutcomes(page: {
+  choice?: SellerUnsoldOutcome["choice"];
+  limit: number;
+  offset: number;
+}): Promise<ListPage<SellerUnsoldOutcome>> {
+  const query = new URLSearchParams({ limit: String(page.limit), offset: String(page.offset) });
+  if (page.choice) query.set("choice", page.choice);
+  const res = await authedServerFetch(`/submissions/mine/unsold-lots?${query}`, {
+    cache: "no-store",
+  });
+  await throwIfNotOk(res, "submissions");
+  const body = await readJsonBody(res);
+  return readListEnvelope(body, unsoldOutcomeSchema, "GET /submissions/mine/unsold-lots");
 }
 
 /** Staff: the unsold choice and withdrawal request on a consignment. */

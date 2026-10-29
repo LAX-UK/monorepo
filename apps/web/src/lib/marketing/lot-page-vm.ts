@@ -3,6 +3,7 @@ import type { BidHistoryEntry } from "@/lib/bid/bid-history-entry";
 import { shouldShowBidStickyMobileBar } from "@/lib/bid/bid-sticky-mobile-bar.logic";
 import { type BiddingAccount, resolveBiddingAccount } from "@/lib/bid/bidding-account";
 import { buildSaleRegistrationBidGate } from "@/lib/bid/build-sale-registration-bid-gate";
+import { splitBuyerMembershipsByState } from "@/lib/bid/buyer-entity-state";
 import { computeIsOwnLot } from "@/lib/bid/compute-is-own-lot";
 import { deriveInitialOutbid, deriveUserHasBid } from "@/lib/bid/derive-initial-outbid";
 import { mapBidToHistoryEntry } from "@/lib/bid/map-bid-to-history-entry";
@@ -373,13 +374,10 @@ export function buildLotPageViewModel(input: {
       })
     : null;
 
+  // Accounts the person can bid for in the room: a bidding role, and a state that allows it.
   const buyerEntitiesForOnsite =
-    actingCtx.memberships
-      .filter(
-        (membership) =>
-          (membership.status === "approved" || membership.status === "restricted") &&
-          entityRoleCan(membership.role, "entity.bid.place"),
-      )
+    splitBuyerMembershipsByState(actingCtx.memberships)
+      .open.filter((membership) => entityRoleCan(membership.role, "entity.bid.place"))
       .map((membership) => ({
         id: membership.id,
         displayName: membership.displayName,

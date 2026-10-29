@@ -6,6 +6,7 @@ import { entityCapabilitiesOf } from "./entity-capabilities.js";
 import {
   ORGANISATION_ACTIONS,
   type OrganisationAction,
+  organisationBannerActors,
   organisationStatePolicy,
 } from "./organisation-state-policy.js";
 import { organisationBidRefusalMessage } from "./organisation-state-refusal.js";
@@ -164,6 +165,31 @@ describe("bidding and registering share one rule", () => {
   it("explains every refusal and nothing else", () => {
     for (const status of legalEntityStatuses) {
       expect(organisationBidRefusalMessage(status) === null).toBe(buyerEntityCanBid(status));
+    }
+  });
+});
+
+describe("who can act on a banner", () => {
+  it("names the roles that receive the banner as something to do", () => {
+    expect(organisationBannerActors("documents_requested")).toEqual(["owner", "admin"]);
+    expect(organisationBannerActors("payouts_not_set_up")).toEqual(["owner", "admin", "finance"]);
+  });
+
+  it("names nobody where only LAX can act", () => {
+    for (const key of [
+      "documents_under_review",
+      "restricted",
+      "not_approved",
+      "archived",
+    ] as const) {
+      expect(organisationBannerActors(key)).toEqual([]);
+    }
+  });
+
+  it("agrees with the audience: each actor is asked, everyone else is told", () => {
+    for (const role of legalEntityMemberRoles) {
+      const asked = organisationStatePolicy("docs_requested", forRole(role)).banner?.audience;
+      expect(asked === "act").toBe(organisationBannerActors("documents_requested").includes(role));
     }
   });
 });

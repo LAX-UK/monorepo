@@ -1,3 +1,4 @@
+import { splitBuyerMembershipsByState } from "@/lib/bid/buyer-entity-state";
 import { resolveKycSurfaceFeedback } from "@/lib/bid/resolve-kyc-bid-gate";
 import { atgCatalogState, atgDisplaySale } from "@/lib/catalog/atg-catalog-display";
 import type { SessionUser } from "@/lib/data/contracts";
@@ -30,12 +31,14 @@ import type {
   SaleLotCardVM,
   SaleOverviewVM,
 } from "@/lib/marketing/saleroom/view-models";
+import { organisationBidReasonCopy } from "@/lib/presenters/organisation-state/organisation-state-copy";
 import { resolveViewerParticipation } from "@/lib/presenters/viewer-participation";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import { salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
-import type { LegalEntityMemberRole, Lot, Sale } from "@auction/types";
+import { roleBidsThroughAuthorisation } from "@auction/domain";
+import type { LegalEntityMemberRole, LegalEntityStatus, Lot, Sale } from "@auction/types";
 import {
   formatPostalAddressLines,
   isSaleroomDeliveryMode,
@@ -47,6 +50,9 @@ export type SaleroomBuyerEntity = {
   displayName: string;
   memberRole: LegalEntityMemberRole;
 };
+
+/** An organisation whose state closes registration, with the words for why. */
+export type SaleroomRegistrationPaused = { id: string; title: string; line: string };
 
 export type SaleroomMyRegistration = Pick<
   SaleRegistrationMineRow,
@@ -104,6 +110,8 @@ export type SaleroomDetailPageVM = {
   isAuthenticated: boolean;
   showTelephoneBooking: boolean;
   buyerEntities: SaleroomBuyerEntity[];
+  /** Organisations the person registers for as a buyer agent whose state closes bidding, and why. */
+  registrationPaused: SaleroomRegistrationPaused[];
   registerToBidShow: boolean;
   myRegistrations: SaleroomMyRegistration[];
   kycApproved: boolean;
@@ -127,7 +135,7 @@ export type BuildSaleroomPageVMInput = {
     id: string;
     displayName: string;
     role: LegalEntityMemberRole;
-    status: string;
+    status: LegalEntityStatus;
   }> | null;
   orgModuleEnabled: boolean;
   mySaleRegs: SaleRegistrationMineRow[];
@@ -233,14 +241,20 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
     isSaleroomDeliveryMode(bundle.sale.deliveryMode) &&
     (bundle.sale.status === "scheduled" || bundle.sale.status === "active");
 
-  const buyerEntities =
-    actingMemberships
-      ?.filter((m) => m.status === "approved" || m.status === "restricted")
-      .map((m) => ({
-        id: m.id,
-        displayName: m.displayName,
-        memberRole: m.role,
-      })) ?? [];
+  // The same state table as the server: an organisation whose state closes bidding is not
+  // offered for registration, and a buyer agent of one is told why instead.
+  const byState = splitBuyerMembershipsByState(actingMemberships ?? []);
+  const buyerEntities = byState.open.map((m) => ({
+    id: m.id,
+    displayName: m.displayName,
+    memberRole: m.role,
+  }));
+  const registrationPaused = byState.paused
+    .filter((m) => roleBidsThroughAuthorisation(m.role))
+    .map((m) => ({
+      id: m.id,
+      ...organisationBidReasonCopy(m.reason, { organisationName: m.displayName }),
+    }));
 
   const registerToBidShow =
     saleAllowsWebBidding(bundle.sale.deliveryMode) &&
@@ -368,6 +382,7 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
     isAuthenticated,
     showTelephoneBooking,
     buyerEntities,
+    registrationPaused,
     registerToBidShow,
     myRegistrations,
     kycApproved,

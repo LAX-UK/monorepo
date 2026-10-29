@@ -51,6 +51,7 @@ function sellerWhere(legalEntityId: string, f: Omit<ListSubmissionsFilter, "limi
   const parts = [eq(itemSubmission.legalEntityId, legalEntityId)];
   const sender = submissionSenderSql(f.visibleTo);
   if (sender) parts.push(sender);
+  if (f.ids) parts.push(inArray(itemSubmission.id, [...f.ids]));
   if (f.statuses && f.statuses.length > 0) {
     parts.push(inArray(itemSubmission.status, f.statuses));
   } else if (f.status) parts.push(eq(itemSubmission.status, f.status));

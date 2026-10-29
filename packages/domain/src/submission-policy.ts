@@ -8,14 +8,23 @@ export const INDIVIDUAL_SUBMISSION_BLOCKED_STATUSES = new Set<LegalEntityStatus>
   "archived",
 ]);
 
-/** Organisation statuses that are still being checked by LAX. */
-const ORGANISATION_UNDER_REVIEW_STATUSES = new Set<LegalEntityStatus>([
-  "lead",
-  "docs_requested",
-  "docs_received",
-  "under_review",
-  "connect_pending",
-]);
+export const ORGANISATION_UNDER_REVIEW_SUBMIT_REASON =
+  "We're still checking this organisation's documents. You can save the work as a draft now and submit it once the organisation is approved.";
+
+export const ORGANISATION_PAYOUTS_PENDING_SUBMIT_REASON =
+  "This organisation's payouts aren't set up yet. You can save the work as a draft now and submit it once they are.";
+
+/**
+ * Organisation statuses that can prepare drafts but not send them yet, with the reason the
+ * seller reads: LAX is still checking the documents, or payouts are still being set up.
+ */
+const DRAFT_ONLY_REASONS: Partial<Record<LegalEntityStatus, string>> = {
+  lead: ORGANISATION_UNDER_REVIEW_SUBMIT_REASON,
+  docs_requested: ORGANISATION_UNDER_REVIEW_SUBMIT_REASON,
+  docs_received: ORGANISATION_UNDER_REVIEW_SUBMIT_REASON,
+  under_review: ORGANISATION_UNDER_REVIEW_SUBMIT_REASON,
+  connect_pending: ORGANISATION_PAYOUTS_PENDING_SUBMIT_REASON,
+};
 
 export type SellerSubmissionAccess = {
   /** May create and edit drafts. */
@@ -25,9 +34,6 @@ export type SellerSubmissionAccess = {
   /** Why submitting is not possible yet, in words for the seller. */
   submitBlockedReason: string | null;
 };
-
-export const ORGANISATION_UNDER_REVIEW_SUBMIT_REASON =
-  "We're still checking this organisation's documents. You can save the work as a draft now and submit it once the organisation is approved.";
 
 const BLOCKED_REASON = "This account can't send works for sale in its current state.";
 
@@ -51,12 +57,9 @@ export function sellerSubmissionAccess(entity: {
   if (organisationStateAllows(entity.status, "submit")) {
     return { canDraft: true, canSubmit: true, submitBlockedReason: null };
   }
-  if (ORGANISATION_UNDER_REVIEW_STATUSES.has(entity.status)) {
-    return {
-      canDraft: true,
-      canSubmit: false,
-      submitBlockedReason: ORGANISATION_UNDER_REVIEW_SUBMIT_REASON,
-    };
+  const draftOnlyReason = DRAFT_ONLY_REASONS[entity.status];
+  if (draftOnlyReason) {
+    return { canDraft: true, canSubmit: false, submitBlockedReason: draftOnlyReason };
   }
   return { canDraft: false, canSubmit: false, submitBlockedReason: BLOCKED_REASON };
 }

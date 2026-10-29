@@ -4,6 +4,7 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { switchActingLegalEntity } from "@/lib/legal-entity/acting-context.actions";
+import { invitationRefusalMessage } from "@/lib/legal-entity/invitation-refusal";
 import type { ActionResult } from "@/lib/legal-entity/member-management.actions";
 import { revalidatePath } from "next/cache";
 
@@ -16,9 +17,10 @@ export async function acceptInvitationByIdAction(
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({}),
     });
-    const body = await res.json();
+    const body = await res.json().catch(() => null);
     if (!res.ok) {
-      return { ok: false, error: (body as { error?: string }).error ?? "accept_failed" };
+      // A refusal in words: the server's own message when the organisation is closed to members.
+      return { ok: false, error: invitationRefusalMessage(body as { code?: unknown } | null) };
     }
     const legalEntityId = (body as { data: { legalEntityId: string } }).data.legalEntityId;
     await switchActingLegalEntity(legalEntityId);

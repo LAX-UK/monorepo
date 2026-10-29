@@ -1,14 +1,20 @@
 import { CLIENT_ROUTES, organisationHref } from "@/lib/navigation/client-routes";
+import {
+  type OrganisationBannerView,
+  oneOfRoles,
+  organisationBannerView,
+} from "@/lib/presenters/organisation-state/organisation-state-copy";
 import { formatDate, formatMoney, formatRelativeTime } from "@/lib/ui/format";
-import type {
-  HomeActivityArchive,
-  HomeActivityEvent,
-  HomeActivityKind,
-  HomeShortcut,
-  HomeSubject,
-  HomeTask,
-  OrganisationHomeModel,
-  OrganisationSetupState,
+import {
+  type HomeActivityArchive,
+  type HomeActivityEvent,
+  type HomeActivityKind,
+  type HomeNotice,
+  type HomeShortcut,
+  type HomeSubject,
+  type HomeTask,
+  type OrganisationHomeModel,
+  rolesWithCapability,
 } from "@auction/domain";
 import { type MyBuyerAgentAuthorisation, salePath } from "@auction/types";
 import {
@@ -24,12 +30,8 @@ export type HomeTaskView = {
   action: { label: string; href: string };
 };
 
-export type HomeSetupView = {
-  /** "warning" asks someone in the organisation to act; "info" is LAX's turn. */
-  tone: "warning" | "info";
-  title: string;
-  detail: string;
-};
+/** Something to know that is not this member's to do, as one quiet line. */
+export type HomeNoticeView = { key: string; text: string; href: string | null };
 
 export type HomeLinkView = { id: string; label: string; href: string };
 
@@ -52,7 +54,9 @@ export type WelcomeCardView = {
 
 export type OrganisationHomeView = {
   needsYou: HomeTaskView[] | null;
-  setup: HomeSetupView | null;
+  /** The organisation's state, when this member has something to be told. */
+  banner: OrganisationBannerView | null;
+  notices: HomeNoticeView[];
   shortcuts: HomeLinkView[];
   activity: HomeActivityView[];
   seeAllHref: string | null;
@@ -155,29 +159,31 @@ export function homeTaskView(task: HomeTask, ctx: Ctx): HomeTaskView {
   return { key: taskKey(task), ...build(task as never, ctx) };
 }
 
-const SETUP_VIEWS: Record<OrganisationSetupState, (ctx: Ctx) => HomeSetupView> = {
-  documents_requested: () => ({
-    tone: "warning",
-    title: "Documents needed.",
-    detail: "Bidding and sending works for sale open once we've checked them.",
-  }),
-  documents_under_review: () => ({
-    tone: "info",
-    title: "Documents under review.",
-    detail:
-      "Usually 2–3 working days. Bidding and sending works for sale open once approved; you can prepare drafts and invite people now.",
-  }),
-  payouts_not_set_up: () => ({
-    tone: "warning",
-    title: "Payouts not set up.",
-    detail: "Lots can't go live in a sale until a bank account is added.",
-  }),
-  not_approved: (ctx) => ({
-    tone: "warning",
-    title: "Not approved.",
-    detail: `We couldn't approve ${ctx.organisationName}. Contact us to find out what's needed.`,
-  }),
+/** Who chooses for an unsold lot, from the capability table: "an owner or admin". */
+const UNSOLD_CHOOSERS = oneOfRoles(rolesWithCapability("entity.consignments.after_sale"), "inside");
+
+type NoticeViewBuilder<K extends HomeNotice["kind"]> = (
+  notice: Extract<HomeNotice, { kind: K }>,
+) => Omit<HomeNoticeView, "key">;
+
+/** Words for every kind of notice; one entry per kind. */
+const NOTICE_VIEWS: { [K in HomeNotice["kind"]]: NoticeViewBuilder<K> } = {
+  unsold_waiting: ({ lots }) => {
+    const [only] = lots;
+    return {
+      text:
+        lots.length === 1 && only
+          ? `Waiting for ${UNSOLD_CHOOSERS} to choose what happens to ${quoted(only)}, which did not sell`
+          : `Waiting for ${UNSOLD_CHOOSERS} to choose what happens to ${lots.length} unsold works`,
+      href: `${CLIENT_ROUTES.consignments}?tab=unsold`,
+    };
+  },
 };
+
+function homeNoticeView(notice: HomeNotice): HomeNoticeView {
+  const build = NOTICE_VIEWS[notice.kind] as NoticeViewBuilder<typeof notice.kind>;
+  return { key: notice.kind, ...build(notice) };
+}
 
 const SHORTCUTS: Record<HomeShortcut, Omit<HomeLinkView, "id">> = {
   sell: { label: "Sell a work", href: CLIENT_ROUTES.sellingNew },
@@ -234,10 +240,13 @@ export function buyerAgentAuthorityLine(
 export function organisationHomeView(model: OrganisationHomeModel, ctx: Ctx): OrganisationHomeView {
   return {
     needsYou: model.tasks ? model.tasks.map((task) => homeTaskView(task, ctx)) : null,
-    setup: model.setup ? SETUP_VIEWS[model.setup](ctx) : null,
+    banner: model.state.banner ? organisationBannerView(model.state.banner, ctx) : null,
+    notices: model.notices.map(homeNoticeView),
     shortcuts: model.shortcuts.map((id) => ({ id, ...SHORTCUTS[id] })),
     activity: model.activity.map(activityView),
     seeAllHref: model.activityArchive ? ARCHIVE_HREF[model.activityArchive] : null,
-    dashboard: model.dashboard ? organisationDashboardView(model.dashboard, ctx) : null,
+    dashboard: model.dashboard
+      ? organisationDashboardView(model.dashboard, ctx, model.state.homeFirstRunKey)
+      : null,
   };
 }

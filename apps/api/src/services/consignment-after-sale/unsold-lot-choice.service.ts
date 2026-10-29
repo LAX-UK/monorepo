@@ -1,6 +1,7 @@
 import {
   type ConsignmentStage,
   type EntityActor,
+  UNSOLD_LOT_END_STATUSES,
   type UnsoldChoiceRefusal,
   type UnsoldChoiceState,
   canChooseUnsoldOutcome,
@@ -14,12 +15,14 @@ import {
 import type {
   IConsignmentAgreementRepository,
   IUnsoldLotChoiceRepository,
+  SubmissionSenderFilter,
 } from "@auction/persistence/interfaces";
 import type {
   ConsignmentAgreement,
   ItemSubmission,
   Lot,
   SellerUnsoldLotView,
+  SellerUnsoldOutcome,
   UnsoldLotChoice,
   UnsoldLotChoiceDecisionInput,
   UnsoldLotChoiceRequestInput,
@@ -58,6 +61,11 @@ export interface IUnsoldLotChoiceService {
   staffView(submission: ItemSubmission): Promise<Omit<SellerUnsoldLotView, "canChoose"> | null>;
   /** Where the consignment is after the sale (or its submission status before it). */
   stageOf(submission: ItemSubmission): Promise<ConsignmentStage>;
+  /** A page of the account's consigned lots that ended unsold, with what was chosen. */
+  listOutcomes(
+    account: { legalEntityId: string; visibleTo: SubmissionSenderFilter | undefined },
+    page: { choice?: UnsoldChoiceState | undefined; limit: number; offset: number },
+  ): Promise<{ rows: SellerUnsoldOutcome[]; total: number }>;
   request(
     submissionId: string,
     seller: AfterSaleSeller,
@@ -152,6 +160,30 @@ export class UnsoldLotChoiceService implements IUnsoldLotChoiceService {
     const context = await this.unsoldContext(submission);
     if (!context) return null;
     return { ...(await this.view(context)), canChoose: canChooseUnsoldOutcome(actor) };
+  }
+
+  async listOutcomes(
+    account: { legalEntityId: string; visibleTo: SubmissionSenderFilter | undefined },
+    page: { choice?: UnsoldChoiceState | undefined; limit: number; offset: number },
+  ): Promise<{ rows: SellerUnsoldOutcome[]; total: number }> {
+    const { rows, total } = await this.deps.choices.listUnsoldOutcomes({
+      legalEntityId: account.legalEntityId,
+      endedStatuses: UNSOLD_LOT_END_STATUSES,
+      visibleTo: account.visibleTo,
+      choice: page.choice,
+      limit: page.limit,
+      offset: page.offset,
+    });
+    return {
+      rows: rows.map((row) => ({
+        lotId: row.lotId,
+        submissionId: row.submissionId,
+        title: row.title,
+        endedAt: row.endedAt.toISOString(),
+        choice: row.choice ?? "none",
+      })),
+      total,
+    };
   }
 
   async stageOf(submission: ItemSubmission): Promise<ConsignmentStage> {

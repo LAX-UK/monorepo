@@ -4,6 +4,8 @@ import type {
   UnsoldLotChoiceDecisionRow,
   UnsoldLotChoiceRequestRow,
   UnsoldLotOutcomeKey,
+  UnsoldOutcomeListFilter,
+  UnsoldOutcomeRow,
 } from "@auction/persistence/interfaces";
 import type { UnsoldLotChoice } from "@auction/types";
 
@@ -15,6 +17,11 @@ const keyOf = (key: UnsoldLotOutcomeKey) => `${key.lotId}@${key.lotEndTime.toISO
  */
 export class InMemoryUnsoldLotChoices implements IUnsoldLotChoiceRepository {
   readonly rows = new Map<string, UnsoldLotChoice>();
+  /** Consigned lots that ended unsold, with the account and sender of their submission. */
+  readonly outcomes: (UnsoldOutcomeRow & {
+    legalEntityId: string;
+    submittedByUserId: string | null;
+  })[] = [];
   writes = 0;
   private seq = 0;
 
@@ -59,6 +66,33 @@ export class InMemoryUnsoldLotChoices implements IUnsoldLotChoiceRepository {
         requestedChoice: row.requestedChoice,
         requestedAt: row.requestedAt,
       }));
+  }
+
+  async listUnsoldOutcomes(filter: UnsoldOutcomeListFilter) {
+    const visible = (submittedByUserId: string | null) => {
+      const scope = filter.visibleTo?.scope ?? "all";
+      if (scope === "all") return true;
+      if (scope === "own") return submittedByUserId === filter.visibleTo?.userId;
+      return submittedByUserId !== null;
+    };
+    const matching = this.outcomes
+      .filter((row) => row.legalEntityId === filter.legalEntityId && visible(row.submittedByUserId))
+      .filter((row) =>
+        filter.choice === undefined ? true : (row.choice ?? "none") === filter.choice,
+      )
+      .sort((a, b) => b.endedAt.getTime() - a.endedAt.getTime());
+    return {
+      rows: matching
+        .slice(filter.offset, filter.offset + filter.limit)
+        .map(({ lotId, submissionId, title, endedAt, choice }) => ({
+          lotId,
+          submissionId,
+          title,
+          endedAt,
+          choice,
+        })),
+      total: matching.length,
+    };
   }
 
   async countOpenRequests() {

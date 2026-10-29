@@ -19,6 +19,8 @@ export type ListSubmissionsFilter = {
   sort?: "newest" | "oldest" | "sla" | undefined;
   /** Seller lists: which senders' submissions the viewer may see (see `/domain`). */
   visibleTo?: SubmissionSenderFilter | undefined;
+  /** Seller lists: only these submissions (to narrow rows already loaded by another read). */
+  ids?: readonly string[] | undefined;
   limit: number;
   offset: number;
 };

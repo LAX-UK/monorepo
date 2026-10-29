@@ -1,4 +1,10 @@
-import type { UnsoldLotChoice, UnsoldLotChoiceKind } from "@auction/types";
+import type {
+  LotStatus,
+  UnsoldLotChoice,
+  UnsoldLotChoiceKind,
+  UnsoldLotChoiceStatus,
+} from "@auction/types";
+import type { SubmissionSenderFilter } from "./item-submission.repository.js";
 
 /** One unsold outcome of a lot: the lot and the end time of the sale it did not sell in. */
 export type UnsoldLotOutcomeKey = { lotId: string; lotEndTime: Date };
@@ -34,8 +40,35 @@ export type OpenUnsoldLotChoice = {
   requestedAt: Date | null;
 };
 
+/** Which of an account's unsold outcomes to read, newest first. */
+export type UnsoldOutcomeListFilter = {
+  legalEntityId: string;
+  /** Lot statuses that end a sale; with no winner, the lot did not sell (from the domain). */
+  endedStatuses: readonly LotStatus[];
+  /** Which senders' consignments the member may see; absent for every one. */
+  visibleTo?: SubmissionSenderFilter | undefined;
+  /** Only outcomes in this state; `none` means nobody has chosen yet. */
+  choice?: UnsoldLotChoiceStatus | "none" | undefined;
+  limit: number;
+  offset: number;
+};
+
+/** A consigned lot that ended without selling, with what has been chosen for it. */
+export type UnsoldOutcomeRow = {
+  lotId: string;
+  submissionId: string;
+  title: string;
+  endedAt: Date;
+  /** `null` while nobody has chosen. */
+  choice: UnsoldLotChoiceStatus | null;
+};
+
 export interface IUnsoldLotChoiceReader {
   findForOutcome(key: UnsoldLotOutcomeKey): Promise<UnsoldLotChoice | null>;
+  /** An account's consigned lots that ended unsold in their latest sale, one page at a time. */
+  listUnsoldOutcomes(
+    filter: UnsoldOutcomeListFilter,
+  ): Promise<{ rows: UnsoldOutcomeRow[]; total: number }>;
   listOpenRequests(limit: number): Promise<OpenUnsoldLotChoice[]>;
   countOpenRequests(): Promise<number>;
 }

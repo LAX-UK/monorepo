@@ -1,5 +1,5 @@
-import type { LegalEntityStatus } from "@auction/types";
-import type { EntityCapability } from "./entity-capabilities.js";
+import type { LegalEntityMemberRole, LegalEntityStatus } from "@auction/types";
+import { type EntityCapability, rolesWithCapability } from "./entity-capabilities.js";
 
 /** What a member can do for an organisation, as far as the organisation's own state allows. */
 export const ORGANISATION_ACTIONS = [
@@ -153,6 +153,27 @@ const STATE_SPECS: Readonly<Record<LegalEntityStatus, StateSpec>> = {
     bidPanelReasonKey: "archived",
   },
 };
+
+/** Who can act on each banner, from the specs above, so the words never name the wrong roles. */
+const BANNER_ACTORS: Readonly<Record<OrganisationBannerKey, readonly EntityCapability[]>> = (() => {
+  const specs = [PAYOUTS_PENDING_BANNER, ...Object.values(STATE_SPECS).map((spec) => spec.banner)];
+  const actors = {} as Record<OrganisationBannerKey, readonly EntityCapability[]>;
+  for (const spec of specs) if (spec) actors[spec.key] = spec.actWith;
+  return actors;
+})();
+
+/**
+ * The roles that can act on a banner (send the documents, set up payouts), in the capability
+ * table's order; empty when nobody in the organisation can, as while LAX checks its documents.
+ */
+export function organisationBannerActors(
+  key: OrganisationBannerKey,
+): readonly LegalEntityMemberRole[] {
+  const roles = new Set(
+    BANNER_ACTORS[key].flatMap((capability) => rolesWithCapability(capability)),
+  );
+  return [...roles];
+}
 
 function bannerFor(
   spec: BannerSpec | null,

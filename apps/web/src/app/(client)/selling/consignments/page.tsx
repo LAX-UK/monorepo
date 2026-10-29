@@ -20,7 +20,7 @@ import {
 import {
   requireSellerCapability,
   resolveSellerWorkspaceContext,
-  sellerCan,
+  sellerCanStartSubmission,
 } from "@/lib/legal-entity/seller-acting-context.server";
 import { CONSIGNMENT_STAGE_LABEL } from "@/lib/organisation-home/consignment-stage-links";
 import {
@@ -53,7 +53,7 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   requireSellerCapability(sellerCtx, "entity.consignments.read");
   const { sellerEntityId, sellingAsOrganisation } = sellerCtx;
-  const canCreateSubmission = sellerCan(sellerCtx, "entity.submissions.create");
+  const canCreateSubmission = sellerCanStartSubmission(sellerCtx);
   const [overview, filter] = await Promise.all([
     loadSellingOverview(sellerCtx, user.id),
     searchParams.then(parseConsignmentFilter),
