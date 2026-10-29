@@ -285,7 +285,7 @@ describe("Home by organisation state", () => {
       "identity",
       "won_awaiting_payment",
     ]);
-    expect(homeShortcuts({ role: "owner" }, "restricted")).toEqual(["invite", "statements"]);
+    expect(homeShortcuts({ role: "owner" }, "restricted")).toEqual(["statements"]);
   });
 
   it("keeps Sell a work away from an organisation that is not approved yet", () => {

@@ -106,8 +106,8 @@ const PAYOUTS_PENDING_BANNER: BannerSpec = {
 
 /**
  * One row per status. A new status fails to compile until it has a row, so no screen or
- * endpoint can forget it. A restricted organisation keeps its history, can pay what it
- * already owes and can still add people, but cannot trade; a rejected or archived one can only be read.
+ * endpoint can forget it. A restricted organisation keeps its history and can pay what it
+ * already owes, but cannot trade or grow; a rejected or archived one can only be read.
  */
 const STATE_SPECS: Readonly<Record<LegalEntityStatus, StateSpec>> = {
   lead: DOCUMENTS_REQUESTED,
@@ -135,7 +135,7 @@ const STATE_SPECS: Readonly<Record<LegalEntityStatus, StateSpec>> = {
     bidPanelReasonKey: null,
   },
   restricted: {
-    allowed: ["pay", "read_history", "invite", "accept_invitation"],
+    allowed: ["pay", "read_history"],
     banner: { kind: "blocked", key: "restricted", actWith: [], toldWith: null },
     homeFirstRunKey: "restricted",
     bidPanelReasonKey: "restricted",
@@ -196,11 +196,32 @@ export function organisationStatePolicy(
   };
 }
 
-/** Refusal for joining an organisation whose state takes no new members. */
+/** Refusal for joining an organisation that has been closed. */
 export const ORGANISATION_CLOSED_TO_MEMBERS = {
   code: "organisation_closed_to_members",
   message: "This organisation is closed and isn't taking new members.",
 } as const;
+
+/** Refusal for joining an organisation that is restricted. */
+export const ORGANISATION_RESTRICTED_MEMBERS = {
+  code: "organisation_restricted_members",
+  message: "This organisation can't add members right now.",
+} as const;
+
+const MEMBER_REFUSALS = [ORGANISATION_CLOSED_TO_MEMBERS, ORGANISATION_RESTRICTED_MEMBERS] as const;
+
+/** The refusal (code and client message) for a code from the member refusals, if it is one. */
+export function organisationMembersRefusal(code: string): { code: string; message: string } | null {
+  return MEMBER_REFUSALS.find((refusal) => refusal.code === code) ?? null;
+}
+
+/** The refusal for joining an organisation in `status`, or `null` when it takes members. */
+export function organisationJoinRefusal(
+  status: LegalEntityStatus,
+): { code: string; message: string } | null {
+  if (organisationStateAllows(status, "accept_invitation")) return null;
+  return status === "restricted" ? ORGANISATION_RESTRICTED_MEMBERS : ORGANISATION_CLOSED_TO_MEMBERS;
+}
 
 const NO_CAPABILITIES: ReadonlySet<EntityCapability> = new Set();
 

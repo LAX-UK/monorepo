@@ -1,4 +1,4 @@
-import { ORGANISATION_CLOSED_TO_MEMBERS, organisationStateAllows } from "@auction/domain";
+import { organisationJoinRefusal, organisationStateAllows } from "@auction/domain";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IEntityInvitationRepository } from "@auction/persistence/interfaces";
 import type { InvitationRow } from "@auction/persistence/interfaces";
@@ -128,9 +128,10 @@ export class InvitationAcceptanceService {
       }
       // A rejected or archived organisation takes no new members, whatever was sent earlier.
       const status = await txRepo.findLegalEntityStatus(legalEntityId);
-      if (!status || !organisationStateAllows(status, "accept_invitation")) {
-        return { ok: false as const, code: ORGANISATION_CLOSED_TO_MEMBERS.code };
-      }
+      const refusal = status
+        ? organisationJoinRefusal(status)
+        : { code: "organisation_closed_to_members" };
+      if (refusal) return { ok: false as const, code: refusal.code };
       const memberRole = validInvite.targetLegalEntityMemberRole as LegalEntityMemberRole;
 
       const member = await txRepo.insertMember({

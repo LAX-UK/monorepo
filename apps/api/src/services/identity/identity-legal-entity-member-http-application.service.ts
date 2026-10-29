@@ -1,7 +1,7 @@
 import {
   MEMBER_CHANGE_DENIAL_MESSAGE,
   type MemberChangeDenial,
-  ORGANISATION_CLOSED_TO_MEMBERS,
+  organisationMembersRefusal,
 } from "@auction/domain";
 import type { OrgModuleGate } from "../../lib/org-module-gate.js";
 import type { IIdentityLegalEntityMemberHttpApplicationService } from "../interfaces/identity-routes/identity-legal-entity-member-http.js";
@@ -45,9 +45,8 @@ function isMemberChangeDenial(code: string): code is MemberChangeDenial {
  * `error`, so the page can show it as it is. Other refusals keep their codes.
  */
 function permissionOutcome(code: string): IdentityRouteOutcome<never> {
-  if (code === ORGANISATION_CLOSED_TO_MEMBERS.code) {
-    return identityRouteRefusal(ORGANISATION_CLOSED_TO_MEMBERS, 403);
-  }
+  const refusal = organisationMembersRefusal(code);
+  if (refusal) return identityRouteRefusal(refusal, 403);
   if (isMemberChangeDenial(code)) {
     return {
       kind: "err",

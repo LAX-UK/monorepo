@@ -11,6 +11,9 @@ export { organisationBidRefusalMessage } from "./organisation-state-refusal.js";
 export {
   ORGANISATION_ACTIONS,
   ORGANISATION_CLOSED_TO_MEMBERS,
+  ORGANISATION_RESTRICTED_MEMBERS,
+  organisationJoinRefusal,
+  organisationMembersRefusal,
   organisationStateAllows,
   organisationStatePolicy,
   type OrganisationAction,

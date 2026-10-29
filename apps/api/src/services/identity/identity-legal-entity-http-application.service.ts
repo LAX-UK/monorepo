@@ -1,4 +1,4 @@
-import { ORGANISATION_CLOSED_TO_MEMBERS } from "@auction/domain";
+import { organisationMembersRefusal } from "@auction/domain";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { IPendingInvitationsReader } from "@auction/persistence/interfaces";
 import type { ActingContextCookieV1, StaffRoles } from "@auction/types";
@@ -114,9 +114,8 @@ export class IdentityLegalEntityHttpApplicationService
       input.invitationId,
     );
     if (!result.ok) {
-      if (result.code === ORGANISATION_CLOSED_TO_MEMBERS.code) {
-        return identityRouteRefusal(ORGANISATION_CLOSED_TO_MEMBERS, 403);
-      }
+      const refusal = organisationMembersRefusal(result.code);
+      if (refusal) return identityRouteRefusal(refusal, 403);
       return identityRouteCodeErr(result.code, invitationStatus(result.code));
     }
     if (result.kind !== "accepted") {

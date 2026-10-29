@@ -29,7 +29,7 @@ const ALLOWED: Record<LegalEntityStatus, readonly OrganisationAction[]> = {
     "set_up_payouts",
   ],
   approved: ORGANISATION_ACTIONS,
-  restricted: ["pay", "read_history", "invite", "accept_invitation"],
+  restricted: ["pay", "read_history"],
   rejected: ["read_history"],
   archived: ["read_history"],
 };
@@ -45,16 +45,16 @@ describe("organisationStatePolicy actions", () => {
     );
   });
 
-  it("lets a restricted organisation read, pay and add people, but not trade", () => {
+  it("lets a restricted organisation read and pay, but not trade or add people", () => {
     const { actions } = organisationStatePolicy("restricted", NONE);
     const on = Object.entries(actions)
       .filter(([, allowed]) => allowed)
       .map(([name]) => name);
-    expect(on).toEqual(["pay", "read_history", "invite", "accept_invitation"]);
+    expect(on).toEqual(["pay", "read_history"]);
   });
 
-  it("never lets a rejected or archived organisation take new members", () => {
-    for (const status of ["rejected", "archived"] as const) {
+  it("never lets a restricted, rejected or archived organisation take new members", () => {
+    for (const status of ["restricted", "rejected", "archived"] as const) {
       expect(organisationStatePolicy(status, NONE).actions.accept_invitation).toBe(false);
     }
   });
