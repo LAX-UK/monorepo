@@ -127,9 +127,19 @@ describe("RecordRow", () => {
     });
   });
 
-  it("puts detail under the row", () => {
-    const li = row(<RecordRow title="Work" detail={<p>Step 2 of 4</p>} />);
-    expect(li).toHaveTextContent("Step 2 of 4");
+  it("puts detail under the row: full width when narrow, under the title when wide", () => {
+    const li = row(
+      <RecordRow
+        title="Work"
+        leading={<RecordRowMedia>x</RecordRowMedia>}
+        detail={<p>Step 2 of 4</p>}
+      />,
+    );
+    const detail = li.querySelector("[data-record-detail]") as HTMLElement;
+    expect(detail).toHaveTextContent("Step 2 of 4");
+    expect(detail.parentElement).toBe(li);
+    // 48px thumbnail plus the 16px gap of the wide row.
+    expect(detail.className).toContain("@2xl:pl-16");
   });
 });
 

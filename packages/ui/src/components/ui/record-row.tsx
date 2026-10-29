@@ -118,70 +118,74 @@ export function RecordRow({
       {...aria}
       data-record-row
       className={cn(
-        "relative flex min-h-14 gap-3 px-4 py-3",
-        "@2xl:gap-4 @2xl:px-5",
+        "relative flex min-h-14 flex-col gap-3 px-4 py-3 @2xl:px-5",
         href &&
           "motion-safe:transition-colors motion-safe:duration-150 hover:bg-surface-container-low has-[[data-record-link]:focus-visible]:outline-2 has-[[data-record-link]:focus-visible]:-outline-offset-2 has-[[data-record-link]:focus-visible]:outline-ring has-[[data-record-link]:focus-visible]:outline-solid",
         className,
       )}
     >
-      {isShown(leading) ? (
-        <span className={cn("shrink-0 self-start @2xl:self-center")}>{leading}</span>
-      ) : null}
-      <div className="flex min-w-0 flex-1 flex-col gap-2">
-        <div
-          className={cn(
-            "flex min-w-0 flex-col gap-2",
-            "@2xl:flex-row @2xl:items-center @2xl:gap-4",
-          )}
-        >
-          <div className="min-w-0 flex-1">
-            <p className="truncate font-body text-sm leading-5.5 font-medium text-on-surface">
-              {href ? (
-                <Link
-                  href={href}
-                  data-record-link
-                  className="after:absolute after:inset-0 focus-visible:outline-none"
-                >
-                  {title}
-                </Link>
-              ) : (
-                title
-              )}
-            </p>
-            <MetaLine items={meta} />
-          </div>
-          {hasFoot ? (
-            <div
-              data-record-foot
-              className={cn(
-                "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2",
-                "@2xl:shrink-0 @2xl:flex-nowrap @2xl:justify-end",
-              )}
-            >
-              {isShown(status) ? <span className="shrink-0">{status}</span> : null}
-              {isShown(value) ? (
-                <span className="shrink-0 font-body text-sm leading-5.5 font-medium tabular-nums text-on-surface">
-                  {value}
-                </span>
-              ) : null}
-              {isShown(action) ? (
-                <span className={cn("relative z-10 ml-auto shrink-0 @2xl:ml-0")}>{action}</span>
-              ) : null}
+      <div className="flex min-w-0 gap-3 @2xl:gap-4">
+        {isShown(leading) ? (
+          <span className="shrink-0 self-start @2xl:self-center">{leading}</span>
+        ) : null}
+        <div className="flex min-w-0 flex-1 flex-col gap-2">
+          <div
+            className={cn(
+              "flex min-w-0 flex-col gap-2",
+              "@2xl:flex-row @2xl:items-center @2xl:gap-4",
+            )}
+          >
+            <div className="min-w-0 flex-1">
+              <p className="truncate font-body text-sm leading-5.5 font-medium text-on-surface">
+                {href ? (
+                  <Link
+                    href={href}
+                    data-record-link
+                    className="after:absolute after:inset-0 focus-visible:outline-none"
+                  >
+                    {title}
+                  </Link>
+                ) : (
+                  title
+                )}
+              </p>
+              <MetaLine items={meta} />
             </div>
-          ) : null}
+            {hasFoot ? (
+              <div
+                data-record-foot
+                className={cn(
+                  "flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2",
+                  "@2xl:shrink-0 @2xl:flex-nowrap @2xl:justify-end",
+                )}
+              >
+                {isShown(status) ? <span className="shrink-0">{status}</span> : null}
+                {isShown(value) ? (
+                  <span className="shrink-0 font-body text-sm leading-5.5 font-medium tabular-nums text-on-surface">
+                    {value}
+                  </span>
+                ) : null}
+                {isShown(action) ? (
+                  <span className={cn("relative z-10 ml-auto shrink-0 @2xl:ml-0")}>{action}</span>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </div>
-        {isShown(detail) ? <div className="relative z-10 min-w-0">{detail}</div> : null}
+        {isShown(menu) ? (
+          <span className="relative z-10 -my-1 -mr-2 shrink-0 self-start @2xl:my-0 @2xl:self-center">
+            {menu}
+          </span>
+        ) : null}
       </div>
-      {isShown(menu) ? (
-        <span
-          className={cn(
-            "relative z-10 -my-1 -mr-2 shrink-0 self-start",
-            "@2xl:my-0 @2xl:self-center",
-          )}
+      {isShown(detail) ? (
+        // Full width in a narrow list, so a progress line has room; under the title when wide.
+        <div
+          data-record-detail
+          className={cn("relative z-10 min-w-0", isShown(leading) && "@2xl:pl-16")}
         >
-          {menu}
-        </span>
+          {detail}
+        </div>
       ) : null}
     </li>
   );

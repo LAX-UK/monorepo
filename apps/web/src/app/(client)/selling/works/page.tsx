@@ -89,35 +89,37 @@ export default async function SellerWorksPage() {
     >
       {winsFailed ? (
         <AccountLoadError {...ACCOUNT_LOAD_ERROR.works} />
+      ) : rows.length === 0 ? (
+        <DashboardEmptyState
+          variant="hero"
+          illustration="easel"
+          title="No works yet"
+          description="Lots won for this organisation appear here, whichever member placed the winning bid."
+          {...(canBid
+            ? {
+                action: (
+                  <Button variant="primary" asChild>
+                    <Link href="/search">{DASHBOARD_CTA.browseLiveAuctions}</Link>
+                  </Button>
+                ),
+              }
+            : {})}
+        />
       ) : (
-        <DashboardSection id="organisation-works" title="Works won">
-          {rows.length === 0 ? (
-            <DashboardEmptyState
-              variant="hero"
-              illustration="easel"
-              title="No works yet"
-              description="Lots won for this organisation appear here, whichever member placed the winning bid."
-              {...(canBid
-                ? {
-                    action: (
-                      <Button variant="primary" asChild>
-                        <Link href="/search">{DASHBOARD_CTA.browseLiveAuctions}</Link>
-                      </Button>
-                    ),
-                  }
-                : {})}
-            />
-          ) : (
-            <>
-              <OrgWorksList rows={rows} />
-              {winsComplete ? null : (
-                <p className="mt-4 font-body text-sm text-on-surface-variant">
-                  Showing the latest {ENTITY_WORKS_PAGING.maxRows.toLocaleString("en-GB")} works.
-                </p>
-              )}
-            </>
+        <section aria-labelledby="works-won-heading" className="flex flex-col gap-4">
+          <h2
+            id="works-won-heading"
+            className="font-headline text-lg font-semibold text-on-surface"
+          >
+            Works won
+          </h2>
+          <OrgWorksList rows={rows} />
+          {winsComplete ? null : (
+            <p className="font-body text-sm text-on-surface-variant">
+              Showing the latest {ENTITY_WORKS_PAGING.maxRows.toLocaleString("en-GB")} works.
+            </p>
           )}
-        </DashboardSection>
+        </section>
       )}
 
       {paymentsFailure ? (

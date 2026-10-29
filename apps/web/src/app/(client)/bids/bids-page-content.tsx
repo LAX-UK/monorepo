@@ -1,19 +1,32 @@
-import { MyBidsView } from "@/components/dashboard/bids/my-bids-view";
+import { MyBidsMoreMenu } from "@/components/dashboard/bids/my-bids-more-menu";
+import { BROWSE_UPCOMING_SALES_HREF, MyBidsView } from "@/components/dashboard/bids/my-bids-view";
+import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
 import { KycVerificationBanner } from "@/components/dashboard/kyc-verification-banner";
 import { parseMyBidTab } from "@/lib/bid/my-bid-status";
 import { type MyBidsVm, buildMyBidsVm } from "@/lib/bid/my-bids.vm";
+import { DASHBOARD_CTA } from "@/lib/dashboard/dashboard-copy";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { resolveSaleTitles } from "@/lib/data/sale-titles.server";
 import { shouldOfferIdentityOnboarding } from "@/lib/kyc/identity-onboarding";
 import { isIdentityOnboardingEnabled } from "@/lib/kyc/identity-onboarding-rollout.server";
 import { roleNeedsPersonalIdentity } from "@auction/domain";
+import { Button } from "@auction/ui/components/button";
+import Link from "next/link";
+import type { ReactNode } from "react";
 
 type PageProps = {
   searchParams: Promise<{ tab?: string }>;
+  title: string;
+  description: string;
+  /** Sections under the bids (a person's telephone bids and condition reports). */
+  children?: ReactNode;
 };
 
-/** Loads bid data inside a parent `<Suspense>` so route `loading.tsx` can render. */
-export async function BidsPageContent({ searchParams }: PageProps) {
+/**
+ * The Bids page once its data is in: the header, the identity notice and the bids. The header
+ * offers the sales only when there are bids; with none, the empty state carries that one action.
+ */
+export async function BidsPageContent({ searchParams, title, description, children }: PageProps) {
   const tab = parseMyBidTab((await searchParams).tab);
   const container = await getServerDataContainer();
   const scope = await container.buying.scope();
@@ -50,8 +63,22 @@ export async function BidsPageContent({ searchParams }: PageProps) {
       signupPersona: user?.signupPersona,
     });
 
+  const hasBids = vm ? vm.tabs.some((t) => t.count > 0) : false;
   return (
-    <>
+    <DashboardListPage
+      title={title}
+      description={description}
+      actions={
+        hasBids ? (
+          <div className="flex gap-2 max-md:[&>a]:flex-1">
+            <Button variant="secondaryOutline" size="default" asChild>
+              <Link href={BROWSE_UPCOMING_SALES_HREF}>{DASHBOARD_CTA.browseUpcomingSales}</Link>
+            </Button>
+            <MyBidsMoreMenu />
+          </div>
+        ) : null
+      }
+    >
       {kycSummary && (kycSummary.requiresKyc || proactiveKyc) ? (
         <KycVerificationBanner
           summary={kycSummary}
@@ -60,6 +87,7 @@ export async function BidsPageContent({ searchParams }: PageProps) {
         />
       ) : null}
       <MyBidsView vm={vm} userId={user?.id ?? null} />
-    </>
+      {children}
+    </DashboardListPage>
   );
 }
