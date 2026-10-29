@@ -9,8 +9,6 @@ import type {
 import { rowToLegalEntityMember } from "../lib/legal-entity-member.mapper.js";
 import { MemberPermissionError } from "../lib/member-permission.error.js";
 
-const ADMIN_ROLES: LegalEntityMemberRole[] = ["owner", "admin"];
-
 export class DrizzleLegalEntityMemberRepository implements ILegalEntityMemberRepository {
   constructor(private readonly db: Database) {}
 
@@ -83,21 +81,28 @@ export class DrizzleLegalEntityMemberRepository implements ILegalEntityMemberRep
     return rows[0] ?? null;
   }
 
-  async findActiveAdminMembership(actingUserId: string, legalEntityId: string) {
-    const me = await this.findActiveMembership(actingUserId, legalEntityId);
-    if (!me || !me.acceptedAt) {
-      throw new MemberPermissionError("not_a_member");
-    }
-    if (!ADMIN_ROLES.includes(me.role)) {
-      throw new MemberPermissionError("insufficient_role");
-    }
-    return me;
+  lockActiveMembers(tx: Database, legalEntityId: string) {
+    return tx
+      .select()
+      .from(legalEntityMember)
+      .where(
+        and(
+          eq(legalEntityMember.legalEntityId, legalEntityId),
+          isNull(legalEntityMember.removedAt),
+        ),
+      )
+      .orderBy(legalEntityMember.createdAt)
+      .for("update");
   }
 
-  async updateRole(memberId: string, role: LegalEntityMemberRole): Promise<LegalEntityMember> {
-    const [updated] = await this.db
+  async updateRole(
+    tx: Database,
+    memberId: string,
+    change: { role: LegalEntityMemberRole; isPrimaryAdmin: boolean },
+  ): Promise<LegalEntityMember> {
+    const [updated] = await tx
       .update(legalEntityMember)
-      .set({ role })
+      .set({ role: change.role, isPrimaryAdmin: change.isPrimaryAdmin })
       .where(eq(legalEntityMember.id, memberId))
       .returning();
     if (!updated) throw new MemberPermissionError("member_update_failed");
@@ -109,25 +114,5 @@ export class DrizzleLegalEntityMemberRepository implements ILegalEntityMemberRep
       .update(legalEntityMember)
       .set({ removedAt: new Date() })
       .where(eq(legalEntityMember.id, memberId));
-  }
-
-  async demotePrimaryAdmin(tx: Database, memberId: string): Promise<LegalEntityMember> {
-    const [from] = await tx
-      .update(legalEntityMember)
-      .set({ isPrimaryAdmin: false, role: "admin" })
-      .where(eq(legalEntityMember.id, memberId))
-      .returning();
-    if (!from) throw new MemberPermissionError("transfer_demote_failed");
-    return rowToLegalEntityMember(from);
-  }
-
-  async promotePrimaryAdmin(tx: Database, memberId: string): Promise<LegalEntityMember> {
-    const [to] = await tx
-      .update(legalEntityMember)
-      .set({ isPrimaryAdmin: true, role: "owner" })
-      .where(eq(legalEntityMember.id, memberId))
-      .returning();
-    if (!to) throw new MemberPermissionError("transfer_promote_failed");
-    return rowToLegalEntityMember(to);
   }
 }

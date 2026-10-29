@@ -95,6 +95,19 @@ describe("redactDomainEventPayload", () => {
     expect(out.secret).toBe("[REDACTED]");
   });
 
+  it("keeps the reference fields of legal_entity.member_authorisations_revoked", () => {
+    const out = redactDomainEventPayload("legal_entity.member_authorisations_revoked", {
+      member_user_id: "u1",
+      authorisations: [{ authorisation_id: "a1", sale_id: null }],
+      cause: "member_removed",
+      secret: "x",
+    }) as Record<string, unknown>;
+    expect(out.member_user_id).toBe("u1");
+    expect(out.authorisations).toEqual([{ authorisation_id: "a1", sale_id: null }]);
+    expect(out.cause).toBe("member_removed");
+    expect(out.secret).toBe("[REDACTED]");
+  });
+
   const seP17LifecycleTypes = [
     "legal_entity.docs_requested",
     "legal_entity.review_started",

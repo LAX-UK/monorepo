@@ -229,6 +229,12 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "member_user_id",
     "reason",
   ]),
+  /** a member's buyer-agent authorisations ended because they left or their role changed. */
+  "legal_entity.member_authorisations_revoked": new Set([
+    "member_user_id",
+    "authorisations",
+    "cause",
+  ]),
   /** buyer agent authorised to bid for the organisation (by a member or by staff). */
   "legal_entity.buyer_agent_authorised": new Set([
     "authorisation_id",

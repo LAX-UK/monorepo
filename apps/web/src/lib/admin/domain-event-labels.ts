@@ -88,6 +88,8 @@ const LABELS: Record<string, string> = {
   "legal_entity.member_declined": "Member declined invitation",
   "legal_entity.member_role_changed": "Member role changed",
   "legal_entity.member_removed": "Member removed",
+  "legal_entity.member_authorisations_revoked":
+    "Buyer agent authorisations ended (member left or changed role)",
   "legal_entity.member_bid_stopped": "Automatic bid stopped (member removed)",
   "legal_entity.buyer_agent_authorised": "Buyer agent authorised",
   "legal_entity.buyer_agent_authorisation_revoked": "Buyer agent authorisation revoked",

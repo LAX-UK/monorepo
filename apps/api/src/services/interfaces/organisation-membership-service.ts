@@ -1,3 +1,4 @@
+import type { AuthorisationRevocationCause } from "@auction/domain";
 import type {
   DbTransaction,
   StandingBidInstruction,
@@ -42,6 +43,22 @@ export interface IRemovedMemberBidStopper {
     tx: DbTransaction,
     input: { legalEntityId: string; memberUserId: string; actorUserId: string },
   ): Promise<StoppedInstruction[]>;
+}
+
+/**
+ * Ends a member's buyer-agent authorisations, inside the change's transaction, with one audit
+ * entry for the lot; nothing is recorded when they held none.
+ */
+export interface IMemberAuthorisationRevoker {
+  revokeFor(
+    tx: DbTransaction,
+    input: {
+      legalEntityId: string;
+      memberUserId: string;
+      actorUserId: string;
+      cause: AuthorisationRevocationCause;
+    },
+  ): Promise<void>;
 }
 
 /** What stopped when members left, for the people who run the organisation. */

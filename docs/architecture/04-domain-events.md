@@ -137,6 +137,7 @@ This catalog is the contract between event producers and projectors. When you ad
 | `bid.lot_won` | apps/worker (lot lifecycle) | zoho, notifications | Lot ended with this user as high bidder | `{lotId, userId, winningBidId, amountCents, endedAt}` |
 | `payment.captured` | apps/api | xero, zoho | Stripe payment intent transitions to captured | `{paymentId, lotId, userId, amountCents, capturedAt, stripeIntentId}` |
 | `payment.refunded` | apps/api | xero, zoho | Refund processed | `{paymentId, lotId, userId, amountCents, refundedAt, reason}` |
+| `legal_entity.member_authorisations_revoked` | apps/api (member management) | — (audit trail) | A member is removed, or their role changes away from buyer agent (including taking ownership) | `{member_user_id, authorisations[{authorisation_id, sale_id}], cause: member_removed \| role_changed}` |
 | `lot.activated` | apps/api (lot lifecycle service) | notification-fanout (planned) | Lot start time reached or saleroom open | `{saleId, activatedAt}` |
 | `lot.created` | apps/api | lot_lifecycle_snapshot projector | Staff create, sale addLot, submission approve | `{saleId, source}` |
 | `lot.attached_to_sale` | apps/api | lot_lifecycle_snapshot projector | attach endpoint, sale patch, wizard attach | `{saleId, lotNumber, fromSaleId, via}` |

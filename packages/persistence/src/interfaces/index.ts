@@ -150,6 +150,7 @@ export type {
   BuyerAgentAuthorisationStatus,
   IBuyerAgentAuthorisationDirectory,
   IBuyerAgentAuthorisationWriter,
+  IMemberBuyerAgentAuthorisationRevoker,
   NewBuyerAgentAuthorisation,
 } from "./buyer-agent-authorisation.repository.js";
 

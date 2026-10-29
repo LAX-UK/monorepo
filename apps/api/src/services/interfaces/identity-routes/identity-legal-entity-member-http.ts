@@ -24,7 +24,8 @@ export interface IIdentityLegalEntityMemberHttpApplicationService {
     confirmationPhrase?: string;
   }): Promise<IdentityRouteOutcome<{ removed: true }>>;
 
-  transferPrimaryAdmin(input: {
+  /** Hands the acting owner's ownership to another member (typed confirmation). */
+  transferOwnership(input: {
     userId: string;
     legalEntityId: string;
     memberId: string;

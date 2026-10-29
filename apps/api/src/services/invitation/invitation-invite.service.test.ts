@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import type { IEntityInvitationRepository } from "@auction/persistence/interfaces";
+import type { LegalEntityMemberRole } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
@@ -46,6 +47,15 @@ function makeDb(): Database {
   } as Database;
 }
 
+/** A membership guard that lets the actor through with `role`. */
+function guardFor(role: LegalEntityMemberRole) {
+  return {
+    assertActorCan: vi.fn(async () => ({ id: "mem-actor", role })),
+  } as unknown as LegalEntityMembershipGuard & {
+    assertActorCan: ReturnType<typeof vi.fn>;
+  };
+}
+
 function makePublisher() {
   return mockDomainEventSink(vi.fn(async () => {}));
 }
@@ -62,9 +72,7 @@ describe("InvitationInviteService", () => {
     const notifications = {
       notifyInviteSent: vi.fn(async () => {}),
     } as unknown as InvitationNotificationService;
-    const guard = {
-      assertActorIsAdmin: vi.fn(async () => ({})),
-    } as unknown as LegalEntityMembershipGuard;
+    const guard = guardFor("admin");
     const service = new InvitationInviteService(
       transactionRunnerFromDb(makeDb()),
       repo,
@@ -79,11 +87,32 @@ describe("InvitationInviteService", () => {
       role: "admin",
     });
 
-    expect(guard.assertActorIsAdmin).toHaveBeenCalledWith(ACTOR_ID, ENTITY_ID);
+    expect(guard.assertActorCan).toHaveBeenCalledWith(ACTOR_ID, ENTITY_ID, "entity.members.manage");
     expect(insertInvitation).toHaveBeenCalledOnce();
     expect(notifications.notifyInviteSent).toHaveBeenCalledOnce();
     expect(result.memberId).toBeNull();
     expect(result.invitationToken).toEqual(expect.any(String));
+  });
+
+  it("lets only an owner invite someone as an owner", async () => {
+    const insertInvitation = vi.fn(async () => {});
+    const build = (role: LegalEntityMemberRole) =>
+      new InvitationInviteService(
+        transactionRunnerFromDb(makeDb()),
+        makeRepo({ insertInvitation }),
+        tokenService,
+        { notifyInviteSent: vi.fn() } as unknown as InvitationNotificationService,
+        makePublisher(),
+        guardFor(role),
+      );
+
+    await expect(
+      build("admin").invite(ACTOR_ID, ENTITY_ID, { email: "new@example.com", role: "owner" }),
+    ).rejects.toMatchObject({ code: "owner_only" });
+    expect(insertInvitation).not.toHaveBeenCalled();
+
+    await build("owner").invite(ACTOR_ID, ENTITY_ID, { email: "new@example.com", role: "owner" });
+    expect(insertInvitation).toHaveBeenCalledOnce();
   });
 
   it("rejects inviting an existing active member", async () => {
@@ -97,7 +126,7 @@ describe("InvitationInviteService", () => {
       tokenService,
       { notifyInviteSent: vi.fn() } as unknown as InvitationNotificationService,
       makePublisher(),
-      { assertActorIsAdmin: vi.fn(async () => ({})) } as unknown as LegalEntityMembershipGuard,
+      guardFor("admin"),
     );
 
     await expect(
@@ -113,7 +142,7 @@ describe("InvitationInviteService", () => {
       tokenService,
       { notifyInviteSent: vi.fn() } as unknown as InvitationNotificationService,
       makePublisher(),
-      { assertActorIsAdmin: vi.fn(async () => ({})) } as unknown as LegalEntityMembershipGuard,
+      guardFor("admin"),
       {
         findSubjectByEmail: vi.fn().mockResolvedValue({
           id: "unverified-user",
@@ -142,7 +171,7 @@ describe("InvitationInviteService", () => {
       tokenService,
       notifications,
       makePublisher(),
-      { assertActorIsAdmin: vi.fn(async () => ({})) } as unknown as LegalEntityMembershipGuard,
+      guardFor("admin"),
       {
         findSubjectByEmail: vi.fn().mockResolvedValue({
           id: "unverified-user",

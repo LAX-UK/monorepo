@@ -223,6 +223,7 @@ export { DrizzleRememberedAccountStore } from "./drizzle-remembered-account.stor
 export { DrizzleRecordAccountReader } from "./drizzle-record-account.reader.js";
 export { DrizzleMemberWelcomeStore } from "./drizzle-member-welcome.store.js";
 export { DrizzleMemberBidInstructionsRepository } from "./drizzle-member-bid-instructions.repository.js";
+export { DrizzleMemberBuyerAgentAuthorisationRevoker } from "./drizzle-member-buyer-agent-authorisation.revoker.js";
 export { DrizzleStoppedMemberBidsReader } from "./drizzle-stopped-member-bids.reader.js";
 export { DrizzleConsignmentStatusCountsReader } from "./drizzle-consignment-status-counts.reader.js";
 export { DrizzleUpcomingSaleWorksReader } from "./drizzle-upcoming-sale-works.reader.js";
