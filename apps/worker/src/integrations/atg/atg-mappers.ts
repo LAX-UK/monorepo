@@ -205,9 +205,12 @@ export function resolveLotImageUrls(lot: AtgLotSnapshot, config: AtgSyncConfig):
     );
 }
 
-/** GAP orders images by name: `1` is primary, then `1-1`, `1-2`, … */
+/**
+ * GAP orders images by name: `1.jpg` is primary, then `1-1.jpg`, `1-2.jpg`, … ATG rejects a name
+ * without an image extension ("Invalid image extension").
+ */
 export function gapImageName(index: number): string {
-  return index === 0 ? "1" : `1-${index}`;
+  return index === 0 ? "1.jpg" : `1-${index}.jpg`;
 }
 
 function stableStringify(value: unknown): string {
