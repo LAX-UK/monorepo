@@ -47,7 +47,7 @@ describe("MarketingMobileNavDrawer", () => {
         ]}
       />,
     );
-    const nav = screen.getByRole("navigation", { name: "LAX products" });
+    const nav = screen.getByRole("navigation", { name: "LAX family menu" });
     expect(Array.from(nav.querySelectorAll("a")).map((link) => link.textContent)).toEqual([
       "lax.art",
       "lax.shop",

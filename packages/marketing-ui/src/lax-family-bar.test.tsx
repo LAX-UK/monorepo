@@ -13,7 +13,7 @@ const LINKS = [
 describe("LaxFamilyBar", () => {
   it("links the products in order, then LAX Account, each to its own URL", () => {
     render(<LaxFamilyBar links={LINKS} />);
-    const nav = screen.getByRole("navigation", { name: "LAX products" });
+    const nav = screen.getByRole("navigation", { name: "LAX family" });
     const links = within(nav).getAllByRole("link");
     expect(links.map((link) => link.textContent)).toEqual([
       "lax.art",
@@ -39,7 +39,7 @@ describe("LaxFamilyBar", () => {
 
   it("spaces the products evenly with no separators, and sets LAX Account after a divider", () => {
     render(<LaxFamilyBar links={LINKS} />);
-    const nav = screen.getByRole("navigation", { name: "LAX products" });
+    const nav = screen.getByRole("navigation", { name: "LAX family" });
     expect(nav.querySelectorAll("[aria-hidden]")).toHaveLength(0);
     expect(nav.textContent).not.toContain("·");
     const accountItem = screen.getByRole("link", { name: "LAX Account" }).closest("li");
@@ -57,8 +57,10 @@ describe("LaxFamilyBar", () => {
 
     const sibling = screen.getByRole("link", { name: "lax.bid" });
     expect(sibling.className).toContain("before:bg-transparent");
-    expect(sibling.className).toContain("hover:before:bg-[var(--family-accent,currentColor)]");
-    expect(sibling.style.getPropertyValue("--family-accent")).toBe("#091f5b");
+    expect(sibling.className).toContain("hover:before:bg-current");
+    expect(sibling.className).toContain("hover:before:h-px");
+    expect(sibling.className).not.toContain("font-semibold");
+    expect(current.className).toContain("before:h-0.5");
   });
 
   it("underlines lax.art in the text colour, since the umbrella product has no accent", () => {
@@ -100,7 +102,7 @@ describe("LaxFamilyBar", () => {
         actions={<a href="/login">Log in</a>}
       />,
     );
-    const nav = screen.getByRole("navigation", { name: "LAX products" });
+    const nav = screen.getByRole("navigation", { name: "LAX family" });
     const message = screen.getByText(/Free collection from our Marylebone gallery/);
     expect(nav).not.toContainElement(message);
     expect(nav).not.toContainElement(screen.getByRole("link", { name: "Log in" }));
@@ -123,7 +125,7 @@ describe("LaxFamilyBar", () => {
 describe("LaxFamilyMenuLinks", () => {
   it("lists every product and LAX Account in the bar's order", () => {
     render(<LaxFamilyMenuLinks links={LINKS} />);
-    const nav = screen.getByRole("navigation", { name: "LAX products" });
+    const nav = screen.getByRole("navigation", { name: "LAX family menu" });
     expect(
       within(nav)
         .getAllByRole("link")

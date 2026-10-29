@@ -19,7 +19,7 @@ export function LaxFamilyMenuLinks({ links, onNavigate, className }: LaxFamilyMe
 
   return (
     <nav
-      aria-label="LAX products"
+      aria-label="LAX family menu"
       data-testid="lax-family-menu-links"
       className={cn("flex flex-col gap-1", className)}
     >

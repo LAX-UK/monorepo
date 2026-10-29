@@ -22,8 +22,6 @@ type ToneClasses = {
   divider: string;
   /** The 2px line under the product the person is on. */
   underline: string;
-  /** The same line under a sibling, drawn only while it is hovered or focused. */
-  underlineHover: string;
   /** Whether the line takes the product's own accent (on a photograph it keeps the text colour). */
   accented: boolean;
 };
@@ -37,8 +35,6 @@ const TONES: Readonly<Record<MarketingHeaderTone, ToneClasses>> = {
     divider: "border-on-surface-variant/35",
     underline:
       "before:bg-[var(--family-accent,currentColor)] dark:before:bg-[var(--family-accent-on-dark,currentColor)]",
-    underlineHover:
-      "hover:before:bg-[var(--family-accent,currentColor)] dark:hover:before:bg-[var(--family-accent-on-dark,currentColor)]",
     accented: true,
   },
   "on-dark": {
@@ -47,7 +43,6 @@ const TONES: Readonly<Record<MarketingHeaderTone, ToneClasses>> = {
     muted: "text-hero-foreground/80",
     divider: "border-hero-foreground/30",
     underline: "before:bg-current",
-    underlineHover: "hover:before:bg-current",
     accented: false,
   },
 };
@@ -59,6 +54,12 @@ const TONES: Readonly<Record<MarketingHeaderTone, ToneClasses>> = {
  */
 const LINK =
   "relative rounded-sm font-label text-xs leading-4 normal-case tracking-normal transition-colors after:absolute after:-inset-x-1.5 after:-inset-y-2.5 after:content-[''] before:pointer-events-none before:absolute before:inset-x-0 before:-bottom-1 before:h-0.5 before:rounded-full before:content-[''] before:transition-colors motion-reduce:transition-none motion-reduce:before:transition-none";
+
+/**
+ * A sibling answers hover with a 1px line in the text colour, lighter than the current product's
+ * 2px accent line, so the two never read as the same state. Same bottom edge, no layout change.
+ */
+const HOVER_UNDERLINE = "hover:before:-bottom-[3px] hover:before:h-px hover:before:bg-current";
 
 export type LaxFamilyBarProps = {
   links: readonly LaxFamilyBarLink[];
@@ -82,7 +83,7 @@ function FamilyLink({ link, tone }: { link: LaxFamilyBarLink; tone: ToneClasses 
         FOCUS_RING,
         link.current
           ? cn("font-semibold", tone.current, tone.underline)
-          : cn("font-medium before:bg-transparent", tone.link, tone.underlineHover),
+          : cn("font-medium before:bg-transparent", tone.link, HOVER_UNDERLINE),
       )}
     >
       {link.label}
@@ -114,7 +115,7 @@ export function LaxFamilyBar({
       data-testid="lax-family-bar"
       className={cn("hidden min-h-9 items-center justify-between gap-6 lg:flex", className)}
     >
-      <nav aria-label="LAX products">
+      <nav aria-label="LAX family">
         <ul className="m-0 flex list-none items-center gap-5 p-0">
           {products.map((link) => (
             <li key={link.id} className="flex items-center">
