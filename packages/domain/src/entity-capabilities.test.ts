@@ -5,7 +5,10 @@ import { type EntityCapability, entityActorCan, entityRoleCan } from "./entity-c
 
 /** The full matrix, written out so a change to any cell is a visible test change. */
 const EXPECTED: Record<EntityCapability, LegalEntityMemberRole[]> = {
+  "entity.members.read": ["owner", "admin"],
   "entity.members.manage": ["owner", "admin"],
+  "entity.ownership.manage": ["owner"],
+  "entity.profile.read": ["owner", "admin"],
   "entity.security.read": ["owner", "admin"],
   "entity.security.manage": ["owner"],
   "entity.finance.read": ["owner", "admin", "finance"],
@@ -15,6 +18,7 @@ const EXPECTED: Record<EntityCapability, LegalEntityMemberRole[]> = {
   "entity.connect.operate": ["owner", "admin", "finance"],
   "entity.consignments.read": ["owner", "admin", "finance", "consignor", "viewer"],
   "entity.submissions.create": ["owner", "admin", "consignor"],
+  "entity.submissions.manage": ["owner", "admin"],
   "entity.consignments.accept_agreement": ["owner", "admin"],
   "entity.consignments.withdraw": ["owner", "admin"],
   "entity.consignments.after_sale": ["owner", "admin"],

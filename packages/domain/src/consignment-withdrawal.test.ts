@@ -69,7 +69,7 @@ describe("canActOnConsignmentWithdrawal", () => {
   it.each([
     ["owner", true, true],
     ["admin", true, true],
-    ["consignor", true, false],
+    ["consignor", false, false],
     ["finance", false, false],
     ["viewer", false, false],
     ["buyer_agent", false, false],

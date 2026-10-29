@@ -16,8 +16,17 @@ type CapabilityRule = {
 };
 
 const ENTITY_CAPABILITY_RULES = {
+  /** See the member list: colleagues' names, emails and roles. */
+  "entity.members.read": { access: "read", roles: ["owner", "admin"] },
   /** Invite, change roles of and remove members. */
   "entity.members.manage": { access: "write", roles: ["owner", "admin"] },
+  /**
+   * Grant, change or remove the owner role, and transfer ownership. Owners run the organisation,
+   * so only another owner may make or unmake one.
+   */
+  "entity.ownership.manage": { access: "write", roles: ["owner"] },
+  /** See the organisation's registered details and the documents sent for its checks. */
+  "entity.profile.read": { access: "read", roles: ["owner", "admin"] },
   /** See the organisation's two-step verification policy and which members have it on. */
   "entity.security.read": {
     access: "read",
@@ -50,6 +59,11 @@ const ENTITY_CAPABILITY_RULES = {
    * consignments but not start them; a person's own profile always has an owner's rights.
    */
   "entity.submissions.create": { access: "write", roles: ["owner", "admin", "consignor"] },
+  /**
+   * Change any of the organisation's submissions, whoever sent them: edit, send, and attach or
+   * remove documents. Members who may only start submissions change just the ones they sent.
+   */
+  "entity.submissions.manage": { access: "write", roles: ["owner", "admin"] },
   /**
    * Accept the consignment agreement (the specialist's estimate and the seller conditions) for
    * the organisation. It binds the organisation, so only the people who run it may accept.
@@ -109,4 +123,11 @@ export function entityActorCan(actor: EntityActor, capability: EntityCapability)
   const rule = ruleFor(capability);
   if (actor.isImpersonation && (rule.access === "write" || rule.denyImpersonation)) return false;
   return rule.roles.includes(actor.role);
+}
+
+/** The roles that hold `capability`, in the table's order, to say who can do something. */
+export function rolesWithCapability(
+  capability: EntityCapability,
+): readonly LegalEntityMemberRole[] {
+  return ruleFor(capability).roles;
 }
