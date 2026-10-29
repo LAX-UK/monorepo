@@ -20,6 +20,7 @@ import {
   hasZeroLotCredentials,
   incompleteLogin,
   operationsLogin,
+  organisationMemberLogin,
   readonlyStaffLogin,
   staffLogin,
   unapprovedLogin,
@@ -118,6 +119,24 @@ setup("authenticate read-only staff @setup-readonly", async ({ page }) => {
   );
   await readonlyStaffLogin(page);
   await page.context().storageState({ path: roleAuthState.readonlyStaff });
+});
+
+setup("authenticate organisation members @setup-org-roles", async ({ browser }) => {
+  setup.skip(!e2eEnabled, "Seeded organisation members are required.");
+  const members = [
+    ["admin", roleAuthState.orgAdmin],
+    ["consignor", roleAuthState.orgConsignor],
+    ["buyerAgent", roleAuthState.orgBuyerAgent],
+    ["viewer", roleAuthState.orgViewer],
+  ] as const;
+  for (const [member, statePath] of members) {
+    flushAuthRateLimits();
+    const context = await browser.newContext();
+    const page = await context.newPage();
+    await organisationMemberLogin(page, member);
+    await context.storageState({ path: statePath });
+    await context.close();
+  }
 });
 
 setup("authenticate operations @setup-operations", async ({ page }) => {

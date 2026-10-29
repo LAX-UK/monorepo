@@ -16,6 +16,7 @@ import { buildPgConnectionConfig } from "../../ssl.js";
 import { assertDevSeedMayRunDestructiveClear } from "../runners/dev-seed-guard.js";
 import { buildPressDemoSaleRow } from "../shared/press-demo.js";
 import { DEMO_SEED_NOW } from "./demo-seed-clock.js";
+import { seedOrganisationJourneys } from "./organisation-journeys-seed.js";
 
 const { Pool } = pg;
 
@@ -4929,6 +4930,20 @@ export async function runLegacyDemoSeed() {
       target: projectorState.projectorName,
       set: { lastProcessedEventId: 0, updatedAt: stamp, lastError: null },
     });
+
+  await seedOrganisationJourneys(db, {
+    adminId: ADMIN_ID,
+    galleryAdminId: GALLERY_ADMIN_ID,
+    estateOwnerId: ESTATE_OWNER_ID,
+    consignorId: CONSIGNOR_ID,
+    buyerAgentId: BUYER_AGENT_ID,
+    northbankId: LE.gallery,
+    restrictedId: LEO.otherRestricted,
+    sellerAccountId: LE.user2,
+    laxStockId: LEO.laxStockApproved,
+    categoryId: CAT.paintings,
+    signInUserIds: [GALLERY_ADMIN_ID, CONSIGNOR_ID, BUYER_AGENT_ID, SPECIALIST_ID],
+  });
 
   // ── Summary ────────────────────────────────────────────────────────────────
   console.log("");
