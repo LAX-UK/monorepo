@@ -21,7 +21,6 @@ export const DASHBOARD_CTA = {
   chooseWhatWeSend: "Choose what we send",
   browseCatalogue: "Browse catalogue",
   newSubmission: "New submission",
-  submitWork: "Submit a work",
   tryAgain: "Try again",
   signInAgain: "Sign in again",
   contactSupport: "Contact support",

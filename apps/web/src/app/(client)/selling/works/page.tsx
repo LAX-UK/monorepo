@@ -1,7 +1,3 @@
-  }
-  const canViewMoney = sellerCan(sellerCtx, "entity.finance.read");
-  // Only someone who may bid is offered the sales; the rest are told what will appear.
-  const canBid = sellerCan(sellerCtx, "entity.bid.place");
 import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { PaymentsMobileList } from "@/components/dashboard/list/payments-mobile-list";
