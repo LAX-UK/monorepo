@@ -1,0 +1,82 @@
+import { expect, test } from "@playwright/test";
+import { e2eEnabled, e2eSkipReason } from "./helpers/auth";
+import { roleAuthState } from "./helpers/auth-state";
+import {
+  ORGANISATION_JOURNEY_NAMES,
+  expectActingAs,
+  openAs,
+} from "./helpers/organisation-journeys";
+
+/**
+ * An admin of Northbank Gallery runs the team like an owner, except that an admin only reads the
+ * two-step policy and cannot hand over ownership. The journey invites and withdraws an
+ * invitation (with Undo) and changes a role and takes it back, leaving the team as it found it.
+ */
+
+const INVITEE_EMAIL = "admin-journey-invitee@example.com";
+const MEMBER_NAME = "Sofia Petrov";
+const { approved } = ORGANISATION_JOURNEY_NAMES;
+
+test.describe("organisation admin journey @roles", () => {
+  test.skip(!e2eEnabled, e2eSkipReason);
+
+  test("manages the team without ownership or policy rights", async ({ browser, baseURL }) => {
+    test.setTimeout(180_000);
+    const admin = await openAs(browser, roleAuthState.orgAdmin, approved, baseURL);
+    const { page } = admin;
+
+    await test.step("sees the team tabs an admin may open", async () => {
+      await page.goto("/organisation/members");
+      await expectActingAs(page, approved, "Admin");
+      const tabs = page.getByRole("main");
+      await expect(tabs.getByRole("link", { name: "Members", exact: true })).toBeVisible();
+      await expect(tabs.getByRole("link", { name: "Documents", exact: true })).toBeVisible();
+    });
+
+    await test.step("invites someone and withdraws the invitation with Undo", async () => {
+      await page.getByLabel("Email").fill(INVITEE_EMAIL);
+      await page.getByRole("combobox", { name: "Role", exact: true }).click();
+      await page.getByRole("option", { name: "Viewer" }).click();
+      await page.getByRole("button", { name: "Send invitation" }).click();
+      await expect(page.getByText(`Invitation sent to ${INVITEE_EMAIL}.`)).toBeVisible();
+
+      await page
+        .getByRole("button", { name: `More for the invitation to ${INVITEE_EMAIL}` })
+        .click();
+      await page.getByRole("menuitem", { name: "Withdraw" }).click();
+      await expect(page.getByText(`Invitation to ${INVITEE_EMAIL} withdrawn.`)).toBeVisible();
+      await page.getByRole("button", { name: "Undo" }).click();
+      await expect(page.getByText(`Invitation to ${INVITEE_EMAIL} reopened.`)).toBeVisible();
+
+      await page
+        .getByRole("button", { name: `More for the invitation to ${INVITEE_EMAIL}` })
+        .click();
+      await page.getByRole("menuitem", { name: "Withdraw" }).click();
+      await expect(page.getByText(`Invitation to ${INVITEE_EMAIL} withdrawn.`)).toBeVisible();
+    });
+
+    await test.step("changes a role and takes it back", async () => {
+      const picker = page.getByRole("combobox", { name: `Role for ${MEMBER_NAME}` });
+      await expect(picker).toContainText("Viewer");
+      await picker.click();
+      await page.getByRole("option", { name: "Consignor" }).click();
+      await expect(page.getByText(`${MEMBER_NAME} is now`)).toBeVisible();
+      await page.getByRole("button", { name: "Undo" }).click();
+      await expect(picker).toContainText("Viewer");
+    });
+
+    await test.step("cannot hand over ownership", async () => {
+      await page.getByRole("button", { name: `More for ${MEMBER_NAME}` }).click();
+      await expect(page.getByRole("menuitem", { name: "Remove" })).toBeVisible();
+      await expect(page.getByRole("menuitem", { name: "Transfer ownership" })).toHaveCount(0);
+      await page.keyboard.press("Escape");
+    });
+
+    await test.step("reads the two-step policy", async () => {
+      await page.goto("/organisation/security");
+      await expect(page.getByRole("heading", { name: "Two-step policy" })).toBeVisible();
+    });
+
+    await admin.close();
+  });
+});

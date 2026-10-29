@@ -10,6 +10,7 @@
 import { inArray } from "drizzle-orm";
 import type { drizzle } from "drizzle-orm/node-postgres";
 import * as schema from "../../schema/index.js";
+import { BUYER_AGENT_BID_LIMIT, ORGANISATION_JOURNEY_IDS } from "./organisation-journey-ids.js";
 
 type Db = ReturnType<typeof drizzle<typeof schema>>;
 
@@ -34,23 +35,6 @@ export type OrganisationJourneyActors = {
   signInUserIds: string[];
 };
 
-/** Stable ids the journeys and the seed agree on. */
-export const ORGANISATION_JOURNEY_IDS = {
-  sale: "e1000010-0000-4000-8000-000000000010",
-  lotForOwner: "b1000401-0000-4000-8000-000000000401",
-  lotForBuyerAgent: "b1000402-0000-4000-8000-000000000402",
-  lotUnsold: "b1000403-0000-4000-8000-000000000403",
-  lotInvoiceNorthbank: "b1000404-0000-4000-8000-000000000404",
-  lotInvoiceRestricted: "b1000405-0000-4000-8000-000000000405",
-  submissionDraft: "d2000101-0000-4000-8000-000000000101",
-  submissionNeedsChanges: "d2000102-0000-4000-8000-000000000102",
-  submissionUnsold: "d2000103-0000-4000-8000-000000000103",
-  payoutPaid: "a3000101-0000-4000-8000-000000000101",
-} as const;
-
-/** Highest bid the seeded buyer agent may place for Northbank, in pounds. */
-export const BUYER_AGENT_BID_LIMIT = "6000.00";
-
 const DAY = 86_400_000;
 const IMAGE = "https://images.unsplash.com/photo-1579783902614-a3fb3927b6a5?w=1200&q=80";
 
@@ -60,13 +44,20 @@ export async function seedOrganisationJourneys(db: Db, actors: OrganisationJourn
   const earlier = new Date(today - 1 * DAY);
   const later = new Date(today + 30 * DAY);
   const ended = new Date(today - 3 * DAY);
-  const lotDefaults = {
+  const lotDefaults: Pick<
+    typeof schema.lot.$inferInsert,
+    | "sellerLegalEntityId"
+    | "images"
+    | "auctionType"
+    | "buyerPremiumRate"
+    | "dutchDecrementIntervalMs"
+  > = {
     sellerLegalEntityId: actors.sellerAccountId,
     images: [IMAGE],
     auctionType: "english",
     buyerPremiumRate: "0.25",
     dutchDecrementIntervalMs: 60_000,
-  } as const;
+  };
 
   // The members who sign in for the journeys land on Home, not on the interests questionnaire.
   await db
@@ -225,7 +216,7 @@ export async function seedOrganisationJourneys(db: Db, actors: OrganisationJourn
     legalEntityId: actors.northbankId,
     userId: actors.buyerAgentId,
     saleId: null,
-    bidLimit: BUYER_AGENT_BID_LIMIT,
+    bidLimit: BUYER_AGENT_BID_LIMIT.toFixed(2),
     validFrom: earlier,
     validUntil: null,
     status: "active",
@@ -234,7 +225,7 @@ export async function seedOrganisationJourneys(db: Db, actors: OrganisationJourn
 
   // The consignor's work: one complete draft to send, one the specialist sent back, and the
   // consignment behind the unsold lot.
-  const submission = {
+  const submission: Omit<typeof schema.itemSubmission.$inferInsert, "id" | "title" | "status"> = {
     legalEntityId: actors.northbankId,
     submittedByUserId: actors.consignorId,
     description: "Oil on canvas, signed lower right, from the gallery's own collection.",
@@ -250,7 +241,7 @@ export async function seedOrganisationJourneys(db: Db, actors: OrganisationJourn
     reservePrice: "2800.00",
     createdAt: new Date(today - 6 * DAY),
     updatedAt: new Date(today - 2 * DAY),
-  } as const;
+  };
   const submissions: (typeof schema.itemSubmission.$inferInsert)[] = [
     {
       ...submission,
