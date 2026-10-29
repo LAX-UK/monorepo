@@ -1,17 +1,14 @@
 "use client";
 
-import { onAccountSwitch } from "@/lib/legal-entity/account-switch-channel";
+import {
+  accountChangedElsewhere,
+  onAccountSwitch,
+} from "@/lib/legal-entity/account-switch-channel";
 import { getClientActingLegalEntityId } from "@/lib/legal-entity/client-acting-context";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-/** Whether the browser now uses another account than the one this page was rendered for. */
-export function accountChangedElsewhere(
-  renderedAccountId: string | null,
-  browserAccountId: string | null | undefined,
-): boolean {
-  return Boolean(renderedAccountId && browserAccountId && browserAccountId !== renderedAccountId);
-}
+export { accountChangedElsewhere } from "@/lib/legal-entity/account-switch-channel";
 
 /**
  * Keeps an open bid panel's "Bidding as" line true after the account is switched in another
