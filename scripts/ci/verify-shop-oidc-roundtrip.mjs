@@ -28,6 +28,7 @@ if (existsSync(envPath)) {
 
 const STAGING_SHOP_ORIGIN = "https://test-shop.lax.bid";
 const STAGING_ACCOUNT_ORIGIN = "https://test-account.lax.bid";
+const STAGING_ART_ORIGIN = "https://test-art.lax.bid";
 const LOCAL_SHOP_IDENTITY_ORIGIN = "http://localhost:3010";
 const LOCAL_SHOP_STOREFRONT_ORIGIN = "http://localhost:3020";
 
@@ -48,6 +49,8 @@ const storefrontBase = authBase.includes("test-auth.lax.bid")
 const accountBase = authBase.includes("test-auth.lax.bid")
   ? STAGING_ACCOUNT_ORIGIN
   : process.env.LAX_ACCOUNT_BASE_URL?.trim().replace(/\/+$/, "") || null;
+/** lax.art (lax-art-web) joins the same session so its back-channel logout delivery is exercised. */
+const artBase = authBase.includes("test-auth.lax.bid") ? STAGING_ART_ORIGIN : null;
 const email = process.env.SHOP_OIDC_TEST_EMAIL;
 const password = process.env.SHOP_OIDC_TEST_PASSWORD;
 
@@ -154,6 +157,56 @@ async function signInToAccount(authCookies) {
   }
 }
 
+async function signInToArt(authCookies) {
+  const artCookies = new Map();
+  const login = await fetch(`${artBase}/login`, { redirect: "manual" });
+  captureCookies(login, artCookies);
+  const authorizeUrl = login.headers.get("location");
+  if (login.status !== 302 || !authorizeUrl || artCookies.size === 0) {
+    throw new Error(`lax.art login did not start OIDC (${login.status})`);
+  }
+  assertTrustedRedirect(
+    authorizeUrl,
+    allowedAuthOrigins,
+    "/api/auth/oauth2/authorize",
+    "lax.art login authorize",
+  );
+
+  const authorize = await fetch(authorizeUrl, {
+    redirect: "manual",
+    headers: { cookie: cookieHeader(authCookies) },
+  });
+  captureCookies(authorize, authCookies);
+  const callbackUri = await completeAuthorization({
+    authBase,
+    authorizeResponse: authorize,
+    cookieHeader: cookieHeader(authCookies),
+    onResponse: (response) => captureCookies(response, authCookies),
+    requireFirstPartySkip: true,
+    expectedState: new URL(authorizeUrl).searchParams.get("state") ?? undefined,
+  });
+  assertTrustedRedirect(
+    callbackUri,
+    new Set([new URL(artBase).origin]),
+    "/auth/callback",
+    "lax.art OIDC callback",
+  );
+
+  const callback = await fetch(callbackUri, {
+    redirect: "manual",
+    headers: { cookie: cookieHeader(artCookies) },
+  });
+  captureCookies(callback, artCookies);
+  if (callback.status !== 302) {
+    throw new Error(`lax.art callback failed (${callback.status})`);
+  }
+  const me = await fetch(`${artBase}/me`, { headers: { cookie: cookieHeader(artCookies) } });
+  const profile = await me.json().catch(() => null);
+  if (!me.ok || profile?.authenticated !== true) {
+    throw new Error(`lax.art authenticated profile check failed (${me.status})`);
+  }
+}
+
 async function main() {
   if (!allowedShopOrigins.has(new URL(shopBase).origin)) {
     throw new Error(`Shop origin is not allowed for this probe: ${shopBase}`);
@@ -231,6 +284,7 @@ async function main() {
   }
 
   if (accountBase) await signInToAccount(authCookies);
+  if (artBase) await signInToArt(authCookies);
 
   const logout = await fetch(`${shopBase}/logout`, {
     method: "POST",
