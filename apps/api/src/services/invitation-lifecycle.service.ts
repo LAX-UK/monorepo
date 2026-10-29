@@ -5,6 +5,7 @@ import type { IIdentitySubjectClient } from "./interfaces/identity-issuer-client
 import type {
   IInvitationLifecycleService,
   InvitationOutcome,
+  InvitationPreview,
   InviteOutcome,
 } from "./interfaces/invitation-lifecycle.js";
 import type { InviteMemberInput } from "./interfaces/member-management.js";
@@ -63,6 +64,10 @@ export class InvitationLifecycleService implements IInvitationLifecycleService {
 
   accept(userId: string, userEmail: string, token: string): Promise<InvitationOutcome> {
     return this.acceptanceService.accept(userId, userEmail, token);
+  }
+
+  preview(userId: string, userEmail: string, token: string): Promise<InvitationPreview> {
+    return this.acceptanceService.preview(userId, userEmail, token);
   }
 
   acceptById(userId: string, userEmail: string, invitationId: string): Promise<InvitationOutcome> {

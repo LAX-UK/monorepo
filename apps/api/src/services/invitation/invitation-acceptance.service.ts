@@ -3,11 +3,14 @@ import type { IEntityInvitationRepository } from "@auction/persistence/interface
 import type { InvitationRow } from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
 import type { IDomainEventSink } from "../domain-event-sink.js";
-import type { InvitationOutcome } from "../interfaces/invitation-lifecycle.js";
+import type { InvitationOutcome, InvitationPreview } from "../interfaces/invitation-lifecycle.js";
 import type { InvitationNotificationService } from "./invitation-notification.service.js";
 import type { InvitationTokenService } from "./invitation-token.service.js";
 
 type AcceptVia = "invitation_token" | "invitation_id";
+
+/** The person already belongs to the organisation (HTTP 409, "You're already a member"). */
+const ALREADY_A_MEMBER = "already_a_member";
 
 export class InvitationAcceptanceService {
   constructor(
@@ -36,12 +39,52 @@ export class InvitationAcceptanceService {
     );
   }
 
+  /**
+   * What an invitation link shows the signed-in person before they accept: the organisation and
+   * role while it is open, or why it is not (already a member, expired, closed, another email).
+   * Reads only; the same checks as {@link accept}, so the page and the accept never disagree.
+   */
+  async preview(userId: string, userEmail: string, token: string): Promise<InvitationPreview> {
+    const emailNorm = this.tokenService.normalizeEmail(userEmail);
+    const invite = await this.repo.findByTokenHash(this.tokenService.hashToken(token));
+    const legalEntityId = invite?.targetLegalEntityId;
+    if (!invite || !legalEntityId) return { state: "closed" };
+    // Someone signed in with another email learns nothing about the organisation.
+    if (this.tokenService.normalizeEmail(invite.email) !== emailNorm) {
+      return { state: "other_email" };
+    }
+    const validation = this.validatePendingEntityInvitation(invite, userId, emailNorm, true);
+    const organisationName = (await this.repo.findLegalEntityDisplayName(legalEntityId)) ?? "";
+    const alreadyMember =
+      (!validation.ok && validation.code === ALREADY_A_MEMBER) ||
+      (await this.repo.hasActiveMember(legalEntityId, userId));
+    if (alreadyMember) return { state: "already_member", legalEntityId, organisationName };
+    if (!validation.ok) {
+      return validation.code === "invitation_expired"
+        ? { state: "expired", organisationName }
+        : { state: "closed" };
+    }
+    return {
+      state: "open",
+      legalEntityId,
+      organisationName,
+      role: invite.targetLegalEntityMemberRole as LegalEntityMemberRole,
+      inviterName: await this.repo.findUserName(invite.createdByUserId),
+      expiresAt: invite.expiresAt.toISOString(),
+    };
+  }
+
   private validatePendingEntityInvitation(
     invite: InvitationRow | null,
+    userId: string,
     emailNorm: string,
     requireMemberRole: boolean,
   ): { ok: false; code: string } | { ok: true; invite: InvitationRow } {
     if (!invite) return { ok: false, code: "invitation_not_found" };
+    // Accepting twice (a second tab, a double click, a reload) is not an error for the person.
+    if (invite.status === "accepted" && invite.acceptedUserId === userId) {
+      return { ok: false, code: ALREADY_A_MEMBER };
+    }
     if (invite.status !== "pending") {
       return { ok: false, code: "invitation_not_pending" };
     }
@@ -71,7 +114,7 @@ export class InvitationAcceptanceService {
     const txResult = await this.transactionRunner.runInTransaction(async (tx) => {
       const txRepo = this.repo.forConnection(tx);
       const invite = await loadInvite(txRepo);
-      const validation = this.validatePendingEntityInvitation(invite, emailNorm, true);
+      const validation = this.validatePendingEntityInvitation(invite, userId, emailNorm, true);
       if (!validation.ok) return validation;
 
       const { invite: validInvite } = validation;
@@ -88,7 +131,9 @@ export class InvitationAcceptanceService {
         invitedByUserId: validInvite.createdByUserId,
         invitedAt: validInvite.createdAt,
       });
-      if (!member) return { ok: false as const, code: "member_create_failed" };
+      // Already an active member: a concurrent accept won the race, or the person had joined
+      // before this invitation was sent. Nothing else changes.
+      if (!member) return { ok: false as const, code: ALREADY_A_MEMBER };
 
       await txRepo.markInvitationAccepted(validInvite.id, userId);
 
@@ -143,7 +188,7 @@ export class InvitationAcceptanceService {
     const emailNorm = this.tokenService.normalizeEmail(userEmail);
 
     const invite = await this.repo.findById(invitationId);
-    const validation = this.validatePendingEntityInvitation(invite, emailNorm, false);
+    const validation = this.validatePendingEntityInvitation(invite, userId, emailNorm, false);
     if (!validation.ok) return validation;
 
     const { invite: validInvite } = validation;

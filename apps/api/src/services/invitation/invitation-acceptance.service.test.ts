@@ -149,4 +149,139 @@ describe("InvitationAcceptanceService", () => {
     expect(result).toEqual({ ok: true, kind: "declined" });
     expect(notifications.notifyInviteDeclined).toHaveBeenCalledOnce();
   });
+
+  function serviceWith(repo: IEntityInvitationRepository, publish = vi.fn(async () => {})) {
+    const notifications = {
+      notifyInviteAccepted: vi.fn(async () => {}),
+    } as unknown as InvitationNotificationService;
+    return {
+      notifications,
+      publish,
+      service: new InvitationAcceptanceService(
+        transactionRunnerFromDb(makeDb()),
+        repo,
+        tokenService,
+        notifications,
+        mockDomainEventSink(publish),
+      ),
+    };
+  }
+
+  it("answers already_a_member when a concurrent accept added the person first", async () => {
+    const markInvitationAccepted = vi.fn(async () => {});
+    const { service, notifications, publish } = serviceWith(
+      makeRepo({ insertMember: async () => null, markInvitationAccepted }),
+    );
+
+    const result = await service.accept(USER_ID, "invitee@example.com", "raw-token");
+
+    expect(result).toEqual({ ok: false, code: "already_a_member" });
+    expect(markInvitationAccepted).not.toHaveBeenCalled();
+    expect(publish).not.toHaveBeenCalled();
+    expect(notifications.notifyInviteAccepted).not.toHaveBeenCalled();
+  });
+
+  it("answers already_a_member when the person accepts the same invitation again", async () => {
+    const insertMember = vi.fn(async () => member());
+    const { service } = serviceWith(
+      makeRepo({
+        findByTokenHash: async () =>
+          pendingInvite({ status: "accepted", acceptedUserId: USER_ID, acceptedAt: ACCEPTED_AT }),
+        insertMember,
+      }),
+    );
+
+    await expect(service.accept(USER_ID, "invitee@example.com", "raw-token")).resolves.toEqual({
+      ok: false,
+      code: "already_a_member",
+    });
+    expect(insertMember).not.toHaveBeenCalled();
+  });
+
+  it("still refuses an invitation someone else accepted", async () => {
+    const { service } = serviceWith(
+      makeRepo({
+        findByTokenHash: async () =>
+          pendingInvite({ status: "accepted", acceptedUserId: "someone-else" }),
+      }),
+    );
+    await expect(service.accept(USER_ID, "invitee@example.com", "raw-token")).resolves.toEqual({
+      ok: false,
+      code: "invitation_not_pending",
+    });
+  });
+});
+
+describe("InvitationAcceptanceService.preview", () => {
+  const tokenService = new InvitationTokenService();
+
+  function preview(
+    overrides: Partial<IEntityInvitationRepository> = {},
+    email = "invitee@example.com",
+  ) {
+    const service = new InvitationAcceptanceService(
+      transactionRunnerFromDb(makeDb()),
+      makeRepo({ findLegalEntityDisplayName: async () => "Northbank Gallery", ...overrides }),
+      tokenService,
+      {} as InvitationNotificationService,
+      makePublisher(),
+    );
+    return service.preview(USER_ID, email, "raw-token");
+  }
+
+  it("shows an open invitation with the organisation, role, inviter and expiry", async () => {
+    const result = await preview();
+    expect(result).toEqual({
+      state: "open",
+      legalEntityId: ENTITY_ID,
+      organisationName: "Northbank Gallery",
+      role: "admin",
+      inviterName: "Invitee",
+      expiresAt: expect.any(String),
+    });
+  });
+
+  it("recognises someone who is already a member", async () => {
+    await expect(preview({ hasActiveMember: async () => true })).resolves.toEqual({
+      state: "already_member",
+      legalEntityId: ENTITY_ID,
+      organisationName: "Northbank Gallery",
+    });
+    await expect(
+      preview({
+        findByTokenHash: async () => pendingInvite({ status: "accepted", acceptedUserId: USER_ID }),
+      }),
+    ).resolves.toMatchObject({ state: "already_member" });
+  });
+
+  it("names the organisation of an expired invitation", async () => {
+    await expect(
+      preview({
+        findByTokenHash: async () => pendingInvite({ expiresAt: new Date(Date.now() - 1) }),
+      }),
+    ).resolves.toEqual({ state: "expired", organisationName: "Northbank Gallery" });
+  });
+
+  it("calls a withdrawn, used or unknown invitation closed", async () => {
+    await expect(
+      preview({ findByTokenHash: async () => pendingInvite({ status: "revoked" }) }),
+    ).resolves.toEqual({ state: "closed" });
+    await expect(
+      preview({
+        findByTokenHash: async () =>
+          pendingInvite({ status: "accepted", acceptedUserId: "someone-else" }),
+      }),
+    ).resolves.toEqual({ state: "closed" });
+    await expect(preview({ findByTokenHash: async () => null })).resolves.toEqual({
+      state: "closed",
+    });
+  });
+
+  it("tells someone signed in with another email nothing about the organisation", async () => {
+    const findLegalEntityDisplayName = vi.fn(async () => "Northbank Gallery");
+    await expect(preview({ findLegalEntityDisplayName }, "someone@example.com")).resolves.toEqual({
+      state: "other_email",
+    });
+    expect(findLegalEntityDisplayName).not.toHaveBeenCalled();
+  });
 });

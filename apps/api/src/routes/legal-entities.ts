@@ -29,6 +29,12 @@ const recordAccountParamSchema = z.object({
   id: z.string().uuid(),
 });
 
+/** The raw token from an invitation email; the same bounds as accepting it. */
+const invitationTokenBodySchema = z.object({ token: z.string().min(10).max(200) });
+
+/** Ten seconds, private: the web app keeps the same answer as long, per session. */
+const MEMBERSHIPS_CACHE_CONTROL = "private, max-age=10";
+
 const restoreAccountBodySchema = z.object({
   /** The account this browser last used; `null` on a new device. */
   candidateId: z.string().uuid().nullable(),
@@ -46,17 +52,41 @@ export function createLegalEntityRoutes(
     Variables: { userId?: string; userRole?: string; userStaffRoles?: StaffRoles | undefined };
   }>();
 
+  /**
+   * Every account the person may use. Read on every signed-in page, so it is a cheap private
+   * read: it may be kept briefly per session (never by a shared cache), and the rate limiter
+   * gives it a per-session budget (see `rate-limit.ts`).
+   */
   r.get("/me", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
     const outcome = await legalEntityHttp.listMyMemberships({ userId });
     if (outcome.kind === "err" && outcome.error.code === "personal_entity_unavailable") {
+      c.header("Cache-Control", "no-store");
       return c.json(
         { error: "personal_entity_unavailable", code: "personal_entity_unavailable", data: [] },
         503,
       );
     }
+    if (outcome.kind === "ok") {
+      c.header("Cache-Control", MEMBERSHIPS_CACHE_CONTROL);
+      c.header("Vary", "Authorization, Cookie");
+    }
     return respondIdentityRouteOutcome(c, outcome);
   });
+
+  /** What an invitation link is, for the signed-in person who opened it. Changes nothing. */
+  r.post(
+    "/invitations/preview",
+    requireAuth,
+    zValidator("json", invitationTokenBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { token } = c.req.valid("json");
+      const outcome = await legalEntityHttp.previewInvitationByToken({ userId, token });
+      c.header("Cache-Control", "no-store");
+      return respondIdentityRouteOutcome(c, outcome);
+    },
+  );
 
   r.get("/invitations/mine", requireAuth, async (c) => {
     const userId = c.get("userId") as string;

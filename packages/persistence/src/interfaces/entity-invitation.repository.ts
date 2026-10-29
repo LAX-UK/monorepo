@@ -29,6 +29,10 @@ export interface IEntityInvitationRepository {
   insertInvitation(row: EntityInvitationCreate): Promise<void>;
   findByTokenHash(tokenHash: string): Promise<InvitationRow | null>;
   findById(id: string): Promise<InvitationRow | null>;
+  /**
+   * Adds the person to the organisation. `null` when they are already an active member: a
+   * concurrent accept of the same invitation got there first.
+   */
   insertMember(input: EntityMemberCreate): Promise<LegalEntityMember | null>;
   markInvitationAccepted(id: string, userId: string): Promise<void>;
   markInvitationRevoked(id: string): Promise<void>;

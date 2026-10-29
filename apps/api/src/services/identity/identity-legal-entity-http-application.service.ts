@@ -7,7 +7,10 @@ import {
   type IdentityRouteOutcome,
   identityRouteCodeErr,
 } from "../interfaces/identity-routes/identity-route-http.js";
-import type { IInvitationLifecycleService } from "../interfaces/invitation-lifecycle.js";
+import type {
+  IInvitationLifecycleService,
+  InvitationPreview,
+} from "../interfaces/invitation-lifecycle.js";
 import type { LegalEntityAccessService } from "../legal-entity-access.service.js";
 import type { PersonalLegalEntityResolver } from "../legal-entity/personal-legal-entity-resolver.service.js";
 import type { UserService } from "../user.service.js";
@@ -19,6 +22,8 @@ function invitationStatus(code: string): number {
       return 404;
     case "invitation_email_mismatch":
       return 403;
+    case "already_a_member":
+      return 409;
     default:
       return 400;
   }
@@ -68,6 +73,23 @@ export class IdentityLegalEntityHttpApplicationService
     const u = await this.userService.getById(input.userId);
     if (!u) return identityRouteCodeErr("user_not_found", 404);
     const data = await this.pendingInvitationsReader.listForEmail(u.email, new Date());
+    return { kind: "ok", data };
+  }
+
+  async previewInvitationByToken(input: {
+    userId: string;
+    token: string;
+  }): Promise<IdentityRouteOutcome<InvitationPreview>> {
+    if (!this.orgModuleGate.isEnabled()) {
+      const disabled = this.orgModuleGate.disabledResponse();
+      return {
+        kind: "err",
+        error: { message: disabled.error, status: 403, code: disabled.code },
+      };
+    }
+    const u = await this.userService.getById(input.userId);
+    if (!u) return identityRouteCodeErr("user_not_found", 404);
+    const data = await this.invitationLifecycleService.preview(input.userId, u.email, input.token);
     return { kind: "ok", data };
   }
 
