@@ -57,10 +57,9 @@ export const NOT_FOUND_PRESETS = {
   dashboard: {
     kicker: "404 · Bid",
     title: "That page doesn't exist",
-    description:
-      "The address you opened isn't a known page. Go to My bids or browse the catalogue.",
+    description: "The address you opened isn't a known page. Go back or browse the catalogue.",
     primaryHref: "/bids",
-    primaryLabel: "Go to My bids",
+    primaryLabel: "Back to My bids",
     secondaryHref: "/search",
     secondaryLabel: "Browse catalogue",
     illustration: "lots" as const,

@@ -58,7 +58,7 @@ export function PreferencesSection({
         className,
       )}
     >
-      <h2 className="border-b border-border-hairline bg-surface-container-low/40 px-4 py-2.5 font-label text-[10px] font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+      <h2 className="border-b border-border-hairline bg-surface-container-low/40 px-4 py-2.5 font-headline text-base font-semibold tracking-tight text-on-surface">
         {title}
       </h2>
       <div className="divide-y divide-outline-variant/10">{children}</div>
