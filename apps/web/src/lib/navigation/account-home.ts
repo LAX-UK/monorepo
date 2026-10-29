@@ -20,6 +20,17 @@ export function accountHomePathForKind(kind: AccountContext["kind"]): string {
   return HOME_BY_KIND[kind];
 }
 
+/** The way back to an account's first page, named for it: Home for an organisation. */
+const HOME_LINK_LABEL: Record<AccountContext["kind"], string> = {
+  personal: "Back to My bids",
+  organisation: "Back to Home",
+};
+
+/** The link back to the first page of a kind of account. */
+export function accountHomeLink(kind: AccountContext["kind"]): { href: string; label: string } {
+  return { href: HOME_BY_KIND[kind], label: HOME_LINK_LABEL[kind] };
+}
+
 /** The first page of an account. */
 export function accountHomePath(context: AccountContext): string {
   return accountHomePathForKind(context.kind);

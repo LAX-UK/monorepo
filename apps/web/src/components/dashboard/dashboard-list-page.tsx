@@ -42,6 +42,9 @@ export function DashboardListPage({
     <DashboardPage className={cn("space-y-5", className)}>
       {bannerFirst ? banner : null}
       <DashboardPageHeader
+        // In the workspace on phones the title is in the top bar, so the header is only its
+        // actions: they keep the list rhythm (20px) to the content below rather than touching it.
+        {...(bannerFirst ? { className: "max-lg:mb-5" } : {})}
         meta={meta}
         title={title}
         hideTitleOnMobile

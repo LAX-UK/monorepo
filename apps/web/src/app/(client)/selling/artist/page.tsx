@@ -4,6 +4,7 @@ import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { SITE_CONSIGNMENT_EMAIL } from "@/lib/brand";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { redirect } from "next/navigation";
 
@@ -15,7 +16,7 @@ export default async function SellerArtistProfilePage() {
   });
   const { sellingAsOrganisation } = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   // The artist profile belongs to a person, not to an organisation they sell for.
-  if (sellingAsOrganisation) redirect("/selling");
+  if (sellingAsOrganisation) redirect(CLIENT_ROUTES.consignments);
 
   return (
     <DashboardPage>

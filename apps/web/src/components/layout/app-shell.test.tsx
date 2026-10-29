@@ -1,6 +1,6 @@
 import { buildShellConfig } from "@/lib/shell/build-shell-config";
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { AppShell } from "./app-shell";
 
@@ -183,6 +183,93 @@ describe("AppShell", () => {
     expect(banner.compareDocumentPosition(content) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
+  it("gives every workspace page, its breadcrumbs and notices one content column", () => {
+    render(
+      <AppShell
+        user={clientUser}
+        config={buildShellConfig({
+          user: clientUser,
+          role: "client",
+          contextBanner: <p>Context banner</p>,
+        })}
+      >
+        <p>Dashboard content</p>
+      </AppShell>,
+    );
+    const column = screen.getByRole("main").firstElementChild as HTMLElement;
+    expect(column.style.getPropertyValue("--workspace-page-max")).toBe("64rem");
+    expect(
+      screen.getByText("Context banner").closest("div.max-w-\\[var\\(--workspace-page-max\\)\\]"),
+    ).not.toBeNull();
+  });
+
+  it("keeps staff pages at the full width", () => {
+    render(
+      <AppShell user={adminUser} config={buildShellConfig({ user: adminUser, role: "platform" })}>
+        <p>Dashboard content</p>
+      </AppShell>,
+    );
+    const column = screen.getByRole("main").firstElementChild as HTMLElement;
+    expect(column.style.getPropertyValue("--workspace-page-max")).toBe("");
+  });
+
+  it("ignores a stored density in the organisation workspace", () => {
+    // A compact choice left in this browser from before.
+    const stored = { getItem: () => "compact", setItem: vi.fn(), removeItem: vi.fn() };
+    Object.defineProperty(window, "localStorage", { value: stored, configurable: true });
+    delete document.documentElement.dataset.dashboardDensity;
+    render(
+      <AppShell
+        user={clientUser}
+        config={buildShellConfig({ user: clientUser, role: "client" })}
+        cookieDensity="compact"
+      >
+        <p>Dashboard content</p>
+      </AppShell>,
+    );
+    const column = screen.getByRole("main").firstElementChild as HTMLElement;
+    expect(column.dataset.density).toBe("normal");
+    expect(document.documentElement.dataset.dashboardDensity).toBeUndefined();
+    expect(stored.setItem).not.toHaveBeenCalled();
+  });
+
+  it("keeps the staff density", () => {
+    render(
+      <AppShell
+        user={adminUser}
+        config={buildShellConfig({ user: adminUser, role: "platform" })}
+        cookieDensity="compact"
+      >
+        <p>Dashboard content</p>
+      </AppShell>,
+    );
+    const column = screen.getByRole("main").firstElementChild as HTMLElement;
+    expect(column.dataset.density).toBe("compact");
+    delete document.documentElement.dataset.dashboardDensity;
+  });
+
+  it("never remounts the page when the shell around it changes", () => {
+    const mounts = vi.fn();
+    function Page() {
+      useEffect(() => mounts(), []);
+      return <p>Dashboard content</p>;
+    }
+    const shell = (extra: Partial<Parameters<typeof buildShellConfig>[0]>) => (
+      <AppShell
+        user={clientUser}
+        config={buildShellConfig({ user: clientUser, role: "client", ...extra })}
+      >
+        <Page />
+      </AppShell>
+    );
+    const { rerender } = render(shell({ contextBanner: <p>Switched to Northbank Gallery</p> }));
+    // The one-time notice goes, a top slot arrives, the shell config is rebuilt.
+    rerender(shell({}));
+    rerender(shell({ topSlot: <p>Welcome back</p> }));
+    rerender(shell({ hideBottomTabBar: true }));
+    expect(mounts).toHaveBeenCalledOnce();
+  });
+
   it("renders client bottom tab bar from mobileNav", () => {
     render(
       <AppShell user={clientUser} config={buildShellConfig({ user: clientUser, role: "client" })}>
@@ -219,26 +306,6 @@ describe("AppShell", () => {
     );
 
     expect(screen.getByRole("heading", { name: "My bids" })).toBeInTheDocument();
-  });
-
-  it("titles the seller overview plainly, with no welcome block", () => {
-    pathnameMock.current = "/selling";
-    render(
-      <AppShell
-        user={clientUser}
-        config={buildShellConfig({
-          user: clientUser,
-          role: "client",
-          clientNavScope: { context: { kind: "personal" }, hasSubmissions: true },
-        })}
-      >
-        <p>Dashboard content</p>
-      </AppShell>,
-    );
-
-    expect(screen.queryByText(/welcome/i)).not.toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: "Selling" })).toBeInTheDocument();
-    pathnameMock.current = "/bids";
   });
 
   it("does not render the mobile hamburger and uses a unified account menu", () => {

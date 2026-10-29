@@ -113,6 +113,10 @@
       "types": "./dist/components/ui/data-table.d.ts",
       "default": "./dist/components/ui/data-table.js"
     },
+    "./components/access-denied-state": {
+      "types": "./dist/components/ui/access-denied-state.d.ts",
+      "default": "./dist/components/ui/access-denied-state.js"
+    },
     "./components/empty-state": {
       "types": "./dist/components/ui/empty-state.d.ts",
       "default": "./dist/components/ui/empty-state.js"

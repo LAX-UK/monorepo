@@ -6,7 +6,7 @@ import {
   organisationBannerView,
   unsoldPausedContact,
 } from "@/lib/presenters/organisation-state/organisation-state-copy";
-import { formatDate, formatMoney, formatRelativeTime } from "@/lib/ui/format";
+import { formatDateInline, formatDateTime, formatMoney, formatRelativeTime } from "@/lib/ui/format";
 import {
   type HomeActivityArchive,
   type HomeActivityEvent,
@@ -51,7 +51,10 @@ export type HomeActivityView = {
   text: string;
   /** Where to review it, for lines that lead somewhere. */
   href: string | null;
+  /** "2 hours ago". */
   when: string;
+  /** The full date and time, shown on hover and read with the relative time. */
+  fullDate: string;
   at: string;
 };
 
@@ -144,7 +147,7 @@ const TASK_VIEWS: { [K in HomeTask["kind"]]: TaskViewBuilder<K> } = {
     action: { label: "View", href: CLIENT_ROUTES.purchases },
   }),
   register: (task) => ({
-    title: `Register for ${task.sale.title}, ${formatDate(task.startsAt)}`,
+    title: `Register for ${task.sale.title}, ${formatDateInline(task.startsAt)}`,
     detail: task.bidLimit
       ? `You're authorised to bid up to ${formatMoney(task.bidLimit)}`
       : "You're authorised to bid with no limit",
@@ -268,6 +271,7 @@ function activityView(event: HomeActivityEvent, index: number): HomeActivityView
     text: ACTIVITY_TEXT[event.kind](event),
     href: ACTIVITY_HREF[event.kind] ?? null,
     when: formatRelativeTime(event.at),
+    fullDate: formatDateTime(event.at),
     at: new Date(event.at).toISOString(),
   };
 }

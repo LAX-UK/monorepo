@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { test } from "@playwright/test";
 import { e2eEnabled, e2eSkipReason } from "./helpers/auth";
 import { roleAuthState } from "./helpers/auth-state";
 import {
@@ -25,6 +25,8 @@ const FORBIDDEN = [
   "/organisation/documents",
   "/organisation/payouts",
   "/organisation/security",
+  // Payouts settle the whole organisation's sales; the page names who can open it.
+  "/selling/payouts",
 ];
 
 test.describe("organisation viewer journey @roles", () => {
@@ -54,11 +56,6 @@ test.describe("organisation viewer journey @roles", () => {
         await expectNoAccess(page, path);
       });
     }
-
-    await test.step("payouts send a viewer away", async () => {
-      await page.goto("/selling/payouts");
-      await expect(page).not.toHaveURL(/\/selling\/payouts/);
-    });
 
     await viewer.close();
   });

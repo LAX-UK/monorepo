@@ -1,7 +1,7 @@
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { OrganisationTabAccess } from "@/lib/navigation/organisation-tabs";
+import { AccessDeniedState } from "@auction/ui/components/access-denied-state";
 import { Button } from "@auction/ui/components/button";
-import { EmptyState } from "@auction/ui/components/empty-state";
 import Link from "next/link";
 
 type Props = { access: Extract<OrganisationTabAccess, { kind: "forbidden" }> };
@@ -12,14 +12,11 @@ type Props = { access: Extract<OrganisationTabAccess, { kind: "forbidden" }> };
  */
 export function OrganisationTabNoAccess({ access }: Props) {
   return (
-    <EmptyState
+    <AccessDeniedState
       size="panel"
-      variant="plain"
-      headingLevel="h2"
-      illustration="lock"
-      title={`You don't have access to ${access.label}`}
-      description={`${access.openedBy} can open it. Ask one of them if you need something here.`}
-      action={
+      page={access.label}
+      openedBy={access.openedBy}
+      actions={
         <Button asChild variant="secondary">
           <Link href={CLIENT_ROUTES.home}>Back to Home</Link>
         </Button>

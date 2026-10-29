@@ -1,7 +1,6 @@
 "use client";
 
 import { PreferencesRow, PreferencesSection } from "@/components/settings/preferences-row";
-import { persistDashboardDensityCookieAction } from "@/lib/actions/dashboard-density";
 import {
   resetLayoutPreferencesAction,
   updateUiPreferencesAction,
@@ -18,7 +17,7 @@ import {
   SelectValue,
 } from "@auction/ui/components/select";
 import { Switch } from "@auction/ui/components/switch";
-import type { DensityPreference, LayoutViewDefault, ThemePreference } from "@auction/validators";
+import type { LayoutViewDefault, ThemePreference } from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { useCallback, useState, useTransition } from "react";
 
@@ -27,7 +26,6 @@ export type AppearancePreferencesSnapshot = {
   viewLotsDefault: LayoutViewDefault;
   viewArtistsDefault: LayoutViewDefault;
   viewSalesDefault: LayoutViewDefault;
-  density: DensityPreference;
   viewSync: boolean;
 };
 
@@ -49,7 +47,6 @@ export function AppearanceLayoutPreferencesForm({
   const [viewLots, setViewLots] = useState(initial.viewLotsDefault);
   const [viewArtists, setViewArtists] = useState(initial.viewArtistsDefault);
   const [viewSales, setViewSales] = useState(initial.viewSalesDefault);
-  const [density, setDensity] = useState(initial.density);
   const [viewSync, setViewSync] = useState(initial.viewSync);
 
   const save = useCallback(
@@ -72,12 +69,6 @@ export function AppearanceLayoutPreferencesForm({
     setTheme(next);
     applyThemeDom(next);
     save({ theme: next });
-  };
-
-  const onDensity = (next: DensityPreference) => {
-    setDensity(next);
-    void persistDashboardDensityCookieAction(next === "compact" ? "compact" : "normal");
-    save({ density: next });
   };
 
   return (
@@ -185,24 +176,7 @@ export function AppearanceLayoutPreferencesForm({
         />
       </PreferencesSection>
 
-      <PreferencesSection title="Layout & sync">
-        <PreferencesRow
-          id="density"
-          label="Dashboard density"
-          description="Comfortable spacing or compact tables."
-          control={
-            <SegmentToggle<DensityPreference>
-              aria-label="Density"
-              value={density}
-              disabled={pending}
-              onValueChange={onDensity}
-              options={[
-                { value: "comfortable", label: "Comfortable" },
-                { value: "compact", label: "Compact" },
-              ]}
-            />
-          }
-        />
+      <PreferencesSection title="Sync">
         <PreferencesRow
           id="view-sync"
           label="Sync views across devices"

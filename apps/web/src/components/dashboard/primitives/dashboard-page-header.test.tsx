@@ -18,6 +18,33 @@ describe("DashboardPageHeader", () => {
     expect(actionsWrap?.className).toMatch(/flex shrink-0/);
   });
 
+  it("leaves out the empty text block on phones, so the first action sits at the top", () => {
+    render(
+      <DashboardPageHeader
+        title="Consignments"
+        description="Works you've sent."
+        hideTitleOnMobile
+        hideDescriptionOnMobile
+        actions={<button type="button">Sell a work</button>}
+      />,
+    );
+    const block = screen.getByRole("heading", { level: 1, name: "Consignments" }).parentElement;
+    expect(block?.className).toMatch(/hidden lg:block/);
+  });
+
+  it("keeps the text block on phones while a description shows there", () => {
+    render(
+      <DashboardPageHeader
+        title="Consignments"
+        description="Works you've sent."
+        hideTitleOnMobile
+        actions={<button type="button">Sell a work</button>}
+      />,
+    );
+    const block = screen.getByRole("heading", { level: 1, name: "Consignments" }).parentElement;
+    expect(block?.className).not.toMatch(/(^|\s)hidden(\s|$)/);
+  });
+
   it("uses compact title scale by default", () => {
     render(<DashboardPageHeader title="Portfolio" />);
     const heading = screen.getByRole("heading", { level: 1, name: "Portfolio" });

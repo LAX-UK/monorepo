@@ -1,12 +1,12 @@
 import { CLIENT_ROUTES, organisationHref } from "@/lib/navigation/client-routes";
 import { organisationFirstRunCopy } from "@/lib/presenters/organisation-state/organisation-state-copy";
-import { formatDate, formatKpiMoney, formatMoney } from "@/lib/ui/format";
+import { formatDateInline, formatKpiMoney, formatMoney } from "@/lib/ui/format";
 import {
   CONSIGNMENT_PROGRESS_STAGES,
   type DashboardTile,
   type EstimateTotal,
   type FirstRunAction,
-  type FirstRunRecord,
+  type FirstRunAddressee,
   type MoneyTotal,
   type OrganisationDashboardModel,
   type OrganisationHomeFirstRunKey,
@@ -43,11 +43,13 @@ export type ConsignmentStageView = {
   id: string;
   label: string;
   count: number;
-  /** `null` for a stage with nothing in it: there is nothing to open. */
-  href: string | null;
+  /** The Consignments list filtered to this stage. */
+  href: string;
 };
 
 export type FirstRunView = {
+  /** Whom the steps address; a member's own empty Home stays quiet, without a large drawing. */
+  addressee: FirstRunAddressee;
   title: string;
   description: string;
   actions: { id: FirstRunAction; label: string; href: string }[];
@@ -76,10 +78,10 @@ const estimateRange = (estimate: EstimateTotal) =>
 /** "Overdue since 12 Oct 2026 · next 4 Nov 2026": both dates when one is past and one ahead. */
 function payoutDatesLine(overdueSince: Date | null, nextDate: Date | null): string[] {
   if (overdueSince && nextDate) {
-    return [`Overdue since ${formatDate(overdueSince)} · next ${formatDate(nextDate)}`];
+    return [`Overdue since ${formatDateInline(overdueSince)} · next ${formatDateInline(nextDate)}`];
   }
-  if (overdueSince) return [`Overdue since ${formatDate(overdueSince)}`];
-  return nextDate ? [`Next on ${formatDate(nextDate)}`] : [];
+  if (overdueSince) return [`Overdue since ${formatDateInline(overdueSince)}`];
+  return nextDate ? [`Next on ${formatDateInline(nextDate)}`] : [];
 }
 
 type TileViewBuilder<K extends DashboardTile["kind"]> = (
@@ -210,7 +212,7 @@ function upcomingSaleView(sale: UpcomingSaleFigure): UpcomingSaleView {
   return {
     id: sale.id,
     title: sale.title,
-    date: formatDate(sale.startsAt),
+    date: formatDateInline(sale.startsAt),
     dateTime: sale.startsAt.toISOString(),
     works: plural(sale.works, "work"),
     href: salePath({ id: sale.id, title: sale.title }),
@@ -224,12 +226,13 @@ const FIRST_RUN_ACTION: Record<FirstRunAction, { label: string; href: string }> 
 
 /** First steps: the words follow the organisation's state, then the first thing the role can do. */
 function firstRunView(
-  { actions, shows }: { actions: readonly FirstRunAction[]; shows: readonly FirstRunRecord[] },
+  { actions, shows, addressee }: NonNullable<OrganisationDashboardModel["firstRun"]>,
   key: OrganisationHomeFirstRunKey,
   ctx: Ctx,
 ): FirstRunView {
   return {
-    ...organisationFirstRunCopy(key, actions[0] ?? "none", ctx, shows),
+    addressee,
+    ...organisationFirstRunCopy({ key, step: actions[0] ?? "none", addressee, shows }, ctx),
     actions: actions.map((id) => ({ id, ...FIRST_RUN_ACTION[id] })),
   };
 }
@@ -246,13 +249,22 @@ export function organisationDashboardView(
     tiles: model.tiles.map((tile) => dashboardTileView(tile, ctx)),
     upcomingSales: model.upcomingSales.map(upcomingSaleView),
     upcomingSalesHref: consignmentStageHref("in_sale"),
-    stages: progress
-      ? CONSIGNMENT_PROGRESS_STAGES.map((stage) => ({
-          id: stage,
-          label: CONSIGNMENT_STAGE_LABEL[stage],
-          count: progress[stage],
-          href: progress[stage] > 0 ? consignmentStageHref(stage) : null,
-        }))
-      : null,
+    stages: progress ? stageViews(progress) : null,
   };
+}
+
+/**
+ * Only the stages with works in them, in pipeline order, each opening the filtered list; a row of
+ * zeros says nothing. `null` when every stage is empty, so the section is left out.
+ */
+function stageViews(progress: NonNullable<OrganisationDashboardModel["progress"]>) {
+  const stages = CONSIGNMENT_PROGRESS_STAGES.filter((stage) => progress[stage] > 0).map(
+    (stage): ConsignmentStageView => ({
+      id: stage,
+      label: CONSIGNMENT_STAGE_LABEL[stage],
+      count: progress[stage],
+      href: consignmentStageHref(stage),
+    }),
+  );
+  return stages.length > 0 ? stages : null;
 }

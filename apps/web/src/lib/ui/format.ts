@@ -74,6 +74,18 @@ export function formatDate(
 }
 
 /**
+ * `formatDate` for a date inside a sentence: its spaces are non-breaking, so a line never wraps
+ * between "4" and "Nov 2026". Use it for display text; keep `formatDate` for values compared or
+ * parsed elsewhere.
+ */
+export function formatDateInline(
+  value: Date | string | number | null | undefined,
+  locale = DEFAULT_DATE_LOCALE,
+): string {
+  return formatDate(value, locale).replace(/ /g, " ");
+}
+
+/**
  * A payout period as "1 Jan 2026 → 22 Jun 2026". Settlements that cover everything up to the end
  * date are stored with an epoch start (1 Jan 1970); that reads as "Up to 22 Jun 2026".
  */

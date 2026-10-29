@@ -26,6 +26,7 @@ type Props = {
   user: SessionUser;
   config: ShellConfig;
   children: ReactNode;
+  /** Staff only: the density chosen on another device. */
   cookieDensity?: DashboardDensity | null;
 };
 
@@ -135,6 +136,23 @@ function AppShellFrame({ user, config, children }: Props) {
   );
 }
 
+/**
+ * Staff choose a compact or comfortable density; the organisation workspace has one layout,
+ * so it has no density provider and any stored preference is ignored there.
+ */
+function StaffDensity({
+  enabled,
+  cookieDensity,
+  children,
+}: {
+  enabled: boolean;
+  cookieDensity: DashboardDensity | null | undefined;
+  children: ReactNode;
+}) {
+  if (!enabled) return <>{children}</>;
+  return <DensityProvider cookieDensity={cookieDensity ?? null}>{children}</DensityProvider>;
+}
+
 export function AppShell({ user, config, children, cookieDensity }: Props) {
   const isStaffShell = config.role !== "client";
   return (
@@ -148,13 +166,13 @@ export function AppShell({ user, config, children, cookieDensity }: Props) {
       <ShellConfigProvider config={config}>
         <ShellChromeProvider>
           <TooltipProvider delayDuration={200}>
-            <DensityProvider cookieDensity={cookieDensity ?? null}>
+            <StaffDensity enabled={isStaffShell} cookieDensity={cookieDensity}>
               <SidebarStateProvider>
                 <AppShellFrame user={user} config={config}>
                   {children}
                 </AppShellFrame>
               </SidebarStateProvider>
-            </DensityProvider>
+            </StaffDensity>
           </TooltipProvider>
         </ShellChromeProvider>
       </ShellConfigProvider>

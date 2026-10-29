@@ -35,10 +35,6 @@ import { chooseClientLayout } from "@/lib/navigation/client-layout";
 import { clientNavScopeFor } from "@/lib/navigation/client-nav-scope";
 import { resolveClientRequestPath } from "@/lib/navigation/client-request-path.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
-import {
-  DASHBOARD_DENSITY_COOKIE,
-  parseDashboardDensityCookie,
-} from "@/lib/preferences/dashboard-density-cookie";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { canAccessStaffAdminShell } from "@auction/types";
 import type { Metadata } from "next";
@@ -104,14 +100,6 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
   }
 
   const jar = await cookies();
-  const fromUserDensity =
-    user.uiPreferences?.density === "compact"
-      ? "compact"
-      : user.uiPreferences?.density === "comfortable"
-        ? "normal"
-        : null;
-  const cookieDensity =
-    fromUserDensity ?? parseDashboardDensityCookie(jar.get(DASHBOARD_DENSITY_COOKIE)?.value);
 
   const navScope = clientNavScopeFor(actingOrganisation, hasSubmissions);
   const layout = chooseClientLayout(navScope.context);
@@ -171,7 +159,6 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
             navScope={navScope}
             account={account}
             acting={acting}
-            cookieDensity={cookieDensity}
             banner={banner}
           >
             {page}
@@ -184,7 +171,6 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
           account={account}
           familyLinks={loadBidFamilyLinks()}
           sellerConnectNavBadge={sellerConnectNavBadge}
-          cookieDensity={cookieDensity}
           hideEmailStatusBanner
           acting={acting}
           contextBanner={banner}

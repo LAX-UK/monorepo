@@ -1,4 +1,5 @@
 import {
+  type FirstRunRecord,
   type OrganisationBannerKey,
   type OrganisationBidReasonKey,
   type OrganisationHomeFirstRunKey,
@@ -74,9 +75,19 @@ describe("organisation state copy: every key has words", () => {
 
   it.each(FIRST_RUN_KEYS)("first run %s", (key) => {
     for (const step of STEPS) {
-      const copy = organisationFirstRunCopy(key, step, ctx, ["sales", "payouts", "bids"]);
-      expectPlainCopy(copy.title, copy.description);
-      expect(`${copy.title} ${copy.description}`).toContain("Northbank Gallery");
+      for (const addressee of ["organisation", "member"] as const) {
+        const copy = organisationFirstRunCopy(
+          { key, step, addressee, shows: ["sales", "payouts", "bids"] },
+          ctx,
+        );
+        expectPlainCopy(copy.title, copy.description);
+      }
+      // People who run the organisation read its name; its state is told by name too.
+      const owner = organisationFirstRunCopy(
+        { key, step, addressee: "organisation", shows: ["sales"] },
+        ctx,
+      );
+      expect(`${owner.title} ${owner.description}`).toContain("Northbank Gallery");
     }
   });
 
@@ -173,29 +184,56 @@ describe("the bid panel reason", () => {
 });
 
 describe("first run", () => {
+  const copyOf = (
+    key: OrganisationHomeFirstRunKey,
+    step: FirstRunStep,
+    addressee: "organisation" | "member",
+    shows: FirstRunRecord[],
+  ) => organisationFirstRunCopy({ key, step, addressee, shows }, ctx);
+
   it("never invites a paused or unchecked organisation to sell", () => {
     for (const key of FIRST_RUN_KEYS.filter((k) => k !== "ready")) {
-      const { description } = organisationFirstRunCopy(key, "sell", ctx, ["sales"]);
-      expect(description).not.toMatch(/Send a first work/);
+      for (const addressee of ["organisation", "member"] as const) {
+        const copy = copyOf(key, "sell", addressee, ["sales"]);
+        expect(`${copy.title} ${copy.description}`).not.toMatch(/first work/i);
+      }
     }
   });
 
-  it("does not blame a trading organisation when this role has nothing to show", () => {
-    const copy = organisationFirstRunCopy("ready", "none", ctx, ["sales"]);
-    expect(copy.description).not.toMatch(/starts selling or buying/);
+  it("asks the people who run a new organisation to get it started", () => {
+    expect(copyOf("ready", "sell", "organisation", ["sales", "payouts", "bids"])).toEqual({
+      title: "Get Northbank Gallery started",
+      description:
+        "Send a first work to our specialists. Sales, payouts and bids show here as they happen.",
+    });
+  });
+
+  it("tells any other member about their own part, never about the organisation's trading", () => {
+    // A consignor of a trading gallery is not asked to get the gallery started.
+    expect(copyOf("ready", "sell", "member", ["sales"])).toEqual({
+      title: "Send your first work",
+      description:
+        "Our specialists review each work you send. Your sales show here as they happen.",
+    });
+    // A viewer, finance or buyer agent with nothing to show yet.
+    expect(copyOf("ready", "none", "member", ["sales"])).toEqual({
+      title: "Nothing to show yet",
+      description: "Sales show here as they happen.",
+    });
+    for (const shows of [["sales"], ["sales", "payouts", "purchases"], ["bids"]] as const) {
+      const copy = copyOf("ready", "none", "member", [...shows]);
+      expect(`${copy.title} ${copy.description}`).not.toMatch(
+        /Northbank Gallery|starts selling|started|once/,
+      );
+    }
   });
 
   it("names only what the member will see", () => {
-    expect(
-      organisationFirstRunCopy("ready", "sell", ctx, ["sales", "payouts", "bids"]).description,
-    ).toBe(
-      "Send a first work to our specialists. Sales, payouts and bids show here as they happen.",
-    );
     // A buyer agent never sees payouts, so the empty Home never mentions them.
     for (const key of FIRST_RUN_KEYS.filter((k) => k !== "restricted" && k !== "closed")) {
-      const { description } = organisationFirstRunCopy(key, "none", ctx, ["bids"]);
+      const { description } = copyOf(key, "none", "member", ["bids"]);
       expect(description).not.toMatch(/payout/i);
-      expect(description).toMatch(/^Bids for Northbank Gallery show here/);
+      expect(description).toMatch(/^Bids /);
     }
   });
 });

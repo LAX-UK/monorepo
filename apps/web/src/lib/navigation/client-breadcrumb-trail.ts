@@ -39,7 +39,6 @@ const TRAILS: readonly [RegExp, (match: RegExpMatchArray) => Crumb[]][] = [
   [/^\/notifications$/, () => [here("Notifications")]],
   [/^\/settings$/, () => [here("Bid settings")]],
   [/^\/settings\/([^/]+)$/, (m) => [BID_SETTINGS, here(settingsSectionLabel(m[1] ?? ""))]],
-  [/^\/selling$/, () => [here("Selling")]],
   [/^\/selling\/new$/, () => [CONSIGNMENTS, here("New submission")]],
   [/^\/selling\/consignments$/, () => [here("Consignments")]],
   [/^\/selling\/consignments\/[^/]+$/, () => [CONSIGNMENTS, here("Submission")]],

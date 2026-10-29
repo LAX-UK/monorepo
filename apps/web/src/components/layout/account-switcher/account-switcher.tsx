@@ -25,7 +25,7 @@ export function AccountSwitcher({ account, collapsed = false, showHint = false }
   const { switcher, current } = account;
   if (!switcher) return null;
 
-  return (
+  const switcherButton = (
     <div className="relative">
       <AccountSwitcherPopover
         switcher={switcher}
@@ -71,7 +71,9 @@ export function AccountSwitcher({ account, collapsed = false, showHint = false }
           </Button>
         )}
       />
-      {collapsed ? null : <ActingAsTooltip initiallyVisible={showHint} />}
     </div>
   );
+  // The hint points at the full switcher; a sidebar collapsed to icons has no room for it.
+  if (collapsed) return switcherButton;
+  return <ActingAsTooltip initiallyVisible={showHint}>{switcherButton}</ActingAsTooltip>;
 }

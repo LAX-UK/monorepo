@@ -378,6 +378,7 @@ export {
   type DashboardTile,
   type DashboardTileKind,
   type FirstRunAction,
+  type FirstRunAddressee,
   type FirstRunRecord,
   type OrganisationDashboardModel,
   type UpcomingSaleFigure,

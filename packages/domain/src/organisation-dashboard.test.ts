@@ -223,6 +223,18 @@ describe("empty figures", () => {
     expect(shows("buyer_agent")).toEqual(["bids"]);
   });
 
+  it("first steps speak to the organisation only for the people who run it", () => {
+    const addressee = (role: LegalEntityMemberRole, isImpersonation = false) =>
+      buildOrganisationDashboard({ role, isImpersonation }, EMPTY).firstRun?.addressee;
+    expect(addressee("owner")).toBe("organisation");
+    expect(addressee("admin")).toBe("organisation");
+    // Support staff viewing as an owner read the owner's Home.
+    expect(addressee("owner", true)).toBe("organisation");
+    for (const role of ["finance", "consignor", "viewer", "buyer_agent"] as const) {
+      expect(addressee(role)).toBe("member");
+    }
+  });
+
   it("is not a first run while a figure is still missing", () => {
     const { payoutsDue: _missing, ...partial } = EMPTY;
     expect(buildOrganisationDashboard({ role: "owner" }, partial).firstRun).toBeNull();
