@@ -40,7 +40,7 @@ export const STATUS_BADGE_DEFAULT_SHAPE: Readonly<Record<StatusBadgeTone, Status
 
 /** One size: 20px tall, 12px sentence-case label at weight 500, full pill. */
 export const statusBadgeVariants = cva(
-  "inline-flex h-5 w-fit min-w-0 max-w-full shrink-0 items-center gap-1 whitespace-nowrap rounded-full pr-2 pl-1.5 font-label text-xs leading-4 font-medium",
+  "inline-flex h-5 w-fit min-w-0 max-w-full shrink-0 items-center gap-1 whitespace-nowrap rounded-full pr-2 pl-1.5 align-middle font-label text-xs leading-4 font-medium",
   {
     variants: { variant: STATUS_BADGE_TONE_CLASSES },
     defaultVariants: { variant: "neutral" },
