@@ -2,7 +2,7 @@
 
 import {
   createSubmissionFromValuesAction,
-  submitForReviewAndOpenAction,
+  submitForReviewFromValuesAction,
   updateSubmissionFromValuesAction,
 } from "@/lib/actions/submissions";
 import type { FormController } from "@/lib/forms/shared/form-controller";
@@ -214,12 +214,19 @@ export function useSubmissionWizardController(
         }
       }
 
-      // Success redirects to the submission's page, which confirms it; only a refusal returns.
-      const submitted = await submitForReviewAndOpenAction(id, scope());
+      const submitted = await submitForReviewFromValuesAction(id, scope());
       if (!submitted.ok) {
         setAutosaveStatus("error");
         notify.error(submitted.error);
+        return;
       }
+
+      setAutosaveStatus("saved");
+      setLastSavedAt(new Date());
+      // A full load of the submission's page, which confirms the send. A server redirect was
+      // tried first: its response carried the right page (checked in the CI trace), but the
+      // router kept showing the page as it was before the send, so only a load is reliable.
+      window.location.assign(`/selling/consignments/${id}?submitted=1`);
     } finally {
       saveInFlight.current = false;
       setSubmitInFlight(false);
