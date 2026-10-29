@@ -4949,7 +4949,7 @@ export async function runLegacyDemoSeed() {
   console.log("");
   console.log("Seed complete — comprehensive LAX demo dataset loaded.");
   console.log("");
-  console.log(`  Password for every seeded login: ${SEED_PASSWORD}`);
+  console.log("  Every seeded login shares one password: SEED_PASSWORD in this file.");
   console.log("");
   console.log("  ┌─────────────────────────────────────────────────────────────────────────┐");
   console.log("  │  Login accounts                                                         │");

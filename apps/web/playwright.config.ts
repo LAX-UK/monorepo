@@ -106,7 +106,7 @@ const roleProjects = [
     : []),
   {
     name: "staff-chromium",
-    testMatch: [/admin-.*\.spec\.ts/, /saleroom-clerk\.spec\.ts/],
+    testMatch: [/(^|\/)admin-[^/]*\.spec\.ts$/, /saleroom-clerk\.spec\.ts/],
     testIgnore: /admin-dashboard-roles\.spec\.ts/,
     dependencies: ["setup-staff"],
     workers: 1,
@@ -121,7 +121,7 @@ const roleProjects = [
   },
   {
     name: "buyer-chromium",
-    testMatch: /buyer-.*\.spec\.ts/,
+    testMatch: /(^|\/)buyer-[^/]*\.spec\.ts$/,
     dependencies: ["setup-buyer"],
     use: { ...chromium, storageState: roleAuthState.buyer },
   },
@@ -138,7 +138,7 @@ const roleProjects = [
     ? [
         {
           name: "catalogue-chromium",
-          testMatch: /catalogue-manager-.*\.spec\.ts/,
+          testMatch: /(^|\/)catalogue-manager-[^/]*\.spec\.ts$/,
           dependencies: ["setup-catalogue"],
           timeout: 90_000,
           workers: 1,
@@ -150,10 +150,10 @@ const roleProjects = [
     name: "public-chromium",
     testIgnore: [
       /auth\.setup\.ts/,
-      /admin-.*\.spec\.ts/,
-      /buyer-.*\.spec\.ts/,
+      /(^|\/)admin-[^/]*\.spec\.ts$/,
+      /(^|\/)buyer-[^/]*\.spec\.ts$/,
       /org-roles-.*\.spec\.ts/,
-      /catalogue-manager-.*\.spec\.ts/,
+      /(^|\/)catalogue-manager-[^/]*\.spec\.ts$/,
       /saleroom-clerk\.spec\.ts/,
     ],
     use: chromium,

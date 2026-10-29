@@ -116,8 +116,8 @@ flowchart TD
 
 ### Web components (`orgModuleEnabled` prop)
 
-- `apps/web/src/lib/navigation/client-nav-model.ts` (the sidebar entries per mode, context and role)
-- `apps/web/src/components/layout/selling-mode-bar.tsx` (Selling label, organisation picker, way back to buying)
+- `apps/web/src/lib/navigation/client-nav-model.ts` (the sidebar entries for the account in use and its role)
+- `apps/web/src/components/layout/account-switcher/` (the account switcher and the account strip that names the organisation in use)
 - `apps/web/src/components/layout/legal-entity-switcher.tsx`
 - `apps/web/src/components/layout/acting-as-banner.tsx`
 - `apps/web/src/components/shell/client-shell.tsx`
@@ -165,7 +165,7 @@ flowchart TD
 
 ## Where organisation pages live
 
-- **Selling mode, as an organisation.** The header label reads "Selling as <organisation>" and the picker lists the person's organisations with their role. Every nav entry and page is gated by `packages/domain/src/entity-capabilities.ts`, so a role never sees a page the API would refuse.
+- **The workspace, as an organisation.** There is no Selling mode: the account switcher lists the person's accounts, and choosing an organisation opens its Home with a strip naming the organisation and the role. The sidebar and every page come from `packages/domain/src/entity-capabilities.ts`, so a role never sees a page the API would refuse, and an address a role may not open gives the access page. The `org-roles-*` browser journeys exercise each role.
 - **Organisation settings** are `/dashboard/seller/organisations/:id` (details), `/members`, `/documents`, `/connect` (payout setup), `/security` (two-step policy, owner only) and `/profile`. The organisations list and invitations stay at `/dashboard/organisations` and `/dashboard/invitations`.
 - **Works** (`/dashboard/seller/works`) lists the organisation's won lots and, for roles with finance access, its payments, from `GET /payments/entity/wins` and `GET /payments/entity`.
 - **Starting a submission** for an organisation needs `entity.submissions.create` (owner, admin, consignor); the API route enforces it and the UI hides the button.

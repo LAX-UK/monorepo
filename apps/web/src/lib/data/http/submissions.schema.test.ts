@@ -1,4 +1,5 @@
 import { parseItemSubmissionSchema } from "@/lib/data/http/submissions.schema";
+import { consignmentActionsVm } from "@/lib/seller/consignment-actions.vm";
 import type { ItemSubmission, ItemSubmissionStatus } from "@auction/types";
 import { itemSubmissionStatuses } from "@auction/types";
 import { describe, expect, it } from "vitest";
@@ -159,5 +160,31 @@ describe("itemSubmissionSchema parity with legacy parseItemSubmission", () => {
       sellerId: "",
     };
     expect(parseItemSubmissionSchema(fixture)).toEqual(legacyParseItemSubmission(fixture));
+  });
+
+  it("keeps who sent the submission, so the page can tell a consignor's own work", () => {
+    const parsed = parseItemSubmissionSchema({ ...minimalFixture, submittedByUserId: "user-7" });
+    expect(parsed.submittedByUserId).toBe("user-7");
+    expect(
+      parseItemSubmissionSchema({ ...minimalFixture, submittedByUserId: "" }),
+    ).not.toHaveProperty("submittedByUserId");
+  });
+
+  it("lets a consignor change the work they sent through the page's policy", () => {
+    const parsed = parseItemSubmissionSchema({
+      ...minimalFixture,
+      status: "changes_requested",
+      submittedByUserId: "consignor-1",
+    });
+    const own = consignmentActionsVm({
+      actor: { userId: "consignor-1", member: { role: "consignor" } },
+      submission: parsed,
+    });
+    const someoneElses = consignmentActionsVm({
+      actor: { userId: "consignor-2", member: { role: "consignor" } },
+      submission: parsed,
+    });
+    expect(own.canEdit).toBe(true);
+    expect(someoneElses.canEdit).toBe(false);
   });
 });
