@@ -199,6 +199,12 @@ export default async function SubmissionDetailPage({
       }
     : null;
   const withdrawalView = afterSale ? consignmentWithdrawalViewModel(afterSale.withdrawal) : null;
+  // A consignor takes back their own uncatalogued submission themselves; the panel's withdrawal
+  // binds the organisation and stays with owners and admins, so it would only refuse them.
+  const withdrawOwnSubmission =
+    actions.canWithdraw &&
+    withdrawalView?.mode === "available" &&
+    withdrawalView.blockedReason !== null;
   const submissionFormValues = itemSubmissionToFormValues(submission);
   const submissionQuality = evaluateSubmissionQuality(submission);
   const readyToSubmit = editable && submissionQuality.canSubmit;
@@ -324,7 +330,7 @@ export default async function SubmissionDetailPage({
                 <SubmissionWorkflowActions
                   submissionId={submission.id}
                   canSubmit={actions.canSubmit}
-                  canWithdraw={false}
+                  canWithdraw={withdrawOwnSubmission}
                 />
               </div>
             </section>
@@ -340,7 +346,7 @@ export default async function SubmissionDetailPage({
         <aside className="flex flex-col gap-4" aria-label="About this consignment">
           <AboutTheWork vm={detail} />
           <AskYourSpecialist />
-          {!editable && withdrawalView ? (
+          {!editable && withdrawalView && !withdrawOwnSubmission ? (
             <ConsignmentWithdrawPanel
               submissionId={submission.id}
               view={withdrawalView}

@@ -16,8 +16,8 @@ function actions(
   });
 }
 
-const ALL = { canEdit: true, canSubmit: true, canManageDocuments: true };
-const NONE = { canEdit: false, canSubmit: false, canManageDocuments: false };
+const ALL = { canEdit: true, canSubmit: true, canWithdraw: true, canManageDocuments: true };
+const NONE = { canEdit: false, canSubmit: false, canWithdraw: false, canManageDocuments: false };
 
 describe("consignmentActionsVm", () => {
   it.each([
@@ -35,8 +35,10 @@ describe("consignmentActionsVm", () => {
     expect(actions("owner", "under_review")).toEqual({
       canEdit: false,
       canSubmit: false,
+      canWithdraw: true,
       canManageDocuments: true,
     });
+    expect(actions("owner", "converted").canWithdraw).toBe(false);
     expect(actions("owner", "changes_requested")).toMatchObject({
       canEdit: true,
       canSubmit: false,

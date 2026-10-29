@@ -1,6 +1,7 @@
 import {
   type EntityActor,
   type SubmissionMutation,
+  canTransition,
   sellerCanEditSubmission,
   submissionMutationPolicy,
 } from "@auction/domain";
@@ -12,6 +13,8 @@ export type ConsignmentActionsVm = {
   canEdit: boolean;
   /** Send a draft to the specialist. */
   canSubmit: boolean;
+  /** Take the submission back before it is catalogued (their own, or any for owners and admins). */
+  canWithdraw: boolean;
   /** Add and remove supporting documents. */
   canManageDocuments: boolean;
 };
@@ -19,7 +22,7 @@ export type ConsignmentActionsVm = {
 /**
  * The page asks the same submission policy as the API, so it never offers a change the server
  * would refuse: the state machine says whether the submission can change, the policy whether
- * this person may change it. Withdrawal has its own panel, fed by the API from the same rule.
+ * this person may change it.
  */
 export function consignmentActionsVm(input: {
   /** `null` for the holder of a person's own account. */
@@ -32,6 +35,7 @@ export function consignmentActionsVm(input: {
   return {
     canEdit: sellerCanEditSubmission(status) && may("edit"),
     canSubmit: status === "draft" && may("submit"),
+    canWithdraw: canTransition(status, "withdraw") && may("withdraw"),
     canManageDocuments: may("attach_document"),
   };
 }

@@ -33,10 +33,6 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
     "entity.submissions.create",
     submissionRoleRefusal("edit"),
   );
-  const requireWithdraw = requireEntityCapability(
-    "entity.consignments.withdraw",
-    submissionRoleRefusal("withdraw"),
-  );
 
   r.post(
     "/",
@@ -234,7 +230,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
     requireAuth,
     requireBuyerRole,
     requireSubmissionEntityContext,
-    requireWithdraw,
+    requireChangeSubmissions,
     zValidator("param", submissionIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");

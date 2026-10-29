@@ -244,7 +244,7 @@ describe("submissions API contract", () => {
       "POST /:id/submit": ["owner", "admin", "consignor"],
       "POST /:id/documents": ["owner", "admin", "consignor"],
       "DELETE /:id/documents/:documentId": ["owner", "admin", "consignor"],
-      "POST /:id/withdraw": ["owner", "admin"],
+      "POST /:id/withdraw": ["owner", "admin", "consignor"],
     };
     const roles = ["owner", "admin", "consignor", "finance", "viewer", "buyer_agent"] as const;
 

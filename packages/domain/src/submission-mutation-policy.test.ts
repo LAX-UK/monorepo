@@ -19,7 +19,7 @@ const NONE: Row = { own: "role", other: "role" };
 
 /**
  * Every role × change × whose submission, written out so a change to any cell is a visible test
- * change. Owners and admins change any; consignors change their own but never withdraw; finance,
+ * change. Owners and admins change any; consignors change and withdraw their own; finance,
  * viewers and buyer agents change nothing.
  */
 const EXPECTED: Record<LegalEntityMemberRole, Record<SubmissionMutation, Row>> = {
@@ -42,7 +42,7 @@ const EXPECTED: Record<LegalEntityMemberRole, Record<SubmissionMutation, Row>> =
     submit: CHANGE_OWN,
     attach_document: CHANGE_OWN,
     delete_document: CHANGE_OWN,
-    withdraw: NONE,
+    withdraw: CHANGE_OWN,
   },
   finance: {
     edit: NONE,
@@ -111,7 +111,7 @@ describe("submissionMutationPolicy", () => {
 
   it("explains every refusal in words", () => {
     const withdraw = submissionMutationPolicy(
-      { userId: ME, member: { role: "consignor" } },
+      { userId: ME, member: { role: "finance" } },
       { submittedByUserId: ME },
       "withdraw",
     );

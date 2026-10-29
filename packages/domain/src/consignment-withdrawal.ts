@@ -26,9 +26,10 @@ export function consignmentWithdrawalPath(input: {
 }
 
 /**
- * Who may act on each path. Taking a work back, or asking to, binds the account, so only owners
- * and admins may, before or after cataloguing (the same rule as `submissionMutationPolicy`). A
- * person's own profile always may. Deny by default.
+ * Who may act on each path of the consignment page's withdrawal. It binds the account, so only
+ * owners and admins may; a consignor takes back their own uncatalogued submission through the
+ * submission route (`submissionMutationPolicy`). A person's own profile always may. Deny by
+ * default.
  */
 const WITHDRAWAL_CAPABILITY: Record<ConsignmentWithdrawalPathKind, EntityCapability | null> = {
   withdraw_now: "entity.consignments.withdraw",

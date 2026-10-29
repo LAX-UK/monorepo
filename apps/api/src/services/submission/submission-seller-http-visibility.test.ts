@@ -147,8 +147,8 @@ function every(status: number) {
 }
 
 describe("client endpoints keyed by a submission id, by who sent it", () => {
-  it("open a consignor's own submission, which they may change but not withdraw", async () => {
-    expect(await statuses("consignor", "mine")).toEqual({ ...every(200), withdraw: 403 });
+  it("open a consignor's own submission, which they may change and withdraw", async () => {
+    expect(await statuses("consignor", "mine")).toEqual(every(200));
   });
 
   it.each(["finance", "viewer"] as const)(

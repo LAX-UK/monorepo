@@ -26,15 +26,16 @@ export type SubmissionMutationDecision =
 
 /**
  * What each change needs. `own` lets a member change the submissions they sent; `any` lets them
- * change every submission of the account. Withdrawing binds the account, so it needs the
- * withdrawal capability whoever sent the work. A new change is a new row.
+ * change every submission of the account. Before cataloguing nothing is agreed with LAX yet, so
+ * a member takes back their own submission as they would edit it; taking back anyone else's
+ * needs the withdrawal capability. A new change is a new row.
  */
 const RULES: Record<SubmissionMutation, { own: EntityCapability; any: EntityCapability }> = {
   edit: { own: "entity.submissions.create", any: "entity.submissions.manage" },
   submit: { own: "entity.submissions.create", any: "entity.submissions.manage" },
   attach_document: { own: "entity.submissions.create", any: "entity.submissions.manage" },
   delete_document: { own: "entity.submissions.create", any: "entity.submissions.manage" },
-  withdraw: { own: "entity.consignments.withdraw", any: "entity.consignments.withdraw" },
+  withdraw: { own: "entity.submissions.create", any: "entity.consignments.withdraw" },
 };
 
 /** What the person reads when a change is refused, with a sharper line where one helps. */
@@ -65,7 +66,8 @@ function deny(
  * submission's state (draft, needs changes, …) is the state machine's question, not this one.
  * - An account holder of a personal account may make every change.
  * - Members who manage submissions may change any; members who may start them change their own.
- * - Withdrawing needs the withdrawal capability.
+ * - Withdrawing someone else's submission needs the withdrawal capability; a catalogued
+ *   consignment is withdrawn through `consignmentWithdrawalPath`, owners and admins only.
  * - Support staff viewing an account as its client change nothing.
  */
 export function submissionMutationPolicy(
