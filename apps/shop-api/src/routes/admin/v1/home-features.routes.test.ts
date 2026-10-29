@@ -39,7 +39,10 @@ async function buildApp(role: ShopStaffRole) {
     deps: createMinimalShopApiTestDeps({
       env: { ...base.env, SHOP_ADMIN_ENABLED: true },
       staffReader: {
-        findActiveByIdentitySubject: async (subject) => ({ role, identitySubjectId: subject }),
+        findActiveByIdentitySubject: async (subject) => ({
+          roles: [role],
+          identitySubjectId: subject,
+        }),
         brokerCanAccessClientParty: async () => false,
       },
       admin: {
@@ -64,8 +67,8 @@ function save(app: Awaited<ReturnType<typeof buildApp>>["app"], slot: string, id
 }
 
 describe("admin home feature routes", () => {
-  it("lets catalogue editors save the artists, audited, and refreshes lax.art", async () => {
-    const { app, store, invalidateCatalogue } = await buildApp("catalogue_editor");
+  it("lets editors save the artists, audited, and refreshes lax.art", async () => {
+    const { app, store, invalidateCatalogue } = await buildApp("editor");
     const response = await save(app, "featured_artists", [artistId(1), artistId(0)]);
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({
@@ -76,7 +79,7 @@ describe("admin home feature routes", () => {
     expect(store.saved.featured_artists).toEqual([artistId(1), artistId(0)]);
     expect(store.audit).toEqual([
       expect.objectContaining({
-        actorSubjectId: "catalogue_editor-subject",
+        actorSubjectId: "editor-subject",
         capability: "editorial.publish",
         action: "home_features.replace",
         targetId: "featured_artists",
@@ -147,7 +150,7 @@ describe("admin home feature routes", () => {
   });
 
   it("lets editors search a slot's candidates", async () => {
-    const { app } = await buildApp("catalogue_editor");
+    const { app } = await buildApp("editor");
     const response = await app.inject({
       method: "GET",
       url: "/admin/v1/home-features/featured_prints/candidates?q=vessel",

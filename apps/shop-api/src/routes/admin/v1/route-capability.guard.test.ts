@@ -24,6 +24,7 @@ const OPEN_TO_ANY_STAFF: Record<string, string> = {
   "PATCH /admin/v1/saved-views/:id": "Only the person's own views, checked per list.",
   "PUT /admin/v1/saved-views/order": "Only the person's own views, checked per list.",
   "DELETE /admin/v1/saved-views/:id": "Only the person's own views, checked per list.",
+  "GET /admin/v1/home-features": "Read-only: the lists show only what the home pages already show.",
 };
 
 const HEALTH = new Set(["/admin/v1/health/live", "/admin/v1/health/ready"]);
