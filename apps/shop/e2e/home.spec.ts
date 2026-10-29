@@ -54,14 +54,13 @@ test.describe("Shop home @a11y", () => {
     await page.goto("/");
     const content = [
       page.getByRole("heading", { level: 1 }),
-      page.locator(".shop-catalogue__title-link").first(),
+      page.locator(".shop-home-editions").getByRole("link", { name: /\S/ }).first(),
       page.getByRole("heading", { name: "Across LAX" }),
     ];
     for (const locator of content) {
       await expect(locator).toBeVisible();
       await expect(locator).toHaveCSS("opacity", "1");
     }
-    await expect(content[1]).toHaveAccessibleName(/\S/);
     await expect(page.locator('[data-reveal-init="true"]')).toHaveCount(0);
     await context.close();
   });
