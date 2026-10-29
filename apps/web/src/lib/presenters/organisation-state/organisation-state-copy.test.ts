@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import {
   type FirstRunStep,
   oneOfRoles,
+  organisationBannerForPage,
   organisationBannerView,
   organisationBidReasonCopy,
   organisationFirstRunCopy,
@@ -73,7 +74,7 @@ describe("organisation state copy: every key has words", () => {
 
   it.each(FIRST_RUN_KEYS)("first run %s", (key) => {
     for (const step of STEPS) {
-      const copy = organisationFirstRunCopy(key, step, ctx);
+      const copy = organisationFirstRunCopy(key, step, ctx, ["sales", "payouts", "bids"]);
       expectPlainCopy(copy.title, copy.description);
       expect(`${copy.title} ${copy.description}`).toContain("Northbank Gallery");
     }
@@ -174,14 +175,28 @@ describe("the bid panel reason", () => {
 describe("first run", () => {
   it("never invites a paused or unchecked organisation to sell", () => {
     for (const key of FIRST_RUN_KEYS.filter((k) => k !== "ready")) {
-      const { description } = organisationFirstRunCopy(key, "sell", ctx);
+      const { description } = organisationFirstRunCopy(key, "sell", ctx, ["sales"]);
       expect(description).not.toMatch(/Send a first work/);
     }
   });
 
   it("does not blame a trading organisation when this role has nothing to show", () => {
-    const copy = organisationFirstRunCopy("ready", "none", ctx);
+    const copy = organisationFirstRunCopy("ready", "none", ctx, ["sales"]);
     expect(copy.description).not.toMatch(/starts selling or buying/);
+  });
+
+  it("names only what the member will see", () => {
+    expect(
+      organisationFirstRunCopy("ready", "sell", ctx, ["sales", "payouts", "bids"]).description,
+    ).toBe(
+      "Send a first work to our specialists. Sales, payouts and bids show here as they happen.",
+    );
+    // A buyer agent never sees payouts, so the empty Home never mentions them.
+    for (const key of FIRST_RUN_KEYS.filter((k) => k !== "restricted" && k !== "closed")) {
+      const { description } = organisationFirstRunCopy(key, "none", ctx, ["bids"]);
+      expect(description).not.toMatch(/payout/i);
+      expect(description).toMatch(/^Bids for Northbank Gallery show here/);
+    }
   });
 });
 
@@ -192,5 +207,35 @@ describe("oneOfRoles", () => {
     expect(oneOfRoles(["finance"])).toBe("A finance member");
     expect(oneOfRoles(["owner", "admin"], "inside")).toBe("an owner or admin");
     expect(oneOfRoles([])).toBe("");
+  });
+});
+
+describe("organisationBannerForPage", () => {
+  const banner = organisationBannerView(
+    { kind: "attention", key: "documents_requested", audience: "act" },
+    ctx,
+  );
+
+  it("drops an action that leads to the page the person is on, and keeps the line", () => {
+    const here = organisationBannerForPage(banner, "/organisation/documents");
+    expect(here.action).toBeNull();
+    expect(here.line).toBe(banner.line);
+    expect(here.title).toBe(banner.title);
+  });
+
+  it("keeps the action on every other page", () => {
+    expect(organisationBannerForPage(banner, "/organisation/members").action).toEqual(
+      banner.action,
+    );
+  });
+
+  it("always keeps a way to contact us", () => {
+    const restricted = organisationBannerView(
+      { kind: "blocked", key: "restricted", audience: "told" },
+      ctx,
+    );
+    expect(organisationBannerForPage(restricted, "/organisation/documents").action).toEqual(
+      restricted.action,
+    );
   });
 });

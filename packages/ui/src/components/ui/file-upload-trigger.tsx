@@ -4,7 +4,7 @@ import { UploadIcon } from "lucide-react";
 import * as React from "react";
 
 import { cn } from "../../lib/utils.js";
-import { Button } from "./button.js";
+import { Button, type ButtonSize } from "./button.js";
 
 export type FileUploadTriggerProps = {
   onFilesSelected: (files: FileList) => void;
@@ -21,6 +21,10 @@ export type FileUploadTriggerProps = {
   /** id of element describing constraints (aria-describedby). */
   describedById?: string;
   className?: string;
+  /** Button mode only: the kit button size (default `lg`, as before). */
+  buttonSize?: ButtonSize;
+  /** Button mode only: classes for the button, such as a shared minimum width across rows. */
+  buttonClassName?: string;
   children?: React.ReactNode;
 };
 
@@ -38,6 +42,8 @@ function FileUploadTrigger({
   dropzoneAriaLabel = "Upload file",
   describedById,
   className,
+  buttonSize,
+  buttonClassName,
   children,
 }: FileUploadTriggerProps) {
   const inputRef = React.useRef<HTMLInputElement | null>(null);
@@ -114,7 +120,16 @@ function FileUploadTrigger({
           {content}
         </button>
       ) : (
-        <Button type="button" variant="outline" disabled={disabled || busy} onClick={pick}>
+        <Button
+          type="button"
+          variant="outline"
+          {...(buttonSize ? { size: buttonSize } : {})}
+          {...(buttonClassName ? { className: buttonClassName } : {})}
+          {...(busy ? { "aria-busy": true } : {})}
+          {...(describedById ? { "aria-describedby": describedById } : {})}
+          disabled={disabled || busy}
+          onClick={pick}
+        >
           {content}
         </Button>
       )}

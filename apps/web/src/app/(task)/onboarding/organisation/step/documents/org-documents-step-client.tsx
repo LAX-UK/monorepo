@@ -6,8 +6,10 @@ import {
 } from "@/app/(task)/onboarding/organisation/onboarding-actions";
 import { uploadObjectFile } from "@/hooks/use-upload-object-lifecycle";
 import { WIZARD_COPY } from "@/lib/forms/wizard-copy";
+import type { DocumentSlot } from "@/lib/legal-entity/org-document-requirements";
 import { orgDocumentsStepIntro } from "@/lib/legal-entity/org-onboarding-documents-copy";
 import { orgOnboardingStepHref } from "@/lib/legal-entity/org-onboarding-resume";
+import { receivedDocumentBadge } from "@/lib/organisations/organisation-documents.vm";
 import { Button } from "@auction/ui/components/button";
 import { FileUploadTrigger } from "@auction/ui/components/file-upload-trigger";
 import { Input } from "@auction/ui/components/input";
@@ -17,13 +19,6 @@ import type { PublicOrganisationSubkind } from "@auction/validators";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-
-export type DocumentSlot = {
-  kind: string;
-  /** Required when kind === other (canonical or free-form). */
-  label?: string;
-  title: string;
-};
 
 type UploadedDocument = {
   id: string;
@@ -148,21 +143,22 @@ export function OrgDocumentsStepClient({
           const key = slotKey(slot);
           const isUploading = uploadingKey === key;
           const uploaded = findUploadedForSlot(slot, uploadedDocuments);
+          // During setup the organisation is still waiting to send, so a sent copy reads "Received".
+          const uploadedBadge = uploaded
+            ? receivedDocumentBadge(uploaded.reviewStatus, "docs_requested")
+            : null;
           return (
             <li key={key} className="rounded-lg border border-outline-variant/30 p-4">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium">{slot.title}</p>
-                    {uploaded ? <StatusBadge variant="success">Uploaded</StatusBadge> : null}
+                    {uploadedBadge ? (
+                      <StatusBadge variant={uploadedBadge.tone}>{uploadedBadge.label}</StatusBadge>
+                    ) : null}
                   </div>
                   {slot.label ? (
                     <p className="text-xs text-on-surface-variant">Label: {slot.label}</p>
-                  ) : null}
-                  {uploaded ? (
-                    <p className="mt-1 text-xs text-on-surface-variant">
-                      Status: {uploaded.reviewStatus.replaceAll("_", " ")}
-                    </p>
                   ) : null}
                   {isUploading ? (
                     <p className="mt-1 text-xs text-primary" aria-live="polite">

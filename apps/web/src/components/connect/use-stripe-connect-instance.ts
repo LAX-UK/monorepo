@@ -1,5 +1,6 @@
 "use client";
 
+import { PAYOUT_SETUP_LOAD_FAILED } from "@/lib/connect/connect-error-copy";
 import { useConnectAppearance } from "@/lib/connect/use-connect-appearance";
 import { type StripeConnectInstance, loadConnectAndInitialize } from "@stripe/connect-js";
 import { useEffect, useRef, useState } from "react";
@@ -34,7 +35,9 @@ export function useStripeConnectInstance({ publishableKey, fetchClientSecret }: 
       if (!cancelled) setConnectInstance(instance);
     } catch (err: unknown) {
       if (!cancelled) {
-        setError(err instanceof Error ? err.message : "Could not load Stripe Connect.");
+        // The library's own message is technical, so the person reads a plain one.
+        console.error("Payout setup failed to initialise", err);
+        setError(PAYOUT_SETUP_LOAD_FAILED);
       }
     }
 

@@ -102,6 +102,9 @@ jobs:
       - name: Vitest mock hygiene
         run: pnpm lint:test-mocks
 
+      - name: Client copy (no system terms)
+        run: pnpm lint:client-copy
+
       - name: Lint
         run: pnpm turbo run lint --affected
 

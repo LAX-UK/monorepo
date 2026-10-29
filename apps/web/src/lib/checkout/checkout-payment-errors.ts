@@ -8,7 +8,7 @@ export function checkoutPaymentErrorMessage(message: string, code?: string | nul
     case "invalid_payment_amount":
       return "We could not calculate a valid payment amount for this lot. Contact support.";
     case "stripe_checkout_already_complete":
-      return "Stripe checkout is already complete. Payment confirmation may take a few minutes — refresh this page.";
+      return "Checkout is already complete. Payment confirmation may take a few minutes, so refresh this page.";
     case "stripe_checkout_unavailable":
       return "Secure checkout is temporarily unavailable. Try again shortly or contact settlements.";
     case "accounting_unavailable":
@@ -47,19 +47,19 @@ export function manualReviewReasonCopy(
 ): string {
   switch (reason) {
     case "seller_archived":
-      return "This lot requires finance review because the seller account is archived. Settlements will contact you with payment instructions.";
+      return "Our team checks this payment before you can pay, because the seller's account has closed. Settlements will contact you with payment instructions.";
     case "high_value":
-      return "This high-value purchase requires finance review before Stripe checkout is issued. Settlements will contact you shortly.";
+      return "Our team checks high-value purchases before checkout opens. Settlements will contact you shortly.";
     case "seller_archived_and_high_value":
-      return "This lot requires finance review (high value and seller status). Settlements will contact you with next steps.";
+      return "Our team checks this payment before you can pay, because of its value and the seller's account. Settlements will contact you with next steps.";
     case "aml_hold":
       return "This purchase is on hold while we complete a routine compliance review. Settlement cannot proceed until this is resolved. If you have questions, contact support using the details below — please do not send unsolicited documents.";
     case "source_of_funds_required":
       return "Before settlement we need to verify the source of funds for this purchase. Our compliance team will contact you with secure instructions. Typical documents include recent bank statements, proof of sale proceeds, or inheritance/ gift documentation where applicable.";
     case "finance_release_required":
-      return "Your invoice is with settlements for release. You can complete Stripe checkout once finance has cleared it for payment — refresh this page after you hear from the team.";
+      return "Our team checks your invoice before it can be paid. Once they have, you can pay here; refresh this page after you hear from us.";
     default:
-      return "Your payment record was created. Finance will issue checkout or contact you with payment instructions.";
+      return "Your payment is set up. Our team will open checkout or contact you with payment instructions.";
   }
 }
 

@@ -42,7 +42,7 @@ export function CheckoutReturnBanner({ lotTitle }: Props) {
         className="mb-6 block rounded-lg border border-primary/30 bg-primary-container/20 px-4 py-3 font-body text-sm text-on-surface"
         aria-live="polite"
       >
-        <p className="font-medium text-on-surface">Returned from Stripe</p>
+        <p className="font-medium text-on-surface">Back from secure checkout</p>
         <p className="mt-1 text-on-surface-variant">
           Thanks — we&apos;re finishing up {lotLabel}. See the status below for what happens next.
         </p>
@@ -58,7 +58,7 @@ export function CheckoutReturnBanner({ lotTitle }: Props) {
       >
         <p className="font-medium text-on-surface">Payment not completed</p>
         <p className="mt-1 text-on-surface-variant">
-          You left Stripe checkout without paying for {lotLabel}. You can try again below when
+          You left checkout without paying for {lotLabel}. You can try again below when you're
           ready.
         </p>
       </output>

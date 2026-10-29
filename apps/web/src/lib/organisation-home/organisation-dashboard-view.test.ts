@@ -188,7 +188,7 @@ describe("first steps", () => {
     expect(view("owner", EMPTY).firstRun).toEqual({
       title: "Get Northbank Gallery started",
       description:
-        "Send a first work to our specialists. Sales, payouts and bids show here as they happen.",
+        "Send a first work to our specialists. Sales, payouts, bids and purchases show here as they happen.",
       actions: [
         { id: "sell", label: "Sell a work", href: "/selling/new" },
         { id: "invite", label: "Invite someone", href: "/organisation/members" },
@@ -199,7 +199,15 @@ describe("first steps", () => {
   it("stays calm for a role that cannot start anything, without blaming the organisation", () => {
     expect(view("viewer", EMPTY).firstRun).toEqual({
       title: "Nothing here yet",
-      description: "Sales, payouts and bids for Northbank Gallery show here as they happen.",
+      description: "Sales for Northbank Gallery show here as they happen.",
+      actions: [],
+    });
+  });
+
+  it("never tells a buyer agent about payouts they cannot see", () => {
+    expect(view("buyer_agent", EMPTY).firstRun).toEqual({
+      title: "Nothing here yet",
+      description: "Bids for Northbank Gallery show here as they happen.",
       actions: [],
     });
   });
@@ -222,7 +230,7 @@ describe("first steps", () => {
     expect(organisationDashboardView(model, ctx, "documents_under_review").firstRun).toEqual({
       title: "Nothing here yet",
       description:
-        "Sales, payouts and bids for Northbank Gallery show here once we've finished checking its documents.",
+        "Sales, payouts, bids and purchases for Northbank Gallery show here once we've finished checking its documents.",
       actions: [{ id: "invite", label: "Invite someone", href: "/organisation/members" }],
     });
   });

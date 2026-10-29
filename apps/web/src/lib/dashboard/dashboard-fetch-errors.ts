@@ -155,7 +155,7 @@ const SLICE_DEFAULTS: Record<DashboardSlice, SliceDefaults> = {
     retryHref: DASHBOARD_ROUTES.sellerPayouts,
   },
   sellerConnect: {
-    title: "Could not load Stripe setup",
+    title: "Could not load payout setup",
     message: () => "Something went wrong while loading payout setup. Try again.",
     retryHref: DASHBOARD_ROUTES.sellerConnect,
   },

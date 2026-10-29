@@ -13,11 +13,11 @@ describe("org-onboarding-steps", () => {
 
   it("exposes timeline stages with id and label", () => {
     expect(ORG_ONBOARDING_TIMELINE_STAGES).toEqual([
-      { id: "type", label: "Type" },
+      { id: "type", label: "Organisation type" },
       { id: "details", label: "Details" },
       { id: "documents", label: "Documents" },
-      { id: "connect", label: "Connect" },
-      { id: "identity", label: "Identity" },
+      { id: "connect", label: "Payouts" },
+      { id: "identity", label: "Identity check" },
     ]);
   });
 

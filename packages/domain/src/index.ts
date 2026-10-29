@@ -9,6 +9,16 @@ export {
 export { buyerEntityCanBid, buyerEntityCanRegister } from "./buyer-entity-bid-eligibility.js";
 export { organisationBidRefusalMessage } from "./organisation-state-refusal.js";
 export {
+  organisationDocumentItems,
+  organisationDocumentState,
+  organisationDocumentsSendable,
+  type OrganisationDocumentItem,
+  type OrganisationDocumentReviewStatus,
+  type OrganisationDocumentState,
+  type ReceivedOrganisationDocument,
+  type RequestedOrganisationDocument,
+} from "./organisation-documents.js";
+export {
   ORGANISATION_ACTIONS,
   ORGANISATION_CLOSED_TO_MEMBERS,
   ORGANISATION_RESTRICTED_MEMBERS,
@@ -367,6 +377,7 @@ export {
   type DashboardTile,
   type DashboardTileKind,
   type FirstRunAction,
+  type FirstRunRecord,
   type OrganisationDashboardModel,
   type UpcomingSaleFigure,
   type UpcomingSaleRow,

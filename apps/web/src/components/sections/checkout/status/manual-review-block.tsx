@@ -16,7 +16,7 @@ export function ManualReviewBlock({ reason }: Props) {
   const compliance = reason === "aml_hold" || reason === "source_of_funds_required";
   return (
     <output className="block rounded-xl border border-border-hairline bg-surface-container-low/80 px-6 py-8 shadow-sm sm:px-8">
-      <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+      <p className="font-label text-xs font-bold text-secondary">
         {manualReviewQueueEyebrow(reason)}
       </p>
       <p className="mt-3 font-body text-sm leading-relaxed text-on-surface-variant">

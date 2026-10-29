@@ -1,3 +1,4 @@
+import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 import { type ConnectGapStage, type ConnectGapState, isPastDueConnectGap } from "@auction/connect";
 import type { StatusBadgeProps } from "@auction/ui/components/status-badge";
 import { connectGapStageCopy } from "./connect-gap-stage-registry";
@@ -57,12 +58,12 @@ export function connectGapPayoutsBannerCopy(gap: ConnectGapState): {
       if (isPastDueConnectGap(gap)) {
         return {
           title: "Finish overdue payout details",
-          description: "Stripe needs updated verification before we can send settlement transfers.",
+          description: "We need updated details before we can send your payouts.",
         };
       }
       return {
         title: "Action required on payout setup",
-        description: "Stripe needs a few details before we can send settlement transfers.",
+        description: "We need a few more details before we can send your payouts.",
       };
     case "onboarding_incomplete":
       return {
@@ -72,8 +73,7 @@ export function connectGapPayoutsBannerCopy(gap: ConnectGapState): {
     case "restricted":
       return {
         title: "Payout account restricted",
-        description:
-          "This payout account can't receive transfers right now. Contact support@lax.bid for help.",
+        description: `This payout account can't receive transfers right now. Contact ${SITE_SUPPORT_EMAIL} for help.`,
       };
     default:
       return {

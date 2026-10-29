@@ -205,7 +205,7 @@ describe("organisation state on Home", () => {
       consignmentProgress: emptyConsignmentProgress(),
       openBids: { lots: 0, totalMax: [] },
     });
-    expect(home.dashboard?.firstRun).toEqual({ actions: [] });
+    expect(home.dashboard?.firstRun?.actions).toEqual([]);
     expect(home.state.homeFirstRunKey).toBe("restricted");
   });
 

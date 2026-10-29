@@ -53,7 +53,7 @@ export function TimelineStages({ stages, activeIndex, className }: TimelineStage
             </span>
             <span
               className={cn(
-                "min-w-0 truncate font-label text-xs font-bold uppercase tracking-wider",
+                "min-w-0 truncate font-body text-sm font-medium",
                 active ? "text-on-surface" : "text-on-surface-variant",
               )}
             >

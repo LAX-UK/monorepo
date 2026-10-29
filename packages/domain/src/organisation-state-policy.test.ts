@@ -17,8 +17,8 @@ const forRole = (role: LegalEntityMemberRole) => entityCapabilitiesOf({ role });
 
 /** The expected table: one row per status, the actions it allows. */
 const ALLOWED: Record<LegalEntityStatus, readonly OrganisationAction[]> = {
-  lead: ["read_history", "invite", "accept_invitation"],
-  docs_requested: ["read_history", "invite", "accept_invitation"],
+  lead: ["read_history", "invite", "accept_invitation", "send_documents"],
+  docs_requested: ["read_history", "invite", "accept_invitation", "send_documents"],
   docs_received: ["read_history", "invite", "accept_invitation"],
   under_review: ["read_history", "invite", "accept_invitation"],
   connect_pending: [
@@ -30,7 +30,7 @@ const ALLOWED: Record<LegalEntityStatus, readonly OrganisationAction[]> = {
     "accept_invitation",
     "set_up_payouts",
   ],
-  approved: ORGANISATION_ACTIONS,
+  approved: ORGANISATION_ACTIONS.filter((action) => action !== "send_documents"),
   restricted: ["pay", "read_history"],
   rejected: ["read_history"],
   archived: ["read_history"],
