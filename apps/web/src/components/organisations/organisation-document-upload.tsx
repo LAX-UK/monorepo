@@ -8,9 +8,9 @@ import {
   organisationDocumentUploadError,
 } from "@/lib/organisations/organisation-document-upload-copy";
 import type { DocumentUploadTarget } from "@/lib/organisations/organisation-documents.vm";
-import { Button } from "@auction/ui/components/button";
+import { FileUploadTrigger } from "@auction/ui/components/file-upload-trigger";
 import { useRouter } from "next/navigation";
-import { useId, useRef, useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 
 type Props = {
   entityId: string;
@@ -27,7 +27,6 @@ type Props = {
 export function OrganisationDocumentUpload({ entityId, target, label, documentTitle }: Props) {
   const router = useRouter();
   const errorId = useId();
-  const inputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -59,33 +58,18 @@ export function OrganisationDocumentUpload({ entityId, target, label, documentTi
 
   return (
     <div className="flex flex-col items-start gap-1.5 sm:items-end">
-      <input
-        ref={inputRef}
-        type="file"
-        accept={ORGANISATION_DOCUMENT_ACCEPT}
-        className="sr-only"
-        tabIndex={-1}
-        aria-hidden
-        disabled={pending}
-        onChange={(event) => {
-          send(event.target.files?.[0]);
-          event.target.value = "";
-        }}
-      />
       {/* One size and width for every row's action, so Upload and Replace line up. */}
-      <Button
-        type="button"
-        variant="outline"
-        size="default"
-        className="min-w-28"
-        disabled={pending}
-        aria-busy={pending || undefined}
-        {...(error ? { "aria-describedby": errorId } : {})}
-        onClick={() => inputRef.current?.click()}
+      <FileUploadTrigger
+        accept={ORGANISATION_DOCUMENT_ACCEPT}
+        busy={pending}
+        buttonSize="default"
+        buttonClassName="min-w-28"
+        {...(error ? { describedById: errorId } : {})}
+        onFilesSelected={(files) => send(files[0])}
       >
         {pending ? "Sending…" : label}
         <span className="sr-only"> {documentTitle}</span>
-      </Button>
+      </FileUploadTrigger>
       {error ? (
         <p id={errorId} role="alert" className="font-body text-sm text-error sm:text-right">
           {error}
