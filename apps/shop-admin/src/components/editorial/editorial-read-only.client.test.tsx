@@ -160,6 +160,7 @@ describe("the exhibition editor for Read-only", () => {
     expect(screen.queryByRole("button", { name: /^Save|^Saved/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Unpublish|^Publish/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Create preview link" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add block" })).toBeNull();
     expect(screen.getByRole("link", { name: "Back to list" })).toBeInTheDocument();
   });
 

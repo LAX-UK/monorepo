@@ -336,6 +336,7 @@ export function ArtworkList({
       <ListPage<AdminArtworkListItem>
         title="Artworks"
         description="Every artwork on LAX Shop and lax.art, drafts and archived works included. Open one to edit its details, price, images and visibility."
+        access={permissions.write ? "full" : "read-only"}
         primaryAction={newArtwork}
         overflow={
           permissions.write ? (

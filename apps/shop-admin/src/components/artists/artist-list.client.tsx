@@ -179,6 +179,7 @@ export function ArtistList({
     <>
       <ListPage<AdminArtistListItem>
         title="Artists"
+        access={canWrite ? "full" : "read-only"}
         description="Artists on lax.art and LAX Shop. Open one to link their sign-in, edit their search listing, see their works or archive them."
         primaryAction={newArtist}
         Link={list.Link}
