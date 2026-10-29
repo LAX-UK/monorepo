@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { planRestoreHop, planSwitchHop, recordHop } from "./account-hops";
+import { planJoinHop, planRestoreHop, planSwitchHop, recordHop } from "./account-hops";
+
+describe("planJoinHop", () => {
+  it("opens a just-joined organisation's Home, remembered, without repeating the welcome", () => {
+    expect(planJoinHop("org-1")).toEqual({
+      redirect: "/home",
+      switchTo: { accountId: "org-1", remember: true },
+    });
+  });
+});
 
 const memberships = [
   { id: "me", kind: "individual" as const },

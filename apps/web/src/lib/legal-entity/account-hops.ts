@@ -42,6 +42,18 @@ export function planSwitchHop(input: {
 }
 
 /**
+ * Opening an organisation the person has just joined: its Home, remembered on their profile. No
+ * notice: Home greets a new member with a welcome card that already names the organisation and
+ * their role, and a second line saying the same would only repeat it.
+ */
+export function planJoinHop(organisationId: string): HopPlan {
+  return {
+    redirect: CLIENT_ROUTES.home,
+    switchTo: { accountId: organisationId, remember: true },
+  };
+}
+
+/**
  * Putting a browser back in the right account, as the API chose it (and corrected the profile).
  * Only an answer reaches here: when the API cannot answer, the hop shows the retry state and the
  * browser keeps what it has, rather than being moved to the personal account.

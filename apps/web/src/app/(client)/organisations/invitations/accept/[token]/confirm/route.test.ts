@@ -2,8 +2,12 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
+const setCookie = vi.fn();
 vi.mock("next/headers", () => ({
-  cookies: vi.fn(async () => ({ get: () => undefined, set: vi.fn() })),
+  cookies: vi.fn(async () => ({
+    get: () => undefined,
+    set: (name: string, value: string) => setCookie(name, value),
+  })),
 }));
 
 vi.mock("@/lib/bff/config.server", () => ({
@@ -36,13 +40,20 @@ describe("POST invitation accept", () => {
     apiFetch.mockReset();
   });
 
-  it("accepts, then opens the organisation's Home through the switch hop", async () => {
-    apiFetch.mockResolvedValue(
-      new Response(JSON.stringify({ data: { legalEntityId: ORG_ID } }), { status: 201 }),
+  it("accepts, then opens the organisation's Home in it and remembers it", async () => {
+    apiFetch.mockImplementation(async (path: string) =>
+      path === "/legal-entities/invitations/accept"
+        ? new Response(JSON.stringify({ data: { legalEntityId: ORG_ID } }), { status: 201 })
+        : new Response("{}"),
     );
     const res = await accept();
     expect(res.status).toBe(303);
-    expect(res.headers.get("location")).toBe(`/switch-account?to=${ORG_ID}&next=%2Fhome`);
+    expect(res.headers.get("location")).toBe("/home");
+    expect(setCookie).toHaveBeenCalledWith("lax_acting_legal_entity_id", ORG_ID);
+    expect(apiFetch).toHaveBeenCalledWith(
+      "/legal-entities/me/remembered-account",
+      expect.objectContaining({ method: "PUT" }),
+    );
     expect(apiFetch).toHaveBeenCalledWith(
       "/legal-entities/invitations/accept",
       expect.objectContaining({ method: "POST", body: JSON.stringify({ token: TOKEN }) }),
