@@ -2,6 +2,7 @@ import { DASHBOARD_ROUTES, dashboardCheckoutLotUrl } from "@/lib/dashboard/dashb
 import type { ComplianceGateStatus } from "@/lib/data/http/payments.server";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import { portfolioComplianceReason } from "@/lib/portfolio-settlement";
+import { isToPay } from "@/lib/purchases/purchase-progress";
 import type { ManualReviewReason, PortfolioRow } from "@auction/types";
 import { lotTotalMajorUnits } from "./lot-pricing-helpers";
 
@@ -77,10 +78,9 @@ export function buildPortfolioAnalytics(rows: readonly PortfolioRow[]): Portfoli
   };
 }
 
-/** A won lot that still has to be paid for. */
+/** A won lot that still has to be paid for: one in the To pay view of Purchases. */
 export function isAwaitingCheckout(row: Pick<PortfolioRow, "payment">): boolean {
-  const status = row.payment?.status ?? null;
-  return status !== "captured" && status !== "refunded";
+  return isToPay(row.payment?.status ?? null);
 }
 
 /** Reason a not-yet-paid lot is held for review; the user-level gate covers lots with no payment row yet. */
