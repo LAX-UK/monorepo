@@ -4,6 +4,31 @@ import { describe, expect, it, vi } from "vitest";
 import { BUTTON_SIZES, Button } from "./button.js";
 import { LoadingButton } from "./loading-button.js";
 
+/**
+ * Floating positioning does not settle under jsdom, so an opened Radix tooltip stalls the test
+ * worker. This stand-in keeps the controlled open state and renders the content only when open,
+ * which is the behaviour the disabled reason relies on; the real tooltip is checked in a browser.
+ */
+vi.mock("@radix-ui/react-tooltip", async () => {
+  const React = await import("react");
+  const OpenContext = React.createContext(false);
+  return {
+    Provider: ({ children }: { children: React.ReactNode }) => children,
+    Root: ({ open, children }: { open: boolean; children: React.ReactNode }) => (
+      <OpenContext.Provider value={open}>{children}</OpenContext.Provider>
+    ),
+    Trigger: ({ children }: { children: React.ReactNode }) => children,
+    Portal: ({ children }: { children: React.ReactNode }) => children,
+    Content: React.forwardRef<HTMLDivElement, { children: React.ReactNode }>(({ children }, ref) =>
+      React.useContext(OpenContext) ? (
+        <div ref={ref} role="tooltip">
+          {children}
+        </div>
+      ) : null,
+    ),
+  };
+});
+
 describe("Button size scale", () => {
   it.each([
     ["sm", "min-h-8", "text-[0.8125rem]", "px-3"],
@@ -101,11 +126,12 @@ describe("Button disabledReason", () => {
     expect(fireEvent.click(link)).toBe(false);
   });
 
-  it("keeps the reason on the page for screen readers before any tooltip opens", () => {
-    // The tooltip itself (hover, focus and tap) is checked in a real browser: floating
-    // positioning does not settle under jsdom.
+  it("keeps the reason for screen readers and shows it in a tooltip when pressed", () => {
     render(<Button disabledReason={reason}>Submit</Button>);
     expect(screen.getByText(reason)).toHaveClass("sr-only");
+    expect(screen.queryByRole("tooltip")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Submit" }));
+    expect(screen.getByRole("tooltip")).toHaveTextContent(reason);
   });
 
   it("behaves as an ordinary button when the reason is empty", () => {
