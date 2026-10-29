@@ -17,6 +17,7 @@ import type {
 } from "../services/interfaces/identity-routes/index.js";
 import type { IInvitationLifecycleService } from "../services/interfaces/invitation-lifecycle.js";
 import type { IMemberManagementService } from "../services/interfaces/member-management.js";
+import type { IOrganisationInvitationService } from "../services/interfaces/organisation-invitations.js";
 import type { IOrganizationOnboardingService } from "../services/interfaces/organization-onboarding.js";
 import type { LegalEntityAccessService } from "../services/legal-entity-access.service.js";
 import type { PersonalLegalEntityResolver } from "../services/legal-entity/personal-legal-entity-resolver.service.js";
@@ -35,6 +36,7 @@ export type CreateIdentityRouteServicesInput = {
   invitationLifecycleService: IInvitationLifecycleService;
   legalEntityAccessService: LegalEntityAccessService;
   memberManagementService: IMemberManagementService;
+  organisationInvitationService: IOrganisationInvitationService;
   organizationOnboardingService: IOrganizationOnboardingService;
   organizationOnboardingFlowService: IOrganizationOnboardingFlowService;
   orgTwoFactorPolicy: IOrgTwoFactorPolicyHttp;
@@ -61,6 +63,7 @@ export function createIdentityRouteServices(
       input.invitationLifecycleService,
       input.orgModuleGate,
       input.userService,
+      input.organisationInvitationService,
     ),
     organizationHttp: new IdentityOrganizationHttpApplicationService(
       input.organizationOnboardingService,

@@ -11,6 +11,7 @@ import type { IArtistRegistryService } from "../services/interfaces/artist-regis
 import type { IInvitationLifecycleService } from "../services/interfaces/invitation-lifecycle.js";
 import type { ILotLifecycleRecorder } from "../services/interfaces/lot-lifecycle-recorder.js";
 import type { IMemberManagementService } from "../services/interfaces/member-management.js";
+import type { IOrganisationInvitationService } from "../services/interfaces/organisation-invitations.js";
 import type { IOrganizationOnboardingService } from "../services/interfaces/organization-onboarding.js";
 import type {
   IPayoutAdminService,
@@ -61,6 +62,7 @@ export type ContainerPlatformServicesLegacy = {
   memberManagementService: IMemberManagementService;
   transactionalMailer: ITransactionalMailer;
   invitationLifecycleService: IInvitationLifecycleService;
+  organisationInvitationService: IOrganisationInvitationService;
   payoutAdjustmentService: PayoutAdjustmentService;
   payoutService: IPayoutService;
   payoutSellerService: IPayoutSellerService;

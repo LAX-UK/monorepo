@@ -18,6 +18,7 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { TwoFactorPolicyForbiddenError } from "../services/security/two-factor-policy.service.js";
 
 const memberIdParam = z.object({ memberId: z.string().uuid() });
+const invitationIdParam = z.object({ invitationId: z.string().uuid() });
 const twoFactorPolicyBodySchema = z.object({ required: z.boolean() });
 const acceptBodySchema = z.object({ token: z.string().min(10).max(200) });
 const transferBodySchema = z.object({
@@ -109,24 +110,10 @@ export function createLegalEntityMemberRoutes(
       const userId = c.get("userId") as string;
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const { memberId } = c.req.valid("param");
-      let confirmationPhrase: string | undefined;
-      const ct = c.req.header("content-type") ?? "";
-      if (ct.includes("application/json")) {
-        try {
-          const raw = await c.req.json();
-          confirmationPhrase =
-            typeof raw === "object" && raw && "confirmationPhrase" in raw
-              ? String((raw as { confirmationPhrase?: unknown }).confirmationPhrase ?? "")
-              : undefined;
-        } catch {
-          // ignore invalid JSON
-        }
-      }
       const outcome = await memberHttp.removeMember({
         userId,
         legalEntityId: ctx.legalEntityId,
         memberId,
-        ...(confirmationPhrase !== undefined ? { confirmationPhrase } : {}),
       });
       if (outcome.kind === "err") {
         return respondIdentityError(c, outcome.error);
@@ -136,7 +123,7 @@ export function createLegalEntityMemberRoutes(
   );
 
   r.post(
-    "/members/transfer-primary-admin",
+    "/members/transfer-ownership",
     requireAuth,
     requireContext,
     requireManageMembers,
@@ -154,6 +141,46 @@ export function createLegalEntityMemberRoutes(
       if (outcome.kind === "err") {
         return respondIdentityError(c, outcome.error);
       }
+      return respondIdentityRouteOutcome(c, outcome);
+    },
+  );
+
+  r.get("/invitations", requireAuth, requireContext, requireReadMembers, async (c) => {
+    const ctx = c.get("legalEntityContext") as LegalEntityContext;
+    const outcome = await memberHttp.listInvitations({ legalEntityId: ctx.legalEntityId });
+    return respondIdentityRouteOutcome(c, outcome);
+  });
+
+  r.delete(
+    "/invitations/:invitationId",
+    requireAuth,
+    requireContext,
+    requireManageMembers,
+    zValidator("param", invitationIdParam),
+    async (c) => {
+      const ctx = c.get("legalEntityContext") as LegalEntityContext;
+      const outcome = await memberHttp.withdrawInvitation({
+        userId: c.get("userId") as string,
+        legalEntityId: ctx.legalEntityId,
+        invitationId: c.req.valid("param").invitationId,
+      });
+      return respondIdentityRouteOutcome(c, outcome);
+    },
+  );
+
+  r.post(
+    "/invitations/:invitationId/restore",
+    requireAuth,
+    requireContext,
+    requireManageMembers,
+    zValidator("param", invitationIdParam),
+    async (c) => {
+      const ctx = c.get("legalEntityContext") as LegalEntityContext;
+      const outcome = await memberHttp.restoreInvitation({
+        userId: c.get("userId") as string,
+        legalEntityId: ctx.legalEntityId,
+        invitationId: c.req.valid("param").invitationId,
+      });
       return respondIdentityRouteOutcome(c, outcome);
     },
   );

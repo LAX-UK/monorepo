@@ -7,6 +7,7 @@ import type { LegalEntityContext } from "../middleware/require-legal-entity-cont
 import { IdentityLegalEntityMemberHttpApplicationService } from "../services/identity/identity-legal-entity-member-http-application.service.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { InvitationLifecycleService } from "../services/invitation-lifecycle.service.js";
+import { OrganisationInvitationService } from "../services/invitation/organisation-invitation.service.js";
 import { LegalEntityMembershipGuard } from "../services/legal-entity-membership.guard.js";
 import { MemberManagementService } from "../services/member-management.service.js";
 import type { UserService } from "../services/user.service.js";
@@ -42,7 +43,41 @@ function team() {
   ];
 }
 
-function invitationRepo(): IEntityInvitationRepository {
+type StoredInvitation = {
+  id: string;
+  email: string;
+  targetLegalEntityId: string;
+  targetLegalEntityMemberRole: LegalEntityMemberRole;
+  status: "pending" | "revoked";
+  createdAt: Date;
+  expiresAt: Date;
+};
+
+/** Two open invitations to this organisation (a viewer and an owner) and one to another. */
+function invitationStore(): Map<string, StoredInvitation> {
+  const week = new Date(Date.now() + 7 * 86_400_000);
+  const invite = (name: string, role: LegalEntityMemberRole, legalEntityId = TEST_ENTITY_ID) => ({
+    id: idOf(name),
+    email: `${name}@example.com`,
+    targetLegalEntityId: legalEntityId,
+    targetLegalEntityMemberRole: role,
+    status: "pending" as const,
+    createdAt: new Date(),
+    expiresAt: week,
+  });
+  return new Map(
+    [
+      invite("invite-viewer", "viewer"),
+      invite("invite-owner", "owner"),
+      invite("invite-other-org", "viewer", OTHER_ORG),
+    ].map((row) => [row.id, row]),
+  );
+}
+
+function invitationRepo(
+  store: Map<string, StoredInvitation> = invitationStore(),
+): IEntityInvitationRepository {
+  const pending = (row: StoredInvitation) => row.status === "pending";
   const repo = {
     forConnection: () => repo,
     findUserIdByEmail: async () => null,
@@ -51,10 +86,33 @@ function invitationRepo(): IEntityInvitationRepository {
     revokePendingForEntity: async () => {},
     insertInvitation: vi.fn(async () => {}),
     findByTokenHash: async () => null,
-    findById: async () => null,
+    findById: async (id: string) => store.get(id) ?? null,
     insertMember: async () => null,
     markInvitationAccepted: async () => {},
-    markInvitationRevoked: async () => {},
+    markInvitationRevoked: async (id: string) => {
+      const row = store.get(id);
+      if (row) row.status = "revoked";
+    },
+    listPendingForEntity: async (legalEntityId: string) =>
+      [...store.values()]
+        .filter((row) => pending(row) && row.targetLegalEntityId === legalEntityId)
+        .map((row) => ({
+          id: row.id,
+          email: row.email,
+          role: row.targetLegalEntityMemberRole,
+          sentAt: row.createdAt,
+          expiresAt: row.expiresAt,
+        })),
+    hasPendingForEntity: async (email: string, legalEntityId: string) =>
+      [...store.values()].some(
+        (row) => pending(row) && row.email === email && row.targetLegalEntityId === legalEntityId,
+      ),
+    markInvitationPending: async (id: string) => {
+      const row = store.get(id);
+      if (row?.status !== "revoked") return false;
+      row.status = "pending";
+      return true;
+    },
     findUserName: async () => "Admin",
     findUserEmail: async () => "admin@example.com",
     findLegalEntityDisplayName: async () => "Northbank Gallery",
@@ -80,9 +138,11 @@ function mount(role: LegalEntityMemberRole, opts: { impersonation?: boolean } = 
     authorisationRevoker: { revokeFor: vi.fn(async () => undefined) },
     realtime: { notifyProxyCancelled: async () => undefined },
   });
+  const store = invitationStore();
+  const invitationRows = invitationRepo(store);
   const invitations = new InvitationLifecycleService(
     transactionRunner,
-    invitationRepo(),
+    invitationRows,
     sink,
     { notify: vi.fn(async () => undefined) } as never,
     "https://lax.test",
@@ -93,6 +153,12 @@ function mount(role: LegalEntityMemberRole, opts: { impersonation?: boolean } = 
     invitations,
     { isEnabled: () => true, disabledResponse: () => ({ error: "off", code: "off" }) } as never,
     {} as UserService,
+    new OrganisationInvitationService({
+      transactionRunner,
+      invitations: invitationRows,
+      membership: guard,
+      domainEventSink: sink,
+    }),
   );
   const userId = opts.impersonation ? "support-staff" : `user-${role}`;
   const context: LegalEntityContext = {
@@ -126,7 +192,7 @@ function mount(role: LegalEntityMemberRole, opts: { impersonation?: boolean } = 
       headers: { "Content-Type": "application/json" },
       ...(body === undefined ? {} : { body: JSON.stringify(body) }),
     });
-  return { send, byId };
+  return { send, byId, store };
 }
 
 async function body(res: Response) {
@@ -231,19 +297,10 @@ describe("role changes, removal and ownership", () => {
     expect((await body(res)).code).toBe("owner_only");
   });
 
-  it("asks for the typed phrase before removing an admin", async () => {
+  it("removes an admin without a typed phrase; the dialog confirms it", async () => {
     const { send, byId } = mount("owner");
-    const unconfirmed = await send("DELETE", `/members/${idOf("admin")}`);
-    expect(unconfirmed.status).toBe(400);
-    const phrase = `REMOVE Name ${idOf("admin")}`;
-    expect(await body(unconfirmed)).toMatchObject({
-      code: "confirmation_required",
-      message: `Type exactly: ${phrase}`,
-    });
-    const confirmed = await send("DELETE", `/members/${idOf("admin")}`, {
-      confirmationPhrase: phrase,
-    });
-    expect(confirmed.status).toBe(200);
+    const res = await send("DELETE", `/members/${idOf("admin")}`);
+    expect(res.status).toBe(200);
     expect(byId.get(idOf("admin"))?.removedAt).toBeInstanceOf(Date);
   });
 
@@ -256,9 +313,9 @@ describe("role changes, removal and ownership", () => {
   });
 
   it("lets only an owner transfer ownership", async () => {
-    const phrase = `TRANSFER PRIMARY TO Name ${idOf("admin")}`;
+    const phrase = `Transfer to Name ${idOf("admin")}`;
     const request = { memberId: idOf("admin"), confirmationPhrase: phrase };
-    const asAdmin = await mount("admin").send("POST", "/members/transfer-primary-admin", {
+    const asAdmin = await mount("admin").send("POST", "/members/transfer-ownership", {
       ...request,
       memberId: idOf("finance"),
     });
@@ -266,8 +323,57 @@ describe("role changes, removal and ownership", () => {
     expect((await body(asAdmin)).code).toBe("owner_only");
 
     const { send, byId } = mount("owner");
-    expect((await send("POST", "/members/transfer-primary-admin", request)).status).toBe(200);
+    expect((await send("POST", "/members/transfer-ownership", request)).status).toBe(200);
     expect(byId.get(idOf("admin"))).toMatchObject({ role: "owner", isPrimaryAdmin: true });
     expect(byId.get(idOf("owner"))).toMatchObject({ role: "admin", isPrimaryAdmin: false });
+  });
+});
+
+describe("pending invitations", () => {
+  it.each(ROLES)("are listed to owners and admins only (as %s)", async (role) => {
+    const res = await mount(role).send("GET", "/invitations");
+    if (role === "owner" || role === "admin") {
+      expect(res.status).toBe(200);
+      const rows = (await body(res)).data as { id: string; role: string }[];
+      expect(rows.map((r) => r.role).sort()).toEqual(["owner", "viewer"]);
+    } else {
+      expect(res.status).toBe(403);
+    }
+  });
+
+  it("lets an admin withdraw a viewer's invitation, and take it back", async () => {
+    const { send, store } = mount("admin");
+    expect((await send("DELETE", `/invitations/${idOf("invite-viewer")}`)).status).toBe(200);
+    expect(store.get(idOf("invite-viewer"))?.status).toBe("revoked");
+    expect((await send("POST", `/invitations/${idOf("invite-viewer")}/restore`)).status).toBe(200);
+    expect(store.get(idOf("invite-viewer"))?.status).toBe("pending");
+  });
+
+  it("keeps owner invitations to owners", async () => {
+    const res = await mount("admin").send("DELETE", `/invitations/${idOf("invite-owner")}`);
+    expect(res.status).toBe(403);
+    expect((await body(res)).code).toBe("owner_only");
+    expect(
+      (await mount("owner").send("DELETE", `/invitations/${idOf("invite-owner")}`)).status,
+    ).toBe(200);
+  });
+
+  it.each(["finance", "consignor", "viewer", "buyer_agent"] as const)(
+    "refuses a %s",
+    async (role) => {
+      const res = await mount(role).send("DELETE", `/invitations/${idOf("invite-viewer")}`);
+      expect(res.status).toBe(403);
+    },
+  );
+
+  it("answers not found for another organisation's invitation", async () => {
+    const res = await mount("owner").send("DELETE", `/invitations/${idOf("invite-other-org")}`);
+    expect(res.status).toBe(404);
+  });
+
+  it("will not reopen an invitation that was never withdrawn", async () => {
+    const res = await mount("owner").send("POST", `/invitations/${idOf("invite-viewer")}/restore`);
+    expect(res.status).toBe(409);
+    expect((await body(res)).code).toBe("invitation_not_restorable");
   });
 });

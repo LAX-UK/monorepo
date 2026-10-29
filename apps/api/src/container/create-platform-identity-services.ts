@@ -17,11 +17,13 @@ import type { IArtistRegistryService } from "../services/interfaces/artist-regis
 import type { IIdentitySubjectClient } from "../services/interfaces/identity-issuer-client.js";
 import type { IInvitationLifecycleService } from "../services/interfaces/invitation-lifecycle.js";
 import type { IMemberManagementService } from "../services/interfaces/member-management.js";
+import type { IOrganisationInvitationService } from "../services/interfaces/organisation-invitations.js";
 import type { IProxyCancelledRealtime } from "../services/interfaces/organisation-membership-service.js";
 import type { IOrganizationOnboardingService } from "../services/interfaces/organization-onboarding.js";
 import type { IStripeConnectService } from "../services/interfaces/stripe-connect.js";
 import type { ITransactionalMailer } from "../services/interfaces/transactional-mail.js";
 import { InvitationLifecycleService } from "../services/invitation-lifecycle.service.js";
+import { OrganisationInvitationService } from "../services/invitation/organisation-invitation.service.js";
 import { LegalEntityAccessService } from "../services/legal-entity-access.service.js";
 import { LegalEntityLifecycleAdminService } from "../services/legal-entity-lifecycle-admin.service.js";
 import { LegalEntityMembershipGuard } from "../services/legal-entity-membership.guard.js";
@@ -46,6 +48,7 @@ export type ContainerPlatformIdentityServices = {
   memberManagementService: IMemberManagementService;
   transactionalMailer: ITransactionalMailer;
   invitationLifecycleService: IInvitationLifecycleService;
+  organisationInvitationService: IOrganisationInvitationService;
   organizationOnboardingFlowService: OrganizationOnboardingFlowService;
   legalEntityLifecycleAdminService: LegalEntityLifecycleAdminService;
   uiPreferenceService: UiPreferenceService;
@@ -135,6 +138,13 @@ export function createPlatformIdentityServices(
     membershipGuard,
     identitySubjects,
   );
+  const organisationInvitationService: IOrganisationInvitationService =
+    new OrganisationInvitationService({
+      transactionRunner: core.transactionRunner,
+      invitations: entityInvitationRepository,
+      membership: membershipGuard,
+      domainEventSink,
+    });
   const organizationOnboardingFlowService = new OrganizationOnboardingFlowService(
     core.transactionRunner,
     legalEntityRepository,
@@ -198,6 +208,7 @@ export function createPlatformIdentityServices(
     memberManagementService,
     transactionalMailer,
     invitationLifecycleService,
+    organisationInvitationService,
     organizationOnboardingFlowService,
     legalEntityLifecycleAdminService,
     uiPreferenceService,

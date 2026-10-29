@@ -86,6 +86,8 @@ const LABELS: Record<string, string> = {
   "legal_entity.member_invited": "Member invited",
   "legal_entity.member_accepted": "Member accepted invitation",
   "legal_entity.member_declined": "Member declined invitation",
+  "legal_entity.invitation_withdrawn": "Invitation withdrawn",
+  "legal_entity.invitation_restored": "Withdrawn invitation reopened",
   "legal_entity.member_role_changed": "Member role changed",
   "legal_entity.member_removed": "Member removed",
   "legal_entity.member_authorisations_revoked":

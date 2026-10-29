@@ -29,6 +29,9 @@ function makeRepo(
     insertMember: async () => null,
     markInvitationAccepted: async () => {},
     markInvitationRevoked: async () => {},
+    listPendingForEntity: async () => [],
+    hasPendingForEntity: async () => false,
+    markInvitationPending: async () => true,
     findUserName: async () => "Admin",
     findUserEmail: async () => "admin@example.com",
     findLegalEntityDisplayName: async () => "Org",
@@ -114,6 +117,29 @@ describe("InvitationInviteService", () => {
 
     await build("owner").invite(ACTOR_ID, ENTITY_ID, { email: "new@example.com", role: "owner" });
     expect(insertInvitation).toHaveBeenCalledOnce();
+  });
+
+  it.each([
+    ["restricted", "organisation_restricted_members"],
+    ["rejected", "organisation_closed_to_members"],
+    ["archived", "organisation_closed_to_members"],
+  ] as const)("sends nothing while the organisation is %s", async (status, code) => {
+    const insertInvitation = vi.fn(async () => {});
+    const notifyInviteSent = vi.fn();
+    const service = new InvitationInviteService(
+      transactionRunnerFromDb(makeDb()),
+      makeRepo({ insertInvitation, findLegalEntityStatus: async () => status }),
+      tokenService,
+      { notifyInviteSent } as unknown as InvitationNotificationService,
+      makePublisher(),
+      guardFor("owner"),
+    );
+
+    await expect(
+      service.invite(ACTOR_ID, ENTITY_ID, { email: "new@example.com", role: "viewer" }),
+    ).rejects.toMatchObject({ code });
+    expect(insertInvitation).not.toHaveBeenCalled();
+    expect(notifyInviteSent).not.toHaveBeenCalled();
   });
 
   it("rejects inviting an existing active member", async () => {

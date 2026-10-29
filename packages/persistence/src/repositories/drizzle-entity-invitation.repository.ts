@@ -6,10 +6,11 @@ import {
   userInvitation,
 } from "@auction/db/schema";
 import type { LegalEntityMember, LegalEntityStatus } from "@auction/types";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, desc, eq, isNull } from "drizzle-orm";
 import type {
   EntityInvitationCreate,
   EntityMemberCreate,
+  EntityPendingInvitation,
   IEntityInvitationRepository,
 } from "../interfaces/entity-invitation.repository.js";
 import type { InvitationRow } from "../interfaces/invitation.repository.js";
@@ -169,6 +170,52 @@ export class DrizzleEntityInvitationRepository implements IEntityInvitationRepos
         updatedAt: new Date(),
       })
       .where(eq(userInvitation.id, id));
+  }
+
+  async listPendingForEntity(legalEntityId: string): Promise<EntityPendingInvitation[]> {
+    const rows = await this.db
+      .select({
+        id: userInvitation.id,
+        email: userInvitation.email,
+        role: userInvitation.targetLegalEntityMemberRole,
+        sentAt: userInvitation.createdAt,
+        expiresAt: userInvitation.expiresAt,
+      })
+      .from(userInvitation)
+      .where(
+        and(
+          eq(userInvitation.targetLegalEntityId, legalEntityId),
+          eq(userInvitation.status, "pending"),
+        ),
+      )
+      .orderBy(desc(userInvitation.createdAt));
+    return rows.flatMap((row) =>
+      row.role ? [{ ...row, role: row.role as EntityPendingInvitation["role"] }] : [],
+    );
+  }
+
+  async hasPendingForEntity(email: string, legalEntityId: string): Promise<boolean> {
+    const [row] = await this.db
+      .select({ id: userInvitation.id })
+      .from(userInvitation)
+      .where(
+        and(
+          eq(userInvitation.email, email),
+          eq(userInvitation.targetLegalEntityId, legalEntityId),
+          eq(userInvitation.status, "pending"),
+        ),
+      )
+      .limit(1);
+    return row !== undefined;
+  }
+
+  async markInvitationPending(id: string): Promise<boolean> {
+    const rows = await this.db
+      .update(userInvitation)
+      .set({ status: "pending", updatedAt: new Date() })
+      .where(and(eq(userInvitation.id, id), eq(userInvitation.status, "revoked")))
+      .returning({ id: userInvitation.id });
+    return rows.length > 0;
   }
 
   async findUserName(userId: string): Promise<string | null> {

@@ -218,6 +218,9 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "reason",
     "stopped_bids",
   ]),
+  /** an unanswered organisation invitation withdrawn, or reopened by its Undo. */
+  "legal_entity.invitation_withdrawn": new Set(["invitation_id", "role"]),
+  "legal_entity.invitation_restored": new Set(["invitation_id", "role"]),
   /** an automatic bid (auto-bid ceiling or absentee bid) stopped because its member was removed. */
   "legal_entity.member_bid_stopped": new Set([
     "bid_kind",

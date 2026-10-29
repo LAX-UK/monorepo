@@ -53,8 +53,12 @@ export type MemberChangeDenial =
   | "last_owner"
   | "self";
 
-/** A change that must be confirmed by typing a phrase that names the member. */
-export type MemberChangeConfirmation = "remove" | "transfer_ownership";
+/**
+ * A change that must be confirmed by typing a phrase that names the member. Only handing over
+ * ownership is: the person gives up running the organisation and cannot take it back alone.
+ * Removing someone is confirmed in a dialog without typing; they can be invited again.
+ */
+export type MemberChangeConfirmation = "transfer_ownership";
 
 export type MemberChangeDecision =
   | { allowed: true; confirmation: MemberChangeConfirmation | null }
@@ -97,16 +101,9 @@ function removesLastOwner(change: MemberChange): boolean {
   return !(change.action === "change_role" && holdsOwnership(change.newRole));
 }
 
-/**
- * Typed confirmation for the changes that are hard to undo: removing someone who runs the
- * organisation (they would have to be invited again), and handing over ownership.
- */
+/** Typed confirmation for the one change the person cannot undo by themselves. */
 function confirmationFor(change: MemberChange): MemberChangeConfirmation | null {
-  if (change.action === "transfer_ownership") return "transfer_ownership";
-  if (change.action === "remove" && entityRoleCan(change.target.role, "entity.members.manage")) {
-    return "remove";
-  }
-  return null;
+  return change.action === "transfer_ownership" ? "transfer_ownership" : null;
 }
 
 /**
@@ -134,12 +131,16 @@ export function memberChangePolicy(
   return { allowed: true, confirmation: confirmationFor(change) };
 }
 
-/** The phrase a person types to confirm a change, naming the member. */
+/** The phrase a person types to confirm a change, naming the member, in sentence case. */
+const CONFIRMATION_PHRASE: Record<MemberChangeConfirmation, (memberName: string) => string> = {
+  transfer_ownership: (memberName) => `Transfer to ${memberName}`,
+};
+
 export function memberChangeConfirmationPhrase(
   confirmation: MemberChangeConfirmation,
   memberName: string,
 ): string {
-  return confirmation === "remove" ? `REMOVE ${memberName}` : `TRANSFER PRIMARY TO ${memberName}`;
+  return CONFIRMATION_PHRASE[confirmation](memberName);
 }
 
 /** Why a member's buyer-agent authorisations end, recorded on each one. */

@@ -87,12 +87,7 @@ export class MemberManagementService implements IMemberManagementService {
     });
   }
 
-  async removeMember(
-    actingUserId: string,
-    legalEntityId: string,
-    memberId: string,
-    confirmationPhrase?: string,
-  ): Promise<void> {
+  async removeMember(actingUserId: string, legalEntityId: string, memberId: string): Promise<void> {
     await this.assertManages(actingUserId, legalEntityId);
     const existing = await this.deps.members.findMemberById(memberId);
     if (!existing || existing.legalEntityId !== legalEntityId) {
@@ -123,7 +118,7 @@ export class MemberManagementService implements IMemberManagementService {
         action: "remove",
         target: memberChangeTarget(target, locked.team),
       };
-      await this.authoriseConfirmed(locked.me, change, target, confirmationPhrase);
+      this.authorise(locked.me, change);
 
       await this.deps.members.markRemoved(tx, memberId);
       const stoppedInTx = await this.deps.bidStopper.stopFor(tx, stopInput);

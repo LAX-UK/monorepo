@@ -21,7 +21,6 @@ export interface IIdentityLegalEntityMemberHttpApplicationService {
     userId: string;
     legalEntityId: string;
     memberId: string;
-    confirmationPhrase?: string;
   }): Promise<IdentityRouteOutcome<{ removed: true }>>;
 
   /** Hands the acting owner's ownership to another member (typed confirmation). */
@@ -31,6 +30,22 @@ export interface IIdentityLegalEntityMemberHttpApplicationService {
     memberId: string;
     confirmationPhrase: string;
   }): Promise<IdentityRouteOutcome<unknown>>;
+
+  /** The organisation's unanswered invitations. */
+  listInvitations(input: { legalEntityId: string }): Promise<IdentityRouteOutcome<unknown[]>>;
+
+  withdrawInvitation(input: {
+    userId: string;
+    legalEntityId: string;
+    invitationId: string;
+  }): Promise<IdentityRouteOutcome<{ withdrawn: true }>>;
+
+  /** Takes a withdrawal back while the invitation could still be used. */
+  restoreInvitation(input: {
+    userId: string;
+    legalEntityId: string;
+    invitationId: string;
+  }): Promise<IdentityRouteOutcome<{ restored: true }>>;
 
   acceptInvitationByToken(input: {
     userId: string;

@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { memberChangePolicy } from "@auction/domain";
+import { memberChangePolicy, organisationInviteRefusal } from "@auction/domain";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IEntityInvitationRepository } from "@auction/persistence/interfaces";
 import type { IDomainEventSink } from "../domain-event-sink.js";
@@ -37,6 +37,10 @@ export class InvitationInviteService {
       { action: "invite", newRole: input.role },
     );
     if (!decision.allowed) throw new MemberPermissionError(decision.reason);
+    // A restricted, rejected or archived organisation takes no new people, so it sends no links.
+    const status = await this.repo.findLegalEntityStatus(legalEntityId);
+    const stateRefusal = status ? organisationInviteRefusal(status) : null;
+    if (stateRefusal) throw new MemberPermissionError(stateRefusal.code);
     const email = this.tokenService.normalizeEmail(input.email);
     const identitySubject = this.identitySubjects
       ? await this.identitySubjects.findSubjectByEmail(email)
