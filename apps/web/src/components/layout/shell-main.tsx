@@ -54,7 +54,8 @@ export function ShellMain({
     >
       <div
         className={cn(
-          "mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 py-6 md:px-8 md:py-8 lg:px-8",
+          // Phones: the page starts 16px under the header strip.
+          "mx-auto w-full max-w-[var(--container-inner,1376px)] px-4 pt-4 pb-6 md:px-8 md:py-8 lg:px-8",
           "data-[density=compact]:md:px-6 data-[density=compact]:md:py-6",
         )}
         data-density={density}

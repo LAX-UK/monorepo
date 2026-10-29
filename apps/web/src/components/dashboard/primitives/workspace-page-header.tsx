@@ -44,6 +44,14 @@ export function WorkspacePageHeader({
       ? "font-headline text-3xl font-semibold tracking-tight text-on-surface lg:text-4xl"
       : "font-headline text-xl font-semibold tracking-tight text-on-surface sm:text-2xl lg:text-[1.75rem]";
 
+  // On phones the shell's title bar shows the title; when nothing else in the block shows,
+  // the block is left out there, so the first action sits at the top of the page.
+  const textHiddenOnMobile =
+    hideTitleOnMobile &&
+    !breadcrumbs &&
+    (!description || hideDescriptionOnMobile) &&
+    (!metaNode || hideMetaOnMobile);
+
   return (
     <div
       className={cn(
@@ -52,7 +60,7 @@ export function WorkspacePageHeader({
         className,
       )}
     >
-      <div className="w-full lg:flex-1 lg:pr-8">
+      <div className={cn("w-full lg:flex-1 lg:pr-8", textHiddenOnMobile && "hidden lg:block")}>
         {breadcrumbs ? (
           <div className="mb-4 text-on-surface-variant [&_a]:text-primary [&_a]:underline-offset-4 hover:[&_a]:underline">
             {breadcrumbs}
