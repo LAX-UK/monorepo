@@ -54,6 +54,9 @@ export function MemberChangeDialog({
     <Dialog open={open} onOpenChange={(next) => (pending ? undefined : onOpenChange(next))}>
       <DialogContent
         className="max-w-md rounded-xl border-border-hairline"
+        // A row menu that opened this dialog hands focus back to its trigger as it finishes
+        // closing; that is not the person leaving, so only Cancel, Esc and the scrim close it.
+        onFocusOutside={(event) => event.preventDefault()}
         onOpenAutoFocus={(event) => {
           if (tone !== "danger" || children) return;
           event.preventDefault();

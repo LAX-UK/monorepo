@@ -2,9 +2,9 @@
 
 import type { MemberRowView } from "@/lib/legal-entity/member-row.vm";
 import type { LegalEntityMemberRole } from "@auction/types";
-import { InlineActionMenu, type InlineActionMenuItem } from "@auction/ui";
 import { LabelledSelect } from "@auction/ui/components/labelled-select";
 import { MemberInitials } from "./member-initials";
+import { type RowAction, RowActionsMenu } from "./row-actions-menu";
 
 type Props = {
   row: MemberRowView;
@@ -31,14 +31,9 @@ export function MemberRow({
   onTransfer,
   onRemove,
 }: Props) {
-  const menu: InlineActionMenuItem[] = [
-    ...(row.transfer
-      ? [{ type: "item" as const, label: "Transfer ownership", onSelect: onTransfer }]
-      : []),
-    ...(row.transfer && row.canRemove ? [{ type: "separator" as const }] : []),
-    ...(row.canRemove
-      ? [{ type: "item" as const, label: "Remove", onSelect: onRemove, destructive: true }]
-      : []),
+  const menu: RowAction[] = [
+    ...(row.transfer ? [{ label: "Transfer ownership", onSelect: onTransfer }] : []),
+    ...(row.canRemove ? [{ label: "Remove", onSelect: onRemove, destructive: true }] : []),
   ];
 
   return (
@@ -80,7 +75,7 @@ export function MemberRow({
         )}
       </div>
       <div className="col-start-3 row-start-1 flex justify-end sm:col-start-4">
-        {menu.length > 0 ? <InlineActionMenu items={menu} label={`More for ${row.name}`} /> : null}
+        <RowActionsMenu label={`More for ${row.name}`} actions={menu} />
       </div>
       {error ? (
         <p

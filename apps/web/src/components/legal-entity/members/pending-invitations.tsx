@@ -9,11 +9,11 @@ import {
 import type { InvitationRowView } from "@/lib/legal-entity/member-row.vm";
 import { ROLE_CHANGE_UNDO_MS } from "@/lib/legal-entity/role-change-flow";
 import { notify } from "@/lib/ui/notify";
-import { InlineActionMenu } from "@auction/ui";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Mail } from "lucide-react";
 import { useState } from "react";
 import { MemberInitials } from "./member-initials";
+import { RowActionsMenu } from "./row-actions-menu";
 
 type Props = {
   legalEntityId: string;
@@ -97,18 +97,11 @@ export function PendingInvitations({ legalEntityId, rows }: Props) {
           ) : null}
           <div className="col-start-3 row-start-1 flex justify-end sm:col-start-4">
             {row.canManage ? (
-              <InlineActionMenu
+              <RowActionsMenu
                 label={`More for the invitation to ${row.email}`}
-                items={[
+                actions={[
+                  { label: "Resend", onSelect: () => void resend(row), disabled: busy === row.id },
                   {
-                    type: "item",
-                    label: "Resend",
-                    onSelect: () => void resend(row),
-                    disabled: busy === row.id,
-                  },
-                  { type: "separator" },
-                  {
-                    type: "item",
                     label: row.expired ? "Remove" : "Withdraw",
                     onSelect: () => void withdraw(row),
                     disabled: busy === row.id,
