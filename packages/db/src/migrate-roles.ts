@@ -46,6 +46,8 @@ const WORKER_READ_TABLES = [
   "item_submission",
   "category",
   "artist_profile",
+  /** The refund notice projector reads the refunded payment's lot and amount. */
+  "payment",
   /** Legal Entity Model - worker needs SELECT for projectors */
   "legal_entity",
   "legal_entity_member",
@@ -299,6 +301,15 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
     await grantIfExists(client, "worker_app", "notification", "INSERT, SELECT");
     /** Retention job anonymizes buyer-supplied SoF evidence after AML window. */
     await grantIfExists(client, "worker_app", "source_of_funds_document", "SELECT, UPDATE");
+    /** The SoF review projector upserts reviews; the document purge job deletes them. */
+    await grantIfExists(
+      client,
+      "worker_app",
+      "source_of_funds_document_review",
+      "INSERT, SELECT, UPDATE, DELETE",
+    );
+    /** The impersonation sweeper ends sessions that have expired. */
+    await grantIfExists(client, "worker_app", "impersonation_session", "SELECT, UPDATE");
     /** worker send-email reads suppression list and inserts manual suppressions for missing users. */
     await grantIfExists(client, "worker_app", "email_suppression", "INSERT, SELECT");
     /** worker enqueues mail from notification-fanout projectors (INSERT) and the send-email
