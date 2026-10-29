@@ -1,6 +1,6 @@
 import { workspaceMenuEntryAt } from "@/lib/navigation/client-nav-model";
 import { organisationTabAt } from "@/lib/navigation/organisation-tabs";
-import { roleGroupsSentence } from "@/lib/organisations/legal-entity-labels";
+import { organisationRoleGroupsSentence } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import {
   type EntityActor,
   type EntityCapability,
@@ -54,7 +54,7 @@ export function workspacePageOpenedBy(anyCapability: readonly EntityCapability[]
   const roles = legalEntityMemberRoles.filter((role) =>
     anyCapability.some((capability) => entityRoleCan(role, capability)),
   );
-  return roles.length > 0 ? roleGroupsSentence(roles) : null;
+  return roles.length > 0 ? organisationRoleGroupsSentence(roles) : null;
 }
 
 /** A page the member's role does not open: its name, and who can open it. */
