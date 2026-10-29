@@ -13,7 +13,7 @@ import {
   type StatusPresentation,
   formatStaffMoney,
 } from "@auction/staff-ui";
-import type { SaleStatus } from "@auction/types";
+import { type AtgSaleSellingSummary, type SaleStatus, isSaleOnAtg } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 
 export const SALES_LIST_PATH = "/admin/sales";
@@ -40,6 +40,10 @@ export type SalesStaffRow = {
   editHref: string | null;
   publicHref: string;
   canDelete: boolean;
+  /** Linked to or selling on ATG: the row carries the compact ATG marker. */
+  onAtg?: boolean;
+  /** ATG owns the sale, so publish, cancel and delete are disabled here as on the server. */
+  sellingOnAtg?: boolean;
 };
 
 const count = new Intl.NumberFormat("en-GB");
@@ -50,10 +54,17 @@ export function lotCountLabel(lots: number): string {
   return `${count.format(lots)} ${lots === 1 ? "lot" : "lots"}`;
 }
 
-export function toSalesStaffRows(rows: readonly AdminSaleBoardRow[]): SalesStaffRow[] {
+/** `atgSelling`: where each draft sale sells, from one batched lookup for the page. */
+export function toSalesStaffRows(
+  rows: readonly AdminSaleBoardRow[],
+  atgSelling: ReadonlyMap<string, AtgSaleSellingSummary> = new Map(),
+): SalesStaffRow[] {
   return rows.map((row) => {
     const delivery = deliveryModeShortLabel(row.deliveryMode);
+    const selling = atgSelling.get(row.saleId);
     return {
+      ...(isSaleOnAtg(selling) ? { onAtg: true } : {}),
+      ...(selling?.sellingPlatform === "atg" ? { sellingOnAtg: true } : {}),
       id: row.saleId,
       title: row.title,
       coverImageUrl: row.coverImageUrl,

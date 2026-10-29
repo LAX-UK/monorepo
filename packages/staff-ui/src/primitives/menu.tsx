@@ -180,11 +180,14 @@ export function StaffTooltip({
   label,
   side = "bottom",
   shortcut,
+  multiline = false,
   children,
 }: {
   label: string;
   side?: "top" | "right" | "bottom" | "left";
   shortcut?: string;
+  /** A sentence rather than a name: wraps at 320px instead of running on one line. */
+  multiline?: boolean;
   children: React.ReactElement;
 }) {
   return (
@@ -194,7 +197,10 @@ export function StaffTooltip({
         {...STAFF_LAYER}
         side={side}
         sideOffset={6}
-        className="flex items-center gap-2 rounded-staff-xs border-0 bg-staff-ink px-2 py-1 font-staff text-staff-xs font-medium text-staff-on-ink shadow-staff-md"
+        className={cn(
+          "flex items-center gap-2 rounded-staff-xs border-0 bg-staff-ink px-2 py-1 font-staff text-staff-xs font-medium text-staff-on-ink shadow-staff-md",
+          multiline && "max-w-80 text-pretty",
+        )}
       >
         {label}
         {shortcut ? <span className="text-staff-disabled">{shortcut}</span> : null}

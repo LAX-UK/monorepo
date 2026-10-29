@@ -1,5 +1,6 @@
 "use client";
 
+import { SellingPlatformBadge } from "@/components/admin/atg/selling-platform-badge";
 import { AdminQrCodeButton } from "@/components/admin/qr-code/admin-qr-code-button";
 import { SaleDetailReadinessProvider } from "@/components/admin/sale-detail/sale-detail-readiness-context";
 import { SaleDetailSectionNav } from "@/components/admin/sale-detail/sale-detail-section-nav";
@@ -12,7 +13,11 @@ import {
 } from "@/components/layout/palette/palette-cookie-client";
 import { adminUpdateSaleTitleFieldAction } from "@/lib/actions/admin/field-updates";
 import type { CatalogReadinessResult } from "@/lib/admin/catalog-readiness";
-import { adminSaleEditHref, adminSaleroomHref } from "@/lib/admin/catalog-route-helpers";
+import {
+  adminSaleDetailTabHref,
+  adminSaleEditHref,
+  adminSaleroomHref,
+} from "@/lib/admin/catalog-route-helpers";
 import {
   computeSaleDetailReadiness,
   saleDetailCanPublish,
@@ -43,7 +48,7 @@ import {
   type StaffLinkComponent,
   StatusBadge,
 } from "@auction/staff-ui";
-import type { AtgOwnershipState } from "@auction/types";
+import { type AtgSaleSellingSummary, atgSaleSellingBadge } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import { CalendarDays, ExternalLink, Pencil, Pin, QrCode } from "lucide-react";
 import Link from "next/link";
@@ -65,8 +70,8 @@ type Props = {
   draftSetupReadiness?: CatalogReadinessResult | null;
   /** Open problems on the overview, for its tab count. */
   overviewAttentionCount?: number;
-  /** From the ATG link when sync is on. */
-  sellingPlatform?: AtgOwnershipState | null;
+  /** Where the sale sells (lax.bid or ATG), from the shared ownership rule. */
+  selling?: AtgSaleSellingSummary | null;
   linkedEventSlug?: string | null;
   linkedEventTitle?: string | null;
   children: ReactNode;
@@ -89,7 +94,7 @@ export function SaleDetailShell({
   connectRequiredByLotId,
   draftSetupReadiness: draftSetupReadinessProp,
   overviewAttentionCount = 0,
-  sellingPlatform = null,
+  selling = null,
   linkedEventSlug = null,
   linkedEventTitle = null,
   children,
@@ -102,7 +107,8 @@ export function SaleDetailShell({
   const venue = venueOneLiner(sale);
   const publicHref = salePath({ id: sale.id, title: sale.title });
   const status = staffStatus("sale", sale.status);
-  const sellingOnAtg = sellingPlatform === "atg";
+  const sellingOnAtg = selling?.sellingPlatform === "atg";
+  const sellingBadge = selling ? atgSaleSellingBadge(selling) : null;
   const isSaleroom = isSaleroomDeliveryMode(sale.deliveryMode);
   const pendingRegs =
     liveish && pendingRegistrationCount != null && pendingRegistrationCount > 0
@@ -282,7 +288,12 @@ export function SaleDetailShell({
             <StatusBadge tone={status.tone} live={status.live ?? false}>
               {status.label}
             </StatusBadge>
-            {sellingOnAtg ? <StatusBadge tone="neutral">Selling on ATG</StatusBadge> : null}
+            {sellingBadge ? (
+              <SellingPlatformBadge
+                badge={sellingBadge}
+                atgHref={canManageSales ? adminSaleDetailTabHref(saleId, "atg") : null}
+              />
+            ) : null}
           </>
         }
         meta={

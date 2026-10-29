@@ -213,3 +213,138 @@ export type AtgSaleSyncView = {
   results: AtgSaleResultRow[];
   lots: AtgLotSyncView[];
 };
+
+/**
+ * Small ownership summary for admin headers and list markers. Built by the API from the same
+ * inputs as {@link resolveSaleSellingPlatform}, so it can never disagree with the server guards.
+ */
+export type AtgSaleSellingSummary = {
+  sellingPlatform: AtgOwnershipState;
+  /** The sale has an ATG auction id (it was created on ATG at least once). */
+  linked: boolean;
+  remoteStatus: AtgRemoteStatus | null;
+  /** When ATG staff approved the auction in Toolbox; null until then. */
+  approvedAt: string | null;
+  soldLotCount: number;
+};
+
+/** ATG link state for one lot plus its sale's summary. `lot` is null when never sent to ATG. */
+export type AtgLotSellingSummary = {
+  saleId: string | null;
+  sale: AtgSaleSellingSummary | null;
+  lot: {
+    /** GetLots `Status` stored as a decimal string. */
+    remoteStatus: string | null;
+    lastError: string | null;
+    sold: boolean | null;
+    numberOfBids: number | null;
+  } | null;
+};
+
+/** Builds the summary from the ownership inputs; ownership always goes through the SSOT. */
+export function toAtgSaleSellingSummary(
+  input: ResolveSaleSellingPlatformInput & { atgApprovedAt: string | null },
+): AtgSaleSellingSummary {
+  return {
+    sellingPlatform: resolveSaleSellingPlatform(input),
+    linked: input.atgLinked,
+    remoteStatus: input.atgRemoteStatus,
+    approvedAt: input.atgApprovedAt,
+    soldLotCount: input.atgSoldLotCount,
+  };
+}
+
+export type AtgSellingBadge = {
+  platform: "lax" | "atg";
+  label: string;
+  /** Plain-language explanation for the tooltip and screen readers. */
+  description: string;
+};
+
+const ATG_BADGE_HINT =
+  "Bidding happens on the ATG White Label (auctions.lax.bid). Publish, cancel and delete are disabled here.";
+
+/**
+ * Header badge for a sale. Null when the status badge already says it all (unlinked draft,
+ * cancelled). Ownership comes from `sellingPlatform`; the ATG stage only refines the label.
+ */
+export function atgSaleSellingBadge(summary: AtgSaleSellingSummary): AtgSellingBadge | null {
+  const { sellingPlatform, linked, remoteStatus, approvedAt } = summary;
+  if (sellingPlatform === "cancelled") return null;
+  if (sellingPlatform === "lax") {
+    return {
+      platform: "lax",
+      label: "lax.bid",
+      description: "Bidding happens on lax.bid. ATG push and publish are disabled for this sale.",
+    };
+  }
+  if (sellingPlatform === "atg") {
+    return remoteStatus === "published"
+      ? { platform: "atg", label: "ATG · Live", description: ATG_BADGE_HINT }
+      : {
+          platform: "atg",
+          label: "ATG · Ended",
+          description:
+            "The ATG auction closed with lots sold. The sale stays on ATG and is settled manually.",
+        };
+  }
+  if (!linked) return null;
+  if (remoteStatus === "closed") {
+    return {
+      platform: "atg",
+      label: "ATG · Closed",
+      description:
+        "The ATG auction closed with nothing sold. The sale is free to publish on lax.bid.",
+    };
+  }
+  const approved = approvedAt != null || remoteStatus === "approved";
+  return {
+    platform: "atg",
+    label: approved ? "ATG · Approved" : "ATG · Draft",
+    description: approved
+      ? "ATG approved this auction. It is not published on ATG yet."
+      : "This sale is on ATG as an unpublished draft. It is not taking bids anywhere yet.",
+  };
+}
+
+/** Staff label for a lot pushed to ATG; known GetLots codes win, then sold and bid counts. */
+export function atgLotStateLabel(lot: NonNullable<AtgLotSellingSummary["lot"]>): string | null {
+  if (lot.lastError) return "Sync error";
+  const documented = atgLotStatusLabel(lot.remoteStatus);
+  if (documented) return documented;
+  if (lot.sold) return "Sold";
+  const bids = lot.numberOfBids ?? 0;
+  if (bids > 0) return bids === 1 ? "1 bid" : `${bids} bids`;
+  return null;
+}
+
+/** Header badge for a lot: its ATG state when linked, or lax.bid when its sale sells there. */
+export function atgLotSellingBadge(summary: AtgLotSellingSummary): AtgSellingBadge | null {
+  const salePlatform = summary.sale?.sellingPlatform;
+  if (salePlatform === "lax") {
+    return {
+      platform: "lax",
+      label: "lax.bid",
+      description: "This lot sells on lax.bid with the rest of its sale.",
+    };
+  }
+  if (salePlatform === "cancelled") return null;
+  if (summary.lot) {
+    const state = atgLotStateLabel(summary.lot);
+    return {
+      platform: "atg",
+      label: state ? `On ATG · ${state}` : "On ATG",
+      description: "This lot is listed on the ATG White Label (auctions.lax.bid).",
+    };
+  }
+  return null;
+}
+
+/** Whether a list row gets the compact ATG marker (same rule as the header badge). */
+export function isSaleOnAtg(summary: AtgSaleSellingSummary | null | undefined): boolean {
+  return summary != null && atgSaleSellingBadge(summary)?.platform === "atg";
+}
+
+export function isLotOnAtg(summary: AtgLotSellingSummary | null | undefined): boolean {
+  return summary != null && atgLotSellingBadge(summary)?.platform === "atg";
+}
