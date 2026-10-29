@@ -30,7 +30,7 @@ function FigureValue({ figure }: { figure: MyBidFigure }) {
 function Figures({ figures }: { figures: MyBidFigure[] }) {
   if (figures.length === 0) return null;
   return (
-    <dl className="grid grid-flow-col grid-cols-3 grid-rows-[auto_auto] gap-x-4 gap-y-1 max-xl:border-t max-xl:border-outline-variant/50 max-xl:pt-3 xl:w-[27rem] xl:shrink-0">
+    <dl className="grid grid-flow-col grid-cols-[repeat(3,minmax(0,1fr))] grid-rows-[auto_auto] gap-x-4 gap-y-1 max-xl:border-t max-xl:border-outline-variant/50 max-xl:pt-3 xl:w-[27rem] xl:shrink-0">
       {/* Labels share the first row and values the second, so values line up when a label wraps. */}
       {figures.map((figure) => [
         <dt
@@ -41,7 +41,7 @@ function Figures({ figures }: { figures: MyBidFigure[] }) {
         </dt>,
         <dd
           key={`${figure.label}-value`}
-          className="min-w-0 font-body text-base font-medium text-on-surface"
+          className="min-w-0 font-body text-sm font-medium tabular-nums text-on-surface sm:text-base"
         >
           <FigureValue figure={figure} />
         </dd>,
@@ -73,7 +73,7 @@ function Actions({
           size="default"
           onClick={onOpenHistory}
           aria-label={`Bid history for ${card.title}`}
-          className="px-3"
+          className="shrink-0 px-3"
         >
           <History aria-hidden />
           <span className="max-sm:sr-only">History</span>
