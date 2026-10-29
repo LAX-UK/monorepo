@@ -137,7 +137,7 @@ describe("admin ATG routes", () => {
       const getLotSellingSummaries = vi
         .fn()
         .mockResolvedValue({ [LOT_ID]: { saleId: SALE_ID, sale: summary, lot: null } });
-      const app = buildApp("auction_manager", { getSaleSellingSummaries, getLotSellingSummaries });
+      const app = buildApp(["sales_manager"], { getSaleSellingSummaries, getLotSellingSummaries });
 
       const sales = await app.request(
         `http://test/admin/integrations/atg/selling/sales?ids=${SALE_ID},${SALE_ID}`,
@@ -158,7 +158,7 @@ describe("admin ATG routes", () => {
 
     it("rejects missing, malformed and oversized id lists", async () => {
       const getSaleSellingSummaries = vi.fn();
-      const app = buildApp("auction_manager", { getSaleSellingSummaries });
+      const app = buildApp(["sales_manager"], { getSaleSellingSummaries });
       const many = Array.from(
         { length: 201 },
         (_, i) => `11111111-1111-4111-8111-${String(i).padStart(12, "0")}`,
@@ -174,7 +174,7 @@ describe("admin ATG routes", () => {
     it("forbids staff without auction.manage", async () => {
       const getSaleSellingSummaries = vi.fn();
       const getLotSellingSummaries = vi.fn();
-      const app = buildApp("finance_ops", { getSaleSellingSummaries, getLotSellingSummaries });
+      const app = buildApp(["finance"], { getSaleSellingSummaries, getLotSellingSummaries });
 
       const sales = await app.request(
         `http://test/admin/integrations/atg/selling/sales?ids=${SALE_ID}`,
