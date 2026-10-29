@@ -52,10 +52,16 @@ test.describe("Shop home @a11y", () => {
     const context = await browser.newContext({ javaScriptEnabled: false });
     const page = await context.newPage();
     await page.goto("/");
-    await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    const firstReveal = page.locator(".reveal").first();
-    await expect(firstReveal).toBeVisible();
-    await expect(firstReveal).not.toHaveAttribute("data-reveal-init", "true");
+    const content = [
+      page.getByRole("heading", { level: 1 }),
+      page.locator(".shop-home-editions").getByRole("link", { name: /\S/ }).first(),
+      page.getByRole("heading", { name: "Across LAX" }),
+    ];
+    for (const locator of content) {
+      await expect(locator).toBeVisible();
+      await expect(locator).toHaveCSS("opacity", "1");
+    }
+    await expect(page.locator('[data-reveal-init="true"]')).toHaveCount(0);
     await context.close();
   });
 });
