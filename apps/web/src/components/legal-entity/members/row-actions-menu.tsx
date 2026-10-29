@@ -29,6 +29,10 @@ type Props = {
  * The "…" menu at the end of a team row. Choosing an item closes the menu first and then runs
  * the action on the next frame, so a dialog it opens takes focus cleanly and hands it back to
  * this trigger when it closes. Destructive items come last, after a separator.
+ *
+ * Temporary: this stands in for the kit's `InlineActionMenu`, which keeps its menu open after a
+ * choice and draws destructive items in a red that fails contrast. Replace it with
+ * `InlineActionMenu` once the kit menu closes on select and uses the error token.
  */
 export function RowActionsMenu({ label, actions }: Props) {
   if (actions.length === 0) return null;
