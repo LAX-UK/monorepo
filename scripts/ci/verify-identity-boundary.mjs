@@ -128,7 +128,12 @@ const RETIRED_VENDOR_DOC_ALLOWLIST = new Set([
 const RETIRED_VENDOR_PATTERNS = [
   [new RegExp(["shop", "ify"].join(""), "i"), "retired commerce vendor"],
   [new RegExp(["word", "press"].join(""), "i"), "retired CMS vendor"],
-  [new RegExp(["lax", "\\.", "shop"].join(""), "i"), "retired shop domain"],
+  // The retired domain used as an address. "lax.shop" written as the Shop's brand name in the
+  // family navigation is not an address and is allowed.
+  [
+    new RegExp(["(?:https?:)?\\/\\/(?:www\\.)?lax", "\\.", "shop"].join(""), "i"),
+    "retired shop domain",
+  ],
   [new RegExp(["lax", "-shop-", "proof"].join(""), "i"), "retired shop client"],
   [new RegExp(["Remote", "Session", "Authenticator"].join("")), "retired remote authenticator"],
   [new RegExp(["Composite", "Authenticator"].join("")), "retired composite authenticator"],
