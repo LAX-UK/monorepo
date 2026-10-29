@@ -20,9 +20,9 @@ describe("loadArtFamilyLinks", () => {
     vi.stubEnv("NODE_ENV", "production");
     const links = loadArtFamilyLinks();
     expect(links.map((link) => link.label)).toEqual([
-      "LAX Bid",
       "lax.art",
-      "LAX Shop",
+      "lax.shop",
+      "lax.bid",
       "LAX Account",
     ]);
     expect(links.at(-1)?.href).toBe("https://account.lax.bid/account");

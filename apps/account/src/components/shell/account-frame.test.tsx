@@ -66,8 +66,8 @@ describe("AccountFrame signed in", () => {
   const html = render(true);
 
   it("shows the product bar with Account as the current product", () => {
-    expect(html).toContain('aria-label="LAX products"');
-    for (const label of ["LAX Bid", "lax.art", "LAX Shop", "LAX Account"]) {
+    expect(html).toContain('aria-label="LAX family"');
+    for (const label of ["lax.art", "lax.shop", "lax.bid", "LAX Account"]) {
       expect(html).toContain(label);
     }
     expect(html).toMatch(/aria-current="true"[^>]*>LAX Account</);
@@ -104,7 +104,7 @@ describe("AccountFrame signed in", () => {
     expect(html).toContain('aria-label="Open menu"');
     const sheet = html.slice(html.indexOf('data-testid="menu-sheet"'));
     expect(sheet).toContain("Personal details");
-    expect(sheet).toContain("LAX Bid");
+    expect(sheet).toContain("lax.bid");
     expect(sheet).toContain("Sign out");
   });
 

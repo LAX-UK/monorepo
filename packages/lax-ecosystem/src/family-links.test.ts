@@ -13,14 +13,21 @@ const HREFS = {
 };
 
 describe("buildLaxFamilyLinks", () => {
-  it("lists the products in the bar's order, then LAX Account, named as the brand writes them", () => {
+  it("lists the products in the bar's order, then LAX Account, named as the family writes them", () => {
     const links = buildLaxFamilyLinks({ current: "shop", hrefs: HREFS });
     expect(links.map((link) => link.label)).toEqual([
-      "LAX Bid",
       "lax.art",
-      "LAX Shop",
+      "lax.shop",
+      "lax.bid",
       "LAX Account",
     ]);
+  });
+
+  it("keeps the same order whichever product is current", () => {
+    for (const current of ["art", "shop", "bid", "account"] as const) {
+      const ids = buildLaxFamilyLinks({ current, hrefs: HREFS }).map((link) => link.id);
+      expect(ids).toEqual(["art", "shop", "bid", "account"]);
+    }
   });
 
   it("marks only the product the person is on", () => {
@@ -54,9 +61,9 @@ describe("buildLaxFamilyLinksFromDirectory", () => {
       "https://account.lax.bid/account?from=bid",
     );
     expect(links.map(({ id, href, current }) => ({ id, href, current }))).toEqual([
-      { id: "bid", href: HREFS.bid, current: true },
       { id: "art", href: HREFS.art, current: false },
       { id: "shop", href: HREFS.shop, current: false },
+      { id: "bid", href: HREFS.bid, current: true },
       { id: "account", href: "https://account.lax.bid/account?from=bid", current: false },
     ]);
   });

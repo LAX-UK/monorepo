@@ -39,9 +39,9 @@ vi.mock("@/hooks/use-unread-notifications", () => ({
 }));
 
 const FAMILY_LINKS = [
-  { id: "bid", label: "LAX Bid", href: "https://lax.bid", current: true },
   { id: "art", label: "lax.art", href: "https://lax.art", current: false },
-  { id: "shop", label: "LAX Shop", href: "https://shop.lax.art", current: false },
+  { id: "shop", label: "lax.shop", href: "https://shop.lax.art", current: false },
+  { id: "bid", label: "lax.bid", href: "https://lax.bid", current: true },
   {
     id: "account",
     label: "LAX Account",
@@ -74,7 +74,7 @@ describe("MobileMoreSheet", () => {
     const accounts = screen.getAllByRole("link", { name: /LAX Account/ });
     expect(accounts).toHaveLength(1);
     expect(accounts[0]).toHaveAttribute("href", "https://account.lax.bid/account?from=bid");
-    expect(accounts[0]?.closest("nav")).toHaveAttribute("aria-label", "LAX products");
+    expect(accounts[0]?.closest("nav")).toHaveAttribute("aria-label", "LAX family menu");
     expect(screen.queryByRole("link", { name: "Profile" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Account settings" })).toBeNull();
   });

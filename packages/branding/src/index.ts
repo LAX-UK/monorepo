@@ -5,6 +5,7 @@ export * from "./lax-social-links.js";
 export * from "./email.js";
 export * from "./site.js";
 export * from "./legal-entity.js";
+export * from "./family-names.js";
 export * from "./gallery-contact.js";
 export * from "./structured-data.js";
 export * from "./favicons.js";

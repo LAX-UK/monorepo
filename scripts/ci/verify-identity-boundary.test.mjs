@@ -46,3 +46,11 @@ test("retired vendor references in integration surfaces still fail the guard", (
   assert.equal(matches[0]?.label, "retired commerce vendor");
   assert.equal(matches[0]?.path, "apps/shop/src/lib/vendor.ts");
 });
+
+test("the retired shop domain fails as an address but not as the Shop's brand name", () => {
+  const domain = ["lax", "shop"].join(".");
+  const address = findRetiredVendorMatches([["apps/shop/src/a.ts", `https://${domain}/cart`]]);
+  assert.equal(address.length, 1);
+  assert.equal(address[0]?.label, "retired shop domain");
+  assert.equal(findRetiredVendorMatches([["apps/shop/src/a.ts", `label: "${domain}"`]]).length, 0);
+});
