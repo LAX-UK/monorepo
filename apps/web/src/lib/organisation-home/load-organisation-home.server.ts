@@ -4,12 +4,14 @@ import { openBidsFigure, purchasesToPayFigure } from "@/lib/buying/account-buyin
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
+import { listServerUnsoldOutcomes } from "@/lib/data/http/consignment-after-sale.server";
 import { listServerConsignmentAgreements } from "@/lib/data/http/consignment-agreements.server";
 import { getServerOrganisationDashboard } from "@/lib/data/http/organisation-dashboard.server";
 import {
   getServerMyBuyerAgentAuthorisations,
   getServerStoppedMemberBids,
 } from "@/lib/data/http/organisation-membership.server";
+import { type PagedRead, readAllPages } from "@/lib/data/paging/read-all-pages";
 import { isAwaitingCheckout } from "@/lib/data/view-models/dashboard-portfolio.vm";
 import { listMembersAction } from "@/lib/legal-entity/member-management.actions";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
@@ -40,6 +42,7 @@ import type {
   LegalEntitySummary,
   Lot,
   PortfolioRow,
+  SellerUnsoldOutcome,
 } from "@auction/types";
 import { abilityPhrases, roleExplanation, welcomeHeadline } from "./member-role-copy";
 import { homeActivityEvents } from "./organisation-home-activity";
@@ -50,7 +53,10 @@ import {
   organisationHomeView,
 } from "./organisation-home-view";
 
-const PAGE_LIMIT = 100;
+/** Lists are read page by page up to this many rows; past it, Home says so. */
+const LIST_PAGING = { pageSize: 100, maxRows: 1000 } as const;
+
+const EMPTY_READ: PagedRead<never> = { rows: [], complete: true };
 
 export type LoadedOrganisationHome = {
   organisationName: string;
@@ -59,6 +65,8 @@ export type LoadedOrganisationHome = {
   roleExplanation: string;
   /** A buyer agent's standing authority for every sale ("Your limit for every sale: £10,000"). */
   authority: string | null;
+  /** Set when a list was longer than Home reads, so "Needs you" may not show everything. */
+  listLimitNotice: string | null;
 };
 
 /** Settles to a fallback, so one slow or refused list never blanks Home. */
@@ -87,8 +95,9 @@ export async function loadOrganisationHome(
 
   const scope = await c.buying.scope();
   const [
-    submissions,
-    lots,
+    submissionRead,
+    lotRead,
+    unsoldRead,
     agreements,
     account,
     purchases,
@@ -99,15 +108,28 @@ export async function loadOrganisationHome(
     kyc,
     dashboard,
   ] = await Promise.all([
-    settle<ItemSubmission[]>(
+    settle<PagedRead<ItemSubmission>>(
       followsConsignments,
-      () => c.submissions.listMine({ limit: PAGE_LIMIT, offset: 0 }),
-      [],
+      () => readAllPages((page) => c.submissions.listMinePaged(page), LIST_PAGING),
+      EMPTY_READ,
     ),
-    settle<Lot[]>(
+    settle<PagedRead<Lot>>(
       followsConsignments,
-      () => c.sellerLots.list({ sellerId: organisation.id, limit: PAGE_LIMIT }),
-      [],
+      () =>
+        readAllPages(
+          async (page) => ({
+            rows: await c.sellerLots.list({ sellerId: organisation.id, ...page }),
+          }),
+          LIST_PAGING,
+        ),
+      EMPTY_READ,
+    ),
+    // Only the unsold lots nobody has chosen for: a made choice clears the task.
+    settle<PagedRead<SellerUnsoldOutcome>>(
+      followsConsignments,
+      () =>
+        readAllPages((page) => listServerUnsoldOutcomes({ choice: "none", ...page }), LIST_PAGING),
+      EMPTY_READ,
     ),
     settle<ConsignmentAgreement[]>(followsConsignments, listServerConsignmentAgreements, []),
     settle(true, () => loadSellerAccountFacts(sellerCtx), null),
@@ -136,6 +158,8 @@ export async function loadOrganisationHome(
     settle(true, () => getServerOrganisationDashboard(organisation.id), null),
   ]);
 
+  const submissions = submissionRead.rows;
+  const lots = lotRead.rows;
   const agreementBySubmission = new Map(agreements.map((a) => [a.submissionId, a]));
   const lotById = new Map(lots.map((lot) => [lot.id, lot]));
   const viewerIdentity = needsIdentity ? personalIdentityFact(kyc) : "verified";
@@ -163,13 +187,10 @@ export async function loadOrganisationHome(
     changesRequested: submissions
       .filter((s) => s.status === "changes_requested")
       .map((s) => ({ id: s.id, title: s.title, note: s.changesRequestedNote ?? null })),
-    // The lot list carries no unsold choice yet, so every ended lot reads as "none".
-    unsoldLots: lots.map((lot) => ({
-      id: lot.id,
-      title: lot.title,
-      status: lot.status,
-      winnerId: lot.winnerId ?? null,
-      choice: "none" as const,
+    unsoldLots: unsoldRead.rows.map((outcome) => ({
+      id: outcome.lotId,
+      title: outcome.title,
+      choice: outcome.choice,
     })),
     purchasesAwaitingPayment: purchases
       .filter(isAwaitingCheckout)
@@ -246,5 +267,8 @@ export async function loadOrganisationHome(
     roleExplanation: roleExplanation(actor.role, organisation.displayName),
     // The bid limit figure says the same; the line stands in when the figures did not load.
     authority: model.dashboard ? null : buyerAgentAuthorityLine(mine),
+    listLimitNotice: [submissionRead, lotRead, unsoldRead].every((read) => read.complete)
+      ? null
+      : `Showing tasks from the latest ${LIST_PAGING.maxRows.toLocaleString("en-GB")} works.`,
   };
 }

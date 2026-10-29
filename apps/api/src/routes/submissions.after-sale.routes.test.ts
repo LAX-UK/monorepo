@@ -19,6 +19,7 @@ import { SellerIdentityReminderService } from "../services/consignment-after-sal
 import { UnsoldLotChoiceService } from "../services/consignment-after-sale/unsold-lot-choice.service.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { ISubmissionAccessGuard } from "../services/interfaces/submission-routes/submission-access.js";
+import { SubmissionAccessGuard } from "../services/submission/submission-access-guard.js";
 import { InMemoryConsignmentAgreements } from "../testing/in-memory-consignment-agreements.js";
 import { InMemoryUnsoldLotChoices } from "../testing/in-memory-unsold-lot-choices.js";
 import { passThroughAccountOnboarding } from "../testing/pass-through-account-onboarding.middleware.js";
@@ -48,6 +49,8 @@ type Setup = {
   identityVerified?: boolean;
   /** The submission access guard hides it from this member. */
   hidden?: boolean;
+  /** The selling account's state (with `sourceKind: "organisation"`). */
+  entityStatus?: LegalEntity["status"];
 };
 
 function setup(options: Setup = {}) {
@@ -96,7 +99,7 @@ function setup(options: Setup = {}) {
       {
         id: entityId,
         kind: options.sourceKind ?? "individual",
-        status: "approved",
+        status: options.entityStatus ?? "approved",
         displayName: "Jane Smith",
       } as LegalEntity,
     ],
@@ -134,6 +137,12 @@ function setup(options: Setup = {}) {
     submissions,
     access: {
       hides: vi.fn(async () => options.hidden ?? false),
+      // The real sender rule, so list reads are narrowed exactly as in production.
+      senderFilter: (account: Parameters<ISubmissionAccessGuard["senderFilter"]>[0]) =>
+        new SubmissionAccessGuard({
+          findById: vi.fn(),
+          listForLegalEntity: vi.fn(),
+        }).senderFilter(account),
     } as unknown as ISubmissionAccessGuard,
     unsold: new UnsoldLotChoiceService({
       choices,
@@ -141,6 +150,7 @@ function setup(options: Setup = {}) {
       lots,
       agreements,
       people: { findById: vi.fn().mockResolvedValue({ name: "Jane Smith" }) },
+      accounts: { findById: vi.fn(async (id: string) => entities.get(id) ?? null) },
       notifier,
       events,
       now,
@@ -214,10 +224,12 @@ function setup(options: Setup = {}) {
       body: JSON.stringify(body),
     });
   const get = (path: string) => app.request(`http://t/submissions/${submissionId}${path}`);
+  const getMine = (path: string) => app.request(`http://t/submissions/mine${path}`);
   return {
     app,
     post,
     get,
+    getMine,
     choices,
     notifier,
     events,
@@ -305,6 +317,122 @@ describe("POST /submissions/:id/unsold-choice", () => {
     });
     expect(res.status).toBe(400);
     expect((await json<{ code: string }>(res)).code).toBe("reserve_below_floor");
+  });
+});
+
+describe("a restricted organisation's unsold lots", () => {
+  const restricted = {
+    role: "owner" as const,
+    sourceKind: "organisation" as const,
+    entityStatus: "restricted" as const,
+  };
+
+  it.each(["owner", "admin"] as const)(
+    "refuses a %s's choice with the state's message, and records nothing",
+    async (role) => {
+      const { post, choices } = setup({ ...restricted, role });
+      const res = await post("/unsold-choice", { choice: "relist" });
+      expect(res.status).toBe(403);
+      expect(await json<{ error: string; code: string }>(res)).toEqual({
+        error:
+          "Choices for works that did not sell are paused for this organisation. Contact us to decide what happens to them.",
+        code: "organisation_paused",
+      });
+      expect(choices.writes).toBe(0);
+    },
+  );
+
+  it("tells the page choices are paused instead of offering the form", async () => {
+    const res = await setup(restricted).get("/after-sale");
+    const body = await json<{ data: { unsold: { canChoose: boolean; choicePaused: boolean } } }>(
+      res,
+    );
+    expect(body.data.unsold).toMatchObject({ canChoose: false, choicePaused: true });
+  });
+
+  it("keeps choices open for an approved organisation", async () => {
+    const { post } = setup({ ...restricted, entityStatus: "approved" });
+    expect((await post("/unsold-choice", { choice: "collect" })).status).toBe(200);
+  });
+});
+
+describe("GET /submissions/mine/unsold-lots", () => {
+  const outcome = (
+    id: string,
+    choice: "requested" | "confirmed" | null,
+    submittedByUserId: string | null,
+    legalEntityId = entityId,
+    day = 20,
+  ) => ({
+    lotId: id,
+    submissionId: `sub-${id}`,
+    title: `Lot ${id}`,
+    endedAt: new Date(`2026-10-${day}T18:00:00Z`),
+    choice,
+    legalEntityId,
+    submittedByUserId,
+  });
+
+  function seeded(role: LegalEntityMemberRole) {
+    const ctx = setup({ role });
+    ctx.choices.outcomes.push(
+      outcome("mine-open", null, "u1", entityId, 22),
+      outcome("theirs-open", null, "u2", entityId, 21),
+      outcome("theirs-asked", "requested", "u2"),
+      outcome("unattributed-open", null, null, entityId, 19),
+      outcome("other-account", null, "u1", otherEntityId),
+    );
+    return ctx;
+  }
+
+  const ids = async (res: Response) =>
+    (await json<{ data: { lotId: string }[] }>(res)).data.map((row) => row.lotId);
+
+  it.each(["owner", "admin"] as const)(
+    "lists every unsold lot of the account for a %s, newest first, with its choice",
+    async (role) => {
+      const res = await seeded(role).getMine("/unsold-lots");
+      expect(res.status).toBe(200);
+      const body = await json<{ data: { lotId: string; choice: string }[]; total: number }>(res);
+      expect(body.total).toBe(4);
+      expect(body.data.map((row) => [row.lotId, row.choice])).toEqual([
+        ["mine-open", "none"],
+        ["theirs-open", "none"],
+        ["theirs-asked", "requested"],
+        ["unattributed-open", "none"],
+      ]);
+    },
+  );
+
+  it("lists only the lots nobody has chosen for yet", async () => {
+    const res = await seeded("owner").getMine("/unsold-lots?choice=none");
+    expect(await ids(res)).toEqual(["mine-open", "theirs-open", "unattributed-open"]);
+  });
+
+  it("shows a consignor only the lots they sent", async () => {
+    const res = await seeded("consignor").getMine("/unsold-lots?choice=none");
+    expect(res.status).toBe(200);
+    expect(await ids(res)).toEqual(["mine-open"]);
+  });
+
+  it.each(["viewer", "finance"] as const)("shows a %s the lots a member sent", async (role) => {
+    const res = await seeded(role).getMine("/unsold-lots?choice=none");
+    expect(await ids(res)).toEqual(["mine-open", "theirs-open"]);
+  });
+
+  it("refuses a buyer agent, who does not follow consignments", async () => {
+    const res = await seeded("buyer_agent").getMine("/unsold-lots");
+    expect(res.status).toBe(403);
+    expect((await json<{ code: string }>(res)).code).toBe("insufficient_entity_role");
+  });
+
+  it("pages with a total, and rejects a page size over 100", async () => {
+    const ctx = seeded("owner");
+    const page = await ctx.getMine("/unsold-lots?limit=2&offset=2");
+    const body = await json<{ data: { lotId: string }[]; total: number }>(page);
+    expect(body.total).toBe(4);
+    expect(body.data.map((row) => row.lotId)).toEqual(["theirs-asked", "unattributed-open"]);
+    expect((await ctx.getMine("/unsold-lots?limit=101")).status).toBe(400);
   });
 });
 

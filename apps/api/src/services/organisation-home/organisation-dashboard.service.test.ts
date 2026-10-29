@@ -1,3 +1,4 @@
+import type { PayoutsDueRow } from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import {
@@ -41,14 +42,17 @@ function fakeReaders() {
       ]),
     },
     payoutsDue: {
-      listDue: vi.fn(async () => [
-        {
-          currency: "GBP",
-          count: 2,
-          amount: "1000.00",
-          nextDate: new Date("2027-01-04T00:00:00Z"),
-        },
-      ]),
+      listDue: vi.fn(
+        async (): Promise<PayoutsDueRow[]> => [
+          {
+            currency: "GBP",
+            count: 2,
+            amount: "1000.00",
+            nextDate: new Date("2027-01-04T00:00:00Z"),
+            overdueSince: null,
+          },
+        ],
+      ),
     },
   } satisfies OrganisationDashboardReaders;
 }
@@ -102,8 +106,20 @@ describe("OrganisationDashboardService", () => {
   it("labels a payout date already past as overdue and never as the next date", async () => {
     const readers = fakeReaders();
     readers.payoutsDue.listDue.mockResolvedValue([
-      { currency: "GBP", count: 1, amount: "700.00", nextDate: new Date("2026-05-08T00:00:00Z") },
-      { currency: "EUR", count: 1, amount: "300.00", nextDate: new Date("2027-01-04T00:00:00Z") },
+      {
+        currency: "GBP",
+        count: 2,
+        amount: "700.00",
+        nextDate: new Date("2027-02-01T00:00:00Z"),
+        overdueSince: new Date("2026-05-08T00:00:00Z"),
+      },
+      {
+        currency: "EUR",
+        count: 1,
+        amount: "300.00",
+        nextDate: new Date("2027-01-04T00:00:00Z"),
+        overdueSince: null,
+      },
     ]);
     const service = new OrganisationDashboardService({
       readers,

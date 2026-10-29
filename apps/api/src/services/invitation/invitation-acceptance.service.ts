@@ -1,4 +1,4 @@
-import { organisationJoinRefusal, organisationStateAllows } from "@auction/domain";
+import { organisationJoinRefusal } from "@auction/domain";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IEntityInvitationRepository } from "@auction/persistence/interfaces";
 import type { InvitationRow } from "@auction/persistence/interfaces";
@@ -61,8 +61,10 @@ export class InvitationAcceptanceService {
       (await this.repo.hasActiveMember(legalEntityId, userId));
     if (alreadyMember) return { state: "already_member", legalEntityId, organisationName };
     const status = await this.repo.findLegalEntityStatus(legalEntityId);
-    if (!status || !organisationStateAllows(status, "accept_invitation"))
-      return { state: "closed" };
+    if (!status) return { state: "closed" };
+    const refusal = organisationJoinRefusal(status);
+    if (refusal)
+      return { state: "organisation_closed", organisationName, message: refusal.message };
     if (!validation.ok) {
       return validation.code === "invitation_expired"
         ? { state: "expired", organisationName }

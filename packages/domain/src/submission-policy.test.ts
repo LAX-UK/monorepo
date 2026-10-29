@@ -21,18 +21,18 @@ describe("sellerSubmissionAccess", () => {
   });
 
   it("lets an organisation under review save drafts but not submit, and says why", () => {
-    for (const status of [
-      "lead",
-      "docs_requested",
-      "docs_received",
-      "under_review",
-      "connect_pending",
-    ] as const) {
+    for (const status of ["lead", "docs_requested", "docs_received", "under_review"] as const) {
       const access = sellerSubmissionAccess({ kind: "organisation", status });
       expect(access.canDraft).toBe(true);
       expect(access.canSubmit).toBe(false);
       expect(access.submitBlockedReason).toMatch(/still checking/);
     }
+  });
+
+  it("lets an organisation setting up payouts save drafts, and says payouts are the wait", () => {
+    const access = sellerSubmissionAccess({ kind: "organisation", status: "connect_pending" });
+    expect(access).toMatchObject({ canDraft: true, canSubmit: false });
+    expect(access.submitBlockedReason).toMatch(/payouts aren't set up/);
   });
 
   it("blocks a restricted, rejected or archived organisation entirely", () => {

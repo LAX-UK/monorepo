@@ -1,6 +1,7 @@
 import {
   type HomeTask,
   type OrganisationHomeModel,
+  entityCapabilitiesOf,
   organisationStatePolicy,
 } from "@auction/domain";
 import { describe, expect, it } from "vitest";
@@ -64,7 +65,6 @@ describe("homeTaskView", () => {
 describe("organisationHomeView", () => {
   const model: OrganisationHomeModel = {
     tasks: [],
-    setup: "documents_under_review",
     state: organisationStatePolicy("under_review", new Set()),
     notices: [],
     shortcuts: ["sell", "invite", "statements"],
@@ -78,12 +78,92 @@ describe("organisationHomeView", () => {
     expect(organisationHomeView({ ...model, tasks: null }, ctx).needsYou).toBeNull();
   });
 
-  it("says documents are under review with the usual wait", () => {
-    expect(organisationHomeView(model, ctx).setup).toMatchObject({
-      tone: "info",
+  it("says documents are under review with the usual wait, from the state policy", () => {
+    const view = organisationHomeView(model, ctx);
+    expect(view.banner).toMatchObject({
+      kind: "info",
       title: "Documents under review.",
+      action: null,
     });
-    expect(organisationHomeView(model, ctx).setup?.detail).toContain("2–3 working days");
+    expect(view.banner?.line).toContain("2–3 working days");
+  });
+
+  it("offers the documents action once: in Needs you, not again on the banner", () => {
+    const owner = entityCapabilitiesOf({ role: "owner" });
+    const requested = { ...model, state: organisationStatePolicy("docs_requested", owner) };
+    expect(organisationHomeView(requested, ctx).banner?.action?.label).toBe("Send documents");
+    const withTask = organisationHomeView({ ...requested, tasks: [{ kind: "documents" }] }, ctx);
+    expect(withTask.banner).toMatchObject({ title: "Documents needed.", action: null });
+    expect(withTask.needsYou?.[0]?.action.label).toBe("Open documents");
+  });
+
+  it("shows no banner when the state has nothing to tell", () => {
+    const approved = { ...model, state: organisationStatePolicy("approved", new Set()) };
+    expect(organisationHomeView(approved, ctx).banner).toBeNull();
+  });
+
+  it("tells the owner of a paused organisation to contact us about unsold works", () => {
+    const view = organisationHomeView(
+      {
+        ...model,
+        notices: [
+          {
+            kind: "unsold_paused",
+            lots: [
+              { id: "l1", title: "Harbour at Dusk" },
+              { id: "l2", title: "Study in Ochre" },
+            ],
+          },
+        ],
+      },
+      ctx,
+    );
+    expect(view.notices).toEqual([
+      {
+        key: "unsold_paused",
+        text: "2 works did not sell.",
+        href: null,
+        action: expect.objectContaining({
+          label: "Contact us to decide what happens to them",
+          href: expect.stringMatching(/^mailto:/),
+        }),
+      },
+    ]);
+  });
+
+  it("shows notices as quiet lines that name who chooses", () => {
+    const one = organisationHomeView(
+      {
+        ...model,
+        notices: [{ kind: "unsold_waiting", lots: [{ id: "l1", title: "Harbour at Dusk" }] }],
+      },
+      ctx,
+    );
+    expect(one.notices).toEqual([
+      {
+        key: "unsold_waiting",
+        text: "Waiting for an owner or admin to choose what happens to “Harbour at Dusk”, which did not sell",
+        href: "/selling/consignments?tab=unsold",
+      },
+    ]);
+    const two = organisationHomeView(
+      {
+        ...model,
+        notices: [
+          {
+            kind: "unsold_waiting",
+            lots: [
+              { id: "l1", title: "Harbour at Dusk" },
+              { id: "l2", title: "Study in Ochre" },
+            ],
+          },
+        ],
+      },
+      ctx,
+    );
+    expect(two.notices[0]?.text).toBe(
+      "Waiting for an owner or admin to choose what happens to 2 unsold works",
+    );
   });
 
   it("labels shortcuts and See all", () => {
@@ -124,7 +204,6 @@ describe("stopped bids activity", () => {
     const view = organisationHomeView(
       {
         tasks: [],
-        setup: null,
         state: organisationStatePolicy("approved", new Set()),
         notices: [],
         shortcuts: [],

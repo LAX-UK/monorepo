@@ -93,6 +93,7 @@ export function SaleroomDetailView({
                   registerToBid={{
                     show: vm.registerToBidShow,
                     buyerEntities: vm.buyerEntities,
+                    registrationPaused: vm.registrationPaused,
                     myRegistrations: vm.myRegistrations,
                     kycApproved: vm.kycApproved,
                     kycFeedback: vm.kycFeedback,

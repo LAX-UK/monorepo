@@ -121,4 +121,51 @@ describe("buildSaleroomPageVM", () => {
     expect(vm.lotVMs).toHaveLength(1);
     expect(vm.lotVMs[0]?.title).toBe("Untitled Study");
   });
+
+  it("does not offer a paused organisation for registration, and tells its buyer agent why", () => {
+    const vm = buildSaleroomPageVM({
+      shell,
+      lotsPage,
+      filteredLots: [baseLot],
+      secondary,
+      query: {
+        pageRaw: undefined,
+        catalogSearch: "",
+        catalogSort: "lot",
+        statusFilter: null,
+        isCatalogLoadAll: false,
+        pageNum: 1,
+        layoutViewRaw: "grid",
+        urlView: "grid",
+      },
+      layoutView: "grid",
+      session: null,
+      actingMemberships: [
+        {
+          id: "le-h",
+          displayName: "Harrington Advisors",
+          role: "buyer_agent",
+          status: "restricted",
+        },
+        { id: "le-n", displayName: "Northbank Gallery", role: "buyer_agent", status: "approved" },
+        { id: "le-c", displayName: "Crowley Fine Art", role: "viewer", status: "under_review" },
+      ],
+      orgModuleEnabled: true,
+      mySaleRegs: [],
+      registeredBidderCount: null,
+      initialSaleroomStatus: { status: "none", currentLotId: null },
+      categoryLabel: null,
+      categoryLabels: [],
+      now: new Date("2026-01-15T12:00:00Z"),
+    });
+
+    expect(vm.buyerEntities.map((entity) => entity.id)).toEqual(["le-n"]);
+    expect(vm.registrationPaused).toEqual([
+      {
+        id: "le-h",
+        title: "Bidding for Harrington Advisors is paused",
+        line: "We can tell you why and when it resumes.",
+      },
+    ]);
+  });
 });

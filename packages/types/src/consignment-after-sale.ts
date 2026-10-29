@@ -75,6 +75,17 @@ export type ConsignmentWithdrawalPathKind =
   | "unavailable";
 
 /** What the seller sees about an unsold lot. */
+/** One of the account's consigned lots that ended without selling, and what was chosen. */
+export type SellerUnsoldOutcome = {
+  lotId: string;
+  submissionId: string;
+  title: string;
+  /** When the sale it did not sell in ended (ISO 8601). */
+  endedAt: string;
+  /** `none` while nobody has chosen. */
+  choice: UnsoldLotChoiceStatus | "none";
+};
+
 export type SellerUnsoldLotView = {
   lotId: string;
   /** The lot's reserve when it ended; a relist may ask for a lower one. */
@@ -85,6 +96,8 @@ export type SellerUnsoldLotView = {
   choice: UnsoldLotChoice | null;
   /** The person may choose or change the choice for this account (capability matrix). */
   canChoose: boolean;
+  /** The organisation's state pauses choices (restricted, unchecked or closed); LAX decides. */
+  choicePaused: boolean;
 };
 
 /** After-sale facts for one consignment, for the seller. */
@@ -102,7 +115,7 @@ export type SellerAfterSaleView = {
 
 /** After-sale facts for one consignment, for staff. */
 export type StaffAfterSaleView = {
-  unsold: Omit<SellerUnsoldLotView, "canChoose"> | null;
+  unsold: Omit<SellerUnsoldLotView, "canChoose" | "choicePaused"> | null;
   withdrawal: LotWithdrawalRequestState | null;
 };
 

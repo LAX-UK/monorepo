@@ -55,6 +55,50 @@ describe("biddingAccountPolicy", () => {
     expect(screen.getByRole("button", { name: "Switch to personal" })).toBeTruthy();
   });
 
+  it.each([
+    [
+      "documents_under_review",
+      "Bidding for Northbank Gallery isn't open yet",
+      "Bidding for Northbank Gallery opens once we've checked its documents. You can still bid in your own name.",
+    ],
+    [
+      "documents_requested",
+      "Bidding for Northbank Gallery isn't open yet",
+      "It opens once Northbank Gallery has sent its documents and we've checked them. You can still bid in your own name.",
+    ],
+    [
+      "restricted",
+      "Bidding for Northbank Gallery is paused",
+      "We can tell you why and when it resumes. Contact us. You can still bid in your own name.",
+    ],
+  ] as const)("says why bidding is closed while the organisation is %s", (state, title, detail) => {
+    const decision = biddingAccountPolicy.evaluate(
+      policyContext({
+        biddingAccount: {
+          kind: "organisation",
+          name: "Northbank Gallery",
+          allowed: false,
+          reason: "organisation_state",
+          state,
+          canSwitchToPersonal: true,
+        },
+      }),
+    );
+    expect(decision.kind).toBe("block");
+    if (decision.kind !== "block") return;
+    expect(decision.presentation).toMatchObject({ tone: "info", title });
+    expect(decision.presentation.action).toBeUndefined();
+    render(<p>{decision.presentation.detail}</p>);
+    const text = screen.getByText((_, el) => el?.tagName === "P");
+    expect(text.textContent).toBe(detail);
+    expect(text.textContent).not.toMatch(/can bid now/i);
+    // Only LAX can lift a pause, so that state links to us in the sentence; one button remains.
+    const contact = screen.queryByRole("link", { name: "Contact us" });
+    expect(contact?.getAttribute("href")?.startsWith("mailto:") ?? false).toBe(
+      state === "restricted",
+    );
+  });
+
   it("leaves out the switch when there is no personal account", () => {
     const decision = biddingAccountPolicy.evaluate(
       policyContext({

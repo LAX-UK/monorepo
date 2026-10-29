@@ -1,19 +1,22 @@
-import type { HomeTaskView } from "@/lib/organisation-home/organisation-home-view";
+import type { HomeNoticeView, HomeTaskView } from "@/lib/organisation-home/organisation-home-view";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import { CircleCheck } from "lucide-react";
 import Link from "next/link";
+import { HomeNotices } from "./home-notices";
 import { HomeSectionHeading } from "./home-section-heading";
 
 type Props = {
   tasks: readonly HomeTaskView[];
+  /** Things to know that are not this member's to do, as quiet lines under the tasks. */
+  notices?: readonly HomeNoticeView[];
 };
 
 /**
  * "Needs you": one row per task with one button; the first is the primary action. With nothing
- * left it collapses to a single calm line.
+ * left it collapses to a single calm line. Notices follow as information, never as tasks.
  */
-export function HomeNeedsYou({ tasks }: Props) {
+export function HomeNeedsYou({ tasks, notices = [] }: Props) {
   return (
     <Surface
       variant="section"
@@ -56,6 +59,11 @@ export function HomeNeedsYou({ tasks }: Props) {
           ))}
         </ul>
       )}
+      {notices.length > 0 ? (
+        <div className="mx-4 border-t border-border-hairline pt-4 pb-5 sm:mx-6">
+          <HomeNotices notices={notices} />
+        </div>
+      ) : null}
     </Surface>
   );
 }

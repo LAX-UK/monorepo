@@ -6,7 +6,9 @@ import { entityCapabilitiesOf } from "./entity-capabilities.js";
 import {
   ORGANISATION_ACTIONS,
   type OrganisationAction,
+  organisationBannerActors,
   organisationStatePolicy,
+  organisationUnsoldChoiceRefusal,
 } from "./organisation-state-policy.js";
 import { organisationBidRefusalMessage } from "./organisation-state-refusal.js";
 
@@ -164,6 +166,47 @@ describe("bidding and registering share one rule", () => {
   it("explains every refusal and nothing else", () => {
     for (const status of legalEntityStatuses) {
       expect(organisationBidRefusalMessage(status) === null).toBe(buyerEntityCanBid(status));
+    }
+  });
+});
+
+describe("choosing what happens to unsold works", () => {
+  it.each(legalEntityStatuses)("is open exactly where submitting is (%s)", (status) => {
+    const { actions } = organisationStatePolicy(status, NONE);
+    expect(actions.choose_unsold).toBe(actions.submit);
+  });
+
+  it("refuses a restricted organisation with a message that says how to decide", () => {
+    expect(organisationUnsoldChoiceRefusal("restricted")).toEqual({
+      code: "organisation_unsold_choice_paused",
+      message:
+        "Choices for works that did not sell are paused for this organisation. Contact us to decide what happens to them.",
+    });
+    expect(organisationUnsoldChoiceRefusal("approved")).toBeNull();
+  });
+});
+
+describe("who can act on a banner", () => {
+  it("names the roles that receive the banner as something to do", () => {
+    expect(organisationBannerActors("documents_requested")).toEqual(["owner", "admin"]);
+    expect(organisationBannerActors("payouts_not_set_up")).toEqual(["owner", "admin", "finance"]);
+  });
+
+  it("names nobody where only LAX can act", () => {
+    for (const key of [
+      "documents_under_review",
+      "restricted",
+      "not_approved",
+      "archived",
+    ] as const) {
+      expect(organisationBannerActors(key)).toEqual([]);
+    }
+  });
+
+  it("agrees with the audience: each actor is asked, everyone else is told", () => {
+    for (const role of legalEntityMemberRoles) {
+      const asked = organisationStatePolicy("docs_requested", forRole(role)).banner?.audience;
+      expect(asked === "act").toBe(organisationBannerActors("documents_requested").includes(role));
     }
   });
 });

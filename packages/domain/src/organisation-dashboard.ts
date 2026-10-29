@@ -8,6 +8,7 @@ import {
 } from "./consignment-progress.js";
 import { type EntityActor, type EntityCapability, entityActorCan } from "./entity-capabilities.js";
 import { type EstimateTotal, type MoneyTotal, sumEstimatesByCurrency } from "./money-totals.js";
+import type { OrganisationAction } from "./organisation-state-policy.js";
 import { type SubmissionSenderScope, submissionSenderScope } from "./submission-visibility.js";
 
 /** One upcoming sale with some of the organisation's works in it. */
@@ -345,10 +346,20 @@ const UPCOMING_SALES_LIMIT = 4;
 /** What a new organisation is pointed to instead of empty figures. */
 export type FirstRunAction = "sell" | "invite";
 
-const FIRST_RUN_ACTIONS: readonly { action: FirstRunAction; capability: EntityCapability }[] = [
-  { action: "sell", capability: "entity.submissions.create" },
-  { action: "invite", capability: "entity.members.manage" },
+const FIRST_RUN_ACTIONS: readonly {
+  action: FirstRunAction;
+  capability: EntityCapability;
+  /** What the organisation's own state must allow for the step to be offered. */
+  requires: OrganisationAction;
+}[] = [
+  { action: "sell", capability: "entity.submissions.create", requires: "submit" },
+  { action: "invite", capability: "entity.members.manage", requires: "invite" },
 ];
+
+/** Whether the organisation's state allows an action. */
+export type OrganisationAllows = (action: OrganisationAction) => boolean;
+
+const ALLOWS_EVERYTHING: OrganisationAllows = () => true;
 
 function tileSpecsFor(actor: EntityActor) {
   return TILE_SPECS.filter((spec) => spec.applies(actor)).slice(0, MAX_TILES);
@@ -394,17 +405,20 @@ function isFirstRun(actor: EntityActor, figures: DashboardFigures): boolean {
 /**
  * The business dashboard for one member, from figures alone. Tasks stay first on Home; this is
  * what follows: up to four figures, the next sales and works by stage, each only when the role
- * may see it. A new organisation with nothing yet gets its first steps instead.
+ * may see it. A new organisation with nothing yet gets its first steps instead, offering only
+ * what both the role and the organisation's state allow (a restricted organisation is never
+ * invited to sell).
  */
 export function buildOrganisationDashboard(
   actor: EntityActor,
   figures: DashboardFigures,
+  allows: OrganisationAllows = ALLOWS_EVERYTHING,
 ): OrganisationDashboardModel {
   if (isFirstRun(actor, figures)) {
     return {
       firstRun: {
-        actions: FIRST_RUN_ACTIONS.filter(({ capability }) =>
-          entityActorCan(actor, capability),
+        actions: FIRST_RUN_ACTIONS.filter(
+          ({ capability, requires }) => entityActorCan(actor, capability) && allows(requires),
         ).map(({ action }) => action),
       },
       tiles: [],

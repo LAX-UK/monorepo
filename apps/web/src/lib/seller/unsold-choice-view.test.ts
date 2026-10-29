@@ -9,6 +9,7 @@ const base: SellerUnsoldLotView = {
   currency: "GBP",
   choice: null,
   canChoose: true,
+  choicePaused: false,
 };
 
 function choice(overrides: Partial<UnsoldLotChoice>): UnsoldLotChoice {
@@ -67,6 +68,20 @@ describe("unsoldChoiceViewModel", () => {
       message:
         "An owner or admin of Northbank Gallery chooses what happens next. You'll see their choice here.",
     });
+  });
+
+  it("offers no form while the organisation's state pauses choices, only a way to contact us", () => {
+    const vm = unsoldChoiceViewModel(
+      { ...base, canChoose: false, choicePaused: true },
+      { organisationName: "Northbank Gallery" },
+    );
+    expect(vm).toMatchObject({
+      mode: "paused",
+      message:
+        "Choices for works that did not sell are paused for Northbank Gallery, so we'll decide what happens next with you.",
+      contact: { label: "Contact us" },
+    });
+    expect(vm.mode === "paused" && vm.contact.href.startsWith("mailto:")).toBe(true);
   });
 
   it("shows a request waiting for the specialist, and who may change it", () => {

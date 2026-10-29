@@ -1,3 +1,4 @@
+import { unsoldPausedContact } from "@/lib/presenters/organisation-state/organisation-state-copy";
 import { sellerMoney } from "@/lib/seller/consignment-agreement-view";
 import { formatDate } from "@/lib/ui/format";
 import type { SellerUnsoldLotView, UnsoldLotChoice, UnsoldLotChoiceKind } from "@auction/types";
@@ -46,6 +47,8 @@ export type UnsoldChoiceViewModel =
   | { mode: "choose"; reserveHint: string }
   /** Nothing chosen yet; someone else in the organisation chooses. */
   | { mode: "waiting_on_admin"; message: string }
+  /** Nothing chosen yet, and the organisation's state pauses choices: we decide with it. */
+  | { mode: "paused"; message: string; contact: { label: string; href: string } }
   /** The choice waits for a specialist. */
   | {
       mode: "requested";
@@ -74,6 +77,10 @@ export const UNSOLD_CHOICE_INTRO: Record<
       "Your work did not sell this time. Tell us what you would like, and a specialist will confirm it with you.",
   },
   waiting_on_admin: {
+    heading: "What happens next",
+    intro: "Your work did not sell this time.",
+  },
+  paused: {
     heading: "What happens next",
     intro: "Your work did not sell this time.",
   },
@@ -143,6 +150,14 @@ export function unsoldChoiceViewModel(
       canChange: view.canChoose,
       reserveHint: reserveHint(view),
       history: history(choice),
+    };
+  }
+  if (view.choicePaused) {
+    const contact = unsoldPausedContact();
+    return {
+      mode: "paused",
+      message: `Choices for works that did not sell are paused for ${account.organisationName ?? "the organisation"}, so we'll decide what happens next with you.`,
+      contact: { label: "Contact us", href: contact.href },
     };
   }
   if (view.canChoose) return { mode: "choose", reserveHint: reserveHint(view) };

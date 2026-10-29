@@ -17,6 +17,8 @@ export type InvitationLinkPreview =
   | { state: "already_member"; legalEntityId: string; organisationName: string }
   | { state: "expired"; organisationName: string }
   | { state: "closed" }
+  /** The organisation is not taking members now; `message` is the server's words for why. */
+  | { state: "organisation_closed"; organisationName: string; message: string }
   | { state: "other_email" }
   /** The API could not answer; nothing is known about the invitation. */
   | { state: "unavailable" };
@@ -51,6 +53,11 @@ const previewSchema = z.object({
     }),
     z.object({ state: z.literal("expired"), organisationName: z.string() }),
     z.object({ state: z.literal("closed") }),
+    z.object({
+      state: z.literal("organisation_closed"),
+      organisationName: z.string(),
+      message: z.string(),
+    }),
     z.object({ state: z.literal("other_email") }),
   ]),
 });

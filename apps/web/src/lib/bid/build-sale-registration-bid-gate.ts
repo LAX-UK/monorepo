@@ -1,3 +1,4 @@
+import { splitBuyerMembershipsByState } from "@/lib/bid/buyer-entity-state";
 import type { SaleRegistrationBidGateContext } from "@/lib/bid/policies/types";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { entityRoleCan } from "@auction/domain";
@@ -21,15 +22,12 @@ type Input = {
   kycFeedback?: KycUserFeedbackDto | null;
 };
 
+/** Accounts the person may register for: their role bids, and the account's state allows it. */
 function toBuyerEntities(
   memberships: LegalEntitySummary[],
 ): SaleRegistrationBidGateContext["buyerEntities"] {
-  return memberships
-    .filter(
-      (m) =>
-        (m.status === "approved" || m.status === "restricted") &&
-        entityRoleCan(m.role, "entity.bid.place"),
-    )
+  return splitBuyerMembershipsByState(memberships)
+    .open.filter((m) => entityRoleCan(m.role, "entity.bid.place"))
     .map((m) => ({
       id: m.id,
       displayName: m.displayName,

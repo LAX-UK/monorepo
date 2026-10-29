@@ -101,6 +101,8 @@ export type {
   UnsoldLotChoiceDecisionRow,
   UnsoldLotChoiceRequestRow,
   UnsoldLotOutcomeKey,
+  UnsoldOutcomeListFilter,
+  UnsoldOutcomeRow,
 } from "./unsold-lot-choice.repository.js";
 export type { ConsignmentMoveRow, IConsignmentMoveWriter } from "./consignment-move.writer.js";
 export type { ISellerIdentityReminderStore } from "./seller-identity-reminder.store.js";
@@ -917,6 +919,7 @@ export type {
   CurrencyCountRow,
   IConsignmentStatusCountsReader,
   IPayoutsDueReader,
+  PayoutsDueRow,
   ISoldWorksReader,
   IUpcomingSaleWorksReader,
   UpcomingSaleWorksRow,

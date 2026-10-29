@@ -37,6 +37,8 @@ type Props = {
     kycFeedback?: KycUserFeedbackDto | null;
     orgModuleEnabled?: boolean;
     saleCurrency?: string;
+    /** Organisations whose state closes registration, said before the person tries. */
+    registrationPaused?: readonly { id: string; title: string; line: string }[];
   };
   hasApprovedRegistration?: boolean;
 };
@@ -141,6 +143,15 @@ export function SaleroomHeroActionRow({
           {caption}
         </RegisterHelperText>
       ) : null}
+      {isAuthenticated && registerToBid?.show
+        ? (registerToBid.registrationPaused ?? []).map((paused) => (
+            <RegisterHelperText key={paused.id} className="max-w-xl text-on-surface-variant">
+              <span data-testid="registration-paused">
+                {paused.title}. {paused.line}
+              </span>
+            </RegisterHelperText>
+          ))
+        : null}
       <div className="flex flex-wrap items-end justify-end gap-3">
         <SaleroomFollowToggle
           saleId={saleId}

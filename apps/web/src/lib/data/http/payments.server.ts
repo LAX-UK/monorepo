@@ -6,6 +6,7 @@ export type {
   MyPaymentsListParams,
 } from "@/lib/data/http/payments.schema";
 export {
+  ENTITY_WORKS_PAGING,
   getServerBuyerComplianceGate,
   getServerEntityPayments,
   getServerEntityWonLots,

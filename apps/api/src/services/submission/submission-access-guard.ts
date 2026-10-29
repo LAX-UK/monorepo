@@ -14,9 +14,6 @@ import type {
   SubmissionMutationAccess,
 } from "../interfaces/submission-routes/submission-access.js";
 
-/** Upper bound for the ids a member may see, used to narrow lists keyed by submission. */
-const VISIBLE_IDS_LIMIT = 1000;
-
 /** The submission access rule over the submissions repository (see `ISubmissionAccessGuard`). */
 export class SubmissionAccessGuard implements ISubmissionAccessGuard {
   constructor(
@@ -76,9 +73,13 @@ export class SubmissionAccessGuard implements ISubmissionAccessGuard {
   ): Promise<T[]> {
     const visibleTo = this.senderFilter(account);
     if (!visibleTo) return [...rows];
+    const wanted = [...new Set(rows.map((row) => row.submissionId))];
+    if (wanted.length === 0) return [];
+    // Ask only about the rows' own submissions, so a long list is never cut at a fixed bound.
     const visible = await this.submissions.listForLegalEntity(account.legalEntityId, {
       visibleTo,
-      limit: VISIBLE_IDS_LIMIT,
+      ids: wanted,
+      limit: wanted.length,
       offset: 0,
     });
     const ids = new Set(visible.map((s) => s.id));

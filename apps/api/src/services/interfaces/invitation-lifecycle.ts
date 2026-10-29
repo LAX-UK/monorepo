@@ -29,6 +29,11 @@ export type InvitationPreview =
   | { state: "expired"; organisationName: string }
   /** Withdrawn, used by someone else, or never an organisation invitation. */
   | { state: "closed" }
+  /**
+   * The organisation is not taking members in its current state (restricted, rejected or
+   * archived), with the refusal's client message, the same one accepting would give.
+   */
+  | { state: "organisation_closed"; organisationName: string; message: string }
   /** Sent to another email address than the signed-in person's. */
   | { state: "other_email" };
 

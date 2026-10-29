@@ -1,16 +1,17 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
-import { EntityStatusBanner } from "@/components/dashboard/entity-status-banner";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import { statusBadgeVariant, statusLabel, subkindLabel } from "@/components/organisations/labels";
 import { OrganisationSettingsUnavailable } from "@/components/organisations/organisation-settings-unavailable";
+import { OrganisationStateBanner } from "@/components/organisations/organisation-state-banner";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { resolveActiveOrganisationActor } from "@/lib/legal-entity/active-organisation.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { organisationTabsFor } from "@/lib/navigation/organisation-tabs";
+import { loadOrganisationStateBanner } from "@/lib/organisations/organisation-state-banner.server";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -63,6 +64,9 @@ export default async function OrganisationLayout({ children }: { children: React
     );
   }
 
+  // The same state banner as Home, for the same audience: only people who can act are asked.
+  const banner = entity ? await loadOrganisationStateBanner(active.actor, entity) : null;
+
   return (
     <DashboardPage>
       <div className="mx-auto max-w-5xl space-y-6">
@@ -92,7 +96,7 @@ export default async function OrganisationLayout({ children }: { children: React
           exactHrefs={[CLIENT_ROUTES.organisation]}
           items={tabs.map((tab) => ({ href: tab.href, label: tab.label }))}
         />
-        {entity ? <EntityStatusBanner acting={{ ...member, status: entity.status }} /> : null}
+        {banner ? <OrganisationStateBanner banner={banner} /> : null}
         <div className="min-w-0 space-y-6">{children}</div>
       </div>
     </DashboardPage>

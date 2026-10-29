@@ -8,6 +8,7 @@ import { OrgWorksList } from "@/components/dashboard/seller/org-works-list";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { describeDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import {
+  ENTITY_WORKS_PAGING,
   type EntityWonLot,
   type MyPaymentRow,
   getServerEntityPayments,
@@ -51,9 +52,12 @@ export default async function SellerWorksPage() {
   ]);
 
   let wins: EntityWonLot[] = [];
+  let winsComplete = true;
   let winsFailure = null;
-  if (winsResult.status === "fulfilled") wins = winsResult.value;
-  else {
+  if (winsResult.status === "fulfilled") {
+    wins = winsResult.value.rows;
+    winsComplete = winsResult.value.complete;
+  } else {
     winsFailure = describeDashboardSliceFailure(
       winsResult.reason,
       "portfolio",
@@ -101,7 +105,14 @@ export default async function SellerWorksPage() {
               }
             />
           ) : (
-            <OrgWorksList rows={rows} />
+            <>
+              <OrgWorksList rows={rows} />
+              {winsComplete ? null : (
+                <p className="mt-4 font-body text-sm text-on-surface-variant">
+                  Showing the latest {ENTITY_WORKS_PAGING.maxRows.toLocaleString("en-GB")} works.
+                </p>
+              )}
+            </>
           )}
         </DashboardSection>
       )}

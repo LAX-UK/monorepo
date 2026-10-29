@@ -1,4 +1,4 @@
-import type { LegalEntityStatus, LotStatus } from "@auction/types";
+import type { LegalEntityStatus } from "@auction/types";
 import { roleBidsThroughAuthorisation } from "./bid-authority.js";
 import type { ConsignmentChecklist } from "./consignment-checklist.js";
 import {
@@ -17,9 +17,10 @@ import { type OrganisationSetupState, organisationSetupState } from "./organisat
 import {
   type OrganisationAction,
   type OrganisationStatePolicy,
+  organisationStateAllows,
   organisationStatePolicy,
 } from "./organisation-state-policy.js";
-import { type UnsoldChoiceState, unsoldChoiceAwaitingSeller } from "./unsold-lot-choice.js";
+import type { UnsoldChoiceState } from "./unsold-lot-choice.js";
 
 /** A thing on Home that a task or an activity line is about. */
 export type HomeSubject = { id: string; title: string };
@@ -35,7 +36,10 @@ export type OrganisationHomeFacts = {
   consignments: ReadonlyArray<HomeSubject & { checklist: ConsignmentChecklist }>;
   /** Submissions a specialist sent back, with the specialist's note. */
   changesRequested: ReadonlyArray<HomeSubject & { note: string | null }>;
-  /** Consigned lots that have ended, with whether they sold and what the seller chose. */
+  /**
+   * Consigned lots that ended without selling (`lotEndedUnsold`, read for the account), with what
+   * has been chosen for each.
+   */
   unsoldLots: ReadonlyArray<HomeSubject & UnsoldLotState>;
   /** The organisation's won lots that are not paid yet (for a buyer agent, their own wins). */
   purchasesAwaitingPayment: readonly HomeSubject[];
@@ -47,12 +51,8 @@ export type OrganisationHomeFacts = {
   hasWorkAwaitingPayout: boolean;
 };
 
-/** A finished lot as the unsold task reads it. */
-export type UnsoldLotState = {
-  status: LotStatus;
-  winnerId: string | null;
-  choice: UnsoldChoiceState;
-};
+/** An unsold lot as the unsold task reads it: whether anyone has chosen yet. */
+export type UnsoldLotState = { choice: UnsoldChoiceState };
 
 /** One thing on "Needs you". Each has one button; it disappears when done. */
 export type HomeTask =
@@ -83,10 +83,10 @@ function capability(name: EntityCapability) {
 
 const DOCUMENT_STATES: ReadonlySet<OrganisationSetupState> = new Set(["documents_requested"]);
 
-/** Lots that ended without a buyer and have no choice yet; a made choice clears the task. */
+/** Unsold lots nobody has chosen for yet; a made choice clears the task. */
 function lotsAwaitingChoice(facts: Pick<OrganisationHomeFacts, "unsoldLots">): HomeSubject[] {
   return facts.unsoldLots
-    .filter((lot) => unsoldChoiceAwaitingSeller(lot, lot.choice))
+    .filter((lot) => lot.choice === "none")
     .map(({ id, title }) => ({ id, title }));
 }
 
@@ -138,6 +138,7 @@ const TASK_SPECS: readonly TaskSpec[] = [
   },
   {
     kind: "unsold",
+    requires: "choose_unsold",
     allowed: capability("entity.consignments.after_sale"),
     collect: (facts) => {
       const lots = lotsAwaitingChoice(facts);
@@ -194,18 +195,27 @@ export function homeTasks(facts: OrganisationHomeFacts): HomeTask[] {
 }
 
 /** Something to know that is not the member's to do. */
-export type HomeNotice = { kind: "unsold_waiting"; lots: HomeSubject[] };
+export type HomeNotice =
+  /** A lot waits for an owner's or admin's choice. */
+  | { kind: "unsold_waiting"; lots: HomeSubject[] }
+  /** The organisation's state pauses choices, so LAX decides with it. */
+  | { kind: "unsold_paused"; lots: HomeSubject[] };
 
 /**
- * A consignor sees that a lot is waiting for an administrator's choice, as information; the
- * people who can choose get the task instead.
+ * Unsold lots as information, never as a task:
+ * - a consignor (who follows but does not choose) sees that the lots wait for an owner or admin;
+ * - while the organisation's state pauses choices, the people who would choose are told to
+ *   contact us instead of being given a task. Nobody else is told an owner will choose, since
+ *   no one in the organisation can.
  */
 export function homeNotices(facts: OrganisationHomeFacts): HomeNotice[] {
+  const lots = lotsAwaitingChoice(facts);
+  if (lots.length === 0) return [];
   const follows = entityActorCan({ role: facts.actor.role }, "entity.consignments.read");
   const chooses = entityActorCan({ role: facts.actor.role }, "entity.consignments.after_sale");
-  if (!follows || chooses) return [];
-  const lots = lotsAwaitingChoice(facts);
-  return lots.length > 0 ? [{ kind: "unsold_waiting", lots }] : [];
+  const open = organisationStateAllows(facts.organisation.status, "choose_unsold");
+  if (!open) return chooses ? [{ kind: "unsold_paused", lots }] : [];
+  return follows && !chooses ? [{ kind: "unsold_waiting", lots }] : [];
 }
 
 /** A shortcut on Home: a page the people who run the organisation use often. */
@@ -304,33 +314,10 @@ export function homeActivityArchive(actor: EntityActor): HomeActivityArchive | n
   return ARCHIVE_SPECS.find((spec) => canRead(actor, spec.capability))?.archive ?? null;
 }
 
-/**
- * Who each setup state concerns. Documents and approval concern everyone in the organisation;
- * payouts concern only the people who sell or settle, so a buyer agent is not told about them.
- */
-const SETUP_AUDIENCE: Record<OrganisationSetupState, readonly EntityCapability[] | "everyone"> = {
-  documents_requested: "everyone",
-  documents_under_review: "everyone",
-  not_approved: "everyone",
-  payouts_not_set_up: ["entity.consignments.read", "entity.connect.operate"],
-};
-
-/** The setup line this member sees, or `null`. */
-export function homeSetupState(
-  facts: Pick<OrganisationHomeFacts, "actor" | "organisation">,
-): OrganisationSetupState | null {
-  const state = organisationSetupState(facts.organisation);
-  if (!state) return null;
-  const audience = SETUP_AUDIENCE[state];
-  if (audience === "everyone") return state;
-  return audience.some((name) => canRead(facts.actor, name)) ? state : null;
-}
-
 /** Home for one member, built from facts alone. */
 export type OrganisationHomeModel = {
   /** `null` when the role has nothing it could ever be asked to do (the section is hidden). */
   tasks: HomeTask[] | null;
-  setup: OrganisationSetupState | null;
   /** What the organisation's state allows and tells this member (banner, first-run message). */
   state: OrganisationStatePolicy;
   /** Things to know that are not this member's to do. */
@@ -352,13 +339,17 @@ export function buildOrganisationHome(
   figures: DashboardFigures | null = null,
 ): OrganisationHomeModel {
   const askable = homeTaskKindsFor(facts.actor).length > 0;
-  const dashboard = figures ? buildOrganisationDashboard(facts.actor, figures) : null;
+  const state = organisationStatePolicy(
+    facts.organisation.status,
+    entityCapabilitiesOf(facts.actor),
+    { payoutsReady: facts.organisation.payoutsReady },
+  );
+  const dashboard = figures
+    ? buildOrganisationDashboard(facts.actor, figures, (action) => state.actions[action])
+    : null;
   return {
     tasks: askable ? homeTasks(facts) : null,
-    setup: homeSetupState(facts),
-    state: organisationStatePolicy(facts.organisation.status, entityCapabilitiesOf(facts.actor), {
-      payoutsReady: facts.organisation.payoutsReady,
-    }),
+    state,
     notices: homeNotices(facts),
     shortcuts: dashboard?.firstRun ? [] : homeShortcuts(facts.actor, facts.organisation.status),
     activity: homeActivity(activity, facts.actor),

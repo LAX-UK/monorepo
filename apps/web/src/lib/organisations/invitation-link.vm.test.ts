@@ -78,6 +78,28 @@ describe("buildInvitationLinkView", () => {
     expect(view.accept).toBeNull();
   });
 
+  it("says an organisation isn't taking members in the server's words, with no Accept", () => {
+    const view = buildInvitationLinkView({
+      preview: {
+        state: "organisation_closed",
+        organisationName: "Harrington Advisors",
+        message: "This organisation can't add members right now.",
+      },
+      pagePath: PAGE,
+      failedBefore: true,
+    });
+    expect(view).toMatchObject({
+      title: "Harrington Advisors isn't taking new members",
+      description:
+        "This organisation can't add members right now. If you think this is a mistake, ask the person who invited you.",
+      art: { kind: "tile", initials: "HA" },
+      accept: null,
+      primary: null,
+      secondary: { label: "Go to your invitations" },
+      retryNotice: null,
+    });
+  });
+
   it("lets the person retry a page that could not be read", () => {
     const view = buildInvitationLinkView({
       preview: { state: "unavailable" },

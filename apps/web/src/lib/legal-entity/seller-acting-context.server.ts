@@ -1,7 +1,12 @@
 import "server-only";
 
 import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
-import { type EntityActor, type EntityCapability, entityActorCan } from "@auction/domain";
+import {
+  type EntityActor,
+  type EntityCapability,
+  entityActorCan,
+  sellerSubmissionAccess,
+} from "@auction/domain";
 import type { LegalEntitySummary, StaffRoles } from "@auction/types";
 import { redirect } from "next/navigation";
 
@@ -45,6 +50,16 @@ export async function resolveSellerWorkspaceContext(
 /** A person always holds every capability on their own profile; organisations follow the matrix. */
 export function sellerCan(ctx: SellerWorkspaceContext, capability: EntityCapability): boolean {
   return ctx.actor === null || entityActorCan(ctx.actor, capability);
+}
+
+/**
+ * Whether "Sell a work" is offered: the role may hand in work, and the account's state lets it
+ * prepare one (an organisation under review may draft; a restricted or closed one may not).
+ */
+export function sellerCanStartSubmission(ctx: SellerWorkspaceContext): boolean {
+  if (!sellerCan(ctx, "entity.submissions.create")) return false;
+  const account = ctx.memberships.find((membership) => membership.id === ctx.sellerEntityId);
+  return account ? sellerSubmissionAccess(account).canDraft : false;
 }
 
 /** Sends a member whose role lacks `capability` back to the Selling overview. */

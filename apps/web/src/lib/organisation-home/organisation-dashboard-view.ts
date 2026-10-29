@@ -1,4 +1,5 @@
 import { CLIENT_ROUTES, organisationHref } from "@/lib/navigation/client-routes";
+import { organisationFirstRunCopy } from "@/lib/presenters/organisation-state/organisation-state-copy";
 import { formatDate, formatKpiMoney, formatMoney } from "@/lib/ui/format";
 import {
   CONSIGNMENT_PROGRESS_STAGES,
@@ -7,6 +8,7 @@ import {
   type FirstRunAction,
   type MoneyTotal,
   type OrganisationDashboardModel,
+  type OrganisationHomeFirstRunKey,
   type UpcomingSaleFigure,
 } from "@auction/domain";
 import { salePath } from "@auction/types";
@@ -70,6 +72,15 @@ const money = (totals: readonly MoneyTotal[]) =>
 const estimateRange = (estimate: EstimateTotal) =>
   `${formatKpiMoney(estimate.low, estimate.currency)}–${formatKpiMoney(estimate.high, estimate.currency)}`;
 
+/** "Overdue since 12 Oct 2026 · next 4 Nov 2026": both dates when one is past and one ahead. */
+function payoutDatesLine(overdueSince: Date | null, nextDate: Date | null): string[] {
+  if (overdueSince && nextDate) {
+    return [`Overdue since ${formatDate(overdueSince)} · next ${formatDate(nextDate)}`];
+  }
+  if (overdueSince) return [`Overdue since ${formatDate(overdueSince)}`];
+  return nextDate ? [`Next on ${formatDate(nextDate)}`] : [];
+}
+
 type TileViewBuilder<K extends DashboardTile["kind"]> = (
   tile: Extract<DashboardTile, { kind: K }>,
   ctx: Ctx,
@@ -117,7 +128,8 @@ const TILE_VIEWS: { [K in DashboardTile["kind"]]: TileViewBuilder<K> } = {
   payouts_due: (tile) => ({
     label: "Payouts due",
     figures: money(tile.totals),
-    supporting: tile.nextDate ? [`Next on ${formatDate(tile.nextDate)}`] : [],
+    // A date already past is never offered as the next one; it reads as overdue instead.
+    supporting: payoutDatesLine(tile.overdueSince, tile.nextDate),
     emptyText: "No payouts due",
     description: "Payouts scheduled or on their way to the bank account, after fees.",
     href: CLIENT_ROUTES.payouts,
@@ -204,32 +216,19 @@ function upcomingSaleView(sale: UpcomingSaleFigure): UpcomingSaleView {
   };
 }
 
-/** First steps, by the first thing the role can do. */
-const FIRST_RUN_COPY: Record<FirstRunAction | "none", (ctx: Ctx) => Omit<FirstRunView, "actions">> =
-  {
-    sell: (ctx) => ({
-      title: `Get ${ctx.organisationName} started`,
-      description:
-        "Send a first work to our specialists. Sales, payouts and bids show here as they happen.",
-    }),
-    invite: (ctx) => ({
-      title: `Get ${ctx.organisationName} started`,
-      description: "Invite your team. Sales, payouts and bids show here as they happen.",
-    }),
-    none: (ctx) => ({
-      title: "Nothing here yet",
-      description: `Sales, payouts and bids show here once ${ctx.organisationName} starts selling or buying.`,
-    }),
-  };
-
 const FIRST_RUN_ACTION: Record<FirstRunAction, { label: string; href: string }> = {
   sell: { label: "Sell a work", href: CLIENT_ROUTES.sellingNew },
   invite: { label: "Invite someone", href: organisationHref("members") },
 };
 
-function firstRunView(actions: readonly FirstRunAction[], ctx: Ctx): FirstRunView {
+/** First steps: the words follow the organisation's state, then the first thing the role can do. */
+function firstRunView(
+  actions: readonly FirstRunAction[],
+  key: OrganisationHomeFirstRunKey,
+  ctx: Ctx,
+): FirstRunView {
   return {
-    ...FIRST_RUN_COPY[actions[0] ?? "none"](ctx),
+    ...organisationFirstRunCopy(key, actions[0] ?? "none", ctx),
     actions: actions.map((id) => ({ id, ...FIRST_RUN_ACTION[id] })),
   };
 }
@@ -238,10 +237,11 @@ function firstRunView(actions: readonly FirstRunAction[], ctx: Ctx): FirstRunVie
 export function organisationDashboardView(
   model: OrganisationDashboardModel,
   ctx: Ctx,
+  firstRunKey: OrganisationHomeFirstRunKey,
 ): OrganisationDashboardView {
   const { progress } = model;
   return {
-    firstRun: model.firstRun ? firstRunView(model.firstRun.actions, ctx) : null,
+    firstRun: model.firstRun ? firstRunView(model.firstRun.actions, firstRunKey, ctx) : null,
     tiles: model.tiles.map((tile) => dashboardTileView(tile, ctx)),
     upcomingSales: model.upcomingSales.map(upcomingSaleView),
     upcomingSalesHref: consignmentStageHref("in_sale"),

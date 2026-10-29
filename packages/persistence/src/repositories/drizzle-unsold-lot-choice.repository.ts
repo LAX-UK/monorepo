@@ -1,14 +1,17 @@
 import type { Database } from "@auction/db";
-import { lot, unsoldLotChoice } from "@auction/db/schema";
+import { itemSubmission, lot, unsoldLotChoice } from "@auction/db/schema";
 import type { UnsoldLotChoice, UnsoldLotChoiceKind, UnsoldLotChoiceStatus } from "@auction/types";
-import { and, asc, count, eq } from "drizzle-orm";
+import { and, asc, count, desc, eq, inArray, isNull } from "drizzle-orm";
 import type {
   IUnsoldLotChoiceRepository,
   OpenUnsoldLotChoice,
   UnsoldLotChoiceDecisionRow,
   UnsoldLotChoiceRequestRow,
   UnsoldLotOutcomeKey,
+  UnsoldOutcomeListFilter,
+  UnsoldOutcomeRow,
 } from "../interfaces/unsold-lot-choice.repository.js";
+import { submissionSenderSql } from "./submission-sender.sql.js";
 
 type ChoiceRow = typeof unsoldLotChoice.$inferSelect;
 
@@ -70,6 +73,57 @@ export class DrizzleUnsoldLotChoiceRepository implements IUnsoldLotChoiceReposit
       .orderBy(asc(unsoldLotChoice.requestedAt))
       .limit(limit);
     return rows.map((row) => ({ ...row, requestedChoice: kind(row.requestedChoice) }));
+  }
+
+  async listUnsoldOutcomes(
+    filter: UnsoldOutcomeListFilter,
+  ): Promise<{ rows: UnsoldOutcomeRow[]; total: number }> {
+    // The choice for the lot's latest outcome: a relisted lot that ends unsold again starts afresh.
+    const choiceJoin = and(
+      eq(unsoldLotChoice.lotId, lot.id),
+      eq(unsoldLotChoice.lotEndTime, lot.endTime),
+    );
+    const parts = [
+      eq(itemSubmission.legalEntityId, filter.legalEntityId),
+      inArray(lot.status, [...filter.endedStatuses]),
+      isNull(lot.winnerId),
+    ];
+    const sender = submissionSenderSql(filter.visibleTo);
+    if (sender) parts.push(sender);
+    if (filter.choice === "none") parts.push(isNull(unsoldLotChoice.id));
+    else if (filter.choice) parts.push(eq(unsoldLotChoice.status, filter.choice));
+    const where = and(...parts);
+
+    const [rows, [counted]] = await Promise.all([
+      this.db
+        .select({
+          lotId: lot.id,
+          submissionId: itemSubmission.id,
+          title: lot.title,
+          endedAt: lot.endTime,
+          choice: unsoldLotChoice.status,
+        })
+        .from(itemSubmission)
+        .innerJoin(lot, eq(lot.id, itemSubmission.convertedLotId))
+        .leftJoin(unsoldLotChoice, choiceJoin)
+        .where(where)
+        .orderBy(desc(lot.endTime), asc(lot.id))
+        .limit(filter.limit)
+        .offset(filter.offset),
+      this.db
+        .select({ n: count() })
+        .from(itemSubmission)
+        .innerJoin(lot, eq(lot.id, itemSubmission.convertedLotId))
+        .leftJoin(unsoldLotChoice, choiceJoin)
+        .where(where),
+    ]);
+    return {
+      rows: rows.map((row) => ({
+        ...row,
+        choice: (row.choice as UnsoldLotChoiceStatus | null) ?? null,
+      })),
+      total: Number(counted?.n ?? 0),
+    };
   }
 
   async countOpenRequests(): Promise<number> {

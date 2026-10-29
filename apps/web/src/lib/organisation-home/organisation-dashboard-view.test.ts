@@ -56,7 +56,7 @@ const FIGURES: DashboardFigures = {
 };
 
 function view(role: Parameters<typeof buildOrganisationDashboard>[0]["role"], figures = FIGURES) {
-  return organisationDashboardView(buildOrganisationDashboard({ role }, figures), ctx);
+  return organisationDashboardView(buildOrganisationDashboard({ role }, figures), ctx, "ready");
 }
 
 describe("At a glance words and links", () => {
@@ -196,12 +196,57 @@ describe("first steps", () => {
     });
   });
 
-  it("stays calm for a role that cannot start anything", () => {
+  it("stays calm for a role that cannot start anything, without blaming the organisation", () => {
     expect(view("viewer", EMPTY).firstRun).toEqual({
       title: "Nothing here yet",
-      description:
-        "Sales, payouts and bids show here once Northbank Gallery starts selling or buying.",
+      description: "Sales, payouts and bids for Northbank Gallery show here as they happen.",
       actions: [],
     });
+  });
+
+  it("follows the organisation's state: a restricted owner is not asked to sell or invite", () => {
+    const model = buildOrganisationDashboard({ role: "owner" }, EMPTY, () => false);
+    expect(organisationDashboardView(model, ctx, "restricted").firstRun).toEqual({
+      title: "Nothing here yet",
+      description: "Northbank Gallery's past sales, purchases and invoices show here.",
+      actions: [],
+    });
+  });
+
+  it("an organisation under review may still invite, and is told when sales show", () => {
+    const model = buildOrganisationDashboard(
+      { role: "owner" },
+      EMPTY,
+      (action) => action === "invite",
+    );
+    expect(organisationDashboardView(model, ctx, "documents_under_review").firstRun).toEqual({
+      title: "Nothing here yet",
+      description:
+        "Sales, payouts and bids for Northbank Gallery show here once we've finished checking its documents.",
+      actions: [{ id: "invite", label: "Invite someone", href: "/organisation/members" }],
+    });
+  });
+});
+
+describe("payouts due", () => {
+  const payouts = (due: { nextDate: Date | null; overdueSince: Date | null }) =>
+    view("finance", {
+      ...FIGURES,
+      payoutsDue: { payouts: 2, totals: [{ currency: "GBP", amount: "1140.00" }], ...due },
+    }).tiles.find((tile) => tile.id === "payouts_due")?.supporting;
+
+  it("says a past date is overdue, never that it is next", () => {
+    expect(payouts({ nextDate: null, overdueSince: new Date("2026-10-12T00:00:00Z") })).toEqual([
+      "Overdue since 12 Oct 2026",
+    ]);
+  });
+
+  it("shows both dates on one line when one payout is overdue and another is ahead", () => {
+    expect(
+      payouts({
+        nextDate: new Date("2026-11-03T00:00:00Z"),
+        overdueSince: new Date("2026-10-12T00:00:00Z"),
+      }),
+    ).toEqual(["Overdue since 12 Oct 2026 · next 3 Nov 2026"]);
   });
 });

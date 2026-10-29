@@ -1,3 +1,5 @@
+import { organisationStateAllows } from "@auction/domain";
+import { type LegalEntityStatus, legalEntityStatuses } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
   biddingAccountOverLimit,
@@ -11,6 +13,7 @@ const gallery = {
   kind: "organisation" as const,
   displayName: "Northbank Gallery",
   role: "viewer" as const,
+  status: "approved" as LegalEntityStatus,
 };
 const personal = { kind: "individual" as const };
 const org = { kind: "organisation" as const };
@@ -81,6 +84,62 @@ describe("resolveBiddingAccount", () => {
         authority: null,
       }),
     ).toMatchObject({ allowed: true, bidLimit: null });
+  });
+});
+
+describe("the organisation's state", () => {
+  const agentAllowed = {
+    allowed: true as const,
+    role: "buyer_agent" as const,
+    viaAuthorisation: true,
+    bidLimit: "10000.00",
+  };
+
+  it("says why before the person tries, while documents are checked", () => {
+    expect(
+      resolveBiddingAccount({
+        acting: { ...gallery, role: "buyer_agent", status: "under_review" },
+        memberships: [personal, org],
+        authority: agentAllowed,
+      }),
+    ).toEqual({
+      kind: "organisation",
+      name: "Northbank Gallery",
+      allowed: false,
+      reason: "organisation_state",
+      state: "documents_under_review",
+      canSwitchToPersonal: true,
+    });
+  });
+
+  it("puts the paused state before a missing authorisation", () => {
+    expect(
+      resolveBiddingAccount({
+        acting: { ...gallery, role: "buyer_agent", status: "restricted" },
+        memberships: [org],
+        authority: { allowed: false, role: "buyer_agent", reason: "authorisation_required" },
+      }),
+    ).toMatchObject({ reason: "organisation_state", state: "restricted" });
+  });
+
+  it("tells someone whose role can never bid that, not that bidding is paused", () => {
+    expect(
+      resolveBiddingAccount({
+        acting: { ...gallery, status: "restricted" },
+        memberships: [org],
+        authority: null,
+      }),
+    ).toMatchObject({ reason: "role_cannot_bid" });
+  });
+
+  it.each(legalEntityStatuses)("agrees with the state table for %s", (status) => {
+    const account = resolveBiddingAccount({
+      acting: { ...gallery, role: "owner", status },
+      memberships: [org],
+      authority: { allowed: true, role: "owner", viaAuthorisation: false, bidLimit: null },
+    });
+    const open = organisationStateAllows(status, "bid");
+    expect(account?.kind === "organisation" && account.allowed).toBe(open);
   });
 });
 

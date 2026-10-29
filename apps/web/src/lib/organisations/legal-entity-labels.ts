@@ -30,7 +30,7 @@ const STATUS_LABELS: Record<LegalEntityStatus, string> = {
   docs_requested: "Documents requested",
   docs_received: "Documents received",
   under_review: "Under review",
-  connect_pending: "Connect pending",
+  connect_pending: "Setting up payouts",
   approved: "Approved",
   restricted: "Restricted",
   rejected: "Rejected",

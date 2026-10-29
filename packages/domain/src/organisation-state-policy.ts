@@ -1,5 +1,5 @@
-import type { LegalEntityStatus } from "@auction/types";
-import type { EntityCapability } from "./entity-capabilities.js";
+import type { LegalEntityMemberRole, LegalEntityStatus } from "@auction/types";
+import { type EntityCapability, rolesWithCapability } from "./entity-capabilities.js";
 
 /** What a member can do for an organisation, as far as the organisation's own state allows. */
 export const ORGANISATION_ACTIONS = [
@@ -7,6 +7,8 @@ export const ORGANISATION_ACTIONS = [
   "register",
   "submit",
   "accept_agreement",
+  /** Choose what happens to a consigned lot that did not sell: a selling decision. */
+  "choose_unsold",
   "pay",
   "read_history",
   "invite",
@@ -154,6 +156,27 @@ const STATE_SPECS: Readonly<Record<LegalEntityStatus, StateSpec>> = {
   },
 };
 
+/** Who can act on each banner, from the specs above, so the words never name the wrong roles. */
+const BANNER_ACTORS: Readonly<Record<OrganisationBannerKey, readonly EntityCapability[]>> = (() => {
+  const specs = [PAYOUTS_PENDING_BANNER, ...Object.values(STATE_SPECS).map((spec) => spec.banner)];
+  const actors = {} as Record<OrganisationBannerKey, readonly EntityCapability[]>;
+  for (const spec of specs) if (spec) actors[spec.key] = spec.actWith;
+  return actors;
+})();
+
+/**
+ * The roles that can act on a banner (send the documents, set up payouts), in the capability
+ * table's order; empty when nobody in the organisation can, as while LAX checks its documents.
+ */
+export function organisationBannerActors(
+  key: OrganisationBannerKey,
+): readonly LegalEntityMemberRole[] {
+  const roles = new Set(
+    BANNER_ACTORS[key].flatMap((capability) => rolesWithCapability(capability)),
+  );
+  return [...roles];
+}
+
 function bannerFor(
   spec: BannerSpec | null,
   capabilities: ReadonlySet<EntityCapability>,
@@ -194,6 +217,25 @@ export function organisationStatePolicy(
     homeFirstRunKey: payoutsPending ? "payouts_not_set_up" : spec.homeFirstRunKey,
     bidPanelReasonKey: spec.bidPanelReasonKey,
   };
+}
+
+/**
+ * Refusal for choosing what happens to an unsold lot while the organisation's state closes
+ * selling (restricted, unchecked or closed). LAX decides with the organisation instead.
+ */
+export const ORGANISATION_UNSOLD_CHOICE_PAUSED = {
+  code: "organisation_unsold_choice_paused",
+  message:
+    "Choices for works that did not sell are paused for this organisation. Contact us to decide what happens to them.",
+} as const;
+
+/** The refusal for choosing an unsold outcome in `status`, or `null` while choices are open. */
+export function organisationUnsoldChoiceRefusal(
+  status: LegalEntityStatus,
+): { code: string; message: string } | null {
+  return organisationStateAllows(status, "choose_unsold")
+    ? null
+    : ORGANISATION_UNSOLD_CHOICE_PAUSED;
 }
 
 /** Refusal for joining an organisation that has been closed. */

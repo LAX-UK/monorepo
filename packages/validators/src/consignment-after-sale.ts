@@ -1,4 +1,4 @@
-import { unsoldLotChoiceKinds } from "@auction/types";
+import { unsoldLotChoiceKinds, unsoldLotChoiceStatuses } from "@auction/types";
 import { z } from "zod";
 
 const amount = z
@@ -33,6 +33,15 @@ export const unsoldLotChoiceDecisionBodySchema = z.object({
 });
 
 export type UnsoldLotChoiceDecisionBody = z.infer<typeof unsoldLotChoiceDecisionBodySchema>;
+
+/** A page of the account's unsold lots, optionally only those in one choice state. */
+export const unsoldOutcomesQuerySchema = z.object({
+  choice: z.enum(["none", ...unsoldLotChoiceStatuses]).optional(),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(50),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+});
+
+export type UnsoldOutcomesQuery = z.infer<typeof unsoldOutcomesQuerySchema>;
 
 /** The lowest reserve the specialist accepts for a relist; empty clears it. */
 export const relistReserveFloorBodySchema = z.object({ floor: optionalAmount });

@@ -82,6 +82,16 @@ const OUTCOME_VIEWS: {
     secondary: INVITATIONS,
     retryNotice: null,
   }),
+  // The organisation's state closed it to new members: the server's words, and nothing to accept.
+  organisation_closed: (preview) => ({
+    title: `${preview.organisationName} isn't taking new members`,
+    description: `${preview.message} If you think this is a mistake, ask the person who invited you.`,
+    art: { kind: "tile", initials: initials(preview.organisationName) },
+    accept: null,
+    primary: null,
+    secondary: INVITATIONS,
+    retryNotice: null,
+  }),
   other_email: () => ({
     title: "This invitation is for another email address",
     description:
