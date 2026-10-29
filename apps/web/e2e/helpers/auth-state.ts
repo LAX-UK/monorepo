@@ -17,6 +17,10 @@ export const roleAuthState = {
   finance: path.join(authDir, "finance.json"),
   readonlyStaff: path.join(authDir, "readonly-staff.json"),
   operations: path.join(authDir, "operations.json"),
+  orgAdmin: path.join(authDir, "org-admin.json"),
+  orgConsignor: path.join(authDir, "org-consignor.json"),
+  orgBuyerAgent: path.join(authDir, "org-buyer-agent.json"),
+  orgViewer: path.join(authDir, "org-viewer.json"),
 } as const;
 
 export const sessionProbeReportPath = path.join(authDir, "session-probe.json");

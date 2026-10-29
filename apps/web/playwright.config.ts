@@ -80,6 +80,13 @@ const roleProjects = [
     use: chromium,
   },
   {
+    name: "setup-org-roles",
+    testMatch: /auth\.setup\.ts/,
+    grep: /@setup-org-roles/,
+    timeout: 240_000,
+    use: chromium,
+  },
+  {
     name: "setup-operations",
     testMatch: /auth\.setup\.ts/,
     grep: /@setup-operations/,
@@ -118,6 +125,15 @@ const roleProjects = [
     dependencies: ["setup-buyer"],
     use: { ...chromium, storageState: roleAuthState.buyer },
   },
+  {
+    // Each journey opens its own contexts from the saved member sessions it needs.
+    name: "org-roles-chromium",
+    testMatch: /org-roles-.*\.spec\.ts/,
+    dependencies: ["setup-buyer", "setup-unapproved", "setup-org-roles"],
+    timeout: 180_000,
+    workers: 1,
+    use: chromium,
+  },
   ...(hasCatalogueManagerCredentials
     ? [
         {
@@ -136,6 +152,7 @@ const roleProjects = [
       /auth\.setup\.ts/,
       /admin-.*\.spec\.ts/,
       /buyer-.*\.spec\.ts/,
+      /org-roles-.*\.spec\.ts/,
       /catalogue-manager-.*\.spec\.ts/,
       /saleroom-clerk\.spec\.ts/,
     ],

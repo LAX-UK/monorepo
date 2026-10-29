@@ -27,6 +27,7 @@ const setupProjects = [
   "setup-unapproved",
   "setup-incomplete",
   "setup-zero-lot",
+  "setup-org-roles",
   ...(process.env.PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL &&
   process.env.PLAYWRIGHT_CATALOGUE_MANAGER_PASSWORD
     ? ["setup-catalogue"]
@@ -45,6 +46,10 @@ const expectedFiles = [
   ["unapproved", path.join(authDir, "unapproved.json")],
   ["incomplete", path.join(authDir, "incomplete.json")],
   ["zeroLot", path.join(authDir, "zero-lot.json")],
+  ["orgAdmin", path.join(authDir, "org-admin.json")],
+  ["orgConsignor", path.join(authDir, "org-consignor.json")],
+  ["orgBuyerAgent", path.join(authDir, "org-buyer-agent.json")],
+  ["orgViewer", path.join(authDir, "org-viewer.json")],
   ...(process.env.PLAYWRIGHT_CATALOGUE_MANAGER_EMAIL
     ? [["catalogueManager", path.join(authDir, "catalogue-manager.json")]]
     : []),

@@ -760,6 +760,42 @@ export async function zeroLotLogin(page: Page): Promise<void> {
   await assertNotStaffShell(page, "Zero-lot buyer");
 }
 
+/**
+ * People who belong to Northbank Gallery in the seed, one per organisation role the journeys
+ * cover that has no login of its own above. Each signs in once during setup and the journeys read
+ * the saved sessions.
+ */
+export type OrganisationMemberKey = "admin" | "consignor" | "buyerAgent" | "viewer";
+
+const organisationMemberCredentials: Record<OrganisationMemberKey, Credentials> = {
+  admin: {
+    email: process.env.PLAYWRIGHT_ORG_ADMIN_EMAIL ?? "gallery-admin@lax.bid",
+    password: process.env.PLAYWRIGHT_ORG_ADMIN_PASSWORD ?? "Password123!",
+  },
+  consignor: {
+    email: process.env.PLAYWRIGHT_ORG_CONSIGNOR_EMAIL ?? "consignor@lax.bid",
+    password: process.env.PLAYWRIGHT_ORG_CONSIGNOR_PASSWORD ?? "Password123!",
+  },
+  buyerAgent: {
+    email: process.env.PLAYWRIGHT_ORG_BUYER_AGENT_EMAIL ?? "buyer-agent@lax.bid",
+    password: process.env.PLAYWRIGHT_ORG_BUYER_AGENT_PASSWORD ?? "Password123!",
+  },
+  viewer: {
+    email: process.env.PLAYWRIGHT_ORG_VIEWER_EMAIL ?? "specialist@lax.bid",
+    password: process.env.PLAYWRIGHT_ORG_VIEWER_PASSWORD ?? "Password123!",
+  },
+};
+
+export async function organisationMemberLogin(
+  page: Page,
+  key: OrganisationMemberKey,
+): Promise<void> {
+  await login(page, organisationMemberCredentials[key], {
+    destination: /\/(admin|home|bids|purchases|watching|selling|organisation|onboarding)/,
+  });
+  await assertNotStaffShell(page, `Organisation ${key}`);
+}
+
 async function assertNotStaffShell(page: Page, label: string): Promise<void> {
   const onAdminStaff = page.getByRole("navigation", { name: /staff dashboard/i });
   if (await onAdminStaff.isVisible().catch(() => false)) {
