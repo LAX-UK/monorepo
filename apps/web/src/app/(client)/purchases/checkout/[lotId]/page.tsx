@@ -4,6 +4,7 @@ import { DashboardErrorAlert, DashboardSection } from "@/components/dashboard/pr
 import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboard-detail-header";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { CheckoutPurchasePanel } from "@/components/sections/checkout/checkout-purchase-panel";
+import { CheckoutReadinessStrip } from "@/components/sections/checkout/checkout-readiness-strip";
 import { CheckoutReturnBanner } from "@/components/sections/checkout/checkout-return-banner";
 import { LotCheckoutFulfilmentStrip } from "@/components/sections/checkout/lot-checkout-fulfilment-strip";
 import { OrganisationPaysBlock } from "@/components/sections/checkout/status/organisation-pays-block";
@@ -158,76 +159,81 @@ export default async function DashboardCheckoutPage({ params, searchParams }: Pa
   };
 
   return (
-    <CheckoutLayout
-      lot={auction}
-      description={checkoutDescription(organisation?.name ?? null, openPayment !== null)}
-    >
-      <Suspense fallback={null}>
-        <CheckoutReturnBanner lotTitle={auction.title} />
-      </Suspense>
+    <>
+      <CheckoutReadinessStrip />
+      <CheckoutLayout
+        lot={auction}
+        description={checkoutDescription(organisation?.name ?? null, openPayment !== null)}
+      >
+        <Suspense fallback={null}>
+          <CheckoutReturnBanner lotTitle={auction.title} />
+        </Suspense>
 
-      <DashboardSection id="checkout-flow" title="Invoice and payment">
-        <div className="min-w-0 space-y-6">
-          {!hasPricing ? (
-            <DashboardErrorAlert
-              title="Could not load checkout pricing"
-              message="We could not load pricing for this lot. Refresh the page or contact support if this keeps happening."
-            >
-              <div className="flex flex-wrap gap-3">
-                <Button variant="secondary" asChild>
-                  <Link href={dashboardCheckoutLotUrl(lotId)}>Retry</Link>
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link href={settlementsEmail() ? `mailto:${settlementsEmail()}` : "/purchases"}>
-                    Contact support
-                  </Link>
-                </Button>
-              </div>
-            </DashboardErrorAlert>
-          ) : (
-            <>
-              {fulfilmentFailure ? <DashboardSliceErrorAlert failure={fulfilmentFailure} /> : null}
-              {paymentsFailure ? <DashboardSliceErrorAlert failure={paymentsFailure} /> : null}
-              <LotCheckoutFulfilmentStrip fulfilment={fulfilment} lotId={auction.id} />
+        <DashboardSection id="checkout-flow" title="Invoice and payment">
+          <div className="min-w-0 space-y-6">
+            {!hasPricing ? (
+              <DashboardErrorAlert
+                title="Could not load checkout pricing"
+                message="We could not load pricing for this lot. Refresh the page or contact support if this keeps happening."
+              >
+                <div className="flex flex-wrap gap-3">
+                  <Button variant="secondary" asChild>
+                    <Link href={dashboardCheckoutLotUrl(lotId)}>Retry</Link>
+                  </Button>
+                  <Button variant="outline" asChild>
+                    <Link href={settlementsEmail() ? `mailto:${settlementsEmail()}` : "/purchases"}>
+                      Contact support
+                    </Link>
+                  </Button>
+                </div>
+              </DashboardErrorAlert>
+            ) : (
+              <>
+                {fulfilmentFailure ? (
+                  <DashboardSliceErrorAlert failure={fulfilmentFailure} />
+                ) : null}
+                {paymentsFailure ? <DashboardSliceErrorAlert failure={paymentsFailure} /> : null}
+                <LotCheckoutFulfilmentStrip fulfilment={fulfilment} lotId={auction.id} />
 
-              <CheckoutPurchasePanel
-                sessionUser={user}
-                lotId={auction.id}
-                lotTitle={auction.title}
-                addresses={addresses}
-                payingFor={organisation?.name ?? null}
-                {...checkoutOrderSummary}
-                {...panelPricing}
-                {...checkoutPaymentLifecycle}
-              />
-            </>
-          )}
-        </div>
-      </DashboardSection>
+                <CheckoutPurchasePanel
+                  sessionUser={user}
+                  lotId={auction.id}
+                  lotTitle={auction.title}
+                  addresses={addresses}
+                  payingFor={organisation?.name ?? null}
+                  {...checkoutOrderSummary}
+                  {...panelPricing}
+                  {...checkoutPaymentLifecycle}
+                />
+              </>
+            )}
+          </div>
+        </DashboardSection>
 
-      <p className="mt-8 font-body text-sm text-on-surface-variant lg:mt-10">
-        After payment, follow delivery in{" "}
-        <Link
-          href="/purchases"
-          className="font-medium text-link underline-offset-4 hover:underline"
-        >
-          Purchases
-        </Link>
-        . Need help?{" "}
-        <Link
-          href={lotPath(auction)}
-          className="rounded font-medium text-link underline-offset-4 transition-colors hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-        >
-          View full lot details
-        </Link>
-      </p>
-      {addressesR.status === "rejected" ? (
-        <div className="mt-4 rounded-lg border border-warning/40 bg-warning-container/15 p-4 text-sm text-on-surface">
-          We could not load your saved addresses. Add a shipping address in settings before
-          checkout.
-        </div>
-      ) : null}
-    </CheckoutLayout>
+        <p className="mt-8 font-body text-sm text-on-surface-variant lg:mt-10">
+          After payment, follow delivery in{" "}
+          <Link
+            href="/purchases"
+            className="font-medium text-link underline-offset-4 hover:underline"
+          >
+            Purchases
+          </Link>
+          . Need help?{" "}
+          <Link
+            href={lotPath(auction)}
+            className="rounded font-medium text-link underline-offset-4 transition-colors hover:underline focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+          >
+            View full lot details
+          </Link>
+        </p>
+        {addressesR.status === "rejected" ? (
+          <div className="mt-4 rounded-lg border border-warning/40 bg-warning-container/15 p-4 text-sm text-on-surface">
+            We could not load your saved addresses. Add a shipping address in settings before
+            checkout.
+          </div>
+        ) : null}
+      </CheckoutLayout>
+    </>
   );
 }
 

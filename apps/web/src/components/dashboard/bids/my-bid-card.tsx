@@ -61,8 +61,8 @@ function Actions({
   return (
     <div
       className={cn(
-        "flex justify-end gap-2",
-        // Two steps share the full width on phones, side by side.
+        "flex justify-end gap-2 max-sm:flex-wrap",
+        // Two steps share the full width on phones, side by side, with History on its own row.
         card.actions.length > 1 && "max-sm:w-full max-sm:[&>a]:flex-1",
       )}
     >
@@ -73,10 +73,10 @@ function Actions({
           size="default"
           onClick={onOpenHistory}
           aria-label={`Bid history for ${card.title}`}
-          className="shrink-0 px-3"
+          className="shrink-0 px-3 max-sm:order-last max-sm:w-full"
         >
           <History aria-hidden />
-          <span className="max-sm:sr-only">History</span>
+          <span>History</span>
         </Button>
       ) : null}
       {card.actions.map((action) => (

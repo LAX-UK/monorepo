@@ -7,7 +7,9 @@ import {
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { KpiRow } from "@/components/dashboard/primitives/kpi-row";
 import { CheckoutBasketPanel } from "@/components/sections/checkout/checkout-basket-panel";
+import { CheckoutReadinessStrip } from "@/components/sections/checkout/checkout-readiness-strip";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { paymentRoleFor } from "@/lib/buying/account-buying-figures";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
@@ -30,7 +32,7 @@ type BasketRow = {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export default async function MultiLotCheckoutPage({ searchParams }: Props) {
-  const user = await requireAuthenticatedUser({
+  await requireAuthenticatedUser({
     shell: "client",
     loginNext: "/purchases/checkout",
   });
@@ -54,6 +56,7 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
   let fetchFailureCount = 0;
   if (requestedIds.length > 0) {
     const c = await getServerDataContainer();
+    const scope = await c.buying.scope();
     const results = await Promise.allSettled(requestedIds.map((id) => c.buyerLots.getById(id)));
     for (const result of results) {
       if (result.status === "rejected") {
@@ -62,7 +65,8 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
       }
       if (!result.value) continue;
       const lot = result.value;
-      if (lot.winnerId !== user.id) {
+      // The same rule as the API: the winner of a personal purchase, an organisation's payers.
+      if (paymentRoleFor(scope, { lot }) !== "payer") {
         unauthorisedCount += 1;
         continue;
       }
@@ -105,6 +109,7 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
 
   return (
     <DashboardPage className="space-y-6">
+      <CheckoutReadinessStrip />
       <DashboardPageHeader
         title="Basket checkout"
         hideTitleOnMobile
