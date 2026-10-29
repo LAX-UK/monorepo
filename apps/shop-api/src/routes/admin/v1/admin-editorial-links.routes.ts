@@ -69,7 +69,7 @@ function sendOutcome(
 }
 
 /**
- * Links are editorial content, so reads and writes both need `editorial.write`;
+ * Links are editorial content, so reads need `editorial.read` and writes `editorial.write`;
  * publishing the parent stays a separate `editorial.publish` decision.
  */
 export async function registerAdminEditorialLinksRoutes(
@@ -86,7 +86,7 @@ export async function registerAdminEditorialLinksRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "editorial.write");
+      requireShopStaffCapability(request, "editorial.read");
       const { id } = request.params as { id: string };
       const result = await links.getExhibitionLinks(id);
       if (!result) {
@@ -108,7 +108,7 @@ export async function registerAdminEditorialLinksRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "editorial.write");
+      requireShopStaffCapability(request, "editorial.read");
       const { id } = request.params as { id: string };
       const result = await links.getStoryLinks(id);
       if (!result) {

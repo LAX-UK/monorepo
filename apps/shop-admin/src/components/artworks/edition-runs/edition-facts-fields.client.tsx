@@ -15,6 +15,7 @@ import {
   EnumSelect,
   Field,
   FieldRow,
+  KeyValueList,
   StaffCheckbox,
   StaffRadio,
   StaffRadioGroup,
@@ -61,6 +62,38 @@ const ARRIVALS = [
   { value: "separately", label: "Sent separately" },
 ] as const;
 
+const labelOf = <T extends string>(options: ReadonlyArray<Option<T>>, value: T | null) =>
+  options.find((option) => option.value === value)?.label ?? null;
+
+/** What is recorded, in the words the form uses, for the read-only view. */
+function factsSummary(values: FactsFormValues): Array<{ label: string; value: React.ReactNode }> {
+  const signature = [
+    labelOf(SIGNATURES, values.signature),
+    labelOf(MEDIA, values.medium),
+    values.place ? `${labelOf(PLACES, values.place)}` : null,
+  ].filter(Boolean);
+  const certificate =
+    values.certificate === "included"
+      ? [
+          "Certificate of authenticity",
+          labelOf(ISSUERS, values.issuer) && `issued by ${labelOf(ISSUERS, values.issuer)}`,
+          labelOf(FORMS, values.form),
+          values.arrives === "separately"
+            ? `sent separately within ${values.withinWeeksText} weeks`
+            : labelOf(ARRIVALS, values.arrives),
+        ]
+          .filter(Boolean)
+          .join(", ")
+      : values.certificate === "none"
+        ? "No certificate"
+        : null;
+  return [
+    { label: "Signature", value: signature.length ? signature.join(", ") : null },
+    { label: "Numbering", value: labelOf(NUMBERINGS, values.numbering) },
+    { label: "Certificate", value: certificate },
+  ];
+}
+
 /** Fields that belong to the option above them, indented under it. */
 function Nested({ children }: { children: React.ReactNode }) {
   return (
@@ -78,14 +111,18 @@ export function EditionFactsFields({
   errors,
   spec,
   disabled = false,
+  readOnly = false,
   onChange,
 }: {
   values: FactsFormValues;
   errors: Partial<Record<FactsFormField, string>>;
   spec: AdminEditionRunSpec | null;
   disabled?: boolean;
+  /** Shows what is recorded as label and value pairs, with nothing to change. */
+  readOnly?: boolean;
   onChange: (patch: Partial<FactsFormValues>) => void;
 }) {
+  if (readOnly) return <KeyValueList className="content-start" items={factsSummary(values)} />;
   const open = spec ? isOpenRun(spec) : false;
   const numbered = values.numbering === "on_print" || values.numbering === "on_certificate";
   return (

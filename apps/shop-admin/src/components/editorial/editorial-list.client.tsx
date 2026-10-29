@@ -36,6 +36,7 @@ import {
   StaffDate,
   formatStaffDateTime,
   toast,
+  useStaffCan,
 } from "@auction/staff-ui";
 import { Eye, EyeOff, Link as LinkIcon, PanelRight, Pencil, Plus } from "@auction/staff-ui/icons";
 import { useMemo, useState } from "react";
@@ -97,6 +98,7 @@ export function EditorialList({
   const opened =
     page.items.find((row) => row.id === list.panel.openId) ??
     (initialOpened?.id === list.panel.openId ? initialOpened : null);
+  const canWrite = useStaffCan("editorial.write");
   const kindOptions = editorialKindOptions(kind);
   const hasKind = kindOptions.length > 0;
   const hasDates = kind === "exhibitions";
@@ -209,9 +211,15 @@ export function EditorialList({
       icon: PanelRight,
       onSelect: () => list.panel.show(row.id),
     },
-    { id: "edit", label: "Edit", icon: Pencil, href: editHref(row) },
+    {
+      id: "edit",
+      label: canWrite ? "Edit" : "View",
+      icon: canWrite ? Pencil : Eye,
+      href: editHref(row),
+    },
     {
       id: "preview",
+      requires: "editorial.write",
       label: "Preview on lax.art",
       icon: LinkIcon,
       onSelect: () => void createPreview(row),
@@ -251,6 +259,7 @@ export function EditorialList({
       <ListPage<EditorialListRow>
         title={entity.title}
         description={entity.description}
+        editRequires="editorial.write"
         Link={list.Link}
         listKey={`lax-admin.editorial.${kind}`}
         primaryAction={
@@ -315,7 +324,13 @@ export function EditorialList({
                 : `${entity.title} you have not published yet appear here.`,
           action:
             totalRows === 0 ? (
-              <StaffButton asChild size="sm" variant="primary" icon={<Plus aria-hidden />}>
+              <StaffButton
+                asChild
+                size="sm"
+                variant="primary"
+                requires="editorial.write"
+                icon={<Plus aria-hidden />}
+              >
                 <list.Link href={newHref}>{entity.newLabel}</list.Link>
               </StaffButton>
             ) : undefined,
@@ -396,6 +411,7 @@ export function EditorialList({
             <>
               <StaffButton
                 variant="secondary"
+                requires="editorial.publish"
                 icon={opened.status === "published" ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
                 onClick={() =>
                   setConfirming({ row: opened, publish: opened.status !== "published" })
@@ -403,8 +419,14 @@ export function EditorialList({
               >
                 {opened.status === "published" ? "Unpublish" : "Publish"}
               </StaffButton>
-              <StaffButton asChild variant="primary" icon={<Pencil aria-hidden />}>
-                <list.Link href={editHref(opened)}>Edit {entity.singular}</list.Link>
+              <StaffButton
+                asChild
+                variant="primary"
+                icon={canWrite ? <Pencil aria-hidden /> : <Eye aria-hidden />}
+              >
+                <list.Link href={editHref(opened)}>
+                  {canWrite ? "Edit" : "View"} {entity.singular}
+                </list.Link>
               </StaffButton>
             </>
           ) : null

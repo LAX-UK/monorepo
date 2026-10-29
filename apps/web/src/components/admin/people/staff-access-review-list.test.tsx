@@ -113,7 +113,7 @@ describe("StaffAccessReviewList", () => {
 
   it("shows read-only staff the review only", () => {
     renderAs(["read_only"], null);
-    expect(screen.getByText("View only · Read-only")).toBeInTheDocument();
+    expect(screen.getByText("View only")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /Export/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Actions for Ada Lovelace" })).toBeNull();
     expect(screen.queryByRole("link", { name: "Ada Lovelace" })).toBeNull();

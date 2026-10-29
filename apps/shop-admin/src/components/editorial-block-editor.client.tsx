@@ -21,6 +21,7 @@ import {
   StaffButton,
   StaffTooltip,
   TextArea,
+  useStaffCan,
 } from "@auction/staff-ui";
 import { ArrowDown, ArrowUp, CircleAlert, Plus, Trash2 } from "@auction/staff-ui/icons";
 import { type ReactNode, useState } from "react";
@@ -142,6 +143,8 @@ export function EditorialBlockEditor({
   errors,
 }: EditorialBlockEditorProps) {
   const [newType, setNewType] = useState<EditorialBlockType>("richText");
+  /** Without `editorial.write` the blocks are shown without moving, removing or adding. */
+  const readOnly = !useStaffCan("editorial.write");
 
   return (
     <div className="flex flex-col gap-4">
@@ -151,7 +154,11 @@ export function EditorialBlockEditor({
           headingLevel="h3"
           illustration="easel"
           title="No blocks yet"
-          description="Choose a block type below and add the first one."
+          description={
+            readOnly
+              ? "This page has no content yet."
+              : "Choose a block type below and add the first one."
+          }
         />
       ) : (
         <ol aria-label="Body blocks" className="flex flex-col gap-3">
@@ -166,29 +173,31 @@ export function EditorialBlockEditor({
                   <p className="text-staff-sm font-semibold text-staff-fg">
                     {index + 1}. {typeLabel}
                   </p>
-                  <div className="flex shrink-0 items-center gap-0.5">
-                    <BlockControl
-                      label={`Move ${label} up`}
-                      disabled={disabled || index === 0}
-                      onClick={() => onChange(moveItem(items, index, -1))}
-                    >
-                      <ArrowUp aria-hidden />
-                    </BlockControl>
-                    <BlockControl
-                      label={`Move ${label} down`}
-                      disabled={disabled || index === items.length - 1}
-                      onClick={() => onChange(moveItem(items, index, 1))}
-                    >
-                      <ArrowDown aria-hidden />
-                    </BlockControl>
-                    <BlockControl
-                      label={`Remove ${label}`}
-                      disabled={disabled}
-                      onClick={() => onChange(removeItem(items, index))}
-                    >
-                      <Trash2 aria-hidden />
-                    </BlockControl>
-                  </div>
+                  {readOnly ? null : (
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <BlockControl
+                        label={`Move ${label} up`}
+                        disabled={disabled || index === 0}
+                        onClick={() => onChange(moveItem(items, index, -1))}
+                      >
+                        <ArrowUp aria-hidden />
+                      </BlockControl>
+                      <BlockControl
+                        label={`Move ${label} down`}
+                        disabled={disabled || index === items.length - 1}
+                        onClick={() => onChange(moveItem(items, index, 1))}
+                      >
+                        <ArrowDown aria-hidden />
+                      </BlockControl>
+                      <BlockControl
+                        label={`Remove ${label}`}
+                        disabled={disabled}
+                        onClick={() => onChange(removeItem(items, index))}
+                      >
+                        <Trash2 aria-hidden />
+                      </BlockControl>
+                    </div>
+                  )}
                 </div>
                 {isStructuredBlock(item.block) ? (
                   <EditorialBlockFields
@@ -204,22 +213,24 @@ export function EditorialBlockEditor({
           })}
         </ol>
       )}
-      <div className="flex flex-wrap items-end gap-2">
-        <Field label="New block type" disabled={disabled} className="w-full sm:w-60">
-          <EnumSelect value={newType} onValueChange={setNewType} options={BLOCK_TYPE_OPTIONS} />
-        </Field>
-        <StaffButton
-          type="button"
-          variant="secondary"
-          icon={<Plus aria-hidden />}
-          disabled={disabled}
-          onClick={() =>
-            onChange([...items, { key: newKey(), block: createEditorialBlock(newType) }])
-          }
-        >
-          Add block
-        </StaffButton>
-      </div>
+      {readOnly ? null : (
+        <div className="flex flex-wrap items-end gap-2">
+          <Field label="New block type" disabled={disabled} className="w-full sm:w-60">
+            <EnumSelect value={newType} onValueChange={setNewType} options={BLOCK_TYPE_OPTIONS} />
+          </Field>
+          <StaffButton
+            type="button"
+            variant="secondary"
+            icon={<Plus aria-hidden />}
+            disabled={disabled}
+            onClick={() =>
+              onChange([...items, { key: newKey(), block: createEditorialBlock(newType) }])
+            }
+          >
+            Add block
+          </StaffButton>
+        </div>
+      )}
     </div>
   );
 }

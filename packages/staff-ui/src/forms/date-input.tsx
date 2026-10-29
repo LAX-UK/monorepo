@@ -183,7 +183,7 @@ export const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
           onBlur?.(event);
         }}
         trailing={
-          noCalendar ? null : (
+          noCalendar || field?.readOnly ? null : (
             <Popover open={open} onOpenChange={setOpen}>
               <PopoverTrigger asChild>
                 <StaffButton

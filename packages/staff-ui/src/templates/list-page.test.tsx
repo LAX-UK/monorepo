@@ -300,7 +300,7 @@ describe("ListPage", () => {
         },
       }),
     );
-    expect(screen.getByText("View only · Finance")).toBeInTheDocument();
+    expect(screen.getByText("View only")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "New payment link" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Export" })).toBeInTheDocument();
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
@@ -349,7 +349,7 @@ describe("DetailPage", () => {
         primaryAction={<StaffButton variant="primary">Refund</StaffButton>}
       />,
     );
-    expect(screen.getByText("View only · Finance")).toBeInTheDocument();
+    expect(screen.getByText("View only")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Refund" })).not.toBeInTheDocument();
 
     rerender(<DetailPage title="Golden Hour" loading rail={<div />} />);

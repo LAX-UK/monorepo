@@ -21,6 +21,7 @@ export function ListEditor<T>({
   emptyText,
   max,
   disabled = false,
+  readOnly = false,
 }: {
   items: readonly T[];
   getKey: (item: T, index: number) => string;
@@ -35,6 +36,8 @@ export function ListEditor<T>({
   emptyText: string;
   max?: number;
   disabled?: boolean;
+  /** Shows the rows without the move, remove and add buttons, for people who may only look. */
+  readOnly?: boolean;
 }) {
   const full = max !== undefined && items.length >= max;
   return (
@@ -51,45 +54,47 @@ export function ListEditor<T>({
                 className="flex flex-col gap-3 rounded-staff-md border border-staff-line bg-staff-surface p-3 sm:flex-row sm:items-start"
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-3">{renderItem(item, index)}</div>
-                <div className="flex shrink-0 gap-1 sm:pt-6">
-                  {onMove ? (
-                    <>
-                      <StaffButton
-                        type="button"
-                        size="icon-sm"
-                        variant="ghost"
-                        aria-label={`Move ${label} up`}
-                        disabled={disabled || index === 0}
-                        icon={<ArrowUp aria-hidden />}
-                        onClick={() => onMove(index, index - 1)}
-                      />
-                      <StaffButton
-                        type="button"
-                        size="icon-sm"
-                        variant="ghost"
-                        aria-label={`Move ${label} down`}
-                        disabled={disabled || index === items.length - 1}
-                        icon={<ArrowDown aria-hidden />}
-                        onClick={() => onMove(index, index + 1)}
-                      />
-                    </>
-                  ) : null}
-                  <StaffButton
-                    type="button"
-                    size="icon-sm"
-                    variant="ghost"
-                    aria-label={`Remove ${label}`}
-                    disabled={disabled}
-                    icon={<Trash2 aria-hidden />}
-                    onClick={() => onRemove(index)}
-                  />
-                </div>
+                {readOnly ? null : (
+                  <div className="flex shrink-0 gap-1 sm:pt-6">
+                    {onMove ? (
+                      <>
+                        <StaffButton
+                          type="button"
+                          size="icon-sm"
+                          variant="ghost"
+                          aria-label={`Move ${label} up`}
+                          disabled={disabled || index === 0}
+                          icon={<ArrowUp aria-hidden />}
+                          onClick={() => onMove(index, index - 1)}
+                        />
+                        <StaffButton
+                          type="button"
+                          size="icon-sm"
+                          variant="ghost"
+                          aria-label={`Move ${label} down`}
+                          disabled={disabled || index === items.length - 1}
+                          icon={<ArrowDown aria-hidden />}
+                          onClick={() => onMove(index, index + 1)}
+                        />
+                      </>
+                    ) : null}
+                    <StaffButton
+                      type="button"
+                      size="icon-sm"
+                      variant="ghost"
+                      aria-label={`Remove ${label}`}
+                      disabled={disabled}
+                      icon={<Trash2 aria-hidden />}
+                      onClick={() => onRemove(index)}
+                    />
+                  </div>
+                )}
               </li>
             );
           })}
         </ol>
       )}
-      {full ? null : (
+      {full || readOnly ? null : (
         <div>
           <StaffButton
             type="button"

@@ -337,7 +337,7 @@ export async function registerAdminReadRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "catalogue.read");
       return deps.adminRead.parties.listArtists(request.query as AdminArtistListQuery);
     },
   );
@@ -356,7 +356,7 @@ export async function registerAdminReadRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "catalogue.write");
+      requireShopStaffCapability(request, "catalogue.read");
       const { artistId } = request.params as { artistId: string };
       return deps.adminRead.parties.getArtistDetail(artistId);
     },

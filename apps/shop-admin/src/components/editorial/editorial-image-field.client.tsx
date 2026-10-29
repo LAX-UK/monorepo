@@ -2,7 +2,7 @@
 
 import { editorialFieldId } from "@/components/editorial/editorial-field-parts.client";
 import { type ShopMediaKind, uploadShopMediaFile } from "@/lib/shop-media-upload.client";
-import { Field, FileDropzone, StaffButton } from "@auction/staff-ui";
+import { Field, FileDropzone, StaffButton, useStaffCan } from "@auction/staff-ui";
 import { ImageIcon, Trash2 } from "@auction/staff-ui/icons";
 import { type ReactNode, useState } from "react";
 
@@ -40,6 +40,7 @@ export function EditorialImageField({
   optional?: boolean;
   disabled?: boolean;
 }) {
+  const readOnly = !useStaffCan("editorial.write");
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [upload, setUpload] = useState<Upload>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -95,6 +96,7 @@ export function EditorialImageField({
               type="button"
               variant="ghost"
               size="sm"
+              requires="editorial.write"
               icon={<Trash2 aria-hidden />}
               disabled={disabled}
               onClick={() => {
@@ -114,13 +116,19 @@ export function EditorialImageField({
             </span>
           </output>
         ) : null}
-        <FileDropzone
-          label={value ? "Replace image" : "Upload image"}
-          hint="JPEG, PNG or WebP."
-          accept={ACCEPT}
-          disabled={disabled || upload !== null}
-          onFiles={(files) => void take(files)}
-        />
+        {readOnly ? (
+          value ? null : (
+            <p className="text-staff-sm text-staff-muted">No image.</p>
+          )
+        ) : (
+          <FileDropzone
+            label={value ? "Replace image" : "Upload image"}
+            hint="JPEG, PNG or WebP."
+            accept={ACCEPT}
+            disabled={disabled || upload !== null}
+            onFiles={(files) => void take(files)}
+          />
+        )}
       </div>
     </Field>
   );

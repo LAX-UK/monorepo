@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { staffReadOnlyBox, useStaffReadOnly } from "../access/read-only.js";
 import { useStaffField } from "../forms/field.js";
 import { cn } from "../lib/cn.js";
 
@@ -48,8 +49,19 @@ export const TextInput = React.forwardRef<HTMLInputElement, TextInputProps>(
     const field = useStaffField();
     const isInvalid = invalid ?? field?.invalid ?? false;
     const describedBy = props["aria-describedby"] ?? field?.describedBy;
+    const inReadOnlyView = useStaffReadOnly();
+    const readOnly = props.readOnly ?? (field?.readOnly || inReadOnlyView);
     return (
-      <div className={cn(staffFieldBox, fieldSize[size], "staff-target", boxClassName)}>
+      <div
+        {...(readOnly ? { "data-readonly": "" } : {})}
+        className={cn(
+          staffFieldBox,
+          staffReadOnlyBox,
+          fieldSize[size],
+          "staff-target",
+          boxClassName,
+        )}
+      >
         {leading}
         <input
           ref={ref}
@@ -58,8 +70,9 @@ export const TextInput = React.forwardRef<HTMLInputElement, TextInputProps>(
           aria-invalid={isInvalid || undefined}
           {...(describedBy ? { "aria-describedby": describedBy } : {})}
           {...(field?.required && props.required === undefined ? { "aria-required": true } : {})}
-          className={cn(bareInput, className)}
+          className={cn(bareInput, readOnly && "placeholder:opacity-0", className)}
           {...props}
+          readOnly={readOnly}
         />
         {trailing}
       </div>
@@ -77,8 +90,13 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
     const field = useStaffField();
     const isInvalid = invalid ?? field?.invalid ?? false;
     const describedBy = props["aria-describedby"] ?? field?.describedBy;
+    const inReadOnlyView = useStaffReadOnly();
+    const readOnly = props.readOnly ?? (field?.readOnly || inReadOnlyView);
     return (
-      <div className={cn(staffFieldBox, "items-stretch px-0 py-0 text-staff-md")}>
+      <div
+        {...(readOnly ? { "data-readonly": "" } : {})}
+        className={cn(staffFieldBox, staffReadOnlyBox, "items-stretch px-0 py-0 text-staff-md")}
+      >
         <textarea
           ref={ref}
           rows={rows}
@@ -88,9 +106,11 @@ export const TextArea = React.forwardRef<HTMLTextAreaElement, TextAreaProps>(
           {...(describedBy ? { "aria-describedby": describedBy } : {})}
           className={cn(
             "min-h-[76px] w-full resize-y bg-transparent px-3 py-2 outline-none placeholder:text-staff-subtle disabled:cursor-not-allowed",
+            readOnly && "resize-none placeholder:opacity-0",
             className,
           )}
           {...props}
+          readOnly={readOnly}
         />
       </div>
     );

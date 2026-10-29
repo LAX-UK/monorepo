@@ -1,6 +1,7 @@
 import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
 import { AdminFailedPage } from "@/components/admin-fetch-state";
 import { EditorialPlacementsTab } from "@/components/editorial-placements-tab.client";
+import { ViewOnlyMarker } from "@/components/view-only-marker.client";
 import type { EditorialAdminRow } from "@/lib/editorial-entity-forms";
 import type { AdminPlacementRow } from "@/lib/editorial-placements";
 import { fetchAdminJson } from "@/server/application/load-admin-data";
@@ -46,6 +47,7 @@ export default async function HomePlacementsPage() {
           />
         }
         title="lax.art home"
+        status={<ViewOnlyMarker editRequires="editorial.write" />}
         description="What lax.art features on its home and hub pages, slot by slot. Each slot is saved on its own and replaces everything in it; rows show in the order listed."
       />
       <EditorialPlacementsTab

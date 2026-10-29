@@ -128,7 +128,7 @@ describe("LotDetailShell", () => {
         </LotDetailShell>
       </BidStaffAccessProvider>,
     );
-    expect(screen.getByText("View only · Read-only")).toBeInTheDocument();
+    expect(screen.getByText("View only")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /^publish$/i })).toBeNull();
     expect(screen.queryByRole("link", { name: /edit/i })).toBeNull();
   });

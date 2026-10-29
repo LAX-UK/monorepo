@@ -36,12 +36,16 @@ import {
   OverflowMenu,
   PageHeader,
   StaffButton,
+  StaffReadOnly,
   StatusBadge,
   TextArea,
   TextInput,
   UnsavedChangesDialog,
+  ViewOnlyBadge,
   formatStaffDateTime,
   toast,
+  useStaffAccess,
+  useStaffCan,
   useUnsavedChanges,
 } from "@auction/staff-ui";
 import { Eye, EyeOff, Link2, Save } from "@auction/staff-ui/icons";
@@ -111,6 +115,9 @@ export function HelpArticleEditor({
   artPublicUrl: string | null;
 }) {
   const router = useRouter();
+  /** Without `editorial.write` the question opens as a read-only view. */
+  const readOnly = !useStaffCan("editorial.write");
+  const { roleLabel } = useStaffAccess();
   const mode = detail ? "edit" : "create";
   const [record, setRecord] = useState(detail);
   const [form, setForm] = useState<HelpArticleForm>(() =>
@@ -287,6 +294,7 @@ export function HelpArticleEditor({
   const publicationButton = record ? (
     <StaffButton
       variant="secondary"
+      requires="editorial.publish"
       icon={published ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
       disabled={dirty || changingPublication}
       onClick={() => setConfirmingPublication(true)}
@@ -309,11 +317,14 @@ export function HelpArticleEditor({
           }
           title={title}
           status={
-            record ? (
-              <MappedStatusBadge status={record.status} present={presentHelpStatus} />
-            ) : (
-              <StatusBadge tone="info">New draft</StatusBadge>
-            )
+            <>
+              {record ? (
+                <MappedStatusBadge status={record.status} present={presentHelpStatus} />
+              ) : (
+                <StatusBadge tone="info">New draft</StatusBadge>
+              )}
+              {readOnly ? <ViewOnlyBadge {...(roleLabel ? { role: roleLabel } : {})} /> : null}
+            </>
           }
           meta={
             record ? (
@@ -331,6 +342,7 @@ export function HelpArticleEditor({
                 actions={[
                   {
                     id: "preview",
+                    requires: "editorial.write",
                     label: "Create preview link",
                     icon: Link2,
                     disabled: dirty || previewing,
@@ -410,124 +422,132 @@ export function HelpArticleEditor({
           className="flex flex-col gap-6 rounded-staff-md border border-staff-line bg-staff-surface p-4 sm:p-6"
           onSubmit={(event) => {
             event.preventDefault();
+            if (readOnly) return;
             void submit();
           }}
         >
-          <FormErrorSummary errors={attempted ? summary : []} focusKey={failedSubmits} />
+          <StaffReadOnly readOnly={readOnly}>
+            <FormErrorSummary errors={attempted ? summary : []} focusKey={failedSubmits} />
 
-          <FormSection
-            title="Details"
-            description="The question as a reader would ask it, and where it sits in the Help centre."
-          >
-            <Field
-              label="Question"
-              description="For example, “Can I return an artwork?”"
-              error={errors.question}
-              id={FIELD_IDS.question}
+            <FormSection
+              title="Details"
+              description="The question as a reader would ask it, and where it sits in the Help centre."
             >
-              <TextInput
-                value={form.question}
-                maxLength={300}
-                autoComplete="off"
-                onChange={(event) => {
-                  const question = event.target.value;
-                  update({
-                    question,
-                    ...(mode === "create" && !slugEdited ? { slug: slugFromTitle(question) } : {}),
-                  });
-                }}
-              />
-            </Field>
-            <Field
-              label="Category"
-              description="Saving a question in another category moves it to the end of that category."
-              error={errors.categoryId}
-              id={FIELD_IDS.categoryId}
-            >
-              <EnumSelect
-                value={form.categoryId || null}
-                onValueChange={(categoryId) => update({ categoryId })}
-                options={categories.map((category) => ({
-                  value: category.value,
-                  label: category.label,
-                }))}
-                placeholder="Choose a category"
-                className="sm:max-w-80"
-              />
-            </Field>
-            <Field
-              label="Web address"
-              description="Lowercase letters, numbers and single hyphens."
-              error={errors.slug}
-              id={FIELD_IDS.slug}
-            >
-              <TextInput
-                value={form.slug}
-                leading={<span className="text-staff-muted">/help/</span>}
-                maxLength={120}
-                autoComplete="off"
-                spellCheck={false}
-                onChange={(event) => {
-                  setSlugEdited(true);
-                  update({ slug: event.target.value });
-                }}
-              />
-            </Field>
-          </FormSection>
+              <Field
+                label="Question"
+                description="For example, “Can I return an artwork?”"
+                error={errors.question}
+                id={FIELD_IDS.question}
+              >
+                <TextInput
+                  value={form.question}
+                  maxLength={300}
+                  autoComplete="off"
+                  onChange={(event) => {
+                    const question = event.target.value;
+                    update({
+                      question,
+                      ...(mode === "create" && !slugEdited
+                        ? { slug: slugFromTitle(question) }
+                        : {}),
+                    });
+                  }}
+                />
+              </Field>
+              <Field
+                label="Category"
+                description="Saving a question in another category moves it to the end of that category."
+                error={errors.categoryId}
+                id={FIELD_IDS.categoryId}
+              >
+                <EnumSelect
+                  value={form.categoryId || null}
+                  onValueChange={(categoryId) => update({ categoryId })}
+                  options={categories.map((category) => ({
+                    value: category.value,
+                    label: category.label,
+                  }))}
+                  placeholder="Choose a category"
+                  className="sm:max-w-80"
+                />
+              </Field>
+              <Field
+                label="Web address"
+                description="Lowercase letters, numbers and single hyphens."
+                error={errors.slug}
+                id={FIELD_IDS.slug}
+              >
+                <TextInput
+                  value={form.slug}
+                  leading={<span className="text-staff-muted">/help/</span>}
+                  maxLength={120}
+                  autoComplete="off"
+                  spellCheck={false}
+                  onChange={(event) => {
+                    setSlugEdited(true);
+                    update({ slug: event.target.value });
+                  }}
+                />
+              </Field>
+            </FormSection>
 
-          <FormSection title="Answer" description="The answer shown on lax.art, built from blocks.">
-            {errors.body ? (
-              <div id={FIELD_IDS.body} tabIndex={-1} className="staff-focus rounded-staff-md">
-                <Notice tone="danger" title={errors.body} />
-              </div>
-            ) : null}
-            <EditorialBlockEditor
-              key={blockSession}
-              items={items}
-              errors={errors}
-              disabled={saving}
-              onChange={setItems}
-            />
-          </FormSection>
+            <FormSection
+              title="Answer"
+              description="The answer shown on lax.art, built from blocks."
+            >
+              {errors.body ? (
+                <div id={FIELD_IDS.body} tabIndex={-1} className="staff-focus rounded-staff-md">
+                  <Notice tone="danger" title={errors.body} />
+                </div>
+              ) : null}
+              <EditorialBlockEditor
+                key={blockSession}
+                items={items}
+                errors={errors}
+                disabled={saving}
+                onChange={setItems}
+              />
+            </FormSection>
 
-          <FormSection
-            title="Search listing"
-            description="How the question appears in search results. Leave blank to use the question and answer."
-          >
-            <Field
-              label="Search title"
-              optional
-              description={counter(form.seoTitle, SEO_TITLE_MAX_LENGTH)}
-              error={errors.seoTitle}
-              id={FIELD_IDS.seoTitle}
+            <FormSection
+              title="Search listing"
+              description="How the question appears in search results. Leave blank to use the question and answer."
             >
-              <TextInput
-                value={form.seoTitle}
-                placeholder={form.question.trim() || "The question"}
-                onChange={(event) => update({ seoTitle: event.target.value })}
-              />
-            </Field>
-            <Field
-              label="Search description"
-              optional
-              description={counter(form.seoDescription, SEO_DESCRIPTION_MAX_LENGTH)}
-              error={errors.seoDescription}
-              id={FIELD_IDS.seoDescription}
-            >
-              <TextArea
-                rows={3}
-                value={form.seoDescription}
-                onChange={(event) => update({ seoDescription: event.target.value })}
-              />
-            </Field>
-          </FormSection>
+              <Field
+                label="Search title"
+                optional
+                description={counter(form.seoTitle, SEO_TITLE_MAX_LENGTH)}
+                error={errors.seoTitle}
+                id={FIELD_IDS.seoTitle}
+              >
+                <TextInput
+                  value={form.seoTitle}
+                  placeholder={form.question.trim() || "The question"}
+                  onChange={(event) => update({ seoTitle: event.target.value })}
+                />
+              </Field>
+              <Field
+                label="Search description"
+                optional
+                description={counter(form.seoDescription, SEO_DESCRIPTION_MAX_LENGTH)}
+                error={errors.seoDescription}
+                id={FIELD_IDS.seoDescription}
+              >
+                <TextArea
+                  rows={3}
+                  value={form.seoDescription}
+                  onChange={(event) => update({ seoDescription: event.target.value })}
+                />
+              </Field>
+            </FormSection>
+          </StaffReadOnly>
 
           <FormActions
             sticky
             start={
               <>
                 <StaffButton asChild variant="secondary">
-                  <Link href="/help">Cancel</Link>
+                  <Link href="/help">{readOnly ? "Back to questions" : "Cancel"}</Link>
                 </StaffButton>
                 <output aria-live="polite" className="text-staff-sm text-staff-muted">
                   {dirty ? "Unsaved changes" : ""}
@@ -538,6 +558,7 @@ export function HelpArticleEditor({
             <StaffButton
               type="submit"
               variant="primary"
+              requires="editorial.write"
               icon={<Save aria-hidden />}
               loading={saving}
               disabled={mode === "edit" && !dirty}

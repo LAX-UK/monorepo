@@ -139,6 +139,7 @@ export function HelpCategoriesList({
       },
       {
         id: "edit",
+        requires: "editorial.write",
         label: "Edit…",
         icon: Pencil,
         onSelect: () => openDialog({ kind: "form", row }),
@@ -148,6 +149,7 @@ export function HelpCategoriesList({
         ? [
             {
               id: "up",
+              requires: "editorial.write",
               label: "Move up",
               icon: ArrowUp,
               disabled: reorder.pending || index === 0,
@@ -155,6 +157,7 @@ export function HelpCategoriesList({
             },
             {
               id: "down",
+              requires: "editorial.write",
               label: "Move down",
               icon: ArrowDown,
               disabled: reorder.pending || index === rows.length - 1,
@@ -171,6 +174,7 @@ export function HelpCategoriesList({
       },
       {
         id: "delete",
+        requires: "editorial.write",
         label: "Delete…",
         icon: Trash2,
         tone: "danger",
@@ -184,6 +188,7 @@ export function HelpCategoriesList({
   const newCategory = (
     <StaffButton
       variant="primary"
+      requires="editorial.write"
       icon={<Plus aria-hidden />}
       onClick={() => openDialog({ kind: "form", row: null })}
     >
@@ -195,6 +200,7 @@ export function HelpCategoriesList({
     <>
       <ListPage<HelpCategoryListRow>
         title="Help centre categories"
+        editRequires="editorial.write"
         description="Questions are grouped by category on lax.art, in this order. Only published categories appear."
         Link={list.Link}
         listKey="lax-admin.help-categories"
@@ -288,6 +294,7 @@ export function HelpCategoriesList({
             <>
               <StaffButton
                 variant="secondary"
+                requires="editorial.publish"
                 icon={opened.status === "published" ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
                 onClick={() =>
                   openDialog({
@@ -301,6 +308,7 @@ export function HelpCategoriesList({
               </StaffButton>
               <StaffButton
                 variant="primary"
+                requires="editorial.write"
                 icon={<Pencil aria-hidden />}
                 onClick={() => openDialog({ kind: "form", row: opened })}
               >

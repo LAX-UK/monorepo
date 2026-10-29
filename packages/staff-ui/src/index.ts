@@ -235,6 +235,7 @@ export { RelatedRecordsSection } from "./data/related-records-section.js";
 export type { RelatedRecordsSectionProps } from "./data/related-records-section.js";
 
 // Access
+export { StaffReadOnly, staffReadOnlyBox, useStaffReadOnly } from "./access/read-only.js";
 export {
   Permitted,
   StaffAccessProvider,

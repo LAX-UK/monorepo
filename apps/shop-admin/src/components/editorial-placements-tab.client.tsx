@@ -30,9 +30,11 @@ import {
   ListEditor,
   Notice,
   StaffButton,
+  StaffReadOnly,
   StatusBadge,
   TextInput,
   useBeforeUnloadGuard,
+  useStaffCan,
 } from "@auction/staff-ui";
 import { Save } from "@auction/staff-ui/icons";
 import Link from "next/link";
@@ -163,6 +165,7 @@ function PlacementSlotEditor({
   refLists: PlacementRefLists;
 }) {
   const { status, setStatus, pending, run } = useEditorialMutation();
+  const readOnly = !useStaffCan("editorial.write");
   const [drafts, setDrafts] = useState(initialDrafts);
   const [dirty, setDirty] = useState(false);
   const [issues, setIssues] = useState<PlacementIssue[]>([]);
@@ -221,31 +224,34 @@ function PlacementSlotEditor({
         {dirty ? <StatusBadge tone="warning">Unsaved changes</StatusBadge> : null}
       </div>
       <FormErrorSummary errors={summary} focusKey={failedSaves} />
-      <ListEditor
-        items={drafts}
-        getKey={(draft) => draft.key}
-        itemLabel={(index) => `row ${index + 1}`}
-        addLabel="Add row"
-        emptyText="Nothing is placed in this slot."
-        max={PLACEMENT_MAX_ROWS}
-        disabled={pending}
-        onAdd={() => update([...drafts, emptyPlacementDraft(newKey())])}
-        onRemove={(index) => update(removeItem(drafts, index))}
-        onMove={(from, to) => update(moveItem(drafts, from, to > from ? 1 : -1))}
-        renderItem={(draft, index) => (
-          // biome-ignore lint/a11y/useSemanticElements: a row is several fields, not one control
-          <div role="group" aria-label={`Row ${index + 1}`} className="flex flex-col gap-4">
-            <PlacementRowFields
-              slot={slot}
-              draft={draft}
-              refLists={refLists}
-              disabled={pending}
-              errors={rowErrors.get(draft.key) ?? {}}
-              onChange={(next) => update(replaceItem(drafts, index, next))}
-            />
-          </div>
-        )}
-      />
+      <StaffReadOnly readOnly={readOnly}>
+        <ListEditor
+          items={drafts}
+          getKey={(draft) => draft.key}
+          itemLabel={(index) => `row ${index + 1}`}
+          addLabel="Add row"
+          emptyText="Nothing is placed in this slot."
+          max={PLACEMENT_MAX_ROWS}
+          disabled={pending}
+          readOnly={readOnly}
+          onAdd={() => update([...drafts, emptyPlacementDraft(newKey())])}
+          onRemove={(index) => update(removeItem(drafts, index))}
+          onMove={(from, to) => update(moveItem(drafts, from, to > from ? 1 : -1))}
+          renderItem={(draft, index) => (
+            // biome-ignore lint/a11y/useSemanticElements: a row is several fields, not one control
+            <div role="group" aria-label={`Row ${index + 1}`} className="flex flex-col gap-4">
+              <PlacementRowFields
+                slot={slot}
+                draft={draft}
+                refLists={refLists}
+                disabled={pending}
+                errors={rowErrors.get(draft.key) ?? {}}
+                onChange={(next) => update(replaceItem(drafts, index, next))}
+              />
+            </div>
+          )}
+        />
+      </StaffReadOnly>
       {status ? (
         <Notice
           tone="danger"
@@ -262,18 +268,20 @@ function PlacementSlotEditor({
             : {})}
         />
       ) : null}
-      <FormActions>
-        <StaffButton
-          type="button"
-          variant="primary"
-          icon={<Save aria-hidden />}
-          {...(dirty || pending ? {} : { disabledReason: "No changes to save" })}
-          loading={pending}
-          onClick={() => void save()}
-        >
-          {pending ? "Saving…" : "Save slot"}
-        </StaffButton>
-      </FormActions>
+      {readOnly ? null : (
+        <FormActions>
+          <StaffButton
+            type="button"
+            variant="primary"
+            icon={<Save aria-hidden />}
+            {...(dirty || pending ? {} : { disabledReason: "No changes to save" })}
+            loading={pending}
+            onClick={() => void save()}
+          >
+            {pending ? "Saving…" : "Save slot"}
+          </StaffButton>
+        </FormActions>
+      )}
     </section>
   );
 }

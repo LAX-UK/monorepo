@@ -43,7 +43,7 @@ const PROBES: Probe[] = [
     name: "editorial read",
     method: "GET",
     url: "/admin/v1/editorial/pages",
-    allowed: ["shop_admin", "editor"],
+    allowed: ["shop_admin", "editor", "read_only"],
   },
   {
     name: "editorial create",
@@ -106,7 +106,7 @@ const PROBES: Probe[] = [
     name: "editorial links read",
     method: "GET",
     url: `/admin/v1/editorial/exhibitions/${ENTITY_ID}/links`,
-    allowed: ["shop_admin", "editor"],
+    allowed: ["shop_admin", "editor", "read_only"],
   },
   {
     name: "editorial links write",
@@ -125,7 +125,7 @@ const PROBES: Probe[] = [
     name: "help categories list",
     method: "GET",
     url: "/admin/v1/help/categories",
-    allowed: ["shop_admin", "editor"],
+    allowed: ["shop_admin", "editor", "read_only"],
   },
   {
     name: "help article publish",
@@ -144,7 +144,7 @@ const PROBES: Probe[] = [
     name: "artists list",
     method: "GET",
     url: "/admin/v1/artists",
-    allowed: ["shop_admin", "catalogue_editor"],
+    allowed: ["shop_admin", "catalogue_editor", "read_only"],
   },
   {
     name: "artist applications queue",

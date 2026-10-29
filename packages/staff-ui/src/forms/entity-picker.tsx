@@ -11,6 +11,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
 import { Check, ChevronsUpDown, LoaderCircle } from "lucide-react";
 import * as React from "react";
+import { staffReadOnlyBox } from "../access/read-only.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { staffFieldBox } from "../primitives/input.js";
 import { staffCommandClass, staffCommandItemClass } from "./command-styles.js";
@@ -102,6 +103,23 @@ export function EntityPicker({
     (selected && selected.id === value ? selected : null);
   const isInvalid = invalid ?? field?.invalid ?? false;
   const isDisabled = disabled ?? field?.disabled ?? false;
+
+  if (field?.readOnly) {
+    return (
+      <div
+        data-readonly=""
+        id={id ?? field.controlId}
+        // biome-ignore lint/a11y/useSemanticElements: a read-only value, not an editable input
+        role="textbox"
+        aria-readonly="true"
+        tabIndex={0}
+        aria-labelledby={field.labelId}
+        className={cn(staffFieldBox, staffReadOnlyBox, "h-control-md text-staff-md", className)}
+      >
+        <span className="truncate">{current?.label ?? ""}</span>
+      </div>
+    );
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

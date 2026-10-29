@@ -35,11 +35,15 @@ describe("getStaffSessionView", () => {
     });
     expect(view.role).toBe("catalogue_editor");
     expect(view.roles).toEqual(["catalogue_editor", "editor"]);
-    expect(view.capabilities).toEqual([
-      "catalogue.write",
-      "editorial.write",
-      "editorial.publish",
-      "artist_application.review",
-    ]);
+    expect([...view.capabilities].sort()).toEqual(
+      [
+        "catalogue.read",
+        "catalogue.write",
+        "editorial.read",
+        "editorial.write",
+        "editorial.publish",
+        "artist_application.review",
+      ].sort(),
+    );
   });
 });

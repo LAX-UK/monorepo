@@ -38,15 +38,22 @@ import {
   OverflowMenu,
   PageHeader,
   StaffButton,
+  StaffReadOnly,
   UnsavedChangesDialog,
+  ViewOnlyBadge,
   formatStaffDateTime,
   toast,
+  useStaffAccess,
+  useStaffCan,
   useUnsavedChanges,
 } from "@auction/staff-ui";
 import { Eye, EyeOff, Link as LinkIcon, Save } from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useRef, useState } from "react";
+
+const EDITORIAL_WRITE = "editorial.write";
+const EDITORIAL_PUBLISH = "editorial.publish";
 
 const presentEditorialStatus = presentStatus("editorial");
 
@@ -134,6 +141,9 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
   const { entity, api } = config;
   const id = detail?.id ?? null;
   const router = useRouter();
+  /** Without `editorial.write` the item opens as a read-only view. */
+  const readOnly = !useStaffCan(EDITORIAL_WRITE);
+  const { roleLabel } = useStaffAccess();
   const pathname = usePathname();
 
   const [form, setForm] = useState<F>(() => (detail ? config.fromDetail(detail) : config.empty()));
@@ -376,7 +386,12 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
               }
             : {})}
           title={title}
-          status={<MappedStatusBadge status={status} present={presentEditorialStatus} />}
+          status={
+            <>
+              <MappedStatusBadge status={status} present={presentEditorialStatus} />
+              {readOnly ? <ViewOnlyBadge {...(roleLabel ? { role: roleLabel } : {})} /> : null}
+            </>
+          }
           meta={
             id ? (
               <>
@@ -396,6 +411,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
               <StaffButton
                 type="button"
                 variant="secondary"
+                requires={EDITORIAL_PUBLISH}
                 icon={publishing ? <Eye aria-hidden /> : <EyeOff aria-hidden />}
                 disabled={disabled || unsaved}
                 onClick={() => setDialog("publish")}
@@ -410,6 +426,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
                 actions={[
                   {
                     id: "preview",
+                    requires: EDITORIAL_WRITE,
                     label: "Create preview link",
                     icon: LinkIcon,
                     disabled: disabled || unsaved,
@@ -464,38 +481,47 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
           className="flex flex-col gap-6 rounded-staff-md border border-staff-line bg-staff-surface p-4 sm:p-6"
           onSubmit={(event) => {
             event.preventDefault();
+            if (readOnly) return;
             void save();
           }}
         >
-          <FormErrorSummary errors={summary} focusKey={failedSubmits} />
+          <StaffReadOnly readOnly={readOnly}>
+            <FormErrorSummary errors={summary} focusKey={failedSubmits} />
 
-          {config.renderFields({ form, onChange: editField, disabled, errors })}
+            {config.renderFields({ form, onChange: editField, disabled, errors })}
 
-          <FieldSection title={body.title} description={body.description}>
-            <EditorialBlockEditor
-              key={blockSession}
-              items={items}
-              errors={errors}
-              disabled={disabled}
-              onChange={(next) => {
-                setItems(next);
-                setDirty(true);
-              }}
-            />
-          </FieldSection>
+            <FieldSection title={body.title} description={body.description}>
+              <EditorialBlockEditor
+                key={blockSession}
+                items={items}
+                errors={errors}
+                disabled={disabled}
+                onChange={(next) => {
+                  setItems(next);
+                  setDirty(true);
+                }}
+              />
+            </FieldSection>
 
-          {links ? (
-            <EditorialLinkLists controller={links} onFailure={(next) => setFailure(next)} />
-          ) : id === null && config.linksBeforeFirstSave ? (
-            <EditorialLinksAfterFirstSave what={config.linksBeforeFirstSave} />
-          ) : null}
+            {links ? (
+              <EditorialLinkLists
+                controller={links}
+                readOnly={readOnly}
+                onFailure={(next) => setFailure(next)}
+              />
+            ) : id === null && config.linksBeforeFirstSave ? (
+              <EditorialLinksAfterFirstSave what={config.linksBeforeFirstSave} />
+            ) : null}
+          </StaffReadOnly>
 
           <FormActions
             sticky
             start={
               <>
                 <StaffButton asChild variant="secondary">
-                  <Link href={config.page?.list.href ?? pathname}>Cancel</Link>
+                  <Link href={config.page?.list.href ?? pathname}>
+                    {readOnly ? "Back to list" : "Cancel"}
+                  </Link>
                 </StaffButton>
                 <output aria-live="polite" className="text-staff-sm text-staff-muted">
                   {unsaved ? "Unsaved changes" : ""}
@@ -506,6 +532,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
             <StaffButton
               type="submit"
               variant="primary"
+              requires={EDITORIAL_WRITE}
               icon={<Save aria-hidden />}
               loading={busy === "save"}
               disabled={disabled || (id !== null && !unsaved)}

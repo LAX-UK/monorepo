@@ -68,7 +68,7 @@ export async function registerAdminHelpRoutes(app: FastifyInstance, repo: HelpRe
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "editorial.write");
+      requireShopStaffCapability(request, "editorial.read");
       return { items: await repo.listAdminCategories() };
     },
   );
@@ -202,7 +202,7 @@ export async function registerAdminHelpRoutes(app: FastifyInstance, repo: HelpRe
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "editorial.write");
+      requireShopStaffCapability(request, "editorial.read");
       return {
         items: await repo.listAdminArticles(
           request.query as Parameters<HelpRepository["listAdminArticles"]>[0],
@@ -221,7 +221,7 @@ export async function registerAdminHelpRoutes(app: FastifyInstance, repo: HelpRe
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "editorial.write");
+      requireShopStaffCapability(request, "editorial.read");
       const { id } = request.params as { id: string };
       const row = await repo.getAdminArticleById(id);
       if (!row) throw notFound("Question not found");

@@ -167,7 +167,7 @@ export function EditionFactsCard({
               values={values}
               errors={errors}
               spec={run.spec}
-              disabled={readOnly}
+              readOnly={readOnly}
               onChange={update}
             />
             <div className="xl:sticky xl:top-20 xl:self-start">
