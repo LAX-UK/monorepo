@@ -82,7 +82,7 @@ describe("CheckoutPurchasePanel", () => {
         })}
       />,
     );
-    expect(screen.getByText("Compliance review")).toBeInTheDocument();
+    expect(screen.getByText("More checks needed")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /complete purchase/i })).not.toBeInTheDocument();
   });
 
@@ -96,7 +96,7 @@ describe("CheckoutPurchasePanel", () => {
         })}
       />,
     );
-    expect(screen.getByText("Compliance review")).toBeInTheDocument();
+    expect(screen.getByText("More checks needed")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /complete purchase/i })).not.toBeInTheDocument();
   });
 
@@ -110,8 +110,8 @@ describe("CheckoutPurchasePanel", () => {
         })}
       />,
     );
-    expect(screen.getByText("Finance review")).toBeInTheDocument();
-    expect(screen.getByText(/settlements for release/i)).toBeInTheDocument();
+    expect(screen.getByText("Our team checks this payment")).toBeInTheDocument();
+    expect(screen.getByText(/checks your invoice before it can be paid/i)).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: /complete purchase/i })).not.toBeInTheDocument();
   });
 
@@ -203,7 +203,7 @@ describe("CheckoutPurchasePanel", () => {
         })}
       />,
     );
-    expect(screen.getByText(/pay by card via secure stripe checkout/i)).toBeInTheDocument();
+    expect(screen.getByText(/pay by card through our secure checkout/i)).toBeInTheDocument();
   });
 
   it("shows bank-transfer-only payment copy when checkout rail is gb_bank_transfer", () => {
@@ -216,7 +216,7 @@ describe("CheckoutPurchasePanel", () => {
     );
     expect(
       screen.getByText(
-        /this purchase settles by uk bank transfer via secure stripe checkout — card is not available/i,
+        /this purchase is paid by uk bank transfer through our secure checkout, as it is above our card limit/i,
       ),
     ).toBeInTheDocument();
   });
@@ -225,7 +225,7 @@ describe("CheckoutPurchasePanel", () => {
     render(<CheckoutPurchasePanel {...baseProps()} />);
     expect(
       screen.getByText(
-        /pay by card or uk bank transfer via secure stripe checkout, depending on the amount/i,
+        /pay by card or uk bank transfer through our secure checkout, depending on the amount/i,
       ),
     ).toBeInTheDocument();
   });

@@ -10,11 +10,11 @@ export type OrgOnboardingStepMeta = {
 
 /** Canonical wizard step order and display labels for org onboarding. */
 export const ORG_ONBOARDING_STEP_META: readonly OrgOnboardingStepMeta[] = [
-  { key: "type", label: "Type", estimatedMinutes: 2 },
+  { key: "type", label: "Organisation type", estimatedMinutes: 2 },
   { key: "details", label: "Details", estimatedMinutes: 5 },
   { key: "documents", label: "Documents", estimatedMinutes: 5 },
-  { key: "connect", label: "Connect", estimatedMinutes: 5 },
-  { key: "identity", label: "Identity", estimatedMinutes: 3 },
+  { key: "connect", label: "Payouts", estimatedMinutes: 5 },
+  { key: "identity", label: "Identity check", estimatedMinutes: 3 },
 ] as const;
 
 const STEP_KEY_SET = new Set<string>(ORG_ONBOARDING_STEPS);

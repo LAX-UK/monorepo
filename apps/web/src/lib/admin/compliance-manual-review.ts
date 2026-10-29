@@ -7,7 +7,7 @@ export function isComplianceManualReviewReason(
 }
 
 export function manualReviewQueueEyebrow(reason: ManualReviewReason | null | undefined): string {
-  if (isComplianceManualReviewReason(reason)) return "Compliance review";
-  if (reason) return "Finance review";
-  return "Payment review";
+  if (isComplianceManualReviewReason(reason)) return "More checks needed";
+  if (reason) return "Our team checks this payment";
+  return "Payment being checked";
 }

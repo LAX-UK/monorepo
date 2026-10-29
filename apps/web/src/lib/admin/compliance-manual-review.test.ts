@@ -13,8 +13,8 @@ describe("compliance-manual-review", () => {
   });
 
   it("labels checkout eyebrows by reason family", () => {
-    expect(manualReviewQueueEyebrow("aml_hold")).toBe("Compliance review");
-    expect(manualReviewQueueEyebrow("high_value")).toBe("Finance review");
-    expect(manualReviewQueueEyebrow(null)).toBe("Payment review");
+    expect(manualReviewQueueEyebrow("aml_hold")).toBe("More checks needed");
+    expect(manualReviewQueueEyebrow("high_value")).toBe("Our team checks this payment");
+    expect(manualReviewQueueEyebrow(null)).toBe("Payment being checked");
   });
 });

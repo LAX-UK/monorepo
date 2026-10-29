@@ -19,9 +19,7 @@ export function OrderSummaryCard({
   return (
     <Card className="min-w-0 border border-border-hairline bg-surface-container-low shadow-md lg:sticky lg:top-4 lg:z-10 lg:shadow-lg">
       <CardContent className="p-6 sm:p-8">
-        <h2 className="mb-6 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Order summary
-        </h2>
+        <h2 className="mb-6 font-label text-xs font-bold text-secondary">Order summary</h2>
         <dl className="min-w-0 space-y-4 font-body text-sm">
           <div className="flex min-w-0 justify-between gap-4">
             <dt className="min-w-0 shrink text-on-surface-variant">Hammer price</dt>
@@ -40,7 +38,7 @@ export function OrderSummaryCard({
           <Separator className="bg-outline-variant/10" />
           <div className="flex min-w-0 justify-between gap-4">
             <dt className="min-w-0 text-on-surface-variant">Shipping &amp; logistics</dt>
-            <dd className="shrink-0 text-right font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+            <dd className="shrink-0 text-right font-label text-xs text-secondary">
               Quoted after payment
             </dd>
           </div>
@@ -50,9 +48,7 @@ export function OrderSummaryCard({
           </p>
           <Separator className="bg-outline-variant/15" />
           <div className="flex min-w-0 justify-between gap-4 pt-2">
-            <dt className="min-w-0 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface">
-              Total due
-            </dt>
+            <dt className="min-w-0 font-label text-xs font-bold text-on-surface">Total due</dt>
             <dd className="shrink-0 font-headline text-2xl tabular-nums text-on-surface">
               {total}
             </dd>

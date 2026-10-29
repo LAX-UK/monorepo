@@ -1,29 +1,25 @@
+import { DashboardErrorAlert } from "@/components/dashboard/primitives";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
-import { documentReviewStatusBadgeVariant } from "@/components/organisations/labels";
 import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
+import { OrganisationDocumentList } from "@/components/organisations/organisation-document-list";
 import { OrganisationTabNoAccess } from "@/components/organisations/organisation-tab-no-access";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { requireActiveOrganisationActor } from "@/lib/legal-entity/active-organisation.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { organisationHref } from "@/lib/navigation/client-routes";
 import { requireOrganisationTab } from "@/lib/navigation/organisation-tabs";
-import type { LegalEntity, LegalEntityDocument } from "@auction/types";
+import { loadOrganisationDocuments } from "@/lib/organisations/organisation-documents.server";
+import { buildOrganisationDocumentsView } from "@/lib/organisations/organisation-documents.vm";
 import { DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { SectionHeader } from "@auction/ui/components/section-header";
-import { StatusBadge } from "@auction/ui/components/status-badge";
-import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-type EntityWithDocs = LegalEntity & { documents?: LegalEntityDocument[] };
-
-function formatUploadedAt(d: Date | string): string {
-  const dt = typeof d === "string" ? new Date(d) : d;
-  if (Number.isNaN(dt.getTime())) return "—";
-  return dt.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" });
-}
-
+/**
+ * The Documents tab: what LAX asked the organisation for, what it sent and where each one is.
+ * The organisation's state banner comes from the layout, so this page does not repeat it.
+ */
 export default async function OrganisationDocumentsPage() {
   const user = await requireAuthenticatedUser({
     shell: "client",
@@ -32,81 +28,60 @@ export default async function OrganisationDocumentsPage() {
   const { organisation, actor } = await requireActiveOrganisationActor(user);
   const access = requireOrganisationTab(actor, "documents");
   if (access.kind === "forbidden") return <OrganisationTabNoAccess access={access} />;
-  const id = organisation.id;
-  const ctx = await createPerOrgGateway().getContext(id);
+  const ctx = await createPerOrgGateway().getContext(organisation.id);
   if (!ctx) notFound();
+  const { member, entity } = ctx;
 
-  const entity = ctx.entity as EntityWithDocs | null;
-  const docs = entity?.documents ?? [];
-  const returnTo = organisationHref("documents");
-  const href = `/onboarding/organisation/step/documents?entityId=${encodeURIComponent(id)}&returnTo=${encodeURIComponent(returnTo)}`;
+  const header = (
+    <OrgTabSectionHeader>
+      <SectionHeader heading={<DisplayHeading as="h2">Documents</DisplayHeading>} />
+    </OrgTabSectionHeader>
+  );
+
+  const loaded = await loadOrganisationDocuments(member.id);
+  if (!loaded.ok) {
+    return (
+      <div className="space-y-6">
+        {header}
+        <DashboardErrorAlert
+          title="We couldn't load the documents"
+          message="Something went wrong on our side. Try again in a moment."
+        >
+          <div>
+            <Button asChild variant="secondary" size="default">
+              <Link href={organisationHref("documents")}>Try again</Link>
+            </Button>
+          </div>
+        </DashboardErrorAlert>
+      </div>
+    );
+  }
+
+  const view = buildOrganisationDocumentsView({
+    actor,
+    status: entity?.status ?? member.status,
+    organisationName: member.displayName,
+    slots: loaded.slots,
+    received: loaded.received,
+  });
 
   return (
     <div className="space-y-6">
-      <OrgTabSectionHeader>
-        <SectionHeader heading={<DisplayHeading as="h2">Documents</DisplayHeading>} />
-      </OrgTabSectionHeader>
-
-      <Surface variant="section" padding="md" className="space-y-4">
-        <div className="space-y-1">
-          <h3 className="text-base font-semibold text-on-surface">Verification files</h3>
-          <p className="font-body text-sm text-on-surface-variant">
-            Upload or replace documents in the secure onboarding step. When the API returns a
-            document list, it appears here.
-          </p>
-        </div>
-        <div>
-          {docs.length === 0 ? (
-            <DashboardEmptyState
-              illustration="ledger"
-              title="No documents yet"
-              description="Use onboarding to add KYB files for this organisation."
-              action={
-                <Button asChild variant="cta" size="default">
-                  <Link href={href} prefetch>
-                    Upload documents
-                  </Link>
-                </Button>
-              }
-            />
-          ) : (
-            <ul className="divide-y divide-outline-variant/15 rounded-lg border border-border-hairline">
-              {docs.map((doc) => (
-                <li
-                  key={doc.id}
-                  className="flex flex-col gap-2 p-4 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0">
-                    <p className="font-medium capitalize">{doc.kind.replace(/_/g, " ")}</p>
-                    <p className="text-xs text-on-surface-variant">
-                      Uploaded {formatUploadedAt(doc.uploadedAt)}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <StatusBadge variant={documentReviewStatusBadgeVariant(doc.reviewStatus)}>
-                      {doc.reviewStatus}
-                    </StatusBadge>
-                    <Button asChild variant="outline" size="default">
-                      <Link href={href} prefetch>
-                        Replace
-                      </Link>
-                    </Button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-        {docs.length > 0 ? (
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="cta" size="default">
-              <Link href={href} prefetch>
-                Upload more
-              </Link>
-            </Button>
-          </div>
-        ) : null}
-      </Surface>
+      {header}
+      {view.empty ? (
+        <DashboardEmptyState
+          illustration="ledger"
+          title={view.empty.title}
+          description={view.empty.description}
+        />
+      ) : (
+        <OrganisationDocumentList
+          entityId={member.id}
+          intro={view.intro}
+          rows={view.rows}
+          closedNote={view.closedNote}
+        />
+      )}
     </div>
   );
 }

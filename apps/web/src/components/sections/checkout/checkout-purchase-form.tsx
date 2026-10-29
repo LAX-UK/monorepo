@@ -61,7 +61,7 @@ export function CheckoutPurchaseForm({
               <FormItem className="min-w-0">
                 <div className="space-y-3">
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <FormLabel className="font-label text-xs font-bold uppercase tracking-[0.2em] text-secondary">
+                    <FormLabel className="font-label text-xs font-bold text-secondary">
                       Shipping / invoice address
                     </FormLabel>
                     {checkoutAddresses.length > 0 ? (
@@ -130,7 +130,7 @@ export function CheckoutPurchaseForm({
                                 : "border-border-hairline bg-surface-container-low/30 hover:border-link/50"
                             }`}
                           >
-                            <span className="block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface">
+                            <span className="block font-label text-xs text-on-surface">
                               {address.label}
                               {address.isDefault ? " · Default" : ""}
                             </span>

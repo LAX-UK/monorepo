@@ -114,7 +114,7 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
         title="Basket checkout"
         hideTitleOnMobile
         hideDescriptionOnMobile
-        description="Review every lot in your basket. We currently process each lot through its own Xero invoice — basket-level invoicing is on the roadmap with finance."
+        description="Review every lot in your basket. Each lot has its own invoice, so you pay them one at a time."
       />
 
       {requestedIds.length === 0 && !hadRawButNoValidUuids ? (

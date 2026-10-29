@@ -98,8 +98,8 @@ export function OrgConnectStepClient({
 
       {!connectReady ? (
         <p className="text-sm text-on-surface-variant">
-          Complete payout verification in the form above, then use Refresh status. Continue unlocks
-          when Stripe confirms your account is ready.
+          Complete your payout details in the form above, then use Refresh status. Continue unlocks
+          once your payout account is ready.
         </p>
       ) : null}
 

@@ -4,8 +4,8 @@ import { checkoutPaymentErrorMessage, manualReviewReasonCopy } from "./checkout-
 describe("checkoutPaymentErrorMessage", () => {
   it("maps known API codes", () => {
     expect(checkoutPaymentErrorMessage("x", "payment_amount_exceeds_limit")).toContain("limit");
-    expect(checkoutPaymentErrorMessage("x", "stripe_checkout_already_complete")).toContain(
-      "Stripe",
+    expect(checkoutPaymentErrorMessage("x", "stripe_checkout_already_complete")).toBe(
+      "Checkout is already complete. Payment confirmation may take a few minutes, so refresh this page.",
     );
   });
 
@@ -29,11 +29,26 @@ describe("checkoutPaymentErrorMessage", () => {
 });
 
 describe("manualReviewReasonCopy", () => {
+  it("never names a vendor or an internal review", () => {
+    const reasons = [
+      "seller_archived",
+      "high_value",
+      "seller_archived_and_high_value",
+      "aml_hold",
+      "source_of_funds_required",
+      "finance_release_required",
+      null,
+    ] as const;
+    for (const reason of reasons) {
+      expect(manualReviewReasonCopy(reason)).not.toMatch(/stripe|finance review/i);
+    }
+  });
+
   it("describes high value review", () => {
-    expect(manualReviewReasonCopy("high_value")).toContain("finance review");
+    expect(manualReviewReasonCopy("high_value")).toContain("Our team checks");
   });
 
   it("describes finance release after compliance clears", () => {
-    expect(manualReviewReasonCopy("finance_release_required")).toContain("settlements for release");
+    expect(manualReviewReasonCopy("finance_release_required")).toContain("checks your invoice");
   });
 });

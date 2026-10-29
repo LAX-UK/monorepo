@@ -24,6 +24,8 @@ export const CLIENT_COPY_ROOTS = [
   "apps/web/src/components/organisations",
   "apps/web/src/components/dashboard",
   "apps/web/src/components/connect",
+  "apps/web/src/components/sections/checkout",
+  "apps/web/src/lib/checkout",
   "apps/web/src/lib/presenters",
   "apps/web/src/lib/connect",
 ];
@@ -38,6 +40,7 @@ export const FORBIDDEN_CLIENT_TERMS = [
   { term: "finance review", pattern: /\bfinance review\b/i, instead: "our team checks" },
   { term: "primary admin", pattern: /\bprimary admin\b/i, instead: "owner, Transfer ownership" },
   { term: "2FA", pattern: /\b2FA\b/i, instead: "two-step verification" },
+  { term: "Xero", pattern: /\bXero\b/i, instead: "invoice" },
   { term: "favor", pattern: /\bfavor(?:s|ed|ing|ite|ites)?\b/i, instead: "favour (British)" },
 ];
 
@@ -50,6 +53,16 @@ export const CLIENT_COPY_EXCEPTIONS = [
     path: "apps/web/src/lib/presenters/status/compliance.ts",
     term: "Connect pending",
     reason: "Staff status labels for Bid admin; client pages use the organisation label map.",
+  },
+  {
+    path: "apps/web/src/components/legal-entity/member-list.tsx",
+    term: "primary admin",
+    reason: "Removed by the Members rebuild.",
+  },
+  {
+    path: "apps/web/src/components/legal-entity/member-list.tsx",
+    term: "2FA",
+    reason: "Removed by the Members rebuild.",
   },
 ];
 

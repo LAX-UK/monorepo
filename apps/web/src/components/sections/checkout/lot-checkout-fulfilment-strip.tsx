@@ -65,7 +65,7 @@ function headlineForFulfilment(f: LotFulfilmentSnapshot | null): {
     case "cancelled":
       return { label: "Fulfilment cancelled", detail: "Contact support if this is unexpected." };
     default:
-      return { label: f.status.replaceAll("_", " "), detail: null };
+      return { label: "Fulfilment in progress", detail: null };
   }
 }
 
@@ -124,9 +124,7 @@ export function LotCheckoutFulfilmentStrip({ fulfilment, lotId }: Props) {
     <div className="mb-8 flex flex-col gap-1 lg:mb-10" aria-live="polite">
       <div className="flex items-center gap-2">
         <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
-        <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          {label}
-        </span>
+        <span className="font-label text-xs font-bold text-secondary">{label}</span>
         {polling ? (
           <Loader2 className="size-3 animate-spin text-on-surface-variant" aria-hidden />
         ) : null}

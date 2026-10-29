@@ -37,9 +37,7 @@ export function CheckoutBasketPanel({ rows, grandTotal }: Props) {
         <div className="space-y-5">
           <header className="flex items-center gap-3">
             <ShoppingBag className="size-5 text-primary" aria-hidden />
-            <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-              Basket
-            </p>
+            <p className="font-label text-xs text-on-surface-variant">Basket</p>
           </header>
           <ul className="space-y-3 lg:divide-y lg:divide-outline-variant/15 lg:space-y-0">
             {rows.map((row) => (
@@ -65,9 +63,7 @@ export function CheckoutBasketPanel({ rows, grandTotal }: Props) {
                 </div>
                 <div className="flex items-center justify-between gap-3 lg:justify-end">
                   <div className="text-left lg:text-right">
-                    <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-                      Lot total
-                    </p>
+                    <p className="font-label text-xs text-secondary">Lot total</p>
                     <p className="font-headline text-base tabular-nums text-on-surface">
                       {formatMoney(row.total.toFixed(2), PLATFORM_DEFAULT_CURRENCY)}
                     </p>
@@ -85,8 +81,7 @@ export function CheckoutBasketPanel({ rows, grandTotal }: Props) {
             ))}
           </ul>
           <p className="font-body text-xs text-on-surface-variant">
-            We invoice and settle each lot individually for now. When finance enables basket
-            invoicing, payment will consolidate into a single Xero invoice from this screen.
+            Each lot has its own invoice for now, so you pay for each one separately.
           </p>
         </div>
       </Surface>
@@ -97,9 +92,7 @@ export function CheckoutBasketPanel({ rows, grandTotal }: Props) {
         aria-live="polite"
       >
         <div className="mx-auto flex max-w-lg items-center justify-between gap-4">
-          <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-            Combined total
-          </p>
+          <p className="font-label text-xs text-on-surface-variant">Combined total</p>
           <p className="font-headline text-lg tabular-nums text-on-surface">
             {formatMoney(grandTotal.toFixed(2), PLATFORM_DEFAULT_CURRENCY)}
           </p>

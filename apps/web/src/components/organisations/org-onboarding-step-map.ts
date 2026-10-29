@@ -1,7 +1,7 @@
 import type { LegalEntityStatus, OrgOnboardingStepKey } from "@auction/types";
 
 /**
- * Fallback resume step from KYB status when onboarding API progress is unavailable.
+ * Fallback resume step from the organisation status when onboarding API progress is unavailable.
  * Prefer {@link getOrgOnboardingResumeHrefForEntity} when entity id is known.
  */
 export function resumeOnboardingStepKey(status: LegalEntityStatus): OrgOnboardingStepKey | null {
