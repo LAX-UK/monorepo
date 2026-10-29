@@ -80,7 +80,7 @@ function WorkFields({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
+          size="default"
           className="min-h-11 w-fit gap-2 px-2 font-label text-on-surface-variant hover:text-on-surface"
           onClick={onRemove}
           disabled={disabled}

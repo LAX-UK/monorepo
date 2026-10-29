@@ -75,7 +75,7 @@ export function SaleMobileSummaryBar({
     return (
       <MarketingStickyBidBar>
         <div className="min-w-0 flex flex-col gap-1">
-          <SaleLifecycleBadge status={status} size="sm" />
+          <SaleLifecycleBadge status={status} />
           <span className="sr-only">{saleTitle}</span>
         </div>
         <Link
@@ -165,7 +165,6 @@ export function SaleMobileSummaryBar({
         <SaleLifecycleBadge
           status={isUpcoming ? "scheduled" : "active"}
           {...(!isUpcoming ? { label: kicker } : {})}
-          size="sm"
         />
         <span className="sr-only">{saleTitle}</span>
         <CountdownFadeSlot visible={showCountdown}>

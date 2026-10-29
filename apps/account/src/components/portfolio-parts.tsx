@@ -4,13 +4,6 @@ import type { CurrencyTotal, LaxPortfolioItemStatus, LaxProductId } from "@aucti
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { ProductName } from "./product-name";
 
-/**
- * The shared badge is all-caps and letter-spaced; these pages write statuses as plain
- * sentences, which are easier to read and do not clip on a narrow screen.
- */
-export const SENTENCE_CASE_BADGE =
-  "px-2 py-0.5 text-xs leading-5 font-medium normal-case tracking-normal";
-
 /** Which LAX product a work or entry belongs to. The name keeps its own capitalisation. */
 export function ProductBadge({ product }: { product: LaxProductId }) {
   // Plain coloured text, not a pill, so the product never reads as another status badge.
@@ -22,11 +15,7 @@ export function ProductBadge({ product }: { product: LaxProductId }) {
 }
 
 export function PortfolioStatusBadge({ status }: { status: LaxPortfolioItemStatus }) {
-  return (
-    <StatusBadge variant={STATUS_TONES[status]} className={SENTENCE_CASE_BADGE}>
-      {STATUS_LABELS[status]}
-    </StatusBadge>
-  );
+  return <StatusBadge variant={STATUS_TONES[status]}>{STATUS_LABELS[status]}</StatusBadge>;
 }
 
 /** One figure per currency, side by side. "None recorded" is shown instead of a zero. */

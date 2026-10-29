@@ -59,7 +59,7 @@ export function TelephoneParticipationGate({
         <p className="font-body text-xs text-on-surface-variant">
           Sign in to request a live telephone bidding line for this sale.
         </p>
-        <Button size="sm" variant="outline" className="w-full gap-1.5" asChild>
+        <Button size="default" variant="outline" className="w-full gap-1.5" asChild>
           <Link href={loginHref}>
             Sign in <ArrowRight className="size-3" />
           </Link>
@@ -74,7 +74,7 @@ export function TelephoneParticipationGate({
         {kycFeedback?.detail ? (
           <p className="font-body text-xs text-on-surface-variant">{kycFeedback.detail}</p>
         ) : null}
-        <Button size="sm" variant="outline" className="w-full gap-1.5" asChild>
+        <Button size="default" variant="outline" className="w-full gap-1.5" asChild>
           <Link
             href={kycHref}
             onClick={() => markContextualKycGateNavigation("telephone", loginNextPath)}
@@ -95,7 +95,7 @@ export function TelephoneParticipationGate({
             ? "Verify your contact number so our team can reach you on the telephone line."
             : "Add and verify a contact number so our team can reach you on the line."}
         </p>
-        <Button size="sm" variant="outline" className="w-full gap-1.5" asChild>
+        <Button size="default" variant="outline" className="w-full gap-1.5" asChild>
           <Link href={profileHref}>
             {mobile?.trim() ? "Verify mobile number" : "Add mobile number"}{" "}
             <ArrowRight className="size-3" />
@@ -118,7 +118,7 @@ export function TelephoneParticipationGate({
         <p className="font-body text-xs text-on-surface-variant">
           Set up a buyer profile before requesting a telephone line.
         </p>
-        <Button size="sm" variant="outline" className="w-full" asChild>
+        <Button size="default" variant="outline" className="w-full" asChild>
           <Link href="/onboarding/organisation">Set up buyer profile</Link>
         </Button>
       </div>
@@ -141,7 +141,7 @@ export function TelephoneParticipationGate({
           You already have a telephone booking for this sale. Track status and request limit changes
           from your dashboard.
         </p>
-        <Button size="sm" variant="outline" className="w-full" asChild>
+        <Button size="default" variant="outline" className="w-full" asChild>
           <Link href={`/bids/telephone/${existingBooking.id}`}>View booking</Link>
         </Button>
       </div>

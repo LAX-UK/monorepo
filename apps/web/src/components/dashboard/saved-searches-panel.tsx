@@ -71,7 +71,7 @@ export function SavedSearchesPanel() {
   if (loadError) {
     return (
       <DashboardErrorAlert title="Saved searches unavailable" message={loadError}>
-        <Button type="button" variant="secondaryOutline" size="sm" onClick={() => void load()}>
+        <Button type="button" variant="secondaryOutline" size="default" onClick={() => void load()}>
           Retry
         </Button>
       </DashboardErrorAlert>

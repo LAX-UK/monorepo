@@ -190,7 +190,7 @@ function DetachedPickerShell({
                   <Button
                     type="button"
                     variant="outline"
-                    size="sm"
+                    size="default"
                     className="inline-flex size-11 items-center justify-center rounded-full p-0"
                     aria-label="Close"
                     onClick={() => onOpenChange(false)}

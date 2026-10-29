@@ -59,7 +59,7 @@ export function ConnectActionsBar({
           <Button
             type="button"
             variant="secondary"
-            size="sm"
+            size="default"
             disabled={actionsPending}
             onClick={onSync}
           >
@@ -70,7 +70,7 @@ export function ConnectActionsBar({
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size="default"
             disabled={actionsPending}
             onClick={handleManageInStripe}
           >

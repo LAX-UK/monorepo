@@ -110,7 +110,7 @@ export function PayoutAccountPanel({
         <Button
           type="button"
           variant="cta"
-          size="md"
+          size="lg"
           className={cn("shop-focus-ring mt-3")}
           onClick={open}
         >

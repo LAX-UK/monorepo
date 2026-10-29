@@ -45,11 +45,7 @@ export default async function InvitationReviewPage({
         backLabel="Invitations"
         eyebrow="Invitation"
         title={invitation.orgDisplayName}
-        badges={
-          <StatusBadge variant="info" size="sm">
-            {roleLabel(invitation.roleOffered)}
-          </StatusBadge>
-        }
+        badges={<StatusBadge variant="info">{roleLabel(invitation.roleOffered)}</StatusBadge>}
       />
       <Surface variant="section" padding="lg" className="space-y-4">
         <div className="flex items-start gap-3">

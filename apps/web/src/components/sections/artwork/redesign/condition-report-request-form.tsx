@@ -106,7 +106,7 @@ export function ConditionReportRequestForm({
           ) : null}
           <Button
             type="submit"
-            size="sm"
+            size="default"
             className="min-h-11 w-full"
             disabled={busy}
             aria-busy={busy}

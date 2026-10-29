@@ -73,7 +73,7 @@ export function AccountFrame({
                   ) : null}
                 </>
               ) : (
-                <Button asChild variant="cta" size="sm" className="min-h-11">
+                <Button asChild variant="cta" size="default" className="min-h-11">
                   <a href="/api/auth/login?returnTo=/account">Sign in</a>
                 </Button>
               )}

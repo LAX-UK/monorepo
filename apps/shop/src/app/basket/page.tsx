@@ -102,7 +102,7 @@ export default async function BasketPage() {
         <Button
           asChild
           variant="cta"
-          size="md"
+          size="lg"
           className={shopButtonClassName("cta", "commerce", "w-full")}
         >
           <ShopAuthLink href={shopStorefrontLoginHref("/checkout")}>

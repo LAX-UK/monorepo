@@ -15,9 +15,6 @@ import { StatusBadge } from "@auction/ui/components/status-badge";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
-/** Pills read as words here, so they opt out of the badge's capitals. */
-const TAG_CASE = "normal-case tracking-normal";
-
 /**
  * One Organisation page with tabs (Profile, Members, Documents, Payouts, Security) for the
  * active organisation account. Each member sees only the tabs their role can use.
@@ -72,16 +69,10 @@ export default async function OrganisationLayout({ children }: { children: React
           hideDescriptionOnMobile
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge
-                variant={statusBadgeVariant(member.status)}
-                size="sm"
-                className={TAG_CASE}
-              >
+              <StatusBadge variant={statusBadgeVariant(member.status)}>
                 {statusLabel(member.status)}
               </StatusBadge>
-              <StatusBadge variant="neutral" size="sm" className={TAG_CASE}>
-                {subkindLabel(member.subkind)}
-              </StatusBadge>
+              <StatusBadge variant="neutral">{subkindLabel(member.subkind)}</StatusBadge>
             </div>
           }
         />

@@ -111,7 +111,7 @@ export function OnsiteAbsenteeBidForm({ ctx, triggerClassName }: AbsenteeProps) 
       title="Submit absentee bid"
       description="Set a confidential maximum hammer price. Our team will confirm receipt and execute bids on your behalf in the saleroom."
       trigger={
-        <Button size="sm" className={cn("w-full gap-1.5", triggerClassName)}>
+        <Button size="default" className={cn("w-full gap-1.5", triggerClassName)}>
           <Mail className="size-3.5" />
           Submit Bid Form
         </Button>
@@ -196,7 +196,7 @@ export function OnsiteAbsenteeBidForm({ ctx, triggerClassName }: AbsenteeProps) 
             <Button type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Submitting…" : "Submit request"}
             </Button>
-            <Button type="button" variant="outline" size="sm" asChild>
+            <Button type="button" variant="outline" size="default" asChild>
               <a href={buildAbsenteeMailto(ctx, form.getValues(), SITE_SUPPORT_EMAIL)}>
                 Use email client instead
               </a>
@@ -337,7 +337,7 @@ export function OnsiteTelephoneBidForm({
             your lot opens.
           </p>
           {createdBookingId ? (
-            <Button size="sm" variant="outline" asChild>
+            <Button size="default" variant="outline" asChild>
               <Link href={`/bids/telephone/${createdBookingId}`}>View booking</Link>
             </Button>
           ) : null}
@@ -346,7 +346,7 @@ export function OnsiteTelephoneBidForm({
       title="Request telephone line"
       description="Register for a live telephone bidding line. A representative will call you before this lot opens."
       trigger={
-        <Button size="sm" variant="outline" className={cn("w-full gap-1.5", triggerClassName)}>
+        <Button size="default" variant="outline" className={cn("w-full gap-1.5", triggerClassName)}>
           <Phone className="size-3.5" />
           Request Line
         </Button>

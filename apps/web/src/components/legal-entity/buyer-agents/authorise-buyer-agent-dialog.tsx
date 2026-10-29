@@ -70,7 +70,7 @@ function FieldBlock({
           <Button
             type="button"
             variant="link"
-            size="sm"
+            size="default"
             className="h-auto px-1 py-0.5 font-body text-xs"
             onClick={onClear}
             aria-label={`Clear ${label.replace(" (optional)", "").toLowerCase()} date`}

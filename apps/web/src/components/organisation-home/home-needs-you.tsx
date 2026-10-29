@@ -46,7 +46,7 @@ export function HomeNeedsYou({ tasks }: Props) {
               </div>
               <Button
                 asChild
-                size="sm"
+                size="default"
                 variant={index === 0 ? "primary" : "outline"}
                 className="shrink-0 self-start sm:self-center"
               >

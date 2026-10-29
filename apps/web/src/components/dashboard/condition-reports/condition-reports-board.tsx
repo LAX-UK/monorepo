@@ -56,14 +56,14 @@ export function ConditionReportsBoard({ rows, className }: Props) {
                   <td className="px-4 py-3 text-on-surface-variant">{row.requestedAtLabel}</td>
                   <td className="px-4 py-3">
                     <div className="flex justify-end gap-2">
-                      <Button asChild variant="outline" size="sm">
+                      <Button asChild variant="outline" size="default">
                         <Link href={row.lotHref}>
                           <ExternalLink className="size-3.5" aria-hidden />
                           View lot
                         </Link>
                       </Button>
                       {row.downloadUrl ? (
-                        <Button asChild size="sm">
+                        <Button asChild size="default">
                           <a href={row.downloadUrl} target="_blank" rel="noreferrer">
                             <FileDown className="size-3.5" aria-hidden />
                             PDF
@@ -99,11 +99,11 @@ export function ConditionReportsBoard({ rows, className }: Props) {
                 <p className="text-sm text-on-surface-variant">{row.responseNote}</p>
               ) : null}
               <div className="flex flex-wrap gap-2">
-                <Button asChild variant="outline" size="sm" className="min-h-10">
+                <Button asChild variant="outline" size="default" className="min-h-10">
                   <Link href={row.lotHref}>View lot</Link>
                 </Button>
                 {row.downloadUrl ? (
-                  <Button asChild size="sm" className="min-h-10">
+                  <Button asChild size="default" className="min-h-10">
                     <a href={row.downloadUrl} target="_blank" rel="noreferrer">
                       Download PDF
                     </a>

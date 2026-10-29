@@ -36,7 +36,7 @@ export function ViewAsClientBanner({ accountName }: Props) {
         <form action={endAdminImpersonationAction} className="shrink-0">
           <Button
             type="submit"
-            size="sm"
+            size="default"
             variant="outline"
             className="border-inverse-on-surface/40 bg-transparent text-inverse-on-surface hover:bg-inverse-on-surface/10 hover:text-inverse-on-surface focus-visible:ring-inverse-on-surface focus-visible:ring-offset-inverse-surface"
           >

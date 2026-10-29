@@ -20,7 +20,7 @@ export function CatalogMediaAddPanel({ panelRef, title, description, onCancel, c
           <h3 className="font-headline text-base font-semibold text-on-surface">{title}</h3>
           <p className="mt-1 font-body text-sm text-on-surface-variant">{description}</p>
         </div>
-        <Button type="button" variant="ghost" size="sm" onClick={onCancel}>
+        <Button type="button" variant="ghost" size="default" onClick={onCancel}>
           Cancel
         </Button>
       </div>

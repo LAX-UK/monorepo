@@ -96,7 +96,7 @@ export function SaleroomLiveLotBanner({
     <div className={cn("border-b border-live-red/20 bg-live-red/5 px-4 py-3", className)}>
       <div className="mx-auto flex max-w-[var(--container-max,1440px)] flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <LotLifecycleStatusBadge badge={saleroomOnBlockBadge()} size="sm" />
+          <LotLifecycleStatusBadge badge={saleroomOnBlockBadge()} />
           <SaleroomSessionCaption caption={saleroomOnBlockCaption(onBlockLot, progressLabel)} />
         </div>
         {canParticipate ? (

@@ -174,7 +174,7 @@ function HeroControlsCluster({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
+          size="default"
           className={cn(pillBase, "hidden md:inline-flex")}
           {...overlayToneProps(tone)}
           onClick={onViewAll}
@@ -187,7 +187,7 @@ function HeroControlsCluster({
           <Button
             type="button"
             variant="ghost"
-            size="sm"
+            size="default"
             data-lightbox-opener="true"
             className={pillBase}
             {...overlayToneProps(tone)}

@@ -45,7 +45,7 @@ export function ProvenanceStep({ form }: StepProps) {
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
+                    size="default"
                     className="h-8 px-2 text-on-surface-variant"
                     onClick={() => provenanceFields.remove(index)}
                     aria-label={`Remove provenance entry ${index + 1}`}
@@ -86,7 +86,7 @@ export function ProvenanceStep({ form }: StepProps) {
         <Button
           type="button"
           variant="outline"
-          size="sm"
+          size="default"
           onClick={() => provenanceFields.append({ period: "", note: "" })}
         >
           <Plus className="mr-1 size-4" aria-hidden />
@@ -117,7 +117,7 @@ export function ProvenanceStep({ form }: StepProps) {
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
+                    size="default"
                     className="h-8 px-2 text-on-surface-variant"
                     onClick={() => exhibitionFields.remove(index)}
                     aria-label={`Remove exhibition ${index + 1}`}
@@ -173,7 +173,7 @@ export function ProvenanceStep({ form }: StepProps) {
         <Button
           type="button"
           variant="outline"
-          size="sm"
+          size="default"
           onClick={() => exhibitionFields.append({ year: "", venue: "", note: "" })}
         >
           <Plus className="mr-1 size-4" aria-hidden />

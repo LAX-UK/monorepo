@@ -36,12 +36,12 @@ export function ExportJobRow({ job, onCancel, onDownload }: Props) {
         </div>
         <div className="flex shrink-0 gap-1">
           {job.status === "completed" && onDownload ? (
-            <Button type="button" size="sm" variant="outline" onClick={() => onDownload(job)}>
+            <Button type="button" size="default" variant="outline" onClick={() => onDownload(job)}>
               Download
             </Button>
           ) : null}
           {inProgress && onCancel ? (
-            <Button type="button" size="sm" variant="ghost" onClick={() => onCancel(job.id)}>
+            <Button type="button" size="default" variant="ghost" onClick={() => onCancel(job.id)}>
               Cancel
             </Button>
           ) : null}

@@ -62,7 +62,7 @@ export default async function OrganisationDocumentsPage() {
               title="No documents yet"
               description="Use onboarding to add KYB files for this organisation."
               action={
-                <Button asChild variant="cta" size="sm">
+                <Button asChild variant="cta" size="default">
                   <Link href={href} prefetch>
                     Upload documents
                   </Link>
@@ -83,13 +83,10 @@ export default async function OrganisationDocumentsPage() {
                     </p>
                   </div>
                   <div className="flex shrink-0 items-center gap-2">
-                    <StatusBadge
-                      variant={documentReviewStatusBadgeVariant(doc.reviewStatus)}
-                      size="sm"
-                    >
+                    <StatusBadge variant={documentReviewStatusBadgeVariant(doc.reviewStatus)}>
                       {doc.reviewStatus}
                     </StatusBadge>
-                    <Button asChild variant="outline" size="sm">
+                    <Button asChild variant="outline" size="default">
                       <Link href={href} prefetch>
                         Replace
                       </Link>
@@ -102,7 +99,7 @@ export default async function OrganisationDocumentsPage() {
         </div>
         {docs.length > 0 ? (
           <div className="flex flex-wrap gap-2">
-            <Button asChild variant="cta" size="sm">
+            <Button asChild variant="cta" size="default">
               <Link href={href} prefetch>
                 Upload more
               </Link>

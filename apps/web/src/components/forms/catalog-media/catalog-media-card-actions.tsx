@@ -74,7 +74,7 @@ export function CatalogMediaManageActions({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
+          size="default"
           onClick={onEditDetails}
           disabled={disabled}
           aria-label={editDetailsAriaLabel}
@@ -87,7 +87,7 @@ export function CatalogMediaManageActions({
         <Button
           type="button"
           variant="secondary"
-          size="sm"
+          size="default"
           onClick={onMakePrimary}
           disabled={disabled}
         >

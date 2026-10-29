@@ -26,10 +26,10 @@ export function SetupPasswordPromptDialog({
       descriptionId="setup-password-desc"
       footer={
         <>
-          <Button type="button" size="sm" asChild>
+          <Button type="button" size="default" asChild>
             <Link href="/settings?tab=security#password-setup">Set up a password</Link>
           </Button>
-          <Button type="button" variant="outline" size="sm" onClick={onCancel}>
+          <Button type="button" variant="outline" size="default" onClick={onCancel}>
             Cancel
           </Button>
         </>

@@ -131,7 +131,7 @@ export function LotStatePill({
   return (
     <div className={cn("flex flex-col gap-1.5", className)}>
       <div className="flex flex-wrap items-center gap-2">
-        <LotLifecycleStatusBadge badge={badge} size={compact ? "sm" : "md"} />
+        <LotLifecycleStatusBadge badge={badge} />
         {countdown && !suppressCountdown ? (
           <span
             className={cn(

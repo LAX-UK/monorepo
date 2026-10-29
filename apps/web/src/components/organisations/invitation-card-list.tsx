@@ -1,6 +1,5 @@
 import { roleLabel } from "@/components/organisations/labels";
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
-import { Badge } from "@auction/ui/components/badge";
 import { Button } from "@auction/ui/components/button";
 import { Card, CardFooter, CardHeader, CardTitle } from "@auction/ui/components/card";
 import Link from "next/link";
@@ -36,7 +35,7 @@ export function InvitationCardList({ invitations }: ListProps) {
               </p>
             </CardHeader>
             <CardFooter className="justify-end border-t-0 pt-0">
-              <Button asChild size="sm" variant="cta">
+              <Button asChild size="default" variant="cta">
                 <Link href={`/organisations/invitations/review/${encodeURIComponent(inv.id)}`}>
                   Review
                 </Link>
@@ -46,16 +45,5 @@ export function InvitationCardList({ invitations }: ListProps) {
         </li>
       ))}
     </ul>
-  );
-}
-
-type BadgeProps = { count: number };
-
-export function PendingInvitationsBadge({ count }: BadgeProps) {
-  if (count <= 0) return null;
-  return (
-    <Badge variant="destructive" className="ml-1 min-w-6 justify-center px-1.5 text-[10px]">
-      {count > 9 ? "9+" : count}
-    </Badge>
   );
 }

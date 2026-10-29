@@ -77,7 +77,7 @@ export function BidForm({
         <Button
           type="button"
           variant="secondary"
-          size="sm"
+          size="default"
           disabled={biddingDisabled}
           onClick={onUseMinimum}
           className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold text-secondary ring-1 ring-outline-variant/15 hover:bg-surface-container"
@@ -95,7 +95,7 @@ export function BidForm({
                   key={add}
                   type="button"
                   variant="secondary"
-                  size="sm"
+                  size="default"
                   disabled={biddingDisabled}
                   onClick={() => onAmountChange(v.toFixed(2))}
                   className="h-auto rounded-md bg-surface-container-high px-4 py-2 font-label text-xs font-bold text-on-surface ring-1 ring-outline-variant/15 hover:bg-primary hover:text-on-primary"
@@ -109,7 +109,7 @@ export function BidForm({
           <Button
             type="button"
             variant="ghost"
-            size="sm"
+            size="default"
             className="h-auto font-label text-xs font-bold text-on-surface-variant hover:text-link"
             onClick={() => document.getElementById(amountInputId)?.focus()}
           >

@@ -97,10 +97,10 @@ export function PwaInstallPrompt() {
         </Button>
       </div>
       <div className="mt-3 flex gap-2">
-        <Button type="button" size="sm" disabled={busy} onClick={() => void onInstall()}>
+        <Button type="button" size="default" disabled={busy} onClick={() => void onInstall()}>
           {busy ? "Installing…" : "Install"}
         </Button>
-        <Button type="button" size="sm" variant="ghost" onClick={onDismiss}>
+        <Button type="button" size="default" variant="ghost" onClick={onDismiss}>
           Not now
         </Button>
       </div>

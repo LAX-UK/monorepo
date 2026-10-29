@@ -262,7 +262,7 @@ export function DocumentAttachmentManager<TKind extends string>({
                   <Button
                     type="button"
                     variant="secondary"
-                    size="sm"
+                    size="default"
                     disabled={busy}
                     onClick={() => void retryLastUpload()}
                   >

@@ -14,7 +14,6 @@ import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import type { PublicOrganisationSubkind } from "@auction/validators";
-import { CheckCircle2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -155,12 +154,7 @@ export function OrgDocumentsStepClient({
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium">{slot.title}</p>
-                    {uploaded ? (
-                      <StatusBadge variant="success" size="sm">
-                        <CheckCircle2 className="mr-1 size-3" aria-hidden />
-                        Uploaded
-                      </StatusBadge>
-                    ) : null}
+                    {uploaded ? <StatusBadge variant="success">Uploaded</StatusBadge> : null}
                   </div>
                   {slot.label ? (
                     <p className="text-xs text-on-surface-variant">Label: {slot.label}</p>

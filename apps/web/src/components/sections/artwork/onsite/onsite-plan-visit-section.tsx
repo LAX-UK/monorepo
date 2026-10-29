@@ -139,7 +139,7 @@ export function OnsitePlanVisitSection({ sale, auction, overview, locationLine }
             </div>
           ) : null}
           {mapsUrl ? (
-            <Button size="sm" variant="outline" className="mt-4 w-full" asChild>
+            <Button size="default" variant="outline" className="mt-4 w-full" asChild>
               <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
                 Get Directions <ExternalLink className="ml-1.5 size-3" />
               </a>

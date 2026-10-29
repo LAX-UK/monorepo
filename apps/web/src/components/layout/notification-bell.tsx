@@ -91,7 +91,7 @@ export function NotificationBell({ headerTone = "on-light" }: { headerTone?: Sit
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
+                size="default"
                 className="h-auto px-0 py-0 font-label text-xs text-link hover:bg-transparent hover:underline"
                 onClick={() => void markAllRead()}
               >
@@ -132,7 +132,7 @@ export function NotificationBell({ headerTone = "on-light" }: { headerTone?: Sit
                     <Button
                       type="button"
                       variant="ghost"
-                      size="sm"
+                      size="default"
                       className="mt-2 h-auto px-0 py-0 font-label text-xs text-secondary hover:bg-transparent hover:text-link"
                       onClick={() => void markRead(n.id)}
                     >

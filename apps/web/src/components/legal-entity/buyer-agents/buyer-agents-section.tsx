@@ -45,7 +45,7 @@ function AuthorisationLine({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
+          size="default"
           className="ml-auto min-h-11 text-error hover:text-error sm:ml-0 sm:min-h-9"
           onClick={onRevoke}
         >
@@ -82,7 +82,7 @@ function AgentRow({
           <Button
             type="button"
             variant="outline"
-            size="sm"
+            size="default"
             className="min-h-11 sm:min-h-9"
             onClick={onAuthorise}
           >

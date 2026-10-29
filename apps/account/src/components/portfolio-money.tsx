@@ -34,7 +34,6 @@ import {
   TableRow,
 } from "@auction/ui/components/table";
 import { FilterToolbar } from "./filter-toolbar.client";
-import { SENTENCE_CASE_BADGE } from "./portfolio-parts";
 
 const BUSINESS_NAMES: Record<LaxBusinessKey, string> = {
   lax_bid: "LAX Bid",
@@ -59,10 +58,7 @@ function EntryLink({ entry }: { entry: LaxMoneyEntryV1 }) {
 
 function EntryStatus({ entry }: { entry: LaxMoneyEntryV1 }) {
   return (
-    <StatusBadge
-      variant={entry.status === "cancelled" ? "danger" : "neutral"}
-      className={SENTENCE_CASE_BADGE}
-    >
+    <StatusBadge variant={entry.status === "cancelled" ? "danger" : "neutral"}>
       {MONEY_STATUS_LABELS[entry.status]}
     </StatusBadge>
   );

@@ -51,7 +51,7 @@ export function ArtHelpSearchBand({ query, titleAs: Title }: ArtHelpSearchBandPr
               </Link>
             </Button>
           ) : null}
-          <Button type="submit" variant="cta" size="md" className="shrink-0 font-label">
+          <Button type="submit" variant="cta" size="lg" className="shrink-0 font-label">
             Search
           </Button>
         </form>

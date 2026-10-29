@@ -41,7 +41,7 @@ export class ConnectErrorBoundary extends Component<Props, State> {
             contact support@lax.bid.
           </p>
           {this.props.onReload ? (
-            <Button type="button" variant="secondary" size="sm" onClick={this.props.onReload}>
+            <Button type="button" variant="secondary" size="default" onClick={this.props.onReload}>
               Reload payout setup
             </Button>
           ) : null}

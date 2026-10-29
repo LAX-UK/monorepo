@@ -34,7 +34,7 @@ export function OnsiteSessionHeader({ vm, sale, className }: Props) {
           <div className="min-w-[10rem] flex-1 sm:flex-none">
             <OnsiteSaleScheduleCountdown sale={sale} variant="compact" />
           </div>
-          <Button variant="outline" size="sm" className="hidden lg:inline-flex" asChild>
+          <Button variant="outline" size="default" className="hidden lg:inline-flex" asChild>
             <Link href={salePath(sale)}>View catalogue</Link>
           </Button>
         </div>

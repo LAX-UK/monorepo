@@ -66,7 +66,7 @@ function InlineActionButton({
     <Button
       type="button"
       variant="outline"
-      size="sm"
+      size="default"
       onClick={onClick}
       disabled={disabled}
       className="inline-flex items-center gap-1.5 font-label text-[11px]"

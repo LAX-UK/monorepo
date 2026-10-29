@@ -91,7 +91,7 @@ export const CatalogMediaCard = forwardRef<HTMLLIElement, Props>(function Catalo
               <Button
                 type="button"
                 variant="ghost"
-                size="sm"
+                size="default"
                 onClick={() => onOpen?.()}
                 className="h-auto min-h-11 justify-start p-0 text-left font-body text-sm font-semibold underline-offset-4 hover:bg-transparent hover:text-link hover:underline"
               >

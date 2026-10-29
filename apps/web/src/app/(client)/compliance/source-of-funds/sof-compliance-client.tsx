@@ -22,6 +22,7 @@ import {
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
+import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
@@ -203,7 +204,7 @@ export function SofComplianceClient({ initial }: Props) {
         <>
           {view.documentRequestNote ? (
             <Surface variant="card" padding="md" className="space-y-2">
-              <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
+              <p className="font-label text-xs font-medium text-on-surface-variant">
                 Message from our team
               </p>
               <p className="font-body text-sm text-on-surface">{view.documentRequestNote}</p>
@@ -235,13 +236,13 @@ export function SofComplianceClient({ initial }: Props) {
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <p className="font-body text-sm font-medium text-on-surface">{type}</p>
                         {activeDoc ? (
-                          <span className="rounded-full bg-surface-container-high px-2 py-0.5 font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
-                            {activeDoc.statusLabel === "under_review" ? "Under review" : "Uploaded"}
-                          </span>
+                          activeDoc.statusLabel === "under_review" ? (
+                            <StatusBadge variant="info">Under review</StatusBadge>
+                          ) : (
+                            <StatusBadge variant="success">Uploaded</StatusBadge>
+                          )
                         ) : needsUpload ? (
-                          <span className="rounded-full border border-warning/40 bg-warning/10 px-2 py-0.5 font-label text-[10px] uppercase tracking-wider text-warning-on-surface">
-                            Still needed
-                          </span>
+                          <StatusBadge variant="warning">Still needed</StatusBadge>
                         ) : null}
                       </div>
                       {previewUrl ? (

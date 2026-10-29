@@ -98,7 +98,7 @@ export function ExportButton({
     <Button
       type="button"
       variant={variant}
-      size="sm"
+      size="default"
       className={className ?? "min-h-9 gap-1.5 font-label text-xs"}
       disabled={disabled || loading}
       aria-busy={loading}

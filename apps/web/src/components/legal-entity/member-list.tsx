@@ -40,7 +40,7 @@ type PendingDialog =
 function TwoFactorMemberBadge({ enabled }: { enabled: boolean | null }) {
   if (enabled === null) return null;
   return (
-    <StatusBadge size="sm" variant={enabled ? "success" : "neutral"}>
+    <StatusBadge variant={enabled ? "success" : "neutral"}>
       {enabled ? "2FA on" : "2FA off"}
     </StatusBadge>
   );

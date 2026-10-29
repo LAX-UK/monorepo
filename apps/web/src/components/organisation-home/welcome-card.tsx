@@ -72,7 +72,7 @@ export function WelcomeCard({ welcome, organisationName }: Props) {
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <Button
           type="button"
-          size="sm"
+          size="default"
           onClick={dismiss}
           disabled={pending}
           className="bg-on-secondary text-secondary shadow-none hover:bg-on-secondary/90 focus-visible:ring-on-secondary focus-visible:ring-offset-secondary"

@@ -23,17 +23,10 @@ type LotStatusBadgeProps = LotTimerInputs & {
   winnerId?: string | null | undefined;
   /** List-row sold flag when buyer id is omitted from public summaries. */
   hasWinner?: boolean;
-  /** Client pages write the status in sentence case ("Live") instead of capitals. */
-  plain?: boolean;
 };
 
 /** Compact inline lot status — live / opens soon / API status + optional countdown. */
-export function LotStatusBadge({
-  winnerId,
-  hasWinner,
-  plain = false,
-  ...inputs
-}: LotStatusBadgeProps) {
+export function LotStatusBadge({ winnerId, hasWinner, ...inputs }: LotStatusBadgeProps) {
   const now = useNow(1000);
   const state = classifyLotTimerState(inputs, now);
 
@@ -41,7 +34,7 @@ export function LotStatusBadge({
     const clock = formatRemaining(state.msLeft);
     return (
       <span className="inline-flex max-w-full items-center gap-1.5">
-        <LiveBadge {...(plain ? { className: "normal-case tracking-normal" } : {})} />
+        <LiveBadge />
         <span className={liveStatusCountdownClassName}>{clock}</span>
       </span>
     );
@@ -50,7 +43,7 @@ export function LotStatusBadge({
   if (state.kind === "opensSoon") {
     const clock = formatRemaining(state.msLeft);
     return (
-      <StatusBadge variant="info" size="sm" className="max-w-full normal-case tracking-normal">
+      <StatusBadge variant="info">
         Opens in <span className="ml-1 tabular-nums">{clock}</span>
       </StatusBadge>
     );
@@ -64,11 +57,9 @@ export function LotStatusBadge({
     return (
       <StatusBadge
         variant={presentation.variant}
-        size="sm"
-        {...(presentation.dot ? { dot: true } : {})}
-        className="max-w-full normal-case tracking-normal"
+        {...(presentation.dot ? { shape: "dot" as const } : {})}
       >
-        <span className="truncate">{presentation.label}</span>
+        {presentation.label}
       </StatusBadge>
     );
   }

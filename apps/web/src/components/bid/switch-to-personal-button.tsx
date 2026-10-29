@@ -13,7 +13,7 @@ export function SwitchToPersonalButton() {
   return (
     <Button
       type="button"
-      size="sm"
+      size="default"
       className="min-h-11"
       disabled={pending}
       onClick={() => {
