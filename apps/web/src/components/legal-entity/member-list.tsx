@@ -41,6 +41,9 @@ export function MemberList({ legalEntityId, organisationName, rows }: Props) {
   const busyRef = useRef<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dialog, setDialog] = useState<OpenDialog | null>(null);
+  // Who the server has removed, hidden at once: the refreshed list follows, but the row does not
+  // wait for it to say what the server already confirmed.
+  const [removed, setRemoved] = useState<ReadonlySet<string>>(new Set());
 
   // Fresh rows from the server are the truth: drop what the pickers held, except mid-change.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the server sends new rows.
@@ -80,31 +83,33 @@ export function MemberList({ legalEntityId, organisationName, rows }: Props) {
   return (
     <>
       <ul className="-my-3 divide-y divide-border-hairline">
-        {rows.map((row) => (
-          <MemberRow
-            key={row.id}
-            row={row}
-            shownRole={shown[row.id] ?? row.role}
-            busy={busy[row.id] ?? false}
-            error={errors[row.id] ?? null}
-            onRoleChange={(role) =>
-              void changeMemberRole(
-                ports,
-                { id: row.id, name: row.name },
-                shown[row.id] ?? row.role,
-                role,
-                organisationName,
-              )
-            }
-            onTransfer={() => {
-              const transfer = row.transfer;
-              if (transfer) {
-                setDialog({ kind: "transfer", row, confirmPhrase: transfer.confirmPhrase });
+        {rows
+          .filter((row) => !removed.has(row.id))
+          .map((row) => (
+            <MemberRow
+              key={row.id}
+              row={row}
+              shownRole={shown[row.id] ?? row.role}
+              busy={busy[row.id] ?? false}
+              error={errors[row.id] ?? null}
+              onRoleChange={(role) =>
+                void changeMemberRole(
+                  ports,
+                  { id: row.id, name: row.name },
+                  shown[row.id] ?? row.role,
+                  role,
+                  organisationName,
+                )
               }
-            }}
-            onRemove={() => setDialog({ kind: "remove", row })}
-          />
-        ))}
+              onTransfer={() => {
+                const transfer = row.transfer;
+                if (transfer) {
+                  setDialog({ kind: "transfer", row, confirmPhrase: transfer.confirmPhrase });
+                }
+              }}
+              onRemove={() => setDialog({ kind: "remove", row })}
+            />
+          ))}
       </ul>
 
       {dialog?.kind === "remove" ? (
@@ -112,6 +117,7 @@ export function MemberList({ legalEntityId, organisationName, rows }: Props) {
           legalEntityId={legalEntityId}
           organisationName={organisationName}
           member={{ id: dialog.row.id, name: dialog.row.name }}
+          onRemoved={() => setRemoved((ids) => new Set(ids).add(dialog.row.id))}
           onClose={() => setDialog(null)}
         />
       ) : null}

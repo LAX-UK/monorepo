@@ -36,17 +36,11 @@ test.describe("organisation buyer agent journey @roles", () => {
 
     await test.step("a bid within the limit is placed", async () => {
       const bid = await placeBid(agent, lot, 5300);
-      if (bid.status >= 300) {
-        test.info().annotations.push({
-          type: "bid-response",
-          description: `${bid.status} ${bid.error}`,
-        });
-      }
-      // The bid is on the agent's own list, whatever the response said.
+      expect(bid.status, `bid answered ${bid.status} ${bid.error}`).toBe(201);
+      // It is on the agent's own list too.
       await page.goto("/bids");
       await expect(
         page.getByText("Harbour Light, study for the buyer agent").first(),
-        `bid answered ${bid.status} ${bid.error}`,
       ).toBeVisible();
     });
 

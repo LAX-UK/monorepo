@@ -238,7 +238,7 @@ export async function seedOrganisationJourneys(db: Db, actors: OrganisationJourn
     conditionSelfReport: "Very good; no restoration.",
     provenance: [{ period: "2019", note: "Acquired from the artist by Northbank Gallery." }],
     askingPrice: "3500.00",
-    reservePrice: "2800.00",
+    reservePrice: "4000.00",
     createdAt: new Date(today - 6 * DAY),
     updatedAt: new Date(today - 2 * DAY),
   };

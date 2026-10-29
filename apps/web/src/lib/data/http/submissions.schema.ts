@@ -56,17 +56,20 @@ const itemSubmissionRowSchema = z
     changesRequestedAt: z.unknown().optional(),
     convertedLotId: z.unknown().optional(),
     assignedToUserId: z.unknown().optional(),
+    submittedByUserId: z.unknown().optional(),
     createdAt: z.unknown(),
     updatedAt: z.unknown(),
   })
   .transform((row): ItemSubmission => {
     const legalEntityId = zOptionalStringFromEmpty.parse(row.legalEntityId);
     const sellerId = zOptionalStringFromEmpty.parse(row.sellerId);
+    const submittedByUserId = zOptionalStringFromEmpty.parse(row.submittedByUserId);
 
     return {
       id: String(row.id),
       ...(legalEntityId ? { legalEntityId } : {}),
       ...(sellerId ? { sellerId } : {}),
+      ...(submittedByUserId ? { submittedByUserId } : {}),
       title: String(row.title),
       description: zNullableStringFromEmpty.parse(row.description),
       medium: zNullableStringFromEmpty.parse(row.medium),

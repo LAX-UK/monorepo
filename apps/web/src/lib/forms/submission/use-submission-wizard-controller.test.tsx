@@ -46,6 +46,8 @@ describe("useSubmissionWizardController", () => {
     push.mockReset();
     replace.mockReset();
     refresh.mockReset();
+    // Sending ends in a full page load; the tests only note where it goes.
+    Object.defineProperty(window, "location", { value: { assign: vi.fn() }, configurable: true });
     updateSubmissionFromValuesAction.mockResolvedValue({ ok: true, data: {} });
     createSubmissionFromValuesAction.mockResolvedValue({
       ok: true,
@@ -111,8 +113,46 @@ describe("useSubmissionWizardController", () => {
     await waitFor(() => {
       expect(createSubmissionFromValuesAction).toHaveBeenCalledTimes(1);
       expect(submitForReviewFromValuesAction).toHaveBeenCalledWith("sub-new", {});
-      expect(push).toHaveBeenCalledWith("/selling/consignments/sub-new");
+      expect(push).not.toHaveBeenCalled();
+      expect(refresh).not.toHaveBeenCalled();
     });
+  });
+
+  it("loads the submission's page afresh once the send is accepted", async () => {
+    const assign = vi.fn();
+    const realLocation = window.location;
+    Object.defineProperty(window, "location", { value: { assign }, configurable: true });
+    try {
+      const { result } = renderHook(() =>
+        useSubmissionWizardController(
+          { kind: "edit", submissionId: "sub-1" },
+          validSubmissionValues(),
+        ),
+      );
+      await act(async () => {
+        await result.current.submitForReview();
+      });
+      expect(submitForReviewFromValuesAction).toHaveBeenCalledWith("sub-1", {});
+      expect(assign).toHaveBeenCalledWith("/selling/consignments/sub-1?submitted=1");
+      expect(push).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(window, "location", { value: realLocation, configurable: true });
+    }
+  });
+
+  it("shows a refusal and stays on the form", async () => {
+    submitForReviewFromValuesAction.mockResolvedValue({ ok: false, error: "Not allowed." });
+    const { result } = renderHook(() =>
+      useSubmissionWizardController(
+        { kind: "edit", submissionId: "sub-1" },
+        validSubmissionValues(),
+      ),
+    );
+    await act(async () => {
+      await result.current.submitForReview();
+    });
+    expect(result.current.autosaveStatus).toBe("error");
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("creates and submits as the account chosen in Who is selling", async () => {

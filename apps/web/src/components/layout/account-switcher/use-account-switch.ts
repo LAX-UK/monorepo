@@ -6,19 +6,18 @@ import type { AccountOption } from "@/lib/navigation/account-switcher-model";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { switchAccount } from "@/lib/navigation/switch-account";
 import { notify } from "@/lib/ui/notify";
-import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
 /**
  * Switches the account Bid is used as. A new account has a different set of pages, so it opens
- * on that account's Home unless a `destination` is given. Other open tabs are told, so a bid
- * panel there refreshes who it bids as before the next bid.
+ * on that account's Home unless a `destination` is given, loading it afresh so nothing of the
+ * previous account is left on screen. Other open tabs are told, so a bid panel there refreshes
+ * who it bids as before the next bid.
  */
 export function useAccountSwitch(destination: string = CLIENT_ROUTES.home): {
   pendingId: string | null;
   choose: (option: AccountOption) => Promise<void>;
 } {
-  const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   const choose = useCallback(
@@ -32,11 +31,13 @@ export function useAccountSwitch(destination: string = CLIENT_ROUTES.home): {
         return;
       }
       announceAccountSwitch(option.id);
-      router.push(destination);
-      router.refresh();
-      setPendingId(null);
+      // A full page load, on purpose. Switching account changes who every request is for, so
+      // nothing the browser holds for the previous account may survive: not the router's cached
+      // pages (same address, different cookie), not a query cache, not component state. A load
+      // drops all of them at once, where a push or refresh drops only what the router knows of.
+      window.location.assign(destination);
     },
-    [router, destination],
+    [destination],
   );
 
   return { pendingId, choose };

@@ -10,6 +10,7 @@ import {
 } from "@/components/dashboard/seller/consignment-detail-parts";
 import { ConsignmentWithdrawPanel } from "@/components/dashboard/seller/consignment-withdraw-panel";
 import { SubmissionChangesRequestedPanel } from "@/components/dashboard/seller/submission-changes-requested-panel";
+import { SubmissionSubmittedNotice } from "@/components/dashboard/seller/submission-submitted-notice";
 import { UnsoldLotChoicePanel } from "@/components/dashboard/seller/unsold-lot-choice-panel";
 import { SubmissionDetailLiveRefresh } from "@/components/dashboard/submission-detail-live-refresh";
 import { SubmissionLotReadyChecklist } from "@/components/dashboard/submission-lot-ready-checklist";
@@ -60,7 +61,7 @@ export default async function SubmissionDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; submitted?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
@@ -235,6 +236,7 @@ export default async function SubmissionDetailPage({
         <DashboardSliceErrorAlert failure={describeSettingsActionError(actionError)} />
       ) : null}
       {categoriesFailure ? <DashboardSliceErrorAlert failure={categoriesFailure} /> : null}
+      {sp.submitted === "1" ? <SubmissionSubmittedNotice submissionId={submission.id} /> : null}
       <SubmissionDetailLiveRefresh status={submission.status} />
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">

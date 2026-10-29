@@ -5,7 +5,6 @@ import {
   submitForReviewFromValuesAction,
   updateSubmissionFromValuesAction,
 } from "@/lib/actions/submissions";
-import { trackWizardSubmit } from "@/lib/analytics/sell-funnel";
 import type { FormController } from "@/lib/forms/shared/form-controller";
 import { EMPTY_SUBMISSION_FORM_VALUES } from "@/lib/forms/submission/item-submission-form-defaults";
 import { allWizardFieldPaths } from "@/lib/forms/submission/step-validation";
@@ -222,17 +221,17 @@ export function useSubmissionWizardController(
         return;
       }
 
-      trackWizardSubmit(id);
-      notify.success("Submitted for review");
       setAutosaveStatus("saved");
       setLastSavedAt(new Date());
-      router.push(`/selling/consignments/${id}`);
-      router.refresh();
+      // A full load of the submission's page, which confirms the send. A server redirect was
+      // tried first: its response carried the right page (checked in the CI trace), but the
+      // router kept showing the page as it was before the send, so only a load is reliable.
+      window.location.assign(`/selling/consignments/${id}?submitted=1`);
     } finally {
       saveInFlight.current = false;
       setSubmitInFlight(false);
     }
-  }, [form, mode, router, scope, submissionId, submitInFlight]);
+  }, [form, mode, scope, submissionId, submitInFlight]);
 
   useEffect(() => {
     if (mode.kind !== "edit" && !submissionId) return;

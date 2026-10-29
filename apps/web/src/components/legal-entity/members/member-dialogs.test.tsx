@@ -79,6 +79,39 @@ describe("RemoveMemberDialog", () => {
     );
   });
 
+  it("tells the list the member is gone once the server agrees, and not when it refuses", async () => {
+    actions.removeMemberAction.mockResolvedValueOnce({ ok: true });
+    const onRemoved = vi.fn();
+    const onClose = vi.fn();
+    const { unmount } = render(
+      <RemoveMemberDialog
+        legalEntityId="org"
+        organisationName={ORG}
+        member={LENA}
+        onRemoved={onRemoved}
+        onClose={onClose}
+      />,
+    );
+    fireEvent.click(confirmButton("Remove member"));
+    await waitFor(() => expect(onRemoved).toHaveBeenCalledTimes(1));
+    unmount();
+
+    actions.removeMemberAction.mockResolvedValueOnce({ ok: false, error: "No." });
+    const refusedRemoved = vi.fn();
+    render(
+      <RemoveMemberDialog
+        legalEntityId="org"
+        organisationName={ORG}
+        member={LENA}
+        onRemoved={refusedRemoved}
+        onClose={vi.fn()}
+      />,
+    );
+    fireEvent.click(confirmButton("Remove member"));
+    await waitFor(() => expect(screen.getByText("No.")).toBeInTheDocument());
+    expect(refusedRemoved).not.toHaveBeenCalled();
+  });
+
   it("stays open and says why when the server refuses", async () => {
     actions.removeMemberAction.mockResolvedValue({
       ok: false,
