@@ -67,13 +67,12 @@ const BANNER_COPY: Record<OrganisationBannerKey, BannerCopy> = {
   restricted: {
     title: "Bidding and selling paused.",
     line: ({ organisationName }) =>
-      `${organisationName} can still see its history and pay its invoices. Contact us to find out more.`,
+      `${organisationName} can still see its history and pay its invoices.`,
     act: CONTACT("Organisation paused"),
   },
   not_approved: {
     title: "Not approved.",
-    line: ({ organisationName }) =>
-      `We couldn't approve ${organisationName}. Contact us to find out what's needed.`,
+    line: ({ organisationName }) => `We couldn't approve ${organisationName}.`,
     act: CONTACT("Organisation not approved"),
   },
   archived: {
@@ -206,7 +205,12 @@ export function organisationFirstRunCopy(
 }
 
 /** Why bidding for the organisation is closed, said before the person tries. */
-export type OrganisationBidReasonCopy = { title: string; line: string };
+export type OrganisationBidReasonCopy = {
+  title: string;
+  line: string;
+  /** A way to ask LAX, when only LAX can reopen bidding. */
+  contact: OrganisationStateLink | null;
+};
 
 const BID_REASON_COPY: Record<
   OrganisationBidReasonKey,
@@ -215,22 +219,27 @@ const BID_REASON_COPY: Record<
   documents_requested: ({ organisationName }) => ({
     title: `Bidding for ${organisationName} isn't open yet`,
     line: `It opens once ${organisationName} has sent its documents and we've checked them.`,
+    contact: null,
   }),
   documents_under_review: ({ organisationName }) => ({
     title: `Bidding for ${organisationName} isn't open yet`,
     line: `Bidding for ${organisationName} opens once we've checked its documents.`,
+    contact: null,
   }),
   restricted: ({ organisationName }) => ({
     title: `Bidding for ${organisationName} is paused`,
-    line: "Contact us to find out more.",
+    line: "We can tell you why and when it resumes.",
+    contact: CONTACT("Organisation paused"),
   }),
   not_approved: ({ organisationName }) => ({
     title: `You can't bid for ${organisationName}`,
     line: `We couldn't approve ${organisationName} to bid.`,
+    contact: CONTACT("Organisation not approved"),
   }),
   archived: ({ organisationName }) => ({
     title: `You can't bid for ${organisationName}`,
     line: `${organisationName} is closed.`,
+    contact: null,
   }),
 };
 

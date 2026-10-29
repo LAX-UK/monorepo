@@ -142,9 +142,7 @@ describe("banner audience", () => {
       { kind: "blocked", key: "restricted", audience: "told" },
       ctx,
     );
-    expect(view.line).toBe(
-      "Northbank Gallery can still see its history and pay its invoices. Contact us to find out more.",
-    );
+    expect(view.line).toBe("Northbank Gallery can still see its history and pay its invoices.");
   });
 });
 
@@ -153,7 +151,16 @@ describe("the bid panel reason", () => {
     expect(organisationBidReasonCopy("documents_under_review", ctx)).toEqual({
       title: "Bidding for Northbank Gallery isn't open yet",
       line: "Bidding for Northbank Gallery opens once we've checked its documents.",
+      contact: null,
     });
+  });
+
+  it("offers a way to ask us only where only we can reopen bidding", () => {
+    expect(organisationBidReasonCopy("restricted", ctx).contact).toMatchObject({
+      label: "Contact us",
+      kind: "contact",
+    });
+    expect(organisationBidReasonCopy("documents_requested", ctx).contact).toBeNull();
   });
 
   it("never says the organisation can bid now", () => {

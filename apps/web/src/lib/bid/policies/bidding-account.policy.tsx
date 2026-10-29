@@ -1,4 +1,5 @@
 import { SwitchToPersonalButton } from "@/components/bid/switch-to-personal-button";
+
 import {
   type BiddingAccount,
   type MemberBidRefusal,
@@ -6,6 +7,7 @@ import {
 } from "@/lib/bid/bidding-account";
 import { formatPounds } from "@/lib/buyer-agents/authorisation-presenter";
 import { organisationBidReasonCopy } from "@/lib/presenters/organisation-state/organisation-state-copy";
+import type { ReactNode } from "react";
 import { blockBid } from "./block-decision";
 import type { BidPolicy, BidPolicyContext, BidPolicyDecision } from "./types";
 
@@ -19,12 +21,29 @@ const REFUSAL_DETAIL: Record<MemberBidRefusal, (name: string) => string> = {
 
 type Refused = Extract<BiddingAccount, { kind: "organisation"; allowed: false }>;
 
-/** The title and line for a refusal: the organisation's state in its words, or the member's. */
-function refusalCopy(account: Refused): { title: string; detail: string } {
+/** The words for a refusal: the organisation's state in its words, or the member's. */
+function refusalCopy(account: Refused): { title: string; detail: ReactNode } {
   if (account.reason === "organisation_state") {
     const copy = organisationBidReasonCopy(account.state, { organisationName: account.name });
     const own = account.canSwitchToPersonal ? " You can still bid in your own name." : "";
-    return { title: copy.title, detail: `${copy.line}${own}` };
+    // The way to ask us is a link in the sentence, so the panel keeps one button.
+    return {
+      title: copy.title,
+      detail: copy.contact ? (
+        <>
+          {copy.line}{" "}
+          <a
+            href={copy.contact.href}
+            className="font-medium text-on-surface underline underline-offset-2"
+          >
+            {copy.contact.label}
+          </a>
+          .{own}
+        </>
+      ) : (
+        `${copy.line}${own}`
+      ),
+    };
   }
   return {
     title: `You can't bid for ${account.name}`,

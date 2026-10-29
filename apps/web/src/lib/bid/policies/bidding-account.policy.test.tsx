@@ -69,7 +69,7 @@ describe("biddingAccountPolicy", () => {
     [
       "restricted",
       "Bidding for Northbank Gallery is paused",
-      "Contact us to find out more. You can still bid in your own name.",
+      "We can tell you why and when it resumes. Contact us. You can still bid in your own name.",
     ],
   ] as const)("says why bidding is closed while the organisation is %s", (state, title, detail) => {
     const decision = biddingAccountPolicy.evaluate(
@@ -86,9 +86,16 @@ describe("biddingAccountPolicy", () => {
     );
     expect(decision.kind).toBe("block");
     if (decision.kind !== "block") return;
-    expect(decision.presentation).toMatchObject({ tone: "info", title, detail });
-    expect(`${decision.presentation.title} ${decision.presentation.detail}`).not.toMatch(
-      /can bid now/i,
+    expect(decision.presentation).toMatchObject({ tone: "info", title });
+    expect(decision.presentation.action).toBeUndefined();
+    render(<p>{decision.presentation.detail}</p>);
+    const text = screen.getByText((_, el) => el?.tagName === "P");
+    expect(text.textContent).toBe(detail);
+    expect(text.textContent).not.toMatch(/can bid now/i);
+    // Only LAX can lift a pause, so that state links to us in the sentence; one button remains.
+    const contact = screen.queryByRole("link", { name: "Contact us" });
+    expect(contact?.getAttribute("href")?.startsWith("mailto:") ?? false).toBe(
+      state === "restricted",
     );
   });
 

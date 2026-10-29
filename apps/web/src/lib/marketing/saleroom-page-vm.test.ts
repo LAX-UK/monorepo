@@ -164,7 +164,7 @@ describe("buildSaleroomPageVM", () => {
       {
         id: "le-h",
         title: "Bidding for Harrington Advisors is paused",
-        line: "Contact us to find out more.",
+        line: "We can tell you why and when it resumes.",
       },
     ]);
   });

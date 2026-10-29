@@ -251,10 +251,10 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
   }));
   const registrationPaused = byState.paused
     .filter((m) => roleBidsThroughAuthorisation(m.role))
-    .map((m) => ({
-      id: m.id,
-      ...organisationBidReasonCopy(m.reason, { organisationName: m.displayName }),
-    }));
+    .map((m) => {
+      const copy = organisationBidReasonCopy(m.reason, { organisationName: m.displayName });
+      return { id: m.id, title: copy.title, line: copy.line };
+    });
 
   const registerToBidShow =
     saleAllowsWebBidding(bundle.sale.deliveryMode) &&
