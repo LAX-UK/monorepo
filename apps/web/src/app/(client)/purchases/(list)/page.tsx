@@ -39,6 +39,7 @@ export default async function DashboardPurchasesPage({ searchParams }: PageProps
       <SetMobileShellTitle title={view.title} />
       <PurchasesView
         filters={filters}
+        offersSales={view.offersSales}
         vm={sources ? buildPurchasesVm(sources, parsePurchaseTab(sp.tab), filters) : null}
       />
     </DashboardListPage>

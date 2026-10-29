@@ -111,7 +111,7 @@ describe("HeaderAuthChip", () => {
       "/bids",
     );
     expect(within(menu).queryByRole("menuitem", { name: /home/i })).not.toBeInTheDocument();
-    expect(within(menu).getByRole("menuitem", { name: "Sell with LAX" })).toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: "Sell a work" })).toBeInTheDocument();
     expect(within(menu).getByRole("menuitem", { name: "Sign out" })).toBeInTheDocument();
     expect(within(menu).queryByRole("group", { name: "Your accounts" })).not.toBeInTheDocument();
   });

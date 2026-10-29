@@ -29,7 +29,10 @@ export async function loadSoldAndPayouts(sellerEntityId: string): Promise<SoldAn
     createOrganisationHubGateway()
       .getEntityDetail(sellerEntityId)
       .catch(() => null),
-    c.sellerLots.list({ sellerId: sellerEntityId, limit: SELLING_PAGE_LIMIT }).catch(() => []),
+    // Only ended lots can have sold; without a status the list returns open lots alone.
+    c.sellerLots
+      .list({ sellerId: sellerEntityId, status: "ended", limit: SELLING_PAGE_LIMIT })
+      .catch(() => []),
   ]);
   if (!list.ok) return null;
 

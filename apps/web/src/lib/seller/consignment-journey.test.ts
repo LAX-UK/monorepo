@@ -38,7 +38,7 @@ describe("consignmentJourney", () => {
       "upcoming",
       "upcoming",
     ]);
-    expect(journeyCaption(journey)).toBe("Agreement · step 3 of 6");
+    expect(journeyCaption(journey)).toBe("Agreement, step 3 of 6");
     expect(
       journeyProgress({ current: "sold", finished: true }).every(
         (step) => step.progress === "done",

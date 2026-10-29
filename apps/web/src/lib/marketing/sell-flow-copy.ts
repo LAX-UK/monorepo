@@ -12,6 +12,9 @@ export const SELLER_SUBMISSION_STATUS_LABELS: Record<ItemSubmissionStatus, strin
   withdrawn: "Withdrawn",
 };
 
+/** The one name for handing a work to LAX: page actions, empty states, Home and the form. */
+export const SELL_A_WORK_LABEL = "Sell a work";
+
 export const SELL_PREREQUISITES = [
   "1+ photos of the item (3+ recommended: overall, detail, signature or markings)",
   "Title, description, dimensions, and medium — include artist or maker in the title or description",

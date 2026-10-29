@@ -97,6 +97,12 @@ export const DASHBOARD_EMPTY = {
     description:
       "Tell our specialists about an artwork or collectible. When it is accepted, we prepare the catalogue entry for you.",
   },
+  /** For a member who follows consignments but does not hand in work. */
+  consignmentsToFollow: {
+    title: "No consignments yet",
+    description:
+      "Works handed to LAX appear here, from first review to sale, as soon as a colleague sends one.",
+  },
   seller: {
     title: "Start your first submission",
     description:
@@ -151,6 +157,10 @@ export const ACCOUNT_LOAD_ERROR = {
   payouts: {
     title: "We couldn't load your sales and payouts",
     description: "This is on our side. Payouts still go to your bank account as scheduled.",
+  },
+  works: {
+    title: "We couldn't load your organisation's works",
+    description: "This is on our side. Your works, invoices and payments are safe.",
   },
   consignment: {
     title: "We couldn't load this consignment",

@@ -297,6 +297,10 @@
       "types": "./dist/components/ui/list-row.d.ts",
       "default": "./dist/components/ui/list-row.js"
     },
+    "./components/record-row": {
+      "types": "./dist/components/ui/record-row.d.ts",
+      "default": "./dist/components/ui/record-row.js"
+    },
     "./components/inset-group": {
       "types": "./dist/components/ui/inset-group.d.ts",
       "default": "./dist/components/ui/inset-group.js"

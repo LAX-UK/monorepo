@@ -3,9 +3,11 @@ import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice
 import { PaymentsMobileList } from "@/components/dashboard/list/payments-mobile-list";
 import { PaymentRowCard } from "@/components/dashboard/payments/payment-row-card";
 import { DashboardEmptyState, DashboardSection } from "@/components/dashboard/primitives";
+import { AccountLoadError } from "@/components/dashboard/primitives/account-load-error";
 import { DashboardDesktopList } from "@/components/dashboard/primitives/dashboard-list-row-card";
 import { OrgWorksList } from "@/components/dashboard/seller/org-works-list";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { ACCOUNT_LOAD_ERROR, DASHBOARD_CTA } from "@/lib/dashboard/dashboard-copy";
 import { describeDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import {
   ENTITY_WORKS_PAGING,
@@ -39,6 +41,8 @@ export default async function SellerWorksPage() {
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: PATH });
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   const canViewMoney = sellerCan(sellerCtx, "entity.finance.read");
+  // Only someone who may bid is offered the sales; the rest are told what will appear.
+  const canBid = sellerCan(sellerCtx, "entity.bid.place");
   if (
     !sellerCtx.sellingAsOrganisation ||
     !(canViewMoney || sellerCan(sellerCtx, "entity.holdings.read"))
@@ -53,16 +57,10 @@ export default async function SellerWorksPage() {
 
   let wins: EntityWonLot[] = [];
   let winsComplete = true;
-  let winsFailure = null;
+  const winsFailed = winsResult.status === "rejected";
   if (winsResult.status === "fulfilled") {
     wins = winsResult.value.rows;
     winsComplete = winsResult.value.complete;
-  } else {
-    winsFailure = describeDashboardSliceFailure(
-      winsResult.reason,
-      "portfolio",
-      "Could not load your organisation's works.",
-    );
   }
 
   let payments: PaymentDisplayRow[] = [];
@@ -87,34 +85,41 @@ export default async function SellerWorksPage() {
           ? "Works your organisation has won, what it paid and its invoices."
           : "Works your organisation has won. Prices and payments are visible to owners, admins and finance."
       }
-      errorAlert={winsFailure ? <DashboardSliceErrorAlert failure={winsFailure} /> : null}
       className="space-y-8"
     >
-      {winsFailure ? null : (
-        <DashboardSection id="organisation-works" title="Works won">
-          {rows.length === 0 ? (
-            <DashboardEmptyState
-              variant="hero"
-              illustration="easel"
-              title="No works yet"
-              description="Lots won for this organisation appear here, whichever member placed the winning bid."
-              action={
-                <Button variant="primary" asChild>
-                  <Link href="/search">Browse live auctions</Link>
-                </Button>
+      {winsFailed ? (
+        <AccountLoadError {...ACCOUNT_LOAD_ERROR.works} />
+      ) : rows.length === 0 ? (
+        <DashboardEmptyState
+          variant="hero"
+          illustration="easel"
+          title="No works yet"
+          description="Lots won for this organisation appear here, whichever member placed the winning bid."
+          {...(canBid
+            ? {
+                action: (
+                  <Button variant="primary" asChild>
+                    <Link href="/search">{DASHBOARD_CTA.browseLiveAuctions}</Link>
+                  </Button>
+                ),
               }
-            />
-          ) : (
-            <>
-              <OrgWorksList rows={rows} />
-              {winsComplete ? null : (
-                <p className="mt-4 font-body text-sm text-on-surface-variant">
-                  Showing the latest {ENTITY_WORKS_PAGING.maxRows.toLocaleString("en-GB")} works.
-                </p>
-              )}
-            </>
+            : {})}
+        />
+      ) : (
+        <section aria-labelledby="works-won-heading" className="flex flex-col gap-4">
+          <h2
+            id="works-won-heading"
+            className="font-headline text-lg font-semibold text-on-surface"
+          >
+            Works won
+          </h2>
+          <OrgWorksList rows={rows} />
+          {winsComplete ? null : (
+            <p className="font-body text-sm text-on-surface-variant">
+              Showing the latest {ENTITY_WORKS_PAGING.maxRows.toLocaleString("en-GB")} works.
+            </p>
           )}
-        </DashboardSection>
+        </section>
       )}
 
       {paymentsFailure ? (

@@ -4,6 +4,7 @@ import { Popover as PopoverPrimitive } from "radix-ui";
 import type * as React from "react";
 
 import { cn } from "../../lib/utils.js";
+import { InertOutside } from "./inert-outside.js";
 
 function Popover({ ...props }: React.ComponentProps<typeof PopoverPrimitive.Root>) {
   return <PopoverPrimitive.Root data-slot="popover" {...props} />;
@@ -17,6 +18,7 @@ function PopoverContent({
   className,
   align = "center",
   sideOffset = 4,
+  children,
   ...props
 }: React.ComponentProps<typeof PopoverPrimitive.Content>) {
   return (
@@ -31,7 +33,10 @@ function PopoverContent({
           className,
         )}
         {...props}
-      />
+      >
+        {children}
+        <InertOutside />
+      </PopoverPrimitive.Content>
     </PopoverPrimitive.Portal>
   );
 }

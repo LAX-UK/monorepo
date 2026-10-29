@@ -15,9 +15,9 @@ import {
 } from "@/lib/forms/submission/item-submission-form-defaults";
 import { findCategoryIdBySlug } from "@/lib/forms/submission/resolve-category-slug";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
+import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { REGISTER_ORGANISATION_HREF } from "@/lib/navigation/account-switcher-model";
 import { sellerAccountChoice } from "@/lib/seller/seller-account-options";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export default async function NewSubmissionPage({
@@ -73,17 +73,9 @@ export default async function NewSubmissionPage({
   return (
     <DashboardPage className={`mx-auto w-full space-y-6 ${SETTINGS_CONTENT_MAX_WIDTH}`}>
       <DashboardPageHeader
-        title="Sell with LAX"
+        title={SELL_A_WORK_LABEL}
         hideTitleOnMobile
         description="Tell us about the work. A specialist reviews every submission, and there's no obligation to sell."
-        actions={
-          <Link
-            href={DASHBOARD_ROUTES.consignments}
-            className="font-body text-sm text-link underline-offset-4 hover:underline"
-          >
-            Consignments
-          </Link>
-        }
       />
       {error ? <DashboardSliceErrorAlert failure={describeSettingsActionError(error)} /> : null}
       {resubmitFrom ? (
@@ -92,7 +84,7 @@ export default async function NewSubmissionPage({
           reviewNotes={resubmitFrom.reviewNotes}
         />
       ) : null}
-      <SetMobileShellTitle title="Sell with LAX" />
+      <SetMobileShellTitle title={SELL_A_WORK_LABEL} />
       <SellWithLaxFlow
         categories={categories}
         choice={choice}

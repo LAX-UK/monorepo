@@ -18,7 +18,7 @@ describe("WizardFooter", () => {
       />,
     );
 
-    expect(screen.getByTestId("wizard-next")).toHaveTextContent("Continue to Details");
+    expect(screen.getByTestId("wizard-next")).toHaveTextContent("Continue to details");
     expect(screen.getByTestId("wizard-back")).toHaveTextContent("Back");
     expect(screen.queryByTestId("wizard-finish-later")).not.toBeInTheDocument();
   });

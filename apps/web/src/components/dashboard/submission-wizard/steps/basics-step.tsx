@@ -3,7 +3,6 @@
 import type { BasicsStepProps } from "@/components/dashboard/submission-wizard/step-props";
 import { CategoryPicker } from "@/components/forms/category-picker";
 import { SellPrerequisitesInline } from "@/components/marketing/sell-journey/sell-prerequisites-inline";
-import { UnderlineInput } from "@/components/ui/input";
 import {
   FormControl,
   FormField,
@@ -11,6 +10,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { Input } from "@auction/ui/components/input";
 
 export function BasicsStep({ form, categories }: BasicsStepProps) {
   return (
@@ -23,7 +23,7 @@ export function BasicsStep({ form, categories }: BasicsStepProps) {
           <FormItem>
             <FormLabel>Title</FormLabel>
             <FormControl>
-              <UnderlineInput placeholder="Work title" {...field} />
+              <Input placeholder="Work title" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -54,7 +54,7 @@ export function BasicsStep({ form, categories }: BasicsStepProps) {
             <FormItem>
               <FormLabel>Year of work</FormLabel>
               <FormControl>
-                <UnderlineInput
+                <Input
                   placeholder="2024 or circa 1990"
                   inputMode="numeric"
                   enterKeyHint="next"
@@ -72,7 +72,7 @@ export function BasicsStep({ form, categories }: BasicsStepProps) {
             <FormItem>
               <FormLabel>Edition (optional)</FormLabel>
               <FormControl>
-                <UnderlineInput placeholder="3/8, AP, unique…" {...field} />
+                <Input placeholder="3/8, AP, unique…" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>

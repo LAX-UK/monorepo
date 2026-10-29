@@ -5,6 +5,7 @@ import {
   type EntityActor,
   accountBidScope,
   accountPurchaseScope,
+  entityActorCan,
 } from "@auction/domain";
 import { legalEntityMemberRoles } from "@auction/types";
 
@@ -53,7 +54,13 @@ const PAGE_SPECS: Record<BuyingPage, PageSpec> = {
 };
 
 export type BuyingPageView =
-  | { kind: "open"; title: string; description: string }
+  | {
+      kind: "open";
+      title: string;
+      description: string;
+      /** The member may bid, so an empty page may point them to the sales. */
+      offersSales: boolean;
+    }
   | {
       kind: "forbidden";
       /** "Bids", for "You don't have access to Bids". */
@@ -69,7 +76,7 @@ export type BuyingPageView =
 export function buyingPageView(scope: AccountScope, page: BuyingPage): BuyingPageView {
   const spec = PAGE_SPECS[page];
   const { account } = scope;
-  if (account.kind === "personal") return { kind: "open", ...spec.personal };
+  if (account.kind === "personal") return { kind: "open", ...spec.personal, offersSales: true };
   const records = spec.scope(account.actor);
   if (!records) {
     return {
@@ -80,5 +87,9 @@ export function buyingPageView(scope: AccountScope, page: BuyingPage): BuyingPag
       ),
     };
   }
-  return { kind: "open", ...spec.organisation(account.name, records) };
+  return {
+    kind: "open",
+    ...spec.organisation(account.name, records),
+    offersSales: entityActorCan(account.actor, "entity.bid.place"),
+  };
 }

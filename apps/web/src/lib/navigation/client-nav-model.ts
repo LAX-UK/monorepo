@@ -1,5 +1,6 @@
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
 import { laxAccountHomeUrl } from "@/lib/lax-account-url";
+import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { type EntityCapability, entityRoleCan } from "@auction/domain";
 import {
   Bell,
@@ -139,7 +140,7 @@ const SELL_WITH_LAX: NavSpec = {
   audience: "personal",
   item: () => ({
     id: "sell",
-    label: "Sell with LAX",
+    label: SELL_A_WORK_LABEL,
     href: CLIENT_ROUTES.sellingNew,
     icon: Store,
     match: (pathname) => pathname === CLIENT_ROUTES.sellingNew,

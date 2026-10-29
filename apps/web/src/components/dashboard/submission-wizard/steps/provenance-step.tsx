@@ -1,7 +1,6 @@
 "use client";
 
 import type { StepProps } from "@/components/dashboard/submission-wizard/step-props";
-import { UnderlineInput } from "@/components/ui/input";
 import { Button } from "@auction/ui/components/button";
 import {
   FormControl,
@@ -10,6 +9,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { Input } from "@auction/ui/components/input";
 import { Textarea } from "@auction/ui/components/textarea";
 import { Plus, Trash2 } from "lucide-react";
 import { useFieldArray } from "react-hook-form";
@@ -60,7 +60,7 @@ export function ProvenanceStep({ form }: StepProps) {
                     <FormItem>
                       <FormLabel>Period (optional)</FormLabel>
                       <FormControl>
-                        <UnderlineInput placeholder="e.g. 2022" {...field} />
+                        <Input placeholder="e.g. 2022" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -133,7 +133,7 @@ export function ProvenanceStep({ form }: StepProps) {
                       <FormItem>
                         <FormLabel>Year (optional)</FormLabel>
                         <FormControl>
-                          <UnderlineInput placeholder="2023" {...field} />
+                          <Input placeholder="2023" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -146,7 +146,7 @@ export function ProvenanceStep({ form }: StepProps) {
                       <FormItem>
                         <FormLabel>Venue</FormLabel>
                         <FormControl>
-                          <UnderlineInput placeholder="Gallery or museum" {...field} />
+                          <Input placeholder="Gallery or museum" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>

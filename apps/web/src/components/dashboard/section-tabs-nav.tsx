@@ -1,6 +1,5 @@
 "use client";
 
-import { cn } from "@auction/ui";
 import { type SectionTabItem, SectionTabs } from "@auction/ui/components/section-tabs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -23,9 +22,9 @@ type SectionTabsNavProps = {
 };
 
 /**
- * Next.js adapter for `SectionTabs` with sentence-case tab names. The tabs stay on one line and
- * scroll sideways when they do not fit (on phones), with a fade at the edge that shows there is
- * more; they never wrap onto a second line.
+ * Next.js adapter for `SectionTabs` with sentence-case tab names. The kit keeps underline tabs on
+ * one line and scrolls them sideways when they do not fit, with a fade at the edge that hides
+ * more.
  */
 export function SectionTabsNav({
   items,
@@ -48,20 +47,18 @@ export function SectionTabsNav({
   }));
 
   return (
-    <div className="-mx-4 overflow-x-auto px-4 pt-1 [mask-image:linear-gradient(to_right,transparent,black_1rem,black_calc(100%-1.5rem),transparent)] [scrollbar-width:none] sm:mx-0 sm:px-0 sm:[mask-image:none]">
-      <SectionTabs
-        ariaLabel={ariaLabel}
-        items={tabs}
-        variant={variant}
-        casing="sentence"
-        sticky={sticky}
-        className={cn("w-max min-w-full flex-nowrap", className)}
-        renderLink={({ href, className: linkClass, children, ...rest }) => (
-          <Link href={href} className={linkClass} {...rest}>
-            {children}
-          </Link>
-        )}
-      />
-    </div>
+    <SectionTabs
+      ariaLabel={ariaLabel}
+      items={tabs}
+      variant={variant}
+      casing="sentence"
+      sticky={sticky}
+      {...(className ? { className } : {})}
+      renderLink={({ href, className: linkClass, children, ...rest }) => (
+        <Link href={href} className={linkClass} {...rest}>
+          {children}
+        </Link>
+      )}
+    />
   );
 }

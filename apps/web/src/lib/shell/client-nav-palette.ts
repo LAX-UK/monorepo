@@ -1,5 +1,6 @@
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
 import type { PaletteItem, PaletteSection } from "@/components/layout/palette/types";
+import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { type ClientNavScope, getClientNavItems } from "@/lib/navigation/client-nav-model";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 
@@ -36,7 +37,7 @@ function everyClientPage(orgModuleEnabled: boolean): AppShellNavItem[] {
 }
 
 const CLIENT_PALETTE_EXTRAS: PaletteItem[] = [
-  { id: "d-sell", href: CLIENT_ROUTES.sellingNew, label: "Sell with LAX" },
+  { id: "d-sell", href: CLIENT_ROUTES.sellingNew, label: SELL_A_WORK_LABEL },
   { id: "d-gallery", href: "/", label: "Browse gallery", hint: "Marketing site" },
   { id: "d-search", href: "/search", label: "Search lots" },
 ];

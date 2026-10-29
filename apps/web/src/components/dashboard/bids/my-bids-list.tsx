@@ -1,15 +1,16 @@
 "use client";
 
 import { BidHistoryDrawer } from "@/components/dashboard/bid-history-drawer";
-import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { ListNoResults } from "@/components/dashboard/primitives/list-no-results";
 import { type MyBidCardVm, filterMyBidCards, showsMyBidsSearch } from "@/lib/bid/my-bids.vm";
+import { RecordList } from "@auction/ui";
 import { Input } from "@auction/ui/components/input";
 import { Search } from "lucide-react";
 import { useId, useMemo, useState } from "react";
 import { MyBidCard } from "./my-bid-card";
 
 /**
- * The cards of one My bids view. A search field appears only when the view is long, and each
+ * The rows of one My bids view. A search field appears only when the view is long, and each
  * card can open the lot's full bid history in the shared drawer.
  */
 export function MyBidsList({ cards }: { cards: readonly MyBidCardVm[] }) {
@@ -44,24 +45,24 @@ export function MyBidsList({ cards }: { cards: readonly MyBidCardVm[] }) {
         </div>
       ) : null}
       {visible.length === 0 ? (
-        <DashboardEmptyState
-          illustration="search"
-          title="No bids match your search"
+        <ListNoResults
+          title={`No bids match “${query.trim()}”`}
           description="Try part of the title, the lot number or the sale."
+          clearLabel="Clear search"
+          onClear={() => setQuery("")}
         />
       ) : (
-        <ul className="flex flex-col gap-3" aria-label="Lots you have bid on">
+        <RecordList aria-label="Lots you have bid on">
           {visible.map((card) => (
-            <li key={card.id}>
-              <MyBidCard
-                card={card}
-                onOpenHistory={
-                  card.href ? () => setHistory({ lotId: card.lotId, title: card.title }) : null
-                }
-              />
-            </li>
+            <MyBidCard
+              key={card.id}
+              card={card}
+              onOpenHistory={
+                card.href ? () => setHistory({ lotId: card.lotId, title: card.title }) : null
+              }
+            />
           ))}
-        </ul>
+        </RecordList>
       )}
       <output aria-live="polite" className="sr-only">
         {searchable && query.trim() ? `${visible.length} of ${cards.length} bids shown` : ""}

@@ -46,6 +46,9 @@ export function DashboardListPage({
         title={title}
         hideTitleOnMobile
         hideDescriptionOnMobile
+        // The workspace header sets its own margin to zero, which beats the page rhythm; this
+        // gives it the standard 16px to the tabs or list below (the action on phones).
+        {...(bannerFirst ? { className: "mb-4" } : {})}
         {...(description ? { description } : {})}
         {...(actions ? { actions } : {})}
       />

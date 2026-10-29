@@ -92,8 +92,8 @@ export function journeyProgress(journey: ConsignmentJourney): {
   }));
 }
 
-/** "Agreement · step 3 of 6", as the list says it. */
+/** "Agreement, step 3 of 6", as the list says it (one fact, so no dot inside). */
 export function journeyCaption(journey: ConsignmentJourney): string {
   const step = CONSIGNMENT_JOURNEY_STEPS.indexOf(journey.current) + 1;
-  return `${CONSIGNMENT_JOURNEY_LABEL[journey.current]} · step ${step} of ${CONSIGNMENT_JOURNEY_STEPS.length}`;
+  return `${CONSIGNMENT_JOURNEY_LABEL[journey.current]}, step ${step} of ${CONSIGNMENT_JOURNEY_STEPS.length}`;
 }

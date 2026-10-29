@@ -2,6 +2,7 @@ import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { AccountLoadError } from "@/components/dashboard/primitives/account-load-error";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { ListNoResults } from "@/components/dashboard/primitives/list-no-results";
 import { SellerProfileUnavailableAlert } from "@/components/dashboard/seller-profile-unavailable-alert";
 import { ConsignmentTabs } from "@/components/dashboard/seller/consignment-tabs";
 import { ConsignmentsList } from "@/components/dashboard/seller/consignments-list";
@@ -13,7 +14,6 @@ import { CatalogActiveFilterChips } from "@/components/marketing/catalog-active-
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import {
   ACCOUNT_LOAD_ERROR,
-  DASHBOARD_CTA,
   DASHBOARD_EMPTY,
   DASHBOARD_ROUTES,
 } from "@/lib/dashboard/dashboard-copy";
@@ -22,10 +22,10 @@ import {
   resolveSellerWorkspaceContext,
   sellerCanStartSubmission,
 } from "@/lib/legal-entity/seller-acting-context.server";
+import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { CONSIGNMENT_STAGE_LABEL } from "@/lib/organisation-home/consignment-stage-links";
+import { consignmentsListView } from "@/lib/seller/consignments-list-view";
 import {
-  CONSIGNMENT_TABS,
-  consignmentTabLabel,
   countConsignmentsByTab,
   filterConsignmentRows,
   parseConsignmentFilter,
@@ -65,7 +65,7 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
     <Button variant="primary" size="default" asChild>
       <Link href={DASHBOARD_ROUTES.submissionsNew}>
         <Plus aria-hidden />
-        {DASHBOARD_CTA.submitWork}
+        {SELL_A_WORK_LABEL}
       </Link>
     </Button>
   ) : null;
@@ -119,19 +119,20 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
   const { tab, reviewStage } = filter;
   const visible = filterConsignmentRows(rows, tab, reviewStage);
   const reviewStageLabel = reviewStage ? CONSIGNMENT_STAGE_LABEL[reviewStage] : null;
-  const tabItems = CONSIGNMENT_TABS.map((id) => ({
-    id,
-    label: consignmentTabLabel(id),
-    count: counts[id],
-    href: id === "all" ? PATH : `${PATH}?tab=${id}`,
-    active: id === tab,
-  }));
+  const view = consignmentsListView({
+    counts,
+    tab,
+    reviewStage,
+    shown: visible.length,
+    canSell: canCreateSubmission,
+    path: PATH,
+  });
 
   return (
     <DashboardListPage
       title="Consignments"
       description="Everything handed to LAX, from first submission through sale."
-      actions={action}
+      actions={view.headerAction ? action : null}
       banner={banner}
       errorAlert={partialFailures}
     >
@@ -140,53 +141,46 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
       ) : (
         <>
           <SubmissionsListAutoRefresh enabled={counts["in-review"] > 0} />
-          {/* The stage chip belongs to the tabs it narrows, so it sits right under them. */}
-          <div className="space-y-3">
-            <ConsignmentTabs tabs={tabItems} />
-            {reviewStage && reviewStageLabel ? (
-              <CatalogActiveFilterChips
-                className="mb-0 md:mb-0"
-                chips={[
-                  {
-                    key: reviewStage,
-                    label: reviewStageLabel,
-                    removeHref: `${PATH}?tab=in-review`,
-                  },
-                ]}
-              />
-            ) : null}
-          </div>
-          {rows.length === 0 ? (
+          {view.chips ? (
+            // The stage chip belongs to the chips it narrows, so it sits right under them.
+            <div className="space-y-3">
+              <ConsignmentTabs tabs={view.chips} />
+              {reviewStage && reviewStageLabel ? (
+                <CatalogActiveFilterChips
+                  className="mb-0 md:mb-0"
+                  chips={[
+                    {
+                      key: reviewStage,
+                      label: reviewStageLabel,
+                      removeHref: `${PATH}?tab=in-review`,
+                    },
+                  ]}
+                />
+              ) : null}
+            </div>
+          ) : null}
+          {view.state === "empty" ? (
             <DashboardEmptyState
               variant="hero"
               illustration="easel"
-              title={DASHBOARD_EMPTY.consignments.title}
-              description={DASHBOARD_EMPTY.consignments.description}
-              {...(canCreateSubmission
+              {...(view.emptyAction
+                ? DASHBOARD_EMPTY.consignments
+                : DASHBOARD_EMPTY.consignmentsToFollow)}
+              {...(view.emptyAction
                 ? {
                     action: (
                       <Button variant="primary" asChild>
-                        <Link href={DASHBOARD_ROUTES.submissionsNew}>
-                          {DASHBOARD_CTA.submitWork}
-                        </Link>
+                        <Link href={DASHBOARD_ROUTES.submissionsNew}>{SELL_A_WORK_LABEL}</Link>
                       </Button>
                     ),
                   }
                 : {})}
             />
-          ) : visible.length === 0 ? (
-            <DashboardEmptyState
-              title={
-                reviewStageLabel
-                  ? `Nothing ${reviewStageLabel.toLowerCase()}`
-                  : `Nothing in ${consignmentTabLabel(tab).toLowerCase()}`
-              }
-              description="Nothing has reached this stage yet."
-              action={
-                <Button variant="secondaryOutline" asChild>
-                  <Link href={PATH}>Show all consignments</Link>
-                </Button>
-              }
+          ) : view.state === "no-results" ? (
+            <ListNoResults
+              title={view.noResults.title}
+              description={view.noResults.description}
+              clearHref={PATH}
             />
           ) : (
             <ConsignmentsList rows={visible} />

@@ -293,7 +293,10 @@ export type {
 } from "./components/ui/wizard-context-strip.js";
 export { BulkActionBar } from "./components/ui/bulk-action-bar.js";
 export type { BulkActionBarProps } from "./components/ui/bulk-action-bar.js";
-export { InlineActionMenu } from "./components/ui/inline-action-menu.js";
+export {
+  INLINE_ACTION_MENU_TOKENS,
+  InlineActionMenu,
+} from "./components/ui/inline-action-menu.js";
 export type {
   InlineActionMenuItem,
   InlineActionMenuProps,
@@ -374,6 +377,13 @@ export { Surface, surfaceVariants } from "./components/ui/surface.js";
 export type { SurfaceProps } from "./components/ui/surface.js";
 export { ListRow } from "./components/ui/list-row.js";
 export type { ListRowProps } from "./components/ui/list-row.js";
+export { InertOutside } from "./components/ui/inert-outside.js";
+export { RecordList, RecordRow, RecordRowMedia } from "./components/ui/record-row.js";
+export type {
+  RecordListProps,
+  RecordRowMediaProps,
+  RecordRowProps,
+} from "./components/ui/record-row.js";
 export { InsetGroup } from "./components/ui/inset-group.js";
 export type { InsetGroupProps } from "./components/ui/inset-group.js";
 export { LoadingButton, AsyncButton } from "./components/ui/loading-button.js";

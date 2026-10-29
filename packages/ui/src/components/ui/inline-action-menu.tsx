@@ -11,6 +11,16 @@ import {
   DropdownMenuTrigger,
 } from "./dropdown-menu.js";
 
+/**
+ * The colours a row menu is drawn in: the menu surface, the surface of the item under focus, and
+ * a destructive item's text. Exported so products can check the pair against their own tokens.
+ */
+export const INLINE_ACTION_MENU_TOKENS = {
+  surface: "surface-container-lowest",
+  focusSurface: "surface-container-high",
+  destructiveText: "error",
+} as const;
+
 export type InlineActionMenuItem =
   | { type: "item"; label: string; onSelect: () => void; disabled?: boolean; destructive?: boolean }
   | { type: "separator" };
@@ -45,7 +55,15 @@ function neighborLabels(
   return { prev, next };
 }
 
-/** Row-level overflow menu; 44×44 minimum touch target. */
+// Spelled out so Tailwind finds the classes; they name `INLINE_ACTION_MENU_TOKENS.destructiveText`.
+const DESTRUCTIVE_ITEM = "text-error focus:text-error";
+
+/**
+ * Row-level overflow menu; 44×44 minimum touch target. Choosing an item closes the menu, then
+ * runs the item on the next frame, so a dialog it opens takes focus cleanly and hands it back to
+ * this trigger when it closes. Destructive items use the error colour, which meets 4.5:1 on the
+ * menu in both themes.
+ */
 export function InlineActionMenu({ items, label, className }: InlineActionMenuProps) {
   const instanceId = useId();
   const itemOrdinalByLabel = new Map<string, number>();
@@ -81,10 +99,9 @@ export function InlineActionMenu({ items, label, className }: InlineActionMenuPr
             <DropdownMenuItem
               key={`${instanceId}-item-${label}-${it.label}-${n}`}
               {...(it.disabled ? { disabled: true } : {})}
-              className={it.destructive ? "text-live-red focus:text-live-red" : undefined}
-              onSelect={(e) => {
-                e.preventDefault();
-                it.onSelect();
+              className={it.destructive ? DESTRUCTIVE_ITEM : undefined}
+              onSelect={() => {
+                requestAnimationFrame(it.onSelect);
               }}
             >
               {it.label}

@@ -32,7 +32,8 @@ describe("toOrgWorkRows", () => {
 
   it("copes with a missing lot number and an unreadable date", () => {
     const [row] = toOrgWorkRows([{ ...win, lotNumber: null, endedAt: "soon" }]);
-    expect(row?.lotNumberLabel).toBe("—");
+    // No placeholder dash: the row simply leaves the fact out.
+    expect(row?.lotNumberLabel).toBeNull();
     expect(row?.endedAtLabel).toBe("soon");
   });
 });

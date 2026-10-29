@@ -5,6 +5,7 @@ import { Check, ChevronDown, ChevronUp } from "lucide-react";
 import * as React from "react";
 import { cn } from "../../lib/utils.js";
 import { type FieldVariant, fieldVariantClasses } from "./field-variant.js";
+import { InertOutside } from "./inert-outside.js";
 
 const Select = SelectPrimitive.Root;
 const SelectGroup = SelectPrimitive.Group;
@@ -80,6 +81,7 @@ const SelectContent = React.forwardRef<
       position={position}
       {...props}
     >
+      <InertOutside />
       <SelectScrollUpButton />
       <SelectPrimitive.Viewport
         data-lenis-prevent
