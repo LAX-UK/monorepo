@@ -1751,6 +1751,13 @@
       "when": 1796889600000,
       "tag": "0249_bid_fulfilment_notices",
       "breakpoints": true
+    },
+    {
+      "idx": 250,
+      "version": "7",
+      "when": 1796976000000,
+      "tag": "0250_shop_order_status_and_refund_order_indexes",
+      "breakpoints": true
     }
   ]
 }

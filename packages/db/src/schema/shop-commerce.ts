@@ -754,6 +754,7 @@ export const shopOrder = pgTable(
     uniqueIndex("shop_order_invoice_number_uid").on(table.invoiceNumber),
     index("shop_order_subject_idx").on(table.identitySubjectId),
     index("shop_order_subject_created_idx").on(table.identitySubjectId, table.createdAt),
+    index("shop_order_status_created_idx").on(table.status, table.createdAt),
   ],
 );
 
@@ -1277,6 +1278,7 @@ export const shopRefund = pgTable(
     uniqueIndex("shop_refund_stripe_refund_uid")
       .on(table.stripeRefundId)
       .where(sql`${table.stripeRefundId} IS NOT NULL`),
+    index("shop_refund_order_idx").on(table.orderId),
     check("shop_refund_amount_nonnegative", sql`${table.amountPence} >= 0`),
   ],
 );
