@@ -1,3 +1,4 @@
+import { accountBidScope } from "./account-buying-scope.js";
 import { roleBidsThroughAuthorisation } from "./bid-authority.js";
 import {
   CONSIGNMENT_PROGRESS_STAGES,
@@ -71,7 +72,7 @@ const GROUP_SCOPE: Record<DashboardFigureGroup, (actor: EntityActor) => Submissi
   upcomingSales: submissionSenderScope,
   soldThisYear: () => "all",
   payoutsDue: () => "all",
-  openBids: (a) => (reads(a, "entity.bid.place_without_authorisation") ? "all" : "own"),
+  openBids: (a) => (accountBidScope(a) === "all" ? "all" : "own"),
   purchasesToPay: () => "all",
   bidAuthority: () => "own",
 };
