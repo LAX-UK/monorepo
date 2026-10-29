@@ -57,20 +57,6 @@ export async function openAs(
   return { context, page, organisation, origin, close: () => context.close() };
 }
 
-/**
- * Places a bid at `amount`, or at the lowest bid the lot accepts when that is higher (the next
- * step above the current price depends on the lot's increments, which the journey need not know).
- */
-export async function placeBidAtLeast(
-  session: OrganisationSession,
-  lotId: string,
-  amount: number,
-): Promise<{ status: number; error: string; code: string | null }> {
-  const first = await placeBid(session, lotId, amount);
-  const minimum = /must be at least ([\d.]+)/.exec(first.error)?.[1];
-  return minimum ? placeBid(session, lotId, Number(minimum)) : first;
-}
-
 /** Places a bid through the same proxy the lot page uses, for the organisation in use. */
 export async function placeBid(
   session: OrganisationSession,
@@ -113,6 +99,30 @@ export async function invitationLinkFor(email: string): Promise<string> {
     return link;
   } finally {
     await client.end();
+  }
+}
+
+/** Switches from one organisation to another through the account switcher, as a person would. */
+export async function switchOrganisation(
+  page: Page,
+  from: string,
+  to: string,
+  timeout = 20_000,
+): Promise<void> {
+  await page
+    .getByRole("button", { name: `Account: ${from},` })
+    .first()
+    .click();
+  const option = page.getByTestId("switch-account-organisation").filter({ hasText: to });
+  const marked = await option.getAttribute("aria-current");
+  await option.click();
+  try {
+    await expect(page.getByTestId("account-strip")).toContainText(to, { timeout });
+  } catch (error) {
+    const toasts = await page.locator("[data-sonner-toast]").allInnerTexts();
+    throw new Error(
+      `Switching from ${from} to ${to} did not take (option aria-current=${marked}, at ${page.url()}, notices: ${toasts.join(" | ") || "none"}). ${String(error)}`,
+    );
   }
 }
 

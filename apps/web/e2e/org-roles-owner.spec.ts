@@ -7,7 +7,8 @@ import {
   expectActingAs,
   invitationLinkFor,
   openAs,
-  placeBidAtLeast,
+  placeBid,
+  switchOrganisation,
   undoOf,
 } from "./helpers/organisation-journeys";
 
@@ -67,26 +68,13 @@ test.describe("organisation owner journey @roles", () => {
     });
 
     await test.step("switch organisation and back", async () => {
-      await page
-        .getByRole("button", { name: `Account: ${approved},` })
-        .first()
-        .click();
-      await page.getByTestId("switch-account-organisation").filter({ hasText: other }).click();
-      await expect(page.getByTestId("account-strip")).toContainText(other, { timeout: 20_000 });
+      await switchOrganisation(page, approved, other);
       await page.waitForLoadState("networkidle");
-
-      await page
-        .getByRole("button", { name: `Account: ${other},` })
-        .first()
-        .click();
-      await page.getByTestId("switch-account-organisation").filter({ hasText: approved }).click();
-      await expect(page.getByTestId("account-strip")).toContainText(approved, {
-        timeout: 20_000,
-      });
+      await switchOrganisation(page, other, approved);
     });
 
     await test.step("bid for the organisation", async () => {
-      const bid = await placeBidAtLeast(owner, ORGANISATION_JOURNEY_IDS.lotForOwner, 2050);
+      const bid = await placeBid(owner, ORGANISATION_JOURNEY_IDS.lotForOwner, 2500);
       expect(bid.status, `bid answered ${bid.status} ${bid.error}`).toBeLessThan(300);
       await page.goto("/bids");
       await expect(page.getByText("Harbour Light, study for the owner").first()).toBeVisible();
