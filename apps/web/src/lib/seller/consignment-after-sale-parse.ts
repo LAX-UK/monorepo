@@ -72,7 +72,7 @@ const requestSchema = z
 export const sellerAfterSaleSchema = z.object({
   stage: z.enum([...itemSubmissionStatuses, ...consignmentAfterSaleStages]),
   unsold: unsoldSchema
-    .extend({ canChoose: z.boolean().default(false) })
+    .extend({ canChoose: z.boolean().default(false), choicePaused: z.boolean().default(false) })
     .nullable()
     .optional()
     .default(null),

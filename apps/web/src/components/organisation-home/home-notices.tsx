@@ -35,7 +35,21 @@ export function HomeNotices({ notices, className }: Props) {
               {notice.text}
             </Link>
           ) : (
-            <span>{notice.text}</span>
+            <span>
+              {notice.text}
+              {notice.action ? (
+                <>
+                  {" "}
+                  <a
+                    href={notice.action.href}
+                    className="rounded-sm font-medium text-on-surface underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-on-surface"
+                  >
+                    {notice.action.label}
+                  </a>
+                  .
+                </>
+              ) : null}
+            </span>
           )}
         </li>
       ))}

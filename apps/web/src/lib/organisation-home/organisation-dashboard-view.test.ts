@@ -241,12 +241,12 @@ describe("payouts due", () => {
     ]);
   });
 
-  it("names the overdue date first, then the next one ahead", () => {
+  it("shows both dates on one line when one payout is overdue and another is ahead", () => {
     expect(
       payouts({
         nextDate: new Date("2026-11-03T00:00:00Z"),
         overdueSince: new Date("2026-10-12T00:00:00Z"),
       }),
-    ).toEqual(["Overdue since 12 Oct 2026", "Next on 3 Nov 2026"]);
+    ).toEqual(["Overdue since 12 Oct 2026 · next 3 Nov 2026"]);
   });
 });

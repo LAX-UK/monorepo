@@ -102,6 +102,35 @@ describe("organisationHomeView", () => {
     expect(organisationHomeView(approved, ctx).banner).toBeNull();
   });
 
+  it("tells the owner of a paused organisation to contact us about unsold works", () => {
+    const view = organisationHomeView(
+      {
+        ...model,
+        notices: [
+          {
+            kind: "unsold_paused",
+            lots: [
+              { id: "l1", title: "Harbour at Dusk" },
+              { id: "l2", title: "Study in Ochre" },
+            ],
+          },
+        ],
+      },
+      ctx,
+    );
+    expect(view.notices).toEqual([
+      {
+        key: "unsold_paused",
+        text: "2 works did not sell.",
+        href: null,
+        action: expect.objectContaining({
+          label: "Contact us to decide what happens to them",
+          href: expect.stringMatching(/^mailto:/),
+        }),
+      },
+    ]);
+  });
+
   it("shows notices as quiet lines that name who chooses", () => {
     const one = organisationHomeView(
       {

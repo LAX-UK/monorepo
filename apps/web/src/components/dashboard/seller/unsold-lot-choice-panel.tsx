@@ -175,6 +175,15 @@ export function UnsoldLotChoicePanel({ submissionId, view, current = null }: Pro
           <p className="font-body text-sm text-on-surface">{view.message}</p>
         ) : null}
 
+        {view.mode === "paused" ? (
+          <div className="space-y-4">
+            <p className="font-body text-sm text-on-surface">{view.message}</p>
+            <Button asChild variant="outline">
+              <a href={view.contact.href}>{view.contact.label}</a>
+            </Button>
+          </div>
+        ) : null}
+
         {view.mode === "requested" ? (
           changing ? (
             <ChoiceForm

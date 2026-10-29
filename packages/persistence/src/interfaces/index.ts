@@ -919,6 +919,7 @@ export type {
   CurrencyCountRow,
   IConsignmentStatusCountsReader,
   IPayoutsDueReader,
+  PayoutsDueRow,
   ISoldWorksReader,
   IUpcomingSaleWorksReader,
   UpcomingSaleWorksRow,

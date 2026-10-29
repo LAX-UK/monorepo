@@ -72,6 +72,15 @@ const money = (totals: readonly MoneyTotal[]) =>
 const estimateRange = (estimate: EstimateTotal) =>
   `${formatKpiMoney(estimate.low, estimate.currency)}–${formatKpiMoney(estimate.high, estimate.currency)}`;
 
+/** "Overdue since 12 Oct 2026 · next 4 Nov 2026": both dates when one is past and one ahead. */
+function payoutDatesLine(overdueSince: Date | null, nextDate: Date | null): string[] {
+  if (overdueSince && nextDate) {
+    return [`Overdue since ${formatDate(overdueSince)} · next ${formatDate(nextDate)}`];
+  }
+  if (overdueSince) return [`Overdue since ${formatDate(overdueSince)}`];
+  return nextDate ? [`Next on ${formatDate(nextDate)}`] : [];
+}
+
 type TileViewBuilder<K extends DashboardTile["kind"]> = (
   tile: Extract<DashboardTile, { kind: K }>,
   ctx: Ctx,
@@ -120,10 +129,7 @@ const TILE_VIEWS: { [K in DashboardTile["kind"]]: TileViewBuilder<K> } = {
     label: "Payouts due",
     figures: money(tile.totals),
     // A date already past is never offered as the next one; it reads as overdue instead.
-    supporting: [
-      ...(tile.overdueSince ? [`Overdue since ${formatDate(tile.overdueSince)}`] : []),
-      ...(tile.nextDate ? [`Next on ${formatDate(tile.nextDate)}`] : []),
-    ],
+    supporting: payoutDatesLine(tile.overdueSince, tile.nextDate),
     emptyText: "No payouts due",
     description: "Payouts scheduled or on their way to the bank account, after fees.",
     href: CLIENT_ROUTES.payouts,

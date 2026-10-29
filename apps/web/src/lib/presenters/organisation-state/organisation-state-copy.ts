@@ -45,6 +45,11 @@ const CONTACT = (subject: string): OrganisationStateLink => ({
   kind: "contact",
 });
 
+/** "Contact us" about works that did not sell while the organisation's choices are paused. */
+export function unsoldPausedContact(): OrganisationStateLink {
+  return CONTACT("Works that did not sell");
+}
+
 const BANNER_COPY: Record<OrganisationBannerKey, BannerCopy> = {
   documents_requested: {
     title: "Documents needed.",

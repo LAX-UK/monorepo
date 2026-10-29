@@ -165,6 +165,31 @@ describe("decideUnsoldChoiceRequest", () => {
     });
   });
 
+  it("refuses an owner of a restricted organisation with the state's message", () => {
+    const d = decideUnsoldChoiceRequest({
+      ...base,
+      actor: { role: "owner" },
+      organisationStatus: "restricted",
+    });
+    expect(d).toEqual({
+      kind: "refused",
+      reason: "organisation_paused",
+      message:
+        "Choices for works that did not sell are paused for this organisation. Contact us to decide what happens to them.",
+    });
+    expect(
+      decideUnsoldChoiceRequest({
+        ...base,
+        actor: { role: "owner" },
+        organisationStatus: "approved",
+      }),
+    ).toMatchObject({ kind: "record" });
+    // A person's own profile is never paused by an organisation's state.
+    expect(decideUnsoldChoiceRequest({ ...base, organisationStatus: null })).toMatchObject({
+      kind: "record",
+    });
+  });
+
   it("refuses a reserve for a private sale or collection", () => {
     const d = decideUnsoldChoiceRequest({ ...base, choice: "private_sale", reserve: "4000" });
     expect(d).toMatchObject({ kind: "refused", reason: "reserve_only_for_relist" });

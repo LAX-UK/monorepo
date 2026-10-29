@@ -10,6 +10,7 @@ import {
   decideUnsoldChoiceRequest,
   lotEndedUnsold,
   relistReserveRefusal,
+  unsoldChoicePaused,
   unsoldChoiceRefusalMessage,
 } from "@auction/domain";
 import type {
@@ -20,6 +21,8 @@ import type {
 import type {
   ConsignmentAgreement,
   ItemSubmission,
+  LegalEntity,
+  LegalEntityStatus,
   Lot,
   SellerUnsoldLotView,
   SellerUnsoldOutcome,
@@ -47,6 +50,8 @@ export type UnsoldLotChoiceServiceDeps = {
   lots: { findById(id: string): Promise<Lot | null> };
   agreements: Pick<IConsignmentAgreementRepository, "findBySubmissionId" | "setRelistReserveFloor">;
   people: { findById(id: string): Promise<{ name: string } | null> };
+  /** The selling account, for its state: an organisation's state can pause choices. */
+  accounts: { findById(id: string): Promise<Pick<LegalEntity, "kind" | "status"> | null> };
   notifier: IConsignmentUpdateNotifier;
   events: IDomainEventSink | null;
   now?: () => Date;
@@ -58,7 +63,9 @@ export interface IUnsoldLotChoiceService {
     submission: ItemSubmission,
     actor: EntityActor | null,
   ): Promise<SellerUnsoldLotView | null>;
-  staffView(submission: ItemSubmission): Promise<Omit<SellerUnsoldLotView, "canChoose"> | null>;
+  staffView(
+    submission: ItemSubmission,
+  ): Promise<Omit<SellerUnsoldLotView, "canChoose" | "choicePaused"> | null>;
   /** Where the consignment is after the sale (or its submission status before it). */
   stageOf(submission: ItemSubmission): Promise<ConsignmentStage>;
   /** A page of the account's consigned lots that ended unsold, with what was chosen. */
@@ -86,6 +93,7 @@ const REFUSAL_STATUS: Record<UnsoldChoiceRefusal, number> = {
   not_unsold: 409,
   already_confirmed: 409,
   forbidden_role: 403,
+  organisation_paused: 403,
   reserve_only_for_relist: 400,
   reserve_invalid: 400,
   reserve_not_lower: 400,
@@ -143,7 +151,9 @@ export class UnsoldLotChoiceService implements IUnsoldLotChoiceService {
     return { submission, lot, agreement, choice };
   }
 
-  private async view(context: UnsoldContext): Promise<Omit<SellerUnsoldLotView, "canChoose">> {
+  private async view(
+    context: UnsoldContext,
+  ): Promise<Omit<SellerUnsoldLotView, "canChoose" | "choicePaused">> {
     return {
       lotId: context.lot.id,
       currentReserve: context.lot.reservePrice,
@@ -159,7 +169,23 @@ export class UnsoldLotChoiceService implements IUnsoldLotChoiceService {
   ): Promise<SellerUnsoldLotView | null> {
     const context = await this.unsoldContext(submission);
     if (!context) return null;
-    return { ...(await this.view(context)), canChoose: canChooseUnsoldOutcome(actor) };
+    const choicePaused = unsoldChoicePaused(
+      await this.organisationStatus(submission.legalEntityId),
+    );
+    return {
+      ...(await this.view(context)),
+      canChoose: canChooseUnsoldOutcome(actor) && !choicePaused,
+      choicePaused,
+    };
+  }
+
+  /** The account's state when it is an organisation; `null` for a person's own profile. */
+  private async organisationStatus(
+    legalEntityId: string | null | undefined,
+  ): Promise<LegalEntityStatus | null> {
+    if (!legalEntityId) return null;
+    const account = await this.deps.accounts.findById(legalEntityId);
+    return account?.kind === "organisation" ? account.status : null;
   }
 
   async listOutcomes(
@@ -199,7 +225,7 @@ export class UnsoldLotChoiceService implements IUnsoldLotChoiceService {
 
   async staffView(
     submission: ItemSubmission,
-  ): Promise<Omit<SellerUnsoldLotView, "canChoose"> | null> {
+  ): Promise<Omit<SellerUnsoldLotView, "canChoose" | "choicePaused"> | null> {
     const context = await this.unsoldContext(submission);
     return context ? this.view(context) : null;
   }
@@ -227,6 +253,7 @@ export class UnsoldLotChoiceService implements IUnsoldLotChoiceService {
       choice: input.choice,
       reserve,
       floor: context.agreement?.relistReserveFloor ?? null,
+      organisationStatus: await this.organisationStatus(seller.legalEntityId),
     });
     if (decision.kind === "refused") return err(this.refused(decision.reason));
 

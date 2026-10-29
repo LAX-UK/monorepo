@@ -1,6 +1,15 @@
-import type { LotStatus, UnsoldLotChoiceKind, UnsoldLotChoiceStatus } from "@auction/types";
+import type {
+  LegalEntityStatus,
+  LotStatus,
+  UnsoldLotChoiceKind,
+  UnsoldLotChoiceStatus,
+} from "@auction/types";
 import { type EntityActor, entityActorCan } from "./entity-capabilities.js";
 import { moneyEq, moneyGte, moneyLt } from "./money-compare.js";
+import {
+  ORGANISATION_UNSOLD_CHOICE_PAUSED,
+  organisationUnsoldChoiceRefusal,
+} from "./organisation-state-policy.js";
 import { hasConfiguredReserve } from "./reserve.js";
 
 /**
@@ -67,6 +76,16 @@ export function canChooseUnsoldOutcome(actor: EntityActor | null): boolean {
   return actor === null || entityActorCan(actor, "entity.consignments.after_sale");
 }
 
+/**
+ * Whether choices are paused by the organisation's state (`null` for a personal account, whose
+ * choices are never paused): a restricted or unchecked organisation does not decide sales.
+ */
+export function unsoldChoicePaused(organisationStatus: LegalEntityStatus | null): boolean {
+  return (
+    organisationStatus !== null && organisationUnsoldChoiceRefusal(organisationStatus) !== null
+  );
+}
+
 export type RelistReserveRefusal = "reserve_invalid" | "reserve_not_lower" | "reserve_below_floor";
 
 /**
@@ -95,6 +114,7 @@ export function relistReserveRefusal(input: {
 
 export type UnsoldChoiceRefusal =
   | "not_unsold"
+  | "organisation_paused"
   | "already_confirmed"
   | "forbidden_role"
   | "reserve_only_for_relist"
@@ -113,6 +133,8 @@ export function unsoldChoiceRefusalMessage(reason: UnsoldChoiceRefusal): string 
       return "A specialist has already confirmed what happens next.";
     case "forbidden_role":
       return "Only an owner or admin can choose what happens next.";
+    case "organisation_paused":
+      return ORGANISATION_UNSOLD_CHOICE_PAUSED.message;
     case "reserve_only_for_relist":
       return "A reserve can only be set for a relist.";
     case "note_required":
@@ -158,9 +180,12 @@ export function decideUnsoldChoiceRequest(input: {
   choice: UnsoldLotChoiceKind;
   reserve: string | null;
   floor: string | null;
+  /** The account's state when it is an organisation; `null` for a personal account. */
+  organisationStatus?: LegalEntityStatus | null;
 }): UnsoldChoiceDecision {
   if (!lotEndedUnsold(input.lot)) return refuse("not_unsold");
   if (!canChooseUnsoldOutcome(input.actor)) return refuse("forbidden_role");
+  if (unsoldChoicePaused(input.organisationStatus ?? null)) return refuse("organisation_paused");
   if (input.current === "confirmed") return refuse("already_confirmed");
   const reserve = reserveRefusal(input.choice, input.reserve, input.lot, input.floor);
   if (reserve) return refuse(reserve);

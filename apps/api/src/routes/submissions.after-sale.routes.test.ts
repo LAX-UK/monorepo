@@ -49,6 +49,8 @@ type Setup = {
   identityVerified?: boolean;
   /** The submission access guard hides it from this member. */
   hidden?: boolean;
+  /** The selling account's state (with `sourceKind: "organisation"`). */
+  entityStatus?: LegalEntity["status"];
 };
 
 function setup(options: Setup = {}) {
@@ -97,7 +99,7 @@ function setup(options: Setup = {}) {
       {
         id: entityId,
         kind: options.sourceKind ?? "individual",
-        status: "approved",
+        status: options.entityStatus ?? "approved",
         displayName: "Jane Smith",
       } as LegalEntity,
     ],
@@ -148,6 +150,7 @@ function setup(options: Setup = {}) {
       lots,
       agreements,
       people: { findById: vi.fn().mockResolvedValue({ name: "Jane Smith" }) },
+      accounts: { findById: vi.fn(async (id: string) => entities.get(id) ?? null) },
       notifier,
       events,
       now,
@@ -314,6 +317,42 @@ describe("POST /submissions/:id/unsold-choice", () => {
     });
     expect(res.status).toBe(400);
     expect((await json<{ code: string }>(res)).code).toBe("reserve_below_floor");
+  });
+});
+
+describe("a restricted organisation's unsold lots", () => {
+  const restricted = {
+    role: "owner" as const,
+    sourceKind: "organisation" as const,
+    entityStatus: "restricted" as const,
+  };
+
+  it.each(["owner", "admin"] as const)(
+    "refuses a %s's choice with the state's message, and records nothing",
+    async (role) => {
+      const { post, choices } = setup({ ...restricted, role });
+      const res = await post("/unsold-choice", { choice: "relist" });
+      expect(res.status).toBe(403);
+      expect(await json<{ error: string; code: string }>(res)).toEqual({
+        error:
+          "Choices for works that did not sell are paused for this organisation. Contact us to decide what happens to them.",
+        code: "organisation_paused",
+      });
+      expect(choices.writes).toBe(0);
+    },
+  );
+
+  it("tells the page choices are paused instead of offering the form", async () => {
+    const res = await setup(restricted).get("/after-sale");
+    const body = await json<{ data: { unsold: { canChoose: boolean; choicePaused: boolean } } }>(
+      res,
+    );
+    expect(body.data.unsold).toMatchObject({ canChoose: false, choicePaused: true });
+  });
+
+  it("keeps choices open for an approved organisation", async () => {
+    const { post } = setup({ ...restricted, entityStatus: "approved" });
+    expect((await post("/unsold-choice", { choice: "collect" })).status).toBe(200);
   });
 });
 

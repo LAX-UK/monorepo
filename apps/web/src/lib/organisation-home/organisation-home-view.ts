@@ -1,8 +1,10 @@
 import { CLIENT_ROUTES, organisationHref } from "@/lib/navigation/client-routes";
 import {
   type OrganisationBannerView,
+  type OrganisationStateLink,
   oneOfRoles,
   organisationBannerView,
+  unsoldPausedContact,
 } from "@/lib/presenters/organisation-state/organisation-state-copy";
 import { formatDate, formatMoney, formatRelativeTime } from "@/lib/ui/format";
 import {
@@ -33,7 +35,14 @@ export type HomeTaskView = {
 };
 
 /** Something to know that is not this member's to do, as one quiet line. */
-export type HomeNoticeView = { key: string; text: string; href: string | null };
+export type HomeNoticeView = {
+  key: string;
+  text: string;
+  /** Where the whole line leads, when it is about something to follow. */
+  href: string | null;
+  /** A way on after the line ("Contact us"), when the line itself leads nowhere. */
+  action?: OrganisationStateLink;
+};
 
 export type HomeLinkView = { id: string; label: string; href: string };
 
@@ -199,6 +208,21 @@ const NOTICE_VIEWS: { [K in HomeNotice["kind"]]: NoticeViewBuilder<K> } = {
           ? `Waiting for ${UNSOLD_CHOOSERS} to choose what happens to ${quoted(only)}, which did not sell`
           : `Waiting for ${UNSOLD_CHOOSERS} to choose what happens to ${lots.length} unsold works`,
       href: `${CLIENT_ROUTES.consignments}?tab=unsold`,
+    };
+  },
+  // Choices are paused by the organisation's state, so we decide with it.
+  unsold_paused: ({ lots }) => {
+    const [only] = lots;
+    return {
+      text:
+        lots.length === 1 && only
+          ? `${quoted(only)} did not sell.`
+          : `${lots.length} works did not sell.`,
+      href: null,
+      action: {
+        ...unsoldPausedContact(),
+        label: `Contact us to decide what happens to ${lots.length === 1 ? "it" : "them"}`,
+      },
     };
   },
 };

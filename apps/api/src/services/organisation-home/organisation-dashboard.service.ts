@@ -108,8 +108,10 @@ export class OrganisationDashboardService implements IOrganisationDashboardServi
         return { year: year.year, works: countOf(rows), totals: totalsOf(rows) };
       },
       payoutsDue: async (ctx) => {
-        const rows = await readers.payoutsDue.listDue(ctx.member.legalEntityId);
-        const dates = rows.flatMap((row) => (row.nextDate ? [row.nextDate] : []));
+        const rows = await readers.payoutsDue.listDue(ctx.member.legalEntityId, ctx.now);
+        const dates = rows.flatMap((row) =>
+          [row.nextDate, row.overdueSince].filter((date): date is Date => date !== null),
+        );
         return {
           payouts: countOf(rows),
           totals: totalsOf(rows),

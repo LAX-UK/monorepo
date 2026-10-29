@@ -17,6 +17,7 @@ import { type OrganisationSetupState, organisationSetupState } from "./organisat
 import {
   type OrganisationAction,
   type OrganisationStatePolicy,
+  organisationStateAllows,
   organisationStatePolicy,
 } from "./organisation-state-policy.js";
 import type { UnsoldChoiceState } from "./unsold-lot-choice.js";
@@ -137,6 +138,7 @@ const TASK_SPECS: readonly TaskSpec[] = [
   },
   {
     kind: "unsold",
+    requires: "choose_unsold",
     allowed: capability("entity.consignments.after_sale"),
     collect: (facts) => {
       const lots = lotsAwaitingChoice(facts);
@@ -193,18 +195,27 @@ export function homeTasks(facts: OrganisationHomeFacts): HomeTask[] {
 }
 
 /** Something to know that is not the member's to do. */
-export type HomeNotice = { kind: "unsold_waiting"; lots: HomeSubject[] };
+export type HomeNotice =
+  /** A lot waits for an owner's or admin's choice. */
+  | { kind: "unsold_waiting"; lots: HomeSubject[] }
+  /** The organisation's state pauses choices, so LAX decides with it. */
+  | { kind: "unsold_paused"; lots: HomeSubject[] };
 
 /**
- * A consignor sees that a lot is waiting for an administrator's choice, as information; the
- * people who can choose get the task instead.
+ * Unsold lots as information, never as a task:
+ * - a consignor (who follows but does not choose) sees that the lots wait for an owner or admin;
+ * - while the organisation's state pauses choices, the people who would choose are told to
+ *   contact us instead of being given a task. Nobody else is told an owner will choose, since
+ *   no one in the organisation can.
  */
 export function homeNotices(facts: OrganisationHomeFacts): HomeNotice[] {
+  const lots = lotsAwaitingChoice(facts);
+  if (lots.length === 0) return [];
   const follows = entityActorCan({ role: facts.actor.role }, "entity.consignments.read");
   const chooses = entityActorCan({ role: facts.actor.role }, "entity.consignments.after_sale");
-  if (!follows || chooses) return [];
-  const lots = lotsAwaitingChoice(facts);
-  return lots.length > 0 ? [{ kind: "unsold_waiting", lots }] : [];
+  const open = organisationStateAllows(facts.organisation.status, "choose_unsold");
+  if (!open) return chooses ? [{ kind: "unsold_paused", lots }] : [];
+  return follows && !chooses ? [{ kind: "unsold_waiting", lots }] : [];
 }
 
 /** A shortcut on Home: a page the people who run the organisation use often. */

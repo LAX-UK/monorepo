@@ -7,6 +7,8 @@ export const ORGANISATION_ACTIONS = [
   "register",
   "submit",
   "accept_agreement",
+  /** Choose what happens to a consigned lot that did not sell: a selling decision. */
+  "choose_unsold",
   "pay",
   "read_history",
   "invite",
@@ -215,6 +217,25 @@ export function organisationStatePolicy(
     homeFirstRunKey: payoutsPending ? "payouts_not_set_up" : spec.homeFirstRunKey,
     bidPanelReasonKey: spec.bidPanelReasonKey,
   };
+}
+
+/**
+ * Refusal for choosing what happens to an unsold lot while the organisation's state closes
+ * selling (restricted, unchecked or closed). LAX decides with the organisation instead.
+ */
+export const ORGANISATION_UNSOLD_CHOICE_PAUSED = {
+  code: "organisation_unsold_choice_paused",
+  message:
+    "Choices for works that did not sell are paused for this organisation. Contact us to decide what happens to them.",
+} as const;
+
+/** The refusal for choosing an unsold outcome in `status`, or `null` while choices are open. */
+export function organisationUnsoldChoiceRefusal(
+  status: LegalEntityStatus,
+): { code: string; message: string } | null {
+  return organisationStateAllows(status, "choose_unsold")
+    ? null
+    : ORGANISATION_UNSOLD_CHOICE_PAUSED;
 }
 
 /** Refusal for joining an organisation that has been closed. */

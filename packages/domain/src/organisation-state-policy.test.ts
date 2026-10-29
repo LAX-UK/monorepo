@@ -8,6 +8,7 @@ import {
   type OrganisationAction,
   organisationBannerActors,
   organisationStatePolicy,
+  organisationUnsoldChoiceRefusal,
 } from "./organisation-state-policy.js";
 import { organisationBidRefusalMessage } from "./organisation-state-refusal.js";
 
@@ -166,6 +167,22 @@ describe("bidding and registering share one rule", () => {
     for (const status of legalEntityStatuses) {
       expect(organisationBidRefusalMessage(status) === null).toBe(buyerEntityCanBid(status));
     }
+  });
+});
+
+describe("choosing what happens to unsold works", () => {
+  it.each(legalEntityStatuses)("is open exactly where submitting is (%s)", (status) => {
+    const { actions } = organisationStatePolicy(status, NONE);
+    expect(actions.choose_unsold).toBe(actions.submit);
+  });
+
+  it("refuses a restricted organisation with a message that says how to decide", () => {
+    expect(organisationUnsoldChoiceRefusal("restricted")).toEqual({
+      code: "organisation_unsold_choice_paused",
+      message:
+        "Choices for works that did not sell are paused for this organisation. Contact us to decide what happens to them.",
+    });
+    expect(organisationUnsoldChoiceRefusal("approved")).toBeNull();
   });
 });
 

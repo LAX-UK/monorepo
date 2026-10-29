@@ -55,6 +55,7 @@ export function createConsignmentAfterSaleServices(
     lots: input.lots,
     agreements: input.agreements,
     people: input.people,
+    accounts: input.legalEntities,
     notifier,
     events: input.events,
   });

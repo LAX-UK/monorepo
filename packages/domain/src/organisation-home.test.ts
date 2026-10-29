@@ -301,6 +301,49 @@ describe("the unsold task", () => {
   });
 });
 
+describe("unsold works while choices are paused", () => {
+  const paused = (role: LegalEntityMemberRole) => ({
+    ...quiet(role),
+    organisation: { status: "restricted" as const, payoutsReady: true },
+    unsoldLots: [
+      { id: "l1", title: "Harbour at Dusk", choice: "none" as const },
+      { id: "l2", title: "Study in Ochre", choice: "none" as const },
+    ],
+  });
+
+  it.each(["owner", "admin"] as const)(
+    "gives a %s of a restricted organisation no task, and a notice to contact us",
+    (role) => {
+      const home = buildOrganisationHome(paused(role), []);
+      expect(home.tasks?.map((task) => task.kind)).not.toContain("unsold");
+      expect(home.notices).toEqual([
+        {
+          kind: "unsold_paused",
+          lots: [
+            { id: "l1", title: "Harbour at Dusk" },
+            { id: "l2", title: "Study in Ochre" },
+          ],
+        },
+      ]);
+    },
+  );
+
+  it.each(["consignor", "finance", "viewer"] as const)(
+    "never tells a %s that an owner will choose while nobody can",
+    (role) => {
+      expect(homeNotices(paused(role))).toEqual([]);
+    },
+  );
+
+  it.each(["under_review", "docs_requested", "connect_pending"] as const)(
+    "pauses choices wherever submitting is closed (%s)",
+    (status) => {
+      const facts = { ...paused("owner"), organisation: { status, payoutsReady: false } };
+      expect(buildOrganisationHome(facts, []).tasks?.map((t) => t.kind)).not.toContain("unsold");
+    },
+  );
+});
+
 describe("Home by organisation state", () => {
   const inState = (
     role: LegalEntityMemberRole,
@@ -311,7 +354,7 @@ describe("Home by organisation state", () => {
   });
 
   it("offers no selling, agreements or registering to a restricted organisation", () => {
-    expect(taskKinds(inState("owner", "restricted"))).toEqual(["unsold", "pay"]);
+    expect(taskKinds(inState("owner", "restricted"))).toEqual(["pay"]);
     expect(taskKinds(inState("buyer_agent", "restricted"))).toEqual([
       "identity",
       "won_awaiting_payment",
