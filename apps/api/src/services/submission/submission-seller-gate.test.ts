@@ -60,10 +60,10 @@ describe("assertSellerEntityAllowsSubmissions", () => {
     expect(result._unsafeUnwrapErr().status).toBe(403);
   });
 
-  it("blocks non-approved organisation", async () => {
+  it.each(["restricted", "rejected", "archived"])("blocks a %s organisation", async (status) => {
     const deps = baseDeps({
       legalEntityRepository: {
-        findById: vi.fn().mockResolvedValue({ kind: "organisation", status: "pending" }),
+        findById: vi.fn().mockResolvedValue({ kind: "organisation", status }),
       } as unknown as ILegalEntityRepository,
     });
     const result = await assertSellerEntityAllowsSubmissions(deps, "le-1");

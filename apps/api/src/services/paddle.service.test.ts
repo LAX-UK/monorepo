@@ -14,6 +14,7 @@ function createPaddleService(
       del: ReturnType<typeof vi.fn>;
     } | null;
     bidAuthority?: IBidAuthority;
+    entityStatus?: string;
   } = {},
 ) {
   const repo = {
@@ -37,8 +38,10 @@ function createPaddleService(
     repo as never,
     lotRepo as never,
     overrides.cache ?? null,
-    undefined,
-    overrides.bidAuthority ?? null,
+    overrides.bidAuthority ?? fakeBidAuthority("owner"),
+    {
+      findById: vi.fn().mockResolvedValue({ status: overrides.entityStatus ?? "approved" }),
+    } as never,
   );
 }
 
@@ -117,6 +120,27 @@ describe("PaddleService.assignPaddle bid authority", () => {
     });
     expect(result.isErr() && result.error.code).toBe("buyer_agent_authorisation_required");
   });
+
+  it.each(["restricted", "under_review", "rejected", "archived"])(
+    "refuses a paddle to a %s organisation",
+    async (entityStatus) => {
+      const assignPaddle = vi.fn();
+      const service = createPaddleService({
+        repo: { findRegistrationById: vi.fn().mockResolvedValue(registration), assignPaddle },
+        entityStatus,
+      });
+      const result = await service.assignPaddle({
+        saleId: "sale-1",
+        registrationId: "reg-1",
+        clerkUserId: "staff-1",
+      });
+      expect(result.isErr() && [result.error.status, result.error.code]).toEqual([
+        403,
+        "entity_not_authorised",
+      ]);
+      expect(assignPaddle).not.toHaveBeenCalled();
+    },
+  );
 });
 
 describe("PaddleService.assertPaddleAllowsBid", () => {

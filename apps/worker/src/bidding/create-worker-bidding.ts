@@ -28,6 +28,7 @@ import type { WorkerEnv } from "../env.js";
 import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
 import { WorkerLotLifecycleEventRecorder } from "../lifecycle/worker-lifecycle-event-recorder.js";
 import {
+  createWorkerBidAuthority,
   createWorkerBidEligibility,
   createWorkerBidIdentityEligibilityGate,
 } from "./create-worker-bid-eligibility.js";
@@ -115,6 +116,7 @@ export function createWorkerBiddingComposition(
     legalEntities,
     repoFactory.root.bid,
     identityEligibilityGate,
+    createWorkerBidAuthority(db),
   );
 
   return {

@@ -6,7 +6,25 @@ export {
   SALE_CANCELLABLE,
   SALE_STATUSES_ALLOWING_LOT_ADD,
 } from "./sale-status-policy.js";
-export { buyerEntityCanBid } from "./buyer-entity-bid-eligibility.js";
+export { buyerEntityCanBid, buyerEntityCanRegister } from "./buyer-entity-bid-eligibility.js";
+export { organisationBidRefusalMessage } from "./organisation-state-refusal.js";
+export {
+  ORGANISATION_ACTIONS,
+  ORGANISATION_CLOSED_TO_MEMBERS,
+  ORGANISATION_RESTRICTED_MEMBERS,
+  organisationJoinRefusal,
+  organisationMembersRefusal,
+  organisationStateAllows,
+  organisationStatePolicy,
+  type OrganisationAction,
+  type OrganisationBanner,
+  type OrganisationBannerAudience,
+  type OrganisationBannerKey,
+  type OrganisationBannerKind,
+  type OrganisationBidReasonKey,
+  type OrganisationHomeFirstRunKey,
+  type OrganisationStatePolicy,
+} from "./organisation-state-policy.js";
 export {
   evaluateSelfServiceActorIdentityEligibility,
   type SelfServiceActorIdentityEligibility,
@@ -279,6 +297,7 @@ export {
 } from "./bid-authority.js";
 export {
   entityActorCan,
+  entityCapabilitiesOf,
   entityRoleCan,
   rolesWithCapability,
   type EntityActor,
@@ -308,6 +327,7 @@ export {
   buildOrganisationHome,
   homeActivity,
   homeActivityArchive,
+  homeNotices,
   homeSetupState,
   homeShortcuts,
   homeTaskKindsFor,
@@ -315,17 +335,20 @@ export {
   type HomeActivityArchive,
   type HomeActivityEvent,
   type HomeActivityKind,
+  type HomeNotice,
   type HomeShortcut,
   type HomeSubject,
   type HomeTask,
   type HomeTaskKind,
   type OrganisationHomeFacts,
   type OrganisationHomeModel,
+  type UnsoldLotState,
 } from "./organisation-home.js";
 export {
   bidAuthorityFigure,
   bidLimitSummary,
   buildOrganisationDashboard,
+  splitPayoutDates,
   dashboardFigureGroupsFor,
   dashboardFigureScope,
   dashboardSectionsFor,

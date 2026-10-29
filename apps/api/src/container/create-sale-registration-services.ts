@@ -90,8 +90,9 @@ export function createSaleRegistrationServices(
     paddleRepo,
     lotRepo,
     cache,
-    (saleId, userId) => paddleBidWindowReader.hasRecentSelfServiceBid(saleId, userId),
     bidAuthority,
+    legalEntityRepository,
+    (saleId, userId) => paddleBidWindowReader.hasRecentSelfServiceBid(saleId, userId),
   );
 
   const saleroomCheckInEligibility = new SaleroomCheckInEligibilityValidator(

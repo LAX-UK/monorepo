@@ -32,6 +32,7 @@ function makeRepo(
     findUserName: async () => "Admin",
     findUserEmail: async () => "admin@example.com",
     findLegalEntityDisplayName: async () => "Org",
+    findLegalEntityStatus: async () => "approved",
     ...overrides,
   };
   return {

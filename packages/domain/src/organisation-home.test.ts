@@ -5,6 +5,7 @@ import {
   type HomeActivityEvent,
   type OrganisationHomeFacts,
   buildOrganisationHome,
+  homeNotices,
   homeShortcuts,
   homeTaskKindsFor,
 } from "./organisation-home.js";
@@ -26,7 +27,9 @@ function busy(role: LegalEntityMemberRole): OrganisationHomeFacts {
     organisation: { status: "approved", payoutsReady: false },
     consignments: [{ id: "c1", title: "Untitled (Blue)", checklist: agreementToAccept }],
     changesRequested: [{ id: "s1", title: "Study in Ochre", note: "Add a photo" }],
-    unsoldLots: [{ id: "l1", title: "Harbour at Dusk" }],
+    unsoldLots: [
+      { id: "l1", title: "Harbour at Dusk", status: "ended", winnerId: null, choice: "none" },
+    ],
     purchasesAwaitingPayment: [{ id: "p1", title: "Lot 14" }],
     viewerIdentity: "required",
     salesToRegister: [
@@ -74,22 +77,22 @@ function taskKinds(facts: OrganisationHomeFacts) {
 describe("buildOrganisationHome, per role", () => {
   it("owner: everything that keeps the organisation selling and buying", () => {
     expect(taskKinds(busy("owner"))).toEqual(["agreement", "changes", "payouts", "unsold", "pay"]);
-    expect(homeShortcuts({ role: "owner" })).toEqual(["sell", "invite", "statements"]);
+    expect(homeShortcuts({ role: "owner" }, "approved")).toEqual(["sell", "invite", "statements"]);
   });
 
   it("admin: the same tasks as the owner", () => {
     expect(taskKinds(busy("admin"))).toEqual(taskKinds(busy("owner")));
-    expect(homeShortcuts({ role: "admin" })).toEqual(["sell", "invite", "statements"]);
+    expect(homeShortcuts({ role: "admin" }, "approved")).toEqual(["sell", "invite", "statements"]);
   });
 
   it("finance: payouts and purchases to pay", () => {
     expect(taskKinds(busy("finance"))).toEqual(["payouts", "pay"]);
-    expect(homeShortcuts({ role: "finance" })).toEqual([]);
+    expect(homeShortcuts({ role: "finance" }, "approved")).toEqual([]);
   });
 
-  it("consignor: their identity, submissions sent back and unsold lots; never the agreement", () => {
-    expect(taskKinds(busy("consignor"))).toEqual(["identity", "changes", "unsold"]);
-    expect(homeShortcuts({ role: "consignor" })).toEqual([]);
+  it("consignor: their identity and submissions sent back; never the agreement or the unsold choice", () => {
+    expect(taskKinds(busy("consignor"))).toEqual(["identity", "changes"]);
+    expect(homeShortcuts({ role: "consignor" }, "approved")).toEqual([]);
   });
 
   it("buyer agent: identity, sales to register in, and wins finance has to pay", () => {
@@ -98,13 +101,13 @@ describe("buildOrganisationHome, per role", () => {
       "won_awaiting_payment",
       "register",
     ]);
-    expect(homeShortcuts({ role: "buyer_agent" })).toEqual([]);
+    expect(homeShortcuts({ role: "buyer_agent" }, "approved")).toEqual([]);
   });
 
   it("viewer: no Needs you section at all", () => {
     expect(taskKinds(busy("viewer"))).toBeNull();
     expect(homeTaskKindsFor({ role: "viewer" })).toEqual([]);
-    expect(homeShortcuts({ role: "viewer" })).toEqual([]);
+    expect(homeShortcuts({ role: "viewer" }, "approved")).toEqual([]);
   });
 
   it.each(["owner", "admin", "finance", "consignor", "buyer_agent"] as const)(
@@ -117,13 +120,13 @@ describe("buildOrganisationHome, per role", () => {
   it("keeps shortcuts for the people who run the organisation; other roles use the figures", () => {
     const withShortcuts = (
       ["owner", "admin", "finance", "consignor", "buyer_agent", "viewer"] as const
-    ).filter((role) => homeShortcuts({ role }).length > 0);
+    ).filter((role) => homeShortcuts({ role }, "approved").length > 0);
     expect(withShortcuts).toEqual(["owner", "admin"]);
   });
 
   it("an impersonating platform admin is read-only: no tasks and no write shortcuts", () => {
     const actor = { role: "owner" as const, isImpersonation: true };
-    expect(homeShortcuts(actor)).toEqual(["statements"]);
+    expect(homeShortcuts(actor, "approved")).toEqual(["statements"]);
     expect(taskKinds({ ...busy("owner"), actor })).toBeNull();
   });
 });
@@ -215,5 +218,87 @@ describe("recent activity", () => {
   it("leads See all to the role's main list", () => {
     expect(buildOrganisationHome(quiet("owner"), []).activityArchive).toBe("consignments");
     expect(buildOrganisationHome(quiet("buyer_agent"), []).activityArchive).toBe("bids");
+  });
+});
+
+describe("the unsold task", () => {
+  const ended = (choice: "none" | "requested" | "confirmed") => ({
+    id: "l1",
+    title: "Harbour at Dusk",
+    status: "ended" as const,
+    winnerId: null,
+    choice,
+  });
+  const facts = (role: LegalEntityMemberRole, lots: OrganisationHomeFacts["unsoldLots"]) => ({
+    ...quiet(role),
+    unsoldLots: lots,
+  });
+
+  it.each(["owner", "admin"] as const)("%s chooses for lots with no choice yet", (role) => {
+    expect(taskKinds(facts(role, [ended("none")]))).toEqual(["unsold"]);
+  });
+
+  it.each(["owner", "admin"] as const)("%s has no task once a choice is made", (role) => {
+    expect(taskKinds(facts(role, [ended("requested"), ended("confirmed")]))).toEqual([]);
+  });
+
+  it("covers only lots that ended without a winner", () => {
+    const sold = { ...ended("none"), id: "l2", winnerId: "u1" };
+    const live = { ...ended("none"), id: "l3", status: "active" as const };
+    const tasks = buildOrganisationHome(facts("owner", [ended("none"), sold, live]), []).tasks;
+    expect(tasks).toEqual([{ kind: "unsold", lots: [{ id: "l1", title: "Harbour at Dusk" }] }]);
+  });
+
+  it.each(["finance", "buyer_agent", "viewer"] as const)("%s is not asked to choose", (role) => {
+    expect(taskKinds(facts(role, [ended("none")])) ?? []).not.toContain("unsold");
+  });
+
+  it("tells a consignor a lot is waiting, as information and not a task", () => {
+    const home = buildOrganisationHome(facts("consignor", [ended("none")]), []);
+    expect(home.tasks?.map((task) => task.kind)).not.toContain("unsold");
+    expect(home.notices).toEqual([
+      { kind: "unsold_waiting", lots: [{ id: "l1", title: "Harbour at Dusk" }] },
+    ]);
+  });
+
+  it("gives the consignor nothing once a choice is made; only those who follow consignments but cannot choose get it", () => {
+    expect(homeNotices(facts("consignor", [ended("requested")]))).toEqual([]);
+    for (const role of ["owner", "admin", "finance", "buyer_agent", "viewer"] as const) {
+      const informed = ["finance", "viewer"].includes(role);
+      expect(homeNotices(facts(role, [ended("none")]))).toHaveLength(informed ? 1 : 0);
+    }
+  });
+});
+
+describe("Home by organisation state", () => {
+  const inState = (
+    role: LegalEntityMemberRole,
+    status: OrganisationHomeFacts["organisation"]["status"],
+  ): OrganisationHomeFacts => ({
+    ...busy(role),
+    organisation: { status, payoutsReady: false },
+  });
+
+  it("offers no selling, agreements or registering to a restricted organisation", () => {
+    expect(taskKinds(inState("owner", "restricted"))).toEqual(["unsold", "pay"]);
+    expect(taskKinds(inState("buyer_agent", "restricted"))).toEqual([
+      "identity",
+      "won_awaiting_payment",
+    ]);
+    expect(homeShortcuts({ role: "owner" }, "restricted")).toEqual(["statements"]);
+  });
+
+  it("keeps Sell a work away from an organisation that is not approved yet", () => {
+    for (const status of ["lead", "docs_requested", "under_review", "connect_pending"] as const) {
+      expect(homeShortcuts({ role: "owner" }, status)).not.toContain("sell");
+    }
+  });
+
+  it("carries the state's banner and reasons for the member", () => {
+    const owner = buildOrganisationHome(inState("owner", "restricted"), []);
+    expect(owner.state.banner).toEqual({ kind: "blocked", key: "restricted", audience: "told" });
+    expect(owner.state.homeFirstRunKey).toBe("restricted");
+    const agent = buildOrganisationHome(inState("buyer_agent", "restricted"), []);
+    expect(agent.state.bidPanelReasonKey).toBe("restricted");
   });
 });

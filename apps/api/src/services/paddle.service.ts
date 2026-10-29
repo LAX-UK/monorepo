@@ -1,5 +1,6 @@
 import { type IBidAuthority, bidAuthorityError } from "@auction/bidding-runtime";
-import type { IPaddleRepository } from "@auction/persistence/interfaces";
+import { buyerEntityCanBid, organisationBidRefusalMessage } from "@auction/domain";
+import type { ILegalEntityRepository, IPaddleRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository } from "@auction/persistence/interfaces";
 import { isPaddleUniqueViolation } from "@auction/persistence/lib";
 import { type Result, err, ok } from "neverthrow";
@@ -58,11 +59,12 @@ export class PaddleService {
     private readonly repo: IPaddleRepository,
     private readonly lotRepo: ILotRepository,
     private readonly cache: ICacheProvider | null,
+    private readonly bidAuthority: IBidAuthority,
+    private readonly legalEntityRepository: ILegalEntityRepository,
     private readonly hasActiveSelfServiceSession?: (
       saleId: string,
       userId: string,
     ) => Promise<boolean>,
-    private readonly bidAuthority: IBidAuthority | null = null,
   ) {}
 
   private err(message: string, status: number, code?: string): Result<never, PaddleServiceError> {
@@ -87,16 +89,23 @@ export class PaddleService {
         "kyc_required",
       );
     }
-    if (this.bidAuthority) {
-      const authority = await this.bidAuthority.resolve({
-        userId: reg.userId,
-        legalEntityId: reg.buyerLegalEntityId,
-        saleId: input.saleId,
-      });
-      if (!authority.allowed) {
-        const { message, status, code } = bidAuthorityError(authority.reason);
-        return this.err(message, status, code);
-      }
+    const entity = await this.legalEntityRepository.findById(reg.buyerLegalEntityId);
+    if (!entity) return this.err("Legal entity not found", 404);
+    if (!buyerEntityCanBid(entity.status)) {
+      return this.err(
+        organisationBidRefusalMessage(entity.status) ?? "Legal entity is not authorised to bid",
+        403,
+        "entity_not_authorised",
+      );
+    }
+    const authority = await this.bidAuthority.resolve({
+      userId: reg.userId,
+      legalEntityId: reg.buyerLegalEntityId,
+      saleId: input.saleId,
+    });
+    if (!authority.allowed) {
+      const { message, status, code } = bidAuthorityError(authority.reason);
+      return this.err(message, status, code);
     }
 
     let paddleNumber = input.paddleNumber;

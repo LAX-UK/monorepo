@@ -5,7 +5,7 @@ import {
   legalEntityMember,
   userInvitation,
 } from "@auction/db/schema";
-import type { LegalEntityMember } from "@auction/types";
+import type { LegalEntityMember, LegalEntityStatus } from "@auction/types";
 import { and, eq, isNull } from "drizzle-orm";
 import type {
   EntityInvitationCreate,
@@ -196,5 +196,14 @@ export class DrizzleEntityInvitationRepository implements IEntityInvitationRepos
       .where(eq(legalEntity.id, legalEntityId))
       .limit(1);
     return row?.displayName ?? null;
+  }
+
+  async findLegalEntityStatus(legalEntityId: string): Promise<LegalEntityStatus | null> {
+    const [row] = await this.db
+      .select({ status: legalEntity.status })
+      .from(legalEntity)
+      .where(eq(legalEntity.id, legalEntityId))
+      .limit(1);
+    return row?.status ?? null;
   }
 }

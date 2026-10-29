@@ -38,6 +38,23 @@ export type BidAuthorityFigure = {
  * The business figures behind Home, one entry per figure group. A group is loaded only for roles
  * that use it, so the others stay absent.
  */
+/**
+ * Splits scheduled payout dates at `now`: the soonest one still ahead and the earliest one
+ * already past (overdue). A past date is never offered as the next one.
+ */
+export function splitPayoutDates(
+  dates: readonly Date[],
+  now: Date,
+): { nextDate: Date | null; overdueSince: Date | null } {
+  const times = dates.map((date) => date.getTime());
+  const ahead = times.filter((time) => time >= now.getTime());
+  const past = times.filter((time) => time < now.getTime());
+  return {
+    nextDate: ahead.length > 0 ? new Date(Math.min(...ahead)) : null,
+    overdueSince: past.length > 0 ? new Date(Math.min(...past)) : null,
+  };
+}
+
 export type DashboardFigures = {
   /** The organisation's works in progress, by stage. */
   consignmentProgress?: ConsignmentProgressCounts;
@@ -45,8 +62,16 @@ export type DashboardFigures = {
   upcomingSales?: UpcomingSaleFigure[];
   /** Works sold in the calendar year (UK time), with hammer totals per currency. */
   soldThisYear?: { year: number; works: number; totals: MoneyTotal[] };
-  /** Payouts scheduled or on their way, with the soonest settlement date. */
-  payoutsDue?: { payouts: number; totals: MoneyTotal[]; nextDate: Date | null };
+  /**
+   * Payouts scheduled or on their way. `nextDate` is the soonest date still ahead;
+   * `overdueSince` is the earliest date already past, so a past date is never shown as upcoming.
+   */
+  payoutsDue?: {
+    payouts: number;
+    totals: MoneyTotal[];
+    nextDate: Date | null;
+    overdueSince: Date | null;
+  };
   /** Lots still open with the organisation's bids, and the most it could pay per currency. */
   openBids?: { lots: number; totalMax: MoneyTotal[] };
   /** Won lots not paid yet, with what is owed per currency. */
@@ -149,6 +174,7 @@ export type DashboardTile =
       payouts: number;
       totals: MoneyTotal[];
       nextDate: Date | null;
+      overdueSince: Date | null;
     }
   | { kind: "open_bids"; empty: boolean; own: boolean; lots: number; totalMax: MoneyTotal[] }
   | { kind: "purchases_to_pay"; empty: boolean; purchases: number; totals: MoneyTotal[] }

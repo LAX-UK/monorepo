@@ -27,6 +27,14 @@ export function identityRouteErr(
   return { kind: "err", error };
 }
 
+/** A refusal that carries its own client-facing explanation as the message. */
+export function identityRouteRefusal(
+  refusal: { code: string; message: string },
+  status: number,
+): IdentityRouteErr {
+  return { kind: "err", error: { message: refusal.message, status, code: refusal.code } };
+}
+
 export function identityRouteCodeErr(code: string, status: number): IdentityRouteErr {
   return { kind: "err", error: { message: code, status, code } };
 }

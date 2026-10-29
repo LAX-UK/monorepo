@@ -21,6 +21,7 @@ function mount(role: LegalEntityMemberRole, isImpersonation?: boolean) {
       payouts: 1,
       totals: [{ currency: "GBP", amount: "900.00" }],
       nextDate: new Date("2026-11-03T00:00:00Z"),
+      overdueSince: null,
     },
   }));
   const container = {
@@ -61,6 +62,7 @@ describe("organisation home routes", () => {
           payouts: 1,
           totals: [{ currency: "GBP", amount: "900.00" }],
           nextDate: "2026-11-03T00:00:00.000Z",
+          overdueSince: null,
         },
       },
     });

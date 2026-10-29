@@ -50,8 +50,10 @@ describe("absentee durable placement replay", () => {
       absenteeBidRepo as never,
       bidPlacer as never,
       lotRepo as never,
-      null,
+      {} as never,
       bidRepo as never,
+      null,
+      {} as never,
     );
 
     await svc.replayScheduledForLot(lotId);
@@ -83,8 +85,10 @@ describe("absentee durable placement replay", () => {
       absenteeBidRepo as never,
       { placeBid: vi.fn(async () => ok({ id: bidId })) } as never,
       { findById: vi.fn() } as never,
-      null,
+      {} as never,
       bidRepo as never,
+      null,
+      {} as never,
     );
 
     await svc.expireStaleExecutingLeases();

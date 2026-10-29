@@ -1,3 +1,4 @@
+import { organisationMembersRefusal } from "@auction/domain";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { IPendingInvitationsReader } from "@auction/persistence/interfaces";
 import type { ActingContextCookieV1, StaffRoles } from "@auction/types";
@@ -6,6 +7,7 @@ import type { IIdentityLegalEntityHttpApplicationService } from "../interfaces/i
 import {
   type IdentityRouteOutcome,
   identityRouteCodeErr,
+  identityRouteRefusal,
 } from "../interfaces/identity-routes/identity-route-http.js";
 import type {
   IInvitationLifecycleService,
@@ -112,6 +114,8 @@ export class IdentityLegalEntityHttpApplicationService
       input.invitationId,
     );
     if (!result.ok) {
+      const refusal = organisationMembersRefusal(result.code);
+      if (refusal) return identityRouteRefusal(refusal, 403);
       return identityRouteCodeErr(result.code, invitationStatus(result.code));
     }
     if (result.kind !== "accepted") {

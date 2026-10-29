@@ -1,7 +1,12 @@
-import type { LegalEntityStatus } from "@auction/types";
+import type { LegalEntityStatus, LotStatus } from "@auction/types";
 import { roleBidsThroughAuthorisation } from "./bid-authority.js";
 import type { ConsignmentChecklist } from "./consignment-checklist.js";
-import { type EntityActor, type EntityCapability, entityActorCan } from "./entity-capabilities.js";
+import {
+  type EntityActor,
+  type EntityCapability,
+  entityActorCan,
+  entityCapabilitiesOf,
+} from "./entity-capabilities.js";
 import { roleNeedsPersonalIdentity } from "./member-role-guide.js";
 import {
   type DashboardFigures,
@@ -9,6 +14,12 @@ import {
   buildOrganisationDashboard,
 } from "./organisation-dashboard.js";
 import { type OrganisationSetupState, organisationSetupState } from "./organisation-setup.js";
+import {
+  type OrganisationAction,
+  type OrganisationStatePolicy,
+  organisationStatePolicy,
+} from "./organisation-state-policy.js";
+import { type UnsoldChoiceState, unsoldChoiceAwaitingSeller } from "./unsold-lot-choice.js";
 
 /** A thing on Home that a task or an activity line is about. */
 export type HomeSubject = { id: string; title: string };
@@ -24,8 +35,8 @@ export type OrganisationHomeFacts = {
   consignments: ReadonlyArray<HomeSubject & { checklist: ConsignmentChecklist }>;
   /** Submissions a specialist sent back, with the specialist's note. */
   changesRequested: ReadonlyArray<HomeSubject & { note: string | null }>;
-  /** Lots that ended without selling, waiting for the seller's choice. */
-  unsoldLots: readonly HomeSubject[];
+  /** Consigned lots that have ended, with whether they sold and what the seller chose. */
+  unsoldLots: ReadonlyArray<HomeSubject & UnsoldLotState>;
   /** The organisation's won lots that are not paid yet (for a buyer agent, their own wins). */
   purchasesAwaitingPayment: readonly HomeSubject[];
   /** The person's own identity check. */
@@ -34,6 +45,13 @@ export type OrganisationHomeFacts = {
   salesToRegister: ReadonlyArray<HomeSubject & { startsAt: Date; bidLimit: string | null }>;
   /** Something is sold or on its way to sale, so payouts are needed. */
   hasWorkAwaitingPayout: boolean;
+};
+
+/** A finished lot as the unsold task reads it. */
+export type UnsoldLotState = {
+  status: LotStatus;
+  winnerId: string | null;
+  choice: UnsoldChoiceState;
 };
 
 /** One thing on "Needs you". Each has one button; it disappears when done. */
@@ -54,6 +72,8 @@ type TaskSpec = {
   kind: HomeTaskKind;
   /** Who may complete it, from the capability table. */
   allowed: (actor: EntityActor) => boolean;
+  /** What the organisation's own state must allow for the task to be offered. */
+  requires?: OrganisationAction;
   collect: (facts: OrganisationHomeFacts) => HomeTask[];
 };
 
@@ -62,6 +82,13 @@ function capability(name: EntityCapability) {
 }
 
 const DOCUMENT_STATES: ReadonlySet<OrganisationSetupState> = new Set(["documents_requested"]);
+
+/** Lots that ended without a buyer and have no choice yet; a made choice clears the task. */
+function lotsAwaitingChoice(facts: Pick<OrganisationHomeFacts, "unsoldLots">): HomeSubject[] {
+  return facts.unsoldLots
+    .filter((lot) => unsoldChoiceAwaitingSeller(lot, lot.choice))
+    .map(({ id, title }) => ({ id, title }));
+}
 
 /** "Needs you", in order: what blocks the organisation first, then each piece of work. */
 const TASK_SPECS: readonly TaskSpec[] = [
@@ -80,6 +107,7 @@ const TASK_SPECS: readonly TaskSpec[] = [
   },
   {
     kind: "agreement",
+    requires: "accept_agreement",
     allowed: capability("entity.consignments.accept_agreement"),
     collect: (facts) =>
       facts.consignments
@@ -92,6 +120,7 @@ const TASK_SPECS: readonly TaskSpec[] = [
   },
   {
     kind: "changes",
+    requires: "submit",
     allowed: capability("entity.submissions.create"),
     collect: (facts) =>
       facts.changesRequested.map(({ id, title, note }) => ({
@@ -102,18 +131,22 @@ const TASK_SPECS: readonly TaskSpec[] = [
   },
   {
     kind: "payouts",
+    requires: "set_up_payouts",
     allowed: capability("entity.connect.operate"),
     collect: (facts) =>
       !facts.organisation.payoutsReady && facts.hasWorkAwaitingPayout ? [{ kind: "payouts" }] : [],
   },
   {
     kind: "unsold",
-    allowed: capability("entity.submissions.create"),
-    collect: (facts) =>
-      facts.unsoldLots.length > 0 ? [{ kind: "unsold", lots: [...facts.unsoldLots] }] : [],
+    allowed: capability("entity.consignments.after_sale"),
+    collect: (facts) => {
+      const lots = lotsAwaitingChoice(facts);
+      return lots.length > 0 ? [{ kind: "unsold", lots }] : [];
+    },
   },
   {
     kind: "pay",
+    requires: "pay",
     allowed: capability("entity.finance.write"),
     collect: (facts) =>
       facts.purchasesAwaitingPayment.length > 0
@@ -132,6 +165,7 @@ const TASK_SPECS: readonly TaskSpec[] = [
   },
   {
     kind: "register",
+    requires: "register",
     allowed: (actor) => roleBidsThroughAuthorisation(actor.role) && !actor.isImpersonation,
     collect: (facts) =>
       facts.salesToRegister.map(({ id, title, startsAt, bidLimit }) => ({
@@ -150,15 +184,39 @@ export function homeTaskKindsFor(actor: EntityActor): HomeTaskKind[] {
 
 /** The tasks this member can complete now, in order. */
 export function homeTasks(facts: OrganisationHomeFacts): HomeTask[] {
-  return TASK_SPECS.filter((spec) => spec.allowed(facts.actor)).flatMap((spec) =>
-    spec.collect(facts),
+  const state = organisationStatePolicy(
+    facts.organisation.status,
+    entityCapabilitiesOf(facts.actor),
   );
+  return TASK_SPECS.filter(
+    (spec) => spec.allowed(facts.actor) && (!spec.requires || state.actions[spec.requires]),
+  ).flatMap((spec) => spec.collect(facts));
+}
+
+/** Something to know that is not the member's to do. */
+export type HomeNotice = { kind: "unsold_waiting"; lots: HomeSubject[] };
+
+/**
+ * A consignor sees that a lot is waiting for an administrator's choice, as information; the
+ * people who can choose get the task instead.
+ */
+export function homeNotices(facts: OrganisationHomeFacts): HomeNotice[] {
+  const follows = entityActorCan({ role: facts.actor.role }, "entity.consignments.read");
+  const chooses = entityActorCan({ role: facts.actor.role }, "entity.consignments.after_sale");
+  if (!follows || chooses) return [];
+  const lots = lotsAwaitingChoice(facts);
+  return lots.length > 0 ? [{ kind: "unsold_waiting", lots }] : [];
 }
 
 /** A shortcut on Home: a page the people who run the organisation use often. */
 export type HomeShortcut = "sell" | "invite" | "statements";
 
-type ShortcutSpec = { shortcut: HomeShortcut; applies: (actor: EntityActor) => boolean };
+type ShortcutSpec = {
+  shortcut: HomeShortcut;
+  applies: (actor: EntityActor) => boolean;
+  /** What the organisation's own state must allow for the shortcut to be offered. */
+  requires?: OrganisationAction;
+};
 
 const can = (actor: EntityActor, name: EntityCapability) => entityActorCan(actor, name);
 /** Reading capabilities (writes are hidden from an impersonating admin). */
@@ -173,15 +231,18 @@ const SHORTCUTS_AUDIENCE: EntityCapability = "entity.members.manage";
 
 /** Shortcuts in order; writes are hidden from an impersonating admin. */
 const SHORTCUT_SPECS: readonly ShortcutSpec[] = [
-  { shortcut: "sell", applies: (a) => can(a, "entity.submissions.create") },
-  { shortcut: "invite", applies: (a) => can(a, "entity.members.manage") },
+  { shortcut: "sell", applies: (a) => can(a, "entity.submissions.create"), requires: "submit" },
+  { shortcut: "invite", applies: (a) => can(a, "entity.members.manage"), requires: "invite" },
   { shortcut: "statements", applies: (a) => canRead(a, "entity.payouts.read") },
 ];
 
 /** The role's shortcuts: Sell a work, Invite someone and Statements for owners and admins. */
-export function homeShortcuts(actor: EntityActor): HomeShortcut[] {
+export function homeShortcuts(actor: EntityActor, status: LegalEntityStatus): HomeShortcut[] {
   if (!canRead(actor, SHORTCUTS_AUDIENCE)) return [];
-  return SHORTCUT_SPECS.filter((spec) => spec.applies(actor)).map((spec) => spec.shortcut);
+  const state = organisationStatePolicy(status, entityCapabilitiesOf(actor));
+  return SHORTCUT_SPECS.filter(
+    (spec) => spec.applies(actor) && (!spec.requires || state.actions[spec.requires]),
+  ).map((spec) => spec.shortcut);
 }
 
 /** Something that happened in the organisation, for "Recent activity". */
@@ -270,6 +331,10 @@ export type OrganisationHomeModel = {
   /** `null` when the role has nothing it could ever be asked to do (the section is hidden). */
   tasks: HomeTask[] | null;
   setup: OrganisationSetupState | null;
+  /** What the organisation's state allows and tells this member (banner, first-run message). */
+  state: OrganisationStatePolicy;
+  /** Things to know that are not this member's to do. */
+  notices: HomeNotice[];
   shortcuts: HomeShortcut[];
   activity: HomeActivityEvent[];
   activityArchive: HomeActivityArchive | null;
@@ -291,7 +356,11 @@ export function buildOrganisationHome(
   return {
     tasks: askable ? homeTasks(facts) : null,
     setup: homeSetupState(facts),
-    shortcuts: dashboard?.firstRun ? [] : homeShortcuts(facts.actor),
+    state: organisationStatePolicy(facts.organisation.status, entityCapabilitiesOf(facts.actor), {
+      payoutsReady: facts.organisation.payoutsReady,
+    }),
+    notices: homeNotices(facts),
+    shortcuts: dashboard?.firstRun ? [] : homeShortcuts(facts.actor, facts.organisation.status),
     activity: homeActivity(activity, facts.actor),
     activityArchive: homeActivityArchive(facts.actor),
     dashboard,

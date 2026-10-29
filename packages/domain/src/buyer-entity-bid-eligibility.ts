@@ -1,13 +1,12 @@
 import type { LegalEntityStatus } from "@auction/types";
+import { organisationStateAllows } from "./organisation-state-policy.js";
 
-/** Buyer-side bidding only needs a verified identity, not finished Stripe payout setup. */
-const BUYER_BID_ELIGIBLE_STATUSES = new Set<LegalEntityStatus>([
-  "approved",
-  "restricted",
-  "connect_pending",
-]);
-
-/** Whether a legal entity status allows placing bids (buyer side). */
+/** Whether a legal entity's state allows placing bids (buyer side). */
 export function buyerEntityCanBid(status: LegalEntityStatus): boolean {
-  return BUYER_BID_ELIGIBLE_STATUSES.has(status);
+  return organisationStateAllows(status, "bid");
+}
+
+/** Whether a legal entity's state allows registering for a sale; the same rule as bidding. */
+export function buyerEntityCanRegister(status: LegalEntityStatus): boolean {
+  return organisationStateAllows(status, "register");
 }

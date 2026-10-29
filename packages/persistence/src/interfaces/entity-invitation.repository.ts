@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import type { LegalEntityMember, LegalEntityMemberRole } from "@auction/types";
+import type { LegalEntityMember, LegalEntityMemberRole, LegalEntityStatus } from "@auction/types";
 import type { InvitationRow } from "./invitation.repository.js";
 
 export type EntityInvitationCreate = {
@@ -39,4 +39,6 @@ export interface IEntityInvitationRepository {
   findUserName(userId: string): Promise<string | null>;
   findUserEmail(userId: string): Promise<string | null>;
   findLegalEntityDisplayName(legalEntityId: string): Promise<string | null>;
+  /** The organisation's verification state, or `null` when it does not exist. */
+  findLegalEntityStatus(legalEntityId: string): Promise<LegalEntityStatus | null>;
 }

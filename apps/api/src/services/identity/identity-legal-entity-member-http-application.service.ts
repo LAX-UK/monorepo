@@ -1,9 +1,14 @@
-import { MEMBER_CHANGE_DENIAL_MESSAGE, type MemberChangeDenial } from "@auction/domain";
+import {
+  MEMBER_CHANGE_DENIAL_MESSAGE,
+  type MemberChangeDenial,
+  organisationMembersRefusal,
+} from "@auction/domain";
 import type { OrgModuleGate } from "../../lib/org-module-gate.js";
 import type { IIdentityLegalEntityMemberHttpApplicationService } from "../interfaces/identity-routes/identity-legal-entity-member-http.js";
 import {
   type IdentityRouteOutcome,
   identityRouteCodeErr,
+  identityRouteRefusal,
 } from "../interfaces/identity-routes/identity-route-http.js";
 import type { IInvitationLifecycleService } from "../interfaces/invitation-lifecycle.js";
 import type { InviteMemberInput, UpdateMemberRoleInput } from "../interfaces/member-management.js";
@@ -40,6 +45,8 @@ function isMemberChangeDenial(code: string): code is MemberChangeDenial {
  * `error`, so the page can show it as it is. Other refusals keep their codes.
  */
 function permissionOutcome(code: string): IdentityRouteOutcome<never> {
+  const refusal = organisationMembersRefusal(code);
+  if (refusal) return identityRouteRefusal(refusal, 403);
   if (isMemberChangeDenial(code)) {
     return {
       kind: "err",
