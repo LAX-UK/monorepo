@@ -19,11 +19,16 @@ export const LAX_ADMIN_ROLE_SUCCESSORS: Readonly<Record<string, readonly ShopSta
   catalogue_editor: ["catalogue_editor", "editor"],
 };
 
-/** Capabilities the single role gave before the split; editorial work sat with catalogue editors. */
+/**
+ * Capabilities the single role gave before the split; editorial work sat with catalogue editors.
+ * Writing included reading, so the reads are listed with the writes.
+ */
 const CAPABILITIES_BEFORE: Readonly<Record<string, readonly ShopStaffCapability[]>> = {
   catalogue_editor: [
     "catalogue.write",
+    "catalogue.read",
     "editorial.write",
+    "editorial.read",
     "editorial.publish",
     "artist_application.review",
   ],

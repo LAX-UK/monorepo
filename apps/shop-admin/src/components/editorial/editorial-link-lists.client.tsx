@@ -31,9 +31,11 @@ function useLinkSearch(spec: LinkSectionSpec) {
 function LinkListSection({
   controller,
   spec,
+  readOnly,
 }: {
   controller: LinksController;
   spec: LinkSectionSpec;
+  readOnly: boolean;
 }) {
   const items = controller.state.current[spec.list] ?? [];
   const note = publicRailNote(spec, items.length);
@@ -49,6 +51,7 @@ function LinkListSection({
           search={search}
           ordered={spec.ordered}
           disabled={controller.busy !== null}
+          readOnly={readOnly}
           emptyText={`No ${spec.noun} linked yet.`}
           addLabel={`Add ${spec.singular}`}
         />
@@ -66,9 +69,12 @@ function LinkListSection({
  */
 export function EditorialLinkLists({
   controller,
+  readOnly = false,
   onFailure,
 }: {
   controller: LinksController;
+  /** The person may look but not change: the lists are shown without their editing controls. */
+  readOnly?: boolean;
   /** Where a failed save over a conflict is reported: the editor's own alert, never a toast. */
   onFailure: (failure: { text: string; stepUp: boolean }) => void;
 }) {
@@ -110,7 +116,7 @@ export function EditorialLinkLists({
         </Notice>
       ) : null}
       {controller.specs.map((spec) => (
-        <LinkListSection key={spec.list} controller={controller} spec={spec} />
+        <LinkListSection key={spec.list} controller={controller} spec={spec} readOnly={readOnly} />
       ))}
       <ConfirmActionDialog
         open={dialog === "reload"}

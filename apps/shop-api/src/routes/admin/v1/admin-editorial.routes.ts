@@ -223,7 +223,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "editorial.write");
+      requireShopStaffCapability(request, "editorial.read");
       return { items: await repo.listAdminVenues() };
     },
   );
@@ -237,7 +237,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "editorial.write");
+      requireShopStaffCapability(request, "editorial.read");
       return { items: await repo.listAdminExhibitions() };
     },
   );
@@ -251,7 +251,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "editorial.write");
+      requireShopStaffCapability(request, "editorial.read");
       return { items: await repo.listAdminStories() };
     },
   );
@@ -265,7 +265,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "editorial.write");
+      requireShopStaffCapability(request, "editorial.read");
       return { items: await repo.listAdminPages() };
     },
   );
@@ -279,7 +279,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request) => {
-      requireShopStaffCapability(request, "editorial.write");
+      requireShopStaffCapability(request, "editorial.read");
       return { items: await repo.listAdminPlacements() };
     },
   );
@@ -326,7 +326,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "editorial.write");
+      requireShopStaffCapability(request, "editorial.read");
       const { id } = request.params as { id: string };
       const row = await repo.getAdminPageById(id);
       if (!row) {
@@ -420,7 +420,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "editorial.write");
+      requireShopStaffCapability(request, "editorial.read");
       const { id } = request.params as { id: string };
       const row = await repo.getAdminVenueById(id);
       if (!row) {
@@ -514,7 +514,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "editorial.write");
+      requireShopStaffCapability(request, "editorial.read");
       const { id } = request.params as { id: string };
       const row = await repo.getAdminStoryById(id);
       if (!row) {
@@ -608,7 +608,7 @@ export async function registerAdminEditorialRoutes(
       },
     },
     async (request, reply) => {
-      requireShopStaffCapability(request, "editorial.write");
+      requireShopStaffCapability(request, "editorial.read");
       const { id } = request.params as { id: string };
       const row = await repo.getAdminExhibitionById(id);
       if (!row) {

@@ -51,6 +51,14 @@ describe("buildAdminNavGroups", () => {
     expect(navHrefsFor("editor")).toEqual(["/overview", ...EDITORIAL_HREFS]);
   });
 
+  it("shows Read-only the catalogue and editorial pages, and nothing from clients or the audit log", () => {
+    const hrefs = navHrefsFor("read_only");
+    for (const href of ["/artworks", "/artists", ...EDITORIAL_HREFS]) expect(hrefs).toContain(href);
+    expect(hrefs).not.toContain("/artist-applications");
+    expect(hrefs).not.toContain("/clients");
+    expect(hrefs).not.toContain("/audit");
+  });
+
   it("shows someone with both roles everything either opens", () => {
     const hrefs = flattenAdminNav(
       buildAdminNavGroups({

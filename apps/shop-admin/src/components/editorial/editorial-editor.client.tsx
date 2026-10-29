@@ -39,14 +39,20 @@ import {
   PageHeader,
   StaffButton,
   UnsavedChangesDialog,
+  ViewOnlyBadge,
   formatStaffDateTime,
   toast,
+  useStaffAccess,
+  useStaffCan,
   useUnsavedChanges,
 } from "@auction/staff-ui";
 import { Eye, EyeOff, Link as LinkIcon, Save } from "@auction/staff-ui/icons";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useRef, useState } from "react";
+
+const EDITORIAL_WRITE = "editorial.write";
+const EDITORIAL_PUBLISH = "editorial.publish";
 
 const presentEditorialStatus = presentStatus("editorial");
 
@@ -134,6 +140,9 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
   const { entity, api } = config;
   const id = detail?.id ?? null;
   const router = useRouter();
+  /** Without `editorial.write` the item opens as a read-only view. */
+  const readOnly = !useStaffCan(EDITORIAL_WRITE);
+  const { roleLabel } = useStaffAccess();
   const pathname = usePathname();
 
   const [form, setForm] = useState<F>(() => (detail ? config.fromDetail(detail) : config.empty()));
@@ -345,7 +354,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
     setConflictVersion(null);
   }
 
-  const disabled = busy !== null;
+  const disabled = busy !== null || readOnly;
   const body = config.body ?? DEFAULT_BODY;
   const publishing = status !== "published";
   const unsaved = dirty || linksDirty;
@@ -376,7 +385,12 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
               }
             : {})}
           title={title}
-          status={<MappedStatusBadge status={status} present={presentEditorialStatus} />}
+          status={
+            <>
+              <MappedStatusBadge status={status} present={presentEditorialStatus} />
+              {readOnly ? <ViewOnlyBadge {...(roleLabel ? { role: roleLabel } : {})} /> : null}
+            </>
+          }
           meta={
             id ? (
               <>
@@ -396,6 +410,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
               <StaffButton
                 type="button"
                 variant="secondary"
+                requires={EDITORIAL_PUBLISH}
                 icon={publishing ? <Eye aria-hidden /> : <EyeOff aria-hidden />}
                 disabled={disabled || unsaved}
                 onClick={() => setDialog("publish")}
@@ -410,6 +425,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
                 actions={[
                   {
                     id: "preview",
+                    requires: EDITORIAL_WRITE,
                     label: "Create preview link",
                     icon: LinkIcon,
                     disabled: disabled || unsaved,
@@ -485,7 +501,11 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
           </FieldSection>
 
           {links ? (
-            <EditorialLinkLists controller={links} onFailure={(next) => setFailure(next)} />
+            <EditorialLinkLists
+              controller={links}
+              readOnly={readOnly}
+              onFailure={(next) => setFailure(next)}
+            />
           ) : id === null && config.linksBeforeFirstSave ? (
             <EditorialLinksAfterFirstSave what={config.linksBeforeFirstSave} />
           ) : null}
@@ -495,7 +515,9 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
             start={
               <>
                 <StaffButton asChild variant="secondary">
-                  <Link href={config.page?.list.href ?? pathname}>Cancel</Link>
+                  <Link href={config.page?.list.href ?? pathname}>
+                    {readOnly ? "Back to list" : "Cancel"}
+                  </Link>
                 </StaffButton>
                 <output aria-live="polite" className="text-staff-sm text-staff-muted">
                   {unsaved ? "Unsaved changes" : ""}
@@ -506,6 +528,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
             <StaffButton
               type="submit"
               variant="primary"
+              requires={EDITORIAL_WRITE}
               icon={<Save aria-hidden />}
               loading={busy === "save"}
               disabled={disabled || (id !== null && !unsaved)}

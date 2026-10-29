@@ -33,6 +33,7 @@ import {
   StatusBadge,
   TextInput,
   useBeforeUnloadGuard,
+  useStaffCan,
 } from "@auction/staff-ui";
 import { Save } from "@auction/staff-ui/icons";
 import Link from "next/link";
@@ -163,6 +164,7 @@ function PlacementSlotEditor({
   refLists: PlacementRefLists;
 }) {
   const { status, setStatus, pending, run } = useEditorialMutation();
+  const readOnly = !useStaffCan("editorial.write");
   const [drafts, setDrafts] = useState(initialDrafts);
   const [dirty, setDirty] = useState(false);
   const [issues, setIssues] = useState<PlacementIssue[]>([]);
@@ -229,6 +231,7 @@ function PlacementSlotEditor({
         emptyText="Nothing is placed in this slot."
         max={PLACEMENT_MAX_ROWS}
         disabled={pending}
+        readOnly={readOnly}
         onAdd={() => update([...drafts, emptyPlacementDraft(newKey())])}
         onRemove={(index) => update(removeItem(drafts, index))}
         onMove={(from, to) => update(moveItem(drafts, from, to > from ? 1 : -1))}
@@ -239,7 +242,7 @@ function PlacementSlotEditor({
               slot={slot}
               draft={draft}
               refLists={refLists}
-              disabled={pending}
+              disabled={pending || readOnly}
               errors={rowErrors.get(draft.key) ?? {}}
               onChange={(next) => update(replaceItem(drafts, index, next))}
             />
@@ -262,18 +265,20 @@ function PlacementSlotEditor({
             : {})}
         />
       ) : null}
-      <FormActions>
-        <StaffButton
-          type="button"
-          variant="primary"
-          icon={<Save aria-hidden />}
-          {...(dirty || pending ? {} : { disabledReason: "No changes to save" })}
-          loading={pending}
-          onClick={() => void save()}
-        >
-          {pending ? "Saving…" : "Save slot"}
-        </StaffButton>
-      </FormActions>
+      {readOnly ? null : (
+        <FormActions>
+          <StaffButton
+            type="button"
+            variant="primary"
+            icon={<Save aria-hidden />}
+            {...(dirty || pending ? {} : { disabledReason: "No changes to save" })}
+            loading={pending}
+            onClick={() => void save()}
+          >
+            {pending ? "Saving…" : "Save slot"}
+          </StaffButton>
+        </FormActions>
+      )}
     </section>
   );
 }

@@ -39,8 +39,8 @@ import { afterArtCatalogueWrite } from "./art-cache-invalidation.js";
 
 const ArtworkParams = Type.Object({ id: Type.String({ format: "uuid" }) });
 
-/** Catalogue editors, and staff who set prices without editing the catalogue (finance). */
-const ARTWORK_READERS = ["catalogue.write", "artwork_price.write"] as const;
+/** Anyone who may open the catalogue, and staff who set prices without editing the catalogue (finance). */
+const ARTWORK_READERS = ["catalogue.read", "artwork_price.write"] as const;
 
 /** Descriptions run to 10,000 characters and a gallery to 20 images; the app default is 1 KB. */
 const ARTWORK_BODY_LIMIT = 65_536;

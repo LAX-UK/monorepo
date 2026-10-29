@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ADMINISTRATOR_ONLY_CAPABILITIES, checkSeparateApprover } from "./staff-action-rules.js";
 import {
   OVERVIEW_KPI_CAPABILITY,
+  READ_IMPLIED_BY_WRITE,
   READ_ONLY_CAPABILITIES,
   SHOP_STAFF_CAPABILITIES,
   SHOP_STAFF_ROLES,
@@ -181,5 +182,79 @@ describe("separate approver", () => {
     expect(checkSeparateApprover({ ...base, approvalRequired: false, approvedBy: null })).toEqual({
       ok: true,
     });
+  });
+});
+
+describe("catalogue and editorial reads", () => {
+  it("gives every role that writes a kind of record the read for it", () => {
+    for (const role of SHOP_STAFF_ROLES)
+      for (const [write, read] of Object.entries(READ_IMPLIED_BY_WRITE))
+        if (can(role, write as ShopStaffCapability)) expect(can(role, read)).toBe(true);
+  });
+
+  it("keeps every capability each role held before the reads existed", () => {
+    const before: Record<ShopStaffRole, ShopStaffCapability[]> = {
+      shop_admin: [...SHOP_STAFF_CAPABILITIES],
+      account_manager: [
+        "sale_authority.write",
+        "original_sale.write",
+        "stock_hold.write",
+        "stock_hold.override",
+        "client.read_all",
+        "enquiry.read",
+        "enquiry.write",
+        "order.read",
+      ],
+      broker: [
+        "stock_hold.write",
+        "client.read_assigned",
+        "purchase_price.read_assigned",
+        "enquiry.read",
+      ],
+      operations: [
+        "production.write",
+        "fulfilment.write",
+        "third_party_sale.write",
+        "order.read",
+        "enquiry.read",
+      ],
+      finance: [
+        "fee.approve",
+        "refund.write",
+        "payout.mark_paid",
+        "audit.read",
+        "order.read",
+        "artwork_price.write",
+      ],
+      catalogue_editor: ["catalogue.write", "artist_application.review"],
+      editor: ["editorial.write", "editorial.publish"],
+      read_only: ["order.read", "enquiry.read", "merchandise.read"],
+    };
+    for (const role of SHOP_STAFF_ROLES)
+      for (const capability of before[role])
+        expect(can(role, capability), `${role} ${capability}`).toBe(true);
+  });
+
+  it("gives the Catalogue editor and Editor their own read only", () => {
+    expect(capabilitiesForRole("catalogue_editor")).toContain("catalogue.read");
+    expect(capabilitiesForRole("catalogue_editor")).not.toContain("editorial.read");
+    expect(capabilitiesForRole("editor")).toContain("editorial.read");
+    expect(capabilitiesForRole("editor")).not.toContain("catalogue.read");
+  });
+
+  it("lets Read-only open the catalogue and editorial, and nothing sensitive or writable", () => {
+    expect(READ_ONLY_CAPABILITIES).toContain("catalogue.read");
+    expect(READ_ONLY_CAPABILITIES).toContain("editorial.read");
+    const held = capabilitiesForRole("read_only");
+    for (const capability of held) {
+      expect(capability.endsWith(".read"), capability).toBe(true);
+    }
+    for (const forbidden of [
+      "client.read_all",
+      "client.read_assigned",
+      "purchase_price.read_assigned",
+      "audit.read",
+    ] as const)
+      expect(held).not.toContain(forbidden);
   });
 });

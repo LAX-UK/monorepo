@@ -1,5 +1,7 @@
 export const SHOP_STAFF_CAPABILITIES = [
   "catalogue.write",
+  /** Opening artworks, edition runs, artists and categories without changing them. */
+  "catalogue.read",
   /** Setting or changing an edition's price. Kept apart from catalogue edits because it is money. */
   "artwork_price.write",
   "sale_authority.write",
@@ -21,6 +23,8 @@ export const SHOP_STAFF_CAPABILITIES = [
   "stock_hold.override",
   "editorial.write",
   "editorial.publish",
+  /** Opening stories, exhibitions, venues, pages and help without changing them. */
+  "editorial.read",
   "enquiry.read",
   "enquiry.write",
   "order.read",
@@ -52,17 +56,35 @@ export const SHOP_STAFF_ROLES = [
 export type ShopStaffRole = (typeof SHOP_STAFF_ROLES)[number];
 
 /**
- * What the Read-only role sees: the order, enquiry and merchandise lists and records, with every
- * action closed. No client lists or records, no buying prices and no audit log, whose entries
+ * What the Read-only role sees: the order, enquiry, merchandise, catalogue and editorial lists and
+ * records, with every action closed. No client lists or records, no buying prices and no audit log, whose entries
  * carry prices and personal details.
  */
 export const READ_ONLY_CAPABILITIES = [
   "order.read",
   "enquiry.read",
   "merchandise.read",
+  "catalogue.read",
+  "editorial.read",
 ] as const satisfies readonly ShopStaffCapability[];
 
-const ROLE_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]> = {
+/**
+ * Writing a kind of record includes reading it. The role table below lists only what each role is
+ * given; this rule adds the matching read, so no role can write what it cannot open.
+ */
+export const READ_IMPLIED_BY_WRITE = {
+  "catalogue.write": "catalogue.read",
+  "editorial.write": "editorial.read",
+} as const satisfies Partial<Record<ShopStaffCapability, ShopStaffCapability>>;
+
+function withImpliedReads(granted: readonly ShopStaffCapability[]): readonly ShopStaffCapability[] {
+  const all = new Set(granted);
+  for (const [write, read] of Object.entries(READ_IMPLIED_BY_WRITE))
+    if (all.has(write as ShopStaffCapability)) all.add(read);
+  return [...all];
+}
+
+const GRANTED_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]> = {
   shop_admin: SHOP_STAFF_CAPABILITIES,
   account_manager: [
     "sale_authority.write",
@@ -101,6 +123,10 @@ const ROLE_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]> =
   editor: ["editorial.write", "editorial.publish"],
   read_only: READ_ONLY_CAPABILITIES,
 };
+
+const ROLE_CAPABILITIES = Object.fromEntries(
+  SHOP_STAFF_ROLES.map((role) => [role, withImpliedReads(GRANTED_CAPABILITIES[role])]),
+) as Record<ShopStaffRole, readonly ShopStaffCapability[]>;
 
 export function capabilitiesForRole(role: ShopStaffRole): readonly ShopStaffCapability[] {
   return ROLE_CAPABILITIES[role];

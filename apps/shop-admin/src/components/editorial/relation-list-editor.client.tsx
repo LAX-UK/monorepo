@@ -19,6 +19,7 @@ export function RelationListEditor<T extends RelationRow>({
   search,
   ordered,
   disabled = false,
+  readOnly = false,
   emptyText,
   addLabel,
   max,
@@ -34,6 +35,8 @@ export function RelationListEditor<T extends RelationRow>({
   /** False hides the reorder controls, for sets whose order is not stored. */
   ordered: boolean;
   disabled?: boolean;
+  /** Shows the list without moving, removing or adding controls. */
+  readOnly?: boolean;
   emptyText: string;
   addLabel: string;
   /** The most records the list can hold; adding is switched off once it is full. */
@@ -102,57 +105,61 @@ export function RelationListEditor<T extends RelationRow>({
                 ) : null}
               </span>
               {item.notPublic ? <StatusBadge tone="neutral">Not public</StatusBadge> : null}
-              <span className="flex shrink-0 items-center gap-0.5">
-                {ordered ? (
-                  <>
-                    <StaffButton
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Move ${item.title} up`}
-                      disabled={disabled || index === 0}
-                      onClick={() => move(index, -1)}
-                    >
-                      <ArrowUp aria-hidden />
-                    </StaffButton>
-                    <StaffButton
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Move ${item.title} down`}
-                      disabled={disabled || index === items.length - 1}
-                      onClick={() => move(index, 1)}
-                    >
-                      <ArrowDown aria-hidden />
-                    </StaffButton>
-                  </>
-                ) : null}
-                <StaffButton
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Remove ${item.title}`}
-                  disabled={disabled}
-                  onClick={() => onChange(items.filter((other) => other.id !== item.id))}
-                >
-                  <X aria-hidden />
-                </StaffButton>
-              </span>
+              {readOnly ? null : (
+                <span className="flex shrink-0 items-center gap-0.5">
+                  {ordered ? (
+                    <>
+                      <StaffButton
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Move ${item.title} up`}
+                        disabled={disabled || index === 0}
+                        onClick={() => move(index, -1)}
+                      >
+                        <ArrowUp aria-hidden />
+                      </StaffButton>
+                      <StaffButton
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Move ${item.title} down`}
+                        disabled={disabled || index === items.length - 1}
+                        onClick={() => move(index, 1)}
+                      >
+                        <ArrowDown aria-hidden />
+                      </StaffButton>
+                    </>
+                  ) : null}
+                  <StaffButton
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Remove ${item.title}`}
+                    disabled={disabled}
+                    onClick={() => onChange(items.filter((other) => other.id !== item.id))}
+                  >
+                    <X aria-hidden />
+                  </StaffButton>
+                </span>
+              )}
             </li>
           ))}
         </ul>
       )}
-      <EntityPicker
-        value={null}
-        onValueChange={(option) => {
-          const row = option ? found.current.get(option.id) : undefined;
-          if (row && !items.some((item) => item.id === row.id)) onChange([...items, row]);
-        }}
-        search={searchOptions}
-        placeholder={addLabel}
-        searchPlaceholder={`Search ${plural} by name`}
-        emptyText={`No ${plural} match.`}
-        disabled={disabled || full}
-        aria-label={addLabel}
-        className="max-w-sm"
-      />
+      {readOnly ? null : (
+        <EntityPicker
+          value={null}
+          onValueChange={(option) => {
+            const row = option ? found.current.get(option.id) : undefined;
+            if (row && !items.some((item) => item.id === row.id)) onChange([...items, row]);
+          }}
+          search={searchOptions}
+          placeholder={addLabel}
+          searchPlaceholder={`Search ${plural} by name`}
+          emptyText={`No ${plural} match.`}
+          disabled={disabled || full}
+          aria-label={addLabel}
+          className="max-w-sm"
+        />
+      )}
       {full ? (
         <p className="text-staff-xs text-staff-muted">
           The list is full at {max} {plural}. Remove one to add another.

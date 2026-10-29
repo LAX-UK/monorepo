@@ -25,6 +25,7 @@ import {
   StaffButton,
   StaffDate,
   formatStaffDateTime,
+  useStaffCan,
 } from "@auction/staff-ui";
 import {
   ArrowDown,
@@ -84,6 +85,7 @@ export function HelpArticlesList({
     noun: { one: "question", other: "questions" },
     search: { label: "Search questions", placeholder: "Search questions and answers" },
   });
+  const canWrite = useStaffCan("editorial.write");
   const [dialog, setDialog] = useState<Dialog | null>(null);
   const opened = rows.find((row) => row.id === list.panel.openId) ?? null;
   const category = state.filters.category;
@@ -160,11 +162,17 @@ export function HelpArticlesList({
         icon: PanelRight,
         onSelect: () => list.panel.show(row.id),
       },
-      { id: "edit", label: "Edit", icon: Pencil, href: editHref(row) },
+      {
+        id: "edit",
+        label: canWrite ? "Edit" : "View",
+        icon: canWrite ? Pencil : Eye,
+        href: editHref(row),
+      },
       ...(reorderable
         ? [
             {
               id: "up",
+              requires: "editorial.write",
               label: "Move up",
               icon: ArrowUp,
               disabled: reorder.pending || index === 0,
@@ -172,6 +180,7 @@ export function HelpArticlesList({
             },
             {
               id: "down",
+              requires: "editorial.write",
               label: "Move down",
               icon: ArrowDown,
               disabled: reorder.pending || index === rows.length - 1,
@@ -182,6 +191,7 @@ export function HelpArticlesList({
       publishAction(row),
       {
         id: "delete",
+        requires: "editorial.write",
         label: "Delete…",
         icon: Trash2,
         tone: "danger",
@@ -210,13 +220,14 @@ export function HelpArticlesList({
   const createAction = noCategories ? (
     <StaffButton
       variant="primary"
+      requires="editorial.write"
       icon={<Plus aria-hidden />}
       onClick={() => setDialog({ kind: "category" })}
     >
       New category
     </StaffButton>
   ) : (
-    <StaffButton asChild variant="primary" icon={<Plus aria-hidden />}>
+    <StaffButton asChild variant="primary" requires="editorial.write" icon={<Plus aria-hidden />}>
       <list.Link href={newHref}>New question</list.Link>
     </StaffButton>
   );
@@ -229,6 +240,7 @@ export function HelpArticlesList({
       <ListPage<HelpArticleListRow>
         title="Help centre"
         description="Questions and answers shown on lax.art, in the order readers see them."
+        editRequires="editorial.write"
         Link={list.Link}
         listKey="lax-admin.help-articles"
         primaryAction={isEmptyList ? undefined : createAction}
@@ -338,6 +350,7 @@ export function HelpArticlesList({
             <>
               <StaffButton
                 variant="secondary"
+                requires="editorial.publish"
                 icon={opened.status === "published" ? <EyeOff aria-hidden /> : <Eye aria-hidden />}
                 onClick={() =>
                   setDialog({
@@ -349,8 +362,12 @@ export function HelpArticlesList({
               >
                 {opened.status === "published" ? "Unpublish" : "Publish"}
               </StaffButton>
-              <StaffButton asChild variant="primary" icon={<Pencil aria-hidden />}>
-                <list.Link href={editHref(opened)}>Edit</list.Link>
+              <StaffButton
+                asChild
+                variant="primary"
+                icon={canWrite ? <Pencil aria-hidden /> : <Eye aria-hidden />}
+              >
+                <list.Link href={editHref(opened)}>{canWrite ? "Edit" : "View"}</list.Link>
               </StaffButton>
             </>
           ) : null
