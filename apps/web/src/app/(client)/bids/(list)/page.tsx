@@ -58,6 +58,7 @@ export default async function DashboardBidsPage({ searchParams }: PageProps) {
         </div>
       }
     >
+      <SetMobileShellTitle title={view.title} />
       <Suspense fallback={<AccountListSkeleton label="Loading bids" />}>
         <BidsPageContent searchParams={searchParams} />
       </Suspense>

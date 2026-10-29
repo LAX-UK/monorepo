@@ -180,6 +180,21 @@ describe("Home, the lists and the menu agree", () => {
   });
 });
 
+describe("an organisation's bids", () => {
+  it("never shows a colleague's ceiling as the person's own", () => {
+    const colleagues = bid(outbidLot, "2600");
+    const rows = [{ ...colleagues, bid: { ...colleagues.bid, placedByUserId: COLLEAGUE } }];
+    const [card] = buildMyBidsVm({ rows, userId: ME, tab: "active", saleTitleById: {} }).cards;
+    expect(card?.figures.map((figure) => figure.label)).toContain("Maximum bid");
+    const [own] = buildMyBidsVm({
+      rows: [bid(outbidLot, "2600")],
+      userId: ME,
+      tab: "active",
+    }).cards;
+    expect(own?.figures.map((figure) => figure.label)).toContain("Your maximum");
+  });
+});
+
 describe("paymentRoleFor", () => {
   it("lets the winner pay a personal purchase", () => {
     const row = purchase("lot-1", null, ME);

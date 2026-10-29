@@ -36,6 +36,7 @@ export default async function DashboardPurchasesPage({ searchParams }: PageProps
   const filters = parsePortfolioParams(sp);
   return (
     <DashboardListPage title={view.title} description={view.description}>
+      <SetMobileShellTitle title={view.title} />
       <PurchasesView
         filters={filters}
         vm={sources ? buildPurchasesVm(sources, parsePurchaseTab(sp.tab), filters) : null}
