@@ -93,7 +93,7 @@ describe("organisationHomeView", () => {
     const requested = { ...model, state: organisationStatePolicy("docs_requested", owner) };
     expect(organisationHomeView(requested, ctx).banner?.action?.label).toBe("Send documents");
     const withTask = organisationHomeView({ ...requested, tasks: [{ kind: "documents" }] }, ctx);
-    expect(withTask.banner).toMatchObject({ title: "Documents needed.", action: null });
+    expect(withTask.banner).toMatchObject({ title: "Documents requested.", action: null });
     expect(withTask.needsYou?.[0]?.action.label).toBe("Open documents");
   });
 

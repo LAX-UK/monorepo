@@ -43,7 +43,7 @@ export default async function OrganisationLayout({ children }: { children: React
   if (access.kind === "forbidden") {
     return (
       <DashboardPage>
-        <div className="mx-auto max-w-5xl space-y-6">
+        <div className="space-y-6">
           <DashboardPageHeader title="Organisation" />
           <DashboardSliceErrorAlert failure={access.failure} />
         </div>
@@ -68,7 +68,7 @@ export default async function OrganisationLayout({ children }: { children: React
 
   return (
     <DashboardPage>
-      <div className="mx-auto max-w-5xl space-y-6">
+      <div className="space-y-6">
         <DashboardPageHeader
           title={member.displayName}
           description="Your organisation's details, team and settings."

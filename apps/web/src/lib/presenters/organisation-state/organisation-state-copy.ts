@@ -1,5 +1,6 @@
 import { supportMailto } from "@/lib/dashboard/dashboard-copy";
 import { organisationHref } from "@/lib/navigation/client-routes";
+import { organisationStatusView } from "@/lib/presenters/organisation-status/organisation-status-presentation";
 import {
   type FirstRunRecord,
   type OrganisationBanner,
@@ -53,19 +54,19 @@ export function unsoldPausedContact(): OrganisationStateLink {
 
 const BANNER_COPY: Record<OrganisationBannerKey, BannerCopy> = {
   documents_requested: {
-    title: "Documents needed.",
+    title: `${organisationStatusView("docs_requested").label}.`,
     line: ({ organisationName }) =>
       `Bidding and selling for ${organisationName} open once we've checked them.`,
     act: { label: "Send documents", href: organisationHref("documents"), kind: "page" },
   },
   documents_under_review: {
-    title: "Documents under review.",
+    title: `${organisationStatusView("under_review").label}.`,
     line: ({ organisationName }) =>
       `We're checking ${organisationName}'s documents, usually within 2–3 working days. Bidding and selling open once we're done.`,
     act: null,
   },
   payouts_not_set_up: {
-    title: "Payouts not set up.",
+    title: `${organisationStatusView("connect_pending").label}.`,
     line: ({ organisationName }) =>
       `${organisationName}'s works can't go into a sale until a bank account is added for payouts.`,
     act: { label: "Set up payouts", href: organisationHref("payouts"), kind: "page" },
@@ -77,12 +78,12 @@ const BANNER_COPY: Record<OrganisationBannerKey, BannerCopy> = {
     act: CONTACT("Organisation paused"),
   },
   not_approved: {
-    title: "Not approved.",
+    title: `${organisationStatusView("rejected").label}.`,
     line: ({ organisationName }) => `We couldn't approve ${organisationName}.`,
     act: CONTACT("Organisation not approved"),
   },
   archived: {
-    title: "Closed.",
+    title: `${organisationStatusView("archived").label}.`,
     line: ({ organisationName }) =>
       `${organisationName} is closed. Its history stays here to read.`,
     act: CONTACT("Closed organisation"),

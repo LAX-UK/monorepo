@@ -54,16 +54,6 @@ export const CLIENT_COPY_EXCEPTIONS = [
     term: "Connect pending",
     reason: "Staff status labels for Bid admin; client pages use the organisation label map.",
   },
-  {
-    path: "apps/web/src/components/legal-entity/member-list.tsx",
-    term: "primary admin",
-    reason: "Removed by the Members rebuild.",
-  },
-  {
-    path: "apps/web/src/components/legal-entity/member-list.tsx",
-    term: "2FA",
-    reason: "Removed by the Members rebuild.",
-  },
 ];
 
 const TEST_FILE = /\.(?:test|spec|stories)\.[cm]?[jt]sx?$/;
