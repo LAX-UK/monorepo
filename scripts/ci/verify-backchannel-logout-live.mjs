@@ -16,6 +16,11 @@ if (!databaseUrl || !startedAt || Number.isNaN(Date.parse(startedAt))) {
   throw new Error("DATABASE_URL_OWNER and a valid ACCEPTANCE_STARTED_AT are required");
 }
 
+function describeDelivery(delivery) {
+  if (!delivery) return "no delivery was recorded after the acceptance start";
+  return JSON.stringify(delivery);
+}
+
 const client = new pg.Client(buildPgConnectionConfig(databaseUrl));
 
 try {
@@ -49,10 +54,10 @@ try {
       delivery.status !== "delivered" ||
       delivery.last_status_code !== 200
     ) {
-      throw new Error(`Back-channel logout failed for ${clientId}: ${JSON.stringify(delivery)}`);
+      throw new Error(`Back-channel logout failed for ${clientId}: ${describeDelivery(delivery)}`);
     }
   }
-  console.log("Bid and Shop back-channel logout deliveries passed");
+  console.log("Back-channel logout deliveries passed for every first-party client");
 } finally {
   await client.end().catch(() => undefined);
 }
