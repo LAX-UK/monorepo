@@ -39,8 +39,10 @@ ARG NEXT_PUBLIC_ALLOW_INDEXING=
 ARG CSP_ENFORCE=
 ARG SENTRY_RELEASE=
 ARG SENTRY_PROJECT=
-# Build-only: heap for next build + Sentry source maps (not persisted to runner).
-ARG NODE_OPTIONS=--max-old-space-size=4096
+# Build-only: heap for next build + Sentry source maps (not persisted to runner). The webpack
+# compile alone peaks near 4.4 GB of V8 heap (231 routes), so a 4 GB limit leaves no margin and fails
+# on the CI image; 6 GB leaves headroom and fits a 16 GB hosted runner.
+ARG NODE_OPTIONS=--max-old-space-size=6144
 ARG TURBO_CONCURRENCY=1
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_AUTH_URL=$NEXT_PUBLIC_AUTH_URL
