@@ -64,7 +64,7 @@ export function WizardHeaderActions({
         <Button
           type="button"
           variant="outline"
-          size="sm"
+          size="default"
           className="font-label text-xs"
           disabled={isSubmitting}
           onClick={onFinishLater}

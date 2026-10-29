@@ -61,12 +61,12 @@ describe("EmailChangeConfirm", () => {
     );
     expect(html).toContain("Confirm your email change");
     expect(html).toContain("both your current and your new");
-    expect(html).toMatch(/<button[^>]*>Confirm email change/);
-    expect(html).not.toMatch(/<button[^>]*\sdisabled=""[^>]*>Confirm email change/);
+    expect(html).toMatch(/<button[^>]*>(?:<span[^>]*>)*Confirm email change/);
+    expect(html).not.toMatch(/<button[^>]*\sdisabled=""[^>]*>(?:<span[^>]*>)*Confirm email change/);
   });
 
   it("cannot be confirmed when the link was cut short", () => {
     const html = renderToStaticMarkup(<EmailChangeConfirm token="" signInHref="/api/auth/login" />);
-    expect(html).toMatch(/<button[^>]*\sdisabled=""[^>]*>Confirm email change/);
+    expect(html).toMatch(/<button[^>]*\sdisabled=""[^>]*>(?:<span[^>]*>)*Confirm email change/);
   });
 });

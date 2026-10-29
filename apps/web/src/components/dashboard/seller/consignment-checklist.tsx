@@ -80,7 +80,7 @@ export function ConsignmentChecklist({ items, doneCount, totalCount }: Props) {
               {item.action ? (
                 <Button
                   asChild
-                  size="sm"
+                  size="default"
                   variant={item.id === firstAction ? "primary" : "outline"}
                   className="ml-8 self-start sm:ml-0 sm:self-center"
                 >

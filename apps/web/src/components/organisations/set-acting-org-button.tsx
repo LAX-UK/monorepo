@@ -28,7 +28,7 @@ export function SetActingOrgButton({ legalEntityId }: Props) {
     <Button
       type="button"
       variant="cta"
-      size="sm"
+      size="default"
       className="min-h-11 sm:min-h-9"
       disabled={pending}
       onClick={() => {

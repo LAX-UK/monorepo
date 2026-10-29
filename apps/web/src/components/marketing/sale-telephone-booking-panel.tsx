@@ -120,7 +120,7 @@ export function SaleTelephoneBookingPanel({
           Telephone line requested for {saleTitle}. Our team will confirm before your lots open.
         </p>
         {createdBookingId ? (
-          <Button size="sm" variant="outline" asChild>
+          <Button size="default" variant="outline" asChild>
             <Link href={`/bids/telephone/${createdBookingId}`}>View booking</Link>
           </Button>
         ) : null}

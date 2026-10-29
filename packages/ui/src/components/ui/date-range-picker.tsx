@@ -94,7 +94,7 @@ export function DateRangePicker({
           <Button
             key={p.id}
             type="button"
-            size="sm"
+            size="default"
             variant={mode === p.id ? "default" : "outline"}
             className="font-label text-xs"
             onClick={() => apply(p.id)}
@@ -104,7 +104,7 @@ export function DateRangePicker({
         ))}
         <Button
           type="button"
-          size="sm"
+          size="default"
           variant={mode === "custom" ? "default" : "outline"}
           className="font-label text-xs"
           onClick={() => apply("custom")}

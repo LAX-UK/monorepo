@@ -23,7 +23,7 @@ function OrderHelp({ order }: { order: ShopOrderDetailVm }) {
             <Button
               asChild
               variant="outline"
-              size="md"
+              size="lg"
               className={shopButtonClassName("outline", "standard", "shop-order-help__action")}
             >
               <a href={invoiceHref} download>
@@ -37,7 +37,7 @@ function OrderHelp({ order }: { order: ShopOrderDetailVm }) {
             <Button
               asChild
               variant="outline"
-              size="md"
+              size="lg"
               className={shopButtonClassName("outline", "standard", "shop-order-help__action")}
             >
               <Link href={problem.href}>Report a problem</Link>

@@ -51,7 +51,7 @@ export function OrganisationCard({
             <h3 className="truncate font-headline text-lg font-semibold tracking-tight">
               {summary.displayName}
             </h3>
-            <StatusBadge variant={statusBadgeVariant(summary.status)} size="sm">
+            <StatusBadge variant={statusBadgeVariant(summary.status)}>
               {statusLabel(summary.status)}
             </StatusBadge>
           </div>
@@ -64,11 +64,11 @@ export function OrganisationCard({
       {gap ? (
         <CardContent className="space-y-2 pb-4 pt-0">
           <div className="flex flex-wrap gap-1.5">
-            <StatusBadge variant={connectGapStageBadgeVariant(gap.stage)} size="sm">
+            <StatusBadge variant={connectGapStageBadgeVariant(gap.stage)}>
               {connectGapStageLabel(gap.stage)}
             </StatusBadge>
             {gap.missing.length > 0 ? (
-              <StatusBadge variant="warning" size="sm">
+              <StatusBadge variant="warning">
                 {gap.missing.length} req{gap.missing.length === 1 ? "" : "s"}
               </StatusBadge>
             ) : null}
@@ -77,18 +77,16 @@ export function OrganisationCard({
       ) : null}
       <CardFooter className="flex flex-wrap gap-2 border-t border-border-hairline pt-4">
         {!isActing ? (
-          <Button asChild size="sm" variant="secondary">
+          <Button asChild size="default" variant="secondary">
             <Link href={organisationHref("profile", summary.id)} prefetch>
               Manage
             </Link>
           </Button>
         ) : (
-          <StatusBadge variant="info" size="sm">
-            Active
-          </StatusBadge>
+          <StatusBadge variant="info">Active</StatusBadge>
         )}
         {showResume && resumeHref ? (
-          <Button asChild size="sm" variant="outline">
+          <Button asChild size="default" variant="outline">
             <Link href={resumeHref} prefetch>
               {summary.status === "connect_pending" ? "Finish payout setup" : "Continue setup"}
             </Link>

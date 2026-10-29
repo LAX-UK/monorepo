@@ -35,7 +35,7 @@ function PrimaryAction({ row }: { row: PaymentDisplayRow }) {
   }
   if (action.kind === "pay") {
     return (
-      <Button variant="primary" size="sm" asChild>
+      <Button variant="primary" size="default" asChild>
         <Link href={action.href}>{action.label}</Link>
       </Button>
     );

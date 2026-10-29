@@ -45,6 +45,14 @@
       "types": "./dist/components/ui/select.d.ts",
       "default": "./dist/components/ui/select.js"
     },
+    "./components/labelled-select": {
+      "types": "./dist/components/ui/labelled-select.d.ts",
+      "default": "./dist/components/ui/labelled-select.js"
+    },
+    "./components/count-pill": {
+      "types": "./dist/components/ui/count-pill.d.ts",
+      "default": "./dist/components/ui/count-pill.js"
+    },
     "./components/dialog": {
       "types": "./dist/components/ui/dialog.d.ts",
       "default": "./dist/components/ui/dialog.js"

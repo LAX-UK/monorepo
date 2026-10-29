@@ -286,7 +286,7 @@ export function RelationPicker<T extends RelationItem>({
             ) : null}
             {nextCursor && !loading ? (
               <div className="p-2">
-                <Button type="button" variant="outline" size="sm" onClick={loadMore}>
+                <Button type="button" variant="outline" size="default" onClick={loadMore}>
                   Show more results
                 </Button>
               </div>

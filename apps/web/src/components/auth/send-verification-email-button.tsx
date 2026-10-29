@@ -21,7 +21,7 @@ export function SendVerificationEmailButton({
   label = "Send verification email",
   className,
   variant = "outline",
-  size = "sm",
+  size = "default",
 }: Props) {
   const [sending, setSending] = useState(false);
 

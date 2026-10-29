@@ -87,7 +87,7 @@ export default async function OrganisationProfilePage() {
             </p>
           </div>
           <TimelineStages stages={ORG_ONBOARDING_TIMELINE_STAGES} activeIndex={timelineIndex} />
-          <Button asChild variant="primary" size="sm">
+          <Button asChild variant="primary" size="default">
             <Link href={continueSetupHref} prefetch>
               Continue setup
             </Link>
@@ -125,7 +125,7 @@ export default async function OrganisationProfilePage() {
             </div>
           ))}
         </dl>
-        <Button asChild variant="secondary" size="sm">
+        <Button asChild variant="secondary" size="default">
           <Link href={editHref} prefetch>
             Edit profile
           </Link>

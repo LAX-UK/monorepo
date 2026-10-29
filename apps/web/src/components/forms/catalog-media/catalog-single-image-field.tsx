@@ -95,7 +95,7 @@ export function CatalogSingleImageField({
             <Button
               type="button"
               variant="ghost"
-              size="sm"
+              size="default"
               disabled={disabled}
               onClick={() => onChange(null)}
             >

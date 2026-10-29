@@ -14,7 +14,7 @@ export function HomeShortcuts({ shortcuts }: { shortcuts: readonly HomeLinkView[
         <ul className="flex flex-wrap gap-2">
           {shortcuts.map((shortcut) => (
             <li key={shortcut.id}>
-              <Button asChild size="sm" variant="outline">
+              <Button asChild size="default" variant="outline">
                 <Link href={shortcut.href}>{shortcut.label}</Link>
               </Button>
             </li>

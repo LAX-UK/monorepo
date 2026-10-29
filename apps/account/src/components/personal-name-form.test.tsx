@@ -25,7 +25,7 @@ describe("PersonalNameForm", () => {
   it("starts empty for a person with no name and keeps Save name off until something changes", () => {
     const html = render(null);
     expect(html).toContain('value=""');
-    expect(html).toMatch(/<button[^>]*disabled[^>]*>Save name/);
+    expect(html).toMatch(/<button[^>]*disabled[^>]*>(?:<span[^>]*>)*Save name/);
   });
 
   it("says where the name is used", () => {

@@ -181,14 +181,29 @@
   /* The shared field edge: 3:1 or more on every surface (WCAG 1.4.11). */
   --color-input-border: var(--brand-field-edge);
   --color-input-border-focus: var(--color-brand-obsidian);
+  /* Disabled controls: a label, fill and edge distinct from every enabled one in both themes. */
+  --color-disabled-fg: color-mix(in srgb, var(--color-on-surface) 55%, var(--color-surface));
+  --color-disabled-bg: color-mix(in srgb, var(--color-on-surface) 8%, var(--color-surface));
+  --color-disabled-border: color-mix(in srgb, var(--color-on-surface) 16%, var(--color-surface));
   --color-hero-foreground: #ffffff;
 
-  --radius-DEFAULT: 0.125rem;
-  --radius-md: 0.375rem;
+  /*
+   * One radius scale: 6px for controls (buttons, fields, menus, chips), 12px for cards and
+   * dialogs, full for pills and avatars. The size-named steps map onto it: xs, sm, md and bare
+   * `rounded` are controls, 2xl is a card.
+   * Still outside the scale, pending a decision because they shape established cards: lg and xl
+   * (8px: lot, sale and sell-journey cards) and shell-card (16px).
+   */
+  --radius-control: 0.375rem;
+  --radius-card: 0.75rem;
+  --radius-pill: 9999px;
+  --radius: var(--radius-control);
+  --radius-xs: var(--radius-control);
+  --radius-sm: var(--radius-control);
+  --radius-md: var(--radius-control);
   --radius-lg: 0.5rem;
   --radius-xl: 0.5rem;
-  --radius-2xl: 0.75rem;
-  --radius-pill: 9999px;
+  --radius-2xl: var(--radius-card);
   /** Dashboard shell chrome (Figma Admin Dashboard) */
   --radius-shell-card: 1rem;
   --color-shell-page-bg: #fafafa;

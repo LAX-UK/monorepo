@@ -144,7 +144,7 @@ export function LotBidPositionSummary({
           )}
           {supportsAutoBid && onRaiseAutoBid ? (
             <div className="mt-3">
-              <Button type="button" size="sm" variant="default" onClick={onRaiseAutoBid}>
+              <Button type="button" size="default" variant="default" onClick={onRaiseAutoBid}>
                 {position.autoBid ? "Raise auto-bid max" : "Set auto-bid to defend"}
               </Button>
             </div>
@@ -167,7 +167,7 @@ export function LotBidPositionSummary({
           <AutoBidLine max={position.autoBid.max} step={position.autoBid.step} />
           {onRaiseAutoBid ? (
             <div className="mt-3">
-              <Button type="button" size="sm" variant="outline" onClick={onRaiseAutoBid}>
+              <Button type="button" size="default" variant="outline" onClick={onRaiseAutoBid}>
                 Raise auto-bid max
               </Button>
             </div>
@@ -191,12 +191,12 @@ export function LotBidPositionSummary({
           ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
             {onIncreaseBid ? (
-              <Button type="button" size="sm" variant="default" onClick={onIncreaseBid}>
+              <Button type="button" size="default" variant="default" onClick={onIncreaseBid}>
                 Increase bid
               </Button>
             ) : null}
             {onRaiseAutoBid ? (
-              <Button type="button" size="sm" variant="outline" onClick={onRaiseAutoBid}>
+              <Button type="button" size="default" variant="outline" onClick={onRaiseAutoBid}>
                 Raise auto-bid max
               </Button>
             ) : null}
@@ -220,12 +220,12 @@ export function LotBidPositionSummary({
           ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
             {onIncreaseBid ? (
-              <Button type="button" size="sm" variant="default" onClick={onIncreaseBid}>
+              <Button type="button" size="default" variant="default" onClick={onIncreaseBid}>
                 Bid again
               </Button>
             ) : null}
             {onRaiseAutoBid ? (
-              <Button type="button" size="sm" variant="outline" onClick={onRaiseAutoBid}>
+              <Button type="button" size="default" variant="outline" onClick={onRaiseAutoBid}>
                 Raise auto-bid max
               </Button>
             ) : null}

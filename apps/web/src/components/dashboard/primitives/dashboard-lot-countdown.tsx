@@ -21,7 +21,6 @@ export function DashboardLotCountdown({
 }: DashboardLotCountdownProps) {
   return (
     <LotStatusBadge
-      plain
       {...lotStatusBadgeProps({
         status,
         startTime,

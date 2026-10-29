@@ -17,7 +17,7 @@ export function LotConditionReportPublishedPanel({
   return (
     <>
       {state.summary ? <p className="text-on-surface-variant">{state.summary}</p> : null}
-      <Button asChild size="sm" className="min-h-11 w-full">
+      <Button asChild size="default" className="min-h-11 w-full">
         <a href={state.downloadUrl} target="_blank" rel="noreferrer">
           View condition report (PDF)
         </a>
@@ -36,7 +36,7 @@ export function LotConditionReportNotSignedInPanel({
       <p className="text-on-surface-variant">
         Request a formal condition report prepared by our specialists before you bid.
       </p>
-      <Button asChild variant="outline" size="sm" className="min-h-11 w-full">
+      <Button asChild variant="outline" size="default" className="min-h-11 w-full">
         <a href={buildHostedLoginStartHref({ next: state.loginNextPath })}>Sign in to request</a>
       </Button>
     </>
@@ -75,7 +75,7 @@ export function LotConditionReportKycRequiredPanel({
       <p className="text-on-surface-variant">
         {state.feedback ?? "Verify your identity to request a condition report for this lot."}
       </p>
-      <Button asChild variant="outline" size="sm" className="min-h-11 w-full">
+      <Button asChild variant="outline" size="default" className="min-h-11 w-full">
         <Link href={contextualIdentityOnboardingHref(state.loginNextPath, "condition_report")}>
           Verify to continue bidding
         </Link>

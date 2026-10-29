@@ -33,7 +33,7 @@ export function UploadItem({ item, onRetry }: Props) {
         <Button
           type="button"
           variant="outline"
-          size="sm"
+          size="default"
           className="mt-2 h-auto px-2 py-1 text-xs"
           onClick={() => onRetry(item.id)}
         >

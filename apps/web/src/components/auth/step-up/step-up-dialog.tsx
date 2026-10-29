@@ -21,10 +21,10 @@ export function StepUpDialog({ coordinator }: { coordinator: IStepUpCoordinator 
         descriptionId="step-up-password-desc"
         footer={
           <>
-            <Button type="button" size="sm" asChild>
+            <Button type="button" size="default" asChild>
               <a href={buildHostedReauthHref()}>Sign in again</a>
             </Button>
-            <Button type="button" variant="outline" size="sm" onClick={cancel}>
+            <Button type="button" variant="outline" size="default" onClick={cancel}>
               Cancel
             </Button>
           </>

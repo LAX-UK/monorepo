@@ -71,7 +71,7 @@ describe("PortfolioHoldings", () => {
 
   it("writes statuses in sentence case", () => {
     const html = render(works);
-    expect(html).toContain("normal-case");
+    expect(html).not.toMatch(/uppercase|tracking-widest/);
   });
 
   it("marks an unpaid work's amount as due, not paid", () => {
@@ -116,7 +116,7 @@ describe("PortfolioHoldings", () => {
     const html = render(works);
     expect(html).toContain("Ada Artist 1");
     expect(textOf(html)).toContain("LAX Shop 1");
-    expect(html).not.toMatch(/\d%/);
+    expect(textOf(html)).not.toMatch(/\d%/);
   });
 
   it("shows images from allowed media origins only", () => {

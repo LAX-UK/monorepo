@@ -9,7 +9,8 @@ export {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "./components/ui/breadcrumb.js";
-export { Button, buttonVariants } from "./components/ui/button.js";
+export { BUTTON_SIZES, Button, buttonVariants } from "./components/ui/button.js";
+export type { ButtonProps, ButtonSize } from "./components/ui/button.js";
 export { Checkbox } from "./components/ui/checkbox.js";
 export { FloatingLabelInput } from "./components/ui/floating-label-input.js";
 export { LiveDot } from "./components/ui/live-dot.js";
@@ -59,6 +60,12 @@ export {
   SelectTrigger,
   SelectValue,
 } from "./components/ui/select.js";
+export { LabelledSelect } from "./components/ui/labelled-select.js";
+export type {
+  LabelledSelectProps,
+  SelectAccessibleName,
+  SelectOption,
+} from "./components/ui/labelled-select.js";
 export { Skeleton } from "./components/ui/skeleton.js";
 export {
   Table,
@@ -146,8 +153,19 @@ export { TableSkeleton } from "./components/ui/table-skeleton.js";
 export type { TableSkeletonProps } from "./components/ui/table-skeleton.js";
 export { AlphabetJumpBar } from "./components/ui/alphabet-jump-bar.js";
 export type { AlphabetJumpBarProps, LetterFacet } from "./components/ui/alphabet-jump-bar.js";
-export { StatusBadge, statusBadgeVariants } from "./components/ui/status-badge.js";
-export type { StatusBadgeProps } from "./components/ui/status-badge.js";
+export {
+  STATUS_BADGE_DEFAULT_SHAPE,
+  STATUS_BADGE_TONE_CLASSES,
+  StatusBadge,
+  statusBadgeVariants,
+} from "./components/ui/status-badge.js";
+export type {
+  StatusBadgeProps,
+  StatusBadgeShape,
+  StatusBadgeTone,
+} from "./components/ui/status-badge.js";
+export { COUNT_PILL_MAX, CountPill, formatCountPill } from "./components/ui/count-pill.js";
+export type { CountPillProps, CountPillTone } from "./components/ui/count-pill.js";
 export { Sparkline } from "./components/ui/sparkline.js";
 export type { SparklineProps } from "./components/ui/sparkline.js";
 export { KpiTile } from "./components/ui/kpi-tile.js";

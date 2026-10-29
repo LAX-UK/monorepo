@@ -57,10 +57,10 @@ export function SalesPriceSlider({ state, min = DEFAULT_MIN, max = DEFAULT_MAX }
         className="py-2"
       />
       <div className="flex flex-wrap gap-2">
-        <Button variant="outline" size="sm" className="h-8 text-xs" asChild>
+        <Button variant="outline" size="default" className="h-8 text-xs" asChild>
           <Link href={applyHref}>Apply</Link>
         </Button>
-        <Button variant="ghost" size="sm" className="h-8 text-xs" asChild>
+        <Button variant="ghost" size="default" className="h-8 text-xs" asChild>
           <Link href={clearHref}>Reset</Link>
         </Button>
       </div>

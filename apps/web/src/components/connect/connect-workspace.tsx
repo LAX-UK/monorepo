@@ -204,7 +204,7 @@ export function ConnectWorkspace({
               kycSummary={kycSummary}
             />
           ) : (
-            <Button asChild variant="cta" size="sm">
+            <Button asChild variant="cta" size="default">
               <a href={dashboardIdentityOnboardingHref("/selling/payout-setup")}>Verify identity</a>
             </Button>
           )}

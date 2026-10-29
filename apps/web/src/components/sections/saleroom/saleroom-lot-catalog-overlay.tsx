@@ -143,9 +143,7 @@ export function SaleroomLotCatalogOverlay({
   return (
     <StatusBadge
       variant={presentation.variant}
-      size="sm"
-      {...(presentation.dot ? { dot: true } : {})}
-      className="max-w-full normal-case"
+      {...(presentation.dot ? { shape: "dot" as const } : {})}
     >
       <span className="truncate">{presentation.label}</span>
     </StatusBadge>

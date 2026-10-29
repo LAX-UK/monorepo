@@ -33,7 +33,7 @@ type ShopCommerceButtonProps = ButtonProps & {
 export function ShopCommerceButton({
   href,
   variant = "cta",
-  size = "md",
+  size = "lg",
   scale,
   className,
   children,
@@ -68,7 +68,7 @@ export function ShopCommerceOutlineLink({
     <Button
       asChild
       variant="outline"
-      size="md"
+      size="lg"
       className={shopButtonClassName("outline", "standard", className)}
     >
       <Link href={href} {...props}>

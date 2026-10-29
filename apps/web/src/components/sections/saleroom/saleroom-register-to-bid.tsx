@@ -146,7 +146,7 @@ function RegisterOutlineLink({ href, children }: { href: string; children: React
     <Button
       asChild
       variant="outline"
-      size="md"
+      size="lg"
       className={cn(saleroomHeroActionSizing, "shrink-0")}
     >
       {useFullPageNav ? <a href={href}>{children}</a> : <Link href={href}>{children}</Link>}
@@ -277,7 +277,7 @@ function AgentRegistrationForm({
       </div>
       {error ? <p className="font-body text-xs text-destructive">{error}</p> : null}
       {message ? <p className="font-body text-xs text-primary">{message}</p> : null}
-      <Button type="submit" disabled={loading} className="min-h-11 w-full sm:w-auto" size="sm">
+      <Button type="submit" disabled={loading} className="min-h-11 w-full sm:w-auto" size="default">
         {loading ? "Submitting…" : "Submit registration"}
       </Button>
     </form>

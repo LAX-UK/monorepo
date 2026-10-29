@@ -298,7 +298,7 @@ export function MarketingHeaderMegaNav<TSection extends MarketingMegaNavSection>
                   <Button
                     type="button"
                     variant="ghost"
-                    size="sm"
+                    size="default"
                     ref={(el) => {
                       triggerRefs.current[index] = el;
                     }}

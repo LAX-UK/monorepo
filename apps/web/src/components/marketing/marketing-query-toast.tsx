@@ -79,7 +79,7 @@ function MarketingQueryToastInner({
         <Button
           type="button"
           variant="ghost"
-          size="sm"
+          size="default"
           className="shrink-0 text-inverse-on-surface"
           onClick={dismiss}
         >

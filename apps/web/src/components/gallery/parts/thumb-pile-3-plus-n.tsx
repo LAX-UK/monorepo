@@ -42,7 +42,7 @@ export function ThumbPile3PlusN({ total, index, onSelect, onOverflow, className 
       <Button
         type="button"
         variant="ghost"
-        size="sm"
+        size="default"
         className={cn(
           TAP_MIN,
           "rounded-full bg-white/50 px-3 font-label text-xs font-bold text-on-surface hover:bg-white/80",

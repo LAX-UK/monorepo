@@ -44,17 +44,17 @@ export function FilterEmptyState({
   const action = (
     <div className="flex flex-wrap justify-center gap-2">
       {hasActiveFilters && onClearFilters ? (
-        <Button type="button" variant="outline" size="sm" onClick={onClearFilters}>
+        <Button type="button" variant="outline" size="default" onClick={onClearFilters}>
           Clear filters
         </Button>
       ) : null}
       {hasActiveFilters && clearFiltersHref ? (
-        <Button variant="outline" size="sm" asChild>
+        <Button variant="outline" size="default" asChild>
           <Link href={clearFiltersHref}>Clear filters</Link>
         </Button>
       ) : null}
       {browseHref && browseLabel ? (
-        <Button variant="ghost" size="sm" asChild>
+        <Button variant="ghost" size="default" asChild>
           <Link href={browseHref}>{browseLabel}</Link>
         </Button>
       ) : null}

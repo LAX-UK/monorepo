@@ -11,7 +11,7 @@ function TaskHeaderBackLink({ className, hidden }: { className?: string; hidden?
   return (
     <Button
       variant="ghost"
-      size="sm"
+      size="default"
       asChild
       className={cn(
         "min-h-[var(--tap-target-min,44px)] shrink-0 gap-1 px-2 font-label text-xs font-semibold text-on-surface-variant hover:text-on-surface",

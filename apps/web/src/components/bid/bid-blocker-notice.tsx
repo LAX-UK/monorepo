@@ -32,7 +32,7 @@ function BidBlockerActionControl({ action }: { action: BidBlockerAction }) {
   switch (action.kind) {
     case "link":
       return (
-        <Button asChild size="sm" className="min-h-11">
+        <Button asChild size="default" className="min-h-11">
           <Link href={action.href}>{action.label}</Link>
         </Button>
       );

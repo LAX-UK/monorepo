@@ -42,7 +42,13 @@ export function ConnectPreparingPanel({
             detail="preparing_timed_out"
             title="Still setting up"
           />
-          <Button type="button" variant="secondary" size="sm" disabled={pending} onClick={onRetry}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="default"
+            disabled={pending}
+            onClick={onRetry}
+          >
             Try again
           </Button>
         </div>
@@ -50,7 +56,13 @@ export function ConnectPreparingPanel({
       {ensureError ? (
         <div className="mt-3 space-y-2">
           <ConnectInlineAlert kind="init_failed" detail={ensureError} />
-          <Button type="button" variant="secondary" size="sm" disabled={pending} onClick={onRetry}>
+          <Button
+            type="button"
+            variant="secondary"
+            size="default"
+            disabled={pending}
+            onClick={onRetry}
+          >
             Try again
           </Button>
         </div>

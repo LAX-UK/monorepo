@@ -59,7 +59,7 @@ function SaleroomHeroPrimaryCta({
   if (!saleAllowsWebBidding(deliveryMode)) {
     if (hero.status === "scheduled" || hero.status === "draft") {
       return (
-        <Button variant="cta" size="md" className={ctaClassName} asChild>
+        <Button variant="cta" size="lg" className={ctaClassName} asChild>
           <Link href="#plan-visit">Plan visit →</Link>
         </Button>
       );
@@ -72,7 +72,7 @@ function SaleroomHeroPrimaryCta({
   }
 
   return (
-    <Button variant="cta" size="md" className={ctaClassName} asChild>
+    <Button variant="cta" size="lg" className={ctaClassName} asChild>
       <a href={buildHostedLoginStartHref({ intent: "signup" })}>Register to Bid →</a>
     </Button>
   );

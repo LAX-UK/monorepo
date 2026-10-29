@@ -52,7 +52,7 @@ export default async function InvitationsInboxPage() {
       title="Invitations"
       description="Pending organisation invitations for your account email."
       actions={
-        <Button asChild variant="outline" size="sm">
+        <Button asChild variant="outline" size="default">
           <Link href={DASHBOARD_ROUTES.organisations} prefetch>
             Back to organisations
           </Link>
@@ -67,7 +67,7 @@ export default async function InvitationsInboxPage() {
           title={DASHBOARD_EMPTY.invitations.title}
           description={DASHBOARD_EMPTY.invitations.description}
           action={
-            <Button asChild variant="outline" size="sm">
+            <Button asChild variant="outline" size="default">
               <Link href={DASHBOARD_ROUTES.organisations} prefetch>
                 Go to Organisations
               </Link>

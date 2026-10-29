@@ -14,7 +14,7 @@ import {
   TableRow,
 } from "@auction/ui/components/table";
 import { CARD, CARD_PADDING, CARD_TITLE } from "./account-ui";
-import { CurrencyAmounts, SENTENCE_CASE_BADGE, WorkThumbnail } from "./portfolio-parts";
+import { CurrencyAmounts, WorkThumbnail } from "./portfolio-parts";
 import { ProductText } from "./product-name";
 
 function Section({
@@ -170,9 +170,7 @@ export function PortfolioWorkDetail({ work }: { work: WorkDetailVm }) {
             {work.title}
           </h1>
           {work.artist ? <p className="text-sm text-on-surface-variant">{work.artist}</p> : null}
-          <StatusBadge variant={work.statusTone} className={SENTENCE_CASE_BADGE}>
-            {work.statusLabel}
-          </StatusBadge>
+          <StatusBadge variant={work.statusTone}>{work.statusLabel}</StatusBadge>
         </div>
       </header>
       <AcquisitionRecord work={work} />

@@ -3,12 +3,10 @@ import {
   lotParticipationWarningPresentation,
 } from "@/lib/presenters/participation-warning-presentation";
 import { StatusBadge } from "@auction/ui";
-import type { ComponentProps } from "react";
 
 export type ParticipationWarningBadgeProps = {
   kind: LotParticipationWarningKind;
   extendedSeconds?: number;
-  size?: ComponentProps<typeof StatusBadge>["size"];
   className?: string;
 };
 
@@ -16,7 +14,6 @@ export type ParticipationWarningBadgeProps = {
 export function ParticipationWarningBadge({
   kind,
   extendedSeconds,
-  size = "sm",
   className,
 }: ParticipationWarningBadgeProps) {
   const presentation = lotParticipationWarningPresentation(
@@ -24,7 +21,7 @@ export function ParticipationWarningBadge({
     extendedSeconds !== undefined ? { extendedSeconds } : undefined,
   );
   return (
-    <StatusBadge variant={presentation.variant} size={size} className={className}>
+    <StatusBadge variant={presentation.variant} className={className}>
       {presentation.label}
     </StatusBadge>
   );

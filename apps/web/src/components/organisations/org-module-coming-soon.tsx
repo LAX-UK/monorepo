@@ -15,19 +15,17 @@ export function OrgModuleComingSoon() {
         illustration="plinth"
         title={
           <span className="flex flex-col items-center gap-3">
-            <StatusBadge variant="neutral" size="sm">
-              Coming soon
-            </StatusBadge>
+            <StatusBadge variant="neutral">Coming soon</StatusBadge>
             {copy.title}
           </span>
         }
         description={copy.description}
         action={
           <div className="flex flex-col items-center gap-3 sm:flex-row">
-            <Button asChild variant="cta" size="sm">
+            <Button asChild variant="cta" size="default">
               <Link href="/contact">Contact us</Link>
             </Button>
-            <Button asChild variant="ghost" size="sm">
+            <Button asChild variant="ghost" size="default">
               <a href={`mailto:${SITE_SUPPORT_EMAIL}`}>{SITE_SUPPORT_EMAIL}</a>
             </Button>
           </div>

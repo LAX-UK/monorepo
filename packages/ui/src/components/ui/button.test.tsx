@@ -1,5 +1,5 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import { Button } from "./button.js";
 import { LoadingButton } from "./loading-button.js";
 
@@ -69,27 +69,30 @@ describe("Button primary", () => {
     expect(className).not.toContain("hover:opacity-95");
   });
 
-  it("draws the product's focus ring and keeps the shared disabled state", () => {
+  it("draws the product's focus ring and the shared disabled pair", () => {
     const className = classesOf("primary");
     expect(className).toContain("focus-visible:ring-2");
     expect(className).toContain("focus-visible:ring-ring");
     expect(className).not.toContain("focus-visible:ring-primary");
-    expect(className).toContain("disabled:opacity-50");
+    expect(className).toContain("disabled:bg-[color:var(--color-disabled-bg,");
+    expect(className).toContain("aria-disabled:text-[color:var(--color-disabled-fg,");
   });
 });
 
 describe("LoadingButton primary", () => {
   it("keeps the primary fill, shows a spinner and blocks a second press while loading", () => {
+    const onClick = vi.fn();
     render(
-      <LoadingButton variant="primary" loading loadingLabel="Placing bid">
+      <LoadingButton variant="primary" loading loadingLabel="Placing bid" onClick={onClick}>
         Place bid
       </LoadingButton>,
     );
     const button = screen.getByRole("button", { name: "Placing bid" });
-    expect(button).toBeDisabled();
     expect(button).toHaveAttribute("aria-busy", "true");
     expect(button.className).toContain("bg-cta-bg");
     expect(button.querySelector("svg.animate-spin")).not.toBeNull();
+    fireEvent.click(button);
+    expect(onClick).not.toHaveBeenCalled();
   });
 });
 

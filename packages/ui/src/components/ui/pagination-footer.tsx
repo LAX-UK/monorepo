@@ -39,20 +39,20 @@ export function PaginationFooter({
         </span>
         <div className="flex gap-2">
           {prevHref ? (
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" size="default" asChild>
               <a href={prevHref}>Previous</a>
             </Button>
           ) : (
-            <Button variant="outline" size="sm" disabled>
+            <Button variant="outline" size="default" disabled>
               Previous
             </Button>
           )}
           {nextHref ? (
-            <Button variant="outline" size="sm" asChild>
+            <Button variant="outline" size="default" asChild>
               <a href={nextHref}>Next</a>
             </Button>
           ) : (
-            <Button variant="outline" size="sm" disabled>
+            <Button variant="outline" size="default" disabled>
               Next
             </Button>
           )}

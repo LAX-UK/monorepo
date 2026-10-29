@@ -194,7 +194,7 @@ export function ArtworkWatchToggle({
         <Button
           type="button"
           variant="secondaryOutline"
-          size="sm"
+          size="default"
           disabled={busy}
           aria-pressed={watching}
           aria-label={listActionAriaLabel(watching)}

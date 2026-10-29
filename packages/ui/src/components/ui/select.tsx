@@ -21,7 +21,7 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-9 w-full items-center justify-between whitespace-nowrap py-2 text-sm text-on-surface ring-offset-background placeholder:text-on-surface-variant focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1",
+      "flex h-9 w-full items-center justify-between whitespace-nowrap py-2 text-sm text-on-surface ring-offset-background placeholder:text-on-surface-variant focus:outline-none disabled:cursor-not-allowed disabled:bg-[color:var(--color-disabled-bg,color-mix(in_srgb,var(--color-on-surface)_8%,var(--color-surface)))] disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] disabled:shadow-none [&>span]:line-clamp-1",
       variant === "boxed" && "px-3 focus:ring-2 focus:ring-primary focus:ring-offset-2",
       fieldVariantClasses(variant),
       className,
@@ -30,7 +30,7 @@ const SelectTrigger = React.forwardRef<
   >
     {children}
     <SelectPrimitive.Icon asChild>
-      <ChevronDown className="size-4 opacity-50" />
+      <ChevronDown className="size-4 text-on-surface-variant" aria-hidden />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ));
@@ -116,7 +116,7 @@ const SelectItem = React.forwardRef<
   <SelectPrimitive.Item
     ref={ref}
     className={cn(
-      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none focus:bg-surface-container-high focus:text-on-surface data-[disabled]:pointer-events-none data-[disabled]:opacity-50",
+      "relative flex w-full cursor-default select-none items-center rounded-sm py-1.5 pr-8 pl-2 text-sm outline-none focus:bg-surface-container-high focus:text-on-surface data-[disabled]:pointer-events-none data-[disabled]:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))]",
       className,
     )}
     {...props}

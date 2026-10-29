@@ -53,7 +53,7 @@ export function DashboardDetailHeader({
         {backHref && !crumbs ? (
           <Button
             variant="ghost"
-            size="sm"
+            size="default"
             asChild
             className={cn(
               "min-h-11 w-fit gap-1 px-2 font-label text-xs font-semibold",

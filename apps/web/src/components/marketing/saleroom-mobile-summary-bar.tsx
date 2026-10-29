@@ -29,7 +29,7 @@ export function SaleroomMobileSummaryBar({ mode, saleTitle, canParticipate = tru
     return (
       <MarketingStickyBidBar>
         <div className="min-w-0 flex flex-col gap-1">
-          <LotLifecycleStatusBadge badge={saleroomOnBlockBadge()} size="sm" />
+          <LotLifecycleStatusBadge badge={saleroomOnBlockBadge()} />
           <span className="sr-only">{saleTitle}</span>
           <SaleroomSessionCaption caption={saleroomOnBlockCaption(mode.lot, mode.progressLabel)} />
         </div>

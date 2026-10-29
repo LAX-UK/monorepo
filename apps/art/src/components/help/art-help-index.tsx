@@ -78,7 +78,7 @@ function HelpChip({
     <Button
       asChild
       variant={selected ? "default" : "outline"}
-      size="md"
+      size="lg"
       className="shrink-0 snap-start rounded-full normal-case"
     >
       <Link

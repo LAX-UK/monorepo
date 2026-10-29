@@ -98,7 +98,7 @@ export default async function OrganisationsHubPage() {
       banner={orgModuleEnabled ? <OrgSubmittedAlert /> : null}
       description="Manage organisations you belong to, respond to invitations, and continue setup."
       actions={
-        <Button asChild variant="cta" size="sm">
+        <Button asChild variant="cta" size="default">
           <Link href="/onboarding/organisation?fresh=1" prefetch>
             Register organisation
           </Link>
@@ -127,9 +127,7 @@ export default async function OrganisationsHubPage() {
         >
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-on-surface">{personal.displayName}</span>
-            <StatusBadge variant="neutral" size="sm">
-              {subkindLabel(personal.subkind)}
-            </StatusBadge>
+            <StatusBadge variant="neutral">{subkindLabel(personal.subkind)}</StatusBadge>
           </div>
         </DashboardSection>
       ) : null}
@@ -141,7 +139,7 @@ export default async function OrganisationsHubPage() {
           title={DASHBOARD_EMPTY.organisations.title}
           description={DASHBOARD_EMPTY.organisations.description}
           action={
-            <Button asChild variant="cta" size="sm">
+            <Button asChild variant="cta" size="default">
               <Link href="/onboarding/organisation?fresh=1" prefetch>
                 Register organisation
               </Link>
@@ -153,7 +151,7 @@ export default async function OrganisationsHubPage() {
           <SectionHeader
             heading={<DisplayHeading as="h2">Your organisations</DisplayHeading>}
             action={
-              <Button asChild variant="outline" size="sm">
+              <Button asChild variant="outline" size="default">
                 <Link href="/onboarding/organisation?fresh=1" prefetch>
                   Register organisation
                 </Link>
