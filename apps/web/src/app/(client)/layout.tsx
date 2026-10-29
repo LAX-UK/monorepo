@@ -1,5 +1,6 @@
 import { DashboardFetchWarningBanner } from "@/components/dashboard/dashboard-fetch-warning-banner";
 import { ExportShellClient } from "@/components/exports/export-shell-client";
+import { AccountChangedElsewhere } from "@/components/layout/account-switcher/account-changed-elsewhere";
 import { AccountNotice } from "@/components/layout/account-switcher/account-notice";
 import { BidSiteChrome } from "@/components/layout/bid-site-chrome";
 import { CommandPaletteLazy } from "@/components/layout/command-palette-lazy";
@@ -10,6 +11,7 @@ import {
 } from "@/components/layout/view-as-client/view-as-client-banner";
 import { ViewAsClientProvider } from "@/components/layout/view-as-client/view-as-client-context";
 import { WelcomeBackToast } from "@/components/marketing/welcome-back-toast";
+import { AccountsUnavailableFrame } from "@/components/shell/accounts-unavailable-frame";
 import { ClientShell } from "@/components/shell/client-shell";
 import { ClientWebsiteFrame } from "@/components/shell/client-website-frame";
 import { clientAreaRedirectFor } from "@/lib/auth/client-audience";
@@ -18,7 +20,7 @@ import { loadSellerConnectNavBadge } from "@/lib/connect/load-seller-connect-nav
 import { dashboardSliceFailureMessage } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { loadBidFamilyLinks } from "@/lib/ecosystem/product-directory.server";
-import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { lookupActingContext } from "@/lib/legal-entity/acting-context.server";
 import { deriveActingContext } from "@/lib/legal-entity/derive-acting-context";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { createPendingInvitationsGateway } from "@/lib/legal-entity/pending-invitations.gateway.server";
@@ -65,7 +67,10 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
   if (!canAccessStaffAdminShell(user.role) && user.accountOnboardingComplete === false) {
     redirect(`/onboarding/account?next=${encodeURIComponent(CLIENT_ROUTES.home)}`);
   }
-  const actingContext = await resolveActingContext(user.role, user.staffRoles);
+  const lookup = await lookupActingContext(user.role, user.staffRoles);
+  // The accounts could not be read: say so, and never fall back to the personal account.
+  if (!lookup.ok) return <AccountsUnavailableFrame />;
+  const actingContext = lookup.context;
   // A new device, or an organisation the person has left: open the account they used last.
   if (actingContext.needsRestore) {
     redirect(restoreAccountHref(await resolveClientRequestPath()));
@@ -133,7 +138,7 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
     },
   );
   const banners = [
-    ...(noticeMessage ? [<AccountNotice key="account-notice" message={noticeMessage} />] : []),
+    ...(noticeMessage ? [<AccountNotice key={noticeMessage} message={noticeMessage} />] : []),
     ...layoutWarnings.map((w) => (
       <DashboardFetchWarningBanner key={w.title} title={w.title} message={w.message} />
     )),
@@ -142,7 +147,10 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
   const page = viewingAs ? (
     <ReadOnlyBoundary reasonId={READ_ONLY_REASON_ID}>{children}</ReadOnlyBoundary>
   ) : (
-    children
+    <>
+      <AccountChangedElsewhere renderedAccountId={safeActing?.id ?? null} />
+      {children}
+    </>
   );
   const banner = banners.length > 0 ? <>{banners}</> : undefined;
 

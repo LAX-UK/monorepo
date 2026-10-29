@@ -22,7 +22,7 @@ export default async function SellerPayoutsPage() {
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   // Payouts settle the whole organisation's sales, so consignors and viewers do not see them.
   requireSellerCapability(sellerCtx, "entity.payouts.read");
-  const { sellerEntityId, bootstrapFailed, sellingAsOrganisation } = sellerCtx;
+  const { sellerEntityId, sellingAsOrganisation } = sellerCtx;
   const vm = sellerEntityId ? await loadSoldAndPayouts(sellerEntityId) : null;
 
   const exportAction =
@@ -33,9 +33,7 @@ export default async function SellerPayoutsPage() {
         filters={{ legalEntityId: sellerEntityId }}
       />
     ) : null;
-  const banner = !sellerEntityId ? (
-    <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} />
-  ) : null;
+  const banner = !sellerEntityId ? <SellerProfileUnavailableAlert /> : null;
 
   return sellingAsOrganisation ? (
     <DashboardListPage

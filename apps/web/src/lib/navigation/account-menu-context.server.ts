@@ -20,8 +20,9 @@ function settled<T>(result: PromiseSettledResult<T>, fallback: T): T {
 
 /**
  * Loads the facts behind the account menu, the header chip and the account sub-navigation.
- * Each lookup degrades to "nothing" on failure: a menu without a count for a moment is better
- * than one that blocks on a slow service.
+ * Each count degrades to "nothing" on failure: a menu without a count for a moment is better
+ * than one that blocks on a slow service. The accounts do not: without them the menu would
+ * describe the wrong account, so this throws {@link AccountsUnavailableError} instead.
  */
 export async function loadAccountMenuContext(user: SessionUser): Promise<AccountMenuContext> {
   const c = await getServerDataContainer();
@@ -35,13 +36,14 @@ export async function loadAccountMenuContext(user: SessionUser): Promise<Account
     c.notifications.listMine({ tab: "unread", limit: UNREAD_LIMIT }),
   ]);
 
-  const actingContext = settled(acting, null);
-  const safeActing = actingContext
-    ? deriveActingContext({ actingContext, orgModuleEnabled }).safeActing
-    : null;
+  // Without the accounts the menu would describe the personal account; the caller keeps what it
+  // showed last instead.
+  if (acting.status === "rejected") throw acting.reason;
+  const actingContext = acting.value;
+  const safeActing = deriveActingContext({ actingContext, orgModuleEnabled }).safeActing;
   const hasConsigned = (settled(submissions, null)?.total ?? 0) > 0;
   const pendingInvitations = settled(invitations, []).length;
-  const memberships = actingContext?.memberships ?? [];
+  const memberships = actingContext.memberships;
   const account = buildAccountChrome({
     personName: user.name.trim() || user.email,
     memberships,

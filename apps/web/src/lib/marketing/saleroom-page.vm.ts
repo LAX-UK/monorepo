@@ -123,7 +123,7 @@ export type BuildSaleroomPageVMInput = {
   query: SaleroomPageQuery;
   layoutView: "grid" | "list";
   session: SessionUser | null;
-  actingMemberships: Array<{
+  actingMemberships: ReadonlyArray<{
     id: string;
     displayName: string;
     role: LegalEntityMemberRole;

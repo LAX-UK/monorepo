@@ -30,7 +30,6 @@ const EMPTY_ACTING_CTX = {
   acting: null,
   memberships: [],
   impersonation: null,
-  bootstrapFailed: false,
   needsRestore: false,
 } as const;
 

@@ -25,7 +25,7 @@ export default async function SellerStripeConnectPage() {
     loginNext: DASHBOARD_ROUTES.sellerConnect,
   });
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
-  const { sellerEntityId, sellingAsOrganisation, bootstrapFailed } = sellerCtx;
+  const { sellerEntityId, sellingAsOrganisation } = sellerCtx;
   // An organisation's payout setup is one of its settings pages.
   if (sellingAsOrganisation && sellerEntityId) {
     redirect(organisationHref("payouts"));
@@ -74,7 +74,7 @@ export default async function SellerStripeConnectPage() {
         description="Verify your identity, then complete payout details in the secure form below so approved lots can be scheduled once finance enables settlement."
       />
 
-      {!sellerEntityId ? <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} /> : null}
+      {!sellerEntityId ? <SellerProfileUnavailableAlert /> : null}
 
       {connectFailure ? (
         <DashboardSliceErrorAlert failure={connectFailure} />

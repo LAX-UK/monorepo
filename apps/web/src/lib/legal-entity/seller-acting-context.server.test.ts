@@ -1,5 +1,6 @@
 import type { LegalEntitySummary } from "@auction/types";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { AccountsUnavailableError } from "./accounts-unavailable-error";
 
 vi.mock("server-only", () => ({}));
 
@@ -46,7 +47,6 @@ function acting(current: LegalEntitySummary, memberships: LegalEntitySummary[]) 
     acting: current,
     memberships,
     impersonation: null,
-    bootstrapFailed: false,
     needsRestore: false,
   });
 }
@@ -78,17 +78,10 @@ describe("resolveSellerWorkspaceContext", () => {
     expect(ctx.personalEntity?.id).toBe("me");
   });
 
-  it("has no entity to sell as when the person's profile could not be loaded", async () => {
-    resolveActingContext.mockResolvedValue({
-      acting: null,
-      memberships: [],
-      impersonation: null,
-      bootstrapFailed: true,
-      needsRestore: false,
-    });
-    const ctx = await resolveSellerWorkspaceContext("client", []);
-    expect(ctx.sellerEntityId).toBeNull();
-    expect(ctx.bootstrapFailed).toBe(true);
+  it("never falls back to the personal profile when the accounts could not be read", async () => {
+    const outage = new AccountsUnavailableError("rate_limited");
+    resolveActingContext.mockRejectedValue(outage);
+    await expect(resolveSellerWorkspaceContext("client", [])).rejects.toBe(outage);
   });
 });
 
