@@ -5,6 +5,7 @@ import {
   ORGANISATION_JOURNEY_NAMES,
   expectActingAs,
   openAs,
+  undoOf,
 } from "./helpers/organisation-journeys";
 
 /**
@@ -19,6 +20,8 @@ const { approved } = ORGANISATION_JOURNEY_NAMES;
 
 test.describe("organisation admin journey @roles", () => {
   test.skip(!e2eEnabled, e2eSkipReason);
+  // The journey changes the team, so a retry would start from a changed team.
+  test.describe.configure({ retries: 0 });
 
   test("manages the team without ownership or policy rights", async ({ browser, baseURL }) => {
     test.setTimeout(180_000);
@@ -45,7 +48,7 @@ test.describe("organisation admin journey @roles", () => {
         .click();
       await page.getByRole("menuitem", { name: "Withdraw" }).click();
       await expect(page.getByText(`Invitation to ${INVITEE_EMAIL} withdrawn.`)).toBeVisible();
-      await page.getByRole("button", { name: "Undo" }).click();
+      await undoOf(page, `Invitation to ${INVITEE_EMAIL} withdrawn.`).click();
       await expect(page.getByText(`Invitation to ${INVITEE_EMAIL} reopened.`)).toBeVisible();
 
       await page
@@ -61,7 +64,7 @@ test.describe("organisation admin journey @roles", () => {
       await picker.click();
       await page.getByRole("option", { name: "Consignor" }).click();
       await expect(page.getByText(`${MEMBER_NAME} is now`)).toBeVisible();
-      await page.getByRole("button", { name: "Undo" }).click();
+      await undoOf(page, `${MEMBER_NAME} is now`).click();
       await expect(picker).toContainText("Viewer");
     });
 

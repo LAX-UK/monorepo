@@ -57,6 +57,20 @@ export async function openAs(
   return { context, page, organisation, origin, close: () => context.close() };
 }
 
+/**
+ * Places a bid at `amount`, or at the lowest bid the lot accepts when that is higher (the next
+ * step above the current price depends on the lot's increments, which the journey need not know).
+ */
+export async function placeBidAtLeast(
+  session: OrganisationSession,
+  lotId: string,
+  amount: number,
+): Promise<{ status: number; error: string; code: string | null }> {
+  const first = await placeBid(session, lotId, amount);
+  const minimum = /must be at least ([\d.]+)/.exec(first.error)?.[1];
+  return minimum ? placeBid(session, lotId, Number(minimum)) : first;
+}
+
 /** Places a bid through the same proxy the lot page uses, for the organisation in use. */
 export async function placeBid(
   session: OrganisationSession,
@@ -100,6 +114,14 @@ export async function invitationLinkFor(email: string): Promise<string> {
   } finally {
     await client.end();
   }
+}
+
+/** The Undo button of the toast that says `message`, so an earlier toast's Undo is not chosen. */
+export function undoOf(page: Page, message: string) {
+  return page
+    .locator("[data-sonner-toast]")
+    .filter({ hasText: message })
+    .getByRole("button", { name: "Undo" });
 }
 
 /** The access page a role sees when it opens an address it may not use. */

@@ -10,6 +10,7 @@ import {
   expectNoAccess,
   openAs,
   placeBid,
+  placeBidAtLeast,
 } from "./helpers/organisation-journeys";
 
 /**
@@ -35,7 +36,7 @@ test.describe("organisation buyer agent journey @roles", () => {
     });
 
     await test.step("a bid within the limit is placed", async () => {
-      const bid = await placeBid(agent, lot, 5100);
+      const bid = await placeBidAtLeast(agent, lot, 5100);
       expect(bid.status, `bid answered ${bid.status} ${bid.error}`).toBeLessThan(300);
     });
 

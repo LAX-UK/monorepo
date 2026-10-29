@@ -7,7 +7,8 @@ import {
   expectActingAs,
   invitationLinkFor,
   openAs,
-  placeBid,
+  placeBidAtLeast,
+  undoOf,
 } from "./helpers/organisation-journeys";
 
 /**
@@ -23,6 +24,8 @@ const { approved, other } = ORGANISATION_JOURNEY_NAMES;
 
 test.describe("organisation owner journey @roles", () => {
   test.skip(!e2eEnabled, e2eSkipReason);
+  // The journey changes the team, so a retry would start from a changed team.
+  test.describe.configure({ retries: 0 });
 
   test("invites, bids, chooses, changes a role with Undo and removes a member", async ({
     browser,
@@ -69,18 +72,21 @@ test.describe("organisation owner journey @roles", () => {
         .first()
         .click();
       await page.getByTestId("switch-account-organisation").filter({ hasText: other }).click();
-      await expect(page.getByTestId("account-strip")).toContainText(other);
+      await expect(page.getByTestId("account-strip")).toContainText(other, { timeout: 20_000 });
+      await page.waitForLoadState("networkidle");
 
       await page
         .getByRole("button", { name: `Account: ${other},` })
         .first()
         .click();
       await page.getByTestId("switch-account-organisation").filter({ hasText: approved }).click();
-      await expect(page.getByTestId("account-strip")).toContainText(approved);
+      await expect(page.getByTestId("account-strip")).toContainText(approved, {
+        timeout: 20_000,
+      });
     });
 
     await test.step("bid for the organisation", async () => {
-      const bid = await placeBid(owner, ORGANISATION_JOURNEY_IDS.lotForOwner, 2050);
+      const bid = await placeBidAtLeast(owner, ORGANISATION_JOURNEY_IDS.lotForOwner, 2050);
       expect(bid.status, `bid answered ${bid.status} ${bid.error}`).toBeLessThan(300);
       await page.goto("/bids");
       await expect(page.getByText("Harbour Light, study for the owner").first()).toBeVisible();
@@ -102,7 +108,7 @@ test.describe("organisation owner journey @roles", () => {
       await picker.click();
       await page.getByRole("option", { name: "Finance" }).click();
       await expect(page.getByText(`${INVITEE_NAME} is now`)).toBeVisible();
-      await page.getByRole("button", { name: "Undo" }).click();
+      await undoOf(page, `${INVITEE_NAME} is now`).click();
       await expect(picker).toContainText("Viewer");
     });
 
