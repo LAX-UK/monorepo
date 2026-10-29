@@ -72,14 +72,16 @@ export function mapSaleToAuctionFields(
     CountryCode: config.countryCode,
     IncrementSetId: config.incrementSetId,
     ClientsAuctionId: sale.id,
-    SaleDates: [{ Starts: toGapDate(sale.startTime), Ends: toGapDate(sale.endTime) }],
   };
   if (config.clientId) fields.ClientId = config.clientId;
   const premium = percent(sale.buyerPremiumRate);
   if (premium !== undefined) fields.BuyersPremium = premium;
+  // ATG rejects SaleDates on a timed auction ("use TimedStart"), so each type sends only its own dates.
   if (isTimed(sale)) {
     fields.TimedStart = toGapDate(sale.startTime);
     fields.TimedFirstLotEnds = toGapDate(sale.endTime);
+  } else {
+    fields.SaleDates = [{ Starts: toGapDate(sale.startTime), Ends: toGapDate(sale.endTime) }];
   }
   const address1 = optionalClip(sale.locationAddressLine1, ADDRESS_MAX);
   if (address1) fields.Address1 = address1;
