@@ -107,7 +107,6 @@ describe("OrganisationDashboardService", () => {
     ]);
     const service = new OrganisationDashboardService({
       readers,
-      purchaseTotal: buyerPurchaseTotal,
       now: () => NOW,
     });
     const figures = await service.figures({
