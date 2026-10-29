@@ -1,5 +1,6 @@
 import { setSignInNoticeActive } from "@/lib/ui/first-visit-overlays";
 import { act, fireEvent, render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ActingAsTooltip } from "./acting-as-tooltip";
 
@@ -14,6 +15,52 @@ vi.mock("@/lib/legal-entity/acting-context.actions", () => ({
   dismissActingContextTooltip: dismiss,
 }));
 vi.mock("@/hooks/use-is-lg", () => ({ useIsLg: () => viewport.wide }));
+
+/**
+ * The kit popover without its positioning: floating-ui keeps re-measuring zero-sized jsdom boxes
+ * while a popover is open, which pins the CPU for seconds per test. This stand-in keeps the parts
+ * the hint relies on (the anchor stays in place, the content renders in a portal on the body as a
+ * labelled dialog, and closing goes through `onOpenChange`).
+ */
+vi.mock("@auction/ui/components/popover", async () => {
+  const { createPortal } = await import("react-dom");
+  const { createContext, useContext } = await import("react");
+  const Open = createContext<{ open: boolean; onOpenChange: (open: boolean) => void }>({
+    open: false,
+    onOpenChange: () => {},
+  });
+  return {
+    Popover: ({
+      open = false,
+      onOpenChange = () => {},
+      children,
+    }: {
+      open?: boolean;
+      onOpenChange?: (open: boolean) => void;
+      children: ReactNode;
+    }) => <Open.Provider value={{ open, onOpenChange }}>{children}</Open.Provider>,
+    PopoverAnchor: ({ children }: { children: ReactNode }) => children,
+    PopoverContent: ({
+      children,
+      onOpenAutoFocus: _focus,
+      sideOffset: _offset,
+      collisionPadding: _padding,
+      align: _align,
+      side: _side,
+      ...props
+    }: Record<string, unknown> & { children: ReactNode }) => {
+      const { open } = useContext(Open);
+      return open
+        ? createPortal(
+            <dialog open {...props}>
+              {children}
+            </dialog>,
+            document.body,
+          )
+        : null;
+    },
+  };
+});
 
 function renderHint() {
   return render(
