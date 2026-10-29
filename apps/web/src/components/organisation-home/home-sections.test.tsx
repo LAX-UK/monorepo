@@ -127,4 +127,20 @@ describe("HomeCellGrid", () => {
     expect(cells[2]?.className).toContain("lg:col-span-1");
     expect(cells[0]?.className).not.toContain("col-span-2");
   });
+
+  it("sizes a card of a few cells to the cells, not the page", () => {
+    render(
+      <HomeCellGrid
+        labelledBy="x"
+        items={["a"]}
+        itemKey={(item) => item}
+        phoneColumns={2}
+        wideColumns={1}
+        fit
+        renderItem={(item) => <span>{item}</span>}
+      />,
+    );
+    expect(screen.getByRole("list").className).toContain("lg:w-fit");
+    expect(screen.getByRole("listitem").className).toContain("lg:min-w-56");
+  });
 });

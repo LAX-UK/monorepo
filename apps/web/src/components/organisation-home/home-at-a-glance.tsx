@@ -14,6 +14,8 @@ export function HomeAtAGlance({ tiles }: { tiles: readonly DashboardTileView[] }
         itemKey={(tile) => tile.id}
         phoneColumns={2}
         wideColumns={tiles.length}
+        // One figure stays a figure-sized card rather than a band across the page.
+        fit={tiles.length === 1}
         renderItem={(tile) => <HomeFigureTile tile={tile} />}
       />
     </HomeSection>

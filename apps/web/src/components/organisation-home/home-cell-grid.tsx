@@ -31,7 +31,7 @@ type Props<T> = {
   wideColumns: number;
   renderItem: (item: T) => ReactNode;
   itemTestId?: (item: T) => string;
-  /** From `lg`, size the card to its cells (each at least 11rem) rather than the column. */
+  /** From `lg`, size the card to its cells (each at least 14rem) rather than the column. */
   fit?: boolean;
 };
 
@@ -71,7 +71,7 @@ export function HomeCellGrid<T>({
             key={itemKey(item)}
             className={cn(
               "flex min-w-0 bg-surface-container-lowest",
-              fit && "lg:min-w-44",
+              fit && "lg:min-w-56",
               span > 1 && [SPAN[span as keyof typeof SPAN], "lg:col-span-1"],
             )}
             {...(itemTestId ? { "data-testid": itemTestId(item) } : {})}
