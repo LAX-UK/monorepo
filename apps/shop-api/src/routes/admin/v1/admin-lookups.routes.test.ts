@@ -33,7 +33,7 @@ function depsFor(role: ShopStaffRole) {
       },
       staffReader: {
         findActiveByIdentitySubject: async (s) =>
-          s === subject ? { role, identitySubjectId: s } : null,
+          s === subject ? { roles: [role], identitySubjectId: s } : null,
         brokerCanAccessClientParty: async () => false,
       },
     }),

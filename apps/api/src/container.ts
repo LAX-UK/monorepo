@@ -2,6 +2,7 @@ import { createDb } from "@auction/db";
 import {
   DrizzleAdminSavedViewRepository,
   DrizzleBuyerAgentAuthorisationRepository,
+  DrizzleLaxAdminRolesRepository,
   DrizzleLaxStaffAccessRepository,
   DrizzleStaffAccessReviewReader,
   DrizzleStaffNoticeRecipientReader,
@@ -38,6 +39,8 @@ import { HttpIdentityIssuerClient } from "./infrastructure/http-identity-issuer.
 import { IdentityAddressBookRepository } from "./infrastructure/identity-address-book.repository.js";
 import { RedisIdempotencyStore } from "./infrastructure/redis-idempotency.store.js";
 import { RedisOAuthAttributionStore } from "./infrastructure/redis-oauth-attribution.store.js";
+import { StaffAdministratorDirectory } from "./infrastructure/staff-administrators.js";
+import { StaffRoleChangeNotifier } from "./infrastructure/staff-role-change.notifier.js";
 import { createAppLogger } from "./lib/logger.js";
 import { AdminSavedViewService } from "./services/admin/admin-saved-view.service.js";
 import { AdminTwoFactorResetService } from "./services/admin/admin-two-factor-reset.service.js";
@@ -52,6 +55,7 @@ import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure
 import { TwoFactorPolicyService } from "./services/security/two-factor-policy.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
 import { StaffStepUpService } from "./services/staff-step-up.service.js";
+import { LaxAdminRolesService } from "./services/staff/lax-admin-roles.service.js";
 import { StaffRoleAssignmentService } from "./services/staff/staff-role-assignment.service.js";
 import { StaffRolesAdminService } from "./services/staff/staff-roles-admin.service.js";
 import { SubmissionAccessGuard } from "./services/submission/submission-access-guard.js";
@@ -193,12 +197,17 @@ export function createContainer(env: Env): Container {
     webhookEventRepository: repos.webhookEventRepository,
     webhookEventsProducer: infra.webhookEventsProducer,
   });
+  const laxAdminRoles = new DrizzleLaxAdminRolesRepository(db);
+  const staffNoticeRecipients = new DrizzleStaffNoticeRecipientReader(db);
+  const staffAdministrators = new StaffAdministratorDirectory(staffNoticeRecipients, laxAdminRoles);
   const platformCron = createPlatformCronRouteServices({
     redis: infra.redis,
     lifecycleCronService: cron.lifecycleCronService,
     hygieneCronService: cron.hygieneCronService,
     staffRoster: repos.staffRoster,
-    staffNoticeRecipients: new DrizzleStaffNoticeRecipientReader(db),
+    laxAdminRoleExpiry: laxAdminRoles,
+    staffNoticeRecipients,
+    staffAdministrators,
     notificationDispatcher: platform.notificationDispatcher,
     emailService: infra.emailService,
     webOrigin: env.WEB_ORIGIN,
@@ -272,7 +281,20 @@ export function createContainer(env: Env): Container {
     roles: new DrizzleStaffRoleAssignmentReader(db),
     users: repos.adminUserReader,
     review: new DrizzleStaffAccessReviewReader(db),
+    laxAdminRoles,
     identity: identityIssuer,
+  });
+  const laxAdminRoleChanges = new LaxAdminRolesService({
+    roles: laxAdminRoles,
+    requests: laxAdminRoles,
+    users: repos.adminUserReader,
+    notifier: new StaffRoleChangeNotifier(
+      staffNoticeRecipients,
+      staffAdministrators,
+      platform.notificationDispatcher,
+      infra.emailService,
+      env.WEB_ORIGIN,
+    ),
   });
 
   const savedViews = new AdminSavedViewService(new DrizzleAdminSavedViewRepository(db));
@@ -541,6 +563,7 @@ export function createContainer(env: Env): Container {
       twoFactorReset,
       staffAccess,
       staffRoles,
+      laxAdminRoles: laxAdminRoleChanges,
       savedViews,
       atg,
       buyerAgentAuthorisations,

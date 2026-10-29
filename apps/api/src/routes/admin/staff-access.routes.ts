@@ -8,7 +8,6 @@ import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
 import { STAFF_TOOLS_READ_SCOPE } from "../../middleware/bid-scope-policy.js";
 import { createRequireAuth } from "../../middleware/require-auth.js";
-import { requireUserInvite } from "../../middleware/require-capability.js";
 import {
   STAFF_ACCESS_SUMMARY_BATCH,
   type StaffAccessActor,
@@ -16,14 +15,12 @@ import {
   type StaffAccessError,
 } from "../../services/admin/staff-access-admin.service.js";
 import type { IAuthenticator } from "../../services/interfaces/authenticator.js";
-import type { AdminHono, AdminStaffMutationGuards } from "./_shared.js";
+import type { AdminHono } from "./_shared.js";
 
 const summariesBodySchema = z.object({
   subjectIds: z.array(z.string().min(1)).max(STAFF_ACCESS_SUMMARY_BATCH),
 });
 const subjectParamSchema = z.object({ userId: z.string().min(1) });
-const remoteProductParamSchema = subjectParamSchema.extend({ product: z.literal("shop") });
-const roleBodySchema = z.object({ role: z.string().min(1) });
 
 function actorOf(c: Context): StaffAccessActor {
   return {
@@ -66,11 +63,7 @@ export function createAdminMyStaffToolsRoutes(
 /** Cross-platform staff access for the Bid People screen (D36). */
 export function attachAdminStaffAccessRoutes(
   platform: AdminHono,
-  staffAccess: Pick<
-    StaffAccessAdminService,
-    "summaries" | "detail" | "setRemoteRole" | "revokeRemote"
-  >,
-  guards: AdminStaffMutationGuards,
+  staffAccess: Pick<StaffAccessAdminService, "summaries" | "detail">,
 ): void {
   platform.post("/staff/access/summaries", zValidator("json", summariesBodySchema), async (c) =>
     respond(c, await staffAccess.summaries(actorOf(c), c.req.valid("json").subjectIds)),
@@ -78,29 +71,5 @@ export function attachAdminStaffAccessRoutes(
 
   platform.get("/staff/:userId/access", zValidator("param", subjectParamSchema), async (c) =>
     respond(c, await staffAccess.detail(actorOf(c), c.req.valid("param").userId)),
-  );
-
-  platform.put(
-    "/staff/:userId/access/:product",
-    requireUserInvite,
-    guards.requireStepUp,
-    zValidator("param", remoteProductParamSchema),
-    zValidator("json", roleBodySchema),
-    async (c) => {
-      const { userId, product } = c.req.valid("param");
-      const { role } = c.req.valid("json");
-      return respond(c, await staffAccess.setRemoteRole(actorOf(c), userId, product, role));
-    },
-  );
-
-  platform.delete(
-    "/staff/:userId/access/:product",
-    requireUserInvite,
-    guards.requireStepUp,
-    zValidator("param", remoteProductParamSchema),
-    async (c) => {
-      const { userId, product } = c.req.valid("param");
-      return respond(c, await staffAccess.revokeRemote(actorOf(c), userId, product));
-    },
   );
 }

@@ -35,7 +35,7 @@ describe("shop-api step-up routes match the shared list", () => {
   const routes = routesRequiringStepUp();
 
   it("finds the step-up routes", () => {
-    expect(routes.length).toBeGreaterThan(8);
+    expect(routes.length).toBeGreaterThan(6);
   });
 
   it.each(routes)("%s is on the shared list the BFF uses", (route) => {

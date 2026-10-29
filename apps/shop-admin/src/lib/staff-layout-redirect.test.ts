@@ -6,6 +6,7 @@ describe("resolveStaffLayoutRedirect", () => {
   const session = {
     subject: "sub",
     role: "shop_admin",
+    roles: ["shop_admin"],
     capabilities: [],
     features: {
       payouts: false,

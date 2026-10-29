@@ -8,9 +8,10 @@ import {
   shopProduct,
   shopProductVariant,
   shopStaffMember,
+  shopStaffRoleAssignment,
 } from "@auction/db/schema";
 import type { ShopStaffRole } from "@auction/shop-domain";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 import type { ArtworkImportWriter } from "../application/ports/artwork-import.writer.js";
 import { createDrizzleArtworkImportRepository } from "../infrastructure/drizzle-artwork-import.repository.js";
 import { completeShopCheckoutSession } from "../infrastructure/drizzle-payment-event.processor.js";
@@ -195,6 +196,23 @@ export async function insertTestStaffMember(
       set: { role: input.role, disabledAt: null },
     })
     .returning({ id: shopStaffMember.id });
+  // The person holds exactly this one role from now, as a single-role staff member did.
+  const now = new Date();
+  await db
+    .update(shopStaffRoleAssignment)
+    .set({ endsAt: now, endRecordedAt: now })
+    .where(
+      and(
+        eq(shopStaffRoleAssignment.identitySubjectId, input.identitySubjectId),
+        isNull(shopStaffRoleAssignment.endsAt),
+      ),
+    );
+  await db.insert(shopStaffRoleAssignment).values({
+    identitySubjectId: input.identitySubjectId,
+    role: input.role,
+    startsAt: new Date(now.getTime() - 60_000),
+    reason: "test fixture",
+  });
   return requireDefined(row?.id, "staff member id");
 }
 

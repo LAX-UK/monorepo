@@ -1,6 +1,7 @@
 export const dynamic = "force-dynamic";
 
 import { StaffCatalogueImageProvider } from "@/components/artworks/staff-catalogue-image-provider.client";
+import { LaxStaffAccessProvider } from "@/components/lax-staff-access-provider.client";
 import { ShopAdminShell } from "@/components/shop-admin-shell.client";
 import { loadAdminSession } from "@/lib/admin-data.server";
 import { resolveStaffLayoutRedirect, staffSignInHref } from "@/lib/staff-layout-redirect";
@@ -11,7 +12,7 @@ import { loadStaffProducts } from "@/server/application/load-staff-products";
 import { getShopAdminContainer } from "@/server/container";
 import { buildAdminNavGroups } from "@/server/domain/admin-nav.vm";
 import { staffDisplayName } from "@/server/domain/staff-identity.vm";
-import { staffRoleLabel } from "@/server/domain/staff-role-label.vm";
+import { staffRolesLabel } from "@/server/domain/staff-role-label.vm";
 import {
   STAFF_NAV_COOKIE,
   STAFF_THEME_COOKIE,
@@ -54,7 +55,7 @@ export default async function StaffLayout({ children }: { children: ReactNode })
     enquiryAttentionCount: enquirySummary?.needsAttentionCount ?? 0,
     applicationAttentionCount: applicationSummary?.newCount ?? 0,
   });
-  const roleLabel = staffRoleLabel(session.role);
+  const roleLabel = staffRolesLabel(session.roles?.length ? session.roles : [session.role]);
   const { shopStorefrontUrl, artPublicUrl } = getShopAdminContainer().config;
   return (
     <>
@@ -70,7 +71,9 @@ export default async function StaffLayout({ children }: { children: ReactNode })
           initialTheme={parseStaffTheme(jar.get(STAFF_THEME_COOKIE)?.value)}
           defaultCollapsed={jar.get(STAFF_NAV_COOKIE)?.value === "collapsed"}
         >
-          {children}
+          <LaxStaffAccessProvider capabilities={session.capabilities} roleLabel={roleLabel}>
+            {children}
+          </LaxStaffAccessProvider>
         </ShopAdminShell>
       </StaffCatalogueImageProvider>
       <StaffToaster />

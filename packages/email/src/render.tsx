@@ -183,6 +183,9 @@ import SourceOfFundsDocumentsRequestedEmail, {
 import SourceOfFundsRejectedEmail, {
   subject as sourceOfFundsRejectedSubject,
 } from "./templates/source-of-funds-rejected.js";
+import StaffRoleChangedEmail, {
+  subject as staffRoleChangedSubject,
+} from "./templates/staff-role-changed.js";
 import StaffRoleExpiredEmail, {
   subject as staffRoleExpiredSubject,
 } from "./templates/staff-role-expired.js";
@@ -391,6 +394,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "staff-role-expired": {
     subject: staffRoleExpiredSubject,
     component: (vars) => <StaffRoleExpiredEmail {...vars} />,
+  },
+  "staff-role-changed": {
+    subject: staffRoleChangedSubject,
+    component: (vars) => <StaffRoleChangedEmail {...vars} />,
   },
   "aml-compliance-review-notice": {
     subject: amlComplianceReviewNoticeSubject,

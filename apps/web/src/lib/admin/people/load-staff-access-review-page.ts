@@ -37,10 +37,18 @@ export async function loadStaffAccessReviewPage(search: AccessReviewSearch) {
       filters,
       counts: accessReviewCounts(all, filters, now),
       rows: sortAccessReview(
-        toAccessReviewRows(shown, now, canOpenRecords ? (id) => `/admin/staff/${id}` : null),
+        toAccessReviewRows(
+          shown,
+          now,
+          canOpenRecords ? (id) => `/admin/staff/${id}` : null,
+          filters.product,
+        ),
         typeof search.sort === "string" ? search.sort : null,
       ),
-      csv: { shown: accessReviewCsvRows(shown), all: accessReviewCsvRows(all) },
+      csv: {
+        shown: accessReviewCsvRows(shown, filters.product),
+        all: accessReviewCsvRows(all),
+      },
       total: all.length,
       loadError: null as string | null,
     };

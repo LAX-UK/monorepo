@@ -4,7 +4,8 @@ export type CreateStockHoldCommand = {
   expiresAt: string;
   note?: string | undefined;
   actorSubjectId: string;
-  actorRole: import("@auction/shop-domain").ShopStaffRole;
+  /** Holds `stock_hold.override`: may hold for clients not assigned to them. */
+  actorMayOverride: boolean;
   usedOverride?: boolean;
 };
 
@@ -16,7 +17,8 @@ export type CreateStockHoldResult = {
 export type ReleaseStockHoldCommand = {
   holdId: string;
   actorSubjectId: string;
-  actorRole: import("@auction/shop-domain").ShopStaffRole;
+  /** Holds `stock_hold.override`: may hold for clients not assigned to them. */
+  actorMayOverride: boolean;
 };
 
 export type ReleaseStockHoldResult = {

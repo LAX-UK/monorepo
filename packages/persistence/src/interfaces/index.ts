@@ -502,8 +502,17 @@ export type {
   ILaxStaffAccessRepository,
   LaxStaffAccessEntry,
   LaxStaffAccessHistoryEntry,
-  LaxStaffAccessRequest,
 } from "./lax-staff-access.repository.js";
+export type {
+  ILaxAdminRoleExpiryRequests,
+  ILaxAdminRoleReader,
+  ILaxAdminRoleRequestWriter,
+  LaxAdminRoleAssignmentRecord,
+  LaxAdminRoleEnd,
+  LaxAdminRoleRequest,
+  NewLaxAdminRoleGrant,
+  NewLaxAdminRoleRemoval,
+} from "./lax-admin-roles.repository.js";
 
 export type {
   AdminPaymentTableRowDto,

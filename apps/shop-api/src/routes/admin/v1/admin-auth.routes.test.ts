@@ -23,9 +23,9 @@ function adminDeps(overrides: Parameters<typeof createMinimalShopApiTestDeps>[0]
     staffReader: {
       findActiveByIdentitySubject: async (subject) =>
         subject === "finance-subject"
-          ? { role: "finance" as const, identitySubjectId: subject }
+          ? { roles: ["finance"], identitySubjectId: subject }
           : subject === "ops-subject"
-            ? { role: "operations" as const, identitySubjectId: subject }
+            ? { roles: ["operations"], identitySubjectId: subject }
             : null,
       brokerCanAccessClientParty: async () => false,
       ...overrides.staffReader,
@@ -193,7 +193,7 @@ describe("admin auth and authz", () => {
         staffReader: {
           findActiveByIdentitySubject: async (subject) =>
             subject === "admin-subject"
-              ? { role: "shop_admin" as const, identitySubjectId: subject }
+              ? { roles: ["shop_admin"], identitySubjectId: subject }
               : null,
           brokerCanAccessClientParty: async () => false,
         },
@@ -251,11 +251,11 @@ describe("admin auth and authz", () => {
         staffReader: {
           findActiveByIdentitySubject: async (subject) =>
             subject === "admin-subject"
-              ? { role: "shop_admin" as const, identitySubjectId: subject }
+              ? { roles: ["shop_admin"], identitySubjectId: subject }
               : subject === "finance-subject"
-                ? { role: "finance" as const, identitySubjectId: subject }
+                ? { roles: ["finance"], identitySubjectId: subject }
                 : subject === "ops-subject"
-                  ? { role: "operations" as const, identitySubjectId: subject }
+                  ? { roles: ["operations"], identitySubjectId: subject }
                   : null,
           brokerCanAccessClientParty: async () => false,
         },

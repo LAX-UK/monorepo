@@ -14,12 +14,13 @@ export const subject = (vars: Vars) =>
 
 export default function StaffRoleExpiredEmail(vars: Vars) {
   const { recipient, recipientFirstName, staffName, roleLabel, endedOnDisplay } = vars;
+  const product = vars.productLabel ?? "Bid";
   const greeting = recipientFirstName ? `${recipientFirstName}, ` : "";
 
   return (
     <Layout
       category="alert"
-      eyebrow="Bid · staff access"
+      eyebrow={`${product} · staff access`}
       preview={
         recipient === "person"
           ? `Your ${roleLabel} role ended on ${endedOnDisplay}`
@@ -29,12 +30,12 @@ export default function StaffRoleExpiredEmail(vars: Vars) {
     >
       {recipient === "person" ? (
         <TextBlock>
-          {greeting}your {roleLabel} role on Bid ended on {endedOnDisplay}. Ask an administrator if
-          you still need it.
+          {greeting}your {roleLabel} role on {product} ended on {endedOnDisplay}. Ask an
+          administrator if you still need it.
         </TextBlock>
       ) : (
         <TextBlock>
-          {greeting}a staff role on Bid reached its end date and has been recorded as ended.
+          {greeting}a staff role on {product} reached its end date and has been recorded as ended.
         </TextBlock>
       )}
       <FactCard

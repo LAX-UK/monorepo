@@ -31,14 +31,3 @@ export function twoFactorStatusLabel(enabled: boolean | null | undefined): strin
   if (enabled == null) return "Unknown";
   return enabled ? "On" : "Off";
 }
-
-export function pendingChangeLabel(
-  product: LaxStaffAccessProduct,
-  pending: { action: "granted" | "revoked"; role: string | null },
-): string {
-  const platform = LAX_STAFF_PLATFORMS.find((p) => p.product === product)?.label ?? product;
-  if (pending.action === "revoked" || !pending.role) {
-    return `Removal waiting for ${platform} to apply it`;
-  }
-  return `${staffRoleOnPlatformLabel(product, pending.role)} waiting for ${platform} to apply it`;
-}

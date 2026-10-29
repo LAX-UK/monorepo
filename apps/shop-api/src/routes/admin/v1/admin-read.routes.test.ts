@@ -32,7 +32,7 @@ function mockAdminAuth(subject: string, role: import("@auction/shop-domain").Sho
     },
     staffReader: {
       findActiveByIdentitySubject: async (s) =>
-        s === subject ? { role, identitySubjectId: s } : null,
+        s === subject ? { roles: [role], identitySubjectId: s } : null,
       brokerCanAccessClientParty: async (_broker, clientPartyId) => clientPartyId === PARTY_ID,
     },
   });

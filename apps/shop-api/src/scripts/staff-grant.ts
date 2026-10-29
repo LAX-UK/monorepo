@@ -1,16 +1,9 @@
 import { closeDb, createDb } from "@auction/db";
-import type { ShopStaffRole } from "@auction/shop-domain";
+import { SHOP_STAFF_ROLES, type ShopStaffRole } from "@auction/shop-domain";
 import { loadShopApiEnv } from "../env.js";
 import { grantShopStaffRole } from "../infrastructure/grant-staff-role.js";
 
-const ROLES: readonly ShopStaffRole[] = [
-  "shop_admin",
-  "account_manager",
-  "broker",
-  "operations",
-  "finance",
-  "catalogue_editor",
-];
+const ROLES: readonly ShopStaffRole[] = SHOP_STAFF_ROLES;
 
 function usage(): never {
   console.error(
@@ -41,8 +34,10 @@ const env = loadShopApiEnv();
 const db = createDb(env.DATABASE_URL_SHOP);
 
 try {
-  await grantShopStaffRole(db, { subject, role, operatorSubjectId: operator });
-  console.log(`Granted ${role} to ${subject}`);
+  const outcome = await grantShopStaffRole(db, { subject, role, operatorSubjectId: operator });
+  console.log(
+    outcome === "applied" ? `Granted ${role} to ${subject}` : `${subject} already holds ${role}`,
+  );
 } finally {
   await closeDb(db);
 }

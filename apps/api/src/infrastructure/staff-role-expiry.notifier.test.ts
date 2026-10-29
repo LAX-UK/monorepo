@@ -20,6 +20,7 @@ const GRACE = person("grace", "Grace Hopper");
 const ALAN = person("alan", "Alan Turing");
 
 const endedRole = (userId: string, assignmentId: string): EndedStaffRole => ({
+  product: "bid",
   assignmentId,
   userId,
   role: "saleroom_clerk",
@@ -27,7 +28,7 @@ const endedRole = (userId: string, assignmentId: string): EndedStaffRole => ({
   endedAt: new Date("2026-11-03T23:30:00.000Z"),
 });
 
-function setup(admins: StaffNoticeRecipient[]) {
+function setup(admins: StaffNoticeRecipient[], laxAdmins: StaffNoticeRecipient[] = []) {
   const people = [ADA, GRACE, ALAN];
   const recipients: IStaffNoticeRecipientReader = {
     findByIds: async (ids) => people.filter((p) => ids.includes(p.id)),
@@ -36,7 +37,16 @@ function setup(admins: StaffNoticeRecipient[]) {
   const dispatch = vi.fn().mockResolvedValue(undefined);
   const enqueue = vi.fn().mockResolvedValue({ outboxId: "o" });
   const email = { enqueue } as unknown as IEmailService;
-  const notifier = new StaffRoleExpiryNotifier(recipients, { dispatch }, email, "https://lax.bid");
+  const administrators = {
+    listAdministrators: async (product: "bid" | "shop") => (product === "bid" ? admins : laxAdmins),
+  };
+  const notifier = new StaffRoleExpiryNotifier(
+    recipients,
+    administrators,
+    { dispatch },
+    email,
+    "https://lax.bid",
+  );
   return { notifier, dispatch, enqueue };
 }
 

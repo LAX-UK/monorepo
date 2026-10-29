@@ -36,7 +36,7 @@ describe("admin editorial routes", () => {
       },
       staffReader: {
         findActiveByIdentitySubject: async (s) => ({
-          role: "catalogue_editor",
+          roles: ["editor"],
           identitySubjectId: s,
         }),
         brokerCanAccessClientParty: async () => false,
@@ -106,7 +106,7 @@ describe("admin editorial routes", () => {
       },
       staffReader: {
         findActiveByIdentitySubject: async (s) => ({
-          role: "catalogue_editor",
+          roles: ["editor"],
           identitySubjectId: s,
         }),
         brokerCanAccessClientParty: async () => false,
@@ -212,7 +212,7 @@ describe("entity saves are versioned", () => {
       },
       staffReader: {
         findActiveByIdentitySubject: async (s) => ({
-          role: "catalogue_editor",
+          roles: ["editor"],
           identitySubjectId: s,
         }),
         brokerCanAccessClientParty: async () => false,

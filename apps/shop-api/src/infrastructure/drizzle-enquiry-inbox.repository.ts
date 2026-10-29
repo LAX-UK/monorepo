@@ -9,8 +9,7 @@ import type {
   EnquiryStatus,
   EnquiryTopic,
 } from "@auction/shop-contracts";
-import { roleHasCapability } from "@auction/shop-domain";
-import { type SQL, and, asc, eq, isNull, sql } from "drizzle-orm";
+import { type SQL, and, asc, eq, sql } from "drizzle-orm";
 import type { EnquiryInboxCursor } from "../application/enquiry-inbox-cursor.js";
 import type {
   EnquiryInboxFilters,
@@ -18,6 +17,7 @@ import type {
 } from "../application/ports/enquiry-inbox.repository.js";
 import { containsPattern } from "./drizzle-editorial-search.reader.js";
 import { insertShopAdminAudit } from "./shop-admin-audit.js";
+import { listStaffHoldingCapability } from "./shop-staff-active-roles.sql.js";
 
 type ResolveMediaUrl = (value: string | null | undefined) => string | null;
 
@@ -429,21 +429,8 @@ export function createDrizzleEnquiryInboxRepository(
     },
 
     async listAssignees() {
-      const staff = await db
-        .select({
-          subject: shopStaffMember.identitySubjectId,
-          role: shopStaffMember.role,
-          name: shopUserProfile.name,
-          email: shopUserProfile.email,
-        })
-        .from(shopStaffMember)
-        .leftJoin(
-          shopUserProfile,
-          eq(shopUserProfile.identitySubjectId, shopStaffMember.identitySubjectId),
-        )
-        .where(isNull(shopStaffMember.disabledAt));
+      const staff = await listStaffHoldingCapability(db, "enquiry.write");
       return staff
-        .filter((member) => roleHasCapability(member.role, "enquiry.write"))
         .map((member) => ({
           subject: member.subject,
           label: member.name?.trim() || member.email?.trim() || null,

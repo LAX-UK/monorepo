@@ -2,6 +2,7 @@ import { loadAdminUserDetail } from "@/lib/admin/load-admin-user-detail";
 import { requireAdminCapability } from "@/lib/auth/require-admin-capability";
 import type { AdminUserDetailPayload } from "@/lib/data/http/admin.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { getServerLaxAdminRoles } from "@/lib/data/http/staff-roles.server";
 import {
   USERS_DIRECTORY_ACCESS,
   USER_MODERATION_ACCESS,
@@ -17,11 +18,17 @@ export type AdminStaffDetailBundle = {
   canModerate: boolean;
 };
 
+async function holdsLaxAdminRoles(userId: string): Promise<boolean> {
+  const roles = await getServerLaxAdminRoles(userId).catch(() => null);
+  return (roles?.assignments.length ?? 0) > 0;
+}
+
 export const loadAdminStaffDetail = cache(
   async (userId: string): Promise<AdminStaffDetailBundle> => {
     await requireAdminCapability(USERS_DIRECTORY_ACCESS, `/admin/staff/${userId}`);
     const user = await loadAdminUserDetail(userId);
-    if (user.role !== "staff") {
+    // Someone with LAX Admin roles only is staff too: their roles are managed on this record.
+    if (user.role !== "staff" && !(await holdsLaxAdminRoles(userId))) {
       redirect(`/admin/clients/${userId}`);
     }
     const sessionUser = await getServerSessionUser();

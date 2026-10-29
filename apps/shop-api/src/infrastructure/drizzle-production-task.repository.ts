@@ -14,7 +14,6 @@ import type {
   ProductionTaskStaff,
   ProductionTaskStatus,
 } from "@auction/shop-contracts";
-import { roleHasCapability } from "@auction/shop-domain";
 import { type SQL, and, asc, count, eq, isNull, or, sql } from "drizzle-orm";
 import type {
   ProductionTaskFilters,
@@ -23,6 +22,7 @@ import type {
 import { keysetAfter, orderByMsTimestampId } from "./admin-created-at-keyset.js";
 import { containsPattern } from "./drizzle-editorial-search.reader.js";
 import { insertShopAdminAudit } from "./shop-admin-audit.js";
+import { listStaffHoldingCapability } from "./shop-staff-active-roles.sql.js";
 
 /** The `target_type` of every audit row written for a production task. */
 export const PRODUCTION_TASK_AUDIT_TARGET = "shop_production_task";
@@ -322,21 +322,8 @@ export function createDrizzleProductionTaskRepository(db: Database): ProductionT
     },
 
     async listAssignees() {
-      const staff = await db
-        .select({
-          subject: shopStaffMember.identitySubjectId,
-          role: shopStaffMember.role,
-          name: shopUserProfile.name,
-          email: shopUserProfile.email,
-        })
-        .from(shopStaffMember)
-        .leftJoin(
-          shopUserProfile,
-          eq(shopUserProfile.identitySubjectId, shopStaffMember.identitySubjectId),
-        )
-        .where(isNull(shopStaffMember.disabledAt));
+      const staff = await listStaffHoldingCapability(db, "production.write");
       return staff
-        .filter((member) => roleHasCapability(member.role, "production.write"))
         .map((member) =>
           staffRef(member.subject, { name: member.name, email: member.email, role: member.role }),
         )

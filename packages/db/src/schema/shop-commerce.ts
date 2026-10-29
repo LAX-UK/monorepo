@@ -130,6 +130,8 @@ export const shopStaffRoleEnum = pgEnum("shop_staff_role", [
   "operations",
   "finance",
   "catalogue_editor",
+  "editor",
+  "read_only",
 ]);
 
 export const shopSaleAuthorityRequestStatusEnum = pgEnum("shop_sale_authority_request_status", [
@@ -958,6 +960,45 @@ export const shopStaffMember = pgTable(
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [uniqueIndex("shop_staff_member_subject_uid").on(table.identitySubjectId)],
+);
+
+/**
+ * The LAX Admin roles each staff member holds, each for a period. Capabilities are the union of
+ * the roles in force; `shop_staff_member.role` keeps the primary one for display. Rows are never
+ * deleted: removing or expiring a role sets `ends_at` and records the end.
+ */
+export const shopStaffRoleAssignment = pgTable(
+  "shop_staff_role_assignment",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    identitySubjectId: text("identity_subject_id")
+      .notNull()
+      .references(() => shopStaffMember.identitySubjectId, {
+        onDelete: "cascade",
+        onUpdate: "cascade",
+      }),
+    role: shopStaffRoleEnum("role").notNull(),
+    startsAt: timestamp("starts_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    endsAt: timestamp("ends_at", { mode: "date", withTimezone: true }),
+    grantedBySubjectId: text("granted_by_subject_id"),
+    grantedAt: timestamp("granted_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    reason: text("reason"),
+    /** When the end was recorded (removal or the daily expiry); null while the role runs. */
+    endRecordedAt: timestamp("end_recorded_at", { mode: "date", withTimezone: true }),
+    /** The Bid event that gave the role, so Bid can tell a request was applied. */
+    grantedEventId: bigint("granted_event_id", { mode: "number" }),
+    /** The Bid event that ended the role. */
+    endedEventId: bigint("ended_event_id", { mode: "number" }),
+  },
+  (table) => [
+    uniqueIndex("shop_staff_role_assignment_open_uidx")
+      .on(table.identitySubjectId, table.role)
+      .where(sql`${table.endsAt} IS NULL`),
+    index("shop_staff_role_assignment_subject_idx").on(table.identitySubjectId),
+    index("shop_staff_role_assignment_unrecorded_end_idx")
+      .on(table.endsAt)
+      .where(sql`${table.endsAt} IS NOT NULL AND ${table.endRecordedAt} IS NULL`),
+  ],
 );
 
 export const shopAdminAudit = pgTable(

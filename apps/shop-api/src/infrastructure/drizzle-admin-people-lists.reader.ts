@@ -15,6 +15,7 @@ import {
   type AdminAuditListQuery,
   type AdminStaffListQuery,
 } from "@auction/shop-contracts";
+import { laxShopStaffRoles } from "@auction/types";
 import {
   type SQL,
   and,
@@ -53,6 +54,18 @@ import {
   resolveWorkListLimit,
   searchPatterns,
 } from "./drizzle-admin-work-lists.reader.js";
+import {
+  type CurrentShopStaffRole,
+  currentShopStaffRolesSql,
+  holdsAnyShopStaffRoleSql,
+} from "./shop-staff-active-roles.sql.js";
+
+const ROLE_ORDER = new Map<string, number>(laxShopStaffRoles.map((role, i) => [role, i]));
+
+/** A person's roles in role order, so the same set always reads the same. */
+function inRoleOrder(roles: readonly CurrentShopStaffRole[]): CurrentShopStaffRole[] {
+  return [...roles].sort((a, b) => (ROLE_ORDER.get(a.role) ?? 99) - (ROLE_ORDER.get(b.role) ?? 99));
+}
 
 /*
  * The people lists in LAX Admin: clients, staff and the audit log. Each searches, filters, sorts
@@ -246,11 +259,9 @@ export function createDrizzleAdminPeopleListsReader(db: Database) {
         .groupBy(shopAdminAudit.actorSubjectId)
         .as("staff_last_active");
       const filters = [
+        // A person counts for every role they hold in force, not only the one shown.
         input.role
-          ? inArray(
-              shopStaffMember.role,
-              input.role.split(",") as (typeof shopStaffMember.$inferSelect.role)[],
-            )
+          ? holdsAnyShopStaffRoleSql(shopStaffMember.identitySubjectId, input.role.split(","))
           : undefined,
         search
           ? or(
@@ -264,6 +275,7 @@ export function createDrizzleAdminPeopleListsReader(db: Database) {
         db
           .select({
             member: shopStaffMember,
+            roles: currentShopStaffRolesSql(shopStaffMember.identitySubjectId),
             displayName: shopUserProfile.name,
             email: shopUserProfile.email,
             lastActiveAt: lastActive.lastActiveAt,
@@ -308,6 +320,7 @@ export function createDrizzleAdminPeopleListsReader(db: Database) {
             email: clean(row.email),
             lastActiveAt: row.lastActiveAt ? new Date(row.lastActiveAt).toISOString() : null,
             role: row.member.role,
+            roles: inRoleOrder(row.roles),
             disabledAt: row.member.disabledAt?.toISOString() ?? null,
             createdAt: row.member.createdAt.toISOString(),
           }),

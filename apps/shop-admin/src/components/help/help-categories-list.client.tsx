@@ -165,6 +165,7 @@ export function HelpCategoriesList({
       {
         id: "publication",
         label: publish ? "Publish…" : "Unpublish…",
+        requires: "editorial.publish",
         icon: publish ? Eye : EyeOff,
         onSelect: () => openDialog({ kind: "publish", row, publish }),
       },

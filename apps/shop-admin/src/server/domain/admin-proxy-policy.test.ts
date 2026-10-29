@@ -50,9 +50,9 @@ describe("resolveAdminProxyTarget", () => {
   });
 
   it.each([
-    ["POST", "/api/admin/staff/grants"],
-    ["DELETE", "/api/admin/staff/grants/subject-1"],
-  ])("requires recent auth for staff role change %s %s", (method, bffPath) => {
+    ["POST", "/api/admin/refunds"],
+    ["POST", "/api/admin/cancellations"],
+  ])("requires recent auth for money change %s %s", (method, bffPath) => {
     const resolved = resolveAdminProxyTarget({
       bffPath,
       shopApiBaseUrl: "http://shop-api:3011",

@@ -180,6 +180,7 @@ export function EnquiryConversation({
           closed ? (
             <StaffButton
               variant="primary"
+              requires="enquiry.write"
               icon={<RotateCcw aria-hidden />}
               loading={actions.pending}
               onClick={() => void actions.reopen(target)}
@@ -189,6 +190,7 @@ export function EnquiryConversation({
           ) : (
             <StaffButton
               variant="primary"
+              requires="enquiry.write"
               icon={<CircleCheck aria-hidden />}
               loading={actions.pending}
               onClick={() => actions.requestClose(target)}

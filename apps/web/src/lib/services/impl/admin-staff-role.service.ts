@@ -1,23 +1,34 @@
-import type { AdminAssignStaffRoleBody, AdminRemoveStaffRoleBody } from "@auction/validators";
 import type { IAuthedApiClient } from "../http/authed-api-client";
 import type { IAdminStaffRoleService } from "../interfaces/admin-staff-role-service";
 
 const jsonHeaders = { "Content-Type": "application/json" };
-const rolesPath = (userId: string) => `/admin/staff/${encodeURIComponent(userId)}/roles`;
 
-export class AdminStaffRoleService implements IAdminStaffRoleService {
-  constructor(private readonly api: IAuthedApiClient) {}
+/**
+ * One admin's role changes on the staff record: `segment` names the admin's roles in the API
+ * path (`roles` for Bid admin, `lax-admin-roles` for LAX Admin).
+ */
+export class AdminStaffRoleService<Assign, Remove>
+  implements IAdminStaffRoleService<Assign, Remove>
+{
+  constructor(
+    private readonly api: IAuthedApiClient,
+    private readonly segment: "roles" | "lax-admin-roles" = "roles",
+  ) {}
 
-  assign(userId: string, body: AdminAssignStaffRoleBody) {
-    return this.api.json<unknown>(rolesPath(userId), {
+  private path(userId: string): string {
+    return `/admin/staff/${encodeURIComponent(userId)}/${this.segment}`;
+  }
+
+  assign(userId: string, body: Assign) {
+    return this.api.json<unknown>(this.path(userId), {
       method: "POST",
       headers: jsonHeaders,
       body: JSON.stringify(body),
     });
   }
 
-  remove(userId: string, body: AdminRemoveStaffRoleBody) {
-    return this.api.json<unknown>(`${rolesPath(userId)}/remove`, {
+  remove(userId: string, body: Remove) {
+    return this.api.json<unknown>(`${this.path(userId)}/remove`, {
       method: "POST",
       headers: jsonHeaders,
       body: JSON.stringify(body),

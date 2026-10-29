@@ -3,7 +3,7 @@ import {
   ADMIN_WORK_LIST_SEARCH_MAX_LENGTH,
 } from "@auction/shop-contracts";
 import type { TeamView } from "@auction/staff-ui";
-import { GRANTABLE_STAFF_ROLES, type GrantableStaffRole } from "./staff-directory.vm";
+import { STAFF_ROLES, type StaffRoleValue } from "./staff-directory.vm";
 import { defineWorkList } from "./work-list.vm";
 
 /*
@@ -42,7 +42,7 @@ export const staffList = defineWorkList({
     },
   ],
   defaultView: "all",
-  filters: { role: { anyOf: GRANTABLE_STAFF_ROLES } },
+  filters: { role: { anyOf: STAFF_ROLES } },
   sorts: {
     name: { asc: "name_asc", desc: "name_desc" },
     added: { asc: "added_asc", desc: "added_desc" },
@@ -52,13 +52,13 @@ export const staffList = defineWorkList({
   searchMaxLength: ADMIN_WORK_LIST_SEARCH_MAX_LENGTH,
 });
 
-const TEAMS: ReadonlyArray<{ id: string; label: string; roles: readonly GrantableStaffRole[] }> = [
+const TEAMS: ReadonlyArray<{ id: string; label: string; roles: readonly StaffRoleValue[] }> = [
   { id: "admins", label: "Administrators", roles: ["shop_admin"] },
   { id: "sales", label: "Sales team", roles: ["account_manager", "broker"] },
   {
     id: "operations",
-    label: "Operations and catalogue",
-    roles: ["operations", "catalogue_editor"],
+    label: "Operations, catalogue and editorial",
+    roles: ["operations", "catalogue_editor", "editor"],
   },
   { id: "finance", label: "Finance", roles: ["finance"] },
 ];

@@ -7,6 +7,7 @@ import type { StaffAccessAdminService } from "../../admin/staff-access-admin.ser
 import type { DeliveryOpsApplicationService } from "../../delivery-ops.application.service.js";
 import type { TwoFactorPolicyService } from "../../security/two-factor-policy.service.js";
 import type { IStaffStepUpGuard } from "../../staff-step-up.service.js";
+import type { LaxAdminRolesService } from "../../staff/lax-admin-roles.service.js";
 import type { StaffRolesAdminService } from "../../staff/staff-roles-admin.service.js";
 import type { IAtgAdminService } from "../atg-admin-service.js";
 import type { IBuyerAgentAuthorisationService } from "../buyer-agent-authorisation-service.js";
@@ -65,12 +66,11 @@ export type AdminIntegrationRouteServices = {
 export type AdminStaffSecurityRouteServices = {
   staffTwoFactorPolicy: Pick<TwoFactorPolicyService, "readStaffPolicy" | "setStaffPolicy">;
   twoFactorReset: Pick<AdminTwoFactorResetService, "reset">;
-  staffAccess: Pick<
-    StaffAccessAdminService,
-    "summaries" | "detail" | "setRemoteRole" | "revokeRemote" | "myTools"
-  >;
+  staffAccess: Pick<StaffAccessAdminService, "summaries" | "detail" | "myTools">;
   /** A staff member's Bid roles, role changes and the access review. */
   staffRoles: Pick<StaffRolesAdminService, "overview" | "assign" | "remove" | "accessReview">;
+  /** A person's LAX Admin roles on the same staff record, and changes to them. */
+  laxAdminRoles: Pick<LaxAdminRolesService, "overview" | "assign" | "remove">;
   savedViews: Pick<AdminSavedViewService, "list" | "create" | "rename" | "reorder" | "remove">;
   /** Whether the signed-in staff member's Identity session is recent enough (step-up). */
   stepUp: IStaffStepUpGuard;

@@ -12,7 +12,7 @@ import {
   summariseEditionRun,
 } from "./artwork-catalogue.js";
 import { planEditionsForArtwork } from "./edition-allocation.js";
-import { roleHasCapability } from "./staff-capabilities.js";
+import { rolesGranting } from "./staff-capabilities.js";
 
 const PUBLISHED = new Date("2026-03-01T10:00:00Z");
 
@@ -250,11 +250,7 @@ describe("archiving an artist", () => {
 
 describe("edition price capability", () => {
   it("is held by shop admins and finance only", () => {
-    expect(roleHasCapability("shop_admin", "artwork_price.write")).toBe(true);
-    expect(roleHasCapability("finance", "artwork_price.write")).toBe(true);
-    for (const role of ["catalogue_editor", "account_manager", "broker", "operations"] as const) {
-      expect(roleHasCapability(role, "artwork_price.write")).toBe(false);
-    }
+    expect(rolesGranting("artwork_price.write")).toEqual(["shop_admin", "finance"]);
   });
 });
 

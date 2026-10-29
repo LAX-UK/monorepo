@@ -42,10 +42,6 @@ import type { createCreateMerchandiseProductHandler } from "./infrastructure/han
 import type { createCreateProductionTaskHandler } from "./infrastructure/handlers/admin/create-production-task.handler.js";
 import type { createCreateStockHoldHandler } from "./infrastructure/handlers/admin/create-stock-hold.handler.js";
 import type {
-  createGrantStaffRoleHandler,
-  createRevokeStaffRoleHandler,
-} from "./infrastructure/handlers/admin/grant-staff-role.handler.js";
-import type {
   createLinkArtistIdentityHandler,
   createUnlinkArtistIdentityHandler,
 } from "./infrastructure/handlers/admin/link-artist-identity.handler.js";
@@ -71,8 +67,6 @@ export type AdminRoutesDeps = {
   ) => ReturnType<SaleAuthorityWriter["grantSaleAuthority"]>;
   getSaleAuthorityRequest: AdminReadPorts["saleAuthorityRequests"]["getRequestById"];
   rejectSaleAuthorityRequest: ReturnType<typeof createRejectSaleAuthorityRequestHandler>;
-  grantStaffRole: ReturnType<typeof createGrantStaffRoleHandler>;
-  revokeStaffRole: ReturnType<typeof createRevokeStaffRoleHandler>;
   adminRead: AdminReadPorts;
   enquiryInbox: EnquiryInboxService;
   artistApplicationReview: ArtistApplicationReviewService;

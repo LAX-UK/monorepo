@@ -1,53 +1,51 @@
 import { describe, expect, it } from "vitest";
+import { ADMINISTRATOR_ONLY_CAPABILITIES, checkSeparateApprover } from "./staff-action-rules.js";
 import {
   OVERVIEW_KPI_CAPABILITY,
+  READ_ONLY_CAPABILITIES,
   SHOP_STAFF_CAPABILITIES,
+  SHOP_STAFF_ROLES,
   type ShopStaffCapability,
   type ShopStaffRole,
   capabilitiesForRole,
+  capabilitiesForRoles,
   clientListScope,
-  overviewKpiKeysForRole,
-  roleHasCapability,
+  overviewKpiKeysFor,
+  rolesGranting,
+  rolesHaveCapability,
 } from "./staff-capabilities.js";
 
-const ROLES: ShopStaffRole[] = [
-  "shop_admin",
-  "account_manager",
-  "broker",
-  "operations",
-  "finance",
-  "catalogue_editor",
-];
+const can = (role: ShopStaffRole, capability: ShopStaffCapability) =>
+  rolesHaveCapability([role], capability);
 
 describe("staff capabilities matrix", () => {
   it.each(
-    ROLES.flatMap((role) =>
+    SHOP_STAFF_ROLES.flatMap((role) =>
       SHOP_STAFF_CAPABILITIES.map((capability) => [role, capability] as const),
     ),
   )("role %s capability %s", (role, capability) => {
-    const allowed = capabilitiesForRole(role).includes(capability);
-    expect(roleHasCapability(role, capability)).toBe(allowed);
+    expect(can(role, capability)).toBe(capabilitiesForRole(role).includes(capability));
   });
 
-  it("brokers do not receive third_party_sale.write", () => {
-    expect(roleHasCapability("broker", "third_party_sale.write")).toBe(false);
+  it("gives the Administrator every capability", () => {
+    expect([...capabilitiesForRoles(["shop_admin"])].sort()).toEqual(
+      [...SHOP_STAFF_CAPABILITIES].sort(),
+    );
   });
 
-  it("operations receive third_party_sale.write", () => {
-    expect(roleHasCapability("operations", "third_party_sale.write")).toBe(true);
-  });
-
-  it("merchandise capabilities exist on shop_admin", () => {
-    for (const cap of ["merchandise.read", "merchandise.write"] as ShopStaffCapability[]) {
-      expect(roleHasCapability("shop_admin", cap)).toBe(true);
+  it("keeps settings, edition corrections and hors commerce approval with the Administrator", () => {
+    for (const capability of ADMINISTRATOR_ONLY_CAPABILITIES) {
+      expect(rolesGranting(capability)).toEqual(["shop_admin"]);
     }
   });
 
+  it("brokers do not receive third_party_sale.write; operations do", () => {
+    expect(can("broker", "third_party_sale.write")).toBe(false);
+    expect(can("operations", "third_party_sale.write")).toBe(true);
+  });
+
   it("stock_hold.override is limited to managers and admins", () => {
-    expect(roleHasCapability("shop_admin", "stock_hold.override")).toBe(true);
-    expect(roleHasCapability("account_manager", "stock_hold.override")).toBe(true);
-    expect(roleHasCapability("broker", "stock_hold.override")).toBe(false);
-    expect(roleHasCapability("operations", "stock_hold.override")).toBe(false);
+    expect(rolesGranting("stock_hold.override")).toEqual(["shop_admin", "account_manager"]);
   });
 
   it.each<[ShopStaffRole, ShopStaffCapability[]]>([
@@ -55,11 +53,13 @@ describe("staff capabilities matrix", () => {
       "shop_admin",
       ["editorial.write", "editorial.publish", "enquiry.read", "enquiry.write", "order.read"],
     ],
-    ["catalogue_editor", ["editorial.write", "editorial.publish"]],
+    ["catalogue_editor", []],
+    ["editor", ["editorial.write", "editorial.publish"]],
     ["account_manager", ["enquiry.read", "enquiry.write", "order.read"]],
     ["broker", ["enquiry.read"]],
     ["operations", ["order.read", "enquiry.read"]],
     ["finance", ["order.read"]],
+    ["read_only", ["order.read", "enquiry.read"]],
   ])("%s holds %j from the editorial, enquiry and order capabilities", (role, expected) => {
     const scoped = [
       "editorial.write",
@@ -72,34 +72,69 @@ describe("staff capabilities matrix", () => {
     expect([...held].sort()).toEqual([...expected].sort());
   });
 
-  it("lets only admins and catalogue editors review artist applications", () => {
-    const reviewers = ROLES.filter((role) => roleHasCapability(role, "artist_application.review"));
-    expect(reviewers).toEqual(["shop_admin", "catalogue_editor"]);
+  it("moves editorial work from Catalogue editor to Editor", () => {
+    expect(rolesGranting("editorial.publish")).toEqual(["shop_admin", "editor"]);
+    expect(rolesGranting("editorial.write")).toEqual(["shop_admin", "editor"]);
+    expect(capabilitiesForRole("editor")).not.toContain("catalogue.write");
   });
 
-  it("keeps editorial publishing out of every role except admins and catalogue editors", () => {
-    for (const role of ["account_manager", "broker", "operations", "finance"] as ShopStaffRole[]) {
-      expect(roleHasCapability(role, "editorial.publish")).toBe(false);
+  it("keeps catalogue and artist applications with Catalogue editor", () => {
+    expect(rolesGranting("artist_application.review")).toEqual(["shop_admin", "catalogue_editor"]);
+    expect(can("catalogue_editor", "catalogue.write")).toBe(true);
+    expect(can("catalogue_editor", "artwork_price.write")).toBe(false);
+  });
+
+  it("gives Read-only only read capabilities, and never buying prices or client records", () => {
+    expect([...capabilitiesForRole("read_only")]).toEqual([...READ_ONLY_CAPABILITIES]);
+    for (const capability of capabilitiesForRole("read_only")) {
+      expect(capability.endsWith(".read")).toBe(true);
     }
-  });
-
-  it("keeps catalogue.write for catalogue editors so artworks and artists stay editable", () => {
-    expect(roleHasCapability("catalogue_editor", "catalogue.write")).toBe(true);
+    for (const closed of [
+      "purchase_price.read_assigned",
+      "client.read_all",
+      "client.read_assigned",
+      "audit.read",
+    ] as const) {
+      expect(can("read_only", closed)).toBe(false);
+    }
   });
 });
 
-describe("overviewKpiKeysForRole", () => {
-  it("offers a figure only to roles that hold the capability for its list", () => {
-    for (const role of ROLES) {
-      for (const key of overviewKpiKeysForRole(role)) {
-        expect(roleHasCapability(role, OVERVIEW_KPI_CAPABILITY[key])).toBe(true);
+describe("several roles", () => {
+  it("unions the capabilities of every role held", () => {
+    const both = capabilitiesForRoles(["catalogue_editor", "editor"]);
+    expect(both.has("catalogue.write")).toBe(true);
+    expect(both.has("editorial.publish")).toBe(true);
+    expect(both.has("refund.write")).toBe(false);
+  });
+
+  it("gives nothing for no roles", () => {
+    expect(capabilitiesForRoles([]).size).toBe(0);
+    expect(rolesHaveCapability([], "order.read")).toBe(false);
+  });
+});
+
+describe("overviewKpiKeysFor", () => {
+  it("offers a figure only to people who hold the capability for its list", () => {
+    for (const role of SHOP_STAFF_ROLES) {
+      const capabilities = capabilitiesForRoles([role]);
+      for (const key of overviewKpiKeysFor(capabilities)) {
+        expect(capabilities.has(OVERVIEW_KPI_CAPABILITY[key])).toBe(true);
       }
     }
   });
 
+  it("counts every role a person holds", () => {
+    expect(overviewKpiKeysFor(capabilitiesForRoles(["operations", "finance"]))).toEqual([
+      "fulfilmentOpenCount",
+      "payoutsDueCount",
+    ]);
+  });
+
   it("offers nothing to roles with no overview list, and every figure to admins", () => {
-    expect(overviewKpiKeysForRole("catalogue_editor")).toEqual([]);
-    expect(overviewKpiKeysForRole("shop_admin")).toHaveLength(
+    expect(overviewKpiKeysFor(capabilitiesForRoles(["catalogue_editor", "editor"]))).toEqual([]);
+    expect(overviewKpiKeysFor(capabilitiesForRoles(["read_only"]))).toEqual([]);
+    expect(overviewKpiKeysFor(capabilitiesForRoles(["shop_admin"]))).toHaveLength(
       Object.keys(OVERVIEW_KPI_CAPABILITY).length,
     );
   });
@@ -117,6 +152,34 @@ describe("clientListScope", () => {
 
   it("gives everyone else no client list", () => {
     expect(clientListScope(["order.read"])).toBe("none");
-    expect(clientListScope([])).toBe("none");
+    expect(clientListScope(capabilitiesForRoles(["read_only"]))).toBe("none");
+  });
+});
+
+describe("separate approver", () => {
+  const base = { action: "refund.write" as const, requestedBy: "staff-a", approvalRequired: true };
+
+  it("refuses approval by the person who requested it", () => {
+    expect(checkSeparateApprover({ ...base, approvedBy: "staff-a" })).toEqual({
+      ok: false,
+      reason: "approver_is_requester",
+    });
+    expect(
+      checkSeparateApprover({ ...base, action: "payout.mark_paid", approvedBy: " staff-a " }),
+    ).toEqual({ ok: false, reason: "approver_is_requester" });
+  });
+
+  it("asks for an approver when approval is required, and accepts someone else", () => {
+    expect(checkSeparateApprover({ ...base, approvedBy: null })).toEqual({
+      ok: false,
+      reason: "approver_missing",
+    });
+    expect(checkSeparateApprover({ ...base, approvedBy: "staff-b" })).toEqual({ ok: true });
+  });
+
+  it("needs nothing when the action does not ask for approval", () => {
+    expect(checkSeparateApprover({ ...base, approvalRequired: false, approvedBy: null })).toEqual({
+      ok: true,
+    });
   });
 });

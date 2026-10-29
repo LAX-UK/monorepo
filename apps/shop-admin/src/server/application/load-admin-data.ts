@@ -74,7 +74,10 @@ export async function fetchAdminJson<T>(path: string): Promise<AdminFetchResult<
 
 export type AdminSessionPayload = {
   subject: string;
+  /** The primary role, for places with room for one. */
   role: string;
+  /** Every role in force; capabilities are their union. */
+  roles: string[];
   capabilities: string[];
   features: {
     payouts: boolean;

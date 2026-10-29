@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { err, ok } from "neverthrow";
+import { ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import type { Container } from "../container.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
@@ -10,8 +10,6 @@ function buildApp(options: { recent?: boolean } = {}) {
   const staffAccess = {
     summaries: vi.fn().mockResolvedValue(ok([])),
     detail: vi.fn().mockResolvedValue(ok({ subjectId: "usr_a", platforms: [], history: [] })),
-    setRemoteRole: vi.fn().mockResolvedValue(err({ status: 400, message: "unknown_shop_role" })),
-    revokeRemote: vi.fn().mockResolvedValue(ok({ subjectId: "usr_a", platforms: [], history: [] })),
   };
   const container = {
     env: { LOG_LEVEL: "silent", NODE_ENV: "test" } as never,
@@ -63,39 +61,14 @@ describe("admin staff access routes", () => {
     expect(staffAccess.summaries).toHaveBeenCalledWith(ACTOR, ["usr_a", "usr_b"]);
   });
 
-  it("maps service errors to their status", async () => {
+  it("no longer changes another platform's role here; LAX Admin roles have their own endpoints", async () => {
     const { app } = buildApp();
 
-    const res = await app.request("/admin/staff/usr_a/access/shop", json("PUT", { role: "x" }));
+    const put = await app.request("/admin/staff/usr_a/access/shop", json("PUT", { role: "x" }));
+    const del = await app.request("/admin/staff/usr_a/access/shop", json("DELETE"));
 
-    expect(res.status).toBe(400);
-    expect(await res.json()).toEqual({ error: "unknown_shop_role" });
-  });
-
-  it("only accepts remote platforms; Bid roles change through the staff-role endpoint", async () => {
-    const { app, staffAccess } = buildApp();
-
-    const res = await app.request("/admin/staff/usr_a/access/bid", json("DELETE"));
-
-    expect(res.status).toBe(400);
-    expect(staffAccess.revokeRemote).not.toHaveBeenCalled();
-  });
-
-  it("asks for a fresh sign-in before granting or revoking a remote role", async () => {
-    const { app, staffAccess } = buildApp({ recent: false });
-
-    const grant = await app.request("/admin/staff/usr_a/access/shop", json("PUT", { role: "x" }));
-    const revoke = await app.request("/admin/staff/usr_a/access/shop", json("DELETE"));
-
-    for (const res of [grant, revoke]) {
-      expect(res.status).toBe(403);
-      expect(await res.json()).toEqual({
-        error: "Recent sign-in required",
-        code: "step_up_required",
-      });
-    }
-    expect(staffAccess.setRemoteRole).not.toHaveBeenCalled();
-    expect(staffAccess.revokeRemote).not.toHaveBeenCalled();
+    expect(put.status).toBe(404);
+    expect(del.status).toBe(404);
   });
 
   it("still reads access without a recent sign-in", async () => {

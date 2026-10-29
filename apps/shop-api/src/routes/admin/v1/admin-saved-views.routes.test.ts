@@ -39,7 +39,7 @@ async function setup() {
     staffReader: {
       findActiveByIdentitySubject: async (subject: string) => {
         const role = people.get(subject);
-        return role ? { role, identitySubjectId: subject } : null;
+        return role ? { roles: [role], identitySubjectId: subject } : null;
       },
       brokerCanAccessClientParty: async () => false,
     },

@@ -71,7 +71,7 @@ describe("LAX staff platforms", () => {
     ).toEqual({ ok: false, message: "Bid role chosen twice (Specialist)" });
   });
 
-  it("allows several Bid roles, in role order, and one Shop role", () => {
+  it("allows several Bid roles, in role order, beside a LAX Admin role", () => {
     expect(
       normalizeLaxStaffGrants([
         { product: "shop", role: "broker" },
@@ -86,12 +86,21 @@ describe("LAX staff platforms", () => {
         { product: "shop", role: "broker" },
       ],
     });
+  });
+
+  it("allows several LAX Admin roles, in role order", () => {
     expect(
       normalizeLaxStaffGrants([
-        { product: "shop", role: "broker" },
-        { product: "shop", role: "finance" },
+        { product: "shop", role: "editor" },
+        { product: "shop", role: "catalogue_editor" },
       ]),
-    ).toEqual({ ok: false, message: "Only one role per platform (Shop)" });
+    ).toEqual({
+      ok: true,
+      grants: [
+        { product: "shop", role: "catalogue_editor" },
+        { product: "shop", role: "editor" },
+      ],
+    });
   });
 
   it("reads the Bid roles of a set of grants", () => {

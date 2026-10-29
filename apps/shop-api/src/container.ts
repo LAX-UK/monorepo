@@ -101,10 +101,6 @@ import { createCreateMerchandiseProductHandler } from "./infrastructure/handlers
 import { createCreateProductionTaskHandler } from "./infrastructure/handlers/admin/create-production-task.handler.js";
 import { createCreateStockHoldHandler } from "./infrastructure/handlers/admin/create-stock-hold.handler.js";
 import {
-  createGrantStaffRoleHandler,
-  createRevokeStaffRoleHandler,
-} from "./infrastructure/handlers/admin/grant-staff-role.handler.js";
-import {
   createLinkArtistIdentityHandler,
   createUnlinkArtistIdentityHandler,
 } from "./infrastructure/handlers/admin/link-artist-identity.handler.js";
@@ -283,8 +279,6 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   });
   const cancelAfterPossession = createCancelAfterPossessionHandler({ uow: shopUow });
   const rejectSaleAuthorityRequest = createRejectSaleAuthorityRequestHandler({ uow: shopUow });
-  const grantStaffRoleHandler = createGrantStaffRoleHandler({ uow: shopUow });
-  const revokeStaffRoleHandler = createRevokeStaffRoleHandler({ uow: shopUow });
   const linkArtistIdentity = createLinkArtistIdentityHandler({ uow: shopUow });
   const unlinkArtistIdentity = createUnlinkArtistIdentityHandler({ uow: shopUow });
   const artistSeoWriter = createDrizzleArtistSeoWriter(db);
@@ -495,8 +489,6 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
         getSaleAuthorityRequest: (requestId) =>
           adminRead.saleAuthorityRequests.getRequestById(requestId),
         rejectSaleAuthorityRequest,
-        grantStaffRole: grantStaffRoleHandler,
-        revokeStaffRole: revokeStaffRoleHandler,
         adminRead,
         artistApplicationReview: artistApplications.review,
         enquiryInbox: createEnquiryInboxService({
@@ -583,7 +575,9 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       editorial,
     },
     importArtwork,
-    grantStaffRole: (input) => grantShopStaffRole(db, input),
+    grantStaffRole: async (input) => {
+      await grantShopStaffRole(db, input);
+    },
     grantSaleAuthority: (command) => saleAuthorityWriter.grantSaleAuthority(command),
     async seedCatalogue(): Promise<void> {
       await seedShopFoundationCatalogue(importArtwork, db, (command) =>

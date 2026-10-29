@@ -12,9 +12,12 @@ vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
 
-function model(href: string | null): StaffAccessReviewPageModel {
+function model(
+  href: string | null,
+  product: "bid" | "shop" | null = null,
+): StaffAccessReviewPageModel {
   return {
-    filters: { view: "all", role: null, q: "" },
+    filters: { view: "all", product, role: null, q: "" },
     counts: { all: 1, ending: 1 },
     total: 1,
     loadError: null,
@@ -28,13 +31,34 @@ function model(href: string | null): StaffAccessReviewPageModel {
         lastSignInAt: "2026-10-27T08:00:00.000Z",
         nextEnd: "2026-11-15T00:00:00.000Z",
         href,
-        roles: [
+        roleGroups: [
           {
-            id: "asg-1",
-            role: "fulfilment",
-            label: "Fulfilment",
-            meta: "Since 5 Jan 2026 · Until 14 Nov 2026 · 18 days left",
-            endingSoon: true,
+            product: "bid",
+            label: "Bid admin",
+            roles: [
+              {
+                id: "asg-1",
+                role: "fulfilment",
+                label: "Fulfilment",
+                meta: "Since 5 Jan 2026 · Until 14 Nov 2026 · 18 days left",
+                endingSoon: true,
+                pending: null,
+              },
+            ],
+          },
+          {
+            product: "shop",
+            label: "LAX Admin",
+            roles: [
+              {
+                id: "lax-1",
+                role: "editor",
+                label: "Editor",
+                meta: "Since 5 Jan 2026",
+                endingSoon: false,
+                pending: null,
+              },
+            ],
           },
         ],
       },
@@ -42,11 +66,15 @@ function model(href: string | null): StaffAccessReviewPageModel {
   };
 }
 
-function renderAs(staffRoles: StaffRoles, href: string | null) {
+function renderAs(
+  staffRoles: StaffRoles,
+  href: string | null,
+  product: "bid" | "shop" | null = null,
+) {
   return render(
     <StaffTooltipProvider>
       <BidStaffAccessProvider platformRole="staff" staffRoles={staffRoles}>
-        <StaffAccessReviewList model={model(href)} search={{}} />
+        <StaffAccessReviewList model={model(href, product)} search={product ? { product } : {}} />
       </BidStaffAccessProvider>
     </StaffTooltipProvider>,
   );
@@ -60,6 +88,18 @@ describe("StaffAccessReviewList", () => {
       screen.getAllByText("Since 5 Jan 2026 · Until 14 Nov 2026 · 18 days left").length,
     ).toBeGreaterThan(0);
     expect(screen.getByRole("link", { name: /Ending within 30 days/ })).toBeInTheDocument();
+  });
+
+  it("shows each admin's roles under its name", () => {
+    renderAs(["administrator"], "/admin/staff/ada");
+    expect(screen.getAllByRole("list", { name: "Bid admin roles" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("list", { name: "LAX Admin roles" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Editor").length).toBeGreaterThan(0);
+  });
+
+  it("shows the admin filter as a chip that can be removed", () => {
+    renderAs(["administrator"], "/admin/staff/ada", "shop");
+    expect(screen.getByText("Admin: LAX Admin")).toBeInTheDocument();
   });
 
   it("offers the export and record links to role managers", () => {

@@ -41,7 +41,7 @@ describe("forwardAdminMutation", () => {
     });
     const { forwardAdminMutation } = await import("./forward-admin-mutation.js");
     await forwardAdminMutation({
-      bffPath: "staff/grants",
+      bffPath: "refunds",
       method: "POST",
     });
     expect(forwardAdminRequest).toHaveBeenCalledWith(

@@ -52,6 +52,8 @@ export const ADMIN_STAFF_ROLES = [
   "operations",
   "finance",
   "catalogue_editor",
+  "editor",
+  "read_only",
 ] as const;
 
 /** The first is the default. */
@@ -75,21 +77,6 @@ export const AdminStaffListQuerySchema = Type.Object({
   limit: LimitSchema,
 });
 export type AdminStaffListQuery = Static<typeof AdminStaffListQuerySchema>;
-
-/** Why someone's access was removed; kept with the change in the audit log. */
-export const ADMIN_STAFF_REVOKE_REASON_MIN_LENGTH = 5;
-export const ADMIN_STAFF_REVOKE_REASON_MAX_LENGTH = 500;
-
-export const AdminStaffRevokeBodySchema = Type.Object(
-  {
-    reason: Type.String({
-      minLength: ADMIN_STAFF_REVOKE_REASON_MIN_LENGTH,
-      maxLength: ADMIN_STAFF_REVOKE_REASON_MAX_LENGTH,
-    }),
-  },
-  { additionalProperties: false },
-);
-export type AdminStaffRevokeBody = Static<typeof AdminStaffRevokeBodySchema>;
 
 // Audit log --------------------------------------------------------------------------------
 

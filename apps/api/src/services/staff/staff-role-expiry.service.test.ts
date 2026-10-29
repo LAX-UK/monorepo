@@ -116,7 +116,7 @@ describe("StaffRoleExpiryService", () => {
       payload: { assignmentId: id, role: "saleroom_clerk", endedAt: ended.toISOString() },
     });
     expect(notifier.notified).toEqual([
-      { assignmentId: id, userId: "ada", role: "saleroom_clerk", endedAt: ended },
+      { product: "bid", assignmentId: id, userId: "ada", role: "saleroom_clerk", endedAt: ended },
     ]);
   });
 

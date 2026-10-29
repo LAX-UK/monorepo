@@ -188,7 +188,10 @@ export type AdminStaffMemberListItem = {
   displayName: string | null;
   email: string | null;
   lastActiveAt: string | null;
+  /** The primary role. */
   role: string;
+  /** Every role held or starting later, with its period, in role order. */
+  roles: { role: string; startsAt: string; endsAt: string | null }[];
   disabledAt: string | null;
   createdAt: string;
 };

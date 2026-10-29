@@ -1,24 +1,27 @@
 import type { UserStaffRole } from "../user.js";
+import type { StaffRoleAssignment } from "./staff-role-assignment.js";
 import {
-  type StaffRoleAssignment,
-  isStaffRoleAssignmentActive,
-  isStaffRoleAssignmentCurrent,
-  staffRoleAssignmentsOverlap,
-} from "./staff-role-assignment.js";
+  type ForbiddenStaffRoleCombination as AnyForbiddenStaffRoleCombination,
+  type StaffRoleAssignmentCheck as AnyStaffRoleAssignmentCheck,
+  type StaffRoleChange as AnyStaffRoleChange,
+  type StaffRoleSetCheck as AnyStaffRoleSetCheck,
+  type StaffRosterFacts,
+  createStaffRoleRules,
+} from "./staff-role-rule-engine.js";
+
+export type { StaffRoleAssignmentRefusal, StaffRosterFacts } from "./staff-role-rule-engine.js";
 
 /** The role that holds every permission; Bid must always keep at least one active holder. */
 export const ADMINISTRATOR_STAFF_ROLE: UserStaffRole = "administrator";
 
-export type ForbiddenStaffRoleCombination = {
-  readonly role: UserStaffRole;
-  /** Roles it may not be held together with; `"any"` means it is only ever held alone. */
-  readonly with: readonly UserStaffRole[] | "any";
-  readonly why: string;
-};
+export type ForbiddenStaffRoleCombination = AnyForbiddenStaffRoleCombination<UserStaffRole>;
+export type StaffRoleChange = AnyStaffRoleChange<UserStaffRole>;
+export type StaffRoleAssignmentCheck = AnyStaffRoleAssignmentCheck<UserStaffRole>;
+export type StaffRoleSetCheck = AnyStaffRoleSetCheck<UserStaffRole>;
 
 /**
- * Roles one person may not hold at the same time. Each rule reads both ways. Add a rule here
- * rather than checking roles at call sites.
+ * Roles one person may not hold at the same time in Bid admin. Each rule reads both ways. Add a
+ * rule here rather than checking roles at call sites.
  */
 export const FORBIDDEN_STAFF_ROLE_COMBINATIONS: readonly ForbiddenStaffRoleCombination[] = [
   {
@@ -38,110 +41,27 @@ export const FORBIDDEN_STAFF_ROLE_COMBINATIONS: readonly ForbiddenStaffRoleCombi
   },
 ];
 
-function ruleForbids(rule: ForbiddenStaffRoleCombination, a: UserStaffRole, b: UserStaffRole) {
-  return rule.role === a && (rule.with === "any" || rule.with.includes(b));
-}
+/** Bid admin's role rules, from the shared engine. */
+export const BID_STAFF_ROLE_RULES = createStaffRoleRules<UserStaffRole>({
+  administratorRole: ADMINISTRATOR_STAFF_ROLE,
+  forbidden: FORBIDDEN_STAFF_ROLE_COMBINATIONS,
+});
 
 /** The rule that keeps `a` and `b` apart, or null when one person may hold both. */
 export function forbiddenStaffRoleCombination(
   a: UserStaffRole,
   b: UserStaffRole,
 ): ForbiddenStaffRoleCombination | null {
-  if (a === b) return null;
-  return (
-    FORBIDDEN_STAFF_ROLE_COMBINATIONS.find(
-      (rule) => ruleForbids(rule, a, b) || ruleForbids(rule, b, a),
-    ) ?? null
-  );
+  return BID_STAFF_ROLE_RULES.forbiddenCombination(a, b);
 }
 
 /** Whether one person may not hold `a` and `b` at the same time. */
 export function isForbiddenStaffRoleCombination(a: UserStaffRole, b: UserStaffRole): boolean {
-  return forbiddenStaffRoleCombination(a, b) !== null;
-}
-
-export type StaffRoleChange =
-  | {
-      readonly kind: "assign";
-      readonly role: UserStaffRole;
-      readonly startsAt: Date;
-      readonly endsAt: Date | null;
-    }
-  | { readonly kind: "remove"; readonly role: UserStaffRole };
-
-/** Facts about everyone else on the roster that a single person's change depends on. */
-export type StaffRosterFacts = {
-  /** People other than this one who hold the administrator role right now. */
-  readonly otherActiveAdministrators: number;
-};
-
-export type StaffRoleAssignmentRefusal =
-  | "duplicate"
-  | "forbidden_combination"
-  | "last_administrator"
-  | "not_assigned"
-  | "invalid_period";
-
-export type StaffRoleAssignmentCheck =
-  | { readonly ok: true }
-  | {
-      readonly ok: false;
-      readonly reason: StaffRoleAssignmentRefusal;
-      /** The role already held that the requested one cannot be combined with. */
-      readonly conflictingRole?: UserStaffRole;
-    };
-
-const OK: StaffRoleAssignmentCheck = { ok: true };
-
-function checkAssign(
-  current: readonly StaffRoleAssignment[],
-  requested: Extract<StaffRoleChange, { kind: "assign" }>,
-  now: Date,
-): StaffRoleAssignmentCheck {
-  if (
-    requested.endsAt !== null &&
-    (requested.endsAt.getTime() <= requested.startsAt.getTime() ||
-      requested.endsAt.getTime() <= now.getTime())
-  ) {
-    return { ok: false, reason: "invalid_period" };
-  }
-  const overlapping = current.filter(
-    (held) =>
-      isStaffRoleAssignmentCurrent(held, now) && staffRoleAssignmentsOverlap(held, requested),
-  );
-  if (overlapping.some((held) => held.role === requested.role)) {
-    return { ok: false, reason: "duplicate" };
-  }
-  const conflict = overlapping.find((held) =>
-    isForbiddenStaffRoleCombination(held.role, requested.role),
-  );
-  if (conflict) {
-    return { ok: false, reason: "forbidden_combination", conflictingRole: conflict.role };
-  }
-  return OK;
-}
-
-function checkRemove(
-  current: readonly StaffRoleAssignment[],
-  requested: Extract<StaffRoleChange, { kind: "remove" }>,
-  now: Date,
-  roster: StaffRosterFacts,
-): StaffRoleAssignmentCheck {
-  const held = current.filter(
-    (a) => a.role === requested.role && isStaffRoleAssignmentCurrent(a, now),
-  );
-  if (held.length === 0) return { ok: false, reason: "not_assigned" };
-  const removesActiveAdministrator =
-    requested.role === ADMINISTRATOR_STAFF_ROLE &&
-    held.some((a) => isStaffRoleAssignmentActive(a, now));
-  if (removesActiveAdministrator && roster.otherActiveAdministrators === 0) {
-    return { ok: false, reason: "last_administrator" };
-  }
-  return OK;
+  return BID_STAFF_ROLE_RULES.isForbiddenCombination(a, b);
 }
 
 /**
- * Whether a person whose assignments are `current` may take the `requested` change at `now`:
+ * Whether a person whose Bid assignments are `current` may take the `requested` change at `now`:
  * no role twice in the same period, no forbidden combination in an overlapping period, and never
  * the removal of the last active administrator.
  */
@@ -151,47 +71,10 @@ export function checkStaffRoleAssignment(
   now: Date,
   roster: StaffRosterFacts,
 ): StaffRoleAssignmentCheck {
-  return requested.kind === "assign"
-    ? checkAssign(current, requested, now)
-    : checkRemove(current, requested, now, roster);
+  return BID_STAFF_ROLE_RULES.check(current, requested, now, roster);
 }
 
-export type StaffRoleSetCheck =
-  | { readonly ok: true }
-  | {
-      readonly ok: false;
-      readonly reason: Extract<StaffRoleAssignmentRefusal, "duplicate" | "forbidden_combination">;
-      /** The role that cannot join the ones before it. */
-      readonly role: UserStaffRole;
-      readonly conflictingRole?: UserStaffRole;
-    };
-
-/** Any fixed instant works: every role in a set starts together and stays open. */
-const SET_START = new Date(0);
-
-/**
- * Whether one person may be given every role in `roles` at once, as an invitation does: the same
- * rules as {@link checkStaffRoleAssignment}, applied to each role after the ones before it.
- */
+/** Whether one person may be given every Bid role in `roles` at once, as an invitation does. */
 export function checkStaffRoleSet(roles: readonly UserStaffRole[]): StaffRoleSetCheck {
-  const granted: StaffRoleAssignment[] = [];
-  for (const role of roles) {
-    const result = checkStaffRoleAssignment(
-      granted,
-      { kind: "assign", role, startsAt: SET_START, endsAt: null },
-      SET_START,
-      { otherActiveAdministrators: 0 },
-    );
-    if (!result.ok) {
-      const reason = result.reason === "duplicate" ? "duplicate" : "forbidden_combination";
-      return {
-        ok: false,
-        reason,
-        role,
-        ...(result.conflictingRole ? { conflictingRole: result.conflictingRole } : {}),
-      };
-    }
-    granted.push({ role, startsAt: SET_START, endsAt: null });
-  }
-  return { ok: true };
+  return BID_STAFF_ROLE_RULES.checkSet(roles);
 }

@@ -6,7 +6,9 @@ import { requireIdempotencyKey } from "../../../plugins/require-idempotency-key.
 import {
   requireRecentAuthentication,
   requireShopAdminSubject,
+  requireShopStaffAuth,
   requireShopStaffCapability,
+  staffCan,
 } from "../../../plugins/shop-admin-auth.js";
 
 const IdResponseSchema = Type.Object({
@@ -56,13 +58,13 @@ export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: 
         expiresAt: string;
         note?: string;
       };
-      const role = request.shopAdminAuth?.role ?? "broker";
+      const auth = requireShopStaffAuth(request);
       const result = await deps.createStockHold({
         editionId: body.editionId,
         clientPartyId: body.clientPartyId,
         expiresAt: body.expiresAt,
         actorSubjectId: subject,
-        actorRole: role,
+        actorMayOverride: staffCan(auth, "stock_hold.override"),
         idempotencyKey,
         ...(body.note !== undefined ? { note: body.note } : {}),
       });
@@ -88,12 +90,12 @@ export async function registerAdminThirdPartyRoutes(app: FastifyInstance, deps: 
       const idempotencyKey = requireIdempotencyKey(request);
       const subject = requireShopAdminSubject(request);
       const params = request.params as { holdId: string };
-      const auth = request.shopAdminAuth;
+      const auth = requireShopStaffAuth(request);
       const result = await deps.stockHolds.releaseHold(
         {
           holdId: params.holdId,
           actorSubjectId: subject,
-          actorRole: auth?.role ?? "broker",
+          actorMayOverride: staffCan(auth, "stock_hold.override"),
         },
         { idempotencyKey, actorSubjectId: subject },
       );

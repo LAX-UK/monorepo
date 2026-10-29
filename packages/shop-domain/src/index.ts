@@ -197,15 +197,33 @@ export {
   type ClientListScope,
   OVERVIEW_KPI_CAPABILITY,
   OVERVIEW_LOW_STOCK_CAPABILITY,
+  READ_ONLY_CAPABILITIES,
   SHOP_STAFF_CAPABILITIES,
+  SHOP_STAFF_ROLES,
   capabilitiesForRole,
+  capabilitiesForRoles,
   clientListScope,
-  overviewKpiKeysForRole,
+  overviewKpiKeysFor,
   type OverviewKpiKey,
-  roleHasCapability,
+  rolesGranting,
+  rolesHaveCapability,
   type ShopStaffCapability,
   type ShopStaffRole,
 } from "./staff-capabilities.js";
+export {
+  ADMINISTRATOR_ONLY_CAPABILITIES,
+  SEPARATE_APPROVER_ACTIONS,
+  type SeparateApproverAction,
+  type SeparateApproverCheck,
+  checkSeparateApprover,
+} from "./staff-action-rules.js";
+export {
+  LAX_ADMIN_ROLE_SUCCESSORS,
+  type LaxAdminRoleMigrationChange,
+  type LaxAdminRoleMigrationMember,
+  type LaxAdminRoleMigrationPlan,
+  planLaxAdminRoleMigration,
+} from "./staff-role-migration.js";
 export {
   isPayeeComplianceEligible,
   resolvePayeeComplianceStatus,

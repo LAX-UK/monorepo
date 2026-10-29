@@ -1,7 +1,11 @@
 import { verifyBearerToken } from "@auction/auth/token-verifier";
 import { type ProductScope, isRecentStaffAuthentication } from "@auction/identity-contracts";
 import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
-import { type ShopStaffCapability, roleHasCapability } from "@auction/shop-domain";
+import {
+  type ShopStaffCapability,
+  type ShopStaffRole,
+  capabilitiesForRoles,
+} from "@auction/shop-domain";
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import type { ShopStaffMemberReader } from "../application/ports/staff-member.reader.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
@@ -9,10 +13,18 @@ import { ShopApiError } from "../errors/shop-api-error.js";
 export type ShopAdminAuthContext = {
   subject: string;
   scopes: readonly ProductScope[];
-  role: import("@auction/shop-domain").ShopStaffRole;
+  /** Every LAX Admin role in force, in role order. */
+  roles: readonly ShopStaffRole[];
+  /** The union of the roles' capabilities: every check reads this. */
+  capabilities: ReadonlySet<ShopStaffCapability>;
   /** OIDC `auth_time` (seconds since epoch) when present on the access token. */
   authTime: number | undefined;
 };
+
+/** Whether the signed-in staff member may take actions that need `capability`. */
+export function staffCan(auth: ShopAdminAuthContext, capability: ShopStaffCapability): boolean {
+  return auth.capabilities.has(capability);
+}
 
 declare module "fastify" {
   interface FastifyRequest {
@@ -87,7 +99,8 @@ export function registerShopAdminAuthHooks(
     request.shopAdminAuth = {
       subject: verified.subject,
       scopes,
-      role: staff.role,
+      roles: staff.roles,
+      capabilities: capabilitiesForRoles(staff.roles),
       authTime: readAuthTime(verified.payload),
     };
   });
@@ -132,7 +145,7 @@ export function requireShopStaffCapability(
   if (!auth) {
     throw new ShopApiError(SHOP_API_ERROR_CODES.UNAUTHORIZED, "Unauthorized", 401);
   }
-  if (!roleHasCapability(auth.role, capability)) {
+  if (!staffCan(auth, capability)) {
     throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Insufficient capability", 403);
   }
   return auth;
@@ -147,7 +160,7 @@ export function requireAnyShopStaffCapability(
   if (!auth) {
     throw new ShopApiError(SHOP_API_ERROR_CODES.UNAUTHORIZED, "Unauthorized", 401);
   }
-  if (!capabilities.some((capability) => roleHasCapability(auth.role, capability))) {
+  if (!capabilities.some((capability) => staffCan(auth, capability))) {
     throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Insufficient capability", 403);
   }
   return auth;

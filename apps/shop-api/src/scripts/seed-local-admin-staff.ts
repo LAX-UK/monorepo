@@ -20,6 +20,8 @@ import { grantShopStaffRole } from "../infrastructure/grant-staff-role.js";
 export const LOCAL_ADMIN_STAFF: ReadonlyArray<{ role: ShopStaffRole; email: string }> = [
   { role: "shop_admin", email: "admin@lax.bid" },
   { role: "catalogue_editor", email: "staff-catalogue@lax.bid" },
+  // Editorial work moved to its own role; the catalogue account keeps it.
+  { role: "editor", email: "staff-catalogue@lax.bid" },
   { role: "operations", email: "staff-operations@lax.bid" },
   { role: "finance", email: "accountant@lax.bid" },
   { role: "account_manager", email: "staff-advisor@lax.bid" },

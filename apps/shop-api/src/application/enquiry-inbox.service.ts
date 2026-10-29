@@ -5,7 +5,7 @@ import {
   type EnquiryStatus,
   SHOP_API_ERROR_CODES,
 } from "@auction/shop-contracts";
-import { roleHasCapability } from "@auction/shop-domain";
+import { rolesHaveCapability } from "@auction/shop-domain";
 import { ShopApiError, notFound } from "../errors/shop-api-error.js";
 import { decodeEnquiryInboxCursor, encodeEnquiryInboxCursor } from "./enquiry-inbox-cursor.js";
 import type {
@@ -86,7 +86,7 @@ export function createEnquiryInboxService(deps: {
       }
       if (typeof command.assigneeSubject === "string") {
         const member = await staffReader.findActiveByIdentitySubject(command.assigneeSubject);
-        if (!member || !roleHasCapability(member.role, "enquiry.write")) {
+        if (!member || !rolesHaveCapability(member.roles, "enquiry.write")) {
           throw validation("The assignee must be an active staff member who can handle enquiries");
         }
       }

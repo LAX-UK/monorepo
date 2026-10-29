@@ -2,12 +2,14 @@
 
 import { ChoiceRow, EnumSelect, Field, StaffCheckbox, useStaffField } from "@auction/staff-ui";
 import {
+  LAX_ADMIN_ROLE_RULES,
   LAX_STAFF_PLATFORMS,
   type LaxStaffAccessProduct,
   type LaxStaffGrant,
   type LaxStaffPlatform,
   checkStaffRoleSet,
   laxStaffRoleOption,
+  normalizeLaxAdminRoles,
   normalizeStaffRoles,
   staffRoleRefusalMessage,
 } from "@auction/types";
@@ -46,17 +48,31 @@ export function draftGrants(drafts: readonly DraftPlatformAccess[]): LaxStaffGra
 }
 
 /**
- * Bid roles one person may not hold together, as soon as they are chosen: the same rule the API
- * applies when the invitation is sent and again when it is accepted.
+ * Roles one person may not hold together on an admin, as soon as they are chosen: the same rule
+ * the API applies when the invitation is sent, and the admin again when it is accepted.
  */
 export function platformRoleCombinationIssue(
   drafts: readonly DraftPlatformAccess[],
 ): PlatformGrantsIssue | null {
   const bid = drafts.find((draft) => draft.product === "bid");
-  if (!bid) return null;
-  const together = checkStaffRoleSet(normalizeStaffRoles(bid.roles));
-  if (together.ok) return null;
-  return { message: staffRoleRefusalMessage(together), target: "role", product: "bid" };
+  if (bid) {
+    const together = checkStaffRoleSet(normalizeStaffRoles(bid.roles));
+    if (!together.ok) {
+      return { message: staffRoleRefusalMessage(together), target: "role", product: "bid" };
+    }
+  }
+  const shop = drafts.find((draft) => draft.product === "shop");
+  if (shop) {
+    const together = LAX_ADMIN_ROLE_RULES.checkSet(normalizeLaxAdminRoles(shop.roles));
+    if (!together.ok) {
+      return {
+        message: staffRoleRefusalMessage({ ...together, product: "shop" }),
+        target: "role",
+        product: "shop",
+      };
+    }
+  }
+  return null;
 }
 
 /** Checks the drafts before submit; names the first problem and the field it belongs to. */
@@ -139,10 +155,9 @@ function RoleChecklist({
 }
 
 /**
- * One row per LAX platform: tick the platform to give access, then choose its roles: several on
- * Bid, where permissions add up, one on Shop. Sits inside a `Field`, which supplies the group's
- * label, hint and error. A Bid combination one person may not hold is explained as soon as it is
- * chosen.
+ * One row per LAX platform: tick the platform to give access, then choose its roles, which add
+ * up. Sits inside a `Field`, which supplies the group's label, hint and error. A combination one
+ * person may not hold on an admin is explained as soon as it is chosen.
  */
 export function InvitePlatformAccessPicker({
   id,

@@ -12,8 +12,6 @@ import {
   type StaffToolId,
   USERS_DIRECTORY_ACCESS,
   type UserRole,
-  laxStaffRoleOption,
-  roleHasCapability,
   staffToolsFromGrants,
   userHasAccessTo,
 } from "@auction/types";
@@ -63,9 +61,6 @@ export type StaffAccessDetail = {
   platforms: StaffAccessPlatformView[];
   history: StaffAccessHistoryView[];
 };
-
-/** Platforms other than Bid apply their own roles from `lax.staff_access.*` events (D36). */
-export type RemoteStaffAccessProduct = Exclude<LaxStaffAccessProduct, "bid">;
 
 const HISTORY_LIMIT = 50;
 export const STAFF_ACCESS_SUMMARY_BATCH = 100;
@@ -164,46 +159,10 @@ export class StaffAccessAdminService {
       })),
     });
   }
-
-  async setRemoteRole(
-    actor: StaffAccessActor,
-    subjectId: string,
-    product: RemoteStaffAccessProduct,
-    role: string,
-  ): Promise<Result<StaffAccessDetail, StaffAccessError>> {
-    if (!canManage(actor)) return err(forbidden);
-    if (actor.userId === subjectId) return err({ status: 400, message: "cannot_change_own_role" });
-    if (!laxStaffRoleOption(product, role)) {
-      return err({ status: 400, message: `unknown_${product}_role` });
-    }
-    if (!(await this.deps.users.getById(subjectId))) {
-      return err({ status: 404, message: "user_not_found" });
-    }
-    await this.deps.access.requestGrant({ subjectId, product, role, actorSubjectId: actor.userId });
-    return this.detail(actor, subjectId);
-  }
-
-  async revokeRemote(
-    actor: StaffAccessActor,
-    subjectId: string,
-    product: RemoteStaffAccessProduct,
-  ): Promise<Result<StaffAccessDetail, StaffAccessError>> {
-    if (!canManage(actor)) return err(forbidden);
-    if (actor.userId === subjectId) return err({ status: 400, message: "cannot_revoke_self" });
-    if (!(await this.deps.users.getById(subjectId))) {
-      return err({ status: 404, message: "user_not_found" });
-    }
-    await this.deps.access.requestRevoke({ subjectId, product, actorSubjectId: actor.userId });
-    return this.detail(actor, subjectId);
-  }
 }
 
 function canRead(actor: StaffAccessActor): boolean {
   return userHasAccessTo(actor.role as UserRole, actor.staffRoles, USERS_DIRECTORY_ACCESS);
-}
-
-function canManage(actor: StaffAccessActor): boolean {
-  return roleHasCapability(actor.role as UserRole, "user.invite", actor.staffRoles);
 }
 
 function groupBySubject(entries: LaxStaffAccessEntry[]): Map<string, LaxStaffAccessEntry[]> {

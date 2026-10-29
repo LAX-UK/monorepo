@@ -37,6 +37,7 @@ import {
   formatStaffDateTime,
   parsePoundsToPence,
   toast,
+  useStaffCan,
   useUnsavedChanges,
 } from "@auction/staff-ui";
 import { Archive, ArchiveRestore, Save } from "@auction/staff-ui/icons";
@@ -286,7 +287,9 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
     router.refresh();
   }
 
-  const disabled = busy !== null;
+  // Staff who may only read merchandise see the product as it is, with nothing to change.
+  const canWrite = useStaffCan("merchandise.write");
+  const disabled = busy !== null || !canWrite;
   const name = form.title.trim() || "this product";
   const archiving = status === "active";
   const heading = detail ? detail.title : "New product";
@@ -308,6 +311,11 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
       }
       notice={
         <>
+          {!canWrite ? (
+            <Notice tone="info" title="View only">
+              Your roles let you see this product but not change it.
+            </Notice>
+          ) : null}
           {status === "archived" ? (
             <Notice tone="warning" title="This product is archived">
               It is not shown on the shop and cannot be bought. Restore it to put it back on sale.
@@ -460,6 +468,7 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
               <MappedStatusBadge status={status} present={presentMerchandiseStatus} />
               <StaffButton
                 type="button"
+                requires="merchandise.write"
                 variant={archiving ? "danger-secondary" : "secondary"}
                 icon={archiving ? <Archive aria-hidden /> : <ArchiveRestore aria-hidden />}
                 disabled={disabled || (archiving && dirty)}
@@ -489,6 +498,7 @@ export function MerchandiseProductEditor({ detail }: { detail: MerchandiseProduc
           </StaffButton>
           <StaffButton
             type="submit"
+            requires="merchandise.write"
             variant="primary"
             icon={<Save aria-hidden />}
             loading={busy === "save"}

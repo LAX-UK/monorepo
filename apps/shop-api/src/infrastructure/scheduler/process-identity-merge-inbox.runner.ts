@@ -12,34 +12,15 @@ import {
   shopStaffMember,
 } from "@auction/db/schema";
 import { userIdentityMergedPayloadSchemaV1 } from "@auction/identity-contracts";
+import { normalizeLaxAdminRoles, primaryLaxAdminRole } from "@auction/types";
 import { and, asc, eq, gt, inArray, isNull, notExists, sql } from "drizzle-orm";
 import { createDrizzleShopNotificationPublisher } from "../drizzle-shop-notification.publisher.js";
+import { activeShopStaffRolesSql } from "../shop-staff-active-roles.sql.js";
 
 const INGEST_BATCH = 100;
 const PROCESS_BATCH = 5;
 const MAX_ATTEMPTS = 8;
 const INGEST_WINDOW_DAYS = 7;
-
-type ShopStaffRole =
-  | "shop_admin"
-  | "account_manager"
-  | "broker"
-  | "operations"
-  | "finance"
-  | "catalogue_editor";
-
-const STAFF_ROLE_RANK: Record<ShopStaffRole, number> = {
-  shop_admin: 6,
-  finance: 5,
-  operations: 4,
-  account_manager: 3,
-  broker: 2,
-  catalogue_editor: 1,
-};
-
-function higherStaffRole(a: ShopStaffRole, b: ShopStaffRole): ShopStaffRole {
-  return STAFF_ROLE_RANK[a] >= STAFF_ROLE_RANK[b] ? a : b;
-}
 
 async function lockPartiesAsc(tx: Database, partyIds: string[]): Promise<void> {
   const sorted = [...partyIds].sort();
@@ -191,16 +172,34 @@ async function applyIdentityMerge(
     .limit(1);
 
   if (retiredStaff && canonicalStaff) {
-    const role = higherStaffRole(
-      retiredStaff.role as ShopStaffRole,
-      canonicalStaff.role as ShopStaffRole,
-    );
+    // The canonical person keeps their roles and gains the retired one's that they lack; the
+    // retired record and any role both held go with it (the assignments cascade).
+    await tx.execute(sql`
+      UPDATE shop_staff_role_assignment AS retired
+      SET identity_subject_id = ${canonicalSubjectId}
+      WHERE retired.identity_subject_id = ${retiredSubjectId}
+        AND (
+          retired.ends_at IS NOT NULL
+          OR NOT EXISTS (
+            SELECT 1 FROM shop_staff_role_assignment AS canonical
+            WHERE canonical.identity_subject_id = ${canonicalSubjectId}
+              AND canonical.role = retired.role
+              AND canonical.ends_at IS NULL
+          )
+        )
+    `);
+    await tx.delete(shopStaffMember).where(eq(shopStaffMember.id, retiredStaff.id));
+    const [held] = await tx
+      .select({ roles: activeShopStaffRolesSql(shopStaffMember.identitySubjectId) })
+      .from(shopStaffMember)
+      .where(eq(shopStaffMember.id, canonicalStaff.id));
+    const primary = primaryLaxAdminRole(normalizeLaxAdminRoles(held?.roles ?? []));
     await tx
       .update(shopStaffMember)
-      .set({ role, disabledAt: retiredStaff.disabledAt ?? canonicalStaff.disabledAt })
+      .set(primary ? { role: primary, disabledAt: null } : { disabledAt: new Date() })
       .where(eq(shopStaffMember.id, canonicalStaff.id));
-    await tx.delete(shopStaffMember).where(eq(shopStaffMember.id, retiredStaff.id));
   } else if (retiredStaff) {
+    // Its role assignments follow through the foreign key.
     await tx
       .update(shopStaffMember)
       .set({ identitySubjectId: canonicalSubjectId })

@@ -83,12 +83,14 @@ export function MerchandiseVariants({
   const actionsFor = (variant: MerchandiseVariantDetail): OverflowAction[] => [
     {
       id: "edit",
+      requires: "merchandise.write",
       label: "Edit…",
       icon: Pencil,
       onSelect: () => setDialog({ kind: "edit", variant }),
     },
     {
       id: "stock",
+      requires: "merchandise.write",
       label: "Adjust stock…",
       icon: SlidersHorizontal,
       onSelect: () => setDialog({ kind: "stock", variant }),
@@ -96,6 +98,7 @@ export function MerchandiseVariants({
     variant.status === "active"
       ? {
           id: "archive",
+          requires: "merchandise.write",
           label: "Archive…",
           icon: Archive,
           tone: "danger",
@@ -103,6 +106,7 @@ export function MerchandiseVariants({
         }
       : {
           id: "restore",
+          requires: "merchandise.write",
           label: "Restore",
           icon: ArchiveRestore,
           disabled: restore.pending,
@@ -191,6 +195,7 @@ export function MerchandiseVariants({
           <StaffButton
             variant="secondary"
             size="sm"
+            requires="merchandise.write"
             icon={<Plus aria-hidden />}
             onClick={() => setDialog({ kind: "add" })}
           >

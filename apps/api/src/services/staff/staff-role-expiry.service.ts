@@ -4,7 +4,7 @@ import type {
   StaffRoleAssignmentRecord,
   StaffRosterEvent,
 } from "@auction/persistence/interfaces";
-import type { UserStaffRole } from "@auction/types";
+import type { LaxStaffAccessProduct } from "@auction/types";
 import type {
   IPlatformStaffRolesCronApplicationService,
   StaffRoleExpiryResult,
@@ -14,9 +14,12 @@ import { profileRolesFor, staffAccessHistoryEvent } from "./staff-profile-roles.
 
 /** One staff role whose end date passed and whose end was recorded by this run. */
 export type EndedStaffRole = {
+  /** The admin the role belongs to. */
+  readonly product: LaxStaffAccessProduct;
   readonly assignmentId: string;
   readonly userId: string;
-  readonly role: UserStaffRole;
+  /** A role of that admin, as it stores it. */
+  readonly role: string;
   readonly endedAt: Date;
 };
 
@@ -103,6 +106,7 @@ export class StaffRoleExpiryService implements IPlatformStaffRolesCronApplicatio
     await tx.recordEvents(events);
 
     return batch.map((a) => ({
+      product: "bid" as const,
       assignmentId: a.id,
       userId: a.userId,
       role: a.role,

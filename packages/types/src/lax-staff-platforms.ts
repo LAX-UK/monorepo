@@ -1,7 +1,10 @@
 import type { LaxStaffAccessProduct } from "./domain-event-catalog/lax-staff-access-payload-schemas.js";
 import { type UserStaffRole, normalizeUserStaffRole, userStaffRoles } from "./user.js";
 
-/** Mirrors `shop_staff_role`; shop-api pins the two lists together in a parity test. */
+/**
+ * LAX Admin's staff roles, in the order screens list them. `shop_admin` is the Administrator.
+ * Mirrors `shop_staff_role`; shop-api pins the two lists together in a parity test.
+ */
 export const laxShopStaffRoles = [
   "shop_admin",
   "account_manager",
@@ -9,6 +12,8 @@ export const laxShopStaffRoles = [
   "operations",
   "finance",
   "catalogue_editor",
+  "editor",
+  "read_only",
 ] as const;
 export type LaxShopStaffRole = (typeof laxShopStaffRoles)[number];
 
@@ -59,7 +64,10 @@ const BID_ROLE_OPTIONS: Record<UserStaffRole, Omit<LaxStaffRoleOption, "value">>
 };
 
 const SHOP_ROLE_OPTIONS: Record<LaxShopStaffRole, Omit<LaxStaffRoleOption, "value">> = {
-  shop_admin: { label: "Shop admin", summary: "Full Shop access, including staff and settings." },
+  shop_admin: {
+    label: "Administrator",
+    summary: "Runs LAX Admin: full access, including settings and edition corrections.",
+  },
   account_manager: {
     label: "Account manager",
     summary: "Sale authority, original sales, holds and all clients.",
@@ -67,7 +75,15 @@ const SHOP_ROLE_OPTIONS: Record<LaxShopStaffRole, Omit<LaxStaffRoleOption, "valu
   broker: { label: "Broker", summary: "Stock holds and assigned clients." },
   operations: { label: "Operations", summary: "Production, fulfilment and third-party sales." },
   finance: { label: "Finance", summary: "Fees, refunds, payouts and audit." },
-  catalogue_editor: { label: "Catalogue editor", summary: "Edits the Shop catalogue." },
+  catalogue_editor: {
+    label: "Catalogue editor",
+    summary: "Artworks, edition runs, artists and artist applications.",
+  },
+  editor: { label: "Editor", summary: "Writes and publishes stories, exhibitions and pages." },
+  read_only: {
+    label: "Read-only",
+    summary: "Sees orders, enquiries and merchandise; no client records, buying prices or actions.",
+  },
 };
 
 export const LAX_STAFF_PLATFORMS: readonly LaxStaffPlatform[] = [
@@ -80,10 +96,10 @@ export const LAX_STAFF_PLATFORMS: readonly LaxStaffPlatform[] = [
   },
   {
     product: "shop",
-    label: "Shop",
-    description: "Editions, originals, orders and Shop Admin.",
+    label: "LAX Admin",
+    description: "Shop and gallery: editions, originals, orders, artists and editorial.",
     roles: laxShopStaffRoles.map((value) => ({ value, ...SHOP_ROLE_OPTIONS[value] })),
-    multipleRoles: false,
+    multipleRoles: true,
   },
 ];
 

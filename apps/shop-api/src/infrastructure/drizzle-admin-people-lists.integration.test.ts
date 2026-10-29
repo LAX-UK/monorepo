@@ -112,7 +112,20 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle admin people lists", () => {
          values ($1, $2, $3)`,
         [subject, index === 2 ? "finance" : "operations", index === 1 ? new Date() : null],
       );
+      if (index !== 1) {
+        await ownerPool.query(
+          `insert into shop_staff_role_assignment (identity_subject_id, role, starts_at)
+           values ($1, $2, now() - interval '1 day')`,
+          [subject, index === 2 ? "finance" : "operations"],
+        );
+      }
     }
+    // A second role counts in the role filter and is listed with its end date.
+    await ownerPool.query(
+      `insert into shop_staff_role_assignment (identity_subject_id, role, starts_at, ends_at)
+       values ($1, 'editor', now() - interval '1 day', now() + interval '10 days')`,
+      [subjects[0]],
+    );
     const repo = createDrizzleAdminReadRepository(createShopDb(shopPool));
 
     const all = await repo.staff.listStaffMembers({ q: marker });
@@ -124,6 +137,11 @@ describe.skipIf(!hasShopIntegrationDb)("drizzle admin people lists", () => {
     const finance = await repo.staff.listStaffMembers({ q: marker, role: "finance" });
     expect(finance.items.map((item) => item.identitySubjectId)).toEqual([subjects[2]]);
     expect(finance.counts).toEqual({ active: 1 });
+
+    const editors = await repo.staff.listStaffMembers({ q: marker, role: "editor" });
+    expect(editors.items.map((item) => item.identitySubjectId)).toEqual([subjects[0]]);
+    expect(editors.items[0]?.roles.map((r) => r.role)).toEqual(["operations", "editor"]);
+    expect(editors.items[0]?.roles[1]?.endsAt).toMatch(/Z$/);
 
     const aToZ = await pageThrough((cursor) =>
       repo.staff.listStaffMembers({ q: marker, limit: 1, ...(cursor ? { cursor } : {}) }),

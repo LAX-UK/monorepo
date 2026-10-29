@@ -1,6 +1,5 @@
 import { verifyBearerToken } from "@auction/auth/token-verifier";
 import { OIDC_ACR_SILVER } from "@auction/identity-contracts";
-import { SHOP_API_ERROR_CODES } from "@auction/shop-contracts";
 import type { ShopStaffRole } from "@auction/shop-domain";
 import { describe, expect, it, vi } from "vitest";
 
@@ -19,7 +18,6 @@ import { createStubHelpRepository } from "../../../test-support/stub-help-reposi
 
 const ADMIN_TOKEN = "admin-token-placeholder-minimum-length";
 const ENTITY_ID = "44444444-4444-4444-8444-444444444444";
-const IDEMPOTENCY_KEY = "77777777-7777-4777-8777-777777777777";
 
 const ALL_ROLES: ShopStaffRole[] = [
   "shop_admin",
@@ -28,6 +26,8 @@ const ALL_ROLES: ShopStaffRole[] = [
   "operations",
   "finance",
   "catalogue_editor",
+  "editor",
+  "read_only",
 ];
 
 type Probe = {
@@ -43,14 +43,14 @@ const PROBES: Probe[] = [
     name: "editorial read",
     method: "GET",
     url: "/admin/v1/editorial/pages",
-    allowed: ["shop_admin", "catalogue_editor"],
+    allowed: ["shop_admin", "editor"],
   },
   {
     name: "editorial create",
     method: "POST",
     url: "/admin/v1/editorial/pages",
     payload: { slug: "about", title: "About", body: [] },
-    allowed: ["shop_admin", "catalogue_editor"],
+    allowed: ["shop_admin", "editor"],
   },
   {
     name: "editorial update",
@@ -62,83 +62,83 @@ const PROBES: Probe[] = [
       body: [],
       expectedVersion: "2026-01-01T00:00:00.000Z",
     },
-    allowed: ["shop_admin", "catalogue_editor"],
+    allowed: ["shop_admin", "editor"],
   },
   {
     name: "editorial publish",
     method: "POST",
     url: `/admin/v1/editorial/pages/${ENTITY_ID}/publish`,
-    allowed: ["shop_admin", "catalogue_editor"],
+    allowed: ["shop_admin", "editor"],
   },
   {
     name: "editorial unpublish",
     method: "POST",
     url: `/admin/v1/editorial/stories/${ENTITY_ID}/unpublish`,
-    allowed: ["shop_admin", "catalogue_editor"],
+    allowed: ["shop_admin", "editor"],
   },
   {
     name: "editorial placement write",
     method: "PUT",
     url: "/admin/v1/editorial/placements/home_hero",
     payload: { items: [] },
-    allowed: ["shop_admin", "catalogue_editor"],
+    allowed: ["shop_admin", "editor"],
   },
   {
     name: "editorial preview token",
     method: "POST",
     url: "/admin/v1/editorial/preview-token",
     payload: { entity: "page", id: ENTITY_ID },
-    allowed: ["shop_admin", "catalogue_editor"],
+    allowed: ["shop_admin", "editor"],
   },
   {
     name: "enquiry inbox list",
     method: "GET",
     url: "/admin/v1/enquiries",
-    allowed: ["shop_admin", "account_manager", "broker", "operations"],
+    allowed: ["shop_admin", "account_manager", "broker", "operations", "read_only"],
   },
   {
     name: "orders list",
     method: "GET",
     url: "/admin/v1/orders",
-    allowed: ["shop_admin", "account_manager", "operations", "finance"],
+    allowed: ["shop_admin", "account_manager", "operations", "finance", "read_only"],
   },
   {
     name: "editorial links read",
     method: "GET",
     url: `/admin/v1/editorial/exhibitions/${ENTITY_ID}/links`,
-    allowed: ["shop_admin", "catalogue_editor"],
+    allowed: ["shop_admin", "editor"],
   },
   {
     name: "editorial links write",
     method: "PUT",
     url: `/admin/v1/editorial/exhibitions/${ENTITY_ID}/links/artworks`,
     payload: { ids: [], expectedVersion: "v1" },
-    allowed: ["shop_admin", "catalogue_editor"],
+    allowed: ["shop_admin", "editor"],
   },
   {
     name: "editorial link candidates",
     method: "GET",
     url: "/admin/v1/editorial/link-candidates?kind=artist",
-    allowed: ["shop_admin", "catalogue_editor"],
+    allowed: ["shop_admin", "editor"],
   },
   {
     name: "help categories list",
     method: "GET",
     url: "/admin/v1/help/categories",
-    allowed: ["shop_admin", "catalogue_editor"],
+    allowed: ["shop_admin", "editor"],
   },
   {
     name: "help article publish",
     method: "POST",
     url: `/admin/v1/help/articles/${ENTITY_ID}/publish`,
-    allowed: ["shop_admin", "catalogue_editor"],
+    allowed: ["shop_admin", "editor"],
   },
   {
     name: "help category reorder",
     method: "PUT",
     url: "/admin/v1/help/categories/order",
     payload: { ids: [ENTITY_ID] },
-    allowed: ["shop_admin", "catalogue_editor"],
+    allowed: ["shop_admin", "editor"],
   },
   {
     name: "artists list",
@@ -185,7 +185,10 @@ function buildApp(
   const deps = createMinimalShopApiTestDeps({
     env: { ...baseEnv, SHOP_ADMIN_ENABLED: true, SHOP_EDITORIAL_ENABLED: true },
     staffReader: {
-      findActiveByIdentitySubject: async (subject) => ({ role, identitySubjectId: subject }),
+      findActiveByIdentitySubject: async (subject) => ({
+        roles: [role],
+        identitySubjectId: subject,
+      }),
       brokerCanAccessClientParty: async () => false,
     },
     editorial: {
@@ -237,7 +240,7 @@ describe("admin route capabilities", () => {
 
   it("records the issuer of a preview token", async () => {
     const recordPreviewTokenIssued = vi.fn(async () => undefined);
-    const app = buildApp("catalogue_editor", { editorial: { recordPreviewTokenIssued } });
+    const app = buildApp("editor", { editorial: { recordPreviewTokenIssued } });
     await app.ready();
     const response = await app.inject({
       method: "POST",
@@ -246,81 +249,7 @@ describe("admin route capabilities", () => {
       payload: { entity: "page", id: ENTITY_ID },
     });
     expect(response.statusCode).toBe(200);
-    expect(recordPreviewTokenIssued).toHaveBeenCalledWith(
-      "page",
-      ENTITY_ID,
-      "catalogue_editor-subject",
-    );
-    await app.close();
-  });
-});
-
-describe("staff role changes require recent authentication", () => {
-  const grant = { method: "POST", url: "/admin/v1/staff/grants" } as const;
-  const revoke = { method: "DELETE", url: "/admin/v1/staff/grants/subject-1" } as const;
-
-  it.each([
-    ["grant", grant],
-    ["revoke", revoke],
-  ])("rejects a %s with a stale sign-in", async (_name, request) => {
-    const app = buildApp("shop_admin", { authAgeSeconds: 3600 });
-    await app.ready();
-    const response = await app.inject({
-      ...request,
-      headers: { authorization: `Bearer ${ADMIN_TOKEN}`, "idempotency-key": IDEMPOTENCY_KEY },
-      payload:
-        request.method === "POST"
-          ? { email: "new@example.com", role: "broker" }
-          : { reason: "Left the team" },
-    });
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: SHOP_API_ERROR_CODES.STEP_UP_REQUIRED });
-    await app.close();
-  });
-
-  it.each([
-    ["grant", grant],
-    ["revoke", revoke],
-  ])("accepts a %s after a recent sign-in", async (_name, request) => {
-    const app = buildApp("shop_admin", { authAgeSeconds: 30 });
-    await app.ready();
-    const response = await app.inject({
-      ...request,
-      headers: { authorization: `Bearer ${ADMIN_TOKEN}`, "idempotency-key": IDEMPOTENCY_KEY },
-      payload:
-        request.method === "POST"
-          ? { email: "new@example.com", role: "broker" }
-          : { reason: "Left the team" },
-    });
-    expect(response.statusCode).toBeLessThan(300);
-    await app.close();
-  });
-
-  it("still denies role changes to staff without settings.write", async () => {
-    const app = buildApp("finance");
-    await app.ready();
-    const response = await app.inject({
-      ...revoke,
-      headers: { authorization: `Bearer ${ADMIN_TOKEN}`, "idempotency-key": IDEMPOTENCY_KEY },
-      payload: { reason: "Left the team" },
-    });
-    expect(response.statusCode).toBe(403);
-    expect(response.json()).toMatchObject({ code: SHOP_API_ERROR_CODES.FORBIDDEN });
-    await app.close();
-  });
-
-  it.each([
-    ["no reason", {}],
-    ["a blank reason", { reason: "       " }],
-  ])("refuses to revoke access with %s", async (_name, payload) => {
-    const app = buildApp("shop_admin", { authAgeSeconds: 30 });
-    await app.ready();
-    const response = await app.inject({
-      ...revoke,
-      headers: { authorization: `Bearer ${ADMIN_TOKEN}`, "idempotency-key": IDEMPOTENCY_KEY },
-      payload,
-    });
-    expect(response.statusCode).toBe(400);
+    expect(recordPreviewTokenIssued).toHaveBeenCalledWith("page", ENTITY_ID, "editor-subject");
     await app.close();
   });
 });

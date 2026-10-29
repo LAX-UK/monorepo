@@ -7,12 +7,14 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { IStaffRoleAssignmentReader, IUserRepository } from "@auction/persistence/interfaces";
 import {
+  LAX_ADMIN_ROLE_RULES,
   LAX_STAFF_PLATFORMS,
   type LaxStaffGrant,
   type UserRole,
   type UserStaffRole,
   bidStaffRolesFromGrants,
   checkStaffRoleSet,
+  laxAdminRolesFromGrants,
   laxStaffRoleOption,
   normalizeLaxStaffGrants,
   primaryStaffRole,
@@ -69,6 +71,13 @@ function resolveInvitationAccess(
     // The same role rules as giving the roles one by one on the staff record.
     const together = checkStaffRoleSet(bidRoles);
     if (!together.ok) return err({ message: staffRoleRefusalMessage(together), status: 400 });
+    const laxTogether = LAX_ADMIN_ROLE_RULES.checkSet(laxAdminRolesFromGrants(normalized.grants));
+    if (!laxTogether.ok) {
+      return err({
+        message: staffRoleRefusalMessage({ ...laxTogether, product: "shop" }),
+        status: 400,
+      });
+    }
     return ok({
       targetRole: bidRoles.length > 0 ? "staff" : "client",
       targetStaffRole: primaryStaffRole(bidRoles),

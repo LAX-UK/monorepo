@@ -19,16 +19,7 @@ export type LaxStaffAccessHistoryEntry = {
   invitationId: string | null;
 };
 
-export type LaxStaffAccessRequest = {
-  subjectId: string;
-  product: Exclude<LaxStaffAccessProduct, "bid">;
-  actorSubjectId: string;
-};
-
 export interface ILaxStaffAccessRepository {
   listForSubjects(subjectIds: readonly string[]): Promise<LaxStaffAccessEntry[]>;
   history(subjectId: string, limit: number): Promise<LaxStaffAccessHistoryEntry[]>;
-  /** Asks the owning product to grant `role`; it applies the change asynchronously. */
-  requestGrant(input: LaxStaffAccessRequest & { role: string }): Promise<void>;
-  requestRevoke(input: LaxStaffAccessRequest): Promise<void>;
 }

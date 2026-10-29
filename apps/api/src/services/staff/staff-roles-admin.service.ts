@@ -1,11 +1,13 @@
 import type {
   IAdminUserReader,
+  ILaxAdminRoleReader,
   IStaffAccessReviewReader,
   IStaffRoleAssignmentReader,
   IStaffRosterFactsReader,
   StaffRoleAssignmentRecord,
 } from "@auction/persistence/interfaces";
 import {
+  type LaxShopStaffRole,
   type StaffRoleAssignmentRefusal,
   type UserStaffRole,
   staffRoleRefusalMessage,
@@ -36,13 +38,19 @@ export type StaffRolesOverview = {
   otherActiveAdministrators: number;
 };
 
+/** One LAX Admin role as the access review lists it. */
+export type LaxAdminRoleReviewView = Omit<StaffRoleView, "role"> & { role: LaxShopStaffRole };
+
 export type StaffAccessReviewRow = {
   userId: string;
   name: string | null;
   email: string;
   suspended: boolean;
   lastSignInAt: string | null;
+  /** Bid admin roles held or starting later. */
   roles: StaffRoleView[];
+  /** LAX Admin roles held or starting later. */
+  laxAdminRoles: LaxAdminRoleReviewView[];
 };
 
 export type StaffRolesError = {
@@ -63,15 +71,27 @@ const SIGN_IN_BATCH = 100;
 
 const notStaff: StaffRolesError = { status: 404, message: "Staff member not found" };
 
-function toView(assignment: StaffRoleAssignmentRecord): StaffRoleView {
+type Period = {
+  id: string;
+  startsAt: Date;
+  endsAt: Date | null;
+  grantedAt: Date;
+  reason: string | null;
+};
+
+/** A held role's period as screens show it, for either admin. */
+function periodView(assignment: Period): Omit<StaffRoleView, "role"> {
   return {
     id: assignment.id,
-    role: assignment.role,
     startsAt: assignment.startsAt.toISOString(),
     endsAt: assignment.endsAt?.toISOString() ?? null,
     grantedAt: assignment.grantedAt.toISOString(),
     reason: assignment.reason,
   };
+}
+
+function toView(assignment: StaffRoleAssignmentRecord): StaffRoleView {
+  return { ...periodView(assignment), role: assignment.role };
 }
 
 function chunks<T>(items: readonly T[], size: number): T[][] {
@@ -91,8 +111,9 @@ export class StaffRolesAdminService {
     private readonly deps: {
       changes: IStaffRoleChanges;
       roles: IStaffRoleAssignmentReader & IStaffRosterFactsReader;
-      users: Pick<IAdminUserReader, "getById">;
+      users: Pick<IAdminUserReader, "getById" | "getByIds">;
       review: IStaffAccessReviewReader;
+      laxAdminRoles: Pick<ILaxAdminRoleReader, "listAllCurrent">;
       identity: Pick<IIdentityTwoFactorPolicyClient, "readSecuritySummaries">;
       clock?: () => Date;
     },
@@ -147,9 +168,35 @@ export class StaffRolesAdminService {
     }
   }
 
-  /** Every staff member with the roles they hold or will hold and when they last signed in. */
+  /**
+   * Every staff member of either admin with the roles they hold or will hold there, and when they
+   * last signed in. Someone with LAX Admin roles only is listed too.
+   */
   async accessReview(): Promise<StaffAccessReviewRow[]> {
-    const people = await this.deps.review.listStaff(this.now());
+    const now = this.now();
+    const [bidStaff, laxAssignments] = await Promise.all([
+      this.deps.review.listStaff(now),
+      this.deps.laxAdminRoles.listAllCurrent(now),
+    ]);
+    const laxBySubject = new Map<string, LaxAdminRoleReviewView[]>();
+    for (const assignment of laxAssignments) {
+      const views = laxBySubject.get(assignment.subjectId) ?? [];
+      views.push({ ...periodView(assignment), role: assignment.role });
+      laxBySubject.set(assignment.subjectId, views);
+    }
+    const bidIds = new Set(bidStaff.map((person) => person.userId));
+    const laxOnlyIds = [...laxBySubject.keys()].filter((id) => !bidIds.has(id));
+    const laxOnly = laxOnlyIds.length > 0 ? await this.deps.users.getByIds(laxOnlyIds) : [];
+    const people = [
+      ...bidStaff,
+      ...laxOnly.map((user) => ({
+        userId: user.id,
+        name: user.name || null,
+        email: user.email,
+        suspended: user.suspendedAt !== null,
+        assignments: [],
+      })),
+    ];
     const signIns = new Map<string, Date | null>();
     for (const batch of chunks(
       people.map((person) => person.userId),
@@ -166,6 +213,7 @@ export class StaffRolesAdminService {
       suspended: person.suspended,
       lastSignInAt: signIns.get(person.userId)?.toISOString() ?? null,
       roles: person.assignments.map(toView),
+      laxAdminRoles: laxBySubject.get(person.userId) ?? [],
     }));
   }
 }
