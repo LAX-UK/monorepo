@@ -1,3 +1,4 @@
+import { submissionRoleRefusal } from "@auction/domain";
 import {
   acceptConsignmentAgreementBodySchema,
   attachSubmissionDocumentBodySchema,
@@ -26,6 +27,16 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
   const sellerHttp = container.submissionRoutes.sellerHttp;
   const documentHttp = container.submissionRoutes.documentHttp;
   const agreementHttp = container.submissionRoutes.agreementHttp;
+  // Coarse gates for the roles that may change no submission at all; which submission a member
+  // may change (their own, or any) is the submission policy's call in the application service.
+  const requireChangeSubmissions = requireEntityCapability(
+    "entity.submissions.create",
+    submissionRoleRefusal("edit"),
+  );
+  const requireWithdraw = requireEntityCapability(
+    "entity.consignments.withdraw",
+    submissionRoleRefusal("withdraw"),
+  );
 
   r.post(
     "/",
@@ -140,6 +151,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
     requireAuth,
     requireBuyerRoleUnlessStaff,
     requireSubmissionEntityContext,
+    requireChangeSubmissions,
     zValidator("param", submissionIdParamSchema),
     zValidator("json", attachSubmissionDocumentBodySchema),
     async (c) => {
@@ -160,6 +172,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
     requireAuth,
     requireBuyerRoleUnlessStaff,
     requireSubmissionEntityContext,
+    requireChangeSubmissions,
     zValidator("param", submissionIdParamSchema.merge(entityDocumentIdParamSchema)),
     async (c) => {
       const { id, documentId } = c.req.valid("param");
@@ -178,6 +191,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
     requireAuth,
     requireBuyerRoleUnlessStaff,
     requireSubmissionEntityContext,
+    requireChangeSubmissions,
     zValidator("param", submissionIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");
@@ -203,6 +217,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
     requireAccountOnboarding,
     requireBuyerRole,
     requireSubmissionEntityContext,
+    requireChangeSubmissions,
     zValidator("param", submissionIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");
@@ -219,6 +234,7 @@ export function attachSubmissionSellerRoutes(r: SubmissionHono, deps: Submission
     requireAuth,
     requireBuyerRole,
     requireSubmissionEntityContext,
+    requireWithdraw,
     zValidator("param", submissionIdParamSchema),
     async (c) => {
       const { id } = c.req.valid("param");

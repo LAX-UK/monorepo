@@ -72,7 +72,7 @@ describe("seller payout reads by organisation role", () => {
       const res = await app.request(path);
 
       expect(res.status).toBe(403);
-      await expect(res.json()).resolves.toEqual({ error: "insufficient_entity_role" });
+      await expect(res.json()).resolves.toMatchObject({ error: "insufficient_entity_role" });
       expect(sellerPayoutHttp[method]).not.toHaveBeenCalled();
     });
 

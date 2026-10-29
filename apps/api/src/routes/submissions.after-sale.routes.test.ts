@@ -402,26 +402,23 @@ describe("staff confirmation", () => {
 });
 
 describe("POST /submissions/:id/withdrawal", () => {
-  it.each(["owner", "admin", "consignor"] as const)(
-    "lets a %s withdraw before cataloguing",
-    async (role) => {
-      const s = setup({ role, submissionStatus: "under_review", lotStatus: null });
-      const res = await s.post("/withdrawal");
-      expect(res.status).toBe(200);
-      expect((await json<{ data: { kind: string } }>(res)).data.kind).toBe("withdrawn");
-      expect(s.withdrawSubmission).toHaveBeenCalledWith(entityId, submissionId);
-      expect(s.events.publish).toHaveBeenCalledWith(
-        expect.objectContaining({ eventType: "submission.withdrawn" }),
-      );
-      expect(s.notifier.notifyStaff).toHaveBeenCalledWith(
-        "specialist-1",
-        expect.objectContaining({ title: "A seller withdrew a consignment" }),
-      );
-    },
-  );
+  it.each(["owner", "admin"] as const)("lets a %s withdraw before cataloguing", async (role) => {
+    const s = setup({ role, submissionStatus: "under_review", lotStatus: null });
+    const res = await s.post("/withdrawal");
+    expect(res.status).toBe(200);
+    expect((await json<{ data: { kind: string } }>(res)).data.kind).toBe("withdrawn");
+    expect(s.withdrawSubmission).toHaveBeenCalledWith(entityId, submissionId);
+    expect(s.events.publish).toHaveBeenCalledWith(
+      expect.objectContaining({ eventType: "submission.withdrawn" }),
+    );
+    expect(s.notifier.notifyStaff).toHaveBeenCalledWith(
+      "specialist-1",
+      expect.objectContaining({ title: "A seller withdrew a consignment" }),
+    );
+  });
 
-  it("refuses a viewer before cataloguing", async () => {
-    const s = setup({ role: "viewer", submissionStatus: "submitted", lotStatus: null });
+  it.each(["consignor", "viewer"] as const)("refuses a %s before cataloguing", async (role) => {
+    const s = setup({ role, submissionStatus: "submitted", lotStatus: null });
     expect((await s.post("/withdrawal")).status).toBe(403);
     expect(s.withdrawSubmission).not.toHaveBeenCalled();
   });

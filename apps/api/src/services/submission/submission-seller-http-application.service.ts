@@ -1,3 +1,4 @@
+import type { SubmissionMutation } from "@auction/domain";
 import type { CreateItemSubmissionInput, UserRole } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { SubmissionError } from "../../lib/errors.js";
@@ -8,6 +9,7 @@ import type {
   SubmissionLegalEntityContext,
 } from "../interfaces/submission-routes/submission-route-http.js";
 import type { ISubmissionSellerHttpApplicationService } from "../interfaces/submission-routes/submission-seller-http.js";
+import { mutationRefusal } from "./submission-mutation-refusal.js";
 
 const NOT_FOUND: SubmissionHttpJson = { status: 404, body: { error: "Not found" } };
 
@@ -29,9 +31,18 @@ export class SubmissionSellerHttpApplicationService
     private readonly access: ISubmissionAccessGuard,
   ) {}
 
-  /** A submission the member may not see answers "Not found", like one in another account. */
-  private async visible(legalEntity: SubmissionLegalEntityContext, submissionId: string) {
-    return !(await this.access.hides(legalEntity, submissionId));
+  /**
+   * The refusal for a change the member may not make, or `null` to go ahead. A submission the
+   * member may not see answers "Not found", like one in another account.
+   */
+  private async refuse(
+    legalEntity: SubmissionLegalEntityContext,
+    submissionId: string,
+    mutation: SubmissionMutation,
+  ): Promise<SubmissionHttpJson | null> {
+    return mutationRefusal(
+      await this.access.authoriseMutation(legalEntity, submissionId, mutation),
+    );
   }
 
   async createDraft(input: {
@@ -101,7 +112,8 @@ export class SubmissionSellerHttpApplicationService
     viewer: Parameters<ISubmissionSellerHttpApplicationService["patch"]>[0]["viewer"];
     legalEntity: SubmissionLegalEntityContext;
   }): Promise<SubmissionHttpJson> {
-    if (!(await this.visible(input.legalEntity, input.submissionId))) return NOT_FOUND;
+    const refused = await this.refuse(input.legalEntity, input.submissionId, "edit");
+    if (refused) return refused;
     const out = await this.itemSubmissionSellerApi.patchSubmissionFromRequestBody({
       rawBody: input.rawBody,
       submissionId: input.submissionId,
@@ -123,7 +135,8 @@ export class SubmissionSellerHttpApplicationService
     submissionId: string;
     legalEntity: SubmissionLegalEntityContext;
   }): Promise<SubmissionHttpJson> {
-    if (!(await this.visible(input.legalEntity, input.submissionId))) return NOT_FOUND;
+    const refused = await this.refuse(input.legalEntity, input.submissionId, "submit");
+    if (refused) return refused;
     const result = await this.itemSubmissionSellerApi.submitForReviewForSellerApi(
       input.legalEntity.legalEntityId,
       input.submissionId,
@@ -136,7 +149,8 @@ export class SubmissionSellerHttpApplicationService
     submissionId: string;
     legalEntity: SubmissionLegalEntityContext;
   }): Promise<SubmissionHttpJson> {
-    if (!(await this.visible(input.legalEntity, input.submissionId))) return NOT_FOUND;
+    const refused = await this.refuse(input.legalEntity, input.submissionId, "withdraw");
+    if (refused) return refused;
     const result = await this.itemSubmissionSellerApi.withdrawForSellerApi(
       input.legalEntity.legalEntityId,
       input.submissionId,

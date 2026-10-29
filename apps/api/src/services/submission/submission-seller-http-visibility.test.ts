@@ -147,8 +147,43 @@ function every(status: number) {
 }
 
 describe("client endpoints keyed by a submission id, by who sent it", () => {
-  it("open a consignor's own submission", async () => {
-    expect(await statuses("consignor", "mine")).toEqual(every(200));
+  it("open a consignor's own submission, which they may change but not withdraw", async () => {
+    expect(await statuses("consignor", "mine")).toEqual({ ...every(200), withdraw: 403 });
+  });
+
+  it.each(["finance", "viewer"] as const)(
+    "let a %s read a submission but change nothing, with a reason",
+    async (role) => {
+      expect(await statuses(role, "other")).toEqual({
+        ...every(200),
+        patch: 403,
+        submit: 403,
+        withdraw: 403,
+        attachDocument: 403,
+        removeDocument: 403,
+      });
+      const refused = await services().seller.patch({
+        submissionId: "other",
+        rawBody: {},
+        viewer,
+        legalEntity: as(role),
+      });
+      expect(refused.body).toEqual({
+        error: "Your role can follow this consignment but not change it.",
+        code: "submission_change_not_allowed",
+      });
+    },
+  );
+
+  it("let support staff viewing as the client change nothing", async () => {
+    const s = services();
+    const legalEntity = {
+      legalEntityId: ENTITY,
+      member: { userId: ME, actor: { role: "admin" as const, isImpersonation: true } },
+    };
+    const res = await s.seller.patch({ submissionId: "other", rawBody: {}, viewer, legalEntity });
+    expect(res.status).toBe(403);
+    expect(s.sellerApi.patchSubmissionFromRequestBody).not.toHaveBeenCalled();
   });
 
   it("answer Not found for another member's submission to a consignor", async () => {

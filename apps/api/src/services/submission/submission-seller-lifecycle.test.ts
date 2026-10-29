@@ -123,6 +123,21 @@ describe("needs changes: the seller edits the same submission and resubmits", ()
     expect(d.publish).not.toHaveBeenCalled();
   });
 
+  it("keeps the original sender when someone else sends it back", async () => {
+    const d = deps({ ...submission("changes_requested"), submittedByUserId: "consignor-1" });
+    await submitForReview(d.value, "le-1", "sub-1", "admin-1");
+    expect(d.update).toHaveBeenCalledWith("sub-1", { status: "submitted" });
+  });
+
+  it("records the sender on a first submission that has none yet", async () => {
+    const d = deps({ ...submission("draft"), submittedByUserId: null });
+    await submitForReview(d.value, "le-1", "sub-1", "consignor-1");
+    expect(d.update).toHaveBeenCalledWith("sub-1", {
+      status: "submitted",
+      submittedByUserId: "consignor-1",
+    });
+  });
+
   it("lets the seller withdraw instead", async () => {
     const d = deps(submission("changes_requested"));
     expect((await withdraw(d.value, "le-1", "sub-1")).isOk()).toBe(true);
