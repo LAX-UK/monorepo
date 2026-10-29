@@ -69,7 +69,7 @@ export type OrganisationHomeView = {
 type Ctx = { organisationName: string };
 
 function quoted(subject: HomeSubject): string {
-  return `"${subject.title}"`;
+  return `“${subject.title}”`;
 }
 
 function listOf(subjects: readonly HomeSubject[]): string {
@@ -107,7 +107,7 @@ const TASK_VIEWS: { [K in HomeTask["kind"]]: TaskViewBuilder<K> } = {
   changes: (task) => ({
     title: "Make the changes the specialist asked for",
     detail: task.note
-      ? `${quoted(task.submission)} · "${task.note}"`
+      ? `${quoted(task.submission)} · “${task.note}”`
       : `${quoted(task.submission)} · see the specialist's note`,
     action: {
       label: "Edit and resubmit",

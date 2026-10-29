@@ -113,7 +113,7 @@ describe("organisationHomeView", () => {
     expect(one.notices).toEqual([
       {
         key: "unsold_waiting",
-        text: 'Waiting for an owner or admin to choose what happens to "Harbour at Dusk", which did not sell',
+        text: "Waiting for an owner or admin to choose what happens to “Harbour at Dusk”, which did not sell",
         href: "/selling/consignments?tab=unsold",
       },
     ]);

@@ -2,12 +2,14 @@ import "server-only";
 
 import Redis from "ioredis";
 import { bffConfig } from "./config.server";
+import { redisOptionsFromUrl } from "./redis-url";
 
 const globalRedis = globalThis as typeof globalThis & { bidBffRedis?: Redis };
 
 export function getBffRedis(): Redis {
   if (!globalRedis.bidBffRedis) {
-    globalRedis.bidBffRedis = new Redis(bffConfig().redisUrl, {
+    globalRedis.bidBffRedis = new Redis({
+      ...redisOptionsFromUrl(bffConfig().redisUrl),
       enableOfflineQueue: false,
       maxRetriesPerRequest: 1,
       lazyConnect: true,
