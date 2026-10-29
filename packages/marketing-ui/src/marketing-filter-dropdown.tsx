@@ -15,6 +15,11 @@ import {
 export type MarketingFilterDropdownProps = {
   /** Trigger text and popover heading (e.g. "Medium"). */
   label: string;
+  /**
+   * Trigger text in place of the label and its count, for a choice that always has a value,
+   * such as a sort ("Sort: Newest"). The popover heading keeps `label`.
+   */
+  triggerLabel?: string;
   options: readonly MarketingFilterOption[];
   /** Applied values; the popover edits a draft copy of them. */
   selected: readonly string[];
@@ -32,6 +37,7 @@ export type MarketingFilterDropdownProps = {
  */
 export function MarketingFilterDropdown({
   label,
+  triggerLabel,
   options,
   selected,
   onApply,
@@ -56,7 +62,7 @@ export function MarketingFilterDropdown({
         <Button
           type="button"
           variant="ghost"
-          aria-label={count > 0 ? `${label}, ${count} selected` : label}
+          aria-label={triggerLabel ?? (count > 0 ? `${label}, ${count} selected` : label)}
           className={cn(
             "min-h-11 gap-1.5 rounded-none px-3 font-body text-sm font-normal text-on-surface hover:bg-surface-container-low",
             FOCUS_RING,
@@ -64,8 +70,12 @@ export function MarketingFilterDropdown({
           )}
         >
           <span aria-hidden>
-            {label}
-            {count > 0 ? ` (${count})` : null}
+            {triggerLabel ?? (
+              <>
+                {label}
+                {count > 0 ? ` (${count})` : null}
+              </>
+            )}
           </span>
           <ChevronDown
             aria-hidden

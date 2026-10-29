@@ -56,4 +56,16 @@ describe("normalizeArtworkCatalogueFilters", () => {
     expect(normalized).not.toHaveProperty("rarities");
     expect(normalized).not.toHaveProperty("artistSlugs");
   });
+
+  it("keeps a known size band and a trimmed technique", () => {
+    expect(
+      normalizeArtworkCatalogueFilters({ sizeBand: "medium", technique: "  Screenprint " }),
+    ).toMatchObject({ sizeBand: "medium", technique: "Screenprint" });
+  });
+
+  it("drops an unknown size band and a blank technique", () => {
+    const normalized = normalizeArtworkCatalogueFilters({ sizeBand: "huge", technique: "  " });
+    expect(normalized).not.toHaveProperty("sizeBand");
+    expect(normalized).not.toHaveProperty("technique");
+  });
 });

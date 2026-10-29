@@ -1,4 +1,10 @@
-import { formatGbpPence } from "@auction/shop-portal/vm";
+import {
+  type CataloguePriceBandKey,
+  type CatalogueSizeBandKey,
+  cataloguePriceBandRange,
+  isCataloguePriceBandKey,
+  isCatalogueSizeBandKey,
+} from "@auction/shop-domain";
 
 export type CatalogActiveFilterChip = {
   key: string;
@@ -6,26 +12,37 @@ export type CatalogActiveFilterChip = {
   removeHref: string;
 };
 
-export const ARTWORK_CATALOGUE_SORTS = ["newest", "titleAsc", "priceAsc", "priceDesc"] as const;
+export const ARTWORK_CATALOGUE_SORTS = ["newest", "priceAsc", "priceDesc"] as const;
 
 export type ArtworkCatalogueSort = (typeof ARTWORK_CATALOGUE_SORTS)[number];
 
+export type ArtworkCatalogueAvailability = "available" | "sold_out";
+
+/** The catalogue as the URL states it. Prices in the URL are whole pounds. */
 export type ArtworkCatalogueUrlState = {
   q?: string;
   categorySlug?: string;
   artistSlug?: string;
   /** Can be bought now, or sold out. */
   availability?: ArtworkCatalogueAvailability;
+  /** One of the catalogue price bands; wins over a free price range. */
+  price?: CataloguePriceBandKey;
+  /** A free price range in pounds, from links such as the home page's "Under £150". */
   minPrice?: number;
   maxPrice?: number;
+  size?: CatalogueSizeBandKey;
+  technique?: string;
   sort: ArtworkCatalogueSort;
-  cursor?: string | undefined;
-  back?: string | undefined;
+  /** How many editions the page shows; "Load more" raises it a page at a time. */
+  shown?: number;
 };
 
-export type ArtworkCatalogueAvailability = "available" | "sold_out";
-
 export type ArtworkCatalogueSearchParams = Record<string, string | string[] | undefined>;
+
+/** Editions per page, and per "Load more". */
+export const CATALOGUE_PAGE_SIZE = 24;
+/** The most editions one page shows; past this, filters narrow the list. */
+export const CATALOGUE_MAX_SHOWN = CATALOGUE_PAGE_SIZE * 8;
 
 function firstString(value: string | string[] | undefined): string | undefined {
   if (typeof value === "string") return value;
@@ -58,6 +75,14 @@ function parseSort(value: string | undefined): ArtworkCatalogueSort {
   return "newest";
 }
 
+/** Whole pages only, from one page up to the most a page shows. */
+function parseShown(value: string | undefined): number | undefined {
+  const parsed = parseOptionalInt(value);
+  if (parsed === undefined || parsed <= CATALOGUE_PAGE_SIZE) return undefined;
+  const pages = Math.ceil(parsed / CATALOGUE_PAGE_SIZE);
+  return Math.min(pages * CATALOGUE_PAGE_SIZE, CATALOGUE_MAX_SHOWN);
+}
+
 function normalizePriceBounds(
   minPrice: number | undefined,
   maxPrice: number | undefined,
@@ -74,10 +99,6 @@ function normalizePriceBounds(
 export function parseArtworkCatalogueParams(
   searchParams: ArtworkCatalogueSearchParams,
 ): ArtworkCatalogueUrlState {
-  const prices = normalizePriceBounds(
-    parseOptionalInt(firstString(searchParams.minPrice)),
-    parseOptionalInt(firstString(searchParams.maxPrice)),
-  );
   const state: ArtworkCatalogueUrlState = {
     sort: parseSort(firstString(searchParams.sort)),
   };
@@ -92,50 +113,68 @@ export function parseArtworkCatalogueParams(
     firstString(searchParams.saleState),
   );
   if (availability) state.availability = availability;
-  if (prices.minPrice !== undefined) state.minPrice = prices.minPrice;
-  if (prices.maxPrice !== undefined) state.maxPrice = prices.maxPrice;
-  const cursor = firstString(searchParams.cursor);
-  if (cursor) state.cursor = cursor;
-  const back = firstString(searchParams.back);
-  if (back) state.back = back;
+  const price = firstString(searchParams.price);
+  if (price && isCataloguePriceBandKey(price)) {
+    state.price = price;
+  } else {
+    const prices = normalizePriceBounds(
+      parseOptionalInt(firstString(searchParams.minPrice)),
+      parseOptionalInt(firstString(searchParams.maxPrice)),
+    );
+    if (prices.minPrice !== undefined) state.minPrice = prices.minPrice;
+    if (prices.maxPrice !== undefined) state.maxPrice = prices.maxPrice;
+  }
+  const size = firstString(searchParams.size);
+  if (size && isCatalogueSizeBandKey(size)) state.size = size;
+  const technique = firstString(searchParams.technique)?.trim();
+  if (technique) state.technique = technique;
+  const shown = parseShown(firstString(searchParams.shown));
+  if (shown !== undefined) state.shown = shown;
   return state;
 }
 
-export function artworkCatalogueHref(
-  state: ArtworkCatalogueUrlState,
-  overrides: Partial<ArtworkCatalogueUrlState> = {},
-): string {
-  const next = { ...state, ...overrides };
+export function artworkCatalogueHref(state: ArtworkCatalogueUrlState): string {
   const params = new URLSearchParams();
-  if (next.q) params.set("q", next.q);
-  if (next.categorySlug) params.set("categorySlug", next.categorySlug);
-  if (next.artistSlug) params.set("artistSlug", next.artistSlug);
-  if (next.availability) params.set("availability", next.availability);
-  if (next.minPrice !== undefined) params.set("minPrice", String(next.minPrice));
-  if (next.maxPrice !== undefined) params.set("maxPrice", String(next.maxPrice));
-  if (next.sort !== "newest") params.set("sort", next.sort);
-  if (next.cursor) params.set("cursor", next.cursor);
-  if (next.back) params.set("back", next.back);
+  if (state.q) params.set("q", state.q);
+  if (state.categorySlug) params.set("categorySlug", state.categorySlug);
+  if (state.artistSlug) params.set("artistSlug", state.artistSlug);
+  if (state.availability) params.set("availability", state.availability);
+  if (state.price) params.set("price", state.price);
+  if (state.minPrice !== undefined) params.set("minPrice", String(state.minPrice));
+  if (state.maxPrice !== undefined) params.set("maxPrice", String(state.maxPrice));
+  if (state.size) params.set("size", state.size);
+  if (state.technique) params.set("technique", state.technique);
+  if (state.sort !== "newest") params.set("sort", state.sort);
+  if (state.shown !== undefined) params.set("shown", String(state.shown));
   const qs = params.toString();
   return qs ? `/artworks?${qs}` : "/artworks";
 }
 
+type FilterState = Omit<ArtworkCatalogueUrlState, "shown">;
+
 export type ArtworkCatalogueFilterPatch = {
-  [K in keyof Omit<ArtworkCatalogueUrlState, "cursor" | "back">]?:
-    | Omit<ArtworkCatalogueUrlState, "cursor" | "back">[K]
-    | null
-    | undefined;
+  [K in keyof FilterState]?: FilterState[K] | null | undefined;
 };
 
-/** Filter/sort changes clear cursor history. */
+/**
+ * A filter or sort change, as a link. It starts again from the first page, and a price band
+ * replaces any free price range (and the other way round), so only one price filter applies.
+ */
 export function artworkCatalogueFilterHref(
   state: ArtworkCatalogueUrlState,
   overrides: ArtworkCatalogueFilterPatch = {},
 ): string {
-  const { cursor: _c, back: _b, ...rest } = state;
-  const next: Omit<ArtworkCatalogueUrlState, "cursor" | "back"> = { ...rest };
-  for (const key of Object.keys(overrides) as Array<keyof typeof overrides>) {
-    const value = overrides[key];
+  const { shown: _shown, ...rest } = state;
+  const next: FilterState = { ...rest };
+  const patch: ArtworkCatalogueFilterPatch = { ...overrides };
+  if (patch.price) {
+    patch.minPrice = null;
+    patch.maxPrice = null;
+  } else if (patch.minPrice != null || patch.maxPrice != null) {
+    patch.price = null;
+  }
+  for (const key of Object.keys(patch) as Array<keyof FilterState>) {
+    const value = patch[key];
     if (value === null || value === undefined) {
       delete next[key];
     } else {
@@ -145,125 +184,80 @@ export function artworkCatalogueFilterHref(
   return artworkCatalogueHref(next);
 }
 
-export function artworkCatalogueClearHref(): string {
-  return artworkCatalogueHref({ sort: "newest" });
+/** "Load more": the same list, one page longer. */
+export function artworkCatalogueLoadMoreHref(state: ArtworkCatalogueUrlState): string {
+  const shown = Math.min(
+    (state.shown ?? CATALOGUE_PAGE_SIZE) + CATALOGUE_PAGE_SIZE,
+    CATALOGUE_MAX_SHOWN,
+  );
+  return artworkCatalogueHref({ ...state, shown });
 }
+
+/** Every filter off; the sort is kept, since it is not a filter. */
+export function artworkCatalogueClearHref(state?: ArtworkCatalogueUrlState): string {
+  return artworkCatalogueHref({ sort: state?.sort ?? "newest" });
+}
+
+const FILTER_KEYS = [
+  "q",
+  "categorySlug",
+  "artistSlug",
+  "availability",
+  "price",
+  "size",
+  "technique",
+] as const satisfies ReadonlyArray<keyof FilterState>;
 
 export function countActiveArtworkCatalogueFilters(state: ArtworkCatalogueUrlState): number {
-  let count = 0;
-  if (state.q) count += 1;
-  if (state.categorySlug) count += 1;
-  if (state.artistSlug) count += 1;
-  if (state.availability) count += 1;
-  if (state.minPrice !== undefined) count += 1;
-  if (state.maxPrice !== undefined) count += 1;
-  return count;
-}
-
-export const ARTWORK_AVAILABILITY_LABELS: Record<ArtworkCatalogueAvailability, string> = {
-  available: "Available",
-  sold_out: "Sold out",
-};
-
-export function buildArtworkCatalogueActiveChips(
-  state: ArtworkCatalogueUrlState,
-  lookups: {
-    categories: ReadonlyArray<{ slug: string; label: string }>;
-    artists: ReadonlyArray<{ slug: string; label: string }>;
-  },
-): CatalogActiveFilterChip[] {
-  const chips: CatalogActiveFilterChip[] = [];
-  if (state.q) {
-    chips.push({
-      key: "q",
-      label: `Search: ${state.q}`,
-      removeHref: artworkCatalogueFilterHref(state, { q: null }),
-    });
-  }
-  if (state.availability) {
-    chips.push({
-      key: "availability",
-      label: ARTWORK_AVAILABILITY_LABELS[state.availability],
-      removeHref: artworkCatalogueFilterHref(state, { availability: null }),
-    });
-  }
-  if (state.categorySlug) {
-    const label =
-      lookups.categories.find((c) => c.slug === state.categorySlug)?.label ?? state.categorySlug;
-    chips.push({
-      key: "category",
-      label,
-      removeHref: artworkCatalogueFilterHref(state, { categorySlug: null }),
-    });
-  }
-  if (state.artistSlug) {
-    const label =
-      lookups.artists.find((a) => a.slug === state.artistSlug)?.label ?? state.artistSlug;
-    chips.push({
-      key: "artist",
-      label,
-      removeHref: artworkCatalogueFilterHref(state, { artistSlug: null }),
-    });
-  }
-  if (state.minPrice !== undefined || state.maxPrice !== undefined) {
-    let label: string;
-    if (state.minPrice !== undefined && state.maxPrice !== undefined) {
-      label = `${formatGbpPence(state.minPrice * 100)}–${formatGbpPence(state.maxPrice * 100)}`;
-    } else if (state.minPrice !== undefined) {
-      label = `From ${formatGbpPence(state.minPrice * 100)}`;
-    } else {
-      label = `Up to ${formatGbpPence((state.maxPrice ?? 0) * 100)}`;
-    }
-    chips.push({
-      key: "price",
-      label,
-      removeHref: artworkCatalogueFilterHref(state, { minPrice: null, maxPrice: null }),
-    });
-  }
-  return chips;
+  const set = FILTER_KEYS.filter((key) => state[key] !== undefined).length;
+  // A free range counts once, like the band it stands in for.
+  const freeRange = state.minPrice !== undefined || state.maxPrice !== undefined ? 1 : 0;
+  return set + freeRange;
 }
 
 export function artworkCatalogueHasActiveFilters(state: ArtworkCatalogueUrlState): boolean {
   return countActiveArtworkCatalogueFilters(state) > 0;
 }
 
+/** What the page asks shop-api for; prices in pence. */
 export type ArtworkCatalogueFetchInput = {
-  limit?: number;
-  cursor?: string;
   categorySlug?: string;
   artistSlug?: string;
   availability?: ArtworkCatalogueAvailability;
   minPrice?: number;
   maxPrice?: number;
+  size?: CatalogueSizeBandKey;
+  technique?: string;
   sort?: ArtworkCatalogueSort;
   q?: string;
 };
 
+function pricePence(state: ArtworkCatalogueUrlState): { minPrice?: number; maxPrice?: number } {
+  if (state.price) {
+    const range = cataloguePriceBandRange(state.price);
+    return {
+      ...(range.from !== undefined ? { minPrice: range.from } : {}),
+      // The API's bounds are inclusive; the band's upper bound is not.
+      ...(range.below !== undefined ? { maxPrice: range.below - 1 } : {}),
+    };
+  }
+  return {
+    ...(state.minPrice !== undefined ? { minPrice: state.minPrice * 100 } : {}),
+    ...(state.maxPrice !== undefined ? { maxPrice: state.maxPrice * 100 } : {}),
+  };
+}
+
 export function artworkCatalogueFetchQuery(
   state: ArtworkCatalogueUrlState,
 ): ArtworkCatalogueFetchInput {
-  const query: ArtworkCatalogueFetchInput = {};
-  if (state.q) query.q = state.q;
-  if (state.categorySlug) query.categorySlug = state.categorySlug;
-  if (state.artistSlug) query.artistSlug = state.artistSlug;
-  if (state.availability) query.availability = state.availability;
-  if (state.minPrice !== undefined) query.minPrice = state.minPrice * 100;
-  if (state.maxPrice !== undefined) query.maxPrice = state.maxPrice * 100;
-  if (state.sort !== "newest") query.sort = state.sort;
-  if (state.cursor) query.cursor = state.cursor;
-  return query;
-}
-
-export function artworkCataloguePagerHref(
-  state: ArtworkCatalogueUrlState,
-  overrides: { cursor?: string | null; back?: string | null },
-): string {
-  const next = { ...state };
-  if ("cursor" in overrides) {
-    next.cursor = overrides.cursor ?? undefined;
-  }
-  if ("back" in overrides) {
-    next.back = overrides.back ?? undefined;
-  }
-  return artworkCatalogueHref(next);
+  return {
+    ...(state.q ? { q: state.q } : {}),
+    ...(state.categorySlug ? { categorySlug: state.categorySlug } : {}),
+    ...(state.artistSlug ? { artistSlug: state.artistSlug } : {}),
+    ...(state.availability ? { availability: state.availability } : {}),
+    ...pricePence(state),
+    ...(state.size ? { size: state.size } : {}),
+    ...(state.technique ? { technique: state.technique } : {}),
+    ...(state.sort !== "newest" ? { sort: state.sort } : {}),
+  };
 }

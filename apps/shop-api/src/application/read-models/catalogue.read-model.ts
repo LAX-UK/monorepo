@@ -36,6 +36,12 @@ export type ArtworkFacetCountsReadModel = {
   availability: { available: number; soldOut: number };
   categories: Array<{ slug: string; label: string; count: number }>;
   artists: Array<{ slug: string; name: string; count: number }>;
+  /** Every price band in band order, empty ones included. */
+  priceBands: Array<{ key: string; count: number }>;
+  /** Every size band in band order, empty ones included. */
+  sizes: Array<{ key: string; count: number }>;
+  /** Techniques with works, most works first. */
+  techniques: Array<{ value: string; count: number }>;
 };
 
 export type ArtworkSummaryReadModel = {

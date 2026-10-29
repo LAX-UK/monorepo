@@ -7,12 +7,17 @@ import { forwardRef } from "react";
 
 export type MarketingFilterTriggerProps = {
   activeCount?: number;
+  /** Visible text; "Filters" by default, "Filter and sort" where the sheet also sorts. */
+  label?: string;
   className?: string;
 } & React.ComponentPropsWithoutRef<"button">;
 
 /** Compact “Filters” control for mobile marketing toolbars (pairs with MarketingFilterSheet). */
 export const MarketingFilterTrigger = forwardRef<HTMLButtonElement, MarketingFilterTriggerProps>(
-  function MarketingFilterTrigger({ activeCount = 0, className, ...props }, ref) {
+  function MarketingFilterTrigger(
+    { activeCount = 0, label = "Filters", className, ...props },
+    ref,
+  ) {
     return (
       <Button
         ref={ref}
@@ -25,7 +30,7 @@ export const MarketingFilterTrigger = forwardRef<HTMLButtonElement, MarketingFil
         {...props}
       >
         <SlidersHorizontal className="size-3.5 shrink-0" aria-hidden />
-        <span>Filters</span>
+        <span>{label}</span>
         {activeCount > 0 ? (
           <span
             className="inline-flex min-h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 font-label text-xs font-semibold leading-none text-on-primary"

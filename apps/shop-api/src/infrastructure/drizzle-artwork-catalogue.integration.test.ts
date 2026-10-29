@@ -168,6 +168,94 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork catalogue", () => {
     await db.delete(shopCategory).where(eq(shopCategory.id, category.id));
   });
 
+  it("filters by size and technique and counts the price, size and technique bands", async () => {
+    const db = createDbFromPool(shopPool);
+    const writer = createPublishedArtworkImportWriter(db);
+    const repository = createDrizzleArtworkCatalogueRepository(db);
+    const suffix = `${Date.now()}-${crypto.randomUUID()}`;
+    const q = `integration-bands-${suffix}`;
+    const edition = async (
+      key: string,
+      fields: {
+        pricePence: number;
+        heightCm: string | null;
+        widthCm: string | null;
+        medium: string;
+      },
+    ) => {
+      const imported = await writer.importArtwork({
+        importKey: `integration:bands:${suffix}:${key}`,
+        slug: `${q}-${key}`,
+        title: `Band ${key}`,
+        description: null,
+        primaryImageUrl: null,
+        artistSlug: `integration-bands-artist-${suffix}`,
+        artistDisplayName: "Band artist",
+        eligibleForEditionAllocation: true,
+        printPricePence: fields.pricePence,
+      });
+      await db
+        .update(shopArtwork)
+        .set({ heightCm: fields.heightCm, widthCm: fields.widthCm, medium: fields.medium })
+        .where(eq(shopArtwork.id, imported.artworkId));
+      return `${q}-${key}`;
+    };
+    const small = await edition("small", {
+      pricePence: 4_500,
+      heightCm: "42",
+      widthCm: "29.7",
+      medium: "Screenprint",
+    });
+    const medium = await edition("medium", {
+      pricePence: 9_500,
+      heightCm: "50",
+      widthCm: "40",
+      medium: " Screenprint ",
+    });
+    await edition("large", {
+      pricePence: 12_000,
+      heightCm: "70",
+      widthCm: "100",
+      medium: "Giclée",
+    });
+    await edition("unsized", {
+      pricePence: 30_000,
+      heightCm: null,
+      widthCm: null,
+      medium: "Giclée",
+    });
+    const base = { q, artworkType: "edition" as const, sort: "newest" as const };
+
+    const mediumOnly = await repository.listPublicArtworks({
+      limit: 10,
+      filter: { ...base, sizeBand: "medium" },
+    });
+    expect(mediumOnly.items.map((item) => item.slug)).toEqual([medium]);
+    const screenprints = await repository.listPublicArtworks({
+      limit: 10,
+      filter: { ...base, technique: "screenprint" },
+    });
+    expect(screenprints.items.map((item) => item.slug).sort()).toEqual([medium, small].sort());
+
+    const facets = await repository.countFacets({ ...base, technique: "Screenprint" });
+    // Price and size keep the technique filter; techniques ignore their own.
+    expect(facets.priceBands).toEqual([
+      { key: "under-50", count: 1 },
+      { key: "50-100", count: 1 },
+      { key: "100-300", count: 0 },
+      { key: "300-plus", count: 0 },
+    ]);
+    expect(facets.sizes).toEqual([
+      { key: "small", count: 1 },
+      { key: "medium", count: 1 },
+      { key: "large", count: 0 },
+    ]);
+    expect(facets.techniques).toEqual([
+      { value: "Giclée", count: 2 },
+      { value: "Screenprint", count: 2 },
+    ]);
+  });
+
   it("filters artworks by artist display name text search", async () => {
     const db = createDbFromPool(shopPool);
     const writer = createPublishedArtworkImportWriter(db);

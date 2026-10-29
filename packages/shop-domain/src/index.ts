@@ -341,3 +341,19 @@ export {
   type ArtistApplicationWork,
   type ArtistApplicationWorkKind,
 } from "./artist-application.js";
+export {
+  CATALOGUE_PRICE_BANDS,
+  CATALOGUE_PRICE_BAND_KEYS,
+  CATALOGUE_SIZE_BANDS,
+  CATALOGUE_SIZE_BAND_KEYS,
+  cataloguePriceBandFor,
+  cataloguePriceBandRange,
+  catalogueSizeBandFor,
+  catalogueSizeBandRange,
+  isCataloguePriceBandKey,
+  isCatalogueSizeBandKey,
+  isInCatalogueBand,
+  type CatalogueBandRange,
+  type CataloguePriceBandKey,
+  type CatalogueSizeBandKey,
+} from "./catalogue-bands.js";

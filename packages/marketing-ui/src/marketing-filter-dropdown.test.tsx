@@ -113,4 +113,25 @@ describe("MarketingFilterDropdown", () => {
     fireEvent.click(screen.getByRole("button", { name: "Apply" }));
     expect(onApply).toHaveBeenCalledWith(["under-1000"]);
   });
+  it("shows a trigger label in place of the label and count, keeping the heading", () => {
+    render(
+      <MarketingFilterDropdown
+        label="Sort"
+        triggerLabel="Sort: Newest"
+        idPrefix="sort"
+        selection="single"
+        options={[
+          { value: "newest", label: "Newest" },
+          { value: "priceAsc", label: "Price low to high" },
+        ]}
+        selected={["newest"]}
+        onApply={vi.fn()}
+      />,
+    );
+    const trigger = screen.getByRole("button", { name: "Sort: Newest" });
+    expect(trigger).toHaveTextContent("Sort: Newest");
+    expect(trigger).not.toHaveTextContent("(1)");
+    fireEvent.click(trigger);
+    expect(screen.getByRole("radiogroup", { name: "Sort" })).toBeInTheDocument();
+  });
 });

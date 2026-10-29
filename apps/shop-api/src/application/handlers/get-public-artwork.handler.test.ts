@@ -12,6 +12,9 @@ function handlerFor(artwork: ArtworkDetailReadModel | null) {
       availability: { available: 0, soldOut: 0 },
       categories: [],
       artists: [],
+      priceBands: [],
+      sizes: [],
+      techniques: [],
     }),
   });
 }

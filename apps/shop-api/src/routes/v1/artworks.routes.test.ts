@@ -19,6 +19,9 @@ function createCatalogueDeps() {
         availability: { available: 0, soldOut: 0 },
         categories: [],
         artists: [],
+        priceBands: [],
+        sizes: [],
+        techniques: [],
       }),
       listPublicCategories: async () => ({ items: [] }),
       getPublicCategory: async () => null,
@@ -35,6 +38,9 @@ describe("artworks routes", () => {
       availability: { available: 3, soldOut: 1 },
       categories: [{ slug: "prints", label: "Prints", count: 4 }],
       artists: [{ slug: "emmett-king", name: "Emmett King", count: 2 }],
+      priceBands: [{ key: "under-50", count: 4 }],
+      sizes: [{ key: "small", count: 4 }],
+      techniques: [{ value: "Screenprint", count: 4 }],
     }));
     deps.catalogue.countArtworkFacets = countArtworkFacets;
     const app = createShopApiApp({ deps, logger: false });
@@ -64,6 +70,31 @@ describe("artworks routes", () => {
       expect.objectContaining({ filter: expect.objectContaining({ availability: "sold_out" }) }),
     );
     const bad = await app.inject({ method: "GET", url: "/v1/artworks?availability=maybe" });
+    expect(bad.statusCode).toBe(400);
+    await app.close();
+  });
+
+  it("passes the size and technique filters to the list and the counts", async () => {
+    const deps = createCatalogueDeps();
+    const listPublicArtworks = vi.fn(async () => ({ items: [] }));
+    const countArtworkFacets = vi.fn(deps.catalogue.countArtworkFacets);
+    deps.catalogue.listPublicArtworks = listPublicArtworks;
+    deps.catalogue.countArtworkFacets = countArtworkFacets;
+    const app = createShopApiApp({ deps, logger: false });
+    await app.ready();
+    const query = "size=large&technique=Screenprint";
+    await app.inject({ method: "GET", url: `/v1/artworks?${query}` });
+    await app.inject({ method: "GET", url: `/v1/artwork-facets?${query}` });
+    expect(listPublicArtworks).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filter: expect.objectContaining({ sizeBand: "large", technique: "Screenprint" }),
+      }),
+    );
+    expect(countArtworkFacets).toHaveBeenCalledWith({
+      sizeBand: "large",
+      technique: "Screenprint",
+    });
+    const bad = await app.inject({ method: "GET", url: "/v1/artworks?size=huge" });
     expect(bad.statusCode).toBe(400);
     await app.close();
   });
@@ -304,6 +335,9 @@ describe("artworks routes", () => {
         availability: { available: 0, soldOut: 0 },
         categories: [],
         artists: [],
+        priceBands: [],
+        sizes: [],
+        techniques: [],
       }),
     });
     const app = createShopApiApp({ deps, logger: false });

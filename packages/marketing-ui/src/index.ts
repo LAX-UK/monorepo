@@ -195,6 +195,10 @@ export {
 } from "./marketing-filter-sidebar.js";
 export { MarketingChipStrip, type MarketingChipStripProps } from "./marketing-chip-strip.js";
 export {
+  MarketingFilterChip,
+  type MarketingFilterChipProps,
+} from "./marketing-filter-chip.js";
+export {
   CatalogActiveFilterChips,
   type CatalogActiveFilterChip,
 } from "./catalog-active-filter-chips.js";

@@ -93,10 +93,16 @@ describe("Shop commerce architecture SSOT", () => {
     const shopHomeCss = readFileSync(join(root, "apps/shop/src/app/home.css"), "utf8");
     assert.doesNotMatch(shopHomeCss, /shop-home__card-interactive/);
 
+    // Home and catalogue artists render through one Shop wrapper of the shared LAX artist card.
     assert.match(
       readFileSync(join(root, "apps/shop/src/components/home/sections/home-artists.tsx"), "utf8"),
-      /MarketingArtistCard/,
+      /ShopArtistCard/,
       "Shop home artists must use the shared LAX artist card",
+    );
+    assert.match(
+      readFileSync(join(root, "apps/shop/src/components/artists/shop-artist-card.tsx"), "utf8"),
+      /MarketingArtistCard/,
+      "The Shop artist card must be the shared LAX artist card",
     );
   });
 

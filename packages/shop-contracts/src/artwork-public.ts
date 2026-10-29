@@ -165,6 +165,11 @@ export const PublicArtworkAvailabilityFilterSchema = Type.Union([
 
 const FacetCount = Type.Integer({ minimum: 0 });
 
+const BandFacetCount = Type.Object(
+  { key: Type.String({ minLength: 1 }), count: FacetCount },
+  { additionalProperties: false },
+);
+
 /**
  * Counts beside each catalogue filter option. A group is counted with the other filters applied
  * but not its own; options with no works are left out.
@@ -185,6 +190,20 @@ export const PublicArtworkFacetCountsSchema = Type.Object(
       Type.Object(
         { slug: Type.String({ minLength: 1 }), name: Type.String(), count: FacetCount },
         { additionalProperties: false },
+      ),
+    ),
+    // The band and technique groups stay optional so storefronts parse an older shop-api.
+    /** Works per price band (`CATALOGUE_PRICE_BANDS`), in band order; empty bands included. */
+    priceBands: Type.Optional(Type.Array(BandFacetCount)),
+    /** Works per size band (`CATALOGUE_SIZE_BANDS`) by the longest side; empty bands included. */
+    sizes: Type.Optional(Type.Array(BandFacetCount)),
+    /** Works per technique (the catalogued medium), most works first. */
+    techniques: Type.Optional(
+      Type.Array(
+        Type.Object(
+          { value: Type.String({ minLength: 1 }), count: FacetCount },
+          { additionalProperties: false },
+        ),
       ),
     ),
   },

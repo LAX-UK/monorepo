@@ -17,6 +17,8 @@ export type ShopStatusStateIcon = MarketingStatusStateMotif;
 type ShopStatusStateProps = {
   variant: ShopStatusStateVariant;
   icon?: ShopStatusStateIcon;
+  /** In place of the drawing, e.g. the hatched placeholder of a page that holds works. */
+  motifSlot?: ReactNode;
   title: string;
   description: string;
   /** A control under the description, such as a search field. */
@@ -72,6 +74,7 @@ function resolveAnnouncement(
 export function ShopStatusState({
   variant,
   icon,
+  motifSlot,
   title,
   description,
   control,
@@ -90,6 +93,7 @@ export function ShopStatusState({
       variant={variant}
       layout={layout}
       motif={resolveMotif(variant, icon)}
+      {...(motifSlot ? { motifSlot } : {})}
       title={title}
       description={description}
       control={control}
