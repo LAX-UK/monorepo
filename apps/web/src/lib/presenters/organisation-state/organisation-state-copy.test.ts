@@ -14,6 +14,7 @@ import { describe, expect, it } from "vitest";
 import {
   type FirstRunStep,
   oneOfRoles,
+  organisationBannerForPage,
   organisationBannerView,
   organisationBidReasonCopy,
   organisationFirstRunCopy,
@@ -206,5 +207,35 @@ describe("oneOfRoles", () => {
     expect(oneOfRoles(["finance"])).toBe("A finance member");
     expect(oneOfRoles(["owner", "admin"], "inside")).toBe("an owner or admin");
     expect(oneOfRoles([])).toBe("");
+  });
+});
+
+describe("organisationBannerForPage", () => {
+  const banner = organisationBannerView(
+    { kind: "attention", key: "documents_requested", audience: "act" },
+    ctx,
+  );
+
+  it("drops an action that leads to the page the person is on, and keeps the line", () => {
+    const here = organisationBannerForPage(banner, "/organisation/documents");
+    expect(here.action).toBeNull();
+    expect(here.line).toBe(banner.line);
+    expect(here.title).toBe(banner.title);
+  });
+
+  it("keeps the action on every other page", () => {
+    expect(organisationBannerForPage(banner, "/organisation/members").action).toEqual(
+      banner.action,
+    );
+  });
+
+  it("always keeps a way to contact us", () => {
+    const restricted = organisationBannerView(
+      { kind: "blocked", key: "restricted", audience: "told" },
+      ctx,
+    );
+    expect(organisationBannerForPage(restricted, "/organisation/documents").action).toEqual(
+      restricted.action,
+    );
   });
 });

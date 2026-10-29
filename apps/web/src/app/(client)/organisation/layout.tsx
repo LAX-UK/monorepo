@@ -4,7 +4,7 @@ import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import { statusBadgeVariant, statusLabel, subkindLabel } from "@/components/organisations/labels";
 import { OrganisationSettingsUnavailable } from "@/components/organisations/organisation-settings-unavailable";
-import { OrganisationStateBanner } from "@/components/organisations/organisation-state-banner";
+import { OrganisationStateBannerForRoute } from "@/components/organisations/organisation-state-banner-for-route";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { resolveActiveOrganisationActor } from "@/lib/legal-entity/active-organisation.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
@@ -87,7 +87,7 @@ export default async function OrganisationLayout({ children }: { children: React
           exactHrefs={[CLIENT_ROUTES.organisation]}
           items={tabs.map((tab) => ({ href: tab.href, label: tab.label }))}
         />
-        {banner ? <OrganisationStateBanner banner={banner} /> : null}
+        {banner ? <OrganisationStateBannerForRoute banner={banner} /> : null}
         <div className="min-w-0 space-y-6">{children}</div>
       </div>
     </DashboardPage>

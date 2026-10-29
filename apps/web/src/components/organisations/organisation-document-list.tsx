@@ -23,25 +23,27 @@ export function OrganisationDocumentList({ entityId, intro, rows, closedNote }: 
             key={row.key}
             className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
           >
-            <div className="min-w-0 space-y-1">
+            <div className="min-w-0 space-y-2">
               <p className="break-words font-body text-sm font-medium text-on-surface">
                 {row.title}
               </p>
+              <div>
+                <StatusBadge variant={row.badge.tone}>{row.badge.label}</StatusBadge>
+              </div>
               {row.hint ? (
                 <p className="font-body text-sm text-on-surface-variant">{row.hint}</p>
               ) : null}
             </div>
-            <div className="flex shrink-0 flex-wrap items-center gap-3 sm:justify-end">
-              <StatusBadge variant={row.badge.tone}>{row.badge.label}</StatusBadge>
-              {row.action ? (
+            {row.action ? (
+              <div className="shrink-0">
                 <OrganisationDocumentUpload
                   entityId={entityId}
                   target={row.action.target}
                   label={row.action.label}
                   documentTitle={row.title}
                 />
-              ) : null}
-            </div>
+              </div>
+            ) : null}
           </li>
         ))}
       </ul>

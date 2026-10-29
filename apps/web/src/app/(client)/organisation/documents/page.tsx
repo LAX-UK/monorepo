@@ -1,6 +1,5 @@
 import { DashboardErrorAlert } from "@/components/dashboard/primitives";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
-import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
 import { OrganisationDocumentList } from "@/components/organisations/organisation-document-list";
 import { OrganisationTabNoAccess } from "@/components/organisations/organisation-tab-no-access";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
@@ -10,9 +9,7 @@ import { organisationHref } from "@/lib/navigation/client-routes";
 import { requireOrganisationTab } from "@/lib/navigation/organisation-tabs";
 import { loadOrganisationDocuments } from "@/lib/organisations/organisation-documents.server";
 import { buildOrganisationDocumentsView } from "@/lib/organisations/organisation-documents.vm";
-import { DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
-import { SectionHeader } from "@auction/ui/components/section-header";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -32,17 +29,10 @@ export default async function OrganisationDocumentsPage() {
   if (!ctx) notFound();
   const { member, entity } = ctx;
 
-  const header = (
-    <OrgTabSectionHeader>
-      <SectionHeader heading={<DisplayHeading as="h2">Documents</DisplayHeading>} />
-    </OrgTabSectionHeader>
-  );
-
   const loaded = await loadOrganisationDocuments(member.id);
   if (!loaded.ok) {
     return (
       <div className="space-y-6">
-        {header}
         <DashboardErrorAlert
           title="We couldn't load the documents"
           message="Something went wrong on our side. Try again in a moment."
@@ -67,7 +57,6 @@ export default async function OrganisationDocumentsPage() {
 
   return (
     <div className="space-y-6">
-      {header}
       {view.empty ? (
         <DashboardEmptyState
           illustration="ledger"

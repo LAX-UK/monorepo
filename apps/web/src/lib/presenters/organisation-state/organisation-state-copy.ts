@@ -147,6 +147,18 @@ export function organisationBannerView(
   };
 }
 
+/**
+ * The banner on the page at `currentPath`. Its line stays, but an action that leads to this
+ * same page is dropped: the person is already where the action is.
+ */
+export function organisationBannerForPage(
+  banner: OrganisationBannerView,
+  currentPath: string,
+): OrganisationBannerView {
+  const here = banner.action?.kind === "page" && banner.action.href === currentPath;
+  return here ? { ...banner, action: null } : banner;
+}
+
 /** The Home first-run card's words, before anything has happened. */
 export type OrganisationFirstRunCopy = { title: string; description: string };
 
