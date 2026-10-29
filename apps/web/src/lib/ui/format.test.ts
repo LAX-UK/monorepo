@@ -3,6 +3,7 @@ import {
   dash,
   formatCount,
   formatDate,
+  formatDateInline,
   formatDateShort,
   formatDateTime,
   formatDateTimeShort,
@@ -60,6 +61,15 @@ describe("format", () => {
     expect(dash("")).toBe("—");
     expect(dash("  ")).toBe("  ");
     expect(dash("ok")).toBe("ok");
+  });
+});
+
+describe("formatDateInline", () => {
+  it("never lets a line break inside a date", () => {
+    const date = new Date("2026-11-04T12:00:00Z");
+    expect(formatDateInline(date)).toBe("4\u00a0Nov\u00a02026");
+    expect(formatDateInline(date).replace(/\u00a0/g, " ")).toBe(formatDate(date));
+    expect(formatDateInline(null)).toBe(formatDate(null));
   });
 });
 

@@ -31,6 +31,8 @@ type Props<T> = {
   wideColumns: number;
   renderItem: (item: T) => ReactNode;
   itemTestId?: (item: T) => string;
+  /** From `lg`, size the card to its cells (each at least 11rem) rather than the column. */
+  fit?: boolean;
 };
 
 /**
@@ -45,6 +47,7 @@ export function HomeCellGrid<T>({
   wideColumns,
   renderItem,
   itemTestId,
+  fit = false,
 }: Props<T>) {
   const columns = Math.min(phoneColumns, items.length) as keyof typeof PHONE_COLUMNS;
   const remainder = items.length % columns;
@@ -57,6 +60,7 @@ export function HomeCellGrid<T>({
         "grid gap-px overflow-hidden bg-border-hairline",
         PHONE_COLUMNS[columns],
         WIDE_COLUMNS[Math.min(wideColumns, items.length)],
+        fit && "lg:w-fit lg:max-w-full",
       )}
     >
       {items.map((item, index) => {
@@ -67,6 +71,7 @@ export function HomeCellGrid<T>({
             key={itemKey(item)}
             className={cn(
               "flex min-w-0 bg-surface-container-lowest",
+              fit && "lg:min-w-44",
               span > 1 && [SPAN[span as keyof typeof SPAN], "lg:col-span-1"],
             )}
             {...(itemTestId ? { "data-testid": itemTestId(item) } : {})}

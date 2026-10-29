@@ -11,29 +11,22 @@ function StageCell({ stage }: { stage: ConsignmentStageView }) {
   const content = (
     <>
       <span className="font-body text-sm text-on-surface-variant">{stage.label}</span>
-      <span
-        className={cn(
-          "font-headline text-xl font-semibold tabular-nums sm:text-2xl",
-          stage.count > 0 ? "text-on-surface" : "text-on-surface-variant",
-        )}
-      >
+      <span className="font-headline text-xl font-semibold text-on-surface tabular-nums sm:text-2xl">
         <span className="sr-only">, </span>
         {stage.count}
       </span>
     </>
   );
-  return stage.href ? (
+  return (
     <Link href={stage.href} className={cn(CELL, HOME_CELL_LINK_CLASS)}>
       {content}
     </Link>
-  ) : (
-    <div className={CELL}>{content}</div>
   );
 }
 
 /**
- * Works by stage as one row of counts on one card. A stage with works opens the Consignments
- * list filtered to it; an empty stage is plain text, as there is nothing to open.
+ * Works by stage as one row of counts on one card: only the stages with works in them, each
+ * opening the Consignments list filtered to it.
  */
 export function HomeConsignmentStages({ stages }: { stages: readonly ConsignmentStageView[] }) {
   return (
@@ -42,8 +35,10 @@ export function HomeConsignmentStages({ stages }: { stages: readonly Consignment
         labelledBy="home-consignment-stages"
         items={stages}
         itemKey={(stage) => stage.id}
-        phoneColumns={3}
-        wideColumns={6}
+        phoneColumns={Math.min(stages.length, 3) as 1 | 2 | 3}
+        wideColumns={stages.length}
+        // A few stages read as a short row of counts, not a stretched card.
+        fit={stages.length <= 4}
         itemTestId={(stage) => `home-stage-${stage.id}`}
         renderItem={(stage) => <StageCell stage={stage} />}
       />

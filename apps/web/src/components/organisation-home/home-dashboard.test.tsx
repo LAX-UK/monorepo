@@ -38,7 +38,6 @@ const DASHBOARD: OrganisationDashboardView = {
   upcomingSalesHref: "/selling/consignments?tab=in-sale",
   stages: [
     { id: "under_review", label: "Under review", count: 2, href: "/selling/consignments?x" },
-    { id: "needs_changes", label: "Needs changes", count: 0, href: null },
   ],
 };
 
@@ -69,7 +68,7 @@ describe("HomeDashboard", () => {
     expect(sold.querySelector("[data-tile-footer]")?.className).toContain("mt-auto");
   });
 
-  it("lists upcoming sales as links, and stages with works as links", () => {
+  it("lists upcoming sales and stages as links", () => {
     render(<HomeDashboard dashboard={DASHBOARD} />);
     expect(screen.getByRole("link", { name: /Modern British/ })).toHaveAttribute(
       "href",
@@ -77,7 +76,6 @@ describe("HomeDashboard", () => {
     );
     const review = screen.getByTestId("home-stage-under_review");
     expect(within(review).getByRole("link")).toHaveAccessibleName("Under review , 2");
-    expect(within(screen.getByTestId("home-stage-needs_changes")).queryByRole("link")).toBeNull();
   });
 
   it("keeps the keyboard order: figures, then sales, then stages, with a visible focus ring", () => {

@@ -2,6 +2,7 @@ import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { Button } from "@auction/ui/components/button";
 import { EmptyState } from "@auction/ui/components/empty-state";
 import Link from "next/link";
+import { OrganisationPageNoAccess } from "./organisation-page-no-access";
 
 type Props =
   | { reason: "personal" }
@@ -32,14 +33,6 @@ export function OrganisationSettingsUnavailable(props: Props) {
       />
     );
   }
-  return (
-    <EmptyState
-      size="page"
-      variant="plain"
-      headingLevel="h1"
-      illustration="lock"
-      title="Organisation settings"
-      description={`Your role at ${props.organisationName} doesn't include its settings. Ask an owner or admin if you need them.`}
-    />
-  );
+  // The access page names the tab tried and who can open it.
+  return <OrganisationPageNoAccess />;
 }

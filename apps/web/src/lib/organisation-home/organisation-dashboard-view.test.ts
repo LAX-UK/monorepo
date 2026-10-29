@@ -84,7 +84,7 @@ describe("At a glance words and links", () => {
       {
         label: "Payouts due",
         figures: ["£9,100.00"],
-        supporting: ["Next on 3 Nov 2026"],
+        supporting: ["Next on 3\u00a0Nov\u00a02026"],
         href: "/selling/payouts",
       },
       {
@@ -152,7 +152,7 @@ describe("sections", () => {
       {
         id: "s1",
         title: "Modern British",
-        date: "20 Nov 2026",
+        date: "20\u00a0Nov\u00a02026",
         dateTime: "2026-11-20T10:00:00.000Z",
         works: "2 works",
         href: "/sales/modern-british/s1",
@@ -160,16 +160,21 @@ describe("sections", () => {
     ]);
   });
 
-  it("links each stage with works to the filtered list, and leaves empty stages plain", () => {
+  it("shows only stages with works, each linking to the filtered list", () => {
     const stages = view("owner").stages;
     expect(stages?.map(({ label, count, href }) => [label, count, href])).toEqual([
       ["Under review", 2, "/selling/consignments?tab=in-review&stage=under_review"],
-      ["Needs changes", 0, null],
-      ["Accepted", 0, null],
       ["In sale", 3, "/selling/consignments?tab=in-sale"],
       ["Sold", 1, "/selling/consignments?tab=sold"],
-      ["Unsold", 0, null],
     ]);
+  });
+
+  it("leaves the section out when every stage is empty", () => {
+    const model = buildOrganisationDashboard(
+      { role: "owner" },
+      { ...FIGURES, consignmentProgress: emptyConsignmentProgress() },
+    );
+    expect(organisationDashboardView(model, ctx, "ready").stages).toBeNull();
   });
 });
 
@@ -266,7 +271,7 @@ describe("payouts due", () => {
 
   it("says a past date is overdue, never that it is next", () => {
     expect(payouts({ nextDate: null, overdueSince: new Date("2026-10-12T00:00:00Z") })).toEqual([
-      "Overdue since 12 Oct 2026",
+      "Overdue since 12\u00a0Oct\u00a02026",
     ]);
   });
 
@@ -276,6 +281,6 @@ describe("payouts due", () => {
         nextDate: new Date("2026-11-03T00:00:00Z"),
         overdueSince: new Date("2026-10-12T00:00:00Z"),
       }),
-    ).toEqual(["Overdue since 12 Oct 2026 · next 3 Nov 2026"]);
+    ).toEqual(["Overdue since 12\u00a0Oct\u00a02026 · next 3\u00a0Nov\u00a02026"]);
   });
 });

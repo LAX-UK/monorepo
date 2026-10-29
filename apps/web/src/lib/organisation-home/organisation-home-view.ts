@@ -6,7 +6,7 @@ import {
   organisationBannerView,
   unsoldPausedContact,
 } from "@/lib/presenters/organisation-state/organisation-state-copy";
-import { formatDate, formatDateTime, formatMoney, formatRelativeTime } from "@/lib/ui/format";
+import { formatDateInline, formatDateTime, formatMoney, formatRelativeTime } from "@/lib/ui/format";
 import {
   type HomeActivityArchive,
   type HomeActivityEvent,
@@ -147,7 +147,7 @@ const TASK_VIEWS: { [K in HomeTask["kind"]]: TaskViewBuilder<K> } = {
     action: { label: "View", href: CLIENT_ROUTES.purchases },
   }),
   register: (task) => ({
-    title: `Register for ${task.sale.title}, ${formatDate(task.startsAt)}`,
+    title: `Register for ${task.sale.title}, ${formatDateInline(task.startsAt)}`,
     detail: task.bidLimit
       ? `You're authorised to bid up to ${formatMoney(task.bidLimit)}`
       : "You're authorised to bid with no limit",

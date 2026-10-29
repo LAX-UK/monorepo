@@ -43,7 +43,7 @@ export function HomeFigureTile({ tile }: { tile: DashboardTileView }) {
       {tile.supporting.length > 0 ? (
         <span
           data-tile-footer
-          className="mt-auto flex flex-col gap-0.5 pt-1 font-body text-xs text-on-surface-variant"
+          className="mt-auto flex flex-col gap-0.5 pt-1 font-body text-xs text-pretty text-on-surface-variant"
         >
           {tile.supporting.map((line) => (
             <span key={line}>{line}</span>
