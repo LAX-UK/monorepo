@@ -1,13 +1,13 @@
 import { groupMyBids } from "@/lib/bid/my-bid-status";
 import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
-import { isAwaitingCheckout } from "@/lib/data/view-models/dashboard-portfolio.vm";
-import type { PortfolioRow, UserNotification } from "@auction/types";
+import type { UserNotification } from "@auction/types";
 import type { ClientAttention } from "./client-attention";
 
 export type ClientAttentionSources = {
   userId: string;
   bids: readonly BidWithLot[];
-  purchases: readonly Pick<PortfolioRow, "payment">[];
+  /** Won lots still to pay that this person pays (see `purchasesToPayBy`). */
+  purchasesToPay: readonly unknown[];
   unreadNotifications: readonly Pick<UserNotification, "read">[];
 };
 
@@ -27,7 +27,7 @@ export function deriveClientAttention(sources: ClientAttentionSources): ClientAt
     outbidLots: active
       .filter((entry) => entry.status === "outbid")
       .map((entry) => lotLabel(entry.row.lot?.lotNumber)),
-    paymentsDue: sources.purchases.filter(isAwaitingCheckout).length,
+    paymentsDue: sources.purchasesToPay.length,
     unreadNotifications: sources.unreadNotifications.filter((n) => !n.read).length,
   };
 }

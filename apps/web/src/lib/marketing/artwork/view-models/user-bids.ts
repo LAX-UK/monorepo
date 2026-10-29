@@ -1,5 +1,5 @@
 import type { BidHistoryEntry } from "@/lib/bid/bid-history-entry";
-import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import type { Lot } from "@auction/types";
 import { maskPaddleFromBidderId } from "./bid-feed";
 
@@ -28,7 +28,7 @@ export function mapUserBidsHistoryVM(
   if (!userId || entries.length === 0) return null;
   const userBids = entries.filter((e) => e.bidderId === userId);
   if (userBids.length === 0) return null;
-  const currency = resolveLotCurrency(lot);
+  const currency = lotChargeCurrency(lot);
 
   const sortedByAmount = [...entries].sort((a, b) => {
     const na = Number.parseFloat(a.amount);

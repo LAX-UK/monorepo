@@ -15,6 +15,7 @@ import {
   watchlistWithLotRowSchema,
 } from "@/lib/data/http/dashboard.schema";
 import { readJsonBody, readListEnvelope } from "@/lib/data/http/envelope";
+import { X_LEGAL_ENTITY_ID_HEADER } from "@/lib/legal-entity/client-acting-context";
 import type { PortfolioRow } from "@auction/types";
 
 export type {
@@ -38,6 +39,30 @@ export async function getServerMyPortfolio(): Promise<PortfolioRow[]> {
   const body = await readJsonBody(res);
   const { rows } = readListEnvelope(body, portfolioRowSchema, "GET /users/me/portfolio");
   return rows;
+}
+
+/** Sends the request for one account, whatever the acting cookie says. */
+function forAccount(accountId: string): RequestInit {
+  return { headers: { [X_LEGAL_ENTITY_ID_HEADER]: accountId } };
+}
+
+/**
+ * Bids placed for an organisation, as far as the member's role follows them (everyone's for
+ * owners and admins, their own for buyer agents). The API refuses other roles.
+ */
+export async function getServerAccountBids(accountId: string): Promise<BidWithLot[]> {
+  const res = await authedServerFetch("/users/me/account/bids", forAccount(accountId));
+  await throwIfNotOk(res, "bids");
+  const body = await readJsonBody(res);
+  return readListEnvelope(body, bidWithLotRowSchema, "GET /users/me/account/bids").rows;
+}
+
+/** Lots won for an organisation with their payment state (a buyer agent's own wins). */
+export async function getServerAccountPurchases(accountId: string): Promise<PortfolioRow[]> {
+  const res = await authedServerFetch("/users/me/account/purchases", forAccount(accountId));
+  await throwIfNotOk(res, "portfolio");
+  const body = await readJsonBody(res);
+  return readListEnvelope(body, portfolioRowSchema, "GET /users/me/account/purchases").rows;
 }
 
 export async function getServerMyWatchlist(

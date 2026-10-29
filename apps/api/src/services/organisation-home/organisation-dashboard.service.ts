@@ -1,4 +1,5 @@
 import {
+  type AccountFigureGroup,
   type DashboardFigureGroup,
   type DashboardFigures,
   type EntityActor,
@@ -6,6 +7,7 @@ import {
   consignmentProgressCounts,
   dashboardFigureGroupsFor,
   dashboardFigureScope,
+  isAccountFigureGroup,
   londonCalendarYear,
   splitPayoutDates,
   sumMoneyByCurrency,
@@ -15,12 +17,9 @@ import type {
   ConsignmentReadScope,
   CurrencyCountRow,
   IConsignmentStatusCountsReader,
-  IOpenBidsReader,
   IPayoutsDueReader,
   ISoldWorksReader,
-  IUnpaidPurchasesReader,
   IUpcomingSaleWorksReader,
-  UnpaidPurchaseRow,
 } from "@auction/persistence/interfaces";
 import type { IOrganisationDashboardService } from "../interfaces/organisation-dashboard-service.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
@@ -31,21 +30,19 @@ export type OrganisationDashboardReaders = {
   upcomingSaleWorks: IUpcomingSaleWorksReader;
   soldWorks: ISoldWorksReader;
   payoutsDue: IPayoutsDueReader;
-  openBids: IOpenBidsReader;
-  unpaidPurchases: IUnpaidPurchasesReader;
 };
-
-/** What a won lot costs the buyer: hammer plus buyer's premium (decimal string). */
-export type PurchaseTotal = (purchase: UnpaidPurchaseRow) => string;
 
 export type OrganisationDashboardDeps = {
   readers: OrganisationDashboardReaders;
-  purchaseTotal: PurchaseTotal;
   now?: () => Date;
 };
 
-/** Home reuses the buyer agent's authorisations it reads for its tasks. */
-type ServerGroup = Exclude<DashboardFigureGroup, "bidAuthority">;
+/**
+ * Groups Home adds itself from what it already reads: the buyer agent's authorisations, and the
+ * account's bids and purchases, which come from the same reader as the Bids and Purchases pages
+ * so the figures always match them.
+ */
+type ServerGroup = Exclude<DashboardFigureGroup, AccountFigureGroup>;
 
 type LoadContext = {
   actor: EntityActor;
@@ -59,11 +56,9 @@ type Loaders = {
 
 /** Rows per sale and currency; far more than the few sales Home shows. */
 const UPCOMING_ROWS_LIMIT = 100;
-/** Unpaid wins read to total what is owed. */
-const UNPAID_PURCHASES_LIMIT = 200;
 
 const isServerGroup = (group: DashboardFigureGroup): group is ServerGroup =>
-  group !== "bidAuthority";
+  !isAccountFigureGroup(group);
 
 function consignmentScope(ctx: LoadContext, group: ServerGroup): ConsignmentReadScope {
   const scope = dashboardFigureScope(ctx.actor, group);
@@ -89,7 +84,7 @@ export class OrganisationDashboardService implements IOrganisationDashboardServi
 
   constructor(deps: OrganisationDashboardDeps) {
     this.now = deps.now ?? (() => new Date());
-    const { readers, purchaseTotal } = deps;
+    const { readers } = deps;
     this.loaders = {
       consignmentProgress: async (ctx) =>
         consignmentProgressCounts(
@@ -119,26 +114,6 @@ export class OrganisationDashboardService implements IOrganisationDashboardServi
           payouts: countOf(rows),
           totals: totalsOf(rows),
           ...splitPayoutDates(dates, ctx.now),
-        };
-      },
-      openBids: async (ctx) => {
-        const own = dashboardFigureScope(ctx.actor, "openBids") === "own";
-        const rows = await readers.openBids.summarise(
-          ctx.member.legalEntityId,
-          own ? ctx.member.userId : null,
-        );
-        return { lots: countOf(rows), totalMax: totalsOf(rows) };
-      },
-      purchasesToPay: async (ctx) => {
-        const rows = await readers.unpaidPurchases.list(
-          ctx.member.legalEntityId,
-          UNPAID_PURCHASES_LIMIT,
-        );
-        return {
-          purchases: rows.length,
-          totals: sumMoneyByCurrency(
-            rows.map((row) => ({ currency: row.currency, amount: purchaseTotal(row) })),
-          ),
         };
       },
     };

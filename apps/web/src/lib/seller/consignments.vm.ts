@@ -1,4 +1,4 @@
-import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import {
   type ReviewStage,
   parseReviewStage,
@@ -79,7 +79,7 @@ const CONTEXT_DATE = new Intl.DateTimeFormat("en-GB", {
 function lotContext(lot: Lot): string {
   const parts = [lot.lotNumber == null ? null : `Lot ${lot.lotNumber}`];
   if (lot.status === "ended" && lot.winnerId) {
-    parts.push(`sold for ${formatMoney(lot.currentPrice, resolveLotCurrency(lot))}`);
+    parts.push(`sold for ${formatMoney(lot.currentPrice, lotChargeCurrency(lot))}`);
   }
   const text = parts.filter(Boolean).join(" · ");
   return text ? text.charAt(0).toUpperCase() + text.slice(1) : "Catalogued";

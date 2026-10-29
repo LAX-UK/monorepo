@@ -1,4 +1,5 @@
 import { type Result, err, ok } from "neverthrow";
+import type { PaymentAuthorityLot } from "../interfaces/buyer-payment-authority.js";
 import type {
   ILotFulfilmentBuyerService,
   LotFulfilmentRow,
@@ -15,13 +16,20 @@ export class LotFulfilmentBuyerService implements ILotFulfilmentBuyerService {
   ): Promise<Result<LotFulfilmentRow | null, LotFulfilmentServiceError>> {
     const lotRow = await this.ctx.lotRepo.findById(lotId);
     if (!lotRow) return err({ message: "Lot not found", status: 404 });
-    if (lotRow.winnerId !== userId) {
+    if (!(await this.mayFollow(userId, lotRow))) {
       return err({
-        message: "Only the winning bidder can view fulfilment for this lot",
+        message: "Only the winner or the account's payers can view fulfilment for this lot",
         status: 403,
       });
     }
     const row = await this.ctx.fulfilmentRepo.findByLotId(lotId);
     return ok(row ?? null);
+  }
+
+  /** The winner follows their lot; so do the people who pay for it (an organisation's payers). */
+  private async mayFollow(userId: string, lot: PaymentAuthorityLot): Promise<boolean> {
+    if (lot.winnerId === userId) return true;
+    if (!this.ctx.paymentAuthority) return false;
+    return (await this.ctx.paymentAuthority.canPay({ userId }, lot)).allowed;
   }
 }

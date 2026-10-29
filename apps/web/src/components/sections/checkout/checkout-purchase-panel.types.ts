@@ -28,6 +28,8 @@ export type CheckoutBuyerContext = {
   lotId: string;
   lotTitle: string;
   addresses: unknown[];
+  /** The organisation being paid for, named on the confirm button; `null` for a personal purchase. */
+  payingFor?: string | null;
 };
 
 export type CheckoutPurchasePanelProps = CheckoutOrderSummary &

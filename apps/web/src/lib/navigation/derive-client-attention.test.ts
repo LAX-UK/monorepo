@@ -64,21 +64,17 @@ describe("deriveClientAttention", () => {
         bidOn({ lotId: "c", lotNumber: 8, winning: true, endsInHours: 2 }),
         bidOn({ lotId: "d", lotNumber: null, winning: false, endsInHours: 9 }),
       ],
-      purchases: [],
+      purchasesToPay: [],
       unreadNotifications: [],
     });
     expect(attention.outbidLots).toEqual(["14", "22", null]);
   });
 
-  it("counts purchases still to pay and unread notifications", () => {
+  it("counts the purchases this person pays and unread notifications", () => {
     const attention = deriveClientAttention({
       userId: "user-1",
       bids: [],
-      purchases: [
-        { payment: null },
-        { payment: { status: "captured" } as never },
-        { payment: { status: "requires_payment_method" } as never },
-      ],
+      purchasesToPay: [{ lot: "a" }, { lot: "b" }],
       unreadNotifications: [{ read: false }, { read: true }, { read: false }],
     });
     expect(attention).toEqual({ outbidLots: [], paymentsDue: 2, unreadNotifications: 2 });

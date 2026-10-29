@@ -6,7 +6,7 @@ import { SaleroomActivityLog } from "@/features/saleroom/components/clerk-consol
 import { formatSaleroomMoney } from "@/features/saleroom/lib/format-saleroom-money";
 import type { SaleroomActivityEntry } from "@/features/saleroom/types/staff-saleroom.vm";
 import type { ClerkLotLiveBidState } from "@/hooks/use-clerk-lot-live-price";
-import { resolveLotCurrency } from "@/lib/money/currency";
+import { lotChargeCurrency } from "@/lib/money/currency";
 import { formatLotRunListLabel } from "@/lib/saleroom/sort-lots-for-run-list";
 import type { Lot } from "@auction/types";
 
@@ -21,7 +21,7 @@ type Props = {
  * leading bidder, then the room's activity. It updates as the room does, but takes no actions.
  */
 export function ClerkReadOnlyView({ currentLot, liveBid, activityLog }: Props) {
-  const currency = currentLot ? resolveLotCurrency(currentLot) : undefined;
+  const currency = currentLot ? lotChargeCurrency(currentLot) : undefined;
   return (
     <div className="flex flex-col gap-4">
       <ConsolePanel className="flex flex-col gap-1">

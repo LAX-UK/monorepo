@@ -1,7 +1,6 @@
 import type { IAttributionStore } from "@auction/marketing-events";
 import type { Redis } from "ioredis";
-import { LotError, PaymentProviderError } from "../../lib/errors.js";
-import type { AuthzError } from "../../lib/errors.js";
+import { AuthzError, LotError, PaymentProviderError } from "../../lib/errors.js";
 import { buildEnrichedWebsiteUserEvent } from "../../lib/marketing-attribution-context.js";
 import type { WebsiteEventContext } from "../../lib/marketing-event-factory.js";
 import { checkSofDocumentAttachRateLimit } from "../../lib/sof-document-attach-rate-limit.js";
@@ -157,7 +156,7 @@ export class BuyerPaymentHttpApplicationService implements IBuyerPaymentHttpAppl
       let code: string | undefined;
       if (error instanceof PaymentProviderError && error.stripeCode) {
         code = error.stripeCode;
-      } else if (error instanceof LotError && error.code) {
+      } else if ((error instanceof LotError || error instanceof AuthzError) && error.code) {
         code = error.code;
       }
       return {

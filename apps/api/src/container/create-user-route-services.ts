@@ -70,6 +70,7 @@ export type CreateUserRouteServicesInput = {
   authAuditPublisher: IAuthAuditPublisher;
   twoFactorRequirement: UserRouteServices["twoFactorRequirement"];
   staffInvitationAccept: UserRouteServices["staffInvitationAccept"];
+  requireBuyingAccount: UserRouteServices["requireBuyingAccount"];
 };
 
 export function createUserRouteServices(input: CreateUserRouteServicesInput): UserRouteServices {
@@ -137,5 +138,6 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
     }),
     twoFactorRequirement: input.twoFactorRequirement,
     staffInvitationAccept: input.staffInvitationAccept,
+    requireBuyingAccount: input.requireBuyingAccount,
   };
 }

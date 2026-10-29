@@ -84,6 +84,17 @@ export function purchaseState(facts: PurchaseFacts): PurchaseState {
   }
 }
 
+/**
+ * Whether a won lot is still to pay: it sits in the To pay view (due, or held for checks before
+ * it can be paid). A bank transfer on its way is not; nor is a paid or refunded lot. Home, the
+ * menu counts and the Pay now banner use this, so they always match the To pay view.
+ */
+export function isToPay(paymentStatus: PaymentStatus | null): boolean {
+  return (
+    purchaseTab(purchaseState({ paymentStatus, reviewReason: null, fulfilment: null })) === "to-pay"
+  );
+}
+
 export function purchaseStep(state: PurchaseState): PurchaseStep {
   return STATE_PLACE[state].step;
 }

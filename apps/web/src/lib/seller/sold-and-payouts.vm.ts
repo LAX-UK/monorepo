@@ -1,4 +1,4 @@
-import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { formatPeriod } from "@/lib/ui/format";
 import type { Lot, Payout } from "@auction/types";
@@ -60,7 +60,7 @@ export function buildSoldWorks(
       saleTitle: lot.saleId ? (saleTitleById[lot.saleId] ?? null) : null,
       hammer: formatMoney(
         lot.checkoutPricing?.hammerMajor ?? lot.currentPrice,
-        resolveLotCurrency(lot),
+        lotChargeCurrency(lot),
       ),
       soldOn: DAY_MONTH_YEAR.format(lot.endTime),
     }));

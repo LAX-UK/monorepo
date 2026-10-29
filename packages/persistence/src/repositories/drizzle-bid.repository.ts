@@ -363,6 +363,20 @@ export class DrizzleBidRepository implements IBidRepository {
     return rows.map(mapBidRow);
   }
 
+  async listForBuyerAccount(buyerLegalEntityId: string, bidderId: string | null, limit: number) {
+    const rows = await this.db
+      .select()
+      .from(bid)
+      .where(
+        bidderId
+          ? and(eq(bid.buyerLegalEntityId, buyerLegalEntityId), eq(bid.bidderId, bidderId))
+          : eq(bid.buyerLegalEntityId, buyerLegalEntityId),
+      )
+      .orderBy(desc(bid.createdAt))
+      .limit(limit);
+    return rows.map(mapBidRow);
+  }
+
   async markWinningBid(lotId: string, bidId: string) {
     // Two steps avoid violating bid_one_winner_per_lot_uniq: a single UPDATE that
     // demotes the old winner and promotes the new bid can briefly have two winners.

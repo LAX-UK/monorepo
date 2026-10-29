@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const container = {
   session: { getCurrent: vi.fn() },
-  bids: { listMine: vi.fn() },
+  buying: { bids: vi.fn() },
 };
 
 vi.mock("@/lib/data/container.server", () => ({
@@ -17,7 +17,7 @@ import { GET } from "./route";
 describe("GET /bids/export", () => {
   beforeEach(() => {
     container.session.getCurrent.mockResolvedValue({ id: "me" });
-    container.bids.listMine.mockResolvedValue([
+    container.buying.bids.mockResolvedValue([
       {
         bid: {
           id: "b1",

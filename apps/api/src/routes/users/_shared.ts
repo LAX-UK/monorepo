@@ -3,6 +3,7 @@ import type { ContainerUserAccountRoutesSlice } from "../../container.js";
 import type { MarketingClientContextVars } from "../../middleware/marketing-client-context.js";
 import type { MarketingConsentVars } from "../../middleware/marketing-consent.js";
 import type { createRequireAuth } from "../../middleware/require-auth.js";
+import type { LegalEntityContext } from "../../middleware/require-legal-entity-context.js";
 import type { createRequireRecentPasswordAuth } from "../../middleware/require-recent-password-auth.js";
 import type { createTurnstileMiddleware } from "../../middleware/turnstile.js";
 
@@ -11,6 +12,7 @@ export type UserHono = Hono<{
     userId?: string;
     userRole?: string;
     identitySessionId?: string;
+    legalEntityContext?: LegalEntityContext;
   } & MarketingConsentVars &
     MarketingClientContextVars;
 }>;

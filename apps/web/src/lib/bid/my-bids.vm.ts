@@ -1,5 +1,5 @@
 import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
-import { formatEstimateRange, formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { formatEstimateRange, formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { formatDateTimeShort } from "@/lib/ui/format";
 import type { Lot } from "@auction/types";
@@ -56,7 +56,7 @@ export const MY_BID_STATUS_LABEL: Record<MyBidStatus, string> = {
 };
 
 function money(amount: string | number, lot: Lot): string {
-  return formatMoney(amount, resolveLotCurrency(lot));
+  return formatMoney(amount, lotChargeCurrency(lot));
 }
 
 function yourMaximum(row: BidWithLot, lot: Lot): string {

@@ -6,6 +6,7 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import { resolveSaleTitles } from "@/lib/data/sale-titles.server";
 import { shouldOfferIdentityOnboarding } from "@/lib/kyc/identity-onboarding";
 import { isIdentityOnboardingEnabled } from "@/lib/kyc/identity-onboarding-rollout.server";
+import { roleNeedsPersonalIdentity } from "@auction/domain";
 
 type PageProps = {
   searchParams: Promise<{ tab?: string }>;
@@ -15,10 +16,14 @@ type PageProps = {
 export async function BidsPageContent({ searchParams }: PageProps) {
   const tab = parseMyBidTab((await searchParams).tab);
   const container = await getServerDataContainer();
+  const scope = await container.buying.scope();
+  // Inside an organisation the person's own identity matters only for roles that bid in person.
+  const identityMatters =
+    scope.account.kind === "personal" || roleNeedsPersonalIdentity(scope.account.actor.role);
   const [userResult, bidsResult, kycResult] = await Promise.allSettled([
     container.session.getCurrent(),
-    container.bids.listMine(),
-    container.kyc.getSummary(),
+    container.buying.bids(),
+    identityMatters ? container.kyc.getSummary() : Promise.resolve(null),
   ]);
   const user = userResult.status === "fulfilled" ? userResult.value : null;
 

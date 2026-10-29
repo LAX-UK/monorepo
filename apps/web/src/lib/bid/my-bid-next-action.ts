@@ -1,5 +1,5 @@
 import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
-import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
@@ -49,7 +49,7 @@ function actionFor(kind: MyBidActionKind, lot: Lot): MyBidAction {
       const amount = getMinNextBidAmount(lot, lot.currentPrice);
       return {
         kind,
-        label: `Bid ${formatMoney(amount, resolveLotCurrency(lot))}`,
+        label: `Bid ${formatMoney(amount, lotChargeCurrency(lot))}`,
         href,
         emphasis: EMPHASIS[kind],
       };

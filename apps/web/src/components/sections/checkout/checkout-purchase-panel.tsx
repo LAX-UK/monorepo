@@ -43,6 +43,7 @@ export function CheckoutPurchasePanel({
   sessionUser,
   lotId,
   lotTitle,
+  payingFor = null,
   hammer,
   buyerPremium,
   total,
@@ -159,6 +160,7 @@ export function CheckoutPurchasePanel({
               <CheckoutPurchaseForm
                 sessionUser={sessionUser}
                 totalLabel={total}
+                payingFor={payingFor}
                 form={purchaseState.form}
                 checkoutAddresses={purchaseState.checkoutAddresses}
                 billingOnlyAddresses={purchaseState.billingOnlyAddresses}

@@ -5,7 +5,7 @@ import {
   formatAdminTableMoneyRange,
 } from "@/lib/admin/format-admin-table-money";
 import { lotWasSold } from "@/lib/lot/lot-outcome";
-import { resolveLotCurrency } from "@/lib/money/currency";
+import { lotChargeCurrency } from "@/lib/money/currency";
 import { lotDotStatusPresentation } from "@/lib/presenters/status/lot-dot-status";
 import { formatMoney } from "@/lib/ui/format";
 import type { LotStatus, SaleDeliveryMode } from "@auction/types";
@@ -67,12 +67,12 @@ type LotHammerSource = {
   winnerId?: string | null;
   /** List rows hide the buyer and carry only this flag. */
   hasWinner?: boolean | undefined;
-  marketingDetails?: Parameters<typeof resolveLotCurrency>[0]["marketingDetails"];
+  marketingDetails?: Parameters<typeof lotChargeCurrency>[0]["marketingDetails"];
 };
 
 /** Status-aware hammer presentation for admin lot list tables. */
 export function formatLotHammerForTable(lot: LotHammerSource): AdminTableMoneyDisplay {
-  const currency = resolveLotCurrency({
+  const currency = lotChargeCurrency({
     marketingDetails: lot.marketingDetails ?? null,
   });
   const starting = toAmount(lot.startingPrice);

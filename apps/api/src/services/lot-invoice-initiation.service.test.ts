@@ -60,8 +60,8 @@ function buildService(
       findById: vi.fn().mockResolvedValue(null),
     } as unknown as ISaleRepository,
     {
-      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
-      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
+      findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({
         id: "pay-new",
         lotId: baseLot.id,
@@ -120,7 +120,7 @@ describe("LotInvoiceInitiationService.ensureForLot", () => {
   it("no-ops when an open payment already exists", async () => {
     const { service } = buildService({
       payments: {
-        findOpenByLotAndBuyer: vi.fn().mockResolvedValue({ id: "pay-existing" }),
+        findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue({ id: "pay-existing" }),
       },
     });
     const result = await service.ensureForLot(baseLot.id);
@@ -184,7 +184,7 @@ describe("LotInvoiceInitiationService.ensureForLot", () => {
           code: "23505",
           message: 'duplicate key value violates unique constraint "payment_lot_buyer_open_unique"',
         }),
-        findOpenByLotAndBuyer: vi
+        findOpenByLotAndBuyerAccount: vi
           .fn()
           .mockResolvedValueOnce(null)
           .mockResolvedValueOnce({ id: "pay-raced" }),

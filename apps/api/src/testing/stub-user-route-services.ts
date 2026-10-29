@@ -23,6 +23,8 @@ export function stubUserRouteServices(overrides?: Partial<UserRouteServices>): U
       listConditionReportRequests: vi.fn(),
       listBids: vi.fn(),
       listPortfolio: vi.fn(),
+      listAccountBids: vi.fn(),
+      listAccountPurchases: vi.fn(),
     },
     laxPortfolioHttp: {
       getPortfolio: vi.fn(),
@@ -81,6 +83,9 @@ export function stubUserRouteServices(overrides?: Partial<UserRouteServices>): U
     },
     twoFactorRequirement: { readMyRequirement: vi.fn() },
     staffInvitationAccept: { accept: vi.fn() },
+    requireBuyingAccount: async (_c, next) => {
+      await next();
+    },
     ...overrides,
   };
 }

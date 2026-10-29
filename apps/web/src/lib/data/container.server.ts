@@ -2,6 +2,7 @@ import "server-only";
 
 export { getWriteContainer, type WriteServiceContainer } from "./write-container.server";
 
+import { serverAccountScope } from "@/lib/account-scope/account-scope.server";
 import {
   getServerMyArtistFollows,
   getServerMyBids,
@@ -16,8 +17,13 @@ import {
   getServerLotFulfilmentForWinner,
   getServerMyPayments,
 } from "@/lib/buyer-account/payments.server";
+import {
+  type IAccountBuyingReader,
+  createAccountBuyingReader,
+} from "@/lib/buying/account-buying-reader";
 import { getServerMyAddresses } from "@/lib/data/http/addresses.server";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
+import { getServerAccountBids, getServerAccountPurchases } from "@/lib/data/http/dashboard.reader";
 import { getServerKycStatusSummary, postServerKycSession } from "@/lib/data/http/kyc.server";
 import { getServerMyLegalEntityMemberships } from "@/lib/data/http/legal-entities.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
@@ -38,7 +44,6 @@ import type {
   DashboardActiveLotsReader,
   DashboardAddressesReader,
   DashboardArtistFollowReader,
-  DashboardBidsReader,
   DashboardBuyerLotReader,
   DashboardCategoriesReader,
   DashboardKycReader,
@@ -47,7 +52,6 @@ import type {
   DashboardNotificationsReader,
   DashboardOrgOnboardingReader,
   DashboardPaymentsReader,
-  DashboardPortfolioReader,
   DashboardSalesReader,
   DashboardSellerLotReader,
   DashboardSellerPayoutsReader,
@@ -76,8 +80,8 @@ export type ServerDataContainer = {
   categories: DashboardCategoriesReader;
   buyerLots: DashboardBuyerLotReader;
   sellerLots: DashboardSellerLotReader;
-  bids: DashboardBidsReader;
-  portfolio: DashboardPortfolioReader;
+  /** The acting account's bids and purchases (an organisation's when acting for one). */
+  buying: IAccountBuyingReader;
   watchlist: DashboardWatchlistReader;
   artistFollow: DashboardArtistFollowReader;
   activeLots: DashboardActiveLotsReader;
@@ -126,8 +130,10 @@ export async function getServerDataContainer(): Promise<ServerDataContainer> {
     sellerLots: {
       list: (params) => lotReader.list(params),
     },
-    bids: { listMine: getServerMyBids },
-    portfolio: { listMine: getServerMyPortfolio },
+    buying: createAccountBuyingReader(serverAccountScope, {
+      personal: { bids: getServerMyBids, purchases: getServerMyPortfolio },
+      organisation: { bids: getServerAccountBids, purchases: getServerAccountPurchases },
+    }),
     watchlist: { listMine: getServerMyWatchlist },
     artistFollow: { listMine: getServerMyArtistFollows },
     payments: {
