@@ -26,7 +26,7 @@ export function ShopCatalogueHub({
     <MarketingCatalogHubShell footer={footer} shellClassName="flex flex-col gap-8 py-8 lg:py-12">
       <header className="shop-catalogue-hub__header flex max-w-[var(--container-inner,86rem)] flex-col gap-3">
         {eyebrow ? <p className="shop-catalogue-hub__eyebrow">{eyebrow}</p> : null}
-        <DisplayHeading as="h1" size="md">
+        <DisplayHeading as="h1" size="lg">
           {title}
         </DisplayHeading>
         {description ? (
