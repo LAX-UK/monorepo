@@ -32,6 +32,7 @@ const FIGURES: DashboardFigures = {
     payouts: 1,
     totals: [{ currency: "GBP", amount: "9100.00" }],
     nextDate: new Date("2026-11-03T00:00:00Z"),
+    overdueSince: null,
   },
   openBids: { lots: 3, totalMax: [{ currency: "GBP", amount: "24000.00" }] },
   purchasesToPay: {
@@ -139,7 +140,7 @@ describe("At a glance words and links", () => {
   it("a tile with nothing to show says so, with no zero and no supporting line", () => {
     const empty = view("owner", {
       ...FIGURES,
-      payoutsDue: { payouts: 0, totals: [], nextDate: null },
+      payoutsDue: { payouts: 0, totals: [], nextDate: null, overdueSince: null },
     }).tiles.find((t) => t.id === "payouts_due");
     expect(empty).toMatchObject({ figures: [], emptyText: "No payouts due", supporting: [] });
   });
@@ -177,7 +178,7 @@ describe("first steps", () => {
     consignmentProgress: emptyConsignmentProgress(),
     upcomingSales: [],
     soldThisYear: { year: 2026, works: 0, totals: [] },
-    payoutsDue: { payouts: 0, totals: [], nextDate: null },
+    payoutsDue: { payouts: 0, totals: [], nextDate: null, overdueSince: null },
     openBids: { lots: 0, totalMax: [] },
     purchasesToPay: { purchases: 0, totals: [] },
     bidAuthority: { everySale: null, sales: [] },

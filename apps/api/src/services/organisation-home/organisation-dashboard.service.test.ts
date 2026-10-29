@@ -128,6 +128,29 @@ describe("OrganisationDashboardService", () => {
     expect(readers.openBids.summarise).toHaveBeenCalledWith(ENTITY, null);
   });
 
+  it("labels a payout date already past as overdue and never as the next date", async () => {
+    const readers = fakeReaders();
+    readers.payoutsDue.listDue.mockResolvedValue([
+      { currency: "GBP", count: 1, amount: "700.00", nextDate: new Date("2026-05-08T00:00:00Z") },
+      { currency: "EUR", count: 1, amount: "300.00", nextDate: new Date("2027-01-04T00:00:00Z") },
+    ]);
+    const service = new OrganisationDashboardService({
+      readers,
+      purchaseTotal: buyerPurchaseTotal,
+      now: () => NOW,
+    });
+    const figures = await service.figures({
+      userId: "member-1",
+      legalEntityId: ENTITY,
+      role: "owner",
+      isImpersonation: false,
+    });
+    expect(figures.payoutsDue).toMatchObject({
+      nextDate: new Date("2027-01-04T00:00:00Z"),
+      overdueSince: new Date("2026-05-08T00:00:00Z"),
+    });
+  });
+
   it("narrows a consignor to their own submissions and reads no money", async () => {
     const { readers, figures } = load("consignor");
     await figures;
@@ -204,6 +227,7 @@ describe("OrganisationDashboardService", () => {
       payouts: 2,
       totals: [{ currency: "GBP", amount: "1000.00" }],
       nextDate: new Date("2027-01-04T00:00:00Z"),
+      overdueSince: null,
     });
     expect(result.consignmentProgress).toMatchObject({
       under_review: 2,

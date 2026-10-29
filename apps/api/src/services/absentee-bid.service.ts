@@ -31,10 +31,10 @@ export class AbsenteeBidService implements IAbsenteeBidService {
     absenteeBidRepo: IAbsenteeBidRepository,
     bidService: IBidPlacer,
     lotRepo: ILotRepository,
-    legalEntityRepository: ILegalEntityRepository | null,
-    bidRepo: IBidRepository | null = null,
-    identityEligibilityGate: IBidIdentityEligibilityGate | null = null,
-    bidAuthority: IBidAuthority | null = null,
+    legalEntityRepository: ILegalEntityRepository,
+    bidRepo: IBidRepository | null,
+    identityEligibilityGate: IBidIdentityEligibilityGate | null,
+    bidAuthority: IBidAuthority,
   ) {
     this.inner = new RuntimeAbsenteeBidService(
       absenteeBidRepo,

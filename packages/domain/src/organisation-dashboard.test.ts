@@ -10,6 +10,7 @@ import {
   dashboardFigureScope,
   dashboardSectionsFor,
   dashboardTileKindsFor,
+  splitPayoutDates,
   upcomingSaleFigures,
 } from "./organisation-dashboard.js";
 import { buildOrganisationHome } from "./organisation-home.js";
@@ -53,6 +54,7 @@ const BUSY: Required<DashboardFigures> = {
     payouts: 1,
     totals: [{ currency: "GBP", amount: "9100.00" }],
     nextDate: new Date("2026-11-03T00:00:00Z"),
+    overdueSince: null,
   },
   openBids: { lots: 3, totalMax: [{ currency: "GBP", amount: "24000.00" }] },
   purchasesToPay: { purchases: 2, totals: [{ currency: "GBP", amount: "6250.00" }] },
@@ -74,7 +76,7 @@ const EMPTY: Required<DashboardFigures> = {
   consignmentProgress: emptyConsignmentProgress(),
   upcomingSales: [],
   soldThisYear: { year: 2026, works: 0, totals: [] },
-  payoutsDue: { payouts: 0, totals: [], nextDate: null },
+  payoutsDue: { payouts: 0, totals: [], nextDate: null, overdueSince: null },
   openBids: { lots: 0, totalMax: [] },
   purchasesToPay: { purchases: 0, totals: [] },
   bidAuthority: { everySale: null, sales: [] },
@@ -387,5 +389,38 @@ describe("Home with the dashboard", () => {
     const home = buildOrganisationHome(facts("owner"), [], null);
     expect(home.dashboard).toBeNull();
     expect(home.shortcuts).toEqual(["sell", "invite", "statements"]);
+  });
+});
+
+describe("splitPayoutDates", () => {
+  const now = new Date("2026-10-29T12:00:00Z");
+
+  it("separates the next date ahead from the earliest date already past", () => {
+    expect(
+      splitPayoutDates(
+        [
+          new Date("2026-12-01T00:00:00Z"),
+          new Date("2026-05-08T00:00:00Z"),
+          new Date("2026-11-03T00:00:00Z"),
+          new Date("2026-09-01T00:00:00Z"),
+        ],
+        now,
+      ),
+    ).toEqual({
+      nextDate: new Date("2026-11-03T00:00:00Z"),
+      overdueSince: new Date("2026-05-08T00:00:00Z"),
+    });
+  });
+
+  it("never offers a past date as the next one", () => {
+    expect(splitPayoutDates([new Date("2026-05-08T00:00:00Z")], now)).toEqual({
+      nextDate: null,
+      overdueSince: new Date("2026-05-08T00:00:00Z"),
+    });
+  });
+
+  it("is empty without dates, and counts a date at this instant as due, not overdue", () => {
+    expect(splitPayoutDates([], now)).toEqual({ nextDate: null, overdueSince: null });
+    expect(splitPayoutDates([now], now)).toEqual({ nextDate: now, overdueSince: null });
   });
 });

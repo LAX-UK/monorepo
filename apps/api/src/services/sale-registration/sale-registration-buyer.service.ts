@@ -1,4 +1,8 @@
 import { type Result, err, ok } from "neverthrow";
+import {
+  buyerEntityCanRegister,
+  organisationBidRefusalMessage,
+} from "../../lib/buyer-entity-bid-eligibility.js";
 import { memberRequiresSaleRegistration } from "../../lib/sale-registration-policy.js";
 import type {
   ISaleRegistrationBuyerService,
@@ -63,9 +67,11 @@ export class SaleRegistrationBuyerService implements ISaleRegistrationBuyerServi
     if (!entity) {
       return err({ message: "Legal entity not found", status: 404 });
     }
-    if (entity.status !== "approved" && entity.status !== "restricted") {
+    if (!buyerEntityCanRegister(entity.status)) {
       return err({
-        message: "Legal entity is not authorised to register for bidding",
+        message:
+          organisationBidRefusalMessage(entity.status) ??
+          "Legal entity is not authorised to register for bidding",
         status: 403,
         code: "entity_not_authorised",
       });

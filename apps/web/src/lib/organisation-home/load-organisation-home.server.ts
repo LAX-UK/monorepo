@@ -158,9 +158,14 @@ export async function loadOrganisationHome(
     changesRequested: submissions
       .filter((s) => s.status === "changes_requested")
       .map((s) => ({ id: s.id, title: s.title, note: s.changesRequestedNote ?? null })),
-    unsoldLots: lots
-      .filter((lot) => lot.status === "ended" && !lot.winnerId)
-      .map((lot) => ({ id: lot.id, title: lot.title })),
+    // The lot list carries no unsold choice yet, so every ended lot reads as "none".
+    unsoldLots: lots.map((lot) => ({
+      id: lot.id,
+      title: lot.title,
+      status: lot.status,
+      winnerId: lot.winnerId ?? null,
+      choice: "none" as const,
+    })),
     purchasesAwaitingPayment: purchases
       .filter(isAwaitingCheckout)
       .map(({ lot }) => ({ id: lot.id, title: lot.title })),

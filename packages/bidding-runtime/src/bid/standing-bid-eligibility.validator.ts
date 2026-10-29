@@ -1,4 +1,4 @@
-import { buyerEntityCanBid } from "@auction/domain";
+import { buyerEntityCanBid, organisationBidRefusalMessage } from "@auction/domain";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import { type Result, err } from "neverthrow";
 import { BidError } from "../bid-error.js";
@@ -51,7 +51,8 @@ export class StandingBidEligibilityValidator implements IStandingBidEligibilityV
       if (!buyerEntityCanBid(entity.status)) {
         return err(
           new BidError(
-            "Buyer legal entity is not authorised to bid",
+            organisationBidRefusalMessage(entity.status) ??
+              "Buyer legal entity is not authorised to bid",
             403,
             "entity_not_authorised_to_bid",
           ),

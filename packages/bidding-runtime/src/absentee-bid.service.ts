@@ -1,4 +1,8 @@
-import { bidExceedsAuthority, buyerEntityCanBid } from "@auction/domain";
+import {
+  bidExceedsAuthority,
+  buyerEntityCanBid,
+  organisationBidRefusalMessage,
+} from "@auction/domain";
 import type { IAbsenteeBidRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository } from "@auction/persistence/interfaces";
@@ -30,10 +34,10 @@ export class AbsenteeBidService implements IAbsenteeBidService {
     private readonly absenteeBidRepo: IAbsenteeBidRepository,
     private readonly bidPlacer: IBidPlacer,
     private readonly lotRepo: ILotRepository,
-    private readonly legalEntityRepository: ILegalEntityRepository | null,
-    private readonly bidRepo: IBidRepository | null = null,
-    private readonly identityEligibilityGate: IBidIdentityEligibilityGate | null = null,
-    private readonly bidAuthority: IBidAuthority | null = null,
+    private readonly legalEntityRepository: ILegalEntityRepository,
+    private readonly bidRepo: IBidRepository | null,
+    private readonly identityEligibilityGate: IBidIdentityEligibilityGate | null,
+    private readonly bidAuthority: IBidAuthority,
   ) {}
 
   private async reconcileStaleExecutingLeases(cutoff: Date): Promise<void> {
@@ -85,24 +89,17 @@ export class AbsenteeBidService implements IAbsenteeBidService {
         ...(identityResult.error.code ? { code: identityResult.error.code } : {}),
       });
     }
-    if (this.legalEntityRepository) {
-      const entity = await this.legalEntityRepository.findById(input.buyerLegalEntityId);
-      if (!entity) {
-        return err({ message: "Buyer legal entity not found", status: 404 });
-      }
-      if (!buyerEntityCanBid(entity.status)) {
-        return err({
-          message: "Buyer legal entity is not authorised to bid",
-          status: 403,
-          code: "entity_not_authorised_to_bid",
-        });
-      }
+    const entity = await this.legalEntityRepository.findById(input.buyerLegalEntityId);
+    if (!entity) {
+      return err({ message: "Buyer legal entity not found", status: 404 });
     }
-    if (!this.bidAuthority) {
+    if (!buyerEntityCanBid(entity.status)) {
       return err({
-        message: "Bid authority is not configured",
-        status: 503,
-        code: "bid_authority_unconfigured",
+        message:
+          organisationBidRefusalMessage(entity.status) ??
+          "Buyer legal entity is not authorised to bid",
+        status: 403,
+        code: "entity_not_authorised_to_bid",
       });
     }
     const authority = await this.bidAuthority.resolve({

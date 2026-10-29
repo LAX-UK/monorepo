@@ -7,6 +7,7 @@ import {
   dashboardFigureGroupsFor,
   dashboardFigureScope,
   londonCalendarYear,
+  splitPayoutDates,
   sumMoneyByCurrency,
   upcomingSaleFigures,
 } from "@auction/domain";
@@ -113,11 +114,11 @@ export class OrganisationDashboardService implements IOrganisationDashboardServi
       },
       payoutsDue: async (ctx) => {
         const rows = await readers.payoutsDue.listDue(ctx.member.legalEntityId);
-        const dates = rows.flatMap((row) => (row.nextDate ? [row.nextDate.getTime()] : []));
+        const dates = rows.flatMap((row) => (row.nextDate ? [row.nextDate] : []));
         return {
           payouts: countOf(rows),
           totals: totalsOf(rows),
-          nextDate: dates.length > 0 ? new Date(Math.min(...dates)) : null,
+          ...splitPayoutDates(dates, ctx.now),
         };
       },
       openBids: async (ctx) => {

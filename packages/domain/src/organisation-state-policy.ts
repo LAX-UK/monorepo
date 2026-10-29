@@ -1,0 +1,213 @@
+import type { LegalEntityStatus } from "@auction/types";
+import type { EntityCapability } from "./entity-capabilities.js";
+
+/** What a member can do for an organisation, as far as the organisation's own state allows. */
+export const ORGANISATION_ACTIONS = [
+  "bid",
+  "register",
+  "submit",
+  "accept_agreement",
+  "pay",
+  "read_history",
+  "invite",
+  "accept_invitation",
+  "set_up_payouts",
+] as const;
+export type OrganisationAction = (typeof ORGANISATION_ACTIONS)[number];
+
+export type OrganisationBannerKind = "info" | "attention" | "blocked";
+
+/** Stable keys; the words live in the web presenter. */
+export type OrganisationBannerKey =
+  | "documents_requested"
+  | "documents_under_review"
+  | "payouts_not_set_up"
+  | "restricted"
+  | "not_approved"
+  | "archived";
+
+export type OrganisationHomeFirstRunKey =
+  | "documents_requested"
+  | "documents_under_review"
+  | "payouts_not_set_up"
+  | "ready"
+  | "restricted"
+  | "closed";
+
+export type OrganisationBidReasonKey =
+  | "documents_requested"
+  | "documents_under_review"
+  | "restricted"
+  | "not_approved"
+  | "archived";
+
+/** Whether the viewer can do something about a banner, or is only told. */
+export type OrganisationBannerAudience = "act" | "told";
+
+export type OrganisationBanner = {
+  kind: OrganisationBannerKind;
+  key: OrganisationBannerKey;
+  audience: OrganisationBannerAudience;
+};
+
+export type OrganisationStatePolicy = {
+  status: LegalEntityStatus;
+  actions: Readonly<Record<OrganisationAction, boolean>>;
+  /** `null` when this viewer has nothing to be told. */
+  banner: OrganisationBanner | null;
+  homeFirstRunKey: OrganisationHomeFirstRunKey;
+  /** Why the bid panel is closed, or `null` while bidding is open. */
+  bidPanelReasonKey: OrganisationBidReasonKey | null;
+};
+
+type BannerSpec = {
+  kind: OrganisationBannerKind;
+  key: OrganisationBannerKey;
+  /** Holding any of these means the viewer can act on it; empty means nobody can. */
+  actWith: readonly EntityCapability[];
+  /** Who is told when they cannot act; `null` means everyone in the organisation. */
+  toldWith: readonly EntityCapability[] | null;
+};
+
+type StateSpec = {
+  allowed: readonly OrganisationAction[];
+  banner: BannerSpec | null;
+  homeFirstRunKey: OrganisationHomeFirstRunKey;
+  bidPanelReasonKey: OrganisationBidReasonKey | null;
+};
+
+const READ_ONLY: readonly OrganisationAction[] = ["read_history"];
+
+const DOCUMENTS_REQUESTED: StateSpec = {
+  allowed: ["read_history", "invite", "accept_invitation"],
+  banner: {
+    kind: "attention",
+    key: "documents_requested",
+    actWith: ["entity.members.manage"],
+    toldWith: null,
+  },
+  homeFirstRunKey: "documents_requested",
+  bidPanelReasonKey: "documents_requested",
+};
+
+const UNDER_REVIEW: StateSpec = {
+  allowed: ["read_history", "invite", "accept_invitation"],
+  banner: { kind: "info", key: "documents_under_review", actWith: [], toldWith: null },
+  homeFirstRunKey: "documents_under_review",
+  bidPanelReasonKey: "documents_under_review",
+};
+
+const PAYOUTS_PENDING_BANNER: BannerSpec = {
+  kind: "attention",
+  key: "payouts_not_set_up",
+  actWith: ["entity.connect.operate"],
+  toldWith: ["entity.consignments.read"],
+};
+
+/**
+ * One row per status. A new status fails to compile until it has a row, so no screen or
+ * endpoint can forget it. A restricted organisation keeps its history, can pay what it
+ * already owes and can still add people, but cannot trade; a rejected or archived one can only be read.
+ */
+const STATE_SPECS: Readonly<Record<LegalEntityStatus, StateSpec>> = {
+  lead: DOCUMENTS_REQUESTED,
+  docs_requested: DOCUMENTS_REQUESTED,
+  docs_received: UNDER_REVIEW,
+  under_review: UNDER_REVIEW,
+  connect_pending: {
+    allowed: [
+      "bid",
+      "register",
+      "pay",
+      "read_history",
+      "invite",
+      "accept_invitation",
+      "set_up_payouts",
+    ],
+    banner: PAYOUTS_PENDING_BANNER,
+    homeFirstRunKey: "payouts_not_set_up",
+    bidPanelReasonKey: null,
+  },
+  approved: {
+    allowed: ORGANISATION_ACTIONS,
+    banner: null,
+    homeFirstRunKey: "ready",
+    bidPanelReasonKey: null,
+  },
+  restricted: {
+    allowed: ["pay", "read_history", "invite", "accept_invitation"],
+    banner: { kind: "blocked", key: "restricted", actWith: [], toldWith: null },
+    homeFirstRunKey: "restricted",
+    bidPanelReasonKey: "restricted",
+  },
+  rejected: {
+    allowed: READ_ONLY,
+    banner: { kind: "blocked", key: "not_approved", actWith: [], toldWith: null },
+    homeFirstRunKey: "closed",
+    bidPanelReasonKey: "not_approved",
+  },
+  archived: {
+    allowed: READ_ONLY,
+    banner: { kind: "blocked", key: "archived", actWith: [], toldWith: null },
+    homeFirstRunKey: "closed",
+    bidPanelReasonKey: "archived",
+  },
+};
+
+function bannerFor(
+  spec: BannerSpec | null,
+  capabilities: ReadonlySet<EntityCapability>,
+): OrganisationBanner | null {
+  if (!spec) return null;
+  const holds = (names: readonly EntityCapability[]) =>
+    names.some((name) => capabilities.has(name));
+  if (holds(spec.actWith)) return { kind: spec.kind, key: spec.key, audience: "act" };
+  if (spec.toldWith && !holds(spec.toldWith)) return null;
+  return { kind: spec.kind, key: spec.key, audience: "told" };
+}
+
+function actionsOf(allowed: readonly OrganisationAction[]): Record<OrganisationAction, boolean> {
+  const set = new Set(allowed);
+  return Object.fromEntries(
+    ORGANISATION_ACTIONS.map((action) => [action, set.has(action)]),
+  ) as Record<OrganisationAction, boolean>;
+}
+
+/**
+ * What an organisation in `status` allows and tells, for a viewer holding `capabilities`. The
+ * single source for the banner, the Home first-run message, the bid panel reason and every
+ * server check on bidding, registering, submitting, paying and joining. An approved
+ * organisation whose payouts are not ready (`payoutsReady: false`) is told like one still
+ * setting them up.
+ */
+export function organisationStatePolicy(
+  status: LegalEntityStatus,
+  capabilities: ReadonlySet<EntityCapability>,
+  options: { payoutsReady?: boolean } = {},
+): OrganisationStatePolicy {
+  const spec = STATE_SPECS[status];
+  const payoutsPending = status === "approved" && options.payoutsReady === false;
+  return {
+    status,
+    actions: actionsOf(spec.allowed),
+    banner: bannerFor(payoutsPending ? PAYOUTS_PENDING_BANNER : spec.banner, capabilities),
+    homeFirstRunKey: payoutsPending ? "payouts_not_set_up" : spec.homeFirstRunKey,
+    bidPanelReasonKey: spec.bidPanelReasonKey,
+  };
+}
+
+/** Refusal for joining an organisation whose state takes no new members. */
+export const ORGANISATION_CLOSED_TO_MEMBERS = {
+  code: "organisation_closed_to_members",
+  message: "This organisation is closed and isn't taking new members.",
+} as const;
+
+const NO_CAPABILITIES: ReadonlySet<EntityCapability> = new Set();
+
+/** Whether the organisation's state allows `action`, whoever asks. */
+export function organisationStateAllows(
+  status: LegalEntityStatus,
+  action: OrganisationAction,
+): boolean {
+  return organisationStatePolicy(status, NO_CAPABILITIES).actions[action];
+}

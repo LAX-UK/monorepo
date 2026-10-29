@@ -69,6 +69,7 @@ function makeRepo(
     findUserName: async () => "Invitee",
     findUserEmail: async () => "inviter@example.com",
     findLegalEntityDisplayName: async () => "Org",
+    findLegalEntityStatus: async () => "approved",
     ...overrides,
   };
   return {
@@ -198,6 +199,42 @@ describe("InvitationAcceptanceService", () => {
     expect(insertMember).not.toHaveBeenCalled();
   });
 
+  it.each(["rejected", "archived"] as const)(
+    "refuses to join a %s organisation and adds no member",
+    async (status) => {
+      const insertMember = vi.fn(async () => member());
+      const markInvitationAccepted = vi.fn(async () => {});
+      const { service, notifications } = serviceWith(
+        makeRepo({
+          findLegalEntityStatus: async () => status,
+          insertMember,
+          markInvitationAccepted,
+        }),
+      );
+
+      await expect(service.accept(USER_ID, "invitee@example.com", "raw-token")).resolves.toEqual({
+        ok: false,
+        code: "organisation_closed_to_members",
+      });
+      await expect(service.acceptById(USER_ID, "invitee@example.com", INVITE_ID)).resolves.toEqual({
+        ok: false,
+        code: "organisation_closed_to_members",
+      });
+      expect(insertMember).not.toHaveBeenCalled();
+      expect(markInvitationAccepted).not.toHaveBeenCalled();
+      expect(notifications.notifyInviteAccepted).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(["lead", "under_review", "connect_pending", "restricted", "approved"] as const)(
+    "still lets a person join a %s organisation",
+    async (status) => {
+      const { service } = serviceWith(makeRepo({ findLegalEntityStatus: async () => status }));
+      const result = await service.accept(USER_ID, "invitee@example.com", "raw-token");
+      expect(result.ok).toBe(true);
+    },
+  );
+
   it("still refuses an invitation someone else accepted", async () => {
     const { service } = serviceWith(
       makeRepo({
@@ -260,6 +297,14 @@ describe("InvitationAcceptanceService.preview", () => {
         findByTokenHash: async () => pendingInvite({ expiresAt: new Date(Date.now() - 1) }),
       }),
     ).resolves.toEqual({ state: "expired", organisationName: "Northbank Gallery" });
+  });
+
+  it("calls an invitation to a rejected or archived organisation closed", async () => {
+    for (const status of ["rejected", "archived"] as const) {
+      await expect(preview({ findLegalEntityStatus: async () => status })).resolves.toEqual({
+        state: "closed",
+      });
+    }
   });
 
   it("calls a withdrawn, used or unknown invitation closed", async () => {

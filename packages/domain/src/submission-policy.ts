@@ -1,4 +1,5 @@
 import type { LegalEntityKind, LegalEntityStatus } from "@auction/types";
+import { organisationStateAllows } from "./organisation-state-policy.js";
 
 export const SELLER_ENTITY_WRITE_STATUSES = new Set<LegalEntityStatus>(["approved", "restricted"]);
 
@@ -47,7 +48,7 @@ export function sellerSubmissionAccess(entity: {
       submitBlockedReason: blocked ? BLOCKED_REASON : null,
     };
   }
-  if (SELLER_ENTITY_WRITE_STATUSES.has(entity.status)) {
+  if (organisationStateAllows(entity.status, "submit")) {
     return { canDraft: true, canSubmit: true, submitBlockedReason: null };
   }
   if (ORGANISATION_UNDER_REVIEW_STATUSES.has(entity.status)) {

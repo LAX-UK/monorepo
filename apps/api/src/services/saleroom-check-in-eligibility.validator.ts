@@ -4,7 +4,10 @@ import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { SaleDeliveryMode } from "@auction/types";
 import { PADDLE_NUMBER_MIN, saleAllowsInRoomCheckIn } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
-import { buyerEntityCanBid } from "../lib/buyer-entity-bid-eligibility.js";
+import {
+  buyerEntityCanBid,
+  organisationBidRefusalMessage,
+} from "../lib/buyer-entity-bid-eligibility.js";
 import type { SaleroomCheckInServiceError } from "./interfaces/saleroom-check-in-service.js";
 
 export class SaleroomCheckInEligibilityValidator {
@@ -73,7 +76,11 @@ export class SaleroomCheckInEligibilityValidator {
       return this.serviceErr("Legal entity not found", 404);
     }
     if (!buyerEntityCanBid(entity.status)) {
-      return this.serviceErr("Legal entity is not authorised to bid", 403, "entity_not_authorised");
+      return this.serviceErr(
+        organisationBidRefusalMessage(entity.status) ?? "Legal entity is not authorised to bid",
+        403,
+        "entity_not_authorised",
+      );
     }
 
     if (

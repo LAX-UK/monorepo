@@ -35,7 +35,12 @@ const figuresSchema = z.object({
     .object({ year: z.number(), works: z.number(), totals: z.array(money) })
     .optional(),
   payoutsDue: z
-    .object({ payouts: z.number(), totals: z.array(money), nextDate: date.nullable() })
+    .object({
+      payouts: z.number(),
+      totals: z.array(money),
+      nextDate: date.nullable(),
+      overdueSince: date.nullable(),
+    })
     .optional(),
   openBids: z.object({ lots: z.number(), totalMax: z.array(money) }).optional(),
   purchasesToPay: z.object({ purchases: z.number(), totals: z.array(money) }).optional(),

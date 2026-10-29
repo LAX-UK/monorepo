@@ -13,6 +13,10 @@ import { fakeBidAuthority } from "../testing/fake-bid-authority.js";
 import { AbsenteeBidService } from "./absentee-bid.service.js";
 import type { IBidPlacer } from "./interfaces/place-bid.js";
 
+function entitiesIn(status: string): ILegalEntityRepository {
+  return { findById: vi.fn().mockResolvedValue({ status }) } as unknown as ILegalEntityRepository;
+}
+
 const CAT = "c1000001-0000-4000-8000-000000000001";
 
 function okIdentityGate(): IBidIdentityEligibilityGate {
@@ -68,7 +72,10 @@ describe("AbsenteeBidService", () => {
       {} as IAbsenteeBidRepository,
       {} as IBidPlacer,
       lotRepo,
+      entitiesIn("approved"),
       null,
+      null,
+      fakeBidAuthority("owner"),
     );
     const result = await svc.schedule({
       userId: "u1",
@@ -96,9 +103,10 @@ describe("AbsenteeBidService", () => {
       {
         findById: vi.fn().mockResolvedValue(mkLot({ status: "scheduled" })),
       } as unknown as ILotRepository,
-      null,
+      entitiesIn("approved"),
       null,
       identityEligibilityGate,
+      fakeBidAuthority("owner"),
     );
 
     const result = await svc.schedule({
@@ -130,6 +138,7 @@ describe("AbsenteeBidService", () => {
       legalEntities,
       null,
       okIdentityGate(),
+      fakeBidAuthority("owner"),
     );
 
     const result = await svc.schedule({
@@ -141,6 +150,37 @@ describe("AbsenteeBidService", () => {
 
     expect(result.isErr() && result.error.code).toBe("entity_not_authorised_to_bid");
     expect(legalEntities.findActiveMembership).not.toHaveBeenCalled();
+    expect(insertScheduled).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["restricted", "Bidding is paused for this organisation. Contact LAX to find out why."],
+    ["under_review", "Bidding opens once we've finished checking the organisation's documents."],
+    ["archived", "This organisation is closed and can't bid."],
+  ] as const)("refuses a %s organisation with a message that says why", async (status, message) => {
+    const insertScheduled = vi.fn();
+    const svc = new AbsenteeBidService(
+      { insertScheduled } as unknown as IAbsenteeBidRepository,
+      {} as IBidPlacer,
+      {
+        findById: vi.fn().mockResolvedValue(mkLot({ status: "scheduled" })),
+      } as unknown as ILotRepository,
+      entitiesIn(status),
+      null,
+      okIdentityGate(),
+      fakeBidAuthority("owner"),
+    );
+
+    const result = await svc.schedule({
+      userId: "u1",
+      lotId: "lot-1",
+      buyerLegalEntityId: "le-1",
+      maxAmount: 500,
+    });
+
+    expect(
+      result.isErr() && [result.error.status, result.error.code, result.error.message],
+    ).toEqual([403, "entity_not_authorised_to_bid", message]);
     expect(insertScheduled).not.toHaveBeenCalled();
   });
 
@@ -186,7 +226,7 @@ describe("AbsenteeBidService", () => {
       {
         findById: vi.fn().mockResolvedValue(mkLot({ status: "scheduled" })),
       } as unknown as ILotRepository,
-      null,
+      entitiesIn("approved"),
       null,
       okIdentityGate(),
       fakeBidAuthority("buyer_agent", [{ saleId: null, bidLimit: "400.00" }]),
@@ -218,7 +258,7 @@ describe("AbsenteeBidService", () => {
       new DrizzleAbsenteeBidRepository(db),
       {} as IBidPlacer,
       lotRepo,
-      null,
+      entitiesIn("approved"),
       null,
       okIdentityGate(),
       fakeBidAuthority("owner"),
@@ -244,7 +284,10 @@ describe("AbsenteeBidService", () => {
       {
         findById: vi.fn().mockResolvedValue(mkLot({ status: "scheduled" })),
       } as unknown as ILotRepository,
+      entitiesIn("approved"),
       null,
+      null,
+      fakeBidAuthority("owner"),
     );
 
     const result = await svc.schedule({
@@ -292,7 +335,10 @@ describe("AbsenteeBidService", () => {
       new DrizzleAbsenteeBidRepository(db),
       { placeBid } as unknown as IBidPlacer,
       lotRepo,
+      entitiesIn("approved"),
       null,
+      null,
+      fakeBidAuthority("owner"),
     );
     await svc.replayScheduledForLot("lot-1");
     expect(placeBid).not.toHaveBeenCalled();
@@ -333,7 +379,10 @@ describe("AbsenteeBidService", () => {
       new DrizzleAbsenteeBidRepository(db),
       { placeBid } as unknown as IBidPlacer,
       lotRepo,
+      entitiesIn("approved"),
       null,
+      null,
+      fakeBidAuthority("owner"),
     );
     await svc.replayScheduledForLot("lot-1");
     expect(placeBid).toHaveBeenCalledWith(
@@ -364,7 +413,10 @@ describe("AbsenteeBidService", () => {
       new DrizzleAbsenteeBidRepository(db),
       {} as IBidPlacer,
       { findById: vi.fn() } as unknown as ILotRepository,
+      entitiesIn("approved"),
       null,
+      null,
+      fakeBidAuthority("owner"),
     );
     await svc.expireStaleExecutingLeases();
     expect(where).toHaveBeenCalled();

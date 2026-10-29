@@ -1,4 +1,8 @@
-import { buyerEntityCanBid, isOperatorPlacement } from "@auction/domain";
+import {
+  buyerEntityCanBid,
+  isOperatorPlacement,
+  organisationBidRefusalMessage,
+} from "@auction/domain";
 import type { ILegalEntityRepository, ISaleModeLookup } from "@auction/persistence/interfaces";
 import { saleModeAllowsBidding } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
@@ -59,7 +63,8 @@ export class BidPrePlacementValidator {
       if (!buyerEntityCanBid(ent.status)) {
         return err(
           new BidError(
-            "Buyer legal entity is not authorised to bid",
+            organisationBidRefusalMessage(ent.status) ??
+              "Buyer legal entity is not authorised to bid",
             403,
             "entity_not_authorised_to_bid",
           ),

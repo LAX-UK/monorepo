@@ -125,6 +125,12 @@ export function entityActorCan(actor: EntityActor, capability: EntityCapability)
   return rule.roles.includes(actor.role);
 }
 
+/** Every capability the actor holds, so a rule can ask "who can act" without naming roles. */
+export function entityCapabilitiesOf(actor: EntityActor): ReadonlySet<EntityCapability> {
+  const all = Object.keys(ENTITY_CAPABILITY_RULES) as EntityCapability[];
+  return new Set(all.filter((capability) => entityActorCan(actor, capability)));
+}
+
 /** The roles that hold `capability`, in the table's order, to say who can do something. */
 export function rolesWithCapability(
   capability: EntityCapability,

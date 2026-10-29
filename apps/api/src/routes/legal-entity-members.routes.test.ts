@@ -58,6 +58,7 @@ function invitationRepo(): IEntityInvitationRepository {
     findUserName: async () => "Admin",
     findUserEmail: async () => "admin@example.com",
     findLegalEntityDisplayName: async () => "Northbank Gallery",
+    findLegalEntityStatus: async () => "approved",
   } as unknown as IEntityInvitationRepository;
   return repo;
 }

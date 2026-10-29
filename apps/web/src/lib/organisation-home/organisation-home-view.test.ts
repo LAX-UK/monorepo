@@ -1,4 +1,8 @@
-import type { HomeTask, OrganisationHomeModel } from "@auction/domain";
+import {
+  type HomeTask,
+  type OrganisationHomeModel,
+  organisationStatePolicy,
+} from "@auction/domain";
 import { describe, expect, it } from "vitest";
 import { roleExplanation, welcomeHeadline } from "./member-role-copy";
 import { homeActivityEvents } from "./organisation-home-activity";
@@ -61,6 +65,8 @@ describe("organisationHomeView", () => {
   const model: OrganisationHomeModel = {
     tasks: [],
     setup: "documents_under_review",
+    state: organisationStatePolicy("under_review", new Set()),
+    notices: [],
     shortcuts: ["sell", "invite", "statements"],
     activity: [],
     activityArchive: "consignments",
@@ -119,6 +125,8 @@ describe("stopped bids activity", () => {
       {
         tasks: [],
         setup: null,
+        state: organisationStatePolicy("approved", new Set()),
+        notices: [],
         shortcuts: [],
         activity: [
           {

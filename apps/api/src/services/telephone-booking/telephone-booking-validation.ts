@@ -11,7 +11,10 @@ import type { ILotRepository, ISaleRepository } from "@auction/persistence/inter
 import type { TelephoneBidBooking } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
-import { buyerEntityCanBid } from "../../lib/buyer-entity-bid-eligibility.js";
+import {
+  buyerEntityCanBid,
+  organisationBidRefusalMessage,
+} from "../../lib/buyer-entity-bid-eligibility.js";
 import type { IAmlHoldStore } from "../aml/ports.js";
 import type { TelephoneBidBookingServiceError } from "../interfaces/telephone-bid-booking-service-errors.js";
 
@@ -125,7 +128,11 @@ export async function assertCanBidFor(
     return telephoneBookingErr("Legal entity not found", 404);
   }
   if (!buyerEntityCanBid(entity.status)) {
-    return telephoneBookingErr("Legal entity is not authorised", 403, "entity_not_authorised");
+    return telephoneBookingErr(
+      organisationBidRefusalMessage(entity.status) ?? "Legal entity is not authorised",
+      403,
+      "entity_not_authorised",
+    );
   }
   return ok(undefined);
 }

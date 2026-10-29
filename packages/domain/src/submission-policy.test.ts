@@ -12,14 +12,12 @@ describe("sellerSubmissionAccess", () => {
     }
   });
 
-  it("lets an approved or restricted organisation submit", () => {
-    for (const status of ["approved", "restricted"] as const) {
-      expect(sellerSubmissionAccess({ kind: "organisation", status })).toEqual({
-        canDraft: true,
-        canSubmit: true,
-        submitBlockedReason: null,
-      });
-    }
+  it("lets an approved organisation submit", () => {
+    expect(sellerSubmissionAccess({ kind: "organisation", status: "approved" })).toEqual({
+      canDraft: true,
+      canSubmit: true,
+      submitBlockedReason: null,
+    });
   });
 
   it("lets an organisation under review save drafts but not submit, and says why", () => {
@@ -37,8 +35,8 @@ describe("sellerSubmissionAccess", () => {
     }
   });
 
-  it("blocks a rejected or archived organisation entirely", () => {
-    for (const status of ["rejected", "archived"] as const) {
+  it("blocks a restricted, rejected or archived organisation entirely", () => {
+    for (const status of ["restricted", "rejected", "archived"] as const) {
       const access = sellerSubmissionAccess({ kind: "organisation", status });
       expect(access.canDraft).toBe(false);
       expect(access.canSubmit).toBe(false);

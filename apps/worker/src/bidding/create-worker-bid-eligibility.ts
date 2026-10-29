@@ -4,6 +4,7 @@ import {
   BidEligibilityService,
   BidIdentityEligibilityGate,
   BidderRoleGate,
+  type IBidAuthority,
   type IBidEligibility,
   type IBidIdentityEligibilityGate,
   type IKycThresholdGate,
@@ -48,6 +49,13 @@ export function isWorkerBidKycEnforcementActive(
   return false;
 }
 
+export function createWorkerBidAuthority(db: Database): IBidAuthority {
+  return new BidAuthorityService(
+    new DrizzleBidMembershipReader(db),
+    new DrizzleBuyerAgentAuthorisationReader(db),
+  );
+}
+
 export function createWorkerBidEligibility(
   input: CreateWorkerBidEligibilityInput,
 ): IBidEligibility {
@@ -62,10 +70,7 @@ export function createWorkerBidEligibility(
     identityEligibilityGate,
     new AmlBidGate(amlHoldStore),
     new DrizzleBidLotRulesReader(db),
-    new BidAuthorityService(
-      new DrizzleBidMembershipReader(db),
-      new DrizzleBuyerAgentAuthorisationReader(db),
-    ),
+    createWorkerBidAuthority(db),
     new OperatorPlacementPolicy(operatorReader),
     new SaleRegistrationBidGate(new DrizzleSaleRegistrationBidReader(db)),
     new BidderRoleGate(new DrizzleBidBidderRoleReader(db)),
