@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import type * as React from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { InlineActionMenu } from "./inline-action-menu.js";
+import { INLINE_ACTION_MENU_TOKENS, InlineActionMenu } from "./inline-action-menu.js";
 
 /**
  * The menu primitive closes itself after a select event unless the handler cancels it. Opening a
@@ -101,6 +101,8 @@ describe("InlineActionMenu", () => {
     expect(item.className).toContain("text-error");
     expect(item.className).toContain("focus:text-error");
     expect(item.className).not.toContain("live-red");
+    // The token products check for contrast is the one the item is drawn in.
+    expect(item.className).toContain(`text-${INLINE_ACTION_MENU_TOKENS.destructiveText}`);
     expect(screen.getByRole("menuitem", { name: "Resend" }).className).toBe("");
   });
 

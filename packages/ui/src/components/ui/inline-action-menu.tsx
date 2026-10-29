@@ -11,6 +11,16 @@ import {
   DropdownMenuTrigger,
 } from "./dropdown-menu.js";
 
+/**
+ * The colours a row menu is drawn in: the menu surface, the surface of the item under focus, and
+ * a destructive item's text. Exported so products can check the pair against their own tokens.
+ */
+export const INLINE_ACTION_MENU_TOKENS = {
+  surface: "surface-container-lowest",
+  focusSurface: "surface-container-high",
+  destructiveText: "error",
+} as const;
+
 export type InlineActionMenuItem =
   | { type: "item"; label: string; onSelect: () => void; disabled?: boolean; destructive?: boolean }
   | { type: "separator" };
@@ -44,6 +54,9 @@ function neighborLabels(
   }
   return { prev, next };
 }
+
+// Spelled out so Tailwind finds the classes; they name `INLINE_ACTION_MENU_TOKENS.destructiveText`.
+const DESTRUCTIVE_ITEM = "text-error focus:text-error";
 
 /**
  * Row-level overflow menu; 44×44 minimum touch target. Choosing an item closes the menu, then
@@ -86,7 +99,7 @@ export function InlineActionMenu({ items, label, className }: InlineActionMenuPr
             <DropdownMenuItem
               key={`${instanceId}-item-${label}-${it.label}-${n}`}
               {...(it.disabled ? { disabled: true } : {})}
-              className={it.destructive ? "text-error focus:text-error" : undefined}
+              className={it.destructive ? DESTRUCTIVE_ITEM : undefined}
               onSelect={() => {
                 requestAnimationFrame(it.onSelect);
               }}

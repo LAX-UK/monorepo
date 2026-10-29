@@ -293,7 +293,10 @@ export type {
 } from "./components/ui/wizard-context-strip.js";
 export { BulkActionBar } from "./components/ui/bulk-action-bar.js";
 export type { BulkActionBarProps } from "./components/ui/bulk-action-bar.js";
-export { InlineActionMenu } from "./components/ui/inline-action-menu.js";
+export {
+  INLINE_ACTION_MENU_TOKENS,
+  InlineActionMenu,
+} from "./components/ui/inline-action-menu.js";
 export type {
   InlineActionMenuItem,
   InlineActionMenuProps,
