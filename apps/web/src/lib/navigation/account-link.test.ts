@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
   accountLinkRedirect,
+  accountsUnavailableHref,
+  confirmSwitchHref,
   restoreAccountHref,
   safeHopNext,
+  safeRetryTarget,
   switchAccountHref,
 } from "./account-link";
 
@@ -58,5 +61,37 @@ describe("hop links", () => {
       "/switch-account?to=org-1&next=%2Fpurchases%2Fcheckout%2Fl1",
     );
     expect(restoreAccountHref("/bids")).toBe("/restore-account?next=%2Fbids");
+    expect(confirmSwitchHref("org-1", "/home")).toBe(
+      "/switch-account/confirm?to=org-1&next=%2Fhome",
+    );
+    expect(accountsUnavailableHref("/restore-account?next=%2Fhome")).toBe(
+      `/switch-account/unavailable?retry=${encodeURIComponent("/restore-account?next=%2Fhome")}`,
+    );
+  });
+
+  it("never comes back to a hop's own pages", () => {
+    expect(safeHopNext("/switch-account/confirm?to=org-1")).toBe("/home");
+    expect(safeHopNext("/switch-account/unavailable")).toBe("/home");
+  });
+});
+
+describe("safeRetryTarget", () => {
+  it("retries a hop, or opens the page that was being opened", () => {
+    expect(safeRetryTarget("/switch-account?to=org-1&next=%2Fhome")).toBe(
+      "/switch-account?to=org-1&next=%2Fhome",
+    );
+    expect(safeRetryTarget("/restore-account?next=%2Fbids")).toBe("/restore-account?next=%2Fbids");
+    expect(safeRetryTarget("/selling/consignments/s1")).toBe("/selling/consignments/s1");
+  });
+
+  it("sends anything else Home", () => {
+    for (const retry of [
+      null,
+      "https://evil.example",
+      "//evil.example",
+      "/switch-account/unavailable",
+    ]) {
+      expect(safeRetryTarget(retry)).toBe("/home");
+    }
   });
 });

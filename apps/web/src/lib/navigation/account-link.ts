@@ -14,14 +14,44 @@ export function safeHopNext(next: string | null | undefined): string {
   return isAccountHop(path) ? CLIENT_ROUTES.home : next;
 }
 
-function isAccountHop(path: string): boolean {
+function isHop(path: string): boolean {
   return path === CLIENT_ROUTES.accountSwitch || path === CLIENT_ROUTES.accountRestore;
+}
+
+/** A hop or one of its own pages (confirm, retry): never a place to come back to. */
+function isAccountHop(path: string): boolean {
+  return [CLIENT_ROUTES.accountSwitch, CLIENT_ROUTES.accountRestore].some(
+    (hop) => path === hop || path.startsWith(`${hop}/`),
+  );
 }
 
 /** The hop that opens `next` in account `accountId`, switching to it when the person may. */
 export function switchAccountHref(accountId: string, next: string): string {
   const params = new URLSearchParams({ to: accountId, next });
   return `${CLIENT_ROUTES.accountSwitch}?${params.toString()}`;
+}
+
+/**
+ * Asks before opening `next` in account `accountId`: where a link from another site (an email, a
+ * shared message) lands, since only the person may change the account they use.
+ */
+export function confirmSwitchHref(accountId: string, next: string): string {
+  const params = new URLSearchParams({ to: accountId, next });
+  return `${CLIENT_ROUTES.accountSwitchConfirm}?${params.toString()}`;
+}
+
+/**
+ * The retry state for a hop or a record lookup that could not read the person's accounts.
+ * `retry` is where "Try again" goes: the same hop, or the page that was being opened.
+ */
+export function accountsUnavailableHref(retry: string): string {
+  return `${CLIENT_ROUTES.accountsUnavailable}?${new URLSearchParams({ retry }).toString()}`;
+}
+
+/** Where "Try again" on the retry state may go: a hop, or a page `safeHopNext` allows. */
+export function safeRetryTarget(retry: string | null | undefined): string {
+  if (!retry || !isSafeNextPath(retry)) return CLIENT_ROUTES.home;
+  return isHop(retry.split(/[?#]/)[0] ?? "") ? retry : safeHopNext(retry);
 }
 
 /** The hop that puts this browser back in the account the person used last. */

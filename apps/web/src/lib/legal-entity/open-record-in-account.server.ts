@@ -15,9 +15,7 @@ export async function openRecordInItsAccount(input: {
   actingId: string | null;
   next: string;
 }): Promise<void> {
-  const owner = await findRecordAccount(input.kind, input.id).catch(
-    () => ({ kind: "not_found" }) as const,
-  );
+  const owner = await findRecordAccount(input.kind, input.id);
   const target = recordHop(owner, input.actingId, input.next);
   if (target) redirect(target);
 }

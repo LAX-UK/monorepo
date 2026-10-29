@@ -65,6 +65,8 @@ describe("buildClientBreadcrumbTrail", () => {
       "/organisation/documents",
       "/settings/appearance",
       "/no-access",
+      "/switch-account/confirm",
+      "/switch-account/unavailable",
     ]) {
       expect(labels(path)).not.toContain("Detail");
     }

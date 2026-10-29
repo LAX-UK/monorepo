@@ -27,6 +27,10 @@ export const CLIENT_ROUTES = {
   sourceOfFunds: "/compliance/source-of-funds",
   /** Opens a link in the account it belongs to; see `account-link.ts`. */
   accountSwitch: "/switch-account",
+  /** Asks before a link from another site changes the account. */
+  accountSwitchConfirm: "/switch-account/confirm",
+  /** "We couldn't load your accounts", with a way to try again. */
+  accountsUnavailable: "/switch-account/unavailable",
   /** Puts the browser back in the account the person used last; see `account-link.ts`. */
   accountRestore: "/restore-account",
   noAccess: "/no-access",
