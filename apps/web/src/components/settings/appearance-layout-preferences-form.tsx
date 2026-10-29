@@ -77,7 +77,7 @@ export function AppearanceLayoutPreferencesForm({
         <PreferencesRow
           id="theme"
           label="Theme"
-          description="Applies across marketing and dashboard. The header quick toggle switches to Light or Dark and overrides Auto until you choose Auto again."
+          description="Applies across LAX Bid. The moon in the header switches between light and dark, and overrides Auto until you choose Auto again."
           control={
             <SegmentToggle<ThemePreference>
               aria-label="Theme"

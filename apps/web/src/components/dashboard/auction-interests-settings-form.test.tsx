@@ -30,6 +30,22 @@ function requireCategoryId(value: string | undefined): string {
 }
 
 describe("AuctionInterestsSettingsForm", () => {
+  it("pairs every card surface with theme tokens, never a fixed light colour", () => {
+    const { container } = render(
+      <AuctionInterestsSettingsForm
+        categoryIdBySlug={{ paintings: "category-art" }}
+        initialCategoryIds={[]}
+      />,
+    );
+    const cards = container.querySelectorAll("label.group, div[aria-disabled='true']");
+    expect(cards.length).toBeGreaterThan(0);
+    for (const card of cards) {
+      expect(card.className).toContain("bg-surface-container-lowest");
+      expect(card.className).toContain("text-on-surface");
+      expect(card.className).not.toMatch(/\bbg-white\b/);
+    }
+  });
+
   it("updates selections without onboarding skip copy", () => {
     render(
       <AuctionInterestsSettingsForm

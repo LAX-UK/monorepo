@@ -43,7 +43,7 @@ export function SegmentToggle<TValue extends string>({
             disabled={Boolean(toggleDisabled || option.disabled)}
             onClick={() => onValueChange(option.value)}
             className={cn(
-              "min-h-8 rounded-full px-3 font-label text-[11px] font-bold uppercase tracking-[0.12em] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-50",
+              "min-h-8 rounded-full px-3 font-label text-xs font-semibold transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary disabled:pointer-events-none disabled:opacity-50",
               selected
                 ? "bg-primary text-on-primary"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface",

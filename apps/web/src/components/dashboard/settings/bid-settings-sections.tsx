@@ -127,11 +127,7 @@ export function AppearanceSettings({ user }: { user: SessionUser }) {
     viewSync: p?.viewSync ?? false,
   };
   return (
-    <BidSettingsSection
-      id="appearance"
-      title="Appearance"
-      description="How LAX Bid looks for you. The theme also changes from the moon in the header."
-    >
+    <BidSettingsSection id="appearance" title="Appearance" description="How LAX Bid looks for you.">
       <div className="flex flex-col gap-6">
         <AppearanceLayoutPreferencesForm initial={initial} />
         <ReduceMotionCard />
