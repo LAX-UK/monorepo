@@ -58,7 +58,10 @@ export const notification = pgTable(
         'staff_role_expired',
         'staff_role_expired_admin',
         'staff_role_changed',
-        'staff_role_changed_admin'
+        'staff_role_changed_admin',
+        'lot_ready_for_collection',
+        'lot_shipped',
+        'lot_delivered'
       )`,
     ),
   ],

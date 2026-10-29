@@ -26,6 +26,24 @@ describe("notificationTypePresenter", () => {
     }
   });
 
+  it("labels the three delivery notices with their own icon and tone", () => {
+    expect(notificationTypePresenter("lot_ready_for_collection")).toMatchObject({
+      label: "Ready to collect",
+      tone: "info",
+    });
+    expect(notificationTypePresenter("lot_shipped")).toMatchObject({
+      label: "Shipped",
+      tone: "info",
+    });
+    expect(notificationTypePresenter("lot_delivered")).toMatchObject({
+      label: "Delivered",
+      tone: "success",
+    });
+    expect(notificationTypePresenter("lot_shipped").Icon).not.toBe(
+      notificationTypePresenter("unknown_type").Icon,
+    );
+  });
+
   it("maps condition_report_declined", () => {
     const p = notificationTypePresenter("condition_report_declined");
     expect(p.label).toBe("Condition report");

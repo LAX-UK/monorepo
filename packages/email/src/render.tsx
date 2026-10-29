@@ -76,6 +76,9 @@ import {
 import LotEndedSellerEmail, {
   subject as lotEndedSellerSubject,
 } from "./templates/lot-ended-seller.js";
+import LotFulfilmentUpdateEmail, {
+  subject as lotFulfilmentUpdateSubject,
+} from "./templates/lot-fulfilment-update.js";
 import LotVoidedAntiShillingAdminEmail, {
   subject as lotVoidedAntiShillingAdminSubject,
 } from "./templates/lot-voided-anti-shilling-admin.js";
@@ -294,6 +297,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     component: (vars) => <AccessInviteEmail {...vars} />,
   },
   "bid-outbid": { subject: bidOutbidSubject, component: (vars) => <BidOutbidEmail {...vars} /> },
+  "lot-fulfilment-update": {
+    subject: lotFulfilmentUpdateSubject,
+    component: (vars) => <LotFulfilmentUpdateEmail {...vars} />,
+  },
   "lot-won": { subject: lotWonSubject, component: (vars) => <LotWonEmail {...vars} /> },
   "lot-ended-seller": {
     subject: lotEndedSellerSubject,

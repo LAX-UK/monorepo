@@ -4,6 +4,7 @@ const names = [
   "bid-outbid",
   "lot-won",
   "lot-ended-seller",
+  "lot-fulfilment-update",
   "proxy-cancelled-notice",
   "lot-voided-notice",
   "lot-withdrawal-declined-notice",
@@ -30,6 +31,15 @@ type BiddingTemplateVars = {
     hammerPrice?: string | null;
     /** Where the seller reviews the result: their consignments in Bid. */
     saleUrl?: string | null;
+  };
+  "lot-fulfilment-update": {
+    userName?: string | null;
+    lotTitle: string;
+    /** What happened to the lot, as a heading, and what it means for the buyer. */
+    heading: string;
+    message: string;
+    /** The buyer's purchase in Bid. */
+    purchaseUrl: string;
   };
   "proxy-cancelled-notice": {
     userName?: string | null;
@@ -59,6 +69,7 @@ export const biddingTemplates = {
     "bid-outbid": "live",
     "lot-won": "live",
     "lot-ended-seller": "live",
+    "lot-fulfilment-update": "live",
     "proxy-cancelled-notice": "live",
     "lot-voided-notice": "live",
     "lot-withdrawal-declined-notice": "live",

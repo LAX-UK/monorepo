@@ -1744,6 +1744,13 @@
       "when": 1796803200000,
       "tag": "0248_lax_admin_staff_roles",
       "breakpoints": true
+    },
+    {
+      "idx": 249,
+      "version": "7",
+      "when": 1796889600000,
+      "tag": "0249_bid_fulfilment_notices",
+      "breakpoints": true
     }
   ]
 }

@@ -183,4 +183,55 @@ export class NotificationFactory implements INotificationFactory {
       },
     };
   }
+
+  createLotReadyForCollection(
+    lot: Lot,
+    buyerId: string,
+    input?: { collectionPlace?: string | null },
+  ): CreateNotificationRow {
+    const place = input?.collectionPlace?.trim();
+    return {
+      userId: buyerId,
+      type: "lot_ready_for_collection",
+      title: "Your lot is ready to collect",
+      message: place
+        ? `"${lot.title}" is ready for you to collect from ${place}.`
+        : `"${lot.title}" is ready for you to collect. Open your purchase for the collection details.`,
+      lotId: lot.id,
+      meta: { lotTitle: lot.title, ...(place ? { collectionPlace: place } : {}) },
+    };
+  }
+
+  createLotShipped(
+    lot: Lot,
+    buyerId: string,
+    input: { carrier: string; trackingNumber: string },
+  ): CreateNotificationRow {
+    return {
+      userId: buyerId,
+      type: "lot_shipped",
+      title: "Your lot is on its way",
+      message: `"${lot.title}" has been sent with ${input.carrier}. Tracking number: ${input.trackingNumber}.`,
+      lotId: lot.id,
+      meta: { lotTitle: lot.title, carrier: input.carrier, trackingNumber: input.trackingNumber },
+    };
+  }
+
+  createLotDelivered(
+    lot: Lot,
+    buyerId: string,
+    input: { method: "delivery" | "collection" },
+  ): CreateNotificationRow {
+    const collected = input.method === "collection";
+    return {
+      userId: buyerId,
+      type: "lot_delivered",
+      title: collected ? "Your lot has been collected" : "Your lot has been delivered",
+      message: collected
+        ? `"${lot.title}" has been collected. Thank you for buying with us.`
+        : `"${lot.title}" has been delivered. Thank you for buying with us.`,
+      lotId: lot.id,
+      meta: { lotTitle: lot.title, fulfilmentMethod: input.method },
+    };
+  }
 }

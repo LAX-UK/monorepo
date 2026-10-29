@@ -5,6 +5,7 @@ import type {
   LotFulfilmentRow,
   LotFulfilmentServiceError,
 } from "../interfaces/lot-fulfilment-service.js";
+import type { LotFulfilmentStep } from "./lot-fulfilment-buyer-notifier.js";
 import type { LotFulfilmentContext } from "./lot-fulfilment-context.js";
 
 export class LotFulfilmentAdminService implements ILotFulfilmentAdminService {
@@ -49,15 +50,25 @@ export class LotFulfilmentAdminService implements ILotFulfilmentAdminService {
     trackingNumber: string;
   }): Promise<Result<LotFulfilmentRow, LotFulfilmentServiceError>> {
     void input.actorUserId;
-    return this.transition(input.lotId, "released", async () => {
-      await this.ctx.fulfilmentRepo.updateByLotId(input.lotId, {
-        status: "in_transit",
-        fulfilmentMethod: "shipping",
-        shippingCarrier: input.carrier,
+    return this.transition(
+      input.lotId,
+      "released",
+      async () => {
+        await this.ctx.fulfilmentRepo.updateByLotId(input.lotId, {
+          status: "in_transit",
+          fulfilmentMethod: "shipping",
+          shippingCarrier: input.carrier,
+          trackingNumber: input.trackingNumber,
+          updatedAt: new Date(),
+        });
+      },
+      {
+        kind: "shipped",
+        lotId: input.lotId,
+        carrier: input.carrier,
         trackingNumber: input.trackingNumber,
-        updatedAt: new Date(),
-      });
-    });
+      },
+    );
   }
 
   async markReadyForCollection(input: {
@@ -65,13 +76,18 @@ export class LotFulfilmentAdminService implements ILotFulfilmentAdminService {
     actorUserId: string;
   }): Promise<Result<LotFulfilmentRow, LotFulfilmentServiceError>> {
     void input.actorUserId;
-    return this.transition(input.lotId, "released", async () => {
-      await this.ctx.fulfilmentRepo.updateByLotId(input.lotId, {
-        status: "ready_for_collection",
-        fulfilmentMethod: "collection",
-        updatedAt: new Date(),
-      });
-    });
+    return this.transition(
+      input.lotId,
+      "released",
+      async () => {
+        await this.ctx.fulfilmentRepo.updateByLotId(input.lotId, {
+          status: "ready_for_collection",
+          fulfilmentMethod: "collection",
+          updatedAt: new Date(),
+        });
+      },
+      { kind: "ready_for_collection", lotId: input.lotId },
+    );
   }
 
   async markDelivered(input: {
@@ -79,12 +95,17 @@ export class LotFulfilmentAdminService implements ILotFulfilmentAdminService {
     actorUserId: string;
   }): Promise<Result<LotFulfilmentRow, LotFulfilmentServiceError>> {
     void input.actorUserId;
-    return this.transition(input.lotId, "in_transit", async () => {
-      await this.ctx.fulfilmentRepo.updateByLotId(input.lotId, {
-        status: "delivered",
-        updatedAt: new Date(),
-      });
-    });
+    return this.transition(
+      input.lotId,
+      "in_transit",
+      async () => {
+        await this.ctx.fulfilmentRepo.updateByLotId(input.lotId, {
+          status: "delivered",
+          updatedAt: new Date(),
+        });
+      },
+      { kind: "delivered", lotId: input.lotId, method: "delivery" },
+    );
   }
 
   async markCollected(input: {
@@ -93,20 +114,26 @@ export class LotFulfilmentAdminService implements ILotFulfilmentAdminService {
     collectedBy: string;
   }): Promise<Result<LotFulfilmentRow, LotFulfilmentServiceError>> {
     void input.actorUserId;
-    return this.transition(input.lotId, "ready_for_collection", async () => {
-      await this.ctx.fulfilmentRepo.updateByLotId(input.lotId, {
-        status: "delivered",
-        collectedBy: input.collectedBy,
-        collectedAt: new Date(),
-        updatedAt: new Date(),
-      });
-    });
+    return this.transition(
+      input.lotId,
+      "ready_for_collection",
+      async () => {
+        await this.ctx.fulfilmentRepo.updateByLotId(input.lotId, {
+          status: "delivered",
+          collectedBy: input.collectedBy,
+          collectedAt: new Date(),
+          updatedAt: new Date(),
+        });
+      },
+      { kind: "delivered", lotId: input.lotId, method: "collection" },
+    );
   }
 
   private async transition(
     lotId: string,
     requiredStatus: LotFulfilmentRow["status"],
     patch: () => Promise<void>,
+    notice?: LotFulfilmentStep,
   ): Promise<Result<LotFulfilmentRow, LotFulfilmentServiceError>> {
     const row = await this.ctx.fulfilmentRepo.findByLotId(lotId);
     if (!row) {
@@ -125,6 +152,9 @@ export class LotFulfilmentAdminService implements ILotFulfilmentAdminService {
     }
     await patch();
     const next = await this.ctx.fulfilmentRepo.findByLotId(lotId);
-    return next ? ok(next) : err({ message: "Fulfilment row missing after update", status: 500 });
+    if (!next) return err({ message: "Fulfilment row missing after update", status: 500 });
+    // Only a step that moved the lot is announced: a repeat fails the status check above.
+    if (notice) await this.ctx.buyerNotifier?.notify(notice);
+    return ok(next);
   }
 }

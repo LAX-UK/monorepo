@@ -30,6 +30,9 @@ const NOTIFICATION_TYPES = [
   "source_of_funds_documents_requested",
   "source_of_funds_approved",
   "source_of_funds_rejected",
+  "lot_ready_for_collection",
+  "lot_shipped",
+  "lot_delivered",
 ] as const;
 
 type ExpectedRow = {
@@ -103,6 +106,27 @@ const EXPECTED: Record<(typeof NOTIFICATION_TYPES)[number], ExpectedRow> = {
     inApp: "paymentInApp",
     push: null,
     template: "payment-invoice",
+  },
+  lot_ready_for_collection: {
+    email: "paymentEmail",
+    whatsapp: "paymentWhatsapp",
+    inApp: "paymentInApp",
+    push: null,
+    template: "lot-fulfilment-update",
+  },
+  lot_shipped: {
+    email: "paymentEmail",
+    whatsapp: "paymentWhatsapp",
+    inApp: "paymentInApp",
+    push: null,
+    template: "lot-fulfilment-update",
+  },
+  lot_delivered: {
+    email: "paymentEmail",
+    whatsapp: "paymentWhatsapp",
+    inApp: "paymentInApp",
+    push: null,
+    template: "lot-fulfilment-update",
   },
   lot_ended_seller: {
     email: "lotEndedSellerEmail",

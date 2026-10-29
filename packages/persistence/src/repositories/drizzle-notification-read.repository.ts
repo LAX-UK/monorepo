@@ -7,6 +7,7 @@ import type {
   INotificationReadRepository,
   NotificationListFilter,
 } from "../interfaces/notification-read.repository.js";
+import { notificationTypesForFilter } from "../lib/notification-type-filter.js";
 
 type Row = InferSelectModel<typeof notification>;
 
@@ -52,7 +53,7 @@ export class DrizzleNotificationReadRepository implements INotificationReadRepos
       parts.push(isNull(notification.archivedAt));
     }
     if (filter.type) {
-      parts.push(eq(notification.type, filter.type));
+      parts.push(inArray(notification.type, [...notificationTypesForFilter(filter.type)]));
     }
     const rows = await this.db
       .select()

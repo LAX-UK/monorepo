@@ -2,6 +2,7 @@ import type { ILotFulfilmentRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentService } from "./interfaces/lot-fulfilment-service.js";
 import { LotFulfilmentAdminService } from "./lot-fulfilment/lot-fulfilment-admin.service.js";
+import type { ILotFulfilmentBuyerNotifier } from "./lot-fulfilment/lot-fulfilment-buyer-notifier.js";
 import { LotFulfilmentBuyerService } from "./lot-fulfilment/lot-fulfilment-buyer.service.js";
 import { createLotFulfilmentContext } from "./lot-fulfilment/lot-fulfilment-context.js";
 import { LotFulfilmentPaymentSyncService } from "./lot-fulfilment/lot-fulfilment-payment-sync.service.js";
@@ -17,10 +18,15 @@ export class LotFulfilmentService implements ILotFulfilmentService {
   private readonly admin: LotFulfilmentAdminService;
   private readonly paymentSync: LotFulfilmentPaymentSyncService;
 
-  constructor(lotRepo: ILotRepository, fulfilmentRepo: ILotFulfilmentRepository) {
+  constructor(
+    lotRepo: ILotRepository,
+    fulfilmentRepo: ILotFulfilmentRepository,
+    buyerNotifier?: ILotFulfilmentBuyerNotifier,
+  ) {
     const ctx = createLotFulfilmentContext({
       fulfilmentRepo,
       lotRepo,
+      buyerNotifier,
     });
     this.buyer = new LotFulfilmentBuyerService(ctx);
     this.admin = new LotFulfilmentAdminService(ctx);
