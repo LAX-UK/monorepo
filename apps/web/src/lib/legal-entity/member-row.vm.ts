@@ -42,6 +42,12 @@ function twoStepWords(enabled: boolean | null | undefined): string | null {
   return null;
 }
 
+/** The picker: the current role first, then the others in listing order (owners first). */
+function pickerOptions([current, ...others]: readonly LegalEntityMemberRole[]) {
+  const rest = [...others].sort((a, b) => organisationRoleRank(a) - organisationRoleRank(b));
+  return organisationRoleOptions(current ? [current, ...rest] : rest);
+}
+
 /** You first, then by role (owners down to viewers), then by name. */
 function listingOrder(a: MemberRowView, b: MemberRowView): number {
   if (a.isYou !== b.isYou) return a.isYou ? -1 : 1;
@@ -63,8 +69,7 @@ export function memberRowViews({ actor, members, twoFactorByUserId }: MemberRows
         role: member.role,
         roleLabel: organisationRoleLabel(member.role),
         twoStep: twoFactorByUserId ? twoStepWords(twoFactorByUserId[member.userId]) : null,
-        roleOptions:
-          controls.roleOptions.length > 0 ? organisationRoleOptions(controls.roleOptions) : null,
+        roleOptions: controls.roleOptions.length > 0 ? pickerOptions(controls.roleOptions) : null,
         transfer: controls.transfer,
         canRemove: controls.remove,
       };
