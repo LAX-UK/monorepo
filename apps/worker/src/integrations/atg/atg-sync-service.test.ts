@@ -88,7 +88,7 @@ describe("AtgSyncService", () => {
       });
       expect(gateway.calls[3]?.arg).toEqual({
         LotId: "atg-lot-1",
-        ImageName: "1-1",
+        ImageName: "1-1.jpg",
         Url: "https://media.example/b.jpg",
       });
       expect(store.auctionLinks.get("sale-1")).toMatchObject({
@@ -100,7 +100,7 @@ describe("AtgSyncService", () => {
       });
       expect(store.lotLinks.get("lot-1")).toMatchObject({
         atgLotId: "atg-lot-1",
-        imageNames: ["1", "1-1"],
+        imageNames: ["1.jpg", "1-1.jpg"],
         lastError: null,
       });
     });
@@ -153,7 +153,7 @@ describe("AtgSyncService", () => {
       expect(gateway.calls).toEqual([
         {
           op: "addLotImageUrl",
-          arg: { LotId: "atg-lot-2", ImageName: "1", Url: "https://media.example/new.jpg" },
+          arg: { LotId: "atg-lot-2", ImageName: "1.jpg", Url: "https://media.example/new.jpg" },
         },
       ]);
     });
@@ -239,7 +239,7 @@ describe("AtgSyncService", () => {
       expect(gateway.calls[1]?.arg).toMatchObject({ LotId: "atg-lot-orphan", LotNumber: "1" });
       expect(store.lotLinks.get("lot-1")).toMatchObject({
         atgLotId: "atg-lot-orphan",
-        imageNames: ["1", "1-1"],
+        imageNames: ["1.jpg", "1-1.jpg"],
       });
       expect(summary).toMatchObject({ updated: 1, unchanged: 1, failed: 0 });
     });
@@ -289,7 +289,7 @@ describe("AtgSyncService", () => {
       gateway.failNext("addLotImageUrl", transient("addLotImageUrl"), 1);
 
       await expect(service.pushSale("sale-1")).rejects.toBeInstanceOf(AtgPartialSyncError);
-      expect(store.lotLinks.get("lot-1")?.imageNames).toEqual(["1"]);
+      expect(store.lotLinks.get("lot-1")?.imageNames).toEqual(["1.jpg"]);
 
       gateway.calls.length = 0;
       await service.pushSale("sale-1");
@@ -297,10 +297,10 @@ describe("AtgSyncService", () => {
       expect(gateway.calls).toEqual([
         {
           op: "addLotImageUrl",
-          arg: { LotId: "atg-lot-1", ImageName: "1-1", Url: "https://media.example/b.jpg" },
+          arg: { LotId: "atg-lot-1", ImageName: "1-1.jpg", Url: "https://media.example/b.jpg" },
         },
       ]);
-      expect(store.lotLinks.get("lot-1")?.imageNames).toEqual(["1", "1-1"]);
+      expect(store.lotLinks.get("lot-1")?.imageNames).toEqual(["1.jpg", "1-1.jpg"]);
     });
 
     it("appends images added in LAX after the first push", async () => {
@@ -321,7 +321,7 @@ describe("AtgSyncService", () => {
       expect(gateway.calls).toEqual([
         {
           op: "addLotImageUrl",
-          arg: { LotId: "atg-lot-1", ImageName: "1-2", Url: "https://media.example/c.jpg" },
+          arg: { LotId: "atg-lot-1", ImageName: "1-2.jpg", Url: "https://media.example/c.jpg" },
         },
       ]);
     });

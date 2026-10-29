@@ -193,7 +193,7 @@ describe("lot images", () => {
   });
 
   it("names images in GAP order", () => {
-    expect([0, 1, 2].map(gapImageName)).toEqual(["1", "1-1", "1-2"]);
+    expect([0, 1, 2].map(gapImageName)).toEqual(["1.jpg", "1-1.jpg", "1-2.jpg"]);
   });
 });
 

@@ -198,7 +198,7 @@ another currency or inverted), `OpeningPrice`, `Reserve`, `BuyItNowPrice` (only 
 error (no lot-level premium is sent).
 
 **Images.** Up to 20 per lot, as public CDN URLs (`S3_PUBLIC_BASE_URL` + storage key, or the
-stored absolute URL), named `1`, `1-1`, `1-2`, … in LAX order (ATG orders by name). ATG only
+stored absolute URL), named `1.jpg`, `1-1.jpg`, `1-2.jpg`, … in LAX order (ATG orders by name and rejects a name without an image extension). ATG only
 accepts JPG under 10 MB, but LAX also accepts PNG and WebP uploads, so before any lot write
 the worker `HEAD`s each image not yet on ATG and fails the lot (`image 2 must be a JPG (is
 image/png)`) unless the media origin reports `image/jpeg` and a size under 10,000,000 bytes.
@@ -559,7 +559,8 @@ authentication, claims, redirect URIs, logout).
    Is PUT `UpdateAuction` a full replace?
 6. **Distribution after publish.** May a published auction move between private and public, and
    what happens to bids and watchers?
-7. **Images.** Must image names end in `.jpg` (we send `1`, `1-1`)? Must the source URL stay
+7. **Images.** Names need an image extension: ATG answered `Invalid image extension` to `1`, so
+   we send `1.jpg`, `1-1.jpg` (Oct 2026). Still open: must the source URL stay
    reachable after upload, or does ATG copy the file? How do we remove or reorder images added
    by the API?
 8. **Timeout reconciliation.** Is there any API lookup to find an auction created by a request
