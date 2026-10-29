@@ -149,7 +149,7 @@ export function AuctionInterestsSettingsForm({ categoryIdBySlug, initialCategory
               <div
                 key={interest.key}
                 aria-disabled="true"
-                className="relative flex h-[190px] flex-col overflow-hidden rounded-xl border border-outline-variant/40 bg-white opacity-60 shadow-sm dark:bg-surface-container-lowest sm:h-[clamp(170px,23vh,239px)]"
+                className="relative flex h-[190px] flex-col overflow-hidden rounded-xl border border-outline-variant/40 bg-surface-container-lowest text-on-surface opacity-60 shadow-sm sm:h-[clamp(170px,23vh,239px)]"
               >
                 <div className="relative min-h-0 flex-1 overflow-hidden bg-surface-container">
                   <MediaImage
@@ -164,7 +164,7 @@ export function AuctionInterestsSettingsForm({ categoryIdBySlug, initialCategory
                 <span className="flex h-[62px] shrink-0 items-center justify-center px-2 text-center text-base font-semibold leading-[26px]">
                   {interest.label}
                 </span>
-                <span className="absolute right-2.5 top-2.5 rounded bg-white/90 px-2 py-1 text-xs font-semibold text-on-surface shadow-sm dark:bg-surface-container-high/90">
+                <span className="absolute right-2.5 top-2.5 rounded bg-surface-container-high px-2 py-1 text-xs font-semibold text-on-surface shadow-sm">
                   Unavailable
                 </span>
               </div>
@@ -176,7 +176,7 @@ export function AuctionInterestsSettingsForm({ categoryIdBySlug, initialCategory
             <label
               key={interest.key}
               htmlFor={controlId}
-              className={`group relative flex h-[190px] cursor-pointer flex-col overflow-hidden rounded-xl border bg-white shadow-sm transition-[border-color,box-shadow,transform] duration-200 motion-reduce:transition-none sm:h-[clamp(170px,23vh,239px)] ${
+              className={`group relative flex h-[190px] cursor-pointer flex-col overflow-hidden rounded-xl border bg-surface-container-lowest text-on-surface shadow-sm transition-[border-color,box-shadow,transform] duration-200 motion-reduce:transition-none sm:h-[clamp(170px,23vh,239px)] ${
                 checked
                   ? "border-primary shadow-md ring-2 ring-primary ring-offset-2"
                   : "border-outline-variant/40 hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md"
