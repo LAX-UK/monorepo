@@ -5,6 +5,7 @@ import {
   submitForReviewFromValuesAction,
   updateSubmissionFromValuesAction,
 } from "@/lib/actions/submissions";
+import { trackWizardSubmit } from "@/lib/analytics/sell-funnel";
 import type { FormController } from "@/lib/forms/shared/form-controller";
 import { EMPTY_SUBMISSION_FORM_VALUES } from "@/lib/forms/submission/item-submission-form-defaults";
 import { allWizardFieldPaths } from "@/lib/forms/submission/step-validation";
