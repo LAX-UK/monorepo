@@ -10,11 +10,19 @@ type Props = {
   legalEntityId: string;
   organisationName: string;
   member: { id: string; name: string };
+  /** Called once the server has removed the member, before the dialog closes. */
+  onRemoved?: () => void;
   onClose: () => void;
 };
 
 /** Removing a member: says who, from which organisation and what stops, then a plain confirm. */
-export function RemoveMemberDialog({ legalEntityId, organisationName, member, onClose }: Props) {
+export function RemoveMemberDialog({
+  legalEntityId,
+  organisationName,
+  member,
+  onRemoved,
+  onClose,
+}: Props) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const copy = removeMemberCopy(member.name, organisationName);
@@ -29,6 +37,7 @@ export function RemoveMemberDialog({ legalEntityId, organisationName, member, on
       return;
     }
     notify.success(copy.done().title);
+    onRemoved?.();
     onClose();
   }
 
