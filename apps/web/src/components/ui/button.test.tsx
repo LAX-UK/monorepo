@@ -35,13 +35,13 @@ describe("Button", () => {
     expect(link.className).toMatch(/rounded-md/);
   });
 
-  it("uses lg size when specified", () => {
+  it("uses the 44px lg size when specified", () => {
     render(
       <Button variant="primary" size="lg">
         Large CTA
       </Button>,
     );
-    expect(screen.getByRole("button", { name: /large cta/i }).className).toMatch(/min-h-12/);
+    expect(screen.getByRole("button", { name: /large cta/i }).className).toMatch(/min-h-11/);
   });
 
   it("skips block size min-height for link-shaped variants", () => {

@@ -118,7 +118,7 @@ describe("DeleteAccountSection", () => {
 
     it("keeps the destructive button disabled until the phrase is typed", () => {
       const html = render(vm);
-      expect(html).toMatch(/<button[^>]*\sdisabled=""[^>]*>Delete my account/);
+      expect(html).toMatch(/<button[^>]*\sdisabled=""[^>]*>(?:<span[^>]*>)*Delete my account/);
     });
   });
 });

@@ -78,7 +78,7 @@ describe("PortfolioMoney", () => {
   it("writes statuses in sentence case", () => {
     const html = render(entries);
     expect(html).toContain("Pending");
-    expect(html).toContain("normal-case");
+    expect(html).not.toMatch(/uppercase|tracking-widest/);
   });
 
   it("links each entry to its product and drops an unsafe link", () => {

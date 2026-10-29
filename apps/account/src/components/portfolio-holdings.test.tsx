@@ -71,7 +71,7 @@ describe("PortfolioHoldings", () => {
 
   it("writes statuses in sentence case", () => {
     const html = render(works);
-    expect(html).toContain("normal-case");
+    expect(html).not.toMatch(/uppercase|tracking-widest/);
   });
 
   it("marks an unpaid work's amount as due, not paid", () => {
