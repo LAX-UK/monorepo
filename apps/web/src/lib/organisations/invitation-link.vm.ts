@@ -53,7 +53,7 @@ const OUTCOME_VIEWS: {
 } = {
   already_member: (preview) => ({
     title: `You're already a member of ${preview.organisationName}`,
-    description: "This invitation has nothing more to add. Open the organisation to carry on.",
+    description: "There is nothing left to accept. You can open it any time from your accounts.",
     art: { kind: "tile", initials: initials(preview.organisationName) },
     accept: null,
     primary: {
