@@ -374,6 +374,12 @@ export { Surface, surfaceVariants } from "./components/ui/surface.js";
 export type { SurfaceProps } from "./components/ui/surface.js";
 export { ListRow } from "./components/ui/list-row.js";
 export type { ListRowProps } from "./components/ui/list-row.js";
+export { RecordList, RecordRow, RecordRowMedia } from "./components/ui/record-row.js";
+export type {
+  RecordListProps,
+  RecordRowMediaProps,
+  RecordRowProps,
+} from "./components/ui/record-row.js";
 export { InsetGroup } from "./components/ui/inset-group.js";
 export type { InsetGroupProps } from "./components/ui/inset-group.js";
 export { LoadingButton, AsyncButton } from "./components/ui/loading-button.js";

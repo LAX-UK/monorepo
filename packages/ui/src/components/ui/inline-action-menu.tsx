@@ -45,7 +45,12 @@ function neighborLabels(
   return { prev, next };
 }
 
-/** Row-level overflow menu; 44×44 minimum touch target. */
+/**
+ * Row-level overflow menu; 44×44 minimum touch target. Choosing an item closes the menu, then
+ * runs the item on the next frame, so a dialog it opens takes focus cleanly and hands it back to
+ * this trigger when it closes. Destructive items use the error colour, which meets 4.5:1 on the
+ * menu in both themes.
+ */
 export function InlineActionMenu({ items, label, className }: InlineActionMenuProps) {
   const instanceId = useId();
   const itemOrdinalByLabel = new Map<string, number>();
@@ -81,10 +86,9 @@ export function InlineActionMenu({ items, label, className }: InlineActionMenuPr
             <DropdownMenuItem
               key={`${instanceId}-item-${label}-${it.label}-${n}`}
               {...(it.disabled ? { disabled: true } : {})}
-              className={it.destructive ? "text-live-red focus:text-live-red" : undefined}
-              onSelect={(e) => {
-                e.preventDefault();
-                it.onSelect();
+              className={it.destructive ? "text-error focus:text-error" : undefined}
+              onSelect={() => {
+                requestAnimationFrame(it.onSelect);
               }}
             >
               {it.label}
