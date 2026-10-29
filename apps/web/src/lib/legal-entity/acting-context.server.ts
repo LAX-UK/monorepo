@@ -5,6 +5,8 @@ import { readBidSessionIdFromStore } from "@/lib/bff/session-cookie.server";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
+import { accountsUnavailableHref } from "@/lib/navigation/account-link";
+import { resolveClientRequestPath } from "@/lib/navigation/client-request-path.server";
 import {
   type StaffRoles,
   canAccessPlatformAdminRoutes,
@@ -12,6 +14,7 @@ import {
   normalizeUserRoleOrClient,
 } from "@auction/types";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { cache } from "react";
 import type { AccountDirectory, AccountsLookup } from "./account-directory";
 import { AccountsCache } from "./accounts-cache";
@@ -110,11 +113,25 @@ export async function lookupActingContext(
 }
 
 /**
- * The account this request acts as. Throws {@link AccountsUnavailableError} when the accounts
- * could not be read; the client layout has already shown the retry state for the same request,
- * so pages use this and never decide anything from a missing account.
+ * The account this request acts as, for client-area pages. When the accounts could not be read
+ * the page goes to the retry state (with "Try again" back to this page) instead of deciding
+ * anything from a missing account. It is a redirect, not an error: on a client-side navigation
+ * the workspace shell stays as it was and only the page changes.
  */
 export async function resolveActingContext(
+  userRole?: string | null,
+  userStaffRoles?: StaffRoles,
+): Promise<ResolvedActingContext> {
+  const lookup = await lookupActingContext(userRole, userStaffRoles);
+  if (!lookup.ok) redirect(accountsUnavailableHref(await resolveClientRequestPath()));
+  return lookup.context;
+}
+
+/**
+ * The same, for callers that report the failure themselves (a route handler answering 503):
+ * throws {@link AccountsUnavailableError} when the accounts could not be read.
+ */
+export async function requireActingContext(
   userRole?: string | null,
   userStaffRoles?: StaffRoles,
 ): Promise<ResolvedActingContext> {

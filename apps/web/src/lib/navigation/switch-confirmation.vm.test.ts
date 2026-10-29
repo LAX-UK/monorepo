@@ -13,7 +13,7 @@ describe("buildSwitchConfirmation", () => {
     ).toEqual({
       title: "Open this as Northbank Gallery?",
       description:
-        "You're using LAX Bid as your personal account. The link you followed is for Northbank Gallery, where your role is Admin.",
+        "You're using LAX Bid as your personal account. The link you followed is for Northbank Gallery, where you're an admin.",
       continueLabel: "Continue as Northbank Gallery",
       stayLabel: "Stay as Personal",
       tile: { kind: "organisation", initials: "NG" },
@@ -41,7 +41,7 @@ describe("buildSwitchConfirmation", () => {
       personName: "Lena Fischer",
     });
     expect(confirmation.description).toBe(
-      "The link you followed is for Northbank Gallery, where your role is Admin.",
+      "The link you followed is for Northbank Gallery, where you're an admin.",
     );
     expect(confirmation.stayLabel).toBe("Go to Home");
   });

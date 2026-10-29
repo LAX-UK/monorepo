@@ -5,7 +5,7 @@ import {
   describePostVerifyNextStep,
   resolvePostVerifyDestination,
 } from "@/lib/auth/post-verify-destination";
-import { tryConsumePendingInviteAfterVerify } from "@/lib/auth/post-verify-invite.server";
+import { pendingInvitationAfterVerify } from "@/lib/auth/post-verify-invite.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { isFullBuyerOnboardingEnabled } from "@/lib/kyc/full-buyer-onboarding-rollout.server";
 import { isIdentityOnboardingEnabled } from "@/lib/kyc/identity-onboarding-rollout.server";
@@ -134,11 +134,10 @@ export default async function VerifyEmailPage({
     );
   }
 
+  // An invited person goes on to the invitation itself; it is accepted only from that page.
   if (sessionUser?.id && orgModuleEnabled) {
-    const consumed = await tryConsumePendingInviteAfterVerify(queryInvite);
-    if (consumed) {
-      redirect(consumed.redirectTo);
-    }
+    const invitation = await pendingInvitationAfterVerify(queryInvite);
+    if (invitation) redirect(invitation);
   }
 
   return (

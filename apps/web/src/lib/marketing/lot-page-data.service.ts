@@ -21,7 +21,7 @@ import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerTelephoneBookingForSale } from "@/lib/data/http/telephone-booking.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
 import { isKycStatusUnavailableError } from "@/lib/kyc/kyc-status-unavailable-error";
-import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { requireActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import type { Bid, Lot } from "@auction/types";
@@ -52,7 +52,7 @@ export type LotPageShellData = {
 };
 
 export type LotPageSecondaryData = {
-  actingCtx: Awaited<ReturnType<typeof resolveActingContext>> | typeof EMPTY_ACTING_CTX;
+  actingCtx: Awaited<ReturnType<typeof requireActingContext>> | typeof EMPTY_ACTING_CTX;
   mySaleRegs: Awaited<ReturnType<typeof getServerSaleMyRegistrations>>;
   buyerConditionReportRequest: Awaited<ReturnType<typeof getServerConditionReportForLot>> | null;
   telephoneBookingForOnsite: Awaited<ReturnType<typeof getServerTelephoneBookingForSale>> | null;
@@ -155,7 +155,7 @@ export class LotPageDataService {
     const [actingCtx, mySaleRegs, buyerConditionReportRequest, orgModuleEnabled] =
       await Promise.all([
         session
-          ? resolveActingContext(session.role, session.staffRoles).catch(() => EMPTY_ACTING_CTX)
+          ? requireActingContext(session.role, session.staffRoles).catch(() => EMPTY_ACTING_CTX)
           : Promise.resolve(EMPTY_ACTING_CTX),
         session && auction.saleId && saleBundle
           ? getServerSaleMyRegistrations(auction.saleId).catch(() => [])

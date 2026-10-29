@@ -20,7 +20,7 @@ describe("buildInvitationLinkView", () => {
     });
     expect(view.title).toBe("Join Northbank Gallery");
     expect(view.description).toContain(
-      "Sam Okafor invited you to join Northbank Gallery as Buyer agent.",
+      "Sam Okafor invited you to join Northbank Gallery as a buyer agent.",
     );
     expect(view.description).toContain("expires on 5 Nov 2026");
     expect(view.accept).toEqual({ label: "Accept invitation" });
@@ -40,9 +40,9 @@ describe("buildInvitationLinkView", () => {
       pagePath: PAGE,
       failedBefore: true,
     });
-    expect(view.description.startsWith("You're invited to join Northbank Gallery as Admin.")).toBe(
-      true,
-    );
+    expect(
+      view.description.startsWith("You're invited to join Northbank Gallery as an admin."),
+    ).toBe(true);
     expect(view.retryNotice).toMatch(/couldn't accept the invitation just now/);
   });
 

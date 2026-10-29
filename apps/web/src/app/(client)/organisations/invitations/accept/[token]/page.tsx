@@ -6,7 +6,7 @@ import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { createInvitationLinkGateway } from "@/lib/legal-entity/invitation-link.gateway.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
-import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { invitationAcceptAction, invitationLinkPath } from "@/lib/navigation/invitation-link";
 import { buildInvitationLinkView } from "@/lib/organisations/invitation-link.vm";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
@@ -29,7 +29,7 @@ export default async function AcceptInvitationTokenPage({
 }) {
   const [{ token: raw }, { error }] = await Promise.all([params, searchParams]);
   const token = decodeURIComponent(raw);
-  const pagePath = `${CLIENT_ROUTES.invitations}/accept/${encodeURIComponent(token)}`;
+  const pagePath = invitationLinkPath(token);
 
   if (!(await resolveOrgModuleEnabledFromRequest())) {
     return (
@@ -49,7 +49,7 @@ export default async function AcceptInvitationTokenPage({
     });
     return (
       <DashboardPage>
-        <InvitationLinkState view={view} acceptAction={`${pagePath}/confirm`} />
+        <InvitationLinkState view={view} acceptAction={invitationAcceptAction(token)} />
       </DashboardPage>
     );
   }

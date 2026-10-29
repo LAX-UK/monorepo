@@ -2,7 +2,7 @@ import "server-only";
 
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SessionUser } from "@/lib/data/contracts";
-import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { requireActingContext } from "@/lib/legal-entity/acting-context.server";
 import { deriveActingContext } from "@/lib/legal-entity/derive-acting-context";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { createPendingInvitationsGateway } from "@/lib/legal-entity/pending-invitations.gateway.server";
@@ -28,7 +28,7 @@ export async function loadAccountMenuContext(user: SessionUser): Promise<Account
   const c = await getServerDataContainer();
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
   const [acting, submissions, invitations, bids, purchases, unread] = await Promise.allSettled([
-    resolveActingContext(user.role, user.staffRoles),
+    requireActingContext(user.role, user.staffRoles),
     c.submissions.getSummary(),
     orgModuleEnabled ? createPendingInvitationsGateway().listMine() : Promise.resolve([]),
     c.bids.listMine(),

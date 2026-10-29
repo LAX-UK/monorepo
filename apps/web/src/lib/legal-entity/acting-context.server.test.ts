@@ -13,7 +13,15 @@ vi.mock("next/headers", () => ({
     },
     set: mockSet,
   })),
-  headers: vi.fn(async () => new Headers({ host: "lax.bid" })),
+  headers: vi.fn(async () => requestHeaders),
+}));
+
+let requestHeaders = new Headers({ host: "lax.bid" });
+
+vi.mock("next/navigation", () => ({
+  redirect: (to: string) => {
+    throw new Error(`NEXT_REDIRECT:${to}`);
+  },
 }));
 
 const mockAuthedFetch = vi.fn();
@@ -26,6 +34,7 @@ import { isAccountsUnavailableError } from "./accounts-unavailable-error";
 import {
   getActingLegalEntityHeader,
   lookupActingContext,
+  requireActingContext,
   resolveActingContext,
 } from "./acting-context.server";
 
@@ -141,10 +150,19 @@ describe("when the accounts cannot be read", () => {
       mockAuthedFetch.mockResolvedValue(respond(status, { error: "unavailable" }));
 
       await expect(lookupActingContext("client", [])).resolves.toEqual({ ok: false, reason });
-      const thrown = await resolveActingContext("client", []).catch((error: unknown) => error);
+      const thrown = await requireActingContext("client", []).catch((error: unknown) => error);
       expect(isAccountsUnavailableError(thrown)).toBe(true);
     },
   );
+
+  it("sends a page to the retry state, back to the same page, with a redirect rather than an error", async () => {
+    mockAuthedFetch.mockResolvedValue(respond(429, { error: "Too many requests" }));
+    requestHeaders = new Headers({ "x-pathname": "/organisation", "x-search": "" });
+
+    await expect(resolveActingContext("client", [])).rejects.toThrow(
+      `NEXT_REDIRECT:/switch-account/unavailable?retry=${encodeURIComponent("/organisation")}`,
+    );
+  });
 
   it("keeps sending the browser's own account to the API, instead of acting for nobody", async () => {
     mockAuthedFetch.mockResolvedValue(respond(429, { error: "Too many requests" }));
