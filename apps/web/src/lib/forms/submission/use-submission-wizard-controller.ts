@@ -223,15 +223,15 @@ export function useSubmissionWizardController(
 
       setAutosaveStatus("saved");
       setLastSavedAt(new Date());
-      // A full load of the submission's page, which confirms the send. A server redirect was
-      // tried first: its response carried the right page (checked in the CI trace), but the
-      // router kept showing the page as it was before the send, so only a load is reliable.
-      window.location.assign(`/selling/consignments/${id}?submitted=1`);
+      trackWizardSubmit(id);
+      notify.success("Submitted for review");
+      if (mode.kind === "edit") router.refresh();
+      else router.push(`/selling/consignments/${id}`);
     } finally {
       saveInFlight.current = false;
       setSubmitInFlight(false);
     }
-  }, [form, mode, scope, submissionId, submitInFlight]);
+  }, [form, mode, router, scope, submissionId, submitInFlight]);
 
   useEffect(() => {
     if (mode.kind !== "edit" && !submissionId) return;
