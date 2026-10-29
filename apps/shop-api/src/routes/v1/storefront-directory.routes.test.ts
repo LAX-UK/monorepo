@@ -12,6 +12,9 @@ function createDeps() {
         availability: { available: 0, soldOut: 0 },
         categories: [],
         artists: [],
+        priceBands: [],
+        sizes: [],
+        techniques: [],
       }),
       listPublicCategories: async () => ({
         items: [{ slug: "art", label: "Art", imageUrl: null, artworkCount: 1 }],

@@ -10,6 +10,7 @@ import {
   PublicArtworkTypeFilterSchema,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
+import { CATALOGUE_SIZE_BAND_KEYS } from "@auction/shop-domain";
 import { Type } from "@sinclair/typebox";
 import type { Static } from "@sinclair/typebox";
 import type { FastifyInstance } from "fastify";
@@ -58,6 +59,10 @@ const ListQuerySchema = Type.Object({
   type: Type.Optional(PublicArtworkTypeFilterSchema),
   minPrice: Type.Optional(Type.Integer({ minimum: 0 })),
   maxPrice: Type.Optional(Type.Integer({ minimum: 0 })),
+  /** Size by the longest side: `small`, `medium` or `large`. */
+  size: Type.Optional(Type.Union(CATALOGUE_SIZE_BAND_KEYS.map((key) => Type.Literal(key)))),
+  /** One catalogued technique (the medium), matched exactly. */
+  technique: Type.Optional(Type.String({ minLength: 1, maxLength: 200 })),
   sort: Type.Optional(PublicArtworkSortSchema),
   q: Type.Optional(Type.String({ minLength: 1, maxLength: 120 })),
 });
@@ -81,6 +86,8 @@ function filterFromQuery(query: ListQuery) {
     ...(query.type !== undefined ? { artworkType: query.type } : {}),
     ...(query.minPrice !== undefined ? { minPricePence: query.minPrice } : {}),
     ...(query.maxPrice !== undefined ? { maxPricePence: query.maxPrice } : {}),
+    ...(query.size !== undefined ? { sizeBand: query.size } : {}),
+    ...(query.technique !== undefined ? { technique: query.technique } : {}),
     ...(query.sort !== undefined ? { sort: query.sort } : {}),
     ...(query.q !== undefined ? { q: query.q } : {}),
   };

@@ -1,3 +1,4 @@
+import { type CatalogueSizeBandKey, isCatalogueSizeBandKey } from "@auction/shop-domain";
 import type { ArtworkCatalogueSort } from "./artwork-catalogue-sort.js";
 import { DEFAULT_ARTWORK_CATALOGUE_SORT } from "./artwork-catalogue-sort.js";
 
@@ -45,6 +46,10 @@ export type NormalizedArtworkCatalogueFilters = {
   rarities?: ArtworkRarityFilter[];
   minPricePence?: number;
   maxPricePence?: number;
+  /** Size by the longest side (`CATALOGUE_SIZE_BANDS`). */
+  sizeBand?: CatalogueSizeBandKey;
+  /** The catalogued medium, matched exactly (case-insensitive). */
+  technique?: string;
   sort: ArtworkCatalogueSort;
   /** @deprecated Prefer artworkType=edition */
   editionEligible?: boolean;
@@ -65,6 +70,8 @@ export type RawArtworkCatalogueFilters = {
   rarities?: readonly string[];
   minPricePence?: number;
   maxPricePence?: number;
+  sizeBand?: string;
+  technique?: string;
   sort?: ArtworkCatalogueSort;
   editionEligible?: boolean;
 };
@@ -120,6 +127,7 @@ export function normalizeArtworkCatalogueFilters(
   const artistSlugs = normalizeList<string>(raw.artistSlugs);
   const objectTypes = normalizeList(raw.objectTypes, ARTWORK_OBJECT_TYPES);
   const rarities = normalizeList(raw.rarities, ARTWORK_RARITIES);
+  const technique = raw.technique?.trim();
 
   return {
     ...(raw.placement !== undefined ? { placement: raw.placement } : {}),
@@ -140,6 +148,8 @@ export function normalizeArtworkCatalogueFilters(
     ...(rarities.length > 0 ? { rarities } : {}),
     ...(minPricePence !== undefined ? { minPricePence } : {}),
     ...(maxPricePence !== undefined ? { maxPricePence } : {}),
+    ...(raw.sizeBand && isCatalogueSizeBandKey(raw.sizeBand) ? { sizeBand: raw.sizeBand } : {}),
+    ...(technique ? { technique } : {}),
     sort: raw.sort ?? DEFAULT_ARTWORK_CATALOGUE_SORT,
     ...(raw.editionEligible !== undefined ? { editionEligible: raw.editionEligible } : {}),
   };

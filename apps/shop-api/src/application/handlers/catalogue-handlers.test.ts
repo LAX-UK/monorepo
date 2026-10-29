@@ -15,6 +15,9 @@ describe("catalogue handlers", () => {
         availability: { available: 0, soldOut: 0 },
         categories: [],
         artists: [],
+        priceBands: [],
+        sizes: [],
+        techniques: [],
       }),
     });
     const input = {

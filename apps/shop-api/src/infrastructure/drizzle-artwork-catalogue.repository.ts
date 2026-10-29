@@ -9,7 +9,13 @@ import {
   shopMediaAsset,
   shopParty,
 } from "@auction/db/schema";
-import { maxItemsForPlacement } from "@auction/shop-domain";
+import {
+  CATALOGUE_PRICE_BANDS,
+  CATALOGUE_SIZE_BANDS,
+  type CatalogueBandRange,
+  catalogueSizeBandRange,
+  maxItemsForPlacement,
+} from "@auction/shop-domain";
 import {
   type SQL,
   and,
@@ -54,6 +60,23 @@ import { artworkAvailableNowSql } from "./shop-edition-availability.js";
 import { publishedHomePlacementForSlot } from "./shop-home-placement-queries.js";
 
 const priceTierSql = sql<number>`CASE WHEN ${shopArtwork.printPricePence} IS NULL THEN 1 ELSE 0 END`;
+
+/** The longest side of the image in cm; null unless both height and width are positive. */
+const longestSideCmSql = sql<number | null>`CASE
+  WHEN ${shopArtwork.heightCm} > 0 AND ${shopArtwork.widthCm} > 0
+  THEN greatest(${shopArtwork.heightCm}, ${shopArtwork.widthCm})
+END`;
+
+/** The catalogued medium, trimmed; the technique filter and its counts both read it. */
+const techniqueSql = sql<string | null>`nullif(btrim(${shopArtwork.medium}), '')`;
+
+/** `value` within a half-open catalogue band (`from` included, `below` excluded). */
+function inBandSql(value: SQL, range: CatalogueBandRange): SQL {
+  const parts: SQL[] = [sql`${value} IS NOT NULL`];
+  if (range.from !== undefined) parts.push(sql`${value} >= ${range.from}`);
+  if (range.below !== undefined) parts.push(sql`${value} < ${range.below}`);
+  return and(...parts) as SQL;
+}
 
 type ArtworkCatalogueRepositoryOptions = {
   resolveMediaUrl: (value: string | null | undefined) => string | null;
@@ -158,6 +181,12 @@ function buildArtworkFilters(filter: NormalizedArtworkCatalogueFilters | undefin
         lte(shopArtwork.printPricePence, filter.maxPricePence),
       ) as SQL,
     );
+  }
+  if (filter.sizeBand) {
+    conditions.push(inBandSql(longestSideCmSql, catalogueSizeBandRange(filter.sizeBand)));
+  }
+  if (filter.technique) {
+    conditions.push(sql`lower(${techniqueSql}) = lower(${filter.technique})`);
   }
   if (filter.objectTypes) {
     conditions.push(inArray(shopArtwork.objectType, filter.objectTypes));
@@ -425,41 +454,88 @@ export function createDrizzleArtworkCatalogueRepository(
       const { availability: _availability, ...availabilityScope } = filter;
       const { categorySlug: _category, ...categoryScope } = filter;
       const { artistSlugs: _artists, ...artistScope } = filter;
-      const [availabilityRows, categoryRows, artistRows] = await Promise.all([
+      const { minPricePence: _min, maxPricePence: _max, ...priceScope } = filter;
+      const { sizeBand: _size, ...sizeScope } = filter;
+      const { technique: _technique, ...techniqueScope } = filter;
+      const bandCounts = (
+        value: SQL,
+        bands: ReadonlyArray<{ key: string; range: CatalogueBandRange }>,
+        scope: NormalizedArtworkCatalogueFilters,
+      ) =>
         db
-          .select({
-            total: count(),
-            available: sql<number>`count(*) filter (where ${artworkAvailableNowSql})`,
-          })
+          .select(
+            Object.fromEntries(
+              bands.map((band) => [
+                band.key,
+                sql<number>`count(*) filter (where ${inBandSql(value, band.range)})`,
+              ]),
+            ),
+          )
           .from(shopArtwork)
           .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
           .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-          .where(and(...buildArtworkFilters(availabilityScope))),
-        db
-          .select({ slug: shopCategory.slug, label: shopCategory.label, count: count() })
-          .from(shopArtwork)
-          .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
-          .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-          .innerJoin(shopArtworkCategory, eq(shopArtworkCategory.artworkId, shopArtwork.id))
-          .innerJoin(shopCategory, eq(shopArtworkCategory.categoryId, shopCategory.id))
-          .where(and(...buildArtworkFilters(categoryScope)))
-          .groupBy(shopCategory.slug, shopCategory.label, shopCategory.sortOrder)
-          .orderBy(asc(shopCategory.sortOrder), asc(shopCategory.label)),
-        db
-          .select({ slug: shopArtist.slug, name: shopParty.displayName, count: count() })
-          .from(shopArtwork)
-          .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
-          .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
-          .where(and(...buildArtworkFilters(artistScope)))
-          .groupBy(shopArtist.slug, shopParty.displayName)
-          .orderBy(asc(shopParty.displayName)),
-      ]);
+          .where(and(...buildArtworkFilters(scope)));
+      const priceBands = CATALOGUE_PRICE_BANDS.map((band) => ({
+        key: band.key,
+        range: band.pence,
+      }));
+      const sizeBands = CATALOGUE_SIZE_BANDS.map((band) => ({
+        key: band.key,
+        range: band.longestSideCm,
+      }));
+      const [availabilityRows, categoryRows, artistRows, priceRows, sizeRows, techniqueRows] =
+        await Promise.all([
+          db
+            .select({
+              total: count(),
+              available: sql<number>`count(*) filter (where ${artworkAvailableNowSql})`,
+            })
+            .from(shopArtwork)
+            .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
+            .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+            .where(and(...buildArtworkFilters(availabilityScope))),
+          db
+            .select({ slug: shopCategory.slug, label: shopCategory.label, count: count() })
+            .from(shopArtwork)
+            .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
+            .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+            .innerJoin(shopArtworkCategory, eq(shopArtworkCategory.artworkId, shopArtwork.id))
+            .innerJoin(shopCategory, eq(shopArtworkCategory.categoryId, shopCategory.id))
+            .where(and(...buildArtworkFilters(categoryScope)))
+            .groupBy(shopCategory.slug, shopCategory.label, shopCategory.sortOrder)
+            .orderBy(asc(shopCategory.sortOrder), asc(shopCategory.label)),
+          db
+            .select({ slug: shopArtist.slug, name: shopParty.displayName, count: count() })
+            .from(shopArtwork)
+            .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
+            .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+            .where(and(...buildArtworkFilters(artistScope)))
+            .groupBy(shopArtist.slug, shopParty.displayName)
+            .orderBy(asc(shopParty.displayName)),
+          bandCounts(sql`${shopArtwork.printPricePence}`, priceBands, priceScope),
+          bandCounts(longestSideCmSql, sizeBands, sizeScope),
+          db
+            .select({ value: sql<string>`${techniqueSql}`, count: count() })
+            .from(shopArtwork)
+            .innerJoin(shopArtist, eq(shopArtwork.artistId, shopArtist.id))
+            .innerJoin(shopParty, eq(shopArtist.partyId, shopParty.id))
+            .where(and(...buildArtworkFilters(techniqueScope), sql`${techniqueSql} IS NOT NULL`))
+            .groupBy(techniqueSql)
+            .orderBy(desc(count()), asc(techniqueSql)),
+        ]);
       const total = Number(availabilityRows[0]?.total ?? 0);
       const available = Number(availabilityRows[0]?.available ?? 0);
+      const bandRow = (
+        rows: ReadonlyArray<Record<string, unknown>>,
+        bands: ReadonlyArray<{ key: string }>,
+      ) => bands.map((band) => ({ key: band.key, count: Number(rows[0]?.[band.key] ?? 0) }));
       return {
         availability: { available, soldOut: total - available },
         categories: categoryRows.map((row) => ({ ...row, count: Number(row.count) })),
         artists: artistRows.map((row) => ({ ...row, count: Number(row.count) })),
+        priceBands: bandRow(priceRows, priceBands),
+        sizes: bandRow(sizeRows, sizeBands),
+        techniques: techniqueRows.map((row) => ({ value: row.value, count: Number(row.count) })),
       };
     },
 
