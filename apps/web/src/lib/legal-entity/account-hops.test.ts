@@ -1,5 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { planRestoreHop, planSwitchHop, recordHop } from "./account-hops";
+import { planJoinHop, planRestoreHop, planSwitchHop, recordHop } from "./account-hops";
+
+describe("planJoinHop", () => {
+  it("opens a just-joined organisation's Home, remembered, without repeating the welcome", () => {
+    expect(planJoinHop("org-1")).toEqual({
+      redirect: "/home",
+      switchTo: { accountId: "org-1", remember: true },
+    });
+  });
+});
 
 const memberships = [
   { id: "me", kind: "individual" as const },
@@ -70,7 +79,6 @@ describe("planRestoreHop", () => {
       planRestoreHop({
         next: "/home",
         restored: { accountId: "org-1", lostOrganisation: null },
-        personalId: "me",
       }),
     ).toEqual({ redirect: "/home", switchTo: { accountId: "org-1", remember: false } });
   });
@@ -80,16 +88,8 @@ describe("planRestoreHop", () => {
       planRestoreHop({
         next: "/home",
         restored: { accountId: "me", lostOrganisation: { displayName: "Northbank Gallery" } },
-        personalId: "me",
       }).switchTo?.notice,
     ).toEqual({ kind: "removed", organisationName: "Northbank Gallery" });
-  });
-
-  it("falls back to the personal account when the API cannot answer", () => {
-    expect(planRestoreHop({ next: "/bids", restored: null, personalId: "me" })).toEqual({
-      redirect: "/bids",
-      switchTo: { accountId: "me", remember: false },
-    });
   });
 });
 
@@ -112,5 +112,11 @@ describe("recordHop", () => {
 
   it("leaves a missing record to the page's not-found", () => {
     expect(recordHop({ kind: "not_found" }, "me", next)).toBeNull();
+  });
+
+  it("shows the retry state, not 'not found', when the owner could not be looked up", () => {
+    expect(recordHop({ kind: "unavailable" }, "me", next)).toBe(
+      `/switch-account/unavailable?retry=${encodeURIComponent(next)}`,
+    );
   });
 });

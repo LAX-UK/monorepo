@@ -5,7 +5,8 @@ const refresh = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 
 let announce: ((accountId: string) => void) | null = null;
-vi.mock("@/lib/legal-entity/account-switch-channel", () => ({
+vi.mock("@/lib/legal-entity/account-switch-channel", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/legal-entity/account-switch-channel")>()),
   onAccountSwitch: (listener: (accountId: string) => void) => {
     announce = listener;
     return () => {

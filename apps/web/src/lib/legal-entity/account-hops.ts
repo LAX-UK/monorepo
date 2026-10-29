@@ -1,4 +1,4 @@
-import { switchAccountHref } from "@/lib/navigation/account-link";
+import { accountsUnavailableHref, switchAccountHref } from "@/lib/navigation/account-link";
 import type { AccountNotice } from "@/lib/navigation/account-notice";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { type UsableAccount, canUseAccount } from "@auction/domain";
@@ -42,57 +42,67 @@ export function planSwitchHop(input: {
 }
 
 /**
- * Putting a browser back in the right account. The API has already chosen it (and corrected the
- * profile); when it could not answer, the person's own account is the safe choice.
+ * Opening an organisation the person has just joined: its Home, remembered on their profile. No
+ * notice: Home greets a new member with a welcome card that already names the organisation and
+ * their role, and a second line saying the same would only repeat it.
+ */
+export function planJoinHop(organisationId: string): HopPlan {
+  return {
+    redirect: CLIENT_ROUTES.home,
+    switchTo: { accountId: organisationId, remember: true },
+  };
+}
+
+/**
+ * Putting a browser back in the right account, as the API chose it (and corrected the profile).
+ * Only an answer reaches here: when the API cannot answer, the hop shows the retry state and the
+ * browser keeps what it has, rather than being moved to the personal account.
  */
 export function planRestoreHop(input: {
   next: string;
   restored: {
     accountId: string;
     lostOrganisation: { displayName: string } | null;
-  } | null;
-  personalId: string | null;
+  };
 }): HopPlan {
   const { next, restored } = input;
-  if (restored) {
-    return {
-      redirect: next,
-      switchTo: {
-        accountId: restored.accountId,
-        remember: false,
-        ...(restored.lostOrganisation
-          ? {
-              notice: {
-                kind: "removed",
-                organisationName: restored.lostOrganisation.displayName,
-              },
-            }
-          : {}),
-      },
-    };
-  }
-  if (input.personalId) {
-    return { redirect: next, switchTo: { accountId: input.personalId, remember: false } };
-  }
-  return { redirect: next };
+  return {
+    redirect: next,
+    switchTo: {
+      accountId: restored.accountId,
+      remember: false,
+      ...(restored.lostOrganisation
+        ? {
+            notice: {
+              kind: "removed",
+              organisationName: restored.lostOrganisation.displayName,
+            },
+          }
+        : {}),
+    },
+  };
 }
 
 /** Who owns a record, as the API answered for the signed-in person. */
 export type RecordOwner =
   | { kind: "ok"; legalEntityId: string }
   | { kind: "no_access" }
-  | { kind: "not_found" };
+  | { kind: "not_found" }
+  /** The API could not answer; nothing is known about the record. */
+  | { kind: "unavailable" };
 
 /**
  * Where a consignment or purchase page goes when the record belongs to another account: through
- * the switch hop to its owner, or to the no-access page. `null` when the page should render (or
- * report not found) as it is.
+ * the switch hop to its owner, to the no-access page, or, when the owner could not be looked up,
+ * to the retry state (rendering it in the current account could say "not found" about a record
+ * that exists). `null` when the page should render (or report not found) as it is.
  */
 export function recordHop(
   owner: RecordOwner,
   actingId: string | null,
   next: string,
 ): string | null {
+  if (owner.kind === "unavailable") return accountsUnavailableHref(next);
   if (owner.kind === "no_access") return noAccessHref(next);
   if (owner.kind === "ok" && owner.legalEntityId !== actingId) {
     return switchAccountHref(owner.legalEntityId, next);

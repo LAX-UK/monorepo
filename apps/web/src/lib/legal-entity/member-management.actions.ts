@@ -4,7 +4,6 @@ import { instrumentServerAction } from "@/lib/observability/instrument-server-ac
 import { normalizeApiErrorMessage } from "@auction/validators";
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
-import { switchActingLegalEntity } from "@/lib/legal-entity/acting-context.actions";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { revalidatePath } from "next/cache";
 import { X_LEGAL_ENTITY_ID_HEADER } from "./client-acting-context";
@@ -140,34 +139,5 @@ export async function transferPrimaryAdminAction(
     revalidatePath("/invitations");
     revalidatePath("/organisations/invitations");
     return { ok: true };
-  });
-}
-
-export async function acceptInvitationAction(
-  token: string,
-): Promise<ActionResult<{ legalEntityId: string }>> {
-  return instrumentServerAction("acceptInvitationAction", async () => {
-    const res = await authedServerFetch("/legal-entities/invitations/accept", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ token }),
-    });
-    const body = await res.json();
-    if (!res.ok) {
-      return {
-        ok: false,
-        error: normalizeApiErrorMessage((body as { error?: unknown }).error, "accept_failed"),
-      };
-    }
-    const legalEntityId = (body as { data: { legalEntityId: string } }).data.legalEntityId;
-    await switchActingLegalEntity(legalEntityId);
-    revalidatePath("/organisations");
-    revalidatePath("/invitations");
-    revalidatePath("/organisations/invitations");
-    revalidatePath("/", "layout");
-    return {
-      ok: true,
-      data: { legalEntityId },
-    };
   });
 }

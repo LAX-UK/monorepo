@@ -52,7 +52,7 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: PATH });
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   requireSellerCapability(sellerCtx, "entity.consignments.read");
-  const { sellerEntityId, bootstrapFailed, sellingAsOrganisation } = sellerCtx;
+  const { sellerEntityId, sellingAsOrganisation } = sellerCtx;
   const canCreateSubmission = sellerCan(sellerCtx, "entity.submissions.create");
   const [overview, filter] = await Promise.all([
     loadSellingOverview(sellerCtx, user.id),
@@ -69,9 +69,7 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
       </Link>
     </Button>
   ) : null;
-  const banner = !sellerEntityId ? (
-    <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} />
-  ) : null;
+  const banner = !sellerEntityId ? <SellerProfileUnavailableAlert /> : null;
   const partialFailures = overview.loadedNothing
     ? null
     : overview.failures.map((failure) => (

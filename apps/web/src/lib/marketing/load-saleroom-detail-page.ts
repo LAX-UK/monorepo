@@ -13,7 +13,7 @@ import {
   getServerSaleShell,
 } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { lookupActingContext } from "@/lib/legal-entity/acting-context.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { saleroomPageDataService } from "@/lib/marketing/saleroom-page-data.service";
 import {
@@ -80,7 +80,9 @@ export async function loadSaleroomDetailPage(input: {
   }
 
   const secondary = await saleroomPageDataService.loadSecondary(input.id, shell.sale, session);
-  const actingCtx = session ? await resolveActingContext(session.role, session.staffRoles) : null;
+  // A public page: while the accounts cannot be read it shows no account choice, as signed out.
+  const actingLookup = session ? await lookupActingContext(session.role, session.staffRoles) : null;
+  const actingCtx = actingLookup?.ok ? actingLookup.context : null;
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
   const mySaleRegs = session ? await getServerSaleMyRegistrations(input.id).catch(() => []) : [];
 

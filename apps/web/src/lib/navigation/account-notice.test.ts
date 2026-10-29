@@ -26,6 +26,19 @@ describe("account notice", () => {
     expect(accountNoticeMessage({ kind: "switched", accountId: "gone" }, names)).toBeNull();
   });
 
+  it("says when this tab followed a switch made in another tab", () => {
+    const notice = { kind: "switched_elsewhere", accountId: "org-1" } as const;
+    expect(decodeAccountNotice(encodeAccountNotice(notice))).toEqual(notice);
+    expect(accountNoticeMessage(notice, names)).toBe(
+      "You switched to Northbank Gallery in another tab, so this tab shows it now.",
+    );
+  });
+
+  it("ignores notices of a kind it does not know", () => {
+    expect(decodeAccountNotice(encodeURIComponent('{"kind":"toString"}'))).toBeNull();
+    expect(decodeAccountNotice(encodeURIComponent('{"kind":"other","accountId":"x"}'))).toBeNull();
+  });
+
   it("explains a fallback after removal", () => {
     expect(
       accountNoticeMessage({ kind: "removed", organisationName: "Northbank Gallery" }, names),

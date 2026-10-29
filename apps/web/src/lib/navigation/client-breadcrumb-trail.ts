@@ -60,6 +60,8 @@ const TRAILS: readonly [RegExp, (match: RegExpMatchArray) => Crumb[]][] = [
   [/^\/verify-identity$/, () => [here("Verify identity")]],
   [/^\/compliance\/source-of-funds$/, () => [here("Source of funds")]],
   [/^\/no-access$/, () => [here("No access")]],
+  [/^\/switch-account\/confirm$/, () => [here("Switch account")]],
+  [/^\/switch-account\/unavailable$/, () => [here("Your accounts")]],
 ];
 
 /** Human-readable breadcrumb trail for a signed-in client-area page. */

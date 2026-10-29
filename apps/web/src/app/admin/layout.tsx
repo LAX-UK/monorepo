@@ -20,7 +20,7 @@ import {
 import { EMPTY_ADMIN_NAV_COUNTS } from "@/lib/data/http/admin-nav-counts.types";
 import { getAdminArtistStats } from "@/lib/data/http/admin.server";
 import { getAdminSubmissionPendingCount } from "@/lib/data/http/submissions.server";
-import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
+import { findViewAsClientSession } from "@/lib/legal-entity/acting-context.server";
 import { PLATFORM_ADMIN_ACCESS } from "@/lib/navigation/staff-nav-access";
 import { AdminNuqsAdapter } from "@/lib/nuqs/admin-nuqs-adapter";
 import {
@@ -44,7 +44,7 @@ export async function generateMetadata(): Promise<Metadata> {
     shell: "staff",
     loginNext: await resolveAdminReturnPath(),
   });
-  const { impersonation } = await resolveActingContext(user.role, user.staffRoles);
+  const impersonation = await findViewAsClientSession(user.role, user.staffRoles);
   const base = metadataForPrivate("Admin");
   if (
     !impersonation ||
@@ -70,7 +70,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
     shell: "staff",
     loginNext: await resolveAdminReturnPath(),
   });
-  const { impersonation } = await resolveActingContext(user.role, user.staffRoles);
+  const impersonation = await findViewAsClientSession(user.role, user.staffRoles);
 
   let pendingSubmissionCount = 0;
   let pendingArtistCount = 0;

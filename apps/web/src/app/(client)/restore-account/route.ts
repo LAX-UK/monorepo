@@ -2,30 +2,33 @@ import {
   browserAccountId,
   carryOutHop,
   hopNext,
+  hopUser,
   isImpersonating,
-  requireHopUser,
+  seeOther,
 } from "@/lib/legal-entity/account-hop.server";
 import { planRestoreHop } from "@/lib/legal-entity/account-hops";
-import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import { restoreAccount } from "@/lib/legal-entity/remembered-account.server";
-import { redirect } from "next/navigation";
+import { accountsUnavailableHref, restoreAccountHref } from "@/lib/navigation/account-link";
+import { isPrefetchRequest } from "@/lib/security/fetch-metadata";
 
 export const dynamic = "force-dynamic";
 
 /**
  * `/restore-account?next=<page>`: a browser with no usable account choice (a new device, or an
  * organisation the person has left) opens in the account they used last, or in their own with a
- * notice saying why.
+ * notice saying why. When the API cannot answer, the browser keeps its choice and the person
+ * sees the retry state; it is never moved to the personal account on a guess.
  */
 export async function GET(request: Request) {
-  const user = await requireHopUser(request);
+  if (isPrefetchRequest(request.headers)) {
+    return new Response(null, { status: 204, headers: { "Cache-Control": "no-store" } });
+  }
+  const signedIn = await hopUser(request);
+  if (signedIn instanceof Response) return signedIn;
   const next = hopNext(request);
-  if (await isImpersonating()) redirect(next);
+  if (await isImpersonating()) return seeOther(next);
 
-  const [restored, context] = await Promise.all([
-    restoreAccount(await browserAccountId()),
-    resolveActingContext(user.role, user.staffRoles),
-  ]);
-  const personalId = context.memberships.find((m) => m.kind === "individual")?.id ?? null;
-  return carryOutHop(planRestoreHop({ next, restored, personalId }));
+  const answer = await restoreAccount(await browserAccountId());
+  if (!answer.ok) return seeOther(accountsUnavailableHref(restoreAccountHref(next)));
+  return carryOutHop(planRestoreHop({ next, restored: answer.restored }));
 }

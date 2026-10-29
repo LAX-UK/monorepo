@@ -153,6 +153,9 @@ function AccountRow({
   return (
     <Link
       href={account.href}
+      // Opening another account goes through the switch hop: never prefetched, so showing the
+      // menu can never change the account.
+      prefetch={false}
       aria-current={account.here ? "true" : undefined}
       className={cn(ROW_BASE, ROW[surface], "group gap-3 py-2", surface === "sheet" && "py-2.5")}
       onClick={onNavigate}

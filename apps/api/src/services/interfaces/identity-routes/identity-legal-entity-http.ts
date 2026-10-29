@@ -1,5 +1,6 @@
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ActingContextCookieV1, StaffRoles } from "@auction/types";
+import type { InvitationPreview } from "../invitation-lifecycle.js";
 import type { IdentityRouteOutcome } from "./identity-route-http.js";
 
 type ActiveMembershipRow = Awaited<
@@ -12,6 +13,12 @@ export interface IIdentityLegalEntityHttpApplicationService {
   >;
 
   listPendingInvitations(input: { userId: string }): Promise<IdentityRouteOutcome<unknown[]>>;
+
+  /** What an invitation link is, for the signed-in person who opened it; changes nothing. */
+  previewInvitationByToken(input: {
+    userId: string;
+    token: string;
+  }): Promise<IdentityRouteOutcome<InvitationPreview>>;
 
   acceptInvitationById(input: {
     userId: string;

@@ -13,6 +13,7 @@ import { revalidatePath } from "next/cache";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { z } from "zod";
+import { listMyAccounts } from "./acting-context.server";
 import { writeActingAccountCookie } from "./acting-cookie.server";
 import { ACTING_LEGAL_ENTITY_COOKIE } from "./client-acting-context";
 import { rememberAccount } from "./remembered-account.server";
@@ -72,12 +73,8 @@ type SwitchResult =
 
 /** The person's own legal entity, for "switch to personal". */
 async function findPersonalAccountId(): Promise<string | null> {
-  const res = await authedServerFetch("/legal-entities/me", { cache: "no-store" });
-  if (!res.ok) return null;
-  const body = (await res.json().catch(() => null)) as {
-    data?: { id: string; kind: string }[];
-  } | null;
-  return body?.data?.find((m) => m.kind === "individual")?.id ?? null;
+  const lookup = await listMyAccounts();
+  return lookup.ok ? (lookup.accounts.find((m) => m.kind === "individual")?.id ?? null) : null;
 }
 
 /**

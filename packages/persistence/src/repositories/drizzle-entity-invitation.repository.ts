@@ -128,6 +128,8 @@ export class DrizzleEntityInvitationRepository implements IEntityInvitationRepos
   }
 
   async insertMember(input: EntityMemberCreate): Promise<LegalEntityMember | null> {
+    // `legal_entity_member_active_uidx` allows one active row per person and organisation. A
+    // concurrent accept that loses the race waits for the winner's commit, then inserts nothing.
     const [member] = await this.db
       .insert(legalEntityMember)
       .values({
@@ -138,6 +140,10 @@ export class DrizzleEntityInvitationRepository implements IEntityInvitationRepos
         invitedByUserId: input.invitedByUserId,
         invitedAt: input.invitedAt,
         acceptedAt: new Date(),
+      })
+      .onConflictDoNothing({
+        target: [legalEntityMember.legalEntityId, legalEntityMember.userId],
+        where: isNull(legalEntityMember.removedAt),
       })
       .returning();
     return member ? rowToLegalEntityMember(member) : null;

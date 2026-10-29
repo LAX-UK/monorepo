@@ -1,184 +1,172 @@
 import "server-only";
 
+import { createHash } from "node:crypto";
+import { readBidSessionIdFromStore } from "@/lib/bff/session-cookie.server";
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
+import { accountsUnavailableHref } from "@/lib/navigation/account-link";
+import { resolveClientRequestPath } from "@/lib/navigation/client-request-path.server";
 import {
-  type LegalEntitySummary,
   type StaffRoles,
   canAccessPlatformAdminRoutes,
   decodeActingContextCookie,
   normalizeUserRoleOrClient,
 } from "@auction/types";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { cache } from "react";
+import type { AccountDirectory, AccountsLookup } from "./account-directory";
+import { AccountsCache } from "./accounts-cache";
+import { AccountsUnavailableError } from "./accounts-unavailable-error";
+import {
+  type ActingContextLookup,
+  type BrowserAccountChoice,
+  type ResolvedActingContext,
+  type ResolvedActingImpersonation,
+  resolveActingContextWith,
+} from "./acting-context-resolver";
 import { ACTING_LEGAL_ENTITY_COOKIE, X_LEGAL_ENTITY_ID_HEADER } from "./client-acting-context";
+import { HttpAccountDirectory } from "./http-account-directory";
 
-export type ResolvedActingImpersonation = {
-  displayName: string;
-  expiresAtIso: string;
-  sessionId: string;
-};
+export type {
+  ActingContextLookup,
+  ResolvedActingContext,
+  ResolvedActingImpersonation,
+} from "./acting-context-resolver";
 
-export type ResolvedActingContext = {
-  /** The acting summary chosen for this request — explicit cookie if valid,
-   * otherwise the user's personal entity. `null` when the user has no
-   * memberships at all (should be impossible post-0027 backfill).
-   */
-  acting: LegalEntitySummary | null;
-  /** Every active membership for the user (used by the switcher UI). */
-  memberships: LegalEntitySummary[];
-  /** active platform-admin impersonation (synthetic acting row). */
-  impersonation: ResolvedActingImpersonation | null;
-  /** True when `/legal-entities/me` reported personal-entity bootstrap failure. */
-  bootstrapFailed: boolean;
-  /**
-   * This browser has no usable account choice: no cookie yet (a new device) or one for an
-   * account the person can no longer use. The client area then sends it through
-   * `/restore-account`, which opens the remembered account or explains the fallback.
-   */
-  needsRestore: boolean;
-};
+/**
+ * Short, private, per-session memory of each person's accounts in this server process. Ten
+ * seconds absorbs the bursts of ordinary browsing (a page, its prefetches, a quick next page);
+ * memberships that change are re-read at once (see `AccountsCache.get`).
+ */
+const ACCOUNTS_CACHE_TTL_MS = 10_000;
+const ACCOUNTS_CACHE_MAX_SESSIONS = 5_000;
+const sharedAccountsCache = new AccountsCache({
+  ttlMs: ACCOUNTS_CACHE_TTL_MS,
+  maxEntries: ACCOUNTS_CACHE_MAX_SESSIONS,
+});
 
-/** Resolves the acting legal entity for the current request. Read-only: the cookie is written
- * only by the switch action and the `/switch-account` and `/restore-account` hops.
- * 1. Fetch `/legal-entities/me` (cookie-authenticated).
- * 2. For platform administrators, a structured cookie with an
- * impersonation block is validated via `GET /legal-entities/:id`.
- * 3. Otherwise pick the membership whose id matches the cookie; if no match,
- * fall back to the first membership where `kind = 'individual'`.
+/** A key for the signed-in session that never holds the session id itself. */
+async function sessionCacheKey(): Promise<string | null> {
+  const sessionId = readBidSessionIdFromStore(await cookies());
+  return sessionId ? createHash("sha256").update(sessionId).digest("base64url") : null;
+}
+
+/** The signed-in person's account directory: the Bid API, cached per session. */
+export async function createAccountDirectory(): Promise<AccountDirectory> {
+  return new HttpAccountDirectory({
+    fetcher: authedServerFetch,
+    cache: sharedAccountsCache,
+    sessionKey: await sessionCacheKey(),
+  });
+}
+
+/** Forgets the cached accounts of this session after its memberships changed. */
+export async function forgetMyCachedAccounts(): Promise<void> {
+  const key = await sessionCacheKey();
+  if (key) sharedAccountsCache.forget(key);
+}
+
+/** The signed-in person's accounts, or why they could not be read. */
+export async function listMyAccounts(options?: {
+  mustInclude?: string | null;
+}): Promise<AccountsLookup> {
+  return (await createAccountDirectory()).listMine(options);
+}
+
+/** What this browser's acting cookie says; `null` when it has none it can read. */
+async function readBrowserChoice(): Promise<BrowserAccountChoice | null> {
+  const raw = (await cookies()).get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
+  const decoded = raw ? decodeActingContextCookie(decodeURIComponent(raw)) : null;
+  return decoded ? { accountId: decoded.e, viewSessionId: decoded.i?.sid ?? null } : null;
+}
+
+/**
+ * One resolution per request: the layout, the page and every API call's account header read the
+ * same answer, so they can never disagree about whose account a response shows.
+ */
+const lookupActingContextOnce = cache(
+  async (canViewAsClient: boolean): Promise<ActingContextLookup> =>
+    resolveActingContextWith({
+      directory: await createAccountDirectory(),
+      browserChoice: await readBrowserChoice(),
+      orgModuleEnabled: resolveOrgModuleEnabledFromRequest,
+      canViewAsClient,
+    }),
+);
+
+function viewerCanViewAsClient(userRole?: string | null, userStaffRoles?: StaffRoles): boolean {
+  return canAccessPlatformAdminRoutes(normalizeUserRoleOrClient(userRole), userStaffRoles);
+}
+
+/**
+ * The account this request acts as, or why the person's accounts could not be read. Read-only:
+ * the cookie is written only by the switch action and the `/switch-account` and
+ * `/restore-account` hops. Use this where the failure is shown (the client layout, the hops).
+ */
+export async function lookupActingContext(
+  userRole?: string | null,
+  userStaffRoles?: StaffRoles,
+): Promise<ActingContextLookup> {
+  return lookupActingContextOnce(viewerCanViewAsClient(userRole, userStaffRoles));
+}
+
+/**
+ * The account this request acts as, for client-area pages. When the accounts could not be read
+ * the page goes to the retry state (with "Try again" back to this page) instead of deciding
+ * anything from a missing account. It is a redirect, not an error: on a client-side navigation
+ * the workspace shell stays as it was and only the page changes.
  */
 export async function resolveActingContext(
   userRole?: string | null,
-  userStaffRoles?: StaffRoles | undefined,
+  userStaffRoles?: StaffRoles,
 ): Promise<ResolvedActingContext> {
-  const res = await authedServerFetch("/legal-entities/me", {
-    cache: "no-store",
-  });
-  if (!res.ok) {
-    const bootstrapFailed = res.status === 503;
-    return {
-      acting: null,
-      memberships: [],
-      impersonation: null,
-      bootstrapFailed,
-      needsRestore: false,
-    };
-  }
-  const body = (await res.json()) as {
-    data?: LegalEntitySummary[];
-    error?: string;
-    code?: string;
-  };
-  const bootstrapFailed = body.code === "personal_entity_unavailable";
-  const memberships = body.data ?? [];
-  if (memberships.length === 0) {
-    return {
-      acting: null,
-      memberships: [],
-      impersonation: null,
-      bootstrapFailed,
-      needsRestore: false,
-    };
-  }
-
-  const jar = await cookies();
-  const cookieValue = jar.get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
-  const raw = cookieValue ? decodeURIComponent(cookieValue) : "";
-  const decoded = raw ? decodeActingContextCookie(raw) : null;
-
-  const role = normalizeUserRoleOrClient(userRole);
-  const staff = userStaffRoles;
-  if (decoded?.i?.sid && canAccessPlatformAdminRoutes(role, staff)) {
-    const resEntity = await authedServerFetch(`/legal-entities/${decoded.e}`, {
-      cache: "no-store",
-    });
-    if (resEntity.ok) {
-      const entityJson = (await resEntity.json()) as {
-        data?: {
-          id: string;
-          displayName: string;
-          kind: LegalEntitySummary["kind"];
-          subkind: LegalEntitySummary["subkind"];
-          status: LegalEntitySummary["status"];
-          membership?: {
-            role: LegalEntitySummary["role"];
-            isPrimaryAdmin: boolean;
-            isImpersonation?: boolean;
-            impersonationExpiresAt?: string;
-          };
-        };
-      };
-      const d = entityJson.data;
-      if (d?.membership?.isImpersonation) {
-        const acting: LegalEntitySummary = {
-          id: d.id,
-          displayName: d.displayName,
-          kind: d.kind,
-          subkind: d.subkind,
-          status: d.status,
-          role: d.membership.role,
-          isPrimaryAdmin: d.membership.isPrimaryAdmin,
-          isImpersonation: true,
-        };
-        return {
-          acting,
-          memberships,
-          impersonation: d.membership.impersonationExpiresAt
-            ? {
-                displayName: d.displayName,
-                expiresAtIso: d.membership.impersonationExpiresAt,
-                sessionId: decoded.i.sid,
-              }
-            : null,
-          bootstrapFailed: false,
-          needsRestore: false,
-        };
-      }
-    }
-  }
-
-  const matchedByCookie = decoded ? memberships.find((m) => m.id === decoded.e) : undefined;
-
-  // Kill switch: a stale org cookie must not leak org acting into SSR fetch
-  // headers or capability wiring — reset to the personal entity.
-  const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
-  const orgGatedByKillSwitch = !orgModuleEnabled && matchedByCookie?.kind === "organisation";
-
-  const usable = matchedByCookie !== undefined && !orgGatedByKillSwitch;
-
-  const firstMembership = memberships[0];
-  if (!firstMembership) {
-    return {
-      acting: null,
-      memberships: [],
-      impersonation: null,
-      bootstrapFailed,
-      needsRestore: false,
-    };
-  }
-  const fallback = memberships.find((m) => m.kind === "individual") ?? firstMembership;
-  const acting = (usable ? matchedByCookie : undefined) ?? fallback;
-  return {
-    acting,
-    memberships,
-    impersonation: null,
-    bootstrapFailed: false,
-    // A staff impersonation cookie is never "restored" over; the staff tools end it.
-    needsRestore: !usable && !decoded?.i?.sid,
-  };
+  const lookup = await lookupActingContext(userRole, userStaffRoles);
+  if (!lookup.ok) redirect(accountsUnavailableHref(await resolveClientRequestPath()));
+  return lookup.context;
 }
 
-/** Convenience for server-side data fetchers that need to forward acting
- * context to the API. Returns `{ "x-legal-entity-id": "<id>" }` when an
- * acting entity is resolved, otherwise an empty object.
+/**
+ * The same, for callers that report the failure themselves (a route handler answering 503):
+ * throws {@link AccountsUnavailableError} when the accounts could not be read.
+ */
+export async function requireActingContext(
+  userRole?: string | null,
+  userStaffRoles?: StaffRoles,
+): Promise<ResolvedActingContext> {
+  const lookup = await lookupActingContext(userRole, userStaffRoles);
+  if (!lookup.ok) throw new AccountsUnavailableError(lookup.reason);
+  return lookup.context;
+}
+
+/**
+ * A staff member's live "view as client" session, for the admin area's banner and titles. The
+ * admin area does not depend on client accounts, so an outage reading them shows no session
+ * rather than failing the page; the API still refuses every write in one.
+ */
+export async function findViewAsClientSession(
+  userRole?: string | null,
+  userStaffRoles?: StaffRoles,
+): Promise<ResolvedActingImpersonation | null> {
+  const lookup = await lookupActingContext(userRole, userStaffRoles);
+  return lookup.ok ? lookup.context.impersonation : null;
+}
+
+/**
+ * The `X-Legal-Entity-Id` header for server-side API calls. While the accounts cannot be read,
+ * the browser's own choice is sent as it is: the API checks membership on every request, and
+ * acting for nobody would silently turn an organisation's page into the personal account's.
  */
 export async function getActingLegalEntityHeader(
   userRole?: string | null,
-  userStaffRoles?: StaffRoles | undefined,
+  userStaffRoles?: StaffRoles,
 ): Promise<Record<string, string>> {
-  const { acting } = await resolveActingContext(userRole, userStaffRoles);
-  if (!acting) return {};
-  return { [X_LEGAL_ENTITY_ID_HEADER]: acting.id };
+  const lookup = await lookupActingContext(userRole, userStaffRoles);
+  const accountId = lookup.ok
+    ? lookup.context.acting.id
+    : ((await readBrowserChoice())?.accountId ?? null);
+  return accountId ? { [X_LEGAL_ENTITY_ID_HEADER]: accountId } : {};
 }
 
 /**
@@ -189,13 +177,8 @@ export async function isViewingAsClient(
   userRole?: string | null,
   userStaffRoles?: StaffRoles | undefined,
 ): Promise<boolean> {
-  const role = normalizeUserRoleOrClient(userRole);
-  const staff = userStaffRoles;
-  if (!canAccessPlatformAdminRoutes(role, staff)) return false;
-  const jar = await cookies();
-  const cookieValue = jar.get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
-  const raw = cookieValue ? decodeURIComponent(cookieValue) : "";
-  return Boolean(raw && decodeActingContextCookie(raw)?.i?.sid);
+  if (!viewerCanViewAsClient(userRole, userStaffRoles)) return false;
+  return Boolean((await readBrowserChoice())?.viewSessionId);
 }
 
 /** When the acting cookie references an admin impersonation session,
@@ -203,11 +186,7 @@ export async function isViewingAsClient(
  * so it can validate via `GET /legal-entities/:id`. Fetch the role only in
  * that case to avoid an extra `/users/me` on every SSR request. */
 export async function getUserRoleIfImpersonationActingCookie(): Promise<string | null | undefined> {
-  const jar = await cookies();
-  const cookieValue = jar.get(ACTING_LEGAL_ENTITY_COOKIE)?.value;
-  const raw = cookieValue ? decodeURIComponent(cookieValue) : "";
-  const decoded = raw ? decodeActingContextCookie(raw) : null;
-  if (!decoded?.i?.sid) return undefined;
+  if (!(await readBrowserChoice())?.viewSessionId) return undefined;
   const user = await getServerSessionUser();
   return user?.role ?? null;
 }

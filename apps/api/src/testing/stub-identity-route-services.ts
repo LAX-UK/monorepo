@@ -18,6 +18,7 @@ export function stubIdentityRouteServices(
     legalEntityHttp: {
       listMyMemberships: vi.fn(),
       listPendingInvitations: vi.fn(),
+      previewInvitationByToken: vi.fn(),
       acceptInvitationById: vi.fn(),
       declineInvitation: vi.fn(),
       getLegalEntityDetail: vi.fn(),

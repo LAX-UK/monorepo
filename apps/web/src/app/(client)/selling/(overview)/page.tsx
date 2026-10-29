@@ -35,7 +35,7 @@ export default async function SellerOverviewPage() {
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   if (!sellerCtx.sellingAsOrganisation) redirect(CLIENT_ROUTES.consignments);
 
-  const { sellerEntityId, bootstrapFailed } = sellerCtx;
+  const { sellerEntityId } = sellerCtx;
   const canSell = sellerCan(sellerCtx, "entity.consignments.read");
   const canCreateSubmission = sellerCan(sellerCtx, "entity.submissions.create");
   const overview = await loadSellingOverview(sellerCtx, user.id);
@@ -54,9 +54,7 @@ export default async function SellerOverviewPage() {
           </Button>
         ) : null
       }
-      banner={
-        !sellerEntityId ? <SellerProfileUnavailableAlert bootstrapFailed={bootstrapFailed} /> : null
-      }
+      banner={!sellerEntityId ? <SellerProfileUnavailableAlert /> : null}
       errorAlert={
         overview.loadedNothing
           ? null
