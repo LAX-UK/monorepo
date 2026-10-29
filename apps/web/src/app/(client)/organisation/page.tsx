@@ -1,13 +1,14 @@
 import { subkindLabel } from "@/components/organisations/labels";
 import { resumeOnboardingStepKey } from "@/components/organisations/org-onboarding-step-map";
 import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
+import { OrganisationTabNoAccess } from "@/components/organisations/organisation-tab-no-access";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getOrgOnboardingResumeHrefForEntity } from "@/lib/data/http/org-onboarding.server";
-import { resolveActiveOrganisation } from "@/lib/legal-entity/active-organisation.server";
+import { resolveActiveOrganisationActor } from "@/lib/legal-entity/active-organisation.server";
 import { ORG_ONBOARDING_TIMELINE_STAGES } from "@/lib/legal-entity/org-onboarding-steps";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
-import { canOpenOrganisationTab, organisationTabsFor } from "@/lib/navigation/organisation-tabs";
+import { requireOrganisationTab } from "@/lib/navigation/organisation-tabs";
 import type { LegalEntityStatus } from "@auction/types";
 import { DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -37,16 +38,16 @@ export default async function OrganisationProfilePage() {
     shell: "client",
     loginNext: CLIENT_ROUTES.organisation,
   });
-  const active = await resolveActiveOrganisation(user);
+  const active = await resolveActiveOrganisationActor(user);
   if (!active) return null;
-  if (!canOpenOrganisationTab(active.role, "profile")) {
-    // Finance members manage payouts only; their Organisation page opens on that tab.
-    const first = organisationTabsFor(active.role)[0];
-    if (first) redirect(first.href);
-    return null;
+  const access = requireOrganisationTab(active.actor, "profile");
+  if (access.kind === "forbidden") {
+    // The Organisation page opens on the first tab the person can use (finance: Payouts).
+    if (access.fallback) redirect(access.fallback.href);
+    return <OrganisationTabNoAccess access={access} />;
   }
 
-  const ctx = await createPerOrgGateway().getContext(active.id);
+  const ctx = await createPerOrgGateway().getContext(active.organisation.id);
   if (!ctx) notFound();
   const { member, entity } = ctx;
   const id = member.id;

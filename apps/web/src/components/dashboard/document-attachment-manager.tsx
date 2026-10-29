@@ -39,6 +39,7 @@ export type DocumentAttachmentManagerProps<TKind extends string> = {
   initialDocuments: EntityDocument[];
   sectionTitle?: string;
   sectionDescription?: string;
+  /** How documents are added and removed; `null` lists them read-only, with downloads. */
   actions: {
     attach: (input: {
       uploadObjectId: string;
@@ -46,7 +47,7 @@ export type DocumentAttachmentManagerProps<TKind extends string> = {
       label: string | null;
     }) => Promise<ActionResult<EntityDocument>>;
     remove: (documentId: string) => Promise<ActionResult<void>>;
-  };
+  } | null;
 };
 
 export function DocumentAttachmentManager<TKind extends string>({
@@ -80,6 +81,7 @@ export function DocumentAttachmentManager<TKind extends string>({
 
   const addDocument = useCallback(
     async (file: File) => {
+      if (!actions) return;
       setBusy(true);
       setErrorMessage(null);
       setRetryFile(null);
@@ -133,6 +135,7 @@ export function DocumentAttachmentManager<TKind extends string>({
   }
 
   async function removeConfirmed(documentId: string) {
+    if (!actions) return;
     setBusy(true);
     const res = await actions.remove(documentId);
     setBusy(false);
@@ -186,84 +189,91 @@ export function DocumentAttachmentManager<TKind extends string>({
                     Download
                   </a>
                 </div>
-                <ConfirmedRemoveButton
-                  ariaLabel={`Remove ${displayName}`}
-                  confirmTitle="Remove document?"
-                  confirmBody={`Remove ${displayName}? This detaches the file from this record.`}
-                  disabled={busy}
-                  loading={busy}
-                  onConfirmed={() => removeConfirmed(d.id)}
-                >
-                  Remove
-                </ConfirmedRemoveButton>
+                {actions ? (
+                  <ConfirmedRemoveButton
+                    ariaLabel={`Remove ${displayName}`}
+                    confirmTitle="Remove document?"
+                    confirmBody={`Remove ${displayName}? This detaches the file from this record.`}
+                    disabled={busy}
+                    loading={busy}
+                    onConfirmed={() => removeConfirmed(d.id)}
+                  >
+                    Remove
+                  </ConfirmedRemoveButton>
+                ) : null}
               </li>
             );
           })}
         </ul>
       )}
 
-      <div className="space-y-3 border-t border-outline-variant/30 pt-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <Label htmlFor={`doc-kind-${entityId}`}>Document type</Label>
-            <Select value={kind} disabled={busy} onValueChange={(v) => setKind(v as TKind)}>
-              <SelectTrigger id={`doc-kind-${entityId}`} className="mt-1 w-full font-body text-sm">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {kinds.map((k) => (
-                  <SelectItem key={k} value={k}>
-                    {documentKindLabel(k)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div>
-            <Label htmlFor={`doc-label-${entityId}`}>Label (optional)</Label>
-            <Input
-              id={`doc-label-${entityId}`}
-              value={label}
-              disabled={busy}
-              onChange={(e) => setLabel(e.target.value)}
-              className="mt-1"
-              maxLength={200}
-              placeholder="e.g. Addendum A"
-            />
-          </div>
-        </div>
-
-        <DocumentUploadField
-          kind={uploadKind}
-          busy={busy}
-          dropzone
-          helperText={DOCUMENT_UPLOAD_HELPER}
-          inputId={`doc-file-${entityId}`}
-          onFileSelected={onFileSelected}
-        />
-
-        <div aria-live="polite" aria-atomic="true" className="space-y-2">
-          {statusMessage ? (
-            <p className="font-body text-xs text-on-surface-variant">{statusMessage}</p>
-          ) : null}
-          {errorMessage ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <p className="font-body text-xs text-error">{errorMessage}</p>
-              {retryFile ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  size="sm"
-                  disabled={busy}
-                  onClick={() => void retryLastUpload()}
+      {actions ? (
+        <div className="space-y-3 border-t border-outline-variant/30 pt-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <Label htmlFor={`doc-kind-${entityId}`}>Document type</Label>
+              <Select value={kind} disabled={busy} onValueChange={(v) => setKind(v as TKind)}>
+                <SelectTrigger
+                  id={`doc-kind-${entityId}`}
+                  className="mt-1 w-full font-body text-sm"
                 >
-                  Retry
-                </Button>
-              ) : null}
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {kinds.map((k) => (
+                    <SelectItem key={k} value={k}>
+                      {documentKindLabel(k)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-          ) : null}
+            <div>
+              <Label htmlFor={`doc-label-${entityId}`}>Label (optional)</Label>
+              <Input
+                id={`doc-label-${entityId}`}
+                value={label}
+                disabled={busy}
+                onChange={(e) => setLabel(e.target.value)}
+                className="mt-1"
+                maxLength={200}
+                placeholder="e.g. Addendum A"
+              />
+            </div>
+          </div>
+
+          <DocumentUploadField
+            kind={uploadKind}
+            busy={busy}
+            dropzone
+            helperText={DOCUMENT_UPLOAD_HELPER}
+            inputId={`doc-file-${entityId}`}
+            onFileSelected={onFileSelected}
+          />
+
+          <div aria-live="polite" aria-atomic="true" className="space-y-2">
+            {statusMessage ? (
+              <p className="font-body text-xs text-on-surface-variant">{statusMessage}</p>
+            ) : null}
+            {errorMessage ? (
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-body text-xs text-error">{errorMessage}</p>
+                {retryFile ? (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="sm"
+                    disabled={busy}
+                    onClick={() => void retryLastUpload()}
+                  >
+                    Retry
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </div>
-      </div>
+      ) : null}
     </div>
   );
 }

@@ -1,10 +1,12 @@
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { documentReviewStatusBadgeVariant } from "@/components/organisations/labels";
 import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
+import { OrganisationTabNoAccess } from "@/components/organisations/organisation-tab-no-access";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { requireActiveOrganisationId } from "@/lib/legal-entity/active-organisation.server";
+import { requireActiveOrganisationActor } from "@/lib/legal-entity/active-organisation.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { organisationHref } from "@/lib/navigation/client-routes";
+import { requireOrganisationTab } from "@/lib/navigation/organisation-tabs";
 import type { LegalEntity, LegalEntityDocument } from "@auction/types";
 import { DisplayHeading } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -27,7 +29,10 @@ export default async function OrganisationDocumentsPage() {
     shell: "client",
     loginNext: organisationHref("documents"),
   });
-  const id = await requireActiveOrganisationId(user);
+  const { organisation, actor } = await requireActiveOrganisationActor(user);
+  const access = requireOrganisationTab(actor, "documents");
+  if (access.kind === "forbidden") return <OrganisationTabNoAccess access={access} />;
+  const id = organisation.id;
   const ctx = await createPerOrgGateway().getContext(id);
   if (!ctx) notFound();
 

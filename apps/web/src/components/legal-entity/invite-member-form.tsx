@@ -1,8 +1,8 @@
 "use client";
 
 import { inviteMemberAction } from "@/lib/legal-entity/member-management.actions";
+import { roleLabel } from "@/lib/organisations/legal-entity-labels";
 import type { LegalEntityMemberRole } from "@auction/types";
-import { legalEntityMemberRoles } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
@@ -17,26 +17,19 @@ import { useState, useTransition } from "react";
 
 type Props = {
   legalEntityId: string;
+  /** The roles this person may invite someone as (from the member change policy). */
+  roleOptions: readonly LegalEntityMemberRole[];
 };
 
-const DEFAULT_ROLE: LegalEntityMemberRole = "consignor";
+const PREFERRED_ROLE: LegalEntityMemberRole = "consignor";
 
-function memberRoleLabel(role: LegalEntityMemberRole): string {
-  const labels: Record<LegalEntityMemberRole, string> = {
-    owner: "Owner",
-    admin: "Admin",
-    consignor: "Consignor",
-    finance: "Finance",
-    buyer_agent: "Buyer agent",
-    viewer: "Viewer",
-  };
-  return labels[role];
-}
-
-export function InviteMemberForm({ legalEntityId }: Props) {
+export function InviteMemberForm({ legalEntityId, roleOptions }: Props) {
+  const defaultRole = roleOptions.includes(PREFERRED_ROLE)
+    ? PREFERRED_ROLE
+    : (roleOptions[0] ?? PREFERRED_ROLE);
   const [pending, startTransition] = useTransition();
   const [email, setEmail] = useState("");
-  const [role, setRole] = useState<LegalEntityMemberRole>(DEFAULT_ROLE);
+  const [role, setRole] = useState<LegalEntityMemberRole>(defaultRole);
   const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
@@ -58,7 +51,7 @@ export function InviteMemberForm({ legalEntityId }: Props) {
         return;
       }
       setEmail("");
-      setRole(DEFAULT_ROLE);
+      setRole(defaultRole);
       setSent(true);
     });
   }
@@ -95,9 +88,9 @@ export function InviteMemberForm({ legalEntityId }: Props) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {legalEntityMemberRoles.map((r) => (
+              {roleOptions.map((r) => (
                 <SelectItem key={r} value={r}>
-                  {memberRoleLabel(r)}
+                  {roleLabel(r)}
                 </SelectItem>
               ))}
             </SelectContent>

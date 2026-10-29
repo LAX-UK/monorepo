@@ -42,6 +42,7 @@ import {
   CONDITIONS_OF_BUSINESS_PART_C,
   partCSection,
 } from "@/lib/legal/conditions-of-business-part-c";
+import { consignmentActionsVm } from "@/lib/seller/consignment-actions.vm";
 import { checklistItemView } from "@/lib/seller/consignment-checklist-copy";
 import { consignmentChecklistFacts } from "@/lib/seller/consignment-checklist-facts";
 import { buildConsignmentDetailVm } from "@/lib/seller/consignment-detail.vm";
@@ -49,11 +50,7 @@ import { consignmentWithdrawalViewModel } from "@/lib/seller/consignment-withdra
 import { loadSellerAccountFacts } from "@/lib/seller/seller-account-facts.server";
 import { unsoldChoiceViewModel } from "@/lib/seller/unsold-choice-view";
 import { lotPath } from "@/lib/seo/url";
-import {
-  computeConsignmentChecklist,
-  evaluateSubmissionQuality,
-  sellerCanEditSubmission,
-} from "@auction/domain";
+import { computeConsignmentChecklist, evaluateSubmissionQuality } from "@auction/domain";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -170,8 +167,12 @@ export default async function SubmissionDetailPage({
       connectStatus == null || !connectStatus.ok || !connectStatus.data.payoutsEnabled;
   }
 
-  const editable = sellerCanEditSubmission(submission.status);
-  const canSubmit = submission.status === "draft";
+  // What this person may do here: the submission's state and the submission policy, as the API.
+  const actions = consignmentActionsVm({
+    actor: sellerCtx.actor ? { userId: user.id, member: sellerCtx.actor } : null,
+    submission,
+  });
+  const editable = actions.canEdit;
   const agreementView = agreementRes.status === "fulfilled" ? agreementRes.value : null;
   const account = accountRes.status === "fulfilled" ? accountRes.value : null;
   const checklist = account
@@ -322,7 +323,7 @@ export default async function SubmissionDetailPage({
               <div className="mt-4">
                 <SubmissionWorkflowActions
                   submissionId={submission.id}
-                  canSubmit={canSubmit}
+                  canSubmit={actions.canSubmit}
                   canWithdraw={false}
                 />
               </div>
@@ -333,6 +334,7 @@ export default async function SubmissionDetailPage({
             status={submission.status}
             initialDocuments={submissionDocuments}
             loadFailure={documentsFailure}
+            canManage={actions.canManageDocuments}
           />
         </div>
         <aside className="flex flex-col gap-4" aria-label="About this consignment">

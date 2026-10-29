@@ -1,15 +1,17 @@
 import { ConnectWorkspace } from "@/components/connect/connect-workspace";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
+import { OrganisationTabNoAccess } from "@/components/organisations/organisation-tab-no-access";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { buildSellerConnectFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import {
   getServerStripeConnectClientConfig,
   syncServerStripeConnectStatus,
 } from "@/lib/data/http/stripe-connect.server";
-import { requireActiveOrganisationId } from "@/lib/legal-entity/active-organisation.server";
+import { requireActiveOrganisationActor } from "@/lib/legal-entity/active-organisation.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { organisationHref } from "@/lib/navigation/client-routes";
+import { requireOrganisationTab } from "@/lib/navigation/organisation-tabs";
 import { DisplayHeading } from "@auction/ui";
 import { SectionHeader } from "@auction/ui/components/section-header";
 import { notFound } from "next/navigation";
@@ -19,7 +21,10 @@ export default async function OrganisationConnectPage() {
     shell: "client",
     loginNext: organisationHref("payouts"),
   });
-  const id = await requireActiveOrganisationId(user);
+  const { organisation, actor } = await requireActiveOrganisationActor(user);
+  const access = requireOrganisationTab(actor, "payouts");
+  if (access.kind === "forbidden") return <OrganisationTabNoAccess access={access} />;
+  const id = organisation.id;
   const ctx = await createPerOrgGateway().getContext(id);
   if (!ctx) notFound();
   const { member, entity } = ctx;

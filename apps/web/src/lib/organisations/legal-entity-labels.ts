@@ -51,6 +51,24 @@ export function roleLabel(role: LegalEntityMemberRole | string): string {
   return role.replace(/_/g, " ");
 }
 
+/** The people holding a role, as a group: "owners", "finance". */
+const ROLE_GROUP_LABELS: Record<LegalEntityMemberRole, string> = {
+  owner: "owners",
+  admin: "admins",
+  consignor: "consignors",
+  finance: "finance",
+  buyer_agent: "buyer agents",
+  viewer: "viewers",
+};
+
+/** Who holds these roles, as a sentence opening: "Owners, admins and finance". */
+export function roleGroupsSentence(roles: readonly LegalEntityMemberRole[]): string {
+  const groups = roles.map((role) => ROLE_GROUP_LABELS[role]);
+  const last = groups.pop();
+  const list = groups.length > 0 ? `${groups.join(", ")} and ${last}` : (last ?? "");
+  return list.charAt(0).toUpperCase() + list.slice(1);
+}
+
 export function statusLabel(status: LegalEntityStatus): string {
   return STATUS_LABELS[status] ?? status.replace(/_/g, " ");
 }

@@ -22,6 +22,8 @@ type Props = {
   status: ItemSubmission["status"];
   initialDocuments: EntityDocument[];
   loadFailure?: DashboardSliceFailure | null;
+  /** Whether this person may add and remove documents (the submission policy); else read-only. */
+  canManage: boolean;
 };
 
 const UPLOAD_STATUSES = new Set<ItemSubmission["status"]>([
@@ -37,15 +39,20 @@ export function SubmissionSellerDocumentsPanel({
   status,
   initialDocuments,
   loadFailure = null,
+  canManage,
 }: Props) {
   if (!UPLOAD_STATUSES.has(status)) return null;
+  // Someone who may not add documents has nothing to do here until there is one to read.
+  if (!canManage && !loadFailure && initialDocuments.length === 0) return null;
 
   return (
     <Surface variant="section" className="space-y-4">
       <div>
         <h3 className="font-headline text-base text-on-surface">Supporting documents</h3>
         <p className="mt-1 font-body text-sm text-on-surface-variant">
-          Upload certificates, invoices, or condition reports to help specialists review your item.
+          {canManage
+            ? "Upload certificates, invoices, or condition reports to help specialists review your item."
+            : "Certificates, invoices and condition reports sent with this work."}
         </p>
       </div>
       {loadFailure ? (
@@ -56,16 +63,20 @@ export function SubmissionSellerDocumentsPanel({
           entityId={submissionId}
           kinds={SUBMISSION_DOC_KINDS}
           initialDocuments={initialDocuments}
-          actions={{
-            attach: (input) =>
-              sellerAttachSubmissionDocumentResultAction(submissionId, {
-                uploadObjectId: input.uploadObjectId,
-                kind: input.kind,
-                label: input.label,
-              }),
-            remove: (documentId) =>
-              sellerRemoveSubmissionDocumentResultAction(submissionId, documentId),
-          }}
+          actions={
+            canManage
+              ? {
+                  attach: (input) =>
+                    sellerAttachSubmissionDocumentResultAction(submissionId, {
+                      uploadObjectId: input.uploadObjectId,
+                      kind: input.kind,
+                      label: input.label,
+                    }),
+                  remove: (documentId) =>
+                    sellerRemoveSubmissionDocumentResultAction(submissionId, documentId),
+                }
+              : null
+          }
         />
       )}
     </Surface>

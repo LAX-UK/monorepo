@@ -1,5 +1,6 @@
 import {
   documentReviewStatusBadgeVariant,
+  roleGroupsSentence,
   roleLabel,
   statusBadgeVariant,
   statusLabel,
@@ -16,6 +17,13 @@ describe("labels", () => {
   it("roleLabel maps known roles", () => {
     expect(roleLabel("owner")).toBe("Owner");
     expect(roleLabel("buyer_agent")).toBe("Buyer agent");
+  });
+
+  it("roleGroupsSentence names who holds roles, as a sentence opening", () => {
+    expect(roleGroupsSentence(["owner"])).toBe("Owners");
+    expect(roleGroupsSentence(["owner", "admin"])).toBe("Owners and admins");
+    expect(roleGroupsSentence(["owner", "admin", "finance"])).toBe("Owners, admins and finance");
+    expect(roleGroupsSentence(["buyer_agent"])).toBe("Buyer agents");
   });
 
   it("statusLabel maps KYB statuses", () => {
