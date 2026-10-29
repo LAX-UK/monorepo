@@ -57,7 +57,9 @@ export function MemberRow({
           <span className="min-w-0 truncate">{row.email}</span>
           {row.twoStep ? (
             <>
-              <span aria-hidden>·</span>
+              <span aria-hidden className="hidden sm:inline">
+                ·
+              </span>
               <span className="whitespace-nowrap">{row.twoStep}</span>
             </>
           ) : null}

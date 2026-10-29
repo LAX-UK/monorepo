@@ -1,5 +1,6 @@
 "use client";
 
+import { initials } from "@/components/organisations/initials";
 import {
   authorisationStatePresentation,
   liveAuthorisationsFor,
@@ -13,8 +14,9 @@ import type {
 import { Button } from "@auction/ui/components/button";
 import { DotStatusPill } from "@auction/ui/components/dot-status-pill";
 import { EmptyState } from "@auction/ui/components/empty-state";
-import { Surface } from "@auction/ui/components/surface";
 import { useState } from "react";
+import { MemberInitials } from "../members/member-initials";
+import { TeamSection } from "../members/team-section";
 import { AuthoriseBuyerAgentDialog } from "./authorise-buyer-agent-dialog";
 import { RevokeAuthorisationDialog } from "./revoke-authorisation-dialog";
 
@@ -72,20 +74,19 @@ function AgentRow({
   onRevoke: (a: BuyerAgentAuthorisationView) => void;
 }) {
   return (
-    <li className="space-y-3 p-4 sm:px-5">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <p className="truncate font-medium text-on-surface">{agent.name}</p>
-          <p className="truncate font-body text-xs text-on-surface-variant">{agent.email}</p>
+    <li className="space-y-3 py-3 pl-11">
+      <div className="-ml-11 flex items-center gap-3">
+        <MemberInitials>{initials(agent.name)}</MemberInitials>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-body text-sm leading-5.5 font-medium text-on-surface">
+            {agent.name}
+          </p>
+          <p className="truncate font-body text-label-3 leading-5 text-on-surface-variant">
+            {agent.email}
+          </p>
         </div>
         {canManage ? (
-          <Button
-            type="button"
-            variant="outline"
-            size="default"
-            className="min-h-11 sm:min-h-9"
-            onClick={onAuthorise}
-          >
+          <Button type="button" variant="outline" size="default" onClick={onAuthorise}>
             {authorisations.length > 0 ? "Add authorisation" : "Authorise"}
           </Button>
         ) : null}
@@ -102,7 +103,7 @@ function AgentRow({
           ))}
         </ul>
       ) : (
-        <p className="font-body text-sm text-on-surface-variant">
+        <p className="font-body text-label-3 leading-5 text-on-surface-variant">
           Not authorised yet, so they can&apos;t bid for {entityName}.
         </p>
       )}
@@ -120,19 +121,13 @@ export function BuyerAgentsSection({ legalEntityId, entityName, overview }: Prop
   const { buyerAgents, authorisations, sales, canManage } = overview;
 
   return (
-    <Surface variant="section" padding="none" className="overflow-hidden p-0 sm:p-0">
-      <div className="space-y-1 p-4 sm:px-5 sm:pt-5">
-        <h3 className="font-headline text-base font-semibold text-on-surface">
-          Who can bid for {entityName}
-        </h3>
-        <p className="font-body text-sm text-on-surface-variant">
-          Owners and admins can always bid for the organisation. Buyer agents can bid once you
-          authorise them, for all sales or one, with an optional limit. Other members bid only in
-          their own name.
-        </p>
-      </div>
+    <TeamSection
+      id="who-can-bid"
+      title="Who can bid"
+      description={`Owners and admins can always bid for ${entityName}. Buyer agents can bid once you authorise them, for all sales or one, with an optional limit. Other members bid only in their own name.`}
+    >
       {buyerAgents.length === 0 ? (
-        <div className="border-t border-border-hairline">
+        <div>
           <EmptyState
             size="compact"
             headingLevel="h3"
@@ -142,7 +137,7 @@ export function BuyerAgentsSection({ legalEntityId, entityName, overview }: Prop
           />
         </div>
       ) : (
-        <ul className="divide-y divide-border-hairline border-t border-border-hairline">
+        <ul className="-my-3 divide-y divide-border-hairline">
           {buyerAgents.map((agent) => (
             <AgentRow
               key={agent.userId}
@@ -176,6 +171,6 @@ export function BuyerAgentsSection({ legalEntityId, entityName, overview }: Prop
           onClose={() => setRevoking(null)}
         />
       ) : null}
-    </Surface>
+    </TeamSection>
   );
 }

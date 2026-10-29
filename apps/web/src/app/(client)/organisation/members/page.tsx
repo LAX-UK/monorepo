@@ -128,10 +128,10 @@ export default async function OrganisationMembersPage() {
 
       {invitationRows.length > 0 ? (
         <TeamSection
-          id="pending-invitations"
-          title="Pending invitations"
-          count={invitationRows.length}
-          countLabel="waiting"
+          id="invitations"
+          title="Invitations"
+          count={invitationRows.filter((row) => !row.expired).length}
+          countLabel="waiting for an answer"
         >
           <PendingInvitations legalEntityId={id} rows={invitationRows} />
         </TeamSection>

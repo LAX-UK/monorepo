@@ -1,4 +1,3 @@
-import { supportMailto } from "@/lib/dashboard/dashboard-copy";
 import { organisationRoleInSentence } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import {
   type ORGANISATION_CLOSED_TO_MEMBERS,
@@ -87,6 +86,7 @@ export const invitationCopy = {
     description: "The earlier link no longer works.",
   }),
   withdrawn: (email: string): ToastCopy => ({ title: `Invitation to ${email} withdrawn.` }),
+  removed: (email: string): ToastCopy => ({ title: `Expired invitation to ${email} removed.` }),
   reopened: (email: string): ToastCopy => ({ title: `Invitation to ${email} reopened.` }),
 };
 
@@ -94,18 +94,16 @@ type InviteRefusalCode =
   | typeof ORGANISATION_RESTRICTED_MEMBERS.code
   | typeof ORGANISATION_CLOSED_TO_MEMBERS.code;
 
-/** Why the invite form is not shown, naming the organisation, for each state that closes it. */
-const INVITES_CLOSED: Record<
-  InviteRefusalCode,
-  (organisationName: string) => { line: string; contact: { label: string; href: string } | null }
-> = {
+/**
+ * Why the invite form is not shown, naming the organisation, for each state that closes it. The
+ * organisation's state banner above the tabs already offers "Contact us", so this line does not.
+ */
+const INVITES_CLOSED: Record<InviteRefusalCode, (organisationName: string) => { line: string }> = {
   organisation_restricted_members: (organisationName) => ({
     line: `${organisationName} can't invite anyone while it's restricted. The people already here keep their access.`,
-    contact: { label: "Contact us", href: supportMailto(`Adding people to ${organisationName}`) },
   }),
   organisation_closed_to_members: (organisationName) => ({
     line: `${organisationName} is closed, so it can't invite anyone.`,
-    contact: null,
   }),
 };
 

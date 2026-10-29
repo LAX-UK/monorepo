@@ -139,6 +139,14 @@ export function InviteMemberForm({ legalEntityId, organisationName, roleOptions 
           value={role}
           onValueChange={setRole}
         />
+        {/* On phones the role's description sits under the role, before the button. */}
+        <p
+          id={ids.roleHint}
+          className="-mt-2 font-body text-label-3 leading-5 text-on-surface-variant sm:order-last sm:col-span-3 sm:mt-0"
+        >
+          <span className="font-medium text-on-surface">{organisationRoleLabel(role)}:</span>{" "}
+          {lowerFirst(organisationRoleDescription(role))} Invitation links work for 7 days.
+        </p>
         <div className="flex flex-col gap-1.5">
           {/* Keeps the button on the fields' line, under a label-height gap. */}
           <span aria-hidden className="hidden h-5 sm:block" />
@@ -154,11 +162,6 @@ export function InviteMemberForm({ legalEntityId, organisationName, roleOptions 
           </LoadingButton>
         </div>
       </div>
-
-      <p id={ids.roleHint} className="font-body text-label-3 leading-5 text-on-surface-variant">
-        <span className="font-medium text-on-surface">{organisationRoleLabel(role)}:</span>{" "}
-        {lowerFirst(organisationRoleDescription(role))} Invitation links work for 7 days.
-      </p>
 
       {formError ? (
         <Alert variant="destructive">

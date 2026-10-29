@@ -90,6 +90,24 @@ export function organisationRoleGroupsSentence(roles: readonly LegalEntityMember
   return list.charAt(0).toUpperCase() + list.slice(1);
 }
 
+/**
+ * The order people are listed in a team: who runs it first, then money, selling, buying and
+ * reading. Separate from the role list's own order, which other tables depend on.
+ */
+const LISTING_RANK: Record<LegalEntityMemberRole, number> = {
+  owner: 0,
+  admin: 1,
+  finance: 2,
+  consignor: 3,
+  buyer_agent: 4,
+  viewer: 5,
+};
+
+/** A role's place in a team listing (owners first). */
+export function organisationRoleRank(role: LegalEntityMemberRole): number {
+  return LISTING_RANK[role];
+}
+
 /** Picker options for these roles, in the order given, labelled for people. */
 export function organisationRoleOptions(
   roles: readonly LegalEntityMemberRole[],

@@ -12,20 +12,7 @@ export function InvitesClosed({ refusalCode, organisationName }: Props) {
       data-testid="invites-closed"
     >
       <Info className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} aria-hidden />
-      <span>
-        {copy.line}
-        {copy.contact ? (
-          <>
-            {" "}
-            <a
-              href={copy.contact.href}
-              className="font-medium text-on-surface underline underline-offset-2 hover:decoration-2"
-            >
-              {copy.contact.label}
-            </a>
-          </>
-        ) : null}
-      </span>
+      <span>{copy.line}</span>
     </p>
   );
 }

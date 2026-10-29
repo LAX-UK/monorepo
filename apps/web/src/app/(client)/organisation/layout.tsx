@@ -74,9 +74,12 @@ export default async function OrganisationLayout({ children }: { children: React
           description="Your organisation's details, team and settings."
           hideDescriptionOnMobile
           actions={
-            <div className="flex flex-wrap items-center gap-2">
+            // The state is a status; the organisation's type is a plain fact beside it.
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
               <StatusBadge variant={status.tone}>{status.label}</StatusBadge>
-              <StatusBadge variant="neutral">{subkindLabel(member.subkind)}</StatusBadge>
+              <span className="font-body text-sm leading-5 text-on-surface-variant">
+                {subkindLabel(member.subkind)}
+              </span>
             </div>
           }
         />

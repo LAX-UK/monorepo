@@ -35,7 +35,7 @@ export function TransferOwnershipDialog({
   const copy = transferOwnershipCopy(member.name, organisationName);
   const matches = typed.trim() === confirmPhrase;
 
-  async function confirm() {
+  async function confirmTransfer() {
     if (!matches) return;
     setPending(true);
     setError(null);
@@ -61,7 +61,7 @@ export function TransferOwnershipDialog({
       pending={pending}
       error={error}
       confirmBlockedReason={matches ? null : `Type "${confirmPhrase}" to confirm.`}
-      onConfirm={() => void confirm()}
+      onConfirm={() => void confirmTransfer()}
     >
       <div className="space-y-1.5">
         <Label htmlFor={fieldId} className="font-body text-sm leading-5 font-medium">
@@ -72,7 +72,7 @@ export function TransferOwnershipDialog({
           value={typed}
           onChange={(event) => setTyped(event.target.value)}
           onKeyDown={(event) => {
-            if (event.key === "Enter") void confirm();
+            if (event.key === "Enter") void confirmTransfer();
           }}
           autoComplete="off"
           spellCheck={false}

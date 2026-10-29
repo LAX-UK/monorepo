@@ -2,6 +2,7 @@ import { initials } from "@/components/organisations/initials";
 import {
   organisationRoleLabel,
   organisationRoleOptions,
+  organisationRoleRank,
 } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import { formatDate } from "@/lib/ui/format";
 import type { MemberChangeActor } from "@auction/domain";
@@ -41,25 +42,34 @@ function twoStepWords(enabled: boolean | null | undefined): string | null {
   return null;
 }
 
+/** You first, then by role (owners down to viewers), then by name. */
+function listingOrder(a: MemberRowView, b: MemberRowView): number {
+  if (a.isYou !== b.isYou) return a.isYou ? -1 : 1;
+  const byRole = organisationRoleRank(a.role) - organisationRoleRank(b.role);
+  return byRole !== 0 ? byRole : a.name.localeCompare(b.name, "en-GB");
+}
+
 /** The team as rows, each with the controls the member change policy allows the viewer. */
 export function memberRowViews({ actor, members, twoFactorByUserId }: MemberRowsInput) {
-  return members.map((member): MemberRowView => {
-    const controls = memberRowControls(actor, member, members);
-    return {
-      id: member.id,
-      name: member.user.name,
-      email: member.user.email,
-      initials: initials(member.user.name),
-      isYou: actor.memberId === member.id,
-      role: member.role,
-      roleLabel: organisationRoleLabel(member.role),
-      twoStep: twoFactorByUserId ? twoStepWords(twoFactorByUserId[member.userId]) : null,
-      roleOptions:
-        controls.roleOptions.length > 0 ? organisationRoleOptions(controls.roleOptions) : null,
-      transfer: controls.transfer,
-      canRemove: controls.remove,
-    };
-  });
+  return members
+    .map((member): MemberRowView => {
+      const controls = memberRowControls(actor, member, members);
+      return {
+        id: member.id,
+        name: member.user.name,
+        email: member.user.email,
+        initials: initials(member.user.name),
+        isYou: actor.memberId === member.id,
+        role: member.role,
+        roleLabel: organisationRoleLabel(member.role),
+        twoStep: twoFactorByUserId ? twoStepWords(twoFactorByUserId[member.userId]) : null,
+        roleOptions:
+          controls.roleOptions.length > 0 ? organisationRoleOptions(controls.roleOptions) : null,
+        transfer: controls.transfer,
+        canRemove: controls.remove,
+      };
+    })
+    .sort(listingOrder);
 }
 
 /** One unanswered invitation as its row shows it. */
@@ -68,8 +78,8 @@ export type InvitationRowView = {
   email: string;
   role: LegalEntityMemberRole;
   roleLabel: string;
-  /** "Finance · Sent 29 Oct 2026 · Expires 5 Nov 2026". */
-  detail: string;
+  /** ["Finance · Sent 29 Oct 2026", "Expires 5 Nov 2026"]: kept whole when the line wraps. */
+  detail: [string, string];
   expired: boolean;
   /** Resend and Withdraw are offered (only owners handle owner invitations). */
   canManage: boolean;
@@ -89,7 +99,7 @@ export function invitationRowViews(
       email: invitation.email,
       role: invitation.role,
       roleLabel,
-      detail: `${roleLabel} · Sent ${formatDate(invitation.sentAt)} · ${expiry}`,
+      detail: [`${roleLabel} · Sent ${formatDate(invitation.sentAt)}`, expiry],
       expired,
       canManage: canManageInvitation(actor, invitation.role),
     };

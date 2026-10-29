@@ -19,7 +19,7 @@ export function RemoveMemberDialog({ legalEntityId, organisationName, member, on
   const [error, setError] = useState<string | null>(null);
   const copy = removeMemberCopy(member.name, organisationName);
 
-  async function confirm() {
+  async function confirmRemoval() {
     setPending(true);
     setError(null);
     const result = await removeMemberAction(legalEntityId, member.id);
@@ -42,7 +42,7 @@ export function RemoveMemberDialog({ legalEntityId, organisationName, member, on
       tone="danger"
       pending={pending}
       error={error}
-      onConfirm={() => void confirm()}
+      onConfirm={() => void confirmRemoval()}
     />
   );
 }

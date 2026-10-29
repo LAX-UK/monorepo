@@ -41,6 +41,9 @@ export function MemberList({ legalEntityId, organisationName, rows }: Props) {
   const busyRef = useRef<Record<string, boolean>>({});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [dialog, setDialog] = useState<OpenDialog | null>(null);
+  // The row menu closes and hands focus back to its trigger first; opening the dialog on the
+  // next frame lets the dialog take focus and return it to that trigger when it closes.
+  const openAfterMenu = (next: OpenDialog) => requestAnimationFrame(() => setDialog(next));
 
   // Fresh rows from the server are the truth: drop what the pickers held, except mid-change.
   // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the server sends new rows.
@@ -96,12 +99,13 @@ export function MemberList({ legalEntityId, organisationName, rows }: Props) {
                 organisationName,
               )
             }
-            onTransfer={() =>
-              row.transfer
-                ? setDialog({ kind: "transfer", row, confirmPhrase: row.transfer.confirmPhrase })
-                : undefined
-            }
-            onRemove={() => setDialog({ kind: "remove", row })}
+            onTransfer={() => {
+              const transfer = row.transfer;
+              if (transfer) {
+                openAfterMenu({ kind: "transfer", row, confirmPhrase: transfer.confirmPhrase });
+              }
+            }}
+            onRemove={() => openAfterMenu({ kind: "remove", row })}
           />
         ))}
       </ul>

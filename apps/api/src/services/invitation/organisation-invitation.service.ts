@@ -55,7 +55,7 @@ export class OrganisationInvitationService implements IOrganisationInvitationSer
     if (invitation.status !== "pending") throw new MemberPermissionError("invitation_not_found");
     await this.deps.transactionRunner.runInTransaction(async (tx) => {
       await this.deps.invitations.forConnection(tx).markInvitationRevoked(invitation.id);
-      await this.publish(tx, "legal_entity.invitation_withdrawn", {
+      await this.recordEvent(tx, "legal_entity.invitation_withdrawn", {
         actingUserId,
         legalEntityId,
         invitationId: invitation.id,
@@ -81,7 +81,7 @@ export class OrganisationInvitationService implements IOrganisationInvitationSer
       if (!(await repo.markInvitationPending(invitation.id))) {
         throw new MemberPermissionError(INVITATION_NOT_RESTORABLE);
       }
-      await this.publish(tx, "legal_entity.invitation_restored", {
+      await this.recordEvent(tx, "legal_entity.invitation_restored", {
         actingUserId,
         legalEntityId,
         invitationId: invitation.id,
@@ -117,7 +117,7 @@ export class OrganisationInvitationService implements IOrganisationInvitationSer
     return { invitation, role };
   }
 
-  private publish(
+  private recordEvent(
     tx: DbTransaction,
     eventType: EventType,
     input: {

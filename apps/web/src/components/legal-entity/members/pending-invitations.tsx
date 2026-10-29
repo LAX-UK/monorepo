@@ -22,8 +22,8 @@ type Props = {
 
 /**
  * Invitations nobody has answered yet, with their role, when they were sent and when they
- * expire. Resend sends a fresh link (the old one stops working); Withdraw closes the link at
- * once, with Undo for 10 seconds.
+ * expire. Resend sends a fresh link (the old one stops working). Withdraw closes an open link
+ * at once, with Undo for 10 seconds; Remove clears an expired one.
  */
 export function PendingInvitations({ legalEntityId, rows }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
@@ -48,6 +48,11 @@ export function PendingInvitations({ legalEntityId, rows }: Props) {
   async function withdraw(row: InvitationRowView) {
     const ok = await run(row, () => withdrawInvitationAction(legalEntityId, row.id));
     if (!ok) return;
+    // An expired link cannot be reopened, so removing it offers no Undo.
+    if (row.expired) {
+      notify.success(invitationCopy.removed(row.email).title);
+      return;
+    }
     notify.action(invitationCopy.withdrawn(row.email).title, {
       duration: ROLE_CHANGE_UNDO_MS,
       actionLabel: "Undo",
@@ -77,7 +82,13 @@ export function PendingInvitations({ legalEntityId, rows }: Props) {
             <p className="truncate font-body text-sm leading-5.5 font-medium text-on-surface">
               {row.email}
             </p>
-            <p className="font-body text-label-3 leading-5 text-on-surface-variant">{row.detail}</p>
+            <p className="flex flex-wrap gap-x-1.5 font-body text-label-3 leading-5 text-on-surface-variant">
+              <span className="whitespace-nowrap">{row.detail[0]}</span>
+              <span aria-hidden className="hidden sm:inline">
+                ·
+              </span>
+              <span className="whitespace-nowrap">{row.detail[1]}</span>
+            </p>
           </div>
           {row.expired ? (
             <div className="col-start-2 row-start-2 sm:col-start-3 sm:row-start-1">
@@ -91,14 +102,14 @@ export function PendingInvitations({ legalEntityId, rows }: Props) {
                 items={[
                   {
                     type: "item",
-                    label: row.expired ? "Send again" : "Resend",
+                    label: "Resend",
                     onSelect: () => void resend(row),
                     disabled: busy === row.id,
                   },
                   { type: "separator" },
                   {
                     type: "item",
-                    label: "Withdraw",
+                    label: row.expired ? "Remove" : "Withdraw",
                     onSelect: () => void withdraw(row),
                     disabled: busy === row.id,
                     destructive: true,

@@ -23,11 +23,10 @@ describe("the invite form per organisation state", () => {
     }
   });
 
-  it("offers a restricted organisation a way to reach us", () => {
+  it("tells a restricted organisation that its people keep their access", () => {
     const refusal = organisationInviteRefusal("restricted");
-    expect(invitesClosedCopy(refusal?.code ?? "", ORG)).toMatchObject({
+    expect(invitesClosedCopy(refusal?.code ?? "", ORG)).toEqual({
       line: "Northbank Gallery can't invite anyone while it's restricted. The people already here keep their access.",
-      contact: { label: "Contact us" },
     });
   });
 });

@@ -110,6 +110,27 @@ describe("memberRowViews two-step sign-in", () => {
   });
 });
 
+describe("memberRowViews order", () => {
+  it("lists you first, then by role from owners to viewers, then by name", () => {
+    const viewerB = member("vb", "viewer", "Beth Viewer");
+    const viewerA = member("va", "viewer", "Anna Viewer");
+    const consignor = member("c", "consignor", "Cara Consignor");
+    const rows = memberRowViews({
+      actor: { role: "admin", memberId: admin.id },
+      members: [viewerB, consignor, agent, lena, viewerA, owner, admin],
+    });
+    expect(rows.map((r) => r.name)).toEqual([
+      "Sam Admin",
+      "Ada Owner",
+      "Lena Fischer",
+      "Cara Consignor",
+      "Ravi Agent",
+      "Anna Viewer",
+      "Beth Viewer",
+    ]);
+  });
+});
+
 describe("invitationRowViews", () => {
   const invitation = (role: LegalEntityMemberRole, expiresAt: string): PendingInvitationRow => ({
     id: `inv-${role}`,
@@ -127,7 +148,7 @@ describe("invitationRowViews", () => {
       now,
     );
     expect(row).toMatchObject({
-      detail: "Finance · Sent 29 Oct 2026 · Expires 5 Nov 2026",
+      detail: ["Finance · Sent 29 Oct 2026", "Expires 5 Nov 2026"],
       expired: false,
       canManage: true,
     });
@@ -139,7 +160,7 @@ describe("invitationRowViews", () => {
       [invitation("viewer", "2026-10-31T10:00:00Z")],
       now,
     );
-    expect(row?.detail).toBe("Viewer · Sent 29 Oct 2026 · Expired 31 Oct 2026");
+    expect(row?.detail).toEqual(["Viewer · Sent 29 Oct 2026", "Expired 31 Oct 2026"]);
     expect(row?.expired).toBe(true);
   });
 
