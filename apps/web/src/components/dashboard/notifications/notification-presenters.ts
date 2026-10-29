@@ -9,8 +9,10 @@ import {
   FileText,
   Gavel,
   type LucideIcon,
+  PackageCheck,
   ShieldAlert,
   Trophy,
+  Truck,
   UserRoundCog,
   UserRoundX,
   XCircle,
@@ -44,6 +46,15 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
   }
   if (type === "payment_due" || type.startsWith("payment")) {
     return { label: "Payment", Icon: CreditCard, tone: "info" };
+  }
+  if (type === "lot_ready_for_collection") {
+    return { label: "Ready to collect", Icon: PackageCheck, tone: "info" };
+  }
+  if (type === "lot_shipped") {
+    return { label: "Shipped", Icon: Truck, tone: "info" };
+  }
+  if (type === "lot_delivered") {
+    return { label: "Delivered", Icon: PackageCheck, tone: "success" };
   }
   if (type === "ending_soon" || type === "lot_ending_soon") {
     return { label: "Ending soon", Icon: Clock, tone: "warn" };

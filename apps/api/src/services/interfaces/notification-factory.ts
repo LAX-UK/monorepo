@@ -46,4 +46,22 @@ export interface INotificationFactory {
     buyerId: string,
     input: { paymentId: string; amount: string; checkoutUrl: string | null; dueDate?: string },
   ): CreateNotificationRow;
+
+  createLotReadyForCollection(
+    lot: Lot,
+    buyerId: string,
+    input?: { collectionPlace?: string | null },
+  ): CreateNotificationRow;
+
+  createLotShipped(
+    lot: Lot,
+    buyerId: string,
+    input: { carrier: string; trackingNumber: string },
+  ): CreateNotificationRow;
+
+  createLotDelivered(
+    lot: Lot,
+    buyerId: string,
+    input: { method: "delivery" | "collection" },
+  ): CreateNotificationRow;
 }

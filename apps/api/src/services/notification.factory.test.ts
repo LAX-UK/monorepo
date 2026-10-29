@@ -72,3 +72,66 @@ describe("NotificationFactory lot ended for the seller", () => {
     expect(row.message).toContain("without a sale");
   });
 });
+
+describe("NotificationFactory lot fulfilment", () => {
+  it("tells the buyer where to collect when the place is known", () => {
+    const row = factory.createLotReadyForCollection(lot, "user-1", {
+      collectionPlace: "Mayfair Rooms, 1 High Street, London, W1 1AA",
+    });
+    expect(row).toMatchObject({
+      type: "lot_ready_for_collection",
+      userId: "user-1",
+      lotId: "lot-1",
+      title: "Your lot is ready to collect",
+    });
+    expect(row.message).toBe(
+      '"Blue Vase" is ready for you to collect from Mayfair Rooms, 1 High Street, London, W1 1AA.',
+    );
+    expect(row.meta).toMatchObject({
+      collectionPlace: "Mayfair Rooms, 1 High Street, London, W1 1AA",
+    });
+  });
+
+  it("points to the purchase when no place is known", () => {
+    const row = factory.createLotReadyForCollection(lot, "user-1", { collectionPlace: "  " });
+    expect(row.message).toBe(
+      '"Blue Vase" is ready for you to collect. Open your purchase for the collection details.',
+    );
+    expect(row.meta?.collectionPlace).toBeUndefined();
+  });
+
+  it("names the carrier and tracking number when the lot ships", () => {
+    const row = factory.createLotShipped(lot, "user-1", {
+      carrier: "DHL",
+      trackingNumber: "JD0146000012345",
+    });
+    expect(row).toMatchObject({ type: "lot_shipped", title: "Your lot is on its way" });
+    expect(row.message).toBe(
+      '"Blue Vase" has been sent with DHL. Tracking number: JD0146000012345.',
+    );
+    expect(row.meta).toMatchObject({ carrier: "DHL", trackingNumber: "JD0146000012345" });
+  });
+
+  it("words delivery and collection differently under one type", () => {
+    const delivered = factory.createLotDelivered(lot, "user-1", { method: "delivery" });
+    const collected = factory.createLotDelivered(lot, "user-1", { method: "collection" });
+    expect(delivered).toMatchObject({
+      type: "lot_delivered",
+      title: "Your lot has been delivered",
+    });
+    expect(collected).toMatchObject({
+      type: "lot_delivered",
+      title: "Your lot has been collected",
+    });
+    expect(collected.message).toContain("has been collected");
+  });
+
+  it("uses plain sentences with no em dashes", () => {
+    const rows = [
+      factory.createLotReadyForCollection(lot, "u"),
+      factory.createLotShipped(lot, "u", { carrier: "DHL", trackingNumber: "1" }),
+      factory.createLotDelivered(lot, "u", { method: "delivery" }),
+    ];
+    for (const r of rows) expect(`${r.title} ${r.message}`).not.toContain("\u2014");
+  });
+});

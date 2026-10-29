@@ -71,3 +71,24 @@ describe("notificationHref", () => {
     expect(href).toContain("00000000-0000-4000-8000-000000000099");
   });
 });
+
+describe("notificationHref for delivery notices", () => {
+  it.each(["lot_ready_for_collection", "lot_shipped", "lot_delivered"])(
+    "opens purchases for %s",
+    (type) => {
+      expect(
+        notificationHref({
+          id: "n9",
+          userId: "u1",
+          type,
+          title: "Your lot",
+          message: "Body",
+          lotId: "lot-1",
+          submissionId: null,
+          read: false,
+          createdAt: new Date(),
+        }),
+      ).toBe("/purchases");
+    },
+  );
+});

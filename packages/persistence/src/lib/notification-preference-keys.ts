@@ -108,6 +108,28 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, NotificationTypeConfig> = {
     whatsapp: "paymentWhatsapp",
     template: "payment-invoice",
   },
+  /** Order updates on a purchased lot share the payment switches: they are transactional. */
+  lot_ready_for_collection: {
+    inApp: "paymentInApp",
+    push: null,
+    email: "paymentEmail",
+    whatsapp: "paymentWhatsapp",
+    template: "lot-fulfilment-update",
+  },
+  lot_shipped: {
+    inApp: "paymentInApp",
+    push: null,
+    email: "paymentEmail",
+    whatsapp: "paymentWhatsapp",
+    template: "lot-fulfilment-update",
+  },
+  lot_delivered: {
+    inApp: "paymentInApp",
+    push: null,
+    email: "paymentEmail",
+    whatsapp: "paymentWhatsapp",
+    template: "lot-fulfilment-update",
+  },
   lot_ended_seller: {
     inApp: null,
     push: null,

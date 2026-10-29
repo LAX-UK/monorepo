@@ -9,9 +9,17 @@ const STAFF_ACCESS_NOTIFICATION_TYPES = new Set([
   "staff_role_changed_admin",
 ]);
 
+/** A lot's delivery notices open the buyer's purchases, where its fulfilment is tracked. */
+const FULFILMENT_NOTIFICATION_TYPES = new Set([
+  "lot_ready_for_collection",
+  "lot_shipped",
+  "lot_delivered",
+]);
+
 /** Primary deep link for an inbox row (submission detail preferred over lot page). */
 export function notificationHref(item: UserNotification): string | null {
   if (STAFF_ACCESS_NOTIFICATION_TYPES.has(item.type)) return "/admin/staff/access";
+  if (FULFILMENT_NOTIFICATION_TYPES.has(item.type)) return "/purchases";
   if (item.submissionId && STAFF_SUBMISSION_NOTIFICATION_TYPES.has(item.type)) {
     return `/admin/submissions/${item.submissionId}`;
   }

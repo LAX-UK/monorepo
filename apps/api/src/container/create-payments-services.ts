@@ -20,6 +20,7 @@ import type {
   IPaymentMaintenanceService,
 } from "../services/interfaces/payment-service.js";
 import { LotFulfilmentService } from "../services/lot-fulfilment.service.js";
+import { LotFulfilmentBuyerNotifier } from "../services/lot-fulfilment/lot-fulfilment-buyer-notifier.js";
 import { LotInvoiceInitiationService } from "../services/lot-invoice-initiation.service.js";
 import { PaymentService } from "../services/payment.service.js";
 import { BankTransferCheckoutRail } from "../services/payment/bank-transfer-checkout.rail.js";
@@ -172,7 +173,11 @@ export function createPaymentsServices(
 
   const lotFulfilmentRepository = new DrizzleLotFulfilmentRepository(db);
 
-  const lotFulfilmentService = new LotFulfilmentService(lotRepo, lotFulfilmentRepository);
+  const lotFulfilmentService = new LotFulfilmentService(
+    lotRepo,
+    lotFulfilmentRepository,
+    new LotFulfilmentBuyerNotifier(lotRepo, saleRepo, notificationDispatcher, notificationFactory),
+  );
 
   const paymentCaptureService = new PaymentCaptureService(
     platform.transactionRunner,

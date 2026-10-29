@@ -17,6 +17,7 @@ export const NOTIFICATION_TYPE_OPTIONS: readonly { id: string; label: string }[]
   { id: "lot_won", label: "Won" },
   { id: "lot_lost", label: "Lost" },
   { id: "payment_due", label: "Payment" },
+  { id: "fulfilment", label: "Delivery" },
   { id: "ending_soon", label: "Ending soon" },
   { id: "watchlist", label: "Watchlist" },
 ] as const;

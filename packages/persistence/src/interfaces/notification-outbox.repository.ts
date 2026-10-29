@@ -33,6 +33,15 @@ export type NotificationPayload = {
     audience?: "buyer" | "seller" | "staff";
     /** Canonical lot title for deep links (push/email). */
     lotTitle?: string;
+    /** Carrier and tracking number of a shipped lot. */
+    carrier?: string;
+    trackingNumber?: string;
+    /** Where a lot is collected, as one line of text, when the sale has a venue. */
+    collectionPlace?: string;
+    /** How a delivered lot reached its buyer. */
+    fulfilmentMethod?: "delivery" | "collection";
+    /** Keeps an email for one fulfilment step from being queued twice. */
+    emailIdempotencyKey?: string;
     /** Outbox idempotency key — used by in-app channel to skip duplicate retries. */
     outboxIdempotencyKey?: string;
   };

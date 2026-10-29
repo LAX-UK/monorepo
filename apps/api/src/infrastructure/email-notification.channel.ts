@@ -44,6 +44,9 @@ export class EmailNotificationChannel implements INotificationChannel {
       to: recipient.email,
       userId,
       category: "transactional",
+      ...(payload.meta?.emailIdempotencyKey
+        ? { idempotencyKey: payload.meta.emailIdempotencyKey }
+        : {}),
       vars: this.varsFor(template, payload, recipient.name, userId) as never,
     });
   }
@@ -93,6 +96,14 @@ export class EmailNotificationChannel implements INotificationChannel {
           hammerPrice: formatMoneyMajor(payload.meta?.hammerPrice, payload.meta?.currency),
           saleUrl: `${this.baseUrl()}/selling/consignments`,
           unsubscribeUrl,
+        };
+      case "lot-fulfilment-update":
+        return {
+          userName,
+          lotTitle,
+          heading: payload.title,
+          message: payload.message,
+          purchaseUrl: `${this.baseUrl()}/purchases`,
         };
       case "payment-receipt":
         return {

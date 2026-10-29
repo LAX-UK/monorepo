@@ -152,3 +152,30 @@ describe("EmailNotificationChannel payment receipt", () => {
     expect(enqueued).toHaveLength(0);
   });
 });
+
+describe("EmailNotificationChannel lot fulfilment", () => {
+  it("sends the fulfilment update with the notice's own words, keyed once per step", async () => {
+    const { channel, enqueued } = setup();
+    await channel.send(
+      USER_ID,
+      payload({
+        type: "lot_shipped",
+        title: "Your lot is on its way",
+        message: '"Blue Vase" has been sent with DHL. Tracking number: 123.',
+        meta: { lotTitle: "Blue Vase", emailIdempotencyKey: "lot-fulfilment:lot-1:lot_shipped" },
+      }),
+    );
+    expect(enqueued).toHaveLength(1);
+    expect(enqueued[0]).toMatchObject({
+      template: "lot-fulfilment-update",
+      category: "transactional",
+      idempotencyKey: "lot-fulfilment:lot-1:lot_shipped",
+      vars: {
+        lotTitle: "Blue Vase",
+        heading: "Your lot is on its way",
+        message: '"Blue Vase" has been sent with DHL. Tracking number: 123.',
+        purchaseUrl: "https://test.lax.bid/purchases",
+      },
+    });
+  });
+});
