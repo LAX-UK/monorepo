@@ -1,110 +1,169 @@
 "use client";
 
+import { invitationCopy } from "@/lib/legal-entity/member-change-copy";
 import { inviteMemberAction } from "@/lib/legal-entity/member-management.actions";
-import { roleLabel } from "@/lib/organisations/legal-entity-labels";
+import {
+  organisationRoleDescription,
+  organisationRoleLabel,
+  organisationRoleOptions,
+} from "@/lib/presenters/organisation-role/organisation-role-presentation";
+import { notify } from "@/lib/ui/notify";
 import type { LegalEntityMemberRole } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
+import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@auction/ui/components/select";
-import { useState, useTransition } from "react";
+import { LabelledSelect } from "@auction/ui/components/labelled-select";
+import { LoadingButton } from "@auction/ui/components/loading-button";
+import { useEffect, useId, useRef, useState } from "react";
 
 type Props = {
   legalEntityId: string;
+  organisationName: string;
   /** The roles this person may invite someone as (from the member change policy). */
   roleOptions: readonly LegalEntityMemberRole[];
 };
 
 const PREFERRED_ROLE: LegalEntityMemberRole = "consignor";
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function InviteMemberForm({ legalEntityId, roleOptions }: Props) {
+function lowerFirst(text: string): string {
+  return text.charAt(0).toLowerCase() + text.slice(1);
+}
+
+/** The email field's problem, or `null` when it can be sent. */
+export function inviteEmailError(email: string): string | null {
+  const trimmed = email.trim();
+  if (!trimmed) return "Enter the email address of the person to invite.";
+  if (!EMAIL_SHAPE.test(trimmed)) return "Enter an email address like name@example.com.";
+  return null;
+}
+
+/**
+ * Invite someone: email, role and Send invitation on one line (stacked on phones), all at the
+ * same height. A failed send lists what to fix at the top and moves focus there; a problem with
+ * the address is also shown under the field, and anything else above the button.
+ */
+export function InviteMemberForm({ legalEntityId, organisationName, roleOptions }: Props) {
+  const ids = { email: useId(), role: useId(), roleHint: useId(), summary: useId() };
   const defaultRole = roleOptions.includes(PREFERRED_ROLE)
     ? PREFERRED_ROLE
     : (roleOptions[0] ?? PREFERRED_ROLE);
-  const [pending, startTransition] = useTransition();
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<LegalEntityMemberRole>(defaultRole);
-  const [error, setError] = useState<string | null>(null);
   const [emailError, setEmailError] = useState<string | null>(null);
-  const [sent, setSent] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [attempt, setAttempt] = useState(0);
+  const [pending, setPending] = useState(false);
+  const summaryRef = useRef<HTMLDivElement>(null);
 
-  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    setError(null);
-    setEmailError(null);
-    setSent(false);
-    const trimmed = email.trim();
-    if (!trimmed.includes("@")) {
-      setEmailError("Enter a valid email address.");
+  // After a failed send, the summary takes focus so the problem is read out first.
+  useEffect(() => {
+    if (attempt > 0 && emailError) summaryRef.current?.focus();
+  }, [attempt, emailError]);
+
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setFormError(null);
+    const problem = inviteEmailError(email);
+    setEmailError(problem);
+    setAttempt((n) => n + 1);
+    if (problem) return;
+    setPending(true);
+    const address = email.trim();
+    const result = await inviteMemberAction(legalEntityId, address, role);
+    setPending(false);
+    if (!result.ok) {
+      if (result.code === "already_a_member") {
+        setEmailError(`${address} is already a member of ${organisationName}.`);
+        setAttempt((n) => n + 1);
+      } else {
+        setFormError(result.error);
+      }
       return;
     }
-    startTransition(async () => {
-      const res = await inviteMemberAction(legalEntityId, trimmed, role);
-      if (!res.ok) {
-        setError(res.error);
-        return;
-      }
-      setEmail("");
-      setRole(defaultRole);
-      setSent(true);
-    });
+    notify.success(invitationCopy.sent(address).title);
+    setEmail("");
+    setRole(defaultRole);
+    setAttempt(0);
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3 rounded-md border bg-surface p-4">
-      <h3 className="text-sm font-semibold">Invite a teammate</h3>
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto] sm:items-end">
-        <div className="space-y-1">
-          <Label htmlFor="invite-email">Email</Label>
+    <form onSubmit={(event) => void submit(event)} noValidate className="space-y-4">
+      {emailError && attempt > 0 ? (
+        <Alert variant="destructive" ref={summaryRef} tabIndex={-1} aria-labelledby={ids.summary}>
+          <AlertTitle id={ids.summary} className="font-body text-sm font-semibold">
+            Check the invitation
+          </AlertTitle>
+          <AlertDescription>
+            <ul className="mt-1 list-none">
+              <li>
+                <a href={`#${ids.email}`} className="underline underline-offset-2">
+                  {emailError}
+                </a>
+              </li>
+            </ul>
+          </AlertDescription>
+        </Alert>
+      ) : null}
+
+      <div className="grid gap-4 sm:grid-cols-[minmax(0,1fr)_12rem_auto] sm:items-start">
+        <div className="flex flex-col gap-1.5">
+          <Label htmlFor={ids.email} className="leading-5">
+            Email
+          </Label>
           <Input
-            id="invite-email"
+            id={ids.email}
             type="email"
-            value={email}
-            onChange={(e) => {
-              setEmail(e.target.value);
-              setEmailError(null);
-            }}
-            required
+            inputMode="email"
             autoComplete="email"
+            value={email}
+            onChange={(event) => {
+              setEmail(event.target.value);
+              // Once a send has failed, re-check the field as it changes.
+              if (attempt > 0) setEmailError(inviteEmailError(event.target.value));
+            }}
             aria-invalid={emailError ? true : undefined}
-            aria-describedby={emailError ? "invite-email-error" : undefined}
+            aria-describedby={emailError ? `${ids.email}-error` : undefined}
+            className={emailError ? "border-error" : undefined}
           />
           {emailError ? (
-            <p id="invite-email-error" className="text-sm text-destructive">
+            <p id={`${ids.email}-error`} className="font-body text-label-3 leading-5 text-error">
               {emailError}
             </p>
           ) : null}
         </div>
-        <div className="space-y-1">
-          <Label htmlFor="invite-role">Role</Label>
-          <Select value={role} onValueChange={(v) => setRole(v as LegalEntityMemberRole)}>
-            <SelectTrigger id="invite-role" className="w-40">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {roleOptions.map((r) => (
-                <SelectItem key={r} value={r}>
-                  {roleLabel(r)}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <LabelledSelect
+          id={ids.role}
+          label="Role"
+          options={organisationRoleOptions(roleOptions)}
+          value={role}
+          onValueChange={setRole}
+        />
+        <div className="flex flex-col gap-1.5">
+          {/* Keeps the button on the fields' line, under a label-height gap. */}
+          <span aria-hidden className="hidden h-5 sm:block" />
+          <LoadingButton
+            type="submit"
+            variant="primary"
+            size="default"
+            loading={pending}
+            loadingLabel="Sending…"
+            disabledReason={email.trim() ? undefined : "Enter an email address first."}
+          >
+            Send invitation
+          </LoadingButton>
         </div>
-        <Button type="submit" disabled={pending || !email.trim()}>
-          {pending ? "Sending…" : "Invite"}
-        </Button>
       </div>
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      {sent ? (
-        <p className="rounded-md border border-success/30 bg-success-container/20 px-3 py-2 text-sm text-on-surface">
-          Invitation sent. They will receive an email with instructions to join.
-        </p>
+
+      <p id={ids.roleHint} className="font-body text-label-3 leading-5 text-on-surface-variant">
+        <span className="font-medium text-on-surface">{organisationRoleLabel(role)}:</span>{" "}
+        {lowerFirst(organisationRoleDescription(role))} Invitation links work for 7 days.
+      </p>
+
+      {formError ? (
+        <Alert variant="destructive">
+          <AlertDescription>{formError}</AlertDescription>
+        </Alert>
       ) : null}
     </form>
   );

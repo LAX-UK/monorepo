@@ -1,215 +1,128 @@
 "use client";
 
-import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
-import type { MemberRowControls } from "@/lib/legal-entity/member-controls.vm";
+import { updateMemberRoleAction } from "@/lib/legal-entity/member-management.actions";
+import type { MemberRowView } from "@/lib/legal-entity/member-row.vm";
 import {
-  type MemberRow,
-  removeMemberAction,
-  transferPrimaryAdminAction,
-  updateMemberRoleAction,
-} from "@/lib/legal-entity/member-management.actions";
-import { roleLabel } from "@/lib/organisations/legal-entity-labels";
+  ROLE_CHANGE_UNDO_MS,
+  type RoleChangePorts,
+  changeMemberRole,
+} from "@/lib/legal-entity/role-change-flow";
+import { notify } from "@/lib/ui/notify";
 import type { LegalEntityMemberRole } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
-import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@auction/ui/components/select";
-import { StatusBadge } from "@auction/ui/components/status-badge";
-import { Loader2 } from "lucide-react";
-import { useState, useTransition } from "react";
-
-/** A member with what the viewer may do to them, decided by the member change policy. */
-export type MemberListRow = { member: MemberRow; controls: MemberRowControls };
+import { useEffect, useMemo, useRef, useState } from "react";
+import { MemberRow } from "./members/member-row";
+import { RemoveMemberDialog } from "./members/remove-member-dialog";
+import { TransferOwnershipDialog } from "./members/transfer-ownership-dialog";
 
 type Props = {
   legalEntityId: string;
-  rows: MemberListRow[];
-  /** Owners/admins only: two-step verification status per user (`null` when unknown). */
-  twoFactorByUserId?: Record<string, boolean | null>;
+  organisationName: string;
+  rows: readonly MemberRowView[];
 };
 
-type PendingDialog =
-  | { kind: "remove"; memberId: string; phrase: string }
-  | { kind: "transfer"; memberId: string; phrase: string };
+type OpenDialog =
+  | { kind: "remove"; row: MemberRowView }
+  | { kind: "transfer"; row: MemberRowView; confirmPhrase: string };
 
-function TwoFactorMemberBadge({ enabled }: { enabled: boolean | null }) {
-  if (enabled === null) return null;
-  return (
-    <StatusBadge variant={enabled ? "success" : "neutral"}>
-      {enabled ? "2FA on" : "2FA off"}
-    </StatusBadge>
-  );
+function withEntry<T>(map: Readonly<Record<string, T>>, key: string, value: T | null) {
+  const next = { ...map };
+  if (value === null) delete next[key];
+  else next[key] = value;
+  return next;
 }
 
-export function MemberList({ legalEntityId, rows, twoFactorByUserId }: Props) {
-  const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
-  const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
-  const [dialog, setDialog] = useState<PendingDialog | null>(null);
-  const [simpleRemove, setSimpleRemove] = useState<{ memberId: string; memberName: string } | null>(
-    null,
+/**
+ * The team as one list of rows. A role change applies from the picker, with a success toast and
+ * Undo once the server agrees; removing someone and handing over ownership open a dialog.
+ */
+export function MemberList({ legalEntityId, organisationName, rows }: Props) {
+  const [shown, setShown] = useState<Record<string, LegalEntityMemberRole>>({});
+  const [busy, setBusy] = useState<Record<string, boolean>>({});
+  const busyRef = useRef<Record<string, boolean>>({});
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [dialog, setDialog] = useState<OpenDialog | null>(null);
+
+  // Fresh rows from the server are the truth: drop what the pickers held, except mid-change.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: runs when the server sends new rows.
+  useEffect(() => {
+    setShown((map) => {
+      const kept = Object.entries(map).filter(([memberId]) => busyRef.current[memberId]);
+      return kept.length === Object.keys(map).length ? map : Object.fromEntries(kept);
+    });
+  }, [rows]);
+
+  const ports = useMemo<RoleChangePorts>(
+    () => ({
+      update: (memberId, role) => updateMemberRoleAction(legalEntityId, memberId, role),
+      show: (memberId, role) => setShown((map) => withEntry(map, memberId, role)),
+      busy: (memberId, value) => {
+        busyRef.current = withEntry<boolean>(busyRef.current, memberId, value ? true : null);
+        setBusy(busyRef.current);
+      },
+      rowError: (memberId, message) => setErrors((map) => withEntry(map, memberId, message)),
+      toast: (copy, onUndo) => {
+        const description = copy.description ? { description: copy.description } : {};
+        if (onUndo) {
+          notify.action(copy.title, {
+            ...description,
+            duration: ROLE_CHANGE_UNDO_MS,
+            actionLabel: "Undo",
+            onAction: onUndo,
+          });
+        } else {
+          notify.success(copy.title, description);
+        }
+      },
+    }),
+    [legalEntityId],
   );
 
-  function handleRoleChange(memberId: string, role: LegalEntityMemberRole) {
-    setError(null);
-    setRowErrors((prev) => {
-      const next = { ...prev };
-      delete next[memberId];
-      return next;
-    });
-    startTransition(async () => {
-      const res = await updateMemberRoleAction(legalEntityId, memberId, role);
-      if (!res.ok) setRowErrors((prev) => ({ ...prev, [memberId]: res.error }));
-    });
-  }
-
-  function handleRemoveClick(m: MemberRow, confirmPhrase: string | null) {
-    setError(null);
-    if (confirmPhrase) {
-      setDialog({ kind: "remove", memberId: m.id, phrase: confirmPhrase });
-      return;
-    }
-    setSimpleRemove({ memberId: m.id, memberName: m.user.name });
-  }
-
-  function handleTransferClick(m: MemberRow, confirmPhrase: string) {
-    setError(null);
-    setDialog({ kind: "transfer", memberId: m.id, phrase: confirmPhrase });
-  }
-
   return (
-    <div className="space-y-3">
-      {error && <p className="text-sm text-destructive">{error}</p>}
-      <ul className="space-y-3 lg:divide-y lg:rounded-md lg:border lg:bg-surface lg:space-y-0">
-        {rows.map(({ member: m, controls }) => {
-          const pendingInvitation = !m.acceptedAt;
-          const rowError = rowErrors[m.id];
-          return (
-            <li
-              key={m.id}
-              className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-4 lg:rounded-none lg:border-0 lg:bg-transparent lg:p-3 lg:flex lg:flex-wrap lg:items-center lg:gap-3"
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{m.user.name}</p>
-                <p className="truncate text-xs text-on-surface-variant">
-                  {m.user.email}
-                  {pendingInvitation ? " · pending invite" : ""}
-                  {m.isPrimaryAdmin ? " · primary admin" : ""}
-                </p>
-              </div>
-              {twoFactorByUserId && !pendingInvitation ? (
-                <TwoFactorMemberBadge enabled={twoFactorByUserId[m.userId] ?? null} />
-              ) : null}
-              <div className="flex items-center gap-2">
-                {controls.roleOptions.length > 1 ? (
-                  <Select
-                    value={m.role}
-                    onValueChange={(v) => handleRoleChange(m.id, v as LegalEntityMemberRole)}
-                  >
-                    <SelectTrigger className="w-36" aria-label={`Role for ${m.user.name}`}>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {controls.roleOptions.map((role) => (
-                        <SelectItem key={role} value={role}>
-                          {roleLabel(role)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                ) : (
-                  <span className="rounded-full border px-2 py-0.5 text-xs">
-                    {roleLabel(m.role)}
-                  </span>
-                )}
-                {controls.transfer ? (
-                  <Button
-                    type="button"
-                    variant="tertiary"
-                    onClick={() => handleTransferClick(m, controls.transfer?.confirmPhrase ?? "")}
-                    disabled={pending}
-                  >
-                    Make primary
-                  </Button>
-                ) : null}
-                {controls.remove ? (
-                  <Button
-                    type="button"
-                    variant="destructive"
-                    onClick={() => handleRemoveClick(m, controls.remove?.confirmPhrase ?? null)}
-                    disabled={pending}
-                  >
-                    Remove
-                  </Button>
-                ) : null}
-              </div>
-              {rowError ? <p className="mt-2 w-full text-sm text-destructive">{rowError}</p> : null}
-            </li>
-          );
-        })}
-      </ul>
-      {pending && (
-        <p className="flex items-center gap-2 text-xs text-on-surface-variant">
-          <Loader2 className="size-3 animate-spin" /> Saving…
-        </p>
-      )}
-
-      {dialog ? (
-        <TypedConfirmationDialog
-          open
-          onOpenChange={(o) => {
-            if (!o) setDialog(null);
-          }}
-          title={dialog.kind === "transfer" ? "Transfer primary admin" : "Remove member"}
-          description={
-            dialog.kind === "transfer"
-              ? "You will be demoted to admin. This cannot be undone without the new primary admin."
-              : "This removes the member from the organisation."
-          }
-          actionLabel={dialog.kind === "transfer" ? "Transfer primary" : "Remove member"}
-          confirmationPhrase={dialog.phrase}
-          severity="danger"
-          onConfirm={async () => {
-            const d = dialog;
-            setError(null);
-            if (d.kind === "remove") {
-              const res = await removeMemberAction(legalEntityId, d.memberId, {
-                confirmationPhrase: d.phrase,
-              });
-              if (!res.ok) throw new Error(res.error);
-              return;
+    <>
+      <ul className="-my-3 divide-y divide-border-hairline">
+        {rows.map((row) => (
+          <MemberRow
+            key={row.id}
+            row={row}
+            shownRole={shown[row.id] ?? row.role}
+            busy={busy[row.id] ?? false}
+            error={errors[row.id] ?? null}
+            onRoleChange={(role) =>
+              void changeMemberRole(
+                ports,
+                { id: row.id, name: row.name },
+                shown[row.id] ?? row.role,
+                role,
+                organisationName,
+              )
             }
-            const res = await transferPrimaryAdminAction(legalEntityId, d.memberId, d.phrase);
-            if (!res.ok) throw new Error(res.error);
-          }}
+            onTransfer={() =>
+              row.transfer
+                ? setDialog({ kind: "transfer", row, confirmPhrase: row.transfer.confirmPhrase })
+                : undefined
+            }
+            onRemove={() => setDialog({ kind: "remove", row })}
+          />
+        ))}
+      </ul>
+
+      {dialog?.kind === "remove" ? (
+        <RemoveMemberDialog
+          legalEntityId={legalEntityId}
+          organisationName={organisationName}
+          member={{ id: dialog.row.id, name: dialog.row.name }}
+          onClose={() => setDialog(null)}
         />
       ) : null}
-      {simpleRemove ? (
-        <ConfirmDialog
-          open
-          onOpenChange={(open) => {
-            if (!open) setSimpleRemove(null);
-          }}
-          title="Remove member"
-          body={`Remove ${simpleRemove.memberName} from this organisation?`}
-          confirmLabel="Remove"
-          tone="danger"
-          loading={pending}
-          onConfirm={() => {
-            const target = simpleRemove;
-            setSimpleRemove(null);
-            startTransition(async () => {
-              const res = await removeMemberAction(legalEntityId, target.memberId);
-              if (!res.ok) setError(res.error);
-            });
-          }}
+      {dialog?.kind === "transfer" ? (
+        <TransferOwnershipDialog
+          legalEntityId={legalEntityId}
+          organisationName={organisationName}
+          member={{ id: dialog.row.id, name: dialog.row.name }}
+          confirmPhrase={dialog.confirmPhrase}
+          onClose={() => setDialog(null)}
         />
       ) : null}
-    </div>
+    </>
   );
 }

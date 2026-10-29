@@ -1,5 +1,5 @@
 import { initials } from "@/components/organisations/initials";
-import { roleInSentence } from "@/lib/organisations/role-in-sentence";
+import { organisationRoleInSentence } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import type { LegalEntitySummary } from "@auction/types";
 
 type Account = Pick<LegalEntitySummary, "kind" | "displayName" | "role">;
@@ -37,7 +37,7 @@ export function buildSwitchConfirmation(input: {
   const target =
     requested.kind === "individual"
       ? "your personal account"
-      : `${requested.displayName}, where you're ${roleInSentence(requested.role)}`;
+      : `${requested.displayName}, where you're ${organisationRoleInSentence(requested.role)}`;
   const using = current ? `You're using LAX Bid as ${inSentence(current)}. ` : "";
   return {
     title: `Open this as ${shortName(requested)}?`,

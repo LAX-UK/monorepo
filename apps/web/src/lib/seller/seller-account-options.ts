@@ -1,3 +1,4 @@
+import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import { entityActorCan, sellerSubmissionAccess } from "@auction/domain";
 import type { LegalEntitySummary } from "@auction/types";
 
@@ -17,15 +18,6 @@ export type SellerAccountChoice = {
   options: SellerAccountOption[];
   /** Preselected: the account in use when it is one of the options, else Personal. */
   defaultId: string | null;
-};
-
-const ROLE_LABELS: Record<string, string> = {
-  owner: "Owner",
-  admin: "Admin",
-  consignor: "Consignor",
-  finance: "Finance",
-  viewer: "Viewer",
-  buyer_agent: "Buyer agent",
 };
 
 /**
@@ -62,7 +54,7 @@ export function sellerAccountChoice(input: {
       id: membership.id,
       kind: "organisation",
       name: membership.displayName,
-      roleLabel: ROLE_LABELS[membership.role] ?? null,
+      roleLabel: organisationRoleLabel(membership.role),
       canSubmit: access.canSubmit,
       submitBlockedReason: access.submitBlockedReason,
     });

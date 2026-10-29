@@ -168,7 +168,6 @@ export default async function OrganisationsHubPage() {
                   subkind: summary.subkind,
                   status: summary.status,
                   role: summary.role,
-                  isPrimaryAdmin: summary.isPrimaryAdmin,
                 }}
                 detail={detail as LegalEntity | null}
                 isActing={acting?.id === summary.id}

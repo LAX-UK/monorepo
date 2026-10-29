@@ -8,7 +8,7 @@ import {
   CONSIGNMENT_MOVE_AGREEMENT_NOTICE,
   CONSIGNMENT_MOVE_TOLD,
 } from "@/lib/admin/submissions/consignment-move-copy";
-import { roleLabel } from "@/lib/organisations/legal-entity-labels";
+import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import { notify } from "@/lib/ui/notify";
 import {
   ChoiceRow,
@@ -162,7 +162,7 @@ export function MoveConsignmentDialog({
                       key={option.legalEntityId}
                       htmlFor={id}
                       label={option.displayName}
-                      description={`Their role there: ${roleLabel(option.role)}`}
+                      description={`Their role there: ${organisationRoleLabel(option.role)}`}
                       control={<StaffRadio id={id} value={option.legalEntityId} />}
                     />
                   );

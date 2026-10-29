@@ -1,4 +1,4 @@
-import { roleLabel } from "@/lib/organisations/legal-entity-labels";
+import { organisationRoleInSentence } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import { type MemberAbility, entityRoleCan, memberAbilities } from "@auction/domain";
 import type { LegalEntityMemberRole } from "@auction/types";
 
@@ -27,12 +27,6 @@ export function abilityPhrases(role: LegalEntityMemberRole): string[] {
   return memberAbilities(role).map((ability) => ABILITY_PHRASES[ability]);
 }
 
-/** A role inside a sentence: "a Consignor", "an Admin", "a Finance member". */
-function roleInSentence(role: LegalEntityMemberRole): string {
-  const label = role === "finance" ? "Finance member" : roleLabel(role);
-  return /^[AEIOU]/i.test(label) ? `an ${label}` : `a ${label}`;
-}
-
 /**
  * "What can I do here?": the role in one paragraph, from the same capability table the server
  * uses, plus where the person's own activity lives.
@@ -41,8 +35,8 @@ export function roleExplanation(role: LegalEntityMemberRole, organisationName: s
   const phrases = abilityPhrases(role);
   const can =
     phrases.length > 0
-      ? `As ${roleInSentence(role)} at ${organisationName}, you can ${joinPhrases(phrases)}.`
-      : `As ${roleInSentence(role)} at ${organisationName}, you can look but not act.`;
+      ? `As ${organisationRoleInSentence(role)} at ${organisationName}, you can ${joinPhrases(phrases)}.`
+      : `As ${organisationRoleInSentence(role)} at ${organisationName}, you can look but not act.`;
   const others = entityRoleCan(role, "entity.members.manage")
     ? ""
     : " Anything else is done by its owners and admins.";
@@ -51,5 +45,5 @@ export function roleExplanation(role: LegalEntityMemberRole, organisationName: s
 
 /** The welcome card's opening line. */
 export function welcomeHeadline(role: LegalEntityMemberRole, organisationName: string): string {
-  return `You're now ${roleInSentence(role)} at ${organisationName}.`;
+  return `You're now ${organisationRoleInSentence(role)} at ${organisationName}.`;
 }

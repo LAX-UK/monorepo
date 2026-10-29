@@ -24,7 +24,7 @@ const actorAs = (self: MemberForControls) => ({ role: self.role, memberId: self.
 
 describe("memberRowControls", () => {
   it("shows an admin no controls on the owner, and none on themselves", () => {
-    const none = { roleOptions: [], remove: null, transfer: null };
+    const none = { roleOptions: [], remove: false, transfer: null };
     expect(memberRowControls(actorAs(admin), owner, team)).toEqual(none);
     expect(memberRowControls(actorAs(admin), admin, team)).toEqual(none);
   });
@@ -38,15 +38,15 @@ describe("memberRowControls", () => {
       "finance",
       "viewer",
     ]);
-    expect(controls.remove).toEqual({ confirmPhrase: null });
+    expect(controls.remove).toBe(true);
     expect(controls.transfer).toBeNull();
   });
 
-  it("offers an owner the owner role, typed removal of an admin and the transfer", () => {
+  it("offers an owner the owner role, removal of an admin and the typed transfer", () => {
     const controls = memberRowControls(actorAs(owner), admin, team);
     expect(controls.roleOptions).toContain("owner");
-    expect(controls.remove).toEqual({ confirmPhrase: "REMOVE Name admin" });
-    expect(controls.transfer).toEqual({ confirmPhrase: "TRANSFER PRIMARY TO Name admin" });
+    expect(controls.remove).toBe(true);
+    expect(controls.transfer).toEqual({ confirmPhrase: "Transfer to Name admin" });
   });
 
   it("never offers ownership to someone who has not joined", () => {
@@ -57,7 +57,7 @@ describe("memberRowControls", () => {
     const staff = { role: "admin" as const, isImpersonation: true, memberId: null };
     expect(memberRowControls(staff, agent, team)).toEqual({
       roleOptions: [],
-      remove: null,
+      remove: false,
       transfer: null,
     });
   });

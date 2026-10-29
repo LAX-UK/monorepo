@@ -1,6 +1,8 @@
 import { connectGapStageBadgeVariant, connectGapStageLabel } from "@/lib/connect/connect-gap-copy";
 import { orgOnboardingStepHref } from "@/lib/legal-entity/org-onboarding-resume";
 import { organisationHref } from "@/lib/navigation/client-routes";
+import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organisation-role-presentation";
+import { organisationStatusView } from "@/lib/presenters/organisation-status/organisation-status-presentation";
 import { getConnectGapState } from "@auction/connect";
 import type { LegalEntity, LegalEntitySubkind } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -8,7 +10,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "@auction/ui/component
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import Link from "next/link";
 import { initials } from "./initials";
-import { roleLabel, statusBadgeVariant, statusLabel, subkindLabel } from "./labels";
+import { subkindLabel } from "./labels";
 import { resumeOnboardingStepKey } from "./org-onboarding-step-map";
 
 export type OrganisationCardProps = {
@@ -18,7 +20,6 @@ export type OrganisationCardProps = {
     subkind: LegalEntitySubkind | string;
     status: LegalEntity["status"];
     role: string;
-    isPrimaryAdmin: boolean;
   };
   detail?: LegalEntity | null;
   isActing: boolean;
@@ -33,6 +34,7 @@ export function OrganisationCard({
   resumeHref: resumeHrefProp,
 }: OrganisationCardProps) {
   const gap = detail ? getConnectGapState(detail) : null;
+  const status = organisationStatusView(summary.status);
   const fallbackStep = resumeOnboardingStepKey(summary.status);
   const fallbackHref = fallbackStep
     ? orgOnboardingStepHref(fallbackStep, { entityId: summary.id })
@@ -51,12 +53,10 @@ export function OrganisationCard({
             <h3 className="truncate font-headline text-lg font-semibold tracking-tight">
               {summary.displayName}
             </h3>
-            <StatusBadge variant={statusBadgeVariant(summary.status)}>
-              {statusLabel(summary.status)}
-            </StatusBadge>
+            <StatusBadge variant={status.tone}>{status.label}</StatusBadge>
           </div>
           <p className="text-sm text-on-surface-variant">
-            {subkindLabel(summary.subkind)} · {roleLabel(summary.role)}
+            {subkindLabel(summary.subkind)} · {organisationRoleLabel(summary.role)}
           </p>
         </div>
       </CardHeader>

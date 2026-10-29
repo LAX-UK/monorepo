@@ -1,5 +1,6 @@
 import { initials } from "@/components/organisations/initials";
-import { roleLabel } from "@/lib/organisations/legal-entity-labels";
+import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organisation-role-presentation";
+import { organisationStatusView } from "@/lib/presenters/organisation-status/organisation-status-presentation";
 import { organisationUnderReview } from "@auction/domain";
 import type { LegalEntitySummary } from "@auction/types";
 import { CLIENT_ROUTES } from "./client-routes";
@@ -67,12 +68,13 @@ function personalOption(personName: string, id: string, current: boolean): Accou
 
 function organisationOption(member: LegalEntitySummary, current: boolean): AccountOption {
   const underReview = organisationUnderReview(member.status);
-  const role = roleLabel(member.role);
+  const role = organisationRoleLabel(member.role);
+  const note = organisationStatusView(member.status).switcherNote;
   return {
     id: member.id,
     kind: "organisation",
     name: member.displayName,
-    detail: underReview ? `${role} · Under review` : role,
+    detail: note ? `${role} · ${note}` : role,
     initials: initials(member.displayName),
     current,
     underReview,
@@ -107,7 +109,10 @@ export function buildAccountChrome(input: Input): AccountChrome {
           }
         : null,
     strip: actingOrganisation
-      ? { name: actingOrganisation.displayName, role: roleLabel(actingOrganisation.role) }
+      ? {
+          name: actingOrganisation.displayName,
+          role: organisationRoleLabel(actingOrganisation.role),
+        }
       : null,
   };
 }

@@ -2,7 +2,7 @@ import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
-import { statusBadgeVariant, statusLabel, subkindLabel } from "@/components/organisations/labels";
+import { subkindLabel } from "@/components/organisations/labels";
 import { OrganisationSettingsUnavailable } from "@/components/organisations/organisation-settings-unavailable";
 import { OrganisationStateBannerForRoute } from "@/components/organisations/organisation-state-banner-for-route";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
@@ -12,6 +12,7 @@ import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { organisationTabsFor } from "@/lib/navigation/organisation-tabs";
 import { loadOrganisationStateBanner } from "@/lib/organisations/organisation-state-banner.server";
+import { organisationStatusView } from "@/lib/presenters/organisation-status/organisation-status-presentation";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -63,6 +64,7 @@ export default async function OrganisationLayout({ children }: { children: React
 
   // The same state banner as Home, for the same audience: only people who can act are asked.
   const banner = entity ? await loadOrganisationStateBanner(active.actor, entity) : null;
+  const status = organisationStatusView(member.status);
 
   return (
     <DashboardPage>
@@ -73,9 +75,7 @@ export default async function OrganisationLayout({ children }: { children: React
           hideDescriptionOnMobile
           actions={
             <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge variant={statusBadgeVariant(member.status)}>
-                {statusLabel(member.status)}
-              </StatusBadge>
+              <StatusBadge variant={status.tone}>{status.label}</StatusBadge>
               <StatusBadge variant="neutral">{subkindLabel(member.subkind)}</StatusBadge>
             </div>
           }

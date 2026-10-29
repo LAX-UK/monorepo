@@ -2,7 +2,7 @@ import { initials } from "@/components/organisations/initials";
 import type { InvitationLinkPreview } from "@/lib/legal-entity/invitation-link.gateway.server";
 import { switchAccountHref } from "@/lib/navigation/account-link";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
-import { roleInSentence } from "@/lib/organisations/role-in-sentence";
+import { organisationRoleInSentence } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import { formatDate } from "@/lib/ui/format";
 import type { LaxIllustrationName } from "@auction/ui/components/lax-illustration";
 
@@ -33,7 +33,7 @@ function openView(
     : "You're invited";
   return {
     title: `Join ${preview.organisationName}`,
-    description: `${who} to join ${preview.organisationName} as ${roleInSentence(preview.role)}. You can switch between it and your personal account at any time. This invitation expires on ${formatDate(preview.expiresAt)}.`,
+    description: `${who} to join ${preview.organisationName} as ${organisationRoleInSentence(preview.role)}. You can switch between it and your personal account at any time. This invitation expires on ${formatDate(preview.expiresAt)}.`,
     art: { kind: "tile", initials: initials(preview.organisationName) },
     accept: { label: "Accept invitation" },
     primary: null,
