@@ -1,3 +1,4 @@
+import type { EntityActor } from "@auction/domain";
 import type { ListMyConditionReportRequestsQuery } from "@auction/validators";
 import type { UserHttpJson } from "./user-route-http.js";
 
@@ -10,4 +11,22 @@ export interface IUserDashboardHttpApplicationService {
   listBids(input: { userId: string }): Promise<UserHttpJson>;
 
   listPortfolio(input: { userId: string }): Promise<UserHttpJson>;
+
+  /**
+   * Bids placed for the acting account, as far as the member's role follows them
+   * (`accountBidScope`): everyone's for owners and admins, their own for buyer agents.
+   */
+  listAccountBids(input: { userId: string; account: BuyingAccountActor }): Promise<UserHttpJson>;
+
+  /**
+   * Lots won for the acting account with their payment state (`accountPurchaseScope`): every
+   * lot for the members who see its money, their own wins for buyer agents.
+   */
+  listAccountPurchases(input: {
+    userId: string;
+    account: BuyingAccountActor;
+  }): Promise<UserHttpJson>;
 }
+
+/** The acting account and the member's role in it (from the legal-entity context). */
+export type BuyingAccountActor = EntityActor & { legalEntityId: string };

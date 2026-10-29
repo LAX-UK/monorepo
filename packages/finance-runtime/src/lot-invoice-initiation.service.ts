@@ -102,13 +102,15 @@ export class LotInvoiceInitiationService {
     }
 
     const buyerId = lot.winnerId;
+    // Any payer of the account may have started paying already, so look the payment up by account.
+    const buyerAccountId = lot.buyerLegalEntityId;
 
-    const existing = await this.payments.findOpenByLotAndBuyer(lotId, buyerId);
+    const existing = await this.payments.findOpenByLotAndBuyerAccount(lotId, buyerAccountId);
     if (existing) {
       return { created: false, reason: "payment_already_exists", paymentId: existing.id, lotId };
     }
 
-    const priorRefund = await this.payments.findRefundedByLotAndBuyer(lotId, buyerId);
+    const priorRefund = await this.payments.findRefundedByLotAndBuyerAccount(lotId, buyerAccountId);
     if (priorRefund) {
       return { created: false, reason: "already_refunded", paymentId: priorRefund.id, lotId };
     }
@@ -160,7 +162,7 @@ export class LotInvoiceInitiationService {
       });
     } catch (err) {
       if (isOpenPaymentUniqueViolation(err)) {
-        const raced = await this.payments.findOpenByLotAndBuyer(lotId, buyerId);
+        const raced = await this.payments.findOpenByLotAndBuyerAccount(lotId, buyerAccountId);
         return {
           created: false,
           reason: "payment_already_exists",

@@ -62,6 +62,11 @@ export const payment = pgTable(
       .where(
         sql`${table.status} in ('pending', 'authorized', 'captured', 'requires_manual_review')`,
       ),
+    uniqueIndex("payment_lot_buyer_open_account_unique")
+      .on(table.lotId, table.buyerLegalEntityId)
+      .where(
+        sql`${table.status} in ('pending', 'authorized', 'captured', 'requires_manual_review')`,
+      ),
     index("payment_buyer_id_status_idx").on(table.buyerId, table.status),
   ],
 );

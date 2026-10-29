@@ -78,6 +78,9 @@ export function createTestUserRouteServicesInput(
     authAuditPublisher: { publish: vi.fn(async () => {}) } as never,
     twoFactorRequirement: { readMyRequirement: vi.fn() },
     staffInvitationAccept: { accept: vi.fn() },
+    requireBuyingAccount: async (_c, next) => {
+      await next();
+    },
     ...overrides,
   };
 }

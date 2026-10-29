@@ -25,6 +25,7 @@ import { LotInvoiceInitiationService } from "../services/lot-invoice-initiation.
 import { PaymentService } from "../services/payment.service.js";
 import { BankTransferCheckoutRail } from "../services/payment/bank-transfer-checkout.rail.js";
 import { CardCheckoutRail } from "../services/payment/card-checkout.rail.js";
+import { LegalEntityBuyerPaymentAuthority } from "../services/payment/legal-entity-buyer-payment-authority.js";
 import { PaymentCaptureService } from "../services/payment/payment-capture.service.js";
 import {
   PaymentTierPolicy,
@@ -173,10 +174,12 @@ export function createPaymentsServices(
 
   const lotFulfilmentRepository = new DrizzleLotFulfilmentRepository(db);
 
+  const buyerPaymentAuthority = new LegalEntityBuyerPaymentAuthority(legalEntityRepository);
   const lotFulfilmentService = new LotFulfilmentService(
     lotRepo,
     lotFulfilmentRepository,
     new LotFulfilmentBuyerNotifier(lotRepo, saleRepo, notificationDispatcher, notificationFactory),
+    buyerPaymentAuthority,
   );
 
   const paymentCaptureService = new PaymentCaptureService(
@@ -255,6 +258,7 @@ export function createPaymentsServices(
     settlementCompliancePolicy,
     env.XERO_INVOICE_BLOCKING,
     paymentDomainEventsRepository,
+    buyerPaymentAuthority,
   );
 
   const lotInvoiceInitiationService = new LotInvoiceInitiationService(

@@ -29,6 +29,18 @@ export class UserDashboardReadService {
     return this.attachEnrichedLots(rows);
   }
 
+  /** Bids placed for a buyer account, by everyone or (with `bidderId`) by one member. */
+  async listBidsForBuyerAccount(
+    buyerLegalEntityId: string,
+    bidderId: string | null,
+  ): Promise<UserBidWithLot[]> {
+    const rows = await this.dashboardQuery.listBidsWithLotsForBuyerAccount(
+      buyerLegalEntityId,
+      bidderId,
+    );
+    return this.attachEnrichedLots(rows);
+  }
+
   async listWatchlistForUser(
     userId: string,
     options: WatchlistListOptions = {},

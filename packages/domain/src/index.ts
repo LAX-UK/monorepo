@@ -343,6 +343,9 @@ export {
   type OrganisationDashboardModel,
   type UpcomingSaleFigure,
   type UpcomingSaleRow,
+  ACCOUNT_FIGURE_GROUPS,
+  type AccountFigureGroup,
+  isAccountFigureGroup,
 } from "./organisation-dashboard.js";
 export {
   CONSIGNMENT_PROGRESS_STAGES,

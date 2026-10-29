@@ -14,6 +14,7 @@ import type { AuthzError, LotError, PaymentProviderError } from "../lib/errors.j
 import type { IXeroPaymentRecorder } from "./accounting/xero-payment-recorder.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
+import type { IBuyerPaymentAuthority } from "./interfaces/buyer-payment-authority.js";
 import type { IStripeCheckoutService } from "./interfaces/checkout-rail.js";
 import type { IInvoiceAccountingProvider } from "./interfaces/invoice-accounting.js";
 import type { IMarketingEventService } from "./interfaces/marketing-event-service.js";
@@ -30,6 +31,7 @@ import type { NotificationDispatcher } from "./notification.dispatcher.js";
 import type { NotificationFactory } from "./notification.factory.js";
 import type { MyPaymentRowDTO } from "./payment-me-presenter.js";
 import type { CheckoutOrchestratorDeps } from "./payment/checkout-orchestrator.js";
+import { LegalEntityBuyerPaymentAuthority } from "./payment/legal-entity-buyer-payment-authority.js";
 import {
   backfillXeroInvoiceForPayment,
   countPendingOlderThanHours,
@@ -66,6 +68,11 @@ export type {
   IPaymentMaintenanceService,
 } from "./interfaces/payment-service.js";
 
+/** Without a way to read accounts nobody can be shown to be a payer, so checkout stays closed. */
+const REFUSE_ALL_PAYMENTS: IBuyerPaymentAuthority = {
+  canPay: async () => ({ allowed: false, reason: "not_member" }),
+};
+
 export class PaymentService
   implements IPaymentBuyerService, IPaymentAdminService, IPaymentMaintenanceService
 {
@@ -97,6 +104,7 @@ export class PaymentService
     settlementCompliance: ISettlementCompliancePolicy | null = null,
     xeroInvoiceBlocking = true,
     paymentDomainEvents: IPaymentDomainEventsRepository | null = null,
+    buyerPaymentAuthority: IBuyerPaymentAuthority | null = null,
   ) {
     const checkoutOrchestratorDeps: CheckoutOrchestratorDeps = {
       payments,
@@ -135,6 +143,11 @@ export class PaymentService
       settlementCompliance,
       xeroInvoiceBlocking,
       checkoutOrchestratorDeps,
+      buyerPaymentAuthority:
+        buyerPaymentAuthority ??
+        (legalEntityRepository
+          ? new LegalEntityBuyerPaymentAuthority(legalEntityRepository)
+          : REFUSE_ALL_PAYMENTS),
     };
   }
 

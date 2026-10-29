@@ -88,6 +88,19 @@ export interface IPaymentReadRepository {
   findById(id: string): Promise<PaymentRecord | null>;
   findOpenByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null>;
   findRefundedByLotAndBuyer(lotId: string, buyerId: string): Promise<PaymentRecord | null>;
+  /**
+   * The open (or captured) payment for a lot billed to an account, whichever member started it.
+   * An organisation's purchase can be paid by any of its payers, so checkout looks it up by account.
+   */
+  findOpenByLotAndBuyerAccount(
+    lotId: string,
+    buyerLegalEntityId: string,
+  ): Promise<PaymentRecord | null>;
+  /** A refunded payment for a lot billed to an account, whichever member paid it. */
+  findRefundedByLotAndBuyerAccount(
+    lotId: string,
+    buyerLegalEntityId: string,
+  ): Promise<PaymentRecord | null>;
   findByStripePaymentIntentId(stripePaymentIntentId: string): Promise<PaymentRecord | null>;
   /** All payments (admin listing). */
   listAll(): Promise<PaymentRecord[]>;

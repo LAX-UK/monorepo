@@ -1,3 +1,4 @@
+import type { MiddlewareHandler } from "hono";
 import type { TwoFactorPolicyService } from "../../security/two-factor-policy.service.js";
 import type { StaffInvitationAcceptService } from "../../staff-invitation-accept.service.js";
 import type { IUserAccountOnboardingHttpApplicationService } from "./user-account-onboarding-http.js";
@@ -24,6 +25,11 @@ export type UserRouteServices = {
   securityHttp: IUserSecurityHttpApplicationService;
   twoFactorRequirement: Pick<TwoFactorPolicyService, "readMyRequirement">;
   staffInvitationAccept: Pick<StaffInvitationAcceptService, "accept">;
+  /**
+   * Resolves the acting account from `X-Legal-Entity-Id` (the person's own account when absent)
+   * and proves membership, for the account-scoped buying reads.
+   */
+  requireBuyingAccount: MiddlewareHandler;
 };
 
 export type {

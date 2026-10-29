@@ -57,6 +57,18 @@ export type DashboardFigures = {
 
 export type DashboardFigureGroup = keyof DashboardFigures;
 
+/**
+ * Figure groups Home works out from the account's own records rather than reading as totals:
+ * the buyer agent's authorisations, and the open bids and purchases to pay, which come from the
+ * same reader as the Bids and Purchases pages so the figure and the page always agree.
+ */
+export const ACCOUNT_FIGURE_GROUPS = ["bidAuthority", "openBids", "purchasesToPay"] as const;
+export type AccountFigureGroup = (typeof ACCOUNT_FIGURE_GROUPS)[number];
+
+export function isAccountFigureGroup(group: DashboardFigureGroup): group is AccountFigureGroup {
+  return (ACCOUNT_FIGURE_GROUPS as readonly string[]).includes(group);
+}
+
 /** Reading capabilities count for an impersonating admin too; Home only shows figures. */
 const reads = (actor: EntityActor, name: EntityCapability) =>
   entityActorCan({ role: actor.role }, name);
