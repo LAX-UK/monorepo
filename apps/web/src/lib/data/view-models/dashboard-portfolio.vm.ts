@@ -1,8 +1,9 @@
 import { DASHBOARD_ROUTES, dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { ComplianceGateStatus } from "@/lib/data/http/payments.server";
-import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
+import { PLATFORM_DEFAULT_CURRENCY, formatMoney, resolveLotCurrency } from "@/lib/format-currency";
 import { portfolioComplianceReason } from "@/lib/portfolio-settlement";
 import { isToPay } from "@/lib/purchases/purchase-progress";
+import { sumMoneyByCurrency } from "@auction/domain";
 import type { ManualReviewReason, PortfolioRow } from "@auction/types";
 import { lotTotalMajorUnits } from "./lot-pricing-helpers";
 
@@ -50,27 +51,37 @@ export type PortfolioAnalyticsVm = {
   categoryCounts: { id: string; count: number }[];
 };
 
+/**
+ * What a set of won lots comes to, in each lot's own currency ("US$7,200.00 + £1,250.00").
+ * Lots sold in different currencies are never added together.
+ */
+function formatTotals(rows: readonly PortfolioRow[]): string {
+  const totals = sumMoneyByCurrency(
+    rows.map((row) => ({
+      currency: resolveLotCurrency(row.lot),
+      amount: lotTotalMajorUnits(row.lot).toFixed(2),
+    })),
+  );
+  if (totals.length === 0) return formatMoney("0.00", PLATFORM_DEFAULT_CURRENCY);
+  return totals.map((total) => formatMoney(total.amount, total.currency)).join(" + ");
+}
+
 export function buildPortfolioAnalytics(rows: readonly PortfolioRow[]): PortfolioAnalyticsVm {
-  let totalSpent = 0;
-  let outstanding = 0;
   const yearsSet = new Set<number>();
   const categoryCount = new Map<string, number>();
   for (const row of rows) {
-    const total = lotTotalMajorUnits(row.lot);
-    totalSpent += total;
-    if (row.payment?.status !== "captured" && row.payment?.status !== "refunded") {
-      outstanding += total;
-    }
-    const year = row.lot.endTime.getUTCFullYear();
-    yearsSet.add(year);
+    yearsSet.add(row.lot.endTime.getUTCFullYear());
     const cat = row.lot.categoryId;
     if (cat) categoryCount.set(cat, (categoryCount.get(cat) ?? 0) + 1);
   }
+  const outstanding = rows.filter(
+    (row) => row.payment?.status !== "captured" && row.payment?.status !== "refunded",
+  );
   return {
     totalRows: rows.length,
-    totalSpentFormatted: formatMoney(totalSpent.toFixed(2), PLATFORM_DEFAULT_CURRENCY),
-    outstandingFormatted: formatMoney(outstanding.toFixed(2), PLATFORM_DEFAULT_CURRENCY),
-    hasOutstanding: outstanding > 0,
+    totalSpentFormatted: formatTotals(rows),
+    outstandingFormatted: formatTotals(outstanding),
+    hasOutstanding: outstanding.some((row) => lotTotalMajorUnits(row.lot) > 0),
     years: Array.from(yearsSet).sort((a, b) => b - a),
     categoryCounts: Array.from(categoryCount.entries())
       .map(([id, count]) => ({ id, count }))

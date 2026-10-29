@@ -180,6 +180,20 @@ describe("Home, the lists and the menu agree", () => {
   });
 });
 
+describe("money in more than one currency", () => {
+  it("never adds lots sold in different currencies together", () => {
+    const dollars = purchase("lot-21", null);
+    dollars.lot.marketingDetails = {
+      estimate: { low: "1", high: "2", currency: "USD" },
+    } as Lot["marketingDetails"];
+    const rows = [dollars, purchase("lot-22", null)];
+    const vm = buildPurchasesVm(purchaseSources(organisation("finance"), rows), null);
+    expect(vm.payNow?.description).toBe(
+      "£1,250.00 + US$1,250.00 in total, including buyer's premium",
+    );
+  });
+});
+
 describe("an organisation's bids", () => {
   it("never shows a colleague's ceiling as the person's own", () => {
     const colleagues = bid(outbidLot, "2600");
