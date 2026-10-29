@@ -40,7 +40,7 @@ describe("AtgLotSyncer", () => {
     expect(first.summary).toEqual({ created: 1, updated: 0, unchanged: 0, deleted: 0, failed: 0 });
     expect(store.lotLinks.get("lot-1")).toMatchObject({
       atgLotId: "atg-lot-1",
-      imageNames: ["1", "1-1"],
+      imageNames: ["1.jpg", "1-1.jpg"],
       lastSyncedAt: NOW,
     });
     expect(second.summary).toMatchObject({ unchanged: 1, created: 0 });
