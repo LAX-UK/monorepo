@@ -374,6 +374,7 @@ export { Surface, surfaceVariants } from "./components/ui/surface.js";
 export type { SurfaceProps } from "./components/ui/surface.js";
 export { ListRow } from "./components/ui/list-row.js";
 export type { ListRowProps } from "./components/ui/list-row.js";
+export { InertOutside } from "./components/ui/inert-outside.js";
 export { RecordList, RecordRow, RecordRowMedia } from "./components/ui/record-row.js";
 export type {
   RecordListProps,
