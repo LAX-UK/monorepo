@@ -115,6 +115,28 @@ describe("useSubmissionWizardController", () => {
     });
   });
 
+  it("loads the page afresh after submitting from its own page", async () => {
+    const assign = vi.fn();
+    const realLocation = window.location;
+    Object.defineProperty(window, "location", { value: { assign }, configurable: true });
+    try {
+      const { result } = renderHook(() =>
+        useSubmissionWizardController(
+          { kind: "edit", submissionId: "sub-1" },
+          validSubmissionValues(),
+        ),
+      );
+      await act(async () => {
+        await result.current.submitForReview();
+      });
+      expect(submitForReviewFromValuesAction).toHaveBeenCalledWith("sub-1", {});
+      expect(assign).toHaveBeenCalledWith("/selling/consignments/sub-1");
+      expect(push).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(window, "location", { value: realLocation, configurable: true });
+    }
+  });
+
   it("creates and submits as the account chosen in Who is selling", async () => {
     let chosen = "personal-1";
     const { result } = renderHook(() =>
