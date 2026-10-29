@@ -2,6 +2,7 @@
 
 import { WIZARD_STEPS } from "@/lib/forms/submission/step-validation";
 import { WizardProgress, type WizardProgressStep } from "@auction/ui/components/wizard-progress";
+import type { ReactNode } from "react";
 
 type Props = {
   activeIndex: number;
@@ -12,6 +13,8 @@ type Props = {
    * progress bar.
    */
   trailingSteps?: readonly WizardProgressStep[];
+  /** Page actions shown in the step-text row ("Save and finish later"). */
+  actions?: ReactNode;
 };
 
 export function WizardStepper({
@@ -19,6 +22,7 @@ export function WizardStepper({
   maxReachableIndex,
   onStepClick,
   trailingSteps = [],
+  actions,
 }: Props) {
   return (
     <WizardProgress
@@ -29,6 +33,7 @@ export function WizardStepper({
       variant="bar"
       enableMobileSheet
       showUpNext
+      actions={actions}
     />
   );
 }

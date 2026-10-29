@@ -59,7 +59,7 @@ export function WizardNav({
             type="button"
             variant="ghost"
             size="lg"
-            className="min-h-12 shrink-0 px-4"
+            className="shrink-0 px-4"
             disabled={pending}
             onClick={onBack}
             data-testid="wizard-back"
@@ -72,7 +72,7 @@ export function WizardNav({
             type="button"
             variant="cta"
             size="lg"
-            className="min-h-12 flex-1"
+            className="flex-1"
             disabled={pending}
             onClick={onNext}
             data-testid="wizard-next"
@@ -120,7 +120,9 @@ export function WizardNav({
   return (
     <div
       className={cn(
-        "sticky z-50 -mx-4 border-t border-border-hairline bg-surface-container-lowest/95 px-4 pt-4 backdrop-blur-sm sm:-mx-0 sm:rounded-xl sm:border sm:shadow-md",
+        // An opaque surface with a top edge (a raised card from sm), so the form reads as
+        // passing under it rather than being cut off.
+        "sticky z-50 -mx-4 border-t border-border-hairline bg-surface-container-lowest px-4 pt-4 sm:-mx-0 sm:rounded-xl sm:border sm:shadow-md",
         "pb-[max(1rem,env(safe-area-inset-bottom))]",
         className,
       )}

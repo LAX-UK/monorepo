@@ -39,6 +39,11 @@ export type WizardProgressProps = {
   sidebarContent?: ReactNode;
   /** "bar" only: show "Up next: {label}" hint. */
   showUpNext?: boolean;
+  /**
+   * "bar" only: page actions ("Save and finish later") in the step-text row, so they line up
+   * with "Step n of m" and the bar runs the full width under both.
+   */
+  actions?: ReactNode;
   className?: string;
 };
 
@@ -163,6 +168,7 @@ export function WizardProgress({
   variant = "bar",
   enableMobileSheet = false,
   sidebarContent,
+  actions,
   showUpNext = false,
   className,
 }: WizardProgressProps) {
@@ -198,8 +204,8 @@ export function WizardProgress({
 
   return (
     <nav aria-label="Form steps" className={cn("mb-6", className)}>
-      <div className="flex items-center gap-1">
-        <div className="min-w-0 flex-1 px-1">
+      <div className="flex items-center gap-2" data-wizard-progress-row>
+        <div className="min-w-0 flex-1">
           <StepHeader current={current} currentIndex={currentIndex} stepCount={stepCount} />
           {showUpNext && nextLabel ? (
             <p className="truncate font-body text-xs text-on-surface-variant">
@@ -247,6 +253,7 @@ export function WizardProgress({
             </BottomSheetContent>
           </BottomSheet>
         ) : null}
+        {actions ? <div className="flex shrink-0 items-center gap-2">{actions}</div> : null}
       </div>
       <div
         className="mt-2 h-1 w-full overflow-hidden rounded-full bg-surface-container-high"

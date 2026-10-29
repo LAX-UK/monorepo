@@ -382,24 +382,22 @@ export function SubmissionWizardView({
               showAutosave={showAutosave}
             />
           ) : null}
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <WizardStepper
-                activeIndex={stepIndex}
-                maxReachableIndex={maxReachableIndex}
-                onStepClick={(index) => {
-                  if (index <= maxReachableIndex) goToStep(index);
-                }}
-                trailingSteps={trailingSteps}
+          <WizardStepper
+            activeIndex={stepIndex}
+            maxReachableIndex={maxReachableIndex}
+            onStepClick={(index) => {
+              if (index <= maxReachableIndex) goToStep(index);
+            }}
+            trailingSteps={trailingSteps}
+            actions={
+              <WizardHeaderActions
+                isSubmitting={isSubmitting}
+                onFinishLater={handleFinishLater}
+                onLeaveWithoutSaving={requestLeaveWithoutSaving}
+                {...(mode.kind === "edit" ? { onWithdraw: handleWithdraw } : {})}
               />
-            </div>
-            <WizardHeaderActions
-              isSubmitting={isSubmitting}
-              onFinishLater={handleFinishLater}
-              onLeaveWithoutSaving={requestLeaveWithoutSaving}
-              {...(mode.kind === "edit" ? { onWithdraw: handleWithdraw } : {})}
-            />
-          </div>
+            }
+          />
 
           {currentStep ? (
             <h2
