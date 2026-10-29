@@ -277,6 +277,7 @@ export async function submitForReviewAndOpenAction(
     revalidatePath(`/selling/consignments/${id}`);
     const { redirect } = await import("next/navigation");
     redirect(`/selling/consignments/${id}?submitted=1`);
+    return mapped; // not reached: redirect throws
   });
 }
 
