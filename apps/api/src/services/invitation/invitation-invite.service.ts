@@ -1,4 +1,5 @@
 import { randomUUID } from "node:crypto";
+import { memberChangePolicy } from "@auction/domain";
 import type { ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IEntityInvitationRepository } from "@auction/persistence/interfaces";
 import type { IDomainEventSink } from "../domain-event-sink.js";
@@ -26,7 +27,16 @@ export class InvitationInviteService {
     legalEntityId: string,
     input: InviteMemberInput,
   ): Promise<InviteOutcome> {
-    await this.membershipGuard.assertActorIsAdmin(actingUserId, legalEntityId);
+    const me = await this.membershipGuard.assertActorCan(
+      actingUserId,
+      legalEntityId,
+      "entity.members.manage",
+    );
+    const decision = memberChangePolicy(
+      { role: me.role, memberId: me.id },
+      { action: "invite", newRole: input.role },
+    );
+    if (!decision.allowed) throw new MemberPermissionError(decision.reason);
     const email = this.tokenService.normalizeEmail(input.email);
     const identitySubject = this.identitySubjects
       ? await this.identitySubjects.findSubjectByEmail(email)

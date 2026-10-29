@@ -1,3 +1,4 @@
+import type { MemberChangeConfirmation } from "@auction/domain";
 import type { MemberWithUser } from "@auction/persistence/interfaces";
 import type { LegalEntityMember, LegalEntityMemberRole } from "@auction/types";
 export type { MemberWithUser } from "@auction/persistence/interfaces";
@@ -12,17 +13,26 @@ export type UpdateMemberRoleInput = {
   role: LegalEntityMemberRole;
 };
 
+/** A change that is allowed but must first be confirmed by typing `phrase`. */
+export class MemberChangeConfirmationError extends Error {
+  constructor(
+    readonly confirmation: MemberChangeConfirmation,
+    readonly phrase: string,
+  ) {
+    super("confirmation_required");
+    this.name = "MemberChangeConfirmationError";
+  }
+}
+
+/**
+ * Changes to an organisation's team. Every change is decided by the domain `memberChangePolicy`
+ * (refusals throw `MemberPermissionError` with the policy's reason as `code`) and runs with the
+ * team locked, so concurrent changes can never leave the organisation without an owner.
+ */
 export interface IMemberManagementService {
-  /** List active members for a legal entity (used by the team UI). */
+  /** Active members with their names and emails, for the people who may see the team. */
   listMembers(legalEntityId: string): Promise<MemberWithUser[]>;
 
-  /** Active member row joined with user name for typed confirmation prompts. */
-  getMemberForConfirmation(
-    legalEntityId: string,
-    memberId: string,
-  ): Promise<{ role: LegalEntityMemberRole; memberName: string } | null>;
-
-  /** Owner / admin only. Cannot demote a primary admin without a transfer. */
   updateRole(
     actingUserId: string,
     legalEntityId: string,
@@ -30,18 +40,25 @@ export interface IMemberManagementService {
     input: UpdateMemberRoleInput,
   ): Promise<LegalEntityMember>;
 
-  /** Soft-deletes the membership (`removed_at = now()`). Cannot remove the
-   * primary admin (must transfer first).
+  /**
+   * Soft-deletes the membership (`removed_at = now()`), stops the member's automatic bids and
+   * ends their buyer-agent authorisations. A retried removal only stops what is left running.
    */
-  removeMember(actingUserId: string, legalEntityId: string, memberId: string): Promise<void>;
+  removeMember(
+    actingUserId: string,
+    legalEntityId: string,
+    memberId: string,
+    confirmationPhrase?: string,
+  ): Promise<void>;
 
-  /** Transfer the primary admin flag to another active member. Both members
-   * end up with `role='owner'` (the new primary) and the previous primary
-   * is downgraded to `role='admin'` for safety.
+  /**
+   * Hands the acting owner's ownership to another accepted member: the target becomes an owner
+   * and the acting owner an admin, in one transaction.
    */
-  transferPrimaryAdmin(
+  transferOwnership(
     actingUserId: string,
     legalEntityId: string,
     toMemberId: string,
+    confirmationPhrase: string,
   ): Promise<{ from: LegalEntityMember; to: LegalEntityMember }>;
 }

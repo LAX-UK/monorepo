@@ -26,12 +26,13 @@ export function consignmentWithdrawalPath(input: {
 }
 
 /**
- * Who may act on each path. Anyone who may hand in work for the account may take it back
- * before cataloguing; asking to withdraw a catalogued lot binds the account, so only owners and
- * admins may. A person's own profile always may. Deny by default.
+ * Who may act on each path of the consignment page's withdrawal. It binds the account, so only
+ * owners and admins may; a consignor takes back their own uncatalogued submission through the
+ * submission route (`submissionMutationPolicy`). A person's own profile always may. Deny by
+ * default.
  */
 const WITHDRAWAL_CAPABILITY: Record<ConsignmentWithdrawalPathKind, EntityCapability | null> = {
-  withdraw_now: "entity.submissions.create",
+  withdraw_now: "entity.consignments.withdraw",
   request: "entity.consignments.withdraw",
   requested: "entity.consignments.withdraw",
   unavailable: null,
@@ -50,7 +51,7 @@ export const WITHDRAWAL_FORBIDDEN_MESSAGE: Record<
   Exclude<ConsignmentWithdrawalPathKind, "unavailable">,
   string
 > = {
-  withdraw_now: "Only an owner, admin or consignor can withdraw this consignment.",
+  withdraw_now: "Only an owner or admin can withdraw this consignment.",
   request: "Only an owner or admin can ask to withdraw a catalogued lot.",
   requested: "Only an owner or admin can ask to withdraw a catalogued lot.",
 };

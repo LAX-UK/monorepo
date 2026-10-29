@@ -1,23 +1,29 @@
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
-import { DashboardErrorAlert } from "@/components/dashboard/primitives";
 import { BuyerAgentsSection } from "@/components/legal-entity/buyer-agents/buyer-agents-section";
 import { InviteMemberForm } from "@/components/legal-entity/invite-member-form";
 import { MemberList } from "@/components/legal-entity/member-list";
 import { StoppedMemberBidsSection } from "@/components/legal-entity/stopped-member-bids-section";
 import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
+import { OrganisationTabNoAccess } from "@/components/organisations/organisation-tab-no-access";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { buildDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerBuyerAgentOverview } from "@/lib/data/http/buyer-agent-authorisations.server";
 import { getServerStoppedMemberBids } from "@/lib/data/http/organisation-membership.server";
 import { getServerOrgTwoFactorPolicy } from "@/lib/data/http/two-factor-policy.server";
-import { requireActiveOrganisationId } from "@/lib/legal-entity/active-organisation.server";
+import { requireActiveOrganisationActor } from "@/lib/legal-entity/active-organisation.server";
+import {
+  inviteRoleOptions,
+  memberRowControls,
+  memberViewOnlyReason,
+} from "@/lib/legal-entity/member-controls.vm";
 import {
   type ILegalEntityMemberListGateway,
   createLegalEntityMemberListGateway,
 } from "@/lib/legal-entity/member-list.gateway.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { organisationHref } from "@/lib/navigation/client-routes";
-import { entityRoleCan } from "@auction/domain";
+import { requireOrganisationTab } from "@/lib/navigation/organisation-tabs";
+import { entityActorCan } from "@auction/domain";
 import { DisplayHeading } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { SectionHeader } from "@auction/ui/components/section-header";
@@ -29,7 +35,10 @@ export default async function OrganisationMembersPage() {
     shell: "client",
     loginNext: organisationHref("members"),
   });
-  const id = await requireActiveOrganisationId(user);
+  const { organisation, actor } = await requireActiveOrganisationActor(user);
+  const access = requireOrganisationTab(actor, "members");
+  if (access.kind === "forbidden") return <OrganisationTabNoAccess access={access} />;
+  const id = organisation.id;
   const perOrgGw = createPerOrgGateway();
   const ctx = await perOrgGw.getContext(id);
   if (!ctx) notFound();
@@ -60,27 +69,29 @@ export default async function OrganisationMembersPage() {
   }
 
   const members = fetched.data;
-  const meRow = members.find((m) => m.userId === user.id);
-  const missingSelfInList = !meRow;
-  const viewerIsAdmin = meRow ? entityRoleCan(meRow.role, "entity.members.manage") : false;
-  const viewerIsPrimaryAdmin = meRow?.isPrimaryAdmin === true;
-  // Admins see which members have two-step verification on; the policy itself is on its own page.
+  const me = members.find((m) => m.userId === user.id);
+  // Support staff viewing as the client are not in the list (`memberId` null).
+  const changeActor = { ...actor, memberId: me?.id ?? null };
+  const rows = members.map((row) => ({
+    member: row,
+    controls: memberRowControls(changeActor, row, members),
+  }));
+  const inviteRoles = inviteRoleOptions(changeActor);
+  const viewOnlyReason = memberViewOnlyReason(changeActor);
+  const isOrganisation = acting.kind === "organisation";
+  // Owners and admins see which members have two-step verification on; the policy is its own tab.
   const twoFactorPolicy =
-    viewerIsAdmin && acting.kind === "organisation"
+    isOrganisation && entityActorCan(actor, "entity.security.read")
       ? await getServerOrgTwoFactorPolicy(acting.id)
       : null;
-  const canSeeBuyerAgents =
-    acting.kind === "organisation" &&
-    meRow != null &&
-    entityRoleCan(meRow.role, "entity.buyer_agents.read");
-  const buyerAgentOverview = canSeeBuyerAgents
-    ? await getServerBuyerAgentOverview(acting.id).catch(() => null)
-    : null;
-  // What stopped when members left, for the people who manage members (read-only).
-  const stoppedMemberBids =
-    acting.kind === "organisation" && viewerIsAdmin
-      ? ((await getServerStoppedMemberBids(acting.id).catch(() => null)) ?? [])
-      : [];
+  const buyerAgentOverview =
+    isOrganisation && entityActorCan(actor, "entity.buyer_agents.read")
+      ? await getServerBuyerAgentOverview(acting.id).catch(() => null)
+      : null;
+  // What stopped when members left, for the people who see the team (read-only).
+  const stoppedMemberBids = isOrganisation
+    ? ((await getServerStoppedMemberBids(acting.id).catch(() => null)) ?? [])
+    : [];
   const twoFactorByUserId = twoFactorPolicy
     ? Object.fromEntries(twoFactorPolicy.members.map((m) => [m.userId, m.twoFactorEnabled]))
     : undefined;
@@ -98,24 +109,14 @@ export default async function OrganisationMembersPage() {
         />
       </OrgTabSectionHeader>
 
-      {missingSelfInList ? (
-        <DashboardErrorAlert
-          title="Could not verify your membership"
-          message="Your account is not listed in the member response we received. Refresh the page or ask an organisation admin to confirm your access."
-        />
+      {viewOnlyReason ? (
+        <Alert>
+          <AlertTitle>View only</AlertTitle>
+          <AlertDescription>{viewOnlyReason}</AlertDescription>
+        </Alert>
       ) : null}
 
-      {!missingSelfInList && !viewerIsAdmin && (
-        <Alert>
-          <AlertTitle>Read-only view</AlertTitle>
-          <AlertDescription>
-            You can see your colleagues here, but only owners and admins can invite or remove
-            members.
-          </AlertDescription>
-        </Alert>
-      )}
-
-      {!missingSelfInList && viewerIsAdmin ? (
+      {inviteRoles.length > 0 ? (
         <Surface variant="section" padding="md" className="space-y-4">
           <div className="space-y-1">
             <h3 className="text-base font-semibold text-on-surface">Invite someone</h3>
@@ -123,17 +124,14 @@ export default async function OrganisationMembersPage() {
               They&apos;ll receive an email invitation to join this organisation.
             </p>
           </div>
-          <InviteMemberForm legalEntityId={acting.id} />
+          <InviteMemberForm legalEntityId={acting.id} roleOptions={inviteRoles} />
         </Surface>
       ) : null}
 
       <MemberList
         legalEntityId={acting.id}
         {...(twoFactorByUserId ? { twoFactorByUserId } : {})}
-        members={members}
-        viewerIsAdmin={viewerIsAdmin}
-        viewerIsPrimaryAdmin={viewerIsPrimaryAdmin}
-        viewerUserId={user.id}
+        rows={rows}
       />
 
       {buyerAgentOverview ? (

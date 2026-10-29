@@ -29,12 +29,16 @@ export interface ILegalEntityMemberRepository {
     actingUserId: string,
     legalEntityId: string,
   ): Promise<LegalEntityMemberRow | null>;
-  findActiveAdminMembership(
-    actingUserId: string,
-    legalEntityId: string,
-  ): Promise<LegalEntityMemberRow>;
-  updateRole(memberId: string, role: LegalEntityMemberRole): Promise<LegalEntityMember>;
+  /**
+   * The organisation's active members (pending invitations included), locked until the
+   * transaction ends, so two changes to the team can never together leave it without an owner.
+   */
+  lockActiveMembers(tx: Database, legalEntityId: string): Promise<LegalEntityMemberRow[]>;
+  /** Sets a member's role, and whether they keep the legacy primary flag, in `tx`. */
+  updateRole(
+    tx: Database,
+    memberId: string,
+    change: { role: LegalEntityMemberRole; isPrimaryAdmin: boolean },
+  ): Promise<LegalEntityMember>;
   markRemoved(tx: Database, memberId: string): Promise<void>;
-  demotePrimaryAdmin(tx: Database, memberId: string): Promise<LegalEntityMember>;
-  promotePrimaryAdmin(tx: Database, memberId: string): Promise<LegalEntityMember>;
 }

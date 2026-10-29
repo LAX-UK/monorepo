@@ -1,11 +1,12 @@
 import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
+import { OrganisationTabNoAccess } from "@/components/organisations/organisation-tab-no-access";
 import { TwoFactorPolicyCard } from "@/components/security/two-factor-policy-card";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerOrgTwoFactorPolicy } from "@/lib/data/http/two-factor-policy.server";
-import { requireActiveOrganisationId } from "@/lib/legal-entity/active-organisation.server";
+import { requireActiveOrganisationActor } from "@/lib/legal-entity/active-organisation.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { organisationHref } from "@/lib/navigation/client-routes";
-import { entityRoleCan } from "@auction/domain";
+import { requireOrganisationTab } from "@/lib/navigation/organisation-tabs";
 import { DisplayHeading } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { SectionHeader } from "@auction/ui/components/section-header";
@@ -16,13 +17,14 @@ export default async function OrganisationSecurityPage() {
     shell: "client",
     loginNext: organisationHref("security"),
   });
-  const id = await requireActiveOrganisationId(user);
+  const { organisation, actor } = await requireActiveOrganisationActor(user);
+  const access = requireOrganisationTab(actor, "security");
+  if (access.kind === "forbidden") return <OrganisationTabNoAccess access={access} />;
+  const id = organisation.id;
   const ctx = await createPerOrgGateway().getContext(id);
   if (!ctx) notFound();
 
-  const canRead = entityRoleCan(ctx.member.role, "entity.security.read");
-  // The API refuses the policy to everyone but owners and admins, so asking would only fail.
-  const policy = canRead ? await getServerOrgTwoFactorPolicy(id) : null;
+  const policy = await getServerOrgTwoFactorPolicy(id);
 
   return (
     <div className="space-y-6">
@@ -40,11 +42,9 @@ export default async function OrganisationSecurityPage() {
         />
       ) : (
         <Alert>
-          <AlertTitle>{canRead ? "Policy unavailable" : "Owners and admins only"}</AlertTitle>
+          <AlertTitle>Policy unavailable</AlertTitle>
           <AlertDescription>
-            {canRead
-              ? "We could not load this organisation's two-step policy. Try again in a moment."
-              : "Only owners and admins can see whether this organisation requires two-step verification."}
+            We could not load this organisation&apos;s two-step policy. Try again in a moment.
           </AlertDescription>
         </Alert>
       )}

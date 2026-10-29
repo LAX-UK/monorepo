@@ -77,7 +77,7 @@ export async function submitForReview(
   deps: ItemSubmissionServiceDeps,
   legalEntityId: string,
   id: string,
-  /** Who is sending it; recorded as its sender so consignors see their own. */
+  /** Who is sending it; recorded as its sender, if none is yet, so consignors see their own. */
   sentByUserId?: string,
 ): Promise<Result<ItemSubmission, SubmissionError>> {
   const s = await deps.submissions.findById(id);
@@ -97,9 +97,11 @@ export async function submitForReview(
       ),
     );
   }
+  // The sender is recorded once. Whoever sends it back after changes, the work stays with the
+  // person who first sent it, so a consignor never loses it from their own list.
   const updated = await deps.submissions.update(id, {
     status: "submitted",
-    ...(sentByUserId ? { submittedByUserId: sentByUserId } : {}),
+    ...(sentByUserId && !s.submittedByUserId ? { submittedByUserId: sentByUserId } : {}),
   });
   await maybeLogRestrictedSellerWrite(deps, legalEntityId, id, "submit_for_review");
   const resubmitted = transition === "resubmit";

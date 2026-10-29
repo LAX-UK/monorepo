@@ -1,5 +1,8 @@
 import type { Database } from "@auction/db";
-import { DrizzleMemberBidInstructionsRepository } from "@auction/persistence/repositories";
+import {
+  DrizzleMemberBidInstructionsRepository,
+  DrizzleMemberBuyerAgentAuthorisationRevoker,
+} from "@auction/persistence/repositories";
 import { LEGAL_ENTITY_ARCHIVE_JOB_NAME } from "@auction/queues";
 import type { Env } from "../env.js";
 import { CachedUserSuspensionChecker } from "../infrastructure/cached-user-suspension.checker.js";
@@ -24,6 +27,7 @@ import { LegalEntityLifecycleAdminService } from "../services/legal-entity-lifec
 import { LegalEntityMembershipGuard } from "../services/legal-entity-membership.guard.js";
 import { MemberManagementService } from "../services/member-management.service.js";
 import { EmailMembershipInviteNotifier } from "../services/membership-invite-notifier.js";
+import { MemberAuthorisationRevoker } from "../services/organisation-membership/member-authorisation-revoker.js";
 import { RemovedMemberBidStopper } from "../services/organisation-membership/removed-member-bid-stopper.js";
 import { OrganizationOnboardingService } from "../services/organization-onboarding.service.js";
 import { OrganizationOnboardingFlowService } from "../services/organization-onboarding/organization-onboarding-flow.service.js";
@@ -101,19 +105,27 @@ export function createPlatformIdentityServices(
     artistRegistryRepository,
     domainEventSink,
   );
-  const memberManagementService: IMemberManagementService = new MemberManagementService(
-    core.transactionRunner,
-    repos.legalEntityMemberRepository,
-    core.domainEventSink,
-    new RemovedMemberBidStopper(new DrizzleMemberBidInstructionsRepository(), core.domainEventSink),
-    input.proxyRealtime,
-  );
   const transactionalMailer: ITransactionalMailer = createTransactionalMailer(env);
   const membershipInviteNotifier = new EmailMembershipInviteNotifier(
     transactionalMailer,
     emailService,
   );
   const membershipGuard = new LegalEntityMembershipGuard(repos.legalEntityMemberRepository);
+  const memberManagementService: IMemberManagementService = new MemberManagementService({
+    transactionRunner: core.transactionRunner,
+    members: repos.legalEntityMemberRepository,
+    membership: membershipGuard,
+    domainEventSink: core.domainEventSink,
+    bidStopper: new RemovedMemberBidStopper(
+      new DrizzleMemberBidInstructionsRepository(),
+      core.domainEventSink,
+    ),
+    authorisationRevoker: new MemberAuthorisationRevoker(
+      new DrizzleMemberBuyerAgentAuthorisationRevoker(),
+      core.domainEventSink,
+    ),
+    realtime: input.proxyRealtime,
+  });
   const invitationLifecycleService: IInvitationLifecycleService = new InvitationLifecycleService(
     core.transactionRunner,
     entityInvitationRepository,

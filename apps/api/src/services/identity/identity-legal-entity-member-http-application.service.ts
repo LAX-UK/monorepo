@@ -1,3 +1,4 @@
+import { MEMBER_CHANGE_DENIAL_MESSAGE, type MemberChangeDenial } from "@auction/domain";
 import type { OrgModuleGate } from "../../lib/org-module-gate.js";
 import type { IIdentityLegalEntityMemberHttpApplicationService } from "../interfaces/identity-routes/identity-legal-entity-member-http.js";
 import {
@@ -6,20 +7,17 @@ import {
 } from "../interfaces/identity-routes/identity-route-http.js";
 import type { IInvitationLifecycleService } from "../interfaces/invitation-lifecycle.js";
 import type { InviteMemberInput, UpdateMemberRoleInput } from "../interfaces/member-management.js";
-import { MemberPermissionError } from "../interfaces/member-management.js";
+import {
+  MemberChangeConfirmationError,
+  MemberPermissionError,
+} from "../interfaces/member-management.js";
 import type { IMemberManagementService } from "../interfaces/member-management.js";
 import type { UserService } from "../user.service.js";
-
-const ADMIN_ROLES_FOR_TYPED_REMOVE = new Set(["owner", "admin"]);
 
 function permissionErrorStatus(code: string): number {
   switch (code) {
     case "not_a_member":
     case "insufficient_role":
-    case "only_primary_admin_can_transfer":
-    case "cannot_demote_primary_admin":
-    case "cannot_remove_primary_admin":
-    case "cannot_transfer_to_self":
     case "invitation_email_mismatch":
       return 403;
     case "already_a_member":
@@ -33,8 +31,43 @@ function permissionErrorStatus(code: string): number {
   }
 }
 
+function isMemberChangeDenial(code: string): code is MemberChangeDenial {
+  return Object.hasOwn(MEMBER_CHANGE_DENIAL_MESSAGE, code);
+}
+
+/**
+ * A refused member change answers 403 with the policy's reason as `code` and its explanation as
+ * `error`, so the page can show it as it is. Other refusals keep their codes.
+ */
 function permissionOutcome(code: string): IdentityRouteOutcome<never> {
+  if (isMemberChangeDenial(code)) {
+    return {
+      kind: "err",
+      error: { message: MEMBER_CHANGE_DENIAL_MESSAGE[code], status: 403, code },
+    };
+  }
   return identityRouteCodeErr(code, permissionErrorStatus(code));
+}
+
+/** The codes the confirmation dialogs already read, per kind of change. */
+const CONFIRMATION_CODE = {
+  remove: "confirmation_required",
+  transfer_ownership: "confirmation_mismatch",
+} as const;
+
+function confirmationOutcome(error: MemberChangeConfirmationError): IdentityRouteOutcome<never> {
+  const code = CONFIRMATION_CODE[error.confirmation];
+  return {
+    kind: "err",
+    error: { message: code, status: 400, code, hint: `Type exactly: ${error.phrase}` },
+  };
+}
+
+/** Maps the member service's typed refusals to HTTP; anything else is unexpected. */
+function memberChangeOutcome(err: unknown): IdentityRouteOutcome<never> {
+  if (err instanceof MemberChangeConfirmationError) return confirmationOutcome(err);
+  if (err instanceof MemberPermissionError) return permissionOutcome(err.code);
+  throw err;
 }
 
 export class IdentityLegalEntityMemberHttpApplicationService
@@ -65,10 +98,7 @@ export class IdentityLegalEntityMemberHttpApplicationService
       );
       return { kind: "ok", data: result, status: 201 };
     } catch (err) {
-      if (err instanceof MemberPermissionError) {
-        return permissionOutcome(err.code);
-      }
-      throw err;
+      return memberChangeOutcome(err);
     }
   }
 
@@ -87,10 +117,7 @@ export class IdentityLegalEntityMemberHttpApplicationService
       );
       return { kind: "ok", data: updated };
     } catch (err) {
-      if (err instanceof MemberPermissionError) {
-        return permissionOutcome(err.code);
-      }
-      throw err;
+      return memberChangeOutcome(err);
     }
   }
 
@@ -100,75 +127,35 @@ export class IdentityLegalEntityMemberHttpApplicationService
     memberId: string;
     confirmationPhrase?: string;
   }): Promise<IdentityRouteOutcome<{ removed: true }>> {
-    const targetRow = await this.memberManagementService.getMemberForConfirmation(
-      input.legalEntityId,
-      input.memberId,
-    );
-
-    if (targetRow && ADMIN_ROLES_FOR_TYPED_REMOVE.has(targetRow.role)) {
-      const expected = `REMOVE ${targetRow.memberName}`;
-      if (input.confirmationPhrase !== expected) {
-        return {
-          kind: "err",
-          error: {
-            message: "confirmation_required",
-            status: 400,
-            code: "confirmation_required",
-            hint: `Type exactly: ${expected}`,
-          },
-        };
-      }
-    }
-
     try {
       await this.memberManagementService.removeMember(
         input.userId,
         input.legalEntityId,
         input.memberId,
+        input.confirmationPhrase,
       );
       return { kind: "ok", data: { removed: true } };
     } catch (err) {
-      if (err instanceof MemberPermissionError) {
-        return permissionOutcome(err.code);
-      }
-      throw err;
+      return memberChangeOutcome(err);
     }
   }
 
-  async transferPrimaryAdmin(input: {
+  async transferOwnership(input: {
     userId: string;
     legalEntityId: string;
     memberId: string;
     confirmationPhrase: string;
   }): Promise<IdentityRouteOutcome<unknown>> {
-    const targetRow = await this.memberManagementService.getMemberForConfirmation(
-      input.legalEntityId,
-      input.memberId,
-    );
-    const expected = targetRow ? `TRANSFER PRIMARY TO ${targetRow.memberName}` : "";
-    if (!targetRow || input.confirmationPhrase !== expected) {
-      return {
-        kind: "err",
-        error: {
-          message: "confirmation_mismatch",
-          status: 400,
-          code: "confirmation_mismatch",
-          ...(targetRow ? { hint: `Type exactly: ${expected}` } : { hint: "member_not_found" }),
-        },
-      };
-    }
     try {
-      const result = await this.memberManagementService.transferPrimaryAdmin(
+      const result = await this.memberManagementService.transferOwnership(
         input.userId,
         input.legalEntityId,
         input.memberId,
+        input.confirmationPhrase,
       );
       return { kind: "ok", data: result };
     } catch (err) {
-      if (err instanceof MemberPermissionError) {
-        return permissionOutcome(err.code);
-      }
-      throw err;
+      return memberChangeOutcome(err);
     }
   }
 

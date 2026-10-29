@@ -1,3 +1,4 @@
+import type { SubmissionMutation } from "@auction/domain";
 import type { StaffRoles, UserRole } from "@auction/types";
 import {
   hasSubmissionsAccess,
@@ -15,6 +16,7 @@ import type {
   SubmissionHttpJson,
   SubmissionLegalEntityContext,
 } from "../interfaces/submission-routes/submission-route-http.js";
+import { mutationRefusal } from "./submission-mutation-refusal.js";
 
 function canStaffManageSubmissionDocuments(
   role: UserRole,
@@ -44,10 +46,14 @@ export class SubmissionDocumentHttpApplicationService
     return null;
   }
 
-  /** The submission is the account's and the member may see it (who sent it); else Not found. */
+  /**
+   * The submission is the account's and the member may see it (who sent it); else Not found.
+   * With `mutation`, the member must also be allowed to make that change.
+   */
   private async assertSellerOwnsSubmission(
     legalEntity: SubmissionLegalEntityContext,
     submissionId: string,
+    mutation?: SubmissionMutation,
   ): Promise<SubmissionHttpJson | null> {
     const owned = await this.itemSubmissionSellerApi.getForSeller(
       legalEntity.legalEntityId,
@@ -55,6 +61,11 @@ export class SubmissionDocumentHttpApplicationService
     );
     if (owned.isErr()) {
       return { status: owned.error.status, body: { error: owned.error.message } };
+    }
+    if (mutation) {
+      return mutationRefusal(
+        await this.access.authoriseMutation(legalEntity, submissionId, mutation),
+      );
     }
     if (await this.access.hides(legalEntity, submissionId)) {
       return { status: 404, body: { error: "Not found" } };
@@ -112,7 +123,11 @@ export class SubmissionDocumentHttpApplicationService
     const role = (input.viewer.role ?? "client") as UserRole;
     const staff = input.viewer.staffRoles;
     if (!canStaffManageSubmissionDocuments(role, staff)) {
-      const denied = await this.assertSellerOwnsSubmission(input.legalEntity, input.submissionId);
+      const denied = await this.assertSellerOwnsSubmission(
+        input.legalEntity,
+        input.submissionId,
+        "attach_document",
+      );
       if (denied) return denied;
     } else {
       const denied = await this.assertStaffSubmissionExists(input.submissionId);
@@ -170,7 +185,11 @@ export class SubmissionDocumentHttpApplicationService
     const role = (input.viewer.role ?? "client") as UserRole;
     const staff = input.viewer.staffRoles;
     if (!canStaffManageSubmissionDocuments(role, staff)) {
-      const denied = await this.assertSellerOwnsSubmission(input.legalEntity, input.submissionId);
+      const denied = await this.assertSellerOwnsSubmission(
+        input.legalEntity,
+        input.submissionId,
+        "delete_document",
+      );
       if (denied) return denied;
     } else {
       const denied = await this.assertStaffSubmissionExists(input.submissionId);

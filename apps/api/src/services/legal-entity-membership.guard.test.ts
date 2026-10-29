@@ -1,60 +1,59 @@
-import type { ILegalEntityMemberRepository } from "@auction/persistence/interfaces";
+import type { LegalEntityMemberRow } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import { LegalEntityMembershipGuard } from "./legal-entity-membership.guard.js";
 
 const ENTITY_ID = "00000000-0000-4000-8000-000000000001";
 const USER_ID = "user-1";
 
-function makeMemberRepo(
-  row: Awaited<ReturnType<ILegalEntityMemberRepository["findActiveMembership"]>>,
-): ILegalEntityMemberRepository {
-  return {
-    listMembersWithUsers: vi.fn(),
-    findMemberById: vi.fn(),
-    findActiveMemberConfirmationContext: vi.fn(),
+function guardFor(row: Partial<LegalEntityMemberRow> | null) {
+  return new LegalEntityMembershipGuard({
     findActiveMembership: vi.fn().mockResolvedValue(row),
-    findActiveAdminMembership: vi.fn(),
-    updateRole: vi.fn(),
-    markRemoved: vi.fn(),
-    demotePrimaryAdmin: vi.fn(),
-    promotePrimaryAdmin: vi.fn(),
-  };
+  });
 }
 
-describe("LegalEntityMembershipGuard", () => {
-  it("throws not_a_member when actor is missing or not accepted", async () => {
-    const guard = new LegalEntityMembershipGuard(makeMemberRepo(null));
-    await expect(guard.assertActorIsAdmin(USER_ID, ENTITY_ID)).rejects.toMatchObject({
-      code: "not_a_member",
-    });
+const accepted = (role: LegalEntityMemberRow["role"]) =>
+  ({
+    id: "mem-1",
+    userId: USER_ID,
+    legalEntityId: ENTITY_ID,
+    role,
+    acceptedAt: new Date(),
+    removedAt: null,
+  }) as LegalEntityMemberRow;
+
+describe("LegalEntityMembershipGuard.assertActorCan", () => {
+  it("refuses someone who is not an accepted member", async () => {
+    await expect(
+      guardFor(null).assertActorCan(USER_ID, ENTITY_ID, "entity.members.manage"),
+    ).rejects.toMatchObject({ code: "not_a_member" });
+    await expect(
+      guardFor({ ...accepted("owner"), acceptedAt: null }).assertActorCan(
+        USER_ID,
+        ENTITY_ID,
+        "entity.members.manage",
+      ),
+    ).rejects.toMatchObject({ code: "not_a_member" });
   });
 
-  it("throws insufficient_role for non-admin members", async () => {
-    const guard = new LegalEntityMembershipGuard(
-      makeMemberRepo({
-        id: "mem-1",
-        userId: USER_ID,
-        legalEntityId: ENTITY_ID,
-        role: "member",
-        acceptedAt: new Date(),
-        removedAt: null,
-      } as never),
-    );
-    await expect(guard.assertActorIsAdmin(USER_ID, ENTITY_ID)).rejects.toMatchObject({
-      code: "insufficient_role",
-    });
+  it.each(["consignor", "finance", "viewer", "buyer_agent"] as const)(
+    "refuses a %s the capability",
+    async (role) => {
+      await expect(
+        guardFor(accepted(role)).assertActorCan(USER_ID, ENTITY_ID, "entity.members.manage"),
+      ).rejects.toMatchObject({ code: "insufficient_role" });
+    },
+  );
+
+  it.each(["owner", "admin"] as const)("returns the membership of a %s", async (role) => {
+    const row = accepted(role);
+    await expect(
+      guardFor(row).assertActorCan(USER_ID, ENTITY_ID, "entity.members.manage"),
+    ).resolves.toEqual(row);
   });
 
-  it("returns admin membership row for owner/admin actors", async () => {
-    const row = {
-      id: "mem-1",
-      userId: USER_ID,
-      legalEntityId: ENTITY_ID,
-      role: "owner",
-      acceptedAt: new Date(),
-      removedAt: null,
-    };
-    const guard = new LegalEntityMembershipGuard(makeMemberRepo(row as never));
-    await expect(guard.assertActorIsAdmin(USER_ID, ENTITY_ID)).resolves.toEqual(row);
+  it("asks the capability table, so ownership changes stay with owners", async () => {
+    await expect(
+      guardFor(accepted("admin")).assertActorCan(USER_ID, ENTITY_ID, "entity.ownership.manage"),
+    ).rejects.toMatchObject({ code: "insufficient_role" });
   });
 });

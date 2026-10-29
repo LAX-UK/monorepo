@@ -6,7 +6,7 @@ import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
 import { statusBadgeVariant, statusLabel, subkindLabel } from "@/components/organisations/labels";
 import { OrganisationSettingsUnavailable } from "@/components/organisations/organisation-settings-unavailable";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { resolveActiveOrganisation } from "@/lib/legal-entity/active-organisation.server";
+import { resolveActiveOrganisationActor } from "@/lib/legal-entity/active-organisation.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
@@ -30,7 +30,7 @@ export default async function OrganisationLayout({ children }: { children: React
     shell: "client",
     loginNext: CLIENT_ROUTES.organisation,
   });
-  const active = await resolveActiveOrganisation(user);
+  const active = await resolveActiveOrganisationActor(user);
   if (!active) {
     return (
       <DashboardPage>
@@ -39,7 +39,7 @@ export default async function OrganisationLayout({ children }: { children: React
     );
   }
 
-  const access = await createPerOrgGateway().resolveAccess(active.id);
+  const access = await createPerOrgGateway().resolveAccess(active.organisation.id);
   if (access.kind === "not_found") notFound();
   if (access.kind === "forbidden") {
     return (
@@ -53,7 +53,8 @@ export default async function OrganisationLayout({ children }: { children: React
   }
 
   const { member, entity } = access.context;
-  const tabs = organisationTabsFor(member.role);
+  // Support staff viewing as the client open the reading tabs only (`entityActorCan`).
+  const tabs = organisationTabsFor(active.actor);
   if (tabs.length === 0) {
     return (
       <DashboardPage>

@@ -1,14 +1,15 @@
 "use client";
 
 import { TypedConfirmationDialog } from "@/components/admin/typed-confirmation-dialog";
+import type { MemberRowControls } from "@/lib/legal-entity/member-controls.vm";
 import {
   type MemberRow,
   removeMemberAction,
   transferPrimaryAdminAction,
   updateMemberRoleAction,
 } from "@/lib/legal-entity/member-management.actions";
+import { roleLabel } from "@/lib/organisations/legal-entity-labels";
 import type { LegalEntityMemberRole } from "@auction/types";
-import { legalEntityMemberRoles } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
 import {
@@ -22,15 +23,12 @@ import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Loader2 } from "lucide-react";
 import { useState, useTransition } from "react";
 
+/** A member with what the viewer may do to them, decided by the member change policy. */
+export type MemberListRow = { member: MemberRow; controls: MemberRowControls };
+
 type Props = {
   legalEntityId: string;
-  members: MemberRow[];
-  /** True when the current viewer holds a role in {owner, admin}. */
-  viewerIsAdmin: boolean;
-  /** True when the current viewer is the primary admin. */
-  viewerIsPrimaryAdmin: boolean;
-  /** Current viewer's user.id, used to disable self-targeting actions. */
-  viewerUserId: string;
+  rows: MemberListRow[];
   /** Owners/admins only: two-step verification status per user (`null` when unknown). */
   twoFactorByUserId?: Record<string, boolean | null>;
 };
@@ -38,10 +36,6 @@ type Props = {
 type PendingDialog =
   | { kind: "remove"; memberId: string; phrase: string }
   | { kind: "transfer"; memberId: string; phrase: string };
-
-function needsTypedRemove(role: LegalEntityMemberRole): boolean {
-  return role === "owner" || role === "admin";
-}
 
 function TwoFactorMemberBadge({ enabled }: { enabled: boolean | null }) {
   if (enabled === null) return null;
@@ -52,14 +46,7 @@ function TwoFactorMemberBadge({ enabled }: { enabled: boolean | null }) {
   );
 }
 
-export function MemberList({
-  legalEntityId,
-  members,
-  viewerIsAdmin,
-  viewerIsPrimaryAdmin,
-  viewerUserId,
-  twoFactorByUserId,
-}: Props) {
+export function MemberList({ legalEntityId, rows, twoFactorByUserId }: Props) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   const [rowErrors, setRowErrors] = useState<Record<string, string>>({});
@@ -81,36 +68,25 @@ export function MemberList({
     });
   }
 
-  function handleRemoveClick(m: MemberRow) {
+  function handleRemoveClick(m: MemberRow, confirmPhrase: string | null) {
     setError(null);
-    if (needsTypedRemove(m.role)) {
-      setDialog({
-        kind: "remove",
-        memberId: m.id,
-        phrase: `REMOVE ${m.user.name}`,
-      });
+    if (confirmPhrase) {
+      setDialog({ kind: "remove", memberId: m.id, phrase: confirmPhrase });
       return;
     }
     setSimpleRemove({ memberId: m.id, memberName: m.user.name });
   }
 
-  function handleTransferClick(m: MemberRow) {
+  function handleTransferClick(m: MemberRow, confirmPhrase: string) {
     setError(null);
-    setDialog({
-      kind: "transfer",
-      memberId: m.id,
-      phrase: `TRANSFER PRIMARY TO ${m.user.name}`,
-    });
+    setDialog({ kind: "transfer", memberId: m.id, phrase: confirmPhrase });
   }
 
   return (
     <div className="space-y-3">
       {error && <p className="text-sm text-destructive">{error}</p>}
       <ul className="space-y-3 lg:divide-y lg:rounded-md lg:border lg:bg-surface lg:space-y-0">
-        {members.map((m) => {
-          const isSelf = m.userId === viewerUserId;
-          const canEdit = viewerIsAdmin && !m.isPrimaryAdmin && !isSelf;
-          const canTransfer = viewerIsPrimaryAdmin && !m.isPrimaryAdmin;
+        {rows.map(({ member: m, controls }) => {
           const pendingInvitation = !m.acceptedAt;
           const rowError = rowErrors[m.id];
           return (
@@ -130,45 +106,47 @@ export function MemberList({
                 <TwoFactorMemberBadge enabled={twoFactorByUserId[m.userId] ?? null} />
               ) : null}
               <div className="flex items-center gap-2">
-                {canEdit ? (
+                {controls.roleOptions.length > 1 ? (
                   <Select
                     value={m.role}
                     onValueChange={(v) => handleRoleChange(m.id, v as LegalEntityMemberRole)}
                   >
-                    <SelectTrigger className="w-36">
+                    <SelectTrigger className="w-36" aria-label={`Role for ${m.user.name}`}>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {legalEntityMemberRoles.map((role) => (
+                      {controls.roleOptions.map((role) => (
                         <SelectItem key={role} value={role}>
-                          {role}
+                          {roleLabel(role)}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 ) : (
-                  <span className="rounded-full border px-2 py-0.5 text-xs">{m.role}</span>
+                  <span className="rounded-full border px-2 py-0.5 text-xs">
+                    {roleLabel(m.role)}
+                  </span>
                 )}
-                {canTransfer && (
+                {controls.transfer ? (
                   <Button
                     type="button"
                     variant="tertiary"
-                    onClick={() => handleTransferClick(m)}
+                    onClick={() => handleTransferClick(m, controls.transfer?.confirmPhrase ?? "")}
                     disabled={pending}
                   >
                     Make primary
                   </Button>
-                )}
-                {canEdit && (
+                ) : null}
+                {controls.remove ? (
                   <Button
                     type="button"
                     variant="destructive"
-                    onClick={() => handleRemoveClick(m)}
+                    onClick={() => handleRemoveClick(m, controls.remove?.confirmPhrase ?? null)}
                     disabled={pending}
                   >
                     Remove
                   </Button>
-                )}
+                ) : null}
               </div>
               {rowError ? <p className="mt-2 w-full text-sm text-destructive">{rowError}</p> : null}
             </li>

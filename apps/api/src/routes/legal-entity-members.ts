@@ -1,3 +1,4 @@
+import { MEMBER_CHANGE_DENIAL_MESSAGE } from "@auction/domain";
 import {
   inviteLegalEntityMemberSchema,
   updateLegalEntityMemberRoleSchema,
@@ -11,6 +12,7 @@ import {
 } from "../lib/identity-route-response.js";
 import { zValidator } from "../lib/z-validator.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
+import { requireEntityCapability } from "../middleware/require-entity-capability.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { TwoFactorPolicyForbiddenError } from "../services/security/two-factor-policy.service.js";
@@ -32,6 +34,16 @@ export function createLegalEntityMemberRoutes(
   });
   const requireContext = container.requireLegalEntityContext;
   const memberHttp = container.identityRoutes.legalEntityMemberHttp;
+  // Names, emails and roles are for the people who run the team; each change is then decided
+  // by the member change policy in the service.
+  const requireReadMembers = requireEntityCapability(
+    "entity.members.read",
+    "Only owners and admins can see the member list.",
+  );
+  const requireManageMembers = requireEntityCapability(
+    "entity.members.manage",
+    MEMBER_CHANGE_DENIAL_MESSAGE.cannot_manage_members,
+  );
   const r = new Hono<{
     Variables: {
       userId?: string;
@@ -40,7 +52,7 @@ export function createLegalEntityMemberRoutes(
     };
   }>();
 
-  r.get("/members", requireAuth, requireContext, async (c) => {
+  r.get("/members", requireAuth, requireContext, requireReadMembers, async (c) => {
     const ctx = c.get("legalEntityContext") as LegalEntityContext;
     const outcome = await memberHttp.listMembers({ legalEntityId: ctx.legalEntityId });
     return respondIdentityRouteOutcome(c, outcome);
@@ -50,6 +62,7 @@ export function createLegalEntityMemberRoutes(
     "/members",
     requireAuth,
     requireContext,
+    requireManageMembers,
     zValidator("json", inviteLegalEntityMemberSchema),
     async (c) => {
       const userId = c.get("userId") as string;
@@ -68,6 +81,7 @@ export function createLegalEntityMemberRoutes(
     "/members/:memberId",
     requireAuth,
     requireContext,
+    requireManageMembers,
     zValidator("param", memberIdParam),
     zValidator("json", updateLegalEntityMemberRoleSchema),
     async (c) => {
@@ -89,6 +103,7 @@ export function createLegalEntityMemberRoutes(
     "/members/:memberId",
     requireAuth,
     requireContext,
+    requireManageMembers,
     zValidator("param", memberIdParam),
     async (c) => {
       const userId = c.get("userId") as string;
@@ -124,12 +139,13 @@ export function createLegalEntityMemberRoutes(
     "/members/transfer-primary-admin",
     requireAuth,
     requireContext,
+    requireManageMembers,
     zValidator("json", transferBodySchema),
     async (c) => {
       const userId = c.get("userId") as string;
       const ctx = c.get("legalEntityContext") as LegalEntityContext;
       const body = c.req.valid("json");
-      const outcome = await memberHttp.transferPrimaryAdmin({
+      const outcome = await memberHttp.transferOwnership({
         userId,
         legalEntityId: ctx.legalEntityId,
         memberId: body.memberId,

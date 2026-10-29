@@ -1,3 +1,5 @@
+import type { Database } from "@auction/db";
+
 export type BuyerAgentAuthorisationStatus = "active" | "revoked";
 
 /** One authorisation as the people managing it see it. */
@@ -60,4 +62,16 @@ export interface IBuyerAgentAuthorisationWriter {
     reason: string;
     revokedAt: Date;
   }): Promise<boolean>;
+}
+
+/** Ends a member's authorisations when they leave or stop being a buyer agent. */
+export interface IMemberBuyerAgentAuthorisationRevoker {
+  /**
+   * Revokes every active authorisation `userId` holds for the organisation, in `tx`, and returns
+   * the ones it revoked (none when they held none).
+   */
+  revokeAllForMember(
+    tx: Database,
+    input: { legalEntityId: string; userId: string; reason: string; revokedAt: Date },
+  ): Promise<{ id: string; saleId: string | null }[]>;
 }

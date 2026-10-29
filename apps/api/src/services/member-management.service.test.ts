@@ -1,255 +1,151 @@
-import type { Database } from "@auction/db";
-import { DrizzleLegalEntityMemberRepository } from "@auction/persistence/repositories";
+import type { LegalEntityMemberRow } from "@auction/persistence/interfaces";
+import type { DomainEventInput } from "@auction/persistence/lib";
 import { describe, expect, it, vi } from "vitest";
-import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
-import { DomainEventSink } from "./domain-event-sink.js";
-import { DomainEventPublisher } from "./domain-event.publisher.js";
-import { MemberPermissionError } from "./interfaces/member-management.js";
+import {
+  TEST_ENTITY_ID,
+  inMemoryLegalEntityMembers,
+  memberRow,
+} from "../testing/in-memory-legal-entity-members.js";
+import type { IDomainEventSink } from "./domain-event-sink.js";
+import {
+  MemberChangeConfirmationError,
+  MemberPermissionError,
+} from "./interfaces/member-management.js";
 import type {
-  IProxyCancelledRealtime,
+  IMemberAuthorisationRevoker,
   IRemovedMemberBidStopper,
   StoppedInstruction,
 } from "./interfaces/organisation-membership-service.js";
+import { LegalEntityMembershipGuard } from "./legal-entity-membership.guard.js";
 import { MemberManagementService } from "./member-management.service.js";
 
-const testPublisher = new DomainEventPublisher();
-const testDomainEventSink = new DomainEventSink(testPublisher, {} as Database);
-const noBidStopper: IRemovedMemberBidStopper = { stopFor: async () => [] };
-const noRealtime: IProxyCancelledRealtime = { notifyProxyCancelled: async () => undefined };
+const ENTITY_ID = TEST_ENTITY_ID;
+const TX = { tx: true } as never;
+const member = memberRow;
 
-const ENTITY_ID = "00000000-0000-4000-8000-000000000001";
-const PRIMARY_USER_ID = "user-primary";
-const TARGET_USER_ID = "user-target";
-const PRIMARY_MEMBER_ID = "mem-primary";
-const TARGET_MEMBER_ID = "mem-target";
-
-type ChainOp = "select" | "insert" | "update";
-type Chain = {
-  op: ChainOp;
-  /** Public methods invoked on this chain (for assertion / debugging). */
-  calls: string[];
-};
-
-function makeFluentDb(resultsQueue: unknown[][]) {
-  const chains: Chain[] = [];
-
-  function startChain(op: ChainOp) {
-    const chain: Chain = { op, calls: [] };
-    chains.push(chain);
-    const result = resultsQueue.shift() ?? [];
-    const handler: ProxyHandler<object> = {
-      get(_t, prop: string | symbol) {
-        if (prop === "then") {
-          return (resolve: (v: unknown) => unknown) => Promise.resolve(result).then(resolve);
-        }
-        if (typeof prop === "string") chain.calls.push(prop);
-        return () => proxy;
-      },
-    };
-    const proxy: object = new Proxy({}, handler);
-    return proxy as Record<string, unknown>;
-  }
-
-  const db = {
-    select: () => startChain("select"),
-    insert: () => startChain("insert"),
-    update: () => startChain("update"),
-    transaction: async (fn: (tx: unknown) => unknown) => {
-      return await fn({
-        select: () => startChain("select"),
-        insert: () => startChain("insert"),
-        update: () => startChain("update"),
-      });
+function setup(rows: LegalEntityMemberRow[], stopped: StoppedInstruction[] = []) {
+  const { repo, byId } = inMemoryLegalEntityMembers(rows);
+  const events: DomainEventInput[] = [];
+  const sink: IDomainEventSink = {
+    publish: async (event) => {
+      events.push(event);
     },
-  } as unknown as Database;
-
-  return { db, chains };
-}
-
-function memberRow(overrides: Record<string, unknown>) {
-  return {
-    id: PRIMARY_MEMBER_ID,
-    legalEntityId: ENTITY_ID,
-    userId: PRIMARY_USER_ID,
-    role: "owner",
-    isPrimaryAdmin: true,
-    invitedByUserId: null,
-    invitedAt: null,
-    acceptedAt: new Date(),
-    removedAt: null,
-    createdAt: new Date(),
-    ...overrides,
+    withTx: () => sink,
   };
+  const bidStopper = { stopFor: vi.fn<IRemovedMemberBidStopper["stopFor"]>(async () => stopped) };
+  const authorisationRevoker = {
+    revokeFor: vi.fn<IMemberAuthorisationRevoker["revokeFor"]>(async () => undefined),
+  };
+  const realtime = { notifyProxyCancelled: vi.fn(async () => undefined) };
+  const membership = new LegalEntityMembershipGuard(repo);
+  const service = new MemberManagementService({
+    transactionRunner: { runInTransaction: (fn) => fn(TX) },
+    members: repo,
+    membership,
+    domainEventSink: sink,
+    bidStopper,
+    authorisationRevoker,
+    realtime,
+  });
+  return { service, repo, byId, events, bidStopper, authorisationRevoker, realtime };
 }
 
-describe("MemberManagementService.transferPrimaryAdmin", () => {
-  it("rejects when the actor is not the primary admin", async () => {
-    const meRow = memberRow({
-      id: "mem-other",
-      userId: PRIMARY_USER_ID,
-      role: "admin",
-      isPrimaryAdmin: false,
-    });
-    const { db } = makeFluentDb([[meRow]]);
-    const svc = new MemberManagementService(
-      transactionRunnerFromDb(db),
-      new DrizzleLegalEntityMemberRepository(db),
-      testDomainEventSink,
-      noBidStopper,
-      noRealtime,
-    );
+const code = (promise: Promise<unknown>) =>
+  promise.then(
+    () => "ok",
+    (e: unknown) => (e instanceof MemberPermissionError ? e.code : String(e)),
+  );
 
-    let thrown: unknown;
-    try {
-      await svc.transferPrimaryAdmin(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID);
-    } catch (e) {
-      thrown = e;
-    }
-    expect(thrown).toBeInstanceOf(MemberPermissionError);
-    expect((thrown as MemberPermissionError).code).toBe("only_primary_admin_can_transfer");
-  });
+describe("MemberManagementService.updateRole", () => {
+  const team = () => [
+    member("owner", "owner", { isPrimaryAdmin: true }),
+    member("owner2", "owner"),
+    member("admin", "admin"),
+    member("agent", "buyer_agent"),
+    member("viewer", "viewer"),
+  ];
 
-  it("rejects when the target member is missing or removed", async () => {
-    const meRow = memberRow({});
-    const { db } = makeFluentDb([[meRow], []]);
-    const svc = new MemberManagementService(
-      transactionRunnerFromDb(db),
-      new DrizzleLegalEntityMemberRepository(db),
-      testDomainEventSink,
-      noBidStopper,
-      noRealtime,
-    );
-
+  it.each([
+    ["an admin cannot make someone an owner", "admin", "viewer", "owner", "owner_only"],
+    ["an admin cannot demote an owner", "admin", "owner2", "admin", "owner_only"],
+    ["nobody changes their own role", "admin", "admin", "viewer", "self"],
+    ["an admin changes other roles", "admin", "viewer", "consignor", "ok"],
+    ["an owner makes someone an owner", "owner", "admin", "owner", "ok"],
+    ["an owner demotes another owner", "owner", "owner2", "admin", "ok"],
+  ] as const)("%s", async (_label, actor, target, role, expected) => {
+    const { service } = setup(team());
     await expect(
-      svc.transferPrimaryAdmin(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID),
-    ).rejects.toMatchObject({ code: "target_member_not_found" });
+      code(service.updateRole(`user-${actor}`, ENTITY_ID, target, { role })),
+    ).resolves.toBe(expected);
   });
 
-  it("rejects self-transfer", async () => {
-    const meRow = memberRow({});
-    const { db } = makeFluentDb([
-      [meRow],
-      [meRow], // target lookup returns same row
-    ]);
-    const svc = new MemberManagementService(
-      transactionRunnerFromDb(db),
-      new DrizzleLegalEntityMemberRepository(db),
-      testDomainEventSink,
-      noBidStopper,
-      noRealtime,
-    );
-
+  it("refuses roles that cannot manage members before reading the team", async () => {
+    const { service, repo } = setup(team());
     await expect(
-      svc.transferPrimaryAdmin(PRIMARY_USER_ID, ENTITY_ID, PRIMARY_MEMBER_ID),
-    ).rejects.toMatchObject({ code: "cannot_transfer_to_self" });
+      code(service.updateRole("user-viewer", ENTITY_ID, "agent", { role: "viewer" })),
+    ).resolves.toBe("insufficient_role");
+    expect(repo.lockActiveMembers).not.toHaveBeenCalled();
   });
 
-  it("demotes the current primary BEFORE promoting the new one", async () => {
-    const meRow = memberRow({});
-    const targetRow = memberRow({
-      id: TARGET_MEMBER_ID,
-      userId: TARGET_USER_ID,
-      role: "admin",
-      isPrimaryAdmin: false,
-    });
-
-    // Order:
-    //   1. assertActorIsAdmin select (returns meRow)
-    //   2. target select (returns targetRow)
-    //   3. tx.update -> demote (returns from row, isPrimaryAdmin=false, role=admin)
-    //   4. tx.update -> promote (returns to row, isPrimaryAdmin=true, role=owner)
-    const fromAfter = memberRow({
-      isPrimaryAdmin: false,
-      role: "admin",
-    });
-    const toAfter = memberRow({
-      id: TARGET_MEMBER_ID,
-      userId: TARGET_USER_ID,
-      role: "owner",
-      isPrimaryAdmin: true,
-    });
-
-    const { db, chains } = makeFluentDb([[meRow], [targetRow], [fromAfter], [toAfter]]);
-
-    const svc = new MemberManagementService(
-      transactionRunnerFromDb(db),
-      new DrizzleLegalEntityMemberRepository(db),
-      testDomainEventSink,
-      noBidStopper,
-      noRealtime,
-    );
-    const result = await svc.transferPrimaryAdmin(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID);
-
-    expect(chains.map((c) => c.op)).toEqual([
-      "select", // assert actor
-      "select", // target lookup
-      "update", // demote current primary (must come first)
-      "update", // promote new primary
-    ]);
-    expect(result.from.isPrimaryAdmin).toBe(false);
-    expect(result.from.role).toBe("admin");
-    expect(result.to.isPrimaryAdmin).toBe(true);
-    expect(result.to.role).toBe("owner");
-  });
-
-  it("aborts the transaction if the demote update returns no row", async () => {
-    const meRow = memberRow({});
-    const targetRow = memberRow({
-      id: TARGET_MEMBER_ID,
-      userId: TARGET_USER_ID,
-      isPrimaryAdmin: false,
-    });
-    const { db, chains } = makeFluentDb([
-      [meRow],
-      [targetRow],
-      [], // demote returns nothing
-    ]);
-
-    const svc = new MemberManagementService(
-      transactionRunnerFromDb(db),
-      new DrizzleLegalEntityMemberRepository(db),
-      testDomainEventSink,
-      noBidStopper,
-      noRealtime,
-    );
+  it("answers not found for a member of another organisation", async () => {
+    const { service } = setup(team());
     await expect(
-      svc.transferPrimaryAdmin(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID),
-    ).rejects.toMatchObject({ code: "transfer_demote_failed" });
-    // We never reached the promote step.
-    expect(chains.map((c) => c.op)).toEqual(["select", "select", "update"]);
+      code(service.updateRole("user-owner", ENTITY_ID, "someone-else", { role: "viewer" })),
+    ).resolves.toBe("member_not_found");
+  });
+
+  it("keeps the organisation's last owner", async () => {
+    // Only one owner is accepted; the second is still an invitation.
+    const { service } = setup([
+      member("owner", "owner"),
+      member("invited", "owner", { acceptedAt: null }),
+      member("other", "owner", { removedAt: new Date() }),
+    ]);
+    // The pending owner cannot act, and the accepted one cannot act on themselves.
+    await expect(
+      code(service.updateRole("user-owner", ENTITY_ID, "owner", { role: "admin" })),
+    ).resolves.toBe("self");
+  });
+
+  it("clears the primary flag with the owner role and records the change", async () => {
+    const { service, byId, events } = setup(team());
+    await service.updateRole("user-owner2", ENTITY_ID, "owner", { role: "admin" });
+    expect(byId.get("owner")).toMatchObject({ role: "admin", isPrimaryAdmin: false });
+    expect(events).toEqual([
+      expect.objectContaining({
+        eventType: "legal_entity.member_role_changed",
+        payload: expect.objectContaining({ from_role: "owner", to_role: "admin" }),
+      }),
+    ]);
+  });
+
+  it("ends a buyer agent's authorisations when their role changes", async () => {
+    const { service, authorisationRevoker } = setup(team());
+    await service.updateRole("user-admin", ENTITY_ID, "agent", { role: "viewer" });
+    expect(authorisationRevoker.revokeFor).toHaveBeenCalledWith(TX, {
+      legalEntityId: ENTITY_ID,
+      memberUserId: "user-agent",
+      actorUserId: "user-admin",
+      cause: "role_changed",
+    });
+  });
+
+  it("changes nothing when the role stays the same", async () => {
+    const { service, repo, events, authorisationRevoker } = setup(team());
+    await service.updateRole("user-admin", ENTITY_ID, "agent", { role: "buyer_agent" });
+    expect(repo.updateRole).not.toHaveBeenCalled();
+    expect(authorisationRevoker.revokeFor).not.toHaveBeenCalled();
+    expect(events).toEqual([]);
   });
 });
 
 describe("MemberManagementService.removeMember", () => {
-  it("forbids removing the primary admin", async () => {
-    const meRow = memberRow({});
-    const targetRow = memberRow({
-      id: TARGET_MEMBER_ID,
-      userId: TARGET_USER_ID,
-      isPrimaryAdmin: true,
-    });
-    const { db } = makeFluentDb([[meRow], [targetRow]]);
-    const svc = new MemberManagementService(
-      transactionRunnerFromDb(db),
-      new DrizzleLegalEntityMemberRepository(db),
-      testDomainEventSink,
-      noBidStopper,
-      noRealtime,
-    );
-
-    await expect(
-      svc.removeMember(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID),
-    ).rejects.toMatchObject({ code: "cannot_remove_primary_admin" });
-  });
-
-  const agentRow = () =>
-    memberRow({
-      id: TARGET_MEMBER_ID,
-      userId: TARGET_USER_ID,
-      role: "buyer_agent",
-      isPrimaryAdmin: false,
-    });
-  const stoppedCeiling: StoppedInstruction = {
+  const team = () => [
+    member("owner", "owner", { isPrimaryAdmin: true }),
+    member("admin", "admin"),
+    member("agent", "buyer_agent"),
+  ];
+  const ceiling: StoppedInstruction = {
     kind: "auto_bid",
     id: "lot-1",
     lotId: "lot-1",
@@ -257,95 +153,132 @@ describe("MemberManagementService.removeMember", () => {
     lotNumber: 14,
     maxAmount: "6200.00",
   };
-  const stoppedAbsentee: StoppedInstruction = { ...stoppedCeiling, kind: "absentee", id: "abs-1" };
 
-  function removal(
-    targetRow: Record<string, unknown>,
-    stopFor: IRemovedMemberBidStopper["stopFor"],
-  ) {
-    const { db, chains } = makeFluentDb([[memberRow({})], [targetRow], [], []]);
-    const stopper = { stopFor: vi.fn(stopFor) };
-    const realtime = { notifyProxyCancelled: vi.fn(async () => undefined) };
-    const svc = new MemberManagementService(
-      transactionRunnerFromDb(db),
-      new DrizzleLegalEntityMemberRepository(db),
-      testDomainEventSink,
-      stopper,
-      realtime,
+  it("lets an admin remove neither an owner nor themselves", async () => {
+    const { service, repo } = setup(team());
+    await expect(code(service.removeMember("user-admin", ENTITY_ID, "owner"))).resolves.toBe(
+      "owner_only",
     );
-    return { svc, chains, stopper, realtime };
-  }
+    await expect(code(service.removeMember("user-admin", ENTITY_ID, "admin"))).resolves.toBe(
+      "self",
+    );
+    expect(repo.markRemoved).not.toHaveBeenCalled();
+  });
 
-  it("stops the member's automatic bids in the same transaction as the removal", async () => {
-    const { svc, chains, stopper, realtime } = removal(agentRow(), async () => [
-      stoppedCeiling,
-      stoppedAbsentee,
+  it("asks for the typed phrase before removing someone who runs the organisation", async () => {
+    const { service, repo } = setup(team());
+    const refused = service.removeMember("user-owner", ENTITY_ID, "admin", "remove");
+    await expect(refused).rejects.toBeInstanceOf(MemberChangeConfirmationError);
+    await expect(refused).rejects.toMatchObject({ phrase: "REMOVE Name admin" });
+    expect(repo.markRemoved).not.toHaveBeenCalled();
+
+    await service.removeMember("user-owner", ENTITY_ID, "admin", "REMOVE Name admin");
+    expect(repo.markRemoved).toHaveBeenCalledWith(TX, "admin");
+  });
+
+  it("removes a buyer agent, stops their bids and ends their authorisations at once", async () => {
+    const { service, events, bidStopper, authorisationRevoker, realtime } = setup(team(), [
+      ceiling,
     ]);
-    await svc.removeMember(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID);
+    await service.removeMember("user-admin", ENTITY_ID, "agent");
 
-    // Actor check, target lookup, then inside the transaction: mark removed, the stopper (its own
-    // writes are behind the fake), and the member_removed event.
-    expect(chains.map((c) => c.op)).toEqual(["select", "select", "update", "insert"]);
-    expect(stopper.stopFor).toHaveBeenCalledWith(expect.anything(), {
+    const stopInput = {
       legalEntityId: ENTITY_ID,
-      memberUserId: TARGET_USER_ID,
-      actorUserId: PRIMARY_USER_ID,
+      memberUserId: "user-agent",
+      actorUserId: "user-admin",
+    };
+    expect(bidStopper.stopFor).toHaveBeenCalledWith(TX, stopInput);
+    expect(authorisationRevoker.revokeFor).toHaveBeenCalledWith(TX, {
+      ...stopInput,
+      cause: "member_removed",
     });
-    // Open lot pages hear about the auto-bid ceiling; absentee bids have no live state.
-    expect(realtime.notifyProxyCancelled).toHaveBeenCalledTimes(1);
+    expect(events.map((e) => e.eventType)).toEqual(["legal_entity.member_removed"]);
     expect(realtime.notifyProxyCancelled).toHaveBeenCalledWith(
       "lot-1",
-      TARGET_USER_ID,
+      "user-agent",
       "member_removed",
     );
   });
 
-  it("removes nothing when stopping the bids fails, so the removal is all or nothing", async () => {
-    const { svc, chains, realtime } = removal(agentRow(), async () => {
-      throw new Error("db down");
-    });
-    await expect(svc.removeMember(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID)).rejects.toThrow(
-      "db down",
-    );
-    // The member_removed event was never written and no notice went out.
-    expect(chains.map((c) => c.op)).toEqual(["select", "select", "update"]);
+  it("removes nothing when stopping the bids fails", async () => {
+    const { service, events, bidStopper, realtime } = setup(team());
+    bidStopper.stopFor.mockRejectedValueOnce(new Error("db down"));
+    await expect(service.removeMember("user-admin", ENTITY_ID, "agent")).rejects.toThrow("db down");
+    expect(events).toEqual([]);
     expect(realtime.notifyProxyCancelled).not.toHaveBeenCalled();
   });
 
-  it("treats a retried removal as done: no second removal, only leftovers are stopped", async () => {
-    const { svc, chains, stopper } = removal(
-      { ...agentRow(), removedAt: new Date() },
-      async () => [],
-    );
-    await svc.removeMember(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID);
-    expect(stopper.stopFor).toHaveBeenCalledTimes(1);
-    // No mark-removed update and no second member_removed event.
-    expect(chains.map((c) => c.op)).toEqual(["select", "select"]);
+  it("treats a retried removal as done, only ending what is left running", async () => {
+    const { service, repo, events, bidStopper, authorisationRevoker } = setup([
+      ...team().filter((m) => m.id !== "agent"),
+      member("agent", "buyer_agent", { removedAt: new Date() }),
+    ]);
+    await service.removeMember("user-admin", ENTITY_ID, "agent");
+    expect(repo.markRemoved).not.toHaveBeenCalled();
+    expect(bidStopper.stopFor).toHaveBeenCalledTimes(1);
+    expect(authorisationRevoker.revokeFor).toHaveBeenCalledTimes(1);
+    expect(events).toEqual([]);
   });
 });
 
-describe("MemberManagementService.updateRole", () => {
-  it("forbids demoting the primary admin", async () => {
-    const meRow = memberRow({});
-    const targetRow = memberRow({
-      id: TARGET_MEMBER_ID,
-      userId: TARGET_USER_ID,
-      isPrimaryAdmin: true,
-      role: "owner",
-    });
-    const { db } = makeFluentDb([[meRow], [targetRow]]);
-    const svc = new MemberManagementService(
-      transactionRunnerFromDb(db),
-      new DrizzleLegalEntityMemberRepository(db),
-      testDomainEventSink,
-      noBidStopper,
-      noRealtime,
+describe("MemberManagementService.transferOwnership", () => {
+  const team = () => [
+    member("owner", "owner", { isPrimaryAdmin: true }),
+    member("admin", "admin"),
+    member("agent", "buyer_agent"),
+    member("invited", "viewer", { acceptedAt: null }),
+  ];
+  const phrase = (id: string) => `TRANSFER PRIMARY TO Name ${id}`;
+
+  it("is for owners only", async () => {
+    const { service } = setup(team());
+    await expect(
+      code(service.transferOwnership("user-admin", ENTITY_ID, "agent", phrase("agent"))),
+    ).resolves.toBe("owner_only");
+  });
+
+  it("never goes to oneself or to someone who has not joined", async () => {
+    const { service } = setup(team());
+    await expect(
+      code(service.transferOwnership("user-owner", ENTITY_ID, "owner", phrase("owner"))),
+    ).resolves.toBe("self");
+    await expect(
+      code(service.transferOwnership("user-owner", ENTITY_ID, "invited", phrase("invited"))),
+    ).resolves.toBe("target_member_not_found");
+  });
+
+  it("needs the typed phrase", async () => {
+    const { service, repo } = setup(team());
+    await expect(
+      service.transferOwnership("user-owner", ENTITY_ID, "admin", "transfer"),
+    ).rejects.toBeInstanceOf(MemberChangeConfirmationError);
+    expect(repo.updateRole).not.toHaveBeenCalled();
+  });
+
+  it("makes the target the owner and the previous owner an admin, flag first", async () => {
+    const { service, repo, byId, events, authorisationRevoker } = setup(team());
+    const result = await service.transferOwnership(
+      "user-owner",
+      ENTITY_ID,
+      "agent",
+      phrase("agent"),
     );
 
-    await expect(
-      svc.updateRole(PRIMARY_USER_ID, ENTITY_ID, TARGET_MEMBER_ID, {
-        role: "admin",
-      }),
-    ).rejects.toMatchObject({ code: "cannot_demote_primary_admin" });
+    expect(repo.updateRole.mock.calls.map(([, id, change]) => [id, change])).toEqual([
+      ["owner", { role: "admin", isPrimaryAdmin: false }],
+      ["agent", { role: "owner", isPrimaryAdmin: true }],
+    ]);
+    expect(byId.get("agent")?.role).toBe("owner");
+    expect(result.from.role).toBe("admin");
+    expect(result.to.role).toBe("owner");
+    // A buyer agent who becomes owner no longer bids through an authorisation.
+    expect(authorisationRevoker.revokeFor).toHaveBeenCalledWith(
+      TX,
+      expect.objectContaining({ memberUserId: "user-agent", cause: "role_changed" }),
+    );
+    expect(events.map((e) => [e.eventType, (e.payload as { to_role: string }).to_role])).toEqual([
+      ["legal_entity.member_role_changed", "admin"],
+      ["legal_entity.member_role_changed", "owner"],
+    ]);
   });
 });

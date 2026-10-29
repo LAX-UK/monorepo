@@ -30,7 +30,7 @@ export function stubIdentityRouteServices(
       inviteMember: vi.fn(),
       updateMemberRole: vi.fn(),
       removeMember: vi.fn(),
-      transferPrimaryAdmin: vi.fn(),
+      transferOwnership: vi.fn(),
       acceptInvitationByToken: vi.fn(),
     },
     organizationHttp: {

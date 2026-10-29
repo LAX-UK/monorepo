@@ -14,11 +14,12 @@ const categoryId = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 function mockContainer(
   overrides: Partial<ReturnType<typeof stubSubmissionRouteServices>> = {},
   role: LegalEntityMemberRole = "owner",
+  isImpersonation = false,
 ) {
   return {
     userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
     requireSubmissionsLegalEntityContext: vi.fn((c, next) => {
-      c.set("legalEntityContext", { legalEntityId: entityId, role });
+      c.set("legalEntityContext", { legalEntityId: entityId, role, isImpersonation });
       return next();
     }),
     submissionRoutes: stubSubmissionRouteServices(overrides),
@@ -160,8 +161,119 @@ describe("submissions API contract", () => {
       async (role) => {
         const { res, createDraft } = await post(role);
         expect(res.status).toBe(403);
-        expect(await res.json()).toEqual({ error: "insufficient_entity_role" });
+        expect(await res.json()).toMatchObject({ error: "insufficient_entity_role" });
         expect(createDraft).not.toHaveBeenCalled();
+      },
+    );
+  });
+
+  describe("who may change a submission, per route", () => {
+    const documentId = "44444444-4444-4444-8444-444444444444";
+    const uploadObjectId = "55555555-5555-4555-8555-555555555555";
+    const ok = { status: 200, body: { data: { id: submissionId } } };
+    const routes = [
+      {
+        name: "PATCH /:id",
+        handler: "patch",
+        service: "sellerHttp",
+        request: { method: "PATCH", path: `/${submissionId}`, body: { title: "Edited" } },
+      },
+      {
+        name: "POST /:id/submit",
+        handler: "submitForReview",
+        service: "sellerHttp",
+        request: { method: "POST", path: `/${submissionId}/submit` },
+      },
+      {
+        name: "POST /:id/documents",
+        handler: "attachForViewer",
+        service: "documentHttp",
+        request: {
+          method: "POST",
+          path: `/${submissionId}/documents`,
+          body: { kind: "provenance", uploadObjectId },
+        },
+      },
+      {
+        name: "DELETE /:id/documents/:documentId",
+        handler: "removeForViewer",
+        service: "documentHttp",
+        request: { method: "DELETE", path: `/${submissionId}/documents/${documentId}` },
+      },
+      {
+        name: "POST /:id/withdraw",
+        handler: "withdraw",
+        service: "sellerHttp",
+        request: { method: "POST", path: `/${submissionId}/withdraw` },
+      },
+    ] as const;
+
+    async function call(
+      route: (typeof routes)[number],
+      role: LegalEntityMemberRole,
+      isImpersonation = false,
+    ) {
+      const handler = vi.fn().mockResolvedValue(ok);
+      const container = mockContainer(
+        { [route.service]: { [route.handler]: handler } } as never,
+        role,
+        isImpersonation,
+      );
+      const authenticator: IAuthenticator = {
+        getSessionUser: vi
+          .fn()
+          .mockResolvedValue({ id: "u1", role: "client", scopes: ["bid.write"] }),
+      };
+      const app = new Hono();
+      app.route(
+        "/submissions",
+        createSubmissionRoutes(container, authenticator, passThroughAccountOnboarding),
+      );
+      const body = "body" in route.request ? route.request.body : undefined;
+      const res = await app.request(`http://t/submissions${route.request.path}`, {
+        method: route.request.method,
+        headers: { "Content-Type": "application/json" },
+        ...(body ? { body: JSON.stringify(body) } : {}),
+      });
+      return { res, handler };
+    }
+
+    /** Who passes each route's gate; which submission they may change is the service's call. */
+    const PASSES: Record<(typeof routes)[number]["name"], LegalEntityMemberRole[]> = {
+      "PATCH /:id": ["owner", "admin", "consignor"],
+      "POST /:id/submit": ["owner", "admin", "consignor"],
+      "POST /:id/documents": ["owner", "admin", "consignor"],
+      "DELETE /:id/documents/:documentId": ["owner", "admin", "consignor"],
+      "POST /:id/withdraw": ["owner", "admin", "consignor"],
+    };
+    const roles = ["owner", "admin", "consignor", "finance", "viewer", "buyer_agent"] as const;
+
+    it.each(routes.flatMap((route) => roles.map((role) => [route.name, role, route] as const)))(
+      "%s as %s",
+      async (_name, role, route) => {
+        const { res, handler } = await call(route, role);
+        if (PASSES[route.name].includes(role)) {
+          expect(res.status).toBe(200);
+          expect(handler).toHaveBeenCalled();
+          return;
+        }
+        expect(res.status).toBe(403);
+        const body = (await res.json()) as { error: string; message: string };
+        expect(body.error).toBe("insufficient_entity_role");
+        expect(body.message).toMatch(/^(Your role|Only an owner)/);
+        expect(handler).not.toHaveBeenCalled();
+      },
+    );
+
+    it.each(routes.map((route) => [route.name, route] as const))(
+      "%s is read-only for support staff viewing as the client",
+      async (_name, route) => {
+        const { res, handler } = await call(route, "admin", true);
+        expect(res.status).toBe(403);
+        expect(((await res.json()) as { message: string }).message).toBe(
+          "You're viewing this organisation as LAX support, so changes are turned off.",
+        );
+        expect(handler).not.toHaveBeenCalled();
       },
     );
   });

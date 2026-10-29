@@ -280,6 +280,7 @@ export {
 export {
   entityActorCan,
   entityRoleCan,
+  rolesWithCapability,
   type EntityActor,
   type EntityCapability,
 } from "./entity-capabilities.js";
@@ -367,6 +368,35 @@ export {
   type StandingInstructionCandidate,
   type StandingInstructionKind,
 } from "./member-removal.js";
+export {
+  AUTHORISATION_REVOCATION_REASON,
+  MEMBER_CHANGE_DENIAL_MESSAGE,
+  OWNER_ROLE,
+  STEPPED_DOWN_OWNER_ROLE,
+  authorisationRevocationFor,
+  countOwners,
+  holdsOwnership,
+  memberChangeConfirmationPhrase,
+  memberChangePolicy,
+  memberChangeTarget,
+  type AuthorisationRevocationCause,
+  type MemberChange,
+  type MemberChangeAction,
+  type MemberChangeActor,
+  type MemberChangeConfirmation,
+  type MemberChangeDecision,
+  type MemberChangeDenial,
+  type MemberChangeTarget,
+} from "./member-change-policy.js";
+export {
+  SUBMISSION_MUTATIONS,
+  submissionMutationPolicy,
+  submissionRoleRefusal,
+  type SubmissionMutation,
+  type SubmissionMutationActor,
+  type SubmissionMutationDecision,
+  type SubmissionMutationDenial,
+} from "./submission-mutation-policy.js";
 export {
   canSeeConsignedLot,
   canSeeSubmission,
