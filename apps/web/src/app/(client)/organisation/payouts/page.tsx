@@ -46,31 +46,33 @@ export default async function OrganisationPayoutsPage() {
       <OrgTabSectionHeader>
         <SectionHeader heading={<DisplayHeading as="h2">Payout setup</DisplayHeading>} />
       </OrgTabSectionHeader>
-      <p className="font-body text-sm text-on-surface-variant">
-        Two steps, both on this page, so {member.displayName} can be paid when its works sell.
-      </p>
-      <PayoutSetupSteps
-        steps={payoutSetupSteps("organisation", {
-          identityChecked: false,
-          payoutsReady: connectRes.ok ? connectRes.data.payoutsEnabled : false,
-        })}
-      />
       {connectFailure ? (
         <DashboardSliceErrorAlert failure={connectFailure} />
       ) : (
-        <ConnectWorkspace
-          publishableKey={clientConfig.publishableKey}
-          connectEnforced={clientConfig.connectEnforced}
-          status={connectRes.ok ? connectRes.data : null}
-          syncDegraded={connectRes.ok ? Boolean(connectRes.data.syncDegraded) : false}
-          legalEntityId={id}
-          memberRole={member.role}
-          entityStatus={entity?.status ?? member.status}
-          kycApproved
-          isLaxManaged={entity?.isLaxManaged ?? false}
-          returnPath={organisationHref("payouts")}
-          showDashboardLink={false}
-        />
+        <>
+          <p className="font-body text-sm text-on-surface-variant">
+            Two steps, both on this page, so {member.displayName} can be paid when its works sell.
+          </p>
+          <PayoutSetupSteps
+            steps={payoutSetupSteps("organisation", {
+              identityChecked: false,
+              payoutsReady: connectRes.ok ? connectRes.data.payoutsEnabled : false,
+            })}
+          />
+          <ConnectWorkspace
+            publishableKey={clientConfig.publishableKey}
+            connectEnforced={clientConfig.connectEnforced}
+            status={connectRes.ok ? connectRes.data : null}
+            syncDegraded={connectRes.ok ? Boolean(connectRes.data.syncDegraded) : false}
+            legalEntityId={id}
+            memberRole={member.role}
+            entityStatus={entity?.status ?? member.status}
+            kycApproved
+            isLaxManaged={entity?.isLaxManaged ?? false}
+            returnPath={organisationHref("payouts")}
+            showDashboardLink={false}
+          />
+        </>
       )}
     </div>
   );

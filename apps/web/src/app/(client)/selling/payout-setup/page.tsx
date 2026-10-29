@@ -74,15 +74,19 @@ export default async function SellerPayoutSetupPage() {
         title="Payout setup"
         hideTitleOnMobile
         hideDescriptionOnMobile
-        description="Two steps, both on this page. We pay you when a work sells."
+        {...(sellerEntityId && !connectFailure
+          ? { description: "Two steps, both on this page. We pay you when a work sells." }
+          : {})}
       />
 
-      <PayoutSetupSteps
-        steps={payoutSetupSteps("personal", {
-          identityChecked: kycApproved,
-          payoutsReady: status?.payoutsEnabled ?? false,
-        })}
-      />
+      {sellerEntityId && !connectFailure ? (
+        <PayoutSetupSteps
+          steps={payoutSetupSteps("personal", {
+            identityChecked: kycApproved,
+            payoutsReady: status?.payoutsEnabled ?? false,
+          })}
+        />
+      ) : null}
 
       {!sellerEntityId ? <SellerProfileUnavailableAlert /> : null}
 
