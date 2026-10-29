@@ -12,7 +12,6 @@ describe("OrganisationCard", () => {
           subkind: "gallery",
           status: "lead",
           role: "owner",
-          isPrimaryAdmin: true,
         }}
         isActing={false}
       />,
@@ -34,7 +33,6 @@ describe("OrganisationCard", () => {
           subkind: "gallery",
           status: "connect_pending",
           role: "owner",
-          isPrimaryAdmin: true,
         }}
         isActing={false}
         resumeHref="/onboarding/organisation/step/connect?entityId=org-1"
@@ -55,7 +53,6 @@ describe("OrganisationCard", () => {
           subkind: "gallery",
           status: "approved",
           role: "admin",
-          isPrimaryAdmin: false,
         }}
         isActing
       />,

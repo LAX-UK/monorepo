@@ -41,15 +41,11 @@ export interface IMemberManagementService {
   ): Promise<LegalEntityMember>;
 
   /**
-   * Soft-deletes the membership (`removed_at = now()`), stops the member's automatic bids and
-   * ends their buyer-agent authorisations. A retried removal only stops what is left running.
+   * Soft-deletes the membership (`removed_at = now()`), stops the member's automatic and
+   * absentee bids and ends their buyer-agent authorisations; placed bids stand. A retried
+   * removal only stops what is left running.
    */
-  removeMember(
-    actingUserId: string,
-    legalEntityId: string,
-    memberId: string,
-    confirmationPhrase?: string,
-  ): Promise<void>;
+  removeMember(actingUserId: string, legalEntityId: string, memberId: string): Promise<void>;
 
   /**
    * Hands the acting owner's ownership to another accepted member: the target becomes an owner

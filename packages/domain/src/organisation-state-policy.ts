@@ -268,6 +268,17 @@ export function organisationJoinRefusal(
   return status === "restricted" ? ORGANISATION_RESTRICTED_MEMBERS : ORGANISATION_CLOSED_TO_MEMBERS;
 }
 
+/**
+ * The refusal for inviting someone to an organisation in `status`, or `null` while it may
+ * invite. The same refusals as joining, so the sender and the person invited read one reason.
+ */
+export function organisationInviteRefusal(
+  status: LegalEntityStatus,
+): { code: string; message: string } | null {
+  if (organisationStateAllows(status, "invite")) return null;
+  return status === "restricted" ? ORGANISATION_RESTRICTED_MEMBERS : ORGANISATION_CLOSED_TO_MEMBERS;
+}
+
 const NO_CAPABILITIES: ReadonlySet<EntityCapability> = new Set();
 
 /** Whether the organisation's state allows `action`, whoever asks. */

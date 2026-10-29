@@ -165,14 +165,9 @@ describe("MemberManagementService.removeMember", () => {
     expect(repo.markRemoved).not.toHaveBeenCalled();
   });
 
-  it("asks for the typed phrase before removing someone who runs the organisation", async () => {
+  it("removes someone who runs the organisation without a typed phrase", async () => {
     const { service, repo } = setup(team());
-    const refused = service.removeMember("user-owner", ENTITY_ID, "admin", "remove");
-    await expect(refused).rejects.toBeInstanceOf(MemberChangeConfirmationError);
-    await expect(refused).rejects.toMatchObject({ phrase: "REMOVE Name admin" });
-    expect(repo.markRemoved).not.toHaveBeenCalled();
-
-    await service.removeMember("user-owner", ENTITY_ID, "admin", "REMOVE Name admin");
+    await service.removeMember("user-owner", ENTITY_ID, "admin");
     expect(repo.markRemoved).toHaveBeenCalledWith(TX, "admin");
   });
 
@@ -228,7 +223,7 @@ describe("MemberManagementService.transferOwnership", () => {
     member("agent", "buyer_agent"),
     member("invited", "viewer", { acceptedAt: null }),
   ];
-  const phrase = (id: string) => `TRANSFER PRIMARY TO Name ${id}`;
+  const phrase = (id: string) => `Transfer to Name ${id}`;
 
   it("is for owners only", async () => {
     const { service } = setup(team());

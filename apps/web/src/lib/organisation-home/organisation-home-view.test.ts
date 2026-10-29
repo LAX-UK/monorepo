@@ -93,7 +93,7 @@ describe("organisationHomeView", () => {
     const requested = { ...model, state: organisationStatePolicy("docs_requested", owner) };
     expect(organisationHomeView(requested, ctx).banner?.action?.label).toBe("Send documents");
     const withTask = organisationHomeView({ ...requested, tasks: [{ kind: "documents" }] }, ctx);
-    expect(withTask.banner).toMatchObject({ title: "Documents needed.", action: null });
+    expect(withTask.banner).toMatchObject({ title: "Documents requested.", action: null });
     expect(withTask.needsYou?.[0]?.action.label).toBe("Open documents");
   });
 
@@ -230,16 +230,16 @@ describe("stopped bids activity", () => {
 describe("member role copy", () => {
   it("explains a role in one paragraph from its abilities", () => {
     expect(roleExplanation("consignor", "Northbank Gallery")).toBe(
-      "As a Consignor at Northbank Gallery, you can send works to sell for the organisation and follow their progress. Anything else is done by its owners and admins. Your own bids, purchases and sales stay in your personal account; switch between them from the account menu.",
+      "As a consignor at Northbank Gallery, you can send works to sell for the organisation and follow their progress. Anything else is done by its owners and admins. Your own bids, purchases and sales stay in your personal account; switch between them from the account menu.",
     );
   });
 
   it("reads naturally for every role", () => {
     expect(welcomeHeadline("admin", "Northbank Gallery")).toBe(
-      "You're now an Admin at Northbank Gallery.",
+      "You're now an admin at Northbank Gallery.",
     );
     expect(welcomeHeadline("finance", "Northbank Gallery")).toBe(
-      "You're now a Finance member at Northbank Gallery.",
+      "You're now a finance member at Northbank Gallery.",
     );
     expect(roleExplanation("owner", "Northbank Gallery")).not.toContain("owners and admins");
   });

@@ -2,9 +2,9 @@ import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardDetailHeader } from "@/components/dashboard/primitives/dashboard-detail-header";
 import { initials } from "@/components/organisations/initials";
 import { InvitationReviewActions } from "@/components/organisations/invitation-review-actions";
-import { roleLabel } from "@/components/organisations/labels";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { createPendingInvitationsGateway } from "@/lib/legal-entity/pending-invitations.gateway.server";
+import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { Surface } from "@auction/ui/components/surface";
 import { notFound } from "next/navigation";
@@ -45,7 +45,9 @@ export default async function InvitationReviewPage({
         backLabel="Invitations"
         eyebrow="Invitation"
         title={invitation.orgDisplayName}
-        badges={<StatusBadge variant="info">{roleLabel(invitation.roleOffered)}</StatusBadge>}
+        badges={
+          <StatusBadge variant="info">{organisationRoleLabel(invitation.roleOffered)}</StatusBadge>
+        }
       />
       <Surface variant="section" padding="lg" className="space-y-4">
         <div className="flex items-start gap-3">

@@ -518,6 +518,7 @@ export function createContainer(env: Env): Container {
       invitationLifecycleService: platform.invitationLifecycleService,
       legalEntityAccessService: platform.legalEntityAccessService,
       memberManagementService: platform.memberManagementService,
+      organisationInvitationService: platform.organisationInvitationService,
       organizationOnboardingService: platform.organizationOnboardingService,
       organizationOnboardingFlowService: platform.organizationOnboardingFlowService,
       orgTwoFactorPolicy: twoFactorPolicy,

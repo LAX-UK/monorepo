@@ -717,6 +717,7 @@ export { legalEntityNotificationAudienceRoles } from "./legal-entity-notificatio
 export type {
   EntityInvitationCreate,
   EntityMemberCreate,
+  EntityPendingInvitation,
   IEntityInvitationRepository,
 } from "./entity-invitation.repository.js";
 

@@ -1,4 +1,4 @@
-import { roleGroupsSentence } from "@/lib/organisations/legal-entity-labels";
+import { organisationRoleGroupsSentence } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import {
   type EntityActor,
   type EntityCapability,
@@ -69,7 +69,7 @@ export function requireOrganisationTab(
   return {
     kind: "forbidden",
     label: spec.label,
-    openedBy: roleGroupsSentence(rolesWithCapability(spec.capability)),
+    openedBy: organisationRoleGroupsSentence(rolesWithCapability(spec.capability)),
     fallback: organisationTabsFor(actor)[0] ?? null,
   };
 }

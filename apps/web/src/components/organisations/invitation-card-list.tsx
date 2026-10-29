@@ -1,5 +1,5 @@
-import { roleLabel } from "@/components/organisations/labels";
 import type { PendingInvitationRow } from "@/lib/legal-entity/pending-invitations.gateway.server";
+import { organisationRoleLabel } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import { Button } from "@auction/ui/components/button";
 import { Card, CardFooter, CardHeader, CardTitle } from "@auction/ui/components/card";
 import Link from "next/link";
@@ -28,7 +28,7 @@ export function InvitationCardList({ invitations }: ListProps) {
             <CardHeader className="pb-2">
               <CardTitle className="text-base font-semibold">{inv.orgDisplayName}</CardTitle>
               <p className="text-sm text-on-surface-variant">
-                From {inv.inviterName} · {roleLabel(inv.roleOffered)}
+                From {inv.inviterName} · {organisationRoleLabel(inv.roleOffered)}
               </p>
               <p className="text-xs text-on-surface-variant">
                 Expires {formatExpiry(inv.expiresAt)}

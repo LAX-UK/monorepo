@@ -16,10 +16,10 @@ export type MemberForControls = {
 
 /** What the person may do to one member, straight from the member change policy. */
 export type MemberRowControls = {
-  /** The roles offered in the role picker, the current one first; one or none is read-only. */
+  /** The roles offered in the role picker, the current one first; empty means read-only. */
   roleOptions: LegalEntityMemberRole[];
-  /** Removal, with the phrase to type when it must be confirmed; `null` when not offered. */
-  remove: { confirmPhrase: string | null } | null;
+  /** Whether the person may remove this member (confirmed in a dialog). */
+  remove: boolean;
   /** Handing ownership to this member, with the phrase to type; `null` when not offered. */
   transfer: { confirmPhrase: string } | null;
 };
@@ -36,17 +36,10 @@ export function memberRowControls(
       role !== member.role &&
       memberChangePolicy(actor, { action: "change_role", target, newRole: role }).allowed,
   );
-  const removal = memberChangePolicy(actor, { action: "remove", target });
   const transfer = memberChangePolicy(actor, { action: "transfer_ownership", target });
   return {
     roleOptions: otherRoles.length > 0 ? [member.role, ...otherRoles] : [],
-    remove: removal.allowed
-      ? {
-          confirmPhrase: removal.confirmation
-            ? memberChangeConfirmationPhrase(removal.confirmation, member.user.name)
-            : null,
-        }
-      : null,
+    remove: memberChangePolicy(actor, { action: "remove", target }).allowed,
     // Ownership goes only to someone who has joined.
     transfer:
       transfer.allowed && member.acceptedAt
@@ -60,6 +53,14 @@ export function inviteRoleOptions(actor: MemberChangeActor): LegalEntityMemberRo
   return legalEntityMemberRoles.filter(
     (role) => memberChangePolicy(actor, { action: "invite", newRole: role }).allowed,
   );
+}
+
+/** Whether the person may resend or withdraw an invitation for `role` (as if sending it). */
+export function canManageInvitation(
+  actor: MemberChangeActor,
+  role: LegalEntityMemberRole,
+): boolean {
+  return memberChangePolicy(actor, { action: "invite", newRole: role }).allowed;
 }
 
 /** Why the person can see the team but change nothing, or `null` when they can make changes. */

@@ -1,5 +1,5 @@
 import type { AccountScope } from "@/lib/account-scope/account-scope";
-import { roleGroupsSentence } from "@/lib/organisations/legal-entity-labels";
+import { organisationRoleGroupsSentence } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import {
   type BuyingRecordScope,
   type EntityActor,
@@ -75,7 +75,7 @@ export function buyingPageView(scope: AccountScope, page: BuyingPage): BuyingPag
     return {
       kind: "forbidden",
       label: spec.label,
-      openedBy: roleGroupsSentence(
+      openedBy: organisationRoleGroupsSentence(
         legalEntityMemberRoles.filter((role) => spec.scope({ role }) !== null),
       ),
     };

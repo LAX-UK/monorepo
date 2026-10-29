@@ -194,7 +194,7 @@ export type {
   DateRangePreset,
   DateRangeValue,
 } from "./components/ui/date-range-picker.js";
-export { Toaster } from "./components/ui/sonner.js";
+export { TOAST_SUCCESS_COLOURS, Toaster } from "./components/ui/sonner.js";
 export { toast } from "sonner";
 export { SidebarInset, SidebarTrigger } from "./components/ui/sidebar.js";
 export { FilterChip } from "./components/ui/filter-chip.js";

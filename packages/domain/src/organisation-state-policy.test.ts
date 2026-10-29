@@ -5,8 +5,11 @@ import { buyerEntityCanBid, buyerEntityCanRegister } from "./buyer-entity-bid-el
 import { entityCapabilitiesOf } from "./entity-capabilities.js";
 import {
   ORGANISATION_ACTIONS,
+  ORGANISATION_CLOSED_TO_MEMBERS,
+  ORGANISATION_RESTRICTED_MEMBERS,
   type OrganisationAction,
   organisationBannerActors,
+  organisationInviteRefusal,
   organisationStatePolicy,
   organisationUnsoldChoiceRefusal,
 } from "./organisation-state-policy.js";
@@ -208,5 +211,18 @@ describe("who can act on a banner", () => {
       const asked = organisationStatePolicy("docs_requested", forRole(role)).banner?.audience;
       expect(asked === "act").toBe(organisationBannerActors("documents_requested").includes(role));
     }
+  });
+});
+
+describe("inviting people", () => {
+  it.each(legalEntityStatuses)("refuses exactly when %s does not allow inviting", (status) => {
+    const refusal = organisationInviteRefusal(status);
+    expect(refusal === null).toBe(ALLOWED[status].includes("invite"));
+  });
+
+  it("gives a restricted organisation its own reason and a closed one the closed reason", () => {
+    expect(organisationInviteRefusal("restricted")).toBe(ORGANISATION_RESTRICTED_MEMBERS);
+    expect(organisationInviteRefusal("rejected")).toBe(ORGANISATION_CLOSED_TO_MEMBERS);
+    expect(organisationInviteRefusal("archived")).toBe(ORGANISATION_CLOSED_TO_MEMBERS);
   });
 });

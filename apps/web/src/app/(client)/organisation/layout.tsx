@@ -2,7 +2,7 @@ import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
-import { statusBadgeVariant, statusLabel, subkindLabel } from "@/components/organisations/labels";
+import { subkindLabel } from "@/components/organisations/labels";
 import { OrganisationSettingsUnavailable } from "@/components/organisations/organisation-settings-unavailable";
 import { OrganisationStateBannerForRoute } from "@/components/organisations/organisation-state-banner-for-route";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
@@ -12,6 +12,7 @@ import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { organisationTabsFor } from "@/lib/navigation/organisation-tabs";
 import { loadOrganisationStateBanner } from "@/lib/organisations/organisation-state-banner.server";
+import { organisationStatusView } from "@/lib/presenters/organisation-status/organisation-status-presentation";
 import { StatusBadge } from "@auction/ui/components/status-badge";
 import { notFound, redirect } from "next/navigation";
 import type { ReactNode } from "react";
@@ -42,7 +43,7 @@ export default async function OrganisationLayout({ children }: { children: React
   if (access.kind === "forbidden") {
     return (
       <DashboardPage>
-        <div className="mx-auto max-w-5xl space-y-6">
+        <div className="space-y-6">
           <DashboardPageHeader title="Organisation" />
           <DashboardSliceErrorAlert failure={access.failure} />
         </div>
@@ -63,20 +64,22 @@ export default async function OrganisationLayout({ children }: { children: React
 
   // The same state banner as Home, for the same audience: only people who can act are asked.
   const banner = entity ? await loadOrganisationStateBanner(active.actor, entity) : null;
+  const status = organisationStatusView(member.status);
 
   return (
     <DashboardPage>
-      <div className="mx-auto max-w-5xl space-y-6">
+      <div className="space-y-6">
         <DashboardPageHeader
           title={member.displayName}
           description="Your organisation's details, team and settings."
           hideDescriptionOnMobile
           actions={
-            <div className="flex flex-wrap items-center gap-2">
-              <StatusBadge variant={statusBadgeVariant(member.status)}>
-                {statusLabel(member.status)}
-              </StatusBadge>
-              <StatusBadge variant="neutral">{subkindLabel(member.subkind)}</StatusBadge>
+            // The state is a status; the organisation's type is a plain fact beside it.
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+              <StatusBadge variant={status.tone}>{status.label}</StatusBadge>
+              <span className="font-body text-sm leading-5 text-on-surface-variant">
+                {subkindLabel(member.subkind)}
+              </span>
             </div>
           }
         />

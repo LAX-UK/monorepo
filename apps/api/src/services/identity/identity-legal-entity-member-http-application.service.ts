@@ -17,6 +17,8 @@ import {
   MemberPermissionError,
 } from "../interfaces/member-management.js";
 import type { IMemberManagementService } from "../interfaces/member-management.js";
+import type { IOrganisationInvitationService } from "../interfaces/organisation-invitations.js";
+import { INVITATION_NOT_RESTORABLE } from "../invitation/organisation-invitation.service.js";
 import type { UserService } from "../user.service.js";
 
 function permissionErrorStatus(code: string): number {
@@ -26,6 +28,7 @@ function permissionErrorStatus(code: string): number {
     case "invitation_email_mismatch":
       return 403;
     case "already_a_member":
+    case INVITATION_NOT_RESTORABLE:
       return 409;
     case "member_not_found":
     case "target_member_not_found":
@@ -56,9 +59,8 @@ function permissionOutcome(code: string): IdentityRouteOutcome<never> {
   return identityRouteCodeErr(code, permissionErrorStatus(code));
 }
 
-/** The codes the confirmation dialogs already read, per kind of change. */
+/** The code the confirmation dialog reads, per kind of typed confirmation. */
 const CONFIRMATION_CODE = {
-  remove: "confirmation_required",
   transfer_ownership: "confirmation_mismatch",
 } as const;
 
@@ -85,7 +87,49 @@ export class IdentityLegalEntityMemberHttpApplicationService
     private readonly invitationLifecycleService: IInvitationLifecycleService,
     private readonly orgModuleGate: OrgModuleGate,
     private readonly userService: UserService,
+    private readonly organisationInvitations: IOrganisationInvitationService,
   ) {}
+
+  async listInvitations(input: { legalEntityId: string }): Promise<
+    IdentityRouteOutcome<unknown[]>
+  > {
+    const invitations = await this.organisationInvitations.listPending(input.legalEntityId);
+    return { kind: "ok", data: invitations };
+  }
+
+  async withdrawInvitation(input: {
+    userId: string;
+    legalEntityId: string;
+    invitationId: string;
+  }): Promise<IdentityRouteOutcome<{ withdrawn: true }>> {
+    try {
+      await this.organisationInvitations.withdraw(
+        input.userId,
+        input.legalEntityId,
+        input.invitationId,
+      );
+      return { kind: "ok", data: { withdrawn: true } };
+    } catch (err) {
+      return memberChangeOutcome(err);
+    }
+  }
+
+  async restoreInvitation(input: {
+    userId: string;
+    legalEntityId: string;
+    invitationId: string;
+  }): Promise<IdentityRouteOutcome<{ restored: true }>> {
+    try {
+      await this.organisationInvitations.restore(
+        input.userId,
+        input.legalEntityId,
+        input.invitationId,
+      );
+      return { kind: "ok", data: { restored: true } };
+    } catch (err) {
+      return memberChangeOutcome(err);
+    }
+  }
 
   async listMembers(input: { legalEntityId: string }): Promise<IdentityRouteOutcome<unknown[]>> {
     const members = await this.memberManagementService.listMembers(input.legalEntityId);
@@ -132,14 +176,12 @@ export class IdentityLegalEntityMemberHttpApplicationService
     userId: string;
     legalEntityId: string;
     memberId: string;
-    confirmationPhrase?: string;
   }): Promise<IdentityRouteOutcome<{ removed: true }>> {
     try {
       await this.memberManagementService.removeMember(
         input.userId,
         input.legalEntityId,
         input.memberId,
-        input.confirmationPhrase,
       );
       return { kind: "ok", data: { removed: true } };
     } catch (err) {

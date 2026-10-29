@@ -2,8 +2,10 @@ import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice
 import { BuyerAgentsSection } from "@/components/legal-entity/buyer-agents/buyer-agents-section";
 import { InviteMemberForm } from "@/components/legal-entity/invite-member-form";
 import { MemberList } from "@/components/legal-entity/member-list";
+import { InvitesClosed } from "@/components/legal-entity/members/invites-closed";
+import { PendingInvitations } from "@/components/legal-entity/members/pending-invitations";
+import { TeamSection } from "@/components/legal-entity/members/team-section";
 import { StoppedMemberBidsSection } from "@/components/legal-entity/stopped-member-bids-section";
-import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
 import { OrganisationTabNoAccess } from "@/components/organisations/organisation-tab-no-access";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { buildDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
@@ -11,26 +13,21 @@ import { getServerBuyerAgentOverview } from "@/lib/data/http/buyer-agent-authori
 import { getServerStoppedMemberBids } from "@/lib/data/http/organisation-membership.server";
 import { getServerOrgTwoFactorPolicy } from "@/lib/data/http/two-factor-policy.server";
 import { requireActiveOrganisationActor } from "@/lib/legal-entity/active-organisation.server";
-import {
-  inviteRoleOptions,
-  memberRowControls,
-  memberViewOnlyReason,
-} from "@/lib/legal-entity/member-controls.vm";
-import {
-  type ILegalEntityMemberListGateway,
-  createLegalEntityMemberListGateway,
-} from "@/lib/legal-entity/member-list.gateway.server";
+import { inviteRoleOptions, memberViewOnlyReason } from "@/lib/legal-entity/member-controls.vm";
+import { createLegalEntityMemberListGateway } from "@/lib/legal-entity/member-list.gateway.server";
+import { invitationRowViews, memberRowViews } from "@/lib/legal-entity/member-row.vm";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { organisationHref } from "@/lib/navigation/client-routes";
 import { requireOrganisationTab } from "@/lib/navigation/organisation-tabs";
-import { entityActorCan, organisationJoinRefusal } from "@auction/domain";
-import { DisplayHeading } from "@auction/ui";
+import { entityActorCan, organisationInviteRefusal } from "@auction/domain";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { SectionHeader } from "@auction/ui/components/section-header";
-import { Surface } from "@auction/ui/components/surface";
-import { Info } from "lucide-react";
 import { notFound } from "next/navigation";
 
+/**
+ * The Members tab, for owners and admins: invite someone (or why the organisation cannot),
+ * the team with each person's role, the invitations nobody has answered yet, then buyer-agent
+ * authorisations. The page header already names the organisation, so nothing here repeats it.
+ */
 export default async function OrganisationMembersPage() {
   const user = await requireAuthenticatedUser({
     shell: "client",
@@ -39,15 +36,14 @@ export default async function OrganisationMembersPage() {
   const { organisation, actor } = await requireActiveOrganisationActor(user);
   const access = requireOrganisationTab(actor, "members");
   if (access.kind === "forbidden") return <OrganisationTabNoAccess access={access} />;
-  const id = organisation.id;
-  const perOrgGw = createPerOrgGateway();
-  const ctx = await perOrgGw.getContext(id);
+  const ctx = await createPerOrgGateway().getContext(organisation.id);
   if (!ctx) notFound();
   const { member } = ctx;
-
+  const id = organisation.id;
+  const organisationName = member.displayName;
   const acting = {
     id,
-    displayName: member.displayName,
+    displayName: organisationName,
     kind: member.kind,
     subkind: member.subkind,
     status: member.status,
@@ -55,64 +51,50 @@ export default async function OrganisationMembersPage() {
     isPrimaryAdmin: member.isPrimaryAdmin,
   };
 
-  const memberListGateway: ILegalEntityMemberListGateway = createLegalEntityMemberListGateway();
-  const fetched = await memberListGateway.fetchMemberListForActing(acting);
+  const gateway = createLegalEntityMemberListGateway();
+  const [fetched, invitations] = await Promise.all([
+    gateway.fetchMemberListForActing(acting),
+    gateway.fetchPendingInvitations(id),
+  ]);
   if (!fetched.ok) {
-    const failure = buildDashboardSliceFailure("orgMembers", fetched.status, fetched.errorCode);
     return (
-      <div className="space-y-6">
-        <OrgTabSectionHeader>
-          <SectionHeader heading={<DisplayHeading as="h2">Members</DisplayHeading>} />
-        </OrgTabSectionHeader>
-        <DashboardSliceErrorAlert failure={failure} />
-      </div>
+      <DashboardSliceErrorAlert
+        failure={buildDashboardSliceFailure("orgMembers", fetched.status, fetched.errorCode)}
+      />
     );
   }
 
   const members = fetched.data;
-  const me = members.find((m) => m.userId === user.id);
   // Support staff viewing as the client are not in the list (`memberId` null).
-  const changeActor = { ...actor, memberId: me?.id ?? null };
-  const rows = members.map((row) => ({
-    member: row,
-    controls: memberRowControls(changeActor, row, members),
-  }));
+  const changeActor = { ...actor, memberId: members.find((m) => m.userId === user.id)?.id ?? null };
   const inviteRoles = inviteRoleOptions(changeActor);
-  // The organisation's state can close it to new members whatever the role; say so, in the
-  // server's words, instead of offering a form the server would refuse.
-  const invitesClosed = organisationJoinRefusal(acting.status);
+  // The organisation's state can close inviting whatever the role: say why in place of the form.
+  const invitesClosed = organisationInviteRefusal(acting.status);
   const viewOnlyReason = memberViewOnlyReason(changeActor);
   const isOrganisation = acting.kind === "organisation";
-  // Owners and admins see which members have two-step verification on; the policy is its own tab.
-  const twoFactorPolicy =
+
+  const [twoFactorPolicy, buyerAgentOverview, stoppedMemberBids] = await Promise.all([
+    // Owners and admins see who has two-step sign-in on; the policy is its own tab.
     isOrganisation && entityActorCan(actor, "entity.security.read")
-      ? await getServerOrgTwoFactorPolicy(acting.id)
-      : null;
-  const buyerAgentOverview =
+      ? getServerOrgTwoFactorPolicy(id)
+      : null,
     isOrganisation && entityActorCan(actor, "entity.buyer_agents.read")
-      ? await getServerBuyerAgentOverview(acting.id).catch(() => null)
-      : null;
-  // What stopped when members left, for the people who see the team (read-only).
-  const stoppedMemberBids = isOrganisation
-    ? ((await getServerStoppedMemberBids(acting.id).catch(() => null)) ?? [])
-    : [];
+      ? getServerBuyerAgentOverview(id).catch(() => null)
+      : null,
+    // What stopped when members left, for the people who see the team (read-only).
+    isOrganisation ? getServerStoppedMemberBids(id).catch(() => null) : null,
+  ]);
   const twoFactorByUserId = twoFactorPolicy
     ? Object.fromEntries(twoFactorPolicy.members.map((m) => [m.userId, m.twoFactorEnabled]))
     : undefined;
 
+  const rows = memberRowViews({ actor: changeActor, members, twoFactorByUserId });
+  const invitationRows = invitations.ok
+    ? invitationRowViews(changeActor, invitations.data, new Date())
+    : [];
+
   return (
     <div className="space-y-6">
-      <OrgTabSectionHeader>
-        <SectionHeader
-          heading={<DisplayHeading as="h2">Members</DisplayHeading>}
-          action={
-            <p className="max-w-md text-right text-sm text-on-surface-variant">
-              {acting.displayName}
-            </p>
-          }
-        />
-      </OrgTabSectionHeader>
-
       {viewOnlyReason ? (
         <Alert>
           <AlertTitle>View only</AlertTitle>
@@ -120,41 +102,57 @@ export default async function OrganisationMembersPage() {
         </Alert>
       ) : null}
 
-      {inviteRoles.length > 0 && invitesClosed ? (
-        <p
-          className="flex items-start gap-2 font-body text-sm text-on-surface-variant"
-          data-testid="invites-closed"
+      {inviteRoles.length > 0 ? (
+        <TeamSection
+          id="invite"
+          title="Invite someone"
+          {...(invitesClosed
+            ? {}
+            : { description: `We'll email them a link to join ${organisationName}.` })}
         >
-          <Info className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} aria-hidden />
-          {invitesClosed.message}
-        </p>
-      ) : inviteRoles.length > 0 ? (
-        <Surface variant="section" padding="md" className="space-y-4">
-          <div className="space-y-1">
-            <h3 className="text-base font-semibold text-on-surface">Invite someone</h3>
-            <p className="font-body text-sm text-on-surface-variant">
-              They&apos;ll receive an email invitation to join this organisation.
-            </p>
-          </div>
-          <InviteMemberForm legalEntityId={acting.id} roleOptions={inviteRoles} />
-        </Surface>
+          {invitesClosed ? (
+            <InvitesClosed refusalCode={invitesClosed.code} organisationName={organisationName} />
+          ) : (
+            <InviteMemberForm
+              legalEntityId={id}
+              organisationName={organisationName}
+              roleOptions={inviteRoles}
+            />
+          )}
+        </TeamSection>
       ) : null}
 
-      <MemberList
-        legalEntityId={acting.id}
-        {...(twoFactorByUserId ? { twoFactorByUserId } : {})}
-        rows={rows}
-      />
+      <TeamSection id="team" title="Team" count={rows.length} countLabel="people">
+        <MemberList legalEntityId={id} organisationName={organisationName} rows={rows} />
+      </TeamSection>
+
+      {invitationRows.length > 0 ? (
+        <TeamSection
+          id="invitations"
+          title="Invitations"
+          count={invitationRows.filter((row) => !row.expired).length}
+          countLabel="waiting for an answer"
+        >
+          <PendingInvitations legalEntityId={id} rows={invitationRows} />
+        </TeamSection>
+      ) : null}
+      {!invitations.ok ? (
+        <Alert>
+          <AlertDescription>
+            We couldn't load the invitations waiting for an answer. Refresh the page to try again.
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {buyerAgentOverview ? (
         <BuyerAgentsSection
-          legalEntityId={acting.id}
-          entityName={acting.displayName}
+          legalEntityId={id}
+          entityName={organisationName}
           overview={buyerAgentOverview}
         />
       ) : null}
 
-      <StoppedMemberBidsSection entityName={acting.displayName} stopped={stoppedMemberBids} />
+      <StoppedMemberBidsSection entityName={organisationName} stopped={stoppedMemberBids ?? []} />
     </div>
   );
 }

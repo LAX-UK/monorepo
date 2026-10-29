@@ -24,6 +24,7 @@ export {
   ORGANISATION_RESTRICTED_MEMBERS,
   ORGANISATION_UNSOLD_CHOICE_PAUSED,
   organisationBannerActors,
+  organisationInviteRefusal,
   organisationJoinRefusal,
   organisationMembersRefusal,
   organisationStateAllows,

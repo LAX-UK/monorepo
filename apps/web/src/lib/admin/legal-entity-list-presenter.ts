@@ -1,8 +1,25 @@
-import { statusLabel, subkindLabel } from "@/lib/organisations/legal-entity-labels";
+import { subkindLabel } from "@/lib/organisations/legal-entity-labels";
 import type { LegalEntityKind, LegalEntityStatus } from "@auction/types";
 import { legalEntityKinds, legalEntityStatuses } from "@auction/types";
 
-export { statusLabel, subkindLabel };
+export { subkindLabel };
+
+/** Review states as staff name them; clients read `organisationStatusView` instead. */
+const STAFF_STATUS_LABELS: Record<LegalEntityStatus, string> = {
+  lead: "Setup",
+  docs_requested: "Documents requested",
+  docs_received: "Documents received",
+  under_review: "Under review",
+  connect_pending: "Setting up payouts",
+  approved: "Approved",
+  restricted: "Restricted",
+  rejected: "Rejected",
+  archived: "Archived",
+};
+
+export function statusLabel(status: LegalEntityStatus): string {
+  return STAFF_STATUS_LABELS[status];
+}
 
 const KIND_LABELS: Record<LegalEntityKind, string> = {
   individual: "Individual",

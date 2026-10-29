@@ -53,7 +53,7 @@ function everyChange(memberId = OTHER): { label: string; change: MemberChange }[
 
 /**
  * What an admin may do, written out per change. Admins run the team but never touch the owner
- * role; removing another admin is confirmed by typing.
+ * role. Removing anyone is confirmed in a dialog, never by typing.
  */
 function expectedForAdmin(change: MemberChange): Outcome {
   switch (change.action) {
@@ -62,8 +62,7 @@ function expectedForAdmin(change: MemberChange): Outcome {
     case "change_role":
       return change.target.role === "owner" || change.newRole === "owner" ? "owner_only" : "allow";
     case "remove":
-      if (change.target.role === "owner") return "owner_only";
-      return change.target.role === "admin" ? "allow+confirm" : "allow";
+      return change.target.role === "owner" ? "owner_only" : "allow";
     case "transfer_ownership":
       return "owner_only";
   }
@@ -76,9 +75,7 @@ function expectedForOwner(change: MemberChange): Outcome {
     case "change_role":
       return "allow";
     case "remove":
-      return change.target.role === "owner" || change.target.role === "admin"
-        ? "allow+confirm"
-        : "allow";
+      return "allow";
     case "transfer_ownership":
       return "allow+confirm";
   }
@@ -188,10 +185,9 @@ describe("countOwners", () => {
 });
 
 describe("memberChangeConfirmationPhrase", () => {
-  it("names the member", () => {
-    expect(memberChangeConfirmationPhrase("remove", "Lena Fischer")).toBe("REMOVE Lena Fischer");
+  it("names the member, in sentence case", () => {
     expect(memberChangeConfirmationPhrase("transfer_ownership", "Lena Fischer")).toBe(
-      "TRANSFER PRIMARY TO Lena Fischer",
+      "Transfer to Lena Fischer",
     );
   });
 });
