@@ -42,7 +42,7 @@ export function buildAccountNav(
 }
 
 /**
- * The LAX top bar on Account: LAX Bid, lax.art and LAX Shop, then LAX Account as the current
+ * The LAX top bar on Account: lax.art, lax.shop and lax.bid, then LAX Account as the current
  * member. A product without a configured URL is left out rather than linking nowhere.
  */
 export function buildProductBar(

@@ -4,9 +4,9 @@ import { LaxFamilyBar } from "./lax-family-bar.js";
 import { LaxFamilyMenuLinks } from "./lax-family-menu-links.js";
 
 const LINKS = [
-  { id: "bid", label: "LAX Bid", href: "https://lax.bid", current: false },
   { id: "art", label: "lax.art", href: "https://lax.art", current: false },
-  { id: "shop", label: "LAX Shop", href: "https://shop.lax.art", current: true },
+  { id: "shop", label: "lax.shop", href: "https://shop.lax.art", current: true },
+  { id: "bid", label: "lax.bid", href: "https://lax.bid", current: false },
   { id: "account", label: "LAX Account", href: "https://account.lax.bid/account", current: false },
 ];
 
@@ -16,9 +16,9 @@ describe("LaxFamilyBar", () => {
     const nav = screen.getByRole("navigation", { name: "LAX products" });
     const links = within(nav).getAllByRole("link");
     expect(links.map((link) => link.textContent)).toEqual([
-      "LAX Bid",
       "lax.art",
-      "LAX Shop",
+      "lax.shop",
+      "lax.bid",
       "LAX Account",
     ]);
     expect(links.map((link) => link.getAttribute("href"))).toEqual(LINKS.map((link) => link.href));
@@ -26,24 +26,54 @@ describe("LaxFamilyBar", () => {
 
   it("marks the current product for assistive technology and visually", () => {
     render(<LaxFamilyBar links={LINKS} />);
-    const current = screen.getByRole("link", { name: "LAX Shop" });
+    const current = screen.getByRole("link", { name: "lax.shop" });
     expect(current).toHaveAttribute("aria-current", "true");
     expect(current.className).toContain("font-semibold");
     expect(current.className).toContain("text-on-surface");
 
-    const sibling = screen.getByRole("link", { name: "LAX Bid" });
+    const sibling = screen.getByRole("link", { name: "lax.bid" });
     expect(sibling).not.toHaveAttribute("aria-current");
     expect(sibling.className).toContain("text-on-surface-variant");
     expect(sibling.className).not.toContain("font-semibold");
   });
 
-  it("separates the products with dots that screen readers skip, and LAX Account with a divider", () => {
+  it("spaces the products evenly with no separators, and sets LAX Account after a divider", () => {
     render(<LaxFamilyBar links={LINKS} />);
     const nav = screen.getByRole("navigation", { name: "LAX products" });
-    const dots = Array.from(nav.querySelectorAll("[aria-hidden]"));
-    expect(dots.map((dot) => dot.textContent)).toEqual(["·", "·"]);
+    expect(nav.querySelectorAll("[aria-hidden]")).toHaveLength(0);
+    expect(nav.textContent).not.toContain("·");
     const accountItem = screen.getByRole("link", { name: "LAX Account" }).closest("li");
     expect(accountItem?.className).toContain("border-l");
+  });
+
+  it("underlines the current product in its accent without moving the layout", () => {
+    render(<LaxFamilyBar links={LINKS} />);
+    const current = screen.getByRole("link", { name: "lax.shop" });
+    expect(current.className).toContain("before:bg-[var(--family-accent,currentColor)]");
+    expect(current.style.getPropertyValue("--family-accent")).toBe("#5a2a5c");
+    expect(current.style.getPropertyValue("--family-accent-on-dark")).toBe("#d6a8d4");
+    expect(current.className).toContain("before:absolute");
+    expect(current.className).not.toMatch(/(^|\s)(underline|hover:underline)(\s|$)/);
+
+    const sibling = screen.getByRole("link", { name: "lax.bid" });
+    expect(sibling.className).toContain("before:bg-transparent");
+    expect(sibling.className).toContain("hover:before:bg-[var(--family-accent,currentColor)]");
+    expect(sibling.style.getPropertyValue("--family-accent")).toBe("#091f5b");
+  });
+
+  it("underlines lax.art in the text colour, since the umbrella product has no accent", () => {
+    render(<LaxFamilyBar links={LINKS.map((l) => ({ ...l, current: l.id === "art" }))} />);
+    const current = screen.getByRole("link", { name: "lax.art" });
+    expect(current).toHaveAttribute("aria-current", "true");
+    expect(current.style.getPropertyValue("--family-accent")).toBe("");
+  });
+
+  it("keeps the current product a link home", () => {
+    render(<LaxFamilyBar links={LINKS} />);
+    expect(screen.getByRole("link", { name: "lax.shop" })).toHaveAttribute(
+      "href",
+      "https://shop.lax.art",
+    );
   });
 
   it("is hidden on phones, where the product menus carry the same links", () => {
@@ -78,9 +108,10 @@ describe("LaxFamilyBar", () => {
 
   it("uses the light-on-photograph colours over a hero", () => {
     render(<LaxFamilyBar links={LINKS} tone="on-dark" />);
-    expect(screen.getByRole("link", { name: "LAX Shop" }).className).toContain(
-      "text-hero-foreground",
-    );
+    const current = screen.getByRole("link", { name: "lax.shop" });
+    expect(current.className).toContain("text-hero-foreground");
+    expect(current.className).toContain("before:bg-current");
+    expect(current.style.getPropertyValue("--family-accent")).toBe("");
   });
 
   it("renders nothing when no product is configured", () => {
@@ -90,14 +121,22 @@ describe("LaxFamilyBar", () => {
 });
 
 describe("LaxFamilyMenuLinks", () => {
-  it("lists the other products and LAX Account in the bar's order, leaving out the current one", () => {
+  it("lists every product and LAX Account in the bar's order", () => {
     render(<LaxFamilyMenuLinks links={LINKS} />);
     const nav = screen.getByRole("navigation", { name: "LAX products" });
     expect(
       within(nav)
         .getAllByRole("link")
-        .map((link) => link.textContent),
-    ).toEqual(["LAX Bid", "lax.art", "LAX Account"]);
+        .map((link) => link.getAttribute("href")),
+    ).toEqual(LINKS.map((link) => link.href));
+  });
+
+  it("says in words which product the person is on", () => {
+    render(<LaxFamilyMenuLinks links={LINKS} />);
+    const current = screen.getByRole("link", { name: /lax\.shop/ });
+    expect(current).toHaveAttribute("aria-current", "true");
+    expect(current).toHaveTextContent("You're here");
+    expect(screen.getAllByText("You're here")).toHaveLength(1);
   });
 
   it("gives each row a 44px target and closes the menu when one is chosen", () => {
@@ -110,8 +149,8 @@ describe("LaxFamilyMenuLinks", () => {
     expect(closed).toBe(1);
   });
 
-  it("renders nothing when the current product is the only one configured", () => {
-    const { container } = render(<LaxFamilyMenuLinks links={[LINKS[2] as (typeof LINKS)[2]]} />);
+  it("renders nothing when no product is configured", () => {
+    const { container } = render(<LaxFamilyMenuLinks links={[]} />);
     expect(container).toBeEmptyDOMElement();
   });
 });

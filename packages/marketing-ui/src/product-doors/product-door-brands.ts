@@ -1,5 +1,5 @@
 import {
-  LAX_PRODUCT_NAMES,
+  LAX_FAMILY_NAMES,
   type LaxLockupKind,
   PRODUCT_ACCENTS,
   PRODUCT_ACCENTS_ON_DARK,
@@ -47,7 +47,7 @@ function accentOf(product: MarketingProductDoorProduct): ProductDoorBrand["accen
 export const PRODUCT_DOOR_BRANDS: Readonly<Record<MarketingProductDoorProduct, ProductDoorBrand>> =
   {
     bid: {
-      name: LAX_PRODUCT_NAMES.bid,
+      name: LAX_FAMILY_NAMES.bid,
       lockup: "bid-compact",
       accent: accentOf("bid"),
       illustration: {
@@ -56,7 +56,7 @@ export const PRODUCT_DOOR_BRANDS: Readonly<Record<MarketingProductDoorProduct, P
       },
     },
     shop: {
-      name: LAX_PRODUCT_NAMES.shop,
+      name: LAX_FAMILY_NAMES.shop,
       lockup: "shop",
       accent: accentOf("shop"),
       illustration: {
@@ -65,7 +65,7 @@ export const PRODUCT_DOOR_BRANDS: Readonly<Record<MarketingProductDoorProduct, P
       },
     },
     art: {
-      name: LAX_PRODUCT_NAMES.art,
+      name: LAX_FAMILY_NAMES.art,
       lockup: "art",
       accent: accentOf("art"),
       illustration: null,

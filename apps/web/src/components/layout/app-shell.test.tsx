@@ -84,9 +84,9 @@ const adminUser = {
 };
 
 const FAMILY_LINKS = [
-  { id: "bid", label: "LAX Bid", href: "https://lax.bid", current: true },
   { id: "art", label: "lax.art", href: "https://lax.art", current: false },
-  { id: "shop", label: "LAX Shop", href: "https://shop.lax.art", current: false },
+  { id: "shop", label: "lax.shop", href: "https://shop.lax.art", current: false },
+  { id: "bid", label: "lax.bid", href: "https://lax.bid", current: true },
   { id: "account", label: "LAX Account", href: "https://account.lax.bid/account", current: false },
 ] as const;
 
@@ -133,7 +133,7 @@ describe("AppShell", () => {
     );
 
     const bar = screen.getByTestId("lax-family-bar");
-    expect(within(bar).getByRole("link", { name: "LAX Bid" })).toHaveAttribute(
+    expect(within(bar).getByRole("link", { name: "lax.bid" })).toHaveAttribute(
       "aria-current",
       "true",
     );

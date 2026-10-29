@@ -1,11 +1,11 @@
-import { LAX_PRODUCT_NAMES } from "@auction/branding";
+import { LAX_FAMILY_NAMES, LAX_FAMILY_ORDER } from "@auction/branding";
 import type { ProductDirectoryConfig } from "./product-directory.js";
 
 /**
  * Everything the LAX top bar links to, in its order: the three products, then LAX Account, which
  * they share. A new product is added here and to the product directory, not to each header.
  */
-export const LAX_FAMILY_IDS = ["bid", "art", "shop", "account"] as const;
+export const LAX_FAMILY_IDS = LAX_FAMILY_ORDER;
 export type LaxFamilyMemberId = (typeof LAX_FAMILY_IDS)[number];
 
 export type LaxFamilyLinkVm = {
@@ -22,12 +22,12 @@ export type LaxFamilyLinksInput = {
   hrefs: Readonly<Partial<Record<LaxFamilyMemberId, string | undefined>>>;
 };
 
-/** The top bar's links, named as the brand writes them ("LAX Bid", "lax.art", ...). */
+/** The top bar's links, named as the family writes them ("lax.art", "lax.shop", ...). */
 export function buildLaxFamilyLinks(input: LaxFamilyLinksInput): LaxFamilyLinkVm[] {
   return LAX_FAMILY_IDS.flatMap((id) => {
     const href = input.hrefs[id]?.trim();
     if (!href) return [];
-    return [{ id, label: LAX_PRODUCT_NAMES[id], href, current: id === input.current }];
+    return [{ id, label: LAX_FAMILY_NAMES[id], href, current: id === input.current }];
   });
 }
 

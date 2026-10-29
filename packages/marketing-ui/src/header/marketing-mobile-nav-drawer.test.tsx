@@ -30,7 +30,7 @@ describe("MarketingMobileNavDrawer", () => {
     expect(nav.textContent).toContain("Buy");
   });
 
-  it("lists the other LAX products and LAX Account, since the top bar is hidden on phones", () => {
+  it("lists every LAX product and LAX Account, marking the current one, since the top bar is hidden on phones", () => {
     render(
       <MarketingMobileNavDrawer
         open
@@ -40,9 +40,9 @@ describe("MarketingMobileNavDrawer", () => {
         sections={[]}
         isSectionActive={() => false}
         familyLinks={[
-          { id: "bid", label: "LAX Bid", href: "https://lax.bid", current: true },
           { id: "art", label: "lax.art", href: "https://lax.art", current: false },
-          { id: "shop", label: "LAX Shop", href: "https://shop.lax.art", current: false },
+          { id: "shop", label: "lax.shop", href: "https://shop.lax.art", current: false },
+          { id: "bid", label: "lax.bid", href: "https://lax.bid", current: true },
           { id: "account", label: "LAX Account", href: "https://account.lax.bid", current: false },
         ]}
       />,
@@ -50,7 +50,8 @@ describe("MarketingMobileNavDrawer", () => {
     const nav = screen.getByRole("navigation", { name: "LAX products" });
     expect(Array.from(nav.querySelectorAll("a")).map((link) => link.textContent)).toEqual([
       "lax.art",
-      "LAX Shop",
+      "lax.shop",
+      "lax.bidYou're here",
       "LAX Account",
     ]);
   });

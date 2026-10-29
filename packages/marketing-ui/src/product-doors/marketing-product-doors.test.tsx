@@ -46,7 +46,7 @@ describe("MarketingProductDoors", () => {
   it("makes the whole door one link named by product and title, described by promise and action", () => {
     renderDoors([bid]);
 
-    const link = screen.getByRole("link", { name: "LAX Bid: Auctions you can join from anywhere" });
+    const link = screen.getByRole("link", { name: "lax.bid: Auctions you can join from anywhere" });
     expect(link).toHaveAccessibleDescription("Bid in live and timed sales. Visit LAX Bid");
     expect(within(link).getByRole("heading", { level: 3 })).toHaveTextContent(
       "Auctions you can join from anywhere",
@@ -56,7 +56,7 @@ describe("MarketingProductDoors", () => {
   it("shows the product's lockup and sets its accent for light and dark surfaces", () => {
     renderDoors([shop]);
 
-    const link = screen.getByRole("link", { name: /^LAX Shop:/ });
+    const link = screen.getByRole("link", { name: /^lax.shop:/ });
     expect(link.querySelector("svg.lax-lockup title")?.textContent).toBe("LAX Shop");
     expect(link.style.getPropertyValue("--door-accent")).toBe(PRODUCT_ACCENTS.shop);
     expect(link.style.getPropertyValue("--door-accent-dark")).toBe(PRODUCT_ACCENTS_ON_DARK.shop);
@@ -91,7 +91,7 @@ describe("MarketingProductDoors", () => {
   it("keeps the external cue decorative", () => {
     renderDoors([shop]);
 
-    const link = screen.getByRole("link", { name: /^LAX Shop:/ });
+    const link = screen.getByRole("link", { name: /^lax.shop:/ });
     for (const svg of link.querySelectorAll("svg:not(.lax-lockup)")) {
       expect(svg.getAttribute("aria-hidden")).toBe("true");
     }

@@ -10,12 +10,12 @@ export type LaxFamilyMenuLinksProps = {
 };
 
 /**
- * The top bar's links inside a phone menu, where the bar is hidden: the other LAX products and
- * LAX Account, in the bar's order, as 44px rows. The product the person is on is left out.
+ * The top bar's links inside a phone menu, where the bar is hidden: all the LAX products and LAX
+ * Account in the bar's order, as 44px rows. The product the person is on says "You're here" in
+ * words and keeps its link home.
  */
 export function LaxFamilyMenuLinks({ links, onNavigate, className }: LaxFamilyMenuLinksProps) {
-  const siblings = links.filter((link) => !link.current);
-  if (siblings.length === 0) return null;
+  if (links.length === 0) return null;
 
   return (
     <nav
@@ -27,18 +27,25 @@ export function LaxFamilyMenuLinks({ links, onNavigate, className }: LaxFamilyMe
         LAX products
       </p>
       <ul className="m-0 flex list-none flex-col p-0">
-        {siblings.map((link) => (
+        {links.map((link) => (
           <li key={link.id}>
             <a
               href={link.href}
-              rel="noopener noreferrer"
+              aria-current={link.current ? "true" : undefined}
+              rel={link.current ? undefined : "noopener noreferrer"}
               onClick={onNavigate}
               className={cn(
-                "flex min-h-11 items-center rounded-sm font-label text-sm font-medium normal-case tracking-normal text-on-surface underline-offset-4 transition-colors hover:underline motion-reduce:transition-none",
+                "flex min-h-11 items-center justify-between gap-3 rounded-sm font-label text-sm normal-case tracking-normal text-on-surface underline-offset-4 transition-colors hover:underline motion-reduce:transition-none",
+                link.current ? "font-semibold" : "font-medium",
                 FOCUS_RING,
               )}
             >
               {link.label}
+              {link.current ? (
+                <span className="text-xs font-medium text-on-surface-variant">
+                  You&apos;re here
+                </span>
+              ) : null}
             </a>
           </li>
         ))}
