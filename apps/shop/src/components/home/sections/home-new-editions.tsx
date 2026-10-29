@@ -1,67 +1,13 @@
 import { ShopEditionCard } from "@/components/catalogue/shop-edition-card";
+import { ShopEditionFeature } from "@/components/catalogue/shop-edition-feature";
 import { ShopCatalogueState } from "@/components/home/shop-empty-state";
 import { ShopSection } from "@/components/layout/shop-section";
-import { ShopWorkMat } from "@/components/media/shop-work-mat";
-import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { SHOP_HOME_CONTENT } from "@/content/home/shop-home-content";
-import { type EditionCardVm, toEditionCardVm } from "@/lib/catalogue/edition-card.vm";
+import { toEditionCardVm } from "@/lib/catalogue/edition-card.vm";
 import type { HomeNewEditionsVm } from "@/lib/home/home-new-editions";
-import {
-  MARKETING_ROW_MAX_COLUMNS,
-  MarketingCardRow,
-  MarketingSplitFeature,
-} from "@auction/marketing-ui";
-import Link from "next/link";
+import { MARKETING_ROW_MAX_COLUMNS, MarketingCardRow } from "@auction/marketing-ui";
 
 const copy = SHOP_HOME_CONTENT.newEditions;
-
-/** A single new edition, told large: the work on its mat beside its caption. */
-function NewEditionFeature({ card }: { card: EditionCardVm }) {
-  return (
-    <MarketingSplitFeature
-      className="shop-home-feature"
-      tone="plain"
-      headingLevel="h3"
-      mediaSide="left"
-      eyebrow={
-        card.status?.kind === "new" ? (
-          <span className="shop-home-eyebrow">{card.status.label}</span>
-        ) : null
-      }
-      title={card.title}
-      media={
-        <Link
-          href={card.href}
-          className="shop-home-feature__media"
-          tabIndex={-1}
-          aria-hidden="true"
-        >
-          <ShopWorkMat
-            src={card.imageUrl}
-            alt={card.imageAlt}
-            sizes="(min-width: 48rem) 40vw, 90vw"
-            className="shop-home-feature__mat"
-          />
-        </Link>
-      }
-      body={
-        <div className="shop-home-feature__caption">
-          <Link href={card.artistHref} className="shop-inline-link shop-focus-ring">
-            {card.artistName}
-          </Link>
-          {card.factsLine ? <p className="shop-home-feature__facts">{card.factsLine}</p> : null}
-          {card.priceLabel ? <p className="shop-home-feature__price">{card.priceLabel}</p> : null}
-        </div>
-      }
-      action={
-        <ShopCommerceButton href={card.href} variant="outline" scale="standard">
-          {copy.seeLabel}
-          <span className="sr-only">{`, ${card.title}`}</span>
-        </ShopCommerceButton>
-      }
-    />
-  );
-}
 
 /**
  * "New editions" after the first screen's release, laid out for its count by the shared row
@@ -94,7 +40,7 @@ export function NewEditionsSection({
           className="shop-home-editions"
           renderItem={(card, layout) =>
             layout === "feature" ? (
-              <NewEditionFeature card={card} />
+              <ShopEditionFeature card={card} />
             ) : (
               <ShopEditionCard
                 card={card}

@@ -95,6 +95,8 @@ export async function fetchPublicArtworks(input: {
   availability?: "available" | "sold_out";
   minPrice?: number;
   maxPrice?: number;
+  size?: "small" | "medium" | "large";
+  technique?: string;
   sort?: "newest" | "titleAsc" | "priceAsc" | "priceDesc";
   q?: string;
 }): Promise<PublicArtworkList> {
@@ -117,6 +119,8 @@ type CatalogueFilterInput = {
   availability?: "available" | "sold_out";
   minPrice?: number;
   maxPrice?: number;
+  size?: "small" | "medium" | "large";
+  technique?: string;
   q?: string;
 };
 
@@ -130,6 +134,8 @@ function catalogueFilterParams(input: CatalogueFilterInput): URLSearchParams {
   if (input.maxPrice !== undefined) params.set("maxPrice", String(input.maxPrice));
   if (input.saleState) params.set("saleState", input.saleState);
   if (input.availability) params.set("availability", input.availability);
+  if (input.size) params.set("size", input.size);
+  if (input.technique) params.set("technique", input.technique);
   if (input.q) params.set("q", input.q);
   return params;
 }

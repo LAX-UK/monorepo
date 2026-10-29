@@ -1,14 +1,12 @@
+import { ShopArtistCard as ArtistCard } from "@/components/artists/shop-artist-card";
 import { ShopArtistPortrait } from "@/components/artists/shop-artist-portrait";
 import { ShopSection } from "@/components/layout/shop-section";
-import { ShopMediaImage } from "@/components/media/shop-media-image";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { SHOP_HOME_CONTENT } from "@/content/home/shop-home-content";
 import type { CatalogueArtistCardVm } from "@/lib/catalogue/catalogue-artist-card.vm";
 import type { HomeArtistsVm, HomeSoloArtistVm } from "@/lib/home/home-artists";
-import { SHOP_MEDIA_LABELS } from "@/lib/media/shop-media-labels";
 import {
   MarketingArrowUpRightIcon,
-  MarketingArtistCard,
   MarketingCardRow,
   MarketingHorizontalRail,
   MarketingSplitFeature,
@@ -16,35 +14,6 @@ import {
 import Link from "next/link";
 
 const copy = SHOP_HOME_CONTENT.artists;
-
-const CARD_SIZES = "(min-width: 64rem) 22vw, (min-width: 40rem) 30vw, 45vw";
-
-/** The shared artist card: portrait, name, discipline and "4 editions", to their editions. */
-function ArtistCard({ card }: { card: CatalogueArtistCardVm }) {
-  return (
-    <MarketingArtistCard
-      href={card.href}
-      name={card.name}
-      nameAs="h3"
-      facts={card.discipline}
-      caption={card.editionsLabel}
-      {...(card.image
-        ? {
-            portrait: (
-              <ShopMediaImage
-                src={card.image}
-                alt=""
-                label={SHOP_MEDIA_LABELS.artistPortrait}
-                aspect={[4, 5]}
-                sizes={CARD_SIZES}
-                className="absolute inset-0 size-full object-cover"
-              />
-            ),
-          }
-        : {})}
-    />
-  );
-}
 
 /** Two artists side by side: each a portrait beside the name, discipline, count and link. */
 function ArtistPairRow({ card }: { card: CatalogueArtistCardVm }) {

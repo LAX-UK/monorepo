@@ -17,7 +17,6 @@ export const SHOP_HOME_CONTENT = {
   newEditions: {
     title: "New editions",
     subtitle: "Released by artists the gallery represents.",
-    seeLabel: "See the edition",
   },
   artists: {
     title: "Artists",
