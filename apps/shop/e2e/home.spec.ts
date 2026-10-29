@@ -53,9 +53,8 @@ test.describe("Shop home @a11y", () => {
     const page = await context.newPage();
     await page.goto("/");
     await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
-    const firstReveal = page.locator(".reveal").first();
-    await expect(firstReveal).toBeVisible();
-    await expect(firstReveal).not.toHaveAttribute("data-reveal-init", "true");
+    await expect(page.locator("#main-content")).toBeVisible();
+    await expect(page.locator('[data-reveal-init="true"]')).toHaveCount(0);
     await context.close();
   });
 });
