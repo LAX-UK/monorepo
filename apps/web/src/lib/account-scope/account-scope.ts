@@ -6,7 +6,11 @@ import type { EntityActor } from "@auction/domain";
  * the person's own records while they act for an organisation.
  */
 export type ScopedAccount =
-  | { kind: "personal" }
+  | {
+      kind: "personal";
+      /** The person's own account, when it is known. */
+      id: string | null;
+    }
   | {
       kind: "organisation";
       id: string;

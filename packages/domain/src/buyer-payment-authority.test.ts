@@ -23,8 +23,6 @@ const ORGANISATION_PAYERS: Record<LegalEntityMemberRole, PaymentAuthorityDecisio
   buyer_agent: refused("not_payer"),
   consignor: refused("not_payer"),
   viewer: refused("not_payer"),
-  specialist: refused("not_payer"),
-  staff: refused("not_payer"),
 };
 
 function organisationLot(
@@ -112,8 +110,6 @@ describe("buying record scopes", () => {
     finance: null,
     consignor: null,
     viewer: null,
-    specialist: null,
-    staff: null,
   };
   const PURCHASES: Record<LegalEntityMemberRole, string | null> = {
     owner: "all",
@@ -122,8 +118,6 @@ describe("buying record scopes", () => {
     buyer_agent: "own",
     consignor: null,
     viewer: null,
-    specialist: null,
-    staff: null,
   };
 
   it.each(legalEntityMemberRoles)("%s reads the bids and purchases the table gives", (role) => {

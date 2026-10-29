@@ -23,6 +23,8 @@ import type { UseFormReturn } from "react-hook-form";
 type Props = {
   sessionUser: SessionUser;
   totalLabel: string;
+  /** The organisation being paid for, named on the button so the account is never in doubt. */
+  payingFor: string | null;
   form: UseFormReturn<CheckoutTermsAcceptanceValues>;
   checkoutAddresses: ProfileAddressRow[];
   billingOnlyAddresses: ProfileAddressRow[];
@@ -35,6 +37,7 @@ type Props = {
 export function CheckoutPurchaseForm({
   sessionUser,
   totalLabel,
+  payingFor,
   form,
   checkoutAddresses,
   billingOnlyAddresses,
@@ -195,7 +198,11 @@ export function CheckoutPurchaseForm({
             disabled={form.formState.isSubmitting || !canSubmit}
             className="hidden h-auto min-h-11 w-full py-5 lg:flex"
           >
-            {form.formState.isSubmitting ? "Processing…" : "Complete purchase"}
+            {form.formState.isSubmitting
+              ? "Processing…"
+              : payingFor
+                ? `Complete purchase for ${payingFor}`
+                : "Complete purchase"}
           </Button>
         </form>
       </Form>

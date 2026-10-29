@@ -58,19 +58,32 @@ export function purchasesToPayFigure(
   };
 }
 
-/** How the signed-in person stands to one purchase of the account in use. */
+/**
+ * How the signed-in person stands to one purchase of the account in use. A personal list also
+ * holds lots the person won for an organisation; those are paid by that organisation, so the
+ * person is told how payment is going and is never offered a Pay button for them.
+ */
 export function paymentRoleFor(
   scope: AccountScope,
-  row: Pick<PortfolioRow, "lot">,
+  row: { lot: Pick<PortfolioRow["lot"], "winnerId" | "buyerLegalEntityId"> },
 ): PurchasePaymentRole {
-  const organisation = scope.account.kind === "organisation" ? scope.account : null;
+  const { account } = scope;
+  const winnerId = row.lot.winnerId ?? null;
+  if (account.kind === "organisation") {
+    return purchasePaymentRole({
+      payerUserId: scope.actor.userId,
+      lot: { winnerId, buyerAccountKind: "organisation" },
+      membership: account.actor,
+    });
+  }
+  const wonForAnotherAccount = Boolean(
+    account.id && row.lot.buyerLegalEntityId && row.lot.buyerLegalEntityId !== account.id,
+  );
+  if (wonForAnotherAccount) return winnerId === scope.actor.userId ? "informed" : "none";
   return purchasePaymentRole({
     payerUserId: scope.actor.userId,
-    lot: {
-      winnerId: row.lot.winnerId ?? null,
-      buyerAccountKind: organisation ? "organisation" : "individual",
-    },
-    membership: organisation ? organisation.actor : { role: "owner" },
+    lot: { winnerId, buyerAccountKind: "individual" },
+    membership: null,
   });
 }
 
