@@ -5,14 +5,14 @@ import { useSubmissionWizardController } from "./use-submission-wizard-controlle
 
 const createSubmissionFromValuesAction = vi.fn();
 const updateSubmissionFromValuesAction = vi.fn();
-const submitForReviewFromValuesAction = vi.fn();
+const submitForReviewAndOpenAction = vi.fn();
 
 vi.mock("@/lib/actions/submissions", () => ({
   createSubmissionFromValuesAction: (...args: unknown[]) =>
     createSubmissionFromValuesAction(...args),
   updateSubmissionFromValuesAction: (...args: unknown[]) =>
     updateSubmissionFromValuesAction(...args),
-  submitForReviewFromValuesAction: (...args: unknown[]) => submitForReviewFromValuesAction(...args),
+  submitForReviewAndOpenAction: (...args: unknown[]) => submitForReviewAndOpenAction(...args),
 }));
 
 vi.mock("@/lib/ui/notify", () => ({
@@ -42,7 +42,7 @@ describe("useSubmissionWizardController", () => {
   beforeEach(() => {
     createSubmissionFromValuesAction.mockReset();
     updateSubmissionFromValuesAction.mockReset();
-    submitForReviewFromValuesAction.mockReset();
+    submitForReviewAndOpenAction.mockReset();
     push.mockReset();
     replace.mockReset();
     refresh.mockReset();
@@ -51,7 +51,7 @@ describe("useSubmissionWizardController", () => {
       ok: true,
       data: { id: "sub-new", redirectTo: "/selling/consignments/sub-new" },
     });
-    submitForReviewFromValuesAction.mockResolvedValue({ ok: true, data: {} });
+    submitForReviewAndOpenAction.mockResolvedValue({ ok: true, data: {} });
   });
 
   afterEach(() => {
@@ -110,31 +110,40 @@ describe("useSubmissionWizardController", () => {
 
     await waitFor(() => {
       expect(createSubmissionFromValuesAction).toHaveBeenCalledTimes(1);
-      expect(submitForReviewFromValuesAction).toHaveBeenCalledWith("sub-new", {});
-      expect(push).toHaveBeenCalledWith("/selling/consignments/sub-new");
+      expect(submitForReviewAndOpenAction).toHaveBeenCalledWith("sub-new", {});
+      expect(push).not.toHaveBeenCalled();
+      expect(refresh).not.toHaveBeenCalled();
     });
   });
 
-  it("loads the page afresh after submitting from its own page", async () => {
-    const assign = vi.fn();
-    const realLocation = window.location;
-    Object.defineProperty(window, "location", { value: { assign }, configurable: true });
-    try {
-      const { result } = renderHook(() =>
-        useSubmissionWizardController(
-          { kind: "edit", submissionId: "sub-1" },
-          validSubmissionValues(),
-        ),
-      );
-      await act(async () => {
-        await result.current.submitForReview();
-      });
-      expect(submitForReviewFromValuesAction).toHaveBeenCalledWith("sub-1", {});
-      expect(assign).toHaveBeenCalledWith("/selling/consignments/sub-1");
-      expect(push).not.toHaveBeenCalled();
-    } finally {
-      Object.defineProperty(window, "location", { value: realLocation, configurable: true });
-    }
+  it("leaves the navigation to the action when submitting from the page's own address", async () => {
+    const { result } = renderHook(() =>
+      useSubmissionWizardController(
+        { kind: "edit", submissionId: "sub-1" },
+        validSubmissionValues(),
+      ),
+    );
+    await act(async () => {
+      await result.current.submitForReview();
+    });
+    expect(submitForReviewAndOpenAction).toHaveBeenCalledWith("sub-1", {});
+    expect(push).not.toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
+  });
+
+  it("shows a refusal and stays on the form", async () => {
+    submitForReviewAndOpenAction.mockResolvedValue({ ok: false, error: "Not allowed." });
+    const { result } = renderHook(() =>
+      useSubmissionWizardController(
+        { kind: "edit", submissionId: "sub-1" },
+        validSubmissionValues(),
+      ),
+    );
+    await act(async () => {
+      await result.current.submitForReview();
+    });
+    expect(result.current.autosaveStatus).toBe("error");
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("creates and submits as the account chosen in Who is selling", async () => {
@@ -155,7 +164,7 @@ describe("useSubmissionWizardController", () => {
       expect(createSubmissionFromValuesAction).toHaveBeenCalledWith(expect.anything(), {
         legalEntityId: "gallery-1",
       });
-      expect(submitForReviewFromValuesAction).toHaveBeenCalledWith("sub-new", {
+      expect(submitForReviewAndOpenAction).toHaveBeenCalledWith("sub-new", {
         legalEntityId: "gallery-1",
       });
     });

@@ -257,6 +257,29 @@ export async function submitForReviewFromValuesAction(
   });
 }
 
+/**
+ * Sends a submission for review from the wizard and opens its page, as one response: the page is
+ * revalidated and the redirect is part of the same answer, so what the person lands on is the page
+ * as the server has it now. A refusal comes back as a result for the wizard to show; success never
+ * returns, so the confirmation (toast, analytics) is shown by the page it lands on.
+ */
+export async function submitForReviewAndOpenAction(
+  submissionId: string,
+  scope?: SubmissionAccountScope,
+): Promise<ActionResult<void>> {
+  return instrumentServerAction("submitForReviewAndOpenAction", async () => {
+    const id = submissionId.trim();
+    if (!id) return actionFailure("Missing submission");
+    const { submissions } = getWriteContainer();
+    const mapped = mapServiceToActionVoid(await submissions.submitForReview(id, scope));
+    if (!mapped.ok) return mapped;
+    revalidatePath("/selling/consignments");
+    revalidatePath(`/selling/consignments/${id}`);
+    const { redirect } = await import("next/navigation");
+    redirect(`/selling/consignments/${id}?submitted=1`);
+  });
+}
+
 export async function withdrawSubmissionFromValuesAction(
   submissionId: string,
 ): Promise<ActionResult<void>> {

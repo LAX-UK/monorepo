@@ -31,9 +31,10 @@ export function useAccountSwitch(destination: string = CLIENT_ROUTES.home): {
         return;
       }
       announceAccountSwitch(option.id);
-      // A full navigation, not a router push or refresh: the router keeps pages it fetched for the
-      // previous account (the address is the same, only the cookie differs), and after a switch it
-      // could show that account's page until the next reload.
+      // A full page load, on purpose. Switching account changes who every request is for, so
+      // nothing the browser holds for the previous account may survive: not the router's cached
+      // pages (same address, different cookie), not a query cache, not component state. A load
+      // drops all of them at once, where a push or refresh drops only what the router knows of.
       window.location.assign(destination);
     },
     [destination],

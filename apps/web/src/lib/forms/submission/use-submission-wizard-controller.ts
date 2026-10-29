@@ -2,10 +2,9 @@
 
 import {
   createSubmissionFromValuesAction,
-  submitForReviewFromValuesAction,
+  submitForReviewAndOpenAction,
   updateSubmissionFromValuesAction,
 } from "@/lib/actions/submissions";
-import { trackWizardSubmit } from "@/lib/analytics/sell-funnel";
 import type { FormController } from "@/lib/forms/shared/form-controller";
 import { EMPTY_SUBMISSION_FORM_VALUES } from "@/lib/forms/submission/item-submission-form-defaults";
 import { allWizardFieldPaths } from "@/lib/forms/submission/step-validation";
@@ -215,32 +214,17 @@ export function useSubmissionWizardController(
         }
       }
 
-      const submitted = await submitForReviewFromValuesAction(id, scope());
+      // Success redirects to the submission's page, which confirms it; only a refusal returns.
+      const submitted = await submitForReviewAndOpenAction(id, scope());
       if (!submitted.ok) {
         setAutosaveStatus("error");
         notify.error(submitted.error);
-        return;
-      }
-
-      trackWizardSubmit(id);
-      notify.success("Submitted for review");
-      setAutosaveStatus("saved");
-      setLastSavedAt(new Date());
-      const detailPath = `/selling/consignments/${id}`;
-      if (mode.kind === "edit") {
-        // The person is already on this page and the action refreshed it. Pushing the same address
-        // and refreshing again can leave the router showing the page as it was before the submit,
-        // so the page is loaded afresh instead.
-        window.location.assign(detailPath);
-      } else {
-        router.push(detailPath);
-        router.refresh();
       }
     } finally {
       saveInFlight.current = false;
       setSubmitInFlight(false);
     }
-  }, [form, mode, router, scope, submissionId, submitInFlight]);
+  }, [form, mode, scope, submissionId, submitInFlight]);
 
   useEffect(() => {
     if (mode.kind !== "edit" && !submissionId) return;

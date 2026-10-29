@@ -45,6 +45,7 @@ test.describe("organisation consignor journey @roles", () => {
       const send = page.getByRole("button", { name: "Submit for specialist review" }).first();
       await expect(send).toBeVisible();
       await send.click();
+      await expect(page.getByText("Submitted for review").first()).toBeVisible();
       await expect(page.getByRole("button", { name: "Submit for specialist review" })).toHaveCount(
         0,
       );
