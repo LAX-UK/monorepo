@@ -19,6 +19,9 @@ import { WelcomeCard } from "./welcome-card";
  */
 export function OrganisationHome({ home }: { home: LoadedOrganisationHome }) {
   const { view } = home;
+  const notices = home.listLimitNotice
+    ? [...view.notices, { key: "list-limit", text: home.listLimitNotice, href: null }]
+    : view.notices;
   return (
     <DashboardPage>
       <SetMobileShellTitle title="Home" />
@@ -43,14 +46,12 @@ export function OrganisationHome({ home }: { home: LoadedOrganisationHome }) {
             {home.authority}
           </p>
         ) : null}
-        {view.needsYou ? <HomeNeedsYou tasks={view.needsYou} /> : null}
-        <HomeNotices
-          notices={
-            home.listLimitNotice
-              ? [...view.notices, { key: "list-limit", text: home.listLimitNotice, href: null }]
-              : view.notices
-          }
-        />
+        {/* Notices sit under "Needs you"; a role with nothing to do reads them on their own. */}
+        {view.needsYou ? (
+          <HomeNeedsYou tasks={view.needsYou} notices={notices} />
+        ) : (
+          <HomeNotices notices={notices} />
+        )}
         {view.dashboard ? <HomeDashboard dashboard={view.dashboard} /> : null}
         <HomeShortcuts shortcuts={view.shortcuts} />
         <HomeActivity activity={view.activity} seeAllHref={view.seeAllHref} />

@@ -13,6 +13,8 @@ import {
   type HomeShortcut,
   type HomeSubject,
   type HomeTask,
+  type OrganisationBanner,
+  type OrganisationBannerKey,
   type OrganisationHomeModel,
   rolesWithCapability,
 } from "@auction/domain";
@@ -159,6 +161,27 @@ export function homeTaskView(task: HomeTask, ctx: Ctx): HomeTaskView {
   return { key: taskKey(task), ...build(task as never, ctx) };
 }
 
+/** The "Needs you" task that does what a banner asks, so Home offers the action only once. */
+const BANNER_TASK: Partial<Record<OrganisationBannerKey, HomeTask["kind"]>> = {
+  documents_requested: "documents",
+  payouts_not_set_up: "payouts",
+};
+
+/**
+ * The banner on Home. When "Needs you" already has the task for it, the banner only says what
+ * the state is and the task carries the button.
+ */
+function homeBannerView(
+  model: OrganisationHomeModel,
+  banner: OrganisationBanner,
+  ctx: Ctx,
+): OrganisationBannerView {
+  const view = organisationBannerView(banner, ctx);
+  const task = BANNER_TASK[banner.key];
+  const asked = task !== undefined && (model.tasks ?? []).some((t) => t.kind === task);
+  return asked ? { ...view, action: null } : view;
+}
+
 /** Who chooses for an unsold lot, from the capability table: "an owner or admin". */
 const UNSOLD_CHOOSERS = oneOfRoles(rolesWithCapability("entity.consignments.after_sale"), "inside");
 
@@ -240,7 +263,7 @@ export function buyerAgentAuthorityLine(
 export function organisationHomeView(model: OrganisationHomeModel, ctx: Ctx): OrganisationHomeView {
   return {
     needsYou: model.tasks ? model.tasks.map((task) => homeTaskView(task, ctx)) : null,
-    banner: model.state.banner ? organisationBannerView(model.state.banner, ctx) : null,
+    banner: model.state.banner ? homeBannerView(model, model.state.banner, ctx) : null,
     notices: model.notices.map(homeNoticeView),
     shortcuts: model.shortcuts.map((id) => ({ id, ...SHORTCUTS[id] })),
     activity: model.activity.map(activityView),

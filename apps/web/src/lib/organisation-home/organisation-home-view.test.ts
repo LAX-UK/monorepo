@@ -1,6 +1,7 @@
 import {
   type HomeTask,
   type OrganisationHomeModel,
+  entityCapabilitiesOf,
   organisationStatePolicy,
 } from "@auction/domain";
 import { describe, expect, it } from "vitest";
@@ -85,6 +86,15 @@ describe("organisationHomeView", () => {
       action: null,
     });
     expect(view.banner?.line).toContain("2–3 working days");
+  });
+
+  it("offers the documents action once: in Needs you, not again on the banner", () => {
+    const owner = entityCapabilitiesOf({ role: "owner" });
+    const requested = { ...model, state: organisationStatePolicy("docs_requested", owner) };
+    expect(organisationHomeView(requested, ctx).banner?.action?.label).toBe("Send documents");
+    const withTask = organisationHomeView({ ...requested, tasks: [{ kind: "documents" }] }, ctx);
+    expect(withTask.banner).toMatchObject({ title: "Documents needed.", action: null });
+    expect(withTask.needsYou?.[0]?.action.label).toBe("Open documents");
   });
 
   it("shows no banner when the state has nothing to tell", () => {
