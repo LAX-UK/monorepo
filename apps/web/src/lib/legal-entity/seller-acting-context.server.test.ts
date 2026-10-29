@@ -9,14 +9,7 @@ vi.mock("@/lib/legal-entity/acting-context.server", () => ({
   resolveActingContext: (...args: unknown[]) => resolveActingContext(...args),
 }));
 
-const redirect = vi.fn((to: string) => {
-  throw new Error(`redirect:${to}`);
-});
-vi.mock("next/navigation", () => ({ redirect: (to: string) => redirect(to) }));
-
-const { requireSellerCapability, resolveSellerWorkspaceContext, sellerCan } = await import(
-  "./seller-acting-context.server"
-);
+const { resolveSellerWorkspaceContext, sellerCan } = await import("./seller-acting-context.server");
 
 function entity(overrides: Partial<LegalEntitySummary>): LegalEntitySummary {
   return {
@@ -54,7 +47,6 @@ function acting(current: LegalEntitySummary, memberships: LegalEntitySummary[]) 
 describe("resolveSellerWorkspaceContext", () => {
   beforeEach(() => {
     resolveActingContext.mockReset();
-    redirect.mockClear();
   });
 
   it("sells as the person when no organisation is chosen", async () => {
@@ -85,7 +77,7 @@ describe("resolveSellerWorkspaceContext", () => {
   });
 });
 
-describe("sellerCan and requireSellerCapability", () => {
+describe("sellerCan", () => {
   async function ctxFor(role: LegalEntitySummary["role"], extra: Partial<LegalEntitySummary> = {}) {
     acting(gallery(role, extra), [personal, gallery(role, extra)]);
     return resolveSellerWorkspaceContext("client", []);
@@ -104,14 +96,6 @@ describe("sellerCan and requireSellerCapability", () => {
     expect(sellerCan(await ctxFor("consignor"), "entity.consignments.read")).toBe(true);
     expect(sellerCan(await ctxFor("viewer"), "entity.finance.read")).toBe(false);
     expect(sellerCan(await ctxFor("viewer"), "entity.holdings.read")).toBe(true);
-  });
-
-  it("sends a role without the capability back to the Selling overview", async () => {
-    const consignor = await ctxFor("consignor");
-    expect(() => requireSellerCapability(consignor, "entity.payouts.read")).toThrow(
-      "redirect:/selling",
-    );
-    expect(() => requireSellerCapability(consignor, "entity.consignments.read")).not.toThrow();
   });
 
   it("keeps an impersonating admin read-only", async () => {

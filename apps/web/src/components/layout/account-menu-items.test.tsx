@@ -75,7 +75,10 @@ describe("AccountMenuItems", () => {
   it("offers Selling and Your organisations to an organisation member", () => {
     withContext({ isOrgMember: true });
     render(<Menu />);
-    expect(screen.getByRole("menuitem", { name: "Selling" })).toHaveAttribute("href", "/selling");
+    expect(screen.getByRole("menuitem", { name: "Selling" })).toHaveAttribute(
+      "href",
+      "/selling/consignments",
+    );
     expect(screen.getByRole("menuitem", { name: "Your organisations" })).toBeInTheDocument();
   });
 

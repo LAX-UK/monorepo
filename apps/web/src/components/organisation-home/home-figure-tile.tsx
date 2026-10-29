@@ -1,10 +1,12 @@
 import type { DashboardTileView } from "@/lib/organisation-home/organisation-dashboard-view";
+import { cn } from "@auction/ui";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { HOME_CELL_LINK_CLASS } from "./home-cell-grid";
 
 /**
  * One figure under "At a glance": label, the figure (a line per currency), one supporting line,
- * and the whole tile a link to the page behind it. With nothing to show it says so plainly.
+ * and the whole cell a link to the page behind it. With nothing to show it says so plainly.
  * What the figure counts is its accessible description.
  */
 export function HomeFigureTile({ tile }: { tile: DashboardTileView }) {
@@ -14,7 +16,10 @@ export function HomeFigureTile({ tile }: { tile: DashboardTileView }) {
       href={tile.href}
       aria-describedby={descriptionId}
       data-testid={`home-tile-${tile.id}`}
-      className="group flex min-h-11 w-full flex-col gap-1.5 rounded-lg border border-border-hairline bg-surface-container-lowest p-3 text-on-surface transition-colors hover:border-outline-variant hover:bg-surface-container-low focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring sm:p-4"
+      className={cn(
+        "group flex min-h-28 w-full flex-col gap-1.5 p-4 text-on-surface sm:p-5",
+        HOME_CELL_LINK_CLASS,
+      )}
     >
       <span className="flex items-start justify-between gap-2">
         <span className="font-body text-sm text-on-surface-variant">{tile.label}</span>

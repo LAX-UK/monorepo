@@ -8,7 +8,6 @@ import {
   sellerSubmissionAccess,
 } from "@auction/domain";
 import type { LegalEntitySummary, StaffRoles } from "@auction/types";
-import { redirect } from "next/navigation";
 
 export type SellerWorkspaceContext = {
   /** Personal (`individual`) entity: the person's own seller profile. */
@@ -60,12 +59,4 @@ export function sellerCanStartSubmission(ctx: SellerWorkspaceContext): boolean {
   if (!sellerCan(ctx, "entity.submissions.create")) return false;
   const account = ctx.memberships.find((membership) => membership.id === ctx.sellerEntityId);
   return account ? sellerSubmissionAccess(account).canDraft : false;
-}
-
-/** Sends a member whose role lacks `capability` back to the Selling overview. */
-export function requireSellerCapability(
-  ctx: SellerWorkspaceContext,
-  capability: EntityCapability,
-): void {
-  if (!sellerCan(ctx, capability)) redirect("/selling");
 }

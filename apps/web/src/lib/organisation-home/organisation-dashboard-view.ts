@@ -6,7 +6,7 @@ import {
   type DashboardTile,
   type EstimateTotal,
   type FirstRunAction,
-  type FirstRunRecord,
+  type FirstRunAddressee,
   type MoneyTotal,
   type OrganisationDashboardModel,
   type OrganisationHomeFirstRunKey,
@@ -48,6 +48,8 @@ export type ConsignmentStageView = {
 };
 
 export type FirstRunView = {
+  /** Whom the steps address; a member's own empty Home stays quiet, without a large drawing. */
+  addressee: FirstRunAddressee;
   title: string;
   description: string;
   actions: { id: FirstRunAction; label: string; href: string }[];
@@ -224,12 +226,13 @@ const FIRST_RUN_ACTION: Record<FirstRunAction, { label: string; href: string }> 
 
 /** First steps: the words follow the organisation's state, then the first thing the role can do. */
 function firstRunView(
-  { actions, shows }: { actions: readonly FirstRunAction[]; shows: readonly FirstRunRecord[] },
+  { actions, shows, addressee }: NonNullable<OrganisationDashboardModel["firstRun"]>,
   key: OrganisationHomeFirstRunKey,
   ctx: Ctx,
 ): FirstRunView {
   return {
-    ...organisationFirstRunCopy(key, actions[0] ?? "none", ctx, shows),
+    addressee,
+    ...organisationFirstRunCopy({ key, step: actions[0] ?? "none", addressee, shows }, ctx),
     actions: actions.map((id) => ({ id, ...FIRST_RUN_ACTION[id] })),
   };
 }

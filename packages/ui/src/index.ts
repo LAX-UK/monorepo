@@ -137,6 +137,12 @@ export {
   BottomSheetDescription,
 } from "./components/ui/bottom-sheet.js";
 export { DataTable } from "./components/ui/data-table.js";
+export {
+  AccessDeniedState,
+  accessDeniedLine,
+  accessDeniedTitle,
+} from "./components/ui/access-denied-state.js";
+export type { AccessDeniedStateProps } from "./components/ui/access-denied-state.js";
 export { EmptyState } from "./components/ui/empty-state.js";
 export type { EmptyStateProps } from "./components/ui/empty-state.js";
 export { LAX_ILLUSTRATION_NAMES, LaxIllustration } from "./components/ui/lax-illustration.js";

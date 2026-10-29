@@ -150,19 +150,16 @@ const SELL_WITH_LAX: NavSpec = {
 
 const CONSIGNMENTS: NavSpec = {
   audience: "both",
-  item: (scope) => ({
+  item: () => ({
     id: "consignments",
     label: "Consignments",
     // "Consignments" does not fit a phone tab, so the tab takes the menu section's name.
     shortLabel: "Selling",
     href: CLIENT_ROUTES.consignments,
     icon: Upload,
-    // Submissions are consignments before they are accepted, so a new one belongs here too, and
-    // a personal account's selling overview (which has no menu entry of its own) as well.
+    // Submissions are consignments before they are accepted, so a new one belongs here too.
     match: (pathname) =>
-      exactOrNested(CLIENT_ROUTES.consignments)(pathname) ||
-      pathname === CLIENT_ROUTES.sellingNew ||
-      (!isOrganisation(scope) && pathname === CLIENT_ROUTES.selling),
+      exactOrNested(CLIENT_ROUTES.consignments)(pathname) || pathname === CLIENT_ROUTES.sellingNew,
   }),
   anyCapability: ["entity.consignments.read"],
   personalWhen: (scope) => scope.hasSubmissions,
@@ -287,6 +284,28 @@ export function getClientNavSections(scope: ClientNavScope): ClientNavSection[] 
     label: section.label,
     items: section.specs.filter((spec) => isVisible(spec, scope)).map((spec) => spec.item(scope)),
   })).filter((section) => section.items.length > 0);
+}
+
+/** Any organisation member's menu, to name a page the way the workspace menu does. */
+const ANY_ORGANISATION_SCOPE: ClientNavScope = {
+  context: { kind: "organisation", id: "", role: "owner" },
+  hasSubmissions: true,
+};
+
+/** A workspace menu entry: its name and what a member needs to open it (empty: everyone). */
+export type WorkspaceMenuEntry = { label: string; anyCapability: readonly EntityCapability[] };
+
+/** The workspace menu entry `pathname` belongs to, or `null` for a page outside the menu. */
+export function workspaceMenuEntryAt(pathname: string): WorkspaceMenuEntry | null {
+  for (const section of SECTIONS) {
+    for (const spec of section.specs) {
+      if (spec.audience === "personal") continue;
+      const item = spec.item(ANY_ORGANISATION_SCOPE);
+      if (item.external || !navItemMatches(item, pathname)) continue;
+      return { label: item.label, anyCapability: spec.anyCapability ?? [] };
+    }
+  }
+  return null;
 }
 
 /** Whether a menu entry is the page at `pathname` (its own rule, else its exact address). */

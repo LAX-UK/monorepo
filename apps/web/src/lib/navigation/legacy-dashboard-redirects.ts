@@ -56,7 +56,7 @@ export const LEGACY_DASHBOARD_REDIRECTS: readonly LegacyDashboardRedirect[] = [
   rule("/dashboard/artist-follow", "/watching?section=artists"),
 
   // Selling. Submissions and items in sale are one Consignments list with status tabs.
-  rule("/dashboard/seller", "/selling"),
+  rule("/dashboard/seller", "/selling/consignments"),
   rule("/dashboard/seller/consignments", "/selling/consignments"),
   rule("/dashboard/seller/in-sale", "/selling/consignments?tab=in-sale"),
   rule("/dashboard/submissions", "/selling/consignments"),
@@ -90,6 +90,10 @@ export const LEGACY_DASHBOARD_REDIRECTS: readonly LegacyDashboardRedirect[] = [
   rule("/dashboard/settings/payment-methods", "/purchases"),
   rule("/dashboard/verify-identity", "/verify-identity"),
   rule("/dashboard/compliance/source-of-funds", "/compliance/source-of-funds"),
+
+  // Retired client pages. Selling had an overview of what needs the team, which Home's
+  // "Needs you" already shows; Selling now opens on Consignments.
+  rule("/selling", "/selling/consignments"),
 ];
 
 /**

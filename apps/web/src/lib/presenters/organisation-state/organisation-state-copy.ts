@@ -2,6 +2,7 @@ import { supportMailto } from "@/lib/dashboard/dashboard-copy";
 import { organisationHref } from "@/lib/navigation/client-routes";
 import { organisationStatusView } from "@/lib/presenters/organisation-status/organisation-status-presentation";
 import {
+  type FirstRunAddressee,
   type FirstRunRecord,
   type OrganisationBanner,
   type OrganisationBannerKey,
@@ -186,19 +187,39 @@ type FirstRunWords = (
   records: string,
 ) => OrganisationFirstRunCopy;
 
-const READY_COPY: Record<FirstRunStep, FirstRunWords> = {
-  sell: ({ organisationName }, records) => ({
-    title: `Get ${organisationName} started`,
-    description: `Send a first work to our specialists. ${records} show here as they happen.`,
-  }),
-  invite: ({ organisationName }, records) => ({
-    title: `Get ${organisationName} started`,
-    description: `Invite your team. ${records} show here as they happen.`,
-  }),
-  none: ({ organisationName }, records) => ({
-    title: "Nothing here yet",
-    description: `${records} for ${organisationName} show here as they happen.`,
-  }),
+/**
+ * A ready organisation's first steps. People who run it are asked to get it started; every
+ * other member is told about their own part, never that the organisation has yet to trade.
+ */
+const READY_COPY: Record<FirstRunAddressee, Record<FirstRunStep, FirstRunWords>> = {
+  organisation: {
+    sell: ({ organisationName }, records) => ({
+      title: `Get ${organisationName} started`,
+      description: `Send a first work to our specialists. ${records} show here as they happen.`,
+    }),
+    invite: ({ organisationName }, records) => ({
+      title: `Get ${organisationName} started`,
+      description: `Invite your team. ${records} show here as they happen.`,
+    }),
+    none: ({ organisationName }, records) => ({
+      title: "Nothing here yet",
+      description: `${records} for ${organisationName} show here as they happen.`,
+    }),
+  },
+  member: {
+    sell: (_ctx, records) => ({
+      title: "Send your first work",
+      description: `Our specialists review each work you send. Your ${records.toLowerCase()} show here as they happen.`,
+    }),
+    invite: (_ctx, records) => ({
+      title: "Nothing to show yet",
+      description: `${records} show here as they happen.`,
+    }),
+    none: (_ctx, records) => ({
+      title: "Nothing to show yet",
+      description: `${records} show here as they happen.`,
+    }),
+  },
 };
 
 /**
@@ -228,18 +249,24 @@ const FIRST_RUN_COPY: Record<Exclude<OrganisationHomeFirstRunKey, "ready">, Firs
   }),
 };
 
-/**
- * The first-run words for an organisation in `key`, offering `step`, naming only the records
- * (`shows`) this member's role can see.
- */
+/** What the first-run words are for: the organisation's state, the step and whom they address. */
+export type FirstRunCopyInput = {
+  key: OrganisationHomeFirstRunKey;
+  step: FirstRunStep;
+  addressee: FirstRunAddressee;
+  /** The records this member's role can see; only these are named. */
+  shows: readonly FirstRunRecord[];
+};
+
+/** The first-run words for one member's Home. */
 export function organisationFirstRunCopy(
-  key: OrganisationHomeFirstRunKey,
-  step: FirstRunStep,
+  { key, step, addressee, shows }: FirstRunCopyInput,
   ctx: OrganisationStateCopyContext,
-  shows: readonly FirstRunRecord[],
 ): OrganisationFirstRunCopy {
   const records = recordsSentence(shows);
-  return key === "ready" ? READY_COPY[step](ctx, records) : FIRST_RUN_COPY[key](ctx, records);
+  return key === "ready"
+    ? READY_COPY[addressee][step](ctx, records)
+    : FIRST_RUN_COPY[key](ctx, records);
 }
 
 /** Why bidding for the organisation is closed, said before the person tries. */

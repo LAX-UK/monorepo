@@ -1,11 +1,14 @@
 import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
 import { render, screen } from "@testing-library/react";
+import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
 
 vi.mock("./use-account-switch", () => ({
   useAccountSwitch: () => ({ pendingId: null, choose: vi.fn() }),
 }));
-vi.mock("@/components/layout/acting-as-tooltip", () => ({ ActingAsTooltip: () => null }));
+vi.mock("@/components/layout/acting-as-tooltip", () => ({
+  ActingAsTooltip: ({ children }: { children: ReactNode }) => children,
+}));
 
 const { AccountSwitcher } = await import("./account-switcher");
 const { AccountStrip } = await import("./account-strip");

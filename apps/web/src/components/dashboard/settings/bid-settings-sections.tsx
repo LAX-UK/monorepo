@@ -15,7 +15,7 @@ import { getServerCategoryInterests } from "@/lib/data/http/category-interests.s
 import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import { biddingStanding } from "@/lib/settings/bidding-standing";
 import { Button } from "@auction/ui/components/button";
-import type { DensityPreference, LayoutViewDefault, ThemePreference } from "@auction/validators";
+import type { LayoutViewDefault, ThemePreference } from "@auction/validators";
 import { ExternalLink, UserRound } from "lucide-react";
 import Link from "next/link";
 import { BidSettingsSection } from "./bid-settings-section";
@@ -124,7 +124,6 @@ export function AppearanceSettings({ user }: { user: SessionUser }) {
     viewLotsDefault: (p?.viewLotsDefault ?? "auto") as LayoutViewDefault,
     viewArtistsDefault: (p?.viewArtistsDefault ?? "auto") as LayoutViewDefault,
     viewSalesDefault: (p?.viewSalesDefault ?? "auto") as LayoutViewDefault,
-    density: (p?.density ?? "comfortable") as DensityPreference,
     viewSync: p?.viewSync ?? false,
   };
   return (

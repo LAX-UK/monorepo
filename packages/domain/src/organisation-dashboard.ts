@@ -366,6 +366,16 @@ const FIRST_RUN_RECORDS: readonly { record: FirstRunRecord; capability: EntityCa
   { record: "purchases", capability: "entity.finance.read" },
 ];
 
+/**
+ * Whom the first steps speak to. People who run the organisation are told about the
+ * organisation ("Get Northbank Gallery started"); every other member is told about their own
+ * part of it, as an empty Home for them says nothing about how the organisation trades.
+ */
+export type FirstRunAddressee = "organisation" | "member";
+
+/** Holding this makes a member one of the people who run the organisation. */
+const RUNS_ORGANISATION: EntityCapability = "entity.members.manage";
+
 /** Whether the organisation's state allows an action. */
 export type OrganisationAllows = (action: OrganisationAction) => boolean;
 
@@ -397,7 +407,11 @@ export function dashboardSectionsFor(actor: EntityActor): DashboardSection[] {
 
 export type OrganisationDashboardModel = {
   /** Set when there is nothing yet: Home points to the first steps instead of empty figures. */
-  firstRun: { actions: FirstRunAction[]; shows: FirstRunRecord[] } | null;
+  firstRun: {
+    actions: FirstRunAction[];
+    shows: FirstRunRecord[];
+    addressee: FirstRunAddressee;
+  } | null;
   tiles: DashboardTile[];
   /** The next few sales, or empty when the section is hidden. */
   upcomingSales: UpcomingSaleFigure[];
@@ -433,6 +447,8 @@ export function buildOrganisationDashboard(
         shows: FIRST_RUN_RECORDS.filter(({ capability }) => entityActorCan(actor, capability)).map(
           ({ record }) => record,
         ),
+        // Read, not act: support staff viewing as an owner see the owner's words.
+        addressee: reads(actor, RUNS_ORGANISATION) ? "organisation" : "member",
       },
       tiles: [],
       upcomingSales: [],

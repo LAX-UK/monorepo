@@ -10,7 +10,9 @@ import { NeedsYouCard } from "@/components/dashboard/seller/needs-you-card";
 import { SellWithLaxInvitation } from "@/components/dashboard/seller/sell-with-lax-invitation";
 import { SellingSectionTabs } from "@/components/dashboard/seller/selling-section-tabs";
 import { SubmissionsListAutoRefresh } from "@/components/dashboard/submissions/submissions-list-auto-refresh";
+import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { CatalogActiveFilterChips } from "@/components/marketing/catalog-active-filter-chips";
+import { WorkspacePageNoAccess } from "@/components/organisations/workspace-page-no-access";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import {
   ACCOUNT_LOAD_ERROR,
@@ -18,12 +20,12 @@ import {
   DASHBOARD_ROUTES,
 } from "@/lib/dashboard/dashboard-copy";
 import {
-  requireSellerCapability,
   resolveSellerWorkspaceContext,
   sellerCanStartSubmission,
 } from "@/lib/legal-entity/seller-acting-context.server";
 import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { CONSIGNMENT_STAGE_LABEL } from "@/lib/organisation-home/consignment-stage-links";
+import { workspacePageRefusal } from "@/lib/presenters/workspace-access/workspace-access";
 import { consignmentsListView } from "@/lib/seller/consignments-list-view";
 import {
   countConsignmentsByTab,
@@ -51,7 +53,15 @@ type PageProps = {
 export default async function SellerConsignmentsPage({ searchParams }: PageProps) {
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: PATH });
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
-  requireSellerCapability(sellerCtx, "entity.consignments.read");
+  const refusal = workspacePageRefusal(PATH, sellerCtx.actor);
+  if (refusal) {
+    return (
+      <>
+        <SetMobileShellTitle title={refusal.label} />
+        <WorkspacePageNoAccess label={refusal.label} openedBy={refusal.openedBy} next={PATH} />
+      </>
+    );
+  }
   const { sellerEntityId, sellingAsOrganisation } = sellerCtx;
   const canCreateSubmission = sellerCanStartSubmission(sellerCtx);
   const [overview, filter] = await Promise.all([

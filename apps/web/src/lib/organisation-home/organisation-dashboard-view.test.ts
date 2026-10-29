@@ -186,6 +186,7 @@ describe("first steps", () => {
 
   it("points an owner to selling and inviting", () => {
     expect(view("owner", EMPTY).firstRun).toEqual({
+      addressee: "organisation",
       title: "Get Northbank Gallery started",
       description:
         "Send a first work to our specialists. Sales, payouts, bids and purchases show here as they happen.",
@@ -198,16 +199,34 @@ describe("first steps", () => {
 
   it("stays calm for a role that cannot start anything, without blaming the organisation", () => {
     expect(view("viewer", EMPTY).firstRun).toEqual({
-      title: "Nothing here yet",
-      description: "Sales for Northbank Gallery show here as they happen.",
+      addressee: "member",
+      title: "Nothing to show yet",
+      description: "Sales show here as they happen.",
       actions: [],
+    });
+    expect(view("finance", EMPTY).firstRun).toEqual({
+      addressee: "member",
+      title: "Nothing to show yet",
+      description: "Sales, payouts and purchases show here as they happen.",
+      actions: [],
+    });
+  });
+
+  it("asks a consignor for their own first work, not to get the organisation started", () => {
+    expect(view("consignor", EMPTY).firstRun).toEqual({
+      addressee: "member",
+      title: "Send your first work",
+      description:
+        "Our specialists review each work you send. Your sales show here as they happen.",
+      actions: [{ id: "sell", label: "Sell a work", href: "/selling/new" }],
     });
   });
 
   it("never tells a buyer agent about payouts they cannot see", () => {
     expect(view("buyer_agent", EMPTY).firstRun).toEqual({
-      title: "Nothing here yet",
-      description: "Bids for Northbank Gallery show here as they happen.",
+      addressee: "member",
+      title: "Nothing to show yet",
+      description: "Bids show here as they happen.",
       actions: [],
     });
   });
@@ -215,6 +234,7 @@ describe("first steps", () => {
   it("follows the organisation's state: a restricted owner is not asked to sell or invite", () => {
     const model = buildOrganisationDashboard({ role: "owner" }, EMPTY, () => false);
     expect(organisationDashboardView(model, ctx, "restricted").firstRun).toEqual({
+      addressee: "organisation",
       title: "Nothing here yet",
       description: "Northbank Gallery's past sales, purchases and invoices show here.",
       actions: [],
@@ -228,6 +248,7 @@ describe("first steps", () => {
       (action) => action === "invite",
     );
     expect(organisationDashboardView(model, ctx, "documents_under_review").firstRun).toEqual({
+      addressee: "organisation",
       title: "Nothing here yet",
       description:
         "Sales, payouts, bids and purchases for Northbank Gallery show here once we've finished checking its documents.",

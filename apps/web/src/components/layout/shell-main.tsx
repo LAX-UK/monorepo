@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  WORKSPACE_COLUMN_STYLE,
+  WORKSPACE_PAGE_WIDTH_CLASS,
+} from "@/components/dashboard/dashboard-page";
 import { AppShellBreadcrumbs } from "@/components/layout/app-shell-breadcrumbs";
 import type { AppShellRole } from "@/components/layout/app-shell-nav";
 import { useDashboardDensity } from "@/components/layout/density-provider";
@@ -54,15 +58,23 @@ export function ShellMain({
           "data-[density=compact]:md:px-6 data-[density=compact]:md:py-6",
         )}
         data-density={density}
+        // The organisation workspace has one content column; staff pages keep the full width.
+        style={isStaffShell ? undefined : WORKSPACE_COLUMN_STYLE}
       >
-        {shellRole === "client" || (isStaffShell && !hideStaffBreadcrumbs) ? (
-          <div className="mb-4 hidden lg:block">
-            <AppShellBreadcrumbs role={shellRole} sessionUser={user} variant="desktop" />
-          </div>
-        ) : null}
-        {topSlot ? <div className="mb-6">{topSlot}</div> : null}
-        {hideEmailStatusBanner ? null : <EmailStatusBanner user={user} />}
-        {contextBanner ? <div className="mb-6 space-y-4">{contextBanner}</div> : null}
+        {/* Breadcrumbs and notices line up with the page column they belong to. */}
+        <div className={WORKSPACE_PAGE_WIDTH_CLASS}>
+          {shellRole === "client" || (isStaffShell && !hideStaffBreadcrumbs) ? (
+            <div className="mb-4 hidden lg:block">
+              <AppShellBreadcrumbs role={shellRole} sessionUser={user} variant="desktop" />
+            </div>
+          ) : null}
+          {/* A slot whose content renders nothing (no toast this visit) leaves no gap. */}
+          {topSlot ? <div className="mb-6 empty:hidden">{topSlot}</div> : null}
+          {hideEmailStatusBanner ? null : <EmailStatusBanner user={user} />}
+          {contextBanner ? (
+            <div className="mb-6 space-y-4 empty:hidden">{contextBanner}</div>
+          ) : null}
+        </div>
         {children}
       </div>
     </main>

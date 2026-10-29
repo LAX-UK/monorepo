@@ -1,10 +1,9 @@
 import type { HomeNoticeView, HomeTaskView } from "@/lib/organisation-home/organisation-home-view";
 import { Button } from "@auction/ui/components/button";
-import { Surface } from "@auction/ui/components/surface";
 import { CircleCheck } from "lucide-react";
 import Link from "next/link";
 import { HomeNotices } from "./home-notices";
-import { HomeSectionHeading } from "./home-section-heading";
+import { HomePanel, HomeSection } from "./home-section";
 
 type Props = {
   tasks: readonly HomeTaskView[];
@@ -17,30 +16,28 @@ type Props = {
  * left it collapses to a single calm line. Notices follow as information, never as tasks.
  */
 export function HomeNeedsYou({ tasks, notices = [] }: Props) {
-  return (
-    <Surface
-      variant="section"
-      padding="none"
-      aria-labelledby="home-needs-you"
-      className="p-0 sm:p-0"
-    >
-      <div className="px-4 pt-4 sm:px-6 sm:pt-5">
-        <HomeSectionHeading id="home-needs-you">Needs you</HomeSectionHeading>
-      </div>
-      {tasks.length === 0 ? (
+  if (tasks.length === 0) {
+    return (
+      <div className="space-y-3">
         <p
-          className="flex items-center gap-2 px-4 pt-2 pb-5 font-body text-sm text-on-surface-variant sm:px-6"
+          className="flex items-center gap-2 font-body text-sm text-on-surface-variant"
           data-testid="home-needs-you-empty"
         >
           <CircleCheck className="size-4 shrink-0 text-success" strokeWidth={1.75} aria-hidden />
           Nothing needs you right now.
         </p>
-      ) : (
-        <ul className="mt-1 divide-y divide-border-hairline px-4 pb-1 sm:px-6">
+        <HomeNotices notices={notices} />
+      </div>
+    );
+  }
+  return (
+    <HomeSection id="home-needs-you" title="Needs you">
+      <HomePanel>
+        <ul className="divide-y divide-border-hairline">
           {tasks.map((task, index) => (
             <li
               key={task.key}
-              className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6"
+              className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-5"
               data-testid={`home-task-${task.key}`}
             >
               <div className="min-w-0 space-y-0.5">
@@ -51,19 +48,15 @@ export function HomeNeedsYou({ tasks, notices = [] }: Props) {
                 asChild
                 size="default"
                 variant={index === 0 ? "primary" : "outline"}
-                className="shrink-0 self-start sm:self-center"
+                className="w-full shrink-0 sm:w-auto"
               >
                 <Link href={task.action.href}>{task.action.label}</Link>
               </Button>
             </li>
           ))}
         </ul>
-      )}
-      {notices.length > 0 ? (
-        <div className="mx-4 border-t border-border-hairline pt-4 pb-5 sm:mx-6">
-          <HomeNotices notices={notices} />
-        </div>
-      ) : null}
-    </Surface>
+      </HomePanel>
+      <HomeNotices notices={notices} className="pt-1" />
+    </HomeSection>
   );
 }

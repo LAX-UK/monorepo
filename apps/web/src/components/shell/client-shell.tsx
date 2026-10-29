@@ -9,7 +9,6 @@ import type { SessionUser } from "@/lib/data/contracts";
 import { isHideDashboardTabBarRoute } from "@/lib/layout/bottom-chrome";
 import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
 import type { ClientNavScope } from "@/lib/navigation/client-nav-model";
-import type { DashboardDensity } from "@/lib/preferences/density";
 import type { SellerConnectNavBadgeInput } from "@/lib/shell/apply-seller-connect-nav-badges";
 import { buildShellConfig } from "@/lib/shell/build-shell-config";
 import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
@@ -24,7 +23,6 @@ type Props = {
   account: AccountChrome;
   /** The LAX top bar: the other products and LAX Account. */
   familyLinks?: readonly LaxFamilyLinkVm[];
-  cookieDensity?: DashboardDensity | null;
   hideEmailStatusBanner?: boolean;
   contextBanner?: ReactNode;
   topSlot?: ReactNode;
@@ -39,7 +37,6 @@ export function ClientShell({
   navScope,
   account,
   familyLinks,
-  cookieDensity,
   hideEmailStatusBanner,
   contextBanner,
   topSlot,
@@ -80,7 +77,7 @@ export function ClientShell({
     <ViewerCapabilitiesProvider user={user} acting={acting}>
       <ContextualKycReturnTracker kycApproved={user.kycStatus === "approved"} />
       <AccountChromeProvider account={account}>
-        <AppShell user={user} config={config} cookieDensity={cookieDensity ?? null}>
+        <AppShell user={user} config={config}>
           {children}
         </AppShell>
       </AccountChromeProvider>

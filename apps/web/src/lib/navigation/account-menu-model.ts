@@ -36,10 +36,10 @@ const PRIMARY: readonly AccountMenuEntry[] = [
   { id: "notifications", label: "Notifications", href: "/notifications" },
 ];
 
-/** Sellers go to their selling overview; everyone else is offered one way to start. */
+/** Sellers go to Selling, which opens on Consignments; everyone else is offered a way to start. */
 function sellingEntry(facts: AccountMenuFacts): AccountMenuEntry {
   if (facts.hasConsigned || facts.isOrgMember) {
-    return { id: "selling", label: "Selling", href: CLIENT_ROUTES.selling };
+    return { id: "selling", label: "Selling", href: CLIENT_ROUTES.consignments };
   }
   return { id: "start-selling", label: "Sell with LAX", href: CLIENT_ROUTES.sellingNew };
 }

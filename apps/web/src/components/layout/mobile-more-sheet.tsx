@@ -293,9 +293,12 @@ export function MobileMoreSheet({
             {familyLinks ? (
               <LaxFamilyMenuLinks links={familyLinks} onNavigate={() => onOpenChange(false)} />
             ) : null}
-            <div className="rounded-lg border border-border-hairline bg-surface-container-low/40 p-4">
-              <DensityTweakSection />
-            </div>
+            {/* Density is a staff setting; the client workspace has one layout. */}
+            {variant === "staff" ? (
+              <div className="rounded-lg border border-border-hairline bg-surface-container-low/40 p-4">
+                <DensityTweakSection />
+              </div>
+            ) : null}
             <div className="flex items-center justify-between rounded-lg border border-border-hairline bg-surface-container-low/40 p-4">
               <div>
                 <p className="font-label text-sm font-medium text-on-surface">Dark mode</p>

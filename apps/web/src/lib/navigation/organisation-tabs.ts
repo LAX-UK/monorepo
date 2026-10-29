@@ -74,6 +74,14 @@ export function requireOrganisationTab(
   };
 }
 
+/** The tab at `pathname` and what opens it, or `null` for a page that is not a tab. */
+export function organisationTabAt(
+  pathname: string,
+): { id: OrganisationTab; label: string; capability: EntityCapability } | null {
+  const spec = ORGANISATION_TAB_SPECS.find((s) => organisationHref(s.id) === pathname);
+  return spec ? { id: spec.id, label: spec.label, capability: spec.capability } : null;
+}
+
 /** Every capability that opens at least one tab; the menu shows Organisation to these members. */
 export const ORGANISATION_PAGE_CAPABILITIES: readonly EntityCapability[] = [
   ...new Set(ORGANISATION_TAB_SPECS.map((spec) => spec.capability)),

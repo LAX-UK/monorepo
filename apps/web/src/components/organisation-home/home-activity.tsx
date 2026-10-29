@@ -1,46 +1,31 @@
 import type { HomeActivityView } from "@/lib/organisation-home/organisation-home-view";
-import { EmptyState } from "@auction/ui/components/empty-state";
-import { Surface } from "@auction/ui/components/surface";
 import Link from "next/link";
-import { HomeSectionHeading } from "./home-section-heading";
-import { HomeSeeAllLink } from "./home-see-all-link";
+import { HomePanel, HomeSection } from "./home-section";
 
 type Props = {
   activity: readonly HomeActivityView[];
   seeAllHref: string | null;
 };
 
-/** The five newest things this role may see, with a way to the full list. */
+/**
+ * The five newest things this role may see, newest first, each with how long ago it happened
+ * (the full date on hover). With nothing to list the section is left out.
+ */
 export function HomeActivity({ activity, seeAllHref }: Props) {
+  if (activity.length === 0) return null;
   return (
-    <Surface variant="section" padding="none" className="p-0 sm:p-0">
-      <div className="flex items-center justify-between gap-4 px-4 pt-4 sm:px-6 sm:pt-5">
-        <HomeSectionHeading id="home-activity">Recent activity</HomeSectionHeading>
-        {seeAllHref && activity.length > 0 ? <HomeSeeAllLink href={seeAllHref} /> : null}
-      </div>
-      {activity.length === 0 ? (
-        <EmptyState
-          variant="plain"
-          size="compact"
-          headingLevel="h3"
-          illustration="ledger"
-          title="Nothing here yet"
-          description="New submissions, sales and members show here as they happen."
-        />
-      ) : (
-        <ol
-          aria-labelledby="home-activity"
-          className="divide-y divide-border-hairline px-4 pb-1 sm:px-6"
-        >
+    <HomeSection id="home-activity" title="Recent activity" seeAllHref={seeAllHref}>
+      <HomePanel>
+        <ol aria-labelledby="home-activity" className="divide-y divide-border-hairline">
           {activity.map((item) => (
             <li
               key={item.key}
-              className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 py-3"
+              className="flex min-h-14 flex-col justify-center gap-0.5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-5"
             >
               {item.href ? (
                 <Link
                   href={item.href}
-                  className="min-w-0 rounded-sm font-body text-sm text-on-surface underline decoration-outline-variant underline-offset-4 hover:decoration-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+                  className="min-w-0 rounded-sm font-body text-sm text-on-surface underline decoration-outline-variant underline-offset-4 transition-colors duration-150 hover:decoration-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
                 >
                   {item.text}
                 </Link>
@@ -49,14 +34,16 @@ export function HomeActivity({ activity, seeAllHref }: Props) {
               )}
               <time
                 dateTime={item.at}
-                className="shrink-0 font-body text-xs text-on-surface-variant"
+                title={item.fullDate}
+                className="shrink-0 font-body text-xs text-on-surface-variant tabular-nums"
               >
                 {item.when}
+                <span className="sr-only">, {item.fullDate}</span>
               </time>
             </li>
           ))}
         </ol>
-      )}
-    </Surface>
+      </HomePanel>
+    </HomeSection>
   );
 }

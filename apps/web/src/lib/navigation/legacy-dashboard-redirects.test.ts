@@ -55,7 +55,7 @@ const EVERY_OLD_PAGE: readonly [string, string][] = [
   ["/dashboard/settings/appearance", "/settings/appearance"],
   ["/dashboard/verify-identity", "/verify-identity"],
   ["/dashboard/compliance/source-of-funds", "/compliance/source-of-funds"],
-  ["/dashboard/seller", "/selling"],
+  ["/dashboard/seller", "/selling/consignments"],
   ["/dashboard/seller/consignments", "/selling/consignments"],
   ["/dashboard/submissions/new", "/selling/new"],
   ["/dashboard/submissions/sub-1", "/selling/consignments/sub-1"],
@@ -93,6 +93,23 @@ const EARLIER_RETIREMENTS: readonly [string, string][] = [
   ["/dashboard/organisations/org-1/members", "/organisation/members?account=org-1"],
   ["/dashboard/organisations/org-1/connect", "/organisation/payouts?account=org-1"],
 ];
+
+describe("retired client pages", () => {
+  it("opens Selling on Consignments, keeping the query string", () => {
+    expect(resolveLegacyDashboardRedirect("/selling")).toBe("/selling/consignments");
+    expect(resolveLegacyDashboardRedirect("/selling/", "?tab=unsold")).toBe(
+      "/selling/consignments?tab=unsold",
+    );
+    expect(servesPage("/selling")).toBe(false);
+    expect(servesPage("/selling/consignments")).toBe(true);
+  });
+
+  it("leaves every page under Selling where it is", () => {
+    for (const path of ["/selling/new", "/selling/consignments", "/selling/payouts"]) {
+      expect(resolveLegacyDashboardRedirect(path)).toBeNull();
+    }
+  });
+});
 
 describe("LEGACY_DASHBOARD_REDIRECTS", () => {
   it.each([...EVERY_OLD_PAGE, ...EARLIER_RETIREMENTS])("sends %s to %s", (from, to) => {

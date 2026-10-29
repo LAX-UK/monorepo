@@ -86,13 +86,13 @@ const SUBMISSIONS_FAILURES: Record<string, Omit<LegalEntityAccessFailure, "code"
     title: "Impersonation session expired",
     message:
       "Your admin impersonation session ended. End impersonation from the banner and reload.",
-    actions: [{ kind: "retry", label: "Reload seller workspace", href: DASHBOARD_ROUTES.seller }],
+    actions: [{ kind: "retry", label: DASHBOARD_CTA.tryAgain, href: DASHBOARD_ROUTES.seller }],
   },
   invalid_impersonation_session: {
     title: "Impersonation session invalid",
     message:
       "Your admin impersonation session is no longer valid. End impersonation and try again.",
-    actions: [{ kind: "retry", label: "Reload seller workspace", href: DASHBOARD_ROUTES.seller }],
+    actions: [{ kind: "retry", label: DASHBOARD_CTA.tryAgain, href: DASHBOARD_ROUTES.seller }],
   },
 };
 
@@ -115,7 +115,6 @@ export function buildLegalEntityAccessFailure(
           : "Something went wrong while loading your submissions. Try again.",
       actions: [
         { kind: "retry", label: DASHBOARD_CTA.tryAgain, href: DASHBOARD_ROUTES.consignments },
-        { kind: "navigate", label: DASHBOARD_CTA.sellingOverview, href: DASHBOARD_ROUTES.seller },
       ],
     };
   }

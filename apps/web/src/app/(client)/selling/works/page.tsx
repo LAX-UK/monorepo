@@ -1,3 +1,7 @@
+  }
+  const canViewMoney = sellerCan(sellerCtx, "entity.finance.read");
+  // Only someone who may bid is offered the sales; the rest are told what will appear.
+  const canBid = sellerCan(sellerCtx, "entity.bid.place");
 import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { PaymentsMobileList } from "@/components/dashboard/list/payments-mobile-list";
@@ -6,6 +10,8 @@ import { DashboardEmptyState, DashboardSection } from "@/components/dashboard/pr
 import { AccountLoadError } from "@/components/dashboard/primitives/account-load-error";
 import { DashboardDesktopList } from "@/components/dashboard/primitives/dashboard-list-row-card";
 import { OrgWorksList } from "@/components/dashboard/seller/org-works-list";
+import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
+import { WorkspacePageNoAccess } from "@/components/organisations/workspace-page-no-access";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { ACCOUNT_LOAD_ERROR, DASHBOARD_CTA } from "@/lib/dashboard/dashboard-copy";
 import { describeDashboardSliceFailure } from "@/lib/dashboard/dashboard-fetch-errors";
@@ -25,6 +31,8 @@ import {
   resolveSellerWorkspaceContext,
   sellerCan,
 } from "@/lib/legal-entity/seller-acting-context.server";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { workspacePageRefusal } from "@/lib/presenters/workspace-access/workspace-access";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -40,15 +48,20 @@ const PATH = "/selling/works";
 export default async function SellerWorksPage() {
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: PATH });
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
+  // A person's own works are in Purchases and LAX Account; this page is an organisation's.
+  if (!sellerCtx.sellingAsOrganisation) redirect(CLIENT_ROUTES.consignments);
+  const refusal = workspacePageRefusal(PATH, sellerCtx.actor);
+  if (refusal) {
+    return (
+      <>
+        <SetMobileShellTitle title={refusal.label} />
+        <WorkspacePageNoAccess label={refusal.label} openedBy={refusal.openedBy} next={PATH} />
+      </>
+    );
+  }
   const canViewMoney = sellerCan(sellerCtx, "entity.finance.read");
   // Only someone who may bid is offered the sales; the rest are told what will appear.
   const canBid = sellerCan(sellerCtx, "entity.bid.place");
-  if (
-    !sellerCtx.sellingAsOrganisation ||
-    !(canViewMoney || sellerCan(sellerCtx, "entity.holdings.read"))
-  ) {
-    redirect("/selling");
-  }
 
   const [winsResult, paymentsResult] = await Promise.allSettled([
     getServerEntityWonLots(),

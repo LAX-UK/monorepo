@@ -101,6 +101,7 @@ describe("HomeDashboard", () => {
         dashboard={{
           ...DASHBOARD,
           firstRun: {
+            addressee: "organisation",
             title: "Get Northbank Gallery started",
             description: "Send a first work to our specialists.",
             actions: [
