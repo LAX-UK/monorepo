@@ -1,31 +1,37 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
+import { InvitationLinkState } from "@/components/organisations/invitation-link-state";
 import { OrgModuleComingSoon } from "@/components/organisations/org-module-coming-soon";
-import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
-import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
-import { describeSettingsActionError } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
-import { acceptInvitationAction } from "@/lib/legal-entity/member-management.actions";
+import { createInvitationLinkGateway } from "@/lib/legal-entity/invitation-link.gateway.server";
 import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-module-host.server";
-import { CLIENT_ROUTES, withAccount } from "@/lib/navigation/client-routes";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { buildInvitationLinkView } from "@/lib/organisations/invitation-link.vm";
 import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import { LogIn, UserPlus } from "lucide-react";
-import Link from "next/link";
-import { redirect } from "next/navigation";
+import type { Metadata } from "next";
 
+export const metadata: Metadata = { title: "Accept invitation" };
+
+/**
+ * An organisation invitation link. Opening it changes nothing: a signed-in person reads what
+ * the invitation is (or what became of it) and accepts with a button, which posts to the
+ * `confirm` route handler.
+ */
 export default async function AcceptInvitationTokenPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ token: string }>;
+  searchParams: Promise<{ error?: string | string[] }>;
 }) {
-  const { token: raw } = await params;
+  const [{ token: raw }, { error }] = await Promise.all([params, searchParams]);
   const token = decodeURIComponent(raw);
+  const pagePath = `${CLIENT_ROUTES.invitations}/accept/${encodeURIComponent(token)}`;
 
-  const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
-  if (!orgModuleEnabled) {
+  if (!(await resolveOrgModuleEnabledFromRequest())) {
     return (
       <DashboardPage>
         <OrgModuleComingSoon />
@@ -35,38 +41,22 @@ export default async function AcceptInvitationTokenPage({
 
   const session = await getServerSessionUser();
   if (session?.id) {
-    await requireAuthenticatedUser({
-      shell: "client",
-      loginNext: `/organisations/invitations/accept/${raw}`,
+    const preview = await createInvitationLinkGateway().preview(token);
+    const view = buildInvitationLinkView({
+      preview,
+      pagePath,
+      failedBefore: error === "unavailable",
     });
-    const res = await acceptInvitationAction(token);
-    if (res.ok) {
-      redirect(withAccount(CLIENT_ROUTES.home, res.data.legalEntityId));
-    }
-    const failure = {
-      ...describeSettingsActionError(res.error ?? "Could not accept invitation."),
-      title: "Could not accept invitation",
-    };
     return (
-      <DashboardPage className="mx-auto max-w-lg space-y-4">
-        <DashboardPageHeader
-          meta="Invitation"
-          title={failure.title}
-          hideTitleOnMobile
-          hideDescriptionOnMobile
-        />
-        <DashboardSliceErrorAlert failure={failure} />
-        <Button asChild variant="outline">
-          <Link href={DASHBOARD_ROUTES.invitations}>Back to invitations</Link>
-        </Button>
+      <DashboardPage>
+        <InvitationLinkState view={view} acceptAction={`${pagePath}/confirm`} />
       </DashboardPage>
     );
   }
 
-  const acceptNext = `/organisations/invitations/accept/${encodeURIComponent(token)}`;
-  const signInHref = buildHostedLoginStartHref({ next: acceptNext });
+  const signInHref = buildHostedLoginStartHref({ next: pagePath });
   const registerHref = buildHostedLoginStartHref({
-    next: acceptNext,
+    next: pagePath,
     intent: "signup",
     invite: token,
   });
