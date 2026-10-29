@@ -10,7 +10,7 @@ import {
   filterPortfolioRows,
   isAwaitingCheckout,
 } from "@/lib/data/view-models/dashboard-portfolio.vm";
-import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { portfolioComplianceReason } from "@/lib/portfolio-settlement";
 import { lotPath } from "@/lib/seo/url";
 import type { PurchasePaymentRole } from "@auction/domain";
@@ -264,7 +264,7 @@ function breakdownFor(row: PortfolioRow, paidBy: string | null): PurchaseCardVm[
   const pricing = row.lot.checkoutPricing;
   const lines: PurchaseCardVm["breakdown"] = [];
   if (pricing) {
-    const currency = resolveLotCurrency(row.lot);
+    const currency = lotChargeCurrency(row.lot);
     lines.push(
       { label: "Hammer", value: formatMoney(pricing.hammerMajor, currency) },
       { label: "Buyer's premium", value: formatMoney(pricing.premiumMajor, currency) },
@@ -302,7 +302,7 @@ function toCard(
     reviewReason: reason,
     fulfilment: fulfilment ?? null,
   });
-  const currency = resolveLotCurrency(lot);
+  const currency = lotChargeCurrency(lot);
   const informed = (sources.paymentRoleByLot[lot.id] ?? "payer") !== "payer";
   const paidBy =
     informed && PAID_STATES.has(state)

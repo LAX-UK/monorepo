@@ -180,32 +180,41 @@ describe("Home, the lists and the menu agree", () => {
   });
 });
 
-describe("money in more than one currency", () => {
-  it("never adds lots sold in different currencies together", () => {
-    const dollars = purchase("lot-21", null);
-    dollars.lot.marketingDetails = {
-      estimate: { low: "1", high: "2", currency: "USD" },
-    } as Lot["marketingDetails"];
-    const rows = [dollars, purchase("lot-22", null)];
-    const vm = buildPurchasesVm(purchaseSources(organisation("finance"), rows), null);
-    expect(vm.payNow?.description).toBe(
-      "£1,250.00 + US$1,250.00 in total, including buyer's premium",
-    );
-  });
-});
+describe("a lot whose estimate is in dollars", () => {
+  const usdEstimate = {
+    estimate: { low: "50000", high: "70000", currency: "USD" },
+  } as Lot["marketingDetails"];
 
-describe("an organisation's bids", () => {
-  it("never shows a colleague's ceiling as the person's own", () => {
-    const colleagues = bid(outbidLot, "2600");
-    const rows = [{ ...colleagues, bid: { ...colleagues.bid, placedByUserId: COLLEAGUE } }];
-    const [card] = buildMyBidsVm({ rows, userId: ME, tab: "active", saleTitleById: {} }).cards;
-    expect(card?.figures.map((figure) => figure.label)).toContain("Maximum bid");
-    const [own] = buildMyBidsVm({
-      rows: [bid(outbidLot, "2600")],
+  it("is bid on and charged in pounds; only its estimate shows dollars", () => {
+    const open = lot("lot-31", { status: "scheduled", marketingDetails: usdEstimate });
+    const [card] = buildMyBidsVm({ rows: [bid(open, "45000")], userId: ME, tab: "active" }).cards;
+    const figures = Object.fromEntries(
+      (card?.figures ?? []).map((figure) => [figure.label, "value" in figure ? figure.value : ""]),
+    );
+    expect(figures.Estimate).toMatch(/^US\$50,000/);
+    expect(figures["Absentee bid"]).toBe("£45,000.00");
+
+    const live = lot("lot-32", { currentPrice: "55000", marketingDetails: usdEstimate });
+    const [liveCard] = buildMyBidsVm({
+      rows: [bid(live, "45000")],
       userId: ME,
       tab: "active",
     }).cards;
-    expect(own?.figures.map((figure) => figure.label)).toContain("Your maximum");
+    expect(liveCard?.figures.find((f) => f.label === "Current bid")).toMatchObject({
+      value: "£55,000.00",
+    });
+    expect(liveCard?.actions.map((action) => action.label).join(" ")).toMatch(/£/);
+    expect(liveCard?.actions.map((action) => action.label).join(" ")).not.toMatch(/\$/);
+  });
+
+  it("totals and charges in pounds on Purchases and Home", () => {
+    const dollars = purchase("lot-21", null);
+    dollars.lot.marketingDetails = usdEstimate;
+    const rows = [dollars, purchase("lot-22", null)];
+    const vm = buildPurchasesVm(purchaseSources(organisation("finance"), rows), null);
+    expect(vm.payNow?.description).toBe("£2,500.00 in total, including buyer's premium");
+    expect(vm.cards.find((card) => card.lotId === "lot-21")?.amount).toBe("£1,250.00");
+    expect(purchasesToPayFigure(rows).totals).toEqual([{ currency: "GBP", amount: "2500.00" }]);
   });
 });
 

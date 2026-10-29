@@ -1,4 +1,4 @@
-import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { lotWasSold } from "@/lib/lot/lot-outcome";
 import type { Lot } from "@auction/types";
 
@@ -26,7 +26,7 @@ type LotPriceDisplaySource = Pick<
 };
 
 function money(amount: string, lot: LotPriceDisplaySource): string {
-  return formatMoney(amount, resolveLotCurrency(lot));
+  return formatMoney(amount, lotChargeCurrency(lot));
 }
 
 /** Human-readable price label + formatted value for marketing cards,

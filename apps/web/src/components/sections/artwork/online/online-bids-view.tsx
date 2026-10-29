@@ -12,7 +12,7 @@ import { useLotBidHistory } from "@/lib/context/lot-bid-history-provider";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
-import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
 import { getArtworkAuctionTypeProfile } from "@/lib/marketing/artwork/auction-type-profile";
 import type { Lot, LotEndedEvent } from "@auction/types";
@@ -84,7 +84,7 @@ export function OnlineBidsView({
     if (!initialOutbid || !currentUserId) return userBidsVmBase;
     const myLatest = entries.find((e) => e.bidderId === currentUserId);
     if (!myLatest) return userBidsVmBase;
-    const currency = resolveLotCurrency(lot);
+    const currency = lotChargeCurrency(lot);
     return {
       ...userBidsVmBase,
       contextLine: `Your last bid ${formatMoney(myLatest.amount, currency)} — current high ${formatMoney(liveCurrentPrice, currency)}`,
@@ -143,7 +143,7 @@ export function OnlineBidsView({
         <LiveBidFeed
           entries={entries}
           currentUserId={currentUserId}
-          bidCurrency={resolveLotCurrency(lot)}
+          bidCurrency={lotChargeCurrency(lot)}
           headerMode="watching"
           watcherCount={watcherCount}
           lifecycleKind={lifecycle.kind}

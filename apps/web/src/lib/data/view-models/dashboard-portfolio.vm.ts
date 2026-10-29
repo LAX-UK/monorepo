@@ -1,6 +1,6 @@
 import { DASHBOARD_ROUTES, dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
 import type { ComplianceGateStatus } from "@/lib/data/http/payments.server";
-import { PLATFORM_DEFAULT_CURRENCY, formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { PLATFORM_DEFAULT_CURRENCY, formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { portfolioComplianceReason } from "@/lib/portfolio-settlement";
 import { isToPay } from "@/lib/purchases/purchase-progress";
 import { sumMoneyByCurrency } from "@auction/domain";
@@ -58,7 +58,7 @@ export type PortfolioAnalyticsVm = {
 function formatTotals(rows: readonly PortfolioRow[]): string {
   const totals = sumMoneyByCurrency(
     rows.map((row) => ({
-      currency: resolveLotCurrency(row.lot),
+      currency: lotChargeCurrency(row.lot),
       amount: lotTotalMajorUnits(row.lot).toFixed(2),
     })),
   );

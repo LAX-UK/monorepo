@@ -1,5 +1,5 @@
 import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
-import { formatEstimateRange, formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { formatEstimateRange, formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import { formatDateTimeShort } from "@/lib/ui/format";
 import type { Lot } from "@auction/types";
@@ -56,7 +56,7 @@ export const MY_BID_STATUS_LABEL: Record<MyBidStatus, string> = {
 };
 
 function money(amount: string | number, lot: Lot): string {
-  return formatMoney(amount, resolveLotCurrency(lot));
+  return formatMoney(amount, lotChargeCurrency(lot));
 }
 
 function yourMaximum(row: BidWithLot, lot: Lot): string {
@@ -75,29 +75,13 @@ function closedOn(lot: Lot, now: Date): MyBidFigure {
 }
 
 /** The three figures a card shows, chosen by where the bid stands. */
-/**
- * "Your maximum" for the person's own bid; in an organisation's list a colleague's bid shows as
- * "Maximum bid", so nobody reads another member's ceiling as their own.
- */
-function maximumLabel(row: BidWithLot, userId: string | undefined): string {
-  const placedBy = row.bid.placedByUserId ?? row.bid.bidderId;
-  return !placedBy || placedBy === userId ? "Your maximum" : "Maximum bid";
-}
-
-function figuresFor(
-  status: MyBidStatus,
-  row: BidWithLot,
-  lot: Lot,
-  now: Date,
-  userId: string | undefined,
-): MyBidFigure[] {
-  const maximum = maximumLabel(row, userId);
+function figuresFor(status: MyBidStatus, row: BidWithLot, lot: Lot, now: Date): MyBidFigure[] {
   switch (status) {
     case "winning":
     case "outbid":
       return [
         { label: "Current bid", kind: "text", value: money(lot.currentPrice, lot) },
-        { label: maximum, kind: "text", value: yourMaximum(row, lot) },
+        { label: "Your maximum", kind: "text", value: yourMaximum(row, lot) },
         { label: "Closes in", kind: "countdown", endsAt: lot.endTime.toISOString() },
       ];
     case "absentee":
@@ -113,13 +97,13 @@ function figuresFor(
           kind: "text",
           value: money(lot.checkoutPricing?.hammerMajor ?? lot.currentPrice, lot),
         },
-        { label: maximum, kind: "text", value: yourMaximum(row, lot) },
+        { label: "Your maximum", kind: "text", value: yourMaximum(row, lot) },
         closedOn(lot, now),
       ];
     default:
       return [
         { label: "Final bid", kind: "text", value: money(lot.currentPrice, lot) },
-        { label: maximum, kind: "text", value: yourMaximum(row, lot) },
+        { label: "Your maximum", kind: "text", value: yourMaximum(row, lot) },
         closedOn(lot, now),
       ];
   }
@@ -134,7 +118,6 @@ function toCard(
   { row, status }: { row: BidWithLot; status: MyBidStatus },
   saleTitleById: Readonly<Record<string, string>>,
   now: Date,
-  userId: string | undefined,
 ): MyBidCardVm {
   const { bid, lot } = row;
   const base = {
@@ -165,7 +148,7 @@ function toCard(
     lotLabel: lot.lotNumber == null ? null : `Lot ${lot.lotNumber}`,
     saleTitle: lot.saleId ? (saleTitleById[lot.saleId] ?? null) : null,
     details: lotDetails(lot),
-    figures: figuresFor(status, row, lot, now, userId),
+    figures: figuresFor(status, row, lot, now),
   };
 }
 
@@ -179,9 +162,7 @@ export function buildMyBidsVm(input: {
 }): MyBidsVm {
   const now = input.now ?? new Date();
   const groups = groupMyBids(input.rows, input.userId);
-  const cards = groups[input.tab].map((entry) =>
-    toCard(entry, input.saleTitleById ?? {}, now, input.userId),
-  );
+  const cards = groups[input.tab].map((entry) => toCard(entry, input.saleTitleById ?? {}, now));
   return {
     tab: input.tab,
     tabs: MY_BID_TABS.map((id) => ({ id, label: MY_BID_TAB_LABEL[id], count: groups[id].length })),

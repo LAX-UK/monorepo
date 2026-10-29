@@ -2,5 +2,5 @@ export { formatMoney } from "@/lib/ui/format";
 export {
   PLATFORM_DEFAULT_CURRENCY,
   formatEstimateRange,
-  resolveLotCurrency,
+  lotChargeCurrency,
 } from "@/lib/money/currency";

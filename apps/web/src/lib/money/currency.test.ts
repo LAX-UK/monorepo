@@ -2,8 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   PLATFORM_DEFAULT_CURRENCY,
   formatEstimateRange,
+  lotChargeCurrency,
   normalizeCurrencyCode,
-  resolveLotCurrency,
 } from "./currency";
 
 describe("currency", () => {
@@ -18,13 +18,13 @@ describe("currency", () => {
     expect(normalizeCurrencyCode("US")).toBe(PLATFORM_DEFAULT_CURRENCY);
   });
 
-  it("resolves lot currency from estimate metadata", () => {
+  it("bids and charges in pounds, whatever currency the estimate is in", () => {
     expect(
-      resolveLotCurrency({
+      lotChargeCurrency({
         marketingDetails: { estimate: { low: "100", high: "200", currency: "USD" } },
       }),
-    ).toBe("USD");
-    expect(resolveLotCurrency({ marketingDetails: {} })).toBe(PLATFORM_DEFAULT_CURRENCY);
+    ).toBe("GBP");
+    expect(lotChargeCurrency({ marketingDetails: {} })).toBe(PLATFORM_DEFAULT_CURRENCY);
   });
 
   it("formats estimate ranges with matching symbols", () => {

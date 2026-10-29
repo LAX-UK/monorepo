@@ -1,4 +1,4 @@
-import { formatEstimateRange, formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { formatEstimateRange, formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { isLotAdvanceable } from "@/lib/saleroom/lot-run-progress";
 import {
@@ -38,7 +38,7 @@ function lotToQueueCardVM(
     artistName,
     imageUrl: lot.images[0] ?? null,
     estimateLine: est ? formatEstimateRange(est) : null,
-    currentBid: lot.currentPrice ? formatMoney(lot.currentPrice, resolveLotCurrency(lot)) : null,
+    currentBid: lot.currentPrice ? formatMoney(lot.currentPrice, lotChargeCurrency(lot)) : null,
     isCurrentLot: flags.isCurrentLot,
     isUpNext: flags.isUpNext,
   };

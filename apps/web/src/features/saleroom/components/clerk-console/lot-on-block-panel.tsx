@@ -12,7 +12,7 @@ import type {
   AdminPaddleRosterEntry,
   AdminTelephoneBookingRow,
 } from "@/lib/data/http/admin.server";
-import { PLATFORM_DEFAULT_CURRENCY, resolveLotCurrency } from "@/lib/money/currency";
+import { PLATFORM_DEFAULT_CURRENCY, lotChargeCurrency } from "@/lib/money/currency";
 import type { PublicSaleroomSessionStatus } from "@/lib/saleroom/public-session-status";
 import { formatLotRunListLabel } from "@/lib/saleroom/sort-lots-for-run-list";
 import { deriveReserveStatus } from "@auction/domain";
@@ -106,7 +106,7 @@ export function LotOnBlockPanel({
 }: Props) {
   const paddleInputRef = useRef<HTMLInputElement>(null);
   const currentLot = lots.find((l) => l.id === currentLotId) ?? null;
-  const lotCurrency = currentLot ? resolveLotCurrency(currentLot) : PLATFORM_DEFAULT_CURRENCY;
+  const lotCurrency = currentLot ? lotChargeCurrency(currentLot) : PLATFORM_DEFAULT_CURRENCY;
 
   const bidEntry = useClerkBidEntry<AdminPaddleRosterEntry>({
     saleId,

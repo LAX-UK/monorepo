@@ -19,6 +19,15 @@ const TIER_TONE: Record<CountdownTier, string> = {
   critical: "text-danger-on-surface",
 };
 
+/** "1 Nov, 12:00", in UK time, the same on the server and in every browser. */
+const CLOSING_TIME = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+  timeZone: "Europe/London",
+});
+
 /**
  * Time left before a lot closes, in words ("4m 12s"), ticking each second. It warms to amber in
  * the last hour and red in the last ten minutes. The visible text is hidden from screen readers,
@@ -27,9 +36,15 @@ const TIER_TONE: Record<CountdownTier, string> = {
 export function BidCloseCountdown({ endsAt, className }: { endsAt: string; className?: string }) {
   const now = useNow(1000);
   const end = Date.parse(endsAt);
-  // Before the first tick (and on the server) nothing time-dependent is rendered.
-  if (now == null || Number.isNaN(end)) {
-    return <span className={cn("tabular-nums text-on-surface-variant", className)}>…</span>;
+  if (Number.isNaN(end)) return null;
+  // Before the first tick (and on the server) the closing time is shown instead: it does not
+  // depend on the clock, so the server and the browser render the same text.
+  if (now == null) {
+    return (
+      <time dateTime={endsAt} className={cn("tabular-nums text-on-surface", className)}>
+        {CLOSING_TIME.format(end)}
+      </time>
+    );
   }
   const left = end - now;
   if (left <= 0) {

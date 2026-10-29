@@ -2,7 +2,7 @@ import type { AccountScope } from "@/lib/account-scope/account-scope";
 import { groupMyBids } from "@/lib/bid/my-bid-status";
 import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
 import { isAwaitingCheckout } from "@/lib/data/view-models/dashboard-portfolio.vm";
-import { resolveLotCurrency } from "@/lib/money/currency";
+import { lotChargeCurrency } from "@/lib/money/currency";
 import {
   type DashboardFigures,
   type MoneyTotal,
@@ -37,7 +37,7 @@ export function openBidsFigure(
     const { lot } = row;
     if (!lot) return [];
     const onLot = bids.filter((candidate) => candidate.bid.lotId === lot.id);
-    return [{ currency: resolveLotCurrency(lot), amount: commitment(onLot) }];
+    return [{ currency: lotChargeCurrency(lot), amount: commitment(onLot) }];
   });
   return { lots: active.length, totalMax: sumMoneyByCurrency(totals) };
 }
@@ -51,7 +51,7 @@ export function purchasesToPayFigure(
     purchases: due.length,
     totals: sumMoneyByCurrency(
       due.map(({ lot }) => ({
-        currency: resolveLotCurrency(lot),
+        currency: lotChargeCurrency(lot),
         amount: lot.checkoutPricing?.totalMajor ?? lot.currentPrice,
       })),
     ),
