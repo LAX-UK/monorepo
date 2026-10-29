@@ -5,7 +5,8 @@ import { lotPath } from "@/lib/seo/url";
 export type OrgWorkRow = {
   lotId: string;
   title: string;
-  lotNumberLabel: string;
+  /** "Lot 14", or `null` before the lot has a number. */
+  lotNumberLabel: string | null;
   endedAtLabel: string;
   endedAtIso: string;
   imageUrl: string | null;
@@ -27,7 +28,7 @@ export function toOrgWorkRows(wins: readonly EntityWonLot[]): OrgWorkRow[] {
     return {
       lotId: win.lotId,
       title: win.title,
-      lotNumberLabel: win.lotNumber == null ? "—" : `Lot ${win.lotNumber}`,
+      lotNumberLabel: win.lotNumber == null ? null : `Lot ${win.lotNumber}`,
       endedAtLabel: valid ? DATE_FORMAT.format(ended) : win.endedAt,
       endedAtIso: valid ? ended.toISOString() : win.endedAt,
       imageUrl: win.imageUrl,

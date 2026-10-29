@@ -13,6 +13,7 @@ import type {
   SoldAndPayoutsVm,
   SoldWorkRow,
 } from "@/lib/seller/sold-and-payouts.vm";
+import { RecordList, RecordRow, RecordRowMedia } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { CreditCard, FileText } from "lucide-react";
 import Link from "next/link";
@@ -54,73 +55,34 @@ function PayoutDestinationCard({ vm }: { vm: PayoutDestinationVm }) {
   );
 }
 
-const TABLE_HEAD =
-  "px-4 py-3 text-left font-body text-xs font-medium text-on-surface-variant md:px-5";
-const TABLE_CELL = "px-4 py-3.5 font-body text-sm text-on-surface md:px-5";
-
 function SoldWorks({ rows }: { rows: readonly SoldWorkRow[] }) {
   return (
     <section aria-labelledby="sold-heading" className="flex flex-col gap-4">
       <h2 id="sold-heading" className="font-headline text-lg font-semibold text-on-surface">
         Sold
       </h2>
-      <div className="overflow-hidden rounded-xl border border-outline-variant/60 bg-surface-container-lowest">
-        <table className="w-full">
-          <thead className="border-b border-outline-variant/50 max-md:sr-only">
-            <tr>
-              <th scope="col" className={TABLE_HEAD}>
-                Work
-              </th>
-              <th scope="col" className={TABLE_HEAD}>
-                Sale
-              </th>
-              <th scope="col" className={`${TABLE_HEAD} text-right`}>
-                Hammer
-              </th>
-              <th scope="col" className={`${TABLE_HEAD} text-right`}>
-                Sold on
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-outline-variant/50">
-            {rows.map((row) => (
-              <tr key={row.lotId} className="max-md:flex max-md:flex-wrap max-md:items-center">
-                <td className={`${TABLE_CELL} max-md:w-full max-md:pb-1`}>
-                  <span className="flex items-center gap-3">
-                    <span className="relative size-12 shrink-0 overflow-hidden rounded-md bg-surface-container-high">
-                      <MediaImage src={row.image} alt="" label="Lot image" sizes="48px" />
-                    </span>
-                    <span className="min-w-0">
-                      <Link
-                        href={row.href}
-                        className="block truncate font-medium underline-offset-4 hover:underline"
-                      >
-                        {row.title}
-                      </Link>
-                      {row.lotLabel ? (
-                        <span className="block text-xs text-on-surface-variant">
-                          {row.lotLabel}
-                        </span>
-                      ) : null}
-                    </span>
-                  </span>
-                </td>
-                <td
-                  className={`${TABLE_CELL} text-on-surface-variant max-md:flex-1 max-md:pt-1 max-md:pl-19`}
-                >
-                  {row.saleTitle ?? "—"}
-                </td>
-                <td className={`${TABLE_CELL} text-right font-medium tabular-nums max-md:pt-1`}>
-                  {row.hammer}
-                </td>
-                <td className={`${TABLE_CELL} text-right text-on-surface-variant max-md:hidden`}>
-                  {row.soldOn}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <RecordList aria-labelledby="sold-heading">
+        {rows.map((row) => (
+          <RecordRow
+            key={row.lotId}
+            href={row.href}
+            linkAs={Link}
+            leading={
+              <RecordRowMedia>
+                <MediaImage src={row.image} alt="" sizes="48px" />
+              </RecordRowMedia>
+            }
+            title={row.title}
+            meta={[row.lotLabel, row.saleTitle, `Sold ${row.soldOn}`]}
+            value={
+              <>
+                <span className="sr-only">Hammer price </span>
+                {row.hammer}
+              </>
+            }
+          />
+        ))}
+      </RecordList>
     </section>
   );
 }
@@ -131,32 +93,30 @@ function Payouts({ rows }: { rows: readonly PayoutRow[] }) {
       <h2 id="payouts-heading" className="font-headline text-lg font-semibold text-on-surface">
         Payouts
       </h2>
-      <ul className="divide-y divide-outline-variant/50 overflow-hidden rounded-xl border border-outline-variant/60 bg-surface-container-lowest">
+      <RecordList aria-labelledby="payouts-heading">
         {rows.map((row) => (
-          <li
+          <RecordRow
             key={row.id}
-            className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-x-4 gap-y-2 px-4 py-4 md:grid-cols-[minmax(0,1fr)_auto_auto_auto] md:px-5"
-          >
-            <div className="min-w-0">
-              <p className="font-body text-sm font-medium text-on-surface">{row.period}</p>
-              <p className="mt-0.5 font-body text-xs tabular-nums text-on-surface-variant">
-                Sales {row.gross} · Commission and fees {row.fees}
-              </p>
-            </div>
-            <p className="text-right font-body text-base font-semibold tabular-nums text-on-surface">
-              <span className="sr-only">You receive </span>
-              {row.net}
-            </p>
-            <DomainStatusBadge domain="payout" status={row.status} />
-            <Button variant="ghost" size="default" asChild className="justify-self-end">
-              <a href={row.statementHref}>
-                <FileText aria-hidden />
-                Statement
-              </a>
-            </Button>
-          </li>
+            title={row.period}
+            meta={[`Sales ${row.gross}`, `Commission and fees ${row.fees}`]}
+            status={<DomainStatusBadge domain="payout" status={row.status} />}
+            value={
+              <>
+                <span className="sr-only">You receive </span>
+                {row.net}
+              </>
+            }
+            action={
+              <Button variant="ghost" size="default" asChild>
+                <a href={row.statementHref} aria-label={`Statement for ${row.period}`}>
+                  <FileText aria-hidden />
+                  Statement
+                </a>
+              </Button>
+            }
+          />
         ))}
-      </ul>
+      </RecordList>
     </section>
   );
 }

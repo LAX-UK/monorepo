@@ -283,6 +283,18 @@ describe("buyingPageView", () => {
     expect(buyingPageView(organisation(role), "purchases").kind).toBe(purchases);
   });
 
+  it.each([
+    ["owner", true],
+    ["buyer_agent", true],
+    ["finance", false],
+  ] as const)("points %s to the sales from an empty Purchases: %s", (role, offersSales) => {
+    expect(buyingPageView(organisation(role), "purchases")).toMatchObject({ offersSales });
+  });
+
+  it("points a personal account to the sales", () => {
+    expect(buyingPageView(personal, "purchases")).toMatchObject({ offersSales: true });
+  });
+
   it("names the page and who can open it", () => {
     expect(buyingPageView(organisation("viewer"), "purchases")).toEqual({
       kind: "forbidden",

@@ -3,7 +3,7 @@
 import { HydrationDeferred } from "@/components/layout/hydration-deferred";
 import { useSplitOverlayOpen } from "@/hooks/use-split-overlay-open";
 import type { CategoryNode } from "@auction/types";
-import { cn, fieldVariantUnderline } from "@auction/ui";
+import { cn, fieldVariantBoxed } from "@auction/ui";
 import {
   BottomSheet,
   BottomSheetContent,
@@ -29,10 +29,10 @@ type FlatCategory = CategoryNode & {
   path: string;
 };
 
-/** The underline field look (UnderlineInput) on a button: same rule, type and focus. */
+/** The boxed field look (the kit Input) on a button: same edge, height, type and focus. */
 const TRIGGER_CLASS = cn(
-  fieldVariantUnderline,
-  "h-auto min-h-12 w-full justify-start py-3 text-left font-headline text-2xl font-normal normal-case tracking-normal hover:bg-transparent md:text-sm",
+  fieldVariantBoxed,
+  "h-auto min-h-9 w-full justify-start px-3 py-1.5 text-left font-body text-base font-normal text-on-surface normal-case tracking-normal hover:bg-surface-container-lowest md:text-sm",
 );
 
 type Props = {

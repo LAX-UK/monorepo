@@ -1,10 +1,8 @@
 import type { OrgWorkRow } from "@/app/(client)/selling/works/org-works.vm";
-import { DashboardMobileLotThumbnail } from "@/components/dashboard/list/dashboard-mobile-lot-thumbnail";
-import {
-  DashboardListRowCard,
-  DashboardMobileList,
-} from "@/components/dashboard/primitives/dashboard-list-row-card";
+import { MediaImage } from "@/components/ui/media-image";
+import { RecordList, RecordRow, RecordRowMedia } from "@auction/ui";
 import Link from "next/link";
+import { Fragment } from "react";
 
 type Props = {
   rows: readonly OrgWorkRow[];
@@ -13,38 +11,27 @@ type Props = {
 /** The works an organisation owns. The price shows only on rows the viewer's role may see. */
 export function OrgWorksList({ rows }: Props) {
   return (
-    <DashboardMobileList className="lg:block">
+    <RecordList aria-label="Works won">
       {rows.map((row) => (
-        <li key={row.lotId}>
-          <DashboardListRowCard
-            thumbnail={
-              <DashboardMobileLotThumbnail href={row.href} src={row.imageUrl} alt={row.title} />
-            }
-            title={
-              <Link
-                href={row.href}
-                className="block truncate font-headline text-sm font-semibold text-on-surface underline-offset-4 hover:underline"
-              >
-                {row.title}
-              </Link>
-            }
-            subtitle={
-              <p className="mt-1 font-body text-xs text-on-surface-variant">
-                {row.lotNumberLabel} · Won <time dateTime={row.endedAtIso}>{row.endedAtLabel}</time>
-              </p>
-            }
-            {...(row.hammerPriceLabel
-              ? {
-                  trailing: (
-                    <p className="shrink-0 font-body text-sm font-semibold tabular-nums text-on-surface">
-                      {row.hammerPriceLabel}
-                    </p>
-                  ),
-                }
-              : {})}
-          />
-        </li>
+        <RecordRow
+          key={row.lotId}
+          href={row.href}
+          linkAs={Link}
+          leading={
+            <RecordRowMedia>
+              <MediaImage src={row.imageUrl} alt="" sizes="48px" />
+            </RecordRowMedia>
+          }
+          title={row.title}
+          meta={[
+            row.lotNumberLabel,
+            <Fragment key="won">
+              Won <time dateTime={row.endedAtIso}>{row.endedAtLabel}</time>
+            </Fragment>,
+          ]}
+          value={row.hammerPriceLabel}
+        />
       ))}
-    </DashboardMobileList>
+    </RecordList>
   );
 }

@@ -1,6 +1,7 @@
 import { PortfolioNoticeToast } from "@/components/dashboard/portfolio-notice-toast";
 import { AccountLoadError } from "@/components/dashboard/primitives/account-load-error";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { ListNoResults } from "@/components/dashboard/primitives/list-no-results";
 import { PayNowBanner } from "@/components/dashboard/purchases/pay-now-banner";
 import { PurchaseCard } from "@/components/dashboard/purchases/purchase-card";
 import {
@@ -15,6 +16,7 @@ import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import type { PurchaseTab } from "@/lib/purchases/purchase-progress";
 import type { PurchasesVm } from "@/lib/purchases/purchases.vm";
 import { AccountViewTabs } from "@auction/marketing-ui";
+import { RecordList } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { Info } from "lucide-react";
 import Link from "next/link";
@@ -38,18 +40,23 @@ function tabHref(tab: PurchaseTab): string {
   return `${CLIENT_ROUTES.purchases}?tab=${tab}`;
 }
 
-function NothingWonYet() {
+/** Nothing won yet; someone who may bid is pointed to the sales, everyone else is told why. */
+function NothingWonYet({ offersSales }: { offersSales: boolean }) {
   return (
     <DashboardEmptyState
       variant="hero"
       illustration="parcel"
       title={DASHBOARD_EMPTY.purchases.title}
       description={DASHBOARD_EMPTY.purchases.description}
-      action={
-        <Button variant="secondaryOutline" asChild>
-          <Link href={calendarSalesHref({ tab: "live" })}>{DASHBOARD_CTA.seeWhatsOn}</Link>
-        </Button>
-      }
+      {...(offersSales
+        ? {
+            action: (
+              <Button variant="secondaryOutline" asChild>
+                <Link href={calendarSalesHref({ tab: "live" })}>{DASHBOARD_CTA.seeWhatsOn}</Link>
+              </Button>
+            ),
+          }
+        : {})}
     />
   );
 }
@@ -79,23 +86,20 @@ function PortfolioNote() {
 export function PurchasesView({
   vm,
   filters,
+  offersSales,
 }: {
   vm: PurchasesVm | null;
   filters: PortfolioFilters;
+  offersSales: boolean;
 }) {
   if (!vm) return <AccountLoadError {...ACCOUNT_LOAD_ERROR.purchases} />;
   const filtered = vm.shown < vm.total;
-  const empty = filtered
-    ? {
-        title: "No purchases match these filters",
-        description: "Clear a filter or choose another view to see more.",
-      }
-    : EMPTY_VIEW[vm.tab];
+  const empty = EMPTY_VIEW[vm.tab];
   return (
     <div className="flex flex-col gap-6">
       <PortfolioNoticeToast />
       {vm.total === 0 ? (
-        <NothingWonYet />
+        <NothingWonYet offersSales={offersSales} />
       ) : (
         <>
           {vm.payNow ? <PayNowBanner banner={vm.payNow} /> : null}
@@ -115,20 +119,24 @@ export function PurchasesView({
             </div>
             <PurchasesActiveFilters filters={filters} />
           </div>
-          {vm.cards.length === 0 ? (
+          {vm.cards.length > 0 ? (
+            <RecordList aria-label="Your purchases">
+              {vm.cards.map((card) => (
+                <PurchaseCard key={card.lotId} card={card} />
+              ))}
+            </RecordList>
+          ) : filtered ? (
+            <ListNoResults
+              title="No purchases match these filters"
+              description="Clear the filters or choose another view to see more."
+              clearHref={tabHref(vm.tab)}
+            />
+          ) : (
             <DashboardEmptyState
               illustration="parcel"
               title={empty.title}
               description={empty.description}
             />
-          ) : (
-            <ul className="flex flex-col gap-4" aria-label="Your purchases">
-              {vm.cards.map((card) => (
-                <li key={card.lotId}>
-                  <PurchaseCard card={card} />
-                </li>
-              ))}
-            </ul>
           )}
           <PortfolioNote />
         </>

@@ -42,12 +42,24 @@ describe("RecordRow", () => {
     expect(li.className).not.toContain("hover:");
   });
 
-  it("joins the facts with a dot, dropping empty ones, and hides the dots from readers", () => {
+  it("puts a silent dot between the facts, dropping empty ones", () => {
     const li = row(<RecordRow title="Work" meta={["Lot 12", null, "", "Spring sale", false]} />);
     const meta = li.querySelector("[data-record-meta]") as HTMLElement;
-    expect(meta.textContent).toBe("Lot 12·Spring sale");
-    const dots = meta.querySelectorAll("[aria-hidden]");
-    expect(dots).toHaveLength(1);
+    const facts = [...meta.querySelectorAll("[data-record-fact]")];
+    expect(facts.map((fact) => fact.textContent)).toEqual(["Lot 12", "Spring sale"]);
+    // The dot is drawn in front of each fact with empty alternative text, so readers skip it.
+    for (const fact of facts) expect(fact.className).toContain("before:content-['·'_/_'']");
+  });
+
+  it("starts each wrapped line with a fact, not a dot", () => {
+    const li = row(<RecordRow title="Work" meta={["Lot 12", "Spring sale"]} />);
+    const meta = li.querySelector("[data-record-meta]") as HTMLElement;
+    // The line is shifted left by one dot's width and clipped, hiding the dot that opens it.
+    expect(meta.className).toContain("overflow-hidden");
+    expect((meta.firstElementChild as HTMLElement).className).toContain("-ml-4");
+    expect((meta.querySelector("[data-record-fact]") as HTMLElement).className).toContain(
+      "before:w-4",
+    );
   });
 
   it("draws no facts line when there are none", () => {
@@ -84,9 +96,10 @@ describe("RecordRow", () => {
       expect(body.className).toContain("min-w-0");
       expect(li.querySelector("p")?.className).toContain("truncate");
       const meta = li.querySelector("[data-record-meta]") as HTMLElement;
-      expect(meta.className).toContain("flex-wrap");
-      for (const fact of meta.querySelectorAll(".truncate")) {
+      expect(meta.firstElementChild?.className).toContain("flex-wrap");
+      for (const fact of meta.querySelectorAll("[data-record-fact]")) {
         expect(fact.className).toContain("min-w-0");
+        expect(fact.firstElementChild?.className).toContain("truncate");
       }
     });
 

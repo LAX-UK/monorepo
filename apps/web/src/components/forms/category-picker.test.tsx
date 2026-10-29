@@ -3,13 +3,13 @@ import { describe, expect, it, vi } from "vitest";
 import { CategoryPicker } from "./category-picker";
 
 describe("CategoryPicker trigger", () => {
-  it("is an underline field, like the inputs around it in the sell form", () => {
+  it("is a boxed field, like the inputs around it in the sell form", () => {
     render(<CategoryPicker categories={[]} value={[]} onChange={vi.fn()} />);
     const triggers = screen.getAllByRole("button", { name: /select categories/i });
     expect(triggers.length).toBeGreaterThan(0);
     for (const trigger of triggers) {
-      expect(trigger).toHaveClass("border-b", "rounded-none", "bg-transparent");
-      expect(trigger.className).not.toMatch(/rounded-md|shadow-sm|uppercase/);
+      expect(trigger).toHaveClass("border", "border-input-border", "rounded-md");
+      expect(trigger.className).not.toMatch(/border-b |rounded-none|uppercase|text-2xl/);
     }
   });
 });

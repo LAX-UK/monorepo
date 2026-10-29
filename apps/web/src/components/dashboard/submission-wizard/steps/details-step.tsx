@@ -1,7 +1,6 @@
 "use client";
 
 import type { StepProps } from "@/components/dashboard/submission-wizard/step-props";
-import { UnderlineInput } from "@/components/ui/input";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import {
   FormControl,
@@ -10,6 +9,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@auction/ui/components/form";
+import { Input } from "@auction/ui/components/input";
 import { Textarea } from "@auction/ui/components/textarea";
 
 export function DetailsStep({ form }: StepProps) {
@@ -23,7 +23,7 @@ export function DetailsStep({ form }: StepProps) {
             <FormItem>
               <FormLabel>Medium (optional)</FormLabel>
               <FormControl>
-                <UnderlineInput placeholder="Oil on canvas" {...field} />
+                <Input placeholder="Oil on canvas" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -36,7 +36,7 @@ export function DetailsStep({ form }: StepProps) {
             <FormItem>
               <FormLabel>Dimensions (optional)</FormLabel>
               <FormControl>
-                <UnderlineInput placeholder="120 × 80 cm" {...field} />
+                <Input placeholder="120 × 80 cm" {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -66,7 +66,7 @@ export function DetailsStep({ form }: StepProps) {
           <FormItem>
             <FormLabel>Signature note (optional)</FormLabel>
             <FormControl>
-              <UnderlineInput placeholder="Signed lower right, verso label…" {...field} />
+              <Input placeholder="Signed lower right, verso label…" {...field} />
             </FormControl>
             <FormMessage />
           </FormItem>

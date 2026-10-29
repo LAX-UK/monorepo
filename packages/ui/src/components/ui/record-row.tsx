@@ -1,4 +1,5 @@
 import type * as React from "react";
+import { Children } from "react";
 import { cn } from "../../lib/utils.js";
 
 export type RecordListProps = {
@@ -63,22 +64,30 @@ function isShown(node: React.ReactNode): boolean {
   return node !== null && node !== undefined && node !== false && node !== "";
 }
 
+/**
+ * The facts, with a dot between them. When the line wraps, each line starts with a fact, not a
+ * dot: every fact carries its dot in front, and the line is shifted left by one dot's width and
+ * clipped, so the dot that would open a line falls outside it. The dot is silent to readers.
+ */
 function MetaLine({ items }: { items: readonly React.ReactNode[] }) {
   const shown = items.filter(isShown);
   if (shown.length === 0) return null;
   return (
     <p
       data-record-meta
-      className="mt-0.5 flex min-w-0 flex-wrap gap-x-1.5 font-body text-label-3 leading-5 text-on-surface-variant"
+      className="mt-0.5 overflow-hidden font-body text-label-3 leading-5 text-on-surface-variant"
     >
-      {shown.map((item, index) => (
-        // Facts are positional: the caller's order is the reading order.
-        // biome-ignore lint/suspicious/noArrayIndexKey: a fixed, ordered list of facts
-        <span key={index} className="flex min-w-0 gap-x-1.5">
-          {index > 0 ? <span aria-hidden>·</span> : null}
-          <span className="min-w-0 truncate">{item}</span>
-        </span>
-      ))}
+      <span className="-ml-4 flex min-w-0 flex-wrap">
+        {/* Facts are positional: the caller's order is the reading order. */}
+        {Children.map(shown, (item) => (
+          <span
+            data-record-fact
+            className="flex min-w-0 before:w-4 before:shrink-0 before:text-center before:content-['·'_/_'']"
+          >
+            <span className="min-w-0 truncate">{item}</span>
+          </span>
+        ))}
+      </span>
     </p>
   );
 }

@@ -48,13 +48,11 @@ describe("buildHeaderAccountMenu", () => {
     ]);
   });
 
-  it("offers Sell with LAX before a first submission", () => {
+  it("offers Sell a work before a first submission", () => {
     const selling = menu({ scope: { ...PERSONAL, hasSubmissions: false } }).sections.find(
       (s) => s.id === "selling",
     );
-    expect(selling?.links.map((l) => [l.label, l.href])).toEqual([
-      ["Sell with LAX", "/selling/new"],
-    ]);
+    expect(selling?.links.map((l) => [l.label, l.href])).toEqual([["Sell a work", "/selling/new"]]);
   });
 
   it("marks the page in view and links LAX Account out of Bid", () => {

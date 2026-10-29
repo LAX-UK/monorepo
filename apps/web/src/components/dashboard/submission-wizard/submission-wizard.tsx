@@ -45,6 +45,7 @@ import {
 } from "@auction/ui/components/dialog";
 import { Form } from "@auction/ui/components/form";
 import { Surface } from "@auction/ui/components/surface";
+import type { WizardProgressStep } from "@auction/ui/components/wizard-progress";
 import type { ItemSubmissionFormValues } from "@auction/validators";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -62,7 +63,7 @@ type Props = {
 };
 
 /**
- * What the review step's primary button does. By default it submits; "Sell with LAX" makes it
+ * What the review step's primary button does. By default it submits; "Sell a work" makes it
  * continue to "Who is selling?" instead, and submits from there.
  */
 export type SubmissionWizardPrimaryAction = { label: string; onActivate: () => void };
@@ -71,6 +72,8 @@ type ViewProps = Omit<Props, "initialValues" | "submitLabel"> & {
   controller: SubmissionWizardController;
   primaryAction?: SubmissionWizardPrimaryAction;
   submitLabel?: string;
+  /** Steps the surrounding flow adds after the form's own, shown in the same progress bar. */
+  trailingSteps?: readonly WizardProgressStep[];
 };
 
 function renderStep(
@@ -119,7 +122,7 @@ export function SubmissionWizard({ initialValues, ...props }: Props) {
   return <SubmissionWizardView {...props} controller={controller} />;
 }
 
-/** The submission form around a controller the caller owns (see "Sell with LAX"). */
+/** The submission form around a controller the caller owns (see "Sell a work"). */
 export function SubmissionWizardView({
   mode,
   categories,
@@ -128,6 +131,7 @@ export function SubmissionWizardView({
   controller,
   primaryAction,
   submitLabel = SUBMISSION_SUBMIT_LABEL,
+  trailingSteps = [],
 }: ViewProps) {
   const router = useRouter();
   const { form, isSubmitting, autosaveStatus, lastSavedAt, saveDraft, submitForReview } =
@@ -141,6 +145,7 @@ export function SubmissionWizardView({
   const [pendingExitAction, setPendingExitAction] = useState<"leave" | "navigate" | null>(null);
   const pendingNavigateHref = useRef<string | null>(null);
   const stepHeadingRef = useRef<HTMLHeadingElement>(null);
+  const firstStepShown = useRef(true);
   const submittedThisSession = useRef(false);
 
   const currentStep = WIZARD_STEPS[stepIndex];
@@ -237,9 +242,15 @@ export function SubmissionWizardView({
     })();
   }, [isSubmitting, mode, router]);
 
+  // Moving between steps takes focus to the new step's heading, so it is announced. Opening the
+  // form does not: the page loads in reading order with nothing focused.
   // biome-ignore lint/correctness/useExhaustiveDependencies: refocus step heading on navigation
   useEffect(() => {
-    stepHeadingRef.current?.focus();
+    if (firstStepShown.current) {
+      firstStepShown.current = false;
+      return;
+    }
+    stepHeadingRef.current?.focus({ preventScroll: true });
   }, [stepIndex]);
 
   useEffect(() => {
@@ -379,10 +390,7 @@ export function SubmissionWizardView({
                 onStepClick={(index) => {
                   if (index <= maxReachableIndex) goToStep(index);
                 }}
-                onPrev={handleBack}
-                onNext={() => void handleNext()}
-                canGoPrev={stepIndex > 0}
-                canGoNext={!isLastStep}
+                trailingSteps={trailingSteps}
               />
             </div>
             <WizardHeaderActions
@@ -398,7 +406,8 @@ export function SubmissionWizardView({
               id="submission-wizard-step-heading"
               ref={stepHeadingRef}
               tabIndex={-1}
-              className="font-headline text-xl text-on-surface outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              // A heading is not a control: focus lands here for screen readers, with no ring.
+              className="font-headline text-xl text-on-surface outline-none"
             >
               {currentStep.label}
             </h2>
