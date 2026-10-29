@@ -43,4 +43,24 @@ describe("WizardNav", () => {
     fireEvent.click(screen.getByTestId("wizard-next"));
     expect(onNext).toHaveBeenCalledTimes(1);
   });
+
+  it("keeps Back and Continue at the kit's lg height, not taller", () => {
+    render(<WizardNav isFirst={false} isLast={false} onBack={vi.fn()} onNext={vi.fn()} />);
+    for (const id of ["wizard-next", "wizard-back"]) {
+      const button = screen.getByTestId(id);
+      expect(button.className).toContain("min-h-11");
+      expect(button.className).not.toContain("min-h-12");
+    }
+  });
+
+  it("draws the sticky bar as an opaque surface with a top edge", () => {
+    const { container } = render(
+      <WizardNav isFirst isLast={false} onBack={vi.fn()} onNext={vi.fn()} sticky />,
+    );
+    const bar = container.firstElementChild as HTMLElement;
+    expect(bar.className).toContain("sticky");
+    expect(bar.className).toContain("border-t");
+    expect(bar.className).toMatch(/\bbg-surface-container-lowest(\s|$)/);
+    expect(bar.className).not.toMatch(/bg-surface-container-lowest\/|backdrop-blur/);
+  });
 });

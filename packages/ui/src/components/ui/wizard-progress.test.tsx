@@ -61,4 +61,21 @@ describe("WizardProgress", () => {
 
     expect(screen.getByText("Review").parentElement?.textContent).toContain("✓");
   });
+
+  it("puts page actions in the step-text row, with the text on the bar's left edge", () => {
+    render(
+      <WizardProgress
+        steps={STEPS}
+        currentIndex={1}
+        showUpNext
+        actions={<button type="button">Save and finish later</button>}
+      />,
+    );
+    const header = screen.getByText(/Step 2 of 3 · Details/);
+    const row = header.closest("[data-wizard-progress-row]") as HTMLElement;
+    expect(row).toContainElement(screen.getByRole("button", { name: "Save and finish later" }));
+    expect(row.className).toContain("items-center");
+    // No inset of its own: the step text starts where the title and the bar start.
+    expect(header.parentElement?.className).not.toMatch(/\bp[xl]-/);
+  });
 });
