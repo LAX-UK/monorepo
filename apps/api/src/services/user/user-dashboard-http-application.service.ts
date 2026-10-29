@@ -1,3 +1,5 @@
+import { accountBidScope, accountPurchaseScope } from "@auction/domain";
+import type { Lot } from "@auction/types";
 import type { LotReadPort, SaleLookupPort } from "../../container/container-slices.js";
 import { lotsWithCheckoutPricing } from "../../lib/lots-with-checkout-pricing.js";
 import { presentLotsImages } from "../../lib/media-presenters.js";
@@ -5,9 +7,21 @@ import type { IConditionReportService } from "../interfaces/condition-report.js"
 import type { IMediaAssetEnricher } from "../interfaces/media-asset-enricher.js";
 import type { IMediaUrlResolver } from "../interfaces/media-url-resolver.js";
 import type { IPaymentBuyerService } from "../interfaces/payment-service.js";
-import type { IUserDashboardHttpApplicationService } from "../interfaces/user-routes/user-dashboard-http.js";
+import type {
+  BuyingAccountActor,
+  IUserDashboardHttpApplicationService,
+} from "../interfaces/user-routes/user-dashboard-http.js";
 import type { UserHttpJson } from "../interfaces/user-routes/user-route-http.js";
 import type { UserDashboardReadService } from "../user-dashboard-read.service.js";
+
+/** Won lots a purchases list reads; the same for a person and for an account. */
+const PURCHASES_LIMIT = 50;
+
+/** A role that does not follow the account's buying records. */
+const NOT_YOURS: UserHttpJson = {
+  status: 403,
+  body: { error: "insufficient_entity_role", code: "insufficient_entity_role" },
+};
 
 export type UserDashboardHttpDeps = {
   conditionReportService: IConditionReportService;
@@ -44,15 +58,51 @@ export class UserDashboardHttpApplicationService implements IUserDashboardHttpAp
 
   async listPortfolio(input: { userId: string }): Promise<UserHttpJson> {
     const userId = input.userId;
-    const lots = await this.deps.lotService.list({
-      winnerId: userId,
-      limit: 50,
-      offset: 0,
-    });
-    const { data: payments } = await this.deps.paymentBuyerService.listMyPaymentsForBuyerApi(
-      userId,
-      {},
+    const [lots, { data: payments }] = await Promise.all([
+      this.deps.lotService.list({ winnerId: userId, limit: PURCHASES_LIMIT, offset: 0 }),
+      this.deps.paymentBuyerService.listMyPaymentsForBuyerApi(userId, {}),
+    ]);
+    return { status: 200, body: { data: await this.toPurchaseRows(lots, payments) } };
+  }
+
+  async listAccountBids(input: {
+    userId: string;
+    account: BuyingAccountActor;
+  }): Promise<UserHttpJson> {
+    const scope = accountBidScope(input.account);
+    if (!scope) return NOT_YOURS;
+    const data = await this.deps.userDashboardReadService.listBidsForBuyerAccount(
+      input.account.legalEntityId,
+      scope === "own" ? input.userId : null,
     );
+    return { status: 200, body: { data } };
+  }
+
+  async listAccountPurchases(input: {
+    userId: string;
+    account: BuyingAccountActor;
+  }): Promise<UserHttpJson> {
+    const scope = accountPurchaseScope(input.account);
+    if (!scope) return NOT_YOURS;
+    const accountId = input.account.legalEntityId;
+    const [lots, { data: payments }] = await Promise.all([
+      this.deps.lotService.list({
+        buyerLegalEntityId: accountId,
+        ...(scope === "own" ? { winnerId: input.userId } : {}),
+        statuses: ["ended"],
+        limit: PURCHASES_LIMIT,
+        offset: 0,
+      }),
+      this.deps.paymentBuyerService.listEntityPaymentsForBuyerApi(accountId, {}),
+    ]);
+    return { status: 200, body: { data: await this.toPurchaseRows(lots, payments) } };
+  }
+
+  /** Won lots with images, checkout pricing and the latest payment for each. */
+  private async toPurchaseRows(
+    lots: Lot[],
+    payments: Awaited<ReturnType<IPaymentBuyerService["listMyPaymentsForBuyerApi"]>>["data"],
+  ) {
     const byLot = new Map<string, (typeof payments)[number]>();
     for (const p of payments) {
       if (!byLot.has(p.lotId)) byLot.set(p.lotId, p);
@@ -66,7 +116,7 @@ export class UserDashboardHttpApplicationService implements IUserDashboardHttpAp
       { saleService: this.deps.saleService },
       presentedLots,
     );
-    const data = pricedLots.map((lotRow) => {
+    return pricedLots.map((lotRow) => {
       const p = byLot.get(lotRow.id);
       return {
         lot: lotRow,
@@ -80,6 +130,5 @@ export class UserDashboardHttpApplicationService implements IUserDashboardHttpAp
           : null,
       };
     });
-    return { status: 200, body: { data } };
   }
 }

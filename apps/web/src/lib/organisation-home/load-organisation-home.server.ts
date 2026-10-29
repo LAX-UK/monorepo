@@ -1,7 +1,9 @@
 import "server-only";
 
+import { openBidsFigure, purchasesToPayFigure } from "@/lib/buying/account-buying-figures";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SessionUser } from "@/lib/data/contracts";
+import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
 import { listServerConsignmentAgreements } from "@/lib/data/http/consignment-agreements.server";
 import { getServerOrganisationDashboard } from "@/lib/data/http/organisation-dashboard.server";
 import {
@@ -21,9 +23,12 @@ import {
   type EntityActor,
   type EntityCapability,
   type OrganisationHomeFacts,
+  accountBidScope,
+  accountPurchaseScope,
   bidAuthorityFigure,
   buildOrganisationHome,
   computeConsignmentChecklist,
+  dashboardFigureGroupsFor,
   entityActorCan,
   roleBidsThroughAuthorisation,
   roleNeedsPersonalIdentity,
@@ -80,12 +85,14 @@ export async function loadOrganisationHome(
   const followsConsignments = reads("entity.consignments.read");
   const needsIdentity = roleNeedsPersonalIdentity(actor.role);
 
+  const scope = await c.buying.scope();
   const [
     submissions,
     lots,
     agreements,
     account,
     purchases,
+    bids,
     members,
     stoppedBids,
     mine,
@@ -104,11 +111,9 @@ export async function loadOrganisationHome(
     ),
     settle<ConsignmentAgreement[]>(followsConsignments, listServerConsignmentAgreements, []),
     settle(true, () => loadSellerAccountFacts(sellerCtx), null),
-    settle<PortfolioRow[]>(
-      reads("entity.finance.read") || reads("entity.bid.place"),
-      () => c.portfolio.listMine(),
-      [],
-    ),
+    // The same reader as Purchases and Bids, so the figures and tasks match those pages.
+    settle<PortfolioRow[]>(accountPurchaseScope(actor) !== null, () => c.buying.purchases(), []),
+    settle<BidWithLot[]>(accountBidScope(actor) !== null, () => c.buying.bids(), []),
     settle(
       reads("entity.members.manage"),
       async () => {
@@ -199,12 +204,16 @@ export async function loadOrganisationHome(
       count: stopped.bids.length,
     })),
   });
-  // A buyer agent's authorisations are already loaded for their tasks; the figures reuse them.
+  // Home works out the account groups itself from what it already read: the buyer agent's
+  // authorisations, and the bids and purchases behind the Bids and Purchases pages.
+  const groups = new Set(dashboardFigureGroupsFor(actor));
   const figures: DashboardFigures | null = dashboard
     ? {
         ...dashboard,
-        ...(roleBidsThroughAuthorisation(actor.role)
-          ? { bidAuthority: bidAuthorityFigure(mine) }
+        ...(groups.has("bidAuthority") ? { bidAuthority: bidAuthorityFigure(mine) } : {}),
+        ...(groups.has("openBids") ? { openBids: openBidsFigure(bids, scope.actor.userId) } : {}),
+        ...(groups.has("purchasesToPay")
+          ? { purchasesToPay: purchasesToPayFigure(purchases) }
           : {}),
       }
     : null;

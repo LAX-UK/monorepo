@@ -1,5 +1,6 @@
 import "server-only";
 
+import { purchasesToPayBy } from "@/lib/buying/account-buying-figures";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SessionUser } from "@/lib/data/contracts";
 import { requireActingContext } from "@/lib/legal-entity/acting-context.server";
@@ -19,7 +20,8 @@ function settled<T>(result: PromiseSettledResult<T>, fallback: T): T {
 }
 
 /**
- * Loads the facts behind the account menu, the header chip and the account sub-navigation.
+ * Loads the facts behind the account menu, the header chip and the account sub-navigation, from
+ * the account in use: an organisation's bids and purchases while acting for one.
  * Each count degrades to "nothing" on failure: a menu without a count for a moment is better
  * than one that blocks on a slow service. The accounts do not: without them the menu would
  * describe the wrong account, so this throws {@link AccountsUnavailableError} instead.
@@ -27,14 +29,16 @@ function settled<T>(result: PromiseSettledResult<T>, fallback: T): T {
 export async function loadAccountMenuContext(user: SessionUser): Promise<AccountMenuContext> {
   const c = await getServerDataContainer();
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
-  const [acting, submissions, invitations, bids, purchases, unread] = await Promise.allSettled([
-    requireActingContext(user.role, user.staffRoles),
-    c.submissions.getSummary(),
-    orgModuleEnabled ? createPendingInvitationsGateway().listMine() : Promise.resolve([]),
-    c.bids.listMine(),
-    c.portfolio.listMine(),
-    c.notifications.listMine({ tab: "unread", limit: UNREAD_LIMIT }),
-  ]);
+  const [acting, submissions, invitations, scope, bids, purchases, unread] =
+    await Promise.allSettled([
+      requireActingContext(user.role, user.staffRoles),
+      c.submissions.getSummary(),
+      orgModuleEnabled ? createPendingInvitationsGateway().listMine() : Promise.resolve([]),
+      c.buying.scope(),
+      c.buying.bids(),
+      c.buying.purchases(),
+      c.notifications.listMine({ tab: "unread", limit: UNREAD_LIMIT }),
+    ]);
 
   // Without the accounts the menu would describe the personal account; the caller keeps what it
   // showed last instead.
@@ -61,7 +65,9 @@ export async function loadAccountMenuContext(user: SessionUser): Promise<Account
     attention: deriveClientAttention({
       userId: user.id,
       bids: settled(bids, []),
-      purchases: settled(purchases, []),
+      // Only what this person pays: a buyer agent is told about a win, not asked to pay for it.
+      purchasesToPay:
+        scope.status === "fulfilled" ? purchasesToPayBy(scope.value, settled(purchases, [])) : [],
       unreadNotifications: settled(unread, []),
     }),
   };

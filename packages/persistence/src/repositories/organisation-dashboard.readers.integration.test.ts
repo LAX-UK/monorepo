@@ -12,10 +12,8 @@ import {
 } from "@auction/db/schema";
 import { describe, expect, it } from "vitest";
 import { DrizzleConsignmentStatusCountsReader } from "./drizzle-consignment-status-counts.reader.js";
-import { DrizzleOpenBidsReader } from "./drizzle-open-bids.reader.js";
 import { DrizzlePayoutsDueReader } from "./drizzle-payouts-due.reader.js";
 import { DrizzleSoldWorksReader } from "./drizzle-sold-works.reader.js";
-import { DrizzleUnpaidPurchasesReader } from "./drizzle-unpaid-purchases.reader.js";
 import { DrizzleUpcomingSaleWorksReader } from "./drizzle-upcoming-sale-works.reader.js";
 
 const HAS_DB = Boolean(process.env.DATABASE_URL);
@@ -394,40 +392,6 @@ describe.skipIf(!HAS_DB)("organisation dashboard read models (integration)", () 
           count: 2,
           amount: "1000.00",
           nextDate: new Date("2026-10-31T00:00:00Z"),
-        },
-      ]);
-    });
-  });
-
-  it("sums the most the organisation could pay on each open lot, or one member's", async () => {
-    await inRollback(async (db) => {
-      const reader = new DrizzleOpenBidsReader(db);
-      const sorted = (rows: Awaited<ReturnType<typeof reader.summarise>>) =>
-        rows.sort((a, b) => a.currency.localeCompare(b.currency));
-      expect(sorted(await reader.summarise(ORG, null))).toEqual([
-        { currency: "EUR", count: 1, amount: "1200.00" },
-        { currency: "GBP", count: 1, amount: "800.00" },
-      ]);
-      expect(await reader.summarise(ORG, AGENT)).toEqual([
-        { currency: "GBP", count: 1, amount: "800.00" },
-      ]);
-      expect(sorted(await reader.summarise(ORG, OWNER))).toEqual([
-        { currency: "EUR", count: 1, amount: "1200.00" },
-        { currency: "GBP", count: 1, amount: "300.00" },
-      ]);
-    });
-  });
-
-  it("lists wins without a settled payment", async () => {
-    await inRollback(async (db) => {
-      const rows = await new DrizzleUnpaidPurchasesReader(db).list(ORG, 50);
-      expect(rows).toEqual([
-        {
-          lotId: L.wonUnpaid,
-          hammer: "400.00",
-          lotPremiumRate: "0.2500",
-          saleTiers: null,
-          currency: "GBP",
         },
       ]);
     });

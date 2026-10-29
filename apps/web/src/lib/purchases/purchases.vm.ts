@@ -8,10 +8,12 @@ import {
   buildPayNow,
   buildPortfolioAnalytics,
   filterPortfolioRows,
+  isAwaitingCheckout,
 } from "@/lib/data/view-models/dashboard-portfolio.vm";
-import { formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { portfolioComplianceReason } from "@/lib/portfolio-settlement";
 import { lotPath } from "@/lib/seo/url";
+import type { PurchasePaymentRole } from "@auction/domain";
 import {
   INVOICE_PAYMENT_DUE_DAYS,
   type ManualReviewReason,
@@ -112,6 +114,13 @@ export type PurchaseSources = {
   fulfilmentByLot: Readonly<Record<string, LotFulfilmentSnapshot>>;
   complianceGate: ComplianceGateStatus;
   saleTitleById: Readonly<Record<string, string>>;
+  /**
+   * How the person stands to each purchase, by lot. Missing means they pay it. A buyer agent is
+   * `informed` of the organisation's purchases they won: told how payment goes, never asked to pay.
+   */
+  paymentRoleByLot: Readonly<Record<string, PurchasePaymentRole>>;
+  /** The organisation that pays what the person does not, or `null` when it is not known. */
+  payerName: string | null;
 };
 
 const DAY_MONTH = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
@@ -172,6 +181,37 @@ function noteFor(
   }
 }
 
+/** "Northbank Gallery" or, when the paying organisation is not known, "your organisation". */
+function payer(name: string | null): string {
+  return name ?? "your organisation";
+}
+
+/** How a purchase someone else pays reads to the member who won it. */
+function informedNoteFor(state: PurchaseState, name: string | null): string | null {
+  const team = `${capitalise(possessive(payer(name)))} finance team`;
+  switch (state) {
+    case "payment-due":
+    case "in-review":
+      return `Waiting for payment by ${payer(name)}`;
+    case "payment-processing":
+      return `${capitalise(possessive(payer(name)))} payment is being confirmed`;
+    case "choose-delivery":
+      return `${team} is arranging delivery`;
+    case "refunded":
+      return "The payment has been refunded";
+    default:
+      return null;
+  }
+}
+
+function possessive(name: string): string {
+  return name.endsWith("s") ? `${name}'` : `${name}'s`;
+}
+
+function capitalise(text: string): string {
+  return text.charAt(0).toUpperCase() + text.slice(1);
+}
+
 function primaryActionFor(
   state: PurchaseState,
   row: PortfolioRow,
@@ -220,15 +260,29 @@ function stepsFor(
   }));
 }
 
-function breakdownFor(row: PortfolioRow): PurchaseCardVm["breakdown"] {
+function breakdownFor(row: PortfolioRow, paidBy: string | null): PurchaseCardVm["breakdown"] {
   const pricing = row.lot.checkoutPricing;
-  if (!pricing) return [];
-  const currency = resolveLotCurrency(row.lot);
-  return [
-    { label: "Hammer", value: formatMoney(pricing.hammerMajor, currency) },
-    { label: "Buyer's premium", value: formatMoney(pricing.premiumMajor, currency) },
-  ];
+  const lines: PurchaseCardVm["breakdown"] = [];
+  if (pricing) {
+    const currency = lotChargeCurrency(row.lot);
+    lines.push(
+      { label: "Hammer", value: formatMoney(pricing.hammerMajor, currency) },
+      { label: "Buyer's premium", value: formatMoney(pricing.premiumMajor, currency) },
+    );
+  }
+  if (paidBy) lines.push({ label: "Paid by", value: paidBy });
+  return lines;
 }
+
+/** Paid states: the purchase has been paid for, so who paid it can be said. */
+const PAID_STATES: ReadonlySet<PurchaseState> = new Set([
+  "choose-delivery",
+  "preparing",
+  "ready-for-collection",
+  "in-transit",
+  "delivered",
+  "collected",
+]);
 
 function amountLabel(state: PurchaseState): string {
   if (state === "payment-due" || state === "in-review") return "Total due";
@@ -248,7 +302,12 @@ function toCard(
     reviewReason: reason,
     fulfilment: fulfilment ?? null,
   });
-  const currency = resolveLotCurrency(lot);
+  const currency = lotChargeCurrency(lot);
+  const informed = (sources.paymentRoleByLot[lot.id] ?? "payer") !== "payer";
+  const paidBy =
+    informed && PAID_STATES.has(state)
+      ? `${capitalise(possessive(payer(sources.payerName)))} finance team`
+      : null;
   return {
     tab: purchaseTab(state),
     lotId: lot.id,
@@ -258,13 +317,19 @@ function toCard(
     lotLabel: lot.lotNumber == null ? null : `Lot ${lot.lotNumber}`,
     saleTitle: lot.saleId ? (sources.saleTitleById[lot.saleId] ?? null) : null,
     state,
-    statusLabel: PURCHASE_STATE_LABEL[state],
-    statusNote: noteFor(state, row, reason, fulfilment),
+    statusLabel:
+      informed && (state === "payment-due" || state === "in-review")
+        ? "Awaiting payment"
+        : PURCHASE_STATE_LABEL[state],
+    statusNote: informed
+      ? (informedNoteFor(state, sources.payerName) ?? noteFor(state, row, reason, fulfilment))
+      : noteFor(state, row, reason, fulfilment),
     amountLabel: amountLabel(state),
     amount: lot.checkoutPricing ? formatMoney(lot.checkoutPricing.totalMajor, currency) : "—",
     steps: stepsFor(state, row, fulfilment),
-    breakdown: breakdownFor(row),
-    primaryAction: primaryActionFor(state, row, reason),
+    breakdown: breakdownFor(row, paidBy),
+    // Paying and arranging delivery belong to whoever pays; the member who won is only told.
+    primaryAction: informed ? null : primaryActionFor(state, row, reason),
     invoiceHref: sources.invoiceByLot[lot.id] ?? null,
     problemHref: canReportProblem(state) ? REPORT_PROBLEM_HREF : null,
   };
@@ -277,9 +342,7 @@ function payNowBanner(
 ): PayNowBannerVm | null {
   const payNow = buildPayNow(rows, gate);
   if (!payNow) return null;
-  const due = rows.filter(
-    (row) => row.payment?.status !== "captured" && row.payment?.status !== "refunded",
-  );
+  const due = rows.filter(isAwaitingCheckout);
   const earliest = due.map(dueDate).sort((a, b) => a.getTime() - b.getTime())[0];
   const by = earliest ? ` by ${DAY_MONTH_LONG.format(earliest)}` : "";
   const [only] = due;
@@ -330,8 +393,11 @@ export function buildPurchasesVm(
     tab,
     tabs: PURCHASE_TABS.map((id) => ({ id, label: PURCHASE_TAB_LABEL[id], count: counts[id] })),
     cards: cards.filter((card) => card.tab === tab).map(({ tab: _tab, ...card }) => card),
-    // The banner is about money owed, so filters never hide it.
-    payNow: payNowBanner(sources.rows, sources.complianceGate),
+    // The banner is about money owed, so filters never hide it; it lists only what this person pays.
+    payNow: payNowBanner(
+      sources.rows.filter((row) => (sources.paymentRoleByLot[row.lot.id] ?? "payer") === "payer"),
+      sources.complianceGate,
+    ),
     total: sources.rows.length,
     shown: visible.length,
     spent: analytics.totalSpentFormatted,

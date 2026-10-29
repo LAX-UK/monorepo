@@ -31,7 +31,7 @@ async function loadWatching(sp: PageSearchParams, sort: WatchlistSortOption) {
   const c = await getServerDataContainer();
   const [rowsResult, bidsResult, userResult] = await Promise.allSettled([
     c.watchlist.listMine({ sort, categoryIds: [] }),
-    c.bids.listMine(),
+    c.buying.bids(),
     c.session.getCurrent(),
   ]);
   if (rowsResult.status === "rejected") return null;

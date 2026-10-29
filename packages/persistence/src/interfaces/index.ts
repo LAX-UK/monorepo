@@ -916,11 +916,8 @@ export type {
   ConsignmentStatusCounts,
   CurrencyCountRow,
   IConsignmentStatusCountsReader,
-  IOpenBidsReader,
   IPayoutsDueReader,
   ISoldWorksReader,
-  IUnpaidPurchasesReader,
   IUpcomingSaleWorksReader,
-  UnpaidPurchaseRow,
   UpcomingSaleWorksRow,
 } from "./organisation-dashboard.readers.js";

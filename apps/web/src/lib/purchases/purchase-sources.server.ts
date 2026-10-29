@@ -1,22 +1,41 @@
 import "server-only";
+import type { AccountScope } from "@/lib/account-scope/account-scope";
+import { paymentRoleFor } from "@/lib/buying/account-buying-figures";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
-import { getServerBuyerComplianceGate } from "@/lib/data/http/payments.server";
+import type { LotFulfilmentSnapshot, MyPaymentRow } from "@/lib/data/http/payments.schema";
+import {
+  getServerBuyerComplianceGate,
+  getServerEntityPayments,
+} from "@/lib/data/http/payments.server";
 import { resolveSaleTitles } from "@/lib/data/sale-titles.server";
+import { accountPurchaseScope } from "@auction/domain";
+import type { PurchasePaymentRole } from "@auction/domain";
 import type { PurchaseSources } from "./purchases.vm";
 
 /**
- * Everything Purchases shows, read through the existing buyer endpoints: the won lots, their
- * invoices, and delivery for the lots already paid for (only those have any). Delivery and
- * invoices degrade to "not shown" when their reads fail; the won lots are the page itself, so
- * their failure returns `null`.
+ * The invoices to link: the person's own, or an organisation's for the members who see its money.
+ * A buyer agent has no invoice links; the organisation's payers hold them.
+ */
+async function invoicesFor(scope: AccountScope): Promise<MyPaymentRow[]> {
+  const { account } = scope;
+  if (account.kind === "personal") {
+    return (await getServerDataContainer()).payments.listMine();
+  }
+  return accountPurchaseScope(account.actor) === "all" ? getServerEntityPayments() : [];
+}
+
+/**
+ * Everything Purchases shows, for the account in use: the won lots, their invoices, and delivery
+ * for the lots already paid for (only those have any). Delivery and invoices degrade to "not
+ * shown" when their reads fail; the won lots are the page itself, so their failure returns `null`.
  */
 export async function loadPurchaseSources(): Promise<PurchaseSources | null> {
   const container = await getServerDataContainer();
+  const scope = await container.buying.scope();
   const [rowsResult, gateResult, paymentsResult] = await Promise.allSettled([
-    container.portfolio.listMine(),
+    container.buying.purchases(),
     getServerBuyerComplianceGate(),
-    container.payments.listMine(),
+    invoicesFor(scope),
   ]);
   if (rowsResult.status === "rejected") return null;
   const rows = rowsResult.value;
@@ -27,6 +46,9 @@ export async function loadPurchaseSources(): Promise<PurchaseSources | null> {
       if (payment.invoiceUrl) invoiceByLot[payment.lotId] = payment.invoiceUrl;
     }
   }
+
+  const paymentRoleByLot: Record<string, PurchasePaymentRole> = {};
+  for (const row of rows) paymentRoleByLot[row.lot.id] = paymentRoleFor(scope, row);
 
   const paidLotIds = rows
     .filter((row) => row.payment?.status === "captured")
@@ -46,7 +68,10 @@ export async function loadPurchaseSources(): Promise<PurchaseSources | null> {
     rows,
     invoiceByLot,
     fulfilmentByLot,
+    // The person's own checks hold only what they pay themselves.
     complianceGate: gateResult.status === "fulfilled" ? gateResult.value : "clear",
     saleTitleById,
+    paymentRoleByLot,
+    payerName: scope.account.kind === "organisation" ? scope.account.name : null,
   };
 }

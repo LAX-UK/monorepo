@@ -1,6 +1,6 @@
 import { type MyBidStatus, latestBidPerLot, myBidStatus } from "@/lib/bid/my-bid-status";
 import type { BidWithLot, WatchlistWithLotRow } from "@/lib/data/dto/dashboard-dtos";
-import { formatEstimateRange, formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { formatEstimateRange, formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot, LotStatus } from "@auction/types";
 
@@ -95,7 +95,7 @@ function lotBadge(lot: Lot, bid: MyBidStatus | null, now: Date): WatchedLotBadge
 }
 
 function figureFor(lot: Lot, badge: WatchedLotBadge, myBid: BidWithLot | null): string {
-  const money = (amount: string) => formatMoney(amount, resolveLotCurrency(lot));
+  const money = (amount: string) => formatMoney(amount, lotChargeCurrency(lot));
   if (badge === "absentee" && myBid) {
     return `Absentee ${money(myBid.bid.maxAutoBidAmount ?? myBid.bid.amount)}`;
   }

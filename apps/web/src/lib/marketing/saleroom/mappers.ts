@@ -1,5 +1,5 @@
 import { mapPressRefToVM } from "@/components/sections/press/mappers";
-import { formatEstimateRange, formatMoney, resolveLotCurrency } from "@/lib/format-currency";
+import { formatEstimateRange, formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import { lotWasSold } from "@/lib/lot/lot-outcome";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
@@ -153,7 +153,7 @@ export function computeEndedSaleSummary(
   for (const lot of soldLots) {
     const price = Number.parseFloat(lot.currentPrice);
     if (!Number.isFinite(price)) continue;
-    const lotCurrency = resolveLotCurrency(lot);
+    const lotCurrency = lotChargeCurrency(lot);
     if (currency && lotCurrency !== currency) {
       currency = null;
       break;
@@ -280,7 +280,7 @@ export function mapLotToCardVM(
       : { label: "Result", value: lot.hasWinner ? "Sold" : "No sale" }
     : {
         label: lot.status === "ended" ? "Final bid" : "Current bid",
-        value: formatMoney(lot.currentPrice, resolveLotCurrency(lot)),
+        value: formatMoney(lot.currentPrice, lotChargeCurrency(lot)),
       };
   // Server-rendered relative phrase used as a non-ticking secondary line.
   // Important: scheduled lots count down to start (opens-in), active lots to end (closes-in).

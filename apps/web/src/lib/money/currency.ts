@@ -16,9 +16,15 @@ type LotCurrencySource = {
   marketingDetails?: LotMarketingDetails | null;
 };
 
-/** Display currency for lot prices and bids (from estimate metadata, else platform default). */
-export function resolveLotCurrency(lot: LotCurrencySource): string {
-  return normalizeCurrencyCode(lot.marketingDetails?.estimate?.currency);
+/**
+ * The currency a lot is bid and paid in: current bid, maximums, the bid button, hammer, buyer's
+ * premium, totals and checkout. Bids are taken and payments charged in the platform currency
+ * (GBP), whatever currency the catalogue gives its estimate in; only the estimate keeps its own
+ * currency, through {@link formatEstimateRange}. The lot is taken so a per-sale currency can be
+ * introduced here, in one place.
+ */
+export function lotChargeCurrency(_lot: LotCurrencySource): string {
+  return PLATFORM_DEFAULT_CURRENCY;
 }
 
 export function formatEstimateRange(input: {

@@ -127,6 +127,8 @@ function sources(overrides: Partial<PurchaseSources> = {}): PurchaseSources {
     },
     complianceGate: "clear",
     saleTitleById: { "sale-2": "Jewels and objects of vertu" },
+    paymentRoleByLot: {},
+    payerName: null,
     ...overrides,
   };
 }

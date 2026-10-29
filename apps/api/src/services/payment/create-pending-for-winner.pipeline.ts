@@ -5,6 +5,7 @@ import { type Result, err, ok } from "neverthrow";
 import { gbpAmountToPence, gbpPenceToMajorString } from "../../lib/decimal-money.js";
 import { AuthzError, LotError, type PaymentProviderError } from "../../lib/errors.js";
 import { recordMoneyPathEvent } from "../../middleware/metrics.js";
+import type { PaymentRefusal } from "../interfaces/buyer-payment-authority.js";
 import { notificationRowToPayload } from "../notification-payload.js";
 import { resolveCheckoutAddressSnapshot } from "./checkout-address.js";
 import { resolveCheckoutForPendingOrPromoteCompliance } from "./checkout-orchestrator.js";
@@ -95,20 +96,46 @@ async function handleExistingOpenPayment(
   });
 }
 
-export async function validateWinnerCanPay(
+/** What the payer is told when they may not pay, by the authority's reason. */
+const PAYMENT_REFUSAL: Record<PaymentRefusal, { message: string; status: number; code: string }> = {
+  lot_not_won: { message: "This lot has no winner to pay for", status: 400, code: "lot_not_won" },
+  not_winner: {
+    message: "Only the winning bidder can pay for this lot",
+    status: 403,
+    code: "not_winner",
+  },
+  not_member: {
+    message: "You are no longer a member of the account this lot was won for",
+    status: 403,
+    code: "not_a_member_of_buyer_account",
+  },
+  not_payer: {
+    message: "The organisation's owners, admins and finance team pay for its purchases",
+    status: 403,
+    code: "not_organisation_payer",
+  },
+};
+
+/**
+ * The lot can be paid for, and `payerId` may pay it ({@link IBuyerPaymentAuthority}): the winner
+ * of a personal purchase, or an organisation's owners, admins and finance for its purchases.
+ */
+export async function validatePayerCanPay(
   deps: PaymentServiceDeps,
-  buyerId: string,
+  payerId: string,
   lotId: string,
 ): Promise<Result<Lot, AuthzError | LotError>> {
   const lot = await deps.lots.findById(lotId);
   if (!lot) {
     return err(new LotError("Lot not found", 404));
   }
-  if (lot.winnerId !== buyerId) {
-    return err(new AuthzError("Only the winning bidder can initiate payment", 403));
-  }
   if (lot.status !== "ended") {
     return err(new AuthzError("Lot must be ended before payment", 400));
+  }
+  const decision = await deps.buyerPaymentAuthority.canPay({ userId: payerId }, lot);
+  if (!decision.allowed) {
+    const refusal = PAYMENT_REFUSAL[decision.reason];
+    return err(new AuthzError(refusal.message, refusal.status, { code: refusal.code }));
   }
   if (!lot.buyerLegalEntityId) {
     return err(new AuthzError("Winning legal entity is missing for this lot", 400));
@@ -149,7 +176,9 @@ export async function handleExistingPaymentForWinner(
   CreatePendingPaymentResult,
   AuthzError | LotError | PaymentProviderError
 > | null> {
-  const existing = await deps.payments.findOpenByLotAndBuyer(lot.id, buyerId);
+  if (!lot.buyerLegalEntityId) return null;
+  // Any payer of the account may have started this payment; it is continued, never duplicated.
+  const existing = await deps.payments.findOpenByLotAndBuyerAccount(lot.id, lot.buyerLegalEntityId);
   if (!existing) return null;
 
   await deps.lotFulfilmentHooks?.ensureAwaitingPayment(lot.id, existing.id, addressSnapshot);
@@ -175,12 +204,15 @@ export async function computeNewPaymentTerms(
     LotError
   >
 > {
-  const priorRefund = await deps.payments.findRefundedByLotAndBuyer(lot.id, buyerId);
-  if (priorRefund) {
-    return err(new LotError("Payment for this lot has already been refunded", 409));
-  }
   if (!lot.sellerLegalEntityId || !lot.buyerLegalEntityId) {
     return err(new LotError("Winning legal entity is missing for this lot", 400));
+  }
+  const priorRefund = await deps.payments.findRefundedByLotAndBuyerAccount(
+    lot.id,
+    lot.buyerLegalEntityId,
+  );
+  if (priorRefund) {
+    return err(new LotError("Payment for this lot has already been refunded", 409));
   }
   const sellerLegalEntityId = lot.sellerLegalEntityId;
 
@@ -331,14 +363,17 @@ export async function finalizePendingPaymentForWinner(
   }
 }
 
-/** Winning bidder initiates Stripe checkout (card or UK bank transfer by amount tier). */
+/**
+ * Starts checkout for a won lot (card or UK bank transfer by amount tier). `buyerId` is the person
+ * paying: the winner of a personal purchase, or one of an organisation's payers.
+ */
 export async function createPendingForWinner(
   deps: PaymentServiceDeps,
   buyerId: string,
   lotId: string,
   addressId: string,
 ): Promise<Result<CreatePendingPaymentResult, AuthzError | LotError | PaymentProviderError>> {
-  const lotResult = await validateWinnerCanPay(deps, buyerId, lotId);
+  const lotResult = await validatePayerCanPay(deps, buyerId, lotId);
   if (lotResult.isErr()) return err(lotResult.error);
   const lot = lotResult.value;
 

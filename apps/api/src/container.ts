@@ -555,6 +555,7 @@ export function createContainer(env: Env): Container {
       sessionRevocation,
       authAuditPublisher: platform.authAuditPublisher,
       twoFactorRequirement: twoFactorPolicy,
+      requireBuyingAccount: userMisc.requireSubmissionsLegalEntityContext,
       staffInvitationAccept: userMisc.staffInvitationAccept,
     }),
     admin: {

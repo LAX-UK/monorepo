@@ -13,6 +13,7 @@ import { describe, expect, it, vi } from "vitest";
 import { LotError, PaymentProviderError } from "../lib/errors.js";
 import { mockDomainEventSink } from "../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../test/transaction-runner-from-db.js";
+import { winnerPaysForTests } from "../testing/winner-pays-authority.js";
 import type { ISettlementCompliancePolicy } from "./aml/settlement-compliance.policy.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IStripeCheckoutService } from "./interfaces/checkout-rail.js";
@@ -196,6 +197,15 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       paymentCapture,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const result = await service.markCapturedByAdmin(
@@ -282,6 +292,15 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       paymentCapture,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const result = await service.markCapturedByAdmin("admin-1", "staff", pay.id, undefined, [
@@ -334,6 +353,21 @@ describe("PaymentService", () => {
       transactionRunnerFromDb(db),
       publisher,
       stripe,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const result = await service.markCapturedByAdmin("admin-1", "staff", pay.id, undefined, [
@@ -393,6 +427,21 @@ describe("PaymentService", () => {
       transactionRunnerFromDb(db),
       publisher,
       stripe,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const result = await service.refundPayment(
@@ -459,6 +508,21 @@ describe("PaymentService", () => {
       transactionRunnerFromDb(db),
       publisher,
       stripe,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const result = await service.refundPayment("admin-1", "staff", pay.id, undefined, [
@@ -502,6 +566,21 @@ describe("PaymentService", () => {
       transactionRunnerFromDb(db),
       publisher,
       stripe,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const result = await service.refundPayment("admin-1", "staff", pay.id, undefined, [
@@ -528,6 +607,25 @@ describe("PaymentService", () => {
       {} as IUserRepository,
       accounting,
       defaultTierPolicy,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const result = await service.refundPayment(
@@ -544,8 +642,8 @@ describe("PaymentService", () => {
 
   it("creates manual-review payment and skips checkout when seller entity is archived", async () => {
     const payments: IPaymentWriteRepository = {
-      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
-      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
+      findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({
         ...payment,
         id: "pay-review",
@@ -593,6 +691,7 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       undefined,
+      winnerPaysForTests,
     );
 
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
@@ -617,8 +716,8 @@ describe("PaymentService", () => {
       status: "requires_manual_review",
     } as PaymentRecord;
     const payments: IPaymentWriteRepository = {
-      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(existingReview),
-      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(existingReview),
+      findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
     } as unknown as IPaymentWriteRepository;
     const settlementCompliance: ISettlementCompliancePolicy = {
       evaluate: vi.fn().mockResolvedValue({ hold: true, reason: "source_of_funds_required" }),
@@ -648,6 +747,9 @@ describe("PaymentService", () => {
       undefined,
       mockCheckoutAddresses(),
       settlementCompliance,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
@@ -672,8 +774,8 @@ describe("PaymentService", () => {
       revokeOpenCheckoutForPayment,
     } as unknown as IStripePaymentGateway;
     const payments: IPaymentWriteRepository = {
-      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(existingPending),
-      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(existingPending),
+      findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
       findById: vi.fn().mockResolvedValue(existingPending),
       updateStatus: vi.fn().mockResolvedValue(undefined),
     } as unknown as IPaymentWriteRepository;
@@ -712,6 +814,7 @@ describe("PaymentService", () => {
       settlementCompliance,
       true,
       publisher,
+      winnerPaysForTests,
     );
 
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
@@ -740,8 +843,8 @@ describe("PaymentService", () => {
       revokeOpenCheckoutForPayment,
     } as unknown as IStripePaymentGateway;
     const payments: IPaymentWriteRepository = {
-      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(existingPending),
-      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(existingPending),
+      findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
       findById: vi.fn().mockResolvedValue(existingPending),
       updateStatus: vi.fn().mockResolvedValue(undefined),
     } as unknown as IPaymentWriteRepository;
@@ -773,6 +876,10 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       mockCheckoutAddresses(),
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
@@ -825,6 +932,9 @@ describe("PaymentService", () => {
       undefined,
       mockCheckoutAddresses(),
       settlementCompliance,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const result = await service.releaseManualReviewForCapture(
@@ -883,6 +993,9 @@ describe("PaymentService", () => {
       undefined,
       mockCheckoutAddresses(),
       settlementCompliance,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const result = await service.releaseManualReviewForCapture("finance-1", "staff", payment.id, [
@@ -917,6 +1030,22 @@ describe("PaymentService", () => {
       undefined,
       transactionRunnerFromDb(db as never),
       publisher as never,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const result = await service.refundManualReviewPayment("admin-1", "staff", payment.id, [
@@ -975,8 +1104,8 @@ describe("PaymentService", () => {
       updatedAt: new Date(),
     };
     const payments: IPaymentWriteRepository = {
-      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
-      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
+      findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({ ...payment, id: "pay-tier", status: "pending" }),
     } as unknown as IPaymentWriteRepository;
     const accounting = mockAccounting();
@@ -1019,6 +1148,10 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       mockCheckoutAddresses(),
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const result = await service.createPendingForWinner(
@@ -1056,6 +1189,20 @@ describe("PaymentService", () => {
       undefined,
       null,
       undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
     const out = await service.listMyPaymentsForBuyerApi("buyer-1", { status: "pending" });
     expect(out.data).toHaveLength(1);
@@ -1072,8 +1219,8 @@ describe("PaymentService", () => {
       buyerPremiumRate: "0.25",
     };
     const payments: IPaymentWriteRepository = {
-      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
-      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
+      findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
       create: vi.fn(),
     } as unknown as IPaymentWriteRepository;
     const service = new PaymentService(
@@ -1099,6 +1246,10 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       mockCheckoutAddresses(),
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
     const result = await service.createPendingForWinner(
       "buyer-1",
@@ -1112,8 +1263,8 @@ describe("PaymentService", () => {
   it("creates high-value manual review without Xero or Stripe calls", async () => {
     const highLot: Lot = { ...lot, currentPrice: "400000.00", buyerPremiumRate: "0.25" };
     const payments: IPaymentWriteRepository = {
-      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
-      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
+      findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({
         ...payment,
         id: "pay-hv",
@@ -1148,6 +1299,10 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       mockCheckoutAddresses(),
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
     const result = await service.createPendingForWinner("buyer-1", highLot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isOk()).toBe(true);
@@ -1161,8 +1316,8 @@ describe("PaymentService", () => {
 
   it("returns 503 when Xero invoice fails before Stripe checkout", async () => {
     const payments: IPaymentWriteRepository = {
-      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
-      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
+      findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({ ...payment, id: "pay-xero", status: "pending" }),
     } as unknown as IPaymentWriteRepository;
     const accounting = mockAccounting({
@@ -1197,6 +1352,10 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       mockCheckoutAddresses(),
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isErr()).toBe(true);
@@ -1209,8 +1368,8 @@ describe("PaymentService", () => {
 
   it("proceeds to Stripe checkout when Xero invoice fails and blocking is disabled", async () => {
     const payments: IPaymentWriteRepository = {
-      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
-      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
+      findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({ ...payment, id: "pay-xero-defer", status: "pending" }),
     } as unknown as IPaymentWriteRepository;
     const accounting = mockAccounting({
@@ -1247,6 +1406,8 @@ describe("PaymentService", () => {
       mockCheckoutAddresses(),
       undefined,
       false,
+      undefined,
+      winnerPaysForTests,
     );
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isOk()).toBe(true);
@@ -1264,8 +1425,8 @@ describe("PaymentService", () => {
       status: "ended",
     };
     const payments: IPaymentWriteRepository = {
-      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
-      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
+      findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
       create: vi.fn().mockResolvedValue({
         ...payment,
         id: "pay-saleroom",
@@ -1301,6 +1462,10 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       mockCheckoutAddresses(),
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const winnerResult = await service.createPendingForWinner(
@@ -1321,7 +1486,7 @@ describe("PaymentService", () => {
     );
     expect(nonWinnerResult.isErr()).toBe(true);
     if (nonWinnerResult.isErr()) {
-      expect(nonWinnerResult.error.message).toBe("Only the winning bidder can initiate payment");
+      expect(nonWinnerResult.error.message).toBe("Only the winning bidder can pay for this lot");
     }
   });
 
@@ -1334,8 +1499,8 @@ describe("PaymentService", () => {
       status: "pending",
     };
     const payments: IPaymentWriteRepository = {
-      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(pendingPayment),
-      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(pendingPayment),
+      findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
     } as unknown as IPaymentWriteRepository;
     const stripeCheckout = mockStripeCheckout({
       createCheckout: vi.fn().mockResolvedValue({
@@ -1370,6 +1535,10 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       mockCheckoutAddresses(),
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isOk()).toBe(true);
@@ -1386,8 +1555,8 @@ describe("PaymentService", () => {
       status: "captured",
     };
     const payments: IPaymentWriteRepository = {
-      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(capturedPayment),
-      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(capturedPayment),
+      findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
     } as unknown as IPaymentWriteRepository;
     const stripeCheckout = mockStripeCheckout();
     const service = new PaymentService(
@@ -1415,6 +1584,10 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       mockCheckoutAddresses(),
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isOk()).toBe(true);
@@ -1434,8 +1607,8 @@ describe("PaymentService", () => {
       stripePaymentIntentId: "pi_inflight",
     };
     const payments: IPaymentWriteRepository = {
-      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(authorizedPayment),
-      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue(null),
+      findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(authorizedPayment),
+      findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
     } as unknown as IPaymentWriteRepository;
     const stripeCheckout = mockStripeCheckout();
     const service = new PaymentService(
@@ -1463,6 +1636,10 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       mockCheckoutAddresses(),
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isOk()).toBe(true);
@@ -1475,8 +1652,8 @@ describe("PaymentService", () => {
 
   it("blocks creating a new payment when a prior refund exists for the lot", async () => {
     const payments: IPaymentWriteRepository = {
-      findOpenByLotAndBuyer: vi.fn().mockResolvedValue(null),
-      findRefundedByLotAndBuyer: vi.fn().mockResolvedValue({
+      findOpenByLotAndBuyerAccount: vi.fn().mockResolvedValue(null),
+      findRefundedByLotAndBuyerAccount: vi.fn().mockResolvedValue({
         ...payment,
         id: "pay-refunded",
         status: "refunded",
@@ -1508,6 +1685,10 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       mockCheckoutAddresses(),
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
     const result = await service.createPendingForWinner("buyer-1", lot.id, CHECKOUT_ADDRESS_ID);
     expect(result.isErr()).toBe(true);
@@ -1556,6 +1737,21 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       stripe,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const result = await service.cancelPendingAsBuyer("buyer-1", pendingPay.id);
@@ -1593,6 +1789,21 @@ describe("PaymentService", () => {
       undefined,
       undefined,
       stripe,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const expired = await service.expireStalePendingPayments(14, 30);
@@ -1621,6 +1832,25 @@ describe("PaymentService", () => {
       } as unknown as IUserRepository,
       accounting,
       defaultTierPolicy,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const res = await service.backfillXeroInvoiceForPayment(pendingPay.id);
@@ -1641,6 +1871,25 @@ describe("PaymentService", () => {
       {} as IUserRepository,
       accounting,
       defaultTierPolicy,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      undefined,
+      winnerPaysForTests,
     );
 
     const res = await service.backfillXeroInvoiceForPayment("pay-x");

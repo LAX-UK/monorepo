@@ -343,6 +343,9 @@ export {
   type OrganisationDashboardModel,
   type UpcomingSaleFigure,
   type UpcomingSaleRow,
+  ACCOUNT_FIGURE_GROUPS,
+  type AccountFigureGroup,
+  isAccountFigureGroup,
 } from "./organisation-dashboard.js";
 export {
   CONSIGNMENT_PROGRESS_STAGES,
@@ -418,3 +421,17 @@ export {
   type ComplianceDecisionRefusal,
   type PayoutReversalRefusal,
 } from "./separation-of-duties.js";
+export {
+  accountBidScope,
+  accountPurchaseScope,
+  type BuyingRecordScope,
+} from "./account-buying-scope.js";
+export {
+  buyerPaymentAuthority,
+  purchasePaymentRole,
+  type BuyerPaymentAuthorityInput,
+  type PayableLot,
+  type PaymentAuthorityDecision,
+  type PaymentRefusal,
+  type PurchasePaymentRole,
+} from "./buyer-payment-authority.js";

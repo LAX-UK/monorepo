@@ -1,5 +1,5 @@
 import { coerceToIsoString } from "@/lib/data/http/parse";
-import { resolveLotCurrency } from "@/lib/money/currency";
+import { lotChargeCurrency } from "@/lib/money/currency";
 import { lotPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Lot, PublicLotView } from "@auction/types";
@@ -27,7 +27,7 @@ export function lotProductJsonLd(
     offers: {
       "@type": "Offer",
       url,
-      priceCurrency: resolveLotCurrency(auction),
+      priceCurrency: lotChargeCurrency(auction),
       price: auction.currentPrice,
       availability,
       ...(priceValidUntil ? { priceValidUntil } : {}),

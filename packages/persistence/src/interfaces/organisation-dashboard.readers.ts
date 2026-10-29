@@ -1,4 +1,4 @@
-import type { BuyerPremiumTier, ItemSubmissionStatus, LotStatus } from "@auction/types";
+import type { ItemSubmissionStatus, LotStatus } from "@auction/types";
 import type { SubmissionSenderFilter } from "./item-submission.repository.js";
 
 /**
@@ -53,26 +53,4 @@ export interface ISoldWorksReader {
 export interface IPayoutsDueReader {
   /** Net totals of payouts scheduled or in transit, with the soonest settlement date. */
   listDue(legalEntityId: string): Promise<(CurrencyCountRow & { nextDate: Date | null })[]>;
-}
-
-export interface IOpenBidsReader {
-  /**
-   * Lots still open where the organisation has bid, with the most it could pay on each
-   * (highest bid, auto-bid ceiling or absentee maximum). `bidderUserId` narrows to one member.
-   */
-  summarise(legalEntityId: string, bidderUserId: string | null): Promise<CurrencyCountRow[]>;
-}
-
-/** A won lot not paid yet, with what its total is worked out from. */
-export type UnpaidPurchaseRow = {
-  lotId: string;
-  hammer: string;
-  lotPremiumRate: string;
-  saleTiers: BuyerPremiumTier[] | null;
-  currency: string;
-};
-
-export interface IUnpaidPurchasesReader {
-  /** The organisation's won lots with no captured or refunded payment, at most `limit`. */
-  list(legalEntityId: string, limit: number): Promise<UnpaidPurchaseRow[]>;
 }

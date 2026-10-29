@@ -151,6 +151,44 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
     return row ? mapRow(row, null) : null;
   }
 
+  async findOpenByLotAndBuyerAccount(
+    lotId: string,
+    buyerLegalEntityId: string,
+  ): Promise<PaymentRecord | null> {
+    const rows = await this.db
+      .select()
+      .from(payment)
+      .where(
+        and(
+          eq(payment.lotId, lotId),
+          eq(payment.buyerLegalEntityId, buyerLegalEntityId),
+          inArray(payment.status, ["pending", "authorized", "captured", "requires_manual_review"]),
+        ),
+      )
+      .limit(1);
+    const row = rows[0];
+    return row ? mapRow(row, null) : null;
+  }
+
+  async findRefundedByLotAndBuyerAccount(
+    lotId: string,
+    buyerLegalEntityId: string,
+  ): Promise<PaymentRecord | null> {
+    const rows = await this.db
+      .select()
+      .from(payment)
+      .where(
+        and(
+          eq(payment.lotId, lotId),
+          eq(payment.buyerLegalEntityId, buyerLegalEntityId),
+          eq(payment.status, "refunded"),
+        ),
+      )
+      .limit(1);
+    const row = rows[0];
+    return row ? mapRow(row, null) : null;
+  }
+
   async updateStatus(id: string, status: PaymentRecord["status"]): Promise<void> {
     await this.db.update(payment).set({ status }).where(eq(payment.id, id));
   }

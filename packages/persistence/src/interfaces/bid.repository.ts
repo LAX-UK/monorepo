@@ -38,6 +38,15 @@ export interface IBidRepository {
   listDistinctBidderIds(lotId: string): Promise<string[]>;
   /** Latest bids placed by a bidder (for dashboard). */
   listForBidder(bidderId: string, limit: number): Promise<Bid[]>;
+  /**
+   * Latest bids placed for a buyer account (an organisation), newest first. `bidderId` narrows
+   * to the bids one member placed for it.
+   */
+  listForBuyerAccount(
+    buyerLegalEntityId: string,
+    bidderId: string | null,
+    limit: number,
+  ): Promise<Bid[]>;
   markWinningBid(lotId: string, bidId: string): Promise<void>;
   clearWinningBid(lotId: string): Promise<void>;
   /** Max effective ceiling per bidder for proxy resolution (English / buy-it-now). */
