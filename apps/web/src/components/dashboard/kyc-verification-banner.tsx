@@ -35,7 +35,7 @@ export function KycVerificationBanner({
       </AlertTitle>
       <AlertDescription className="text-pretty">
         {awaitingDecision ? (
-          <>Veriff is reviewing your submission. You can return here to check your status.</>
+          <>We're reviewing your identity check. You can come back here to see your status.</>
         ) : proactive ? (
           <>
             Secure verification usually takes about two minutes. Complete it now, or return when you

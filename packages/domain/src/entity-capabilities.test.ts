@@ -9,6 +9,7 @@ const EXPECTED: Record<EntityCapability, LegalEntityMemberRole[]> = {
   "entity.members.manage": ["owner", "admin"],
   "entity.ownership.manage": ["owner"],
   "entity.profile.read": ["owner", "admin"],
+  "entity.documents.manage": ["owner", "admin"],
   "entity.security.read": ["owner", "admin"],
   "entity.security.manage": ["owner"],
   "entity.finance.read": ["owner", "admin", "finance"],

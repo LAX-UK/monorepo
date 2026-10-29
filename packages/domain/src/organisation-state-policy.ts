@@ -14,6 +14,8 @@ export const ORGANISATION_ACTIONS = [
   "invite",
   "accept_invitation",
   "set_up_payouts",
+  /** Send or replace the documents LAX checks; open only while LAX is waiting for them. */
+  "send_documents",
 ] as const;
 export type OrganisationAction = (typeof ORGANISATION_ACTIONS)[number];
 
@@ -81,11 +83,11 @@ type StateSpec = {
 const READ_ONLY: readonly OrganisationAction[] = ["read_history"];
 
 const DOCUMENTS_REQUESTED: StateSpec = {
-  allowed: ["read_history", "invite", "accept_invitation"],
+  allowed: ["read_history", "invite", "accept_invitation", "send_documents"],
   banner: {
     kind: "attention",
     key: "documents_requested",
-    actWith: ["entity.members.manage"],
+    actWith: ["entity.documents.manage"],
     toldWith: null,
   },
   homeFirstRunKey: "documents_requested",
@@ -131,7 +133,8 @@ const STATE_SPECS: Readonly<Record<LegalEntityStatus, StateSpec>> = {
     bidPanelReasonKey: null,
   },
   approved: {
-    allowed: ORGANISATION_ACTIONS,
+    // Documents are closed once checked; LAX reopens them by asking for more.
+    allowed: ORGANISATION_ACTIONS.filter((action) => action !== "send_documents"),
     banner: null,
     homeFirstRunKey: "ready",
     bidPanelReasonKey: null,

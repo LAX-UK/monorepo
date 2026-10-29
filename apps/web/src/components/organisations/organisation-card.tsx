@@ -57,7 +57,6 @@ export function OrganisationCard({
           </div>
           <p className="text-sm text-on-surface-variant">
             {subkindLabel(summary.subkind)} · {roleLabel(summary.role)}
-            {summary.isPrimaryAdmin ? " · Primary admin" : ""}
           </p>
         </div>
       </CardHeader>
@@ -69,7 +68,7 @@ export function OrganisationCard({
             </StatusBadge>
             {gap.missing.length > 0 ? (
               <StatusBadge variant="warning">
-                {gap.missing.length} req{gap.missing.length === 1 ? "" : "s"}
+                {gap.missing.length} {gap.missing.length === 1 ? "detail" : "details"} needed
               </StatusBadge>
             ) : null}
           </div>

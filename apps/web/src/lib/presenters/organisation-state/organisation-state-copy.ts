@@ -1,6 +1,7 @@
 import { supportMailto } from "@/lib/dashboard/dashboard-copy";
 import { organisationHref } from "@/lib/navigation/client-routes";
 import {
+  type FirstRunRecord,
   type OrganisationBanner,
   type OrganisationBannerKey,
   type OrganisationBannerKind,
@@ -152,22 +153,38 @@ export type OrganisationFirstRunCopy = { title: string; description: string };
 /** What a ready organisation's first step is; `none` when the role has no step to take. */
 export type FirstRunStep = "sell" | "invite" | "none";
 
-const READY_COPY: Record<
-  FirstRunStep,
-  (ctx: OrganisationStateCopyContext) => OrganisationFirstRunCopy
-> = {
-  sell: ({ organisationName }) => ({
+const RECORD_WORDS: Record<FirstRunRecord, string> = {
+  sales: "sales",
+  payouts: "payouts",
+  bids: "bids",
+  purchases: "purchases",
+};
+
+/** "Sales, bids and purchases": only what this member will see, so nobody is promised a page they cannot open. */
+function recordsSentence(shows: readonly FirstRunRecord[]): string {
+  const words = shows.map((record) => RECORD_WORDS[record]);
+  const last = words.pop() ?? "activity";
+  const list = words.length > 0 ? `${words.join(", ")} and ${last}` : last;
+  return list.charAt(0).toUpperCase() + list.slice(1);
+}
+
+type FirstRunWords = (
+  ctx: OrganisationStateCopyContext,
+  records: string,
+) => OrganisationFirstRunCopy;
+
+const READY_COPY: Record<FirstRunStep, FirstRunWords> = {
+  sell: ({ organisationName }, records) => ({
     title: `Get ${organisationName} started`,
-    description:
-      "Send a first work to our specialists. Sales, payouts and bids show here as they happen.",
+    description: `Send a first work to our specialists. ${records} show here as they happen.`,
   }),
-  invite: ({ organisationName }) => ({
+  invite: ({ organisationName }, records) => ({
     title: `Get ${organisationName} started`,
-    description: "Invite your team. Sales, payouts and bids show here as they happen.",
+    description: `Invite your team. ${records} show here as they happen.`,
   }),
-  none: ({ organisationName }) => ({
+  none: ({ organisationName }, records) => ({
     title: "Nothing here yet",
-    description: `Sales, payouts and bids for ${organisationName} show here as they happen.`,
+    description: `${records} for ${organisationName} show here as they happen.`,
   }),
 };
 
@@ -175,21 +192,18 @@ const READY_COPY: Record<
  * Every first-run key. The banner above already says what the state is, so these say what this
  * page will show and when, without repeating it.
  */
-const FIRST_RUN_COPY: Record<
-  Exclude<OrganisationHomeFirstRunKey, "ready">,
-  (ctx: OrganisationStateCopyContext) => OrganisationFirstRunCopy
-> = {
-  documents_requested: ({ organisationName }) => ({
+const FIRST_RUN_COPY: Record<Exclude<OrganisationHomeFirstRunKey, "ready">, FirstRunWords> = {
+  documents_requested: ({ organisationName }, records) => ({
     title: "Nothing here yet",
-    description: `Sales, payouts and bids for ${organisationName} show here once its documents are checked.`,
+    description: `${records} for ${organisationName} show here once its documents are checked.`,
   }),
-  documents_under_review: ({ organisationName }) => ({
+  documents_under_review: ({ organisationName }, records) => ({
     title: "Nothing here yet",
-    description: `Sales, payouts and bids for ${organisationName} show here once we've finished checking its documents.`,
+    description: `${records} for ${organisationName} show here once we've finished checking its documents.`,
   }),
-  payouts_not_set_up: ({ organisationName }) => ({
+  payouts_not_set_up: ({ organisationName }, records) => ({
     title: "Nothing here yet",
-    description: `Bids and purchases for ${organisationName} show here as they happen. Works can go into a sale once payouts are set up.`,
+    description: `${records} for ${organisationName} show here as they happen.`,
   }),
   restricted: ({ organisationName }) => ({
     title: "Nothing here yet",
@@ -201,12 +215,18 @@ const FIRST_RUN_COPY: Record<
   }),
 };
 
+/**
+ * The first-run words for an organisation in `key`, offering `step`, naming only the records
+ * (`shows`) this member's role can see.
+ */
 export function organisationFirstRunCopy(
   key: OrganisationHomeFirstRunKey,
   step: FirstRunStep,
   ctx: OrganisationStateCopyContext,
+  shows: readonly FirstRunRecord[],
 ): OrganisationFirstRunCopy {
-  return key === "ready" ? READY_COPY[step](ctx) : FIRST_RUN_COPY[key](ctx);
+  const records = recordsSentence(shows);
+  return key === "ready" ? READY_COPY[step](ctx, records) : FIRST_RUN_COPY[key](ctx, records);
 }
 
 /** Why bidding for the organisation is closed, said before the person tries. */

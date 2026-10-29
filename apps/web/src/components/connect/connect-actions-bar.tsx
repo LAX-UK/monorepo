@@ -74,14 +74,14 @@ export function ConnectActionsBar({
             disabled={actionsPending}
             onClick={handleManageInStripe}
           >
-            Manage in Stripe
+            Manage payout account
           </Button>
         ) : null}
       </div>
       {!payoutReady && showOnboardingForm && showDashboardLink ? (
         <p className="font-body text-xs text-on-surface-variant">
-          Prefer the secure form above. Open Manage in Stripe only if you need the Express
-          dashboard.
+          Use the secure form above. Open your payout account only if you need to change something
+          the form doesn't show.
         </p>
       ) : null}
     </>

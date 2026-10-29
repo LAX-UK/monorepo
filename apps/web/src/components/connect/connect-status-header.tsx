@@ -60,8 +60,8 @@ export function ConnectStatusHeader({
       </p>
       {gap.stage === "ready" && !gap.canPublish ? (
         <p className="font-body text-sm text-on-surface-variant">
-          Stripe payout setup is complete. Your profile still needs LAX approval before you can
-          publish lots or receive settlement transfers.
+          Your payout details are complete. Our team still checks your profile before your works can
+          go into a sale or you can be paid.
         </p>
       ) : null}
       {actionHint ? (

@@ -307,8 +307,7 @@ export function ConnectWorkspace({
                       Complete your payout details
                     </h3>
                     <p className="font-body text-sm text-on-surface-variant">
-                      Add your bank account and any verification Stripe requests. Prefer this form
-                      over opening Stripe separately.
+                      Add your bank account and answer any checks the form asks for.
                     </p>
                   </>
                 ) : null}

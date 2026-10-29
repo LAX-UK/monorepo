@@ -35,8 +35,8 @@ function PayoutDestinationCard({ vm }: { vm: PayoutDestinationVm }) {
         </h2>
         <p className="mt-1 font-body text-sm text-on-surface-variant">
           {vm.ready
-            ? "Through Stripe. We never see or store your bank details."
-            : "Add your bank details with Stripe so we can pay you when a work sells."}
+            ? "Through our secure payment partner. We never see or store your bank details."
+            : "Add your bank details so we can pay you when a work sells."}
           {vm.pending ? ` ${vm.pending} is waiting for the next payout.` : ""}
         </p>
       </div>

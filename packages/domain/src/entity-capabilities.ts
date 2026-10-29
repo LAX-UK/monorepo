@@ -27,6 +27,8 @@ const ENTITY_CAPABILITY_RULES = {
   "entity.ownership.manage": { access: "write", roles: ["owner"] },
   /** See the organisation's registered details and the documents sent for its checks. */
   "entity.profile.read": { access: "read", roles: ["owner", "admin"] },
+  /** Send the documents LAX asks for to check the organisation, and replace one it cannot accept. */
+  "entity.documents.manage": { access: "write", roles: ["owner", "admin"] },
   /** See the organisation's two-step verification policy and which members have it on. */
   "entity.security.read": {
     access: "read",

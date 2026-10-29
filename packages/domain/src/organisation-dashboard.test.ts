@@ -211,6 +211,18 @@ describe("empty figures", () => {
     expect(actions("owner", true)).toEqual([]);
   });
 
+  it("first steps name only the records the role will see", () => {
+    const shows = (role: LegalEntityMemberRole) =>
+      buildOrganisationDashboard({ role }, EMPTY).firstRun?.shows;
+    expect(shows("owner")).toEqual(["sales", "payouts", "bids", "purchases"]);
+    expect(shows("admin")).toEqual(["sales", "payouts", "bids", "purchases"]);
+    expect(shows("finance")).toEqual(["sales", "payouts", "purchases"]);
+    expect(shows("consignor")).toEqual(["sales"]);
+    expect(shows("viewer")).toEqual(["sales"]);
+    // A buyer agent bids for the organisation and never sees its payouts.
+    expect(shows("buyer_agent")).toEqual(["bids"]);
+  });
+
   it("is not a first run while a figure is still missing", () => {
     const { payoutsDue: _missing, ...partial } = EMPTY;
     expect(buildOrganisationDashboard({ role: "owner" }, partial).firstRun).toBeNull();

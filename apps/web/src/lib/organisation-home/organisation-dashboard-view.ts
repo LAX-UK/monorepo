@@ -6,6 +6,7 @@ import {
   type DashboardTile,
   type EstimateTotal,
   type FirstRunAction,
+  type FirstRunRecord,
   type MoneyTotal,
   type OrganisationDashboardModel,
   type OrganisationHomeFirstRunKey,
@@ -223,12 +224,12 @@ const FIRST_RUN_ACTION: Record<FirstRunAction, { label: string; href: string }> 
 
 /** First steps: the words follow the organisation's state, then the first thing the role can do. */
 function firstRunView(
-  actions: readonly FirstRunAction[],
+  { actions, shows }: { actions: readonly FirstRunAction[]; shows: readonly FirstRunRecord[] },
   key: OrganisationHomeFirstRunKey,
   ctx: Ctx,
 ): FirstRunView {
   return {
-    ...organisationFirstRunCopy(key, actions[0] ?? "none", ctx),
+    ...organisationFirstRunCopy(key, actions[0] ?? "none", ctx, shows),
     actions: actions.map((id) => ({ id, ...FIRST_RUN_ACTION[id] })),
   };
 }
@@ -241,7 +242,7 @@ export function organisationDashboardView(
 ): OrganisationDashboardView {
   const { progress } = model;
   return {
-    firstRun: model.firstRun ? firstRunView(model.firstRun.actions, firstRunKey, ctx) : null,
+    firstRun: model.firstRun ? firstRunView(model.firstRun, firstRunKey, ctx) : null,
     tiles: model.tiles.map((tile) => dashboardTileView(tile, ctx)),
     upcomingSales: model.upcomingSales.map(upcomingSaleView),
     upcomingSalesHref: consignmentStageHref("in_sale"),

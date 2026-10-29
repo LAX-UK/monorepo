@@ -356,6 +356,16 @@ const FIRST_RUN_ACTIONS: readonly {
   { action: "invite", capability: "entity.members.manage", requires: "invite" },
 ];
 
+/** What Home lists once things happen, so a new member is told only about what they will see. */
+export type FirstRunRecord = "sales" | "payouts" | "bids" | "purchases";
+
+const FIRST_RUN_RECORDS: readonly { record: FirstRunRecord; capability: EntityCapability }[] = [
+  { record: "sales", capability: "entity.consignments.read" },
+  { record: "payouts", capability: "entity.payouts.read" },
+  { record: "bids", capability: "entity.bid.place" },
+  { record: "purchases", capability: "entity.finance.read" },
+];
+
 /** Whether the organisation's state allows an action. */
 export type OrganisationAllows = (action: OrganisationAction) => boolean;
 
@@ -387,7 +397,7 @@ export function dashboardSectionsFor(actor: EntityActor): DashboardSection[] {
 
 export type OrganisationDashboardModel = {
   /** Set when there is nothing yet: Home points to the first steps instead of empty figures. */
-  firstRun: { actions: FirstRunAction[] } | null;
+  firstRun: { actions: FirstRunAction[]; shows: FirstRunRecord[] } | null;
   tiles: DashboardTile[];
   /** The next few sales, or empty when the section is hidden. */
   upcomingSales: UpcomingSaleFigure[];
@@ -420,6 +430,9 @@ export function buildOrganisationDashboard(
         actions: FIRST_RUN_ACTIONS.filter(
           ({ capability, requires }) => entityActorCan(actor, capability) && allows(requires),
         ).map(({ action }) => action),
+        shows: FIRST_RUN_RECORDS.filter(({ capability }) => entityActorCan(actor, capability)).map(
+          ({ record }) => record,
+        ),
       },
       tiles: [],
       upcomingSales: [],

@@ -1,3 +1,4 @@
+import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 import type { ConnectGapStage } from "@auction/connect";
 import type { StatusBadgeProps } from "@auction/ui/components/status-badge";
 
@@ -15,7 +16,7 @@ export const CONNECT_GAP_STAGE_REGISTRY: Record<ConnectGapStage, ConnectGapStage
   managed_by_lax: {
     label: "Managed by LAX",
     badgeVariant: "success",
-    summary: "LAX manages payouts for this inventory — no Stripe Connect setup is required.",
+    summary: "LAX manages payouts for these works, so there is nothing to set up.",
     readOnlySummary:
       "Payout setup is incomplete. Ask an organisation owner or admin to finish setup.",
     actionHint: null,
@@ -23,8 +24,7 @@ export const CONNECT_GAP_STAGE_REGISTRY: Record<ConnectGapStage, ConnectGapStage
   not_started: {
     label: "Payout setup not started",
     badgeVariant: "warning",
-    summary:
-      "We'll set up a secure Stripe payout account, then you'll add bank details and verification below.",
+    summary: "We'll open a secure payout account, then you add your bank details below.",
     readOnlySummary:
       "Payout setup has not started. Ask an organisation owner or admin to begin setup.",
     actionHint: FORM_HINT,
@@ -48,7 +48,7 @@ export const CONNECT_GAP_STAGE_REGISTRY: Record<ConnectGapStage, ConnectGapStage
   requirements_due: {
     label: "Action required",
     badgeVariant: "warning",
-    summary: "Stripe needs a few details before we can send payouts. Complete the form below.",
+    summary: "We need a few more details before we can send payouts. Complete the form below.",
     readOnlySummary:
       "Payout setup is incomplete. Ask an organisation owner or admin to finish verification.",
     actionHint: FORM_HINT,
@@ -56,8 +56,7 @@ export const CONNECT_GAP_STAGE_REGISTRY: Record<ConnectGapStage, ConnectGapStage
   ready: {
     label: "Payout ready",
     badgeVariant: "success",
-    summary:
-      "Your payout account is ready — approved lots can be scheduled once finance enables settlement.",
+    summary: "Your payout account is ready to receive payouts when your works sell.",
     readOnlySummary:
       "Payout setup is incomplete. Ask an organisation owner or admin to finish setup.",
     actionHint: null,
@@ -65,9 +64,8 @@ export const CONNECT_GAP_STAGE_REGISTRY: Record<ConnectGapStage, ConnectGapStage
   restricted: {
     label: "Account restricted",
     badgeVariant: "danger",
-    summary: "This payout account can't be used right now. Contact support@lax.bid for help.",
-    readOnlySummary:
-      "This payout account can't be used right now. Ask an organisation owner or admin to contact support@lax.bid for help.",
+    summary: `This payout account can't be used right now. Contact ${SITE_SUPPORT_EMAIL} for help.`,
+    readOnlySummary: `This payout account can't be used right now. Ask an organisation owner or admin to contact ${SITE_SUPPORT_EMAIL} for help.`,
     actionHint: null,
   },
 };
