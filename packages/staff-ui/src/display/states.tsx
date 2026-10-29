@@ -128,12 +128,18 @@ export function AccessDeniedState({
 
 const ROLE_LIST = new Intl.ListFormat("en-GB", { style: "long", type: "conjunction" });
 
-/** A quiet marker in a page header for roles that can look but not change: "View only · Finance". */
+/**
+ * A quiet marker in a page header for roles that can look but not change. The role is already
+ * shown in the account menu, so the marker says only "View only"; the role stays in its tooltip.
+ */
 export function ViewOnlyBadge({ role }: { role?: string }) {
   return (
-    <span className="inline-flex h-6 items-center gap-1.5 rounded-staff-xs border border-staff-line px-2 text-staff-xs font-medium text-staff-muted">
+    <span
+      {...(role ? { title: `Your role: ${role}` } : {})}
+      className="inline-flex h-6 items-center gap-1.5 rounded-staff-xs border border-staff-line px-2 text-staff-xs font-medium text-staff-muted"
+    >
       <Eye aria-hidden className="size-3.5" strokeWidth={1.75} />
-      View only{role ? ` · ${role}` : ""}
+      View only
     </span>
   );
 }

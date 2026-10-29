@@ -3,7 +3,9 @@
 import { Checkbox } from "@auction/ui/components/checkbox";
 import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
 import { Switch } from "@auction/ui/components/switch";
+import { Check } from "lucide-react";
 import type * as React from "react";
+import { useStaffReadOnly } from "../access/read-only.js";
 import { cn } from "../lib/cn.js";
 
 /*
@@ -27,6 +29,25 @@ export function StaffCheckbox({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<typeof Checkbox>) {
+  if (useStaffReadOnly()) {
+    const on = props.checked === true;
+    return (
+      <span
+        id={props.id}
+        role="img"
+        aria-label={on ? "Yes" : "No"}
+        className={cn(
+          "inline-flex size-4 shrink-0 items-center justify-center rounded-staff-xs border",
+          on
+            ? "border-staff-ink bg-staff-ink text-staff-on-ink"
+            : "border-staff-line-strong bg-transparent",
+          className,
+        )}
+      >
+        {on ? <Check aria-hidden className="size-3 stroke-[2.5]" /> : null}
+      </span>
+    );
+  }
   return (
     <Checkbox
       className={cn(

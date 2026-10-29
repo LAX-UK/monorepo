@@ -76,7 +76,7 @@ export function EditorialImageField({
     <Field
       label={label}
       id={editorialFieldId(name)}
-      disabled={disabled && !readOnly}
+      disabled={disabled}
       error={failure}
       {...(description ? { description } : {})}
       {...(optional ? { optional } : {})}

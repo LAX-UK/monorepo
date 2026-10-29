@@ -124,7 +124,7 @@ describe("page templates read their access from the kit", () => {
         Body
       </DetailPage>,
     );
-    expect(screen.getByText("View only · Read-only")).toBeInTheDocument();
+    expect(screen.getByText("View only")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Publish sale" })).toBeNull();
   });
 
@@ -158,7 +158,7 @@ describe("page templates read their access from the kit", () => {
         table={{ columns: [], data: [], getRowId: (row) => row.id }}
       />,
     );
-    expect(screen.getByText("View only · Read-only")).toBeInTheDocument();
+    expect(screen.getByText("View only")).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "New sale" })).toBeNull();
   });
 
@@ -182,7 +182,7 @@ describe("page templates read their access from the kit", () => {
         </DetailPage>
       </StaffAccessProvider>,
     );
-    expect(screen.getByText("View only · Saleroom clerk")).toBeInTheDocument();
+    expect(screen.getByText("View only")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Open saleroom" })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Edit sale" })).toBeNull();
   });

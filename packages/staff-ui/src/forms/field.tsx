@@ -2,6 +2,7 @@
 
 import { CircleAlert } from "lucide-react";
 import * as React from "react";
+import { useStaffReadOnly } from "../access/read-only.js";
 import { cn } from "../lib/cn.js";
 
 type FieldContextValue = {
@@ -12,6 +13,8 @@ type FieldContextValue = {
   invalid: boolean;
   required: boolean;
   disabled: boolean;
+  /** The form is a read-only view: controls show their value as content. */
+  readOnly: boolean;
 };
 
 const FieldContext = React.createContext<FieldContextValue | null>(null);
@@ -51,6 +54,7 @@ export function Field({
   className,
   children,
 }: FieldProps) {
+  const readOnly = useStaffReadOnly();
   const autoId = React.useId();
   const controlId = id ?? `field-${autoId}`;
   const descriptionId = description ? `${controlId}-description` : undefined;
@@ -65,8 +69,9 @@ export function Field({
       invalid: Boolean(error),
       required: !optional,
       disabled,
+      readOnly,
     }),
-    [controlId, labelId, describedBy, error, optional, disabled],
+    [controlId, labelId, describedBy, error, optional, disabled, readOnly],
   );
 
   return (

@@ -129,7 +129,7 @@ describe("editorial lists for Read-only", () => {
   it("shows the list with the View only marker and no way to create, publish or edit", async () => {
     as("read_only", list());
     const panel = await screen.findByRole("dialog", { name: /Summer Show/ });
-    expect(screen.getByText(/View only · Read-only/)).toBeInTheDocument();
+    expect(screen.getByText(/View only/)).toBeInTheDocument();
     expect(screen.queryByRole("link", { name: /New exhibition/i, hidden: true })).toBeNull();
     expect(within(panel).queryByRole("button", { name: "Unpublish" })).toBeNull();
     expect(within(panel).queryByRole("link", { name: /^Edit/ })).toBeNull();
@@ -155,8 +155,8 @@ describe("the exhibition editor for Read-only", () => {
       "read_only",
       <ExhibitionEditor detail={detail} venues={[]} artPublicUrl="https://lax.test" />,
     );
-    expect(screen.getByText(/View only · Read-only/)).toBeInTheDocument();
-    expect(screen.getByLabelText("Title")).toBeDisabled();
+    expect(screen.getByText(/View only/)).toBeInTheDocument();
+    expect(screen.getByLabelText("Title")).toHaveAttribute("readonly");
     expect(screen.queryByRole("button", { name: /^Save|^Saved/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Unpublish|^Publish/ })).toBeNull();
     expect(screen.queryByRole("button", { name: "Create preview link" })).toBeNull();

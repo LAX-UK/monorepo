@@ -2,6 +2,7 @@
 
 import { Bold, Italic, Link2, Unlink } from "lucide-react";
 import * as React from "react";
+import { staffReadOnlyBox } from "../access/read-only.js";
 import { cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
 import { staffFieldBox } from "../primitives/input.js";
@@ -75,6 +76,7 @@ export function RichTextField({
   const controlId = id ?? field?.controlId;
   const isInvalid = invalid ?? field?.invalid ?? false;
   const isDisabled = disabled ?? field?.disabled ?? false;
+  const readOnly = field?.readOnly ?? false;
   const describedBy = field?.describedBy;
   const linkInputId = React.useId();
   const linkHintId = React.useId();
@@ -208,28 +210,33 @@ export function RichTextField({
   );
 
   return (
-    <div className={cn(staffFieldBox, "h-auto flex-col items-stretch gap-0 p-0")}>
-      <StaffTooltipProvider>
-        <div
-          role="toolbar"
-          aria-label="Text formatting"
-          className="flex items-center gap-0.5 border-b border-staff-line-subtle px-1.5 py-1"
-        >
-          {toolbarButton("Bold", active.bold, <Bold aria-hidden />, () => run("bold"))}
-          {toolbarButton("Italic", active.italic, <Italic aria-hidden />, () => run("italic"))}
-          {toolbarButton(
-            active.link ? "Edit link" : "Add link",
-            active.link || linkOpen,
-            <Link2 aria-hidden />,
-            openLink,
-            !canLink,
-          )}
-          {active.link
-            ? toolbarButton("Remove link", false, <Unlink aria-hidden />, removeLink)
-            : null}
-        </div>
-      </StaffTooltipProvider>
-      {linkOpen ? (
+    <div
+      {...(readOnly ? { "data-readonly": "" } : {})}
+      className={cn(staffFieldBox, staffReadOnlyBox, "h-auto flex-col items-stretch gap-0 p-0")}
+    >
+      {readOnly ? null : (
+        <StaffTooltipProvider>
+          <div
+            role="toolbar"
+            aria-label="Text formatting"
+            className="flex items-center gap-0.5 border-b border-staff-line-subtle px-1.5 py-1"
+          >
+            {toolbarButton("Bold", active.bold, <Bold aria-hidden />, () => run("bold"))}
+            {toolbarButton("Italic", active.italic, <Italic aria-hidden />, () => run("italic"))}
+            {toolbarButton(
+              active.link ? "Edit link" : "Add link",
+              active.link || linkOpen,
+              <Link2 aria-hidden />,
+              openLink,
+              !canLink,
+            )}
+            {active.link
+              ? toolbarButton("Remove link", false, <Unlink aria-hidden />, removeLink)
+              : null}
+          </div>
+        </StaffTooltipProvider>
+      )}
+      {linkOpen && !readOnly ? (
         <div className="flex flex-col gap-1.5 border-b border-staff-line-subtle bg-staff-sunken px-3 py-2.5">
           <label htmlFor={linkInputId} className="text-staff-xs font-medium text-staff-fg">
             Link address
@@ -291,8 +298,9 @@ export function RichTextField({
         aria-labelledby={ariaLabel ? undefined : field?.labelId}
         aria-invalid={isInvalid || undefined}
         aria-disabled={isDisabled || undefined}
+        aria-readonly={readOnly || undefined}
         {...(describedBy ? { "aria-describedby": describedBy } : {})}
-        contentEditable={!isDisabled}
+        contentEditable={!isDisabled && !readOnly}
         suppressContentEditableWarning
         tabIndex={isDisabled ? -1 : 0}
         spellCheck

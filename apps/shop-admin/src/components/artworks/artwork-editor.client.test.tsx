@@ -464,7 +464,7 @@ describe("artwork editor", () => {
         },
       });
       const price = screen.getByLabelText(/Price per edition/);
-      expect(price).toBeDisabled();
+      expect(price).toHaveAttribute("readonly");
       expect(
         screen.getByText("Only a shop admin can set or change the price."),
       ).toBeInTheDocument();

@@ -38,6 +38,7 @@ import {
   OverflowMenu,
   PageHeader,
   StaffButton,
+  StaffReadOnly,
   UnsavedChangesDialog,
   ViewOnlyBadge,
   formatStaffDateTime,
@@ -354,7 +355,7 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
     setConflictVersion(null);
   }
 
-  const disabled = busy !== null || readOnly;
+  const disabled = busy !== null;
   const body = config.body ?? DEFAULT_BODY;
   const publishing = status !== "published";
   const unsaved = dirty || linksDirty;
@@ -480,35 +481,38 @@ export function EditorialEditor<F, D extends EditorialDetailBase>({
           className="flex flex-col gap-6 rounded-staff-md border border-staff-line bg-staff-surface p-4 sm:p-6"
           onSubmit={(event) => {
             event.preventDefault();
+            if (readOnly) return;
             void save();
           }}
         >
-          <FormErrorSummary errors={summary} focusKey={failedSubmits} />
+          <StaffReadOnly readOnly={readOnly}>
+            <FormErrorSummary errors={summary} focusKey={failedSubmits} />
 
-          {config.renderFields({ form, onChange: editField, disabled, errors })}
+            {config.renderFields({ form, onChange: editField, disabled, errors })}
 
-          <FieldSection title={body.title} description={body.description}>
-            <EditorialBlockEditor
-              key={blockSession}
-              items={items}
-              errors={errors}
-              disabled={disabled}
-              onChange={(next) => {
-                setItems(next);
-                setDirty(true);
-              }}
-            />
-          </FieldSection>
+            <FieldSection title={body.title} description={body.description}>
+              <EditorialBlockEditor
+                key={blockSession}
+                items={items}
+                errors={errors}
+                disabled={disabled}
+                onChange={(next) => {
+                  setItems(next);
+                  setDirty(true);
+                }}
+              />
+            </FieldSection>
 
-          {links ? (
-            <EditorialLinkLists
-              controller={links}
-              readOnly={readOnly}
-              onFailure={(next) => setFailure(next)}
-            />
-          ) : id === null && config.linksBeforeFirstSave ? (
-            <EditorialLinksAfterFirstSave what={config.linksBeforeFirstSave} />
-          ) : null}
+            {links ? (
+              <EditorialLinkLists
+                controller={links}
+                readOnly={readOnly}
+                onFailure={(next) => setFailure(next)}
+              />
+            ) : id === null && config.linksBeforeFirstSave ? (
+              <EditorialLinksAfterFirstSave what={config.linksBeforeFirstSave} />
+            ) : null}
+          </StaffReadOnly>
 
           <FormActions
             sticky

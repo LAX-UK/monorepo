@@ -8,6 +8,7 @@ import {
   SelectValue,
 } from "@auction/ui/components/select";
 import * as React from "react";
+import { staffReadOnlyBox } from "../access/read-only.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { staffFieldBox } from "../primitives/input.js";
 import { useStaffField } from "./field.js";
@@ -53,6 +54,32 @@ export function EnumSelect<T extends string>({
   const field = useStaffField();
   const isInvalid = invalid ?? field?.invalid ?? false;
   const byValue = React.useMemo(() => new Map(options.map((o) => [o.value, o])), [options]);
+
+  if (field?.readOnly) {
+    const chosen = value ? byValue.get(value)?.label : undefined;
+    return (
+      <div
+        data-readonly=""
+        id={id ?? field.controlId}
+        // biome-ignore lint/a11y/useSemanticElements: a read-only value, not an editable input
+        role="textbox"
+        aria-readonly="true"
+        tabIndex={0}
+        aria-labelledby={field.labelId}
+        {...(field.describedBy ? { "aria-describedby": field.describedBy } : {})}
+        className={cn(
+          staffFieldBox,
+          staffReadOnlyBox,
+          size === "sm" && "h-control-sm text-staff-sm",
+          size === "md" && "h-control-md text-staff-md",
+          size === "live" && "h-11 text-staff-md",
+          className,
+        )}
+      >
+        <span className="truncate">{chosen ?? ""}</span>
+      </div>
+    );
+  }
 
   return (
     <Select

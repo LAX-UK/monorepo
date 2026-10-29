@@ -36,6 +36,7 @@ import {
   OverflowMenu,
   PageHeader,
   StaffButton,
+  StaffReadOnly,
   StatusBadge,
   TextArea,
   TextInput,
@@ -421,10 +422,11 @@ export function HelpArticleEditor({
           className="flex flex-col gap-6 rounded-staff-md border border-staff-line bg-staff-surface p-4 sm:p-6"
           onSubmit={(event) => {
             event.preventDefault();
+            if (readOnly) return;
             void submit();
           }}
         >
-          <fieldset disabled={readOnly} className="contents">
+          <StaffReadOnly readOnly={readOnly}>
             <FormErrorSummary errors={attempted ? summary : []} focusKey={failedSubmits} />
 
             <FormSection
@@ -502,7 +504,7 @@ export function HelpArticleEditor({
                 key={blockSession}
                 items={items}
                 errors={errors}
-                disabled={saving || readOnly}
+                disabled={saving}
                 onChange={setItems}
               />
             </FormSection>
@@ -538,7 +540,7 @@ export function HelpArticleEditor({
                 />
               </Field>
             </FormSection>
-          </fieldset>
+          </StaffReadOnly>
 
           <FormActions
             sticky

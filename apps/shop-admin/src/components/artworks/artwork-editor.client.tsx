@@ -108,6 +108,7 @@ import {
   StaffButton,
   StaffRadio,
   StaffRadioGroup,
+  StaffReadOnly,
   StatGrid,
   TextArea,
   TextInput,
@@ -790,26 +791,27 @@ export function ArtworkEditor({
           )}
 
           {values.editionRun === "editions" ? (
-            <Field
-              label="Price per edition"
-              optional={!(live && values.saleState === "for_sale")}
-              description={
-                permissions.setPrice
-                  ? "In pounds, including VAT. Leave blank until the price is agreed."
-                  : "Only a shop admin can set or change the price."
-              }
-              error={errors.price}
-              id={artworkFieldId("price")}
-              disabled={!permissions.setPrice}
-            >
-              <MoneyInput
-                value={typedPence.ok ? typedPence.pence : null}
-                onValueChange={() => undefined}
-                onInput={(event) => update({ priceText: event.currentTarget.value })}
-                placeholder="0.00"
-                boxClassName="sm:max-w-60"
-              />
-            </Field>
+            <StaffReadOnly readOnly={!permissions.setPrice}>
+              <Field
+                label="Price per edition"
+                optional={!(live && values.saleState === "for_sale")}
+                description={
+                  permissions.setPrice
+                    ? "In pounds, including VAT. Leave blank until the price is agreed."
+                    : "Only a shop admin can set or change the price."
+                }
+                error={errors.price}
+                id={artworkFieldId("price")}
+              >
+                <MoneyInput
+                  value={typedPence.ok ? typedPence.pence : null}
+                  onValueChange={() => undefined}
+                  onInput={(event) => update({ priceText: event.currentTarget.value })}
+                  placeholder="0.00"
+                  boxClassName="sm:max-w-60"
+                />
+              </Field>
+            </StaffReadOnly>
           ) : null}
 
           {values.editionRun === "editions" && mode === "edit" ? (
