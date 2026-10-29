@@ -1,3 +1,9 @@
+import galleryIllustration from "@auction/branding/images/product-doors/shop.webp";
+
+/** Next resolves an image import to an object; Vite (in tests) resolves it to the URL. */
+const galleryIllustrationUrl =
+  typeof galleryIllustration === "string" ? galleryIllustration : galleryIllustration.src;
+
 /**
  * The fixed words on the Shop home page. Everything that depends on the catalogue (counts, prices,
  * the release) is worked out in the view model; this is only what the gallery says.
@@ -36,8 +42,8 @@ export const SHOP_HOME_CONTENT = {
       title: "Original works and the artists’ stories",
       promise: "Originals, exhibitions and full artist profiles, from our Marylebone gallery.",
       actionLabel: "Visit lax.art",
-      /** lax.art has no door illustration yet, so Shop shows a view of the gallery. */
-      imageUrl: "/shop/home/hero-layer-3.webp",
+      /** lax.art has no door art of its own yet, so Shop shows the gallery drawing. */
+      imageUrl: galleryIllustrationUrl,
     },
     bid: {
       title: "Art and collectibles at auction",
