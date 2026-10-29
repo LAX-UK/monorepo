@@ -6,8 +6,9 @@ import type { AccountOption } from "@/lib/navigation/account-switcher-model";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { switchAccount } from "@/lib/navigation/switch-account";
 import { notify } from "@/lib/ui/notify";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
+import { followSwitch } from "./switch-navigation";
 
 /**
  * Switches the account Bid is used as. A new account has a different set of pages, so it opens
@@ -19,6 +20,7 @@ export function useAccountSwitch(destination: string = CLIENT_ROUTES.home): {
   choose: (option: AccountOption) => Promise<void>;
 } {
   const router = useRouter();
+  const pathname = usePathname();
   const [pendingId, setPendingId] = useState<string | null>(null);
 
   const choose = useCallback(
@@ -32,11 +34,11 @@ export function useAccountSwitch(destination: string = CLIENT_ROUTES.home): {
         return;
       }
       announceAccountSwitch(option.id);
-      router.push(destination);
+      if (followSwitch(pathname, destination) === "push") router.push(destination);
       router.refresh();
       setPendingId(null);
     },
-    [router, destination],
+    [router, pathname, destination],
   );
 
   return { pendingId, choose };

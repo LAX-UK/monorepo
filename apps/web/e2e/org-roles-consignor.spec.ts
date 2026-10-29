@@ -42,10 +42,12 @@ test.describe("organisation consignor journey @roles", () => {
 
     await test.step("sends a complete draft to the specialist", async () => {
       await openConsignment(page, submissionDraft);
-      const send = page.getByRole("button", { name: "Submit for specialist review" });
+      const send = page.getByRole("button", { name: "Submit for specialist review" }).first();
       await expect(send).toBeVisible();
       await send.click();
-      await expect(send).toHaveCount(0);
+      await expect(page.getByRole("button", { name: "Submit for specialist review" })).toHaveCount(
+        0,
+      );
     });
 
     await test.step("answers a request for changes", async () => {
@@ -53,7 +55,7 @@ test.describe("organisation consignor journey @roles", () => {
       await expect(page.getByTestId("changes-requested")).toContainText(
         "Please add a clearer photograph of the signature.",
       );
-      await page.getByRole("button", { name: "Send back for review" }).click();
+      await page.getByRole("button", { name: "Send back for review" }).first().click();
       await expect(page.getByTestId("changes-requested")).toHaveCount(0);
     });
 
