@@ -40,6 +40,7 @@ describe("mapSaleToAuctionFields", () => {
       Terms: "Standard terms apply.",
     });
     expect(fields).not.toHaveProperty("Address2");
+    expect(fields).not.toHaveProperty("SaleDates");
   });
 
   it("uses the sale's own auction type and omits timed-only fields for live auctions", () => {
@@ -50,6 +51,7 @@ describe("mapSaleToAuctionFields", () => {
 
     expect(fields.AuctionListings[0]?.AuctionTypeAndListing).toBe("Live");
     expect(fields.TimedStart).toBeUndefined();
+    expect(fields.TimedFirstLotEnds).toBeUndefined();
     expect(fields.SaleDates).toEqual([
       { Starts: "2026-10-20T10:00:00.000Z", Ends: "2026-11-01T18:00:00.000Z" },
     ]);
