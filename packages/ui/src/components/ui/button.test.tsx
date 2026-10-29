@@ -74,8 +74,8 @@ describe("Button primary", () => {
     expect(className).toContain("focus-visible:ring-2");
     expect(className).toContain("focus-visible:ring-ring");
     expect(className).not.toContain("focus-visible:ring-primary");
-    expect(className).toContain("disabled:bg-surface-container-high");
-    expect(className).toContain("aria-disabled:text-on-surface-variant");
+    expect(className).toContain("disabled:bg-[color:var(--color-disabled-bg,");
+    expect(className).toContain("aria-disabled:text-[color:var(--color-disabled-fg,");
   });
 });
 

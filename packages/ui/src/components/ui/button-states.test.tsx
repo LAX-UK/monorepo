@@ -19,6 +19,7 @@ vi.mock("@radix-ui/react-tooltip", async () => {
     ),
     Trigger: ({ children }: { children: React.ReactNode }) => children,
     Portal: ({ children }: { children: React.ReactNode }) => children,
+    Arrow: () => null,
     Content: React.forwardRef<HTMLDivElement, { children: React.ReactNode }>(({ children }, ref) =>
       React.useContext(OpenContext) ? (
         <div ref={ref} role="tooltip">
@@ -65,7 +66,7 @@ describe("Button disabled", () => {
     "secondaryOutline",
     "ghost",
     "link",
-  ] as const)("%s never fades and stays readable when disabled", (variant) => {
+  ] as const)("%s never fades and draws the disabled label when disabled", (variant) => {
     render(
       <Button variant={variant} disabled>
         Save
@@ -73,9 +74,37 @@ describe("Button disabled", () => {
     );
     const { className } = screen.getByRole("button", { name: "Save" });
     expect(className).not.toMatch(/opacity/);
-    expect(className).toContain("disabled:text-on-surface-variant");
-    expect(className).toContain("aria-disabled:text-on-surface-variant");
+    expect(className).toContain(" disabled:text-[color:var(--color-disabled-fg,");
+    expect(className).toContain("aria-disabled:text-[color:var(--color-disabled-fg,");
   });
+
+  it.each(["outline", "secondaryOutline"] as const)(
+    "%s mutes its edge when disabled",
+    (variant) => {
+      render(
+        <Button variant={variant} disabled>
+          Save
+        </Button>,
+      );
+      const { className } = screen.getByRole("button", { name: "Save" });
+      expect(className).toContain("disabled:border-[color:var(--color-disabled-border,");
+      expect(className).toContain("aria-disabled:border-[color:var(--color-disabled-border,");
+    },
+  );
+
+  it.each(["default", "primary", "destructive", "secondary"] as const)(
+    "%s moves onto the faint disabled fill",
+    (variant) => {
+      render(
+        <Button variant={variant} disabled>
+          Save
+        </Button>,
+      );
+      expect(screen.getByRole("button", { name: "Save" }).className).toContain(
+        "disabled:bg-[color:var(--color-disabled-bg,",
+      );
+    },
+  );
 });
 
 describe("Button disabledReason", () => {

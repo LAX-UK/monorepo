@@ -7,16 +7,20 @@ import { cn } from "../../lib/utils.js";
 import { DisabledReason } from "./button-disabled-reason.js";
 
 /**
- * Disabled states never fade. A disabled button is drawn in a defined pair (muted label on a
- * neutral fill, or a muted label on no fill) that stays readable, applies to the native
- * `disabled` attribute and to `aria-disabled` alike, and wins over hover and pressed.
+ * Disabled states never fade. A disabled button is drawn in its own pair, distinct from every
+ * enabled label at a glance in light and dark: a disabled label (`--color-disabled-fg`), on a
+ * faint neutral fill for filled variants (`--color-disabled-bg`) or inside a faint edge for
+ * outlined ones (`--color-disabled-border`). A product may set the three tokens; the defaults
+ * mix the product's own text into its surface (label 55%, edge 16%, fill 8%), which keeps the
+ * label at 3:1 or more, the level WCAG asks of an inactive control. The pair applies to the
+ * native `disabled` attribute and to `aria-disabled` alike, and wins over hover and pressed.
  */
 const DISABLED_FILLED =
-  "disabled:bg-surface-container-high disabled:text-on-surface-variant disabled:shadow-none aria-disabled:bg-surface-container-high aria-disabled:text-on-surface-variant aria-disabled:shadow-none";
+  "disabled:bg-[color:var(--color-disabled-bg,color-mix(in_srgb,var(--color-on-surface)_8%,var(--color-surface)))] disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] disabled:shadow-none aria-disabled:bg-[color:var(--color-disabled-bg,color-mix(in_srgb,var(--color-on-surface)_8%,var(--color-surface)))] aria-disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] aria-disabled:shadow-none";
 const DISABLED_OUTLINED =
-  "disabled:border-outline-variant disabled:bg-transparent disabled:text-on-surface-variant disabled:shadow-none aria-disabled:border-outline-variant aria-disabled:bg-transparent aria-disabled:text-on-surface-variant aria-disabled:shadow-none";
+  "disabled:border-[color:var(--color-disabled-border,color-mix(in_srgb,var(--color-on-surface)_16%,var(--color-surface)))] disabled:bg-transparent disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] disabled:shadow-none aria-disabled:border-[color:var(--color-disabled-border,color-mix(in_srgb,var(--color-on-surface)_16%,var(--color-surface)))] aria-disabled:bg-transparent aria-disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] aria-disabled:shadow-none";
 const DISABLED_TEXT =
-  "disabled:border-transparent disabled:bg-transparent disabled:text-on-surface-variant disabled:no-underline aria-disabled:border-transparent aria-disabled:bg-transparent aria-disabled:text-on-surface-variant aria-disabled:no-underline";
+  "disabled:border-transparent disabled:bg-transparent disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] disabled:no-underline aria-disabled:border-transparent aria-disabled:bg-transparent aria-disabled:text-[color:var(--color-disabled-fg,color-mix(in_srgb,var(--color-on-surface)_55%,var(--color-surface)))] aria-disabled:no-underline";
 
 /**
  * The one primary button of every LAX product: a flat fill in the product's `--color-cta-bg` with

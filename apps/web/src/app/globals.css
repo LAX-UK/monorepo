@@ -181,6 +181,10 @@
   /* The shared field edge: 3:1 or more on every surface (WCAG 1.4.11). */
   --color-input-border: var(--brand-field-edge);
   --color-input-border-focus: var(--color-brand-obsidian);
+  /* Disabled controls: a label, fill and edge distinct from every enabled one in both themes. */
+  --color-disabled-fg: color-mix(in srgb, var(--color-on-surface) 55%, var(--color-surface));
+  --color-disabled-bg: color-mix(in srgb, var(--color-on-surface) 8%, var(--color-surface));
+  --color-disabled-border: color-mix(in srgb, var(--color-on-surface) 16%, var(--color-surface));
   --color-hero-foreground: #ffffff;
 
   /*
