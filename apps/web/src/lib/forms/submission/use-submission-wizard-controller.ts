@@ -23,7 +23,7 @@ export type WizardMode = { kind: "create" } | { kind: "edit"; submissionId: stri
 
 export type SubmissionWizardControllerOptions = {
   /**
-   * The account the work is sold as, read at the moment of each save. "Sell with LAX" asks
+   * The account the work is sold as, read at the moment of each save. "Sell a work" asks
    * for it in its second step; without it writes use the account in use.
    */
   accountScope?: () => SubmissionAccountScope;
