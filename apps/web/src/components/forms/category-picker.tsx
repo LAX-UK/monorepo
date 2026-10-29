@@ -22,7 +22,7 @@ import {
 } from "@auction/ui/components/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
 import { Check } from "lucide-react";
-import { useMemo, useState } from "react";
+import { type ComponentPropsWithoutRef, forwardRef, useMemo, useState } from "react";
 
 type FlatCategory = CategoryNode & {
   depth: number;
@@ -89,27 +89,29 @@ function CategoryCommandList({
   );
 }
 
-function CategoryPickerTrigger({
-  selectedNames,
-  selected,
-  className,
-}: {
-  selectedNames: string;
-  selected: FlatCategory[];
-  className?: string;
-}) {
-  const label = (
-    <span className={selected.length ? "text-on-surface" : "text-on-surface-variant"}>
-      {selectedNames}
-    </span>
-  );
-
+/**
+ * The field-shaped button that opens the list. It forwards its ref and every prop, because the
+ * popover and the phone sheet open it through `asChild`: without them the click never reaches
+ * the overlay and no category can be chosen.
+ */
+const CategoryPickerTrigger = forwardRef<
+  HTMLButtonElement,
+  ComponentPropsWithoutRef<"button"> & { selectedNames: string; selected: FlatCategory[] }
+>(function CategoryPickerTrigger({ selectedNames, selected, className, ...props }, ref) {
   return (
-    <Button type="button" variant="ghost" className={cn(TRIGGER_CLASS, className)}>
-      {label}
+    <Button
+      ref={ref}
+      type="button"
+      variant="ghost"
+      className={cn(TRIGGER_CLASS, className)}
+      {...props}
+    >
+      <span className={selected.length ? "text-on-surface" : "text-on-surface-variant"}>
+        {selectedNames}
+      </span>
     </Button>
   );
-}
+});
 
 function CategoryPickerOverlays({
   flat,
