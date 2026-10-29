@@ -43,7 +43,7 @@ export function ReduceMotionCard() {
   return (
     <Card className="rounded-xl border-border-hairline shadow-none">
       <CardHeader>
-        <CardTitle className="font-label text-xs font-bold uppercase tracking-[0.18em] text-on-surface">
+        <CardTitle className="font-headline text-base font-semibold tracking-tight text-on-surface">
           Motion
         </CardTitle>
         <CardDescription>
