@@ -113,7 +113,7 @@ export function MemberRow({
         </>
       }
       meta={[row.email, row.twoStep]}
-      action={
+      status={
         row.roleOptions ? (
           <SelectMenu
             label={`Role for ${row.name}`}
@@ -124,7 +124,7 @@ export function MemberRow({
             className="w-40"
           />
         ) : (
-          <span className="inline-flex h-lax-control-md w-40 items-center text-lax-14 text-lax-fg @2xl:px-3">
+          <span className="inline-flex items-center text-lax-ui text-lax-fg @2xl:h-lax-control-md @2xl:w-40 @2xl:px-3">
             {row.roleLabel}
           </span>
         )

@@ -1,5 +1,6 @@
 import { workspaceMenuEntryAt } from "@/lib/navigation/client-nav-model";
 import { organisationTabAt } from "@/lib/navigation/organisation-tabs";
+import { tabCapabilities } from "@/lib/navigation/section-tabs";
 import { organisationRoleGroupsSentence } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import {
   type EntityActor,
@@ -40,7 +41,7 @@ export function workspacePageAt(href: string): WorkspacePage | null {
   const record = RECORD_PAGES.find((page) => page.pattern.test(path));
   if (record) return { label: record.label, anyCapability: [], record: true };
   const tab = organisationTabAt(path);
-  if (tab) return { label: tab.label, anyCapability: [tab.capability], record: false };
+  if (tab) return { label: tab.label, anyCapability: tabCapabilities(tab), record: false };
   const entry = workspaceMenuEntryAt(path);
   return entry ? { label: entry.label, anyCapability: entry.anyCapability, record: false } : null;
 }

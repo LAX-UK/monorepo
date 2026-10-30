@@ -103,6 +103,42 @@ export function toAuthoriseBuyerAgentInput(draft: AuthorisationDraft): Authorise
   };
 }
 
+/** A London day (`YYYY-MM-DD`) for an instant. */
+function londonDayOf(iso: string): string {
+  return londonToday(new Date(iso));
+}
+
+/** Whole pounds read back for the form ("25000.00" → "25,000"). */
+function poundsText(value: string | null): string {
+  if (value == null) return "";
+  const n = Number.parseFloat(value);
+  return Number.isFinite(n) ? n.toLocaleString("en-GB", { maximumFractionDigits: 2 }) : "";
+}
+
+/**
+ * The form for changing an authorisation, filled from it. Saving grants the same scope again,
+ * which replaces the one in force; a start already passed is left empty (it starts now).
+ */
+export function draftFromAuthorisation(a: {
+  userId: string;
+  saleId: string | null;
+  bidLimit: string | null;
+  totalLimit: string | null;
+  validFrom: string;
+  validUntil: string | null;
+  scheduled: boolean;
+}): AuthorisationDraft {
+  return {
+    memberUserId: a.userId,
+    scope: a.saleId ? "sale" : "all",
+    saleId: a.saleId ?? "",
+    limit: poundsText(a.bidLimit),
+    totalLimit: poundsText(a.totalLimit),
+    startDay: a.scheduled ? londonDayOf(a.validFrom) : "",
+    endDay: a.validUntil ? londonDayOf(a.validUntil) : "",
+  };
+}
+
 /** Today's London day as `YYYY-MM-DD`. */
 export function londonToday(now: Date = new Date()): string {
   const parts = new Intl.DateTimeFormat("en-GB", {

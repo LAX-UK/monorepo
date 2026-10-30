@@ -31,14 +31,23 @@ describe("usageView", () => {
       text: "£8,000 of £25,000",
       left: "£17,000 left",
       percent: 32,
+      idle: false,
     });
   });
 
   it("shows only what's committed when there is no limit", () => {
-    expect(usageView({ limit: null, exposure: "0", available: null })).toEqual({
-      text: "£0 committed",
+    expect(usageView({ limit: null, exposure: "1800", available: null })).toEqual({
+      text: "£1,800 committed",
       left: null,
       percent: null,
+      idle: false,
+    });
+  });
+
+  it("never shows a lone £0: nothing in use reads in words", () => {
+    expect(usageView({ limit: null, exposure: "0", available: null })).toMatchObject({
+      text: "Nothing committed yet",
+      idle: true,
     });
   });
 });
@@ -76,7 +85,7 @@ describe("whoCanBidView", () => {
     });
     expect(view.rows[0]).toMatchObject({
       title: "Tom Whitfield · Works on Paper",
-      facts: ["Until 30 Oct 2026", "£10,000 a lot"],
+      facts: ["Until 30 Oct 2026", "£10,000 a lot", "£25,000 in total", "£17,000 left"],
       usage: { text: "£8,000 of £25,000" },
       badge: { label: "Ends today", tone: "warning" },
     });
@@ -88,5 +97,11 @@ describe("whoCanBidView", () => {
     const view = whoCanBidView({ overview, limits: null, now });
     expect(view.organisation).toBeNull();
     expect(view.rows[0]?.usage).toBeNull();
+    const untotalled = whoCanBidView({
+      overview: { ...overview, authorisations: [auth({ totalLimit: null })] },
+      limits: null,
+      now,
+    });
+    expect(untotalled.rows[0]?.facts).toContain("No total limit");
   });
 });

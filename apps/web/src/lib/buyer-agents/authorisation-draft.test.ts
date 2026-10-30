@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   type AuthorisationDraft,
   EMPTY_AUTHORISATION_DRAFT,
+  draftFromAuthorisation,
   londonToday,
   parsePounds,
   toAuthoriseBuyerAgentInput,
@@ -119,5 +120,29 @@ describe("toAuthoriseBuyerAgentInput", () => {
 describe("londonToday", () => {
   it("uses the London day, not UTC", () => {
     expect(londonToday(new Date("2026-07-01T23:30:00Z"))).toBe("2026-07-02");
+  });
+});
+
+describe("draftFromAuthorisation", () => {
+  it("fills the form from the authorisation in force, ready to save as a change", () => {
+    expect(
+      draftFromAuthorisation({
+        userId: "agent-1",
+        saleId: "sale-1",
+        bidLimit: "6000.00",
+        totalLimit: "20000.00",
+        validFrom: "2026-10-01T00:00:00Z",
+        validUntil: "2026-11-30T23:59:00Z",
+        scheduled: false,
+      }),
+    ).toEqual({
+      memberUserId: "agent-1",
+      scope: "sale",
+      saleId: "sale-1",
+      limit: "6,000",
+      totalLimit: "20,000",
+      startDay: "",
+      endDay: "2026-11-30",
+    });
   });
 });

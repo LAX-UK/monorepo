@@ -128,12 +128,15 @@ export function ActivityView({
           disabled={navigating}
         />
       </div>
-      <Button asChild className="md:ml-auto">
-        <a href={exportHref} download>
-          <Download aria-hidden />
-          Export CSV
-        </a>
-      </Button>
+      {/* Nothing to export until something is listed. */}
+      {entries.length > 0 ? (
+        <Button asChild className="md:ml-auto">
+          <a href={exportHref} download>
+            <Download aria-hidden />
+            Export CSV
+          </a>
+        </Button>
+      ) : null}
     </div>
   );
 

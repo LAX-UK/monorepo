@@ -20,11 +20,12 @@ import {
   Menu,
   MenuContent,
   MenuItem,
+  MenuSeparator,
   MenuTrigger,
   Meter,
   StatusBadge,
 } from "@auction/ui/lax";
-import { Ellipsis, Plus, UserPlus, X } from "lucide-react";
+import { Ellipsis, Plus, SlidersHorizontal, UserPlus, X } from "lucide-react";
 import { useState } from "react";
 import { OrganisationLimitDialog } from "./organisation-limit-dialog";
 import { TeamListEmpty } from "./team-list-states";
@@ -38,12 +39,18 @@ type Props = {
 
 const SECTION_HEADING = "font-lax-display text-lax-18 font-semibold text-lax-fg";
 
-function Usage({ usage, label }: { usage: UsageView; label: string }) {
+function Usage({
+  usage,
+  label,
+  showLeft = true,
+}: { usage: UsageView; label: string; showLeft?: boolean }) {
   return (
     <span className="flex w-full flex-col gap-1.5 @2xl:w-44">
       <span className="flex items-baseline justify-between gap-2 text-lax-13 tabular-nums">
-        <span className="font-medium text-lax-fg">{usage.text}</span>
-        {usage.left ? <span className="text-lax-muted">{usage.left}</span> : null}
+        <span className={usage.idle && usage.percent === null ? "text-lax-muted" : "font-medium text-lax-fg"}>
+          {usage.text}
+        </span>
+        {showLeft && usage.left ? <span className="text-lax-muted">{usage.left}</span> : null}
       </span>
       {usage.percent !== null ? (
         <Meter value={usage.percent} label={`${label}: ${usage.text} used`} />
@@ -94,10 +101,12 @@ function OrganisationLimitCard({
 function AuthorisationRow({
   row,
   canManage,
+  onChange,
   onRevoke,
 }: {
   row: AuthorisationRowView;
   canManage: boolean;
+  onChange: () => void;
   onRevoke: () => void;
 }) {
   return (
@@ -110,7 +119,11 @@ function AuthorisationRow({
           {row.badge.label}
         </StatusBadge>
       }
-      value={row.usage ? <Usage usage={row.usage} label={`${row.title} total`} /> : null}
+      value={
+        row.usage ? (
+          <Usage usage={row.usage} label={`${row.title} total`} showLeft={false} />
+        ) : null
+      }
       menu={
         canManage ? (
           <Menu>
@@ -120,6 +133,11 @@ function AuthorisationRow({
               </Button>
             </MenuTrigger>
             <MenuContent className="w-56">
+              <MenuItem onSelect={onChange}>
+                <SlidersHorizontal aria-hidden />
+                Change limits…
+              </MenuItem>
+              <MenuSeparator />
               <MenuItem tone="danger" onSelect={onRevoke}>
                 <X aria-hidden />
                 End this authorisation…
@@ -141,7 +159,10 @@ function AuthorisationRow({
  */
 export function WhoCanBid({ legalEntityId, organisationName, view, sales }: Props) {
   const [limitOpen, setLimitOpen] = useState(false);
-  const [authorising, setAuthorising] = useState<AuthorisableBuyerAgent | null>(null);
+  const [authorising, setAuthorising] = useState<{
+    agent: AuthorisableBuyerAgent;
+    current?: BuyerAgentAuthorisationView;
+  } | null>(null);
   const [revoking, setRevoking] = useState<BuyerAgentAuthorisationView | null>(null);
   const agents = [...new Map(
     [...view.rows.map((row) => row.agent), ...view.unauthorised].map((a) => [a.userId, a]),
@@ -171,7 +192,7 @@ export function WhoCanBid({ legalEntityId, organisationName, view, sales }: Prop
           {view.canManage && agents.length > 0 ? (
             <span className="max-md:w-full md:ml-auto">
               {agents.length === 1 ? (
-                <Button onClick={() => setAuthorising(agents[0] ?? null)} className="max-md:w-full">
+                <Button onClick={() => setAuthorising(agents[0] ? { agent: agents[0] } : null)} className="max-md:w-full">
                   <Plus aria-hidden />
                   Authorise a buyer agent
                 </Button>
@@ -185,7 +206,7 @@ export function WhoCanBid({ legalEntityId, organisationName, view, sales }: Prop
                   </MenuTrigger>
                   <MenuContent className="w-64">
                     {agents.map((agent) => (
-                      <MenuItem key={agent.userId} onSelect={() => open(() => setAuthorising(agent))}>
+                      <MenuItem key={agent.userId} onSelect={() => open(() => setAuthorising({ agent }))}>
                         {agent.name}
                       </MenuItem>
                     ))}
@@ -209,6 +230,9 @@ export function WhoCanBid({ legalEntityId, organisationName, view, sales }: Prop
                 key={row.id}
                 row={row}
                 canManage={view.canManage}
+                onChange={() =>
+                  open(() => setAuthorising({ agent: row.agent, current: row.authorisation }))
+                }
                 onRevoke={() => open(() => setRevoking(row.authorisation))}
               />
             ))}
@@ -220,7 +244,7 @@ export function WhoCanBid({ legalEntityId, organisationName, view, sales }: Prop
                 meta={[`Not authorised yet, so can't bid for ${organisationName}`]}
                 action={
                   view.canManage ? (
-                    <Button size="sm" onClick={() => setAuthorising(agent)}>
+                    <Button size="sm" onClick={() => setAuthorising({ agent })}>
                       <UserPlus aria-hidden />
                       Authorise
                     </Button>
@@ -245,7 +269,8 @@ export function WhoCanBid({ legalEntityId, organisationName, view, sales }: Prop
         <AuthoriseBuyerAgentDialog
           legalEntityId={legalEntityId}
           entityName={organisationName}
-          agent={authorising}
+          agent={authorising.agent}
+          {...(authorising.current ? { current: authorising.current } : {})}
           sales={sales}
           open
           onOpenChange={(next) => {

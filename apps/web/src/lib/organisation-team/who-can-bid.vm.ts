@@ -27,6 +27,8 @@ export type UsageView = {
   left: string | null;
   /** 0–100 for the bar; `null` with no limit (no bar). */
   percent: number | null;
+  /** Nothing is in use: the words are quiet, never a lone "£0". */
+  idle: boolean;
 };
 
 export type OrganisationLimitView = {
@@ -68,13 +70,16 @@ export function usageView(usage: BiddingLimitUsage): UsageView {
   const limit = pounds(usage.limit);
   const exposure = pounds(usage.exposure) ?? 0;
   if (limit == null || limit <= 0) {
-    return { text: `${formatPounds(exposure)} committed`, left: null, percent: null };
+    return exposure > 0
+      ? { text: `${formatPounds(exposure)} committed`, left: null, percent: null, idle: false }
+      : { text: "Nothing committed yet", left: null, percent: null, idle: true };
   }
   const available = pounds(usage.available) ?? Math.max(limit - exposure, 0);
   return {
     text: `${formatPounds(exposure)} of ${formatPounds(limit)}`,
     left: `${formatPounds(available)} left`,
     percent: Math.min(100, Math.round((exposure / limit) * 100)),
+    idle: exposure === 0,
   };
 }
 
@@ -103,6 +108,7 @@ export function whoCanBidView(input: {
     for (const a of live) {
       const summary = summariseAuthorisation(a);
       const total = totals.get(a.id);
+      const usage = total ? usageView(total) : null;
       rows.push({
         id: a.id,
         agent,
@@ -110,8 +116,11 @@ export function whoCanBidView(input: {
         facts: [
           summary.window,
           a.bidLimit ? `${formatPounds(a.bidLimit)} a lot` : "No limit a lot",
+          a.totalLimit ? `${formatPounds(a.totalLimit)} in total` : "No total limit",
+          ...(a.totalLimit && usage?.left ? [usage.left] : []),
         ],
-        usage: total ? usageView(total) : null,
+        // The bar only means something against a total.
+        usage: a.totalLimit ? usage : null,
         badge: badgeFor(a, now),
         authorisation: a,
       });
