@@ -29,13 +29,6 @@ export function useReadOnlyView(): boolean {
   return React.useContext(ReadOnlyContext);
 }
 
-/**
- * How a read-only control draws its value: the field box without the control look, at the
- * foreground colour, so values read as content and not as disabled controls.
- */
-export const readOnlyBox =
-  "data-[readonly]:cursor-default data-[readonly]:border-lax-line! data-[readonly]:bg-transparent! data-[readonly]:text-lax-fg!";
-
 type FieldContextValue = {
   controlId: string;
   /** The label's id, for controls that are not labelable elements and name themselves with it. */

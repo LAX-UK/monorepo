@@ -3,10 +3,7 @@
 import { Toaster as BaseToaster } from "../components/ui/sonner.js";
 import { cn } from "../lib/utils.js";
 import type { LaxDensity } from "./density.js";
-
-/** A plain confirmation stays 5s; one with Undo stays 10s, and both pause while hovered. */
-export const TOAST_DURATION_MS = 5000;
-export const UNDO_TOAST_DURATION_MS = 10_000;
+import { TOAST_DURATION_MS } from "./toast-durations.js";
 
 const TEXT_STEP: Record<LaxDensity, string> = { staff: "text-lax-13", client: "text-lax-14" };
 
