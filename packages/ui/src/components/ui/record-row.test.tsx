@@ -163,7 +163,7 @@ describe("RecordRow", () => {
     const [lead, second] = [...figures.children] as HTMLElement[];
     expect(lead?.className).not.toContain("hidden");
     expect(second?.className).toContain("hidden @2xl:flex");
-    expect(lead?.className).toContain("@2xl:w-24");
+    expect(lead?.className).toContain("@2xl:w-28");
     expect(
       figures.compareDocumentPosition(within(li).getByTestId("status")) &
         Node.DOCUMENT_POSITION_FOLLOWING,

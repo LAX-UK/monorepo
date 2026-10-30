@@ -37,8 +37,11 @@ export const BROWSE_UPCOMING_SALES_HREF = calendarSalesHref({ tab: "upcoming" })
 export type BidsViewProps = {
   /** `null` when the bids could not be read. */
   vm: MyBidsVm | null;
-  /** The sales the account asked to bid in; `null` when they could not be read. */
-  registrations: readonly AccountRegistrationView[] | null;
+  /**
+   * The sales the account asked to bid in; `null` when they could not be read, `undefined` for a
+   * person's own account, which has no Sales view (each sale page shows its registration).
+   */
+  registrations: readonly AccountRegistrationView[] | null | undefined;
   query: BidsListQuery;
   /** The account's name in sentences, or `null` for a person's own account. */
   organisation: string | null;
@@ -111,8 +114,9 @@ export function BidsView({
     [registrations, shared, query.q],
   );
 
-  const view = query.view;
-  const tabs: TabNavItem[] = BIDS_VIEWS.map((id) => {
+  const hasSales = registrations !== undefined;
+  const view = query.view === "sales" && !hasSales ? "active" : query.view;
+  const tabs: TabNavItem[] = BIDS_VIEWS.filter((id) => id !== "sales" || hasSales).map((id) => {
     const count =
       id === "sales" ? (registrationRows?.length ?? undefined) : (counts?.[id] ?? undefined);
     return {
@@ -188,7 +192,7 @@ export function BidsView({
         <BidList
           cards={bidsInView(vm.cardsByTab[view], query)}
           total={vm.cardsByTab[view].length}
-          query={query}
+          query={{ ...query, view }}
           organisation={organisation}
           onClear={clearAll}
           onOpenHistory={setHistory}

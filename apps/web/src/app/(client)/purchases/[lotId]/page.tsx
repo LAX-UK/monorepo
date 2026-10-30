@@ -48,8 +48,8 @@ export default async function PurchaseDetailPage({ params }: PageProps) {
   const facts = sources.factsByLot?.[lotId] ?? null;
   const organisation = scope.account.kind === "organisation" ? scope.account : null;
   const collection =
-    facts && COLLECTION_STAGES.has(facts.delivery.stage)
-      ? await getServerCollectionOffer(organisation?.id ?? null, lotId).catch(() => null)
+    organisation && facts && COLLECTION_STAGES.has(facts.delivery.stage)
+      ? await getServerCollectionOffer(organisation.id, lotId).catch(() => null)
       : null;
   const panel = facts
     ? deliveryPanel({

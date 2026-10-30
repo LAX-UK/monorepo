@@ -156,7 +156,6 @@ export function ArtistAlertDialog({
             Change in Bid settings
           </Link>
         </p>
-        <button type="submit" hidden aria-hidden tabIndex={-1} />
       </form>
     </Dialog>
   );

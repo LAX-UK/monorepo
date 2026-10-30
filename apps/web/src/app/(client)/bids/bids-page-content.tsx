@@ -9,6 +9,7 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import { shouldOfferIdentityOnboarding } from "@/lib/kyc/identity-onboarding";
 import { isIdentityOnboardingEnabled } from "@/lib/kyc/identity-onboarding-rollout.server";
 import { roleNeedsPersonalIdentity } from "@auction/domain";
+import { Notice } from "@auction/ui/lax";
 import type { ReactNode } from "react";
 
 type PageProps = {
@@ -71,6 +72,11 @@ export async function BidsPageContent({
     >
       {/* One rhythm for the notices and the list: 24px, as between every block of a list page. */}
       <div className="flex flex-col gap-6">
+        {page.bidBlockedReason ? (
+          <Notice tone="warning" title={`${page.bidBlockedReason}.`}>
+            You can still see every bid, and pay for what was won.
+          </Notice>
+        ) : null}
         {page.agentBanner ? <BuyerAgentBanner banner={page.agentBanner} /> : null}
         {kycSummary && (kycSummary.requiresKyc || proactiveKyc) ? (
           <KycVerificationBanner

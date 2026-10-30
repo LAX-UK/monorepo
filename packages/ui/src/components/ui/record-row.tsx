@@ -96,7 +96,7 @@ function RecordFigures({ figures }: { figures: readonly RecordFigure[] }) {
           key={figure.id ?? figure.label}
           className={cn(
             "min-w-0 items-baseline gap-1",
-            "@2xl:w-24 @2xl:flex-col @2xl:items-end @2xl:gap-0 @2xl:text-right",
+            "@2xl:w-28 @2xl:flex-col @2xl:items-end @2xl:gap-0 @2xl:text-right",
             index === 0 ? "flex" : "hidden @2xl:flex",
           )}
         >

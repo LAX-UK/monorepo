@@ -23,7 +23,8 @@ import {
 
 export type LoadedBidsPage = {
   vm: MyBidsVm | null;
-  registrations: AccountRegistrationView[] | null;
+  /** `undefined` for a person's own account, which registers sale by sale on each sale page. */
+  registrations: AccountRegistrationView[] | null | undefined;
   organisation: string | null;
   shared: boolean;
   /** Why bidding is off for the account, or `null` while it is open. */
@@ -48,7 +49,7 @@ export async function loadBidsPage(user: SessionUser | null): Promise<LoadedBids
   const [bidsResult, registrationsResult, summaryResult, mineResult, limitsResult] =
     await Promise.allSettled([
       container.buying.bids(),
-      getServerAccountRegistrations(organisation?.id ?? null),
+      organisation ? getServerAccountRegistrations(organisation.id) : Promise.resolve(undefined),
       organisation && user ? resolveActiveOrganisation(user) : Promise.resolve(null),
       organisation && agent
         ? getServerMyBuyerAgentAuthorisations(organisation.id)
@@ -84,7 +85,12 @@ export async function loadBidsPage(user: SessionUser | null): Promise<LoadedBids
   const authorisations = mineResult.status === "fulfilled" ? mineResult.value : null;
   return {
     vm,
-    registrations: registrationsResult.status === "fulfilled" ? registrationsResult.value : null,
+    registrations:
+      registrationsResult.status === "fulfilled"
+        ? registrationsResult.value
+        : organisation
+          ? null
+          : undefined,
     organisation: organisation?.name ?? null,
     shared,
     bidBlockedReason,

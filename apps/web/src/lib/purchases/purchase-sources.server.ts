@@ -38,7 +38,7 @@ export async function loadPurchaseSources(): Promise<PurchaseSources | null> {
     container.buying.purchases(),
     getServerBuyerComplianceGate(),
     invoicesFor(scope),
-    getServerAccountPurchaseFacts(organisation?.id ?? null),
+    organisation ? getServerAccountPurchaseFacts(organisation.id) : Promise.resolve(null),
   ]);
   if (rowsResult.status === "rejected") return null;
   const rows = rowsResult.value;

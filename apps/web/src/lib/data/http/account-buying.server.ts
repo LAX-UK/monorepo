@@ -114,14 +114,11 @@ const biddingLimitsSchema = z.object({
 }) satisfies z.ZodType<OrganisationBiddingLimitsView>;
 
 /**
- * Sends the request for one account. A personal account sends no header: the API answers for the
- * person's own account.
+ * Sends the request for one organisation. These reads need the account named: the API has no
+ * personal-account fallback for them.
  */
-function forAccount(accountId: string | null): RequestInit {
-  return {
-    cache: "no-store",
-    ...(accountId ? { headers: { [X_LEGAL_ENTITY_ID_HEADER]: accountId } } : {}),
-  };
+function forAccount(accountId: string): RequestInit {
+  return { cache: "no-store", headers: { [X_LEGAL_ENTITY_ID_HEADER]: accountId } };
 }
 
 async function readData<T>(res: Response, schema: z.ZodType<T, z.ZodTypeDef, unknown>) {
@@ -134,7 +131,7 @@ async function readData<T>(res: Response, schema: z.ZodType<T, z.ZodTypeDef, unk
 
 /** The sales the account is registered for, as far as the member follows them; `null` on failure. */
 export async function getServerAccountRegistrations(
-  accountId: string | null,
+  accountId: string,
 ): Promise<AccountRegistrationView[] | null> {
   const res = await authedServerFetch("/legal-entities/registrations", forAccount(accountId));
   return readData(res, z.array(registrationSchema));
@@ -150,7 +147,7 @@ const MAX_PURCHASE_PAGES = 10;
  * the list could not be read.
  */
 export async function getServerAccountPurchaseFacts(
-  accountId: string | null,
+  accountId: string,
 ): Promise<AccountPurchaseFacts[] | null> {
   const pageSchema = z.object({
     items: z.array(purchaseSchema),
@@ -173,7 +170,7 @@ export async function getServerAccountPurchaseFacts(
 
 /** How a work is collected from the saleroom; `null` when it cannot be read. */
 export async function getServerCollectionOffer(
-  accountId: string | null,
+  accountId: string,
   lotId: string,
 ): Promise<CollectionBookingOffer | null> {
   const res = await authedServerFetch(
