@@ -621,8 +621,4 @@ export {
   type SoldLotFacts,
   type SoldLotPayoutStage,
 } from "./selling-records.js";
-  bidOutcome,
-  purchasePaymentState,
-  type BidOutcome,
-  type PurchasePaymentState,
-} from "./search-result-states.js";
+export { bidOutcome, type BidOutcome } from "./search-result-states.js";

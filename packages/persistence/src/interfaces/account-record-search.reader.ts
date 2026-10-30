@@ -2,7 +2,7 @@ import type {
   AccountSearchScopes,
   AccountSearchTerms,
   BidOutcome,
-  PurchasePaymentState,
+  PurchaseInvoiceStatus,
 } from "@auction/domain";
 import type {
   ItemSubmissionStatus,
@@ -54,7 +54,8 @@ export type PurchaseSearchHit = LotSearchHit & {
   /** The hammer price, decimal in `currency`. */
   hammerPrice: string;
   currency: string;
-  paymentState: PurchasePaymentState;
+  /** Where its invoice stands (`purchaseInvoiceState`): due, overdue, paid and so on. */
+  paymentState: PurchaseInvoiceStatus;
 };
 
 /** A lot bid on, with the highest the bidders in scope offered and how it stands for them. */

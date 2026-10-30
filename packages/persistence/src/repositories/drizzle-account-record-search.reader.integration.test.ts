@@ -216,12 +216,15 @@ describe.skipIf(!HAS_DB)("account record search reader (integration)", () => {
           status: "captured" as const,
           createdAt: now,
         });
-        await tx
-          .insert(payment)
-          .values([
-            newPayment(ids.payment, ids.wonByOwner, ownerId, orgId),
-            newPayment(ids.otherPayment, ids.wonByOtherOrg, strangerId, otherOrgId),
-          ]);
+        await tx.insert(payment).values([
+          newPayment(ids.payment, ids.wonByOwner, ownerId, orgId),
+          newPayment(ids.otherPayment, ids.wonByOtherOrg, strangerId, otherOrgId),
+          // An invoice raised for the agent's win and not paid yet.
+          {
+            ...newPayment(randomUUID(), ids.wonByAgent, agentId, orgId),
+            status: "pending" as const,
+          },
+        ]);
         await tx.insert(paymentExternalRef).values([
           { paymentId: ids.payment, xeroInvoiceNumber: `INV-${tag}-1` },
           { paymentId: ids.otherPayment, xeroInvoiceNumber: `INV-${tag}-2` },

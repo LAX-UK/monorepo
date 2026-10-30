@@ -12,7 +12,7 @@ import {
   sale,
 } from "@auction/db/schema";
 import type { AccountSearchTerms } from "@auction/domain";
-import { bidOutcome, purchasePaymentState } from "@auction/domain";
+import { bidOutcome, purchaseInvoiceState } from "@auction/domain";
 import type { PaymentStatus } from "@auction/types";
 import {
   type SQL,
@@ -144,11 +144,13 @@ export class DrizzleAccountRecordSearchReader implements IAccountRecordSearchRea
     );
     return rows.map(({ paymentStatus, invoicedAt, ...row }) => ({
       ...row,
-      paymentState: purchasePaymentState({
-        paymentStatus,
-        invoicedAt: invoicedAt ?? row.endsAt,
-        now: criteria.now,
-      }),
+      paymentState: purchaseInvoiceState(
+        {
+          payment:
+            paymentStatus && invoicedAt ? { status: paymentStatus, raisedAt: invoicedAt } : null,
+        },
+        criteria.now,
+      ).status,
     }));
   };
 
