@@ -19,6 +19,7 @@ vi.mock("@/lib/data/http/artist-watchlist.client", () => ({
 
 vi.mock("@/lib/shell/shell-config-context", () => ({
   useShellConfig: () => ({ density: "normal" }),
+  useOptionalShellConfig: () => ({ density: "normal" }),
 }));
 
 const artist: ArtistFollowCardVm = {

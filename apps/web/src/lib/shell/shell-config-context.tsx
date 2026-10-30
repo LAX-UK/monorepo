@@ -15,6 +15,11 @@ export function ShellConfigProvider({
   return <ShellConfigContext.Provider value={config}>{children}</ShellConfigContext.Provider>;
 }
 
+/** The shell config when a frame provides one; `null` in frames that have none (the workspace). */
+export function useOptionalShellConfig(): ShellConfig | null {
+  return useContext(ShellConfigContext);
+}
+
 export function useShellConfig(): ShellConfig {
   const ctx = useContext(ShellConfigContext);
   if (!ctx) {
