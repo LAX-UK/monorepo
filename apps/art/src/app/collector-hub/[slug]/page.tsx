@@ -15,7 +15,7 @@ type CollectorServicePageProps = {
 const collectorRoute = (slug: string) => `/collector-hub/${encodeURIComponent(slug)}`;
 
 export async function generateMetadata({ params }: CollectorServicePageProps): Promise<Metadata> {
-  return editorialPageMetadata(await loadEditorialPage((await params).slug), "Collector Hub", {
+  return editorialPageMetadata(await loadEditorialPage((await params).slug), "Collecting", {
     notFoundWhenDisabled: true,
   });
 }
@@ -33,7 +33,7 @@ export default async function CollectorServicePage({ params }: CollectorServiceP
       result={result}
       routeFor={collectorRoute}
       notFoundWhenDisabled
-      breadcrumbs={[{ label: "Collector Hub", href: "/collector-hub" }]}
+      breadcrumbs={[{ label: "Collecting", href: "/collector-hub" }]}
       closing={<ArtGalleryTeamBand team={team} viewer={viewer} />}
     />
   );

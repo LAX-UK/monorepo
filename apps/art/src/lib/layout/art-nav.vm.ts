@@ -25,7 +25,7 @@ const ITEMS: ReadonlyArray<Omit<ArtNavItem, "active">> = [
   { key: "artworks", href: "/artworks", label: "Artworks" },
   { key: "exhibitions", href: "/exhibitions", label: "Exhibitions" },
   { key: "artHub", href: "/art-hub", label: "Art Hub" },
-  { key: "collectorHub", href: "/collector-hub", label: "Collector Hub" },
+  { key: "collectorHub", href: "/collector-hub", label: "Collecting" },
 ];
 
 function matches(pathname: string, prefix: string): boolean {

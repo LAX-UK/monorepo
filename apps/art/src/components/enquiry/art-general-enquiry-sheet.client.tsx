@@ -32,6 +32,8 @@ type Props = {
   /** Prefill for signed-in visitors; guests start empty. */
   contact: ArtEnquiryContact;
   triggerLabel?: string;
+  /** The trigger button style; the page's one primary action keeps the default. */
+  triggerVariant?: "default" | "secondaryOutline";
   /** Replaces the default button, e.g. with the header's text-sized "Enquire" control. */
   renderTrigger?: (open: () => void) => ReactNode;
 };
@@ -44,6 +46,7 @@ export function ArtGeneralEnquirySheet({
   contextLabel = null,
   contact,
   triggerLabel = "Send a message",
+  triggerVariant = "default",
   renderTrigger,
 }: Props) {
   const [open, setOpen] = useState(autoOpen);
@@ -68,6 +71,7 @@ export function ArtGeneralEnquirySheet({
         <Button
           type="button"
           size="lg"
+          variant={triggerVariant}
           className="min-h-11 w-fit font-label"
           onClick={() => setOpen(true)}
           data-testid="art-general-enquire-trigger"

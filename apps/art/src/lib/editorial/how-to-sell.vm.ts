@@ -24,6 +24,12 @@ function bidBaseUrl(links: readonly LaxProductLinkVm[]): URL | null {
   }
 }
 
+/** LAX Bid's "Sell with LAX" page, where collectors sell; null when this deployment has no Bid. */
+export function bidSellUrl(links: readonly LaxProductLinkVm[]): string | null {
+  const bid = bidBaseUrl(links);
+  return bid ? new URL(BID_SELL_PATH, bid).toString() : null;
+}
+
 /**
  * Collectors sell through LAX Bid's "Sell with LAX"; artists the gallery represents use the
  * artist portal in LAX Account. Without a Bid URL in this deployment the collector route is left
@@ -34,8 +40,8 @@ export function buildSellingRoutes(input: {
   laxAccountUrl: (page: LaxAccountDestination) => string;
 }): SellingRouteVm[] {
   const routes: SellingRouteVm[] = [];
-  const bid = bidBaseUrl(input.crossProductLinks);
-  if (bid) {
+  const sellHref = bidSellUrl(input.crossProductLinks);
+  if (sellHref) {
     routes.push({
       id: "collector",
       title: "You own a work",
@@ -43,7 +49,7 @@ export function buildSellingRoutes(input: {
         "Sell it at auction with LAX Bid. A specialist values the work and guides you from estimate to sale.",
       action: {
         label: "Sell with LAX",
-        href: new URL(BID_SELL_PATH, bid).toString(),
+        href: sellHref,
         productName: "LAX Bid",
       },
     });

@@ -12,7 +12,9 @@ const ASPECT_CLASS = {
 
 /**
  * `stacked` puts the text under the media. `split` puts them side by side from `md` (media 7, text
- * 5), for a card that is alone in its row and would otherwise be one very large image.
+ * 5), for a card that is alone in its row and would otherwise be one very large image. `row` is a
+ * compact card with media and text side by side at every width (half each), for two cards
+ * stacked in one column of a mixed rail (Figma Art Hub stories, `983:27672`).
  */
 const LAYOUT_CLASS = {
   stacked: { card: "flex h-full flex-col gap-4", text: "flex flex-col gap-4" },
@@ -20,7 +22,17 @@ const LAYOUT_CLASS = {
     card: "flex h-full flex-col gap-4 md:grid md:grid-cols-[7fr_5fr] md:items-center md:gap-12",
     text: "flex flex-col gap-4",
   },
+  row: {
+    card: "grid h-full grid-cols-2 items-start gap-4",
+    text: "flex min-w-0 flex-col gap-2",
+  },
 } as const;
+
+const TITLE_CLASS: Record<keyof typeof LAYOUT_CLASS, string> = {
+  stacked: "text-lg leading-7 md:text-xl",
+  split: "text-xl leading-7 md:text-[1.75rem] md:leading-tight",
+  row: "text-base leading-6 md:text-lg md:leading-7",
+};
 
 type EditorialCardLinkProps = { href: string; className?: string; children: ReactNode };
 
@@ -93,9 +105,7 @@ export function MarketingEditorialCard({
             <h3
               className={cn(
                 "min-w-0 flex-1 font-headline font-medium text-on-surface",
-                layout === "split"
-                  ? "text-xl leading-7 md:text-[1.75rem] md:leading-tight"
-                  : "text-lg leading-7 md:text-xl",
+                TITLE_CLASS[layout],
               )}
             >
               {href ? (
