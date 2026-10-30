@@ -42,6 +42,7 @@ export * from "./saved-search.js";
 export * from "./admin-saved-views.js";
 export * from "./push-subscriptions.js";
 export * from "./payments.js";
+export * from "./payment-group.js";
 export * from "./watchlist.js";
 export * from "./artist-watchlist.js";
 export * from "./artist-profiles.js";

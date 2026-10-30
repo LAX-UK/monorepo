@@ -1793,6 +1793,13 @@
       "when": 1797580800000,
       "tag": "0257_workspace_buying_modules",
       "breakpoints": true
+    },
+    {
+      "idx": 261,
+      "version": "7",
+      "when": 1798012800000,
+      "tag": "0261_payment_groups",
+      "breakpoints": true
     }
   ]
 }
