@@ -84,6 +84,11 @@ function parsePayload(event: DomainEventRowForCrm): unknown | null {
   return parsed.ok ? parsed.data : null;
 }
 
+const GUEST_LEAD_STATUS_LABEL = {
+  abandoned_checkout: "abandoned checkout",
+  ordered: "ordered",
+} as const;
+
 function leadSourceDetailed(source: string, channel: "bid" | "shop" | "identity"): string {
   return `${channel}:${source}`.slice(0, 120);
 }
@@ -292,6 +297,32 @@ export function mapDomainEventToCrmIntent(
           [CRM_FIELD.dealExternalKey]: dealKey,
         },
       };
+    }
+    case "shop.guest_lead.recorded": {
+      if (payload === null) return { kind: "skip", reason: "invalid_payload" };
+      const p = payload as {
+        leadSubjectId: string;
+        email: string;
+        name: string | null;
+        status: "abandoned_checkout" | "ordered";
+        source: string;
+        marketingConsent: boolean;
+      };
+      // The detailed source says which kind of guest lead it is; the subject keys it until a
+      // LAX account claims it.
+      const fields = withAttribution(
+        personBaseFields(p.email, p.name ?? undefined, "shop", `guest_checkout_${p.status}`),
+        ctx.attribution,
+      );
+      fields[CRM_FIELD.subjectExternalId] = p.leadSubjectId;
+      fields[CRM_FIELD.leadSourceDetailed] = `${p.source}: ${GUEST_LEAD_STATUS_LABEL[p.status]}`;
+      fields[CRM_FIELD.emailOptOut] = !p.marketingConsent;
+      return { kind: "person_upsert", subjectId: p.leadSubjectId, email: p.email, fields };
+    }
+    case "shop.guest_lead.claimed": {
+      if (payload === null) return { kind: "skip", reason: "invalid_payload" };
+      const p = payload as { leadSubjectId: string; subjectId: string };
+      return { kind: "merge_subjects", subjectId: p.subjectId, retiredSubjectId: p.leadSubjectId };
     }
     case "shop.order.paid": {
       if (payload === null) return { kind: "skip", reason: "invalid_payload" };

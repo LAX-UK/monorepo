@@ -2,6 +2,7 @@ import type { TemplateDomainSlice } from "./shared.js";
 
 const names = [
   "shop-order-receipt",
+  "shop-guest-order-link",
   "shop-artwork-enquiry-alert",
   "shop-edition-available-notify",
   "shop-zoho-dead-letter-notice",
@@ -29,6 +30,14 @@ type ShopTemplateVars = {
     vatAmount?: string;
     orderUrl: string;
     lineSummary: string;
+    /** True for a guest order: the link opens it without an account. */
+    guest?: boolean;
+  };
+  "shop-guest-order-link": {
+    orderReference: string;
+    orderUrl: string;
+    /** "29 November 2026": when the link stops opening the order. */
+    expiresOn: string;
   };
   "shop-artwork-enquiry-alert": {
     artworkTitle: string;

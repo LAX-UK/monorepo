@@ -124,4 +124,64 @@ describe("mapDomainEventToCrmIntent", () => {
     );
     expect(intent.kind).toBe("deal_stage");
   });
+
+  it("maps a guest checkout lead to a CRM lead keyed by the guest, with its source and consent", () => {
+    const guestId = "6f1c3c2a-1d2b-4c3e-9f4a-5b6c7d8e9f01";
+    const intent = mapDomainEventToCrmIntent(
+      {
+        id: 10,
+        eventType: "shop.guest_lead.recorded",
+        aggregateId: guestId,
+        schemaVersion: 1,
+        payload: {
+          schemaVersion: 1,
+          guestCustomerId: guestId,
+          leadSubjectId: `guest:${guestId}`,
+          email: "ada@example.com",
+          name: null,
+          status: "abandoned_checkout",
+          source: "Shop guest checkout",
+          marketingConsent: false,
+          firstSeenAt: "2026-10-30T12:00:00.000Z",
+          lastSeenAt: "2026-10-30T12:00:00.000Z",
+          paidOrderCount: 0,
+        },
+      },
+      ctx,
+    );
+    expect(intent.kind).toBe("person_upsert");
+    if (intent.kind === "person_upsert") {
+      expect(intent.subjectId).toBe(`guest:${guestId}`);
+      expect(intent.fields[CRM_FIELD.leadSource]).toBe(CRM_LEAD_SOURCE_PLATFORM);
+      expect(intent.fields[CRM_FIELD.leadSourceDetailed]).toBe(
+        "Shop guest checkout: abandoned checkout",
+      );
+      expect(intent.fields[CRM_FIELD.emailOptOut]).toBe(true);
+    }
+  });
+
+  it("merges a claimed guest lead into the account that verified the email", () => {
+    const guestId = "6f1c3c2a-1d2b-4c3e-9f4a-5b6c7d8e9f01";
+    const intent = mapDomainEventToCrmIntent(
+      {
+        id: 11,
+        eventType: "shop.guest_lead.claimed",
+        aggregateId: guestId,
+        schemaVersion: 1,
+        payload: {
+          schemaVersion: 1,
+          guestCustomerId: guestId,
+          leadSubjectId: `guest:${guestId}`,
+          subjectId: "user_1",
+          claimedOrders: 2,
+        },
+      },
+      ctx,
+    );
+    expect(intent).toEqual({
+      kind: "merge_subjects",
+      subjectId: "user_1",
+      retiredSubjectId: `guest:${guestId}`,
+    });
+  });
 });

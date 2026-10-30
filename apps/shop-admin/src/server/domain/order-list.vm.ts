@@ -231,12 +231,23 @@ export function orderBuyerName(order: {
   return order.buyerName?.trim() || order.buyerEmail?.trim() || "Unknown buyer";
 }
 
-/** Shown under the name; omitted when the email already is the name. */
+/**
+ * Shown under the name: the email, unless it already is the name, and "Guest" when the order
+ * came through guest checkout rather than a LAX account.
+ */
 export function orderBuyerSecondary(order: {
   buyerName: string | null;
   buyerEmail: string | null;
+  buyerIsGuest?: boolean;
 }): string | null {
-  return order.buyerName?.trim() ? (order.buyerEmail?.trim() ?? null) : null;
+  const email = order.buyerName?.trim() ? (order.buyerEmail?.trim() ?? null) : null;
+  if (!order.buyerIsGuest) return email;
+  return email ? `Guest · ${email}` : "Guest";
+}
+
+/** How the buyer checked out, for the order's customer details. */
+export function orderBuyerAccountLabel(order: { buyerIsGuest?: boolean }): string {
+  return order.buyerIsGuest ? "Guest checkout, no LAX account" : "LAX Account";
 }
 
 /** The period line over the orders summary. */

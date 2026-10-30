@@ -4,6 +4,7 @@ import {
   ORDER_STATUS_LABELS,
   dailyAveragePence,
   hasActiveOrderFilters,
+  orderBuyerAccountLabel,
   orderBuyerName,
   orderBuyerSecondary,
   orderListApiQuery,
@@ -201,5 +202,16 @@ describe("order labels", () => {
       "ada@example.com",
     );
     expect(orderBuyerSecondary({ buyerName: null, buyerEmail: "ada@example.com" })).toBeNull();
+  });
+
+  it("marks a guest checkout order as a guest, with the email given at checkout", () => {
+    expect(
+      orderBuyerSecondary({ buyerName: "Ada", buyerEmail: "ada@example.com", buyerIsGuest: true }),
+    ).toBe("Guest · ada@example.com");
+    expect(
+      orderBuyerSecondary({ buyerName: null, buyerEmail: "ada@example.com", buyerIsGuest: true }),
+    ).toBe("Guest");
+    expect(orderBuyerAccountLabel({ buyerIsGuest: true })).toBe("Guest checkout, no LAX account");
+    expect(orderBuyerAccountLabel({})).toBe("LAX Account");
   });
 });
