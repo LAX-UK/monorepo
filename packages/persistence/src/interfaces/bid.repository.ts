@@ -36,6 +36,8 @@ export interface IBidRepository {
   countForLot(lotId: string): Promise<number>;
   findWinningBid(lotId: string): Promise<Bid | null>;
   listDistinctBidderIds(lotId: string): Promise<string[]>;
+  /** Each bidder on the lot once, with the account of their latest bid there. */
+  listDistinctBidderAccounts(lotId: string): Promise<{ userId: string; legalEntityId: string }[]>;
   /** Latest bids placed by a bidder (for dashboard). */
   listForBidder(bidderId: string, limit: number): Promise<Bid[]>;
   /**

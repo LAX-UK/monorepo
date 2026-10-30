@@ -2,11 +2,16 @@ import type { CreateNotificationRow } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import type { INotificationFactory } from "./ports.js";
 
-/** Builds persisted notification rows from domain events (shared API/worker bidding). */
+/**
+ * Builds persisted notification rows from domain events (shared API/worker bidding). Every row
+ * names its account: the account a bid was placed for, the account that won the lot, or the
+ * consigning account.
+ */
 export class NotificationFactory implements INotificationFactory {
   createOutbid(
     lot: Lot,
     outbidUserId: string,
+    legalEntityId: string | null,
     opts?: { currentBid?: string },
   ): CreateNotificationRow {
     return {
@@ -15,6 +20,7 @@ export class NotificationFactory implements INotificationFactory {
       title: "You have been outbid",
       message: `Another bidder placed a higher bid on "${lot.title}".`,
       lotId: lot.id,
+      legalEntityId,
       meta: { lotTitle: lot.title, ...(opts?.currentBid ? { bidAmount: opts.currentBid } : {}) },
     };
   }
@@ -30,6 +36,7 @@ export class NotificationFactory implements INotificationFactory {
       title: "Congratulations — you won",
       message: `You won "${lot.title}". Complete payment from your portfolio when ready.`,
       lotId: lot.id,
+      legalEntityId: lot.buyerLegalEntityId ?? null,
       meta: {
         lotTitle: lot.title,
         bidAmount: lot.currentPrice,
@@ -53,6 +60,7 @@ export class NotificationFactory implements INotificationFactory {
         ? `"${lot.title}" sold with a hammer price of ${opts?.hammerPrice} GBP.`
         : `"${lot.title}" closed without a sale.`,
       lotId: lot.id,
+      legalEntityId: lot.sellerLegalEntityId ?? null,
       meta: {
         lotTitle: lot.title,
         outcome: sold ? "sold" : "unsold",
@@ -61,13 +69,14 @@ export class NotificationFactory implements INotificationFactory {
     };
   }
 
-  createLost(lot: Lot, bidderId: string): CreateNotificationRow {
+  createLost(lot: Lot, bidderId: string, legalEntityId: string | null): CreateNotificationRow {
     return {
       userId: bidderId,
       type: "lot_lost",
       title: "Lot closed",
       message: `The lot "${lot.title}" has ended without your bid winning.`,
       lotId: lot.id,
+      legalEntityId,
       meta: { lotTitle: lot.title },
     };
   }

@@ -102,6 +102,7 @@ export class ConditionReportFulfilmentService implements IConditionReportFulfilm
         this.ctx.notificationFactory.createConditionReportReady(
           refreshed,
           reqRow.requestedByUserId,
+          reqRow.requestingLegalEntityId ?? null,
         ),
       );
       return ok(refreshed);
@@ -158,6 +159,7 @@ export class ConditionReportFulfilmentService implements IConditionReportFulfilm
         this.ctx.notificationFactory.createConditionReportDeclined(
           lotRow,
           reqRow.requestedByUserId,
+          reqRow.requestingLegalEntityId ?? null,
           input.responseNote ?? null,
         ),
       );

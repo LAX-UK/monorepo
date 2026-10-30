@@ -8,6 +8,11 @@ export type CreateNotificationRow = {
   message: string;
   lotId?: string | undefined;
   submissionId?: string | undefined;
+  /**
+   * The account the notification is about (a personal or organisation legal entity); `null`
+   * means the person's own personal account. Required so every producer decides it.
+   */
+  legalEntityId: string | null;
   /** Ephemeral fields for email/push channels (not stored on `notification` rows). */
   meta?: NotificationPayload["meta"];
 };

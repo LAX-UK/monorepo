@@ -166,6 +166,7 @@ export class ConsignmentAgreementService implements IConsignmentAgreementService
         title: "Your consignment agreement is ready",
         message: `Your specialist sent the estimate and terms for "${submission.title}". Accept the consignment agreement so we can catalogue it for sale.`,
         submissionId,
+        legalEntityId: submission.legalEntityId,
       });
     }
     return ok(stored);
@@ -247,6 +248,7 @@ export class ConsignmentAgreementService implements IConsignmentAgreementService
           title: "Your consignment agreement is waiting",
           message: `Accept the consignment agreement for "${agreement.submissionTitle}" so we can catalogue it for sale.`,
           submissionId: agreement.submissionId,
+          legalEntityId: agreement.legalEntityId,
         });
       }
       reminded += 1;

@@ -265,6 +265,7 @@ export async function sendStaleDraftReminders(
       for (const recipientId of recipients) {
         await deps.dispatcher.dispatch(recipientId, {
           type: "submission_draft_reminder",
+          legalEntityId: s.legalEntityId,
           title: "Submission waiting",
           message: `Your in-progress submission "${s.title}" has not been updated in ${input.staleDays} days. Resume when you are ready to submit for review.`,
           submissionId: s.id,

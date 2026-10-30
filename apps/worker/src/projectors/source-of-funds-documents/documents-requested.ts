@@ -30,6 +30,8 @@ export async function handleDocumentsRequested(args: {
     {
       userId: buyerId,
       type: "source_of_funds_documents_requested",
+      // Source of funds is checked for the person, so the notice is personal.
+      legalEntityId: null,
       title: "Documents requested for source of funds",
       message: settlement.summary
         ? `Please upload the requested documents for ${settlement.summary}.`

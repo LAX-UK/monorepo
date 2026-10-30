@@ -33,6 +33,9 @@ describe("TimedLotTransitionRunner", () => {
       listForLotSettlement: vi.fn().mockResolvedValue([bid({ amount: "500.00" })]),
       findEligibleBidsForLotClose: vi.fn(),
       listDistinctBidderIds: vi.fn().mockResolvedValue(["u1"]),
+      listDistinctBidderAccounts: vi
+        .fn()
+        .mockResolvedValue(["u1"].map((userId) => ({ userId, legalEntityId: null }))),
     } as unknown as IBidRepository;
 
     const { timedRunner } = createTimedRunnerStack({
@@ -70,6 +73,9 @@ describe("TimedLotTransitionRunner", () => {
         .mockResolvedValue([bid({ amount: "500.00", bidderId: "winner" })]),
       findEligibleBidsForLotClose: vi.fn(),
       listDistinctBidderIds: vi.fn().mockResolvedValue(["winner"]),
+      listDistinctBidderAccounts: vi
+        .fn()
+        .mockResolvedValue(["winner"].map((userId) => ({ userId, legalEntityId: null }))),
     } as unknown as IBidRepository;
 
     const { timedRunner } = createTimedRunnerStack({
@@ -107,6 +113,9 @@ describe("TimedLotTransitionRunner", () => {
         ]),
       findEligibleBidsForLotClose: findEligible,
       listDistinctBidderIds: vi.fn().mockResolvedValue(["u1", "u2"]),
+      listDistinctBidderAccounts: vi
+        .fn()
+        .mockResolvedValue(["u1", "u2"].map((userId) => ({ userId, legalEntityId: null }))),
     } as unknown as IBidRepository;
 
     const guard = {
@@ -172,6 +181,7 @@ describe("TimedLotTransitionRunner", () => {
       listForLotSettlement: vi.fn().mockResolvedValue(settlementBids),
       findEligibleBidsForLotClose: findEligible,
       listDistinctBidderIds: vi.fn().mockResolvedValue(settlementBids.map((b) => b.bidderId)),
+      listDistinctBidderAccounts: vi.fn().mockResolvedValue([]),
     } as unknown as IBidRepository;
 
     const guard = {
@@ -217,6 +227,7 @@ describe("TimedLotTransitionRunner", () => {
       listForLotSettlement: vi.fn(),
       findEligibleBidsForLotClose: vi.fn(),
       listDistinctBidderIds: vi.fn(),
+      listDistinctBidderAccounts: vi.fn().mockResolvedValue([]),
     } as unknown as IBidRepository;
 
     const saleroomSessionLookup = {

@@ -41,6 +41,8 @@ export async function handleReviewedClosure(args: {
     {
       userId: buyerId,
       type: notifType,
+      // Source of funds is checked for the person, so the notice is personal.
+      legalEntityId: null,
       title,
       message,
     },

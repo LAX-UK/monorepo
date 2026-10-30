@@ -45,7 +45,10 @@ function baseDeps(overrides: Partial<LotServiceDeps> = {}): LotServiceDeps {
   return {
     lotRepo: {} as ILotRepository,
     saleRepo: null,
-    bids: { listDistinctBidderIds: vi.fn().mockResolvedValue([]) } as never,
+    bids: {
+      listDistinctBidderIds: vi.fn().mockResolvedValue([]),
+      listDistinctBidderAccounts: vi.fn().mockResolvedValue([]),
+    } as never,
     watchlist: { listUserIdsForLot: vi.fn().mockResolvedValue([]) } as never,
     jobScheduler: { cancelLotJobs: vi.fn().mockResolvedValue(undefined) } as never,
     lotNotifications: null,

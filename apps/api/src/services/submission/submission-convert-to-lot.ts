@@ -109,6 +109,7 @@ export async function convert(
     for (const recipientId of recipients) {
       await deps.dispatcher.dispatch(recipientId, {
         type: "submission_converted",
+        legalEntityId,
         title: "Draft lot created",
         message: `A draft catalogue lot was created for "${title}". Complete any remaining steps in your seller dashboard.`,
         lotId: lot.id,

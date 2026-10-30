@@ -74,6 +74,9 @@ describe("worker lifecycle parity (shared lot-lifecycle-app stack)", () => {
       listForLotSettlement: vi.fn().mockResolvedValue([bid({ amount: "500.00" })]),
       findEligibleBidsForLotClose: vi.fn(),
       listDistinctBidderIds: vi.fn().mockResolvedValue(["u1"]),
+      listDistinctBidderAccounts: vi
+        .fn()
+        .mockResolvedValue(["u1"].map((userId) => ({ userId, legalEntityId: null }))),
     } as unknown as IBidRepository;
 
     const service = createWorkerParityStack({ lots, bids });
@@ -109,6 +112,9 @@ describe("worker lifecycle parity (shared lot-lifecycle-app stack)", () => {
         ]),
       findEligibleBidsForLotClose: findEligible,
       listDistinctBidderIds: vi.fn().mockResolvedValue(["u1", "u2"]),
+      listDistinctBidderAccounts: vi
+        .fn()
+        .mockResolvedValue(["u1", "u2"].map((userId) => ({ userId, legalEntityId: null }))),
     } as unknown as IBidRepository;
 
     const guard = {
@@ -144,6 +150,7 @@ describe("worker lifecycle parity (shared lot-lifecycle-app stack)", () => {
       listForLotSettlement: vi.fn(),
       findEligibleBidsForLotClose: vi.fn(),
       listDistinctBidderIds: vi.fn(),
+      listDistinctBidderAccounts: vi.fn().mockResolvedValue([]),
     } as unknown as IBidRepository;
 
     const saleroomSessionLookup = {
@@ -179,6 +186,7 @@ describe("worker lifecycle parity (shared lot-lifecycle-app stack)", () => {
       listForLotSettlement: vi.fn(),
       findEligibleBidsForLotClose: vi.fn(),
       listDistinctBidderIds: vi.fn(),
+      listDistinctBidderAccounts: vi.fn().mockResolvedValue([]),
     } as unknown as IBidRepository;
 
     const onLotActivated = vi.fn().mockResolvedValue(undefined);

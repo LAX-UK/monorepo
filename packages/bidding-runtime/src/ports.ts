@@ -216,6 +216,8 @@ export interface INotificationFactory {
   createOutbid(
     lot: Lot,
     outbidUserId: string,
+    /** The account the outbid bid was placed for. */
+    legalEntityId: string | null,
     opts?: { currentBid?: string },
   ): CreateNotificationRow;
 
@@ -231,7 +233,8 @@ export interface INotificationFactory {
     opts?: { hammerPrice?: string },
   ): CreateNotificationRow;
 
-  createLost(lot: Lot, bidderId: string): CreateNotificationRow;
+  /** `legalEntityId` is the account the bidder bid for. */
+  createLost(lot: Lot, bidderId: string, legalEntityId: string | null): CreateNotificationRow;
 }
 
 export type BidPlacedRealtimeMeta = {

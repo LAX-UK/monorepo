@@ -11,15 +11,16 @@ const lot = {
 
 describe("NotificationFactory condition report", () => {
   it("createConditionReportReady", () => {
-    const row = factory.createConditionReportReady(lot, "user-1");
+    const row = factory.createConditionReportReady(lot, "user-1", "org-1");
     expect(row.type).toBe("condition_report_ready");
     expect(row.userId).toBe("user-1");
+    expect(row.legalEntityId).toBe("org-1");
     expect(row.lotId).toBe("lot-1");
     expect(row.title).toMatch(/ready/i);
   });
 
   it("createConditionReportDeclined", () => {
-    const row = factory.createConditionReportDeclined(lot, "user-1", "Not available");
+    const row = factory.createConditionReportDeclined(lot, "user-1", "org-1", "Not available");
     expect(row.type).toBe("condition_report_declined");
     expect(row.message).toContain("Not available");
   });

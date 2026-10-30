@@ -52,6 +52,7 @@ export function notificationRowToPayload(row: CreateNotificationRow): Notificati
     message: row.message,
     lotId: row.lotId,
     submissionId: row.submissionId,
+    legalEntityId: row.legalEntityId,
     ...(row.meta != null ? { meta: row.meta } : {}),
   };
 }
