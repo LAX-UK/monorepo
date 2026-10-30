@@ -1,6 +1,6 @@
 import { PendingInvitations } from "@/components/legal-entity/members/pending-invitations";
-import { TeamListEmpty } from "@/components/organisation-team/team-list-states";
 import { WorkspaceTabNoAccess } from "@/components/organisation-team/workspace-tab-no-access";
+import { ListEmpty, ListLoadError } from "@/components/workspace/list-states";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { invitationRowViews } from "@/lib/legal-entity/member-row.vm";
 import { teamHref } from "@/lib/navigation/client-routes";
@@ -11,7 +11,6 @@ import {
   loadTeamScope,
   memberChangeActorFor,
 } from "@/lib/organisation-team/team-data.server";
-import { Notice } from "@auction/ui/lax";
 import { notFound } from "next/navigation";
 
 /**
@@ -43,11 +42,7 @@ export default async function TeamInvitationsPage() {
     loadTeamMembers(scope),
   ]);
   if (!invitations.ok) {
-    return (
-      <Notice tone="danger" alert title="We couldn't load the invitations.">
-        Nothing is lost. Refresh the page to try again.
-      </Notice>
-    );
+    return <ListLoadError />;
   }
   const changeActor = memberChangeActorFor(scope, user.id, members.ok ? members.data : []);
   const rows = invitationRowViews(changeActor, invitations.data, new Date()).sort(
@@ -56,7 +51,7 @@ export default async function TeamInvitationsPage() {
 
   if (rows.length === 0) {
     return (
-      <TeamListEmpty
+      <ListEmpty
         illustration="easel"
         title="No invitations waiting"
         description={`Everyone you've invited has answered. Invite colleagues so they can bid, pay or sell for ${acting.displayName}.`}

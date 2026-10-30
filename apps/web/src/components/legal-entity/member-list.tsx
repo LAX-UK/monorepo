@@ -1,7 +1,7 @@
 "use client";
 
 import { LeaveOrganisationDialog } from "@/components/organisation-team/leave-organisation-dialog";
-import { TeamListNoResults } from "@/components/organisation-team/team-list-states";
+import { ListNoResults } from "@/components/workspace/list-states";
 import { updateMemberRoleAction } from "@/lib/legal-entity/member-management.actions";
 import type { MemberRowView } from "@/lib/legal-entity/member-row.vm";
 import {
@@ -121,7 +121,7 @@ export function MemberList({ legalEntityId, organisationName, rows }: Props) {
       ) : null}
 
       {visible.length === 0 && filtering ? (
-        <TeamListNoResults
+        <ListNoResults
           query={query.trim()}
           onClear={() => {
             setQuery("");

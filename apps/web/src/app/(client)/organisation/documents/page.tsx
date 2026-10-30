@@ -1,9 +1,9 @@
 import { DashboardErrorAlert } from "@/components/dashboard/primitives";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
 import { AgreementDocuments } from "@/components/organisation-team/agreement-documents";
-import { TeamListEmpty } from "@/components/organisation-team/team-list-states";
 import { OrganisationDocumentList } from "@/components/organisations/organisation-document-list";
 import { OrganisationTabNoAccess } from "@/components/organisations/organisation-tab-no-access";
+import { ListEmpty } from "@/components/workspace/list-states";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { listServerConsignmentAgreements } from "@/lib/data/http/consignment-agreements.server";
@@ -105,7 +105,7 @@ export default async function OrganisationDocumentsPage() {
         {agreementRows.length > 0 ? (
           <AgreementDocuments rows={agreementRows} />
         ) : (
-          <TeamListEmpty
+          <ListEmpty
             illustration="ledger"
             title="No agreements yet"
             description={`When ${member.displayName} consigns a work, its agreement is kept here to download.`}

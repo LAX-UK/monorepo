@@ -18,7 +18,7 @@ import { payoutSetupSteps } from "@/lib/presenters/payout-setup-steps";
 import { entityActorCan } from "@auction/domain";
 import { DisplayHeading } from "@auction/ui";
 import { SectionHeader } from "@auction/ui/components/section-header";
-import { Button, Notice } from "@auction/ui/lax";
+import { ButtonLink, Notice } from "@auction/ui/lax";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -56,9 +56,9 @@ export default async function OrganisationPayoutsPage() {
           tone="warning"
           title={bankChange.title}
           actions={
-            <Button asChild size="sm">
-              <Link href="/contact">Contact us</Link>
-            </Button>
+            <ButtonLink href="/contact" Link={Link} size="sm">
+              Contact us
+            </ButtonLink>
           }
         >
           {bankChange.body}

@@ -1,6 +1,7 @@
 import { StoppedMemberBidsSection } from "@/components/legal-entity/stopped-member-bids-section";
 import { WhoCanBid } from "@/components/organisation-team/who-can-bid-view";
 import { WorkspaceTabNoAccess } from "@/components/organisation-team/workspace-tab-no-access";
+import { ListLoadError } from "@/components/workspace/list-states";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { teamHref } from "@/lib/navigation/client-routes";
 import { requireTeamTab } from "@/lib/navigation/team-tabs";
@@ -11,7 +12,6 @@ import {
   loadTeamScope,
 } from "@/lib/organisation-team/team-data.server";
 import { whoCanBidView } from "@/lib/organisation-team/who-can-bid.vm";
-import { Notice } from "@auction/ui/lax";
 import { notFound } from "next/navigation";
 
 /**
@@ -41,11 +41,7 @@ export default async function TeamBiddingPage() {
     loadStoppedMemberBids(acting.id),
   ]);
   if (!overview) {
-    return (
-      <Notice tone="danger" alert title="We couldn't load who can bid.">
-        Nothing is lost. Refresh the page to try again.
-      </Notice>
-    );
+    return <ListLoadError />;
   }
 
   return (

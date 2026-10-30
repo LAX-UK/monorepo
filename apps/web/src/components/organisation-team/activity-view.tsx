@@ -1,5 +1,6 @@
 "use client";
 
+import { ListEmpty, ListLoadError, ListNoResults } from "@/components/workspace/list-states";
 import type { ActivityEntryView, ActivityQuery } from "@/lib/data/http/organisation-team.types";
 import { teamHref } from "@/lib/navigation/client-routes";
 import {
@@ -14,7 +15,7 @@ import {
 import { activityDays, activityLine, activityTime } from "@/lib/organisation-team/activity-lines";
 import { loadOlderActivityAction } from "@/lib/organisation-team/organisation-team.actions";
 import { ACTIVITY_GROUPS, type ActivityGroup } from "@auction/domain";
-import { Button, Notice, SelectMenu } from "@auction/ui/lax";
+import { Button, SelectMenu } from "@auction/ui/lax";
 import {
   Download,
   Gavel,
@@ -26,7 +27,6 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
-import { TeamListEmpty, TeamListNoResults } from "./team-list-states";
 
 const GROUP_ICON: Record<ActivityGroup, LucideIcon> = {
   members: Users,
@@ -158,21 +158,12 @@ export function ActivityView({
 
   let body: React.ReactNode;
   if (!page) {
-    body = (
-      <Notice
-        tone="danger"
-        alert
-        title="We couldn't load Activity."
-        actions={<Button onClick={() => router.refresh()}>Try again</Button>}
-      >
-        Nothing is lost. Try again in a moment.
-      </Notice>
-    );
+    body = <ListLoadError />;
   } else if (entries.length === 0) {
     body = activityFiltered(filters) ? (
-      <TeamListNoResults query="" onClear={() => go(DEFAULT_ACTIVITY_FILTERS)} />
+      <ListNoResults query="" onClear={() => go(DEFAULT_ACTIVITY_FILTERS)} />
     ) : (
-      <TeamListEmpty
+      <ListEmpty
         illustration="ledger"
         title="Nothing has changed yet"
         description={`When someone joins, changes a role, bids or sells for ${organisationName}, it's listed here.`}

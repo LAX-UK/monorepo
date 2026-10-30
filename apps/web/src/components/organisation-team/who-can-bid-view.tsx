@@ -4,6 +4,7 @@ import { AuthoriseBuyerAgentDialog } from "@/components/legal-entity/buyer-agent
 import { RevokeAuthorisationDialog } from "@/components/legal-entity/buyer-agents/revoke-authorisation-dialog";
 import { MemberInitials } from "@/components/legal-entity/members/member-initials";
 import { initials } from "@/components/organisations/initials";
+import { ListEmpty } from "@/components/workspace/list-states";
 import type {
   AuthorisationRowView,
   UsageView,
@@ -28,7 +29,6 @@ import {
 import { Ellipsis, Plus, SlidersHorizontal, UserPlus, X } from "lucide-react";
 import { useState } from "react";
 import { OrganisationLimitDialog } from "./organisation-limit-dialog";
-import { TeamListEmpty } from "./team-list-states";
 
 type Props = {
   legalEntityId: string;
@@ -231,7 +231,7 @@ export function WhoCanBid({ legalEntityId, organisationName, view, sales }: Prop
         </div>
 
         {agents.length === 0 ? (
-          <TeamListEmpty
+          <ListEmpty
             illustration="gavel"
             title="No buyer agents yet"
             description={`Invite someone as a buyer agent to bid for ${organisationName} within limits you set. Owners and admins already bid.`}
