@@ -11,6 +11,8 @@ export type ArtEnquiryConfirmationProps = {
   vm: EnquiryConfirmationVm;
   /** The address the form sent; the promise names it. */
   email: string | null;
+  /** The stored enquiry's reference; null when the service did not return one. */
+  reference: string | null;
   onClose: () => void;
 };
 
@@ -19,7 +21,7 @@ export type ArtEnquiryConfirmationProps = {
  * then tracking (signed in) or an account invitation (guest), and a way back to the page.
  */
 export const ArtEnquiryConfirmation = forwardRef(function ArtEnquiryConfirmation(
-  { vm, email, onClose }: ArtEnquiryConfirmationProps,
+  { vm, email, reference, onClose }: ArtEnquiryConfirmationProps,
   ref: Ref<HTMLOutputElement>,
 ) {
   const { followUp } = vm;
@@ -28,7 +30,8 @@ export const ArtEnquiryConfirmation = forwardRef(function ArtEnquiryConfirmation
       ref={ref}
       data-testid="art-enquiry-confirmation"
       title={vm.title}
-      lead={enquiryConfirmationLead(email)}
+      lead={enquiryConfirmationLead(email, reference)}
+      reference={reference}
       steps={vm.steps}
       details={vm.details}
       actions={

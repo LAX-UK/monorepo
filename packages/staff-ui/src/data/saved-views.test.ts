@@ -5,9 +5,10 @@ import {
   SavedViewsError,
   type SavedViewsPort,
   migrateLegacySavedViews,
+  sameViewQuery,
   useSavedViews,
+  viewQuery,
 } from "./saved-views.js";
-import { sameViewQuery, viewQuery } from "./view-query.js";
 
 const LIST = "test.orders";
 const STORAGE_KEY = `staff.views.${LIST}`;

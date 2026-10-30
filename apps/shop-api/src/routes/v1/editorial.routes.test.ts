@@ -239,7 +239,10 @@ describe("editorial routes", () => {
   });
 
   it("stores a signed-in collector's enquiry with blank optional fields as null", async () => {
-    const insertGeneralEnquiry = vi.fn(async () => ({ enquiryId: ENQUIRY_ID }));
+    const insertGeneralEnquiry = vi.fn(async () => ({
+      enquiryId: ENQUIRY_ID,
+      reference: "E-2041",
+    }));
     const app = await buildApp({ insertGeneralEnquiry });
     const res = await app.inject({
       method: "POST",
@@ -253,7 +256,7 @@ describe("editorial routes", () => {
       },
     });
     expect(res.statusCode).toBe(201);
-    expect(res.json()).toEqual({ enquiryId: ENQUIRY_ID });
+    expect(res.json()).toEqual({ enquiryId: ENQUIRY_ID, reference: "E-2041" });
     expect(insertGeneralEnquiry).toHaveBeenCalledWith({
       sender: {
         kind: "account",
@@ -311,7 +314,10 @@ describe("editorial routes", () => {
   });
 
   it("stores a guest enquiry sent through the BFF with the typed contact details", async () => {
-    const insertGeneralEnquiry = vi.fn(async () => ({ enquiryId: ENQUIRY_ID }));
+    const insertGeneralEnquiry = vi.fn(async () => ({
+      enquiryId: ENQUIRY_ID,
+      reference: "E-2041",
+    }));
     const app = await buildApp({ insertGeneralEnquiry });
     const res = await app.inject({
       method: "POST",
@@ -383,7 +389,10 @@ describe("editorial routes", () => {
   });
 
   it("rejects a guest general enquiry without an email", async () => {
-    const insertGeneralEnquiry = vi.fn(async () => ({ enquiryId: ENQUIRY_ID }));
+    const insertGeneralEnquiry = vi.fn(async () => ({
+      enquiryId: ENQUIRY_ID,
+      reference: "E-2041",
+    }));
     const app = await buildApp({ insertGeneralEnquiry });
     const res = await app.inject({
       method: "POST",
@@ -397,7 +406,10 @@ describe("editorial routes", () => {
   });
 
   it("answers a honeypot general enquiry with a 201 and stores nothing", async () => {
-    const insertGeneralEnquiry = vi.fn(async () => ({ enquiryId: ENQUIRY_ID }));
+    const insertGeneralEnquiry = vi.fn(async () => ({
+      enquiryId: ENQUIRY_ID,
+      reference: "E-2041",
+    }));
     const app = await buildApp({ insertGeneralEnquiry });
     const res = await app.inject({
       method: "POST",

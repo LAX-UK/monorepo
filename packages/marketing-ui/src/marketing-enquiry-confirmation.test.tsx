@@ -30,8 +30,21 @@ describe("MarketingEnquiryConfirmation", () => {
     expect(screen.getByRole("link", { name: "Track this in Enquiries" })).toBeInTheDocument();
   });
 
+  it("announces the reference with the confirmation when there is one", () => {
+    render(
+      <MarketingEnquiryConfirmation
+        title="Enquiry sent"
+        lead="Thanks."
+        reference="E-2041"
+        steps={[]}
+      />,
+    );
+    expect(screen.getByRole("status")).toHaveTextContent("Your reference E-2041");
+  });
+
   it("leaves out the contact block without details", () => {
     render(<MarketingEnquiryConfirmation title="Sent" lead="Thanks." steps={[]} />);
+    expect(screen.getByRole("status")).not.toHaveTextContent("Your reference");
     expect(screen.queryByRole("heading", { name: "Prefer to talk?" })).not.toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "What happens next" })).not.toBeInTheDocument();
   });

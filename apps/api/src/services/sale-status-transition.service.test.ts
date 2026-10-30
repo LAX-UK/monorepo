@@ -352,3 +352,41 @@ describe("SaleStatusTransitionService.setLotStatus", () => {
     expect(scheduleLot).toHaveBeenCalled();
   });
 });
+
+describe("SaleStatusTransitionService.markOnsiteSaleEnded", () => {
+  function serviceFor(sale: Sale, lots: Lot[]) {
+    const saleRepo = {
+      findById: vi.fn().mockResolvedValue(sale),
+      updateStatus: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ISaleRepository;
+    const lotRepo = {
+      findBySaleId: vi.fn().mockResolvedValue(lots),
+      updateStatus: vi.fn().mockResolvedValue(undefined),
+    } as unknown as ILotRepository;
+    const svc = new SaleStatusTransitionService(saleRepo, lotRepo, null);
+    return { svc, saleRepo, lotRepo };
+  }
+
+  it("ends an active hybrid sale and closes the lots still open", async () => {
+    const window = saleWindow();
+    const { svc, saleRepo, lotRepo } = serviceFor(
+      draftSale(window, { deliveryMode: "hybrid", status: "active" }),
+      [draftLot(window, { status: "active" })],
+    );
+    const result = await svc.markOnsiteSaleEnded("staff", saleId, undefined, ["administrator"]);
+    expect(result.isOk()).toBe(true);
+    expect(lotRepo.updateStatus).toHaveBeenCalledWith(lotId, "ended");
+    expect(saleRepo.updateStatus).toHaveBeenCalledWith(saleId, "ended");
+  });
+
+  it("refuses an online sale, which ends when its lots close", async () => {
+    const window = saleWindow();
+    const { svc, saleRepo } = serviceFor(
+      draftSale(window, { deliveryMode: "online", status: "active" }),
+      [],
+    );
+    const result = await svc.markOnsiteSaleEnded("staff", saleId, undefined, ["administrator"]);
+    expect(result.isErr()).toBe(true);
+    expect(saleRepo.updateStatus).not.toHaveBeenCalled();
+  });
+});

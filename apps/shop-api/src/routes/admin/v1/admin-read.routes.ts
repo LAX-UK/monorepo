@@ -60,6 +60,7 @@ import type { FastifyInstance } from "fastify";
 import type { AdminRoutesDeps } from "../../../admin-route-deps.js";
 import { parseOrderListQuery } from "../../../application/admin-order-list-query.js";
 import { buildOrderSummary, orderSummarySince } from "../../../application/admin-order-summary.js";
+import { withRetainedInvoiceAccess } from "../../../application/guest-erasure/retained-invoice-access.js";
 import { ShopApiError } from "../../../errors/shop-api-error.js";
 import {
   requireAnyShopStaffCapability,
@@ -174,7 +175,11 @@ export async function registerAdminReadRoutes(
     async (request) => {
       requireShopStaffCapability(request, "order.read");
       const { orderId } = request.params as { orderId: string };
-      return deps.adminRead.orders.getOrderDetail(orderId);
+      const detail = await deps.adminRead.orders.getOrderDetail(orderId);
+      return withRetainedInvoiceAccess(
+        detail,
+        staffCan(requireShopStaffAuth(request), "retained_invoice_data.read"),
+      );
     },
   );
 

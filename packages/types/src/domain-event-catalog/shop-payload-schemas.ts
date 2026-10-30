@@ -77,7 +77,8 @@ export const shopGuestLeadRecordedPayloadSchemaV1 = z.object({
   leadSubjectId: z.string().min(1),
   email: z.string().email(),
   name: z.string().nullable(),
-  status: z.enum(["abandoned_checkout", "ordered"]),
+  /** The furthest step the lead reached; `enquired` is a lead that has only sent enquiries. */
+  status: z.enum(["abandoned_checkout", "ordered", "enquired"]),
   source: z.string().min(1),
   marketingConsent: z.boolean(),
   /** When and to which wording the guest opted in; null without consent. */
@@ -95,4 +96,17 @@ export const shopGuestLeadClaimedPayloadSchemaV1 = z.object({
   leadSubjectId: z.string().min(1),
   subjectId: z.string().min(1),
   claimedOrders: z.number().int().nonnegative(),
+  /** Enquiries the guest sent that now show in the account. */
+  claimedEnquiries: z.number().int().nonnegative().optional(),
+});
+
+/**
+ * Staff erased a guest's personal data on request. Carries no personal data: the lead is named by
+ * its subject so the CRM record can be deleted.
+ */
+export const shopGuestLeadErasedPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  guestCustomerId: z.string().uuid(),
+  leadSubjectId: z.string().min(1),
+  erasedAt: rfc3339Timestamp,
 });

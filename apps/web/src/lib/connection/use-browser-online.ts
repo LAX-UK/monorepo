@@ -1,6 +1,6 @@
 "use client";
 
-import { getBrowserConnectivityPort } from "@/lib/connection/browser-connectivity";
+import { getBrowserConnectivityPort } from "@/lib/connection/browser-connectivity.client";
 import { useEffect, useState } from "react";
 
 export function useBrowserOnline(): boolean {

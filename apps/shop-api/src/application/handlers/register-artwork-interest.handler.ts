@@ -5,10 +5,9 @@ import type { EnquirySender } from "../enquiry-sender.js";
 import type { ArtworkInterestWriter } from "../ports/artwork-interest.writer.js";
 
 export type RegisterArtworkInterestHandlerResult =
-  | "registered"
-  | "already_subscribed"
-  | "artwork_not_found"
-  | "not_subscribable";
+  | { status: "registered" | "already_subscribed"; reference: string | null }
+  | { status: "artwork_not_found" }
+  | { status: "not_subscribable" };
 
 function isEligibleForIntent(
   intent: ArtworkInterestIntent,
@@ -43,10 +42,10 @@ export function createRegisterArtworkInterestHandler(writer: ArtworkInterestWrit
   }): Promise<RegisterArtworkInterestHandlerResult> => {
     const context = await writer.loadInterestContext(input.artworkSlug);
     if (!context) {
-      return "artwork_not_found";
+      return { status: "artwork_not_found" };
     }
     if (!isEligibleForIntent(input.intent, context)) {
-      return "not_subscribable";
+      return { status: "not_subscribable" };
     }
     const result = await writer.registerInterest({
       artworkId: context.artworkId,
@@ -59,8 +58,8 @@ export function createRegisterArtworkInterestHandler(writer: ArtworkInterestWrit
         ? { contactPhone: input.contactPhone }
         : {}),
     });
-    if (result === "not_found") {
-      return "artwork_not_found";
+    if (result.status === "not_found") {
+      return { status: "artwork_not_found" };
     }
     return result;
   };

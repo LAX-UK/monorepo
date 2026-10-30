@@ -64,8 +64,8 @@ const VISIT_STEP: MarketingEnquiryStep = {
 
 /**
  * The confirmation shown once an enquiry is sent. It promises only what the gallery does: a
- * reply within one working day. It does not claim an email copy or a reference, which the
- * enquiry service does not send.
+ * reply within one working day, and, once the enquiry is stored with a reference, the copy
+ * emailed to the sender.
  */
 export function buildEnquiryConfirmation(input: {
   viewer: Pick<ArtViewerState, "kind">;
@@ -96,9 +96,18 @@ export function buildEnquiryConfirmation(input: {
   };
 }
 
-/** The promise under the tick, naming the address the reply goes to when the form had one. */
-export function enquiryConfirmationLead(email: string | null | undefined): string {
+/**
+ * The promise under the tick, naming the address the reply goes to when the form had one. A
+ * stored enquiry has a reference, and its sender is emailed a copy, so the lead says so.
+ */
+export function enquiryConfirmationLead(
+  email: string | null | undefined,
+  reference: string | null = null,
+): string {
   const address = email?.trim();
+  if (address && reference) {
+    return `We've emailed you a copy at ${address}. The gallery team will reply ${REPLY_TIME}.`;
+  }
   return address
     ? `The gallery team will reply to ${address} ${REPLY_TIME}.`
     : `The gallery team will reply ${REPLY_TIME}.`;

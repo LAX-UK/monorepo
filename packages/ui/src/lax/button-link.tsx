@@ -2,7 +2,7 @@
 
 import type { VariantProps } from "class-variance-authority";
 import type * as React from "react";
-import type { buttonVariants } from "./button-variants.js";
+import type { buttonVariants } from "./button.js";
 import { Button } from "./button.js";
 
 export type ButtonLinkProps = Omit<React.AnchorHTMLAttributes<HTMLAnchorElement>, "href"> &

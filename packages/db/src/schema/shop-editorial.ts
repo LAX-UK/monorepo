@@ -403,6 +403,10 @@ export const shopGeneralEnquiry = pgTable(
     /** Null for guest enquiries, which carry `contactEmail` instead. */
     identitySubjectId: text("identity_subject_id"),
     topic: shopGeneralEnquiryTopicEnum("topic").notNull(),
+    /** What the sender and staff quote ("E-2041"); the sequence is shared with artwork enquiries. */
+    reference: text("reference")
+      .default(sql`('E-' || nextval('shop_enquiry_reference_seq')::text)`)
+      .notNull(),
     contextSlug: text("context_slug"),
     message: text("message").notNull(),
     phone: text("phone"),
@@ -419,6 +423,10 @@ export const shopGeneralEnquiry = pgTable(
   },
   (table) => [
     index("shop_general_enquiry_subject_idx").on(table.identitySubjectId, table.createdAt),
+    uniqueIndex("shop_general_enquiry_reference_uid").on(table.reference),
+    index("shop_general_enquiry_guest_email_idx")
+      .on(sql`lower(${table.contactEmail})`)
+      .where(sql`${table.identitySubjectId} IS NULL`),
     index("shop_general_enquiry_inbox_idx").on(
       table.status,
       table.createdAt.desc(),

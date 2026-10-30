@@ -31,3 +31,22 @@ export function connectReadyFromCachedEntity(entity: LegalEntityConnectRow): boo
     !disabledReason
   );
 }
+
+/**
+ * How Stripe answered a read of the stored Connect account, when it did not return it:
+ * - `missing` (`resource_missing`): the account definitively does not exist (a seeded or
+ *   deleted id). Payouts are not set up, and setting up may replace the id.
+ * - `unreachable` (`account_invalid`): this key cannot see the account. That is ambiguous:
+ *   revoked access, a wrong API key, or no such account. The id is kept and never replaced.
+ * - null: any other error, which is a real failure and is not hidden.
+ */
+export type ConnectAccountReadFailure = "missing" | "unreachable";
+
+export function classifyConnectAccountReadError(err: unknown): ConnectAccountReadFailure | null {
+  if (!err || typeof err !== "object") return null;
+  const { type, code } = err as { type?: unknown; code?: unknown };
+  if (type !== "StripePermissionError" && type !== "StripeInvalidRequestError") return null;
+  if (code === "resource_missing") return "missing";
+  if (code === "account_invalid") return "unreachable";
+  return null;
+}

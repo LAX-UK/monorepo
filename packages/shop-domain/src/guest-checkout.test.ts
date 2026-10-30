@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   decideGuestEmail,
   guestCustomerIdFromSubject,
-  guestLeadStatus,
   guestOrderLinkExpiry,
   guestOrderLinkState,
   guestOrderSubject,
@@ -34,11 +33,6 @@ describe("guest checkout rules", () => {
     expect(guestCustomerIdFromSubject(subject)).toBe("2f0b6d7e-0000-4000-8000-000000000001");
     expect(guestCustomerIdFromSubject("user_123")).toBeNull();
     expect(guestCustomerIdFromSubject("guest:")).toBeNull();
-  });
-
-  it("marks a guest who never paid as an abandoned checkout", () => {
-    expect(guestLeadStatus({ paidOrderCount: 0 })).toBe("abandoned_checkout");
-    expect(guestLeadStatus({ paidOrderCount: 2 })).toBe("ordered");
   });
 
   it("opens a link until it expires, and never once the order is claimed", () => {
