@@ -641,6 +641,7 @@ export {
   type SoldLotFacts,
   type SoldLotPayoutStage,
 } from "./selling-records.js";
+export { bidOutcome, type BidOutcome } from "./search-result-states.js";
 export {
   ACCESS_REQUEST_STATUSES,
   accessAskRefusal,

@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { AccountRecordSearchService } from "./account-record-search.service.js";
 
 const ENTITY = "00000000-0000-4000-8000-000000000001";
+const NOW = new Date("2026-11-10T12:00:00Z");
 
 function lotHit(n: number): LotSearchHit {
   return {
@@ -30,7 +31,7 @@ function setup(rows = 0) {
     invoices: read,
     members: read,
   } as unknown as IAccountRecordSearchReader;
-  return { service: new AccountRecordSearchService(reader), read };
+  return { service: new AccountRecordSearchService(reader, () => NOW), read };
 }
 
 const actor = (role: LegalEntityMemberRole) => ({ userId: "me", legalEntityId: ENTITY, role });
@@ -52,9 +53,10 @@ describe("AccountRecordSearchService", () => {
       legalEntityId: ENTITY,
       userId: "me",
       scope: "own",
-      terms: { text: "hockney", lotNumber: null },
+      terms: { text: "hockney", lotNumber: null, consignmentNumber: null },
       limit: 6,
       offset: 0,
+      now: NOW,
     });
   });
 
