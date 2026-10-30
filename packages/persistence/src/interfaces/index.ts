@@ -958,3 +958,14 @@ export type {
   MemberSearchHit,
 } from "./account-record-search.reader.js";
 export type { INeedsYouFactsReader } from "./needs-you-facts.reader.js";
+export type {
+  AgreementDocumentFacts,
+  IAgreementDocumentFactsReader,
+  IPayoutLinesReader,
+  IReturnedWorksReader,
+  ISoldLotsReader,
+  PayoutLineRow,
+  PayoutWithLines,
+  ReturnedWorkRow,
+  SoldLotRow,
+} from "./workspace-selling.readers.js";

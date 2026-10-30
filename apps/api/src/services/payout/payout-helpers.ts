@@ -3,6 +3,7 @@ import type { IPayoutProcessorReader, IPayoutRepository } from "@auction/persist
 import { DrizzlePayoutRepository } from "@auction/persistence/repositories";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IPayoutAdjustmentService } from "../interfaces/payout-adjustment.js";
+import type { IPayoutProblemNotifier } from "./payout-problem-notifier.js";
 
 /** Resolve payout repo for a transaction scope. */
 export function payoutRepoForTx(_rootRepo: IPayoutRepository, tx: Database): IPayoutRepository {
@@ -22,6 +23,8 @@ export type PayoutServiceDeps = {
   payoutAdjustments: IPayoutAdjustmentService | undefined;
   payoutRepoForTx: (tx: Database) => IPayoutRepository;
   payoutProcessorsForTx: (tx: Database) => IPayoutProcessorReader;
+  /** Tells the account when a payout fails or is reversed; told after the change commits. */
+  problemNotifier?: IPayoutProblemNotifier | undefined;
 };
 
 export const DEFAULT_CURRENCY = "GBP";

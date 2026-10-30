@@ -1,3 +1,4 @@
+import { entityRoleCan } from "@auction/domain";
 import { type PayoutStatus, normalizeUserRoleOrClient } from "@auction/types";
 import { canReadAllPayouts, requirePayoutRead } from "./auth.js";
 import { AuthzError } from "./authz-error.js";
@@ -14,6 +15,10 @@ async function assertClientPayoutAccess(
   const membership = await legalEntityRepo.findActiveMembership(ctx.userId, legalEntityId);
   if (!membership) {
     throw new AuthzError("Payout export requires membership in the legal entity", 403);
+  }
+  // Payouts are the seller's money: only the roles that read them may export them.
+  if (!entityRoleCan(membership.role, "entity.payouts.read")) {
+    throw new AuthzError("Payout export requires a role that reads payouts", 403);
   }
 }
 

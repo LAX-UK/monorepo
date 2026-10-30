@@ -184,7 +184,7 @@ describe("createExportProviders", () => {
     const deps = baseDeps({
       payoutRepo: { countMatching, list: vi.fn() } as unknown as IExportProviderDeps["payoutRepo"],
       legalEntityRepo: {
-        findActiveMembership: vi.fn().mockResolvedValue({ id: "m1" }),
+        findActiveMembership: vi.fn().mockResolvedValue({ id: "m1", role: "finance" }),
       } as unknown as IExportProviderDeps["legalEntityRepo"],
     });
     const payouts = createExportProviders(deps).get("payouts");
@@ -221,7 +221,7 @@ describe("createExportProviders", () => {
         list,
       } as unknown as IExportProviderDeps["payoutRepo"],
       legalEntityRepo: {
-        findActiveMembership: vi.fn().mockResolvedValue({ id: "m1" }),
+        findActiveMembership: vi.fn().mockResolvedValue({ id: "m1", role: "finance" }),
       } as unknown as IExportProviderDeps["legalEntityRepo"],
     });
     const providers = createExportProviders(deps);

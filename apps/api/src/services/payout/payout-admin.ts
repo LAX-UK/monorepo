@@ -202,14 +202,15 @@ export async function reconcileStripeTransfer(
 
   const { runner, publisher } = requireTransactional(deps);
 
-  return await runner.runInTransaction(async (tx) => {
+  const outcome = await runner.runInTransaction(async (tx) => {
     const r = deps.payoutRepoForTx(tx);
     // Row lock: concurrent Stripe events for one payout apply one after another, so each
     // sees the previous status and emits its payout event only on a real transition.
     const row = await r.findByIdForUpdate(found.id);
-    if (!row) return null;
+    if (!row) return { payout: null, problem: false };
     // A transfer that was reversed by staff or Stripe is never re-marked paid by a late event.
-    if (row.status === "reversed" && patch.status === "paid") return row;
+    if (row.status === "reversed" && patch.status === "paid")
+      return { payout: row, problem: false };
     const previousStatus = row.status;
     const updated = await r.reconcileStripeTransfer(row.id, patch);
 
@@ -275,9 +276,17 @@ export async function reconcileStripeTransfer(
       recordMoneyPathEvent("payout_reconciled_failed");
     }
 
-    return updated;
+    const problem = PROBLEM_STATUSES.has(updated.status) && updated.status !== previousStatus;
+    return { payout: updated, problem };
   });
+  if (outcome.problem && outcome.payout) {
+    await deps.problemNotifier?.payoutProblem(outcome.payout);
+  }
+  return outcome.payout;
 }
+
+/** Payout states the account is told about: the money did not arrive. */
+const PROBLEM_STATUSES: ReadonlySet<string> = new Set(["failed", "reversed"]);
 
 const PAYOUT_REVERSAL_REFUSAL_CODES: Record<PayoutReversalRefusal, string> = {
   not_permitted: "payout_reversal_not_permitted",
@@ -293,7 +302,7 @@ export async function adminManualReverse(
   const { runner, publisher } = requireTransactional(deps);
   const actorUserId = actor.userId;
 
-  return await runner.runInTransaction(async (tx) => {
+  const reversed = await runner.runInTransaction(async (tx) => {
     const r = deps.payoutRepoForTx(tx);
     const found = await r.findById(payoutId);
     if (!found) throw new PayoutNotFoundError();
@@ -344,4 +353,6 @@ export async function adminManualReverse(
     });
     return updated;
   });
+  await deps.problemNotifier?.payoutProblem(reversed);
+  return reversed;
 }

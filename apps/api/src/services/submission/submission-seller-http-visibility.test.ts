@@ -84,7 +84,9 @@ function services() {
   return {
     sellerApi,
     agreements,
-    seller: new SubmissionSellerHttpApplicationService(sellerApi, guard),
+    seller: new SubmissionSellerHttpApplicationService(sellerApi, guard, {
+      namesFor: async () => new Map<string, string>(),
+    }),
     docs: new SubmissionDocumentHttpApplicationService(
       sellerApi,
       {} as IItemSubmissionAdminApi,

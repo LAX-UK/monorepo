@@ -1,3 +1,4 @@
+import type { IRecordPeopleReader } from "@auction/persistence/interfaces";
 import { ConsignmentAgreementHttpApplicationService } from "../services/consignment-agreement/consignment-agreement-http-application.service.js";
 import type { IConsignmentAgreementService } from "../services/consignment-agreement/consignment-agreement.service.js";
 import type {
@@ -20,6 +21,8 @@ export type CreateSubmissionRouteServicesInput = {
   /** Decides which of an account's submissions the signed-in member may reach. */
   submissionAccess: ISubmissionAccessGuard;
   consignmentAfterSaleHttp: IConsignmentAfterSaleHttpApplicationService;
+  /** Names the member who sent each consignment. */
+  recordPeople: IRecordPeopleReader;
 };
 
 export function createSubmissionRouteServices(
@@ -29,6 +32,7 @@ export function createSubmissionRouteServices(
     sellerHttp: new SubmissionSellerHttpApplicationService(
       input.itemSubmissionSellerApi,
       input.submissionAccess,
+      input.recordPeople,
     ),
     adminHttp: new SubmissionAdminHttpApplicationService(input.itemSubmissionAdminApi),
     documentHttp: new SubmissionDocumentHttpApplicationService(

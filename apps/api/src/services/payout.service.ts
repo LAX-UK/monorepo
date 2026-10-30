@@ -46,6 +46,7 @@ import {
   payoutProcessorReaderForTx,
   payoutRepoForTx,
 } from "./payout/payout-helpers.js";
+import type { IPayoutProblemNotifier } from "./payout/payout-problem-notifier.js";
 import { createSettlement, runBulkSettlement } from "./payout/payout-settlement.js";
 
 export class PayoutService implements IPayoutService {
@@ -58,6 +59,7 @@ export class PayoutService implements IPayoutService {
     payoutAdjustments?: IPayoutAdjustmentService,
     repoForTx?: (tx: Database) => IPayoutRepository,
     processorsForTx: (tx: Database) => IPayoutProcessorReader = payoutProcessorReaderForTx,
+    problemNotifier?: IPayoutProblemNotifier,
   ) {
     this.deps = {
       repo,
@@ -67,6 +69,7 @@ export class PayoutService implements IPayoutService {
       payoutRepoForTx:
         repoForTx ?? (transactionRunner ? (tx) => payoutRepoForTx(repo, tx) : () => repo),
       payoutProcessorsForTx: processorsForTx,
+      problemNotifier,
     };
   }
 

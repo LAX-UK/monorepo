@@ -1,4 +1,5 @@
 import type { itemSubmission } from "@auction/db/schema";
+import { consignmentReference } from "@auction/domain";
 import type { ItemSubmission, ItemSubmissionStatus } from "@auction/types";
 import type { InferSelectModel } from "drizzle-orm";
 
@@ -47,6 +48,7 @@ export function mapItemSubmissionRow(
     convertedLotId: row.convertedLotId,
     assignedToUserId: row.assignedToUserId ?? null,
     submittedByUserId: row.submittedByUserId ?? null,
+    reference: consignmentReference(row.referenceNumber),
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   };

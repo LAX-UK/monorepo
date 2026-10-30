@@ -56,6 +56,8 @@ export type ItemSubmission = {
   assignedToUserId?: string | null;
   /** The member who created or last sent it; `null` for submissions from before it was recorded. */
   submittedByUserId?: string | null;
+  /** The reference the seller quotes to a specialist, for example "C-1042". */
+  reference?: string;
   createdAt: Date;
   updatedAt: Date;
 };

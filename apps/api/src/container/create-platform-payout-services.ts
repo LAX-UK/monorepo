@@ -10,9 +10,11 @@ import type {
 } from "../services/interfaces/payout.js";
 import type { IStripeConnectService } from "../services/interfaces/stripe-connect.js";
 import { InvoiceAddressingService } from "../services/invoice-addressing.js";
+import type { NotificationDispatcher } from "../services/notification.dispatcher.js";
 import { PaymentRefundReconcileService } from "../services/payment/payment-refund-reconcile.service.js";
 import { PayoutService } from "../services/payout.service.js";
 import { PayoutAdjustmentService } from "../services/payout/payout-adjustment.service.js";
+import { PayoutProblemNotifier } from "../services/payout/payout-problem-notifier.js";
 import { StripeConnectFacade } from "../services/stripe/stripe-connect.facade.js";
 import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerPlatformCore } from "./create-platform-core.js";
@@ -36,6 +38,8 @@ export type CreatePlatformPayoutServicesInput = {
   infra: ContainerInfra;
   repos: ContainerRepositories;
   core: ContainerPlatformCore;
+  /** Delivers the payout problem notice in the product and by email. */
+  notificationDispatcher: Pick<NotificationDispatcher, "dispatch">;
 };
 
 export function createPlatformPayoutServices(
@@ -63,6 +67,13 @@ export function createPlatformPayoutServices(
     core.transactionRunner,
     domainEventSink,
     payoutAdjustmentService,
+    undefined,
+    undefined,
+    new PayoutProblemNotifier(
+      repos.legalEntityNotificationRecipients,
+      input.notificationDispatcher,
+      core.notificationFactory,
+    ),
   );
   const payoutService: IPayoutService = payoutServiceInstance;
   const payoutSellerService: IPayoutSellerService = payoutServiceInstance;
