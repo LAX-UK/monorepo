@@ -61,7 +61,10 @@ export const notification = pgTable(
         'staff_role_changed_admin',
         'lot_ready_for_collection',
         'lot_shipped',
-        'lot_delivered'
+        'lot_delivered',
+        'delivery_quote_ready',
+        'payout_problem',
+        'bid_refused_limit'
       )`,
     ),
   ],

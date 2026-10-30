@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { artistWatchlist } from "@auction/db/schema";
+import type { ArtistAlertCriteria } from "@auction/domain";
 import { and, eq } from "drizzle-orm";
 import type {
   ArtistWatchlistRow,
@@ -12,6 +13,11 @@ function mapRow(row: typeof artistWatchlist.$inferSelect): ArtistWatchlistRow {
     userId: row.userId,
     artistId: row.artistId,
     createdAt: row.createdAt,
+    alert: {
+      medium: row.alertMedium,
+      priceMin: row.alertPriceMin,
+      priceMax: row.alertPriceMax,
+    },
   };
 }
 
@@ -53,5 +59,23 @@ export class DrizzleArtistWatchlistRepository implements IArtistWatchlistReposit
       .where(and(eq(artistWatchlist.userId, userId), eq(artistWatchlist.artistId, artistId)))
       .limit(1);
     return rows.length > 0;
+  }
+
+  async setAlert(
+    userId: string,
+    artistId: string,
+    criteria: ArtistAlertCriteria,
+  ): Promise<ArtistWatchlistRow | null> {
+    const [row] = await this.db
+      .update(artistWatchlist)
+      .set({
+        alertMedium: criteria.medium,
+        alertPriceMin: criteria.priceMin,
+        alertPriceMax: criteria.priceMax,
+        alertUpdatedAt: new Date(),
+      })
+      .where(and(eq(artistWatchlist.userId, userId), eq(artistWatchlist.artistId, artistId)))
+      .returning();
+    return row ? mapRow(row) : null;
   }
 }
