@@ -205,7 +205,10 @@ export class NotificationFactory implements INotificationFactory {
 
   createAccessRequested(
     userId: string,
-    request: Pick<AccessRequestRow, "requesterName" | "requestedRole" | "requestedCapability">,
+    request: Pick<
+      AccessRequestRow,
+      "legalEntityId" | "requesterName" | "requestedRole" | "requestedCapability"
+    >,
   ): CreateNotificationRow {
     const who = request.requesterName?.trim() || "A member";
     const what = request.requestedRole
@@ -214,6 +217,7 @@ export class NotificationFactory implements INotificationFactory {
     return {
       userId,
       type: "access_requested",
+      legalEntityId: request.legalEntityId,
       title: "Someone asked for access",
       message: `${who} asked for ${what}. Open Team to approve or decline.`,
       meta: {},
@@ -222,13 +226,14 @@ export class NotificationFactory implements INotificationFactory {
 
   createAccessRequestDecided(
     userId: string,
-    request: Pick<AccessRequestRow, "status" | "grantedRole" | "decisionNote">,
+    request: Pick<AccessRequestRow, "legalEntityId" | "status" | "grantedRole" | "decisionNote">,
   ): CreateNotificationRow {
     const approved = request.status === "approved";
     const note = request.decisionNote?.trim();
     return {
       userId,
       type: "access_request_decided",
+      legalEntityId: request.legalEntityId,
       title: approved ? "Your access request was approved" : "Your access request was declined",
       message: approved
         ? `You now have the ${roleWords(request.grantedRole ?? "viewer")} role.${note ? ` ${note}` : ""}`
