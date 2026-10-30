@@ -1,10 +1,10 @@
 "use client";
 
+import { ShortcutKeys, TextInput } from "@auction/ui/lax";
 import { Search } from "lucide-react";
 import * as React from "react";
 import { cn } from "../lib/cn.js";
 import { StaffDialog } from "../panels/staff-dialog.js";
-import { ShortcutKeys, TextInput } from "../primitives/input.js";
 
 /*
  * Keyboard shortcuts for the staff tools: one registry the shell owns, so every page registers

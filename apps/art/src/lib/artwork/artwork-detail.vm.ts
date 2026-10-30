@@ -1,6 +1,6 @@
 import {
   ARTWORK_OBJECT_TYPE_LABELS,
-  ARTWORK_RARITY_LABELS,
+  ARTWORK_OBJECT_TYPE_SINGULAR_LABELS,
   artworkCatalogueHref,
   emptyArtworkCatalogueState,
 } from "@/lib/catalogue/artwork-catalogue-params";
@@ -45,24 +45,17 @@ function dimensionLines(artwork: ArtworkDimensionFacts): string[] {
 }
 
 /** Year, medium and dimensions in the info column (Figma 426:2581). */
+/**
+ * The work's facts, shown once beside the image: year, type, medium and dimensions in
+ * centimetres and inches. Nothing below repeats them.
+ */
 export function buildArtworkKeySpecs(artwork: PublicArtworkDetail): ArtworkSpecRow[] {
   const rows: ArtworkSpecRow[] = [];
   if (artwork.yearCreated != null)
     rows.push({ label: "Year", lines: [String(artwork.yearCreated)] });
-  if (artwork.medium) rows.push({ label: "Medium", lines: [artwork.medium] });
-  const dimensions = dimensionLines(artwork);
-  if (dimensions.length > 0) rows.push({ label: "Dimensions", lines: dimensions });
-  return rows;
-}
-
-/** "Medium & dimensions" accordion: the physical facts plus object type and rarity. */
-export function buildArtworkMediumSpecs(artwork: PublicArtworkDetail): ArtworkSpecRow[] {
-  const rows: ArtworkSpecRow[] = [];
   if (artwork.objectType) {
-    rows.push({ label: "Object type", lines: [ARTWORK_OBJECT_TYPE_LABELS[artwork.objectType]] });
+    rows.push({ label: "Type", lines: [ARTWORK_OBJECT_TYPE_SINGULAR_LABELS[artwork.objectType]] });
   }
-  if (artwork.rarity)
-    rows.push({ label: "Rarity", lines: [ARTWORK_RARITY_LABELS[artwork.rarity]] });
   if (artwork.medium) rows.push({ label: "Medium", lines: [artwork.medium] });
   const dimensions = dimensionLines(artwork);
   if (dimensions.length > 0) rows.push({ label: "Dimensions", lines: dimensions });
@@ -105,3 +98,89 @@ export function artworkPriceNote(artwork: PublicArtworkDetail): string | null {
     ? "Contact us to discuss this work. All enquiries are handled with complete discretion."
     : null;
 }
+
+/**
+ * The image stage's width-to-height ratio, kept between a tall portrait (3:4) and a wide
+ * landscape (16:10) so every work sits in a frame made for it, with a narrow mat at most.
+ */
+export const ARTWORK_STAGE_RATIO = { min: 3 / 4, max: 16 / 10 } as const;
+
+export function clampArtworkStageRatio(ratio: number): number {
+  if (!Number.isFinite(ratio) || ratio <= 0) return ARTWORK_STAGE_RATIO.min;
+  return Math.min(ARTWORK_STAGE_RATIO.max, Math.max(ARTWORK_STAGE_RATIO.min, ratio));
+}
+
+/** The stage ratio from the work's own size; null when height or width is unknown. */
+export function artworkStageRatio(
+  artwork: Pick<PublicArtworkDetail, "heightCm" | "widthCm">,
+): number | null {
+  const { heightCm, widthCm } = artwork;
+  if (!heightCm || !widthCm) return null;
+  return clampArtworkStageRatio(widthCm / heightCm);
+}
+
+/** Who replies and when, and where the work can be seen. */
+export type ArtworkPromiseVm = { reply: string; viewing: string };
+
+/** The promise under the price while the work is available; none once it is sold. */
+export function artworkPromise(
+  artwork: PublicArtworkDetail,
+  gallery: { name: string; address: string },
+): ArtworkPromiseVm | null {
+  if (!isArtworkEnquiryAvailable(artwork)) return null;
+  return {
+    reply: "The gallery team replies within one working day.",
+    viewing: `Viewing by appointment at ${gallery.name}, ${gallery.address}.`,
+  };
+}
+
+/** A question a collector asks about buying an original, with the gallery's answer. */
+export type ArtworkFaqVm = {
+  id: string;
+  question: string;
+  answer: string;
+  /** Where to go next, when the answer has a page. */
+  link?: { label: string; href: string };
+};
+
+/**
+ * The artwork page's questions (Figma `468:7996`, `905:21656`). Product-owned copy: there is no
+ * help centre entity yet. Answers follow the gallery's decisions: originals only, sold by
+ * conversation, selling through LAX Bid.
+ */
+export const ARTWORK_FAQS: readonly ArtworkFaqVm[] = [
+  {
+    id: "private-sale",
+    question: "What is a private sale?",
+    answer:
+      "Every original at lax.art is sold directly by the gallery, by conversation rather than at a checkout. You ask about the work, we answer and, if you decide to buy, we send an invoice and arrange delivery.",
+    link: { label: "How to buy", href: "/how-to-buy" },
+  },
+  {
+    id: "availability",
+    question: "How do I know if a work is available?",
+    answer:
+      "Works listed with a price, or with price on request, are available. Sold works stay on the artist's page as part of their record; ask us about similar works.",
+  },
+  {
+    id: "viewing",
+    question: "Can I see the work in person?",
+    answer:
+      "Yes. Book a private viewing and the gallery team will suggest a quiet time to see it at the gallery in Marylebone.",
+    link: { label: "Plan a visit", href: "/visit" },
+  },
+  {
+    id: "contact",
+    question: "How do I contact the gallery team?",
+    answer:
+      "Send an enquiry from this page, call or email us, or visit the gallery. We reply within one working day.",
+    link: { label: "Contact", href: "/contact" },
+  },
+  {
+    id: "selling",
+    question: "How can I sell a work through LAX?",
+    answer:
+      "The gallery does not take works on consignment. Collectors sell at auction with LAX Bid; artists can apply to be represented.",
+    link: { label: "How to sell", href: "/how-to-sell" },
+  },
+];

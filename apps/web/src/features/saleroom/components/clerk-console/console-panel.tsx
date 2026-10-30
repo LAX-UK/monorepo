@@ -28,7 +28,7 @@ export function ConsolePanel({
   return (
     <div
       className={cn(
-        variant === "bordered" && "rounded-staff-md border border-staff-line bg-staff-surface p-4",
+        variant === "bordered" && "rounded-staff-lg border border-staff-line bg-staff-surface p-4",
         className,
       )}
     >

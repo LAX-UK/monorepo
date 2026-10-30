@@ -45,6 +45,10 @@ export type NotificationPayload = {
     collectionPlace?: string;
     /** How a delivered lot reached its buyer. */
     fulfilmentMethod?: "delivery" | "collection";
+    /** The organisation a notice is about, by name, for its email. */
+    organisationName?: string;
+    /** Last four digits of a new payout bank account. */
+    bankLast4?: string | null;
     /** Keeps an email for one fulfilment step from being queued twice. */
     emailIdempotencyKey?: string;
     /** Outbox idempotency key — used by in-app channel to skip duplicate retries. */

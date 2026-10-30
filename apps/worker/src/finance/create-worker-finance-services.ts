@@ -10,6 +10,7 @@ import {
 import {
   DrizzleAddressRepository,
   DrizzleDisplayPairingRepository,
+  DrizzleInvoiceDetailsRepository,
   DrizzleLegalEntityMembershipReader,
   DrizzleLegalEntityReader,
   DrizzleLegalEntityRepository,
@@ -122,6 +123,7 @@ export function createWorkerFinanceServices(
     ),
     profileReader: new DrizzleProfileRepository(db),
     addressRepo: new DrizzleAddressRepository(db),
+    invoiceDetails: new DrizzleInvoiceDetailsRepository(db),
     paymentMaintenance,
   });
 

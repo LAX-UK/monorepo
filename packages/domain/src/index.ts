@@ -334,6 +334,8 @@ export {
 } from "./notification-needs-action.js";
 export {
   NOTIFICATION_ALWAYS_DELIVERED_TYPES,
+  NOTIFICATION_IGNORES_QUIET_HOURS_TYPES,
+  notificationIgnoresQuietHours,
   notificationIsMutable,
   notificationSilencedByMute,
 } from "./notification-mutes.js";
@@ -493,6 +495,46 @@ export {
   type BuyingRecordScope,
 } from "./account-buying-scope.js";
 export {
+  AUTHORISATION_ENDING_SOON_DAYS,
+  EXPIRED_INVITATION_SHOWN_DAYS,
+  NEEDS_YOU_KINDS,
+  NEEDS_YOU_NOTIFICATION_TYPES,
+  needsYouWindows,
+  UNSOLD_CHOICE_WINDOW_DAYS,
+  UNSOLD_DUE_SOON_DAYS,
+  needsYouCounts,
+  needsYouKindAnnouncedBy,
+  needsYouKindsFor,
+  needsYouLink,
+  needsYouTasks,
+  unsoldChoiceDueBy,
+  type EndingAuthorisation,
+  type ExpiredInvitation,
+  type NeedsYouCounts,
+  type NeedsYouFacts,
+  type NeedsYouKind,
+  type NeedsYouLink,
+  type NeedsYouSection,
+  type NeedsYouTask,
+} from "./needs-you.js";
+export {
+  purchaseNextStep,
+  type PurchaseFulfilmentStatus,
+  type PurchaseNextStep,
+  type PurchaseNextStepFacts,
+} from "./purchase-next-step.js";
+export {
+  ACCOUNT_SEARCH_GROUPS,
+  ACCOUNT_SEARCH_MAX_LENGTH,
+  ACCOUNT_SEARCH_MIN_LENGTH,
+  accountSearchGroupsFor,
+  accountSearchScopes,
+  accountSearchTerms,
+  type AccountSearchGroup,
+  type AccountSearchScopes,
+  type AccountSearchTerms,
+} from "./account-record-search.js";
+export {
   buyerPaymentAuthority,
   purchasePaymentRole,
   type BuyerPaymentAuthorityInput,
@@ -548,3 +590,23 @@ export {
   type CollectionBookingOffer,
   type CollectionBookingSettings,
 } from "./collection-booking.js";
+export {
+  MEMBER_LEAVE_REFUSAL_MESSAGE,
+  memberLeavePolicy,
+  type MemberLeaveDecision,
+  type MemberLeaveRefusal,
+} from "./member-leave-policy.js";
+export {
+  ACTIVITY_EVENT_TYPES,
+  ACTIVITY_GROUPS,
+  ACTIVITY_RETENTION_MONTHS,
+  activityEntry,
+  activityEventTypesFor,
+  activityRetentionStart,
+  type ActivityDetail,
+  type ActivityEntry,
+  type ActivityEventRecord,
+  type ActivityEventType,
+  type ActivityGroup,
+  type ActivityKind,
+} from "./organisation-activity.js";

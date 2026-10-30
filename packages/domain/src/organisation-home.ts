@@ -1,5 +1,4 @@
 import type { LegalEntityStatus } from "@auction/types";
-import { roleBidsThroughAuthorisation } from "./bid-authority.js";
 import type { ConsignmentChecklist } from "./consignment-checklist.js";
 import {
   type EntityActor,
@@ -7,13 +6,19 @@ import {
   entityActorCan,
   entityCapabilitiesOf,
 } from "./entity-capabilities.js";
-import { roleNeedsPersonalIdentity } from "./member-role-guide.js";
+import {
+  type HomeSubject,
+  type NeedsYouFacts,
+  type NeedsYouKind,
+  type NeedsYouTask,
+  needsYouKindsFor,
+  needsYouTasks,
+} from "./needs-you.js";
 import {
   type DashboardFigures,
   type OrganisationDashboardModel,
   buildOrganisationDashboard,
 } from "./organisation-dashboard.js";
-import { type OrganisationSetupState, organisationSetupState } from "./organisation-setup.js";
 import {
   type OrganisationAction,
   type OrganisationStatePolicy,
@@ -22,8 +27,7 @@ import {
 } from "./organisation-state-policy.js";
 import type { UnsoldChoiceState } from "./unsold-lot-choice.js";
 
-/** A thing on Home that a task or an activity line is about. */
-export type HomeSubject = { id: string; title: string };
+export type { HomeSubject };
 
 /**
  * Everything Home needs to know, already loaded. Lists a role may not see can be left empty:
@@ -52,34 +56,30 @@ export type OrganisationHomeFacts = {
 /** An unsold lot as the unsold task reads it: whether anyone has chosen yet. */
 export type UnsoldLotState = { choice: UnsoldChoiceState };
 
+/**
+ * The kinds Home draws today. Home reads the one "Needs you" table (`needs-you.ts`); the kinds
+ * added there since (outbid, delivery, collection, invitations, authorisations) reach Home through
+ * the workspace's Needs you endpoint.
+ */
+const HOME_TASK_KINDS = [
+  "documents",
+  "agreement",
+  "changes",
+  "payouts",
+  "unsold",
+  "pay",
+  "won_awaiting_payment",
+  "identity",
+  "register",
+] as const satisfies readonly NeedsYouKind[];
+
+export type HomeTaskKind = (typeof HOME_TASK_KINDS)[number];
 /** One thing on "Needs you". Each has one button; it disappears when done. */
-export type HomeTask =
-  | { kind: "documents" }
-  | { kind: "agreement"; consignment: HomeSubject }
-  | { kind: "changes"; submission: HomeSubject; note: string | null }
-  | { kind: "payouts" }
-  | { kind: "unsold"; lots: HomeSubject[] }
-  | { kind: "pay"; purchases: HomeSubject[] }
-  | { kind: "won_awaiting_payment"; purchases: HomeSubject[] }
-  | { kind: "identity" }
-  | { kind: "register"; sale: HomeSubject; startsAt: Date; bidLimit: string | null };
+export type HomeTask = Extract<NeedsYouTask, { kind: HomeTaskKind }>;
 
-export type HomeTaskKind = HomeTask["kind"];
-
-type TaskSpec = {
-  kind: HomeTaskKind;
-  /** Who may complete it, from the capability table. */
-  allowed: (actor: EntityActor) => boolean;
-  /** What the organisation's own state must allow for the task to be offered. */
-  requires?: OrganisationAction;
-  collect: (facts: OrganisationHomeFacts, state: OrganisationStatePolicy) => HomeTask[];
-};
-
-function capability(name: EntityCapability) {
-  return (actor: EntityActor) => entityActorCan(actor, name);
-}
-
-const DOCUMENT_STATES: ReadonlySet<OrganisationSetupState> = new Set(["documents_requested"]);
+const isHomeKind = (kind: NeedsYouKind): kind is HomeTaskKind =>
+  (HOME_TASK_KINDS as readonly NeedsYouKind[]).includes(kind);
+const isHomeTask = (task: NeedsYouTask): task is HomeTask => isHomeKind(task.kind);
 
 /** Unsold lots nobody has chosen for yet; a made choice clears the task. */
 function lotsAwaitingChoice(facts: Pick<OrganisationHomeFacts, "unsoldLots">): HomeSubject[] {
@@ -88,112 +88,44 @@ function lotsAwaitingChoice(facts: Pick<OrganisationHomeFacts, "unsoldLots">): H
     .map(({ id, title }) => ({ id, title }));
 }
 
-/** "Needs you", in order: what blocks the organisation first, then each piece of work. */
-const TASK_SPECS: readonly TaskSpec[] = [
-  {
-    kind: "documents",
-    allowed: capability("entity.members.manage"),
-    collect: (facts) => {
-      const state = organisationSetupState(facts.organisation);
-      return state && DOCUMENT_STATES.has(state) ? [{ kind: "documents" }] : [];
-    },
-  },
-  {
-    kind: "identity",
-    allowed: (actor) => roleNeedsPersonalIdentity(actor.role) && !actor.isImpersonation,
-    collect: (facts) => (facts.viewerIdentity === "required" ? [{ kind: "identity" }] : []),
-  },
-  {
-    kind: "agreement",
-    requires: "accept_agreement",
-    allowed: capability("entity.consignments.accept_agreement"),
-    collect: (facts) =>
-      facts.consignments
-        .filter(({ checklist }) =>
-          checklist.applies
-            ? checklist.items.some((item) => item.id === "agreement" && item.state === "action")
-            : false,
-        )
-        .map(({ id, title }) => ({ kind: "agreement", consignment: { id, title } })),
-  },
-  {
-    kind: "changes",
-    requires: "submit",
-    allowed: capability("entity.submissions.create"),
-    collect: (facts) =>
-      facts.changesRequested.map(({ id, title, note }) => ({
-        kind: "changes",
-        submission: { id, title },
-        note,
-      })),
-  },
-  {
-    kind: "payouts",
-    requires: "set_up_payouts",
-    allowed: capability("entity.connect.operate"),
-    // The organisation's state decides, so the task, the banner and the sidebar badge agree.
-    collect: (_facts, state) =>
-      state.banner?.key === "payouts_not_set_up" && state.banner.audience === "act"
-        ? [{ kind: "payouts" }]
-        : [],
-  },
-  {
-    kind: "unsold",
-    requires: "choose_unsold",
-    allowed: capability("entity.consignments.after_sale"),
-    collect: (facts) => {
-      const lots = lotsAwaitingChoice(facts);
-      return lots.length > 0 ? [{ kind: "unsold", lots }] : [];
-    },
-  },
-  {
-    kind: "pay",
-    requires: "pay",
-    allowed: capability("entity.finance.write"),
-    collect: (facts) =>
-      facts.purchasesAwaitingPayment.length > 0
-        ? [{ kind: "pay", purchases: [...facts.purchasesAwaitingPayment] }]
-        : [],
-  },
-  {
-    // A buyer agent wins for the organisation; finance pays, so the agent is only told.
-    kind: "won_awaiting_payment",
-    allowed: (actor) =>
-      roleBidsThroughAuthorisation(actor.role) && !entityActorCan(actor, "entity.finance.write"),
-    collect: (facts) =>
-      facts.purchasesAwaitingPayment.length > 0
-        ? [{ kind: "won_awaiting_payment", purchases: [...facts.purchasesAwaitingPayment] }]
-        : [],
-  },
-  {
-    kind: "register",
-    requires: "register",
-    allowed: (actor) => roleBidsThroughAuthorisation(actor.role) && !actor.isImpersonation,
-    collect: (facts) =>
-      facts.salesToRegister.map(({ id, title, startsAt, bidLimit }) => ({
-        kind: "register",
-        sale: { id, title },
-        startsAt,
-        bidLimit,
-      })),
-  },
-];
+/** Home's facts in the table's terms. */
+function asNeedsYouFacts(facts: OrganisationHomeFacts): NeedsYouFacts {
+  return {
+    actor: facts.actor,
+    organisation: facts.organisation,
+    now: new Date(),
+    viewerIdentity: facts.viewerIdentity,
+    sourceOfFundsRequested: false,
+    agreementsToAccept: facts.consignments
+      .filter(({ checklist }) =>
+        checklist.applies
+          ? checklist.items.some((item) => item.id === "agreement" && item.state === "action")
+          : false,
+      )
+      .map(({ id, title }) => ({ id, title })),
+    changesRequested: facts.changesRequested,
+    unsoldLots: lotsAwaitingChoice(facts).map((lot) => ({ ...lot, endedAt: null })),
+    purchases: facts.purchasesAwaitingPayment.map((purchase) => ({
+      ...purchase,
+      paymentStatus: null,
+      fulfilment: null,
+      shippingQuote: null,
+    })),
+    salesToRegister: facts.salesToRegister,
+    outbidLots: [],
+    expiredInvitations: [],
+    endingAuthorisations: [],
+  };
+}
 
 /** Which "Needs you" kinds a role can ever see; Home hides the section for the others. */
 export function homeTaskKindsFor(actor: EntityActor): HomeTaskKind[] {
-  return TASK_SPECS.filter((spec) => spec.allowed(actor)).map((spec) => spec.kind);
+  return needsYouKindsFor(actor).filter(isHomeKind);
 }
 
-/** The tasks this member can complete now, in order. */
+/** The tasks this member can complete now, in the table's order. */
 export function homeTasks(facts: OrganisationHomeFacts): HomeTask[] {
-  const state = organisationStatePolicy(
-    facts.organisation.status,
-    entityCapabilitiesOf(facts.actor),
-    { payoutsReady: facts.organisation.payoutsReady },
-  );
-  return TASK_SPECS.filter(
-    (spec) => spec.allowed(facts.actor) && (!spec.requires || state.actions[spec.requires]),
-  ).flatMap((spec) => spec.collect(facts, state));
+  return needsYouTasks(asNeedsYouFacts(facts)).filter(isHomeTask);
 }
 
 /** Something to know that is not the member's to do. */

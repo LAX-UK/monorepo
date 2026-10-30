@@ -8,7 +8,7 @@ export type LiveBadgeProps = {
 /** Something happening now: the live tone with its pulsing dot. */
 export function LiveBadge({ className, label = "Live" }: LiveBadgeProps) {
   return (
-    <StatusBadge variant="live" shape="dot" className={className}>
+    <StatusBadge tone="live" shape="dot" className={className}>
       {label}
     </StatusBadge>
   );

@@ -34,7 +34,7 @@ const REASON_MIN = 10;
 
 function PayoutFacts({ payout }: { payout: PayoutsStaffRow }) {
   return (
-    <div className="rounded-staff-md border border-staff-line px-3 py-1">
+    <div className="rounded-staff-lg border border-staff-line px-3 py-1">
       <KeyValueList
         items={[
           { label: "Seller", value: payout.seller },

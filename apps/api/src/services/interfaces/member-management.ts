@@ -48,6 +48,13 @@ export interface IMemberManagementService {
   removeMember(actingUserId: string, legalEntityId: string, memberId: string): Promise<void>;
 
   /**
+   * The acting member leaves the organisation, with the same consequences as a removal, and its
+   * owners and admins are told. Refused (`memberLeavePolicy`) for the last owner, who must hand
+   * ownership on first, and for a person's own account.
+   */
+  leave(actingUserId: string, legalEntityId: string): Promise<void>;
+
+  /**
    * Hands the acting owner's ownership to another accepted member: the target becomes an owner
    * and the acting owner an admin, in one transaction.
    */

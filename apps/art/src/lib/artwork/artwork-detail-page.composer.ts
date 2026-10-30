@@ -1,10 +1,15 @@
 import type { ArtViewerState } from "@/lib/art-viewer-state";
+import { artistIntro } from "@/lib/artist/artist-profile.vm";
 import {
   type CatalogueArtworkCardVm,
   artistHref,
   artworkHref,
   buildCatalogueArtworkCards,
 } from "@/lib/catalogue/catalogue-artwork-card.vm";
+import {
+  type EnquiryConfirmationVm,
+  buildEnquiryConfirmation,
+} from "@/lib/enquiry/enquiry-confirmation.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
 import type {
@@ -20,21 +25,26 @@ import {
 } from "@/lib/presenters/artwork-commerce.presenter";
 import { artworkJsonLd } from "@/lib/seo/art-structured-data";
 import { seoMetadataDescription, seoMetadataTitle } from "@/lib/seo/seo-metadata";
-import type { JsonLd } from "@auction/branding";
+import { GALLERY_CONTACT, type JsonLd } from "@auction/branding";
+import { marketingArtistFactsLine, marketingRailHasEnough } from "@auction/marketing-ui";
 import type {
   PublicArtistDetail,
   PublicArtworkDetail,
   PublicArtworkSummary,
 } from "@auction/shop-contracts";
 import {
+  ARTWORK_FAQS,
   type ArtworkBreadcrumbItem,
+  type ArtworkFaqVm,
+  type ArtworkPromiseVm,
   type ArtworkSpecRow,
   artworkCategoryHref,
   artworkCertificateLine,
   artworkPriceNote,
+  artworkPromise,
+  artworkStageRatio,
   buildArtworkBreadcrumb,
   buildArtworkKeySpecs,
-  buildArtworkMediumSpecs,
 } from "./artwork-detail.vm";
 import {
   SHOP_EDITIONS_LIMIT,
@@ -58,11 +68,12 @@ export type ArtworkEnquiryVm =
       artistName: string;
       imageUrl: string | null;
       autoOpen: boolean;
+      confirmation: EnquiryConfirmationVm;
     };
 
 /** "Contact a specialist" in the mobile options sheet opens the general enquiry form. */
 export type ArtworkSpecialistContactVm =
-  | { kind: "ready"; contact: ArtEnquiryContact }
+  | { kind: "ready"; contact: ArtEnquiryContact; viewerKind: "authenticated" | "guest" }
   | { kind: "unavailable" };
 
 export type ArtworkGalleryImageVm = { url: string; alt: string };
@@ -72,7 +83,10 @@ export type ArtworkArtistVm = {
   name: string;
   href: string;
   portraitUrl: string | null;
+  /** One sentence: the short biography, else the biography's first sentence. */
   bio: string | null;
+  /** "British · b. 1956 · Painter"; null when nothing is known. */
+  facts: string | null;
   following: boolean;
 };
 
@@ -85,13 +99,18 @@ export type ArtworkDetailVm = {
   artistName: string;
   artistHref: string;
   galleryImages: ArtworkGalleryImageVm[];
+  /** Width-to-height ratio of the image stage from the work's size; null lets the image decide. */
+  stageRatio: number | null;
   priceLabel: string;
+  /** Who replies and where to see the work; null once the work is sold. */
+  promise: ArtworkPromiseVm | null;
+  /** Questions collectors ask, as pills that open their answers. */
+  faqs: ArtworkFaqVm[];
   /** Discretion line under the price; null once the work is sold. */
   priceNote: string | null;
   /** Edition availability ("Limited edition of 10 · Available"); null for originals. */
   availabilityNote: string | null;
   keySpecs: ArtworkSpecRow[];
-  mediumSpecs: ArtworkSpecRow[];
   description: string | null;
   certificateLine: string | null;
   provenance: string | null;
@@ -141,6 +160,7 @@ function resolveEnquiry(
         artistName: artwork.artistName,
         imageUrl: artwork.imageUrl,
         autoOpen: enquireRequested,
+        confirmation: buildEnquiryConfirmation({ viewer, subject: "artwork" }),
       };
     case "disabled":
     case "unavailable":
@@ -152,7 +172,7 @@ function resolveSpecialistContact(viewer: ArtViewerState): ArtworkSpecialistCont
   switch (viewer.kind) {
     case "authenticated":
     case "guest":
-      return { kind: "ready", contact: resolveContact(viewer) };
+      return { kind: "ready", contact: resolveContact(viewer), viewerKind: viewer.kind };
     case "disabled":
     case "unavailable":
       return { kind: "unavailable" };
@@ -168,7 +188,13 @@ function buildArtistVm(
     name: artist.name,
     href: artistHref(artist.slug),
     portraitUrl: artist.portraitUrl,
-    bio: artist.bio || artist.shortBio || null,
+    bio: artistIntro(artist),
+    facts: marketingArtistFactsLine({
+      nationality: artist.nationality ?? null,
+      birthYear: artist.birthYear ?? null,
+      deathYear: artist.deathYear ?? null,
+      discipline: artist.discipline,
+    }),
     following: followedArtistSlugs.has(artist.slug),
   };
 }
@@ -219,16 +245,21 @@ export async function composeArtworkDetailPage(
       artistName: artwork.artistName,
       artistHref: artistHref(artwork.artistSlug),
       galleryImages: buildGalleryImages(artwork),
+      stageRatio: artworkStageRatio(artwork),
       priceLabel: resolveArtworkPriceLabel(artwork),
       priceNote: artworkPriceNote(artwork),
+      promise: artworkPromise(artwork, GALLERY_CONTACT),
+      faqs: [...ARTWORK_FAQS],
       availabilityNote: availability.isEdition ? availability.headline : null,
       keySpecs: buildArtworkKeySpecs(artwork),
-      mediumSpecs: buildArtworkMediumSpecs(artwork),
       description: artwork.description,
       certificateLine: artworkCertificateLine(artwork),
       provenance: artwork.provenance ?? null,
       exhibitionHistory: artwork.exhibitionHistory ?? null,
-      relatedArtworks: buildCatalogueArtworkCards(relatedPage.items, favorites.savedArtworkSlugs),
+      // A rail of one or two works ends in empty space, so it shows from three.
+      relatedArtworks: marketingRailHasEnough(relatedPage.items.length)
+        ? buildCatalogueArtworkCards(relatedPage.items, favorites.savedArtworkSlugs)
+        : [],
       relatedSection: relatedPage.fromCollection
         ? { title: "More in this collection", viewAllHref: "/artworks", viewAllSrLabel: "artworks" }
         : {
@@ -261,7 +292,7 @@ async function loadShopEditions(
   const editions = await services.catalogue
     .listShopEditionsOfOriginal(artwork.slug, SHOP_EDITIONS_LIMIT)
     .catch(() => ({ items: [] }));
-  return buildShopEditionLinks(editions.items, shop);
+  return buildShopEditionLinks(editions.items, shop, artwork.imageUrl);
 }
 
 export const RELATED_ARTWORKS_LIMIT = 4;

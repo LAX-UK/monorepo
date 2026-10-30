@@ -1,4 +1,8 @@
-import { notificationIsMutable, notificationSilencedByMute } from "@auction/domain";
+import {
+  notificationIgnoresQuietHours,
+  notificationIsMutable,
+  notificationSilencedByMute,
+} from "@auction/domain";
 import type {
   INotificationAccountMuteReader,
   INotificationPreferenceReader,
@@ -90,7 +94,8 @@ export class NotificationDispatcher {
     if (kind === "in_app") {
       return this.preferences.isChannelEnabled(userId, type, "in_app");
     }
-    if (quiet) return false;
+    // Quiet hours hold back every notice except security alerts that cannot wait.
+    if (quiet && !notificationIgnoresQuietHours(type)) return false;
     return this.preferences.isChannelEnabled(userId, type, kind as NotificationChannelKind);
   }
 }

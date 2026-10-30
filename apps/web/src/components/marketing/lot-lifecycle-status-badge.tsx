@@ -14,7 +14,7 @@ export function LotLifecycleStatusBadge({ badge, className }: LotLifecycleStatus
   const presentation = lifecycleToStatusPresentation(badge);
   return (
     <StatusBadge
-      variant={presentation.variant}
+      tone={presentation.variant}
       {...(presentation.dot ? { shape: "dot" as const } : {})}
       className={className}
     >

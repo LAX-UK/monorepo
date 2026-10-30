@@ -234,6 +234,35 @@ describe("contrast in light and dark", () => {
     });
   });
 
+  describe("filled buttons through hover and pressed", () => {
+    const fills = [
+      ["primary", "on-ink", ["ink", "ink-hover", "ink-pressed"]],
+      ["danger", "on-danger", ["danger-solid", "danger-solid-hover", "danger-solid-pressed"]],
+    ] as const;
+
+    it.each(
+      fills.flatMap(([name, label, steps]) =>
+        SCHEMES.map((scheme) => [name, scheme, label, steps] as const),
+      ),
+    )("%s keeps its label at 4.5:1 in every state (%s)", (_name, scheme, label, steps) => {
+      for (const step of steps) {
+        expect(contrast(token(label, scheme), token(step, scheme))).toBeGreaterThanOrEqual(
+          LAX_MIN_CONTRAST.text,
+        );
+      }
+    });
+
+    it.each(
+      fills.flatMap(([name, , steps]) => SCHEMES.map((scheme) => [name, scheme, steps] as const)),
+    )(
+      "%s pressed is its own fill, apart from rest and hover (%s)",
+      (_name, scheme, [rest, hover, pressed]) => {
+        expect(token(pressed, scheme)).not.toBe(token(rest, scheme));
+        expect(token(pressed, scheme)).not.toBe(token(hover, scheme));
+      },
+    );
+  });
+
   describe("status text on its tint, on every surface the tint is laid over", () => {
     const pairs = [
       ...LAX_STATUS_TONES.map((tone) => [tone, `${tone}-fg`, `${tone}-bg`] as const),

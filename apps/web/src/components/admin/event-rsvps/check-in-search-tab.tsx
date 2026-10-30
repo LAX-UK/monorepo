@@ -51,7 +51,7 @@ export function CheckInSearchTab({
         <p className="text-staff-sm text-staff-muted">No guests match “{query}”.</p>
       ) : null}
       {searchResults.length > 0 ? (
-        <ul className="divide-y divide-staff-line-subtle overflow-hidden rounded-staff-md border border-staff-line bg-staff-surface">
+        <ul className="divide-y divide-staff-line-subtle overflow-hidden rounded-staff-lg border border-staff-line bg-staff-surface">
           {searchResults.map((row) => (
             <li
               key={row.rsvpId}

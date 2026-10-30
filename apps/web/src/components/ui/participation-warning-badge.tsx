@@ -21,7 +21,7 @@ export function ParticipationWarningBadge({
     extendedSeconds !== undefined ? { extendedSeconds } : undefined,
   );
   return (
-    <StatusBadge variant={presentation.variant} className={className}>
+    <StatusBadge tone={presentation.variant} className={className}>
       {presentation.label}
     </StatusBadge>
   );

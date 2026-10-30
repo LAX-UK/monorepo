@@ -3,9 +3,10 @@
  *
  * One file, imported by LAX Admin (apps/shop-admin) and Bid admin (apps/web), so both staff tools
  * draw from the same scales. The values come from the LAX system token layer
- * (@auction/branding/lax-system.css), which the client workspace reads too; the app imports it
- * before this file. This file names those tokens for Tailwind (`bg-staff-canvas`, `rounded-staff-sm`)
- * and keeps only what is staff-only: the 11px counter digits, the 24px inline and 40px palette
+ * (@auction/branding/lax-system.css), which the client workspace reads too. The app imports it,
+ * and the LAX primitives' names (@auction/ui/lax-theme.css), before this file. This file names
+ * those tokens for Tailwind under the staff names (`bg-staff-canvas`, `rounded-staff-sm`) and
+ * keeps only what is staff-only: the 11px counter digits, the 24px inline and 40px palette
  * control heights, the sticky layers and Bid's accent. Every colour is a `light-dark()` pair, so a
  * single declaration serves both schemes: the scheme follows `color-scheme`, which `.dark` (both
  * apps' theme switch) and `data-staff-theme="system"` (follow the operating system) set below.
@@ -155,44 +156,30 @@
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* The one focus treatment: a 2px ring offset from the control. `staff-focus-inset` draws it inside
-   the box for rows and cells, where an outside ring would be clipped by the table. */
-/* Important on purpose: the wrapped primitives switch their own outline off on focus, and the
-   one staff ring must win whatever order the stylesheets land in. */
+/* The focus ring, interaction overlays and touch targets are the LAX system utilities
+   (@auction/ui/lax-theme.css, imported before this file), under the names staff pages use. */
 @utility staff-focus {
-  &:focus-visible {
-    outline: var(--lax-focus-width) solid var(--color-staff-focus) !important;
-    outline-offset: var(--lax-focus-offset) !important;
-  }
+  @apply lax-focus;
 }
 
 @utility staff-focus-inset {
-  &:focus-visible {
-    outline: var(--lax-focus-width) solid var(--color-staff-focus) !important;
-    outline-offset: calc(var(--lax-focus-offset) * -1) !important;
-  }
+  @apply lax-focus-inset;
 }
 
-/* Interaction overlays. Painted as a background image over whatever the base colour is, so hover,
-   pressed and selected read the same on white, on a sunken row or on a tinted badge. */
 @utility staff-overlay-hover {
-  background-image: linear-gradient(var(--color-staff-hover), var(--color-staff-hover));
+  @apply lax-overlay-hover;
 }
 
 @utility staff-overlay-pressed {
-  background-image: linear-gradient(var(--color-staff-pressed), var(--color-staff-pressed));
+  @apply lax-overlay-pressed;
 }
 
 @utility staff-overlay-selected {
-  background-image: linear-gradient(var(--color-staff-selected), var(--color-staff-selected));
+  @apply lax-overlay-selected;
 }
 
-/* Touch targets: dense controls stay 32-36px for a mouse and grow to 44px for a finger. */
 @utility staff-target {
-  @media (pointer: coarse) {
-    min-height: var(--lax-control-lg);
-    min-width: var(--lax-control-lg);
-  }
+  @apply lax-target;
 }
 
 /* Focus not obscured: scrolling a focused control into view stops short of the sticky layers. */

@@ -190,7 +190,7 @@ describe("LotDetailShell selling badge", () => {
       lot: { ...pushed, remoteStatus: "1", lastError: "ATG 500" },
     });
     expect(badge()).toHaveTextContent("On ATG · Sync error");
-    expect(badge()?.querySelector(".bg-staff-danger-bg")).not.toBeNull();
+    expect(badge()?.querySelector("[data-tone=danger]")).not.toBeNull();
   });
 
   it("shows lax.bid for a lot in a sale selling on lax.bid, without a link", () => {

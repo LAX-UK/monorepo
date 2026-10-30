@@ -8,7 +8,7 @@ const USER_ID = "2f1c1a1e-7a0e-4c53-9d0b-6f1a2b3c4d5e";
 const LOT_ID = "9b7d0a52-1f43-4b7a-8a55-0c2f6e1d3a90";
 const BASE_URL = "https://test.lax.bid/";
 
-function setup() {
+function setup(billingEmail: string | null = null) {
   const enqueued: EmailEnqueueInput<TemplateName>[] = [];
   const email: IEmailService = {
     async enqueue(input) {
@@ -26,6 +26,10 @@ function setup() {
     users,
     BASE_URL,
     "7e6d5c4b-3a29-4180-9f8e-7d6c5b4a3921",
+    {
+      find: async () =>
+        billingEmail ? { billingEmail, address: null, poReference: null, updatedAt: null } : null,
+    },
   );
   return { channel, enqueued };
 }
@@ -178,5 +182,75 @@ describe("EmailNotificationChannel lot fulfilment", () => {
         purchaseUrl: "https://test.lax.bid/purchases",
       },
     });
+  });
+});
+
+const ORG_ID = "5d4c3b2a-1908-4f7e-8d6c-5b4a39281706";
+
+function invoice(legalEntityId: string | null): NotificationPayload {
+  return {
+    type: "payment_due",
+    legalEntityId,
+    title: "Payment due",
+    message: "GBP 1,250.00",
+    lotId: LOT_ID,
+    meta: { paymentId: "pay-1", amount: "GBP 1,250.00", invoiceNumber: "INV-0001" },
+  };
+}
+
+describe("EmailNotificationChannel invoices to the billing email", () => {
+  it("sends the member their invoice and a copy to the organisation's billing email", async () => {
+    const { channel, enqueued } = setup("accounts@northbank.example");
+    await channel.send(USER_ID, invoice(ORG_ID));
+    expect(enqueued.map((e) => [e.template, e.to])).toEqual([
+      ["payment-invoice", "ada@example.com"],
+      ["payment-invoice", "accounts@northbank.example"],
+    ]);
+    expect(enqueued[1]).toMatchObject({
+      recipientResolution: "snapshot",
+      idempotencyKey: `payment-invoice-billing:${ORG_ID}:pay-1`,
+      vars: { invoiceNumber: "INV-0001" },
+    });
+    expect(enqueued[1]?.userId).toBeUndefined();
+  });
+
+  it("sends one copy when the billing email is the member's own", async () => {
+    const { channel, enqueued } = setup("ADA@example.com");
+    await channel.send(USER_ID, invoice(ORG_ID));
+    expect(enqueued).toHaveLength(1);
+  });
+
+  it("sends only the member's copy with no billing email or no organisation", async () => {
+    const none = setup(null);
+    await none.channel.send(USER_ID, invoice(ORG_ID));
+    expect(none.enqueued).toHaveLength(1);
+    const personal = setup("accounts@northbank.example");
+    await personal.channel.send(USER_ID, invoice(null));
+    expect(personal.enqueued).toHaveLength(1);
+  });
+});
+
+describe("EmailNotificationChannel payout bank change", () => {
+  it("names the organisation and the new account, and links to payouts", async () => {
+    const { channel, enqueued } = setup();
+    await channel.send(USER_ID, {
+      type: "payout_bank_changed",
+      legalEntityId: ORG_ID,
+      title: "The payout bank account for Northbank Gallery changed",
+      message: "Payouts now go to the account ending 4242.",
+      meta: { organisationName: "Northbank Gallery", bankLast4: "4242" },
+    });
+    expect(enqueued).toEqual([
+      expect.objectContaining({
+        template: "payout-bank-changed-notice",
+        to: "ada@example.com",
+        vars: {
+          userName: "Ada",
+          entityName: "Northbank Gallery",
+          bankLast4: "4242",
+          payoutsUrl: "https://test.lax.bid/organisation/payouts",
+        },
+      }),
+    ]);
   });
 });

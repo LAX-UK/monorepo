@@ -1,7 +1,7 @@
+import type { LinkComponent } from "@auction/ui/lax";
 import { ExternalLink } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
-import type { StaffLinkComponent } from "../shell/link.js";
 
 /**
  * A link in running text or a facts list, outside a table: underlined so it reads as a link at
@@ -25,7 +25,7 @@ export function TextLink({
 }: {
   href: string;
   /** The app's router link, for in-app pages. */
-  Link?: StaffLinkComponent;
+  Link?: LinkComponent;
   external?: boolean;
   className?: string;
   children: React.ReactNode;

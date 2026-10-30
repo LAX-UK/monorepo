@@ -1,11 +1,12 @@
 "use client";
 
+import { TOAST_DURATION_MS, UNDO_TOAST_DURATION_MS } from "@auction/ui/lax";
 import * as React from "react";
 import { toast } from "sonner";
 
 /** A plain confirmation stays 5s; one with Undo stays 10s, and both pause while hovered. */
-export const STAFF_TOAST_DURATION_MS = 5000;
-export const STAFF_UNDO_TOAST_DURATION_MS = 10_000;
+export const STAFF_TOAST_DURATION_MS = TOAST_DURATION_MS;
+export const STAFF_UNDO_TOAST_DURATION_MS = UNDO_TOAST_DURATION_MS;
 
 /**
  * Confirms a reversible change with one Undo action: "Order LAX-10432 marked packed · Undo".

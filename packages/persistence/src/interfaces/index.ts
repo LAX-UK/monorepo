@@ -953,3 +953,22 @@ export type {
   IRecordPeopleReader,
   RecordPerson,
 } from "./workspace-buying.readers.js";
+export type {
+  AccountSearchCriteria,
+  AccountSearchHits,
+  ConsignmentSearchHit,
+  IAccountRecordSearchReader,
+  InvoiceSearchHit,
+  LotSearchHit,
+  MemberSearchHit,
+} from "./account-record-search.reader.js";
+export type { INeedsYouFactsReader } from "./needs-you-facts.reader.js";
+export type {
+  ActivityListFilter,
+  ActivityPerson,
+  IInvoiceDetailsReader,
+  IInvoiceDetailsRepository,
+  IOrganisationActivityReader,
+  InvoiceAddress,
+  InvoiceDetails,
+} from "./organisation-team.readers.js";

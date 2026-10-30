@@ -73,7 +73,8 @@ function taskKinds(facts: OrganisationHomeFacts) {
 
 describe("buildOrganisationHome, per role", () => {
   it("owner: everything that keeps the organisation selling and buying", () => {
-    expect(taskKinds(busy("owner"))).toEqual(["agreement", "changes", "payouts", "unsold", "pay"]);
+    // Money and time first, then binding steps, then the rest of the work, then setup.
+    expect(taskKinds(busy("owner"))).toEqual(["pay", "agreement", "changes", "unsold", "payouts"]);
     expect(homeShortcuts({ role: "owner" }, "approved")).toEqual(["sell", "invite", "statements"]);
   });
 
@@ -83,20 +84,20 @@ describe("buildOrganisationHome, per role", () => {
   });
 
   it("finance: payouts and purchases to pay", () => {
-    expect(taskKinds(busy("finance"))).toEqual(["payouts", "pay"]);
+    expect(taskKinds(busy("finance"))).toEqual(["pay", "payouts"]);
     expect(homeShortcuts({ role: "finance" }, "approved")).toEqual([]);
   });
 
   it("consignor: their identity and submissions sent back; never the agreement or the unsold choice", () => {
-    expect(taskKinds(busy("consignor"))).toEqual(["identity", "changes"]);
+    expect(taskKinds(busy("consignor"))).toEqual(["changes", "identity"]);
     expect(homeShortcuts({ role: "consignor" }, "approved")).toEqual([]);
   });
 
   it("buyer agent: identity, sales to register in, and wins finance has to pay", () => {
     expect(taskKinds(busy("buyer_agent"))).toEqual([
-      "identity",
       "won_awaiting_payment",
       "register",
+      "identity",
     ]);
     expect(homeShortcuts({ role: "buyer_agent" }, "approved")).toEqual([]);
   });
@@ -373,8 +374,8 @@ describe("Home by organisation state", () => {
   it("offers no selling, agreements or registering to a restricted organisation", () => {
     expect(taskKinds(inState("owner", "restricted"))).toEqual(["pay"]);
     expect(taskKinds(inState("buyer_agent", "restricted"))).toEqual([
-      "identity",
       "won_awaiting_payment",
+      "identity",
     ]);
     expect(homeShortcuts({ role: "owner" }, "restricted")).toEqual(["statements"]);
   });

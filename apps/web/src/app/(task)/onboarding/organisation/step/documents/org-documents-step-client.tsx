@@ -154,7 +154,7 @@ export function OrgDocumentsStepClient({
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium">{slot.title}</p>
                     {uploadedBadge ? (
-                      <StatusBadge variant={uploadedBadge.tone}>{uploadedBadge.label}</StatusBadge>
+                      <StatusBadge tone={uploadedBadge.tone}>{uploadedBadge.label}</StatusBadge>
                     ) : null}
                   </div>
                   {slot.label ? (

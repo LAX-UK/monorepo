@@ -465,11 +465,22 @@ export {
   type MarketingSplitFeatureProps,
 } from "./marketing-split-feature.js";
 export {
+  MarketingGalleryDetailList,
   MarketingGalleryTeamBand,
   type MarketingGalleryTeamBandProps,
   type MarketingGalleryTeamDetail,
   type MarketingGalleryTeamDetailKind,
 } from "./marketing-gallery-team-band.js";
+export {
+  type MarketingFaqPill,
+  MarketingFaqPills,
+  type MarketingFaqPillsProps,
+} from "./marketing-faq-pills.js";
+export {
+  MarketingEnquiryConfirmation,
+  type MarketingEnquiryConfirmationProps,
+  type MarketingEnquiryStep,
+} from "./marketing-enquiry-confirmation.js";
 export {
   type MarketingGalleryContact,
   marketingGalleryContactDetails,

@@ -58,7 +58,7 @@ function EntryLink({ entry }: { entry: LaxMoneyEntryV1 }) {
 
 function EntryStatus({ entry }: { entry: LaxMoneyEntryV1 }) {
   return (
-    <StatusBadge variant={entry.status === "cancelled" ? "danger" : "neutral"}>
+    <StatusBadge tone={entry.status === "cancelled" ? "danger" : "neutral"}>
       {MONEY_STATUS_LABELS[entry.status]}
     </StatusBadge>
   );

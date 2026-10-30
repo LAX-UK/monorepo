@@ -1,13 +1,15 @@
 "use client";
 
+import { ArtEnquiryConfirmation } from "@/components/enquiry/art-enquiry-confirmation";
 import { ArtEnquiryForm } from "@/components/enquiry/art-enquiry-form.client";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import type { ArtEnquiryContact } from "@/lib/artwork/artwork-detail-page.composer";
 import { sendArtEnquiry } from "@/lib/enquiry/art-enquiry-actions.server";
+import type { EnquiryConfirmationVm } from "@/lib/enquiry/enquiry-confirmation.vm";
 import { ENQUIRY_MESSAGE_MAX_LENGTH } from "@/lib/enquiry/enquiry-form.validator";
 import type { ArtEnquiryState } from "@/lib/enquiry/submit-art-enquiry";
 import { ART_MEDIA_LABELS } from "@/lib/media/art-media-labels";
-import { MarketingSideSheet, MarketingSuccessState } from "@auction/marketing-ui";
+import { MarketingSideSheet } from "@auction/marketing-ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import type { ReactNode } from "react";
@@ -21,6 +23,8 @@ export type ArtEnquirySheetProps = {
   contact: ArtEnquiryContact;
   /** Opened from a card “Enquire” link (`?enquire=1`). */
   autoOpen: boolean;
+  /** The designed sent state: what happens next and the way on. */
+  confirmation: EnquiryConfirmationVm;
   /** Trigger text; defaults to "Enquire". */
   triggerLabel?: ReactNode;
 };
@@ -43,6 +47,7 @@ export function ArtEnquirySheet({
   contact,
   autoOpen,
   triggerLabel = "Enquire",
+  confirmation,
 }: ArtEnquirySheetProps) {
   const [open, setOpen] = useState(autoOpen);
   const action = useMemo(() => sendArtEnquiry.bind(null, artworkSlug), [artworkSlug]);
@@ -66,7 +71,7 @@ export function ArtEnquirySheet({
         ref={triggerRef}
         type="button"
         size="lg"
-        className="min-h-11 w-full font-label sm:w-auto"
+        className="min-h-11 w-full font-label"
         onClick={() => setOpen(true)}
         data-testid="art-enquire-trigger"
       >
@@ -80,28 +85,18 @@ export function ArtEnquirySheet({
         returnFocusRef={triggerRef}
       >
         <div data-testid="art-enquiry-sheet">
-          {sent ? (
-            <MarketingSuccessState
+          {state.status === "sent" ? (
+            <ArtEnquiryConfirmation
               ref={sentRef}
-              tabIndex={-1}
-              title="Enquiry sent"
-              description="Our specialist will be in touch soon."
-              actions={
-                <Button
-                  type="button"
-                  variant="secondaryOutline"
-                  className="w-full"
-                  onClick={() => onOpenChange(false)}
-                >
-                  Close
-                </Button>
-              }
+              vm={confirmation}
+              email={state.email}
+              onClose={() => onOpenChange(false)}
             />
           ) : (
             <div className="flex flex-col gap-6">
               <p className="text-base leading-6 text-on-surface">
-                Thank you for your interest. Please complete the form below and our specialist will
-                follow up with you shortly.
+                Ask about price, condition, framing or delivery. The gallery team replies within one
+                working day, and every enquiry is handled with discretion.
               </p>
               <div className="flex items-center gap-4 border-y border-border-hairline py-4">
                 <ArtMediaImage

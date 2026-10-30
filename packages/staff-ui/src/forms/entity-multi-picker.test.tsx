@@ -1,7 +1,7 @@
+import { Field } from "@auction/ui/lax";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { EntityMultiPicker } from "./entity-multi-picker.js";
-import { Field } from "./field.js";
 
 const options = [
   { id: "c1", label: "Paintings" },

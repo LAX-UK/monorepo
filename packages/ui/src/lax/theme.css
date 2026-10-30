@@ -1,0 +1,181 @@
+/*
+ * The LAX system primitives' Tailwind names.
+ *
+ * The values live in @auction/branding/lax-system.css; this file names them for the shared
+ * primitives in `@auction/ui/lax` (`bg-lax-surface`, `rounded-lax-control`, `text-lax-ui`). Both
+ * the staff tools and the client workspace import it, after lax-system.css:
+ *
+ *   @import "@auction/branding/lax-system.css" layer(base);
+ *   @import "@auction/ui/lax-theme.css";
+ *   @source "../../../../packages/ui/src/**\/*.{ts,tsx}";
+ *
+ * Density. The shell sets `data-lax-density="staff"` or `"client"`. The type step of the
+ * interface (`text-lax-ui`) follows it through the density tokens; discrete differences (switch
+ * size, figure size) use the `in-data-[lax-density=client]:` variant in the component. Without a
+ * density the primitives draw at the staff step, so a stray primitive never looks broken.
+ */
+
+@theme {
+  --font-lax: var(--font-outfit), var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-lax-display: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+
+  /* Type: one step per size, on the 4px grid. `2xs` is for digits in counters and kbd glyphs only;
+     `ui` is the interface step of the current density (13/20 staff, 14/20 client). */
+  --text-lax-2xs: 11px;
+  --text-lax-2xs--line-height: 16px;
+  --text-lax-12: var(--lax-text-12);
+  --text-lax-12--line-height: var(--lax-text-12--line);
+  --text-lax-13: var(--lax-text-13);
+  --text-lax-13--line-height: var(--lax-text-13--line);
+  --text-lax-14: var(--lax-text-14);
+  --text-lax-14--line-height: var(--lax-text-14--line);
+  --text-lax-16: var(--lax-text-16);
+  --text-lax-16--line-height: var(--lax-text-16--line);
+  --text-lax-18: var(--lax-text-18);
+  --text-lax-18--line-height: var(--lax-text-18--line);
+  --text-lax-20: var(--lax-text-20);
+  --text-lax-20--line-height: var(--lax-text-20--line);
+  --text-lax-24: var(--lax-text-24);
+  --text-lax-24--line-height: var(--lax-text-24--line);
+  --text-lax-28: var(--lax-text-28);
+  --text-lax-28--line-height: var(--lax-text-28--line);
+  --text-lax-ui: var(--lax-density-text, var(--lax-text-13));
+  --text-lax-ui--line-height: var(--lax-density-text-line, var(--lax-text-13--line));
+
+  /* Radius: one role per step. */
+  --radius-lax-badge: var(--lax-radius-badge);
+  --radius-lax-control: var(--lax-radius-control);
+  --radius-lax-menu: var(--lax-radius-menu);
+  --radius-lax-card: var(--lax-radius-card);
+
+  /* Control heights: 24 inline (kbd, row icons), 32 compact, 36 default, 44 touch. */
+  --spacing-lax-control-xs: 24px;
+  --spacing-lax-control-sm: var(--lax-control-sm);
+  --spacing-lax-control-md: var(--lax-control-md);
+  --spacing-lax-control-lg: var(--lax-control-lg);
+
+  --shadow-lax-xs: var(--lax-shadow-xs);
+  --shadow-lax-md: var(--lax-shadow-md);
+  --shadow-lax-lg: var(--lax-shadow-lg);
+
+  --color-lax-canvas: var(--lax-canvas);
+  --color-lax-page: var(--lax-page);
+  --color-lax-side: var(--lax-side);
+  --color-lax-surface: var(--lax-surface);
+  --color-lax-sunken: var(--lax-sunken);
+  --color-lax-raised: var(--lax-raised);
+  --color-lax-paper: var(--lax-paper);
+  --color-lax-hover: var(--lax-hover);
+  --color-lax-pressed: var(--lax-pressed);
+  --color-lax-selected: var(--lax-selected);
+  --color-lax-line: var(--lax-line);
+  --color-lax-line-subtle: var(--lax-line-subtle);
+  --color-lax-line-strong: var(--lax-line-strong);
+  --color-lax-line-hover: var(--lax-line-hover);
+  --color-lax-control-edge: var(--lax-control-edge);
+  --color-lax-control-edge-hover: var(--lax-control-edge-hover);
+  --color-lax-fg: var(--lax-fg);
+  --color-lax-muted: var(--lax-muted);
+  --color-lax-subtle: var(--lax-subtle);
+  --color-lax-ink: var(--lax-ink);
+  --color-lax-ink-hover: var(--lax-ink-hover);
+  --color-lax-ink-pressed: var(--lax-ink-pressed);
+  --color-lax-on-ink: var(--lax-on-ink);
+  --color-lax-focus: var(--lax-focus);
+  --color-lax-thumb: var(--lax-thumb);
+  --color-lax-scrim: var(--lax-scrim);
+  --color-lax-disabled-fg: var(--lax-disabled-fg);
+  --color-lax-disabled-bg: var(--lax-disabled-bg);
+  --color-lax-disabled-border: var(--lax-disabled-border);
+  --color-lax-neutral-bg: var(--lax-neutral-bg);
+  --color-lax-neutral-fg: var(--lax-neutral-fg);
+  --color-lax-neutral-dot: var(--lax-neutral-dot);
+  --color-lax-info-bg: var(--lax-info-bg);
+  --color-lax-info-fg: var(--lax-info-fg);
+  --color-lax-info-dot: var(--lax-info-dot);
+  --color-lax-success-bg: var(--lax-success-bg);
+  --color-lax-success-fg: var(--lax-success-fg);
+  --color-lax-success-dot: var(--lax-success-dot);
+  --color-lax-warning-bg: var(--lax-warning-bg);
+  --color-lax-warning-fg: var(--lax-warning-fg);
+  --color-lax-warning-dot: var(--lax-warning-dot);
+  --color-lax-danger-bg: var(--lax-danger-bg);
+  --color-lax-danger-fg: var(--lax-danger-fg);
+  --color-lax-danger-dot: var(--lax-danger-dot);
+  --color-lax-danger: var(--lax-danger);
+  --color-lax-danger-solid: var(--lax-danger-solid);
+  --color-lax-danger-solid-hover: var(--lax-danger-solid-hover);
+  --color-lax-danger-solid-pressed: var(--lax-danger-solid-pressed);
+  --color-lax-on-danger: var(--lax-on-danger);
+  --color-lax-live-dot: var(--lax-live-dot);
+  --color-lax-live-bg: var(--lax-live-bg);
+  --color-lax-on-live: var(--lax-on-live);
+}
+
+/* Icons: one stroke weight, whatever size an icon is drawn at. Portalled layers (menus, tooltips,
+   dialogs, toasts) carry `data-lax-ui` so this reaches them outside the shell. */
+[data-lax-ui] svg.lucide {
+  stroke-width: 1.75;
+}
+
+[data-lax-ui] {
+  font-family: var(--font-lax);
+  font-feature-settings: "ss01" off;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* The one focus treatment: a 2px ring offset from the control, inset on rows and cells where an
+   outside ring would be clipped. Important on purpose: wrapped Radix primitives switch their own
+   outline off on focus, and the one ring must win whatever order the stylesheets land in. */
+@utility lax-focus {
+  &:focus-visible {
+    outline: var(--lax-focus-width) solid var(--lax-focus) !important;
+    outline-offset: var(--lax-focus-offset) !important;
+  }
+}
+
+@utility lax-focus-inset {
+  &:focus-visible {
+    outline: var(--lax-focus-width) solid var(--lax-focus) !important;
+    outline-offset: calc(var(--lax-focus-offset) * -1) !important;
+  }
+}
+
+/* Interaction overlays, painted over whatever the base colour is, so hover, pressed and selected
+   read the same on white, on a sunken row or on a tinted badge. */
+@utility lax-overlay-hover {
+  background-image: linear-gradient(var(--lax-hover), var(--lax-hover));
+}
+
+@utility lax-overlay-pressed {
+  background-image: linear-gradient(var(--lax-pressed), var(--lax-pressed));
+}
+
+@utility lax-overlay-selected {
+  background-image: linear-gradient(var(--lax-selected), var(--lax-selected));
+}
+
+/* Touch targets: a control grows to 44px for a finger, and in the client workspace on any phone
+   (clients make fewer, costlier taps). Staff controls stay dense under a mouse at any width. */
+@utility lax-target {
+  @media (pointer: coarse) {
+    min-height: var(--lax-control-lg);
+    min-width: var(--lax-control-lg);
+  }
+  @media (max-width: 47.99rem) {
+    :where([data-lax-density="client"]) & {
+      min-height: var(--lax-control-lg);
+      min-width: var(--lax-control-lg);
+    }
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-lax-ui] *,
+  [data-lax-ui] *::before,
+  [data-lax-ui] *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+  }
+}

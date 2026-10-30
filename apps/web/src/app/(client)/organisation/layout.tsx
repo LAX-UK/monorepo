@@ -79,7 +79,7 @@ export default async function OrganisationLayout({ children }: { children: React
           actions={
             // The state is a status; the organisation's type is a plain fact beside it.
             <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-              <StatusBadge variant={status.tone}>{status.label}</StatusBadge>
+              <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
               <span className="font-body text-sm leading-5 text-on-surface-variant">
                 {subkindLabel(member.subkind)}
               </span>

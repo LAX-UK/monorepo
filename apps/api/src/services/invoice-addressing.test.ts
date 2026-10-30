@@ -51,6 +51,9 @@ const indEntity = (overrides: Partial<LegalEntity> = {}): LegalEntity => ({
   ...overrides,
 });
 
+/** Organisations without saved invoice details: the registered address is used. */
+const noInvoiceDetails = { find: async () => null };
+
 describe("InvoiceAddressingService.resolveForPayment", () => {
   it("organisation with VAT and preferred address", async () => {
     const payments = {
@@ -79,6 +82,7 @@ describe("InvoiceAddressingService.resolveForPayment", () => {
       legalEntities,
       profiles,
       addresses,
+      noInvoiceDetails,
       silentLogger(),
     );
     const { billTo, warnings } = await svc.resolveForPayment("pay1");
@@ -88,6 +92,54 @@ describe("InvoiceAddressingService.resolveForPayment", () => {
     expect(billTo.addressIncomplete).toBe(false);
     expect(billTo.addressLines.join("|")).toContain("1 High St");
     expect(warnings).toHaveLength(0);
+  });
+
+  it("organisation with invoice details: their address and PO reference win", async () => {
+    const payments = {
+      findById: vi.fn().mockResolvedValue({
+        id: "pay1",
+        buyerLegalEntityId: "le-org",
+        paidByUserId: "u1",
+      }),
+    } as unknown as IPaymentWriteRepository;
+    const legalEntities = {
+      findById: vi.fn().mockResolvedValue(orgEntity({ vatNumber: null })),
+      findPreferredBillToLegalEntityAddress: vi.fn().mockResolvedValue({
+        line1: "1 High St",
+        line2: null,
+        city: "London",
+        state: null,
+        postalCode: "EC1A 1BB",
+        country: "GB",
+        addressType: "registered_office",
+      }),
+    } as unknown as ILegalEntityRepository;
+    const svc = new InvoiceAddressingService(
+      payments,
+      legalEntities,
+      {} as IProfileReader,
+      { listByUser: vi.fn() } as unknown as IAddressRepository,
+      {
+        find: async () => ({
+          billingEmail: "accounts@acme.example",
+          address: {
+            line1: "Accounts, 9 Cork Street",
+            line2: null,
+            city: "London",
+            region: null,
+            postalCode: "W1S 3LL",
+            country: "GB",
+          },
+          poReference: "PO-4471",
+          updatedAt: null,
+        }),
+      },
+      silentLogger(),
+    );
+    const { billTo } = await svc.resolveForPayment("pay1");
+    expect(billTo.addressLines[0]).toBe("Accounts, 9 Cork Street");
+    expect(billTo.addressLines.join("|")).not.toContain("1 High St");
+    expect(billTo.poReference).toBe("PO-4471");
   });
 
   it("organisation without VAT", async () => {
@@ -115,6 +167,7 @@ describe("InvoiceAddressingService.resolveForPayment", () => {
       legalEntities,
       {} as IProfileReader,
       { listByUser: vi.fn() } as unknown as IAddressRepository,
+      noInvoiceDetails,
       silentLogger(),
     );
     const { billTo } = await svc.resolveForPayment("pay1");
@@ -149,6 +202,7 @@ describe("InvoiceAddressingService.resolveForPayment", () => {
       legalEntities,
       {} as IProfileReader,
       { listByUser: vi.fn() } as unknown as IAddressRepository,
+      noInvoiceDetails,
       log,
     );
     const { billTo, warnings } = await svc.resolveForPayment("pay1");
@@ -196,6 +250,7 @@ describe("InvoiceAddressingService.resolveForPayment", () => {
       legalEntities,
       profiles,
       addresses,
+      noInvoiceDetails,
       silentLogger(),
     );
     const { billTo, warnings } = await svc.resolveForPayment("pay1");
@@ -226,7 +281,14 @@ describe("InvoiceAddressingService.resolveForPayment", () => {
       listByUser: vi.fn().mockResolvedValue([]),
     } as unknown as IAddressRepository;
     const log = silentLogger();
-    const svc = new InvoiceAddressingService(payments, legalEntities, profiles, addresses, log);
+    const svc = new InvoiceAddressingService(
+      payments,
+      legalEntities,
+      profiles,
+      addresses,
+      noInvoiceDetails,
+      log,
+    );
     const { billTo, warnings } = await svc.resolveForPayment("pay1");
     expect(billTo.addressLines).toEqual([]);
     expect(billTo.addressIncomplete).toBe(true);
@@ -271,6 +333,7 @@ describe("InvoiceAddressingService.resolveForPayment", () => {
       legalEntities,
       profiles,
       addresses,
+      noInvoiceDetails,
       silentLogger(),
     );
     const { billTo } = await svc.resolveForPayment("pay1");
@@ -302,6 +365,7 @@ describe("InvoiceAddressingService.resolveForPayment", () => {
       legalEntities,
       {} as IProfileReader,
       { listByUser: vi.fn() } as unknown as IAddressRepository,
+      noInvoiceDetails,
       silentLogger(),
     );
     const { billTo } = await svc.resolveForPayment("pay1");

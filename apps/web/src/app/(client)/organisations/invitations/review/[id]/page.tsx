@@ -46,7 +46,7 @@ export default async function InvitationReviewPage({
         eyebrow="Invitation"
         title={invitation.orgDisplayName}
         badges={
-          <StatusBadge variant="info">{organisationRoleLabel(invitation.roleOffered)}</StatusBadge>
+          <StatusBadge tone="info">{organisationRoleLabel(invitation.roleOffered)}</StatusBadge>
         }
       />
       <Surface variant="section" padding="lg" className="space-y-4">

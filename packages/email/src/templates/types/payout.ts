@@ -5,6 +5,7 @@ const names = [
   "payout-transfer-blocked-notice",
   "payout-initiated-notice",
   "payout-clawback-required-notice",
+  "payout-bank-changed-notice",
 ] as const;
 
 type PayoutTemplateName = (typeof names)[number];
@@ -52,6 +53,14 @@ type PayoutTemplateVars = {
     currency: string;
     payoutsUrl: string;
   };
+  /** Tells every owner, admin and finance member that the payout bank account changed. */
+  "payout-bank-changed-notice": {
+    userName: string;
+    entityName: string;
+    /** Last four digits of the new account, when Stripe gave them. */
+    bankLast4: string | null;
+    payoutsUrl: string;
+  };
   "payout-clawback-required-notice": {
     audience: PayoutAudience;
     recipientFirstName?: string | null;
@@ -71,6 +80,7 @@ export const payoutTemplates = {
     "payout-transfer-blocked-notice": "live",
     "payout-initiated-notice": "live",
     "payout-clawback-required-notice": "live",
+    "payout-bank-changed-notice": "live",
   },
 } satisfies TemplateDomainSlice<PayoutTemplateName, PayoutTemplateVars>;
 

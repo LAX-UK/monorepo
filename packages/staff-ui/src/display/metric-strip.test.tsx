@@ -1,10 +1,8 @@
+import { PlainLink, Sparkline, metricChange, sparklinePoints } from "@auction/ui/lax";
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { PlainLink } from "../shell/link.js";
 import { AttentionStrip } from "./attention-strip.js";
-import { metricChange } from "./metric-change.js";
 import { MetricStrip } from "./metric-strip.js";
-import { Sparkline, sparklinePoints } from "./sparkline.js";
 import { StatGrid } from "./stat-grid.js";
 
 describe("MetricStrip", () => {
