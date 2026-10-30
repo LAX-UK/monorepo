@@ -397,7 +397,6 @@ describe("Home with the dashboard", () => {
     purchasesAwaitingPayment: [],
     viewerIdentity: "verified" as const,
     salesToRegister: [],
-    hasWorkAwaitingPayout: false,
   });
 
   it("first steps replace the shortcuts they would repeat", () => {

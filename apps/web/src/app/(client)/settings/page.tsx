@@ -9,6 +9,7 @@ import {
 } from "@/components/dashboard/settings/bid-settings-sections";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { laxAccountUrl } from "@/lib/lax-account-url";
+import { resolveActingContext } from "@/lib/legal-entity/acting-context.server";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { Suspense } from "react";
@@ -35,13 +36,19 @@ export default async function SettingsPage({
   if (sp.tab === "security") redirect(laxAccountUrl("/account/security"));
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: "/settings" });
 
+  const { acting } = await resolveActingContext(user.role, user.staffRoles);
+  const organisation =
+    acting.kind === "organisation"
+      ? { name: acting.displayName, status: acting.status, role: acting.role }
+      : null;
+
   return (
     <DashboardListPage
       title="Bid settings"
       description="How bidding and selling work for you on LAX Bid."
     >
       <div className="max-w-5xl">
-        <BiddingSettings user={user} />
+        <BiddingSettings user={user} organisation={organisation} />
         <Suspense fallback={<SectionLoading label="Loading notification settings" />}>
           <NotificationSettings user={user} />
         </Suspense>

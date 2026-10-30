@@ -34,7 +34,6 @@ function busy(role: LegalEntityMemberRole): OrganisationHomeFacts {
     salesToRegister: [
       { id: "sale1", title: "Contemporary", startsAt: new Date("2026-11-04"), bidLimit: "10000" },
     ],
-    hasWorkAwaitingPayout: true,
   };
 }
 
@@ -49,7 +48,6 @@ function quiet(role: LegalEntityMemberRole): OrganisationHomeFacts {
     purchasesAwaitingPayment: [],
     viewerIdentity: "verified",
     salesToRegister: [],
-    hasWorkAwaitingPayout: false,
   };
 }
 
@@ -172,6 +170,25 @@ describe("organisation state on Home", () => {
     };
     expect(banner(facts)).toMatchObject({ key: "payouts_not_set_up", audience: "told" });
     expect(banner({ ...facts, actor: { role: "finance" } })).toMatchObject({ audience: "act" });
+  });
+
+  it("offers the payouts task exactly to those the banner asks to act, with or without work", () => {
+    const organisation = { status: "approved" as const, payoutsReady: false };
+    const tasksFor = (role: LegalEntityMemberRole) =>
+      taskKinds({ ...quiet(role), organisation, actor: { role } }) ?? [];
+    for (const role of ["owner", "admin", "finance"] as const) {
+      expect(banner({ ...quiet(role), organisation })).toMatchObject({ audience: "act" });
+      expect(tasksFor(role)).toContain("payouts");
+    }
+    for (const role of ["consignor", "viewer"] as const) {
+      expect(banner({ ...quiet(role), organisation })).toMatchObject({ audience: "told" });
+      expect(tasksFor(role)).not.toContain("payouts");
+    }
+    expect(tasksFor("buyer_agent")).not.toContain("payouts");
+  });
+
+  it("offers no payouts task once payouts are ready", () => {
+    expect(taskKinds(quiet("owner"))).toEqual([]);
   });
 
   it("does not tell a buyer agent about payouts", () => {

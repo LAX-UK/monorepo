@@ -208,9 +208,6 @@ export async function loadOrganisationHome(
           ]
         : [],
     ),
-    hasWorkAwaitingPayout:
-      lots.length > 0 ||
-      submissions.some((s) => s.status === "approved" || s.status === "converted"),
   };
 
   const activity = homeActivityEvents({
