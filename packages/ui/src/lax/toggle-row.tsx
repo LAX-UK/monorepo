@@ -57,7 +57,7 @@ export function ToggleRow({
           htmlFor={id}
           className={cn(
             "block text-lax-ui font-medium",
-            disabled ? "cursor-not-allowed text-lax-disabled-fg" : "cursor-pointer text-lax-fg",
+            disabled ? "cursor-not-allowed text-lax-muted" : "cursor-pointer text-lax-fg",
           )}
         >
           {label}
