@@ -11,6 +11,7 @@ import { SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR } from "./source-of-funds-doc
 import { SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR } from "./source-of-funds-documents.js";
 import { SOURCE_OF_FUNDS_REVIEW_RESOLUTION_PROJECTOR } from "./source-of-funds-review-resolution.js";
 import { SOURCE_OF_FUNDS_REVIEW_PROJECTOR } from "./source-of-funds-review.js";
+import { UNSOLD_CHOICE_DEADLINE_PROJECTOR } from "./unsold-choice-deadline.js";
 import { XERO_PROJECTOR } from "./xero-projector.js";
 import { ZOHO_PROJECTOR } from "./zoho-projector.js";
 
@@ -35,6 +36,7 @@ const EXPECTED_PROJECTOR_ORDER = [
   SOURCE_OF_FUNDS_DOCUMENTS_PROJECTOR,
   SOURCE_OF_FUNDS_DOCUMENT_REVIEW_PROJECTOR,
   LOT_INVOICE_INITIATION_PROJECTOR,
+  UNSOLD_CHOICE_DEADLINE_PROJECTOR,
 ] as const;
 
 function baseCtx(overrides: Partial<ProjectorRunContext> = {}): ProjectorRunContext {

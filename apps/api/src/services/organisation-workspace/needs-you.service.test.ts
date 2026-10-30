@@ -63,7 +63,7 @@ function setup(options: { standing?: { status: "approved"; payoutsReady: boolean
     facts,
     organisations: { standing: vi.fn(async () => standing) },
     unsold,
-    deadlines: new UnsoldChoiceDeadlines({ keep: async (proposed) => [...proposed] }),
+    deadlines: new UnsoldChoiceDeadlines({ warn: () => {} }),
     authorisations,
     now: () => NOW,
   });

@@ -3,7 +3,6 @@ import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import {
   DrizzleAccountRecordSearchReader,
   DrizzleNeedsYouFactsReader,
-  DrizzleUnsoldChoiceDeadlineStore,
   DrizzleUnsoldLotChoiceRepository,
 } from "@auction/persistence/repositories";
 import type { IMyBuyerAgentAuthorisationsService } from "../services/buyer-agents/my-buyer-agent-authorisations.service.js";
@@ -36,7 +35,7 @@ export function createOrganisationWorkspaceServices(input: {
         connectEnforced: input.connectEnforced,
       }),
       unsold: new DrizzleUnsoldLotChoiceRepository(input.db),
-      deadlines: new UnsoldChoiceDeadlines(new DrizzleUnsoldChoiceDeadlineStore(input.db)),
+      deadlines: new UnsoldChoiceDeadlines(),
       authorisations: input.buyerAgentAuthorisations,
     }),
   };

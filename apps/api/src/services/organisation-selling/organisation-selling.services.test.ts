@@ -233,21 +233,17 @@ describe("AgreementDocumentService", () => {
 });
 
 describe("UnsoldChoiceDeadlines", () => {
-  it("keeps a stored date and stores the window for an outcome that has none", async () => {
-    const keep = vi.fn(async (proposed: { lotId: string; lotEndTime: Date; chooseBy: Date }[]) => [
-      ...proposed,
-    ]);
-    const deadlines = new UnsoldChoiceDeadlines({ keep });
+  it("reads the stored date, and works out a missing one from the window without writing", () => {
+    const warn = vi.fn();
+    const deadlines = new UnsoldChoiceDeadlines({ warn });
     const stored = new Date("2026-11-30T00:00:00Z");
     const endedAt = new Date("2026-11-01T18:00:00Z");
-    const dates = await deadlines.chooseByFor([
+    const dates = deadlines.chooseByFor([
       { lotId: "kept", endedAt, chooseBy: stored },
-      { lotId: "new", endedAt, chooseBy: null },
+      { lotId: "missing", endedAt, chooseBy: null },
     ]);
     expect(dates.get("kept")).toEqual(stored);
-    expect(dates.get("new")).toEqual(new Date("2026-11-15T18:00:00Z"));
-    expect(keep).toHaveBeenCalledWith([
-      { lotId: "new", lotEndTime: endedAt, chooseBy: new Date("2026-11-15T18:00:00Z") },
-    ]);
+    expect(dates.get("missing")).toEqual(new Date("2026-11-15T18:00:00Z"));
+    expect(warn).toHaveBeenCalledWith(expect.any(String), { lotIds: ["missing"] });
   });
 });

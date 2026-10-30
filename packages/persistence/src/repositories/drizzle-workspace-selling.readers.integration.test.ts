@@ -235,6 +235,14 @@ describe.skipIf(!HAS_DB)("workspace selling readers (integration)", () => {
     });
   });
 
+  it("finds a consigned lot's unsold outcome, and none for a sold lot", async () => {
+    expect(await deadlines.unsoldOutcomeOf(lots.unsold)).toEqual({
+      lotId: lots.unsold,
+      lotEndTime: new Date(now.getTime() - day),
+    });
+    expect(await deadlines.unsoldOutcomeOf(lots.paidOut)).toBeNull();
+  });
+
   it("keeps the first unsold-choice date and never moves it", async () => {
     const key = { lotId: lots.unsold, lotEndTime: new Date(now.getTime() - day) };
     const first = new Date(now.getTime() + 13 * day);
@@ -245,5 +253,6 @@ describe.skipIf(!HAS_DB)("workspace selling readers (integration)", () => {
     expect(await deadlines.keep([{ ...key, chooseBy: later }])).toEqual([
       { ...key, chooseBy: first },
     ]);
+    expect(await deadlines.kept([key])).toEqual([{ ...key, chooseBy: first }]);
   });
 });

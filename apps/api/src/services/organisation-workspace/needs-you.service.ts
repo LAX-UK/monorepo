@@ -197,7 +197,7 @@ export class NeedsYouService implements INeedsYouService {
       }),
     ]);
 
-    const dueBy = await this.deps.deadlines.chooseByFor(unsold.rows);
+    const dueBy = this.deps.deadlines.chooseByFor(unsold.rows);
     const facts: NeedsYouFacts = {
       actor,
       organisation,

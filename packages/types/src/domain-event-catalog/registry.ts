@@ -324,7 +324,7 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "lot.ended": {
     schema: LotEventSchemas["lot.ended"],
-    consumers: ["lot_invoice_initiation", "notification_fanout", "xero"],
+    consumers: ["lot_invoice_initiation", "notification_fanout", "unsold_choice_deadline", "xero"],
     piiClassification: "none",
   },
   "lot.published": {

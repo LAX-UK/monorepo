@@ -40,6 +40,10 @@ import {
   SOURCE_OF_FUNDS_REVIEW_PROJECTOR,
   processSourceOfFundsReview,
 } from "./source-of-funds-review.js";
+import {
+  UNSOLD_CHOICE_DEADLINE_PROJECTOR,
+  processUnsoldChoiceDeadline,
+} from "./unsold-choice-deadline.js";
 import { createXeroProjector } from "./xero-projector.js";
 import { createZohoProjector } from "./zoho-projector.js";
 
@@ -224,6 +228,22 @@ export function createDefaultProjectorRegistry(): ProjectorRegistry {
           log: ctx.log,
           ensureLotInvoice: ctx.ensureLotInvoice as NonNullable<
             ProjectorRunContext["ensureLotInvoice"]
+          >,
+        });
+      },
+    },
+    {
+      name: UNSOLD_CHOICE_DEADLINE_PROJECTOR,
+      isEnabled(ctx) {
+        return ctx.unsoldChoiceDeadlines != null;
+      },
+      async run(ctx) {
+        await ctx.projectorStateRepo.ensureCursor(UNSOLD_CHOICE_DEADLINE_PROJECTOR);
+        await processUnsoldChoiceDeadline({
+          ctx,
+          log: ctx.log,
+          recorder: ctx.unsoldChoiceDeadlines as NonNullable<
+            ProjectorRunContext["unsoldChoiceDeadlines"]
           >,
         });
       },

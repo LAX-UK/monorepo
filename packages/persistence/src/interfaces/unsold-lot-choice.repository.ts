@@ -95,4 +95,11 @@ export type UnsoldChoiceDeadline = UnsoldLotOutcomeKey & { chooseBy: Date };
 export interface IUnsoldChoiceDeadlineStore {
   /** Stores each proposed date unless one is already kept; returns the kept dates. */
   keep(proposed: readonly UnsoldChoiceDeadline[]): Promise<UnsoldChoiceDeadline[]>;
+  /** The stored dates for these outcomes; an outcome with none is left out. Reads only. */
+  kept(outcomes: readonly UnsoldLotOutcomeKey[]): Promise<UnsoldChoiceDeadline[]>;
+  /**
+   * The lot's current unsold outcome when it is a consigned lot that ended without selling;
+   * `null` otherwise (sold, still running, or not a consignment).
+   */
+  unsoldOutcomeOf(lotId: string): Promise<UnsoldLotOutcomeKey | null>;
 }

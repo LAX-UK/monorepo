@@ -53,7 +53,8 @@ export function createConsignmentAfterSaleServices(
   const notifier = new ConsignmentUpdateNotifier(input.dispatcher, input.recipients);
   const unsold = new UnsoldLotChoiceService({
     choices: new DrizzleUnsoldLotChoiceRepository(input.db),
-    deadlines: new UnsoldChoiceDeadlines(new DrizzleUnsoldChoiceDeadlineStore(input.db)),
+    deadlines: new UnsoldChoiceDeadlines(),
+    storedDeadlines: new DrizzleUnsoldChoiceDeadlineStore(input.db),
     submissions: input.submissions,
     lots: input.lots,
     agreements: input.agreements,
