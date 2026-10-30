@@ -2,6 +2,7 @@ import type { LinkComponent } from "@auction/ui/lax";
 import { Check, Circle, CircleAlert, X } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
+import { StaffButtonLink } from "../primitives/button-link.js";
 import { StaffButton } from "../primitives/button.js";
 
 export type ChecklistItem = {
@@ -164,9 +165,9 @@ export function Checklist({
               </span>
             ) : null}
             {!item.done && item.href ? (
-              <StaffButton asChild size="sm" variant="ghost">
-                <Link href={item.href}>Fix</Link>
-              </StaffButton>
+              <StaffButtonLink size="sm" variant="ghost" href={item.href} Link={Link}>
+                Fix
+              </StaffButtonLink>
             ) : null}
           </li>
         ))}

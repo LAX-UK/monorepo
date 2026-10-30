@@ -12,6 +12,8 @@ export type { LaxDensity } from "./density-attributes.js";
 export { PlainLink } from "./link.js";
 export type { LinkComponent, LinkProps } from "./link.js";
 export { Button } from "./button.js";
+export { ButtonLink } from "./button-link.js";
+export type { ButtonLinkProps } from "./button-link.js";
 export { buttonVariants } from "./button-variants.js";
 export type { ButtonProps } from "./button.js";
 export { ReasonTooltip, Tooltip, TooltipProvider } from "./tooltip.js";
@@ -21,6 +23,8 @@ export { Field, ReadOnlyView, useField, useReadOnlyView } from "./field.js";
 export type { FieldProps } from "./field.js";
 export { TextArea, TextInput } from "./input.js";
 export type { TextAreaProps, TextInputProps } from "./input.js";
+export { NativeSelect } from "./native-select.js";
+export type { NativeSelectOption, NativeSelectProps } from "./native-select.js";
 export {
   Menu,
   MenuCheckboxItem,

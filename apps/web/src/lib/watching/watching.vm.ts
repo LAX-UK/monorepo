@@ -1,185 +1,161 @@
+import { formatLotMoment } from "@/lib/bid/lot-moment";
 import { type MyBidStatus, latestBidPerLot, myBidStatus } from "@/lib/bid/my-bid-status";
 import type { BidWithLot, WatchlistWithLotRow } from "@/lib/data/dto/dashboard-dtos";
 import { formatEstimateRange, formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { lotPath } from "@/lib/seo/url";
+import { matchesEveryWord, searchParam } from "@/lib/workspace/list-search";
 import type { Lot, LotStatus } from "@auction/types";
+import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
 
 /** The views of Watching, in order. The ids are the page's `?tab=` values. */
-export const WATCHING_TABS = ["upcoming", "live", "ended"] as const;
-export type WatchingTab = (typeof WATCHING_TABS)[number];
+export const WATCHING_VIEWS = ["lots", "artists", "searches"] as const;
+export type WatchingView = (typeof WATCHING_VIEWS)[number];
 
-export const WATCHING_TAB_LABEL: Record<WatchingTab, string> = {
-  upcoming: "Upcoming",
-  live: "Live",
-  ended: "Ended",
+export const WATCHING_VIEW_LABEL: Record<WatchingView, string> = {
+  lots: "Lots",
+  artists: "Artists",
+  searches: "Searches",
 };
 
-const STATUS_TAB: Record<LotStatus, WatchingTab> = {
-  draft: "upcoming",
-  scheduled: "upcoming",
-  active: "live",
-  ended: "ended",
-  cancelled: "ended",
-  voided: "ended",
-};
+export function parseWatchingView(raw: string | string[] | null | undefined): WatchingView {
+  const value = searchParam(raw);
+  return (WATCHING_VIEWS as readonly string[]).includes(value ?? "")
+    ? (value as WatchingView)
+    : "lots";
+}
 
-/** The pill on a watched lot: the person's own bid first, then the lot's own moment. */
-export type WatchedLotBadge =
+/** Where a watched lot stands for the person: their bid first, then the lot's own moment. */
+export type WatchedLotStanding =
   | "winning"
   | "outbid"
-  | "absentee"
-  | "closing-soon"
-  | "live"
-  | "upcoming"
+  | "maximum-set"
+  | "not-bidding"
   | "sold"
   | "closed";
 
-export const WATCHED_BADGE_LABEL: Record<WatchedLotBadge, string> = {
-  winning: "You're winning",
-  outbid: "Outbid",
-  absentee: "Absentee bid",
-  "closing-soon": "Closing soon",
-  live: "Live",
-  upcoming: "Upcoming",
-  sold: "Sold",
-  closed: "Closed",
+const STANDING: Record<
+  WatchedLotStanding,
+  { label: string; tone: StatusBadgeTone; shape: StatusBadgeShape }
+> = {
+  winning: { label: "Winning", tone: "success", shape: "check" },
+  outbid: { label: "Outbid", tone: "warning", shape: "alert" },
+  "maximum-set": { label: "Maximum set", tone: "info", shape: "dot" },
+  "not-bidding": { label: "Not bidding", tone: "neutral", shape: "ring" },
+  sold: { label: "Sold", tone: "neutral", shape: "ring" },
+  closed: { label: "Closed", tone: "neutral", shape: "ring" },
 };
 
-/** A bid outranks the lot's own state: the person cares most about where they stand. */
-const BID_BADGE: Partial<Record<MyBidStatus, WatchedLotBadge>> = {
+const BID_STANDING: Partial<Record<MyBidStatus, WatchedLotStanding>> = {
   winning: "winning",
   outbid: "outbid",
-  absentee: "absentee",
+  "maximum-set": "maximum-set",
+  absentee: "maximum-set",
 };
 
-/** The last hour before a lot closes. */
-const CLOSING_SOON_MS = 60 * 60 * 1000;
+const ENDED: ReadonlySet<LotStatus> = new Set(["ended", "cancelled", "voided"]);
 
-export type WatchedLotCardVm = {
+export type WatchedLotRowVm = {
   lotId: string;
   href: string;
   title: string;
   image: string | null;
   lotLabel: string | null;
-  estimate: string | null;
-  badge: WatchedLotBadge;
-  badgeLabel: string;
-  /** Bottom line, left: the figure that matters now ("£2,600", "Absentee £18,000"). */
-  figure: string;
-  /** Bottom line, right: time left, the opening date or the closing date. */
-  timing: { kind: "countdown"; endsAt: string } | { kind: "date"; label: string };
+  saleTitle: string | null;
+  /** "closes Today 18:00", "opens 26 Nov", "closed 2 Nov". */
+  moment: string;
+  standing: { label: string; tone: StatusBadgeTone; shape: StatusBadgeShape };
+  figure: { value: string; label: string };
+  ended: boolean;
+  /** For sorting: when it closes, and when it was watched. */
+  closesAt: number;
+  watchedAt: number;
 };
 
-export type WatchingVm = {
-  tab: WatchingTab;
-  tabs: { id: WatchingTab; label: string; count: number }[];
-  cards: WatchedLotCardVm[];
-  /** "4 lots in 2 sales": what the view holds. */
-  summary: string;
-  total: number;
-};
-
-const DAY_MONTH = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
-
-function lotBadge(lot: Lot, bid: MyBidStatus | null, now: Date): WatchedLotBadge {
-  const fromBid = bid ? BID_BADGE[bid] : undefined;
-  if (fromBid) return fromBid;
-  switch (STATUS_TAB[lot.status]) {
-    case "live":
-      return lot.endTime.getTime() - now.getTime() <= CLOSING_SOON_MS ? "closing-soon" : "live";
-    case "upcoming":
-      return "upcoming";
-    default:
-      return lot.hasWinner || lot.winnerId ? "sold" : "closed";
-  }
+function standingOf(lot: Lot, bid: MyBidStatus | null): WatchedLotStanding {
+  if (ENDED.has(lot.status)) return lot.hasWinner || lot.winnerId ? "sold" : "closed";
+  return (bid ? BID_STANDING[bid] : undefined) ?? "not-bidding";
 }
 
-function figureFor(lot: Lot, badge: WatchedLotBadge, myBid: BidWithLot | null): string {
+function figureFor(lot: Lot, standing: WatchedLotStanding): { value: string; label: string } {
   const money = (amount: string) => formatMoney(amount, lotChargeCurrency(lot));
-  if (badge === "absentee" && myBid) {
-    return `Absentee ${money(myBid.bid.maxAutoBidAmount ?? myBid.bid.amount)}`;
-  }
-  switch (STATUS_TAB[lot.status]) {
-    case "upcoming":
-      return `Opens at ${money(lot.startingPrice)}`;
-    case "live":
-      return money(lot.currentPrice);
-    default:
-      return badge === "sold" ? `Sold for ${money(lot.currentPrice)}` : "Not sold";
-  }
+  if (standing === "sold") return { value: money(lot.currentPrice), label: "sold for" };
+  if (standing === "closed") return { value: "–", label: "not sold" };
+  const opened = lot.status === "active";
+  if (opened) return { value: money(lot.currentPrice), label: "current bid" };
+  const estimate = lot.marketingDetails?.estimate;
+  return estimate
+    ? { value: formatEstimateRange(estimate), label: "estimate" }
+    : { value: money(lot.startingPrice), label: "opening bid" };
 }
 
-function timingFor(lot: Lot): WatchedLotCardVm["timing"] {
-  switch (STATUS_TAB[lot.status]) {
-    case "live":
-      return { kind: "countdown", endsAt: lot.endTime.toISOString() };
-    case "upcoming":
-      return { kind: "date", label: DAY_MONTH.format(lot.startTime) };
-    default:
-      return { kind: "date", label: `Closed ${DAY_MONTH.format(lot.endTime)}` };
-  }
+function momentFor(lot: Lot, now: Date): string {
+  if (ENDED.has(lot.status)) return `closed ${formatLotMoment(lot.endTime, now, { time: false })}`;
+  if (lot.status === "active") return `closes ${formatLotMoment(lot.endTime, now)}`;
+  return `opens ${formatLotMoment(lot.startTime, now, { time: false })}`;
 }
 
-function plural(count: number, one: string, many: string): string {
-  return `${count} ${count === 1 ? one : many}`;
-}
-
-/** The view to open when none is asked for: Live while anything is live, else Upcoming, else Ended. */
-function defaultTab(counts: Record<WatchingTab, number>): WatchingTab {
-  if (counts.live > 0) return "live";
-  if (counts.upcoming > 0) return "upcoming";
-  return counts.ended > 0 ? "ended" : "upcoming";
-}
-
-export function parseWatchingTab(raw: string | null | undefined): WatchingTab | null {
-  return (WATCHING_TABS as readonly string[]).includes(raw ?? "") ? (raw as WatchingTab) : null;
-}
-
-/**
- * Watching for one view: a card per followed lot with where the person stands on it. Lots keep
- * the order the list was read in (the chosen sort).
- */
-export function buildWatchingVm(input: {
+/** The watched lots, with where the person stands on each. */
+export function buildWatchedLots(input: {
   rows: readonly WatchlistWithLotRow[];
   bids: readonly BidWithLot[];
   userId: string | undefined;
-  tab: WatchingTab | null;
+  saleTitleById?: Readonly<Record<string, string>>;
   now?: Date;
-}): WatchingVm {
+}): WatchedLotRowVm[] {
   const now = input.now ?? new Date();
   const bidByLot = new Map(latestBidPerLot(input.bids).map((row) => [row.bid.lotId, row]));
-  const lots = input.rows.flatMap((row) => (row.lot ? [row.lot] : []));
-  const counts = Object.fromEntries(
-    WATCHING_TABS.map((tab) => [tab, lots.filter((lot) => STATUS_TAB[lot.status] === tab).length]),
-  ) as Record<WatchingTab, number>;
-  const tab = input.tab ?? defaultTab(counts);
-  const inView = lots.filter((lot) => STATUS_TAB[lot.status] === tab);
-  const sales = new Set(inView.map((lot) => lot.saleId ?? lot.id));
-
-  return {
-    tab,
-    tabs: WATCHING_TABS.map((id) => ({ id, label: WATCHING_TAB_LABEL[id], count: counts[id] })),
-    total: lots.length,
-    summary:
-      inView.length === 0
-        ? ""
-        : `${plural(inView.length, "lot", "lots")} in ${plural(sales.size, "sale", "sales")}`,
-    cards: inView.map((lot) => {
-      const myBid = bidByLot.get(lot.id) ?? null;
-      const badge = lotBadge(lot, myBid ? myBidStatus(myBid, input.userId) : null, now);
-      const estimate = lot.marketingDetails?.estimate;
-      return {
+  return input.rows.flatMap((row) => {
+    const lot = row.lot;
+    if (!lot) return [];
+    const myBid = bidByLot.get(lot.id) ?? null;
+    const standing = standingOf(lot, myBid ? myBidStatus(myBid, input.userId) : null);
+    return [
+      {
         lotId: lot.id,
         href: lotPath(lot),
         title: lot.title,
         image: lot.images[0] ?? null,
         lotLabel: lot.lotNumber == null ? null : `Lot ${lot.lotNumber}`,
-        estimate: estimate ? `Estimate ${formatEstimateRange(estimate)}` : null,
-        badge,
-        badgeLabel: WATCHED_BADGE_LABEL[badge],
-        figure: figureFor(lot, badge, myBid),
-        timing: timingFor(lot),
-      };
-    }),
-  };
+        saleTitle: lot.saleId ? (input.saleTitleById?.[lot.saleId] ?? null) : null,
+        moment: momentFor(lot, now),
+        standing: STANDING[standing],
+        figure: figureFor(lot, standing),
+        ended: ENDED.has(lot.status),
+        closesAt: lot.endTime.getTime(),
+        watchedAt: row.createdAt.getTime(),
+      },
+    ];
+  });
+}
+
+export const WATCHED_LOT_SORTS = ["closing", "added"] as const;
+export type WatchedLotSort = (typeof WATCHED_LOT_SORTS)[number];
+
+export const WATCHED_LOT_SORT_LABEL: Record<WatchedLotSort, string> = {
+  closing: "Closing soonest",
+  added: "Recently watched",
+};
+
+/**
+ * The watched lots after search and sort. Closing soonest puts open lots first, soonest to close,
+ * and ended lots last, most recent first.
+ */
+export function watchedLotsInView(
+  rows: readonly WatchedLotRowVm[],
+  query: string,
+  sort: WatchedLotSort,
+): WatchedLotRowVm[] {
+  const matches = rows.filter((row) =>
+    matchesEveryWord([row.title, row.lotLabel, row.saleTitle], query),
+  );
+  if (sort === "added") return matches.sort((a, b) => b.watchedAt - a.watchedAt);
+  return matches.sort((a, b) =>
+    a.ended === b.ended
+      ? a.ended
+        ? b.closesAt - a.closesAt
+        : a.closesAt - b.closesAt
+      : a.ended
+        ? 1
+        : -1,
+  );
 }

@@ -18,6 +18,8 @@ export {
 // Primitives
 export { StaffButton, staffButtonVariants } from "./primitives/button.js";
 export type { StaffButtonProps } from "./primitives/button.js";
+export { StaffButtonLink } from "./primitives/button-link.js";
+export type { StaffButtonLinkProps } from "./primitives/button-link.js";
 export { HoldButton, STAFF_HOLD_MS } from "./primitives/hold-button.js";
 export type { HoldButtonProps } from "./primitives/hold-button.js";
 export {

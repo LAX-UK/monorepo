@@ -28,14 +28,39 @@ const RESULT: AccountSearchResult = accountSearchResultSchema.parse({
           artistName: "Eleanor Vance",
           lotNumber: 57,
           saleTitle: "Modern British",
-          lotStatus: "sold",
+          lotStatus: "ended",
+          hammerPrice: "3200.00",
+          currency: "GBP",
+          paymentState: "overdue",
+        },
+      ],
+      nextOffset: null,
+    },
+    {
+      group: "bids",
+      items: [
+        {
+          lotId: "lot-88",
+          title: "Sun over Arles",
+          lotNumber: 88,
+          lotStatus: "active",
+          maximum: "6200.00",
+          currency: "GBP",
+          outcome: "outbid",
         },
       ],
       nextOffset: null,
     },
     {
       group: "consignments",
-      items: [{ submissionId: "s-1", title: "Night harbour", status: "needs_changes" }],
+      items: [
+        {
+          submissionId: "s-1",
+          reference: "C-1042",
+          title: "Night harbour",
+          status: "needs_changes",
+        },
+      ],
       nextOffset: null,
     },
     {
@@ -65,17 +90,21 @@ const PAGES = [
 describe("account search results", () => {
   it("names each group and turns each hit into a row that opens its record", () => {
     const groups = searchRowGroups(RESULT);
-    expect(groups.map((g) => g.label)).toEqual(["Purchases", "Consignments", "Invoices"]);
+    expect(groups.map((g) => g.label)).toEqual(["Purchases", "Bids", "Consignments", "Invoices"]);
     expect(groups[0]?.rows[0]).toMatchObject({
       label: "Harbour at dawn",
-      meta: "Lot 57 · won · Modern British",
-      href: "/lot/harbour-at-dawn/lot-57",
+      meta: "Lot 57 · won for £3,200.00 · payment overdue",
+      href: "/purchases/lot-57",
     });
     expect(groups[1]?.rows[0]).toMatchObject({
-      meta: "Consignment · needs changes",
-      href: "/selling/consignments/s-1",
+      meta: "Lot 88 · outbid · your maximum £6,200.00",
+      href: "/lot/sun-over-arles/lot-88",
     });
     expect(groups[2]?.rows[0]).toMatchObject({
+      meta: "C-1042 · needs changes",
+      href: "/selling/consignments/s-1",
+    });
+    expect(groups[3]?.rows[0]).toMatchObject({
       label: "INV-2026-0412 · Harbour at dawn",
       meta: "£6,450.00 · overdue",
     });

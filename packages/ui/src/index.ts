@@ -386,6 +386,7 @@ export type { ListRowProps } from "./components/ui/list-row.js";
 export { InertOutside } from "./components/ui/inert-outside.js";
 export { RecordList, RecordRow, RecordRowMedia } from "./components/ui/record-row.js";
 export type {
+  RecordFigure,
   RecordListProps,
   RecordRowMediaProps,
   RecordRowProps,

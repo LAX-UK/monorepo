@@ -1,7 +1,6 @@
 import { AuctionInterestsSettingsForm } from "@/components/dashboard/auction-interests-settings-form";
 import { NotificationPreferencesForm } from "@/components/dashboard/notification-preferences-form";
 import { DashboardErrorAlert } from "@/components/dashboard/primitives/dashboard-error-alert";
-import { SavedSearchesPanel } from "@/components/dashboard/saved-searches-panel";
 import { EmailStatusBanner } from "@/components/layout/email-status-banner";
 import {
   AppearanceLayoutPreferencesForm,
@@ -13,6 +12,7 @@ import type { SessionUser } from "@/lib/data/contracts";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerCategoryInterests } from "@/lib/data/http/category-interests.server";
 import { laxAccountHomeUrl } from "@/lib/lax-account-url";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { type BiddingOrganisation, biddingStanding } from "@/lib/settings/bidding-standing";
 import { Button } from "@auction/ui/components/button";
 import type { LayoutViewDefault, ThemePreference } from "@auction/validators";
@@ -94,10 +94,17 @@ export async function NotificationSettings({ user }: { user: SessionUser }) {
         ) : (
           <SectionUnavailable what="notification preferences" />
         )}
-        <div className="flex flex-col gap-3 border-t border-outline-variant/50 pt-6">
-          <h3 className="font-body text-base font-semibold text-on-surface">Saved searches</h3>
-          <SavedSearchesPanel />
-        </div>
+        {/* What to watch lives on Watching; these settings say how alerts reach the person. */}
+        <p className="border-t border-outline-variant/50 pt-6 font-body text-sm text-on-surface-variant">
+          Saved searches and artist alerts are in{" "}
+          <Link
+            href={`${CLIENT_ROUTES.watching}?tab=searches`}
+            className="text-on-surface underline underline-offset-4 hover:decoration-2"
+          >
+            Watching
+          </Link>
+          .
+        </p>
       </div>
     </BidSettingsSection>
   );

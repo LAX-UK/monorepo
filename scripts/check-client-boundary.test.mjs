@@ -6,6 +6,7 @@ import { describe, it } from "node:test";
 import {
   clientBoundaryViolations,
   clientOnlyExports,
+  serverAsChildViolations,
   serverImportViolations,
 } from "./check-client-boundary.mjs";
 
@@ -69,5 +70,23 @@ describe("check-client-boundary", () => {
     );
     assert.equal(lines.length, 1);
     assert.match(lines[0], /server-page\.tsx: imports format from @pkg/);
+  });
+
+  it("flags Button asChild in a server module, and not in a client one", () => {
+    const dir = fixture();
+    writeFileSync(
+      join(dir, "server-cta.tsx"),
+      'import { Button } from "@auction/ui/lax";\nexport const Cta = () => <Button asChild variant="primary"><a href="/x">Go</a></Button>;\n',
+    );
+    writeFileSync(
+      join(dir, "client-cta.tsx"),
+      '"use client";\nimport { Button } from "@auction/ui/lax";\nexport const Cta = () => <Button asChild><a href="/x">Go</a></Button>;\n',
+    );
+    const lines = serverAsChildViolations([
+      join(dir, "server-cta.tsx"),
+      join(dir, "client-cta.tsx"),
+    ]);
+    assert.equal(lines.length, 1);
+    assert.match(lines[0], /server-cta\.tsx: <Button asChild>/);
   });
 });
