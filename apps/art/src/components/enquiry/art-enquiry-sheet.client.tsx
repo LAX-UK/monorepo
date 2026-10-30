@@ -71,7 +71,7 @@ export function ArtEnquirySheet({
         ref={triggerRef}
         type="button"
         size="lg"
-        className="min-h-11 w-full font-label sm:w-auto"
+        className="min-h-11 w-full font-label"
         onClick={() => setOpen(true)}
         data-testid="art-enquire-trigger"
       >

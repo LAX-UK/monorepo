@@ -1,6 +1,6 @@
 import { ArtArtworkArtistSummary } from "@/components/artwork/art-artwork-artist-summary";
 import { ArtArtworkBreadcrumb } from "@/components/artwork/art-artwork-breadcrumb";
-import { ArtArtworkConversations } from "@/components/artwork/art-artwork-conversations";
+import { ArtArtworkConversations } from "@/components/artwork/art-artwork-conversations.client";
 import { ArtArtworkDetailSections } from "@/components/artwork/art-artwork-detail-sections";
 import { ArtArtworkGallery } from "@/components/artwork/art-artwork-gallery.client";
 import { ArtArtworkMobileGallery } from "@/components/artwork/art-artwork-mobile-gallery.client";

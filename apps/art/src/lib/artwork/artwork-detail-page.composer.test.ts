@@ -86,6 +86,20 @@ describe("composeArtworkDetailPage", () => {
     });
   });
 
+  it("leaves the related rail out with fewer than three works", async () => {
+    const services = fakeArtServices();
+    services.catalogue.getArtwork.mockResolvedValue(artworkDetail());
+    services.catalogue.listArtworks.mockImplementation(async (query) =>
+      query.relatedTo ? { items: [] } : { items: [artworkSummary({ slug: "own-1" })] },
+    );
+    const result = await composeArtworkDetailPage(services, {
+      slug: "warm-basket",
+      enquireRequested: false,
+      siteUrl: SITE_URL,
+    });
+    expect(result.kind === "ok" && result.vm.relatedArtworks).toEqual([]);
+  });
+
   it("still renders when related reads fail", async () => {
     const services = fakeArtServices();
     services.catalogue.getArtwork.mockResolvedValue(artworkDetail());

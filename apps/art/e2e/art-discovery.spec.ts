@@ -97,7 +97,7 @@ test.describe("lax.art discovery", () => {
     await expect(sections).toBeVisible();
     const firstTrigger = sections.getByRole("button", { expanded: true }).first();
     await expect(firstTrigger).toBeVisible();
-    await expect(page.getByRole("button", { name: "Share" })).toBeVisible();
+    await expect(page.getByRole("button", { name: /^Share .+/ })).toBeVisible();
   });
 
   test("unknown slugs render the not-found page", async ({ page }) => {

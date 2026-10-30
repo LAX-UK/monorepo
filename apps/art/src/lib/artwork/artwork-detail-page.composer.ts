@@ -25,6 +25,7 @@ import {
 import { artworkJsonLd } from "@/lib/seo/art-structured-data";
 import { seoMetadataDescription, seoMetadataTitle } from "@/lib/seo/seo-metadata";
 import { GALLERY_CONTACT, type JsonLd } from "@auction/branding";
+import { marketingRailHasEnough } from "@auction/marketing-ui";
 import type {
   PublicArtistDetail,
   PublicArtworkDetail,
@@ -241,7 +242,10 @@ export async function composeArtworkDetailPage(
       certificateLine: artworkCertificateLine(artwork),
       provenance: artwork.provenance ?? null,
       exhibitionHistory: artwork.exhibitionHistory ?? null,
-      relatedArtworks: buildCatalogueArtworkCards(relatedPage.items, favorites.savedArtworkSlugs),
+      // A rail of one or two works ends in empty space, so it shows from three.
+      relatedArtworks: marketingRailHasEnough(relatedPage.items.length)
+        ? buildCatalogueArtworkCards(relatedPage.items, favorites.savedArtworkSlugs)
+        : [],
       relatedSection: relatedPage.fromCollection
         ? { title: "More in this collection", viewAllHref: "/artworks", viewAllSrLabel: "artworks" }
         : {

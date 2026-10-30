@@ -116,7 +116,8 @@ test.describe("lax.art journeys", () => {
     await sheet.getByLabel("Message (optional)").fill("Is this work still available to view?");
     await sheet.getByRole("button", { name: "Send enquiry" }).click();
     await expect(sheet.getByText("Enquiry sent")).toBeVisible({ timeout: 30_000 });
-    await expect(sheet.getByText("Our specialist will be in touch soon.")).toBeVisible();
+    await expect(sheet.getByRole("heading", { name: "What happens next" })).toBeVisible();
+    await expect(sheet.getByRole("link", { name: "Create an account" })).toBeVisible();
   });
 
   test("a guest can send a general enquiry from the contact page", async ({ page }) => {

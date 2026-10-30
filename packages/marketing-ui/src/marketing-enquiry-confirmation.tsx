@@ -50,7 +50,7 @@ export const MarketingEnquiryConfirmation = forwardRef<
         tabIndex={-1}
         title={title}
         description={lead}
-        className="pb-0 pt-6 outline-none"
+        className="pt-4! pb-0! outline-none"
       />
       {steps.length > 0 ? (
         <section aria-labelledby={stepsId} className="flex flex-col gap-4">

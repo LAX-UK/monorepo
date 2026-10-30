@@ -1,3 +1,5 @@
+"use client";
+
 import { ArtEnquiryPanel } from "@/components/enquiry/art-enquiry-panel";
 import { ArtGeneralEnquirySheet } from "@/components/enquiry/art-general-enquiry-sheet.client";
 import { ArtArtworkFavoriteToggle } from "@/components/favorites/art-artwork-favorite-toggle.client";
