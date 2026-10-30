@@ -48,6 +48,11 @@ export interface GuestOrderLinks {
    * guest order. Says nothing about whether it matched.
    */
   resend(input: { email: string; orderReference: string; now: Date }): Promise<void>;
+  /**
+   * The guest left the payment page: the unpaid order is cancelled, its prints released and its
+   * lines put back in the browser's basket. Does nothing for an order that is no longer unpaid.
+   */
+  cancelUnpaid(input: { token: string; basketTokenHash: string; now: Date }): Promise<void>;
 }
 
 /** Moves a guest's orders to the LAX account that verified the same email. */

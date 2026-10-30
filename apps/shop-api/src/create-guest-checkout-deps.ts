@@ -2,7 +2,11 @@ import type { LegalEntity } from "@auction/branding";
 import type { Database } from "@auction/db";
 import { createGuestCheckoutRateLimiters } from "./application/enquiry-rate-limit.js";
 import { createGuestCheckoutService } from "./application/guest-checkout/guest-checkout.service.js";
-import type { CheckoutWriter, OrderReader } from "./application/ports/commerce.ports.js";
+import type {
+  CheckoutWriter,
+  OrderReader,
+  PaymentCheckoutGateway,
+} from "./application/ports/commerce.ports.js";
 import type { FixedWindowCounter } from "./application/ports/fixed-window-counter.js";
 import type { ShopNotificationPublisher } from "./application/ports/shop-notification.publisher.js";
 import type { GuestCheckoutRoutesDeps } from "./commerce-route-deps.js";
@@ -20,6 +24,7 @@ export function createGuestCheckoutDeps(
     checkout: Pick<CheckoutWriter, "createCheckoutOrder">;
     orders: Pick<OrderReader, "getOrder" | "getCustomerProfile">;
     notifications: ShopNotificationPublisher;
+    paymentGateway: PaymentCheckoutGateway;
     rateLimitCounter: FixedWindowCounter;
     storefrontUrl: string;
     domainEventMode: ShopDomainEventPublisherMode;
@@ -30,6 +35,7 @@ export function createGuestCheckoutDeps(
   const links = createDrizzleGuestOrderLinks(db, {
     orders: input.orders,
     notifications: input.notifications,
+    paymentGateway: input.paymentGateway,
     storefrontUrl: input.storefrontUrl,
   });
   return {

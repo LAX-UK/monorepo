@@ -80,6 +80,7 @@ export function createCommerceServices(
         checkout: repository,
         orders: repository,
         notifications,
+        paymentGateway,
         rateLimitCounter: options.rateLimitCounter,
         storefrontUrl: env.SHOP_STOREFRONT_URL,
         domainEventMode,

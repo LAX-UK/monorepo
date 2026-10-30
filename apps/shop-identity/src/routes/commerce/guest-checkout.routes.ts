@@ -1,5 +1,5 @@
 import type { Context, Hono } from "hono";
-import { readBasketToken } from "../../basket-cookie.js";
+import { readBasketToken, rotateBasketToken } from "../../basket-cookie.js";
 import {
   createGuestCheckoutBodySchema,
   guestCheckoutSessionSchema,
@@ -147,6 +147,24 @@ export function registerCommerceGuestCheckoutRoutes(
       body: { token },
     });
     return response.ok ? proxyFile(c, response) : proxyJson(c, response);
+  });
+
+  /** Back from the payment page without paying: the order is cancelled, the basket refilled. */
+  app.post("/commerce/guest-orders/current/cancel", async (c) => {
+    const refused = csrfFailed(c);
+    if (refused) return refused;
+    const token = readGuestOrderToken(c);
+    if (!token) return c.json({ error: "not_found" }, 404);
+    const basketToken = readBasketToken(c) ?? rotateBasketToken(c, deps.secureCookies);
+    return proxyJson(
+      c,
+      await asStorefront(c, {
+        path: "/v1/guest-orders/cancel",
+        scopes: "shop.write",
+        body: { token },
+        basketToken,
+      }),
+    );
   });
 
   app.post("/commerce/guest-orders/links", async (c) => {

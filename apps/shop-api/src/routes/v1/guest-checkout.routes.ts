@@ -245,6 +245,31 @@ export async function registerGuestCheckoutRoutes(
   );
 
   app.post(
+    "/v1/guest-orders/cancel",
+    {
+      schema: {
+        tags: ["commerce"],
+        body: GuestOrderLinkRequestSchema,
+        response: {
+          200: Type.Object({ cancelled: Type.Literal(true) }),
+          404: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireStorefront(request, "shop.write");
+      const deps = requireGuestCheckout(guestDeps);
+      const { token } = request.body as { token: string };
+      await deps.links.cancelUnpaid({
+        token,
+        basketTokenHash: basketTokenHash(request),
+        now: new Date(),
+      });
+      return { cancelled: true as const };
+    },
+  );
+
+  app.post(
     "/v1/guest-orders/links",
     {
       schema: {

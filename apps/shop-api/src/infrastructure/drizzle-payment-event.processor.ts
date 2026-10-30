@@ -13,7 +13,7 @@ import {
 } from "@auction/db/schema";
 import { computePayoutDueAt, isGuestOrderSubject, orderVatBreakdown } from "@auction/shop-domain";
 import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
-import type { PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
+import type { BasketOwner, PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
 import type { PaymentEventProcessor } from "../application/ports/payment-event.processor.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import { ShopPaymentWebhookError } from "../errors/shop-payment-webhook.error.js";
@@ -545,7 +545,7 @@ export async function recordShopCheckoutCurrencyViolation(
 
 export async function cancelShopCheckoutSession(
   db: Database,
-  input: { eventId: string; orderId: string; source?: string },
+  input: { eventId: string; orderId: string; source?: string; restoreTo?: BasketOwner },
   options: CheckoutTransitionOptions = {},
 ): Promise<"processed" | "duplicate"> {
   const source = input.source ?? "buyer";
@@ -579,7 +579,7 @@ export async function cancelShopCheckoutSession(
       .set({ status: "cancelled", updatedAt: new Date() })
       .where(eq(shopOrder.id, input.orderId));
     await releaseReservedEditionsForOrder(tx as Database, input.orderId, events);
-    await restoreBasketLinesFromOrder(tx as Database, order, input.orderId);
+    await restoreBasketLinesFromOrder(tx as Database, order, input.orderId, input.restoreTo);
     return "processed";
   });
 }

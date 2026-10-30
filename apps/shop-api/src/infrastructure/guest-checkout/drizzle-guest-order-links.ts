@@ -2,9 +2,13 @@ import type { Database } from "@auction/db";
 import { shopGuestCustomer, shopGuestOrderLink, shopOrder } from "@auction/db/schema";
 import { guestOrderLinkState, guestOrderSubject } from "@auction/shop-domain";
 import { and, eq } from "drizzle-orm";
-import type { OrderReader } from "../../application/ports/commerce.ports.js";
+import type {
+  OrderReader,
+  PaymentCheckoutGateway,
+} from "../../application/ports/commerce.ports.js";
 import type { GuestOrderLinks } from "../../application/ports/guest-checkout.ports.js";
 import type { ShopNotificationPublisher } from "../../application/ports/shop-notification.publisher.js";
+import { cancelShopCheckoutSession } from "../drizzle-payment-event.processor.js";
 import {
   guestOrderLinkUrl,
   hashGuestOrderLinkToken,
@@ -24,10 +28,11 @@ export function createDrizzleGuestOrderLinks(
   deps: {
     orders: Pick<OrderReader, "getOrder">;
     notifications: Pick<ShopNotificationPublisher, "queueGuestOrderLink">;
+    paymentGateway: PaymentCheckoutGateway;
     storefrontUrl: string;
   },
 ): GuestOrderLinks {
-  return {
+  const links: GuestOrderLinks = {
     issue(orderId, now) {
       return issueGuestOrderLink(db, orderId, now);
     },
@@ -76,6 +81,21 @@ export function createDrizzleGuestOrderLinks(
       };
     },
 
+    async cancelUnpaid({ token, basketTokenHash, now }) {
+      const resolved = await links.resolve(token, now);
+      if (resolved.kind !== "valid" || resolved.order.status !== "pending_payment") return;
+      await cancelShopCheckoutSession(
+        db,
+        {
+          eventId: `guest-cancel:${resolved.order.orderId}`,
+          orderId: resolved.order.orderId,
+          source: "buyer",
+          restoreTo: { kind: "anonymous", tokenHash: basketTokenHash },
+        },
+        { paymentGateway: deps.paymentGateway },
+      );
+    },
+
     async resend({ email, orderReference, now }) {
       const [order] = await db
         .select({
@@ -108,4 +128,5 @@ export function createDrizzleGuestOrderLinks(
       });
     },
   };
+  return links;
 }
