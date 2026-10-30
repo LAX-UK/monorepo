@@ -53,6 +53,7 @@ export type AbsenteeBidServiceError = {
   message: string;
   status: number;
   code?: string;
+  details?: Readonly<Record<string, string>>;
 };
 
 export interface IAbsenteeBidService {

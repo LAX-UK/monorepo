@@ -10,7 +10,18 @@ export type BuyerAgentGrant = {
   saleId: string | null;
   /** Highest bid allowed, in major units; `null` means no limit. */
   bidLimit: number | null;
+  /**
+   * Most the agent may have committed at once for the organisation (see `bidding-limits.ts`),
+   * in major units; `null` or absent means no total.
+   */
+  totalLimit?: number | null;
 };
+
+/**
+ * The total an authorisation allows: the amount, and the sale it counts within (`null` means
+ * the agent's commitments across every sale count).
+ */
+export type AuthorisationTotalLimit = { limit: number; saleId: string | null };
 
 /** Why a person may not bid for a legal entity. */
 export type BidAuthorityDenial =
@@ -29,6 +40,8 @@ export type BidAuthorityDecision =
       viaAuthorisation: boolean;
       /** The authorisation's limit in major units, or `null` when there is none. */
       bidLimit: number | null;
+      /** The authorisation's total, or `null` when there is none (always for owners and admins). */
+      totalLimit: AuthorisationTotalLimit | null;
     }
   | { allowed: false; role: LegalEntityMemberRole | null; reason: BidAuthorityDenial };
 
@@ -47,14 +60,33 @@ export function roleBidsThroughAuthorisation(role: LegalEntityMemberRole): boole
   );
 }
 
-/**
- * The limit that applies to a bid: a sale-specific authorisation wins over an all-sales one,
- * and within the winning scope the lowest limit applies.
- */
-function effectiveLimit(grants: readonly BuyerAgentGrant[], saleId: string | null): number | null {
+/** A sale-specific authorisation wins over an all-sales one. */
+function winningScope(
+  grants: readonly BuyerAgentGrant[],
+  saleId: string | null,
+): { grants: readonly BuyerAgentGrant[]; saleId: string | null } {
   const saleScoped = saleId ? grants.filter((g) => g.saleId === saleId) : [];
-  const scoped = saleScoped.length > 0 ? saleScoped : grants;
-  return scoped.reduce<number | null>((cap, g) => minPositiveCap(cap, g.bidLimit), null);
+  return saleScoped.length > 0 ? { grants: saleScoped, saleId } : { grants, saleId: null };
+}
+
+/**
+ * The limits that apply to a bid: within the winning scope the lowest per-lot limit and the
+ * lowest total apply. A sale-specific total counts the agent's commitments in that sale only.
+ */
+function effectiveLimits(
+  grants: readonly BuyerAgentGrant[],
+  saleId: string | null,
+): { bidLimit: number | null; totalLimit: AuthorisationTotalLimit | null } {
+  const scope = winningScope(grants, saleId);
+  const bidLimit = scope.grants.reduce<number | null>(
+    (cap, g) => minPositiveCap(cap, g.bidLimit),
+    null,
+  );
+  const total = scope.grants.reduce<number | null>(
+    (cap, g) => minPositiveCap(cap, g.totalLimit ?? null),
+    null,
+  );
+  return { bidLimit, totalLimit: total == null ? null : { limit: total, saleId: scope.saleId } };
 }
 
 /**
@@ -72,7 +104,7 @@ export function decideBidAuthority(input: {
     return { allowed: false, role, reason: "role_cannot_bid" };
   }
   if (!roleBidsThroughAuthorisation(role)) {
-    return { allowed: true, role, viaAuthorisation: false, bidLimit: null };
+    return { allowed: true, role, viaAuthorisation: false, bidLimit: null, totalLimit: null };
   }
   const covering = grants.filter((g) => g.saleId === null || g.saleId === saleId);
   if (covering.length === 0) {
@@ -82,7 +114,7 @@ export function decideBidAuthority(input: {
     allowed: true,
     role,
     viaAuthorisation: true,
-    bidLimit: effectiveLimit(covering, saleId),
+    ...effectiveLimits(covering, saleId),
   };
 }
 

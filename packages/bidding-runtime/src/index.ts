@@ -47,6 +47,20 @@ export {
   type IBidAuthority,
 } from "./bid/bid-authority.service.js";
 export {
+  BiddingLimitGate,
+  type BiddingLimitCheck,
+  type BiddingLimitGateDeps,
+  biddingLimitError,
+  type IBiddingLimitGate,
+  PerLotBiddingLimitGate,
+} from "./bid/bidding-limit.gate.js";
+export {
+  BidPlacementLimitGuard,
+  type BidPlacementLimitInput,
+  committedAmount,
+  type IBidPlacementLimitGuard,
+} from "./bid/bid-placement-limit.guard.js";
+export {
   BidIdentityEligibilityGate,
   type IBidIdentityEligibilityGate,
   SelfServiceIdentityEligibilityGate,

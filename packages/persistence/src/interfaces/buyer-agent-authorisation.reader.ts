@@ -1,6 +1,8 @@
 export type BuyerAgentAuthorisationRow = {
   saleId: string | null;
   bidLimit: string | null;
+  /** Decimal string in major units, or `null` for no total. */
+  totalLimit: string | null;
 };
 
 export interface IBuyerAgentAuthorisationReader {

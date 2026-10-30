@@ -93,6 +93,11 @@ const ENTITY_CAPABILITY_RULES = {
   "entity.buyer_agents.read": { access: "read", roles: ["owner", "admin"] },
   /** Authorise buyer agents to bid for the organisation, and revoke those authorisations. */
   "entity.buyer_agents.manage": { access: "write", roles: ["owner", "admin"] },
+  /**
+   * Set or remove the organisation's bidding limit, which applies to everyone who bids for it.
+   * Everyone who bids for the organisation can see the limit (`entity.bid.place`).
+   */
+  "entity.bidding_limits.manage": { access: "write", roles: ["owner", "admin"] },
   /** See the works the organisation owns, without any prices. */
   "entity.holdings.read": {
     access: "read",

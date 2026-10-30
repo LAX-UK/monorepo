@@ -1,4 +1,4 @@
-import { type BidAuthorityDecision, bidExceedsAuthority } from "@auction/domain";
+import type { BidAuthorityDecision } from "@auction/domain";
 import type { IBidLotRulesReader } from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { type AutoBidLotRules, validateAutoBidStepAmount } from "@auction/validators";
@@ -8,6 +8,7 @@ import type { IAmlBidGate } from "./bid/aml-bid.gate.js";
 import { bidAuthorityError } from "./bid/bid-authority-error.js";
 import type { IBidAuthority } from "./bid/bid-authority.service.js";
 import type { IBidderRoleGate } from "./bid/bidder-role.gate.js";
+import type { IBiddingLimitGate } from "./bid/bidding-limit.gate.js";
 import type { IBidIdentityEligibilityGate } from "./bid/identity-bid-eligibility.gate.js";
 import type { OperatorPlacementPolicy } from "./bid/operator-placement-policy.js";
 import type { SaleRegistrationBidGate } from "./bid/sale-registration-bid.gate.js";
@@ -37,6 +38,7 @@ export type BidEligibilityRuleDeps = {
   operatorPolicy: OperatorPlacementPolicy;
   saleRegistrationGate: SaleRegistrationBidGate;
   bidderRoleGate: IBidderRoleGate;
+  biddingLimitGate: IBiddingLimitGate;
 };
 
 function selfServiceIdentityRule(deps: BidEligibilityRuleDeps): BidEligibilityRule {
@@ -205,17 +207,23 @@ function saleRegistrationRule(deps: BidEligibilityRuleDeps): BidEligibilityRule 
   };
 }
 
-/** A buyer agent's authorisation limit caps the bid (or auto-bid ceiling) on every channel. */
-function authorisationLimitRule(): BidEligibilityRule {
+/**
+ * The bid (or auto-bid ceiling) must fit under every limit that applies, on every channel: a
+ * buyer agent's per-lot limit and total, and the organisation's own limit. The lowest wins.
+ */
+function biddingLimitsRule(deps: BidEligibilityRuleDeps): BidEligibilityRule {
   return {
-    name: "authorisation_limit",
+    name: "bidding_limits",
     async apply(ctx) {
-      if (ctx.authority && bidExceedsAuthority(ctx.authority, ctx.effectiveAmount)) {
-        return err(
-          new BidError("Bid exceeds buyer agent authorisation limit", 403, "bid_limit_exceeded"),
-        );
-      }
-      return ok(undefined);
+      if (!ctx.authority) return ok(undefined);
+      return deps.biddingLimitGate.check({
+        legalEntityId: ctx.input.buyerLegalEntityId,
+        placedByUserId: ctx.input.placedByUserId,
+        lotId: ctx.input.lotId,
+        saleId: ctx.saleId,
+        amount: ctx.effectiveAmount,
+        authority: ctx.authority,
+      });
     },
   };
 }
@@ -232,7 +240,7 @@ export function createBidEligibilityRules(deps: BidEligibilityRuleDeps): BidElig
     operatorCapRule(deps),
     operatorIdentityRule(deps),
     saleRegistrationRule(deps),
-    authorisationLimitRule(),
+    biddingLimitsRule(deps),
   ];
 }
 

@@ -155,6 +155,15 @@ export type {
   IMemberBuyerAgentAuthorisationRevoker,
   NewBuyerAgentAuthorisation,
 } from "./buyer-agent-authorisation.repository.js";
+export type {
+  BiddingExposureCommitmentKind,
+  BiddingExposureCommitmentRow,
+  IBiddingExposureLock,
+  IBiddingExposureReader,
+  IOrganisationBiddingLimitReader,
+  IOrganisationBiddingLimitWriter,
+  OrganisationBiddingLimitRecord,
+} from "./bidding-limits.repository.js";
 
 export type { IGuestPaddleReader } from "./guest-paddle.reader.js";
 

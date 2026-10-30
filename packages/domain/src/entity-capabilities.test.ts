@@ -27,6 +27,7 @@ const EXPECTED: Record<EntityCapability, LegalEntityMemberRole[]> = {
   "entity.bid.place_without_authorisation": ["owner", "admin"],
   "entity.buyer_agents.read": ["owner", "admin"],
   "entity.buyer_agents.manage": ["owner", "admin"],
+  "entity.bidding_limits.manage": ["owner", "admin"],
   "entity.holdings.read": ["owner", "admin", "finance", "viewer", "buyer_agent"],
 };
 

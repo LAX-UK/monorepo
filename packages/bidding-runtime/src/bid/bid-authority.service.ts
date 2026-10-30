@@ -43,7 +43,11 @@ export class BidAuthorityService implements IBidAuthority {
     });
     return decideBidAuthority({
       role,
-      grants: rows.map((row) => ({ saleId: row.saleId, bidLimit: parseMoneyCap(row.bidLimit) })),
+      grants: rows.map((row) => ({
+        saleId: row.saleId,
+        bidLimit: parseMoneyCap(row.bidLimit),
+        totalLimit: parseMoneyCap(row.totalLimit),
+      })),
       saleId: query.saleId,
     });
   }

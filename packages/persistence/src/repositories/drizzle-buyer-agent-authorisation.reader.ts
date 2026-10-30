@@ -17,6 +17,7 @@ export class DrizzleBuyerAgentAuthorisationReader implements IBuyerAgentAuthoris
       .select({
         saleId: buyerAgentAuthorisation.saleId,
         bidLimit: buyerAgentAuthorisation.bidLimit,
+        totalLimit: buyerAgentAuthorisation.totalLimit,
       })
       .from(buyerAgentAuthorisation)
       .where(
@@ -37,6 +38,7 @@ export class DrizzleBuyerAgentAuthorisationReader implements IBuyerAgentAuthoris
     return rows.map((row) => ({
       saleId: row.saleId,
       bidLimit: row.bidLimit != null ? String(row.bidLimit) : null,
+      totalLimit: row.totalLimit != null ? String(row.totalLimit) : null,
     }));
   }
 }

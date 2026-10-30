@@ -14,6 +14,8 @@ export type BuyerAgentAuthorisationRecord = {
   saleTitle: string | null;
   /** Decimal string in major units, or `null` for no limit. */
   bidLimit: string | null;
+  /** Decimal string in major units, or `null` for no total. */
+  totalLimit: string | null;
   validFrom: Date;
   validUntil: Date | null;
   status: BuyerAgentAuthorisationStatus;
@@ -29,6 +31,8 @@ export type NewBuyerAgentAuthorisation = {
   userId: string;
   saleId: string | null;
   bidLimit: string | null;
+  /** Decimal string in major units, or `null` for no total. */
+  totalLimit: string | null;
   validFrom: Date;
   validUntil: Date | null;
   createdByUserId: string;
