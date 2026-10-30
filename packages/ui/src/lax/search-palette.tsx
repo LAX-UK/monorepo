@@ -281,7 +281,7 @@ export function SearchPalette({
               />
             ) : null}
 
-            {scopeNote && !nothing ? (
+            {scopeNote && (typed || !nothing) ? (
               <p className="mx-2 mt-1 flex items-start gap-2 rounded-lax-menu bg-lax-sunken px-3 py-2 text-lax-12 text-lax-muted">
                 <Lock aria-hidden className="mt-0.5 size-3.5 shrink-0" />
                 {scopeNote}

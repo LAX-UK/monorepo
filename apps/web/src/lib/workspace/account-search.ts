@@ -166,7 +166,11 @@ export function narrowerScopeNote(
   searchable: readonly AccountSearchGroup[],
   roleLabel: string,
 ): string | null {
-  const missing = ACCOUNT_SEARCH_GROUPS.filter((group) => !searchable.includes(group)).map(
+  // A won work is found under Purchases by the members who follow every purchase, so Works is
+  // left out for them by design, not because their role cannot open it.
+  const covered = (group: AccountSearchGroup) =>
+    searchable.includes(group) || (group === "works" && searchable.includes("purchases"));
+  const missing = ACCOUNT_SEARCH_GROUPS.filter((group) => !covered(group)).map(
     (group) => GROUP_NOUN[group],
   );
   if (missing.length === 0) return null;

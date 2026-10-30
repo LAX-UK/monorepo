@@ -87,6 +87,10 @@ describe("account search results", () => {
       /^Showing what an admin/,
     );
     expect(narrowerScopeNote(RESULT.searchable, "Owner")).toBeNull();
+    // Owners find won works under Purchases, so Works is not a gap for them.
+    expect(
+      narrowerScopeNote(["consignments", "purchases", "bids", "invoices", "members"], "Owner"),
+    ).toBeNull();
   });
 });
 
