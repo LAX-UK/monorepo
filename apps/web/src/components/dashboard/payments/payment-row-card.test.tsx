@@ -6,6 +6,7 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("@/lib/shell/shell-config-context", () => ({
   useShellConfig: () => ({ density: "normal" }),
+  useOptionalShellConfig: () => ({ density: "normal" }),
 }));
 
 const sampleRow: PaymentDisplayRow = {

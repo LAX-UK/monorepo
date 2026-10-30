@@ -8,6 +8,9 @@ import { ChevronsUpDown, Loader2 } from "lucide-react";
 import { AccountSwitcherPopover } from "./account-switcher-popover";
 import { AccountTile } from "./account-tile";
 
+/** Past about this many characters a name can need more than the card's two lines. */
+const LONG_NAME = 36;
+
 type Props = {
   account: AccountChrome;
   /** The sidebar is collapsed to icons, so only the tile shows. */
@@ -54,10 +57,16 @@ export function AccountSwitcher({ account, collapsed = false, showHint = false }
             {collapsed ? null : (
               <>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-body text-sm font-semibold text-on-surface">
+                  {/* The account's name is the one identity in the chrome: it wraps to two lines,
+                      and only a longer name is cut, with the whole name on hover. */}
+                  <span
+                    className="line-clamp-2 font-body text-sm font-semibold break-words text-on-surface"
+                    {...(current.name.length > LONG_NAME ? { title: current.name } : {})}
+                  >
                     {current.name}
                   </span>
-                  <span className="block truncate font-body text-xs text-on-surface-variant">
+                  {/* The role and state ("Owner · Documents requested") wrap rather than cut. */}
+                  <span className="block font-body text-xs text-pretty text-on-surface-variant">
                     {current.detail}
                   </span>
                 </span>

@@ -8,6 +8,9 @@ type Props = {
   className?: string;
 };
 
+const LINK_CLASS =
+  "rounded-lax-badge underline decoration-lax-line-strong underline-offset-4 transition-colors duration-150 hover:text-lax-fg hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lax-focus";
+
 /**
  * Things to know that are not this member's to do ("Waiting for an owner or admin to choose…").
  * Quiet lines rather than tasks: no button, at most a link to where it can be followed. Shown
@@ -22,16 +25,10 @@ export function HomeNotices({ notices, className }: Props) {
       data-testid="home-notices"
     >
       {notices.map((notice) => (
-        <li
-          key={notice.key}
-          className="flex items-start gap-2 font-body text-sm text-on-surface-variant"
-        >
+        <li key={notice.key} className="flex items-start gap-2 text-lax-14 text-lax-muted">
           <Info className="mt-0.5 size-4 shrink-0" strokeWidth={1.75} aria-hidden />
           {notice.href ? (
-            <Link
-              href={notice.href}
-              className="rounded-sm underline-offset-2 transition-colors duration-150 hover:text-on-surface hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-on-surface"
-            >
+            <Link href={notice.href} className={LINK_CLASS}>
               {notice.text}
             </Link>
           ) : (
@@ -42,7 +39,7 @@ export function HomeNotices({ notices, className }: Props) {
                   {" "}
                   <a
                     href={notice.action.href}
-                    className="rounded-sm font-medium text-on-surface underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-on-surface"
+                    className={cn(LINK_CLASS, "font-medium text-lax-fg")}
                   >
                     {notice.action.label}
                   </a>

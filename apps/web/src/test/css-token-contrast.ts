@@ -142,12 +142,16 @@ function luminance([r, g, b]: Rgb): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-/** WCAG contrast ratio between two Bid tokens (names without `--color-`), in one theme. */
+/**
+ * WCAG contrast ratio between two Bid colours, in one theme: token names without `--color-`, or a
+ * CSS `var(…)` reference as a class writes it (`var(--lax-info-bg,var(--color-info-container))`).
+ */
 export function createTokenContrast() {
   const themes = loadThemes();
   return function contrast(fg: string, bg: string, theme: Theme): number {
     const tokens = themes[theme];
     const read = (name: string) => {
+      if (name.startsWith("var(")) return resolve(name, tokens, theme);
       const raw = tokens.get(`--color-${name}`);
       if (!raw) throw new Error(`--color-${name} is not defined for ${theme}`);
       return resolve(raw, tokens, theme);

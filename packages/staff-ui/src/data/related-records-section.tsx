@@ -1,6 +1,6 @@
+import type { LinkComponent } from "@auction/ui/lax";
 import type * as React from "react";
 import { EmptyState, Section } from "../display/states.js";
-import type { StaffLinkComponent } from "../shell/link.js";
 import { DataTable } from "./data-table.js";
 import type { DataColumn, SortState, TableDensity } from "./types.js";
 
@@ -23,7 +23,7 @@ export type RelatedRecordsSectionProps<T> = {
    * The full list filtered to this record, when the section shows only the newest rows:
    * "View all 23" in the section's header.
    */
-  viewAll?: { href: string; total: number; Link: StaffLinkComponent } | null;
+  viewAll?: { href: string; total: number; Link: LinkComponent } | null;
   /**
    * One action for the section, e.g. "Grant sale authority". While the section is empty and its
    * `empty` state has an action, only the empty state shows it.

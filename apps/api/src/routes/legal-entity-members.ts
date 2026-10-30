@@ -145,6 +145,17 @@ export function createLegalEntityMemberRoutes(
     },
   );
 
+  /** Any member leaves the acting organisation; the last owner is refused with a reason key. */
+  r.post("/members/leave", requireAuth, requireContext, async (c) => {
+    const userId = c.get("userId") as string;
+    const ctx = c.get("legalEntityContext") as LegalEntityContext;
+    const outcome = await memberHttp.leave({ userId, legalEntityId: ctx.legalEntityId });
+    if (outcome.kind === "err") {
+      return respondIdentityError(c, outcome.error);
+    }
+    return respondIdentityRouteOutcome(c, outcome);
+  });
+
   r.get("/invitations", requireAuth, requireContext, requireReadMembers, async (c) => {
     const ctx = c.get("legalEntityContext") as LegalEntityContext;
     const outcome = await memberHttp.listInvitations({ legalEntityId: ctx.legalEntityId });

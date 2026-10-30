@@ -1795,6 +1795,13 @@
       "breakpoints": true
     },
     {
+      "idx": 256,
+      "version": "7",
+      "when": 1797494400000,
+      "tag": "0256_organisation_invoice_details",
+      "breakpoints": true
+    },
+    {
       "idx": 257,
       "version": "7",
       "when": 1797580800000,

@@ -11,4 +11,6 @@ export type BillToContext = {
   vatLine: string | null;
   /** True when required address rows were missing (ops should investigate). */
   addressIncomplete: boolean;
+  /** The organisation's purchase-order reference for its invoices, when its finance team set one. */
+  poReference: string | null;
 };

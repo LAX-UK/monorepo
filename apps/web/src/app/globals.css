@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "@auction/branding/brand-primitives.css" layer(base);
 @import "@auction/branding/lax-system.css" layer(base);
+@import "@auction/ui/lax-theme.css";
 @import "../styles/tokens-dark.css" layer(base);
 @import "../styles/tokens-motion.css" layer(base);
 @import "@auction/marketing-ui/marketing-header.css";
@@ -182,8 +183,8 @@
   --color-scrim-hero-strong: rgba(0, 0, 0, 0.88);
   --color-scrim-hero-soft: rgba(0, 0, 0, 0.55);
   --color-scrim-auth: rgba(0, 0, 0, 0.07);
-  /* The shared field edge: 3:1 or more on every surface (WCAG 1.4.11). */
-  --color-input-border: var(--brand-field-edge);
+  /* The shared control edge: 3:1 or more on every surface (WCAG 1.4.11), in both schemes. */
+  --color-input-border: var(--lax-control-edge);
   --color-input-border-focus: var(--lax-focus);
   /* Disabled controls: the LAX disabled style, a quiet fill and edge with a label at 3:1. */
   --color-disabled-fg: var(--lax-disabled-fg);
@@ -459,4 +460,29 @@
 [data-read-only] :disabled,
 [data-read-only] label:has(:disabled) {
   cursor: not-allowed;
+}
+
+/*
+ * The organisation workspace reads the LAX system surfaces. Pages inside it still name Bid's
+ * older surface tokens (`bg-surface-container-low`, `text-on-surface-variant`); inside the shell
+ * those names resolve to the LAX layer, so every client page moves with the shell and none is
+ * restyled one by one. Each value is a light-dark() pair, so one block serves both schemes. The
+ * public pages keep Bid's own values: this applies under `[data-workspace-shell]` only.
+ */
+[data-workspace-shell] {
+  --color-background: var(--lax-page);
+  --color-surface: var(--lax-surface);
+  --color-surface-bright: var(--lax-surface);
+  --color-surface-container-lowest: var(--lax-surface);
+  --color-surface-container-low: var(--lax-sunken);
+  --color-surface-container: var(--lax-sunken);
+  --color-surface-container-high: var(--lax-neutral-bg);
+  --color-surface-container-highest: var(--lax-neutral-bg);
+  --color-surface-variant: var(--lax-neutral-bg);
+  --color-on-surface: var(--lax-fg);
+  --color-foreground: var(--lax-fg);
+  --color-on-surface-variant: var(--lax-muted);
+  --color-outline-variant: var(--lax-line-strong);
+  --color-shell-stroke: var(--lax-line);
+  --color-border-hairline: var(--lax-line);
 }

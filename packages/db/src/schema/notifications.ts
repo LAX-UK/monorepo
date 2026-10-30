@@ -42,6 +42,8 @@ export const NOTIFICATION_TYPES = [
   "lot_ready_for_collection",
   "lot_shipped",
   "lot_delivered",
+  "organisation_member_left",
+  "payout_bank_changed",
   "delivery_quote_ready",
   "payout_problem",
   "bid_refused_limit",

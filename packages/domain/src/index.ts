@@ -334,6 +334,8 @@ export {
 } from "./notification-needs-action.js";
 export {
   NOTIFICATION_ALWAYS_DELIVERED_TYPES,
+  NOTIFICATION_IGNORES_QUIET_HOURS_TYPES,
+  notificationIgnoresQuietHours,
   notificationIsMutable,
   notificationSilencedByMute,
 } from "./notification-mutes.js";
@@ -372,16 +374,18 @@ export {
   homeActivityArchive,
   homeNotices,
   homeShortcuts,
-  homeTaskKindsFor,
-  homeTasks,
+  organisationFirstSteps,
+  FIRST_STEP_TASK_KINDS,
+  type FirstStep,
+  type FirstStepId,
+  type FirstStepState,
+  type NeedsYouRead,
   type HomeActivityArchive,
   type HomeActivityEvent,
   type HomeActivityKind,
   type HomeNotice,
   type HomeShortcut,
   type HomeSubject,
-  type HomeTask,
-  type HomeTaskKind,
   type OrganisationHomeFacts,
   type OrganisationHomeModel,
   type UnsoldLotState,
@@ -589,6 +593,26 @@ export {
   type CollectionBookingOffer,
   type CollectionBookingSettings,
 } from "./collection-booking.js";
+export {
+  MEMBER_LEAVE_REFUSAL_MESSAGE,
+  memberLeavePolicy,
+  type MemberLeaveDecision,
+  type MemberLeaveRefusal,
+} from "./member-leave-policy.js";
+export {
+  ACTIVITY_EVENT_TYPES,
+  ACTIVITY_GROUPS,
+  ACTIVITY_RETENTION_MONTHS,
+  activityEntry,
+  activityEventTypesFor,
+  activityRetentionStart,
+  type ActivityDetail,
+  type ActivityEntry,
+  type ActivityEventRecord,
+  type ActivityEventType,
+  type ActivityGroup,
+  type ActivityKind,
+} from "./organisation-activity.js";
 export {
   consignmentReference,
   saleLineBreakdown,

@@ -1,38 +1,8 @@
 "use client";
 
-import { Toaster } from "@auction/ui/components/sonner";
-import { STAFF_TOAST_DURATION_MS } from "./feedback.js";
+import { Toaster } from "@auction/ui/lax";
 
-/**
- * Feedback after an action, bottom right on desktop, above the thumb on a phone. Sentence-case
- * title, one optional line, raised surface; success and failure carry an icon, not a colour fill.
- * Toasts stay 5s (10s with Undo, see `toastUndo`) and pause while hovered.
- */
+/** The LAX system toaster (`@auction/ui/lax`) at the staff density. */
 export function StaffToaster() {
-  return (
-    <Toaster
-      position="bottom-right"
-      richColors={false}
-      closeButton
-      duration={STAFF_TOAST_DURATION_MS}
-      offset={24}
-      toastOptions={{
-        classNames: {
-          toast:
-            "font-staff rounded-staff-md! border! border-staff-line! bg-staff-raised! text-staff-fg! shadow-staff-md!",
-          title: "font-staff text-staff-sm font-medium normal-case tracking-normal",
-          description: "font-staff text-staff-sm text-staff-muted!",
-          actionButton:
-            "group-[.toast]:rounded-staff-sm group-[.toast]:bg-staff-ink group-[.toast]:text-staff-on-ink",
-          // Sonner's own close button is 20px; staff targets are at least 24px.
-          closeButton:
-            "size-6! border-staff-line! bg-staff-raised! text-staff-muted! hover:text-staff-fg! staff-focus",
-          cancelButton:
-            "group-[.toast]:rounded-staff-sm group-[.toast]:bg-staff-sunken group-[.toast]:text-staff-fg",
-          success: "[&_[data-icon]]:text-staff-success-dot",
-          error: "[&_[data-icon]]:text-staff-danger-dot",
-        },
-      }}
-    />
-  );
+  return <Toaster density="staff" />;
 }

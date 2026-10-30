@@ -70,8 +70,8 @@ describe("AdminClientArtistProfilesPanel", () => {
   it("is a secondary sentence-case button, and left out for roles that cannot create", () => {
     panel();
     const button = screen.getByRole("button", { name: "Create artist profile" });
-    expect(button.className).not.toMatch(/uppercase|bg-staff-ink /);
-    expect(button.className).toMatch(/border-staff-line-strong/);
+    expect(button.className).not.toMatch(/uppercase|bg-lax-ink /);
+    expect(button.className).toMatch(/border-lax-line-strong/);
   });
 
   it("offers no create button to a role that cannot create artist profiles", () => {

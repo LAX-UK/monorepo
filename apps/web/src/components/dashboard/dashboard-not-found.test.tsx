@@ -25,7 +25,7 @@ const gallery: AccountOption = {
 
 function renderAs(current: AccountOption) {
   render(
-    <AccountChromeProvider account={{ current, switcher: null, strip: null }}>
+    <AccountChromeProvider account={{ current, switcher: null }}>
       <DashboardNotFound />
     </AccountChromeProvider>,
   );

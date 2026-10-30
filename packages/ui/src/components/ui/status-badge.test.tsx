@@ -17,9 +17,11 @@ function badge(label = "Under review") {
 }
 
 describe("StatusBadge", () => {
-  it("is one size: 20px tall, 12px label at weight 500, a full pill", () => {
+  it("is one size: 20px tall, 12px label at weight 500, on the LAX badge radius", () => {
     render(<StatusBadge>Under review</StatusBadge>);
-    expect(badge()).toHaveClass("h-5", "text-xs", "font-medium", "rounded-full");
+    expect(badge()).toHaveClass("h-5", "text-xs", "font-medium");
+    // 4px wherever the LAX system is loaded (Bid, both staff tools); a pill in other products.
+    expect(badge()).toHaveClass("rounded-[var(--lax-radius-badge,9999px)]");
   });
 
   it("never changes the case or spacing of its label", () => {
@@ -37,14 +39,14 @@ describe("StatusBadge", () => {
 
   describe.each(TONES)("%s tone", (tone) => {
     it("draws its tint and label colour from the tone table", () => {
-      render(<StatusBadge variant={tone}>Under review</StatusBadge>);
+      render(<StatusBadge tone={tone}>Under review</StatusBadge>);
       for (const token of STATUS_BADGE_TONE_CLASSES[tone].split(" ")) {
         expect(badge()).toHaveClass(token);
       }
     });
 
     it("pairs its colour with a cue, so it never relies on hue alone", () => {
-      render(<StatusBadge variant={tone}>Under review</StatusBadge>);
+      render(<StatusBadge tone={tone}>Under review</StatusBadge>);
       const cue = badge().querySelector("[data-shape]");
       expect(cue).toHaveAttribute("data-shape", STATUS_BADGE_DEFAULT_SHAPE[tone]);
       expect(cue).toHaveAttribute("aria-hidden", "true");
@@ -52,7 +54,7 @@ describe("StatusBadge", () => {
 
     it.each(SHAPES)("can draw the %s cue instead", (shape) => {
       render(
-        <StatusBadge variant={tone} shape={shape}>
+        <StatusBadge tone={tone} shape={shape}>
           Under review
         </StatusBadge>,
       );
@@ -73,13 +75,13 @@ describe("StatusBadge", () => {
   });
 
   it("pulses its dot only for something live, and only when motion is allowed", () => {
-    const { unmount } = render(<StatusBadge variant="live">Live</StatusBadge>);
+    const { unmount } = render(<StatusBadge tone="live">Live</StatusBadge>);
     expect(badge("Live").querySelector("[data-shape] > span")).toHaveClass(
       "motion-safe:animate-pulse",
     );
     unmount();
     render(
-      <StatusBadge variant="warning" shape="dot">
+      <StatusBadge tone="warning" shape="dot">
         Extended
       </StatusBadge>,
     );
@@ -88,16 +90,17 @@ describe("StatusBadge", () => {
     );
   });
 
-  it("truncates a long label inside the row instead of overflowing", () => {
+  it("never cuts its label short, since the words are the status", () => {
     render(<StatusBadge>Documents requested by our team</StatusBadge>);
-    expect(screen.getByText("Documents requested by our team")).toHaveClass("truncate", "min-w-0");
-    expect(badge("Documents requested by our team")).toHaveClass("max-w-full");
+    expect(screen.getByText("Documents requested by our team")).not.toHaveClass("truncate");
+    expect(badge("Documents requested by our team").className).not.toMatch(/truncate|max-w-/);
+    expect(badge("Documents requested by our team")).toHaveClass("shrink-0", "whitespace-nowrap");
   });
 
   it("reads as its words alone to assistive technology", () => {
     render(
       <p>
-        Status: <StatusBadge variant="success">Approved</StatusBadge>
+        Status: <StatusBadge tone="success">Approved</StatusBadge>
       </p>,
     );
     expect(screen.getByText(/Status:/).textContent).toBe("Status: Approved");

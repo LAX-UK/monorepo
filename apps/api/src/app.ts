@@ -55,6 +55,7 @@ import { createOrganisationBuyingRoutes } from "./routes/organisation-buying.js"
 import { createOrganisationHomeRoutes } from "./routes/organisation-home.js";
 import { createOrganisationMembershipRoutes } from "./routes/organisation-membership.js";
 import { createOrganisationSellingRoutes } from "./routes/organisation-selling.js";
+import { createOrganisationTeamRoutes } from "./routes/organisation-team.js";
 import { createOrganisationWorkspaceRoutes } from "./routes/organisation-workspace.js";
 import { createOrganizationRoutes } from "./routes/organizations.js";
 import { createPaymentRoutes } from "./routes/payments.js";
@@ -243,6 +244,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/legal-entities", createOrganisationSellingRoutes(container, authenticator))
     .route("/legal-entities", createOrganisationAccessRequestRoutes(container, authenticator))
     .route("/legal-entities", createOrganisationWorkspaceRoutes(container, authenticator))
+    .route("/legal-entities", createOrganisationTeamRoutes(container, authenticator))
     .route("/legal-entities", createLegalEntityRoutes(container, authenticator))
     .route("/kyc", createKycRoutes(container, authenticator))
     .route(

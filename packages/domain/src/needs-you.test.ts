@@ -12,6 +12,7 @@ import {
   needsYouTasks,
   unsoldChoiceDueBy,
 } from "./needs-you.js";
+import { NOTIFICATION_NEEDS_ACTION_TYPES } from "./notification-needs-action.js";
 
 const NOW = new Date("2026-11-10T12:00:00Z");
 const DAY = 86_400_000;
@@ -301,14 +302,7 @@ describe("links", () => {
 
 describe("notifications that announce a task", () => {
   /** The inbox's "Needs action" types: each must belong to exactly one task kind. */
-  const NEEDS_ACTION = [
-    "outbid",
-    "payment_due",
-    "consignment_agreement_reminder",
-    "submission_changes_requested",
-    "kyc_resubmission_required",
-    "source_of_funds_documents_requested",
-  ];
+  const NEEDS_ACTION: readonly string[] = NOTIFICATION_NEEDS_ACTION_TYPES;
 
   it("maps every needs-action notification to its task", () => {
     expect(NEEDS_ACTION.map(needsYouKindAnnouncedBy)).toEqual([

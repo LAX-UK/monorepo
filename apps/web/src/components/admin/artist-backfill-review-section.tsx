@@ -22,7 +22,7 @@ export async function ArtistBackfillReviewSection() {
 
   if (tasks.length === 0) {
     return (
-      <div className="rounded-staff-md border border-staff-line bg-staff-surface">
+      <div className="rounded-staff-lg border border-staff-line bg-staff-surface">
         <EmptyState
           title="Nothing to match"
           description="Every lot's artist has been matched to a profile."

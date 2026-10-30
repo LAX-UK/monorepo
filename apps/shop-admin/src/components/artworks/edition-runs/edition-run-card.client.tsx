@@ -110,7 +110,7 @@ export function EditionRunCard({
     <form
       noValidate
       aria-label="Run of prints"
-      className="flex flex-col gap-6 rounded-staff-md border border-staff-line bg-staff-surface p-4 sm:p-6"
+      className="flex flex-col gap-6 rounded-staff-lg border border-staff-line bg-staff-surface p-4 sm:p-6"
       onSubmit={(event) => {
         event.preventDefault();
         void submit();

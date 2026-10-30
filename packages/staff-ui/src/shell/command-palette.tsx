@@ -14,12 +14,11 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@auction/ui/components/dialog";
+import { Kbd, useReturnFocus } from "@auction/ui/lax";
 import { CornerDownLeft, LoaderCircle } from "lucide-react";
 import * as React from "react";
 import { staffCommandClass, staffCommandItemClass } from "../forms/command-styles.js";
 import { STAFF_LAYER } from "../lib/cn.js";
-import { useReturnFocus } from "../lib/return-focus.js";
-import { Kbd } from "../primitives/input.js";
 import type { StaffCommand, StaffCommandSearch } from "./types.js";
 
 /** Opens on ⌘K (Ctrl+K on Windows and Linux) from anywhere in the shell. */

@@ -81,7 +81,7 @@ function ItemSummary({ item }: { item: RelationItem }) {
           <span className="block truncate text-xs text-on-surface-variant">{item.subtitle}</span>
         ) : null}
       </span>
-      {item.draft ? <StatusBadge variant="warning">Draft</StatusBadge> : null}
+      {item.draft ? <StatusBadge tone="warning">Draft</StatusBadge> : null}
     </>
   );
 }

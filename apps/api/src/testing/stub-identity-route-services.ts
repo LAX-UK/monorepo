@@ -31,6 +31,7 @@ export function stubIdentityRouteServices(
       inviteMember: vi.fn(),
       updateMemberRole: vi.fn(),
       removeMember: vi.fn(),
+      leave: vi.fn(),
       transferOwnership: vi.fn(),
       listInvitations: vi.fn(),
       withdrawInvitation: vi.fn(),

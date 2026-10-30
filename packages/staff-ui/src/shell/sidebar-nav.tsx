@@ -1,10 +1,9 @@
 "use client";
 
+import { Count, type LinkComponent } from "@auction/ui/lax";
 import { resolveActiveNavHref } from "@auction/ui/shell";
 import { cn } from "../lib/cn.js";
 import { StaffTooltip } from "../primitives/menu.js";
-import { Count } from "../primitives/tabs.js";
-import type { StaffLinkComponent } from "./link.js";
 import type { StaffNavGroup, StaffNavItem } from "./types.js";
 
 export function resolveActiveItem(
@@ -35,7 +34,7 @@ export function SidebarNav({
 }: {
   groups: readonly StaffNavGroup[];
   pathname: string;
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
   collapsed?: boolean;
   onNavigate?: () => void;
 }) {

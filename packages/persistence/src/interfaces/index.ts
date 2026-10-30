@@ -966,6 +966,15 @@ export type {
 } from "./account-record-search.reader.js";
 export type { INeedsYouFactsReader } from "./needs-you-facts.reader.js";
 export type {
+  ActivityListFilter,
+  ActivityPerson,
+  IInvoiceDetailsReader,
+  IInvoiceDetailsRepository,
+  IOrganisationActivityReader,
+  InvoiceAddress,
+  InvoiceDetails,
+} from "./organisation-team.readers.js";
+export type {
   AgreementDocumentFacts,
   IAgreementDocumentFactsReader,
   IPayoutLinesReader,

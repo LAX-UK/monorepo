@@ -237,12 +237,12 @@ export function SofComplianceClient({ initial }: Props) {
                         <p className="font-body text-sm font-medium text-on-surface">{type}</p>
                         {activeDoc ? (
                           activeDoc.statusLabel === "under_review" ? (
-                            <StatusBadge variant="info">Under review</StatusBadge>
+                            <StatusBadge tone="info">Under review</StatusBadge>
                           ) : (
-                            <StatusBadge variant="success">Uploaded</StatusBadge>
+                            <StatusBadge tone="success">Uploaded</StatusBadge>
                           )
                         ) : needsUpload ? (
-                          <StatusBadge variant="warning">Still needed</StatusBadge>
+                          <StatusBadge tone="warning">Still needed</StatusBadge>
                         ) : null}
                       </div>
                       {previewUrl ? (

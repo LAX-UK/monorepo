@@ -32,7 +32,7 @@ async function useOrganisationInThisBrowser(context: BrowserContext, url: string
 }
 
 async function expectActingFor(page: Page, organisationName: string) {
-  await expect(page.getByTestId("account-strip")).toContainText(organisationName);
+  await expect(page.getByTestId("account-switcher")).toContainText(organisationName);
   await expect(page.getByText("We couldn't load your accounts")).toHaveCount(0);
   expect(new URL(page.url()).pathname).not.toMatch(/no-access|restore-account|switch-account/);
 }
@@ -82,14 +82,14 @@ test.describe("buyer account stability @roles", () => {
       .first()
       .click();
     await other.getByTestId("switch-account-personal").click();
-    await expect(other.getByTestId("account-strip")).toHaveCount(0);
+    await expect(other.getByTestId("account-switcher")).toHaveCount(0);
 
     // The first tab follows, and says why, rather than silently acting for the new account.
     await page.bringToFront();
     await expect(page.getByTestId("account-notice")).toContainText(
       "You switched to your personal account in another tab",
     );
-    await expect(page.getByTestId("account-strip")).toHaveCount(0);
+    await expect(page.getByTestId("account-switcher")).toHaveCount(0);
     await other.close();
   });
 });

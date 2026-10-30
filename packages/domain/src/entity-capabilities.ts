@@ -98,6 +98,16 @@ const ENTITY_CAPABILITY_RULES = {
    * Everyone who bids for the organisation can see the limit (`entity.bid.place`).
    */
   "entity.bidding_limits.manage": { access: "write", roles: ["owner", "admin"] },
+  /**
+   * Change the details printed on the organisation's invoices: the billing email, the invoice
+   * address and a PO reference. Finance teams keep these; anyone who sees the money reads them.
+   */
+  "entity.invoice_details.manage": { access: "write", roles: ["owner", "admin", "finance"] },
+  /**
+   * Read the organisation's activity: who joined, left or was removed, role changes,
+   * authorisations, agreements, unsold choices, payouts and bank changes.
+   */
+  "entity.activity.read": { access: "read", roles: ["owner", "admin"] },
   /** See the works the organisation owns, without any prices. */
   "entity.holdings.read": {
     access: "read",

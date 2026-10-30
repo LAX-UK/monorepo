@@ -1,6 +1,8 @@
 import {
   MEMBER_CHANGE_DENIAL_MESSAGE,
+  MEMBER_LEAVE_REFUSAL_MESSAGE,
   type MemberChangeDenial,
+  type MemberLeaveRefusal,
   organisationMembersRefusal,
 } from "@auction/domain";
 import type { OrgModuleGate } from "../../lib/org-module-gate.js";
@@ -47,9 +49,30 @@ function isMemberChangeDenial(code: string): code is MemberChangeDenial {
  * A refused member change answers 403 with the policy's reason as `code` and its explanation as
  * `error`, so the page can show it as it is. Other refusals keep their codes.
  */
+function isMemberLeaveRefusal(code: string): code is MemberLeaveRefusal {
+  return Object.hasOwn(MEMBER_LEAVE_REFUSAL_MESSAGE, code);
+}
+
+/** Leaving is refused with the reason key: 403 for support staff, 409 when ownership is in the way. */
+const LEAVE_REFUSAL_STATUS: Record<MemberLeaveRefusal, number> = {
+  read_only: 403,
+  personal_account: 409,
+  last_owner_must_transfer: 409,
+};
+
 function permissionOutcome(code: string): IdentityRouteOutcome<never> {
   const refusal = organisationMembersRefusal(code);
   if (refusal) return identityRouteRefusal(refusal, 403);
+  if (isMemberLeaveRefusal(code)) {
+    return {
+      kind: "err",
+      error: {
+        message: MEMBER_LEAVE_REFUSAL_MESSAGE[code],
+        status: LEAVE_REFUSAL_STATUS[code],
+        code,
+      },
+    };
+  }
   if (isMemberChangeDenial(code)) {
     return {
       kind: "err",
@@ -184,6 +207,18 @@ export class IdentityLegalEntityMemberHttpApplicationService
         input.memberId,
       );
       return { kind: "ok", data: { removed: true } };
+    } catch (err) {
+      return memberChangeOutcome(err);
+    }
+  }
+
+  async leave(input: {
+    userId: string;
+    legalEntityId: string;
+  }): Promise<IdentityRouteOutcome<{ left: true }>> {
+    try {
+      await this.memberManagementService.leave(input.userId, input.legalEntityId);
+      return { kind: "ok", data: { left: true } };
     } catch (err) {
       return memberChangeOutcome(err);
     }

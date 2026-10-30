@@ -5,20 +5,16 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
 import { listServerUnsoldOutcomes } from "@/lib/data/http/consignment-after-sale.server";
-import { listServerConsignmentAgreements } from "@/lib/data/http/consignment-agreements.server";
+import { getServerNeedsYou } from "@/lib/data/http/needs-you.server";
 import { getServerOrganisationDashboard } from "@/lib/data/http/organisation-dashboard.server";
 import {
   getServerMyBuyerAgentAuthorisations,
   getServerStoppedMemberBids,
 } from "@/lib/data/http/organisation-membership.server";
 import { type PagedRead, readAllPages } from "@/lib/data/paging/read-all-pages";
-import { isAwaitingCheckout } from "@/lib/data/view-models/dashboard-portfolio.vm";
 import { listMembersAction } from "@/lib/legal-entity/member-management.actions";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
-import {
-  consignmentChecklistFacts,
-  personalIdentityFact,
-} from "@/lib/seller/consignment-checklist-facts";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { loadSellerAccountFacts } from "@/lib/seller/seller-account-facts.server";
 import {
   type DashboardFigures,
@@ -29,22 +25,19 @@ import {
   accountPurchaseScope,
   bidAuthorityFigure,
   buildOrganisationHome,
-  computeConsignmentChecklist,
   dashboardFigureGroupsFor,
   entityActorCan,
   roleBidsThroughAuthorisation,
-  roleNeedsPersonalIdentity,
   welcomeCardFor,
 } from "@auction/domain";
 import type {
-  ConsignmentAgreement,
   ItemSubmission,
   LegalEntitySummary,
   Lot,
   PortfolioRow,
   SellerUnsoldOutcome,
 } from "@auction/types";
-import { abilityPhrases, roleExplanation, welcomeHeadline } from "./member-role-copy";
+import { abilityPhrases, roleExplanation, roleQuestion, welcomeHeadline } from "./member-role-copy";
 import { homeActivityEvents } from "./organisation-home-activity";
 import {
   type OrganisationHomeView,
@@ -63,11 +56,39 @@ export type LoadedOrganisationHome = {
   view: OrganisationHomeView;
   welcome: WelcomeCardView | null;
   roleExplanation: string;
+  /** "What can I do here as an owner?" */
+  roleQuestion: string;
+  /** The line under the title. */
+  description: string;
   /** A buyer agent's standing authority for every sale ("Your limit for every sale: £10,000"). */
   authority: string | null;
   /** Set when a list was longer than Home reads, so "Needs you" may not show everything. */
   listLimitNotice: string | null;
+  /** The people who run the organisation get "Sell a work" beside the title. */
+  sellHref: string | null;
+  /** Whether the organisation's state lets it bid, so Home only suggests sales it can join. */
+  biddingOpen: boolean;
 };
+
+/**
+ * The line under the title: a new organisation is welcomed and told its steps; otherwise Home
+ * says what it is for, in the member's terms.
+ */
+function homeDescription(
+  model: { firstSteps: readonly unknown[] | null },
+  organisationName: string,
+  followsSales: boolean,
+  welcomeCard: boolean,
+): string {
+  // The welcome card says welcome, so the line under the title does not say it again.
+  if (model.firstSteps) {
+    const steps = `These steps get ${organisationName} ready to bid and sell.`;
+    return welcomeCard ? steps : `Welcome to LAX Bid. ${steps}`;
+  }
+  return followsSales
+    ? `What needs ${organisationName} this week, and how its sales are going.`
+    : `What needs you at ${organisationName} this week.`;
+}
 
 /** Settles to a fallback, so one slow or refused list never blanks Home. */
 function settle<T>(enabled: boolean, load: () => Promise<T>, fallback: T): Promise<T> {
@@ -77,7 +98,8 @@ function settle<T>(enabled: boolean, load: () => Promise<T>, fallback: T): Promi
 
 /**
  * Loads only what the member's role may see, builds the Home model in the domain and turns it
- * into words and links. Every list degrades to empty on failure.
+ * into words and links. "Needs you" is the one reader's answer, the same read the sidebar counts
+ * use; Home works out no task itself. Every other list degrades to empty on failure.
  */
 export async function loadOrganisationHome(
   user: Pick<SessionUser, "role" | "staffRoles">,
@@ -91,22 +113,20 @@ export async function loadOrganisationHome(
   const c = await getServerDataContainer();
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   const followsConsignments = reads("entity.consignments.read");
-  const needsIdentity = roleNeedsPersonalIdentity(actor.role);
 
   const scope = await c.buying.scope();
   const [
     submissionRead,
     lotRead,
     unsoldRead,
-    agreements,
     account,
     purchases,
     bids,
     members,
     stoppedBids,
     mine,
-    kyc,
     dashboard,
+    needsYou,
   ] = await Promise.all([
     settle<PagedRead<ItemSubmission>>(
       followsConsignments,
@@ -124,14 +144,13 @@ export async function loadOrganisationHome(
         ),
       EMPTY_READ,
     ),
-    // Only the unsold lots nobody has chosen for: a made choice clears the task.
+    // Only the unsold lots nobody has chosen for: told to those who follow but cannot choose.
     settle<PagedRead<SellerUnsoldOutcome>>(
       followsConsignments,
       () =>
         readAllPages((page) => listServerUnsoldOutcomes({ choice: "none", ...page }), LIST_PAGING),
       EMPTY_READ,
     ),
-    settle<ConsignmentAgreement[]>(followsConsignments, listServerConsignmentAgreements, []),
     settle(true, () => loadSellerAccountFacts(sellerCtx), null),
     // The same reader as Purchases and Bids, so the figures and tasks match those pages.
     settle<PortfolioRow[]>(accountPurchaseScope(actor) !== null, () => c.buying.purchases(), []),
@@ -154,60 +173,23 @@ export async function loadOrganisationHome(
       () => getServerMyBuyerAgentAuthorisations(organisation.id),
       [],
     ),
-    settle(needsIdentity, () => c.kyc.getSummary(), null),
     settle(true, () => getServerOrganisationDashboard(organisation.id), null),
+    settle(true, () => getServerNeedsYou(organisation.id), null),
   ]);
 
   const submissions = submissionRead.rows;
   const lots = lotRead.rows;
-  const agreementBySubmission = new Map(agreements.map((a) => [a.submissionId, a]));
-  const lotById = new Map(lots.map((lot) => [lot.id, lot]));
-  const viewerIdentity = needsIdentity ? personalIdentityFact(kyc) : "verified";
-  const payoutsReady = account?.payoutsReady ?? true;
 
   const facts: OrganisationHomeFacts = {
     actor,
-    organisation: { status: organisation.status, payoutsReady },
-    consignments: account
-      ? submissions.map((submission) => ({
-          id: submission.id,
-          title: submission.title,
-          checklist: computeConsignmentChecklist(
-            consignmentChecklistFacts({
-              submission,
-              agreement: agreementBySubmission.get(submission.id) ?? null,
-              account,
-              lot: submission.convertedLotId
-                ? (lotById.get(submission.convertedLotId) ?? null)
-                : null,
-            }),
-          ),
-        }))
-      : [],
-    changesRequested: submissions
-      .filter((s) => s.status === "changes_requested")
-      .map((s) => ({ id: s.id, title: s.title, note: s.changesRequestedNote ?? null })),
+    organisation: { status: organisation.status, payoutsReady: account?.payoutsReady ?? true },
     unsoldLots: unsoldRead.rows.map((outcome) => ({
       id: outcome.lotId,
       title: outcome.title,
       choice: outcome.choice,
     })),
-    purchasesAwaitingPayment: purchases
-      .filter(isAwaitingCheckout)
-      .map(({ lot }) => ({ id: lot.id, title: lot.title })),
-    viewerIdentity,
-    salesToRegister: mine.flatMap((authorisation) =>
-      authorisation.sale && !authorisation.sale.registered
-        ? [
-            {
-              id: authorisation.sale.id,
-              title: authorisation.sale.title,
-              startsAt: new Date(authorisation.sale.startTime),
-              bidLimit: authorisation.bidLimit,
-            },
-          ]
-        : [],
-    ),
+    // The first owner is always a member; anyone else, joined or invited, means a team.
+    teamInvited: members.length > 1,
   };
 
   const activity = homeActivityEvents({
@@ -240,14 +222,14 @@ export async function loadOrganisationHome(
           : {}),
       }
     : null;
-  const model = buildOrganisationHome(facts, activity, figures);
-  const ctx = { organisationName: organisation.displayName };
+  const model = buildOrganisationHome(facts, activity, figures, needsYou);
+  const ctx = { organisationName: organisation.displayName, now: new Date() };
 
   const welcome = welcomeCardFor({
     role: actor.role,
     invited: organisation.welcomePending === true && !actor.isImpersonation,
     dismissed: false,
-    identityVerified: viewerIdentity === "verified",
+    identityVerified: !(needsYou?.tasks ?? []).some((task) => task.kind === "identity"),
   });
 
   return {
@@ -262,10 +244,20 @@ export async function loadOrganisationHome(
         }
       : null,
     roleExplanation: roleExplanation(actor.role, organisation.displayName),
+    roleQuestion: roleQuestion(actor.role),
+    description: homeDescription(
+      model,
+      organisation.displayName,
+      followsConsignments,
+      welcome !== null,
+    ),
     // The bid limit figure says the same; the line stands in when the figures did not load.
     authority: model.dashboard ? null : buyerAgentAuthorityLine(mine),
-    listLimitNotice: [submissionRead, lotRead, unsoldRead].every((read) => read.complete)
-      ? null
-      : `Showing tasks from the latest ${LIST_PAGING.maxRows.toLocaleString("en-GB")} works.`,
+    listLimitNotice:
+      needsYou?.truncated || ![submissionRead, lotRead, unsoldRead].every((read) => read.complete)
+        ? "Some lists are longer than Home reads. Open each page to see everything."
+        : null,
+    sellHref: model.shortcuts.includes("sell") ? CLIENT_ROUTES.sellingNew : null,
+    biddingOpen: model.state.actions.bid,
   };
 }

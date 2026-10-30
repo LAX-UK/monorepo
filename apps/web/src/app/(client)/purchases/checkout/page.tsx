@@ -112,8 +112,6 @@ export default async function MultiLotCheckoutPage({ searchParams }: Props) {
       <CheckoutReadinessStrip />
       <DashboardPageHeader
         title="Basket checkout"
-        hideTitleOnMobile
-        hideDescriptionOnMobile
         description="Review every lot in your basket. Each lot has its own invoice, so you pay them one at a time."
       />
 

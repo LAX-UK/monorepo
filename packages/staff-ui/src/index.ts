@@ -20,8 +20,14 @@ export { StaffButton, staffButtonVariants } from "./primitives/button.js";
 export type { StaffButtonProps } from "./primitives/button.js";
 export { HoldButton, STAFF_HOLD_MS } from "./primitives/hold-button.js";
 export type { HoldButtonProps } from "./primitives/hold-button.js";
-export { Kbd, ShortcutKeys, TextArea, TextInput, staffFieldBox } from "./primitives/input.js";
-export type { TextAreaProps, TextInputProps } from "./primitives/input.js";
+export {
+  Kbd,
+  ShortcutKeys,
+  TextArea,
+  TextInput,
+  fieldBox as staffFieldBox,
+} from "@auction/ui/lax";
+export type { TextAreaProps, TextInputProps } from "@auction/ui/lax";
 export {
   ChoiceRow,
   StaffCheckbox,
@@ -48,8 +54,8 @@ export {
   SecondaryTabNav,
   SegmentedControl,
   TabNav,
-} from "./primitives/tabs.js";
-export type { CountTone, SegmentOption, TabNavItem } from "./primitives/tabs.js";
+} from "@auction/ui/lax";
+export type { CountTone, SegmentOption, TabNavItem } from "@auction/ui/lax";
 
 // Display
 export {
@@ -57,10 +63,10 @@ export {
   StatusBadge,
   defineStatusMap,
   humanizeStatus,
-} from "./display/status-badge.js";
-export type { StatusPresentation } from "./display/status-badge.js";
+} from "@auction/ui/lax";
+export type { StatusPresentation } from "@auction/ui/lax";
 export { KeyValueList } from "./display/key-value-list.js";
-export { Notice } from "./display/notice.js";
+export { Notice } from "@auction/ui/lax";
 export { RecordImage } from "./display/record-image.js";
 export { ImageGallery, type ImageGalleryItem } from "./display/image-gallery.js";
 export { StatGrid } from "./display/stat-grid.js";
@@ -93,34 +99,33 @@ export {
   ViewOnlyBadge,
 } from "./display/states.js";
 export { METRIC_STRIP_MAX, MetricStrip } from "./display/metric-strip.js";
-export { MetricCell, MetricDelta } from "./display/metric-cell.js";
-export { metricChange } from "./display/metric-change.js";
-export type {
-  Metric,
-  MetricCellItem,
-  MetricComparison,
-  MetricTone,
-} from "./display/metric-cell.js";
-export { Sparkline, SparklineSkeleton } from "./display/sparkline.js";
+export {
+  MetricCell,
+  MetricDelta,
+  Sparkline,
+  SparklineSkeleton,
+  metricChange,
+} from "@auction/ui/lax";
+export type { Metric, MetricCellItem, MetricComparison, MetricTone } from "@auction/ui/lax";
 export { ProgressBar } from "./display/progress-bar.js";
 export { AttentionStrip } from "./display/attention-strip.js";
 export type { AttentionStripItem } from "./display/attention-strip.js";
 
 // Forms
-export { Field, useStaffField } from "./forms/field.js";
-export type { FieldProps } from "./forms/field.js";
+export { Field, useField as useStaffField } from "@auction/ui/lax";
+export type { FieldProps } from "@auction/ui/lax";
 export { MoneyInput } from "./forms/money-input.js";
+export { DateInput, DateTimeInput } from "./forms/date-input.js";
+export type { DateInputProps, DateTimeInputProps } from "./forms/date-input.js";
 export {
-  DateInput,
-  DateTimeInput,
   formatStaffDay,
   isoToLondonWallTime,
   londonClockChange,
   londonWallTimeToIso,
   parseStaffDay,
   parseStaffTime,
-} from "./forms/date-input.js";
-export type { DateInputProps, DateTimeInputProps, ParsedDay } from "./forms/date-input.js";
+} from "./forms/staff-dates.js";
+export type { ParsedDay } from "./forms/staff-dates.js";
 export {
   UnsavedChangesDialog,
   UnsavedChangesGuard,
@@ -180,13 +185,9 @@ export type { WizardStep } from "./forms/wizard.js";
 export { DataTable } from "./data/data-table.js";
 export type { DataTableProps } from "./data/data-table.js";
 export { BulkActionBar, useTableSelectionActive } from "./data/bulk-action-bar.js";
-export {
-  DEFAULT_DATE_PRESETS,
-  DateRangeFilter,
-  daysBefore,
-  londonToday,
-} from "./data/date-range-filter.js";
-export type { DateRangePreset, DayRange } from "./data/date-range-filter.js";
+export { DateRangeFilter } from "./data/date-range-filter.js";
+export { DEFAULT_DATE_PRESETS, daysBefore, londonToday } from "./data/date-ranges.js";
+export type { DateRangePreset, DayRange } from "./data/date-ranges.js";
 export { ListPageSkeleton } from "./data/list-page-skeleton.js";
 export {
   ActiveFilterChips,
@@ -196,10 +197,10 @@ export {
   FilterMenu,
   TablePagination,
   TableSearch,
-  fitViewTabs,
-  searchChipLabel,
   useTableDensity,
 } from "./data/toolbar.js";
+export { searchChipLabel } from "./data/search-chip.js";
+export { fitViewTabs } from "@auction/ui/lax/helpers";
 export { FilterSheet } from "./data/filter-sheet.js";
 export type {
   FilterChecklistSection,
@@ -235,7 +236,11 @@ export { RelatedRecordsSection } from "./data/related-records-section.js";
 export type { RelatedRecordsSectionProps } from "./data/related-records-section.js";
 
 // Access
-export { StaffReadOnly, staffReadOnlyBox, useStaffReadOnly } from "./access/read-only.js";
+export {
+  ReadOnlyView as StaffReadOnly,
+  readOnlyBox as staffReadOnlyBox,
+  useReadOnlyView as useStaffReadOnly,
+} from "@auction/ui/lax";
 export {
   Permitted,
   StaffAccessProvider,
@@ -263,7 +268,8 @@ export type { DetailPageProps } from "./templates/detail-page.js";
 export { FormPage, FormPageSkeleton } from "./templates/form-page.js";
 export type { FormPageProps } from "./templates/form-page.js";
 export type { ActiveFilter, DataView, FilterOption } from "./data/toolbar.js";
-export { SavedViewsError, sameViewQuery, useSavedViews, viewQuery } from "./data/saved-views.js";
+export { SavedViewsError, useSavedViews } from "./data/saved-views.js";
+export { sameViewQuery, viewQuery } from "./data/view-query.js";
 export type {
   SavedView,
   SavedViewItem,
@@ -312,7 +318,8 @@ export {
 export { toast } from "sonner";
 
 // Shell
-export { StaffShell, STAFF_NAV_COOKIE } from "./shell/staff-shell.js";
+export { StaffShell } from "./shell/staff-shell.js";
+export { STAFF_NAV_COOKIE } from "./shell/nav-cookie.js";
 export type { StaffShellProps } from "./shell/staff-shell.js";
 export { AccountMenu, initialsOf } from "./shell/account-menu.js";
 export { ProductMark, ProductSwitcher } from "./shell/product-switcher.js";
@@ -342,8 +349,11 @@ export {
 } from "./shell/theme.js";
 export type { OverflowAction } from "./shell/overflow-menu.js";
 export { SidebarNav, resolveActiveItem } from "./shell/sidebar-nav.js";
-export { PlainLink } from "./shell/link.js";
-export type { StaffLinkComponent, StaffLinkProps } from "./shell/link.js";
+export { PlainLink } from "@auction/ui/lax";
+export type {
+  LinkComponent as StaffLinkComponent,
+  LinkProps as StaffLinkProps,
+} from "@auction/ui/lax";
 export type {
   StaffBreadcrumb,
   StaffCommand,

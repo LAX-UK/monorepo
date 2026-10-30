@@ -1,6 +1,6 @@
+import type { LinkComponent } from "@auction/ui/lax";
 import { ChevronRight } from "lucide-react";
 import { cn } from "../lib/cn.js";
-import type { StaffLinkComponent } from "./link.js";
 import type { StaffBreadcrumb } from "./types.js";
 
 /**
@@ -13,7 +13,7 @@ export function StaffBreadcrumbs({
   className,
 }: {
   items: readonly StaffBreadcrumb[];
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
   className?: string;
 }) {
   if (items.length === 0) return null;

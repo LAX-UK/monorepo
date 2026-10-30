@@ -83,7 +83,7 @@ export function EditorialImageField({
     >
       <div className="flex flex-col gap-3">
         {value ? (
-          <div className="flex items-center gap-3 rounded-staff-md border border-staff-line px-3 py-2.5">
+          <div className="flex items-center gap-3 rounded-staff-lg border border-staff-line px-3 py-2.5">
             <span className="flex size-12 shrink-0 items-center justify-center overflow-hidden rounded-staff-sm border border-staff-line bg-staff-sunken">
               {picture ? (
                 <img src={picture} alt="" className="size-full object-cover" />
@@ -109,7 +109,7 @@ export function EditorialImageField({
           </div>
         ) : null}
         {upload ? (
-          <output className="flex items-center gap-3 rounded-staff-md border border-staff-line px-3 py-2 text-staff-sm">
+          <output className="flex items-center gap-3 rounded-staff-lg border border-staff-line px-3 py-2 text-staff-sm">
             <span className="min-w-0 flex-1 truncate text-staff-fg">{upload.fileName}</span>
             <span className="shrink-0 text-staff-xs text-staff-muted tabular-nums">
               {upload.progress}%

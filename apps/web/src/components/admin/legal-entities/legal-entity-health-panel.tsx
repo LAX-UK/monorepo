@@ -35,7 +35,7 @@ export function LegalEntityHealthPanel({ health }: Props) {
           ]}
         />
         {health.blockers.length > 0 ? (
-          <ul className="flex flex-col divide-y divide-staff-line-subtle rounded-staff-md border border-staff-line">
+          <ul className="flex flex-col divide-y divide-staff-line-subtle rounded-staff-lg border border-staff-line">
             {health.blockers.map((blocker) => (
               <li key={blocker.key} className="flex flex-col gap-0.5 px-3 py-2 text-staff-sm">
                 <span className="font-medium text-staff-fg">{blocker.label}</span>

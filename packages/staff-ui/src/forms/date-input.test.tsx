@@ -1,16 +1,15 @@
+import { Field } from "@auction/ui/lax";
 import { fireEvent, render, screen } from "@testing-library/react";
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
+import { DateInput, DateTimeInput } from "./date-input.js";
 import {
-  DateInput,
-  DateTimeInput,
   isoToLondonWallTime,
   londonClockChange,
   londonWallTimeToIso,
   parseStaffDay,
   parseStaffTime,
-} from "./date-input.js";
-import { Field } from "./field.js";
+} from "./staff-dates.js";
 
 describe("parseStaffDay", () => {
   it.each([

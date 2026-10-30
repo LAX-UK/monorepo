@@ -23,14 +23,33 @@ export type ArtworkObjectType = (typeof ARTWORK_OBJECT_TYPES)[number];
 /** Rarity as the artwork page describes it; lax.art lists unique works and unrecorded ones. */
 export type ArtworkRarity = "unique" | "limited_edition" | "open_edition";
 
-export const ARTWORK_OBJECT_TYPE_LABELS: Record<ArtworkObjectType, string> = {
-  painting: "Paintings",
-  work_on_paper: "Works on paper",
-  sculpture: "Sculpture",
-  photography: "Photography",
-  print: "Prints",
-  mixed_media: "Mixed media",
+/**
+ * One mapping for every object type's names: `plural` names a category (filters, breadcrumbs,
+ * tiles), `singular` names one work ("Type: Painting").
+ */
+export const ARTWORK_OBJECT_TYPE_NAMES: Record<
+  ArtworkObjectType,
+  { singular: string; plural: string }
+> = {
+  painting: { singular: "Painting", plural: "Paintings" },
+  work_on_paper: { singular: "Work on paper", plural: "Works on paper" },
+  sculpture: { singular: "Sculpture", plural: "Sculpture" },
+  photography: { singular: "Photograph", plural: "Photography" },
+  print: { singular: "Print", plural: "Prints" },
+  mixed_media: { singular: "Mixed media", plural: "Mixed media" },
 };
+
+function namesBy(form: "singular" | "plural"): Record<ArtworkObjectType, string> {
+  return Object.fromEntries(
+    Object.entries(ARTWORK_OBJECT_TYPE_NAMES).map(([type, names]) => [type, names[form]]),
+  ) as Record<ArtworkObjectType, string>;
+}
+
+/** Category names (plural). */
+export const ARTWORK_OBJECT_TYPE_LABELS = namesBy("plural");
+
+/** The name of one work's type (singular). */
+export const ARTWORK_OBJECT_TYPE_SINGULAR_LABELS = namesBy("singular");
 
 export type ArtworkMediumLanding = {
   path: `/${string}`;

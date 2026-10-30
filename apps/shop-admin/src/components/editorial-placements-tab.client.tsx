@@ -211,7 +211,7 @@ function PlacementSlotEditor({
   return (
     <section
       aria-labelledby={headingId}
-      className="flex flex-col gap-4 rounded-staff-md border border-staff-line bg-staff-surface p-4 sm:p-6"
+      className="flex flex-col gap-4 rounded-staff-lg border border-staff-line bg-staff-surface p-4 sm:p-6"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2

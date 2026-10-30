@@ -1,46 +1,19 @@
 "use client";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
+import { Count, Field, TextInput } from "@auction/ui/lax";
 import { CalendarDays } from "lucide-react";
 import * as React from "react";
-import { Field } from "../forms/field.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
-import { TextInput } from "../primitives/input.js";
-import { Count } from "../primitives/tabs.js";
+import {
+  DEFAULT_DATE_PRESETS,
+  type DateRangePreset,
+  type DayRange,
+  londonToday,
+} from "./date-ranges.js";
 
-export type DayRange = { from: string; to: string };
-
-const LONDON_DAY = new Intl.DateTimeFormat("en-CA", {
-  timeZone: "Europe/London",
-  year: "numeric",
-  month: "2-digit",
-  day: "2-digit",
-});
-
-/** Today's date in London as `YYYY-MM-DD`; staff work in UK time whatever their laptop says. */
-export function londonToday(now: Date = new Date()): string {
-  return LONDON_DAY.format(now);
-}
-
-/** The day `count` days before `day` (`YYYY-MM-DD`). */
-export function daysBefore(day: string, count: number): string {
-  const date = new Date(`${day}T00:00:00Z`);
-  date.setUTCDate(date.getUTCDate() - count);
-  return date.toISOString().slice(0, 10);
-}
-
-export type DateRangePreset = { id: string; label: string; range: (today: string) => DayRange };
-
-export const DEFAULT_DATE_PRESETS: readonly DateRangePreset[] = [
-  { id: "today", label: "Today", range: (today) => ({ from: today, to: today }) },
-  { id: "7d", label: "Last 7 days", range: (today) => ({ from: daysBefore(today, 6), to: today }) },
-  {
-    id: "30d",
-    label: "Last 30 days",
-    range: (today) => ({ from: daysBefore(today, 29), to: today }),
-  },
-];
+export type { DateRangePreset, DayRange } from "./date-ranges.js";
 
 /**
  * A date range as a button that opens presets and two date fields. Days are whole calendar days

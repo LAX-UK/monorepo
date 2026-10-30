@@ -1,13 +1,19 @@
 "use client";
 
+import {
+  Count,
+  Field,
+  type LinkComponent,
+  OverflowTabs,
+  SegmentedControl,
+  TextInput,
+} from "@auction/ui/lax";
 import { ChevronLeft, ChevronRight, ListFilter, Plus, Rows3, Rows4, Search, X } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
-import { Field } from "../forms/field.js";
 import { cn } from "../lib/cn.js";
 import { StaffDialog } from "../panels/staff-dialog.js";
 import { StaffButton } from "../primitives/button.js";
-import { TextInput } from "../primitives/input.js";
 import {
   StaffMenu,
   StaffMenuCheckboxItem,
@@ -16,18 +22,11 @@ import {
   StaffMenuSeparator,
   StaffMenuTrigger,
 } from "../primitives/menu.js";
-import { Count, OverflowTabs, SegmentedControl } from "../primitives/tabs.js";
-import type { StaffLinkComponent } from "../shell/link.js";
 import { useStaffShortcut } from "../shell/shortcuts.js";
-import {
-  type SavedView,
-  type SavedViewsControls,
-  sameViewQuery,
-  viewQuery,
-} from "./saved-views.js";
+import type { SavedView, SavedViewsControls } from "./saved-views.js";
 import type { TableDensity } from "./types.js";
+import { sameViewQuery, viewQuery } from "./view-query.js";
 
-export { fitViewTabs } from "../primitives/tabs.js";
 import { type TeamView, VIEW_LABEL_MAX_LENGTH, ViewsMenu } from "./views-menu.js";
 
 /** The rows above a table: views on top, then search, filters and view options. */
@@ -213,11 +212,6 @@ export function FilterMenu({
 
 export type ActiveFilter = { id: string; label: string; onRemove: () => void };
 
-/** The chip for the search in force, worded the same on every list: "Search: ada". */
-export function searchChipLabel(query: string): string {
-  return `Search: ${query.trim()}`;
-}
-
 /** Applied filters as removable chips, plus "Clear all". */
 export function ActiveFilterChips({
   filters,
@@ -338,7 +332,7 @@ export function DataViews({
 }: {
   views: readonly DataView[];
   activeId: string | null;
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
   /** Views fixed in code for everyone; shown in the Views menu, never editable. */
   team?: readonly TeamView[];
   /** The person's own views (from `useSavedViews`); turns on saving and managing them. */
@@ -459,7 +453,7 @@ export function TablePagination({
   nextHref: string | null;
   /** "First page" for cursor lists, which can only go back to the start. */
   prevLabel?: string;
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
 }) {
   return (
     <nav

@@ -6,7 +6,7 @@ vi.mock("@auction/ui/components/tooltip", () =>
 );
 
 const { KeyValueList } = await import("./key-value-list.js");
-const { Count, formatCount } = await import("../primitives/tabs.js");
+const { Count, formatCount } = await import("@auction/ui/lax");
 
 describe("KeyValueList", () => {
   it("keeps a copyable reference on one line instead of breaking it mid-word", () => {

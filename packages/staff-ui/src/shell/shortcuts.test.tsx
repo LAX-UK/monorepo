@@ -1,8 +1,7 @@
+import { PlainLink, TextInput } from "@auction/ui/lax";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import type * as React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { TextInput } from "../primitives/input.js";
-import { PlainLink } from "./link.js";
 import { RecordPager, recordPosition } from "./record-pager.js";
 import {
   STAFF_SHORTCUTS_STORAGE_KEY,

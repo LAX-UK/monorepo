@@ -28,12 +28,16 @@ test.describe("organisation admin journey @roles", () => {
     const admin = await openAs(browser, roleAuthState.orgAdmin, approved, baseURL);
     const { page } = admin;
 
-    await test.step("sees the team tabs an admin may open", async () => {
-      await page.goto("/organisation/members");
+    await test.step("opens Team and the Organisation page from the menu", async () => {
+      await page.goto("/team");
       await expectActingAs(page, approved, "Admin");
-      const tabs = page.getByRole("main");
-      await expect(tabs.getByRole("link", { name: "Members", exact: true })).toBeVisible();
-      await expect(tabs.getByRole("link", { name: "Documents", exact: true })).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Team" })).toBeVisible();
+      const menu = page.getByRole("navigation", { name: "Bid" });
+      await expect(menu.getByRole("link", { name: "Team", exact: true })).toHaveAttribute(
+        "aria-current",
+        "page",
+      );
+      await expect(menu.getByRole("link", { name: "Organisation", exact: true })).toBeVisible();
     });
 
     await test.step("invites someone and withdraws the invitation with Undo", async () => {

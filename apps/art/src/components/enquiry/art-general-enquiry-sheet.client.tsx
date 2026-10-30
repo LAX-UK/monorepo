@@ -1,14 +1,17 @@
 "use client";
 
+import { ArtEnquiryConfirmation } from "@/components/enquiry/art-enquiry-confirmation";
 import { ArtEnquiryForm } from "@/components/enquiry/art-enquiry-form.client";
 import type { ArtEnquiryContact } from "@/lib/artwork/artwork-detail-page.composer";
 import { sendArtGeneralEnquiry } from "@/lib/enquiry/art-general-enquiry-actions.server";
+import { buildEnquiryConfirmation } from "@/lib/enquiry/enquiry-confirmation.vm";
 import {
   ART_GENERAL_ENQUIRY_TOPICS,
   type ArtGeneralEnquiryState,
   type ArtGeneralEnquiryTopic,
 } from "@/lib/enquiry/submit-general-enquiry";
-import { MarketingSideSheet, MarketingSuccessState } from "@auction/marketing-ui";
+import { MarketingSideSheet } from "@auction/marketing-ui";
+import { cn } from "@auction/ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
 import { Button } from "@auction/ui/components/button";
 import { Label } from "@auction/ui/components/label";
@@ -30,10 +33,14 @@ type Props = {
   contextSlug?: string | null;
   contextLabel?: string | null;
   /** Prefill for signed-in visitors; guests start empty. */
+  /** Signed-in visitors are offered their Enquiries after sending; guests an account. */
+  viewerKind: "authenticated" | "guest";
   contact: ArtEnquiryContact;
   triggerLabel?: string;
-  /** The trigger button style; the page's one primary action keeps the default. */
+  /** The trigger button style; a page's one primary action keeps the default. */
   triggerVariant?: "default" | "secondaryOutline";
+  /** Extra trigger classes, e.g. full width beside the primary action. */
+  triggerClassName?: string;
   /** Replaces the default button, e.g. with the header's text-sized "Enquire" control. */
   renderTrigger?: (open: () => void) => ReactNode;
 };
@@ -47,6 +54,8 @@ export function ArtGeneralEnquirySheet({
   contact,
   triggerLabel = "Send a message",
   triggerVariant = "default",
+  triggerClassName,
+  viewerKind,
   renderTrigger,
 }: Props) {
   const [open, setOpen] = useState(autoOpen);
@@ -72,7 +81,7 @@ export function ArtGeneralEnquirySheet({
           type="button"
           size="lg"
           variant={triggerVariant}
-          className="min-h-11 w-fit font-label"
+          className={cn("min-h-11 w-fit font-label", triggerClassName)}
           onClick={() => setOpen(true)}
           data-testid="art-general-enquire-trigger"
         >
@@ -85,30 +94,21 @@ export function ArtGeneralEnquirySheet({
         title="Send an enquiry"
         titleCase="sentence"
       >
-        {sent ? (
-          <MarketingSuccessState
-            ref={sentRef}
-            tabIndex={-1}
-            title="Enquiry sent"
-            description="Our specialist will be in touch soon."
-            data-testid="art-general-enquire-sent"
-            actions={
-              <Button
-                type="button"
-                variant="secondaryOutline"
-                className="w-full"
-                onClick={() => setOpen(false)}
-              >
-                Close
-              </Button>
-            }
-          />
+        {state.status === "sent" ? (
+          <div data-testid="art-general-enquire-sent">
+            <ArtEnquiryConfirmation
+              ref={sentRef}
+              vm={buildEnquiryConfirmation({ viewer: { kind: viewerKind }, subject: topic })}
+              email={state.email}
+              onClose={() => setOpen(false)}
+            />
+          </div>
         ) : (
           <div className="flex flex-col gap-6">
             <p className="text-base leading-6 text-on-surface">
               {contextLabel
-                ? `Thank you for your interest in ${contextLabel}. Please complete the form below and our specialist will follow up with you shortly.`
-                : "Thank you for your interest. Please complete the form below and our specialist will follow up with you shortly."}
+                ? `Tell us what you would like to know about ${contextLabel}. The gallery team replies within one working day.`
+                : "Tell us what you would like to know. The gallery team replies within one working day."}
             </p>
             <ArtEnquiryForm
               action={formAction}

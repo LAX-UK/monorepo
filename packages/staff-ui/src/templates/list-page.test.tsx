@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { searchChipLabel } from "../data/toolbar.js";
+import { searchChipLabel } from "../data/search-chip.js";
 import type { DataColumn } from "../data/types.js";
 
 vi.mock("@auction/ui/components/dropdown-menu", () =>
@@ -20,7 +20,7 @@ const { ListPage, NO_RESULTS_DESCRIPTION } = await import("./list-page.js");
 const { DetailColumns, DetailError, DetailPage, DetailPageSkeleton } = await import(
   "./detail-page.js"
 );
-const { PlainLink } = await import("../shell/link.js");
+const { PlainLink } = await import("@auction/ui/lax");
 const { StaffButton } = await import("../primitives/button.js");
 
 type Payment = { id: string; lot: string; amount: string };
@@ -385,9 +385,9 @@ describe("DetailPage", () => {
   it("shows a tab's loading body with or without the summary card", () => {
     const { container, rerender } = render(<DetailPageSkeleton />);
     expect(container.firstElementChild).toHaveAttribute("aria-busy", "true");
-    const without = container.querySelectorAll(".rounded-staff-md").length;
+    const without = container.querySelectorAll(".rounded-staff-lg").length;
     rerender(<DetailPageSkeleton withSummary />);
-    expect(container.querySelectorAll(".rounded-staff-md").length).toBe(without + 1);
+    expect(container.querySelectorAll(".rounded-staff-lg").length).toBe(without + 1);
   });
 
   it("keeps a tab's failure in place with a retry", () => {

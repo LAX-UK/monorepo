@@ -66,8 +66,6 @@ export default async function AcceptInvitationTokenPage({
       <DashboardPageHeader
         meta="Invitation"
         title="Accept invitation"
-        hideTitleOnMobile
-        hideDescriptionOnMobile
         description="Sign in or create an account with the invited email to join this organisation."
       />
       <Surface variant="section" padding="md" className="space-y-4">
