@@ -6,11 +6,16 @@ import type { ContainerOrganisationWorkspaceRoutesSlice } from "../container.js"
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAccountRecordSearchService } from "../services/interfaces/account-record-search-service.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
+import type { INeedsYouService } from "../services/interfaces/needs-you-service.js";
 import { createOrganisationWorkspaceRoutes } from "./organisation-workspace.js";
 
 const ENTITY = "00000000-0000-4000-8000-000000000001";
 
-function mount(role: LegalEntityMemberRole, search: IAccountRecordSearchService["search"]) {
+function mount(
+  role: LegalEntityMemberRole,
+  search: IAccountRecordSearchService["search"],
+  read: INeedsYouService["read"] = vi.fn(),
+) {
   const context = {
     legalEntityId: ENTITY,
     userId: "member-1",
@@ -26,7 +31,7 @@ function mount(role: LegalEntityMemberRole, search: IAccountRecordSearchService[
       c.set("legalEntityContext", context);
       await next();
     },
-    organisationWorkspace: { search: { search } },
+    organisationWorkspace: { search: { search }, needsYou: { read } },
   } as unknown as ContainerOrganisationWorkspaceRoutesSlice;
   const authenticator: IAuthenticator = {
     getSessionUser: vi
@@ -99,5 +104,35 @@ describe("organisation workspace routes: search", () => {
     expect((await app.request("/legal-entities/search?q=a&group=lots")).status).toBe(400);
     expect((await app.request("/legal-entities/search")).status).toBe(400);
     expect(search).not.toHaveBeenCalled();
+  });
+});
+
+describe("organisation workspace routes: needs you", () => {
+  it("reads the member's tasks for the acting account, dates as ISO strings", async () => {
+    const read = vi.fn(async () => ({
+      kinds: ["outbid" as const],
+      tasks: [
+        {
+          kind: "outbid" as const,
+          lots: [{ id: "l1", title: "Pool", endsAt: new Date("2026-11-10T14:00:00Z") }],
+          link: { page: "lot" as const, id: "l1" },
+        },
+      ],
+      counts: { bids: 1, purchases: 0, consignments: 0, team: 0, organisation: 0 },
+      truncated: false,
+    }));
+    const res = await mount("buyer_agent", vi.fn(), read).request("/legal-entities/needs-you");
+    expect(res.status).toBe(200);
+    expect(read).toHaveBeenCalledWith({
+      userId: "member-1",
+      legalEntityId: ENTITY,
+      role: "buyer_agent",
+      isImpersonation: undefined,
+    });
+    const body = (await res.json()) as {
+      data: { tasks: { lots: { endsAt: string }[] }[]; counts: { bids: number } };
+    };
+    expect(body.data.tasks[0]?.lots[0]?.endsAt).toBe("2026-11-10T14:00:00.000Z");
+    expect(body.data.counts.bids).toBe(1);
   });
 });

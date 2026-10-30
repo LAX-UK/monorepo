@@ -19,7 +19,9 @@ function lotHit(n: number): LotSearchHit {
 }
 
 function setup(rows = 0) {
-  const read = vi.fn(async () => Array.from({ length: rows }, (_, i) => lotHit(i + 1)));
+  const read = vi.fn(async (_criteria: { scope: string }) =>
+    Array.from({ length: rows }, (_, i) => lotHit(i + 1)),
+  );
   const reader = {
     consignments: read,
     purchases: read,
@@ -45,11 +47,7 @@ describe("AccountRecordSearchService", () => {
         { group: "works", items: [], nextOffset: null },
       ],
     });
-    expect(read.mock.calls.map(([criteria]) => (criteria as { scope: string }).scope)).toEqual([
-      "own",
-      "own",
-      "all",
-    ]);
+    expect(read.mock.calls.map(([criteria]) => criteria.scope)).toEqual(["own", "own", "all"]);
     expect(read).toHaveBeenCalledWith({
       legalEntityId: ENTITY,
       userId: "me",

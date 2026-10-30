@@ -29,7 +29,7 @@ export function createOrganisationWorkspaceRoutes(
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
-  const { search } = container.organisationWorkspace;
+  const { search, needsYou } = container.organisationWorkspace;
   const r = new Hono<{ Variables: Variables }>();
 
   /** Records in the acting account by title, artist, lot number, invoice number or person. */
@@ -47,6 +47,15 @@ export function createOrganisationWorkspaceRoutes(
       );
     },
   );
+
+  /**
+   * What waits on this member now, ranked, each with its link, and the count on each sidebar
+   * item. Home, the sidebar, Consignments' Needs you and the inbox's Needs action read it.
+   */
+  r.get("/needs-you", requireAuth, container.requireLegalEntityContext, async (c) => {
+    const ctx = c.get("legalEntityContext") as LegalEntityContext;
+    return c.json({ data: await needsYou.read(memberActor(ctx)) });
+  });
 
   return r;
 }

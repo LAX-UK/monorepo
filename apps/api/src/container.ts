@@ -329,7 +329,12 @@ export function createContainer(env: Env): Container {
   };
   const organisationMembership = createOrganisationMembershipServices({ db });
   const organisationHome = createOrganisationHomeServices({ db });
-  const organisationWorkspace = createOrganisationWorkspaceServices({ db });
+  const organisationWorkspace = createOrganisationWorkspaceServices({
+    db,
+    legalEntities: repos.legalEntityRepository,
+    connectEnforced: () => platform.stripeConnectService.isConfigured(),
+    buyerAgentAuthorisations: buyerAgents.mine,
+  });
 
   const atg = new AtgAdminService(
     repos.atgLinkReader,

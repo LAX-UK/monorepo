@@ -950,3 +950,4 @@ export type {
   LotSearchHit,
   MemberSearchHit,
 } from "./account-record-search.reader.js";
+export type { INeedsYouFactsReader } from "./needs-you-facts.reader.js";
