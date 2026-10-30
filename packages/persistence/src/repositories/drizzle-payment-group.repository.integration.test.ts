@@ -184,7 +184,7 @@ describe.skipIf(!HAS_DB)("payment groups (integration)", () => {
     if (claimed.kind !== "claimed") throw new Error("expected a claim");
     const pi = `pi_${randomUUID()}`;
     const charge = `ch_${randomUUID()}`;
-    await groups.recordPaymentIntent(claimed.group.id, pi);
+    await groups.recordCheckout(claimed.group.id, { sessionId: "cs_1", paymentIntentId: pi });
     expect((await payments.findById(a))?.stripePaymentIntentId).toBe(pi);
     await db.transaction(async (tx) => {
       await payments.applyCapturedInTransaction(tx, a, { stripeChargeId: charge });

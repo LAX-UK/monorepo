@@ -13,6 +13,7 @@ export type PaymentGroupRecord = {
   /** The sum of the invoices' amounts, as a decimal string. */
   totalAmount: string;
   checkoutRail: "card" | "gb_bank_transfer";
+  stripeCheckoutSessionId: string | null;
   stripePaymentIntentId: string | null;
   stripeChargeId: string | null;
   createdAt: Date;
@@ -64,20 +65,27 @@ export interface IPaymentGroupRepository {
     paymentIntentId?: string | null;
   }): Promise<PaymentGroupRecord | null>;
   listMembers(groupId: string): Promise<PaymentGroupMember[]>;
-  /** Records the checkout's PaymentIntent on the group and on each of its invoices' payments. */
-  recordPaymentIntent(groupId: string, paymentIntentId: string): Promise<void>;
+  /**
+   * Records the group's checkout, and its PaymentIntent (when the provider made one up front) on
+   * the group and on each of its invoices' payments.
+   */
+  recordCheckout(
+    groupId: string,
+    checkout: { sessionId: string; paymentIntentId: string | null },
+  ): Promise<void>;
   /** Locks the group and its invoices' payments (`FOR UPDATE`) inside `tx`. */
   lockInTransaction(tx: Database, groupId: string): Promise<LockedPaymentGroup | null>;
   /**
    * Moves the group from one of `from` to `to` inside `tx`; `false` when it was not in `from`.
-   * Settling (`paid` or `cancelled`) stamps `settledAt`; `stripeChargeId` is recorded when given.
+   * Settling (`paid` or `cancelled`) stamps `settledAt`; the Stripe references are recorded when
+   * given.
    */
   transitionInTransaction(
     tx: Database,
     groupId: string,
     from: readonly PaymentGroupStatus[],
     to: PaymentGroupStatus,
-    opts?: { stripeChargeId?: string | null },
+    opts?: { stripeChargeId?: string | null; stripePaymentIntentId?: string | null },
   ): Promise<boolean>;
   /**
    * Hands every invoice of a released group back: each payment still open (`pending` or

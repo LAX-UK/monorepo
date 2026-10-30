@@ -24,6 +24,7 @@ function mapGroup(row: GroupRow): PaymentGroupRecord {
     currency: row.currency,
     totalAmount: String(row.totalAmount),
     checkoutRail: row.checkoutRail as PaymentGroupRecord["checkoutRail"],
+    stripeCheckoutSessionId: row.stripeCheckoutSessionId,
     stripePaymentIntentId: row.stripePaymentIntentId,
     stripeChargeId: row.stripeChargeId,
     createdAt: row.createdAt,
@@ -118,16 +119,25 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
     return this.membersQuery(this.db, groupId);
   }
 
-  async recordPaymentIntent(groupId: string, paymentIntentId: string): Promise<void> {
+  async recordCheckout(
+    groupId: string,
+    checkout: { sessionId: string; paymentIntentId: string | null },
+  ): Promise<void> {
     await this.db.transaction(async (tx) => {
       await tx
         .update(paymentGroup)
-        .set({ stripePaymentIntentId: paymentIntentId, updatedAt: new Date() })
+        .set({
+          stripeCheckoutSessionId: checkout.sessionId,
+          ...(checkout.paymentIntentId ? { stripePaymentIntentId: checkout.paymentIntentId } : {}),
+          updatedAt: new Date(),
+        })
         .where(eq(paymentGroup.id, groupId));
-      await tx
-        .update(payment)
-        .set({ stripePaymentIntentId: paymentIntentId })
-        .where(eq(payment.paymentGroupId, groupId));
+      if (checkout.paymentIntentId) {
+        await tx
+          .update(payment)
+          .set({ stripePaymentIntentId: checkout.paymentIntentId })
+          .where(eq(payment.paymentGroupId, groupId));
+      }
     });
   }
 
@@ -151,7 +161,7 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
     groupId: string,
     from: readonly PaymentGroupStatus[],
     to: PaymentGroupStatus,
-    opts: { stripeChargeId?: string | null } = {},
+    opts: { stripeChargeId?: string | null; stripePaymentIntentId?: string | null } = {},
   ): Promise<boolean> {
     const now = new Date();
     const rows = await tx
@@ -161,6 +171,9 @@ export class DrizzlePaymentGroupRepository implements IPaymentGroupRepository {
         updatedAt: now,
         ...(SETTLED_STATUSES.includes(to) ? { settledAt: now } : {}),
         ...(opts.stripeChargeId ? { stripeChargeId: opts.stripeChargeId } : {}),
+        ...(opts.stripePaymentIntentId
+          ? { stripePaymentIntentId: opts.stripePaymentIntentId }
+          : {}),
       })
       .where(and(eq(paymentGroup.id, groupId), inArray(paymentGroup.status, [...from])))
       .returning({ id: paymentGroup.id });

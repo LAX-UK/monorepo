@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS "payment_group" (
   "currency" text DEFAULT 'GBP' NOT NULL,
   "total_amount" numeric(18, 2) NOT NULL,
   "checkout_rail" text NOT NULL,
+  "stripe_checkout_session_id" text,
   "stripe_payment_intent_id" text,
   "stripe_charge_id" text,
   "created_at" timestamp with time zone DEFAULT now() NOT NULL,

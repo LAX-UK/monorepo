@@ -38,6 +38,8 @@ export const paymentGroup = pgTable(
     totalAmount: numeric("total_amount", { precision: 18, scale: 2 }).notNull(),
     /** `card` or `gb_bank_transfer`, chosen on the total. */
     checkoutRail: text("checkout_rail").notNull(),
+    /** The hosted checkout, so it can be expired when the group is let go early. */
+    stripeCheckoutSessionId: text("stripe_checkout_session_id"),
     stripePaymentIntentId: text("stripe_payment_intent_id"),
     stripeChargeId: text("stripe_charge_id"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
