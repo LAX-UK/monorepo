@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { createBidEligibilityContext, createBidEligibilityRules } from "./bid-eligibility.rules.js";
 import type { BidEligibilityRuleDeps } from "./bid-eligibility.rules.js";
 import { BidderRoleGate } from "./bid/bidder-role.gate.js";
+import { PerLotBiddingLimitGate } from "./bid/bidding-limit.gate.js";
 import type { BidEligibilityCheckInput } from "./ports.js";
 
 const CLIENT = "client-1";
@@ -53,6 +54,7 @@ function rulesWith(recordOperators: string[] = []) {
     },
     saleRegistrationGate: pass,
     bidderRoleGate: new BidderRoleGate(roleReader),
+    biddingLimitGate: new PerLotBiddingLimitGate(),
   } as unknown as BidEligibilityRuleDeps;
   return createBidEligibilityRules(deps);
 }

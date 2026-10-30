@@ -146,12 +146,14 @@ export class BuyerAgentAuthorisationService implements IBuyerAgentAuthorisationS
     }
 
     const bidLimit = input.bidLimit != null ? input.bidLimit.toFixed(2) : null;
+    const totalLimit = input.totalLimit != null ? input.totalLimit.toFixed(2) : null;
     const { id, supersededId } = await this.deps.writer.grant(
       {
         legalEntityId,
         userId: target.userId,
         saleId: input.saleId,
         bidLimit,
+        totalLimit,
         validFrom,
         validUntil,
         createdByUserId: manager.userId,
@@ -168,6 +170,7 @@ export class BuyerAgentAuthorisationService implements IBuyerAgentAuthorisationS
         member_user_id: target.userId,
         sale_id: input.saleId,
         bid_limit: bidLimit,
+        total_limit: totalLimit,
         valid_from: validFrom.toISOString(),
         valid_until: validUntil?.toISOString() ?? null,
         superseded_authorisation_id: supersededId,
@@ -250,6 +253,7 @@ export function toView(r: BuyerAgentAuthorisationRecord, now: Date): BuyerAgentA
     saleId: r.saleId,
     saleTitle: r.saleTitle,
     bidLimit: r.bidLimit,
+    totalLimit: r.totalLimit,
     validFrom: r.validFrom.toISOString(),
     validUntil: r.validUntil?.toISOString() ?? null,
     status: r.status,

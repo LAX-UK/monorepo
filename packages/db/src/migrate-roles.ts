@@ -205,6 +205,9 @@ export const WORKER_READ_TABLES = [
   "source_of_funds",
   /** Compliance emails go to the staff whose roles in force include compliance. */
   "staff_role_assignment",
+  /** Absentee replay places bids, which check who may bid for an organisation and its limits. */
+  "buyer_agent_authorisation",
+  "legal_entity_bidding_limit",
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,

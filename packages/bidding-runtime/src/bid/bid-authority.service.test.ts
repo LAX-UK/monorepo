@@ -35,13 +35,14 @@ describe("BidAuthorityService", () => {
 
   it("asks for a buyer agent's active authorisations at this moment and sale", async () => {
     const { svc, findActiveAuthorisations } = service("buyer_agent", [
-      { saleId: "sale-1", bidLimit: "2500.00" },
+      { saleId: "sale-1", bidLimit: "2500.00", totalLimit: "40000.00" },
     ]);
     await expect(svc.resolve(query)).resolves.toEqual({
       allowed: true,
       role: "buyer_agent",
       viaAuthorisation: true,
       bidLimit: 2500,
+      totalLimit: { limit: 40000, saleId: "sale-1" },
     });
     expect(findActiveAuthorisations).toHaveBeenCalledWith({
       legalEntityId: "le-1",
@@ -60,7 +61,7 @@ describe("BidAuthorityService", () => {
   });
 
   it("treats a blank limit as no limit", async () => {
-    const { svc } = service("buyer_agent", [{ saleId: null, bidLimit: null }]);
+    const { svc } = service("buyer_agent", [{ saleId: null, bidLimit: null, totalLimit: null }]);
     await expect(svc.resolve(query)).resolves.toMatchObject({ allowed: true, bidLimit: null });
   });
 

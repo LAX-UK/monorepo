@@ -119,6 +119,7 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "legal_entity.approved",
   "legal_entity.archive_cascaded",
   "legal_entity.archived",
+  "legal_entity.bidding_limit_changed",
   "legal_entity.buyer_agent_authorisation_revoked",
   "legal_entity.buyer_agent_authorised",
   "legal_entity.created",

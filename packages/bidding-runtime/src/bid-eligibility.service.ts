@@ -5,6 +5,7 @@ import type { BidError } from "./bid-error.js";
 import type { IAmlBidGate } from "./bid/aml-bid.gate.js";
 import type { IBidAuthority } from "./bid/bid-authority.service.js";
 import type { IBidderRoleGate } from "./bid/bidder-role.gate.js";
+import { type IBiddingLimitGate, PerLotBiddingLimitGate } from "./bid/bidding-limit.gate.js";
 import type { IBidIdentityEligibilityGate } from "./bid/identity-bid-eligibility.gate.js";
 import type { OperatorPlacementPolicy } from "./bid/operator-placement-policy.js";
 import type { SaleRegistrationBidGate } from "./bid/sale-registration-bid.gate.js";
@@ -21,6 +22,7 @@ export class BidEligibilityService implements IBidEligibility {
     operatorPolicy: OperatorPlacementPolicy,
     saleRegistrationGate: SaleRegistrationBidGate,
     bidderRoleGate: IBidderRoleGate,
+    biddingLimitGate: IBiddingLimitGate = new PerLotBiddingLimitGate(),
   ) {
     this.rules = createBidEligibilityRules({
       identityEligibilityGate,
@@ -30,6 +32,7 @@ export class BidEligibilityService implements IBidEligibility {
       operatorPolicy,
       saleRegistrationGate,
       bidderRoleGate,
+      biddingLimitGate,
     });
   }
 

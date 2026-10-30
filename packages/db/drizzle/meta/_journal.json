@@ -1765,6 +1765,13 @@
       "when": 1797062400000,
       "tag": "0251_payment_open_per_account",
       "breakpoints": true
+    },
+    {
+      "idx": 252,
+      "version": "7",
+      "when": 1797148800000,
+      "tag": "0252_organisation_bidding_limits",
+      "breakpoints": true
     }
   ]
 }

@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  check,
   index,
   numeric,
   pgEnum,
@@ -30,6 +31,11 @@ export const buyerAgentAuthorisation = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     saleId: uuid("sale_id").references(() => sale.id, { onDelete: "cascade" }),
     bidLimit: numeric("bid_limit", { precision: 18, scale: 2 }),
+    /**
+     * Most the agent may have committed for the organisation at once (in this sale, or across
+     * every sale for an all-sales authorisation); `null` means no total. GBP, major units.
+     */
+    totalLimit: numeric("total_limit", { precision: 18, scale: 2 }),
     validFrom: timestamp("valid_from", { mode: "date", withTimezone: true }).notNull().defaultNow(),
     validUntil: timestamp("valid_until", { mode: "date", withTimezone: true }),
     status: buyerAgentAuthorisationStatusEnum("status").notNull().default("active"),
@@ -52,6 +58,10 @@ export const buyerAgentAuthorisation = pgTable(
       .on(table.legalEntityId, table.userId)
       .where(sql`${table.status} = 'active'`),
     index("buyer_agent_auth_sale_idx").on(table.saleId).where(sql`${table.saleId} IS NOT NULL`),
+    check(
+      "buyer_agent_auth_total_limit_positive",
+      sql`${table.totalLimit} IS NULL OR ${table.totalLimit} > 0`,
+    ),
   ],
 );
 

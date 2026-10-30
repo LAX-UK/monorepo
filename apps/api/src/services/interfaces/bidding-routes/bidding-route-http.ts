@@ -5,6 +5,8 @@ export type BiddingRouteServiceError = {
   message: string;
   status: number;
   code?: string;
+  /** Facts a client needs to phrase the refusal (for example a limit and the room left). */
+  details?: Readonly<Record<string, string>>;
 };
 
 export type BiddingRouteOk<T> = { kind: "ok"; data: T; status?: number };
@@ -20,6 +22,7 @@ export function biddingRouteFromBidError(error: BidError): BiddingRouteErr {
       message: error.message,
       status: error.status,
       ...(error.code ? { code: error.code } : {}),
+      ...(error.details ? { details: error.details } : {}),
     },
   };
 }

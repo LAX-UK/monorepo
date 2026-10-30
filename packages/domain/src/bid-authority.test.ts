@@ -26,6 +26,7 @@ describe("decideBidAuthority", () => {
       role,
       viaAuthorisation: false,
       bidLimit: null,
+      totalLimit: null,
     });
   });
 
@@ -60,6 +61,7 @@ describe("decideBidAuthority", () => {
       role: "buyer_agent",
       viaAuthorisation: true,
       bidLimit: 5000,
+      totalLimit: null,
     });
   });
 
@@ -91,6 +93,28 @@ describe("decideBidAuthority", () => {
       saleId: SALE,
     });
     expect(decision).toMatchObject({ allowed: true, bidLimit: null });
+  });
+
+  it("takes the lowest total within the sale's own authorisations, counted in that sale", () => {
+    const decision = decideBidAuthority({
+      role: "buyer_agent",
+      grants: [
+        { saleId: null, bidLimit: null, totalLimit: 1000 },
+        { saleId: SALE, bidLimit: null, totalLimit: 50_000 },
+        { saleId: SALE, bidLimit: null, totalLimit: 40_000 },
+      ],
+      saleId: SALE,
+    });
+    expect(decision).toMatchObject({ allowed: true, totalLimit: { limit: 40_000, saleId: SALE } });
+  });
+
+  it("counts an all-sales total across every sale", () => {
+    const decision = decideBidAuthority({
+      role: "buyer_agent",
+      grants: [{ saleId: null, bidLimit: 5000, totalLimit: 20_000 }],
+      saleId: SALE,
+    });
+    expect(decision).toMatchObject({ totalLimit: { limit: 20_000, saleId: null } });
   });
 
   it("allows only owners and admins when nobody holds an authorisation", () => {
