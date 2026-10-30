@@ -2,7 +2,10 @@
 
 import { startCheckout } from "@/app/actions/checkout.actions";
 import { startGuestCheckout } from "@/app/actions/guest-checkout.actions";
-import { CheckoutOrderSummary } from "@/components/checkout/checkout-order-summary";
+import {
+  CheckoutOrderSummary,
+  CheckoutSummaryDisclosure,
+} from "@/components/checkout/checkout-order-summary";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { SHOP_POLICY_PATHS } from "@/content/policies/shop-policy-status";
 import {
@@ -227,6 +230,7 @@ export function CheckoutForm({
 
   return (
     <div className="shop-checkout__layout">
+      <CheckoutSummaryDisclosure basket={basket} fulfilment={details.choice} />
       <form id={FORM_ID} className="shop-checkout__form" noValidate onSubmit={onSubmit}>
         <MarketingFormErrorSummary errors={summaryErrors} focusKey={failedSubmits} />
         {guest ? (

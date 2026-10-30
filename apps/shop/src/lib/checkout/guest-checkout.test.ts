@@ -57,7 +57,7 @@ describe("guest order links", () => {
     expect(guestOrderLinkProblem("anything")).toBeNull();
   });
 
-  it("shows a guest the invoice from the guest route and no account-only actions", () => {
+  it("gives a guest the same help as an account, through the guest routes", () => {
     const vm = buildGuestOrderDetailVm(
       {
         orderId: "8f0a1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b",
@@ -77,6 +77,5 @@ describe("guest order links", () => {
     );
     expect(vm.invoiceHref).toBe(GUEST_ORDER_INVOICE_PATH);
     expect(vm.finishPaying).toBeNull();
-    expect(vm.problem).toBeNull();
   });
 });

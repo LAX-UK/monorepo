@@ -2,7 +2,10 @@
 
 import { checkGuestEmail } from "@/app/actions/guest-checkout.actions";
 import { CheckoutForm } from "@/components/checkout/checkout-form";
-import { CheckoutOrderSummary } from "@/components/checkout/checkout-order-summary";
+import {
+  CheckoutOrderSummary,
+  CheckoutSummaryDisclosure,
+} from "@/components/checkout/checkout-order-summary";
 import { ShopCommerceButton, shopButtonClassName } from "@/components/shop-commerce-button";
 import { ShopNotice } from "@/components/shop-notice";
 import { SHOP_POLICY_PATHS } from "@/content/policies/shop-policy-status";
@@ -67,6 +70,7 @@ export function GuestCheckout({ basket, deliveryOptions, showTermsNotice }: Prop
 
   return (
     <div className="shop-checkout__layout">
+      <CheckoutSummaryDisclosure basket={basket} fulfilment="uk_insured_delivery" />
       <div className="shop-checkout__form">
         {step.kind === "known" ? (
           <KnownAccount

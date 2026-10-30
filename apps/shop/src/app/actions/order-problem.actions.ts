@@ -1,5 +1,6 @@
 "use server";
 
+import { orderCommercePath } from "@/lib/checkout/order-commerce-path.server";
 import { commerceErrorMessage } from "@/lib/commerce-error-message";
 import { fetchShopCommerceCsrfForMutation } from "@/lib/shop-commerce-mutation.server";
 import { shopCommerceRequest } from "@/lib/shop-commerce-request.server";
@@ -14,7 +15,7 @@ export type ReportOrderProblemResult =
   | { kind: "closed" }
   | { kind: "error"; message: string };
 
-/** Sends "Report a problem" for one of the signed-in shopper's orders to the staff inbox. */
+/** Sends "Report a problem" for the shopper's order (an account's, or a guest's) to the staff inbox. */
 export async function reportOrderProblem(
   orderId: string,
   input: { reason: OrderProblemReason; details: string },
@@ -35,7 +36,7 @@ export async function reportOrderProblem(
     };
   }
   const response = await shopCommerceRequest(
-    `/commerce/orders/${encodeURIComponent(orderId)}/problem-reports`,
+    await orderCommercePath(orderId, "problem-reports"),
     {
       method: "POST",
       headers: { accept: "application/json", "content-type": "application/json" },

@@ -21,7 +21,7 @@ export function createGuestCheckoutDeps(
   db: Database,
   input: {
     identity: IdentityMachineClient;
-    checkout: Pick<CheckoutWriter, "createCheckoutOrder">;
+    checkout: Pick<CheckoutWriter, "createCheckoutOrder" | "resumeCheckoutOrder">;
     orders: Pick<OrderReader, "getOrder" | "getCustomerProfile">;
     notifications: ShopNotificationPublisher;
     paymentGateway: PaymentCheckoutGateway;
@@ -47,6 +47,7 @@ export function createGuestCheckoutDeps(
       rateLimiter: limiters.checkout,
     }),
     links,
+    resumeCheckout: (order) => input.checkout.resumeCheckoutOrder(order),
     linkRateLimiter: limiters.orderLinks,
     getCustomerProfile: (subject) => input.orders.getCustomerProfile(subject),
     invoiceIssuer: input.invoiceIssuer,

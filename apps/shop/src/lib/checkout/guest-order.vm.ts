@@ -6,6 +6,7 @@ import type { OrderSummary } from "@auction/shop-contracts";
 /** The guest's order page; the token stays in an httpOnly cookie, never in this URL. */
 export const GUEST_ORDER_PATH = "/orders/guest";
 export const GUEST_ORDER_INVOICE_PATH = "/orders/guest/invoice";
+export const GUEST_ORDER_PROBLEM_PATH = "/orders/guest/report-a-problem";
 
 /** Why a guest order link did not open the order. */
 export type GuestOrderLinkProblem = "expired" | "claimed" | "invalid";
@@ -22,16 +23,15 @@ export function guestOrderLinkDestination(state: string | null): string {
 }
 
 /**
- * The order page as a guest sees it: the same order, with the invoice from the guest route.
- * Finishing a payment and reporting a problem need an account, so they are left out; the page
- * says how to keep the order in a LAX account instead.
+ * The order page as a guest sees it: the same order with the same help (finishing a payment,
+ * the invoice, reporting a problem), each through the guest's routes rather than an account's.
  */
 export function buildGuestOrderDetailVm(order: OrderSummary, now: Date): ShopOrderDetailVm {
   const vm = buildShopOrderDetailVm(order, now);
   return {
     ...vm,
-    finishPaying: null,
-    problem: null,
+    problem:
+      vm.problem?.kind === "open" ? { ...vm.problem, href: GUEST_ORDER_PROBLEM_PATH } : vm.problem,
     invoiceHref: order.invoiceAvailable ? GUEST_ORDER_INVOICE_PATH : null,
   };
 }

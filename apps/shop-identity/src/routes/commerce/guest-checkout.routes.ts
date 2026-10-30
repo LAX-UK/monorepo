@@ -6,6 +6,8 @@ import {
   guestEmailCheckBodySchema,
   guestOrderLinkResendBodySchema,
   guestOrderViewStateSchema,
+  orderProblemReportBodySchema,
+  storefrontRedirectsBodySchema,
 } from "../../commerce-bodies.js";
 import { commerceClientIp } from "../../commerce-client-ip.js";
 import { assertCommerceCsrf } from "../../commerce-csrf.js";
@@ -163,6 +165,44 @@ export function registerCommerceGuestCheckoutRoutes(
         scopes: "shop.write",
         body: { token },
         basketToken,
+      }),
+    );
+  });
+
+  /** "Report a problem" on the guest's order: the same staff case as for an account. */
+  app.post("/commerce/guest-orders/current/problem-reports", async (c) => {
+    const refused = csrfFailed(c);
+    if (refused) return refused;
+    const token = readGuestOrderToken(c);
+    if (!token) return c.json({ error: "not_found" }, 404);
+    const parsed = orderProblemReportBodySchema.safeParse(await c.req.json().catch(() => ({})));
+    if (!parsed.success) return c.json({ error: "validation_failed" }, 400);
+    return proxyJson(
+      c,
+      await asStorefront(c, {
+        path: "/v1/guest-orders/problem-reports",
+        scopes: "shop.write",
+        body: { token, ...parsed.data },
+      }),
+    );
+  });
+
+  /** Back to secure payment for the guest's unpaid order, while it is still held. */
+  app.post("/commerce/guest-orders/current/resume-checkout", async (c) => {
+    const refused = csrfFailed(c);
+    if (refused) return refused;
+    const token = readGuestOrderToken(c);
+    if (!token) return c.json({ error: "not_found" }, 404);
+    const parsed = storefrontRedirectsBodySchema(storefrontOrigin).safeParse(
+      await c.req.json().catch(() => ({})),
+    );
+    if (!parsed.success) return c.json({ error: "validation_failed" }, 400);
+    return proxyJson(
+      c,
+      await asStorefront(c, {
+        path: "/v1/guest-orders/resume-checkout",
+        scopes: "shop.write",
+        body: { token, ...parsed.data },
       }),
     );
   });

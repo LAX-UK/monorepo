@@ -1140,3 +1140,82 @@ a.shop-checkout-steps__link:hover .shop-checkout-steps__label {
   max-width: 36rem;
   margin: var(--shop-space-8) auto 0;
 }
+
+/*
+ * Phones: the order sits closed at the top of checkout with its total; the side panel keeps the
+ * totals and the pay button. From 1024px the side panel shows everything and this goes away.
+ */
+.shop-checkout-disclosure {
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-container-low);
+}
+
+.shop-checkout-disclosure__toggle {
+  display: flex;
+  width: 100%;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--shop-space-4);
+  padding: var(--shop-space-3) var(--shop-space-4);
+  border: 0;
+  border-radius: var(--radius-card);
+  background: transparent;
+  font: inherit;
+  font-size: var(--shop-text-md);
+  color: var(--color-on-surface);
+  cursor: pointer;
+}
+
+.shop-checkout-disclosure__toggle:hover .shop-checkout-disclosure__label {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.shop-checkout-disclosure__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shop-space-2);
+  font-weight: 500;
+}
+
+.shop-checkout-disclosure__chevron {
+  transition: transform 150ms ease;
+}
+
+.shop-checkout-disclosure.is-open .shop-checkout-disclosure__chevron {
+  transform: rotate(180deg);
+}
+
+.shop-checkout-disclosure__total {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.shop-checkout-disclosure__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-4);
+  padding: 0 var(--shop-space-4) var(--shop-space-4);
+}
+
+.shop-checkout__summary-side-lines {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  .shop-checkout-disclosure {
+    display: none;
+  }
+
+  .shop-checkout__summary-side-lines {
+    display: block;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shop-checkout-disclosure__chevron {
+    transition: none;
+  }
+}

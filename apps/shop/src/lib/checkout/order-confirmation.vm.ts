@@ -91,10 +91,7 @@ export function buildOrderConfirmationVm(input: {
       deliveryStep(order, input.times),
       {
         title: "Changed your mind?",
-        // A guest's order page has no form for this; they contact us instead.
-        text: input.links
-          ? "You can cancel within 14 days of delivery. Contact us and quote your order reference."
-          : "You can cancel within 14 days of delivery, or report a problem, from your order page.",
+        text: "You can cancel within 14 days of delivery, or report a problem, from your order page.",
       },
     ],
     orderHref: input.links?.orderHref ?? shopOrderHref(order.orderId),

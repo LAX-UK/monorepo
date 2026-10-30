@@ -170,6 +170,15 @@ export const guestOrderViewStateSchema = z.union([
   z.object({ state: z.enum(["expired", "claimed"]) }),
 ]);
 
+/** Where payment returns to: both pages must be on the storefront. */
+export function storefrontRedirectsBodySchema(storefrontOrigin: string) {
+  const onStorefront = z
+    .string()
+    .url()
+    .refine((value) => new URL(value).origin === storefrontOrigin, "Must stay on the storefront");
+  return z.object({ successUrl: onStorefront, cancelUrl: onStorefront }).strict();
+}
+
 export const checkoutBodySchema = createCheckoutBodySchema("http://localhost:3020");
 
 const ENQUIRY_NAME_MAX_LENGTH = 120;

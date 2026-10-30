@@ -43,6 +43,7 @@ import { registerCategoryRoutes } from "./routes/v1/categories.routes.js";
 import { registerEditionAlertRoutes } from "./routes/v1/edition-alerts.routes.js";
 import { registerEditorialRoutes } from "./routes/v1/editorial.routes.js";
 import { registerGuestCheckoutRoutes } from "./routes/v1/guest-checkout.routes.js";
+import { registerGuestOrderHelpRoutes } from "./routes/v1/guest-order-help.routes.js";
 import { registerHelpRoutes } from "./routes/v1/help.routes.js";
 import { registerMerchandiseRoutes } from "./routes/v1/merchandise.routes.js";
 import { registerOrderRoutes } from "./routes/v1/orders.routes.js";
@@ -141,6 +142,11 @@ export function createShopApiApp(options: CreateShopApiAppOptions) {
   void registerBasketRoutes(app, options.deps.commerce);
   void registerOrderRoutes(app, options.deps.commerce);
   void registerGuestCheckoutRoutes(app, options.deps.commerce.guestCheckout);
+  void registerGuestOrderHelpRoutes(
+    app,
+    options.deps.commerce.guestCheckout,
+    options.deps.commerce.orderProblems,
+  );
   void registerCategoryRoutes(app, options.deps.catalogue);
   void registerArtistRoutes(app, options.deps.catalogue);
   void registerArtistApplicationRoutes(app, options.deps.artistApplicant);

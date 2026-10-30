@@ -10,7 +10,7 @@ vi.mock("@auction/auth/token-verifier", () => ({
 import { createShopApiApp } from "../../app.js";
 import type { GuestCheckoutService } from "../../application/guest-checkout/guest-checkout.service.js";
 import type { GuestOrderLinks } from "../../application/ports/guest-checkout.ports.js";
-import type { GuestCheckoutRoutesDeps } from "../../commerce-route-deps.js";
+import type { CommerceRoutesDeps, GuestCheckoutRoutesDeps } from "../../commerce-route-deps.js";
 import { createMinimalShopApiTestDeps } from "../../test-app-deps.js";
 
 const bffHeaders = {
@@ -44,17 +44,29 @@ function guestDeps(
       cancelUnpaid: vi.fn(async () => undefined),
       ...links,
     },
+    resumeCheckout: vi.fn(async () => ({
+      orderId: "8f0a1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b",
+      checkoutUrl: "https://pay.example/again",
+      expiresAt: new Date("2026-10-30T12:30:00Z"),
+    })),
     linkRateLimiter: { consume: vi.fn(async () => ({ allowed: true as const })) },
     getCustomerProfile: vi.fn(async () => ({ name: null, email: null })),
     invoiceIssuer: { supplier: {} as never, vatNumber: null },
   };
 }
 
-async function buildApp(guestCheckout: GuestCheckoutRoutesDeps | undefined) {
+async function buildApp(
+  guestCheckout: GuestCheckoutRoutesDeps | undefined,
+  orderProblems?: CommerceRoutesDeps["orderProblems"],
+) {
   const base = createMinimalShopApiTestDeps();
   const app = createShopApiApp({
     deps: createMinimalShopApiTestDeps({
-      commerce: { ...base.commerce, ...(guestCheckout ? { guestCheckout } : {}) },
+      commerce: {
+        ...base.commerce,
+        ...(guestCheckout ? { guestCheckout } : {}),
+        ...(orderProblems ? { orderProblems } : {}),
+      },
     }),
     logger: false,
   });
@@ -174,5 +186,92 @@ describe("guest checkout routes", () => {
       payload: { email: "ada@example.com" },
     });
     expect(response.statusCode).toBe(503);
+  });
+
+  const paidOrder = {
+    orderId: "8f0a1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2b",
+    reference: "LAX-S-10482",
+    invoiceNumber: "LAX-INV-000124",
+    status: "paid" as const,
+    fulfilment: "collect_new_cavendish" as const,
+    merchandiseSubtotalPence: 12000,
+    fulfilmentSurchargePence: 0,
+    fulfilmentVatPence: null,
+    totalPence: 12000,
+    refundedPence: 0,
+    lines: [],
+    createdAt: new Date(),
+    paidAt: new Date(),
+    checkoutExpiresAt: null,
+    refundPeriodEndsAt: null,
+    deliveryAddress: null,
+    progress: null,
+    refunds: [],
+    problemReports: [],
+  };
+  const validLink = {
+    resolve: vi.fn(async () => ({
+      kind: "valid" as const,
+      order: paidOrder,
+      subject: "guest:g-1",
+      email: "ada@example.com",
+      expiresAt: new Date(Date.now() + 86_400_000),
+    })),
+  };
+
+  it("sends a guest's problem report to the same staff inbox, as the guest", async () => {
+    const writer = {
+      submit: vi.fn(async () => ({ reportId: "8f0a1c2e-3b4d-4e5f-8a6b-7c8d9e0f1a2c" })),
+    };
+    const deps = guestDeps({}, validLink);
+    deps.getCustomerProfile = vi.fn(async () => ({
+      name: "Ada Lovelace",
+      email: "ada@example.com",
+    }));
+    const app = await buildApp(deps, {
+      writer,
+      rateLimiter: { consume: vi.fn(async () => ({ allowed: true as const })) },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/guest-orders/problem-reports",
+      headers: bffHeaders,
+      payload: { token: "t".repeat(43), reason: "damaged", details: "The frame arrived cracked." },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(writer.submit).toHaveBeenCalledWith({
+      sender: { kind: "guest", contactName: "Ada Lovelace", contactEmail: "ada@example.com" },
+      orderReference: "LAX-S-10482",
+      reason: "damaged",
+      details: "The frame arrived cracked.",
+    });
+  });
+
+  it("reopens payment for a guest's unpaid order through its token, and refuses an unknown one", async () => {
+    const deps = guestDeps({}, validLink);
+    const app = await buildApp(deps);
+    const response = await app.inject({
+      method: "POST",
+      url: "/v1/guest-orders/resume-checkout",
+      headers: bffHeaders,
+      payload: {
+        token: "t".repeat(43),
+        successUrl: "http://localhost:3020/checkout/confirmation",
+        cancelUrl: "http://localhost:3020/checkout/cancel",
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(deps.resumeCheckout).toHaveBeenCalledWith(
+      expect.objectContaining({ subject: "guest:g-1", orderId: paidOrder.orderId }),
+    );
+
+    const unknown = await buildApp(guestDeps());
+    const refused = await unknown.inject({
+      method: "POST",
+      url: "/v1/guest-orders/resume-checkout",
+      headers: bffHeaders,
+      payload: { token: "x".repeat(43), successUrl: "http://a/b", cancelUrl: "http://a/c" },
+    });
+    expect(refused.statusCode).toBe(404);
   });
 });
