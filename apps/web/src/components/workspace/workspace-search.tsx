@@ -158,7 +158,7 @@ export function WorkspaceSearch({
         variant="ghost"
         onClick={() => setOpen(true)}
         aria-label={placeholder}
-        className="lax-focus inline-flex size-11 items-center justify-center rounded-lax-control text-lax-fg hover:bg-lax-hover lg:hidden"
+        className="lax-focus inline-flex size-11 items-center justify-center rounded-lax-control text-lax-fg hover:bg-lax-hover lg:hidden [&_svg]:size-5"
       >
         <Search aria-hidden className="size-5" strokeWidth={1.75} />
       </Button>
