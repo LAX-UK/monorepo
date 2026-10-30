@@ -17,7 +17,11 @@ function recordingClient(result: ArtCommerceMutationResult) {
 }
 
 const CONTACT = { name: "Grace Hopper", email: "grace@example.com" };
-const SENT: ArtCommerceMutationResult = { kind: "response", status: 201, body: {} };
+const SENT: ArtCommerceMutationResult = {
+  kind: "response",
+  status: 201,
+  body: { enquiryId: "11111111-1111-4111-8111-111111111111", reference: "E-2041" },
+};
 
 describe("submitGeneralEnquiry", () => {
   it("posts a trimmed enquiry with context and phone", async () => {
@@ -29,7 +33,7 @@ describe("submitGeneralEnquiry", () => {
       phone: " +44 20 0000 ",
       contextSlug: "summer-show",
     });
-    expect(state).toEqual({ status: "sent", email: "grace@example.com" });
+    expect(state).toEqual({ status: "sent", email: "grace@example.com", reference: "E-2041" });
     expect(calls).toEqual([
       {
         path: "/commerce/me/general-enquiries",

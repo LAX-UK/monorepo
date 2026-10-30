@@ -391,17 +391,14 @@ describe("Home with the dashboard", () => {
   const facts = (role: LegalEntityMemberRole) => ({
     actor: { role },
     organisation: { status: "approved" as const, payoutsReady: true },
-    consignments: [],
-    changesRequested: [],
     unsoldLots: [],
-    purchasesAwaitingPayment: [],
-    viewerIdentity: "verified" as const,
-    salesToRegister: [],
+    teamInvited: true,
   });
+  const READ = { kinds: [], tasks: [] };
 
   it("first steps replace the shortcuts they would repeat", () => {
-    expect(buildOrganisationHome(facts("owner"), [], EMPTY).shortcuts).toEqual([]);
-    expect(buildOrganisationHome(facts("owner"), [], BUSY).shortcuts).toEqual([
+    expect(buildOrganisationHome(facts("owner"), [], EMPTY, READ).shortcuts).toEqual([]);
+    expect(buildOrganisationHome(facts("owner"), [], BUSY, READ).shortcuts).toEqual([
       "sell",
       "invite",
       "statements",
@@ -409,7 +406,7 @@ describe("Home with the dashboard", () => {
   });
 
   it("keeps the rest of Home when the figures could not be loaded", () => {
-    const home = buildOrganisationHome(facts("owner"), [], null);
+    const home = buildOrganisationHome(facts("owner"), [], null, READ);
     expect(home.dashboard).toBeNull();
     expect(home.shortcuts).toEqual(["sell", "invite", "statements"]);
   });

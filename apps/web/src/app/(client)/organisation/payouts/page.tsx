@@ -1,10 +1,9 @@
+import { ConnectLoadFailure } from "@/components/connect/connect-load-failure";
 import { ConnectWorkspace } from "@/components/connect/connect-workspace";
 import { PayoutSetupSteps } from "@/components/connect/payout-setup-steps";
-import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
 import { OrganisationTabNoAccess } from "@/components/organisations/organisation-tab-no-access";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { buildSellerConnectFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import {
   getServerStripeConnectClientConfig,
   syncServerStripeConnectStatus,
@@ -37,9 +36,7 @@ export default async function OrganisationPayoutsPage() {
   ]);
 
   const connectFailure =
-    connectRes.ok || connectRes.error === "not_connected"
-      ? null
-      : buildSellerConnectFailure(connectRes.error);
+    connectRes.ok || connectRes.error === "not_connected" ? null : connectRes.error;
 
   return (
     <div className="space-y-6">
@@ -47,7 +44,7 @@ export default async function OrganisationPayoutsPage() {
         <SectionHeader heading={<DisplayHeading as="h2">Payout setup</DisplayHeading>} />
       </OrgTabSectionHeader>
       {connectFailure ? (
-        <DashboardSliceErrorAlert failure={connectFailure} />
+        <ConnectLoadFailure error={connectFailure} />
       ) : (
         <>
           <p className="font-body text-sm text-on-surface-variant">

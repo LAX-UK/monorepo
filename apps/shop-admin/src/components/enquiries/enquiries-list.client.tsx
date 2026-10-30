@@ -1,5 +1,6 @@
 "use client";
 
+import { useStaffCatalogueImage } from "@/components/artworks/staff-catalogue-image-provider.client";
 import {
   type EnquiryTarget,
   useEnquiryActions,
@@ -99,6 +100,7 @@ export function EnquiriesList({
     search: { label: "Search enquiries", placeholder: "Search by sender or message" },
   });
   const actions = useEnquiryActions({ currentSubject });
+  const resolveImage = useStaffCatalogueImage();
   const openRef = parseEnquiryRef(list.panel.openId);
   const opened = openRef
     ? (page.items.find((item) => item.kind === openRef.kind && item.id === openRef.id) ?? null)
@@ -129,7 +131,7 @@ export function EnquiriesList({
         cell: (row) =>
           row.artwork ? (
             <span className="flex min-w-0 items-center gap-3">
-              <CellThumbnail src={row.artwork.thumbnailUrl} />
+              <CellThumbnail src={resolveImage(row.artwork.thumbnailUrl)} />
               <span className="truncate">{row.artwork.title}</span>
             </span>
           ) : (
@@ -163,7 +165,7 @@ export function EnquiriesList({
         cell: (row) => <StaffDate value={row.createdAt} withTime />,
       },
     ],
-    [list.panelHref, list.panel.PanelLink],
+    [list.panelHref, list.panel.PanelLink, resolveImage],
   );
 
   const kindChip = filterChip(

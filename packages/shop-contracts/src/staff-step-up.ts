@@ -23,6 +23,7 @@ export const SHOP_ADMIN_STEP_UP_PATHS = [
   "/admin/v1/original-sales/:originalSaleId/invoice",
   "/admin/v1/sale-authority-requests/:requestId/decision",
   "/admin/v1/artworks/:artworkId/sale-authority",
+  "/admin/v1/guests/:guestCustomerId/erasure",
 ] as const;
 
 function segmentsOf(path: string): string[] {

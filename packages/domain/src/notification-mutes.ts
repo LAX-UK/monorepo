@@ -6,9 +6,8 @@
  * email, because missing them costs the person or the organisation: an unpaid invoice, a won lot,
  * an agreement waiting for acceptance, a role change. Extend this table, not the callers.
  *
- * Covered by the policy as notice types are added: membership changes have no notification type
- * yet; give them one in this table when they do. A bid refused for a limit is informational and
- * in-app only, so a mute may quiet it.
+ * Covered by the policy as notice types are added: a bid refused for a limit is informational
+ * and in-app only, so a mute may quiet it.
  */
 export const NOTIFICATION_ALWAYS_DELIVERED_TYPES = [
   // Money owed or received: payment due (the invoice) and won lots.
@@ -34,6 +33,9 @@ export const NOTIFICATION_ALWAYS_DELIVERED_TYPES = [
   "staff_role_expired_admin",
   "staff_role_changed",
   "staff_role_changed_admin",
+  // A member's request for access, waiting for a decision, and the decision.
+  "access_requested",
+  "access_request_decided",
 ] as const;
 
 const ALWAYS_DELIVERED = new Set<string>(NOTIFICATION_ALWAYS_DELIVERED_TYPES);

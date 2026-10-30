@@ -37,11 +37,9 @@ test.describe("organisation owner journey @roles", () => {
     const { page } = owner;
 
     await test.step("invite someone as a viewer", async () => {
-      await page.goto("/organisation/members");
+      await page.goto("/team");
       await expectActingAs(page, approved, "Owner");
-      await expect(
-        page.getByRole("main").getByRole("link", { name: "Security", exact: true }),
-      ).toBeVisible();
+      await expect(page.getByRole("heading", { level: 1, name: "Team" })).toBeVisible();
 
       await page.getByLabel("Email").fill(INVITEE_EMAIL);
       await page.getByRole("combobox", { name: "Role", exact: true }).click();
@@ -90,7 +88,7 @@ test.describe("organisation owner journey @roles", () => {
     });
 
     await test.step("change a role and take it back", async () => {
-      await page.goto("/organisation/members");
+      await page.goto("/team");
       const picker = page.getByRole("combobox", { name: `Role for ${INVITEE_NAME}` });
       await expect(picker).toContainText("Viewer");
       await picker.click();

@@ -19,6 +19,7 @@ import type {
   SubmissionSenderFilter,
 } from "@auction/persistence/interfaces";
 import type { IMyBuyerAgentAuthorisationsService } from "../buyer-agents/my-buyer-agent-authorisations.service.js";
+import type { IUnsoldChoiceDeadlines } from "../consignment-after-sale/unsold-choice-deadlines.js";
 import type {
   INeedsYouOrganisationReader,
   INeedsYouService,
@@ -33,6 +34,8 @@ export type NeedsYouServiceDeps = {
   facts: INeedsYouFactsReader;
   organisations: INeedsYouOrganisationReader;
   unsold: Pick<IUnsoldLotChoiceReader, "listUnsoldOutcomes">;
+  /** The stored date each unsold choice is due by. */
+  deadlines: IUnsoldChoiceDeadlines;
   authorisations: IMyBuyerAgentAuthorisationsService;
   now?: () => Date;
 };
@@ -194,6 +197,7 @@ export class NeedsYouService implements INeedsYouService {
       }),
     ]);
 
+    const dueBy = this.deps.deadlines.chooseByFor(unsold.rows);
     const facts: NeedsYouFacts = {
       actor,
       organisation,
@@ -205,7 +209,7 @@ export class NeedsYouService implements INeedsYouService {
       unsoldLots: unsold.rows.map((row) => ({
         id: row.lotId,
         title: row.title,
-        endedAt: row.endedAt,
+        dueBy: dueBy.get(row.lotId) ?? null,
       })),
       purchases,
       salesToRegister: registrations.flatMap((authorisation) =>

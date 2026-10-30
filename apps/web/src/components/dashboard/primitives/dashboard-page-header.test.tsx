@@ -18,26 +18,11 @@ describe("DashboardPageHeader", () => {
     expect(actionsWrap?.className).toMatch(/flex shrink-0/);
   });
 
-  it("leaves out the empty text block on phones, so the first action sits at the top", () => {
+  it("keeps the text block on phones, where it is the large title", () => {
     render(
       <DashboardPageHeader
         title="Consignments"
         description="Works you've sent."
-        hideTitleOnMobile
-        hideDescriptionOnMobile
-        actions={<button type="button">Sell a work</button>}
-      />,
-    );
-    const block = screen.getByRole("heading", { level: 1, name: "Consignments" }).parentElement;
-    expect(block?.className).toMatch(/hidden lg:block/);
-  });
-
-  it("keeps the text block on phones while a description shows there", () => {
-    render(
-      <DashboardPageHeader
-        title="Consignments"
-        description="Works you've sent."
-        hideTitleOnMobile
         actions={<button type="button">Sell a work</button>}
       />,
     );
@@ -60,24 +45,19 @@ describe("DashboardPageHeader", () => {
     expect(heading.className).toMatch(/lg:text-4xl/);
   });
 
-  it("omits page h1 below lg when hideTitleOnMobile is set", () => {
-    render(<DashboardPageHeader title="Portfolio" hideTitleOnMobile />);
-
-    const heading = screen.getByRole("heading", { level: 1, name: "Portfolio" });
-    expect(heading.className).toMatch(/hidden lg:block/);
-  });
-
-  it("visually hides description on mobile when hideDescriptionOnMobile is set", () => {
+  it("keeps the page title and description on phones, as the large title", () => {
     render(
       <DashboardPageHeader
         title="Portfolio"
-        hideDescriptionOnMobile
         description="Your acquired lots and settlement status."
       />,
     );
-
-    const description = screen.getByText("Your acquired lots and settlement status.");
-    expect(description.className).toMatch(/hidden lg:block/);
+    const heading = screen.getByRole("heading", { level: 1, name: "Portfolio" });
+    expect(heading.className).not.toMatch(/hidden/);
+    expect(heading).toHaveAttribute("data-page-title");
+    expect(screen.getByText("Your acquired lots and settlement status.").className).not.toMatch(
+      /hidden/,
+    );
   });
 });
 
@@ -87,8 +67,6 @@ describe("DashboardPageHeader on the public site", () => {
       <ClientLayoutProvider layout="website">
         <DashboardPageHeader
           title="My bids"
-          hideTitleOnMobile
-          hideDescriptionOnMobile
           description="Your bids in current and past sales."
           actions={<a href="/auctions">Browse upcoming sales</a>}
         />

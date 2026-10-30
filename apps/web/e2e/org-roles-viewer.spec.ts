@@ -21,7 +21,7 @@ const FORBIDDEN = [
   "/bids",
   "/purchases",
   "/organisation",
-  "/organisation/members",
+  "/team",
   "/organisation/documents",
   "/organisation/payouts",
   "/organisation/security",

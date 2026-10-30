@@ -19,6 +19,13 @@ export type SaleModeCapabilities = {
   readonly inheritsLotTiming: boolean;
   /** Which bid placement channels are meaningful for admin overview UI. */
   readonly bidChannels: SaleBidChannelVisibility;
+  /**
+   * Whether staff end the sale. Saleroom sales (onsite and hybrid) are run by the clerk: their
+   * lots follow the room, online bids are one more channel, and a lot sells at the hammer. Staff
+   * end them when the room is done; lots not hammered by then close unsold. Online sales end on
+   * their own once every lot has closed. Every mode also ends on its own when all lots close.
+   */
+  readonly endsManually: boolean;
 };
 
 export type SaleBidChannelVisibility = {
@@ -37,6 +44,7 @@ const SALE_MODE_CAPABILITIES: Record<SaleDeliveryMode, SaleModeCapabilities> = {
     allowsLocation: false,
     inheritsLotTiming: false,
     bidChannels: { online: true, room: false, phone: false },
+    endsManually: false,
   },
   onsite: {
     allowsBidding: false,
@@ -44,6 +52,7 @@ const SALE_MODE_CAPABILITIES: Record<SaleDeliveryMode, SaleModeCapabilities> = {
     allowsLocation: true,
     inheritsLotTiming: true,
     bidChannels: { online: false, room: true, phone: true },
+    endsManually: true,
   },
   hybrid: {
     allowsBidding: true,
@@ -51,6 +60,7 @@ const SALE_MODE_CAPABILITIES: Record<SaleDeliveryMode, SaleModeCapabilities> = {
     allowsLocation: true,
     inheritsLotTiming: true,
     bidChannels: { online: true, room: true, phone: true },
+    endsManually: true,
   },
 };
 
@@ -60,6 +70,11 @@ export function getSaleModeCapabilities(mode: SaleDeliveryMode): SaleModeCapabil
 
 export function saleModeAllowsBidding(mode: SaleDeliveryMode): boolean {
   return SALE_MODE_CAPABILITIES[mode].allowsBidding;
+}
+
+/** Whether staff can end a sale of this mode by hand (saleroom sales: onsite and hybrid). */
+export function saleModeEndsManually(mode: SaleDeliveryMode): boolean {
+  return SALE_MODE_CAPABILITIES[mode].endsManually;
 }
 
 /** Operator/clerk placements (telephone, saleroom, absentee) on legacy onsite sales. */

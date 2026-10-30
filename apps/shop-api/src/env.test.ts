@@ -139,3 +139,22 @@ describe("loadShopApiEnv editorial", () => {
     expect(() => loadShopApiEnv(productionNodeBase())).not.toThrow();
   });
 });
+
+describe("loadShopApiEnv SHOP_FINANCIAL_YEAR_END", () => {
+  it("defaults to 30 September and reads a configured MM-DD", () => {
+    expect(loadShopApiEnv(productionNodeBase()).SHOP_FINANCIAL_YEAR_END).toEqual({
+      month: 9,
+      day: 30,
+    });
+    expect(
+      loadShopApiEnv(productionNodeBase({ SHOP_FINANCIAL_YEAR_END: "03-31" }))
+        .SHOP_FINANCIAL_YEAR_END,
+    ).toEqual({ month: 3, day: 31 });
+  });
+
+  it("refuses a date that is not a day of the year", () => {
+    expect(() =>
+      loadShopApiEnv(productionNodeBase({ SHOP_FINANCIAL_YEAR_END: "09-31" })),
+    ).toThrow();
+  });
+});

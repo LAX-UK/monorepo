@@ -251,6 +251,12 @@ export const RegisterGeneralEnquiryRequestSchema = Type.Object({
   ...EnquiryContactProperties,
 });
 
+/** A stored general enquiry and the reference its sender can quote ("E-2041"). */
+export const GeneralEnquiryCreatedSchema = Type.Object({
+  enquiryId: Type.String({ format: "uuid" }),
+  reference: Type.Optional(Type.String({ pattern: "^E-[0-9]+$" })),
+});
+
 export const GeneralEnquiryTopicSchema = Type.Union([
   Type.Literal("general"),
   Type.Literal("private_viewing"),

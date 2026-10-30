@@ -45,6 +45,10 @@ export type NotificationPayload = {
     collectionPlace?: string;
     /** How a delivered lot reached its buyer. */
     fulfilmentMethod?: "delivery" | "collection";
+    /** The organisation a notice is about, by name, for its email. */
+    organisationName?: string;
+    /** Last four digits of a new payout bank account. */
+    bankLast4?: string | null;
     /**
      * The invoices one payment settled together, each with its amount (major units, `currency`);
      * `amount` is then their total.
@@ -52,10 +56,6 @@ export type NotificationPayload = {
     receiptLines?: { lotTitle: string; lotNumber: number | null; amount: string }[];
     /** How a payment was made. */
     paymentMethod?: "card" | "bank_transfer";
-    /** The organisation a notice is about, by name, for its email. */
-    organisationName?: string;
-    /** Last four digits of a new payout bank account. */
-    bankLast4?: string | null;
     /** Keeps an email for one fulfilment step from being queued twice. */
     emailIdempotencyKey?: string;
     /** Outbox idempotency key — used by in-app channel to skip duplicate retries. */

@@ -8,10 +8,11 @@ import {
   type EnquiryFormInput,
   validateEnquiryForm,
 } from "@/lib/enquiry/enquiry-form.validator";
+import { readEnquiryReference } from "@/lib/enquiry/enquiry-reference";
 
 export type ArtEnquiryState =
   | { status: "idle" }
-  | { status: "sent"; email: string | null }
+  | { status: "sent"; email: string | null; reference: string | null }
   | { status: "invalid"; fieldErrors: EnquiryFieldErrors }
   | { status: "error"; message: string };
 
@@ -38,7 +39,9 @@ export function interpretArtEnquiryResult(
     return { status: "error", message: MESSAGES.sessionExpired };
   if (result.kind === "network_error") return { status: "error", message: MESSAGES.unavailable };
   const { status, body } = result;
-  if (status >= 200 && status < 300) return { status: "sent", email };
+  if (status >= 200 && status < 300) {
+    return { status: "sent", email, reference: readEnquiryReference(body) };
+  }
   if (status === 403 && readError(body) === "csrf_failed") {
     return { status: "error", message: MESSAGES.sessionExpired };
   }

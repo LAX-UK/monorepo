@@ -1,5 +1,6 @@
 import { laxAccountUrl } from "@/lib/lax-account-url";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import HomeLayout from "./home/layout";
 import HomePage from "./home/page";
 import SettingsPage from "./settings/page";
 import VerifyIdentityPage from "./verify-identity/page";
@@ -21,6 +22,11 @@ vi.mock("@/lib/legal-entity/active-organisation.server", () => ({
 const loadOrganisationHome = vi.fn(async () => ({}));
 vi.mock("@/lib/organisation-home/load-organisation-home.server", () => ({
   loadOrganisationHome: (...args: unknown[]) => loadOrganisationHome(...(args as [])),
+}));
+
+const requestPath = vi.fn(() => "/home");
+vi.mock("@/lib/navigation/client-request-path.server", () => ({
+  resolveClientRequestPath: async () => requestPath(),
 }));
 
 vi.mock("@/lib/auth/guards.server", () => ({
@@ -80,6 +86,18 @@ describe("/home", () => {
     expect(await visit({ welcome: "back", utm_source: ["a", "b"] })).toBe(
       "/bids?welcome=back&utm_source=a&utm_source=b",
     );
+  });
+});
+
+describe("/home layout", () => {
+  it("redirects a personal account before Home's loading state streams, keeping the query", async () => {
+    requestPath.mockReturnValue("/home?welcome=back");
+    expect(await redirectTarget(() => HomeLayout({ children: null }))).toBe("/bids?welcome=back");
+  });
+
+  it("lets an organisation through to its Home", async () => {
+    activeOrganisation.mockReturnValue({ id: "org-1", role: "owner" });
+    expect(await redirectTarget(() => HomeLayout({ children: null }))).toBeNull();
   });
 });
 

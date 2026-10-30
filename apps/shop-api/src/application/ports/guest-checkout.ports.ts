@@ -55,10 +55,13 @@ export interface GuestOrderLinks {
   cancelUnpaid(input: { token: string; basketTokenHash: string; now: Date }): Promise<void>;
 }
 
-/** Moves a guest's orders to the LAX account that verified the same email. */
+/**
+ * Moves a guest's orders and the enquiries they sent as a guest to the LAX account that verified
+ * the same email. Idempotent: a second call for the same email claims nothing more.
+ */
 export interface GuestOrderClaimer {
   claimForVerifiedEmail(input: {
     subjectId: string;
     email: string;
-  }): Promise<{ claimedOrders: number }>;
+  }): Promise<{ claimedOrders: number; claimedEnquiries: number }>;
 }

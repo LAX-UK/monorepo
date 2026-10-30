@@ -12,6 +12,7 @@ const names = [
   "shop-refund-issued",
   "shop-cancellation-confirmed",
   "art-general-enquiry-alert",
+  "art-enquiry-received",
   "art-artist-application-received",
   "art-artist-application-more-info",
   "art-artist-application-declined",
@@ -108,6 +109,19 @@ type ShopTemplateVars = {
     contextSlug?: string;
     contactPhone?: string;
   };
+  /** The sender's copy of an enquiry: its reference, what happens next, the gallery's lines. */
+  "art-enquiry-received": {
+    /** "E-2041". */
+    reference: string;
+    /** The name typed in the form, if any. */
+    recipientName?: string;
+    /** A work on its page, or the topic of a general enquiry. */
+    topic: "artwork" | "general" | "private_viewing" | "art_advisory" | "selling" | "exhibition";
+    artworkTitle?: string;
+    artworkUrl?: string;
+    /** Where it was sent; decides which storefront's footer the email carries. */
+    storefront: "shop" | "art";
+  };
   /** The applicant's copy of an artist application they sent. */
   "art-artist-application-received": {
     artistName: string;
@@ -154,6 +168,7 @@ export const shopTemplates = {
     "shop-refund-issued": "snapshot",
     "shop-cancellation-confirmed": "snapshot",
     "art-general-enquiry-alert": "snapshot",
+    "art-enquiry-received": "snapshot",
     "art-artist-application-received": "snapshot",
     "art-artist-application-more-info": "snapshot",
     "art-artist-application-declined": "snapshot",

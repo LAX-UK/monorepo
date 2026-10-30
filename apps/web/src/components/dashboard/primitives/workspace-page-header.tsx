@@ -7,23 +7,17 @@ export type WorkspacePageHeaderProps = Omit<PageHeaderProps, "title"> & {
   meta?: ReactNode;
   /** `display` — larger welcome-style title on overview. */
   titleScale?: "default" | "display";
-  /** Hide h1 below lg when shell breadcrumb shows the current page. */
-  hideTitleOnMobile?: boolean;
-  /** Hide description below lg to reduce vertical stack on list pages. */
-  hideDescriptionOnMobile?: boolean;
-  /** Hide meta eyebrow below lg when shell title already shows parent context. */
-  hideMetaOnMobile?: boolean;
   listHeadingId?: string;
 };
 
-/** The workspace page header (organisation workspace and staff areas): single h1 per page. */
+/**
+ * The workspace page header (organisation workspace and staff areas): single h1 per page. On a
+ * phone it is the large title, which the workspace bar takes over once the page scrolls past it.
+ */
 export function WorkspacePageHeader({
   meta,
   title,
   titleScale = "default",
-  hideTitleOnMobile = false,
-  hideDescriptionOnMobile = false,
-  hideMetaOnMobile = false,
   listHeadingId,
   className,
   description,
@@ -44,14 +38,6 @@ export function WorkspacePageHeader({
       ? "font-headline text-3xl font-semibold tracking-tight text-on-surface lg:text-4xl"
       : "font-headline text-xl font-semibold tracking-tight text-on-surface sm:text-2xl lg:text-[1.75rem]";
 
-  // On phones the shell's title bar shows the title; when nothing else in the block shows,
-  // the block is left out there, so the first action sits at the top of the page.
-  const textHiddenOnMobile =
-    hideTitleOnMobile &&
-    !breadcrumbs &&
-    (!description || hideDescriptionOnMobile) &&
-    (!metaNode || hideMetaOnMobile);
-
   return (
     <div
       className={cn(
@@ -60,35 +46,18 @@ export function WorkspacePageHeader({
         className,
       )}
     >
-      <div className={cn("w-full lg:flex-1 lg:pr-8", textHiddenOnMobile && "hidden lg:block")}>
+      <div className="w-full lg:flex-1 lg:pr-8">
         {breadcrumbs ? (
           <div className="mb-4 text-on-surface-variant [&_a]:text-primary [&_a]:underline-offset-4 hover:[&_a]:underline">
             {breadcrumbs}
           </div>
         ) : null}
-        {metaNode ? (
-          <div
-            className={cn("mb-2 text-on-surface-variant", hideMetaOnMobile && "hidden lg:block")}
-          >
-            {metaNode}
-          </div>
-        ) : null}
-        {hideTitleOnMobile ? (
-          <h1 id={listHeadingId} className={cn(titleClass, "hidden lg:block")}>
-            {title}
-          </h1>
-        ) : (
-          <h1 id={listHeadingId} className={titleClass}>
-            {title}
-          </h1>
-        )}
+        {metaNode ? <div className="mb-2 text-on-surface-variant">{metaNode}</div> : null}
+        <h1 id={listHeadingId} className={titleClass} data-page-title="">
+          {title}
+        </h1>
         {description ? (
-          <p
-            className={cn(
-              "mt-2 max-w-xl font-body text-sm leading-relaxed text-on-surface-variant",
-              hideDescriptionOnMobile && "hidden lg:block",
-            )}
-          >
+          <p className="mt-2 max-w-xl font-body text-sm leading-relaxed text-on-surface-variant">
             {description}
           </p>
         ) : null}

@@ -74,7 +74,6 @@ export default async function NewSubmissionPage({
     <DashboardPage className={`mx-auto w-full space-y-6 ${SETTINGS_CONTENT_MAX_WIDTH}`}>
       <DashboardPageHeader
         title={SELL_A_WORK_LABEL}
-        hideTitleOnMobile
         description="Tell us about the work. A specialist reviews every submission, and there's no obligation to sell."
       />
       {error ? <DashboardSliceErrorAlert failure={describeSettingsActionError(error)} /> : null}

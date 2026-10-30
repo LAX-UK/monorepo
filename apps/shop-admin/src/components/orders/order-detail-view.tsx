@@ -5,6 +5,7 @@ import {
   OrderLineMenu,
   SendToProductionButton,
 } from "@/components/orders/order-actions.client";
+import { guestErasedLine } from "@/server/domain/guest-erasure.vm";
 import {
   buildOrderTimeline,
   canRefundOrder,
@@ -14,7 +15,7 @@ import {
   presentRefundStatus,
 } from "@/server/domain/order-detail.vm";
 import { orderBuyerAccountLabel, orderNumber } from "@/server/domain/order-list.vm";
-import type { AdminOrderDetail } from "@auction/shop-contracts";
+import type { AdminGuestErasureState, AdminOrderDetail } from "@auction/shop-contracts";
 import {
   KeyValueList,
   MappedStatusBadge,
@@ -33,6 +34,8 @@ export type OrderPermissions = {
   refund: boolean;
   fulfilment: boolean;
   production: boolean;
+  /** Erasing a guest buyer's personal data on request. */
+  eraseGuest: boolean;
 };
 
 /** Capability names as the session lists them; the API checks the same ones. */
@@ -41,6 +44,7 @@ export function orderPermissions(capabilities: readonly string[]): OrderPermissi
     refund: capabilities.includes("refund.write"),
     fulfilment: capabilities.includes("fulfilment.write"),
     production: capabilities.includes("production.write"),
+    eraseGuest: capabilities.includes("lead.erase"),
   };
 }
 
@@ -51,12 +55,17 @@ export function orderPermissions(capabilities: readonly string[]): OrderPermissi
 export function OrderDetailView({
   detail,
   permissions,
+  guestErasure = null,
 }: {
   detail: AdminOrderDetail;
   permissions: OrderPermissions;
+  /** Loaded only for a guest's order, for people who may erase guest data. */
+  guestErasure?: AdminGuestErasureState | null;
 }) {
   const number = orderNumber(detail.orderId, detail.reference);
-  const buyer = detail.buyerName ?? detail.buyerEmail ?? "Unknown buyer";
+  const erased = detail.personalDataErasedAt ? guestErasedLine(detail.personalDataErasedAt) : null;
+  const buyer =
+    detail.buyerName ?? detail.buyerEmail ?? (erased ? "Erased guest" : "Unknown buyer");
   const refundedPence = detail.refunds
     .filter((refund) => refund.status !== "failed" && refund.status !== "cancelled")
     .reduce((sum, refund) => sum + refund.amountPence, 0);
@@ -83,6 +92,11 @@ export function OrderDetailView({
           <OrderHeaderActions
             detail={detail}
             canRefund={permissions.refund && canRefundOrder(detail)}
+            guestErasure={
+              guestErasure && !erased && detail.buyerEmail
+                ? { state: guestErasure, email: detail.buyerEmail }
+                : null
+            }
           />
         }
       />
@@ -187,15 +201,30 @@ export function OrderDetailView({
         </div>
 
         <div className="flex min-w-0 flex-col gap-6">
-          <Section title="Customer">
+          <Section title="Customer" bodyClassName="flex flex-col gap-3">
             <KeyValueList
               items={[
-                { label: "Name", value: detail.buyerName },
-                {
-                  label: "Email",
-                  value: detail.buyerEmail,
-                  ...(detail.buyerEmail ? { copyValue: detail.buyerEmail } : {}),
-                },
+                // An erased guest has no name or email left; the rows would only read "—".
+                ...(erased
+                  ? []
+                  : [
+                      { label: "Name", value: detail.buyerName },
+                      {
+                        label: "Email",
+                        value: detail.buyerEmail,
+                        ...(detail.buyerEmail ? { copyValue: detail.buyerEmail } : {}),
+                      },
+                    ]),
+                // Kept for the accounting record; the API sends it only to people who handle invoices.
+                ...(detail.retainedInvoiceContact
+                  ? [
+                      { label: "Invoice name", value: detail.retainedInvoiceContact.name },
+                      {
+                        label: "Invoice address",
+                        value: detail.retainedInvoiceContact.addressLines.join(", ") || null,
+                      },
+                    ]
+                  : []),
                 detail.buyerIsGuest
                   ? { label: "Account", value: orderBuyerAccountLabel(detail) }
                   : {
@@ -205,6 +234,7 @@ export function OrderDetailView({
                     },
               ]}
             />
+            {erased ? <p className="m-0 text-staff-xs text-staff-muted">{erased}</p> : null}
           </Section>
           <Section title="Payment">
             <KeyValueList

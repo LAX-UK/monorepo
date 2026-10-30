@@ -71,7 +71,10 @@ function makeRepo(initial: Payout) {
   return { repo, lines, current: () => row };
 }
 
-function serviceFor(repo: IPayoutRepository) {
+function serviceFor(
+  repo: IPayoutRepository,
+  problemNotifier = { payoutProblem: vi.fn(async () => {}) },
+) {
   const runner = { runInTransaction: <T>(fn: (tx: never) => Promise<T>) => fn({} as never) };
   const adjustments = bridgePayoutAdjustmentService(
     new SharedPayoutAdjustmentService(runner, repo, () => repo),
@@ -83,6 +86,7 @@ function serviceFor(repo: IPayoutRepository) {
     adjustments,
     () => repo,
     () => ({ listProcessorUserIds: async () => [] }),
+    problemNotifier,
   );
 }
 
@@ -114,5 +118,18 @@ describe("manual payout reversal", () => {
     expect(current().netAmount).toBe("0.00");
     expect(current().platformFee).toBe("50.00");
     expect(current().grossAmount).toBe("50.00");
+  });
+
+  it("tells the account once the reversal is recorded", async () => {
+    const { repo } = makeRepo(paidPayout());
+    const notifier = { payoutProblem: vi.fn(async () => {}) };
+
+    await serviceFor(repo, notifier).adminManualReverse(REVERSER, "po1", {
+      reason: "bank returned it",
+    });
+
+    expect(notifier.payoutProblem).toHaveBeenCalledWith(
+      expect.objectContaining({ id: "po1", status: "reversed" }),
+    );
   });
 });

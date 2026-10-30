@@ -149,7 +149,7 @@ export function MetricCell({
   const accent = accentTone[tone];
   const valueText = missing ? (
     item.emptyText ? (
-      <span className="text-lax-14 font-medium whitespace-normal text-lax-fg in-data-[lax-density=client]:text-lax-16">
+      <span className="block text-lax-14 font-medium whitespace-normal text-lax-fg in-data-[lax-density=client]:text-lax-16">
         {item.emptyText}
       </span>
     ) : (

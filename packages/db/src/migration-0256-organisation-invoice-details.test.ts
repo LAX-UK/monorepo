@@ -32,7 +32,8 @@ describe("migration 0256 organisation invoice details", () => {
     expect(rollback).toContain('DROP TABLE IF EXISTS "legal_entity_invoice_details"');
   });
 
-  // The schema's final list is checked against the latest migration in notification-type-check.
+  // Whether the final constraint allows every declared type is checked across all migrations in
+  // notification-type-check.test.ts.
   it("adds the two notices and keeps every earlier type", () => {
     const types = typesIn(migration);
     for (const type of [...typesIn(previous), ...NEW_TYPES]) expect(types).toContain(type);

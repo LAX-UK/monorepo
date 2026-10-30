@@ -15,6 +15,7 @@ import {
 } from "@auction/domain";
 import type {
   IConsignmentAgreementRepository,
+  IUnsoldChoiceDeadlineStore,
   IUnsoldLotChoiceRepository,
   SubmissionSenderFilter,
 } from "@auction/persistence/interfaces";
@@ -35,6 +36,7 @@ import { SubmissionError } from "../../lib/errors.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import { unsoldChoiceConfirmedUpdate, unsoldChoiceRequestedUpdate } from "./after-sale-copy.js";
 import type { IConsignmentUpdateNotifier } from "./consignment-update-notifier.js";
+import type { IUnsoldChoiceDeadlines } from "./unsold-choice-deadlines.js";
 
 /** The signed-in seller, the account they act for and their standing with it. */
 export type AfterSaleSeller = {
@@ -53,6 +55,9 @@ export type UnsoldLotChoiceServiceDeps = {
   /** The selling account, for its state: an organisation's state can pause choices. */
   accounts: { findById(id: string): Promise<Pick<LegalEntity, "kind" | "status"> | null> };
   notifier: IConsignmentUpdateNotifier;
+  /** The date each unsold choice is due by, from the stored dates. */
+  deadlines: IUnsoldChoiceDeadlines;
+  storedDeadlines: Pick<IUnsoldChoiceDeadlineStore, "kept">;
   events: IDomainEventSink | null;
   now?: () => Date;
 };
@@ -154,8 +159,17 @@ export class UnsoldLotChoiceService implements IUnsoldLotChoiceService {
   private async view(
     context: UnsoldContext,
   ): Promise<Omit<SellerUnsoldLotView, "canChoose" | "choicePaused">> {
+    const key = { lotId: context.lot.id, lotEndTime: context.lot.endTime };
+    const [stored] = await this.deps.storedDeadlines.kept([key]);
+    const outcome = {
+      lotId: key.lotId,
+      endedAt: key.lotEndTime,
+      chooseBy: stored?.chooseBy ?? null,
+    };
+    const dueBy = this.deps.deadlines.chooseByFor([outcome]);
     return {
       lotId: context.lot.id,
+      chooseBy: (dueBy.get(context.lot.id) ?? context.lot.endTime).toISOString(),
       currentReserve: context.lot.reservePrice,
       reserveFloor: context.agreement?.relistReserveFloor ?? null,
       currency: context.agreement?.currency ?? "GBP",
@@ -200,12 +214,14 @@ export class UnsoldLotChoiceService implements IUnsoldLotChoiceService {
       limit: page.limit,
       offset: page.offset,
     });
+    const dueBy = this.deps.deadlines.chooseByFor(rows);
     return {
       rows: rows.map((row) => ({
         lotId: row.lotId,
         submissionId: row.submissionId,
         title: row.title,
         endedAt: row.endedAt.toISOString(),
+        chooseBy: (dueBy.get(row.lotId) ?? row.endedAt).toISOString(),
         choice: row.choice ?? "none",
       })),
       total,

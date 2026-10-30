@@ -100,6 +100,7 @@ export function ArtGeneralEnquirySheet({
               ref={sentRef}
               vm={buildEnquiryConfirmation({ viewer: { kind: viewerKind }, subject: topic })}
               email={state.email}
+              reference={state.reference}
               onClose={() => setOpen(false)}
             />
           </div>

@@ -8,10 +8,8 @@ Programmable app chrome for staff (`/admin`), finance, and client (`/dashboard`)
 |-------|------|------|
 | Contract | [`contracts.ts`](contracts.ts) | `ShellConfig`, nav types — no React |
 | Builder | [`build-shell-config.ts`](build-shell-config.ts) | Role → nav + mobile tabs |
-| Frame | [`components/layout/app-shell.tsx`](../components/layout/app-shell.tsx) | Sidebar + header dispatch + main landmark |
-| Staff header | [`components/layout/staff-shell-header.tsx`](../components/layout/staff-shell-header.tsx) | Search, theme, account |
-| Client header | [`components/layout/client-shell-header.tsx`](../components/layout/client-shell-header.tsx) | Mobile breadcrumbs, view-site, account |
-| Main landmark | [`components/layout/shell-main.tsx`](../components/layout/shell-main.tsx) | Breadcrumbs, banners, density wrapper |
+| Organisation workspace | [`components/workspace/workspace-shell.tsx`](../../components/workspace/workspace-shell.tsx) | The 48px bar, the role-shaped sidebar, the content column, phone tabs and More, search |
+| Staff frame | [`components/shell/bid-staff-frame.tsx`](../../components/shell/bid-staff-frame.tsx) | The staff kit's `StaffShell` for Bid admin |
 | Module injection | `app/admin/layout.tsx`, `app/dashboard/layout.tsx` | Pass slots into `buildShellConfig` |
 
 ## Header slot semantics
@@ -29,7 +27,7 @@ Programmable app chrome for staff (`/admin`), finance, and client (`/dashboard`)
 leading: search (pill lg+, icon <lg) | trailing: actionsSlot → extraSlot → theme → account
 ```
 
-Do **not** add module routes or data fetching inside `app-shell.tsx` or header components. Inject via layout + `buildShellConfig`.
+Do **not** add module routes or data fetching inside the shells or their bars. The layout loads data and passes it in.
 
 ## UX surface tiers
 
@@ -69,7 +67,7 @@ To add a new bell item: append to `STAFF_HEADER_ATTENTION_SPECS`, gate with `Cap
 1. Decide tier: header vs sidebar vs palette (not all three).
 2. Add UI in module layout via `headerActionsSlot` / `headerExtraSlot`.
 3. Use `ShellChromeIconButton` or existing shell primitives for styling.
-4. Add vitest on `staff-shell-header` or `app-shell.test.tsx`.
+4. Add vitest beside the shell part you change (`components/workspace/*.test.tsx`).
 
 ## List pages
 

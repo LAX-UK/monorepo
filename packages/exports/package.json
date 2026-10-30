@@ -15,6 +15,10 @@
     "./infrastructure": {
       "types": "./dist/infrastructure/index.d.ts",
       "default": "./dist/infrastructure/index.js"
+    },
+    "./documents": {
+      "types": "./dist/documents/index.d.ts",
+      "default": "./dist/documents/index.js"
     }
   },
   "scripts": {
@@ -24,14 +28,18 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@auction/branding": "workspace:*",
     "@auction/db": "workspace:*",
+    "@auction/domain": "workspace:*",
     "@auction/persistence": "workspace:*",
     "@auction/types": "workspace:*",
     "@auction/validators": "workspace:*",
-    "drizzle-orm": "^0.45.2"
+    "drizzle-orm": "^0.45.2",
+    "pdfkit": "0.15.0"
   },
   "devDependencies": {
     "@auction/config-ts": "workspace:*",
+    "@types/pdfkit": "^0.13.9",
     "typescript": "^5.7.3",
     "vitest": "^3.0.5"
   }

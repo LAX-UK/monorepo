@@ -1,20 +1,20 @@
 import { startKycVerification } from "@/app/(client)/verify-identity/actions";
+import { ConnectLoadFailure } from "@/components/connect/connect-load-failure";
 import { PayoutSetupSteps } from "@/components/connect/payout-setup-steps";
 import { SellerConnectWorkspace } from "@/components/connect/seller-connect-workspace";
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
-import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
 import { SellerProfileUnavailableAlert } from "@/components/dashboard/seller-profile-unavailable-alert";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { SITE_SUPPORT_EMAIL } from "@/lib/brand";
 import { DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
-import { buildSellerConnectFailure } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerKycStatusSummary } from "@/lib/data/http/kyc.server";
 import {
   getServerStripeConnectClientConfig,
   getServerStripeConnectStatus,
   syncServerStripeConnectStatus,
 } from "@/lib/data/http/stripe-connect.server";
+import type { StripeConnectLoadError } from "@/lib/data/http/stripe-connect.types";
 import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
 import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
 import { organisationHref } from "@/lib/navigation/client-routes";
@@ -41,7 +41,7 @@ export default async function SellerPayoutSetupPage() {
   const kycApproved = kycSummary?.status === "approved";
 
   let status = null;
-  let connectFailure = null;
+  let connectFailure: StripeConnectLoadError | null = null;
   let syncDegraded = false;
   let isLaxManaged = false;
   let memberRole = "owner";
@@ -64,7 +64,7 @@ export default async function SellerPayoutSetupPage() {
     } else if (connectRes.error === "not_connected") {
       status = null;
     } else {
-      connectFailure = buildSellerConnectFailure(connectRes.error);
+      connectFailure = connectRes.error;
     }
   }
 
@@ -72,8 +72,6 @@ export default async function SellerPayoutSetupPage() {
     <DashboardPage className="mx-auto max-w-3xl space-y-8">
       <DashboardPageHeader
         title="Payout setup"
-        hideTitleOnMobile
-        hideDescriptionOnMobile
         {...(sellerEntityId && !connectFailure
           ? { description: "Two steps, both on this page. We pay you when a work sells." }
           : {})}
@@ -91,7 +89,7 @@ export default async function SellerPayoutSetupPage() {
       {!sellerEntityId ? <SellerProfileUnavailableAlert /> : null}
 
       {connectFailure ? (
-        <DashboardSliceErrorAlert failure={connectFailure} />
+        <ConnectLoadFailure error={connectFailure} />
       ) : sellerEntityId ? (
         <SellerConnectWorkspace
           publishableKey={clientConfig.publishableKey}

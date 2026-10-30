@@ -14,32 +14,38 @@ type Props = {
 export function HomeActivity({ activity, seeAllHref }: Props) {
   if (activity.length === 0) return null;
   return (
-    <HomeSection id="home-activity" title="Recent activity" seeAllHref={seeAllHref}>
+    <HomeSection
+      id="home-activity"
+      title="Recent activity"
+      link={seeAllHref ? { href: seeAllHref, label: "See all" } : null}
+    >
       <HomePanel>
-        <ol aria-labelledby="home-activity" className="divide-y divide-border-hairline">
+        <ol aria-labelledby="home-activity" className="py-2">
           {activity.map((item) => (
             <li
               key={item.key}
-              className="flex min-h-14 flex-col justify-center gap-0.5 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6 sm:px-5"
+              className="grid grid-cols-[0.5rem_minmax(0,1fr)] gap-3 px-5 py-2.5 before:mt-[0.4375rem] before:size-1.5 before:rounded-full before:bg-lax-line-strong before:content-['']"
             >
-              {item.href ? (
-                <Link
-                  href={item.href}
-                  className="min-w-0 rounded-sm font-body text-sm text-on-surface underline decoration-outline-variant underline-offset-4 transition-colors duration-150 hover:decoration-on-surface focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              <div className="min-w-0 text-lax-14 text-lax-fg">
+                {item.href ? (
+                  <Link
+                    href={item.href}
+                    className="rounded-lax-badge underline decoration-lax-line-strong underline-offset-4 transition-colors duration-150 hover:decoration-current focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lax-focus"
+                  >
+                    {item.text}
+                  </Link>
+                ) : (
+                  item.text
+                )}
+                <time
+                  dateTime={item.at}
+                  title={item.fullDate}
+                  className="block text-lax-13 text-lax-muted tabular-nums"
                 >
-                  {item.text}
-                </Link>
-              ) : (
-                <span className="min-w-0 font-body text-sm text-on-surface">{item.text}</span>
-              )}
-              <time
-                dateTime={item.at}
-                title={item.fullDate}
-                className="shrink-0 font-body text-xs text-on-surface-variant tabular-nums"
-              >
-                {item.when}
-                <span className="sr-only">, {item.fullDate}</span>
-              </time>
+                  {item.when}
+                  <span className="sr-only">, {item.fullDate}</span>
+                </time>
+              </div>
             </li>
           ))}
         </ol>
