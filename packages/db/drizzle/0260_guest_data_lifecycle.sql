@@ -3,7 +3,8 @@
 -- Existing enquiries are numbered in the order they were sent.
 -- A guest lead now also comes from an enquiry: the lead records where it started, whether the
 -- person reached checkout, and how many enquiries they sent. Existing guest enquiries become leads.
--- A guest's personal data can be erased on request: the lead and the guest's orders record when.
+-- A guest's personal data can be erased on request: the lead and the guest's orders record when,
+-- and when the invoice name and address kept for the accounting record were purged.
 SET LOCAL lock_timeout = '30s';
 --> statement-breakpoint
 CREATE SEQUENCE IF NOT EXISTS "shop_enquiry_reference_seq" START WITH 2001 MINVALUE 2000;
@@ -95,6 +96,11 @@ ALTER TABLE "shop_guest_customer" ADD CONSTRAINT "shop_guest_customer_erasure_pa
   CHECK (("erased_at" IS NULL) = ("erased_by_subject_id" IS NULL));
 --> statement-breakpoint
 ALTER TABLE "shop_order" ADD COLUMN IF NOT EXISTS "personal_data_erased_at" timestamp with time zone;
+--> statement-breakpoint
+ALTER TABLE "shop_order" ADD COLUMN IF NOT EXISTS "invoice_data_purged_at" timestamp with time zone;
+--> statement-breakpoint
+CREATE INDEX IF NOT EXISTS "shop_order_invoice_purge_due_idx" ON "shop_order" ("personal_data_erased_at")
+  WHERE "personal_data_erased_at" IS NOT NULL AND "invoice_data_purged_at" IS NULL;
 --> statement-breakpoint
 WITH guest_enquiries AS (
   SELECT lower(btrim(i."contact_email")) AS email, i."contact_name" AS name, i."contact_phone" AS phone,

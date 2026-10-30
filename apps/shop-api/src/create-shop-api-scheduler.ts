@@ -19,6 +19,7 @@ import { createIdentityMergeTask } from "./scheduler/tasks/identity-merge.task.j
 import { createNotifyMeDispatchTask } from "./scheduler/tasks/notify-me-dispatch.task.js";
 import { createPayoutEligibilityTask } from "./scheduler/tasks/payout-eligibility.task.js";
 import { createRefundSubmissionTask } from "./scheduler/tasks/refund-submission.task.js";
+import { createRetainedInvoicePurgeTask } from "./scheduler/tasks/retained-invoice-purge.task.js";
 import { createStaffAccessTask } from "./scheduler/tasks/staff-access.task.js";
 import { createStaleCheckoutReaperTask } from "./scheduler/tasks/stale-checkout-reaper.task.js";
 import { createStockHoldExpiryTask } from "./scheduler/tasks/stock-hold-expiry.task.js";
@@ -60,6 +61,7 @@ export function buildShopApiSchedulerTasks(input: {
     createStaleCheckoutReaperTask(input.db, paymentGateway),
     createIdentityMergeTask(input.db, opsAlertEmail),
     createGuestOrderClaimTask(input.db, input.env),
+    createRetainedInvoicePurgeTask(input.db),
     createStaffAccessTask(input.db, opsAlertEmail),
     createNotifyMeDispatchTask(input.db, {
       notifications,

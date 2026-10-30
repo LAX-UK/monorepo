@@ -6,6 +6,10 @@ DELETE FROM "shop_guest_customer" g
 WHERE g."source" <> 'shop_checkout'
   AND NOT EXISTS (SELECT 1 FROM "shop_order" o WHERE o."guest_customer_id" = g."id");
 --> statement-breakpoint
+DROP INDEX IF EXISTS "shop_order_invoice_purge_due_idx";
+--> statement-breakpoint
+ALTER TABLE "shop_order" DROP COLUMN IF EXISTS "invoice_data_purged_at";
+--> statement-breakpoint
 ALTER TABLE "shop_order" DROP COLUMN IF EXISTS "personal_data_erased_at";
 --> statement-breakpoint
 ALTER TABLE "shop_guest_customer" DROP CONSTRAINT IF EXISTS "shop_guest_customer_erasure_pair_ck";

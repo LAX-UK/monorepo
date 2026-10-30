@@ -215,6 +215,16 @@ export function OrderDetailView({
                         ...(detail.buyerEmail ? { copyValue: detail.buyerEmail } : {}),
                       },
                     ]),
+                // Kept for the accounting record; the API sends it only to people who handle invoices.
+                ...(detail.retainedInvoiceContact
+                  ? [
+                      { label: "Invoice name", value: detail.retainedInvoiceContact.name },
+                      {
+                        label: "Invoice address",
+                        value: detail.retainedInvoiceContact.addressLines.join(", ") || null,
+                      },
+                    ]
+                  : []),
                 detail.buyerIsGuest
                   ? { label: "Account", value: orderBuyerAccountLabel(detail) }
                   : {

@@ -84,17 +84,15 @@ async function readSnapshot(
   };
 }
 
-/** Clears the guest's details from their orders; the amounts, VAT and invoice stay. */
+/**
+ * Clears what the invoice does not need from the guest's orders (the phone) and marks them
+ * erased. The name and address the VAT invoice shows stay until the retention purge.
+ */
 async function redactOrders(tx: Database, guestCustomerId: string, now: Date) {
   const orders = await tx
     .update(shopOrder)
     .set({
-      deliveryRecipientName: null,
       deliveryPhone: null,
-      deliveryLine1: null,
-      deliveryLine2: null,
-      deliveryCity: null,
-      deliveryPostcode: null,
       personalDataErasedAt: now,
       updatedAt: now,
     })

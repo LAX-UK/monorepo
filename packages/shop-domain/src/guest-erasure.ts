@@ -5,21 +5,55 @@ import type { ShopOrderStatus } from "./order-state.js";
 /**
  * Erasing a guest's personal data on request (UK GDPR article 17).
  *
- * What goes: the guest's name, email and phone on the lead; the delivery name, phone and address
- * on their orders; the contact details and message of the enquiries they sent as a guest; the
- * emailed order links; and the lead in the CRM.
+ * What goes at once: the lead (name, email, phone, marketing consent) and its CRM record; the
+ * delivery phone on their orders; the emailed order links; the contact details and message of the
+ * enquiries they sent as a guest; and waiting edition alerts.
  *
- * What stays, and why: each order and its invoice, with the amounts, VAT, dates, invoice number
- * and delivery country. UK law requires accounting records to be kept for six years from the end
- * of the financial year (Companies Act 2006 s.388, and HMRC for VAT), and article 17(3)(b) lets
- * a legal obligation outweigh erasure. The kept records hold no name, email, phone or street
- * address once the guest is erased.
+ * What stays, and why: the order and invoice record, which the law requires: amounts, VAT, dates,
+ * invoice number, and the buyer's name and address as the VAT invoice shows them. UK accounting
+ * records are kept for six years from the end of the financial year (Companies Act 2006 s.388;
+ * HMRC for VAT records), and article 17(3)(b) lets that legal obligation outweigh erasure. The
+ * kept name and address are shown only to people who handle invoices (finance and
+ * Administrators), and a scheduled purge clears them once the six years have passed.
  *
  * When it waits: while anything still needs to reach the guest. An order in progress, a refund
  * not yet settled, an open dispute, return or problem report, or a cancellation window still
  * open all need the guest's contact details, so erasure waits until they are over.
  */
 export const GUEST_RECORD_RETENTION_YEARS = 6;
+
+/**
+ * The last day of the company's financial year, as month (1-12) and day. Set to London Art
+ * Exchange Ltd's accounting reference date; retention runs from the end of the year a sale is in.
+ */
+export const FINANCIAL_YEAR_END = { month: 3, day: 31 } as const;
+
+/**
+ * When an erased guest's invoice name and address may be purged: six years after the end of the
+ * financial year in which the order was paid (or placed, if it was never paid).
+ */
+export function guestInvoiceRetentionEndsAt(soldAt: Date): Date {
+  const year = soldAt.getUTCFullYear();
+  const endThisYear = Date.UTC(
+    year,
+    FINANCIAL_YEAR_END.month - 1,
+    FINANCIAL_YEAR_END.day,
+    23,
+    59,
+    59,
+  );
+  const financialYearEndYear = soldAt.getTime() <= endThisYear ? year : year + 1;
+  return new Date(
+    Date.UTC(
+      financialYearEndYear + GUEST_RECORD_RETENTION_YEARS,
+      FINANCIAL_YEAR_END.month - 1,
+      FINANCIAL_YEAR_END.day,
+      23,
+      59,
+      59,
+    ),
+  );
+}
 
 /** Why erasure cannot go ahead now, in the order they are checked. */
 export type GuestErasureBlock =

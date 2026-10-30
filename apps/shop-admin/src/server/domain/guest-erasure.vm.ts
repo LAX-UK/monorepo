@@ -6,7 +6,7 @@ import { formatStaffDate } from "@auction/staff-ui";
 export const GUEST_ERASURE_COPY = {
   menuItem: "Erase guest data…",
   title: "Erase this guest's personal data?",
-  description: `Their name, email, phone and delivery address are removed from their orders, enquiries and leads, their order links stop working and their CRM lead is deleted. The orders and invoices stay, without those details, for the ${GUEST_RECORD_RETENTION_YEARS}-year accounting record. This cannot be undone.`,
+  description: `Their email, phone and marketing consent are removed, their order links stop working, the enquiries they sent are cleared and their CRM lead is deleted. The name and address on their invoices are kept for the ${GUEST_RECORD_RETENTION_YEARS}-year accounting record, seen only by finance and Administrators, then purged. This cannot be undone.`,
   confirm: "Erase guest data",
   done: "Guest data erased",
   unavailable: "Not available for this guest yet",

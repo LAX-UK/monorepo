@@ -29,6 +29,7 @@ import { createDrizzleOrderRepository } from "../drizzle-order.repository.js";
 import { createDrizzleShopNotificationPublisher } from "../drizzle-shop-notification.publisher.js";
 import { createEnquiryFollowUp } from "../enquiry-follow-up.js";
 import { createClaimGuestOrdersRunner } from "../scheduler/claim-guest-orders.runner.js";
+import { createPurgeRetainedInvoiceDataRunner } from "../scheduler/purge-retained-invoice-data.runner.js";
 import { createDrizzleGuestCustomerStore } from "./drizzle-guest-customer.store.js";
 import { createDrizzleGuestErasureStore } from "./drizzle-guest-erasure.store.js";
 import { createDrizzleGuestOrderClaimer } from "./drizzle-guest-order-claimer.js";
@@ -245,12 +246,26 @@ describe.skipIf(!hasShopIntegrationDb)("guest checkout persistence", () => {
       links: 1,
     });
     const [order] = await db.select().from(shopOrder).where(eq(shopOrder.id, fixture.orderId));
+    // The invoice name and address stay for the accounting record; the phone goes.
     expect(order).toMatchObject({
-      deliveryRecipientName: null,
-      deliveryLine1: null,
+      deliveryRecipientName: "Ada Lovelace",
+      deliveryLine1: "1 Example Street",
+      deliveryPhone: null,
       totalPence: 8_500,
     });
     expect(order?.personalDataErasedAt).toBeInstanceOf(Date);
+
+    // Six years after the financial year ends, the scheduled purge clears them.
+    const purge = createPurgeRetainedInvoiceDataRunner(db);
+    expect(await purge(new Date())).toEqual({ purged: 0 });
+    await db
+      .update(shopOrder)
+      .set({ createdAt: new Date("2018-05-01T10:00:00Z"), paidAt: null })
+      .where(eq(shopOrder.id, fixture.orderId));
+    await purge(new Date());
+    const [purged] = await db.select().from(shopOrder).where(eq(shopOrder.id, fixture.orderId));
+    expect(purged).toMatchObject({ deliveryRecipientName: null, deliveryLine1: null });
+    expect(purged?.invoiceDataPurgedAt).toBeInstanceOf(Date);
     const [lead] = await db
       .select()
       .from(shopGuestCustomer)

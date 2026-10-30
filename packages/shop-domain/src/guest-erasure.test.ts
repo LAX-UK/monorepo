@@ -5,6 +5,7 @@ import {
   erasedGuestEmail,
   guestErasureBlockMessage,
   guestErasureConfirmed,
+  guestInvoiceRetentionEndsAt,
   isErasedGuestEmail,
   isGuestOrderOpen,
 } from "./guest-erasure.js";
@@ -97,6 +98,15 @@ describe("guest erasure policy", () => {
       decideGuestErasure({ erasedAt: NOW, claimedAt: NOW, orders: [], now: NOW }),
     ).toMatchObject({ reason: "already_erased" });
     expect(guestErasureBlockMessage({ kind: "allowed" })).toBeNull();
+  });
+
+  it("keeps invoice data for six years from the end of the financial year", () => {
+    expect(guestInvoiceRetentionEndsAt(new Date("2026-10-30T12:00:00Z")).toISOString()).toBe(
+      "2033-03-31T23:59:59.000Z",
+    );
+    expect(guestInvoiceRetentionEndsAt(new Date("2026-02-10T12:00:00Z")).toISOString()).toBe(
+      "2032-03-31T23:59:59.000Z",
+    );
   });
 
   it("replaces the email with a value nothing can be sent to", () => {

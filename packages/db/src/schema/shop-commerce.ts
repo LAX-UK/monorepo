@@ -754,12 +754,14 @@ export const shopOrder = pgTable(
     deliveryPhone: text("delivery_phone"),
     /**
      * When a guest's personal data was erased on request. The order and its invoice stay for the
-     * accounting record, with the delivery name, phone and address cleared.
+     * accounting record, with the buyer's name and address as the invoice shows them.
      */
     personalDataErasedAt: timestamp("personal_data_erased_at", {
       mode: "date",
       withTimezone: true,
     }),
+    /** When that kept name and address were purged, once the six-year retention had passed. */
+    invoiceDataPurgedAt: timestamp("invoice_data_purged_at", { mode: "date", withTimezone: true }),
     salesChannel: shopSalesChannelEnum("sales_channel").default("shop").notNull(),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
@@ -774,6 +776,11 @@ export const shopOrder = pgTable(
     index("shop_order_guest_customer_idx")
       .on(table.guestCustomerId)
       .where(sql`${table.guestCustomerId} IS NOT NULL`),
+    index("shop_order_invoice_purge_due_idx")
+      .on(table.personalDataErasedAt)
+      .where(
+        sql`${table.personalDataErasedAt} IS NOT NULL AND ${table.invoiceDataPurgedAt} IS NULL`,
+      ),
   ],
 );
 

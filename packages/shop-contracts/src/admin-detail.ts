@@ -201,6 +201,19 @@ export const AdminOrderDetailSchema = Type.Object({
   guestCustomerId: Type.Optional(Type.Union([Type.String({ format: "uuid" }), Type.Null()])),
   /** When the guest's personal data was erased on request; the order itself is kept. */
   personalDataErasedAt: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+  /**
+   * The name and address an erased guest's VAT invoice shows, kept for the accounting record.
+   * Sent only to staff who handle invoices; null otherwise and once purged.
+   */
+  retainedInvoiceContact: Type.Optional(
+    Type.Union([
+      Type.Object({
+        name: Type.Union([Type.String(), Type.Null()]),
+        addressLines: Type.Array(Type.String()),
+      }),
+      Type.Null(),
+    ]),
+  ),
   stripeCheckoutSessionId: Type.Union([Type.String(), Type.Null()]),
   stripePaymentIntentId: Type.Union([Type.String(), Type.Null()]),
   paidAt: Type.Union([Type.String(), Type.Null()]),
