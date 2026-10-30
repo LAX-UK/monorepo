@@ -7,6 +7,7 @@ import { wizardStepIndex } from "@/lib/forms/submission/step-validation";
 import { useSubmissionWizardController } from "@/lib/forms/submission/use-submission-wizard-controller";
 import { sendToSpecialistsLabel } from "@/lib/seller/sell-flow";
 import type { SellerAccountChoice, SellerAccountOption } from "@/lib/seller/seller-account-options";
+import { Button } from "@auction/ui/lax";
 import type { ItemSubmissionFormValues } from "@auction/validators";
 import { useEffect, useRef, useState } from "react";
 
@@ -42,13 +43,9 @@ function SellingAsSummary({
         ) : null}
       </div>
       {onChange ? (
-        <button
-          type="button"
-          onClick={onChange}
-          className="shrink-0 text-lax-14 font-medium text-lax-fg underline underline-offset-4 lax-focus"
-        >
+        <Button variant="ghost" size="sm" onClick={onChange} className="shrink-0">
           Change<span className="sr-only"> who is selling</span>
-        </button>
+        </Button>
       ) : null}
     </section>
   );
