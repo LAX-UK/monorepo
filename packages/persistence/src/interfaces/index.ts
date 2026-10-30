@@ -941,3 +941,12 @@ export type {
   IUpcomingSaleWorksReader,
   UpcomingSaleWorksRow,
 } from "./organisation-dashboard.readers.js";
+export type {
+  AccountSearchCriteria,
+  AccountSearchHits,
+  ConsignmentSearchHit,
+  IAccountRecordSearchReader,
+  InvoiceSearchHit,
+  LotSearchHit,
+  MemberSearchHit,
+} from "./account-record-search.reader.js";

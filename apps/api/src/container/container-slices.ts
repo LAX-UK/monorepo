@@ -86,6 +86,7 @@ import type { ContainerLotLifecycle } from "./create-lot-lifecycle.js";
 import type { ContainerOnsiteEventServices } from "./create-onsite-event-services.js";
 import type { OrganisationHomeServices } from "./create-organisation-home-services.js";
 import type { OrganisationMembershipServices } from "./create-organisation-membership-services.js";
+import type { OrganisationWorkspaceServices } from "./create-organisation-workspace-services.js";
 import type { ContainerPaymentsServices } from "./create-payments-services.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
@@ -339,6 +340,11 @@ export type ContainerOrganisationHomeSlice = {
   organisationHome: OrganisationHomeServices;
 };
 
+/** Reads across the client workspace's modules for the acting account (`organisationWorkspace`). */
+export type ContainerOrganisationWorkspaceSlice = {
+  organisationWorkspace: OrganisationWorkspaceServices;
+};
+
 /** Route-facing buyer user account bag (mirrors `container.userRoutes`). */
 export type ContainerUserRouteServicesSlice = {
   userRoutes: UserRouteServices;
@@ -371,6 +377,7 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerBuyerAgentsSlice &
   ContainerOrganisationMembershipSlice &
   ContainerOrganisationHomeSlice &
+  ContainerOrganisationWorkspaceSlice &
   ContainerUserRouteServicesSlice;
 
 export type Container = ContainerComposedSlices;
@@ -601,6 +608,12 @@ export type ContainerOrganisationMembershipRoutesSlice = Pick<
 export type ContainerOrganisationHomeRoutesSlice = Pick<
   Container,
   "userSuspensionChecker" | "requireLegalEntityContext" | "organisationHome"
+>;
+
+/** Record search (and other cross-module reads) for the acting account. */
+export type ContainerOrganisationWorkspaceRoutesSlice = Pick<
+  Container,
+  "userSuspensionChecker" | "requireLegalEntityContext" | "organisationWorkspace"
 >;
 
 /** Item submission seller + admin APIs. */
