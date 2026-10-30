@@ -23,6 +23,8 @@ export { Field, ReadOnlyView, useField, useReadOnlyView } from "./field.js";
 export type { FieldProps } from "./field.js";
 export { TextArea, TextInput } from "./input.js";
 export type { TextAreaProps, TextInputProps } from "./input.js";
+export { NativeSelect } from "./native-select.js";
+export type { NativeSelectOption, NativeSelectProps } from "./native-select.js";
 export {
   Menu,
   MenuCheckboxItem,

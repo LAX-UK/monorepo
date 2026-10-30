@@ -50,6 +50,20 @@ export type RecordRowProps = {
   status?: React.ReactNode;
   /** A figure, such as an amount; right-aligned with tabular digits. */
   value?: React.ReactNode;
+  /**
+   * Several labelled figures ("£6,800 current bid", "£6,200 your maximum"), right-aligned in a
+   * row of cells before the status. A narrow list shows the first one beside the status, on one
+   * line ("£6,800 current bid"); the record holds the rest. Use `value` for a single unlabelled
+   * figure.
+   */
+  figures?: readonly RecordFigure[];
+  /**
+   * Line the row up with the other rows of its list: on a wide list the status and the action
+   * keep their width even when this row has none, so figures and badges form columns. A narrow
+   * list keeps such a row to its title, facts, status and lead figure: the row opens the record,
+   * where the step is.
+   */
+  aligned?: boolean;
   /** At most one inline action. Anything else goes in `menu`. */
   action?: React.ReactNode;
   /** The persistent "…" menu. */
@@ -59,6 +73,43 @@ export type RecordRowProps = {
   "aria-label"?: string;
   className?: string;
 };
+
+/** One labelled figure in a row: the value, then what it is. */
+export type RecordFigure = {
+  /** Keys the cell; the label is used when this is left out. */
+  id?: string;
+  value: React.ReactNode;
+  label: string;
+};
+
+/**
+ * A row's figures as a description list. Wide, each value sits above its label in a cell of
+ * fixed width, so the columns of a list line up from row to row; narrow, only the first shows,
+ * as "value label" on one line.
+ */
+function RecordFigures({ figures }: { figures: readonly RecordFigure[] }) {
+  return (
+    <dl data-record-figures className="flex min-w-0 items-baseline gap-6 @2xl:shrink-0">
+      {figures.map((figure, index) => (
+        <div
+          key={figure.id ?? figure.label}
+          className={cn(
+            "min-w-0 items-baseline gap-1",
+            "@2xl:w-24 @2xl:flex-col @2xl:items-end @2xl:gap-0 @2xl:text-right",
+            index === 0 ? "flex" : "hidden @2xl:flex",
+          )}
+        >
+          <dt className="order-2 truncate font-body text-label-3 leading-5 text-on-surface-variant">
+            {figure.label}
+          </dt>
+          <dd className="order-1 truncate font-body text-sm leading-5.5 font-medium tabular-nums text-on-surface">
+            {figure.value}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
 
 function isShown(node: React.ReactNode): boolean {
   return node !== null && node !== undefined && node !== false && node !== "";
@@ -106,13 +157,16 @@ export function RecordRow({
   meta = [],
   status,
   value,
+  figures = [],
+  aligned = false,
   action,
   menu,
   detail,
   className,
   ...aria
 }: RecordRowProps) {
-  const hasFoot = isShown(status) || isShown(value) || isShown(action);
+  const hasFoot =
+    aligned || isShown(status) || isShown(value) || isShown(action) || figures.length > 0;
   return (
     <li
       {...aria}
@@ -159,19 +213,45 @@ export function RecordRow({
                   "@2xl:shrink-0 @2xl:flex-nowrap @2xl:justify-end",
                 )}
               >
-                {isShown(status) ? <span className="shrink-0">{status}</span> : null}
+                {figures.length > 0 ? <RecordFigures figures={figures} /> : null}
+                {isShown(status) || aligned ? (
+                  <span
+                    data-record-status
+                    className={cn(
+                      "shrink-0",
+                      // Narrow, the status leads the line and the figure follows it.
+                      figures.length > 0 && "-order-1 @2xl:order-none",
+                      aligned && "@2xl:flex @2xl:w-40 @2xl:justify-end",
+                      !isShown(status) && "hidden",
+                    )}
+                  >
+                    {status}
+                  </span>
+                ) : null}
                 {isShown(value) ? (
                   <span className="shrink-0 font-body text-sm leading-5.5 font-medium tabular-nums text-on-surface">
                     {value}
                   </span>
                 ) : null}
-                {isShown(action) ? (
-                  <span className={cn("relative z-10 ml-auto shrink-0 @2xl:ml-0")}>{action}</span>
+                {isShown(action) || aligned ? (
+                  <span
+                    data-record-action
+                    className={cn(
+                      "relative z-10 ml-auto shrink-0 @2xl:ml-0",
+                      aligned && "hidden @2xl:flex @2xl:w-36 @2xl:justify-end",
+                      !isShown(action) && "hidden",
+                    )}
+                  >
+                    {action}
+                  </span>
                 ) : null}
               </div>
             ) : null}
           </div>
         </div>
+        {aligned && !isShown(menu) ? (
+          <span aria-hidden className="hidden size-10 shrink-0 @2xl:block" />
+        ) : null}
         {isShown(menu) ? (
           <span className="relative z-10 -my-1 -mr-2 shrink-0 self-start @2xl:my-0 @2xl:self-center">
             {menu}
