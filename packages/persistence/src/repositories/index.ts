@@ -232,3 +232,5 @@ export { DrizzleConsignmentStatusCountsReader } from "./drizzle-consignment-stat
 export { DrizzleUpcomingSaleWorksReader } from "./drizzle-upcoming-sale-works.reader.js";
 export { DrizzleSoldWorksReader } from "./drizzle-sold-works.reader.js";
 export { DrizzlePayoutsDueReader } from "./drizzle-payouts-due.reader.js";
+export { DrizzleAccountRecordSearchReader } from "./drizzle-account-record-search.reader.js";
+export { DrizzleNeedsYouFactsReader } from "./drizzle-needs-you-facts.reader.js";
