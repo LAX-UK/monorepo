@@ -53,7 +53,7 @@ test.describe("organisation finance journey @roles", () => {
 
     await test.step("bids and the team stay closed", async () => {
       await expectNoAccess(page, "/bids");
-      await expectNoAccess(page, "/organisation/members");
+      await expectNoAccess(page, "/team");
     });
 
     await finance.close();

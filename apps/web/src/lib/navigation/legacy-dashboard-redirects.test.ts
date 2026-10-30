@@ -59,13 +59,13 @@ const EVERY_OLD_PAGE: readonly [string, string][] = [
   ["/dashboard/seller/consignments", "/selling/consignments"],
   ["/dashboard/submissions/new", "/selling/new"],
   ["/dashboard/submissions/sub-1", "/selling/consignments/sub-1"],
-  ["/dashboard/seller/works", "/selling/works"],
+  ["/dashboard/seller/works", "/collection"],
   ["/dashboard/seller/payouts", "/selling/payouts"],
   ["/dashboard/seller/connect", "/selling/payout-setup"],
   ["/dashboard/seller/artist", "/selling/artist"],
   ["/dashboard/seller/organisations/org-1", "/organisation?account=org-1"],
   ["/dashboard/seller/organisations/org-1/profile", "/organisation?account=org-1"],
-  ["/dashboard/seller/organisations/org-1/members", "/organisation/members?account=org-1"],
+  ["/dashboard/seller/organisations/org-1/members", "/team?account=org-1"],
   ["/dashboard/seller/organisations/org-1/documents", "/organisation/documents?account=org-1"],
   ["/dashboard/seller/organisations/org-1/connect", "/organisation/payouts?account=org-1"],
   ["/dashboard/seller/organisations/org-1/security", "/organisation/security?account=org-1"],
@@ -90,7 +90,7 @@ const EARLIER_RETIREMENTS: readonly [string, string][] = [
   ["/dashboard/seller/in-sale", "/selling/consignments?tab=in-sale"],
   ["/dashboard/artist-follow", "/watching?section=artists"],
   ["/dashboard/organisations/org-1", "/organisation?account=org-1"],
-  ["/dashboard/organisations/org-1/members", "/organisation/members?account=org-1"],
+  ["/dashboard/organisations/org-1/members", "/team?account=org-1"],
   ["/dashboard/organisations/org-1/connect", "/organisation/payouts?account=org-1"],
 ];
 
@@ -102,6 +102,16 @@ describe("retired client pages", () => {
     );
     expect(servesPage("/selling")).toBe(false);
     expect(servesPage("/selling/consignments")).toBe(true);
+  });
+
+  it("sends Members to Team and Works to Collection, keeping the query string", () => {
+    expect(resolveLegacyDashboardRedirect("/organisation/members", "?account=org-1")).toBe(
+      "/team?account=org-1",
+    );
+    expect(resolveLegacyDashboardRedirect("/selling/works")).toBe("/collection");
+    expect(servesPage("/organisation/members")).toBe(false);
+    expect(servesPage("/team")).toBe(true);
+    expect(servesPage("/collection")).toBe(true);
   });
 
   it("leaves every page under Selling where it is", () => {
@@ -127,7 +137,7 @@ describe("LEGACY_DASHBOARD_REDIRECTS", () => {
     );
     expect(
       resolveLegacyDashboardRedirect("/dashboard/seller/organisations/org-1/members", "?welcome=1"),
-    ).toBe("/organisation/members?account=org-1&welcome=1");
+    ).toBe("/team?account=org-1&welcome=1");
     expect(resolveLegacyDashboardRedirect("/dashboard/payments", "?a=1&b=2")).toBe(
       "/purchases?a=1&b=2#payment-history",
     );

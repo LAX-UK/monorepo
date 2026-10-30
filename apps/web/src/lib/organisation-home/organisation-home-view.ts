@@ -1,4 +1,4 @@
-import { CLIENT_ROUTES, organisationHref } from "@/lib/navigation/client-routes";
+import { CLIENT_ROUTES, organisationHref, teamHref } from "@/lib/navigation/client-routes";
 import {
   type OrganisationBannerView,
   type OrganisationStateLink,
@@ -237,7 +237,7 @@ function homeNoticeView(notice: HomeNotice): HomeNoticeView {
 
 const SHORTCUTS: Record<HomeShortcut, Omit<HomeLinkView, "id">> = {
   sell: { label: "Sell a work", href: CLIENT_ROUTES.sellingNew },
-  invite: { label: "Invite someone", href: organisationHref("members") },
+  invite: { label: "Invite someone", href: teamHref() },
   statements: { label: "Statements", href: CLIENT_ROUTES.payouts },
 };
 
@@ -256,7 +256,7 @@ const ACTIVITY_TEXT: Record<HomeActivityKind, (event: HomeActivityEvent) => stri
 
 /** Lines that lead somewhere to review; the rest are plain. */
 const ACTIVITY_HREF: Partial<Record<HomeActivityKind, string>> = {
-  member_bids_stopped: `${organisationHref("members")}#stopped-member-bids`,
+  member_bids_stopped: `${teamHref()}#stopped-member-bids`,
 };
 
 const ARCHIVE_HREF: Record<HomeActivityArchive, string> = {

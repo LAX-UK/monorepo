@@ -222,7 +222,7 @@ describe("stopped bids activity", () => {
     );
     expect(view.activity[0]).toMatchObject({
       text: "Sam Lee's automatic bids stopped when they left: 2 lots",
-      href: "/organisation/members#stopped-member-bids",
+      href: "/team#stopped-member-bids",
     });
   });
 });

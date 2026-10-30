@@ -61,7 +61,7 @@ test.describe("organisation consignor journey @roles", () => {
     });
 
     await test.step("has no Members tab and the address gives the access page", async () => {
-      await expectNoAccess(page, "/organisation/members");
+      await expectNoAccess(page, "/team");
       await expectNoAccess(page, "/purchases");
     });
 

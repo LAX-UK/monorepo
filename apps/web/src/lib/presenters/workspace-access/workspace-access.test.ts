@@ -12,10 +12,10 @@ const as = (role: EntityActor["role"]): EntityActor => ({ role });
 describe("workspacePageAt", () => {
   it("names pages the way the menu and the Organisation tabs do", () => {
     expect(workspacePageAt("/organisation/payouts")?.label).toBe("Payouts");
-    expect(workspacePageAt("/organisation/members?account=o1")?.label).toBe("Members");
+    expect(workspacePageAt("/team?account=o1")?.label).toBe("Team");
     expect(workspacePageAt("/selling/payouts")?.label).toBe("Sold & payouts");
     expect(workspacePageAt("/selling/consignments")?.label).toBe("Consignments");
-    expect(workspacePageAt("/selling/works")?.label).toBe("Works");
+    expect(workspacePageAt("/collection")?.label).toBe("Works");
     expect(workspacePageAt("/bids")?.label).toBe("Bids");
   });
 

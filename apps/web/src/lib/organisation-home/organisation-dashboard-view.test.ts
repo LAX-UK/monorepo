@@ -197,7 +197,7 @@ describe("first steps", () => {
         "Send a first work to our specialists. Sales, payouts, bids and purchases show here as they happen.",
       actions: [
         { id: "sell", label: "Sell a work", href: "/selling/new" },
-        { id: "invite", label: "Invite someone", href: "/organisation/members" },
+        { id: "invite", label: "Invite someone", href: "/team" },
       ],
     });
   });
@@ -257,7 +257,7 @@ describe("first steps", () => {
       title: "Nothing here yet",
       description:
         "Sales, payouts, bids and purchases for Northbank Gallery show here once we've finished checking its documents.",
-      actions: [{ id: "invite", label: "Invite someone", href: "/organisation/members" }],
+      actions: [{ id: "invite", label: "Invite someone", href: "/team" }],
     });
   });
 });

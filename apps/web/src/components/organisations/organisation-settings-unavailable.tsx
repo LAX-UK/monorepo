@@ -23,7 +23,7 @@ export function OrganisationSettingsUnavailable(props: Props) {
         variant="plain"
         headingLevel="h1"
         illustration="frame"
-        title="Organisation settings"
+        title="Organisation"
         description="These settings belong to an organisation. Switch to one from the account menu to manage it, or register your own."
         action={
           <Button asChild variant="secondary">
