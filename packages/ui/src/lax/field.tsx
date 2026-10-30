@@ -2,8 +2,39 @@
 
 import { CircleAlert } from "lucide-react";
 import * as React from "react";
-import { useStaffReadOnly } from "../access/read-only.js";
-import { cn } from "../lib/cn.js";
+import { cn } from "../lib/utils.js";
+
+const ReadOnlyContext = React.createContext(false);
+
+/**
+ * Marks everything below it as a view of a record, not a form: fields show their values at
+ * normal contrast with no editing affordance, selects and checkboxes show the chosen value, and
+ * the controls that would change it are left to each page's own permission checks.
+ */
+export function ReadOnlyView({
+  readOnly = true,
+  children,
+}: {
+  readOnly?: boolean;
+  children: React.ReactNode;
+}) {
+  const inherited = React.useContext(ReadOnlyContext);
+  return (
+    <ReadOnlyContext.Provider value={readOnly || inherited}>{children}</ReadOnlyContext.Provider>
+  );
+}
+
+/** Whether the surrounding form is being shown as a read-only view. */
+export function useReadOnlyView(): boolean {
+  return React.useContext(ReadOnlyContext);
+}
+
+/**
+ * How a read-only control draws its value: the field box without the control look, at the
+ * foreground colour, so values read as content and not as disabled controls.
+ */
+export const readOnlyBox =
+  "data-[readonly]:cursor-default data-[readonly]:border-lax-line! data-[readonly]:bg-transparent! data-[readonly]:text-lax-fg!";
 
 type FieldContextValue = {
   controlId: string;
@@ -20,7 +51,7 @@ type FieldContextValue = {
 const FieldContext = React.createContext<FieldContextValue | null>(null);
 
 /** The ids and state a control inside a `Field` needs for its label, hint and error. */
-export function useStaffField(): FieldContextValue | null {
+export function useField(): FieldContextValue | null {
   return React.useContext(FieldContext);
 }
 
@@ -30,7 +61,7 @@ export type FieldProps = {
   description?: React.ReactNode;
   /** Shown under the control and announced; marks the control invalid. */
   error?: string | null | undefined;
-  /** Marks the label "Optional" instead; required is the default in staff forms. */
+  /** Marks the label "Optional" instead; required is the default. */
   optional?: boolean;
   disabled?: boolean;
   /** Use when the control renders its own id (e.g. a picker trigger). */
@@ -54,7 +85,7 @@ export function Field({
   className,
   children,
 }: FieldProps) {
-  const readOnly = useStaffReadOnly();
+  const readOnly = useReadOnlyView();
   const autoId = React.useId();
   const controlId = id ?? `field-${autoId}`;
   const descriptionId = description ? `${controlId}-description` : undefined;
@@ -81,17 +112,17 @@ export function Field({
           id={labelId}
           htmlFor={controlId}
           className={cn(
-            "flex items-baseline gap-2 text-staff-sm font-medium text-staff-fg",
-            disabled && "text-staff-disabled",
+            "flex items-baseline gap-2 text-lax-ui font-medium text-lax-fg",
+            disabled && "text-lax-disabled-fg",
           )}
         >
           {label}
           {optional ? (
-            <span className="text-staff-xs font-normal text-staff-subtle">Optional</span>
+            <span className="text-lax-12 font-normal text-lax-subtle">Optional</span>
           ) : null}
         </label>
         {description ? (
-          <p id={descriptionId} className="text-staff-xs text-staff-muted">
+          <p id={descriptionId} className="text-lax-12 text-lax-muted">
             {description}
           </p>
         ) : null}
@@ -100,7 +131,7 @@ export function Field({
       {error ? (
         <p
           id={errorId}
-          className="flex items-start gap-1.5 text-staff-xs font-medium text-staff-danger"
+          className="flex items-start gap-1.5 text-lax-12 font-medium text-lax-danger"
         >
           <CircleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
           {error}

@@ -92,7 +92,7 @@ export function PendingInvitations({ legalEntityId, rows }: Props) {
           </div>
           {row.expired ? (
             <div className="col-start-2 row-start-2 sm:col-start-3 sm:row-start-1">
-              <StatusBadge variant="warning">Expired</StatusBadge>
+              <StatusBadge tone="warning">Expired</StatusBadge>
             </div>
           ) : null}
           <div className="col-start-3 row-start-1 flex justify-end sm:col-start-4">

@@ -58,7 +58,8 @@ export const ARTWORK_VIEW_ORDER: readonly AdminArtworkState[] = [
 ];
 
 export const presentArtworkState = defineStatusMap<AdminArtworkState>({
-  live: { label: ARTWORK_STATE_LABELS.live, tone: "success" },
+  // On sale now: in progress, so the dot rather than the tick of something finished.
+  live: { label: ARTWORK_STATE_LABELS.live, tone: "success", shape: "dot" },
   draft: { label: ARTWORK_STATE_LABELS.draft, tone: "info" },
   sold_out: { label: ARTWORK_STATE_LABELS.sold_out, tone: "warning" },
   archived: { label: ARTWORK_STATE_LABELS.archived, tone: "neutral" },

@@ -15,7 +15,7 @@ export function StaffMutationError({
   return (
     <p
       role="alert"
-      className="flex items-start gap-2 rounded-staff-md bg-staff-danger-bg px-3 py-2.5 text-staff-sm text-staff-danger-fg"
+      className="flex items-start gap-2 rounded-staff-lg bg-staff-danger-bg px-3 py-2.5 text-staff-sm text-staff-danger-fg"
     >
       <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
       <span>

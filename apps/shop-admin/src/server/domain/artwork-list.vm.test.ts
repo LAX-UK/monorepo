@@ -107,7 +107,7 @@ describe("artwork list URL state", () => {
 
 describe("artwork list columns", () => {
   it("names each state and gives it a tone", () => {
-    expect(presentArtworkState("live")).toEqual({ label: "Live", tone: "success" });
+    expect(presentArtworkState("live")).toEqual({ label: "Live", tone: "success", shape: "dot" });
     expect(presentArtworkState("sold_out")).toEqual({ label: "Sold out", tone: "warning" });
     expect(presentArtworkState("future_state").label).toBe("Future state");
   });

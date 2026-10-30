@@ -1,7 +1,7 @@
+import { Field } from "@auction/ui/lax";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { formatRateAsPercent, formatStaffPercent, parsePercentToRate } from "../lib/percent.js";
-import { Field } from "./field.js";
 import { PercentInput } from "./percent-input.js";
 
 describe("percent conversion", () => {

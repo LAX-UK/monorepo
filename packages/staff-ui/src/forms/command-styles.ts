@@ -12,7 +12,7 @@ export const staffCommandClass = [
 ].join(" ");
 
 export const staffCommandItemClass = [
-  "min-h-control-sm gap-2.5 rounded-staff-xs px-2 py-1.5 font-staff text-staff-sm text-staff-fg",
+  "min-h-control-sm gap-2.5 rounded-staff-sm px-2 py-1.5 font-staff text-staff-sm text-staff-fg",
   "data-[selected=true]:bg-staff-hover data-[selected=true]:text-staff-fg",
   "data-[disabled=true]:text-staff-disabled data-[disabled=true]:opacity-100",
   "[&_svg]:size-4 [&_svg:not([class*='text-'])]:text-staff-muted",

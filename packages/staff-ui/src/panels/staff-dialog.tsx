@@ -6,12 +6,10 @@ import {
   DialogDescription,
   DialogTitle,
 } from "@auction/ui/components/dialog";
+import { Field, TextArea, TextInput, useReturnFocus } from "@auction/ui/lax";
 import * as React from "react";
-import { Field } from "../forms/field.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
-import { useReturnFocus } from "../lib/return-focus.js";
 import { StaffButton } from "../primitives/button.js";
-import { TextArea, TextInput } from "../primitives/input.js";
 
 export type StaffDialogProps = {
   open: boolean;

@@ -1,15 +1,15 @@
 "use client";
 
-import { ToggleGroup, ToggleGroupItem } from "@auction/ui/components/toggle-group";
 import { ChevronDown } from "lucide-react";
 import * as React from "react";
-import { cn } from "../lib/cn.js";
-import { formatCount } from "../lib/count.js";
-import type { StaffLinkComponent } from "../shell/link.js";
-import { StaffButton } from "./button.js";
-import { StaffMenu, StaffMenuContent, StaffMenuItem, StaffMenuTrigger } from "./menu.js";
+import { ToggleGroup, ToggleGroupItem } from "../components/ui/toggle-group.js";
+import { cn } from "../lib/utils.js";
+import { Button } from "./button.js";
+import { formatCount } from "./count.js";
+import type { LinkComponent } from "./link.js";
+import { Menu, MenuContent, MenuItem, MenuTrigger } from "./menu.js";
 
-export { formatCount } from "../lib/count.js";
+export { formatCount } from "./count.js";
 
 export type CountTone = "neutral" | "attention";
 
@@ -28,10 +28,10 @@ export function Count({
   return (
     <span
       className={cn(
-        "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-staff-2xs font-medium tabular-nums",
+        "inline-flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-lax-2xs font-medium tabular-nums",
         tone === "attention"
-          ? "bg-staff-ink text-staff-on-ink"
-          : "bg-staff-neutral-bg text-staff-neutral-fg",
+          ? "bg-lax-ink text-lax-on-ink"
+          : "bg-lax-neutral-bg text-lax-neutral-fg",
         className,
       )}
     >
@@ -46,7 +46,7 @@ export type TabNavItem = {
   label: string;
   href: string;
   count?: number;
-  /** `attention` fills the count in ink, for work waiting on staff. */
+  /** `attention` fills the count in ink, for work waiting on the reader. */
   countTone?: CountTone;
   /** What the count means, for assistive technology ("waiting"). */
   countLabel?: string;
@@ -79,11 +79,11 @@ export function TabNav({
   items: readonly TabNavItem[];
   activeId: string;
   label: string;
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
   className?: string;
 }) {
   return (
-    <div className={cn("flex border-b border-staff-line", className)}>
+    <div className={cn("flex border-b border-lax-line", className)}>
       <OverflowTabs tabs={items} currentId={activeId} Link={Link} label={label} />
     </div>
   );
@@ -91,9 +91,10 @@ export function TabNav({
 
 const tabClass = (active: boolean) =>
   cn(
-    "staff-focus relative flex h-10 shrink-0 items-center gap-1.5 rounded-staff-xs px-2.5 text-staff-sm font-medium whitespace-nowrap transition-colors",
+    "lax-focus relative flex h-10 shrink-0 items-center gap-1.5 rounded-lax-control px-2.5 text-lax-ui font-medium whitespace-nowrap transition-colors",
+    "in-data-[lax-density=client]:max-md:h-11",
     "after:absolute after:inset-x-2.5 after:bottom-0 after:h-0.5 after:rounded-full",
-    active ? "text-staff-fg after:bg-staff-ink" : "text-staff-muted hover:text-staff-fg",
+    active ? "text-lax-fg after:bg-lax-ink" : "text-lax-muted hover:text-lax-fg",
   );
 
 /** Width assumed for the "More" button until it has been rendered and measured. */
@@ -150,7 +151,7 @@ export function OverflowTabs({
 }: {
   tabs: readonly TabNavItem[];
   currentId: string | null;
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
   /** The navigation's accessible name: "Views", "Payout sections". */
   label: string;
 }) {
@@ -246,32 +247,32 @@ export function OverflowTabs({
         })}
         {overflow.length > 0 ? (
           <li ref={moreRef}>
-            <StaffMenu>
-              <StaffMenuTrigger asChild>
-                <StaffButton
+            <Menu>
+              <MenuTrigger asChild>
+                <Button
                   variant="ghost"
                   size="sm"
-                  className="text-staff-muted"
+                  className="text-lax-muted"
                   aria-label={`More ${label.toLowerCase()}, ${overflow.length}`}
                 >
                   More
                   <ChevronDown aria-hidden />
-                </StaffButton>
-              </StaffMenuTrigger>
-              <StaffMenuContent align="start" className="w-56">
+                </Button>
+              </MenuTrigger>
+              <MenuContent align="start" className="w-56">
                 {overflow.map((index) => {
                   const view = tabs[index];
                   if (!view) return null;
                   return (
-                    <StaffMenuItem key={view.id} asChild>
+                    <MenuItem key={view.id} asChild>
                       <Link href={view.href} className="flex w-full items-center justify-between">
                         {content(view)}
                       </Link>
-                    </StaffMenuItem>
+                    </MenuItem>
                   );
                 })}
-              </StaffMenuContent>
-            </StaffMenu>
+              </MenuContent>
+            </Menu>
           </li>
         ) : null}
       </ul>
@@ -295,7 +296,7 @@ export function SecondaryTabNav({
   items: readonly TabNavItem[];
   activeId: string;
   label: string;
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
   className?: string;
 }) {
   return (
@@ -316,10 +317,10 @@ export function SecondaryTabNav({
                 href={item.href}
                 {...(active ? { "aria-current": "page" as const } : {})}
                 className={cn(
-                  "staff-focus staff-target inline-flex h-control-sm items-center justify-center gap-1.5 rounded-staff-sm px-3 text-staff-sm font-medium whitespace-nowrap transition-colors",
+                  "lax-focus lax-target inline-flex h-lax-control-sm items-center justify-center gap-1.5 rounded-lax-control px-3 text-lax-ui font-medium whitespace-nowrap transition-colors",
                   active
-                    ? "staff-overlay-selected text-staff-fg ring-1 ring-staff-line ring-inset"
-                    : "text-staff-muted hover:text-staff-fg active:staff-overlay-pressed",
+                    ? "lax-overlay-selected text-lax-fg ring-1 ring-lax-line ring-inset"
+                    : "text-lax-muted hover:text-lax-fg active:lax-overlay-pressed",
                 )}
               >
                 {item.label}
@@ -372,8 +373,8 @@ export function SegmentedControl<T extends string>({
         if (match) onValueChange(match.value);
       }}
       className={cn(
-        "inline-flex gap-0.5 rounded-staff-sm bg-staff-sunken p-0.5 shadow-none ring-1 ring-staff-line ring-inset",
-        size === "sm" ? "h-control-sm" : "h-control-md",
+        "inline-flex gap-0.5 rounded-lax-control bg-lax-sunken p-0.5 shadow-none ring-1 ring-lax-line ring-inset",
+        size === "sm" ? "h-lax-control-sm" : "h-lax-control-md",
         className,
       )}
     >
@@ -383,11 +384,11 @@ export function SegmentedControl<T extends string>({
           value={option.value}
           aria-label={option.label}
           className={cn(
-            "h-full min-w-0 gap-1.5 rounded-staff-xs border-0 px-2.5 font-staff text-staff-sm font-medium text-staff-muted shadow-none",
-            "staff-focus focus-visible:ring-0",
-            "hover:bg-transparent hover:text-staff-fg",
-            "data-[state=on]:bg-staff-raised data-[state=on]:text-staff-fg data-[state=on]:shadow-staff-xs",
-            "data-[state=on]:ring-1 data-[state=on]:ring-staff-line",
+            "h-full min-w-0 gap-1.5 rounded-lax-badge border-0 px-2.5 font-lax text-lax-ui font-medium text-lax-muted shadow-none",
+            "lax-focus focus-visible:ring-0",
+            "hover:bg-transparent hover:text-lax-fg",
+            "data-[state=on]:bg-lax-raised data-[state=on]:text-lax-fg data-[state=on]:shadow-lax-xs",
+            "data-[state=on]:ring-1 data-[state=on]:ring-lax-line",
             "[&_svg]:size-4",
             option.iconOnly && "px-1.5",
           )}

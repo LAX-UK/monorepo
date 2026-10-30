@@ -52,7 +52,7 @@ export function SaleroomCheckInSearch({
       {candidates.length > 0 ? (
         <ul
           aria-label="Search results"
-          className="divide-y divide-staff-line-subtle overflow-hidden rounded-staff-md border border-staff-line"
+          className="divide-y divide-staff-line-subtle overflow-hidden rounded-staff-lg border border-staff-line"
         >
           {candidates.map((candidate) => {
             const selected = candidate.userId === selectedUserId;

@@ -1,9 +1,9 @@
+import { ArrowDown, ArrowUp, ChevronRight, Minus } from "lucide-react";
 import type * as React from "react";
-import { ArrowDown, ArrowUp, ChevronRight, Minus } from "../icons.js";
-import { cn } from "../lib/cn.js";
-import type { StaffLinkComponent } from "../shell/link.js";
+import { cn } from "../lib/utils.js";
+import type { LinkComponent } from "./link.js";
+import { Skeleton } from "./skeleton.js";
 import { type MetricTone, Sparkline, SparklineSkeleton } from "./sparkline.js";
-import { Skeleton } from "./states.js";
 
 export type { MetricTone } from "./sparkline.js";
 
@@ -22,6 +22,11 @@ export type Metric = {
   label: string;
   /** Already formatted, in full: "£1,250.00", never "£1.2k". Null when unknown: shows "—". */
   value: React.ReactNode | null;
+  /**
+   * What a missing value means, in words: "Nothing sold yet this year". Shown instead of the
+   * dash, so a figure with no data never reads as a zero or a blank.
+   */
+  emptyText?: string;
   /** A 14px icon before the label, drawn in the metric's tone. */
   icon?: React.ReactNode;
   /**
@@ -49,27 +54,27 @@ const ARROW = { up: ArrowUp, down: ArrowDown, flat: Minus } as const;
 const ARROW_LABEL = { up: "Up", down: "Down", flat: "No change" } as const;
 
 const chipTone = {
-  positive: "bg-staff-success-bg text-staff-success-fg",
-  negative: "bg-staff-danger-bg text-staff-danger-fg",
-  neutral: "bg-staff-neutral-bg text-staff-neutral-fg",
+  positive: "bg-lax-success-bg text-lax-success-fg",
+  negative: "bg-lax-danger-bg text-lax-danger-fg",
+  neutral: "bg-lax-neutral-bg text-lax-neutral-fg",
 } as const;
 
 const iconTone: Record<MetricTone, string> = {
-  neutral: "text-staff-muted",
-  positive: "text-staff-success-fg",
-  attention: "text-staff-warning-fg",
-  critical: "text-staff-danger-fg",
+  neutral: "text-lax-muted",
+  positive: "text-lax-success-fg",
+  attention: "text-lax-warning-fg",
+  critical: "text-lax-danger-fg",
 };
 
 const accentTone: Partial<Record<MetricTone, string>> = {
-  attention: "bg-staff-warning-dot",
-  critical: "bg-staff-danger-dot",
+  attention: "bg-lax-warning-dot",
+  critical: "bg-lax-danger-dot",
 };
 
 const hintTone = {
-  positive: "text-staff-success-fg",
-  negative: "text-staff-danger-fg",
-  neutral: "text-staff-subtle",
+  positive: "text-lax-success-fg",
+  negative: "text-lax-danger-fg",
+  neutral: "text-lax-subtle",
 } as const;
 
 /** Wide enough to hold the value, the change and the trend side by side. */
@@ -105,7 +110,7 @@ export function MetricDelta({
       data-metric-delta={comparison.direction}
       title={comparison.basis ? `${comparison.text} ${comparison.basis}` : undefined}
       className={cn(
-        "inline-flex h-5 shrink-0 items-center gap-0.5 rounded-staff-xs pr-1.5 pl-1 text-staff-xs font-medium tabular-nums",
+        "inline-flex h-5 shrink-0 items-center gap-0.5 rounded-lax-badge pr-1.5 pl-1 text-lax-12 font-medium tabular-nums",
         chipTone[comparison.tone ?? "neutral"],
         className,
       )}
@@ -118,11 +123,12 @@ export function MetricDelta({
 }
 
 /**
- * One number in a metric strip or a record's stat grid. The label (with an optional icon) sits over
+ * One number in a metric strip, a record's stat grid or the client's "At a glance" figures. The label (with an optional icon) sits over
  * the value; when there is a change or a trend they sit on the right, the chip above a small line
  * chart. Narrow cells (phones, four across a sidebar layout) stack the chip under the value and
  * drop the chart, so a number is never squeezed. With `href` the whole cell links to the list
- * behind the number.
+ * behind the number. In the client workspace the cell is a figure: 28/36 at 600 with 20px by 24px of
+ * padding, since it is the only figure surface clients see.
  */
 export function MetricCell({
   item,
@@ -130,7 +136,7 @@ export function MetricCell({
   className,
 }: {
   item: MetricCellItem;
-  Link?: StaffLinkComponent | undefined;
+  Link?: LinkComponent | undefined;
   className?: string;
 }) {
   const tone = item.tone ?? "neutral";
@@ -142,9 +148,15 @@ export function MetricCell({
   const linked = Boolean(item.href && Link);
   const accent = accentTone[tone];
   const valueText = missing ? (
-    <span className="text-staff-subtle" title="No data">
-      —<span className="sr-only">No data</span>
-    </span>
+    item.emptyText ? (
+      <span className="text-lax-14 font-medium whitespace-normal text-lax-fg in-data-[lax-density=client]:text-lax-16">
+        {item.emptyText}
+      </span>
+    ) : (
+      <span className="text-lax-subtle" title="No data">
+        —<span className="sr-only">No data</span>
+      </span>
+    )
   ) : (
     item.value
   );
@@ -156,7 +168,7 @@ export function MetricCell({
       className={cn(
         "@container relative min-w-0",
         linked &&
-          "transition-colors duration-150 ease-out hover:staff-overlay-hover active:staff-overlay-pressed has-[a:focus-visible]:outline-2 has-[a:focus-visible]:-outline-offset-2 has-[a:focus-visible]:rounded-staff-md has-[a:focus-visible]:outline-staff-focus has-[a:focus-visible]:outline-solid",
+          "transition-colors duration-150 ease-out hover:lax-overlay-hover active:lax-overlay-pressed has-[a:focus-visible]:outline-2 has-[a:focus-visible]:-outline-offset-2 has-[a:focus-visible]:rounded-lax-card has-[a:focus-visible]:outline-lax-focus has-[a:focus-visible]:outline-solid",
         className,
       )}
     >
@@ -166,6 +178,7 @@ export function MetricCell({
       <dl
         className={cn(
           "h-full content-start gap-x-3 px-4 py-3",
+          "in-data-[lax-density=client]:px-6 in-data-[lax-density=client]:py-5",
           comparison || trend
             ? // Narrow: the change and trend follow the value, on its line when they fit and on
               // the next when they do not. Wide: they take a column of their own on the right.
@@ -177,7 +190,7 @@ export function MetricCell({
             : "grid grid-cols-1",
         )}
       >
-        <dt className="col-start-1 row-start-1 flex min-w-0 basis-full items-center gap-1.5 text-staff-xs text-staff-muted">
+        <dt className="col-start-1 row-start-1 flex min-w-0 basis-full items-center gap-1.5 text-lax-12 text-lax-muted in-data-[lax-density=client]:text-lax-13">
           {item.icon ? (
             <span aria-hidden className={cn("flex shrink-0 [&_svg]:size-3.5", iconTone[tone])}>
               {item.icon}
@@ -189,19 +202,19 @@ export function MetricCell({
           {linked ? (
             <ChevronRight
               aria-hidden
-              className="-ml-0.5 size-3 shrink-0 text-staff-subtle transition-transform duration-150 ease-out [[data-metric-cell]:hover_&]:translate-x-0.5 [[data-metric-cell]:hover_&]:text-staff-fg"
+              className="-ml-0.5 size-3 shrink-0 text-lax-subtle transition-transform duration-150 ease-out [[data-metric-cell]:hover_&]:translate-x-0.5 [[data-metric-cell]:hover_&]:text-lax-fg"
             />
           ) : null}
         </dt>
-        <dd className="col-start-1 row-start-2 mt-0.5 min-w-0">
+        <dd className="col-start-1 row-start-2 mt-0.5 min-w-0 in-data-[lax-density=client]:mt-2">
           <span
             title={typeof item.value === "string" && !linked ? item.value : undefined}
             className={cn(
-              "block font-semibold whitespace-nowrap text-staff-fg tabular-nums",
+              "block font-semibold whitespace-nowrap text-lax-fg tabular-nums",
               // A long figure steps down in a narrow cell instead of running past its edge.
               stackBeside
-                ? "text-staff-sm @min-[12rem]:text-staff-md @min-[13rem]:text-staff-lg @min-[18rem]:text-staff-xl"
-                : "text-staff-lg @min-[10rem]:text-staff-xl",
+                ? "text-lax-13 @min-[12rem]:text-lax-14 @min-[13rem]:text-lax-16 @min-[18rem]:text-lax-20"
+                : "text-lax-16 @min-[10rem]:text-lax-20 in-data-[lax-density=client]:@min-[10rem]:text-lax-28 in-data-[lax-density=client]:tracking-[-0.01em]",
             )}
           >
             {linked && item.href && Link ? (
@@ -218,7 +231,10 @@ export function MetricCell({
           </span>
           {item.hint ? (
             <span
-              className={cn("mt-0.5 block text-staff-xs", hintTone[item.hintTone ?? "neutral"])}
+              className={cn(
+                "mt-0.5 block text-lax-12 in-data-[lax-density=client]:mt-1 in-data-[lax-density=client]:text-lax-13",
+                hintTone[item.hintTone ?? "neutral"],
+              )}
             >
               {item.hint}
             </span>
@@ -282,7 +298,7 @@ export function MetricCellSkeleton({ trend = true }: { trend?: boolean }) {
         </div>
         {trend ? (
           <div className="hidden flex-col items-end gap-0.5 @min-[15rem]:flex">
-            <Skeleton className="h-5 w-12 rounded-staff-xs" />
+            <Skeleton className="h-5 w-12 rounded-lax-badge" />
             <SparklineSkeleton width={TREND_WIDTH} height={TREND_HEIGHT} />
           </div>
         ) : null}

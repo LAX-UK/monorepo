@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { MappedStatusBadge, StatusBadge, defineStatusMap, humanizeStatus } from "./status-badge.js";
+import { MappedStatusBadge, StatusBadge, defineStatusMap, humanizeStatus } from "./index.js";
 
 const present = defineStatusMap({
   paid: { label: "Paid", tone: "success" },
@@ -24,18 +24,19 @@ describe("humanizeStatus", () => {
 });
 
 describe("StatusBadge", () => {
-  it("draws live as its own solid tone with a pulsing white dot, never the danger tint", () => {
+  it("draws live as its own solid tone with a pulsing dot in its label colour, never the danger tint", () => {
     const { container } = render(
       <StatusBadge tone="live" live>
         Live
       </StatusBadge>,
     );
     const badge = container.firstElementChild as HTMLElement;
-    expect(badge.className).toContain("bg-staff-live-bg");
-    expect(badge.className).not.toContain("bg-staff-danger-bg");
-    const dot = badge.firstElementChild as HTMLElement;
+    expect(badge.className).toContain("--lax-live-bg");
+    expect(badge.className).not.toContain("--lax-danger-bg");
+    const dot = badge.querySelector("[data-shape=dot] > span") as HTMLElement;
     expect(dot.className).toContain("animate-pulse");
-    expect(dot.className).toContain("bg-staff-on-live");
+    expect(dot.className).toContain("bg-current");
+    expect(dot.className).not.toContain("--lax-live-dot");
   });
 
   it("pulses the live red dot on a tinted tone", () => {
@@ -44,8 +45,8 @@ describe("StatusBadge", () => {
         Opening
       </StatusBadge>,
     );
-    const dot = container.firstElementChild?.firstElementChild as HTMLElement;
-    expect(dot.className).toContain("bg-staff-live-dot");
+    const dot = container.querySelector("[data-shape=dot] > span") as HTMLElement;
+    expect(dot.className).toContain("--lax-live-dot");
   });
 });
 

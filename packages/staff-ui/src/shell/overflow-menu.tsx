@@ -1,5 +1,6 @@
 "use client";
 
+import type { LinkComponent } from "@auction/ui/lax";
 import type { LucideIcon } from "lucide-react";
 import { Ellipsis } from "lucide-react";
 import * as React from "react";
@@ -13,7 +14,6 @@ import {
   StaffMenuSeparator,
   StaffMenuTrigger,
 } from "../primitives/menu.js";
-import type { StaffLinkComponent } from "./link.js";
 
 export type OverflowAction = {
   id: string;
@@ -44,7 +44,7 @@ export function OverflowMenu({
 }: {
   actions: readonly OverflowAction[];
   label?: string;
-  Link?: StaffLinkComponent;
+  Link?: LinkComponent;
   size?: "icon-xs" | "icon-sm" | "icon-md";
 }) {
   const selectionActive = useTableSelectionActive();

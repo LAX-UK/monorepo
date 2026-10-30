@@ -1,6 +1,6 @@
 import { render } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { MetricCell, isLongMetricValue } from "./metric-cell.js";
+import { MetricCell, isLongMetricValue } from "./index.js";
 
 const trend = [1, 2, 3, 4];
 

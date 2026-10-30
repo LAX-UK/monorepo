@@ -25,7 +25,7 @@ export const COMPLIANCE_RELEASE_BLOCKED = "Released once the MLRO clears the com
 
 function HeldPaymentFacts({ row }: { row: ManualReviewStaffRow }) {
   return (
-    <div className="rounded-staff-md border border-staff-line px-3 py-1">
+    <div className="rounded-staff-lg border border-staff-line px-3 py-1">
       <KeyValueList
         items={[
           { label: "Lot", value: row.lotTitle },

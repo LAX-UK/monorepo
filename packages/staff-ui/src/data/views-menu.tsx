@@ -1,6 +1,7 @@
 "use client";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
+import { Count, type LinkComponent, TextInput } from "@auction/ui/lax";
 import {
   Bookmark,
   Check,
@@ -17,9 +18,6 @@ import * as React from "react";
 import { Skeleton } from "../display/states.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
-import { TextInput } from "../primitives/input.js";
-import { Count } from "../primitives/tabs.js";
-import type { StaffLinkComponent } from "../shell/link.js";
 import type { SavedView, SavedViewItem, SavedViewsControls } from "./saved-views.js";
 
 /** A view the team shares, fixed in code: it cannot be renamed, reordered or deleted. */
@@ -84,7 +82,7 @@ function GroupHeading({
 
 const linkClass = (active: boolean) =>
   cn(
-    "staff-focus flex min-h-control-sm min-w-0 flex-1 items-center rounded-staff-xs px-2 text-staff-sm",
+    "staff-focus flex min-h-control-sm min-w-0 flex-1 items-center rounded-staff-sm px-2 text-staff-sm",
     active ? "font-medium text-staff-fg" : "text-staff-fg hover:bg-staff-hover",
   );
 
@@ -105,7 +103,7 @@ export function ViewsMenu({
   savedHref?: ((view: SavedView) => string) | undefined;
   /** The team or saved view the list is showing, if it is one. */
   activeViewId: string | null;
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
 }) {
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Editing | null>(null);
@@ -280,7 +278,7 @@ export function ViewsMenu({
                     <li
                       key={view.id}
                       data-view-id={view.id}
-                      className="group/view flex flex-col rounded-staff-xs"
+                      className="group/view flex flex-col rounded-staff-sm"
                     >
                       {isEditing && editing ? (
                         <form

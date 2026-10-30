@@ -1,10 +1,10 @@
+import { returnFocusTarget } from "@auction/ui/lax";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import * as React from "react";
 import { describe, expect, it } from "vitest";
 import { FilterSheet } from "../data/filter-sheet.js";
 import { DetailPanel } from "../panels/detail-panel.js";
 import { StaffDialog } from "../panels/staff-dialog.js";
-import { returnFocusTarget } from "./return-focus.js";
 
 function DialogFromButton() {
   const [open, setOpen] = React.useState(false);

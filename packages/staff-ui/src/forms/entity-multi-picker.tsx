@@ -1,9 +1,9 @@
 "use client";
 
+import { useField } from "@auction/ui/lax";
 import { X } from "lucide-react";
 import * as React from "react";
 import { type EntityOption, EntityPicker } from "./entity-picker.js";
-import { useStaffField } from "./field.js";
 
 export type EntityMultiPickerProps = {
   /** The chosen records' ids, in the order they were added. */
@@ -34,7 +34,7 @@ export function EntityMultiPicker({
   max,
   id,
 }: EntityMultiPickerProps) {
-  const field = useStaffField();
+  const field = useField();
   const isDisabled = disabled ?? field?.disabled ?? false;
   const byId = React.useMemo(
     () => new Map(options.map((option) => [option.id, option])),

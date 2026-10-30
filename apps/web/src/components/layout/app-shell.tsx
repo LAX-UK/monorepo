@@ -20,6 +20,7 @@ import { ShellChromeProvider, useShellChrome } from "@/lib/shell/shell-chrome-co
 import { ShellConfigProvider } from "@/lib/shell/shell-config-context";
 import { LaxFamilyBar } from "@auction/marketing-ui";
 import { TooltipProvider } from "@auction/ui/components/tooltip";
+import { LaxDensityProvider, laxDensityAttributes } from "@auction/ui/lax";
 import { type ReactNode, useEffect } from "react";
 
 type Props = {
@@ -64,76 +65,80 @@ function AppShellFrame({ user, config, children }: Props) {
   const desktopSidebar = <AppShellSidebar user={user} role={shellRole} collapsible />;
   const familyLinks = isStaffShell ? [] : (config.familyLinks ?? []);
 
+  const density = isStaffShell ? "staff" : "client";
+
   return (
-    <div
-      data-lax-density={isStaffShell ? "staff" : "client"}
-      className="flex h-[calc(100dvh-var(--view-as-client-banner-height,0px))] flex-col overflow-hidden bg-shell-page-bg font-body text-on-surface"
-      style={{
-        ["--sidebar-width" as string]: collapsed ? "4.5rem" : expandedSidebarWidth,
-      }}
-    >
-      {familyLinks.length > 0 ? (
-        <div className="hidden shrink-0 border-b border-shell-stroke bg-surface-container-lowest px-6 lg:block">
-          <LaxFamilyBar links={familyLinks} />
+    <LaxDensityProvider density={density}>
+      <div
+        {...laxDensityAttributes(density)}
+        className="flex h-[calc(100dvh-var(--view-as-client-banner-height,0px))] flex-col overflow-hidden bg-shell-page-bg font-body text-on-surface"
+        style={{
+          ["--sidebar-width" as string]: collapsed ? "4.5rem" : expandedSidebarWidth,
+        }}
+      >
+        {familyLinks.length > 0 ? (
+          <div className="hidden shrink-0 border-b border-shell-stroke bg-surface-container-lowest px-6 lg:block">
+            <LaxFamilyBar links={familyLinks} />
+          </div>
+        ) : null}
+        <div className="flex min-h-0 flex-1 overflow-hidden">
+          <CommandPaletteLazy
+            variant={shellRole === "client" ? "dashboard" : "admin"}
+            sessionUser={user}
+            {...(shellRole === "client"
+              ? {}
+              : {
+                  shellRole,
+                  pendingSubmissionCount,
+                  pendingArtistCount,
+                  ...(navCounts ? { navCounts } : {}),
+                })}
+          />
+
+          <aside className="relative z-20 hidden h-full w-[var(--sidebar-width)] shrink-0 overflow-visible border-r border-shell-stroke bg-shell-sidebar shadow-[2px_0_12px_-4px_rgba(0,0,0,0.08)] transition-[width] duration-200 ease-out lg:flex lg:flex-col dark:shadow-[2px_0_12px_-4px_rgba(0,0,0,0.35)]">
+            {desktopSidebar}
+          </aside>
+
+          <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
+            <header className="z-30 shrink-0 border-b border-shell-stroke bg-surface-container-lowest pt-[env(safe-area-inset-top,0px)] shadow-[var(--shadow-rest)]">
+              <div className="mx-auto flex h-[var(--header-height-mobile,56px)] max-w-[var(--container-inner,1376px)] flex-nowrap items-center gap-3 px-3 sm:px-4 md:px-8 lg:h-[var(--header-height-shell,82px)] lg:gap-6 lg:px-8">
+                {isStaffShell ? (
+                  <StaffShellHeader
+                    user={user}
+                    role={shellRole}
+                    actionsSlot={headerActionsSlot}
+                    extraSlot={headerExtraSlot}
+                  />
+                ) : (
+                  <ClientShellHeader
+                    user={user}
+                    role={shellRole}
+                    account={clientAccount}
+                    actionsSlot={headerActionsSlot}
+                    extraSlot={headerExtraSlot}
+                  />
+                )}
+              </div>
+            </header>
+
+            {clientAccount?.strip ? <AccountStrip strip={clientAccount.strip} /> : null}
+
+            <ShellMain
+              user={user}
+              shellRole={shellRole}
+              hideEmailStatusBanner={hideEmailStatusBanner}
+              mobileNavCount={config.mobileNav.length}
+              topSlot={topSlot}
+              contextBanner={contextBanner}
+            >
+              {children}
+            </ShellMain>
+          </div>
         </div>
-      ) : null}
-      <div className="flex min-h-0 flex-1 overflow-hidden">
-        <CommandPaletteLazy
-          variant={shellRole === "client" ? "dashboard" : "admin"}
-          sessionUser={user}
-          {...(shellRole === "client"
-            ? {}
-            : {
-                shellRole,
-                pendingSubmissionCount,
-                pendingArtistCount,
-                ...(navCounts ? { navCounts } : {}),
-              })}
-        />
 
-        <aside className="relative z-20 hidden h-full w-[var(--sidebar-width)] shrink-0 overflow-visible border-r border-shell-stroke bg-shell-sidebar shadow-[2px_0_12px_-4px_rgba(0,0,0,0.08)] transition-[width] duration-200 ease-out lg:flex lg:flex-col dark:shadow-[2px_0_12px_-4px_rgba(0,0,0,0.35)]">
-          {desktopSidebar}
-        </aside>
-
-        <div className="flex h-full min-w-0 flex-1 flex-col overflow-hidden">
-          <header className="z-30 shrink-0 border-b border-shell-stroke bg-surface-container-lowest pt-[env(safe-area-inset-top,0px)] shadow-[var(--shadow-rest)]">
-            <div className="mx-auto flex h-[var(--header-height-mobile,56px)] max-w-[var(--container-inner,1376px)] flex-nowrap items-center gap-3 px-3 sm:px-4 md:px-8 lg:h-[var(--header-height-shell,82px)] lg:gap-6 lg:px-8">
-              {isStaffShell ? (
-                <StaffShellHeader
-                  user={user}
-                  role={shellRole}
-                  actionsSlot={headerActionsSlot}
-                  extraSlot={headerExtraSlot}
-                />
-              ) : (
-                <ClientShellHeader
-                  user={user}
-                  role={shellRole}
-                  account={clientAccount}
-                  actionsSlot={headerActionsSlot}
-                  extraSlot={headerExtraSlot}
-                />
-              )}
-            </div>
-          </header>
-
-          {clientAccount?.strip ? <AccountStrip strip={clientAccount.strip} /> : null}
-
-          <ShellMain
-            user={user}
-            shellRole={shellRole}
-            hideEmailStatusBanner={hideEmailStatusBanner}
-            mobileNavCount={config.mobileNav.length}
-            topSlot={topSlot}
-            contextBanner={contextBanner}
-          >
-            {children}
-          </ShellMain>
-        </div>
+        {config.mobileNav.length > 0 && !hideBottomTabBar ? <BottomTabBar user={user} /> : null}
       </div>
-
-      {config.mobileNav.length > 0 && !hideBottomTabBar ? <BottomTabBar user={user} /> : null}
-    </div>
+    </LaxDensityProvider>
   );
 }
 

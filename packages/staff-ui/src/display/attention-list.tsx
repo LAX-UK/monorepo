@@ -1,8 +1,7 @@
+import { type LinkComponent, formatCount } from "@auction/ui/lax";
 import { ChevronRight, CircleCheck } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
-import { formatCount } from "../lib/count.js";
-import type { StaffLinkComponent } from "../shell/link.js";
 import type { StaffStatusTone } from "../tokens.js";
 
 export type AttentionItem = {
@@ -43,7 +42,7 @@ export function AttentionList({
   className,
 }: {
   items: readonly AttentionItem[];
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
   title?: string;
   allClear?: React.ReactNode;
   className?: string;
@@ -52,7 +51,7 @@ export function AttentionList({
   return (
     <section
       aria-label={title}
-      className={cn("rounded-staff-md border border-staff-line bg-staff-surface", className)}
+      className={cn("rounded-staff-lg border border-staff-line bg-staff-surface", className)}
     >
       <h2 className="border-b border-staff-line-subtle px-4 py-3 font-staff text-staff-md font-semibold text-staff-fg">
         {title}

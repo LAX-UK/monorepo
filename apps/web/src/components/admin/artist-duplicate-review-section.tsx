@@ -72,7 +72,7 @@ export async function ArtistDuplicateReviewSection() {
 
   if (hits.length === 0) {
     return (
-      <div className="rounded-staff-md border border-staff-line bg-staff-surface">
+      <div className="rounded-staff-lg border border-staff-line bg-staff-surface">
         <EmptyState
           title="No duplicates found"
           description="Pending profiles and a sample of catalogue profiles were checked. When the registry suggests overlaps, you can merge them here."

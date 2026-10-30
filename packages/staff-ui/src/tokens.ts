@@ -25,8 +25,8 @@ export const STAFF_FONT_WEIGHTS = { regular: 400, medium: 500, semibold: 600 } a
 export const STAFF_RADIUS = {
   xs: { px: 4, use: "Badges, checkboxes, kbd" },
   sm: { px: 6, use: "Buttons, inputs, selects, nav items, menu items" },
-  md: { px: 8, use: "Cards, tables, menus, popovers, the bulk-action bar" },
-  lg: { px: 12, use: "Dialogs, sheets, the command palette" },
+  md: { px: 8, use: "Menus, popovers, toasts, the bulk-action bar" },
+  lg: { px: 12, use: "Cards, tables, notices, dialogs, sheets, the command palette" },
 } as const;
 
 /** Control heights in px, as `h-control-<step>`. */

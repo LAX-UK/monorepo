@@ -4,7 +4,7 @@ import type { StatusBadgeProps } from "@auction/ui/components/status-badge";
 export type OrganisationDocumentStateView = {
   /** The badge words. */
   label: string;
-  tone: NonNullable<StatusBadgeProps["variant"]>;
+  tone: NonNullable<StatusBadgeProps["tone"]>;
 };
 
 /**

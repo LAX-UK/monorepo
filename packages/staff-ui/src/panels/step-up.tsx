@@ -4,9 +4,9 @@ import {
   STAFF_STEP_UP_MAX_AGE_SECONDS,
   STAFF_STEP_UP_REQUIRED,
 } from "@auction/identity-contracts/staff-step-up";
+import { Notice } from "@auction/ui/lax";
 import { ShieldCheck } from "lucide-react";
 import * as React from "react";
-import { Notice } from "../display/notice.js";
 import { StaffButton } from "../primitives/button.js";
 import { StaffDialog } from "./staff-dialog.js";
 

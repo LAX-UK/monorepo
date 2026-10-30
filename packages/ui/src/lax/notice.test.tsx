@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { Notice } from "./notice.js";
+import { Notice } from "./index.js";
 
 describe("Notice", () => {
   it("announces politely by default and immediately as an alert", () => {
@@ -21,7 +21,7 @@ describe("Notice", () => {
       </Notice>,
     );
     const notice = screen.getByRole("status");
-    expect(notice.className).toContain("bg-staff-success-bg");
+    expect(notice.className).toContain("bg-lax-success-bg");
     expect(notice).toHaveTextContent("Ada Lovelace");
   });
 });

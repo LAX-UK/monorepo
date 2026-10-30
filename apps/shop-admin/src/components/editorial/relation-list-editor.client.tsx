@@ -78,13 +78,13 @@ export function RelationListEditor<T extends RelationRow>({
   return (
     <div className="flex flex-col gap-3">
       {items.length === 0 ? (
-        <p className="rounded-staff-md border border-dashed border-staff-line px-4 py-6 text-center text-staff-sm text-staff-muted">
+        <p className="rounded-staff-lg border border-dashed border-staff-line px-4 py-6 text-center text-staff-sm text-staff-muted">
           {emptyText}
         </p>
       ) : (
         <ul
           aria-label={label}
-          className="divide-y divide-staff-line-subtle rounded-staff-md border border-staff-line bg-staff-surface"
+          className="divide-y divide-staff-line-subtle rounded-staff-lg border border-staff-line bg-staff-surface"
         >
           {items.map((item, index) => (
             <li key={item.id} className="flex items-center gap-3 px-3 py-2">

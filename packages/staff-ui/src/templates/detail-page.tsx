@@ -129,7 +129,7 @@ export function DetailPage({
     return (
       <div className="flex flex-col gap-6">
         {header}
-        <div className="rounded-staff-md border border-staff-line bg-staff-surface">
+        <div className="rounded-staff-lg border border-staff-line bg-staff-surface">
           <AccessDeniedState
             resource={resource ?? "this record"}
             {...(requiredRole ? { requiredRole } : {})}
@@ -162,7 +162,7 @@ export function DetailPage({
           {summary && summary.length > 0 ? (
             <section
               aria-label="Summary"
-              className="rounded-staff-md border border-staff-line bg-staff-surface px-4 py-2"
+              className="rounded-staff-lg border border-staff-line bg-staff-surface px-4 py-2"
             >
               <KeyValueList items={summary} columns={2} />
             </section>
@@ -190,7 +190,7 @@ export function DetailError({
   onRetry: () => void;
 }) {
   return (
-    <div className="rounded-staff-md border border-staff-line bg-staff-surface">
+    <div className="rounded-staff-lg border border-staff-line bg-staff-surface">
       <ErrorState
         title={title}
         description={description}
@@ -248,7 +248,7 @@ export function DetailPageSkeleton({
   withSummary?: boolean;
 }) {
   const card = (rows: number) => (
-    <div className="flex flex-col gap-3 rounded-staff-md border border-staff-line bg-staff-surface p-4">
+    <div className="flex flex-col gap-3 rounded-staff-lg border border-staff-line bg-staff-surface p-4">
       <Skeleton className="h-4 w-32" />
       {Array.from({ length: rows }, (_, index) => (
         // biome-ignore lint/suspicious/noArrayIndexKey: placeholder rows have no identity
@@ -259,7 +259,7 @@ export function DetailPageSkeleton({
   return (
     <div className="flex flex-col gap-6" aria-busy="true">
       {withSummary ? (
-        <div className="grid grid-cols-1 gap-x-8 gap-y-3 rounded-staff-md border border-staff-line bg-staff-surface p-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-x-8 gap-y-3 rounded-staff-lg border border-staff-line bg-staff-surface p-4 lg:grid-cols-2">
           {Array.from({ length: 4 }, (_, index) => (
             // biome-ignore lint/suspicious/noArrayIndexKey: placeholder rows have no identity
             <Skeleton key={index} className="h-3 w-3/4" />

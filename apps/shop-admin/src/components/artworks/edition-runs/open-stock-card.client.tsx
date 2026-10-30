@@ -100,7 +100,7 @@ export function OpenStockCard({
         </Notice>
       ) : null}
       <StatGrid label={`${title} stock`} items={openStockFacts(stock)} />
-      <div className="overflow-hidden rounded-staff-md border border-staff-line">
+      <div className="overflow-hidden rounded-staff-lg border border-staff-line">
         <DataTable<AdminStockBatch>
           embedded
           label="Stock batches"

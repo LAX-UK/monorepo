@@ -28,7 +28,7 @@ export function CheckInScanTab({
           Paste the pass link or token below, or search for the guest by name.
         </Notice>
       ) : (
-        <div className="overflow-hidden rounded-staff-md border border-staff-line bg-staff-sunken">
+        <div className="overflow-hidden rounded-staff-lg border border-staff-line bg-staff-sunken">
           <video
             ref={videoRef}
             className="aspect-[4/3] w-full object-cover"

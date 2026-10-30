@@ -206,7 +206,7 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
 
         {selected ? (
           <div className="flex min-w-0 flex-col gap-4">
-            <div className="min-h-[16rem] rounded-staff-md border border-staff-line bg-staff-sunken p-2">
+            <div className="min-h-[16rem] rounded-staff-lg border border-staff-line bg-staff-sunken p-2">
               {previewFailed ? (
                 <p className="p-4 text-staff-sm text-staff-muted">
                   Could not load the preview. Open the file in a new tab or download it.
@@ -262,7 +262,7 @@ export function SofEvidenceReviewer({ caseId, row, detail, readOnly = false }: P
             </div>
 
             {canReview ? (
-              <div className="flex flex-col gap-3 rounded-staff-md border border-staff-line p-4">
+              <div className="flex flex-col gap-3 rounded-staff-lg border border-staff-line p-4">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <h3 className="text-staff-sm font-semibold text-staff-fg">
                     Verification checklist

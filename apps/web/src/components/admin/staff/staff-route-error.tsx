@@ -44,7 +44,7 @@ export function StaffRouteError({
         title={title}
         breadcrumbs={<StaffBreadcrumbs Link={NextLink} items={breadcrumbs} />}
       />
-      <div className="rounded-staff-md border border-staff-line bg-staff-surface">
+      <div className="rounded-staff-lg border border-staff-line bg-staff-surface">
         <ErrorState
           title={heading ?? `Could not load ${title.toLowerCase()}`}
           description={message}

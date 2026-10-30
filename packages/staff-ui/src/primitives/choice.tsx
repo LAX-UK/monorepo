@@ -2,10 +2,9 @@
 
 import { Checkbox } from "@auction/ui/components/checkbox";
 import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
-import { Switch } from "@auction/ui/components/switch";
+import { Switch, useReadOnlyView } from "@auction/ui/lax";
 import { Check } from "lucide-react";
 import type * as React from "react";
-import { useStaffReadOnly } from "../access/read-only.js";
 import { cn } from "../lib/cn.js";
 
 /*
@@ -29,7 +28,7 @@ export function StaffCheckbox({
   className,
   ...props
 }: React.ComponentPropsWithoutRef<typeof Checkbox>) {
-  if (useStaffReadOnly()) {
+  if (useReadOnlyView()) {
     const on = props.checked === true;
     return (
       <span
@@ -90,27 +89,8 @@ export function StaffRadio({
   );
 }
 
-export function StaffSwitch({
-  className,
-  ...props
-}: React.ComponentPropsWithoutRef<typeof Switch>) {
-  return (
-    <Switch
-      className={cn(
-        "h-5 w-8 border-0 p-0.5",
-        "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-staff-focus",
-        "data-[state=unchecked]:bg-staff-control-border data-[state=checked]:bg-staff-ink",
-        "hover:data-[state=unchecked]:bg-staff-control-border-hover hover:data-[state=checked]:bg-staff-ink-hover",
-        "disabled:opacity-100 disabled:data-[state=checked]:bg-staff-line-hover disabled:data-[state=unchecked]:bg-staff-line",
-        // A disabled switch dims its thumb too, so it never reads as an active control.
-        "disabled:data-[state=unchecked]:[&>span]:bg-staff-disabled",
-        className,
-      )}
-      thumbClassName="size-4 bg-staff-thumb shadow-staff-xs data-[state=checked]:translate-x-3 data-[state=checked]:bg-staff-on-ink data-[state=unchecked]:translate-x-0"
-      {...props}
-    />
-  );
-}
+/** The LAX system switch (`@auction/ui/lax`): 32×20 at the staff density. */
+export const StaffSwitch = Switch;
 
 /** A checkbox, radio or switch with its label in one 32px row, label clickable. */
 export function ChoiceRow({

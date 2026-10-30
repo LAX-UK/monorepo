@@ -63,7 +63,7 @@ export function SaleroomCheckInForm({
   const blockedReason = prerequisitesOk ? undefined : "Resolve the account issues first";
 
   return (
-    <div className="flex flex-col gap-4 rounded-staff-md border border-staff-line bg-staff-sunken p-4">
+    <div className="flex flex-col gap-4 rounded-staff-lg border border-staff-line bg-staff-sunken p-4">
       {blockerMessages.length > 0 ? (
         <Notice
           tone="danger"

@@ -15,7 +15,7 @@ import { useCallback, useEffect, useId, useState } from "react";
 
 const QRCodeSVG = dynamic(() => import("qrcode.react").then((m) => m.QRCodeSVG), {
   ssr: false,
-  loading: () => <Skeleton className="size-56 rounded-staff-md" />,
+  loading: () => <Skeleton className="size-56 rounded-staff-lg" />,
 });
 
 type EntityType = "sale" | "lot";
@@ -227,7 +227,7 @@ export function AdminQrCodeButton({
         ) : null}
         {item ? (
           <div className="flex flex-col gap-5">
-            <div className="flex justify-center rounded-staff-md border border-staff-line bg-white p-5">
+            <div className="flex justify-center rounded-staff-lg border border-staff-line bg-white p-5">
               <QRCodeSVG id={qrId} value={item.shortUrl} size={224} level="M" includeMargin />
             </div>
             <div className="flex flex-col gap-1 text-staff-sm">
@@ -312,8 +312,8 @@ export function AdminQrCodeButton({
 function QrCodeDialogSkeleton() {
   return (
     <div className="flex flex-col gap-5" aria-busy="true" aria-label="Loading QR code details">
-      <div className="flex justify-center rounded-staff-md border border-staff-line bg-white p-5">
-        <Skeleton className="size-56 rounded-staff-md" />
+      <div className="flex justify-center rounded-staff-lg border border-staff-line bg-white p-5">
+        <Skeleton className="size-56 rounded-staff-lg" />
       </div>
       <div className="flex flex-col gap-2">
         <Skeleton className="h-4 w-20" />

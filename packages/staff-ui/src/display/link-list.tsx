@@ -1,8 +1,7 @@
+import { Count, type LinkComponent } from "@auction/ui/lax";
 import { ChevronRight } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
-import { Count } from "../primitives/tabs.js";
-import type { StaffLinkComponent } from "../shell/link.js";
 
 export type LinkListItem = {
   id: string;
@@ -30,14 +29,14 @@ export function LinkList({
   items: readonly LinkListItem[];
   title: string;
   description?: React.ReactNode;
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
   className?: string;
 }) {
   if (items.length === 0) return null;
   return (
     <nav
       aria-label={title}
-      className={cn("rounded-staff-md border border-staff-line bg-staff-surface", className)}
+      className={cn("rounded-staff-lg border border-staff-line bg-staff-surface", className)}
     >
       <div className="border-b border-staff-line-subtle px-4 py-3">
         <h2 className="font-staff text-staff-md font-semibold text-staff-fg">{title}</h2>

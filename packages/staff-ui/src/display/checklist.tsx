@@ -1,8 +1,8 @@
+import type { LinkComponent } from "@auction/ui/lax";
 import { Check, Circle, CircleAlert, X } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
-import type { StaffLinkComponent } from "../shell/link.js";
 
 export type ChecklistItem = {
   id: string;
@@ -71,7 +71,7 @@ export function Checklist({
 }: {
   title: string;
   items: readonly ChecklistItem[];
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
   description?: React.ReactNode;
   compact?: boolean;
   /** Hides the checklist for this person; leave out when it must stay. */
@@ -117,7 +117,7 @@ export function Checklist({
   return (
     <section
       aria-label={title}
-      className={cn("rounded-staff-md border border-staff-line bg-staff-surface", className)}
+      className={cn("rounded-staff-lg border border-staff-line bg-staff-surface", className)}
     >
       <header className="flex flex-col gap-2.5 border-b border-staff-line-subtle px-4 py-3">
         <div className="flex items-start justify-between gap-3">

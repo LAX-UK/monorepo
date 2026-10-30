@@ -49,6 +49,8 @@
   --lax-subtle: light-dark(#666969, #8c8f8f);
   --lax-ink: var(--lax-fg);
   --lax-ink-hover: light-dark(#323535, #ffffff);
+  /* Pressed is a fill of its own, a step past the ink away from hover, never an opacity fade. */
+  --lax-ink-pressed: light-dark(#000000, #d6d6d4);
   --lax-on-ink: light-dark(#ffffff, #111313);
   --lax-focus: var(--lax-fg);
   /* A switch's thumb when off: near white on the control-edge track, 3:1 or more in both schemes. */
@@ -83,6 +85,7 @@
   --lax-danger: light-dark(#b42318, #ef6a5e);
   --lax-danger-solid: light-dark(#b42318, #c13a2e);
   --lax-danger-solid-hover: light-dark(#931c13, #a93125);
+  --lax-danger-solid-pressed: light-dark(#7a170f, #8f271e);
   --lax-on-danger: light-dark(#ffffff, #ffffff);
   /* Live now (Bid): a solid fill, so it never reads as the tinted danger of a failed record. */
   --lax-live-dot: light-dark(#e83030, #ff5a4f);

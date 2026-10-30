@@ -1,6 +1,6 @@
+import { Field } from "@auction/ui/lax";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { Field } from "./field.js";
 import { MoneyInput } from "./money-input.js";
 
 describe("MoneyInput in a Field", () => {

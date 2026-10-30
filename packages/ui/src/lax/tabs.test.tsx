@@ -1,7 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { PlainLink as Link } from "../shell/link.js";
-import { Count, SecondaryTabNav, type TabNavItem } from "./tabs.js";
+import { Count, PlainLink as Link, SecondaryTabNav, type TabNavItem } from "./index.js";
 
 const pages: TabNavItem[] = [
   { id: "registrations", label: "Registrations", href: "/sales/1/registrations", count: 12 },
@@ -37,7 +36,7 @@ describe("SecondaryTabNav", () => {
     render(<SecondaryTabNav items={pages} activeId="registrations" label="Bidders" Link={Link} />);
     expect(screen.getByRole("link", { name: "Registrations 12" })).toBeInTheDocument();
     const waiting = screen.getByRole("link", { name: "Telephone bookings 2 waiting" });
-    expect(waiting.querySelector(".bg-staff-ink")).not.toBeNull();
+    expect(waiting.querySelector(".bg-lax-ink")).not.toBeNull();
   });
 });
 

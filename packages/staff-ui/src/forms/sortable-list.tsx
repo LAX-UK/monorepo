@@ -88,7 +88,7 @@ export function SortableList<T>({
       </p>
       <ol
         aria-label={label}
-        className="flex list-none flex-col divide-y divide-staff-line-subtle overflow-hidden rounded-staff-md border border-staff-line bg-staff-surface p-0"
+        className="flex list-none flex-col divide-y divide-staff-line-subtle overflow-hidden rounded-staff-lg border border-staff-line bg-staff-surface p-0"
       >
         {items.map((item, index) => {
           const key = getKey(item);

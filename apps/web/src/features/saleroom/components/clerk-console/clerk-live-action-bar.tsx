@@ -46,7 +46,7 @@ export function ClerkLiveActionBar({
         <SaleroomPendingSubmit
           pendingLabel="Advancing…"
           variant={hammerShown ? "secondary" : "primary"}
-          size="live"
+          size="lg"
           disabled={!sessionLive}
           onRun={() => adminSaleroomAdvanceAction({ saleId, lotId: nextLot.id })}
         >

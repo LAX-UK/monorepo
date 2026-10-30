@@ -1,6 +1,6 @@
+import type { LinkComponent } from "@auction/ui/lax";
 import { ArrowRight, CircleAlert, Info, TriangleAlert } from "lucide-react";
 import { cn } from "../lib/cn.js";
-import type { StaffLinkComponent } from "../shell/link.js";
 
 export type AttentionStripItem = {
   id: string;
@@ -36,7 +36,7 @@ export function AttentionStrip({
   className,
 }: {
   items: readonly AttentionStripItem[];
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
   label?: string;
   className?: string;
 }) {
@@ -46,7 +46,7 @@ export function AttentionStrip({
     <section
       aria-label={label}
       className={cn(
-        "overflow-hidden rounded-staff-md border border-staff-line bg-staff-surface text-staff-sm",
+        "overflow-hidden rounded-staff-lg border border-staff-line bg-staff-surface text-staff-sm",
         className,
       )}
     >

@@ -84,7 +84,7 @@ export function SaleroomHubView({ model }: { model: SaleroomHubPageModel }) {
       )}
 
       {nothing ? (
-        <div className="rounded-staff-md border border-staff-line bg-staff-surface">
+        <div className="rounded-staff-lg border border-staff-line bg-staff-surface">
           <EmptyState
             title="No live or upcoming sales"
             description="Schedule or activate a sale to open its clerk console."

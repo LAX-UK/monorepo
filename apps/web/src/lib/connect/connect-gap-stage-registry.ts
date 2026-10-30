@@ -4,7 +4,7 @@ import type { StatusBadgeProps } from "@auction/ui/components/status-badge";
 
 type ConnectGapStageCopy = {
   label: string;
-  badgeVariant: NonNullable<StatusBadgeProps["variant"]>;
+  badgeVariant: NonNullable<StatusBadgeProps["tone"]>;
   summary: string;
   readOnlySummary: string;
   actionHint: string | null;

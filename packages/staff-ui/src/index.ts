@@ -20,8 +20,14 @@ export { StaffButton, staffButtonVariants } from "./primitives/button.js";
 export type { StaffButtonProps } from "./primitives/button.js";
 export { HoldButton, STAFF_HOLD_MS } from "./primitives/hold-button.js";
 export type { HoldButtonProps } from "./primitives/hold-button.js";
-export { Kbd, ShortcutKeys, TextArea, TextInput, staffFieldBox } from "./primitives/input.js";
-export type { TextAreaProps, TextInputProps } from "./primitives/input.js";
+export {
+  Kbd,
+  ShortcutKeys,
+  TextArea,
+  TextInput,
+  fieldBox as staffFieldBox,
+} from "@auction/ui/lax";
+export type { TextAreaProps, TextInputProps } from "@auction/ui/lax";
 export {
   ChoiceRow,
   StaffCheckbox,
@@ -48,8 +54,8 @@ export {
   SecondaryTabNav,
   SegmentedControl,
   TabNav,
-} from "./primitives/tabs.js";
-export type { CountTone, SegmentOption, TabNavItem } from "./primitives/tabs.js";
+} from "@auction/ui/lax";
+export type { CountTone, SegmentOption, TabNavItem } from "@auction/ui/lax";
 
 // Display
 export {
@@ -57,10 +63,10 @@ export {
   StatusBadge,
   defineStatusMap,
   humanizeStatus,
-} from "./display/status-badge.js";
-export type { StatusPresentation } from "./display/status-badge.js";
+} from "@auction/ui/lax";
+export type { StatusPresentation } from "@auction/ui/lax";
 export { KeyValueList } from "./display/key-value-list.js";
-export { Notice } from "./display/notice.js";
+export { Notice } from "@auction/ui/lax";
 export { RecordImage } from "./display/record-image.js";
 export { ImageGallery, type ImageGalleryItem } from "./display/image-gallery.js";
 export { StatGrid } from "./display/stat-grid.js";
@@ -93,22 +99,21 @@ export {
   ViewOnlyBadge,
 } from "./display/states.js";
 export { METRIC_STRIP_MAX, MetricStrip } from "./display/metric-strip.js";
-export { MetricCell, MetricDelta } from "./display/metric-cell.js";
-export { metricChange } from "./display/metric-change.js";
-export type {
-  Metric,
-  MetricCellItem,
-  MetricComparison,
-  MetricTone,
-} from "./display/metric-cell.js";
-export { Sparkline, SparklineSkeleton } from "./display/sparkline.js";
+export {
+  MetricCell,
+  MetricDelta,
+  Sparkline,
+  SparklineSkeleton,
+  metricChange,
+} from "@auction/ui/lax";
+export type { Metric, MetricCellItem, MetricComparison, MetricTone } from "@auction/ui/lax";
 export { ProgressBar } from "./display/progress-bar.js";
 export { AttentionStrip } from "./display/attention-strip.js";
 export type { AttentionStripItem } from "./display/attention-strip.js";
 
 // Forms
-export { Field, useStaffField } from "./forms/field.js";
-export type { FieldProps } from "./forms/field.js";
+export { Field, useField as useStaffField } from "@auction/ui/lax";
+export type { FieldProps } from "@auction/ui/lax";
 export { MoneyInput } from "./forms/money-input.js";
 export {
   DateInput,
@@ -235,7 +240,11 @@ export { RelatedRecordsSection } from "./data/related-records-section.js";
 export type { RelatedRecordsSectionProps } from "./data/related-records-section.js";
 
 // Access
-export { StaffReadOnly, staffReadOnlyBox, useStaffReadOnly } from "./access/read-only.js";
+export {
+  ReadOnlyView as StaffReadOnly,
+  readOnlyBox as staffReadOnlyBox,
+  useReadOnlyView as useStaffReadOnly,
+} from "@auction/ui/lax";
 export {
   Permitted,
   StaffAccessProvider,
@@ -342,8 +351,11 @@ export {
 } from "./shell/theme.js";
 export type { OverflowAction } from "./shell/overflow-menu.js";
 export { SidebarNav, resolveActiveItem } from "./shell/sidebar-nav.js";
-export { PlainLink } from "./shell/link.js";
-export type { StaffLinkComponent, StaffLinkProps } from "./shell/link.js";
+export { PlainLink } from "@auction/ui/lax";
+export type {
+  LinkComponent as StaffLinkComponent,
+  LinkProps as StaffLinkProps,
+} from "@auction/ui/lax";
 export type {
   StaffBreadcrumb,
   StaffCommand,

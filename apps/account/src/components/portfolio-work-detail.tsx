@@ -170,7 +170,7 @@ export function PortfolioWorkDetail({ work }: { work: WorkDetailVm }) {
             {work.title}
           </h1>
           {work.artist ? <p className="text-sm text-on-surface-variant">{work.artist}</p> : null}
-          <StatusBadge variant={work.statusTone}>{work.statusLabel}</StatusBadge>
+          <StatusBadge tone={work.statusTone}>{work.statusLabel}</StatusBadge>
         </div>
       </header>
       <AcquisitionRecord work={work} />

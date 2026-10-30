@@ -103,7 +103,7 @@ export function AccountMenu({
                 <DropdownMenuRadioItem
                   key={option.value}
                   value={option.value}
-                  className="min-h-control-sm gap-2 rounded-staff-xs py-1.5 pr-2 pl-8 font-staff text-staff-sm text-staff-fg focus:bg-staff-hover [&>svg]:size-4 [&>svg]:text-staff-muted [&>span>span>svg]:size-2 [&>span>span>svg]:fill-staff-ink"
+                  className="min-h-control-sm gap-2 rounded-staff-sm py-1.5 pr-2 pl-8 font-staff text-staff-sm text-staff-fg focus:bg-staff-hover [&>svg]:size-4 [&>svg]:text-staff-muted [&>span>span>svg]:size-2 [&>span>span>svg]:fill-staff-ink"
                 >
                   {option.icon}
                   {option.label}

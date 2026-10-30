@@ -32,7 +32,7 @@ export function DisplayOverlayActions({ saleId, initialOverlay = null, className
       <SaleroomPendingSubmit
         pendingLabel="Sending…"
         variant={activeOverlay?.kind === "fair_warning" ? "primary" : "secondary"}
-        size="live"
+        size="lg"
         aria-pressed={activeOverlay?.kind === "fair_warning"}
         className="w-full sm:w-auto"
         onRun={() => adminSaleroomDisplayOverlayAction({ saleId, kind: "fair_warning" })}
@@ -47,7 +47,7 @@ export function DisplayOverlayActions({ saleId, initialOverlay = null, className
       <div className="flex w-full min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-end">
         <Field label="Announcement text" optional className="min-w-0 flex-1">
           <TextInput
-            size="live"
+            size="lg"
             value={announcement}
             onChange={(e) => setAnnouncement(e.target.value)}
             maxLength={500}
@@ -57,7 +57,7 @@ export function DisplayOverlayActions({ saleId, initialOverlay = null, className
         <SaleroomPendingSubmit
           pendingLabel="Sending…"
           variant={activeOverlay?.kind === "announcement" ? "primary" : "secondary"}
-          size="live"
+          size="lg"
           aria-pressed={activeOverlay?.kind === "announcement"}
           className="w-full sm:w-auto"
           onRun={() => {
@@ -84,7 +84,7 @@ export function DisplayOverlayActions({ saleId, initialOverlay = null, className
       <SaleroomPendingSubmit
         pendingLabel="Clearing…"
         variant="ghost"
-        size="live"
+        size="lg"
         className="w-full sm:w-auto"
         disabled={!hasActiveOverlay}
         onRun={() => adminSaleroomDisplayClearOverlayAction({ saleId })}

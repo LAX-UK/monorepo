@@ -145,14 +145,7 @@ export function ViewOnlyBadge({ role }: { role?: string }) {
 }
 
 /** A block placeholder with the exact geometry of what will load, so nothing shifts. */
-export function Skeleton({ className }: { className?: string }) {
-  return (
-    <span
-      aria-hidden
-      className={cn("block animate-pulse rounded-staff-xs bg-staff-neutral-bg", className)}
-    />
-  );
-}
+export { Skeleton } from "@auction/ui/lax";
 
 /**
  * A titled block on a record page: hairline card, 16px header row with an optional action, then
@@ -180,7 +173,7 @@ export function Section({
     <section
       {...(id ? { id } : {})}
       {...(headingId ? { "aria-labelledby": headingId } : {})}
-      className={cn("rounded-staff-md border border-staff-line bg-staff-surface", className)}
+      className={cn("rounded-staff-lg border border-staff-line bg-staff-surface", className)}
     >
       <header className="flex min-h-12 items-center justify-between gap-3 border-b border-staff-line-subtle px-4 py-2.5">
         <div className="min-w-0">

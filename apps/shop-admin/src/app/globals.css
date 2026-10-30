@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "@auction/branding/brand-primitives.css" layer(base);
 @import "@auction/branding/lax-system.css" layer(base);
+@import "@auction/ui/lax-theme.css";
 @import "@auction/staff-ui/theme.css";
 
 /* The shared @auction/ui controls (dialogs, selects, toasts) and the staff kit are compiled to

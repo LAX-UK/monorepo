@@ -130,7 +130,7 @@ export const FormErrorSummary = React.forwardRef<HTMLDivElement, FormErrorSummar
         role="alert"
         tabIndex={-1}
         aria-labelledby={titleId}
-        className="staff-focus flex gap-2.5 rounded-staff-md border border-staff-danger/30 bg-staff-danger-bg px-3 py-2.5 text-staff-sm text-staff-danger-fg"
+        className="staff-focus flex gap-2.5 rounded-staff-lg border border-staff-danger/30 bg-staff-danger-bg px-3 py-2.5 text-staff-sm text-staff-danger-fg"
       >
         <CircleAlert aria-hidden className="mt-0.5 size-4 shrink-0" />
         <div>
@@ -174,7 +174,7 @@ export function DangerZone({
   return (
     <section
       aria-label={title}
-      className={cn("rounded-staff-md border border-staff-danger/35 bg-staff-surface", className)}
+      className={cn("rounded-staff-lg border border-staff-danger/35 bg-staff-surface", className)}
     >
       <h2 className="border-b border-staff-danger/20 px-4 py-3 font-staff text-staff-md font-semibold text-staff-danger">
         {title}

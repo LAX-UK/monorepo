@@ -143,7 +143,7 @@ export function CorrectFactsDialog({
             {run.paidOrderCount === 1 ? "1 sale affected" : `${run.paidOrderCount} sales affected`}
           </h3>
           {run.affectedOrders.length > 0 ? (
-            <ul className="flex flex-col divide-y divide-staff-line-subtle rounded-staff-md border border-staff-line">
+            <ul className="flex flex-col divide-y divide-staff-line-subtle rounded-staff-lg border border-staff-line">
               {run.affectedOrders.map((order) => (
                 <li
                   key={order.orderId}

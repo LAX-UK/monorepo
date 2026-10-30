@@ -9,13 +9,11 @@ import {
   CommandList,
 } from "@auction/ui/components/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
+import { fieldBox, readOnlyBox, useField } from "@auction/ui/lax";
 import { Check, ChevronsUpDown, LoaderCircle } from "lucide-react";
 import * as React from "react";
-import { staffReadOnlyBox } from "../access/read-only.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
-import { staffFieldBox } from "../primitives/input.js";
 import { staffCommandClass, staffCommandItemClass } from "./command-styles.js";
-import { useStaffField } from "./field.js";
 
 export type EntityOption = {
   id: string;
@@ -67,7 +65,7 @@ export function EntityPicker({
   className,
   ...aria
 }: EntityPickerProps) {
-  const field = useStaffField();
+  const field = useField();
   const listId = React.useId();
   const [open, setOpen] = React.useState(false);
   const [query, setQuery] = React.useState("");
@@ -114,7 +112,7 @@ export function EntityPicker({
         aria-readonly="true"
         tabIndex={0}
         aria-labelledby={field.labelId}
-        className={cn(staffFieldBox, staffReadOnlyBox, "h-control-md text-staff-md", className)}
+        className={cn(fieldBox, readOnlyBox, "h-control-md text-staff-md", className)}
       >
         <span className="truncate">{current?.label ?? ""}</span>
       </div>
@@ -137,7 +135,7 @@ export function EntityPicker({
           {...(field?.describedBy ? { "aria-describedby": field.describedBy } : {})}
           {...(aria["aria-label"] ? { "aria-label": aria["aria-label"] } : {})}
           className={cn(
-            staffFieldBox,
+            fieldBox,
             "staff-focus staff-target h-control-md justify-between text-left text-staff-md",
             "aria-invalid:border-staff-danger disabled:cursor-not-allowed disabled:border-staff-line disabled:bg-staff-sunken disabled:text-staff-disabled",
             "data-[state=open]:border-staff-control-border-hover",

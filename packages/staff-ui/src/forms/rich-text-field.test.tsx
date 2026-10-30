@@ -1,6 +1,6 @@
+import { Field } from "@auction/ui/lax";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { Field } from "./field";
 import { RichTextField } from "./rich-text-field";
 import type { RichTextSpan } from "./rich-text-model";
 

@@ -1,9 +1,9 @@
 "use client";
 
+import { useField } from "@auction/ui/lax";
 import { FileUp, ImagePlus } from "lucide-react";
 import * as React from "react";
 import { cn } from "../lib/cn.js";
-import { useStaffField } from "./field.js";
 
 export type FileDropzoneProps = {
   /** Called with the chosen or dropped files that match `accept`. */
@@ -48,7 +48,7 @@ export function FileDropzone({
   kind = "image",
   className,
 }: FileDropzoneProps) {
-  const field = useStaffField();
+  const field = useField();
   const autoId = React.useId();
   const inputId = id ?? field?.controlId ?? `dropzone-${autoId}`;
   const hintId = hint ? `${inputId}-hint` : undefined;
@@ -80,7 +80,7 @@ export function FileDropzone({
         take(event.dataTransfer.files);
       }}
       className={cn(
-        "flex cursor-pointer rounded-staff-md border border-dashed",
+        "flex cursor-pointer rounded-staff-lg border border-dashed",
         compact
           ? "flex-row flex-wrap items-center gap-x-2 gap-y-0.5 px-3 py-2.5 text-left"
           : "flex-col items-center justify-center gap-1.5 px-4 py-6 text-center",

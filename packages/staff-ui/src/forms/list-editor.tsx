@@ -51,7 +51,7 @@ export function ListEditor<T>({
             return (
               <li
                 key={getKey(item, index)}
-                className="flex flex-col gap-3 rounded-staff-md border border-staff-line bg-staff-surface p-3 sm:flex-row sm:items-start"
+                className="flex flex-col gap-3 rounded-staff-lg border border-staff-line bg-staff-surface p-3 sm:flex-row sm:items-start"
               >
                 <div className="flex min-w-0 flex-1 flex-col gap-3">{renderItem(item, index)}</div>
                 {readOnly ? null : (

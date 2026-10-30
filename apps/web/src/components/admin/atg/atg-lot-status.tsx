@@ -15,7 +15,7 @@ export function AtgLotStatus({ lot }: { lot: AtgLotSyncView }) {
 
   return (
     <section
-      className="mb-6 flex flex-col gap-2 rounded-staff-md border border-staff-line bg-staff-surface px-4 py-3 text-staff-sm"
+      className="mb-6 flex flex-col gap-2 rounded-staff-lg border border-staff-line bg-staff-surface px-4 py-3 text-staff-sm"
       aria-label="ATG White Label status"
     >
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
