@@ -1,5 +1,6 @@
 import {
   domainEvent,
+  emailOutbox,
   shopAdminAudit,
   shopGeneralEnquiry,
   shopGuestCustomer,
@@ -25,6 +26,8 @@ import {
   setupShopIntegrationPools,
 } from "../../test-support/shop-integration-setup.js";
 import { createDrizzleOrderRepository } from "../drizzle-order.repository.js";
+import { createDrizzleShopNotificationPublisher } from "../drizzle-shop-notification.publisher.js";
+import { createEnquiryFollowUp } from "../enquiry-follow-up.js";
 import { createClaimGuestOrdersRunner } from "../scheduler/claim-guest-orders.runner.js";
 import { createDrizzleGuestCustomerStore } from "./drizzle-guest-customer.store.js";
 import { createDrizzleGuestErasureStore } from "./drizzle-guest-erasure.store.js";
@@ -269,5 +272,41 @@ describe.skipIf(!hasShopIntegrationDb)("guest checkout persistence", () => {
       kind: "blocked",
       reason: "already_erased",
     });
+  });
+
+  it("makes a guest enquiry a lead and emails the sender their copy", async () => {
+    const db = createShopDb(shopPool);
+    const email = `enquirer-${integrationSuffix("lead")}@example.com`;
+    const followUp = createEnquiryFollowUp({
+      notifications: createDrizzleShopNotificationPublisher(),
+      domainEventMode: "off",
+    });
+    const reference = `E-9${Date.now().toString().slice(-7)}`;
+    const enquiry = {
+      reference,
+      sender: { kind: "guest" as const, contactName: "Ana Collector", contactEmail: email },
+      phone: null,
+      salesChannel: "art" as const,
+      topic: "private_viewing" as const,
+    };
+    await db.transaction((tx) => followUp.afterStored(tx, enquiry, new Date()));
+    await db.transaction((tx) =>
+      followUp.afterStored(tx, { ...enquiry, reference: `${reference}1` }, new Date()),
+    );
+    const [lead] = await db
+      .select()
+      .from(shopGuestCustomer)
+      .where(eq(shopGuestCustomer.email, email));
+    expect(lead).toMatchObject({
+      source: "art_enquiry",
+      enquiryCount: 2,
+      checkoutStartedAt: null,
+      name: "Ana Collector",
+    });
+    const [copy] = await db
+      .select({ template: emailOutbox.template, to: emailOutbox.toSnapshot })
+      .from(emailOutbox)
+      .where(eq(emailOutbox.idempotencyKey, `enquiry-received:${reference}`));
+    expect(copy).toEqual({ template: "art-enquiry-received", to: email });
   });
 });
