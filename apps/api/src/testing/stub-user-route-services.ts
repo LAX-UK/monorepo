@@ -48,6 +48,9 @@ export function stubUserRouteServices(overrides?: Partial<UserRouteServices>): U
       archiveNotification: vi.fn(),
       markRead: vi.fn(),
       markAllRead: vi.fn(),
+      listMutes: vi.fn(),
+      muteAccount: vi.fn(),
+      unmuteAccount: vi.fn(),
     },
     preferencesHttp: {
       getVapidPublicKey: vi

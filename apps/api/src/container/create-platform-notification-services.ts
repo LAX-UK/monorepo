@@ -43,6 +43,7 @@ export function createPlatformNotificationServices(
     userRepo,
     notificationPreferenceRepository,
     notificationOutboxRepository,
+    notificationAccountMuteRepository,
   } = repos;
 
   const notifier = new RedisNotificationSender(redis);
@@ -74,6 +75,7 @@ export function createPlatformNotificationServices(
     channels,
     notificationPreferenceRepository,
     quietHoursChecker,
+    notificationAccountMuteRepository,
   );
   const notificationOutboxService = new NotificationOutboxService(notificationOutboxRepository);
   const notificationOutboxProcessor = new NotificationOutboxProcessor(

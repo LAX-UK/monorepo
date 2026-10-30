@@ -49,6 +49,7 @@ export function createTestUserRouteServicesInput(
       markRead: vi.fn(),
       markAllRead: vi.fn(),
     } as never,
+    notificationAccountMuteService: { list: vi.fn(), mute: vi.fn(), unmute: vi.fn() },
     vapidPublicKey: null,
     pushSubscriptionRepository: {
       findByUser: vi.fn(async () => []),

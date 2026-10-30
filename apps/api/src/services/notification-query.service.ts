@@ -2,7 +2,7 @@ import type {
   INotificationReadRepository,
   NotificationListFilter,
 } from "@auction/persistence/interfaces";
-import type { UserNotification } from "@auction/types";
+import type { UserNotification, UserNotificationListItem } from "@auction/types";
 
 /** SRP: persisted notification reads for the dashboard / header. */
 export class NotificationQueryService {
@@ -12,7 +12,10 @@ export class NotificationQueryService {
     return this.notifications.findByUser(userId, limit);
   }
 
-  listForUserFiltered(userId: string, filter: NotificationListFilter): Promise<UserNotification[]> {
+  listForUserFiltered(
+    userId: string,
+    filter: NotificationListFilter,
+  ): Promise<UserNotificationListItem[]> {
     return this.notifications.findByUserFiltered(userId, filter);
   }
 

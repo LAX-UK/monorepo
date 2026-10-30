@@ -14,6 +14,32 @@ export type UserNotification = {
   createdAt: Date;
 };
 
+/**
+ * The account an inbox notification is about, with what the client needs to open it there:
+ * opening a notification for another account switches to it when the person is still a member.
+ */
+export type NotificationAccount = {
+  legalEntityId: string;
+  kind: "personal" | "organisation";
+  displayName: string;
+  /** The person is still an active member, so the client can switch to this account. */
+  canSwitch: boolean;
+};
+
+/** One inbox row: the notification and its account (`null` for the person's own account). */
+export type UserNotificationListItem = UserNotification & {
+  account: NotificationAccount | null;
+  /** The notification asks the person to do something (see the "Needs action" view). */
+  needsAction: boolean;
+};
+
+/** An organisation the person has muted in their notifications. */
+export type NotificationAccountMute = {
+  legalEntityId: string;
+  displayName: string;
+  mutedAt: string;
+};
+
 export type NotificationPreference = {
   userId: string;
   outbidInApp: boolean;
