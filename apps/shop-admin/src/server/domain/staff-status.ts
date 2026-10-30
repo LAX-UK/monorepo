@@ -112,7 +112,7 @@ const LAX_STATUS: Record<LaxStatusDomain, Readonly<Record<string, StatusPresenta
     cancelled: { label: "Withdrawn", tone: "neutral" },
   },
   artwork: {
-    live: { label: "Live", tone: "success" },
+    live: { label: "Live", tone: "success", shape: "dot" },
     draft: { label: "Draft", tone: "info" },
     sold_out: { label: "Sold out", tone: "warning" },
     archived: { label: "Archived", tone: "neutral" },

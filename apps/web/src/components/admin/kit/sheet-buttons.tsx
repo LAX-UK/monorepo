@@ -13,7 +13,12 @@ const VARIANT_STATES: ReadonlyArray<{
   hover: string;
   pressed: string;
 }> = [
-  { variant: "primary", label: "Primary", hover: "bg-lax-ink-hover", pressed: "opacity-90" },
+  {
+    variant: "primary",
+    label: "Primary",
+    hover: "bg-lax-ink-hover",
+    pressed: "bg-lax-ink-pressed",
+  },
   {
     variant: "secondary",
     label: "Secondary",

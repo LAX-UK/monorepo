@@ -30,7 +30,7 @@ export const buttonVariants = cva(
       variant: {
         primary: [
           "bg-lax-ink text-lax-on-ink",
-          "hover:bg-lax-ink-hover active:opacity-90",
+          "hover:bg-lax-ink-hover active:bg-lax-ink-pressed",
           "disabled:bg-lax-line disabled:text-lax-disabled-fg aria-disabled:bg-lax-line aria-disabled:text-lax-disabled-fg aria-disabled:opacity-100",
         ],
         secondary: [
@@ -48,7 +48,7 @@ export const buttonVariants = cva(
         ],
         danger: [
           "bg-lax-danger-solid text-lax-on-danger",
-          "hover:bg-lax-danger-solid-hover active:opacity-90",
+          "hover:bg-lax-danger-solid-hover active:bg-lax-danger-solid-pressed",
           "disabled:bg-lax-line disabled:text-lax-disabled-fg aria-disabled:bg-lax-line aria-disabled:text-lax-disabled-fg aria-disabled:opacity-100",
         ],
         "danger-secondary": [

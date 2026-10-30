@@ -79,6 +79,7 @@
   --color-lax-subtle: var(--lax-subtle);
   --color-lax-ink: var(--lax-ink);
   --color-lax-ink-hover: var(--lax-ink-hover);
+  --color-lax-ink-pressed: var(--lax-ink-pressed);
   --color-lax-on-ink: var(--lax-on-ink);
   --color-lax-focus: var(--lax-focus);
   --color-lax-thumb: var(--lax-thumb);
@@ -104,6 +105,7 @@
   --color-lax-danger: var(--lax-danger);
   --color-lax-danger-solid: var(--lax-danger-solid);
   --color-lax-danger-solid-hover: var(--lax-danger-solid-hover);
+  --color-lax-danger-solid-pressed: var(--lax-danger-solid-pressed);
   --color-lax-on-danger: var(--lax-on-danger);
   --color-lax-live-dot: var(--lax-live-dot);
   --color-lax-live-bg: var(--lax-live-bg);
