@@ -84,6 +84,7 @@ export { DrizzleWatchlistRepository } from "./drizzle-watchlist.repository.js";
 export { DrizzleArtistWatchlistRepository } from "./drizzle-artist-watchlist.repository.js";
 export { DrizzleNotificationReadRepository } from "./drizzle-notification-read.repository.js";
 export { DrizzleNotificationWriteRepository } from "./drizzle-notification-write.repository.js";
+export { DrizzleNotificationAccountMuteRepository } from "./drizzle-notification-account-mute.repository.js";
 export {
   DrizzleNotificationOutboxRepository,
   NOTIFICATION_OUTBOX_MAX_ATTEMPTS,

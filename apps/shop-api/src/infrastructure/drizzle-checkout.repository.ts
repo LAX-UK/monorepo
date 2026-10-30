@@ -13,6 +13,8 @@ import {
 import { isUkPostcode, normalizeUkPostcode, vatIncludedIn } from "@auction/shop-domain";
 import { eq } from "drizzle-orm";
 import type {
+  BasketOwner,
+  CheckoutOrderInput,
   CheckoutWriter,
   PaymentCheckoutGateway,
 } from "../application/ports/commerce.ports.js";
@@ -41,6 +43,14 @@ import { resolveOrCreateStripeCheckoutSession } from "./shop-checkout-stripe-ses
 import { createShopDomainEventPublisher } from "./shop-domain-event-publisher.js";
 
 const CHECKOUT_SESSION_TTL_MS = 30 * 60 * 1000;
+
+/** A signed-in order needs the shopper's basket; a guest order the browser's anonymous one. */
+function ownsBasket(owner: BasketOwner, input: CheckoutOrderInput): boolean {
+  if (input.guest) {
+    return owner.kind === "anonymous" && owner.tokenHash === input.guest.basketTokenHash;
+  }
+  return owner.kind === "subject" && owner.identitySubjectId === input.subject;
+}
 
 export function createDrizzleCheckoutRepository(
   db: Database,
@@ -153,7 +163,7 @@ export function createDrizzleCheckoutRepository(
       }
 
       const basket = await loadBasketRecord(db, input.basketId);
-      if (basket.owner.kind !== "subject" || basket.owner.identitySubjectId !== input.subject) {
+      if (!ownsBasket(basket.owner, input)) {
         throw new ShopApiError(SHOP_API_ERROR_CODES.FORBIDDEN, "Basket ownership mismatch", 403);
       }
       if (basket.lines.length === 0) {
@@ -205,6 +215,7 @@ export function createDrizzleCheckoutRepository(
             .insert(shopOrder)
             .values({
               identitySubjectId: input.subject,
+              guestCustomerId: input.guest?.guestCustomerId ?? null,
               fulfilment: input.fulfilment,
               merchandiseSubtotalPence: merchandiseSubtotal,
               fulfilmentSurchargePence: fulfilmentSurcharge,

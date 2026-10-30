@@ -9,12 +9,23 @@ export type MarketingHorizontalRailScrollerTag = "ul" | "section" | "div";
 
 export type MarketingHorizontalRailControls = "forward-only" | "arrows-progress";
 
+/**
+ * `overlay`: arrows over the rail's ends, progress under it. `below`: one row under the rail with
+ * the back arrow, the progress and the forward arrow (Figma Art Hub carousels, `992:14233`). Both
+ * arrows stay in place and disable at the ends, so the row never shifts.
+ */
+export type MarketingHorizontalRailControlsPlacement = "overlay" | "below";
+
 export type MarketingHorizontalRailProps = {
   id: string;
   ariaLabel: string;
   forwardAriaLabel: string;
   backAriaLabel?: string;
   controls?: MarketingHorizontalRailControls;
+  /** Only with `arrows-progress`; defaults to `overlay`. */
+  controlsPlacement?: MarketingHorizontalRailControlsPlacement;
+  /** Fades the trailing edge while more items wait off screen; off for full-bleed peek rails. */
+  edgeFade?: boolean;
   scrollerAs?: MarketingHorizontalRailScrollerTag;
   scrollerClassName?: string;
   forwardButtonClassName?: string;
@@ -31,9 +42,29 @@ const RAIL_BUTTON_BASE_CLASS =
 const DEFAULT_FORWARD_BUTTON_CLASS = cn(RAIL_BUTTON_BASE_CLASS, "right-0");
 const DEFAULT_BACK_BUTTON_CLASS = cn(RAIL_BUTTON_BASE_CLASS, "left-0");
 
+/** In-flow arrows under the rail: shown at every width, quiet (not hidden) at the ends. */
+const BELOW_BUTTON_CLASS =
+  "size-11 shrink-0 rounded-full border border-outline-variant bg-surface text-on-surface outline-offset-2 hover:bg-surface-container-low focus-visible:outline focus-visible:outline-2 focus-visible:outline-ring disabled:border-border-hairline disabled:bg-transparent disabled:text-on-surface-variant disabled:opacity-100 dark:bg-surface-container-low dark:hover:bg-surface-container";
+
 function prefersReducedMotion(): boolean {
   if (typeof window === "undefined") return false;
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+/** Thin track with the scrolled share filled; decorative, the arrows carry the meaning. */
+function RailProgress({ progress, className }: { progress: number; className?: string }) {
+  return (
+    <div
+      className={cn("h-0.5 overflow-hidden rounded-full bg-outline-variant/40", className)}
+      aria-hidden
+      data-testid="marketing-rail-progress"
+    >
+      <div
+        className="h-full bg-on-surface transition-[width] duration-[var(--motion-duration-fast,150ms)] motion-reduce:transition-none"
+        style={{ width: `${Math.max(8, Math.round(progress * 100))}%` }}
+      />
+    </div>
+  );
 }
 
 export function MarketingHorizontalRail({
@@ -42,6 +73,8 @@ export function MarketingHorizontalRail({
   forwardAriaLabel,
   backAriaLabel = "Scroll back",
   controls = "forward-only",
+  controlsPlacement = "overlay",
+  edgeFade = true,
   scrollerAs = "div",
   scrollerClassName,
   forwardButtonClassName,
@@ -53,6 +86,7 @@ export function MarketingHorizontalRail({
   const [canScrollStart, setCanScrollStart] = useState(false);
   const [scrollProgress, setScrollProgress] = useState(0);
   const showArrows = controls === "arrows-progress";
+  const below = showArrows && controlsPlacement === "below";
 
   const updateScrollHint = useCallback(() => {
     const el = scrollerRef.current;
@@ -98,6 +132,34 @@ export function MarketingHorizontalRail({
     children,
   };
 
+  const backButton = (className: string) => (
+    <Button
+      type="button"
+      variant="ghost"
+      onClick={() => scrollByDirection("back")}
+      className={className}
+      aria-label={backAriaLabel}
+      aria-controls={id}
+      {...(below ? { disabled: !canScrollStart } : {})}
+    >
+      <MarketingCarouselPreviousIcon />
+    </Button>
+  );
+  const forwardButton = (className: string) => (
+    <Button
+      type="button"
+      variant="ghost"
+      onClick={() => scrollByDirection("forward")}
+      className={className}
+      aria-label={forwardAriaLabel}
+      aria-controls={id}
+      {...(below ? { disabled: !canScrollEnd } : {})}
+    >
+      <MarketingCarouselNextIcon />
+    </Button>
+  );
+  const scrollable = canScrollStart || canScrollEnd;
+
   return (
     <div className={cn("relative", wrapperClassName)}>
       {scrollerAs === "ul" ? (
@@ -107,47 +169,37 @@ export function MarketingHorizontalRail({
       ) : (
         <div {...scrollerProps} ref={scrollerRef as RefObject<HTMLDivElement>} />
       )}
-      {canScrollEnd ? (
+      {edgeFade && canScrollEnd ? (
         <div
           className="pointer-events-none absolute inset-y-0 right-0 z-[1] hidden w-16 bg-gradient-to-l from-page-bg via-page-bg/90 to-transparent sm:block"
           aria-hidden
         />
       ) : null}
-      {showArrows && canScrollStart ? (
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => scrollByDirection("back")}
-          className={DEFAULT_BACK_BUTTON_CLASS}
-          aria-label={backAriaLabel}
-          aria-controls={id}
-        >
-          <MarketingCarouselPreviousIcon />
-        </Button>
-      ) : null}
-      {canScrollEnd ? (
-        <Button
-          type="button"
-          variant="ghost"
-          onClick={() => scrollByDirection("forward")}
-          className={cn(DEFAULT_FORWARD_BUTTON_CLASS, forwardButtonClassName)}
-          aria-label={forwardAriaLabel}
-          aria-controls={id}
-        >
-          <MarketingCarouselNextIcon />
-        </Button>
-      ) : null}
-      {showArrows && (canScrollStart || canScrollEnd) ? (
-        <div
-          className="mx-auto mt-6 hidden h-0.5 max-w-xs overflow-hidden rounded-full bg-outline-variant/40 sm:block"
-          aria-hidden
-        >
+      {below ? (
+        scrollable ? (
           <div
-            className="h-full bg-on-surface transition-[width] duration-[var(--motion-duration-fast,150ms)] motion-reduce:transition-none"
-            style={{ width: `${Math.max(8, Math.round(scrollProgress * 100))}%` }}
-          />
-        </div>
-      ) : null}
+            className="mt-6 flex items-center justify-center gap-4 px-4 sm:mt-8 sm:gap-6"
+            data-testid="marketing-rail-controls"
+          >
+            {backButton(BELOW_BUTTON_CLASS)}
+            <RailProgress progress={scrollProgress} className="w-full max-w-xs sm:max-w-md" />
+            {forwardButton(BELOW_BUTTON_CLASS)}
+          </div>
+        ) : null
+      ) : (
+        <>
+          {showArrows && canScrollStart ? backButton(DEFAULT_BACK_BUTTON_CLASS) : null}
+          {canScrollEnd
+            ? forwardButton(cn(DEFAULT_FORWARD_BUTTON_CLASS, forwardButtonClassName))
+            : null}
+          {showArrows && scrollable ? (
+            <RailProgress
+              progress={scrollProgress}
+              className="mx-auto mt-6 hidden max-w-xs sm:block"
+            />
+          ) : null}
+        </>
+      )}
     </div>
   );
 }

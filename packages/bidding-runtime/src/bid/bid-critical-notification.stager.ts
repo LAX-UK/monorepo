@@ -17,6 +17,7 @@ function notificationRowToPayload(row: CreateNotificationRow): NotificationPaylo
     message: row.message,
     lotId: row.lotId,
     submissionId: row.submissionId,
+    legalEntityId: row.legalEntityId,
     ...(row.meta != null ? { meta: row.meta } : {}),
   };
 }
@@ -33,6 +34,8 @@ export class BidCriticalNotificationStager {
     lotRow: Lot;
     created: Bid;
     prevWinnerId: string | null;
+    /** The account the outbid bid was placed for. */
+    prevWinnerLegalEntityId: string | null;
     endedEarly: boolean;
     bids: IBidRepository;
     tx: Database;
@@ -60,9 +63,14 @@ export class BidCriticalNotificationStager {
         {
           userId: params.prevWinnerId,
           payload: notificationRowToPayload(
-            this.notificationFactory.createOutbid(lotForNotify, params.prevWinnerId, {
-              currentBid: params.created.amount,
-            }),
+            this.notificationFactory.createOutbid(
+              lotForNotify,
+              params.prevWinnerId,
+              params.prevWinnerLegalEntityId,
+              {
+                currentBid: params.created.amount,
+              },
+            ),
           ),
           idempotencyKey: `outbid:${params.lotId}:${params.created.id}:${params.prevWinnerId}`,
         },
@@ -102,14 +110,14 @@ export class BidCriticalNotificationStager {
         );
       }
 
-      const bidderIds = await params.bids.listDistinctBidderIds(params.lotId);
-      for (const uid of bidderIds) {
+      const bidders = await params.bids.listDistinctBidderAccounts(params.lotId);
+      for (const { userId: uid, legalEntityId } of bidders) {
         if (uid === createdUserId) continue;
         await this.notificationOutbox.stageDispatch(
           {
             userId: uid,
             payload: notificationRowToPayload(
-              this.notificationFactory.createLost(lotForNotify, uid),
+              this.notificationFactory.createLost(lotForNotify, uid, legalEntityId),
             ),
             idempotencyKey: `lot_lost:${params.lotId}:${uid}`,
           },

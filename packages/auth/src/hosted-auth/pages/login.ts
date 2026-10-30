@@ -44,7 +44,7 @@ function emailFirstBody(view: HostedAuthView): string {
     ${socialActions(view)}
     <form id="login-form" class="auth-form" novalidate>
       <div class="auth-step" data-login-step="email">
-        ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username" })}
+        ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username", ...(view.flow.loginHint ? { value: view.flow.loginHint } : {}) })}
         ${hostedButton({ label: "Continue", loadingLabel: "Continue" })}
       </div>
       <div class="auth-step" data-login-step="credentials" hidden>
@@ -82,7 +82,7 @@ function combinedBody(view: HostedAuthView): string {
   return `<div id="login-root" class="auth-stack" data-email-first="false">
     ${socialActions(view)}
     <form id="login-form" class="auth-form" novalidate>
-      ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username" })}
+      ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username", ...(view.flow.loginHint ? { value: view.flow.loginHint } : {}) })}
       ${passwordField({ id: "password", label: "Password", autocomplete: "current-password" })}
       <div class="field-row-end">${continuationAnchor("Forgot password?", "/forgot-password", view.flow)}</div>
       ${hostedButton({ label: "Sign in", loadingLabel: "Signing in…" })}

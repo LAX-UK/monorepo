@@ -66,7 +66,7 @@ export async function proxyAuthenticatedCommerce(
 /** Only these response headers reach the browser with a file; nothing else from upstream does. */
 const FILE_HEADERS = ["content-type", "content-disposition", "content-length"] as const;
 
-function proxyFile(c: Context, response: Response) {
+export function proxyFile(c: Context, response: Response) {
   const headers: Record<string, string> = { "cache-control": "private, no-store" };
   for (const name of FILE_HEADERS) {
     const value = response.headers.get(name);

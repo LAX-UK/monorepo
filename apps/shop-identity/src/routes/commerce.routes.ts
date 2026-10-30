@@ -7,6 +7,7 @@ import { registerCommerceArtistApplicationRoutes } from "./commerce/artist-appli
 import { registerCommerceBasketRoutes } from "./commerce/basket.routes.js";
 import { registerCommerceCheckoutRoutes } from "./commerce/checkout.routes.js";
 import type { CommerceRoutesDeps } from "./commerce/commerce-route-types.js";
+import { registerCommerceGuestCheckoutRoutes } from "./commerce/guest-checkout.routes.js";
 import { registerCommerceInterestRoutes } from "./commerce/interest.routes.js";
 import { registerCommerceMeRoutes } from "./commerce/me.routes.js";
 import { registerCommerceOrdersRoutes } from "./commerce/orders.routes.js";
@@ -25,6 +26,7 @@ export function registerCommerceRoutes(app: Hono, deps: CommerceRoutesDeps): voi
 
   registerCommerceBasketRoutes(app, deps, storefrontOrigin);
   registerCommerceCheckoutRoutes(app, deps, storefrontOrigin);
+  registerCommerceGuestCheckoutRoutes(app, deps, storefrontOrigin);
   registerCommerceOrdersRoutes(app, deps);
   registerCommerceInterestRoutes(app, deps);
   registerCommerceMeRoutes(app, deps);

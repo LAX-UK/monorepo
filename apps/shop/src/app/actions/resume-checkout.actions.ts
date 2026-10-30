@@ -1,5 +1,6 @@
 "use server";
 
+import { orderCommercePath } from "@/lib/checkout/order-commerce-path.server";
 import { commerceErrorMessage } from "@/lib/commerce-error-message";
 import { fetchShopCommerceCsrfForMutation } from "@/lib/shop-commerce-mutation.server";
 import { shopCommerceRequest } from "@/lib/shop-commerce-request.server";
@@ -21,7 +22,7 @@ export async function resumeCheckoutPayment(
   const proto = headerStore.get("x-forwarded-proto") ?? "http";
   const origin = `${proto}://${host}`;
   const response = await shopCommerceRequest(
-    `/commerce/orders/${encodeURIComponent(orderId)}/resume-checkout`,
+    await orderCommercePath(orderId, "resume-checkout"),
     {
       method: "POST",
       headers: {

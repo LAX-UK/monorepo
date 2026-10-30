@@ -28,6 +28,8 @@ export function registerShopAuthPlugin(
     const protectedCommerce =
       path.startsWith("/v1/basket") ||
       path.startsWith("/v1/orders") ||
+      path.startsWith("/v1/guest-checkout/") ||
+      path.startsWith("/v1/guest-orders/") ||
       path.startsWith("/v1/me/") ||
       /\/v1\/artworks\/[^/]+\/interest$/.test(path);
     if (!protectedCommerce) {

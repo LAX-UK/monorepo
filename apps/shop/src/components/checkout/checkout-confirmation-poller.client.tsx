@@ -7,10 +7,12 @@ import { useEffect, useState } from "react";
 type Props = {
   active: boolean;
   orderId?: string;
+  /** A guest's order page; a guest has no order history to go to. */
+  guestOrderHref?: string;
 };
 
 /** Refreshes confirmation while payment processes; offers manual refresh after 30s. */
-export function CheckoutConfirmationPoller({ active, orderId }: Props) {
+export function CheckoutConfirmationPoller({ active, orderId, guestOrderHref }: Props) {
   const router = useRouter();
   const [pollingEnded, setPollingEnded] = useState(false);
 
@@ -47,12 +49,20 @@ export function CheckoutConfirmationPoller({ active, orderId }: Props) {
           <ShopCommerceButton type="button" onClick={() => router.refresh()}>
             Check payment status
           </ShopCommerceButton>
-          {orderId ? (
-            <ShopCommerceOutlineLink href={`/account/orders/${orderId}`}>
-              View order
-            </ShopCommerceOutlineLink>
-          ) : null}
-          <ShopCommerceOutlineLink href="/account/orders">Order history</ShopCommerceOutlineLink>
+          {guestOrderHref ? (
+            <ShopCommerceOutlineLink href={guestOrderHref}>View order</ShopCommerceOutlineLink>
+          ) : (
+            <>
+              {orderId ? (
+                <ShopCommerceOutlineLink href={`/account/orders/${orderId}`}>
+                  View order
+                </ShopCommerceOutlineLink>
+              ) : null}
+              <ShopCommerceOutlineLink href="/account/orders">
+                Order history
+              </ShopCommerceOutlineLink>
+            </>
+          )}
         </div>
       ) : null}
     </div>

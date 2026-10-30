@@ -95,6 +95,7 @@ export function buildAuthorizeUrl(input: {
   scopes?: string[];
   prompt?: OidcAuthorizePrompt;
   maxAge?: number;
+  loginHint?: string;
 }): string {
   return buildAuthorizeUrlCore({
     authorizationEndpoint: input.discovery.authorization_endpoint,
@@ -114,6 +115,7 @@ export function buildAuthorizeUrl(input: {
     codeChallenge: input.params.codeChallenge,
     ...(input.prompt ? { prompt: input.prompt } : {}),
     ...(input.maxAge != null ? { maxAge: input.maxAge } : {}),
+    ...(input.loginHint ? { loginHint: input.loginHint } : {}),
   });
 }
 

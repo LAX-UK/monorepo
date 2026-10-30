@@ -162,6 +162,27 @@ describe("renderEmail", () => {
     expect(refund.text).toContain("for your order LAX-S-10482");
   });
 
+  it("tells a guest the receipt link opens the order and how to keep it in an account", async () => {
+    const rendered = await renderEmail("shop-order-receipt", {
+      orderId: "ord-1",
+      orderReference: "LAX-S-10482",
+      totalAmount: "£135.00",
+      orderUrl: "https://shop.lax.art/orders/guest/token",
+      lineSummary: "Warm Basket (edition 3) — £120.00",
+      guest: true,
+    });
+    expect(rendered.text).toContain("without an account for 30 days");
+    expect(rendered.text).toContain("Create a LAX account with this email");
+
+    const link = await renderEmail("shop-guest-order-link", {
+      orderReference: "LAX-S-10482",
+      orderUrl: "https://shop.lax.art/orders/guest/token",
+      expiresOn: "29 November 2026",
+    });
+    expect(link.subject).toBe("Your link to your LAX Shop order");
+    expect(link.text).toContain("until 29 November 2026");
+  });
+
   it("renders payment-invoice with bill-to block", async () => {
     const rendered = await renderEmail("payment-invoice", {
       userName: "Ada",

@@ -498,6 +498,50 @@
   font-size: var(--shop-text-sm);
 }
 
+/* Guest checkout: the email step, and the sign-in answer for an email with a LAX account. */
+.shop-guest-email {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-6);
+}
+
+.shop-guest-email__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shop-space-3);
+}
+
+@media (max-width: 47.99rem) {
+  .shop-guest-email__actions .shop-button {
+    width: 100%;
+  }
+}
+
+.shop-guest-email__privacy,
+.shop-guest-known__text {
+  margin: 0;
+  font-size: var(--shop-text-sm);
+  line-height: 1.25rem;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-guest-known__text {
+  font-size: var(--shop-text-md);
+  line-height: 1.5rem;
+  color: var(--color-on-surface);
+}
+
+/* Focused only so the answer is read out; it is not a control. */
+.shop-guest-known__heading:focus {
+  outline: none;
+}
+
+.shop-guest-known__text strong {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
 /* Legacy cancel page heading. */
 .shop-checkout__legend {
   margin: 0 0 0.75rem;
@@ -1071,4 +1115,107 @@ a.shop-checkout-steps__link:hover .shop-checkout-steps__label {
 .shop-checkout input,
 .shop-checkout__saved {
   scroll-margin-top: calc(var(--shop-header-height, 5rem) + var(--shop-space-6));
+}
+
+/* After a guest order: the offer to keep it in a LAX account. */
+@media (min-width: 48rem) {
+  .shop-guest-offer__action {
+    align-self: flex-start;
+    width: auto;
+  }
+}
+
+/* A guest's order page: as wide as checkout, so the order panels sit side by side. */
+.shop-commerce-content.shop-guest-order {
+  max-width: 72rem;
+  gap: var(--shop-space-6);
+}
+
+/* An expired or broken link: what happened, then the form for a new link, in one calm column. */
+.shop-guest-order__problem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-6);
+  width: 100%;
+  max-width: 36rem;
+  margin: var(--shop-space-8) auto 0;
+}
+
+/*
+ * Phones: the order sits closed at the top of checkout with its total; the side panel keeps the
+ * totals and the pay button. From 1024px the side panel shows everything and this goes away.
+ */
+.shop-checkout-disclosure {
+  border: 1px solid var(--color-border-hairline);
+  border-radius: var(--radius-card);
+  background: var(--color-surface-container-low);
+}
+
+.shop-checkout-disclosure__toggle {
+  display: flex;
+  width: 100%;
+  min-height: 3rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--shop-space-4);
+  padding: var(--shop-space-3) var(--shop-space-4);
+  border: 0;
+  border-radius: var(--radius-card);
+  background: transparent;
+  font: inherit;
+  font-size: var(--shop-text-md);
+  color: var(--color-on-surface);
+  cursor: pointer;
+}
+
+.shop-checkout-disclosure__toggle:hover .shop-checkout-disclosure__label {
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+
+.shop-checkout-disclosure__label {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--shop-space-2);
+  font-weight: 500;
+}
+
+.shop-checkout-disclosure__chevron {
+  transition: transform 150ms ease;
+}
+
+.shop-checkout-disclosure.is-open .shop-checkout-disclosure__chevron {
+  transform: rotate(180deg);
+}
+
+.shop-checkout-disclosure__total {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.shop-checkout-disclosure__panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-4);
+  padding: 0 var(--shop-space-4) var(--shop-space-4);
+}
+
+.shop-checkout__summary-side-lines {
+  display: none;
+}
+
+@media (min-width: 64rem) {
+  .shop-checkout-disclosure {
+    display: none;
+  }
+
+  .shop-checkout__summary-side-lines {
+    display: block;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .shop-checkout-disclosure__chevron {
+    transition: none;
+  }
 }

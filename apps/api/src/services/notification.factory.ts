@@ -8,6 +8,7 @@ export class NotificationFactory implements INotificationFactory {
   createOutbid(
     lot: Lot,
     outbidUserId: string,
+    legalEntityId: string | null,
     opts?: { currentBid?: string },
   ): CreateNotificationRow {
     return {
@@ -16,6 +17,7 @@ export class NotificationFactory implements INotificationFactory {
       title: "You have been outbid",
       message: `Another bidder placed a higher bid on "${lot.title}".`,
       lotId: lot.id,
+      legalEntityId,
       meta: { lotTitle: lot.title, ...(opts?.currentBid ? { bidAmount: opts.currentBid } : {}) },
     };
   }
@@ -31,6 +33,7 @@ export class NotificationFactory implements INotificationFactory {
       title: "Congratulations — you won",
       message: `You won "${lot.title}". Complete payment from your portfolio when ready.`,
       lotId: lot.id,
+      legalEntityId: lot.buyerLegalEntityId ?? null,
       meta: {
         lotTitle: lot.title,
         bidAmount: lot.currentPrice,
@@ -54,6 +57,7 @@ export class NotificationFactory implements INotificationFactory {
         ? `"${lot.title}" sold with a hammer price of ${opts?.hammerPrice} GBP.`
         : `"${lot.title}" closed without a sale. Choose what happens next: relist it, offer it by private sale, or have it returned.`,
       lotId: lot.id,
+      legalEntityId: lot.sellerLegalEntityId ?? null,
       meta: {
         lotTitle: lot.title,
         outcome: sold ? "sold" : "unsold",
@@ -62,24 +66,26 @@ export class NotificationFactory implements INotificationFactory {
     };
   }
 
-  createLost(lot: Lot, bidderId: string): CreateNotificationRow {
+  createLost(lot: Lot, bidderId: string, legalEntityId: string | null): CreateNotificationRow {
     return {
       userId: bidderId,
       type: "lot_lost",
       title: "Lot ended",
       message: `The lot "${lot.title}" has ended. Another bidder had the winning bid.`,
       lotId: lot.id,
+      legalEntityId,
       meta: { lotTitle: lot.title },
     };
   }
 
-  createEndingSoon(lot: Lot, userId: string): CreateNotificationRow {
+  createEndingSoon(lot: Lot, userId: string, legalEntityId: string | null): CreateNotificationRow {
     return {
       userId,
       type: "lot_ending_soon",
       title: "Lot ending soon",
       message: `"${lot.title}" ends in about one hour.`,
       lotId: lot.id,
+      legalEntityId,
       meta: { lotTitle: lot.title },
     };
   }
@@ -91,6 +97,7 @@ export class NotificationFactory implements INotificationFactory {
       title: "Saved lot is now live",
       message: `"${lot.title}" is now accepting bids.`,
       lotId: lot.id,
+      legalEntityId: null,
       meta: { lotTitle: lot.title },
     };
   }
@@ -102,6 +109,7 @@ export class NotificationFactory implements INotificationFactory {
       title: "Saved lot ending soon",
       message: `"${lot.title}" ends in about one hour.`,
       lotId: lot.id,
+      legalEntityId: null,
       meta: { lotTitle: lot.title },
     };
   }
@@ -113,6 +121,7 @@ export class NotificationFactory implements INotificationFactory {
       title: "Payment received",
       message: `Your payment for "${lot.title}" was recorded.`,
       lotId: lot.id,
+      legalEntityId: lot.buyerLegalEntityId ?? null,
       meta: { lotTitle: lot.title, audience: "buyer", ...(amount ? { amount } : {}) },
     };
   }
@@ -128,17 +137,23 @@ export class NotificationFactory implements INotificationFactory {
       title: "Payment received",
       message: `Payment of ${amount} was recorded for "${lot.title}".`,
       lotId: lot.id,
+      legalEntityId: lot.sellerLegalEntityId ?? null,
       meta: { lotTitle: lot.title, audience: "seller", amount },
     };
   }
 
-  createConditionReportReady(lot: Lot, userId: string): CreateNotificationRow {
+  createConditionReportReady(
+    lot: Lot,
+    userId: string,
+    legalEntityId: string | null,
+  ): CreateNotificationRow {
     return {
       userId,
       type: "condition_report_ready",
       title: "Condition report ready",
       message: `Your condition report for "${lot.title}" is ready to view.`,
       lotId: lot.id,
+      legalEntityId,
       meta: { lotTitle: lot.title },
     };
   }
@@ -146,6 +161,7 @@ export class NotificationFactory implements INotificationFactory {
   createConditionReportDeclined(
     lot: Lot,
     userId: string,
+    legalEntityId: string | null,
     responseNote?: string | null,
   ): CreateNotificationRow {
     const detail =
@@ -158,6 +174,7 @@ export class NotificationFactory implements INotificationFactory {
       title: "Condition report unavailable",
       message: `We could not provide a condition report for "${lot.title}".${detail}`,
       lotId: lot.id,
+      legalEntityId,
       meta: { lotTitle: lot.title },
     };
   }
@@ -174,6 +191,7 @@ export class NotificationFactory implements INotificationFactory {
       title: `Payment due — ${lot.title}`,
       message: `Complete payment of ${input.amount} GBP for this lot.${dueSuffix}`,
       lotId: lot.id,
+      legalEntityId: lot.buyerLegalEntityId ?? null,
       meta: {
         paymentId: input.paymentId,
         amount: input.amount,
@@ -221,11 +239,12 @@ export class NotificationFactory implements INotificationFactory {
 
   createPayoutProblem(
     userId: string,
-    input: { payoutId: string; amount: string; currency: string },
+    input: { payoutId: string; amount: string; currency: string; legalEntityId: string },
   ): CreateNotificationRow {
     return {
       userId,
       type: "payout_problem",
+      legalEntityId: input.legalEntityId,
       title: "A payout didn't reach your bank",
       message: `Your payout of ${input.amount} ${input.currency} didn't go through. Our finance team is looking into it and will contact you. Check that your bank details are up to date.`,
       meta: { amount: input.amount },
@@ -235,11 +254,12 @@ export class NotificationFactory implements INotificationFactory {
   createDeliveryQuoteReady(
     lot: Lot,
     userId: string,
-    input: { amount: string; currency: string },
+    input: { amount: string; currency: string; legalEntityId: string },
   ): CreateNotificationRow {
     return {
       userId,
       type: "delivery_quote_ready",
+      legalEntityId: input.legalEntityId,
       title: "Your delivery quote is ready",
       message: `Delivery for "${lot.title}" is quoted at ${input.amount} ${input.currency}. Open the purchase to accept it.`,
       lotId: lot.id,
@@ -261,6 +281,7 @@ export class NotificationFactory implements INotificationFactory {
         ? `"${lot.title}" is ready for you to collect from ${place}.`
         : `"${lot.title}" is ready for you to collect. Open your purchase for the collection details.`,
       lotId: lot.id,
+      legalEntityId: lot.buyerLegalEntityId ?? null,
       meta: { lotTitle: lot.title, ...(place ? { collectionPlace: place } : {}) },
     };
   }
@@ -276,6 +297,7 @@ export class NotificationFactory implements INotificationFactory {
       title: "Your lot is on its way",
       message: `"${lot.title}" has been sent with ${input.carrier}. Tracking number: ${input.trackingNumber}.`,
       lotId: lot.id,
+      legalEntityId: lot.buyerLegalEntityId ?? null,
       meta: { lotTitle: lot.title, carrier: input.carrier, trackingNumber: input.trackingNumber },
     };
   }
@@ -294,6 +316,7 @@ export class NotificationFactory implements INotificationFactory {
         ? `"${lot.title}" has been collected. Thank you for buying with us.`
         : `"${lot.title}" has been delivered. Thank you for buying with us.`,
       lotId: lot.id,
+      legalEntityId: lot.buyerLegalEntityId ?? null,
       meta: { lotTitle: lot.title, fulfilmentMethod: input.method },
     };
   }

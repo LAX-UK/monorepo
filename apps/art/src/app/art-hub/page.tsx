@@ -1,9 +1,9 @@
-import { ArtArtistCard } from "@/components/catalogue/art-artist-grid";
-import { ArtEditorialCard } from "@/components/editorial/art-editorial-card";
+import { ArtHubFilm } from "@/components/art-hub/art-hub-film";
+import { ArtHubNowOn } from "@/components/art-hub/art-hub-now-on";
+import { ArtHubSpotlight } from "@/components/art-hub/art-hub-spotlight";
+import { ArtHubStories } from "@/components/art-hub/art-hub-stories";
 import { ArtEditorialStatus } from "@/components/editorial/art-editorial-status";
 import { ArtHubPressBand } from "@/components/editorial/art-hub-press-band";
-import { ArtRail, ArtRailItem } from "@/components/layout/art-rail";
-import { ArtSection } from "@/components/layout/art-section";
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import { ArtProductDoors } from "@/components/product-doors/art-product-doors";
 import { artServices } from "@/lib/art-services.server";
@@ -12,14 +12,13 @@ import {
   type ArtHubSectionId,
   composeArtHubPage,
 } from "@/lib/editorial/art-hub-page.composer";
-import { ART_HUB_COLLECTING, ART_HUB_HEADINGS, ART_HUB_HERO } from "@/lib/editorial/art-hub.vm";
+import { ART_HUB_COLLECTING, ART_HUB_HERO } from "@/lib/editorial/art-hub.vm";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import {
   MarketingAudioPlayer,
   MarketingLinkList,
   MarketingReveal,
   MarketingSplitFeature,
-  MarketingVideoPoster,
 } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -34,24 +33,27 @@ export const metadata: Metadata = {
   alternates: { canonical: "/art-hub" },
 };
 
-const OUTLINE_ON_PANEL =
-  "min-h-11 border-current bg-transparent font-label text-on-surface-feature hover:bg-surface-container-low/40";
-
 function Shell({ children }: { children: ReactNode }) {
   return <div className={MARKETING_PAGE_SHELL}>{children}</div>;
 }
 
-function panelImage(src: string, label: string) {
+function panelImage(src: string, label: string, priority = false) {
   return (
     <ArtMediaImage
       src={src}
       alt=""
       label={label}
+      priority={priority}
       sizes="(min-width: 48rem) 50vw, 100vw"
       className="absolute inset-0 size-full"
       imgClassName="object-cover"
     />
   );
+}
+
+/** A cream panel that gave way to the page surface (a band sits next to it) renders plain. */
+function panelTone(vm: ArtHubPageVm, id: ArtHubSectionId): "feature" | "plain" {
+  return vm.surfaces[id] === "band" ? "feature" : "plain";
 }
 
 function HubSection({ id, vm }: { id: ArtHubSectionId; vm: ArtHubPageVm }) {
@@ -61,6 +63,7 @@ function HubSection({ id, vm }: { id: ArtHubSectionId; vm: ArtHubPageVm }) {
         <MarketingSplitFeature
           tone="plain"
           headingLevel="h1"
+          mobileOrder="text-first"
           mediaSide="right"
           eyebrow={ART_HUB_HERO.eyebrow}
           title={ART_HUB_HERO.title}
@@ -69,73 +72,26 @@ function HubSection({ id, vm }: { id: ArtHubSectionId; vm: ArtHubPageVm }) {
               <p>{ART_HUB_HERO.body}</p>
               <MarketingLinkList
                 ariaLabel={ART_HUB_HERO.linksLabel}
-                items={ART_HUB_HERO.links}
+                items={vm.hero.links}
                 className="max-w-sm"
               />
             </div>
           }
-          {...(vm.heroImageUrl ? { media: panelImage(vm.heroImageUrl, "Art Hub") } : {})}
+          {...(vm.hero.imageUrl ? { media: panelImage(vm.hero.imageUrl, "Art Hub", true) } : {})}
         />
       );
     case "now-on":
-      return (
-        <Shell>
-          <ArtSection
-            id="art-hub-now-on"
-            title={ART_HUB_HEADINGS.nowOn}
-            subtitle={ART_HUB_HEADINGS.nowOnSubtitle}
-            viewAllHref="/exhibitions"
-            viewAllSrLabel="exhibitions"
-          >
-            <ArtRail id="art-hub-now-on-rail" label={ART_HUB_HEADINGS.nowOn}>
-              {vm.nowOn.map((card, index) => (
-                <ArtRailItem key={card.key} size="feature">
-                  <ArtEditorialCard card={card} priority={index === 0} />
-                </ArtRailItem>
-              ))}
-            </ArtRail>
-          </ArtSection>
-        </Shell>
-      );
+      return <ArtHubNowOn cards={vm.nowOn} />;
     case "stories":
       return (
         <Shell>
-          <ArtSection
-            id="art-hub-stories"
-            title={ART_HUB_HEADINGS.stories}
-            viewAllHref="/stories"
-            viewAllSrLabel="stories"
-          >
-            <ArtRail id="art-hub-stories-rail" label={ART_HUB_HEADINGS.stories}>
-              {vm.stories.map((card) => (
-                <ArtRailItem key={card.key} size="feature">
-                  <ArtEditorialCard card={card} />
-                </ArtRailItem>
-              ))}
-            </ArtRail>
-          </ArtSection>
+          <ArtHubStories cards={vm.stories} />
         </Shell>
       );
     case "spotlight":
       return (
         <Shell>
-          <ArtSection
-            id="art-hub-spotlight"
-            title={ART_HUB_HEADINGS.spotlight}
-            viewAllHref="/artists"
-            viewAllSrLabel="artists"
-          >
-            <ul
-              className="grid max-w-[56rem] gap-x-6 gap-y-10 sm:grid-cols-2"
-              aria-label="Featured artists"
-            >
-              {vm.artists.map((card) => (
-                <li key={card.slug}>
-                  <ArtArtistCard card={card} favoriteAuth={vm.favoriteAuth} />
-                </li>
-              ))}
-            </ul>
-          </ArtSection>
+          <ArtHubSpotlight artists={vm.spotlight} />
         </Shell>
       );
     case "podcast": {
@@ -143,9 +99,9 @@ function HubSection({ id, vm }: { id: ArtHubSectionId; vm: ArtHubPageVm }) {
       if (!podcast) return null;
       return (
         <MarketingSplitFeature
-          tone="feature"
+          tone={panelTone(vm, id)}
           mediaSide="left"
-          eyebrow="LAX's Podcast"
+          eyebrow="Podcast"
           title={podcast.title}
           body={
             <div className="flex flex-col gap-6">
@@ -158,7 +114,7 @@ function HubSection({ id, vm }: { id: ArtHubSectionId; vm: ArtHubPageVm }) {
             </div>
           }
           action={
-            <Button asChild variant="outline" size="lg" className={OUTLINE_ON_PANEL}>
+            <Button asChild variant="secondaryOutline" size="lg">
               <Link href={podcast.href}>Explore the episode</Link>
             </Button>
           }
@@ -166,43 +122,16 @@ function HubSection({ id, vm }: { id: ArtHubSectionId; vm: ArtHubPageVm }) {
         />
       );
     }
-    case "films": {
-      const { film } = vm;
-      if (!film) return null;
-      return (
+    case "films":
+      return vm.film ? (
         <Shell>
-          <section aria-label="Film" className="flex flex-col gap-4">
-            <MarketingVideoPoster
-              href={film.videoUrl}
-              title={film.title}
-              className="mx-auto w-full max-w-5xl"
-              {...(film.imageUrl
-                ? {
-                    poster: (
-                      <ArtMediaImage
-                        src={film.imageUrl}
-                        alt=""
-                        sizes="(min-width: 64rem) 64rem, 100vw"
-                        className="absolute inset-0 size-full"
-                        imgClassName="object-cover"
-                      />
-                    ),
-                  }
-                : {})}
-            />
-            <p className="mx-auto w-full max-w-5xl font-headline text-xl font-medium">
-              <Link href={film.href} className="art-focus-ring rounded-sm hover:underline">
-                {film.title}
-              </Link>
-            </p>
-          </section>
+          <ArtHubFilm film={vm.film} />
         </Shell>
-      );
-    }
+      ) : null;
     case "collecting":
       return (
         <MarketingSplitFeature
-          tone="feature"
+          tone={panelTone(vm, id)}
           mediaSide="right"
           title={ART_HUB_COLLECTING.title}
           body={<p>{ART_HUB_COLLECTING.body}</p>}
@@ -211,6 +140,9 @@ function HubSection({ id, vm }: { id: ArtHubSectionId; vm: ArtHubPageVm }) {
               <Link href={ART_HUB_COLLECTING.cta.href}>{ART_HUB_COLLECTING.cta.label}</Link>
             </Button>
           }
+          {...(vm.collectingImageUrl
+            ? { media: panelImage(vm.collectingImageUrl, "Collecting") }
+            : {})}
         />
       );
     case "press":
@@ -237,8 +169,15 @@ export default async function ArtHubPage() {
   }
 
   const vm = result.data;
+  const lastIsBand = vm.surfaces[vm.sections.at(-1) ?? "hero"] === "band";
   return (
-    <div className="flex flex-col gap-[var(--section-spacing-tight)] pb-[var(--section-spacing-tight)]">
+    <div
+      className={cn(
+        "flex flex-col gap-[var(--section-spacing)]",
+        // A closing band meets the footer directly; a plain section keeps one section gap.
+        !lastIsBand && "pb-[var(--section-spacing)]",
+      )}
+    >
       {vm.sections.map((id, index) => (
         <MarketingReveal key={id} index={index}>
           <HubSection id={id} vm={vm} />

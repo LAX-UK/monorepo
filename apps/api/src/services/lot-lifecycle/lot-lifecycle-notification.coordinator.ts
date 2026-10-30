@@ -47,14 +47,17 @@ export class LotLifecycleNotificationCoordinator {
       const sent = await this.cache.get(cacheKey);
       if (sent) continue;
       await this.cache.set(cacheKey, "1", 7200);
-      const bidderIds = await bids.listDistinctBidderIds(a.id);
+      const bidderAccounts = new Map(
+        (await bids.listDistinctBidderAccounts(a.id)).map((b) => [b.userId, b.legalEntityId]),
+      );
       const watchers = await this.watchlist.listUserIdsForLot(a.id);
-      const recipients = new Set([...bidderIds, ...watchers]);
+      const recipients = new Set([...bidderAccounts.keys(), ...watchers]);
       for (const uid of recipients) {
-        const onlyWatcher = watchers.includes(uid) && !bidderIds.includes(uid);
-        const row = onlyWatcher
-          ? this.notificationFactory.createWatchlistEndingSoon(a, uid)
-          : this.notificationFactory.createEndingSoon(a, uid);
+        const account = bidderAccounts.get(uid);
+        const row =
+          account === undefined
+            ? this.notificationFactory.createWatchlistEndingSoon(a, uid)
+            : this.notificationFactory.createEndingSoon(a, uid, account);
         await this.notificationDispatcher.dispatch(uid, notificationRowToPayload(row));
       }
     }
@@ -104,13 +107,15 @@ export class LotLifecycleNotificationCoordinator {
       );
     }
 
-    const bidderIds = await params.bid.listDistinctBidderIds(params.lot.id);
-    for (const uid of bidderIds) {
+    const bidders = await params.bid.listDistinctBidderAccounts(params.lot.id);
+    for (const { userId: uid, legalEntityId } of bidders) {
       if (uid === params.winnerId) continue;
       await this.notificationOutbox.stageDispatch(
         {
           userId: uid,
-          payload: notificationRowToPayload(this.notificationFactory.createLost(params.lot, uid)),
+          payload: notificationRowToPayload(
+            this.notificationFactory.createLost(params.lot, uid, legalEntityId),
+          ),
           idempotencyKey: `lot_lost:${params.lot.id}:${uid}`,
         },
         params.tx,

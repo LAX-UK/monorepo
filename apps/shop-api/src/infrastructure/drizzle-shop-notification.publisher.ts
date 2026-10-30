@@ -89,7 +89,9 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
         (await resolveShopUserEmail(db, input.identitySubjectId)) ?? input.fallbackEmail?.trim();
       if (!to || !to.includes("@")) return;
 
-      const orderUrl = `${input.storefrontUrl.replace(/\/+$/, "")}/account/orders/${input.orderId}`;
+      const orderUrl =
+        input.guestOrderUrl ??
+        `${input.storefrontUrl.replace(/\/+$/, "")}/account/orders/${input.orderId}`;
       const lineSummary = input.lines
         .map((line) => {
           const editionSuffix =
@@ -111,6 +113,20 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
             : {}),
           orderUrl,
           lineSummary,
+          ...(input.guestOrderUrl ? { guest: true } : {}),
+        },
+      });
+    },
+
+    async queueGuestOrderLink(tx, input) {
+      await insertShopEmailOutbox(asDb(tx), {
+        idempotencyKey: input.idempotencyKey,
+        to: input.to,
+        template: "shop-guest-order-link",
+        vars: {
+          orderReference: input.orderReference,
+          orderUrl: input.orderUrl,
+          expiresOn: input.expiresOn,
         },
       });
     },

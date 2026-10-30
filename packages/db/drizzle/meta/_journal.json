@@ -1774,6 +1774,20 @@
       "breakpoints": true
     },
     {
+      "idx": 253,
+      "version": "7",
+      "when": 1797235200000,
+      "tag": "0253_shop_guest_checkout",
+      "breakpoints": true
+    },
+    {
+      "idx": 254,
+      "version": "7",
+      "when": 1797321600000,
+      "tag": "0254_notification_account",
+      "breakpoints": true
+    },
+    {
       "idx": 255,
       "version": "7",
       "when": 1797408000000,

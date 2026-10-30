@@ -58,6 +58,7 @@ describe("StaffRoleExpiryNotifier", () => {
 
     expect(dispatch).toHaveBeenCalledWith("ada", {
       type: "staff_role_expired",
+      legalEntityId: null,
       title: "Your Saleroom clerk role has ended",
       message:
         "Your Saleroom clerk role on Bid ended on 3 November 2026. Ask an administrator if you still need it.",
@@ -65,6 +66,7 @@ describe("StaffRoleExpiryNotifier", () => {
     for (const admin of ["grace", "alan"]) {
       expect(dispatch).toHaveBeenCalledWith(admin, {
         type: "staff_role_expired_admin",
+        legalEntityId: null,
         title: "A staff role has ended",
         message: "Ada Lovelace's Saleroom clerk role on Bid ended on 3 November 2026.",
       });

@@ -4,6 +4,11 @@ import { composeArtistMetadata, composeArtistPage } from "./artist-page.composer
 
 const SITE_URL = new URL("https://www.thelax.art/");
 
+/** One available work, no sold works. */
+async function availableOnly(query: { saleState?: string }) {
+  return { items: query.saleState === "sold" ? [] : [artworkSummary()] };
+}
+
 const artist = {
   slug: "flora-powers",
   name: "Flora Powers",
@@ -23,16 +28,22 @@ describe("composeArtistPage", () => {
   it("lists the artist's works and skips favorites reads for guests", async () => {
     const services = fakeArtServices();
     services.catalogue.getArtist.mockResolvedValue(artist);
-    services.catalogue.listArtworks.mockResolvedValue({ items: [artworkSummary()] });
+    services.catalogue.listArtworks.mockImplementation(availableOnly);
 
     const result = await composeArtistPage(services, "flora-powers", SITE_URL);
 
     if (result.kind !== "ok") throw new Error("expected ok");
-    // lax.art lists originals only, so one read gives the featured works.
-    expect(services.catalogue.listArtworks).toHaveBeenCalledTimes(1);
+    // lax.art lists originals only: available works, then sold works as the artist's record.
+    expect(services.catalogue.listArtworks).toHaveBeenCalledTimes(2);
     expect(services.catalogue.listArtworks).toHaveBeenCalledWith({
       artistSlugs: ["flora-powers"],
+      saleState: "available",
       limit: 8,
+    });
+    expect(services.catalogue.listArtworks).toHaveBeenCalledWith({
+      artistSlugs: ["flora-powers"],
+      saleState: "sold",
+      limit: 4,
     });
     expect(services.favorites.followedArtistSlugs).not.toHaveBeenCalled();
     expect(result.vm).toMatchObject({
@@ -66,7 +77,7 @@ describe("composeArtistPage", () => {
       birthYear: 1869,
       deathYear: 1954,
     });
-    services.catalogue.listArtworks.mockResolvedValue({ items: [artworkSummary()] });
+    services.catalogue.listArtworks.mockImplementation(availableOnly);
     services.editorial.getArtistRelations.mockResolvedValue({
       status: "ok",
       data: {
@@ -84,12 +95,32 @@ describe("composeArtistPage", () => {
         ],
         stories: [
           {
+            slug: "a-profile",
+            kind: "article",
+            title: "A profile",
+            standfirst: null,
+            coverUrl: null,
+            featured: false,
+            publishedAt: "2026-10-02T00:00:00.000Z",
+          },
+          {
             slug: "in-the-studio",
             kind: "film",
             title: "In the studio",
             standfirst: null,
             coverUrl: null,
             featured: false,
+            publishedAt: "2026-09-01T00:00:00.000Z",
+          },
+          {
+            slug: "review",
+            kind: "press",
+            title: "A review",
+            standfirst: null,
+            coverUrl: null,
+            featured: false,
+            publicationName: "The Week",
+            publishedAt: "2026-09-12T00:00:00.000Z",
           },
         ],
       },
@@ -104,12 +135,73 @@ describe("composeArtistPage", () => {
       lifeLine: "French, 1869–1954",
     });
     expect(result.vm.exhibitions.map((card) => card.headline)).toEqual(["Water Lilies"]);
-    expect(result.vm.stories.map((card) => card.headline)).toEqual(["In the studio"]);
+    // Films lead the stories; press is listed on its own.
+    expect(result.vm.stories.map((card) => card.headline)).toEqual(["In the studio", "A profile"]);
+    expect(result.vm.press).toEqual([
+      expect.objectContaining({ title: "A review", publication: "The Week" }),
+    ]);
     expect(result.vm.sectionTabs.map((tab) => tab.label)).toEqual([
-      "Featured works",
+      "Available works",
       "Exhibitions",
       "Films & stories",
+      "Press",
     ]);
+  });
+
+  it("keeps the stories grid to whole rows: five stories show as a lead and a row of three", async () => {
+    const services = fakeArtServices();
+    services.catalogue.getArtist.mockResolvedValue(artist);
+    services.editorial.getArtistRelations.mockResolvedValue({
+      status: "ok",
+      data: {
+        exhibitions: [],
+        stories: ["a", "b", "c", "d", "e"].map((slug) => ({
+          slug,
+          kind: "article" as const,
+          title: slug,
+          standfirst: null,
+          coverUrl: null,
+          featured: false,
+        })),
+      },
+    });
+
+    const result = await composeArtistPage(services, "flora-powers", SITE_URL);
+
+    if (result.kind !== "ok") throw new Error("expected ok");
+    expect(result.vm.stories).toHaveLength(4);
+  });
+
+  it("shows sold works as the record, standing in for an empty available section", async () => {
+    const services = fakeArtServices();
+    services.catalogue.getArtist.mockResolvedValue(artist);
+    services.catalogue.listArtworks.mockImplementation(async (query) => ({
+      items: query.saleState === "sold" ? [artworkSummary({ saleState: "sold" })] : [],
+    }));
+
+    const result = await composeArtistPage(services, "flora-powers", SITE_URL);
+
+    if (result.kind !== "ok") throw new Error("expected ok");
+    expect(result.vm.works).toEqual([]);
+    expect(result.vm.soldWorks).toHaveLength(1);
+    expect(result.vm.showWorks).toBe(false);
+    // Nothing separates the sold band from the gallery team band, so it takes the page surface.
+    expect(result.vm.soldSurface).toBe("plain");
+  });
+
+  it("keeps the sold band when a section separates it from the gallery team band", async () => {
+    const services = fakeArtServices();
+    services.catalogue.getArtist.mockResolvedValue(artist);
+    services.catalogue.listArtworks.mockImplementation(availableOnly);
+    services.ecosystem.crossProductLinks.mockReturnValue([
+      { id: "bid", label: "LAX Bid", href: "https://bid.example/", current: false, external: true },
+    ]);
+
+    const result = await composeArtistPage(services, "flora-powers", SITE_URL);
+
+    if (result.kind !== "ok") throw new Error("expected ok");
+    expect(result.vm.sellHref).toBe("https://bid.example/sell");
+    expect(result.vm.soldSurface).toBe("band");
   });
 
   it.each([
@@ -119,7 +211,7 @@ describe("composeArtistPage", () => {
   ])("hides only the editorial sections when relations %s", async (_label, relations) => {
     const services = fakeArtServices();
     services.catalogue.getArtist.mockResolvedValue(artist);
-    services.catalogue.listArtworks.mockResolvedValue({ items: [artworkSummary()] });
+    services.catalogue.listArtworks.mockImplementation(availableOnly);
     services.editorial.getArtistRelations.mockImplementation(relations);
 
     const result = await composeArtistPage(services, "flora-powers", SITE_URL);
@@ -164,7 +256,7 @@ describe("composeArtistPage", () => {
   it("shows no section tabs when the works are the only section", async () => {
     const services = fakeArtServices();
     services.catalogue.getArtist.mockResolvedValue(artist);
-    services.catalogue.listArtworks.mockResolvedValue({ items: [artworkSummary()] });
+    services.catalogue.listArtworks.mockImplementation(availableOnly);
 
     const result = await composeArtistPage(services, "flora-powers", SITE_URL);
 

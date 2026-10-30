@@ -115,6 +115,7 @@ function baseBidRepo(overrides: Partial<IBidRepository> = {}): IBidRepository {
     listForBuyerAccount: vi.fn(),
     findWinningBid: vi.fn().mockResolvedValue(null),
     listDistinctBidderIds: vi.fn().mockResolvedValue([]),
+    listDistinctBidderAccounts: vi.fn().mockResolvedValue([]),
     markWinningBid: vi.fn(),
     clearWinningBid: vi.fn(),
     aggregateBidderCeilings: vi.fn().mockResolvedValue(new Map<string, number>()),
@@ -1069,6 +1070,11 @@ describe("BidService.placeBid", () => {
       create: vi.fn().mockResolvedValue(created),
       markWinningBid: vi.fn().mockResolvedValue(undefined),
       listDistinctBidderIds: vi.fn().mockResolvedValue(["buyer-1", "buyer-2"]),
+      listDistinctBidderAccounts: vi
+        .fn()
+        .mockResolvedValue(
+          ["buyer-1", "buyer-2"].map((userId) => ({ userId, legalEntityId: null })),
+        ),
     });
     const cache: ICacheProvider = { set: vi.fn(), get: vi.fn(), del: vi.fn() };
     const notifyBidPlaced = vi.fn().mockResolvedValue(undefined);
