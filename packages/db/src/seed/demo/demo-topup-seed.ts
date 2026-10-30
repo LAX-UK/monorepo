@@ -473,6 +473,25 @@ async function writeCatalogue(db: Db, catalogue: DemoCatalogue, base: Base) {
     )
     .onConflictDoNothing();
 
+  await db
+    .insert(schema.lotFulfilment)
+    .values(
+      catalogue.fulfilments.map((f) => ({
+        id: f.id,
+        lotId: f.lotId,
+        paymentId: f.paymentId,
+        status: f.status,
+        fulfilmentMethod: "shipping" as const,
+        shippingCarrier: "LAX Fine Art Logistics",
+        trackingNumber: `LAX${f.id.slice(-6)}`,
+        releaseApprovedByUserId: base.userIds.admin,
+        releaseApprovedAt: f.updatedAt,
+        createdAt: f.updatedAt,
+        updatedAt: f.updatedAt,
+      })),
+    )
+    .onConflictDoNothing();
+
   for (const payout of catalogue.payouts) {
     const fee = payout.hammer * SELLER_COMMISSION_RATE;
     await db

@@ -164,6 +164,16 @@ export type DemoCatalogue = {
   payouts: DemoPayout[];
   registrations: DemoRegistration[];
   watches: DemoWatch[];
+  fulfilments: DemoFulfilment[];
+};
+
+/** Delivery of a paid purchase: on its way, or delivered. */
+export type DemoFulfilment = {
+  id: string;
+  lotId: string;
+  paymentId: string;
+  status: "in_transit" | "delivered";
+  updatedAt: Date;
 };
 
 /** Rounds down to the hour, so times read cleanly on the pages. */
@@ -756,7 +766,31 @@ export function buildDemoCatalogue(now: number, actors: DemoActors): DemoCatalog
     createdAt: new Date(now - (index + 1) * DAY),
   }));
 
-  return { sales, lots, bids, payments, submissions, payouts, registrations, watches };
+  const fulfilments: DemoFulfilment[] = (
+    [
+      ["Morning Rain, Kensington", "in_transit", now - 1 * DAY],
+      ["Grey Morning", "delivered", olderEnd + 6 * DAY],
+      ["Winter Orchard", "delivered", olderEnd + 7 * DAY],
+    ] as const
+  ).map(([title, status, at], index) => ({
+    id: DEMO_IDS.fulfilment(index + 1),
+    lotId: lot(title).id,
+    paymentId: paymentFor(title).id,
+    status,
+    updatedAt: new Date(at),
+  }));
+
+  return {
+    sales,
+    lots,
+    bids,
+    payments,
+    submissions,
+    payouts,
+    registrations,
+    watches,
+    fulfilments,
+  };
 }
 
 function buildSubmissions(
