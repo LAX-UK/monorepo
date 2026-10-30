@@ -179,6 +179,17 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, NotificationTypeConfig> = {
     whatsapp: null,
     template: "consignment-agreement-reminder",
   },
+  /**
+   * The payout bank account changed: in-app and by email to every owner, admin and finance
+   * member. No preference turns it off; it is a fraud signal.
+   */
+  payout_bank_changed: {
+    inApp: null,
+    push: null,
+    email: null,
+    whatsapp: null,
+    template: "payout-bank-changed-notice",
+  },
   /** After-sale and account changes on a consignment, each worded by the service that sends it. */
   consignment_update: {
     inApp: null,

@@ -44,6 +44,7 @@ describe("OrganisationTeamNotifier", () => {
       title: "The payout bank account for Northbank Gallery changed",
       message:
         "Payouts now go to the account ending 4242. If nobody at Northbank Gallery made this change, contact us straight away.",
+      meta: { organisationName: "Northbank Gallery", bankLast4: "4242" },
       legalEntityId: ENTITY,
     });
   });

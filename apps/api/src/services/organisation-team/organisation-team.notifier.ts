@@ -2,6 +2,7 @@ import type {
   ILegalEntityNotificationRecipientReader,
   LegalEntityNotificationAudience,
 } from "@auction/persistence/interfaces";
+import type { NotificationPayload } from "../interfaces/notification-channel.js";
 import type { IMemberLeftNotifier } from "../member-management.service.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
 
@@ -52,13 +53,14 @@ export class OrganisationTeamNotifier implements IMemberLeftNotifier, IPayoutBan
       type: "payout_bank_changed",
       title: `The payout bank account for ${input.organisationName} changed`,
       message: `Payouts now go${account}. If nobody at ${input.organisationName} made this change, contact us straight away.`,
+      meta: { organisationName: input.organisationName, bankLast4: input.bankLast4 },
     });
   }
 
   private async send(
     legalEntityId: string,
     audience: LegalEntityNotificationAudience,
-    notice: { type: string; title: string; message: string },
+    notice: Omit<NotificationPayload, "legalEntityId">,
   ) {
     const userIds = await this.deps.recipients
       .listUserIdsForAudience(legalEntityId, audience)

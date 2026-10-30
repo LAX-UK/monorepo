@@ -10,7 +10,7 @@ Stripe allows **one scope per destination** ([Connect webhooks](https://docs.str
 |-------------|-------|-----|--------|
 | Veriff decision | **Veriff Customer Portal** | `https://api.yourdomain.com/webhooks/veriff/decision` | Session decision (required for IDV) |
 | Veriff event (optional) | **Veriff Customer Portal** | `https://api.yourdomain.com/webhooks/veriff/event` | Session progress (`started`, `submitted`) |
-| Connect accounts | **Connected accounts** | `/webhooks/stripe/connect` | `account.updated`, `capability.updated` |
+| Connect accounts | **Connected accounts** | `/webhooks/stripe/connect` | `account.updated`, `capability.updated`, `account.external_account.created`, `account.external_account.updated` (payout bank changes: Activity and the required notice to owners, admins and finance) |
 | Transfers | **Your account** | `/webhooks/stripe/transfers` | `transfer.created`, `transfer.updated`, `transfer.reversed` |
 | Payments | **Your account** | `/webhooks/stripe/payments` | `payment_intent.succeeded`, `payment_intent.processing`, `payment_intent.partially_funded`, `payment_intent.payment_failed`, `payment_intent.canceled`, `charge.dispute.*`, `charge.refunded` |
 

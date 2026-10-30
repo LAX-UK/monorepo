@@ -334,6 +334,8 @@ export {
 } from "./notification-needs-action.js";
 export {
   NOTIFICATION_ALWAYS_DELIVERED_TYPES,
+  NOTIFICATION_IGNORES_QUIET_HOURS_TYPES,
+  notificationIgnoresQuietHours,
   notificationIsMutable,
   notificationSilencedByMute,
 } from "./notification-mutes.js";
