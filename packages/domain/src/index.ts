@@ -307,10 +307,25 @@ export {
   bidExceedsAuthority,
   type BidAuthorityDecision,
   type BidAuthorityDenial,
+  type AuthorisationTotalLimit,
   type BuyerAgentGrant,
   decideBidAuthority,
   roleBidsThroughAuthorisation,
 } from "./bid-authority.js";
+export {
+  BIDDING_LIMIT_ERROR_CODES,
+  bindingBiddingLimit,
+  decideBiddingLimits,
+  exposureOf,
+  roomUnder,
+  type ApplicableBiddingLimit,
+  type BiddingLimitDecision,
+  type BiddingLimitKind,
+  type BindingBiddingLimit,
+  type ExposureCommitment,
+  type ExposureCommitmentKind,
+  type ExposureScope,
+} from "./bidding-limits.js";
 export {
   entityActorCan,
   entityCapabilitiesOf,

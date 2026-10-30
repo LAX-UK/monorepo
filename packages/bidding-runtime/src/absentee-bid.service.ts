@@ -1,8 +1,4 @@
-import {
-  bidExceedsAuthority,
-  buyerEntityCanBid,
-  organisationBidRefusalMessage,
-} from "@auction/domain";
+import { buyerEntityCanBid, organisationBidRefusalMessage } from "@auction/domain";
 import type { IAbsenteeBidRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository } from "@auction/persistence/interfaces";
@@ -11,6 +7,7 @@ import type { Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { bidAuthorityError } from "./bid/bid-authority-error.js";
 import type { IBidAuthority } from "./bid/bid-authority.service.js";
+import { type IBiddingLimitGate, PerLotBiddingLimitGate } from "./bid/bidding-limit.gate.js";
 import type { IBidIdentityEligibilityGate } from "./bid/identity-bid-eligibility.gate.js";
 import type { AbsenteeBidServiceError, IAbsenteeBidService, IBidPlacer } from "./ports.js";
 
@@ -38,6 +35,7 @@ export class AbsenteeBidService implements IAbsenteeBidService {
     private readonly bidRepo: IBidRepository | null,
     private readonly identityEligibilityGate: IBidIdentityEligibilityGate | null,
     private readonly bidAuthority: IBidAuthority,
+    private readonly biddingLimitGate: IBiddingLimitGate = new PerLotBiddingLimitGate(),
   ) {}
 
   private async reconcileStaleExecutingLeases(cutoff: Date): Promise<void> {
@@ -111,12 +109,17 @@ export class AbsenteeBidService implements IAbsenteeBidService {
       const { message, status, code } = bidAuthorityError(authority.reason);
       return err({ message, status, ...(code ? { code } : {}) });
     }
-    if (bidExceedsAuthority(authority, input.maxAmount)) {
-      return err({
-        message: "Bid exceeds buyer agent authorisation limit",
-        status: 403,
-        code: "bid_limit_exceeded",
-      });
+    const limits = await this.biddingLimitGate.check({
+      legalEntityId: input.buyerLegalEntityId,
+      placedByUserId: input.userId,
+      lotId: input.lotId,
+      saleId: lotRow.saleId ?? null,
+      amount: input.maxAmount,
+      authority,
+    });
+    if (limits.isErr()) {
+      const { message, status, code, details } = limits.error;
+      return err({ message, status, ...(code ? { code } : {}), ...(details ? { details } : {}) });
     }
 
     try {

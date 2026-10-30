@@ -306,6 +306,31 @@ describe("POST /bids middleware gates", () => {
     expect(json.code).toBe("sale_registration_required");
   });
 
+  it("returns the limit and the room left when a bid would pass the organisation limit", async () => {
+    const { app } = mount({
+      placeBid: vi.fn().mockResolvedValue({
+        kind: "err",
+        error: {
+          message: "This bid would take the organisation past its bidding limit",
+          status: 403,
+          code: "organisation_limit_exceeded",
+          details: { limitKind: "organisation", limit: "250000.00", available: "5000.00" },
+        },
+      }),
+    });
+    const res = await app.request("/bids", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: bidBody(),
+    });
+    expect(res.status).toBe(403);
+    expect(await res.json()).toEqual({
+      error: "This bid would take the organisation past its bidding limit",
+      code: "organisation_limit_exceeded",
+      details: { limitKind: "organisation", limit: "250000.00", available: "5000.00" },
+    });
+  });
+
   it("passes acting legal entity id from middleware to bid service", async () => {
     const agentEntityId = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
     const placeBid = vi.fn().mockResolvedValue({

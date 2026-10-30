@@ -1767,6 +1767,13 @@
       "breakpoints": true
     },
     {
+      "idx": 252,
+      "version": "7",
+      "when": 1797148800000,
+      "tag": "0252_organisation_bidding_limits",
+      "breakpoints": true
+    },
+    {
       "idx": 253,
       "version": "7",
       "when": 1797235200000,

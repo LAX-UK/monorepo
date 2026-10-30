@@ -18,6 +18,7 @@ function record(overrides: Partial<BuyerAgentAuthorisationRecord>): BuyerAgentAu
     saleId: "sale1",
     saleTitle: "Contemporary",
     bidLimit: "10000.00",
+    totalLimit: null,
     validFrom: new Date("2026-10-01"),
     validUntil: null,
     status: "active",

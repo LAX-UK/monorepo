@@ -16,6 +16,7 @@ import {
 } from "./bid-policy.js";
 import { BidCriticalNotificationStager } from "./bid/bid-critical-notification.stager.js";
 import { BidNotificationCoordinator } from "./bid/bid-notification.coordinator.js";
+import type { IBidPlacementLimitGuard } from "./bid/bid-placement-limit.guard.js";
 import { BidPrePlacementValidator } from "./bid/bid-pre-placement.validator.js";
 import { EarlyCloseHandler } from "./bid/early-close.handler.js";
 import { IdempotentBidExecutor } from "./bid/idempotent-bid.executor.js";
@@ -74,6 +75,8 @@ export type BidServiceOptions = {
   notificationOutbox?: INotificationOutboxService | null;
   notificationFactory: INotificationFactory;
   saleRepo?: ISaleRepository | null;
+  /** Organisation bidding limits, checked again inside the bid transaction. */
+  limitGuard?: IBidPlacementLimitGuard | null;
 };
 
 export class BidService implements IBidPlacerWithIdempotency {
@@ -92,6 +95,7 @@ export class BidService implements IBidPlacerWithIdempotency {
   private readonly legalEntityRepository: ILegalEntityRepository | null;
   private readonly bidPolicy: BidPolicyConfig;
   private readonly domainEventSink: IDomainEventSink | null;
+  private readonly limitGuard: IBidPlacementLimitGuard | null;
 
   constructor(opts: BidServiceOptions) {
     this.repos = opts.repos;
@@ -102,6 +106,7 @@ export class BidService implements IBidPlacerWithIdempotency {
     this.saleroomSessionLookup = opts.saleroomSessionLookup ?? null;
     this.antiShillingGuard = opts.antiShillingGuard ?? null;
     this.domainEventSink = opts.domainEventSink ?? null;
+    this.limitGuard = opts.limitGuard ?? null;
 
     const notificationFactory = opts.notificationFactory;
 
@@ -159,6 +164,7 @@ export class BidService implements IBidPlacerWithIdempotency {
       englishOnlyAuctions: this.englishOnlyAuctions,
       bidPolicy: this.bidPolicy,
       domainEventSink: this.domainEventSink,
+      limitGuard: this.limitGuard,
     };
   }
 

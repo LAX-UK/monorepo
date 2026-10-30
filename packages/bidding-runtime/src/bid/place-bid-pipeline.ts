@@ -14,6 +14,7 @@ import type { IDomainEventSink, ILotStrategyFactory, PlaceBidInput } from "../po
 import type { BidCriticalNotificationStager } from "./bid-critical-notification.stager.js";
 import { publishBidMilestoneDomainEvents } from "./bid-milestone-domain-events.js";
 import type { BidNotificationCoordinator } from "./bid-notification.coordinator.js";
+import type { IBidPlacementLimitGuard } from "./bid-placement-limit.guard.js";
 import type { EarlyCloseHandler } from "./early-close.handler.js";
 import type { ProxyAutoBidResolver, ProxyCancelNotification } from "./proxy-auto-bid.resolver.js";
 import type { SaleroomBidGate } from "./saleroom-bid.gate.js";
@@ -31,6 +32,8 @@ export type PlaceBidPipelineDeps = {
   englishOnlyAuctions: boolean;
   bidPolicy: BidPolicyConfig;
   domainEventSink?: IDomainEventSink | null;
+  /** Organisation bidding limits, checked again under a lock once the lot is locked. */
+  limitGuard?: IBidPlacementLimitGuard | null;
 };
 
 export type PlaceBidTxOutcome = {
@@ -318,6 +321,14 @@ export async function runPlaceBidInTransaction(
     bids,
     tx,
   );
+  await deps.limitGuard?.assertInTransaction(tx, {
+    placedByUserId: input.placedByUserId,
+    buyerLegalEntityId: input.buyerLegalEntityId,
+    lotId: input.lotId,
+    saleId: lotRow.saleId ?? null,
+    amount: input.amount,
+    maxAutoBidAmount: input.maxAutoBidAmount,
+  });
   const existingBidders = await bids.listDistinctBidderIds(input.lotId);
   const isFirstBidForUserOnLot = !existingBidders.includes(input.placedByUserId);
   const { strategy, nextPrice, amountStr, maxStr, stepStr, hasMax } = applyStrategyBidValidation(

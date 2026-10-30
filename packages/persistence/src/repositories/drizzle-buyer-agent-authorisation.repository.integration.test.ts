@@ -76,12 +76,21 @@ describe.skipIf(!HAS_DB)("DrizzleBuyerAgentAuthorisationRepository (integration)
         createdByUserId: ownerId,
       };
 
-      const allSales = await repo.grant({ ...base, saleId: null, bidLimit: "5000.00" }, "Replaced");
-      const oneSale = await repo.grant({ ...base, saleId, bidLimit: null }, "Replaced");
+      const allSales = await repo.grant(
+        { ...base, saleId: null, bidLimit: "5000.00", totalLimit: null },
+        "Replaced",
+      );
+      const oneSale = await repo.grant(
+        { ...base, saleId, bidLimit: null, totalLimit: null },
+        "Replaced",
+      );
       expect(allSales.supersededId).toBeNull();
       expect(oneSale.supersededId).toBeNull();
 
-      const replaced = await repo.grant({ ...base, saleId: null, bidLimit: "8000.00" }, "Replaced");
+      const replaced = await repo.grant(
+        { ...base, saleId: null, bidLimit: "8000.00", totalLimit: "40000.00" },
+        "Replaced",
+      );
       expect(replaced.supersededId).toBe(allSales.id);
 
       const listed = await repo.listForLegalEntity(entityId);
@@ -128,7 +137,7 @@ describe.skipIf(!HAS_DB)("DrizzleBuyerAgentAuthorisationRepository (integration)
           saleId,
           now,
         }),
-      ).toEqual([{ saleId: null, bidLimit: "8000.00" }]);
+      ).toEqual([{ saleId: null, bidLimit: "8000.00", totalLimit: "40000.00" }]);
 
       const found = await repo.findForLegalEntity(entityId, oneSale.id);
       expect(found).toMatchObject({ status: "revoked", revokedReason: "Left the gallery" });
@@ -148,6 +157,7 @@ describe.skipIf(!HAS_DB)("DrizzleBuyerAgentAuthorisationRepository (integration)
           userId: agentId,
           saleId: null,
           bidLimit: null,
+          totalLimit: null,
           validFrom: new Date("2026-11-01T00:00:00Z"),
           validUntil: new Date("2026-11-30T00:00:00Z"),
           createdByUserId: ownerId,

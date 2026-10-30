@@ -244,11 +244,14 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "member_user_id",
     "sale_id",
     "bid_limit",
+    "total_limit",
     "valid_from",
     "valid_until",
     "superseded_authorisation_id",
     "granted_by",
   ]),
+  /** the organisation's own bidding limit set, changed or removed. */
+  "legal_entity.bidding_limit_changed": new Set(["previous_limit", "limit", "changed_by"]),
   "legal_entity.buyer_agent_authorisation_revoked": new Set([
     "authorisation_id",
     "member_user_id",

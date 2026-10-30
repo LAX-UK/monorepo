@@ -14,6 +14,7 @@ const authorisationSchema = z.object({
   saleId: z.string().nullable(),
   saleTitle: z.string().nullable(),
   bidLimit: z.string().nullable(),
+  totalLimit: z.string().nullable(),
   validFrom: z.string(),
   validUntil: z.string().nullable(),
   status: z.enum(["active", "revoked"]),

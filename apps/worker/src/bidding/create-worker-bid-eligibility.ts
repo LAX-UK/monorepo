@@ -4,9 +4,11 @@ import {
   BidEligibilityService,
   BidIdentityEligibilityGate,
   BidderRoleGate,
+  BiddingLimitGate,
   type IBidAuthority,
   type IBidEligibility,
   type IBidIdentityEligibilityGate,
+  type IBiddingLimitGate,
   type IKycThresholdGate,
   KycBidGate,
   NoOpKycBidGate,
@@ -23,9 +25,11 @@ import {
   DrizzleBidBidderRoleReader,
   DrizzleBidLotRulesReader,
   DrizzleBidMembershipReader,
+  DrizzleBiddingExposureReader,
   DrizzleBuyerAgentAuthorisationReader,
   DrizzleKycRepository,
   DrizzleOperatorPlacementReader,
+  DrizzleOrganisationBiddingLimitRepository,
   DrizzleSaleRegistrationBidReader,
 } from "@auction/persistence/repositories";
 import { WorkerKycThresholdGate } from "../compliance/worker-kyc-threshold-gate.js";
@@ -38,6 +42,8 @@ export type CreateWorkerBidEligibilityInput = {
   amlHoldStore?: IAmlHoldStore;
   kycThresholdGate?: IKycThresholdGate;
   identityEligibilityGate?: IBidIdentityEligibilityGate;
+  bidAuthority?: IBidAuthority;
+  biddingLimitGate?: IBiddingLimitGate;
 };
 
 export function isWorkerBidKycEnforcementActive(
@@ -47,6 +53,16 @@ export function isWorkerBidKycEnforcementActive(
     return isKycBidEnforcementEnabled(env.KYC_THRESHOLD_AMOUNT);
   }
   return false;
+}
+
+/** Per-lot limits, buyer-agent totals and organisation limits, as the API applies them. */
+export function createWorkerBiddingLimitGate(db: Database): IBiddingLimitGate {
+  const exposure = new DrizzleBiddingExposureReader(db);
+  return new BiddingLimitGate({
+    organisationLimits: new DrizzleOrganisationBiddingLimitRepository(db),
+    exposure,
+    lock: exposure,
+  });
 }
 
 export function createWorkerBidAuthority(db: Database): IBidAuthority {
@@ -70,10 +86,11 @@ export function createWorkerBidEligibility(
     identityEligibilityGate,
     new AmlBidGate(amlHoldStore),
     new DrizzleBidLotRulesReader(db),
-    createWorkerBidAuthority(db),
+    input.bidAuthority ?? createWorkerBidAuthority(db),
     new OperatorPlacementPolicy(operatorReader),
     new SaleRegistrationBidGate(new DrizzleSaleRegistrationBidReader(db)),
     new BidderRoleGate(new DrizzleBidBidderRoleReader(db)),
+    input.biddingLimitGate ?? createWorkerBiddingLimitGate(db),
   );
 }
 

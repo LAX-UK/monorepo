@@ -3,6 +3,9 @@ import { z } from "zod";
 /** Largest bid limit an organisation can set, in pounds (matches `numeric(18, 2)` headroom). */
 export const BUYER_AGENT_BID_LIMIT_MAX = 1_000_000_000;
 
+/** A limit in pounds, with pence. */
+const bidLimitAmount = z.number().positive().max(BUYER_AGENT_BID_LIMIT_MAX).multipleOf(0.01);
+
 /**
  * Authorise a buyer-agent member to bid for the organisation: every sale (`saleId: null`) or one
  * sale, with an optional limit in pounds and an optional start and end. Dates are ISO strings.
@@ -11,7 +14,9 @@ export const authoriseBuyerAgentSchema = z
   .object({
     memberUserId: z.string().min(1).max(200),
     saleId: z.string().uuid().nullable(),
-    bidLimit: z.number().positive().max(BUYER_AGENT_BID_LIMIT_MAX).multipleOf(0.01).nullable(),
+    bidLimit: bidLimitAmount.nullable(),
+    /** Most the agent may have committed at once; omitted or `null` means no total. */
+    totalLimit: bidLimitAmount.nullable().optional(),
     validFrom: z.string().datetime({ offset: true }).nullable(),
     validUntil: z.string().datetime({ offset: true }).nullable(),
   })
@@ -34,3 +39,13 @@ export const revokeBuyerAgentAuthorisationSchema = z
 export type RevokeBuyerAgentAuthorisationInput = z.infer<
   typeof revokeBuyerAgentAuthorisationSchema
 >;
+
+/**
+ * Set the organisation's bidding limit in pounds, which applies to everyone who bids for it, or
+ * remove it with `null`.
+ */
+export const setOrganisationBiddingLimitSchema = z
+  .object({ limit: bidLimitAmount.nullable() })
+  .strict();
+
+export type SetOrganisationBiddingLimitInput = z.infer<typeof setOrganisationBiddingLimitSchema>;

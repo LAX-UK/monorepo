@@ -16,6 +16,7 @@ const base: BuyerAgentAuthorisationView = {
   saleId: null,
   saleTitle: null,
   bidLimit: "10000.00",
+  totalLimit: null,
   validFrom: "2026-10-27T12:00:00.000Z",
   validUntil: null,
   status: "active",

@@ -66,6 +66,7 @@ function AppShellFrame({ user, config, children }: Props) {
 
   return (
     <div
+      data-lax-density={isStaffShell ? "staff" : "client"}
       className="flex h-[calc(100dvh-var(--view-as-client-banner-height,0px))] flex-col overflow-hidden bg-shell-page-bg font-body text-on-surface"
       style={{
         ["--sidebar-width" as string]: collapsed ? "4.5rem" : expandedSidebarWidth,
@@ -90,7 +91,7 @@ function AppShellFrame({ user, config, children }: Props) {
               })}
         />
 
-        <aside className="relative z-20 hidden h-full w-[var(--sidebar-width)] shrink-0 overflow-visible border-r border-shell-stroke bg-surface-container-low shadow-[2px_0_12px_-4px_rgba(0,0,0,0.08)] transition-[width] duration-200 ease-out lg:flex lg:flex-col dark:shadow-[2px_0_12px_-4px_rgba(0,0,0,0.35)]">
+        <aside className="relative z-20 hidden h-full w-[var(--sidebar-width)] shrink-0 overflow-visible border-r border-shell-stroke bg-shell-sidebar shadow-[2px_0_12px_-4px_rgba(0,0,0,0.08)] transition-[width] duration-200 ease-out lg:flex lg:flex-col dark:shadow-[2px_0_12px_-4px_rgba(0,0,0,0.35)]">
           {desktopSidebar}
         </aside>
 

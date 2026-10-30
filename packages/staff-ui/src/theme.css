@@ -2,9 +2,13 @@
  * LAX staff design system tokens.
  *
  * One file, imported by LAX Admin (apps/shop-admin) and Bid admin (apps/web), so both staff tools
- * draw from the same scales. Every colour is a `light-dark()` pair, so a single declaration serves
- * both schemes: the scheme follows `color-scheme`, which `.dark` (both apps' theme switch) and
- * `data-staff-theme="system"` (follow the operating system) set below.
+ * draw from the same scales. The values come from the LAX system token layer
+ * (@auction/branding/lax-system.css), which the client workspace reads too; the app imports it
+ * before this file. This file names those tokens for Tailwind (`bg-staff-canvas`, `rounded-staff-sm`)
+ * and keeps only what is staff-only: the 11px counter digits, the 24px inline and 40px palette
+ * control heights, the sticky layers and Bid's accent. Every colour is a `light-dark()` pair, so a
+ * single declaration serves both schemes: the scheme follows `color-scheme`, which `.dark` (both
+ * apps' theme switch) and `data-staff-theme="system"` (follow the operating system) set below.
  *
  * Rules (see packages/staff-ui/README.md):
  *   - Components use these tokens only; no raw hex, no ad-hoc sizes.
@@ -22,28 +26,28 @@
 
   --text-staff-2xs: 11px;
   --text-staff-2xs--line-height: 16px;
-  --text-staff-xs: 12px;
-  --text-staff-xs--line-height: 16px;
-  --text-staff-sm: 13px;
-  --text-staff-sm--line-height: 20px;
-  --text-staff-md: 14px;
-  --text-staff-md--line-height: 20px;
-  --text-staff-lg: 16px;
-  --text-staff-lg--line-height: 24px;
-  --text-staff-xl: 20px;
-  --text-staff-xl--line-height: 28px;
+  --text-staff-xs: var(--lax-text-12);
+  --text-staff-xs--line-height: var(--lax-text-12--line);
+  --text-staff-sm: var(--lax-text-13);
+  --text-staff-sm--line-height: var(--lax-text-13--line);
+  --text-staff-md: var(--lax-text-14);
+  --text-staff-md--line-height: var(--lax-text-14--line);
+  --text-staff-lg: var(--lax-text-16);
+  --text-staff-lg--line-height: var(--lax-text-16--line);
+  --text-staff-xl: var(--lax-text-20);
+  --text-staff-xl--line-height: var(--lax-text-20--line);
 
   /* Radius: xs badges and checkboxes, sm controls, md cards and menus, lg dialogs and sheets. */
-  --radius-staff-xs: 4px;
-  --radius-staff-sm: 6px;
-  --radius-staff-md: 8px;
-  --radius-staff-lg: 12px;
+  --radius-staff-xs: var(--lax-radius-badge);
+  --radius-staff-sm: var(--lax-radius-control);
+  --radius-staff-md: var(--lax-radius-menu);
+  --radius-staff-lg: var(--lax-radius-card);
 
   /* Control heights. 32px compact (toolbars, table actions), 36px default (forms), 24px inline
      (badges, kbd), 40px large (the ⌘K field). Coarse pointers grow to 44px; see .staff-target. */
   --spacing-control-xs: 24px;
-  --spacing-control-sm: 32px;
-  --spacing-control-md: 36px;
+  --spacing-control-sm: var(--lax-control-sm);
+  --spacing-control-md: var(--lax-control-md);
   --spacing-control-lg: 40px;
 
   /* Sticky layers. The top bar and a sticky table header stay over the page as it scrolls, and
@@ -56,75 +60,69 @@
   /* Elevation. Level 0 is flat with a hairline (page, cards, tables). xs lifts secondary buttons
      off the surface; md floats menus, popovers and the bulk-action bar; lg holds dialogs, sheets
      and the command palette. Dark mode deepens the shadow and relies on the hairline for edges. */
-  --shadow-staff-xs: 0 1px 1px light-dark(rgb(16 18 18 / 0.05), rgb(0 0 0 / 0.3));
-  --shadow-staff-md: 0 2px 4px -1px light-dark(rgb(16 18 18 / 0.06), rgb(0 0 0 / 0.3)), 0 8px 24px
-    -4px light-dark(rgb(16 18 18 / 0.12), rgb(0 0 0 / 0.5));
-  --shadow-staff-lg: 0 4px 12px -4px light-dark(rgb(16 18 18 / 0.08), rgb(0 0 0 / 0.35)), 0 24px
-    64px -12px light-dark(rgb(16 18 18 / 0.24), rgb(0 0 0 / 0.6));
+  --shadow-staff-xs: var(--lax-shadow-xs);
+  --shadow-staff-md: var(--lax-shadow-md);
+  --shadow-staff-lg: var(--lax-shadow-lg);
 
   /* Neutrals. Surfaces step from canvas (the page) through surface (cards, tables) to raised
      (menus, dialogs). Interaction states are translucent so they read the same on any surface. */
-  --color-staff-canvas: light-dark(#f7f7f6, #111313);
-  --color-staff-surface: light-dark(#ffffff, #181a1a);
-  --color-staff-sunken: light-dark(#f3f3f2, #141616);
-  --color-staff-raised: light-dark(#ffffff, #202323);
-  --color-staff-hover: light-dark(rgb(16 18 18 / 0.045), rgb(255 255 255 / 0.055));
-  --color-staff-pressed: light-dark(rgb(16 18 18 / 0.08), rgb(255 255 255 / 0.09));
-  --color-staff-selected: light-dark(rgb(16 18 18 / 0.06), rgb(255 255 255 / 0.075));
-  --color-staff-line: light-dark(#e5e5e3, #2b2e2e);
-  --color-staff-line-subtle: light-dark(#eeeeec, #222525);
-  --color-staff-line-strong: light-dark(#d0d0ce, #3d4141);
-  --color-staff-line-hover: light-dark(#b3b5b4, #535757);
+  --color-staff-canvas: var(--lax-canvas);
+  --color-staff-surface: var(--lax-surface);
+  --color-staff-sunken: var(--lax-sunken);
+  --color-staff-raised: var(--lax-raised);
+  --color-staff-hover: var(--lax-hover);
+  --color-staff-pressed: var(--lax-pressed);
+  --color-staff-selected: var(--lax-selected);
+  --color-staff-line: var(--lax-line);
+  --color-staff-line-subtle: var(--lax-line-subtle);
+  --color-staff-line-strong: var(--lax-line-strong);
+  --color-staff-line-hover: var(--lax-line-hover);
   /* Form-control boundaries: inputs, selects, pickers, checkboxes, radios and the switch track
      when off. The border is the only edge these controls have, so it keeps at least 3:1 against
-     every surface it sits on (WCAG 1.4.11): 3.35:1 on surface and 3.01:1 on sunken in light,
-     3.59:1 on surface and 3.25:1 on raised in dark. Hover darkens it further. Card and table
-     hairlines (`line*`) are decorative and stay faint. */
-  --color-staff-control-border: light-dark(#8a8d8d, #6e7272);
-  --color-staff-control-border-hover: light-dark(#6f7272, #878b8b);
-  --color-staff-fg: light-dark(#181a1a, #ededeb);
-  --color-staff-muted: light-dark(#5b5e5e, #a4a7a7);
-  --color-staff-subtle: light-dark(#666969, #8c8f8f);
-  --color-staff-disabled: light-dark(#a9abab, #5a5d5d);
-  --color-staff-ink: light-dark(#181a1a, #ededeb);
-  --color-staff-ink-hover: light-dark(#323535, #ffffff);
-  --color-staff-on-ink: light-dark(#ffffff, #111313);
-  --color-staff-focus: light-dark(#181a1a, #ededeb);
-  /* A switch's thumb when off: near white on the control-border track in both schemes, so the
-     thumb keeps 3:1 against the track (3.35:1 light, 4.15:1 dark). */
-  --color-staff-thumb: light-dark(#ffffff, #ededeb);
-  --color-staff-scrim: light-dark(rgb(17 19 19 / 0.32), rgb(0 0 0 / 0.6));
+     every surface it sits on (WCAG 1.4.11). Card and table hairlines (`line*`) stay faint. */
+  --color-staff-control-border: var(--lax-control-edge);
+  --color-staff-control-border-hover: var(--lax-control-edge-hover);
+  --color-staff-fg: var(--lax-fg);
+  --color-staff-muted: var(--lax-muted);
+  --color-staff-subtle: var(--lax-subtle);
+  --color-staff-disabled: var(--lax-disabled-fg);
+  --color-staff-ink: var(--lax-ink);
+  --color-staff-ink-hover: var(--lax-ink-hover);
+  --color-staff-on-ink: var(--lax-on-ink);
+  --color-staff-focus: var(--lax-focus);
+  --color-staff-thumb: var(--lax-thumb);
+  --color-staff-scrim: var(--lax-scrim);
 
   /* Product accent: identity only. Each shell sets data-staff-product; see below. */
-  --color-staff-accent: light-dark(#181a1a, #ededeb);
+  --color-staff-accent: var(--lax-ink);
 
   /* Status tones: background, text and dot. Text meets 4.5:1 on its background in both schemes. */
-  --color-staff-neutral-bg: light-dark(#f0f0ef, #282b2b);
-  --color-staff-neutral-fg: light-dark(#454848, #c4c7c7);
-  --color-staff-neutral-dot: light-dark(#8d9090, #858888);
-  --color-staff-info-bg: light-dark(#edf2fd, rgb(91 141 239 / 0.16));
-  --color-staff-info-fg: light-dark(#2550b4, #9dbcf7);
-  --color-staff-info-dot: light-dark(#2f62cf, #6f9bf2);
-  --color-staff-success-bg: light-dark(#eaf5ec, rgb(64 178 98 / 0.16));
-  --color-staff-success-fg: light-dark(#1b6b2f, #86d59a);
-  --color-staff-success-dot: light-dark(#2a9148, #4fbf6c);
-  --color-staff-warning-bg: light-dark(#fdf3dc, rgb(232 166 48 / 0.16));
-  --color-staff-warning-fg: light-dark(#7d4a00, #f2c46d);
-  --color-staff-warning-dot: light-dark(#d98e0b, #e8a630);
-  --color-staff-danger-bg: light-dark(#fcecea, rgb(240 82 70 / 0.16));
-  --color-staff-danger-fg: light-dark(#a8261b, #f6a49c);
-  --color-staff-danger-dot: light-dark(#d93a2b, #f0675b);
+  --color-staff-neutral-bg: var(--lax-neutral-bg);
+  --color-staff-neutral-fg: var(--lax-neutral-fg);
+  --color-staff-neutral-dot: var(--lax-neutral-dot);
+  --color-staff-info-bg: var(--lax-info-bg);
+  --color-staff-info-fg: var(--lax-info-fg);
+  --color-staff-info-dot: var(--lax-info-dot);
+  --color-staff-success-bg: var(--lax-success-bg);
+  --color-staff-success-fg: var(--lax-success-fg);
+  --color-staff-success-dot: var(--lax-success-dot);
+  --color-staff-warning-bg: var(--lax-warning-bg);
+  --color-staff-warning-fg: var(--lax-warning-fg);
+  --color-staff-warning-dot: var(--lax-warning-dot);
+  --color-staff-danger-bg: var(--lax-danger-bg);
+  --color-staff-danger-fg: var(--lax-danger-fg);
+  --color-staff-danger-dot: var(--lax-danger-dot);
   /* Danger as text, icon or border (red on the surface), and as a solid fill behind white text.
      They differ in dark mode: light red reads on a dark surface, but white needs a deeper red. */
-  --color-staff-danger: light-dark(#b42318, #ef6a5e);
-  --color-staff-danger-solid: light-dark(#b42318, #c13a2e);
-  --color-staff-danger-solid-hover: light-dark(#931c13, #a93125);
-  --color-staff-on-danger: light-dark(#ffffff, #ffffff);
-  --color-staff-live-dot: light-dark(#e83030, #ff5a4f);
+  --color-staff-danger: var(--lax-danger);
+  --color-staff-danger-solid: var(--lax-danger-solid);
+  --color-staff-danger-solid-hover: var(--lax-danger-solid-hover);
+  --color-staff-on-danger: var(--lax-on-danger);
+  --color-staff-live-dot: var(--lax-live-dot);
   /* Live now (Bid): a solid fill, so it never reads as the tinted danger of a failed or
      withdrawn record. White text meets 4.5:1 on it in both schemes. */
-  --color-staff-live-bg: light-dark(#c81e1e, #c13a2e);
-  --color-staff-on-live: light-dark(#ffffff, #ffffff);
+  --color-staff-live-bg: var(--lax-live-bg);
+  --color-staff-on-live: var(--lax-on-live);
 }
 
 :root:not(.dark) {
@@ -163,15 +161,15 @@
    one staff ring must win whatever order the stylesheets land in. */
 @utility staff-focus {
   &:focus-visible {
-    outline: 2px solid var(--color-staff-focus) !important;
-    outline-offset: 2px !important;
+    outline: var(--lax-focus-width) solid var(--color-staff-focus) !important;
+    outline-offset: var(--lax-focus-offset) !important;
   }
 }
 
 @utility staff-focus-inset {
   &:focus-visible {
-    outline: 2px solid var(--color-staff-focus) !important;
-    outline-offset: -2px !important;
+    outline: var(--lax-focus-width) solid var(--color-staff-focus) !important;
+    outline-offset: calc(var(--lax-focus-offset) * -1) !important;
   }
 }
 
@@ -192,8 +190,8 @@
 /* Touch targets: dense controls stay 32-36px for a mouse and grow to 44px for a finger. */
 @utility staff-target {
   @media (pointer: coarse) {
-    min-height: 44px;
-    min-width: 44px;
+    min-height: var(--lax-control-lg);
+    min-width: var(--lax-control-lg);
   }
 }
 
