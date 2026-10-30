@@ -92,6 +92,7 @@ export function OrganisationHome({ home }: { home: LoadedOrganisationHome }) {
             firstRun={firstRun}
             organisationName={home.organisationName}
             payoutsPending={payoutsPending ?? false}
+            offerSales={home.biddingOpen}
           />
         ) : null}
         {main ? <HomeAtAGlance tiles={dashboard.tiles} /> : null}

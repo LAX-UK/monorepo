@@ -253,7 +253,14 @@ describe("HomeFirstRun", () => {
   };
 
   it("gives the people who run a new organisation a card for each first thing to do", () => {
-    render(<HomeFirstRun firstRun={firstRun} organisationName="Cedar & Stone" payoutsPending />);
+    render(
+      <HomeFirstRun
+        firstRun={firstRun}
+        organisationName="Cedar & Stone"
+        payoutsPending
+        offerSales
+      />,
+    );
     expect(screen.getByRole("link", { name: /Sell a work/ })).toHaveAttribute(
       "href",
       "/selling/new",
@@ -265,12 +272,25 @@ describe("HomeFirstRun", () => {
     );
   });
 
+  it("suggests no sales to an organisation that cannot bid, and nothing when nothing is left", () => {
+    const { container } = render(
+      <HomeFirstRun
+        firstRun={{ ...firstRun, actions: [] }}
+        organisationName="Harrington"
+        payoutsPending={false}
+        offerSales={false}
+      />,
+    );
+    expect(container).toBeEmptyDOMElement();
+  });
+
   it("gives any other member one calm empty state", () => {
     render(
       <HomeFirstRun
         firstRun={{ ...firstRun, addressee: "member", actions: [] }}
         organisationName="Cedar & Stone"
         payoutsPending={false}
+        offerSales
       />,
     );
     expect(screen.getByRole("heading", { name: "Nothing yet" })).toBeVisible();

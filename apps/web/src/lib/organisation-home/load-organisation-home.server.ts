@@ -66,6 +66,8 @@ export type LoadedOrganisationHome = {
   listLimitNotice: string | null;
   /** The people who run the organisation get "Sell a work" beside the title. */
   sellHref: string | null;
+  /** Whether the organisation's state lets it bid, so Home only suggests sales it can join. */
+  biddingOpen: boolean;
 };
 
 /**
@@ -256,5 +258,6 @@ export async function loadOrganisationHome(
         ? "Some lists are longer than Home reads. Open each page to see everything."
         : null,
     sellHref: model.shortcuts.includes("sell") ? CLIENT_ROUTES.sellingNew : null,
+    biddingOpen: model.state.actions.bid,
   };
 }

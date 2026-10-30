@@ -17,9 +17,16 @@ type Props = {
   organisationName: string;
   /** Payouts are still to set up: a work can be prepared now and sent afterwards. */
   payoutsPending: boolean;
+  /** The organisation may bid, so upcoming sales are worth suggesting. */
+  offerSales: boolean;
 };
 
-function startCards({ firstRun, organisationName, payoutsPending }: Props): StartCard[] {
+function startCards({
+  firstRun,
+  organisationName,
+  payoutsPending,
+  offerSales,
+}: Props): StartCard[] {
   const sell = firstRun.actions.find((action) => action.id === "sell");
   return [
     ...(sell
@@ -35,13 +42,17 @@ function startCards({ firstRun, organisationName, payoutsPending }: Props): Star
           },
         ]
       : []),
-    {
-      id: "sales",
-      illustration: "gavel",
-      title: "Browse upcoming sales",
-      description: `Watch lots and register to bid as ${organisationName}.`,
-      href: "/sales",
-    },
+    ...(offerSales
+      ? [
+          {
+            id: "sales",
+            illustration: "gavel" as const,
+            title: "Browse upcoming sales",
+            description: `Watch lots and register to bid as ${organisationName}.`,
+            href: "/sales",
+          },
+        ]
+      : []),
   ];
 }
 
@@ -52,6 +63,7 @@ function startCards({ firstRun, organisationName, payoutsPending }: Props): Star
  */
 export function HomeFirstRun(props: Props) {
   const { firstRun } = props;
+  const cards = startCards(props);
   if (firstRun.addressee === "member") {
     return (
       <div className="rounded-lax-card border border-lax-line bg-lax-surface">
@@ -73,10 +85,12 @@ export function HomeFirstRun(props: Props) {
       </div>
     );
   }
+  // A paused organisation has nothing to start; its banner says what it can still do.
+  if (cards.length === 0) return null;
   return (
     <HomeSection id="home-get-started" title="Get started">
       <ul aria-labelledby="home-get-started" className="grid grid-cols-1 gap-4 md:grid-cols-2">
-        {startCards(props).map((card) => (
+        {cards.map((card) => (
           <li key={card.id}>
             <Link
               href={card.href}
