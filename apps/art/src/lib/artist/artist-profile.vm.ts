@@ -23,23 +23,52 @@ export function formatArtistLifeLine({
 
 export type ArtistSectionTab = { id: string; label: string };
 
-export const ARTIST_SECTION_IDS = {
+/** The profile's sections in page order (Figma artist profile `439:6125`). */
+export type ArtistSectionKey = "works" | "sold" | "exhibitions" | "stories" | "press";
+
+export const ARTIST_SECTION_IDS: Record<ArtistSectionKey, string> = {
   works: "artist-works",
+  sold: "artist-sold",
   exhibitions: "artist-exhibitions",
   stories: "artist-stories",
-} as const;
+  press: "artist-press",
+};
+
+export const ARTIST_SECTION_LABELS: Record<ArtistSectionKey, string> = {
+  works: "Available works",
+  sold: "Sold works",
+  exhibitions: "Exhibitions",
+  stories: "Films & stories",
+  press: "Press",
+};
+
+const SECTION_ORDER: readonly ArtistSectionKey[] = [
+  "works",
+  "sold",
+  "exhibitions",
+  "stories",
+  "press",
+];
 
 /** Anchor tabs for the sections that render, in page order; none when fewer than two. */
-export function artistSectionTabs(sections: {
-  works: boolean;
-  exhibitions: boolean;
-  stories: boolean;
-}): ArtistSectionTab[] {
-  const candidates: (ArtistSectionTab | null)[] = [
-    sections.works ? { id: ARTIST_SECTION_IDS.works, label: "Featured works" } : null,
-    sections.exhibitions ? { id: ARTIST_SECTION_IDS.exhibitions, label: "Exhibitions" } : null,
-    sections.stories ? { id: ARTIST_SECTION_IDS.stories, label: "Films & stories" } : null,
-  ];
-  const tabs = candidates.filter((tab): tab is ArtistSectionTab => tab != null);
+export function artistSectionTabs(
+  sections: Partial<Record<ArtistSectionKey, boolean>>,
+): ArtistSectionTab[] {
+  const tabs = SECTION_ORDER.filter((key) => sections[key]).map((key) => ({
+    id: ARTIST_SECTION_IDS[key],
+    label: ARTIST_SECTION_LABELS[key],
+  }));
   return tabs.length > 1 ? tabs : [];
+}
+
+export type ArtistWorksLayout = "grid" | "pair" | "single";
+
+/**
+ * Works recompose for their count, so a row is never mostly empty: three or more fill the works
+ * grid, two sit side by side at half width, and one sits beside an invitation to ask about more.
+ */
+export function artistWorksLayout(count: number): ArtistWorksLayout | null {
+  if (count <= 0) return null;
+  if (count === 1) return "single";
+  return count === 2 ? "pair" : "grid";
 }

@@ -19,7 +19,8 @@ export type ArtGalleryTeamContext =
   | "pastExhibition"
   | "advisory"
   | "howToBuy"
-  | "forArtists";
+  | "forArtists"
+  | "artist";
 
 /** The work, exhibition, venue or page the enquiry is about, carried into the enquiry. */
 export type ArtGalleryTeamSubject = { slug: string; label: string };
@@ -95,6 +96,12 @@ const CONTEXTS: Record<ArtGalleryTeamContext, ContextCopy> = {
   forArtists: {
     title: "Questions before you apply?",
     body: "Ask the gallery team about representation, the review or what to send. We are glad to help before you start.",
+    topic: "general",
+    directLines: true,
+  },
+  artist: {
+    title: "Ask about the artist's work",
+    body: "See works in person, ask about pieces not shown online, or hear first when new work arrives from the studio.",
     topic: "general",
     directLines: true,
   },

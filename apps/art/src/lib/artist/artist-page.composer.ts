@@ -5,7 +5,11 @@ import {
   artistHref,
   buildCatalogueArtworkCards,
 } from "@/lib/catalogue/catalogue-artwork-card.vm";
+import type { ArtEditorialStorySummary } from "@/lib/editorial/art-editorial.types";
+import { type ArtHubPressRowVm, buildHubPressRows } from "@/lib/editorial/art-hub.vm";
 import { type EditorialCardVm, exhibitionCard, storyCard } from "@/lib/editorial/editorial-card.vm";
+import { newestFirst } from "@/lib/editorial/editorial-story.vm";
+import { bidSellUrl } from "@/lib/editorial/how-to-sell.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
 import type {
@@ -18,7 +22,12 @@ import type {
 import { artistJsonLd } from "@/lib/seo/art-structured-data";
 import { seoMetadataDescription, seoMetadataTitle } from "@/lib/seo/seo-metadata";
 import type { JsonLd } from "@auction/branding";
-import type { MarketingArtistCrossLink, MarketingArtistFactInput } from "@auction/marketing-ui";
+import {
+  type MarketingArtistCrossLink,
+  type MarketingArtistFactInput,
+  type MarketingSectionSurface,
+  resolveBandSequence,
+} from "@auction/marketing-ui";
 import type { PublicArtistDetail } from "@auction/shop-contracts";
 import {
   type ArtistSectionTab,
@@ -39,14 +48,25 @@ export type ArtistPageVm = {
   heroUrl: string | null;
   /** "French, 1869–1954"; null when nothing is known. */
   lifeLine: string | null;
+  /** Originals still available (for sale or price on request). */
   works: CatalogueArtworkCardVm[];
+  /** Sold originals, shown as the artist's record with the gallery. */
+  soldWorks: CatalogueArtworkCardVm[];
   worksFailed: boolean;
+  /** Available works render (works, an empty state or an error) unless sold works stand in. */
+  showWorks: boolean;
   exhibitions: EditorialCardVm[];
-  /** Stories, films and press that feature the artist. */
+  /** Films first, then stories that feature the artist. */
   stories: EditorialCardVm[];
+  /** Press coverage that features the artist. */
+  press: ArtHubPressRowVm[];
   /** "Editions by {artist} in LAX Shop" when the Shop has editions by them (one artist list). */
   crossLinks: MarketingArtistCrossLink[];
+  /** LAX Bid's "Sell with LAX" for collectors who own a work; lax.art takes no consignments. */
+  sellHref: string | null;
   sectionTabs: ArtistSectionTab[];
+  /** Sold works sit on a cream band unless the gallery team band would then touch it. */
+  soldSurface: MarketingSectionSurface;
   viewer: ArtViewerState;
   following: boolean;
   favoriteAuth: ArtFavoriteAuth;
@@ -58,7 +78,9 @@ export type ArtistPageResult =
   | { kind: "not_found" }
   | { kind: "unavailable" };
 
-const FEATURED_WORKS_LIMIT = 8;
+const AVAILABLE_WORKS_LIMIT = 8;
+const SOLD_WORKS_LIMIT = 4;
+const PRESS_LIMIT = 5;
 
 /**
  * "Editions by {artist} in LAX Shop" when the Shop has live editions by the artist. LAX Shop and
@@ -85,6 +107,39 @@ async function loadShopEditionsLink(
   ];
 }
 
+/** Films lead the artist's stories (Figma `454:6937`); press is listed on its own. */
+function splitStories(stories: readonly ArtEditorialStorySummary[]): {
+  stories: EditorialCardVm[];
+  press: ArtHubPressRowVm[];
+} {
+  const sorted = newestFirst(stories);
+  const features = sorted.filter((story) => story.kind !== "press");
+  const films = features.filter((story) => story.kind === "film");
+  const others = features.filter((story) => story.kind !== "film");
+  return {
+    stories: [...films, ...others].map(storyCard),
+    press: buildHubPressRows(
+      sorted.filter((story) => story.kind === "press").slice(0, PRESS_LIMIT),
+    ),
+  };
+}
+
+/**
+ * The page's band rhythm: the sold record is a cream band, the gallery team band closes the
+ * page. Everything between them is plain, so the sold band gives way only when nothing else
+ * separates the two.
+ */
+function soldSurface(sectionsAfterSold: number): MarketingSectionSurface {
+  const surfaces = resolveBandSequence([
+    { id: "sold", surface: "band", flexible: true },
+    ...(sectionsAfterSold > 0
+      ? [{ id: "between", surface: "plain", flexible: false } as const]
+      : []),
+    { id: "team", surface: "band", flexible: false },
+  ]);
+  return surfaces.sold;
+}
+
 export async function composeArtistPage(
   services: {
     catalogue: ArtCataloguePort;
@@ -100,10 +155,19 @@ export async function composeArtistPage(
     savedArtworks: true,
     followedArtists: true,
   });
-  // lax.art lists originals only, so the featured works are the artist's originals.
-  const [artist, works, relations] = await Promise.allSettled([
+  // lax.art lists originals only: available works first, then sold works as the artist's record.
+  const [artist, works, sold, relations] = await Promise.allSettled([
     services.catalogue.getArtist(slug),
-    services.catalogue.listArtworks({ artistSlugs: [slug], limit: FEATURED_WORKS_LIMIT }),
+    services.catalogue.listArtworks({
+      artistSlugs: [slug],
+      saleState: "available",
+      limit: AVAILABLE_WORKS_LIMIT,
+    }),
+    services.catalogue.listArtworks({
+      artistSlugs: [slug],
+      saleState: "sold",
+      limit: SOLD_WORKS_LIMIT,
+    }),
     services.editorial.getArtistRelations(slug),
   ]);
   const favorites = await favoritesPromise;
@@ -111,18 +175,24 @@ export async function composeArtistPage(
   const detail: PublicArtistDetail | null = artist.value;
   if (!detail) return { kind: "not_found" };
 
-  const workCards =
-    works.status === "fulfilled"
-      ? buildCatalogueArtworkCards(works.value.items, favorites.savedArtworkSlugs)
+  const cards = (result: typeof works) =>
+    result.status === "fulfilled"
+      ? buildCatalogueArtworkCards(result.value.items, favorites.savedArtworkSlugs)
       : [];
-  // A failed or disabled editorial read hides only the exhibition and story sections.
+  const workCards = cards(works);
+  const soldCards = cards(sold);
+  // A failed or disabled editorial read hides only the exhibition, story and press sections.
   const related =
     relations.status === "fulfilled" && relations.value.status === "ok"
       ? relations.value.data
       : null;
   const exhibitions = related?.exhibitions.map(exhibitionCard) ?? [];
-  const stories = related?.stories.map(storyCard) ?? [];
+  const { stories, press } = splitStories(related?.stories ?? []);
   const crossLinks = await loadShopEditionsLink(services, detail);
+  const sellHref = bidSellUrl(services.ecosystem.crossProductLinks());
+  const worksFailed = works.status === "rejected";
+
+  const showWorks = workCards.length > 0 || worksFailed || soldCards.length === 0;
 
   return {
     kind: "ok",
@@ -136,21 +206,31 @@ export async function composeArtistPage(
         deathYear: detail.deathYear ?? null,
         discipline: detail.discipline,
       },
-      bio: detail.bio,
+      bio: detail.bio?.trim() || null,
       portraitUrl: detail.portraitUrl,
       portraitAlt: `Portrait of ${detail.name}`,
       heroUrl: detail.heroUrl ?? null,
       lifeLine: formatArtistLifeLine(detail),
       works: workCards,
-      worksFailed: works.status === "rejected",
+      soldWorks: soldCards,
+      worksFailed,
+      showWorks,
       exhibitions,
       stories,
+      press,
       crossLinks,
+      sellHref,
       sectionTabs: artistSectionTabs({
-        works: true,
+        works: showWorks,
+        sold: soldCards.length > 0,
         exhibitions: exhibitions.length > 0,
         stories: stories.length > 0,
+        press: press.length > 0,
       }),
+      soldSurface: soldSurface(
+        [exhibitions.length, stories.length, press.length, sellHref ? 1 : 0].filter((n) => n > 0)
+          .length,
+      ),
       viewer: favorites.viewer,
       following: favorites.followedArtistSlugs.has(detail.slug),
       favoriteAuth: favorites.favoriteAuth,
