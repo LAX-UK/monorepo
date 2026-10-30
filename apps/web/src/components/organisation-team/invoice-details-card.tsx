@@ -177,6 +177,7 @@ export function InvoiceDetailsCard({ legalEntityId, details }: Props) {
               <Field label="Country" error={errors.country ?? null}>
                 <div className={`${fieldBox} h-lax-control-md text-lax-14`}>
                   <select
+                    aria-label="Country"
                     autoComplete="country"
                     value={form.address.country}
                     onChange={(e) => setAddress({ country: e.target.value })}

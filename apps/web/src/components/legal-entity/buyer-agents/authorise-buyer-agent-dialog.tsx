@@ -181,7 +181,9 @@ export function AuthoriseBuyerAgentDialog({
             {current ? `Change limits for ${agent.name}` : `Authorise ${agent.name}`}
           </DialogTitle>
           <DialogDescription>
-            Let {agent.name} bid for {entityName}. You can change or revoke this at any time.
+            {current
+              ? `Saving replaces the limits ${agent.name} bids under now. Bids already placed stand.`
+              : `Let ${agent.name} bid for ${entityName}. You can change or revoke this at any time.`}
           </DialogDescription>
         </DialogHeader>
         <form

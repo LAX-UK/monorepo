@@ -76,7 +76,10 @@ export function usageView(usage: BiddingLimitUsage): UsageView {
   }
   const available = pounds(usage.available) ?? Math.max(limit - exposure, 0);
   return {
-    text: `${formatPounds(exposure)} of ${formatPounds(limit)}`,
+    text:
+      exposure > 0
+        ? `${formatPounds(exposure)} of ${formatPounds(limit)}`
+        : `None of ${formatPounds(limit)} used`,
     left: `${formatPounds(available)} left`,
     percent: Math.min(100, Math.round((exposure / limit) * 100)),
     idle: exposure === 0,

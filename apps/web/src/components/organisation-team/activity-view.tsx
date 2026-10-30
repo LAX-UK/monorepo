@@ -73,7 +73,12 @@ export function ActivityView({
   const [loading, startLoading] = useTransition();
   const [navigating, startNavigating] = useTransition();
 
-  const entries = useMemo(() => [...(page?.entries ?? []), ...older], [page, older]);
+  // Newest first by time, whatever order the pages arrive in.
+  const entries = useMemo(
+    () =>
+      [...(page?.entries ?? []), ...older].sort((a, b) => b.occurredAt.localeCompare(a.occurredAt)),
+    [page, older],
+  );
   const days = useMemo(
     () =>
       activityDays(
