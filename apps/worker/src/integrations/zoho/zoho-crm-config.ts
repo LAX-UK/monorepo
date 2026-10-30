@@ -10,6 +10,14 @@ export const ZOHO_CRM_ALWAYS_ON_WHEN_PERSON_SYNC_EVENT_TYPES = [
   "user.identity_deleted",
 ] as const;
 
+/**
+ * An erasure always runs where the records it removes were synced: a guest lead's erasure is on
+ * whenever guest leads are sent to the CRM, whatever the allowlist says.
+ */
+const ERASURE_FOLLOWS_SYNC: Readonly<Record<string, string>> = {
+  "shop.guest_lead.erased": "shop.guest_lead.recorded",
+};
+
 export const ZOHO_CRM_PERSON_EVENT_TYPES = [
   "user.registered",
   "user.email_verified",
@@ -62,6 +70,8 @@ export function isZohoEventTypeEnabled(env: WorkerEnv, eventType: string): boole
   const enabled = parseZohoEnabledEventTypes(env.ZOHO_CRM_ENABLED_EVENT_TYPES);
   if (enabled.size === 0) return false;
   if (enabled.has(eventType)) return true;
+  const sentBy = ERASURE_FOLLOWS_SYNC[eventType];
+  if (sentBy && enabled.has(sentBy)) return true;
   if (
     hasZohoPersonSyncEnabled(env) &&
     (ZOHO_CRM_ALWAYS_ON_WHEN_PERSON_SYNC_EVENT_TYPES as readonly string[]).includes(eventType)

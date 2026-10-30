@@ -1,4 +1,8 @@
-import { basketKnownEmpty, canProceedToCheckout } from "@/lib/basket-checkout-eligibility";
+import {
+  basketCheckoutEntry,
+  basketKnownEmpty,
+  canProceedToCheckout,
+} from "@/lib/basket-checkout-eligibility";
 import type { BasketView } from "@auction/shop-contracts";
 import { describe, expect, it } from "vitest";
 
@@ -52,5 +56,17 @@ describe("basketKnownEmpty", () => {
     expect(basketKnownEmpty({ status: "ok", data: baseBasket })).toBe(false);
     expect(basketKnownEmpty({ status: "failed" })).toBe(false);
     expect(basketKnownEmpty({ status: "unauthorized" })).toBe(false);
+  });
+});
+
+describe("basketCheckoutEntry", () => {
+  it("sends signed-out shoppers to checkout, where guest checkout is offered", () => {
+    expect(basketCheckoutEntry("guest")).toBe("checkout");
+    expect(basketCheckoutEntry("authenticated")).toBe("checkout");
+  });
+
+  it("asks for sign-in only when the session cannot be used", () => {
+    expect(basketCheckoutEntry("unavailable")).toBe("sign_in");
+    expect(basketCheckoutEntry("disabled")).toBe("sign_in");
   });
 });

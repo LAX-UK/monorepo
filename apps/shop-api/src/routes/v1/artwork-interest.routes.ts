@@ -107,24 +107,27 @@ export async function registerArtworkInterestRoutes(
       const admission = await admitEnquiry(request, reply, deps.enquiryRateLimiter, body);
       if (admission.kind === "honeypot") return { status: "registered" as const };
       const sender: EnquirySender = admission.sender;
-      const status = await deps.registerArtworkInterest({
+      const result = await deps.registerArtworkInterest({
         artworkSlug: slug,
         sender,
         intent,
         ...(body.message ? { message: body.message } : {}),
         ...(body.contactPhone ? { contactPhone: body.contactPhone } : {}),
       });
-      if (status === "artwork_not_found") {
+      if (result.status === "artwork_not_found") {
         throw notFound("Artwork");
       }
-      if (status === "not_subscribable") {
+      if (result.status === "not_subscribable") {
         throw new ShopApiError(
           SHOP_API_ERROR_CODES.CONFLICT,
           "This artwork is not accepting enquiries",
           409,
         );
       }
-      return { status };
+      return {
+        status: result.status,
+        ...(result.reference ? { reference: result.reference } : {}),
+      };
     },
   );
 }

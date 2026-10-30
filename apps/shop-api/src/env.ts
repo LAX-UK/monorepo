@@ -1,5 +1,6 @@
 import { legalEntityFor } from "@auction/branding";
 import { STAFF_STEP_UP_MAX_AGE_SECONDS } from "@auction/identity-contracts";
+import { parseFinancialYearEnd } from "@auction/shop-domain";
 import { z } from "zod";
 
 type AppEnv = "production" | "test" | "development";
@@ -79,6 +80,25 @@ export const shopApiEnvSchema = z.object({
     .default("true")
     .transform((value) => value === "true"),
   SHOP_SCHEDULER_INTERVAL_MS: z.coerce.number().int().min(5_000).default(60_000),
+  /**
+   * The last day of London Art Exchange Ltd's financial year, as "MM-DD". The kept invoice name
+   * and address of an erased guest are purged six years after the end of the financial year the
+   * invoice falls in. Defaults to 30 September, the company's accounting reference date.
+   */
+  SHOP_FINANCIAL_YEAR_END: z
+    .string()
+    .default("09-30")
+    .transform((value, ctx) => {
+      const parsed = parseFinancialYearEnd(value);
+      if (!parsed) {
+        ctx.addIssue({
+          code: "custom",
+          message: "SHOP_FINANCIAL_YEAR_END must be MM-DD, e.g. 09-30",
+        });
+        return z.NEVER;
+      }
+      return parsed;
+    }),
   SHOP_ENQUIRY_NOTIFICATION_EMAIL: z.preprocess(
     (val) => (val === "" ? undefined : val),
     z.string().email().optional(),

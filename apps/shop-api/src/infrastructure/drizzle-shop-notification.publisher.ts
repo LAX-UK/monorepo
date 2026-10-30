@@ -149,6 +149,29 @@ export function createDrizzleShopNotificationPublisher(): ShopNotificationPublis
       });
     },
 
+    async queueEnquiryAcknowledgement(tx, input) {
+      const db = asDb(tx);
+      const to =
+        input.sender.contactEmail?.trim() ||
+        (input.sender.kind === "account"
+          ? await resolveShopUserEmail(db, input.sender.identitySubjectId)
+          : null);
+      if (!to || !to.includes("@")) return;
+      await insertShopEmailOutbox(db, {
+        idempotencyKey: input.idempotencyKey,
+        to,
+        template: "art-enquiry-received",
+        vars: {
+          reference: input.reference,
+          ...(input.sender.contactName ? { recipientName: input.sender.contactName } : {}),
+          topic: input.topic,
+          storefront: input.storefront,
+          ...(input.artworkTitle ? { artworkTitle: input.artworkTitle } : {}),
+          ...(input.artworkUrl ? { artworkUrl: input.artworkUrl } : {}),
+        },
+      });
+    },
+
     async queueGeneralEnquiryAlert(tx, input) {
       const db = asDb(tx);
       await insertShopEmailOutbox(db, {

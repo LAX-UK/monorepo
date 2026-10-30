@@ -300,7 +300,7 @@ export type EditorialRepository = {
     contextSlug: string | null;
     message: string;
     phone: string | null;
-  }): Promise<{ enquiryId: string }>;
+  }): Promise<{ enquiryId: string; reference: string }>;
   listGeneralEnquiriesForSubject(identitySubjectId: string): Promise<
     Array<{
       enquiryId: string;

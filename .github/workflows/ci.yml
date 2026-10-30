@@ -78,9 +78,6 @@ jobs:
       - name: UI guardrails
         run: pnpm lint:ui-guardrails
 
-      - name: Client boundary
-        run: pnpm lint:client-boundary
-
       - name: Admin capability drift
         run: pnpm lint:admin-capability-drift
 

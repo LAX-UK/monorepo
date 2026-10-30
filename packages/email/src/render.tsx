@@ -35,6 +35,9 @@ import ArtArtistApplicationReceivedEmail, {
 import ArtArtistApplicationWelcomeEmail, {
   subject as artArtistApplicationWelcomeSubject,
 } from "./templates/art-artist-application-welcome.js";
+import ArtEnquiryReceivedEmail, {
+  subject as artEnquiryReceivedSubject,
+} from "./templates/art-enquiry-received.js";
 import ArtGeneralEnquiryAlertEmail, {
   subject as artGeneralEnquiryAlertSubject,
 } from "./templates/art-general-enquiry-alert.js";
@@ -491,6 +494,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "art-artist-application-welcome": {
     subject: artArtistApplicationWelcomeSubject,
     component: (vars) => <ArtArtistApplicationWelcomeEmail {...vars} />,
+  },
+  "art-enquiry-received": {
+    subject: artEnquiryReceivedSubject,
+    component: (vars) => <ArtEnquiryReceivedEmail {...vars} />,
   },
   "art-general-enquiry-alert": {
     subject: artGeneralEnquiryAlertSubject,

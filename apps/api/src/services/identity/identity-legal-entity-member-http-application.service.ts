@@ -96,7 +96,7 @@ function confirmationOutcome(error: MemberChangeConfirmationError): IdentityRout
 }
 
 /** Maps the member service's typed refusals to HTTP; anything else is unexpected. */
-function memberChangeOutcome(err: unknown): IdentityRouteOutcome<never> {
+export function memberChangeOutcome(err: unknown): IdentityRouteOutcome<never> {
   if (err instanceof MemberChangeConfirmationError) return confirmationOutcome(err);
   if (err instanceof MemberPermissionError) return permissionOutcome(err.code);
   throw err;

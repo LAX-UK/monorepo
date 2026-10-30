@@ -1,4 +1,4 @@
-import { isGuestOrderSubject } from "@auction/shop-domain";
+import { isErasedGuestEmail, isGuestOrderSubject } from "@auction/shop-domain";
 
 type BuyerColumns = {
   buyerName: string | null;
@@ -18,5 +18,7 @@ export function orderBuyer(
   const buyerIsGuest = isGuestOrderSubject(subject);
   const name = buyerIsGuest ? columns.guestName : columns.buyerName;
   const email = buyerIsGuest ? columns.guestEmail : columns.buyerEmail;
-  return { buyerName: name?.trim() || null, buyerEmail: email?.trim() || null, buyerIsGuest };
+  // An erased guest's email column holds a placeholder, never shown as an address.
+  const shownEmail = email && !isErasedGuestEmail(email) ? email.trim() : null;
+  return { buyerName: name?.trim() || null, buyerEmail: shownEmail || null, buyerIsGuest };
 }

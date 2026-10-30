@@ -87,6 +87,7 @@ function parsePayload(event: DomainEventRowForCrm): unknown | null {
 const GUEST_LEAD_STATUS_LABEL = {
   abandoned_checkout: "abandoned checkout",
   ordered: "ordered",
+  enquired: "enquired",
 } as const;
 
 function leadSourceDetailed(source: string, channel: "bid" | "shop" | "identity"): string {
@@ -304,7 +305,7 @@ export function mapDomainEventToCrmIntent(
         leadSubjectId: string;
         email: string;
         name: string | null;
-        status: "abandoned_checkout" | "ordered";
+        status: keyof typeof GUEST_LEAD_STATUS_LABEL;
         source: string;
         marketingConsent: boolean;
       };
@@ -323,6 +324,13 @@ export function mapDomainEventToCrmIntent(
       if (payload === null) return { kind: "skip", reason: "invalid_payload" };
       const p = payload as { leadSubjectId: string; subjectId: string };
       return { kind: "merge_subjects", subjectId: p.subjectId, retiredSubjectId: p.leadSubjectId };
+    }
+    case "shop.guest_lead.erased": {
+      // Staff erased the guest's data on request: the CRM lead is deleted and purged from the
+      // recycle bin, as for a closed account.
+      if (payload === null) return { kind: "skip", reason: "invalid_payload" };
+      const p = payload as { leadSubjectId: string };
+      return { kind: "erase_subject", subjectId: p.leadSubjectId };
     }
     case "shop.order.paid": {
       if (payload === null) return { kind: "skip", reason: "invalid_payload" };

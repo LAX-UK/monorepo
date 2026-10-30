@@ -6,6 +6,17 @@ export function basketKnownEmpty(result: ShopFetchResult<BasketView>): boolean {
   return result.status === "empty" || (result.status === "ok" && result.data.lines.length === 0);
 }
 
+/**
+ * Where the basket's checkout button leads. Signed-in and signed-out shoppers both go to
+ * checkout, which offers a signed-out shopper guest checkout or sign-in. Only a session that
+ * cannot be read (or a disabled account) is sent to sign in first.
+ */
+export function basketCheckoutEntry(
+  viewerKind: "guest" | "authenticated" | "disabled" | "unavailable",
+): "checkout" | "sign_in" {
+  return viewerKind === "guest" || viewerKind === "authenticated" ? "checkout" : "sign_in";
+}
+
 export type BasketCheckoutBlockReason = "price_changed" | "out_of_stock";
 
 export function basketCheckoutBlockReasons(basket: BasketView): BasketCheckoutBlockReason[] {

@@ -3,7 +3,7 @@
 import { ConnectivityBannerShell } from "@/components/realtime/connectivity-banner-shell";
 import { useBrowserOnline } from "@/lib/connection/use-browser-online";
 
-/** Slim global banner when the browser reports no network connectivity. */
+/** Slim global banner when our own server cannot be reached (checked, not just the browser flag). */
 export function BrowserOfflineBanner() {
   const online = useBrowserOnline();
   if (online) return null;
