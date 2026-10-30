@@ -23,7 +23,7 @@ export type ArtGeneralEnquiryTopic = (typeof ART_GENERAL_ENQUIRY_TOPICS)[number]
 export type ArtGeneralEnquiryState =
   | { status: "idle" }
   | { status: "invalid"; fieldErrors: EnquiryFieldErrors & { topic?: string } }
-  | { status: "sent" }
+  | { status: "sent"; email: string | null }
   | { status: "error"; message: string };
 
 const MESSAGE_MAX = 4000;
@@ -39,12 +39,12 @@ export function isArtGeneralEnquiryTopic(value: string): value is ArtGeneralEnqu
   return ART_GENERAL_ENQUIRY_TOPICS.some((topic) => topic.value === value);
 }
 
-function interpretResult(result: ArtCommerceMutationResult): ArtGeneralEnquiryState {
+function interpretResult(result: ArtCommerceMutationResult, email: string): ArtGeneralEnquiryState {
   if (result.kind === "csrf_unavailable") {
     return { status: "error", message: MESSAGES.sessionExpired };
   }
   if (result.kind === "network_error") return { status: "error", message: MESSAGES.unavailable };
-  if (result.status === 201) return { status: "sent" };
+  if (result.status === 201) return { status: "sent", email };
   if (result.status === 429) return { status: "error", message: MESSAGES.rateLimited };
   return { status: "error", message: MESSAGES.unavailable };
 }
@@ -73,17 +73,18 @@ export async function submitGeneralEnquiry(
 
   const contextSlug = readEnquiryText(input.contextSlug).trim();
   const website = readEnquiryText(input.website);
+  const email = readEnquiryText(input.email).trim();
   const result = await client.mutate("/commerce/me/general-enquiries", {
     method: "POST",
     body: {
       topic,
       name: readEnquiryText(input.name).trim(),
-      email: readEnquiryText(input.email).trim(),
+      email,
       message,
       ...(phone ? { phone } : {}),
       ...(CONTEXT_SLUG.test(contextSlug) ? { contextSlug } : {}),
       ...(website.trim() ? { website } : {}),
     },
   });
-  return interpretResult(result);
+  return interpretResult(result, email);
 }

@@ -72,3 +72,17 @@ export function artistWorksLayout(count: number): ArtistWorksLayout | null {
   if (count === 1) return "single";
   return count === 2 ? "pair" : "grid";
 }
+
+const SENTENCE_END = /^(.+?[.!?])(\s|$)/s;
+
+/** The short biography when there is one; otherwise the biography's opening sentence. */
+export function artistIntro(input: {
+  shortBio?: string | null;
+  bio?: string | null;
+}): string | null {
+  const short = input.shortBio?.trim();
+  if (short) return short;
+  const bio = input.bio?.trim();
+  if (!bio) return null;
+  return bio.match(SENTENCE_END)?.[1] ?? bio;
+}

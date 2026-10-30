@@ -16,6 +16,8 @@ export type MarketingArtistSummaryProps = {
   /** Links or buttons under the bio, e.g. "Editions by …" and a profile link. */
   actions?: ReactNode;
   bio?: string | null;
+  /** One line under the name, e.g. "British · b. 1956 · Printmaker". */
+  meta?: string | null;
   className?: string;
 };
 
@@ -40,6 +42,7 @@ export function MarketingArtistSummary({
   action,
   actions,
   bio,
+  meta,
   className,
 }: MarketingArtistSummaryProps) {
   const headingId = useId();
@@ -55,15 +58,18 @@ export function MarketingArtistSummary({
         >
           {avatar ?? initials(name)}
         </span>
-        <Link
-          href={href}
-          className={cn(
-            "min-w-0 flex-1 truncate rounded-sm text-base font-semibold text-on-surface hover:underline",
-            FOCUS_RING,
-          )}
-        >
-          {name}
-        </Link>
+        <div className="flex min-w-0 flex-1 flex-col">
+          <Link
+            href={href}
+            className={cn(
+              "w-fit max-w-full truncate rounded-sm text-base font-semibold text-on-surface hover:underline",
+              FOCUS_RING,
+            )}
+          >
+            {name}
+          </Link>
+          {meta ? <p className="m-0 text-sm leading-5 text-on-surface-variant">{meta}</p> : null}
+        </div>
         {action ? <div className="shrink-0">{action}</div> : null}
       </div>
       {bio ? (

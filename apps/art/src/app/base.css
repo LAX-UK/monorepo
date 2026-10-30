@@ -354,11 +354,15 @@ html.dark {
   --color-destructive-foreground: var(--color-on-error);
 }
 
-/* The page action bar (artwork detail) is fixed above the bottom tab bar below `md`. The footer
-   sits outside <main>, so the page cannot pad for it; reserve the bar and tab bar height at the end of
-   the document instead so the footer's last row stays reachable. */
+/* A page action bar (artwork detail) takes the bottom of the screen below `md`, and the bottom
+   tab bar gives way to it, so the fixed chrome is one bar, never two stacked over the page. The
+   footer sits outside <main>, so the page cannot pad for the bar; reserve its height at the end
+   of the document instead so the footer's last row stays reachable. */
 @media (max-width: 47.99rem) {
   body:has(.art-action-bar) {
-    padding-bottom: calc(var(--art-bottom-nav-height) + 4.5rem);
+    padding-bottom: calc(4.5rem + env(safe-area-inset-bottom, 0px));
+  }
+  body:has(.art-action-bar) .art-bottom-nav {
+    display: none;
   }
 }

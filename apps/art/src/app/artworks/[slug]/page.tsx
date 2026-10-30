@@ -1,12 +1,12 @@
 import { ArtArtworkArtistSummary } from "@/components/artwork/art-artwork-artist-summary";
 import { ArtArtworkBreadcrumb } from "@/components/artwork/art-artwork-breadcrumb";
+import { ArtArtworkConversations } from "@/components/artwork/art-artwork-conversations.client";
 import { ArtArtworkDetailSections } from "@/components/artwork/art-artwork-detail-sections";
 import { ArtArtworkGallery } from "@/components/artwork/art-artwork-gallery.client";
 import { ArtArtworkMobileGallery } from "@/components/artwork/art-artwork-mobile-gallery.client";
 import { ArtShopEditions } from "@/components/artwork/art-shop-editions";
 import { ArtSpecList } from "@/components/artwork/art-spec-list";
 import { ArtArtworkRail } from "@/components/catalogue/art-artwork-rail";
-import { ArtEnquiryPanel } from "@/components/enquiry/art-enquiry-panel";
 import { ArtArtworkFavoriteToggle } from "@/components/favorites/art-artwork-favorite-toggle.client";
 import { ArtSection } from "@/components/layout/art-section";
 import { ArtJsonLd } from "@/components/seo/art-json-ld";
@@ -20,8 +20,10 @@ import { notFoundOrUnavailable } from "@/lib/seo/page-status";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
 import {
   MarketingCertificateIcon,
+  MarketingClockIcon,
+  MarketingFaqPills,
+  MarketingMapPinIcon,
   MarketingShareButton,
-  MarketingStickyActionBar,
 } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 import type { Metadata } from "next";
@@ -76,7 +78,7 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
             sticks below the header while the media and details scroll (Figma 433:4845). */}
         <div className="grid grid-cols-1 gap-x-10 gap-y-10 lg:grid-cols-[minmax(0,800fr)_minmax(0,520fr)] lg:grid-rows-[auto_1fr]">
           <div className="hidden md:block lg:col-start-1 lg:row-start-1">
-            <ArtArtworkGallery images={vm.galleryImages} priority />
+            <ArtArtworkGallery images={vm.galleryImages} stageRatio={vm.stageRatio} priority />
           </div>
 
           <section
@@ -88,13 +90,14 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
                 <h1 className="min-w-0 break-words font-headline text-2xl font-normal leading-tight text-on-surface lg:text-[1.75rem]">
                   {vm.title}
                 </h1>
-                <div className="-mt-1 hidden shrink-0 md:block">
+                <div className="-mr-0.5 -mt-1 hidden shrink-0 items-center md:flex">
                   <ArtArtworkFavoriteToggle
                     slug={vm.slug}
                     title={vm.title}
                     initialSaved={vm.saved}
                     auth={vm.favoriteAuth}
                   />
+                  <MarketingShareButton url={shareUrl} title={vm.title} appearance="icon" />
                 </div>
               </div>
               <Link
@@ -130,38 +133,25 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
               {vm.priceNote ? (
                 <p className="text-sm leading-6 text-on-surface-variant">{vm.priceNote}</p>
               ) : null}
+              {vm.promise ? (
+                <ul
+                  className="flex flex-col gap-2 text-sm leading-6 text-on-surface"
+                  aria-label="Replies and viewing"
+                  data-testid="art-artwork-promise"
+                >
+                  <li className="flex items-start gap-2">
+                    <MarketingClockIcon aria-hidden className="mt-1 size-4 shrink-0" />
+                    {vm.promise.reply}
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <MarketingMapPinIcon aria-hidden className="mt-1 size-4 shrink-0" />
+                    {vm.promise.viewing}
+                  </li>
+                </ul>
+              ) : null}
             </div>
 
-            <div className="flex flex-col gap-3 md:pt-4">
-              {/* One enquiry control for both layouts: fixed above the bottom nav on mobile,
-                  in flow from `md`, so a single sheet answers `?enquire=1`. */}
-              <MarketingStickyActionBar
-                ariaLabel="Artwork actions"
-                bottomOffset="var(--art-bottom-nav-height)"
-                inlineFromMd
-                className="art-action-bar"
-              >
-                <div className="shrink-0 md:hidden">
-                  <ArtArtworkFavoriteToggle
-                    slug={vm.slug}
-                    title={vm.title}
-                    initialSaved={vm.saved}
-                    auth={vm.favoriteAuth}
-                  />
-                </div>
-                <div className="min-w-0 flex-1 *:w-full">
-                  <ArtEnquiryPanel
-                    slug={vm.slug}
-                    title={vm.title}
-                    enquiry={vm.enquiry}
-                    triggerLabel="Enquire to purchase"
-                  />
-                </div>
-              </MarketingStickyActionBar>
-              <div className="hidden md:block">
-                <MarketingShareButton url={shareUrl} title={vm.title} className="min-h-11 w-full" />
-              </div>
-            </div>
+            <ArtArtworkConversations vm={vm} />
 
             <ArtShopEditions editions={vm.shopEditions} />
           </section>
@@ -169,13 +159,13 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
           <div className="flex min-w-0 flex-col gap-12 lg:col-start-1 lg:row-start-2 lg:max-w-[37.5rem]">
             <ArtArtworkDetailSections
               description={vm.description}
-              mediumSpecs={vm.mediumSpecs}
               provenance={vm.provenance}
               exhibitionHistory={vm.exhibitionHistory}
             />
             {vm.artist ? (
               <ArtArtworkArtistSummary artist={vm.artist} favoriteAuth={vm.favoriteAuth} />
             ) : null}
+            <MarketingFaqPills items={vm.faqs} />
           </div>
         </div>
 
