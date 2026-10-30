@@ -6,32 +6,47 @@ import {
   organisationBannerView,
   unsoldPausedContact,
 } from "@/lib/presenters/organisation-state/organisation-state-copy";
-import { formatDateInline, formatDateTime, formatMoney, formatRelativeTime } from "@/lib/ui/format";
+import { formatDateTime, formatMoney, formatRelativeTime } from "@/lib/ui/format";
+import type { NeedsYouTaskWithLink } from "@/lib/workspace/needs-you-read";
 import {
+  type FirstStep,
+  type FirstStepId,
+  type FirstStepState,
   type HomeActivityArchive,
   type HomeActivityEvent,
   type HomeActivityKind,
   type HomeNotice,
   type HomeShortcut,
   type HomeSubject,
-  type HomeTask,
   type OrganisationBanner,
   type OrganisationBannerKey,
   type OrganisationHomeModel,
   rolesWithCapability,
 } from "@auction/domain";
-import { type MyBuyerAgentAuthorisation, salePath } from "@auction/types";
+import type { MyBuyerAgentAuthorisation } from "@auction/types";
+import { type NeedsYouRowView, needsYouRowView } from "./needs-you-view";
 import {
   type OrganisationDashboardView,
   organisationDashboardView,
 } from "./organisation-dashboard-view";
 
-/** One "Needs you" row as it reads, with its single button. */
-export type HomeTaskView = {
-  key: string;
+/** One of a new organisation's first steps as it reads. */
+export type FirstStepView = {
+  id: FirstStepId;
+  state: FirstStepState;
   title: string;
+  /** What the step is, or once done or with us, where it stands. */
   detail: string;
-  action: { label: string; href: string };
+  /**
+   * The step's button: the primary one on the step to take now; the team step can be taken any
+   * time, so it keeps a secondary one. Setup steps wait their turn.
+   */
+  action: { label: string; href: string; primary: boolean } | null;
+};
+
+export type FirstStepsView = {
+  steps: FirstStepView[];
+  done: number;
 };
 
 /** Something to know that is not this member's to do, as one quiet line. */
@@ -67,7 +82,11 @@ export type WelcomeCardView = {
 };
 
 export type OrganisationHomeView = {
-  needsYou: HomeTaskView[] | null;
+  /** `null` when the role is never asked for anything, so the section is left out. */
+  needsYou: NeedsYouRowView[] | null;
+  /** The reader did not answer: Home offers to try again instead of saying "nothing". */
+  needsYouFailed: boolean;
+  firstSteps: FirstStepsView | null;
   /** The organisation's state, when this member has something to be told. */
   banner: OrganisationBannerView | null;
   notices: HomeNoticeView[];
@@ -78,120 +97,113 @@ export type OrganisationHomeView = {
   dashboard: OrganisationDashboardView | null;
 };
 
-type Ctx = { organisationName: string };
+type Ctx = { organisationName: string; now: Date };
 
 function quoted(subject: HomeSubject): string {
   return `“${subject.title}”`;
 }
 
-function listOf(subjects: readonly HomeSubject[]): string {
-  const [first] = subjects;
-  if (!first) return "";
-  if (subjects.length === 1) return quoted(first);
-  return `${quoted(first)} and ${subjects.length - 1} more`;
-}
-
-type TaskViewBuilder<K extends HomeTask["kind"]> = (
-  task: Extract<HomeTask, { kind: K }>,
-  ctx: Ctx,
-) => Omit<HomeTaskView, "key">;
-
-/** Words and the button for every kind of task; one entry per kind. */
-const TASK_VIEWS: { [K in HomeTask["kind"]]: TaskViewBuilder<K> } = {
-  documents: () => ({
-    title: "Send the documents we asked for",
+const FIRST_STEPS: Record<
+  FirstStepId,
+  { title: string; detail: string; action: { label: string; href: string } }
+> = {
+  documents: {
+    title: "Send your organisation documents",
     detail: "We check them before the organisation can bid or sell.",
-    action: { label: "Open documents", href: organisationHref("documents") },
-  }),
-  identity: (_task, ctx) => ({
-    title: "Verify your identity",
-    detail: `Needed before you can act for ${ctx.organisationName}. It takes about 3 minutes.`,
-    action: { label: "Verify", href: CLIENT_ROUTES.verifyIdentity },
-  }),
-  agreement: (task) => ({
-    title: "Accept the consignment agreement",
-    detail: `${quoted(task.consignment)} · the specialist's estimate and terms`,
-    action: {
-      label: "Review and accept",
-      href: `${CLIENT_ROUTES.consignments}/${task.consignment.id}#agreement`,
-    },
-  }),
-  changes: (task) => ({
-    title: "Make the changes the specialist asked for",
-    detail: task.note
-      ? `${quoted(task.submission)} · “${task.note}”`
-      : `${quoted(task.submission)} · see the specialist's note`,
-    action: {
-      label: "Edit and resubmit",
-      href: `${CLIENT_ROUTES.consignments}/${task.submission.id}`,
-    },
-  }),
-  payouts: () => ({
+    action: { label: "Send documents", href: organisationHref("documents") },
+  },
+  payouts: {
     title: "Set up payouts",
-    detail: "Needed before the organisation's lots can go live in a sale.",
-    action: { label: "Set up", href: organisationHref("payouts") },
-  }),
-  unsold: (task) => ({
-    title: "Choose what happens next",
-    detail: `${listOf(task.lots)} did not sell`,
-    action: { label: "Choose", href: `${CLIENT_ROUTES.consignments}?tab=unsold` },
-  }),
-  pay: (task) => ({
-    title: task.purchases.length === 1 ? "Pay for a purchase" : "Pay for purchases",
-    detail: `${listOf(task.purchases)} won and awaiting payment`,
-    action: { label: "Pay", href: CLIENT_ROUTES.purchases },
-  }),
-  won_awaiting_payment: (task, ctx) => ({
-    title: task.purchases.length === 1 ? "A win is awaiting payment" : "Wins awaiting payment",
-    detail: `${listOf(task.purchases)} · ${ctx.organisationName}'s finance team has been told`,
-    action: { label: "View", href: CLIENT_ROUTES.purchases },
-  }),
-  register: (task) => ({
-    title: `Register for ${task.sale.title}, ${formatDateInline(task.startsAt)}`,
-    detail: task.bidLimit
-      ? `You're authorised to bid up to ${formatMoney(task.bidLimit)}`
-      : "You're authorised to bid with no limit",
-    action: { label: "Register", href: salePath({ id: task.sale.id, title: task.sale.title }) },
-  }),
+    detail:
+      "Add the bank account we pay sale proceeds into. Works go into a sale once this is done. About 5 minutes.",
+    action: { label: "Set up payouts", href: organisationHref("payouts") },
+  },
+  invite: {
+    title: "Invite your team",
+    detail:
+      "Give colleagues their own sign-in as admin, finance, buyer agent, consignor or viewer.",
+    action: { label: "Invite a member", href: teamHref() },
+  },
 };
 
-function taskKey(task: HomeTask): string {
-  switch (task.kind) {
-    case "agreement":
-      return `agreement:${task.consignment.id}`;
-    case "changes":
-      return `changes:${task.submission.id}`;
-    case "register":
-      return `register:${task.sale.id}`;
-    default:
-      return task.kind;
-  }
+/** Where a step stands once it is not the member's to take. */
+const STEP_STATUS: Partial<Record<FirstStepId, Partial<Record<FirstStepState, string>>>> = {
+  documents: { done: "Checked and approved", waiting: "Sent. We're checking them." },
+  payouts: { done: "Bank account added" },
+  invite: { done: "Your team has been invited" },
+};
+
+function firstStepsView(steps: readonly FirstStep[]): FirstStepsView {
+  return {
+    done: steps.filter((step) => step.state === "done").length,
+    steps: steps.map(({ id, state }) => {
+      const copy = FIRST_STEPS[id];
+      return {
+        id,
+        state,
+        title: copy.title,
+        detail: STEP_STATUS[id]?.[state] ?? copy.detail,
+        action:
+          state === "next"
+            ? { ...copy.action, primary: true }
+            : id === "invite" && state === "later"
+              ? { ...copy.action, primary: false }
+              : null,
+      };
+    }),
+  };
 }
 
-export function homeTaskView(task: HomeTask, ctx: Ctx): HomeTaskView {
-  const build = TASK_VIEWS[task.kind] as TaskViewBuilder<typeof task.kind>;
-  return { key: taskKey(task), ...build(task as never, ctx) };
-}
+/**
+ * Banners on Home are for blocking states only (restricted, documents needed). The rest read as a
+ * quiet line, and setup the member does themself is a task or first step, not a banner.
+ */
+const BANNER_AS_NOTICE: ReadonlySet<OrganisationBannerKey> = new Set([
+  "payouts_not_set_up",
+  "documents_under_review",
+]);
 
-/** The "Needs you" task that does what a banner asks, so Home offers the action only once. */
-const BANNER_TASK: Partial<Record<OrganisationBannerKey, HomeTask["kind"]>> = {
+/** The task or first step that does what a banner asks, so Home offers the action only once. */
+const BANNER_TASK: Partial<Record<OrganisationBannerKey, NeedsYouTaskWithLink["kind"]>> = {
   documents_requested: "documents",
   payouts_not_set_up: "payouts",
 };
 
-/**
- * The banner on Home. When "Needs you" already has the task for it, the banner only says what
- * the state is and the task carries the button.
- */
+function askedFor(model: OrganisationHomeModel<NeedsYouTaskWithLink>, key: OrganisationBannerKey) {
+  const kind = BANNER_TASK[key];
+  if (!kind) return false;
+  const inTasks = (model.tasks ?? []).some((t) => t.kind === kind);
+  const inSteps = (model.firstSteps ?? []).some(
+    (step) => step.id === kind && step.state === "next",
+  );
+  return inTasks || inSteps;
+}
+
+/** The banner on Home, or `null` when it reads as a notice or a task instead. */
 function homeBannerView(
-  model: OrganisationHomeModel,
+  model: OrganisationHomeModel<NeedsYouTaskWithLink>,
   banner: OrganisationBanner,
   ctx: Ctx,
-): OrganisationBannerView {
+): OrganisationBannerView | null {
+  if (BANNER_AS_NOTICE.has(banner.key)) return null;
   const view = organisationBannerView(banner, ctx);
-  const task = BANNER_TASK[banner.key];
-  const asked = task !== undefined && (model.tasks ?? []).some((t) => t.kind === task);
-  return asked ? { ...view, action: null } : view;
+  return askedFor(model, banner.key) ? { ...view, action: null } : view;
+}
+
+/** A non-blocking state as a line, unless the member already has it as a task or step. */
+function stateNotice(
+  model: OrganisationHomeModel<NeedsYouTaskWithLink>,
+  ctx: Ctx,
+): HomeNoticeView | null {
+  const banner = model.state.banner;
+  if (!banner || !BANNER_AS_NOTICE.has(banner.key) || askedFor(model, banner.key)) return null;
+  const view = organisationBannerView(banner, ctx);
+  return {
+    key: `state:${banner.key}`,
+    text: `${view.title}. ${view.line}`,
+    href: null,
+    ...(view.action ? { action: view.action } : {}),
+  };
 }
 
 /** Who chooses for an unsold lot, from the capability table: "an owner or admin". */
@@ -237,7 +249,7 @@ function homeNoticeView(notice: HomeNotice): HomeNoticeView {
 
 const SHORTCUTS: Record<HomeShortcut, Omit<HomeLinkView, "id">> = {
   sell: { label: "Sell a work", href: CLIENT_ROUTES.sellingNew },
-  invite: { label: "Invite someone", href: teamHref() },
+  invite: { label: "Invite a member", href: teamHref() },
   statements: { label: "Statements", href: CLIENT_ROUTES.payouts },
 };
 
@@ -288,12 +300,21 @@ export function buyerAgentAuthorityLine(
 }
 
 /** Home's words and links, from the domain model. */
-export function organisationHomeView(model: OrganisationHomeModel, ctx: Ctx): OrganisationHomeView {
+export function organisationHomeView(
+  model: OrganisationHomeModel<NeedsYouTaskWithLink>,
+  ctx: Ctx,
+): OrganisationHomeView {
+  const state = stateNotice(model, ctx);
   return {
-    needsYou: model.tasks ? model.tasks.map((task) => homeTaskView(task, ctx)) : null,
+    needsYou: model.tasks ? model.tasks.map((task) => needsYouRowView(task, ctx)) : null,
+    needsYouFailed: model.needsYouFailed,
+    firstSteps: model.firstSteps ? firstStepsView(model.firstSteps) : null,
     banner: model.state.banner ? homeBannerView(model, model.state.banner, ctx) : null,
-    notices: model.notices.map(homeNoticeView),
-    shortcuts: model.shortcuts.map((id) => ({ id, ...SHORTCUTS[id] })),
+    notices: [...(state ? [state] : []), ...model.notices.map(homeNoticeView)],
+    // "Sell a work" is the page's own action beside the title, so the list does not repeat it.
+    shortcuts: model.shortcuts
+      .filter((id) => id !== "sell")
+      .map((id) => ({ id, ...SHORTCUTS[id] })),
     activity: model.activity.map(activityView),
     seeAllHref: model.activityArchive ? ARCHIVE_HREF[model.activityArchive] : null,
     dashboard: model.dashboard

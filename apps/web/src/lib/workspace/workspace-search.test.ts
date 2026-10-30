@@ -6,7 +6,8 @@ import {
   narrowerScopeNote,
   searchRowGroups,
 } from "./account-search";
-import { navCountsFrom, parseNeedsYouCounts } from "./needs-you-counts";
+import { navCountsFrom } from "./needs-you-counts";
+import { parseNeedsYouResponse } from "./needs-you-read";
 import { RECENT_SEARCH_LIMIT, localRecentSearchStore, withRecent } from "./recent-searches";
 import { matchingPages, shouldSearchRecords, workspaceSearchView } from "./workspace-search-model";
 
@@ -210,9 +211,37 @@ describe("Needs-you counts in the menu", () => {
 
   it("reads the reader's response and nothing else", () => {
     expect(
-      parseNeedsYouCounts({ data: { counts: { bids: 1, consignments: 2, other: 5 }, tasks: [] } }),
+      parseNeedsYouResponse({
+        data: { kinds: [], counts: { bids: 1, consignments: 2, other: 5 }, tasks: [] },
+      })?.counts,
     ).toEqual({ bids: 1, consignments: 2 });
-    expect(parseNeedsYouCounts({ error: "forbidden" })).toBeNull();
-    expect(parseNeedsYouCounts(null)).toBeNull();
+    expect(parseNeedsYouResponse({ error: "forbidden" })).toBeNull();
+    expect(parseNeedsYouResponse(null)).toBeNull();
+  });
+
+  it("reads each task with its dates and link, and skips a kind this build does not know", () => {
+    const read = parseNeedsYouResponse({
+      data: {
+        kinds: ["outbid", "pay"],
+        counts: { bids: 1 },
+        truncated: true,
+        tasks: [
+          {
+            kind: "outbid",
+            lots: [{ id: "l1", title: "Sun over Arles", endsAt: "2026-10-30T18:12:00.000Z" }],
+            link: { page: "lot", id: "l1" },
+          },
+          { kind: "something_new", link: { page: "bids" } },
+        ],
+      },
+    });
+    expect(read?.tasks).toEqual([
+      {
+        kind: "outbid",
+        lots: [{ id: "l1", title: "Sun over Arles", endsAt: new Date("2026-10-30T18:12:00.000Z") }],
+        link: { page: "lot", id: "l1" },
+      },
+    ]);
+    expect(read?.truncated).toBe(true);
   });
 });

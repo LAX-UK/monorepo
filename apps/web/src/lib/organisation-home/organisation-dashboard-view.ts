@@ -214,7 +214,7 @@ function upcomingSaleView(sale: UpcomingSaleFigure): UpcomingSaleView {
     title: sale.title,
     date: formatDateInline(sale.startsAt),
     dateTime: sale.startsAt.toISOString(),
-    works: plural(sale.works, "work"),
+    works: `${sale.works.toLocaleString("en-GB")} of your works`,
     href: salePath({ id: sale.id, title: sale.title }),
   };
 }
