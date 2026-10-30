@@ -14,14 +14,7 @@ import {
  */
 
 const { approved } = ORGANISATION_JOURNEY_NAMES;
-const PAGES = [
-  "/home",
-  "/bids",
-  "/purchases",
-  "/organisation",
-  "/organisation/members",
-  "/organisation/documents",
-];
+const PAGES = ["/home", "/bids", "/purchases", "/organisation", "/team", "/organisation/documents"];
 const MOVES = 30;
 
 type Marked = Window & { __shellMarker?: string; next?: { router?: { push(path: string): void } } };
@@ -45,7 +38,7 @@ test.describe("organisation account stability @roles", () => {
     await expectActingAs(page, approved, "Owner");
     await page.evaluate(() => {
       (window as Marked).__shellMarker = "kept";
-      document.querySelector("[data-testid=account-strip]")?.setAttribute("data-kept", "yes");
+      document.querySelector("[data-testid=account-switcher]")?.setAttribute("data-kept", "yes");
     });
 
     for (let move = 0; move < MOVES; move++) {
@@ -53,9 +46,9 @@ test.describe("organisation account stability @roles", () => {
       await moveTo(page, path);
       await expectActingAs(page, approved, "Owner");
       await expect(page.getByText("We couldn't load your accounts")).toHaveCount(0);
-      // Still the same document and the same account strip: nothing reloaded or remounted.
+      // Still the same document and the same account switcher: nothing reloaded or remounted.
       expect(await page.evaluate(() => (window as Marked).__shellMarker)).toBe("kept");
-      await expect(page.getByTestId("account-strip")).toHaveAttribute("data-kept", "yes");
+      await expect(page.getByTestId("account-switcher")).toHaveAttribute("data-kept", "yes");
     }
     await owner.close();
   });
@@ -74,17 +67,17 @@ test.describe("organisation account stability @roles", () => {
       .first()
       .click();
     await other.getByTestId("switch-account-personal").click();
-    await expect(other.getByTestId("account-strip")).toHaveCount(0);
+    await expect(other.getByTestId("account-switcher")).toHaveCount(0);
 
     await page.bringToFront();
     await expect(page.getByTestId("account-notice")).toContainText(
       "You switched to your personal account in another tab",
     );
-    await expect(page.getByTestId("account-strip")).toHaveCount(0);
+    await expect(page.getByTestId("account-switcher")).toHaveCount(0);
 
     // Nothing was mixed up: a reload of the first tab is the personal account too.
     await page.reload();
-    await expect(page.getByTestId("account-strip")).toHaveCount(0);
+    await expect(page.getByTestId("account-switcher")).toHaveCount(0);
     await owner.close();
   });
 });

@@ -22,6 +22,18 @@ describe("MarketingArtistSummary", () => {
     expect(screen.getByText("Ada Lane paints the Thames.")).toBeInTheDocument();
   });
 
+  it("shows the artist's facts under the name", () => {
+    render(
+      <MarketingArtistSummary
+        title="About the artist"
+        name="Ada Lane"
+        href="/artists/ada-lane"
+        meta="British · b. 1984 · Painter"
+      />,
+    );
+    expect(screen.getByText("British · b. 1984 · Painter")).toBeInTheDocument();
+  });
+
   it("falls back to initials without a portrait and omits an empty bio", () => {
     const { container } = render(
       <MarketingArtistSummary title="About the artist" name="Ada Lane" href="/artists/ada-lane" />,

@@ -21,7 +21,7 @@ export function SofCaseTimeline({ steps }: Props) {
   if (steps.length === 1 && steps[0]?.id === "outcome") {
     const step = steps[0];
     return (
-      <div className="rounded-staff-md border border-staff-line bg-staff-surface px-4 py-3">
+      <div className="rounded-staff-lg border border-staff-line bg-staff-surface px-4 py-3">
         <p className="text-staff-md font-semibold text-staff-fg">{step.label}</p>
         {step.detail ? <p className="mt-1 text-staff-sm text-staff-muted">{step.detail}</p> : null}
       </div>
@@ -33,7 +33,7 @@ export function SofCaseTimeline({ steps }: Props) {
       aria-label="Case workflow"
       // biome-ignore lint/a11y/noNoninteractiveTabindex: a horizontally scrollable region must be keyboard-scrollable (WCAG 2.1.1).
       tabIndex={0}
-      className="overflow-x-auto rounded-staff-md border border-staff-line bg-staff-surface p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-staff-focus"
+      className="overflow-x-auto rounded-staff-lg border border-staff-line bg-staff-surface p-4 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-staff-focus"
     >
       <ol className="flex min-w-max items-start gap-2">
         {steps.map((step, index) => (

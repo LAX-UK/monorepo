@@ -2,6 +2,7 @@ import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
 import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import { SELL_A_WORK_LABEL } from "@/lib/marketing/sell-flow-copy";
 import { type EntityCapability, entityRoleCan } from "@auction/domain";
+import type { LegalEntityMemberRole } from "@auction/types";
 import {
   Bell,
   Building2,
@@ -15,11 +16,13 @@ import {
   TrendingUp,
   Upload,
   UserRound,
+  Users,
   WalletCards,
 } from "lucide-react";
 import type { AccountContext } from "./account-home";
 import { CLIENT_ROUTES } from "./client-routes";
 import { ORGANISATION_PAGE_CAPABILITIES } from "./organisation-tabs";
+import { TEAM_PAGE_CAPABILITIES } from "./team-tabs";
 
 export type { AccountContext };
 
@@ -41,7 +44,13 @@ export const PERSONAL_NAV_SCOPE: ClientNavScope = {
   hasSubmissions: false,
 };
 
-export type ClientNavSectionId = "home" | "buying" | "selling" | "organisation" | "account";
+export type ClientNavSectionId =
+  | "home"
+  | "buying"
+  | "selling"
+  | "collection"
+  | "organisation"
+  | "account";
 
 /** One block of the menu: a heading (or none) and its entries. */
 export type ClientNavSection = {
@@ -166,9 +175,15 @@ const CONSIGNMENTS: NavSpec = {
 };
 
 const WORKS: NavSpec = {
-  // An organisation's own works; a person's are in Purchases and LAX Account.
+  // An organisation's own works, its collection; a person's are in Purchases and LAX Account.
   audience: "organisation",
-  item: () => ({ id: "works", label: "Works", href: CLIENT_ROUTES.works, icon: Layers }),
+  item: () => ({
+    id: "works",
+    label: "Works",
+    href: CLIENT_ROUTES.collection,
+    icon: Layers,
+    match: exactOrNested(CLIENT_ROUTES.collection),
+  }),
   anyCapability: ["entity.holdings.read", "entity.finance.read"],
 };
 
@@ -190,11 +205,23 @@ const SOLD_AND_PAYOUTS: NavSpec = {
   personalWhen: (scope) => scope.hasSubmissions,
 };
 
+const TEAM: NavSpec = {
+  audience: "organisation",
+  item: () => ({
+    id: "team",
+    label: "Team",
+    href: CLIENT_ROUTES.team,
+    icon: Users,
+    match: exactOrNested(CLIENT_ROUTES.team),
+  }),
+  anyCapability: TEAM_PAGE_CAPABILITIES,
+};
+
 const ORGANISATION_SETTINGS: NavSpec = {
   audience: "organisation",
   item: () => ({
     id: "organisation",
-    label: "Organisation settings",
+    label: "Organisation",
     href: CLIENT_ROUTES.organisation,
     icon: Building2,
     match: exactOrNested(CLIENT_ROUTES.organisation),
@@ -249,13 +276,14 @@ const SECTIONS: readonly SectionSpec[] = [
   {
     id: "selling",
     label: "Selling",
-    specs: [SELL_WITH_LAX, CONSIGNMENTS, WORKS, SOLD_AND_PAYOUTS],
+    specs: [SELL_WITH_LAX, CONSIGNMENTS, SOLD_AND_PAYOUTS],
     subNav: { kind: "one-link", prefix: CLIENT_ROUTES.selling },
   },
+  { id: "collection", label: "Collection", specs: [WORKS], subNav: { kind: "hidden" } },
   {
     id: "organisation",
     label: "Organisation",
-    specs: [ORGANISATION_SETTINGS],
+    specs: [TEAM, ORGANISATION_SETTINGS],
     subNav: { kind: "hidden" },
   },
   {
@@ -375,7 +403,21 @@ export function getClientNavItems(scope: ClientNavScope): AppShellNavItem[] {
   return getClientNavSections(scope).flatMap((section) => section.items);
 }
 
-/** Which entries earn a place in the phone's bottom bar, most important first. */
+/**
+ * An organisation member's four phone tabs, by role: the pages that role opens most. Everything
+ * else is in More. A role's list names only pages the role can open, and `getClientMobileTabs`
+ * still checks each against the menu, so the bar never offers a page the API would refuse.
+ */
+const ORGANISATION_TABS: Readonly<Record<LegalEntityMemberRole, readonly string[]>> = {
+  owner: ["home", "bids", "purchases", "consignments"],
+  admin: ["home", "bids", "purchases", "consignments"],
+  finance: ["home", "purchases", "payouts"],
+  buyer_agent: ["home", "bids", "purchases", "watchlist"],
+  consignor: ["home", "consignments", "watchlist"],
+  viewer: ["home", "consignments", "works"],
+};
+
+/** Which entries earn a place in a personal account's bottom bar, most important first. */
 const MOBILE_TAB_PRIORITY = [
   "home",
   "bids",
@@ -395,7 +437,12 @@ const MORE_TAB: AppShellNavItem = { id: "more", label: "More", href: "#more", ic
 /** The most-used entries plus "More", for the mobile bottom bar. */
 export function getClientMobileTabs(scope: ClientNavScope): AppShellNavItem[] {
   const items = getClientNavItems(scope);
-  const tabs = MOBILE_TAB_PRIORITY.map((id) => items.find((item) => item.id === id))
+  const order =
+    scope.context.kind === "organisation"
+      ? ORGANISATION_TABS[scope.context.role]
+      : MOBILE_TAB_PRIORITY;
+  const tabs = order
+    .map((id) => items.find((item) => item.id === id))
     .filter((item): item is AppShellNavItem => item != null)
     .slice(0, MAX_TABS);
   return [...tabs, MORE_TAB];

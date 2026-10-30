@@ -71,7 +71,7 @@ function QuickAmounts({
             <StaffButton
               key={`${prefix}-${amount}`}
               variant="secondary"
-              size="live"
+              size="lg"
               className="tabular-nums"
               aria-label={chip.spoken}
               disabled={disabled}
@@ -239,7 +239,7 @@ export function LotOnBlockPanel({
           >
             <TextInput
               ref={paddleInputRef}
-              size="live"
+              size="lg"
               value={bidEntry.state.paddleNumber}
               onChange={(e) => bidEntry.setPaddleNumber(e.target.value)}
               onKeyDown={onPaddleKeyDown}
@@ -261,7 +261,7 @@ export function LotOnBlockPanel({
             className="min-w-40 flex-1"
           >
             <TextInput
-              size="live"
+              size="lg"
               value={bidEntry.state.paddleAmount}
               onChange={(e) => bidEntry.setPaddleAmount(e.target.value)}
               onKeyDown={onPaddleKeyDown}
@@ -275,7 +275,7 @@ export function LotOnBlockPanel({
         <div className="flex flex-wrap items-center gap-2">
           <StaffButton
             variant={enteringPaddleBid ? "primary" : "secondary"}
-            size="live"
+            size="lg"
             disabled={!bidEntry.canPlacePaddleBid || isPaused}
             loading={bidEntry.pending}
             onClick={bidEntry.placePaddleBid}
@@ -319,7 +319,7 @@ export function LotOnBlockPanel({
             disabled={biddingDisabled}
           >
             <EnumSelect
-              size="live"
+              size="lg"
               value={bidEntry.state.bookingId || null}
               onValueChange={bidEntry.setBookingId}
               placeholder="Choose a line"
@@ -331,7 +331,7 @@ export function LotOnBlockPanel({
           </Field>
           <Field label="Amount" id={`telephone-bid-amount-${saleId}`} disabled={biddingDisabled}>
             <TextInput
-              size="live"
+              size="lg"
               value={bidEntry.state.telephoneAmount}
               onChange={(e) => bidEntry.setTelephoneAmount(e.target.value)}
               leading={<span className="text-staff-muted">{currencyMark(lotCurrency)}</span>}
@@ -343,7 +343,7 @@ export function LotOnBlockPanel({
           <div className="flex flex-wrap items-center gap-2">
             <StaffButton
               variant="secondary"
-              size="live"
+              size="lg"
               disabled={!bidEntry.canPlaceTelephoneBid || isPaused}
               loading={bidEntry.pending}
               onClick={bidEntry.placeTelephoneBid}

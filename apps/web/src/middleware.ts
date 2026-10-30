@@ -154,7 +154,9 @@ export async function middleware(request: NextRequest) {
       pathname === "/organisations/invitations" ||
       pathname.startsWith("/organisations/invitations/") ||
       pathname === "/organisation" ||
-      pathname.startsWith("/organisation/")
+      pathname.startsWith("/organisation/") ||
+      pathname === "/team" ||
+      pathname.startsWith("/team/")
     ) {
       return NextResponse.redirect(new URL("/organisations", request.url), 307);
     }

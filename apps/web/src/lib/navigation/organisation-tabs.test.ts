@@ -7,12 +7,12 @@ import {
   requireOrganisationTab,
 } from "./organisation-tabs";
 
-const TABS: OrganisationTab[] = ["profile", "members", "documents", "payouts", "security"];
+const TABS: OrganisationTab[] = ["profile", "documents", "payouts", "security"];
 
 /** Which tabs each role opens, written out so a change to any cell is a visible test change. */
 const EXPECTED: Record<LegalEntityMemberRole, OrganisationTab[]> = {
-  owner: ["profile", "members", "documents", "payouts", "security"],
-  admin: ["profile", "members", "documents", "payouts", "security"],
+  owner: ["profile", "documents", "payouts", "security"],
+  admin: ["profile", "documents", "payouts", "security"],
   finance: ["payouts"],
   consignor: [],
   viewer: [],
@@ -29,7 +29,6 @@ describe("organisationTabsFor", () => {
   it("lists only the reading tabs for support staff viewing as the client", () => {
     expect(organisationTabsFor({ role: "admin", isImpersonation: true }).map((t) => t.id)).toEqual([
       "profile",
-      "members",
       "documents",
     ]);
   });
@@ -45,9 +44,9 @@ describe("requireOrganisationTab", () => {
   );
 
   it("names the tab and who can open it", () => {
-    expect(requireOrganisationTab({ role: "finance" }, "members")).toEqual({
+    expect(requireOrganisationTab({ role: "finance" }, "security")).toEqual({
       kind: "forbidden",
-      label: "Members",
+      label: "Security",
       openedBy: "Owners and admins",
       fallback: { id: "payouts", label: "Payouts", href: "/organisation/payouts" },
     });

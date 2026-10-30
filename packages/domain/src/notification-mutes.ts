@@ -6,9 +6,8 @@
  * email, because missing them costs the person or the organisation: an unpaid invoice, a won lot,
  * an agreement waiting for acceptance, a role change. Extend this table, not the callers.
  *
- * Covered by the policy as notice types are added: membership changes have no notification type
- * yet; give them one in this table when they do. A bid refused for a limit is informational and
- * in-app only, so a mute may quiet it.
+ * Covered by the policy as notice types are added: a bid refused for a limit is informational
+ * and in-app only, so a mute may quiet it.
  */
 export const NOTIFICATION_ALWAYS_DELIVERED_TYPES = [
   // Money owed or received: payment due (the invoice) and won lots.
@@ -25,6 +24,10 @@ export const NOTIFICATION_ALWAYS_DELIVERED_TYPES = [
   "source_of_funds_documents_requested",
   "source_of_funds_approved",
   "source_of_funds_rejected",
+  // Membership: a member left the organisation.
+  "organisation_member_left",
+  // Payout bank account changed: a fraud route, so the people who handle the money always hear.
+  "payout_bank_changed",
   // Roles and access.
   "staff_role_expired",
   "staff_role_expired_admin",
@@ -53,4 +56,16 @@ export function notificationSilencedByMute(
       ? mutedAccountIds.has(notice.legalEntityId)
       : (mutedAccountIds as readonly string[]).includes(notice.legalEntityId);
   return muted;
+}
+
+/**
+ * Security alerts that go out during a person's quiet hours too. Quiet hours drop email and push
+ * rather than delay them, and a payout bank change someone did not make has to be seen at once.
+ */
+export const NOTIFICATION_IGNORES_QUIET_HOURS_TYPES = ["payout_bank_changed"] as const;
+
+const IGNORES_QUIET_HOURS = new Set<string>(NOTIFICATION_IGNORES_QUIET_HOURS_TYPES);
+
+export function notificationIgnoresQuietHours(type: string): boolean {
+  return IGNORES_QUIET_HOURS.has(type);
 }

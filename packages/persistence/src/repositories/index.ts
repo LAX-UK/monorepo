@@ -240,6 +240,10 @@ export {
 export { DrizzleDeliveryQuoteRepository } from "./drizzle-delivery-quote.repository.js";
 export { DrizzleAccountRecordSearchReader } from "./drizzle-account-record-search.reader.js";
 export { DrizzleNeedsYouFactsReader } from "./drizzle-needs-you-facts.reader.js";
+export {
+  DrizzleInvoiceDetailsRepository,
+  DrizzleOrganisationActivityReader,
+} from "./drizzle-organisation-team.readers.js";
 export { DrizzleUnsoldChoiceDeadlineStore } from "./drizzle-unsold-choice-deadline.store.js";
 export {
   DrizzleAgreementDocumentFactsReader,

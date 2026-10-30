@@ -1,6 +1,6 @@
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import type { ShopEditionLinkVm } from "@/lib/artwork/shop-editions.vm";
-import { ART_MEDIA_LABELS } from "@/lib/media/art-media-labels";
+import { marketingArtistInitials } from "@auction/marketing-ui";
 
 /**
  * "Editions available in LAX Shop": the limited editions made from this original, each linking to
@@ -35,7 +35,7 @@ export function ArtShopEditions({ editions }: { editions: readonly ShopEditionLi
                   alt=""
                   aspect={[1, 1]}
                   sizes="4rem"
-                  label={ART_MEDIA_LABELS.artwork}
+                  label={marketingArtistInitials(edition.artistName)}
                   className="absolute inset-0 size-full"
                   imgClassName="object-contain"
                 />

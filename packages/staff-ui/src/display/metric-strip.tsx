@@ -1,9 +1,8 @@
+import { type LinkComponent, type Metric, MetricCell, MetricCellSkeleton } from "@auction/ui/lax";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
-import type { StaffLinkComponent } from "../shell/link.js";
-import { type Metric, MetricCell, MetricCellSkeleton } from "./metric-cell.js";
 
-export type { Metric, MetricComparison, MetricTone } from "./metric-cell.js";
+export type { Metric, MetricComparison, MetricTone } from "@auction/ui/lax";
 
 /** The most metrics a strip shows; more than this is a report, not a summary. */
 export const METRIC_STRIP_MAX = 4;
@@ -52,7 +51,7 @@ export function MetricStrip({
   /** How many placeholders to show while loading with no items yet; defaults to four. */
   placeholders?: number;
   /** Needed when metrics carry an `href`. */
-  Link?: StaffLinkComponent;
+  Link?: LinkComponent;
   className?: string;
 }) {
   const shown = items.slice(0, METRIC_STRIP_MAX);
@@ -73,7 +72,7 @@ export function MetricStrip({
       </div>
       <div
         className={cn(
-          "grid overflow-hidden rounded-staff-md border border-staff-line bg-staff-surface",
+          "grid overflow-hidden rounded-staff-lg border border-staff-line bg-staff-surface",
           count === 1 ? "grid-cols-1" : "grid-cols-2",
           mdColumns[count],
         )}

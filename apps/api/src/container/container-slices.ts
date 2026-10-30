@@ -88,6 +88,7 @@ import type { OrganisationBuyingServices } from "./create-organisation-buying-se
 import type { OrganisationHomeServices } from "./create-organisation-home-services.js";
 import type { OrganisationMembershipServices } from "./create-organisation-membership-services.js";
 import type { OrganisationSellingServices } from "./create-organisation-selling-services.js";
+import type { OrganisationTeamServices } from "./create-organisation-team-services.js";
 import type { OrganisationWorkspaceServices } from "./create-organisation-workspace-services.js";
 import type { ContainerPaymentsServices } from "./create-payments-services.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
@@ -357,6 +358,11 @@ export type ContainerOrganisationWorkspaceSlice = {
   organisationWorkspace: OrganisationWorkspaceServices;
 };
 
+/** Invoice details and Activity for the acting organisation (`container.organisationTeam`). */
+export type ContainerOrganisationTeamSlice = {
+  organisationTeam: OrganisationTeamServices;
+};
+
 /** Route-facing buyer user account bag (mirrors `container.userRoutes`). */
 export type ContainerUserRouteServicesSlice = {
   userRoutes: UserRouteServices;
@@ -392,6 +398,7 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerOrganisationBuyingSlice &
   ContainerOrganisationSellingSlice &
   ContainerOrganisationWorkspaceSlice &
+  ContainerOrganisationTeamSlice &
   ContainerUserRouteServicesSlice;
 
 export type Container = ContainerComposedSlices;
@@ -640,6 +647,12 @@ export type ContainerOrganisationBuyingRoutesSlice = Pick<
 export type ContainerOrganisationWorkspaceRoutesSlice = Pick<
   Container,
   "userSuspensionChecker" | "requireLegalEntityContext" | "organisationWorkspace"
+>;
+
+/** Invoice details and Activity for the acting organisation. */
+export type ContainerOrganisationTeamRoutesSlice = Pick<
+  Container,
+  "userSuspensionChecker" | "requireLegalEntityContext" | "organisationTeam"
 >;
 
 /** Item submission seller + admin APIs. */

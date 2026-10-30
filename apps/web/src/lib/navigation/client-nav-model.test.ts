@@ -76,8 +76,9 @@ describe("menu sections, organisation roles", () => {
       {
         home: ["home"],
         buying: ["bids", "purchases", "watchlist"],
-        selling: ["consignments", "works", "payouts"],
-        organisation: ["organisation"],
+        selling: ["consignments", "payouts"],
+        collection: ["works"],
+        organisation: ["team", "organisation"],
         account: ACCOUNT,
       },
     ],
@@ -86,8 +87,9 @@ describe("menu sections, organisation roles", () => {
       {
         home: ["home"],
         buying: ["bids", "purchases", "watchlist"],
-        selling: ["consignments", "works", "payouts"],
-        organisation: ["organisation"],
+        selling: ["consignments", "payouts"],
+        collection: ["works"],
+        organisation: ["team", "organisation"],
         account: ACCOUNT,
       },
     ],
@@ -96,7 +98,7 @@ describe("menu sections, organisation roles", () => {
       {
         home: ["home"],
         buying: ["bids", "purchases", "watchlist"],
-        selling: ["works"],
+        collection: ["works"],
         account: ACCOUNT,
       },
     ],
@@ -114,7 +116,8 @@ describe("menu sections, organisation roles", () => {
       {
         home: ["home"],
         buying: ["purchases"],
-        selling: ["consignments", "works", "payouts"],
+        selling: ["consignments", "payouts"],
+        collection: ["works"],
         organisation: ["organisation"],
         account: ACCOUNT,
       },
@@ -123,7 +126,8 @@ describe("menu sections, organisation roles", () => {
       "viewer",
       {
         home: ["home"],
-        selling: ["consignments", "works"],
+        selling: ["consignments"],
+        collection: ["works"],
         account: ACCOUNT,
       },
     ],
@@ -170,7 +174,8 @@ describe("menu links", () => {
       purchases: "/purchases",
       watchlist: "/watching",
       consignments: "/selling/consignments",
-      works: "/selling/works",
+      works: "/collection",
+      team: "/team",
       payouts: "/selling/payouts",
       organisation: "/organisation",
       settings: "/settings",
@@ -216,17 +221,23 @@ describe("mobile tabs", () => {
     ]);
   });
 
-  it("organisation owner: Home first, then the most used entries", () => {
-    expect(tabIds(scope(org("owner")))).toEqual(["home", "bids", "purchases", "watchlist", "more"]);
+  it.each([
+    ["owner", ["home", "bids", "purchases", "consignments", "more"]],
+    ["admin", ["home", "bids", "purchases", "consignments", "more"]],
+    ["finance", ["home", "purchases", "payouts", "more"]],
+    ["buyer_agent", ["home", "bids", "purchases", "watchlist", "more"]],
+    ["consignor", ["home", "consignments", "watchlist", "more"]],
+    ["viewer", ["home", "consignments", "works", "more"]],
+  ] as const)("%s: the role's own tabs, then More", (role, expected) => {
+    expect(tabIds(scope(org(role)))).toEqual(expected);
   });
 
-  it("consignor: only the entries the role can open, and always More", () => {
-    expect(tabIds(scope(org("consignor")))).toEqual([
-      "home",
-      "watchlist",
-      "consignments",
-      "notifications",
-      "more",
-    ]);
+  it("offers a role only tabs its menu has", () => {
+    for (const role of legalEntityMemberRoles) {
+      const menuIds = getClientNavItems(scope(org(role))).map((i) => i.id);
+      for (const id of tabIds(scope(org(role)))) {
+        if (id !== "more") expect(menuIds).toContain(id);
+      }
+    }
   });
 });

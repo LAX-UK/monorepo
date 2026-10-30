@@ -211,7 +211,7 @@ export function HomeFeatureList({
   return (
     <section
       aria-labelledby={headingId}
-      className="flex flex-col gap-4 rounded-staff-md border border-staff-line bg-staff-surface p-4 sm:p-6"
+      className="flex flex-col gap-4 rounded-staff-lg border border-staff-line bg-staff-surface p-4 sm:p-6"
     >
       <div className="flex flex-col gap-1">
         <div className="flex flex-wrap items-center justify-between gap-2">
@@ -230,7 +230,7 @@ export function HomeFeatureList({
       </div>
 
       {rows.length === 0 ? (
-        <p className="rounded-staff-md border border-dashed border-staff-line px-4 py-6 text-center text-staff-sm text-staff-muted">
+        <p className="rounded-staff-lg border border-dashed border-staff-line px-4 py-6 text-center text-staff-sm text-staff-muted">
           {copy.emptyText}
         </p>
       ) : (

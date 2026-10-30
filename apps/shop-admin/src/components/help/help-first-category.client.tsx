@@ -13,7 +13,7 @@ export function HelpFirstCategory() {
   const [creating, setCreating] = useState(false);
   return (
     <>
-      <div className="rounded-staff-md border border-staff-line bg-staff-surface">
+      <div className="rounded-staff-lg border border-staff-line bg-staff-surface">
         <EmptyState
           illustration="frame"
           title="Create a category first"

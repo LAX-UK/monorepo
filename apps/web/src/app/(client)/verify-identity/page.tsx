@@ -31,7 +31,6 @@ export default async function VerifyIdentityPage({ searchParams }: PageProps) {
       <SettingsFormHeader
         eyebrow="Identity"
         title="Verify your identity"
-        hideTitleOnMobile
         description="Secure identity verification helps us protect buyers and sellers when bidding exposure reaches our threshold."
       />
       <VerifyIdentityClient initialStatus={kyc} />

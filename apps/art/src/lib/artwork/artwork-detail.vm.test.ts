@@ -1,12 +1,15 @@
 import { artworkDetail } from "@/lib/testing/fake-art-services";
 import { describe, expect, it } from "vitest";
 import {
+  ARTWORK_FAQS,
   artworkCategoryHref,
   artworkCertificateLine,
   artworkPriceNote,
+  artworkPromise,
+  artworkStageRatio,
   buildArtworkBreadcrumb,
   buildArtworkKeySpecs,
-  buildArtworkMediumSpecs,
+  clampArtworkStageRatio,
   formatArtworkDimensions,
 } from "./artwork-detail.vm.js";
 
@@ -38,7 +41,13 @@ describe("buildArtworkKeySpecs", () => {
   it("lists year, medium and dimensions with cm and inches on separate lines", () => {
     expect(
       buildArtworkKeySpecs(
-        artworkDetail({ yearCreated: 2026, medium: "Oil on canvas", heightCm: 120, widthCm: 90 }),
+        artworkDetail({
+          yearCreated: 2026,
+          objectType: null,
+          medium: "Oil on canvas",
+          heightCm: 120,
+          widthCm: 90,
+        }),
       ),
     ).toEqual([
       { label: "Year", lines: ["2026"] },
@@ -50,27 +59,76 @@ describe("buildArtworkKeySpecs", () => {
   it("falls back to the free-text dimensions and omits unknown facts", () => {
     expect(
       buildArtworkKeySpecs(
-        artworkDetail({ yearCreated: null, medium: null, dimensions: "16 × 20 in" }),
+        artworkDetail({
+          yearCreated: null,
+          objectType: null,
+          medium: null,
+          dimensions: "16 × 20 in",
+        }),
       ),
     ).toEqual([{ label: "Dimensions", lines: ["16 × 20 in"] }]);
     expect(
-      buildArtworkKeySpecs(artworkDetail({ yearCreated: null, medium: null, dimensions: null })),
+      buildArtworkKeySpecs(
+        artworkDetail({ yearCreated: null, objectType: null, medium: null, dimensions: null }),
+      ),
     ).toEqual([]);
   });
 });
 
-describe("buildArtworkMediumSpecs", () => {
-  it("adds object type and rarity to the physical facts", () => {
+describe("artworkStageRatio", () => {
+  it("shapes the stage like the work, between 3:4 and 16:10", () => {
+    expect(artworkStageRatio({ heightCm: 60, widthCm: 60 })).toBe(1);
+    expect(artworkStageRatio({ heightCm: 50, widthCm: 70 })).toBeCloseTo(1.4);
+    expect(artworkStageRatio({ heightCm: 200, widthCm: 50 })).toBe(0.75);
+    expect(artworkStageRatio({ heightCm: 20, widthCm: 100 })).toBe(1.6);
+    expect(artworkStageRatio({ heightCm: null, widthCm: 40 })).toBeNull();
+    expect(clampArtworkStageRatio(Number.NaN)).toBe(0.75);
+  });
+});
+
+describe("the type fact", () => {
+  it("names one work in the singular", () => {
+    expect(buildArtworkKeySpecs(artworkDetail({ objectType: "painting" }))).toContainEqual({
+      label: "Type",
+      lines: ["Painting"],
+    });
+  });
+});
+
+describe("buildArtworkKeySpecs with a type", () => {
+  it("lists the type once with the other facts, and never rarity", () => {
     expect(
-      buildArtworkMediumSpecs(
-        artworkDetail({ objectType: "work_on_paper", rarity: "limited_edition" }),
-      ),
-    ).toEqual([
-      { label: "Object type", lines: ["Works on paper"] },
-      { label: "Rarity", lines: ["Limited edition"] },
-      { label: "Medium", lines: ["Oil on linen"] },
-      { label: "Dimensions", lines: ["40 × 50 cm"] },
-    ]);
+      buildArtworkKeySpecs(
+        artworkDetail({
+          objectType: "work_on_paper",
+          rarity: "limited_edition",
+          yearCreated: null,
+        }),
+      ).map((row) => row.label),
+    ).toEqual(["Type", "Medium", "Dimensions"]);
+  });
+});
+
+describe("artworkPromise", () => {
+  const gallery = { name: "LAX Marylebone", address: "156 New Cavendish Street, London" };
+
+  it("says who replies and where to see the work while it is available", () => {
+    expect(artworkPromise(artworkDetail({ saleState: "price_on_application" }), gallery)).toEqual({
+      reply: "The gallery team replies within one working day.",
+      viewing: "Viewing by appointment at LAX Marylebone, 156 New Cavendish Street, London.",
+    });
+  });
+
+  it("makes no promise once the work is sold", () => {
+    expect(artworkPromise(artworkDetail({ saleState: "sold" }), gallery)).toBeNull();
+  });
+});
+
+describe("ARTWORK_FAQS", () => {
+  it("sends selling to LAX Bid, never a consignment", () => {
+    const selling = ARTWORK_FAQS.find((faq) => faq.id === "selling");
+    expect(selling?.answer).toMatch(/does not take works on consignment/);
+    expect(selling?.link?.href).toBe("/how-to-sell");
   });
 });
 

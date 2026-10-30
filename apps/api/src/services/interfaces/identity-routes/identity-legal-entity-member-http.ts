@@ -23,6 +23,12 @@ export interface IIdentityLegalEntityMemberHttpApplicationService {
     memberId: string;
   }): Promise<IdentityRouteOutcome<{ removed: true }>>;
 
+  /** The acting member leaves the organisation (refused for the last owner, with a reason key). */
+  leave(input: {
+    userId: string;
+    legalEntityId: string;
+  }): Promise<IdentityRouteOutcome<{ left: true }>>;
+
   /** Hands the acting owner's ownership to another member (typed confirmation). */
   transferOwnership(input: {
     userId: string;

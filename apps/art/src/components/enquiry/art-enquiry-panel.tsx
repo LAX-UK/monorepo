@@ -22,6 +22,7 @@ export function ArtEnquiryPanel({ slug, title, enquiry, triggerLabel }: ArtEnqui
           imageUrl={enquiry.imageUrl}
           contact={enquiry.contact}
           autoOpen={enquiry.autoOpen}
+          confirmation={enquiry.confirmation}
           {...(triggerLabel ? { triggerLabel } : {})}
         />
       );

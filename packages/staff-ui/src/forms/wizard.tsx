@@ -176,7 +176,7 @@ export function ReviewSection({
   return (
     <section
       aria-label={title}
-      className="rounded-staff-md border border-staff-line bg-staff-surface"
+      className="rounded-staff-lg border border-staff-line bg-staff-surface"
     >
       <header className="flex min-h-12 items-center justify-between gap-3 border-b border-staff-line-subtle px-4 py-2">
         <h3 className="font-staff text-staff-md font-semibold text-staff-fg">{title}</h3>

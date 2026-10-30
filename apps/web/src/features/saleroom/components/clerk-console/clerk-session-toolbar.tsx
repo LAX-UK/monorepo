@@ -45,7 +45,7 @@ export function ClerkSessionToolbar({ saleId, livePhase, sessionStatus, sticky =
             <SaleroomPendingSubmit
               pendingLabel="Going live…"
               variant="primary"
-              size="live"
+              size="lg"
               disabled={!canGoLive}
               onRun={() => adminSaleroomGoLiveAction({ saleId })}
             >
@@ -55,7 +55,7 @@ export function ClerkSessionToolbar({ saleId, livePhase, sessionStatus, sticky =
               <SaleroomPendingSubmit
                 pendingLabel="Resuming…"
                 variant="secondary"
-                size="live"
+                size="lg"
                 onRun={() => adminSaleroomResumeAction({ saleId })}
               >
                 Resume
@@ -67,7 +67,7 @@ export function ClerkSessionToolbar({ saleId, livePhase, sessionStatus, sticky =
           <SaleroomPendingSubmit
             pendingLabel="Resuming…"
             variant="primary"
-            size="live"
+            size="lg"
             disabled={!canResume}
             onRun={() => adminSaleroomResumeAction({ saleId })}
           >
@@ -78,7 +78,7 @@ export function ClerkSessionToolbar({ saleId, livePhase, sessionStatus, sticky =
           <SaleroomPendingSubmit
             pendingLabel="Pausing…"
             variant="secondary"
-            size="live"
+            size="lg"
             disabled={!canPause}
             onRun={() => adminSaleroomPauseAction({ saleId })}
           >
@@ -88,7 +88,7 @@ export function ClerkSessionToolbar({ saleId, livePhase, sessionStatus, sticky =
         {livePhase !== "setup" ? (
           <StaffButton
             variant={concluded ? "primary" : "secondary"}
-            size="live"
+            size="lg"
             disabled={!canClose}
             onClick={() =>
               confirm.ask({

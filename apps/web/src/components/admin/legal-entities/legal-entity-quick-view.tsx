@@ -193,7 +193,7 @@ export function LegalEntityQuickView({
                     {details.health.blockers.map((blocker) => (
                       <li
                         key={blocker.key}
-                        className="rounded-staff-md border border-staff-line px-3 py-2 text-staff-sm"
+                        className="rounded-staff-lg border border-staff-line px-3 py-2 text-staff-sm"
                       >
                         <span className="font-medium text-staff-fg">{blocker.label}</span>
                         <span className="mt-0.5 block text-staff-muted">{blocker.hint}</span>

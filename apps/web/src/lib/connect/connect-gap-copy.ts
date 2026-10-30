@@ -9,7 +9,7 @@ export function connectGapStageLabel(stage: ConnectGapStage): string {
 
 export function connectGapStageBadgeVariant(
   stage: ConnectGapStage,
-): NonNullable<StatusBadgeProps["variant"]> {
+): NonNullable<StatusBadgeProps["tone"]> {
   return connectGapStageCopy(stage).badgeVariant;
 }
 

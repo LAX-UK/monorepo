@@ -183,7 +183,7 @@ describe("LotOnBlockPanel", () => {
       entry.paddleAmount = "";
       renderPanel();
       expect(dock()).toHaveAttribute("data-hammer-primary", "false");
-      expect(screen.getByRole("button", { name: "Place paddle bid" })).toHaveClass("bg-staff-ink");
+      expect(screen.getByRole("button", { name: "Place paddle bid" })).toHaveClass("bg-lax-ink");
       entry.paddleNumber = "";
     });
 
@@ -192,7 +192,7 @@ describe("LotOnBlockPanel", () => {
       entry.paddleAmount = "";
       renderPanel();
       expect(screen.getByRole("button", { name: "Place paddle bid" })).not.toHaveClass(
-        "bg-staff-ink",
+        "bg-lax-ink",
       );
     });
   });

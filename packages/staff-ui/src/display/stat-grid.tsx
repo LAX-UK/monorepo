@@ -1,7 +1,6 @@
+import { type LinkComponent, MetricCell, type MetricCellItem } from "@auction/ui/lax";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
-import type { StaffLinkComponent } from "../shell/link.js";
-import { MetricCell, type MetricCellItem } from "./metric-cell.js";
 
 /** A record's headline number: the metric cell, with an optional context line under the value. */
 export type StatItem = MetricCellItem;
@@ -23,11 +22,11 @@ export function StatGrid({
   /** What any trends cover, as a caption above the card: "Daily activity, last 30 days". */
   period?: React.ReactNode;
   /** Needed when items carry an `href`. */
-  Link?: StaffLinkComponent;
+  Link?: LinkComponent;
   className?: string;
 }) {
   const grid = (
-    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-staff-md border border-staff-line bg-staff-line-subtle md:grid-cols-4">
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-staff-lg border border-staff-line bg-staff-line-subtle md:grid-cols-4">
       {items.map((item) => (
         <MetricCell key={item.id} item={item} Link={Link} className="bg-staff-surface" />
       ))}

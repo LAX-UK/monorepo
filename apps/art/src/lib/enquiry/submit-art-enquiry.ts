@@ -11,7 +11,7 @@ import {
 
 export type ArtEnquiryState =
   | { status: "idle" }
-  | { status: "sent" }
+  | { status: "sent"; email: string | null }
   | { status: "invalid"; fieldErrors: EnquiryFieldErrors }
   | { status: "error"; message: string };
 
@@ -30,12 +30,15 @@ function readError(body: unknown): string | null {
   return typeof error === "string" ? error : null;
 }
 
-export function interpretArtEnquiryResult(result: ArtCommerceMutationResult): ArtEnquiryState {
+export function interpretArtEnquiryResult(
+  result: ArtCommerceMutationResult,
+  email: string | null = null,
+): ArtEnquiryState {
   if (result.kind === "csrf_unavailable")
     return { status: "error", message: MESSAGES.sessionExpired };
   if (result.kind === "network_error") return { status: "error", message: MESSAGES.unavailable };
   const { status, body } = result;
-  if (status >= 200 && status < 300) return { status: "sent" };
+  if (status >= 200 && status < 300) return { status: "sent", email };
   if (status === 403 && readError(body) === "csrf_failed") {
     return { status: "error", message: MESSAGES.sessionExpired };
   }
@@ -64,5 +67,5 @@ export async function submitArtEnquiry(
     `/commerce/artworks/${encodeURIComponent(input.artworkSlug.trim())}/interest`,
     { method: "POST", body: { ...validation.payload, ...honeypot(input.website) } },
   );
-  return interpretArtEnquiryResult(result);
+  return interpretArtEnquiryResult(result, validation.payload.email);
 }

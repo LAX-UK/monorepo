@@ -369,7 +369,7 @@ describe("DataTable layout", () => {
       <DataTable label="People" columns={columns} data={rows} getRowId={(r) => r.id} embedded />,
     );
     expect(container.querySelector(".border-staff-line")).not.toBeInTheDocument();
-    expect(container.querySelector(".rounded-staff-md")).not.toBeInTheDocument();
+    expect(container.querySelector(".rounded-staff-lg")).not.toBeInTheDocument();
   });
 
   it("shortens text cells but never numeric ones", () => {

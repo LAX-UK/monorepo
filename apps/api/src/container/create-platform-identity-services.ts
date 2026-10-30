@@ -29,8 +29,10 @@ import { LegalEntityLifecycleAdminService } from "../services/legal-entity-lifec
 import { LegalEntityMembershipGuard } from "../services/legal-entity-membership.guard.js";
 import { MemberManagementService } from "../services/member-management.service.js";
 import { EmailMembershipInviteNotifier } from "../services/membership-invite-notifier.js";
+import type { NotificationDispatcher } from "../services/notification.dispatcher.js";
 import { MemberAuthorisationRevoker } from "../services/organisation-membership/member-authorisation-revoker.js";
 import { RemovedMemberBidStopper } from "../services/organisation-membership/removed-member-bid-stopper.js";
+import { OrganisationTeamNotifier } from "../services/organisation-team/organisation-team.notifier.js";
 import { OrganizationOnboardingService } from "../services/organization-onboarding.service.js";
 import { OrganizationOnboardingFlowService } from "../services/organization-onboarding/organization-onboarding-flow.service.js";
 import { UiPreferenceService } from "../services/ui-preference.service.js";
@@ -66,6 +68,8 @@ export type CreatePlatformIdentityServicesInput = {
   stripeConnectService: IStripeConnectService;
   /** Open lot pages drop a removed member's auto-bid ceilings straight away. */
   proxyRealtime: IProxyCancelledRealtime;
+  /** In-app notices to an organisation's owners and admins (a member left). */
+  notificationDispatcher: Pick<NotificationDispatcher, "dispatch">;
 };
 
 export function createPlatformIdentityServices(
@@ -128,6 +132,14 @@ export function createPlatformIdentityServices(
       core.domainEventSink,
     ),
     realtime: input.proxyRealtime,
+    accounts: legalEntityRepository,
+    leaveNotifier: new OrganisationTeamNotifier({
+      dispatcher: input.notificationDispatcher,
+      recipients: repos.legalEntityNotificationRecipients,
+      people: {
+        nameOf: async (userId) => (await repos.profileRepo.getProfile(userId))?.name ?? null,
+      },
+    }),
   });
   const invitationLifecycleService: IInvitationLifecycleService = new InvitationLifecycleService(
     core.transactionRunner,

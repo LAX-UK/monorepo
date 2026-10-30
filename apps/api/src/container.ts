@@ -30,6 +30,7 @@ import { createOrganisationBuyingServices } from "./container/create-organisatio
 import { createOrganisationHomeServices } from "./container/create-organisation-home-services.js";
 import { createOrganisationMembershipServices } from "./container/create-organisation-membership-services.js";
 import { createOrganisationSellingServices } from "./container/create-organisation-selling-services.js";
+import { createOrganisationTeamServices } from "./container/create-organisation-team-services.js";
 import { createOrganisationWorkspaceServices } from "./container/create-organisation-workspace-services.js";
 import { createPaymentsServices } from "./container/create-payments-services.js";
 import { createPlatformCronRouteServices } from "./container/create-platform-cron-route-services.js";
@@ -351,6 +352,10 @@ export function createContainer(env: Env): Container {
     connectEnforced: () => platform.stripeConnectService.isConfigured(),
     buyerAgentAuthorisations: buyerAgents.mine,
   });
+  const organisationTeam = createOrganisationTeamServices({
+    db,
+    events: platform.domainEventSink,
+  });
 
   const atg = new AtgAdminService(
     repos.atgLinkReader,
@@ -621,6 +626,7 @@ export function createContainer(env: Env): Container {
     organisationBuying: organisationBuying.client,
     organisationSelling,
     organisationWorkspace,
+    organisationTeam,
     queueAdmin: userMisc.queueAdmin,
     closeBullQueues: userMisc.closeBullQueues,
   };
@@ -666,6 +672,7 @@ export type {
   ContainerOrganisationBuyingRoutesSlice,
   ContainerOrganisationSellingRoutesSlice,
   ContainerOrganisationWorkspaceRoutesSlice,
+  ContainerOrganisationTeamRoutesSlice,
   ContainerLegalEntityRoutesSlice,
   ContainerLotCatalogSlice,
   ContainerLotDocumentRoutesSlice,

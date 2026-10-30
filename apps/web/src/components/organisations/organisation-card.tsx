@@ -53,7 +53,7 @@ export function OrganisationCard({
             <h3 className="truncate font-headline text-lg font-semibold tracking-tight">
               {summary.displayName}
             </h3>
-            <StatusBadge variant={status.tone}>{status.label}</StatusBadge>
+            <StatusBadge tone={status.tone}>{status.label}</StatusBadge>
           </div>
           <p className="text-sm text-on-surface-variant">
             {subkindLabel(summary.subkind)} · {organisationRoleLabel(summary.role)}
@@ -63,11 +63,11 @@ export function OrganisationCard({
       {gap ? (
         <CardContent className="space-y-2 pb-4 pt-0">
           <div className="flex flex-wrap gap-1.5">
-            <StatusBadge variant={connectGapStageBadgeVariant(gap.stage)}>
+            <StatusBadge tone={connectGapStageBadgeVariant(gap.stage)}>
               {connectGapStageLabel(gap.stage)}
             </StatusBadge>
             {gap.missing.length > 0 ? (
-              <StatusBadge variant="warning">
+              <StatusBadge tone="warning">
                 {gap.missing.length} {gap.missing.length === 1 ? "detail" : "details"} needed
               </StatusBadge>
             ) : null}
@@ -82,7 +82,7 @@ export function OrganisationCard({
             </Link>
           </Button>
         ) : (
-          <StatusBadge variant="info">Active</StatusBadge>
+          <StatusBadge tone="info">Active</StatusBadge>
         )}
         {showResume && resumeHref ? (
           <Button asChild size="default" variant="outline">

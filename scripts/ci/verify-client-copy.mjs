@@ -42,6 +42,12 @@ export const FORBIDDEN_CLIENT_TERMS = [
   { term: "2FA", pattern: /\b2FA\b/i, instead: "two-step verification" },
   { term: "Xero", pattern: /\bXero\b/i, instead: "invoice" },
   { term: "favor", pattern: /\bfavor(?:s|ed|ing|ite|ites)?\b/i, instead: "favour (British)" },
+  // The workspace menu's names: the page is "Organisation", and the team has its own Team page.
+  {
+    term: "Organisation settings",
+    pattern: /\bOrganisation settings\b/,
+    instead: "Organisation (the team is on Team)",
+  },
 ];
 
 /**

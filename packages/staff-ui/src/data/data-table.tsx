@@ -464,7 +464,7 @@ export function DataTable<T>({
           <div
             className={cn(
               "overflow-clip bg-staff-surface",
-              !embedded && "rounded-staff-md border border-staff-line",
+              !embedded && "rounded-staff-lg border border-staff-line",
             )}
           >
             {toolbar ? (
