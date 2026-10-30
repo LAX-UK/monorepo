@@ -63,8 +63,7 @@ vi.mock("@auction/ui/components/command", () => {
   };
 });
 
-const { StaffShell } = await import("./staff-shell.js");
-const { STAFF_NAV_COOKIE } = await import("./nav-cookie.js");
+const { StaffShell, STAFF_NAV_COOKIE } = await import("./staff-shell.js");
 const { PlainLink } = await import("@auction/ui/lax");
 
 const product = { id: "lax-admin" as const, name: "LAX Admin", description: "Shop", href: "/" };

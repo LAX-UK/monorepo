@@ -5,7 +5,7 @@ import type { ILotRepository, ISaleRepository } from "@auction/persistence/inter
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { Lot, LotStatus, Sale, StaffRoles, UserRole } from "@auction/types";
 import { roleHasCapability } from "@auction/types";
-import { saleModeAllowsBidding } from "@auction/validators";
+import { saleModeEndsManually } from "@auction/validators";
 import { type Result, err, ok } from "neverthrow";
 import { AuthzError, LotError } from "../lib/errors.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
@@ -68,9 +68,11 @@ export class SaleStatusTransitionService implements ISaleStatusTransitionService
     }
     const sale = await this.saleRepo.findById(saleId);
     if (!sale) return err(new LotError("Sale not found", 404));
-    if (saleModeAllowsBidding(sale.deliveryMode)) {
+    if (!saleModeEndsManually(sale.deliveryMode)) {
       return err(
-        new LotError("Only onsite sales can be ended manually; online sales end automatically"),
+        new LotError(
+          "Only saleroom sales can be ended manually; online sales end when their lots close",
+        ),
       );
     }
     if (sale.status !== "active" && sale.status !== "scheduled") {

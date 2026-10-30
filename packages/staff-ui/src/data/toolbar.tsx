@@ -23,10 +23,15 @@ import {
   StaffMenuTrigger,
 } from "../primitives/menu.js";
 import { useStaffShortcut } from "../shell/shortcuts.js";
-import type { SavedView, SavedViewsControls } from "./saved-views.js";
+import {
+  type SavedView,
+  type SavedViewsControls,
+  sameViewQuery,
+  viewQuery,
+} from "./saved-views.js";
 import type { TableDensity } from "./types.js";
-import { sameViewQuery, viewQuery } from "./view-query.js";
 
+export { fitViewTabs } from "@auction/ui/lax";
 import { type TeamView, VIEW_LABEL_MAX_LENGTH, ViewsMenu } from "./views-menu.js";
 
 /** The rows above a table: views on top, then search, filters and view options. */
@@ -211,6 +216,11 @@ export function FilterMenu({
 }
 
 export type ActiveFilter = { id: string; label: string; onRemove: () => void };
+
+/** The chip for the search in force, worded the same on every list: "Search: ada". */
+export function searchChipLabel(query: string): string {
+  return `Search: ${query.trim()}`;
+}
 
 /** Applied filters as removable chips, plus "Clear all". */
 export function ActiveFilterChips({

@@ -1,5 +1,6 @@
 "use client";
 
+import { useStaffCatalogueImage } from "@/components/artworks/staff-catalogue-image-provider.client";
 import {
   type EnquiryTarget,
   useEnquiryActions,
@@ -82,6 +83,7 @@ export function EnquiryConversation({
   initialNoteError?: string;
 }) {
   const router = useRouter();
+  const artworkImage = useStaffCatalogueImage()(detail.artwork?.thumbnailUrl);
   const actions = useEnquiryActions({ currentSubject });
   const senderName = enquirySenderName(detail.sender);
   const target: EnquiryTarget = {
@@ -259,8 +261,8 @@ export function EnquiryConversation({
                 <div className="flex flex-col gap-3">
                   {detail.artwork ? (
                     <>
-                      {detail.artwork.thumbnailUrl ? (
-                        <RecordImage src={detail.artwork.thumbnailUrl} alt={detail.artwork.title} />
+                      {artworkImage ? (
+                        <RecordImage src={artworkImage} alt={detail.artwork.title} />
                       ) : null}
                       <KeyValueList
                         items={[

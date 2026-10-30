@@ -11,7 +11,7 @@ vi.mock("@auction/ui/components/tooltip", () =>
 
 const { ColumnsMenu, useColumnVisibility, visibleColumns } = await import("./columns-menu.js");
 const { RowActions, rowActionsColumn } = await import("./row-actions.js");
-const { fitViewTabs } = await import("@auction/ui/lax/helpers");
+const { fitViewTabs } = await import("./toolbar.js");
 
 type Row = { id: string };
 const columns: DataColumn<Row>[] = [
