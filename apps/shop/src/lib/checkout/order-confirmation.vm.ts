@@ -71,6 +71,8 @@ export function buildOrderConfirmationVm(input: {
   displayName: string | null;
   email: string | null;
   times: CheckoutDeliveryTimes;
+  /** Where a guest opens the order and invoice; an account uses its order page. */
+  links?: { orderHref: string; invoiceHref: string };
 }): OrderConfirmationVm {
   const { order } = input;
   const reference = shopOrderReference(order);
@@ -92,8 +94,10 @@ export function buildOrderConfirmationVm(input: {
         text: "You can cancel within 14 days of delivery, or report a problem, from your order page.",
       },
     ],
-    orderHref: shopOrderHref(order.orderId),
-    invoiceHref: order.invoiceAvailable ? shopOrderInvoiceHref(order.orderId) : null,
+    orderHref: input.links?.orderHref ?? shopOrderHref(order.orderId),
+    invoiceHref: order.invoiceAvailable
+      ? (input.links?.invoiceHref ?? shopOrderInvoiceHref(order.orderId))
+      : null,
     lines: buildShopOrderLines(order),
     totals: buildShopOrderTotals(order),
     delivery: buildShopOrderDelivery(order),

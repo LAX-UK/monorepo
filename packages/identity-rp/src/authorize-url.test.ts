@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildAuthorizeUrl } from "./authorize-url.js";
 import { buildEndSessionUrl } from "./end-session-url.js";
+import { safeLoginHint } from "./safe-return-path.js";
 
 describe("buildAuthorizeUrl", () => {
   it("builds a PKCE authorization request", () => {
@@ -36,6 +37,25 @@ describe("buildAuthorizeUrl", () => {
     const url = new URL(href);
     expect(url.searchParams.get("prompt")).toBe("create");
     expect(url.searchParams.get("max_age")).toBe("0");
+  });
+});
+
+describe("login hints", () => {
+  it("adds a login hint to the authorize URL and accepts only plausible emails", () => {
+    const href = buildAuthorizeUrl({
+      authorizationEndpoint: "https://auth.example/authorize",
+      clientId: "lax-shop-web",
+      redirectUri: "https://test.lax.shop/auth/callback",
+      scopes: ["openid"],
+      state: "s",
+      nonce: "n",
+      codeChallenge: "c",
+      loginHint: "ada@example.com",
+    });
+    expect(new URL(href).searchParams.get("login_hint")).toBe("ada@example.com");
+    expect(safeLoginHint(" ada@example.com ")).toBe("ada@example.com");
+    expect(safeLoginHint("not an email")).toBeNull();
+    expect(safeLoginHint(undefined)).toBeNull();
   });
 });
 

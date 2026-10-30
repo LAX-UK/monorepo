@@ -15,6 +15,8 @@ export async function restoreBasketLinesFromOrder(
   tx: Database,
   order: OrderHeader,
   orderId: string,
+  /** Where the lines go instead of the owner's basket: a guest's browser basket. */
+  restoreTo?: BasketOwner,
 ): Promise<void> {
   const lines = await tx
     .select({
@@ -57,7 +59,10 @@ export async function restoreBasketLinesFromOrder(
     }
   }
 
-  const owner: BasketOwner = { kind: "subject", identitySubjectId: order.identitySubjectId };
+  const owner: BasketOwner = restoreTo ?? {
+    kind: "subject",
+    identitySubjectId: order.identitySubjectId,
+  };
   const basketId = await ensureOpenBasket(tx, owner);
   const artworkIds = [...quantityByArtwork.keys()];
   const variantIds = [...quantityByVariant.keys()];

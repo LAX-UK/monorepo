@@ -78,6 +78,8 @@ export type FloatingInputOptions = {
   exactEntry?: boolean;
   /** Guidance shown under the label before anything is typed. */
   hint?: string;
+  /** Prefilled text, such as the email a product passed as `login_hint`. */
+  value?: string;
 };
 
 export type HostedButtonOptions = {
@@ -154,6 +156,7 @@ export function floatingInput(input: FloatingInputOptions): string {
     input.maxlength ? attr("maxlength", String(input.maxlength)) : "",
     inputmode ? attr("inputmode", inputmode) : "",
     input.pattern ? attr("pattern", input.pattern) : "",
+    input.value ? attr("value", input.value) : "",
     type === "email" ? attr("spellcheck", "false") : "",
     type === "password" || input.exactEntry
       ? 'autocapitalize="off" autocorrect="off" spellcheck="false"'

@@ -1,5 +1,6 @@
 import { ShopOrderLines, ShopOrderTotals } from "@/components/account/shop-order-lines";
 import { CheckoutConfirmationPoller } from "@/components/checkout/checkout-confirmation-poller.client";
+import { GuestAccountOffer } from "@/components/checkout/guest-account-offer";
 import { ShopCheckoutSteps } from "@/components/checkout/shop-checkout-steps";
 import { ShopOrderConfirmation } from "@/components/checkout/shop-order-confirmation";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
@@ -15,12 +16,15 @@ import {
 } from "@/lib/account/shop-orders.vm";
 import { resolveCheckoutConfirmationView } from "@/lib/checkout-confirmation-state";
 import { loadCheckoutDeliveryTimes } from "@/lib/checkout/checkout-delivery.server";
+import { fetchCurrentGuestOrder } from "@/lib/checkout/guest-order.server";
+import { GUEST_ORDER_INVOICE_PATH, GUEST_ORDER_PATH } from "@/lib/checkout/guest-order.vm";
 import { buildOrderConfirmationVm } from "@/lib/checkout/order-confirmation.vm";
 import { fetchShopOrder } from "@/lib/shop-commerce.server";
 import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
 import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { MarketingDetailShell } from "@auction/marketing-ui";
+import type { OrderSummary } from "@auction/shop-contracts";
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
@@ -51,6 +55,17 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
     ? `/checkout/confirmation?orderId=${encodeURIComponent(orderId)}`
     : "/checkout/confirmation";
   const viewer = await loadShopViewerState();
+  if (viewer.kind === "guest" && orderId) {
+    // A guest's browser holds the order's access token from checkout.
+    const guest = await fetchCurrentGuestOrder();
+    if (
+      guest.status === "ok" &&
+      guest.view.state === "valid" &&
+      guest.view.order.orderId === orderId
+    ) {
+      return <GuestConfirmation order={guest.view.order} email={guest.view.email} />;
+    }
+  }
   const gate = gateShopAuthenticatedRoute(viewer, returnTo);
   if (!gate.allowed) {
     if (gate.redirectTo) redirect(gate.redirectTo);
@@ -192,6 +207,54 @@ export default async function CheckoutConfirmationPage({ searchParams }: Confirm
           View order
         </ShopCommerceOutlineLink>
         <ShopCommerceOutlineLink href="/account/orders">Your orders</ShopCommerceOutlineLink>
+      </div>
+    </ConfirmationRouteShell>
+  );
+}
+
+/** The confirmation a guest sees: the same order, with its guest links and the account offer. */
+function GuestConfirmation({ order, email }: { order: OrderSummary; email: string }) {
+  if (order.status === "paid") {
+    const confirmation = buildOrderConfirmationVm({
+      order,
+      displayName: null,
+      email,
+      times: loadCheckoutDeliveryTimes(),
+      links: { orderHref: GUEST_ORDER_PATH, invoiceHref: GUEST_ORDER_INVOICE_PATH },
+    });
+    return (
+      <ConfirmationRouteShell title={confirmation.heading}>
+        <ShopOrderConfirmation confirmation={confirmation} />
+        <GuestAccountOffer email={email} headingId="confirmation-account-heading" />
+      </ConfirmationRouteShell>
+    );
+  }
+  const view = resolveCheckoutConfirmationView({
+    orderId: order.orderId,
+    orderResult: { status: "ok", data: order },
+  });
+  const heading = view.kind === "order" ? view.heading : shopPageWayfinding.confirmation.title;
+  const statusMessage = view.kind === "order" ? view.statusMessage : null;
+  return (
+    <ConfirmationRouteShell title={heading}>
+      <CheckoutConfirmationPoller
+        active={order.status === "pending_payment"}
+        orderId={order.orderId}
+        guestOrderHref={GUEST_ORDER_PATH}
+      />
+      {statusMessage ? <output className="block">{statusMessage}</output> : null}
+      {order.status === "payment_failed" ? (
+        <ShopCommerceButton href="/basket">Return to basket</ShopCommerceButton>
+      ) : null}
+      <section className="shop-order-panel" aria-labelledby="confirmation-order-heading">
+        <h2 id="confirmation-order-heading" className="shop-order-panel__title">
+          {shopOrderName(order)}
+        </h2>
+        <ShopOrderLines lines={buildShopOrderLines(order)} />
+        <ShopOrderTotals totals={buildShopOrderTotals(order)} />
+      </section>
+      <div className="flex flex-wrap gap-3">
+        <ShopCommerceOutlineLink href={GUEST_ORDER_PATH}>View order</ShopCommerceOutlineLink>
       </div>
     </ConfirmationRouteShell>
   );

@@ -191,3 +191,4 @@ export {
 export type { ConsentRecord, ConsentStore } from "./consent-store.js";
 export * from "./account-addresses.js";
 export { countryToIso } from "./address-country.js";
+export * from "./email-registration.js";

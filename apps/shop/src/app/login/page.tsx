@@ -1,17 +1,20 @@
 import { shopIdentityBaseUrl } from "@/lib/shop-identity.server";
 import { shopPrivatePageMetadata } from "@/lib/shop-private-page-metadata";
-import { safeRelativeReturnPath } from "@auction/identity-rp/safe-return-path";
-
-export const metadata = shopPrivatePageMetadata;
+import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
+import { safeLoginHint } from "@auction/identity-rp/safe-return-path";
 import { redirect } from "next/navigation";
 
+export const metadata = shopPrivatePageMetadata;
+
 type ShopLoginPageProps = {
-  searchParams: Promise<{ returnTo?: string }>;
+  searchParams: Promise<{ returnTo?: string; loginHint?: string }>;
 };
 
 export default async function ShopLoginPage({ searchParams }: ShopLoginPageProps) {
   const params = await searchParams;
-  const returnTo = safeRelativeReturnPath(params.returnTo);
-  const base = `${shopIdentityBaseUrl()}/login`;
-  redirect(returnTo ? `${base}?returnTo=${encodeURIComponent(returnTo)}` : base);
+  redirect(
+    `${shopIdentityBaseUrl()}${shopStorefrontLoginHref(params.returnTo, {
+      loginHint: safeLoginHint(params.loginHint),
+    })}`,
+  );
 }

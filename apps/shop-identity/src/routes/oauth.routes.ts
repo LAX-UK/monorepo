@@ -3,6 +3,7 @@ import {
   type OidcAuthorizePrompt,
   classifySilentCallback,
   createSilentSignInCookieSpec,
+  safeLoginHint,
   safeRelativeReturnPath,
 } from "@auction/identity-rp";
 import type { Context, Hono } from "hono";
@@ -127,6 +128,7 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
       return skipBackgroundAuthStart(c);
     }
     const safeReturnTo = safeRelativeReturnPath(c.req.query("returnTo"));
+    const loginHint = safeLoginHint(c.req.query("loginHint"));
     const isInteractiveLogin = !options?.prompt || options.prompt === "create";
     if (
       isInteractiveLogin &&
@@ -213,6 +215,8 @@ export function registerOAuthRoutes(app: Hono, deps: OAuthRoutesDeps): void {
         redirectUri: env.OIDC_REDIRECT_URI,
         params: oauth,
         ...(options?.prompt ? { prompt: options.prompt } : {}),
+        // The email the shopper already gave (guest checkout), so sign-in starts prefilled.
+        ...(isInteractiveLogin && loginHint ? { loginHint } : {}),
       }),
       302,
     );

@@ -11,6 +11,8 @@ export function buildAuthorizeUrl(input: {
   prompt?: OidcAuthorizePrompt;
   /** OAuth `max_age` — requires a fresh login when combined with `prompt=login`. */
   maxAge?: number;
+  /** OIDC `login_hint`: an email the relying party already knows, prefilled at sign-in. */
+  loginHint?: string;
 }): string {
   const url = new URL(input.authorizationEndpoint);
   url.searchParams.set("response_type", "code");
@@ -21,6 +23,7 @@ export function buildAuthorizeUrl(input: {
   if (input.maxAge != null && Number.isFinite(input.maxAge)) {
     url.searchParams.set("max_age", String(Math.max(0, Math.floor(input.maxAge))));
   }
+  if (input.loginHint) url.searchParams.set("login_hint", input.loginHint);
   url.searchParams.set("state", input.state);
   url.searchParams.set("nonce", input.nonce);
   url.searchParams.set("code_challenge", input.codeChallenge);

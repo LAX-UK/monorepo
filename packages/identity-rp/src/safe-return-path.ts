@@ -19,3 +19,9 @@ export function safeRelativeReturnPath(raw: string | null | undefined): string |
   }
   return value;
 }
+
+/** A login hint taken from a query string: a plausible email, or nothing. */
+export function safeLoginHint(raw: string | null | undefined): string | null {
+  const hint = raw?.trim() ?? "";
+  return hint.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hint) ? hint : null;
+}

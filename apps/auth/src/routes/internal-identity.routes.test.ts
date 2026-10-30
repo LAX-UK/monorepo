@@ -28,6 +28,7 @@ function setup() {
     })),
     markDeletionRequested: vi.fn(async () => undefined),
     cancelDeletionRequested: vi.fn(async () => undefined),
+    isEmailRegistered: vi.fn(async () => true),
   };
   const accountDeletion = {
     requestDeletion: vi.fn<(...args: unknown[]) => Promise<unknown>>(async () => ({
@@ -451,5 +452,27 @@ describe("internal Identity machine routes", () => {
     });
     expect(anonymous.status).toBe(401);
     expect(emailChange.confirm).not.toHaveBeenCalled();
+  });
+
+  it("says only whether an email has a LAX account, and only to a machine caller", async () => {
+    const { app, operations } = setup();
+    const token = await issueToken(app);
+    const ask = (body: unknown, authorization?: string) =>
+      app.request("/identity/emails/registration", {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(authorization ? { authorization } : {}),
+        },
+        body: JSON.stringify(body),
+      });
+
+    const registered = await ask({ email: " Ada@Example.com " }, `Bearer ${token}`);
+    expect(registered.status).toBe(200);
+    expect(await registered.json()).toEqual({ registered: true });
+    expect(operations.isEmailRegistered).toHaveBeenCalledWith("Ada@Example.com");
+
+    expect((await ask({}, `Bearer ${token}`)).status).toBe(400);
+    expect((await ask({ email: "ada@example.com" })).status).toBe(401);
   });
 });

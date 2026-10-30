@@ -27,7 +27,8 @@ export default async function CancelCheckoutPage({ searchParams }: CancelCheckou
 
   const viewer = await loadShopViewerState();
   const gate = gateShopAuthenticatedRoute(viewer, returnTo);
-  if (!gate.allowed) {
+  // A guest cancels through the order token their browser holds from checkout.
+  if (!gate.allowed && viewer.kind !== "guest") {
     if (gate.redirectTo) redirect(gate.redirectTo);
     return (
       <MarketingDetailShell shellClassName="shop-page shop-page--checkout-cancel">

@@ -357,3 +357,21 @@ export {
   type CataloguePriceBandKey,
   type CatalogueSizeBandKey,
 } from "./catalogue-bands.js";
+export {
+  GUEST_EMAIL_MAX_LENGTH,
+  GUEST_MARKETING_CONSENT,
+  GUEST_LEAD_SOURCE,
+  GUEST_ORDER_LINK_TTL_DAYS,
+  decideGuestEmail,
+  guestCustomerIdFromSubject,
+  guestLeadStatus,
+  guestOrderLinkExpiry,
+  guestOrderLinkState,
+  guestOrderSubject,
+  isGuestOrderSubject,
+  isPlausibleGuestEmail,
+  normaliseGuestEmail,
+  type GuestEmailDecision,
+  type GuestLeadStatus,
+  type GuestOrderLinkState,
+} from "./guest-checkout.js";

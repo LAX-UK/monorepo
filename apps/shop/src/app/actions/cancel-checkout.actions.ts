@@ -1,5 +1,6 @@
 "use server";
 
+import { orderCommercePath } from "@/lib/checkout/order-commerce-path.server";
 import { commerceErrorMessage } from "@/lib/commerce-error-message";
 import { fetchShopCommerceCsrfForMutation } from "@/lib/shop-commerce-mutation.server";
 import { shopCommerceRequest } from "@/lib/shop-commerce-request.server";
@@ -20,7 +21,7 @@ export async function cancelCheckoutOrder(orderId: string): Promise<CancelChecko
     };
   }
   const response = await shopCommerceRequest(
-    `/commerce/orders/${encodeURIComponent(trimmed)}/cancel`,
+    await orderCommercePath(trimmed, "cancel"),
     {
       method: "POST",
       headers: {

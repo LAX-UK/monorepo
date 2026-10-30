@@ -11,7 +11,6 @@ import {
   shopProduct,
   shopProductVariant,
   shopRefund,
-  shopUserProfile,
 } from "@auction/db/schema";
 import {
   SHOP_FULFILMENT_STATUSES,
@@ -30,6 +29,7 @@ import type {
   ShopDeliveryAddressRecord,
 } from "../application/ports/commerce.ports.js";
 import { MAX_ORDER_LIST_LIMIT } from "../application/ports/commerce.ports.js";
+import { readShopCustomerContact } from "./resolve-shop-user-email.js";
 
 function deliveryAddressFromOrder(
   order: typeof shopOrder.$inferSelect,
@@ -358,16 +358,8 @@ export function createDrizzleOrderRepository(db: Database): OrderReader {
       return record ?? null;
     },
 
-    async getCustomerProfile(subject) {
-      const [profile] = await db
-        .select({ name: shopUserProfile.name, email: shopUserProfile.email })
-        .from(shopUserProfile)
-        .where(eq(shopUserProfile.identitySubjectId, subject))
-        .limit(1);
-      return {
-        name: profile?.name?.trim() || null,
-        email: profile?.email?.trim() || null,
-      };
+    getCustomerProfile(subject) {
+      return readShopCustomerContact(db, subject);
     },
   };
 }

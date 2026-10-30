@@ -12,6 +12,8 @@ export const CRM_FIELD = {
   utmContent: "UTM_Content",
   utmTerm: "UTM_Term",
   landingPageUrl: "Landing_Page_URL",
+  /** Zoho's standard opt-out flag: true unless the person opted in to marketing. */
+  emailOptOut: "Email_Opt_Out",
 } as const;
 
 export const CRM_LEAD_SOURCE_PLATFORM = "LAX Platform";

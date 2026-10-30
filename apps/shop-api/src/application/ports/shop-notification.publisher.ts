@@ -18,12 +18,27 @@ export type ShopNotificationPublisher = {
       /** VAT included in the total; null when the order recorded no VAT rate. */
       vatAmountPence: number | null;
       storefrontUrl: string;
+      /** A guest order's emailed link, which opens the order without an account. */
+      guestOrderUrl?: string;
       lines: Array<{
         artworkTitle: string;
         artworkSlug: string;
         editionNumber: number | null;
         unitPricePence: number;
       }>;
+    },
+  ): Promise<void>;
+
+  /** A fresh link to a guest order, sent when the guest asks for one. */
+  queueGuestOrderLink(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      to: string;
+      orderReference: string;
+      orderUrl: string;
+      /** "29 November 2026". */
+      expiresOn: string;
     },
   ): Promise<void>;
 
