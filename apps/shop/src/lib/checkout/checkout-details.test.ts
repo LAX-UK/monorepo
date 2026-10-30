@@ -24,6 +24,7 @@ const saved = (overrides: Partial<SavedDeliveryAddress>): SavedDeliveryAddress =
 
 const blank: CheckoutDetails = {
   choice: "uk_insured_delivery",
+  contactName: "",
   address: "new",
   recipientName: "",
   line1: "",
@@ -74,6 +75,16 @@ describe("validateCheckoutDetails", () => {
       validateCheckoutDetails({ ...blank, address: "a", phone: "07700 900123" }, book),
     ).toEqual({});
     expect(validateCheckoutDetails({ ...blank, choice: "collect_new_cavendish" }, [])).toEqual({});
+  });
+
+  it("asks a guest for their name, whatever the delivery", () => {
+    const collect = { ...blank, choice: "collect_new_cavendish" as const };
+    expect(validateCheckoutDetails(collect, [], { requireContactName: true })).toEqual({
+      contactName: "Enter your full name",
+    });
+    expect(
+      validateCheckoutDetails({ ...collect, contactName: "Ada" }, [], { requireContactName: true }),
+    ).toEqual({});
   });
 
   it("refuses a saved address outside the UK", () => {

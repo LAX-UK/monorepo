@@ -31,6 +31,9 @@ describe("ClerkLotOutcomeService", () => {
     const bids: IBidRepository = {
       listForLotSettlement: vi.fn().mockResolvedValue([bid({ amount: "500.00" })]),
       listDistinctBidderIds: vi.fn().mockResolvedValue(["bidder-a"]),
+      listDistinctBidderAccounts: vi
+        .fn()
+        .mockResolvedValue(["bidder-a"].map((userId) => ({ userId, legalEntityId: null }))),
       clearWinningBid,
     } as unknown as IBidRepository;
 
@@ -82,6 +85,9 @@ describe("ClerkLotOutcomeService", () => {
         .fn()
         .mockResolvedValue([bid({ amount: "500.00", buyerLegalEntityId: "le-1" })]),
       listDistinctBidderIds: vi.fn().mockResolvedValue(["u1"]),
+      listDistinctBidderAccounts: vi
+        .fn()
+        .mockResolvedValue(["u1"].map((userId) => ({ userId, legalEntityId: null }))),
       clearWinningBid,
     } as unknown as IBidRepository;
 

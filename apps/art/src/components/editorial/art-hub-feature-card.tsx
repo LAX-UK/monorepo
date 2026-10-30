@@ -23,7 +23,7 @@ export function ArtHubFeatureCard({
         <ArtMediaImage
           src={card.imageUrl}
           alt=""
-          label="Collector Hub"
+          label="Collecting"
           sizes="(min-width: 64rem) 25vw, (min-width: 48rem) 45vw, 100vw"
           priority={priority}
           className="absolute inset-0 size-full"

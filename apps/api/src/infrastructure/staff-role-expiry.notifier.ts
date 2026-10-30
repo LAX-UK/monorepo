@@ -114,11 +114,13 @@ export class StaffRoleExpiryNotifier implements IStaffRoleExpiryNotifier {
     return audience === "person"
       ? {
           type: "staff_role_expired",
+          legalEntityId: null,
           title: `Your ${roleLabel} role has ended`,
           message: `Your ${roleLabel} role on ${productLabel} ended on ${endedOnDisplay}. Ask an administrator if you still need it.`,
         }
       : {
           type: "staff_role_expired_admin",
+          legalEntityId: null,
           title: "A staff role has ended",
           message: `${staffName}'s ${roleLabel} role on ${productLabel} ended on ${endedOnDisplay}.`,
         };

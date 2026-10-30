@@ -10,6 +10,7 @@ type Props = {
   contextSlug?: string | null;
   contextLabel?: string | null;
   triggerLabel?: string;
+  triggerVariant?: "default" | "secondaryOutline";
 };
 
 const GUEST_CONTACT = { name: "", email: "", phone: "" };
@@ -21,6 +22,7 @@ export function ArtGeneralEnquiryPanel({
   contextSlug,
   contextLabel,
   triggerLabel,
+  triggerVariant,
 }: Props) {
   switch (viewer.kind) {
     case "authenticated":
@@ -40,6 +42,7 @@ export function ArtGeneralEnquiryPanel({
           {...(contextSlug ? { contextSlug } : {})}
           {...(contextLabel ? { contextLabel } : {})}
           {...(triggerLabel ? { triggerLabel } : {})}
+          {...(triggerVariant ? { triggerVariant } : {})}
         />
       );
     case "disabled":

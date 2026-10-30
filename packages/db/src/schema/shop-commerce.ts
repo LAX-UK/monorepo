@@ -722,7 +722,15 @@ export const shopOrder = pgTable(
      * `shop_invoice_counter` in the transaction that sets `paid_at`. Null until the order is paid.
      */
     invoiceNumber: text("invoice_number"),
+    /**
+     * Who owns the order: a LAX Identity subject, or `guest:<shop_guest_customer.id>` for a guest
+     * order until the guest verifies that email on a LAX account and the order is claimed.
+     */
     identitySubjectId: text("identity_subject_id").notNull(),
+    /** The guest who placed the order; kept after a claim so staff still see how it was placed. */
+    guestCustomerId: uuid("guest_customer_id").references((): AnyPgColumn => shopGuestCustomer.id, {
+      onDelete: "restrict",
+    }),
     buyerPartyId: uuid("buyer_party_id").references(() => shopParty.id, { onDelete: "restrict" }),
     status: shopOrderStatusEnum("status").default("pending_payment").notNull(),
     fulfilment: shopFulfilmentOptionEnum("fulfilment").notNull(),
@@ -755,6 +763,88 @@ export const shopOrder = pgTable(
     index("shop_order_subject_idx").on(table.identitySubjectId),
     index("shop_order_subject_created_idx").on(table.identitySubjectId, table.createdAt),
     index("shop_order_status_created_idx").on(table.status, table.createdAt),
+    index("shop_order_guest_customer_idx")
+      .on(table.guestCustomerId)
+      .where(sql`${table.guestCustomerId} IS NOT NULL`),
+  ],
+);
+
+/**
+ * Someone who gave their email at checkout without a LAX account: the guest on their orders, and
+ * a Shop lead whether or not they went on to pay. One row per normalised email.
+ */
+export const shopGuestCustomer = pgTable(
+  "shop_guest_customer",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    /** Trimmed and lower-cased, so one person is one row. */
+    email: text("email").notNull(),
+    name: text("name"),
+    phone: text("phone"),
+    /** The separate, unticked opt-in at checkout; transactional email never depends on it. */
+    marketingConsent: boolean("marketing_consent").default(false).notNull(),
+    marketingConsentAt: timestamp("marketing_consent_at", { mode: "date", withTimezone: true }),
+    /** Which wording of the opt-in the guest agreed to. */
+    marketingConsentVersion: text("marketing_consent_version"),
+    firstSeenAt: timestamp("first_seen_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    lastSeenAt: timestamp("last_seen_at", { mode: "date", withTimezone: true })
+      .defaultNow()
+      .notNull(),
+    /** Paid guest orders; zero means the guest gave an email and left (an abandoned checkout). */
+    paidOrderCount: integer("paid_order_count").default(0).notNull(),
+    firstPaidAt: timestamp("first_paid_at", { mode: "date", withTimezone: true }),
+    /** The LAX account that verified this email and took over the guest's orders. */
+    claimedSubjectId: text("claimed_subject_id"),
+    claimedAt: timestamp("claimed_at", { mode: "date", withTimezone: true }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("shop_guest_customer_email_uid").on(table.email),
+    check(
+      "shop_guest_customer_email_normalised_ck",
+      sql`${table.email} = lower(btrim(${table.email}))`,
+    ),
+    check("shop_guest_customer_paid_count_ck", sql`${table.paidOrderCount} >= 0`),
+    check(
+      "shop_guest_customer_consent_record_ck",
+      sql`NOT ${table.marketingConsent} OR (${table.marketingConsentAt} IS NOT NULL AND ${table.marketingConsentVersion} IS NOT NULL)`,
+    ),
+    check(
+      "shop_guest_customer_claim_pair_ck",
+      sql`(${table.claimedSubjectId} IS NULL) = (${table.claimedAt} IS NULL)`,
+    ),
+  ],
+);
+
+/** How far a shop-api projection has read `domain_events`; one row per projection. */
+export const shopProjectionCursor = pgTable("shop_projection_cursor", {
+  name: text("name").primaryKey(),
+  lastEventId: bigint("last_event_id", { mode: "number" }).default(0).notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+});
+
+/**
+ * The emailed link that opens one guest order without an account. Only the token's SHA-256 is
+ * stored; each link has one purpose and an expiry.
+ */
+export const shopGuestOrderLink = pgTable(
+  "shop_guest_order_link",
+  {
+    tokenHash: text("token_hash").primaryKey(),
+    orderId: uuid("order_id")
+      .notNull()
+      .references(() => shopOrder.id, { onDelete: "cascade" }),
+    purpose: text("purpose").default("order_view").notNull(),
+    expiresAt: timestamp("expires_at", { mode: "date", withTimezone: true }).notNull(),
+    lastOpenedAt: timestamp("last_opened_at", { mode: "date", withTimezone: true }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("shop_guest_order_link_order_idx").on(table.orderId),
+    check("shop_guest_order_link_purpose_ck", sql`${table.purpose} IN ('order_view')`),
   ],
 );
 

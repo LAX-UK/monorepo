@@ -47,6 +47,8 @@ export class ConsignmentUpdateNotifier
         title: update.title,
         message: update.message,
         submissionId: update.submissionId,
+        // Staff work happens in Bid admin, outside any client account.
+        legalEntityId: null,
         meta: { audience: "staff" },
       })
       .catch(() => undefined);
@@ -60,13 +62,23 @@ export class ConsignmentUpdateNotifier
         reader.listUserIdsForAudience(target.legalEntityId, target.audience).catch(() => []),
       ),
     );
-    for (const userId of new Set(lists.flat())) {
+    // Each person once, about the first account in `to` they were reached through.
+    const accountOf = new Map<string, string>();
+    lists.forEach((userIds, i) => {
+      const target = to[i];
+      if (!target) return;
+      for (const userId of userIds) {
+        if (!accountOf.has(userId)) accountOf.set(userId, target.legalEntityId);
+      }
+    });
+    for (const [userId, legalEntityId] of accountOf) {
       await this.dispatcher
         .dispatch(userId, {
           type: "consignment_update",
           title: update.title,
           message: update.message,
           submissionId: update.submissionId,
+          legalEntityId,
         })
         .catch(() => undefined);
     }

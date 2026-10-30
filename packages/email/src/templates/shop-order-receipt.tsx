@@ -11,6 +11,7 @@ export default function ShopOrderReceiptEmail({
   vatAmount,
   orderUrl,
   lineSummary,
+  guest,
 }: TemplateVarsByName["shop-order-receipt"]) {
   return (
     <Layout
@@ -26,9 +27,17 @@ export default function ShopOrderReceiptEmail({
       </TextBlock>
       <TextBlock>{lineSummary}</TextBlock>
       <TextBlock>
-        Your order page shows its progress and the invoice, and is where to report a problem.
+        {guest
+          ? "Your order page shows its progress and the invoice. This link opens it without an account for 30 days."
+          : "Your order page shows its progress and the invoice, and is where to report a problem."}
       </TextBlock>
       <Button href={orderUrl}>View your order</Button>
+      {guest ? (
+        <TextBlock>
+          Create a LAX account with this email and your orders move into it, so you can follow them
+          any time.
+        </TextBlock>
+      ) : null}
     </Layout>
   );
 }

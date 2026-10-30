@@ -120,6 +120,8 @@ export async function submitForReview(
   for (const aid of admins) {
     await deps.dispatcher.dispatch(aid, {
       type: "submission_received_for_review",
+      // Staff review happens in Bid admin, outside any client account.
+      legalEntityId: null,
       title: resubmitted ? "Submission sent back with changes" : "New item submission",
       message: resubmitted
         ? `The seller made the changes you asked for on "${updated.title}" and sent it back for review.`

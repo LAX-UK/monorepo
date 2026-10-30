@@ -88,6 +88,11 @@ export const shopPageWayfinding = {
     /** Ends at "Your orders": the h1 names the order, so a third crumb would repeat it. */
     breadcrumbs: [shopRoot, { label: "Your orders", href: "/account/orders" }],
   }),
+  /** A guest order opened from its emailed link: there is no order list to go back to. */
+  guestOrder: (title: string) => ({
+    title,
+    breadcrumbs: [shopRoot, { label: title }],
+  }),
   orderProblem: (orderName: string, orderHref: string) => ({
     title: "Report a problem",
     breadcrumbs: [

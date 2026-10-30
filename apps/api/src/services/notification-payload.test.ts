@@ -8,7 +8,13 @@ import {
 
 describe("notificationWebPath for consignment updates", () => {
   it("opens the consignment for the seller and the submission in Bid admin for staff", () => {
-    const update = { type: "consignment_update", title: "t", message: "m", submissionId: "s1" };
+    const update = {
+      type: "consignment_update",
+      title: "t",
+      message: "m",
+      submissionId: "s1",
+      legalEntityId: "org-1",
+    };
     expect(notificationWebPath(update)).toBe("/selling/consignments/s1");
     expect(notificationWebPath({ ...update, meta: { audience: "staff" } })).toBe(
       "/admin/submissions/s1",
@@ -21,6 +27,7 @@ describe("notificationLotWebPath", () => {
     expect(
       notificationLotWebPath({
         type: "outbid",
+        legalEntityId: null,
         title: "You have been outbid",
         message: "…",
         lotId: "lot-uuid",
@@ -33,6 +40,7 @@ describe("notificationLotWebPath", () => {
     expect(
       notificationLotWebPath({
         type: "outbid",
+        legalEntityId: null,
         title: "You have been outbid",
         message: "…",
         lotId: "lot-uuid",
@@ -46,6 +54,7 @@ describe("notificationLotTitle", () => {
     expect(
       notificationLotTitle({
         type: "outbid",
+        legalEntityId: null,
         title: "You have been outbid",
         message: "…",
         meta: { lotTitle: "Blue Period Study" },
@@ -59,6 +68,7 @@ describe("notificationRowToPayload", () => {
     const payload = notificationRowToPayload({
       userId: "u1",
       type: "outbid",
+      legalEntityId: null,
       title: "You have been outbid",
       message: "…",
       lotId: "lot-1",

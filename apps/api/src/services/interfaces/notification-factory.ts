@@ -6,6 +6,8 @@ export interface INotificationFactory {
   createOutbid(
     lot: Lot,
     outbidUserId: string,
+    /** The account the outbid bid was placed for. */
+    legalEntityId: string | null,
     opts?: { currentBid?: string },
   ): CreateNotificationRow;
 
@@ -21,9 +23,10 @@ export interface INotificationFactory {
     opts?: { hammerPrice?: string },
   ): CreateNotificationRow;
 
-  createLost(lot: Lot, bidderId: string): CreateNotificationRow;
+  /** `legalEntityId` is the account the bidder bid for. */
+  createLost(lot: Lot, bidderId: string, legalEntityId: string | null): CreateNotificationRow;
 
-  createEndingSoon(lot: Lot, userId: string): CreateNotificationRow;
+  createEndingSoon(lot: Lot, userId: string, legalEntityId: string | null): CreateNotificationRow;
 
   createWatchlistStarting(lot: Lot, userId: string): CreateNotificationRow;
 
@@ -33,11 +36,16 @@ export interface INotificationFactory {
 
   createSellerPaymentReceived(lot: Lot, recipientId: string, amount: string): CreateNotificationRow;
 
-  createConditionReportReady(lot: Lot, userId: string): CreateNotificationRow;
+  createConditionReportReady(
+    lot: Lot,
+    userId: string,
+    legalEntityId: string | null,
+  ): CreateNotificationRow;
 
   createConditionReportDeclined(
     lot: Lot,
     userId: string,
+    legalEntityId: string | null,
     responseNote?: string | null,
   ): CreateNotificationRow;
 
@@ -51,7 +59,7 @@ export interface INotificationFactory {
   createDeliveryQuoteReady(
     lot: Lot,
     userId: string,
-    input: { amount: string; currency: string },
+    input: { amount: string; currency: string; legalEntityId: string },
   ): CreateNotificationRow;
 
   createLotReadyForCollection(

@@ -33,6 +33,7 @@ function setup() {
 function payload(overrides: Partial<NotificationPayload>): NotificationPayload {
   return {
     type: "payment_received",
+    legalEntityId: null,
     title: "Payment received",
     message: 'Your payment for "Blue Vase" was recorded.',
     lotId: LOT_ID,

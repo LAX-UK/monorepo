@@ -30,6 +30,9 @@ describe("LotLifecycleService facade", () => {
         .mockResolvedValue([bid({ amount: "500.00", bidderId: "winner" })]),
       findEligibleBidsForLotClose: vi.fn(),
       listDistinctBidderIds: vi.fn().mockResolvedValue(["winner"]),
+      listDistinctBidderAccounts: vi
+        .fn()
+        .mockResolvedValue(["winner"].map((userId) => ({ userId, legalEntityId: null }))),
     } as unknown as IBidRepository;
 
     const svc = createLotLifecycleTestStack({
@@ -53,6 +56,9 @@ describe("LotLifecycleService facade", () => {
     const bids: IBidRepository = {
       listForLotSettlement: vi.fn().mockResolvedValue([bid({ amount: "500.00" })]),
       listDistinctBidderIds: vi.fn().mockResolvedValue(["u1"]),
+      listDistinctBidderAccounts: vi
+        .fn()
+        .mockResolvedValue(["u1"].map((userId) => ({ userId, legalEntityId: null }))),
       clearWinningBid,
     } as unknown as IBidRepository;
 

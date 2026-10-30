@@ -109,6 +109,11 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_artist_application_work",
   /** What staff confirm about each print run: numbering, signature and certificate. */
   "shop_edition_facts",
+  /** Guest checkout: the guest and lead behind guest orders, and their emailed order links. */
+  "shop_guest_customer",
+  "shop_guest_order_link",
+  /** How far shop-api has read the shared event log for each of its own projections. */
+  "shop_projection_cursor",
 ] as const;
 
 /** Append-only Shop tables: shop_app may INSERT and SELECT only. */
@@ -208,6 +213,8 @@ export const WORKER_READ_TABLES = [
   /** Absentee replay places bids, which check who may bid for an organisation and its limits. */
   "buyer_agent_authorisation",
   "legal_entity_bidding_limit",
+  /** Notifications about an account a person has muted are not delivered to them. */
+  "notification_account_mute",
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,

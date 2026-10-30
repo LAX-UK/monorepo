@@ -31,7 +31,7 @@ describe("art navigation view model", () => {
       "Artworks",
       "Exhibitions",
       "Art Hub",
-      "Collector Hub",
+      "Collecting",
     ]);
     expect(
       buildArtNavItems("/exhibitions")
@@ -84,7 +84,7 @@ describe("art navigation view model", () => {
         ["Artworks", "/artworks"],
         ["Exhibitions", "/exhibitions"],
         ["Art Hub", "/art-hub"],
-        ["Collector Hub", "/collector-hub"],
+        ["Collecting", "/collector-hub"],
       ]);
       expect(buildArtSearchSuggestions(null)).toEqual([]);
     });

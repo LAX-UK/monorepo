@@ -6,36 +6,71 @@ import type {
 import { formatStoryDate } from "@/lib/editorial/editorial-story.vm";
 import { isSafeEditorialHref } from "@auction/shop-contracts";
 
-/** Product-owned hero copy (Figma Arthub `980:26767`). */
+/** Product-owned hero copy (Figma Arthub `983:27033`). */
 export const ART_HUB_HERO = {
   eyebrow: "Art Hub",
   title: "Inside the world of LAX",
-  body: "Stories, conversations and films from the artists, exhibitions and people behind the gallery.",
+  body: "Artists, ideas, exhibitions and the stories unfolding in and around the gallery.",
   linksLabel: "Explore the Art Hub",
-  links: [
-    { label: "Explore artists", href: "/artists" },
-    { label: "Exhibitions", href: "/exhibitions" },
-    { label: "Stories", href: "/stories" },
-  ],
 } as const;
+
+export type ArtHubHeroLinkVm = { label: string; href: string };
+
+const HERO_LINKS: readonly ArtHubHeroLinkVm[] = [
+  { label: "Explore artists", href: "/artists" },
+  { label: "Exhibitions", href: "/exhibitions" },
+  { label: "All stories", href: "/stories" },
+];
+
+/** The hero's links; "Watch" joins them only when a film is published, so it never leads nowhere. */
+export function buildArtHubHeroLinks(film: Pick<ArtHubFilmVm, "href"> | null): ArtHubHeroLinkVm[] {
+  return film ? [...HERO_LINKS, { label: "Watch", href: film.href }] : [...HERO_LINKS];
+}
 
 export const ART_HUB_HEADINGS = {
   nowOn: "Happening now in the gallery",
-  nowOnSubtitle:
-    "Current encounters, upcoming presentations and the evolving exhibition record of LAX.",
-  stories: "Ways of seeing, from where we stand.",
+  nowOnSubtitle: "Current exhibitions and presentations at the gallery.",
+  stories: "Ways of seeing",
+  storiesSubtitle: "Stories from where we stand: the artists, studios and ideas behind the work.",
   spotlight: "In the spotlight",
+  films: "Films",
   press: "Press",
 } as const;
 
-/** Collecting 101 panel (Figma Arthub `980:26767`). */
+/** Collecting 101 panel (Figma Arthub `999:15936`). */
 export const ART_HUB_COLLECTING = {
-  title: "A clearer way to begin.",
+  title: "A clearer way to begin",
   body: "Collecting should feel considered, not intimidating. Our guide walks you through finding, understanding and buying original art.",
   cta: { label: "Start Collecting 101", href: "/collector-hub/101-guide" },
 } as const;
 
-export const ART_HUB_LIMITS = { nowOn: 6, stories: 8, press: 5 } as const;
+export const ART_HUB_LIMITS = { nowOn: 6, stories: 8, press: 5, spotlight: 2 } as const;
+
+export type ArtHubSpotlightVm = {
+  slug: string;
+  name: string;
+  href: string;
+  imageUrl: string | null;
+  imageAlt: string;
+  /** Nationality, years and discipline; null hides the line. */
+  caption: string | null;
+  /** The short biography, else the biography's first sentence; null hides it. */
+  intro: string | null;
+};
+
+const SENTENCE_END = /^(.+?[.!?])(\s|$)/s;
+
+/** The short biography when there is one; otherwise the biography's opening sentence. */
+export function artistIntro(input: {
+  shortBio?: string | null;
+  bio?: string | null;
+}): string | null {
+  const short = input.shortBio?.trim();
+  if (short) return short;
+  const bio = input.bio?.trim();
+  if (!bio) return null;
+  return bio.match(SENTENCE_END)?.[1] ?? bio;
+}
 
 function httpsUrl(value: string | null | undefined): string | null {
   return value && isSafeEditorialHref(value) && value.startsWith("https://") ? value : null;
@@ -78,6 +113,8 @@ export function buildHubPodcast(story: ArtEditorialStoryDetail | null): ArtHubPo
 
 export type ArtHubFilmVm = {
   title: string;
+  /** The film's standfirst; null hides the line. */
+  description: string | null;
   href: string;
   imageUrl: string | null;
   videoUrl: string;
@@ -89,6 +126,7 @@ export function buildHubFilm(story: ArtEditorialStoryDetail | null): ArtHubFilmV
   if (!story || !videoUrl) return null;
   return {
     title: story.title,
+    description: story.standfirst?.trim() || null,
     href: `/stories/${encodeURIComponent(story.slug)}`,
     imageUrl: story.coverUrl,
     videoUrl,

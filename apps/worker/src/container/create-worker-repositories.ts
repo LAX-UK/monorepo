@@ -10,11 +10,13 @@ import type {
 import {
   EnsurePersonalLegalEntityService,
   type IEnsurePersonalLegalEntityService,
+  MuteAwareNotificationWriter,
 } from "@auction/persistence/lib";
 import { DrizzleTransactionRunner } from "@auction/persistence/repositories";
 import {
   DrizzleCrmRecordLinkRepository,
   DrizzleDomainEventDeliveryRepository,
+  DrizzleNotificationAccountMuteRepository,
   DrizzleNotificationWriteRepository,
   DrizzleQrCodeScanPersister,
   DrizzleStaffRoleAssignmentReader,
@@ -173,7 +175,11 @@ export function createWorkerRepositories(
     qrCodeScanPurgeRepo: new DrizzleQrCodeScanPurgeRepository(db),
     marketingClickIdPurgeRepo: new DrizzleMarketingClickIdPurgeRepository(db),
     marketingAttributionPurgeRepo: new DrizzleMarketingAttributionPurgeRepository(db),
-    notificationWriteRepo: new DrizzleNotificationWriteRepository(db),
+    // Every in-app write skips notifications about an account the recipient has muted.
+    notificationWriteRepo: new MuteAwareNotificationWriter(
+      new DrizzleNotificationWriteRepository(db),
+      new DrizzleNotificationAccountMuteRepository(db),
+    ),
     transactionRunner: new DrizzleTransactionRunner(db),
     adminReviewTaskProjectorRepo: new DrizzleAdminReviewTaskProjectorRepository(db),
     impersonationSweepRepo: new DrizzleImpersonationSweepRepository(db),

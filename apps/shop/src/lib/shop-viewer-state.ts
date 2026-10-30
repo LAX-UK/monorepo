@@ -24,14 +24,25 @@ export function toShopViewerState(
   });
 }
 
-export function shopStorefrontLoginHref(returnTo?: string): string {
+/** An email the shopper already gave, so sign-in or sign-up opens with it filled in. */
+export type ShopAuthHrefOptions = { loginHint?: string | null };
+
+function shopAuthHref(path: string, returnTo: string | undefined, options: ShopAuthHrefOptions) {
+  const query = new URLSearchParams();
   const safe = safeRelativeReturnPath(returnTo);
-  return safe ? `/login?returnTo=${encodeURIComponent(safe)}` : "/login";
+  if (safe) query.set("returnTo", safe);
+  const hint = options.loginHint?.trim();
+  if (hint) query.set("loginHint", hint);
+  const search = query.toString();
+  return search ? `${path}?${search}` : path;
 }
 
-export function shopStorefrontRegisterHref(returnTo?: string): string {
-  const safe = safeRelativeReturnPath(returnTo);
-  return safe ? `/register?returnTo=${encodeURIComponent(safe)}` : "/register";
+export function shopStorefrontLoginHref(returnTo?: string, options: ShopAuthHrefOptions = {}) {
+  return shopAuthHref("/login", returnTo, options);
+}
+
+export function shopStorefrontRegisterHref(returnTo?: string, options: ShopAuthHrefOptions = {}) {
+  return shopAuthHref("/register", returnTo, options);
 }
 
 export type ShopViewerGateOutcome = { allowed: true } | { allowed: false; redirectTo: string };

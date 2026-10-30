@@ -195,6 +195,8 @@ export const AdminOrderDetailSchema = Type.Object({
   /** From the buyer's profile; null for a buyer who has none. */
   buyerName: Type.Union([Type.String(), Type.Null()]),
   buyerEmail: Type.Union([Type.String(), Type.Null()]),
+  /** True while the order belongs to a guest checkout rather than a LAX account. */
+  buyerIsGuest: Type.Optional(Type.Boolean()),
   stripeCheckoutSessionId: Type.Union([Type.String(), Type.Null()]),
   stripePaymentIntentId: Type.Union([Type.String(), Type.Null()]),
   paidAt: Type.Union([Type.String(), Type.Null()]),

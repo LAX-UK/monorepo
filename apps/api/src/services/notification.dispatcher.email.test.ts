@@ -37,6 +37,7 @@ describe("NotificationDispatcher email channel", () => {
 
     await dispatcher.dispatch("user_1", {
       type: "outbid",
+      legalEntityId: null,
       title: "Outbid",
       message: "Another bidder is ahead",
     });

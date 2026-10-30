@@ -1,4 +1,8 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
+import {
+  IDENTITY_EMAIL_REGISTRATION_PATH,
+  emailRegistrationRequestSchema,
+} from "@auction/identity-contracts";
 import { type Context, Hono } from "hono";
 import type { AccountDeletionService } from "../services/account-deletion.service.js";
 import type { EmailChangeFailure, EmailChangeService } from "../services/email-change.service.js";
@@ -281,6 +285,13 @@ export function createInternalIdentityRoutes(options: {
       return c.json({ error: "email_required" }, 400);
     }
     return c.json({ subject: await options.operations.findSubjectByEmail(body.email) });
+  });
+
+  // Yes or no only, for a product deciding whether someone may continue without signing in.
+  app.post(IDENTITY_EMAIL_REGISTRATION_PATH, async (c) => {
+    const parsed = emailRegistrationRequestSchema.safeParse(await readJson(c));
+    if (!parsed.success) return c.json({ error: "email_required" }, 400);
+    return c.json({ registered: await options.operations.isEmailRegistered(parsed.data.email) });
   });
 
   app.get("/identity/subjects/:subjectId/credentials", async (c) =>

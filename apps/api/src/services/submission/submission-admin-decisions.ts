@@ -86,6 +86,7 @@ export async function accept(
   for (const recipientId of recipients) {
     await deps.dispatcher.dispatch(recipientId, {
       type: "submission_approved",
+      legalEntityId: s.legalEntityId,
       title: "Your work was accepted",
       message: `A specialist accepted "${s.title}" and proposed an estimate and terms. Review and accept the consignment agreement so we can catalogue it.`,
       submissionId: id,
@@ -138,6 +139,7 @@ export async function requestChanges(
   for (const recipientId of recipients) {
     await deps.dispatcher.dispatch(recipientId, {
       type: "submission_changes_requested",
+      legalEntityId: s.legalEntityId,
       title: "Your submission needs changes",
       message: `A specialist asked for changes to "${s.title}": ${trimmed}`,
       submissionId: id,
@@ -175,6 +177,7 @@ export async function reject(
   for (const recipientId of recipients) {
     await deps.dispatcher.dispatch(recipientId, {
       type: "submission_rejected",
+      legalEntityId: s.legalEntityId,
       title: "Submission not accepted",
       message: `Your submission "${s.title}" was not accepted: ${rejectionReason}`,
       submissionId: id,

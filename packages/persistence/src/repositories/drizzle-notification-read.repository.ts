@@ -1,8 +1,13 @@
 import type { Database } from "@auction/db";
-import { notification } from "@auction/db/schema";
-import type { UserNotification } from "@auction/types";
+import { legalEntity, legalEntityMember, lot, notification } from "@auction/db/schema";
+import {
+  NOTIFICATION_NEEDS_ACTION_TYPES,
+  NOTIFICATION_NEEDS_ACTION_WHILE_LOT_OPEN,
+  notificationNeedsAction,
+} from "@auction/domain";
+import type { UserNotification, UserNotificationListItem } from "@auction/types";
 import type { InferSelectModel, SQL } from "drizzle-orm";
-import { and, desc, eq, inArray, isNotNull, isNull } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, notInArray, or } from "drizzle-orm";
 import type {
   INotificationReadRepository,
   NotificationListFilter,
@@ -10,6 +15,23 @@ import type {
 import { notificationTypesForFilter } from "../lib/notification-type-filter.js";
 
 type Row = InferSelectModel<typeof notification>;
+
+const WHILE_LOT_OPEN = new Set<string>(NOTIFICATION_NEEDS_ACTION_WHILE_LOT_OPEN);
+
+/** Unread, not archived, of a type that needs action, and (for outbids) on a lot still open. */
+function needsActionCondition(): SQL {
+  const condition = and(
+    isNull(notification.archivedAt),
+    eq(notification.read, false),
+    inArray(notification.type, [...NOTIFICATION_NEEDS_ACTION_TYPES]),
+    or(
+      notInArray(notification.type, [...NOTIFICATION_NEEDS_ACTION_WHILE_LOT_OPEN]),
+      eq(lot.status, "active"),
+    ),
+  );
+  if (!condition) throw new Error("needs_action_condition_empty");
+  return condition;
+}
 
 function mapRow(row: Row): UserNotification {
   return {
@@ -20,6 +42,7 @@ function mapRow(row: Row): UserNotification {
     message: row.message,
     lotId: row.lotId,
     submissionId: row.submissionId,
+    legalEntityId: row.legalEntityId,
     read: row.read,
     archivedAt: row.archivedAt ?? null,
     createdAt: row.createdAt,
@@ -42,27 +65,68 @@ export class DrizzleNotificationReadRepository implements INotificationReadRepos
   async findByUserFiltered(
     userId: string,
     filter: NotificationListFilter,
-  ): Promise<UserNotification[]> {
+  ): Promise<UserNotificationListItem[]> {
     const parts: SQL[] = [eq(notification.userId, userId)];
     if (filter.tab === "archived") {
       parts.push(isNotNull(notification.archivedAt));
     } else if (filter.tab === "unread") {
       parts.push(isNull(notification.archivedAt));
       parts.push(eq(notification.read, false));
+    } else if (filter.tab === "needs_action") {
+      parts.push(needsActionCondition());
     } else {
       parts.push(isNull(notification.archivedAt));
     }
     if (filter.type) {
       parts.push(inArray(notification.type, [...notificationTypesForFilter(filter.type)]));
     }
+    if (filter.account?.kind === "personal") {
+      const personal = or(isNull(notification.legalEntityId), eq(legalEntity.kind, "individual"));
+      if (personal) parts.push(personal);
+    } else if (filter.account?.kind === "entity") {
+      parts.push(eq(notification.legalEntityId, filter.account.legalEntityId));
+    }
     const rows = await this.db
-      .select()
+      .select({
+        row: notification,
+        entityKind: legalEntity.kind,
+        entityName: legalEntity.displayName,
+        membershipId: legalEntityMember.id,
+        lotStatus: lot.status,
+      })
       .from(notification)
+      .leftJoin(legalEntity, eq(legalEntity.id, notification.legalEntityId))
+      .leftJoin(
+        legalEntityMember,
+        and(
+          eq(legalEntityMember.legalEntityId, notification.legalEntityId),
+          eq(legalEntityMember.userId, userId),
+          isNull(legalEntityMember.removedAt),
+          isNotNull(legalEntityMember.acceptedAt),
+        ),
+      )
+      .leftJoin(lot, eq(lot.id, notification.lotId))
       .where(and(...parts))
       .orderBy(desc(notification.createdAt))
       .limit(filter.limit)
       .offset(filter.offset);
-    return rows.map(mapRow);
+    return rows.map(({ row, entityKind, entityName, membershipId, lotStatus }) => ({
+      ...mapRow(row),
+      account:
+        row.legalEntityId && entityKind && entityName
+          ? {
+              legalEntityId: row.legalEntityId,
+              kind: entityKind === "individual" ? "personal" : "organisation",
+              displayName: entityName,
+              canSwitch: membershipId != null,
+            }
+          : null,
+      needsAction:
+        notificationNeedsAction(row.type) &&
+        !row.read &&
+        row.archivedAt == null &&
+        (!WHILE_LOT_OPEN.has(row.type) || lotStatus === "active"),
+    }));
   }
 
   async markRead(userId: string, notificationId: string): Promise<boolean> {

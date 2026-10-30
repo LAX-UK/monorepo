@@ -1,17 +1,28 @@
-import type { UserNotification } from "@auction/types";
+import type { UserNotification, UserNotificationListItem } from "@auction/types";
 
-export type NotificationListTab = "all" | "unread" | "archived";
+/** `needs_action`: unread notifications that ask the person to do something. */
+export type NotificationListTab = "all" | "unread" | "archived" | "needs_action";
+
+/** Narrows the inbox to one account: the person's own (`personal`) or one legal entity. */
+export type NotificationAccountFilter =
+  | { kind: "personal" }
+  | { kind: "entity"; legalEntityId: string };
 
 export type NotificationListFilter = {
   limit: number;
   offset: number;
   tab: NotificationListTab;
   type?: string | undefined;
+  account?: NotificationAccountFilter | undefined;
 };
 
 export interface INotificationReadRepository {
   findByUser(userId: string, limit: number): Promise<UserNotification[]>;
-  findByUserFiltered(userId: string, filter: NotificationListFilter): Promise<UserNotification[]>;
+  /** The inbox page, each row with its account and whether it needs action. */
+  findByUserFiltered(
+    userId: string,
+    filter: NotificationListFilter,
+  ): Promise<UserNotificationListItem[]>;
   markRead(userId: string, notificationId: string): Promise<boolean>;
   markAllRead(userId: string): Promise<number>;
   markManyRead(userId: string, ids: string[]): Promise<number>;

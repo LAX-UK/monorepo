@@ -2,6 +2,7 @@ import { relations, sql } from "drizzle-orm";
 import { boolean, check, index, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
 import { itemSubmission } from "./item-submissions.js";
+import { legalEntity } from "./legal-entities.js";
 import { lot } from "./lots.js";
 
 /**
@@ -62,6 +63,13 @@ export const notification = pgTable(
     submissionId: uuid("submission_id").references(() => itemSubmission.id, {
       onDelete: "set null",
     }),
+    /**
+     * The account the notification is about: a personal or organisation legal entity. `null`
+     * means the person's own personal account (and older rows whose account is not known).
+     */
+    legalEntityId: uuid("legal_entity_id").references(() => legalEntity.id, {
+      onDelete: "set null",
+    }),
     read: boolean("read").notNull().default(false),
     archivedAt: timestamp("archived_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
@@ -72,6 +80,11 @@ export const notification = pgTable(
     index("notification_read_idx").on(table.read),
     index("notification_archived_at_idx").on(table.archivedAt),
     index("notification_submission_id_idx").on(table.submissionId),
+    index("notification_user_id_legal_entity_id_created_at_idx").on(
+      table.userId,
+      table.legalEntityId,
+      table.createdAt,
+    ),
     check(
       "notification_type_check",
       sql`${table.type} IN (${sql.raw(NOTIFICATION_TYPES.map((t) => `'${t}'`).join(", "))})`,

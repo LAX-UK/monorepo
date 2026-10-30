@@ -36,6 +36,8 @@ export class InAppNotificationChannel implements INotificationChannel {
         message: payload.message,
         lotId: payload.lotId,
         submissionId: payload.submissionId,
+        // Payloads staged before notifications carried an account are personal.
+        legalEntityId: payload.legalEntityId ?? null,
       },
     ]);
 

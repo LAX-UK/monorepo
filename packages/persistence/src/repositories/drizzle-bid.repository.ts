@@ -353,6 +353,18 @@ export class DrizzleBidRepository implements IBidRepository {
     return rows.map((r) => r.bidderId);
   }
 
+  async listDistinctBidderAccounts(lotId: string) {
+    const rows = await this.db
+      .selectDistinctOn([bid.bidderId], {
+        userId: bid.bidderId,
+        legalEntityId: bid.buyerLegalEntityId,
+      })
+      .from(bid)
+      .where(eq(bid.lotId, lotId))
+      .orderBy(bid.bidderId, desc(bid.createdAt));
+    return rows;
+  }
+
   async listForBidder(bidderId: string, limit: number) {
     const rows = await this.db
       .select()

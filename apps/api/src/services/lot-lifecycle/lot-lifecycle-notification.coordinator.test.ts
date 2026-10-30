@@ -37,6 +37,9 @@ describe("LotLifecycleNotificationCoordinator", () => {
       listForLotSettlement: vi.fn().mockResolvedValue([winningBid]),
       findEligibleBidsForLotClose: vi.fn(),
       listDistinctBidderIds: vi.fn().mockResolvedValue(["winner"]),
+      listDistinctBidderAccounts: vi
+        .fn()
+        .mockResolvedValue(["winner"].map((userId) => ({ userId, legalEntityId: null }))),
     } as unknown as IBidRepository;
 
     const notifyLotEnded = vi.fn().mockResolvedValue(undefined);
@@ -83,6 +86,9 @@ describe("LotLifecycleNotificationCoordinator", () => {
       listForLotSettlement: vi.fn().mockResolvedValue([bid({ amount: "500.00" })]),
       findEligibleBidsForLotClose: vi.fn(),
       listDistinctBidderIds: vi.fn().mockResolvedValue(["u1"]),
+      listDistinctBidderAccounts: vi
+        .fn()
+        .mockResolvedValue(["u1"].map((userId) => ({ userId, legalEntityId: null }))),
     } as unknown as IBidRepository;
 
     const notifyLotEnded = vi.fn().mockResolvedValue(undefined);
@@ -129,6 +135,9 @@ describe("LotLifecycleNotificationCoordinator", () => {
       listForLotSettlement: vi.fn().mockResolvedValue([bid({ amount: "500.00" })]),
       findEligibleBidsForLotClose: vi.fn(),
       listDistinctBidderIds: vi.fn().mockResolvedValue(["u1", "u2"]),
+      listDistinctBidderAccounts: vi
+        .fn()
+        .mockResolvedValue(["u1", "u2"].map((userId) => ({ userId, legalEntityId: null }))),
     } as unknown as IBidRepository;
 
     const stageDispatch = vi.fn().mockResolvedValue(undefined);
@@ -187,6 +196,9 @@ describe("LotLifecycleNotificationCoordinator", () => {
       winnerId: "winner",
       bid: {
         listDistinctBidderIds: vi.fn().mockResolvedValue(["winner"]),
+        listDistinctBidderAccounts: vi
+          .fn()
+          .mockResolvedValue(["winner"].map((userId) => ({ userId, legalEntityId: null }))),
       } as unknown as IBidRepository,
       tx: {} as never,
     });
@@ -209,7 +221,10 @@ describe("LotLifecycleNotificationCoordinator", () => {
     await coordinator.stageLotCloseNotificationsInTransaction({
       lot,
       winnerId: null,
-      bid: { listDistinctBidderIds: vi.fn().mockResolvedValue([]) } as unknown as IBidRepository,
+      bid: {
+        listDistinctBidderIds: vi.fn().mockResolvedValue([]),
+        listDistinctBidderAccounts: vi.fn().mockResolvedValue([]),
+      } as unknown as IBidRepository,
       tx: {} as never,
     });
 

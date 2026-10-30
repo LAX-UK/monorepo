@@ -1,0 +1,63 @@
+import { SHOP_ORDERS_HREF } from "@/lib/account/shop-account-routes";
+import { type ShopOrderDetailVm, buildShopOrderDetailVm } from "@/lib/account/shop-orders.vm";
+import { shopStorefrontRegisterHref } from "@/lib/shop-viewer-state";
+import type { OrderSummary } from "@auction/shop-contracts";
+
+/** The guest's order page; the token stays in an httpOnly cookie, never in this URL. */
+export const GUEST_ORDER_PATH = "/orders/guest";
+export const GUEST_ORDER_INVOICE_PATH = "/orders/guest/invoice";
+export const GUEST_ORDER_PROBLEM_PATH = "/orders/guest/report-a-problem";
+
+/** Why a guest order link did not open the order. */
+export type GuestOrderLinkProblem = "expired" | "claimed" | "invalid";
+
+export function guestOrderLinkProblem(value: string | undefined): GuestOrderLinkProblem | null {
+  return value === "expired" || value === "claimed" || value === "invalid" ? value : null;
+}
+
+/** After the link is checked, the browser lands on the order page or on what went wrong. */
+export function guestOrderLinkDestination(state: string | null): string {
+  if (state === "valid") return GUEST_ORDER_PATH;
+  const problem = guestOrderLinkProblem(state ?? undefined) ?? "invalid";
+  return `${GUEST_ORDER_PATH}?link=${problem}`;
+}
+
+/**
+ * The order page as a guest sees it: the same order with the same help (finishing a payment,
+ * the invoice, reporting a problem), each through the guest's routes rather than an account's.
+ */
+export function buildGuestOrderDetailVm(order: OrderSummary, now: Date): ShopOrderDetailVm {
+  const vm = buildShopOrderDetailVm(order, now);
+  return {
+    ...vm,
+    problem:
+      vm.problem?.kind === "open" ? { ...vm.problem, href: GUEST_ORDER_PROBLEM_PATH } : vm.problem,
+    invoiceHref: order.invoiceAvailable ? GUEST_ORDER_INVOICE_PATH : null,
+  };
+}
+
+/** Creating an account with the guest's email (prefilled): the order then shows in "Your orders". */
+export function guestCreateAccountHref(email: string): string {
+  return shopStorefrontRegisterHref(SHOP_ORDERS_HREF, { loginHint: email });
+}
+
+export const GUEST_LINK_PROBLEM_COPY: Record<
+  GuestOrderLinkProblem,
+  { title: string; description: string }
+> = {
+  expired: {
+    title: "This link has expired",
+    description:
+      "Order links work for 30 days. Enter your email and order reference and we will send you a new one.",
+  },
+  claimed: {
+    title: "This order is in your LAX account",
+    description:
+      "You created a LAX account with this email, so the order moved there. Sign in to see it with the rest of your orders.",
+  },
+  invalid: {
+    title: "We could not open this order",
+    description:
+      "The link may be incomplete. Open it again from your email, or ask for a new one with your email and order reference.",
+  },
+};

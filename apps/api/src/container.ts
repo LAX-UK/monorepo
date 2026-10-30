@@ -57,6 +57,7 @@ import {
 } from "./services/buyer-agents/buyer-agent-authorisation.service.js";
 import { MyBuyerAgentAuthorisationsService } from "./services/buyer-agents/my-buyer-agent-authorisations.service.js";
 import { EnsurePersonalLegalEntityService } from "./services/legal-entity/ensure-personal-legal-entity.service.js";
+import { NotificationAccountMuteService } from "./services/notifications/notification-account-mute.service.js";
 import { TwoFactorPolicyService } from "./services/security/two-factor-policy.service.js";
 import { SessionRevocationService } from "./services/session-revocation.service.js";
 import { StaffStepUpService } from "./services/staff-step-up.service.js";
@@ -567,6 +568,9 @@ export function createContainer(env: Env): Container {
       artistWatchlistService: userMisc.artistWatchlistService,
       savedSearchService: userMisc.savedSearchService,
       notificationQueryService: userNotification.notificationQueryService,
+      notificationAccountMuteService: new NotificationAccountMuteService(
+        repos.notificationAccountMuteRepository,
+      ),
       vapidPublicKey: env.VAPID_PUBLIC_KEY ?? null,
       pushSubscriptionRepository: repos.pushSubscriptionRepository,
       notificationPreferenceRepository: repos.notificationPreferenceRepository,

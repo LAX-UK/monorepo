@@ -35,7 +35,8 @@ export async function ArtStoriesIndex({ tab }: { tab: StoriesTabId }) {
   return (
     <div className="flex flex-col pb-10 lg:pb-16">
       <MarketingPageTitle
-        title="Latest stories"
+        eyebrow="Art Hub"
+        title="All stories"
         subtitle="Conversations, films, episodes and press from the artists and exhibitions behind LAX."
       />
       <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-10 pt-2")}>

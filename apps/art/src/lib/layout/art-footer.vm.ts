@@ -35,7 +35,7 @@ export function buildArtFooterVm(input: {
     { label: "How to buy", href: "/how-to-buy" },
     { label: "How to sell", href: "/how-to-sell" },
     { label: "For artists", href: "/for-artists" },
-    { label: "Collector Hub", href: "/collector-hub" },
+    { label: "Collecting", href: "/collector-hub" },
     { label: "Help centre", href: "/help" },
   ];
 

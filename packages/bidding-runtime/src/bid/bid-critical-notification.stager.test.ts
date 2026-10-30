@@ -38,8 +38,14 @@ function run(endedEarly: boolean) {
       lotRow,
       created,
       prevWinnerId: PREV_WINNER,
+      prevWinnerLegalEntityId: "org-prev",
       endedEarly,
-      bids: { listDistinctBidderIds: async () => [PREV_WINNER, NEW_BIDDER] } as IBidRepository,
+      bids: {
+        listDistinctBidderAccounts: async () => [
+          { userId: PREV_WINNER, legalEntityId: "org-prev" },
+          { userId: NEW_BIDDER, legalEntityId: "personal-new" },
+        ],
+      } as unknown as IBidRepository,
       tx: {} as Database,
     }),
   };
@@ -52,6 +58,8 @@ describe("BidCriticalNotificationStager amounts", () => {
     const outbid = stageDispatch.mock.calls[0]?.[0];
     expect(outbid?.userId).toBe(PREV_WINNER);
     expect(outbid?.payload.meta?.bidAmount).toBe("1000.00");
+    // The outbid notice belongs to the account the outbid bid was placed for.
+    expect(outbid?.payload.legalEntityId).toBe("org-prev");
   });
 
   it("stages the won notice with the winning bid when the lot closes early", async () => {

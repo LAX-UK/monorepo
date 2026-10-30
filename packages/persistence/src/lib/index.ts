@@ -109,6 +109,7 @@ export {
   pushPreferenceKey,
   whatsappPreferenceKey,
 } from "./notification-preference-keys.js";
+export { MuteAwareNotificationWriter } from "./mute-aware-notification-writer.js";
 
 export {
   EnsurePersonalLegalEntityService,
