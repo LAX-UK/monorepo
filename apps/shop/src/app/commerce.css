@@ -1116,3 +1116,17 @@ a.shop-checkout-steps__link:hover .shop-checkout-steps__label {
 .shop-checkout__saved {
   scroll-margin-top: calc(var(--shop-header-height, 5rem) + var(--shop-space-6));
 }
+
+/* After a guest order: the offer to keep it in a LAX account. */
+@media (min-width: 48rem) {
+  .shop-guest-offer__action {
+    align-self: flex-start;
+    width: auto;
+  }
+}
+
+/* A guest's order page: as wide as checkout, so the order panels sit side by side. */
+.shop-commerce-content.shop-guest-order {
+  max-width: 72rem;
+  gap: var(--shop-space-6);
+}
