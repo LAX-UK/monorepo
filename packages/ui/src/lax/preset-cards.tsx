@@ -33,6 +33,7 @@ export function PresetCards<T extends string>({
   options,
   label,
   columns = 3,
+  compact = false,
   className,
 }: {
   value: T;
@@ -41,6 +42,8 @@ export function PresetCards<T extends string>({
   /** The group's accessible name: "Alert style". */
   label: string;
   columns?: keyof typeof COLUMNS;
+  /** Rows only as tall as their words: a list of choices in a dialog, not a settings page. */
+  compact?: boolean;
   className?: string;
 }) {
   const id = React.useId();
@@ -73,6 +76,7 @@ export function PresetCards<T extends string>({
                 "data-[state=checked]:border-lax-ink data-[state=checked]:shadow-[inset_0_0_0_1px_var(--lax-ink)]",
                 "disabled:cursor-not-allowed disabled:border-lax-line disabled:hover:border-lax-line",
                 "max-sm:min-h-0 max-sm:py-3",
+                compact && "min-h-0 py-3",
               )}
             >
               <span
@@ -82,6 +86,7 @@ export function PresetCards<T extends string>({
                   "group-data-[state=checked]/preset:border-[5.5px] group-data-[state=checked]/preset:border-lax-ink",
                   "group-disabled/preset:border-lax-line-strong",
                   "max-sm:top-[14px]",
+                  compact && "top-[14px]",
                 )}
               />
               <span className="flex flex-wrap items-center gap-x-2 gap-y-1">

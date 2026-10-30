@@ -4,8 +4,8 @@ import { TEAM_PAGE_CAPABILITIES, requireTeamTab, teamTabAt, teamTabsFor } from "
 
 /** Which Team tabs each role opens: owners and admins run the team. */
 const EXPECTED: Record<LegalEntityMemberRole, string[]> = {
-  owner: ["members"],
-  admin: ["members"],
+  owner: ["members", "invitations", "bidding", "activity"],
+  admin: ["members", "invitations", "bidding", "activity"],
   finance: [],
   consignor: [],
   viewer: [],
@@ -26,6 +26,7 @@ describe("Team tabs", () => {
       href: "/team",
     });
     expect(teamTabAt("/team")?.id).toBe("members");
+    expect(teamTabAt("/team/bidding")?.id).toBe("bidding");
   });
 
   it("tells a member who cannot open it who can", () => {
@@ -33,11 +34,16 @@ describe("Team tabs", () => {
       kind: "forbidden",
       label: "Members",
       openedBy: "Owners and admins",
+      capability: "entity.members.read",
       fallback: null,
     });
   });
 
   it("is shown in the menu to the roles that read members", () => {
-    expect(TEAM_PAGE_CAPABILITIES).toEqual(["entity.members.read"]);
+    expect(TEAM_PAGE_CAPABILITIES).toEqual([
+      "entity.members.read",
+      "entity.buyer_agents.read",
+      "entity.activity.read",
+    ]);
   });
 });

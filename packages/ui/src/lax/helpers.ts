@@ -24,4 +24,5 @@ export { sparklinePoints, sparklineToneClass } from "./sparkline.js";
 export { returnFocusTarget } from "./return-focus-target.js";
 export { fieldBox, readOnlyBox, tooltipClass } from "./styles.js";
 export { fitViewTabs } from "./tabs-fit.js";
+export { splitTokens } from "./token-split.js";
 export { TOAST_DURATION_MS, UNDO_TOAST_DURATION_MS } from "./toast-durations.js";

@@ -13,7 +13,7 @@ const TABS: OrganisationTab[] = ["profile", "documents", "payouts", "security"];
 const EXPECTED: Record<LegalEntityMemberRole, OrganisationTab[]> = {
   owner: ["profile", "documents", "payouts", "security"],
   admin: ["profile", "documents", "payouts", "security"],
-  finance: ["payouts"],
+  finance: ["profile", "payouts"],
   consignor: [],
   viewer: [],
   buyer_agent: [],
@@ -48,7 +48,8 @@ describe("requireOrganisationTab", () => {
       kind: "forbidden",
       label: "Security",
       openedBy: "Owners and admins",
-      fallback: { id: "payouts", label: "Payouts", href: "/organisation/payouts" },
+      capability: "entity.security.read",
+      fallback: { id: "profile", label: "Profile", href: "/organisation" },
     });
     expect(requireOrganisationTab({ role: "viewer" }, "payouts")).toMatchObject({
       openedBy: "Owners, admins and finance",

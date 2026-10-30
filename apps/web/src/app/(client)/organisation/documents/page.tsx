@@ -1,14 +1,20 @@
 import { DashboardErrorAlert } from "@/components/dashboard/primitives";
 import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
+import { AgreementDocuments } from "@/components/organisation-team/agreement-documents";
 import { OrganisationDocumentList } from "@/components/organisations/organisation-document-list";
 import { OrganisationTabNoAccess } from "@/components/organisations/organisation-tab-no-access";
+import { ListEmpty } from "@/components/workspace/list-states";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { getServerDataContainer } from "@/lib/data/container.server";
+import { listServerConsignmentAgreements } from "@/lib/data/http/consignment-agreements.server";
 import { requireActiveOrganisationActor } from "@/lib/legal-entity/active-organisation.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { organisationHref } from "@/lib/navigation/client-routes";
 import { requireOrganisationTab } from "@/lib/navigation/organisation-tabs";
+import { agreementDocumentRows } from "@/lib/organisation-team/agreement-documents.vm";
 import { loadOrganisationDocuments } from "@/lib/organisations/organisation-documents.server";
 import { buildOrganisationDocumentsView } from "@/lib/organisations/organisation-documents.vm";
+import type { ConsignmentAgreement } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -29,7 +35,17 @@ export default async function OrganisationDocumentsPage() {
   if (!ctx) notFound();
   const { member, entity } = ctx;
 
-  const loaded = await loadOrganisationDocuments(member.id);
+  const [loaded, agreements, submissions] = await Promise.all([
+    loadOrganisationDocuments(member.id),
+    listServerConsignmentAgreements().catch((): ConsignmentAgreement[] => []),
+    getServerDataContainer()
+      .then((c) => c.submissions.listMine({ limit: 100, offset: 0 }))
+      .catch(() => []),
+  ]);
+  const agreementRows = agreementDocumentRows(
+    agreements,
+    new Map(submissions.map((s) => [s.id, s.title])),
+  );
   if (!loaded.ok) {
     return (
       <div className="space-y-6">
@@ -56,21 +72,46 @@ export default async function OrganisationDocumentsPage() {
   });
 
   return (
-    <div className="space-y-6">
-      {view.empty ? (
-        <DashboardEmptyState
-          illustration="ledger"
-          title={view.empty.title}
-          description={view.empty.description}
-        />
-      ) : (
-        <OrganisationDocumentList
-          entityId={member.id}
-          intro={view.intro}
-          rows={view.rows}
-          closedNote={view.closedNote}
-        />
-      )}
+    <div className="flex flex-col gap-8">
+      <section aria-labelledby="check-documents-heading" className="flex flex-col gap-3">
+        <h2
+          id="check-documents-heading"
+          className="font-lax-display text-lax-18 font-semibold text-lax-fg"
+        >
+          Organisation check
+        </h2>
+        {view.empty ? (
+          <DashboardEmptyState
+            illustration="ledger"
+            title={view.empty.title}
+            description={view.empty.description}
+          />
+        ) : (
+          <OrganisationDocumentList
+            entityId={member.id}
+            intro={view.intro}
+            rows={view.rows}
+            closedNote={view.closedNote}
+          />
+        )}
+      </section>
+      <section aria-labelledby="agreement-documents-heading" className="flex flex-col gap-3">
+        <h2
+          id="agreement-documents-heading"
+          className="font-lax-display text-lax-18 font-semibold text-lax-fg"
+        >
+          Consignment agreements
+        </h2>
+        {agreementRows.length > 0 ? (
+          <AgreementDocuments rows={agreementRows} />
+        ) : (
+          <ListEmpty
+            illustration="ledger"
+            title="No agreements yet"
+            description={`When ${member.displayName} consigns a work, its agreement is kept here to download.`}
+          />
+        )}
+      </section>
     </div>
   );
 }
