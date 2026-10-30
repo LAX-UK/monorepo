@@ -6,6 +6,7 @@ import {
   bidUserProfile,
   buyerAgentAuthorisation,
   consignmentAgreement,
+  deliveryQuote,
   itemSubmission,
   lot,
   lotFulfilment,
@@ -128,11 +129,19 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
         sql`${lotFulfilment.status} not in ('in_transit', 'delivered', 'cancelled')`,
       ),
     );
+    // A courier quote the team priced and the account has not answered yet.
+    const quoteReady = sql<boolean>`exists (
+      select 1 from ${deliveryQuote}
+      where ${deliveryQuote.lotId} = ${lot.id}
+        and ${deliveryQuote.buyerLegalEntityId} = ${input.legalEntityId}
+        and ${deliveryQuote.status} = 'quoted'
+    )`;
     const rows = await this.db
       .select({
         id: lot.id,
         title: lot.title,
         paymentStatus: latestStatus,
+        quoteReady,
         fulfilmentStatus: lotFulfilment.status,
         method: lotFulfilment.fulfilmentMethod,
         collectedAt: lotFulfilment.collectedAt,
@@ -157,8 +166,7 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
       fulfilment: row.fulfilmentStatus
         ? { status: row.fulfilmentStatus, method: row.method, collectedAt: row.collectedAt }
         : null,
-      // Courier quotes are not recorded yet; the step appears once they are.
-      shippingQuote: null,
+      shippingQuote: row.quoteReady ? ("ready" as const) : null,
     }));
   }
 

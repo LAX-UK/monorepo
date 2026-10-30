@@ -19,6 +19,7 @@ vi.mock("next/navigation", () => ({ useRouter: () => ({ refresh }) }));
 
 const unsold: NonNullable<StaffAfterSaleView["unsold"]> = {
   lotId: "lot-1",
+  chooseBy: "2026-11-03T18:00:00.000Z",
   currentReserve: "5000.00",
   reserveFloor: "3000.00",
   currency: "GBP",

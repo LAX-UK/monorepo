@@ -51,6 +51,7 @@ export * from "./sale-follow.js";
 export * from "./item-submissions.js";
 export * from "./consignment-agreements.js";
 export * from "./unsold-lot-choices.js";
+export * from "./unsold-choice-deadline.js";
 export * from "./submission-categories.js";
 export * from "./user-address.js";
 export * from "./xero-integration.js";

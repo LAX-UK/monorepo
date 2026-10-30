@@ -612,3 +612,12 @@ export {
   type ActivityGroup,
   type ActivityKind,
 } from "./organisation-activity.js";
+export {
+  consignmentReference,
+  saleLineBreakdown,
+  soldLotPayoutStage,
+  type SaleLineBreakdown,
+  type SaleLineFacts,
+  type SoldLotFacts,
+  type SoldLotPayoutStage,
+} from "./selling-records.js";

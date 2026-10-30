@@ -244,3 +244,10 @@ export {
   DrizzleInvoiceDetailsRepository,
   DrizzleOrganisationActivityReader,
 } from "./drizzle-organisation-team.readers.js";
+export { DrizzleUnsoldChoiceDeadlineStore } from "./drizzle-unsold-choice-deadline.store.js";
+export {
+  DrizzleAgreementDocumentFactsReader,
+  DrizzlePayoutLinesReader,
+  DrizzleReturnedWorksReader,
+  DrizzleSoldLotsReader,
+} from "./drizzle-workspace-selling.readers.js";

@@ -55,6 +55,12 @@ export interface INotificationFactory {
     input: { paymentId: string; amount: string; checkoutUrl: string | null; dueDate?: string },
   ): CreateNotificationRow;
 
+  /** A payout failed or was reversed; LAX is on it and the money is not lost. */
+  createPayoutProblem(
+    userId: string,
+    input: { payoutId: string; amount: string; currency: string; legalEntityId: string },
+  ): CreateNotificationRow;
+
   /** A courier quote for a won lot is priced and waiting for the buyer to accept it. */
   createDeliveryQuoteReady(
     lot: Lot,

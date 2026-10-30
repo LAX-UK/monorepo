@@ -202,6 +202,20 @@ export class NotificationFactory implements INotificationFactory {
     };
   }
 
+  createPayoutProblem(
+    userId: string,
+    input: { payoutId: string; amount: string; currency: string; legalEntityId: string },
+  ): CreateNotificationRow {
+    return {
+      userId,
+      type: "payout_problem",
+      legalEntityId: input.legalEntityId,
+      title: "A payout didn't reach your bank",
+      message: `Your payout of ${input.amount} ${input.currency} didn't go through. Our finance team is looking into it and will contact you. Check that your bank details are up to date.`,
+      meta: { amount: input.amount },
+    };
+  }
+
   createDeliveryQuoteReady(
     lot: Lot,
     userId: string,

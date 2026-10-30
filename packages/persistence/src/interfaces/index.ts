@@ -94,6 +94,8 @@ export type {
   IConsignmentAgreementWriter,
 } from "./consignment-agreement.repository.js";
 export type {
+  IUnsoldChoiceDeadlineStore,
+  UnsoldChoiceDeadline,
   IUnsoldLotChoiceReader,
   IUnsoldLotChoiceRepository,
   IUnsoldLotChoiceWriter,
@@ -972,3 +974,14 @@ export type {
   InvoiceAddress,
   InvoiceDetails,
 } from "./organisation-team.readers.js";
+export type {
+  AgreementDocumentFacts,
+  IAgreementDocumentFactsReader,
+  IPayoutLinesReader,
+  IReturnedWorksReader,
+  ISoldLotsReader,
+  PayoutLineRow,
+  PayoutWithLines,
+  ReturnedWorkRow,
+  SoldLotRow,
+} from "./workspace-selling.readers.js";

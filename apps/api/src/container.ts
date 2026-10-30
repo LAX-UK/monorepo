@@ -29,6 +29,7 @@ import { createLotLifecycle } from "./container/create-lot-lifecycle.js";
 import { createOrganisationBuyingServices } from "./container/create-organisation-buying-services.js";
 import { createOrganisationHomeServices } from "./container/create-organisation-home-services.js";
 import { createOrganisationMembershipServices } from "./container/create-organisation-membership-services.js";
+import { createOrganisationSellingServices } from "./container/create-organisation-selling-services.js";
 import { createOrganisationTeamServices } from "./container/create-organisation-team-services.js";
 import { createOrganisationWorkspaceServices } from "./container/create-organisation-workspace-services.js";
 import { createPaymentsServices } from "./container/create-payments-services.js";
@@ -253,6 +254,7 @@ export function createContainer(env: Env): Container {
     consignmentAgreementService: catalog.consignmentAgreementService,
     submissionAccess: new SubmissionAccessGuard(repos.itemSubmissionRepository),
     consignmentAfterSaleHttp: catalog.consignmentAfterSaleHttp,
+    recordPeople: new DrizzleRecordPeopleReader(db),
   });
   const admin = createAdminServices({
     env,
@@ -339,6 +341,10 @@ export function createContainer(env: Env): Container {
     sales: repos.saleRepo,
     notificationDispatcher: platform.notificationDispatcher,
     notificationFactory: platform.notificationFactory,
+  });
+  const organisationSelling = createOrganisationSellingServices({
+    db,
+    submissionAccess: new SubmissionAccessGuard(repos.itemSubmissionRepository),
   });
   const organisationWorkspace = createOrganisationWorkspaceServices({
     db,
@@ -618,6 +624,7 @@ export function createContainer(env: Env): Container {
     organisationMembership,
     organisationHome,
     organisationBuying: organisationBuying.client,
+    organisationSelling,
     organisationWorkspace,
     organisationTeam,
     queueAdmin: userMisc.queueAdmin,
@@ -663,6 +670,7 @@ export type {
   ContainerOrganisationMembershipRoutesSlice,
   ContainerOrganisationHomeRoutesSlice,
   ContainerOrganisationBuyingRoutesSlice,
+  ContainerOrganisationSellingRoutesSlice,
   ContainerOrganisationWorkspaceRoutesSlice,
   ContainerOrganisationTeamRoutesSlice,
   ContainerLegalEntityRoutesSlice,

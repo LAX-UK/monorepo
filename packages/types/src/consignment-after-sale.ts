@@ -82,6 +82,8 @@ export type SellerUnsoldOutcome = {
   title: string;
   /** When the sale it did not sell in ended (ISO 8601). */
   endedAt: string;
+  /** The date the choice is due by (ISO 8601); if nobody chooses, LAX contacts the seller. */
+  chooseBy: string;
   /** `none` while nobody has chosen. */
   choice: UnsoldLotChoiceStatus | "none";
 };
@@ -93,6 +95,8 @@ export type SellerUnsoldLotView = {
   /** The lowest reserve the specialist accepts for a relist, when they set one. */
   reserveFloor: string | null;
   currency: string;
+  /** The date the choice is due by (ISO 8601); if nobody chooses, LAX contacts the seller. */
+  chooseBy: string;
   choice: UnsoldLotChoice | null;
   /** The person may choose or change the choice for this account (capability matrix). */
   canChoose: boolean;

@@ -74,8 +74,11 @@ export type NeedsYouFacts = {
   agreementsToAccept: readonly HomeSubject[];
   /** Submissions a specialist sent back, with the note. */
   changesRequested: ReadonlyArray<HomeSubject & { note: string | null }>;
-  /** Consigned lots that ended unsold with nothing chosen yet; `endedAt` sets the due date. */
-  unsoldLots: ReadonlyArray<HomeSubject & { endedAt: Date | null }>;
+  /**
+   * Consigned lots that ended unsold with nothing chosen yet, each with the date its choice is
+   * due: the stored date, set from {@link unsoldChoiceDueBy} when the outcome was first shown.
+   */
+  unsoldLots: ReadonlyArray<HomeSubject & { dueBy: Date | null }>;
   /** Won lots that are not finished, with what their payment and delivery records say. */
   purchases: ReadonlyArray<HomeSubject & PurchaseNextStepFacts>;
   /** Sales a buyer agent is authorised for and has not registered in. */
@@ -178,8 +181,7 @@ function unsoldSplit(facts: NeedsYouFacts) {
   const soon = facts.now.getTime() + UNSOLD_DUE_SOON_DAYS * DAY_MS;
   const due: Array<HomeSubject & { dueBy: Date }> = [];
   const later: HomeSubject[] = [];
-  for (const { id, title, endedAt } of facts.unsoldLots) {
-    const dueBy = endedAt ? unsoldChoiceDueBy(endedAt) : null;
+  for (const { id, title, dueBy } of facts.unsoldLots) {
     if (dueBy && dueBy.getTime() <= soon) due.push({ id, title, dueBy });
     else later.push({ id, title });
   }
