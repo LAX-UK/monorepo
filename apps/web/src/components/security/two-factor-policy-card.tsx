@@ -81,7 +81,7 @@ export function TwoFactorPolicyCard({ scope, required, members, enrolled, canEdi
         />
       </div>
       <div className="flex flex-wrap items-center gap-2 font-body text-sm text-on-surface-variant">
-        <StatusBadge variant={required ? "success" : "neutral"}>
+        <StatusBadge tone={required ? "success" : "neutral"}>
           {required ? "Required" : "Optional"}
         </StatusBadge>
         <span>

@@ -1,3 +1,4 @@
+import { Field } from "@auction/ui/lax";
 import { fireEvent, render, screen } from "@testing-library/react";
 import * as React from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -10,7 +11,6 @@ import {
   parseStaffDay,
   parseStaffTime,
 } from "./date-input.js";
-import { Field } from "./field.js";
 
 describe("parseStaffDay", () => {
   it.each([

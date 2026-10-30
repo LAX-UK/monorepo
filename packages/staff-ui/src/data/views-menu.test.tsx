@@ -1,8 +1,8 @@
 import { TooltipProvider } from "@auction/ui/components/tooltip";
+import { PlainLink } from "@auction/ui/lax";
 import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import type * as React from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PlainLink } from "../shell/link.js";
 
 // The real toaster injects a large stylesheet into the page, which makes every style lookup the
 // test runtime does for focus and role queries slow. Toasts are not what these tests are about.

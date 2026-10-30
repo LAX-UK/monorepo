@@ -1,9 +1,8 @@
+import { type LinkComponent, StatusBadge } from "@auction/ui/lax";
 import { CircleAlert, CircleCheck, Info, TriangleAlert } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
-import type { StaffLinkComponent } from "../shell/link.js";
-import { StatusBadge } from "./status-badge.js";
 
 export type IssueItem = {
   id: string;
@@ -39,7 +38,7 @@ export function IssueList({
   className,
 }: {
   items: readonly IssueItem[];
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
   title?: string;
   allClear?: React.ReactNode | null;
   /** Hides the advisory rows for this person; leave out when they cannot be dismissed. */

@@ -1,6 +1,6 @@
+import type { LinkComponent } from "@auction/ui/lax";
 import { ArrowRight, CircleAlert, Info, TriangleAlert } from "lucide-react";
 import { cn } from "../lib/cn.js";
-import type { StaffLinkComponent } from "../shell/link.js";
 
 export type AttentionStripItem = {
   id: string;
@@ -36,7 +36,7 @@ export function AttentionStrip({
   className,
 }: {
   items: readonly AttentionStripItem[];
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
   label?: string;
   className?: string;
 }) {

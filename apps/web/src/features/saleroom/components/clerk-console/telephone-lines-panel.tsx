@@ -74,7 +74,7 @@ export function TelephoneLinesPanel({
                         formId={`tel-start-${row.id}`}
                         pendingLabel="Starting…"
                         variant="secondary"
-                        size="live"
+                        size="lg"
                       >
                         Start line
                       </SaleroomPendingSubmit>
@@ -90,7 +90,7 @@ export function TelephoneLinesPanel({
                         formId={`tel-complete-${row.id}`}
                         pendingLabel="Completing…"
                         variant="secondary"
-                        size="live"
+                        size="lg"
                       >
                         Complete line
                       </SaleroomPendingSubmit>

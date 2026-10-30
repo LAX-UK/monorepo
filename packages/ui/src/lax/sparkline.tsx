@@ -1,14 +1,14 @@
 import { useId } from "react";
-import { cn } from "../lib/cn.js";
+import { cn } from "../lib/utils.js";
 
 export type MetricTone = "neutral" | "positive" | "attention" | "critical";
 
 /** The line colour for each tone; the area under it is the same colour, faded. */
 export const sparklineToneClass: Record<MetricTone, string> = {
-  neutral: "text-staff-muted",
-  positive: "text-staff-success-dot",
-  attention: "text-staff-warning-dot",
-  critical: "text-staff-danger-dot",
+  neutral: "text-lax-muted",
+  positive: "text-lax-success-dot",
+  attention: "text-lax-warning-dot",
+  critical: "text-lax-danger-dot",
 };
 
 /** Fewer points than this is not a trend. */
@@ -121,7 +121,7 @@ export function SparklineSkeleton({
       width={width}
       height={height}
       viewBox={`0 0 ${width} ${height}`}
-      className={cn("block shrink-0 animate-pulse text-staff-neutral-bg", className)}
+      className={cn("block shrink-0 animate-pulse text-lax-neutral-bg", className)}
     >
       <path
         d={wave}

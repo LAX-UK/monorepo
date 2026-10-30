@@ -28,7 +28,7 @@ export function OrganisationDocumentList({ entityId, intro, rows, closedNote }: 
                 {row.title}
               </p>
               <div>
-                <StatusBadge variant={row.badge.tone}>{row.badge.label}</StatusBadge>
+                <StatusBadge tone={row.badge.tone}>{row.badge.label}</StatusBadge>
               </div>
               {row.hint ? (
                 <p className="font-body text-sm text-on-surface-variant">{row.hint}</p>

@@ -15,7 +15,7 @@ export function OrgModuleComingSoon() {
         illustration="plinth"
         title={
           <span className="flex flex-col items-center gap-3">
-            <StatusBadge variant="neutral">Coming soon</StatusBadge>
+            <StatusBadge tone="neutral">Coming soon</StatusBadge>
             {copy.title}
           </span>
         }

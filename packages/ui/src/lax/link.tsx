@@ -1,10 +1,10 @@
 import type * as React from "react";
 
 /**
- * The kit never imports a router. Apps pass their own link (e.g. `next/link`) so navigation stays
+ * The primitives never import a router. Apps pass their own link (e.g. `next/link`) so navigation stays
  * client-side, and tests pass a plain anchor.
  */
-export type StaffLinkProps = {
+export type LinkProps = {
   href: string;
   className?: string;
   children?: React.ReactNode;
@@ -14,8 +14,8 @@ export type StaffLinkProps = {
   prefetch?: boolean;
 };
 
-export type StaffLinkComponent = React.ComponentType<StaffLinkProps>;
+export type LinkComponent = React.ComponentType<LinkProps>;
 
-export function PlainLink({ prefetch: _prefetch, children, ...props }: StaffLinkProps) {
+export function PlainLink({ prefetch: _prefetch, children, ...props }: LinkProps) {
   return <a {...props}>{children}</a>;
 }

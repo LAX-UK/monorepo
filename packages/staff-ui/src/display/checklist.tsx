@@ -1,8 +1,8 @@
+import type { LinkComponent } from "@auction/ui/lax";
 import { Check, Circle, CircleAlert, X } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
-import type { StaffLinkComponent } from "../shell/link.js";
 
 export type ChecklistItem = {
   id: string;
@@ -71,7 +71,7 @@ export function Checklist({
 }: {
   title: string;
   items: readonly ChecklistItem[];
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
   description?: React.ReactNode;
   compact?: boolean;
   /** Hides the checklist for this person; leave out when it must stay. */

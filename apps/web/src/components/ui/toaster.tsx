@@ -1,7 +1,9 @@
 "use client";
 
 import { isAdminPath } from "@/lib/admin/admin-return-path";
+import { isClientAreaPath } from "@/lib/navigation/client-routes";
 import { Toaster as AuctionToaster } from "@auction/ui";
+import { Toaster as LaxToaster } from "@auction/ui/lax";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -19,12 +21,15 @@ function useHtmlDarkClass(): "light" | "dark" {
 }
 
 /**
- * Global toast host — theme follows `<html class="dark">`; defaults live in `@auction/ui`.
- * Admin pages render the staff toaster from their own shell instead, so a toast shows once.
+ * Global toast host. The client workspace uses the LAX system toast (the same element as the
+ * staff tools, at the client density); public pages keep the marketing toast, whose theme
+ * follows `<html class="dark">`. Admin pages render the staff toaster from their own shell
+ * instead, so a toast shows once.
  */
 export function Toaster() {
   const resolvedTheme = useHtmlDarkClass();
   const pathname = usePathname();
   if (isAdminPath(pathname)) return null;
+  if (pathname && isClientAreaPath(pathname)) return <LaxToaster density="client" />;
   return <AuctionToaster theme={resolvedTheme} />;
 }

@@ -81,7 +81,7 @@ export function DisplayControlPanel({
         </div>
         <StaffButton
           variant="secondary"
-          size="live"
+          size="lg"
           icon={copied ? <Check aria-hidden /> : <Copy aria-hidden />}
           onClick={() => void copyDisplayUrl()}
         >
@@ -96,7 +96,7 @@ export function DisplayControlPanel({
           className="min-w-40 flex-1"
         >
           <TextInput
-            size="live"
+            size="lg"
             value={pairingCode}
             onChange={(e) => setPairingCode(e.target.value)}
             placeholder="For example ABCD-1234"
@@ -108,7 +108,7 @@ export function DisplayControlPanel({
         <SaleroomPendingSubmit
           pendingLabel="Approving…"
           variant="primary"
-          size="live"
+          size="lg"
           {...(pairingCode.trim().length < 4
             ? { disabledReason: "Enter the code shown on the venue screen" }
             : {})}

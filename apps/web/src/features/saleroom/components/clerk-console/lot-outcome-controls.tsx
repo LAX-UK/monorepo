@@ -38,7 +38,7 @@ function OutcomeHold({
   return (
     <HoldButton
       variant={variant}
-      size="live"
+      size="lg"
       disabled={disabled}
       loading={pending}
       holdHint={hint}

@@ -1,6 +1,6 @@
 "use client";
 
-import type { StaffLinkComponent } from "../shell/link.js";
+import type { LinkComponent } from "@auction/ui/lax";
 import { type OverflowAction, OverflowMenu } from "../shell/overflow-menu.js";
 import type { DataColumn } from "./types.js";
 
@@ -18,7 +18,7 @@ export function RowActions({
   actions: readonly OverflowAction[];
   /** Names the row: "Actions for payment Golden Hour". */
   label: string;
-  Link?: StaffLinkComponent;
+  Link?: LinkComponent;
 }) {
   return (
     <OverflowMenu actions={actions} label={label} size="icon-xs" {...(Link ? { Link } : {})} />
@@ -37,7 +37,7 @@ export function rowActionsColumn<T>({
   actions: (row: T) => readonly OverflowAction[];
   /** The menu's accessible name for a row: (row) => `Actions for ${row.title}`. */
   label: (row: T) => string;
-  Link?: StaffLinkComponent;
+  Link?: LinkComponent;
 }): DataColumn<T> {
   return {
     id: "actions",

@@ -145,14 +145,7 @@ export function ViewOnlyBadge({ role }: { role?: string }) {
 }
 
 /** A block placeholder with the exact geometry of what will load, so nothing shifts. */
-export function Skeleton({ className }: { className?: string }) {
-  return (
-    <span
-      aria-hidden
-      className={cn("block animate-pulse rounded-staff-xs bg-staff-neutral-bg", className)}
-    />
-  );
-}
+export { Skeleton } from "@auction/ui/lax";
 
 /**
  * A titled block on a record page: hairline card, 16px header row with an optional action, then

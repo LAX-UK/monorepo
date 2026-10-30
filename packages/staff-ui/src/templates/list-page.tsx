@@ -1,6 +1,7 @@
 "use client";
 
 import type { LaxIllustrationName } from "@auction/ui/components/lax-illustration";
+import type { LinkComponent } from "@auction/ui/lax";
 import type * as React from "react";
 import { type StaffPermission, useStaffPageAccess } from "../access/staff-access.js";
 import { useColumnVisibility, visibleColumns } from "../data/columns-menu.js";
@@ -25,7 +26,6 @@ import {
 } from "../display/states.js";
 import { cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
-import type { StaffLinkComponent } from "../shell/link.js";
 import type { OverflowAction } from "../shell/overflow-menu.js";
 import { PageHeader } from "../shell/page-header.js";
 
@@ -75,7 +75,7 @@ export type ListPageProps<T> = {
   exportAction?: React.ReactNode;
   /** An OverflowMenu with the page's remaining actions. */
   overflow?: React.ReactNode;
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
   /** Remembers the person's columns and density for this list. */
   listKey: string;
 

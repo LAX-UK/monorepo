@@ -1,8 +1,8 @@
 "use client";
 
+import { TextInput, type TextInputProps } from "@auction/ui/lax";
 import * as React from "react";
 import { formatRateAsPercent, parsePercentToRate } from "../lib/percent.js";
-import { TextInput, type TextInputProps } from "../primitives/input.js";
 
 export type PercentInputProps = Omit<
   TextInputProps,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCount } from "./count.js";
+import { formatCount } from "./index.js";
 
 describe("formatCount", () => {
   it("writes counts in full with thousands separators", () => {

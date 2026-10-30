@@ -1,8 +1,7 @@
+import { Count, type LinkComponent } from "@auction/ui/lax";
 import { ChevronRight } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
-import { Count } from "../primitives/tabs.js";
-import type { StaffLinkComponent } from "../shell/link.js";
 
 export type LinkListItem = {
   id: string;
@@ -30,7 +29,7 @@ export function LinkList({
   items: readonly LinkListItem[];
   title: string;
   description?: React.ReactNode;
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
   className?: string;
 }) {
   if (items.length === 0) return null;

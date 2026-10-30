@@ -13,6 +13,11 @@
       "types": "./dist/lib/utils.d.ts",
       "default": "./dist/lib/utils.js"
     },
+    "./lax": {
+      "types": "./dist/lax/index.d.ts",
+      "default": "./dist/lax/index.js"
+    },
+    "./lax-theme.css": "./src/lax/theme.css",
     "./components/button": {
       "types": "./dist/components/ui/button.d.ts",
       "default": "./dist/components/ui/button.js"

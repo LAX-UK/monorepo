@@ -14,7 +14,7 @@ export function SaleLifecycleBadge({ status, label, className }: SaleLifecycleBa
   const presentation = resolveStatusPresentation("sale", status);
   return (
     <StatusBadge
-      variant={presentation.variant}
+      tone={presentation.variant}
       {...(presentation.dot ? { shape: "dot" as const } : {})}
       className={className}
     >

@@ -15,7 +15,7 @@ export function ProductBadge({ product }: { product: LaxProductId }) {
 }
 
 export function PortfolioStatusBadge({ status }: { status: LaxPortfolioItemStatus }) {
-  return <StatusBadge variant={STATUS_TONES[status]}>{STATUS_LABELS[status]}</StatusBadge>;
+  return <StatusBadge tone={STATUS_TONES[status]}>{STATUS_LABELS[status]}</StatusBadge>;
 }
 
 /** One figure per currency, side by side. "None recorded" is shown instead of a zero. */

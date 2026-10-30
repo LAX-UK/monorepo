@@ -156,10 +156,10 @@ function RoomCard({
       ) : null}
 
       <div className="mt-auto flex flex-wrap gap-2 pt-1">
-        <StaffButton asChild variant={roomOpen ? "primary" : "secondary"} size="live">
+        <StaffButton asChild variant={roomOpen ? "primary" : "secondary"} size="lg">
           <Link href={`/admin/saleroom/${row.saleId}`}>Open console</Link>
         </StaffButton>
-        <StaffButton asChild variant="secondary" size="live">
+        <StaffButton asChild variant="secondary" size="lg">
           <Link href={`${saleDetailTabHref(row.saleId, "registrations")}#check-in`}>
             Check in bidders
           </Link>

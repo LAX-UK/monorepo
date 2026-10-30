@@ -20,7 +20,7 @@ const { ListPage, NO_RESULTS_DESCRIPTION } = await import("./list-page.js");
 const { DetailColumns, DetailError, DetailPage, DetailPageSkeleton } = await import(
   "./detail-page.js"
 );
-const { PlainLink } = await import("../shell/link.js");
+const { PlainLink } = await import("@auction/ui/lax");
 const { StaffButton } = await import("../primitives/button.js");
 
 type Payment = { id: string; lot: string; amount: string };

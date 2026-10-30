@@ -1,9 +1,9 @@
+import type { LinkComponent } from "@auction/ui/lax";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import type { StaffLinkComponent } from "../shell/link.js";
 import { TextLink } from "./text-link.js";
 
-const RouterLink: StaffLinkComponent = ({ href, children, ...rest }) => (
+const RouterLink: LinkComponent = ({ href, children, ...rest }) => (
   <a href={href} data-router="" {...rest}>
     {children}
   </a>

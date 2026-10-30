@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "@auction/branding/brand-primitives.css" layer(base);
 @import "@auction/branding/lax-system.css" layer(base);
+@import "@auction/ui/lax-theme.css";
 @import "../styles/tokens-dark.css" layer(base);
 @import "../styles/tokens-motion.css" layer(base);
 @import "@auction/marketing-ui/marketing-header.css";

@@ -1,6 +1,6 @@
+import { PlainLink } from "@auction/ui/lax";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { PlainLink } from "../shell/link.js";
 import { IssueList } from "./issue-list.js";
 
 describe("IssueList", () => {

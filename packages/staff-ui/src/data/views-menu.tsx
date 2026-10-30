@@ -1,6 +1,7 @@
 "use client";
 
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
+import { Count, type LinkComponent, TextInput } from "@auction/ui/lax";
 import {
   Bookmark,
   Check,
@@ -17,9 +18,6 @@ import * as React from "react";
 import { Skeleton } from "../display/states.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
-import { TextInput } from "../primitives/input.js";
-import { Count } from "../primitives/tabs.js";
-import type { StaffLinkComponent } from "../shell/link.js";
 import type { SavedView, SavedViewItem, SavedViewsControls } from "./saved-views.js";
 
 /** A view the team shares, fixed in code: it cannot be renamed, reordered or deleted. */
@@ -105,7 +103,7 @@ export function ViewsMenu({
   savedHref?: ((view: SavedView) => string) | undefined;
   /** The team or saved view the list is showing, if it is one. */
   activeViewId: string | null;
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
 }) {
   const [open, setOpen] = React.useState(false);
   const [editing, setEditing] = React.useState<Editing | null>(null);
