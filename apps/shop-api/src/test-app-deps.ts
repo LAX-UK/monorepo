@@ -7,6 +7,7 @@ import {
   createEditionAlertRateLimiter,
   createEnquiryRateLimiter,
 } from "./application/enquiry-rate-limit.js";
+import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import { createHomeFeaturesService } from "./application/home-features/home-features.service.js";
 import { createProductionTaskService } from "./application/production-task.service.js";
 import { createSavedViewService } from "./application/saved-view.service.js";
@@ -131,7 +132,7 @@ export function createMinimalShopApiTestDeps(
       clock,
     }),
     interest: {
-      registerArtworkInterest: async () => "registered" as const,
+      registerArtworkInterest: async () => ({ status: "registered" as const, reference: "E-2041" }),
       getArtworkInterest: async () => ({ subscribed: false }),
       enquiryRateLimiter: createEnquiryRateLimiter(createInMemoryFixedWindowCounter()),
       editionAlerts: {
@@ -207,6 +208,10 @@ export function createMinimalShopApiTestDeps(
         },
       }),
       savedViews: createSavedViewService({ repository: createInMemorySavedViewRepository() }),
+      guestErasure: new GuestErasureService({
+        read: async () => null,
+        withLockedGuest: async () => null,
+      }),
       enquiryInbox: createEnquiryInboxService({
         repository: createStubEnquiryInboxRepository(),
         staffReader: {

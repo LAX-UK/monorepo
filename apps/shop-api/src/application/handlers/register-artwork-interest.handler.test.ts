@@ -11,7 +11,10 @@ const ACCOUNT: EnquirySender = {
 
 describe("createRegisterArtworkInterestHandler", () => {
   it("evaluates notify-me policy before registering interest", async () => {
-    const registerInterest = vi.fn(async () => "registered" as const);
+    const registerInterest = vi.fn(async () => ({
+      status: "registered" as const,
+      reference: "E-2041",
+    }));
     const handler = createRegisterArtworkInterestHandler({
       loadInterestContext: vi.fn(async () => ({
         artworkId: "art-1",
@@ -27,7 +30,7 @@ describe("createRegisterArtworkInterestHandler", () => {
     });
     await expect(
       handler({ artworkSlug: "warm-basket", sender: ACCOUNT, intent: "notify_me" }),
-    ).resolves.toBe("registered");
+    ).resolves.toEqual({ status: "registered", reference: "E-2041" });
     expect(registerInterest).toHaveBeenCalledWith({
       artworkId: "art-1",
       artworkSlug: "warm-basket",

@@ -44,6 +44,7 @@ import type {
   EditorialUpdateOutcome,
   EditorialVenueExtraFields,
 } from "../application/ports/editorial.repository.js";
+import type { EnquiryFollowUp } from "../application/ports/enquiry-follow-up.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import { ShopApiError } from "../errors/shop-api-error.js";
 import { pgUniqueViolationConstraint } from "../lib/pg-errors.js";
@@ -63,6 +64,8 @@ type RepoOptions = {
   resolveMediaUrl: (value: string | null | undefined) => string | null;
   /** Staff alert queued in the same transaction as each general enquiry. */
   generalEnquiryAlerts?: { notifications: ShopNotificationPublisher; opsEmail: string };
+  /** The lead and the sender's copy, after each general enquiry is stored. */
+  enquiryFollowUp?: EnquiryFollowUp;
 };
 
 function seoColumns(input: { seoTitle?: string | null; seoDescription?: string | null }) {
@@ -631,7 +634,7 @@ export function createDrizzleEditorialRepository(
             message: input.message,
             phone: input.phone,
           })
-          .returning({ id: shopGeneralEnquiry.id });
+          .returning({ id: shopGeneralEnquiry.id, reference: shopGeneralEnquiry.reference });
         if (!row) throw new Error("general enquiry insert returned no row");
         if (alerts?.opsEmail.trim()) {
           await alerts.notifications.queueGeneralEnquiryAlert(tx, {
@@ -644,7 +647,19 @@ export function createDrizzleEditorialRepository(
             phone: input.phone,
           });
         }
-        return { enquiryId: row.id };
+        await options.enquiryFollowUp?.afterStored(
+          tx,
+          {
+            reference: row.reference,
+            sender: input.sender,
+            phone: input.phone,
+            // General enquiries are sent from lax.art.
+            salesChannel: "art",
+            topic: input.topic,
+          },
+          new Date(),
+        );
+        return { enquiryId: row.id, reference: row.reference };
       });
     },
 

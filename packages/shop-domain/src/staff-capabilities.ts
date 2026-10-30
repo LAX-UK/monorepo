@@ -37,6 +37,11 @@ export const SHOP_STAFF_CAPABILITIES = [
   "edition_facts.correct",
   /** Approving the listing of hors commerce proofs, which were not made to be sold. */
   "hors_commerce.approve",
+  /**
+   * Erasing a guest's personal data on request. Administrators only: it cannot be undone, and it
+   * removes the only way to contact the guest about their orders.
+   */
+  "lead.erase",
 ] as const;
 
 export type ShopStaffCapability = (typeof SHOP_STAFF_CAPABILITIES)[number];

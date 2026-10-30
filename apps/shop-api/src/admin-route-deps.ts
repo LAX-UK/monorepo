@@ -1,6 +1,7 @@
 import type { ArtistApplicationReviewService } from "./application/artist-applications/artist-application-review.service.js";
 import type { EditionRunServices } from "./application/edition-runs/edition-run-services.js";
 import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js";
+import type { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import type { ShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
 import type { HomeFeaturesService } from "./application/home-features/home-features.service.js";
 import type { AdminReadPorts } from "./application/ports/admin-readers.js";
@@ -69,6 +70,8 @@ export type AdminRoutesDeps = {
   rejectSaleAuthorityRequest: ReturnType<typeof createRejectSaleAuthorityRequestHandler>;
   adminRead: AdminReadPorts;
   enquiryInbox: EnquiryInboxService;
+  /** Erasing a guest's personal data on request. */
+  guestErasure: GuestErasureService;
   artistApplicationReview: ArtistApplicationReviewService;
   productionTasks: ProductionTaskService;
   savedViews: SavedViewService;

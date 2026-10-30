@@ -1,5 +1,7 @@
 import {
   domainEvent,
+  shopAdminAudit,
+  shopGeneralEnquiry,
   shopGuestCustomer,
   shopOrder,
   shopParty,
@@ -9,6 +11,7 @@ import { GUEST_MARKETING_CONSENT, guestOrderSubject } from "@auction/shop-domain
 import { and, eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { GuestErasureService } from "../../application/guest-erasure/guest-erasure.service.js";
 import {
   completeFixtureOrderPayment,
   createPendingPaymentOrderWithReservedEdition,
@@ -24,6 +27,7 @@ import {
 import { createDrizzleOrderRepository } from "../drizzle-order.repository.js";
 import { createClaimGuestOrdersRunner } from "../scheduler/claim-guest-orders.runner.js";
 import { createDrizzleGuestCustomerStore } from "./drizzle-guest-customer.store.js";
+import { createDrizzleGuestErasureStore } from "./drizzle-guest-erasure.store.js";
 import { createDrizzleGuestOrderClaimer } from "./drizzle-guest-order-claimer.js";
 import { createDrizzleGuestOrderLinks } from "./drizzle-guest-order-links.js";
 
@@ -108,6 +112,7 @@ describe.skipIf(!hasShopIntegrationDb)("guest checkout persistence", () => {
     const claimer = createDrizzleGuestOrderClaimer(db, { domainEventMode: "off" });
     expect(await claimer.claimForVerifiedEmail({ subjectId, email: email.toUpperCase() })).toEqual({
       claimedOrders: 1,
+      claimedEnquiries: 0,
     });
     const claimed = await createDrizzleOrderRepository(db).getOrder(subjectId, fixture.orderId);
     expect(claimed?.orderId).toBe(fixture.orderId);
@@ -121,6 +126,7 @@ describe.skipIf(!hasShopIntegrationDb)("guest checkout persistence", () => {
     // A second claim finds nothing left to move.
     expect(await claimer.claimForVerifiedEmail({ subjectId, email })).toEqual({
       claimedOrders: 0,
+      claimedEnquiries: 0,
     });
   });
 
@@ -154,5 +160,114 @@ describe.skipIf(!hasShopIntegrationDb)("guest checkout persistence", () => {
       .from(shopProjectionCursor)
       .where(and(eq(shopProjectionCursor.name, "shop_guest_order_claim")));
     expect(cursor?.last).toBeGreaterThan(0);
+  });
+
+  it("claims a guest's orders and enquiries when an account confirms a change to that email", async () => {
+    const { db, email, fixture } = await guestOrder("guest-email-change");
+    const [enquiry] = await db
+      .insert(shopGeneralEnquiry)
+      .values({ topic: "general", message: "Do you frame prints?", contactEmail: email })
+      .returning({ id: shopGeneralEnquiry.id, reference: shopGeneralEnquiry.reference });
+    expect(enquiry?.reference).toMatch(/^E-\d+$/);
+    const subjectId = `account-change-${fixture.orderId}`;
+    await createShopDb(ownerPool)
+      .insert(domainEvent)
+      .values({
+        aggregateType: "user",
+        aggregateId: subjectId,
+        eventType: "user.profile_updated",
+        payload: {
+          schemaVersion: 1,
+          subjectId,
+          email,
+          emailVerified: true,
+          updatedAt: new Date().toISOString(),
+        },
+        producer: "apps/auth",
+      });
+    const run = createClaimGuestOrdersRunner(
+      db,
+      createDrizzleGuestOrderClaimer(db, { domainEventMode: "off" }),
+    );
+    for (let i = 0; i < 200; i++) {
+      const { processed } = await run();
+      if (processed === 0) break;
+    }
+    const [order] = await db
+      .select({ subject: shopOrder.identitySubjectId })
+      .from(shopOrder)
+      .where(eq(shopOrder.id, fixture.orderId));
+    expect(order?.subject).toBe(subjectId);
+    const [claimedEnquiry] = await db
+      .select({ subject: shopGeneralEnquiry.identitySubjectId })
+      .from(shopGeneralEnquiry)
+      .where(eq(shopGeneralEnquiry.id, enquiry?.id ?? ""));
+    expect(claimedEnquiry?.subject).toBe(subjectId);
+  });
+
+  it("erases a guest's personal data and keeps the order for the accounting record", async () => {
+    const { db, email, guestCustomerId, fixture } = await guestOrder("guest-erase");
+    await db
+      .update(shopOrder)
+      .set({ deliveryRecipientName: "Ada Lovelace", deliveryLine1: "1 Example Street" })
+      .where(eq(shopOrder.id, fixture.orderId));
+    await db
+      .insert(shopGeneralEnquiry)
+      .values({ topic: "art_advisory", message: "My flat is in Hackney.", contactEmail: email });
+    const links = createDrizzleGuestOrderLinks(db, {
+      orders: createDrizzleOrderRepository(db),
+      notifications: { queueGuestOrderLink: async () => undefined },
+      paymentGateway: {} as never,
+      storefrontUrl: "http://localhost:3020",
+    });
+    const { token } = await links.issue(fixture.orderId, new Date());
+    const service = new GuestErasureService(
+      createDrizzleGuestErasureStore(db, { domainEventMode: "off" }),
+    );
+    const request = {
+      guestCustomerId,
+      confirmation: email,
+      reason: "Asked by email to delete their data.",
+      actorSubjectId: "staff-erase",
+    };
+
+    // An unpaid checkout is still open, so it is finished first.
+    expect(await service.erase(request)).toMatchObject({ kind: "blocked", reason: "open_order" });
+    await db.update(shopOrder).set({ status: "expired" }).where(eq(shopOrder.id, fixture.orderId));
+
+    expect(await service.erase(request)).toMatchObject({
+      kind: "erased",
+      orders: 1,
+      enquiries: 1,
+      links: 1,
+    });
+    const [order] = await db.select().from(shopOrder).where(eq(shopOrder.id, fixture.orderId));
+    expect(order).toMatchObject({
+      deliveryRecipientName: null,
+      deliveryLine1: null,
+      totalPence: 8_500,
+    });
+    expect(order?.personalDataErasedAt).toBeInstanceOf(Date);
+    const [lead] = await db
+      .select()
+      .from(shopGuestCustomer)
+      .where(eq(shopGuestCustomer.id, guestCustomerId));
+    expect(lead).toMatchObject({ email: `erased:${guestCustomerId}`, name: null, phone: null });
+    expect(lead?.erasedBySubjectId).toBe("staff-erase");
+    const leftover = await db
+      .select({ id: shopGeneralEnquiry.id })
+      .from(shopGeneralEnquiry)
+      .where(eq(shopGeneralEnquiry.contactEmail, email));
+    expect(leftover).toHaveLength(0);
+    expect(await links.resolve(token, new Date())).toEqual({ kind: "not_found" });
+    const audit = await db
+      .select({ afterJson: shopAdminAudit.afterJson })
+      .from(shopAdminAudit)
+      .where(eq(shopAdminAudit.targetId, guestCustomerId));
+    expect(audit[0]?.afterJson).not.toContain(email);
+    expect(await service.erase(request)).toMatchObject({
+      kind: "blocked",
+      reason: "already_erased",
+    });
   });
 });

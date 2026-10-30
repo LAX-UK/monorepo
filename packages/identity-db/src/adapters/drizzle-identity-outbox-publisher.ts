@@ -20,6 +20,7 @@ export type IdentityOutboxLifecycleEvent =
       type: "user.profile_updated";
       userId: string;
       email?: string;
+      emailVerified?: boolean;
       name?: string;
       phone?: string | null;
       phoneVerified?: boolean;
@@ -122,6 +123,7 @@ function buildOutboxRow(
           schemaVersion: IDENTITY_EVENT_SCHEMA_VERSION,
           subjectId: event.userId,
           ...(event.email !== undefined ? { email: event.email } : {}),
+          ...(event.emailVerified !== undefined ? { emailVerified: event.emailVerified } : {}),
           ...(event.name !== undefined ? { name: event.name } : {}),
           ...(event.phone !== undefined ? { phone: event.phone } : {}),
           ...(event.phoneVerified !== undefined ? { phoneVerified: event.phoneVerified } : {}),

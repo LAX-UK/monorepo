@@ -409,6 +409,8 @@ export function createDrizzleAdminDetailReaders(db: Database) {
         totalPence: order.totalPence,
         buyerSubjectId: order.identitySubjectId,
         ...orderBuyer(order.identitySubjectId, found),
+        guestCustomerId: order.guestCustomerId,
+        personalDataErasedAt: order.personalDataErasedAt?.toISOString() ?? null,
         stripeCheckoutSessionId: order.stripeCheckoutSessionId,
         stripePaymentIntentId: order.stripePaymentIntentId,
         paidAt: order.paidAt ? order.paidAt.toISOString() : null,

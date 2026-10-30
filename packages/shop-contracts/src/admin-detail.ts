@@ -197,6 +197,10 @@ export const AdminOrderDetailSchema = Type.Object({
   buyerEmail: Type.Union([Type.String(), Type.Null()]),
   /** True while the order belongs to a guest checkout rather than a LAX account. */
   buyerIsGuest: Type.Optional(Type.Boolean()),
+  /** The guest who placed it, kept after a claim; null for an account's own checkout. */
+  guestCustomerId: Type.Optional(Type.Union([Type.String({ format: "uuid" }), Type.Null()])),
+  /** When the guest's personal data was erased on request; the order itself is kept. */
+  personalDataErasedAt: Type.Optional(Type.Union([Type.String(), Type.Null()])),
   stripeCheckoutSessionId: Type.Union([Type.String(), Type.Null()]),
   stripePaymentIntentId: Type.Union([Type.String(), Type.Null()]),
   paidAt: Type.Union([Type.String(), Type.Null()]),

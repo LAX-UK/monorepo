@@ -6,9 +6,11 @@ import type {
   ArtworkInterestContext,
   ArtworkInterestWriter,
 } from "../application/ports/artwork-interest.writer.js";
+import type { EnquiryFollowUp } from "../application/ports/enquiry-follow-up.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import { type StorefrontOrigins, artworkPublicUrl } from "../domain/storefront-origins.js";
 import { publicArtworkVisible } from "./artwork-visibility-sql.js";
+import { nextEnquiryReference } from "./enquiry-follow-up.js";
 import {
   type ShopDomainEventPublisherMode,
   createShopDomainEventPublisher,
@@ -20,6 +22,8 @@ type ArtworkInterestRepositoryOptions = {
   storefrontOrigins?: StorefrontOrigins;
   enquiryOpsEmail?: string;
   domainEventMode?: ShopDomainEventPublisherMode;
+  /** The lead and the sender's copy, after an enquiry is stored. */
+  followUp?: EnquiryFollowUp;
 };
 
 async function loadArtworkSubscriptionContext(
@@ -53,6 +57,26 @@ async function loadArtworkSubscriptionContext(
     saleState: row.saleState,
     salesChannel: row.salesChannel,
   };
+}
+
+/** An account's earlier enquiry about the same work, which a repeat enquiry points back to. */
+async function existingEnquiryReference(
+  db: Database,
+  input: { artworkId: string; sender: { kind: string; identitySubjectId?: string } },
+): Promise<string | null> {
+  if (input.sender.kind !== "account" || !input.sender.identitySubjectId) return null;
+  const [row] = await db
+    .select({ reference: shopArtworkInterest.reference })
+    .from(shopArtworkInterest)
+    .where(
+      and(
+        eq(shopArtworkInterest.artworkId, input.artworkId),
+        eq(shopArtworkInterest.identitySubjectId, input.sender.identitySubjectId),
+        eq(shopArtworkInterest.intent, "enquiry"),
+      ),
+    )
+    .limit(1);
+  return row?.reference ?? null;
 }
 
 const DEFAULT_STOREFRONT_ORIGINS: StorefrontOrigins = {
@@ -96,31 +120,33 @@ export function createDrizzleArtworkInterestRepository(
           true,
         );
         if (!context || context.artworkId !== input.artworkId) {
-          return "not_found";
+          return { status: "not_found" as const };
         }
 
+        const isEnquiry = input.intent === "enquiry";
         const inserted = await tx
           .insert(shopArtworkInterest)
           .values({
             artworkId: input.artworkId,
             ...enquirySenderColumns(input.sender),
             intent: input.intent,
+            ...(isEnquiry ? { reference: nextEnquiryReference() } : {}),
             ...(input.intent === "enquiry" && input.message ? { message: input.message } : {}),
             ...(input.intent === "enquiry" && input.contactPhone
               ? { contactPhone: input.contactPhone }
               : {}),
           })
           .onConflictDoNothing()
-          .returning({ id: shopArtworkInterest.id });
+          .returning({ id: shopArtworkInterest.id, reference: shopArtworkInterest.reference });
 
-        if (inserted.length === 0) {
-          return "already_subscribed";
+        const stored = inserted[0];
+        if (!stored) {
+          return {
+            status: "already_subscribed" as const,
+            reference: isEnquiry ? await existingEnquiryReference(tx as Database, input) : null,
+          };
         }
-
-        const interestId = inserted[0]?.id;
-        if (!interestId) {
-          return "already_subscribed";
-        }
+        const interestId = stored.id;
 
         // The event feeds account-keyed consumers (CRM deals); guests reach staff by the alert only.
         if (input.sender.kind === "account") {
@@ -138,21 +164,26 @@ export function createDrizzleArtworkInterestRepository(
           });
         }
 
-        if (
-          input.intent === "enquiry" &&
-          options.notifications &&
-          options.enquiryOpsEmail?.trim()
-        ) {
-          const [artwork] = await tx
-            .select({ title: shopArtwork.title })
-            .from(shopArtwork)
-            .where(eq(shopArtwork.id, input.artworkId))
-            .limit(1);
+        if (!isEnquiry || !stored.reference) {
+          return { status: "registered" as const, reference: null };
+        }
+        const [artwork] = await tx
+          .select({ title: shopArtwork.title })
+          .from(shopArtwork)
+          .where(eq(shopArtwork.id, input.artworkId))
+          .limit(1);
+        const artworkTitle = artwork?.title ?? input.artworkSlug;
+        const artworkUrl = artworkPublicUrl(
+          storefrontOrigins,
+          input.salesChannel,
+          input.artworkSlug,
+        );
+        if (options.notifications && options.enquiryOpsEmail?.trim()) {
           await options.notifications.queueEnquiryAlert(tx, {
             idempotencyKey: `enquiry:${interestId}`,
             artworkSlug: input.artworkSlug,
-            artworkTitle: artwork?.title ?? input.artworkSlug,
-            artworkUrl: artworkPublicUrl(storefrontOrigins, input.salesChannel, input.artworkSlug),
+            artworkTitle,
+            artworkUrl,
             sender: input.sender,
             opsEmail: options.enquiryOpsEmail.trim(),
             salesChannel: input.salesChannel,
@@ -160,8 +191,21 @@ export function createDrizzleArtworkInterestRepository(
             ...(input.contactPhone ? { contactPhone: input.contactPhone } : {}),
           });
         }
+        await options.followUp?.afterStored(
+          tx,
+          {
+            reference: stored.reference,
+            sender: input.sender,
+            phone: input.contactPhone ?? null,
+            salesChannel: input.salesChannel,
+            topic: "artwork",
+            artworkTitle,
+            artworkUrl,
+          },
+          new Date(),
+        );
 
-        return "registered";
+        return { status: "registered" as const, reference: stored.reference };
       });
     },
   };

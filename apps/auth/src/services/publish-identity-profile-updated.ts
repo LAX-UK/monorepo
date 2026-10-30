@@ -5,6 +5,8 @@ export async function publishIdentityProfileUpdated(
   input: {
     subjectId: string;
     email?: string;
+    /** True when `email` is an address the person has just verified. */
+    emailVerified?: boolean;
     name?: string;
     phone?: string | null;
     phoneVerified?: boolean;
@@ -17,6 +19,7 @@ export async function publishIdentityProfileUpdated(
       type: "user.profile_updated",
       userId: input.subjectId,
       ...(input.email !== undefined ? { email: input.email } : {}),
+      ...(input.emailVerified !== undefined ? { emailVerified: input.emailVerified } : {}),
       ...(input.name !== undefined ? { name: input.name } : {}),
       ...(input.phone !== undefined ? { phone: input.phone } : {}),
       ...(input.phoneVerified !== undefined ? { phoneVerified: input.phoneVerified } : {}),

@@ -1800,6 +1800,13 @@
       "when": 1797494400000,
       "tag": "0256_organisation_invoice_details",
       "breakpoints": true
+    },
+    {
+      "idx": 260,
+      "version": "7",
+      "when": 1797840000000,
+      "tag": "0260_guest_data_lifecycle",
+      "breakpoints": true
     }
   ]
 }

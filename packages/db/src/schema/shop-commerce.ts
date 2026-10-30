@@ -752,6 +752,14 @@ export const shopOrder = pgTable(
     deliveryCountry: text("delivery_country"),
     deliveryRecipientName: text("delivery_recipient_name"),
     deliveryPhone: text("delivery_phone"),
+    /**
+     * When a guest's personal data was erased on request. The order and its invoice stay for the
+     * accounting record, with the delivery name, phone and address cleared.
+     */
+    personalDataErasedAt: timestamp("personal_data_erased_at", {
+      mode: "date",
+      withTimezone: true,
+    }),
     salesChannel: shopSalesChannelEnum("sales_channel").default("shop").notNull(),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
@@ -798,11 +806,33 @@ export const shopGuestCustomer = pgTable(
     /** The LAX account that verified this email and took over the guest's orders. */
     claimedSubjectId: text("claimed_subject_id"),
     claimedAt: timestamp("claimed_at", { mode: "date", withTimezone: true }),
+    /** Where the lead started: Shop guest checkout, or an enquiry on the Shop or lax.art. */
+    source: text("source")
+      .$type<"shop_checkout" | "shop_enquiry" | "art_enquiry">()
+      .default("shop_checkout")
+      .notNull(),
+    /** First time this guest reached checkout; null for a lead that has only enquired. */
+    checkoutStartedAt: timestamp("checkout_started_at", { mode: "date", withTimezone: true }),
+    /** Enquiries sent as a guest from this email. */
+    enquiryCount: integer("enquiry_count").default(0).notNull(),
+    lastEnquiryAt: timestamp("last_enquiry_at", { mode: "date", withTimezone: true }),
+    /** Set when staff erased the guest's personal data on request; the row stays as a tombstone. */
+    erasedAt: timestamp("erased_at", { mode: "date", withTimezone: true }),
+    erasedBySubjectId: text("erased_by_subject_id"),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
     uniqueIndex("shop_guest_customer_email_uid").on(table.email),
+    check(
+      "shop_guest_customer_source_ck",
+      sql`${table.source} IN ('shop_checkout', 'shop_enquiry', 'art_enquiry')`,
+    ),
+    check("shop_guest_customer_enquiry_count_ck", sql`${table.enquiryCount} >= 0`),
+    check(
+      "shop_guest_customer_erasure_pair_ck",
+      sql`(${table.erasedAt} IS NULL) = (${table.erasedBySubjectId} IS NULL)`,
+    ),
     check(
       "shop_guest_customer_email_normalised_ck",
       sql`${table.email} = lower(btrim(${table.email}))`,
@@ -1621,6 +1651,11 @@ export const shopArtworkInterest = pgTable(
     /** Null for guest enquiries, which carry `contactEmail` instead. */
     identitySubjectId: text("identity_subject_id"),
     intent: shopArtworkInterestIntentEnum("intent").default("notify_me").notNull(),
+    /**
+     * Enquiries only: what the sender and staff quote ("E-2041"), from `shop_enquiry_reference_seq`,
+     * which general enquiries share.
+     */
+    reference: text("reference"),
     message: text("message"),
     contactPhone: text("contact_phone"),
     contactName: text("contact_name"),
@@ -1668,6 +1703,16 @@ export const shopArtworkInterest = pgTable(
       .on(table.unsubscribeTokenHash)
       .where(sql`${table.unsubscribeTokenHash} IS NOT NULL`),
     index("shop_artwork_interest_subject_idx").on(table.identitySubjectId),
+    uniqueIndex("shop_artwork_interest_reference_uid")
+      .on(table.reference)
+      .where(sql`${table.reference} IS NOT NULL`),
+    index("shop_artwork_interest_guest_email_idx")
+      .on(sql`lower(${table.contactEmail})`)
+      .where(sql`${table.identitySubjectId} IS NULL AND ${table.intent} = 'enquiry'`),
+    check(
+      "shop_artwork_interest_reference_ck",
+      sql`(${table.intent} = 'enquiry') = (${table.reference} IS NOT NULL)`,
+    ),
     check(
       "shop_artwork_interest_alert_columns_ck",
       sql`${table.intent} = 'notify_me' OR (${table.cancelledAt} IS NULL AND ${table.unsubscribeTokenHash} IS NULL)`,
