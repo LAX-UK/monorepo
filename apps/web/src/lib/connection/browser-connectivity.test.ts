@@ -1,9 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  type NetworkHint,
-  createHealthProbe,
-  createVerifiedConnectivityPort,
-} from "./browser-connectivity";
+import { type NetworkHint, createVerifiedConnectivityPort } from "./browser-connectivity";
+import { createHealthProbe } from "./browser-connectivity.client";
 
 function fakeHint(initiallyOnline: boolean) {
   let listener: ((online: boolean) => void) | null = null;

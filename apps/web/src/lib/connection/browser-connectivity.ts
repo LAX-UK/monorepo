@@ -28,7 +28,7 @@ export type VerifiedConnectivityOptions = {
 
 export const CONNECTIVITY_DEBOUNCE_MS = 2_500;
 export const CONNECTIVITY_RETRY_DELAYS_MS = [5_000, 10_000, 20_000, 30_000] as const;
-const PROBE_TIMEOUT_MS = 5_000;
+export const CONNECTIVITY_PROBE_TIMEOUT_MS = 5_000;
 /** Static, uncached and served by this app on every host. */
 export const CONNECTIVITY_PROBE_PATH = "/api/health";
 
@@ -140,33 +140,4 @@ export function createNavigatorNetworkHint(): NetworkHint {
       };
     },
   };
-}
-
-/** A no-store GET of our health route; any answer from the server counts as reachable. */
-export function createHealthProbe(fetchImpl: typeof fetch = fetch): ConnectivityProbe {
-  return async () => {
-    try {
-      await fetchImpl(CONNECTIVITY_PROBE_PATH, {
-        method: "GET",
-        cache: "no-store",
-        credentials: "omit",
-        signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
-      });
-      return true;
-    } catch {
-      return false;
-    }
-  };
-}
-
-let defaultPort: BrowserConnectivityPort | null = null;
-
-export function getBrowserConnectivityPort(): BrowserConnectivityPort {
-  if (!defaultPort) {
-    defaultPort = createVerifiedConnectivityPort({
-      hint: createNavigatorNetworkHint(),
-      probe: createHealthProbe((input, init) => fetch(input, init)),
-    });
-  }
-  return defaultPort;
 }
