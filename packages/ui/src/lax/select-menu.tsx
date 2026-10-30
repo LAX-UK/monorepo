@@ -49,7 +49,7 @@ export function SelectMenu<T extends string>({
       </MenuTrigger>
       <MenuContent
         align="start"
-        className="w-[max(var(--radix-dropdown-menu-trigger-width),12rem)]"
+        className="max-h-80 w-[max(var(--radix-dropdown-menu-trigger-width),12rem)] overflow-y-auto"
       >
         <MenuRadioGroup
           value={value}

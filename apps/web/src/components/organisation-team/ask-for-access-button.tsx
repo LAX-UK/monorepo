@@ -138,8 +138,8 @@ export function NoAccessActions({ legalEntityId, page, roles, waiting }: Props) 
           ) : (
             <p className="text-lax-14 text-lax-muted">
               You&apos;re asking to be{" "}
-              <span className="font-medium text-lax-fg">{organisationRoleLabel(role)}</span>:{" "}
-              {organisationRoleDescription(role).toLowerCase()}
+              <span className="font-medium text-lax-fg">{organisationRoleLabel(role)}</span>.{" "}
+              {organisationRoleDescription(role)}
             </p>
           )}
           <Field label="Why you need it" error={(tried ? reasonProblem : null) ?? error}>

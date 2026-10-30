@@ -11,7 +11,7 @@ import {
 import { saveInvoiceDetailsAction } from "@/lib/organisation-team/organisation-team.actions";
 import { countriesByName } from "@/lib/ui/countries";
 import { notify } from "@/lib/ui/notify";
-import { Button, Field, Notice, Switch, TextInput, fieldBox } from "@auction/ui/lax";
+import { Button, Field, Notice, SelectMenu, Switch, TextInput } from "@auction/ui/lax";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { SettingsCard, SettingsRow } from "./settings-section";
@@ -175,22 +175,14 @@ export function InvoiceDetailsCard({ legalEntityId, details }: Props) {
                 />
               </Field>
               <Field label="Country" error={errors.country ?? null}>
-                <div className={`${fieldBox} h-lax-control-md text-lax-14`}>
-                  <select
-                    aria-label="Country"
-                    autoComplete="country"
-                    value={form.address.country}
-                    onChange={(e) => setAddress({ country: e.target.value })}
-                    disabled={pending}
-                    className="h-full w-full min-w-0 bg-transparent outline-none"
-                  >
-                    {countries.map((c) => (
-                      <option key={c.code} value={c.code}>
-                        {c.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                <SelectMenu
+                  label="Country"
+                  value={form.address.country}
+                  onValueChange={(country) => setAddress({ country })}
+                  options={countries.map((c) => ({ value: c.code, label: c.name }))}
+                  disabled={pending}
+                  className="w-full"
+                />
               </Field>
             </div>
           ) : (
