@@ -13,10 +13,17 @@ export const AdminGuestErasureStateSchema = Type.Object({
     Type.Literal("already_erased"),
     Type.Literal("claimed"),
     Type.Literal("open_order"),
+    Type.Literal("open_refund"),
+    Type.Literal("open_case"),
+    Type.Literal("cancellation_window"),
     Type.Null(),
   ]),
   /** A sentence staff can act on; null when erasure is allowed. */
   blockedMessage: Type.Union([Type.String(), Type.Null()]),
+  /** The orders behind the block, by reference; empty when erasure is allowed. */
+  blockingOrderReferences: Type.Array(Type.String()),
+  /** For a cancellation window: when erasure becomes available. */
+  availableFrom: Type.Union([Type.String({ format: "date-time" }), Type.Null()]),
 });
 
 /** Staff type the guest's email to confirm, and say why, for the audit log. */

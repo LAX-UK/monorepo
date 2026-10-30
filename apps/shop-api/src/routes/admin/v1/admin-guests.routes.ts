@@ -46,7 +46,11 @@ export async function registerAdminGuestRoutes(app: FastifyInstance, deps: Admin
       const { guestCustomerId } = request.params as GuestParams;
       const state = await deps.guestErasure.state(guestCustomerId);
       if (!state) throw notFound("Guest");
-      return { ...state, erasedAt: state.erasedAt?.toISOString() ?? null };
+      return {
+        ...state,
+        erasedAt: state.erasedAt?.toISOString() ?? null,
+        availableFrom: state.availableFrom?.toISOString() ?? null,
+      };
     },
   );
 

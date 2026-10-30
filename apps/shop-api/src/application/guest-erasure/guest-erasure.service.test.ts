@@ -19,7 +19,16 @@ const guest = (overrides: Partial<GuestErasureSnapshot> = {}): GuestErasureSnaps
   email: "ada@example.com",
   erasedAt: null,
   claimedAt: null,
-  orders: [{ reference: "LAX-S-10001", status: "paid", fulfilmentStatus: "delivered" }],
+  orders: [
+    {
+      reference: "LAX-S-10001",
+      status: "paid",
+      fulfilmentStatus: "delivered",
+      openRefund: false,
+      openCase: false,
+      cancellationEndsAt: null,
+    },
+  ],
   ...overrides,
 });
 
@@ -69,14 +78,23 @@ describe("GuestErasureService", () => {
   it("explains an order still in progress", async () => {
     const { store, erase } = storeWith(
       guest({
-        orders: [{ reference: "LAX-S-10002", status: "paid", fulfilmentStatus: "in_transit" }],
+        orders: [
+          {
+            reference: "LAX-S-10002",
+            status: "paid",
+            fulfilmentStatus: "in_transit",
+            openRefund: false,
+            openCase: false,
+            cancellationEndsAt: null,
+          },
+        ],
       }),
     );
     const service = new GuestErasureService(store, () => NOW);
     await expect(service.erase(request)).resolves.toEqual({
       kind: "blocked",
       reason: "open_order",
-      message: "Finish or cancel LAX-S-10002 first: the order still needs the guest's details.",
+      message: "Available once LAX-S-10002 is delivered, collected or cancelled.",
     });
     expect(erase).not.toHaveBeenCalled();
   });
@@ -98,6 +116,8 @@ describe("GuestErasureService", () => {
       blockedReason: "claimed",
       blockedMessage:
         "This guest now has a LAX account. Their data is erased by closing that account.",
+      blockingOrderReferences: [],
+      availableFrom: null,
     });
   });
 });

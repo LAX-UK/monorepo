@@ -19,6 +19,8 @@ export type GuestErasureState = {
   allowed: boolean;
   blockedReason: GuestErasureBlock | null;
   blockedMessage: string | null;
+  blockingOrderReferences: string[];
+  availableFrom: Date | null;
 };
 
 export type GuestErasureOutcome =
@@ -28,14 +30,16 @@ export type GuestErasureOutcome =
   | { kind: "confirmation_mismatch" }
   | { kind: "reason_invalid" };
 
-function stateOf(guest: GuestErasureSnapshot): GuestErasureState {
-  const decision = decideGuestErasure(guest);
+function stateOf(guest: GuestErasureSnapshot, now: Date): GuestErasureState {
+  const decision = decideGuestErasure({ ...guest, now });
   return {
     guestCustomerId: guest.guestCustomerId,
     erasedAt: guest.erasedAt,
     allowed: decision.kind === "allowed",
     blockedReason: decision.kind === "blocked" ? decision.reason : null,
     blockedMessage: guestErasureBlockMessage(decision),
+    blockingOrderReferences: decision.kind === "blocked" ? decision.orderReferences : [],
+    availableFrom: decision.kind === "blocked" ? (decision.until ?? null) : null,
   };
 }
 
@@ -52,7 +56,7 @@ export class GuestErasureService {
 
   async state(guestCustomerId: string): Promise<GuestErasureState | null> {
     const guest = await this.store.read(guestCustomerId);
-    return guest ? stateOf(guest) : null;
+    return guest ? stateOf(guest, this.now()) : null;
   }
 
   async erase(input: {
@@ -72,7 +76,8 @@ export class GuestErasureService {
     const outcome = await this.store.withLockedGuest(
       input.guestCustomerId,
       async (guest, erase): Promise<GuestErasureOutcome> => {
-        const decision = decideGuestErasure(guest);
+        const now = this.now();
+        const decision = decideGuestErasure({ ...guest, now });
         if (decision.kind === "blocked") {
           return {
             kind: "blocked",
@@ -83,7 +88,6 @@ export class GuestErasureService {
         if (!guestErasureConfirmed({ typed: input.confirmation, email: guest.email })) {
           return { kind: "confirmation_mismatch" };
         }
-        const now = this.now();
         const counts = await erase({ actorSubjectId: input.actorSubjectId, reason, now });
         return { kind: "erased", erasedAt: now, ...counts };
       },

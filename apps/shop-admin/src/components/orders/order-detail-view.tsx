@@ -1,12 +1,11 @@
 import { AdminBreadcrumbs } from "@/components/admin-breadcrumbs";
 import { FulfilmentSection } from "@/components/orders/fulfilment-section.client";
-import { GuestErasureAction } from "@/components/orders/guest-erasure-action.client";
 import {
   OrderHeaderActions,
   OrderLineMenu,
   SendToProductionButton,
 } from "@/components/orders/order-actions.client";
-import { guestErasedNotice } from "@/server/domain/guest-erasure.vm";
+import { guestErasedLine } from "@/server/domain/guest-erasure.vm";
 import {
   buildOrderTimeline,
   canRefundOrder,
@@ -21,7 +20,6 @@ import {
   KeyValueList,
   MappedStatusBadge,
   MetaItem,
-  Notice,
   PageHeader,
   Section,
   StatusBadge,
@@ -65,9 +63,7 @@ export function OrderDetailView({
   guestErasure?: AdminGuestErasureState | null;
 }) {
   const number = orderNumber(detail.orderId, detail.reference);
-  const erased = detail.personalDataErasedAt
-    ? guestErasedNotice(detail.personalDataErasedAt)
-    : null;
+  const erased = detail.personalDataErasedAt ? guestErasedLine(detail.personalDataErasedAt) : null;
   const buyer =
     detail.buyerName ?? detail.buyerEmail ?? (erased ? "Erased guest" : "Unknown buyer");
   const refundedPence = detail.refunds
@@ -96,6 +92,11 @@ export function OrderDetailView({
           <OrderHeaderActions
             detail={detail}
             canRefund={permissions.refund && canRefundOrder(detail)}
+            guestErasure={
+              guestErasure && !erased && detail.buyerEmail
+                ? { state: guestErasure, email: detail.buyerEmail }
+                : null
+            }
           />
         }
       />
@@ -201,19 +202,19 @@ export function OrderDetailView({
 
         <div className="flex min-w-0 flex-col gap-6">
           <Section title="Customer" bodyClassName="flex flex-col gap-3">
-            {erased ? (
-              <Notice tone="info" title={erased.title}>
-                {erased.body}
-              </Notice>
-            ) : null}
             <KeyValueList
               items={[
-                { label: "Name", value: detail.buyerName },
-                {
-                  label: "Email",
-                  value: detail.buyerEmail,
-                  ...(detail.buyerEmail ? { copyValue: detail.buyerEmail } : {}),
-                },
+                // An erased guest has no name or email left; the rows would only read "—".
+                ...(erased
+                  ? []
+                  : [
+                      { label: "Name", value: detail.buyerName },
+                      {
+                        label: "Email",
+                        value: detail.buyerEmail,
+                        ...(detail.buyerEmail ? { copyValue: detail.buyerEmail } : {}),
+                      },
+                    ]),
                 detail.buyerIsGuest
                   ? { label: "Account", value: orderBuyerAccountLabel(detail) }
                   : {
@@ -223,9 +224,7 @@ export function OrderDetailView({
                     },
               ]}
             />
-            {guestErasure && !erased && detail.buyerEmail ? (
-              <GuestErasureAction state={guestErasure} email={detail.buyerEmail} />
-            ) : null}
+            {erased ? <p className="m-0 text-staff-xs text-staff-muted">{erased}</p> : null}
           </Section>
           <Section title="Payment">
             <KeyValueList

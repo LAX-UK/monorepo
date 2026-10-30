@@ -3,52 +3,35 @@
 import { useAdminAction } from "@/components/use-admin-action.client";
 import { eraseGuestData } from "@/server/application/admin-guest-actions.server";
 import { GUEST_ERASURE_COPY } from "@/server/domain/guest-erasure.vm";
-import type { AdminGuestErasureState } from "@auction/shop-contracts";
 import {
   GUEST_ERASURE_REASON_MAX_LENGTH,
   GUEST_ERASURE_REASON_MIN_LENGTH,
 } from "@auction/shop-domain";
-import { ConfirmActionDialog, StaffButton } from "@auction/staff-ui";
-import { useId, useState } from "react";
+import { ConfirmActionDialog } from "@auction/staff-ui";
 
 /**
- * "Erase guest data" for one guest. The button says why when it cannot be used; erasing asks for
- * the guest's email typed in full, a reason for the audit log and a recent sign-in.
+ * Confirms erasing a guest's personal data: says what goes and what stays, asks for the guest's
+ * email typed in full and a reason for the audit log; a missing recent sign-in is asked for by
+ * the kit's "Confirm it's you" dialog.
  */
-export function GuestErasureAction({
-  state,
+export function GuestErasureDialog({
+  open,
+  onOpenChange,
+  guestCustomerId,
   email,
 }: {
-  state: AdminGuestErasureState;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  guestCustomerId: string;
   /** The guest's email, typed to confirm. */
   email: string;
 }) {
   const action = useAdminAction();
-  const [open, setOpen] = useState(false);
-  const blockedId = useId();
-  const blocked = !state.allowed;
-
   return (
-    <div className="flex flex-col gap-2 border-t border-staff-line-subtle pt-3">
-      <div>
-        <StaffButton
-          size="sm"
-          requires="lead.erase"
-          disabled={blocked}
-          {...(blocked ? { "aria-describedby": blockedId } : {})}
-          onClick={() => setOpen(true)}
-        >
-          {GUEST_ERASURE_COPY.button}
-        </StaffButton>
-      </div>
-      {blocked && state.blockedMessage ? (
-        <p id={blockedId} className="m-0 text-staff-xs text-staff-muted">
-          {state.blockedMessage}
-        </p>
-      ) : null}
+    <>
       <ConfirmActionDialog
         open={open}
-        onOpenChange={setOpen}
+        onOpenChange={onOpenChange}
         title={GUEST_ERASURE_COPY.title}
         description={
           <>
@@ -70,7 +53,7 @@ export function GuestErasureAction({
           const ok = await action.run(
             () =>
               eraseGuestData({
-                guestCustomerId: state.guestCustomerId,
+                guestCustomerId,
                 confirmation: email,
                 reason,
                 idempotencyKey: action.idempotencyKey,
@@ -78,10 +61,10 @@ export function GuestErasureAction({
             GUEST_ERASURE_COPY.done,
             "erase this guest's data",
           );
-          if (ok) setOpen(false);
+          if (ok) onOpenChange(false);
         }}
       />
       {action.stepUpDialog}
-    </div>
+    </>
   );
 }

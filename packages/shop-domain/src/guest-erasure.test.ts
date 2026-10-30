@@ -9,12 +9,20 @@ import {
   isGuestOrderOpen,
 } from "./guest-erasure.js";
 
+const NOW = new Date("2026-10-30T12:00:00Z");
+
 const order = (overrides: Partial<GuestErasureOrder>): GuestErasureOrder => ({
   reference: "LAX-S-10001",
   status: "paid",
   fulfilmentStatus: "delivered",
+  openRefund: false,
+  openCase: false,
+  cancellationEndsAt: null,
   ...overrides,
 });
+
+const decide = (orders: GuestErasureOrder[]) =>
+  decideGuestErasure({ erasedAt: null, claimedAt: null, orders, now: NOW });
 
 describe("guest erasure policy", () => {
   it("treats an order as open until its print has left LAX's hands", () => {
@@ -31,49 +39,63 @@ describe("guest erasure policy", () => {
     expect(isGuestOrderOpen(order({ fulfilmentStatus: "collected" }))).toBe(false);
     expect(isGuestOrderOpen(order({ status: "refunded", fulfilmentStatus: null }))).toBe(false);
     expect(isGuestOrderOpen(order({ status: "expired", fulfilmentStatus: null }))).toBe(false);
-    expect(isGuestOrderOpen(order({ status: "cancelled", fulfilmentStatus: null }))).toBe(false);
   });
 
   it("allows erasure once every order is finished", () => {
-    expect(
-      decideGuestErasure({
-        erasedAt: null,
-        claimedAt: null,
-        orders: [order({}), order({ status: "expired", fulfilmentStatus: null })],
-      }),
-    ).toEqual({ kind: "allowed" });
-    expect(decideGuestErasure({ erasedAt: null, claimedAt: null, orders: [] })).toEqual({
+    expect(decide([order({}), order({ status: "expired", fulfilmentStatus: null })])).toEqual({
       kind: "allowed",
     });
+    expect(decide([])).toEqual({ kind: "allowed" });
   });
 
   it("names the orders that still need the guest's details", () => {
-    const decision = decideGuestErasure({
-      erasedAt: null,
-      claimedAt: null,
-      orders: [
-        order({ reference: "LAX-S-10001", fulfilmentStatus: "awaiting_dispatch" }),
-        order({ reference: "LAX-S-10002" }),
-      ],
-    });
+    const decision = decide([
+      order({ reference: "LAX-S-10001", fulfilmentStatus: "awaiting_dispatch" }),
+      order({ reference: "LAX-S-10002" }),
+    ]);
     expect(decision).toEqual({
       kind: "blocked",
       reason: "open_order",
-      openOrderReferences: ["LAX-S-10001"],
+      orderReferences: ["LAX-S-10001"],
     });
     expect(guestErasureBlockMessage(decision)).toBe(
-      "Finish or cancel LAX-S-10001 first: the order still needs the guest's details.",
+      "Available once LAX-S-10001 is delivered, collected or cancelled.",
     );
   });
 
+  it("waits for a refund, a dispute, return or problem report", () => {
+    const refund = decide([order({ openRefund: true })]);
+    expect(refund).toMatchObject({ reason: "open_refund" });
+    expect(guestErasureBlockMessage(refund)).toBe(
+      "Available once the refund on LAX-S-10001 has gone through.",
+    );
+    const dispute = decide([order({ openCase: true })]);
+    expect(dispute).toMatchObject({ reason: "open_case" });
+    expect(guestErasureBlockMessage(dispute)).toContain("problem report on LAX-S-10001 is closed");
+  });
+
+  it("waits until the right to cancel has ended", () => {
+    const decision = decide([order({ cancellationEndsAt: new Date("2026-11-13T12:00:00Z") })]);
+    expect(decision).toMatchObject({ reason: "cancellation_window" });
+    expect(guestErasureBlockMessage(decision)).toBe(
+      "Available after 13 Nov 2026, when the right to cancel LAX-S-10001 ends.",
+    );
+    expect(decide([order({ cancellationEndsAt: new Date("2026-10-01T00:00:00Z") })])).toEqual({
+      kind: "allowed",
+    });
+    // A refunded order has nothing left to cancel.
+    expect(
+      decide([order({ status: "refunded", cancellationEndsAt: new Date("2026-11-13T12:00:00Z") })]),
+    ).toEqual({ kind: "allowed" });
+  });
+
   it("sends a claimed guest to account closure, and never erases twice", () => {
-    const at = new Date("2026-10-30T12:00:00Z");
-    const claimed = decideGuestErasure({ erasedAt: null, claimedAt: at, orders: [] });
+    const claimed = decideGuestErasure({ erasedAt: null, claimedAt: NOW, orders: [], now: NOW });
     expect(claimed).toMatchObject({ kind: "blocked", reason: "claimed" });
     expect(guestErasureBlockMessage(claimed)).toContain("closing that account");
-    expect(decideGuestErasure({ erasedAt: at, claimedAt: at, orders: [] })).toMatchObject({
-      reason: "already_erased",
-    });
+    expect(
+      decideGuestErasure({ erasedAt: NOW, claimedAt: NOW, orders: [], now: NOW }),
+    ).toMatchObject({ reason: "already_erased" });
     expect(guestErasureBlockMessage({ kind: "allowed" })).toBeNull();
   });
 

@@ -1,21 +1,57 @@
+import type { AdminGuestErasureState } from "@auction/shop-contracts";
 import { GUEST_RECORD_RETENTION_YEARS } from "@auction/shop-domain";
 import { formatStaffDate } from "@auction/staff-ui";
 
 /** What staff read around erasing a guest's personal data. */
 export const GUEST_ERASURE_COPY = {
-  button: "Erase guest data",
+  menuItem: "Erase guest data…",
   title: "Erase this guest's personal data?",
   description: `Their name, email, phone and delivery address are removed from their orders, enquiries and leads, their order links stop working and their CRM lead is deleted. The orders and invoices stay, without those details, for the ${GUEST_RECORD_RETENTION_YEARS}-year accounting record. This cannot be undone.`,
   confirm: "Erase guest data",
   done: "Guest data erased",
+  unavailable: "Not available for this guest yet",
 } as const;
 
-/** The line shown in place of the guest's details once they have been erased. */
-export function guestErasedNotice(erasedAt: string): { title: string; body: string } {
-  return {
-    title: `Personal data erased on ${formatStaffDate(erasedAt)}`,
-    body: "The order and its invoice are kept for the accounting record, without the guest's name, email, phone or address.",
-  };
+/**
+ * The quiet line the Customer panel keeps once a guest's data is erased. It names LAX, not the
+ * staff member: who erased it is in the audit log.
+ */
+export function guestErasedLine(erasedAt: string): string {
+  return `Guest data erased on ${formatStaffDate(erasedAt)} by LAX`;
+}
+
+/**
+ * Why "Erase guest data…" has to wait, short enough for a line under a menu item: the full
+ * sentence names every order, this one says "this order" when the block is the order on screen.
+ */
+export function guestErasureMenuReason(
+  state: AdminGuestErasureState,
+  currentReference: string | undefined,
+): string | null {
+  if (state.allowed || !state.blockedReason) return null;
+  const refs = state.blockingOrderReferences;
+  const which =
+    refs.length === 1 && refs[0] === currentReference
+      ? "this order"
+      : refs.length === 1
+        ? refs[0]
+        : "other orders";
+  switch (state.blockedReason) {
+    case "already_erased":
+      return "Already erased";
+    case "claimed":
+      return "This guest now has a LAX account";
+    case "open_order":
+      return `Available once ${which} is complete`;
+    case "open_refund":
+      return `Available once the refund on ${which} is done`;
+    case "open_case":
+      return `Available once the case on ${which} is closed`;
+    case "cancellation_window":
+      return state.availableFrom
+        ? `Available after ${formatStaffDate(state.availableFrom)}`
+        : "Available once the right to cancel ends";
+  }
 }
 
 /**

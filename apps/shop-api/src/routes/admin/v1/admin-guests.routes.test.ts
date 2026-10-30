@@ -22,7 +22,16 @@ const GUEST: GuestErasureSnapshot = {
   email: "ada@example.com",
   erasedAt: null,
   claimedAt: null,
-  orders: [{ reference: "LAX-S-10001", status: "paid", fulfilmentStatus: "delivered" }],
+  orders: [
+    {
+      reference: "LAX-S-10001",
+      status: "paid",
+      fulfilmentStatus: "delivered",
+      openRefund: false,
+      openCase: false,
+      cancellationEndsAt: null,
+    },
+  ],
 };
 
 const BODY = {
@@ -139,7 +148,16 @@ describe("admin guest erasure routes", () => {
     const { app } = await buildApp("shop_admin", {
       guest: {
         ...GUEST,
-        orders: [{ reference: "LAX-S-10002", status: "paid", fulfilmentStatus: "in_production" }],
+        orders: [
+          {
+            reference: "LAX-S-10002",
+            status: "paid",
+            fulfilmentStatus: "in_production",
+            openRefund: false,
+            openCase: false,
+            cancellationEndsAt: null,
+          },
+        ],
       },
     });
     const response = await app.inject({
@@ -167,6 +185,8 @@ describe("admin guest erasure routes", () => {
       allowed: true,
       blockedReason: null,
       blockedMessage: null,
+      blockingOrderReferences: [],
+      availableFrom: null,
     });
     await app.close();
   });

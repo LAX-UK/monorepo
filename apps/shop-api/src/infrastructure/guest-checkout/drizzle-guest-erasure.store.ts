@@ -47,6 +47,23 @@ async function readSnapshot(
       reference: shopOrder.reference,
       status: shopOrder.status,
       fulfilmentStatus: shopFulfilment.status,
+      cancellationEndsAt: shopOrder.refundPeriodEndsAt,
+      // Each of these still needs to reach the guest, so erasure waits for it.
+      openRefund: sql<boolean>`EXISTS (
+        SELECT 1 FROM shop_refund r WHERE r.order_id = ${shopOrder.id} AND r.status = 'pending'
+      )`,
+      openCase: sql<boolean>`(
+        EXISTS (SELECT 1 FROM shop_dispute d WHERE d.order_id = ${shopOrder.id} AND d.status = 'opened')
+        OR EXISTS (
+          SELECT 1 FROM shop_return rt JOIN shop_order_line l ON l.id = rt.order_line_id
+          WHERE l.order_id = ${shopOrder.id} AND rt.status IN ('requested', 'in_transit')
+        )
+        OR EXISTS (
+          SELECT 1 FROM shop_general_enquiry g
+          WHERE g.topic = 'order_problem' AND g.context_slug = ${shopOrder.reference}
+            AND g.status <> 'closed'
+        )
+      )`,
     })
     .from(shopOrder)
     .leftJoin(shopFulfilment, eq(shopFulfilment.orderId, shopOrder.id))
@@ -60,6 +77,9 @@ async function readSnapshot(
       reference: order.reference,
       status: order.status,
       fulfilmentStatus: order.fulfilmentStatus ?? null,
+      openRefund: Boolean(order.openRefund),
+      openCase: Boolean(order.openCase),
+      cancellationEndsAt: order.cancellationEndsAt,
     })),
   };
 }
