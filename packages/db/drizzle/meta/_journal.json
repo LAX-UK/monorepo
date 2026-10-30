@@ -1765,6 +1765,13 @@
       "when": 1797062400000,
       "tag": "0251_payment_open_per_account",
       "breakpoints": true
+    },
+    {
+      "idx": 253,
+      "version": "7",
+      "when": 1797235200000,
+      "tag": "0253_shop_guest_checkout",
+      "breakpoints": true
     }
   ]
 }

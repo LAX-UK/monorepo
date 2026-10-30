@@ -15,14 +15,17 @@ import {
   createListSavedDeliveryAddressesHandler,
   createSaveDeliveryAddressHandler,
 } from "./application/handlers/delivery-address-book.handler.js";
+import type { FixedWindowCounter } from "./application/ports/fixed-window-counter.js";
 import type { PaymentEventProcessor } from "./application/ports/payment-event.processor.js";
 import type { CommerceRoutesDeps, StripeWebhookDeps } from "./commerce-route-deps.js";
+import { createGuestCheckoutDeps } from "./create-guest-checkout-deps.js";
 import type { ShopApiEnv } from "./env.js";
 import { createDrizzleCommerceRepository } from "./infrastructure/drizzle-commerce.repository.js";
 import { createDrizzlePaymentEventProcessor } from "./infrastructure/drizzle-payment-event.processor.js";
 import { createDrizzleShopNotificationPublisher } from "./infrastructure/drizzle-shop-notification.publisher.js";
 import { createDrizzleStripeMoneyWebhookProcessor } from "./infrastructure/drizzle-stripe-money-webhook.processor.js";
 import { createHttpIdentityAddressBook } from "./infrastructure/http-identity-address-book.js";
+import { createIdentityMachineClient } from "./infrastructure/identity-machine-client.js";
 import { loadShopVatPolicy } from "./infrastructure/shop-vat-policy.js";
 import { createStripePaymentIntentMetadataFetcher } from "./infrastructure/stripe-refund-metadata.js";
 import { createStripeShopCheckoutGateway } from "./infrastructure/stripe-shop-checkout.gateway.js";
@@ -38,6 +41,7 @@ import { constructStripeWebhookEvent } from "./infrastructure/stripe-webhook-ver
 export function createCommerceServices(
   db: Database,
   env: ShopApiEnv,
+  options: { rateLimitCounter: FixedWindowCounter },
 ): { commerce: CommerceRoutesDeps; stripeWebhook: StripeWebhookDeps } {
   const paymentGateway = createStripeShopCheckoutGateway({
     secretKey: env.STRIPE_SECRET_KEY,
@@ -53,17 +57,35 @@ export function createCommerceServices(
     editionOrderLimit: env.SHOP_EDITION_ORDER_LIMIT,
   });
 
-  // Identity shares one machine client across products; without it checkout asks for entry only.
-  const addressBook =
+  // Identity shares one machine client across products. Without it checkout asks for entry
+  // only, and guest checkout is off: no one continues as a guest without the account check.
+  const identityConfig =
     env.IDENTITY_MACHINE_CLIENT_ID && env.IDENTITY_MACHINE_CLIENT_SECRET
-      ? createHttpIdentityAddressBook({
+      ? {
           issuerBaseUrl: env.OIDC_INTERNAL_BASE_URL ?? env.OIDC_ISSUER_URL,
           clientId: env.IDENTITY_MACHINE_CLIENT_ID,
           clientSecret: env.IDENTITY_MACHINE_CLIENT_SECRET,
-        })
+        }
       : null;
+  const addressBook = identityConfig ? createHttpIdentityAddressBook(identityConfig) : null;
 
   const notifications = createDrizzleShopNotificationPublisher();
+  const invoiceIssuer = {
+    supplier: legalEntityFor("shop"),
+    vatNumber: env.SHOP_VAT_REGISTRATION_NUMBER ?? legalEntityFor("shop").vatNumber ?? null,
+  };
+  const guestCheckout = identityConfig
+    ? createGuestCheckoutDeps(db, {
+        identity: createIdentityMachineClient(identityConfig),
+        checkout: repository,
+        orders: repository,
+        notifications,
+        rateLimitCounter: options.rateLimitCounter,
+        storefrontUrl: env.SHOP_STOREFRONT_URL,
+        domainEventMode,
+        invoiceIssuer,
+      })
+    : undefined;
   const opsAlertEmail = env.SHOP_OPS_ALERT_EMAIL ?? env.SHOP_ENQUIRY_NOTIFICATION_EMAIL ?? null;
   const paymentEvents: PaymentEventProcessor = createDrizzlePaymentEventProcessor(db, {
     notifications,
@@ -97,10 +119,8 @@ export function createCommerceServices(
       listOrders: createListOrdersHandler(repository),
       getOrder: createGetOrderHandler(repository),
       getCustomerProfile: (subject) => repository.getCustomerProfile(subject),
-      invoiceIssuer: {
-        supplier: legalEntityFor("shop"),
-        vatNumber: env.SHOP_VAT_REGISTRATION_NUMBER ?? legalEntityFor("shop").vatNumber ?? null,
-      },
+      invoiceIssuer,
+      ...(guestCheckout ? { guestCheckout } : {}),
       savedAddresses: {
         list: createListSavedDeliveryAddressesHandler(addressBook),
         save: createSaveDeliveryAddressHandler(addressBook),

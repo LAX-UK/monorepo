@@ -11,12 +11,14 @@ import {
   shopProduct,
   shopProductVariant,
 } from "@auction/db/schema";
-import { computePayoutDueAt, orderVatBreakdown } from "@auction/shop-domain";
+import { computePayoutDueAt, isGuestOrderSubject, orderVatBreakdown } from "@auction/shop-domain";
 import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type { PaymentCheckoutGateway } from "../application/ports/commerce.ports.js";
 import type { PaymentEventProcessor } from "../application/ports/payment-event.processor.js";
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import { ShopPaymentWebhookError } from "../errors/shop-payment-webhook.error.js";
+import { recordGuestOrderPaid } from "./guest-checkout/guest-lead-events.js";
+import { guestOrderLinkUrl, issueGuestOrderLink } from "./guest-checkout/guest-order-link-token.js";
 import {
   assertCheckoutNotAlreadyPaid,
   assertCheckoutNotAsyncPending,
@@ -416,7 +418,22 @@ export async function completeShopCheckoutSession(
       },
     });
 
+    if (order.guestCustomerId) {
+      await recordGuestOrderPaid(
+        tx as Database,
+        { guestCustomerId: order.guestCustomerId, paidAt: input.paidAt },
+        options.domainEventMode ?? "off",
+      );
+    }
+
     if (options.notifications && options.storefrontUrl) {
+      // A guest has no account to open the order from, so the receipt carries a link that does.
+      const guestOrderUrl = isGuestOrderSubject(order.identitySubjectId)
+        ? guestOrderLinkUrl(
+            options.storefrontUrl,
+            (await issueGuestOrderLink(tx as Database, order.id, new Date())).token,
+          )
+        : undefined;
       const lineDetails = await tx
         .select({
           artworkTitle: shopArtwork.title,
@@ -460,6 +477,7 @@ export async function completeShopCheckoutSession(
         totalPence: order.totalPence,
         vatAmountPence: vat ? vat.vatPence : null,
         storefrontUrl: options.storefrontUrl,
+        ...(guestOrderUrl ? { guestOrderUrl } : {}),
         lines: receiptLines.map((line) => ({
           artworkTitle: line.artworkTitle,
           artworkSlug: line.artworkSlug,

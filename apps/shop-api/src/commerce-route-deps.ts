@@ -1,5 +1,6 @@
 import type { LegalEntity } from "@auction/branding";
 import type { EnquiryRateLimiter } from "./application/enquiry-rate-limit.js";
+import type { GuestCheckoutService } from "./application/guest-checkout/guest-checkout.service.js";
 import type { createCancelCheckoutOrderHandler } from "./application/handlers/commerce-handlers.js";
 import type { createCheckoutOrderHandler } from "./application/handlers/commerce-handlers.js";
 import type { createGetBasketHandler } from "./application/handlers/commerce-handlers.js";
@@ -14,6 +15,7 @@ import type {
   createSaveDeliveryAddressHandler,
 } from "./application/handlers/delivery-address-book.handler.js";
 import type { OrderReader } from "./application/ports/commerce.ports.js";
+import type { GuestOrderLinks } from "./application/ports/guest-checkout.ports.js";
 import type { OrderProblemReportWriter } from "./application/ports/order-problem-report.port.js";
 import type { StripeMoneyWebhookOutcome } from "./application/ports/stripe-money-webhook.types.js";
 import type {
@@ -46,11 +48,22 @@ export type CommerceRoutesDeps = {
   invoiceIssuer: { supplier: LegalEntity; vatNumber: string | null };
   /** "Report a problem" on an order; the limiter is the one enquiries share. */
   orderProblems?: { writer: OrderProblemReportWriter; rateLimiter: EnquiryRateLimiter };
+  /** Checkout without an account; absent where Identity's machine client is not configured. */
+  guestCheckout?: GuestCheckoutRoutesDeps;
   /** The LAX Account address book; absent where Identity's machine client is not configured. */
   savedAddresses?: {
     list: ReturnType<typeof createListSavedDeliveryAddressesHandler>;
     save: ReturnType<typeof createSaveDeliveryAddressHandler>;
   };
+};
+
+export type GuestCheckoutRoutesDeps = {
+  service: GuestCheckoutService;
+  links: GuestOrderLinks;
+  /** Asking for a new order link; kept apart from the checkout allowance. */
+  linkRateLimiter: EnquiryRateLimiter;
+  getCustomerProfile: OrderReader["getCustomerProfile"];
+  invoiceIssuer: { supplier: LegalEntity; vatNumber: string | null };
 };
 
 export type StripeWebhookDeps = {

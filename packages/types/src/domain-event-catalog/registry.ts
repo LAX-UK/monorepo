@@ -43,6 +43,8 @@ import {
   shopEditionReservedPayloadSchemaV1,
   shopEditionSoldPayloadSchemaV1,
   shopEditionsAllocatedPayloadSchemaV1,
+  shopGuestLeadClaimedPayloadSchemaV1,
+  shopGuestLeadRecordedPayloadSchemaV1,
   shopOrderPaidPayloadSchemaV1,
   shopSaleAuthorityChangedPayloadSchemaV1,
 } from "./shop-payload-schemas.js";
@@ -184,6 +186,8 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "shop.edition.sold",
   "shop.editions.allocated",
   "shop.order.paid",
+  "shop.guest_lead.recorded",
+  "shop.guest_lead.claimed",
   "shop.sale_authority.changed",
   "shop.production.started",
   "shop.fulfilment.dispatched",
@@ -530,6 +534,20 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
     consumers: ["zoho"],
     idempotencyPolicy: "aggregate_event_unique",
     piiClassification: "contains_pii",
+  },
+  "shop.guest_lead.recorded": {
+    schema: shopGuestLeadRecordedPayloadSchemaV1,
+    producers: ["shop-api"],
+    consumers: ["zoho"],
+    idempotencyPolicy: "none",
+    piiClassification: "contains_pii",
+  },
+  "shop.guest_lead.claimed": {
+    schema: shopGuestLeadClaimedPayloadSchemaV1,
+    producers: ["shop-api"],
+    consumers: ["zoho"],
+    idempotencyPolicy: "aggregate_event_unique",
+    piiClassification: "operational",
   },
   "shop.artwork.created": {
     schema: shopArtworkCreatedPayloadSchemaV1,

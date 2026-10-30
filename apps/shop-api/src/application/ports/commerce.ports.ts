@@ -46,7 +46,10 @@ export type ShopDeliveryAddress = {
 };
 
 export type CheckoutOrderInput = {
+  /** The order's owner: the shopper's subject, or the guest owner value for a guest order. */
   subject: string;
+  /** Set for a guest order: the guest, and the anonymous basket that must be theirs. */
+  guest?: { guestCustomerId: string; basketTokenHash: string };
   basketId: string;
   fulfilment: ShopFulfilmentOption;
   idempotencyKey: string;
