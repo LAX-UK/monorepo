@@ -23,7 +23,10 @@ export function createStubEditorialRepository(
     getArtistRelations: async () => null,
     listPages: async () => [],
     getPageBySlug: async () => null,
-    insertGeneralEnquiry: async () => ({ enquiryId: "11111111-1111-4111-8111-111111111111" }),
+    insertGeneralEnquiry: async () => ({
+      enquiryId: "11111111-1111-4111-8111-111111111111",
+      reference: "E-2041",
+    }),
     listGeneralEnquiriesForSubject: async () => [],
     getDraftEntityById: async () => null,
     getAdminPageById: async () => null,

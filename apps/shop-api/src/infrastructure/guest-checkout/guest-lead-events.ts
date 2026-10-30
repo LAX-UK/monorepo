@@ -1,6 +1,12 @@
 import type { Database } from "@auction/db";
 import { shopGuestCustomer } from "@auction/db/schema";
-import { GUEST_LEAD_SOURCE, guestLeadStatus, guestOrderSubject } from "@auction/shop-domain";
+import {
+  GUEST_LEAD_SOURCE_LABEL,
+  type GuestLeadSource,
+  guestLeadStatus,
+  guestOrderSubject,
+  normaliseGuestEmail,
+} from "@auction/shop-domain";
 import { eq, sql } from "drizzle-orm";
 import {
   type ShopDomainEventPublisherMode,
@@ -27,7 +33,7 @@ export async function publishGuestLead(
       email: row.email,
       name: row.name,
       status: guestLeadStatus(row),
-      source: GUEST_LEAD_SOURCE,
+      source: GUEST_LEAD_SOURCE_LABEL[row.source],
       marketingConsent: row.marketingConsent,
       marketingConsentAt: row.marketingConsentAt?.toISOString() ?? null,
       marketingConsentVersion: row.marketingConsentVersion,
@@ -57,4 +63,51 @@ export async function recordGuestOrderPaid(
     .where(eq(shopGuestCustomer.id, input.guestCustomerId))
     .returning();
   if (row?.paidOrderCount === 1) await publishGuestLead(tx, row, mode);
+}
+
+/**
+ * A guest enquiry makes the sender a lead, or counts on the lead they already are. A new lead is
+ * published; later enquiries only update the counts staff see.
+ */
+export async function recordGuestEnquiryLead(
+  tx: Database,
+  input: {
+    email: string;
+    name: string | null;
+    phone: string | null;
+    source: GuestLeadSource;
+    at: Date;
+  },
+  mode: ShopDomainEventPublisherMode,
+): Promise<void> {
+  const email = normaliseGuestEmail(input.email);
+  const [created] = await tx
+    .insert(shopGuestCustomer)
+    .values({
+      email,
+      name: input.name,
+      phone: input.phone,
+      source: input.source,
+      firstSeenAt: input.at,
+      lastSeenAt: input.at,
+      enquiryCount: 1,
+      lastEnquiryAt: input.at,
+    })
+    .onConflictDoNothing({ target: shopGuestCustomer.email })
+    .returning();
+  if (created) {
+    await publishGuestLead(tx, created, mode);
+    return;
+  }
+  await tx
+    .update(shopGuestCustomer)
+    .set({
+      enquiryCount: sql`${shopGuestCustomer.enquiryCount} + 1`,
+      lastEnquiryAt: input.at,
+      lastSeenAt: input.at,
+      updatedAt: input.at,
+      ...(input.name ? { name: input.name } : {}),
+      ...(input.phone ? { phone: input.phone } : {}),
+    })
+    .where(eq(shopGuestCustomer.email, email));
 }

@@ -13,6 +13,7 @@ import {
   EditorialStorySummarySchema,
   EditorialVenueDetailSchema,
   EditorialVenueSummarySchema,
+  GeneralEnquiryCreatedSchema,
   PortalGeneralEnquiriesResponseSchema,
   RegisterGeneralEnquiryRequestSchema,
   ShopApiErrorBodySchema,
@@ -261,7 +262,7 @@ export async function registerEditorialRoutes(app: FastifyInstance, deps: Editor
         tags: ["editorial"],
         body: RegisterGeneralEnquiryRequestSchema,
         response: {
-          201: Type.Object({ enquiryId: Type.String({ format: "uuid" }) }),
+          201: GeneralEnquiryCreatedSchema,
           400: ShopApiErrorBodySchema,
           401: ShopApiErrorBodySchema,
           403: ShopApiErrorBodySchema,

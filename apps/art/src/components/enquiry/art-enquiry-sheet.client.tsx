@@ -90,6 +90,7 @@ export function ArtEnquirySheet({
               ref={sentRef}
               vm={confirmation}
               email={state.email}
+              reference={state.reference}
               onClose={() => onOpenChange(false)}
             />
           ) : (

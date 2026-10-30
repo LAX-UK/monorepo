@@ -30,6 +30,11 @@ export const userProfileUpdatedPayloadSchemaV1 = z.object({
   name: z.string().optional(),
   phone: z.string().nullable().optional(),
   image: z.string().nullable().optional(),
+  /**
+   * True when `email` is a newly verified address (an email change both inboxes confirmed). Shop
+   * attaches a guest's orders and enquiries to the account only on a verified address.
+   */
+  emailVerified: z.boolean().optional(),
   updatedAt: rfc3339Timestamp,
 });
 

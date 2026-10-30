@@ -20,7 +20,13 @@ export function createDrizzleGuestCustomerStore(
       return db.transaction(async (tx) => {
         const inserted = await tx
           .insert(shopGuestCustomer)
-          .values({ email: contact.email, firstSeenAt: now, lastSeenAt: now })
+          .values({
+            email: contact.email,
+            source: "shop_checkout",
+            checkoutStartedAt: now,
+            firstSeenAt: now,
+            lastSeenAt: now,
+          })
           .onConflictDoNothing({ target: shopGuestCustomer.email })
           .returning({ id: shopGuestCustomer.id });
         const [existing] = await tx
@@ -32,12 +38,15 @@ export function createDrizzleGuestCustomerStore(
         if (!existing) throw new Error("Guest customer could not be recorded");
 
         const isNew = inserted.length > 0;
+        // A lead that only enquired reaches checkout: its status changes, so it is published.
+        const firstCheckout = existing.checkoutStartedAt === null;
         const consentGiven = contact.marketingConsent && !existing.marketingConsent;
         const [row] = await tx
           .update(shopGuestCustomer)
           .set({
             lastSeenAt: now,
             updatedAt: now,
+            ...(firstCheckout ? { checkoutStartedAt: now } : {}),
             ...(contact.name ? { name: contact.name } : {}),
             ...(contact.phone ? { phone: contact.phone } : {}),
             ...(consentGiven
@@ -51,7 +60,7 @@ export function createDrizzleGuestCustomerStore(
           .where(eq(shopGuestCustomer.id, existing.id))
           .returning();
         if (!row) throw new Error("Guest customer could not be recorded");
-        if (isNew || consentGiven) {
+        if (isNew || firstCheckout || consentGiven) {
           await publishGuestLead(tx as Database, row, options.domainEventMode);
         }
         return { guestCustomerId: row.id };

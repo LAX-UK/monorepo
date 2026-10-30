@@ -11,6 +11,8 @@ export type MarketingEnquiryConfirmationProps = {
   title: string;
   /** Who replies, how and when, e.g. "The gallery team will reply to ana@… within one working day." */
   lead: string;
+  /** The enquiry's reference ("E-2041"), shown under the promise for the sender to quote. */
+  reference?: string | null;
   /** What happens next, in order; two or three short steps. */
   steps: readonly MarketingEnquiryStep[];
   /** Heading over the direct lines, e.g. "Prefer to talk?". */
@@ -33,6 +35,7 @@ export const MarketingEnquiryConfirmation = forwardRef<
   {
     title,
     lead,
+    reference,
     steps,
     contactTitle = "Prefer to talk?",
     details = [],
@@ -50,6 +53,14 @@ export const MarketingEnquiryConfirmation = forwardRef<
         tabIndex={-1}
         title={title}
         description={lead}
+        actions={
+          reference ? (
+            <p className="m-0 font-body text-sm leading-5 text-on-surface-variant">
+              Your reference{" "}
+              <span className="font-medium text-on-surface tabular-nums">{reference}</span>
+            </p>
+          ) : undefined
+        }
         className="pt-4! pb-0! outline-none"
       />
       {steps.length > 0 ? (
