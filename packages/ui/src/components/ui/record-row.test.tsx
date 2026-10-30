@@ -170,6 +170,19 @@ describe("RecordRow", () => {
     ).toBeTruthy();
   });
 
+  it("reads a date figure label first on a narrow list and value first on a wide one", () => {
+    const li = row(
+      <RecordRow
+        title="Night harbour"
+        figures={[{ value: "12 Nov", label: "choose by", labelFirst: true }]}
+      />,
+    );
+    const term = li.querySelector("[data-record-figures] dt") as HTMLElement;
+    const value = li.querySelector("[data-record-figures] dd") as HTMLElement;
+    expect(term.className).toContain("order-1 @2xl:order-2");
+    expect(value.className).toContain("order-2 @2xl:order-1");
+  });
+
   it("keeps the status and action columns on an aligned row that has neither", () => {
     const li = row(
       <RecordRow

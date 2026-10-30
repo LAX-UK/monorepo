@@ -81,6 +81,11 @@ export type RecordFigure = {
   id?: string;
   value: React.ReactNode;
   label: string;
+  /**
+   * A narrow list reads the label first ("choose by 12 Nov"), as a date reads, instead of after
+   * the value ("£6,800 current bid"). A wide list keeps the value above its label either way.
+   */
+  labelFirst?: boolean;
 };
 
 /**
@@ -100,10 +105,19 @@ function RecordFigures({ figures }: { figures: readonly RecordFigure[] }) {
             index === 0 ? "flex" : "hidden @2xl:flex",
           )}
         >
-          <dt className="order-2 truncate font-body text-label-3 leading-5 text-on-surface-variant">
+          <dt
+            // Joined, not merged: the type step and the colour are both `text-` classes.
+            className={`truncate font-body text-label-3 leading-5 text-on-surface-variant ${
+              figure.labelFirst ? "order-1 @2xl:order-2" : "order-2"
+            }`}
+          >
             {figure.label}
           </dt>
-          <dd className="order-1 truncate font-body text-sm leading-5.5 font-medium tabular-nums text-on-surface">
+          <dd
+            className={`truncate font-body text-sm leading-5.5 font-medium tabular-nums text-on-surface ${
+              figure.labelFirst ? "order-2 @2xl:order-1" : "order-1"
+            }`}
+          >
             {figure.value}
           </dd>
         </div>
