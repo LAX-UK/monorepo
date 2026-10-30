@@ -28,7 +28,7 @@ import {
 import Link from "next/link";
 
 const linkClass =
-  "staff-focus rounded-staff-xs font-medium text-staff-fg underline decoration-staff-line-strong underline-offset-4 hover:decoration-staff-fg";
+  "staff-focus rounded-staff-xs text-staff-sm font-medium text-staff-fg underline decoration-staff-line-strong underline-offset-4 hover:decoration-staff-fg";
 
 /**
  * One guest lead: who they are, what they agreed to, where they are in the CRM, and every order
@@ -162,7 +162,8 @@ export function LeadDetailView({
                 <KeyValueList
                   items={[
                     {
-                      label: lead.crmRecord.module,
+                      // "Leads" becomes "Lead record", "Contacts" becomes "Contact record".
+                      label: `${lead.crmRecord.module.replace(/s$/, "")} record`,
                       value: lead.crmRecord.recordId,
                       copyValue: lead.crmRecord.recordId,
                     },

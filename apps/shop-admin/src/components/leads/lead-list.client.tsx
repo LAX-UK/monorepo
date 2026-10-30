@@ -104,7 +104,7 @@ export function LeadList({
       {
         id: "status",
         header: "Status",
-        width: "176px",
+        width: "168px",
         mobile: "badge",
         truncate: false,
         cell: (row) => {
@@ -115,29 +115,29 @@ export function LeadList({
       {
         id: "source",
         header: "Source",
-        width: "176px",
-        hideBelow: "lg",
+        width: "152px",
+        hideBelow: "xl",
         mobile: "meta",
         cell: (row) => GUEST_LEAD_SOURCE_LABEL[row.source],
       },
       {
         id: "activity",
         header: "Orders and enquiries",
-        width: "184px",
+        width: "160px",
         mobile: "meta",
         cell: (row) => leadActivitySummary(row),
       },
       {
         id: "consent",
         header: "Consent",
-        width: "152px",
+        width: "120px",
         hideBelow: "xl",
         cell: (row) => (row.consent.given ? "Opted in" : "Not opted in"),
       },
       {
         id: "crm",
         header: "CRM",
-        width: "120px",
+        width: "112px",
         hideBelow: "lg",
         truncate: false,
         cell: (row) => {
@@ -148,7 +148,7 @@ export function LeadList({
       {
         id: "lastSeen",
         header: "Last seen",
-        width: "136px",
+        width: "120px",
         sortable: true,
         sortValue: (row) => row.lastSeenAt,
         defaultSortDirection: "desc",
@@ -285,6 +285,8 @@ export function LeadList({
         columns,
         data: page.items,
         getRowId: (row) => row.leadId,
+        // Consent is in the Display menu and in the export; the lead's name needs the room.
+        defaultHiddenColumns: ["consent"],
         defaultDensity: "comfortable",
         defaultSort: { columnId: "lastSeen", direction: "desc" },
         onRowOpen: (row) => navigate(`/leads/${row.leadId}`),
