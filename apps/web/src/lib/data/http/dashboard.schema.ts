@@ -30,12 +30,23 @@ const manualReviewReasonSchema = z.enum([
   "finance_release_required",
 ]);
 
+const placedBySchema = z
+  .object({ userId: z.string(), name: z.string().nullable() })
+  .nullable()
+  .catch(null);
+
 const bidWithLotRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transform(
   (row): BidWithLot => ({
     bid: bidSchema.parse(row.bid),
     lot: row.lot == null ? null : lotSchema.parse(row.lot),
+    ...(row.placedBy === undefined ? {} : { placedBy: placedBySchema.parse(row.placedBy) }),
   }),
 ) as z.ZodType<BidWithLot>;
+
+const alertAmountSchema = z.string().nullable().catch(null);
+const artistAlertSchema = z
+  .object({ medium: alertAmountSchema, priceMin: alertAmountSchema, priceMax: alertAmountSchema })
+  .catch({ medium: null, priceMin: null, priceMax: null });
 
 const portfolioRowSchema = z
   .preprocess(toObjectRecord, z.record(z.unknown()))
@@ -76,6 +87,7 @@ const artistFollowRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())
     watchlistId: String(row.id ?? ""),
     artistId: String(row.artistId ?? ""),
     createdAt: zCoerceDate.parse(row.createdAt),
+    alert: artistAlertSchema.parse(row.alert),
   }),
 ) as z.ZodType<ArtistFollowRow>;
 
