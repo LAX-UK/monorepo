@@ -13,7 +13,11 @@ function SeveralInvoicesReceipt({
   lines,
   amount,
   paymentMethod,
-}: Required<Pick<Vars, "lines">> & Pick<Vars, "amount" | "paymentMethod">) {
+}: {
+  lines: NonNullable<Vars["lines"]>;
+  amount: string | null | undefined;
+  paymentMethod: string | null | undefined;
+}) {
   return (
     <>
       <TextBlock>

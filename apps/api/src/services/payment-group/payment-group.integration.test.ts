@@ -8,7 +8,6 @@ import {
   payout,
   payoutLine,
   processedStripeEvents,
-  user,
 } from "@auction/db/schema";
 import {
   DrizzlePaymentGroupRepository,
@@ -22,6 +21,10 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vites
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
 import { mockDomainEventSink } from "../../test/domain-event-sink-mock.js";
 import { transactionRunnerFromDb } from "../../test/transaction-runner-from-db.js";
+import {
+  deleteIdentityUserFixtures,
+  seedIdentityUserFixtures,
+} from "../../testing/identity-user-fixtures.js";
 import { PaymentCaptureService } from "../payment/payment-capture.service.js";
 import { PayoutAdjustmentService } from "../payout/payout-adjustment.service.js";
 import { StripePaymentWebhookService } from "../stripe-payment-webhook.service.js";
@@ -160,14 +163,9 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
 
   beforeAll(async () => {
     const now = new Date();
-    await db.insert(user).values({
-      id: payerId,
-      name: "Payer",
-      email: `${payerId}@integration.test`,
-      emailVerified: true,
-      createdAt: now,
-      updatedAt: now,
-    });
+    await seedIdentityUserFixtures(db, [
+      { id: payerId, name: "Payer", email: `${payerId}@integration.test` },
+    ]);
     await db.insert(legalEntity).values([
       {
         id: orgId,
@@ -249,7 +247,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
       .delete(processedStripeEvents)
       .where(like(processedStripeEvents.eventId, `evt_ps_${run}_%`));
     await db.delete(legalEntity).where(inArray(legalEntity.id, [orgId, sellerId]));
-    await db.delete(user).where(eq(user.id, payerId));
+    await deleteIdentityUserFixtures(db, [payerId]);
   });
 
   it("lets only one of two concurrent payments over overlapping invoices hold them", async () => {
