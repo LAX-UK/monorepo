@@ -6,6 +6,7 @@ import {
   DrizzleLaxAdminRolesRepository,
   DrizzleLaxStaffAccessRepository,
   DrizzleOrganisationBiddingLimitRepository,
+  DrizzleRecordPeopleReader,
   DrizzleStaffAccessReviewReader,
   DrizzleStaffNoticeRecipientReader,
   DrizzleStaffRoleAssignmentReader,
@@ -25,6 +26,7 @@ import { createFinanceRouteServices } from "./container/create-finance-route-ser
 import { createIdentityRouteServices } from "./container/create-identity-route-services.js";
 import { createInfra } from "./container/create-infra.js";
 import { createLotLifecycle } from "./container/create-lot-lifecycle.js";
+import { createOrganisationBuyingServices } from "./container/create-organisation-buying-services.js";
 import { createOrganisationHomeServices } from "./container/create-organisation-home-services.js";
 import { createOrganisationMembershipServices } from "./container/create-organisation-membership-services.js";
 import { createPaymentsServices } from "./container/create-payments-services.js";
@@ -327,6 +329,14 @@ export function createContainer(env: Env): Container {
   };
   const organisationMembership = createOrganisationMembershipServices({ db });
   const organisationHome = createOrganisationHomeServices({ db });
+  const organisationBuying = createOrganisationBuyingServices({
+    db,
+    env,
+    lots: repos.lotRepo,
+    sales: repos.saleRepo,
+    notificationDispatcher: platform.notificationDispatcher,
+    notificationFactory: platform.notificationFactory,
+  });
 
   const atg = new AtgAdminService(
     repos.atgLinkReader,
@@ -537,6 +547,7 @@ export function createContainer(env: Env): Container {
     userRoutes: createUserRouteServices({
       env,
       bidPortfolioReader: repos.bidPortfolioReader,
+      recordPeople: new DrizzleRecordPeopleReader(db),
       categoryInterestsEligibilityReader: repos.categoryInterestsEligibilityReader,
       categoryInterestsRepository: repos.categoryInterestsRepository,
       accountOnboardingService: userMisc.accountOnboardingService,
@@ -578,6 +589,7 @@ export function createContainer(env: Env): Container {
       savedViews,
       atg,
       buyerAgentAuthorisations,
+      deliveryQuotes: organisationBuying.staffDeliveryQuotes,
       stepUp: new StaffStepUpService(identityIssuer),
       idempotencyStore: new RedisIdempotencyStore(infra.redis),
     },
@@ -589,6 +601,7 @@ export function createContainer(env: Env): Container {
     buyerAgents,
     organisationMembership,
     organisationHome,
+    organisationBuying: organisationBuying.client,
     queueAdmin: userMisc.queueAdmin,
     closeBullQueues: userMisc.closeBullQueues,
   };
@@ -631,6 +644,7 @@ export type {
   ContainerLegalEntityMemberRoutesSlice,
   ContainerOrganisationMembershipRoutesSlice,
   ContainerOrganisationHomeRoutesSlice,
+  ContainerOrganisationBuyingRoutesSlice,
   ContainerLegalEntityRoutesSlice,
   ContainerLotCatalogSlice,
   ContainerLotDocumentRoutesSlice,

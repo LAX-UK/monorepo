@@ -1,4 +1,5 @@
 import type { IAttributionStore } from "@auction/marketing-events";
+import type { IRecordPeopleReader } from "@auction/persistence/interfaces";
 import type {
   IBidPortfolioReader,
   ICategoryInterestsEligibilityReader,
@@ -71,6 +72,7 @@ export type CreateUserRouteServicesInput = {
   twoFactorRequirement: UserRouteServices["twoFactorRequirement"];
   staffInvitationAccept: UserRouteServices["staffInvitationAccept"];
   requireBuyingAccount: UserRouteServices["requireBuyingAccount"];
+  recordPeople: IRecordPeopleReader;
 };
 
 export function createUserRouteServices(input: CreateUserRouteServicesInput): UserRouteServices {
@@ -91,6 +93,7 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
       mediaUrlResolver: input.mediaUrlResolver,
       mediaAssetEnricher: input.mediaAssetEnricher,
       saleService: input.saleService,
+      recordPeople: input.recordPeople,
     }),
     laxPortfolioHttp: new LaxPortfolioHttpApplicationService({
       reader: input.bidPortfolioReader,

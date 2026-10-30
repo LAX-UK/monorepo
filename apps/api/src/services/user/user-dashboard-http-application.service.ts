@@ -1,4 +1,5 @@
 import { accountBidScope, accountPurchaseScope } from "@auction/domain";
+import type { IRecordPeopleReader } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 import type { LotReadPort, SaleLookupPort } from "../../container/container-slices.js";
 import { lotsWithCheckoutPricing } from "../../lib/lots-with-checkout-pricing.js";
@@ -31,6 +32,8 @@ export type UserDashboardHttpDeps = {
   mediaUrlResolver: IMediaUrlResolver;
   mediaAssetEnricher: IMediaAssetEnricher;
   saleService: SaleLookupPort;
+  /** Names the member who placed each of an account's bids. */
+  recordPeople: IRecordPeopleReader;
 };
 
 export class UserDashboardHttpApplicationService implements IUserDashboardHttpApplicationService {
@@ -68,13 +71,24 @@ export class UserDashboardHttpApplicationService implements IUserDashboardHttpAp
   async listAccountBids(input: {
     userId: string;
     account: BuyingAccountActor;
+    saleId?: string;
   }): Promise<UserHttpJson> {
     const scope = accountBidScope(input.account);
     if (!scope) return NOT_YOURS;
-    const data = await this.deps.userDashboardReadService.listBidsForBuyerAccount(
+    const rows = await this.deps.userDashboardReadService.listBidsForBuyerAccount(
       input.account.legalEntityId,
       scope === "own" ? input.userId : null,
+      input.saleId,
     );
+    const bidderIds = rows.flatMap((r) => (r.bid.bidderId ? [r.bid.bidderId] : []));
+    const names = await this.deps.recordPeople.namesFor(bidderIds);
+    const data = rows.map((row) => {
+      const userId = row.bid.bidderId;
+      return {
+        ...row,
+        placedBy: userId ? { userId, name: names.get(userId) ?? null } : null,
+      };
+    });
     return { status: 200, body: { data } };
   }
 

@@ -1,3 +1,4 @@
+import type { ArtistAlertCriteria } from "@auction/domain";
 import type { IAttributionStore } from "@auction/marketing-events";
 import type { WatchlistQuery } from "@auction/validators";
 import type { savedSearchBodySchema } from "@auction/validators";
@@ -106,7 +107,12 @@ export class UserWatchlistHttpApplicationService implements IUserWatchlistHttpAp
     return {
       status: 200,
       body: {
-        data: rows.map((row) => ({ artistId: row.artistId, id: row.id, createdAt: row.createdAt })),
+        data: rows.map((row) => ({
+          artistId: row.artistId,
+          id: row.id,
+          createdAt: row.createdAt,
+          alert: row.alert,
+        })),
       },
     };
   }
@@ -118,6 +124,37 @@ export class UserWatchlistHttpApplicationService implements IUserWatchlistHttpAp
     const row = await this.deps.artistWatchlistService.add(input.userId, input.body.artistId);
     if (!row) return { status: 404, body: { error: "Artist not found" } };
     return { status: 201, body: { data: row } };
+  }
+
+  async setArtistAlert(input: {
+    userId: string;
+    artistId: string;
+    criteria: ArtistAlertCriteria;
+  }): Promise<UserHttpJson> {
+    const result = await this.deps.artistWatchlistService.setAlert(
+      input.userId,
+      input.artistId,
+      input.criteria,
+    );
+    if (result.kind === "refused") {
+      return {
+        status: 400,
+        body: {
+          error: "The lowest price must not be above the highest.",
+          code: result.reason,
+        },
+      };
+    }
+    if (result.kind === "not_following") {
+      return {
+        status: 404,
+        body: { error: "Follow this artist to set an alert.", code: "artist_not_followed" },
+      };
+    }
+    return {
+      status: 200,
+      body: { data: { artistId: result.row.artistId, alert: result.row.alert } },
+    };
   }
 
   async removeArtistWatchlist(input: {

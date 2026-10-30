@@ -4,6 +4,7 @@ import {
   lotFulfilmentCollectBodySchema,
   lotFulfilmentReleaseBodySchema,
   lotFulfilmentShipBodySchema,
+  staffDeliveryQuoteSchema,
 } from "@auction/validators";
 import { asHttpStatus } from "../../lib/http-status.js";
 import { zValidator } from "../../lib/z-validator.js";
@@ -154,6 +155,28 @@ export function attachAdminLotFulfilmentRoutes(
         (row) => c.json({ data: row }),
         (e) =>
           c.json({ error: e.message, ...(e.code ? { code: e.code } : {}) }, asHttpStatus(e.status)),
+      );
+    },
+  );
+
+  /** Price the courier quote a buyer asked for; the buyer is told it is ready to accept. */
+  platform.put(
+    "/lot-fulfilment/:lotId/delivery-quote",
+    requireOperationsFulfilment,
+    zValidator("param", adminLotFulfilmentLotIdParamSchema),
+    zValidator("json", staffDeliveryQuoteSchema),
+    async (c) => {
+      const { lotId } = c.req.valid("param");
+      const body = c.req.valid("json");
+      const result = await container.admin.deliveryQuotes.quote({
+        staffUserId: c.get("userId") as string,
+        lotId,
+        amount: body.amount,
+        note: body.note ?? null,
+      });
+      return result.match(
+        (data) => c.json({ data }),
+        (e) => c.json({ error: e.code, message: e.message }, e.status),
       );
     },
   );

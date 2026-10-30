@@ -40,7 +40,9 @@ ALTER TABLE notification
       'staff_role_changed_admin',
       'lot_ready_for_collection',
       'lot_shipped',
-      'lot_delivered'
+      'lot_delivered',
+      'organisation_member_left',
+      'payout_bank_changed'
     )
   );
 --> statement-breakpoint

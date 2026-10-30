@@ -16,15 +16,17 @@ export class DashboardQueryService {
     return this.withLots(bids);
   }
 
-  /** Bids placed for a buyer account; `bidderId` narrows to one member's. */
+  /** Bids placed for a buyer account; `bidderId` narrows to one member's, `saleId` to one sale. */
   async listBidsWithLotsForBuyerAccount(
     buyerLegalEntityId: string,
     bidderId: string | null,
+    saleId?: string,
   ): Promise<BidWithLotRow[]> {
     const bids = await this.repos.root.bid.listForBuyerAccount(
       buyerLegalEntityId,
       bidderId,
       BIDS_LIMIT,
+      saleId,
     );
     return this.withLots(bids);
   }

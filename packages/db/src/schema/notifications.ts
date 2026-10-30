@@ -4,6 +4,50 @@ import { user } from "./auth.js";
 import { itemSubmission } from "./item-submissions.js";
 import { lot } from "./lots.js";
 
+/**
+ * Every notification type the product sends. The `notification_type_check` constraint must allow
+ * each of them; a migration test checks the migrated database against this list, so a later
+ * migration that rebuilds the constraint cannot silently drop one.
+ */
+export const NOTIFICATION_TYPES = [
+  "outbid",
+  "lot_cancelled",
+  "lot_won",
+  "lot_lost",
+  "lot_ending_soon",
+  "watchlist_starting",
+  "watchlist_ending_soon",
+  "payment_received",
+  "payment_due",
+  "lot_ended_seller",
+  "kyc_resubmission_required",
+  "submission_received_for_review",
+  "submission_approved",
+  "submission_rejected",
+  "submission_converted",
+  "submission_draft_reminder",
+  "submission_changes_requested",
+  "consignment_agreement_reminder",
+  "consignment_update",
+  "condition_report_ready",
+  "condition_report_declined",
+  "source_of_funds_documents_requested",
+  "source_of_funds_approved",
+  "source_of_funds_rejected",
+  "staff_role_expired",
+  "staff_role_expired_admin",
+  "staff_role_changed",
+  "staff_role_changed_admin",
+  "lot_ready_for_collection",
+  "lot_shipped",
+  "lot_delivered",
+  "delivery_quote_ready",
+  "payout_problem",
+  "bid_refused_limit",
+] as const;
+
+export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
+
 export const notification = pgTable(
   "notification",
   {
@@ -30,42 +74,7 @@ export const notification = pgTable(
     index("notification_submission_id_idx").on(table.submissionId),
     check(
       "notification_type_check",
-      sql`${table.type} IN (
-        'outbid',
-        'lot_cancelled',
-        'lot_won',
-        'lot_lost',
-        'lot_ending_soon',
-        'watchlist_starting',
-        'watchlist_ending_soon',
-        'payment_received',
-        'payment_due',
-        'lot_ended_seller',
-        'kyc_resubmission_required',
-        'submission_received_for_review',
-        'submission_approved',
-        'submission_rejected',
-        'submission_converted',
-        'submission_draft_reminder',
-        'submission_changes_requested',
-        'consignment_agreement_reminder',
-        'consignment_update',
-        'condition_report_ready',
-        'condition_report_declined',
-        'source_of_funds_documents_requested',
-        'source_of_funds_approved',
-        'source_of_funds_rejected',
-        'staff_role_expired',
-        'staff_role_expired_admin',
-        'staff_role_changed',
-        'staff_role_changed_admin',
-        'lot_ready_for_collection',
-        'lot_shipped',
-        'lot_delivered',
-        'delivery_quote_ready',
-        'payout_problem',
-        'bid_refused_limit'
-      )`,
+      sql`${table.type} IN (${sql.raw(NOTIFICATION_TYPES.map((t) => `'${t}'`).join(", "))})`,
     ),
   ],
 );

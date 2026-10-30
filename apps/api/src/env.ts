@@ -90,6 +90,23 @@ const envSchema = z
     DATABASE_URL_API: z.preprocess(emptyToUndefined, z.string().optional()),
     /** ATG White Label sync: the API only enqueues `atg-sync` jobs; the worker calls ATG. */
     ATG_SYNC_ENABLED: z.preprocess(parseOptionalBooleanFlag, z.boolean().default(false)),
+    /**
+     * Self-serve collection booking. Stays off until operations confirm the saleroom's hours and
+     * capacity; until then buyers get the address, the hours and an email address to book by.
+     */
+    COLLECTION_SELF_SERVE_ENABLED: z.preprocess(
+      parseOptionalBooleanFlag,
+      z.boolean().default(false),
+    ),
+    /** Collections the saleroom can take per hour; self-serve needs a positive number. */
+    COLLECTION_SLOT_CAPACITY_PER_HOUR: z.preprocess(
+      emptyToUndefined,
+      z.coerce.number().int().min(0).max(100).optional(),
+    ),
+    /** The saleroom's collection hours as published, for example "Monday to Friday, 10:00 to 17:00". */
+    COLLECTION_HOURS: z.preprocess(trimEmptyToUndefined, z.string().max(200).optional()),
+    /** Where buyers email to book a collection; defaults to the site contact address. */
+    COLLECTION_BOOKING_EMAIL: z.preprocess(emptyToUndefined, z.string().email().optional()),
     /** White Label origin linked from the admin ATG tab and the public ATG sale pages. */
     ATG_WHITE_LABEL_BASE_URL: z.preprocess(emptyToUndefined, z.string().url().optional()),
     VERIFY_ORIGIN: z.preprocess((val) => {

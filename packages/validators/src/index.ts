@@ -84,3 +84,4 @@ export * from "./telephone-booking.js";
 export * from "./paddle.js";
 export * from "./onsite-event.js";
 export * from "./press.js";
+export * from "./workspace-buying.js";

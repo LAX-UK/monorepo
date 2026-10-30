@@ -33,10 +33,12 @@ export class UserDashboardReadService {
   async listBidsForBuyerAccount(
     buyerLegalEntityId: string,
     bidderId: string | null,
+    saleId?: string,
   ): Promise<UserBidWithLot[]> {
     const rows = await this.dashboardQuery.listBidsWithLotsForBuyerAccount(
       buyerLegalEntityId,
       bidderId,
+      saleId,
     );
     return this.attachEnrichedLots(rows);
   }

@@ -1,4 +1,7 @@
-import type { AdminStaffSecurityRouteServices } from "./admin-satellite-routes.js";
+import type {
+  AdminIntegrationRouteServices,
+  AdminStaffSecurityRouteServices,
+} from "./admin-satellite-routes.js";
 import type { AdminRouteServices } from "./index.js";
 
 type AdminRoutePick<K extends keyof AdminRouteServices> = {
@@ -48,7 +51,7 @@ export type AdminTelephoneBookingRoutesContainer = AdminRoutePick<"telephoneBook
 
 export type AdminCatalogSupportRoutesContainer = AdminRoutePick<
   "conditionReports" | "lotFulfilment" | "saleRegistrations" | "qrCodes" | "email"
->;
+> & { admin: Pick<AdminIntegrationRouteServices, "deliveryQuotes"> };
 
 export type AdminAuditRoutesContainer = AdminRoutePick<"domainEvents" | "auditLog">;
 

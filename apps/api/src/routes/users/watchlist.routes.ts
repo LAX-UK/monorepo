@@ -1,4 +1,5 @@
 import {
+  artistAlertCriteriaSchema,
   artistWatchlistArtistIdParamSchema,
   artistWatchlistBodySchema,
   savedSearchBodySchema,
@@ -86,6 +87,23 @@ export function attachUserWatchlistRoutes(r: UserHono, deps: UserRouteDeps): voi
       const response = await container.userRoutes.watchlistHttp.removeArtistWatchlist({
         userId,
         artistId,
+      });
+      return respondUserHttpJson(c, response);
+    },
+  );
+
+  r.put(
+    "/me/artist-watchlist/:artistId/alert",
+    requireAuth,
+    zValidator("param", artistWatchlistArtistIdParamSchema),
+    zValidator("json", artistAlertCriteriaSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { artistId } = c.req.valid("param");
+      const response = await container.userRoutes.watchlistHttp.setArtistAlert({
+        userId,
+        artistId,
+        criteria: c.req.valid("json"),
       });
       return respondUserHttpJson(c, response);
     },

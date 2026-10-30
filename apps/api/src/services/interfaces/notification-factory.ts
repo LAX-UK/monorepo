@@ -47,6 +47,13 @@ export interface INotificationFactory {
     input: { paymentId: string; amount: string; checkoutUrl: string | null; dueDate?: string },
   ): CreateNotificationRow;
 
+  /** A courier quote for a won lot is priced and waiting for the buyer to accept it. */
+  createDeliveryQuoteReady(
+    lot: Lot,
+    userId: string,
+    input: { amount: string; currency: string },
+  ): CreateNotificationRow;
+
   createLotReadyForCollection(
     lot: Lot,
     buyerId: string,

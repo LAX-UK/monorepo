@@ -14,6 +14,7 @@ import type { IBuyerAgentAuthorisationService } from "../buyer-agent-authorisati
 import type { IIdempotencyStore } from "../idempotency-store.js";
 import type { IOnsiteEventAdminService } from "../onsite-event-admin-service.js";
 import type { IOnsiteEventStaffCheckInService } from "../onsite-event-staff-check-in-service.js";
+import type { IStaffDeliveryQuoteService } from "../organisation-buying-service.js";
 import type {
   ActorContext,
   IQueueInspector,
@@ -60,6 +61,8 @@ export type AdminIntegrationRouteServices = {
   atg: IAtgAdminService;
   /** Staff manage an organisation's buyer-agent authorisations from its legal entity record. */
   buyerAgentAuthorisations: IBuyerAgentAuthorisationService;
+  /** The saleroom team prices the courier quotes buyers ask for on won lots. */
+  deliveryQuotes: IStaffDeliveryQuoteService;
 };
 
 /** Wired in the container root because the policy client lives outside the admin graph. */
