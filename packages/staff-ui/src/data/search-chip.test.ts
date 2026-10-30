@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { searchChipLabel } from "./toolbar.js";
+import { searchChipLabel } from "./search-chip.js";
 
 describe("searchChipLabel", () => {
   it("words the search chip the same way on every list", () => {
