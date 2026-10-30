@@ -154,7 +154,8 @@ export function PurchasesView({
             <p className="mt-1 text-lax-14 text-lax-muted">{vm.payNow.description}</p>
           </div>
           <Button
-            variant="primary"
+            // While invoices are picked, the selection bar holds the one primary action.
+            variant={picks.length > 0 ? "secondary" : "primary"}
             onClick={() => setPaying(vm.payNow?.kind === "pay" ? vm.payNow.lotIds : [])}
           >
             Pay {formatMoney(vm.payNow.total)}
