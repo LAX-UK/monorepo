@@ -1,4 +1,5 @@
 import { CheckoutForm } from "@/components/checkout/checkout-form";
+import { GuestCheckout } from "@/components/checkout/guest-checkout.client";
 import { ShopCheckoutSteps } from "@/components/checkout/shop-checkout-steps";
 import { ShopCatalogueStateRetryButton } from "@/components/home/shop-catalogue-state-retry.client";
 import { ShopCommercePageShell } from "@/components/shop-commerce-page-shell";
@@ -22,11 +23,7 @@ import { loadLinkableShopPolicies } from "@/lib/policies/shop-policy-publication
 import { fetchShopBasket, fetchShopSavedAddresses } from "@/lib/shop-commerce.server";
 import { shopIdentityUrl } from "@/lib/shop-identity.server";
 import { shopPrivatePageTitle } from "@/lib/shop-private-page-metadata";
-import {
-  gateShopAuthenticatedRoute,
-  shopStorefrontLoginHref,
-  shopStorefrontRegisterHref,
-} from "@/lib/shop-viewer-state";
+import { gateShopAuthenticatedRoute, shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { MarketingDetailShell } from "@auction/marketing-ui";
 import { redirect } from "next/navigation";
@@ -49,12 +46,13 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
     redirect("/basket");
   }
 
+  if (viewer.kind === "guest" && params.basketMerge) {
+    redirect(shopStorefrontLoginHref("/checkout"));
+  }
+
+  // A signed-out shopper checks out as a guest; every other unsigned state is handled here.
   const gate = gateShopAuthenticatedRoute(viewer, "/checkout");
-  if (!gate.allowed) {
-    if (viewer.kind === "guest" && params.basketMerge) {
-      redirect(shopStorefrontLoginHref("/checkout"));
-    }
-    if (viewer.kind === "guest") return <CheckoutSignInPage />;
+  if (!gate.allowed && viewer.kind !== "guest") {
     if (gate.redirectTo) redirect(gate.redirectTo);
     return (
       <MarketingDetailShell shellClassName="shop-page shop-page--checkout">
@@ -174,6 +172,30 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
     );
   }
 
+  const deliveryOptions = presentCheckoutDeliveryOptions({
+    now: new Date(),
+    times: loadCheckoutDeliveryTimes(),
+  });
+  const showTermsNotice = canShowCheckoutTerms(loadLinkableShopPolicies());
+
+  if (viewer.kind === "guest") {
+    return (
+      <MarketingDetailShell shellClassName="shop-page shop-page--checkout">
+        <ShopCommercePageShell
+          header={shopPageWayfinding.checkout}
+          contentClassName="shop-checkout shop-checkout--details"
+        >
+          <ShopCheckoutSteps current="Details" />
+          <GuestCheckout
+            basket={basket}
+            deliveryOptions={deliveryOptions}
+            showTermsNotice={showTermsNotice}
+          />
+        </ShopCommercePageShell>
+      </MarketingDetailShell>
+    );
+  }
+
   const savedAddresses = await fetchShopSavedAddresses();
 
   return (
@@ -185,52 +207,16 @@ export default async function CheckoutPage({ searchParams }: CheckoutPageProps) 
         <ShopCheckoutSteps current="Details" />
         <CheckoutForm
           basket={basket}
-          deliveryOptions={presentCheckoutDeliveryOptions({
-            now: new Date(),
-            times: loadCheckoutDeliveryTimes(),
-          })}
+          deliveryOptions={deliveryOptions}
           savedAddresses={savedAddresses}
           manageAddressesHref={laxAccountUrl(LAX_ACCOUNT_PATHS.addresses)}
-          showTermsNotice={canShowCheckoutTerms(loadLinkableShopPolicies())}
+          showTermsNotice={showTermsNotice}
           {...(viewer.kind === "authenticated" && viewer.email
             ? {
                 customerEmail: viewer.email,
                 ...(viewer.verifiedPhone ? { defaultDeliveryPhone: viewer.verifiedPhone } : {}),
               }
             : {})}
-        />
-      </ShopCommercePageShell>
-    </MarketingDetailShell>
-  );
-}
-
-/**
- * A signed-out shopper who reaches checkout: what signing in is for, that the basket is kept, and
- * the way back. Guest checkout is not offered yet.
- */
-function CheckoutSignInPage() {
-  return (
-    <MarketingDetailShell shellClassName="shop-page shop-page--checkout">
-      <ShopCommercePageShell header={shopPageWayfinding.checkout} contentClassName="shop-checkout">
-        <ShopCheckoutSteps current="Details" />
-        <ShopStatusState
-          layout="page"
-          variant="empty"
-          icon="bag"
-          title="Sign in to check out"
-          titleAs="h2"
-          description="Your basket is saved. Sign in with your LAX Account to choose delivery and pay, and you will come straight back here. New to LAX? Create an account on the way."
-          actions={
-            <>
-              <ShopStatusStateLink href={shopStorefrontLoginHref("/checkout")} priority="primary">
-                Sign in to check out
-              </ShopStatusStateLink>
-              <ShopStatusStateLink href={shopStorefrontRegisterHref("/checkout")}>
-                Create an account
-              </ShopStatusStateLink>
-              <ShopStatusStateLink href="/basket">Back to basket</ShopStatusStateLink>
-            </>
-          }
         />
       </ShopCommercePageShell>
     </MarketingDetailShell>

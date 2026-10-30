@@ -498,6 +498,50 @@
   font-size: var(--shop-text-sm);
 }
 
+/* Guest checkout: the email step, and the sign-in answer for an email with a LAX account. */
+.shop-guest-email {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-6);
+}
+
+.shop-guest-email__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--shop-space-3);
+}
+
+@media (max-width: 47.99rem) {
+  .shop-guest-email__actions .shop-button {
+    width: 100%;
+  }
+}
+
+.shop-guest-email__privacy,
+.shop-guest-known__text {
+  margin: 0;
+  font-size: var(--shop-text-sm);
+  line-height: 1.25rem;
+  color: var(--color-on-surface-variant);
+}
+
+.shop-guest-known__text {
+  font-size: var(--shop-text-md);
+  line-height: 1.5rem;
+  color: var(--color-on-surface);
+}
+
+/* Focused only so the answer is read out; it is not a control. */
+.shop-guest-known__heading:focus {
+  outline: none;
+}
+
+.shop-guest-known__text strong {
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
 /* Legacy cancel page heading. */
 .shop-checkout__legend {
   margin: 0 0 0.75rem;

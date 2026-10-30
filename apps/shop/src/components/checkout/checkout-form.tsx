@@ -1,6 +1,7 @@
 "use client";
 
 import { startCheckout } from "@/app/actions/checkout.actions";
+import { startGuestCheckout } from "@/app/actions/guest-checkout.actions";
 import { CheckoutOrderSummary } from "@/components/checkout/checkout-order-summary";
 import { ShopCommerceButton } from "@/components/shop-commerce-button";
 import { SHOP_POLICY_PATHS } from "@/content/policies/shop-policy-status";
@@ -36,6 +37,17 @@ type Props = {
   showTermsNotice: boolean;
   /** LAX Account's address book, for "Manage addresses"; null when it cannot be linked. */
   manageAddressesHref: string | null;
+  /** Checkout without an account, after the email step. */
+  guest?: GuestCheckoutBuyer;
+};
+
+/** The guest the email step let through, and the ways back to that step. */
+export type GuestCheckoutBuyer = {
+  email: string;
+  marketingConsent: boolean;
+  onChangeEmail: () => void;
+  /** The server found a LAX account for the email after all. */
+  onSignInRequired: () => void;
 };
 
 const FORM_ID = "checkout-form";
@@ -81,6 +93,7 @@ export function CheckoutForm({
   defaultDeliveryPhone,
   showTermsNotice,
   manageAddressesHref,
+  guest,
 }: Props) {
   const initialAddress = initialCheckoutAddress(savedAddresses);
   const initialPhone =
@@ -89,6 +102,7 @@ export function CheckoutForm({
     "";
   const [details, setDetails] = useState<CheckoutDetails>({
     choice: "uk_insured_delivery",
+    contactName: "",
     address: initialAddress,
     recipientName: "",
     line1: "",
@@ -99,6 +113,9 @@ export function CheckoutForm({
     saveAddress: true,
   });
   const [phoneEdited, setPhoneEdited] = useState(false);
+  // A guest's name fills the recipient until they type a different one.
+  const [recipientEdited, setRecipientEdited] = useState(false);
+  const validationOptions = { requireContactName: Boolean(guest) };
   const [showLine2, setShowLine2] = useState(false);
   // Errors appear on submit; after that each field is checked again as it changes.
   const [submitCount, setSubmitCount] = useState(0);
@@ -108,7 +125,8 @@ export function CheckoutForm({
   const [redirecting, setRedirecting] = useState(false);
   const busy = pending || redirecting;
 
-  const errors = submitCount > 0 ? validateCheckoutDetails(details, savedAddresses) : {};
+  const errors =
+    submitCount > 0 ? validateCheckoutDetails(details, savedAddresses, validationOptions) : {};
   const summaryErrors = orderedCheckoutErrors(errors);
   const payable = isPayableDeliveryChoice(details.choice);
 
@@ -145,8 +163,13 @@ export function CheckoutForm({
           disabled={busy}
           value={details[name]}
           onChange={(event) => {
+            const value = event.target.value;
             if (name === "phone") setPhoneEdited(true);
-            update({ [name]: event.target.value });
+            if (name === "recipientName") setRecipientEdited(true);
+            update({
+              [name]: value,
+              ...(name === "contactName" && !recipientEdited ? { recipientName: value } : {}),
+            });
           }}
         />
       )}
@@ -158,24 +181,34 @@ export function CheckoutForm({
     if (busy || !payable) return;
     setSubmitCount((count) => count + 1);
     setServerError(null);
-    const found = validateCheckoutDetails(details, savedAddresses);
+    const found = validateCheckoutDetails(details, savedAddresses, validationOptions);
     if (Object.keys(found).length > 0) {
       setFailedSubmits((count) => count + 1);
       return;
     }
     const delivery = checkoutDeliveryPayload(details, savedAddresses);
     startTransition(async () => {
-      const result = await startCheckout({
-        basketId: basket.basketId,
-        fulfilment: details.choice,
-        ...(delivery
-          ? {
-              deliveryAddress: delivery.deliveryAddress,
-              deliveryPhone: delivery.deliveryPhone,
-              saveAddress: delivery.saveAddress,
-            }
-          : {}),
-      });
+      const deliveryFields = delivery
+        ? { deliveryAddress: delivery.deliveryAddress, deliveryPhone: delivery.deliveryPhone }
+        : {};
+      const result = guest
+        ? await startGuestCheckout({
+            basketId: basket.basketId,
+            email: guest.email,
+            name: details.contactName,
+            marketingConsent: guest.marketingConsent,
+            fulfilment: details.choice,
+            ...deliveryFields,
+          })
+        : await startCheckout({
+            basketId: basket.basketId,
+            fulfilment: details.choice,
+            ...(delivery ? { ...deliveryFields, saveAddress: delivery.saveAddress } : {}),
+          });
+      if (result.kind === "sign_in_required") {
+        guest?.onSignInRequired();
+        return;
+      }
       if (result.kind === "error") {
         // Everything entered stays as it is; only the message is added.
         setServerError(result.message);
@@ -196,7 +229,37 @@ export function CheckoutForm({
     <div className="shop-checkout__layout">
       <form id={FORM_ID} className="shop-checkout__form" noValidate onSubmit={onSubmit}>
         <MarketingFormErrorSummary errors={summaryErrors} focusKey={failedSubmits} />
-        {customerEmail ? (
+        {guest ? (
+          <section className="shop-checkout__section" aria-labelledby="checkout-you-heading">
+            <div className="shop-checkout__section-head">
+              <h2 id="checkout-you-heading" className="shop-checkout__section-title">
+                Your details
+              </h2>
+              <button
+                type="button"
+                className="shop-inline-link shop-focus-ring"
+                disabled={busy}
+                onClick={guest.onChangeEmail}
+              >
+                Change email
+              </button>
+            </div>
+            <p className="shop-checkout__paying-as">
+              Checking out as <strong>{guest.email}</strong>. We send the receipt and updates here.
+            </p>
+            <div className="shop-checkout__field-grid">
+              {field(
+                "contactName",
+                "Full name",
+                { autoComplete: "name" },
+                {
+                  hint: "As it should appear on your invoice",
+                  className: "shop-checkout__field--full",
+                },
+              )}
+            </div>
+          </section>
+        ) : customerEmail ? (
           <p className="shop-checkout__paying-as">
             Paying as <strong>{customerEmail}</strong>. We send the receipt and updates here.
           </p>

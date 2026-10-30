@@ -3,6 +3,7 @@
 import { commerceErrorMessage } from "@/lib/commerce-error-message";
 import { fetchShopCommerceCsrfForMutation } from "@/lib/shop-commerce-mutation.server";
 import { shopCommerceRequest } from "@/lib/shop-commerce-request.server";
+import { loadShopViewerState } from "@/lib/shop-viewer-state.server";
 import { redirect } from "next/navigation";
 
 export type CancelCheckoutResult = { kind: "success" } | { kind: "error"; message: string };
@@ -19,8 +20,12 @@ export async function cancelCheckoutOrder(orderId: string): Promise<CancelChecko
       message: commerceErrorMessage({ error: "csrf_failed" }, "Could not verify your session."),
     };
   }
+  // A guest has no account to cancel through; their browser holds the order's token instead.
+  const viewer = await loadShopViewerState();
   const response = await shopCommerceRequest(
-    `/commerce/orders/${encodeURIComponent(trimmed)}/cancel`,
+    viewer.kind === "guest"
+      ? "/commerce/guest-orders/current/cancel"
+      : `/commerce/orders/${encodeURIComponent(trimmed)}/cancel`,
     {
       method: "POST",
       headers: {
