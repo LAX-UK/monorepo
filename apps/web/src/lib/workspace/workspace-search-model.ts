@@ -72,3 +72,17 @@ export function workspaceSearchView({
     scopeNote: records ? narrowerScopeNote(records.searchable, roleLabel) : null,
   };
 }
+
+/** The longest organisation name the 288px field shows whole after "Search ". */
+const FIELD_NAME_LIMIT = 17;
+
+/**
+ * The search field's words: "Search Northbank Gallery", or "Search this organisation" when the
+ * name would not fit the field. A placeholder is never cut short with an ellipsis.
+ */
+export function searchPlaceholder(organisationName: string): string {
+  const name = organisationName.trim();
+  return name.length > 0 && name.length <= FIELD_NAME_LIMIT
+    ? `Search ${name}`
+    : "Search this organisation";
+}

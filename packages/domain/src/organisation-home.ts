@@ -1,24 +1,17 @@
 import type { LegalEntityStatus } from "@auction/types";
-import type { ConsignmentChecklist } from "./consignment-checklist.js";
 import {
   type EntityActor,
   type EntityCapability,
   entityActorCan,
   entityCapabilitiesOf,
 } from "./entity-capabilities.js";
-import {
-  type HomeSubject,
-  type NeedsYouFacts,
-  type NeedsYouKind,
-  type NeedsYouTask,
-  needsYouKindsFor,
-  needsYouTasks,
-} from "./needs-you.js";
+import type { HomeSubject, NeedsYouKind, NeedsYouTask } from "./needs-you.js";
 import {
   type DashboardFigures,
   type OrganisationDashboardModel,
   buildOrganisationDashboard,
 } from "./organisation-dashboard.js";
+import { organisationSetupState } from "./organisation-setup.js";
 import {
   type OrganisationAction,
   type OrganisationStatePolicy,
@@ -30,102 +23,100 @@ import type { UnsoldChoiceState } from "./unsold-lot-choice.js";
 export type { HomeSubject };
 
 /**
- * Everything Home needs to know, already loaded. Lists a role may not see can be left empty:
- * the model only reads what the role's capabilities allow.
+ * Everything Home needs to know besides "Needs you", already loaded. Lists a role may not see can
+ * be left empty: the model only reads what the role's capabilities allow.
  */
 export type OrganisationHomeFacts = {
   actor: EntityActor;
   organisation: { status: LegalEntityStatus; payoutsReady: boolean };
-  /** The organisation's consignments with their checklists (phase of selling). */
-  consignments: ReadonlyArray<HomeSubject & { checklist: ConsignmentChecklist }>;
-  /** Submissions a specialist sent back, with the specialist's note. */
-  changesRequested: ReadonlyArray<HomeSubject & { note: string | null }>;
   /**
    * Consigned lots that ended without selling (`lotEndedUnsold`, read for the account), with what
-   * has been chosen for each.
+   * has been chosen for each. Home tells the people who cannot choose about them.
    */
   unsoldLots: ReadonlyArray<HomeSubject & UnsoldLotState>;
-  /** The organisation's won lots that are not paid yet (for a buyer agent, their own wins). */
-  purchasesAwaitingPayment: readonly HomeSubject[];
-  /** The person's own identity check. */
-  viewerIdentity: "verified" | "checking" | "required";
-  /** Sales a buyer agent is authorised for and has not registered in yet. */
-  salesToRegister: ReadonlyArray<HomeSubject & { startsAt: Date; bidLimit: string | null }>;
+  /** Whether anyone besides the first owner has joined or been invited (the team step). */
+  teamInvited: boolean;
 };
 
-/** An unsold lot as the unsold task reads it: whether anyone has chosen yet. */
+/** An unsold lot as the unsold notice reads it: whether anyone has chosen yet. */
 export type UnsoldLotState = { choice: UnsoldChoiceState };
 
 /**
- * The kinds Home draws today. Home reads the one "Needs you" table (`needs-you.ts`); the kinds
- * added there since (outbid, delivery, collection, invitations, authorisations) reach Home through
- * the workspace's Needs you endpoint.
+ * What the one Needs-you reader (`needs-you.ts`, served by `GET /legal-entities/needs-you`) said
+ * for this member: the kinds the role can ever be asked for, and the tasks waiting now, ranked.
+ * Home never works out a task itself, so it always agrees with the sidebar counts.
  */
-const HOME_TASK_KINDS = [
-  "documents",
-  "agreement",
-  "changes",
-  "payouts",
-  "unsold",
-  "pay",
-  "won_awaiting_payment",
-  "identity",
-  "register",
-] as const satisfies readonly NeedsYouKind[];
+export type NeedsYouRead<T extends NeedsYouTask = NeedsYouTask> = {
+  kinds: readonly NeedsYouKind[];
+  tasks: readonly T[];
+};
 
-export type HomeTaskKind = (typeof HOME_TASK_KINDS)[number];
-/** One thing on "Needs you". Each has one button; it disappears when done. */
-export type HomeTask = Extract<NeedsYouTask, { kind: HomeTaskKind }>;
-
-const isHomeKind = (kind: NeedsYouKind): kind is HomeTaskKind =>
-  (HOME_TASK_KINDS as readonly NeedsYouKind[]).includes(kind);
-const isHomeTask = (task: NeedsYouTask): task is HomeTask => isHomeKind(task.kind);
-
-/** Unsold lots nobody has chosen for yet; a made choice clears the task. */
+/** Unsold lots nobody has chosen for yet; a made choice clears the notice. */
 function lotsAwaitingChoice(facts: Pick<OrganisationHomeFacts, "unsoldLots">): HomeSubject[] {
   return facts.unsoldLots
     .filter((lot) => lot.choice === "none")
     .map(({ id, title }) => ({ id, title }));
 }
 
-/** Home's facts in the table's terms. */
-function asNeedsYouFacts(facts: OrganisationHomeFacts): NeedsYouFacts {
-  return {
-    actor: facts.actor,
-    organisation: facts.organisation,
-    now: new Date(),
-    viewerIdentity: facts.viewerIdentity,
-    sourceOfFundsRequested: false,
-    agreementsToAccept: facts.consignments
-      .filter(({ checklist }) =>
-        checklist.applies
-          ? checklist.items.some((item) => item.id === "agreement" && item.state === "action")
-          : false,
-      )
-      .map(({ id, title }) => ({ id, title })),
-    changesRequested: facts.changesRequested,
-    unsoldLots: lotsAwaitingChoice(facts).map((lot) => ({ ...lot, endedAt: null })),
-    purchases: facts.purchasesAwaitingPayment.map((purchase) => ({
-      ...purchase,
-      paymentStatus: null,
-      fulfilment: null,
-      shippingQuote: null,
-    })),
-    salesToRegister: facts.salesToRegister,
-    outbidLots: [],
-    expiredInvitations: [],
-    endingAuthorisations: [],
-  };
-}
+/** One of a new organisation's first steps. */
+export type FirstStepId = "documents" | "payouts" | "invite";
 
-/** Which "Needs you" kinds a role can ever see; Home hides the section for the others. */
-export function homeTaskKindsFor(actor: EntityActor): HomeTaskKind[] {
-  return needsYouKindsFor(actor).filter(isHomeKind);
-}
+/**
+ * - `done`: finished;
+ * - `waiting`: with LAX (documents being checked);
+ * - `next`: the step to take now;
+ * - `later`: still to come.
+ */
+export type FirstStepState = "done" | "waiting" | "next" | "later";
 
-/** The tasks this member can complete now, in the table's order. */
-export function homeTasks(facts: OrganisationHomeFacts): HomeTask[] {
-  return needsYouTasks(asNeedsYouFacts(facts)).filter(isHomeTask);
+export type FirstStep = { id: FirstStepId; state: FirstStepState };
+
+/** The Needs-you kinds the first steps stand for: Home shows them as steps, not twice. */
+export const FIRST_STEP_TASK_KINDS = [
+  "documents",
+  "payouts",
+] as const satisfies readonly NeedsYouKind[];
+
+/**
+ * A new organisation's first steps, for the people who run it: documents, payouts, then the team.
+ * Setup is a first step, never a banner. A setup step is `next` only when the reader asks for it,
+ * so the step and the sidebar count agree; the team step is `next` once nothing before it is.
+ * `null` for anyone who does not run the organisation.
+ */
+export function organisationFirstSteps(
+  facts: OrganisationHomeFacts,
+  needsYou: NeedsYouRead | null,
+): FirstStep[] | null {
+  if (!canRead(facts.actor, SHORTCUTS_AUDIENCE)) return null;
+  const asked = new Set<NeedsYouKind>((needsYou?.tasks ?? []).map((task) => task.kind));
+  const setup = organisationSetupState(facts.organisation);
+  const documents: FirstStepState =
+    setup === "documents_requested"
+      ? asked.has("documents")
+        ? "next"
+        : "later"
+      : setup === "documents_under_review"
+        ? "waiting"
+        : "done";
+  // The reader decides whether payouts are asked for, from the organisation's own state.
+  const payouts: FirstStepState = asked.has("payouts")
+    ? "next"
+    : setup === "payouts_not_set_up" ||
+        setup === "documents_requested" ||
+        setup === "documents_under_review"
+      ? "later"
+      : "done";
+  const setupOpen = documents === "next" || payouts === "next";
+  const invite: FirstStepState = facts.teamInvited
+    ? "done"
+    : !setupOpen && can(facts.actor, "entity.members.manage")
+      ? "next"
+      : "later";
+  return [
+    { id: "documents", state: documents },
+    { id: "payouts", state: payouts },
+    { id: "invite", state: invite },
+  ];
 }
 
 /** Something to know that is not the member's to do. */
@@ -249,9 +240,16 @@ export function homeActivityArchive(actor: EntityActor): HomeActivityArchive | n
 }
 
 /** Home for one member, built from facts alone. */
-export type OrganisationHomeModel = {
-  /** `null` when the role has nothing it could ever be asked to do (the section is hidden). */
-  tasks: HomeTask[] | null;
+export type OrganisationHomeModel<T extends NeedsYouTask = NeedsYouTask> = {
+  /**
+   * The reader's tasks, ranked; empty when nothing waits, `null` when the role can never be asked
+   * for anything (the section is hidden) or when the reader could not be read (`needsYouFailed`).
+   */
+  tasks: T[] | null;
+  /** The reader did not answer: Home says so and offers to try again, rather than "nothing". */
+  needsYouFailed: boolean;
+  /** A new organisation's first steps, while any is left; `null` otherwise. */
+  firstSteps: FirstStep[] | null;
   /** What the organisation's state allows and tells this member (banner, first-run message). */
   state: OrganisationStatePolicy;
   /** Things to know that are not this member's to do. */
@@ -267,12 +265,12 @@ export type OrganisationHomeModel = {
  * Home for one member: tasks first, then the business figures, shortcuts and activity. A new
  * organisation's first steps replace the shortcuts, which would only repeat them.
  */
-export function buildOrganisationHome(
+export function buildOrganisationHome<T extends NeedsYouTask>(
   facts: OrganisationHomeFacts,
   activity: readonly HomeActivityEvent[],
-  figures: DashboardFigures | null = null,
-): OrganisationHomeModel {
-  const askable = homeTaskKindsFor(facts.actor).length > 0;
+  figures: DashboardFigures | null,
+  needsYou: NeedsYouRead<T> | null,
+): OrganisationHomeModel<T> {
   const state = organisationStatePolicy(
     facts.organisation.status,
     entityCapabilitiesOf(facts.actor),
@@ -282,12 +280,37 @@ export function buildOrganisationHome(
     ? buildOrganisationDashboard(facts.actor, figures, (action) => state.actions[action])
     : null;
   return {
-    tasks: askable ? homeTasks(facts) : null,
+    ...homeTasksAndSteps(facts, needsYou, dashboard?.firstRun != null),
     state,
     notices: homeNotices(facts),
     shortcuts: dashboard?.firstRun ? [] : homeShortcuts(facts.actor, facts.organisation.status),
     activity: homeActivity(activity, facts.actor),
     activityArchive: homeActivityArchive(facts.actor),
     dashboard,
+  };
+}
+
+/**
+ * The reader's tasks and the first steps. The steps show while setup is open, or while a new
+ * organisation has nothing yet (then the team step too); a long-standing organisation is never
+ * nagged to invite anyone. The setup tasks the steps stand for are not listed twice.
+ */
+function homeTasksAndSteps<T extends NeedsYouTask>(
+  facts: OrganisationHomeFacts,
+  needsYou: NeedsYouRead<T> | null,
+  nothingYet: boolean,
+): Pick<OrganisationHomeModel<T>, "tasks" | "needsYouFailed" | "firstSteps"> {
+  const steps = organisationFirstSteps(facts, needsYou);
+  const setupOpen = steps?.some((step) => step.id !== "invite" && step.state !== "done") ?? false;
+  const firstSteps =
+    steps && (setupOpen || nothingYet) && steps.some((step) => step.state !== "done")
+      ? steps
+      : null;
+  const stepKinds = new Set<NeedsYouKind>(firstSteps ? FIRST_STEP_TASK_KINDS : []);
+  const askable = needsYou !== null && needsYou.kinds.length > 0;
+  return {
+    tasks: askable ? needsYou.tasks.filter((task) => !stepKinds.has(task.kind)) : null,
+    needsYouFailed: needsYou === null,
+    firstSteps,
   };
 }

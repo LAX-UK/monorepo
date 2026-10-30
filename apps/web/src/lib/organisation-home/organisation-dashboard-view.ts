@@ -214,7 +214,7 @@ function upcomingSaleView(sale: UpcomingSaleFigure): UpcomingSaleView {
     title: sale.title,
     date: formatDateInline(sale.startsAt),
     dateTime: sale.startsAt.toISOString(),
-    works: plural(sale.works, "work"),
+    works: `${sale.works.toLocaleString("en-GB")} of your works`,
     href: salePath({ id: sale.id, title: sale.title }),
   };
 }
@@ -244,9 +244,11 @@ export function organisationDashboardView(
   firstRunKey: OrganisationHomeFirstRunKey,
 ): OrganisationDashboardView {
   const { progress } = model;
+  const tiles = model.tiles.map((tile) => dashboardTileView(tile, ctx));
   return {
     firstRun: model.firstRun ? firstRunView(model.firstRun, firstRunKey, ctx) : null,
-    tiles: model.tiles.map((tile) => dashboardTileView(tile, ctx)),
+    // Thin data: a row of "No …" cells says nothing, so the figures show from the first one.
+    tiles: tiles.some((tile) => tile.figures.length > 0) ? tiles : [],
     upcomingSales: model.upcomingSales.map(upcomingSaleView),
     upcomingSalesHref: consignmentStageHref("in_sale"),
     stages: progress ? stageViews(progress) : null,
@@ -255,7 +257,7 @@ export function organisationDashboardView(
 
 /**
  * Only the stages with works in them, in pipeline order, each opening the filtered list; a row of
- * zeros says nothing. `null` when every stage is empty, so the section is left out.
+ * zeros says nothing. `null` with fewer than two stages, so the section is left out.
  */
 function stageViews(progress: NonNullable<OrganisationDashboardModel["progress"]>) {
   const stages = CONSIGNMENT_PROGRESS_STAGES.filter((stage) => progress[stage] > 0).map(
@@ -266,5 +268,6 @@ function stageViews(progress: NonNullable<OrganisationDashboardModel["progress"]
       href: consignmentStageHref(stage),
     }),
   );
-  return stages.length > 0 ? stages : null;
+  // One stage is a lone number, not a breakdown: the section shows from two.
+  return stages.length > 1 ? stages : null;
 }
