@@ -13,9 +13,14 @@ type Props = {
   onSelect: (id: string) => void;
   registerHref: string;
   busy: boolean;
-  onBack: () => void;
-  onSubmit: () => void;
-  onSaveDraft: () => void;
+  /**
+   * The step comes first ("Selling as"): one way on, to the work. Without it the step comes
+   * last and sends the work.
+   */
+  onContinue?: () => void;
+  onBack?: () => void;
+  onSubmit?: () => void;
+  onSaveDraft?: () => void;
 };
 
 function OptionLabel({ option }: { option: SellerAccountOption }) {
@@ -41,6 +46,7 @@ export function SellerAccountStep({
   onSelect,
   registerHref,
   busy,
+  onContinue,
   onBack,
   onSubmit,
   onSaveDraft,
@@ -102,30 +108,44 @@ export function SellerAccountStep({
         </Link>
       </p>
 
-      <div className="flex flex-col-reverse gap-3 border-t border-border-hairline pt-6 sm:flex-row sm:items-center sm:justify-between">
-        <Button type="button" variant="outline" onClick={onBack} disabled={busy}>
-          Back to the work
-        </Button>
-        {blocked ? (
-          <Button type="button" variant="primary" onClick={onSaveDraft} disabled={busy}>
-            {busy ? "Saving…" : "Save as draft"}
-          </Button>
-        ) : (
+      {onContinue ? (
+        <div className="flex flex-col gap-3 border-t border-border-hairline pt-6 sm:flex-row sm:justify-end">
           <Button
             type="button"
             variant="primary"
-            onClick={onSubmit}
+            onClick={onContinue}
             disabled={busy || !selected}
-            data-testid="sell-flow-submit"
+            data-testid="sell-flow-continue"
           >
-            {busy
-              ? "Submitting…"
-              : selected?.kind === "organisation"
-                ? `Submit as ${selected.name}`
-                : "Submit for review"}
+            Continue to the work
           </Button>
-        )}
-      </div>
+        </div>
+      ) : (
+        <div className="flex flex-col-reverse gap-3 border-t border-border-hairline pt-6 sm:flex-row sm:items-center sm:justify-between">
+          <Button type="button" variant="outline" onClick={() => onBack?.()} disabled={busy}>
+            Back to the work
+          </Button>
+          {blocked ? (
+            <Button type="button" variant="primary" onClick={() => onSaveDraft?.()} disabled={busy}>
+              {busy ? "Saving…" : "Save as draft"}
+            </Button>
+          ) : (
+            <Button
+              type="button"
+              variant="primary"
+              onClick={() => onSubmit?.()}
+              disabled={busy || !selected}
+              data-testid="sell-flow-submit"
+            >
+              {busy
+                ? "Submitting…"
+                : selected?.kind === "organisation"
+                  ? `Submit as ${selected.name}`
+                  : "Submit for review"}
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

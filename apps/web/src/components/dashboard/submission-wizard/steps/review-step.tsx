@@ -39,6 +39,7 @@ export function ReviewStep({
   onFinishLater,
   onSubmitForReview,
   submitLabel = SUBMISSION_SUBMIT_LABEL,
+  lead = null,
 }: ReviewStepProps) {
   const v = form.getValues();
   const quality = evaluateSubmissionQuality({
@@ -98,8 +99,10 @@ export function ReviewStep({
   return (
     <div className="space-y-6" data-testid="submission-wizard-step-review">
       <p className="font-body text-sm text-on-surface-variant">
-        Check everything before submitting. Specialists review submitted items before cataloguing.
+        Check the details, then send them to our specialists. You can change anything before you
+        send.
       </p>
+      {lead}
 
       {!canSubmit ? (
         <Surface variant="quiet" padding="md" className="border-primary/30 bg-primary/5">

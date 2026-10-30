@@ -2,22 +2,13 @@
 
 import { SellerAccountStep } from "@/components/dashboard/seller/seller-account-step";
 import { SubmissionWizardView } from "@/components/dashboard/submission-wizard/submission-wizard";
-import { WizardStepper } from "@/components/dashboard/submission-wizard/wizard-stepper";
 import type { SubmissionCategoryOption } from "@/lib/forms/submission/item-submission-form-defaults";
-import {
-  WIZARD_STEP_COUNT,
-  allWizardFieldPaths,
-  wizardStepIndex,
-} from "@/lib/forms/submission/step-validation";
+import { wizardStepIndex } from "@/lib/forms/submission/step-validation";
 import { useSubmissionWizardController } from "@/lib/forms/submission/use-submission-wizard-controller";
-import type { SellerAccountChoice } from "@/lib/seller/seller-account-options";
-import { notify } from "@/lib/ui/notify";
-import { evaluateSubmissionQuality } from "@auction/domain";
+import { sendToSpecialistsLabel } from "@/lib/seller/sell-flow";
+import type { SellerAccountChoice, SellerAccountOption } from "@/lib/seller/seller-account-options";
 import type { ItemSubmissionFormValues } from "@auction/validators";
-import { useCallback, useEffect, useRef, useState } from "react";
-
-/** The flow's own last step, after the form's: one progress bar counts them all. */
-const SELLER_STEP = [{ id: "seller", label: "Who is selling?" }] as const;
+import { useEffect, useRef, useState } from "react";
 
 type Props = {
   categories: SubmissionCategoryOption[];
@@ -26,92 +17,115 @@ type Props = {
   registerHref: string;
 };
 
+/** "Selling as" at the top of Check and send, with the way back to change it. */
+function SellingAsSummary({
+  option,
+  onChange,
+}: {
+  option: SellerAccountOption;
+  onChange: (() => void) | null;
+}) {
+  return (
+    <section
+      aria-labelledby="selling-as-summary"
+      className="flex items-start justify-between gap-4 rounded-lax-card border border-lax-line bg-lax-surface p-5"
+    >
+      <div className="min-w-0">
+        <h3 id="selling-as-summary" className="text-lax-16 font-semibold text-lax-fg">
+          Selling as
+        </h3>
+        <p className="mt-1 text-lax-14 text-lax-fg">
+          {option.kind === "personal" ? `${option.name}, your personal account` : option.name}
+        </p>
+        {option.submitBlockedReason ? (
+          <p className="mt-1 text-lax-13 text-lax-muted">{option.submitBlockedReason}</p>
+        ) : null}
+      </div>
+      {onChange ? (
+        <button
+          type="button"
+          onClick={onChange}
+          className="shrink-0 text-lax-14 font-medium text-lax-fg underline underline-offset-4 lax-focus"
+        >
+          Change<span className="sr-only"> who is selling</span>
+        </button>
+      ) : null}
+    </section>
+  );
+}
+
 /**
- * "Sell a work": the work, using the same form and checks as every submission, then who is
- * selling, as the last step of the same progress bar. The submission is created for the account
- * chosen in that step.
+ * "Sell a work": who is selling first, when the person has a choice (it decides who is paid,
+ * who can change it and whose fees apply), then the work with the same form and checks as every
+ * submission, ending in Check and send. The draft is saved as it goes, so it can be finished
+ * later from Consignments.
  */
 export function SellWithLaxFlow({ categories, initialValues, choice, registerHref }: Props) {
-  const [step, setStep] = useState<0 | 1>(0);
-  /** The form step to reopen when coming back from "Who is selling?". */
-  const [returnIndex, setReturnIndex] = useState(wizardStepIndex("review"));
+  const hasChoice = choice.options.length > 1;
+  const [phase, setPhase] = useState<"seller" | "work">(hasChoice ? "seller" : "work");
   const [accountId, setAccountId] = useState<string | null>(choice.defaultId);
+  const [cameBack, setCameBack] = useState(false);
   const controller = useSubmissionWizardController({ kind: "create" }, initialValues, {
     accountScope: () => ({ legalEntityId: accountId }),
   });
-  const { form } = controller;
   const busy = controller.isSubmitting || controller.autosaveStatus === "saving";
   const sellerRef = useRef<HTMLDivElement>(null);
-  const movedStep = useRef(false);
+  const selected =
+    choice.options.find((option) => option.id === accountId) ?? choice.options[0] ?? null;
+  const blocked = selected !== null && !selected.canSubmit;
 
-  // Reaching "Who is selling?" moves focus to it, without a ring: it is not a control.
+  // Returning to "Selling as" moves focus to it, without a ring: it is not a control.
   useEffect(() => {
-    if (step !== 1) return;
+    if (phase !== "seller" || !cameBack) return;
     sellerRef.current?.focus({ preventScroll: true });
     sellerRef.current?.scrollIntoView({ block: "start" });
-  }, [step]);
+  }, [phase, cameBack]);
 
-  const continueToSeller = useCallback(() => {
-    void (async () => {
-      const valid = await form.trigger(allWizardFieldPaths(), { shouldFocus: true });
-      const values = form.getValues();
-      const quality = evaluateSubmissionQuality({
-        title: values.title,
-        images: values.images,
-        description: values.description,
-        provenance: values.provenance,
-        categoryId: values.categoryIds[0] ?? "",
-        categoryIds: values.categoryIds,
-      });
-      if (!valid || !quality.canSubmit) {
-        notify.error("Add a title, a category and at least one photo first");
-        return;
-      }
-      movedStep.current = true;
-      setStep(1);
-    })();
-  }, [form]);
-
-  const backToWork = useCallback((index: number = wizardStepIndex("review")) => {
-    movedStep.current = true;
-    setReturnIndex(index);
-    setStep(0);
-  }, []);
+  if (phase === "seller") {
+    return (
+      <div ref={sellerRef} tabIndex={-1} className="space-y-6 outline-none">
+        <SellerAccountStep
+          options={choice.options}
+          selectedId={accountId}
+          onSelect={setAccountId}
+          registerHref={registerHref}
+          busy={busy}
+          onContinue={() => setPhase("work")}
+        />
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {step === 0 ? (
-        <SubmissionWizardView
-          mode={{ kind: "create" }}
-          categories={categories}
-          controller={controller}
-          // Coming back from "Who is selling?" reopens the review (or the step chosen in the bar).
-          initialStepIndex={movedStep.current ? returnIndex : 0}
-          primaryAction={{ label: "Continue", onActivate: continueToSeller }}
-          trailingSteps={SELLER_STEP}
-        />
-      ) : (
-        <div ref={sellerRef} tabIndex={-1} className="space-y-6 outline-none">
-          <WizardStepper
-            activeIndex={WIZARD_STEP_COUNT}
-            maxReachableIndex={WIZARD_STEP_COUNT}
-            onStepClick={(index) => {
-              if (index < WIZARD_STEP_COUNT) backToWork(index);
-            }}
-            trailingSteps={SELLER_STEP}
+    <SubmissionWizardView
+      mode={{ kind: "create" }}
+      categories={categories}
+      controller={controller}
+      // Coming back from "Selling as" reopens Check and send.
+      {...(cameBack ? { initialStepIndex: wizardStepIndex("review") } : {})}
+      primaryAction={
+        blocked
+          ? { label: "Save as draft", onActivate: () => void controller.saveDraft() }
+          : {
+              label: sendToSpecialistsLabel(selected),
+              onActivate: () => void controller.submitForReview(),
+            }
+      }
+      reviewLead={
+        selected ? (
+          <SellingAsSummary
+            option={selected}
+            onChange={
+              hasChoice
+                ? () => {
+                    setCameBack(true);
+                    setPhase("seller");
+                  }
+                : null
+            }
           />
-          <SellerAccountStep
-            options={choice.options}
-            selectedId={accountId}
-            onSelect={setAccountId}
-            registerHref={registerHref}
-            busy={busy}
-            onBack={() => backToWork()}
-            onSubmit={() => void controller.submitForReview()}
-            onSaveDraft={() => void controller.saveDraft()}
-          />
-        </div>
-      )}
-    </div>
+        ) : null
+      }
+    />
   );
 }
