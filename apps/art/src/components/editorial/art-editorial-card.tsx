@@ -11,16 +11,20 @@ import {
 type ArtEditorialCardProps = {
   card: EditorialCardVm;
   priority?: boolean;
-  /** `wide` is for a lead that spans the content width above other cards. */
-  aspect?: Extract<MarketingEditorialCardProps["aspect"], "landscape" | "wide">;
-  /** `split` for a card alone in its row: media and text side by side. */
+  /** `wide` is for a lead that spans the content width; `portrait` for a tall rail card. */
+  aspect?: MarketingEditorialCardProps["aspect"];
+  /** `split` for a card alone in its row; `row` for a compact card in a stacked pair. */
   layout?: MarketingEditorialCardProps["layout"];
+  /** Overrides the image `sizes` when the host knows the card's width (rails). */
+  sizes?: string;
 };
 
 const SIZES = {
   landscape: "(min-width: 64rem) 30vw, (min-width: 40rem) 45vw, 100vw",
+  portrait: "(min-width: 40rem) 20rem, 80vw",
   wide: "(min-width: 90rem) 1360px, 100vw",
   split: "(min-width: 48rem) 55vw, 100vw",
+  row: "(min-width: 40rem) 12.5rem, 45vw",
 } as const;
 
 /**
@@ -32,6 +36,7 @@ export function ArtEditorialCard({
   priority = false,
   aspect = "landscape",
   layout = "stacked",
+  sizes,
 }: ArtEditorialCardProps) {
   return (
     <MarketingEditorialCard
@@ -48,7 +53,7 @@ export function ArtEditorialCard({
           src={card.imageUrl}
           alt=""
           label={card.kicker ?? "lax.art"}
-          sizes={layout === "split" ? SIZES.split : SIZES[aspect]}
+          sizes={sizes ?? (layout === "stacked" ? SIZES[aspect] : SIZES[layout])}
           priority={priority}
           className="absolute inset-0 size-full"
           imgClassName="object-cover"

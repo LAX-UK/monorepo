@@ -46,7 +46,13 @@ describe("composeArtHubPage", () => {
     const result = await composeArtHubPage(withEditorial());
     expect(result).toMatchObject({
       status: "ok",
-      data: { sections: ["hero", "collecting"], podcast: null, film: null, press: [] },
+      data: {
+        sections: ["hero", "collecting"],
+        surfaces: { hero: "plain", collecting: "band" },
+        podcast: null,
+        film: null,
+        press: [],
+      },
     });
   });
 
@@ -89,7 +95,25 @@ describe("composeArtHubPage", () => {
           : detail("film", { kind: "film", videoUrl: "https://vimeo.example/1" }),
     }));
     services.catalogue.listArtists.mockResolvedValue({
-      items: [{ slug: "flora", name: "Flora Powers", imageUrl: null }],
+      items: [
+        {
+          slug: "flora",
+          name: "Flora Powers",
+          discipline: "Painter",
+          portraitUrl: null,
+          artworkCount: 2,
+        },
+      ],
+    });
+    services.catalogue.getArtist.mockResolvedValue({
+      slug: "flora",
+      name: "Flora Powers",
+      discipline: "Painter",
+      bio: "Paints the estuary at low tide. Lives in Kent.",
+      portraitUrl: null,
+      nationality: "British",
+      birthYear: 1984,
+      artworkCount: 2,
     });
     services.ecosystem.crossProductLinks.mockReturnValue([
       { id: "bid", label: "LAX.bid", href: "https://lax.bid" },
@@ -109,8 +133,67 @@ describe("composeArtHubPage", () => {
       "press",
       "product-doors",
     ]);
-    expect(result.data.heroImageUrl).toBe("/cover.webp");
     expect(result.data.stories[0]).toMatchObject({ kicker: "Article", kickerDetail: "5 MIN READ" });
+    expect(result.data.spotlight).toEqual([
+      {
+        slug: "flora",
+        name: "Flora Powers",
+        href: "/artists/flora",
+        imageUrl: null,
+        imageAlt: "Portrait of Flora Powers",
+        caption: "British · b. 1984 · Painter",
+        intro: "Paints the estuary at low tide.",
+      },
+    ]);
+    expect(result.data.hero.links.map((link) => link.label)).toEqual([
+      "Explore artists",
+      "Exhibitions",
+      "All stories",
+      "Watch",
+    ]);
+    expect(result.data.hero.links.at(-1)?.href).toBe("/stories/film");
+  });
+
+  it("never opens with an image a card below repeats", async () => {
+    const services = withEditorial();
+    services.editorial.listExhibitions.mockResolvedValue({
+      status: "ok",
+      data: {
+        items: [
+          {
+            slug: "show",
+            kind: "exhibition",
+            title: "Show",
+            summary: null,
+            startsOn: null,
+            endsOn: null,
+            coverUrl: "/art/gallery-team/gallery.webp",
+            featured: false,
+          },
+        ],
+      },
+    });
+    const result = await composeArtHubPage(services);
+    expect(result).toMatchObject({ status: "ok", data: { hero: { imageUrl: null } } });
+  });
+
+  it("opens with the gallery view, and leaves Watch out without a film", async () => {
+    const result = await composeArtHubPage(withEditorial());
+    if (result.status !== "ok") throw new Error("expected ok");
+    expect(result.data.hero.imageUrl).toBe("/art/gallery-team/gallery.webp");
+    expect(result.data.hero.links.map((link) => link.label)).not.toContain("Watch");
+  });
+
+  it("keeps two tinted bands apart: Collecting 101 gives way to the press band", async () => {
+    const services = withEditorial();
+    services.editorial.listStories.mockImplementation(async (filter) => ({
+      status: "ok",
+      data: { items: filter?.kind === "press" ? [summary("review", { kind: "press" })] : [] },
+    }));
+    const result = await composeArtHubPage(services);
+    if (result.status !== "ok") throw new Error("expected ok");
+    expect(result.data.sections).toEqual(["hero", "collecting", "press"]);
+    expect(result.data.surfaces).toMatchObject({ collecting: "plain", press: "band" });
   });
 
   it("hides the podcast panel when the episode has no audio file", async () => {

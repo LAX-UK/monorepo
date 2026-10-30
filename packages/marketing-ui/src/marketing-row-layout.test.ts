@@ -2,11 +2,35 @@ import { describe, expect, it } from "vitest";
 import {
   marketingFeatureGridLayout,
   marketingFeatureGridRole,
+  marketingMixedRailSlots,
   marketingRailHasEnough,
   marketingRowCap,
   marketingRowColumns,
   marketingRowLayout,
 } from "./marketing-row-layout.js";
+
+describe("marketingMixedRailSlots", () => {
+  it("repeats tall, wide, then a stacked pair", () => {
+    expect(marketingMixedRailSlots(8)).toEqual([
+      { kind: "tall", items: [0] },
+      { kind: "wide", items: [1] },
+      { kind: "pair", items: [2, 3] },
+      { kind: "tall", items: [4] },
+      { kind: "wide", items: [5] },
+      { kind: "pair", items: [6, 7] },
+    ]);
+  });
+
+  it("never leaves a pair half empty: a lone last item takes a tall slot", () => {
+    expect(marketingMixedRailSlots(3).map((slot) => slot.kind)).toEqual(["tall", "wide", "tall"]);
+    expect(marketingMixedRailSlots(7).at(-1)).toEqual({ kind: "tall", items: [6] });
+  });
+
+  it("returns nothing for no items", () => {
+    expect(marketingMixedRailSlots(0)).toEqual([]);
+    expect(marketingMixedRailSlots(-2)).toEqual([]);
+  });
+});
 
 describe("marketingRowLayout", () => {
   it.each([

@@ -98,3 +98,33 @@ export function marketingFeatureGridRole(
   if (layout === "feature") return "solo";
   return layout === "lead-plus-stack" ? "lead" : "feature";
 }
+
+/**
+ * One slot of a mixed-size rail (Figma Art Hub stories, `983:27847`): a `tall` portrait card, a
+ * `wide` landscape card, or a `pair` of compact cards stacked in one column.
+ */
+export type MarketingMixedRailSlot = {
+  kind: "tall" | "wide" | "pair";
+  /** Indexes of the items the slot holds, in reading order. */
+  items: number[];
+};
+
+const MIXED_RAIL_PATTERN: readonly MarketingMixedRailSlot["kind"][] = ["tall", "wide", "pair"];
+
+/**
+ * Groups `count` items into the repeating tall, wide, pair rhythm. A pair never holds one item
+ * (it would leave half a column empty), so a lone last item takes a tall slot instead.
+ */
+export function marketingMixedRailSlots(count: number): MarketingMixedRailSlot[] {
+  const slots: MarketingMixedRailSlot[] = [];
+  const total = Math.max(0, Math.floor(count));
+  let next = 0;
+  while (next < total) {
+    const planned = MIXED_RAIL_PATTERN[slots.length % MIXED_RAIL_PATTERN.length] ?? "tall";
+    const kind = planned === "pair" && total - next < 2 ? "tall" : planned;
+    const size = kind === "pair" ? 2 : 1;
+    slots.push({ kind, items: Array.from({ length: size }, (_, offset) => next + offset) });
+    next += size;
+  }
+  return slots;
+}
