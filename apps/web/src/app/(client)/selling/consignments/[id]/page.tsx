@@ -19,9 +19,9 @@ import { SubmissionSellerDocumentsPanel } from "@/components/dashboard/submissio
 import { SubmissionWizard } from "@/components/dashboard/submission-wizard/submission-wizard";
 import { SubmissionWorkflowActions } from "@/components/dashboard/submission-workflow-actions";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
-import { ConsignmentStatusBadge } from "@/components/ui/consignment-status-badge";
 import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { formatLotMoment } from "@/lib/bid/lot-moment";
 import { ACCOUNT_LOAD_ERROR, DASHBOARD_ROUTES } from "@/lib/dashboard/dashboard-copy";
 import {
   describeDashboardSliceFailure,
@@ -47,11 +47,15 @@ import { consignmentActionsVm } from "@/lib/seller/consignment-actions.vm";
 import { checklistItemView } from "@/lib/seller/consignment-checklist-copy";
 import { consignmentChecklistFacts } from "@/lib/seller/consignment-checklist-facts";
 import { buildConsignmentDetailVm } from "@/lib/seller/consignment-detail.vm";
+import { consignmentNextStep } from "@/lib/seller/consignment-next";
+import { consignmentAgreementHref } from "@/lib/seller/consignment-records";
+import { CONSIGNMENT_STATUS, consignmentStatus } from "@/lib/seller/consignment-status";
 import { consignmentWithdrawalViewModel } from "@/lib/seller/consignment-withdrawal-view";
 import { loadSellerAccountFacts } from "@/lib/seller/seller-account-facts.server";
 import { unsoldChoiceViewModel } from "@/lib/seller/unsold-choice-view";
 import { lotPath } from "@/lib/seo/url";
 import { computeConsignmentChecklist, evaluateSubmissionQuality } from "@auction/domain";
+import { Notice, StatusBadge } from "@auction/ui/lax";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -221,14 +225,49 @@ export default async function SubmissionDetailPage({
       : null,
   });
   const photos = submission.images.filter((src): src is string => Boolean(src));
+  const agreement = agreementView?.agreement ?? null;
+  const unsoldChoiceMade = Boolean(afterSale?.unsold?.choice?.requestedChoice);
+  const status = consignmentStatus({
+    submission: submission.status,
+    agreement: !agreement ? "none" : agreement.acceptedAt ? "accepted" : "open",
+    lot: convertedLot
+      ? {
+          status: convertedLot.status,
+          sold: Boolean(convertedLot.winnerId ?? convertedLot.hasWinner),
+        }
+      : null,
+    unsoldChoice: afterSale?.unsold ? (unsoldChoiceMade ? "made" : "none") : null,
+  });
+  const statusView = CONSIGNMENT_STATUS[status];
+  const now = new Date();
+  const chooseBy =
+    afterSale?.unsold?.chooseBy && !unsoldChoiceMade
+      ? formatLotMoment(new Date(afterSale.unsold.chooseBy), now, { time: false })
+      : null;
+  const nextStep = consignmentNextStep(status, {
+    canAccept: Boolean(agreementView?.canAccept),
+    organisation: account?.organisationName ?? null,
+    chooseBy,
+  });
+  const headMeta = [
+    detail.meta,
+    submission.reference,
+    submission.sentBy?.name ? `sent by ${submission.sentBy.name}` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   return (
     <DashboardPage className="space-y-8">
       <SetMobileShellTitle title={submission.title} />
       <ConsignmentDetailHead
-        vm={detail}
+        vm={{ ...detail, meta: headMeta }}
         title={submission.title}
-        status={<ConsignmentStatusBadge stage={afterSale?.stage ?? submission.status} />}
+        status={
+          <StatusBadge tone={statusView.tone} shape={statusView.shape}>
+            {statusView.label}
+          </StatusBadge>
+        }
         backHref={DASHBOARD_ROUTES.consignments}
         backLabel={backLabel}
       />
@@ -238,6 +277,11 @@ export default async function SubmissionDetailPage({
       {categoriesFailure ? <DashboardSliceErrorAlert failure={categoriesFailure} /> : null}
       {sp.submitted === "1" ? <SubmissionSubmittedNotice submissionId={submission.id} /> : null}
       <SubmissionDetailLiveRefresh status={submission.status} />
+      {nextStep ? (
+        <Notice tone="info" title="What happens next">
+          {nextStep}
+        </Notice>
+      ) : null}
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
         <div className="flex min-w-0 flex-col gap-6">
           <SubmissionChangesRequestedPanel submission={submission} />
@@ -259,6 +303,7 @@ export default async function SubmissionDetailPage({
               submissionId={submission.id}
               view={unsoldView}
               current={unsoldCurrent}
+              deadline={chooseBy}
             />
           ) : null}
           {agreementView?.agreement && account ? (
@@ -268,6 +313,7 @@ export default async function SubmissionDetailPage({
               accountName={accountName}
               accountKind={account.accountKind}
               conditions={CONDITIONS_OF_BUSINESS_PART_C}
+              pdfHref={consignmentAgreementHref(submission.id)}
             />
           ) : null}
           <SubmissionRejectionPanel submission={submission} />
