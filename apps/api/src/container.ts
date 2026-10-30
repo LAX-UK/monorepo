@@ -1,9 +1,11 @@
 import { createDb } from "@auction/db";
 import {
   DrizzleAdminSavedViewRepository,
+  DrizzleBiddingExposureReader,
   DrizzleBuyerAgentAuthorisationRepository,
   DrizzleLaxAdminRolesRepository,
   DrizzleLaxStaffAccessRepository,
+  DrizzleOrganisationBiddingLimitRepository,
   DrizzleStaffAccessReviewReader,
   DrizzleStaffNoticeRecipientReader,
   DrizzleStaffRoleAssignmentReader,
@@ -46,6 +48,7 @@ import { AdminSavedViewService } from "./services/admin/admin-saved-view.service
 import { AdminTwoFactorResetService } from "./services/admin/admin-two-factor-reset.service.js";
 import { AtgAdminService } from "./services/admin/atg-admin.service.js";
 import { StaffAccessAdminService } from "./services/admin/staff-access-admin.service.js";
+import { OrganisationBiddingLimitsService } from "./services/bidding-limits/organisation-bidding-limits.service.js";
 import {
   BidAuthorityQueryService,
   BuyerAgentAuthorisationService,
@@ -310,6 +313,12 @@ export function createContainer(env: Env): Container {
   const buyerAgents = {
     authorisations: buyerAgentAuthorisations,
     bidAuthority: new BidAuthorityQueryService(catalog.bidAuthority),
+    limits: new OrganisationBiddingLimitsService({
+      limits: new DrizzleOrganisationBiddingLimitRepository(db),
+      exposure: new DrizzleBiddingExposureReader(db),
+      authorisations: buyerAgentAuthorisationRepository,
+      events: platform.domainEventSink,
+    }),
     mine: new MyBuyerAgentAuthorisationsService({
       directory: buyerAgentAuthorisationRepository,
       sales: repos.saleRepo,

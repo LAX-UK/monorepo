@@ -95,6 +95,7 @@ const LABELS: Record<string, string> = {
   "legal_entity.member_bid_stopped": "Automatic bid stopped (member removed)",
   "legal_entity.buyer_agent_authorised": "Buyer agent authorised",
   "legal_entity.buyer_agent_authorisation_revoked": "Buyer agent authorisation revoked",
+  "legal_entity.bidding_limit_changed": "Organisation bidding limit changed",
 
   "lot.created": "Lot created",
   "lot.activated": "Lot went live",

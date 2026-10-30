@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   authoriseBuyerAgentSchema,
   revokeBuyerAgentAuthorisationSchema,
+  setOrganisationBiddingLimitSchema,
 } from "./buyer-agent-authorisation.js";
 
 const valid = {
@@ -43,6 +44,23 @@ describe("authoriseBuyerAgentSchema", () => {
 
   it("rejects unknown fields", () => {
     expect(authoriseBuyerAgentSchema.safeParse({ ...valid, role: "owner" }).success).toBe(false);
+  });
+
+  it("takes an optional total with the same bounds as the limit", () => {
+    expect(authoriseBuyerAgentSchema.safeParse({ ...valid, totalLimit: 50_000 }).success).toBe(
+      true,
+    );
+    expect(authoriseBuyerAgentSchema.safeParse({ ...valid, totalLimit: null }).success).toBe(true);
+    expect(authoriseBuyerAgentSchema.safeParse({ ...valid, totalLimit: 0 }).success).toBe(false);
+  });
+});
+
+describe("setOrganisationBiddingLimitSchema", () => {
+  it("sets a limit in pounds or removes it with null", () => {
+    expect(setOrganisationBiddingLimitSchema.safeParse({ limit: 250_000 }).success).toBe(true);
+    expect(setOrganisationBiddingLimitSchema.safeParse({ limit: null }).success).toBe(true);
+    expect(setOrganisationBiddingLimitSchema.safeParse({ limit: -5 }).success).toBe(false);
+    expect(setOrganisationBiddingLimitSchema.safeParse({}).success).toBe(false);
   });
 });
 

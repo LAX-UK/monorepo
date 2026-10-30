@@ -10,7 +10,11 @@ export function respondBiddingRouteOutcome<T>(
   if (outcome.kind === "err") {
     const e = outcome.error;
     return c.json(
-      e.code ? { error: e.message, code: e.code } : { error: e.message },
+      {
+        error: e.message,
+        ...(e.code ? { code: e.code } : {}),
+        ...(e.details ? { details: e.details } : {}),
+      },
       asHttpStatus(e.status),
     );
   }

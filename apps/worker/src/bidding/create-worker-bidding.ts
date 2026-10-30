@@ -1,5 +1,6 @@
 import {
   AbsenteeBidService,
+  BidPlacementLimitGuard,
   DEFAULT_BID_POLICY,
   type IBidPlacer,
   type INotificationOutboxService,
@@ -31,6 +32,7 @@ import {
   createWorkerBidAuthority,
   createWorkerBidEligibility,
   createWorkerBidIdentityEligibilityGate,
+  createWorkerBiddingLimitGate,
 } from "./create-worker-bid-eligibility.js";
 import { WorkerBidLotLifecycleRecording } from "./worker-bid-lot-lifecycle-recording.js";
 import {
@@ -80,7 +82,15 @@ export function createWorkerBiddingComposition(
   );
 
   const identityEligibilityGate = createWorkerBidIdentityEligibilityGate(db, env);
-  const bidEligibility = createWorkerBidEligibility({ db, env, identityEligibilityGate });
+  const bidAuthority = createWorkerBidAuthority(db);
+  const biddingLimitGate = createWorkerBiddingLimitGate(db);
+  const bidEligibility = createWorkerBidEligibility({
+    db,
+    env,
+    identityEligibilityGate,
+    bidAuthority,
+    biddingLimitGate,
+  });
   const lotLifecycleJournal = new WorkerLotLifecycleEventRecorder(
     domainEventSink,
     new DrizzleLotLifecycleSnapshotRepository(db),
@@ -107,6 +117,7 @@ export function createWorkerBiddingComposition(
     notificationOutbox,
     notificationFactory,
     saleRepo: new DrizzleSaleRepository(db),
+    limitGuard: new BidPlacementLimitGuard(bidAuthority, biddingLimitGate),
   });
 
   const absenteeReplay = new AbsenteeBidService(
@@ -116,7 +127,8 @@ export function createWorkerBiddingComposition(
     legalEntities,
     repoFactory.root.bid,
     identityEligibilityGate,
-    createWorkerBidAuthority(db),
+    bidAuthority,
+    biddingLimitGate,
   );
 
   return {

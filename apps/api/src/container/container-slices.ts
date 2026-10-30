@@ -48,6 +48,7 @@ import type {
 import type { IdentityRouteServices } from "../services/interfaces/identity-routes.js";
 import type { ILotLifecycleService, ILotReadService } from "../services/interfaces/lot-service.js";
 import type { IOAuthAttributionStore } from "../services/interfaces/oauth-attribution-store.js";
+import type { IOrganisationBiddingLimitsService } from "../services/interfaces/organisation-bidding-limits-service.js";
 import type { PlatformCronRouteServices } from "../services/interfaces/platform-cron-routes/index.js";
 import type { IPushSubscriptionRepository } from "../services/interfaces/push.js";
 import type {
@@ -323,6 +324,8 @@ export type ContainerBuyerAgentsSlice = {
     bidAuthority: IBidAuthorityQueryService;
     /** A buyer agent's own authorisations, for their Home. */
     mine: IMyBuyerAgentAuthorisationsService;
+    /** The organisation's bidding limits and what is in use under them. */
+    limits: IOrganisationBiddingLimitsService;
   };
 };
 

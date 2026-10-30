@@ -317,6 +317,7 @@ export {
   bindingBiddingLimit,
   decideBiddingLimits,
   exposureOf,
+  roomUnder,
   type ApplicableBiddingLimit,
   type BiddingLimitDecision,
   type BiddingLimitKind,

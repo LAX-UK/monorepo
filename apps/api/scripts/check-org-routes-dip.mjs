@@ -15,6 +15,7 @@ const files = [
   "src/routes/legal-entities.ts",
   "src/routes/legal-entity-members.ts",
   "src/routes/legal-entity-buyer-agents.ts",
+  "src/routes/legal-entity-bidding-limits.ts",
   "src/routes/organisation-membership.ts",
   "src/routes/organisation-home.ts",
   "src/routes/organizations.ts",

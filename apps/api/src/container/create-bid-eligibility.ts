@@ -4,8 +4,10 @@ import {
   BidEligibilityService,
   BidIdentityEligibilityGate,
   BidderRoleGate,
+  BiddingLimitGate,
   type IBidAuthority,
   type IBidIdentityEligibilityGate,
+  type IBiddingLimitGate,
   type ISelfServiceIdentityEligibilityGate,
   KycBidGate,
   NoOpAmlBidGate,
@@ -20,8 +22,10 @@ import {
   DrizzleBidBidderRoleReader,
   DrizzleBidLotRulesReader,
   DrizzleBidMembershipReader,
+  DrizzleBiddingExposureReader,
   DrizzleBuyerAgentAuthorisationReader,
   DrizzleOperatorPlacementReader,
+  DrizzleOrganisationBiddingLimitRepository,
   DrizzleSaleRegistrationBidReader,
 } from "@auction/persistence/repositories";
 import type { IAmlHoldStore } from "../services/aml/ports.js";
@@ -33,6 +37,7 @@ export type CreateBidEligibilityInput = {
   amlHoldStore: IAmlHoldStore;
   identityEligibilityGate: IBidIdentityEligibilityGate;
   bidAuthority?: IBidAuthority;
+  biddingLimitGate?: IBiddingLimitGate;
 };
 
 /** Who may bid for a legal entity; shared by every bidding channel. */
@@ -41,6 +46,16 @@ export function createBidAuthority(db: Database): IBidAuthority {
     new DrizzleBidMembershipReader(db),
     new DrizzleBuyerAgentAuthorisationReader(db),
   );
+}
+
+/** Per-lot limits, buyer-agent totals and organisation limits; shared by every bidding channel. */
+export function createBiddingLimitGate(db: Database): IBiddingLimitGate {
+  const exposure = new DrizzleBiddingExposureReader(db);
+  return new BiddingLimitGate({
+    organisationLimits: new DrizzleOrganisationBiddingLimitRepository(db),
+    exposure,
+    lock: exposure,
+  });
 }
 
 export function createBidEligibility(input: CreateBidEligibilityInput): IBidEligibility {
@@ -54,6 +69,7 @@ export function createBidEligibility(input: CreateBidEligibilityInput): IBidElig
     new OperatorPlacementPolicy(operatorReader),
     new SaleRegistrationBidGate(new DrizzleSaleRegistrationBidReader(db)),
     new BidderRoleGate(new DrizzleBidBidderRoleReader(db)),
+    input.biddingLimitGate ?? createBiddingLimitGate(db),
   );
 }
 
@@ -100,5 +116,6 @@ export function createBidEligibilityForTest(
     new OperatorPlacementPolicy(operatorReader),
     new SaleRegistrationBidGate(new DrizzleSaleRegistrationBidReader(db)),
     new BidderRoleGate(new DrizzleBidBidderRoleReader(db)),
+    createBiddingLimitGate(db),
   );
 }

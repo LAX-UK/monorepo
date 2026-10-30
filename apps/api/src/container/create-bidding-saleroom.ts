@@ -1,4 +1,8 @@
-import { SaleroomOnBlockPolicy, createBidPlacer } from "@auction/bidding-runtime";
+import {
+  BidPlacementLimitGuard,
+  SaleroomOnBlockPolicy,
+  createBidPlacer,
+} from "@auction/bidding-runtime";
 import type { Database } from "@auction/db";
 import { DrizzleSaleroomSessionRepository } from "@auction/persistence/repositories";
 import { type Env, resolveStrictBidEligibilityEnabled } from "../env.js";
@@ -22,6 +26,7 @@ import { SaleroomService } from "../services/saleroom.service.js";
 import {
   createBidEligibility,
   createBidIdentityEligibilityGate,
+  createBiddingLimitGate,
 } from "./create-bid-eligibility.js";
 import type { ContainerCatalogServices } from "./create-catalog-services.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
@@ -129,7 +134,9 @@ function composeRegistrationAndBidding(
       "[BidEligibility] STRICT_BID_ELIGIBILITY_ENABLED is active while Veriff is unconfigured; bidding remains fail-closed until users are approved in the database",
     );
   }
+  const biddingLimitGate = createBiddingLimitGate(db);
   const bidEligibilityService = createBidEligibility({
+    biddingLimitGate,
     db,
     amlHoldStore,
     identityEligibilityGate,
@@ -162,6 +169,7 @@ function composeRegistrationAndBidding(
     },
     notificationOutbox: notificationOutboxService,
     notificationFactory,
+    limitGuard: new BidPlacementLimitGuard(bidAuthority, biddingLimitGate),
     saleRepo,
   });
   const absenteeBidService = new AbsenteeBidService(
@@ -172,6 +180,7 @@ function composeRegistrationAndBidding(
     repoFactory.root.bid,
     identityEligibilityGate,
     bidAuthority,
+    biddingLimitGate,
   );
   const adminSaleOperationsSnapshotService = new AdminSaleOperationsSnapshotService(
     repos.adminSaleOperationsSnapshotReader,

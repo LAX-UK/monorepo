@@ -108,9 +108,13 @@ export function exposureOf(
   return fromPence(total);
 }
 
+/** Room left under a total limit, never below zero. */
+export function roomUnder(limit: number, exposure: number): number {
+  return fromPence(Math.max(0, toPence(limit) - toPence(exposure)));
+}
+
 function availableUnder(limit: ApplicableBiddingLimit): number {
-  if (limit.kind === "per_lot") return limit.limit;
-  return fromPence(Math.max(0, toPence(limit.limit) - toPence(limit.exposure)));
+  return limit.kind === "per_lot" ? limit.limit : roomUnder(limit.limit, limit.exposure);
 }
 
 /** The limit with the least room, or `null` when no limit applies. */
