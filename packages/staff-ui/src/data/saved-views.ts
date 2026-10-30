@@ -58,6 +58,26 @@ export type SavedViewsControls = {
   move: (id: string, toIndex: number) => Promise<SavedViewsResult>;
 };
 
+/** Parameters that say where in a list you are, not what the list shows. */
+const PAGING_PARAMS = ["offset", "cursor", "page"];
+
+/** A list's URL params without paging, so a view is the filters and not the page it was saved on. */
+export function viewQuery(query: string): string {
+  const params = new URLSearchParams(query.replace(/^\?/, ""));
+  for (const name of PAGING_PARAMS) params.delete(name);
+  return params.toString();
+}
+
+/** True when two URL param strings show the same list: same params, any order, any page. */
+export function sameViewQuery(a: string, b: string): boolean {
+  const canonical = (query: string) =>
+    [...new URLSearchParams(viewQuery(query)).entries()]
+      .map(([key, value]) => `${key}=${value}`)
+      .sort()
+      .join("&");
+  return canonical(a) === canonical(b);
+}
+
 const FAILED_MESSAGE = "Something went wrong. Try again.";
 
 function toFailure(error: unknown): Extract<SavedViewsResult, { ok: false }> {

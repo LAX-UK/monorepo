@@ -14,7 +14,7 @@ import type { AuthzError, LotError } from "../../lib/errors.js";
  * those services while preserving the composite route surface.
  */
 export interface ISaleStatusTransitionService {
-  /** Manually mark an active onsite sale as ended. Ends all still-active lots
+  /** Manually mark an active saleroom (onsite or hybrid) sale as ended. Ends all still-active lots
    * and cancels their lifecycle jobs. Online sales continue to use timed
    * lifecycle automation and reject this transition.
    */

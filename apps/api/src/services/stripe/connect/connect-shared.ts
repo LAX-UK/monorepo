@@ -31,3 +31,23 @@ export function connectReadyFromCachedEntity(entity: LegalEntityConnectRow): boo
     !disabledReason
   );
 }
+
+/**
+ * Stripe codes meaning the stored Connect account id is not one this platform can use: it never
+ * existed (seeded or mistyped ids), was deleted, or its access was revoked. Every other error,
+ * such as a network failure, is a real failure and is not hidden.
+ */
+const UNKNOWN_CONNECT_ACCOUNT_CODES: ReadonlySet<string> = new Set([
+  "account_invalid",
+  "resource_missing",
+]);
+
+export function isUnknownConnectAccountError(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const { type, code } = err as { type?: unknown; code?: unknown };
+  return (
+    (type === "StripePermissionError" || type === "StripeInvalidRequestError") &&
+    typeof code === "string" &&
+    UNKNOWN_CONNECT_ACCOUNT_CODES.has(code)
+  );
+}
