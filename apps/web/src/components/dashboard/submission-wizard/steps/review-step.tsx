@@ -20,12 +20,12 @@ import { Button } from "@auction/ui/components/button";
 import { Surface } from "@auction/ui/components/surface";
 import type { ItemSubmissionFormValues } from "@auction/validators";
 function formatProvenance(values: ItemSubmissionFormValues): string {
-  if (values.provenance.length === 0) return "—";
+  if (values.provenance.length === 0) return "";
   return values.provenance.map((e) => [e.period, e.note].filter(Boolean).join(" — ")).join("; ");
 }
 
 function formatExhibitions(values: ItemSubmissionFormValues): string {
-  if (values.exhibitions.length === 0) return "—";
+  if (values.exhibitions.length === 0) return "";
   return values.exhibitions
     .map((e) => [e.year, e.venue, e.note].filter(Boolean).join(" — "))
     .join("; ");
@@ -81,7 +81,7 @@ export function ReviewStep({
     {
       stepId: "provenance",
       title: "Provenance & exhibitions",
-      body: `${formatProvenance(v)} / ${formatExhibitions(v)}`,
+      body: [formatProvenance(v), formatExhibitions(v)].filter(Boolean).join(" / "),
     },
     {
       stepId: "pricing",
@@ -151,7 +151,9 @@ export function ReviewStep({
                 <h3 className="font-headline text-sm font-semibold text-on-surface">
                   {section.title}
                 </h3>
-                <p className="font-body text-sm text-on-surface-variant">{section.body || "—"}</p>
+                <p className="font-body text-sm text-on-surface-variant">
+                  {section.body || "Not added yet"}
+                </p>
               </div>
               <Button
                 type="button"

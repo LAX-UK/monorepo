@@ -80,7 +80,7 @@ export function SellWithLaxFlow({ categories, initialValues, choice, registerHre
 
   if (phase === "seller") {
     return (
-      <div ref={sellerRef} tabIndex={-1} className="space-y-6 outline-none">
+      <div ref={sellerRef} tabIndex={-1} className="space-y-6 pt-4 outline-none">
         <SellerAccountStep
           options={choice.options}
           selectedId={accountId}
