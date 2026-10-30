@@ -119,7 +119,11 @@ export function Dialog({
             </DialogPrimitive.Close>
           </div>
           {children ? (
-            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-5 md:px-6">
+            // Focusable, so the body can be scrolled from the keyboard when it overflows.
+            <div
+              tabIndex={0}
+              className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-lax-focus md:px-6"
+            >
               {children}
             </div>
           ) : null}
