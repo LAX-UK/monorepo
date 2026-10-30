@@ -19,7 +19,7 @@ export function returnFocusTarget(active: Element | null): HTMLElement | null {
 }
 
 /**
- * Returns focus to whatever opened an overlay once it closes. Kit dialogs and sheets open from
+ * Returns focus to whatever opened an overlay once it closes. Dialogs and sheets open from
  * state rather than from a trigger element, so without this focus would fall back to the page
  * body and keyboard users would lose their place. Pass the result as `onCloseAutoFocus`.
  */

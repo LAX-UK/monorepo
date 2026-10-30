@@ -2,12 +2,17 @@
 
 import { Sheet, SheetContent, SheetDescription, SheetTitle } from "@auction/ui/components/sheet";
 import { TooltipProvider } from "@auction/ui/components/tooltip";
-import { Kbd, LaxDensityProvider, type LinkComponent, laxDensityAttributes } from "@auction/ui/lax";
+import {
+  Kbd,
+  LaxDensityProvider,
+  type LinkComponent,
+  laxDensityAttributes,
+  useReturnFocus,
+} from "@auction/ui/lax";
 import { Menu, PanelLeftClose, PanelLeftOpen, Search } from "lucide-react";
 import * as React from "react";
 import { confirmDiscardChanges } from "../forms/unsaved-changes.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
-import { useReturnFocus } from "../lib/return-focus.js";
 import { StaffButton } from "../primitives/button.js";
 import { StaffTooltip } from "../primitives/menu.js";
 import { CommandPalette, useCommandPaletteShortcut } from "./command-palette.js";

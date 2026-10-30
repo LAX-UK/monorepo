@@ -6,7 +6,9 @@ import { SheetButtons } from "./sheet-buttons";
 import { SheetFigures, SheetNotices, SheetToasts } from "./sheet-feedback";
 import { SheetFields } from "./sheet-fields";
 import { SheetDensitiesProvider } from "./sheet-frame";
+import { SheetListToolbar, SheetOverlays } from "./sheet-lists";
 import { SheetMenus } from "./sheet-menus";
+import { SheetEmptyStates, SheetPresets, SheetToggles } from "./sheet-settings";
 import { SheetStatus } from "./sheet-status";
 import { SheetTabs } from "./sheet-tabs";
 
@@ -40,6 +42,11 @@ export function LaxComponentSheet({
         <SheetNotices />
         <SheetFigures />
         <SheetToasts />
+        <SheetListToolbar />
+        <SheetOverlays />
+        <SheetPresets />
+        <SheetToggles />
+        <SheetEmptyStates />
       </div>
     </SheetDensitiesProvider>
   );

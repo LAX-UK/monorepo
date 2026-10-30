@@ -58,7 +58,7 @@ export function MenuContent({
 
 const itemClass = [
   "min-h-lax-control-sm gap-2 rounded-lax-control px-2 py-1.5 font-lax text-lax-ui text-lax-fg",
-  "in-data-[lax-density=client]:min-h-lax-control-md in-data-[lax-density=client]:gap-3 in-data-[lax-density=client]:px-3",
+  "in-data-[lax-density=client]:min-h-lax-control-md in-data-[lax-density=client]:gap-x-3 in-data-[lax-density=client]:px-3",
   "focus:bg-lax-hover data-[highlighted]:bg-lax-hover",
   "data-[disabled]:text-lax-disabled-fg data-[disabled]:opacity-100",
   "[&>svg]:size-4 [&>svg]:text-lax-muted",

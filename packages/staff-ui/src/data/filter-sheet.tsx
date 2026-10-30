@@ -7,12 +7,11 @@ import {
   SheetDescription,
   SheetTitle,
 } from "@auction/ui/components/sheet";
-import { Count, Field, TextInput } from "@auction/ui/lax";
+import { Count, Field, TextInput, useReturnFocus } from "@auction/ui/lax";
 import { ListFilter, X } from "lucide-react";
 import * as React from "react";
 import { type EntityOption, EntityPicker } from "../forms/entity-picker.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
-import { useReturnFocus } from "../lib/return-focus.js";
 import { StaffButton } from "../primitives/button.js";
 import { ChoiceRow, StaffCheckbox, StaffRadio, StaffRadioGroup } from "../primitives/choice.js";
 import { useStaffShortcut } from "../shell/shortcuts.js";
