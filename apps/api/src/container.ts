@@ -26,6 +26,7 @@ import { createFinanceRouteServices } from "./container/create-finance-route-ser
 import { createIdentityRouteServices } from "./container/create-identity-route-services.js";
 import { createInfra } from "./container/create-infra.js";
 import { createLotLifecycle } from "./container/create-lot-lifecycle.js";
+import { createOrganisationAccessServices } from "./container/create-organisation-access-services.js";
 import { createOrganisationBuyingServices } from "./container/create-organisation-buying-services.js";
 import { createOrganisationHomeServices } from "./container/create-organisation-home-services.js";
 import { createOrganisationMembershipServices } from "./container/create-organisation-membership-services.js";
@@ -342,6 +343,14 @@ export function createContainer(env: Env): Container {
     notificationDispatcher: platform.notificationDispatcher,
     notificationFactory: platform.notificationFactory,
   });
+  const organisationAccess = createOrganisationAccessServices({
+    db,
+    memberManagement: platform.memberManagementService,
+    recipients: repos.legalEntityNotificationRecipients,
+    notificationDispatcher: platform.notificationDispatcher,
+    notificationFactory: platform.notificationFactory,
+    events: platform.domainEventSink,
+  });
   const organisationSelling = createOrganisationSellingServices({
     db,
     submissionAccess: new SubmissionAccessGuard(repos.itemSubmissionRepository),
@@ -625,6 +634,7 @@ export function createContainer(env: Env): Container {
     organisationHome,
     organisationBuying: organisationBuying.client,
     organisationSelling,
+    organisationAccess,
     organisationWorkspace,
     organisationTeam,
     queueAdmin: userMisc.queueAdmin,
@@ -671,6 +681,7 @@ export type {
   ContainerOrganisationHomeRoutesSlice,
   ContainerOrganisationBuyingRoutesSlice,
   ContainerOrganisationSellingRoutesSlice,
+  ContainerOrganisationAccessRoutesSlice,
   ContainerOrganisationWorkspaceRoutesSlice,
   ContainerOrganisationTeamRoutesSlice,
   ContainerLegalEntityRoutesSlice,

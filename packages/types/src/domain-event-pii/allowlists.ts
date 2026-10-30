@@ -227,6 +227,20 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
   /** an unanswered organisation invitation withdrawn, or reopened by its Undo. */
   "legal_entity.invitation_withdrawn": new Set(["invitation_id", "role"]),
   "legal_entity.invitation_restored": new Set(["invitation_id", "role"]),
+  /** A member asked for a role or capability; the reason stays on the request, not the event. */
+  "legal_entity.access_requested": new Set([
+    "request_id",
+    "requester_user_id",
+    "requested_role",
+    "requested_capability",
+  ]),
+  /** An owner or admin approved (with the role given) or declined a request for access. */
+  "legal_entity.access_request_decided": new Set([
+    "request_id",
+    "requester_user_id",
+    "decision",
+    "granted_role",
+  ]),
   /** an automatic bid (auto-bid ceiling or absentee bid) stopped because its member was removed. */
   "legal_entity.member_bid_stopped": new Set([
     "bid_kind",

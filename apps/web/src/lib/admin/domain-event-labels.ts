@@ -96,6 +96,8 @@ const LABELS: Record<string, string> = {
   "legal_entity.member_authorisations_revoked":
     "Buyer agent authorisations ended (member left or changed role)",
   "legal_entity.member_bid_stopped": "Automatic bid stopped (member removed)",
+  "legal_entity.access_requested": "Access requested",
+  "legal_entity.access_request_decided": "Access request decided",
   "legal_entity.buyer_agent_authorised": "Buyer agent authorised",
   "legal_entity.buyer_agent_authorisation_revoked": "Buyer agent authorisation revoked",
   "legal_entity.bidding_limit_changed": "Organisation bidding limit changed",

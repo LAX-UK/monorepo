@@ -342,6 +342,7 @@ export {
 export {
   entityActorCan,
   entityCapabilitiesOf,
+  isEntityCapability,
   entityRoleCan,
   rolesWithCapability,
   type EntityActor,
@@ -621,3 +622,16 @@ export {
   type SoldLotFacts,
   type SoldLotPayoutStage,
 } from "./selling-records.js";
+export {
+  ACCESS_REQUEST_STATUSES,
+  accessAskRefusal,
+  accessDecisionRefusal,
+  accessRequestOpen,
+  approvalRole,
+  canDecideAccessRequests,
+  type AccessApprovalRefusal,
+  type AccessAsk,
+  type AccessAskRefusal,
+  type AccessDecisionRefusal,
+  type AccessRequestStatus,
+} from "./access-request.js";

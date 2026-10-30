@@ -985,3 +985,10 @@ export type {
   ReturnedWorkRow,
   SoldLotRow,
 } from "./workspace-selling.readers.js";
+export type {
+  AccessRequestDecision,
+  AccessRequestRow,
+  IAccessRequestRepository,
+  IActiveMemberLookup,
+  NewAccessRequest,
+} from "./access-request.repository.js";

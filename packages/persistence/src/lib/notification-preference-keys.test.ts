@@ -36,6 +36,8 @@ const NOTIFICATION_TYPES = [
   "delivery_quote_ready",
   "payout_problem",
   "bid_refused_limit",
+  "access_requested",
+  "access_request_decided",
 ] as const;
 
 type ExpectedRow = {
@@ -145,6 +147,8 @@ const EXPECTED: Record<(typeof NOTIFICATION_TYPES)[number], ExpectedRow> = {
     push: null,
     template: null,
   },
+  access_requested: { email: null, whatsapp: null, inApp: null, push: null, template: null },
+  access_request_decided: { email: null, whatsapp: null, inApp: null, push: null, template: null },
   bid_refused_limit: {
     email: null,
     whatsapp: null,

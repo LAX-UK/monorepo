@@ -251,3 +251,4 @@ export {
   DrizzleReturnedWorksReader,
   DrizzleSoldLotsReader,
 } from "./drizzle-workspace-selling.readers.js";
+export { DrizzleAccessRequestRepository } from "./drizzle-access-request.repository.js";
