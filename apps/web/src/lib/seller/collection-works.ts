@@ -35,6 +35,13 @@ export type CollectionWork = {
   meta: string[];
   /** What it was bought for; `null` when the member's role does not see money. */
   price: string | null;
+  /**
+   * What the organisation paid, hammer and buyer's premium, from its invoice; `null` before the
+   * invoice, for returned works, or when the member's role does not see money.
+   */
+  boughtFor: string | null;
+  /** "Lot 44" for a work bought, "C-1987" for one returned. */
+  reference: string | null;
   where: Badge | null;
   /** Starts Sell a work with the work's details filled in. */
   consignHref: string;
@@ -63,6 +70,11 @@ export function boughtWork(
       win.lotNumber == null ? null : `lot ${win.lotNumber}`,
     ].filter((fact): fact is string => Boolean(fact)),
     price: win.hammerPrice == null ? null : formatMoney(win.hammerPrice, "GBP"),
+    boughtFor:
+      win.hammerPrice != null && facts?.invoice.totalDue
+        ? formatMoney(facts.invoice.totalDue, "GBP")
+        : null,
+    reference: win.lotNumber == null ? null : `Lot ${win.lotNumber}`,
     where: whereFrom(facts?.delivery.stage),
     consignHref: `${CLIENT_ROUTES.sellingNew}?fromLot=${encodeURIComponent(win.lotId)}`,
     consignLabel: "Consign this work",
@@ -88,6 +100,8 @@ export function returnedWork(work: ReturnedWork, input: { now: Date }): Collecti
       work.reference,
     ],
     price: null,
+    boughtFor: null,
+    reference: work.reference,
     where: WHERE["with-us"],
     consignHref: `${CLIENT_ROUTES.sellingNew}?fromSubmission=${encodeURIComponent(work.submissionId)}`,
     consignLabel: "Consign again",

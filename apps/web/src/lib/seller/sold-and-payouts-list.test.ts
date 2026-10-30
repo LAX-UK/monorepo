@@ -123,7 +123,9 @@ describe("collection works", () => {
   it("offers Consign this work with the details carried, and where the work is", () => {
     const work = boughtWork(
       win,
-      { delivery: { stage: "delivered" } } as Parameters<typeof boughtWork>[1],
+      { delivery: { stage: "delivered" }, invoice: { totalDue: "4960.00" } } as Parameters<
+        typeof boughtWork
+      >[1],
       { now: NOW, canSell: true },
     );
     expect(work.where?.label).toBe("Delivered");

@@ -224,7 +224,9 @@ export function RecordRow({
                   <Link
                     href={href}
                     data-record-link
-                    className="after:absolute after:inset-0 focus-visible:outline-none"
+                    // A block at least 24px tall (WCAG 2.5.8) without moving the line: the padding
+                    // is taken back by the margin. The whole row stays the click area (after:).
+                    className="-my-[3px] block truncate py-[3px] after:absolute after:inset-0 focus-visible:outline-none"
                   >
                     {title}
                   </Link>

@@ -1,4 +1,5 @@
 import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
+import { CollectionExportButton } from "@/components/dashboard/seller/collection-export-button";
 import { CollectionView } from "@/components/dashboard/seller/collection-view";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { WorkspacePageNoAccess } from "@/components/organisations/workspace-page-no-access";
@@ -10,7 +11,7 @@ import {
 } from "@/lib/legal-entity/seller-acting-context.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { workspacePageRefusal } from "@/lib/presenters/workspace-access/workspace-access";
-import { parseWorksListQuery } from "@/lib/seller/collection-works";
+import { parseWorksListQuery, worksInView } from "@/lib/seller/collection-works";
 import { loadCollectionWorks } from "@/lib/seller/collection.server";
 import { sellingAccess } from "@/lib/seller/selling-access.server";
 import type { Metadata } from "next";
@@ -48,10 +49,20 @@ export default async function CollectionPage({ searchParams }: PageProps) {
     searchParams,
   ]);
 
+  const query = parseWorksListQuery(sp);
+  const showPrice = sellerCan(ctx, "entity.finance.read");
   return (
     <DashboardListPage
       title="Works"
       description={`Works ${organisation} owns through LAX Bid, and where each one is.`}
+      actions={
+        works && works.length > 0 ? (
+          <CollectionExportButton
+            counts={{ view: worksInView(works, query).length }}
+            showPrice={showPrice}
+          />
+        ) : null
+      }
     >
       <SetMobileShellTitle title="Works" />
       <p className="text-lax-13 text-lax-muted">
@@ -66,9 +77,9 @@ export default async function CollectionPage({ searchParams }: PageProps) {
       </p>
       <CollectionView
         works={works}
-        query={parseWorksListQuery(sp)}
+        query={query}
         organisation={organisation}
-        showPrice={sellerCan(ctx, "entity.finance.read")}
+        showPrice={showPrice}
         canBid={sellerCan(ctx, "entity.bid.place")}
         pausedReason={access.pausedReason}
       />

@@ -197,6 +197,14 @@ describe("RecordRow", () => {
     expect(value.className).not.toContain("truncate");
   });
 
+  it("gives the record link a target of at least 24px without moving the title", () => {
+    const li = row(<RecordRow title="Ceramic vessel" href="/r/1" />);
+    const link = li.querySelector("[data-record-link]") as HTMLElement;
+    expect(link.className).toContain("block");
+    expect(link.className).toContain("py-[3px]");
+    expect(link.className).toContain("-my-[3px]");
+  });
+
   it("keeps the status and action columns on an aligned row that has neither", () => {
     const li = row(
       <RecordRow
