@@ -6,6 +6,8 @@ export const PAY_SEVERAL_SKIP_COPY: Record<PaySeveralSkipReason, string> = {
   not_owed: "Already paid, or the payment is being confirmed",
   not_payer: "Your role doesn't pay this invoice",
   not_invoiced: "No invoice yet",
+  held_for_review: "Held while we review a payment",
+  being_paid: "A payment for it is already in progress",
 };
 
 /** Why one payment of the picks cannot be taken, as the payer reads it. */
@@ -37,10 +39,21 @@ export type PaySeveralPlanView = {
   block: PaySeveralBlock | null;
 };
 
-/** Where the payer goes to pay: the combined checkout, or the checkout for several lots. */
+/** Where the payer goes to pay the one combined payment, or why it could not be opened. */
 export type PaySeveralStart = { ok: true; url: string } | { ok: false; message: string };
 
-/** The checkout for several lots, used while one combined payment is not available. */
-export function multiLotCheckoutHref(lotIds: readonly string[]): string {
-  return `/purchases/checkout?lots=${lotIds.map(encodeURIComponent).join(",")}`;
-}
+/** What a refused payment says, by the API's code; anything else reads as a passing failure. */
+export const PAY_SEVERAL_START_COPY: Readonly<Record<string, string>> = {
+  pay_several_payer_on_hold: PAY_SEVERAL_BLOCK_COPY.payer_on_hold,
+  pay_several_below_minimum: PAY_SEVERAL_BLOCK_COPY.below_minimum,
+  pay_several_over_limit: PAY_SEVERAL_BLOCK_COPY.over_limit,
+  pay_several_needs_finance_review: PAY_SEVERAL_BLOCK_COPY.needs_finance_review,
+  pay_several_nothing_payable: PAY_SEVERAL_BLOCK_COPY.nothing_payable,
+  pay_several_mixed_currency: PAY_SEVERAL_BLOCK_COPY.mixed_currency,
+  pay_several_conflict:
+    "One of these invoices changed while you were looking. Close this and try again.",
+  pay_several_unavailable: "Paying several invoices at once is paused. Pay each one on its own.",
+};
+
+export const PAY_SEVERAL_START_FAILED =
+  "We couldn't open the payment. Nothing was charged. Try again in a moment.";
