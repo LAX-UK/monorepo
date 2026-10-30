@@ -1,55 +1,41 @@
 import type { LegalEntityMemberRole } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { computeConsignmentChecklist } from "./consignment-checklist.js";
 import { emptyConsignmentProgress } from "./consignment-progress.js";
+import { type NeedsYouTask, needsYouKindsFor } from "./needs-you.js";
+import type { DashboardFigures } from "./organisation-dashboard.js";
 import {
   type HomeActivityEvent,
+  type NeedsYouRead,
   type OrganisationHomeFacts,
   buildOrganisationHome,
   homeNotices,
   homeShortcuts,
-  homeTaskKindsFor,
+  organisationFirstSteps,
 } from "./organisation-home.js";
-
-const agreementToAccept = computeConsignmentChecklist({
-  submissionStatus: "approved",
-  accountKind: "organisation",
-  identity: "verified",
-  agreement: { proposed: true, accepted: false },
-  payoutsReady: false,
-  viewer: { canAcceptAgreement: true, canSetUpPayouts: true },
-  saleStartsAt: null,
-});
-
-/** An organisation with something for every role to do. */
-function busy(role: LegalEntityMemberRole): OrganisationHomeFacts {
-  return {
-    actor: { role },
-    organisation: { status: "approved", payoutsReady: false },
-    consignments: [{ id: "c1", title: "Untitled (Blue)", checklist: agreementToAccept }],
-    changesRequested: [{ id: "s1", title: "Study in Ochre", note: "Add a photo" }],
-    unsoldLots: [{ id: "l1", title: "Harbour at Dusk", choice: "none" }],
-    purchasesAwaitingPayment: [{ id: "p1", title: "Lot 14" }],
-    viewerIdentity: "required",
-    salesToRegister: [
-      { id: "sale1", title: "Contemporary", startsAt: new Date("2026-11-04"), bidLimit: "10000" },
-    ],
-  };
-}
 
 /** An approved organisation with nothing left to do. */
 function quiet(role: LegalEntityMemberRole): OrganisationHomeFacts {
   return {
     actor: { role },
     organisation: { status: "approved", payoutsReady: true },
-    consignments: [],
-    changesRequested: [],
     unsoldLots: [],
-    purchasesAwaitingPayment: [],
-    viewerIdentity: "verified",
-    salesToRegister: [],
+    teamInvited: true,
   };
 }
+
+/** What the reader says for a role: its kinds, and these tasks. */
+function read(role: LegalEntityMemberRole, tasks: NeedsYouTask[] = []): NeedsYouRead {
+  return { kinds: needsYouKindsFor({ role }), tasks };
+}
+
+/** Nothing to count yet: a new organisation. */
+const NOTHING_YET: DashboardFigures = {
+  soldThisYear: { year: 2026, works: 0, totals: [] },
+  payoutsDue: { payouts: 0, totals: [], nextDate: null, overdueSince: null },
+  upcomingSales: [],
+  consignmentProgress: emptyConsignmentProgress(),
+  openBids: { lots: 0, totalMax: [] },
+};
 
 const ACTIVITY: HomeActivityEvent[] = [
   { kind: "submission_sent", at: new Date("2026-10-01"), subject: { id: "a", title: "A" } },
@@ -67,83 +53,151 @@ const ACTIVITY: HomeActivityEvent[] = [
   { kind: "lot_unsold", at: new Date("2026-10-07"), subject: { id: "g", title: "G" } },
 ];
 
-function taskKinds(facts: OrganisationHomeFacts) {
-  return buildOrganisationHome(facts, ACTIVITY).tasks?.map((task) => task.kind) ?? null;
-}
+const OUTBID: NeedsYouTask = {
+  kind: "outbid",
+  lots: [{ id: "l88", title: "Sun over Arles", endsAt: new Date("2026-10-30T18:12:00Z") }],
+};
+const PAY: NeedsYouTask = { kind: "pay", purchases: [{ id: "p1", title: "Harbour at dawn" }] };
 
-describe("buildOrganisationHome, per role", () => {
-  it("owner: everything that keeps the organisation selling and buying", () => {
-    // Money and time first, then binding steps, then the rest of the work, then setup.
-    expect(taskKinds(busy("owner"))).toEqual(["pay", "agreement", "changes", "unsold", "payouts"]);
-    expect(homeShortcuts({ role: "owner" }, "approved")).toEqual(["sell", "invite", "statements"]);
+describe("Needs you on Home comes from the one reader", () => {
+  it("shows the reader's tasks in the reader's order, adding and dropping none", () => {
+    const home = buildOrganisationHome(quiet("owner"), [], null, read("owner", [OUTBID, PAY]));
+    expect(home.tasks).toEqual([OUTBID, PAY]);
+    expect(home.needsYouFailed).toBe(false);
   });
 
-  it("admin: the same tasks as the owner", () => {
-    expect(taskKinds(busy("admin"))).toEqual(taskKinds(busy("owner")));
-    expect(homeShortcuts({ role: "admin" }, "approved")).toEqual(["sell", "invite", "statements"]);
+  it("hides the section for a role that can never be asked for anything", () => {
+    const home = buildOrganisationHome(quiet("viewer"), [], null, { kinds: [], tasks: [] });
+    expect(home.tasks).toBeNull();
   });
 
-  it("finance: payouts and purchases to pay", () => {
-    expect(taskKinds(busy("finance"))).toEqual(["pay", "payouts"]);
-    expect(homeShortcuts({ role: "finance" }, "approved")).toEqual([]);
+  it("an empty list when the role has kinds but nothing waits", () => {
+    expect(buildOrganisationHome(quiet("finance"), [], null, read("finance")).tasks).toEqual([]);
   });
 
-  it("consignor: their identity and submissions sent back; never the agreement or the unsold choice", () => {
-    expect(taskKinds(busy("consignor"))).toEqual(["changes", "identity"]);
-    expect(homeShortcuts({ role: "consignor" }, "approved")).toEqual([]);
+  it("says the reader failed rather than that nothing needs you", () => {
+    const home = buildOrganisationHome(quiet("owner"), [], null, null);
+    expect(home.tasks).toBeNull();
+    expect(home.needsYouFailed).toBe(true);
+  });
+});
+
+describe("first steps", () => {
+  const newOrganisation = (
+    status: OrganisationHomeFacts["organisation"]["status"],
+    payoutsReady = false,
+  ): OrganisationHomeFacts => ({
+    ...quiet("owner"),
+    organisation: { status, payoutsReady },
+    teamInvited: false,
   });
 
-  it("buyer agent: identity, sales to register in, and wins finance has to pay", () => {
-    expect(taskKinds(busy("buyer_agent"))).toEqual([
-      "won_awaiting_payment",
-      "register",
-      "identity",
+  it("documents first, then payouts, then the team", () => {
+    const steps = organisationFirstSteps(
+      newOrganisation("docs_requested"),
+      read("owner", [{ kind: "documents" }]),
+    );
+    expect(steps).toEqual([
+      { id: "documents", state: "next" },
+      { id: "payouts", state: "later" },
+      { id: "invite", state: "later" },
     ]);
-    expect(homeShortcuts({ role: "buyer_agent" }, "approved")).toEqual([]);
   });
 
-  it("viewer: no Needs you section at all", () => {
-    expect(taskKinds(busy("viewer"))).toBeNull();
-    expect(homeTaskKindsFor({ role: "viewer" })).toEqual([]);
-    expect(homeShortcuts({ role: "viewer" }, "approved")).toEqual([]);
+  it("documents being checked are with LAX, not with the member", () => {
+    const steps = organisationFirstSteps(newOrganisation("under_review"), read("owner"));
+    expect(steps?.[0]).toEqual({ id: "documents", state: "waiting" });
   });
 
-  it.each(["owner", "admin", "finance", "consignor", "buyer_agent"] as const)(
-    "%s: an empty Needs you when nothing is left",
-    (role) => {
-      expect(taskKinds(quiet(role))).toEqual([]);
-    },
-  );
+  it("payouts is the step the reader asks for, and the task is not listed twice", () => {
+    const facts = newOrganisation("approved");
+    const home = buildOrganisationHome(
+      facts,
+      [],
+      NOTHING_YET,
+      read("owner", [PAY, { kind: "payouts" }]),
+    );
+    expect(home.firstSteps).toEqual([
+      { id: "documents", state: "done" },
+      { id: "payouts", state: "next" },
+      { id: "invite", state: "later" },
+    ]);
+    expect(home.tasks).toEqual([PAY]);
+  });
 
+  it("the team step is next once setup is done, while there is nothing yet", () => {
+    const home = buildOrganisationHome(
+      newOrganisation("approved", true),
+      [],
+      NOTHING_YET,
+      read("owner"),
+    );
+    expect(home.firstSteps?.at(-1)).toEqual({ id: "invite", state: "next" });
+  });
+
+  it("never nags a working organisation to invite anyone", () => {
+    const busy: DashboardFigures = {
+      ...NOTHING_YET,
+      openBids: { lots: 2, totalMax: [{ amount: "4000", currency: "GBP" }] },
+    };
+    const home = buildOrganisationHome(newOrganisation("approved", true), [], busy, read("owner"));
+    expect(home.firstSteps).toBeNull();
+  });
+
+  it("keeps the steps for the people who run the organisation", () => {
+    for (const role of ["finance", "consignor", "buyer_agent", "viewer"] as const) {
+      expect(
+        organisationFirstSteps({ ...newOrganisation("approved"), actor: { role } }, read(role)),
+      ).toBeNull();
+    }
+  });
+
+  it("is gone once every step is done", () => {
+    const home = buildOrganisationHome(quiet("owner"), [], NOTHING_YET, read("owner"));
+    expect(home.firstSteps).toBeNull();
+  });
+});
+
+describe("shortcuts", () => {
   it("keeps shortcuts for the people who run the organisation; other roles use the figures", () => {
     const withShortcuts = (
       ["owner", "admin", "finance", "consignor", "buyer_agent", "viewer"] as const
     ).filter((role) => homeShortcuts({ role }, "approved").length > 0);
     expect(withShortcuts).toEqual(["owner", "admin"]);
+    expect(homeShortcuts({ role: "owner" }, "approved")).toEqual(["sell", "invite", "statements"]);
   });
 
-  it("an impersonating platform admin is read-only: no tasks and no write shortcuts", () => {
-    const actor = { role: "owner" as const, isImpersonation: true };
-    expect(homeShortcuts(actor, "approved")).toEqual(["statements"]);
-    expect(taskKinds({ ...busy("owner"), actor })).toBeNull();
+  it("an impersonating platform admin gets no write shortcuts", () => {
+    expect(homeShortcuts({ role: "owner", isImpersonation: true }, "approved")).toEqual([
+      "statements",
+    ]);
+  });
+
+  it("offers a restricted organisation only its statements", () => {
+    expect(homeShortcuts({ role: "owner" }, "restricted")).toEqual(["statements"]);
+  });
+
+  it("keeps Sell a work away from an organisation that is not approved yet", () => {
+    for (const status of ["lead", "docs_requested", "under_review", "connect_pending"] as const) {
+      expect(homeShortcuts({ role: "owner" }, status)).not.toContain("sell");
+    }
   });
 });
 
 describe("organisation state on Home", () => {
-  const banner = (facts: OrganisationHomeFacts) => buildOrganisationHome(facts, []).state.banner;
+  const banner = (facts: OrganisationHomeFacts) =>
+    buildOrganisationHome(facts, [], null, read(facts.actor.role)).state.banner;
 
   it("asks owners for documents while they are requested", () => {
     const facts = {
       ...quiet("owner"),
       organisation: { status: "docs_requested" as const, payoutsReady: false },
     };
-    const home = buildOrganisationHome(facts, []);
-    expect(home.state.banner).toEqual({
+    expect(banner(facts)).toEqual({
       kind: "attention",
       key: "documents_requested",
       audience: "act",
     });
-    expect(home.tasks?.map((t) => t.kind)).toEqual(["documents"]);
   });
 
   it("tells a consignor documents are requested without asking them to send them", () => {
@@ -154,50 +208,14 @@ describe("organisation state on Home", () => {
     expect(banner(facts)).toMatchObject({ key: "documents_requested", audience: "told" });
   });
 
-  it("says documents are under review, with nothing to do", () => {
-    const facts = {
-      ...quiet("admin"),
-      organisation: { status: "under_review" as const, payoutsReady: false },
-    };
-    const home = buildOrganisationHome(facts, []);
-    expect(home.state.banner).toMatchObject({ key: "documents_under_review", audience: "told" });
-    expect(home.tasks).toEqual([]);
-  });
-
-  it("says payouts are not set up once approved without them", () => {
+  it("says payouts are not set up to those who act and those who are told", () => {
     const facts = {
       ...quiet("consignor"),
       organisation: { status: "approved" as const, payoutsReady: false },
     };
     expect(banner(facts)).toMatchObject({ key: "payouts_not_set_up", audience: "told" });
     expect(banner({ ...facts, actor: { role: "finance" } })).toMatchObject({ audience: "act" });
-  });
-
-  it("offers the payouts task exactly to those the banner asks to act, with or without work", () => {
-    const organisation = { status: "approved" as const, payoutsReady: false };
-    const tasksFor = (role: LegalEntityMemberRole) =>
-      taskKinds({ ...quiet(role), organisation, actor: { role } }) ?? [];
-    for (const role of ["owner", "admin", "finance"] as const) {
-      expect(banner({ ...quiet(role), organisation })).toMatchObject({ audience: "act" });
-      expect(tasksFor(role)).toContain("payouts");
-    }
-    for (const role of ["consignor", "viewer"] as const) {
-      expect(banner({ ...quiet(role), organisation })).toMatchObject({ audience: "told" });
-      expect(tasksFor(role)).not.toContain("payouts");
-    }
-    expect(tasksFor("buyer_agent")).not.toContain("payouts");
-  });
-
-  it("offers no payouts task once payouts are ready", () => {
-    expect(taskKinds(quiet("owner"))).toEqual([]);
-  });
-
-  it("does not tell a buyer agent about payouts", () => {
-    const organisation = { status: "approved" as const, payoutsReady: false };
-    expect(banner({ ...quiet("buyer_agent"), organisation })).toBeNull();
-    expect(banner({ ...quiet("viewer"), organisation })).toMatchObject({
-      key: "payouts_not_set_up",
-    });
+    expect(banner({ ...facts, actor: { role: "buyer_agent" } })).toBeNull();
   });
 
   it("tells every role, buyer agents included, that a restricted organisation is paused", () => {
@@ -216,13 +234,7 @@ describe("organisation state on Home", () => {
       ...quiet("owner"),
       organisation: { status: "restricted" as const, payoutsReady: true },
     };
-    const home = buildOrganisationHome(facts, [], {
-      soldThisYear: { year: 2026, works: 0, totals: [] },
-      payoutsDue: { payouts: 0, totals: [], nextDate: null, overdueSince: null },
-      upcomingSales: [],
-      consignmentProgress: emptyConsignmentProgress(),
-      openBids: { lots: 0, totalMax: [] },
-    });
+    const home = buildOrganisationHome(facts, [], NOTHING_YET, read("owner"));
     expect(home.dashboard?.firstRun?.actions).toEqual([]);
     expect(home.state.homeFirstRunKey).toBe("restricted");
   });
@@ -234,7 +246,9 @@ describe("organisation state on Home", () => {
 
 describe("recent activity", () => {
   const kinds = (role: LegalEntityMemberRole) =>
-    buildOrganisationHome(quiet(role), ACTIVITY).activity.map((event) => event.kind);
+    buildOrganisationHome(quiet(role), ACTIVITY, null, read(role)).activity.map(
+      (event) => event.kind,
+    );
 
   it("shows the five newest lines the role may see, newest first", () => {
     expect(kinds("owner")).toEqual([
@@ -257,23 +271,25 @@ describe("recent activity", () => {
   });
 
   it("tells owners and admins whose automatic bids stopped when they left", () => {
-    const admin = buildOrganisationHome(quiet("admin"), ACTIVITY).activity;
-    expect(admin.find((e) => e.kind === "member_bids_stopped")).toBeUndefined();
     const recent = buildOrganisationHome(
       quiet("admin"),
       ACTIVITY.filter((e) => e.kind === "member_bids_stopped"),
+      null,
+      read("admin"),
     ).activity;
     expect(recent).toEqual([expect.objectContaining({ kind: "member_bids_stopped", count: 2 })]);
     expect(kinds("finance")).not.toContain("member_bids_stopped");
   });
 
   it("leads See all to the role's main list", () => {
-    expect(buildOrganisationHome(quiet("owner"), []).activityArchive).toBe("consignments");
-    expect(buildOrganisationHome(quiet("buyer_agent"), []).activityArchive).toBe("bids");
+    const archive = (role: LegalEntityMemberRole) =>
+      buildOrganisationHome(quiet(role), [], null, read(role)).activityArchive;
+    expect(archive("owner")).toBe("consignments");
+    expect(archive("buyer_agent")).toBe("bids");
   });
 });
 
-describe("the unsold task", () => {
+describe("unsold works as information", () => {
   const ended = (choice: "none" | "requested" | "confirmed") => ({
     id: "l1",
     title: "Harbour at Dusk",
@@ -284,28 +300,8 @@ describe("the unsold task", () => {
     unsoldLots: lots,
   });
 
-  it.each(["owner", "admin"] as const)("%s chooses for lots with no choice yet", (role) => {
-    expect(taskKinds(facts(role, [ended("none")]))).toEqual(["unsold"]);
-  });
-
-  it.each(["owner", "admin"] as const)("%s has no task once a choice is made", (role) => {
-    expect(taskKinds(facts(role, [ended("requested"), ended("confirmed")]))).toEqual([]);
-  });
-
-  it("lists only the lots nobody has chosen for", () => {
-    const asked = { ...ended("requested"), id: "l2" };
-    const tasks = buildOrganisationHome(facts("owner", [ended("none"), asked]), []).tasks;
-    expect(tasks).toEqual([{ kind: "unsold", lots: [{ id: "l1", title: "Harbour at Dusk" }] }]);
-  });
-
-  it.each(["finance", "buyer_agent", "viewer"] as const)("%s is not asked to choose", (role) => {
-    expect(taskKinds(facts(role, [ended("none")])) ?? []).not.toContain("unsold");
-  });
-
   it("tells a consignor a lot is waiting, as information and not a task", () => {
-    const home = buildOrganisationHome(facts("consignor", [ended("none")]), []);
-    expect(home.tasks?.map((task) => task.kind)).not.toContain("unsold");
-    expect(home.notices).toEqual([
+    expect(homeNotices(facts("consignor", [ended("none")]))).toEqual([
       { kind: "unsold_waiting", lots: [{ id: "l1", title: "Harbour at Dusk" }] },
     ]);
   });
@@ -317,9 +313,7 @@ describe("the unsold task", () => {
       expect(homeNotices(facts(role, [ended("none")]))).toHaveLength(informed ? 1 : 0);
     }
   });
-});
 
-describe("unsold works while choices are paused", () => {
   const paused = (role: LegalEntityMemberRole) => ({
     ...quiet(role),
     organisation: { status: "restricted" as const, payoutsReady: true },
@@ -330,11 +324,9 @@ describe("unsold works while choices are paused", () => {
   });
 
   it.each(["owner", "admin"] as const)(
-    "gives a %s of a restricted organisation no task, and a notice to contact us",
+    "tells a %s of a restricted organisation to contact us about unsold works",
     (role) => {
-      const home = buildOrganisationHome(paused(role), []);
-      expect(home.tasks?.map((task) => task.kind)).not.toContain("unsold");
-      expect(home.notices).toEqual([
+      expect(homeNotices(paused(role))).toEqual([
         {
           kind: "unsold_paused",
           lots: [
@@ -352,45 +344,4 @@ describe("unsold works while choices are paused", () => {
       expect(homeNotices(paused(role))).toEqual([]);
     },
   );
-
-  it.each(["under_review", "docs_requested", "connect_pending"] as const)(
-    "pauses choices wherever submitting is closed (%s)",
-    (status) => {
-      const facts = { ...paused("owner"), organisation: { status, payoutsReady: false } };
-      expect(buildOrganisationHome(facts, []).tasks?.map((t) => t.kind)).not.toContain("unsold");
-    },
-  );
-});
-
-describe("Home by organisation state", () => {
-  const inState = (
-    role: LegalEntityMemberRole,
-    status: OrganisationHomeFacts["organisation"]["status"],
-  ): OrganisationHomeFacts => ({
-    ...busy(role),
-    organisation: { status, payoutsReady: false },
-  });
-
-  it("offers no selling, agreements or registering to a restricted organisation", () => {
-    expect(taskKinds(inState("owner", "restricted"))).toEqual(["pay"]);
-    expect(taskKinds(inState("buyer_agent", "restricted"))).toEqual([
-      "won_awaiting_payment",
-      "identity",
-    ]);
-    expect(homeShortcuts({ role: "owner" }, "restricted")).toEqual(["statements"]);
-  });
-
-  it("keeps Sell a work away from an organisation that is not approved yet", () => {
-    for (const status of ["lead", "docs_requested", "under_review", "connect_pending"] as const) {
-      expect(homeShortcuts({ role: "owner" }, status)).not.toContain("sell");
-    }
-  });
-
-  it("carries the state's banner and reasons for the member", () => {
-    const owner = buildOrganisationHome(inState("owner", "restricted"), []);
-    expect(owner.state.banner).toEqual({ kind: "blocked", key: "restricted", audience: "told" });
-    expect(owner.state.homeFirstRunKey).toBe("restricted");
-    const agent = buildOrganisationHome(inState("buyer_agent", "restricted"), []);
-    expect(agent.state.bidPanelReasonKey).toBe("restricted");
-  });
 });

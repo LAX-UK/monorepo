@@ -1,5 +1,5 @@
+import type { NeedsYouTaskWithLink } from "@/lib/workspace/needs-you-read";
 import {
-  type HomeTask,
   type OrganisationHomeModel,
   entityCapabilitiesOf,
   organisationStatePolicy,
@@ -7,64 +7,15 @@ import {
 import { describe, expect, it } from "vitest";
 import { roleExplanation, welcomeHeadline } from "./member-role-copy";
 import { homeActivityEvents } from "./organisation-home-activity";
-import {
-  buyerAgentAuthorityLine,
-  homeTaskView,
-  organisationHomeView,
-} from "./organisation-home-view";
+import { buyerAgentAuthorityLine, organisationHomeView } from "./organisation-home-view";
 
-const ctx = { organisationName: "Northbank Gallery" };
-
-const EVERY_TASK: HomeTask[] = [
-  { kind: "documents" },
-  { kind: "identity" },
-  { kind: "agreement", consignment: { id: "c1", title: "Untitled (Blue)" } },
-  { kind: "changes", submission: { id: "s1", title: "Study in Ochre" }, note: "Add a photo" },
-  { kind: "payouts" },
-  { kind: "unsold", lots: [{ id: "l1", title: "Harbour at Dusk" }] },
-  { kind: "pay", purchases: [{ id: "p1", title: "Lot 14" }] },
-  { kind: "won_awaiting_payment", purchases: [{ id: "p1", title: "Lot 14" }] },
-  {
-    kind: "register",
-    sale: { id: "sale1", title: "Contemporary" },
-    startsAt: new Date("2026-11-04T18:00:00Z"),
-    bidLimit: "10000.00",
-  },
-];
-
-describe("homeTaskView", () => {
-  it("gives every task a title, a detail and exactly one button", () => {
-    for (const task of EVERY_TASK) {
-      const view = homeTaskView(task, ctx);
-      expect(view.title.length).toBeGreaterThan(0);
-      expect(view.detail.length).toBeGreaterThan(0);
-      expect(view.action.label.length).toBeGreaterThan(0);
-      expect(view.action.href.startsWith("/")).toBe(true);
-    }
-  });
-
-  it("leads each task to the place it is done", () => {
-    const hrefs = Object.fromEntries(
-      EVERY_TASK.map((task) => [task.kind, homeTaskView(task, ctx).action.href]),
-    );
-    expect(hrefs).toMatchObject({
-      agreement: "/selling/consignments/c1#agreement",
-      changes: "/selling/consignments/s1",
-      payouts: "/organisation/payouts",
-      identity: "/verify-identity",
-      register: "/sales/contemporary/sale1",
-    });
-  });
-
-  it("shows the buyer agent's limit on the sale to register for", () => {
-    const register = EVERY_TASK.find((t) => t.kind === "register") as HomeTask;
-    expect(homeTaskView(register, ctx).detail).toBe("You're authorised to bid up to £10,000.00");
-  });
-});
+const ctx = { organisationName: "Northbank Gallery", now: new Date("2026-10-30T09:00:00Z") };
 
 describe("organisationHomeView", () => {
-  const model: OrganisationHomeModel = {
+  const model: OrganisationHomeModel<NeedsYouTaskWithLink> = {
     tasks: [],
+    needsYouFailed: false,
+    firstSteps: null,
     state: organisationStatePolicy("under_review", new Set()),
     notices: [],
     shortcuts: ["sell", "invite", "statements"],
@@ -78,23 +29,77 @@ describe("organisationHomeView", () => {
     expect(organisationHomeView({ ...model, tasks: null }, ctx).needsYou).toBeNull();
   });
 
-  it("says documents are under review with the usual wait, from the state policy", () => {
-    const view = organisationHomeView(model, ctx);
-    expect(view.banner).toMatchObject({
-      kind: "info",
-      title: "Documents under review.",
-      action: null,
-    });
-    expect(view.banner?.line).toContain("2–3 working days");
+  it("says when the reader failed instead of saying nothing needs you", () => {
+    const view = organisationHomeView({ ...model, tasks: null, needsYouFailed: true }, ctx);
+    expect(view.needsYouFailed).toBe(true);
+    expect(view.needsYou).toBeNull();
   });
 
-  it("offers the documents action once: in Needs you, not again on the banner", () => {
+  it("counts first steps done and gives the step to take now its one primary button", () => {
+    const view = organisationHomeView(
+      {
+        ...model,
+        firstSteps: [
+          { id: "documents", state: "done" },
+          { id: "payouts", state: "next" },
+          { id: "invite", state: "later" },
+        ],
+      },
+      ctx,
+    );
+    expect(view.firstSteps?.done).toBe(1);
+    expect(view.firstSteps?.steps.map((step) => step.action)).toEqual([
+      null,
+      { label: "Set up payouts", href: "/organisation/payouts", primary: true },
+      { label: "Invite a member", href: "/team", primary: false },
+    ]);
+  });
+
+  it("says documents are under review as a quiet line, not a banner", () => {
+    const view = organisationHomeView(model, ctx);
+    expect(view.banner).toBeNull();
+    expect(view.notices[0]).toMatchObject({ key: "state:documents_under_review" });
+    expect(view.notices[0]?.text).toContain("2–3 working days");
+  });
+
+  it("keeps the blocking documents banner, and offers its action once: in Needs you", () => {
     const owner = entityCapabilitiesOf({ role: "owner" });
     const requested = { ...model, state: organisationStatePolicy("docs_requested", owner) };
     expect(organisationHomeView(requested, ctx).banner?.action?.label).toBe("Send documents");
-    const withTask = organisationHomeView({ ...requested, tasks: [{ kind: "documents" }] }, ctx);
+    const withTask = organisationHomeView(
+      {
+        ...requested,
+        tasks: [{ kind: "documents", link: { page: "organisation", view: "documents" } }],
+      },
+      ctx,
+    );
     expect(withTask.banner).toMatchObject({ title: "Documents requested.", action: null });
     expect(withTask.needsYou?.[0]?.action.label).toBe("Open documents");
+  });
+
+  it("makes payouts not set up a task for those who act, and a line for everyone else", () => {
+    const finance = entityCapabilitiesOf({ role: "finance" });
+    const state = organisationStatePolicy("approved", finance, { payoutsReady: false });
+    const asked = organisationHomeView(
+      {
+        ...model,
+        state,
+        tasks: [{ kind: "payouts", link: { page: "organisation", view: "payouts" } }],
+      },
+      ctx,
+    );
+    expect(asked.banner).toBeNull();
+    expect(asked.notices).toEqual([]);
+    const consignor = entityCapabilitiesOf({ role: "consignor" });
+    const told = organisationHomeView(
+      {
+        ...model,
+        state: organisationStatePolicy("approved", consignor, { payoutsReady: false }),
+      },
+      ctx,
+    );
+    expect(told.banner).toBeNull();
+    expect(told.notices[0]?.key).toBe("state:payouts_not_set_up");
   });
 
   it("shows no banner when the state has nothing to tell", () => {
@@ -106,6 +111,7 @@ describe("organisationHomeView", () => {
     const view = organisationHomeView(
       {
         ...model,
+        state: organisationStatePolicy("approved", new Set()),
         notices: [
           {
             kind: "unsold_paused",
@@ -135,6 +141,7 @@ describe("organisationHomeView", () => {
     const one = organisationHomeView(
       {
         ...model,
+        state: organisationStatePolicy("approved", new Set()),
         notices: [{ kind: "unsold_waiting", lots: [{ id: "l1", title: "Harbour at Dusk" }] }],
       },
       ctx,
@@ -149,6 +156,7 @@ describe("organisationHomeView", () => {
     const two = organisationHomeView(
       {
         ...model,
+        state: organisationStatePolicy("approved", new Set()),
         notices: [
           {
             kind: "unsold_waiting",
@@ -166,13 +174,9 @@ describe("organisationHomeView", () => {
     );
   });
 
-  it("labels shortcuts and See all", () => {
+  it("labels shortcuts and See all; Sell a work is the page's own action, not a shortcut", () => {
     const view = organisationHomeView(model, ctx);
-    expect(view.shortcuts.map((s) => s.label)).toEqual([
-      "Sell a work",
-      "Invite someone",
-      "Statements",
-    ]);
+    expect(view.shortcuts.map((s) => s.label)).toEqual(["Invite a member", "Statements"]);
     expect(view.seeAllHref).toBe("/selling/consignments");
   });
 });
@@ -204,6 +208,8 @@ describe("stopped bids activity", () => {
     const view = organisationHomeView(
       {
         tasks: [],
+        needsYouFailed: false,
+        firstSteps: null,
         state: organisationStatePolicy("approved", new Set()),
         notices: [],
         shortcuts: [],

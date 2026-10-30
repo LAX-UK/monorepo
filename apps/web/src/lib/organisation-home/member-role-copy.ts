@@ -47,3 +47,8 @@ export function roleExplanation(role: LegalEntityMemberRole, organisationName: s
 export function welcomeHeadline(role: LegalEntityMemberRole, organisationName: string): string {
   return `You're now ${organisationRoleInSentence(role)} at ${organisationName}.`;
 }
+
+/** The role guide's question at the foot of Home: "What can I do here as an owner?". */
+export function roleQuestion(role: LegalEntityMemberRole): string {
+  return `What can I do here as ${organisationRoleInSentence(role)}?`;
+}

@@ -65,7 +65,8 @@ export function AccountSwitcher({ account, collapsed = false, showHint = false }
                   >
                     {current.name}
                   </span>
-                  <span className="block truncate font-body text-xs text-on-surface-variant">
+                  {/* The role and state ("Owner · Documents requested") wrap rather than cut. */}
+                  <span className="block font-body text-xs text-pretty text-on-surface-variant">
                     {current.detail}
                   </span>
                 </span>
