@@ -5,17 +5,7 @@ import * as React from "react";
 import { cn } from "../lib/utils.js";
 import { useField } from "./field.js";
 import { fieldBox } from "./styles.js";
-
-/** Characters that finish a token while typing; pasted text is split on any whitespace too. */
-const SEPARATOR = /[,;\s]+/;
-
-/** Splits typed or pasted text into tokens, dropping blanks. */
-export function splitTokens(text: string): string[] {
-  return text
-    .split(SEPARATOR)
-    .map((token) => token.trim())
-    .filter((token) => token.length > 0);
-}
+import { TOKEN_SEPARATOR as SEPARATOR, splitTokens } from "./token-split.js";
 
 export type TokenInputProps = {
   /** The tokens so far, in the order they were added. */

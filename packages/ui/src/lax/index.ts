@@ -20,7 +20,8 @@ export { Kbd, ShortcutKeys } from "./kbd.js";
 export { Field, ReadOnlyView, useField, useReadOnlyView } from "./field.js";
 export type { FieldProps } from "./field.js";
 export { TextArea, TextInput } from "./input.js";
-export { TokenInput, splitTokens } from "./token-input.js";
+export { TokenInput } from "./token-input.js";
+export { splitTokens } from "./token-split.js";
 export type { TokenInputProps } from "./token-input.js";
 export type { TextAreaProps, TextInputProps } from "./input.js";
 export {
