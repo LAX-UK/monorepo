@@ -1,4 +1,4 @@
-import { EmptyState, Section, StaffButton } from "@auction/staff-ui";
+import { EmptyState, Section, StaffButtonLink } from "@auction/staff-ui";
 import Link from "next/link";
 
 type Props = {
@@ -13,9 +13,14 @@ export function VenueSalesTab({ salesUsingCount }: Props) {
       description="Sales that use this venue for onsite delivery."
       action={
         salesUsingCount > 0 ? (
-          <StaffButton asChild size="sm" variant="secondary">
-            <Link href="/admin/sales?delivery=onsite">Browse onsite sales</Link>
-          </StaffButton>
+          <StaffButtonLink
+            size="sm"
+            variant="secondary"
+            href="/admin/sales?delivery=onsite"
+            Link={Link}
+          >
+            Browse onsite sales
+          </StaffButtonLink>
         ) : null
       }
     >
