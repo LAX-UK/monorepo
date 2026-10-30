@@ -57,6 +57,23 @@ export type ShopNotificationPublisher = {
     },
   ): Promise<void>;
 
+  /**
+   * The sender's copy of an enquiry, with its reference. Goes to the address typed in the form,
+   * else the account's.
+   */
+  queueEnquiryAcknowledgement(
+    tx: ShopNotificationTx,
+    input: {
+      idempotencyKey: string;
+      sender: EnquirySender;
+      reference: string;
+      storefront: "shop" | "art";
+      topic: "artwork" | Exclude<GeneralEnquiryTopic, "order_problem">;
+      artworkTitle?: string;
+      artworkUrl?: string;
+    },
+  ): Promise<void>;
+
   /** Staff alert for a lax.art general enquiry (contact, viewing, advisory, selling). */
   queueGeneralEnquiryAlert(
     tx: ShopNotificationTx,

@@ -29,6 +29,8 @@ export const ArtworkInterestStatusSchema = Type.Object(
 export const RegisterArtworkInterestResponseSchema = Type.Object(
   {
     status: Type.Union([Type.Literal("registered"), Type.Literal("already_subscribed")]),
+    /** An enquiry's reference ("E-2041"), quoted in the sender's copy and by staff. */
+    reference: Type.Optional(Type.String({ pattern: "^E-[0-9]+$" })),
   },
   { additionalProperties: false },
 );

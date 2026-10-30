@@ -36,6 +36,12 @@ export function emailProductFor<T extends TemplateName>(
       ? "art"
       : "shop";
   }
+  // The sender's copy names the storefront the enquiry was sent on.
+  if (template === "art-enquiry-received") {
+    return (vars as TemplateVarsByName["art-enquiry-received"]).storefront === "shop"
+      ? "shop"
+      : "art";
+  }
   if (SHOP_TEMPLATES.has(template)) return "shop";
   return "bid";
 }

@@ -1,29 +1,36 @@
 "use client";
 
+import { GuestErasureDialog } from "@/components/orders/guest-erasure-dialog.client";
 import { RefundDialog } from "@/components/orders/refund-dialog.client";
 import { useAdminMutation } from "@/components/use-admin-mutation";
 import {
   cancelOrderAfterPossession,
   createProductionTask,
 } from "@/server/application/admin-operations-actions.server";
+import { GUEST_ERASURE_COPY, guestErasureMenuReason } from "@/server/domain/guest-erasure.vm";
 import { orderLineLabel } from "@/server/domain/order-detail.vm";
-import type { AdminOrderDetail } from "@auction/shop-contracts";
+import type { AdminGuestErasureState, AdminOrderDetail } from "@auction/shop-contracts";
 import { ConfirmActionDialog, OverflowMenu, StaffButton, toast } from "@auction/staff-ui";
-import { Copy, CreditCard, Factory, Undo2, XCircle } from "@auction/staff-ui/icons";
+import { Copy, CreditCard, Eraser, Factory, Undo2, XCircle } from "@auction/staff-ui/icons";
 import { useState } from "react";
 
 /**
  * The order page's actions. The refund button appears only for roles allowed to refund and only
- * while there is money left to refund; everything else sits in the overflow menu.
+ * while there is money left to refund; everything else sits in the overflow menu, with erasing a
+ * guest's data last, as the one destructive action, saying why when it has to wait.
  */
 export function OrderHeaderActions({
   detail,
   canRefund,
+  guestErasure = null,
 }: {
   detail: AdminOrderDetail;
   canRefund: boolean;
+  /** A guest's order, for people who may erase guest data: whether it can happen now. */
+  guestErasure?: { state: AdminGuestErasureState; email: string } | null;
 }) {
   const [refunding, setRefunding] = useState(false);
+  const [erasing, setErasing] = useState(false);
   return (
     <>
       <OverflowMenu
@@ -53,8 +60,35 @@ export function OrderHeaderActions({
                 },
               ]
             : []),
+          ...(guestErasure
+            ? [
+                {
+                  id: "erase-guest",
+                  label: GUEST_ERASURE_COPY.menuItem,
+                  icon: Eraser,
+                  tone: "danger" as const,
+                  requires: "lead.erase",
+                  ...(guestErasure.state.allowed
+                    ? {}
+                    : {
+                        disabledReason:
+                          guestErasureMenuReason(guestErasure.state, detail.reference) ??
+                          GUEST_ERASURE_COPY.unavailable,
+                      }),
+                  onSelect: () => setErasing(true),
+                },
+              ]
+            : []),
         ]}
       />
+      {guestErasure ? (
+        <GuestErasureDialog
+          open={erasing}
+          onOpenChange={setErasing}
+          guestCustomerId={guestErasure.state.guestCustomerId}
+          email={guestErasure.email}
+        />
+      ) : null}
       {canRefund ? (
         <>
           <StaffButton

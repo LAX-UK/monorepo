@@ -1,7 +1,14 @@
 import type { Database } from "@auction/db";
-import { shopEdition, shopGuestCustomer, shopOrder, shopParty } from "@auction/db/schema";
+import {
+  shopArtworkInterest,
+  shopEdition,
+  shopGeneralEnquiry,
+  shopGuestCustomer,
+  shopOrder,
+  shopParty,
+} from "@auction/db/schema";
 import { guestOrderSubject, normaliseGuestEmail } from "@auction/shop-domain";
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq, isNull, sql } from "drizzle-orm";
 import type { GuestOrderClaimer } from "../../application/ports/guest-checkout.ports.js";
 import {
   type ShopDomainEventPublisherMode,
@@ -44,8 +51,49 @@ async function moveBuyerParty(tx: Database, guestSubject: string, subjectId: str
 }
 
 /**
- * Claims happen only for an email Identity has verified, so nobody can take a guest's orders by
- * typing their address into a new account.
+ * Guest enquiries sent from the email now show in the account's Enquiries. An account that
+ * already asked about the same work keeps its own enquiry; the guest one stays with staff.
+ */
+async function claimGuestEnquiries(
+  tx: Database,
+  email: string,
+  subjectId: string,
+): Promise<number> {
+  const now = new Date();
+  const artwork = await tx
+    .update(shopArtworkInterest)
+    .set({ identitySubjectId: subjectId, updatedAt: now })
+    .where(
+      and(
+        isNull(shopArtworkInterest.identitySubjectId),
+        eq(shopArtworkInterest.intent, "enquiry"),
+        sql`lower(${shopArtworkInterest.contactEmail}) = ${email}`,
+        sql`NOT EXISTS (
+          SELECT 1 FROM ${shopArtworkInterest} AS own
+          WHERE own.artwork_id = ${shopArtworkInterest.artworkId}
+            AND own.identity_subject_id = ${subjectId}
+            AND own.intent = 'enquiry'
+        )`,
+      ),
+    )
+    .returning({ id: shopArtworkInterest.id });
+  const general = await tx
+    .update(shopGeneralEnquiry)
+    .set({ identitySubjectId: subjectId, updatedAt: now })
+    .where(
+      and(
+        isNull(shopGeneralEnquiry.identitySubjectId),
+        sql`lower(${shopGeneralEnquiry.contactEmail}) = ${email}`,
+      ),
+    )
+    .returning({ id: shopGeneralEnquiry.id });
+  return artwork.length + general.length;
+}
+
+/**
+ * Claims happen only for an email Identity has verified (on sign-up, or a change of email that
+ * both inboxes confirmed), so nobody can take a guest's orders or enquiries by typing their
+ * address into an account. Running it again for the same email claims nothing more.
  */
 export function createDrizzleGuestOrderClaimer(
   db: Database,
@@ -54,19 +102,22 @@ export function createDrizzleGuestOrderClaimer(
   const events = createShopDomainEventPublisher(options.domainEventMode);
   return {
     async claimForVerifiedEmail({ subjectId, email }) {
+      const normalised = normaliseGuestEmail(email);
       return db.transaction(async (tx) => {
+        const claimedEnquiries = await claimGuestEnquiries(tx as Database, normalised, subjectId);
         const [guest] = await tx
           .select({ id: shopGuestCustomer.id })
           .from(shopGuestCustomer)
           .where(
             and(
-              eq(shopGuestCustomer.email, normaliseGuestEmail(email)),
+              eq(shopGuestCustomer.email, normalised),
               isNull(shopGuestCustomer.claimedSubjectId),
+              isNull(shopGuestCustomer.erasedAt),
             ),
           )
           .for("update")
           .limit(1);
-        if (!guest) return { claimedOrders: 0 };
+        if (!guest) return { claimedOrders: 0, claimedEnquiries };
 
         const guestSubject = guestOrderSubject(guest.id);
         await moveBuyerParty(tx as Database, guestSubject, subjectId);
@@ -91,9 +142,10 @@ export function createDrizzleGuestOrderClaimer(
             leadSubjectId: guestSubject,
             subjectId,
             claimedOrders: claimed.length,
+            claimedEnquiries,
           },
         });
-        return { claimedOrders: claimed.length };
+        return { claimedOrders: claimed.length, claimedEnquiries };
       });
     },
   };

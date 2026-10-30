@@ -18,4 +18,33 @@ describe("buildDeployTagMap", () => {
     assert.equal(map.migrate, sha);
     assert.equal(map.api, old);
   });
+
+  it("keeps art-identity on the shop-identity image it runs", () => {
+    const stale = "c".repeat(40);
+    const liveTags = { "shop-identity": old, "art-identity": stale };
+    const rebuilt = buildDeployTagMap({
+      liveTags,
+      affected: ["shop-identity"],
+      buildComponents: ["shop-identity", "migrate"],
+      targetSha: sha,
+    });
+    assert.equal(rebuilt["art-identity"], sha);
+    const unchanged = buildDeployTagMap({
+      liveTags,
+      affected: ["shop-api"],
+      buildComponents: ["shop-api", "migrate"],
+      targetSha: sha,
+    });
+    assert.equal(unchanged["art-identity"], old);
+  });
+
+  it("does not add art-identity to an app that has none", () => {
+    const map = buildDeployTagMap({
+      liveTags: { "shop-identity": old },
+      affected: ["shop-identity"],
+      buildComponents: ["shop-identity"],
+      targetSha: sha,
+    });
+    assert.equal("art-identity" in map, false);
+  });
 });

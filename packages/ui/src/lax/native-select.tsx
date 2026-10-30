@@ -4,7 +4,7 @@ import { ChevronDown } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/utils.js";
 import { useField } from "./field.js";
-import { fieldBox } from "./styles.js";
+import { fieldBox } from "./input.js";
 
 export type NativeSelectOption<T extends string> = { value: T; label: string };
 

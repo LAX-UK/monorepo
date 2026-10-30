@@ -384,6 +384,8 @@ export class IdentityOperationsService {
         {
           subjectId: input.subjectId,
           email: fresh.pendingNewEmail,
+          // Both inboxes followed their link, so the new address is verified.
+          emailVerified: true,
           name: fresh.name,
           phone: fresh.phoneNumber,
         },

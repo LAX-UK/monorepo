@@ -37,6 +37,16 @@ export const SHOP_STAFF_CAPABILITIES = [
   "edition_facts.correct",
   /** Approving the listing of hors commerce proofs, which were not made to be sold. */
   "hors_commerce.approve",
+  /**
+   * Erasing a guest's personal data on request. Administrators only: it cannot be undone, and it
+   * removes the only way to contact the guest about their orders.
+   */
+  "lead.erase",
+  /**
+   * Seeing the name and address kept on an erased guest's orders for the accounting record. Only
+   * the people who handle invoices hold it.
+   */
+  "retained_invoice_data.read",
 ] as const;
 
 export type ShopStaffCapability = (typeof SHOP_STAFF_CAPABILITIES)[number];
@@ -110,6 +120,7 @@ const GRANTED_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]
     "enquiry.read",
   ],
   finance: [
+    "retained_invoice_data.read",
     "fee.approve",
     "refund.write",
     "payout.mark_paid",

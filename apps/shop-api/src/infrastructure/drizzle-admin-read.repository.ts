@@ -90,7 +90,8 @@ function orderFilterConditions(input: AdminOrderListFilters): SQL[] {
       sql`${shopUserProfile.name} ILIKE ${contains}`,
       sql`${shopGuestCustomer.email} ILIKE ${contains}`,
       sql`${shopGuestCustomer.name} ILIKE ${contains}`,
-      sql`${shopOrder.deliveryRecipientName} ILIKE ${contains}`,
+      // The name kept on an erased guest's order is for the invoice only, never for finding them.
+      sql`(${shopOrder.personalDataErasedAt} IS NULL AND ${shopOrder.deliveryRecipientName} ILIKE ${contains})`,
     );
     if (search) conditions.push(search);
   }

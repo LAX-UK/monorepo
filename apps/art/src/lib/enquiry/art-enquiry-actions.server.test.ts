@@ -21,14 +21,14 @@ describe("sendArtEnquiry", () => {
     bff.mutate.mockResolvedValue({
       kind: "response",
       status: 201,
-      body: { status: "registered" },
+      body: { status: "registered", reference: "E-2041" },
     });
     const state = await sendArtEnquiry(
       "warm basket",
       { status: "idle" },
       form({ ...CONTACT, message: " Is it framed? ", contactPhone: "+44 7700 900123" }),
     );
-    expect(state).toEqual({ status: "sent", email: "grace@example.com" });
+    expect(state).toEqual({ status: "sent", email: "grace@example.com", reference: "E-2041" });
     expect(bff.mutate).toHaveBeenCalledWith("/commerce/artworks/warm%20basket/interest", {
       method: "POST",
       body: {

@@ -14,6 +14,8 @@ export type IdentityLifecycleEvent =
       type: "user.profile_updated";
       userId: string;
       email?: string;
+      /** Set when `email` is an address the person has just verified. */
+      emailVerified?: boolean;
       name?: string;
       phone?: string | null;
       phoneVerified?: boolean;

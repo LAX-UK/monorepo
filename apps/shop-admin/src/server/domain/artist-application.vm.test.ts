@@ -72,20 +72,27 @@ describe("works", () => {
   });
 
   it("gives an untitled work a name and marks editions", () => {
-    const [item] = workGalleryItems([
-      {
-        mediaKey: "k",
-        imageUrl: "/k.jpg",
-        width: 10,
-        height: 10,
-        title: null,
-        year: null,
-        medium: null,
-        size: null,
-        kind: "edition",
-      },
-    ]);
-    expect(item).toMatchObject({ title: "Untitled work 1", badge: "Edition", src: "/k.jpg" });
+    const [item] = workGalleryItems(
+      [
+        {
+          mediaKey: "k",
+          imageUrl: "/k.jpg",
+          width: 10,
+          height: 10,
+          title: null,
+          year: null,
+          medium: null,
+          size: null,
+          kind: "edition",
+        },
+      ],
+      (url) => (url ? `https://img.example${url}` : null),
+    );
+    expect(item).toMatchObject({
+      title: "Untitled work 1",
+      badge: "Edition",
+      src: "https://img.example/k.jpg",
+    });
     expect(item).not.toHaveProperty("caption");
   });
 });

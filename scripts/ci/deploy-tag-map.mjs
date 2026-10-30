@@ -14,6 +14,15 @@ const PINNED_COMPONENTS = [
   "art",
 ];
 
+/**
+ * Components that run another component's image. They are not built or diffed on their own, so
+ * they always take the tag their source component ends up with; otherwise they stay on whatever
+ * tag they were created with (lax.art's identity BFF is the shop-identity image).
+ */
+const IMAGE_SHARED_WITH = {
+  "art-identity": "shop-identity",
+};
+
 const AUTH_EXCLUDED = process.env.AUTH_TAG_MAP_ENABLED !== "true";
 
 /**
@@ -34,6 +43,9 @@ export function buildDeployTagMap({ liveTags, affected, buildComponents, targetS
     const pinToTarget =
       affected.includes(component) || (component === "migrate" && built.has("migrate"));
     map[component] = pinToTarget ? targetSha : live;
+  }
+  for (const [component, source] of Object.entries(IMAGE_SHARED_WITH)) {
+    if (liveTags[component]?.trim() && map[source]) map[component] = map[source];
   }
   return map;
 }

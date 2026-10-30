@@ -1,8 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import type * as React from "react";
 import { describe, expect, it, vi } from "vitest";
-import { DateRangeFilter } from "./date-range-filter.js";
-import { daysBefore, londonToday } from "./date-ranges.js";
+import { DateRangeFilter, daysBefore, londonToday } from "./date-range-filter.js";
 
 // Radix popovers keep positioning loops running in jsdom; this stand-in keeps the open contract.
 vi.mock("@auction/ui/components/popover", () => ({

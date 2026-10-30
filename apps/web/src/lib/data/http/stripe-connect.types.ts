@@ -16,7 +16,15 @@ export type StripeConnectClientConfig = {
   connectEnforced: boolean;
 };
 
-export type StripeConnectLoadError = "unauthorized" | "not_connected" | "server_error";
+/**
+ * Why the payout account did not load. `account_unreachable`: LAX holds an account id that
+ * Stripe will not show us (revoked access, a wrong key, or no such account); ops are alerted.
+ */
+export type StripeConnectLoadError =
+  | "unauthorized"
+  | "not_connected"
+  | "account_unreachable"
+  | "server_error";
 
 export type StripeConnectStatusLoadResult =
   | { ok: true; data: StripeConnectStatus }
