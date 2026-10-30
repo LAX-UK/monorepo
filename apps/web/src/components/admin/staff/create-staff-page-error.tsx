@@ -34,7 +34,7 @@ export function createStaffPageError(config: StaffPageErrorConfig) {
     return (
       <div className="flex flex-col gap-6">
         <PageHeader title={config.title} />
-        <div className="rounded-staff-md border border-staff-line bg-staff-surface">
+        <div className="rounded-staff-lg border border-staff-line bg-staff-surface">
           <ErrorState
             title={`${config.title} did not load`}
             description={adminRouteErrorMessage(error)}

@@ -46,7 +46,7 @@ export function AttentionStrip({
     <section
       aria-label={label}
       className={cn(
-        "overflow-hidden rounded-staff-md border border-staff-line bg-staff-surface text-staff-sm",
+        "overflow-hidden rounded-staff-lg border border-staff-line bg-staff-surface text-staff-sm",
         className,
       )}
     >

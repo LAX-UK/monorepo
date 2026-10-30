@@ -60,7 +60,7 @@ export function ClerkSecondaryToolsRail({ phase, phaseLayout, pendingTelForLot, 
           { value: "activity", label: "Activity" },
         ]}
       />
-      <div className="rounded-staff-md border border-staff-line bg-staff-surface p-4">
+      <div className="rounded-staff-lg border border-staff-line bg-staff-surface p-4">
         {slots[activeTab]}
       </div>
     </div>

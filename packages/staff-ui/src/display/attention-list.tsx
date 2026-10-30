@@ -51,7 +51,7 @@ export function AttentionList({
   return (
     <section
       aria-label={title}
-      className={cn("rounded-staff-md border border-staff-line bg-staff-surface", className)}
+      className={cn("rounded-staff-lg border border-staff-line bg-staff-surface", className)}
     >
       <h2 className="border-b border-staff-line-subtle px-4 py-3 font-staff text-staff-md font-semibold text-staff-fg">
         {title}

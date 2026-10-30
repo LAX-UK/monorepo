@@ -10,7 +10,7 @@ export default function StaffError({
   reset: () => void;
 }) {
   return (
-    <div className="rounded-staff-md border border-staff-line bg-staff-surface">
+    <div className="rounded-staff-lg border border-staff-line bg-staff-surface">
       <ErrorState
         title="Something went wrong"
         description="This page could not be shown. Try again, or go back to the overview and sign in again if it keeps happening."

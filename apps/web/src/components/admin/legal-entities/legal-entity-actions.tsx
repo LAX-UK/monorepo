@@ -107,7 +107,7 @@ export function useLegalEntityActions() {
                 {failure}
               </Notice>
             ) : null}
-            <div className="rounded-staff-md border border-staff-line px-3 py-1">
+            <div className="rounded-staff-lg border border-staff-line px-3 py-1">
               <KeyValueList
                 items={[
                   { label: "Legal entity", value: pending.name },

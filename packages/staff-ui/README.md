@@ -23,6 +23,7 @@ atoms (button, field box, badge), the shell, the data table and the record-page 
 /* app globals.css, after tailwindcss */
 @import "@auction/branding/brand-primitives.css" layer(base);
 @import "@auction/branding/lax-system.css" layer(base);
+@import "@auction/ui/lax-theme.css";
 @import "@auction/staff-ui/theme.css";
 @source "../../../../packages/staff-ui/src/**/*.{ts,tsx}";
 ```
@@ -46,7 +47,7 @@ drift. The shell sets `data-lax-density="staff"`. Use the scales only; no ad-hoc
 | Spacing | 4px unit, 4/8 rhythm: 4, 8, 12, 16, 20, 24, 32, 40, 48 | Tailwind `1 2 3 4 5 6 8 10 12`; `0.5` only for 2px optical nudges |
 | Type | `text-staff-2xs` 11/16, `xs` 12/16, `sm` 13/20, `md` 14/20, `lg` 16/24, `xl` 20/28 | Outfit for the interface, Montserrat (`font-staff-display`) for page titles only; `tabular-nums` for money, counts and dates in tables. 12px is the floor for words; `2xs` is for digits in counters and `kbd` glyphs only |
 | Weight | 400, 500, 600 | Body, interactive labels, titles |
-| Radius | `rounded-staff-xs` 4, `sm` 6, `md` 8, `lg` 12 | Badges and checkboxes; controls; cards, menus, tables; dialogs and sheets |
+| Radius | `rounded-staff-xs` 4, `sm` 6, `md` 8, `lg` 12 | One role per step: badges and checkboxes; controls and menu items; menus, popovers and toasts; cards, tables, notices, dialogs and sheets |
 | Control height | `h-control-xs` 24, `sm` 32, `md` 36, `lg` 40 | Inline; compact (toolbars, filters); default (forms); the ⌘K field. Coarse pointers grow to 44 (`staff-target`) |
 | Row height | 36 compact, 44 comfortable | "Rows" in the Display menu; comfortable for lists whose first cell has a second line |
 | Border | 1px hairlines; focus ring 2px offset 2px (inset for rows) | `staff-focus`, `staff-focus-inset` |
@@ -77,6 +78,13 @@ Every colour is a `light-dark()` pair, so one declaration serves both themes; th
   neutral in both products (LAX colour rule, `docs/DESIGN_SYSTEM.md`).
 
 ## Components
+
+The primitives both audiences share live in the `@auction/ui` core (`@auction/ui/lax`): Button,
+StatusBadge, Menu, Tabs, Count, TextInput and Field, Switch, Notice, Toaster, MetricCell and the
+tooltip. Each reads the density its shell sets (`data-lax-density` and `LaxDensityProvider`), so
+the client workspace gets the same element one step up the scale. This kit re-exports them under
+the names staff pages use (`StaffButton`, `StaffMenu*`, `StaffSwitch`, `StaffToaster`) and adds
+only what is staff: `requires` on buttons and menu items, read-only views, and everything below.
 
 - **Shell**: `StaffShell` (grouped, collapsible nav; top bar with ⌘K; product switcher; account
   menu; the keyboard-shortcut registry), `PageHeader`, `StaffBreadcrumbs`, `RecordPager` ("‹ 3 of

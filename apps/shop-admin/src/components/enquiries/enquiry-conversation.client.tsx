@@ -373,7 +373,7 @@ export function EnquiryConversation({
       >
         <Section title="Conversation">
           <ol aria-label="Messages and notes" className="flex flex-col gap-4">
-            <li className="flex flex-col gap-2 rounded-staff-md border border-staff-line p-4">
+            <li className="flex flex-col gap-2 rounded-staff-lg border border-staff-line p-4">
               <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                 <p className="text-staff-sm font-medium text-staff-fg">{senderName}</p>
                 <StaffDate value={detail.createdAt} withTime className="text-staff-xs" />
@@ -385,7 +385,7 @@ export function EnquiryConversation({
             {detail.notes.map((entry) => (
               <li
                 key={entry.id}
-                className="flex flex-col gap-2 rounded-staff-md border border-staff-line bg-staff-sunken p-4"
+                className="flex flex-col gap-2 rounded-staff-lg border border-staff-line bg-staff-sunken p-4"
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
                   <p className="text-staff-sm font-medium text-staff-fg">

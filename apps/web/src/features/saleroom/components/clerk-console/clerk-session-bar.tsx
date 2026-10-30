@@ -35,7 +35,7 @@ export function ClerkSessionBar({
   return (
     <section
       aria-label="Session"
-      className="flex flex-col gap-3 rounded-staff-md border border-staff-line bg-staff-surface p-4"
+      className="flex flex-col gap-3 rounded-staff-lg border border-staff-line bg-staff-surface p-4"
     >
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-2">

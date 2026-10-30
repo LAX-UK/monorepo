@@ -385,9 +385,9 @@ describe("DetailPage", () => {
   it("shows a tab's loading body with or without the summary card", () => {
     const { container, rerender } = render(<DetailPageSkeleton />);
     expect(container.firstElementChild).toHaveAttribute("aria-busy", "true");
-    const without = container.querySelectorAll(".rounded-staff-md").length;
+    const without = container.querySelectorAll(".rounded-staff-lg").length;
     rerender(<DetailPageSkeleton withSummary />);
-    expect(container.querySelectorAll(".rounded-staff-md").length).toBe(without + 1);
+    expect(container.querySelectorAll(".rounded-staff-lg").length).toBe(without + 1);
   });
 
   it("keeps a tab's failure in place with a retry", () => {

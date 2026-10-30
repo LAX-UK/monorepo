@@ -162,7 +162,7 @@ export function OrderQuickView({
             />
           </PanelSection>
           <PanelSection title={`Items (${detail.lines.length})`}>
-            <ul className="divide-y divide-staff-line-subtle rounded-staff-md border border-staff-line">
+            <ul className="divide-y divide-staff-line-subtle rounded-staff-lg border border-staff-line">
               {detail.lines.map((line) => (
                 <li
                   key={line.orderLineId}

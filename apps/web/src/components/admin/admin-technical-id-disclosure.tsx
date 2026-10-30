@@ -43,7 +43,7 @@ export function AdminTechnicalIdDisclosure({ items, triggerLabel = "Show referen
       {open ? (
         <dl
           id={panelId}
-          className="flex flex-col gap-3 rounded-staff-md border border-staff-line bg-staff-sunken p-3"
+          className="flex flex-col gap-3 rounded-staff-lg border border-staff-line bg-staff-sunken p-3"
         >
           {visible.map((item) => (
             <div key={item.label}>

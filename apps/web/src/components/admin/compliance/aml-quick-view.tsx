@@ -29,7 +29,7 @@ import Link from "next/link";
 
 function HitDetail({ hit }: { hit: AmlHitView }) {
   return (
-    <li className="rounded-staff-md border border-staff-line px-3 py-2.5">
+    <li className="rounded-staff-lg border border-staff-line px-3 py-2.5">
       <p className="text-staff-sm font-medium text-staff-fg">{hit.name}</p>
       {hit.facts.map((fact) => (
         <p key={fact} className="mt-0.5 text-staff-xs text-staff-muted">

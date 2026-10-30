@@ -96,7 +96,7 @@ function BlockCard({
     <li
       id={editorialFieldId(`block-${number}`)}
       tabIndex={-1}
-      className="staff-focus flex flex-col gap-4 rounded-staff-md border border-staff-line bg-staff-surface p-4"
+      className="staff-focus flex flex-col gap-4 rounded-staff-lg border border-staff-line bg-staff-surface p-4"
     >
       {children}
       {error ? (

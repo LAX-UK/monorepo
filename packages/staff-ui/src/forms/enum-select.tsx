@@ -119,7 +119,7 @@ export function EnumSelect<T extends string>({
             value={option.value}
             {...(option.disabled ? { disabled: true } : {})}
             className={cn(
-              "min-h-control-sm rounded-staff-xs py-1.5 pr-8 pl-2.5 font-staff text-staff-sm text-staff-fg",
+              "min-h-control-sm rounded-staff-sm py-1.5 pr-8 pl-2.5 font-staff text-staff-sm text-staff-fg",
               "focus:bg-staff-hover focus:text-staff-fg data-[state=checked]:font-medium",
               "data-[disabled]:text-staff-disabled data-[disabled]:opacity-100",
               "[&_svg]:size-4",

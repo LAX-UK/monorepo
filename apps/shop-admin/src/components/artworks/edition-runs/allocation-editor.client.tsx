@@ -68,7 +68,7 @@ export function AllocationEditor({
         error={errors.allocation}
         disabled={disabled}
       >
-        <ul className="flex flex-col divide-y divide-staff-line-subtle rounded-staff-md border border-staff-line">
+        <ul className="flex flex-col divide-y divide-staff-line-subtle rounded-staff-lg border border-staff-line">
           {ROWS.map((row) => {
             const inputId = `run-allocation-${row.key}`;
             const count = Number(values.allocation[row.key].trim() || 0);

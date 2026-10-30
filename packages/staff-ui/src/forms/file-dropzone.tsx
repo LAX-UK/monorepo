@@ -80,7 +80,7 @@ export function FileDropzone({
         take(event.dataTransfer.files);
       }}
       className={cn(
-        "flex cursor-pointer rounded-staff-md border border-dashed",
+        "flex cursor-pointer rounded-staff-lg border border-dashed",
         compact
           ? "flex-row flex-wrap items-center gap-x-2 gap-y-0.5 px-3 py-2.5 text-left"
           : "flex-col items-center justify-center gap-1.5 px-4 py-6 text-center",

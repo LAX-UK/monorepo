@@ -25,7 +25,7 @@ const COPY: Record<AdminPageFailureStatus, { title: string; body: string }> = {
 export function AdminFetchState({ status }: { status: AdminPageFailureStatus }) {
   const copy = COPY[status];
   return (
-    <div className="rounded-staff-md border border-staff-line bg-staff-surface">
+    <div className="rounded-staff-lg border border-staff-line bg-staff-surface">
       {status === "failed" ? (
         <ErrorState title={copy.title} description={copy.body} action={<AdminRetryButton />} />
       ) : (

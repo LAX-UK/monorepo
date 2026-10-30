@@ -72,7 +72,7 @@ export function MetricStrip({
       </div>
       <div
         className={cn(
-          "grid overflow-hidden rounded-staff-md border border-staff-line bg-staff-surface",
+          "grid overflow-hidden rounded-staff-lg border border-staff-line bg-staff-surface",
           count === 1 ? "grid-cols-1" : "grid-cols-2",
           mdColumns[count],
         )}

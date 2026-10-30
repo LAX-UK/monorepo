@@ -260,7 +260,7 @@ export function ListPage<T>({
     return (
       <div className="flex flex-col gap-6">
         {header}
-        <div className="rounded-staff-md border border-staff-line bg-staff-surface">
+        <div className="rounded-staff-lg border border-staff-line bg-staff-surface">
           <AccessDeniedState resource={title} {...(requiredRole ? { requiredRole } : {})} />
         </div>
       </div>

@@ -72,7 +72,7 @@ export function AuditEventPanel({
                 {row.detail.changes.map((change) => (
                   <li
                     key={change.label}
-                    className="rounded-staff-md border border-staff-line bg-staff-surface p-3"
+                    className="rounded-staff-lg border border-staff-line bg-staff-surface p-3"
                   >
                     <p className="mb-2 text-staff-sm font-medium text-staff-fg">{change.label}</p>
                     <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-staff-sm">

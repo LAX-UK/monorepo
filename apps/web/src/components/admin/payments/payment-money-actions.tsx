@@ -22,7 +22,7 @@ type Pending = { kind: "refund" | "capture"; payment: PaymentsStaffRow } | null;
 
 function PaymentFacts({ payment }: { payment: PaymentsStaffRow }) {
   return (
-    <div className="rounded-staff-md border border-staff-line px-3 py-1">
+    <div className="rounded-staff-lg border border-staff-line px-3 py-1">
       <KeyValueList
         items={[
           { label: "Lot", value: payment.lotTitle },

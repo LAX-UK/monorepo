@@ -552,7 +552,7 @@ export function ArtworkEditor({
         id="artwork-form"
         noValidate
         aria-label={mode === "create" ? "New artwork" : `Edit ${record?.title ?? "artwork"}`}
-        className="flex flex-col gap-6 rounded-staff-md border border-staff-line bg-staff-surface p-4 sm:p-6"
+        className="flex flex-col gap-6 rounded-staff-lg border border-staff-line bg-staff-surface p-4 sm:p-6"
         onSubmit={(event) => {
           event.preventDefault();
           void submit();

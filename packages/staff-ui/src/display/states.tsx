@@ -173,7 +173,7 @@ export function Section({
     <section
       {...(id ? { id } : {})}
       {...(headingId ? { "aria-labelledby": headingId } : {})}
-      className={cn("rounded-staff-md border border-staff-line bg-staff-surface", className)}
+      className={cn("rounded-staff-lg border border-staff-line bg-staff-surface", className)}
     >
       <header className="flex min-h-12 items-center justify-between gap-3 border-b border-staff-line-subtle px-4 py-2.5">
         <div className="min-w-0">

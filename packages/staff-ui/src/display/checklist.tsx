@@ -117,7 +117,7 @@ export function Checklist({
   return (
     <section
       aria-label={title}
-      className={cn("rounded-staff-md border border-staff-line bg-staff-surface", className)}
+      className={cn("rounded-staff-lg border border-staff-line bg-staff-surface", className)}
     >
       <header className="flex flex-col gap-2.5 border-b border-staff-line-subtle px-4 py-3">
         <div className="flex items-start justify-between gap-3">

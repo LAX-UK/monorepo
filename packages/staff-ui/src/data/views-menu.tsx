@@ -82,7 +82,7 @@ function GroupHeading({
 
 const linkClass = (active: boolean) =>
   cn(
-    "staff-focus flex min-h-control-sm min-w-0 flex-1 items-center rounded-staff-xs px-2 text-staff-sm",
+    "staff-focus flex min-h-control-sm min-w-0 flex-1 items-center rounded-staff-sm px-2 text-staff-sm",
     active ? "font-medium text-staff-fg" : "text-staff-fg hover:bg-staff-hover",
   );
 
@@ -278,7 +278,7 @@ export function ViewsMenu({
                     <li
                       key={view.id}
                       data-view-id={view.id}
-                      className="group/view flex flex-col rounded-staff-xs"
+                      className="group/view flex flex-col rounded-staff-sm"
                     >
                       {isEditing && editing ? (
                         <form

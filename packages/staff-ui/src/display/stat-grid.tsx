@@ -26,7 +26,7 @@ export function StatGrid({
   className?: string;
 }) {
   const grid = (
-    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-staff-md border border-staff-line bg-staff-line-subtle md:grid-cols-4">
+    <div className="grid grid-cols-2 gap-px overflow-hidden rounded-staff-lg border border-staff-line bg-staff-line-subtle md:grid-cols-4">
       {items.map((item) => (
         <MetricCell key={item.id} item={item} Link={Link} className="bg-staff-surface" />
       ))}
