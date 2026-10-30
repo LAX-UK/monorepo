@@ -359,6 +359,7 @@ export {
 } from "./catalogue-bands.js";
 export {
   GUEST_EMAIL_MAX_LENGTH,
+  GUEST_MARKETING_CONSENT,
   GUEST_LEAD_SOURCE,
   GUEST_ORDER_LINK_TTL_DAYS,
   decideGuestEmail,

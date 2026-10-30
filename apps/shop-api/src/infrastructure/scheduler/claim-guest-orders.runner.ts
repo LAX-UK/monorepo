@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { domainEvent, projectorState } from "@auction/db/schema";
+import { domainEvent, shopProjectionCursor } from "@auction/db/schema";
 import { userEmailVerifiedPayloadSchemaV1 } from "@auction/types";
 import { and, asc, eq, gt, sql } from "drizzle-orm";
 import type { GuestOrderClaimer } from "../../application/ports/guest-checkout.ports.js";
@@ -18,13 +18,13 @@ export function createClaimGuestOrdersRunner(
 ): () => Promise<{ processed: number; claimedOrders: number }> {
   return async () => {
     await db
-      .insert(projectorState)
-      .values({ projectorName: GUEST_ORDER_CLAIM_CURSOR, lastProcessedEventId: 0 })
+      .insert(shopProjectionCursor)
+      .values({ name: GUEST_ORDER_CLAIM_CURSOR, lastEventId: 0 })
       .onConflictDoNothing();
     const [state] = await db
-      .select({ cursor: projectorState.lastProcessedEventId })
-      .from(projectorState)
-      .where(eq(projectorState.projectorName, GUEST_ORDER_CLAIM_CURSOR))
+      .select({ cursor: shopProjectionCursor.lastEventId })
+      .from(shopProjectionCursor)
+      .where(eq(shopProjectionCursor.name, GUEST_ORDER_CLAIM_CURSOR))
       .limit(1);
     const cursor = state?.cursor ?? 0;
     const rows = await db
@@ -46,9 +46,9 @@ export function createClaimGuestOrdersRunner(
         claimedOrders += result.claimedOrders;
       }
       await db
-        .update(projectorState)
-        .set({ lastProcessedEventId: row.id, updatedAt: sql`now()`, lastError: null })
-        .where(eq(projectorState.projectorName, GUEST_ORDER_CLAIM_CURSOR));
+        .update(shopProjectionCursor)
+        .set({ lastEventId: row.id, updatedAt: sql`now()` })
+        .where(eq(shopProjectionCursor.name, GUEST_ORDER_CLAIM_CURSOR));
       processed += 1;
     }
     return { processed, claimedOrders };

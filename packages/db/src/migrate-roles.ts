@@ -109,6 +109,11 @@ export const SHOP_COMMERCE_TABLES = [
   "shop_artist_application_work",
   /** What staff confirm about each print run: numbering, signature and certificate. */
   "shop_edition_facts",
+  /** Guest checkout: the guest and lead behind guest orders, and their emailed order links. */
+  "shop_guest_customer",
+  "shop_guest_order_link",
+  /** How far shop-api has read the shared event log for each of its own projections. */
+  "shop_projection_cursor",
 ] as const;
 
 /** Append-only Shop tables: shop_app may INSERT and SELECT only. */

@@ -36,8 +36,10 @@ export function buildGuestOrderDetailVm(order: OrderSummary, now: Date): ShopOrd
   };
 }
 
-/** Creating an account with the guest's email: the order then appears in "Your orders". */
-export const GUEST_CREATE_ACCOUNT_HREF = shopStorefrontRegisterHref(SHOP_ORDERS_HREF);
+/** Creating an account with the guest's email (prefilled): the order then shows in "Your orders". */
+export function guestCreateAccountHref(email: string): string {
+  return shopStorefrontRegisterHref(SHOP_ORDERS_HREF, { loginHint: email });
+}
 
 export const GUEST_LINK_PROBLEM_COPY: Record<
   GuestOrderLinkProblem,

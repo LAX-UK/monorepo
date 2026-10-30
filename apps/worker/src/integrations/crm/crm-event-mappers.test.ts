@@ -142,6 +142,8 @@ describe("mapDomainEventToCrmIntent", () => {
           status: "abandoned_checkout",
           source: "Shop guest checkout",
           marketingConsent: false,
+          marketingConsentAt: null,
+          marketingConsentVersion: null,
           firstSeenAt: "2026-10-30T12:00:00.000Z",
           lastSeenAt: "2026-10-30T12:00:00.000Z",
           paidOrderCount: 0,

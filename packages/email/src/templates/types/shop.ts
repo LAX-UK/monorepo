@@ -144,6 +144,7 @@ export const shopTemplates = {
   vars: {} as ShopTemplateVars,
   recipientResolution: {
     "shop-order-receipt": "snapshot",
+    "shop-guest-order-link": "snapshot",
     "shop-artwork-enquiry-alert": "snapshot",
     "shop-edition-available-notify": "snapshot",
     "shop-zoho-dead-letter-notice": "snapshot",

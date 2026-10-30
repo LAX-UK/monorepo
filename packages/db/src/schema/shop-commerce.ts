@@ -784,6 +784,8 @@ export const shopGuestCustomer = pgTable(
     /** The separate, unticked opt-in at checkout; transactional email never depends on it. */
     marketingConsent: boolean("marketing_consent").default(false).notNull(),
     marketingConsentAt: timestamp("marketing_consent_at", { mode: "date", withTimezone: true }),
+    /** Which wording of the opt-in the guest agreed to. */
+    marketingConsentVersion: text("marketing_consent_version"),
     firstSeenAt: timestamp("first_seen_at", { mode: "date", withTimezone: true })
       .defaultNow()
       .notNull(),
@@ -807,11 +809,22 @@ export const shopGuestCustomer = pgTable(
     ),
     check("shop_guest_customer_paid_count_ck", sql`${table.paidOrderCount} >= 0`),
     check(
+      "shop_guest_customer_consent_record_ck",
+      sql`NOT ${table.marketingConsent} OR (${table.marketingConsentAt} IS NOT NULL AND ${table.marketingConsentVersion} IS NOT NULL)`,
+    ),
+    check(
       "shop_guest_customer_claim_pair_ck",
       sql`(${table.claimedSubjectId} IS NULL) = (${table.claimedAt} IS NULL)`,
     ),
   ],
 );
+
+/** How far a shop-api projection has read `domain_events`; one row per projection. */
+export const shopProjectionCursor = pgTable("shop_projection_cursor", {
+  name: text("name").primaryKey(),
+  lastEventId: bigint("last_event_id", { mode: "number" }).default(0).notNull(),
+  updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).defaultNow().notNull(),
+});
 
 /**
  * The emailed link that opens one guest order without an account. Only the token's SHA-256 is

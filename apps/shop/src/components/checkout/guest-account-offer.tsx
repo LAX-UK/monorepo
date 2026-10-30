@@ -1,5 +1,5 @@
 import { shopButtonClassName } from "@/components/shop-commerce-button";
-import { GUEST_CREATE_ACCOUNT_HREF } from "@/lib/checkout/guest-order.vm";
+import { guestCreateAccountHref } from "@/lib/checkout/guest-order.vm";
 import { Button } from "@auction/ui/components/button";
 
 /**
@@ -22,7 +22,7 @@ export function GuestAccountOffer({ email, headingId }: { email: string; heading
         size="lg"
         className={shopButtonClassName("outline", "standard", "shop-guest-offer__action")}
       >
-        <a href={GUEST_CREATE_ACCOUNT_HREF}>Create your LAX account</a>
+        <a href={guestCreateAccountHref(email)}>Create your LAX account</a>
       </Button>
     </section>
   );

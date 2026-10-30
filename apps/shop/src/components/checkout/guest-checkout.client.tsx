@@ -11,6 +11,7 @@ import { GUEST_EMAIL_MESSAGES, GUEST_SIGN_IN_RETURN_PATH } from "@/lib/checkout/
 import { shopStorefrontLoginHref } from "@/lib/shop-viewer-state";
 import { MarketingFormField } from "@auction/marketing-ui";
 import type { BasketView } from "@auction/shop-contracts";
+import { GUEST_MARKETING_CONSENT } from "@auction/shop-domain";
 import { Checkbox, Input } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
@@ -28,7 +29,11 @@ type Step =
   | { kind: "details"; email: string; marketingConsent: boolean };
 
 const EMAIL_FIELD_ID = "guest-checkout-email";
-const SIGN_IN_HREF = shopStorefrontLoginHref(GUEST_SIGN_IN_RETURN_PATH);
+
+/** Sign-in returns to checkout, where the basket is merged; the known email arrives prefilled. */
+function signInHref(email?: string): string {
+  return shopStorefrontLoginHref(GUEST_SIGN_IN_RETURN_PATH, { loginHint: email ?? null });
+}
 
 /**
  * Checkout without an account: the email comes first. A new email goes on to delivery and
@@ -39,6 +44,8 @@ export function GuestCheckout({ basket, deliveryOptions, showTermsNotice }: Prop
   const [step, setStep] = useState<Step>({ kind: "email" });
   const [email, setEmail] = useState("");
   const [marketingConsent, setMarketingConsent] = useState(false);
+  // Coming back from "Use a different email" focuses the email with its text selected.
+  const [selectEmailOnShow, setSelectEmailOnShow] = useState(false);
 
   if (step.kind === "details") {
     return (
@@ -62,10 +69,17 @@ export function GuestCheckout({ basket, deliveryOptions, showTermsNotice }: Prop
     <div className="shop-checkout__layout">
       <div className="shop-checkout__form">
         {step.kind === "known" ? (
-          <KnownAccount email={step.email} onUseAnother={() => setStep({ kind: "email" })} />
+          <KnownAccount
+            email={step.email}
+            onUseAnother={() => {
+              setSelectEmailOnShow(true);
+              setStep({ kind: "email" });
+            }}
+          />
         ) : (
           <GuestEmailStep
             email={email}
+            selectOnShow={selectEmailOnShow}
             marketingConsent={marketingConsent}
             onEmailChange={setEmail}
             onConsentChange={setMarketingConsent}
@@ -84,8 +98,15 @@ export function GuestCheckout({ basket, deliveryOptions, showTermsNotice }: Prop
   );
 }
 
+function emailProblem(value: string): string | null {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value.trim())
+    ? null
+    : GUEST_EMAIL_MESSAGES.invalid_email;
+}
+
 function GuestEmailStep({
   email,
+  selectOnShow,
   marketingConsent,
   onEmailChange,
   onConsentChange,
@@ -93,6 +114,7 @@ function GuestEmailStep({
   onContinue,
 }: {
   email: string;
+  selectOnShow: boolean;
   marketingConsent: boolean;
   onEmailChange: (email: string) => void;
   onConsentChange: (consent: boolean) => void;
@@ -107,13 +129,20 @@ function GuestEmailStep({
   const privacyId = useId();
   const consentId = useId();
 
+  useEffect(() => {
+    if (!selectOnShow) return;
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, [selectOnShow]);
+
   const onSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (pending) return;
     setFailure(null);
     const value = email.trim();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-      setFieldError(GUEST_EMAIL_MESSAGES.invalid_email);
+    const problem = emailProblem(value);
+    if (problem) {
+      setFieldError(problem);
       inputRef.current?.focus();
       return;
     }
@@ -162,9 +191,13 @@ function GuestEmailStep({
               disabled={pending}
               value={email}
               onChange={(event) => {
+                // Checked when the field is left or the form sent, not on every keystroke.
                 setFieldError(null);
                 setFailure(null);
                 onEmailChange(event.target.value);
+              }}
+              onBlur={() => {
+                if (email.trim()) setFieldError(emailProblem(email));
               }}
               aria-describedby={[control["aria-describedby"], privacyId].filter(Boolean).join(" ")}
             />
@@ -180,10 +213,8 @@ function GuestEmailStep({
             onCheckedChange={(checked) => onConsentChange(checked === true)}
           />
           <span>
-            Email me about new editions and artists
-            <span className="shop-checkout__save-hint">
-              Optional. Your receipt and order updates come either way.
-            </span>
+            {GUEST_MARKETING_CONSENT.label}
+            <span className="shop-checkout__save-hint">{GUEST_MARKETING_CONSENT.hint}</span>
           </span>
         </label>
 
@@ -217,7 +248,7 @@ function GuestEmailStep({
           >
             {pending ? "Checking…" : "Continue as guest"}
           </ShopCommerceButton>
-          <SignInButton variant="outline" />
+          <SignInButton variant="outline" href={signInHref()} />
         </div>
 
         <p id={privacyId} className="shop-guest-email__privacy">
@@ -233,7 +264,7 @@ function GuestEmailStep({
 }
 
 /** Sign-in starts on Shop Identity, so it is a plain link: never prefetched. */
-function SignInButton({ variant }: { variant: "cta" | "outline" }) {
+function SignInButton({ variant, href }: { variant: "cta" | "outline"; href: string }) {
   return (
     <Button
       asChild
@@ -241,7 +272,7 @@ function SignInButton({ variant }: { variant: "cta" | "outline" }) {
       size="lg"
       className={shopButtonClassName(variant, "commerce")}
     >
-      <a href={SIGN_IN_HREF}>Sign in</a>
+      <a href={href}>Sign in</a>
     </Button>
   );
 }
@@ -268,7 +299,7 @@ function KnownAccount({ email, onUseAnother }: { email: string; onUseAnother: ()
         basket is saved.
       </p>
       <div className="shop-guest-email__actions">
-        <SignInButton variant="cta" />
+        <SignInButton variant="cta" href={signInHref(email)} />
         <ShopCommerceButton type="button" variant="outline" scale="commerce" onClick={onUseAnother}>
           Use a different email
         </ShopCommerceButton>

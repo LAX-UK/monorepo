@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS "shop_guest_customer" (
   "phone" text,
   "marketing_consent" boolean DEFAULT false NOT NULL,
   "marketing_consent_at" timestamp with time zone,
+  "marketing_consent_version" text,
   "first_seen_at" timestamp with time zone DEFAULT now() NOT NULL,
   "last_seen_at" timestamp with time zone DEFAULT now() NOT NULL,
   "paid_order_count" integer DEFAULT 0 NOT NULL,
@@ -19,6 +20,10 @@ CREATE TABLE IF NOT EXISTS "shop_guest_customer" (
   "updated_at" timestamp with time zone DEFAULT now() NOT NULL,
   CONSTRAINT "shop_guest_customer_email_normalised_ck" CHECK ("email" = lower(btrim("email"))),
   CONSTRAINT "shop_guest_customer_paid_count_ck" CHECK ("paid_order_count" >= 0),
+  CONSTRAINT "shop_guest_customer_consent_record_ck" CHECK (
+    NOT "marketing_consent"
+    OR ("marketing_consent_at" IS NOT NULL AND "marketing_consent_version" IS NOT NULL)
+  ),
   CONSTRAINT "shop_guest_customer_claim_pair_ck"
     CHECK (("claimed_subject_id" IS NULL) = ("claimed_at" IS NULL))
 );
@@ -43,3 +48,9 @@ CREATE TABLE IF NOT EXISTS "shop_guest_order_link" (
 );
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "shop_guest_order_link_order_idx" ON "shop_guest_order_link" ("order_id");
+--> statement-breakpoint
+CREATE TABLE IF NOT EXISTS "shop_projection_cursor" (
+  "name" text PRIMARY KEY NOT NULL,
+  "last_event_id" bigint DEFAULT 0 NOT NULL,
+  "updated_at" timestamp with time zone DEFAULT now() NOT NULL
+);

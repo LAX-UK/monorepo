@@ -1,5 +1,6 @@
 import type { Database } from "@auction/db";
 import { shopGuestCustomer } from "@auction/db/schema";
+import { GUEST_MARKETING_CONSENT } from "@auction/shop-domain";
 import { eq } from "drizzle-orm";
 import type { GuestCustomerStore } from "../../application/ports/guest-checkout.ports.js";
 import type { ShopDomainEventPublisherMode } from "../shop-domain-event-publisher.js";
@@ -39,7 +40,13 @@ export function createDrizzleGuestCustomerStore(
             updatedAt: now,
             ...(contact.name ? { name: contact.name } : {}),
             ...(contact.phone ? { phone: contact.phone } : {}),
-            ...(consentGiven ? { marketingConsent: true, marketingConsentAt: now } : {}),
+            ...(consentGiven
+              ? {
+                  marketingConsent: true,
+                  marketingConsentAt: now,
+                  marketingConsentVersion: GUEST_MARKETING_CONSENT.version,
+                }
+              : {}),
           })
           .where(eq(shopGuestCustomer.id, existing.id))
           .returning();

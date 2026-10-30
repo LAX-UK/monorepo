@@ -50,6 +50,19 @@ describe("parseHostedAuthFlow", () => {
     expect(flow.allowedRedirectOrigins).toContain("http://localhost:3010");
   });
 
+  it("keeps a plausible login hint for prefilling, and drops anything else", () => {
+    const flow = parseHostedAuthFlow(
+      new URLSearchParams({ ...shopAuthorize, login_hint: "ada@example.com" }),
+    );
+    expect(flow.loginHint).toBe("ada@example.com");
+    const resume = new URL(flow.authorizeResumePath ?? "", "http://issuer.test");
+    expect(resume.searchParams.get("login_hint")).toBe("ada@example.com");
+    expect(
+      parseHostedAuthFlow(new URLSearchParams({ ...shopAuthorize, login_hint: "<script>" }))
+        .loginHint,
+    ).toBeNull();
+  });
+
   it("drops untrusted callbackURL and returnTo values", () => {
     const flow = parseHostedAuthFlow(
       new URLSearchParams({

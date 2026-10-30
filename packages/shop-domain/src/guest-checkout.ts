@@ -55,6 +55,17 @@ export function guestLeadStatus(input: { paidOrderCount: number }): GuestLeadSta
   return input.paidOrderCount > 0 ? "ordered" : "abandoned_checkout";
 }
 
+/**
+ * The marketing opt-in shown at guest checkout. The version is stored with every consent, so a
+ * lead's consent can always be matched to the words the person agreed to. Change the version
+ * whenever the wording changes.
+ */
+export const GUEST_MARKETING_CONSENT = {
+  version: "shop-guest-news-2026-10-30",
+  label: "Email me about new editions and artists",
+  hint: "Optional. Your receipt and order updates come either way.",
+} as const;
+
 /** The source recorded on every guest lead. */
 export const GUEST_LEAD_SOURCE = "Shop guest checkout";
 

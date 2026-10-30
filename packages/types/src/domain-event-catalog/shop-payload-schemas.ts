@@ -80,6 +80,9 @@ export const shopGuestLeadRecordedPayloadSchemaV1 = z.object({
   status: z.enum(["abandoned_checkout", "ordered"]),
   source: z.string().min(1),
   marketingConsent: z.boolean(),
+  /** When and to which wording the guest opted in; null without consent. */
+  marketingConsentAt: rfc3339Timestamp.nullable(),
+  marketingConsentVersion: z.string().nullable(),
   firstSeenAt: rfc3339Timestamp,
   lastSeenAt: rfc3339Timestamp,
   paidOrderCount: z.number().int().nonnegative(),

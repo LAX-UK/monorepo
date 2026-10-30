@@ -29,6 +29,8 @@ export async function publishGuestLead(
       status: guestLeadStatus(row),
       source: GUEST_LEAD_SOURCE,
       marketingConsent: row.marketingConsent,
+      marketingConsentAt: row.marketingConsentAt?.toISOString() ?? null,
+      marketingConsentVersion: row.marketingConsentVersion,
       firstSeenAt: row.firstSeenAt.toISOString(),
       lastSeenAt: row.lastSeenAt.toISOString(),
       paidOrderCount: row.paidOrderCount,
