@@ -6,7 +6,7 @@ import {
   getAdminArtistDuplicateCandidates,
   getAdminArtistList,
 } from "@/lib/data/http/admin.server";
-import { EmptyState, Notice, Section, StaffButton, StatusBadge } from "@auction/staff-ui";
+import { EmptyState, Notice, Section, StaffButtonLink, StatusBadge } from "@auction/staff-ui";
 import type { AdminArtistListRow } from "@auction/types";
 import Link from "next/link";
 
@@ -102,9 +102,14 @@ export async function ArtistDuplicateReviewSection() {
               </span>
             }
             action={
-              <StaffButton asChild size="sm" variant="ghost">
-                <Link href={`/admin/artists/${artist.id}`}>Open profile</Link>
-              </StaffButton>
+              <StaffButtonLink
+                size="sm"
+                variant="ghost"
+                href={`/admin/artists/${artist.id}`}
+                Link={Link}
+              >
+                Open profile
+              </StaffButtonLink>
             }
             bodyClassName="p-0"
           >

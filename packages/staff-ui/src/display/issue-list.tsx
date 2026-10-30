@@ -2,6 +2,7 @@ import { type LinkComponent, StatusBadge } from "@auction/ui/lax";
 import { CircleAlert, CircleCheck, Info, TriangleAlert } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
+import { StaffButtonLink } from "../primitives/button-link.js";
 import { StaffButton } from "../primitives/button.js";
 
 export type IssueItem = {
@@ -77,9 +78,9 @@ export function IssueList({
                 <span className="min-w-0 flex-1 text-staff-sm text-staff-fg">{item.label}</span>
                 {item.tag ? <StatusBadge tone={tagTone[tone]}>{item.tag}</StatusBadge> : null}
                 {item.action ? (
-                  <StaffButton asChild size="sm" variant="ghost">
-                    <Link href={item.action.href}>{item.action.label}</Link>
-                  </StaffButton>
+                  <StaffButtonLink size="sm" variant="ghost" href={item.action.href} Link={Link}>
+                    {item.action.label}
+                  </StaffButtonLink>
                 ) : null}
               </li>
             );

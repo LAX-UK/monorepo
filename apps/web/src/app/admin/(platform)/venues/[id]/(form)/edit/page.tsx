@@ -3,7 +3,7 @@ import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
 import { VenueEditForm } from "@/components/admin/venue-detail/venue-edit-form";
 import { loadAdminVenueEditPage } from "@/lib/admin/venues/load-venue-edit-page";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { FormPage, Notice, StaffButton } from "@auction/staff-ui";
+import { FormPage, Notice, StaffButtonLink } from "@auction/staff-ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -46,9 +46,9 @@ export default async function AdminVenueEditPage({ params, searchParams }: Props
               tone="info"
               title="This venue is archived and cannot be edited"
               actions={
-                <StaffButton asChild size="sm" variant="secondary">
-                  <Link href={page.detailHref}>Back to venue</Link>
-                </StaffButton>
+                <StaffButtonLink size="sm" variant="secondary" href={page.detailHref} Link={Link}>
+                  Back to venue
+                </StaffButtonLink>
               }
             >
               Sales already held there keep it, but it cannot be chosen for new sales.

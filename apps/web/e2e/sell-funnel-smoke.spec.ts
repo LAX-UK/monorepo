@@ -92,6 +92,11 @@ test.describe("sell funnel smoke @journey", () => {
 
     await clientSession(page);
     await page.goto("/selling/new");
+    // Someone who can sell for more than one account chooses who is selling first.
+    const toWork = page.getByTestId("sell-flow-continue");
+    const basics = page.getByTestId("submission-wizard-step-basics");
+    await expect(toWork.or(basics).first()).toBeVisible({ timeout: 15_000 });
+    if (await toWork.isVisible()) await toWork.click();
 
     await expect(page.getByTestId("submission-wizard-step-basics")).toBeVisible({
       timeout: 15_000,

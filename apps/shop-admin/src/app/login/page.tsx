@@ -2,7 +2,7 @@ import { loadAdminSession } from "@/lib/admin-data.server";
 import { safeReturnTo } from "@/lib/safe-return-to";
 import { shopAdminLoginErrorView } from "@/server/domain/login-error.vm";
 import { SITE_SUPPORT_EMAIL } from "@auction/branding";
-import { StaffButton } from "@auction/staff-ui";
+import { StaffButton, StaffButtonLink } from "@auction/staff-ui";
 import { redirect } from "next/navigation";
 
 export default function ShopAdminLoginPage({
@@ -61,9 +61,9 @@ async function ShopAdminLoginContent({
           </div>
           <div className="mt-6 flex flex-col gap-3">
             {view.showRetrySignIn ? (
-              <StaffButton asChild variant="primary" className="w-full">
-                <a href={loginHref}>Sign in again</a>
-              </StaffButton>
+              <StaffButtonLink variant="primary" className="w-full" href={loginHref}>
+                Sign in again
+              </StaffButtonLink>
             ) : null}
             {view.showUseDifferentAccount ? (
               <form

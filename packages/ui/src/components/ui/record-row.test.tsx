@@ -141,6 +141,86 @@ describe("RecordRow", () => {
     // 48px thumbnail plus the 16px gap of the wide row.
     expect(detail.className).toContain("@2xl:pl-16");
   });
+
+  it("names each figure with its label, value first, before the status", () => {
+    const li = row(
+      <RecordRow
+        title="Sun over Arles"
+        figures={[
+          { value: "£6,800", label: "current bid" },
+          { value: "£6,200", label: "your maximum" },
+        ]}
+        status={<span data-testid="status">Outbid</span>}
+      />,
+    );
+    const figures = li.querySelector("[data-record-figures]") as HTMLElement;
+    expect(figures.tagName).toBe("DL");
+    const terms = [...figures.querySelectorAll("dt")].map((dt) => dt.textContent);
+    const values = [...figures.querySelectorAll("dd")].map((dd) => dd.textContent);
+    expect(terms).toEqual(["current bid", "your maximum"]);
+    expect(values).toEqual(["£6,800", "£6,200"]);
+    // A narrow list shows the lead figure only; a wide one lines them all up in fixed cells.
+    const [lead, second] = [...figures.children] as HTMLElement[];
+    expect(lead?.className).not.toContain("hidden");
+    expect(second?.className).toContain("hidden @2xl:flex");
+    expect(lead?.className).toContain("@2xl:w-28");
+    expect(
+      figures.compareDocumentPosition(within(li).getByTestId("status")) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
+  it("reads a date figure label first on a narrow list and value first on a wide one", () => {
+    const li = row(
+      <RecordRow
+        title="Night harbour"
+        figures={[{ value: "12 Nov", label: "choose by", labelFirst: true }]}
+      />,
+    );
+    const term = li.querySelector("[data-record-figures] dt") as HTMLElement;
+    const value = li.querySelector("[data-record-figures] dd") as HTMLElement;
+    expect(term.className).toContain("order-1 @2xl:order-2");
+    expect(value.className).toContain("order-2 @2xl:order-1");
+  });
+
+  it("says a missing figure in muted words, keeping its label for readers only", () => {
+    const li = row(
+      <RecordRow
+        title="Downs after rain"
+        figures={[{ value: "Estimate after review", label: "estimate", pending: true }]}
+      />,
+    );
+    const term = li.querySelector("[data-record-figures] dt") as HTMLElement;
+    const value = li.querySelector("[data-record-figures] dd") as HTMLElement;
+    expect(term.className).toBe("sr-only");
+    expect(value.className).toContain("text-on-surface-variant");
+    expect(value.className).not.toContain("truncate");
+  });
+
+  it("gives the record link a target of at least 24px without moving the title", () => {
+    const li = row(<RecordRow title="Ceramic vessel" href="/r/1" />);
+    const link = li.querySelector("[data-record-link]") as HTMLElement;
+    expect(link.className).toContain("block");
+    expect(link.className).toContain("py-[3px]");
+    expect(link.className).toContain("-my-[3px]");
+  });
+
+  it("keeps the status and action columns on an aligned row that has neither", () => {
+    const li = row(
+      <RecordRow
+        title="Tidal study"
+        figures={[{ value: "£1,450", label: "current bid" }]}
+        action={null}
+        aligned
+      />,
+    );
+    const status = li.querySelector("[data-record-status]") as HTMLElement;
+    const action = li.querySelector("[data-record-action]") as HTMLElement;
+    // Hidden in a narrow list, a fixed column in a wide one.
+    expect(status.className).toContain("hidden");
+    expect(status.className).toContain("@2xl:w-40");
+    expect(action.className).toContain("@2xl:w-36");
+  });
 });
 
 describe("RecordRowMedia", () => {

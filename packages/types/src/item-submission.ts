@@ -58,6 +58,8 @@ export type ItemSubmission = {
   submittedByUserId?: string | null;
   /** The reference the seller quotes to a specialist, for example "C-1042". */
   reference?: string;
+  /** The member who sent it, named, for an organisation's list ("sent by Lena Fischer"). */
+  sentBy?: { userId: string; name: string | null } | null;
   createdAt: Date;
   updatedAt: Date;
 };

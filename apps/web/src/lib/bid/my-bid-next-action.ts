@@ -9,7 +9,7 @@ export type MyBidActionKind =
   | "bid-next"
   | "set-maximum"
   | "raise-maximum"
-  | "edit-bid"
+  | "edit-maximum"
   | "view-purchase";
 
 export type MyBidAction = {
@@ -27,7 +27,9 @@ export type MyBidAction = {
 const ACTIONS_BY_STATUS: Record<MyBidStatus, readonly MyBidActionKind[]> = {
   outbid: ["set-maximum", "bid-next"],
   winning: ["raise-maximum"],
-  absentee: ["edit-bid"],
+  "maximum-set": ["edit-maximum"],
+  // An absentee bid is held by the saleroom; changing it goes through the team, not a button.
+  absentee: [],
   won: ["view-purchase"],
   "not-won": [],
   withdrawn: [],
@@ -38,7 +40,7 @@ const EMPHASIS: Record<MyBidActionKind, MyBidAction["emphasis"]> = {
   "bid-next": "primary",
   "set-maximum": "secondary",
   "raise-maximum": "secondary",
-  "edit-bid": "secondary",
+  "edit-maximum": "secondary",
   "view-purchase": "secondary",
 };
 
@@ -58,8 +60,8 @@ function actionFor(kind: MyBidActionKind, lot: Lot): MyBidAction {
       return { kind, label: "Set maximum", href, emphasis: EMPHASIS[kind] };
     case "raise-maximum":
       return { kind, label: "Raise maximum", href, emphasis: EMPHASIS[kind] };
-    case "edit-bid":
-      return { kind, label: "Edit bid", href, emphasis: EMPHASIS[kind] };
+    case "edit-maximum":
+      return { kind, label: "Edit maximum", href, emphasis: EMPHASIS[kind] };
     case "view-purchase":
       return {
         kind,

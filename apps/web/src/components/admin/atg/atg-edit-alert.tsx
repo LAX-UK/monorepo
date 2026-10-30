@@ -1,4 +1,4 @@
-import { Notice, StaffButton } from "@auction/staff-ui";
+import { Notice, StaffButtonLink } from "@auction/staff-ui";
 import Link from "next/link";
 
 type Props = {
@@ -13,9 +13,9 @@ export function AtgEditAlert({ saleId, atgTabHref = `/admin/sales/${saleId}/atg`
       tone="warning"
       title="This sale sells on ATG"
       actions={
-        <StaffButton asChild size="sm" variant="secondary">
-          <Link href={atgTabHref}>Open ATG tab</Link>
-        </StaffButton>
+        <StaffButtonLink size="sm" variant="secondary" href={atgTabHref} Link={Link}>
+          Open ATG tab
+        </StaffButtonLink>
       }
     >
       Changes here sync to ATG within a few minutes. Photos are only added on ATG, never removed,

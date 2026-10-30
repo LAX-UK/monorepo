@@ -71,8 +71,11 @@ describe("myBidStatus", () => {
     expect(myBidStatus(bid({}), "user-1")).toBe("outbid");
   });
 
-  it("treats a bid on a lot that has not opened as an absentee bid", () => {
-    expect(myBidStatus(bid({ status: "scheduled" }), "user-1")).toBe("absentee");
+  it("holds a bid on a lot that has not opened as a maximum, or an absentee bid left with us", () => {
+    expect(myBidStatus(bid({ status: "scheduled" }), "user-1")).toBe("maximum-set");
+    expect(myBidStatus(bid({ status: "scheduled" }, { placedVia: "absentee" }), "user-1")).toBe(
+      "absentee",
+    );
   });
 
   it("knows a win by the person or by the account they bid for", () => {
@@ -141,12 +144,14 @@ describe("myBidActions", () => {
       ["Set maximum", "secondary"],
       ["Bid £4,400.00", "primary"],
     ]);
+    // The step opens the lot page, where the amount is confirmed; a row never places a bid.
     expect(actions.every((a) => a.href.startsWith("/lot/"))).toBe(true);
   });
 
   it("offers one quiet step otherwise, and nothing once the lot is lost", () => {
     expect(myBidActions("winning", lot()).map((a) => a.label)).toEqual(["Raise maximum"]);
-    expect(myBidActions("absentee", lot()).map((a) => a.label)).toEqual(["Edit bid"]);
+    expect(myBidActions("maximum-set", lot()).map((a) => a.label)).toEqual(["Edit maximum"]);
+    expect(myBidActions("absentee", lot())).toEqual([]);
     expect(myBidActions("won", lot())).toEqual([
       { kind: "view-purchase", label: "View purchase", href: "/purchases", emphasis: "secondary" },
     ]);
@@ -158,64 +163,65 @@ describe("myBidActions", () => {
 describe("buildMyBidsVm", () => {
   const rows = [
     bid({ id: "o1" }, { maxAutoBidAmount: "4000" }),
-    bid(
-      { id: "a", status: "scheduled", marketingDetails: { estimate: est("15000", "25000") } },
-      { amount: "18000" },
-    ),
+    bid({ id: "a", status: "scheduled", currentPrice: "1000" }, { amount: "18000" }),
     bid({ id: "x", status: "ended", winnerId: "user-1" }),
   ];
 
-  function est(low: string, high: string) {
-    return { low, high, currency: "GBP" };
-  }
-
-  it("counts every view and shows the cards of the one in use", () => {
+  it("builds every view at once, with the open lots to follow live", () => {
     const vm = buildMyBidsVm({
       rows,
       userId: "user-1",
-      tab: "active",
       saleTitleById: { "sale-3": "Autumn modern and contemporary" },
       now: NOW,
     });
-    expect(vm.tabs).toEqual([
-      { id: "active", label: "Active", count: 2 },
-      { id: "won", label: "Won", count: 1 },
-      { id: "lost", label: "Not won", count: 0 },
-    ]);
-    expect(vm.cards.map((card) => card.statusLabel)).toEqual(["Outbid", "Absentee bid placed"]);
+    expect(vm.cardsByTab.active.map((card) => card.statusLabel)).toEqual(["Outbid", "Maximum set"]);
+    expect(vm.cardsByTab.won).toHaveLength(1);
+    expect(vm.cardsByTab.lost).toHaveLength(0);
+    expect(vm.sales).toEqual([{ id: "sale-3", title: "Autumn modern and contemporary" }]);
     expect(vm.liveLots).toEqual([
       { lotId: "o1", lotLabel: "14", title: "Still life with stoneware jug" },
     ]);
   });
 
-  it("describes an open lot by its price, the person's maximum and the time left", () => {
-    const [card] = buildMyBidsVm({ rows, userId: "user-1", tab: "active", now: NOW }).cards;
+  it("shows an open lot's price, the maximum and when it closes, with one next step", () => {
+    const [card] = buildMyBidsVm({ rows, userId: "user-1", now: NOW }).cardsByTab.active;
     expect(card).toMatchObject({
       lotLabel: "Lot 14",
-      details: "Oil on canvas · 61 × 50 cm",
-      saleTitle: null,
       figures: [
-        { label: "Current bid", kind: "text", value: "£4,200.00" },
-        { label: "Your maximum", kind: "text", value: "£4,000.00" },
-        { label: "Closes in", kind: "countdown", endsAt: "2026-11-02T12:04:12.000Z" },
+        { label: "current bid", value: "£4,200.00" },
+        { label: "your maximum", value: "£4,000.00" },
+        { label: "closes", value: "Today 12:04" },
       ],
     });
+    expect(card?.next?.label).toBe("Bid £4,400.00");
+    expect(card?.more.map((action) => action.label)).toEqual(["Set maximum"]);
   });
 
-  it("describes an absentee bid by the estimate, the bid and when the sale starts", () => {
-    const card = buildMyBidsVm({ rows, userId: "user-1", tab: "active", now: NOW }).cards[1];
-    expect(card?.figures.map((f) => f.label)).toEqual(["Estimate", "Absentee bid", "Sale starts"]);
-    expect(card?.figures[0]).toMatchObject({ value: "£15,000.00 – £25,000.00" });
-    expect(card?.figures[1]).toMatchObject({ value: "£18,000.00" });
+  it("shows a maximum waiting for the sale with no current bid yet", () => {
+    const card = buildMyBidsVm({ rows, userId: "user-1", now: NOW }).cardsByTab.active[1];
+    expect(card?.figures.map((f) => [f.label, f.value])).toEqual([
+      ["current bid", "–"],
+      ["your maximum", "£18,000.00"],
+      ["sale day", "Yesterday"],
+    ]);
   });
 
-  it("names a withdrawn lot instead of showing an empty card", () => {
-    const vm = buildMyBidsVm({ rows: [bid(null)], userId: "user-1", tab: "lost", now: NOW });
-    expect(vm.cards[0]).toMatchObject({
+  it("names who placed each bid only on a shared list", () => {
+    const placed = [{ ...bid({ id: "o1" }), placedBy: { userId: "u-2", name: "Tom Whitfield" } }];
+    const shared = buildMyBidsVm({ rows: placed, userId: "user-1", showPlacedBy: true, now: NOW });
+    expect(shared.cardsByTab.active[0]?.placedBy).toBe("Tom Whitfield");
+    expect(shared.placers).toEqual(["Tom Whitfield"]);
+    const own = buildMyBidsVm({ rows: placed, userId: "user-1", now: NOW });
+    expect(own.cardsByTab.active[0]?.placedBy).toBeNull();
+  });
+
+  it("names a withdrawn lot instead of showing an empty row", () => {
+    const vm = buildMyBidsVm({ rows: [bid(null)], userId: "user-1", now: NOW });
+    expect(vm.cardsByTab.lost[0]).toMatchObject({
       href: null,
       title: "Lot withdrawn from the sale",
       figures: [],
-      actions: [],
+      next: null,
     });
   });
 });

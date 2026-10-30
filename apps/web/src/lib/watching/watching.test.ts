@@ -1,7 +1,9 @@
 import type { BidWithLot, WatchlistWithLotRow } from "@/lib/data/dto/dashboard-dtos";
 import type { Lot } from "@auction/types";
 import { describe, expect, it } from "vitest";
-import { buildWatchingVm, parseWatchingTab } from "./watching.vm";
+import { artistAlertSummary, parseArtistAlertDraft } from "./artist-alert";
+import { savedSearchSummary } from "./saved-search";
+import { buildWatchedLots, parseWatchingView, watchedLotsInView } from "./watching.vm";
 
 const NOW = new Date("2026-11-02T12:00:00.000Z");
 
@@ -43,60 +45,91 @@ function myBid(l: Lot, overrides: Partial<BidWithLot["bid"]> = {}): BidWithLot {
   };
 }
 
-describe("buildWatchingVm", () => {
-  const live = lot("live");
-  const soon = lot("soon", { endTime: new Date("2026-11-02T12:40:00Z"), saleId: "sale-4" });
-  const upcoming = lot("up", { status: "scheduled", startTime: new Date("2026-11-06T14:00:00Z") });
-  const sold = lot("sold", { status: "ended", hasWinner: true, currentPrice: "900" });
-  const rows = [live, soon, upcoming, sold].map(watched);
-
-  it("opens Live while something is live and counts each view", () => {
-    const vm = buildWatchingVm({ rows, bids: [], userId: "me", tab: null, now: NOW });
-    expect(vm.tab).toBe("live");
-    expect(vm.tabs.map((tab) => tab.count)).toEqual([1, 2, 1]);
-    expect(vm.summary).toBe("2 lots in 2 sales");
+describe("buildWatchedLots", () => {
+  const open = lot("open");
+  const upcoming = lot("soon", {
+    status: "scheduled",
+    startTime: new Date("2026-11-20T10:00:00Z"),
+    endTime: new Date("2026-11-20T18:00:00Z"),
+  });
+  const sold = lot("sold", {
+    status: "ended",
+    winnerId: "someone",
+    endTime: new Date("2026-10-30T18:00:00Z"),
   });
 
-  it("puts the person's own bid on the pill before the lot's moment", () => {
-    const vm = buildWatchingVm({
-      rows,
-      bids: [myBid(live)],
+  it("says where the person stands, the figure that matters and when", () => {
+    const rows = buildWatchedLots({
+      rows: [watched(open), watched(upcoming), watched(sold)],
+      bids: [myBid(open)],
       userId: "me",
-      tab: "live",
       now: NOW,
     });
-    expect(vm.cards.map((card) => card.badgeLabel)).toEqual(["You're winning", "Closing soon"]);
-    expect(vm.cards[0]).toMatchObject({
-      figure: "£2,600.00",
-      estimate: "Estimate £2,000.00 – £3,000.00",
-      timing: { kind: "countdown", endsAt: "2026-11-02T15:00:00.000Z" },
-    });
+    expect(rows.map((row) => [row.standing.label, row.figure.label, row.moment])).toEqual([
+      ["Winning", "current bid", "closes Today 15:00"],
+      ["Not bidding", "estimate", "opens 20 Nov"],
+      ["Sold", "sold for", "closed 30 Oct"],
+    ]);
+    expect(rows[1]?.figure.value).toBe("£2,000.00 – £3,000.00");
   });
 
-  it("shows an absentee bid, the opening price and the date on upcoming lots", () => {
-    const withBid = buildWatchingVm({
-      rows,
-      bids: [myBid(upcoming, { amount: "18000" })],
+  it("puts open lots first, soonest to close, and ended ones last", () => {
+    const rows = buildWatchedLots({
+      rows: [watched(sold), watched(upcoming), watched(open)],
+      bids: [],
       userId: "me",
-      tab: "upcoming",
       now: NOW,
     });
-    expect(withBid.cards[0]).toMatchObject({
-      badgeLabel: "Absentee bid",
-      figure: "Absentee £18,000.00",
-      timing: { kind: "date", label: "6 Nov" },
+    expect(watchedLotsInView(rows, "", "closing").map((row) => row.lotId)).toEqual([
+      "open",
+      "soon",
+      "sold",
+    ]);
+    expect(watchedLotsInView(rows, "work sold", "closing").map((row) => row.lotId)).toEqual([
+      "sold",
+    ]);
+  });
+
+  it("opens Lots unless another view is asked for", () => {
+    expect(parseWatchingView("artists")).toBe("artists");
+    expect(parseWatchingView("upcoming")).toBe("lots");
+    expect(parseWatchingView(undefined)).toBe("lots");
+  });
+});
+
+describe("artist alerts", () => {
+  it("summarises the criteria in a few words", () => {
+    expect(artistAlertSummary({ medium: null, priceMin: null, priceMax: null })).toBe(
+      "Every new work",
+    );
+    expect(artistAlertSummary({ medium: "oil", priceMin: "2000.00", priceMax: null })).toBe(
+      "Oil · £2,000 and up",
+    );
+    expect(artistAlertSummary({ medium: null, priceMin: "2000", priceMax: "10000" })).toBe(
+      "£2,000 to £10,000",
+    );
+  });
+
+  it("reads amounts as typed, and refuses a range that runs backwards", () => {
+    expect(parseArtistAlertDraft({ medium: " oil ", priceMin: "£2,000", priceMax: "" })).toEqual({
+      ok: true,
+      criteria: { medium: "oil", priceMin: "2000", priceMax: null },
     });
-    const plain = buildWatchingVm({ rows, bids: [], userId: "me", tab: "upcoming", now: NOW });
-    expect(plain.cards[0]).toMatchObject({ badgeLabel: "Upcoming", figure: "Opens at £250.00" });
+    expect(parseArtistAlertDraft({ medium: "", priceMin: "abc", priceMax: "" })).toMatchObject({
+      ok: false,
+      errors: { priceMin: expect.any(String) },
+    });
+    expect(parseArtistAlertDraft({ medium: "", priceMin: "5000", priceMax: "2000" })).toMatchObject(
+      { ok: false, errors: { priceMax: expect.any(String) } },
+    );
   });
+});
 
-  it("says how an ended lot closed", () => {
-    const vm = buildWatchingVm({ rows, bids: [], userId: "me", tab: "ended", now: NOW });
-    expect(vm.cards[0]).toMatchObject({ badgeLabel: "Sold", figure: "Sold for £900.00" });
-  });
-
-  it("reads an unknown view as none chosen", () => {
-    expect(parseWatchingTab("live")).toBe("live");
-    expect(parseWatchingTab("artists")).toBeNull();
+describe("saved searches", () => {
+  it("say what they look for without the catalogue's own keys", () => {
+    expect(savedSearchSummary({ q: "hepworth", category: "sculpture" })).toBe(
+      "“hepworth” with 1 filter",
+    );
+    expect(savedSearchSummary({})).toBe("The whole catalogue");
   });
 });

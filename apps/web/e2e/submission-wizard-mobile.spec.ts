@@ -39,7 +39,8 @@ test.describe("submission wizard mobile @journey", () => {
       await page.goto(`/selling/consignments/${draftId}`);
     } else {
       await page.goto("/selling/consignments?tab=drafts");
-      const draftLink = page.getByRole("link", { name: /draft/i }).first();
+      // Each draft row's title opens the consignment.
+      const draftLink = page.locator("[data-record-link]").first();
       await expect(draftLink).toBeVisible({ timeout: 15_000 });
       await draftLink.click();
       await page.waitForURL(/\/selling\/consignments\/[^/]+$/);

@@ -3,7 +3,7 @@ import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { OrganisationStateBanner } from "@/components/organisations/organisation-state-banner";
 import type { LoadedOrganisationHome } from "@/lib/organisation-home/load-organisation-home.server";
-import { Button } from "@auction/ui/lax";
+import { ButtonLink } from "@auction/ui/lax";
 import { Info, Plus } from "lucide-react";
 import Link from "next/link";
 import { HomeActivity } from "./home-activity";
@@ -58,14 +58,15 @@ export function OrganisationHome({ home }: { home: LoadedOrganisationHome }) {
         className="mb-6 lg:mb-8"
         actions={
           home.sellHref ? (
-            <Button
-              asChild
+            <ButtonLink
               variant="secondary"
               icon={<Plus aria-hidden />}
               className="h-11 w-full sm:h-lax-control-md sm:w-auto"
+              href={home.sellHref}
+              Link={Link}
             >
-              <Link href={home.sellHref}>Sell a work</Link>
-            </Button>
+              Sell a work
+            </ButtonLink>
           ) : null
         }
       />

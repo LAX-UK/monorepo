@@ -3,9 +3,9 @@ import {
   TelephoneBidsSection,
 } from "@/app/(client)/bids/bids-extra-sections";
 import { BidsPageContent } from "@/app/(client)/bids/bids-page-content";
-import { AccountListSkeleton } from "@/components/dashboard/primitives/account-list-skeleton";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
 import { WorkspacePageNoAccess } from "@/components/organisations/workspace-page-no-access";
+import { ListSkeleton } from "@/components/workspace/list-states";
 import { buyingPageView } from "@/lib/buying/buying-pages";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
@@ -19,7 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 type PageProps = {
-  searchParams: Promise<{ tab?: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
 
 export default async function DashboardBidsPage({ searchParams }: PageProps) {
@@ -42,11 +42,12 @@ export default async function DashboardBidsPage({ searchParams }: PageProps) {
   return (
     <>
       <SetMobileShellTitle title={view.title} />
-      <Suspense fallback={<AccountListSkeleton label="Loading bids" />}>
+      <Suspense fallback={<ListSkeleton label="Loading bids" />}>
         <BidsPageContent
           searchParams={searchParams}
           title={view.title}
           description={view.description}
+          offersSales={view.offersSales}
         >
           {personal ? (
             <>

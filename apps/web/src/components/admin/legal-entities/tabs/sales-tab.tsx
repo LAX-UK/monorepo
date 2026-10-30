@@ -1,4 +1,4 @@
-import { EmptyState, Section, StaffButton } from "@auction/staff-ui";
+import { EmptyState, Section, StaffButtonLink } from "@auction/staff-ui";
 import Link from "next/link";
 
 type Props = {
@@ -19,9 +19,9 @@ export function LegalEntitySalesTab({ displayName }: Props) {
         title="No sales are linked to this organisation yet"
         description="When sales are associated with it, they will appear here."
         action={
-          <StaffButton asChild size="sm" variant="secondary">
-            <Link href="/admin/sales">Browse all sales</Link>
-          </StaffButton>
+          <StaffButtonLink size="sm" variant="secondary" href="/admin/sales" Link={Link}>
+            Browse all sales
+          </StaffButtonLink>
         }
       />
     </Section>
