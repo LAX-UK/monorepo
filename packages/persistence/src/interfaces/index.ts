@@ -953,3 +953,13 @@ export type {
   IRecordPeopleReader,
   RecordPerson,
 } from "./workspace-buying.readers.js";
+export type {
+  ClaimPaymentGroupInput,
+  ClaimPaymentGroupResult,
+  IPaySeveralInvoiceFlagsReader,
+  IPaymentGroupRepository,
+  LockedPaymentGroup,
+  PaySeveralInvoiceFlags,
+  PaymentGroupMember,
+  PaymentGroupRecord,
+} from "./payment-group.repository.js";
