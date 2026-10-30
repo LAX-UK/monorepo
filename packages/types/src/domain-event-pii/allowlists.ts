@@ -153,6 +153,15 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "amountRemainingCents",
     "currency",
   ]),
+  /** Several invoices of one account put into one checkout ("Pay several"); amounts and rail. */
+  "payment_group.created": new Set(["total", "checkoutRail"]),
+  "payment_group.paid": new Set(["total"]),
+  /** Why the group's checkout ended (cancelled, expired, failed); operational codes only. */
+  "payment_group.released": new Set(["reason"]),
+  /** Why money received for a group was not applied (an operational code). */
+  "payment_group.settlement_refused": new Set(["reason"]),
+  /** Which dispute stage needs the finance team to allocate it across the invoices. */
+  "payment_group.dispute_needs_allocation": new Set(["stage", "reason"]),
   /** Stripe transfer reversal — negative payout_line inserted for balance correction. */
   "payout.transfer_reversed": new Set([
     "stripeTransferId",

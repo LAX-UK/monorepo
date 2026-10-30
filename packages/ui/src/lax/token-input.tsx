@@ -4,7 +4,7 @@ import { X } from "lucide-react";
 import * as React from "react";
 import { cn } from "../lib/utils.js";
 import { useField } from "./field.js";
-import { fieldBox } from "./input.js";
+import { fieldBox } from "./styles.js";
 
 /** Characters that finish a token while typing; pasted text is split on any whitespace too. */
 const SEPARATOR = /[,;\s]+/;

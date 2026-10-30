@@ -16,6 +16,8 @@ export async function dispatchPaymentReceived(deps: {
   notificationDispatcher: NotificationDispatcher | null;
   notificationFactory: NotificationFactory;
   legalEntityNotificationRecipients: ILegalEntityNotificationRecipientReader | null;
+  /** `false` when the buyer gets one receipt for several invoices instead (sent by the caller). */
+  notifyBuyer?: boolean;
 }): Promise<void> {
   const { payment: p } = deps;
   await deps.lotFulfilmentHooks?.onPaymentCaptured(p.lotId, p.id);
@@ -25,12 +27,14 @@ export async function dispatchPaymentReceived(deps: {
   const paidByUserId = p.paidByUserId ?? p.buyerId;
   if (!paidByUserId) return;
 
-  await deps.notificationDispatcher.dispatch(
-    paidByUserId,
-    notificationRowToPayload(
-      deps.notificationFactory.createPaymentReceived(lot, paidByUserId, p.amount),
-    ),
-  );
+  if (deps.notifyBuyer !== false) {
+    await deps.notificationDispatcher.dispatch(
+      paidByUserId,
+      notificationRowToPayload(
+        deps.notificationFactory.createPaymentReceived(lot, paidByUserId, p.amount),
+      ),
+    );
+  }
 
   const financeRecipients = await resolveLegalEntityNotificationRecipients(
     deps.legalEntityNotificationRecipients,

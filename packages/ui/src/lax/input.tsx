@@ -2,22 +2,8 @@
 
 import * as React from "react";
 import { cn } from "../lib/utils.js";
-import { readOnlyBox, useField, useReadOnlyView } from "./field.js";
-
-/**
- * The field box shared by text inputs, the money input, pickers and selects: one border, one
- * radius, one hover, one focus ring and one error treatment, so every control in a form lines up.
- */
-export const fieldBox = [
-  "flex w-full min-w-0 items-center gap-2 rounded-lax-control border bg-lax-surface px-3",
-  "font-lax text-lax-fg transition-[border-color,box-shadow] duration-150 ease-out",
-  "border-lax-control-edge hover:border-lax-control-edge-hover",
-  "has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-lax-focus",
-  "has-[[aria-invalid=true]]:border-lax-danger",
-  "has-[:disabled]:cursor-not-allowed has-[:disabled]:border-lax-line has-[:disabled]:bg-lax-sunken has-[:disabled]:text-lax-disabled-fg",
-  "has-[input:read-only,textarea:read-only]:bg-lax-sunken",
-  "[&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-lax-subtle",
-].join(" ");
+import { useField, useReadOnlyView } from "./field.js";
+import { fieldBox, readOnlyBox } from "./styles.js";
 
 const fieldSize = {
   sm: "h-lax-control-sm text-lax-ui",

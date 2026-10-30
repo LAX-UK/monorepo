@@ -33,6 +33,8 @@ export type PaymentRecord = {
     | "requires_manual_review"
     | "cancelled";
   createdAt: Date;
+  /** The "Pay several" payment this invoice is settled through, if any. */
+  paymentGroupId?: string | null;
   /** Populated for admin listing when a Xero invoice row exists. */
   xeroInvoiceNumber?: string | null;
   xeroOnlineInvoiceUrl?: string | null;

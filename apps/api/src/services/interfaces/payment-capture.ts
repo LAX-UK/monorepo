@@ -24,3 +24,23 @@ export type CapturePaymentResult = {
 export interface IPaymentCaptureService {
   capture(input: CapturePaymentInput): Promise<CapturePaymentResult>;
 }
+
+export type CaptureInTransactionInput = Omit<CapturePaymentInput, "tx" | "requireApply"> & {
+  tx: Database;
+  /**
+   * Whether the buyer is told about this payment on its own. Invoices settled together get one
+   * receipt for the whole payment instead, sent by the caller.
+   */
+  buyerReceipt: "each" | "none";
+};
+
+export type CaptureInTransactionResult = {
+  captured: boolean;
+  /** Notices, fulfilment and accounting for the capture; run once the transaction commits. */
+  afterCommit: () => Promise<void>;
+};
+
+/** Marks a payment captured inside the caller's transaction, deferring its side effects. */
+export interface IPaymentCaptureInTransaction {
+  captureInTransaction(input: CaptureInTransactionInput): Promise<CaptureInTransactionResult>;
+}

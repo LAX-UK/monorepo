@@ -6,6 +6,16 @@ import { paymentProviderErrorFromUnknown } from "./payment-service-errors.js";
 import { type PaymentServiceDeps, REFUND_BLOCKED_STATUSES } from "./payment-service-types.js";
 import { executePaymentRefundLedger } from "./refund-execution.js";
 
+/**
+ * A payment settled together with other invoices shares their charge, so its refund names the
+ * invoice (always by amount, never "the whole charge").
+ */
+function groupedRefundRef(p: { id: string; paymentGroupId?: string | null }): {
+  paymentId?: string;
+} {
+  return p.paymentGroupId ? { paymentId: p.id } : {};
+}
+
 export async function refundPayment(
   deps: PaymentServiceDeps,
   adminUserId: string,
@@ -64,6 +74,7 @@ export async function refundPayment(
       chargeId: p.stripeChargeId,
       amount: gbpAmountToPence(p.amount),
       reason: "requested_by_customer",
+      ...groupedRefundRef(p),
     });
   } catch (e) {
     return err(paymentProviderErrorFromUnknown(e));
@@ -122,6 +133,7 @@ export async function refundManualReviewPayment(
         chargeId: p.stripeChargeId,
         amount: gbpAmountToPence(p.amount),
         reason: "requested_by_customer",
+        ...groupedRefundRef(p),
       });
       stripeRefundId = refundOutcome.kind === "created" ? refundOutcome.refundId : null;
     } catch (e) {

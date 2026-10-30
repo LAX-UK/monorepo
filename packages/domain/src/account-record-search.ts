@@ -81,11 +81,20 @@ export const ACCOUNT_SEARCH_MAX_LENGTH = 100;
 /**
  * What the member typed, ready for the readers:
  * - `text`: matched anywhere in a title, an artist's name, an invoice number or a person;
- * - `lotNumber`: set when the text is a lot reference ("12", "Lot 12", "#12").
+ * - `lotNumber`: set when the text is a lot reference ("12", "Lot 12", "#12");
+ * - `consignmentNumber`: set when the text is a consignment reference ("C-1042", "C1042") or a
+ *   bare number, which may be either.
  */
-export type AccountSearchTerms = { text: string; lotNumber: number | null };
+export type AccountSearchTerms = {
+  text: string;
+  lotNumber: number | null;
+  consignmentNumber: number | null;
+};
 
 const LOT_REFERENCE = /^(?:lot\s*)?#?\s*(\d{1,6})$/i;
+/** The printed form is `consignmentReference` ("C-1042"); people also type it without the dash. */
+const CONSIGNMENT_REFERENCE = /^c\s*-?\s*(\d{1,12})$/i;
+const BARE_NUMBER = /^(\d{1,12})$/;
 
 /** Terms for a query, or `null` when it is too short to search. */
 export function accountSearchTerms(raw: string): AccountSearchTerms | null {
@@ -95,6 +104,11 @@ export function accountSearchTerms(raw: string): AccountSearchTerms | null {
     .trim()
     .slice(0, ACCOUNT_SEARCH_MAX_LENGTH);
   const lot = LOT_REFERENCE.exec(text);
+  const consignment = CONSIGNMENT_REFERENCE.exec(text) ?? BARE_NUMBER.exec(text);
   if (text.length < ACCOUNT_SEARCH_MIN_LENGTH && !lot) return null;
-  return { text, lotNumber: lot ? Number(lot[1]) : null };
+  return {
+    text,
+    lotNumber: lot ? Number(lot[1]) : null,
+    consignmentNumber: consignment ? Number(consignment[1]) : null,
+  };
 }

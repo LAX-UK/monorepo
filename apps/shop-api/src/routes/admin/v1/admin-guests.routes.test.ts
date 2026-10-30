@@ -201,4 +201,32 @@ describe("admin guest erasure routes", () => {
     expect(response.statusCode).toBe(404);
     await app.close();
   });
+
+  it.each<[ShopStaffRole, number]>([
+    ["shop_admin", 200],
+    ["account_manager", 200],
+    ["operations", 403],
+    ["finance", 403],
+    ["read_only", 403],
+  ])("lists leads for %s: %i", async (role, status) => {
+    const { app } = await buildApp(role);
+    const response = await app.inject({
+      method: "GET",
+      url: "/admin/v1/leads?tab=enquired",
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+    });
+    expect(response.statusCode).toBe(status);
+    await app.close();
+  });
+
+  it("answers 404 for a lead that does not exist or was erased", async () => {
+    const { app } = await buildApp("shop_admin");
+    const response = await app.inject({
+      method: "GET",
+      url: `/admin/v1/leads/${GUEST_ID}`,
+      headers: { authorization: `Bearer ${ADMIN_TOKEN}` },
+    });
+    expect(response.statusCode).toBe(404);
+    await app.close();
+  });
 });

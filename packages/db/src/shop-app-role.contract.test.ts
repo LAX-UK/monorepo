@@ -2,6 +2,7 @@ import pg from "pg";
 import { describe, expect, it } from "vitest";
 import {
   SHOP_COMMERCE_TABLES,
+  SHOP_CRM_READ_TABLES,
   SHOP_EMAIL_OUTBOX_TABLES,
   SHOP_PRODUCT_PROFILE_TABLES,
   SHOP_SSF_RECEIVER_TABLES,
@@ -132,6 +133,25 @@ describe.skipIf(!SHOP_URL)("shop_app role contract", { timeout: 60_000 }, () => 
           [`public.${table}`],
         );
         expect(update.rows[0]?.allowed, `${table}:UPDATE`).toBe(false);
+      }
+    });
+  });
+
+  it("reads the CRM integration's records without writing them", async () => {
+    await withShopClient(async (client) => {
+      for (const table of SHOP_CRM_READ_TABLES) {
+        for (const [privilege, allowed] of [
+          ["SELECT", true],
+          ["INSERT", false],
+          ["UPDATE", false],
+          ["DELETE", false],
+        ] as const) {
+          const result = await client.query<{ allowed: boolean }>(
+            "select has_table_privilege(current_user, $1, $2) as allowed",
+            [`public.${table}`, privilege],
+          );
+          expect(result.rows[0]?.allowed, `${table}:${privilege}`).toBe(allowed);
+        }
       }
     });
   });

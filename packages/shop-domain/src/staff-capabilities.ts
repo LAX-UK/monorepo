@@ -42,6 +42,8 @@ export const SHOP_STAFF_CAPABILITIES = [
    * removes the only way to contact the guest about their orders.
    */
   "lead.erase",
+  /** Opening the guest leads list and a lead's record: people who sell and follow up. */
+  "lead.read",
   /**
    * Seeing the name and address kept on an erased guest's orders for the accounting record. Only
    * the people who handle invoices hold it.
@@ -105,6 +107,7 @@ const GRANTED_CAPABILITIES: Record<ShopStaffRole, readonly ShopStaffCapability[]
     "enquiry.read",
     "enquiry.write",
     "order.read",
+    "lead.read",
   ],
   broker: [
     "stock_hold.write",

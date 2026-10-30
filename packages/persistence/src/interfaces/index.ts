@@ -958,11 +958,13 @@ export type {
 export type {
   AccountSearchCriteria,
   AccountSearchHits,
+  BidSearchHit,
   ConsignmentSearchHit,
   IAccountRecordSearchReader,
   InvoiceSearchHit,
   LotSearchHit,
   MemberSearchHit,
+  PurchaseSearchHit,
 } from "./account-record-search.reader.js";
 export type { INeedsYouFactsReader } from "./needs-you-facts.reader.js";
 export type {
@@ -992,3 +994,13 @@ export type {
   IActiveMemberLookup,
   NewAccessRequest,
 } from "./access-request.repository.js";
+export type {
+  ClaimPaymentGroupInput,
+  ClaimPaymentGroupResult,
+  IPaySeveralInvoiceFlagsReader,
+  IPaymentGroupRepository,
+  LockedPaymentGroup,
+  PaySeveralInvoiceFlags,
+  PaymentGroupMember,
+  PaymentGroupRecord,
+} from "./payment-group.repository.js";
