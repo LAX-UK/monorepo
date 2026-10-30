@@ -148,6 +148,30 @@ describe("composeArtistPage", () => {
     ]);
   });
 
+  it("keeps the stories grid to whole rows: five stories show as a lead and a row of three", async () => {
+    const services = fakeArtServices();
+    services.catalogue.getArtist.mockResolvedValue(artist);
+    services.editorial.getArtistRelations.mockResolvedValue({
+      status: "ok",
+      data: {
+        exhibitions: [],
+        stories: ["a", "b", "c", "d", "e"].map((slug) => ({
+          slug,
+          kind: "article" as const,
+          title: slug,
+          standfirst: null,
+          coverUrl: null,
+          featured: false,
+        })),
+      },
+    });
+
+    const result = await composeArtistPage(services, "flora-powers", SITE_URL);
+
+    if (result.kind !== "ok") throw new Error("expected ok");
+    expect(result.vm.stories).toHaveLength(4);
+  });
+
   it("shows sold works as the record, standing in for an empty available section", async () => {
     const services = fakeArtServices();
     services.catalogue.getArtist.mockResolvedValue(artist);

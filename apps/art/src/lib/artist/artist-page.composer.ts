@@ -26,6 +26,7 @@ import {
   type MarketingArtistCrossLink,
   type MarketingArtistFactInput,
   type MarketingSectionSurface,
+  marketingLeadRowCap,
   resolveBandSequence,
 } from "@auction/marketing-ui";
 import type { PublicArtistDetail } from "@auction/shop-contracts";
@@ -107,6 +108,11 @@ async function loadShopEditionsLink(
   ];
 }
 
+/** Keeps the lead grid's last row whole (`marketingLeadRowCap`). */
+function capLeadRow<T>(items: readonly T[]): T[] {
+  return items.slice(0, marketingLeadRowCap(items.length));
+}
+
 /** Films lead the artist's stories (Figma `454:6937`); press is listed on its own. */
 function splitStories(stories: readonly ArtEditorialStorySummary[]): {
   stories: EditorialCardVm[];
@@ -117,7 +123,7 @@ function splitStories(stories: readonly ArtEditorialStorySummary[]): {
   const films = features.filter((story) => story.kind === "film");
   const others = features.filter((story) => story.kind !== "film");
   return {
-    stories: [...films, ...others].map(storyCard),
+    stories: capLeadRow([...films, ...others]).map(storyCard),
     press: buildHubPressRows(
       sorted.filter((story) => story.kind === "press").slice(0, PRESS_LIMIT),
     ),

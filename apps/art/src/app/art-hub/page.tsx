@@ -63,6 +63,7 @@ function HubSection({ id, vm }: { id: ArtHubSectionId; vm: ArtHubPageVm }) {
         <MarketingSplitFeature
           tone="plain"
           headingLevel="h1"
+          mobileOrder="text-first"
           mediaSide="right"
           eyebrow={ART_HUB_HERO.eyebrow}
           title={ART_HUB_HERO.title}

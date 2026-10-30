@@ -71,14 +71,18 @@ export function ArtEditorialCardGrid({
   cards,
   ariaLabel,
   priorityCount = 0,
+  max,
 }: {
   cards: readonly EditorialCardVm[];
   ariaLabel: string;
   priorityCount?: number;
+  /** Caps the row to whole rows (`marketingRowCap`); the host links to the rest. */
+  max?: number;
 }) {
   return (
     <MarketingCardRow
       aria-label={ariaLabel}
+      {...(max !== undefined ? { max } : {})}
       items={cards}
       getKey={(card) => card.key}
       renderItem={(card, layout, index) => (

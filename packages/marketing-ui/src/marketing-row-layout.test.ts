@@ -2,12 +2,28 @@ import { describe, expect, it } from "vitest";
 import {
   marketingFeatureGridLayout,
   marketingFeatureGridRole,
+  marketingLeadRowCap,
   marketingMixedRailSlots,
   marketingRailHasEnough,
   marketingRowCap,
   marketingRowColumns,
   marketingRowLayout,
 } from "./marketing-row-layout.js";
+
+describe("marketingLeadRowCap", () => {
+  it.each([
+    [0, 0],
+    [1, 1],
+    [3, 3],
+    [4, 4],
+    [5, 4],
+    [6, 4],
+    [7, 7],
+    [9, 7],
+  ])("shows %i items as %i, so no row under the lead is left part-empty", (count, shown) => {
+    expect(marketingLeadRowCap(count)).toBe(shown);
+  });
+});
 
 describe("marketingMixedRailSlots", () => {
   it("repeats tall, wide, then a stacked pair", () => {

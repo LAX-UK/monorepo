@@ -100,6 +100,17 @@ export function marketingFeatureGridRole(
 }
 
 /**
+ * How many of `count` items a `lead-plus-row` grid shows so its last row is whole: up to four
+ * as they come (solo, pair, lead with two, lead with three), then the lead plus whole rows of
+ * three. The host links to the rest when it has somewhere to send them.
+ */
+export function marketingLeadRowCap(count: number): number {
+  const total = Math.max(0, Math.floor(count));
+  if (total <= 4) return total;
+  return 1 + Math.floor((total - 1) / 3) * 3;
+}
+
+/**
  * One slot of a mixed-size rail (Figma Art Hub stories, `983:27847`): a `tall` portrait card, a
  * `wide` landscape card, or a `pair` of compact cards stacked in one column.
  */

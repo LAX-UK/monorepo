@@ -47,6 +47,9 @@ export async function generateMetadata({ params }: ArtistPageProps): Promise<Met
 
 const SECTION = cn(MARKETING_PAGE_SHELL, "py-8 lg:py-12");
 
+/** Exhibitions show as whole rows (one row of four, or two). */
+const EXHIBITIONS_MAX = 8;
+
 export default async function ArtistPage({ params }: ArtistPageProps) {
   const { slug } = await params;
   const siteUrl = loadArtStorefrontBaseUrl();
@@ -168,7 +171,11 @@ export default async function ArtistPage({ params }: ArtistPageProps) {
       {vm.exhibitions.length > 0 ? (
         <div id={ARTIST_SECTION_IDS.exhibitions} className={SECTION}>
           <ArtSection id="artist-exhibitions-list" title={ARTIST_SECTION_LABELS.exhibitions}>
-            <ArtEditorialCardGrid cards={vm.exhibitions} ariaLabel="Exhibitions featuring artist" />
+            <ArtEditorialCardGrid
+              cards={vm.exhibitions}
+              ariaLabel="Exhibitions featuring artist"
+              max={EXHIBITIONS_MAX}
+            />
           </ArtSection>
         </div>
       ) : null}

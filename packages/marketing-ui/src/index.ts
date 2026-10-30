@@ -512,6 +512,7 @@ export {
   type MarketingRowLayout,
   marketingFeatureGridLayout,
   marketingFeatureGridRole,
+  marketingLeadRowCap,
   marketingMixedRailSlots,
   marketingRailHasEnough,
   marketingRowCap,
