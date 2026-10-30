@@ -53,4 +53,23 @@ describe("NotificationDispatcher organisation mutes", () => {
 
     expect(channel.sent).toEqual(["org-cedar", null]);
   });
+
+  it("still delivers required notices about a muted organisation, in-app and by email", async () => {
+    const inApp = new SpyChannel();
+    const email = new SpyChannel();
+    Object.assign(inApp, { channelKind: "in_app" });
+    const dispatcher = new NotificationDispatcher(
+      [inApp, email],
+      prefs,
+      { isQuietTime: () => false },
+      { listMutedAccountIds: async () => ["org-north"] },
+    );
+
+    for (const type of ["payment_due", "lot_won", "consignment_agreement_reminder"]) {
+      await dispatcher.dispatch("ada", { ...payload("org-north"), type });
+    }
+
+    expect(inApp.sent).toEqual(["org-north", "org-north", "org-north"]);
+    expect(email.sent).toEqual(["org-north", "org-north", "org-north"]);
+  });
 });

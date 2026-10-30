@@ -1,3 +1,4 @@
+import { notificationIsMutable, notificationSilencedByMute } from "@auction/domain";
 import type {
   INotificationAccountMuteReader,
   INotificationPreferenceReader,
@@ -44,7 +45,7 @@ export class NotificationDispatcher {
     payload: NotificationPayload,
     mode: "best_effort" | "strict",
   ): Promise<void> {
-    if (await this.isMuted(userId, payload.legalEntityId)) return;
+    if (await this.isSilencedByMute(userId, payload)) return;
     const prefs = await this.preferences.getForUser(userId);
     const quiet =
       prefs?.quietStart && prefs?.quietEnd
@@ -70,9 +71,12 @@ export class NotificationDispatcher {
     }
   }
 
-  private async isMuted(userId: string, legalEntityId: string | null | undefined) {
-    if (!this.mutes || legalEntityId == null) return false;
-    return (await this.mutes.listMutedAccountIds(userId)).includes(legalEntityId);
+  /** Informational notices about a muted account are silenced; required notices never are. */
+  private async isSilencedByMute(userId: string, payload: NotificationPayload) {
+    if (!this.mutes || payload.legalEntityId == null || !notificationIsMutable(payload.type)) {
+      return false;
+    }
+    return notificationSilencedByMute(payload, await this.mutes.listMutedAccountIds(userId));
   }
 
   private async shouldDeliver(

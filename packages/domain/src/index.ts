@@ -333,6 +333,11 @@ export {
   type NotificationNeedsActionType,
 } from "./notification-needs-action.js";
 export {
+  NOTIFICATION_ALWAYS_DELIVERED_TYPES,
+  notificationIsMutable,
+  notificationSilencedByMute,
+} from "./notification-mutes.js";
+export {
   entityActorCan,
   entityCapabilitiesOf,
   entityRoleCan,

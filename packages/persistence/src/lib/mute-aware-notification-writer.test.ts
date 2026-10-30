@@ -45,6 +45,16 @@ describe("MuteAwareNotificationWriter", () => {
     ]);
   });
 
+  it("always writes required notices about a muted organisation", async () => {
+    const { w, createMany, listMutedAccountIds } = writer({ ada: ["org-north"] });
+    await w.createMany([
+      { ...row("ada", "org-north"), type: "payment_due" },
+      { ...row("ada", "org-north"), type: "lot_won" },
+    ]);
+    expect(createMany.mock.calls[0]?.[0].map((r) => r.type)).toEqual(["payment_due", "lot_won"]);
+    expect(listMutedAccountIds).not.toHaveBeenCalled();
+  });
+
   it("never reads mutes for personal notices", async () => {
     const { w, listMutedAccountIds } = writer({});
     await w.createMany([row("ada", null)]);
