@@ -1,4 +1,5 @@
-import { type LinkComponent, formatCount } from "@auction/ui/lax";
+import type { LinkComponent } from "@auction/ui/lax";
+import { formatCount } from "@auction/ui/lax/helpers";
 import { ChevronRight, CircleCheck } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";

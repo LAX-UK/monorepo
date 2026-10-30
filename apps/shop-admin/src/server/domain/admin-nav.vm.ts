@@ -26,6 +26,7 @@ export type AdminNavIcon =
   | "thirdPartySales"
   | "requests"
   | "clients"
+  | "leads"
   | "payouts"
   | "disputes"
   | "staff"
@@ -228,10 +229,18 @@ export function buildAdminNavGroups(input: AdminSessionNavInput): AdminNavGroup[
     },
     {
       title: "Clients",
-      items:
-        clientListScope(caps) !== "none"
+      items: [
+        ...(clientListScope(caps) !== "none"
           ? [{ href: "/clients", icon: "clients" as const, label: "Clients" }]
-          : [],
+          : []),
+        // People without a LAX account who checked out as a guest or enquired.
+        {
+          href: "/leads",
+          icon: "leads" as const,
+          label: "Leads",
+          capability: "lead.read" as const,
+        },
+      ],
     },
     {
       title: "Finance",

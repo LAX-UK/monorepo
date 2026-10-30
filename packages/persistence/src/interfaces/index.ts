@@ -958,11 +958,13 @@ export type {
 export type {
   AccountSearchCriteria,
   AccountSearchHits,
+  BidSearchHit,
   ConsignmentSearchHit,
   IAccountRecordSearchReader,
   InvoiceSearchHit,
   LotSearchHit,
   MemberSearchHit,
+  PurchaseSearchHit,
 } from "./account-record-search.reader.js";
 export type { INeedsYouFactsReader } from "./needs-you-facts.reader.js";
 export type {

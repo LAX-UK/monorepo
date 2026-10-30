@@ -87,7 +87,9 @@ export function MenuItem({
         itemClass,
         disabledReason && "flex-wrap gap-y-0.5",
         tone === "danger" &&
-          "text-lax-danger focus:bg-lax-danger-bg focus:text-lax-danger data-[highlighted]:bg-lax-danger-bg [&>svg]:text-lax-danger",
+          // On its tinted highlight the item takes the danger foreground made for that tint, which
+          // keeps 4.5:1 in dark mode; the plain danger red does not.
+          "text-lax-danger [&>svg]:text-lax-danger focus:bg-lax-danger-bg focus:text-lax-danger-fg data-[highlighted]:bg-lax-danger-bg data-[highlighted]:text-lax-danger-fg focus:[&>svg]:text-lax-danger-fg data-[highlighted]:[&>svg]:text-lax-danger-fg",
         className,
       )}
       disabled={Boolean(disabled || disabledReason)}
