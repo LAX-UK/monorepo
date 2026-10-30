@@ -33,7 +33,7 @@ export type CheckoutOrchestratorDeps = {
 };
 
 export async function revokeOpenStripeCheckoutForPayment(
-  deps: CheckoutOrchestratorDeps,
+  deps: Pick<CheckoutOrchestratorDeps, "payments" | "stripePayments">,
   paymentId: string,
 ): Promise<void> {
   if (!deps.stripePayments?.isConfigured()) return;

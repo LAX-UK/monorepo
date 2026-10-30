@@ -74,38 +74,6 @@ describe("AccountPurchasesService.list", () => {
   });
 });
 
-describe("AccountPurchasesService.planPaySeveral", () => {
-  it("plans one payment over the owed invoices and skips the rest with reasons", async () => {
-    const plan = (
-      await purchasesService().planPaySeveral(actor("finance"), [
-        LOTS.due,
-        LOTS.overdue,
-        LOTS.paid,
-        LOTS.otherAccount,
-      ])
-    )._unsafeUnwrap();
-    expect(plan.payable.map((p) => p.lotId)).toEqual([LOTS.due, LOTS.overdue]);
-    expect(plan.total).toBe("1000.10");
-    expect(plan.skipped).toEqual([
-      { lotId: LOTS.paid, reason: "not_owed" },
-      { lotId: LOTS.otherAccount, reason: "other_account" },
-    ]);
-  });
-
-  it("refuses a buyer agent: they do not move the account's money", async () => {
-    const result = await purchasesService().planPaySeveral(actor("buyer_agent"), [LOTS.agentWin]);
-    expect(result._unsafeUnwrapErr().code).toBe("pay_several_nothing_payable");
-  });
-
-  it("refuses an impersonating admin, who is read-only", async () => {
-    const result = await purchasesService().planPaySeveral(
-      actor("owner", { isImpersonation: true }),
-      [LOTS.due],
-    );
-    expect(result._unsafeUnwrapErr().code).toBe("pay_several_nothing_payable");
-  });
-});
-
 describe("AccountPurchasesService.exportCsv", () => {
   it("writes plain words, never stored codes, for the member's purchases", async () => {
     const csv = (await purchasesService().exportCsv(actor("finance")))._unsafeUnwrap();

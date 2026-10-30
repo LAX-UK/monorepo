@@ -80,6 +80,16 @@ async function handleExistingOpenPayment(
   ctx: ExistingPaymentHandlerContext,
 ): Promise<Result<CreatePendingPaymentResult, AuthzError | LotError | PaymentProviderError>> {
   const { deps, existing, lot, buyerId } = ctx;
+  if (existing.paymentGroupId) {
+    // Held by a "Pay several" payment: a second checkout could take the same money twice.
+    return err(
+      new LotError(
+        "This invoice is part of a payment that is in progress",
+        409,
+        "payment_in_progress_elsewhere",
+      ),
+    );
+  }
   const checkout = await resolveCheckoutForPendingOrPromoteCompliance(
     deps.checkoutOrchestratorDeps,
     existing.id,

@@ -337,6 +337,11 @@ export function createContainer(env: Env): Container {
     sales: repos.saleRepo,
     notificationDispatcher: platform.notificationDispatcher,
     notificationFactory: platform.notificationFactory,
+    payments: {
+      tierLimits: payments.paymentTierPolicy.limitsSnapshot,
+      compliance: payments.settlementCompliancePolicy,
+      groupCheckout: payments.paymentGroupCheckout,
+    },
   });
 
   const atg = new AtgAdminService(
