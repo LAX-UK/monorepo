@@ -122,7 +122,6 @@ export function WorkspaceTabBar({
                 ) : (
                   <Link
                     href={tab.href}
-                    prefetch
                     className={className}
                     {...(active ? { "aria-current": "page" as const } : {})}
                   >

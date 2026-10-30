@@ -68,7 +68,6 @@ function NavEntry({
   return (
     <Link
       href={item.href}
-      prefetch
       className={className}
       {...(onNavigate ? { onClick: onNavigate } : {})}
       {...(active ? { "aria-current": "page" as const } : {})}
