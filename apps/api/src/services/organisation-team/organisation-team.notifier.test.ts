@@ -26,6 +26,7 @@ describe("OrganisationTeamNotifier", () => {
       type: "organisation_member_left",
       title: "Max Member left the organisation",
       message: "Their automatic bids for the organisation have stopped. Bids already placed stand.",
+      legalEntityId: ENTITY,
     });
   });
 
@@ -43,6 +44,7 @@ describe("OrganisationTeamNotifier", () => {
       title: "The payout bank account for Northbank Gallery changed",
       message:
         "Payouts now go to the account ending 4242. If nobody at Northbank Gallery made this change, contact us straight away.",
+      legalEntityId: ENTITY,
     });
   });
 

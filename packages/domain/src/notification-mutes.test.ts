@@ -17,6 +17,8 @@ describe("notifications a mute never silences", () => {
       "source_of_funds_documents_requested",
       "source_of_funds_approved",
       "source_of_funds_rejected",
+      "organisation_member_left",
+      "payout_bank_changed",
       "staff_role_expired",
       "staff_role_expired_admin",
       "staff_role_changed",

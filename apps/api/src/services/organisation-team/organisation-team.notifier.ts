@@ -64,7 +64,10 @@ export class OrganisationTeamNotifier implements IMemberLeftNotifier, IPayoutBan
       .listUserIdsForAudience(legalEntityId, audience)
       .catch(() => []);
     for (const userId of new Set(userIds)) {
-      await this.deps.dispatcher.dispatch(userId, notice).catch(() => undefined);
+      // The notice belongs to the organisation, so it shows its tag and opens in its account.
+      await this.deps.dispatcher
+        .dispatch(userId, { ...notice, legalEntityId })
+        .catch(() => undefined);
     }
   }
 }
