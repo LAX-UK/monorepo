@@ -1,3 +1,7 @@
+"use client";
+
+// A client component: the step buttons are links inside the LAX Button (a Radix Slot), and a Slot
+// renders nothing when the server streams its child as a deferred reference.
 import type { FirstStepView, FirstStepsView } from "@/lib/organisation-home/organisation-home-view";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/lax";

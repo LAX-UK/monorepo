@@ -8,6 +8,7 @@ import {
 import { type RecentSearchStore, localRecentSearchStore } from "@/lib/workspace/recent-searches";
 import {
   type SearchPage,
+  searchPlaceholder,
   shouldSearchRecords,
   workspaceSearchView,
 } from "@/lib/workspace/workspace-search-model";
@@ -136,7 +137,7 @@ export function WorkspaceSearch({
       media: mediaFor(row),
     })),
   }));
-  const placeholder = `Search ${accountName}`;
+  const placeholder = searchPlaceholder(accountName);
 
   return (
     <>
@@ -151,7 +152,7 @@ export function WorkspaceSearch({
         )}
       >
         <Search aria-hidden className="size-4 shrink-0" strokeWidth={1.75} />
-        <span className="min-w-0 flex-1 truncate">{placeholder}</span>
+        <span className="min-w-0 flex-1 whitespace-nowrap">{placeholder}</span>
         <ShortcutKeys keys="mod+k" />
       </Button>
       <Button

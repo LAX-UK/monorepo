@@ -9,7 +9,12 @@ import {
 import { navCountsFrom } from "./needs-you-counts";
 import { parseNeedsYouResponse } from "./needs-you-read";
 import { RECENT_SEARCH_LIMIT, localRecentSearchStore, withRecent } from "./recent-searches";
-import { matchingPages, shouldSearchRecords, workspaceSearchView } from "./workspace-search-model";
+import {
+  matchingPages,
+  searchPlaceholder,
+  shouldSearchRecords,
+  workspaceSearchView,
+} from "./workspace-search-model";
 
 const RESULT: AccountSearchResult = accountSearchResultSchema.parse({
   searchable: ["consignments", "purchases", "bids", "works", "invoices", "members"],
@@ -243,5 +248,12 @@ describe("Needs-you counts in the menu", () => {
       },
     ]);
     expect(read?.truncated).toBe(true);
+  });
+});
+
+describe("searchPlaceholder", () => {
+  it("names the organisation when it fits the field, and never cuts it short", () => {
+    expect(searchPlaceholder("Northbank Gallery")).toBe("Search Northbank Gallery");
+    expect(searchPlaceholder("Cedar & Stone Fine Art")).toBe("Search this organisation");
   });
 });

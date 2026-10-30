@@ -76,9 +76,12 @@ function homeDescription(
   model: { firstSteps: readonly unknown[] | null },
   organisationName: string,
   followsSales: boolean,
+  welcomeCard: boolean,
 ): string {
+  // The welcome card says welcome, so the line under the title does not say it again.
   if (model.firstSteps) {
-    return `Welcome to LAX Bid. These steps get ${organisationName} ready to bid and sell.`;
+    const steps = `These steps get ${organisationName} ready to bid and sell.`;
+    return welcomeCard ? steps : `Welcome to LAX Bid. ${steps}`;
   }
   return followsSales
     ? `What needs ${organisationName} this week, and how its sales are going.`
@@ -240,7 +243,12 @@ export async function loadOrganisationHome(
       : null,
     roleExplanation: roleExplanation(actor.role, organisation.displayName),
     roleQuestion: roleQuestion(actor.role),
-    description: homeDescription(model, organisation.displayName, followsConsignments),
+    description: homeDescription(
+      model,
+      organisation.displayName,
+      followsConsignments,
+      welcome !== null,
+    ),
     // The bid limit figure says the same; the line stands in when the figures did not load.
     authority: model.dashboard ? null : buyerAgentAuthorityLine(mine),
     listLimitNotice:
