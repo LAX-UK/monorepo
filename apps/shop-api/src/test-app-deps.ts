@@ -9,6 +9,7 @@ import {
 } from "./application/enquiry-rate-limit.js";
 import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import { createHomeFeaturesService } from "./application/home-features/home-features.service.js";
+import { LeadsService } from "./application/leads/leads.service.js";
 import { createProductionTaskService } from "./application/production-task.service.js";
 import { createSavedViewService } from "./application/saved-view.service.js";
 import type { ShopApiAppDeps } from "./container.js";
@@ -209,6 +210,13 @@ export function createMinimalShopApiTestDeps(
         },
       }),
       savedViews: createSavedViewService({ repository: createInMemorySavedViewRepository() }),
+      leads: new LeadsService({
+        list: async () => ({
+          rows: [],
+          counts: { all: 0, ordered: 0, abandoned_checkout: 0, enquired: 0, joined: 0 },
+        }),
+        get: async () => null,
+      }),
       guestErasure: new GuestErasureService({
         read: async () => null,
         withLockedGuest: async () => null,

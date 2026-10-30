@@ -69,6 +69,7 @@ describe("accountSearchTerms", () => {
     expect(accountSearchTerms("  David   Hockney ")).toEqual({
       text: "David Hockney",
       lotNumber: null,
+      consignmentNumber: null,
     });
   });
 
@@ -78,17 +79,49 @@ describe("accountSearchTerms", () => {
   });
 
   it("reads a lot reference, even a single digit", () => {
-    expect(accountSearchTerms("7")).toEqual({ text: "7", lotNumber: 7 });
-    expect(accountSearchTerms("Lot 12")).toEqual({ text: "Lot 12", lotNumber: 12 });
-    expect(accountSearchTerms("lot12")).toEqual({ text: "lot12", lotNumber: 12 });
-    expect(accountSearchTerms("#305")).toEqual({ text: "#305", lotNumber: 305 });
+    expect(accountSearchTerms("7")).toEqual({ text: "7", lotNumber: 7, consignmentNumber: 7 });
+    expect(accountSearchTerms("Lot 12")).toEqual({
+      text: "Lot 12",
+      lotNumber: 12,
+      consignmentNumber: null,
+    });
+    expect(accountSearchTerms("lot12")).toEqual({
+      text: "lot12",
+      lotNumber: 12,
+      consignmentNumber: null,
+    });
+    expect(accountSearchTerms("#305")).toEqual({
+      text: "#305",
+      lotNumber: 305,
+      consignmentNumber: null,
+    });
   });
 
   it("does not treat an invoice number as a lot reference", () => {
-    expect(accountSearchTerms("INV-0012")).toEqual({ text: "INV-0012", lotNumber: null });
+    expect(accountSearchTerms("INV-0012")).toEqual({
+      text: "INV-0012",
+      lotNumber: null,
+      consignmentNumber: null,
+    });
   });
 
   it("caps very long input", () => {
     expect(accountSearchTerms("x".repeat(500))?.text).toHaveLength(100);
+  });
+});
+
+describe("accountSearchTerms: consignment references", () => {
+  it("reads the printed reference, with or without the dash", () => {
+    expect(accountSearchTerms("C-1042")?.consignmentNumber).toBe(1042);
+    expect(accountSearchTerms("c1042")?.consignmentNumber).toBe(1042);
+    expect(accountSearchTerms("C-1042")?.lotNumber).toBeNull();
+  });
+
+  it("treats a bare number as either a lot or a consignment", () => {
+    expect(accountSearchTerms("1042")).toEqual({
+      text: "1042",
+      lotNumber: 1042,
+      consignmentNumber: 1042,
+    });
   });
 });

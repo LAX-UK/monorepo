@@ -19,12 +19,15 @@ export function GuestErasureDialog({
   onOpenChange,
   guestCustomerId,
   email,
+  onErased,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   guestCustomerId: string;
   /** The guest's email, typed to confirm. */
   email: string;
+  /** Where to go once erased, when the page itself no longer exists (a lead's record). */
+  onErased?: () => void;
 }) {
   const action = useAdminAction();
   return (
@@ -61,7 +64,9 @@ export function GuestErasureDialog({
             GUEST_ERASURE_COPY.done,
             "erase this guest's data",
           );
-          if (ok) onOpenChange(false);
+          if (!ok) return;
+          onOpenChange(false);
+          onErased?.();
         }}
       />
       {action.stepUpDialog}

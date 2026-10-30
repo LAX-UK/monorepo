@@ -25,6 +25,11 @@ const configSchema = z.object({
    * open. Unset leaves the product switcher on LAX Admin alone.
    */
   bidApiInternalUrl: z.string().url().optional(),
+  /**
+   * A CRM record's page, with `{module}` and `{recordId}` in it, e.g.
+   * "https://crm.zoho.eu/crm/org123/tab/{module}/{recordId}". Unset leaves out "Open in CRM".
+   */
+  crmRecordUrlTemplate: z.string().url().optional(),
 });
 
 export type ShopAdminConfig = z.infer<typeof configSchema>;
@@ -62,6 +67,7 @@ export function loadShopAdminConfig(source: NodeJS.ProcessEnv = process.env): Sh
       (source.LAX_SHOP_STOREFRONT_URL ?? source.SHOP_STOREFRONT_URL)?.trim().replace(/\/+$/, "") ||
       undefined,
     bidApiInternalUrl: source.BID_API_INTERNAL_BASE_URL?.trim().replace(/\/+$/, "") || undefined,
+    crmRecordUrlTemplate: source.LAX_ADMIN_CRM_RECORD_URL_TEMPLATE?.trim() || undefined,
   });
   if (!parsed.success) {
     console.error(parsed.error.flatten());

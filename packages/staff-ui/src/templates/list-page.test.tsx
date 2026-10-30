@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { searchChipLabel } from "../data/toolbar.js";
+import { searchChipLabel } from "../data/search-chip.js";
 import type { DataColumn } from "../data/types.js";
 
 vi.mock("@auction/ui/components/dropdown-menu", () =>

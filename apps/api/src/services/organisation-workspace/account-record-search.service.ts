@@ -47,7 +47,10 @@ type GroupReader = (
  * one row past the page to know whether another follows.
  */
 export class AccountRecordSearchService implements IAccountRecordSearchService {
-  constructor(private readonly reader: IAccountRecordSearchReader) {}
+  constructor(
+    private readonly reader: IAccountRecordSearchReader,
+    private readonly now: () => Date = () => new Date(),
+  ) {}
 
   async search(
     actor: OrganisationMemberActor,
@@ -89,6 +92,7 @@ export class AccountRecordSearchService implements IAccountRecordSearchService {
       terms,
       limit: page.limit + 1,
       offset: page.offset,
+      now: this.now(),
     });
     return {
       group,
