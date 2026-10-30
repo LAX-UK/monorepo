@@ -122,7 +122,7 @@ export default async function TeamMembersPage() {
         </TeamSection>
       ) : null}
 
-      <TeamSection id="team" title="Team" count={rows.length} countLabel="people">
+      <TeamSection id="members" title="Members" count={rows.length} countLabel="people">
         <MemberList legalEntityId={id} organisationName={organisationName} rows={rows} />
       </TeamSection>
 

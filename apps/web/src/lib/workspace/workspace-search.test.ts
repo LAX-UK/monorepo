@@ -62,17 +62,39 @@ describe("account search results", () => {
     expect(groups.map((g) => g.label)).toEqual(["Purchases", "Consignments", "Invoices"]);
     expect(groups[0]?.rows[0]).toMatchObject({
       label: "Harbour at dawn",
-      meta: "Lot 57 · Eleanor Vance · Modern British",
+      meta: "Lot 57 · won · Modern British",
       href: "/lot/harbour-at-dawn/lot-57",
     });
     expect(groups[1]?.rows[0]).toMatchObject({
-      meta: "Needs changes",
+      meta: "Consignment · needs changes",
       href: "/selling/consignments/s-1",
     });
     expect(groups[2]?.rows[0]).toMatchObject({
       label: "INV-2026-0412 · Harbour at dawn",
       meta: "£6,450.00 · overdue",
     });
+  });
+
+  it("lists a lot the account bid on and won once, under Purchases", () => {
+    const groups = searchRowGroups({
+      searchable: ["purchases", "bids"],
+      groups: [
+        { group: "purchases", items: [{ lotId: "l1", title: "Harbour Light", lotStatus: "sold" }] },
+        {
+          group: "bids",
+          items: [
+            { lotId: "l1", title: "Harbour Light", lotStatus: "sold" },
+            { lotId: "l2", title: "Low tide", lotNumber: 12, lotStatus: "live" },
+          ],
+        },
+      ],
+    });
+    expect(groups.map((g) => [g.label, g.rows.map((r) => r.label)])).toEqual([
+      ["Purchases", ["Harbour Light"]],
+      ["Bids", ["Low tide"]],
+    ]);
+    expect(groups[0]?.rows[0]?.meta).toBe("won");
+    expect(groups[1]?.rows[0]?.meta).toBe("Lot 12 · live");
   });
 
   it("leaves out a group with no hits", () => {

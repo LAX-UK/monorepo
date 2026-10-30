@@ -102,9 +102,29 @@ const sentence = (status: string) => {
   return words.charAt(0).toUpperCase() + words.slice(1);
 };
 
-const lotMeta = (hit: z.infer<typeof lotHit>) =>
-  [hit.lotNumber ? `Lot ${hit.lotNumber}` : null, hit.artistName, hit.saleTitle]
-    .filter(Boolean)
+type LotHit = z.infer<typeof lotHit>;
+type LotGroup = "purchases" | "bids" | "works";
+
+const lotRef = (hit: LotHit) => (hit.lotNumber ? `Lot ${hit.lotNumber}` : null);
+
+/**
+ * The second line of a lot, from what the search returns. A purchase is a lot the account won; a
+ * bid names where the lot stands; a work names its artist. Every row has a second line: when the
+ * lot has no number, the sale or the lot's state stands in.
+ */
+const LOT_META: Record<LotGroup, (hit: LotHit) => (string | null | undefined)[]> = {
+  purchases: (hit) => [lotRef(hit), "won", hit.saleTitle],
+  bids: (hit) => [
+    lotRef(hit),
+    hit.lotStatus ? sentence(hit.lotStatus).toLowerCase() : null,
+    hit.saleTitle,
+  ],
+  works: (hit) => [lotRef(hit), hit.artistName, hit.saleTitle],
+};
+
+const lotMeta = (group: LotGroup, hit: LotHit) =>
+  LOT_META[group](hit)
+    .filter((part): part is string => Boolean(part))
     .join(" · ");
 
 function rowsFor(result: z.infer<typeof groupResult>): SearchRow[] {
@@ -113,7 +133,7 @@ function rowsFor(result: z.infer<typeof groupResult>): SearchRow[] {
       return result.items.map((hit) => ({
         id: `consignment-${hit.submissionId}`,
         label: hit.title,
-        meta: sentence(hit.status),
+        meta: `Consignment · ${sentence(hit.status).toLowerCase()}`,
         href: `${CLIENT_ROUTES.consignments}/${hit.submissionId}`,
         kind: "consignments",
       }));
@@ -123,7 +143,7 @@ function rowsFor(result: z.infer<typeof groupResult>): SearchRow[] {
       return result.items.map((hit) => ({
         id: `${result.group}-${hit.lotId}`,
         label: hit.title,
-        meta: lotMeta(hit),
+        meta: lotMeta(result.group, hit),
         href: lotPath({ id: hit.lotId, title: hit.title }),
         kind: result.group,
       }));
@@ -146,10 +166,31 @@ function rowsFor(result: z.infer<typeof groupResult>): SearchRow[] {
   }
 }
 
-/** The result as palette groups, in the API's order, leaving out empty groups. */
+/** The lot a row opens, for rows that open a lot. */
+const lotIdOf = (row: SearchRow) =>
+  row.kind === "purchases" || row.kind === "bids" || row.kind === "works"
+    ? row.id.slice(row.kind.length + 1)
+    : null;
+
+/**
+ * The result as palette groups, in the API's order, leaving out empty groups. A lot the account
+ * both bid on and won is listed once, in the first group that has it (Purchases before Bids), so
+ * two identical rows never sit one above the other.
+ */
 export function searchRowGroups(result: AccountSearchResult): SearchRowGroup[] {
+  const seenLots = new Set<string>();
   return result.groups
-    .map((group) => ({ id: group.group, label: GROUP_LABEL[group.group], rows: rowsFor(group) }))
+    .map((group) => ({
+      id: group.group,
+      label: GROUP_LABEL[group.group],
+      rows: rowsFor(group).filter((row) => {
+        const lotId = lotIdOf(row);
+        if (!lotId) return true;
+        if (seenLots.has(lotId)) return false;
+        seenLots.add(lotId);
+        return true;
+      }),
+    }))
     .filter((group) => group.rows.length > 0);
 }
 
