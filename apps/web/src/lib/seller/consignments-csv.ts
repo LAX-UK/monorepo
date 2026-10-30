@@ -30,8 +30,8 @@ export function consignmentsCsv(records: readonly ConsignmentRecord[]): string {
       record.saleTitle ?? "",
       record.moment.value,
       record.moment.label,
-      record.price?.value ?? "",
-      record.price?.label ?? "",
+      "value" in record.price ? record.price.value : "",
+      "value" in record.price ? record.price.label : "",
       DAY(record.sentAt),
     ]),
   );

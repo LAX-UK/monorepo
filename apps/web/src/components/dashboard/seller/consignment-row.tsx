@@ -95,9 +95,9 @@ export function ConsignmentRow({
           label: record.moment.label,
           labelFirst: true,
         },
-        record.price
+        "value" in record.price
           ? { id: "price", value: record.price.value, label: record.price.label }
-          : { id: "price", value: "—", label: "estimate" },
+          : { id: "price", value: record.price.empty, label: "estimate", pending: true },
       ]}
       aligned
       status={

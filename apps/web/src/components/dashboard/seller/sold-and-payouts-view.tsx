@@ -1,148 +1,312 @@
-import { AccountLoadError } from "@/components/dashboard/primitives/account-load-error";
-import { DashboardEmptyState } from "@/components/dashboard/primitives/dashboard-empty-state";
-import { DomainStatusBadge } from "@/components/ui/domain-status-badge";
+"use client";
+
 import { MediaImage } from "@/components/ui/media-image";
+import { ListEmpty, ListLoadError, ListNoResults } from "@/components/workspace/list-states";
+import { useListQuery } from "@/components/workspace/use-list-query";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import {
-  ACCOUNT_LOAD_ERROR,
-  DASHBOARD_EMPTY,
-  DASHBOARD_ROUTES,
-} from "@/lib/dashboard/dashboard-copy";
-import type {
-  PayoutDestinationVm,
-  PayoutRow,
-  SoldAndPayoutsVm,
-  SoldWorkRow,
-} from "@/lib/seller/sold-and-payouts.vm";
-import { RecordList, RecordRow, RecordRowMedia } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
-import { CreditCard, FileText } from "lucide-react";
+  PAYOUT_STATUS_BADGE,
+  SOLD_SORTS,
+  SOLD_SORT_LABEL,
+  SOLD_VIEWS,
+  SOLD_VIEW_LABEL,
+  type SoldListQuery,
+  type SoldRecord,
+  type SoldSort,
+  isSoldListNarrowed,
+  payoutHref,
+  soldInView,
+  soldListSearch,
+  soldRecord,
+  soldYears,
+} from "@/lib/seller/sold-and-payouts-list";
+import type { PayoutRow, SoldAndPayoutsVm } from "@/lib/seller/sold-and-payouts.vm";
+import { lotPath } from "@/lib/seo/url";
+import {
+  InlineActionMenu,
+  type InlineActionMenuItem,
+  RecordList,
+  RecordRow,
+  RecordRowMedia,
+} from "@auction/ui";
+import {
+  ButtonLink,
+  Field,
+  FilterSheet,
+  ListToolbar,
+  NativeSelect,
+  Notice,
+  ShowingCount,
+  SortMenu,
+  StatusBadge,
+  type TabNavItem,
+} from "@auction/ui/lax";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
-function PayoutDestinationCard({ vm }: { vm: PayoutDestinationVm }) {
+const ANY = "any";
+
+function SoldRow({ record }: { record: SoldRecord }) {
+  const router = useRouter();
+  const lotHref = lotPath({ id: record.lotId, title: record.title });
+  const menu: InlineActionMenuItem[] = [
+    ...(record.payoutHref
+      ? [
+          {
+            type: "item" as const,
+            label: "View payout",
+            onSelect: () => router.push(record.payoutHref ?? ""),
+          },
+        ]
+      : []),
+    { type: "item", label: "View lot", onSelect: () => router.push(lotHref) },
+  ];
   return (
-    <section
-      aria-label="Where payouts go"
-      className="flex flex-col gap-4 rounded-xl border border-outline-variant/60 bg-surface-container-lowest p-4 sm:flex-row sm:items-center sm:gap-5 md:p-5"
-    >
-      <span
-        aria-hidden
-        className="grid size-10 shrink-0 place-items-center rounded-full bg-surface-container-high text-on-surface max-sm:hidden"
-      >
-        <CreditCard className="size-4" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <h2 className="font-body text-base font-semibold text-on-surface">
-          {vm.ready ? "Payouts go to your bank account" : "Set up payouts to be paid"}
-        </h2>
-        <p className="mt-1 font-body text-sm text-on-surface-variant">
-          {vm.ready
-            ? "Through our secure payment partner. We never see or store your bank details."
-            : "Add your bank details so we can pay you when a work sells."}
-          {vm.pending ? ` ${vm.pending} is waiting for the next payout.` : ""}
-        </p>
-      </div>
-      <Button
-        asChild
-        size="default"
-        variant={vm.ready ? "secondaryOutline" : "primary"}
-        className="shrink-0 max-sm:w-full"
-      >
-        <Link href={DASHBOARD_ROUTES.sellerConnect}>
-          {vm.ready ? "Manage payouts" : "Set up payouts"}
-        </Link>
-      </Button>
-    </section>
+    <RecordRow
+      aria-label={`${record.title}, ${record.badge.label}`}
+      href={record.payoutHref ?? lotHref}
+      linkAs={Link}
+      leading={
+        <RecordRowMedia>
+          <MediaImage src={null} alt="" sizes="48px" />
+        </RecordRowMedia>
+      }
+      title={record.title}
+      meta={record.meta}
+      figures={[
+        { id: "hammer", value: record.hammer, label: "hammer" },
+        record.net
+          ? { id: "net", value: record.net, label: "you receive" }
+          : { id: "net", value: "After payment", label: "you receive", pending: true },
+      ]}
+      aligned
+      status={
+        <StatusBadge tone={record.badge.tone} shape={record.badge.shape}>
+          {record.badge.label}
+        </StatusBadge>
+      }
+      menu={<InlineActionMenu label={`More for ${record.title}`} items={menu} />}
+    />
   );
 }
 
-function SoldWorks({ rows }: { rows: readonly SoldWorkRow[] }) {
+function PayoutListRow({ payout }: { payout: PayoutRow }) {
+  const badge = PAYOUT_STATUS_BADGE[payout.status];
   return (
-    <section aria-labelledby="sold-heading" className="flex flex-col gap-4">
-      <h2 id="sold-heading" className="font-headline text-lg font-semibold text-on-surface">
-        Sold
-      </h2>
-      <RecordList aria-labelledby="sold-heading">
-        {rows.map((row) => (
-          <RecordRow
-            key={row.lotId}
-            href={row.href}
-            linkAs={Link}
-            leading={
-              <RecordRowMedia>
-                <MediaImage src={row.image} alt="" sizes="48px" />
-              </RecordRowMedia>
-            }
-            title={row.title}
-            meta={[row.lotLabel, row.saleTitle, `Sold ${row.soldOn}`]}
-            value={
-              <>
-                <span className="sr-only">Hammer price </span>
-                {row.hammer}
-              </>
-            }
-          />
-        ))}
-      </RecordList>
-    </section>
-  );
-}
-
-function Payouts({ rows }: { rows: readonly PayoutRow[] }) {
-  return (
-    <section aria-labelledby="payouts-heading" className="flex flex-col gap-4">
-      <h2 id="payouts-heading" className="font-headline text-lg font-semibold text-on-surface">
-        Payouts
-      </h2>
-      <RecordList aria-labelledby="payouts-heading">
-        {rows.map((row) => (
-          <RecordRow
-            key={row.id}
-            title={row.period}
-            meta={[`Sales ${row.gross}`, `Commission and fees ${row.fees}`]}
-            status={<DomainStatusBadge domain="payout" status={row.status} />}
-            value={
-              <>
-                <span className="sr-only">You receive </span>
-                {row.net}
-              </>
-            }
-            action={
-              <Button variant="ghost" size="default" asChild>
-                <a href={row.statementHref} aria-label={`Statement for ${row.period}`}>
-                  <FileText aria-hidden />
-                  Statement
-                </a>
-              </Button>
-            }
-          />
-        ))}
-      </RecordList>
-    </section>
+    <RecordRow
+      aria-label={`Payout of ${payout.net}, ${badge.label}`}
+      href={payoutHref(payout.id)}
+      linkAs={Link}
+      title={`Payout of ${payout.net}`}
+      meta={[payout.period]}
+      figures={[
+        { id: "gross", value: payout.gross, label: "sales" },
+        { id: "fees", value: payout.fees, label: "commission and fees" },
+      ]}
+      aligned
+      status={
+        <StatusBadge tone={badge.tone} shape={badge.shape}>
+          {badge.label}
+        </StatusBadge>
+      }
+      menu={
+        <InlineActionMenu
+          label={`More for the payout of ${payout.net}`}
+          items={[
+            {
+              type: "item",
+              label: "Download statement (PDF)",
+              onSelect: () => window.location.assign(payout.statementHref),
+            },
+          ]}
+        />
+      }
+    />
   );
 }
 
 /**
- * Sold & payouts: where payouts go, the works that sold and each payout with its statement.
- * `vm` is `null` when the payouts could not be read.
+ * Sold & payouts: each sold lot with where its money stands (buyer paying, paid, in a payout,
+ * paid out), and each payout, which opens to its lines. Search, the year filter and sort follow
+ * the address, as on every workspace list.
  */
-export function SoldAndPayoutsView({ vm }: { vm: SoldAndPayoutsVm | null }) {
-  if (!vm) return <AccountLoadError {...ACCOUNT_LOAD_ERROR.payouts} />;
-  const nothingYet = vm.sold.length === 0 && vm.payouts.length === 0;
+export function SoldAndPayoutsView({
+  vm,
+  query: initialQuery,
+  organisation,
+  setup,
+}: {
+  /** `null` when the payouts could not be read. */
+  vm: SoldAndPayoutsVm | null;
+  query: SoldListQuery;
+  organisation: string | null;
+  /** Where payouts are set up, for a member who may; `null` for one who may not. */
+  setup: { href: string } | null;
+}) {
+  const { query, setQuery, search, setSearch } = useListQuery(initialQuery, soldListSearch);
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [draft, setDraft] = useState(query);
+  useEffect(() => {
+    if (filterOpen) setDraft(query);
+  }, [filterOpen, query]);
+  const records = useMemo(() => {
+    const now = new Date();
+    return vm?.sold?.map((lot) => soldRecord(lot, now)) ?? null;
+  }, [vm]);
+
+  if (!vm) return <ListLoadError />;
+  const payouts = vm.payouts;
+  const soldCount = records?.length ?? 0;
+  if (records && soldCount === 0 && payouts.length === 0) {
+    return (
+      <ListEmpty
+        illustration="ledger"
+        title="Nothing sold yet"
+        description={`Works that sell${organisation ? ` for ${organisation}` : ""}, and each payout, appear here.`}
+        actions={
+          <ButtonLink href={CLIENT_ROUTES.sellingNew} Link={Link} variant="primary">
+            Sell a work
+          </ButtonLink>
+        }
+      />
+    );
+  }
+
+  const shown = records ? soldInView(records, query) : [];
+  const years = records ? soldYears(records) : [];
+  const tabs: TabNavItem[] = SOLD_VIEWS.map((id) => ({
+    id,
+    label: SOLD_VIEW_LABEL[id],
+    href: `${CLIENT_ROUTES.payouts}${soldListSearch({ ...query, view: id })}`,
+    count: id === "sold" ? (records ? soldInView(records, query).length : 0) : payouts.length,
+  }));
+  const chips = query.year ? [{ id: "year" as const, label: `Year: ${query.year}` }] : [];
+  const clearAll = () => setQuery({ ...query, q: "", year: null });
+  const problem = records?.some((record) => record.badge.tone === "warning");
+
   return (
-    <div className="flex flex-col gap-8">
-      <PayoutDestinationCard vm={vm.destination} />
-      {nothingYet ? (
-        <DashboardEmptyState
-          illustration="ledger"
-          title={DASHBOARD_EMPTY.sellerPayouts.title}
-          description={DASHBOARD_EMPTY.sellerPayouts.description}
+    <div className="flex flex-col gap-6">
+      {!vm.destination.ready ? (
+        <Notice
+          tone="info"
+          title="Payouts aren't set up yet"
+          {...(setup
+            ? {
+                actions: (
+                  <ButtonLink href={setup.href} Link={Link}>
+                    Set up payouts
+                  </ButtonLink>
+                ),
+              }
+            : {})}
+        >
+          {setup
+            ? "Add the bank account we pay sale proceeds into. It takes about 5 minutes."
+            : "An owner or admin adds the bank account we pay sale proceeds into."}
+        </Notice>
+      ) : null}
+      {problem ? (
+        <Notice tone="warning" title="A payout didn't go through">
+          We're already on it and will email you once it is sent again. Nothing is needed from you.
+        </Notice>
+      ) : null}
+      <div className="flex flex-col gap-4">
+        <ListToolbar
+          tabs={{ items: tabs, activeId: query.view, label: "Sold & payouts", Link }}
+          {...(query.view === "sold" && records
+            ? {
+                search: {
+                  value: search,
+                  onValueChange: setSearch,
+                  placeholder: "Search by title or sale",
+                },
+                ...(years.length > 1
+                  ? {
+                      filter: {
+                        count: chips.length,
+                        open: filterOpen,
+                        onOpenChange: setFilterOpen,
+                      },
+                    }
+                  : {}),
+                sort: (
+                  <SortMenu<SoldSort>
+                    value={query.sort}
+                    onValueChange={(sort) => setQuery({ ...query, sort })}
+                    options={SOLD_SORTS.map((value) => ({ value, label: SOLD_SORT_LABEL[value] }))}
+                  />
+                ),
+                chips: {
+                  filters: chips,
+                  onRemove: () => setQuery({ ...query, year: null }),
+                  onClearAll: clearAll,
+                },
+              }
+            : {})}
         />
-      ) : (
-        <>
-          {vm.sold.length > 0 ? <SoldWorks rows={vm.sold} /> : null}
-          {vm.payouts.length > 0 ? <Payouts rows={vm.payouts} /> : null}
-        </>
-      )}
+        {query.view === "payouts" ? (
+          payouts.length === 0 ? (
+            <ListEmpty
+              illustration="ledger"
+              title="No payouts yet"
+              description="Once a buyer pays, the money joins your next payout, and it appears here."
+            />
+          ) : (
+            <>
+              <RecordList aria-label="Payouts">
+                {payouts.map((payout) => (
+                  <PayoutListRow key={payout.id} payout={payout} />
+                ))}
+              </RecordList>
+              <ShowingCount shown={payouts.length} total={payouts.length} />
+            </>
+          )
+        ) : !records ? (
+          <ListLoadError />
+        ) : shown.length === 0 ? (
+          isSoldListNarrowed(query) ? (
+            <ListNoResults query={query.q} onClear={clearAll} />
+          ) : (
+            <ListEmpty
+              illustration="ledger"
+              title="Nothing sold yet"
+              description="Works that sell appear here, with the money on its way."
+            />
+          )
+        ) : (
+          <>
+            <RecordList aria-label="Sold works">
+              {shown.map((record) => (
+                <SoldRow key={record.lotId} record={record} />
+              ))}
+            </RecordList>
+            <ShowingCount shown={shown.length} total={shown.length} />
+          </>
+        )}
+      </div>
+      {years.length > 1 ? (
+        <FilterSheet
+          open={filterOpen}
+          onOpenChange={setFilterOpen}
+          resultCount={records ? soldInView(records, draft).length : 0}
+          onApply={() => setQuery(draft)}
+          onClear={() => setDraft({ ...draft, year: null })}
+        >
+          <Field label="Year sold">
+            <NativeSelect
+              value={draft.year ? String(draft.year) : ANY}
+              onValueChange={(value) =>
+                setDraft({ ...draft, year: value === ANY ? null : Number(value) })
+              }
+              options={[
+                { value: ANY, label: "Any year" },
+                ...years.map((year) => ({ value: String(year), label: String(year) })),
+              ]}
+            />
+          </Field>
+        </FilterSheet>
+      ) : null}
     </div>
   );
 }

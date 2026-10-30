@@ -65,8 +65,11 @@ export type ConsignmentRecord = {
   progress: ConsignmentProgressStage | null;
   /** The date that matters now, with what it is: "choose by 12 Nov", "sold 22 Oct". */
   moment: { value: string; label: string };
-  /** The estimate, or the hammer once it sold. */
-  price: { value: string; label: string } | null;
+  /**
+   * The estimate, or the hammer once it sold. Without one, `empty` names why in words ("Estimate
+   * after review"), never a dash under a label.
+   */
+  price: { value: string; label: string } | { empty: string };
   task: ConsignmentTask | null;
   /** The consignment's page; a lot with no submission behind it opens the lot. */
   href: string;
@@ -154,7 +157,9 @@ function priceOf(
     (agreement?.estimateLow && agreement.estimateHigh
       ? { low: agreement.estimateLow, high: agreement.estimateHigh, currency: agreement.currency }
       : null);
-  return estimate ? { value: formatEstimateRangeShort(estimate), label: "estimate" } : null;
+  if (estimate) return { value: formatEstimateRangeShort(estimate), label: "estimate" };
+  const reviewing = CONSIGNMENT_STATUS[status].stage === "in-review" || status === "draft";
+  return { empty: reviewing ? "Estimate after review" : "No estimate" };
 }
 
 function taskOf(pair: Pair, tasks: ConsignmentTasks): ConsignmentTask | null {

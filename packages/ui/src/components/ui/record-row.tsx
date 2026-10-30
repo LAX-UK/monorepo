@@ -86,6 +86,12 @@ export type RecordFigure = {
    * the value ("£6,800 current bid"). A wide list keeps the value above its label either way.
    */
   labelFirst?: boolean;
+  /**
+   * The record has no such figure yet, and `value` says so in words ("Estimate after review"):
+   * drawn muted and allowed to wrap, with the label kept for readers only, so a missing figure
+   * never reads as a dash under a label.
+   */
+  pending?: boolean;
 };
 
 /**
@@ -107,16 +113,24 @@ function RecordFigures({ figures }: { figures: readonly RecordFigure[] }) {
         >
           <dt
             // Joined, not merged: the type step and the colour are both `text-` classes.
-            className={`truncate font-body text-label-3 leading-5 text-on-surface-variant ${
-              figure.labelFirst ? "order-1 @2xl:order-2" : "order-2"
-            }`}
+            className={
+              figure.pending
+                ? "sr-only"
+                : `truncate font-body text-label-3 leading-5 text-on-surface-variant ${
+                    figure.labelFirst ? "order-1 @2xl:order-2" : "order-2"
+                  }`
+            }
           >
             {figure.label}
           </dt>
           <dd
-            className={`truncate font-body text-sm leading-5.5 font-medium tabular-nums text-on-surface ${
-              figure.labelFirst ? "order-2 @2xl:order-1" : "order-1"
-            }`}
+            className={
+              figure.pending
+                ? "font-body text-label-3 leading-5 text-on-surface-variant"
+                : `truncate font-body text-sm leading-5.5 font-medium tabular-nums text-on-surface ${
+                    figure.labelFirst ? "order-2 @2xl:order-1" : "order-1"
+                  }`
+            }
           >
             {figure.value}
           </dd>

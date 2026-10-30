@@ -183,6 +183,20 @@ describe("RecordRow", () => {
     expect(value.className).toContain("order-2 @2xl:order-1");
   });
 
+  it("says a missing figure in muted words, keeping its label for readers only", () => {
+    const li = row(
+      <RecordRow
+        title="Downs after rain"
+        figures={[{ value: "Estimate after review", label: "estimate", pending: true }]}
+      />,
+    );
+    const term = li.querySelector("[data-record-figures] dt") as HTMLElement;
+    const value = li.querySelector("[data-record-figures] dd") as HTMLElement;
+    expect(term.className).toBe("sr-only");
+    expect(value.className).toContain("text-on-surface-variant");
+    expect(value.className).not.toContain("truncate");
+  });
+
   it("keeps the status and action columns on an aligned row that has neither", () => {
     const li = row(
       <RecordRow
