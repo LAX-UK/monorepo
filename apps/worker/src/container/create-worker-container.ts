@@ -1,6 +1,7 @@
 import { assertRuntimeOwnership } from "@auction/background-runtime";
 import { closeDb, createDb } from "@auction/db";
 import { captureBackgroundError, initNodeSentry } from "@auction/observability";
+import { DrizzleUnsoldChoiceDeadlineStore } from "@auction/persistence/repositories";
 import { DrizzleRepositoryFactory } from "@auction/persistence/repositories";
 import { DrizzleWebhookEventRepository } from "@auction/persistence/repositories";
 import {
@@ -58,6 +59,7 @@ import {
 } from "../lifecycle/worker-lifecycle-executor.js";
 import { marketingEventsCapiBatchSize } from "../marketing/meta-capi-batch-collector.js";
 import { createProjectorRunner } from "../projectors/runner.js";
+import { UnsoldChoiceDeadlineRecorder } from "../projectors/unsold-choice-deadline.js";
 import { ShopIdentityProjectionService } from "../services/shop-identity-projection.service.js";
 import { registerAtgSyncWorker } from "../workers/register-atg-sync-worker.js";
 import { registerComplianceWorkers } from "../workers/register-compliance-workers.js";
@@ -475,6 +477,9 @@ export function createWorkerContainer(): WorkerContainer {
       sourceOfFundsDocumentReviewRepo: repositories.sourceOfFundsDocumentReviewRepo,
       sourceOfFundsReviewResolutionRepo: repositories.sourceOfFundsReviewResolutionRepo,
       lotNotifyReader: repositories.lotNotifyReader,
+      unsoldChoiceDeadlines: new UnsoldChoiceDeadlineRecorder(
+        new DrizzleUnsoldChoiceDeadlineStore(db),
+      ),
       env,
       db,
       deliveryRepo: repositories.domainEventDeliveryRepo,

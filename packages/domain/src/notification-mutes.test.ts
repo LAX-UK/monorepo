@@ -13,6 +13,8 @@ describe("notifications a mute never silences", () => {
     expect([...NOTIFICATION_ALWAYS_DELIVERED_TYPES]).toEqual([
       "payment_due",
       "lot_won",
+      "payout_problem",
+      "delivery_quote_ready",
       "consignment_agreement_reminder",
       "submission_changes_requested",
       "kyc_resubmission_required",
@@ -25,6 +27,8 @@ describe("notifications a mute never silences", () => {
       "staff_role_expired_admin",
       "staff_role_changed",
       "staff_role_changed_admin",
+      "access_requested",
+      "access_request_decided",
     ]);
   });
 

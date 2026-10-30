@@ -125,6 +125,8 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "legal_entity.bidding_limit_changed",
   "legal_entity.buyer_agent_authorisation_revoked",
   "legal_entity.buyer_agent_authorised",
+  "legal_entity.access_request_decided",
+  "legal_entity.access_requested",
   "legal_entity.created",
   "legal_entity.docs_received",
   "legal_entity.docs_requested",
@@ -304,6 +306,8 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "bid.proxy_cancelled": { consumers: ["notification_fanout"], piiClassification: "none" },
   "legal_entity.member_bid_stopped": { piiClassification: "none" },
+  "legal_entity.access_requested": { piiClassification: "none" },
+  "legal_entity.access_request_decided": { piiClassification: "none" },
   "legal_entity.invitation_withdrawn": { piiClassification: "none" },
   "legal_entity.invitation_restored": { piiClassification: "none" },
   "legal_entity.member_authorisations_revoked": { piiClassification: "none" },
@@ -336,7 +340,7 @@ const REGISTRY_OVERRIDES: Partial<Record<LiveDomainEventType, RegistryOverride>>
   },
   "lot.ended": {
     schema: LotEventSchemas["lot.ended"],
-    consumers: ["lot_invoice_initiation", "notification_fanout", "xero"],
+    consumers: ["lot_invoice_initiation", "notification_fanout", "unsold_choice_deadline", "xero"],
     piiClassification: "none",
   },
   "lot.published": {

@@ -84,8 +84,11 @@ import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerLotCatalogServices } from "./create-lot-catalog-services.js";
 import type { ContainerLotLifecycle } from "./create-lot-lifecycle.js";
 import type { ContainerOnsiteEventServices } from "./create-onsite-event-services.js";
+import type { OrganisationAccessServices } from "./create-organisation-access-services.js";
+import type { OrganisationBuyingServices } from "./create-organisation-buying-services.js";
 import type { OrganisationHomeServices } from "./create-organisation-home-services.js";
 import type { OrganisationMembershipServices } from "./create-organisation-membership-services.js";
+import type { OrganisationSellingServices } from "./create-organisation-selling-services.js";
 import type { OrganisationTeamServices } from "./create-organisation-team-services.js";
 import type { OrganisationWorkspaceServices } from "./create-organisation-workspace-services.js";
 import type { ContainerPaymentsServices } from "./create-payments-services.js";
@@ -341,6 +344,21 @@ export type ContainerOrganisationHomeSlice = {
   organisationHome: OrganisationHomeServices;
 };
 
+/** Ask for access for the acting organisation (`organisationAccess`). */
+export type ContainerOrganisationAccessSlice = {
+  organisationAccess: OrganisationAccessServices;
+};
+
+/** The client workspace's selling modules for the acting account (`organisationSelling`). */
+export type ContainerOrganisationSellingSlice = {
+  organisationSelling: OrganisationSellingServices;
+};
+
+/** The client workspace's buying modules for the acting account (`organisationBuying`). */
+export type ContainerOrganisationBuyingSlice = {
+  organisationBuying: OrganisationBuyingServices;
+};
+
 /** Reads across the client workspace's modules for the acting account (`organisationWorkspace`). */
 export type ContainerOrganisationWorkspaceSlice = {
   organisationWorkspace: OrganisationWorkspaceServices;
@@ -383,6 +401,9 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerBuyerAgentsSlice &
   ContainerOrganisationMembershipSlice &
   ContainerOrganisationHomeSlice &
+  ContainerOrganisationBuyingSlice &
+  ContainerOrganisationSellingSlice &
+  ContainerOrganisationAccessSlice &
   ContainerOrganisationWorkspaceSlice &
   ContainerOrganisationTeamSlice &
   ContainerUserRouteServicesSlice;
@@ -615,6 +636,24 @@ export type ContainerOrganisationMembershipRoutesSlice = Pick<
 export type ContainerOrganisationHomeRoutesSlice = Pick<
   Container,
   "userSuspensionChecker" | "requireLegalEntityContext" | "organisationHome"
+>;
+
+/** Members ask for access; owners and admins decide. */
+export type ContainerOrganisationAccessRoutesSlice = Pick<
+  Container,
+  "userSuspensionChecker" | "requireLegalEntityContext" | "organisationAccess"
+>;
+
+/** Sold lots, payout lines, returned works and the agreement PDF for the acting account. */
+export type ContainerOrganisationSellingRoutesSlice = Pick<
+  Container,
+  "userSuspensionChecker" | "requireLegalEntityContext" | "organisationSelling"
+>;
+
+/** Registrations, purchases, courier quotes and collection booking for the acting account. */
+export type ContainerOrganisationBuyingRoutesSlice = Pick<
+  Container,
+  "userSuspensionChecker" | "requireLegalEntityContext" | "organisationBuying"
 >;
 
 /** Record search (and other cross-module reads) for the acting account. */

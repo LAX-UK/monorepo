@@ -342,6 +342,7 @@ export {
 export {
   entityActorCan,
   entityCapabilitiesOf,
+  isEntityCapability,
   entityRoleCan,
   rolesWithCapability,
   type EntityActor,
@@ -373,16 +374,18 @@ export {
   homeActivityArchive,
   homeNotices,
   homeShortcuts,
-  homeTaskKindsFor,
-  homeTasks,
+  organisationFirstSteps,
+  FIRST_STEP_TASK_KINDS,
+  type FirstStep,
+  type FirstStepId,
+  type FirstStepState,
+  type NeedsYouRead,
   type HomeActivityArchive,
   type HomeActivityEvent,
   type HomeActivityKind,
   type HomeNotice,
   type HomeShortcut,
   type HomeSubject,
-  type HomeTask,
-  type HomeTaskKind,
   type OrganisationHomeFacts,
   type OrganisationHomeModel,
   type UnsoldLotState,
@@ -544,6 +547,53 @@ export {
   type PurchasePaymentRole,
 } from "./buyer-payment-authority.js";
 export {
+  invoiceDueAt,
+  invoiceIsOwed,
+  purchaseInvoiceState,
+  type PurchaseInvoiceFacts,
+  type PurchaseInvoiceState,
+  type PurchaseInvoiceStatus,
+} from "./purchase-invoice-state.js";
+export {
+  DELIVERY_QUOTE_STATUSES,
+  deliveryQuoteActionsFor,
+  deliveryQuoteTransition,
+  type DeliveryQuoteAction,
+  type DeliveryQuoteActor,
+  type DeliveryQuoteDecision,
+  type DeliveryQuoteRefusal,
+  type DeliveryQuoteStatus,
+} from "./delivery-quote.js";
+export {
+  purchaseDeliveryStage,
+  type FulfilmentFacts,
+  type PurchaseDeliveryFacts,
+  type PurchaseDeliveryStage,
+} from "./purchase-delivery-stage.js";
+export {
+  PAY_SEVERAL_MAX_INVOICES,
+  planPaySeveral,
+  type PayableInvoice,
+  type PaySeveralCandidate,
+  type PaySeveralDecision,
+  type PaySeveralPlan,
+  type PaySeveralRefusal,
+  type PaySeveralSkipReason,
+} from "./pay-several.js";
+export {
+  EMPTY_ARTIST_ALERT_CRITERIA,
+  artistAlertCriteriaRefusal,
+  lotMatchesArtistAlert,
+  type ArtistAlertCriteria,
+  type ArtistAlertCriteriaRefusal,
+  type ArtistAlertLot,
+} from "./artist-alert-criteria.js";
+export {
+  collectionBookingOffer,
+  type CollectionBookingOffer,
+  type CollectionBookingSettings,
+} from "./collection-booking.js";
+export {
   MEMBER_LEAVE_REFUSAL_MESSAGE,
   memberLeavePolicy,
   type MemberLeaveDecision,
@@ -563,3 +613,25 @@ export {
   type ActivityGroup,
   type ActivityKind,
 } from "./organisation-activity.js";
+export {
+  consignmentReference,
+  saleLineBreakdown,
+  soldLotPayoutStage,
+  type SaleLineBreakdown,
+  type SaleLineFacts,
+  type SoldLotFacts,
+  type SoldLotPayoutStage,
+} from "./selling-records.js";
+export {
+  ACCESS_REQUEST_STATUSES,
+  accessAskRefusal,
+  accessDecisionRefusal,
+  accessRequestOpen,
+  approvalRole,
+  canDecideAccessRequests,
+  type AccessApprovalRefusal,
+  type AccessAsk,
+  type AccessAskRefusal,
+  type AccessDecisionRefusal,
+  type AccessRequestStatus,
+} from "./access-request.js";

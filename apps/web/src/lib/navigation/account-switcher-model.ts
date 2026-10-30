@@ -34,11 +34,6 @@ export type AccountChrome = {
     invitationsHref: string;
     registerHref: string;
   } | null;
-  /**
-   * The thin "Northbank Gallery · Admin" strip in the page header, shown while using an
-   * organisation account, so the account is named in two places.
-   */
-  strip: { name: string; role: string } | null;
 };
 
 type Input = {
@@ -81,7 +76,7 @@ function organisationOption(member: LegalEntitySummary, current: boolean): Accou
   };
 }
 
-/** The account switcher and header strip for the signed-in person. */
+/** The account switcher for the signed-in person: the one place the chrome names the account. */
 export function buildAccountChrome(input: Input): AccountChrome {
   const personal = input.memberships.find((m) => m.kind === "individual");
   const organisations = input.orgModuleEnabled
@@ -108,12 +103,6 @@ export function buildAccountChrome(input: Input): AccountChrome {
             registerHref: REGISTER_ORGANISATION_HREF,
           }
         : null,
-    strip: actingOrganisation
-      ? {
-          name: actingOrganisation.displayName,
-          role: organisationRoleLabel(actingOrganisation.role),
-        }
-      : null,
   };
 }
 

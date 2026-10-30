@@ -1,4 +1,7 @@
-import { listMyConditionReportRequestsQuerySchema } from "@auction/validators";
+import {
+  accountBidsQuerySchema,
+  listMyConditionReportRequestsQuerySchema,
+} from "@auction/validators";
 import { respondUserHttpJson } from "../../lib/user-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
 import type { LegalEntityContext } from "../../middleware/require-legal-entity-context.js";
@@ -41,13 +44,24 @@ export function attachUserDashboardRoutes(r: UserHono, deps: UserRouteDeps): voi
    */
   const requireBuyingAccount = container.userRoutes.requireBuyingAccount;
 
-  r.get("/me/account/bids", requireAuth, requireBuyingAccount, async (c) => {
-    const account = buyingAccountOf(c.get("legalEntityContext"));
-    if (!account) return c.json({ error: "insufficient_entity_role" }, 403);
-    const userId = c.get("userId") as string;
-    const response = await container.userRoutes.dashboardHttp.listAccountBids({ userId, account });
-    return respondUserHttpJson(c, response);
-  });
+  r.get(
+    "/me/account/bids",
+    requireAuth,
+    requireBuyingAccount,
+    zValidator("query", accountBidsQuerySchema),
+    async (c) => {
+      const account = buyingAccountOf(c.get("legalEntityContext"));
+      if (!account) return c.json({ error: "insufficient_entity_role" }, 403);
+      const userId = c.get("userId") as string;
+      const { saleId } = c.req.valid("query");
+      const response = await container.userRoutes.dashboardHttp.listAccountBids({
+        userId,
+        account,
+        ...(saleId ? { saleId } : {}),
+      });
+      return respondUserHttpJson(c, response);
+    },
+  );
 
   r.get("/me/account/purchases", requireAuth, requireBuyingAccount, async (c) => {
     const account = buyingAccountOf(c.get("legalEntityContext"));

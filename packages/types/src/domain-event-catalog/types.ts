@@ -28,6 +28,7 @@ export type DomainEventConsumer =
   | "shop_staff_access"
   | "ssf_transmitter"
   | "lot_invoice_initiation"
+  | "unsold_choice_deadline"
   | "payment_refund_notify"
   | "payout_transfer_failed_notify"
   | "lot_voided_anti_shilling"

@@ -4,6 +4,7 @@ import {
   type ArtistApplicationTarget,
   useArtistApplicationActions,
 } from "@/components/artist-applications/use-artist-application-actions.client";
+import { useStaffCatalogueImage } from "@/components/artworks/staff-catalogue-image-provider.client";
 import {
   ARTIST_APPLICATION_LIST_PATH,
   applicationTitle,
@@ -78,6 +79,7 @@ export function ArtistApplicationRecord({
   currentSubject: string;
 }) {
   const actions = useArtistApplicationActions({ currentSubject });
+  const resolveImage = useStaffCatalogueImage();
   const title = applicationTitle(detail);
   const allowed = staffActionsFor(detail.status);
   const target: ArtistApplicationTarget = {
@@ -297,7 +299,10 @@ export function ArtistApplicationRecord({
           title="Works"
           description={`${detail.works.length} ${detail.works.length === 1 ? "work" : "works"} sent with the application. Select one to see it large.`}
         >
-          <ImageGallery items={workGalleryItems(detail.works)} label={`Works sent by ${title}`} />
+          <ImageGallery
+            items={workGalleryItems(detail.works, resolveImage)}
+            label={`Works sent by ${title}`}
+          />
         </Section>
 
         <Section title="About the artist">

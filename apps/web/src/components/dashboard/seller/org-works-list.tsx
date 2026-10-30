@@ -1,4 +1,4 @@
-import type { OrgWorkRow } from "@/app/(client)/selling/works/org-works.vm";
+import type { OrgWorkRow } from "@/app/(client)/collection/org-works.vm";
 import { MediaImage } from "@/components/ui/media-image";
 import { RecordList, RecordRow, RecordRowMedia } from "@auction/ui";
 import Link from "next/link";

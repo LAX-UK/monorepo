@@ -22,7 +22,7 @@ test.describe("organisation account switch repeats @roles", () => {
       await switchOrganisation(owner.page, approved, other);
       await switchOrganisation(owner.page, other, approved);
     }
-    await expect(owner.page.getByTestId("account-strip")).toContainText(approved);
+    await expect(owner.page.getByTestId("account-switcher")).toContainText(approved);
     await owner.close();
   });
 });

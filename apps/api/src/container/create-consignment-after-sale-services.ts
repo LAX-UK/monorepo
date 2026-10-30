@@ -10,6 +10,7 @@ import type {
 import {
   DrizzleConsignmentMoveWriter,
   DrizzleSellerIdentityReminderStore,
+  DrizzleUnsoldChoiceDeadlineStore,
   DrizzleUnsoldLotChoiceRepository,
 } from "@auction/persistence/repositories";
 import { ConsignmentAfterSaleHttpApplicationService } from "../services/consignment-after-sale/consignment-after-sale-http-application.service.js";
@@ -17,6 +18,7 @@ import { ConsignmentMoveService } from "../services/consignment-after-sale/consi
 import { ConsignmentUpdateNotifier } from "../services/consignment-after-sale/consignment-update-notifier.js";
 import { ConsignmentWithdrawalService } from "../services/consignment-after-sale/consignment-withdrawal.service.js";
 import { SellerIdentityReminderService } from "../services/consignment-after-sale/seller-identity-reminder.service.js";
+import { UnsoldChoiceDeadlines } from "../services/consignment-after-sale/unsold-choice-deadlines.js";
 import { UnsoldLotChoiceService } from "../services/consignment-after-sale/unsold-lot-choice.service.js";
 import type { IDomainEventSink } from "../services/domain-event-sink.js";
 import type { IItemSubmissionSellerApi } from "../services/interfaces/item-submission-apis.js";
@@ -51,6 +53,8 @@ export function createConsignmentAfterSaleServices(
   const notifier = new ConsignmentUpdateNotifier(input.dispatcher, input.recipients);
   const unsold = new UnsoldLotChoiceService({
     choices: new DrizzleUnsoldLotChoiceRepository(input.db),
+    deadlines: new UnsoldChoiceDeadlines(),
+    storedDeadlines: new DrizzleUnsoldChoiceDeadlineStore(input.db),
     submissions: input.submissions,
     lots: input.lots,
     agreements: input.agreements,

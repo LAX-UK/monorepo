@@ -272,6 +272,8 @@ export const WORKER_FULL_TABLES = [
 ] as const;
 /** Worker persists async QR scan events (qr-code-scan job via persistQrCodeScan). */
 export const WORKER_QR_CODE_SCAN_TABLES = ["qr_code_scan", "qr_code_scan_daily"] as const;
+/** The unsold-choice projector stores each unsold outcome's choose-by date, once. */
+export const WORKER_UNSOLD_CHOICE_DEADLINE_TABLES = ["unsold_choice_deadline"] as const;
 /** Worker provisions personal legal entities from `user.registered` domain events. */
 export const WORKER_PROVISIONING_TABLES = ["legal_entity", "legal_entity_member"] as const;
 /** Worker processes async CSV exports and purges expired rows (data-export + purge-expired jobs). */
@@ -659,6 +661,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         await grantIfExists(client, "worker_app", "qr_code", "SELECT");
         for (const tableName of WORKER_QR_CODE_SCAN_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_UNSOLD_CHOICE_DEADLINE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
         }
         for (const tableName of WORKER_DOMAIN_EVENT_DELIVERY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");

@@ -4,6 +4,7 @@ import {
   type ArtistApplicationTarget,
   useArtistApplicationActions,
 } from "@/components/artist-applications/use-artist-application-actions.client";
+import { useStaffCatalogueImage } from "@/components/artworks/staff-catalogue-image-provider.client";
 import { filterChip, knownFacts, useWorkList } from "@/components/use-work-list.client";
 import {
   type ArtistApplicationsListState,
@@ -78,6 +79,7 @@ export function ArtistApplicationsList({
     search: { label: "Search applications", placeholder: "Search by name, place or reference" },
   });
   const actions = useArtistApplicationActions({ currentSubject });
+  const resolveImage = useStaffCatalogueImage();
   const opened = list.panel.openId
     ? (page.items.find((item) => item.id === list.panel.openId) ?? null)
     : null;
@@ -94,7 +96,7 @@ export function ArtistApplicationsList({
             href={list.panelHref(row.id)}
             Link={list.panel.PanelLink}
             secondary={row.location ?? undefined}
-            thumbnail={{ src: row.coverImageUrl, missingLabel: "No works yet" }}
+            thumbnail={{ src: resolveImage(row.coverImageUrl), missingLabel: "No works yet" }}
           >
             {applicationTitle(row)}
           </PrimaryCell>
@@ -145,7 +147,7 @@ export function ArtistApplicationsList({
         cell: (row) => <StaffDate value={row.submittedAt} withTime />,
       },
     ],
-    [list.panelHref, list.panel.PanelLink],
+    [list.panelHref, list.panel.PanelLink, resolveImage],
   );
 
   const colleagues = reviewers.filter((person) => person.subject !== currentSubject);

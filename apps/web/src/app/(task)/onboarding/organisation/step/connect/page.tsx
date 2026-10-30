@@ -1,6 +1,5 @@
 import { OrgConnectStepClient } from "@/app/(task)/onboarding/organisation/step/connect/org-connect-step-client";
-import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
-import { buildSellerConnectFailure } from "@/lib/dashboard/dashboard-fetch-errors";
+import { ConnectLoadFailure } from "@/components/connect/connect-load-failure";
 import { redirectIfOrgOnboardingStepBlocked } from "@/lib/data/http/org-onboarding-step-guard.server";
 import {
   getServerStripeConnectClientConfig,
@@ -35,12 +34,10 @@ export default async function OrgOnboardingConnectStepPage({
   const memberRole = member?.role ?? "owner";
 
   const connectFailure =
-    connectRes.ok || connectRes.error === "not_connected"
-      ? null
-      : buildSellerConnectFailure(connectRes.error);
+    connectRes.ok || connectRes.error === "not_connected" ? null : connectRes.error;
 
   if (connectFailure) {
-    return <DashboardSliceErrorAlert failure={connectFailure} />;
+    return <ConnectLoadFailure error={connectFailure} />;
   }
 
   return (

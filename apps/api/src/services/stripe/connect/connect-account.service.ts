@@ -22,10 +22,27 @@ import {
 import { resolveConnectAccountCountry } from "./connect-country-resolver.js";
 import type { ConnectLifecyclePromoter } from "./connect-lifecycle-promoter.js";
 import { ConnectServiceError, throwConnectError } from "./connect-service-errors.js";
-import { loadConnectLegalEntity, requireConnectStripe } from "./connect-shared.js";
+import {
+  classifyConnectAccountReadError,
+  loadConnectLegalEntity,
+  requireConnectStripe,
+} from "./connect-shared.js";
 
 /** Bump when account-create params change or Stripe cached a 4xx under the prior key (24h TTL). */
 const CONNECT_ACCOUNT_CREATE_IDEMPOTENCY_VERSION = "v4";
+
+/** A legal entity with no usable Connect account: payouts not set up yet. */
+function notSetUpStatus(): ConnectAccountStatus {
+  return {
+    stripeAccountId: null,
+    chargesEnabled: false,
+    payoutsEnabled: false,
+    requirementsCurrentlyDue: [],
+    requirementsErrors: [],
+    disabledReason: null,
+    ready: false,
+  };
+}
 
 export class ConnectAccountService {
   private readonly logger: AppLogger;
@@ -65,11 +82,11 @@ export class ConnectAccountService {
     const context = await loadConnectAccountCreationContext(this.connectReader, legalEntityId);
     const row = context.entity;
 
-    if (row.stripeConnectAccountId) {
-      return {
-        stripeAccountId: row.stripeConnectAccountId,
-        legalEntity: legalEntityRowToDomain(row),
-      };
+    // A stored id that definitively does not exist (seeded, deleted) is replaced, so setting up
+    // still works. One this key cannot see is never replaced: the read throws instead.
+    const replacing = row.stripeConnectAccountId;
+    if (replacing && (await this.retrieveUsableAccount(stripe, legalEntityId, replacing))) {
+      return { stripeAccountId: replacing, legalEntity: legalEntityRowToDomain(row) };
     }
     if (row.kind === "individual" && context.ownerKycStatus !== "approved") {
       throwConnectError("kyc_not_approved", 403);
@@ -109,9 +126,16 @@ export class ConnectAccountService {
             controller,
           });
 
+    const idempotencyKey = `connect:account:${CONNECT_ACCOUNT_CREATE_IDEMPOTENCY_VERSION}:${legalEntityId}`;
     const account = await stripe.accounts.create(accountCreateParams, {
-      idempotencyKey: `connect:account:${CONNECT_ACCOUNT_CREATE_IDEMPOTENCY_VERSION}:${legalEntityId}`,
+      idempotencyKey: replacing ? `${idempotencyKey}:replaces:${replacing}` : idempotencyKey,
     });
+    if (replacing) {
+      this.logger.warn(
+        { legalEntityId, previousStripeAccountId: replacing, stripeAccountId: account.id },
+        "connect_account_replaced_unknown",
+      );
+    }
 
     const persistUpdate = () =>
       this.connectRepository.persistConnectAccount({
@@ -140,17 +164,7 @@ export class ConnectAccountService {
 
   async getStatus(legalEntityId: string): Promise<ConnectAccountStatus> {
     const row = await loadConnectLegalEntity(this.connectReader, legalEntityId);
-    if (!row.stripeConnectAccountId) {
-      return {
-        stripeAccountId: null,
-        chargesEnabled: false,
-        payoutsEnabled: false,
-        requirementsCurrentlyDue: [],
-        requirementsErrors: [],
-        disabledReason: null,
-        ready: false,
-      };
-    }
+    if (!row.stripeConnectAccountId) return notSetUpStatus();
     return this.statusFromRow(row);
   }
 
@@ -158,21 +172,48 @@ export class ConnectAccountService {
     await this.assertMutationRateLimit("sync", legalEntityId);
     const stripe = requireConnectStripe(this.stripeFactory);
     const row = await loadConnectLegalEntity(this.connectReader, legalEntityId);
-    if (!row.stripeConnectAccountId) {
-      return {
-        stripeAccountId: null,
-        chargesEnabled: false,
-        payoutsEnabled: false,
-        requirementsCurrentlyDue: [],
-        requirementsErrors: [],
-        disabledReason: null,
-        ready: false,
-      };
-    }
-    const account = await stripe.accounts.retrieve(row.stripeConnectAccountId);
+    if (!row.stripeConnectAccountId) return notSetUpStatus();
+    const account = await this.retrieveUsableAccount(
+      stripe,
+      legalEntityId,
+      row.stripeConnectAccountId,
+    );
+    if (!account) return notSetUpStatus();
     await this.applyAccountUpdate(account);
     const refreshed = await loadConnectLegalEntity(this.connectReader, legalEntityId);
     return this.statusFromRow(refreshed);
+  }
+
+  /**
+   * The stored account at Stripe, or null when it definitively does not exist (a seeded or
+   * deleted id), which reads as payouts not set up. When this key cannot see the account
+   * (`account_invalid`: revoked access, a wrong key, or no such account) the id is kept, ops are
+   * alerted and `stripe_account_unreachable` is thrown. Any other failure is rethrown as it is.
+   */
+  private async retrieveUsableAccount(
+    stripe: Stripe,
+    legalEntityId: string,
+    stripeAccountId: string,
+  ): Promise<Stripe.Account | null> {
+    try {
+      return await stripe.accounts.retrieve(stripeAccountId);
+    } catch (err) {
+      const failure = classifyConnectAccountReadError(err);
+      if (failure === "missing") {
+        recordMoneyPathEvent("stripe_connect_account_missing");
+        this.logger.warn({ legalEntityId, stripeAccountId }, "connect_account_missing_at_stripe");
+        return null;
+      }
+      if (failure === "unreachable") {
+        recordMoneyPathEvent("stripe_connect_account_unreachable");
+        this.logger.error(
+          { legalEntityId, stripeAccountId },
+          "connect_account_unreachable_at_stripe",
+        );
+        throw new ConnectServiceError("stripe_account_unreachable", 409, { stripeAccountId });
+      }
+      throw err;
+    }
   }
 
   async applyAccountUpdate(account: Stripe.Account, tx?: DbTransaction): Promise<void> {

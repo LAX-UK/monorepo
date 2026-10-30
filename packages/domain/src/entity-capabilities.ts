@@ -154,3 +154,8 @@ export function rolesWithCapability(
 ): readonly LegalEntityMemberRole[] {
   return ruleFor(capability).roles;
 }
+
+/** Whether `name` is one of the organisation's capabilities (for values that arrive as text). */
+export function isEntityCapability(name: string): name is EntityCapability {
+  return Object.hasOwn(ENTITY_CAPABILITY_RULES, name);
+}

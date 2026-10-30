@@ -1,4 +1,5 @@
-import type { CreateNotificationRow } from "@auction/persistence/interfaces";
+import type { AccessRequestRow, CreateNotificationRow } from "@auction/persistence/interfaces";
+import type { LegalEntityMemberRole } from "@auction/types";
 import type { Lot } from "@auction/types";
 import type { INotificationFactory } from "./interfaces/notification-factory.js";
 
@@ -202,6 +203,75 @@ export class NotificationFactory implements INotificationFactory {
     };
   }
 
+  createAccessRequested(
+    userId: string,
+    request: Pick<
+      AccessRequestRow,
+      "legalEntityId" | "requesterName" | "requestedRole" | "requestedCapability"
+    >,
+  ): CreateNotificationRow {
+    const who = request.requesterName?.trim() || "A member";
+    const what = request.requestedRole
+      ? `the ${roleWords(request.requestedRole)} role`
+      : "more access";
+    return {
+      userId,
+      type: "access_requested",
+      legalEntityId: request.legalEntityId,
+      title: "Someone asked for access",
+      message: `${who} asked for ${what}. Open Team to approve or decline.`,
+      meta: {},
+    };
+  }
+
+  createAccessRequestDecided(
+    userId: string,
+    request: Pick<AccessRequestRow, "legalEntityId" | "status" | "grantedRole" | "decisionNote">,
+  ): CreateNotificationRow {
+    const approved = request.status === "approved";
+    const note = request.decisionNote?.trim();
+    return {
+      userId,
+      type: "access_request_decided",
+      legalEntityId: request.legalEntityId,
+      title: approved ? "Your access request was approved" : "Your access request was declined",
+      message: approved
+        ? `You now have the ${roleWords(request.grantedRole ?? "viewer")} role.${note ? ` ${note}` : ""}`
+        : note || "An owner or admin declined it. Ask them if you need it for your work.",
+      meta: {},
+    };
+  }
+
+  createPayoutProblem(
+    userId: string,
+    input: { payoutId: string; amount: string; currency: string; legalEntityId: string },
+  ): CreateNotificationRow {
+    return {
+      userId,
+      type: "payout_problem",
+      legalEntityId: input.legalEntityId,
+      title: "A payout didn't reach your bank",
+      message: `Your payout of ${input.amount} ${input.currency} didn't go through. Our finance team is looking into it and will contact you. Check that your bank details are up to date.`,
+      meta: { amount: input.amount },
+    };
+  }
+
+  createDeliveryQuoteReady(
+    lot: Lot,
+    userId: string,
+    input: { amount: string; currency: string; legalEntityId: string },
+  ): CreateNotificationRow {
+    return {
+      userId,
+      type: "delivery_quote_ready",
+      legalEntityId: input.legalEntityId,
+      title: "Your delivery quote is ready",
+      message: `Delivery for "${lot.title}" is quoted at ${input.amount} ${input.currency}. Open the purchase to accept it.`,
+      lotId: lot.id,
+      meta: { lotTitle: lot.title, amount: input.amount },
+    };
+  }
+
   createLotReadyForCollection(
     lot: Lot,
     buyerId: string,
@@ -255,4 +325,18 @@ export class NotificationFactory implements INotificationFactory {
       meta: { lotTitle: lot.title, fulfilmentMethod: input.method },
     };
   }
+}
+
+/** A role as people read it in a sentence, never the stored code. */
+const ROLE_WORDS: Record<LegalEntityMemberRole, string> = {
+  owner: "owner",
+  admin: "admin",
+  finance: "finance",
+  consignor: "consignor",
+  viewer: "viewer",
+  buyer_agent: "buyer agent",
+};
+
+function roleWords(role: LegalEntityMemberRole): string {
+  return ROLE_WORDS[role];
 }

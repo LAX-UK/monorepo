@@ -1,5 +1,6 @@
 "use client";
 
+import { useStaffCatalogueImage } from "@/components/artworks/staff-catalogue-image-provider.client";
 import { editorialFieldId } from "@/components/editorial/editorial-field-parts.client";
 import { type ShopMediaKind, uploadShopMediaFile } from "@/lib/shop-media-upload.client";
 import { Field, FileDropzone, StaffButton, useStaffCan } from "@auction/staff-ui";
@@ -41,6 +42,7 @@ export function EditorialImageField({
   disabled?: boolean;
 }) {
   const readOnly = !useStaffCan("editorial.write");
+  const resolveImage = useStaffCatalogueImage();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [upload, setUpload] = useState<Upload>(null);
   const [failure, setFailure] = useState<string | null>(null);
@@ -70,7 +72,9 @@ export function EditorialImageField({
     }
   }
 
-  const picture = previewUrl ?? (value?.startsWith("http") ? value : null);
+  // A stored key has no address to show; seed paths load from the storefront that serves them.
+  const stored = resolveImage(value);
+  const picture = previewUrl ?? (stored && /^https?:\/\//i.test(stored) ? stored : null);
 
   return (
     <Field

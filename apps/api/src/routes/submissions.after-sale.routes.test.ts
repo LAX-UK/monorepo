@@ -16,6 +16,7 @@ import { ConsignmentAfterSaleHttpApplicationService } from "../services/consignm
 import { ConsignmentMoveService } from "../services/consignment-after-sale/consignment-move.service.js";
 import { ConsignmentWithdrawalService } from "../services/consignment-after-sale/consignment-withdrawal.service.js";
 import { SellerIdentityReminderService } from "../services/consignment-after-sale/seller-identity-reminder.service.js";
+import { UnsoldChoiceDeadlines } from "../services/consignment-after-sale/unsold-choice-deadlines.js";
 import { UnsoldLotChoiceService } from "../services/consignment-after-sale/unsold-lot-choice.service.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { ISubmissionAccessGuard } from "../services/interfaces/submission-routes/submission-access.js";
@@ -152,6 +153,8 @@ function setup(options: Setup = {}) {
       people: { findById: vi.fn().mockResolvedValue({ name: "Jane Smith" }) },
       accounts: { findById: vi.fn(async (id: string) => entities.get(id) ?? null) },
       notifier,
+      deadlines: new UnsoldChoiceDeadlines({ warn: () => {} }),
+      storedDeadlines: { kept: async () => [] },
       events,
       now,
     }),
@@ -368,6 +371,7 @@ describe("GET /submissions/mine/unsold-lots", () => {
     submissionId: `sub-${id}`,
     title: `Lot ${id}`,
     endedAt: new Date(`2026-10-${day}T18:00:00Z`),
+    chooseBy: null,
     choice,
     legalEntityId,
     submittedByUserId,

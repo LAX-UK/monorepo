@@ -25,6 +25,7 @@ const SHARED: Readonly<Record<string, string>> = {
   "--color-success-container": "--lax-success-bg",
   "--color-on-success-container": "--lax-success-fg",
   "--color-ring": "--lax-focus",
+  "--color-input-border": "--lax-control-edge",
   "--color-input-border-focus": "--lax-focus",
   "--color-disabled-fg": "--lax-disabled-fg",
   "--color-disabled-bg": "--lax-disabled-bg",
@@ -67,5 +68,29 @@ describe("Bid reads the LAX system layer", () => {
     const refs = [...`${globals}\n${dark}`.matchAll(/var\((--lax-[\w-]+)\)/g)].map((m) => m[1]);
     expect(refs.length).toBeGreaterThanOrEqual(Object.keys(SHARED).length);
     for (const ref of refs) expect(lax, ref).toContain(`${ref}:`);
+  });
+});
+
+describe("the organisation workspace reads the LAX surfaces", () => {
+  const start = globals.indexOf("[data-workspace-shell] {");
+  const block = globals.slice(start, globals.indexOf("}", start));
+
+  it("maps Bid's older surface and text tokens onto the layer, inside the shell only", () => {
+    expect(start).toBeGreaterThan(0);
+    for (const [token, shared] of [
+      ["--color-surface-container-lowest", "--lax-surface"],
+      ["--color-surface-container-low", "--lax-sunken"],
+      ["--color-on-surface", "--lax-fg"],
+      ["--color-on-surface-variant", "--lax-muted"],
+      ["--color-shell-stroke", "--lax-line"],
+    ] as const) {
+      expect(declarations(block, token)).toEqual([`var(${shared})`]);
+    }
+  });
+
+  it("reads only layer tokens there, so both schemes follow from one block", () => {
+    for (const value of [...block.matchAll(/:\s*([^;]+);/g)].map((m) => m[1])) {
+      expect(value).toMatch(/^var\(--lax-[\w-]+\)$/);
+    }
   });
 });

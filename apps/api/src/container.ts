@@ -6,6 +6,7 @@ import {
   DrizzleLaxAdminRolesRepository,
   DrizzleLaxStaffAccessRepository,
   DrizzleOrganisationBiddingLimitRepository,
+  DrizzleRecordPeopleReader,
   DrizzleStaffAccessReviewReader,
   DrizzleStaffNoticeRecipientReader,
   DrizzleStaffRoleAssignmentReader,
@@ -25,8 +26,11 @@ import { createFinanceRouteServices } from "./container/create-finance-route-ser
 import { createIdentityRouteServices } from "./container/create-identity-route-services.js";
 import { createInfra } from "./container/create-infra.js";
 import { createLotLifecycle } from "./container/create-lot-lifecycle.js";
+import { createOrganisationAccessServices } from "./container/create-organisation-access-services.js";
+import { createOrganisationBuyingServices } from "./container/create-organisation-buying-services.js";
 import { createOrganisationHomeServices } from "./container/create-organisation-home-services.js";
 import { createOrganisationMembershipServices } from "./container/create-organisation-membership-services.js";
+import { createOrganisationSellingServices } from "./container/create-organisation-selling-services.js";
 import { createOrganisationTeamServices } from "./container/create-organisation-team-services.js";
 import { createOrganisationWorkspaceServices } from "./container/create-organisation-workspace-services.js";
 import { createPaymentsServices } from "./container/create-payments-services.js";
@@ -251,6 +255,7 @@ export function createContainer(env: Env): Container {
     consignmentAgreementService: catalog.consignmentAgreementService,
     submissionAccess: new SubmissionAccessGuard(repos.itemSubmissionRepository),
     consignmentAfterSaleHttp: catalog.consignmentAfterSaleHttp,
+    recordPeople: new DrizzleRecordPeopleReader(db),
   });
   const admin = createAdminServices({
     env,
@@ -330,6 +335,26 @@ export function createContainer(env: Env): Container {
   };
   const organisationMembership = createOrganisationMembershipServices({ db });
   const organisationHome = createOrganisationHomeServices({ db });
+  const organisationBuying = createOrganisationBuyingServices({
+    db,
+    env,
+    lots: repos.lotRepo,
+    sales: repos.saleRepo,
+    notificationDispatcher: platform.notificationDispatcher,
+    notificationFactory: platform.notificationFactory,
+  });
+  const organisationAccess = createOrganisationAccessServices({
+    db,
+    memberManagement: platform.memberManagementService,
+    recipients: repos.legalEntityNotificationRecipients,
+    notificationDispatcher: platform.notificationDispatcher,
+    notificationFactory: platform.notificationFactory,
+    events: platform.domainEventSink,
+  });
+  const organisationSelling = createOrganisationSellingServices({
+    db,
+    submissionAccess: new SubmissionAccessGuard(repos.itemSubmissionRepository),
+  });
   const organisationWorkspace = createOrganisationWorkspaceServices({
     db,
     legalEntities: repos.legalEntityRepository,
@@ -550,6 +575,7 @@ export function createContainer(env: Env): Container {
     userRoutes: createUserRouteServices({
       env,
       bidPortfolioReader: repos.bidPortfolioReader,
+      recordPeople: new DrizzleRecordPeopleReader(db),
       categoryInterestsEligibilityReader: repos.categoryInterestsEligibilityReader,
       categoryInterestsRepository: repos.categoryInterestsRepository,
       accountOnboardingService: userMisc.accountOnboardingService,
@@ -594,6 +620,7 @@ export function createContainer(env: Env): Container {
       savedViews,
       atg,
       buyerAgentAuthorisations,
+      deliveryQuotes: organisationBuying.staffDeliveryQuotes,
       stepUp: new StaffStepUpService(identityIssuer),
       idempotencyStore: new RedisIdempotencyStore(infra.redis),
     },
@@ -605,6 +632,9 @@ export function createContainer(env: Env): Container {
     buyerAgents,
     organisationMembership,
     organisationHome,
+    organisationBuying: organisationBuying.client,
+    organisationSelling,
+    organisationAccess,
     organisationWorkspace,
     organisationTeam,
     queueAdmin: userMisc.queueAdmin,
@@ -649,6 +679,9 @@ export type {
   ContainerLegalEntityMemberRoutesSlice,
   ContainerOrganisationMembershipRoutesSlice,
   ContainerOrganisationHomeRoutesSlice,
+  ContainerOrganisationBuyingRoutesSlice,
+  ContainerOrganisationSellingRoutesSlice,
+  ContainerOrganisationAccessRoutesSlice,
   ContainerOrganisationWorkspaceRoutesSlice,
   ContainerOrganisationTeamRoutesSlice,
   ContainerLegalEntityRoutesSlice,

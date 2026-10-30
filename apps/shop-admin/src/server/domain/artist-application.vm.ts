@@ -4,6 +4,7 @@ import {
   type AdminArtistApplicationEvent,
   type ArtistApplicationReviewer,
   type ArtistApplicationWorkView,
+  type CatalogueImageResolver,
 } from "@auction/shop-contracts";
 import {
   type ArtistApplicationAction,
@@ -73,13 +74,17 @@ export function workCaption(
   return [work.year?.toString(), work.medium, work.size].filter(Boolean).join(" · ");
 }
 
-export function workGalleryItems(works: readonly ArtistApplicationWorkView[]): ImageGalleryItem[] {
+/** The works as gallery items, each image read through the staff catalogue image resolver. */
+export function workGalleryItems(
+  works: readonly ArtistApplicationWorkView[],
+  resolveImage: CatalogueImageResolver,
+): ImageGalleryItem[] {
   return works.map((work, index) => {
     const title = work.title?.trim() || `Untitled work ${index + 1}`;
     const caption = workCaption(work);
     return {
       id: work.mediaKey,
-      src: work.imageUrl,
+      src: resolveImage(work.imageUrl) ?? work.imageUrl,
       alt: title,
       title,
       ...(caption ? { caption } : {}),
