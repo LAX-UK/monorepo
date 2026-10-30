@@ -82,7 +82,7 @@ export function AppShellSidebar({
   );
 
   return (
-    <div className="flex h-full min-h-0 flex-col bg-surface-container-low">
+    <div className="flex h-full min-h-0 flex-col bg-shell-sidebar">
       {showLogo ? (
         <div className="shrink-0 border-b border-shell-stroke pt-[env(safe-area-inset-top,0px)]">
           <div
@@ -158,7 +158,7 @@ export function AppShellSidebar({
       </nav>
 
       {role === "client" ? null : (
-        <div className="border-t border-shell-stroke bg-surface-container-low p-3">
+        <div className="border-t border-shell-stroke bg-shell-sidebar p-3">
           <StaffWorkspaceSwitcher collapsed={labelsHidden} />
         </div>
       )}

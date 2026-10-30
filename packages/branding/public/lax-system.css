@@ -1,0 +1,161 @@
+/*
+ * The LAX system: one token layer for the app interfaces of the LAX family.
+ *
+ * Both kits read it: the staff tools (@auction/staff-ui, LAX Admin and Bid admin) and the client
+ * workspace (@auction/ui in apps/web). Each kit maps these tokens onto its own Tailwind names, so
+ * a value lives here once. The scales and their roles are documented in src/lax-system.ts, and
+ * tests/lax-system.test.ts keeps the two in step and checks contrast in light and dark.
+ *
+ * Requirements for a product that imports this file:
+ *   - Import it after brand-primitives.css (the paper token reads the brand paper from there).
+ *   - Set `color-scheme` on the root for its theme switch. Every colour is a `light-dark()` pair,
+ *     so one declaration serves both schemes and follows the scheme the product sets.
+ *   - Set `data-lax-density="staff"` or `"client"` on the shell (see "Density" below).
+ *
+ * Product accents are not here: each product keeps its own (navy is Bid only).
+ */
+
+:root {
+  /* Surfaces. The page steps from the canvas (staff page) or the gallery-white page (client page)
+     through the surface (cards, tables) to the raised layer (menus, dialogs). The sidebar sits a
+     step down from the client page, and artwork and empty-state art sit on the warm paper. */
+  --lax-canvas: light-dark(#f7f7f6, #111313);
+  --lax-page: light-dark(#ffffff, #121414);
+  --lax-side: light-dark(#f7f7f6, #0e1010);
+  --lax-surface: light-dark(#ffffff, #181a1a);
+  --lax-sunken: light-dark(#f3f3f2, #141616);
+  --lax-raised: light-dark(#ffffff, #202323);
+  --lax-paper: light-dark(var(--brand-paper), var(--brand-paper-on-dark));
+
+  /* Interaction overlays: translucent, so they read the same on any surface. */
+  --lax-hover: light-dark(rgb(16 18 18 / 0.045), rgb(255 255 255 / 0.055));
+  --lax-pressed: light-dark(rgb(16 18 18 / 0.08), rgb(255 255 255 / 0.09));
+  --lax-selected: light-dark(rgb(16 18 18 / 0.06), rgb(255 255 255 / 0.075));
+
+  /* Hairlines are decorative and stay faint. */
+  --lax-line: light-dark(#e5e5e3, #2b2e2e);
+  --lax-line-subtle: light-dark(#eeeeec, #222525);
+  --lax-line-strong: light-dark(#d0d0ce, #3d4141);
+  --lax-line-hover: light-dark(#b3b5b4, #535757);
+
+  /* The control edge: the only boundary of a field, select, checkbox, radio or an off switch, so
+     it keeps 3:1 against every surface it sits on (WCAG 1.4.11). Hover darkens it further. */
+  --lax-control-edge: light-dark(#8a8d8d, #6e7272);
+  --lax-control-edge-hover: light-dark(#6f7272, #878b8b);
+
+  /* Text and ink. Ink fills primary buttons; focus draws the ring. Both follow the text colour. */
+  --lax-fg: light-dark(#181a1a, #ededeb);
+  --lax-muted: light-dark(#5b5e5e, #a4a7a7);
+  --lax-subtle: light-dark(#666969, #8c8f8f);
+  --lax-ink: var(--lax-fg);
+  --lax-ink-hover: light-dark(#323535, #ffffff);
+  --lax-on-ink: light-dark(#ffffff, #111313);
+  --lax-focus: var(--lax-fg);
+  /* A switch's thumb when off: near white on the control-edge track, 3:1 or more in both schemes. */
+  --lax-thumb: light-dark(#ffffff, #ededeb);
+  --lax-scrim: light-dark(rgb(17 19 19 / 0.32), rgb(0 0 0 / 0.6));
+
+  /* Disabled: a quiet fill and hairline edge, with a label that still reads at 3:1 on every
+     surface and on its own fill, and stays clearly lighter than any enabled label. */
+  --lax-disabled-fg: light-dark(#7f8282, #7a7d7d);
+  --lax-disabled-bg: var(--lax-sunken);
+  --lax-disabled-border: var(--lax-line);
+
+  /* Status tones: background, text and dot. Text meets 4.5:1 on its background in both schemes,
+     on every surface a tinted dark background is laid over. */
+  --lax-neutral-bg: light-dark(#f0f0ef, #282b2b);
+  --lax-neutral-fg: light-dark(#454848, #c4c7c7);
+  --lax-neutral-dot: light-dark(#8d9090, #858888);
+  --lax-info-bg: light-dark(#edf2fd, rgb(91 141 239 / 0.16));
+  --lax-info-fg: light-dark(#2550b4, #9dbcf7);
+  --lax-info-dot: light-dark(#2f62cf, #6f9bf2);
+  --lax-success-bg: light-dark(#eaf5ec, rgb(64 178 98 / 0.16));
+  --lax-success-fg: light-dark(#1b6b2f, #86d59a);
+  --lax-success-dot: light-dark(#2a9148, #4fbf6c);
+  --lax-warning-bg: light-dark(#fdf3dc, rgb(232 166 48 / 0.16));
+  --lax-warning-fg: light-dark(#7d4a00, #f2c46d);
+  --lax-warning-dot: light-dark(#d98e0b, #e8a630);
+  --lax-danger-bg: light-dark(#fcecea, rgb(240 82 70 / 0.16));
+  --lax-danger-fg: light-dark(#a8261b, #f6a49c);
+  --lax-danger-dot: light-dark(#d93a2b, #f0675b);
+  /* Danger as text, icon or border on a surface, and as a solid fill behind white text. They
+     differ in dark mode: light red reads on a dark surface, but white needs a deeper red. */
+  --lax-danger: light-dark(#b42318, #ef6a5e);
+  --lax-danger-solid: light-dark(#b42318, #c13a2e);
+  --lax-danger-solid-hover: light-dark(#931c13, #a93125);
+  --lax-on-danger: light-dark(#ffffff, #ffffff);
+  /* Live now (Bid): a solid fill, so it never reads as the tinted danger of a failed record. */
+  --lax-live-dot: light-dark(#e83030, #ff5a4f);
+  --lax-live-bg: light-dark(#c81e1e, #c13a2e);
+  --lax-on-live: var(--lax-on-danger);
+
+  /* Radius: one role per step. */
+  --lax-radius-badge: 4px;
+  --lax-radius-control: 6px;
+  --lax-radius-menu: 8px;
+  --lax-radius-card: 12px;
+  --lax-radius-pill: 9999px;
+
+  /* Control heights: compact (staff toolbars), default (forms, client desktop), touch. */
+  --lax-control-sm: 32px;
+  --lax-control-md: 36px;
+  --lax-control-lg: 44px;
+
+  /* Type: size and line height on the 4px grid. 14px has two line heights: 20px in the interface
+     and 24px in paragraphs. */
+  --lax-text-12: 12px;
+  --lax-text-12--line: 16px;
+  --lax-text-13: 13px;
+  --lax-text-13--line: 20px;
+  --lax-text-14: 14px;
+  --lax-text-14--line: 20px;
+  --lax-text-14--paragraph: 24px;
+  --lax-text-16: 16px;
+  --lax-text-16--line: 24px;
+  --lax-text-18: 18px;
+  --lax-text-18--line: 24px;
+  --lax-text-20: 20px;
+  --lax-text-20--line: 28px;
+  --lax-text-24: 24px;
+  --lax-text-24--line: 32px;
+  --lax-text-28: 28px;
+  --lax-text-28--line: 36px;
+
+  /* Elevation. Level 0 is flat with a hairline. xs lifts secondary buttons and resting cards; md
+     floats menus, popovers and toasts; lg holds dialogs, sheets and the command palette. */
+  --lax-shadow-xs: 0 1px 1px light-dark(rgb(16 18 18 / 0.05), rgb(0 0 0 / 0.3));
+  --lax-shadow-md: 0 2px 4px -1px light-dark(rgb(16 18 18 / 0.06), rgb(0 0 0 / 0.3)), 0 8px 24px
+    -4px light-dark(rgb(16 18 18 / 0.12), rgb(0 0 0 / 0.5));
+  --lax-shadow-lg: 0 4px 12px -4px light-dark(rgb(16 18 18 / 0.08), rgb(0 0 0 / 0.35)), 0 24px 64px
+    -12px light-dark(rgb(16 18 18 / 0.24), rgb(0 0 0 / 0.6));
+
+  /* Focus: a 2px outline in --lax-focus, 2px outside the control (drawn inset on rows and cells,
+     where an outside ring would be clipped). Never a box-shadow ring that overflow can clip. */
+  --lax-focus-width: 2px;
+  --lax-focus-offset: 2px;
+}
+
+/*
+ * Density. The two audiences share every token above and differ only in type step, control
+ * height and row height: staff scan tables, clients read sentences and make fewer, costlier taps.
+ * Clients get 44px controls on phones and on any touch screen.
+ */
+[data-lax-density="staff"] {
+  --lax-density-text: var(--lax-text-13);
+  --lax-density-text-line: var(--lax-text-13--line);
+  --lax-density-control: var(--lax-control-sm);
+  --lax-density-row: 36px;
+}
+
+[data-lax-density="client"] {
+  --lax-density-text: var(--lax-text-14);
+  --lax-density-text-line: var(--lax-text-14--line);
+  --lax-density-control: var(--lax-control-md);
+  --lax-density-row: 64px;
+}
+
+@media (max-width: 47.99rem), (pointer: coarse) {
+  [data-lax-density="client"] {
+    --lax-density-control: var(--lax-control-lg);
+  }
+}

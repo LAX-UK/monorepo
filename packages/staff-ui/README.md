@@ -21,6 +21,8 @@ atoms (button, field box, badge), the shell, the data table and the record-page 
 
 ```css
 /* app globals.css, after tailwindcss */
+@import "@auction/branding/brand-primitives.css" layer(base);
+@import "@auction/branding/lax-system.css" layer(base);
 @import "@auction/staff-ui/theme.css";
 @source "../../../../packages/staff-ui/src/**/*.{ts,tsx}";
 ```
@@ -34,8 +36,10 @@ The kit never imports a router: pass your `Link` (e.g. `next/link`) and a `navig
 
 ## Tokens
 
-Defined once in `src/theme.css` (what the browser reads) and named in `src/tokens.ts` (what code
-and tests read); `tokens.test.ts` fails if they drift. Use the scales only; no ad-hoc values.
+The values live in the LAX system layer (`@auction/branding/lax-system.css`), which the client
+workspace reads too. `src/theme.css` names them for Tailwind and keeps only the staff-only steps;
+`src/tokens.ts` names the scales for code and tests, and `tokens.test.ts` fails if any of them
+drift. The shell sets `data-lax-density="staff"`. Use the scales only; no ad-hoc values.
 
 | Scale | Steps | Use |
 | --- | --- | --- |

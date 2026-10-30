@@ -11,11 +11,25 @@ import {
   STAFF_TYPE_SCALE,
 } from "./tokens.js";
 
-// Vitest runs from the package root.
+// Vitest runs from the package root. The theme names the LAX system tokens for Tailwind; the
+// values live in @auction/branding's lax-system.css, so every lookup resolves through it.
 const css = readFileSync(join(process.cwd(), "src/theme.css"), "utf8");
+const laxCss = readFileSync(join(process.cwd(), "../branding/public/lax-system.css"), "utf8");
+const laxRoot = laxCss.slice(laxCss.indexOf(":root {"), laxCss.indexOf("\n}\n"));
 
+function declared(source: string, name: string): string | undefined {
+  return new RegExp(`--${name}:\\s*([^;]+);`).exec(source)?.[1]?.replace(/\s+/g, " ").trim();
+}
+
+/** A theme token's value, following `var(--lax-*)` into the shared layer. */
 function token(name: string): string | undefined {
-  return new RegExp(`--${name}:\\s*([^;]+);`).exec(css)?.[1]?.trim();
+  let value = declared(css, name);
+  for (let hops = 0; value && hops < 5; hops++) {
+    const ref = /^var\(--(lax-[\w-]+)\)$/.exec(value);
+    if (!ref?.[1]) break;
+    value = declared(laxRoot, ref[1]);
+  }
+  return value;
 }
 
 /** The light and dark hex values of a `light-dark(#xxxxxx, #xxxxxx)` colour token. */
@@ -68,9 +82,20 @@ describe("staff tokens", () => {
   });
 
   it("declares every colour as a light and dark pair", () => {
-    const colours = [...css.matchAll(/--color-staff-[\w-]+:\s*([^;]+);/g)].map((m) => m[1] ?? "");
+    const colours = [...css.matchAll(/--color-staff-([\w-]+):/g)].map((m) => m[1] ?? "");
     expect(colours.length).toBeGreaterThan(30);
-    for (const value of colours) expect(value).toMatch(/^light-dark\(/);
+    for (const name of colours) expect(token(`color-staff-${name}`)).toMatch(/^light-dark\(/);
+  });
+
+  it("reads every shared value from the LAX system layer", () => {
+    const refs = [...css.matchAll(/var\(--(lax-[\w-]+)\)/g)].map((m) => m[1] ?? "");
+    expect(refs.length).toBeGreaterThan(60);
+    for (const ref of refs) expect(declared(laxRoot, ref), ref).toBeDefined();
+  });
+
+  it("keeps no colour of its own except Bid's accent", () => {
+    const raw = [...css.matchAll(/(--color-staff-[\w-]+):\s*(light-dark\([^;]+|#[0-9a-f]+)/gi)];
+    expect(raw.map((m) => m[1])).toEqual(["--color-staff-accent"]);
   });
 
   describe("form-control boundaries keep 3:1 against every surface (WCAG 1.4.11)", () => {
