@@ -11,7 +11,7 @@ import { cn } from "@auction/ui";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Collector Hub | lax.art",
+  title: "Collecting | lax.art",
   description: "Advisory, collection care and ways to work with the London Art Exchange team.",
   alternates: { canonical: "/collector-hub" },
 };
@@ -26,9 +26,9 @@ export default async function CollectorHubPage() {
       <div className={cn(MARKETING_PAGE_SHELL, "py-10")}>
         <ArtEditorialStatus
           result={result}
-          disabledTitle="Collector Hub coming soon"
+          disabledTitle="Collecting coming soon"
           disabledDescription="Editorial collector content is not enabled in this environment yet."
-          emptyTitle="Collector Hub is empty"
+          emptyTitle="Nothing in Collecting yet"
           emptyDescription="Collector resources will appear here when published."
         />
       </div>
@@ -40,7 +40,7 @@ export default async function CollectorHubPage() {
   return (
     <div className={cn(MARKETING_PAGE_SHELL, "flex flex-col gap-10 pb-10 lg:pb-16")}>
       <MarketingPageTitle
-        title="Collector Hub"
+        title="Collecting"
         subtitle="From discovering your first work to exploring a more established art practice, LAX offers guidance at every stage."
       />
       {cards.length === 0 ? (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { artistSectionTabs, formatArtistLifeLine } from "./artist-profile.vm";
+import { artistSectionTabs, artistWorksLayout, formatArtistLifeLine } from "./artist-profile.vm";
 
 describe("formatArtistLifeLine", () => {
   it("joins nationality and a life span", () => {
@@ -25,15 +25,25 @@ describe("formatArtistLifeLine", () => {
 describe("artistSectionTabs", () => {
   it("lists rendered sections in page order", () => {
     expect(
-      artistSectionTabs({ works: true, originals: false, exhibitions: true, stories: true }).map(
+      artistSectionTabs({ press: true, works: true, sold: true, stories: true }).map(
         (tab) => tab.label,
       ),
-    ).toEqual(["Featured works", "Exhibitions", "Films & stories"]);
+    ).toEqual(["Available works", "Sold works", "Films & stories", "Press"]);
   });
 
   it("returns none for a single section", () => {
-    expect(
-      artistSectionTabs({ works: true, originals: false, exhibitions: false, stories: false }),
-    ).toEqual([]);
+    expect(artistSectionTabs({ works: true, exhibitions: false })).toEqual([]);
+  });
+});
+
+describe("artistWorksLayout", () => {
+  it.each([
+    [0, null],
+    [1, "single"],
+    [2, "pair"],
+    [3, "grid"],
+    [8, "grid"],
+  ] as const)("lays %i works out as %s", (count, layout) => {
+    expect(artistWorksLayout(count)).toBe(layout);
   });
 });

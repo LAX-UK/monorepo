@@ -208,7 +208,13 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
     env.DOMAIN_EVENT_PUBLISH_VALIDATE,
   );
   const importArtwork = createImportArtworkHandler(artworkImportWriter);
-  const { commerce, stripeWebhook } = createCommerceServices(db, env);
+  const rateLimitRedis = env.REDIS_URL
+    ? new Redis(env.REDIS_URL, { enableOfflineQueue: false, maxRetriesPerRequest: 1 })
+    : null;
+  const rateLimitCounter = rateLimitRedis
+    ? createRedisFixedWindowCounter(rateLimitRedis)
+    : createInMemoryFixedWindowCounter();
+  const { commerce, stripeWebhook } = createCommerceServices(db, env, { rateLimitCounter });
   const readiness = createDrizzleShopReadinessAdapter(db);
   const storefrontOrigins = resolveStorefrontOrigins({
     shopStorefrontUrl: env.SHOP_STOREFRONT_URL,
@@ -222,12 +228,6 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       ? { enquiryOpsEmail: env.SHOP_ENQUIRY_NOTIFICATION_EMAIL }
       : {}),
   });
-  const rateLimitRedis = env.REDIS_URL
-    ? new Redis(env.REDIS_URL, { enableOfflineQueue: false, maxRetriesPerRequest: 1 })
-    : null;
-  const rateLimitCounter = rateLimitRedis
-    ? createRedisFixedWindowCounter(rateLimitRedis)
-    : createInMemoryFixedWindowCounter();
   const enquiryRateLimiter = createEnquiryRateLimiter(rateLimitCounter);
   const editionAlertRateLimiter = createEditionAlertRateLimiter(rateLimitCounter);
   const editionAlerts = createEditionAlertHandlers({

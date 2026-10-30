@@ -56,6 +56,8 @@ export const AdminOrderListItemSchema = Type.Object({
   /** From the buyer's profile; null for a buyer who has none. */
   buyerName: Type.Union([Type.String(), Type.Null()]),
   buyerEmail: Type.Union([Type.String(), Type.Null()]),
+  /** True while the order belongs to a guest checkout rather than a LAX account. */
+  buyerIsGuest: Type.Optional(Type.Boolean()),
   createdAt: Type.String(),
   paidAt: Type.Union([Type.String(), Type.Null()]),
   /** "LAX-S-10482"; optional so the admin parses responses from an older shop-api. */

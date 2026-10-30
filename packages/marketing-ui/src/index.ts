@@ -97,9 +97,12 @@ export { MarketingSectionHeader } from "./marketing-section-header.js";
 export {
   MarketingHorizontalRail,
   type MarketingHorizontalRailControls,
+  type MarketingHorizontalRailControlsPlacement,
   type MarketingHorizontalRailProps,
   type MarketingHorizontalRailScrollerTag,
 } from "./marketing-horizontal-rail.js";
+export { MarketingOverlayCard, type MarketingOverlayCardProps } from "./marketing-overlay-card.js";
+export { MARKETING_SURFACE_TONE } from "./marketing-surface-tone.js";
 export { LaxFamilyBar, type LaxFamilyBarLink, type LaxFamilyBarProps } from "./lax-family-bar.js";
 export { LaxFamilyMenuLinks, type LaxFamilyMenuLinksProps } from "./lax-family-menu-links.js";
 export { LaxLockup, type LaxLockupProps } from "./lax-lockup.js";
@@ -516,9 +519,12 @@ export {
   MARKETING_ROW_MAX_COLUMNS,
   type MarketingFeatureGridLayout,
   type MarketingFeatureGridRole,
+  type MarketingMixedRailSlot,
   type MarketingRowLayout,
   marketingFeatureGridLayout,
   marketingFeatureGridRole,
+  marketingLeadRowCap,
+  marketingMixedRailSlots,
   marketingRailHasEnough,
   marketingRowCap,
   marketingRowColumns,

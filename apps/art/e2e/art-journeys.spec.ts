@@ -390,7 +390,7 @@ test.describe("lax.art journeys", () => {
     await expect(drawer).toBeVisible();
     await expect(
       drawer.getByRole("navigation", { name: "Main menu" }).getByRole("link"),
-    ).toHaveText(["Artists", "Artworks", "Exhibitions", "Art Hub", "Collector Hub"]);
+    ).toHaveText(["Artists", "Artworks", "Exhibitions", "Art Hub", "Collecting"]);
     await expect(drawer.getByRole("link", { name: "Artworks" })).toHaveAttribute(
       "aria-current",
       "page",

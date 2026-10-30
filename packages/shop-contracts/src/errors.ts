@@ -23,6 +23,8 @@ export const SHOP_API_ERROR_CODES = {
   FEATURE_DISABLED: "shop.feature_disabled",
   IDEMPOTENCY_CONFLICT: "shop.idempotency_conflict",
   RATE_LIMITED: "shop.rate_limited",
+  /** The email at guest checkout belongs to a LAX account; the person signs in instead. */
+  ACCOUNT_EXISTS: "shop.account_exists",
   SAVED_VIEW_DUPLICATE: "shop.saved_view_duplicate",
   SAVED_VIEW_LIMIT: "shop.saved_view_limit",
   SAVED_VIEW_ORDER_CHANGED: "shop.saved_view_order_changed",

@@ -1,5 +1,5 @@
 import { ArtEditorialListSkeleton } from "@/components/layout/art-route-skeletons";
 
 export default function Loading() {
-  return <ArtEditorialListSkeleton label="Loading Collector Hub" />;
+  return <ArtEditorialListSkeleton label="Loading Collecting" />;
 }

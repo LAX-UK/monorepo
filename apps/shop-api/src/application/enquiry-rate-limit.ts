@@ -61,6 +61,38 @@ export function createEnquiryRateLimiter(
   };
 }
 
+/**
+ * Guest checkout answers whether an email has a LAX account, so each address and each client IP
+ * gets a small hourly allowance shared by the email step and placing the order. A shopper who
+ * mistypes and retries stays well inside it; walking a list of addresses does not.
+ */
+export const GUEST_CHECKOUT_RATE_LIMITS = {
+  perClientIp: { max: 20, windowSeconds: 3600 },
+  perSender: { max: 10, windowSeconds: 3600 },
+} as const satisfies RateLimits;
+
+/** Asking for a new guest order link sends an email, so the allowance is small. */
+export const GUEST_ORDER_LINK_RATE_LIMITS = {
+  perClientIp: { max: 10, windowSeconds: 3600 },
+  perSender: { max: 3, windowSeconds: 3600 },
+} as const satisfies RateLimits;
+
+export function createGuestCheckoutRateLimiters(counter: FixedWindowCounter): {
+  checkout: EnquiryRateLimiter;
+  orderLinks: EnquiryRateLimiter;
+} {
+  return {
+    checkout: createEnquiryRateLimiter(counter, {
+      keyPrefix: "guest-checkout",
+      limits: GUEST_CHECKOUT_RATE_LIMITS,
+    }),
+    orderLinks: createEnquiryRateLimiter(counter, {
+      keyPrefix: "guest-order-link",
+      limits: GUEST_ORDER_LINK_RATE_LIMITS,
+    }),
+  };
+}
+
 export function createEditionAlertRateLimiter(counter: FixedWindowCounter): EnquiryRateLimiter {
   return createEnquiryRateLimiter(counter, {
     keyPrefix: "edition-alert",

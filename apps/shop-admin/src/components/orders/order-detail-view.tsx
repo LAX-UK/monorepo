@@ -13,7 +13,7 @@ import {
   presentProductionStatus,
   presentRefundStatus,
 } from "@/server/domain/order-detail.vm";
-import { orderNumber } from "@/server/domain/order-list.vm";
+import { orderBuyerAccountLabel, orderNumber } from "@/server/domain/order-list.vm";
 import type { AdminOrderDetail } from "@auction/shop-contracts";
 import {
   KeyValueList,
@@ -75,7 +75,7 @@ export function OrderDetailView({
         meta={
           <>
             <MetaItem label="Total">{formatGbp(detail.totalPence)}</MetaItem>
-            <MetaItem label="Buyer">{buyer}</MetaItem>
+            <MetaItem label={detail.buyerIsGuest ? "Guest buyer" : "Buyer"}>{buyer}</MetaItem>
             <MetaItem label="Placed">{formatStaffDateTime(detail.createdAt)}</MetaItem>
           </>
         }
@@ -196,7 +196,13 @@ export function OrderDetailView({
                   value: detail.buyerEmail,
                   ...(detail.buyerEmail ? { copyValue: detail.buyerEmail } : {}),
                 },
-                { label: "Account", value: "LAX Account", copyValue: detail.buyerSubjectId },
+                detail.buyerIsGuest
+                  ? { label: "Account", value: orderBuyerAccountLabel(detail) }
+                  : {
+                      label: "Account",
+                      value: orderBuyerAccountLabel(detail),
+                      copyValue: detail.buyerSubjectId,
+                    },
               ]}
             />
           </Section>

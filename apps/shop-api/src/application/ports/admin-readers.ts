@@ -56,6 +56,7 @@ export type AdminOrderListItem = {
   buyerSubjectId: string;
   buyerName: string | null;
   buyerEmail: string | null;
+  buyerIsGuest: boolean;
   createdAt: string;
   paidAt: string | null;
 };
