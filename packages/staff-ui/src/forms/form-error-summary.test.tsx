@@ -1,7 +1,6 @@
+import { Field, TextInput } from "@auction/ui/lax";
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { TextInput } from "../primitives/input.js";
-import { Field } from "./field.js";
 import { FormErrorSummary } from "./form-section.js";
 
 const errors = [

@@ -1,3 +1,5 @@
+import type { Database } from "@auction/db";
+import { DrizzleInvoiceDetailsRepository } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { EmailNotificationChannel } from "../infrastructure/email-notification.channel.js";
 import { InAppNotificationChannel } from "../infrastructure/in-app-notification.channel.js";
@@ -27,6 +29,7 @@ export type ContainerPlatformNotificationServices = {
 
 export type CreatePlatformNotificationServicesInput = {
   env: Env;
+  db: Database;
   infra: ContainerInfra;
   repos: ContainerRepositories;
   core: ContainerPlatformCore;
@@ -67,6 +70,7 @@ export function createPlatformNotificationServices(
     userRepo,
     env.WEB_ORIGIN,
     env.EMAIL_UNSUBSCRIBE_SECRET,
+    new DrizzleInvoiceDetailsRepository(input.db),
   );
   const channels = env.ENABLE_WHATSAPP_CHANNEL
     ? [inAppChannel, pushChannel, emailChannel, new WhatsappNotificationChannel()]

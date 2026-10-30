@@ -7,7 +7,10 @@ export type ShopEditionLinkVm = {
   slug: string;
   title: string;
   href: string;
+  /** The edition's image, else the original's; null shows the hatched placeholder. */
   imageUrl: string | null;
+  /** Named on the placeholder (as initials) when there is no image. */
+  artistName: string;
   /** "Limited edition of 24 · Available"; never a remaining count. */
   editionLine: string;
   /** "£120.00", or null when the edition has no price yet. */
@@ -40,13 +43,15 @@ function editionLine(edition: PublicArtworkSummary): string {
 export function buildShopEditionLinks(
   editions: readonly PublicArtworkSummary[],
   shop: URL | null,
+  originalImageUrl: string | null = null,
 ): ShopEditionLinkVm[] {
   if (!shop) return [];
   return editions.slice(0, SHOP_EDITIONS_LIMIT).map((edition) => ({
     slug: edition.slug,
     title: edition.title,
     href: new URL(`/artworks/${encodeURIComponent(edition.slug)}`, shop).toString(),
-    imageUrl: edition.imageUrl,
+    imageUrl: edition.imageUrl ?? originalImageUrl,
+    artistName: edition.artistName,
     editionLine: editionLine(edition),
     priceLabel: edition.printPricePence === null ? null : formatGbpPence(edition.printPricePence),
   }));

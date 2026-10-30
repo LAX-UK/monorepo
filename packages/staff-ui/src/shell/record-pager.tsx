@@ -1,10 +1,10 @@
 "use client";
 
+import type { LinkComponent } from "@auction/ui/lax";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import type * as React from "react";
 import { StaffButton } from "../primitives/button.js";
 import { StaffTooltip } from "../primitives/menu.js";
-import type { StaffLinkComponent } from "./link.js";
 import { useStaffShortcut } from "./shortcuts.js";
 
 export type RecordPosition = {
@@ -52,7 +52,7 @@ export function RecordPager({
   nextHref: string | null;
   /** What the list holds, singular: "order" gives "Previous order". */
   noun?: string;
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
   /** Client-side navigation for the J and K keys (e.g. `router.push`). */
   navigate: (href: string) => void;
 }) {

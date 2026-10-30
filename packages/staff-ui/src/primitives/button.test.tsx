@@ -27,9 +27,9 @@ vi.mock("@auction/ui/components/tooltip", async () => {
 });
 
 describe("StaffButton", () => {
-  it("offers a 44px live size for time-pressured actions", () => {
-    render(<StaffButton size="live">Hammer</StaffButton>);
-    expect(screen.getByRole("button", { name: "Hammer" }).className).toContain("h-11");
+  it("offers a 44px size for time-pressured actions", () => {
+    render(<StaffButton size="lg">Hammer</StaffButton>);
+    expect(screen.getByRole("button", { name: "Hammer" }).className).toContain("h-lax-control-lg");
   });
 
   it("is a real disabled button without a reason", () => {

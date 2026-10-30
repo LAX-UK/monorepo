@@ -25,6 +25,10 @@ export const NOTIFICATION_ALWAYS_DELIVERED_TYPES = [
   "source_of_funds_documents_requested",
   "source_of_funds_approved",
   "source_of_funds_rejected",
+  // Membership: a member left the organisation.
+  "organisation_member_left",
+  // Payout bank account changed: a fraud route, so the people who handle the money always hear.
+  "payout_bank_changed",
   // Roles and access.
   "staff_role_expired",
   "staff_role_expired_admin",
@@ -53,4 +57,16 @@ export function notificationSilencedByMute(
       ? mutedAccountIds.has(notice.legalEntityId)
       : (mutedAccountIds as readonly string[]).includes(notice.legalEntityId);
   return muted;
+}
+
+/**
+ * Security alerts that go out during a person's quiet hours too. Quiet hours drop email and push
+ * rather than delay them, and a payout bank change someone did not make has to be seen at once.
+ */
+export const NOTIFICATION_IGNORES_QUIET_HOURS_TYPES = ["payout_bank_changed"] as const;
+
+const IGNORES_QUIET_HOURS = new Set<string>(NOTIFICATION_IGNORES_QUIET_HOURS_TYPES);
+
+export function notificationIgnoresQuietHours(type: string): boolean {
+  return IGNORES_QUIET_HOURS.has(type);
 }

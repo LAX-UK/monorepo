@@ -2,13 +2,12 @@
 
 import { Calendar } from "@auction/ui/components/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
+import { TextInput, type TextInputProps, useField } from "@auction/ui/lax";
 import { CalendarDays } from "lucide-react";
 import * as React from "react";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { STAFF_TIME_ZONE, formatStaffDate, londonZoneLabel } from "../lib/format.js";
 import { StaffButton } from "../primitives/button.js";
-import { TextInput, type TextInputProps } from "../primitives/input.js";
-import { useStaffField } from "./field.js";
 
 /*
  * Dates are typed first ("24 Oct 2026", "24/10/2026", "2026-10-24"); the calendar is a shortcut,
@@ -141,7 +140,7 @@ export const DateInput = React.forwardRef<HTMLInputElement, DateInputProps>(
     { value, onValueChange, min, max, noCalendar = false, onBlur, placeholder, disabled, ...props },
     ref,
   ) => {
-    const field = useStaffField();
+    const field = useField();
     const [text, setText] = React.useState(() => (value ? formatStaffDay(value) : ""));
     const [open, setOpen] = React.useState(false);
     const lastEmitted = React.useRef<string | null>(value);

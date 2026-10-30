@@ -1,12 +1,12 @@
 "use client";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@auction/ui/components/tooltip";
+import type { LinkComponent } from "@auction/ui/lax";
 import { Cog, ImageOff } from "lucide-react";
 import type * as React from "react";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { formatStaffDate, formatStaffDateTime, formatStaffMoney } from "../lib/format.js";
 import { initialsOf } from "../shell/account-menu.js";
-import type { StaffLinkComponent } from "../shell/link.js";
 
 /*
  * The cells every staff list is made of, so the same value never looks two ways: the row's
@@ -77,7 +77,7 @@ export function PrimaryCell({
 }: {
   children: React.ReactNode;
   href?: string | null;
-  Link?: StaffLinkComponent;
+  Link?: LinkComponent;
   secondary?: React.ReactNode;
   /** Opens outside the tool, in a new tab. */
   external?: boolean;
@@ -136,7 +136,7 @@ export function CellLink({
   external = false,
 }: {
   href: string;
-  Link?: StaffLinkComponent;
+  Link?: LinkComponent;
   children: React.ReactNode;
   external?: boolean;
 }) {
@@ -228,7 +228,7 @@ export function PersonCell({
   name: string;
   secondary?: React.ReactNode;
   href?: string | null;
-  Link?: StaffLinkComponent;
+  Link?: LinkComponent;
   kind?: "person" | "system";
 }) {
   const label =

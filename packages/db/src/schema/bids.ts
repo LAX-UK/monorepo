@@ -56,6 +56,12 @@ export const bid = pgTable(
     index("bid_subject_id_idx").on(table.subjectId),
     index("bid_subject_id_created_at_idx").on(table.subjectId, table.createdAt),
     index("bid_buyer_legal_entity_id_idx").on(table.buyerLegalEntityId),
+    /** Account record search: the lots bid on for an account, or by one member for it. */
+    index("bid_buyer_entity_bidder_lot_idx").on(
+      table.buyerLegalEntityId,
+      table.bidderId,
+      table.lotId,
+    ),
     index("bid_lot_id_created_at_idx").on(table.lotId, table.createdAt),
     index("bid_clerk_user_id_idx").on(table.clerkUserId),
     uniqueIndex("bid_one_winner_per_lot_uniq")

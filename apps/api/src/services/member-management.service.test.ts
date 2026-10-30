@@ -23,7 +23,11 @@ const ENTITY_ID = TEST_ENTITY_ID;
 const TX = { tx: true } as never;
 const member = memberRow;
 
-function setup(rows: LegalEntityMemberRow[], stopped: StoppedInstruction[] = []) {
+function setup(
+  rows: LegalEntityMemberRow[],
+  stopped: StoppedInstruction[] = [],
+  accountKind: "individual" | "organisation" = "organisation",
+) {
   const { repo, byId } = inMemoryLegalEntityMembers(rows);
   const events: DomainEventInput[] = [];
   const sink: IDomainEventSink = {
@@ -37,6 +41,7 @@ function setup(rows: LegalEntityMemberRow[], stopped: StoppedInstruction[] = [])
     revokeFor: vi.fn<IMemberAuthorisationRevoker["revokeFor"]>(async () => undefined),
   };
   const realtime = { notifyProxyCancelled: vi.fn(async () => undefined) };
+  const leaveNotifier = { memberLeft: vi.fn(async () => undefined) };
   const membership = new LegalEntityMembershipGuard(repo);
   const service = new MemberManagementService({
     transactionRunner: { runInTransaction: (fn) => fn(TX) },
@@ -46,8 +51,19 @@ function setup(rows: LegalEntityMemberRow[], stopped: StoppedInstruction[] = [])
     bidStopper,
     authorisationRevoker,
     realtime,
+    accounts: { findById: vi.fn(async () => ({ kind: accountKind }) as never) },
+    leaveNotifier,
   });
-  return { service, repo, byId, events, bidStopper, authorisationRevoker, realtime };
+  return {
+    service,
+    repo,
+    byId,
+    events,
+    bidStopper,
+    authorisationRevoker,
+    realtime,
+    leaveNotifier,
+  };
 }
 
 const code = (promise: Promise<unknown>) =>
@@ -275,5 +291,77 @@ describe("MemberManagementService.transferOwnership", () => {
       ["legal_entity.member_role_changed", "admin"],
       ["legal_entity.member_role_changed", "owner"],
     ]);
+  });
+});
+
+describe("MemberManagementService.leave", () => {
+  const team = () => [
+    member("owner", "owner", { isPrimaryAdmin: true }),
+    member("agent", "buyer_agent"),
+    member("finance", "finance"),
+  ];
+
+  it("ends the membership like a removal: bids stop, authorisations end, owners are told", async () => {
+    const stopped: StoppedInstruction[] = [
+      { kind: "auto_bid", lotId: "lot-1" } as StoppedInstruction,
+    ];
+    const { service, byId, events, bidStopper, authorisationRevoker, realtime, leaveNotifier } =
+      setup(team(), stopped);
+    await service.leave("user-agent", ENTITY_ID);
+    expect(byId.get("agent")?.removedAt).toBeInstanceOf(Date);
+    expect(bidStopper.stopFor).toHaveBeenCalledWith(TX, {
+      legalEntityId: ENTITY_ID,
+      memberUserId: "user-agent",
+      actorUserId: "user-agent",
+    });
+    expect(authorisationRevoker.revokeFor).toHaveBeenCalledWith(
+      TX,
+      expect.objectContaining({ memberUserId: "user-agent", cause: "member_removed" }),
+    );
+    expect(events).toEqual([
+      expect.objectContaining({
+        eventType: "legal_entity.member_left",
+        actorUserId: "user-agent",
+        actingLegalEntityId: ENTITY_ID,
+        payload: {
+          member_user_id: "user-agent",
+          role_at_leaving: "buyer_agent",
+          stopped_bids: [{ kind: "auto_bid", lot_id: "lot-1" }],
+        },
+      }),
+    ]);
+    expect(realtime.notifyProxyCancelled).toHaveBeenCalledWith(
+      "lot-1",
+      "user-agent",
+      expect.any(String),
+    );
+    expect(leaveNotifier.memberLeft).toHaveBeenCalledWith({
+      legalEntityId: ENTITY_ID,
+      memberUserId: "user-agent",
+    });
+  });
+
+  it("refuses the last owner, who must transfer first, and changes nothing", async () => {
+    const { service, byId, events, leaveNotifier } = setup(team());
+    await expect(code(service.leave("user-owner", ENTITY_ID))).resolves.toBe(
+      "last_owner_must_transfer",
+    );
+    expect(byId.get("owner")?.removedAt ?? null).toBeNull();
+    expect(events).toEqual([]);
+    expect(leaveNotifier.memberLeft).not.toHaveBeenCalled();
+  });
+
+  it("lets an owner leave when another owner remains", async () => {
+    const { service } = setup([...team(), member("owner2", "owner")]);
+    await expect(code(service.leave("user-owner", ENTITY_ID))).resolves.toBe("ok");
+  });
+
+  it("refuses a person's own account and someone who is not a member", async () => {
+    const personal = setup(team(), [], "individual");
+    await expect(code(personal.service.leave("user-finance", ENTITY_ID))).resolves.toBe(
+      "personal_account",
+    );
+    const { service } = setup(team());
+    await expect(code(service.leave("user-stranger", ENTITY_ID))).resolves.toBe("not_a_member");
   });
 });

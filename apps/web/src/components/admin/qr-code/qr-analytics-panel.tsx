@@ -45,7 +45,7 @@ export function QrAnalyticsPanel({ qrCodeId, initialAnalytics }: Props) {
   return (
     <section
       aria-label="Scan analytics"
-      className="flex flex-col gap-4 rounded-staff-md border border-staff-line bg-staff-sunken p-3 text-staff-sm"
+      className="flex flex-col gap-4 rounded-staff-lg border border-staff-line bg-staff-sunken p-3 text-staff-sm"
     >
       <div className="flex flex-col gap-3">
         <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
@@ -233,7 +233,7 @@ function QrBreakdownList({
 }) {
   if (rows.length === 0) return null;
   return (
-    <div className="flex flex-col gap-2 rounded-staff-md border border-staff-line bg-staff-surface p-3">
+    <div className="flex flex-col gap-2 rounded-staff-lg border border-staff-line bg-staff-surface p-3">
       <h4 className="text-staff-xs font-medium text-staff-muted">{title}</h4>
       <ul className="flex flex-col gap-2">
         {rows.map((row) => {
@@ -264,7 +264,7 @@ function QrRecentScans({ rows }: { rows: QrCodeRecentScan[] }) {
   return (
     <div className="flex flex-col gap-2">
       <h4 className="text-staff-xs font-medium text-staff-muted">Recent scans</h4>
-      <ul className="max-h-48 divide-y divide-staff-line-subtle overflow-y-auto overscroll-contain rounded-staff-md border border-staff-line bg-staff-surface">
+      <ul className="max-h-48 divide-y divide-staff-line-subtle overflow-y-auto overscroll-contain rounded-staff-lg border border-staff-line bg-staff-surface">
         {rows.map((row, index) => (
           <li key={`${row.scannedAt}-${index}`} className="px-3 py-2 text-staff-xs">
             <p className="font-medium text-staff-fg">{formatDateTime(row.scannedAt)}</p>
@@ -283,11 +283,11 @@ function QrRecentScans({ rows }: { rows: QrCodeRecentScan[] }) {
 function QrAnalyticsSkeleton() {
   return (
     <div className="flex flex-col gap-3" aria-busy="true" aria-label="Loading analytics">
-      <Skeleton className="h-16 w-full rounded-staff-md" />
-      <Skeleton className="h-36 w-full rounded-staff-md" />
+      <Skeleton className="h-16 w-full rounded-staff-lg" />
+      <Skeleton className="h-36 w-full rounded-staff-lg" />
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-        <Skeleton className="h-28 rounded-staff-md" />
-        <Skeleton className="h-28 rounded-staff-md" />
+        <Skeleton className="h-28 rounded-staff-lg" />
+        <Skeleton className="h-28 rounded-staff-lg" />
       </div>
     </div>
   );

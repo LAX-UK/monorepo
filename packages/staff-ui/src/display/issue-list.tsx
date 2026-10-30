@@ -1,9 +1,8 @@
+import { type LinkComponent, StatusBadge } from "@auction/ui/lax";
 import { CircleAlert, CircleCheck, Info, TriangleAlert } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
-import type { StaffLinkComponent } from "../shell/link.js";
-import { StatusBadge } from "./status-badge.js";
 
 export type IssueItem = {
   id: string;
@@ -39,7 +38,7 @@ export function IssueList({
   className,
 }: {
   items: readonly IssueItem[];
-  Link: StaffLinkComponent;
+  Link: LinkComponent;
   title?: string;
   allClear?: React.ReactNode | null;
   /** Hides the advisory rows for this person; leave out when they cannot be dismissed. */
@@ -52,7 +51,7 @@ export function IssueList({
   return (
     <section
       aria-label={title}
-      className={cn("rounded-staff-md border border-staff-line bg-staff-surface", className)}
+      className={cn("rounded-staff-lg border border-staff-line bg-staff-surface", className)}
     >
       <header className="flex min-h-12 items-center justify-between gap-3 border-b border-staff-line-subtle px-4 py-2">
         <h2 className="font-staff text-staff-md font-semibold text-staff-fg">{title}</h2>

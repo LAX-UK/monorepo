@@ -143,7 +143,7 @@ export function LotRunwayPanel({
               <SaleroomPendingSubmit
                 pendingLabel="Advancing…"
                 variant="primary"
-                size="live"
+                size="lg"
                 disabled={!sessionLive}
                 onRun={() => adminSaleroomAdvanceAction({ saleId, lotId: nextLot.id })}
               >
@@ -156,7 +156,7 @@ export function LotRunwayPanel({
             <div className="mt-4 flex flex-wrap items-end gap-3">
               <Field label="Jump to lot" className="w-full sm:w-72">
                 <EnumSelect
-                  size="live"
+                  size="lg"
                   value={advanceLotId || null}
                   onValueChange={setAdvanceLotId}
                   options={advanceableLots.map((l) => ({
@@ -168,7 +168,7 @@ export function LotRunwayPanel({
               <SaleroomPendingSubmit
                 pendingLabel="Advancing…"
                 variant="secondary"
-                size="live"
+                size="lg"
                 disabled={!sessionLive || advanceableLots.length === 0}
                 onRun={() => adminSaleroomAdvanceAction({ saleId, lotId: advanceLotId })}
               >
@@ -177,7 +177,7 @@ export function LotRunwayPanel({
               {nextLot ? (
                 <StaffButton
                   variant="ghost"
-                  size="live"
+                  size="lg"
                   disabled={!sessionLive}
                   onClick={() => setAdvanceLotId(nextLot.id)}
                 >

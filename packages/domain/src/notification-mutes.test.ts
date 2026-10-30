@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   NOTIFICATION_ALWAYS_DELIVERED_TYPES,
+  NOTIFICATION_IGNORES_QUIET_HOURS_TYPES,
+  notificationIgnoresQuietHours,
   notificationIsMutable,
   notificationSilencedByMute,
 } from "./notification-mutes.js";
@@ -19,6 +21,8 @@ describe("notifications a mute never silences", () => {
       "source_of_funds_documents_requested",
       "source_of_funds_approved",
       "source_of_funds_rejected",
+      "organisation_member_left",
+      "payout_bank_changed",
       "staff_role_expired",
       "staff_role_expired_admin",
       "staff_role_changed",
@@ -58,5 +62,15 @@ describe("notificationSilencedByMute", () => {
     expect(notificationSilencedByMute({ type: "outbid", legalEntityId: null }, ["org-1"])).toBe(
       false,
     );
+  });
+});
+
+describe("notices that go out during quiet hours", () => {
+  it("is only the payout bank change, which is also always delivered", () => {
+    expect([...NOTIFICATION_IGNORES_QUIET_HOURS_TYPES]).toEqual(["payout_bank_changed"]);
+    for (const type of NOTIFICATION_IGNORES_QUIET_HOURS_TYPES) {
+      expect(NOTIFICATION_ALWAYS_DELIVERED_TYPES).toContain(type);
+    }
+    expect(notificationIgnoresQuietHours("lot_won")).toBe(false);
   });
 });

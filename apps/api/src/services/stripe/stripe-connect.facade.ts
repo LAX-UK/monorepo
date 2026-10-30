@@ -19,6 +19,7 @@ import type {
   InitiateTransferResult,
 } from "../interfaces/stripe-connect.js";
 import { ConnectAccountService } from "./connect/connect-account.service.js";
+import type { ConnectBankChangeHandler } from "./connect/connect-bank-change.handler.js";
 import { ConnectLifecyclePromoter } from "./connect/connect-lifecycle-promoter.js";
 import { ConnectLinkService } from "./connect/connect-link.service.js";
 import {
@@ -47,6 +48,7 @@ export class StripeConnectFacade implements IStripeConnectService {
     payoutRepository?: IPayoutRepository,
     domainEventSink?: IDomainEventSink,
     redis?: Redis,
+    bankChange?: Pick<ConnectBankChangeHandler, "handle">,
   ) {
     const factory = stripeFactory;
     const lifecyclePromoter = new ConnectLifecyclePromoter(
@@ -68,6 +70,7 @@ export class StripeConnectFacade implements IStripeConnectService {
       transactionRunner,
       factory,
       this.accountService,
+      bankChange,
     );
     this.transferService = new ConnectTransferService(
       env,

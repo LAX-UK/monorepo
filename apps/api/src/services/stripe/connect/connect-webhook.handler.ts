@@ -5,6 +5,10 @@ import { tryClaimProcessedStripeEvent } from "../../../lib/stripe-processed-even
 import { recordMoneyPathEvent } from "../../../middleware/metrics.js";
 import type { IConnectAccountWebhookPort } from "../../interfaces/stripe-connect.js";
 import { StripeConnectNotConfiguredError } from "../../interfaces/stripe-connect.js";
+import {
+  BANK_CHANGE_EVENT_TYPES,
+  type ConnectBankChangeHandler,
+} from "./connect-bank-change.handler.js";
 
 const CONNECT_ACCOUNT_EVENT_TYPES = new Set([
   "account.updated",
@@ -17,6 +21,8 @@ export class ConnectWebhookHandler {
     private readonly transactionRunner: ITransactionRunner,
     private readonly stripeFactory: IStripeClientFactory,
     private readonly accountPort: IConnectAccountWebhookPort,
+    /** Payout bank account changes: Activity and a required notice to the organisation. */
+    private readonly bankChange?: Pick<ConnectBankChangeHandler, "handle">,
   ) {}
 
   private requireStripe(): Stripe {
@@ -40,6 +46,9 @@ export class ConnectWebhookHandler {
   }
 
   async handleConnectedAccountEvent(event: Stripe.Event): Promise<{ processed: boolean }> {
+    if (BANK_CHANGE_EVENT_TYPES.has(event.type) && this.bankChange) {
+      return this.bankChange.handle(event);
+    }
     if (!CONNECT_ACCOUNT_EVENT_TYPES.has(event.type)) {
       recordMoneyPathEvent("stripe_connect_webhook_unhandled_event");
       return { processed: false };

@@ -1,13 +1,11 @@
 "use client";
 
+import { fieldBox, readOnlyBox, useField } from "@auction/ui/lax";
 import { Bold, Italic, Link2, Unlink } from "lucide-react";
 import * as React from "react";
-import { staffReadOnlyBox } from "../access/read-only.js";
 import { cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
-import { staffFieldBox } from "../primitives/input.js";
 import { StaffTooltip, StaffTooltipProvider } from "../primitives/menu.js";
-import { useStaffField } from "./field.js";
 import { type RichTextSpan, htmlToSpans, normalizeSpans, spansToHtml } from "./rich-text-model.js";
 
 export type RichTextFieldProps = {
@@ -72,7 +70,7 @@ export function RichTextField({
   id,
   rows = 4,
 }: RichTextFieldProps) {
-  const field = useStaffField();
+  const field = useField();
   const controlId = id ?? field?.controlId;
   const isInvalid = invalid ?? field?.invalid ?? false;
   const isDisabled = disabled ?? field?.disabled ?? false;
@@ -212,7 +210,7 @@ export function RichTextField({
   return (
     <div
       {...(readOnly ? { "data-readonly": "" } : {})}
-      className={cn(staffFieldBox, staffReadOnlyBox, "h-auto flex-col items-stretch gap-0 p-0")}
+      className={cn(fieldBox, readOnlyBox, "h-auto flex-col items-stretch gap-0 p-0")}
     >
       {readOnly ? null : (
         <StaffTooltipProvider>

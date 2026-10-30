@@ -19,7 +19,7 @@ export function FactsPreview({ preview }: { preview: FactsPreviewModel }) {
   return (
     <aside
       aria-label="Shoppers will see"
-      className="flex flex-col gap-4 rounded-staff-md border border-staff-line bg-staff-sunken p-4"
+      className="flex flex-col gap-4 rounded-staff-lg border border-staff-line bg-staff-sunken p-4"
     >
       <h3 className="font-staff text-staff-md font-semibold text-staff-fg">Shoppers will see</h3>
       {preview.state === "partial" ? (

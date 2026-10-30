@@ -40,7 +40,7 @@ export function SofSettlementBreakdown({ detail }: Props) {
 
   return (
     <div className="flex flex-col gap-3">
-      <div className="overflow-x-auto rounded-staff-md border border-staff-line">
+      <div className="overflow-x-auto rounded-staff-lg border border-staff-line">
         <table className="w-full min-w-[32rem] text-left text-staff-sm">
           <caption className="sr-only">Payments and won lots held by this case</caption>
           <thead>

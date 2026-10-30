@@ -1,7 +1,7 @@
 import type { TemplateName, TemplateVarsByName } from "@auction/email";
 import { formatMoneyMajor } from "@auction/email";
 import type { IEmailService } from "@auction/email";
-import type { IUserRepository } from "@auction/persistence/interfaces";
+import type { IInvoiceDetailsReader, IUserRepository } from "@auction/persistence/interfaces";
 import { notificationTypeToTemplate } from "@auction/persistence/lib";
 import type { BillToContext } from "@auction/types";
 import { createUnsubscribeToken } from "../lib/email-unsubscribe-token.js";
@@ -50,6 +50,8 @@ export class EmailNotificationChannel implements INotificationChannel {
     private readonly users: IUserRepository,
     private readonly apiBaseUrl: string,
     private readonly unsubscribeSecret: string,
+    /** An organisation's billing email: invoices are copied there. */
+    private readonly invoiceDetails: IInvoiceDetailsReader,
   ) {}
 
   supports(type: string): boolean {
@@ -73,6 +75,28 @@ export class EmailNotificationChannel implements INotificationChannel {
         ? { idempotencyKey: payload.meta.emailIdempotencyKey }
         : {}),
       vars: this.varsFor(template, payload, recipient.name, userId) as never,
+    });
+    if (template === "payment-invoice") await this.copyInvoiceToBilling(payload, recipient.email);
+  }
+
+  /**
+   * An organisation's invoice also goes to the billing email its finance team set, once per
+   * payment, unless that is the member's own address. The member keeps their copy: there is no
+   * cc in the outbox, so the billing inbox gets its own message.
+   */
+  private async copyInvoiceToBilling(payload: NotificationPayload, memberEmail: string) {
+    if (!payload.legalEntityId) return;
+    const details = await this.invoiceDetails.find(payload.legalEntityId);
+    const billingEmail = details?.billingEmail;
+    if (!billingEmail || billingEmail.toLowerCase() === memberEmail.toLowerCase()) return;
+    const key = payload.meta?.paymentId ?? payload.meta?.invoiceNumber ?? payload.lotId ?? null;
+    await this.email.enqueue({
+      template: "payment-invoice",
+      to: billingEmail,
+      recipientResolution: "snapshot",
+      category: "transactional",
+      ...(key ? { idempotencyKey: `payment-invoice-billing:${payload.legalEntityId}:${key}` } : {}),
+      vars: this.varsFor("payment-invoice", payload, "", "") as never,
     });
   }
 
@@ -152,6 +176,7 @@ export class EmailNotificationChannel implements INotificationChannel {
           addressLines: [],
           vatLine: null,
           addressIncomplete: true,
+          poReference: null,
         };
         return {
           userName,
@@ -227,6 +252,13 @@ export class EmailNotificationChannel implements INotificationChannel {
           unsubscribeUrl,
         };
       }
+      case "payout-bank-changed-notice":
+        return {
+          userName,
+          entityName: payload.meta?.organisationName ?? "your organisation",
+          bankLast4: payload.meta?.bankLast4 ?? null,
+          payoutsUrl: `${this.baseUrl()}/organisation/payouts`,
+        };
       default:
         throw new Error(`Notification payload cannot render template ${template}`);
     }

@@ -56,6 +56,7 @@ export function ArtHeaderUtilityActions({
       )}
       {account.kind === "authenticated" ? (
         <ArtGeneralEnquirySheet
+          viewerKind="authenticated"
           contact={{
             name: account.displayName,
             email: account.email,

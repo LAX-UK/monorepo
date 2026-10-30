@@ -1,5 +1,7 @@
 "use client";
 
+import { useReturnFocus } from "@auction/ui/lax";
+
 import {
   Sheet,
   SheetClose,
@@ -12,7 +14,6 @@ import * as React from "react";
 import { type KeyValueItem, KeyValueList } from "../display/key-value-list.js";
 import { discardPrompt } from "../forms/unsaved-changes.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
-import { useReturnFocus } from "../lib/return-focus.js";
 import { StaffButton } from "../primitives/button.js";
 import { MetaItem } from "../shell/page-header.js";
 import { ConfirmActionDialog } from "./staff-dialog.js";

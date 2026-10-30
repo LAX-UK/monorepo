@@ -194,6 +194,7 @@ describe("renderEmail", () => {
         billToName: "Acme Ltd",
         addressLines: ["1 High St", "London EC1", "GB"],
         vatLine: "VAT: GB123",
+        poReference: "PO-4471",
         addressIncomplete: false,
       },
     });

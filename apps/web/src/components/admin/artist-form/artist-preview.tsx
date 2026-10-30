@@ -18,7 +18,7 @@ export function ArtistPreview({ data, scenario }: Props) {
 
   return (
     <FormSection title="Preview" description="How the profile reads so far.">
-      <div className="flex gap-4 rounded-staff-md border border-staff-line bg-staff-surface p-4">
+      <div className="flex gap-4 rounded-staff-lg border border-staff-line bg-staff-surface p-4">
         <div className="w-24 shrink-0">
           {portraitSrc ? (
             <RecordImage src={portraitSrc} alt="" className="aspect-square" />

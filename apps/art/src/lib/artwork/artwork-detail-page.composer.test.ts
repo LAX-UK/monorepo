@@ -86,6 +86,20 @@ describe("composeArtworkDetailPage", () => {
     });
   });
 
+  it("leaves the related rail out with fewer than three works", async () => {
+    const services = fakeArtServices();
+    services.catalogue.getArtwork.mockResolvedValue(artworkDetail());
+    services.catalogue.listArtworks.mockImplementation(async (query) =>
+      query.relatedTo ? { items: [] } : { items: [artworkSummary({ slug: "own-1" })] },
+    );
+    const result = await composeArtworkDetailPage(services, {
+      slug: "warm-basket",
+      enquireRequested: false,
+      siteUrl: SITE_URL,
+    });
+    expect(result.kind === "ok" && result.vm.relatedArtworks).toEqual([]);
+  });
+
   it("still renders when related reads fail", async () => {
     const services = fakeArtServices();
     services.catalogue.getArtwork.mockResolvedValue(artworkDetail());
@@ -139,17 +153,22 @@ describe("composeArtworkDetailPage", () => {
       artistName: "Flora Powers",
       imageUrl: "/warm-basket.webp",
       autoOpen: true,
+      confirmation: expect.objectContaining({ title: "Enquiry sent" }),
     });
     expect(result.vm.priceLabel).toBe("Price on request");
     expect(result.vm.keySpecs).toEqual([
       { label: "Year", lines: ["2024"] },
+      { label: "Type", lines: ["Painting"] },
       { label: "Medium", lines: ["Oil on linen"] },
       { label: "Dimensions", lines: ["40 × 50 cm"] },
     ]);
+    expect(result.vm.promise?.reply).toBe("The gallery team replies within one working day.");
+    expect(result.vm.faqs.length).toBeGreaterThan(0);
     expect(result.vm.favoriteAuth.loginHref).toBe("/login?returnTo=%2Fartworks%2Fwarm-basket");
     expect(result.vm.specialistContact).toEqual({
       kind: "ready",
       contact: { name: "", email: "", phone: "" },
+      viewerKind: "guest",
     });
   });
 
@@ -179,11 +198,13 @@ describe("composeArtworkDetailPage", () => {
       href: "/artists/flora-powers",
       portraitUrl: "/flora.webp",
       bio: "Flora Powers paints still lifes.",
+      facts: "Painter",
       following: true,
     });
     expect(result.kind === "ok" && result.vm.specialistContact).toEqual({
       kind: "ready",
       contact: { name: "Ada Collector", email: "ada@example.com", phone: "+447700900123" },
+      viewerKind: "authenticated",
     });
   });
 
@@ -220,6 +241,7 @@ describe("composeArtworkDetailPage", () => {
       artistName: "Flora Powers",
       imageUrl: "/warm-basket.webp",
       autoOpen: true,
+      confirmation: expect.objectContaining({ title: "Enquiry sent" }),
     });
     expect(result.vm.saved).toBe(true);
   });
@@ -277,6 +299,7 @@ describe("Editions available in LAX Shop", () => {
         title: "Warm Basket (print)",
         href: "https://shop.thelax.art/artworks/warm-basket-print",
         imageUrl: "/warm-basket.webp",
+        artistName: "Flora Powers",
         editionLine: "Limited edition of 24 · Available",
         priceLabel: "£120.00",
       },

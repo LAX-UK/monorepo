@@ -7,11 +7,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@auction/ui/components/select";
+import { fieldBox, readOnlyBox, useField } from "@auction/ui/lax";
 import * as React from "react";
-import { staffReadOnlyBox } from "../access/read-only.js";
 import { STAFF_LAYER, cn } from "../lib/cn.js";
-import { staffFieldBox } from "../primitives/input.js";
-import { useStaffField } from "./field.js";
 
 export type EnumOption<T extends string> = {
   value: T;
@@ -27,7 +25,7 @@ export type EnumSelectProps<T extends string> = {
   options: readonly EnumOption<T>[];
   placeholder?: string;
   /** `live` is 44px at every pointer, for fields filled under time pressure. */
-  size?: "sm" | "md" | "live";
+  size?: "sm" | "md" | "lg";
   disabled?: boolean;
   invalid?: boolean;
   id?: string;
@@ -51,7 +49,7 @@ export function EnumSelect<T extends string>({
   className,
   ...aria
 }: EnumSelectProps<T>) {
-  const field = useStaffField();
+  const field = useField();
   const isInvalid = invalid ?? field?.invalid ?? false;
   const byValue = React.useMemo(() => new Map(options.map((o) => [o.value, o])), [options]);
 
@@ -68,11 +66,11 @@ export function EnumSelect<T extends string>({
         aria-labelledby={field.labelId}
         {...(field.describedBy ? { "aria-describedby": field.describedBy } : {})}
         className={cn(
-          staffFieldBox,
-          staffReadOnlyBox,
+          fieldBox,
+          readOnlyBox,
           size === "sm" && "h-control-sm text-staff-sm",
           size === "md" && "h-control-md text-staff-md",
-          size === "live" && "h-11 text-staff-md",
+          size === "lg" && "h-11 text-staff-md",
           className,
         )}
       >
@@ -96,11 +94,11 @@ export function EnumSelect<T extends string>({
         {...(field?.describedBy ? { "aria-describedby": field.describedBy } : {})}
         {...(aria["aria-label"] ? { "aria-label": aria["aria-label"] } : {})}
         className={cn(
-          staffFieldBox,
+          fieldBox,
           "justify-between shadow-none",
           size === "sm" && "h-control-sm text-staff-sm",
           size === "md" && "h-control-md text-staff-md",
-          size === "live" && "h-11 text-staff-md",
+          size === "lg" && "h-11 text-staff-md",
           "staff-focus focus:ring-0 focus:ring-offset-0",
           "aria-invalid:border-staff-danger",
           "disabled:cursor-not-allowed disabled:border-staff-line disabled:bg-staff-sunken disabled:text-staff-disabled disabled:opacity-100",
@@ -121,7 +119,7 @@ export function EnumSelect<T extends string>({
             value={option.value}
             {...(option.disabled ? { disabled: true } : {})}
             className={cn(
-              "min-h-control-sm rounded-staff-xs py-1.5 pr-8 pl-2.5 font-staff text-staff-sm text-staff-fg",
+              "min-h-control-sm rounded-staff-sm py-1.5 pr-8 pl-2.5 font-staff text-staff-sm text-staff-fg",
               "focus:bg-staff-hover focus:text-staff-fg data-[state=checked]:font-medium",
               "data-[disabled]:text-staff-disabled data-[disabled]:opacity-100",
               "[&_svg]:size-4",

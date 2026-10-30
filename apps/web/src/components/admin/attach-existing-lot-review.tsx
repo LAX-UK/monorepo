@@ -278,7 +278,7 @@ export function AttachExistingLotReview({
       ) : null}
 
       {previewLot ? (
-        <div className="flex flex-col gap-4 rounded-staff-md border border-staff-line bg-staff-surface p-4">
+        <div className="flex flex-col gap-4 rounded-staff-lg border border-staff-line bg-staff-surface p-4">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <p className="text-staff-md font-semibold text-staff-fg">{attachLotReviewPrompt()}</p>

@@ -29,6 +29,8 @@ import { createLotLifecycle } from "./container/create-lot-lifecycle.js";
 import { createOrganisationBuyingServices } from "./container/create-organisation-buying-services.js";
 import { createOrganisationHomeServices } from "./container/create-organisation-home-services.js";
 import { createOrganisationMembershipServices } from "./container/create-organisation-membership-services.js";
+import { createOrganisationTeamServices } from "./container/create-organisation-team-services.js";
+import { createOrganisationWorkspaceServices } from "./container/create-organisation-workspace-services.js";
 import { createPaymentsServices } from "./container/create-payments-services.js";
 import { createPlatformCronRouteServices } from "./container/create-platform-cron-route-services.js";
 import { createPlatformServices } from "./container/create-platform-services.js";
@@ -343,6 +345,16 @@ export function createContainer(env: Env): Container {
       groupCheckout: payments.paymentGroupCheckout,
     },
   });
+  const organisationWorkspace = createOrganisationWorkspaceServices({
+    db,
+    legalEntities: repos.legalEntityRepository,
+    connectEnforced: () => platform.stripeConnectService.isConfigured(),
+    buyerAgentAuthorisations: buyerAgents.mine,
+  });
+  const organisationTeam = createOrganisationTeamServices({
+    db,
+    events: platform.domainEventSink,
+  });
 
   const atg = new AtgAdminService(
     repos.atgLinkReader,
@@ -611,6 +623,8 @@ export function createContainer(env: Env): Container {
     organisationMembership,
     organisationHome,
     organisationBuying: organisationBuying.client,
+    organisationWorkspace,
+    organisationTeam,
     queueAdmin: userMisc.queueAdmin,
     closeBullQueues: userMisc.closeBullQueues,
   };
@@ -654,6 +668,8 @@ export type {
   ContainerOrganisationMembershipRoutesSlice,
   ContainerOrganisationHomeRoutesSlice,
   ContainerOrganisationBuyingRoutesSlice,
+  ContainerOrganisationWorkspaceRoutesSlice,
+  ContainerOrganisationTeamRoutesSlice,
   ContainerLegalEntityRoutesSlice,
   ContainerLotCatalogSlice,
   ContainerLotDocumentRoutesSlice,

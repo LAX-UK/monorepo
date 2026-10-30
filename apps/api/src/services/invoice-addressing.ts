@@ -1,6 +1,10 @@
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
-import type { IAddressRepository, IProfileReader } from "@auction/persistence/interfaces";
+import type {
+  IAddressRepository,
+  IInvoiceDetailsReader,
+  IProfileReader,
+} from "@auction/persistence/interfaces";
 import type { BillToContext } from "@auction/types";
 import type { AppLogger } from "../lib/logger.js";
 
@@ -53,6 +57,8 @@ export class InvoiceAddressingService {
     private readonly legalEntities: ILegalEntityRepository,
     private readonly profiles: IProfileReader,
     private readonly addresses: IAddressRepository,
+    /** The organisation's own invoice address and PO reference, when its finance team set them. */
+    private readonly invoiceDetails: IInvoiceDetailsReader,
     private readonly log: AppLogger,
   ) {}
 
@@ -69,6 +75,7 @@ export class InvoiceAddressingService {
           addressLines: [],
           vatLine: null,
           addressIncomplete: true,
+          poReference: null,
         },
         warnings,
       };
@@ -85,6 +92,7 @@ export class InvoiceAddressingService {
           addressLines: [],
           vatLine: null,
           addressIncomplete: true,
+          poReference: null,
         },
         warnings,
       };
@@ -104,6 +112,7 @@ export class InvoiceAddressingService {
           addressLines: [],
           vatLine: null,
           addressIncomplete: true,
+          poReference: null,
         },
         warnings,
       };
@@ -111,7 +120,14 @@ export class InvoiceAddressingService {
 
     if (entity.kind === "organisation") {
       const name = entity.legalName?.trim() || entity.displayName.trim() || "—";
-      const addr = await this.legalEntities.findPreferredBillToLegalEntityAddress(entity.id);
+      const [details, registered] = await Promise.all([
+        this.invoiceDetails.find(entity.id),
+        this.legalEntities.findPreferredBillToLegalEntityAddress(entity.id),
+      ]);
+      // The finance team's invoice address wins over the registered billing address.
+      const addr = details?.address
+        ? { ...details.address, state: details.address.region }
+        : registered;
       let addressLines: string[] = [];
       let addressIncomplete = false;
       if (!addr) {
@@ -133,6 +149,7 @@ export class InvoiceAddressingService {
           addressLines,
           vatLine,
           addressIncomplete,
+          poReference: details?.poReference ?? null,
         },
         warnings,
       };
@@ -149,6 +166,7 @@ export class InvoiceAddressingService {
           addressLines: [],
           vatLine: null,
           addressIncomplete: true,
+          poReference: null,
         },
         warnings,
       };
@@ -175,6 +193,7 @@ export class InvoiceAddressingService {
         addressLines,
         vatLine: null,
         addressIncomplete,
+        poReference: null,
       },
       warnings,
     };

@@ -55,6 +55,41 @@ function DetailText({ detail }: { detail: MarketingGalleryTeamDetail }) {
   );
 }
 
+/**
+ * The gallery's direct lines (phone, email, address, hours), one icon and spoken label each.
+ * Shared by the gallery team band and the enquiry confirmation. Renders nothing without details.
+ */
+export function MarketingGalleryDetailList({
+  details,
+  className,
+}: {
+  details: readonly MarketingGalleryTeamDetail[];
+  className?: string;
+}) {
+  if (details.length === 0) return null;
+  return (
+    <ul
+      className={cn(
+        "m-0 flex list-none flex-col gap-1 p-0 font-body text-sm leading-6 text-on-surface-variant",
+        className,
+      )}
+    >
+      {details.map((detail) => {
+        const { icon: Icon, label } = DETAIL_KINDS[detail.kind];
+        return (
+          <li key={detail.kind} className="flex items-start gap-2">
+            <Icon className="mt-1 size-4" />
+            <span className="min-w-0">
+              <span className="sr-only">{label}: </span>
+              <DetailText detail={detail} />
+            </span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
 export type MarketingGalleryTeamBandProps = {
   /** Short sentence-case label above the title, e.g. "The gallery team". */
   eyebrow: string;
@@ -124,22 +159,7 @@ export function MarketingGalleryTeamBand({
             <p className="m-0 font-body text-sm leading-5 text-on-surface-variant">{note}</p>
           ) : null}
         </div>
-        {details.length > 0 ? (
-          <ul className="m-0 mt-1 flex list-none flex-col gap-1 p-0 font-body text-sm leading-6 text-on-surface-variant">
-            {details.map((detail) => {
-              const { icon: Icon, label } = DETAIL_KINDS[detail.kind];
-              return (
-                <li key={detail.kind} className="flex items-start gap-2">
-                  <Icon className="mt-1 size-4" />
-                  <span className="min-w-0">
-                    <span className="sr-only">{label}: </span>
-                    <DetailText detail={detail} />
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        ) : null}
+        <MarketingGalleryDetailList details={details} className="mt-1" />
       </div>
     </section>
   );

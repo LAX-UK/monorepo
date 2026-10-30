@@ -1,4 +1,5 @@
 import type { Database } from "@auction/db";
+import { DrizzleInvoiceDetailsRepository } from "@auction/persistence/repositories";
 import type { Env } from "../env.js";
 import { createBaseLogger } from "../lib/logger.js";
 import type {
@@ -10,9 +11,12 @@ import type {
 } from "../services/interfaces/payout.js";
 import type { IStripeConnectService } from "../services/interfaces/stripe-connect.js";
 import { InvoiceAddressingService } from "../services/invoice-addressing.js";
+import type { NotificationDispatcher } from "../services/notification.dispatcher.js";
+import { OrganisationTeamNotifier } from "../services/organisation-team/organisation-team.notifier.js";
 import { PaymentRefundReconcileService } from "../services/payment/payment-refund-reconcile.service.js";
 import { PayoutService } from "../services/payout.service.js";
 import { PayoutAdjustmentService } from "../services/payout/payout-adjustment.service.js";
+import { ConnectBankChangeHandler } from "../services/stripe/connect/connect-bank-change.handler.js";
 import { StripeConnectFacade } from "../services/stripe/stripe-connect.facade.js";
 import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerPlatformCore } from "./create-platform-core.js";
@@ -33,6 +37,8 @@ export type ContainerPlatformPayoutServices = {
 export type CreatePlatformPayoutServicesInput = {
   env: Env;
   db: Database;
+  /** In-app notices: the payout bank account changed. */
+  notificationDispatcher: Pick<NotificationDispatcher, "dispatch">;
   infra: ContainerInfra;
   repos: ContainerRepositories;
   core: ContainerPlatformCore;
@@ -79,6 +85,18 @@ export function createPlatformPayoutServices(
     payoutRepository,
     domainEventSink,
     redis,
+    new ConnectBankChangeHandler({
+      transactionRunner: core.transactionRunner,
+      accounts: repos.legalEntityConnectRepository,
+      events: domainEventSink,
+      notifier: new OrganisationTeamNotifier({
+        dispatcher: input.notificationDispatcher,
+        recipients: repos.legalEntityNotificationRecipients,
+        people: {
+          nameOf: async (userId) => (await repos.profileRepo.getProfile(userId))?.name ?? null,
+        },
+      }),
+    }),
   );
   const paymentRefundReconcileService = new PaymentRefundReconcileService(
     core.transactionRunner,
@@ -92,6 +110,7 @@ export function createPlatformPayoutServices(
     legalEntityRepository,
     profileRepo,
     addressRepo,
+    new DrizzleInvoiceDetailsRepository(input.db),
     createBaseLogger(env).child({ component: "invoice_addressing" }),
   );
 

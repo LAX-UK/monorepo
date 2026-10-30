@@ -120,7 +120,7 @@ export function ArtworkMediaField({
       </p>
 
       {images.length === 0 && importedImageUrl ? (
-        <div className="flex items-center gap-3 rounded-staff-md border border-staff-line px-3 py-2.5">
+        <div className="flex items-center gap-3 rounded-staff-lg border border-staff-line px-3 py-2.5">
           <ArtworkThumbnail url={importedImageUrl} size="md" />
           <div className="min-w-0 text-staff-sm">
             <p className="font-medium text-staff-fg">Imported image</p>
@@ -134,7 +134,7 @@ export function ArtworkMediaField({
       {images.length > 0 ? (
         <ol
           aria-label="Images, in display order"
-          className="divide-y divide-staff-line-subtle rounded-staff-md border border-staff-line"
+          className="divide-y divide-staff-line-subtle rounded-staff-lg border border-staff-line"
         >
           {images.map((image, index) => {
             const altId = `${altBase}-alt-${index}`;
@@ -238,7 +238,7 @@ export function ArtworkMediaField({
             <li
               key={item.id}
               className={cn(
-                "flex items-center gap-3 rounded-staff-md border px-3 py-2 text-staff-sm",
+                "flex items-center gap-3 rounded-staff-lg border px-3 py-2 text-staff-sm",
                 item.error ? "border-staff-danger/40 bg-staff-danger-bg" : "border-staff-line",
               )}
             >

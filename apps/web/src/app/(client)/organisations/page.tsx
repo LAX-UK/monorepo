@@ -127,7 +127,7 @@ export default async function OrganisationsHubPage() {
         >
           <div className="flex flex-wrap items-center gap-2">
             <span className="font-medium text-on-surface">{personal.displayName}</span>
-            <StatusBadge variant="neutral">{subkindLabel(personal.subkind)}</StatusBadge>
+            <StatusBadge tone="neutral">{subkindLabel(personal.subkind)}</StatusBadge>
           </div>
         </DashboardSection>
       ) : null}

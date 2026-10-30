@@ -1,11 +1,9 @@
+import { Field, ReadOnlyView, TextInput } from "@auction/ui/lax";
 // @vitest-environment jsdom
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { EnumSelect } from "../forms/enum-select.js";
-import { Field } from "../forms/field.js";
 import { StaffCheckbox } from "../primitives/choice.js";
-import { TextInput } from "../primitives/input.js";
-import { StaffReadOnly } from "./read-only.js";
 
 function form() {
   return (
@@ -25,9 +23,9 @@ function form() {
   );
 }
 
-describe("StaffReadOnly", () => {
+describe("ReadOnlyView", () => {
   it("shows values as read-only content: no disabled controls, the select as text", () => {
-    render(<StaffReadOnly>{form()}</StaffReadOnly>);
+    render(<ReadOnlyView>{form()}</ReadOnlyView>);
     const title = screen.getByLabelText("Title");
     expect(title).toHaveAttribute("readonly");
     expect(title).not.toBeDisabled();

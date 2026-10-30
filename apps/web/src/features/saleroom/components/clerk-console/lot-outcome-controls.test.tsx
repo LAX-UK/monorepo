@@ -18,13 +18,13 @@ afterEach(() => {
 describe("LotOutcomeControls", () => {
   it("keeps Hammer primary by default and Pass secondary", () => {
     render(<LotOutcomeControls saleId="sale-1" canHammer />);
-    expect(screen.getByRole("button", { name: "Hold to hammer" })).toHaveClass("bg-staff-ink");
-    expect(screen.getByRole("button", { name: "Hold to pass" })).not.toHaveClass("bg-staff-ink");
+    expect(screen.getByRole("button", { name: "Hold to hammer" })).toHaveClass("bg-lax-ink");
+    expect(screen.getByRole("button", { name: "Hold to pass" })).not.toHaveClass("bg-lax-ink");
   });
 
   it("lets the caller demote Hammer so no outcome competes with a bid being entered", () => {
     render(<LotOutcomeControls saleId="sale-1" canHammer hammerVariant="secondary" />);
-    expect(screen.getByRole("button", { name: "Hold to hammer" })).not.toHaveClass("bg-staff-ink");
+    expect(screen.getByRole("button", { name: "Hold to hammer" })).not.toHaveClass("bg-lax-ink");
   });
 
   it("explains each hold", () => {
