@@ -5,6 +5,10 @@ import {
   artworkHref,
   buildCatalogueArtworkCards,
 } from "@/lib/catalogue/catalogue-artwork-card.vm";
+import {
+  type EnquiryConfirmationVm,
+  buildEnquiryConfirmation,
+} from "@/lib/enquiry/enquiry-confirmation.vm";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { loadViewerFavoriteContext } from "@/lib/favorites/viewer-favorites";
 import type {
@@ -20,21 +24,24 @@ import {
 } from "@/lib/presenters/artwork-commerce.presenter";
 import { artworkJsonLd } from "@/lib/seo/art-structured-data";
 import { seoMetadataDescription, seoMetadataTitle } from "@/lib/seo/seo-metadata";
-import type { JsonLd } from "@auction/branding";
+import { GALLERY_CONTACT, type JsonLd } from "@auction/branding";
 import type {
   PublicArtistDetail,
   PublicArtworkDetail,
   PublicArtworkSummary,
 } from "@auction/shop-contracts";
 import {
+  ARTWORK_FAQS,
   type ArtworkBreadcrumbItem,
+  type ArtworkFaqVm,
+  type ArtworkPromiseVm,
   type ArtworkSpecRow,
   artworkCategoryHref,
   artworkCertificateLine,
   artworkPriceNote,
+  artworkPromise,
   buildArtworkBreadcrumb,
   buildArtworkKeySpecs,
-  buildArtworkMediumSpecs,
 } from "./artwork-detail.vm";
 import {
   SHOP_EDITIONS_LIMIT,
@@ -58,11 +65,12 @@ export type ArtworkEnquiryVm =
       artistName: string;
       imageUrl: string | null;
       autoOpen: boolean;
+      confirmation: EnquiryConfirmationVm;
     };
 
 /** "Contact a specialist" in the mobile options sheet opens the general enquiry form. */
 export type ArtworkSpecialistContactVm =
-  | { kind: "ready"; contact: ArtEnquiryContact }
+  | { kind: "ready"; contact: ArtEnquiryContact; viewerKind: "authenticated" | "guest" }
   | { kind: "unavailable" };
 
 export type ArtworkGalleryImageVm = { url: string; alt: string };
@@ -86,12 +94,15 @@ export type ArtworkDetailVm = {
   artistHref: string;
   galleryImages: ArtworkGalleryImageVm[];
   priceLabel: string;
+  /** Who replies and where to see the work; null once the work is sold. */
+  promise: ArtworkPromiseVm | null;
+  /** Questions collectors ask, as pills that open their answers. */
+  faqs: ArtworkFaqVm[];
   /** Discretion line under the price; null once the work is sold. */
   priceNote: string | null;
   /** Edition availability ("Limited edition of 10 · Available"); null for originals. */
   availabilityNote: string | null;
   keySpecs: ArtworkSpecRow[];
-  mediumSpecs: ArtworkSpecRow[];
   description: string | null;
   certificateLine: string | null;
   provenance: string | null;
@@ -141,6 +152,7 @@ function resolveEnquiry(
         artistName: artwork.artistName,
         imageUrl: artwork.imageUrl,
         autoOpen: enquireRequested,
+        confirmation: buildEnquiryConfirmation({ viewer, subject: "artwork" }),
       };
     case "disabled":
     case "unavailable":
@@ -152,7 +164,7 @@ function resolveSpecialistContact(viewer: ArtViewerState): ArtworkSpecialistCont
   switch (viewer.kind) {
     case "authenticated":
     case "guest":
-      return { kind: "ready", contact: resolveContact(viewer) };
+      return { kind: "ready", contact: resolveContact(viewer), viewerKind: viewer.kind };
     case "disabled":
     case "unavailable":
       return { kind: "unavailable" };
@@ -221,9 +233,10 @@ export async function composeArtworkDetailPage(
       galleryImages: buildGalleryImages(artwork),
       priceLabel: resolveArtworkPriceLabel(artwork),
       priceNote: artworkPriceNote(artwork),
+      promise: artworkPromise(artwork, GALLERY_CONTACT),
+      faqs: [...ARTWORK_FAQS],
       availabilityNote: availability.isEdition ? availability.headline : null,
       keySpecs: buildArtworkKeySpecs(artwork),
-      mediumSpecs: buildArtworkMediumSpecs(artwork),
       description: artwork.description,
       certificateLine: artworkCertificateLine(artwork),
       provenance: artwork.provenance ?? null,

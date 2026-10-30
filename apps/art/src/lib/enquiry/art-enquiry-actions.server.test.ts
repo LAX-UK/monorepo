@@ -28,7 +28,7 @@ describe("sendArtEnquiry", () => {
       { status: "idle" },
       form({ ...CONTACT, message: " Is it framed? ", contactPhone: "+44 7700 900123" }),
     );
-    expect(state).toEqual({ status: "sent" });
+    expect(state).toEqual({ status: "sent", email: "grace@example.com" });
     expect(bff.mutate).toHaveBeenCalledWith("/commerce/artworks/warm%20basket/interest", {
       method: "POST",
       body: {

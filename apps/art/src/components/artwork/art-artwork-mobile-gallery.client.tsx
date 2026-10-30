@@ -186,6 +186,7 @@ export function ArtArtworkMobileGallery({
             contextSlug={slug}
             contextLabel={title}
             contact={specialistContact.contact}
+            viewerKind={specialistContact.viewerKind}
           />
         </div>
       ) : null}

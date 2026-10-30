@@ -4,6 +4,7 @@ import { ArtMediaImage } from "@/components/media/art-media-image";
 import type { ArtHomeHeroVm } from "@/lib/home/art-home-hero.vm";
 import { ART_HERO_UNDER_HEADER_CLASS } from "@/lib/layout/art-header-chrome.vm";
 import { MARKETING_PAGE_SHELL } from "@auction/branding";
+import { MarketingArrowRightIcon } from "@auction/marketing-ui";
 import { cn } from "@auction/ui";
 
 /** Full-bleed photograph with the cream glass panel from the LAX.art home frame (Figma 473:8994). */
@@ -45,9 +46,13 @@ export function ArtHomeHero({ hero }: { hero: ArtHomeHeroVm }) {
           </div>
           <ArtEditorialLink
             href={hero.cta.href}
-            className="art-focus-ring inline-flex min-h-11 items-center self-start rounded-sm font-label text-sm leading-[1.375rem] font-semibold text-hero-panel-cta underline-offset-4 hover:underline sm:min-h-14 sm:text-base sm:leading-6"
+            className="group art-focus-ring inline-flex min-h-11 items-center gap-2 self-start rounded-sm font-label text-sm leading-[1.375rem] font-semibold text-hero-panel-cta underline decoration-1 underline-offset-4 hover:decoration-2 sm:min-h-14 sm:text-base sm:leading-6"
           >
             {hero.cta.label}
+            <MarketingArrowRightIcon
+              aria-hidden
+              className="size-4 transition-transform motion-safe:group-hover:translate-x-0.5 sm:size-5"
+            />
           </ArtEditorialLink>
         </div>
       </div>

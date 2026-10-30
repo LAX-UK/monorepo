@@ -29,7 +29,7 @@ describe("submitGeneralEnquiry", () => {
       phone: " +44 20 0000 ",
       contextSlug: "summer-show",
     });
-    expect(state).toEqual({ status: "sent" });
+    expect(state).toEqual({ status: "sent", email: "grace@example.com" });
     expect(calls).toEqual([
       {
         path: "/commerce/me/general-enquiries",

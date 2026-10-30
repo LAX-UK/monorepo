@@ -2,7 +2,6 @@ import { ArtArtistFollowButton } from "@/components/favorites/art-artist-follow-
 import { ArtMediaImage } from "@/components/media/art-media-image";
 import type { ArtworkArtistVm } from "@/lib/artwork/artwork-detail-page.composer";
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
-import { ART_MEDIA_LABELS } from "@/lib/media/art-media-labels";
 import { MarketingArtistSummary } from "@auction/marketing-ui";
 
 export function ArtArtworkArtistSummary({
@@ -26,7 +25,6 @@ export function ArtArtworkArtistSummary({
                 alt=""
                 aspect={[1, 1]}
                 sizes="3rem"
-                label={ART_MEDIA_LABELS.artistPortrait}
                 className="absolute inset-0 size-full"
                 imgClassName="object-cover"
               />

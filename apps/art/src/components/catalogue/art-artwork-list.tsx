@@ -4,7 +4,6 @@ import type { CatalogueArtworkCardVm } from "@/lib/catalogue/catalogue-artwork-c
 import type { ArtFavoriteAuth } from "@/lib/favorites/favorite-auth";
 import { ART_MEDIA_LABELS } from "@/lib/media/art-media-labels";
 import { MarketingCatalogList, MarketingCatalogListRow } from "@auction/marketing-ui";
-import { Button } from "@auction/ui/components/button";
 import Link from "next/link";
 
 export type ArtArtworkListProps = {
@@ -15,7 +14,8 @@ export type ArtArtworkListProps = {
 
 /**
  * Figma list row (`881:21543`): landscape media, title and artist, then a divided column with
- * price, heart and an outline Enquire. The mobile row (`905:22299`) keeps only thumb, title,
+ * price, heart and Enquire as a text link. Rows carry the same meta line as cards. The mobile row
+ * (`905:22299`) keeps only thumb, title,
  * artist and price, so the heart and Enquire appear from `md`.
  */
 export function ArtArtworkList({
@@ -45,12 +45,20 @@ export function ArtArtworkList({
           }
           title={card.title}
           subtitle={
-            <Link
-              href={card.artistHref}
-              className="art-focus-ring inline-flex min-h-6 w-fit items-center rounded-sm hover:text-on-surface"
-            >
-              {card.artistName}
-            </Link>
+            <span className="flex flex-col gap-1">
+              <Link
+                href={card.artistHref}
+                className="art-focus-ring inline-flex min-h-6 w-fit items-center rounded-sm hover:text-on-surface"
+              >
+                {card.artistName}
+              </Link>
+              {/* A list shows at least what a card shows: year, medium and size. */}
+              {card.metaLine ? (
+                <span className="text-on-surface-variant" data-testid="art-artwork-row-meta">
+                  {card.metaLine}
+                </span>
+              ) : null}
+            </span>
           }
           aside={
             <>
@@ -73,11 +81,12 @@ export function ArtArtworkList({
                 />
               </div>
               {card.enquireHref ? (
-                <Button variant="secondaryOutline" className="hidden w-full md:inline-flex" asChild>
-                  <Link href={card.enquireHref}>
-                    Enquire<span className="sr-only"> about {card.title}</span>
-                  </Link>
-                </Button>
+                <Link
+                  href={card.enquireHref}
+                  className="art-focus-ring hidden min-h-11 w-fit items-center rounded-sm text-sm font-medium text-on-surface underline underline-offset-4 hover:decoration-2 md:inline-flex"
+                >
+                  Enquire<span className="sr-only"> about {card.title}</span>
+                </Link>
               ) : null}
             </>
           }

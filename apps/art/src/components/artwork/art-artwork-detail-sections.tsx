@@ -1,5 +1,3 @@
-import { ArtSpecList } from "@/components/artwork/art-spec-list";
-import type { ArtworkSpecRow } from "@/lib/artwork/artwork-detail.vm";
 import {
   MarketingDetailAccordion,
   type MarketingDetailAccordionItem,
@@ -9,7 +7,6 @@ import {
 
 export type ArtArtworkDetailSectionsProps = {
   description: string | null;
-  mediumSpecs: readonly ArtworkSpecRow[];
   provenance: string | null;
   exhibitionHistory: string | null;
 };
@@ -19,25 +16,17 @@ function Prose({ text }: { text: string }) {
 }
 
 /**
- * Figma 426:2581: "About the work" holds the Details / Medium & dimensions / Provenance
- * accordions (Details is the description), "Exhibition history" its own tab.
+ * Figma 426:2581: "About the work" holds the Details and Provenance accordions (the facts are
+ * shown once beside the image), "Exhibition history" its own tab.
  */
 export function ArtArtworkDetailSections({
   description,
-  mediumSpecs,
   provenance,
   exhibitionHistory,
 }: ArtArtworkDetailSectionsProps) {
   const accordion: MarketingDetailAccordionItem[] = [];
   if (description) {
     accordion.push({ id: "details", title: "Details", content: <Prose text={description} /> });
-  }
-  if (mediumSpecs.length > 0) {
-    accordion.push({
-      id: "medium",
-      title: "Medium & dimensions",
-      content: <ArtSpecList rows={mediumSpecs} />,
-    });
   }
   if (provenance) {
     accordion.push({ id: "provenance", title: "Provenance", content: <Prose text={provenance} /> });

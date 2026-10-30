@@ -28,6 +28,11 @@ export function ArtMobileBottomNav() {
   }));
 
   return (
-    <MarketingBottomTabBar variant="floating" items={items} data-testid="art-mobile-bottom-nav" />
+    <MarketingBottomTabBar
+      variant="floating"
+      items={items}
+      className="art-bottom-nav"
+      data-testid="art-mobile-bottom-nav"
+    />
   );
 }

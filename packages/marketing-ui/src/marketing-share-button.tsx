@@ -1,5 +1,6 @@
 "use client";
 
+import { FOCUS_RING } from "@auction/branding";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import type { ReactNode } from "react";
@@ -10,8 +11,11 @@ export type MarketingShareButtonProps = {
   url: string;
   title: string;
   className?: string;
-  /** "text" = unstyled Figma row (use with `label` for custom icon+text). */
-  appearance?: "default" | "text";
+  /**
+   * "text" = unstyled Figma row (use with `label` for custom icon+text); "icon" = a circle the
+   * size of the heart toggle, for a title row of icon actions.
+   */
+  appearance?: "default" | "text" | "icon";
   /** Custom trigger content for `appearance="text"` (e.g. icon + "Share"). */
   label?: ReactNode;
 };
@@ -87,6 +91,36 @@ export function MarketingShareButton({
               {triggerLabel}
             </>
           )}
+        </Button>
+      </>
+    );
+  }
+
+  if (appearance === "icon") {
+    // The same 40px circle in a 44px target as the heart toggle, so the pair sits as one set.
+    return (
+      <>
+        <output className="sr-only" aria-live="polite">
+          {liveMessage}
+        </output>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          aria-label={`Share ${title}`}
+          onClick={() => void share()}
+          className={cn(
+            "group/share size-11 min-h-11 min-w-11 rounded-full bg-transparent p-0 hover:bg-transparent",
+            FOCUS_RING,
+            className,
+          )}
+        >
+          <span
+            aria-hidden
+            className="flex size-10 items-center justify-center rounded-full border border-outline-variant bg-surface text-on-surface transition-colors group-hover/share:bg-surface-container-low motion-reduce:transition-none"
+          >
+            <MarketingShareIcon className="size-5" />
+          </span>
         </Button>
       </>
     );
