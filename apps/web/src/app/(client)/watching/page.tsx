@@ -1,98 +1,93 @@
-import { ArtistFollowSection } from "@/components/dashboard/artist-follow/artist-follow-section";
 import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
-import { AccountListSkeleton } from "@/components/dashboard/primitives/account-list-skeleton";
-import {
-  ARTISTS_YOU_FOLLOW_HREF,
-  WatchingView,
-} from "@/components/dashboard/watchlist/watching-view";
-import {
-  WATCHLIST_SORT_OPTIONS,
-  type WatchlistSortOption,
-} from "@/lib/dashboard/filters/watchlist/watchlist-filters";
+import { type WatchedArtistVm, WatchingView } from "@/components/dashboard/watchlist/watching-view";
+import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
+import { resolveArtistFollowProfiles } from "@/lib/data/artist-follow-profiles.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
-import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
-import { type WatchingVm, buildWatchingVm, parseWatchingTab } from "@/lib/watching/watching.vm";
-import { Button } from "@auction/ui/components/button";
-import { ChevronLeft } from "lucide-react";
+import { getServerMySavedSearches } from "@/lib/data/http/saved-searches.server";
+import { resolveSaleTitles } from "@/lib/data/sale-titles.server";
+import { artistPath } from "@/lib/seo/url";
+import { buildWatchedLots, parseWatchingView } from "@/lib/watching/watching.vm";
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Suspense } from "react";
 
 export const metadata: Metadata = { title: "Watching" };
 
-type PageSearchParams = { sort?: string; tab?: string; q?: string; section?: string };
+type PageProps = { searchParams: Promise<Record<string, string | string[] | undefined>> };
 
-/** Closing soonest first, unless the person chose another order. */
-function parseSort(raw: string | undefined): WatchlistSortOption {
-  return WATCHLIST_SORT_OPTIONS.find((option) => option.value === raw)?.value ?? "endingSoon";
+async function settle<T>(read: () => Promise<T>): Promise<T | null> {
+  try {
+    return await read();
+  } catch {
+    return null;
+  }
 }
 
-async function loadWatching(sp: PageSearchParams, sort: WatchlistSortOption) {
+/** The person's watched lots, with where they stand on each; `null` when they could not be read. */
+async function loadLots() {
   const c = await getServerDataContainer();
-  const [rowsResult, bidsResult, userResult] = await Promise.allSettled([
-    c.watchlist.listMine({ sort, categoryIds: [] }),
-    c.buying.bids(),
-    c.session.getCurrent(),
+  const [rows, bids, user] = await Promise.all([
+    settle(() => c.watchlist.listMine({ sort: "endingSoon", categoryIds: [] })),
+    settle(() => c.buying.bids()),
+    settle(() => c.session.getCurrent()),
   ]);
-  if (rowsResult.status === "rejected") return null;
-  return buildWatchingVm({
-    rows: rowsResult.value,
-    // Bids only add the person's standing to the pill; the page works without them.
-    bids: bidsResult.status === "fulfilled" ? bidsResult.value : [],
-    userId: userResult.status === "fulfilled" ? userResult.value?.id : undefined,
-    tab: parseWatchingTab(sp.tab),
+  if (!rows) return null;
+  return buildWatchedLots({
+    rows,
+    // Bids only add the person's standing; the list works without them.
+    bids: bids ?? [],
+    userId: user?.id,
+    saleTitleById: await resolveSaleTitles(rows.map((row) => row.lot?.saleId)),
   });
 }
 
-export default async function DashboardWatchlistPage({
-  searchParams,
-}: {
-  searchParams: Promise<PageSearchParams>;
-}) {
+/** The artists the person follows, with each alert; `null` when they could not be read. */
+async function loadArtists(): Promise<WatchedArtistVm[] | null> {
+  const c = await getServerDataContainer();
+  const rows = await settle(() => c.artistFollow.listMine());
+  if (!rows) return null;
+  const profiles = await resolveArtistFollowProfiles(rows);
+  return profiles
+    .map((profile) => ({
+      artistId: profile.artistId,
+      name: profile.displayName,
+      href: artistPath({ id: profile.artistId, name: profile.displayName }),
+      portraitUrl: profile.portraitUrl,
+      alert: rows.find((row) => row.artistId === profile.artistId)?.alert ?? {
+        medium: null,
+        priceMin: null,
+        priceMax: null,
+      },
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/**
+ * Watching: lots, artists and saved searches on one page. The lists are the person's own, even
+ * while they act for an organisation, and the page says so.
+ */
+export default async function WatchingPage({ searchParams }: PageProps) {
   const sp = await searchParams;
-
-  if (sp.section === "artists") {
-    return (
-      <DashboardListPage
-        title="Artists you follow"
-        description="We'll tell you when their work comes to a sale."
-        meta={
-          <Link
-            href={CLIENT_ROUTES.watching}
-            className="inline-flex items-center gap-1 underline-offset-4 hover:underline"
-          >
-            <ChevronLeft className="size-4" aria-hidden />
-            Watching
-          </Link>
-        }
-      >
-        <Suspense
-          fallback={<AccountListSkeleton label="Loading the artists you follow" tabs={false} />}
-        >
-          <ArtistFollowSection
-            searchParams={Promise.resolve({
-              ...(sp.q ? { q: sp.q } : {}),
-              ...(sp.sort ? { sort: sp.sort } : {}),
-            })}
-          />
-        </Suspense>
-      </DashboardListPage>
-    );
-  }
-
-  const sort = parseSort(sp.sort);
-  const vm: WatchingVm | null = await loadWatching(sp, sort);
+  const c = await getServerDataContainer();
+  const [scope, lots, artists, searches] = await Promise.all([
+    c.buying.scope(),
+    loadLots(),
+    loadArtists(),
+    settle(getServerMySavedSearches),
+  ]);
+  const organisation = scope.account.kind === "organisation" ? scope.account.name : null;
   return (
     <DashboardListPage
       title="Watching"
-      description="Lots you're following. We'll remind you an hour before they close."
-      actions={
-        <Button variant="ghost" size="default" asChild>
-          <Link href={ARTISTS_YOU_FOLLOW_HREF}>Artists you follow</Link>
-        </Button>
-      }
+      description="Lots, artists and searches you follow, and what we tell you about them."
     >
-      <WatchingView vm={vm} sort={sort} />
+      <SetMobileShellTitle title="Watching" />
+      <WatchingView
+        // `section=artists` is the old address of the artists list.
+        view={parseWatchingView(sp.tab ?? (sp.section === "artists" ? "artists" : undefined))}
+        lots={lots}
+        artists={artists}
+        searches={searches}
+        organisation={organisation}
+      />
     </DashboardListPage>
   );
 }

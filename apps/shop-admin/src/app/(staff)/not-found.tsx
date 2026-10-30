@@ -1,4 +1,4 @@
-import { NotFoundState, StaffButton } from "@auction/staff-ui";
+import { NotFoundState, StaffButtonLink } from "@auction/staff-ui";
 import Link from "next/link";
 
 /** A link or record that does not exist, inside the staff shell so staff keep their navigation. */
@@ -10,9 +10,9 @@ export default function StaffNotFound() {
       title="This page doesn’t exist"
       description="The link may be out of date, or the record was deleted. Search for it, or go back to the overview."
       action={
-        <StaffButton asChild variant="secondary">
-          <Link href="/overview">Back to overview</Link>
-        </StaffButton>
+        <StaffButtonLink variant="secondary" href="/overview" Link={Link}>
+          Back to overview
+        </StaffButtonLink>
       }
     />
   );

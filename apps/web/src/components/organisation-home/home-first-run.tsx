@@ -1,6 +1,6 @@
 import type { FirstRunView } from "@/lib/organisation-home/organisation-dashboard-view";
 import { LaxIllustration, type LaxIllustrationName } from "@auction/ui/components/lax-illustration";
-import { Button, EmptyState } from "@auction/ui/lax";
+import { ButtonLink, EmptyState } from "@auction/ui/lax";
 import Link from "next/link";
 import { HomeSection } from "./home-section";
 
@@ -72,14 +72,15 @@ export function HomeFirstRun(props: Props) {
           title={firstRun.title}
           description={firstRun.description}
           actions={firstRun.actions.map((action, index) => (
-            <Button
+            <ButtonLink
               key={action.id}
-              asChild
               variant={index === 0 ? "primary" : "secondary"}
               className="h-11 sm:h-lax-control-md"
+              href={action.href}
+              Link={Link}
             >
-              <Link href={action.href}>{action.label}</Link>
-            </Button>
+              {action.label}
+            </ButtonLink>
           ))}
         />
       </div>

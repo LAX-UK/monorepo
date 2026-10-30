@@ -2,7 +2,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const container = {
   session: { getCurrent: vi.fn() },
-  buying: { bids: vi.fn() },
+  buying: {
+    bids: vi.fn(),
+    scope: vi.fn(async () => ({
+      account: { kind: "personal", id: null },
+      actor: { userId: "me" },
+    })),
+  },
 };
 
 vi.mock("@/lib/data/container.server", () => ({
@@ -33,6 +39,7 @@ describe("GET /bids/export", () => {
           saleId: "sale-1",
           lotNumber: 3,
           title: "Harbour",
+          images: [],
           currentPrice: "900",
           status: "ended",
           winnerId: "me",
@@ -47,7 +54,14 @@ describe("GET /bids/export", () => {
     expect(res.headers.get("content-type")).toContain("text/csv");
     expect(res.headers.get("content-disposition")).toMatch(/lax-bids-won-\d{4}-\d{2}-\d{2}\.csv/);
     const body = await res.text();
-    expect(body).toContain("3,Harbour,The First Hammer,Won,900,900");
+    expect(body).toContain("3,Harbour,The First Hammer,Won,,900,900,900");
+  });
+
+  it("keeps only the bids closing in the chosen period", async () => {
+    const res = await GET(
+      new Request("https://lax.bid/bids/export?tab=won&scope=view&from=2026-07-01&to=2026-07-31"),
+    );
+    expect((await res.text()).trim().split("\n")).toHaveLength(1);
   });
 
   it("refuses a signed-out request", async () => {

@@ -1,7 +1,7 @@
 import { findStaffNavItemForPath } from "@/components/layout/staff-nav";
 import { loadNoAccessPage } from "@/lib/admin/load-no-access-page";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { AccessDeniedState, StaffButton } from "@auction/staff-ui";
+import { AccessDeniedState, StaffButtonLink } from "@auction/staff-ui";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -28,9 +28,9 @@ export default async function AdminNoAccessPage({
       resource={data.resource}
       requiredRoles={data.roles}
       action={
-        <StaffButton asChild variant="secondary">
-          <Link href={data.home}>Back to your overview</Link>
-        </StaffButton>
+        <StaffButtonLink variant="secondary" href={data.home} Link={Link}>
+          Back to your overview
+        </StaffButtonLink>
       }
     />
   );

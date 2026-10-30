@@ -110,6 +110,27 @@ export function clientBoundaryViolations(entryFile, { serverSafe = false } = {})
 }
 
 /** Server modules that import a client-only value from an entry, one line each. */
+/**
+ * Server modules that pass a child element to the shared Button with `asChild`. A link built on
+ * the server can reach the button's Slot as a deferred reference, and the Slot then renders
+ * nothing; `ButtonLink` / `StaffButtonLink` build the link on the client instead.
+ */
+export function serverAsChildViolations(files) {
+  const lines = [];
+  for (const file of files) {
+    const source = readFileSync(file, "utf8");
+    if (USE_CLIENT.test(source)) continue;
+    if (!/from\s+"@auction\/(ui\/lax|staff-ui)"|from\s+"\.\.\/primitives\/button\.js"/.test(source))
+      continue;
+    for (const match of source.matchAll(/<(Button|StaffButton)\b[^>]*?\basChild\b/g)) {
+      lines.push(
+        `${relative(ROOT, file)}: <${match[1]} asChild> in a server module; use ${match[1]}Link with href`,
+      );
+    }
+  }
+  return lines;
+}
+
 export function serverImportViolations(files, clientOnlyBySpecifier) {
   const lines = [];
   for (const file of files) {
@@ -158,7 +179,11 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     ]),
   );
   const files = SOURCE_DIRS.flatMap((dir) => [...sourceFiles(resolve(ROOT, dir))]);
-  const violations = [...entryViolations, ...serverImportViolations(files, clientOnlyBySpecifier)];
+  const violations = [
+    ...entryViolations,
+    ...serverImportViolations(files, clientOnlyBySpecifier),
+    ...serverAsChildViolations(files),
+  ];
   if (violations.length > 0) {
     console.error("check-client-boundary: values from client modules reach server code\n");
     for (const line of violations) console.error(`  ${line}`);

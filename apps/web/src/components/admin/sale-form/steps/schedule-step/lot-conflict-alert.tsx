@@ -7,7 +7,7 @@ import {
   scheduleLotConflictBanner,
   scheduleLotConflictInheritedTimingBanner,
 } from "@/lib/admin/sale-setup/field-copy";
-import { Notice, StaffButton, formatStaffDateTime } from "@auction/staff-ui";
+import { Notice, StaffButtonLink, formatStaffDateTime } from "@auction/staff-ui";
 
 type Props = {
   lotConflicts: readonly LotWindowConflict[];
@@ -30,9 +30,9 @@ export function LotConflictAlert({ lotConflicts, pendingWindow, lotsSetupHref }:
       }
       actions={
         !inheritsLotTiming && lotsSetupHref ? (
-          <StaffButton asChild size="sm" variant="secondary">
-            <a href={lotsSetupHref}>Adjust lot schedules</a>
-          </StaffButton>
+          <StaffButtonLink size="sm" variant="secondary" href={lotsSetupHref}>
+            Adjust lot schedules
+          </StaffButtonLink>
         ) : null
       }
     >

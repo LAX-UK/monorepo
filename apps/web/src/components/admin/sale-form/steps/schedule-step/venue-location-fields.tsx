@@ -4,7 +4,7 @@ import {
   StaffTextField,
 } from "@/components/admin/forms/staff-form-fields";
 import type { AdminSaleFormValues } from "@/lib/forms/schemas/admin-sale-form";
-import { FieldRow, Notice, StaffButton } from "@auction/staff-ui";
+import { FieldRow, Notice, StaffButtonLink } from "@auction/staff-ui";
 import type { Venue } from "@auction/types";
 import { normalizeUkPostcode } from "@auction/validators";
 import { ExternalLink } from "lucide-react";
@@ -131,16 +131,17 @@ export function VenueLocationFields({
           title="On the sale page"
           actions={
             mapHref ? (
-              <StaffButton
-                asChild
+              <StaffButtonLink
                 size="sm"
                 variant="secondary"
                 icon={<ExternalLink aria-hidden />}
+                href={mapHref}
+                target="_blank"
+                rel="noopener noreferrer"
+                Link={Link}
               >
-                <Link href={mapHref} target="_blank" rel="noopener noreferrer">
-                  Open map
-                </Link>
-              </StaffButton>
+                Open map
+              </StaffButtonLink>
             ) : null
           }
         >
