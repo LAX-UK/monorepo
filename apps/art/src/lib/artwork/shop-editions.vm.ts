@@ -1,5 +1,4 @@
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
-import { marketingArtistInitials } from "@auction/marketing-ui";
 import type { PublicArtworkSummary } from "@auction/shop-contracts";
 import { formatGbpPence } from "@auction/shop-portal/vm";
 
@@ -10,8 +9,8 @@ export type ShopEditionLinkVm = {
   href: string;
   /** The edition's image, else the original's; null shows the hatched placeholder. */
   imageUrl: string | null;
-  /** The artist's initials on the placeholder when there is no image. */
-  initials: string;
+  /** Named on the placeholder (as initials) when there is no image. */
+  artistName: string;
   /** "Limited edition of 24 · Available"; never a remaining count. */
   editionLine: string;
   /** "£120.00", or null when the edition has no price yet. */
@@ -52,7 +51,7 @@ export function buildShopEditionLinks(
     title: edition.title,
     href: new URL(`/artworks/${encodeURIComponent(edition.slug)}`, shop).toString(),
     imageUrl: edition.imageUrl ?? originalImageUrl,
-    initials: marketingArtistInitials(edition.artistName),
+    artistName: edition.artistName,
     editionLine: editionLine(edition),
     priceLabel: edition.printPricePence === null ? null : formatGbpPence(edition.printPricePence),
   }));

@@ -299,7 +299,7 @@ describe("Editions available in LAX Shop", () => {
         title: "Warm Basket (print)",
         href: "https://shop.thelax.art/artworks/warm-basket-print",
         imageUrl: "/warm-basket.webp",
-        initials: "FP",
+        artistName: "Flora Powers",
         editionLine: "Limited edition of 24 · Available",
         priceLabel: "£120.00",
       },
