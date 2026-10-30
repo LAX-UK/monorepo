@@ -14,6 +14,12 @@ export type StripeRefundInput = {
   /** Amount in smallest currency unit (e.g. pence). Omit for full refund. */
   amount?: number;
   reason?: Stripe.RefundCreateParams["reason"];
+  /**
+   * The invoice's payment, for a charge that settled several invoices: it goes on the refund so
+   * the refund webhook knows which invoice it belongs to, and into the idempotency key so equal
+   * refunds on two invoices of one charge stay distinct.
+   */
+  paymentId?: string;
 };
 
 export type StripeRefundGatewayResult =
@@ -102,7 +108,9 @@ export class StripePaymentGateway implements IStripePaymentGateway {
     if (!stripe) {
       throw new Error("StripePaymentGateway: refund called while not configured");
     }
-    const idempotencyKey = `refund:${input.chargeId}:${input.amount ?? "full"}`;
+    const idempotencyKey = input.paymentId
+      ? `refund:${input.chargeId}:${input.paymentId}:${input.amount ?? "full"}`
+      : `refund:${input.chargeId}:${input.amount ?? "full"}`;
     return executeWithStripeRetries(async () => {
       try {
         const params: Stripe.RefundCreateParams = {
@@ -111,6 +119,9 @@ export class StripePaymentGateway implements IStripePaymentGateway {
         };
         if (input.amount !== undefined) {
           params.amount = input.amount;
+        }
+        if (input.paymentId) {
+          params.metadata = { paymentId: input.paymentId };
         }
         const refund = await stripe.refunds.create(params, { idempotencyKey });
         return { kind: "created", refundId: refund.id };

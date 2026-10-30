@@ -1,9 +1,4 @@
-import {
-  type PaySeveralCandidate,
-  type PaySeveralPlan,
-  accountPurchaseScope,
-  planPaySeveral,
-} from "@auction/domain";
+import { accountPurchaseScope } from "@auction/domain";
 import { type ExportColumn, formatCsvDocument } from "@auction/exports";
 import type {
   AccountRecordsScope,
@@ -17,10 +12,8 @@ import type {
   PurchasesPage,
 } from "../interfaces/organisation-buying-service.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
-import { buyingError, entityActorOf, paySeveralCandidate, purchaseView } from "./purchase-view.js";
+import { buyingError, entityActorOf, purchaseView } from "./purchase-view.js";
 
-/** Every invoice is raised in pounds sterling. */
-const INVOICE_CURRENCY = "GBP";
 /** The most rows one export carries; a larger history is exported a year at a time. */
 const EXPORT_LIMIT = 5000;
 
@@ -102,38 +95,6 @@ export class AccountPurchasesService implements IAccountPurchasesService {
       items: rows.slice(0, page.limit).map((row) => purchaseView(row, actor, now)),
       nextOffset: rows.length > page.limit ? page.offset + page.limit : null,
     });
-  }
-
-  async planPaySeveral(
-    actor: OrganisationMemberActor,
-    lotIds: readonly string[],
-  ): BuyingResult<PaySeveralPlan> {
-    const scope = this.scopeOf(actor);
-    if (!scope) return err(buyingError("insufficient_entity_role"));
-    const rows = lotIds.length
-      ? await this.deps.reader.list({ ...scope, lotIds, limit: lotIds.length, offset: 0 })
-      : [];
-    const now = this.deps.now();
-    const byLot = new Map(
-      rows.map((row) => [
-        row.lotId,
-        paySeveralCandidate(purchaseView(row, actor, now), actor.legalEntityId, INVOICE_CURRENCY),
-      ]),
-    );
-    // A pick outside what the member follows in this account is treated as another account's.
-    const picks: PaySeveralCandidate[] = lotIds.map(
-      (lotId) =>
-        byLot.get(lotId) ?? {
-          lotId,
-          buyerAccountId: "",
-          invoice: "not_invoiced",
-          payerMayPay: false,
-          totalDue: null,
-          currency: INVOICE_CURRENCY,
-        },
-    );
-    const decision = planPaySeveral(actor.legalEntityId, picks);
-    return decision.allowed ? ok(decision.plan) : err(buyingError(decision.reason));
   }
 
   async exportCsv(actor: OrganisationMemberActor): BuyingResult<string> {

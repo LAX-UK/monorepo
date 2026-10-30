@@ -33,6 +33,8 @@ export const STRIPE_PAYMENT_EVENT_HANDLERS: Partial<
       event,
       event.data.object as Stripe.Checkout.Session,
     ),
+  "checkout.session.expired": (service, event) =>
+    service.handleCheckoutSessionExpired(event, event.data.object as Stripe.Checkout.Session),
 };
 
 const UNHANDLED_PAYMENT_EVENT: PaymentWebhookResult = { processed: false };

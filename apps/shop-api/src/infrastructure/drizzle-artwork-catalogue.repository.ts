@@ -380,7 +380,7 @@ export function createDrizzleArtworkCatalogueRepository(
 
       const hasMore = placement ? false : rows.length > limit;
       const page = hasMore ? rows.slice(0, limit) : rows;
-      const items = await toPublicArtworkSummaries(db, page);
+      const items = await toPublicArtworkSummaries(db, page, resolveMediaUrl);
       const last = page.at(-1);
       if (hasMore && last) {
         return {
@@ -443,7 +443,7 @@ export function createDrizzleArtworkCatalogueRepository(
         sourceOriginalArtworkId ? loadLinkableOriginalSlug(db, sourceOriginalArtworkId) : null,
       ]);
       return toPublicArtworkDetail({
-        ...toArtworkCatalogueRow(selected, editionCounts, images),
+        ...toArtworkCatalogueRow(selected, editionCounts, resolveMediaUrl, images),
         printPaper,
         printSize,
         sourceOriginalSlug,

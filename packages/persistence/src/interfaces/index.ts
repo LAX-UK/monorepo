@@ -992,3 +992,13 @@ export type {
   IActiveMemberLookup,
   NewAccessRequest,
 } from "./access-request.repository.js";
+export type {
+  ClaimPaymentGroupInput,
+  ClaimPaymentGroupResult,
+  IPaySeveralInvoiceFlagsReader,
+  IPaymentGroupRepository,
+  LockedPaymentGroup,
+  PaySeveralInvoiceFlags,
+  PaymentGroupMember,
+  PaymentGroupRecord,
+} from "./payment-group.repository.js";

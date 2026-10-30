@@ -12,8 +12,11 @@ import type { IXeroPaymentRecorder } from "../accounting/xero-payment-recorder.j
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { IMarketingEventService } from "../interfaces/marketing-event-service.js";
 import type {
+  CaptureInTransactionInput,
+  CaptureInTransactionResult,
   CapturePaymentInput,
   CapturePaymentResult,
+  IPaymentCaptureInTransaction,
   IPaymentCaptureService,
 } from "../interfaces/payment-capture.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
@@ -28,7 +31,9 @@ const XERO_CAPTURE_VIAS: CapturePaymentInput["via"][] = [
   "admin_manual",
 ];
 
-export class PaymentCaptureService implements IPaymentCaptureService {
+const NOTHING_AFTER_COMMIT = async () => {};
+
+export class PaymentCaptureService implements IPaymentCaptureService, IPaymentCaptureInTransaction {
   constructor(
     private readonly transactionRunner: ITransactionRunner,
     private readonly payments: IPaymentWriteRepository,
@@ -50,11 +55,55 @@ export class PaymentCaptureService implements IPaymentCaptureService {
       return { captured: false };
     }
 
+    const resolvedChargeId = await this.resolveStripeChargeId(p, input);
+    let result: CaptureInTransactionResult = { captured: false, afterCommit: NOTHING_AFTER_COMMIT };
+    const apply = async (tx: Database) => {
+      result = await this.applyCapture(p, input, resolvedChargeId, tx, "each");
+    };
+
+    if (input.tx) {
+      await apply(input.tx);
+    } else {
+      await this.transactionRunner.runInTransaction(apply);
+    }
+
+    if (!result.captured) {
+      if (input.requireApply) {
+        const current = await this.payments.findById(input.paymentId);
+        if (current?.status === "captured") {
+          return { captured: false };
+        }
+        throw new PaymentCaptureNotAppliedError(input.paymentId, current?.status ?? "unknown");
+      }
+      return { captured: false };
+    }
+
+    await result.afterCommit();
+    return { captured: true };
+  }
+
+  async captureInTransaction(
+    input: CaptureInTransactionInput,
+  ): Promise<CaptureInTransactionResult> {
+    const p = await this.payments.findById(input.paymentId);
+    if (!p || p.status === "captured" || p.status === "refunded" || p.status === "cancelled") {
+      return { captured: false, afterCommit: NOTHING_AFTER_COMMIT };
+    }
+    const resolvedChargeId = await this.resolveStripeChargeId(p, input);
+    return this.applyCapture(p, input, resolvedChargeId, input.tx, input.buyerReceipt);
+  }
+
+  /** Marks the payment captured in `tx`; what follows a capture is returned, not run. */
+  private async applyCapture(
+    p: PaymentRecord,
+    input: Pick<CapturePaymentInput, "paymentId" | "via" | "stripePaymentIntentId" | "actorUserId">,
+    resolvedChargeId: string | null,
+    tx: Database,
+    buyerReceipt: CaptureInTransactionInput["buyerReceipt"],
+  ): Promise<CaptureInTransactionResult> {
     const buyerId = p.paidByUserId ?? p.buyerId ?? null;
     const buyer = buyerId ? await this.users.findById(buyerId) : null;
     const captureFromManualReview = p.status === "requires_manual_review";
-
-    const resolvedChargeId = await this.resolveStripeChargeId(p, input);
 
     const purchaseEvent =
       buyerId && this.marketingEvents
@@ -74,90 +123,76 @@ export class PaymentCaptureService implements IPaymentCaptureService {
           }
         : null;
 
-    let captured = false;
-    const apply = async (tx: Database) => {
-      const captureOpts: { stripeChargeId?: string | null } = {};
-      if (resolvedChargeId) {
-        captureOpts.stripeChargeId = resolvedChargeId;
-      }
-      captured = await this.payments.applyCapturedInTransaction(tx, input.paymentId, captureOpts);
-      if (!captured) return;
-      await this.domainEventSink.withTx(tx).publish({
-        aggregateType: "payment",
-        aggregateId: input.paymentId,
-        eventType: "payment.captured",
-        payload: {
-          paymentId: p.id,
-          lotId: p.lotId,
-          userId: buyerId,
-          amountCents: gbpAmountToPence(p.amount),
-          capturedAt: new Date().toISOString(),
-          stripeIntentId: input.stripePaymentIntentId ?? p.stripePaymentIntentId,
-          stripeChargeId: resolvedChargeId ?? null,
-          via: input.via,
-          buyerName: buyer?.name ?? null,
-          buyerEmail: buyer?.email ?? null,
-        },
-        actorUserId: input.actorUserId ?? null,
-        actingLegalEntityId: p.sellerLegalEntityId ?? null,
+    const captureOpts: { stripeChargeId?: string | null } = {};
+    if (resolvedChargeId) {
+      captureOpts.stripeChargeId = resolvedChargeId;
+    }
+    const captured = await this.payments.applyCapturedInTransaction(
+      tx,
+      input.paymentId,
+      captureOpts,
+    );
+    if (!captured) return { captured: false, afterCommit: NOTHING_AFTER_COMMIT };
+    await this.domainEventSink.withTx(tx).publish({
+      aggregateType: "payment",
+      aggregateId: input.paymentId,
+      eventType: "payment.captured",
+      payload: {
+        paymentId: p.id,
+        lotId: p.lotId,
+        userId: buyerId,
+        amountCents: gbpAmountToPence(p.amount),
+        capturedAt: new Date().toISOString(),
+        stripeIntentId: input.stripePaymentIntentId ?? p.stripePaymentIntentId,
+        stripeChargeId: resolvedChargeId ?? null,
+        via: input.via,
+        buyerName: buyer?.name ?? null,
+        buyerEmail: buyer?.email ?? null,
+      },
+      actorUserId: input.actorUserId ?? null,
+      actingLegalEntityId: p.sellerLegalEntityId ?? null,
+    });
+    if (purchaseEvent && this.marketingEvents) {
+      await this.marketingEvents.stage(purchaseEvent, tx);
+    }
+
+    const afterCommit = async () => {
+      const after = (await this.payments.findById(input.paymentId)) ?? p;
+      await dispatchPaymentReceived({
+        payment: after,
+        lots: this.lots,
+        lotFulfilmentHooks: this.lotFulfilmentHooks,
+        notificationDispatcher: this.notificationDispatcher,
+        notificationFactory: this.notificationFactory,
+        legalEntityNotificationRecipients: this.legalEntityNotificationRecipients,
+        notifyBuyer: buyerReceipt === "each",
       });
+
       if (purchaseEvent && this.marketingEvents) {
-        await this.marketingEvents.stage(purchaseEvent, tx);
+        await this.marketingEvents.enqueue(purchaseEvent);
+      }
+
+      recordMoneyPathEvent(`payment_capture_via_${input.via}`);
+      if (captureFromManualReview) {
+        recordMoneyPathEvent("payment_capture_from_manual_review_reconciliation");
+      }
+
+      if (XERO_CAPTURE_VIAS.includes(input.via) && this.xeroPaymentRecorder) {
+        const xeroResult = await this.xeroPaymentRecorder.recordStripeCapture(
+          input.paymentId,
+          after.amount,
+        );
+        if (!xeroResult.ok) {
+          recordMoneyPathEvent("xero_payment_record_failed");
+        }
       }
     };
-
-    if (input.tx) {
-      await apply(input.tx);
-    } else {
-      await this.transactionRunner.runInTransaction(apply);
-    }
-
-    if (!captured) {
-      if (input.requireApply) {
-        const current = await this.payments.findById(input.paymentId);
-        if (current?.status === "captured") {
-          return { captured: false };
-        }
-        throw new PaymentCaptureNotAppliedError(input.paymentId, current?.status ?? "unknown");
-      }
-      return { captured: false };
-    }
-
-    const after = (await this.payments.findById(input.paymentId)) ?? p;
-    await dispatchPaymentReceived({
-      payment: after,
-      lots: this.lots,
-      lotFulfilmentHooks: this.lotFulfilmentHooks,
-      notificationDispatcher: this.notificationDispatcher,
-      notificationFactory: this.notificationFactory,
-      legalEntityNotificationRecipients: this.legalEntityNotificationRecipients,
-    });
-
-    if (purchaseEvent && this.marketingEvents) {
-      await this.marketingEvents.enqueue(purchaseEvent);
-    }
-
-    recordMoneyPathEvent(`payment_capture_via_${input.via}`);
-    if (captureFromManualReview) {
-      recordMoneyPathEvent("payment_capture_from_manual_review_reconciliation");
-    }
-
-    if (XERO_CAPTURE_VIAS.includes(input.via) && this.xeroPaymentRecorder) {
-      const xeroResult = await this.xeroPaymentRecorder.recordStripeCapture(
-        input.paymentId,
-        after.amount,
-      );
-      if (!xeroResult.ok) {
-        recordMoneyPathEvent("xero_payment_record_failed");
-      }
-    }
-
-    return { captured: true };
+    return { captured: true, afterCommit };
   }
 
   private async resolveStripeChargeId(
     payment: PaymentRecord,
-    input: CapturePaymentInput,
+    input: Pick<CapturePaymentInput, "stripeChargeId" | "stripePaymentIntentId">,
   ): Promise<string | null> {
     const fromInput = input.stripeChargeId ?? payment.stripeChargeId ?? null;
     if (fromInput) return fromInput;

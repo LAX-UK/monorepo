@@ -12,6 +12,7 @@ import {
 import { user } from "./auth.js";
 import { legalEntity } from "./legal-entities.js";
 import { lot } from "./lots.js";
+import { paymentGroup } from "./payment-group.js";
 
 export const paymentStatusEnum = pgEnum("payment_status", [
   "pending",
@@ -47,6 +48,13 @@ export const payment = pgTable(
     /** Stripe Refund id (`re_...`) after an admin-initiated refund. */
     stripeRefundId: text("stripe_refund_id"),
     status: paymentStatusEnum("status").notNull().default("pending"),
+    /**
+     * The "Pay several" payment this invoice is settled through, if any. Set while the group's
+     * checkout is open and kept once it is paid; cleared when the group is cancelled.
+     */
+    paymentGroupId: uuid("payment_group_id").references(() => paymentGroup.id, {
+      onDelete: "restrict",
+    }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -54,9 +62,14 @@ export const payment = pgTable(
     index("payment_buyer_id_idx").on(table.buyerId),
     index("payment_buyer_legal_entity_id_idx").on(table.buyerLegalEntityId),
     index("payment_seller_legal_entity_id_idx").on(table.sellerLegalEntityId),
+    // One charge settles one invoice, except a "Pay several" charge, which every invoice in its
+    // group shares (the group holds that charge once, uniquely).
     uniqueIndex("payment_stripe_charge_id_uidx")
       .on(table.stripeChargeId)
-      .where(sql`${table.stripeChargeId} is not null`),
+      .where(sql`${table.stripeChargeId} is not null and ${table.paymentGroupId} is null`),
+    index("payment_payment_group_id_idx")
+      .on(table.paymentGroupId)
+      .where(sql`${table.paymentGroupId} is not null`),
     uniqueIndex("payment_lot_buyer_open_unique")
       .on(table.lotId, table.buyerId)
       .where(
