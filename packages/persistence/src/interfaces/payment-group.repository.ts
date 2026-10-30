@@ -25,6 +25,7 @@ export type PaymentGroupMember = {
   paymentId: string;
   lotId: string;
   lotTitle: string;
+  lotNumber: number | null;
   amount: string;
   status: PaymentRecord["status"];
   sellerLegalEntityId: string;

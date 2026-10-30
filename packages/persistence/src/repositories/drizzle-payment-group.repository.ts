@@ -36,6 +36,7 @@ const MEMBER_COLUMNS = {
   paymentId: payment.id,
   lotId: payment.lotId,
   lotTitle: lot.title,
+  lotNumber: lot.lotNumber,
   amount: payment.amount,
   status: payment.status,
   sellerLegalEntityId: payment.sellerLegalEntityId,

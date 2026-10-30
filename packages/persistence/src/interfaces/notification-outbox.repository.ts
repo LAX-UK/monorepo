@@ -45,6 +45,13 @@ export type NotificationPayload = {
     collectionPlace?: string;
     /** How a delivered lot reached its buyer. */
     fulfilmentMethod?: "delivery" | "collection";
+    /**
+     * The invoices one payment settled together, each with its amount (major units, `currency`);
+     * `amount` is then their total.
+     */
+    receiptLines?: { lotTitle: string; lotNumber: number | null; amount: string }[];
+    /** How a payment was made. */
+    paymentMethod?: "card" | "bank_transfer";
     /** Keeps an email for one fulfilment step from being queued twice. */
     emailIdempotencyKey?: string;
     /** Outbox idempotency key — used by in-app channel to skip duplicate retries. */

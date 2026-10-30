@@ -174,6 +174,7 @@ function paymentRow(
     stripeChargeId: null,
     stripeRefundId: null,
     status: "pending",
+    paymentGroupId: null,
     createdAt: now,
     ...overrides,
   };
