@@ -94,6 +94,8 @@ export type {
   IConsignmentAgreementWriter,
 } from "./consignment-agreement.repository.js";
 export type {
+  IUnsoldChoiceDeadlineStore,
+  UnsoldChoiceDeadline,
   IUnsoldLotChoiceReader,
   IUnsoldLotChoiceRepository,
   IUnsoldLotChoiceWriter,

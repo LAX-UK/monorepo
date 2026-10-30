@@ -88,6 +88,7 @@ export class InMemoryUnsoldLotChoices implements IUnsoldLotChoiceRepository {
           lotId,
           submissionId,
           title,
+          chooseBy: null,
           endedAt,
           choice,
         })),

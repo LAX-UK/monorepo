@@ -1,5 +1,5 @@
 import type { Database } from "@auction/db";
-import { itemSubmission, lot, unsoldLotChoice } from "@auction/db/schema";
+import { itemSubmission, lot, unsoldChoiceDeadline, unsoldLotChoice } from "@auction/db/schema";
 import type { UnsoldLotChoice, UnsoldLotChoiceKind, UnsoldLotChoiceStatus } from "@auction/types";
 import { and, asc, count, desc, eq, inArray, isNull } from "drizzle-orm";
 import type {
@@ -101,11 +101,19 @@ export class DrizzleUnsoldLotChoiceRepository implements IUnsoldLotChoiceReposit
           submissionId: itemSubmission.id,
           title: lot.title,
           endedAt: lot.endTime,
+          chooseBy: unsoldChoiceDeadline.chooseBy,
           choice: unsoldLotChoice.status,
         })
         .from(itemSubmission)
         .innerJoin(lot, eq(lot.id, itemSubmission.convertedLotId))
         .leftJoin(unsoldLotChoice, choiceJoin)
+        .leftJoin(
+          unsoldChoiceDeadline,
+          and(
+            eq(unsoldChoiceDeadline.lotId, lot.id),
+            eq(unsoldChoiceDeadline.lotEndTime, lot.endTime),
+          ),
+        )
         .where(where)
         .orderBy(desc(lot.endTime), asc(lot.id))
         .limit(filter.limit)

@@ -35,6 +35,7 @@ import { SubmissionError } from "../../lib/errors.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import { unsoldChoiceConfirmedUpdate, unsoldChoiceRequestedUpdate } from "./after-sale-copy.js";
 import type { IConsignmentUpdateNotifier } from "./consignment-update-notifier.js";
+import type { IUnsoldChoiceDeadlines } from "./unsold-choice-deadlines.js";
 
 /** The signed-in seller, the account they act for and their standing with it. */
 export type AfterSaleSeller = {
@@ -53,6 +54,8 @@ export type UnsoldLotChoiceServiceDeps = {
   /** The selling account, for its state: an organisation's state can pause choices. */
   accounts: { findById(id: string): Promise<Pick<LegalEntity, "kind" | "status"> | null> };
   notifier: IConsignmentUpdateNotifier;
+  /** The stored date each unsold choice is due by. */
+  deadlines: IUnsoldChoiceDeadlines;
   events: IDomainEventSink | null;
   now?: () => Date;
 };
@@ -154,8 +157,11 @@ export class UnsoldLotChoiceService implements IUnsoldLotChoiceService {
   private async view(
     context: UnsoldContext,
   ): Promise<Omit<SellerUnsoldLotView, "canChoose" | "choicePaused">> {
+    const outcome = { lotId: context.lot.id, endedAt: context.lot.endTime, chooseBy: null };
+    const dueBy = await this.deps.deadlines.chooseByFor([outcome]);
     return {
       lotId: context.lot.id,
+      chooseBy: (dueBy.get(context.lot.id) ?? context.lot.endTime).toISOString(),
       currentReserve: context.lot.reservePrice,
       reserveFloor: context.agreement?.relistReserveFloor ?? null,
       currency: context.agreement?.currency ?? "GBP",
@@ -200,12 +206,14 @@ export class UnsoldLotChoiceService implements IUnsoldLotChoiceService {
       limit: page.limit,
       offset: page.offset,
     });
+    const dueBy = await this.deps.deadlines.chooseByFor(rows);
     return {
       rows: rows.map((row) => ({
         lotId: row.lotId,
         submissionId: row.submissionId,
         title: row.title,
         endedAt: row.endedAt.toISOString(),
+        chooseBy: (dueBy.get(row.lotId) ?? row.endedAt).toISOString(),
         choice: row.choice ?? "none",
       })),
       total,

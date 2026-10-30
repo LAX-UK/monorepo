@@ -104,7 +104,7 @@ function asNeedsYouFacts(facts: OrganisationHomeFacts): NeedsYouFacts {
       )
       .map(({ id, title }) => ({ id, title })),
     changesRequested: facts.changesRequested,
-    unsoldLots: lotsAwaitingChoice(facts).map((lot) => ({ ...lot, endedAt: null })),
+    unsoldLots: lotsAwaitingChoice(facts).map((lot) => ({ ...lot, dueBy: null })),
     purchases: facts.purchasesAwaitingPayment.map((purchase) => ({
       ...purchase,
       paymentStatus: null,

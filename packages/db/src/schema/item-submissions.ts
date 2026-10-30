@@ -1,5 +1,6 @@
 import { relations, sql } from "drizzle-orm";
 import {
+  bigint,
   boolean,
   index,
   jsonb,
@@ -8,6 +9,7 @@ import {
   pgTable,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
@@ -64,6 +66,13 @@ export const itemSubmission = pgTable(
     changesRequestedNote: text("changes_requested_note"),
     changesRequestedAt: timestamp("changes_requested_at", { mode: "date", withTimezone: true }),
     convertedLotId: uuid("converted_lot_id").references(() => lot.id, { onDelete: "set null" }),
+    /**
+     * The consignment's reference number, quoted when the seller phones a specialist. Given in
+     * order from a sequence; the shown form ("C-1042") is a domain rule.
+     */
+    referenceNumber: bigint("reference_number", { mode: "number" })
+      .notNull()
+      .default(sql`nextval('item_submission_reference_seq')`),
     /** The member who created or last sent the submission; `null` for submissions from before it
      * was recorded. Organisations show a consignor only their own. */
     submittedByUserId: text("submitted_by_user_id").references(() => user.id, {
@@ -88,6 +97,7 @@ export const itemSubmission = pgTable(
     index("item_submission_legal_entity_id_idx").on(table.legalEntityId),
     index("item_submission_status_created_at_idx").on(table.status, table.createdAt),
     index("item_submission_converted_lot_id_idx").on(table.convertedLotId),
+    uniqueIndex("item_submission_reference_number_uidx").on(table.referenceNumber),
     index("item_submission_entity_submitted_by_idx").on(
       table.legalEntityId,
       table.submittedByUserId,
