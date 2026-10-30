@@ -85,7 +85,7 @@ export function SearchPalette({
 
   React.useEffect(() => {
     if (!activeEntry) return;
-    document.getElementById(activeEntry.optionId)?.scrollIntoView({ block: "nearest" });
+    document.getElementById(activeEntry.optionId)?.scrollIntoView?.({ block: "nearest" });
   }, [activeEntry]);
 
   const choose = (item: PaletteItem) => {
@@ -154,7 +154,7 @@ export function SearchPalette({
               ref={inputRef}
               type="text"
               role="combobox"
-              aria-expanded
+              aria-expanded={!nothing}
               aria-controls={listboxId}
               aria-autocomplete="list"
               aria-label={placeholder}
@@ -173,81 +173,94 @@ export function SearchPalette({
             <Kbd className="max-md:hidden">Esc</Kbd>
           </div>
 
-          {/* biome-ignore lint/a11y/useFocusableInteractive: the WAI-ARIA combobox pattern: focus stays in the field and aria-activedescendant points here */}
           <div
-            id={listboxId}
-            // biome-ignore lint/a11y/useSemanticElements: the combobox popup; options hold a thumbnail and two lines
-            role="listbox"
-            aria-label="Results"
-            aria-busy={status === "loading" || undefined}
-            className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2"
+            // The results scroll on their own, so the region must be reachable with Tab.
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be keyboard reachable (WCAG 2.1.1)
+            tabIndex={0}
+            className="lax-focus-inset min-h-0 flex-1 overflow-y-auto overscroll-contain p-2"
           >
-            {groups.map((group) =>
-              group.items.length === 0 ? null : (
-                <div
-                  key={group.id}
-                  // biome-ignore lint/a11y/useSemanticElements: a group of combobox options, labelled by its heading
-                  role="group"
-                  aria-labelledby={`${baseId}-${group.id}-label`}
-                  className="pb-2"
-                >
-                  <div
-                    id={`${baseId}-${group.id}-label`}
-                    role="presentation"
-                    className="px-2 pt-2 pb-1 text-lax-12 font-medium text-lax-muted"
-                  >
-                    {group.label}
-                  </div>
-                  {group.items.map((item) => {
-                    const optionId = `${baseId}-${group.id}-${item.id}`;
-                    const index = flat.findIndex((entry) => entry.optionId === optionId);
-                    const selected = index === active;
-                    return (
-                      // biome-ignore lint/a11y/useKeyWithClickEvents: the field handles the keys; focus stays there and aria-activedescendant points here
+            {
+              // biome-ignore lint/a11y/useFocusableInteractive: the WAI-ARIA combobox pattern: focus stays in the field and aria-activedescendant points here
+              <div
+                id={listboxId}
+                // biome-ignore lint/a11y/useSemanticElements: the combobox popup; options hold a thumbnail and two lines
+                role="listbox"
+                aria-label="Results"
+                aria-busy={status === "loading" || undefined}
+                // With nothing to offer the list is closed, and out of the accessibility tree.
+                hidden={nothing}
+              >
+                {groups.map((group) =>
+                  group.items.length === 0 ? null : (
+                    <div
+                      key={group.id}
+                      // biome-ignore lint/a11y/useSemanticElements: a group of combobox options, labelled by its heading
+                      role="group"
+                      aria-labelledby={`${baseId}-${group.id}-label`}
+                      className="pb-2"
+                    >
                       <div
-                        key={item.id}
-                        id={optionId}
-                        // biome-ignore lint/a11y/useSemanticElements: a combobox option holds a thumbnail and two lines, which a native option cannot
-                        role="option"
-                        aria-selected={selected}
-                        tabIndex={-1}
-                        onMouseMove={() => setActive(index)}
-                        onMouseDown={(event) => event.preventDefault()}
-                        onClick={() => choose(item)}
-                        className={cn(
-                          "flex min-h-12 cursor-pointer items-center gap-3 rounded-lax-menu px-2 py-1",
-                          selected && "bg-lax-selected",
-                        )}
+                        id={`${baseId}-${group.id}-label`}
+                        role="presentation"
+                        className="px-2 pt-2 pb-1 text-lax-12 font-medium text-lax-muted"
                       >
-                        {item.media ? (
-                          <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lax-badge bg-lax-paper text-lax-muted [&_svg]:size-4 [&>img]:size-full [&>img]:object-cover">
-                            {item.media}
-                          </span>
-                        ) : null}
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-lax-14 font-medium">
-                            {item.label}
-                          </span>
-                          {item.meta ? (
-                            <span className="block truncate text-lax-12 text-lax-muted">
-                              {item.meta}
-                            </span>
-                          ) : null}
-                        </span>
-                        {item.shortcut ? (
-                          <ShortcutKeys keys={item.shortcut} className="shrink-0 max-md:hidden" />
-                        ) : selected ? (
-                          <Kbd className="shrink-0 max-md:hidden">
-                            <CornerDownLeft aria-hidden className="size-3" />
-                            <span className="sr-only">Enter</span>
-                          </Kbd>
-                        ) : null}
+                        {group.label}
                       </div>
-                    );
-                  })}
-                </div>
-              ),
-            )}
+                      {group.items.map((item) => {
+                        const optionId = `${baseId}-${group.id}-${item.id}`;
+                        const index = flat.findIndex((entry) => entry.optionId === optionId);
+                        const selected = index === active;
+                        return (
+                          // biome-ignore lint/a11y/useKeyWithClickEvents: the field handles the keys; focus stays there and aria-activedescendant points here
+                          <div
+                            key={item.id}
+                            id={optionId}
+                            // biome-ignore lint/a11y/useSemanticElements: a combobox option holds a thumbnail and two lines, which a native option cannot
+                            role="option"
+                            aria-selected={selected}
+                            tabIndex={-1}
+                            onMouseMove={() => setActive(index)}
+                            onMouseDown={(event) => event.preventDefault()}
+                            onClick={() => choose(item)}
+                            className={cn(
+                              "flex min-h-12 cursor-pointer items-center gap-3 rounded-lax-menu px-2 py-1",
+                              selected && "bg-lax-selected",
+                            )}
+                          >
+                            {item.media ? (
+                              <span className="flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-lax-badge bg-lax-paper text-lax-muted [&_svg]:size-4 [&>img]:size-full [&>img]:object-cover">
+                                {item.media}
+                              </span>
+                            ) : null}
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-lax-14 font-medium">
+                                {item.label}
+                              </span>
+                              {item.meta ? (
+                                <span className="block truncate text-lax-12 text-lax-muted">
+                                  {item.meta}
+                                </span>
+                              ) : null}
+                            </span>
+                            {item.shortcut ? (
+                              <ShortcutKeys
+                                keys={item.shortcut}
+                                className="shrink-0 max-md:hidden"
+                              />
+                            ) : selected ? (
+                              <Kbd className="shrink-0 max-md:hidden">
+                                <CornerDownLeft aria-hidden className="size-3" />
+                                <span className="sr-only">Enter</span>
+                              </Kbd>
+                            ) : null}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ),
+                )}
+              </div>
+            }
 
             {nothing && status !== "loading" ? (
               <PaletteEmpty
@@ -268,7 +281,7 @@ export function SearchPalette({
               />
             ) : null}
 
-            {scopeNote && !nothing ? (
+            {scopeNote && (typed || !nothing) ? (
               <p className="mx-2 mt-1 flex items-start gap-2 rounded-lax-menu bg-lax-sunken px-3 py-2 text-lax-12 text-lax-muted">
                 <Lock aria-hidden className="mt-0.5 size-3.5 shrink-0" />
                 {scopeNote}

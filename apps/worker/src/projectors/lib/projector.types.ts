@@ -66,6 +66,8 @@ export type ProjectorRunContext = {
   complianceRecipientReader: IComplianceRecipientReader;
   syncXeroPayoutBill?: ((payoutId: string) => Promise<boolean>) | undefined;
   ensureLotInvoice?: ((lotId: string) => Promise<void>) | undefined;
+  /** Stores the choose-by date when a consigned lot ends unsold. */
+  unsoldChoiceDeadlines?: { record(lotId: string): Promise<void> } | undefined;
   xeroLiveExecutorPorts?: XeroLiveExecutorPorts | undefined;
   env?: WorkerEnv | undefined;
   db?: Database | undefined;

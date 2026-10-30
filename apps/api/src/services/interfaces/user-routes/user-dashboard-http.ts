@@ -14,9 +14,14 @@ export interface IUserDashboardHttpApplicationService {
 
   /**
    * Bids placed for the acting account, as far as the member's role follows them
-   * (`accountBidScope`): everyone's for owners and admins, their own for buyer agents.
+   * (`accountBidScope`): everyone's for owners and admins, their own for buyer agents. Each row
+   * names the member who placed it; `saleId` narrows to one sale (the per-sale view).
    */
-  listAccountBids(input: { userId: string; account: BuyingAccountActor }): Promise<UserHttpJson>;
+  listAccountBids(input: {
+    userId: string;
+    account: BuyingAccountActor;
+    saleId?: string;
+  }): Promise<UserHttpJson>;
 
   /**
    * Lots won for the acting account with their payment state (`accountPurchaseScope`): every

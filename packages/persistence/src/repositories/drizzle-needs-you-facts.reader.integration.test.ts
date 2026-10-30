@@ -6,6 +6,7 @@ import {
   bidUserProfile,
   buyerAgentAuthorisation,
   consignmentAgreement,
+  deliveryQuote,
   itemSubmission,
   legalEntity,
   legalEntityMember,
@@ -300,6 +301,15 @@ describe.skipIf(!HAS_DB)("needs-you facts reader (integration)", () => {
           documentsRequestedAt: now,
         });
 
+        // A priced courier quote waiting for the account's answer.
+        await tx.insert(deliveryQuote).values({
+          lotId: lots.paidNoDelivery,
+          buyerLegalEntityId: orgId,
+          status: "quoted",
+          destination: "12 Gallery Row, London",
+          amount: "240.00",
+        });
+
         const reader = new DrizzleNeedsYouFactsReader(tx as never);
 
         const titles = (rows: { title: string }[]) => rows.map((row) => row.title);
@@ -325,6 +335,8 @@ describe.skipIf(!HAS_DB)("needs-you facts reader (integration)", () => {
           fulfilment: null,
         });
         expect(purchases.find((p) => p.title === "Agent unpaid")?.paymentStatus).toBeNull();
+        expect(purchases.find((p) => p.title === "Paid, no delivery")?.shippingQuote).toBe("ready");
+        expect(purchases.find((p) => p.title === "Unpaid")?.shippingQuote).toBeNull();
         expect(purchases.find((p) => p.title === "Ready to collect")).toMatchObject({
           paymentStatus: "captured",
           fulfilment: { status: "ready_for_collection", method: "collection", collectedAt: null },

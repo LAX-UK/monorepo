@@ -16,14 +16,12 @@ import { STAFF_LAYER, cn } from "../lib/cn.js";
 import { StaffButton } from "../primitives/button.js";
 import { StaffTooltip } from "../primitives/menu.js";
 import { CommandPalette, useCommandPaletteShortcut } from "./command-palette.js";
+import { STAFF_NAV_COOKIE } from "./nav-cookie.js";
 import { NavScrollArea } from "./nav-scroll-area.js";
 import { ProductMark, ProductSwitcher } from "./product-switcher.js";
 import { StaffShortcutsProvider } from "./shortcuts.js";
 import { SidebarNav } from "./sidebar-nav.js";
 import type { StaffCommand, StaffCommandSearch, StaffNavGroup, StaffProduct } from "./types.js";
-
-/** Cookie the shell writes so the server renders the sidebar at its last width (no shift). */
-export const STAFF_NAV_COOKIE = "lax_staff_nav";
 
 export type StaffShellProps = {
   product: StaffProduct;

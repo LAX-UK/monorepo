@@ -40,7 +40,7 @@ function renderWith(
   denied: { page: string | null; openedBy: string | null },
 ) {
   render(
-    <AccountChromeProvider account={{ current, switcher, strip: null }}>
+    <AccountChromeProvider account={{ current, switcher }}>
       <NoAccess next="/organisation/payouts" denied={denied} />
     </AccountChromeProvider>,
   );

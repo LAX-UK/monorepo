@@ -22,8 +22,6 @@ export default async function SellerArtistProfilePage() {
     <DashboardPage>
       <DashboardPageHeader
         title="Artist profile"
-        hideTitleOnMobile
-        hideDescriptionOnMobile
         description="Your catalogue artist profile is managed by the admin team."
       />
       <Alert>

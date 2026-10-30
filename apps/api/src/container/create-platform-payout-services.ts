@@ -16,6 +16,7 @@ import { OrganisationTeamNotifier } from "../services/organisation-team/organisa
 import { PaymentRefundReconcileService } from "../services/payment/payment-refund-reconcile.service.js";
 import { PayoutService } from "../services/payout.service.js";
 import { PayoutAdjustmentService } from "../services/payout/payout-adjustment.service.js";
+import { PayoutProblemNotifier } from "../services/payout/payout-problem-notifier.js";
 import { ConnectBankChangeHandler } from "../services/stripe/connect/connect-bank-change.handler.js";
 import { StripeConnectFacade } from "../services/stripe/stripe-connect.facade.js";
 import type { ContainerInfra } from "./create-infra.js";
@@ -37,7 +38,7 @@ export type ContainerPlatformPayoutServices = {
 export type CreatePlatformPayoutServicesInput = {
   env: Env;
   db: Database;
-  /** In-app notices: the payout bank account changed. */
+  /** In-app notices: the payout bank account changed, and a payout that ran into a problem. */
   notificationDispatcher: Pick<NotificationDispatcher, "dispatch">;
   infra: ContainerInfra;
   repos: ContainerRepositories;
@@ -69,6 +70,13 @@ export function createPlatformPayoutServices(
     core.transactionRunner,
     domainEventSink,
     payoutAdjustmentService,
+    undefined,
+    undefined,
+    new PayoutProblemNotifier(
+      repos.legalEntityNotificationRecipients,
+      input.notificationDispatcher,
+      core.notificationFactory,
+    ),
   );
   const payoutService: IPayoutService = payoutServiceInstance;
   const payoutSellerService: IPayoutSellerService = payoutServiceInstance;

@@ -38,6 +38,7 @@ export function stubUserRouteServices(overrides?: Partial<UserRouteServices>): U
       listArtistWatchlist: vi.fn(),
       addArtistWatchlist: vi.fn(),
       removeArtistWatchlist: vi.fn(),
+      setArtistAlert: vi.fn(),
       listSavedSearches: vi.fn(),
       createSavedSearch: vi.fn(),
       removeSavedSearch: vi.fn(),

@@ -16,11 +16,14 @@ export const CLIENT_ROUTES = {
   selling: "/selling",
   sellingNew: "/selling/new",
   consignments: "/selling/consignments",
-  works: "/selling/works",
+  /** The organisation's own works, under the Collection heading. */
+  collection: "/collection",
   payouts: "/selling/payouts",
   payoutSetup: "/selling/payout-setup",
   artistProfile: "/selling/artist",
   organisation: "/organisation",
+  /** Who is in the organisation and what each may do; owners and admins only. */
+  team: "/team",
   organisations: "/organisations",
   invitations: "/organisations/invitations",
   verifyIdentity: "/verify-identity",
@@ -46,6 +49,8 @@ export const CLIENT_AREA_PREFIXES = [
   "/settings",
   "/selling",
   "/organisation",
+  "/team",
+  "/collection",
   "/organisations",
   "/verify-identity",
   "/compliance",
@@ -63,7 +68,15 @@ export function isClientAreaPath(pathname: string): boolean {
 }
 
 /** One tab of the Organisation page. */
-export type OrganisationTab = "profile" | "members" | "documents" | "payouts" | "security";
+export type OrganisationTab = "profile" | "documents" | "payouts" | "security";
+
+/** One tab of the Team page. */
+export type TeamTab = "members";
+
+/** The Team page, or one of its tabs; Members is the page itself. */
+export function teamHref(_tab: TeamTab = "members", accountId?: string): string {
+  return accountId ? withAccount(CLIENT_ROUTES.team, accountId) : CLIENT_ROUTES.team;
+}
 
 /**
  * The Organisation page, or one of its tabs. Pass the organisation's id when the link may be

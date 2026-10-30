@@ -1,3 +1,4 @@
+import type { ArtistAlertCriteria } from "@auction/domain";
 import type {
   WatchlistQuery,
   artistWatchlistBodySchema,
@@ -34,6 +35,13 @@ export interface IUserWatchlistHttpApplicationService {
   addArtistWatchlist(input: { userId: string; body: ArtistWatchlistBody }): Promise<UserHttpJson>;
 
   removeArtistWatchlist(input: { userId: string; artistId: string }): Promise<UserHttpJson>;
+
+  /** Replaces the alert criteria (medium and price range) for an artist the person follows. */
+  setArtistAlert(input: {
+    userId: string;
+    artistId: string;
+    criteria: ArtistAlertCriteria;
+  }): Promise<UserHttpJson>;
 
   listSavedSearches(input: { userId: string }): Promise<UserHttpJson>;
 

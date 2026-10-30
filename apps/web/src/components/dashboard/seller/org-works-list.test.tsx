@@ -1,4 +1,4 @@
-import type { OrgWorkRow } from "@/app/(client)/selling/works/org-works.vm";
+import type { OrgWorkRow } from "@/app/(client)/collection/org-works.vm";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { OrgWorksList } from "./org-works-list";

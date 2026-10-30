@@ -72,8 +72,6 @@ export default async function SellerPayoutSetupPage() {
     <DashboardPage className="mx-auto max-w-3xl space-y-8">
       <DashboardPageHeader
         title="Payout setup"
-        hideTitleOnMobile
-        hideDescriptionOnMobile
         {...(sellerEntityId && !connectFailure
           ? { description: "Two steps, both on this page. We pay you when a work sells." }
           : {})}

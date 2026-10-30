@@ -1,4 +1,4 @@
-import type { CreateNotificationRow } from "@auction/persistence/interfaces";
+import type { AccessRequestRow, CreateNotificationRow } from "@auction/persistence/interfaces";
 import type { Lot } from "@auction/types";
 
 /** Builds persisted notification rows from domain events. */
@@ -53,6 +53,34 @@ export interface INotificationFactory {
     lot: Lot,
     buyerId: string,
     input: { paymentId: string; amount: string; checkoutUrl: string | null; dueDate?: string },
+  ): CreateNotificationRow;
+
+  /** A member asked for more access; an owner or admin decides. */
+  createAccessRequested(
+    userId: string,
+    request: Pick<
+      AccessRequestRow,
+      "legalEntityId" | "requesterName" | "requestedRole" | "requestedCapability"
+    >,
+  ): CreateNotificationRow;
+
+  /** The member's request for access was approved or declined. */
+  createAccessRequestDecided(
+    userId: string,
+    request: Pick<AccessRequestRow, "legalEntityId" | "status" | "grantedRole" | "decisionNote">,
+  ): CreateNotificationRow;
+
+  /** A payout failed or was reversed; LAX is on it and the money is not lost. */
+  createPayoutProblem(
+    userId: string,
+    input: { payoutId: string; amount: string; currency: string; legalEntityId: string },
+  ): CreateNotificationRow;
+
+  /** A courier quote for a won lot is priced and waiting for the buyer to accept it. */
+  createDeliveryQuoteReady(
+    lot: Lot,
+    userId: string,
+    input: { amount: string; currency: string; legalEntityId: string },
   ): CreateNotificationRow;
 
   createLotReadyForCollection(

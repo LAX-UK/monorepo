@@ -114,7 +114,7 @@ export async function switchOrganisation(
     .first()
     .click();
   await page.getByTestId("switch-account-organisation").filter({ hasText: to }).click();
-  await expect(page.getByTestId("account-strip")).toContainText(to, { timeout });
+  await expect(page.getByTestId("account-switcher")).toContainText(to, { timeout });
 }
 
 /** The Undo button of the toast that says `message`, so an earlier toast's Undo is not chosen. */
@@ -142,13 +142,13 @@ export async function expectAccess(page: Page, path: string): Promise<void> {
   await expect(page.getByText(/doesn't include its settings/)).toHaveCount(0);
 }
 
-/** The account strip under the header, which names the organisation in use and the role. */
+/** The account switcher at the top of the sidebar: the one place that names the account and the role. */
 export async function expectActingAs(
   page: Page,
   organisationName: string,
   roleLabel: string,
 ): Promise<void> {
-  const strip = page.getByTestId("account-strip");
-  await expect(strip).toContainText(organisationName);
-  await expect(strip).toContainText(roleLabel);
+  const switcher = page.getByTestId("account-switcher");
+  await expect(switcher).toContainText(organisationName);
+  await expect(switcher).toContainText(roleLabel);
 }

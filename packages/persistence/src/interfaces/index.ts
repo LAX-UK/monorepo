@@ -94,6 +94,8 @@ export type {
   IConsignmentAgreementWriter,
 } from "./consignment-agreement.repository.js";
 export type {
+  IUnsoldChoiceDeadlineStore,
+  UnsoldChoiceDeadline,
   IUnsoldLotChoiceReader,
   IUnsoldLotChoiceRepository,
   IUnsoldLotChoiceWriter,
@@ -942,6 +944,18 @@ export type {
   UpcomingSaleWorksRow,
 } from "./organisation-dashboard.readers.js";
 export type {
+  AccountPurchaseFactsRow,
+  AccountRecordsScope,
+  AccountRegistrationRow,
+  DeliveryQuoteRow,
+  DeliveryQuoteWrite,
+  IAccountPurchaseFactsReader,
+  IAccountRegistrationsReader,
+  IDeliveryQuoteRepository,
+  IRecordPeopleReader,
+  RecordPerson,
+} from "./workspace-buying.readers.js";
+export type {
   AccountSearchCriteria,
   AccountSearchHits,
   ConsignmentSearchHit,
@@ -960,3 +974,21 @@ export type {
   InvoiceAddress,
   InvoiceDetails,
 } from "./organisation-team.readers.js";
+export type {
+  AgreementDocumentFacts,
+  IAgreementDocumentFactsReader,
+  IPayoutLinesReader,
+  IReturnedWorksReader,
+  ISoldLotsReader,
+  PayoutLineRow,
+  PayoutWithLines,
+  ReturnedWorkRow,
+  SoldLotRow,
+} from "./workspace-selling.readers.js";
+export type {
+  AccessRequestDecision,
+  AccessRequestRow,
+  IAccessRequestRepository,
+  IActiveMemberLookup,
+  NewAccessRequest,
+} from "./access-request.repository.js";

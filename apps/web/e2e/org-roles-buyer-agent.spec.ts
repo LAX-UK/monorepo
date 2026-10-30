@@ -55,7 +55,7 @@ test.describe("organisation buyer agent journey @roles", () => {
     });
 
     await test.step("sees nothing of the team", async () => {
-      await expectNoAccess(page, "/organisation/members");
+      await expectNoAccess(page, "/team");
     });
 
     await agent.close();

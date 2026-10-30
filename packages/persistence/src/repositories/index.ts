@@ -232,9 +232,23 @@ export { DrizzleConsignmentStatusCountsReader } from "./drizzle-consignment-stat
 export { DrizzleUpcomingSaleWorksReader } from "./drizzle-upcoming-sale-works.reader.js";
 export { DrizzleSoldWorksReader } from "./drizzle-sold-works.reader.js";
 export { DrizzlePayoutsDueReader } from "./drizzle-payouts-due.reader.js";
+export {
+  DrizzleAccountPurchaseFactsReader,
+  DrizzleAccountRegistrationsReader,
+  DrizzleRecordPeopleReader,
+} from "./drizzle-workspace-buying.readers.js";
+export { DrizzleDeliveryQuoteRepository } from "./drizzle-delivery-quote.repository.js";
 export { DrizzleAccountRecordSearchReader } from "./drizzle-account-record-search.reader.js";
 export { DrizzleNeedsYouFactsReader } from "./drizzle-needs-you-facts.reader.js";
 export {
   DrizzleInvoiceDetailsRepository,
   DrizzleOrganisationActivityReader,
 } from "./drizzle-organisation-team.readers.js";
+export { DrizzleUnsoldChoiceDeadlineStore } from "./drizzle-unsold-choice-deadline.store.js";
+export {
+  DrizzleAgreementDocumentFactsReader,
+  DrizzlePayoutLinesReader,
+  DrizzleReturnedWorksReader,
+  DrizzleSoldLotsReader,
+} from "./drizzle-workspace-selling.readers.js";
+export { DrizzleAccessRequestRepository } from "./drizzle-access-request.repository.js";

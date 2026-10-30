@@ -53,17 +53,15 @@ describe("buildAccountChrome", () => {
     expect(result.switcher?.options.find((o) => o.id === "northbank")?.underReview).toBe(false);
   });
 
-  it("hides the switcher and the strip for someone with no organisation", () => {
+  it("hides the switcher for someone with no organisation", () => {
     const result = chrome({ memberships: [personal] });
     expect(result.switcher).toBeNull();
-    expect(result.strip).toBeNull();
     expect(result.current).toMatchObject({ name: "Personal", detail: "Jane Smith" });
   });
 
   it("hides organisations everywhere while they are switched off", () => {
     const result = chrome({ actingId: "northbank", orgModuleEnabled: false });
     expect(result.switcher).toBeNull();
-    expect(result.strip).toBeNull();
   });
 
   it("lists Personal first, then each organisation with the person's role", () => {
@@ -81,14 +79,6 @@ describe("buildAccountChrome", () => {
     expect(result.switcher?.options.filter((o) => o.current).map((o) => o.id)).toEqual([
       "northbank",
     ]);
-  });
-
-  it("adds the header strip only while using an organisation", () => {
-    expect(chrome({ actingId: "northbank" }).strip).toEqual({
-      name: "Northbank Gallery",
-      role: "Admin",
-    });
-    expect(chrome({ actingId: "me" }).strip).toBeNull();
   });
 
   it("falls back to Personal for an account the person no longer has", () => {
