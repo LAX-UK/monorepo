@@ -215,6 +215,8 @@ export const WORKER_READ_TABLES = [
   "legal_entity_bidding_limit",
   /** Notifications about an account a person has muted are not delivered to them. */
   "notification_account_mute",
+  /** Xero invoices print the organisation's invoice address and PO reference. */
+  "legal_entity_invoice_details",
 ];
 // Postgres requires UPDATE on the target table for `select ... for update` row locks even
 // when no rows are mutated. The projector runner pulls events with FOR UPDATE SKIP LOCKED,

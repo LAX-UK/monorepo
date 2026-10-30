@@ -87,6 +87,7 @@ import type { ContainerOnsiteEventServices } from "./create-onsite-event-service
 import type { OrganisationHomeServices } from "./create-organisation-home-services.js";
 import type { OrganisationMembershipServices } from "./create-organisation-membership-services.js";
 import type { OrganisationWorkspaceServices } from "./create-organisation-workspace-services.js";
+import type { OrganisationTeamServices } from "./create-organisation-team-services.js";
 import type { ContainerPaymentsServices } from "./create-payments-services.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
@@ -343,6 +344,9 @@ export type ContainerOrganisationHomeSlice = {
 /** Reads across the client workspace's modules for the acting account (`organisationWorkspace`). */
 export type ContainerOrganisationWorkspaceSlice = {
   organisationWorkspace: OrganisationWorkspaceServices;
+/** Invoice details and Activity for the acting organisation (`container.organisationTeam`). */
+export type ContainerOrganisationTeamSlice = {
+  organisationTeam: OrganisationTeamServices;
 };
 
 /** Route-facing buyer user account bag (mirrors `container.userRoutes`). */
@@ -378,6 +382,7 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerOrganisationMembershipSlice &
   ContainerOrganisationHomeSlice &
   ContainerOrganisationWorkspaceSlice &
+  ContainerOrganisationTeamSlice &
   ContainerUserRouteServicesSlice;
 
 export type Container = ContainerComposedSlices;
@@ -614,6 +619,10 @@ export type ContainerOrganisationHomeRoutesSlice = Pick<
 export type ContainerOrganisationWorkspaceRoutesSlice = Pick<
   Container,
   "userSuspensionChecker" | "requireLegalEntityContext" | "organisationWorkspace"
+/** Invoice details and Activity for the acting organisation. */
+export type ContainerOrganisationTeamRoutesSlice = Pick<
+  Container,
+  "userSuspensionChecker" | "requireLegalEntityContext" | "organisationTeam"
 >;
 
 /** Item submission seller + admin APIs. */
