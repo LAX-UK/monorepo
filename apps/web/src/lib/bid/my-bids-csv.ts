@@ -1,4 +1,5 @@
 import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
+import { csvCell } from "@/lib/workspace/csv";
 import { type BidsListQuery, bidsListSearch } from "./bids-list";
 import type { MyBidStatus } from "./my-bid-status";
 import { MY_BID_STATUS_LABEL } from "./my-bids.vm";
@@ -17,13 +18,7 @@ const HEADER = [
   "lot_id",
 ] as const;
 
-/** Spreadsheet apps run cells that start with these as formulas; a leading quote stops that. */
-const FORMULA_PREFIX = /^[=+\-@]/;
-
-export function csvCell(value: string): string {
-  const safe = FORMULA_PREFIX.test(value) ? `'${value}` : value;
-  return /[",\n\r]/.test(safe) ? `"${safe.replace(/"/g, '""')}"` : safe;
-}
+export { csvCell };
 
 export type CsvBid = { row: BidWithLot; status: MyBidStatus };
 

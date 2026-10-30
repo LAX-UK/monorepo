@@ -4,21 +4,9 @@ import { type CsvBid, myBidsCsv, myBidsCsvFilename } from "@/lib/bid/my-bids-csv
 import { buildMyBidsVm } from "@/lib/bid/my-bids.vm";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { resolveSaleTitles } from "@/lib/data/sale-titles.server";
+import { inPeriod, periodOf } from "@/lib/workspace/csv";
 import { accountBidScope } from "@auction/domain";
 import { NextResponse } from "next/server";
-
-const DAY_MS = 86_400_000;
-
-/** Whole days as `YYYY-MM-DD`; the end day is included. */
-function periodOf(from: string | null, to: string | null): { from: number; to: number } | null {
-  const start = from ? Date.parse(`${from}T00:00:00Z`) : Number.NaN;
-  const end = to ? Date.parse(`${to}T00:00:00Z`) + DAY_MS : Number.NaN;
-  if (Number.isNaN(start) && Number.isNaN(end)) return null;
-  return {
-    from: Number.isNaN(start) ? Number.NEGATIVE_INFINITY : start,
-    to: Number.isNaN(end) ? Number.POSITIVE_INFINITY : end,
-  };
-}
 
 /**
  * Bids as a CSV download: the view and filters on screen (`scope=view`) or every bid
@@ -55,7 +43,7 @@ export async function GET(request: Request) {
       const card = vm.cardsByTab[tab][index];
       if (!card) return;
       if (!everything && !bidMatches(card, query)) return;
-      if (period && (card.closesAt < period.from || card.closesAt >= period.to)) return;
+      if (!inPeriod(card.closesAt, period)) return;
       entries.push(entry);
     });
   }

@@ -2,6 +2,7 @@ import "server-only";
 import type { AccountScope } from "@/lib/account-scope/account-scope";
 import { paymentRoleFor } from "@/lib/buying/account-buying-figures";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { getServerAccountPurchaseFacts } from "@/lib/data/http/account-buying.server";
 import type { LotFulfilmentSnapshot, MyPaymentRow } from "@/lib/data/http/payments.schema";
 import {
   getServerBuyerComplianceGate,
@@ -32,10 +33,12 @@ async function invoicesFor(scope: AccountScope): Promise<MyPaymentRow[]> {
 export async function loadPurchaseSources(): Promise<PurchaseSources | null> {
   const container = await getServerDataContainer();
   const scope = await container.buying.scope();
-  const [rowsResult, gateResult, paymentsResult] = await Promise.allSettled([
+  const organisation = scope.account.kind === "organisation" ? scope.account : null;
+  const [rowsResult, gateResult, paymentsResult, factsResult] = await Promise.allSettled([
     container.buying.purchases(),
     getServerBuyerComplianceGate(),
     invoicesFor(scope),
+    getServerAccountPurchaseFacts(organisation?.id ?? null),
   ]);
   if (rowsResult.status === "rejected") return null;
   const rows = rowsResult.value;
@@ -72,6 +75,12 @@ export async function loadPurchaseSources(): Promise<PurchaseSources | null> {
     complianceGate: gateResult.status === "fulfilled" ? gateResult.value : "clear",
     saleTitleById,
     paymentRoleByLot,
-    payerName: scope.account.kind === "organisation" ? scope.account.name : null,
+    payerName: organisation?.name ?? null,
+    // Invoice and delivery state degrade to what the payment says when they cannot be read.
+    factsByLot:
+      factsResult.status === "fulfilled" && factsResult.value
+        ? Object.fromEntries(factsResult.value.map((facts) => [facts.lotId, facts]))
+        : {},
+    showWonBy: organisation ? accountPurchaseScope(organisation.actor) === "all" : false,
   };
 }

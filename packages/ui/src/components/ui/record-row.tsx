@@ -59,7 +59,8 @@ export type RecordRowProps = {
   figures?: readonly RecordFigure[];
   /**
    * Line the row up with the other rows of its list: on a wide list the status and the action
-   * keep their width even when this row has none, so figures and badges form columns. A narrow
+   * keep their width even when this row has none (pass `action={null}` to keep the action
+   * column on a row without one), so figures and badges form columns. A narrow
    * list keeps such a row to its title, facts, status and lead figure: the row opens the record,
    * where the step is.
    */
@@ -233,7 +234,7 @@ export function RecordRow({
                     {value}
                   </span>
                 ) : null}
-                {isShown(action) || aligned ? (
+                {isShown(action) || (aligned && action !== undefined) ? (
                   <span
                     data-record-action
                     className={cn(

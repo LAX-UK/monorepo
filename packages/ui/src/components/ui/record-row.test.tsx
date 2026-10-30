@@ -175,6 +175,7 @@ describe("RecordRow", () => {
       <RecordRow
         title="Tidal study"
         figures={[{ value: "£1,450", label: "current bid" }]}
+        action={null}
         aligned
       />,
     );
