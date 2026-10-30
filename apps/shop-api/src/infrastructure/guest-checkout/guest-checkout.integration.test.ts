@@ -8,7 +8,11 @@ import {
   shopParty,
   shopProjectionCursor,
 } from "@auction/db/schema";
-import { GUEST_MARKETING_CONSENT, guestOrderSubject } from "@auction/shop-domain";
+import {
+  DEFAULT_FINANCIAL_YEAR_END,
+  GUEST_MARKETING_CONSENT,
+  guestOrderSubject,
+} from "@auction/shop-domain";
 import { and, eq } from "drizzle-orm";
 import type pg from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
@@ -256,7 +260,7 @@ describe.skipIf(!hasShopIntegrationDb)("guest checkout persistence", () => {
     expect(order?.personalDataErasedAt).toBeInstanceOf(Date);
 
     // Six years after the financial year ends, the scheduled purge clears them.
-    const purge = createPurgeRetainedInvoiceDataRunner(db);
+    const purge = createPurgeRetainedInvoiceDataRunner(db, DEFAULT_FINANCIAL_YEAR_END);
     expect(await purge(new Date())).toEqual({ purged: 0 });
     await db
       .update(shopOrder)

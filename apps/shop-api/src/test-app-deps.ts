@@ -51,6 +51,7 @@ export function createMinimalShopApiTestDeps(
       SHOP_OPS_DUAL_CONTROL_PENCE: 500_000,
       STRIPE_SHOP_CONNECT_PLATFORM_KEY: "bid_sandbox",
       SHOP_CONNECT_TRANSFERS_ENABLED: false,
+      SHOP_FINANCIAL_YEAR_END: { month: 9, day: 30 },
     },
     auth: {
       jwksUrl: "http://localhost:3001/.well-known/jwks.json",

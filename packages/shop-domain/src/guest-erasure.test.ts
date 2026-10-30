@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  DEFAULT_FINANCIAL_YEAR_END,
   type GuestErasureOrder,
   decideGuestErasure,
   erasedGuestEmail,
@@ -8,6 +9,7 @@ import {
   guestInvoiceRetentionEndsAt,
   isErasedGuestEmail,
   isGuestOrderOpen,
+  parseFinancialYearEnd,
 } from "./guest-erasure.js";
 
 const NOW = new Date("2026-10-30T12:00:00Z");
@@ -101,12 +103,38 @@ describe("guest erasure policy", () => {
   });
 
   it("keeps invoice data for six years from the end of the financial year", () => {
-    expect(guestInvoiceRetentionEndsAt(new Date("2026-10-30T12:00:00Z")).toISOString()).toBe(
-      "2033-03-31T23:59:59.000Z",
-    );
-    expect(guestInvoiceRetentionEndsAt(new Date("2026-02-10T12:00:00Z")).toISOString()).toBe(
-      "2032-03-31T23:59:59.000Z",
-    );
+    const september = DEFAULT_FINANCIAL_YEAR_END;
+    expect(
+      guestInvoiceRetentionEndsAt(new Date("2026-10-30T12:00:00Z"), september).toISOString(),
+    ).toBe("2033-09-30T23:59:59.000Z");
+    expect(
+      guestInvoiceRetentionEndsAt(new Date("2026-02-10T12:00:00Z"), september).toISOString(),
+    ).toBe("2032-09-30T23:59:59.000Z");
+    // A different year end, from configuration.
+    expect(
+      guestInvoiceRetentionEndsAt(new Date("2026-02-10T12:00:00Z"), {
+        month: 3,
+        day: 31,
+      }).toISOString(),
+    ).toBe("2032-03-31T23:59:59.000Z");
+  });
+
+  it("is never shorter than six years from the invoice date", () => {
+    for (const day of ["2026-09-30T23:00:00Z", "2026-10-01T00:00:00Z", "2027-02-28T12:00:00Z"]) {
+      const invoiced = new Date(day);
+      const sixYears = new Date(invoiced);
+      sixYears.setUTCFullYear(sixYears.getUTCFullYear() + 6);
+      expect(
+        guestInvoiceRetentionEndsAt(invoiced, DEFAULT_FINANCIAL_YEAR_END).getTime(),
+      ).toBeGreaterThanOrEqual(sixYears.getTime());
+    }
+  });
+
+  it("reads the year end from configuration as MM-DD", () => {
+    expect(parseFinancialYearEnd("09-30")).toEqual({ month: 9, day: 30 });
+    expect(parseFinancialYearEnd("02-29")).toEqual({ month: 2, day: 29 });
+    expect(parseFinancialYearEnd("09-31")).toBeNull();
+    expect(parseFinancialYearEnd("30/09")).toBeNull();
   });
 
   it("replaces the email with a value nothing can be sent to", () => {

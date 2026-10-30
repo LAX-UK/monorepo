@@ -1,6 +1,10 @@
 import type { Database } from "@auction/db";
 import { shopOrder } from "@auction/db/schema";
-import { GUEST_RECORD_RETENTION_YEARS, guestInvoiceRetentionEndsAt } from "@auction/shop-domain";
+import {
+  type FinancialYearEnd,
+  GUEST_RECORD_RETENTION_YEARS,
+  guestInvoiceRetentionEndsAt,
+} from "@auction/shop-domain";
 import { and, inArray, isNotNull, isNull, lt } from "drizzle-orm";
 
 const BATCH = 200;
@@ -11,6 +15,7 @@ const BATCH = 200;
  */
 export function createPurgeRetainedInvoiceDataRunner(
   db: Database,
+  financialYearEnd: FinancialYearEnd,
 ): (now: Date) => Promise<{ purged: number }> {
   return async (now) => {
     // Nothing can be due before six whole years have passed, so only those orders are read.
@@ -28,7 +33,10 @@ export function createPurgeRetainedInvoiceDataRunner(
       )
       .limit(BATCH);
     const due = candidates
-      .filter((order) => guestInvoiceRetentionEndsAt(order.paidAt ?? order.createdAt) < now)
+      .filter(
+        (order) =>
+          guestInvoiceRetentionEndsAt(order.paidAt ?? order.createdAt, financialYearEnd) < now,
+      )
       .map((order) => order.id);
     if (due.length === 0) return { purged: 0 };
     await db

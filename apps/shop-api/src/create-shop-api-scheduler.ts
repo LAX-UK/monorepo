@@ -61,7 +61,7 @@ export function buildShopApiSchedulerTasks(input: {
     createStaleCheckoutReaperTask(input.db, paymentGateway),
     createIdentityMergeTask(input.db, opsAlertEmail),
     createGuestOrderClaimTask(input.db, input.env),
-    createRetainedInvoicePurgeTask(input.db),
+    createRetainedInvoicePurgeTask(input.db, input.env),
     createStaffAccessTask(input.db, opsAlertEmail),
     createNotifyMeDispatchTask(input.db, {
       notifications,

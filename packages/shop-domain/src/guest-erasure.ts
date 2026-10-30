@@ -22,37 +22,43 @@ import type { ShopOrderStatus } from "./order-state.js";
  */
 export const GUEST_RECORD_RETENTION_YEARS = 6;
 
+/** The last day of a financial year, as month (1-12) and day. */
+export type FinancialYearEnd = { month: number; day: number };
+
 /**
- * The last day of the company's financial year, as month (1-12) and day. Set to London Art
- * Exchange Ltd's accounting reference date; retention runs from the end of the year a sale is in.
+ * London Art Exchange Ltd's accounting reference date (30 September, from its public filings).
+ * It is the default only: shop-api reads the date from configuration, so it can be corrected
+ * without a code change.
  */
-export const FINANCIAL_YEAR_END = { month: 3, day: 31 } as const;
+export const DEFAULT_FINANCIAL_YEAR_END: FinancialYearEnd = { month: 9, day: 30 };
+
+const DAYS_IN_MONTH = [31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31] as const;
+
+/** Reads "MM-DD" ("09-30"); null when it is not a real day of the year. */
+export function parseFinancialYearEnd(value: string): FinancialYearEnd | null {
+  const match = /^(\d{2})-(\d{2})$/.exec(value.trim());
+  if (!match) return null;
+  const month = Number(match[1]);
+  const day = Number(match[2]);
+  if (month < 1 || month > 12 || day < 1 || day > (DAYS_IN_MONTH[month - 1] ?? 0)) return null;
+  return { month, day };
+}
+
+function yearEndIn(year: number, end: FinancialYearEnd): number {
+  // A 29 February year end falls back to the 28th in a common year.
+  const lastDay = new Date(Date.UTC(year, end.month, 0)).getUTCDate();
+  return Date.UTC(year, end.month - 1, Math.min(end.day, lastDay), 23, 59, 59);
+}
 
 /**
  * When an erased guest's invoice name and address may be purged: six years after the end of the
- * financial year in which the order was paid (or placed, if it was never paid).
+ * financial year in which the order was paid (or placed, if it was never paid). This is never
+ * shorter than HMRC's six-year VAT record retention, which runs from the invoice date.
  */
-export function guestInvoiceRetentionEndsAt(soldAt: Date): Date {
+export function guestInvoiceRetentionEndsAt(soldAt: Date, yearEnd: FinancialYearEnd): Date {
   const year = soldAt.getUTCFullYear();
-  const endThisYear = Date.UTC(
-    year,
-    FINANCIAL_YEAR_END.month - 1,
-    FINANCIAL_YEAR_END.day,
-    23,
-    59,
-    59,
-  );
-  const financialYearEndYear = soldAt.getTime() <= endThisYear ? year : year + 1;
-  return new Date(
-    Date.UTC(
-      financialYearEndYear + GUEST_RECORD_RETENTION_YEARS,
-      FINANCIAL_YEAR_END.month - 1,
-      FINANCIAL_YEAR_END.day,
-      23,
-      59,
-      59,
-    ),
-  );
+  const financialYearEndYear = soldAt.getTime() <= yearEndIn(year, yearEnd) ? year : year + 1;
+  return new Date(yearEndIn(financialYearEndYear + GUEST_RECORD_RETENTION_YEARS, yearEnd));
 }
 
 /** Why erasure cannot go ahead now, in the order they are checked. */
