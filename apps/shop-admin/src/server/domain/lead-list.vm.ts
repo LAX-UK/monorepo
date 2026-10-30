@@ -1,4 +1,4 @@
-import type { AdminLeadSummary } from "@auction/shop-contracts";
+import type { AdminLeadDetail, AdminLeadSummary } from "@auction/shop-contracts";
 import {
   GUEST_LEAD_CRM_STATES,
   GUEST_LEAD_CRM_STATE_LABEL,
@@ -11,7 +11,13 @@ import {
   type GuestLeadStatus,
   type GuestLeadTab,
 } from "@auction/shop-domain";
-import { STAFF_DEFAULT_PAGE_SIZE, formatStaffDate, parseStaffPageSize } from "@auction/staff-ui";
+import {
+  STAFF_DEFAULT_PAGE_SIZE,
+  type TimelineEvent,
+  formatGbp,
+  formatStaffDate,
+  parseStaffPageSize,
+} from "@auction/staff-ui";
 import { type RawSearchParams, listHref, oneOf, singleParam } from "./list-url-state";
 
 export const LEAD_LIST_PATH = "/leads";
@@ -210,4 +216,64 @@ export function crmRecordUrl(
   return template
     .replace("{module}", encodeURIComponent(record.module))
     .replace("{recordId}", encodeURIComponent(record.recordId));
+}
+
+/** What happened to a lead, newest first: seen, checkout, consent, enquiries, orders, joining. */
+export function buildLeadTimeline(lead: AdminLeadDetail): TimelineEvent[] {
+  const events: TimelineEvent[] = [
+    {
+      id: "first-seen",
+      title: `First seen through ${GUEST_LEAD_SOURCE_LABEL[lead.source]}`,
+      at: lead.firstSeenAt,
+    },
+  ];
+  if (lead.checkoutStartedAt) {
+    events.push({
+      id: "checkout",
+      title: "Reached checkout as a guest",
+      at: lead.checkoutStartedAt,
+    });
+  }
+  if (lead.consent.given && lead.consent.at) {
+    events.push({
+      id: "consent",
+      title: "Opted in to news by email",
+      at: lead.consent.at,
+      ...(lead.consent.version ? { detail: `Wording ${lead.consent.version}` } : {}),
+      tone: "success",
+    });
+  }
+  for (const enquiry of lead.enquiries) {
+    events.push({
+      id: `enquiry-${enquiry.enquiryId}`,
+      title: `Enquiry ${enquiry.reference}: ${enquiry.subject}`,
+      at: enquiry.createdAt,
+    });
+  }
+  for (const order of lead.orders) {
+    events.push(
+      order.paidAt
+        ? {
+            id: `paid-${order.orderId}`,
+            title: `Paid order ${order.reference}, ${formatGbp(order.totalPence)}`,
+            at: order.paidAt,
+            tone: "success",
+          }
+        : {
+            id: `order-${order.orderId}`,
+            title: `Started order ${order.reference}`,
+            at: order.createdAt,
+          },
+    );
+  }
+  if (lead.joinedAt) {
+    events.push({
+      id: "joined",
+      title: "Opened a LAX account with this email",
+      detail: "Their orders and enquiries moved to the account.",
+      at: lead.joinedAt,
+      tone: "info",
+    });
+  }
+  return events.sort((a, b) => b.at.localeCompare(a.at));
 }

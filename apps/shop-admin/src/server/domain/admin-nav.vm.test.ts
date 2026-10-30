@@ -179,7 +179,7 @@ describe("buildAdminNavGroups", () => {
       ],
       ["Shop", ["Products", "Orders", "Production", "Fulfilment", "Stock holds"]],
       ["Sales", ["Original sales", "Third-party sales", "Sale limit requests"]],
-      ["Clients", ["Clients"]],
+      ["Clients", ["Clients", "Leads"]],
       ["Finance", ["Payouts", "Disputes"]],
       ["Admin", ["Staff", "Audit log", "Settings"]],
     ]);
