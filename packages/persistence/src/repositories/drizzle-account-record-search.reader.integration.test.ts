@@ -201,7 +201,7 @@ describe.skipIf(!HAS_DB)("account record search reader (integration)", () => {
           .values([
             newBid(ids.wonByOwner, ownerId, orgId),
             newBid(ids.wonByAgent, agentId, orgId),
-            newBid(ids.bidOnly, agentId, orgId),
+            { ...newBid(ids.bidOnly, agentId, orgId), maxAutoBidAmount: "800.00" },
             newBid(ids.bidOnly, strangerId, otherOrgId),
           ]);
 
@@ -231,7 +231,7 @@ describe.skipIf(!HAS_DB)("account record search reader (integration)", () => {
         const criteria = <S>(q: string, scope: S, userId = ownerId): AccountSearchCriteria<S> => {
           const terms = accountSearchTerms(q);
           if (!terms) throw new Error(`unsearchable: ${q}`);
-          return { legalEntityId: orgId, userId, scope, terms, limit: 10, offset: 0 };
+          return { legalEntityId: orgId, userId, scope, terms, limit: 10, offset: 0, now };
         };
 
         // Consignments: by submission title, lot title, artist or lot number; never another org's.
@@ -261,6 +261,19 @@ describe.skipIf(!HAS_DB)("account record search reader (integration)", () => {
         );
         const agentPurchases = await reader.purchases(criteria("hockney", "own", agentId));
         expect(agentPurchases.map((hit) => hit.lotId)).toEqual([ids.wonByAgent]);
+        // The second line: hammer price and where the payment stands.
+        const byLot = new Map(purchases.map((hit) => [hit.lotId, hit]));
+        expect(byLot.get(ids.wonByOwner)).toMatchObject({
+          hammerPrice: "1000.00",
+          currency: "GBP",
+          paymentState: "paid",
+        });
+        expect(byLot.get(ids.wonByAgent)).toMatchObject({ paymentState: "due" });
+        const later = await reader.purchases({
+          ...criteria("hockney", "all"),
+          now: new Date(now.getTime() + 8 * 24 * hour),
+        });
+        expect(later.find((hit) => hit.lotId === ids.wonByAgent)?.paymentState).toBe("overdue");
         expect(await reader.works(criteria("pool", "all"))).toEqual([
           expect.objectContaining({ lotId: ids.wonByOwner, lotNumber: 3, saleId }),
         ]);
@@ -274,6 +287,16 @@ describe.skipIf(!HAS_DB)("account record search reader (integration)", () => {
         expect(agentBids.map((hit) => hit.lotId).sort()).toEqual(
           [ids.wonByAgent, ids.bidOnly].sort(),
         );
+        // The second line: the highest offered in scope and how the lot stands for them.
+        const outcomes = new Map(bids.map((hit) => [hit.lotId, [hit.maximum, hit.outcome]]));
+        expect(outcomes.get(ids.wonByOwner)).toEqual(["500.00", "won"]);
+        expect(outcomes.get(ids.wonByAgent)).toEqual(["500.00", "won"]);
+        expect(outcomes.get(ids.bidOnly)).toEqual(["800.00", "outbid"]);
+        const agentOutcomes = new Map(agentBids.map((hit) => [hit.lotId, hit.outcome]));
+        expect(agentOutcomes.get(ids.bidOnly)).toBe("outbid");
+        // The owner's own view of a lot a colleague won for the account: lost for them.
+        const ownerOwn = await reader.bids(criteria("hockney", "own", ownerId));
+        expect(ownerOwn.map((hit) => [hit.lotId, hit.outcome])).toEqual([[ids.wonByOwner, "won"]]);
 
         // Invoices: by number or work, only the account's.
         expect(await reader.invoices(criteria(`inv-${tag}`, "all"))).toEqual([

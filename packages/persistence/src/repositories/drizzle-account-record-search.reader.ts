@@ -12,14 +12,31 @@ import {
   sale,
 } from "@auction/db/schema";
 import type { AccountSearchTerms } from "@auction/domain";
-import { type SQL, and, asc, desc, eq, ilike, inArray, isNotNull, isNull, or } from "drizzle-orm";
+import { bidOutcome, purchasePaymentState } from "@auction/domain";
+import type { PaymentStatus } from "@auction/types";
+import {
+  type SQL,
+  and,
+  asc,
+  desc,
+  eq,
+  ilike,
+  inArray,
+  isNotNull,
+  isNull,
+  or,
+  sql,
+} from "drizzle-orm";
+import { type AnyPgColumn, alias } from "drizzle-orm/pg-core";
 import type {
   AccountSearchCriteria,
+  BidSearchHit,
   ConsignmentSearchHit,
   IAccountRecordSearchReader,
   InvoiceSearchHit,
   LotSearchHit,
   MemberSearchHit,
+  PurchaseSearchHit,
 } from "../interfaces/account-record-search.reader.js";
 import { escapeLikePattern } from "./audit-log-sql.js";
 import { lotCurrencySql } from "./organisation-dashboard.sql.js";
@@ -104,24 +121,82 @@ export class DrizzleAccountRecordSearchReader implements IAccountRecordSearchRea
     }));
   };
 
-  purchases = (criteria: AccountSearchCriteria<"all" | "own">) =>
-    this.wonLots(criteria, criteria.scope === "own" ? criteria.userId : null);
-
-  works = (criteria: AccountSearchCriteria<"all">) => this.wonLots(criteria, null);
-
-  bids = async (criteria: AccountSearchCriteria<"all" | "own">): Promise<LotSearchHit[]> => {
-    const placedFor = and(
-      eq(bid.buyerLegalEntityId, criteria.legalEntityId),
-      criteria.scope === "own" ? eq(bid.bidderId, criteria.userId) : undefined,
+  purchases = async (
+    criteria: AccountSearchCriteria<"all" | "own">,
+  ): Promise<PurchaseSearchHit[]> => {
+    // The lot's latest payment billed to the account: its state and when the invoice was raised.
+    const latest = (column: SQL | AnyPgColumn) => sql`(
+      select ${column} from ${payment}
+      where ${payment.lotId} = ${lot.id} and ${payment.buyerLegalEntityId} = ${criteria.legalEntityId}
+      order by ${payment.createdAt} desc limit 1
+    )`;
+    const rows = await this.lots(
+      this.wonLotsWhere(criteria, criteria.scope === "own" ? criteria.userId : null),
+      criteria,
+      {
+        hammerPrice: lot.currentPrice,
+        currency: lotCurrencySql,
+        paymentStatus: latest(payment.status).mapWith(String) as SQL<PaymentStatus | null>,
+        invoicedAt: latest(payment.createdAt).mapWith((value) =>
+          value == null ? null : new Date(value),
+        ) as SQL<Date | null>,
+      },
     );
-    return this.lots(
+    return rows.map(({ paymentStatus, invoicedAt, ...row }) => ({
+      ...row,
+      paymentState: purchasePaymentState({
+        paymentStatus,
+        invoicedAt: invoicedAt ?? row.endsAt,
+        now: criteria.now,
+      }),
+    }));
+  };
+
+  works = (criteria: AccountSearchCriteria<"all">): Promise<LotSearchHit[]> =>
+    this.lots(this.wonLotsWhere(criteria, null), criteria, {});
+
+  bids = async (criteria: AccountSearchCriteria<"all" | "own">): Promise<BidSearchHit[]> => {
+    const own = criteria.scope === "own";
+    // The bids in scope: the account's, or one member's for it.
+    const placedFor = (table: { buyerLegalEntityId: AnyPgColumn; bidderId: AnyPgColumn }) =>
       and(
-        inArray(lot.id, this.db.selectDistinct({ id: bid.lotId }).from(bid).where(placedFor)),
+        eq(table.buyerLegalEntityId, criteria.legalEntityId),
+        own ? eq(table.bidderId, criteria.userId) : undefined,
+      );
+    const mine = alias(bid, "mine");
+    const rows = await this.lots(
+      and(
+        inArray(lot.id, this.db.selectDistinct({ id: bid.lotId }).from(bid).where(placedFor(bid))),
         lotNotDeleted(),
         lotMatches(criteria.terms),
       ),
       criteria,
+      {
+        currency: lotCurrencySql,
+        maximum: sql<string | null>`(${this.db
+          .select({
+            value: sql`max(greatest(${mine.amount}, coalesce(${mine.maxAutoBidAmount}, ${mine.amount})))::text`,
+          })
+          .from(mine)
+          .where(and(eq(mine.lotId, lot.id), placedFor(mine)))})`,
+        leading: sql<boolean>`exists (${this.db
+          .select({ one: sql`1` })
+          .from(mine)
+          .where(and(eq(mine.lotId, lot.id), eq(mine.isWinning, true), placedFor(mine)))})`,
+        won: sql<boolean>`(${and(
+          eq(lot.buyerLegalEntityId, criteria.legalEntityId),
+          own ? eq(lot.winnerId, criteria.userId) : isNotNull(lot.winnerId),
+        )})`,
+      },
     );
+    return rows.map(({ leading, won, ...row }) => ({
+      ...row,
+      outcome: bidOutcome({
+        lotStatus: row.lotStatus,
+        leading: Boolean(leading),
+        won: Boolean(won),
+      }),
+    }));
   };
 
   invoices = async (criteria: AccountSearchCriteria<"all">): Promise<InvoiceSearchHit[]> => {
@@ -178,25 +253,27 @@ export class DrizzleAccountRecordSearchReader implements IAccountRecordSearchRea
   };
 
   /** Lots won for the account; `winnerId` narrows them to one member's wins. */
-  private wonLots(
+  private wonLotsWhere(
     criteria: AccountSearchCriteria<unknown>,
     winnerId: string | null,
-  ): Promise<LotSearchHit[]> {
-    return this.lots(
-      and(
-        eq(lot.buyerLegalEntityId, criteria.legalEntityId),
-        eq(lot.status, "ended"),
-        winnerId ? eq(lot.winnerId, winnerId) : isNotNull(lot.winnerId),
-        lotNotDeleted(),
-        lotMatches(criteria.terms),
-      ),
-      criteria,
+  ): SQL | undefined {
+    return and(
+      eq(lot.buyerLegalEntityId, criteria.legalEntityId),
+      eq(lot.status, "ended"),
+      winnerId ? eq(lot.winnerId, winnerId) : isNotNull(lot.winnerId),
+      lotNotDeleted(),
+      lotMatches(criteria.terms),
     );
   }
 
-  private async lots(where: SQL | undefined, page: Page): Promise<LotSearchHit[]> {
+  /** One page of lots with their common columns, plus what a group adds to each. */
+  private lots<E extends Record<string, SQL | SQL.Aliased | AnyPgColumn>>(
+    where: SQL | undefined,
+    page: Page,
+    extra: E,
+  ) {
     return this.db
-      .select(LOT_COLUMNS)
+      .select({ ...LOT_COLUMNS, ...extra })
       .from(lot)
       .leftJoin(artistProfile, eq(artistProfile.id, lot.artistId))
       .leftJoin(sale, eq(sale.id, lot.saleId))
