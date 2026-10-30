@@ -112,3 +112,17 @@ export function invitesClosedCopy(code: string, organisationName: string) {
     INVITES_CLOSED[code as InviteRefusalCode] ?? INVITES_CLOSED.organisation_closed_to_members;
   return copy(organisationName);
 }
+
+/** Leaving: what the person loses, what stops, and how they come back. */
+export function leaveOrganisationCopy(organisationName: string) {
+  return {
+    title: `Leave ${organisationName}?`,
+    lines: [
+      `You'll lose access to ${organisationName} straight away, and Bid will open your own account.`,
+      `Your automatic and absentee bids for ${organisationName} stop, and any authorisation to bid for it ends. Bids you've already placed stand.`,
+      "To come back, an owner or admin will need to invite you again.",
+    ],
+    confirmLabel: "Leave",
+    done: (): ToastCopy => ({ title: `You've left ${organisationName}.` }),
+  };
+}

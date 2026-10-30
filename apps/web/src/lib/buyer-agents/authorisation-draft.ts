@@ -11,11 +11,19 @@ export type AuthorisationDraft = {
   saleId: string;
   /** Pounds as typed, e.g. "10,000" or "2500.50"; empty for no limit. */
   limit: string;
+  /** The most committed at once across the scope, as typed; empty for no total. */
+  totalLimit: string;
   startDay: string;
   endDay: string;
 };
 
-export type AuthorisationDraftField = "memberUserId" | "saleId" | "limit" | "startDay" | "endDay";
+export type AuthorisationDraftField =
+  | "memberUserId"
+  | "saleId"
+  | "limit"
+  | "totalLimit"
+  | "startDay"
+  | "endDay";
 export type AuthorisationDraftErrors = Partial<Record<AuthorisationDraftField, string>>;
 
 export const EMPTY_AUTHORISATION_DRAFT: AuthorisationDraft = {
@@ -23,6 +31,7 @@ export const EMPTY_AUTHORISATION_DRAFT: AuthorisationDraft = {
   scope: "all",
   saleId: "",
   limit: "",
+  totalLimit: "",
   startDay: "",
   endDay: "",
 };
@@ -53,6 +62,15 @@ export function validateAuthorisationDraft(
     errors.limit = "Enter a smaller amount.";
   }
 
+  const total = parsePounds(draft.totalLimit);
+  if (total != null && (Number.isNaN(total) || total <= 0)) {
+    errors.totalLimit = "Enter an amount in pounds, like 25,000.";
+  } else if (total != null && total > BUYER_AGENT_BID_LIMIT_MAX) {
+    errors.totalLimit = "Enter a smaller amount.";
+  } else if (total != null && limit != null && !Number.isNaN(limit) && total < limit) {
+    errors.totalLimit = "The total can't be less than the limit for one lot.";
+  }
+
   if (draft.startDay && !DAY.test(draft.startDay)) errors.startDay = "Enter a valid date.";
   if (draft.endDay && !DAY.test(draft.endDay)) {
     errors.endDay = "Enter a valid date.";
@@ -70,10 +88,12 @@ export function validateAuthorisationDraft(
  */
 export function toAuthoriseBuyerAgentInput(draft: AuthorisationDraft): AuthoriseBuyerAgentInput {
   const limit = parsePounds(draft.limit);
+  const total = parsePounds(draft.totalLimit);
   return {
     memberUserId: draft.memberUserId,
     saleId: draft.scope === "sale" ? draft.saleId : null,
     bidLimit: limit != null && Number.isFinite(limit) ? limit : null,
+    totalLimit: total != null && Number.isFinite(total) ? total : null,
     validFrom: draft.startDay
       ? instantFromAuctionDatetimeFormString(`${draft.startDay}T00:00`).toISOString()
       : null,

@@ -63,6 +63,18 @@ describe("validateAuthorisationDraft", () => {
   });
 });
 
+describe("total limit", () => {
+  it("is optional, read as pounds and never below the limit for one lot", () => {
+    expect(validateAuthorisationDraft(draft({ totalLimit: "25,000" }), TODAY)).toEqual({});
+    expect(validateAuthorisationDraft(draft({ totalLimit: "lots" }), TODAY)).toEqual({
+      totalLimit: "Enter an amount in pounds, like 25,000.",
+    });
+    expect(
+      validateAuthorisationDraft(draft({ limit: "10,000", totalLimit: "5,000" }), TODAY),
+    ).toEqual({ totalLimit: "The total can't be less than the limit for one lot." });
+  });
+});
+
 describe("toAuthoriseBuyerAgentInput", () => {
   it("sends whole London days and pounds", () => {
     expect(
@@ -71,6 +83,7 @@ describe("toAuthoriseBuyerAgentInput", () => {
           scope: "sale",
           saleId: "sale-1",
           limit: "10,000",
+          totalLimit: "25,000",
           startDay: "2026-11-01",
           endDay: "2026-11-30",
         }),
@@ -79,6 +92,7 @@ describe("toAuthoriseBuyerAgentInput", () => {
       memberUserId: "agent-1",
       saleId: "sale-1",
       bidLimit: 10000,
+      totalLimit: 25000,
       validFrom: "2026-11-01T00:00:00.000Z",
       validUntil: "2026-11-30T23:59:00.000Z",
     });
@@ -95,6 +109,7 @@ describe("toAuthoriseBuyerAgentInput", () => {
       memberUserId: "agent-1",
       saleId: null,
       bidLimit: null,
+      totalLimit: null,
       validFrom: null,
       validUntil: null,
     });

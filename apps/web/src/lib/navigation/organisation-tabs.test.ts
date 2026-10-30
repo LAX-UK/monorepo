@@ -48,6 +48,7 @@ describe("requireOrganisationTab", () => {
       kind: "forbidden",
       label: "Security",
       openedBy: "Owners and admins",
+      capability: "entity.security.read",
       fallback: { id: "payouts", label: "Payouts", href: "/organisation/payouts" },
     });
     expect(requireOrganisationTab({ role: "viewer" }, "payouts")).toMatchObject({

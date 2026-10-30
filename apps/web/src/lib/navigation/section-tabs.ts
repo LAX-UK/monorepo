@@ -23,6 +23,8 @@ export type SectionTabAccess<Id extends string> =
       label: string;
       /** Who can open it, for "Owners and admins can open it". */
       openedBy: string;
+      /** What opens it, so the person can ask for a role that has it. */
+      capability: EntityCapability;
       /** The first tab the person can open, if any, to send them on to. */
       fallback: SectionTabLink<Id> | null;
     };
@@ -65,6 +67,7 @@ export function defineSectionTabs<Id extends string>(
         kind: "forbidden",
         label: spec.label,
         openedBy: organisationRoleGroupsSentence(rolesWithCapability(spec.capability)),
+        capability: spec.capability,
         fallback: tabsFor(actor)[0] ?? null,
       };
     },

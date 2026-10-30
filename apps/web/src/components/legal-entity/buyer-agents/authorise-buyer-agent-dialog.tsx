@@ -254,6 +254,32 @@ export function AuthoriseBuyerAgentDialog({
               />
             </div>
           </FieldBlock>
+          <FieldBlock
+            id={fieldId("totalLimit")}
+            label="Total limit (optional)"
+            hint="The most they can have committed at once, across these sales. Leave empty for no total."
+            error={errors.totalLimit}
+          >
+            <div className="relative">
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-body text-sm text-on-surface-variant"
+              >
+                £
+              </span>
+              <Input
+                id={fieldId("totalLimit")}
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="25,000"
+                className="min-h-11 pl-7 tabular-nums"
+                value={draft.totalLimit}
+                onChange={(event) => update({ totalLimit: event.target.value })}
+                aria-invalid={errors.totalLimit ? true : undefined}
+                aria-describedby={describedBy(fieldId("totalLimit"), errors.totalLimit, true)}
+              />
+            </div>
+          </FieldBlock>
           <div className="grid gap-4 sm:grid-cols-2">
             <FieldBlock
               id={fieldId("start")}

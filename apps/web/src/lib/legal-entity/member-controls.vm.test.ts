@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   type MemberForControls,
   inviteRoleOptions,
+  leaveControl,
   memberRowControls,
   memberViewOnlyReason,
 } from "./member-controls.vm";
@@ -80,5 +81,26 @@ describe("memberViewOnlyReason", () => {
     expect(memberViewOnlyReason({ role: "admin", isImpersonation: true, memberId: null })).toBe(
       "You're viewing this organisation as LAX support, so changes are turned off.",
     );
+  });
+});
+
+describe("leaveControl", () => {
+  it("lets any member leave except the last owner, who is told to hand ownership on", () => {
+    expect(leaveControl(actorAs(admin), team)).toEqual({ allowed: true });
+    expect(leaveControl(actorAs(agent), team)).toEqual({ allowed: true });
+    expect(leaveControl(actorAs(owner), team)).toEqual({
+      allowed: false,
+      reason:
+        "You're the only owner. Make someone else an owner, or transfer ownership, before you leave.",
+    });
+  });
+
+  it("lets an owner leave when another owner stays", () => {
+    const second = member("second", "owner");
+    expect(leaveControl(actorAs(owner), [...team, second])).toEqual({ allowed: true });
+  });
+
+  it("offers nothing to support staff, who are not in the team", () => {
+    expect(leaveControl({ role: "admin", isImpersonation: true, memberId: null }, team)).toBeNull();
   });
 });

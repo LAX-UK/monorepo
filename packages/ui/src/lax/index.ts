@@ -22,6 +22,8 @@ export { Kbd, ShortcutKeys } from "./kbd.js";
 export { Field, ReadOnlyView, readOnlyBox, useField, useReadOnlyView } from "./field.js";
 export type { FieldProps } from "./field.js";
 export { TextArea, TextInput, fieldBox } from "./input.js";
+export { TokenInput, splitTokens } from "./token-input.js";
+export type { TokenInputProps } from "./token-input.js";
 export type { TextAreaProps, TextInputProps } from "./input.js";
 export {
   Menu,
@@ -44,6 +46,10 @@ export {
   formatCount,
 } from "./tabs.js";
 export type { CountTone, SegmentOption, TabNavItem } from "./tabs.js";
+export { Meter } from "./meter.js";
+export type { MeterProps } from "./meter.js";
+export { SelectMenu } from "./select-menu.js";
+export type { SelectMenuOption, SelectMenuProps } from "./select-menu.js";
 export { Switch } from "./switch.js";
 export type { SwitchProps } from "./switch.js";
 export { Notice } from "./notice.js";

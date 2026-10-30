@@ -12,6 +12,9 @@ import {
  */
 const TEAM_TAB_SPECS: readonly SectionTabSpec<TeamTab>[] = [
   { id: "members", label: "Members", capability: "entity.members.read" },
+  { id: "invitations", label: "Invitations", capability: "entity.members.read" },
+  { id: "bidding", label: "Who can bid", capability: "entity.buyer_agents.read" },
+  { id: "activity", label: "Activity", capability: "entity.activity.read" },
 ];
 
 const TEAM_TABS = defineSectionTabs(TEAM_TAB_SPECS, (tab) => teamHref(tab));
