@@ -299,6 +299,7 @@ export async function persistBidOutcome(
     lotRow,
     created: lastBid,
     prevWinnerId,
+    prevWinnerLegalEntityId: prevWinningBid?.buyerLegalEntityId ?? null,
     endedEarly,
     bids,
     tx,

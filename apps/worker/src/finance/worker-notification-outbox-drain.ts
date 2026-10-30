@@ -43,6 +43,8 @@ export class WorkerNotificationOutboxDrain implements INotificationOutboxCronPro
             message: row.payload.message,
             lotId: row.payload.lotId,
             submissionId: row.payload.submissionId,
+            // Rows staged before notifications carried an account are personal.
+            legalEntityId: row.payload.legalEntityId ?? null,
           },
         ]);
 

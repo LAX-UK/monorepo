@@ -4,6 +4,7 @@ import { PushNotificationChannel } from "./push-notification.channel.js";
 
 const payload = {
   type: "outbid",
+  legalEntityId: null,
   title: "Outbid",
   message: "Another bidder is ahead",
   lotId: "lot-1",

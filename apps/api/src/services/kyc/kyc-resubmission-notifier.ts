@@ -34,6 +34,8 @@ export class KycResubmissionNotifier {
       {
         userId,
         type: "kyc_resubmission_required",
+        // Identity checks are for the person, so the notice is personal.
+        legalEntityId: null,
         title: feedback.headline,
         message: issueDetail ?? "Please continue verification and resubmit the missing items.",
       },

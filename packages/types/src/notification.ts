@@ -6,6 +6,8 @@ export type UserNotification = {
   message: string;
   lotId: string | null;
   submissionId: string | null;
+  /** The account the notification is about; `null` for the person's own personal account. */
+  legalEntityId?: string | null;
   read: boolean;
   /** When set, hidden from default inbox lists (soft archive). */
   archivedAt?: Date | null;

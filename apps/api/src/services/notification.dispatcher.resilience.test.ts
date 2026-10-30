@@ -50,6 +50,7 @@ describe("NotificationDispatcher resilience", () => {
 
     await dispatcher.dispatch("user_1", {
       type: "outbid",
+      legalEntityId: null,
       title: "Outbid",
       message: "Another bidder is ahead",
     });
@@ -66,6 +67,7 @@ describe("NotificationDispatcher resilience", () => {
     await expect(
       dispatcher.dispatch("user_1", {
         type: "outbid",
+        legalEntityId: null,
         title: "Outbid",
         message: "Another bidder is ahead",
       }),
@@ -83,6 +85,7 @@ describe("NotificationDispatcher resilience", () => {
     await expect(
       dispatcher.dispatchStrict("user_1", {
         type: "outbid",
+        legalEntityId: null,
         title: "Outbid",
         message: "Another bidder is ahead",
       }),

@@ -11,12 +11,13 @@ export class LotNotificationCoordinator implements ILotNotificationCoordinator {
   async notifyLotCancelled(args: {
     lotId: string;
     title: string;
-    recipientIds: string[];
+    recipients: { userId: string; legalEntityId: string | null }[];
   }): Promise<void> {
     if (!this.notificationWrite || !this.userNotificationPublisher) return;
     const persisted = await this.notificationWrite.createMany(
-      args.recipientIds.map((userId) => ({
+      args.recipients.map(({ userId, legalEntityId }) => ({
         userId,
+        legalEntityId,
         type: "lot_cancelled",
         title: "Lot cancelled",
         message: `The lot "${args.title}" has been cancelled.`,

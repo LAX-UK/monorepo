@@ -10,6 +10,11 @@ export type NotificationPayload = {
   message: string;
   lotId?: string | undefined;
   submissionId?: string | undefined;
+  /**
+   * The account the notification is about (a personal or organisation legal entity); `null`
+   * means the person's own personal account. Required so every producer decides it.
+   */
+  legalEntityId: string | null;
   /** Structured extras for email/push rendering (not persisted on in-app rows). */
   meta?: {
     paymentId?: string;

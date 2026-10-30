@@ -695,6 +695,9 @@ describe("LotService.cancel", () => {
     } as unknown as ILotRepository;
     const bids: IBidRepository = {
       listDistinctBidderIds: vi.fn().mockResolvedValue(["bidder-1"]),
+      listDistinctBidderAccounts: vi
+        .fn()
+        .mockResolvedValue([{ userId: "bidder-1", legalEntityId: "buyer-org" }]),
     } as unknown as IBidRepository;
     const watchlist: IWatchlistRepository = {
       listUserIdsForLot: vi.fn().mockResolvedValue(["watcher-1"]),
@@ -729,7 +732,12 @@ describe("LotService.cancel", () => {
     expect(lotNotifications.notifyLotCancelled).toHaveBeenCalledWith({
       lotId,
       title: activeLot.title,
-      recipientIds: ["bidder-1", "watcher-1", "owner-1", "consignor-1"],
+      recipients: [
+        { userId: "bidder-1", legalEntityId: "buyer-org" },
+        { userId: "owner-1", legalEntityId: activeLot.sellerLegalEntityId },
+        { userId: "consignor-1", legalEntityId: activeLot.sellerLegalEntityId },
+        { userId: "watcher-1", legalEntityId: null },
+      ],
     });
   });
 
@@ -744,7 +752,10 @@ describe("LotService.cancel", () => {
     const cancelLotJobs = vi.fn().mockResolvedValue(undefined);
     const svc = new LotService({
       lotRepo,
-      bids: { listDistinctBidderIds: vi.fn().mockResolvedValue([]) } as unknown as IBidRepository,
+      bids: {
+        listDistinctBidderIds: vi.fn().mockResolvedValue([]),
+        listDistinctBidderAccounts: vi.fn().mockResolvedValue([]),
+      } as unknown as IBidRepository,
       watchlist: {
         listUserIdsForLot: vi.fn().mockResolvedValue([]),
       } as unknown as IWatchlistRepository,

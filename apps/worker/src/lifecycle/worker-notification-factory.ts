@@ -14,6 +14,7 @@ export class WorkerNotificationFactory {
       title: "Congratulations — you won",
       message: `You won "${lot.title}". Complete payment from your portfolio when ready.`,
       lotId: lot.id,
+      legalEntityId: lot.buyerLegalEntityId ?? null,
       meta: {
         lotTitle: lot.title,
         bidAmount: lot.currentPrice,
@@ -37,6 +38,7 @@ export class WorkerNotificationFactory {
         ? `"${lot.title}" sold with a hammer price of ${opts?.hammerPrice} GBP.`
         : `"${lot.title}" closed without a sale. Choose what happens next: relist it, offer it by private sale, or have it returned.`,
       lotId: lot.id,
+      legalEntityId: lot.sellerLegalEntityId ?? null,
       meta: {
         lotTitle: lot.title,
         outcome: sold ? "sold" : "unsold",
@@ -45,24 +47,26 @@ export class WorkerNotificationFactory {
     };
   }
 
-  createLost(lot: Lot, bidderId: string): CreateNotificationRow {
+  createLost(lot: Lot, bidderId: string, legalEntityId: string | null): CreateNotificationRow {
     return {
       userId: bidderId,
       type: "lot_lost",
       title: "Lot ended",
       message: `The lot "${lot.title}" has ended. Another bidder had the winning bid.`,
       lotId: lot.id,
+      legalEntityId,
       meta: { lotTitle: lot.title },
     };
   }
 
-  createEndingSoon(lot: Lot, userId: string): CreateNotificationRow {
+  createEndingSoon(lot: Lot, userId: string, legalEntityId: string | null): CreateNotificationRow {
     return {
       userId,
       type: "lot_ending_soon",
       title: "Lot ending soon",
       message: `"${lot.title}" ends in about one hour.`,
       lotId: lot.id,
+      legalEntityId,
       meta: { lotTitle: lot.title },
     };
   }
@@ -74,6 +78,7 @@ export class WorkerNotificationFactory {
       title: "Saved lot is now live",
       message: `"${lot.title}" is now accepting bids.`,
       lotId: lot.id,
+      legalEntityId: null,
       meta: { lotTitle: lot.title },
     };
   }
@@ -85,6 +90,7 @@ export class WorkerNotificationFactory {
       title: "Saved lot ending soon",
       message: `"${lot.title}" ends in about one hour.`,
       lotId: lot.id,
+      legalEntityId: null,
       meta: { lotTitle: lot.title },
     };
   }
@@ -101,6 +107,7 @@ export class WorkerNotificationFactory {
       title: `Payment due — ${lot.title}`,
       message: `Complete payment of ${input.amount} GBP for this lot.${dueSuffix}`,
       lotId: lot.id,
+      legalEntityId: lot.buyerLegalEntityId ?? null,
       meta: {
         paymentId: input.paymentId,
         amount: input.amount,
@@ -120,6 +127,7 @@ export function notificationRowToPayload(
     message: row.message,
     lotId: row.lotId,
     submissionId: row.submissionId,
+    legalEntityId: row.legalEntityId,
     ...(row.meta != null ? { meta: row.meta } : {}),
   };
 }

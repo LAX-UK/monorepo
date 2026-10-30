@@ -18,6 +18,7 @@ describe("InAppNotificationChannel", () => {
     const channel = new InAppNotificationChannel(write, publisher, cache);
     const payload: NotificationPayload = {
       type: "lot_won",
+      legalEntityId: null,
       title: "Congratulations — you won",
       message: "You won.",
       lotId: "lot-1",
