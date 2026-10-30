@@ -30,6 +30,7 @@ import { createRegisterArtworkInterestHandler } from "./application/handlers/reg
 import { createShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
 import { createHomeFeaturesService } from "./application/home-features/home-features.service.js";
 import { createLaxPortfolioHandlers } from "./application/lax-portfolio/lax-portfolio.handler.js";
+import { LeadsService } from "./application/leads/leads.service.js";
 import type { ImportArtworkCommand } from "./application/ports/artwork-import.writer.js";
 import type { CreateOriginalSaleCommand } from "./application/ports/original-sale.writer.js";
 import type {
@@ -69,6 +70,7 @@ import { createDrizzleEditorialSearchReader } from "./infrastructure/drizzle-edi
 import { createDrizzleEditorialRepository } from "./infrastructure/drizzle-editorial.repository.js";
 import { createDrizzleEnquiryInboxRepository } from "./infrastructure/drizzle-enquiry-inbox.repository.js";
 import { createDrizzleHelpRepository } from "./infrastructure/drizzle-help.repository.js";
+import { createDrizzleLeadReader } from "./infrastructure/drizzle-lead.reader.js";
 import { createDrizzleMerchandiseCatalogueRepository } from "./infrastructure/drizzle-merchandise-catalogue.repository.js";
 import { createDrizzleMerchandiseCatalogueWriter } from "./infrastructure/drizzle-merchandise-catalogue.writer.js";
 import { createDrizzleMerchandiseStockWriter } from "./infrastructure/drizzle-merchandise-stock.writer.js";
@@ -504,6 +506,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           repository: createDrizzleEnquiryInboxRepository(db, { resolveMediaUrl }),
           staffReader,
         }),
+        leads: new LeadsService(createDrizzleLeadReader(db)),
         guestErasure: new GuestErasureService(
           createDrizzleGuestErasureStore(db, {
             domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,

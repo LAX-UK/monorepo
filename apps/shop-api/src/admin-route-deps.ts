@@ -4,6 +4,7 @@ import type { EnquiryInboxService } from "./application/enquiry-inbox.service.js
 import type { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import type { ShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
 import type { HomeFeaturesService } from "./application/home-features/home-features.service.js";
+import type { LeadsService } from "./application/leads/leads.service.js";
 import type { AdminReadPorts } from "./application/ports/admin-readers.js";
 import type { ArtCacheInvalidator } from "./application/ports/art-cache-invalidator.js";
 import type { ArtistSeoWriter } from "./application/ports/artist-seo.writer.js";
@@ -72,6 +73,8 @@ export type AdminRoutesDeps = {
   enquiryInbox: EnquiryInboxService;
   /** Erasing a guest's personal data on request. */
   guestErasure: GuestErasureService;
+  /** Guest leads: the list and one lead's record. */
+  leads: LeadsService;
   artistApplicationReview: ArtistApplicationReviewService;
   productionTasks: ProductionTaskService;
   savedViews: SavedViewService;
