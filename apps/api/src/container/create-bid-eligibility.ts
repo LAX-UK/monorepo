@@ -13,6 +13,7 @@ import {
   NoOpAmlBidGate,
   NoOpKycBidGate,
   OperatorPlacementPolicy,
+  PerLotBiddingLimitGate,
   SaleRegistrationBidGate,
   SelfServiceIdentityEligibilityGate,
 } from "@auction/bidding-runtime";
@@ -93,7 +94,10 @@ export function createBidIdentityEligibilityGate(
   );
 }
 
-/** Test-only wiring when KYC/AML ports are absent. */
+/**
+ * Test-only wiring when KYC/AML ports are absent. Only the per-lot limit applies here; the
+ * organisation limits have their own gate and integration tests.
+ */
 export function createBidEligibilityForTest(
   db: Database,
   opts?: {
@@ -116,6 +120,6 @@ export function createBidEligibilityForTest(
     new OperatorPlacementPolicy(operatorReader),
     new SaleRegistrationBidGate(new DrizzleSaleRegistrationBidReader(db)),
     new BidderRoleGate(new DrizzleBidBidderRoleReader(db)),
-    createBiddingLimitGate(db),
+    new PerLotBiddingLimitGate(),
   );
 }
