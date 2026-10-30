@@ -16,9 +16,9 @@ import { ClientShell } from "@/components/shell/client-shell";
 import { ClientWebsiteFrame } from "@/components/shell/client-website-frame";
 import { clientAreaRedirectFor } from "@/lib/auth/client-audience";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
-import { loadSellerConnectNavBadge } from "@/lib/connect/load-seller-connect-nav-badge";
 import { dashboardSliceFailureMessage } from "@/lib/dashboard/dashboard-fetch-errors";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { getServerNeedsYouCounts } from "@/lib/data/http/needs-you.server";
 import { loadBidFamilyLinks } from "@/lib/ecosystem/product-directory.server";
 import { lookupActingContext } from "@/lib/legal-entity/acting-context.server";
 import { deriveActingContext } from "@/lib/legal-entity/derive-acting-context";
@@ -36,6 +36,7 @@ import { clientNavScopeFor } from "@/lib/navigation/client-nav-scope";
 import { resolveClientRequestPath } from "@/lib/navigation/client-request-path.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
+import { navCountsFrom } from "@/lib/workspace/needs-you-counts";
 import { canAccessStaffAdminShell } from "@auction/types";
 import type { Metadata } from "next";
 import { cookies } from "next/headers";
@@ -74,7 +75,7 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
   const { acting, safeActing } = deriveActingContext({ actingContext, orgModuleEnabled });
   const actingOrganisation = safeActing?.kind === "organisation" ? safeActing : null;
 
-  const [pendingR, hasSubmissions, sellerConnectNavBadge] = await Promise.all([
+  const [pendingR, hasSubmissions, needsYouCounts] = await Promise.all([
     orgModuleEnabled
       ? createPendingInvitationsGateway()
           .listMine()
@@ -84,7 +85,8 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
           )
       : Promise.resolve({ ok: true as const, value: [] }),
     actingOrganisation ? Promise.resolve(false) : hasPersonalSubmissions(),
-    loadSellerConnectNavBadge(user.role, user.staffRoles),
+    // The menu's counts come from the one Needs-you reader Home reads.
+    actingOrganisation ? getServerNeedsYouCounts(actingOrganisation.id) : Promise.resolve(null),
   ]);
   const pendingInvites = pendingR.ok ? pendingR.value : [];
   const layoutWarnings: { title: string; message: string }[] = [];
@@ -170,8 +172,7 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
           navScope={navScope}
           account={account}
           familyLinks={loadBidFamilyLinks()}
-          sellerConnectNavBadge={sellerConnectNavBadge}
-          hideEmailStatusBanner
+          needsYou={navCountsFrom(needsYouCounts)}
           acting={acting}
           contextBanner={banner}
           topSlot={<WelcomeBackToast />}

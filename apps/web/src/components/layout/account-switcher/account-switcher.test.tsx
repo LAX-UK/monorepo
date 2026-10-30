@@ -11,7 +11,6 @@ vi.mock("@/components/layout/acting-as-tooltip", () => ({
 }));
 
 const { AccountSwitcher } = await import("./account-switcher");
-const { AccountStrip } = await import("./account-strip");
 
 const current = {
   id: "northbank",
@@ -31,7 +30,6 @@ const withOrganisations: AccountChrome = {
     invitationsHref: "/organisations/invitations",
     registerHref: "/onboarding/organisation?fresh=1",
   },
-  strip: { name: "Northbank Gallery", role: "Admin" },
 };
 
 describe("AccountSwitcher", () => {
@@ -49,19 +47,9 @@ describe("AccountSwitcher", () => {
         account={{
           current: { ...current, kind: "personal", name: "Personal", detail: "Jane Smith" },
           switcher: null,
-          strip: null,
         }}
       />,
     );
     expect(container).toBeEmptyDOMElement();
-  });
-});
-
-describe("AccountStrip", () => {
-  it("names the organisation and role, and says what it means to screen readers", () => {
-    render(<AccountStrip strip={{ name: "Northbank Gallery", role: "Admin" }} />);
-    expect(screen.getByTestId("account-strip")).toHaveTextContent(
-      "Using Bid asNorthbank Gallery·Admin",
-    );
   });
 });
