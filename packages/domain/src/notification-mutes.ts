@@ -6,13 +6,16 @@
  * email, because missing them costs the person or the organisation: an unpaid invoice, a won lot,
  * an agreement waiting for acceptance, a role change. Extend this table, not the callers.
  *
- * Covered by the policy as notice types are added: bid refused for a limit and payout problems
- * have no notification type yet; give them one in this table when they do.
+ * Covered by the policy as notice types are added: a bid refused for a limit is informational
+ * and in-app only, so a mute may quiet it.
  */
 export const NOTIFICATION_ALWAYS_DELIVERED_TYPES = [
   // Money owed or received: payment due (the invoice) and won lots.
   "payment_due",
   "lot_won",
+  // A payout that did not reach the bank, and a delivery quote waiting to be accepted.
+  "payout_problem",
+  "delivery_quote_ready",
   // Consignments waiting for the person to act.
   "consignment_agreement_reminder",
   "submission_changes_requested",

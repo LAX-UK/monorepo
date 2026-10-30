@@ -42,12 +42,13 @@ export interface IBidRepository {
   listForBidder(bidderId: string, limit: number): Promise<Bid[]>;
   /**
    * Latest bids placed for a buyer account (an organisation), newest first. `bidderId` narrows
-   * to the bids one member placed for it.
+   * to the bids one member placed for it; `saleId` to the bids on one sale's lots.
    */
   listForBuyerAccount(
     buyerLegalEntityId: string,
     bidderId: string | null,
     limit: number,
+    saleId?: string,
   ): Promise<Bid[]>;
   markWinningBid(lotId: string, bidId: string): Promise<void>;
   clearWinningBid(lotId: string): Promise<void>;

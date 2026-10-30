@@ -202,6 +202,22 @@ export class NotificationFactory implements INotificationFactory {
     };
   }
 
+  createDeliveryQuoteReady(
+    lot: Lot,
+    userId: string,
+    input: { amount: string; currency: string; legalEntityId: string },
+  ): CreateNotificationRow {
+    return {
+      userId,
+      type: "delivery_quote_ready",
+      legalEntityId: input.legalEntityId,
+      title: "Your delivery quote is ready",
+      message: `Delivery for "${lot.title}" is quoted at ${input.amount} ${input.currency}. Open the purchase to accept it.`,
+      lotId: lot.id,
+      meta: { lotTitle: lot.title, amount: input.amount },
+    };
+  }
+
   createLotReadyForCollection(
     lot: Lot,
     buyerId: string,

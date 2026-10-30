@@ -1,7 +1,7 @@
 import type { Database } from "@auction/db";
 import { bid, lot } from "@auction/db/schema";
 import type { InferSelectModel } from "drizzle-orm";
-import { and, asc, desc, eq, isNotNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, or, sql } from "drizzle-orm";
 import type { CreateBidRow, IBidRepository } from "../interfaces/index.js";
 import { mapBidRow } from "../lib/entity-row-mappers.js";
 
@@ -375,14 +375,26 @@ export class DrizzleBidRepository implements IBidRepository {
     return rows.map(mapBidRow);
   }
 
-  async listForBuyerAccount(buyerLegalEntityId: string, bidderId: string | null, limit: number) {
+  async listForBuyerAccount(
+    buyerLegalEntityId: string,
+    bidderId: string | null,
+    limit: number,
+    saleId?: string,
+  ) {
     const rows = await this.db
       .select()
       .from(bid)
       .where(
-        bidderId
-          ? and(eq(bid.buyerLegalEntityId, buyerLegalEntityId), eq(bid.bidderId, bidderId))
-          : eq(bid.buyerLegalEntityId, buyerLegalEntityId),
+        and(
+          eq(bid.buyerLegalEntityId, buyerLegalEntityId),
+          bidderId ? eq(bid.bidderId, bidderId) : undefined,
+          saleId
+            ? inArray(
+                bid.lotId,
+                this.db.select({ id: lot.id }).from(lot).where(eq(lot.saleId, saleId)),
+              )
+            : undefined,
+        ),
       )
       .orderBy(desc(bid.createdAt))
       .limit(limit);

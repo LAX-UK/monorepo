@@ -84,6 +84,7 @@ import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerLotCatalogServices } from "./create-lot-catalog-services.js";
 import type { ContainerLotLifecycle } from "./create-lot-lifecycle.js";
 import type { ContainerOnsiteEventServices } from "./create-onsite-event-services.js";
+import type { OrganisationBuyingServices } from "./create-organisation-buying-services.js";
 import type { OrganisationHomeServices } from "./create-organisation-home-services.js";
 import type { OrganisationMembershipServices } from "./create-organisation-membership-services.js";
 import type { OrganisationTeamServices } from "./create-organisation-team-services.js";
@@ -341,6 +342,11 @@ export type ContainerOrganisationHomeSlice = {
   organisationHome: OrganisationHomeServices;
 };
 
+/** The client workspace's buying modules for the acting account (`organisationBuying`). */
+export type ContainerOrganisationBuyingSlice = {
+  organisationBuying: OrganisationBuyingServices;
+};
+
 /** Reads across the client workspace's modules for the acting account (`organisationWorkspace`). */
 export type ContainerOrganisationWorkspaceSlice = {
   organisationWorkspace: OrganisationWorkspaceServices;
@@ -383,6 +389,7 @@ export type ContainerComposedSlices = ContainerRootSlice &
   ContainerBuyerAgentsSlice &
   ContainerOrganisationMembershipSlice &
   ContainerOrganisationHomeSlice &
+  ContainerOrganisationBuyingSlice &
   ContainerOrganisationWorkspaceSlice &
   ContainerOrganisationTeamSlice &
   ContainerUserRouteServicesSlice;
@@ -615,6 +622,12 @@ export type ContainerOrganisationMembershipRoutesSlice = Pick<
 export type ContainerOrganisationHomeRoutesSlice = Pick<
   Container,
   "userSuspensionChecker" | "requireLegalEntityContext" | "organisationHome"
+>;
+
+/** Registrations, purchases, courier quotes and collection booking for the acting account. */
+export type ContainerOrganisationBuyingRoutesSlice = Pick<
+  Container,
+  "userSuspensionChecker" | "requireLegalEntityContext" | "organisationBuying"
 >;
 
 /** Record search (and other cross-module reads) for the acting account. */

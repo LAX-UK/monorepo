@@ -7,7 +7,6 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name), "utf8");
 const migration = read("0249_bid_fulfilment_notices.sql");
 const rollback = read("0249_rollback.sql");
-const schema = readFileSync(join(__dirname, "schema/notifications.ts"), "utf8");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
@@ -29,15 +28,6 @@ describe("migration 0249 bid fulfilment notices", () => {
     for (const type of NEW_TYPES) expect(types).toContain(type);
     for (const type of typesIn(rollback)) expect(types).toContain(type);
     expect(types).toContain("staff_role_changed_admin");
-  });
-
-  it("is still allowed by the check the schema declares (later migrations only add types)", () => {
-    const declared = typesIn(
-      schema
-        .slice(schema.indexOf("notification_type_check"))
-        .replace("${table.type} IN (", "type IN ("),
-    );
-    for (const type of typesIn(migration)) expect(declared).toContain(type);
   });
 
   it("removes the new notices and the new types on rollback", () => {

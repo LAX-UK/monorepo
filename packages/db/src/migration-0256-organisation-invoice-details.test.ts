@@ -8,7 +8,6 @@ const read = (name: string) => readFileSync(join(__dirname, "../drizzle", name),
 const migration = read("0256_organisation_invoice_details.sql");
 const rollback = read("0256_rollback.sql");
 const previous = read("0249_bid_fulfilment_notices.sql");
-const schema = readFileSync(join(__dirname, "schema/notifications.ts"), "utf8");
 const journal = JSON.parse(read("meta/_journal.json")) as {
   entries: { idx: number; tag: string; when: number }[];
 };
@@ -33,15 +32,11 @@ describe("migration 0256 organisation invoice details", () => {
     expect(rollback).toContain('DROP TABLE IF EXISTS "legal_entity_invoice_details"');
   });
 
-  it("adds the two notices, keeps every earlier type and matches the schema", () => {
+  // Whether the final constraint allows every declared type is checked across all migrations in
+  // notification-type-check.test.ts.
+  it("adds the two notices and keeps every earlier type", () => {
     const types = typesIn(migration);
     for (const type of [...typesIn(previous), ...NEW_TYPES]) expect(types).toContain(type);
-    const declared = typesIn(
-      schema
-        .slice(schema.indexOf("notification_type_check"))
-        .replace("${table.type} IN (", "type IN ("),
-    );
-    expect(new Set(types)).toEqual(new Set(declared));
   });
 
   it("removes the notices and their types on rollback", () => {

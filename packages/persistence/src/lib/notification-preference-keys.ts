@@ -123,6 +123,30 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, NotificationTypeConfig> = {
     whatsapp: "paymentWhatsapp",
     template: "lot-fulfilment-update",
   },
+  /** A courier quote ready to accept is part of the purchase, so it follows the payment switches. */
+  delivery_quote_ready: {
+    inApp: "paymentInApp",
+    push: null,
+    email: "paymentEmail",
+    whatsapp: null,
+    template: "lot-fulfilment-update",
+  },
+  /** A payout that failed or was reversed: the seller's money, so it follows the payment switches. */
+  payout_problem: {
+    inApp: "paymentInApp",
+    push: null,
+    email: "paymentEmail",
+    whatsapp: null,
+    template: null,
+  },
+  /** A maximum bid that stopped at a bidding limit: told in the product only. */
+  bid_refused_limit: {
+    inApp: "outbidInApp",
+    push: null,
+    email: null,
+    whatsapp: null,
+    template: null,
+  },
   lot_delivered: {
     inApp: "paymentInApp",
     push: null,
