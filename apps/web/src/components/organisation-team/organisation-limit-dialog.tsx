@@ -29,7 +29,12 @@ function amountProblem(text: string): string | null {
  * have committed at once, owners and admins included. A refusal from the server is said in the
  * dialog, which stays open.
  */
-export function OrganisationLimitDialog({ legalEntityId, organisationName, current, onClose }: Props) {
+export function OrganisationLimitDialog({
+  legalEntityId,
+  organisationName,
+  current,
+  onClose,
+}: Props) {
   const router = useRouter();
   const [text, setText] = useState(current ? current.toLocaleString("en-GB") : "");
   const [tried, setTried] = useState(false);

@@ -142,10 +142,7 @@ export function NoAccessActions({ legalEntityId, page, roles, waiting }: Props) 
               {organisationRoleDescription(role).toLowerCase()}
             </p>
           )}
-          <Field
-            label="Why you need it"
-            error={(tried ? reasonProblem : null) ?? error}
-          >
+          <Field label="Why you need it" error={(tried ? reasonProblem : null) ?? error}>
             <TextArea
               value={reason}
               maxLength={500}

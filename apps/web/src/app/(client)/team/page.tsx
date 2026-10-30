@@ -18,7 +18,11 @@ import {
   loadTwoStepPolicy,
   memberChangeActorFor,
 } from "@/lib/organisation-team/team-data.server";
-import { canDecideAccessRequests, entityActorCan, organisationInviteRefusal } from "@auction/domain";
+import {
+  canDecideAccessRequests,
+  entityActorCan,
+  organisationInviteRefusal,
+} from "@auction/domain";
 import { Notice } from "@auction/ui/lax";
 import { notFound } from "next/navigation";
 
@@ -79,9 +83,7 @@ export default async function TeamMembersPage() {
       {invitesClosed && !viewOnlyReason ? (
         <InvitesClosed refusalCode={invitesClosed.code} organisationName={acting.displayName} />
       ) : null}
-      {askRows.length > 0 ? (
-        <AccessRequestsPanel legalEntityId={acting.id} rows={askRows} />
-      ) : null}
+      {askRows.length > 0 ? <AccessRequestsPanel legalEntityId={acting.id} rows={askRows} /> : null}
       <MemberList legalEntityId={acting.id} organisationName={acting.displayName} rows={rows} />
     </div>
   );

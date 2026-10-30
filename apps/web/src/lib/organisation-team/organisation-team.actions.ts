@@ -20,7 +20,10 @@ type Send = {
   /** The pages that show what changed. */
   revalidate: readonly string[];
   /** How the refusal body reads; the API's own sentence by default. */
-  failure?: (body: Record<string, unknown>, status: number) => { code: string | null; error: string };
+  failure?: (
+    body: Record<string, unknown>,
+    status: number,
+  ) => { code: string | null; error: string };
 };
 
 /** Sends one change for the acting organisation and answers in words. */

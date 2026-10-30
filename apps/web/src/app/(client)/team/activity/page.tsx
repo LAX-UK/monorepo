@@ -26,7 +26,12 @@ export default async function TeamActivityPage({ searchParams }: Props) {
   const access = requireTeamTab(actor, "activity");
   if (access.kind === "forbidden") {
     return (
-      <WorkspaceTabNoAccess access={access} legalEntityId={acting.id} actor={actor} userId={user.id} />
+      <WorkspaceTabNoAccess
+        access={access}
+        legalEntityId={acting.id}
+        actor={actor}
+        userId={user.id}
+      />
     );
   }
 

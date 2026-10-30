@@ -58,8 +58,7 @@ const LINES: Record<string, (line: Line) => string> = {
   member_left: ({ subject, organisation }) => `${subject} left ${organisation}`,
   authorisation_granted: ({ actor, subject, detail }) =>
     `${actor} authorised ${subject} to bid in ${detail.sale_id ? "one sale" : "every sale"}${authorisationLimits(detail)}`,
-  authorisation_revoked: ({ actor, subject }) =>
-    `${actor} ended ${subject}'s authorisation to bid`,
+  authorisation_revoked: ({ actor, subject }) => `${actor} ended ${subject}'s authorisation to bid`,
   bidding_limit_changed: ({ actor, organisation, detail }) => {
     const limit = money(detail.limit);
     const previous = money(detail.previous_limit);

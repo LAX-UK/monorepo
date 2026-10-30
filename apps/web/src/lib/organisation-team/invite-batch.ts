@@ -36,7 +36,9 @@ export function sendInvitesLabel(count: number): string {
   return count > 1 ? `Send ${count} invitations` : "Send invitation";
 }
 
-export type InviteOutcome = { email: string; ok: true } | { email: string; ok: false; error: string };
+export type InviteOutcome =
+  | { email: string; ok: true }
+  | { email: string; ok: false; error: string };
 
 export type InviteBatchSummary = {
   /** The toast for what went out; `null` when nothing did. */

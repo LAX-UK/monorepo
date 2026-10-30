@@ -81,7 +81,9 @@ export function defineSectionTabs<Id extends string>(
         kind: "forbidden",
         label: spec.label,
         openedBy: organisationRoleGroupsSentence([
-          ...new Set(tabCapabilities(spec).flatMap((capability) => rolesWithCapability(capability))),
+          ...new Set(
+            tabCapabilities(spec).flatMap((capability) => rolesWithCapability(capability)),
+          ),
         ]),
         capability: spec.capability,
         fallback: tabsFor(actor)[0] ?? null,

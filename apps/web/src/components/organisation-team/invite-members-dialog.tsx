@@ -1,6 +1,7 @@
 "use client";
 
 import { inviteMemberAction } from "@/lib/legal-entity/member-management.actions";
+import { teamHref } from "@/lib/navigation/client-routes";
 import {
   type InviteOutcome,
   inviteBatchProblem,
@@ -9,14 +10,21 @@ import {
   sendInvitesLabel,
   summariseInviteBatch,
 } from "@/lib/organisation-team/invite-batch";
-import { teamHref } from "@/lib/navigation/client-routes";
 import {
   organisationRoleDescription,
   organisationRoleLabel,
 } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import { notify } from "@/lib/ui/notify";
 import type { LegalEntityMemberRole } from "@auction/types";
-import { Button, Dialog, DialogClose, Field, Notice, PresetCards, TokenInput } from "@auction/ui/lax";
+import {
+  Button,
+  Dialog,
+  DialogClose,
+  Field,
+  Notice,
+  PresetCards,
+  TokenInput,
+} from "@auction/ui/lax";
 import { Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";

@@ -44,8 +44,8 @@ describe("invite batch", () => {
     expect(summary.failed).toEqual([
       { email: "b@x.com", error: "This person is already a member." },
     ]);
-    expect(summariseInviteBatch([{ email: "a@x.com", ok: false, error: "No" }], "N").sentTitle).toBe(
-      null,
-    );
+    expect(
+      summariseInviteBatch([{ email: "a@x.com", ok: false, error: "No" }], "N").sentTitle,
+    ).toBe(null);
   });
 });

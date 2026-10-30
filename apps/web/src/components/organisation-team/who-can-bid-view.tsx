@@ -47,7 +47,11 @@ function Usage({
   return (
     <span className="flex w-full flex-col gap-1.5 @2xl:w-44">
       <span className="flex items-baseline justify-between gap-2 text-lax-13 tabular-nums">
-        <span className={usage.idle && usage.percent === null ? "text-lax-muted" : "font-medium text-lax-fg"}>
+        <span
+          className={
+            usage.idle && usage.percent === null ? "text-lax-muted" : "font-medium text-lax-fg"
+          }
+        >
           {usage.text}
         </span>
         {showLeft && usage.left ? <span className="text-lax-muted">{usage.left}</span> : null}
@@ -115,14 +119,15 @@ function AuthorisationRow({
       title={row.title}
       meta={row.facts}
       status={
-        <StatusBadge tone={row.badge.tone} {...(row.badge.tone === "warning" ? { shape: "alert" } : {})}>
+        <StatusBadge
+          tone={row.badge.tone}
+          {...(row.badge.tone === "warning" ? { shape: "alert" } : {})}
+        >
           {row.badge.label}
         </StatusBadge>
       }
       value={
-        row.usage ? (
-          <Usage usage={row.usage} label={`${row.title} total`} showLeft={false} />
-        ) : null
+        row.usage ? <Usage usage={row.usage} label={`${row.title} total`} showLeft={false} /> : null
       }
       menu={
         canManage ? (
@@ -164,9 +169,11 @@ export function WhoCanBid({ legalEntityId, organisationName, view, sales }: Prop
     current?: BuyerAgentAuthorisationView;
   } | null>(null);
   const [revoking, setRevoking] = useState<BuyerAgentAuthorisationView | null>(null);
-  const agents = [...new Map(
-    [...view.rows.map((row) => row.agent), ...view.unauthorised].map((a) => [a.userId, a]),
-  ).values()];
+  const agents = [
+    ...new Map(
+      [...view.rows.map((row) => row.agent), ...view.unauthorised].map((a) => [a.userId, a]),
+    ).values(),
+  ];
   const open = (fn: () => void) => window.setTimeout(fn, 0);
 
   return (
@@ -192,7 +199,10 @@ export function WhoCanBid({ legalEntityId, organisationName, view, sales }: Prop
           {view.canManage && agents.length > 0 ? (
             <span className="max-md:w-full md:ml-auto">
               {agents.length === 1 ? (
-                <Button onClick={() => setAuthorising(agents[0] ? { agent: agents[0] } : null)} className="max-md:w-full">
+                <Button
+                  onClick={() => setAuthorising(agents[0] ? { agent: agents[0] } : null)}
+                  className="max-md:w-full"
+                >
                   <Plus aria-hidden />
                   Authorise a buyer agent
                 </Button>
@@ -206,7 +216,10 @@ export function WhoCanBid({ legalEntityId, organisationName, view, sales }: Prop
                   </MenuTrigger>
                   <MenuContent className="w-64">
                     {agents.map((agent) => (
-                      <MenuItem key={agent.userId} onSelect={() => open(() => setAuthorising({ agent }))}>
+                      <MenuItem
+                        key={agent.userId}
+                        onSelect={() => open(() => setAuthorising({ agent }))}
+                      >
                         {agent.name}
                       </MenuItem>
                     ))}

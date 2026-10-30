@@ -126,7 +126,9 @@ export function TokenInput({
         disabled={isDisabled}
         placeholder={value.length === 0 ? placeholder : undefined}
         aria-invalid={invalid || field?.invalid || undefined}
-        aria-describedby={[field?.describedBy, invalid ? reasonId : null].filter(Boolean).join(" ") || undefined}
+        aria-describedby={
+          [field?.describedBy, invalid ? reasonId : null].filter(Boolean).join(" ") || undefined
+        }
         {...aria}
         onChange={(event) => {
           const text = event.target.value;

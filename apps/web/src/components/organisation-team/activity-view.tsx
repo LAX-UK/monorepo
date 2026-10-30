@@ -15,7 +15,15 @@ import { activityDays, activityLine, activityTime } from "@/lib/organisation-tea
 import { loadOlderActivityAction } from "@/lib/organisation-team/organisation-team.actions";
 import { ACTIVITY_GROUPS, type ActivityGroup } from "@auction/domain";
 import { Button, Notice, SelectMenu } from "@auction/ui/lax";
-import { Download, Gavel, Landmark, type LucideIcon, Package, ShieldCheck, Users } from "lucide-react";
+import {
+  Download,
+  Gavel,
+  Landmark,
+  type LucideIcon,
+  Package,
+  ShieldCheck,
+  Users,
+} from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, useTransition } from "react";
 import { TeamListEmpty, TeamListNoResults } from "./team-list-states";
@@ -111,7 +119,10 @@ export function ActivityView({
           }
           options={[
             { value: "all", label: "All changes" },
-            ...ACTIVITY_GROUPS.map((group) => ({ value: group, label: ACTIVITY_GROUP_LABEL[group] })),
+            ...ACTIVITY_GROUPS.map((group) => ({
+              value: group,
+              label: ACTIVITY_GROUP_LABEL[group],
+            })),
           ]}
           className="w-full md:w-40"
           disabled={navigating}

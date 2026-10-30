@@ -47,7 +47,10 @@ export function SelectMenu<T extends string>({
           <ChevronDown aria-hidden className="text-lax-muted" />
         </Button>
       </MenuTrigger>
-      <MenuContent align="start" className="w-[max(var(--radix-dropdown-menu-trigger-width),12rem)]">
+      <MenuContent
+        align="start"
+        className="w-[max(var(--radix-dropdown-menu-trigger-width),12rem)]"
+      >
         <MenuRadioGroup
           value={value}
           onValueChange={(next) => {

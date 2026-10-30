@@ -26,7 +26,8 @@ export async function GET(request: Request) {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition":
-        res.headers.get("Content-Disposition") ?? 'attachment; filename="organisation-activity.csv"',
+        res.headers.get("Content-Disposition") ??
+        'attachment; filename="organisation-activity.csv"',
       "Cache-Control": "no-store",
     },
   });

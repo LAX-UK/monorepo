@@ -9,7 +9,11 @@ import {
   type RoleChangePorts,
   changeMemberRole,
 } from "@/lib/legal-entity/role-change-flow";
-import { type MemberRoleFilter, filterMemberRows, memberRoleFilterOptions } from "@/lib/organisation-team/member-filter";
+import {
+  type MemberRoleFilter,
+  filterMemberRows,
+  memberRoleFilterOptions,
+} from "@/lib/organisation-team/member-filter";
 import { notify } from "@/lib/ui/notify";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { RecordList } from "@auction/ui";

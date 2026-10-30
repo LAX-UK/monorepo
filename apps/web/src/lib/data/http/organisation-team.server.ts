@@ -111,7 +111,10 @@ export async function getServerBiddingLimits(
 export async function getServerInvoiceDetails(
   legalEntityId: string,
 ): Promise<InvoiceDetailsView | null> {
-  return readData(await get("/legal-entities/invoice-details", legalEntityId), invoiceDetailsSchema);
+  return readData(
+    await get("/legal-entities/invoice-details", legalEntityId),
+    invoiceDetailsSchema,
+  );
 }
 
 /** One page of the organisation's Activity, newest first; `null` when it cannot be read. */

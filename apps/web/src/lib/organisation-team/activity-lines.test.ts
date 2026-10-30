@@ -39,7 +39,9 @@ describe("activityLine", () => {
         entry("authorisation_granted", { sale_id: "s1", bid_limit: "10000", total_limit: "25000" }),
         ORG,
       ).sentence,
-    ).toBe("Daniel Reyes authorised Priya Shah to bid in one sale, up to £10,000 a lot, £25,000 in total");
+    ).toBe(
+      "Daniel Reyes authorised Priya Shah to bid in one sale, up to £10,000 a lot, £25,000 in total",
+    );
   });
 
   it("says the organisation limit change, set and removal", () => {
@@ -74,7 +76,11 @@ describe("activityDays", () => {
       "2026-10-29T16:20:00Z",
       "2026-10-28T14:55:00Z",
       "2025-12-03T10:00:00Z",
-    ].map((occurredAt, id) => ({ ...activityLine(entry("invoice_details_changed"), ORG), id, occurredAt }));
+    ].map((occurredAt, id) => ({
+      ...activityLine(entry("invoice_details_changed"), ORG),
+      id,
+      occurredAt,
+    }));
     expect(activityDays(lines, now).map((d) => d.label)).toEqual([
       "Today",
       "Yesterday",

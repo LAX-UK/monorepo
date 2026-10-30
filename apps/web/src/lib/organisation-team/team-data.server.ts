@@ -10,9 +10,9 @@ import {
 import { getServerOrgTwoFactorPolicy } from "@/lib/data/http/two-factor-policy.server";
 import { resolveActiveOrganisationActor } from "@/lib/legal-entity/active-organisation.server";
 import type { ActingLegalEntitySummary } from "@/lib/legal-entity/client-acting-context";
-import { type EntityActor, type MemberChangeActor, entityActorCan } from "@auction/domain";
 import { createLegalEntityMemberListGateway } from "@/lib/legal-entity/member-list.gateway.server";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
+import { type EntityActor, type MemberChangeActor, entityActorCan } from "@auction/domain";
 import { cache } from "react";
 
 /**
@@ -34,31 +34,29 @@ export function loadTeamScope(user: Viewer): Promise<TeamScope | null> {
   return scopeFor(user.id, user.role, JSON.stringify(user.staffRoles ?? null));
 }
 
-const scopeFor = cache(
-  async (_userId: string, role: Viewer["role"], staffRolesJson: string) => {
-    const staffRoles = JSON.parse(staffRolesJson) as Viewer["staffRoles"] | null;
-    const active = await resolveActiveOrganisationActor({
-      role,
-      ...(staffRoles ? { staffRoles } : {}),
-    });
-    if (!active) return null;
-    const ctx = await createPerOrgGateway().getContext(active.organisation.id);
-    if (!ctx) return null;
-    const { member } = ctx;
-    return {
-      acting: {
-        id: active.organisation.id,
-        displayName: member.displayName,
-        kind: member.kind,
-        subkind: member.subkind,
-        status: member.status,
-        role: member.role,
-        isPrimaryAdmin: member.isPrimaryAdmin,
-      },
-      actor: active.actor,
-    } satisfies TeamScope;
-  },
-);
+const scopeFor = cache(async (_userId: string, role: Viewer["role"], staffRolesJson: string) => {
+  const staffRoles = JSON.parse(staffRolesJson) as Viewer["staffRoles"] | null;
+  const active = await resolveActiveOrganisationActor({
+    role,
+    ...(staffRoles ? { staffRoles } : {}),
+  });
+  if (!active) return null;
+  const ctx = await createPerOrgGateway().getContext(active.organisation.id);
+  if (!ctx) return null;
+  const { member } = ctx;
+  return {
+    acting: {
+      id: active.organisation.id,
+      displayName: member.displayName,
+      kind: member.kind,
+      subkind: member.subkind,
+      status: member.status,
+      role: member.role,
+      isPrimaryAdmin: member.isPrimaryAdmin,
+    },
+    actor: active.actor,
+  } satisfies TeamScope;
+});
 
 export const loadTeamMembers = cache((scope: TeamScope) =>
   createLegalEntityMemberListGateway().fetchMemberListForActing(scope.acting),

@@ -29,7 +29,12 @@ export default async function TeamInvitationsPage() {
   const access = requireTeamTab(actor, "invitations");
   if (access.kind === "forbidden") {
     return (
-      <WorkspaceTabNoAccess access={access} legalEntityId={acting.id} actor={actor} userId={user.id} />
+      <WorkspaceTabNoAccess
+        access={access}
+        legalEntityId={acting.id}
+        actor={actor}
+        userId={user.id}
+      />
     );
   }
 

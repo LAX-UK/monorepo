@@ -26,7 +26,12 @@ export default async function TeamBiddingPage() {
   const access = requireTeamTab(actor, "bidding");
   if (access.kind === "forbidden") {
     return (
-      <WorkspaceTabNoAccess access={access} legalEntityId={acting.id} actor={actor} userId={user.id} />
+      <WorkspaceTabNoAccess
+        access={access}
+        legalEntityId={acting.id}
+        actor={actor}
+        userId={user.id}
+      />
     );
   }
 

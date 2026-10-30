@@ -119,7 +119,9 @@ export function AuthoriseBuyerAgentDialog({
   const ids = useId();
   const fieldId = (name: string) => `${ids}-${name}`;
   const blank = (): AuthorisationDraft =>
-    current ? draftFromAuthorisation(current) : { ...EMPTY_AUTHORISATION_DRAFT, memberUserId: agent.userId };
+    current
+      ? draftFromAuthorisation(current)
+      : { ...EMPTY_AUTHORISATION_DRAFT, memberUserId: agent.userId };
   const [draft, setDraft] = useState<AuthorisationDraft>(blank);
   const [errors, setErrors] = useState<AuthorisationDraftErrors>({});
   const [attempted, setAttempted] = useState(false);
@@ -154,7 +156,9 @@ export function AuthoriseBuyerAgentDialog({
         return;
       }
       notify.success(
-        current ? `${agent.name}'s limits are updated` : `${agent.name} can now bid for ${entityName}`,
+        current
+          ? `${agent.name}'s limits are updated`
+          : `${agent.name} can now bid for ${entityName}`,
       );
       onOpenChange(false);
       reset();
