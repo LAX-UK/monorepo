@@ -21,6 +21,7 @@ describe("resolveArtistFollowProfiles", () => {
       watchlistId: "w1",
       artistId: "artist-1",
       createdAt: new Date("2024-06-01T12:00:00.000Z"),
+      alert: { medium: null, priceMin: null, priceMax: null },
     },
   ];
 

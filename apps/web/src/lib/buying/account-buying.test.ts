@@ -130,9 +130,9 @@ function purchaseSources(scope: AccountScope, rows: readonly PortfolioRow[]): Pu
 
 describe("Home, the lists and the menu agree", () => {
   it("counts the same open bids on Home and in the Bids page's Active view", () => {
-    const vm = buildMyBidsVm({ rows: BIDS, userId: ME, tab: "active", saleTitleById: {} });
+    const vm = buildMyBidsVm({ rows: BIDS, userId: ME, saleTitleById: {} });
     const figure = openBidsFigure(BIDS, ME);
-    expect(figure.lots).toBe(vm.tabs.find((tab) => tab.id === "active")?.count);
+    expect(figure.lots).toBe(vm.cardsByTab.active.length);
     expect(figure.lots).toBe(3);
     // The most committed on each open lot: 1,500 (auto-bid ceiling) + 2,500 + 400.
     expect(figure.totalMax).toEqual([{ currency: "GBP", amount: "4400.00" }]);
@@ -185,26 +185,20 @@ describe("a lot whose estimate is in dollars", () => {
     estimate: { low: "50000", high: "70000", currency: "USD" },
   } as Lot["marketingDetails"];
 
-  it("is bid on and charged in pounds; only its estimate shows dollars", () => {
+  it("is bid on and charged in pounds, whatever currency its estimate is in", () => {
     const open = lot("lot-31", { status: "scheduled", marketingDetails: usdEstimate });
-    const [card] = buildMyBidsVm({ rows: [bid(open, "45000")], userId: ME, tab: "active" }).cards;
-    const figures = Object.fromEntries(
-      (card?.figures ?? []).map((figure) => [figure.label, "value" in figure ? figure.value : ""]),
-    );
-    expect(figures.Estimate).toMatch(/^US\$50,000/);
-    expect(figures["Absentee bid"]).toBe("£45,000.00");
+    const [card] = buildMyBidsVm({ rows: [bid(open, "45000")], userId: ME }).cardsByTab.active;
+    const figures = Object.fromEntries((card?.figures ?? []).map((f) => [f.label, f.value]));
+    expect(figures["your maximum"]).toBe("£45,000.00");
 
     const live = lot("lot-32", { currentPrice: "55000", marketingDetails: usdEstimate });
-    const [liveCard] = buildMyBidsVm({
-      rows: [bid(live, "45000")],
-      userId: ME,
-      tab: "active",
-    }).cards;
-    expect(liveCard?.figures.find((f) => f.label === "Current bid")).toMatchObject({
+    const [liveCard] = buildMyBidsVm({ rows: [bid(live, "45000")], userId: ME }).cardsByTab.active;
+    expect(liveCard?.figures.find((f) => f.label === "current bid")).toMatchObject({
       value: "£55,000.00",
     });
-    expect(liveCard?.actions.map((action) => action.label).join(" ")).toMatch(/£/);
-    expect(liveCard?.actions.map((action) => action.label).join(" ")).not.toMatch(/\$/);
+    const steps = [liveCard?.next, ...(liveCard?.more ?? [])].map((a) => a?.label).join(" ");
+    expect(steps).toMatch(/£/);
+    expect(steps).not.toMatch(/\$/);
   });
 
   it("totals and charges in pounds on Purchases and Home", () => {
