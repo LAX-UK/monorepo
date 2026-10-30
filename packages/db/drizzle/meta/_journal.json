@@ -1828,6 +1828,13 @@
       "when": 1797840000000,
       "tag": "0260_guest_data_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 261,
+      "version": "7",
+      "when": 1798012800000,
+      "tag": "0261_payment_groups",
+      "breakpoints": true
     }
   ]
 }

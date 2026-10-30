@@ -36,7 +36,7 @@ function respond<T>(c: BuyingContext, result: Result<T, OrganisationBuyingError>
 
 /**
  * The acting account's buying modules: the sales it is registered for, its purchases (with the
- * invoice and delivery stage of each, pay several and an export), courier quotes and collection
+ * invoice and delivery stage of each, paying several at once and an export), courier quotes and collection
  * booking. Every read and step is narrowed by the member's role in the services. Mounted under
  * `/legal-entities`; the account comes from the context header.
  */
@@ -48,7 +48,8 @@ export function createOrganisationBuyingRoutes(
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
   const requireContext = container.requireLegalEntityContext;
-  const { registrations, purchases, deliveryQuotes, collection } = container.organisationBuying;
+  const { registrations, purchases, paySeveral, deliveryQuotes, collection } =
+    container.organisationBuying;
   const r = new Hono<{ Variables: Variables }>();
 
   r.get("/registrations", requireAuth, requireContext, async (c) =>
@@ -82,8 +83,16 @@ export function createOrganisationBuyingRoutes(
     requireAuth,
     requireContext,
     zValidator("json", paySeveralBodySchema),
-    async (c) =>
-      respond(c, await purchases.planPaySeveral(memberActor(c), c.req.valid("json").lotIds)),
+    async (c) => respond(c, await paySeveral.plan(memberActor(c), c.req.valid("json").lotIds)),
+  );
+
+  // One payment for several invoices: holds them together and opens the checkout for the total.
+  r.post(
+    "/purchases/pay-several",
+    requireAuth,
+    requireContext,
+    zValidator("json", paySeveralBodySchema),
+    async (c) => respond(c, await paySeveral.pay(memberActor(c), c.req.valid("json").lotIds)),
   );
 
   r.post(

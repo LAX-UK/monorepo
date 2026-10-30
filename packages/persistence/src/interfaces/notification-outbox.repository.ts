@@ -49,6 +49,13 @@ export type NotificationPayload = {
     organisationName?: string;
     /** Last four digits of a new payout bank account. */
     bankLast4?: string | null;
+    /**
+     * The invoices one payment settled together, each with its amount (major units, `currency`);
+     * `amount` is then their total.
+     */
+    receiptLines?: { lotTitle: string; lotNumber: number | null; amount: string }[];
+    /** How a payment was made. */
+    paymentMethod?: "card" | "bank_transfer";
     /** Keeps an email for one fulfilment step from being queued twice. */
     emailIdempotencyKey?: string;
     /** Outbox idempotency key — used by in-app channel to skip duplicate retries. */

@@ -1,5 +1,6 @@
 import type { LegalEntityMemberRole } from "@auction/types";
 import { Hono } from "hono";
+import { ok } from "neverthrow";
 import { describe, expect, it, vi } from "vitest";
 import type { ContainerOrganisationBuyingRoutesSlice } from "../container.js";
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
@@ -8,6 +9,7 @@ import { AccountPurchasesService } from "../services/organisation-buying/account
 import { AccountRegistrationsService } from "../services/organisation-buying/account-registrations.service.js";
 import { CollectionBookingService } from "../services/organisation-buying/collection-booking.service.js";
 import { DeliveryQuoteService } from "../services/organisation-buying/delivery-quote.service.js";
+import { PaySeveralService } from "../services/organisation-buying/pay-several.service.js";
 import {
   BUYING_ACCOUNT,
   InMemoryDeliveryQuotes,
@@ -39,6 +41,26 @@ function mount(role: LegalEntityMemberRole) {
     organisationBuying: {
       registrations: new AccountRegistrationsService(new InMemoryRegistrations()),
       purchases: new AccountPurchasesService({ reader: purchases, now: () => NOW }),
+      paySeveral: new PaySeveralService({
+        reader: purchases,
+        flags: { flagsFor: async () => new Map() },
+        limits: {
+          minPence: 30,
+          cardMaxPence: 500_000,
+          manualReviewMinPence: 2_500_000,
+          absoluteMaxPence: 10_000_000,
+        },
+        compliance: null,
+        checkout: {
+          start: async (input) =>
+            ok({
+              paymentGroupId: "group-1",
+              checkoutUrl: "https://pay.example/g1",
+              rail: input.rail,
+            }),
+        },
+        now: () => NOW,
+      }),
       deliveryQuotes: new DeliveryQuoteService({ quotes, purchases }),
       collection: new CollectionBookingService({
         settings: {
@@ -121,6 +143,17 @@ const MATRIX: Record<
       consignor: 403,
       viewer: 403,
     },
+  }, // Paying several invoices at once is for the people who pay one: owners, admins and finance.
+  "POST /purchases/pay-several": {
+    call: (app) => post(app, "/purchases/pay-several", { lotIds: [LOTS.due, LOTS.overdue] }),
+    expected: {
+      owner: 200,
+      admin: 200,
+      finance: 200,
+      buyer_agent: 403,
+      consignor: 403,
+      viewer: 403,
+    },
   },
 };
 
@@ -160,6 +193,24 @@ describe("organisation buying routes", () => {
     expect(await plan.json()).toMatchObject({ data: { total: "1000.10", currency: "GBP" } });
     expect((await post(app, "/purchases/pay-several/plan", { lotIds: ["nope"] })).status).toBe(400);
     expect((await post(app, "/purchases/pay-several/plan", { lotIds: [] })).status).toBe(400);
+  });
+
+  it("opens one checkout for several invoices and says what it covers", async () => {
+    const res = await post(mount("finance"), "/purchases/pay-several", {
+      lotIds: [LOTS.due, LOTS.overdue, LOTS.paid],
+    });
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({
+      data: {
+        paymentGroupId: "group-1",
+        checkoutUrl: "https://pay.example/g1",
+        rail: "card",
+        total: "1000.10",
+        skipped: [{ lotId: LOTS.paid, reason: "not_owed" }],
+      },
+    });
+    const malformed = await post(mount("finance"), "/purchases/pay-several", { lotIds: [] });
+    expect(malformed.status).toBe(400);
   });
 
   it("answers a stale quote step with a conflict", async () => {

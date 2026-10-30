@@ -17,6 +17,31 @@ import {
 
 const OPT_OUTABLE = new Set(["outbid", "lot_won", "lot_ended_seller"]);
 
+const PAYMENT_METHOD_WORDS: Record<"card" | "bank_transfer", string> = {
+  card: "Card",
+  bank_transfer: "Bank transfer",
+};
+
+/** The receipt's invoice lines and payment method when one payment settled several invoices. */
+function receiptBreakdown(meta: NotificationPayload["meta"]): {
+  lines?: { title: string; amount: string }[];
+  paymentMethod?: string;
+} {
+  const lines = meta?.receiptLines;
+  return {
+    ...(lines?.length
+      ? {
+          lines: lines.map((line) => ({
+            title:
+              line.lotNumber != null ? `Lot ${line.lotNumber} · ${line.lotTitle}` : line.lotTitle,
+            amount: formatMoneyMajor(line.amount, meta?.currency) ?? line.amount,
+          })),
+        }
+      : {}),
+    ...(meta?.paymentMethod ? { paymentMethod: PAYMENT_METHOD_WORDS[meta.paymentMethod] } : {}),
+  };
+}
+
 export class EmailNotificationChannel implements INotificationChannel {
   readonly channelKind = "email" as const;
 
@@ -135,6 +160,7 @@ export class EmailNotificationChannel implements INotificationChannel {
           lotTitle,
           amount: formatMoneyMajor(payload.meta?.amount, payload.meta?.currency),
           receiptUrl: `${this.baseUrl()}/purchases`,
+          ...receiptBreakdown(payload.meta),
         };
       case "payment-invoice": {
         const m = payload.meta;

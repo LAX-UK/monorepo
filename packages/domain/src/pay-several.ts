@@ -7,6 +7,8 @@ export const PAY_SEVERAL_MAX_INVOICES = 20;
 /** One purchase the payer picked, with what the rule needs to know about it. */
 export type PaySeveralCandidate = {
   lotId: string;
+  /** The invoice's open payment; `null` while no invoice is raised. */
+  paymentId: string | null;
   /** The account the lot was won for; every pick must belong to the acting account. */
   buyerAccountId: string;
   invoice: PurchaseInvoiceStatus;
@@ -18,6 +20,13 @@ export type PaySeveralCandidate = {
    */
   totalDue: string | null;
   currency: string;
+  /**
+   * The invoice waits for a finance or compliance review (for example the seller's account is
+   * closed). Money is never taken for an invoice that cannot be released, so it is left out.
+   */
+  heldForReview: boolean;
+  /** The invoice is already part of another payment that is still open. */
+  inPaymentInProgress: boolean;
 };
 
 export type PaySeveralSkipReason =
@@ -28,7 +37,11 @@ export type PaySeveralSkipReason =
   /** The payer does not move this account's money. */
   | "not_payer"
   /** No invoice is raised yet, so there is no amount to pay. */
-  | "not_invoiced";
+  | "not_invoiced"
+  /** Waiting for a finance or compliance review; paid on its own once released. */
+  | "held_for_review"
+  /** Already part of another payment that is still open. */
+  | "being_paid";
 
 export type PaySeveralRefusal =
   /** Nothing picked. */
@@ -42,8 +55,8 @@ export type PaySeveralRefusal =
   /** The payable picks are in more than one currency, so they cannot be one payment. */
   | "pay_several_mixed_currency";
 
-/** A pick that will be paid, with its amount known. */
-export type PayableInvoice = PaySeveralCandidate & { totalDue: string };
+/** A pick that will be paid, with its payment and amount known. */
+export type PayableInvoice = PaySeveralCandidate & { paymentId: string; totalDue: string };
 
 export type PaySeveralPlan = {
   /** The lots that will be paid together, in the order picked. */
@@ -63,7 +76,9 @@ function skipReason(c: PaySeveralCandidate, accountId: string): PaySeveralSkipRe
   if (c.buyerAccountId !== accountId) return "other_account";
   if (!invoiceIsOwed(c.invoice)) return "not_owed";
   if (!c.payerMayPay) return "not_payer";
-  if (c.totalDue === null) return "not_invoiced";
+  if (c.totalDue === null || c.paymentId === null) return "not_invoiced";
+  if (c.heldForReview) return "held_for_review";
+  if (c.inPaymentInProgress) return "being_paid";
   return null;
 }
 
@@ -88,9 +103,9 @@ export function planPaySeveral(
   const skipped: PaySeveralPlan["skipped"] = [];
   for (const pick of picks) {
     const reason = skipReason(pick, accountId);
-    if (reason || pick.totalDue === null) {
+    if (reason || pick.totalDue === null || pick.paymentId === null) {
       skipped.push({ lotId: pick.lotId, reason: reason ?? "not_invoiced" });
-    } else payable.push({ ...pick, totalDue: pick.totalDue });
+    } else payable.push({ ...pick, paymentId: pick.paymentId, totalDue: pick.totalDue });
   }
   const [first] = payable;
   if (!first) return { allowed: false, reason: "pay_several_nothing_payable" };

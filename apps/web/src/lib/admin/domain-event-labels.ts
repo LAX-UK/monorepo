@@ -131,6 +131,14 @@ const LABELS: Record<string, string> = {
   "payment.dispute_funds_withdrawn": "Dispute funds withdrawn",
   "payment.dispute_closed": "Dispute closed",
 
+  "payment_group.created": "Several invoices put into one payment",
+  "payment_group.processing": "Bank transfer started for several invoices",
+  "payment_group.paid": "Several invoices paid together",
+  "payment_group.released": "Several invoices handed back to pay separately",
+  "payment_group.settlement_refused": "Payment for several invoices needs reconciling",
+  "payment_group.refund_unattributed": "Refund on a combined payment needs an invoice",
+  "payment_group.dispute_needs_allocation": "Dispute on a combined payment needs allocating",
+
   "payout.scheduled": "Payout scheduled",
   "payout.paid": "Payout paid",
   "payout.failed": "Payout failed",
