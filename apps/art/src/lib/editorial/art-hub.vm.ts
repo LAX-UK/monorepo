@@ -58,19 +58,8 @@ export type ArtHubSpotlightVm = {
   intro: string | null;
 };
 
-const SENTENCE_END = /^(.+?[.!?])(\s|$)/s;
-
-/** The short biography when there is one; otherwise the biography's opening sentence. */
-export function artistIntro(input: {
-  shortBio?: string | null;
-  bio?: string | null;
-}): string | null {
-  const short = input.shortBio?.trim();
-  if (short) return short;
-  const bio = input.bio?.trim();
-  if (!bio) return null;
-  return bio.match(SENTENCE_END)?.[1] ?? bio;
-}
+/** Re-exported for the Art Hub spotlight; the rule lives with the artist profile. */
+export { artistIntro } from "@/lib/artist/artist-profile.vm";
 
 function httpsUrl(value: string | null | undefined): string | null {
   return value && isSafeEditorialHref(value) && value.startsWith("https://") ? value : null;

@@ -89,14 +89,13 @@ test.describe("lax.art discovery", () => {
     await expect(page).toHaveURL(/sort=title/);
   });
 
-  test("artwork detail groups specs in accordions and offers share", async ({ page }) => {
+  test("artwork detail shows the description directly and offers share", async ({ page }) => {
     const response = await page.goto(`/artworks/${SEEDED_ORIGINAL_SLUG}`);
     test.skip(response?.status() === 404, "art originals seed not applied");
 
     const sections = page.getByTestId("art-artwork-detail-sections");
     await expect(sections).toBeVisible();
-    const firstTrigger = sections.getByRole("button", { expanded: true }).first();
-    await expect(firstTrigger).toBeVisible();
+    await expect(sections.getByTestId("art-artwork-description")).toBeVisible();
     // Desktop shares from the title row ("Share {title}"), phones from the gallery ("Share").
     await expect(
       page

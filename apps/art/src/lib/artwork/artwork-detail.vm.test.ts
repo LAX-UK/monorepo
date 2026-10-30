@@ -6,8 +6,10 @@ import {
   artworkCertificateLine,
   artworkPriceNote,
   artworkPromise,
+  artworkStageRatio,
   buildArtworkBreadcrumb,
   buildArtworkKeySpecs,
+  clampArtworkStageRatio,
   formatArtworkDimensions,
 } from "./artwork-detail.vm.js";
 
@@ -70,6 +72,26 @@ describe("buildArtworkKeySpecs", () => {
         artworkDetail({ yearCreated: null, objectType: null, medium: null, dimensions: null }),
       ),
     ).toEqual([]);
+  });
+});
+
+describe("artworkStageRatio", () => {
+  it("shapes the stage like the work, between 3:4 and 16:10", () => {
+    expect(artworkStageRatio({ heightCm: 60, widthCm: 60 })).toBe(1);
+    expect(artworkStageRatio({ heightCm: 50, widthCm: 70 })).toBeCloseTo(1.4);
+    expect(artworkStageRatio({ heightCm: 200, widthCm: 50 })).toBe(0.75);
+    expect(artworkStageRatio({ heightCm: 20, widthCm: 100 })).toBe(1.6);
+    expect(artworkStageRatio({ heightCm: null, widthCm: 40 })).toBeNull();
+    expect(clampArtworkStageRatio(Number.NaN)).toBe(0.75);
+  });
+});
+
+describe("the type fact", () => {
+  it("names one work in the singular", () => {
+    expect(buildArtworkKeySpecs(artworkDetail({ objectType: "painting" }))).toContainEqual({
+      label: "Type",
+      lines: ["Painting"],
+    });
   });
 });
 

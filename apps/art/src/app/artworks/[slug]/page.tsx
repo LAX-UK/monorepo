@@ -78,7 +78,7 @@ export default async function ArtworkDetailPage({ params, searchParams }: Artwor
             sticks below the header while the media and details scroll (Figma 433:4845). */}
         <div className="grid grid-cols-1 gap-x-10 gap-y-10 lg:grid-cols-[minmax(0,800fr)_minmax(0,520fr)] lg:grid-rows-[auto_1fr]">
           <div className="hidden md:block lg:col-start-1 lg:row-start-1">
-            <ArtArtworkGallery images={vm.galleryImages} priority />
+            <ArtArtworkGallery images={vm.galleryImages} stageRatio={vm.stageRatio} priority />
           </div>
 
           <section

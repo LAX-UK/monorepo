@@ -16,32 +16,37 @@ function Prose({ text }: { text: string }) {
 }
 
 /**
- * Figma 426:2581: "About the work" holds the Details and Provenance accordions (the facts are
- * shown once beside the image), "Exhibition history" its own tab.
+ * Figma 426:2581: "About the work" shows the description directly; secondary, longer content
+ * (provenance) sits in an accordion beneath it. "Exhibition history" is its own tab. The facts
+ * are shown once beside the image.
  */
 export function ArtArtworkDetailSections({
   description,
   provenance,
   exhibitionHistory,
 }: ArtArtworkDetailSectionsProps) {
-  const accordion: MarketingDetailAccordionItem[] = [];
-  if (description) {
-    accordion.push({ id: "details", title: "Details", content: <Prose text={description} /> });
-  }
+  const secondary: MarketingDetailAccordionItem[] = [];
   if (provenance) {
-    accordion.push({ id: "provenance", title: "Provenance", content: <Prose text={provenance} /> });
+    secondary.push({ id: "provenance", title: "Provenance", content: <Prose text={provenance} /> });
   }
 
   const tabs: MarketingUnderlineTabsPanelItem[] = [];
-  if (accordion.length > 0) {
+  if (description || secondary.length > 0) {
     tabs.push({
       id: "about",
       label: "About the work",
       content: (
-        <MarketingDetailAccordion
-          items={accordion}
-          defaultOpen={accordion[0] ? [accordion[0].id] : []}
-        />
+        <div className="flex flex-col gap-6">
+          {description ? (
+            <div
+              className="max-w-[65ch] text-base leading-7 text-on-surface"
+              data-testid="art-artwork-description"
+            >
+              <Prose text={description} />
+            </div>
+          ) : null}
+          {secondary.length > 0 ? <MarketingDetailAccordion items={secondary} /> : null}
+        </div>
       ),
     });
   }

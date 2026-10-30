@@ -1,4 +1,5 @@
 import type { ArtViewerState } from "@/lib/art-viewer-state";
+import { artistIntro } from "@/lib/artist/artist-profile.vm";
 import {
   type CatalogueArtworkCardVm,
   artistHref,
@@ -25,7 +26,7 @@ import {
 import { artworkJsonLd } from "@/lib/seo/art-structured-data";
 import { seoMetadataDescription, seoMetadataTitle } from "@/lib/seo/seo-metadata";
 import { GALLERY_CONTACT, type JsonLd } from "@auction/branding";
-import { marketingRailHasEnough } from "@auction/marketing-ui";
+import { marketingArtistFactsLine, marketingRailHasEnough } from "@auction/marketing-ui";
 import type {
   PublicArtistDetail,
   PublicArtworkDetail,
@@ -41,6 +42,7 @@ import {
   artworkCertificateLine,
   artworkPriceNote,
   artworkPromise,
+  artworkStageRatio,
   buildArtworkBreadcrumb,
   buildArtworkKeySpecs,
 } from "./artwork-detail.vm";
@@ -81,7 +83,10 @@ export type ArtworkArtistVm = {
   name: string;
   href: string;
   portraitUrl: string | null;
+  /** One sentence: the short biography, else the biography's first sentence. */
   bio: string | null;
+  /** "British · b. 1956 · Painter"; null when nothing is known. */
+  facts: string | null;
   following: boolean;
 };
 
@@ -94,6 +99,8 @@ export type ArtworkDetailVm = {
   artistName: string;
   artistHref: string;
   galleryImages: ArtworkGalleryImageVm[];
+  /** Width-to-height ratio of the image stage from the work's size; null lets the image decide. */
+  stageRatio: number | null;
   priceLabel: string;
   /** Who replies and where to see the work; null once the work is sold. */
   promise: ArtworkPromiseVm | null;
@@ -181,7 +188,13 @@ function buildArtistVm(
     name: artist.name,
     href: artistHref(artist.slug),
     portraitUrl: artist.portraitUrl,
-    bio: artist.bio || artist.shortBio || null,
+    bio: artistIntro(artist),
+    facts: marketingArtistFactsLine({
+      nationality: artist.nationality ?? null,
+      birthYear: artist.birthYear ?? null,
+      deathYear: artist.deathYear ?? null,
+      discipline: artist.discipline,
+    }),
     following: followedArtistSlugs.has(artist.slug),
   };
 }
@@ -232,6 +245,7 @@ export async function composeArtworkDetailPage(
       artistName: artwork.artistName,
       artistHref: artistHref(artwork.artistSlug),
       galleryImages: buildGalleryImages(artwork),
+      stageRatio: artworkStageRatio(artwork),
       priceLabel: resolveArtworkPriceLabel(artwork),
       priceNote: artworkPriceNote(artwork),
       promise: artworkPromise(artwork, GALLERY_CONTACT),
@@ -278,7 +292,7 @@ async function loadShopEditions(
   const editions = await services.catalogue
     .listShopEditionsOfOriginal(artwork.slug, SHOP_EDITIONS_LIMIT)
     .catch(() => ({ items: [] }));
-  return buildShopEditionLinks(editions.items, shop);
+  return buildShopEditionLinks(editions.items, shop, artwork.imageUrl);
 }
 
 export const RELATED_ARTWORKS_LIMIT = 4;

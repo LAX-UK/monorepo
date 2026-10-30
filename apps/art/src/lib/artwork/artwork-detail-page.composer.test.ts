@@ -158,7 +158,7 @@ describe("composeArtworkDetailPage", () => {
     expect(result.vm.priceLabel).toBe("Price on request");
     expect(result.vm.keySpecs).toEqual([
       { label: "Year", lines: ["2024"] },
-      { label: "Type", lines: ["Paintings"] },
+      { label: "Type", lines: ["Painting"] },
       { label: "Medium", lines: ["Oil on linen"] },
       { label: "Dimensions", lines: ["40 × 50 cm"] },
     ]);
@@ -198,6 +198,7 @@ describe("composeArtworkDetailPage", () => {
       href: "/artists/flora-powers",
       portraitUrl: "/flora.webp",
       bio: "Flora Powers paints still lifes.",
+      facts: "Painter",
       following: true,
     });
     expect(result.kind === "ok" && result.vm.specialistContact).toEqual({
@@ -298,6 +299,7 @@ describe("Editions available in LAX Shop", () => {
         title: "Warm Basket (print)",
         href: "https://shop.thelax.art/artworks/warm-basket-print",
         imageUrl: "/warm-basket.webp",
+        initials: "FP",
         editionLine: "Limited edition of 24 · Available",
         priceLabel: "£120.00",
       },

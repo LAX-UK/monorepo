@@ -1,5 +1,6 @@
 import {
   ARTWORK_OBJECT_TYPE_LABELS,
+  ARTWORK_OBJECT_TYPE_SINGULAR_LABELS,
   artworkCatalogueHref,
   emptyArtworkCatalogueState,
 } from "@/lib/catalogue/artwork-catalogue-params";
@@ -53,7 +54,7 @@ export function buildArtworkKeySpecs(artwork: PublicArtworkDetail): ArtworkSpecR
   if (artwork.yearCreated != null)
     rows.push({ label: "Year", lines: [String(artwork.yearCreated)] });
   if (artwork.objectType) {
-    rows.push({ label: "Type", lines: [ARTWORK_OBJECT_TYPE_LABELS[artwork.objectType]] });
+    rows.push({ label: "Type", lines: [ARTWORK_OBJECT_TYPE_SINGULAR_LABELS[artwork.objectType]] });
   }
   if (artwork.medium) rows.push({ label: "Medium", lines: [artwork.medium] });
   const dimensions = dimensionLines(artwork);
@@ -96,6 +97,26 @@ export function artworkPriceNote(artwork: PublicArtworkDetail): string | null {
   return isArtworkEnquiryAvailable(artwork)
     ? "Contact us to discuss this work. All enquiries are handled with complete discretion."
     : null;
+}
+
+/**
+ * The image stage's width-to-height ratio, kept between a tall portrait (3:4) and a wide
+ * landscape (16:10) so every work sits in a frame made for it, with a narrow mat at most.
+ */
+export const ARTWORK_STAGE_RATIO = { min: 3 / 4, max: 16 / 10 } as const;
+
+export function clampArtworkStageRatio(ratio: number): number {
+  if (!Number.isFinite(ratio) || ratio <= 0) return ARTWORK_STAGE_RATIO.min;
+  return Math.min(ARTWORK_STAGE_RATIO.max, Math.max(ARTWORK_STAGE_RATIO.min, ratio));
+}
+
+/** The stage ratio from the work's own size; null when height or width is unknown. */
+export function artworkStageRatio(
+  artwork: Pick<PublicArtworkDetail, "heightCm" | "widthCm">,
+): number | null {
+  const { heightCm, widthCm } = artwork;
+  if (!heightCm || !widthCm) return null;
+  return clampArtworkStageRatio(widthCm / heightCm);
 }
 
 /** Who replies and when, and where the work can be seen. */
