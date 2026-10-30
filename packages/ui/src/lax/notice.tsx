@@ -3,9 +3,9 @@ import type * as React from "react";
 import { cn } from "../lib/utils.js";
 
 /**
- * Tone per concern. Staff notices are tinted throughout. In the client workspace information is
- * calm (the surface with a blue icon), while a warning or a block keeps its tint, so the notices
- * that ask for action are the ones that stand out.
+ * Tone per concern. Staff notices are tinted throughout, with a tinted edge. In the client
+ * workspace information is calm (the surface with a hairline and a blue icon), while success, a
+ * warning or a block keeps its tint without an edge, so the notices that ask for action stand out.
  */
 const toneClass = {
   info: {
@@ -14,17 +14,17 @@ const toneClass = {
     Icon: Info,
   },
   success: {
-    box: "border-lax-success-dot/30 bg-lax-success-bg text-lax-success-fg",
+    box: "border-lax-success-dot/30 bg-lax-success-bg text-lax-success-fg in-data-[lax-density=client]:border-transparent",
     icon: "",
     Icon: CircleCheck,
   },
   warning: {
-    box: "border-lax-warning-dot/35 bg-lax-warning-bg text-lax-warning-fg",
+    box: "border-lax-warning-dot/35 bg-lax-warning-bg text-lax-warning-fg in-data-[lax-density=client]:border-transparent",
     icon: "",
     Icon: TriangleAlert,
   },
   danger: {
-    box: "border-lax-danger/30 bg-lax-danger-bg text-lax-danger-fg",
+    box: "border-lax-danger/30 bg-lax-danger-bg text-lax-danger-fg in-data-[lax-density=client]:border-transparent",
     icon: "",
     Icon: CircleAlert,
   },

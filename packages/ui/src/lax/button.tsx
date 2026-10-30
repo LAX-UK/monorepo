@@ -61,9 +61,9 @@ export const buttonVariants = cva(
       },
       size: {
         sm: "h-lax-control-sm px-3",
-        md: "h-lax-control-md px-3.5",
+        md: "h-lax-control-md px-3.5 in-data-[lax-density=client]:px-4",
         /** 44px at every pointer: actions taken under time pressure, and the client phone default. */
-        lg: "h-lax-control-lg px-4",
+        lg: "h-lax-control-lg px-4 in-data-[lax-density=client]:px-6",
         "icon-xs": "size-lax-control-xs rounded-lax-badge",
         "icon-sm": "size-lax-control-sm",
         "icon-md": "size-lax-control-md",

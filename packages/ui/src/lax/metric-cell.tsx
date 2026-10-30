@@ -22,6 +22,11 @@ export type Metric = {
   label: string;
   /** Already formatted, in full: "£1,250.00", never "£1.2k". Null when unknown: shows "—". */
   value: React.ReactNode | null;
+  /**
+   * What a missing value means, in words: "Nothing sold yet this year". Shown instead of the
+   * dash, so a figure with no data never reads as a zero or a blank.
+   */
+  emptyText?: string;
   /** A 14px icon before the label, drawn in the metric's tone. */
   icon?: React.ReactNode;
   /**
@@ -143,9 +148,15 @@ export function MetricCell({
   const linked = Boolean(item.href && Link);
   const accent = accentTone[tone];
   const valueText = missing ? (
-    <span className="text-lax-subtle" title="No data">
-      —<span className="sr-only">No data</span>
-    </span>
+    item.emptyText ? (
+      <span className="text-lax-14 font-medium whitespace-normal text-lax-fg in-data-[lax-density=client]:text-lax-16">
+        {item.emptyText}
+      </span>
+    ) : (
+      <span className="text-lax-subtle" title="No data">
+        —<span className="sr-only">No data</span>
+      </span>
+    )
   ) : (
     item.value
   );

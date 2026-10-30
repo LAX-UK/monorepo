@@ -90,10 +90,11 @@ describe("StatusBadge", () => {
     );
   });
 
-  it("truncates a long label inside the row instead of overflowing", () => {
+  it("never cuts its label short, since the words are the status", () => {
     render(<StatusBadge>Documents requested by our team</StatusBadge>);
-    expect(screen.getByText("Documents requested by our team")).toHaveClass("truncate", "min-w-0");
-    expect(badge("Documents requested by our team")).toHaveClass("max-w-full");
+    expect(screen.getByText("Documents requested by our team")).not.toHaveClass("truncate");
+    expect(badge("Documents requested by our team").className).not.toMatch(/truncate|max-w-/);
+    expect(badge("Documents requested by our team")).toHaveClass("shrink-0", "whitespace-nowrap");
   });
 
   it("reads as its words alone to assistive technology", () => {

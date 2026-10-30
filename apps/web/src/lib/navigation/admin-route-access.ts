@@ -34,6 +34,7 @@ export const ADMIN_ROUTE_AREAS: Readonly<Record<string, Exclude<AdminRouteArea, 
   finance: "finance",
   integrations: "finance",
   audit: "shared",
+  kit: "shared",
   "no-access": "shared",
 };
 

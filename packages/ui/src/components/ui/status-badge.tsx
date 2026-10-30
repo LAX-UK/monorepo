@@ -49,7 +49,7 @@ export const STATUS_BADGE_DEFAULT_SHAPE: Readonly<Record<StatusBadgeTone, Status
  * radius (4px) wherever the LAX system is loaded, and a pill elsewhere.
  */
 export const statusBadgeVariants = cva(
-  "inline-flex h-5 w-fit min-w-0 max-w-full shrink-0 items-center gap-1 whitespace-nowrap rounded-[var(--lax-radius-badge,9999px)] pr-2 pl-1.5 align-middle font-label text-xs leading-4 font-medium",
+  "inline-flex h-5 w-fit shrink-0 items-center gap-1 whitespace-nowrap rounded-[var(--lax-radius-badge,9999px)] pr-2 pl-1.5 align-middle font-label text-xs leading-4 font-medium",
   {
     variants: { tone: STATUS_BADGE_TONE_CLASSES },
     defaultVariants: { tone: "neutral" },
@@ -112,7 +112,8 @@ export type StatusBadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
 
 /**
  * A status as a tinted badge: tone, cue and words together. Labels are written in sentence case
- * by the caller's status map; the badge never transforms case. For counts, use a count pill.
+ * by the caller's status map; the badge never transforms case. The label is the meaning, so it is
+ * never cut short: the cell around a badge wraps, the badge does not. For counts, use a count pill.
  */
 export function StatusBadge({
   className,
@@ -130,7 +131,7 @@ export function StatusBadge({
         pulse={pulsing}
         liveDot={live && tone !== "live"}
       />
-      <span className="min-w-0 truncate">{children}</span>
+      <span>{children}</span>
     </span>
   );
 }
