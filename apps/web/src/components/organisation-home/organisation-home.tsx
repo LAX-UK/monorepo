@@ -27,7 +27,7 @@ export function OrganisationHome({ home }: { home: LoadedOrganisationHome }) {
     <DashboardPage>
       <SetMobileShellTitle title="Home" />
       {/* Phones show the title in the shell header. */}
-      <DashboardPageHeader title="Home" hideTitleOnMobile className="hidden lg:mb-6 lg:flex" />
+      <DashboardPageHeader title="Home" className="hidden lg:mb-6 lg:flex" />
       {home.welcome ? (
         <WelcomeCard welcome={home.welcome} organisationName={home.organisationName} />
       ) : null}

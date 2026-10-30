@@ -29,7 +29,7 @@ function organisationRules(base: string): LegacyDashboardRedirect[] {
   return [
     rule(`${base}/:id`, "/organisation?account=:id"),
     rule(`${base}/:id/profile`, "/organisation?account=:id"),
-    rule(`${base}/:id/members`, "/organisation/members?account=:id"),
+    rule(`${base}/:id/members`, "/team?account=:id"),
     rule(`${base}/:id/documents`, "/organisation/documents?account=:id"),
     rule(`${base}/:id/connect`, "/organisation/payouts?account=:id"),
     rule(`${base}/:id/security`, "/organisation/security?account=:id"),
@@ -62,7 +62,7 @@ export const LEGACY_DASHBOARD_REDIRECTS: readonly LegacyDashboardRedirect[] = [
   rule("/dashboard/submissions", "/selling/consignments"),
   rule("/dashboard/submissions/new", "/selling/new"),
   rule("/dashboard/submissions/:id", "/selling/consignments/:id"),
-  rule("/dashboard/seller/works", "/selling/works"),
+  rule("/dashboard/seller/works", "/collection"),
   rule("/dashboard/seller/payouts", "/selling/payouts"),
   rule("/dashboard/seller/connect", "/selling/payout-setup"),
   rule("/dashboard/seller/artist", "/selling/artist"),
@@ -94,6 +94,10 @@ export const LEGACY_DASHBOARD_REDIRECTS: readonly LegacyDashboardRedirect[] = [
   // Retired client pages. Selling had an overview of what needs the team, which Home's
   // "Needs you" already shows; Selling now opens on Consignments.
   rule("/selling", "/selling/consignments"),
+  // Team left the Organisation page for a page of its own, and Works became the organisation's
+  // Collection.
+  rule("/organisation/members", "/team"),
+  rule("/selling/works", "/collection"),
 ];
 
 /**

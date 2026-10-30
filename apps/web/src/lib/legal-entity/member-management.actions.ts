@@ -1,7 +1,7 @@
 "use server";
 
 import { authedServerFetch } from "@/lib/data/http/authed-fetch.server";
-import { organisationHref } from "@/lib/navigation/client-routes";
+import { teamHref } from "@/lib/navigation/client-routes";
 import { instrumentServerAction } from "@/lib/observability/instrument-server-action";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { revalidatePath } from "next/cache";
@@ -46,7 +46,7 @@ function jsonHeaders(legalEntityId: string): Record<string, string> {
 
 /** Every page that shows the team or the person's accounts. */
 function revalidateTeamPages() {
-  revalidatePath(organisationHref("members"));
+  revalidatePath(teamHref());
   revalidatePath("/organisations");
   revalidatePath("/invitations");
   revalidatePath("/organisations/invitations");

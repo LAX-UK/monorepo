@@ -34,14 +34,14 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { toOrgWorkRows } from "./org-works.vm";
 
-const PATH = "/selling/works";
+const PATH = CLIENT_ROUTES.collection;
 
 /**
  * The organisation's own works: lots it has won, whichever member bid, and (for roles with
  * finance access) what it paid. A person's own purchases live in Purchases, so this page is only
  * for an organisation.
  */
-export default async function SellerWorksPage() {
+export default async function CollectionPage() {
   const user = await requireAuthenticatedUser({ shell: "client", loginNext: PATH });
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   // A person's own works are in Purchases and LAX Account; this page is an organisation's.

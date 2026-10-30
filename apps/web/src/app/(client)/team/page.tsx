@@ -17,24 +17,24 @@ import { inviteRoleOptions, memberViewOnlyReason } from "@/lib/legal-entity/memb
 import { createLegalEntityMemberListGateway } from "@/lib/legal-entity/member-list.gateway.server";
 import { invitationRowViews, memberRowViews } from "@/lib/legal-entity/member-row.vm";
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
-import { organisationHref } from "@/lib/navigation/client-routes";
-import { requireOrganisationTab } from "@/lib/navigation/organisation-tabs";
+import { teamHref } from "@/lib/navigation/client-routes";
+import { requireTeamTab } from "@/lib/navigation/team-tabs";
 import { entityActorCan, organisationInviteRefusal } from "@auction/domain";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
 import { notFound } from "next/navigation";
 
 /**
- * The Members tab, for owners and admins: invite someone (or why the organisation cannot),
+ * Team's Members tab, for owners and admins: invite someone (or why the organisation cannot),
  * the team with each person's role, the invitations nobody has answered yet, then buyer-agent
  * authorisations. The page header already names the organisation, so nothing here repeats it.
  */
-export default async function OrganisationMembersPage() {
+export default async function TeamMembersPage() {
   const user = await requireAuthenticatedUser({
     shell: "client",
-    loginNext: organisationHref("members"),
+    loginNext: teamHref(),
   });
   const { organisation, actor } = await requireActiveOrganisationActor(user);
-  const access = requireOrganisationTab(actor, "members");
+  const access = requireTeamTab(actor, "members");
   if (access.kind === "forbidden") return <OrganisationTabNoAccess access={access} />;
   const ctx = await createPerOrgGateway().getContext(organisation.id);
   if (!ctx) notFound();

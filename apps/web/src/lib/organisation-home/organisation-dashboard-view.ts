@@ -1,4 +1,4 @@
-import { CLIENT_ROUTES, organisationHref } from "@/lib/navigation/client-routes";
+import { CLIENT_ROUTES, teamHref } from "@/lib/navigation/client-routes";
 import { organisationFirstRunCopy } from "@/lib/presenters/organisation-state/organisation-state-copy";
 import { formatDateInline, formatKpiMoney, formatMoney } from "@/lib/ui/format";
 import {
@@ -221,7 +221,7 @@ function upcomingSaleView(sale: UpcomingSaleFigure): UpcomingSaleView {
 
 const FIRST_RUN_ACTION: Record<FirstRunAction, { label: string; href: string }> = {
   sell: { label: "Sell a work", href: CLIENT_ROUTES.sellingNew },
-  invite: { label: "Invite someone", href: organisationHref("members") },
+  invite: { label: "Invite someone", href: teamHref() },
 };
 
 /** First steps: the words follow the organisation's state, then the first thing the role can do. */

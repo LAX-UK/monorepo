@@ -22,7 +22,7 @@ function SectionHeading() {
 export function HomeSkeleton() {
   return (
     <DashboardPage>
-      <DashboardPageHeader title="Home" hideTitleOnMobile className="hidden lg:mb-6 lg:flex" />
+      <DashboardPageHeader title="Home" className="hidden lg:mb-6 lg:flex" />
       <output aria-label="Loading Home" className="flex flex-col gap-8 md:gap-10">
         <div className="space-y-3">
           <SectionHeading />
