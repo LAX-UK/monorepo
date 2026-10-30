@@ -62,9 +62,17 @@ describe("ConnectAccountService.getStatus", () => {
   });
 });
 
-/** What Stripe answers for an account id this platform cannot see (a seeded or deleted id). */
-function unknownAccountError() {
-  return Object.assign(new Error("No such account"), {
+/** Stripe's answer for an account that does not exist (a seeded or deleted id). */
+function missingAccountError() {
+  return Object.assign(new Error("No such account: acct_seed_fake"), {
+    type: "StripeInvalidRequestError",
+    code: "resource_missing",
+  });
+}
+
+/** Stripe's answer when this key cannot see the account: revoked access, wrong key, or absent. */
+function unreachableAccountError() {
+  return Object.assign(new Error("The provided key does not have access to account"), {
     type: "StripePermissionError",
     code: "account_invalid",
   });
@@ -98,7 +106,7 @@ function serviceWith(row: Record<string, unknown>, retrieve: ReturnType<typeof v
   return { svc, create, persistConnectAccount };
 }
 
-describe("ConnectAccountService with an account Stripe does not know", () => {
+describe("ConnectAccountService when Stripe cannot return the stored account", () => {
   const row = {
     id: "le1",
     kind: "organisation",
@@ -112,22 +120,16 @@ describe("ConnectAccountService with an account Stripe does not know", () => {
 
   beforeEach(() => vi.clearAllMocks());
 
-  it("reads as payouts not set up instead of failing to load", async () => {
-    const { svc } = serviceWith(row, vi.fn().mockRejectedValue(unknownAccountError()));
+  it("reads a missing account as payouts not set up", async () => {
+    const { svc } = serviceWith(row, vi.fn().mockRejectedValue(missingAccountError()));
     const status = await svc.syncAccountFromStripe("le1");
     expect(status).toMatchObject({ stripeAccountId: null, ready: false, payoutsEnabled: false });
   });
 
-  it("still fails on any other Stripe error", async () => {
-    const outage = Object.assign(new Error("Stripe is down"), { type: "StripeAPIError" });
-    const { svc } = serviceWith(row, vi.fn().mockRejectedValue(outage));
-    await expect(svc.syncAccountFromStripe("le1")).rejects.toBe(outage);
-  });
-
-  it("sets up a new account in place of the unknown one", async () => {
+  it("sets up a new account in place of a missing one", async () => {
     const { svc, create, persistConnectAccount } = serviceWith(
       row,
-      vi.fn().mockRejectedValue(unknownAccountError()),
+      vi.fn().mockRejectedValue(missingAccountError()),
     );
     const result = await svc.ensureAccount("le1");
     expect(result.stripeAccountId).toBe("acct_new");
@@ -137,6 +139,36 @@ describe("ConnectAccountService with an account Stripe does not know", () => {
     expect(persistConnectAccount).toHaveBeenCalledWith(
       expect.objectContaining({ legalEntityId: "le1", stripeAccountId: "acct_new" }),
     );
+  });
+
+  it("reports an account this key cannot see as unreachable, keeping its id", async () => {
+    const { svc, persistConnectAccount } = serviceWith(
+      row,
+      vi.fn().mockRejectedValue(unreachableAccountError()),
+    );
+    await expect(svc.syncAccountFromStripe("le1")).rejects.toMatchObject({
+      code: "stripe_account_unreachable",
+      httpStatus: 409,
+    });
+    expect(persistConnectAccount).not.toHaveBeenCalled();
+  });
+
+  it("never replaces an account this key cannot see", async () => {
+    const { svc, create, persistConnectAccount } = serviceWith(
+      row,
+      vi.fn().mockRejectedValue(unreachableAccountError()),
+    );
+    await expect(svc.ensureAccount("le1")).rejects.toMatchObject({
+      code: "stripe_account_unreachable",
+    });
+    expect(create).not.toHaveBeenCalled();
+    expect(persistConnectAccount).not.toHaveBeenCalled();
+  });
+
+  it("still fails on any other Stripe error", async () => {
+    const outage = Object.assign(new Error("Stripe is down"), { type: "StripeAPIError" });
+    const { svc } = serviceWith(row, vi.fn().mockRejectedValue(outage));
+    await expect(svc.syncAccountFromStripe("le1")).rejects.toBe(outage);
   });
 
   it("keeps an account Stripe knows", async () => {

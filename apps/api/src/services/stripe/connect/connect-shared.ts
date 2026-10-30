@@ -33,21 +33,20 @@ export function connectReadyFromCachedEntity(entity: LegalEntityConnectRow): boo
 }
 
 /**
- * Stripe codes meaning the stored Connect account id is not one this platform can use: it never
- * existed (seeded or mistyped ids), was deleted, or its access was revoked. Every other error,
- * such as a network failure, is a real failure and is not hidden.
+ * How Stripe answered a read of the stored Connect account, when it did not return it:
+ * - `missing` (`resource_missing`): the account definitively does not exist (a seeded or
+ *   deleted id). Payouts are not set up, and setting up may replace the id.
+ * - `unreachable` (`account_invalid`): this key cannot see the account. That is ambiguous:
+ *   revoked access, a wrong API key, or no such account. The id is kept and never replaced.
+ * - null: any other error, which is a real failure and is not hidden.
  */
-const UNKNOWN_CONNECT_ACCOUNT_CODES: ReadonlySet<string> = new Set([
-  "account_invalid",
-  "resource_missing",
-]);
+export type ConnectAccountReadFailure = "missing" | "unreachable";
 
-export function isUnknownConnectAccountError(err: unknown): boolean {
-  if (!err || typeof err !== "object") return false;
+export function classifyConnectAccountReadError(err: unknown): ConnectAccountReadFailure | null {
+  if (!err || typeof err !== "object") return null;
   const { type, code } = err as { type?: unknown; code?: unknown };
-  return (
-    (type === "StripePermissionError" || type === "StripeInvalidRequestError") &&
-    typeof code === "string" &&
-    UNKNOWN_CONNECT_ACCOUNT_CODES.has(code)
-  );
+  if (type !== "StripePermissionError" && type !== "StripeInvalidRequestError") return null;
+  if (code === "resource_missing") return "missing";
+  if (code === "account_invalid") return "unreachable";
+  return null;
 }

@@ -23,7 +23,7 @@ import { resolveConnectAccountCountry } from "./connect-country-resolver.js";
 import type { ConnectLifecyclePromoter } from "./connect-lifecycle-promoter.js";
 import { ConnectServiceError, throwConnectError } from "./connect-service-errors.js";
 import {
-  isUnknownConnectAccountError,
+  classifyConnectAccountReadError,
   loadConnectLegalEntity,
   requireConnectStripe,
 } from "./connect-shared.js";
@@ -82,7 +82,8 @@ export class ConnectAccountService {
     const context = await loadConnectAccountCreationContext(this.connectReader, legalEntityId);
     const row = context.entity;
 
-    // A stored id Stripe does not know (seeded, deleted) is replaced, so setting up still works.
+    // A stored id that definitively does not exist (seeded, deleted) is replaced, so setting up
+    // still works. One this key cannot see is never replaced: the read throws instead.
     const replacing = row.stripeConnectAccountId;
     if (replacing && (await this.retrieveUsableAccount(stripe, legalEntityId, replacing))) {
       return { stripeAccountId: replacing, legalEntity: legalEntityRowToDomain(row) };
@@ -184,8 +185,10 @@ export class ConnectAccountService {
   }
 
   /**
-   * The stored account at Stripe, or null when Stripe does not know it (a seeded or deleted id).
-   * That is logged and read as payouts not set up; any other Stripe failure still throws.
+   * The stored account at Stripe, or null when it definitively does not exist (a seeded or
+   * deleted id), which reads as payouts not set up. When this key cannot see the account
+   * (`account_invalid`: revoked access, a wrong key, or no such account) the id is kept, ops are
+   * alerted and `stripe_account_unreachable` is thrown. Any other failure is rethrown as it is.
    */
   private async retrieveUsableAccount(
     stripe: Stripe,
@@ -195,13 +198,21 @@ export class ConnectAccountService {
     try {
       return await stripe.accounts.retrieve(stripeAccountId);
     } catch (err) {
-      if (!isUnknownConnectAccountError(err)) throw err;
-      recordMoneyPathEvent("stripe_connect_account_unknown");
-      this.logger.warn(
-        { legalEntityId, stripeAccountId, stripeCode: (err as { code?: string }).code },
-        "connect_account_unknown_at_stripe",
-      );
-      return null;
+      const failure = classifyConnectAccountReadError(err);
+      if (failure === "missing") {
+        recordMoneyPathEvent("stripe_connect_account_missing");
+        this.logger.warn({ legalEntityId, stripeAccountId }, "connect_account_missing_at_stripe");
+        return null;
+      }
+      if (failure === "unreachable") {
+        recordMoneyPathEvent("stripe_connect_account_unreachable");
+        this.logger.error(
+          { legalEntityId, stripeAccountId },
+          "connect_account_unreachable_at_stripe",
+        );
+        throw new ConnectServiceError("stripe_account_unreachable", 409, { stripeAccountId });
+      }
+      throw err;
     }
   }
 
