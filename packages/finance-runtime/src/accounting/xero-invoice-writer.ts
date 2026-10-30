@@ -116,6 +116,8 @@ export class XeroInvoiceWriter {
       if (this.env.XERO_USE_LEGAL_ENTITY_CONTACT && this.invoiceAddressing) {
         const { billTo } = await this.invoiceAddressing.resolveForPayment(ctx.paymentId);
         inv.invoiceAddresses = [billToContextToXeroInvoiceToAddress(billTo)];
+        // The organisation's PO reference leads, so its accounts team can match the invoice.
+        if (billTo.poReference) inv.reference = `${billTo.poReference} · ${inv.reference}`;
       }
 
       const invoicesBody = new Invoices();

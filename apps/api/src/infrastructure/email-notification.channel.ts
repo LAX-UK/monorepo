@@ -126,6 +126,7 @@ export class EmailNotificationChannel implements INotificationChannel {
           addressLines: [],
           vatLine: null,
           addressIncomplete: true,
+          poReference: null,
         };
         return {
           userName,

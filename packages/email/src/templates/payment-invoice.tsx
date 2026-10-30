@@ -51,6 +51,7 @@ export default function PaymentInvoiceEmail({
       <FactCard
         rows={[
           { label: "Bill to", value: billToValue },
+          ...(billTo.poReference ? [{ label: "PO reference", value: billTo.poReference }] : []),
           { label: "Invoice", value: invoiceNumber, mono: true },
           { label: "Amount", value: amount },
           ...(dueDate ? [{ label: "Due by", value: dueDate }] : []),

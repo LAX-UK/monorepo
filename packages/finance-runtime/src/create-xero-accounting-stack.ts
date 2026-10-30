@@ -2,6 +2,7 @@ import { AccountingReplayCronService } from "@auction/finance-cron-app";
 import type { IAccountingReplayPaymentMaintenance } from "@auction/finance-cron-app";
 import type {
   IAddressRepository,
+  IInvoiceDetailsReader,
   ILegalEntityRepository,
   IPaymentExternalRefRepository,
   IPaymentRefundReconcileRepository,
@@ -37,6 +38,8 @@ export type CreateXeroAccountingStackInput = {
   legalEntities: ILegalEntityRepository | null;
   profileReader: IProfileReader | null;
   addressRepo: IAddressRepository | null;
+  /** Organisations' invoice addresses and PO references. */
+  invoiceDetails: IInvoiceDetailsReader | null;
   paymentMaintenance: IAccountingReplayPaymentMaintenance;
   errorReporter?: IErrorReporter;
 };
@@ -55,12 +58,13 @@ export function createXeroAccountingStack(
   const xeroEnabled = xeroOAuthConfigured(input.env);
 
   const invoiceAddressing =
-    input.legalEntities && input.profileReader && input.addressRepo
+    input.legalEntities && input.profileReader && input.addressRepo && input.invoiceDetails
       ? new InvoiceAddressingService(
           input.payments,
           input.legalEntities,
           input.profileReader,
           input.addressRepo,
+          input.invoiceDetails,
           input.log,
         )
       : null;
