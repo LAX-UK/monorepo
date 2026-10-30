@@ -173,7 +173,12 @@ export function SearchPalette({
             <Kbd className="max-md:hidden">Esc</Kbd>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-2">
+          <div
+            // The results scroll on their own, so the region must be reachable with Tab.
+            // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region must be keyboard reachable (WCAG 2.1.1)
+            tabIndex={0}
+            className="lax-focus-inset min-h-0 flex-1 overflow-y-auto overscroll-contain p-2"
+          >
             {
               // biome-ignore lint/a11y/useFocusableInteractive: the WAI-ARIA combobox pattern: focus stays in the field and aria-activedescendant points here
               <div
