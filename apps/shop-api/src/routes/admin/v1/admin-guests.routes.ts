@@ -4,11 +4,17 @@ import {
   AdminGuestErasureResultSchema,
   AdminGuestErasureStateSchema,
   AdminGuestParamsSchema,
+  AdminLeadDetailSchema,
+  type AdminLeadListQuery,
+  AdminLeadListQuerySchema,
+  AdminLeadListResponseSchema,
+  AdminLeadParamsSchema,
   SHOP_API_ERROR_CODES,
   ShopApiErrorBodySchema,
 } from "@auction/shop-contracts";
 import type { FastifyInstance } from "fastify";
 import type { GuestErasureService } from "../../../application/guest-erasure/guest-erasure.service.js";
+import type { LeadsService } from "../../../application/leads/leads.service.js";
 import { ShopApiError, notFound } from "../../../errors/shop-api-error.js";
 import {
   requireRecentAuthentication,
@@ -18,6 +24,7 @@ import {
 
 export type AdminGuestRoutesDeps = {
   guestErasure: GuestErasureService;
+  leads: LeadsService;
   stepUpMaxAuthAgeSeconds: number;
 };
 
@@ -28,6 +35,44 @@ type GuestParams = { guestCustomerId: string };
  * both need `lead.erase` (Administrators); erasing also needs a recent sign-in.
  */
 export async function registerAdminGuestRoutes(app: FastifyInstance, deps: AdminGuestRoutesDeps) {
+  // Guest leads: reading them needs `lead.read`.
+  app.get(
+    "/leads",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        querystring: AdminLeadListQuerySchema,
+        response: { 200: AdminLeadListResponseSchema, 403: ShopApiErrorBodySchema },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "lead.read");
+      return deps.leads.list(request.query as AdminLeadListQuery);
+    },
+  );
+
+  app.get(
+    "/leads/:leadId",
+    {
+      schema: {
+        tags: ["shop-admin"],
+        params: AdminLeadParamsSchema,
+        response: {
+          200: AdminLeadDetailSchema,
+          403: ShopApiErrorBodySchema,
+          404: ShopApiErrorBodySchema,
+        },
+      },
+    },
+    async (request) => {
+      requireShopStaffCapability(request, "lead.read");
+      const { leadId } = request.params as { leadId: string };
+      const detail = await deps.leads.get(leadId);
+      if (!detail) throw notFound("Lead");
+      return detail;
+    },
+  );
+
   app.get(
     "/guests/:guestCustomerId/erasure",
     {

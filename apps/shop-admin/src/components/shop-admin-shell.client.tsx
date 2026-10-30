@@ -38,6 +38,7 @@ import {
   Sun,
   Tag,
   Timer,
+  UserPlus,
   Users,
   Wallet,
 } from "@auction/staff-ui/icons";
@@ -67,6 +68,7 @@ const ICONS: Record<AdminNavIcon, LucideIcon> = {
   thirdPartySales: Handshake,
   requests: ClipboardList,
   clients: Users,
+  leads: UserPlus,
   payouts: Wallet,
   disputes: ShieldAlert,
   staff: ShieldCheck,
