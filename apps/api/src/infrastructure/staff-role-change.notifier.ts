@@ -96,17 +96,20 @@ export class StaffRoleChangeNotifier implements IStaffRoleChangeNotifier {
       return change.change === "given"
         ? {
             type: "staff_role_changed",
+            legalEntityId: null,
             title: `You have the ${roleLabel} role on ${productLabel}`,
             message: `You were given the ${roleLabel} role on ${productLabel}${until}. It applies the next time you load a page.`,
           }
         : {
             type: "staff_role_changed",
+            legalEntityId: null,
             title: `Your ${roleLabel} role on ${productLabel} was removed`,
             message: `Your ${roleLabel} role on ${productLabel} was removed. Ask an administrator if you still need it.`,
           };
     }
     return {
       type: "staff_role_changed_admin",
+      legalEntityId: null,
       title: change.change === "given" ? "A staff role was given" : "A staff role was removed",
       message:
         change.change === "given"

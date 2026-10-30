@@ -54,12 +54,14 @@ describe("StaffRoleChangeNotifier", () => {
     expect(administrators.listAdministrators).toHaveBeenCalledWith("shop", NOW);
     expect(dispatch).toHaveBeenCalledWith("ada", {
       type: "staff_role_changed",
+      legalEntityId: null,
       title: "You have the Editor role on LAX Admin",
       message:
         "You were given the Editor role on LAX Admin until 30 November 2026. It applies the next time you load a page.",
     });
     expect(dispatch).toHaveBeenCalledWith("grace", {
       type: "staff_role_changed_admin",
+      legalEntityId: null,
       title: "A staff role was given",
       message: "Ada Lovelace was given the Editor role on LAX Admin until 30 November 2026.",
     });
@@ -92,6 +94,7 @@ describe("StaffRoleChangeNotifier", () => {
     expect(toAda).toHaveLength(1);
     expect(toAda[0]?.[1]).toMatchObject({
       type: "staff_role_changed",
+      legalEntityId: null,
       title: "Your Editor role on LAX Admin was removed",
     });
   });

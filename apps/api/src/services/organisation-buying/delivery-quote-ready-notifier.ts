@@ -24,6 +24,7 @@ export class DeliveryQuoteReadyNotifier implements IDeliveryQuoteReadyNotifier {
       const row = this.factory.createDeliveryQuoteReady(lot, recipient, {
         amount: quote.amount,
         currency: quote.currency,
+        legalEntityId: quote.buyerLegalEntityId,
       });
       const key = `delivery-quote:${quote.id}:${quote.amount}`;
       const payload = notificationRowToPayload(row);

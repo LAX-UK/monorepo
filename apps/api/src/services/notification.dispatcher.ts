@@ -1,4 +1,8 @@
-import type { INotificationPreferenceReader } from "@auction/persistence/interfaces";
+import { notificationIsMutable, notificationSilencedByMute } from "@auction/domain";
+import type {
+  INotificationAccountMuteReader,
+  INotificationPreferenceReader,
+} from "@auction/persistence/interfaces";
 import type {
   INotificationChannel,
   NotificationChannelKind,
@@ -16,12 +20,14 @@ export class NotificationDispatchError extends Error {
   }
 }
 
-/** Orchestrates notification delivery with preference + quiet-hours gates. */
+/** Orchestrates notification delivery with mute, preference and quiet-hours gates. */
 export class NotificationDispatcher {
   constructor(
     private readonly channels: INotificationChannel[],
     private readonly preferences: INotificationPreferenceReader,
     private readonly quietHours: IQuietHoursChecker,
+    /** Organisations the recipient muted get no delivery on any channel. */
+    private readonly mutes: INotificationAccountMuteReader | null = null,
   ) {}
 
   /** Best-effort delivery: channel failures are logged and skipped. */
@@ -39,6 +45,7 @@ export class NotificationDispatcher {
     payload: NotificationPayload,
     mode: "best_effort" | "strict",
   ): Promise<void> {
+    if (await this.isSilencedByMute(userId, payload)) return;
     const prefs = await this.preferences.getForUser(userId);
     const quiet =
       prefs?.quietStart && prefs?.quietEnd
@@ -62,6 +69,14 @@ export class NotificationDispatcher {
     if (mode === "strict" && failedChannels.length > 0) {
       throw new NotificationDispatchError(failedChannels);
     }
+  }
+
+  /** Informational notices about a muted account are silenced; required notices never are. */
+  private async isSilencedByMute(userId: string, payload: NotificationPayload) {
+    if (!this.mutes || payload.legalEntityId == null || !notificationIsMutable(payload.type)) {
+      return false;
+    }
+    return notificationSilencedByMute(payload, await this.mutes.listMutedAccountIds(userId));
   }
 
   private async shouldDeliver(

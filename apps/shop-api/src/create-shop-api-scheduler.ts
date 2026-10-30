@@ -14,6 +14,7 @@ import type { ShopSchedulerHandle } from "./scheduler/create-shop-scheduler.js";
 import type { ShopSchedulerTask } from "./scheduler/shop-scheduler-task.js";
 import { createAdminCommandPruneTask } from "./scheduler/tasks/admin-command-prune.task.js";
 import { createConnectPayoutTransferTask } from "./scheduler/tasks/connect-payout-transfer.task.js";
+import { createGuestOrderClaimTask } from "./scheduler/tasks/guest-order-claim.task.js";
 import { createIdentityMergeTask } from "./scheduler/tasks/identity-merge.task.js";
 import { createNotifyMeDispatchTask } from "./scheduler/tasks/notify-me-dispatch.task.js";
 import { createPayoutEligibilityTask } from "./scheduler/tasks/payout-eligibility.task.js";
@@ -58,6 +59,7 @@ export function buildShopApiSchedulerTasks(input: {
   return [
     createStaleCheckoutReaperTask(input.db, paymentGateway),
     createIdentityMergeTask(input.db, opsAlertEmail),
+    createGuestOrderClaimTask(input.db, input.env),
     createStaffAccessTask(input.db, opsAlertEmail),
     createNotifyMeDispatchTask(input.db, {
       notifications,

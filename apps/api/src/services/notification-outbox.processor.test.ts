@@ -8,6 +8,7 @@ describe("NotificationOutboxProcessor", () => {
   it("dispatches claimed rows and acks on success", async () => {
     const payload: NotificationPayload = {
       type: "outbid",
+      legalEntityId: null,
       title: "You have been outbid",
       message: "Another bidder placed a higher bid.",
       lotId: "lot-1",
@@ -56,6 +57,7 @@ describe("NotificationOutboxProcessor", () => {
           userId: "user-win",
           payload: {
             type: "lot_won",
+            legalEntityId: null,
             title: "Congratulations — you won",
             message: "You won.",
           },

@@ -155,6 +155,9 @@ import ShopDispatchNoticeEmail, {
 import ShopEditionAvailableNotifyEmail, {
   subject as shopEditionAvailableNotifySubject,
 } from "./templates/shop-edition-available-notify.js";
+import ShopGuestOrderLinkEmail, {
+  subject as shopGuestOrderLinkSubject,
+} from "./templates/shop-guest-order-link.js";
 import ShopOrderReceiptEmail, {
   subject as shopOrderReceiptSubject,
 } from "./templates/shop-order-receipt.js";
@@ -457,6 +460,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "shop-order-receipt": {
     subject: shopOrderReceiptSubject,
     component: (vars) => <ShopOrderReceiptEmail {...vars} />,
+  },
+  "shop-guest-order-link": {
+    subject: shopGuestOrderLinkSubject,
+    component: (vars) => <ShopGuestOrderLinkEmail {...vars} />,
   },
   "shop-artwork-enquiry-alert": {
     subject: shopArtworkEnquiryAlertSubject,

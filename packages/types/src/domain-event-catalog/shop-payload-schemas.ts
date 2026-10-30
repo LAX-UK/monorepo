@@ -65,3 +65,34 @@ export const shopSaleAuthorityChangedPayloadSchemaV1 = z.object({
   ownerPartyId: z.string().uuid(),
   authorisedCount: z.number().int().min(0).max(10),
 });
+
+/**
+ * A Shop lead from guest checkout: published when the guest is first seen, when their marketing
+ * consent changes and when they first pay. `leadSubjectId` keys the lead in the CRM until a LAX
+ * account claims it.
+ */
+export const shopGuestLeadRecordedPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  guestCustomerId: z.string().uuid(),
+  leadSubjectId: z.string().min(1),
+  email: z.string().email(),
+  name: z.string().nullable(),
+  status: z.enum(["abandoned_checkout", "ordered"]),
+  source: z.string().min(1),
+  marketingConsent: z.boolean(),
+  /** When and to which wording the guest opted in; null without consent. */
+  marketingConsentAt: rfc3339Timestamp.nullable(),
+  marketingConsentVersion: z.string().nullable(),
+  firstSeenAt: rfc3339Timestamp,
+  lastSeenAt: rfc3339Timestamp,
+  paidOrderCount: z.number().int().nonnegative(),
+});
+
+/** A LAX account verified a guest's email and took over their orders. */
+export const shopGuestLeadClaimedPayloadSchemaV1 = z.object({
+  schemaVersion: z.literal(1),
+  guestCustomerId: z.string().uuid(),
+  leadSubjectId: z.string().min(1),
+  subjectId: z.string().min(1),
+  claimedOrders: z.number().int().nonnegative(),
+});

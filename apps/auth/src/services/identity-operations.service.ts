@@ -87,6 +87,11 @@ export class IdentityOperationsService {
     return this.repositories.subjects.findByEmail(email);
   }
 
+  /** Whether any LAX account uses this email, whatever its state; nothing else is revealed. */
+  async isEmailRegistered(email: string): Promise<boolean> {
+    return (await this.findSubjectByEmail(email.trim().toLowerCase())) !== null;
+  }
+
   readSecurityStatus(subjectId: string) {
     return this.repositories.subjects.readSecurityStatus(subjectId);
   }

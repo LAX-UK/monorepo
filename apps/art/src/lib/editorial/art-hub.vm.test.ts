@@ -4,7 +4,14 @@ import type {
   ArtEditorialStorySummary,
 } from "@/lib/editorial/art-editorial.types";
 import { describe, expect, it } from "vitest";
-import { buildHubFilm, buildHubPodcast, buildHubPressRows, placedStorySlug } from "./art-hub.vm.js";
+import {
+  artistIntro,
+  buildArtHubHeroLinks,
+  buildHubFilm,
+  buildHubPodcast,
+  buildHubPressRows,
+  placedStorySlug,
+} from "./art-hub.vm.js";
 
 function detail(overrides: Partial<ArtEditorialStoryDetail> = {}): ArtEditorialStoryDetail {
   return {
@@ -48,6 +55,35 @@ describe("buildHubFilm", () => {
       buildHubFilm(detail({ kind: "film", videoUrl: "https://vimeo.example/1" })),
     ).toMatchObject({ videoUrl: "https://vimeo.example/1", href: "/stories/studio-light" });
     expect(buildHubFilm(detail({ kind: "film", videoUrl: null }))).toBeNull();
+  });
+
+  it("carries the standfirst as the film's description", () => {
+    expect(
+      buildHubFilm(detail({ kind: "film", videoUrl: "https://vimeo.example/1", standfirst: " " })),
+    ).toMatchObject({ description: null });
+  });
+});
+
+describe("buildArtHubHeroLinks", () => {
+  it("adds Watch, pointing at the film, only when a film is published", () => {
+    expect(buildArtHubHeroLinks(null).map((link) => link.label)).toEqual([
+      "Explore artists",
+      "Exhibitions",
+      "All stories",
+    ]);
+    expect(buildArtHubHeroLinks({ href: "/stories/studio" }).at(-1)).toEqual({
+      label: "Watch",
+      href: "/stories/studio",
+    });
+  });
+});
+
+describe("artistIntro", () => {
+  it("prefers the short biography, then the biography's first sentence", () => {
+    expect(artistIntro({ shortBio: " Paints light. ", bio: "Long bio." })).toBe("Paints light.");
+    expect(artistIntro({ bio: "Born in Lagos. Works in London." })).toBe("Born in Lagos.");
+    expect(artistIntro({ bio: "No full stop here" })).toBe("No full stop here");
+    expect(artistIntro({ shortBio: null, bio: "  " })).toBeNull();
   });
 });
 

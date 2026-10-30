@@ -157,6 +157,8 @@ const LABELS: Record<string, string> = {
   "shop.edition.sold": "Edition sold",
   "shop.editions.allocated": "Editions allocated",
   "shop.order.paid": "Order paid",
+  "shop.guest_lead.recorded": "Guest checkout lead recorded",
+  "shop.guest_lead.claimed": "Guest orders moved to an account",
   "shop.sale_authority.changed": "Sale authority changed",
   "shop.production.started": "Production started",
   "shop.fulfilment.dispatched": "Order dispatched",

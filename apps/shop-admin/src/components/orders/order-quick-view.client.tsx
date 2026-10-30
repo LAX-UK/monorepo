@@ -130,7 +130,7 @@ export function OrderQuickView({
                 },
                 { label: "Order ID", value: detail.orderId, copyValue: detail.orderId },
                 {
-                  label: "Buyer",
+                  label: detail.buyerIsGuest ? "Guest buyer" : "Buyer",
                   value: detail.buyerName ?? detail.buyerEmail ?? "Unknown buyer",
                 },
                 ...(detail.buyerName && detail.buyerEmail

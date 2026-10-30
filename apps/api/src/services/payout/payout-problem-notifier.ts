@@ -33,6 +33,7 @@ export class PayoutProblemNotifier implements IPayoutProblemNotifier {
           payoutId: payout.id,
           amount: payout.netAmount,
           currency: payout.currency,
+          legalEntityId: payout.legalEntityId,
         });
         const key = `payout-problem:${payout.id}:${payout.status}:${userId}`;
         const payload = notificationRowToPayload(row);

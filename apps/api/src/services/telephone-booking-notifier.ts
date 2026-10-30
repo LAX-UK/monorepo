@@ -79,6 +79,7 @@ export class TelephoneBookingNotifier {
       {
         userId: booking.userId,
         type: "telephone_booking_confirmed",
+        legalEntityId: booking.buyerLegalEntityId,
         title: "Telephone line confirmed",
         message: `Your telephone bidding line for ${title} is confirmed. We will call ${booking.phoneE164} before your lot opens.`,
       },
@@ -108,6 +109,7 @@ export class TelephoneBookingNotifier {
       {
         userId: booking.userId,
         type: "telephone_booking_cancelled",
+        legalEntityId: booking.buyerLegalEntityId,
         title: "Telephone line cancelled",
         message: `Your telephone bidding line for ${title} was cancelled.${reason ? ` ${reason}` : ""}`,
       },
@@ -137,6 +139,7 @@ export class TelephoneBookingNotifier {
       {
         userId: booking.userId,
         type: "telephone_limit_increase_approved",
+        legalEntityId: booking.buyerLegalEntityId,
         title: "Telephone limit updated",
         message: `Your authorized telephone limit for ${title} is now ${cap ?? "updated"}.`,
       },

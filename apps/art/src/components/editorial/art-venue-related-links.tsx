@@ -6,7 +6,7 @@ import Link from "next/link";
 const RELATED = [
   { href: "/how-to-buy", label: "How to buy" },
   { href: "/how-to-sell", label: "How to sell" },
-  { href: "/collector-hub", label: "Collector Hub" },
+  { href: "/collector-hub", label: "Collecting" },
 ] as const;
 
 /**

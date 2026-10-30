@@ -13,8 +13,14 @@ export type MarketingSplitFeatureProps = {
    * does not split: the copy is centred on the band, so no half is left empty.
    */
   media?: ReactNode;
-  /** Desktop side of the media; on small screens media always sits above the panel. */
+  /** Desktop side of the media. */
   mediaSide?: "left" | "right";
+  /**
+   * Order on small screens, where the halves stack. `media-first` (default) puts the media above
+   * the panel; `text-first` leads with the copy, for a page hero whose title should be the
+   * first thing a phone shows.
+   */
+  mobileOrder?: "media-first" | "text-first";
   tone?: MarketingSurfaceTone;
   /** `h1` when the feature leads the page. */
   headingLevel?: "h1" | "h2" | "h3";
@@ -29,6 +35,7 @@ export function MarketingSplitFeature({
   action,
   media,
   mediaSide = "right",
+  mobileOrder = "media-first",
   tone = "feature",
   headingLevel: Heading = "h2",
   className,
@@ -41,13 +48,18 @@ export function MarketingSplitFeature({
       aria-labelledby={headingId}
       className={cn("grid", media ? "md:grid-cols-2" : null, toneClass.surface, className)}
       data-media-side={media ? mediaSide : undefined}
+      data-mobile-order={media ? mobileOrder : undefined}
     >
       {media ? (
         <div
           className={cn(
             "relative aspect-[4/3] overflow-hidden md:aspect-auto md:min-h-[min(37.5rem,60vw)]",
-            mediaSide === "right" ? "md:order-last" : null,
+            mobileOrder === "text-first" && "order-last",
+            mediaSide === "right"
+              ? "md:order-last"
+              : mobileOrder === "text-first" && "md:order-first",
           )}
+          data-testid="marketing-split-feature-media"
         >
           {media}
         </div>

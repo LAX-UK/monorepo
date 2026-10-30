@@ -3,6 +3,7 @@ import {
   shopArtist,
   shopArtwork,
   shopFulfilment,
+  shopGuestCustomer,
   shopOrder,
   shopParty,
   shopPayoutLedger,
@@ -47,6 +48,7 @@ import {
   orderByMsTimestampId,
   orderByMsTimestampIdDesc,
 } from "./admin-created-at-keyset.js";
+import { orderBuyer } from "./admin-order-buyer.js";
 import { createDrizzleAdminArtworkReader } from "./drizzle-admin-artwork.reader.js";
 import { createDrizzleAdminDetailReaders } from "./drizzle-admin-detail.repository.js";
 import { createDrizzleAdminLookupReader } from "./drizzle-admin-lookup.reader.js";
@@ -86,6 +88,8 @@ function orderFilterConditions(input: AdminOrderListFilters): SQL[] {
       sql`${shopOrder.reference} ILIKE ${contains}`,
       sql`${shopUserProfile.email} ILIKE ${contains}`,
       sql`${shopUserProfile.name} ILIKE ${contains}`,
+      sql`${shopGuestCustomer.email} ILIKE ${contains}`,
+      sql`${shopGuestCustomer.name} ILIKE ${contains}`,
       sql`${shopOrder.deliveryRecipientName} ILIKE ${contains}`,
     );
     if (search) conditions.push(search);
@@ -151,12 +155,15 @@ export function createDrizzleAdminReadRepository(
             order: shopOrder,
             buyerName: shopUserProfile.name,
             buyerEmail: shopUserProfile.email,
+            guestName: shopGuestCustomer.name,
+            guestEmail: shopGuestCustomer.email,
           })
           .from(shopOrder)
           .leftJoin(
             shopUserProfile,
             eq(shopUserProfile.identitySubjectId, shopOrder.identitySubjectId),
-          );
+          )
+          .leftJoin(shopGuestCustomer, eq(shopGuestCustomer.id, shopOrder.guestCustomerId));
         const [rows, countRows] = await Promise.all([
           listed
             .where(
@@ -177,21 +184,26 @@ export function createDrizzleAdminReadRepository(
               shopUserProfile,
               eq(shopUserProfile.identitySubjectId, shopOrder.identitySubjectId),
             )
+            .leftJoin(shopGuestCustomer, eq(shopGuestCustomer.id, shopOrder.guestCustomerId))
             .where(and(...filters))
             .groupBy(shopOrder.status),
         ]);
         const page = paginateByCreatedAtId(
           rows.map((row) => ({ ...row, id: row.order.id, createdAt: row.order.createdAt })),
           limit,
-          ({ order, buyerName, buyerEmail }) => ({
+          ({ order, buyerName, buyerEmail, guestName, guestEmail }) => ({
             orderId: order.id,
             reference: order.reference,
             status: order.status,
             totalPence: order.totalPence,
             fulfilment: order.fulfilment,
             buyerSubjectId: order.identitySubjectId,
-            buyerName: buyerName?.trim() || null,
-            buyerEmail: buyerEmail?.trim() || null,
+            ...orderBuyer(order.identitySubjectId, {
+              buyerName,
+              buyerEmail,
+              guestName,
+              guestEmail,
+            }),
             createdAt: order.createdAt.toISOString(),
             paidAt: order.paidAt?.toISOString() ?? null,
           }),

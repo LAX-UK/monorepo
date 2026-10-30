@@ -22,6 +22,7 @@ import type { IPushSubscriptionRepository } from "../services/interfaces/push.js
 import type { UserRouteServices } from "../services/interfaces/user-routes/index.js";
 import { LaxPortfolioHttpApplicationService } from "../services/lax-portfolio/lax-portfolio-http-application.service.js";
 import type { NotificationQueryService } from "../services/notification-query.service.js";
+import type { INotificationAccountMuteService } from "../services/notifications/notification-account-mute.service.js";
 import type { ProfileService } from "../services/profile.service.js";
 import type { SavedSearchService } from "../services/saved-search.service.js";
 import type { SessionRevocationService } from "../services/session-revocation.service.js";
@@ -61,6 +62,7 @@ export type CreateUserRouteServicesInput = {
   artistWatchlistService: ArtistWatchlistService;
   savedSearchService: SavedSearchService;
   notificationQueryService: NotificationQueryService;
+  notificationAccountMuteService: INotificationAccountMuteService;
   vapidPublicKey: string | null;
   pushSubscriptionRepository: IPushSubscriptionRepository;
   notificationPreferenceRepository: INotificationPreferenceRepository;
@@ -111,7 +113,10 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
       artistWatchlistService: input.artistWatchlistService,
       savedSearchService: input.savedSearchService,
     }),
-    notificationsHttp: new UserNotificationsHttpApplicationService(input.notificationQueryService),
+    notificationsHttp: new UserNotificationsHttpApplicationService(
+      input.notificationQueryService,
+      input.notificationAccountMuteService,
+    ),
     preferencesHttp: new UserPreferencesHttpApplicationService({
       vapidPublicKey: input.vapidPublicKey,
       pushSubscriptionRepository: input.pushSubscriptionRepository,

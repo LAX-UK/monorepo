@@ -4,6 +4,7 @@ import type { SavedDeliveryAddress } from "@auction/shop-contracts";
 
 /** Field ids double as the error summary's link targets. */
 export const CHECKOUT_FIELD_IDS = {
+  contactName: "checkout-contact-name",
   savedAddress: "checkout-saved-address",
   recipientName: "checkout-recipient-name",
   line1: "checkout-line1",
@@ -17,6 +18,7 @@ export type CheckoutField = keyof typeof CHECKOUT_FIELD_IDS;
 
 /** The order fields are checked and shown in, top to bottom as on the page. */
 const FIELD_ORDER: readonly CheckoutField[] = [
+  "contactName",
   "savedAddress",
   "recipientName",
   "line1",
@@ -28,6 +30,8 @@ const FIELD_ORDER: readonly CheckoutField[] = [
 
 export type CheckoutDetails = {
   choice: CheckoutDeliveryChoice;
+  /** The buyer's own name; asked only of a guest, whose account cannot supply it. */
+  contactName: string;
   /** A saved address id, or "new" for the address form. */
   address: string;
   recipientName: string;
@@ -71,9 +75,13 @@ function phoneError(phone: string): string | undefined {
 export function validateCheckoutDetails(
   details: CheckoutDetails,
   saved: readonly SavedDeliveryAddress[],
+  options: { requireContactName?: boolean } = {},
 ): CheckoutFieldErrors {
-  if (details.choice !== "uk_insured_delivery") return {};
   const errors: CheckoutFieldErrors = {};
+  if (options.requireContactName && !details.contactName.trim()) {
+    errors.contactName = "Enter your full name";
+  }
+  if (details.choice !== "uk_insured_delivery") return errors;
   if (details.address !== "new") {
     const chosen = saved.find((address) => address.id === details.address);
     if (!chosen || !isDeliverableSavedAddress(chosen)) {

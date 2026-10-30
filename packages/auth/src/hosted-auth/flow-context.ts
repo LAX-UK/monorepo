@@ -18,6 +18,7 @@ export const ALLOWED_OIDC_AUTHORIZE_QUERY_PARAMS = [
   "prompt",
   "max_age",
   "acr_values",
+  "login_hint",
 ] as const;
 
 /** Copy OIDC authorize query params onto a hosted MFA/setup URL so authorize can resume. */
@@ -46,7 +47,15 @@ export type HostedAuthFlow = {
   authorizeResumePath: string | null;
   loginPath: string;
   allowedRedirectOrigins: string[];
+  /** The email a product already knows (OIDC `login_hint`), to prefill sign-in and sign-up. */
+  loginHint: string | null;
 };
+
+/** Only a plausible email is used as a hint; anything else is ignored. */
+export function parseLoginHint(value: string | null): string | null {
+  const hint = value?.trim() ?? "";
+  return hint.length <= 254 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(hint) ? hint : null;
+}
 
 function productForClient(clientId: RegisteredOidcClientId): HostedAuthProduct {
   if (clientId === REGISTERED_OIDC_CLIENT_IDS.LAX_SHOP_ADMIN) return "shop-admin";
@@ -83,6 +92,7 @@ function emptyFlow(): HostedAuthFlow {
     authorizeResumePath: null,
     loginPath: "/login",
     allowedRedirectOrigins: [],
+    loginHint: null,
   };
 }
 
@@ -125,6 +135,7 @@ export function parseHostedAuthFlow(searchParams: URLSearchParams): HostedAuthFl
     authorizeResumePath: canResume ? `${AUTHORIZE_PATH}?${continuationQuery}` : null,
     loginPath: `/login?${productHintQuery}`,
     allowedRedirectOrigins,
+    loginHint: parseLoginHint(searchParams.get("login_hint")),
   };
 }
 

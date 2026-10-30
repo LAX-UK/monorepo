@@ -418,12 +418,19 @@ export type {
   INotificationReadRepository,
   NotificationListFilter,
   NotificationListTab,
+  NotificationAccountFilter,
 } from "./notification-read.repository.js";
 
 export type {
   CreateNotificationRow,
   INotificationWriteRepository,
 } from "./notification-write.repository.js";
+
+export type {
+  INotificationAccountMuteReader,
+  INotificationAccountMuteStore,
+  NotificationAccountMuteRecord,
+} from "./notification-account-mute.repository.js";
 
 export type {
   INotificationOutboxRepository,

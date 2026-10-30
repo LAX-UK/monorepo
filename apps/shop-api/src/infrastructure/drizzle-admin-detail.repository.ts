@@ -5,6 +5,7 @@ import {
   shopArtwork,
   shopEdition,
   shopFulfilment,
+  shopGuestCustomer,
   shopOrder,
   shopOrderLine,
   shopParty,
@@ -26,6 +27,7 @@ import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { PORTAL_ME_LIST_LIMIT } from "../domain/portal-me-list-limit.js";
 import { notFound } from "../errors/shop-api-error.js";
 import { readClientCommerce } from "./admin-client-commerce.js";
+import { orderBuyer } from "./admin-order-buyer.js";
 import { artworkStateSql } from "./artwork-visibility-sql.js";
 import { printedEditionNumber } from "./printed-edition-number.js";
 import { listArtistSalesForArtworkIds } from "./shop-artist-sales-query.js";
@@ -312,12 +314,15 @@ export function createDrizzleAdminDetailReaders(db: Database) {
           order: shopOrder,
           buyerName: shopUserProfile.name,
           buyerEmail: shopUserProfile.email,
+          guestName: shopGuestCustomer.name,
+          guestEmail: shopGuestCustomer.email,
         })
         .from(shopOrder)
         .leftJoin(
           shopUserProfile,
           eq(shopUserProfile.identitySubjectId, shopOrder.identitySubjectId),
         )
+        .leftJoin(shopGuestCustomer, eq(shopGuestCustomer.id, shopOrder.guestCustomerId))
         .where(eq(shopOrder.id, orderId))
         .limit(1);
       if (!found) {
@@ -403,8 +408,7 @@ export function createDrizzleAdminDetailReaders(db: Database) {
         fulfilment: order.fulfilment,
         totalPence: order.totalPence,
         buyerSubjectId: order.identitySubjectId,
-        buyerName: found.buyerName?.trim() || null,
-        buyerEmail: found.buyerEmail?.trim() || null,
+        ...orderBuyer(order.identitySubjectId, found),
         stripeCheckoutSessionId: order.stripeCheckoutSessionId,
         stripePaymentIntentId: order.stripePaymentIntentId,
         paidAt: order.paidAt ? order.paidAt.toISOString() : null,

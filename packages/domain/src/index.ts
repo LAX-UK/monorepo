@@ -327,6 +327,17 @@ export {
   type ExposureScope,
 } from "./bidding-limits.js";
 export {
+  NOTIFICATION_NEEDS_ACTION_TYPES,
+  NOTIFICATION_NEEDS_ACTION_WHILE_LOT_OPEN,
+  notificationNeedsAction,
+  type NotificationNeedsActionType,
+} from "./notification-needs-action.js";
+export {
+  NOTIFICATION_ALWAYS_DELIVERED_TYPES,
+  notificationIsMutable,
+  notificationSilencedByMute,
+} from "./notification-mutes.js";
+export {
   entityActorCan,
   entityCapabilitiesOf,
   entityRoleCan,

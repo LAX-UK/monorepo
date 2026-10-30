@@ -344,6 +344,20 @@ describe("OAuth routes", () => {
     }
   });
 
+  it("passes a known email to sign-in as the login hint, back to checkout", async () => {
+    const { app } = createRoute();
+    const response = await app.request(
+      "/login?returnTo=%2Fcheckout&loginHint=ada%40example.com",
+      documentNavigation,
+    );
+    const location = new URL(response.headers.get("location") ?? "");
+    expect(location.searchParams.get("login_hint")).toBe("ada@example.com");
+    expect(response.headers.get("set-cookie")).toContain("shop_return_to=%2Fcheckout");
+
+    const junk = await app.request("/login?loginHint=%3Cscript%3E", documentNavigation);
+    expect(new URL(junk.headers.get("location") ?? "").searchParams.get("login_hint")).toBeNull();
+  });
+
   it("keeps a safe returnTo on register and drops backslash-prefixed ones", async () => {
     const { app } = createRoute();
     const safe = await app.request("/register?returnTo=%2Fcheckout", documentNavigation);

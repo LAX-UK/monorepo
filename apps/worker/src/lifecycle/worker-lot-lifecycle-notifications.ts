@@ -54,14 +54,17 @@ export class WorkerLotLifecycleNotifications implements ILotLifecycleNotificatio
       const sent = await this.deps.redis.get(cacheKey);
       if (sent) continue;
       await this.deps.redis.set(cacheKey, "1", "EX", 7200);
-      const bidderIds = await bids.listDistinctBidderIds(a.id);
+      const bidderAccounts = new Map(
+        (await bids.listDistinctBidderAccounts(a.id)).map((b) => [b.userId, b.legalEntityId]),
+      );
       const watchers = await this.deps.watchlist.listUserIdsForLot(a.id);
-      const recipients = new Set([...bidderIds, ...watchers]);
+      const recipients = new Set([...bidderAccounts.keys(), ...watchers]);
       for (const uid of recipients) {
-        const onlyWatcher = watchers.includes(uid) && !bidderIds.includes(uid);
-        const row = onlyWatcher
-          ? this.factory.createWatchlistEndingSoon(a, uid)
-          : this.factory.createEndingSoon(a, uid);
+        const account = bidderAccounts.get(uid);
+        const row =
+          account === undefined
+            ? this.factory.createWatchlistEndingSoon(a, uid)
+            : this.factory.createEndingSoon(a, uid, account);
         await this.deps.notificationOutbox.stage({
           userId: uid,
           payload: notificationRowToPayload(row),
@@ -116,19 +119,22 @@ export class WorkerLotLifecycleNotifications implements ILotLifecycleNotificatio
     }
 
     const settlementBids = await params.bid.listForLotSettlement(params.lot.id, 500);
-    const bidderIds = [
-      ...new Set(
-        settlementBids
-          .map((b) => b.placedByUserId ?? b.bidderId)
-          .filter((id): id is string => typeof id === "string" && id.length > 0),
-      ),
-    ];
-    for (const uid of bidderIds) {
+    // Each losing bidder once, with the account of their first bid in settlement order.
+    const bidderAccounts = new Map<string, string | null>();
+    for (const b of settlementBids) {
+      const uid = b.placedByUserId ?? b.bidderId;
+      if (typeof uid === "string" && uid.length > 0 && !bidderAccounts.has(uid)) {
+        bidderAccounts.set(uid, b.buyerLegalEntityId ?? null);
+      }
+    }
+    for (const [uid, legalEntityId] of bidderAccounts) {
       if (uid === params.winnerId) continue;
       await this.deps.notificationOutbox.stage(
         {
           userId: uid,
-          payload: notificationRowToPayload(this.factory.createLost(params.lot, uid)),
+          payload: notificationRowToPayload(
+            this.factory.createLost(params.lot, uid, legalEntityId),
+          ),
           idempotencyKey: `lot_lost:${params.lot.id}:${uid}`,
         },
         params.tx,

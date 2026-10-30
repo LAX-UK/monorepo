@@ -148,7 +148,7 @@ export async function cancelLot(
   }
 
   if (deps.lotNotifications) {
-    const bidders = await deps.bids.listDistinctBidderIds(lotId);
+    const bidders = await deps.bids.listDistinctBidderAccounts(lotId);
     const watchers = await deps.watchlist.listUserIdsForLot(lotId);
     const sellerRecipients = await resolveLegalEntityNotificationRecipients(
       deps.legalEntityNotificationRecipients,
@@ -158,11 +158,18 @@ export async function cancelLot(
         audience: "seller",
       },
     );
-    const recipientIds = [...new Set<string>([...bidders, ...watchers, ...sellerRecipients])];
+    // Each person once: bidders about the account they bid for, the consignor about the
+    // consigning account, and watchers personally.
+    const accountOf = new Map<string, string | null>();
+    for (const b of bidders) accountOf.set(b.userId, b.legalEntityId);
+    for (const userId of sellerRecipients) {
+      if (!accountOf.has(userId)) accountOf.set(userId, a.sellerLegalEntityId ?? null);
+    }
+    for (const userId of watchers) if (!accountOf.has(userId)) accountOf.set(userId, null);
     await deps.lotNotifications.notifyLotCancelled({
       lotId,
       title: a.title,
-      recipientIds,
+      recipients: [...accountOf].map(([userId, legalEntityId]) => ({ userId, legalEntityId })),
     });
   }
 

@@ -42,7 +42,7 @@ export function buildHostedSignUpHtml(view: HostedAuthView = hostedAuthViewFromS
       ${socialActions(view)}
       <form id="signup-form" class="auth-form" novalidate>
       ${floatingInput({ id: "name", label: "Full name", autocomplete: "name" })}
-      ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username" })}
+      ${floatingInput({ id: "email", label: "Email address", type: "email", autocomplete: "username", ...(view.flow.loginHint ? { value: view.flow.loginHint } : {}) })}
       ${passwordField({
         id: "password",
         label: "Password",
