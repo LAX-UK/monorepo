@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "@auction/branding/brand-primitives.css" layer(base);
+@import "@auction/branding/lax-system.css" layer(base);
 @import "../styles/tokens-dark.css" layer(base);
 @import "../styles/tokens-motion.css" layer(base);
 @import "@auction/marketing-ui/marketing-header.css";
@@ -116,19 +117,23 @@
   --color-accent-selling: var(--color-lot-orange);
   --color-accent-live: var(--color-live-red);
 
-  /* Semantic trend / status (oklch — perceptually even in light + dark) */
+  /* Status tints and the text on them come from the LAX system's one status palette
+     (@auction/branding/lax-system.css), shared with the staff tools. Each is a light-dark pair. */
+  --color-info-container: var(--lax-info-bg);
+  --color-info-on-surface: var(--lax-info-fg);
+  --color-info: var(--lax-info-dot);
+  --color-warning-container: var(--lax-warning-bg);
+  --color-warning-on-surface: var(--lax-warning-fg);
+  --color-danger-container: var(--lax-danger-bg);
+  --color-danger-on-surface: var(--lax-danger-fg);
+  --color-success-container: var(--lax-success-bg);
+  --color-on-success-container: var(--lax-success-fg);
+
+  /* Semantic trend and solid status fills (oklch: perceptually even in light and dark) */
   --color-warning: oklch(0.72 0.14 55);
-  /* Status text and glyphs on warning and danger tints; at least 4.5:1 on the tint and the page. */
-  --color-info-on-surface: var(--status-info-ink);
-  --color-warning-on-surface: var(--status-warning-ink);
   --color-on-warning: oklch(0.22 0.04 55);
-  --color-warning-container: oklch(0.94 0.06 85);
   --color-danger: oklch(0.55 0.2 25);
   --color-on-danger: oklch(0.98 0.01 25);
-  --color-danger-container: oklch(0.94 0.04 25);
-  --color-danger-on-surface: var(--status-danger-ink);
-  --color-success-container: oklch(0.94 0.06 145);
-  --color-on-success-container: #0b3d1a;
   --color-positive: oklch(0.55 0.14 145);
   --color-on-positive: oklch(0.98 0.01 145);
   --color-negative: oklch(0.55 0.2 25);
@@ -136,11 +141,10 @@
   --color-neutral-delta: oklch(0.5 0.02 250);
   --color-trend-line: oklch(0.55 0.08 250 / 0.35);
 
-  /* Elevation */
-  --shadow-rest: 0 1px 2px oklch(0.2 0.02 250 / 0.06);
-  --shadow-hover: 0 4px 12px oklch(0.2 0.04 250 / 0.1);
-  --shadow-elevated: 0 8px 24px oklch(0.2 0.06 250 / 0.14);
-  --shadow-glass: 0 1px 0 oklch(1 0 0 / 0.04) inset;
+  /* Elevation: the LAX shadow set. Rest is a resting card or bar; hover lifts it to the
+     floating level of menus and popovers. */
+  --shadow-rest: var(--lax-shadow-xs);
+  --shadow-hover: var(--lax-shadow-md);
 
   /* shadcn/ui variable bridge — maps shadcn new-york tokens to existing Material-like tokens.
      Keep these as var() references so dark-mode overrides on the source tokens flow through.
@@ -158,7 +162,7 @@
   --color-card-foreground: var(--color-on-surface);
   --color-border: var(--color-outline-variant);
   --color-input: var(--color-input-border);
-  --color-ring: var(--color-brand-midnight);
+  --color-ring: var(--lax-focus);
   --color-destructive: var(--color-error);
   --color-destructive-foreground: var(--color-on-error);
   --color-sidebar: var(--color-surface-container-low);
@@ -180,11 +184,11 @@
   --color-scrim-auth: rgba(0, 0, 0, 0.07);
   /* The shared field edge: 3:1 or more on every surface (WCAG 1.4.11). */
   --color-input-border: var(--brand-field-edge);
-  --color-input-border-focus: var(--color-brand-obsidian);
-  /* Disabled controls: a label, fill and edge distinct from every enabled one in both themes. */
-  --color-disabled-fg: color-mix(in srgb, var(--color-on-surface) 55%, var(--color-surface));
-  --color-disabled-bg: color-mix(in srgb, var(--color-on-surface) 8%, var(--color-surface));
-  --color-disabled-border: color-mix(in srgb, var(--color-on-surface) 16%, var(--color-surface));
+  --color-input-border-focus: var(--lax-focus);
+  /* Disabled controls: the LAX disabled style, a quiet fill and edge with a label at 3:1. */
+  --color-disabled-fg: var(--lax-disabled-fg);
+  --color-disabled-bg: var(--lax-disabled-bg);
+  --color-disabled-border: var(--lax-disabled-border);
   --color-hero-foreground: #ffffff;
 
   /*
@@ -194,9 +198,9 @@
    * Still outside the scale, pending a decision because they shape established cards: lg and xl
    * (8px: lot, sale and sell-journey cards) and shell-card (16px).
    */
-  --radius-control: 0.375rem;
-  --radius-card: 0.75rem;
-  --radius-pill: 9999px;
+  --radius-control: var(--lax-radius-control);
+  --radius-card: var(--lax-radius-card);
+  --radius-pill: var(--lax-radius-pill);
   --radius: var(--radius-control);
   --radius-xs: var(--radius-control);
   --radius-sm: var(--radius-control);
@@ -206,11 +210,10 @@
   --radius-2xl: var(--radius-card);
   /** Dashboard shell chrome (Figma Admin Dashboard) */
   --radius-shell-card: 1rem;
-  --color-shell-page-bg: #fafafa;
+  --color-shell-page-bg: var(--lax-page);
+  --color-shell-sidebar: var(--lax-side);
   --color-shell-search-bg: #f5f5f5;
   --color-shell-stroke: #e1e1e1;
-  --color-info: #2f62cf;
-  --color-info-container: #e4f2ff;
   --color-nav-active-bg: var(--color-info-container);
   --color-nav-active-border: var(--color-info);
 

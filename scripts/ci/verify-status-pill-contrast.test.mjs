@@ -7,6 +7,7 @@ import path from "node:path";
 import { describe, it } from "node:test";
 import { fileURLToPath } from "node:url";
 
+const SCHEME = Symbol("scheme");
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const read = (file) => readFileSync(path.join(ROOT, file), "utf8");
 
@@ -29,16 +30,32 @@ function declarations(css, selector) {
   return map;
 }
 
-const primitives = declarations(
-  read("packages/branding/public/brand-primitives.css"),
-  /:root\s*\{/,
-);
+const primitives = new Map([
+  ...declarations(read("packages/branding/public/brand-primitives.css"), /:root\s*\{/),
+  ...declarations(read("packages/branding/public/lax-system.css"), /:root\s*\{/),
+]);
 
-/** Light tokens from `@theme`, dark from `html.dark` over light. */
+/**
+ * Light tokens from `@theme`, dark from `html.dark` over light. Each map knows its scheme, so a
+ * `light-dark()` pair resolves to its half.
+ */
 function product(lightFile, darkFile = lightFile) {
   const light = new Map([...primitives, ...declarations(read(lightFile), /@theme\s*\{/)]);
   const dark = new Map([...light, ...declarations(read(darkFile), /html\.dark\s*\{/)]);
+  light.set(SCHEME, "light");
+  dark.set(SCHEME, "dark");
   return { light, dark };
+}
+
+/** `a, b` split on the top-level comma only. */
+function splitPair(inner) {
+  let depth = 0;
+  for (let i = 0; i < inner.length; i++) {
+    if (inner[i] === "(") depth++;
+    if (inner[i] === ")") depth--;
+    if (inner[i] === "," && depth === 0) return [inner.slice(0, i), inner.slice(i + 1)];
+  }
+  throw new Error(`not a light-dark pair: ${inner}`);
 }
 
 const PRODUCTS = {
@@ -73,6 +90,20 @@ function resolve(value, tokens, depth = 0) {
     const next = tokens.get(ref[1]) ?? ref[2];
     if (!next) throw new Error(`unknown token ${ref[1]}`);
     return resolve(next, tokens, depth + 1);
+  }
+  const pair = v.match(/^light-dark\((.+)\)$/);
+  if (pair) {
+    const [light, dark] = splitPair(pair[1]);
+    return resolve(tokens.get(SCHEME) === "dark" ? dark : light, tokens, depth + 1);
+  }
+  // A translucent tint is painted over the product's surface.
+  const rgba = v.match(/^rgb\((\d+) (\d+) (\d+) \/ ([\d.]+)\)$/);
+  if (rgba) {
+    const alpha = Number(rgba[4]);
+    const backdrop = resolve("var(--color-surface)", tokens, depth + 1).map(toSrgb);
+    return [1, 2, 3].map((i) =>
+      toLinear((Number(rgba[i]) / 255) * alpha + backdrop[i - 1] * (1 - alpha)),
+    );
   }
   if (v.startsWith("#")) {
     let h = v.slice(1);

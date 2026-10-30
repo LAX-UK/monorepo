@@ -9,6 +9,7 @@
       "default": "./dist/index.js"
     },
     "./brand-primitives.css": "./public/brand-primitives.css",
+    "./lax-system.css": "./public/lax-system.css",
     "./favicons/*": "./public/favicons/*",
     "./images/*": "./public/images/*",
     "./lax-logo.svg": "./public/lax-logo.svg",

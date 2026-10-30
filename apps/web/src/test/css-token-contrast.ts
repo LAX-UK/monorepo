@@ -3,13 +3,15 @@ import path from "node:path";
 
 /**
  * Reads Bid's colour tokens from the real stylesheets, so contrast tests check what ships.
- * Light values come from the shared brand primitives and the `@theme` block in globals.css;
- * dark values from `html.dark` in tokens-dark.css, falling back to light for tokens dark mode
- * does not override.
+ * Light values come from the shared brand primitives, the LAX system layer and the `@theme` block
+ * in globals.css; dark values from `html.dark` in tokens-dark.css, falling back to light for
+ * tokens dark mode does not override. A `light-dark()` pair resolves to the theme's half, and a
+ * translucent colour is laid over the theme's surface, as a browser paints it there.
  */
 
 type Rgb = readonly [number, number, number];
 type TokenMap = Map<string, string>;
+export type Theme = "light" | "dark";
 
 const SRC_DIR = path.resolve(__dirname, "..");
 
@@ -40,12 +42,28 @@ function loadThemes(): { light: TokenMap; dark: TokenMap } {
     path.join(SRC_DIR, "../../../packages/branding/public/brand-primitives.css"),
     "utf8",
   );
+  const laxSystem = readFileSync(
+    path.join(SRC_DIR, "../../../packages/branding/public/lax-system.css"),
+    "utf8",
+  );
   const light = new Map([
     ...readDeclarations(primitives, /:root\s*\{/),
+    ...readDeclarations(laxSystem, /:root\s*\{/),
     ...readDeclarations(globals, /@theme\s*\{/),
   ]);
   const dark = new Map([...light, ...readDeclarations(darkCss, /html\.dark\s*\{/)]);
   return { light, dark };
+}
+
+/** `a, b` split on the top-level comma only. */
+function splitPair(inner: string): [string, string] {
+  let depth = 0;
+  for (let i = 0; i < inner.length; i++) {
+    if (inner[i] === "(") depth++;
+    if (inner[i] === ")") depth--;
+    if (inner[i] === "," && depth === 0) return [inner.slice(0, i), inner.slice(i + 1)];
+  }
+  throw new Error(`not a light-dark pair: ${inner}`);
 }
 
 function srgbToLinear(c: number): number {
@@ -82,14 +100,27 @@ function hexToLinear(hex: string): Rgb {
   ];
 }
 
-function resolve(value: string, tokens: TokenMap, depth = 0): Rgb {
+function resolve(value: string, tokens: TokenMap, theme: Theme, depth = 0): Rgb {
   if (depth > 20) throw new Error(`token loop at ${value}`);
   const v = value.trim();
   const ref = v.match(/^var\((--[\w-]+)(?:,\s*(.+))?\)$/);
   if (ref) {
     const next = tokens.get(ref[1] as string) ?? ref[2];
     if (!next) throw new Error(`unknown token ${ref[1]}`);
-    return resolve(next, tokens, depth + 1);
+    return resolve(next, tokens, theme, depth + 1);
+  }
+  const pair = v.match(/^light-dark\((.+)\)$/);
+  if (pair) {
+    const [lightValue, darkValue] = splitPair(pair[1] as string);
+    return resolve(theme === "light" ? lightValue : darkValue, tokens, theme, depth + 1);
+  }
+  const rgba = v.match(/^rgb\((\d+) (\d+) (\d+) \/ ([\d.]+)\)$/);
+  if (rgba) {
+    const alpha = Number(rgba[4]);
+    const backdrop = resolve("var(--color-surface)", tokens, theme, depth + 1).map(linearToSrgb);
+    return [1, 2, 3].map((i) =>
+      srgbToLinear((Number(rgba[i]) / 255) * alpha + (backdrop[i - 1] as number) * (1 - alpha)),
+    ) as unknown as Rgb;
   }
   if (v.startsWith("#")) return hexToLinear(v);
   if (v === "white") return [1, 1, 1];
@@ -99,8 +130,8 @@ function resolve(value: string, tokens: TokenMap, depth = 0): Rgb {
   const mix = v.match(/^color-mix\(\s*in srgb,\s*(.+?)\s+([\d.]+)%,\s*(.+?)\s*\)$/);
   if (mix) {
     // color-mix in srgb interpolates gamma-encoded channels.
-    const a = resolve(mix[1] as string, tokens, depth + 1).map(linearToSrgb);
-    const b = resolve(mix[3] as string, tokens, depth + 1).map(linearToSrgb);
+    const a = resolve(mix[1] as string, tokens, theme, depth + 1).map(linearToSrgb);
+    const b = resolve(mix[3] as string, tokens, theme, depth + 1).map(linearToSrgb);
     const p = Number(mix[2]) / 100;
     return a.map((x, i) => srgbToLinear(x * p + (b[i] as number) * (1 - p))) as unknown as Rgb;
   }
@@ -111,8 +142,6 @@ function luminance([r, g, b]: Rgb): number {
   return 0.2126 * r + 0.7152 * g + 0.0722 * b;
 }
 
-export type Theme = "light" | "dark";
-
 /** WCAG contrast ratio between two Bid tokens (names without `--color-`), in one theme. */
 export function createTokenContrast() {
   const themes = loadThemes();
@@ -121,7 +150,7 @@ export function createTokenContrast() {
     const read = (name: string) => {
       const raw = tokens.get(`--color-${name}`);
       if (!raw) throw new Error(`--color-${name} is not defined for ${theme}`);
-      return resolve(raw, tokens);
+      return resolve(raw, tokens, theme);
     };
     const a = luminance(read(fg));
     const b = luminance(read(bg));

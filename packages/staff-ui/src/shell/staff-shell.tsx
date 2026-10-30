@@ -122,6 +122,7 @@ export function StaffShell({
           data-staff-ui=""
           data-staff-shell=""
           data-staff-product={product.id === "bid-admin" ? "bid" : "lax-admin"}
+          data-lax-density="staff"
           // Sticky table headers sit under the top bar.
           className="min-h-dvh bg-staff-canvas font-staff text-staff-fg [--staff-sticky-top:var(--spacing-staff-top-bar)]"
         >
