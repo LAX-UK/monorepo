@@ -8,10 +8,12 @@ import {
   memberChangeConfirmationPhrase,
   memberChangePolicy,
   memberChangeTarget,
+  memberLeavePolicy,
 } from "@auction/domain";
 import type {
   DbTransaction,
   ILegalEntityMemberRepository,
+  ILegalEntityRepository,
   ITransactionRunner,
   LegalEntityMemberRow,
 } from "@auction/persistence/interfaces";
@@ -41,7 +43,16 @@ export type MemberManagementServiceDeps = {
   bidStopper: IRemovedMemberBidStopper;
   authorisationRevoker: IMemberAuthorisationRevoker;
   realtime: IProxyCancelledRealtime;
+  /** Whether the account is a person's own (which they cannot leave). */
+  accounts: Pick<ILegalEntityRepository, "findById">;
+  /** Tells the organisation's owners and admins that someone left. */
+  leaveNotifier: IMemberLeftNotifier;
 };
+
+/** Tells the people who run an organisation that a member left it. */
+export interface IMemberLeftNotifier {
+  memberLeft(input: { legalEntityId: string; memberUserId: string }): Promise<void>;
+}
 
 /** The acting member and the team, read and locked inside one change's transaction. */
 type LockedTeam = { me: LegalEntityMemberRow; team: LegalEntityMemberRow[] };
@@ -142,6 +153,44 @@ export class MemberManagementService implements IMemberManagementService {
       return stoppedInTx;
     });
     await this.announceStopped(stopped, existing.userId);
+  }
+
+  async leave(actingUserId: string, legalEntityId: string): Promise<void> {
+    const account = await this.deps.accounts.findById(legalEntityId);
+    if (!account) throw new MemberPermissionError("not_a_member");
+    // The same consequences as a removal: automatic bids and authorisations end, placed bids
+    // stand, all in the transaction that ends the membership.
+    const stopped = await this.deps.transactionRunner.runInTransaction(async (tx) => {
+      const { me, team } = await this.lockTeam(tx, actingUserId, legalEntityId);
+      const decision = memberLeavePolicy({
+        actor: { role: me.role },
+        accountKind: account.kind === "individual" ? "personal" : "organisation",
+        self: memberChangeTarget(me, team),
+      });
+      if (!decision.allowed) throw new MemberPermissionError(decision.reason);
+
+      await this.deps.members.markRemoved(tx, me.id);
+      const stopInput = { legalEntityId, memberUserId: actingUserId, actorUserId: actingUserId };
+      const stoppedInTx = await this.deps.bidStopper.stopFor(tx, stopInput);
+      await this.deps.authorisationRevoker.revokeFor(tx, { ...stopInput, cause: "member_removed" });
+      await this.deps.domainEventSink.withTx(tx).publish({
+        aggregateType: "legal_entity",
+        aggregateId: legalEntityId,
+        eventType: "legal_entity.member_left",
+        payload: {
+          member_user_id: actingUserId,
+          role_at_leaving: me.role,
+          stopped_bids: stoppedInTx.map((s) => ({ kind: s.kind, lot_id: s.lotId })),
+        },
+        actorUserId: actingUserId,
+        actingLegalEntityId: legalEntityId,
+        schemaVersion: 1,
+        producer: "apps/api",
+      });
+      return stoppedInTx;
+    });
+    await this.announceStopped(stopped, actingUserId);
+    await this.deps.leaveNotifier.memberLeft({ legalEntityId, memberUserId: actingUserId });
   }
 
   async transferOwnership(

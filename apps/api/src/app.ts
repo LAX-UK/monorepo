@@ -52,6 +52,7 @@ import { createNewsletterRoutes } from "./routes/newsletter.js";
 import { createOnsiteEventRoutes } from "./routes/onsite-events.js";
 import { createOrganisationHomeRoutes } from "./routes/organisation-home.js";
 import { createOrganisationMembershipRoutes } from "./routes/organisation-membership.js";
+import { createOrganisationTeamRoutes } from "./routes/organisation-team.js";
 import { createOrganisationWorkspaceRoutes } from "./routes/organisation-workspace.js";
 import { createOrganizationRoutes } from "./routes/organizations.js";
 import { createPaymentRoutes } from "./routes/payments.js";
@@ -237,6 +238,7 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
     .route("/legal-entities", createOrganisationMembershipRoutes(container, authenticator))
     .route("/legal-entities", createOrganisationHomeRoutes(container, authenticator))
     .route("/legal-entities", createOrganisationWorkspaceRoutes(container, authenticator))
+    .route("/legal-entities", createOrganisationTeamRoutes(container, authenticator))
     .route("/legal-entities", createLegalEntityRoutes(container, authenticator))
     .route("/kyc", createKycRoutes(container, authenticator))
     .route(

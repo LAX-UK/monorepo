@@ -123,6 +123,9 @@ import PaymentReceiptEmail, {
 import PaymentRefundNoticeEmail, {
   subject as paymentRefundNoticeSubject,
 } from "./templates/payment-refund-notice.js";
+import PayoutBankChangedNoticeEmail, {
+  subject as payoutBankChangedNoticeSubject,
+} from "./templates/payout-bank-changed-notice.js";
 import PayoutClawbackRequiredNoticeEmail, {
   subject as payoutClawbackRequiredNoticeSubject,
 } from "./templates/payout-clawback-required-notice.js";
@@ -324,6 +327,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "payout-transfer-failed-notice": {
     subject: payoutTransferFailedNoticeSubject,
     component: (vars) => <PayoutTransferFailedNoticeEmail {...vars} />,
+  },
+  "payout-bank-changed-notice": {
+    subject: payoutBankChangedNoticeSubject,
+    component: (vars) => <PayoutBankChangedNoticeEmail {...vars} />,
   },
   "payout-transfer-blocked-notice": {
     subject: payoutTransferBlockedNoticeSubject,

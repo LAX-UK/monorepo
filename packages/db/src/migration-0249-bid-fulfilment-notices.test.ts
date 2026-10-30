@@ -31,13 +31,13 @@ describe("migration 0249 bid fulfilment notices", () => {
     expect(types).toContain("staff_role_changed_admin");
   });
 
-  it("matches the check the schema declares", () => {
+  it("is still allowed by the check the schema declares (later migrations only add types)", () => {
     const declared = typesIn(
       schema
         .slice(schema.indexOf("notification_type_check"))
         .replace("${table.type} IN (", "type IN ("),
     );
-    expect(new Set(typesIn(migration))).toEqual(new Set(declared));
+    for (const type of typesIn(migration)) expect(declared).toContain(type);
   });
 
   it("removes the new notices and the new types on rollback", () => {

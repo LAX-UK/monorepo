@@ -137,6 +137,8 @@ function mount(role: LegalEntityMemberRole, opts: { impersonation?: boolean } = 
     bidStopper: { stopFor: async () => [] },
     authorisationRevoker: { revokeFor: vi.fn(async () => undefined) },
     realtime: { notifyProxyCancelled: async () => undefined },
+    accounts: { findById: async () => ({ kind: "organisation" }) as never },
+    leaveNotifier: { memberLeft: async () => undefined },
   });
   const store = invitationStore();
   const invitationRows = invitationRepo(store);
@@ -375,5 +377,28 @@ describe("pending invitations", () => {
     const res = await mount("owner").send("POST", `/invitations/${idOf("invite-viewer")}/restore`);
     expect(res.status).toBe(409);
     expect((await body(res)).code).toBe("invitation_not_restorable");
+  });
+});
+
+describe("POST /legal-entities/members/leave", () => {
+  it("lets any member leave, whatever their role", async () => {
+    const { send, byId } = mount("viewer");
+    const res = await send("POST", "/members/leave");
+    expect(res.status).toBe(200);
+    expect((await body(res)).data).toEqual({ left: true });
+    expect(byId.get(idOf("viewer"))?.removedAt).toBeInstanceOf(Date);
+  });
+
+  it("refuses the last owner with the reason key until ownership is handed on", async () => {
+    const { send } = mount("owner");
+    expect((await send("DELETE", `/members/${idOf("owner2")}`)).status).toBe(200);
+    const res = await send("POST", "/members/leave");
+    expect(res.status).toBe(409);
+    expect(await body(res)).toMatchObject({ code: "last_owner_must_transfer" });
+  });
+
+  it("refuses support staff viewing as the client, who are not members", async () => {
+    const res = await mount("admin", { impersonation: true }).send("POST", "/members/leave");
+    expect(res.status).toBe(403);
   });
 });

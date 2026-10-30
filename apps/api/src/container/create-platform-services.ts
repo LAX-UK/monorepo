@@ -25,8 +25,15 @@ export function createPlatformServices(
   const { env, db, infra, repos, identitySubjects } = input;
 
   const core = createPlatformCore(db, repos, env);
-  const payout = createPlatformPayoutServices({ env, db, infra, repos, core });
-  const notification = createPlatformNotificationServices({ env, infra, repos, core });
+  const notification = createPlatformNotificationServices({ env, db, infra, repos, core });
+  const payout = createPlatformPayoutServices({
+    env,
+    db,
+    infra,
+    repos,
+    core,
+    notificationDispatcher: notification.notificationDispatcher,
+  });
   const identity = createPlatformIdentityServices({
     env,
     db,
@@ -36,6 +43,7 @@ export function createPlatformServices(
     identitySubjects,
     stripeConnectService: payout.stripeConnectService,
     proxyRealtime: notification.notificationService,
+    notificationDispatcher: notification.notificationDispatcher,
   });
 
   return {
