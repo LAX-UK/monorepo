@@ -10,7 +10,6 @@ import type { EnquiryFollowUp } from "../application/ports/enquiry-follow-up.js"
 import type { ShopNotificationPublisher } from "../application/ports/shop-notification.publisher.js";
 import { type StorefrontOrigins, artworkPublicUrl } from "../domain/storefront-origins.js";
 import { publicArtworkVisible } from "./artwork-visibility-sql.js";
-import { nextEnquiryReference } from "./enquiry-follow-up.js";
 import {
   type ShopDomainEventPublisherMode,
   createShopDomainEventPublisher,
@@ -130,7 +129,6 @@ export function createDrizzleArtworkInterestRepository(
             artworkId: input.artworkId,
             ...enquirySenderColumns(input.sender),
             intent: input.intent,
-            ...(isEnquiry ? { reference: nextEnquiryReference() } : {}),
             ...(input.intent === "enquiry" && input.message ? { message: input.message } : {}),
             ...(input.intent === "enquiry" && input.contactPhone
               ? { contactPhone: input.contactPhone }

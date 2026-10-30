@@ -36,6 +36,10 @@ DROP INDEX IF EXISTS "shop_artwork_interest_guest_email_idx";
 --> statement-breakpoint
 ALTER TABLE "shop_artwork_interest" DROP CONSTRAINT IF EXISTS "shop_artwork_interest_reference_ck";
 --> statement-breakpoint
+DROP TRIGGER IF EXISTS "shop_artwork_interest_reference_trg" ON "shop_artwork_interest";
+--> statement-breakpoint
+DROP FUNCTION IF EXISTS "shop_artwork_interest_assign_reference"();
+--> statement-breakpoint
 DROP INDEX IF EXISTS "shop_artwork_interest_reference_uid";
 --> statement-breakpoint
 DROP INDEX IF EXISTS "shop_general_enquiry_reference_uid";

@@ -61,8 +61,26 @@ CREATE UNIQUE INDEX IF NOT EXISTS "shop_general_enquiry_reference_uid" ON "shop_
 CREATE UNIQUE INDEX IF NOT EXISTS "shop_artwork_interest_reference_uid" ON "shop_artwork_interest" ("reference")
   WHERE "reference" IS NOT NULL;
 --> statement-breakpoint
+-- Artwork enquiries take their reference on insert, from the database, so any writer (and an
+-- older shop-api during a deploy) gets one; edition alerts on the same table take none.
+CREATE OR REPLACE FUNCTION "shop_artwork_interest_assign_reference"() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW."intent" = 'enquiry' AND NEW."reference" IS NULL THEN
+    NEW."reference" := 'E-' || nextval('shop_enquiry_reference_seq')::text;
+  END IF;
+  RETURN NEW;
+END
+$$;
+--> statement-breakpoint
+DROP TRIGGER IF EXISTS "shop_artwork_interest_reference_trg" ON "shop_artwork_interest";
+--> statement-breakpoint
+CREATE TRIGGER "shop_artwork_interest_reference_trg"
+BEFORE INSERT OR UPDATE OF "intent" ON "shop_artwork_interest"
+FOR EACH ROW EXECUTE FUNCTION "shop_artwork_interest_assign_reference"();
+--> statement-breakpoint
 ALTER TABLE "shop_artwork_interest" ADD CONSTRAINT "shop_artwork_interest_reference_ck"
-  CHECK (("intent" = 'enquiry') = ("reference" IS NOT NULL));
+  CHECK ("intent" <> 'enquiry' OR "reference" IS NOT NULL);
 --> statement-breakpoint
 CREATE INDEX IF NOT EXISTS "shop_artwork_interest_guest_email_idx"
   ON "shop_artwork_interest" (lower("contact_email"))

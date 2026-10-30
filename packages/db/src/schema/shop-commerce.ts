@@ -1659,8 +1659,9 @@ export const shopArtworkInterest = pgTable(
     identitySubjectId: text("identity_subject_id"),
     intent: shopArtworkInterestIntentEnum("intent").default("notify_me").notNull(),
     /**
-     * Enquiries only: what the sender and staff quote ("E-2041"), from `shop_enquiry_reference_seq`,
-     * which general enquiries share.
+     * Enquiries only: what the sender and staff quote ("E-2041"). The
+     * `shop_artwork_interest_reference_trg` trigger takes it from `shop_enquiry_reference_seq`,
+     * which general enquiries share, when an enquiry is inserted.
      */
     reference: text("reference"),
     message: text("message"),
@@ -1718,7 +1719,7 @@ export const shopArtworkInterest = pgTable(
       .where(sql`${table.identitySubjectId} IS NULL AND ${table.intent} = 'enquiry'`),
     check(
       "shop_artwork_interest_reference_ck",
-      sql`(${table.intent} = 'enquiry') = (${table.reference} IS NOT NULL)`,
+      sql`${table.intent} <> 'enquiry' OR ${table.reference} IS NOT NULL`,
     ),
     check(
       "shop_artwork_interest_alert_columns_ck",

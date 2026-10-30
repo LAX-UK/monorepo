@@ -158,7 +158,6 @@ describe.skipIf(!hasShopIntegrationDb)("acceptance portal seed", () => {
       artworkId,
       identitySubjectId: subjectId,
       intent: "enquiry",
-      reference: "E-91001",
     });
 
     await resetAcceptanceEnquiryInterestFixture(db, subjectId);
