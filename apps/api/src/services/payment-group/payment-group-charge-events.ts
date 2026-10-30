@@ -23,7 +23,7 @@ export type PaymentGroupChargeEventsDeps = {
   groups: Pick<IPaymentGroupRepository, "findByStripeRefs" | "listMembers">;
   gateway: Pick<IPaymentGroupGateway, "listChargeRefunds">;
   payments: Pick<IPaymentLifecycleRepository, "applyRefundedInTransaction">;
-  payoutAdjustments: IPayoutAdjustmentService;
+  payoutAdjustments: Pick<IPayoutAdjustmentService, "addPaymentLineToOpenPayoutOrCreateClawback">;
   /** What the seller's ledger already holds as refunded for the payment, in pence. */
   refundedCentsSoFar: (tx: Database, paymentId: string) => Promise<number>;
   events: IDomainEventSink;
