@@ -23,8 +23,7 @@ export function DeliveryChannelsSection({
           Where alerts reach you
         </h3>
         <p className="mt-1 font-body text-sm text-on-surface-variant">
-          Choose how each alert reaches you. WhatsApp is visible here so the setting is ready when
-          delivery launches.
+          Choose how each alert reaches you.
         </p>
       </div>
       <div className="flex flex-wrap gap-2">

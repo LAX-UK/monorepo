@@ -47,8 +47,6 @@ export type OrganisationHomeFacts = {
   viewerIdentity: "verified" | "checking" | "required";
   /** Sales a buyer agent is authorised for and has not registered in yet. */
   salesToRegister: ReadonlyArray<HomeSubject & { startsAt: Date; bidLimit: string | null }>;
-  /** Something is sold or on its way to sale, so payouts are needed. */
-  hasWorkAwaitingPayout: boolean;
 };
 
 /** An unsold lot as the unsold task reads it: whether anyone has chosen yet. */
@@ -74,7 +72,7 @@ type TaskSpec = {
   allowed: (actor: EntityActor) => boolean;
   /** What the organisation's own state must allow for the task to be offered. */
   requires?: OrganisationAction;
-  collect: (facts: OrganisationHomeFacts) => HomeTask[];
+  collect: (facts: OrganisationHomeFacts, state: OrganisationStatePolicy) => HomeTask[];
 };
 
 function capability(name: EntityCapability) {
@@ -133,8 +131,11 @@ const TASK_SPECS: readonly TaskSpec[] = [
     kind: "payouts",
     requires: "set_up_payouts",
     allowed: capability("entity.connect.operate"),
-    collect: (facts) =>
-      !facts.organisation.payoutsReady && facts.hasWorkAwaitingPayout ? [{ kind: "payouts" }] : [],
+    // The organisation's state decides, so the task, the banner and the sidebar badge agree.
+    collect: (_facts, state) =>
+      state.banner?.key === "payouts_not_set_up" && state.banner.audience === "act"
+        ? [{ kind: "payouts" }]
+        : [],
   },
   {
     kind: "unsold",
@@ -188,10 +189,11 @@ export function homeTasks(facts: OrganisationHomeFacts): HomeTask[] {
   const state = organisationStatePolicy(
     facts.organisation.status,
     entityCapabilitiesOf(facts.actor),
+    { payoutsReady: facts.organisation.payoutsReady },
   );
   return TASK_SPECS.filter(
     (spec) => spec.allowed(facts.actor) && (!spec.requires || state.actions[spec.requires]),
-  ).flatMap((spec) => spec.collect(facts));
+  ).flatMap((spec) => spec.collect(facts, state));
 }
 
 /** Something to know that is not the member's to do. */

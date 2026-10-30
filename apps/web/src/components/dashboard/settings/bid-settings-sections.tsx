@@ -13,7 +13,7 @@ import type { SessionUser } from "@/lib/data/contracts";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerCategoryInterests } from "@/lib/data/http/category-interests.server";
 import { laxAccountHomeUrl } from "@/lib/lax-account-url";
-import { biddingStanding } from "@/lib/settings/bidding-standing";
+import { type BiddingOrganisation, biddingStanding } from "@/lib/settings/bidding-standing";
 import { Button } from "@auction/ui/components/button";
 import type { LayoutViewDefault, ThemePreference } from "@auction/validators";
 import { ExternalLink, UserRound } from "lucide-react";
@@ -31,15 +31,25 @@ function SectionUnavailable({ what }: { what: string }) {
 }
 
 /** Whether the person can bid, and how to raise their limit. Alerts live under Notifications. */
-export function BiddingSettings({ user }: { user: SessionUser }) {
+export function BiddingSettings({
+  user,
+  organisation = null,
+}: {
+  user: SessionUser;
+  organisation?: BiddingOrganisation | null;
+}) {
   return (
     <BidSettingsSection
       id="bidding"
       title="Bidding"
-      description="Where you stand to bid on LAX Bid."
+      description={
+        organisation
+          ? `Where ${organisation.name} stands to bid.`
+          : "Where you stand to bid on LAX Bid."
+      }
     >
       <ul className="divide-y divide-outline-variant/50 rounded-xl border border-outline-variant/60 bg-surface-container-lowest">
-        {biddingStanding(user.kycStatus).map((row) => (
+        {biddingStanding(user.kycStatus, organisation).map((row) => (
           <li
             key={row.id}
             className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-center sm:gap-4 md:px-5"
