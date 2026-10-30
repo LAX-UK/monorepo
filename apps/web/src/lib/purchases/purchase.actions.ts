@@ -9,10 +9,11 @@ import type { PaySeveralSkipReason } from "@auction/domain";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import {
+  PAY_SEVERAL_START_COPY,
+  PAY_SEVERAL_START_FAILED,
   type PaySeveralBlock,
   type PaySeveralPlanView,
   type PaySeveralStart,
-  multiLotCheckoutHref,
 } from "./pay-several";
 
 /** Posts for the account in use; the API checks the member's role on every step. */
@@ -31,13 +32,20 @@ async function post(path: string, body: unknown): Promise<Response> {
 
 const lotIdsSchema = z.array(z.string().uuid()).min(1).max(20);
 
-const skipReason = z.enum(["other_account", "not_owed", "not_payer", "not_invoiced"]);
+const skipReason = z.enum([
+  "other_account",
+  "not_owed",
+  "not_payer",
+  "not_invoiced",
+  "held_for_review",
+  "being_paid",
+]) satisfies z.ZodType<PaySeveralSkipReason>;
 const planSchema = z.object({
   payable: z.array(z.object({ lotId: z.string(), totalDue: z.string() })),
   skipped: z.array(z.object({ lotId: z.string(), reason: skipReason })),
   total: z.string(),
   currency: z.string(),
-  /** Sent once one combined payment is available; absent from the plan-only answer. */
+  /** Whether (and how) one payment can take the total. */
   payTogether: z
     .union([
       z.object({ allowed: z.literal(true) }).passthrough(),
@@ -53,6 +61,9 @@ const REFUSAL_BLOCK: Record<string, PaySeveralBlock> = {
   pay_several_nothing_payable: "nothing_payable",
   pay_several_mixed_currency: "mixed_currency",
   pay_several_payer_on_hold: "payer_on_hold",
+  pay_several_below_minimum: "below_minimum",
+  pay_several_over_limit: "over_limit",
+  pay_several_needs_finance_review: "needs_finance_review",
 };
 
 async function errorCode(res: Response): Promise<string | null> {
@@ -103,27 +114,25 @@ export async function planPaySeveralAction(
 const startedSchema = z.object({ checkoutUrl: z.string().min(1) });
 
 /**
- * Opens one payment for the picked invoices and returns where to pay. While the combined payment
- * is not available on the API, the payer goes to the checkout for several lots instead, which
- * takes the same invoices one after another.
+ * Holds the picked invoices in one payment and returns its checkout, where the payer chooses
+ * card or bank transfer and confirms. A refusal comes back in the payer's words; nothing is
+ * charged until the checkout is completed.
  */
 export async function startPaySeveralAction(lotIds: string[]): Promise<PaySeveralStart> {
   return instrumentServerAction("startPaySeveralAction", async () => {
     const ids = lotIdsSchema.safeParse(lotIds);
     if (!ids.success) return { ok: false, message: "Pick between 1 and 20 invoices." };
     const res = await post("/legal-entities/purchases/pay-several", { lotIds: ids.data });
-    if (res.status === 404 && (await errorCode(res)) === null) {
-      return { ok: true, url: multiLotCheckoutHref(ids.data) };
-    }
     if (!res.ok) {
+      const code = await errorCode(res);
       return {
         ok: false,
-        message: "We couldn't open the payment. Nothing was charged. Try again in a moment.",
+        message: (code && PAY_SEVERAL_START_COPY[code]) || PAY_SEVERAL_START_FAILED,
       };
     }
     const body = (await res.json().catch(() => null)) as { data?: unknown } | null;
     const started = startedSchema.safeParse(body?.data);
-    if (!started.success) return { ok: true, url: multiLotCheckoutHref(ids.data) };
+    if (!started.success) return { ok: false, message: PAY_SEVERAL_START_FAILED };
     revalidatePath(CLIENT_ROUTES.purchases);
     return { ok: true, url: started.data.checkoutUrl };
   });

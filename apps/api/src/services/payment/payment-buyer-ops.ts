@@ -110,6 +110,9 @@ export async function cancelPendingAsBuyer(
   if (p.status !== "pending") {
     return err(new LotError("Only pending payments can be cancelled", 409));
   }
+  if (p.paymentGroupId) {
+    return err(new LotError("This invoice is part of a payment that is in progress", 409));
+  }
   await deps.payments.updateStatus(paymentId, "cancelled");
   await revokeOpenStripeCheckoutForPayment(deps.checkoutOrchestratorDeps, paymentId);
   if (deps.domainEventSink) {

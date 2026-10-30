@@ -581,6 +581,25 @@ export {
   type PaySeveralSkipReason,
 } from "./pay-several.js";
 export {
+  payTogether,
+  type PayTogetherDecision,
+  type PayTogetherRefusal,
+} from "./pay-several-checkout.js";
+export {
+  allocateGroupDispute,
+  attributeGroupRefunds,
+  decidePaymentGroupSettlement,
+  paymentGroupIsLive,
+  paymentGroupTransition,
+  type GroupRefund,
+  type GroupRefundAttribution,
+  type PaymentGroupEvent,
+  type PaymentGroupMemberFacts,
+  type PaymentGroupSettlementDecision,
+  type PaymentGroupSettlementRefusal,
+  type PaymentGroupStatus,
+} from "./payment-group.js";
+export {
   EMPTY_ARTIST_ALERT_CRITERIA,
   artistAlertCriteriaRefusal,
   lotMatchesArtistAlert,

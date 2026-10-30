@@ -14,6 +14,9 @@ import { sellableEditionCountSql } from "./shop-edition-availability.js";
 
 type EditionCounts = { total: number; available: number };
 
+/** Turns a stored image value (media key, root-relative seed path or absolute URL) into a public URL. */
+export type ResolveArtworkMediaUrl = (value: string | null | undefined) => string | null;
+
 /** Columns every public artwork read selects; callers join `shopArtist` and `shopParty`. */
 export const publicArtworkColumns = {
   artworkId: shopArtwork.id,
@@ -101,6 +104,7 @@ export async function editionCountsByArtworkId(
 export function toArtworkCatalogueRow(
   row: SelectedArtworkRow,
   editionCounts: Map<string, EditionCounts>,
+  resolveMediaUrl: ResolveArtworkMediaUrl,
   images: ArtworkImageReadModel[] = [],
 ): ArtworkCatalogueRow {
   const counts = editionCounts.get(row.artworkId) ?? { total: 0, available: 0 };
@@ -108,7 +112,7 @@ export function toArtworkCatalogueRow(
     slug: row.slug,
     title: row.title,
     description: row.description,
-    primaryImageUrl: row.primaryImageUrl,
+    primaryImageUrl: resolveMediaUrl(row.primaryImageUrl),
     images,
     artistName: row.artistName,
     artistSlug: row.artistSlug,
@@ -140,10 +144,13 @@ export function toArtworkCatalogueRow(
 export async function toPublicArtworkSummaries(
   db: Database,
   rows: SelectedArtworkRow[],
+  resolveMediaUrl: ResolveArtworkMediaUrl,
 ): Promise<ArtworkSummaryReadModel[]> {
   const editionCounts = await editionCountsByArtworkId(
     db,
     rows.map((row) => row.artworkId),
   );
-  return rows.map((row) => toPublicArtworkSummary(toArtworkCatalogueRow(row, editionCounts)));
+  return rows.map((row) =>
+    toPublicArtworkSummary(toArtworkCatalogueRow(row, editionCounts, resolveMediaUrl)),
+  );
 }
