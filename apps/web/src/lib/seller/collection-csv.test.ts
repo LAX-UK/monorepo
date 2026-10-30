@@ -22,10 +22,7 @@ const work: CollectionWork = {
 describe("collectionCsv", () => {
   it("adds what was paid only for members who see money", () => {
     expect(collectionCsv([work], { showPrice: true })).toBe(
-      'title,reference,acquired,where_it_is,bought_for\nLow cloud,Rye,Lot 44,2026-10-22,Delivered,"£4,960.00"\n'.replace(
-        "Low cloud,Rye",
-        '"Low cloud, Rye"',
-      ),
+      'title,reference,acquired,where_it_is,bought_for\n"Low cloud, Rye",Lot 44,2026-10-22,Delivered,"£4,960.00"\n',
     );
     expect(collectionCsv([work], { showPrice: false })).toBe(
       'title,reference,acquired,where_it_is\n"Low cloud, Rye",Lot 44,2026-10-22,Delivered\n',
