@@ -23,6 +23,24 @@ export function currentTabId(tabs: readonly AppShellNavItem[], pathname: string)
   return own?.id ?? MORE_ID;
 }
 
+/**
+ * What More lists: every menu entry that is not already a tab, in the menu's order, with the
+ * account entries (Notifications, Bid settings, LAX Account) last.
+ */
+export function moreSheetSections(
+  sections: readonly ClientNavSection[],
+  tabs: readonly AppShellNavItem[],
+): ClientNavSection[] {
+  const inTabs = new Set(tabs.map((tab) => tab.id));
+  const rest = sections
+    .map((section) => ({ ...section, items: section.items.filter((item) => !inTabs.has(item.id)) }))
+    .filter((section) => section.items.length > 0);
+  return [
+    ...rest.filter((section) => section.id !== "account"),
+    ...rest.filter((section) => section.id === "account"),
+  ];
+}
+
 function TabCount({ value }: { value: number }) {
   if (value <= 0) return null;
   return (
@@ -56,6 +74,7 @@ export function WorkspaceTabBar({
   const [moreOpen, setMoreOpen] = useState(false);
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const current = currentTabId(tabs, pathname);
+  const moreSections = moreSheetSections(sections, tabs);
   const moreCount = counts.unread;
   return (
     <>
@@ -141,7 +160,7 @@ export function WorkspaceTabBar({
           ) : null}
           <nav aria-label="Bid, all pages">
             <WorkspaceNavList
-              sections={sections}
+              sections={moreSections}
               pathname={pathname}
               counts={counts}
               onNavigate={() => setMoreOpen(false)}

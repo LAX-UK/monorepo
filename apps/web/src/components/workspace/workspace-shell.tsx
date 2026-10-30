@@ -13,6 +13,7 @@ import type { SearchPage } from "@/lib/workspace/workspace-search-model";
 import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
 import { TooltipProvider } from "@auction/ui/components/tooltip";
 import { LaxDensityProvider, laxDensityAttributes } from "@auction/ui/lax";
+import type { LucideIcon } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useMemo, useRef } from "react";
 import { usePageTitleInBar } from "./use-page-title-in-bar";
@@ -65,12 +66,12 @@ function WorkspaceFrame({
     const model = resolveMobileShellTitle(buildClientBreadcrumbTrail(pathname));
     return mobileTitleOverride ? { ...model, title: mobileTitleOverride } : model;
   }, [pathname, mobileTitleOverride]);
-  const pages: SearchPage[] = useMemo(
+  const pages: (SearchPage & { icon: LucideIcon })[] = useMemo(
     () =>
       sections.flatMap((section) =>
         section.items
           .filter((item) => !item.external)
-          .map((item) => ({ id: item.id, label: item.label, href: item.href })),
+          .map((item) => ({ id: item.id, label: item.label, href: item.href, icon: item.icon })),
       ),
     [sections],
   );

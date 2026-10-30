@@ -23,6 +23,7 @@ import {
   Gavel,
   Image as ImageIcon,
   LayoutGrid,
+  type LucideIcon,
   Package,
   Search,
   ShoppingBag,
@@ -65,7 +66,8 @@ export function WorkspaceSearch({
   accountName: string;
   /** The member's role, for the narrower-scope note: "Consignor". */
   roleLabel: string;
-  pages: readonly SearchPage[];
+  /** The pages the role can open, each with its menu icon. */
+  pages: readonly (SearchPage & { icon?: LucideIcon })[];
   search?: AccountSearchPort;
   recentStore?: RecentSearchStore;
 }) {
@@ -115,6 +117,14 @@ export function WorkspaceSearch({
     () => new Map(view.groups.flatMap((group) => group.rows.map((row) => [row.id, row]))),
     [view.groups],
   );
+  const pageIcons = useMemo(
+    () => new Map(pages.map((page) => [`page-${page.id}`, page.icon])),
+    [pages],
+  );
+  const mediaFor = (row: SearchRow): ReactNode => {
+    const Icon = pageIcons.get(row.id);
+    return Icon ? <Icon aria-hidden /> : KIND_ICON[row.kind];
+  };
   const groups: PaletteGroup[] = view.groups.map((group) => ({
     id: group.id,
     label: group.label,
@@ -122,7 +132,7 @@ export function WorkspaceSearch({
       id: row.id,
       label: row.label,
       ...(row.meta ? { meta: row.meta } : {}),
-      media: KIND_ICON[row.kind],
+      media: mediaFor(row),
     })),
   }));
   const placeholder = `Search ${accountName}`;

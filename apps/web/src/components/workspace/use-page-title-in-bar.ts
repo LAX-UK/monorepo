@@ -16,7 +16,9 @@ export function usePageTitleInBar(mainRef: RefObject<HTMLElement | null>): strin
     setTitle(null);
     const main = mainRef.current;
     const heading = main?.querySelector<HTMLElement>("[data-page-title]");
-    if (!main || !heading || typeof IntersectionObserver === "undefined") return;
+    // A title the page hides is not a large title: the bar keeps its lockup.
+    const shown = heading ? heading.getClientRects().length > 0 : false;
+    if (!main || !heading || !shown || typeof IntersectionObserver === "undefined") return;
     const observer = new IntersectionObserver(
       ([entry]) => {
         setTitle(entry && !entry.isIntersecting ? (heading.textContent?.trim() ?? null) : null);

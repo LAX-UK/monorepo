@@ -99,6 +99,9 @@ export function ShellUserMenu({ user, role }: ShellUserMenuProps) {
   };
 
   const displayName = user.name.trim() || user.email;
+  // The bar names the person by first name only, so it is never clipped mid-surname; the menu
+  // itself shows the full name.
+  const firstName = user.name.trim().split(/\s+/)[0] || user.email;
   const roleMeta = appShellRoleMeta[role];
   const rolePillLabel = shellRolePillLabel(user);
   const isClient = role === "client";
@@ -129,12 +132,12 @@ export function ShellUserMenu({ user, role }: ShellUserMenuProps) {
             aria-hidden
           />
         </div>
-        <span className="hidden min-w-0 max-w-[8rem] truncate font-label text-sm font-medium text-on-surface sm:inline">
-          {displayName}
+        <span className="hidden max-w-[10rem] truncate font-label text-sm font-medium text-on-surface lg:inline">
+          {firstName}
         </span>
         <ChevronDown
           className={cn(
-            "hidden size-4 shrink-0 text-on-surface-variant transition-transform duration-200 motion-reduce:transition-none sm:block",
+            "hidden size-4 shrink-0 text-on-surface-variant transition-transform duration-200 motion-reduce:transition-none lg:block",
             open ? "rotate-180" : "",
           )}
           aria-hidden
