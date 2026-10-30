@@ -1130,3 +1130,13 @@ a.shop-checkout-steps__link:hover .shop-checkout-steps__label {
   max-width: 72rem;
   gap: var(--shop-space-6);
 }
+
+/* An expired or broken link: what happened, then the form for a new link, in one calm column. */
+.shop-guest-order__problem {
+  display: flex;
+  flex-direction: column;
+  gap: var(--shop-space-6);
+  width: 100%;
+  max-width: 36rem;
+  margin: var(--shop-space-8) auto 0;
+}

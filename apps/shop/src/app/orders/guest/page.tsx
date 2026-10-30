@@ -63,7 +63,7 @@ function LinkProblem({ problem }: { problem: GuestOrderLinkProblem }) {
   return (
     <div className="shop-guest-order__problem">
       <ShopStatusState
-        layout="page"
+        layout="inline"
         variant="empty"
         icon="bag"
         title={copy.title}
