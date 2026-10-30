@@ -14,7 +14,7 @@ export type ArtworkGalleryImage = {
 
 type Props = {
   images: ArtworkGalleryImage[];
-  /** Width-to-height ratio from the work's size; null takes the ratio of the image itself. */
+  /** Width-to-height ratio from the work's size, used until the image has loaded. */
   stageRatio?: number | null;
   priority?: boolean;
 };
@@ -30,8 +30,9 @@ export function ArtArtworkGallery({ images, stageRatio = null, priority = false 
   const imgRef = useRef<HTMLImageElement>(null);
   const active = images[activeIndex] ?? images[0];
   if (!active) return null;
-  // The work's own size leads; otherwise the loaded image's shape; a portrait frame until then.
-  const ratio = stageRatio ?? imageRatio ?? ARTWORK_STAGE_RATIO.min;
+  // The loaded image's shape leads, since it is what the stage shows; the work's size holds
+  // the frame until the image arrives, so there is little to no shift; a portrait frame otherwise.
+  const ratio = imageRatio ?? stageRatio ?? ARTWORK_STAGE_RATIO.min;
 
   return (
     <div className="flex flex-col gap-3" data-testid="art-artwork-gallery">
