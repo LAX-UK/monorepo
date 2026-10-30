@@ -119,8 +119,9 @@ export function Dialog({
             </DialogPrimitive.Close>
           </div>
           {children ? (
-            // Focusable, so the body can be scrolled from the keyboard when it overflows.
+            // A scrolling body must be reachable from the keyboard (WCAG 2.1.1, axe scrollable-region-focusable).
             <div
+              // biome-ignore lint/a11y/noNoninteractiveTabindex: a scrollable region has to take focus to scroll by keyboard.
               tabIndex={0}
               className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-5 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-lax-focus md:px-6"
             >
