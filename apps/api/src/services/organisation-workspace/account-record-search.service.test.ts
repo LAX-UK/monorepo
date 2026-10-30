@@ -53,7 +53,7 @@ describe("AccountRecordSearchService", () => {
       legalEntityId: ENTITY,
       userId: "me",
       scope: "own",
-      terms: { text: "hockney", lotNumber: null },
+      terms: { text: "hockney", lotNumber: null, consignmentNumber: null },
       limit: 6,
       offset: 0,
       now: NOW,

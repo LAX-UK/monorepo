@@ -12,7 +12,7 @@ import {
   sale,
 } from "@auction/db/schema";
 import type { AccountSearchTerms } from "@auction/domain";
-import { bidOutcome, purchaseInvoiceState } from "@auction/domain";
+import { bidOutcome, consignmentReference, purchaseInvoiceState } from "@auction/domain";
 import type { PaymentStatus } from "@auction/types";
 import {
   type SQL,
@@ -82,6 +82,7 @@ export class DrizzleAccountRecordSearchReader implements IAccountRecordSearchRea
     const rows = await this.db
       .select({
         submissionId: itemSubmission.id,
+        referenceNumber: itemSubmission.referenceNumber,
         title: itemSubmission.title,
         status: itemSubmission.status,
         updatedAt: itemSubmission.updatedAt,
@@ -95,7 +96,13 @@ export class DrizzleAccountRecordSearchReader implements IAccountRecordSearchRea
         and(
           eq(itemSubmission.legalEntityId, criteria.legalEntityId),
           submissionSenderSql({ scope: criteria.scope, userId: criteria.userId }),
-          or(ilike(itemSubmission.title, contains(terms)), lotMatches(terms)),
+          or(
+            ilike(itemSubmission.title, contains(terms)),
+            terms.consignmentNumber !== null
+              ? eq(itemSubmission.referenceNumber, terms.consignmentNumber)
+              : undefined,
+            lotMatches(terms),
+          ),
         ),
       )
       .orderBy(desc(itemSubmission.updatedAt), asc(itemSubmission.id))
@@ -103,6 +110,7 @@ export class DrizzleAccountRecordSearchReader implements IAccountRecordSearchRea
       .offset(criteria.offset);
     return rows.map((row) => ({
       submissionId: row.submissionId,
+      reference: consignmentReference(row.referenceNumber),
       title: row.title,
       status: row.status,
       updatedAt: row.updatedAt,

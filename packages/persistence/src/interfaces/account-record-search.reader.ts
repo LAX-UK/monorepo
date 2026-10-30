@@ -43,6 +43,8 @@ export type LotSearchHit = {
 /** A consignment (a submission) with the lot made from it, once there is one. */
 export type ConsignmentSearchHit = {
   submissionId: string;
+  /** What the seller quotes on the phone ("C-1042"). */
+  reference: string;
   title: string;
   status: ItemSubmissionStatus;
   lot: Omit<LotSearchHit, "title" | "endsAt"> | null;

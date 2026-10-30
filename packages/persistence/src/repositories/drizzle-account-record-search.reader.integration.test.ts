@@ -34,6 +34,8 @@ describe.skipIf(!HAS_DB)("account record search reader (integration)", () => {
     const now = new Date();
     const hour = 3_600_000;
     const tag = randomUUID().slice(0, 8);
+    // A reference no other row uses, so the test can search by it.
+    const reference = 900_000_000 + Math.floor(Math.random() * 99_000_000);
     const ownerId = `search-owner-${tag}`;
     const consignorId = `search-consignor-${tag}`;
     const agentId = `search-agent-${tag}`;
@@ -181,13 +183,14 @@ describe.skipIf(!HAS_DB)("account record search reader (integration)", () => {
           createdAt: now,
           updatedAt: now,
         });
-        await tx
-          .insert(itemSubmission)
-          .values([
-            submission(ids.ownSubmission, orgId, "Splash", ownerId, ids.consignedLot),
-            submission(ids.consignorSubmission, orgId, "Hockney sketch", consignorId),
-            submission(ids.otherOrgSubmission, otherOrgId, "Hockney sketch", strangerId),
-          ]);
+        await tx.insert(itemSubmission).values([
+          {
+            ...submission(ids.ownSubmission, orgId, "Splash", ownerId, ids.consignedLot),
+            referenceNumber: reference,
+          },
+          submission(ids.consignorSubmission, orgId, "Hockney sketch", consignorId),
+          submission(ids.otherOrgSubmission, otherOrgId, "Hockney sketch", strangerId),
+        ]);
 
         const newBid = (lotId: string, bidderId: string, legalEntityId: string) => ({
           lotId,
@@ -254,6 +257,12 @@ describe.skipIf(!HAS_DB)("account record search reader (integration)", () => {
             }),
           }),
         ]);
+        // By the printed reference ("C-1042"), and every hit carries its reference.
+        const byReference = await reader.consignments(criteria(`C-${reference}`, "all"));
+        expect(byReference.map((hit) => [hit.submissionId, hit.reference])).toEqual([
+          [ids.ownSubmission, `C-${reference}`],
+        ]);
+        expect(all.every((hit) => /^C-\d+$/.test(hit.reference))).toBe(true);
         const consignorOwn = await reader.consignments(criteria("hockney", "own", consignorId));
         expect(consignorOwn.map((hit) => hit.submissionId)).toEqual([ids.consignorSubmission]);
 
