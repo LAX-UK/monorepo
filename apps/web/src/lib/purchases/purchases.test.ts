@@ -1,3 +1,4 @@
+import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types";
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
 import type { Lot, PortfolioRow } from "@auction/types";
 import { describe, expect, it } from "vitest";
@@ -9,6 +10,12 @@ import {
   purchaseStep,
   purchaseTab,
 } from "./purchase-progress";
+import {
+  appliedPurchaseFilters,
+  parsePurchasesListQuery,
+  purchasesInView,
+  purchasesListSearch,
+} from "./purchases-list";
 import { type PurchaseSources, buildPurchasesVm } from "./purchases.vm";
 
 function fulfilment(overrides: Partial<LotFulfilmentSnapshot> = {}): LotFulfilmentSnapshot {
@@ -133,40 +140,136 @@ function sources(overrides: Partial<PurchaseSources> = {}): PurchaseSources {
   };
 }
 
+function facts(
+  lotId: string,
+  invoice: AccountPurchaseFacts["invoice"],
+  overrides: Partial<AccountPurchaseFacts> = {},
+): AccountPurchaseFacts {
+  return {
+    lotId,
+    wonBy: { userId: "u-2", name: "Tom Whitfield" },
+    paymentRole: "payer",
+    invoice,
+    delivery: {
+      stage: "awaiting_payment",
+      method: null,
+      carrier: null,
+      trackingNumber: null,
+      collectedBy: null,
+      collectedAt: null,
+      quote: null,
+    },
+    ...overrides,
+  };
+}
+
 describe("buildPurchasesVm", () => {
-  it("counts each view and opens To pay while something is due", () => {
-    const vm = buildPurchasesVm(sources(), null);
-    expect(vm.tab).toBe("to-pay");
-    expect(vm.tabs.map((tab) => [tab.id, tab.count])).toEqual([
-      ["to-pay", 1],
-      ["in-progress", 1],
-      ["completed", 1],
-    ]);
-    expect(vm.cards.map((card) => card.lotId)).toEqual(["lot-5"]);
+  it("sorts every purchase into its view", () => {
+    const vm = buildPurchasesVm(sources());
+    expect(vm.cardsByTab["to-pay"].map((card) => card.lotId)).toEqual(["lot-5"]);
+    expect(vm.cardsByTab["in-progress"].map((card) => card.lotId)).toEqual(["lot-11"]);
+    expect(vm.cardsByTab.completed.map((card) => card.lotId)).toEqual(["lot-7"]);
+    expect(vm.total).toBe(3);
+    expect(vm.sales).toEqual([{ id: "sale-2", title: "Jewels and objects of vertu" }]);
   });
 
-  it("pins one Pay now for what is due, by its deadline", () => {
-    const vm = buildPurchasesVm(sources(), null);
+  it("sums what is due into one payment, and says which are overdue", () => {
+    const vm = buildPurchasesVm(
+      sources({
+        rows: [row("lot-5", 5, null), row("lot-6", 6, null)],
+        factsByLot: {
+          "lot-5": facts("lot-5", {
+            status: "overdue",
+            dueAt: new Date("2026-10-29T12:00:00Z"),
+            paymentId: "p5",
+            totalDue: "8000.00",
+          }),
+          "lot-6": facts("lot-6", {
+            status: "due",
+            dueAt: new Date("2026-11-06T12:00:00Z"),
+            paymentId: "p6",
+            totalDue: "8000.00",
+          }),
+        },
+      }),
+    );
     expect(vm.payNow).toEqual({
-      title: "Pay for lot 5 by 31 October",
-      description: "Work 5 · £8,000.00 including buyer's premium",
-      href: "/purchases/checkout/lot-5",
+      kind: "pay",
+      title: "2 invoices · £16,000.00 due",
+      description: "One is overdue. Pay them together by card or bank transfer.",
+      lotIds: ["lot-5", "lot-6"],
+      total: "16000.00",
+    });
+    expect(vm.cardsByTab["to-pay"].map((card) => card.badge.label)).toEqual([
+      "Overdue since 29 Oct",
+      "Due 6 Nov",
+    ]);
+  });
+
+  it("never offers to pay an invoice not raised yet", () => {
+    const vm = buildPurchasesVm(
+      sources({
+        rows: [row("lot-5", 5, null)],
+        factsByLot: {
+          "lot-5": facts("lot-5", {
+            status: "not_invoiced",
+            dueAt: null,
+            paymentId: null,
+            totalDue: null,
+          }),
+        },
+      }),
+    );
+    expect(vm.payNow).toBeNull();
+    expect(vm.cardsByTab["to-pay"][0]).toMatchObject({
+      payable: null,
+      badge: { label: "Invoice to follow" },
     });
   });
 
-  it("shows a due purchase with its deadline and breakdown, leaving Pay now to the banner", () => {
-    const [card] = buildPurchasesVm(sources(), "to-pay").cards;
+  it("names who won a lot on a shared list, and the delivery stage after payment", () => {
+    const vm = buildPurchasesVm(
+      sources({
+        showWonBy: true,
+        factsByLot: {
+          "lot-11": facts(
+            "lot-11",
+            { status: "paid", dueAt: null, paymentId: "p11", totalDue: "8000.00" },
+            {
+              delivery: {
+                stage: "quote_ready",
+                method: null,
+                carrier: null,
+                trackingNumber: null,
+                collectedBy: null,
+                collectedAt: null,
+                quote: null,
+              },
+            },
+          ),
+        },
+      }),
+    );
+    expect(vm.cardsByTab["in-progress"][0]).toMatchObject({
+      wonBy: "Tom Whitfield",
+      badge: { label: "Quote ready", tone: "warning" },
+      amountLabel: "total paid",
+    });
+    expect(vm.winners).toEqual(["Tom Whitfield"]);
+  });
+
+  it("shows a due purchase with its deadline, breakdown and its own page", () => {
+    const [card] = buildPurchasesVm(sources()).cardsByTab["to-pay"];
     expect(card).toMatchObject({
-      statusLabel: "Payment due",
       statusNote: "Pay by 31 October",
-      amountLabel: "Total due",
+      amountLabel: "total due",
       amount: "£8,000.00",
-      saleTitle: "Jewels and objects of vertu",
+      detailHref: "/purchases/lot-5",
+      payable: { totalDue: "8000", currency: "GBP" },
       breakdown: [
-        { label: "Hammer", value: "£6,400.00" },
+        { label: "Hammer price", value: "£6,400.00" },
         { label: "Buyer's premium", value: "£1,600.00" },
       ],
-      primaryAction: null,
       problemHref: null,
     });
     expect(card?.steps?.map((step) => [step.id, step.progress, step.date])).toEqual([
@@ -177,44 +280,33 @@ describe("buildPurchasesVm", () => {
     ]);
   });
 
-  it("asks a paid buyer to arrange delivery and offers the invoice", () => {
-    const [card] = buildPurchasesVm(sources(), "in-progress").cards;
-    expect(card).toMatchObject({
-      statusLabel: "Choose delivery",
-      primaryAction: { label: "Arrange delivery" },
-      invoiceHref: "/invoices/11.pdf",
-      problemHref: "/contact?intent=purchase-problem",
-    });
-  });
-
   it("marks every step done once delivered", () => {
-    const [card] = buildPurchasesVm(sources(), "completed").cards;
-    expect(card?.statusLabel).toBe("Delivered");
+    const [card] = buildPurchasesVm(sources()).cardsByTab.completed;
+    expect(card?.badge.label).toBe("Delivered");
     expect(card?.steps?.every((step) => step.progress === "done")).toBe(true);
-    expect(card?.primaryAction).toBeNull();
   });
 
   it("explains a review instead of offering to pay", () => {
-    const vm = buildPurchasesVm(sources({ complianceGate: "source_of_funds_required" }), null);
-    expect(vm.payNow?.href).toBeNull();
-    expect(vm.cards[0]).toMatchObject({
+    const vm = buildPurchasesVm(sources({ complianceGate: "source_of_funds_required" }));
+    expect(vm.payNow?.kind).toBe("review");
+    expect(vm.cardsByTab["to-pay"][0]).toMatchObject({
       statusLabel: "In review",
+      payable: null,
       primaryAction: { label: "Provide documents" },
     });
   });
+});
 
-  it("narrows the views with the filters but keeps the banner and the total", () => {
-    const vm = buildPurchasesVm(sources(), null, { q: "work 7", payment: "all", year: null });
-    expect(vm.tabs.map((tab) => tab.count)).toEqual([0, 0, 1]);
-    expect(vm.tab).toBe("completed");
-    expect(vm).toMatchObject({ total: 3, shown: 1, spent: "£24,000.00" });
-    expect(vm.payNow?.href).toBe("/purchases/checkout/lot-5");
-    expect(vm.years).toEqual([2026]);
-  });
-
-  it("filters by payment state", () => {
-    const vm = buildPurchasesVm(sources(), null, { q: "", payment: "paid", year: null });
-    expect(vm.shown).toBe(2);
-    expect(vm.tabs[0]?.count).toBe(0);
+describe("the Purchases list query", () => {
+  it("filters by sale and winner, searches, and sorts by due date", () => {
+    const vm = buildPurchasesVm(sources({ showWonBy: true }));
+    const all = Object.values(vm.cardsByTab).flat();
+    const query = parsePurchasesListQuery({ q: "work 7" }, "completed");
+    expect(purchasesInView(all, query).map((card) => card.lotId)).toEqual(["lot-7"]);
+    expect(purchasesListSearch(query)).toBe("?tab=completed&q=work+7");
+    expect(appliedPurchaseFilters({ ...query, sale: "sale-2", wonBy: "Tom" }, vm.sales)).toEqual([
+      { id: "sale", label: "Sale: Jewels and objects of vertu" },
+      { id: "wonBy", label: "Won by: Tom" },
+    ]);
   });
 });

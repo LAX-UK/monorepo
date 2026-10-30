@@ -227,8 +227,7 @@ export function PurchasesView({
         ) : null}
       </div>
       {picks.length > 0 ? (
-        <div
-          role="region"
+        <section
           aria-label="Selected invoices"
           className="sticky bottom-4 z-20 flex flex-col gap-3 rounded-lax-card border border-lax-line-strong bg-lax-surface p-3 shadow-lax-md sm:flex-row sm:items-center sm:justify-between max-lg:bottom-20"
         >
@@ -249,7 +248,7 @@ export function PurchasesView({
             Pay {picks.length === 1 ? "1 invoice" : `${picks.length} invoices`} ·{" "}
             {formatMoney(picksTotal)}
           </Button>
-        </div>
+        </section>
       ) : null}
       {filterable ? (
         <FilterSheet

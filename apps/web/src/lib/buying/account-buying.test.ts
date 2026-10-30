@@ -142,8 +142,8 @@ describe("Home, the lists and the menu agree", () => {
     "counts the same purchases to pay on Home, in Purchases and in the %s's menu",
     (role) => {
       const scope = organisation(role);
-      const vm = buildPurchasesVm(purchaseSources(scope, PURCHASES), null);
-      const toPayTab = vm.tabs.find((tab) => tab.id === "to-pay")?.count;
+      const vm = buildPurchasesVm(purchaseSources(scope, PURCHASES));
+      const toPayTab = vm.cardsByTab["to-pay"].length;
       const figure = purchasesToPayFigure(PURCHASES);
       const attention = deriveClientAttention({
         userId: ME,
@@ -155,24 +155,30 @@ describe("Home, the lists and the menu agree", () => {
       expect(toPayTab).toBe(figure.purchases);
       expect(attention.paymentsDue).toBe(figure.purchases);
       expect(figure.totals).toEqual([{ currency: "GBP", amount: "3750.00" }]);
-      expect(vm.payNow?.title).toMatch(/^Pay for 3 lots by /);
+      // One payment covers what can be paid now; the lot held for checks waits on its own row.
+      expect(vm.payNow?.title).toBe("2 invoices · £2,500.00 due");
     },
   );
 
   it("never asks a buyer agent to pay, while Purchases still lists what they won", () => {
     const scope = organisation("buyer_agent");
     const won = PURCHASES.map((row) => ({ ...row, lot: { ...row.lot, winnerId: ME } }));
-    const vm = buildPurchasesVm(purchaseSources(scope, won), "to-pay");
+    const vm = buildPurchasesVm(purchaseSources(scope, won));
     expect(purchasesToPayBy(scope, won)).toEqual([]);
     expect(vm.payNow).toBeNull();
-    expect(vm.cards.map((card) => [card.statusLabel, card.statusNote, card.primaryAction])).toEqual(
-      [
-        ["Awaiting payment", "Waiting for payment by Northbank Gallery", null],
-        ["Awaiting payment", "Waiting for payment by Northbank Gallery", null],
-        ["Awaiting payment", "Waiting for payment by Northbank Gallery", null],
-      ],
-    );
-    const paid = buildPurchasesVm(purchaseSources(scope, won), "in-progress").cards;
+    expect(vm.cardsByTab["to-pay"].every((card) => card.payable === null)).toBe(true);
+    expect(
+      vm.cardsByTab["to-pay"].map((card) => [
+        card.statusLabel,
+        card.statusNote,
+        card.primaryAction,
+      ]),
+    ).toEqual([
+      ["Awaiting payment", "Waiting for payment by Northbank Gallery", null],
+      ["Awaiting payment", "Waiting for payment by Northbank Gallery", null],
+      ["Awaiting payment", "Waiting for payment by Northbank Gallery", null],
+    ]);
+    const paid = buildPurchasesVm(purchaseSources(scope, won)).cardsByTab["in-progress"];
     expect(paid.find((card) => card.lotId === "lot-15")?.breakdown).toContainEqual({
       label: "Paid by",
       value: "Northbank Gallery's finance team",
@@ -205,9 +211,11 @@ describe("a lot whose estimate is in dollars", () => {
     const dollars = purchase("lot-21", null);
     dollars.lot.marketingDetails = usdEstimate;
     const rows = [dollars, purchase("lot-22", null)];
-    const vm = buildPurchasesVm(purchaseSources(organisation("finance"), rows), null);
-    expect(vm.payNow?.description).toBe("£2,500.00 in total, including buyer's premium");
-    expect(vm.cards.find((card) => card.lotId === "lot-21")?.amount).toBe("£1,250.00");
+    const vm = buildPurchasesVm(purchaseSources(organisation("finance"), rows));
+    expect(vm.payNow?.title).toBe("2 invoices · £2,500.00 due");
+    expect(vm.cardsByTab["to-pay"].find((card) => card.lotId === "lot-21")?.amount).toBe(
+      "£1,250.00",
+    );
     expect(purchasesToPayFigure(rows).totals).toEqual([{ currency: "GBP", amount: "2500.00" }]);
   });
 });
