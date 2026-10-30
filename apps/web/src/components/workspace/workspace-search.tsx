@@ -13,6 +13,7 @@ import {
 } from "@/lib/workspace/workspace-search-model";
 import { cn } from "@auction/ui";
 import {
+  Button,
   type PaletteGroup,
   SearchPalette,
   ShortcutKeys,
@@ -139,28 +140,28 @@ export function WorkspaceSearch({
 
   return (
     <>
-      <button
-        type="button"
+      <Button
+        variant="ghost"
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-keyshortcuts="Meta+K Control+K /"
         className={cn(
-          "lax-focus hidden h-9 w-72 items-center gap-2 rounded-lax-control bg-lax-surface px-3 text-left text-lax-14 text-lax-muted",
+          "lax-focus hidden h-9 w-72 items-center justify-start gap-2 rounded-lax-control bg-lax-surface px-3 text-left text-lax-14 font-normal text-lax-muted hover:bg-lax-surface",
           "shadow-[inset_0_0_0_1px_var(--lax-control-edge)] transition-shadow hover:shadow-[inset_0_0_0_1px_var(--lax-control-edge-hover)] lg:inline-flex",
         )}
       >
         <Search aria-hidden className="size-4 shrink-0" strokeWidth={1.75} />
         <span className="min-w-0 flex-1 truncate">{placeholder}</span>
         <ShortcutKeys keys="mod+k" />
-      </button>
-      <button
-        type="button"
+      </Button>
+      <Button
+        variant="ghost"
         onClick={() => setOpen(true)}
         aria-label={placeholder}
         className="lax-focus inline-flex size-11 items-center justify-center rounded-lax-control text-lax-fg hover:bg-lax-hover lg:hidden"
       >
         <Search aria-hidden className="size-5" strokeWidth={1.75} />
-      </button>
+      </Button>
       <SearchPalette
         open={open}
         onOpenChange={(next) => {

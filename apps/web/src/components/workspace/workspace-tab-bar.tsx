@@ -6,7 +6,7 @@ import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
 import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
 import { type ClientNavSection, navItemMatches } from "@/lib/navigation/client-nav-model";
 import { cn } from "@auction/ui";
-import { Dialog } from "@auction/ui/lax";
+import { Button, Dialog } from "@auction/ui/lax";
 import { ChevronsUpDown } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -91,7 +91,7 @@ export function WorkspaceTabBar({
             const active = tab.id === current;
             const count = tab.id === MORE_ID ? moreCount : (counts.needsYou[tab.id] ?? 0);
             const className = cn(
-              "lax-focus-inset relative flex h-full w-full flex-col items-center justify-center gap-1 text-lax-12",
+              "lax-focus-inset relative flex h-full w-full flex-col items-center justify-center gap-1 rounded-none px-0 text-lax-12 font-normal hover:bg-transparent",
               active ? "font-semibold text-lax-fg" : "text-lax-muted",
               active &&
                 "before:absolute before:top-0 before:left-1/2 before:h-[3px] before:w-8 before:-translate-x-1/2 before:rounded-b-full before:bg-lax-ink",
@@ -109,8 +109,8 @@ export function WorkspaceTabBar({
             return (
               <li key={tab.id}>
                 {tab.id === MORE_ID ? (
-                  <button
-                    type="button"
+                  <Button
+                    variant="ghost"
                     className={className}
                     aria-haspopup="dialog"
                     aria-expanded={moreOpen}
@@ -118,7 +118,7 @@ export function WorkspaceTabBar({
                     onClick={() => setMoreOpen(true)}
                   >
                     {body}
-                  </button>
+                  </Button>
                 ) : (
                   <Link
                     href={tab.href}
@@ -137,14 +137,14 @@ export function WorkspaceTabBar({
       <Dialog open={moreOpen} onOpenChange={setMoreOpen} title="More">
         <div className="flex flex-col gap-4">
           {account.switcher ? (
-            <button
-              type="button"
+            <Button
+              variant="ghost"
               onClick={() => {
                 setMoreOpen(false);
                 setSwitcherOpen(true);
               }}
               aria-label={`Account: ${account.current.name}, ${account.current.detail}. Switch account`}
-              className="lax-focus flex min-h-14 w-full items-center gap-3 rounded-lax-card bg-lax-surface px-3 text-left shadow-[inset_0_0_0_1px_var(--lax-line)]"
+              className="lax-focus flex h-auto min-h-14 w-full items-center justify-start gap-3 rounded-lax-card bg-lax-surface px-3 text-left font-normal whitespace-normal shadow-[inset_0_0_0_1px_var(--lax-line)] hover:bg-lax-surface"
             >
               <AccountTile account={account.current} />
               <span className="min-w-0 flex-1">
@@ -156,7 +156,7 @@ export function WorkspaceTabBar({
                 </span>
               </span>
               <ChevronsUpDown aria-hidden className="size-4 shrink-0 text-lax-muted" />
-            </button>
+            </Button>
           ) : null}
           <nav aria-label="Bid, all pages">
             <WorkspaceNavList
