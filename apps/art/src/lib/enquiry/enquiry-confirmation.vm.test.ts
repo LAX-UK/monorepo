@@ -49,4 +49,10 @@ describe("enquiryConfirmationLead", () => {
       "The gallery team will reply within one working day.",
     );
   });
+
+  it("says a copy was emailed once the enquiry has a reference", () => {
+    expect(enquiryConfirmationLead("ana@example.com", "E-2041")).toBe(
+      "We've emailed you a copy at ana@example.com. The gallery team will reply within one working day.",
+    );
+  });
 });
