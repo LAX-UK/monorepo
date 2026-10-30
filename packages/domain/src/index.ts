@@ -482,6 +482,46 @@ export {
   type BuyingRecordScope,
 } from "./account-buying-scope.js";
 export {
+  AUTHORISATION_ENDING_SOON_DAYS,
+  EXPIRED_INVITATION_SHOWN_DAYS,
+  NEEDS_YOU_KINDS,
+  NEEDS_YOU_NOTIFICATION_TYPES,
+  needsYouWindows,
+  UNSOLD_CHOICE_WINDOW_DAYS,
+  UNSOLD_DUE_SOON_DAYS,
+  needsYouCounts,
+  needsYouKindAnnouncedBy,
+  needsYouKindsFor,
+  needsYouLink,
+  needsYouTasks,
+  unsoldChoiceDueBy,
+  type EndingAuthorisation,
+  type ExpiredInvitation,
+  type NeedsYouCounts,
+  type NeedsYouFacts,
+  type NeedsYouKind,
+  type NeedsYouLink,
+  type NeedsYouSection,
+  type NeedsYouTask,
+} from "./needs-you.js";
+export {
+  purchaseNextStep,
+  type PurchaseFulfilmentStatus,
+  type PurchaseNextStep,
+  type PurchaseNextStepFacts,
+} from "./purchase-next-step.js";
+export {
+  ACCOUNT_SEARCH_GROUPS,
+  ACCOUNT_SEARCH_MAX_LENGTH,
+  ACCOUNT_SEARCH_MIN_LENGTH,
+  accountSearchGroupsFor,
+  accountSearchScopes,
+  accountSearchTerms,
+  type AccountSearchGroup,
+  type AccountSearchScopes,
+  type AccountSearchTerms,
+} from "./account-record-search.js";
+export {
   buyerPaymentAuthority,
   purchasePaymentRole,
   type BuyerPaymentAuthorityInput,

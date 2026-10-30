@@ -1,0 +1,32 @@
+import type { NeedsYouCounts, NeedsYouKind, NeedsYouLink, NeedsYouTask } from "@auction/domain";
+import type { LegalEntityStatus } from "@auction/types";
+import type { OrganisationMemberActor } from "./organisation-membership-service.js";
+
+/** A task with where its one button leads. */
+export type NeedsYouTaskView = NeedsYouTask & { link: NeedsYouLink };
+
+export type NeedsYouView = {
+  /** Every kind this member could ever be asked to do; empty hides the section. */
+  kinds: NeedsYouKind[];
+  /** What waits now, in rank order. */
+  tasks: NeedsYouTaskView[];
+  /** The number on each sidebar item. */
+  counts: NeedsYouCounts;
+  /** Set when a list was longer than one read; the counts may then be low. */
+  truncated: boolean;
+};
+
+/** The organisation's standing as Needs you reads it. */
+export interface INeedsYouOrganisationReader {
+  standing(
+    legalEntityId: string,
+  ): Promise<{ status: LegalEntityStatus; payoutsReady: boolean } | null>;
+}
+
+/**
+ * The one "Needs you" reader for the acting account: Home, the sidebar counts, Consignments'
+ * Needs you view and the inbox's Needs action read it, so they always agree.
+ */
+export interface INeedsYouService {
+  read(actor: OrganisationMemberActor): Promise<NeedsYouView>;
+}
