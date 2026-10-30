@@ -4,7 +4,26 @@ import type {
 } from "@/lib/editorial/art-editorial.types";
 import { fakeArtServices } from "@/lib/testing/fake-art-services";
 import { describe, expect, it } from "vitest";
-import { composeArtHubPage } from "./art-hub-page.composer.js";
+import { composeArtHubPage, pickSpotlightArtists } from "./art-hub-page.composer.js";
+
+describe("pickSpotlightArtists", () => {
+  const artist = (slug: string, portraitUrl: string | null) => ({ slug, portraitUrl });
+
+  it("prefers artists with a portrait, in curated order, two at most", () => {
+    expect(
+      pickSpotlightArtists([
+        artist("a", null),
+        artist("b", "/b.webp"),
+        artist("c", "/c.webp"),
+        artist("d", "/d.webp"),
+      ]).map((item) => item.slug),
+    ).toEqual(["b", "c"]);
+  });
+
+  it("falls back to the listed artists when nobody has a portrait", () => {
+    expect(pickSpotlightArtists([artist("a", null)]).map((item) => item.slug)).toEqual(["a"]);
+  });
+});
 
 function summary(
   slug: string,
@@ -129,8 +148,8 @@ describe("composeArtHubPage", () => {
       "spotlight",
       "podcast",
       "films",
-      "collecting",
       "press",
+      "collecting",
       "product-doors",
     ]);
     expect(result.data.stories[0]).toMatchObject({ kicker: "Article", kickerDetail: "5 MIN READ" });
@@ -184,7 +203,7 @@ describe("composeArtHubPage", () => {
     expect(result.data.hero.links.map((link) => link.label)).not.toContain("Watch");
   });
 
-  it("keeps two tinted bands apart: Collecting 101 gives way to the press band", async () => {
+  it("keeps two tinted bands apart: Collecting 101 after the press band takes the page surface", async () => {
     const services = withEditorial();
     services.editorial.listStories.mockImplementation(async (filter) => ({
       status: "ok",
@@ -192,7 +211,7 @@ describe("composeArtHubPage", () => {
     }));
     const result = await composeArtHubPage(services);
     if (result.status !== "ok") throw new Error("expected ok");
-    expect(result.data.sections).toEqual(["hero", "collecting", "press"]);
+    expect(result.data.sections).toEqual(["hero", "press", "collecting"]);
     expect(result.data.surfaces).toMatchObject({ collecting: "plain", press: "band" });
   });
 

@@ -16,12 +16,12 @@ function SpotlightCard({ artist, solo }: { artist: ArtHubSpotlightVm; solo: bool
     <article
       className={cn(
         "group relative flex flex-col gap-5",
-        solo && "md:grid md:grid-cols-2 md:items-center md:gap-12",
+        solo && artist.imageUrl && "md:grid md:grid-cols-2 md:items-center md:gap-12",
       )}
       data-testid="art-hub-spotlight-card"
     >
-      <MarketingCardMedia className="aspect-square bg-surface-container-low">
-        {artist.imageUrl ? (
+      {artist.imageUrl ? (
+        <MarketingCardMedia className="aspect-square bg-surface-container-low">
           <ArtMediaImage
             src={artist.imageUrl}
             alt={artist.imageAlt}
@@ -30,19 +30,19 @@ function SpotlightCard({ artist, solo }: { artist: ArtHubSpotlightVm; solo: bool
             className="absolute inset-0 size-full"
             imgClassName="object-cover"
           />
-        ) : (
-          // The established hatch with the artist's initials, as on every artist card.
-          <>
-            <MediaPlaceholder fill />
-            <span
-              aria-hidden
-              className="absolute inset-0 flex items-center justify-center font-headline text-5xl font-medium tracking-tight text-on-surface-variant"
-            >
-              {marketingArtistInitials(artist.name)}
-            </span>
-          </>
-        )}
-      </MarketingCardMedia>
+        </MarketingCardMedia>
+      ) : (
+        // No portrait: the initials on the established hatch at avatar size, never a giant tile.
+        <div className="relative size-24 shrink-0 overflow-hidden rounded-full bg-surface-container-low">
+          <MediaPlaceholder fill />
+          <span
+            aria-hidden
+            className="absolute inset-0 flex items-center justify-center font-headline text-2xl font-medium tracking-tight text-on-surface-variant"
+          >
+            {marketingArtistInitials(artist.name)}
+          </span>
+        </div>
+      )}
       <div className="flex flex-col gap-3">
         <h3 className="font-headline text-2xl font-medium leading-tight text-on-surface md:text-[2rem]">
           <Link

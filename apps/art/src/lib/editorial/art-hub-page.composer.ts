@@ -38,7 +38,10 @@ import {
 } from "@auction/marketing-ui";
 import type { PublicArtistDetail, PublicArtistSummary } from "@auction/shop-contracts";
 
-/** Sections in Figma order (Arthub `980:26767`). */
+/**
+ * Sections in render order: Figma's (Arthub `980:26767`), except that Collecting 101 follows the
+ * press band, so the podcast and Collecting 101 splits never sit one after the other.
+ */
 export type ArtHubSectionId =
   | "hero"
   | "now-on"
@@ -46,8 +49,8 @@ export type ArtHubSectionId =
   | "spotlight"
   | "podcast"
   | "films"
-  | "collecting"
   | "press"
+  | "collecting"
   | "product-doors";
 
 export type ArtHubPageVm = {
@@ -110,15 +113,29 @@ async function loadFeaturedStory(
 
 /** Curated spotlight artists with their profile, so each card can introduce the artist. */
 async function loadSpotlight(catalogue: ArtHubServices["catalogue"]): Promise<ArtHubSpotlightVm[]> {
-  const limit = ART_HUB_LIMITS.spotlight;
   const list = await curatedOrNewest(
-    () => catalogue.listArtists({ limit, placement: "featured_artists" }),
-    () => catalogue.listArtists({ limit }),
+    () => catalogue.listArtists({ limit: SPOTLIGHT_CANDIDATES, placement: "featured_artists" }),
+    () => catalogue.listArtists({ limit: SPOTLIGHT_CANDIDATES }),
   ).catch(() => ({ items: [] as PublicArtistSummary[] }));
+  const chosen = pickSpotlightArtists(list.items);
   const details = await Promise.all(
-    list.items.map((artist) => catalogue.getArtist(artist.slug).catch(() => null)),
+    chosen.map((artist) => catalogue.getArtist(artist.slug).catch(() => null)),
   );
-  return list.items.map((artist, index) => spotlightCard(artist, details[index] ?? null));
+  return chosen.map((artist, index) => spotlightCard(artist, details[index] ?? null));
+}
+
+/** Candidates read for the spotlight, so artists with a portrait can be preferred. */
+const SPOTLIGHT_CANDIDATES = 8;
+
+/**
+ * The spotlight is a portrait feature: it shows artists with a portrait, in curated order. Only
+ * when nobody has one does it fall back to the artists as listed (cards without an image).
+ */
+export function pickSpotlightArtists<T extends { portraitUrl: string | null }>(
+  artists: readonly T[],
+): T[] {
+  const withPortrait = artists.filter((artist) => artist.portraitUrl);
+  return (withPortrait.length > 0 ? withPortrait : artists).slice(0, ART_HUB_LIMITS.spotlight);
 }
 
 function spotlightCard(
@@ -212,8 +229,8 @@ export async function composeArtHubPage(
     spotlight: spotlight.length > 0,
     podcast: podcast !== null,
     films: film !== null,
-    collecting: true,
     press: pressRows.length > 0,
+    collecting: true,
     "product-doors": productDoors.length > 0,
   };
   const sections = (Object.keys(visible) as ArtHubSectionId[]).filter((id) => visible[id]);
