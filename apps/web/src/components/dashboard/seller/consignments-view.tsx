@@ -95,9 +95,16 @@ export function ConsignmentsView({
   }, [filterOpen, query]);
 
   if (!records) return <ListLoadError />;
+  const pausedNotice =
+    pausedReason && organisation ? (
+      <Notice tone="warning" title={`Selling is paused for ${organisation}.`}>
+        You can read every consignment. Steps open again once we hear from {organisation}.
+      </Notice>
+    ) : null;
   if (records.length === 0) {
     return (
       <div className="flex flex-col gap-6">
+        {pausedNotice}
         <ListEmpty
           illustration="easel"
           title="No consignments yet"
@@ -135,11 +142,7 @@ export function ConsignmentsView({
 
   return (
     <div className="flex flex-col gap-6">
-      {pausedReason && organisation ? (
-        <Notice tone="warning" title={`Selling is paused for ${organisation}.`}>
-          You can read every consignment. Steps open again once we hear from {organisation}.
-        </Notice>
-      ) : null}
+      {pausedNotice}
       <div className="flex flex-col gap-4">
         <ListToolbar
           tabs={{ items: tabs, activeId: query.view, label: "Consignments", Link }}
