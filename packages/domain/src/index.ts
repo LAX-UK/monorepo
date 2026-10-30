@@ -482,6 +482,17 @@ export {
   type BuyingRecordScope,
 } from "./account-buying-scope.js";
 export {
+  ACCOUNT_SEARCH_GROUPS,
+  ACCOUNT_SEARCH_MAX_LENGTH,
+  ACCOUNT_SEARCH_MIN_LENGTH,
+  accountSearchGroupsFor,
+  accountSearchScopes,
+  accountSearchTerms,
+  type AccountSearchGroup,
+  type AccountSearchScopes,
+  type AccountSearchTerms,
+} from "./account-record-search.js";
+export {
   buyerPaymentAuthority,
   purchasePaymentRole,
   type BuyerPaymentAuthorityInput,
