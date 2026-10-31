@@ -46,6 +46,8 @@ export type WorkspaceShellProps = {
   /** Notices about the account (a switch elsewhere, a failed read), above the page. */
   banner?: ReactNode;
   topSlot?: ReactNode;
+  /** On a phone, the avatar opens the account sheet rather than the person menu. */
+  accountSheetFromAvatar?: boolean;
   children: ReactNode;
 };
 
@@ -59,6 +61,7 @@ function WorkspaceFrame({
   familyLinks,
   banner,
   topSlot,
+  accountSheetFromAvatar = false,
   children,
 }: WorkspaceShellProps) {
   const pathname = usePathname();
@@ -93,6 +96,7 @@ function WorkspaceFrame({
         familyLinks={familyLinks}
         phoneTitle={phoneTitle}
         scrolledTitle={scrolledTitle}
+        phoneAccountSheet={accountSheetFromAvatar ? account.switcher : null}
         search={
           <WorkspaceSearch
             accountId={account.current.id}
