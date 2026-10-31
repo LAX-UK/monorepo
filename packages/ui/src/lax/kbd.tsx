@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { cn } from "../lib/utils.js";
+import { shortcutKeyCaps } from "./shortcut-key-caps.js";
 
 /** A keyboard hint, e.g. ⌘K. */
 export function Kbd({ children, className }: { children: React.ReactNode; className?: string }) {
@@ -17,38 +18,35 @@ export function Kbd({ children, className }: { children: React.ReactNode; classN
   );
 }
 
-const KEY_GLYPHS: Record<string, string> = {
-  shift: "⇧",
-  alt: "⌥",
-  enter: "↵",
-  escape: "esc",
-  arrowup: "↑",
-  arrowdown: "↓",
-};
-
 /**
- * "g o" as two key caps, "mod+s" as ⌘ S (Ctrl S off a Mac), "?" as itself. The server renders ⌘
- * and the browser corrects it after mount, so the first paint matches.
+ * "g o" as two key caps, "mod+s" as ⌘ S (Ctrl S off a Mac), "?" as itself, through
+ * `shortcutKeyCaps`. The server renders ⌘ and the browser corrects it after mount, so the first
+ * paint matches.
  */
-export function ShortcutKeys({ keys, className }: { keys: string; className?: string }) {
+export function ShortcutKeys({
+  keys,
+  className,
+  sequence = "then",
+}: {
+  keys: string;
+  className?: string;
+  /** How the steps of a sequence read: "G then H", or just the key caps side by side. */
+  sequence?: "then" | "caps";
+}) {
   const [mac, setMac] = React.useState(true);
   React.useEffect(() => {
     setMac(/Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent));
   }, []);
-  const steps = keys.split(" ");
+  const steps = shortcutKeyCaps(keys, { mac });
   return (
     <span className={cn("inline-flex items-center gap-1", className)}>
-      {steps.map((step, index) => (
-        <React.Fragment key={`${step}-${index.toString()}`}>
-          {index > 0 ? <span className="text-lax-12 text-lax-subtle">then</span> : null}
-          {step.split("+").map((part) => (
-            <Kbd key={part}>
-              {part === "mod"
-                ? mac
-                  ? "⌘"
-                  : "Ctrl"
-                : (KEY_GLYPHS[part] ?? (part.length === 1 ? part.toUpperCase() : part))}
-            </Kbd>
+      {steps.map((caps, index) => (
+        <React.Fragment key={`${caps.join("+")}-${index.toString()}`}>
+          {index > 0 && sequence === "then" ? (
+            <span className="text-lax-12 text-lax-subtle">then</span>
+          ) : null}
+          {caps.map((cap, capIndex) => (
+            <Kbd key={`${cap}-${capIndex.toString()}`}>{cap}</Kbd>
           ))}
         </React.Fragment>
       ))}

@@ -6,7 +6,10 @@ import type { ContainerOrganisationWorkspaceRoutesSlice } from "../container.js"
 import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAccountRecordSearchService } from "../services/interfaces/account-record-search-service.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
-import type { INeedsYouService } from "../services/interfaces/needs-you-service.js";
+import type {
+  IAccountNeedsYouService,
+  INeedsYouService,
+} from "../services/interfaces/needs-you-service.js";
 import { createOrganisationWorkspaceRoutes } from "./organisation-workspace.js";
 
 const ENTITY = "00000000-0000-4000-8000-000000000001";
@@ -15,6 +18,7 @@ function mount(
   role: LegalEntityMemberRole,
   search: IAccountRecordSearchService["search"],
   read: INeedsYouService["read"] = vi.fn(),
+  countsFor: IAccountNeedsYouService["countsFor"] = vi.fn(),
 ) {
   const context = {
     legalEntityId: ENTITY,
@@ -31,7 +35,11 @@ function mount(
       c.set("legalEntityContext", context);
       await next();
     },
-    organisationWorkspace: { search: { search }, needsYou: { read } },
+    organisationWorkspace: {
+      search: { search },
+      needsYou: { read },
+      accountNeedsYou: { countsFor },
+    },
   } as unknown as ContainerOrganisationWorkspaceRoutesSlice;
   const authenticator: IAuthenticator = {
     getSessionUser: vi
@@ -137,5 +145,42 @@ describe("organisation workspace routes: needs you", () => {
     };
     expect(body.data.tasks[0]?.lots[0]?.endsAt).toBe("2026-11-10T14:00:00.000Z");
     expect(body.data.counts.bids).toBe(1);
+  });
+});
+
+describe("organisation workspace routes: needs you by account", () => {
+  it("answers for the signed-in person's own organisations, without the acting account", async () => {
+    const countsFor = vi.fn(async () => [{ legalEntityId: ENTITY, count: 2 }]);
+    const res = await mount("owner", vi.fn(), vi.fn(), countsFor).request(
+      "/legal-entities/needs-you/by-account",
+    );
+    expect(res.status).toBe(200);
+    expect(countsFor).toHaveBeenCalledWith("member-1");
+    expect(await res.json()).toEqual({
+      data: { accounts: [{ legalEntityId: ENTITY, count: 2 }] },
+    });
+  });
+
+  it("refuses a request without a session", async () => {
+    const countsFor = vi.fn();
+    const container = {
+      userSuspensionChecker: { isSuspended: vi.fn().mockResolvedValue(false) },
+      requireLegalEntityContext: vi.fn(),
+      organisationWorkspace: {
+        search: { search: vi.fn() },
+        needsYou: { read: vi.fn() },
+        accountNeedsYou: { countsFor },
+      },
+    } as unknown as ContainerOrganisationWorkspaceRoutesSlice;
+    const app = new Hono();
+    app.route(
+      "/legal-entities",
+      createOrganisationWorkspaceRoutes(container, {
+        getSessionUser: vi.fn().mockResolvedValue(null),
+      }),
+    );
+    const res = await app.request("/legal-entities/needs-you/by-account");
+    expect(res.status).toBe(401);
+    expect(countsFor).not.toHaveBeenCalled();
   });
 });

@@ -4,6 +4,9 @@ import { AppShellBreadcrumbs } from "@/components/layout/app-shell-breadcrumbs";
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
 import { useUnreadNotifications } from "@/hooks/use-unread-notifications";
 import type { SessionUser } from "@/lib/data/contracts";
+import { ClientGlobalHotkeys } from "@/lib/hotkeys/client-global-hotkeys";
+import { ClientHotkeyHelpDialog } from "@/lib/hotkeys/client-hotkey-help-dialog";
+import { type HotkeyHelpRenderer, HotkeyProvider } from "@/lib/hotkeys/hotkey-provider";
 import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
 import { buildClientBreadcrumbTrail } from "@/lib/navigation/client-breadcrumb-trail";
 import type { ClientNavSection } from "@/lib/navigation/client-nav-model";
@@ -22,6 +25,8 @@ import { WorkspaceSearch } from "./workspace-search";
 import { WorkspaceSidebar } from "./workspace-sidebar";
 import { WorkspaceTabBar } from "./workspace-tab-bar";
 import { WorkspaceTopBar } from "./workspace-top-bar";
+
+const renderHelp: HotkeyHelpRenderer = (props) => <ClientHotkeyHelpDialog {...props} />;
 
 /** The shell the shared header parts draw for. */
 const CLIENT_SHELL_ROLE = "client" as const;
@@ -82,6 +87,7 @@ function WorkspaceFrame({
       data-workspace-shell=""
       className="flex h-[calc(100dvh-var(--view-as-client-banner-height,0px))] flex-col overflow-hidden bg-lax-page font-body text-lax-fg"
     >
+      <ClientGlobalHotkeys pages={pages} />
       <WorkspaceTopBar
         user={user}
         familyLinks={familyLinks}
@@ -139,7 +145,8 @@ function WorkspaceFrame({
 
 /**
  * The organisation workspace's shell: one 48px bar, a role-shaped sidebar with the account
- * switcher, a left-aligned content column, and the role's bottom tabs on a phone. It draws at
+ * switcher, a left-aligned content column, and the role's bottom tabs on a phone, with the
+ * client key set (`?` lists it). It draws at
  * the client density, and moves every page inside it onto the LAX system's surfaces.
  */
 export function WorkspaceShell(props: WorkspaceShellProps) {
@@ -147,7 +154,9 @@ export function WorkspaceShell(props: WorkspaceShellProps) {
     <LaxDensityProvider density="client">
       <TooltipProvider delayDuration={300}>
         <ShellChromeProvider>
-          <WorkspaceFrame {...props} />
+          <HotkeyProvider scope="page" renderHelp={renderHelp}>
+            <WorkspaceFrame {...props} />
+          </HotkeyProvider>
         </ShellChromeProvider>
       </TooltipProvider>
     </LaxDensityProvider>

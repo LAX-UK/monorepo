@@ -1,6 +1,8 @@
 "use client";
 
 import { AccountChromeProvider } from "@/components/layout/account-switcher/account-chrome-context";
+import { AccountNeedsYouProvider } from "@/components/layout/account-switcher/account-needs-you";
+import { useViewingAsClient } from "@/components/layout/view-as-client/view-as-client-context";
 import { ContextualKycReturnTracker } from "@/components/onboarding/buyer-onboarding-analytics";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { ViewerCapabilitiesProvider } from "@/lib/auth/capabilities";
@@ -52,6 +54,8 @@ export function ClientShell({
   children,
 }: Props) {
   const pathname = usePathname();
+  // Support viewing an account sees that account alone: no other account's dots are read.
+  const viewingAs = useViewingAsClient();
   const sections = useMemo(() => getClientNavSections(navScope), [navScope]);
   const tabs = useMemo(
     () => (isHideDashboardTabBarRoute(pathname) ? [] : getClientMobileTabs(navScope)),
@@ -64,19 +68,21 @@ export function ClientShell({
     <ViewerCapabilitiesProvider user={user} acting={acting}>
       <ContextualKycReturnTracker kycApproved={user.kycStatus === "approved"} />
       <AccountChromeProvider account={account}>
-        <WorkspaceShell
-          user={user}
-          account={account}
-          roleLabel={roleLabel}
-          sections={sections}
-          tabs={tabs}
-          needsYou={needsYou}
-          familyLinks={familyLinks}
-          banner={contextBanner}
-          topSlot={topSlot}
-        >
-          {children}
-        </WorkspaceShell>
+        <AccountNeedsYouProvider enabled={account.switcher !== null && !viewingAs}>
+          <WorkspaceShell
+            user={user}
+            account={account}
+            roleLabel={roleLabel}
+            sections={sections}
+            tabs={tabs}
+            needsYou={needsYou}
+            familyLinks={familyLinks}
+            banner={contextBanner}
+            topSlot={topSlot}
+          >
+            {children}
+          </WorkspaceShell>
+        </AccountNeedsYouProvider>
       </AccountChromeProvider>
     </ViewerCapabilitiesProvider>
   );

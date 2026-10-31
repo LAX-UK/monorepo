@@ -43,7 +43,7 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
 
   return (
     <section
-      aria-label="Submission actions"
+      aria-label="Consignment actions"
       className="flex flex-wrap gap-3 rounded-xl border border-border-hairline bg-surface-container-lowest p-4 shadow-sm"
     >
       {canSubmit ? (
@@ -66,8 +66,8 @@ export function SubmissionWorkflowActions({ submissionId, canSubmit, canWithdraw
           type="button"
           disabled={pending}
           variant="secondaryOutline"
-          confirmTitle="Withdraw submission"
-          confirmBody="Withdraw this submission? You can start a new submission later if needed."
+          confirmTitle="Withdraw this work"
+          confirmBody="We stop reviewing it. You can send it again later if you change your mind."
           confirmLabel="Withdraw"
           onConfirmed={() =>
             void runAction(() => withdrawSubmissionFromValuesAction(submissionId), "Withdrawn")

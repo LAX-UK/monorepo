@@ -52,8 +52,8 @@ export function WizardHeaderActions({
             size="sm"
             className="font-label text-xs"
             disabled={isSubmitting}
-            confirmTitle="Withdraw submission"
-            confirmBody="Withdraw this submission? You can start a new submission later if needed."
+            confirmTitle="Withdraw this work"
+            confirmBody="We stop reviewing it. You can send it again later if you change your mind."
             confirmLabel="Withdraw"
             onConfirmed={withdraw}
             data-testid="wizard-withdraw"
@@ -116,8 +116,8 @@ export function WizardHeaderActions({
                   variant="ghost"
                   className="h-12 w-full justify-start font-body text-base text-on-surface-variant"
                   disabled={isSubmitting}
-                  confirmTitle="Withdraw submission"
-                  confirmBody="Withdraw this submission? You can start a new submission later if needed."
+                  confirmTitle="Withdraw this work"
+                  confirmBody="We stop reviewing it. You can send it again later if you change your mind."
                   confirmLabel="Withdraw"
                   onConfirmed={withdraw}
                   data-testid="wizard-withdraw-mobile"

@@ -247,7 +247,7 @@ export function AuthoriseBuyerAgentDialog({
           <FieldBlock
             id={fieldId("limit")}
             label="Bid limit (optional)"
-            hint="The most they can bid on a lot, auto-bids included. Leave empty for no limit."
+            hint="The most they can bid on a lot, maximum bids included. Leave empty for no limit."
             error={errors.limit}
           >
             <div className="relative">

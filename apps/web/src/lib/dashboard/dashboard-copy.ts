@@ -150,7 +150,7 @@ export const ACCOUNT_LOAD_ERROR = {
   },
   consignments: {
     title: "We couldn't load your consignments",
-    description: "This is on our side. Your submissions are safe with your specialist.",
+    description: "This is on our side. Your consignments are safe with your specialist.",
   },
   payouts: {
     title: "We couldn't load your sales and payouts",
@@ -162,7 +162,7 @@ export const ACCOUNT_LOAD_ERROR = {
   },
   consignment: {
     title: "We couldn't load this consignment",
-    description: "This is on our side. Your submission is safe with your specialist.",
+    description: "This is on our side. Your consignment is safe with your specialist.",
   },
   notifications: {
     title: "We couldn't load your notifications",

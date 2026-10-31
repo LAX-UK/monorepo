@@ -511,6 +511,7 @@ export {
   needsYouWindows,
   UNSOLD_CHOICE_WINDOW_DAYS,
   UNSOLD_DUE_SOON_DAYS,
+  needsYouTaskSplit,
   needsYouCounts,
   needsYouKindAnnouncedBy,
   needsYouKindsFor,

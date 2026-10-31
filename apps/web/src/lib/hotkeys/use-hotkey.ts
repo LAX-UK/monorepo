@@ -11,6 +11,10 @@ import { useEffect, useRef } from "react";
 type UseHotkeyOptions = {
   id: string;
   keys: string;
+  alternateKeys?: readonly string[];
+  order?: number;
+  passive?: boolean;
+  hidden?: boolean;
   label: string;
   description?: string;
   group: string;
@@ -24,6 +28,10 @@ type UseHotkeyOptions = {
 export function useHotkey({
   id,
   keys,
+  alternateKeys,
+  order,
+  passive,
+  hidden,
   label,
   description,
   group,
@@ -35,6 +43,7 @@ export function useHotkey({
   const scope = useHotkeyScope();
   const handlerRef = useRef(handler);
   const whenRef = useRef(when);
+  const alternates = alternateKeys?.join("\n") ?? "";
 
   handlerRef.current = handler;
   whenRef.current = when;
@@ -44,6 +53,10 @@ export function useHotkey({
     const binding: HotkeyBinding = {
       id,
       keys,
+      ...(alternates ? { alternateKeys: alternates.split("\n") } : {}),
+      ...(order !== undefined ? { order } : {}),
+      ...(passive ? { passive } : {}),
+      ...(hidden ? { hidden } : {}),
       label,
       ...(description ? { description } : {}),
       group,
@@ -52,5 +65,18 @@ export function useHotkey({
       ...(whenRef.current ? { when: () => whenRef.current?.() ?? true } : {}),
     };
     return registerHotkey(binding);
-  }, [id, keys, label, description, group, scope, scopeOverride, enabled]);
+  }, [
+    id,
+    keys,
+    alternates,
+    order,
+    passive,
+    hidden,
+    label,
+    description,
+    group,
+    scope,
+    scopeOverride,
+    enabled,
+  ]);
 }

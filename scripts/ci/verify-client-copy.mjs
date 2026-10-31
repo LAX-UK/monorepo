@@ -48,6 +48,25 @@ export const FORBIDDEN_CLIENT_TERMS = [
     pattern: /\bOrganisation settings\b/,
     instead: "Organisation (the team is on Team)",
   },
+  // Internal process words: clients send works to sell and set a maximum bid.
+  { term: "submission", pattern: /\bsubmissions?\b/i, instead: "consignment or work" },
+  { term: "voided", pattern: /\bvoided\b/i, instead: "cancelled" },
+  {
+    term: "Marketing site",
+    pattern: /\bmarketing site\b/i,
+    instead: "LAX Bid, or the page's name",
+  },
+  {
+    term: "auto-bid",
+    pattern: /\bauto[- ]?bid(?:s|der|ders|ding)?\b/i,
+    instead: "maximum bid",
+  },
+  // "Pending" alone says nothing about who is waiting for what; as part of a phrase it may stay.
+  {
+    term: "pending",
+    pattern: /^pending[.:…]?$/i,
+    instead: "Waiting for approval, Waiting for an answer",
+  },
 ];
 
 /**
@@ -59,6 +78,27 @@ export const CLIENT_COPY_EXCEPTIONS = [
     path: "apps/web/src/lib/presenters/status/compliance.ts",
     term: "Connect pending",
     reason: "Staff status labels for Bid admin; client pages use the organisation label map.",
+  },
+  {
+    path: "apps/web/src/lib/presenters/status/catalog.ts",
+    term: "voided",
+    reason:
+      "Staff lot status labels for Bid admin's lot lists; the public sale board says Withdrawn.",
+  },
+  {
+    path: "apps/web/src/lib/presenters/status/lot-dot-status.ts",
+    term: "voided",
+    reason: "Staff lot list context only; the sale-board context a client sees says Withdrawn.",
+  },
+  {
+    path: "apps/web/src/lib/presenters/status/finance.ts",
+    term: "pending",
+    reason: "Staff payment labels; buyers see getPaymentStatusView, which says Awaiting payment.",
+  },
+  {
+    path: "apps/web/src/lib/presenters/status/people.ts",
+    term: "pending",
+    reason: "Staff invitation and registration labels for the admin status registry.",
   },
 ];
 
