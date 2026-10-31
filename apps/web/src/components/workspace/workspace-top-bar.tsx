@@ -6,6 +6,7 @@ import { useViewingAsClient } from "@/components/layout/view-as-client/view-as-c
 import { ViewAsClientMenu } from "@/components/layout/view-as-client/view-as-client-menu";
 import { SITE_LOGO_PATH, SITE_LOGO_SHORT_PATH } from "@/lib/brand";
 import type { SessionUser } from "@/lib/data/contracts";
+import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
 import type { MobileShellTitleModel } from "@/lib/navigation/mobile-shell-title";
 import type { LaxFamilyLinkVm } from "@auction/lax-ecosystem";
 import { LaxFamilyBar } from "@auction/marketing-ui";
@@ -13,6 +14,7 @@ import { cn } from "@auction/ui";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { PhoneAccountButton } from "./phone-account-button";
 
 /** The shell the shared header parts draw for. */
 const CLIENT_SHELL_ROLE = "client" as const;
@@ -31,6 +33,7 @@ export function WorkspaceTopBar({
   search,
   phoneTitle,
   scrolledTitle,
+  phoneAccountSheet = null,
 }: {
   user: SessionUser;
   familyLinks: readonly LaxFamilyLinkVm[];
@@ -40,6 +43,11 @@ export function WorkspaceTopBar({
   phoneTitle: MobileShellTitleModel;
   /** The page's title, once its large title has scrolled out of view. */
   scrolledTitle: string | null;
+  /**
+   * The accounts the person can switch between. When set, the avatar on a phone opens the
+   * account sheet instead of the person menu; from 1024px the person menu stays.
+   */
+  phoneAccountSheet?: AccountChrome["switcher"];
 }) {
   const viewingAs = useViewingAsClient();
   const showTitle = Boolean(scrolledTitle) || Boolean(phoneTitle.backHref);
@@ -102,6 +110,15 @@ export function WorkspaceTopBar({
           {search}
           {viewingAs ? (
             <ViewAsClientMenu name={viewingAs.name} />
+          ) : phoneAccountSheet ? (
+            <>
+              <div className="lg:hidden">
+                <PhoneAccountButton user={user} switcher={phoneAccountSheet} />
+              </div>
+              <div className="max-lg:hidden">
+                <ShellUserMenu user={user} role={CLIENT_SHELL_ROLE} />
+              </div>
+            </>
           ) : (
             <ShellUserMenu user={user} role={CLIENT_SHELL_ROLE} />
           )}
