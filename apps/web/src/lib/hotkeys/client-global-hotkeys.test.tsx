@@ -8,7 +8,7 @@ import { resetHotkeyRegistryForTests } from "./hotkey-registry";
 const push = vi.fn();
 vi.mock("next/navigation", () => ({ useRouter: () => ({ push }) }));
 
-function key(init: KeyboardEventInit, target: EventTarget = window) {
+function key(init: KeyboardEventInit, target: Window | HTMLElement = window) {
   act(() => {
     fireEvent.keyDown(target, init);
   });

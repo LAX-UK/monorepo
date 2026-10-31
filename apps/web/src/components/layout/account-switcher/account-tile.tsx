@@ -3,29 +3,23 @@ import { cn } from "@auction/ui";
 
 type Props = {
   account: Pick<AccountOption, "kind" | "initials">;
-  size?: "sm" | "md";
   className?: string;
 };
 
-const SIZE = {
-  sm: "size-8 rounded-md text-xs",
-  md: "size-9 rounded-lg text-[13px]",
-} as const;
-
 /**
- * An account's initials on a square tile: Bid navy for an organisation, neutral for the person's
- * own account, so the two read apart at a glance.
+ * An account's initials on a 32px tile: a square in a tint of Bid navy for an organisation, a
+ * neutral circle for the person's own account, so the two read apart at a glance.
  */
-export function AccountTile({ account, size = "md", className }: Props) {
+export function AccountTile({ account, className }: Props) {
   return (
     <span
       aria-hidden
       className={cn(
-        "inline-flex shrink-0 select-none items-center justify-center font-label font-semibold tracking-wide",
-        SIZE[size],
+        "inline-flex shrink-0 select-none items-center justify-center font-lax font-semibold tracking-[0.02em]",
+        "size-8 text-lax-12",
         account.kind === "organisation"
-          ? "bg-secondary text-on-secondary"
-          : "bg-surface-container-highest text-on-surface",
+          ? "rounded-[6px] bg-product-accent/10 text-product-accent"
+          : "rounded-full bg-lax-neutral-bg text-lax-fg",
         className,
       )}
     >

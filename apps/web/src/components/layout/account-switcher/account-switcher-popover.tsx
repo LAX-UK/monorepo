@@ -4,6 +4,7 @@ import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
 import type { ReactElement } from "react";
 import { useState } from "react";
+import { useAccountNeedsYou } from "./account-needs-you";
 import { AccountSwitcherList } from "./account-switcher-list";
 import { useAccountSwitch } from "./use-account-switch";
 
@@ -27,15 +28,19 @@ export function AccountSwitcherPopover({
 }: Props) {
   const [open, setOpen] = useState(false);
   const { pendingId, choose } = useAccountSwitch(destination);
+  // Pointing at or focusing the trigger reads the dots, so they are there when the list opens.
+  const { request } = useAccountNeedsYou();
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{trigger(pendingId)}</PopoverTrigger>
+      <PopoverTrigger asChild onPointerEnter={request} onFocus={request}>
+        {trigger(pendingId)}
+      </PopoverTrigger>
       <PopoverContent
         aria-label="Switch account"
         align={align}
         side={side}
         sideOffset={6}
-        className="w-[19rem] rounded-xl bg-surface-container-lowest p-0 shadow-lg"
+        className="w-[19rem] rounded-lax-menu border-lax-line bg-lax-raised p-1 text-lax-fg shadow-lax-md"
       >
         <AccountSwitcherList
           switcher={switcher}

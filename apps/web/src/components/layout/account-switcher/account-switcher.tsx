@@ -1,7 +1,7 @@
 "use client";
 
 import { ActingAsTooltip } from "@/components/layout/acting-as-tooltip";
-import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
+import { type AccountChrome, accountRowText } from "@/lib/navigation/account-switcher-model";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { ChevronsUpDown, Loader2 } from "lucide-react";
@@ -27,6 +27,7 @@ type Props = {
 export function AccountSwitcher({ account, collapsed = false, showHint = false }: Props) {
   const { switcher, current } = account;
   if (!switcher) return null;
+  const { title, caption } = accountRowText(current);
 
   const switcherButton = (
     <div className="relative">
@@ -38,18 +39,18 @@ export function AccountSwitcher({ account, collapsed = false, showHint = false }
             variant="ghost"
             size="link"
             type="button"
-            aria-label={`Account: ${current.name}, ${current.detail}. Switch account`}
+            aria-label={`Account: ${title}, ${caption}. Switch account`}
             data-testid="account-switcher"
             className={cn(
-              "flex w-full items-center justify-start gap-2.5 whitespace-normal rounded-xl border border-shell-stroke bg-surface-container-lowest text-left shadow-[var(--shadow-rest)] transition-colors",
-              "hover:border-outline-variant hover:bg-surface-container-lowest",
-              "data-[state=open]:border-outline-variant",
-              collapsed ? "justify-center p-1.5" : "min-h-14 py-2.5 pr-2 pl-2.5",
+              "lax-focus flex w-full items-center justify-start gap-3 whitespace-normal rounded-lax-menu border border-lax-line bg-lax-surface text-left font-normal transition-colors duration-150",
+              "hover:border-lax-line-strong hover:bg-lax-surface",
+              "data-[state=open]:border-lax-line-strong",
+              collapsed ? "justify-center p-1.5" : "min-h-14 py-2 pr-2 pl-2",
             )}
           >
             {pendingId ? (
-              <span className="inline-flex size-9 shrink-0 items-center justify-center">
-                <Loader2 className="size-4 animate-spin text-on-surface-variant" aria-hidden />
+              <span className="inline-flex size-8 shrink-0 items-center justify-center">
+                <Loader2 className="size-4 animate-spin text-lax-muted" aria-hidden />
               </span>
             ) : (
               <AccountTile account={current} />
@@ -60,18 +61,16 @@ export function AccountSwitcher({ account, collapsed = false, showHint = false }
                   {/* The account's name is the one identity in the chrome: it wraps to two lines,
                       and only a longer name is cut, with the whole name on hover. */}
                   <span
-                    className="line-clamp-2 font-body text-sm font-semibold break-words text-on-surface"
-                    {...(current.name.length > LONG_NAME ? { title: current.name } : {})}
+                    className="line-clamp-2 text-lax-14 font-semibold break-words text-lax-fg"
+                    {...(title.length > LONG_NAME ? { title } : {})}
                   >
-                    {current.name}
+                    {title}
                   </span>
                   {/* The role and state ("Owner · Documents requested") wrap rather than cut. */}
-                  <span className="block font-body text-xs text-pretty text-on-surface-variant">
-                    {current.detail}
-                  </span>
+                  <span className="block text-lax-12 text-pretty text-lax-muted">{caption}</span>
                 </span>
                 <ChevronsUpDown
-                  className="size-4 shrink-0 text-on-surface-variant"
+                  className="size-4 shrink-0 text-lax-muted"
                   strokeWidth={1.75}
                   aria-hidden
                 />
