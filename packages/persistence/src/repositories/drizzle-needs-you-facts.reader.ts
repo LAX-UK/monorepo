@@ -1,6 +1,7 @@
 import type { Database } from "@auction/db";
 import { lotNotDeleted } from "@auction/db";
 import {
+  accessRequest,
   bid,
   bidIdentityDirectory,
   bidUserProfile,
@@ -18,6 +19,7 @@ import type {
   EndingAuthorisation,
   ExpiredInvitation,
   HomeSubject,
+  PendingAccessRequest,
   PurchaseNextStepFacts,
 } from "@auction/domain";
 import type { PaymentStatus } from "@auction/types";
@@ -291,6 +293,31 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
       )
       .orderBy(asc(buyerAgentAuthorisation.validUntil), asc(buyerAgentAuthorisation.id));
     return rows.flatMap((row) => (row.endsAt ? [{ ...row, endsAt: row.endsAt }] : []));
+  }
+
+  async pendingAccessRequests(input: {
+    legalEntityId: string;
+    limit: number;
+  }): Promise<PendingAccessRequest[]> {
+    return this.db
+      .select({
+        id: accessRequest.id,
+        requesterName: sql<string>`coalesce(${bidIdentityDirectory.name}, 'A member')`,
+        askedAt: accessRequest.createdAt,
+      })
+      .from(accessRequest)
+      .leftJoin(
+        bidIdentityDirectory,
+        eq(bidIdentityDirectory.subjectId, accessRequest.requesterUserId),
+      )
+      .where(
+        and(
+          eq(accessRequest.legalEntityId, input.legalEntityId),
+          eq(accessRequest.status, "pending"),
+        ),
+      )
+      .orderBy(asc(accessRequest.createdAt), asc(accessRequest.id))
+      .limit(input.limit);
   }
 
   async viewerChecks(userId: string): Promise<{

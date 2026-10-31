@@ -16,10 +16,21 @@ const FULFILMENT_NOTIFICATION_TYPES = new Set([
   "lot_delivered",
 ]);
 
+/** Notices about the organisation itself open the page where the person acts on them. */
+const PAGE_BY_TYPE: Readonly<Record<string, string>> = {
+  delivery_quote_ready: "/purchases",
+  access_requested: "/team",
+  organisation_member_left: "/team",
+  payout_problem: "/organisation/payouts",
+  payout_bank_changed: "/organisation/payouts",
+};
+
 /** Primary deep link for an inbox row (submission detail preferred over lot page). */
 export function notificationHref(item: UserNotification): string | null {
   if (STAFF_ACCESS_NOTIFICATION_TYPES.has(item.type)) return "/admin/staff/access";
   if (FULFILMENT_NOTIFICATION_TYPES.has(item.type)) return "/purchases";
+  const page = PAGE_BY_TYPE[item.type];
+  if (page) return page;
   if (item.submissionId && STAFF_SUBMISSION_NOTIFICATION_TYPES.has(item.type)) {
     return `/admin/submissions/${item.submissionId}`;
   }

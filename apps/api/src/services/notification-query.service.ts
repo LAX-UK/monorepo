@@ -1,5 +1,7 @@
 import type {
   INotificationReadRepository,
+  NotificationCountFilter,
+  NotificationCounts,
   NotificationListFilter,
 } from "@auction/persistence/interfaces";
 import type { UserNotification, UserNotificationListItem } from "@auction/types";
@@ -17,6 +19,10 @@ export class NotificationQueryService {
     filter: NotificationListFilter,
   ): Promise<UserNotificationListItem[]> {
     return this.notifications.findByUserFiltered(userId, filter);
+  }
+
+  countForUser(userId: string, filter: NotificationCountFilter): Promise<NotificationCounts> {
+    return this.notifications.countByUser(userId, filter);
   }
 
   markRead(userId: string, notificationId: string): Promise<boolean> {

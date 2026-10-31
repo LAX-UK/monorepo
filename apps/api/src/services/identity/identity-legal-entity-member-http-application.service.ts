@@ -6,7 +6,10 @@ import {
   organisationMembersRefusal,
 } from "@auction/domain";
 import type { OrgModuleGate } from "../../lib/org-module-gate.js";
-import type { IIdentityLegalEntityMemberHttpApplicationService } from "../interfaces/identity-routes/identity-legal-entity-member-http.js";
+import type {
+  IIdentityLegalEntityMemberHttpApplicationService,
+  OwnerContact,
+} from "../interfaces/identity-routes/identity-legal-entity-member-http.js";
 import {
   type IdentityRouteOutcome,
   identityRouteCodeErr,
@@ -22,6 +25,7 @@ import type { IMemberManagementService } from "../interfaces/member-management.j
 import type { IOrganisationInvitationService } from "../interfaces/organisation-invitations.js";
 import { INVITATION_NOT_RESTORABLE } from "../invitation/organisation-invitation.service.js";
 import type { UserService } from "../user.service.js";
+import { ownerContacts } from "./owner-contacts.js";
 
 function permissionErrorStatus(code: string): number {
   switch (code) {
@@ -157,6 +161,13 @@ export class IdentityLegalEntityMemberHttpApplicationService
   async listMembers(input: { legalEntityId: string }): Promise<IdentityRouteOutcome<unknown[]>> {
     const members = await this.memberManagementService.listMembers(input.legalEntityId);
     return { kind: "ok", data: members };
+  }
+
+  async listOwnerContacts(input: {
+    legalEntityId: string;
+  }): Promise<IdentityRouteOutcome<OwnerContact[]>> {
+    const members = await this.memberManagementService.listMembers(input.legalEntityId);
+    return { kind: "ok", data: ownerContacts(members) };
   }
 
   async inviteMember(input: {

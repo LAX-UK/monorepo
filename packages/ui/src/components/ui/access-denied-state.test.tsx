@@ -41,6 +41,17 @@ describe("AccessDeniedState", () => {
     expect(screen.getByRole("heading", { level: 2 })).toBeVisible();
   });
 
+  it("names whom to ask in a quiet line under the actions", () => {
+    render(
+      <AccessDeniedState
+        page="Sold & payouts"
+        actions={<a href="/home">Back to Home</a>}
+        footnote="Need access? Ask an owner: Maya Okafor"
+      />,
+    );
+    expect(screen.getByText("Need access? Ask an owner: Maya Okafor")).toBeVisible();
+  });
+
   it("builds its words for pages that compose their own", () => {
     expect(accessDeniedTitle("Members")).toBe("You don't have access to Members");
     expect(accessDeniedTitle(null)).toBe("You don't have access");

@@ -114,6 +114,7 @@ export class NeedsYouService implements INeedsYouService {
       registrations,
       endingAuthorisations,
       expiredInvitations,
+      pendingAccessRequests,
       checks,
     ] = await Promise.all([
       when(
@@ -191,6 +192,11 @@ export class NeedsYouService implements INeedsYouService {
           }),
         [],
       ),
+      when(
+        any("access_requests"),
+        () => this.deps.facts.pendingAccessRequests({ legalEntityId, limit: LIST_LIMIT }),
+        [],
+      ),
       when(any("identity", "source_of_funds"), () => this.deps.facts.viewerChecks(member.userId), {
         identity: "verified" as const,
         sourceOfFundsRequested: false,
@@ -227,6 +233,7 @@ export class NeedsYouService implements INeedsYouService {
       outbidLots,
       expiredInvitations,
       endingAuthorisations,
+      pendingAccessRequests,
     };
     const truncated =
       [outbidLots, purchases, agreementsToAccept, changesRequested].some(

@@ -25,11 +25,23 @@ function isAccountHop(path: string): boolean {
   );
 }
 
-/** The hop that opens `next` in account `accountId`, switching to it when the person may. */
-export function switchAccountHref(accountId: string, next: string): string {
+/**
+ * The hop that opens `next` in account `accountId`, switching to it when the person may.
+ * `openedFrom` is the account a notification was opened from: the notice then offers to switch
+ * back to it.
+ */
+export function switchAccountHref(
+  accountId: string,
+  next: string,
+  openedFrom?: { notificationFrom: string },
+): string {
   const params = new URLSearchParams({ to: accountId, next });
+  if (openedFrom) params.set(NOTIFICATION_FROM_PARAM, openedFrom.notificationFrom);
   return `${CLIENT_ROUTES.accountSwitch}?${params.toString()}`;
 }
+
+/** The switch hop's parameter naming the account a notification was opened from. */
+export const NOTIFICATION_FROM_PARAM = "from";
 
 /**
  * Asks before opening `next` in account `accountId`: where a link from another site (an email, a

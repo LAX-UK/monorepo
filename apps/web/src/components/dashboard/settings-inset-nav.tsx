@@ -25,7 +25,7 @@ const BID_SETTINGS: readonly NavItem[] = [
     match: (pathname) => pathname.startsWith("/settings/bidding"),
   },
   {
-    href: "/settings#notifications",
+    href: "/settings#alerts",
     label: "Auction alerts and notifications",
     match: (pathname) => pathname.startsWith("/settings/notifications"),
   },

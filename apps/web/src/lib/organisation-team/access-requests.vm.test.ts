@@ -1,6 +1,22 @@
 import { describe, expect, it } from "vitest";
 import type { AccessRequestView } from "../data/http/organisation-team.types";
-import { accessRequestRows, askableRoles } from "./access-requests.vm";
+import { accessRequestRows, askableRoles, roleChangeConsequence } from "./access-requests.vm";
+
+describe("roleChangeConsequence", () => {
+  it("says which pages a replaced role would lose, from the capability table", () => {
+    const { lost, sentence } = roleChangeConsequence("finance", "buyer_agent");
+    expect(lost).toContain("Sold & payouts");
+    expect(lost).not.toContain("Purchases");
+    expect(sentence).toMatch(/^This replaces your Finance role, so you'd lose .*Sold & payouts/);
+  });
+
+  it("says nothing is lost when the new role opens everything the old one did", () => {
+    expect(roleChangeConsequence("consignor", "admin")).toEqual({
+      lost: [],
+      sentence: "This replaces your Consignor role. You keep every page you can open now.",
+    });
+  });
+});
 
 const base: AccessRequestView = {
   id: "r1",

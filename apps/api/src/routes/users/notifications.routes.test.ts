@@ -11,6 +11,7 @@ const ORG = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
 
 function mount(memberOf: string[] = [ORG]) {
   const listForUserFiltered = vi.fn().mockResolvedValue([]);
+  const countForUser = vi.fn().mockResolvedValue({ needsAction: 4, unread: 6 });
   const muted = new Map<string, NotificationAccountMuteRecord>();
   const mutes = new NotificationAccountMuteService({
     listMutedAccountIds: async () => [...muted.keys()],
@@ -22,7 +23,7 @@ function mount(memberOf: string[] = [ORG]) {
     unmute: async (_userId, id) => muted.delete(id),
   });
   const notificationsHttp = new UserNotificationsHttpApplicationService(
-    { listForUserFiltered } as never,
+    { listForUserFiltered, countForUser } as never,
     mutes,
   );
   const users = new Hono() as UserHono;
@@ -35,10 +36,21 @@ function mount(memberOf: string[] = [ORG]) {
     container: { userRoutes: { notificationsHttp } },
     requireAuth: passThrough,
   } as unknown as UserRouteDeps);
-  return { app: new Hono().route("/users", users), listForUserFiltered };
+  return { app: new Hono().route("/users", users), listForUserFiltered, countForUser };
 }
 
 describe("notification inbox routes", () => {
+  it("counts what needs action and what is unread, for one account when asked", async () => {
+    const { app, countForUser } = mount();
+    const res = await app.request(`/users/me/notifications/counts?account=${ORG}`);
+    expect(res.status).toBe(200);
+    expect(((await res.json()) as { data: unknown }).data).toEqual({ needsAction: 4, unread: 6 });
+    expect(countForUser).toHaveBeenCalledWith("ada", {
+      account: { kind: "entity", legalEntityId: ORG },
+    });
+    expect((await app.request("/users/me/notifications/counts?account=x")).status).toBe(400);
+  });
+
   it("passes the needs-action view and an organisation filter through", async () => {
     const { app, listForUserFiltered } = mount();
     const res = await app.request(`/users/me/notifications?tab=needs_action&account=${ORG}`);
@@ -59,6 +71,14 @@ describe("notification inbox routes", () => {
       tab: "all",
       account: { kind: "personal" },
     });
+  });
+
+  it("searches the title and message, trimmed and capped", async () => {
+    const { app, listForUserFiltered } = mount();
+    await app.request(`/users/me/notifications?q=${encodeURIComponent("  Arles  ")}`);
+    expect(listForUserFiltered.mock.calls[0]?.[1]).toMatchObject({ query: "Arles" });
+    await app.request(`/users/me/notifications?q=${"a".repeat(300)}`);
+    expect(listForUserFiltered.mock.calls[1]?.[1]?.query).toHaveLength(100);
   });
 
   it("rejects an account that is neither personal nor an id", async () => {

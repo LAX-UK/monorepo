@@ -2,6 +2,7 @@ import type {
   EndingAuthorisation,
   ExpiredInvitation,
   HomeSubject,
+  PendingAccessRequest,
   PurchaseNextStepFacts,
 } from "@auction/domain";
 import type { SubmissionSenderFilter } from "./item-submission.repository.js";
@@ -58,6 +59,12 @@ export interface INeedsYouFactsReader {
     now: Date;
     until: Date;
   }): Promise<EndingAuthorisation[]>;
+
+  /** "Ask for access" requests still waiting for a decision, oldest first. */
+  pendingAccessRequests(input: {
+    legalEntityId: string;
+    limit: number;
+  }): Promise<PendingAccessRequest[]>;
 
   /** The member's own checks: identity, and whether source of funds documents were asked for. */
   viewerChecks(userId: string): Promise<{

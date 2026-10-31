@@ -260,7 +260,14 @@ export function ShowingCount({
 
 export type ListToolbarProps = {
   /** The list's views, as links with counts. */
-  tabs?: { items: readonly TabNavItem[]; activeId: string; label: string; Link: LinkComponent };
+  tabs?: {
+    items: readonly TabNavItem[];
+    activeId: string;
+    label: string;
+    Link: LinkComponent;
+    /** See `TabNav`: a short fixed set of views may scroll instead of folding into "More". */
+    overflow?: "menu" | "scroll";
+  };
   search?: ListSearchProps;
   /** The filter button opens the sheet; the page renders `FilterSheet` with its fields. */
   filter?: { count: number; open: boolean; onOpenChange: (open: boolean) => void };
@@ -280,7 +287,13 @@ export function ListToolbar({ tabs, search, filter, sort, chips, className }: Li
   return (
     <div className={cn("flex flex-col gap-4", className)}>
       {tabs ? (
-        <TabNav items={tabs.items} activeId={tabs.activeId} label={tabs.label} Link={tabs.Link} />
+        <TabNav
+          items={tabs.items}
+          activeId={tabs.activeId}
+          label={tabs.label}
+          Link={tabs.Link}
+          {...(tabs.overflow ? { overflow: tabs.overflow } : {})}
+        />
       ) : null}
       {search || filter || sort ? (
         <div className="flex flex-col gap-2 md:flex-row md:items-center">

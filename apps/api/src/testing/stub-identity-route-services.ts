@@ -28,6 +28,7 @@ export function stubIdentityRouteServices(
     recordAccount: { accountFor: vi.fn() },
     legalEntityMemberHttp: {
       listMembers: vi.fn(),
+      listOwnerContacts: vi.fn(),
       inviteMember: vi.fn(),
       updateMemberRole: vi.fn(),
       removeMember: vi.fn(),

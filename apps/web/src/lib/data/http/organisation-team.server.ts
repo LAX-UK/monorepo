@@ -143,3 +143,12 @@ export async function getServerAccessRequests(
     z.array(accessRequestSchema),
   );
 }
+
+/** The owners' names, primary owner first, for any member; `null` when they can't be read. */
+export async function getServerOwnerNames(legalEntityId: string): Promise<string[] | null> {
+  const owners = await readData(
+    await get("/legal-entities/members/owners", legalEntityId),
+    z.array(z.object({ name: z.string() })),
+  );
+  return owners ? owners.map((owner) => owner.name) : null;
+}

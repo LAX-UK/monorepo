@@ -1,3 +1,4 @@
+import { withLockedPreferencesOn } from "@auction/domain";
 import type { NotificationPreferenceInput } from "@auction/persistence/interfaces";
 import type { INotificationPreferenceRepository } from "@auction/persistence/interfaces";
 import { defaultNotificationPreference } from "@auction/persistence/lib";
@@ -51,9 +52,10 @@ export class UserPreferencesHttpApplicationService
     userId: string;
     body: NotificationPreferencePatch;
   }): Promise<UserHttpJson> {
+    // Alerts that protect a bid or a payment stay on, whatever a client sends.
     const data = await this.deps.notificationPreferenceRepository.upsert(
       input.userId,
-      input.body as NotificationPreferenceInput,
+      withLockedPreferencesOn(input.body) as NotificationPreferenceInput,
     );
     return { status: 200, body: { data } };
   }

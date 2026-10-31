@@ -45,6 +45,7 @@ export function stubUserRouteServices(overrides?: Partial<UserRouteServices>): U
     },
     notificationsHttp: {
       listNotifications: vi.fn(),
+      countNotifications: vi.fn(),
       markManyRead: vi.fn(),
       archiveNotification: vi.fn(),
       markRead: vi.fn(),

@@ -2,6 +2,7 @@ import { DashboardFetchWarningBanner } from "@/components/dashboard/dashboard-fe
 import { ExportShellClient } from "@/components/exports/export-shell-client";
 import { AccountChangedElsewhere } from "@/components/layout/account-switcher/account-changed-elsewhere";
 import { AccountNotice } from "@/components/layout/account-switcher/account-notice";
+import { NotificationSwitchToast } from "@/components/layout/account-switcher/notification-switch-toast";
 import { BidSiteChrome } from "@/components/layout/bid-site-chrome";
 import { CommandPaletteLazy } from "@/components/layout/command-palette-lazy";
 import { ReadOnlyBoundary } from "@/components/layout/view-as-client/read-only-boundary";
@@ -29,6 +30,7 @@ import {
   ACCOUNT_NOTICE_COOKIE,
   accountNoticeMessage,
   decodeAccountNotice,
+  notificationSwitchToast,
 } from "@/lib/navigation/account-notice";
 import { buildAccountChrome } from "@/lib/navigation/account-switcher-model";
 import { chooseClientLayout } from "@/lib/navigation/client-layout";
@@ -119,15 +121,20 @@ export default async function ClientAreaLayout({ children }: { children: ReactNo
     pendingInvitations: pendingInvites.length,
   });
 
-  const noticeMessage = accountNoticeMessage(
-    decodeAccountNotice(jar.get(ACCOUNT_NOTICE_COOKIE)?.value),
-    (id) => {
-      const option = account.switcher?.options.find((o) => o.id === id);
-      if (!option) return null;
-      return option.kind === "personal" ? "your personal account" : option.name;
-    },
-  );
+  const notice = decodeAccountNotice(jar.get(ACCOUNT_NOTICE_COOKIE)?.value);
+  const optionOf = (id: string) => account.switcher?.options.find((o) => o.id === id) ?? null;
+  // Opening a notification for another account says so in a toast that offers the way back.
+  const switchToast =
+    notice?.kind === "opened_notification" ? notificationSwitchToast(notice, optionOf) : null;
+  const noticeMessage = switchToast
+    ? null
+    : accountNoticeMessage(notice, (id) => {
+        const option = optionOf(id);
+        if (!option) return null;
+        return option.kind === "personal" ? "your personal account" : option.name;
+      });
   const banners = [
+    ...(switchToast ? [<NotificationSwitchToast key="switch-toast" {...switchToast} />] : []),
     ...(noticeMessage ? [<AccountNotice key={noticeMessage} message={noticeMessage} />] : []),
     ...layoutWarnings.map((w) => (
       <DashboardFetchWarningBanner key={w.title} title={w.title} message={w.message} />

@@ -59,6 +59,16 @@ export function createLegalEntityMemberRoutes(
     return respondIdentityRouteOutcome(c, outcome);
   });
 
+  /**
+   * The owners by name, for any member: a page a member's role can't open says whom to ask
+   * ("Need access? Ask an owner: Maya Okafor"). Names only; emails stay with the member list.
+   */
+  r.get("/members/owners", requireAuth, requireContext, async (c) => {
+    const ctx = c.get("legalEntityContext") as LegalEntityContext;
+    const outcome = await memberHttp.listOwnerContacts({ legalEntityId: ctx.legalEntityId });
+    return respondIdentityRouteOutcome(c, outcome);
+  });
+
   r.post(
     "/members",
     requireAuth,

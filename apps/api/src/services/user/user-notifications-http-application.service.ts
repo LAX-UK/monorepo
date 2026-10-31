@@ -1,3 +1,4 @@
+import type { NotificationAccountFilter } from "@auction/persistence/interfaces";
 import type { IUserNotificationsHttpApplicationService } from "../interfaces/user-routes/user-notifications-http.js";
 import type { UserHttpJson } from "../interfaces/user-routes/user-route-http.js";
 import type { NotificationQueryService } from "../notification-query.service.js";
@@ -19,6 +20,17 @@ export class UserNotificationsHttpApplicationService
       offset: input.offset,
       tab: input.tab,
       type: input.type,
+      account: input.account,
+      query: input.query,
+    });
+    return { status: 200, body: { data } };
+  }
+
+  async countNotifications(input: {
+    userId: string;
+    account?: NotificationAccountFilter;
+  }): Promise<UserHttpJson> {
+    const data = await this.notificationQueryService.countForUser(input.userId, {
       account: input.account,
     });
     return { status: 200, body: { data } };

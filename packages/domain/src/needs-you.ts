@@ -1,4 +1,5 @@
 import type { LegalEntityStatus } from "@auction/types";
+import { canDecideAccessRequests } from "./access-request.js";
 import { accountBidScope } from "./account-buying-scope.js";
 import { roleBidsThroughAuthorisation } from "./bid-authority.js";
 import {
@@ -48,6 +49,8 @@ export type NeedsYouTask =
   | { kind: "register"; sale: HomeSubject; startsAt: Date; bidLimit: string | null }
   | { kind: "authorisation_ending"; authorisations: EndingAuthorisation[] }
   | { kind: "invitations_expired"; invitations: ExpiredInvitation[] }
+  /** Members who asked for more access, waiting for an owner or admin to decide. */
+  | { kind: "access_requests"; requests: PendingAccessRequest[] }
   | { kind: "documents" }
   | { kind: "identity" }
   | { kind: "source_of_funds" }
@@ -57,6 +60,7 @@ export type NeedsYouKind = NeedsYouTask["kind"];
 
 export type EndingAuthorisation = { id: string; memberName: string; endsAt: Date };
 export type ExpiredInvitation = { id: string; email: string; expiredAt: Date };
+export type PendingAccessRequest = { id: string; requesterName: string; askedAt: Date };
 
 /**
  * Everything the table reads, already loaded and already narrowed to what the member may see
@@ -89,6 +93,8 @@ export type NeedsYouFacts = {
   expiredInvitations: readonly ExpiredInvitation[];
   /** Buyer-agent authorisations that end soon. */
   endingAuthorisations: readonly EndingAuthorisation[];
+  /** "Ask for access" requests still waiting for a decision, oldest first. */
+  pendingAccessRequests: readonly PendingAccessRequest[];
 };
 
 /** Days a consignor has to choose what happens to an unsold lot, from the end of its sale. */
@@ -128,7 +134,7 @@ export type NeedsYouLink =
   | { page: "consignment"; id: string }
   | { page: "consignments"; view: "unsold" }
   | { page: "sale"; id: string }
-  | { page: "team"; view: "invitations" | "who_can_bid" }
+  | { page: "team"; view: "members" | "invitations" | "who_can_bid" }
   | { page: "bid_settings" }
   | { page: "organisation"; view: "documents" | "payouts" }
   | { page: "verify_identity" }
@@ -368,6 +374,19 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
         : [],
     items: (task) => task.invitations.length,
     link: () => ({ page: "team", view: "invitations" }),
+  },
+  access_requests: {
+    kind: "access_requests",
+    section: "team",
+    allowed: (actor) => canDecideAccessRequests(actor) && acting(actor),
+    announcedBy: ["access_requested"],
+    collect: (facts) =>
+      facts.pendingAccessRequests.length > 0
+        ? [{ kind: "access_requests", requests: [...facts.pendingAccessRequests] }]
+        : [],
+    items: (task) => task.requests.length,
+    // The requests wait at the top of Team's Members tab.
+    link: () => ({ page: "team", view: "members" }),
   },
   documents: {
     kind: "documents",

@@ -21,6 +21,9 @@ function setup(options: { standing?: { status: "approved"; payoutsReady: boolean
       { id: "i1", email: "sam@example.com", expiredAt: new Date("2026-11-08T00:00:00Z") },
     ]),
     endingAuthorisations: vi.fn(async () => []),
+    pendingAccessRequests: vi.fn(async () => [
+      { id: "r1", requesterName: "Tom", askedAt: new Date("2026-11-09T00:00:00Z") },
+    ]),
     viewerChecks: vi.fn(async () => ({
       identity: "required" as const,
       sourceOfFundsRequested: false,
@@ -88,12 +91,13 @@ describe("NeedsYouService", () => {
       ["unsold_due", { page: "consignments", view: "unsold" }],
       ["agreement", { page: "consignment", id: "c1" }],
       ["invitations_expired", { page: "team", view: "invitations" }],
+      ["access_requests", { page: "team", view: "members" }],
     ]);
     expect(view.counts).toEqual({
       bids: 1,
       purchases: 1,
       consignments: 2,
-      team: 1,
+      team: 2,
       organisation: 0,
     });
     expect(view.truncated).toBe(false);
@@ -127,6 +131,8 @@ describe("NeedsYouService", () => {
     );
     expect(facts.agreementsToAccept).not.toHaveBeenCalled();
     expect(facts.expiredInvitations).not.toHaveBeenCalled();
+    // Only owners and admins decide access requests.
+    expect(facts.pendingAccessRequests).not.toHaveBeenCalled();
   });
 
   it("consignor: their own submissions only", async () => {

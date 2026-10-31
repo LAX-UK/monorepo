@@ -10,6 +10,7 @@ describe("notificationNeedsAction", () => {
     "payment_due",
     "consignment_agreement_reminder",
     "submission_changes_requested",
+    "access_requested",
     "kyc_resubmission_required",
     "source_of_funds_documents_requested",
   ])("asks for action on %s", (type) => {

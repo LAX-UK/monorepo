@@ -8,6 +8,7 @@ import {
   FileSearch,
   FileText,
   Gavel,
+  Landmark,
   type LucideIcon,
   PackageCheck,
   ShieldAlert,
@@ -15,6 +16,7 @@ import {
   Truck,
   UserRoundCog,
   UserRoundX,
+  Users,
   XCircle,
 } from "lucide-react";
 
@@ -69,7 +71,7 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
     return { label: "Staff role", Icon: UserRoundCog, tone: "info" };
   }
   if (type === "submission_received_for_review") {
-    return { label: "Submission", Icon: BellRing, tone: "info" };
+    return { label: "Consignment", Icon: BellRing, tone: "info" };
   }
   if (type === "submission_approved") {
     return { label: "Approved", Icon: Trophy, tone: "success" };
@@ -81,13 +83,32 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
     return { label: "Not accepted", Icon: XCircle, tone: "neutral" };
   }
   if (type === "submission_draft_reminder") {
-    return { label: "Submission reminder", Icon: Clock, tone: "info" };
+    return { label: "Consignment reminder", Icon: Clock, tone: "info" };
   }
   if (type === "submission_changes_requested") {
     return { label: "Needs changes", Icon: FileText, tone: "warn" };
   }
   if (type === "consignment_agreement_reminder") {
-    return { label: "Agreement waiting", Icon: Clock, tone: "warn" };
+    return { label: "Agreement waiting", Icon: FileText, tone: "warn" };
+  }
+  // Membership and access: the people icon Team uses.
+  if (type === "access_requested") {
+    return { label: "Access request", Icon: Users, tone: "info" };
+  }
+  if (type === "access_request_decided") {
+    return { label: "Access decision", Icon: Users, tone: "neutral" };
+  }
+  if (type === "organisation_member_left") {
+    return { label: "Member left", Icon: Users, tone: "neutral" };
+  }
+  if (type === "delivery_quote_ready") {
+    return { label: "Delivery quote", Icon: Truck, tone: "info" };
+  }
+  if (type === "payout_problem" || type === "payout_bank_changed") {
+    return { label: "Payouts", Icon: Landmark, tone: "warn" };
+  }
+  if (type === "bid_refused_limit") {
+    return { label: "Bid refused", Icon: Gavel, tone: "warn" };
   }
   if (type === "consignment_update") {
     return { label: "Consignment update", Icon: FileText, tone: "neutral" };

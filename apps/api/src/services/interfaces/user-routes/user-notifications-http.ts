@@ -5,6 +5,12 @@ import type {
 import type { UserHttpJson } from "./user-route-http.js";
 
 export interface IUserNotificationsHttpApplicationService {
+  /** The numbers beside Needs action and Unread, for every account or one. */
+  countNotifications(input: {
+    userId: string;
+    account?: NotificationAccountFilter;
+  }): Promise<UserHttpJson>;
+
   /** The inbox page; each item carries its account and whether it needs action. */
   listNotifications(input: {
     userId: string;
@@ -13,6 +19,7 @@ export interface IUserNotificationsHttpApplicationService {
     tab: NotificationListTab;
     type?: string;
     account?: NotificationAccountFilter;
+    query?: string;
   }): Promise<UserHttpJson>;
 
   markManyRead(input: { userId: string; ids: string[] }): Promise<UserHttpJson>;
