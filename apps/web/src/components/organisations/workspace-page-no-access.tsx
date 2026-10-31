@@ -57,6 +57,8 @@ export async function WorkspacePageNoAccess({ label, openedBy, next, inPage = fa
             page={label}
             roles={ask?.roles ?? []}
             waiting={ask?.waiting ?? null}
+            // Without an organisation there is nothing to ask for, so no role is replaced.
+            currentRole={active?.actor.role ?? "viewer"}
           />
           <SwitchAccountAction destination={next} emphasis="secondary" />
         </>

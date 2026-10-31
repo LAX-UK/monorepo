@@ -30,6 +30,7 @@ import type { NotificationPreference } from "@auction/types";
 import { Button, Field, NativeSelect, PresetCards, ReasonTooltip, Switch } from "@auction/ui/lax";
 import { Lock } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
+import { DevicePushRow } from "./device-push-row";
 
 const CHANNELS: readonly { id: AlertChannel; label: string }[] = [
   { id: "email", label: "Email" },
@@ -149,6 +150,7 @@ export function AlertsSettings({ initial }: { initial: NotificationPreference })
           {LOCKED_NOTIFICATION_PREFERENCE_REASON}
         </p>
       </div>
+      <DevicePushRow />
       <QuietHours values={values} onSave={(next) => save(next, values)} />
     </>
   );

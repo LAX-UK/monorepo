@@ -1,6 +1,7 @@
 "use client";
 
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { roleChangeConsequence } from "@/lib/organisation-team/access-requests.vm";
 import {
   askForAccessAction,
   withdrawAccessRequestAction,
@@ -11,7 +12,7 @@ import {
 } from "@/lib/presenters/organisation-role/organisation-role-presentation";
 import { notify } from "@/lib/ui/notify";
 import type { LegalEntityMemberRole } from "@auction/types";
-import { Button, Dialog, DialogClose, Field, PresetCards, TextArea } from "@auction/ui/lax";
+import { Button, Dialog, DialogClose, Field, Notice, PresetCards, TextArea } from "@auction/ui/lax";
 import { Check } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -25,6 +26,8 @@ type Props = {
   roles: readonly LegalEntityMemberRole[];
   /** The request already waiting, if any. */
   waiting: { id: string; role: LegalEntityMemberRole | null } | null;
+  /** The member's role now: an approval replaces it, and the dialog says what that costs. */
+  currentRole: LegalEntityMemberRole;
 };
 
 const REASON_MIN = 3;
@@ -33,10 +36,12 @@ const REASON_MIN = 3;
  * The actions on a tab the person cannot open: "Ask for access" (a role, and why, sent to the
  * owners and admins), or the request already sent with a way to withdraw it; and Back to Home.
  */
-export function NoAccessActions({ legalEntityId, page, roles, waiting }: Props) {
+export function NoAccessActions({ legalEntityId, page, roles, waiting, currentRole }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [role, setRole] = useState<LegalEntityMemberRole | undefined>(roles[0]);
+  // A member holds one role: asking for another replaces it, so say what that costs first.
+  const consequence = role ? roleChangeConsequence(currentRole, role) : null;
   const [reason, setReason] = useState("");
   const [tried, setTried] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -144,6 +149,13 @@ export function NoAccessActions({ legalEntityId, page, roles, waiting }: Props) 
               {organisationRoleDescription(role)}
             </p>
           )}
+          {consequence ? (
+            consequence.lost.length > 0 ? (
+              <Notice tone="warning" title={consequence.sentence} />
+            ) : (
+              <p className="text-lax-13 text-lax-muted">{consequence.sentence}</p>
+            )
+          ) : null}
           <Field label="Why you need it" error={(tried ? reasonProblem : null) ?? error}>
             <TextArea
               value={reason}

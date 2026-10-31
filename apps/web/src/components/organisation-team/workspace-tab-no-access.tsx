@@ -51,6 +51,7 @@ export async function WorkspaceTabNoAccess({
           page={access.label}
           roles={ask.roles}
           waiting={ask.waiting}
+          currentRole={actor.role}
         />
       }
     />
