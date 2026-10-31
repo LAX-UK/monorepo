@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  bindingHelpKeys,
   getActiveHotkeyScope,
   popHotkeyScope,
   pushHotkeyScope,
@@ -38,5 +39,10 @@ describe("hotkey-registry", () => {
     });
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("Hotkey conflict"));
     warn.mockRestore();
+  });
+
+  it("lists a binding's keys once each, as the kit draws them", () => {
+    expect(bindingHelpKeys({ keys: "Shift+?", alternateKeys: ["?"] })).toEqual(["Shift+?"]);
+    expect(bindingHelpKeys({ keys: "$mod+k", alternateKeys: ["/"] })).toEqual(["$mod+k", "/"]);
   });
 });

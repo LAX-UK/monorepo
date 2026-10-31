@@ -1,6 +1,6 @@
 import { render, screen, within } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { KeyboardShortcutsDialog, ShortcutKeys } from "./index.js";
+import { KeyboardShortcutsDialog, ShortcutKeys, shortcutKeyCaps } from "./index.js";
 
 describe("KeyboardShortcutsDialog", () => {
   it("lists each group's actions with their keys, alternatives read with or", () => {
@@ -42,5 +42,32 @@ describe("ShortcutKeys", () => {
   it("reads a sequence with then by default", () => {
     render(<ShortcutKeys keys="g o" />);
     expect(screen.getByText("then")).toBeInTheDocument();
+  });
+});
+
+describe("shortcutKeyCaps", () => {
+  it("shows ? as one key, with Shift implied by the symbol", () => {
+    expect(shortcutKeyCaps("?")).toEqual([["?"]]);
+    expect(shortcutKeyCaps("shift+?")).toEqual([["?"]]);
+    expect(shortcutKeyCaps("Shift+?")).toEqual([["?"]]);
+  });
+
+  it("reads modifiers and named keys in sentence case, never in capitals", () => {
+    expect(shortcutKeyCaps("shift+j")).toEqual([["Shift", "J"]]);
+    expect(shortcutKeyCaps("SHIFT+J")).toEqual([["Shift", "J"]]);
+    expect(shortcutKeyCaps("escape")).toEqual([["Esc"]]);
+    expect(shortcutKeyCaps("Enter")).toEqual([["↵"]]);
+    expect(shortcutKeyCaps("tab")).toEqual([["Tab"]]);
+  });
+
+  it("shows ⌘ on a Mac and Ctrl elsewhere, in both syntaxes", () => {
+    expect(shortcutKeyCaps("mod+k")).toEqual([["⌘", "K"]]);
+    expect(shortcutKeyCaps("$mod+k")).toEqual([["⌘", "K"]]);
+    expect(shortcutKeyCaps("mod+k", { mac: false })).toEqual([["Ctrl", "K"]]);
+  });
+
+  it("splits a sequence into steps, and keeps + as a key", () => {
+    expect(shortcutKeyCaps("g h")).toEqual([["G"], ["H"]]);
+    expect(shortcutKeyCaps("mod++")).toEqual([["⌘", "+"]]);
   });
 });

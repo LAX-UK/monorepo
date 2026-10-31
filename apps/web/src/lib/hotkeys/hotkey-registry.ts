@@ -1,3 +1,5 @@
+import { shortcutKeyCaps } from "@auction/ui/lax";
+
 export type HotkeyScope = "global" | "page" | "table" | "dialog";
 
 export type HotkeyBinding = {
@@ -26,6 +28,19 @@ export type HotkeyBinding = {
 /** Every key string a binding answers to. */
 export function bindingKeys(binding: Pick<HotkeyBinding, "keys" | "alternateKeys">): string[] {
   return [binding.keys, ...(binding.alternateKeys ?? [])];
+}
+
+/**
+ * The keys a help list shows for a binding: only those the kit's formatter draws differently, so
+ * "Shift+?" and "?" show as one "?" key.
+ */
+export function bindingHelpKeys(binding: Pick<HotkeyBinding, "keys" | "alternateKeys">): string[] {
+  const byCaps = new Map<string, string>();
+  for (const keys of bindingKeys(binding)) {
+    const caps = JSON.stringify(shortcutKeyCaps(keys));
+    if (!byCaps.has(caps)) byCaps.set(caps, keys);
+  }
+  return [...byCaps.values()];
 }
 
 type Listener = () => void;

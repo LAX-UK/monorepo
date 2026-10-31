@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clientGoToShortcuts, displayKeys } from "./client-hotkeys";
+import { clientGoToShortcuts } from "./client-hotkeys";
 
 describe("clientGoToShortcuts", () => {
   it("offers a g key only for pages in the person's menu, in a fixed order", () => {
@@ -27,16 +27,5 @@ describe("clientGoToShortcuts", () => {
       "g c",
       "g t",
     ]);
-  });
-});
-
-describe("displayKeys", () => {
-  it("turns tinykeys syntax into the kit's, without repeating a key", () => {
-    expect(displayKeys(["$mod+k", "/"])).toEqual(["mod+k", "/"]);
-    expect(displayKeys(["Shift+?", "?"])).toEqual(["?"]);
-    expect(displayKeys(["g h"])).toEqual(["g h"]);
-    expect(displayKeys(["Enter"])).toEqual(["enter"]);
-    expect(displayKeys(["Escape"])).toEqual(["escape"]);
-    expect(displayKeys(["Shift+j"])).toEqual(["shift+j"]);
   });
 });

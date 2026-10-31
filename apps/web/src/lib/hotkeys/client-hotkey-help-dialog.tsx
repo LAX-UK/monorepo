@@ -1,7 +1,10 @@
 "use client";
 
-import { displayKeys } from "@/lib/hotkeys/client-hotkeys";
-import { bindingKeys, getGroupedHotkeys, subscribeHotkeys } from "@/lib/hotkeys/hotkey-registry";
+import {
+  bindingHelpKeys,
+  getGroupedHotkeys,
+  subscribeHotkeys,
+} from "@/lib/hotkeys/hotkey-registry";
 import { KeyboardShortcutsDialog, type ShortcutGroup } from "@auction/ui/lax";
 import { useEffect, useState } from "react";
 
@@ -16,7 +19,7 @@ export function shortcutGroups(): ShortcutGroup[] {
     items: bindings.map((binding) => ({
       id: binding.id,
       label: binding.description ?? binding.label,
-      keys: displayKeys(bindingKeys(binding)),
+      keys: bindingHelpKeys(binding),
     })),
   }));
 }

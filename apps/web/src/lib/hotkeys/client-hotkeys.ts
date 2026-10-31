@@ -37,20 +37,3 @@ export function clientGoToShortcuts(
       : [];
   });
 }
-
-/** One step of a tinykeys binding in kit syntax: "$mod+k" → "mod+k", "Shift+?" → "?". */
-function displayStep(step: string): string {
-  const parts = step.split("+");
-  const key = parts[parts.length - 1] ?? "";
-  // A symbol already says shift ("?" is shift and slash), so the modifier is not repeated.
-  const symbol = key.length === 1 && !/[a-z0-9]/i.test(key);
-  return parts
-    .filter((part, index) => !(symbol && part === "Shift" && index < parts.length - 1))
-    .map((part) => (part === "$mod" ? "mod" : part.toLowerCase()))
-    .join("+");
-}
-
-/** A binding's keys in the kit's display syntax, without duplicates ("Shift+?" and "?"). */
-export function displayKeys(keys: readonly string[]): string[] {
-  return [...new Set(keys.map((combo) => combo.split(" ").map(displayStep).join(" ")))];
-}
