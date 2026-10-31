@@ -35,3 +35,36 @@ export function formatEstimateRange(input: {
   const currency = normalizeCurrencyCode(input.currency);
   return `${formatMoney(input.low, currency)} – ${formatMoney(input.high, currency)}`;
 }
+
+function toAmount(amount: string | number): number {
+  return typeof amount === "string" ? Number.parseFloat(amount) : amount;
+}
+
+/**
+ * Money in whole units for a list's figure cell, where pennies add nothing ("£9,200"). Amounts
+ * the seller receives keep their pennies (`formatMoney`).
+ */
+export function formatWholeMoney(amount: string | number, currency: string): string {
+  const n = toAmount(amount);
+  if (!Number.isFinite(n)) return "—";
+  return new Intl.NumberFormat("en-GB", {
+    style: "currency",
+    currency: normalizeCurrencyCode(currency),
+    maximumFractionDigits: 0,
+  }).format(n);
+}
+
+/**
+ * An estimate in a list's figure cell: whole units with the symbol once ("£8,000–12,000"), so it
+ * fits beside other figures. Pages with room use {@link formatEstimateRange}.
+ */
+export function formatEstimateRangeShort(input: {
+  low: string;
+  high: string;
+  currency: string;
+}): string {
+  const high = toAmount(input.high);
+  if (!Number.isFinite(toAmount(input.low)) || !Number.isFinite(high)) return "—";
+  const tail = new Intl.NumberFormat("en-GB", { maximumFractionDigits: 0 }).format(high);
+  return `${formatWholeMoney(input.low, input.currency)}–${tail}`;
+}

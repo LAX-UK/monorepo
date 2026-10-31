@@ -43,8 +43,14 @@ test.describe("organisation finance journey @roles", () => {
     });
 
     await test.step("opens a payout statement", async () => {
-      await page.goto("/selling/payouts");
-      const statement = page.locator(`a[href*="${ORGANISATION_JOURNEY_IDS.payoutPaid}"]`);
+      // Payouts are a view of Sold & payouts; each opens to its page, which holds the statement.
+      await page.goto("/selling/payouts?tab=payouts");
+      const payout = page.locator(
+        `a[href$="/selling/payouts/${ORGANISATION_JOURNEY_IDS.payoutPaid}"]`,
+      );
+      await expect(payout.first()).toBeVisible();
+      await payout.first().click();
+      const statement = page.getByRole("link", { name: "Download statement (PDF)" });
       await expect(statement.first()).toBeVisible();
       const href = await statement.first().getAttribute("href");
       const response = await page.request.get(href ?? "", { maxRedirects: 0 });

@@ -146,16 +146,20 @@ function ChoiceForm({
  * (perhaps with a lower reserve), a private sale or its return, and a specialist confirms it.
  * Members who cannot choose see who can, then the choice once made.
  */
-export function UnsoldLotChoicePanel({ submissionId, view, current = null }: Props) {
+export function UnsoldLotChoicePanel({
+  submissionId,
+  view,
+  current = null,
+  deadline = null,
+}: Props & {
+  /** The date the choice is due ("12 Nov"), while nothing has been chosen. */
+  deadline?: string | null;
+}) {
   const [changing, setChanging] = useState(false);
   const intro = UNSOLD_CHOICE_INTRO[changing ? "choose" : view.mode];
 
   return (
-    <section
-      aria-labelledby="unsold-choice-heading"
-      id="what-happens-next"
-      className="scroll-mt-24"
-    >
+    <section aria-labelledby="unsold-choice-heading" id="unsold" className="scroll-mt-24">
       <Surface variant="section" className="space-y-5" data-testid="unsold-choice">
         <div className="space-y-1">
           <h2
@@ -165,6 +169,11 @@ export function UnsoldLotChoicePanel({ submissionId, view, current = null }: Pro
             {intro.heading}
           </h2>
           <p className="font-body text-sm text-on-surface-variant">{intro.intro}</p>
+          {deadline && (view.mode === "choose" || view.mode === "waiting_on_admin") ? (
+            <p className="font-body text-sm font-medium text-on-surface">
+              Choose by {deadline}. If no choice is made by then, a specialist will contact you.
+            </p>
+          ) : null}
         </div>
 
         {view.mode === "choose" ? (

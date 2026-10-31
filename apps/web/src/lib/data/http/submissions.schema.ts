@@ -18,6 +18,12 @@ const exhibitionArraySchema = z.preprocess(
   z.array(z.unknown()).transform((entries) => entries as ExhibitionEntry[]),
 );
 
+/** Who sent it; a sender the API could not name keeps the id with no name. */
+const sentBySchema = z
+  .object({ userId: z.string(), name: z.string().nullable() })
+  .nullable()
+  .optional();
+
 const itemSubmissionStatusSchema = z.preprocess((value) => {
   if (typeof value === "string" && (itemSubmissionStatuses as readonly string[]).includes(value)) {
     return value;
@@ -57,6 +63,8 @@ const itemSubmissionRowSchema = z
     convertedLotId: z.unknown().optional(),
     assignedToUserId: z.unknown().optional(),
     submittedByUserId: z.unknown().optional(),
+    reference: z.unknown().optional(),
+    sentBy: z.unknown().optional(),
     createdAt: z.unknown(),
     updatedAt: z.unknown(),
   })
@@ -64,12 +72,16 @@ const itemSubmissionRowSchema = z
     const legalEntityId = zOptionalStringFromEmpty.parse(row.legalEntityId);
     const sellerId = zOptionalStringFromEmpty.parse(row.sellerId);
     const submittedByUserId = zOptionalStringFromEmpty.parse(row.submittedByUserId);
+    const reference = zOptionalStringFromEmpty.parse(row.reference);
+    const sentBy = sentBySchema.safeParse(row.sentBy);
 
     return {
       id: String(row.id),
       ...(legalEntityId ? { legalEntityId } : {}),
       ...(sellerId ? { sellerId } : {}),
       ...(submittedByUserId ? { submittedByUserId } : {}),
+      ...(reference ? { reference } : {}),
+      ...(sentBy.success && sentBy.data ? { sentBy: sentBy.data } : {}),
       title: String(row.title),
       description: zNullableStringFromEmpty.parse(row.description),
       medium: zNullableStringFromEmpty.parse(row.medium),
