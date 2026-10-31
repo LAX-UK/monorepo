@@ -7,7 +7,12 @@ import {
 import { formatDate } from "@/lib/ui/format";
 import type { MemberChangeActor } from "@auction/domain";
 import type { LegalEntityMemberRole } from "@auction/types";
-import { canManageInvitation, memberRowControls } from "./member-controls.vm";
+import {
+  type LeaveControl,
+  canManageInvitation,
+  leaveControl,
+  memberRowControls,
+} from "./member-controls.vm";
 import type { MemberRow, PendingInvitationRow } from "./member-management.actions";
 
 /** One member as the row shows them, with only what the viewer may do to them. */
@@ -20,13 +25,17 @@ export type MemberRowView = {
   isYou: boolean;
   role: LegalEntityMemberRole;
   roleLabel: string;
-  /** "Two-step sign-in on"; `null` when the viewer does not see it or it is unknown. */
+  /** "Two-step on"; `null` when the viewer does not see it or it is unknown. */
   twoStep: string | null;
   /** The role picker's options, the current role first; `null` shows the role as text. */
   roleOptions: { value: LegalEntityMemberRole; label: string }[] | null;
   /** Handing ownership over, with the phrase to type; owners only. */
   transfer: { confirmPhrase: string } | null;
   canRemove: boolean;
+  /** On your own row: whether you may leave, or why not. `null` on everyone else's. */
+  leave: LeaveControl | null;
+  /** This person's Activity, for viewers who may read it; `null` otherwise. */
+  activityHref: string | null;
 };
 
 type MemberRowsInput = {
@@ -34,11 +43,13 @@ type MemberRowsInput = {
   members: readonly MemberRow[];
   /** Two-step sign-in per user, for the people who may see it (owners and admins). */
   twoFactorByUserId?: Readonly<Record<string, boolean | null>> | undefined;
+  /** Where one person's Activity opens, when the viewer may read Activity. */
+  activityHrefFor?: ((userId: string) => string) | undefined;
 };
 
 function twoStepWords(enabled: boolean | null | undefined): string | null {
-  if (enabled === true) return "Two-step sign-in on";
-  if (enabled === false) return "Two-step sign-in off";
+  if (enabled === true) return "Two-step on";
+  if (enabled === false) return "Two-step off";
   return null;
 }
 
@@ -56,7 +67,13 @@ function listingOrder(a: MemberRowView, b: MemberRowView): number {
 }
 
 /** The team as rows, each with the controls the member change policy allows the viewer. */
-export function memberRowViews({ actor, members, twoFactorByUserId }: MemberRowsInput) {
+export function memberRowViews({
+  actor,
+  members,
+  twoFactorByUserId,
+  activityHrefFor,
+}: MemberRowsInput) {
+  const leave = leaveControl(actor, members);
   return members
     .map((member): MemberRowView => {
       const controls = memberRowControls(actor, member, members);
@@ -72,6 +89,8 @@ export function memberRowViews({ actor, members, twoFactorByUserId }: MemberRows
         roleOptions: controls.roleOptions.length > 0 ? pickerOptions(controls.roleOptions) : null,
         transfer: controls.transfer,
         canRemove: controls.remove,
+        leave: actor.memberId === member.id ? leave : null,
+        activityHref: activityHrefFor ? activityHrefFor(member.userId) : null,
       };
     })
     .sort(listingOrder);

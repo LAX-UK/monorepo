@@ -1,7 +1,8 @@
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { DashboardSliceErrorAlert } from "@/components/dashboard/dashboard-slice-error-alert";
 import { DashboardPageHeader } from "@/components/dashboard/primitives/dashboard-page-header";
-import { SectionTabsNav } from "@/components/dashboard/section-tabs-nav";
+import { LeaveOrCloseCard } from "@/components/organisation-team/leave-or-close-card";
+import { WorkspacePageTabs } from "@/components/organisation-team/workspace-page-tabs";
 import { subkindLabel } from "@/components/organisations/labels";
 import { OrganisationSettingsUnavailable } from "@/components/organisations/organisation-settings-unavailable";
 import { OrganisationStateBannerForRoute } from "@/components/organisations/organisation-state-banner-for-route";
@@ -55,9 +56,23 @@ export default async function OrganisationLayout({ children }: { children: React
   // Support staff viewing as the client open the reading tabs only (`entityActorCan`).
   const tabs = organisationTabsFor(active.actor);
   if (tabs.length === 0) {
+    // Nothing here to manage, but any member can leave (support staff viewing as the client are
+    // not members).
     return (
       <DashboardPage>
-        <OrganisationSettingsUnavailable reason="role" organisationName={member.displayName} />
+        <div className="flex flex-col gap-8">
+          <OrganisationSettingsUnavailable reason="role" organisationName={member.displayName} />
+          {active.actor.isImpersonation ? null : (
+            <div className="mx-auto w-full max-w-[640px]">
+              <LeaveOrCloseCard
+                legalEntityId={member.id}
+                organisationName={member.displayName}
+                leave={{ allowed: true }}
+                canClose={false}
+              />
+            </div>
+          )}
+        </div>
       </DashboardPage>
     );
   }
@@ -82,12 +97,9 @@ export default async function OrganisationLayout({ children }: { children: React
             </div>
           }
         />
-        <SectionTabsNav
-          ariaLabel="Organisation"
-          sticky={false}
-          // The Profile tab is the page itself, so it is current only on its own address.
-          exactHrefs={[CLIENT_ROUTES.organisation]}
-          items={tabs.map((tab) => ({ href: tab.href, label: tab.label }))}
+        <WorkspacePageTabs
+          label="Organisation"
+          items={tabs.map((tab) => ({ id: tab.id, label: tab.label, href: tab.href }))}
         />
         {banner ? <OrganisationStateBannerForRoute banner={banner} /> : null}
         <div className="min-w-0 space-y-6">{children}</div>

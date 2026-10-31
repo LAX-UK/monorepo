@@ -1,17 +1,7 @@
 "use client";
 
-import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@auction/ui/components/dialog";
-import { LoadingButton } from "@auction/ui/components/loading-button";
-import { type ReactNode, useRef } from "react";
+import { Button, Dialog, Notice } from "@auction/ui/lax";
+import { type ReactNode, useId, useRef } from "react";
 
 type Props = {
   open: boolean;
@@ -25,16 +15,19 @@ type Props = {
   pending: boolean;
   /** Why the server refused; the dialog stays open so the person can try again or cancel. */
   error: string | null;
-  /** Why confirming is not possible yet (the typed phrase does not match). */
+  /**
+   * Why confirming is not possible yet (the typed phrase does not match). The field's own label
+   * says what to do, so the button is held until it is done and describes itself with this.
+   */
   confirmBlockedReason?: string | null;
   onConfirm: () => void;
   children?: ReactNode;
 };
 
 /**
- * The frame for confirming a change to the team: the title, what will happen, an optional field,
- * then Cancel and the verb. Focus starts on Cancel for a destructive change, so Enter never
- * removes someone by accident.
+ * The frame for confirming a change to the team (remove, transfer ownership, leave): the title,
+ * what will happen, an optional field, then Cancel and the verb. Focus starts on Cancel for a
+ * destructive change, so Enter never removes someone by accident.
  */
 export function MemberChangeDialog({
   open,
@@ -50,60 +43,44 @@ export function MemberChangeDialog({
   children,
 }: Props) {
   const cancelRef = useRef<HTMLButtonElement>(null);
+  const reasonId = useId();
   return (
-    <Dialog open={open} onOpenChange={(next) => (pending ? undefined : onOpenChange(next))}>
-      <DialogContent
-        className="max-w-md rounded-xl border-border-hairline"
-        // A row menu that opened this dialog hands focus back to its trigger as it finishes
-        // closing; that is not the person leaving, so only Cancel, Esc and the scrim close it.
-        onFocusOutside={(event) => event.preventDefault()}
-        onOpenAutoFocus={(event) => {
-          if (tone !== "danger" || children) return;
-          event.preventDefault();
-          cancelRef.current?.focus();
-        }}
-      >
-        <DialogHeader className="space-y-3 text-left">
-          <DialogTitle className="pr-6 font-headline text-lg leading-6.5 font-semibold">
-            {title}
-          </DialogTitle>
-          <DialogDescription asChild>
-            <div className="space-y-2 font-body text-sm leading-5.5 text-on-surface-variant">
-              {lines.map((line) => (
-                <p key={line}>{line}</p>
-              ))}
-            </div>
-          </DialogDescription>
-        </DialogHeader>
-        {children}
-        {error ? (
-          <Alert variant="destructive">
-            <AlertDescription>{error}</AlertDescription>
-          </Alert>
-        ) : null}
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button
-            ref={cancelRef}
-            type="button"
-            variant="outline"
-            size="default"
-            disabled={pending}
-            onClick={() => onOpenChange(false)}
-          >
+    <Dialog
+      open={open}
+      onOpenChange={(next) => (pending ? undefined : onOpenChange(next))}
+      title={title}
+      {...(tone === "danger" && !children ? { initialFocusRef: cancelRef } : {})}
+      footer={
+        <>
+          <Button ref={cancelRef} disabled={pending} onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <LoadingButton
-            type="button"
-            variant={tone === "danger" ? "destructive" : "primary"}
-            size="default"
+          <Button
+            variant={tone === "danger" ? "danger" : "primary"}
             loading={pending}
-            disabledReason={confirmBlockedReason ?? undefined}
+            disabled={Boolean(confirmBlockedReason)}
+            aria-describedby={confirmBlockedReason ? reasonId : undefined}
             onClick={onConfirm}
           >
             {confirmLabel}
-          </LoadingButton>
-        </DialogFooter>
-      </DialogContent>
+          </Button>
+        </>
+      }
+    >
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-2 text-lax-14 text-lax-muted">
+          {lines.map((line) => (
+            <p key={line}>{line}</p>
+          ))}
+        </div>
+        {children}
+        {confirmBlockedReason ? (
+          <p id={reasonId} className="sr-only">
+            {confirmBlockedReason}
+          </p>
+        ) : null}
+        {error ? <Notice tone="danger" alert title={error} /> : null}
+      </div>
     </Dialog>
   );
 }

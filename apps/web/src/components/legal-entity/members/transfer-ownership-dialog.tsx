@@ -3,9 +3,8 @@
 import { transferOwnershipCopy } from "@/lib/legal-entity/member-change-copy";
 import { transferOwnershipAction } from "@/lib/legal-entity/member-management.actions";
 import { notify } from "@/lib/ui/notify";
-import { Input } from "@auction/ui/components/input";
-import { Label } from "@auction/ui/components/label";
-import { useId, useState } from "react";
+import { Field, TextInput } from "@auction/ui/lax";
+import { useState } from "react";
 import { MemberChangeDialog } from "./member-change-dialog";
 
 type Props = {
@@ -28,7 +27,6 @@ export function TransferOwnershipDialog({
   confirmPhrase,
   onClose,
 }: Props) {
-  const fieldId = useId();
   const [typed, setTyped] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -63,12 +61,14 @@ export function TransferOwnershipDialog({
       confirmBlockedReason={matches ? null : `Type "${confirmPhrase}" to confirm.`}
       onConfirm={() => void confirmTransfer()}
     >
-      <div className="space-y-1.5">
-        <Label htmlFor={fieldId} className="font-body text-sm leading-5 font-medium">
-          Type <span className="font-semibold text-on-surface">{confirmPhrase}</span> to confirm
-        </Label>
-        <Input
-          id={fieldId}
+      <Field
+        label={
+          <span>
+            To confirm, type <span className="font-semibold">{confirmPhrase}</span>
+          </span>
+        }
+      >
+        <TextInput
           value={typed}
           onChange={(event) => setTyped(event.target.value)}
           onKeyDown={(event) => {
@@ -78,7 +78,7 @@ export function TransferOwnershipDialog({
           spellCheck={false}
           disabled={pending}
         />
-      </div>
+      </Field>
     </MemberChangeDialog>
   );
 }
