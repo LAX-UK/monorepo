@@ -62,7 +62,7 @@ describe("DashboardPageHeader", () => {
 });
 
 describe("DashboardPageHeader on the public site", () => {
-  it("uses the shared account page header, always showing title and description", () => {
+  it("uses the workspace page header, the same element as the organisation workspace", () => {
     render(
       <ClientLayoutProvider layout="website">
         <DashboardPageHeader
@@ -75,7 +75,8 @@ describe("DashboardPageHeader on the public site", () => {
 
     const heading = screen.getByRole("heading", { level: 1, name: "My bids" });
     expect(heading.className).not.toMatch(/hidden/);
-    expect(heading.className).toMatch(/md:text-\[2rem\]/);
+    expect(heading).toHaveAttribute("data-page-title");
+    expect(heading.className).toMatch(/sm:text-2xl/);
     expect(screen.getByText("Your bids in current and past sales.").className).not.toMatch(
       /hidden/,
     );

@@ -197,6 +197,7 @@ export function BidsView({
           onClear={clearAll}
           onOpenHistory={setHistory}
           bidBlockedReason={bidBlockedReason}
+          offersSales={offersSales}
         />
       )}
       {vm ? (
@@ -230,6 +231,7 @@ function BidList({
   onClear,
   onOpenHistory,
   bidBlockedReason,
+  offersSales,
 }: {
   cards: MyBidCardVm[];
   total: number;
@@ -238,11 +240,29 @@ function BidList({
   onClear: () => void;
   onOpenHistory: (card: MyBidCardVm) => void;
   bidBlockedReason: string | null;
+  offersSales: boolean;
 }) {
   if (cards.length === 0) {
     if (isNarrowed(query) && total > 0) return <ListNoResults query={query.q} onClear={onClear} />;
     const empty = EMPTY_VIEW[query.view as Exclude<BidsViewId, "sales">](organisation);
-    return <ListEmpty illustration="gavel" title={empty.title} description={empty.description} />;
+    // An empty Active view points to the sales, where the next bid is placed.
+    const browse = offersSales && query.view === "active";
+    return (
+      <ListEmpty
+        illustration="gavel"
+        title={empty.title}
+        description={empty.description}
+        {...(browse
+          ? {
+              actions: (
+                <ButtonLink href={BROWSE_UPCOMING_SALES_HREF} Link={Link}>
+                  Browse upcoming sales
+                </ButtonLink>
+              ),
+            }
+          : {})}
+      />
+    );
   }
   return (
     <>
