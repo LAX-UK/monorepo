@@ -69,6 +69,8 @@ export type NotificationPreference = {
   lotEndedSellerWhatsapp: boolean;
   quietStart: string | null;
   quietEnd: string | null;
+  /** The IANA zone quiet hours are kept in ("Europe/London"); the times above are local to it. */
+  quietTimeZone: string;
   updatedAt: Date;
 };
 
