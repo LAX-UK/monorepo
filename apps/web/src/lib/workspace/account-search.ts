@@ -31,8 +31,22 @@ const lotHit = z.object({
   saleTitle: z.string().nullable().optional(),
   lotStatus: z.string().nullable().optional(),
 });
+/** A won lot: the hammer price and where its invoice stands (older answers may leave them out). */
+const purchaseHit = lotHit.extend({
+  hammerPrice: z.string().nullable().optional(),
+  currency: z.string().nullable().optional(),
+  paymentState: z.string().nullable().optional(),
+});
+/** A lot bid on: the highest bid or maximum in scope, and how it stands. */
+const bidHit = lotHit.extend({
+  maximum: z.string().nullable().optional(),
+  currency: z.string().nullable().optional(),
+  outcome: z.enum(["leading", "outbid", "won", "lost"]).nullable().optional(),
+});
 const consignmentHit = z.object({
   submissionId: z.string(),
+  /** What the seller quotes on the phone ("C-1042"). */
+  reference: z.string().nullable().optional(),
   title: z.string(),
   status: z.string(),
 });
@@ -53,8 +67,8 @@ const memberHit = z.object({
 
 const groupResult = z.discriminatedUnion("group", [
   z.object({ group: z.literal("consignments"), items: z.array(consignmentHit) }),
-  z.object({ group: z.literal("purchases"), items: z.array(lotHit) }),
-  z.object({ group: z.literal("bids"), items: z.array(lotHit) }),
+  z.object({ group: z.literal("purchases"), items: z.array(purchaseHit) }),
+  z.object({ group: z.literal("bids"), items: z.array(bidHit) }),
   z.object({ group: z.literal("works"), items: z.array(lotHit) }),
   z.object({ group: z.literal("invoices"), items: z.array(invoiceHit) }),
   z.object({ group: z.literal("members"), items: z.array(memberHit) }),
@@ -103,29 +117,77 @@ const sentence = (status: string) => {
 };
 
 type LotHit = z.infer<typeof lotHit>;
-type LotGroup = "purchases" | "bids" | "works";
+type PurchaseHit = z.infer<typeof purchaseHit>;
+type BidHit = z.infer<typeof bidHit>;
 
 const lotRef = (hit: LotHit) => (hit.lotNumber ? `Lot ${hit.lotNumber}` : null);
 
-/**
- * The second line of a lot, from what the search returns. A purchase is a lot the account won; a
- * bid names where the lot stands; a work names its artist. Every row has a second line: when the
- * lot has no number, the sale or the lot's state stands in.
- */
-const LOT_META: Record<LotGroup, (hit: LotHit) => (string | null | undefined)[]> = {
-  purchases: (hit) => [lotRef(hit), "won", hit.saleTitle],
-  bids: (hit) => [
-    lotRef(hit),
-    hit.lotStatus ? sentence(hit.lotStatus).toLowerCase() : null,
-    hit.saleTitle,
-  ],
-  works: (hit) => [lotRef(hit), hit.artistName, hit.saleTitle],
+/** Where a purchase's invoice stands, in the words of the Purchases list. */
+const PAYMENT_WORDS: Record<string, string> = {
+  not_invoiced: "invoice to follow",
+  due: "payment due",
+  overdue: "payment overdue",
+  processing: "payment being confirmed",
+  paid: "paid",
+  refunded: "refunded",
+  cancelled: "cancelled",
 };
 
-const lotMeta = (group: LotGroup, hit: LotHit) =>
-  LOT_META[group](hit)
-    .filter((part): part is string => Boolean(part))
-    .join(" · ");
+/** How a bid stands, in the words of the Bids list. */
+const OUTCOME_WORDS: Record<NonNullable<BidHit["outcome"]>, string> = {
+  leading: "winning",
+  outbid: "outbid",
+  won: "won",
+  lost: "not won",
+};
+
+const money = (amount: string | null | undefined, currency: string | null | undefined) =>
+  amount ? formatMoney(amount, currency ?? undefined) : null;
+
+const line = (parts: readonly (string | null | undefined)[]) =>
+  parts.filter((part): part is string => Boolean(part)).join(" · ");
+
+/**
+ * The second line of each lot row. A purchase says what it was won for and where its payment
+ * stands ("Lot 57 · won for £3,200.00 · payment overdue"); a bid says how it stands and the
+ * highest bid in scope ("Lot 29 · outbid · your maximum £6,200.00"); a work names its artist.
+ * Every row has a second line: without a number or facts, the sale stands in.
+ */
+const purchaseMeta = (hit: PurchaseHit) => {
+  const hammer = money(hit.hammerPrice, hit.currency);
+  return line([
+    lotRef(hit),
+    hammer ? `won for ${hammer}` : "won",
+    hit.paymentState ? (PAYMENT_WORDS[hit.paymentState] ?? null) : hit.saleTitle,
+  ]);
+};
+
+const bidMeta = (hit: BidHit) => {
+  const maximum = money(hit.maximum, hit.currency);
+  return line([
+    lotRef(hit),
+    hit.outcome
+      ? OUTCOME_WORDS[hit.outcome]
+      : hit.lotStatus
+        ? sentence(hit.lotStatus).toLowerCase()
+        : null,
+    maximum ? `your maximum ${maximum}` : hit.saleTitle,
+  ]);
+};
+
+const workMeta = (hit: LotHit) => line([lotRef(hit), hit.artistName, hit.saleTitle]);
+
+const lotRow = (group: "purchases" | "bids" | "works", hit: LotHit, meta: string): SearchRow => ({
+  id: `${group}-${hit.lotId}`,
+  label: hit.title,
+  meta,
+  // A purchase opens its own page; a bid or work opens the lot.
+  href:
+    group === "purchases"
+      ? `${CLIENT_ROUTES.purchases}/${encodeURIComponent(hit.lotId)}`
+      : lotPath({ id: hit.lotId, title: hit.title }),
+  kind: group,
+});
 
 function rowsFor(result: z.infer<typeof groupResult>): SearchRow[] {
   switch (result.group) {
@@ -133,20 +195,16 @@ function rowsFor(result: z.infer<typeof groupResult>): SearchRow[] {
       return result.items.map((hit) => ({
         id: `consignment-${hit.submissionId}`,
         label: hit.title,
-        meta: `Consignment · ${sentence(hit.status).toLowerCase()}`,
+        meta: `${hit.reference ?? "Consignment"} · ${sentence(hit.status).toLowerCase()}`,
         href: `${CLIENT_ROUTES.consignments}/${hit.submissionId}`,
         kind: "consignments",
       }));
     case "purchases":
+      return result.items.map((hit) => lotRow("purchases", hit, purchaseMeta(hit)));
     case "bids":
+      return result.items.map((hit) => lotRow("bids", hit, bidMeta(hit)));
     case "works":
-      return result.items.map((hit) => ({
-        id: `${result.group}-${hit.lotId}`,
-        label: hit.title,
-        meta: lotMeta(result.group, hit),
-        href: lotPath({ id: hit.lotId, title: hit.title }),
-        kind: result.group,
-      }));
+      return result.items.map((hit) => lotRow("works", hit, workMeta(hit)));
     case "invoices":
       return result.items.map((hit) => ({
         id: `invoice-${hit.paymentId}`,
