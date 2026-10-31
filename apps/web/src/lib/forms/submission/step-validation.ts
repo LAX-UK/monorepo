@@ -45,7 +45,7 @@ export const WIZARD_STEPS: readonly WizardStepDefinition[] = [
   },
   {
     id: "review",
-    label: "Review",
+    label: "Check and send",
     fields: [],
   },
 ] as const;

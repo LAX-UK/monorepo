@@ -18,4 +18,6 @@ export type ReviewStepProps = StepProps & {
   onSubmitForReview: () => void;
   /** Label of the primary button; "Submit for review" unless the flow continues elsewhere. */
   submitLabel?: string;
+  /** A section the surrounding flow puts first, such as "Selling as" with its own Change. */
+  lead?: import("react").ReactNode;
 };

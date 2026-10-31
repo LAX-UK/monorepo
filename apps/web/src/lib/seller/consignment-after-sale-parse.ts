@@ -55,6 +55,8 @@ const unsoldSchema = z.object({
   currentReserve: money,
   reserveFloor: money,
   currency: z.string().default("GBP"),
+  /** The date the choice is due by (ISO 8601); older answers leave it out. */
+  chooseBy: z.string().optional(),
   choice: choiceSchema.nullable().optional().default(null),
 });
 

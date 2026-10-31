@@ -81,6 +81,17 @@ export type RecordFigure = {
   id?: string;
   value: React.ReactNode;
   label: string;
+  /**
+   * A narrow list reads the label first ("choose by 12 Nov"), as a date reads, instead of after
+   * the value ("£6,800 current bid"). A wide list keeps the value above its label either way.
+   */
+  labelFirst?: boolean;
+  /**
+   * The record has no such figure yet, and `value` says so in words ("Estimate after review"):
+   * drawn muted and allowed to wrap, with the label kept for readers only, so a missing figure
+   * never reads as a dash under a label.
+   */
+  pending?: boolean;
 };
 
 /**
@@ -100,10 +111,27 @@ function RecordFigures({ figures }: { figures: readonly RecordFigure[] }) {
             index === 0 ? "flex" : "hidden @2xl:flex",
           )}
         >
-          <dt className="order-2 truncate font-body text-label-3 leading-5 text-on-surface-variant">
+          <dt
+            // Joined, not merged: the type step and the colour are both `text-` classes.
+            className={
+              figure.pending
+                ? "sr-only"
+                : `truncate font-body text-label-3 leading-5 text-on-surface-variant ${
+                    figure.labelFirst ? "order-1 @2xl:order-2" : "order-2"
+                  }`
+            }
+          >
             {figure.label}
           </dt>
-          <dd className="order-1 truncate font-body text-sm leading-5.5 font-medium tabular-nums text-on-surface">
+          <dd
+            className={
+              figure.pending
+                ? "font-body text-label-3 leading-5 text-on-surface-variant"
+                : `truncate font-body text-sm leading-5.5 font-medium tabular-nums text-on-surface ${
+                    figure.labelFirst ? "order-2 @2xl:order-1" : "order-1"
+                  }`
+            }
+          >
             {figure.value}
           </dd>
         </div>
@@ -196,7 +224,9 @@ export function RecordRow({
                   <Link
                     href={href}
                     data-record-link
-                    className="after:absolute after:inset-0 focus-visible:outline-none"
+                    // A block at least 24px tall (WCAG 2.5.8) without moving the line: the padding
+                    // is taken back by the margin. The whole row stays the click area (after:).
+                    className="-my-[3px] block truncate py-[3px] after:absolute after:inset-0 focus-visible:outline-none"
                   >
                     {title}
                   </Link>
