@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { useAccountChrome } from "./account-chrome-context";
 import { AccountSwitcherPopover } from "./account-switcher-popover";
@@ -26,13 +26,13 @@ export function SwitchAccountAction({ destination, emphasis }: Props) {
       destination={destination}
       trigger={(pendingId) => (
         <Button
-          variant={emphasis === "primary" ? "primary" : "secondaryOutline"}
+          variant={emphasis === "primary" ? "primary" : "secondary"}
           aria-busy={pendingId !== null || undefined}
           data-testid="no-access-switch"
         >
-          {pendingId ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
+          {pendingId ? <Loader2 className="animate-spin" aria-hidden /> : null}
           Switch account
-          <ChevronDown className="size-4" strokeWidth={1.75} aria-hidden />
+          <ChevronDown strokeWidth={1.75} aria-hidden />
         </Button>
       )}
     />

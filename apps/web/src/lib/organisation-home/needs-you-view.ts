@@ -1,4 +1,10 @@
-import { CLIENT_ROUTES, organisationHref, teamHref } from "@/lib/navigation/client-routes";
+import {
+  CLIENT_ROUTES,
+  type TeamTab,
+  organisationHref,
+  teamHref,
+} from "@/lib/navigation/client-routes";
+import { bidSettingsHref } from "@/lib/navigation/settings-links";
 import { formatDateInline, formatDateTimeShort, formatMoney } from "@/lib/ui/format";
 import type { NeedsYouTaskWithLink } from "@/lib/workspace/needs-you-read";
 import {
@@ -61,6 +67,13 @@ function due(at: Date, text: string, now: Date): NeedsYouDue {
   };
 }
 
+/** The Team tab each team task is done on. */
+const TEAM_TAB: Record<Extract<NeedsYouLink, { page: "team" }>["view"], TeamTab> = {
+  members: "members",
+  invitations: "invitations",
+  who_can_bid: "bidding",
+};
+
 /** Where a task's button leads: the reader names the page, the web knows its address. */
 export function needsYouHref(task: NeedsYouTaskWithLink): string {
   const link: NeedsYouLink = task.link;
@@ -85,9 +98,9 @@ export function needsYouHref(task: NeedsYouTaskWithLink): string {
     case "sale":
       return task.kind === "register" ? salePath(task.sale) : CLIENT_ROUTES.bids;
     case "team":
-      return `${teamHref()}#${link.view === "invitations" ? "invitations" : "who-can-bid"}`;
+      return teamHref(TEAM_TAB[link.view]);
     case "bid_settings":
-      return `${CLIENT_ROUTES.settings}/bidding`;
+      return bidSettingsHref("bidding");
     case "organisation":
       return organisationHref(link.view);
     case "verify_identity":
@@ -248,6 +261,22 @@ const ROWS: { [K in NeedsYouTask["kind"]]: RowBuilder<K> } = {
           : `${first?.email ?? ""} and ${task.invitations.length - 1} more`,
       due: null,
       label: "Resend",
+    };
+  },
+  access_requests: (task) => {
+    const [first] = task.requests;
+    return {
+      topic: "team",
+      title:
+        task.requests.length === 1 && first
+          ? `${first.requesterName} asked for access`
+          : `${task.requests.length} people asked for access`,
+      detail:
+        task.requests.length === 1 && first
+          ? `Asked ${formatDateInline(first.askedAt)}`
+          : "Approve or decline each request",
+      due: null,
+      label: "Review",
     };
   },
   documents: () => ({

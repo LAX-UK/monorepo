@@ -69,6 +69,7 @@ function busy(role: LegalEntityMemberRole, overrides: Partial<NeedsYouFacts> = {
     ],
     expiredInvitations: [{ id: "i1", email: "sam@example.com", expiredAt: daysAgo(2) }],
     endingAuthorisations: [{ id: "a1", memberName: "Agnes", endsAt: inHours(48) }],
+    pendingAccessRequests: [{ id: "r1", requesterName: "Tom", askedAt: daysAgo(1) }],
     ...overrides,
   };
 }
@@ -91,6 +92,7 @@ describe("the Needs you table", () => {
       "register",
       "authorisation_ending",
       "invitations_expired",
+      "access_requests",
       "documents",
       "identity",
       "source_of_funds",
@@ -111,6 +113,7 @@ describe("the Needs you table", () => {
       "book_collection",
       "authorisation_ending",
       "invitations_expired",
+      "access_requests",
       "documents",
       "source_of_funds",
       "payouts",
@@ -127,6 +130,7 @@ describe("the Needs you table", () => {
       "book_collection",
       "authorisation_ending",
       "invitations_expired",
+      "access_requests",
       "documents",
       "source_of_funds",
       "payouts",
@@ -170,6 +174,7 @@ describe("the Needs you table", () => {
       "book_collection",
       "authorisation_ending",
       "invitations_expired",
+      "access_requests",
       "payouts",
     ]);
   });
@@ -196,6 +201,7 @@ describe("the Needs you table", () => {
       "quote_ready",
       "book_collection",
       "authorisation_ending",
+      "access_requests",
     ]);
   });
 
@@ -210,6 +216,7 @@ describe("the Needs you table", () => {
       outbidLots: [],
       expiredInvitations: [],
       endingAuthorisations: [],
+      pendingAccessRequests: [],
     });
     expect(needsYouTasks(quiet)).toEqual([]);
     expect(needsYouCounts([])).toEqual({
@@ -266,7 +273,7 @@ describe("tasks", () => {
       bids: 2,
       purchases: 4,
       consignments: 4,
-      team: 2,
+      team: 3,
       organisation: 1,
     });
   });
@@ -311,6 +318,7 @@ describe("notifications that announce a task", () => {
       "pay",
       "agreement",
       "changes",
+      "access_requests",
       "identity",
       "source_of_funds",
     ]);

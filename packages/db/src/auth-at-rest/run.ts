@@ -1,6 +1,6 @@
 import { createEnvelopeCrypto, parseAuthDekKey } from "@auction/identity-contracts";
 import pg from "pg";
-import { buildPgConnectionConfig } from "../ssl.js";
+import { buildPgPoolConfig } from "../ssl.js";
 import {
   applyAuthAtRestBackfill,
   formatAuthAtRestInventory,
@@ -58,7 +58,7 @@ export function parseAuthAtRestArgv(
 export async function runAuthAtRestCommand(
   options: AuthAtRestCommandOptions,
 ): Promise<{ mode: AuthAtRestCommandMode; output: string }> {
-  const pool = new pg.Pool(buildPgConnectionConfig(options.databaseUrl));
+  const pool = new pg.Pool(buildPgPoolConfig(options.databaseUrl));
   const client = await pool.connect();
   try {
     if (options.mode === "inventory") {

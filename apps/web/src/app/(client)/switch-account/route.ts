@@ -8,6 +8,7 @@ import {
 } from "@/lib/legal-entity/account-hop.server";
 import { planSwitchForBrowser } from "@/lib/legal-entity/switch-hop.server";
 import {
+  NOTIFICATION_FROM_PARAM,
   accountsUnavailableHref,
   confirmSwitchHref,
   safeHopNext,
@@ -29,9 +30,14 @@ const NO_STORE = { "Cache-Control": "no-store" };
  * otherwise shows the no-access page. `confirmed` is true for a request the person made on this
  * site; anything else that would change the account goes to the confirm page instead.
  */
-async function switchHop(to: string | null, next: string, confirmed: boolean): Promise<Response> {
+async function switchHop(
+  to: string | null,
+  next: string,
+  confirmed: boolean,
+  notificationFrom: string | null = null,
+): Promise<Response> {
   if (await isImpersonating()) return seeOther(next);
-  const outcome = await planSwitchForBrowser(to, next);
+  const outcome = await planSwitchForBrowser(to, next, notificationFrom);
   if (outcome.kind === "unavailable") {
     // "Try again" is a link on our own page, so the retry is a same-origin GET of this hop.
     return seeOther(accountsUnavailableHref(to ? switchAccountHref(to, next) : next));
@@ -52,8 +58,13 @@ export async function GET(request: Request) {
     return new Response(null, { status: 204, headers: NO_STORE });
   const signedIn = await hopUser(request);
   if (signedIn instanceof Response) return signedIn;
-  const to = new URL(request.url).searchParams.get("to");
-  return switchHop(to, hopNext(request), isSameOriginNavigation(request.headers));
+  const params = new URL(request.url).searchParams;
+  return switchHop(
+    params.get("to"),
+    hopNext(request),
+    isSameOriginNavigation(request.headers),
+    params.get(NOTIFICATION_FROM_PARAM),
+  );
 }
 
 /** `POST /switch-account` (form fields `to`, `next`): the confirm page's "Continue as …". */

@@ -28,7 +28,7 @@ const link = z.discriminatedUnion("page", [
   z.object({ page: z.literal("consignment"), id: z.string() }),
   z.object({ page: z.literal("consignments"), view: z.literal("unsold") }),
   z.object({ page: z.literal("sale"), id: z.string() }),
-  z.object({ page: z.literal("team"), view: z.enum(["invitations", "who_can_bid"]) }),
+  z.object({ page: z.literal("team"), view: z.enum(["members", "invitations", "who_can_bid"]) }),
   z.object({ page: z.literal("bid_settings") }),
   z.object({ page: z.literal("organisation"), view: z.enum(["documents", "payouts"]) }),
   z.object({ page: z.literal("verify_identity") }),
@@ -65,6 +65,10 @@ const task = z.discriminatedUnion("kind", [
   withLink({
     kind: z.literal("invitations_expired"),
     invitations: z.array(z.object({ id: z.string(), email: z.string(), expiredAt: date })),
+  }),
+  withLink({
+    kind: z.literal("access_requests"),
+    requests: z.array(z.object({ id: z.string(), requesterName: z.string(), askedAt: date })),
   }),
   withLink({ kind: z.literal("documents") }),
   withLink({ kind: z.literal("identity") }),

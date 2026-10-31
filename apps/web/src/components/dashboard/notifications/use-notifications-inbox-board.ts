@@ -1,149 +1,211 @@
 "use client";
 
-import type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
-import { useNotificationsInbox } from "@/components/dashboard/notifications/use-notifications-inbox";
+import { useAccountChrome } from "@/components/layout/account-switcher/account-chrome-context";
+import { useListQuery } from "@/components/workspace/use-list-query";
+import { type InboxQuery, inboxSearch } from "@/lib/notifications/inbox-query";
 import {
-  buildNotificationsHref,
-  parseNotificationsParams,
-} from "@/lib/dashboard/filters/notifications/notifications-filters";
+  type InboxAccounts,
+  type InboxRowView,
+  inboxRowView,
+} from "@/lib/notifications/inbox-row.vm";
+import {
+  fetchInboxCounts,
+  setOrganisationMuted,
+} from "@/lib/services/client/notifications-inbox.client";
 import { notify } from "@/lib/ui/notify";
-import type { UserNotification } from "@auction/types";
-import { useSearchParams } from "next/navigation";
+import type { UserNotification, UserNotificationListItem } from "@auction/types";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { parseInboxTab } from "./inbox-empty-state";
-import { countByType, groupByDateBand } from "./notification-presenters";
+import { type DateBand, groupByDateBand } from "./notification-presenters";
+import { useNotificationsInbox } from "./use-notifications-inbox";
 
-type InitialPage = {
-  tab: InboxTab;
-  type: string;
-  items: UserNotification[];
-  hasMore: boolean;
+export type InboxCounts = { needsAction: number; unread: number };
+
+export type InboxBoardInput = {
+  query: InboxQuery;
+  initialPage: { query: InboxQuery; items: UserNotificationListItem[]; hasMore: boolean } | null;
+  counts: InboxCounts | null;
+  mutedIds: readonly string[];
 };
 
-const VIEW_LABEL: Record<InboxTab, string> = {
-  all: "All",
-  unread: "Unread",
-  archived: "Archived",
-};
-const VIEWS: readonly InboxTab[] = ["all", "unread", "archived"];
+/** The accounts the person uses, from the shell's switcher. */
+function useInboxAccounts(): InboxAccounts {
+  const chrome = useAccountChrome();
+  return useMemo(() => {
+    const options = chrome?.switcher?.options ?? (chrome ? [chrome.current] : []);
+    return {
+      currentId: chrome?.current.id ?? "",
+      options: options.map(({ id, kind, name, initials }) => ({ id, kind, name, initials })),
+    };
+  }, [chrome]);
+}
 
 /**
- * The Notifications page's state: the loaded inbox grouped by day, its views and type filter,
- * and the actions on one notification or a selection of them.
+ * The Notifications page's state: the query in the address, the list for it as rows, the view
+ * counts, the picked rows, the muted organisations, and every action on one row or several.
  */
-export function useNotificationsInboxBoard(initialPage?: InitialPage) {
-  const searchParams = useSearchParams();
-  const tab = parseInboxTab(searchParams.get("tab"));
-  const tabParam = searchParams.get("tab");
-  const typeParam = searchParams.get("type");
-  const notificationFilters = parseNotificationsParams({
-    ...(tabParam ? { tab: tabParam } : {}),
-    ...(typeParam ? { type: typeParam } : {}),
-  });
-
-  const [selecting, setSelecting] = useState(false);
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [liveMessage, setLiveMessage] = useState<string>("");
-  const liveTimeoutRef = useRef<number | null>(null);
+export function useNotificationsInboxBoard(input: InboxBoardInput) {
+  const router = useRouter();
+  const accounts = useInboxAccounts();
+  const { query, setQuery, search, setSearch } = useListQuery(input.query, inboxSearch);
+  const [counts, setCounts] = useState<InboxCounts | null>(input.counts);
+  const [muted, setMuted] = useState<ReadonlySet<string>>(() => new Set(input.mutedIds));
+  const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
+  const [liveMessage, setLiveMessage] = useState("");
+  const liveTimer = useRef<number | null>(null);
 
   const announce = useCallback((message: string) => {
     setLiveMessage(message);
-    if (liveTimeoutRef.current !== null) window.clearTimeout(liveTimeoutRef.current);
-    liveTimeoutRef.current = window.setTimeout(() => setLiveMessage(""), 4000);
+    if (liveTimer.current !== null) window.clearTimeout(liveTimer.current);
+    liveTimer.current = window.setTimeout(() => setLiveMessage(""), 4000);
   }, []);
-
-  const announceArrival = useCallback(
-    (n: UserNotification) => {
-      announce(`New notification: ${n.title}`);
-      notify.info(n.title, { description: n.message, id: `inbox-${n.id}` });
+  useEffect(
+    () => () => {
+      if (liveTimer.current !== null) window.clearTimeout(liveTimer.current);
     },
-    [announce],
+    [],
   );
 
+  const refreshCounts = useCallback(async () => {
+    const next = await fetchInboxCounts(query.account);
+    if (next) setCounts(next);
+  }, [query.account]);
+
+  // Counts follow the account picked; the first ones came with the page.
+  const countsAccount = useRef(input.query.account);
   useEffect(() => {
-    return () => {
-      if (liveTimeoutRef.current !== null) window.clearTimeout(liveTimeoutRef.current);
-    };
-  }, []);
+    if (countsAccount.current === query.account) return;
+    countsAccount.current = query.account;
+    void refreshCounts();
+  }, [query.account, refreshCounts]);
 
   const inbox = useNotificationsInbox({
-    tab,
-    type: notificationFilters.type,
-    onRealtimeArrival: announceArrival,
-    ...(initialPage ? { initialPage } : {}),
+    query,
+    onRealtimeArrival: useCallback(
+      (n: UserNotification) => {
+        announce(`New notification: ${n.title}`);
+        void refreshCounts();
+      },
+      [announce, refreshCounts],
+    ),
+    ...(input.initialPage ? { initialPage: input.initialPage } : {}),
   });
 
-  // A selection only holds notifications still on the page.
+  // A pick only holds rows still on the page.
   useEffect(() => {
-    if (selected.size === 0) return;
     const ids = new Set(inbox.items.map((item) => item.id));
     setSelected((current) => {
       const next = new Set([...current].filter((id) => ids.has(id)));
       return next.size === current.size ? current : next;
     });
-  }, [inbox.items, selected.size]);
+  }, [inbox.items]);
 
-  const groups = useMemo(() => groupByDateBand(inbox.items), [inbox.items]);
-  const typeCounts = useMemo(() => countByType(inbox.items), [inbox.items]);
-  const unreadCount = useMemo(() => inbox.items.filter((n) => !n.read).length, [inbox.items]);
+  const rows = useMemo(
+    () => inbox.items.map((item) => inboxRowView(item, accounts, muted)),
+    [inbox.items, accounts, muted],
+  );
+  const groups = useMemo(() => {
+    const byId = new Map(rows.map((row) => [row.id, row]));
+    return groupByDateBand(inbox.items).map(({ band, items }) => ({
+      band: band as DateBand,
+      rows: items.flatMap((item) => byId.get(item.id) ?? []),
+    }));
+  }, [inbox.items, rows]);
 
-  const views = useMemo(
-    () =>
-      VIEWS.map((id) => ({
-        id,
-        label: VIEW_LABEL[id],
-        href: buildNotificationsHref(notificationFilters, { tab: id }),
-        // Only the unread count says something; the totals are noise.
-        count: id === "unread" ? unreadCount : null,
-      })),
-    [notificationFilters, unreadCount],
+  const after = useCallback(
+    async (done: Promise<unknown>) => {
+      await done;
+      void refreshCounts();
+    },
+    [refreshCounts],
   );
 
-  const toggleSelect = useCallback((id: string) => {
-    setSelected((current) => {
-      const next = new Set(current);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  }, []);
+  const markRead = useCallback(
+    (row: InboxRowView) => void after(inbox.markRead(row.id)),
+    [after, inbox],
+  );
 
-  const startSelecting = useCallback(() => setSelecting(true), []);
-  const stopSelecting = useCallback(() => {
-    setSelecting(false);
-    setSelected(new Set());
-  }, []);
+  const archive = useCallback(
+    async (row: InboxRowView) => {
+      if (await inbox.archive(row.id)) announce("Notification archived");
+      void refreshCounts();
+    },
+    [announce, inbox, refreshCounts],
+  );
 
-  const handleMarkRead = useCallback(
-    (id: string) => {
-      void inbox.markRead(id);
+  const opened = useCallback(
+    (row: InboxRowView) => {
+      if (row.unread) void inbox.markRead(row.id);
     },
     [inbox],
   );
 
-  const handleArchive = useCallback(
-    async (id: string) => {
-      if (await inbox.archive(id)) announce("Notification archived");
+  const navigate = useCallback(
+    (row: InboxRowView) => {
+      if (!row.href) return;
+      opened(row);
+      // The switch hop is a server route: load it in full rather than through the client router.
+      if (row.viaHop) window.location.assign(row.href);
+      else router.push(row.href);
     },
-    [announce, inbox],
+    [opened, router],
   );
 
-  const handleMarkAllRead = useCallback(async () => {
-    const ok = await inbox.markAllRead();
-    if (ok) notify.success("All notifications marked as read");
-  }, [inbox]);
+  const setMute = useCallback(async (row: InboxRowView, mute: boolean, undoable = true) => {
+    if (!row.mute) return;
+    const { legalEntityId, name } = row.mute;
+    const apply = (on: boolean) =>
+      setMuted((current) => {
+        const next = new Set(current);
+        if (on) next.add(legalEntityId);
+        else next.delete(legalEntityId);
+        return next;
+      });
+    apply(mute);
+    const result = await setOrganisationMuted(legalEntityId, mute);
+    if (!result.ok) {
+      apply(!mute);
+      notify.error(result.error);
+      return;
+    }
+    if (!undoable) return;
+    if (mute) {
+      notify.action(`You won't be notified about ${name}`, {
+        description: "Payments, wins and requests that need you still reach you.",
+        id: `mute-${legalEntityId}`,
+        onAction: () =>
+          void setMute({ ...row, mute: { legalEntityId, name, muted: true } }, false, false),
+      });
+    } else {
+      notify.success(`You'll be notified about ${name} again`, { id: `mute-${legalEntityId}` });
+    }
+  }, []);
 
-  const handleBulkMarkRead = useCallback(async () => {
+  const toggleSelect = useCallback((id: string, on: boolean) => {
+    setSelected((current) => {
+      const next = new Set(current);
+      if (on) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }, []);
+  const clearSelection = useCallback(() => setSelected(new Set()), []);
+
+  const markAllRead = useCallback(async () => {
+    if (await inbox.markAllRead()) notify.success("All notifications marked as read");
+    void refreshCounts();
+  }, [inbox, refreshCounts]);
+
+  const bulkMarkRead = useCallback(async () => {
     const ids = [...selected];
-    if (ids.length === 0) return;
     const { fulfilled } = await inbox.markReadMany(ids);
     if (fulfilled > 0) announce(`${fulfilled} marked as read`);
-    stopSelecting();
-  }, [announce, inbox, selected, stopSelecting]);
+    clearSelection();
+    void refreshCounts();
+  }, [announce, clearSelection, inbox, refreshCounts, selected]);
 
-  const handleBulkArchive = useCallback(async () => {
+  const bulkArchive = useCallback(async () => {
     const ids = [...selected];
-    if (ids.length === 0) return;
     const { fulfilled, rejected } = await inbox.archiveMany(ids);
     if (rejected > 0) {
       notify.error(`Archived ${fulfilled} of ${ids.length}`, {
@@ -152,27 +214,36 @@ export function useNotificationsInboxBoard(initialPage?: InitialPage) {
     } else {
       announce(`${fulfilled} archived`);
     }
-    stopSelecting();
-  }, [announce, inbox, selected, stopSelecting]);
+    clearSelection();
+    void refreshCounts();
+  }, [announce, clearSelection, inbox, refreshCounts, selected]);
 
   return {
-    tab,
-    notificationFilters,
-    liveMessage,
+    accounts,
+    query,
+    setQuery,
+    search,
+    setSearch,
+    counts,
+    rows,
     groups,
-    typeCounts,
-    unreadCount,
-    views,
-    selecting,
     selected,
     toggleSelect,
-    startSelecting,
-    stopSelecting,
-    handleMarkRead,
-    handleArchive,
-    handleMarkAllRead,
-    handleBulkMarkRead,
-    handleBulkArchive,
-    ...inbox,
+    clearSelection,
+    liveMessage,
+    markRead,
+    archive,
+    opened,
+    navigate,
+    setMute,
+    markAllRead,
+    bulkMarkRead,
+    bulkArchive,
+    loading: inbox.loading,
+    loadingMore: inbox.loadingMore,
+    hasMore: inbox.hasMore,
+    error: inbox.error,
+    loadMore: inbox.loadMore,
+    retry: inbox.retry,
   };
 }

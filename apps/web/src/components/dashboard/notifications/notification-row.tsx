@@ -1,167 +1,161 @@
 "use client";
 
-import { notificationHref } from "@/lib/notifications/notification-link";
-import type { UserNotification } from "@auction/types";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { AccountTile } from "@/components/layout/account-switcher/account-tile";
+import type { InboxAccountTag, InboxRowView } from "@/lib/notifications/inbox-row.vm";
+import { InlineActionMenu, type InlineActionMenuItem, cn } from "@auction/ui";
 import { Checkbox } from "@auction/ui/components/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@auction/ui/components/dropdown-menu";
-import { MoreHorizontal } from "lucide-react";
 import Link from "next/link";
-import type { NotificationPresentation, NotificationTone } from "./notification-presenters";
-import { relativeTime } from "./notification-presenters";
+import { inboxFullTime, inboxTime } from "./inbox-time";
+import { notificationTypePresenter } from "./notification-presenters";
 
-/** The icon disc per tone; the status `*-on-surface` tokens keep the glyph at 3:1 or more. */
-const TONE_STYLES: Record<NotificationTone, string> = {
-  neutral: "bg-surface-container-high text-on-surface",
-  info: "bg-info-container text-info",
-  success: "bg-success-container text-on-success-container",
-  warn: "bg-warning-container text-warning-on-surface",
-  danger: "bg-danger-container text-danger-on-surface",
+export type NotificationRowActions = {
+  /** The row was opened by its link: it is read now. */
+  onOpened: (row: InboxRowView) => void;
+  /** "Open" in the menu: go to it. */
+  onNavigate: (row: InboxRowView) => void;
+  onMarkRead: (row: InboxRowView) => void;
+  onArchive: (row: InboxRowView) => void;
+  onMute: (row: InboxRowView, muted: boolean) => void;
 };
 
-export type NotificationRowProps = {
-  item: UserNotification;
-  presentation: NotificationPresentation;
-  onMarkRead: (id: string) => void;
-  onArchive: (id: string) => void;
-  /** Selection mode: a checkbox leads the row and the whole row toggles it. */
-  selecting?: boolean;
-  selected?: boolean;
-  onToggleSelect?: (id: string) => void;
-  /** Archived notifications cannot be archived again. */
-  archived?: boolean;
-};
+/** "Northbank Gallery" or "Personal", with the account's tile, under the row's line. */
+export function AccountTag({ account }: { account: InboxAccountTag }) {
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5 text-lax-12 font-medium text-lax-fg">
+      <AccountTile account={account} size="xs" />
+      <span className="truncate">{account.name}</span>
+    </span>
+  );
+}
 
 /**
- * One notification: its type disc, the title (bold while unread), what happened, when, and an
- * unread dot that marks it read. Its menu marks it read or archives it. In selection mode a
- * checkbox leads the row instead of the link.
+ * One notification: what it is about (its type), what happened, the account it belongs to and
+ * when. A bar at its start and a bolder title mark it unread. The whole row opens it; the box
+ * picks it for several at once (wide screens), and the "…" menu holds every action, phones
+ * included.
  */
 export function NotificationRow({
-  item,
-  presentation,
-  onMarkRead,
-  onArchive,
-  selecting = false,
-  selected = false,
-  onToggleSelect,
-  archived = false,
-}: NotificationRowProps) {
-  const unread = !item.read;
-  const { Icon } = presentation;
-  const href = selecting ? null : notificationHref(item);
-  const checkboxId = `select-${item.id}`;
-  const title = selecting ? (
-    <label htmlFor={checkboxId} className="cursor-pointer after:absolute after:inset-0">
-      {item.title}
-    </label>
-  ) : href ? (
-    <Link
-      href={href}
-      className="after:absolute after:inset-0 focus-visible:outline-none"
-      onClick={() => {
-        if (unread) onMarkRead(item.id);
-      }}
+  row,
+  archived,
+  selection,
+  actions,
+}: {
+  row: InboxRowView;
+  /** Archived notifications cannot be archived again. */
+  archived: boolean;
+  selection: { selected: boolean; onSelectedChange: (selected: boolean) => void };
+  actions: NotificationRowActions;
+}) {
+  const { Icon, label } = notificationTypePresenter(row.type);
+  const when = inboxTime(row.createdAt);
+  const time = (className: string) => (
+    <time
+      dateTime={row.createdAt.toISOString()}
+      title={inboxFullTime(row.createdAt)}
+      className={cn("text-lax-13 tabular-nums text-lax-muted", className)}
     >
-      {item.title}
-    </Link>
-  ) : (
-    item.title
+      {when}
+    </time>
   );
+  const menu: InlineActionMenuItem[] = [
+    ...(row.href
+      ? [{ type: "item" as const, label: "Open", onSelect: () => actions.onNavigate(row) }]
+      : []),
+    ...(row.unread
+      ? [{ type: "item" as const, label: "Mark as read", onSelect: () => actions.onMarkRead(row) }]
+      : []),
+    ...(archived
+      ? []
+      : [{ type: "item" as const, label: "Archive", onSelect: () => actions.onArchive(row) }]),
+    ...(row.mute
+      ? [
+          { type: "separator" as const },
+          {
+            type: "item" as const,
+            label: row.mute.muted
+              ? `Notify me about ${row.mute.name} again`
+              : `Don't notify me about ${row.mute.name}`,
+            onSelect: () => actions.onMute(row, !row.mute?.muted),
+          },
+        ]
+      : []),
+  ];
 
   return (
     <li
+      data-unread={row.unread || undefined}
       className={cn(
-        "group relative flex items-start gap-3.5 px-4 py-4 md:px-5",
-        (href || selecting) &&
-          "motion-safe:transition-colors hover:bg-surface-container-low has-[a:focus-visible]:outline has-[a:focus-visible]:outline-2 has-[a:focus-visible]:-outline-offset-2 has-[a:focus-visible]:outline-ring",
-        selected && "bg-surface-container-low",
+        "group/row relative flex items-start gap-3 py-3 pr-2 pl-4 md:items-center md:gap-4 md:pr-3 md:pl-5",
+        "min-h-[72px] md:min-h-16",
+        "motion-safe:transition-colors motion-safe:duration-150",
+        row.href && "hover:bg-lax-hover",
+        selection.selected && "bg-lax-selected hover:bg-lax-selected",
+        "has-[[data-row-link]:focus-visible]:outline-2 has-[[data-row-link]:focus-visible]:-outline-offset-2 has-[[data-row-link]:focus-visible]:outline-lax-focus has-[[data-row-link]:focus-visible]:outline-solid",
+        row.unread &&
+          "before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-lax-fg",
       )}
     >
-      {selecting ? (
+      <span className="relative z-10 -my-2 -ml-2 hidden size-11 shrink-0 items-center justify-center md:inline-flex">
         <Checkbox
-          id={checkboxId}
-          checked={selected}
-          onCheckedChange={() => onToggleSelect?.(item.id)}
-          className="relative z-[1] mt-2.5 size-5"
+          checked={selection.selected}
+          onCheckedChange={(checked) => selection.onSelectedChange(checked === true)}
+          aria-label={`Select: ${row.title}`}
+          className="size-[18px] rounded-[4px] border-lax-control-edge bg-lax-surface shadow-none data-[state=checked]:border-lax-ink data-[state=checked]:bg-lax-ink data-[state=checked]:text-lax-on-ink focus-visible:ring-lax-focus"
         />
-      ) : null}
+      </span>
       <span
         aria-hidden
-        className={cn(
-          "grid size-9 shrink-0 place-items-center rounded-full",
-          TONE_STYLES[presentation.tone],
-        )}
+        className="grid size-8 shrink-0 place-items-center rounded-lax-control bg-lax-sunken text-lax-muted shadow-[inset_0_0_0_1px_var(--lax-line)]"
       >
-        <Icon className="size-4" />
+        <Icon className="size-4" strokeWidth={1.75} />
       </span>
       <div className="min-w-0 flex-1">
         <p
           className={cn(
-            "font-body text-[0.9375rem] leading-snug text-on-surface",
-            unread ? "font-semibold" : "font-normal",
+            "text-lax-14 text-lax-fg md:truncate",
+            row.unread ? "font-semibold" : "font-medium",
           )}
         >
-          {unread ? <span className="sr-only">Unread: </span> : null}
-          {title}
+          <span className="sr-only">
+            {row.unread ? "Unread. " : ""}
+            {label}:{" "}
+          </span>
+          {row.href && row.viaHop ? (
+            // The switch hop is a server route: a plain link, so it is a full load and never prefetched.
+            <a
+              href={row.href}
+              data-row-link
+              className="after:absolute after:inset-0 focus-visible:outline-none"
+              onClick={() => actions.onOpened(row)}
+            >
+              {row.title}
+            </a>
+          ) : row.href ? (
+            <Link
+              href={row.href}
+              data-row-link
+              className="after:absolute after:inset-0 focus-visible:outline-none"
+              onClick={() => actions.onOpened(row)}
+            >
+              {row.title}
+            </Link>
+          ) : (
+            row.title
+          )}
         </p>
-        {item.message ? (
-          <p className="mt-1 line-clamp-2 font-body text-sm text-on-surface-variant">
-            {item.message}
+        {row.message ? (
+          <p className="line-clamp-2 text-lax-13 text-lax-muted md:truncate md:[display:block]">
+            {row.message}
           </p>
         ) : null}
+        <p className="mt-1.5 flex min-w-0 items-center gap-3">
+          <AccountTag account={row.account} />
+          {time("md:hidden")}
+        </p>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <time
-          dateTime={item.createdAt.toISOString()}
-          title={item.createdAt.toLocaleString("en-GB")}
-          className="font-body text-xs tabular-nums text-on-surface-variant"
-        >
-          {relativeTime(item.createdAt)}
-        </time>
-        {unread ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="link"
-            onClick={() => onMarkRead(item.id)}
-            aria-label={`Mark as read: ${item.title}`}
-            className="relative z-[1] -m-2 size-8 rounded-full focus-visible:ring-offset-0"
-          >
-            <span className="size-2 rounded-full bg-[var(--color-product-accent,var(--color-on-surface))]" />
-          </Button>
-        ) : (
-          <span aria-hidden className="size-4" />
-        )}
-        {selecting ? null : (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="link"
-                aria-label={`More for ${item.title}`}
-                className="relative z-[1] size-8 rounded-full text-on-surface-variant hover:text-on-surface focus-visible:ring-offset-0"
-              >
-                <MoreHorizontal aria-hidden />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem disabled={!unread} onSelect={() => onMarkRead(item.id)}>
-                Mark as read
-              </DropdownMenuItem>
-              {archived ? null : (
-                <DropdownMenuItem onSelect={() => onArchive(item.id)}>Archive</DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
-        )}
+      <div className="relative z-10 flex shrink-0 items-center gap-1 md:gap-3">
+        {time("hidden w-12 text-right md:block")}
+        <InlineActionMenu label={`More for ${row.title}`} items={menu} />
       </div>
     </li>
   );

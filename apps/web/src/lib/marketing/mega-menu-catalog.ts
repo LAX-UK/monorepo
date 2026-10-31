@@ -35,7 +35,7 @@ export function getMarketingMegaMenuSections(): MegaMenuSection[] {
         { href: timedAuctionsHref, label: "Timed auctions" },
         { href: calendarSalesHref({ tab: "results" }), label: "Past results" },
         { href: "/sales", label: "Auction calendar" },
-        { href: "/settings#notifications", label: "Auction alerts" },
+        { href: "/settings#alerts", label: "Auction alerts" },
       ],
     },
     {

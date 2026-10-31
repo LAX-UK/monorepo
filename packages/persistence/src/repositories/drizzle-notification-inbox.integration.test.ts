@@ -139,6 +139,24 @@ describe.skipIf(!HAS_DB)("notification inbox by account (integration)", () => {
     expect(all.filter((r) => r.needsAction)).toHaveLength(2);
   });
 
+  it("counts what needs action and what is unread, for every account or one", async () => {
+    expect(await reader.countByUser(userId, {})).toEqual({ needsAction: 2, unread: 4 });
+    expect(
+      await reader.countByUser(userId, { account: { kind: "entity", legalEntityId: northId } }),
+    ).toEqual({ needsAction: 1, unread: 2 });
+  });
+
+  it("finds words in the title or message, treating % as a character", async () => {
+    const found = await reader.findByUserFiltered(userId, {
+      ...page,
+      tab: "all",
+      query: "PAYMENT",
+    });
+    expect(found.map((r) => r.type)).toEqual(["payment_due"]);
+    const none = await reader.findByUserFiltered(userId, { ...page, tab: "all", query: "%" });
+    expect(none).toEqual([]);
+  });
+
   it("filters by one organisation or by the person's own account", async () => {
     const north = await reader.findByUserFiltered(userId, {
       ...page,

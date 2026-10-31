@@ -73,18 +73,91 @@ export function TabNav({
   activeId,
   label,
   Link,
+  overflow = "menu",
   className,
 }: {
   items: readonly TabNavItem[];
   activeId: string;
   label: string;
   Link: LinkComponent;
+  /**
+   * What happens when the tabs don't fit: `menu` moves the rest into "More"; `scroll` keeps a
+   * short, fixed set of views in one row that scrolls sideways, with a fade at the edge.
+   */
+  overflow?: "menu" | "scroll";
   className?: string;
 }) {
   return (
     <div className={cn("flex border-b border-lax-line", className)}>
-      <OverflowTabs tabs={items} currentId={activeId} Link={Link} label={label} />
+      {overflow === "scroll" ? (
+        <ScrollingTabs tabs={items} currentId={activeId} Link={Link} label={label} />
+      ) : (
+        <OverflowTabs tabs={items} currentId={activeId} Link={Link} label={label} />
+      )}
     </div>
+  );
+}
+
+/**
+ * Tabs in one row that scrolls sideways when it doesn't fit, so every view stays one swipe away.
+ * The edge fades while there is more to see, and the current tab is scrolled into view.
+ */
+function ScrollingTabs({
+  tabs,
+  currentId,
+  Link,
+  label,
+}: {
+  tabs: readonly TabNavItem[];
+  currentId: string;
+  Link: LinkComponent;
+  label: string;
+}) {
+  const navRef = React.useRef<HTMLElement>(null);
+  const [more, setMore] = React.useState(false);
+  const update = React.useCallback(() => {
+    const nav = navRef.current;
+    if (nav) setMore(nav.scrollLeft + nav.clientWidth < nav.scrollWidth - 1);
+  }, []);
+  React.useEffect(() => {
+    const nav = navRef.current;
+    nav?.querySelector<HTMLElement>('[aria-current="page"]')?.scrollIntoView?.({
+      block: "nearest",
+      inline: "nearest",
+    });
+    update();
+    window.addEventListener("resize", update);
+    return () => window.removeEventListener("resize", update);
+  }, [update]);
+  return (
+    <nav
+      aria-label={label}
+      ref={navRef}
+      onScroll={update}
+      data-more={more || undefined}
+      className={cn(
+        "min-w-0 flex-1 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+        "data-[more]:[mask-image:linear-gradient(to_right,black_calc(100%-32px),transparent)]",
+      )}
+    >
+      <ul className="flex w-max items-center gap-0.5">
+        {tabs.map((view) => {
+          const active = view.id === currentId;
+          return (
+            <li key={view.id} className="shrink-0">
+              <Link
+                href={view.href}
+                {...(active ? { "aria-current": "page" as const } : {})}
+                className={tabClass(active)}
+              >
+                {view.label}
+                <TabCount item={view} />
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
   );
 }
 

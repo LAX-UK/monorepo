@@ -25,19 +25,23 @@ export function planSwitchHop(input: {
   actingId: string | null;
   memberships: readonly UsableAccount[];
   orgModuleEnabled: boolean;
+  /** A notification was opened from this account: the notice offers to switch back to it. */
+  notificationFrom?: string | null;
 }): HopPlan {
   const { requestedId, next } = input;
   if (!requestedId || requestedId === input.actingId) return { redirect: next };
   if (!canUseAccount(requestedId, input.memberships, input.orgModuleEnabled)) {
     return { redirect: noAccessHref(next) };
   }
+  // Switching back is only offered to the account this browser really used.
+  const from = input.notificationFrom;
+  const notice: AccountNotice =
+    from && from === input.actingId
+      ? { kind: "opened_notification", accountId: requestedId, fromAccountId: from }
+      : { kind: "switched", accountId: requestedId };
   return {
     redirect: next,
-    switchTo: {
-      accountId: requestedId,
-      remember: true,
-      notice: { kind: "switched", accountId: requestedId },
-    },
+    switchTo: { accountId: requestedId, remember: true, notice },
   };
 }
 

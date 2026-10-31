@@ -11,6 +11,8 @@ const notificationIdsBody = z.object({
 
 const legalEntityIdParam = z.object({ legalEntityId: z.string().uuid() });
 
+const MAX_QUERY_LENGTH = 100;
+
 /** `?account=personal` or `?account=<legal entity id>`; absent means every account. */
 function parseAccountFilter(
   raw: string | undefined,
@@ -42,12 +44,28 @@ export function attachUserNotificationsRoutes(r: UserHono, deps: UserRouteDeps):
     if (account === "invalid") {
       return c.json({ error: "invalid_account", message: "Unknown account" }, 400);
     }
+    // Free text over the title and message; capped so a pasted essay never reaches the database.
+    const query = (c.req.query("q") ?? "").trim().slice(0, MAX_QUERY_LENGTH);
     const response = await container.userRoutes.notificationsHttp.listNotifications({
       userId,
       limit,
       offset,
       tab,
       ...(type !== undefined ? { type } : {}),
+      ...(account ? { account } : {}),
+      ...(query ? { query } : {}),
+    });
+    return respondUserHttpJson(c, response);
+  });
+
+  r.get("/me/notifications/counts", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    const account = parseAccountFilter(c.req.query("account"));
+    if (account === "invalid") {
+      return c.json({ error: "invalid_account", message: "Unknown account" }, 400);
+    }
+    const response = await container.userRoutes.notificationsHttp.countNotifications({
+      userId,
       ...(account ? { account } : {}),
     });
     return respondUserHttpJson(c, response);

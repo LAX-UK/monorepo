@@ -330,8 +330,14 @@ export {
   NOTIFICATION_NEEDS_ACTION_TYPES,
   NOTIFICATION_NEEDS_ACTION_WHILE_LOT_OPEN,
   notificationNeedsAction,
-  type NotificationNeedsActionType,
 } from "./notification-needs-action.js";
+export {
+  LOCKED_NOTIFICATION_PREFERENCES,
+  LOCKED_NOTIFICATION_PREFERENCE_REASON,
+  type LockedNotificationPreference,
+  notificationPreferenceLocked,
+  withLockedPreferencesOn,
+} from "./notification-preference-locks.js";
 export {
   NOTIFICATION_ALWAYS_DELIVERED_TYPES,
   NOTIFICATION_IGNORES_QUIET_HOURS_TYPES,
@@ -514,6 +520,7 @@ export {
   unsoldChoiceDueBy,
   type EndingAuthorisation,
   type ExpiredInvitation,
+  type PendingAccessRequest,
   type NeedsYouCounts,
   type NeedsYouFacts,
   type NeedsYouKind,

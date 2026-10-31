@@ -14,10 +14,19 @@ export type NotificationListFilter = {
   tab: NotificationListTab;
   type?: string | undefined;
   account?: NotificationAccountFilter | undefined;
+  /** Words to find in the title or message, case-insensitively. */
+  query?: string | undefined;
 };
+
+/** The counts beside the inbox's views, for every account or one. */
+export type NotificationCountFilter = { account?: NotificationAccountFilter | undefined };
+
+export type NotificationCounts = { needsAction: number; unread: number };
 
 export interface INotificationReadRepository {
   findByUser(userId: string, limit: number): Promise<UserNotification[]>;
+  /** How many notifications need action and how many are unread. */
+  countByUser(userId: string, filter: NotificationCountFilter): Promise<NotificationCounts>;
   /** The inbox page, each row with its account and whether it needs action. */
   findByUserFiltered(
     userId: string,

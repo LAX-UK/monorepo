@@ -12,6 +12,7 @@ describe("notificationTypesForFilter", () => {
   });
 
   it("treats any other value as a single type", () => {
-    expect(notificationTypesForFilter("outbid")).toEqual(["outbid"]);
+    expect(notificationTypesForFilter("lot_won")).toEqual(["lot_won"]);
+    expect(notificationTypesForFilter("outbid")).toEqual(["outbid", "bid_refused_limit"]);
   });
 });

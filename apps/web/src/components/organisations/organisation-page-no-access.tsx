@@ -1,12 +1,10 @@
-"use client";
-
+import { resolveClientRequestPath } from "@/lib/navigation/client-request-path.server";
 import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { ORGANISATION_PAGE_CAPABILITIES } from "@/lib/navigation/organisation-tabs";
 import {
   workspacePageAt,
   workspacePageOpenedBy,
 } from "@/lib/presenters/workspace-access/workspace-access";
-import { usePathname } from "next/navigation";
 import { WorkspacePageNoAccess } from "./workspace-page-no-access";
 
 /**
@@ -14,8 +12,9 @@ import { WorkspacePageNoAccess } from "./workspace-page-no-access";
  * tried ("You don't have access to Payouts") and who can open it, from the capability table; on
  * the page's own address it names Organisation and everyone who can open a tab.
  */
-export function OrganisationPageNoAccess() {
-  const pathname = usePathname();
+export async function OrganisationPageNoAccess() {
+  const pathname =
+    (await resolveClientRequestPath()).split(/[?#]/)[0] ?? CLIENT_ROUTES.organisation;
   const tab = pathname === CLIENT_ROUTES.organisation ? null : workspacePageAt(pathname);
   return (
     <WorkspacePageNoAccess

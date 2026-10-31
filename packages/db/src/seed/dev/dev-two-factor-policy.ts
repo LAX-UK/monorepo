@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
-import { buildPgConnectionConfig } from "../../ssl.js";
+import { buildPgPoolConfig } from "../../ssl.js";
 
 const { Pool } = pg;
 
@@ -13,7 +13,7 @@ export async function seedDevTwoFactorPolicy(): Promise<void> {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is required");
 
-  const pool = new Pool(buildPgConnectionConfig(url));
+  const pool = new Pool(buildPgPoolConfig(url));
   try {
     await drizzle(pool).execute(sql`
       INSERT INTO "identity_mfa_policy" ("scope", "required")
