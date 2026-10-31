@@ -15,8 +15,6 @@ export { Button } from "./button.js";
 export { ButtonLink } from "./button-link.js";
 export type { ButtonLinkProps } from "./button-link.js";
 export { buttonVariants } from "./button-variants.js";
-export { ButtonLink } from "./button-link.js";
-export type { ButtonLinkProps } from "./button-link.js";
 export type { ButtonProps } from "./button.js";
 export { ReasonTooltip, Tooltip, TooltipProvider } from "./tooltip.js";
 export { fieldBox, readOnlyBox, tooltipClass } from "./styles.js";
