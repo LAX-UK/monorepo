@@ -2,11 +2,14 @@
  * Dashboard-facing DTOs — pages and view-models import from here, not from `*.server.ts`.
  * Keeps the composition root (`getServerDataContainer`) decoupled from HTTP module boundaries.
  */
+import type { ArtistAlertCriteria } from "@auction/domain";
 import type { Bid, Lot } from "@auction/types";
 
 export type BidWithLot = {
   bid: Bid;
   lot: Lot | null;
+  /** The member who placed the bid, on an organisation's list; absent on a person's own. */
+  placedBy?: { userId: string; name: string | null } | null;
 };
 
 export type WatchlistWithLotRow = {
@@ -26,6 +29,8 @@ export type ArtistFollowRow = {
   watchlistId: string;
   artistId: string;
   createdAt: Date;
+  /** What the person wants to hear about; every field empty means each new lot by the artist. */
+  alert: ArtistAlertCriteria;
 };
 
 /** Mirrors API `KycStatusSummary` (dates as ISO strings over the wire). */

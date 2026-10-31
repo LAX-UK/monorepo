@@ -69,14 +69,14 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
       sender: account(subject),
       intent: "notify_me",
     });
-    expect(first).toBe("registered");
+    expect(first).toMatchObject({ status: "registered" });
 
     const second = await registerInterest({
       artworkSlug: slug,
       sender: account(subject),
       intent: "notify_me",
     });
-    expect(second).toBe("already_subscribed");
+    expect(second).toMatchObject({ status: "already_subscribed" });
 
     const interests = await db
       .select()
@@ -145,7 +145,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
         sender: account(`subject-${suffix}`),
         intent: "notify_me",
       }),
-    ).resolves.toBe("not_subscribable");
+    ).resolves.toEqual({ status: "not_subscribable" });
   });
 
   it("stores enquiry message and phone, lists them, and links the ops alert to lax.art", async () => {
@@ -187,7 +187,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
         message: "Could I view this in person?",
         contactPhone: "+44 20 7946 0000",
       }),
-    ).resolves.toBe("registered");
+    ).resolves.toMatchObject({ status: "registered" });
 
     expect(queueEnquiryAlert).toHaveBeenCalledWith(
       expect.anything(),
@@ -244,16 +244,19 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
 
     await expect(
       registerInterest({ artworkSlug: slug, sender, intent: "enquiry", message: "Hello" }),
-    ).resolves.toBe("registered");
+    ).resolves.toMatchObject({ status: "registered" });
     await expect(
       registerInterest({ artworkSlug: slug, sender, intent: "enquiry", message: "Again" }),
-    ).resolves.toBe("registered");
+    ).resolves.toMatchObject({ status: "registered" });
 
     const rows = await db
       .select()
       .from(shopArtworkInterest)
       .where(eq(shopArtworkInterest.artworkId, imported.artworkId));
     expect(rows).toHaveLength(2);
+    // Each guest enquiry gets its own reference from the shared sequence.
+    expect(new Set(rows.map((row) => row.reference)).size).toBe(2);
+    expect(rows.every((row) => /^E-\d+$/.test(row.reference ?? ""))).toBe(true);
     expect(rows[0]).toMatchObject({
       identitySubjectId: null,
       contactName: "Grace Hopper",
@@ -282,7 +285,7 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
     ).resolves.toBe("artwork_not_found");
     await expect(
       registerInterest({ artworkSlug: slug, sender: account("subject"), intent: "notify_me" }),
-    ).resolves.toBe("artwork_not_found");
+    ).resolves.toEqual({ status: "artwork_not_found" });
   });
 
   it("allows shop_app role to insert interest rows", async () => {
@@ -313,6 +316,6 @@ describe.skipIf(!ownerUrl || !shopUrl)("drizzle artwork interest repository", ()
         sender: account(`grants-subject-${suffix}`),
         intent: "notify_me",
       }),
-    ).resolves.toBe("registered");
+    ).resolves.toMatchObject({ status: "registered" });
   });
 });

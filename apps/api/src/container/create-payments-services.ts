@@ -40,6 +40,10 @@ import { XeroOAuthService } from "../services/xero-oauth.service.js";
 import type { ContainerCatalogServices } from "./create-catalog-services.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
 import type { ContainerInfra } from "./create-infra.js";
+import {
+  type PaymentGroupServices,
+  createPaymentGroupServices,
+} from "./create-payment-group-services.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
 import type { ContainerRepositories } from "./create-repositories.js";
 
@@ -60,6 +64,10 @@ export type ContainerPaymentsServices = {
   stripePaymentWebhookService: StripePaymentWebhookService | null;
   xeroOAuthService: XeroOAuthService | null;
   adminMetricsService: AdminMetricsService;
+  /** "Pay several": one checkout for several invoices of an account. */
+  paymentGroupCheckout: PaymentGroupServices["checkout"];
+  paymentTierPolicy: PaymentTierPolicy;
+  settlementCompliancePolicy: AmlSettlementCompliancePolicy;
 };
 
 export type CreatePaymentsServicesInput = {
@@ -282,6 +290,24 @@ export function createPaymentsServices(
     userRepo,
   );
 
+  const paymentGroups = createPaymentGroupServices({
+    db,
+    env,
+    stripeClientFactory,
+    transactionRunner: platform.transactionRunner,
+    payments: paymentRepo,
+    payouts: payoutRepository,
+    payoutAdjustments: payoutAdjustmentService,
+    capture: paymentCaptureService,
+    events: domainEventSink,
+    notificationDispatcher,
+    users: userRepo,
+    lots: lotRepo,
+    accounting: accountingProvider,
+    stripePayments: stripePaymentGateway,
+    stripeCustomers: stripeCustomerGateway,
+  });
+
   const stripePaymentWebhookService: StripePaymentWebhookService | null =
     env.STRIPE_SECRET_KEY && env.STRIPE_PAYMENTS_WEBHOOK_SECRET
       ? new StripePaymentWebhookService(
@@ -292,6 +318,7 @@ export function createPaymentsServices(
           payoutAdjustmentService,
           paymentCaptureService,
           domainEventSink,
+          paymentGroups.webhooks,
         )
       : null;
 
@@ -321,5 +348,8 @@ export function createPaymentsServices(
     stripePaymentWebhookService,
     xeroOAuthService,
     adminMetricsService,
+    paymentGroupCheckout: paymentGroups.checkout,
+    paymentTierPolicy,
+    settlementCompliancePolicy,
   };
 }

@@ -154,7 +154,7 @@ describe("sections", () => {
         title: "Modern British",
         date: "20\u00a0Nov\u00a02026",
         dateTime: "2026-11-20T10:00:00.000Z",
-        works: "2 works",
+        works: "2 of your works",
         href: "/sales/modern-british/s1",
       },
     ]);
@@ -175,6 +175,34 @@ describe("sections", () => {
       { ...FIGURES, consignmentProgress: emptyConsignmentProgress() },
     );
     expect(organisationDashboardView(model, ctx, "ready").stages).toBeNull();
+  });
+
+  it("leaves out a lone stage: one number is not a breakdown", () => {
+    const lone = view("owner", {
+      ...FIGURES,
+      consignmentProgress: { ...emptyConsignmentProgress(), accepted: 1 },
+    });
+    expect(lone.stages).toBeNull();
+  });
+});
+
+describe("thin data", () => {
+  it("hides At a glance until there is a first figure, rather than a row of “No …” cells", () => {
+    const quiet = view("owner", {
+      ...FIGURES,
+      upcomingSales: [],
+      soldThisYear: { year: 2026, works: 0, totals: [] },
+      payoutsDue: { payouts: 0, totals: [], nextDate: null, overdueSince: null },
+      openBids: { lots: 0, totalMax: [] },
+    });
+    expect(quiet.tiles).toEqual([]);
+    const one = view("owner", {
+      ...FIGURES,
+      upcomingSales: [],
+      soldThisYear: { year: 2026, works: 0, totals: [] },
+      openBids: { lots: 0, totalMax: [] },
+    });
+    expect(one.tiles.map((tile) => tile.emptyText)).toContain("No open bids");
   });
 });
 

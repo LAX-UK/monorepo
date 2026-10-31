@@ -88,6 +88,7 @@ function mapRow(
     stripeRefundId: row.stripeRefundId,
     status: row.status,
     createdAt: row.createdAt,
+    paymentGroupId: row.paymentGroupId,
     xeroInvoiceNumber: xero?.xeroInvoiceNumber ?? null,
     xeroOnlineInvoiceUrl: xero?.xeroOnlineInvoiceUrl ?? null,
     xeroSyncStatus: xero?.xeroSyncStatus ?? null,
@@ -365,7 +366,14 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
         buyerId: payment.buyerId,
       })
       .from(payment)
-      .where(and(eq(payment.status, "pending"), lte(payment.createdAt, cutoff)));
+      // A payment in a "Pay several" group is released with its group, never on its own.
+      .where(
+        and(
+          eq(payment.status, "pending"),
+          lte(payment.createdAt, cutoff),
+          isNull(payment.paymentGroupId),
+        ),
+      );
     return rows;
   }
 
@@ -379,7 +387,14 @@ export class DrizzlePaymentRepository implements IPaymentWriteRepository {
         buyerId: payment.buyerId,
       })
       .from(payment)
-      .where(and(eq(payment.status, "authorized"), lte(payment.createdAt, cutoff)));
+      // A payment in a "Pay several" group is released with its group, never on its own.
+      .where(
+        and(
+          eq(payment.status, "authorized"),
+          lte(payment.createdAt, cutoff),
+          isNull(payment.paymentGroupId),
+        ),
+      );
     return rows;
   }
 

@@ -17,6 +17,73 @@ export type CheckoutStripeLine = {
   imageUrl: string | null;
 };
 
+export type CheckoutEditionRow = {
+  artworkId: string | null;
+  /** Null for an unnumbered run: an open edition or an unnumbered proof. */
+  editionNumber: number | null;
+  unitPricePence: number;
+  title: string;
+  imageUrl: string | null;
+  artistName: string;
+};
+
+/**
+ * The payment page's lines for the order's editions: one per artwork and price, so every
+ * edition the order charges for is shown and the lines always add up to the order total.
+ * Numbered editions name their numbers; unnumbered ones (open editions, proofs) do not.
+ */
+export function groupCheckoutEditionLines(
+  rows: readonly CheckoutEditionRow[],
+): CheckoutStripeLine[] {
+  const grouped = new Map<
+    string,
+    {
+      title: string;
+      artistName: string;
+      imageUrl: string | null;
+      unitAmountPence: number;
+      quantity: number;
+      editionNumbers: number[];
+    }
+  >();
+
+  for (const row of rows) {
+    if (row.artworkId === null) continue;
+    const key = `${row.artworkId}:${row.unitPricePence}`;
+    const existing = grouped.get(key);
+    if (existing) {
+      existing.quantity += 1;
+      if (row.editionNumber !== null) existing.editionNumbers.push(row.editionNumber);
+    } else {
+      grouped.set(key, {
+        title: row.title,
+        artistName: row.artistName,
+        imageUrl: row.imageUrl,
+        unitAmountPence: row.unitPricePence,
+        quantity: 1,
+        editionNumbers: row.editionNumber === null ? [] : [row.editionNumber],
+      });
+    }
+  }
+
+  return [...grouped.values()].map((line) => {
+    const numbers = [...line.editionNumbers].sort((a, b) => a - b);
+    const editionLabel =
+      numbers.length === 0
+        ? null
+        : numbers.length > 1
+          ? `Editions ${numbers.join(", ")}`
+          : `Edition ${numbers[0]}`;
+    return {
+      title: line.title,
+      description: editionLabel ? `${line.artistName} · ${editionLabel}` : line.artistName,
+      quantity: line.quantity,
+      unitAmountPence: line.unitAmountPence,
+      imageUrl: line.imageUrl,
+    };
+  });
+}
+
 export async function loadCheckoutStripePresentation(
   db: Database,
   orderId: string,
@@ -48,52 +115,7 @@ export async function loadCheckoutStripePresentation(
     .innerJoin(shopProduct, eq(shopProductVariant.productId, shopProduct.id))
     .where(eq(shopOrderLine.orderId, orderId));
 
-  const groupedEditions = new Map<
-    string,
-    {
-      title: string;
-      artistName: string;
-      imageUrl: string | null;
-      unitAmountPence: number;
-      quantity: number;
-      editionNumbers: number[];
-    }
-  >();
-
-  for (const row of editionRows) {
-    if (row.artworkId === null || row.editionNumber === null) {
-      continue;
-    }
-    const existing = groupedEditions.get(row.artworkId);
-    if (existing) {
-      existing.quantity += 1;
-      existing.editionNumbers.push(row.editionNumber);
-    } else {
-      groupedEditions.set(row.artworkId, {
-        title: row.title,
-        artistName: row.artistName,
-        imageUrl: row.imageUrl,
-        unitAmountPence: row.unitPricePence,
-        quantity: 1,
-        editionNumbers: [row.editionNumber],
-      });
-    }
-  }
-
-  const editionLines = [...groupedEditions.values()].map((line) => {
-    const sortedEditions = [...line.editionNumbers].sort((a, b) => a - b);
-    const editionLabel =
-      sortedEditions.length > 1
-        ? `Editions ${sortedEditions.join(", ")}`
-        : `Edition ${sortedEditions[0]}`;
-    return {
-      title: line.title,
-      description: `${line.artistName} · ${editionLabel}`,
-      quantity: line.quantity,
-      unitAmountPence: line.unitAmountPence,
-      imageUrl: line.imageUrl,
-    };
-  });
+  const editionLines = groupCheckoutEditionLines(editionRows);
 
   const groupedVariants = new Map<
     string,

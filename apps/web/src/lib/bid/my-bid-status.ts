@@ -4,7 +4,14 @@ import type { BidWithLot } from "@/lib/data/dto/dashboard-dtos";
  * Where one of the person's bids stands. The My bids page, the header prompt and the account
  * sub-navigation all read it from here, so they never disagree.
  */
-export type MyBidStatus = "winning" | "outbid" | "absentee" | "won" | "not-won" | "withdrawn";
+export type MyBidStatus =
+  | "winning"
+  | "outbid"
+  | "maximum-set"
+  | "absentee"
+  | "won"
+  | "not-won"
+  | "withdrawn";
 
 /** The views of My bids, in order. The ids stay the page's `?tab=` values. */
 export const MY_BID_TABS = ["active", "won", "lost"] as const;
@@ -19,6 +26,7 @@ export const MY_BID_TAB_LABEL: Record<MyBidTab, string> = {
 const STATUS_TAB: Record<MyBidStatus, MyBidTab> = {
   winning: "active",
   outbid: "active",
+  "maximum-set": "active",
   absentee: "active",
   won: "won",
   "not-won": "lost",
@@ -29,6 +37,7 @@ const STATUS_TAB: Record<MyBidStatus, MyBidTab> = {
 const ACTIVE_ORDER: Record<MyBidStatus, number> = {
   outbid: 0,
   winning: 1,
+  "maximum-set": 2,
   absentee: 2,
   won: 3,
   "not-won": 3,
@@ -60,7 +69,9 @@ export function myBidStatus(row: BidWithLot, userId: string | undefined): MyBidS
       return bid.isWinning && sameAmount(bid.amount, lot.currentPrice) ? "winning" : "outbid";
     case "draft":
     case "scheduled":
-      return "absentee";
+      // Before the lot opens: a bid left with the saleroom is an absentee bid; one placed online
+      // waits as the maximum the account will go to.
+      return bid.placedVia === "absentee" ? "absentee" : "maximum-set";
     case "ended": {
       const wonByPerson = Boolean(userId && lot.winnerId === userId);
       const wonByAccount = Boolean(

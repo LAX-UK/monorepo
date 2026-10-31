@@ -17,6 +17,19 @@ describe("isZohoEventTypeEnabled", () => {
     expect(isZohoEventTypeEnabled(e, "bid.lot_won")).toBe(false);
   });
 
+  it("runs a guest lead's erasure wherever guest leads are synced", () => {
+    const synced = env({
+      ZOHO_CRM_SYNC_MODE: "live",
+      ZOHO_CRM_ENABLED_EVENT_TYPES: "shop.guest_lead.recorded",
+    });
+    expect(isZohoEventTypeEnabled(synced, "shop.guest_lead.erased")).toBe(true);
+    const notSynced = env({
+      ZOHO_CRM_SYNC_MODE: "live",
+      ZOHO_CRM_ENABLED_EVENT_TYPES: "user.registered",
+    });
+    expect(isZohoEventTypeEnabled(notSynced, "shop.guest_lead.erased")).toBe(false);
+  });
+
   it("respects dry_run for enabled types", () => {
     const e = env({
       ZOHO_CRM_SYNC_MODE: "dry_run",

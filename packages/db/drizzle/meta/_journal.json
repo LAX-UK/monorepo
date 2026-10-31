@@ -1807,6 +1807,34 @@
       "when": 1797580800000,
       "tag": "0257_workspace_buying_modules",
       "breakpoints": true
+    },
+    {
+      "idx": 258,
+      "version": "7",
+      "when": 1797667200000,
+      "tag": "0258_workspace_selling_modules",
+      "breakpoints": true
+    },
+    {
+      "idx": 259,
+      "version": "7",
+      "when": 1797753600000,
+      "tag": "0259_workspace_access_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 260,
+      "version": "7",
+      "when": 1797840000000,
+      "tag": "0260_guest_data_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 261,
+      "version": "7",
+      "when": 1798012800000,
+      "tag": "0261_payment_groups",
+      "breakpoints": true
     }
   ]
 }

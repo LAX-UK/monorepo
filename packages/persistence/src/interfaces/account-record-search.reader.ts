@@ -1,4 +1,9 @@
-import type { AccountSearchScopes, AccountSearchTerms } from "@auction/domain";
+import type {
+  AccountSearchScopes,
+  AccountSearchTerms,
+  BidOutcome,
+  PurchaseInvoiceStatus,
+} from "@auction/domain";
 import type {
   ItemSubmissionStatus,
   LegalEntityMemberRole,
@@ -19,6 +24,8 @@ export type AccountSearchCriteria<S> = {
   terms: AccountSearchTerms;
   limit: number;
   offset: number;
+  /** For states that depend on time (a payment overdue). */
+  now: Date;
 };
 
 /** A lot as search shows it: enough to name it and link to it, never a price. */
@@ -36,10 +43,29 @@ export type LotSearchHit = {
 /** A consignment (a submission) with the lot made from it, once there is one. */
 export type ConsignmentSearchHit = {
   submissionId: string;
+  /** What the seller quotes on the phone ("C-1042"). */
+  reference: string;
   title: string;
   status: ItemSubmissionStatus;
   lot: Omit<LotSearchHit, "title" | "endsAt"> | null;
   updatedAt: Date;
+};
+
+/** A won lot with what was paid and where the payment stands. */
+export type PurchaseSearchHit = LotSearchHit & {
+  /** The hammer price, decimal in `currency`. */
+  hammerPrice: string;
+  currency: string;
+  /** Where its invoice stands (`purchaseInvoiceState`): due, overdue, paid and so on. */
+  paymentState: PurchaseInvoiceStatus;
+};
+
+/** A lot bid on, with the highest the bidders in scope offered and how it stands for them. */
+export type BidSearchHit = LotSearchHit & {
+  /** The highest bid or maximum bid in scope, decimal in `currency`. */
+  maximum: string | null;
+  currency: string;
+  outcome: BidOutcome | null;
 };
 
 export type InvoiceSearchHit = {
@@ -64,8 +90,8 @@ export type MemberSearchHit = {
 /** What each group returns. */
 export type AccountSearchHits = {
   consignments: ConsignmentSearchHit;
-  purchases: LotSearchHit;
-  bids: LotSearchHit;
+  purchases: PurchaseSearchHit;
+  bids: BidSearchHit;
   works: LotSearchHit;
   invoices: InvoiceSearchHit;
   members: MemberSearchHit;

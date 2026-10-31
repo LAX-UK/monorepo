@@ -8,11 +8,14 @@ import {
 const ACCOUNT = "acct-1";
 const pick = (lotId: string, over: Partial<PaySeveralCandidate> = {}): PaySeveralCandidate => ({
   lotId,
+  paymentId: `pay-${lotId}`,
   buyerAccountId: ACCOUNT,
   invoice: "due",
   payerMayPay: true,
   totalDue: "1000.00",
   currency: "GBP",
+  heldForReview: false,
+  inPaymentInProgress: false,
   ...over,
 });
 
@@ -35,7 +38,9 @@ describe("planPaySeveral", () => {
       pick("b", { buyerAccountId: "acct-2" }),
       pick("c", { invoice: "paid" }),
       pick("d", { payerMayPay: false }),
-      pick("e", { invoice: "not_invoiced", totalDue: null }),
+      pick("e", { invoice: "not_invoiced", totalDue: null, paymentId: null }),
+      pick("f", { heldForReview: true }),
+      pick("g", { inPaymentInProgress: true }),
     ]);
     if (!decision.allowed) throw new Error("expected a plan");
     expect(decision.plan.payable.map((p) => p.lotId)).toEqual(["a"]);
@@ -44,6 +49,8 @@ describe("planPaySeveral", () => {
       { lotId: "c", reason: "not_owed" },
       { lotId: "d", reason: "not_payer" },
       { lotId: "e", reason: "not_invoiced" },
+      { lotId: "f", reason: "held_for_review" },
+      { lotId: "g", reason: "being_paid" },
     ]);
     expect(decision.plan.total).toBe("1000.00");
   });

@@ -6,6 +6,7 @@ import {
   saleModeAllowsBidding,
   saleModeAllowsOperatorBidding,
   saleModeBidChannels,
+  saleModeEndsManually,
   saleModeInheritsLotTiming,
 } from "./sale-mode-policy.js";
 
@@ -53,5 +54,14 @@ describe("sale-mode-policy", () => {
     expect(saleModeBidChannels("onsite")).toEqual({ online: false, room: true, phone: true });
     expect(saleModeBidChannels("hybrid")).toEqual({ online: true, room: true, phone: true });
     expect(getSaleModeCapabilities("online").bidChannels.online).toBe(true);
+  });
+
+  it("lets staff end every saleroom sale, hybrid included, and no online sale", () => {
+    expect(saleModeEndsManually("onsite")).toBe(true);
+    expect(saleModeEndsManually("hybrid")).toBe(true);
+    expect(saleModeEndsManually("online")).toBe(false);
+    for (const mode of ["online", "onsite", "hybrid"] as const) {
+      expect(saleModeEndsManually(mode)).toBe(isSaleroomDeliveryMode(mode));
+    }
   });
 });

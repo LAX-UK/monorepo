@@ -6,9 +6,15 @@ import {
   narrowerScopeNote,
   searchRowGroups,
 } from "./account-search";
-import { navCountsFrom, parseNeedsYouCounts } from "./needs-you-counts";
+import { navCountsFrom } from "./needs-you-counts";
+import { parseNeedsYouResponse } from "./needs-you-read";
 import { RECENT_SEARCH_LIMIT, localRecentSearchStore, withRecent } from "./recent-searches";
-import { matchingPages, shouldSearchRecords, workspaceSearchView } from "./workspace-search-model";
+import {
+  matchingPages,
+  searchPlaceholder,
+  shouldSearchRecords,
+  workspaceSearchView,
+} from "./workspace-search-model";
 
 const RESULT: AccountSearchResult = accountSearchResultSchema.parse({
   searchable: ["consignments", "purchases", "bids", "works", "invoices", "members"],
@@ -22,14 +28,39 @@ const RESULT: AccountSearchResult = accountSearchResultSchema.parse({
           artistName: "Eleanor Vance",
           lotNumber: 57,
           saleTitle: "Modern British",
-          lotStatus: "sold",
+          lotStatus: "ended",
+          hammerPrice: "3200.00",
+          currency: "GBP",
+          paymentState: "overdue",
+        },
+      ],
+      nextOffset: null,
+    },
+    {
+      group: "bids",
+      items: [
+        {
+          lotId: "lot-88",
+          title: "Sun over Arles",
+          lotNumber: 88,
+          lotStatus: "active",
+          maximum: "6200.00",
+          currency: "GBP",
+          outcome: "outbid",
         },
       ],
       nextOffset: null,
     },
     {
       group: "consignments",
-      items: [{ submissionId: "s-1", title: "Night harbour", status: "needs_changes" }],
+      items: [
+        {
+          submissionId: "s-1",
+          reference: "C-1042",
+          title: "Night harbour",
+          status: "needs_changes",
+        },
+      ],
       nextOffset: null,
     },
     {
@@ -59,17 +90,21 @@ const PAGES = [
 describe("account search results", () => {
   it("names each group and turns each hit into a row that opens its record", () => {
     const groups = searchRowGroups(RESULT);
-    expect(groups.map((g) => g.label)).toEqual(["Purchases", "Consignments", "Invoices"]);
+    expect(groups.map((g) => g.label)).toEqual(["Purchases", "Bids", "Consignments", "Invoices"]);
     expect(groups[0]?.rows[0]).toMatchObject({
       label: "Harbour at dawn",
-      meta: "Lot 57 · won · Modern British",
-      href: "/lot/harbour-at-dawn/lot-57",
+      meta: "Lot 57 · won for £3,200.00 · payment overdue",
+      href: "/purchases/lot-57",
     });
     expect(groups[1]?.rows[0]).toMatchObject({
-      meta: "Consignment · needs changes",
-      href: "/selling/consignments/s-1",
+      meta: "Lot 88 · outbid · your maximum £6,200.00",
+      href: "/lot/sun-over-arles/lot-88",
     });
     expect(groups[2]?.rows[0]).toMatchObject({
+      meta: "C-1042 · needs changes",
+      href: "/selling/consignments/s-1",
+    });
+    expect(groups[3]?.rows[0]).toMatchObject({
       label: "INV-2026-0412 · Harbour at dawn",
       meta: "£6,450.00 · overdue",
     });
@@ -210,9 +245,44 @@ describe("Needs-you counts in the menu", () => {
 
   it("reads the reader's response and nothing else", () => {
     expect(
-      parseNeedsYouCounts({ data: { counts: { bids: 1, consignments: 2, other: 5 }, tasks: [] } }),
+      parseNeedsYouResponse({
+        data: { kinds: [], counts: { bids: 1, consignments: 2, other: 5 }, tasks: [] },
+      })?.counts,
     ).toEqual({ bids: 1, consignments: 2 });
-    expect(parseNeedsYouCounts({ error: "forbidden" })).toBeNull();
-    expect(parseNeedsYouCounts(null)).toBeNull();
+    expect(parseNeedsYouResponse({ error: "forbidden" })).toBeNull();
+    expect(parseNeedsYouResponse(null)).toBeNull();
+  });
+
+  it("reads each task with its dates and link, and skips a kind this build does not know", () => {
+    const read = parseNeedsYouResponse({
+      data: {
+        kinds: ["outbid", "pay"],
+        counts: { bids: 1 },
+        truncated: true,
+        tasks: [
+          {
+            kind: "outbid",
+            lots: [{ id: "l1", title: "Sun over Arles", endsAt: "2026-10-30T18:12:00.000Z" }],
+            link: { page: "lot", id: "l1" },
+          },
+          { kind: "something_new", link: { page: "bids" } },
+        ],
+      },
+    });
+    expect(read?.tasks).toEqual([
+      {
+        kind: "outbid",
+        lots: [{ id: "l1", title: "Sun over Arles", endsAt: new Date("2026-10-30T18:12:00.000Z") }],
+        link: { page: "lot", id: "l1" },
+      },
+    ]);
+    expect(read?.truncated).toBe(true);
+  });
+});
+
+describe("searchPlaceholder", () => {
+  it("names the organisation when it fits the field, and never cuts it short", () => {
+    expect(searchPlaceholder("Northbank Gallery")).toBe("Search Northbank Gallery");
+    expect(searchPlaceholder("Cedar & Stone Fine Art")).toBe("Search this organisation");
   });
 });

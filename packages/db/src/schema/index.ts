@@ -43,6 +43,7 @@ export * from "./saved-search.js";
 export * from "./admin-saved-views.js";
 export * from "./push-subscriptions.js";
 export * from "./payments.js";
+export * from "./payment-group.js";
 export * from "./watchlist.js";
 export * from "./artist-watchlist.js";
 export * from "./artist-profiles.js";
@@ -51,6 +52,7 @@ export * from "./sale-follow.js";
 export * from "./item-submissions.js";
 export * from "./consignment-agreements.js";
 export * from "./unsold-lot-choices.js";
+export * from "./unsold-choice-deadline.js";
 export * from "./submission-categories.js";
 export * from "./user-address.js";
 export * from "./xero-integration.js";
@@ -107,3 +109,4 @@ export {
   submissionCategoryRelations,
   venueRelations,
 } from "../relations.js";
+export * from "./access-request.js";

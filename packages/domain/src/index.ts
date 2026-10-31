@@ -342,6 +342,7 @@ export {
 export {
   entityActorCan,
   entityCapabilitiesOf,
+  isEntityCapability,
   entityRoleCan,
   rolesWithCapability,
   type EntityActor,
@@ -373,16 +374,18 @@ export {
   homeActivityArchive,
   homeNotices,
   homeShortcuts,
-  homeTaskKindsFor,
-  homeTasks,
+  organisationFirstSteps,
+  FIRST_STEP_TASK_KINDS,
+  type FirstStep,
+  type FirstStepId,
+  type FirstStepState,
+  type NeedsYouRead,
   type HomeActivityArchive,
   type HomeActivityEvent,
   type HomeActivityKind,
   type HomeNotice,
   type HomeShortcut,
   type HomeSubject,
-  type HomeTask,
-  type HomeTaskKind,
   type OrganisationHomeFacts,
   type OrganisationHomeModel,
   type UnsoldLotState,
@@ -578,6 +581,25 @@ export {
   type PaySeveralSkipReason,
 } from "./pay-several.js";
 export {
+  payTogether,
+  type PayTogetherDecision,
+  type PayTogetherRefusal,
+} from "./pay-several-checkout.js";
+export {
+  allocateGroupDispute,
+  attributeGroupRefunds,
+  decidePaymentGroupSettlement,
+  paymentGroupIsLive,
+  paymentGroupTransition,
+  type GroupRefund,
+  type GroupRefundAttribution,
+  type PaymentGroupEvent,
+  type PaymentGroupMemberFacts,
+  type PaymentGroupSettlementDecision,
+  type PaymentGroupSettlementRefusal,
+  type PaymentGroupStatus,
+} from "./payment-group.js";
+export {
   EMPTY_ARTIST_ALERT_CRITERIA,
   artistAlertCriteriaRefusal,
   lotMatchesArtistAlert,
@@ -610,3 +632,26 @@ export {
   type ActivityGroup,
   type ActivityKind,
 } from "./organisation-activity.js";
+export {
+  consignmentReference,
+  saleLineBreakdown,
+  soldLotPayoutStage,
+  type SaleLineBreakdown,
+  type SaleLineFacts,
+  type SoldLotFacts,
+  type SoldLotPayoutStage,
+} from "./selling-records.js";
+export { bidOutcome, type BidOutcome } from "./search-result-states.js";
+export {
+  ACCESS_REQUEST_STATUSES,
+  accessAskRefusal,
+  accessDecisionRefusal,
+  accessRequestOpen,
+  approvalRole,
+  canDecideAccessRequests,
+  type AccessApprovalRefusal,
+  type AccessAsk,
+  type AccessAskRefusal,
+  type AccessDecisionRefusal,
+  type AccessRequestStatus,
+} from "./access-request.js";

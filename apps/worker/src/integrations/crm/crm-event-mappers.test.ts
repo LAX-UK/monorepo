@@ -162,6 +162,37 @@ describe("mapDomainEventToCrmIntent", () => {
     }
   });
 
+  it("labels a lead that has only sent an enquiry", () => {
+    const guestId = "6f1c3c2a-1d2b-4c3e-9f4a-5b6c7d8e9f01";
+    const intent = mapDomainEventToCrmIntent(
+      {
+        id: 13,
+        eventType: "shop.guest_lead.recorded",
+        aggregateId: guestId,
+        schemaVersion: 1,
+        payload: {
+          schemaVersion: 1,
+          guestCustomerId: guestId,
+          leadSubjectId: `guest:${guestId}`,
+          email: "ada@example.com",
+          name: "Ada Moreno",
+          status: "enquired",
+          source: "lax.art enquiry",
+          marketingConsent: false,
+          marketingConsentAt: null,
+          marketingConsentVersion: null,
+          firstSeenAt: "2026-10-30T12:00:00.000Z",
+          lastSeenAt: "2026-10-30T12:00:00.000Z",
+          paidOrderCount: 0,
+        },
+      },
+      ctx,
+    );
+    expect(intent.kind === "person_upsert" && intent.fields[CRM_FIELD.leadSourceDetailed]).toBe(
+      "lax.art enquiry: enquired",
+    );
+  });
+
   it("merges a claimed guest lead into the account that verified the email", () => {
     const guestId = "6f1c3c2a-1d2b-4c3e-9f4a-5b6c7d8e9f01";
     const intent = mapDomainEventToCrmIntent(
@@ -185,5 +216,25 @@ describe("mapDomainEventToCrmIntent", () => {
       subjectId: "user_1",
       retiredSubjectId: `guest:${guestId}`,
     });
+  });
+
+  it("deletes the CRM lead of a guest erased on request", () => {
+    const guestId = "6f1c3c2a-1d2b-4c3e-9f4a-5b6c7d8e9f01";
+    const intent = mapDomainEventToCrmIntent(
+      {
+        id: 12,
+        eventType: "shop.guest_lead.erased",
+        aggregateId: guestId,
+        schemaVersion: 1,
+        payload: {
+          schemaVersion: 1,
+          guestCustomerId: guestId,
+          leadSubjectId: `guest:${guestId}`,
+          erasedAt: "2026-10-30T12:00:00.000Z",
+        },
+      },
+      ctx,
+    );
+    expect(intent).toEqual({ kind: "erase_subject", subjectId: `guest:${guestId}` });
   });
 });

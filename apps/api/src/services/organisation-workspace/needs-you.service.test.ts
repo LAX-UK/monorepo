@@ -1,6 +1,7 @@
 import type { INeedsYouFactsReader } from "@auction/persistence/interfaces";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
+import { UnsoldChoiceDeadlines } from "../consignment-after-sale/unsold-choice-deadlines.js";
 import { NeedsYouService } from "./needs-you.service.js";
 
 const ENTITY = "00000000-0000-4000-8000-000000000001";
@@ -33,6 +34,7 @@ function setup(options: { standing?: { status: "approved"; payoutsReady: boolean
           submissionId: "s1",
           title: "Harbour",
           endedAt: new Date("2026-10-29T12:00:00Z"),
+          chooseBy: null,
           choice: null,
         },
       ],
@@ -61,6 +63,7 @@ function setup(options: { standing?: { status: "approved"; payoutsReady: boolean
     facts,
     organisations: { standing: vi.fn(async () => standing) },
     unsold,
+    deadlines: new UnsoldChoiceDeadlines({ warn: () => {} }),
     authorisations,
     now: () => NOW,
   });

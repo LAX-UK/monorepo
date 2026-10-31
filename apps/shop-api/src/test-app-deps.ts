@@ -7,7 +7,9 @@ import {
   createEditionAlertRateLimiter,
   createEnquiryRateLimiter,
 } from "./application/enquiry-rate-limit.js";
+import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import { createHomeFeaturesService } from "./application/home-features/home-features.service.js";
+import { LeadsService } from "./application/leads/leads.service.js";
 import { createProductionTaskService } from "./application/production-task.service.js";
 import { createSavedViewService } from "./application/saved-view.service.js";
 import type { ShopApiAppDeps } from "./container.js";
@@ -50,6 +52,7 @@ export function createMinimalShopApiTestDeps(
       SHOP_OPS_DUAL_CONTROL_PENCE: 500_000,
       STRIPE_SHOP_CONNECT_PLATFORM_KEY: "bid_sandbox",
       SHOP_CONNECT_TRANSFERS_ENABLED: false,
+      SHOP_FINANCIAL_YEAR_END: { month: 9, day: 30 },
     },
     auth: {
       jwksUrl: "http://localhost:3001/.well-known/jwks.json",
@@ -131,7 +134,7 @@ export function createMinimalShopApiTestDeps(
       clock,
     }),
     interest: {
-      registerArtworkInterest: async () => "registered" as const,
+      registerArtworkInterest: async () => ({ status: "registered" as const, reference: "E-2041" }),
       getArtworkInterest: async () => ({ subscribed: false }),
       enquiryRateLimiter: createEnquiryRateLimiter(createInMemoryFixedWindowCounter()),
       editionAlerts: {
@@ -207,6 +210,17 @@ export function createMinimalShopApiTestDeps(
         },
       }),
       savedViews: createSavedViewService({ repository: createInMemorySavedViewRepository() }),
+      leads: new LeadsService({
+        list: async () => ({
+          rows: [],
+          counts: { all: 0, ordered: 0, abandoned_checkout: 0, enquired: 0, joined: 0 },
+        }),
+        get: async () => null,
+      }),
+      guestErasure: new GuestErasureService({
+        read: async () => null,
+        withLockedGuest: async () => null,
+      }),
       enquiryInbox: createEnquiryInboxService({
         repository: createStubEnquiryInboxRepository(),
         staffReader: {

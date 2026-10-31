@@ -26,7 +26,10 @@ const ACCOUNT = {
 const GUEST_CONTACT = { name: "Grace Hopper", email: "grace@example.com" };
 
 async function buildApp(
-  registerArtworkInterest = vi.fn(async () => "registered" as const),
+  registerArtworkInterest = vi.fn(async () => ({
+    status: "registered" as const,
+    reference: "E-2041",
+  })),
   enquiryRateLimiter: EnquiryRateLimiter = createEnquiryRateLimiter(
     createInMemoryFixedWindowCounter(),
   ),
@@ -71,7 +74,7 @@ describe("artwork interest routes", () => {
       },
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({ status: "registered" });
+    expect(response.json()).toEqual({ status: "registered", reference: "E-2041" });
     expect(registerArtworkInterest).toHaveBeenCalledWith({
       artworkSlug: "test-slug",
       sender: ACCOUNT,

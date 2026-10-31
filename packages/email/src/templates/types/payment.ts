@@ -20,6 +20,13 @@ type PaymentTemplateVars = {
     /** Formatted for display ("£1,250.00"); left out when the amount is unknown. */
     amount?: string | null;
     receiptUrl?: string | null;
+    /**
+     * Each invoice a single payment settled ("Lot 12 · Title", "£1,250.00"), when it settled
+     * more than one; `amount` is then the total.
+     */
+    lines?: { title: string; amount: string }[] | null;
+    /** How it was paid, in words ("Card", "Bank transfer"). */
+    paymentMethod?: string | null;
   };
   "payment-invoice": {
     userName?: string | null;

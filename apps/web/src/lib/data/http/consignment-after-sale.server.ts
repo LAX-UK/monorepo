@@ -35,6 +35,7 @@ const unsoldOutcomeSchema = z.object({
   submissionId: z.string(),
   title: z.string(),
   endedAt: z.string(),
+  chooseBy: z.string(),
   choice: z.enum(["none", "requested", "confirmed"]),
 });
 

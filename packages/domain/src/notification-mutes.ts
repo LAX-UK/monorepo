@@ -33,6 +33,9 @@ export const NOTIFICATION_ALWAYS_DELIVERED_TYPES = [
   "staff_role_expired_admin",
   "staff_role_changed",
   "staff_role_changed_admin",
+  // A member's request for access, waiting for a decision, and the decision.
+  "access_requested",
+  "access_request_decided",
 ] as const;
 
 const ALWAYS_DELIVERED = new Set<string>(NOTIFICATION_ALWAYS_DELIVERED_TYPES);

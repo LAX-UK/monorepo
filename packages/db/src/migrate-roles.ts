@@ -175,6 +175,11 @@ export const SHOP_PRODUCT_PROFILE_TABLES = [
 export const SHOP_SSF_RECEIVER_TABLES = ["shop_ssf_replay"] as const;
 /** Shop-api enqueues transactional mail via email_outbox (worker relay delivers). */
 export const SHOP_EMAIL_OUTBOX_TABLES = ["email_outbox"] as const;
+/**
+ * The CRM integration's own records, read by LAX Admin's leads view to show whether each lead
+ * reached the CRM. shop_app reads them and never writes: the worker owns both.
+ */
+export const SHOP_CRM_READ_TABLES = ["crm_record_link", "domain_event_delivery"] as const;
 /** Worker projectors upsert Shop/Bid local projections from Identity domain events. */
 export const WORKER_PRODUCT_PROFILE_TABLES = [
   "shop_user_profile",
@@ -267,6 +272,8 @@ export const WORKER_FULL_TABLES = [
 ] as const;
 /** Worker persists async QR scan events (qr-code-scan job via persistQrCodeScan). */
 export const WORKER_QR_CODE_SCAN_TABLES = ["qr_code_scan", "qr_code_scan_daily"] as const;
+/** The unsold-choice projector stores each unsold outcome's choose-by date, once. */
+export const WORKER_UNSOLD_CHOICE_DEADLINE_TABLES = ["unsold_choice_deadline"] as const;
 /** Worker provisions personal legal entities from `user.registered` domain events. */
 export const WORKER_PROVISIONING_TABLES = ["legal_entity", "legal_entity_member"] as const;
 /** Worker processes async CSV exports and purges expired rows (data-export + purge-expired jobs). */
@@ -591,6 +598,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         for (const tableName of SHOP_EMAIL_OUTBOX_TABLES) {
           await grantIfExists(client, "shop_app", tableName, "INSERT, SELECT");
         }
+        for (const tableName of SHOP_CRM_READ_TABLES) {
+          await grantIfExists(client, "shop_app", tableName, "SELECT");
+        }
         for (const tableName of WORKER_LOCK_READ_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "SELECT, UPDATE");
         }
@@ -651,6 +661,9 @@ export async function applyApplicationRoleGrants(connectionString: string): Prom
         await grantIfExists(client, "worker_app", "qr_code", "SELECT");
         for (const tableName of WORKER_QR_CODE_SCAN_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");
+        }
+        for (const tableName of WORKER_UNSOLD_CHOICE_DEADLINE_TABLES) {
+          await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT");
         }
         for (const tableName of WORKER_DOMAIN_EVENT_DELIVERY_TABLES) {
           await grantIfExists(client, "worker_app", tableName, "INSERT, SELECT, UPDATE");

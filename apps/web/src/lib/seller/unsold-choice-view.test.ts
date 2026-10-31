@@ -7,6 +7,7 @@ const base: SellerUnsoldLotView = {
   currentReserve: "5000.00",
   reserveFloor: "3000.00",
   currency: "GBP",
+  chooseBy: "2026-11-03T18:00:00.000Z",
   choice: null,
   canChoose: true,
   choicePaused: false,

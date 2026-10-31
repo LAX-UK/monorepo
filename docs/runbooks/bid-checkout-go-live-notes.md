@@ -37,6 +37,20 @@ Fixes shipped in this pass are listed in the PR description. The items below are
 | Xero capture recording failure does not fail capture (cron retry exists) | Low | Monitor `xero_payment_record_failed` |
 | Basket checkout is per-lot only (`checkout-basket-panel.tsx`) | By design | Finance roadmap for consolidated invoice |
 
+## Pay several (one payment for several invoices)
+
+Organisation payers can settle several invoices with one checkout (`POST /legal-entities/purchases/pay-several`). Each invoice keeps its own `payment` row; a `payment_group` row ties them to the one checkout.
+
+| Topic | Behaviour |
+|-------|-----------|
+| **Webhook events** | The Bid payments webhook endpoint must also send `checkout.session.expired` (it releases a group whose checkout lapsed). Without it, a lapsed group is released only by `payment_intent.canceled`. |
+| **Settlement** | `payment_intent.succeeded` with `metadata.paymentGroupId` marks every invoice paid in one transaction. Any mismatch (amount, currency, an invoice paid or cancelled meanwhile, a released group) applies nothing and raises `payment_group.settlement_refused` plus the `payment_group_settlement_refused_*` metric: reconcile and refund by hand. |
+| **Refunds** | Always per invoice and by amount; the Stripe refund carries `metadata.paymentId`. A refund made in the Stripe dashboard on a group charge must set `paymentId`, or it raises `payment_group.refund_unattributed` and changes no ledger. |
+| **Disputes** | A dispute of the whole charge claws back every invoice in full. A partial dispute raises `payment_group.dispute_needs_allocation`; finance allocates it by hand. |
+| **Double payment** | An invoice paid through an older single checkout after its group was paid logs `payment_group_invoice_paid_twice`: refund one of the two. |
+| **Xero** | One Xero payment per invoice, as for single payments; the Stripe payout still lands as one deposit. |
+| **Rollback** | `0261_rollback.sql` stops while a paid group exists, because grouped invoices share one charge. |
+
 ## Scheduled jobs (now wired)
 
 When `CRON_INTERNAL_SECRET` is set, the worker registers:

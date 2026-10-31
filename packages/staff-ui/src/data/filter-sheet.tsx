@@ -20,7 +20,7 @@ import {
   type DateRangePreset,
   type DayRange,
   londonToday,
-} from "./date-range-filter.js";
+} from "./date-ranges.js";
 import type { FilterOption } from "./toolbar.js";
 
 /** Pick any number of values: "Status is Pending or Authorised". */

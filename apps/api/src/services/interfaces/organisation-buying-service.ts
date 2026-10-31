@@ -1,7 +1,9 @@
 import type {
+  CheckoutRailKind,
   CollectionBookingOffer,
   DeliveryQuoteAction,
   PaySeveralPlan,
+  PayTogetherDecision,
   PurchaseDeliveryStage,
   PurchaseInvoiceStatus,
   PurchasePaymentRole,
@@ -24,11 +26,17 @@ export type OrganisationBuyingErrorCode =
   | "pay_several_too_many"
   | "pay_several_duplicate"
   | "pay_several_nothing_payable"
-  | "pay_several_mixed_currency";
+  | "pay_several_mixed_currency"
+  | "pay_several_payer_on_hold"
+  | "pay_several_below_minimum"
+  | "pay_several_over_limit"
+  | "pay_several_needs_finance_review"
+  | "pay_several_conflict"
+  | "pay_several_unavailable";
 
 export type OrganisationBuyingError = {
   code: OrganisationBuyingErrorCode;
-  status: 400 | 403 | 404 | 409;
+  status: 400 | 403 | 404 | 409 | 503;
   message: string;
 };
 
@@ -80,13 +88,33 @@ export interface IAccountPurchasesService {
     actor: OrganisationMemberActor,
     page: { limit: number; offset: number },
   ): BuyingResult<PurchasesPage>;
-  /** Which of the picked invoices one payment would settle, with the total. */
-  planPaySeveral(
-    actor: OrganisationMemberActor,
-    lotIds: readonly string[],
-  ): BuyingResult<PaySeveralPlan>;
   /** The member's purchases as a CSV document for reconciling. */
   exportCsv(actor: OrganisationMemberActor): BuyingResult<string>;
+}
+
+/**
+ * Which picked invoices one payment settles, with the total and whether (and how) that total can
+ * be paid at once.
+ */
+export type PaySeveralQuote = PaySeveralPlan & { payTogether: PayTogetherDecision };
+
+/** The combined payment opened for the payer: where to pay, and what it covers. */
+export type PaySeveralStarted = {
+  paymentGroupId: string;
+  checkoutUrl: string;
+  rail: CheckoutRailKind;
+  total: string;
+  currency: string;
+  payable: { lotId: string; amount: string }[];
+  skipped: PaySeveralPlan["skipped"];
+};
+
+/** "Pay several": the account's payers settle several invoices with one payment. */
+export interface IPaySeveralService {
+  /** What one payment of the picked invoices would cover; nothing is held or charged. */
+  plan(actor: OrganisationMemberActor, lotIds: readonly string[]): BuyingResult<PaySeveralQuote>;
+  /** Holds the payable invoices in one payment and opens its checkout. */
+  pay(actor: OrganisationMemberActor, lotIds: readonly string[]): BuyingResult<PaySeveralStarted>;
 }
 
 /** The buyer's side of a courier quote. Only the account's payers take these steps. */

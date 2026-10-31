@@ -14,6 +14,7 @@ import { SHOP_POLICY_PATHS } from "@/content/policies/shop-policy-status";
 import {
   basketCheckoutBlockMessage,
   basketCheckoutBlockReasons,
+  basketCheckoutEntry,
   canProceedToCheckout,
 } from "@/lib/basket-checkout-eligibility";
 import { loadLinkableShopPolicies } from "@/lib/policies/shop-policy-publication.server";
@@ -93,10 +94,17 @@ export default async function BasketPage() {
   const suggestions = known && lines.length === 0 ? await loadSuggestedEditions() : [];
 
   const checkoutAction =
-    viewer.kind === "authenticated" ? (
-      <ShopCommerceButton href="/checkout" className="w-full">
-        Checkout
-      </ShopCommerceButton>
+    basketCheckoutEntry(viewer.kind) === "checkout" ? (
+      <>
+        <ShopCommerceButton href="/checkout" className="w-full">
+          Checkout
+        </ShopCommerceButton>
+        {viewer.kind === "guest" ? (
+          <p className="shop-basket__summary-note">
+            Check out as a guest or sign in to your LAX Account at the next step.
+          </p>
+        ) : null}
+      </>
     ) : (
       <>
         <Button

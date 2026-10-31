@@ -47,6 +47,8 @@ export const NOTIFICATION_TYPES = [
   "delivery_quote_ready",
   "payout_problem",
   "bid_refused_limit",
+  "access_requested",
+  "access_request_decided",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];

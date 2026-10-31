@@ -1,4 +1,5 @@
 import type { SubmissionMutation } from "@auction/domain";
+import type { IRecordPeopleReader } from "@auction/persistence/interfaces";
 import type { CreateItemSubmissionInput, UserRole } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { SubmissionError } from "../../lib/errors.js";
@@ -29,7 +30,23 @@ export class SubmissionSellerHttpApplicationService
   constructor(
     private readonly itemSubmissionSellerApi: IItemSubmissionSellerApi,
     private readonly access: ISubmissionAccessGuard,
+    private readonly people: IRecordPeopleReader,
   ) {}
+
+  /** Each submission with the member who sent it ("Sent by Lena Fischer"). */
+  private async withSender<T extends { submittedByUserId?: string | null }>(
+    rows: readonly T[],
+  ): Promise<(T & { sentBy: { userId: string; name: string | null } | null })[]> {
+    const names = await this.people.namesFor(
+      rows.flatMap((r) => (r.submittedByUserId ? [r.submittedByUserId] : [])),
+    );
+    return rows.map((row) => ({
+      ...row,
+      sentBy: row.submittedByUserId
+        ? { userId: row.submittedByUserId, name: names.get(row.submittedByUserId) ?? null }
+        : null,
+    }));
+  }
 
   /**
    * The refusal for a change the member may not make, or `null` to go ahead. A submission the
@@ -76,7 +93,7 @@ export class SubmissionSellerHttpApplicationService
         ...(visibleTo ? { visibleTo } : {}),
       },
     );
-    return { status: 200, body: { data, total } };
+    return { status: 200, body: { data: await this.withSender(data), total } };
   }
 
   async getMineSummary(input: {
@@ -100,10 +117,10 @@ export class SubmissionSellerHttpApplicationService
       staffRoles: input.viewer.staffRoles,
       sellerLegalEntityId: input.legalEntity.legalEntityId,
     });
-    if (result.isOk() && !this.access.canSee(input.legalEntity, result.value)) {
-      return NOT_FOUND;
-    }
-    return mapSubmissionResult(result);
+    if (result.isErr()) return mapSubmissionResult(result);
+    if (!this.access.canSee(input.legalEntity, result.value)) return NOT_FOUND;
+    const [withSender] = await this.withSender([result.value]);
+    return { status: 200, body: { data: withSender } };
   }
 
   async patch(input: {

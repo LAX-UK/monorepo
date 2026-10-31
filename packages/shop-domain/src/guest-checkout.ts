@@ -48,13 +48,6 @@ export function isGuestOrderSubject(subject: string): boolean {
   return guestCustomerIdFromSubject(subject) !== null;
 }
 
-/** Where a guest stands as a lead: gave an email and left, or paid for at least one order. */
-export type GuestLeadStatus = "abandoned_checkout" | "ordered";
-
-export function guestLeadStatus(input: { paidOrderCount: number }): GuestLeadStatus {
-  return input.paidOrderCount > 0 ? "ordered" : "abandoned_checkout";
-}
-
 /**
  * The marketing opt-in shown at guest checkout. The version is stored with every consent, so a
  * lead's consent can always be matched to the words the person agreed to. Change the version
@@ -65,9 +58,6 @@ export const GUEST_MARKETING_CONSENT = {
   label: "Email me about new editions and artists",
   hint: "Optional. Your receipt and order updates come either way.",
 } as const;
-
-/** The source recorded on every guest lead. */
-export const GUEST_LEAD_SOURCE = "Shop guest checkout";
 
 /** How long an emailed guest order link opens the order. */
 export const GUEST_ORDER_LINK_TTL_DAYS = 30;

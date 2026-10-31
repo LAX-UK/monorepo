@@ -3,7 +3,7 @@ import { ArtistEditForm } from "@/components/admin/artist-detail/artist-edit-for
 import { StaffActionError } from "@/components/admin/staff/staff-action-error";
 import { StaffBreadcrumbs } from "@/components/admin/staff/staff-breadcrumbs";
 import { loadAdminArtistEditPage } from "@/lib/admin/artists/load-artist-edit-page";
-import { FormPage, Notice, StaffButton } from "@auction/staff-ui";
+import { FormPage, Notice, StaffButtonLink } from "@auction/staff-ui";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -45,11 +45,14 @@ export default async function EditAdminArtistPage({
               title="This profile was merged into another artist"
               actions={
                 artist.mergedIntoArtistId ? (
-                  <StaffButton asChild size="sm" variant="secondary">
-                    <Link href={`/admin/artists/${artist.mergedIntoArtistId}`}>
-                      Open surviving profile
-                    </Link>
-                  </StaffButton>
+                  <StaffButtonLink
+                    size="sm"
+                    variant="secondary"
+                    href={`/admin/artists/${artist.mergedIntoArtistId}`}
+                    Link={Link}
+                  >
+                    Open surviving profile
+                  </StaffButtonLink>
                 ) : null
               }
             >

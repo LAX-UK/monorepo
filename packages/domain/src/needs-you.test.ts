@@ -10,6 +10,7 @@ import {
   needsYouKindsFor,
   needsYouLink,
   needsYouTasks,
+  unsoldChoiceDueBy,
 } from "./needs-you.js";
 import { NOTIFICATION_NEEDS_ACTION_TYPES } from "./notification-needs-action.js";
 
@@ -30,9 +31,9 @@ function busy(role: LegalEntityMemberRole, overrides: Partial<NeedsYouFacts> = {
     changesRequested: [{ id: "s1", title: "Study in Ochre", note: "Add a photo" }],
     unsoldLots: [
       // Ended 12 days ago: due in 2 days.
-      { id: "u1", title: "Harbour at Dusk", endedAt: daysAgo(12) },
+      { id: "u1", title: "Harbour at Dusk", dueBy: unsoldChoiceDueBy(daysAgo(12)) },
       // Ended yesterday: due in 13 days.
-      { id: "u2", title: "Field", endedAt: daysAgo(1) },
+      { id: "u2", title: "Field", dueBy: unsoldChoiceDueBy(daysAgo(1)) },
     ],
     purchases: [
       { id: "p1", title: "Lot 14", paymentStatus: null, fulfilment: null, shippingQuote: null },

@@ -11,6 +11,7 @@ import {
   createEditionAlertRateLimiter,
   createEnquiryRateLimiter,
 } from "./application/enquiry-rate-limit.js";
+import { GuestErasureService } from "./application/guest-erasure/guest-erasure.service.js";
 import { createCountArtworkFacetsHandler } from "./application/handlers/count-artwork-facets.handler.js";
 import { createEditionAlertHandlers } from "./application/handlers/edition-alerts.handler.js";
 import { createGetArtworkInterestHandler } from "./application/handlers/get-artwork-interest.handler.js";
@@ -29,6 +30,7 @@ import { createRegisterArtworkInterestHandler } from "./application/handlers/reg
 import { createShopMediaUploadHandlers } from "./application/handlers/shop-media-upload.handler.js";
 import { createHomeFeaturesService } from "./application/home-features/home-features.service.js";
 import { createLaxPortfolioHandlers } from "./application/lax-portfolio/lax-portfolio.handler.js";
+import { LeadsService } from "./application/leads/leads.service.js";
 import type { ImportArtworkCommand } from "./application/ports/artwork-import.writer.js";
 import type { CreateOriginalSaleCommand } from "./application/ports/original-sale.writer.js";
 import type {
@@ -68,6 +70,7 @@ import { createDrizzleEditorialSearchReader } from "./infrastructure/drizzle-edi
 import { createDrizzleEditorialRepository } from "./infrastructure/drizzle-editorial.repository.js";
 import { createDrizzleEnquiryInboxRepository } from "./infrastructure/drizzle-enquiry-inbox.repository.js";
 import { createDrizzleHelpRepository } from "./infrastructure/drizzle-help.repository.js";
+import { createDrizzleLeadReader } from "./infrastructure/drizzle-lead.reader.js";
 import { createDrizzleMerchandiseCatalogueRepository } from "./infrastructure/drizzle-merchandise-catalogue.repository.js";
 import { createDrizzleMerchandiseCatalogueWriter } from "./infrastructure/drizzle-merchandise-catalogue.writer.js";
 import { createDrizzleMerchandiseStockWriter } from "./infrastructure/drizzle-merchandise-stock.writer.js";
@@ -94,7 +97,9 @@ import { createDrizzleShopStaffMemberReader } from "./infrastructure/drizzle-sho
 import { createDrizzleShopUnitOfWork } from "./infrastructure/drizzle-shop-transaction-effects.js";
 import { createDrizzleStorefrontCurationWriter } from "./infrastructure/drizzle-storefront-curation.repository.js";
 import { createDrizzleEditionRunUnitOfWork } from "./infrastructure/edition-runs/drizzle-edition-run.unit-of-work.js";
+import { createEnquiryFollowUp } from "./infrastructure/enquiry-follow-up.js";
 import { grantShopStaffRole } from "./infrastructure/grant-staff-role.js";
+import { createDrizzleGuestErasureStore } from "./infrastructure/guest-checkout/drizzle-guest-erasure.store.js";
 import { createAdjustMerchandiseStockHandler } from "./infrastructure/handlers/admin/adjust-merchandise-stock.handler.js";
 import { createCancelAfterPossessionHandler } from "./infrastructure/handlers/admin/cancel-after-possession.handler.js";
 import { createCreateMerchandiseProductHandler } from "./infrastructure/handlers/admin/create-merchandise-product.handler.js";
@@ -196,6 +201,10 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   assertShopVatPolicyWhenPayoutsEnabled(env);
   const db: Database = createDb(env.DATABASE_URL_SHOP);
   const notifications = createDrizzleShopNotificationPublisher();
+  const enquiryFollowUp = createEnquiryFollowUp({
+    notifications,
+    domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+  });
   const shopMediaStorage = resolveShopMediaStorage(env);
   const resolveMediaUrl = (value: string | null | undefined) =>
     resolveShopMediaPublicUrl(shopMediaStorage?.storage ?? null, value);
@@ -222,6 +231,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
   });
   const artworkInterestWriter = createDrizzleArtworkInterestRepository(db, {
     notifications,
+    followUp: enquiryFollowUp,
     storefrontOrigins,
     domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
     ...(env.SHOP_ENQUIRY_NOTIFICATION_EMAIL
@@ -439,6 +449,7 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
       ? {
           editorial: createDrizzleEditorialRepository(db, {
             resolveMediaUrl,
+            enquiryFollowUp,
             ...(env.SHOP_ENQUIRY_NOTIFICATION_EMAIL
               ? {
                   generalEnquiryAlerts: {
@@ -495,6 +506,12 @@ export function createShopApiContainer(env: ShopApiEnv): ShopApiContainer {
           repository: createDrizzleEnquiryInboxRepository(db, { resolveMediaUrl }),
           staffReader,
         }),
+        leads: new LeadsService(createDrizzleLeadReader(db)),
+        guestErasure: new GuestErasureService(
+          createDrizzleGuestErasureStore(db, {
+            domainEventMode: env.DOMAIN_EVENT_PUBLISH_VALIDATE,
+          }),
+        ),
         productionTasks: createProductionTaskService({
           repository: createDrizzleProductionTaskRepository(db),
           staffReader,

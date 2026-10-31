@@ -28,6 +28,12 @@ const STATUS: Record<OrganisationBuyingErrorCode, OrganisationBuyingError["statu
   pay_several_duplicate: 400,
   pay_several_nothing_payable: 409,
   pay_several_mixed_currency: 409,
+  pay_several_payer_on_hold: 409,
+  pay_several_below_minimum: 409,
+  pay_several_over_limit: 409,
+  pay_several_needs_finance_review: 409,
+  pay_several_conflict: 409,
+  pay_several_unavailable: 503,
 };
 
 const MESSAGE: Record<OrganisationBuyingErrorCode, string> = {
@@ -41,6 +47,17 @@ const MESSAGE: Record<OrganisationBuyingErrorCode, string> = {
   pay_several_duplicate: "An invoice was chosen twice.",
   pay_several_nothing_payable: "None of the chosen invoices can be paid now.",
   pay_several_mixed_currency: "Invoices in different currencies are paid separately.",
+  pay_several_payer_on_hold:
+    "We need to complete a check on your account before you can pay. Our team will be in touch.",
+  pay_several_below_minimum: "The total is too small to pay online. Choose more invoices.",
+  pay_several_over_limit:
+    "The total is more than one online payment can take. Choose fewer invoices, or contact our settlements team.",
+  pay_several_needs_finance_review:
+    "The total is large enough that our finance team reviews it first. Choose fewer invoices, or pay them one at a time.",
+  pay_several_conflict:
+    "Some of these invoices started being paid in the meantime. Refresh and try again.",
+  pay_several_unavailable:
+    "Paying online isn't available just now. Nothing was charged. Try again shortly.",
 };
 
 /** The one place buying errors get their status and wording. */
@@ -130,14 +147,17 @@ export function paySeveralCandidate(
   view: AccountPurchaseView,
   accountId: string,
   currency: string,
+  flags: Pick<PaySeveralCandidate, "heldForReview" | "inPaymentInProgress">,
 ): PaySeveralCandidate {
   const invoice: PurchaseInvoiceStatus = view.invoice.status;
   return {
     lotId: view.lotId,
+    paymentId: view.invoice.paymentId,
     buyerAccountId: accountId,
     invoice,
     payerMayPay: view.paymentRole === "payer",
     totalDue: view.invoice.totalDue,
     currency,
+    ...flags,
   };
 }

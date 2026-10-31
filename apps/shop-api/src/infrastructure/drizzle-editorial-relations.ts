@@ -237,7 +237,7 @@ export function createEditorialRelationQueries(db: Database, resolveMediaUrl: Re
       .where(and(condition, listedOnSalesChannelSql(ART_SALES_CHANNEL), publicArtworkVisible()))
       .orderBy(...order)
       .limit(EDITORIAL_RELATED_LIMIT);
-    return toPublicArtworkSummaries(db, rows);
+    return toPublicArtworkSummaries(db, rows, resolveMediaUrl);
   }
 
   return {

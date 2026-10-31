@@ -11,7 +11,10 @@ export type ArtworkInterestContext = {
 import type { ArtworkInterestIntent } from "../artwork-interest-intent.js";
 import type { EnquirySender } from "../enquiry-sender.js";
 
-export type RegisterArtworkInterestResult = "registered" | "already_subscribed" | "not_found";
+/** An enquiry carries its reference ("E-2041"); an edition alert has none. */
+export type RegisterArtworkInterestResult =
+  | { status: "registered" | "already_subscribed"; reference: string | null }
+  | { status: "not_found" };
 
 export interface ArtworkInterestWriter {
   loadInterestContext(artworkSlug: string): Promise<ArtworkInterestContext | null>;

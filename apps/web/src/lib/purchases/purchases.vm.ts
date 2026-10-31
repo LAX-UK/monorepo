@@ -2,53 +2,37 @@ import {
   dashboardCheckoutLotUrl,
   dashboardSofRequirementsUrl,
 } from "@/lib/dashboard/dashboard-copy";
-import type { PortfolioFilters } from "@/lib/dashboard/filters/portfolio/portfolio-filters";
+import type { AccountPurchaseFacts } from "@/lib/data/http/account-buying.types";
 import type { ComplianceGateStatus, LotFulfilmentSnapshot } from "@/lib/data/http/payments.schema";
-import {
-  buildPayNow,
-  buildPortfolioAnalytics,
-  filterPortfolioRows,
-  isAwaitingCheckout,
-} from "@/lib/data/view-models/dashboard-portfolio.vm";
+import { buildPayNow, isAwaitingCheckout } from "@/lib/data/view-models/dashboard-portfolio.vm";
 import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { portfolioComplianceReason } from "@/lib/portfolio-settlement";
 import { lotPath } from "@/lib/seo/url";
-import type { PurchasePaymentRole } from "@auction/domain";
+import { type PurchasePaymentRole, addMoneyStrings } from "@auction/domain";
 import {
   INVOICE_PAYMENT_DUE_DAYS,
   type ManualReviewReason,
   type PortfolioRow,
 } from "@auction/types";
+import { PURCHASE_STATE_LABEL } from "./purchase-labels";
 import {
   PURCHASE_STEPS,
   PURCHASE_TABS,
-  PURCHASE_TAB_LABEL,
   type PurchaseState,
   type PurchaseStep,
   type PurchaseTab,
   canReportProblem,
-  defaultPurchaseTab,
   purchaseEndedEarly,
   purchaseState,
   purchaseStep,
   purchaseTab,
 } from "./purchase-progress";
+import { type PurchaseBadge, purchaseBadge } from "./purchase-standing";
+
+export { PURCHASE_STATE_LABEL };
 
 export const REPORT_PROBLEM_HREF = "/contact?intent=purchase-problem";
-
-export const PURCHASE_STATE_LABEL: Record<PurchaseState, string> = {
-  "payment-due": "Payment due",
-  "in-review": "In review",
-  "payment-processing": "Payment processing",
-  "choose-delivery": "Choose delivery",
-  preparing: "Preparing",
-  "ready-for-collection": "Ready to collect",
-  "in-transit": "On its way",
-  delivered: "Delivered",
-  collected: "Collected",
-  refunded: "Refunded",
-  cancelled: "Cancelled",
-};
 
 const STEP_LABEL: Record<PurchaseStep, string> = {
   won: "Won",
@@ -67,16 +51,29 @@ export type PurchaseStepVm = {
 
 export type PurchaseCardVm = {
   lotId: string;
-  href: string;
+  /** The purchase's own page: progress, payment, delivery and documents. */
+  detailHref: string;
+  /** The lot page. */
+  lotHref: string;
   image: string | null;
   title: string;
   lotLabel: string | null;
+  saleId: string | null;
   saleTitle: string | null;
+  /** Who won it, on an organisation's shared list; `null` where it goes without saying. */
+  wonBy: string | null;
+  tab: PurchaseTab;
   state: PurchaseState;
+  badge: PurchaseBadge;
   statusLabel: string;
   statusNote: string | null;
   amountLabel: string;
   amount: string;
+  /** Set when this member can pick the invoice to pay now: its amount, as a decimal string. */
+  payable: { totalDue: string; currency: string } | null;
+  /** For sorting: the due date (or the win), and when it was won. */
+  dueAt: number;
+  wonAt: number;
   /** `null` when the purchase ended early (refunded or cancelled). */
   steps: PurchaseStepVm[] | null;
   breakdown: { label: string; value: string }[];
@@ -85,26 +82,26 @@ export type PurchaseCardVm = {
   problemHref: string | null;
 };
 
-export type PayNowBannerVm = {
-  title: string;
-  description: string;
-  /** Checkout for what can be paid now; `null` while every due lot is being reviewed. */
-  href: string | null;
-};
+/** The summary above the list while something is due, with what one payment would cover. */
+export type PayNowVm =
+  | {
+      kind: "pay";
+      title: string;
+      description: string;
+      /** The invoices one payment would pick, and their total. */
+      lotIds: string[];
+      total: string;
+    }
+  | { kind: "review"; title: string; description: string };
 
 export type PurchasesVm = {
-  tab: PurchaseTab;
-  tabs: { id: PurchaseTab; label: string; count: number }[];
-  cards: PurchaseCardVm[];
-  payNow: PayNowBannerVm | null;
-  /** Every won lot, before filters. */
+  cardsByTab: Record<PurchaseTab, PurchaseCardVm[]>;
+  payNow: PayNowVm | null;
+  /** Every won lot. */
   total: number;
-  /** Won lots the filters leave in view, across every view. */
-  shown: number;
-  /** What every purchase came to, before filters: not shown anywhere else on the page. */
-  spent: string;
-  /** Years with a purchase, newest first, for the year filter. */
-  years: number[];
+  /** The sales and winners in the list, A to Z, for the filters. */
+  sales: { id: string; title: string }[];
+  winners: string[];
 };
 
 export type PurchaseSources = {
@@ -121,12 +118,17 @@ export type PurchaseSources = {
   paymentRoleByLot: Readonly<Record<string, PurchasePaymentRole>>;
   /** The organisation that pays what the person does not, or `null` when it is not known. */
   payerName: string | null;
+  /** The account's invoice and delivery state per lot, when it could be read. */
+  factsByLot?: Readonly<Record<string, AccountPurchaseFacts>>;
+  /** Several members win for the account, so rows name who won. */
+  showWonBy?: boolean;
 };
 
 const DAY_MONTH = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "short" });
 const DAY_MONTH_LONG = new Intl.DateTimeFormat("en-GB", { day: "numeric", month: "long" });
 
-function dueDate(row: PortfolioRow): Date {
+function dueDate(row: PortfolioRow, facts: AccountPurchaseFacts | null = null): Date {
+  if (facts?.invoice.dueAt) return facts.invoice.dueAt;
   const from = row.payment?.createdAt ? new Date(row.payment.createdAt) : row.lot.endTime;
   const due = new Date(from);
   due.setUTCDate(due.getUTCDate() + INVOICE_PAYMENT_DUE_DAYS);
@@ -217,7 +219,6 @@ function primaryActionFor(
   row: PortfolioRow,
   reason: ManualReviewReason | null,
 ): PurchaseCardVm["primaryAction"] {
-  // Paying is the "Pay now" banner's one job, so a due card does not repeat it.
   if (state === "choose-delivery") {
     return { label: "Arrange delivery", href: dashboardCheckoutLotUrl(row.lot.id) };
   }
@@ -232,10 +233,11 @@ function stepDate(
   state: PurchaseState,
   row: PortfolioRow,
   fulfilment: LotFulfilmentSnapshot | undefined,
+  facts: AccountPurchaseFacts | null,
 ): string | null {
   if (step === "won") return DAY_MONTH.format(row.lot.endTime);
   if (step === "payment" && (state === "payment-due" || state === "in-review")) {
-    return `Due ${DAY_MONTH.format(dueDate(row))}`;
+    return `Due ${DAY_MONTH.format(dueDate(row, facts))}`;
   }
   if (step === "delivered" && fulfilment?.collectedAt) {
     return DAY_MONTH.format(new Date(fulfilment.collectedAt));
@@ -247,6 +249,7 @@ function stepsFor(
   state: PurchaseState,
   row: PortfolioRow,
   fulfilment: LotFulfilmentSnapshot | undefined,
+  facts: AccountPurchaseFacts | null,
 ): PurchaseStepVm[] | null {
   if (purchaseEndedEarly(state)) return null;
   const at = PURCHASE_STEPS.indexOf(purchaseStep(state));
@@ -255,7 +258,7 @@ function stepsFor(
   return PURCHASE_STEPS.map((id, index) => ({
     id,
     label: STEP_LABEL[id],
-    date: stepDate(id, state, row, fulfilment),
+    date: stepDate(id, state, row, fulfilment, facts),
     progress: index < at || finished ? "done" : index === at ? "current" : "upcoming",
   }));
 }
@@ -266,7 +269,7 @@ function breakdownFor(row: PortfolioRow, paidBy: string | null): PurchaseCardVm[
   if (pricing) {
     const currency = lotChargeCurrency(row.lot);
     lines.push(
-      { label: "Hammer", value: formatMoney(pricing.hammerMajor, currency) },
+      { label: "Hammer price", value: formatMoney(pricing.hammerMajor, currency) },
       { label: "Buyer's premium", value: formatMoney(pricing.premiumMajor, currency) },
     );
   }
@@ -285,18 +288,17 @@ const PAID_STATES: ReadonlySet<PurchaseState> = new Set([
 ]);
 
 function amountLabel(state: PurchaseState): string {
-  if (state === "payment-due" || state === "in-review") return "Total due";
-  if (state === "refunded") return "Refunded";
-  return "Total";
+  if (state === "payment-due" || state === "in-review") return "total due";
+  if (state === "refunded") return "refunded";
+  return "total paid";
 }
 
-function toCard(
-  row: PortfolioRow,
-  sources: PurchaseSources,
-): PurchaseCardVm & { tab: PurchaseTab } {
+/** One purchase as its row and its page read it. */
+export function purchaseCard(row: PortfolioRow, sources: PurchaseSources): PurchaseCardVm {
   const { lot } = row;
   const reason = reviewReason(row, sources.complianceGate);
   const fulfilment = sources.fulfilmentByLot[lot.id];
+  const facts = sources.factsByLot?.[lot.id] ?? null;
   const state = purchaseState({
     paymentStatus: row.payment?.status ?? null,
     reviewReason: reason,
@@ -308,15 +310,28 @@ function toCard(
     informed && PAID_STATES.has(state)
       ? `${capitalise(possessive(payer(sources.payerName)))} finance team`
       : null;
+  const totalMajor = lot.checkoutPricing?.totalMajor ?? null;
+  // Only a raised invoice can be paid; the account's facts say so when they are to hand.
+  const invoiced = facts
+    ? facts.invoice.status === "due" || facts.invoice.status === "overdue"
+    : true;
+  const payable =
+    !informed && state === "payment-due" && invoiced && totalMajor
+      ? { totalDue: totalMajor, currency }
+      : null;
   return {
     tab: purchaseTab(state),
     lotId: lot.id,
-    href: lotPath(lot),
+    detailHref: `${CLIENT_ROUTES.purchases}/${encodeURIComponent(lot.id)}`,
+    lotHref: lotPath(lot),
     image: lot.images[0] ?? null,
     title: lot.title,
     lotLabel: lot.lotNumber == null ? null : `Lot ${lot.lotNumber}`,
+    saleId: lot.saleId ?? null,
     saleTitle: lot.saleId ? (sources.saleTitleById[lot.saleId] ?? null) : null,
+    wonBy: sources.showWonBy ? (facts?.wonBy?.name ?? null) : null,
     state,
+    badge: purchaseBadge(state, facts, informed),
     statusLabel:
       informed && (state === "payment-due" || state === "in-review")
         ? "Awaiting payment"
@@ -325,8 +340,11 @@ function toCard(
       ? (informedNoteFor(state, sources.payerName) ?? noteFor(state, row, reason, fulfilment))
       : noteFor(state, row, reason, fulfilment),
     amountLabel: amountLabel(state),
-    amount: lot.checkoutPricing ? formatMoney(lot.checkoutPricing.totalMajor, currency) : "—",
-    steps: stepsFor(state, row, fulfilment),
+    amount: totalMajor ? formatMoney(totalMajor, currency) : "—",
+    payable,
+    dueAt: dueDate(row, facts).getTime(),
+    wonAt: lot.endTime.getTime(),
+    steps: stepsFor(state, row, fulfilment, facts),
     breakdown: breakdownFor(row, paidBy),
     // Paying and arranging delivery belong to whoever pays; the member who won is only told.
     primaryAction: informed ? null : primaryActionFor(state, row, reason),
@@ -335,72 +353,72 @@ function toCard(
   };
 }
 
-/** The "Pay now" banner: what is due, by when, and one button to pay everything payable. */
-function payNowBanner(
+function plural(count: number, one: string, many: string): string {
+  return `${count === 1 ? "One" : count} ${count === 1 ? one : many}`;
+}
+
+/** What is due, in one line, and the payment that settles it. */
+function payNowFor(
+  cards: readonly PurchaseCardVm[],
   rows: readonly PortfolioRow[],
-  gate: ComplianceGateStatus,
-): PayNowBannerVm | null {
-  const payNow = buildPayNow(rows, gate);
-  if (!payNow) return null;
-  const due = rows.filter(isAwaitingCheckout);
-  const earliest = due.map(dueDate).sort((a, b) => a.getTime() - b.getTime())[0];
-  const by = earliest ? ` by ${DAY_MONTH_LONG.format(earliest)}` : "";
-  const [only] = due;
-  if (!payNow.href) {
+  sources: PurchaseSources,
+): PayNowVm | null {
+  const mine = rows.filter((row) => (sources.paymentRoleByLot[row.lot.id] ?? "payer") === "payer");
+  const due = buildPayNow(mine, sources.complianceGate);
+  if (!due) return null;
+  const payable = cards.filter((card) => card.payable);
+  if (payable.length === 0) {
+    // Nothing can be paid yet: say so only when our checks are what holds it.
+    if (!cards.some((card) => card.state === "in-review" && card.statusLabel === "In review")) {
+      return null;
+    }
     return {
+      kind: "review",
       title: "We're reviewing your account",
-      description: "You can pay once our checks are done. Each lot below says what is needed.",
-      href: null,
+      description: "You can pay once our checks are done. Each purchase says what is needed.",
     };
   }
-  if (due.length === 1 && only) {
-    const lotName = only.lot.lotNumber == null ? only.lot.title : `lot ${only.lot.lotNumber}`;
-    return {
-      title: `Pay for ${lotName}${by}`,
-      description: `${only.lot.title} · ${payNow.outstandingLabel} including buyer's premium`,
-      href: payNow.href,
-    };
-  }
+  const [first] = payable;
+  const currency = first?.payable?.currency ?? "GBP";
+  const total = payable.reduce(
+    (sum, card) => addMoneyStrings(sum, card.payable?.totalDue ?? "0"),
+    "0.00",
+  );
+  const overdue = payable.filter((card) => card.badge.tone === "danger").length;
+  const invoices = payable.length === 1 ? "1 invoice" : `${payable.length} invoices`;
+  const lead = overdue > 0 ? `${plural(overdue, "is", "are")} overdue. ` : "";
   return {
-    title: `Pay for ${due.length} lots${by}`,
-    description: `${payNow.outstandingLabel} in total, including buyer's premium`,
-    href: payNow.href,
+    kind: "pay",
+    title: `${invoices} · ${formatMoney(total, currency)} due`,
+    description:
+      payable.length === 1
+        ? `${lead}Pay by card or bank transfer.`
+        : `${lead}Pay them together by card or bank transfer.`,
+    lotIds: payable.map((card) => card.lotId),
+    total,
   };
 }
 
-/** Purchases for one view, with the count in every view and the banner when something is due. */
-export function buildPurchasesVm(
-  sources: PurchaseSources,
-  requestedTab: PurchaseTab | null,
-  filters: Pick<PortfolioFilters, "q" | "payment" | "year"> | null = null,
-): PurchasesVm {
-  const visible = filters
-    ? filterPortfolioRows([...sources.rows], {
-        qLower: filters.q.trim().toLowerCase(),
-        payment: filters.payment,
-        year: filters.year,
-      })
-    : sources.rows;
-  const cards = [...visible]
+/** Every view of Purchases at once, so the page can search, filter and switch without a trip. */
+export function buildPurchasesVm(sources: PurchaseSources): PurchasesVm {
+  const cards = [...sources.rows]
     .sort((a, b) => b.lot.endTime.getTime() - a.lot.endTime.getTime())
-    .map((row) => toCard(row, sources));
-  const counts = Object.fromEntries(
-    PURCHASE_TABS.map((tab) => [tab, cards.filter((card) => card.tab === tab).length]),
-  ) as Record<PurchaseTab, number>;
-  const tab = requestedTab ?? defaultPurchaseTab(counts);
-  const analytics = buildPortfolioAnalytics(sources.rows);
+    .map((row) => purchaseCard(row, sources));
+  const cardsByTab = Object.fromEntries(
+    PURCHASE_TABS.map((tab) => [tab, cards.filter((card) => card.tab === tab)]),
+  ) as Record<PurchaseTab, PurchaseCardVm[]>;
+  const sales = new Map<string, string>();
+  for (const card of cards)
+    if (card.saleId && card.saleTitle) sales.set(card.saleId, card.saleTitle);
   return {
-    tab,
-    tabs: PURCHASE_TABS.map((id) => ({ id, label: PURCHASE_TAB_LABEL[id], count: counts[id] })),
-    cards: cards.filter((card) => card.tab === tab).map(({ tab: _tab, ...card }) => card),
-    // The banner is about money owed, so filters never hide it; it lists only what this person pays.
-    payNow: payNowBanner(
-      sources.rows.filter((row) => (sources.paymentRoleByLot[row.lot.id] ?? "payer") === "payer"),
-      sources.complianceGate,
+    cardsByTab,
+    payNow: payNowFor(cards, sources.rows.filter(isAwaitingCheckout), sources),
+    total: cards.length,
+    sales: [...sales]
+      .map(([id, title]) => ({ id, title }))
+      .sort((a, b) => a.title.localeCompare(b.title)),
+    winners: [...new Set(cards.flatMap((card) => (card.wonBy ? [card.wonBy] : [])))].sort((a, b) =>
+      a.localeCompare(b),
     ),
-    total: sources.rows.length,
-    shown: visible.length,
-    spent: analytics.totalSpentFormatted,
-    years: analytics.years,
   };
 }

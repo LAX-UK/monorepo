@@ -94,6 +94,8 @@ export type {
   IConsignmentAgreementWriter,
 } from "./consignment-agreement.repository.js";
 export type {
+  IUnsoldChoiceDeadlineStore,
+  UnsoldChoiceDeadline,
   IUnsoldLotChoiceReader,
   IUnsoldLotChoiceRepository,
   IUnsoldLotChoiceWriter,
@@ -956,11 +958,13 @@ export type {
 export type {
   AccountSearchCriteria,
   AccountSearchHits,
+  BidSearchHit,
   ConsignmentSearchHit,
   IAccountRecordSearchReader,
   InvoiceSearchHit,
   LotSearchHit,
   MemberSearchHit,
+  PurchaseSearchHit,
 } from "./account-record-search.reader.js";
 export type { INeedsYouFactsReader } from "./needs-you-facts.reader.js";
 export type {
@@ -972,3 +976,31 @@ export type {
   InvoiceAddress,
   InvoiceDetails,
 } from "./organisation-team.readers.js";
+export type {
+  AgreementDocumentFacts,
+  IAgreementDocumentFactsReader,
+  IPayoutLinesReader,
+  IReturnedWorksReader,
+  ISoldLotsReader,
+  PayoutLineRow,
+  PayoutWithLines,
+  ReturnedWorkRow,
+  SoldLotRow,
+} from "./workspace-selling.readers.js";
+export type {
+  AccessRequestDecision,
+  AccessRequestRow,
+  IAccessRequestRepository,
+  IActiveMemberLookup,
+  NewAccessRequest,
+} from "./access-request.repository.js";
+export type {
+  ClaimPaymentGroupInput,
+  ClaimPaymentGroupResult,
+  IPaySeveralInvoiceFlagsReader,
+  IPaymentGroupRepository,
+  LockedPaymentGroup,
+  PaySeveralInvoiceFlags,
+  PaymentGroupMember,
+  PaymentGroupRecord,
+} from "./payment-group.repository.js";
