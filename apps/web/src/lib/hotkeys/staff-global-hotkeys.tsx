@@ -32,7 +32,8 @@ export function StaffGlobalHotkeys() {
 
   useHotkey({
     id: "hotkey-help",
-    keys: "shift+/",
+    keys: "Shift+?",
+    alternateKeys: ["?"],
     label: "Keyboard shortcuts",
     description: "Show keyboard shortcuts",
     group: "Navigation",

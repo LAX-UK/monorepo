@@ -2,14 +2,31 @@ export type HotkeyScope = "global" | "page" | "table" | "dialog";
 
 export type HotkeyBinding = {
   id: string;
+  /** In tinykeys syntax: "g h", "$mod+k", "Shift+?". */
   keys: string;
+  /** Other keys that do the same, such as "/" beside "$mod+k"; bound and listed with `keys`. */
+  alternateKeys?: readonly string[];
   label: string;
   description?: string;
   scope: HotkeyScope;
   group: string;
+  /** Position within its group in the help list; unordered bindings follow, by label. */
+  order?: number;
+  /**
+   * Listed in the help but handled where it applies (Enter on a focused link, Escape in a
+   * dialog), so the provider never binds it.
+   */
+  passive?: boolean;
+  /** Bound but left out of the help, when another line already describes it (J beside K). */
+  hidden?: boolean;
   handler: (event: KeyboardEvent) => void;
   when?: () => boolean;
 };
+
+/** Every key string a binding answers to. */
+export function bindingKeys(binding: Pick<HotkeyBinding, "keys" | "alternateKeys">): string[] {
+  return [binding.keys, ...(binding.alternateKeys ?? [])];
+}
 
 type Listener = () => void;
 
@@ -79,12 +96,18 @@ export function listHotkeysForScope(scope?: HotkeyScope): HotkeyBinding[] {
 
   return [...bindings.values()]
     .filter((b) => allowed.has(b.scope))
-    .sort((a, b) => a.group.localeCompare(b.group) || a.label.localeCompare(b.label));
+    .sort(
+      (a, b) =>
+        a.group.localeCompare(b.group) ||
+        (a.order ?? Number.POSITIVE_INFINITY) - (b.order ?? Number.POSITIVE_INFINITY) ||
+        a.label.localeCompare(b.label),
+    );
 }
 
 export function getGroupedHotkeys(scope?: HotkeyScope): Map<string, HotkeyBinding[]> {
   const grouped = new Map<string, HotkeyBinding[]>();
   for (const binding of listHotkeysForScope(scope)) {
+    if (binding.hidden) continue;
     const list = grouped.get(binding.group) ?? [];
     list.push(binding);
     grouped.set(binding.group, list);

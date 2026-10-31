@@ -19,6 +19,12 @@ export type { ButtonProps } from "./button.js";
 export { ReasonTooltip, Tooltip, TooltipProvider } from "./tooltip.js";
 export { fieldBox, readOnlyBox, tooltipClass } from "./styles.js";
 export { Kbd, ShortcutKeys } from "./kbd.js";
+export { KeyboardShortcutsDialog } from "./shortcuts-dialog.js";
+export type {
+  KeyboardShortcutsDialogProps,
+  ShortcutGroup,
+  ShortcutItem,
+} from "./shortcuts-dialog.js";
 export { Field, ReadOnlyView, useField, useReadOnlyView } from "./field.js";
 export type { FieldProps } from "./field.js";
 export { TextArea, TextInput } from "./input.js";
