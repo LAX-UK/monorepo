@@ -111,6 +111,22 @@ describe("PresetCards", () => {
     expect(quiet).toBeDisabled();
     expect(quiet).toHaveAccessibleDescription("Available once you bid");
   });
+
+  it("drops the card height in its compact size, for a list of choices in a dialog", () => {
+    render(
+      <PresetCards
+        compact
+        columns={1}
+        value="viewer"
+        onValueChange={() => {}}
+        label="Role"
+        options={[{ value: "viewer", label: "Viewer", description: "Changes nothing." }]}
+      />,
+    );
+    const card = screen.getByRole("radio", { name: "Viewer" });
+    expect(card.className).toContain("min-h-0");
+    expect(card.className).toContain("py-3");
+  });
 });
 
 describe("FilterChips", () => {

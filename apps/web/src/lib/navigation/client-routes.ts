@@ -71,11 +71,12 @@ export function isClientAreaPath(pathname: string): boolean {
 export type OrganisationTab = "profile" | "documents" | "payouts" | "security";
 
 /** One tab of the Team page. */
-export type TeamTab = "members";
+export type TeamTab = "members" | "invitations" | "bidding" | "activity";
 
 /** The Team page, or one of its tabs; Members is the page itself. */
-export function teamHref(_tab: TeamTab = "members", accountId?: string): string {
-  return accountId ? withAccount(CLIENT_ROUTES.team, accountId) : CLIENT_ROUTES.team;
+export function teamHref(tab: TeamTab = "members", accountId?: string): string {
+  const path = tab === "members" ? CLIENT_ROUTES.team : `${CLIENT_ROUTES.team}/${tab}`;
+  return accountId ? withAccount(path, accountId) : path;
 }
 
 /**

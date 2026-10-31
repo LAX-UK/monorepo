@@ -41,11 +41,13 @@ test.describe("organisation owner journey @roles", () => {
       await expectActingAs(page, approved, "Owner");
       await expect(page.getByRole("heading", { level: 1, name: "Team" })).toBeVisible();
 
-      await page.getByLabel("Email").fill(INVITEE_EMAIL);
-      await page.getByRole("combobox", { name: "Role", exact: true }).click();
-      await page.getByRole("option", { name: "Viewer" }).click();
-      await page.getByRole("button", { name: "Send invitation" }).click();
-      await expect(page.getByText(`Invitation sent to ${INVITEE_EMAIL}.`)).toBeVisible();
+      await page.getByRole("button", { name: "Invite members" }).click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByLabel("Email addresses").fill(INVITEE_EMAIL);
+      await dialog.getByLabel("Email addresses").press("Enter");
+      await dialog.getByRole("radio", { name: "Viewer" }).click();
+      await dialog.getByRole("button", { name: "Send invitation" }).click();
+      await expect(page.getByText(`Invitation sent to join ${approved}`)).toBeVisible();
     });
 
     await test.step("the invitee accepts from their own browser", async () => {
@@ -89,10 +91,10 @@ test.describe("organisation owner journey @roles", () => {
 
     await test.step("change a role and take it back", async () => {
       await page.goto("/team");
-      const picker = page.getByRole("combobox", { name: `Role for ${INVITEE_NAME}` });
+      const picker = page.getByRole("button", { name: new RegExp(`^Role for ${INVITEE_NAME}`) });
       await expect(picker).toContainText("Viewer");
       await picker.click();
-      await page.getByRole("option", { name: "Finance" }).click();
+      await page.getByRole("menuitemradio", { name: "Finance" }).click();
       await expect(page.getByText(`${INVITEE_NAME} is now`)).toBeVisible();
       await undoOf(page, `${INVITEE_NAME} is now`).click();
       await expect(picker).toContainText("Viewer");
@@ -100,13 +102,13 @@ test.describe("organisation owner journey @roles", () => {
 
     await test.step("owners can hand over ownership", async () => {
       await page.getByRole("button", { name: "More for Maya Okafor" }).click();
-      await expect(page.getByRole("menuitem", { name: "Transfer ownership" })).toBeVisible();
+      await expect(page.getByRole("menuitem", { name: /^Transfer ownership/ })).toBeVisible();
       await page.keyboard.press("Escape");
     });
 
     await test.step("remove the member", async () => {
       await page.getByRole("button", { name: `More for ${INVITEE_NAME}` }).click();
-      await page.getByRole("menuitem", { name: "Remove" }).click();
+      await page.getByRole("menuitem", { name: /^Remove from/ }).click();
       await page.getByRole("button", { name: "Remove member" }).click();
       await expect(
         page.getByText(`${INVITEE_NAME} has been removed from ${approved}.`),

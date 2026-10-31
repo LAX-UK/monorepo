@@ -3,8 +3,30 @@ import {
   memberChangeConfirmationPhrase,
   memberChangePolicy,
   memberChangeTarget,
+  memberLeavePolicy,
 } from "@auction/domain";
 import { type LegalEntityMemberRole, legalEntityMemberRoles } from "@auction/types";
+
+/** Whether the person may leave, or why not, in words. */
+export type LeaveControl = { allowed: true } | { allowed: false; reason: string };
+
+/**
+ * Whether `actor` may leave the organisation, judged against the whole team so the last owner is
+ * told to hand ownership on first. `null` when the person is not in the list (support staff).
+ */
+export function leaveControl(
+  actor: MemberChangeActor,
+  team: readonly (MemberForControls & { id: string })[],
+): LeaveControl | null {
+  const me = team.find((member) => member.id === actor.memberId);
+  if (!me) return null;
+  const decision = memberLeavePolicy({
+    actor,
+    accountKind: "organisation",
+    self: memberChangeTarget(me, team),
+  });
+  return decision.allowed ? { allowed: true } : { allowed: false, reason: decision.message };
+}
 
 /** The member fields the controls need. */
 export type MemberForControls = {

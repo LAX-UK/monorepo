@@ -2,8 +2,18 @@
 
 import type { MemberRowView } from "@/lib/legal-entity/member-row.vm";
 import type { LegalEntityMemberRole } from "@auction/types";
-import { InlineActionMenu, type InlineActionMenuItem } from "@auction/ui";
-import { LabelledSelect } from "@auction/ui/components/labelled-select";
+import { RecordRow } from "@auction/ui";
+import {
+  Button,
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuSeparator,
+  MenuTrigger,
+  SelectMenu,
+} from "@auction/ui/lax";
+import { ArrowLeftRight, Clock, Ellipsis, LogOut, UserMinus } from "lucide-react";
+import Link from "next/link";
 import { MemberInitials } from "./member-initials";
 
 type Props = {
@@ -12,84 +22,129 @@ type Props = {
   shownRole: LegalEntityMemberRole;
   busy: boolean;
   error: string | null;
+  organisationName: string;
   onRoleChange: (role: LegalEntityMemberRole) => void;
   onTransfer: () => void;
   onRemove: () => void;
+  onLeave: () => void;
 };
 
+/** The "…" menu: what else the viewer may do about this person, destructive steps last. */
+function MemberMenu({
+  row,
+  organisationName,
+  onTransfer,
+  onRemove,
+  onLeave,
+}: Pick<Props, "row" | "organisationName" | "onTransfer" | "onRemove" | "onLeave">) {
+  const leading = [row.activityHref, row.transfer].some(Boolean);
+  const trailing = row.canRemove || row.leave !== null;
+  // An empty slot the size of the button keeps every row's role in one column.
+  if (!leading && !trailing) return <span aria-hidden className="block size-lax-control-md" />;
+  return (
+    <Menu>
+      <MenuTrigger asChild>
+        <Button variant="ghost" size="icon-md" aria-label={`More for ${row.name}`}>
+          <Ellipsis aria-hidden />
+        </Button>
+      </MenuTrigger>
+      <MenuContent className="w-72">
+        {row.activityHref ? (
+          <MenuItem asChild>
+            <Link href={row.activityHref}>
+              <Clock aria-hidden />
+              View activity
+            </Link>
+          </MenuItem>
+        ) : null}
+        {row.transfer ? (
+          <MenuItem onSelect={onTransfer}>
+            <ArrowLeftRight aria-hidden />
+            Transfer ownership…
+          </MenuItem>
+        ) : null}
+        {leading && trailing ? <MenuSeparator /> : null}
+        {row.canRemove ? (
+          <MenuItem tone="danger" onSelect={onRemove}>
+            <UserMinus aria-hidden />
+            Remove from {organisationName}…
+          </MenuItem>
+        ) : null}
+        {row.leave ? (
+          <MenuItem
+            tone={row.leave.allowed ? "danger" : "default"}
+            onSelect={onLeave}
+            {...(row.leave.allowed ? {} : { disabledReason: row.leave.reason })}
+          >
+            <LogOut aria-hidden />
+            Leave {organisationName}…
+          </MenuItem>
+        ) : null}
+      </MenuContent>
+    </Menu>
+  );
+}
+
 /**
- * One member: initials, name, email and two-step sign-in, the role (a picker when the viewer may
- * change it), and a "…" menu with what else they may do. On phones the role sits under the
- * name, so nothing runs past the card edge.
+ * One member: initials, name and email, whether they use two-step, the role (a picker when the
+ * viewer may change it) and a "…" menu with what else the viewer may do. On a phone the role
+ * sits under the name, so nothing runs past the card edge.
  */
 export function MemberRow({
   row,
   shownRole,
   busy,
   error,
+  organisationName,
   onRoleChange,
   onTransfer,
   onRemove,
+  onLeave,
 }: Props) {
-  const menu: InlineActionMenuItem[] = [
-    ...(row.transfer
-      ? [{ type: "item" as const, label: "Transfer ownership", onSelect: onTransfer }]
-      : []),
-    ...(row.transfer && row.canRemove ? [{ type: "separator" as const }] : []),
-    ...(row.canRemove
-      ? [{ type: "item" as const, label: "Remove", onSelect: onRemove, destructive: true }]
-      : []),
-  ];
-
   return (
-    <li
-      className="grid grid-cols-[2rem_minmax(0,1fr)_2.75rem] items-center gap-x-3 gap-y-2 py-3 sm:grid-cols-[2rem_minmax(0,1fr)_11rem_2.5rem]"
-      data-testid={`member-row-${row.id}`}
-      aria-busy={busy || undefined}
-    >
-      <MemberInitials>{row.initials}</MemberInitials>
-      <div className="min-w-0">
-        <p className="truncate font-body text-sm leading-5.5 font-medium text-on-surface">
+    <RecordRow
+      leading={<MemberInitials>{row.initials}</MemberInitials>}
+      title={
+        <>
           {row.name}
-          {row.isYou ? <span className="font-normal text-on-surface-variant"> (you)</span> : null}
-        </p>
-        <p className="flex min-w-0 flex-wrap gap-x-1.5 font-body text-label-3 leading-5 text-on-surface-variant">
-          <span className="min-w-0 truncate">{row.email}</span>
-          {row.twoStep ? (
-            <>
-              <span aria-hidden className="hidden sm:inline">
-                ·
-              </span>
-              <span className="whitespace-nowrap">{row.twoStep}</span>
-            </>
+          {row.isYou ? (
+            <span className="ml-2 text-lax-12 font-normal text-lax-muted">You</span>
           ) : null}
-        </p>
-      </div>
-      <div className="col-start-2 row-start-2 sm:col-start-3 sm:row-start-1">
-        {row.roleOptions ? (
-          <LabelledSelect
-            aria-label={`Role for ${row.name}`}
+        </>
+      }
+      meta={[row.email, row.twoStep]}
+      status={
+        row.roleOptions ? (
+          <SelectMenu
+            label={`Role for ${row.name}`}
             options={row.roleOptions}
             value={shownRole}
             onValueChange={onRoleChange}
             disabled={busy}
-            triggerClassName="w-full sm:w-44"
+            className="w-40"
           />
         ) : (
-          <p className="font-body text-sm leading-5.5 text-on-surface sm:px-3">{row.roleLabel}</p>
-        )}
-      </div>
-      <div className="col-start-3 row-start-1 flex justify-end sm:col-start-4">
-        {menu.length > 0 ? <InlineActionMenu label={`More for ${row.name}`} items={menu} /> : null}
-      </div>
-      {error ? (
-        <p
-          role="alert"
-          className="col-start-2 col-end-[-1] font-body text-label-3 leading-5 text-error"
-        >
-          {error}
-        </p>
-      ) : null}
-    </li>
+          <span className="inline-flex items-center text-lax-ui text-lax-fg @2xl:h-lax-control-md @2xl:w-40 @2xl:px-3">
+            {row.roleLabel}
+          </span>
+        )
+      }
+      menu={
+        <MemberMenu
+          row={row}
+          organisationName={organisationName}
+          onTransfer={onTransfer}
+          onRemove={onRemove}
+          onLeave={onLeave}
+        />
+      }
+      detail={
+        error ? (
+          <p role="alert" className="text-lax-12 font-medium text-lax-danger">
+            {error}
+          </p>
+        ) : null
+      }
+    />
   );
 }

@@ -147,13 +147,13 @@ describe("TransferOwnershipDialog", () => {
         onClose={onClose}
       />,
     );
-    return { onClose, field: screen.getByLabelText(/to confirm/) };
+    return { onClose, field: screen.getByLabelText(/To confirm, type/) };
   }
 
   it("asks for the phrase in sentence case and says what the owner becomes", () => {
     open();
     const dialog = screen.getByRole("dialog");
-    expect(dialog).toHaveTextContent("Type Transfer to Lena Fischer to confirm");
+    expect(dialog).toHaveTextContent("To confirm, type Transfer to Lena Fischer");
     expect(dialog).toHaveTextContent(
       "Lena Fischer becomes an owner of Northbank Gallery, and you become an admin.",
     );
@@ -183,7 +183,8 @@ describe("TransferOwnershipDialog", () => {
     fireEvent.change(field, { target: { value: "transfer to lena" } });
     const confirm = confirmButton("Transfer ownership");
     fireEvent.click(confirm);
-    expect(confirm).toHaveAttribute("aria-disabled", "true");
+    expect(confirm).toBeDisabled();
+    expect(confirm).toHaveAccessibleDescription('Type "Transfer to Lena Fischer" to confirm.');
     expect(actions.transferOwnershipAction).not.toHaveBeenCalled();
   });
 });

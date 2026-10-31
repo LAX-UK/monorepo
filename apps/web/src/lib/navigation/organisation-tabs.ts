@@ -11,7 +11,13 @@ import {
  * to its own Team page (see `team-tabs.ts`).
  */
 const ORGANISATION_TAB_SPECS: readonly SectionTabSpec<OrganisationTab>[] = [
-  { id: "profile", label: "Profile", capability: "entity.profile.read" },
+  // Finance opens Profile for the invoice details they keep; the rest is for owners and admins.
+  {
+    id: "profile",
+    label: "Profile",
+    capability: "entity.profile.read",
+    alsoOpenedBy: "entity.invoice_details.manage",
+  },
   { id: "documents", label: "Documents", capability: "entity.profile.read" },
   { id: "payouts", label: "Payouts", capability: "entity.connect.operate" },
   // Admins see the policy read-only; only owners change it (`entity.security.manage`).
