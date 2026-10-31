@@ -100,12 +100,7 @@ describe("memberRowViews two-step sign-in", () => {
       members: team,
       twoFactorByUserId: { "user-owner": true, "user-lena": false },
     });
-    expect(rows.map((r) => r.twoStep)).toEqual([
-      "Two-step sign-in on",
-      null,
-      "Two-step sign-in off",
-      null,
-    ]);
+    expect(rows.map((r) => r.twoStep)).toEqual(["Two-step on", null, "Two-step off", null]);
     expect(memberRowViews({ actor, members: team }).every((r) => r.twoStep === null)).toBe(true);
   });
 });

@@ -170,6 +170,41 @@ describe("RecordRow", () => {
     ).toBeTruthy();
   });
 
+  it("reads a date figure label first on a narrow list and value first on a wide one", () => {
+    const li = row(
+      <RecordRow
+        title="Night harbour"
+        figures={[{ value: "12 Nov", label: "choose by", labelFirst: true }]}
+      />,
+    );
+    const term = li.querySelector("[data-record-figures] dt") as HTMLElement;
+    const value = li.querySelector("[data-record-figures] dd") as HTMLElement;
+    expect(term.className).toContain("order-1 @2xl:order-2");
+    expect(value.className).toContain("order-2 @2xl:order-1");
+  });
+
+  it("says a missing figure in muted words, keeping its label for readers only", () => {
+    const li = row(
+      <RecordRow
+        title="Downs after rain"
+        figures={[{ value: "Estimate after review", label: "estimate", pending: true }]}
+      />,
+    );
+    const term = li.querySelector("[data-record-figures] dt") as HTMLElement;
+    const value = li.querySelector("[data-record-figures] dd") as HTMLElement;
+    expect(term.className).toBe("sr-only");
+    expect(value.className).toContain("text-on-surface-variant");
+    expect(value.className).not.toContain("truncate");
+  });
+
+  it("gives the record link a target of at least 24px without moving the title", () => {
+    const li = row(<RecordRow title="Ceramic vessel" href="/r/1" />);
+    const link = li.querySelector("[data-record-link]") as HTMLElement;
+    expect(link.className).toContain("block");
+    expect(link.className).toContain("py-[3px]");
+    expect(link.className).toContain("-my-[3px]");
+  });
+
   it("keeps the status and action columns on an aligned row that has neither", () => {
     const li = row(
       <RecordRow

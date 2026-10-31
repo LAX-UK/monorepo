@@ -13,7 +13,7 @@ import { Button } from "@auction/ui/components/button";
 import { Checkbox } from "@auction/ui/components/checkbox";
 import { Label } from "@auction/ui/components/label";
 import { Surface } from "@auction/ui/components/surface";
-import { CheckCircle2 } from "lucide-react";
+import { CheckCircle2, Download } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useId, useState, useTransition } from "react";
@@ -68,7 +68,11 @@ export function ConsignmentAgreementPanel({
   accountName,
   accountKind,
   conditions,
-}: Props) {
+  pdfHref = null,
+}: Props & {
+  /** The agreement as a PDF to keep, once its terms are set. */
+  pdfHref?: string | null;
+}) {
   const router = useRouter();
   const vm = consignmentAgreementViewModel(agreement);
   const [confirmed, setConfirmed] = useState(false);
@@ -127,6 +131,15 @@ export function ConsignmentAgreementPanel({
             Your specialist's estimate and terms, under the Conditions for Sellers and Consignors (
             {vm.versionName.toLowerCase()}).
           </p>
+          {pdfHref ? (
+            <a
+              href={pdfHref}
+              className="inline-flex w-fit items-center gap-1.5 pt-1 font-body text-sm font-medium text-on-surface underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+            >
+              <Download className="size-4" aria-hidden />
+              Download agreement (PDF)
+            </a>
+          ) : null}
         </div>
 
         <dl className="grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
@@ -207,7 +220,11 @@ export function ConsignmentAgreementPanel({
               disabled={!confirmed || pending}
               data-testid="agreement-accept"
             >
-              {pending ? "Accepting…" : "Accept agreement"}
+              {pending
+                ? "Accepting…"
+                : accountKind === "organisation"
+                  ? `Accept for ${accountName}`
+                  : "Accept agreement"}
             </Button>
           </div>
         ) : (

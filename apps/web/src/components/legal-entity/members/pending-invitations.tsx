@@ -9,9 +9,17 @@ import {
 import type { InvitationRowView } from "@/lib/legal-entity/member-row.vm";
 import { ROLE_CHANGE_UNDO_MS } from "@/lib/legal-entity/role-change-flow";
 import { notify } from "@/lib/ui/notify";
-import { InlineActionMenu } from "@auction/ui";
-import { StatusBadge } from "@auction/ui/components/status-badge";
-import { Mail } from "lucide-react";
+import { RecordList, RecordRow } from "@auction/ui";
+import {
+  Button,
+  Menu,
+  MenuContent,
+  MenuItem,
+  MenuSeparator,
+  MenuTrigger,
+  StatusBadge,
+} from "@auction/ui/lax";
+import { Ellipsis, Mail, RotateCw, X } from "lucide-react";
 import { useState } from "react";
 import { MemberInitials } from "./member-initials";
 
@@ -28,6 +36,7 @@ type Props = {
 export function PendingInvitations({ legalEntityId, rows }: Props) {
   const [busy, setBusy] = useState<string | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [gone, setGone] = useState<ReadonlySet<string>>(new Set());
 
   async function run(row: InvitationRowView, task: () => Promise<{ ok: boolean; error?: string }>) {
     setBusy(row.id);
@@ -48,6 +57,7 @@ export function PendingInvitations({ legalEntityId, rows }: Props) {
   async function withdraw(row: InvitationRowView) {
     const ok = await run(row, () => withdrawInvitationAction(legalEntityId, row.id));
     if (!ok) return;
+    setGone((ids) => new Set(ids).add(row.id));
     // An expired link cannot be reopened, so removing it offers no Undo.
     if (row.expired) {
       notify.success(invitationCopy.removed(row.email).title);
@@ -59,75 +69,86 @@ export function PendingInvitations({ legalEntityId, rows }: Props) {
       onAction: () => {
         void (async () => {
           const restored = await restoreInvitationAction(legalEntityId, row.id);
-          if (restored.ok) notify.success(invitationCopy.reopened(row.email).title);
-          else notify.error(restored.error);
+          if (restored.ok) {
+            setGone((ids) => {
+              const next = new Set(ids);
+              next.delete(row.id);
+              return next;
+            });
+            notify.success(invitationCopy.reopened(row.email).title);
+          } else notify.error(restored.error);
         })();
       },
     });
   }
 
   return (
-    <ul className="-my-3 divide-y divide-border-hairline">
-      {rows.map((row) => (
-        <li
-          key={row.id}
-          className="grid grid-cols-[2rem_minmax(0,1fr)_2.75rem] items-center gap-x-3 gap-y-1 py-3 sm:grid-cols-[2rem_minmax(0,1fr)_auto_2.5rem]"
-          aria-busy={busy === row.id || undefined}
-          data-testid={`invitation-row-${row.id}`}
-        >
-          <MemberInitials>
-            <Mail className="size-4" strokeWidth={1.75} />
-          </MemberInitials>
-          <div className="min-w-0">
-            <p className="truncate font-body text-sm leading-5.5 font-medium text-on-surface">
-              {row.email}
-            </p>
-            <p className="flex flex-wrap gap-x-1.5 font-body text-label-3 leading-5 text-on-surface-variant">
-              <span className="whitespace-nowrap">{row.detail[0]}</span>
-              <span aria-hidden className="hidden sm:inline">
-                ·
-              </span>
-              <span className="whitespace-nowrap">{row.detail[1]}</span>
-            </p>
-          </div>
-          {row.expired ? (
-            <div className="col-start-2 row-start-2 sm:col-start-3 sm:row-start-1">
-              <StatusBadge tone="warning">Expired</StatusBadge>
-            </div>
-          ) : null}
-          <div className="col-start-3 row-start-1 flex justify-end sm:col-start-4">
-            {row.canManage ? (
-              <InlineActionMenu
-                label={`More for the invitation to ${row.email}`}
-                items={[
-                  {
-                    type: "item",
-                    label: "Resend",
-                    onSelect: () => void resend(row),
-                    disabled: busy === row.id,
-                  },
-                  { type: "separator" },
-                  {
-                    type: "item",
-                    label: row.expired ? "Remove" : "Withdraw",
-                    onSelect: () => void withdraw(row),
-                    disabled: busy === row.id,
-                    destructive: true,
-                  },
-                ]}
-              />
-            ) : null}
-          </div>
-          {errors[row.id] ? (
-            <p
-              role="alert"
-              className="col-start-2 col-end-[-1] font-body text-label-3 leading-5 text-error"
-            >
-              {errors[row.id]}
-            </p>
-          ) : null}
-        </li>
-      ))}
-    </ul>
+    <RecordList aria-label="Invitations">
+      {rows
+        .filter((row) => !gone.has(row.id))
+        .map((row) => (
+          <RecordRow
+            key={row.id}
+            leading={
+              <MemberInitials>
+                <Mail className="size-4" strokeWidth={1.75} />
+              </MemberInitials>
+            }
+            title={row.email}
+            meta={row.detail}
+            status={
+              row.expired ? (
+                <StatusBadge tone="warning" shape="alert">
+                  Expired
+                </StatusBadge>
+              ) : null
+            }
+            action={
+              row.canManage ? (
+                <Button size="sm" loading={busy === row.id} onClick={() => void resend(row)}>
+                  Resend
+                </Button>
+              ) : null
+            }
+            menu={
+              row.canManage ? (
+                <Menu>
+                  <MenuTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon-md"
+                      aria-label={`More for the invitation to ${row.email}`}
+                    >
+                      <Ellipsis aria-hidden />
+                    </Button>
+                  </MenuTrigger>
+                  <MenuContent className="w-56">
+                    <MenuItem disabled={busy === row.id} onSelect={() => void resend(row)}>
+                      <RotateCw aria-hidden />
+                      Resend
+                    </MenuItem>
+                    <MenuSeparator />
+                    <MenuItem
+                      tone="danger"
+                      disabled={busy === row.id}
+                      onSelect={() => void withdraw(row)}
+                    >
+                      <X aria-hidden />
+                      {row.expired ? "Remove" : "Withdraw"}
+                    </MenuItem>
+                  </MenuContent>
+                </Menu>
+              ) : null
+            }
+            detail={
+              errors[row.id] ? (
+                <p role="alert" className="text-lax-12 font-medium text-lax-danger">
+                  {errors[row.id]}
+                </p>
+              ) : null
+            }
+          />
+        ))}
+    </RecordList>
   );
 }

@@ -41,12 +41,15 @@ test.describe("organisation admin journey @roles", () => {
     });
 
     await test.step("invites someone and withdraws the invitation with Undo", async () => {
-      await page.getByLabel("Email").fill(INVITEE_EMAIL);
-      await page.getByRole("combobox", { name: "Role", exact: true }).click();
-      await page.getByRole("option", { name: "Viewer" }).click();
-      await page.getByRole("button", { name: "Send invitation" }).click();
-      await expect(page.getByText(`Invitation sent to ${INVITEE_EMAIL}.`)).toBeVisible();
+      await page.getByRole("button", { name: "Invite members" }).click();
+      const dialog = page.getByRole("dialog");
+      await dialog.getByLabel("Email addresses").fill(INVITEE_EMAIL);
+      await dialog.getByLabel("Email addresses").press("Enter");
+      await dialog.getByRole("radio", { name: "Viewer" }).click();
+      await dialog.getByRole("button", { name: "Send invitation" }).click();
+      await expect(page.getByText(`Invitation sent to join ${approved}`)).toBeVisible();
 
+      await page.goto("/team/invitations");
       await page
         .getByRole("button", { name: `More for the invitation to ${INVITEE_EMAIL}` })
         .click();
@@ -63,10 +66,11 @@ test.describe("organisation admin journey @roles", () => {
     });
 
     await test.step("changes a role and takes it back", async () => {
-      const picker = page.getByRole("combobox", { name: `Role for ${MEMBER_NAME}` });
+      await page.goto("/team");
+      const picker = page.getByRole("button", { name: new RegExp(`^Role for ${MEMBER_NAME}`) });
       await expect(picker).toContainText("Viewer");
       await picker.click();
-      await page.getByRole("option", { name: "Consignor" }).click();
+      await page.getByRole("menuitemradio", { name: "Consignor" }).click();
       await expect(page.getByText(`${MEMBER_NAME} is now`)).toBeVisible();
       await undoOf(page, `${MEMBER_NAME} is now`).click();
       await expect(picker).toContainText("Viewer");
@@ -74,14 +78,14 @@ test.describe("organisation admin journey @roles", () => {
 
     await test.step("cannot hand over ownership", async () => {
       await page.getByRole("button", { name: `More for ${MEMBER_NAME}` }).click();
-      await expect(page.getByRole("menuitem", { name: "Remove" })).toBeVisible();
-      await expect(page.getByRole("menuitem", { name: "Transfer ownership" })).toHaveCount(0);
+      await expect(page.getByRole("menuitem", { name: /^Remove from/ })).toBeVisible();
+      await expect(page.getByRole("menuitem", { name: /^Transfer ownership/ })).toHaveCount(0);
       await page.keyboard.press("Escape");
     });
 
     await test.step("reads the two-step policy", async () => {
       await page.goto("/organisation/security");
-      await expect(page.getByRole("heading", { name: "Two-step policy" })).toBeVisible();
+      await expect(page.getByRole("heading", { name: "Two-step verification" })).toBeVisible();
     });
 
     await admin.close();

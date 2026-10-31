@@ -48,7 +48,7 @@ import { Surface } from "@auction/ui/components/surface";
 import type { WizardProgressStep } from "@auction/ui/components/wizard-progress";
 import type { ItemSubmissionFormValues } from "@auction/validators";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { type ReactNode, useCallback, useEffect, useRef, useState } from "react";
 
 type Props = {
   mode: WizardMode;
@@ -74,6 +74,8 @@ type ViewProps = Omit<Props, "initialValues" | "submitLabel"> & {
   submitLabel?: string;
   /** Steps the surrounding flow adds after the form's own, shown in the same progress bar. */
   trailingSteps?: readonly WizardProgressStep[];
+  /** A section the flow puts first in the check-and-send step ("Selling as"). */
+  reviewLead?: ReactNode;
 };
 
 function renderStep(
@@ -86,6 +88,7 @@ function renderStep(
     finishLater: () => void;
     submitForReview: () => void;
     submitLabel: string;
+    reviewLead: ReactNode;
   },
 ) {
   const base = { form: props.form, isSubmitting: props.isSubmitting };
@@ -109,6 +112,7 @@ function renderStep(
           onFinishLater={props.finishLater}
           onSubmitForReview={props.submitForReview}
           submitLabel={props.submitLabel}
+          lead={props.reviewLead}
         />
       );
     default:
@@ -132,6 +136,7 @@ export function SubmissionWizardView({
   primaryAction,
   submitLabel = SUBMISSION_SUBMIT_LABEL,
   trailingSteps = [],
+  reviewLead = null,
 }: ViewProps) {
   const router = useRouter();
   const { form, isSubmitting, autosaveStatus, lastSavedAt, saveDraft, submitForReview } =
@@ -427,6 +432,7 @@ export function SubmissionWizardView({
                   finishLater: handleFinishLater,
                   submitForReview: handlePrimary,
                   submitLabel: primaryLabel,
+                  reviewLead,
                 })
               : null}
           </Surface>

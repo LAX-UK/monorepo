@@ -1,18 +1,8 @@
-import { formatMoney, lotChargeCurrency } from "@/lib/format-currency";
-import { lotPath } from "@/lib/seo/url";
+import type { SoldLot } from "@/lib/data/http/workspace-selling.schema";
+import { formatMoney } from "@/lib/format-currency";
 import { formatPeriod } from "@/lib/ui/format";
-import type { Lot, Payout } from "@auction/types";
-
-export type SoldWorkRow = {
-  lotId: string;
-  href: string;
-  title: string;
-  image: string | null;
-  lotLabel: string | null;
-  saleTitle: string | null;
-  hammer: string;
-  soldOn: string;
-};
+import { csvDocument } from "@/lib/workspace/csv";
+import type { Payout } from "@auction/types";
 
 export type PayoutRow = {
   id: string;
@@ -33,38 +23,10 @@ export type PayoutDestinationVm = {
 
 export type SoldAndPayoutsVm = {
   destination: PayoutDestinationVm;
-  sold: SoldWorkRow[];
+  /** `null` when the sold lots could not be read; the payouts still show. */
+  sold: SoldLot[] | null;
   payouts: PayoutRow[];
 };
-
-const DAY_MONTH_YEAR = new Intl.DateTimeFormat("en-GB", {
-  day: "numeric",
-  month: "short",
-  year: "numeric",
-});
-
-/** Works that sold, most recent first: the hammer price is what the buyer bid. */
-export function buildSoldWorks(
-  lots: readonly Lot[],
-  saleTitleById: Readonly<Record<string, string>>,
-): SoldWorkRow[] {
-  return lots
-    .filter((lot) => lot.status === "ended" && Boolean(lot.winnerId ?? lot.hasWinner))
-    .sort((a, b) => b.endTime.getTime() - a.endTime.getTime())
-    .map((lot) => ({
-      lotId: lot.id,
-      href: lotPath(lot),
-      title: lot.title,
-      image: lot.images[0] ?? null,
-      lotLabel: lot.lotNumber == null ? null : `Lot ${lot.lotNumber}`,
-      saleTitle: lot.saleId ? (saleTitleById[lot.saleId] ?? null) : null,
-      hammer: formatMoney(
-        lot.checkoutPricing?.hammerMajor ?? lot.currentPrice,
-        lotChargeCurrency(lot),
-      ),
-      soldOn: DAY_MONTH_YEAR.format(lot.endTime),
-    }));
-}
 
 /** Payouts, newest first, each with its statement. */
 export function buildPayoutRows(payouts: readonly Payout[], sellerEntityId: string): PayoutRow[] {
@@ -95,4 +57,19 @@ export function buildPayoutDestination(input: {
       ? formatMoney(input.preview.pendingNet, input.preview.currency)
       : null;
   return { ready: input.ready, pending };
+}
+
+/** Payouts as CSV, one line each, amounts as the page shows them. */
+export function payoutsCsv(payouts: readonly PayoutRow[]): string {
+  return csvDocument(
+    ["period", "status", "sales", "commission_and_fees", "amount", "payout_id"],
+    payouts.map((payout) => [
+      payout.period,
+      payout.status,
+      payout.gross,
+      payout.fees,
+      payout.net,
+      payout.id,
+    ]),
+  );
 }

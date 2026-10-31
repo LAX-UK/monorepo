@@ -20,10 +20,47 @@ import { REGISTER_ORGANISATION_HREF } from "@/lib/navigation/account-switcher-mo
 import { sellerAccountChoice } from "@/lib/seller/seller-account-options";
 import { redirect } from "next/navigation";
 
+/**
+ * The details of a work the account already has, to start selling it again: one it bought (from
+ * the lot) or one that came back unsold (from its consignment). Photos and the work's facts come
+ * across; the price and anything about the earlier sale do not.
+ */
+async function consignAgainValues(
+  c: Awaited<ReturnType<typeof getServerDataContainer>>,
+  sp: { fromLot?: string; fromSubmission?: string },
+) {
+  if (sp.fromSubmission) {
+    const prior = await c.submissions.getMineById(sp.fromSubmission).catch(() => null);
+    if (!prior) return null;
+    return { ...itemSubmissionToFormValues(prior), askingPrice: "", reservePrice: "" };
+  }
+  if (sp.fromLot) {
+    const lot = await c.buyerLots.getById(sp.fromLot).catch(() => null);
+    if (!lot) return null;
+    return {
+      ...EMPTY_SUBMISSION_FORM_VALUES,
+      title: lot.title,
+      medium: lot.medium ?? "",
+      dimensions: lot.dimensions ?? "",
+      images: lot.images.slice(0, 10),
+      categoryIds: lot.categoryIds ?? [],
+    };
+  }
+  return null;
+}
+
 export default async function NewSubmissionPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string; fromRejected?: string; categorySlug?: string }>;
+  searchParams: Promise<{
+    error?: string;
+    fromRejected?: string;
+    categorySlug?: string;
+    /** "Consign this work" from the collection: a work the organisation bought. */
+    fromLot?: string;
+    /** "Consign again": a consigned work that came back unsold. */
+    fromSubmission?: string;
+  }>;
 }) {
   const sp = await searchParams;
   const error = sp.error ? decodeURIComponent(sp.error) : null;
@@ -61,11 +98,13 @@ export default async function NewSubmissionPage({
         }
       : null;
 
+  const consignFrom = await consignAgainValues(c, sp);
   const preselectedCategoryId = categorySlug
     ? findCategoryIdBySlug(categories, categorySlug)
     : null;
   const initialValues =
     resubmitFrom?.initialValues ??
+    consignFrom ??
     (preselectedCategoryId
       ? { ...EMPTY_SUBMISSION_FORM_VALUES, categoryIds: [preselectedCategoryId] }
       : undefined);

@@ -4,13 +4,18 @@ import {
   type AuthorisationDraft,
   type AuthorisationDraftErrors,
   EMPTY_AUTHORISATION_DRAFT,
+  draftFromAuthorisation,
   londonToday,
   validateAuthorisationDraft,
 } from "@/lib/buyer-agents/authorisation-draft";
 import { formatDay, formatLondonDay } from "@/lib/buyer-agents/authorisation-presenter";
 import { authoriseBuyerAgentAction } from "@/lib/legal-entity/buyer-agent-authorisation.actions";
 import { notify } from "@/lib/ui/notify";
-import type { AuthorisableBuyerAgent, AuthorisableSale } from "@auction/types";
+import type {
+  AuthorisableBuyerAgent,
+  AuthorisableSale,
+  BuyerAgentAuthorisationView,
+} from "@auction/types";
 import { Button } from "@auction/ui/components/button";
 import { DatePicker } from "@auction/ui/components/date-picker";
 import {
@@ -42,6 +47,8 @@ type Props = {
   sales: AuthorisableSale[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** Changing an authorisation: the form starts from it, and saving replaces it. */
+  current?: BuyerAgentAuthorisationView;
 };
 
 function FieldBlock({
@@ -106,14 +113,15 @@ export function AuthoriseBuyerAgentDialog({
   sales,
   open,
   onOpenChange,
+  current,
 }: Props) {
   const router = useRouter();
   const ids = useId();
   const fieldId = (name: string) => `${ids}-${name}`;
-  const blank = (): AuthorisationDraft => ({
-    ...EMPTY_AUTHORISATION_DRAFT,
-    memberUserId: agent.userId,
-  });
+  const blank = (): AuthorisationDraft =>
+    current
+      ? draftFromAuthorisation(current)
+      : { ...EMPTY_AUTHORISATION_DRAFT, memberUserId: agent.userId };
   const [draft, setDraft] = useState<AuthorisationDraft>(blank);
   const [errors, setErrors] = useState<AuthorisationDraftErrors>({});
   const [attempted, setAttempted] = useState(false);
@@ -147,7 +155,11 @@ export function AuthoriseBuyerAgentDialog({
         setFailure(result.error);
         return;
       }
-      notify.success(`${agent.name} can now bid for ${entityName}`);
+      notify.success(
+        current
+          ? `${agent.name}'s limits are updated`
+          : `${agent.name} can now bid for ${entityName}`,
+      );
       onOpenChange(false);
       reset();
       router.refresh();
@@ -165,9 +177,13 @@ export function AuthoriseBuyerAgentDialog({
     >
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle className="font-headline text-lg">Authorise {agent.name}</DialogTitle>
+          <DialogTitle className="font-headline text-lg">
+            {current ? `Change limits for ${agent.name}` : `Authorise ${agent.name}`}
+          </DialogTitle>
           <DialogDescription>
-            Let {agent.name} bid for {entityName}. You can change or revoke this at any time.
+            {current
+              ? `Saving replaces the limits ${agent.name} bids under now. Bids already placed stand.`
+              : `Let ${agent.name} bid for ${entityName}. You can change or revoke this at any time.`}
           </DialogDescription>
         </DialogHeader>
         <form
@@ -254,6 +270,32 @@ export function AuthoriseBuyerAgentDialog({
               />
             </div>
           </FieldBlock>
+          <FieldBlock
+            id={fieldId("totalLimit")}
+            label="Total limit (optional)"
+            hint="The most they can have committed at once, across these sales. Leave empty for no total."
+            error={errors.totalLimit}
+          >
+            <div className="relative">
+              <span
+                aria-hidden
+                className="pointer-events-none absolute inset-y-0 left-3 flex items-center font-body text-sm text-on-surface-variant"
+              >
+                £
+              </span>
+              <Input
+                id={fieldId("totalLimit")}
+                inputMode="decimal"
+                autoComplete="off"
+                placeholder="25,000"
+                className="min-h-11 pl-7 tabular-nums"
+                value={draft.totalLimit}
+                onChange={(event) => update({ totalLimit: event.target.value })}
+                aria-invalid={errors.totalLimit ? true : undefined}
+                aria-describedby={describedBy(fieldId("totalLimit"), errors.totalLimit, true)}
+              />
+            </div>
+          </FieldBlock>
           <div className="grid gap-4 sm:grid-cols-2">
             <FieldBlock
               id={fieldId("start")}
@@ -311,9 +353,9 @@ export function AuthoriseBuyerAgentDialog({
             form={fieldId("form")}
             className="min-h-11"
             loading={busy}
-            loadingLabel="Authorising…"
+            loadingLabel={current ? "Saving…" : "Authorising…"}
           >
-            Authorise
+            {current ? "Save limits" : "Authorise"}
           </LoadingButton>
         </DialogFooter>
       </DialogContent>
