@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { Count, PlainLink as Link, SecondaryTabNav, type TabNavItem } from "./index.js";
+import { Count, PlainLink as Link, SecondaryTabNav, TabNav, type TabNavItem } from "./index.js";
 
 const pages: TabNavItem[] = [
   { id: "registrations", label: "Registrations", href: "/sales/1/registrations", count: 12 },
@@ -37,6 +37,24 @@ describe("SecondaryTabNav", () => {
     expect(screen.getByRole("link", { name: "Registrations 12" })).toBeInTheDocument();
     const waiting = screen.getByRole("link", { name: "Telephone bookings 2 waiting" });
     expect(waiting.querySelector(".bg-lax-ink")).not.toBeNull();
+  });
+});
+
+describe("TabNav that scrolls", () => {
+  it("keeps every tab in one row, never folding them into More", () => {
+    render(
+      <TabNav
+        items={pages}
+        activeId="registrations"
+        label="Bidders"
+        Link={Link}
+        overflow="scroll"
+      />,
+    );
+    const nav = screen.getByRole("navigation", { name: "Bidders" });
+    expect(nav.querySelectorAll("a")).toHaveLength(2);
+    expect(nav.className).toContain("overflow-x-auto");
+    expect(screen.queryByRole("button", { name: /More/ })).toBeNull();
   });
 });
 

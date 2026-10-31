@@ -61,7 +61,10 @@ function accountOf(
     tag: {
       kind: "organisation",
       name: account.displayName,
-      initials: initials(account.displayName),
+      // The same initials as the switcher, so a row and the switcher read alike.
+      initials:
+        accounts.options.find((o) => o.id === account.legalEntityId)?.initials ??
+        initials(account.displayName),
     },
     member: account.canSwitch,
   };

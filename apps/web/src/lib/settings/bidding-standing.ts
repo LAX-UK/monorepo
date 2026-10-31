@@ -1,111 +1,221 @@
+import { formatPounds } from "@/lib/buyer-agents/authorisation-presenter";
 import type { SessionUser } from "@/lib/data/contracts";
-import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { CLIENT_ROUTES, teamHref } from "@/lib/navigation/client-routes";
 import { organisationBidReasonCopy } from "@/lib/presenters/organisation-state/organisation-state-copy";
+import { organisationStatusView } from "@/lib/presenters/organisation-status/organisation-status-presentation";
+import { formatDateInline } from "@/lib/ui/format";
 import {
-  entityRoleCan,
+  type EntityActor,
+  entityActorCan,
   organisationStatePolicy,
   roleBidsThroughAuthorisation,
+  roleNeedsPersonalIdentity,
 } from "@auction/domain";
-import type { LegalEntityMemberRole, LegalEntityStatus } from "@auction/types";
+import type { LegalEntityStatus, OrganisationBiddingLimitsView } from "@auction/types";
+import type { StatusBadgeTone } from "@auction/ui/lax";
 
 type KycStatus = NonNullable<SessionUser["kycStatus"]>;
 
-export type BiddingStandingRow = {
-  id: "identity" | "limit" | "organisation";
-  title: string;
+/**
+ * One line of Bid settings' Bidding card: what it is, where it stands (a badge or a figure), a
+ * sentence on what that means, and at most one thing to do about it.
+ */
+export type BiddingRow = {
+  id: "identity" | "limit" | "check" | "who_can_bid" | "authorisation" | "role";
+  label: string;
+  value:
+    | { kind: "badge"; text: string; tone: StatusBadgeTone }
+    | { kind: "text"; text: string }
+    /** A large figure ("£250,000") with a quiet unit after it ("across open bids"). */
+    | { kind: "figure"; text: string; unit: string | null };
   detail: string;
-  action: { label: string; href: string } | null;
+  action: { label: string; href: string; style: "button" | "link" } | null;
 };
 
-/** What the identity check means for bidding, one row per status. */
-const IDENTITY: Record<KycStatus, Omit<BiddingStandingRow, "id">> = {
+const IDENTITY: Record<KycStatus, Omit<BiddingRow, "id" | "label">> = {
   approved: {
-    title: "Identity verified",
+    value: { kind: "badge", text: "Verified", tone: "success" },
     detail: "You can bid in every sale you register for.",
     action: null,
   },
   pending: {
-    title: "We're checking your identity",
+    value: { kind: "badge", text: "Being checked", tone: "info" },
     detail: "This usually takes less than a working day. We'll email you when it's done.",
     action: null,
   },
   unverified: {
-    title: "Verify your identity",
+    value: { kind: "badge", text: "Not verified yet", tone: "warning" },
     detail: "We check who you are once, before your first bid.",
-    action: { label: "Verify identity", href: CLIENT_ROUTES.verifyIdentity },
+    action: { label: "Verify identity", href: CLIENT_ROUTES.verifyIdentity, style: "button" },
   },
   rejected: {
-    title: "We couldn't verify your identity",
+    value: { kind: "badge", text: "Not verified", tone: "danger" },
     detail: "Try again with a clear photo, or ask client services for help.",
-    action: { label: "Try again", href: CLIENT_ROUTES.verifyIdentity },
+    action: { label: "Try again", href: CLIENT_ROUTES.verifyIdentity, style: "button" },
   },
 };
 
-const LIMIT: BiddingStandingRow = {
+function identityRow(kycStatus: SessionUser["kycStatus"], label: string): BiddingRow {
+  return { id: "identity", label, ...IDENTITY[kycStatus ?? "unverified"] };
+}
+
+const PERSONAL_LIMIT: BiddingRow = {
   id: "limit",
-  title: "Bidding limit",
-  detail: "Your limit is set when we verify you. Ask us to raise it at any time.",
-  action: { label: "Request an increase", href: "/contact?intent=bidding-limit" },
+  label: "Bidding limit",
+  value: { kind: "text", text: "Set when we verify you" },
+  detail: "Ask us before a big sale and we'll look at raising it.",
+  action: {
+    label: "Request a higher limit",
+    href: "/contact?intent=bidding-limit",
+    style: "button",
+  },
 };
 
-/** The organisation the person is acting for, when they are not acting as themselves. */
+/** The organisation the person is acting for, with what Bid settings reads about it. */
 export type BiddingOrganisation = {
   name: string;
   status: LegalEntityStatus;
-  role: LegalEntityMemberRole;
+  /** When LAX last changed its state: for an approved organisation, the day it was checked. */
+  checkedAt: Date | null;
+  actor: EntityActor;
+  /** The organisation limit and authorisations; `null` when they can't be read or shown. */
+  limits: OrganisationBiddingLimitsView | null;
+  /** Owners, admins and authorised buyer agents; `null` when not counted for this role. */
+  biddersCount: number | null;
+  /** The member's own user id, to find their authorisation. */
+  userId: string;
 };
 
-/**
- * Where the organisation stands to bid. Its state decides first (the same table as the bid
- * panel); then the person's role: owners and admins bid without a limit, buyer agents within
- * the authorisation they are given, and the other roles do not bid.
- */
-function organisationStanding({ name, status, role }: BiddingOrganisation): BiddingStandingRow {
-  const state = organisationStatePolicy(status, new Set());
-  if (state.bidPanelReasonKey) {
-    const reason = organisationBidReasonCopy(state.bidPanelReasonKey, { organisationName: name });
+function checkRow(org: BiddingOrganisation): BiddingRow {
+  const view = organisationStatusView(org.status);
+  const state = organisationStatePolicy(org.status, new Set());
+  const reason = state.bidPanelReasonKey
+    ? organisationBidReasonCopy(state.bidPanelReasonKey, { organisationName: org.name })
+    : null;
+  return {
+    id: "check",
+    label: "Organisation check",
+    value: { kind: "badge", text: view.label, tone: view.tone },
+    detail: reason
+      ? reason.line
+      : org.checkedAt
+        ? `${org.name}'s documents were checked on ${formatDateInline(org.checkedAt)}.`
+        : `${org.name}'s documents are checked.`,
+    action: reason?.contact
+      ? { label: reason.contact.label, href: reason.contact.href, style: "button" }
+      : null,
+  };
+}
+
+function limitRow(org: BiddingOrganisation): BiddingRow | null {
+  if (!entityActorCan(org.actor, "entity.bid.place")) return null;
+  const manage = entityActorCan(org.actor, "entity.bidding_limits.manage");
+  const limits = org.limits;
+  if (!limits) {
     return {
-      id: "organisation",
-      title: reason.title,
-      detail: reason.line,
-      action: reason.contact ? { label: reason.contact.label, href: reason.contact.href } : null,
-    };
-  }
-  if (!entityRoleCan(role, "entity.bid.place")) {
-    return {
-      id: "organisation",
-      title: `You don't bid for ${name}`,
-      detail: "Your role here doesn't place bids. An owner or admin can change it.",
+      id: "limit",
+      label: "Bidding limit",
+      value: { kind: "text", text: "Not available right now" },
+      detail: "We couldn't read the limit. The rest of this page still works; try again soon.",
       action: null,
     };
   }
+  const { limit, available } = limits.organisation;
+  if (!limit) {
+    return {
+      id: "limit",
+      label: "Bidding limit",
+      value: { kind: "text", text: "No organisation limit" },
+      detail: manage
+        ? `Set one to cap what everyone bidding for ${org.name} can commit, owners included.`
+        : `Owners and admins can set one for everyone who bids for ${org.name}.`,
+      action: manage ? { label: "Set a limit", href: teamHref("bidding"), style: "button" } : null,
+    };
+  }
   return {
-    id: "organisation",
-    title: `${name} is approved to bid`,
-    detail: roleBidsThroughAuthorisation(role)
-      ? "You bid up to the limit an owner or admin sets for you, sale by sale."
-      : "There is no limit on bids placed for the organisation.",
+    id: "limit",
+    label: "Bidding limit",
+    value: { kind: "figure", text: formatPounds(limit), unit: "across open bids" },
+    detail: `${available ? `${formatPounds(available)} left now. ` : ""}It applies to everyone who bids for ${org.name}, owners included.`,
+    action: manage ? { label: "Change limit", href: teamHref("bidding"), style: "button" } : null,
+  };
+}
+
+function whoCanBidRow(org: BiddingOrganisation): BiddingRow | null {
+  if (org.biddersCount === null || !entityActorCan(org.actor, "entity.members.manage")) return null;
+  return {
+    id: "who_can_bid",
+    label: "Who can bid",
+    value: {
+      kind: "text",
+      text: org.biddersCount === 1 ? "1 member" : `${org.biddersCount} members`,
+    },
+    detail: "Owners, admins and buyer agents you authorise.",
+    action: { label: "Manage in Members", href: teamHref("members"), style: "link" },
+  };
+}
+
+function authorisationRow(org: BiddingOrganisation): BiddingRow {
+  const mine = org.limits?.authorisations.filter((a) => a.userId === org.userId) ?? [];
+  const [first] = mine;
+  if (!first) {
+    return {
+      id: "authorisation",
+      label: "Your authorisation",
+      value: { kind: "text", text: "Not authorised yet" },
+      detail: `An owner or admin authorises you to bid for ${org.name}, with your limits.`,
+      action: null,
+    };
+  }
+  const perLot = first.bidLimit ? formatPounds(first.bidLimit) : null;
+  const total = first.total.limit ? formatPounds(first.total.limit) : null;
+  const left = first.total.available ? formatPounds(first.total.available) : null;
+  return {
+    id: "authorisation",
+    label: "Your authorisation",
+    value: perLot
+      ? { kind: "figure", text: perLot, unit: "per lot" }
+      : { kind: "text", text: "No limit per lot" },
+    detail: [
+      first.saleTitle ? `For ${first.saleTitle}.` : "For every sale.",
+      total ? `${total} in total${left ? `, ${left} left` : ""}.` : "No total limit.",
+      "Ask an owner or admin if you need a change.",
+    ].join(" "),
     action: null,
   };
 }
 
-function personalStanding(kycStatus: SessionUser["kycStatus"]): BiddingStandingRow[] {
-  return [{ id: "identity", ...IDENTITY[kycStatus ?? "unverified"] }, LIMIT];
+function roleRow(org: BiddingOrganisation): BiddingRow {
+  return {
+    id: "role",
+    label: "Your bidding",
+    value: { kind: "text", text: `You don't bid for ${org.name}` },
+    detail: "Owners, admins and buyer agents bid. Ask an owner if your work needs it.",
+    action: null,
+  };
 }
 
 /**
- * Bid settings' Bidding section. For yourself: whether you can bid and how to raise your limit.
- * For an organisation: the organisation's standing, plus your own identity check only where it
- * gates your bids (a buyer agent bids in their own name).
+ * Bid settings' Bidding card. For yourself: your identity check and your limit. For an
+ * organisation: its check, its limit, who can bid (owners and admins), a buyer agent's own
+ * authorisation and identity check, and for a role that doesn't bid, a line that says so. Never
+ * an owner's own identity check: it doesn't decide the organisation's bidding.
  */
-export function biddingStanding(
+export function biddingRows(
   kycStatus: SessionUser["kycStatus"],
-  organisation: BiddingOrganisation | null = null,
-): BiddingStandingRow[] {
-  if (!organisation) return personalStanding(kycStatus);
-  const rows = [organisationStanding(organisation)];
-  if (roleBidsThroughAuthorisation(organisation.role)) {
-    rows.push({ id: "identity", ...IDENTITY[kycStatus ?? "unverified"] });
-  }
-  return rows;
+  org: BiddingOrganisation | null,
+): BiddingRow[] {
+  if (!org) return [identityRow(kycStatus, "Identity check"), PERSONAL_LIMIT];
+  const bids = entityActorCan(org.actor, "entity.bid.place");
+  const agent = roleBidsThroughAuthorisation(org.actor.role);
+  return [
+    checkRow(org),
+    bids ? null : roleRow(org),
+    limitRow(org),
+    whoCanBidRow(org),
+    agent ? authorisationRow(org) : null,
+    roleNeedsPersonalIdentity(org.actor.role) && bids
+      ? identityRow(kycStatus, "Your identity check")
+      : null,
+  ].filter((row): row is BiddingRow => row !== null);
 }

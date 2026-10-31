@@ -100,7 +100,6 @@ export function NotificationsInboxBoard({
       href: inboxHref({ ...query, tab: id }),
       // A lone 0 says nothing; only a number worth acting on is shown.
       ...(count ? { count } : {}),
-      ...(id === "needs_action" && count ? { countTone: "attention" as const } : {}),
     };
   });
   const accountLabel = accountOptions.find((o) => o.value === query.account)?.label;
@@ -132,7 +131,13 @@ export function NotificationsInboxBoard({
           </Notice>
         ) : null}
         <ListToolbar
-          tabs={{ items: tabs, activeId: query.tab, label: "Notifications", Link }}
+          tabs={{
+            items: tabs,
+            activeId: query.tab,
+            label: "Notifications",
+            Link,
+            overflow: "scroll",
+          }}
           search={{
             value: board.search,
             onValueChange: board.setSearch,

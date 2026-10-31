@@ -21,7 +21,7 @@ export function UnsubscribeForm({ token }: { token: string }) {
           Your email preference has been updated.
         </output>
         <Button asChild variant="cta" size="xl" className="font-headline shadow-none">
-          <Link href="/settings#notifications" prefetch>
+          <Link href="/settings#alerts" prefetch>
             Manage all preferences
           </Link>
         </Button>
