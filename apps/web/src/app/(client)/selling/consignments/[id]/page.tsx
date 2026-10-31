@@ -97,7 +97,7 @@ export default async function SubmissionDetailPage({
     loadFailure = describeDashboardSliceFailure(
       submissionRes.reason,
       "submissions",
-      "Could not load this submission.",
+      "We couldn't load this consignment.",
     );
   }
 
@@ -296,7 +296,7 @@ export default async function SubmissionDetailPage({
                 id="your-submission-heading"
                 className="font-headline text-base font-semibold text-on-surface"
               >
-                Your submission
+                Your description
               </h2>
               <p className="mt-2 whitespace-pre-line font-body text-sm text-on-surface-variant">
                 {submission.description?.trim() || "No description was added."}

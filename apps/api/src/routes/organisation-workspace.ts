@@ -29,7 +29,7 @@ export function createOrganisationWorkspaceRoutes(
   const requireAuth = createRequireAuth(authenticator, {
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
-  const { search, needsYou } = container.organisationWorkspace;
+  const { search, needsYou, accountNeedsYou } = container.organisationWorkspace;
   const r = new Hono<{ Variables: Variables }>();
 
   /** Records in the acting account by title, artist, lot number, invoice number or person. */
@@ -55,6 +55,16 @@ export function createOrganisationWorkspaceRoutes(
   r.get("/needs-you", requireAuth, container.requireLegalEntityContext, async (c) => {
     const ctx = c.get("legalEntityContext") as LegalEntityContext;
     return c.json({ data: await needsYou.read(memberActor(ctx)) });
+  });
+
+  /**
+   * How many tasks wait on the signed-in person in each organisation they belong to, for the
+   * account switcher's dots. Not tied to the acting account: only the person's own active
+   * memberships are read, each through the reader above as their role in it.
+   */
+  r.get("/needs-you/by-account", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    return c.json({ data: { accounts: await accountNeedsYou.countsFor(userId) } });
   });
 
   return r;

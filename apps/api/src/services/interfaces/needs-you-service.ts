@@ -30,3 +30,14 @@ export interface INeedsYouOrganisationReader {
 export interface INeedsYouService {
   read(actor: OrganisationMemberActor): Promise<NeedsYouView>;
 }
+
+/** How many tasks wait on the person in one of their organisations. */
+export type AccountNeedsYouCount = { legalEntityId: string; count: number };
+
+/**
+ * Needs you for each organisation the signed-in person belongs to, for the account switcher's
+ * dots. Each account is read by the one reader above, as the member's own role in it.
+ */
+export interface IAccountNeedsYouService {
+  countsFor(userId: string): Promise<AccountNeedsYouCount[]>;
+}

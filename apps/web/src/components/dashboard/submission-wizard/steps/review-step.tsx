@@ -118,7 +118,7 @@ export function ReviewStep({
 
       <Surface variant="quiet" padding="md" className="space-y-3">
         <div className="flex items-baseline justify-between gap-3">
-          <p className="font-headline text-sm font-semibold text-on-surface">Submission quality</p>
+          <p className="font-headline text-sm font-semibold text-on-surface">Consignment quality</p>
           <span className="font-label text-xs font-semibold uppercase tracking-wider text-secondary">
             {qualityPercent}%
           </span>

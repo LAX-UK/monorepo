@@ -141,7 +141,7 @@ export default async function SellerConsignmentsPage({ searchParams }: PageProps
   return (
     <DashboardListPage
       title="Consignments"
-      description="Everything handed to LAX, from first submission through sale."
+      description="Everything handed to LAX, from first details through sale."
       actions={view.headerAction ? action : null}
       banner={banner}
       errorAlert={partialFailures}

@@ -43,11 +43,11 @@ export function PhotosStep({ form }: StepProps) {
             <FormControl>
               <ImageGalleryManager
                 kind="submission_image"
-                label="Submission image"
+                label="Photos of the work"
                 value={field.value}
                 onChange={field.onChange}
                 maxFiles={20}
-                emptyTitle="No submission images yet"
+                emptyTitle="No photos yet"
                 emptyDescription="Upload photos, then drag to reorder. The first image is the primary catalog image."
               />
             </FormControl>
