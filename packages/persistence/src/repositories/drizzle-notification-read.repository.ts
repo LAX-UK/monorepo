@@ -7,11 +7,12 @@ import {
 } from "@auction/domain";
 import type { UserNotification, UserNotificationListItem } from "@auction/types";
 import type { InferSelectModel, SQL } from "drizzle-orm";
-import { and, desc, eq, inArray, isNotNull, isNull, notInArray, or } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNotNull, isNull, notInArray, or } from "drizzle-orm";
 import type {
   INotificationReadRepository,
   NotificationListFilter,
 } from "../interfaces/notification-read.repository.js";
+import { escapeLikePattern } from "../lib/like-pattern.js";
 import { notificationTypesForFilter } from "../lib/notification-type-filter.js";
 
 type Row = InferSelectModel<typeof notification>;
@@ -85,6 +86,15 @@ export class DrizzleNotificationReadRepository implements INotificationReadRepos
       if (personal) parts.push(personal);
     } else if (filter.account?.kind === "entity") {
       parts.push(eq(notification.legalEntityId, filter.account.legalEntityId));
+    }
+    const query = filter.query?.trim();
+    if (query) {
+      const contains = `%${escapeLikePattern(query)}%`;
+      const matches = or(
+        ilike(notification.title, contains),
+        ilike(notification.message, contains),
+      );
+      if (matches) parts.push(matches);
     }
     const rows = await this.db
       .select({

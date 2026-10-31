@@ -69,7 +69,7 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
     return { label: "Staff role", Icon: UserRoundCog, tone: "info" };
   }
   if (type === "submission_received_for_review") {
-    return { label: "Submission", Icon: BellRing, tone: "info" };
+    return { label: "Consignment", Icon: BellRing, tone: "info" };
   }
   if (type === "submission_approved") {
     return { label: "Approved", Icon: Trophy, tone: "success" };
@@ -81,7 +81,7 @@ export function notificationTypePresenter(type: string): NotificationPresentatio
     return { label: "Not accepted", Icon: XCircle, tone: "neutral" };
   }
   if (type === "submission_draft_reminder") {
-    return { label: "Submission reminder", Icon: Clock, tone: "info" };
+    return { label: "Consignment reminder", Icon: Clock, tone: "info" };
   }
   if (type === "submission_changes_requested") {
     return { label: "Needs changes", Icon: FileText, tone: "warn" };

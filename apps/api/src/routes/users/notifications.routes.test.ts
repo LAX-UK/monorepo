@@ -61,6 +61,14 @@ describe("notification inbox routes", () => {
     });
   });
 
+  it("searches the title and message, trimmed and capped", async () => {
+    const { app, listForUserFiltered } = mount();
+    await app.request(`/users/me/notifications?q=${encodeURIComponent("  Arles  ")}`);
+    expect(listForUserFiltered.mock.calls[0]?.[1]).toMatchObject({ query: "Arles" });
+    await app.request(`/users/me/notifications?q=${"a".repeat(300)}`);
+    expect(listForUserFiltered.mock.calls[1]?.[1]?.query).toHaveLength(100);
+  });
+
   it("rejects an account that is neither personal nor an id", async () => {
     const { app, listForUserFiltered } = mount();
     const res = await app.request("/users/me/notifications?account=northbank");

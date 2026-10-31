@@ -14,6 +14,8 @@ export type NotificationListFilter = {
   tab: NotificationListTab;
   type?: string | undefined;
   account?: NotificationAccountFilter | undefined;
+  /** Words to find in the title or message, case-insensitively. */
+  query?: string | undefined;
 };
 
 export interface INotificationReadRepository {

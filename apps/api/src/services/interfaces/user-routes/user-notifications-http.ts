@@ -13,6 +13,7 @@ export interface IUserNotificationsHttpApplicationService {
     tab: NotificationListTab;
     type?: string;
     account?: NotificationAccountFilter;
+    query?: string;
   }): Promise<UserHttpJson>;
 
   markManyRead(input: { userId: string; ids: string[] }): Promise<UserHttpJson>;

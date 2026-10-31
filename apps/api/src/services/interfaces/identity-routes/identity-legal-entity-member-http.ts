@@ -1,8 +1,16 @@
 import type { InviteMemberInput } from "../member-management.js";
 import type { IdentityRouteOutcome } from "./identity-route-http.js";
 
+/** An owner as any member may see them: a name to ask, never their email. */
+export type OwnerContact = { name: string };
+
 export interface IIdentityLegalEntityMemberHttpApplicationService {
   listMembers(input: { legalEntityId: string }): Promise<IdentityRouteOutcome<unknown[]>>;
+
+  /** The organisation's owners by name, for any member to know whom to ask for access. */
+  listOwnerContacts(input: {
+    legalEntityId: string;
+  }): Promise<IdentityRouteOutcome<OwnerContact[]>>;
 
   inviteMember(input: {
     userId: string;

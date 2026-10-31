@@ -222,6 +222,16 @@ describe("GET /legal-entities/members", () => {
   });
 });
 
+describe("GET /legal-entities/members/owners", () => {
+  it.each(ROLES)("tells a %s whom to ask, by name only", async (role) => {
+    const res = await mount(role).send("GET", "/members/owners");
+    expect(res.status).toBe(200);
+    const owners = (await body(res)).data as Array<Record<string, unknown>>;
+    expect(owners).toHaveLength(2);
+    expect(owners.every((owner) => Object.keys(owner).join() === "name")).toBe(true);
+  });
+});
+
 describe("member changes per role", () => {
   it.each(ROLES.filter((r) => r !== "owner" && r !== "admin"))(
     "refuses every change to a %s with a reason",

@@ -20,6 +20,7 @@ export class UserNotificationsHttpApplicationService
       tab: input.tab,
       type: input.type,
       account: input.account,
+      query: input.query,
     });
     return { status: 200, body: { data } };
   }
