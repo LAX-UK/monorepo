@@ -28,7 +28,7 @@ export function AccountTile({ account, size = "md", className }: Props) {
         account.kind === "organisation"
           ? cn(
               size === "xs" ? "rounded-[4px]" : "rounded-[6px]",
-              "bg-product-accent/10 text-product-accent",
+              "bg-product-accent/10 text-product-accent dark:bg-product-accent/20 dark:text-lax-fg",
             )
           : "rounded-full bg-lax-neutral-bg text-lax-fg",
         className,
