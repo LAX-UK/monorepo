@@ -81,12 +81,14 @@ export function NoAccessActions({ legalEntityId, page, roles, waiting }: Props) 
   if (waiting) {
     return (
       <>
-        <span className="inline-flex items-center justify-center gap-1.5 text-lax-14 text-lax-muted">
-          <Check aria-hidden className="size-4" />
-          {waiting.role
-            ? `You've asked to be ${organisationRoleLabel(waiting.role)}`
-            : "You've asked for access"}
-        </span>
+        {/* "Request sent", with what was asked for, on one line however narrow the row. */}
+        <output className="inline-flex shrink-0 items-center justify-center gap-1.5 whitespace-nowrap text-lax-14 font-medium text-lax-fg">
+          <Check aria-hidden className="size-4 text-lax-success-fg" />
+          Request sent
+          <span className="font-normal text-lax-muted">
+            {waiting.role ? `· ${organisationRoleLabel(waiting.role)}` : "· more access"}
+          </span>
+        </output>
         <Button loading={pending} onClick={() => withdraw(waiting.id)}>
           Withdraw request
         </Button>

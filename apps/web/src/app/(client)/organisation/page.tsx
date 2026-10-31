@@ -64,6 +64,7 @@ export default async function OrganisationProfilePage() {
       <WorkspaceTabNoAccess
         access={access}
         legalEntityId={acting.id}
+        organisationName={acting.displayName}
         actor={actor}
         userId={user.id}
       />

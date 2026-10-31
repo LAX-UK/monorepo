@@ -29,6 +29,7 @@ export default async function TeamActivityPage({ searchParams }: Props) {
       <WorkspaceTabNoAccess
         access={access}
         legalEntityId={acting.id}
+        organisationName={acting.displayName}
         actor={actor}
         userId={user.id}
       />

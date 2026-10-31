@@ -1,11 +1,12 @@
-"use client";
-
 import { DashboardPage } from "@/components/dashboard/dashboard-page";
 import { SwitchAccountAction } from "@/components/layout/account-switcher/switch-account-action";
-import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { NoAccessActions } from "@/components/organisation-team/ask-for-access-button";
+import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { resolveActiveOrganisationActor } from "@/lib/legal-entity/active-organisation.server";
+import { type AccessAsk, loadAccessAsk } from "@/lib/organisation-team/access-ask.server";
+import { workspaceAccessReason } from "@/lib/presenters/workspace-access/access-reason";
+import { workspacePageAt } from "@/lib/presenters/workspace-access/workspace-access";
 import { AccessDeniedState } from "@auction/ui/components/access-denied-state";
-import { Button } from "@auction/ui/components/button";
-import Link from "next/link";
 
 type Props = {
   /** The page's name: "You don't have access to Bids". */
@@ -19,19 +20,44 @@ type Props = {
 };
 
 /**
- * A workspace page the member's role does not open, reached by its address. It names the page and
- * who can open it, and offers the way back: Home, or another account that can.
+ * A workspace page the member's role does not open, reached by its address. It names the page,
+ * who can open it and what the role can do instead, and offers the way on: "Ask for access" (or
+ * the request already sent, which can be withdrawn), Back to Home and Switch account, with the
+ * owner to ask under them.
  */
-export function WorkspacePageNoAccess({ label, openedBy, next, inPage = false }: Props) {
+export async function WorkspacePageNoAccess({ label, openedBy, next, inPage = false }: Props) {
+  const user = await requireAuthenticatedUser({ shell: "client", loginNext: next });
+  const active = await resolveActiveOrganisationActor(user);
+  const ask: AccessAsk | null = active
+    ? await loadAccessAsk({
+        legalEntityId: active.organisation.id,
+        actor: active.actor,
+        userId: user.id,
+        capabilities: workspacePageAt(next)?.anyCapability ?? [],
+      })
+    : null;
+  const reason = active
+    ? workspaceAccessReason({
+        page: label,
+        organisationName: active.organisation.displayName,
+        openedBy,
+        role: active.actor.role,
+      })
+    : null;
   const state = (
     <AccessDeniedState
       page={label}
       openedBy={openedBy}
+      {...(reason ? { reason } : {})}
+      footnote={ask?.footnote ?? null}
       actions={
         <>
-          <Button asChild>
-            <Link href={CLIENT_ROUTES.home}>Back to Home</Link>
-          </Button>
+          <NoAccessActions
+            legalEntityId={ask?.legalEntityId ?? ""}
+            page={label}
+            roles={ask?.roles ?? []}
+            waiting={ask?.waiting ?? null}
+          />
           <SwitchAccountAction destination={next} emphasis="secondary" />
         </>
       }
