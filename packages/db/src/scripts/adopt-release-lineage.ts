@@ -9,6 +9,7 @@ import {
   assertApprovedReleaseHead,
   planReleaseLedgerNormalization,
 } from "../release-lineage-mapping.js";
+import { buildPgPoolConfig } from "../ssl.js";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../../drizzle");
 const apply = process.argv.includes("--apply");
@@ -65,7 +66,7 @@ async function main() {
   const url = process.env.DATABASE_URL_OWNER;
   if (!url) throw new Error("DATABASE_URL_OWNER is required for --apply");
 
-  const pool = new pg.Pool({ connectionString: url });
+  const pool = new pg.Pool(buildPgPoolConfig(url));
   try {
     const { runMigrationsPerTransactionThrough } = await import("../migrate-runner.js");
     const journal = JSON.parse(readFileSync(join(root, "meta/_journal.json"), "utf8"));

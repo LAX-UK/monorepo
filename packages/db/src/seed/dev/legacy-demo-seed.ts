@@ -12,7 +12,7 @@ import { hashPassword } from "@better-auth/utils/password";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "../../schema/index.js";
-import { buildPgConnectionConfig } from "../../ssl.js";
+import { buildPgPoolConfig } from "../../ssl.js";
 import { assertDevSeedMayRunDestructiveClear } from "../runners/dev-seed-guard.js";
 import { buildPressDemoSaleRow } from "../shared/press-demo.js";
 import { DEMO_SEED_NOW } from "./demo-seed-clock.js";
@@ -487,7 +487,7 @@ export async function runLegacyDemoSeed() {
   }
 
   const pool = new Pool({
-    ...buildPgConnectionConfig(url),
+    ...buildPgPoolConfig(url),
     options: "-c lock_timeout=5s -c statement_timeout=120s",
   });
   const db = drizzle(pool, { schema });

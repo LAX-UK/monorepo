@@ -3,7 +3,7 @@
  * Usage: `DATABASE_URL=... pnpm exec tsx scripts/report-email-collisions.ts` from packages/db.
  */
 import pg from "pg";
-import { buildPgConnectionConfig } from "../src/ssl.js";
+import { buildPgPoolConfig } from "../src/ssl.js";
 
 const { Pool } = pg;
 
@@ -13,7 +13,7 @@ async function main() {
     console.error("Set DATABASE_URL or DATABASE_URL_API");
     process.exit(1);
   }
-  const pool = new Pool(buildPgConnectionConfig(url));
+  const pool = new Pool(buildPgPoolConfig(url));
 
   const { rows: emailDups } = await pool.query<{
     e: string;

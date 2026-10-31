@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/node-postgres";
 import pg from "pg";
 import * as schema from "../../schema/index.js";
-import { buildPgConnectionConfig } from "../../ssl.js";
+import { buildPgPoolConfig } from "../../ssl.js";
 import { DEMO_SEED_NOW } from "./demo-seed-clock.js";
 
 const { Pool } = pg;
@@ -34,7 +34,7 @@ export async function seedE2eRolloutIdentities(): Promise<void> {
   const url = process.env.DATABASE_URL;
   if (!url) throw new Error("DATABASE_URL is required");
 
-  const pool = new Pool(buildPgConnectionConfig(url));
+  const pool = new Pool(buildPgPoolConfig(url));
   const db = drizzle(pool, { schema });
   const stamp = DEMO_SEED_NOW;
   const completedAt = new Date("2026-01-15T12:00:00.000Z");

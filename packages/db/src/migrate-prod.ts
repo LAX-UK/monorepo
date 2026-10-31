@@ -5,14 +5,14 @@ import {
   runMigrationsPerTransactionThrough,
 } from "./migrate-runner.js";
 import { resolveProductionMigrationThrough } from "./production-migration-ceiling.js";
-import { buildPgConnectionConfig } from "./ssl.js";
+import { buildPgPoolConfig } from "./ssl.js";
 
 async function main() {
   const url = process.env.DATABASE_URL_OWNER;
   if (!url) {
     throw new Error("DATABASE_URL_OWNER is required for production migrations");
   }
-  const pool = new pg.Pool(buildPgConnectionConfig(url));
+  const pool = new pg.Pool(buildPgPoolConfig(url));
   try {
     const lastApplied = await readLastAppliedFolderMillis(pool);
     const ceiling = resolveProductionMigrationThrough(process.env, lastApplied);

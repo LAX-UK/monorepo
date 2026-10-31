@@ -5,7 +5,7 @@
  *   DATABASE_URL=... pnpm db:backfill-lot-lifecycle-snapshot
  */
 import pg from "pg";
-import { buildPgConnectionConfig } from "../ssl.js";
+import { buildPgPoolConfig } from "../ssl.js";
 
 const { Pool } = pg;
 
@@ -40,7 +40,7 @@ async function main() {
     console.error("Set DATABASE_URL");
     process.exit(1);
   }
-  const pool = new Pool(buildPgConnectionConfig(url));
+  const pool = new Pool(buildPgPoolConfig(url));
 
   const { rows } = await pool.query<LotSnapshotSource>(`
     select

@@ -37,8 +37,8 @@
       "default": "./dist/schema/outbox.js"
     },
     "./pg": {
-      "types": "./dist/pg/ssl.d.ts",
-      "default": "./dist/pg/ssl.js"
+      "types": "./dist/pg/index.d.ts",
+      "default": "./dist/pg/index.js"
     },
     "./schema/access-policy": {
       "types": "./dist/schema/access-policy.d.ts",
