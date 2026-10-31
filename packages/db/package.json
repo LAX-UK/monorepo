@@ -34,6 +34,7 @@
     "db:verify-migration-pair": "tsx src/scripts/verify-migration-pair.ts",
     "db:migrate:kit": "drizzle-kit migrate",
     "db:seed:dev": "tsx src/seed/runners/cli.ts --env=dev",
+    "db:seed:demo-topup": "tsx src/seed/runners/demo-topup-cli.ts",
     "db:studio": "drizzle-kit studio",
     "db:report-email-collisions": "tsx scripts/report-email-collisions.ts",
     "db:backfill-auth-at-rest": "tsx src/scripts/backfill-auth-at-rest.ts",
