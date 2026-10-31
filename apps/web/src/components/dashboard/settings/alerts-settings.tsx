@@ -18,12 +18,7 @@ import {
   formValuesToPatch,
   prefsToFormValues,
 } from "@/lib/notifications/notification-preferences-registry";
-import {
-  QUIET_HOUR_OPTIONS,
-  quietHoursZoneLabel,
-  quietTimeToLocal,
-  quietTimeToUtc,
-} from "@/lib/notifications/quiet-hours";
+import { QUIET_HOUR_OPTIONS, quietHoursZoneLabel } from "@/lib/notifications/quiet-hours";
 import { notify } from "@/lib/ui/notify";
 import { LOCKED_NOTIFICATION_PREFERENCE_REASON } from "@auction/domain";
 import type { NotificationPreference } from "@auction/types";
@@ -208,8 +203,8 @@ function timeOptions(current: string) {
 }
 
 /**
- * Quiet hours in the person's own time (London), as 24-hour half hours or "Not set", with a way
- * to clear them. The API keeps UTC; the times are converted here, at the edge.
+ * Quiet hours in the person's own time zone, as 24-hour half hours or "Not set", with a way to
+ * clear them. They are stored as chosen, with the zone, so they hold through clock changes.
  */
 function QuietHours({
   values,
@@ -218,8 +213,8 @@ function QuietHours({
   values: NotificationPreferencesFormValues;
   onSave: (next: NotificationPreferencesFormValues) => void;
 }) {
-  const savedStart = quietTimeToLocal(values.quietStart);
-  const savedEnd = quietTimeToLocal(values.quietEnd);
+  const savedStart = values.quietStart;
+  const savedEnd = values.quietEnd;
   const [start, setStart] = useState(savedStart);
   const [end, setEnd] = useState(savedEnd);
   const [tried, setTried] = useState(false);
@@ -233,7 +228,7 @@ function QuietHours({
     <div>
       <p className="text-lax-14 font-semibold text-lax-fg">Quiet hours</p>
       <p className="mt-1 text-lax-13 text-lax-muted">
-        {hint} Times are in {quietHoursZoneLabel()}.
+        {hint} Times are in {quietHoursZoneLabel(values.quietTimeZone)}.
       </p>
       <div className="mt-3 flex flex-wrap items-end gap-3">
         <Field label="From" className="w-36" error={tried && !valid ? "Choose both times" : null}>
@@ -258,8 +253,8 @@ function QuietHours({
               if (!valid) return;
               onSave({
                 ...values,
-                quietStart: quietTimeToUtc(start),
-                quietEnd: quietTimeToUtc(end),
+                quietStart: start,
+                quietEnd: end,
               });
             }}
           >

@@ -38,6 +38,8 @@ export function parseNotificationPreference(raw: unknown): NotificationPreferenc
     lotEndedSellerWhatsapp: Boolean(o.lotEndedSellerWhatsapp),
     quietStart: o.quietStart == null || o.quietStart === "" ? null : String(o.quietStart),
     quietEnd: o.quietEnd == null || o.quietEnd === "" ? null : String(o.quietEnd),
+    quietTimeZone:
+      typeof o.quietTimeZone === "string" && o.quietTimeZone ? o.quietTimeZone : "Europe/London",
     updatedAt: coerceToDate(o.updatedAt),
   };
 }

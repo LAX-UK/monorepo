@@ -51,10 +51,13 @@ export class NotificationDispatcher {
   ): Promise<void> {
     if (await this.isSilencedByMute(userId, payload)) return;
     const prefs = await this.preferences.getForUser(userId);
-    const quiet =
-      prefs?.quietStart && prefs?.quietEnd
-        ? this.quietHours.isQuietTime(prefs.quietStart, prefs.quietEnd)
-        : false;
+    const quiet = prefs
+      ? this.quietHours.isQuietTime({
+          start: prefs.quietStart,
+          end: prefs.quietEnd,
+          timeZone: prefs.quietTimeZone,
+        })
+      : false;
 
     const failedChannels: string[] = [];
 

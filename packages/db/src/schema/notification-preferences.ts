@@ -35,8 +35,11 @@ export const notificationPreference = pgTable(
     watchlistWhatsapp: boolean("watchlist_whatsapp").notNull().default(false),
     paymentWhatsapp: boolean("payment_whatsapp").notNull().default(false),
     lotEndedSellerWhatsapp: boolean("lot_ended_seller_whatsapp").notNull().default(false),
+    /** Local "HH:MM" in `quietTimeZone`. */
     quietStart: text("quiet_start"),
     quietEnd: text("quiet_end"),
+    /** The IANA zone quiet hours are kept in, so they hold through clock changes. */
+    quietTimeZone: text("quiet_time_zone").notNull().default("Europe/London"),
     updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [index("notification_preference_user_id_idx").on(table.userId)],

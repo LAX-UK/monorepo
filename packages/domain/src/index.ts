@@ -339,6 +339,13 @@ export {
   withLockedPreferencesOn,
 } from "./notification-preference-locks.js";
 export {
+  DEFAULT_QUIET_HOURS_TIME_ZONE,
+  isValidTimeZone,
+  isWithinQuietHours,
+  localMinuteOfDay,
+  type QuietHours,
+} from "./quiet-hours.js";
+export {
   NOTIFICATION_ALWAYS_DELIVERED_TYPES,
   NOTIFICATION_IGNORES_QUIET_HOURS_TYPES,
   notificationIgnoresQuietHours,

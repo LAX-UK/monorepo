@@ -1835,6 +1835,13 @@
       "when": 1798012800000,
       "tag": "0261_payment_groups",
       "breakpoints": true
+    },
+    {
+      "idx": 262,
+      "version": "7",
+      "when": 1798099200000,
+      "tag": "0262_quiet_hours_time_zone",
+      "breakpoints": true
     }
   ]
 }

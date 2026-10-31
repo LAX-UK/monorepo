@@ -48,6 +48,7 @@ function mapRow(row: Row): NotificationPreference {
     lotEndedSellerWhatsapp: row.lotEndedSellerWhatsapp,
     quietStart: row.quietStart ?? null,
     quietEnd: row.quietEnd ?? null,
+    quietTimeZone: row.quietTimeZone,
     updatedAt: row.updatedAt,
   };
 }
@@ -129,6 +130,7 @@ export class DrizzleNotificationPreferenceRepository
         lotEndedSellerWhatsapp: patch.lotEndedSellerWhatsapp,
         quietStart: patch.quietStart,
         quietEnd: patch.quietEnd,
+        quietTimeZone: patch.quietTimeZone,
         updatedAt: patch.updatedAt,
       })
       .onConflictDoUpdate({
@@ -161,6 +163,7 @@ export class DrizzleNotificationPreferenceRepository
           lotEndedSellerWhatsapp: patch.lotEndedSellerWhatsapp,
           quietStart: patch.quietStart,
           quietEnd: patch.quietEnd,
+          quietTimeZone: patch.quietTimeZone,
           updatedAt: patch.updatedAt,
         },
       })
