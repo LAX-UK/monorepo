@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { accountNoticeMessage, decodeAccountNotice, encodeAccountNotice } from "./account-notice";
+import {
+  accountNoticeMessage,
+  decodeAccountNotice,
+  encodeAccountNotice,
+  notificationSwitchToast,
+} from "./account-notice";
 
 const names = (id: string) =>
   id === "org-1" ? "Northbank Gallery" : id === "me" ? "Personal" : null;
@@ -32,6 +37,25 @@ describe("account notice", () => {
     expect(accountNoticeMessage(notice, names)).toBe(
       "You switched to Northbank Gallery in another tab, so this tab shows it now.",
     );
+  });
+
+  it("turns an opened notification into a toast with the way back", () => {
+    const notice = {
+      kind: "opened_notification",
+      accountId: "org-1",
+      fromAccountId: "me",
+    } as const;
+    expect(decodeAccountNotice(encodeAccountNotice(notice))).toEqual(notice);
+    const accounts = {
+      "org-1": { kind: "organisation" as const, name: "Cedar & Stone Fine Art", initials: "CS" },
+      me: { kind: "personal" as const, name: "Personal", initials: "MO" },
+    };
+    const accountOf = (id: string) => accounts[id as keyof typeof accounts] ?? null;
+    expect(notificationSwitchToast(notice, accountOf)).toEqual({
+      account: { kind: "organisation", name: "Cedar & Stone Fine Art", initials: "CS" },
+      fromAccountId: "me",
+    });
+    expect(notificationSwitchToast({ ...notice, fromAccountId: "gone" }, accountOf)).toBeNull();
   });
 
   it("ignores notices of a kind it does not know", () => {

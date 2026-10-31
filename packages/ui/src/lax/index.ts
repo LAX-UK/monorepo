@@ -84,6 +84,7 @@ export { Dialog, DialogClose } from "./dialog.js";
 export type { DialogPlacement, DialogProps } from "./dialog.js";
 export { PresetCards } from "./preset-cards.js";
 export type { PresetOption } from "./preset-cards.js";
+export { SelectionBar } from "./selection-bar.js";
 export { ToggleRow } from "./toggle-row.js";
 export type { ToggleRowProps } from "./toggle-row.js";
 export { EmptyState } from "./empty-state.js";

@@ -58,6 +58,19 @@ export function attachUserNotificationsRoutes(r: UserHono, deps: UserRouteDeps):
     return respondUserHttpJson(c, response);
   });
 
+  r.get("/me/notifications/counts", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    const account = parseAccountFilter(c.req.query("account"));
+    if (account === "invalid") {
+      return c.json({ error: "invalid_account", message: "Unknown account" }, 400);
+    }
+    const response = await container.userRoutes.notificationsHttp.countNotifications({
+      userId,
+      ...(account ? { account } : {}),
+    });
+    return respondUserHttpJson(c, response);
+  });
+
   r.get("/me/notification-mutes", requireAuth, async (c) => {
     const userId = c.get("userId") as string;
     return respondUserHttpJson(

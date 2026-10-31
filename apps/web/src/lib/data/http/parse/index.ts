@@ -5,7 +5,12 @@ import { parseItemSubmissionSchema } from "@/lib/data/http/submissions.schema";
 import type { Bid, ItemSubmission, Lot, PublicLotView, Sale } from "@auction/types";
 
 export { coerceToDate, coerceToIsoString } from "./coerce";
-export { parseNotificationPreference, parseUserNotification } from "./notifications.parse";
+export {
+  parseInboxNotification,
+  parseNotificationAccountMute,
+  parseNotificationPreference,
+  parseUserNotification,
+} from "./notifications.parse";
 export { parseSessionUser } from "./session.parse";
 export { parseKycStatusSummary } from "./kyc.parse";
 export { parsePublicUser } from "./users.parse";

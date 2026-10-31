@@ -36,6 +36,19 @@ describe("planSwitchHop", () => {
     });
   });
 
+  it("offers the way back after a notification opened another account", () => {
+    const base = { requestedId: "org-1", next, memberships, orgModuleEnabled: true };
+    expect(planSwitchHop({ ...base, actingId: "me", notificationFrom: "me" }).switchTo).toEqual({
+      accountId: "org-1",
+      remember: true,
+      notice: { kind: "opened_notification", accountId: "org-1", fromAccountId: "me" },
+    });
+    // Only the account this browser really used can be the way back.
+    expect(
+      planSwitchHop({ ...base, actingId: "me", notificationFrom: "org-7" }).switchTo?.notice,
+    ).toEqual({ kind: "switched", accountId: "org-1" });
+  });
+
   it("goes straight through when the link is already in the right account", () => {
     expect(
       planSwitchHop({

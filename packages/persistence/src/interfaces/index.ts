@@ -416,6 +416,8 @@ export type {
 
 export type {
   INotificationReadRepository,
+  NotificationCountFilter,
+  NotificationCounts,
   NotificationListFilter,
   NotificationListTab,
   NotificationAccountFilter,

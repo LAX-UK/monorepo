@@ -1,190 +1,269 @@
 "use client";
 
 import { DashboardListPage } from "@/components/dashboard/dashboard-list-page";
-import { InboxEmptyState } from "@/components/dashboard/notifications/inbox-empty-state";
-import type { InboxTab } from "@/components/dashboard/notifications/inbox-tab";
-import { AccountLoadError } from "@/components/dashboard/primitives/account-load-error";
-import { ACCOUNT_LOAD_ERROR, DASHBOARD_CTA } from "@/lib/dashboard/dashboard-copy";
-import { NOTIFICATION_SETTINGS_HREF } from "@/lib/navigation/settings-links";
-import { AccountViewTabs } from "@auction/marketing-ui";
-import type { UserNotification } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
-import { Check } from "lucide-react";
+import {
+  ListEmpty,
+  ListLoadError,
+  ListNoResults,
+  ListSkeleton,
+} from "@/components/workspace/list-states";
+import {
+  INBOX_TABS,
+  INBOX_TAB_LABEL,
+  type InboxAccount,
+  type InboxQuery,
+  type InboxTab,
+  NOTIFICATION_TYPES,
+  inboxCleared,
+  inboxHref,
+  inboxNarrowed,
+  inboxTypeLabel,
+} from "@/lib/notifications/inbox-query";
+import {
+  Button,
+  Field,
+  FilterSheet,
+  ListToolbar,
+  NativeSelect,
+  Notice,
+  SelectionBar,
+  type TabNavItem,
+} from "@auction/ui/lax";
 import Link from "next/link";
-import { notificationTypePresenter } from "./notifications/notification-presenters";
+import { useEffect, useState } from "react";
 import { NotificationRow } from "./notifications/notification-row";
-import { NotificationsSkeleton } from "./notifications/notifications-skeleton";
-import { NotificationsTypeSelect } from "./notifications/notifications-type-select";
-import { useNotificationsInboxBoard } from "./notifications/use-notifications-inbox-board";
+import {
+  type InboxBoardInput,
+  type InboxCounts,
+  useNotificationsInboxBoard,
+} from "./notifications/use-notifications-inbox-board";
+
+const EMPTY: Record<InboxTab, { title: string; description: string }> = {
+  needs_action: {
+    title: "Nothing needs you",
+    description: "Outbids, invoices and agreements that need you appear here first.",
+  },
+  all: {
+    title: "No notifications yet",
+    description: "Bids, purchases and selling updates for every account you belong to appear here.",
+  },
+  unread: { title: "Nothing unread", description: "You're up to date. Everything is under All." },
+  archived: {
+    title: "Nothing archived",
+    description: "Notifications you archive are kept here.",
+  },
+};
+
+const ANY = "any";
+
+function tabCount(tab: InboxTab, counts: InboxCounts | null): number | null {
+  if (!counts) return null;
+  if (tab === "needs_action") return counts.needsAction;
+  if (tab === "unread") return counts.unread;
+  return null;
+}
 
 /**
- * Notifications: All, Unread and Archived, grouped by day with unread first, each opening what it
- * is about and marking itself read. A type filter sits beside the views; Select picks several to
- * mark read or archive at once. "Mark all as read" sits in the page head.
+ * Notifications for every account the person belongs to: Needs action first, then All, Unread
+ * and Archived, each with its own address. Rows carry their account; opening one for another
+ * account switches to it with a notice. Search, a type filter and an account picker narrow the
+ * list; rows are picked to mark read or archive together, and a row's menu mutes an organisation.
  */
 export function NotificationsInboxBoard({
-  loadFailure = false,
-  initialPage,
-}: {
-  /** The first page could not be read on the server. */
-  loadFailure?: boolean;
-  initialPage?: {
-    tab: InboxTab;
-    type: string;
-    items: UserNotification[];
-    hasMore: boolean;
-  };
+  paused,
+  ...input
+}: InboxBoardInput & {
+  /** The account in use is paused: notifications still arrive, and the page says so. */
+  paused: string | null;
 }) {
-  const board = useNotificationsInboxBoard(initialPage);
-  const failed = loadFailure || Boolean(board.error);
-  const canSelect = board.items.length > 0 && !board.loading;
+  const board = useNotificationsInboxBoard(input);
+  const { query, setQuery, counts } = board;
+  const [filterOpen, setFilterOpen] = useState(false);
+  const [draft, setDraft] = useState(query);
+  useEffect(() => {
+    if (filterOpen) setDraft(query);
+  }, [filterOpen, query]);
+
+  const multiAccount = board.accounts.options.length > 1;
+  const accountOptions: { value: InboxAccount; label: string }[] = [
+    { value: "all", label: "All accounts" },
+    ...board.accounts.options.map((option) => ({
+      value: (option.kind === "personal" ? "personal" : option.id) as InboxAccount,
+      label: option.name,
+    })),
+  ];
+  const tabs: TabNavItem[] = INBOX_TABS.map((id) => {
+    const count = tabCount(id, counts);
+    return {
+      id,
+      label: INBOX_TAB_LABEL[id],
+      href: inboxHref({ ...query, tab: id }),
+      // A lone 0 says nothing; only a number worth acting on is shown.
+      ...(count ? { count } : {}),
+      ...(id === "needs_action" && count ? { countTone: "attention" as const } : {}),
+    };
+  });
+  const accountLabel = accountOptions.find((o) => o.value === query.account)?.label;
+  const chips = [
+    ...(query.type ? [{ id: "type", label: inboxTypeLabel(query.type) ?? query.type }] : []),
+    ...(query.account !== "all" && accountLabel ? [{ id: "account", label: accountLabel }] : []),
+  ];
+  const narrowed = inboxNarrowed(query);
+  const clearAll = () => setQuery(inboxCleared(query));
+  const unread = counts?.unread ?? board.rows.filter((row) => row.unread).length;
 
   return (
     <DashboardListPage
       title="Notifications"
-      description="Updates on your bids, purchases and selling."
+      description="For every account you belong to. Opening one switches to its account."
       actions={
-        failed ? undefined : (
-          <Button
-            type="button"
-            variant="ghost"
-            size="default"
-            disabled={board.loading || board.unreadCount === 0}
-            onClick={() => void board.handleMarkAllRead()}
-          >
-            <Check aria-hidden />
-            Mark all as read
-          </Button>
+        board.error || unread === 0 ? undefined : (
+          <Button onClick={() => void board.markAllRead()}>Mark all as read</Button>
         )
       }
     >
       <output className="sr-only" aria-live="polite" aria-atomic="true">
         {board.liveMessage}
       </output>
-      {failed ? (
-        <AccountLoadError
-          {...ACCOUNT_LOAD_ERROR.notifications}
-          {...(board.error ? { onRetry: () => void board.retry() } : {})}
+      <div className="flex flex-col gap-4">
+        {paused ? (
+          <Notice tone="info" title="Notifications still arrive while an account is paused.">
+            {paused} is paused, so some actions wait. You can still open every notification.
+          </Notice>
+        ) : null}
+        <ListToolbar
+          tabs={{ items: tabs, activeId: query.tab, label: "Notifications", Link }}
+          search={{
+            value: board.search,
+            onValueChange: board.setSearch,
+            placeholder: "Search notifications",
+          }}
+          filter={{ count: chips.length, open: filterOpen, onOpenChange: setFilterOpen }}
+          {...(multiAccount
+            ? {
+                sort: (
+                  <NativeSelect<InboxAccount>
+                    aria-label="Account"
+                    className="w-[200px] max-md:hidden"
+                    value={query.account}
+                    onValueChange={(account) => setQuery({ ...query, account })}
+                    options={accountOptions}
+                  />
+                ),
+              }
+            : {})}
+          chips={{
+            filters: chips,
+            onRemove: (id) =>
+              setQuery(id === "type" ? { ...query, type: "" } : { ...query, account: "all" }),
+            onClearAll: clearAll,
+          }}
         />
-      ) : (
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex flex-wrap items-center gap-3 max-md:w-full">
-              <AccountViewTabs label="Notifications" currentId={board.tab} tabs={board.views} />
-              <div className="flex items-center gap-3 max-md:w-full max-md:justify-between">
-                <NotificationsTypeSelect filters={board.notificationFilters} />
-                {canSelect && !board.selecting ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="default"
-                    onClick={board.startSelecting}
-                    className="max-md:-mr-4"
-                  >
-                    Select
-                  </Button>
-                ) : null}
-              </div>
-            </div>
-            <Link
-              href={NOTIFICATION_SETTINGS_HREF}
-              className="font-body text-sm text-on-surface underline underline-offset-4 hover:decoration-2"
-            >
-              {DASHBOARD_CTA.chooseWhatWeSend}
-            </Link>
-          </div>
-
-          {canSelect && board.selecting ? (
-            <section
-              aria-label="Selected notifications"
-              className="flex flex-wrap items-center gap-2 rounded-xl border border-outline-variant/60 bg-surface-container-low px-4 py-2.5"
-            >
-              <p
-                className="mr-auto font-body text-sm font-medium text-on-surface"
-                aria-live="polite"
-              >
-                {board.selected.size === 0
-                  ? "Choose notifications"
-                  : `${board.selected.size} selected`}
-              </p>
-              {/* On phones the count and Done share the first row and the actions the second. */}
-              <div className="flex gap-2 max-sm:order-last max-sm:w-full max-sm:[&>button]:flex-1">
-                <Button
-                  type="button"
-                  variant="secondaryOutline"
-                  size="default"
-                  disabled={board.selected.size === 0}
-                  onClick={() => void board.handleBulkMarkRead()}
-                >
-                  Mark as read
-                </Button>
-                {board.tab === "archived" ? null : (
-                  <Button
-                    type="button"
-                    variant="secondaryOutline"
-                    size="default"
-                    disabled={board.selected.size === 0}
-                    onClick={() => void board.handleBulkArchive()}
-                  >
-                    Archive
-                  </Button>
-                )}
-              </div>
-              <Button type="button" variant="ghost" size="default" onClick={board.stopSelecting}>
-                Done
-              </Button>
-            </section>
-          ) : null}
-
-          {board.loading ? (
-            <NotificationsSkeleton rows={6} />
-          ) : board.items.length === 0 ? (
-            <InboxEmptyState tab={board.tab} filters={board.notificationFilters} />
-          ) : (
-            <div className="flex flex-col gap-6" aria-label="Notifications by day">
-              {board.groups.map((group) => (
-                <section key={group.band} aria-labelledby={`band-${group.band}`}>
-                  <h2
-                    id={`band-${group.band}`}
-                    className="mb-2.5 font-body text-sm text-on-surface-variant"
-                  >
-                    {group.band}
-                  </h2>
-                  <ul className="divide-y divide-outline-variant/50 overflow-hidden rounded-xl border border-outline-variant/60 bg-surface-container-lowest">
-                    {group.items.map((item) => (
-                      <NotificationRow
-                        key={item.id}
-                        item={item}
-                        presentation={notificationTypePresenter(item.type)}
-                        onMarkRead={board.handleMarkRead}
-                        onArchive={(id) => void board.handleArchive(id)}
-                        selecting={board.selecting}
-                        selected={board.selected.has(item.id)}
-                        onToggleSelect={board.toggleSelect}
-                        archived={board.tab === "archived"}
-                      />
-                    ))}
-                  </ul>
-                </section>
-              ))}
-            </div>
+        <SelectionBar
+          count={board.selected.size}
+          noun={["notification", "notifications"]}
+          onClear={board.clearSelection}
+        >
+          <Button onClick={() => void board.bulkMarkRead()}>Mark as read</Button>
+          {query.tab === "archived" ? null : (
+            <Button variant="primary" onClick={() => void board.bulkArchive()}>
+              Archive
+            </Button>
           )}
-
-          {!board.loading && board.hasMore ? (
-            <div className="flex justify-center">
-              <Button
-                type="button"
-                variant="secondaryOutline"
-                size="default"
-                disabled={board.loadingMore}
-                onClick={() => void board.loadMore()}
-              >
-                {board.loadingMore ? "Loading…" : "Show older notifications"}
-              </Button>
-            </div>
-          ) : null}
-        </div>
-      )}
+        </SelectionBar>
+        <InboxList board={board} query={query} narrowed={narrowed} onClear={clearAll} />
+      </div>
+      <FilterSheet
+        open={filterOpen}
+        onOpenChange={setFilterOpen}
+        onApply={() => setQuery(draft)}
+        onClear={() => setDraft({ ...draft, type: "", account: "all" })}
+      >
+        <Field label="Type">
+          <NativeSelect
+            value={draft.type || ANY}
+            onValueChange={(value) => setDraft({ ...draft, type: value === ANY ? "" : value })}
+            options={[
+              { value: ANY, label: "Every type" },
+              ...NOTIFICATION_TYPES.map((t) => ({ value: t.id, label: t.label })),
+            ]}
+          />
+        </Field>
+        {multiAccount ? (
+          <Field label="Account">
+            <NativeSelect<InboxAccount>
+              value={draft.account}
+              onValueChange={(account) => setDraft({ ...draft, account })}
+              options={accountOptions}
+            />
+          </Field>
+        ) : null}
+      </FilterSheet>
     </DashboardListPage>
+  );
+}
+
+function InboxList({
+  board,
+  query,
+  narrowed,
+  onClear,
+}: {
+  board: ReturnType<typeof useNotificationsInboxBoard>;
+  query: InboxQuery;
+  narrowed: boolean;
+  onClear: () => void;
+}) {
+  if (board.error) return <ListLoadError onRetry={() => void board.retry()} />;
+  if (board.loading) return <ListSkeleton label="Loading your notifications" rows={4} />;
+  if (board.rows.length === 0) {
+    return narrowed ? (
+      <ListNoResults query={query.q} onClear={onClear} />
+    ) : (
+      <ListEmpty illustration="plinth" {...EMPTY[query.tab]} />
+    );
+  }
+  const actions = {
+    onOpened: board.opened,
+    onNavigate: board.navigate,
+    onMarkRead: board.markRead,
+    onArchive: (row: Parameters<typeof board.archive>[0]) => void board.archive(row),
+    onMute: (row: Parameters<typeof board.archive>[0], muted: boolean) =>
+      void board.setMute(row, muted),
+  };
+  return (
+    <div className="flex flex-col">
+      {board.groups.map((group, index) => (
+        <section key={group.band} aria-labelledby={`band-${group.band}`}>
+          <h2
+            id={`band-${group.band}`}
+            className={`${index === 0 ? "pt-0" : "pt-4"} pb-2 text-lax-12 font-medium text-lax-muted`}
+          >
+            {group.band}
+          </h2>
+          <ul className="divide-y divide-lax-line-subtle overflow-hidden rounded-lax-card border border-lax-line bg-lax-surface">
+            {group.rows.map((row) => (
+              <NotificationRow
+                key={row.id}
+                row={row}
+                archived={query.tab === "archived"}
+                selection={{
+                  selected: board.selected.has(row.id),
+                  onSelectedChange: (on) => board.toggleSelect(row.id, on),
+                }}
+                actions={actions}
+              />
+            ))}
+          </ul>
+        </section>
+      ))}
+      {board.hasMore ? (
+        <div className="flex justify-center pt-6">
+          <Button loading={board.loadingMore} onClick={() => void board.loadMore()}>
+            Show older notifications
+          </Button>
+        </div>
+      ) : null}
+    </div>
   );
 }

@@ -7,10 +7,13 @@ import {
 } from "@auction/domain";
 import type { UserNotification, UserNotificationListItem } from "@auction/types";
 import type { InferSelectModel, SQL } from "drizzle-orm";
-import { and, desc, eq, ilike, inArray, isNotNull, isNull, notInArray, or } from "drizzle-orm";
+import { and, desc, eq, ilike, inArray, isNotNull, isNull, notInArray, or, sql } from "drizzle-orm";
 import type {
   INotificationReadRepository,
+  NotificationCountFilter,
+  NotificationCounts,
   NotificationListFilter,
+  NotificationListTab,
 } from "../interfaces/notification-read.repository.js";
 import { escapeLikePattern } from "../lib/like-pattern.js";
 import { notificationTypesForFilter } from "../lib/notification-type-filter.js";
@@ -32,6 +35,43 @@ function needsActionCondition(): SQL {
   );
   if (!condition) throw new Error("needs_action_condition_empty");
   return condition;
+}
+
+/**
+ * One person's inbox narrowed to a view, a type, an account and words. Reads `legal_entity` and
+ * `lot`, so the query joins both.
+ */
+function inboxCondition(
+  userId: string,
+  filter: Omit<NotificationListFilter, "limit" | "offset">,
+): SQL | undefined {
+  const parts: SQL[] = [eq(notification.userId, userId)];
+  if (filter.tab === "archived") {
+    parts.push(isNotNull(notification.archivedAt));
+  } else if (filter.tab === "unread") {
+    parts.push(isNull(notification.archivedAt));
+    parts.push(eq(notification.read, false));
+  } else if (filter.tab === "needs_action") {
+    parts.push(needsActionCondition());
+  } else {
+    parts.push(isNull(notification.archivedAt));
+  }
+  if (filter.type) {
+    parts.push(inArray(notification.type, [...notificationTypesForFilter(filter.type)]));
+  }
+  if (filter.account?.kind === "personal") {
+    const personal = or(isNull(notification.legalEntityId), eq(legalEntity.kind, "individual"));
+    if (personal) parts.push(personal);
+  } else if (filter.account?.kind === "entity") {
+    parts.push(eq(notification.legalEntityId, filter.account.legalEntityId));
+  }
+  const query = filter.query?.trim();
+  if (query) {
+    const contains = `%${escapeLikePattern(query)}%`;
+    const matches = or(ilike(notification.title, contains), ilike(notification.message, contains));
+    if (matches) parts.push(matches);
+  }
+  return and(...parts);
 }
 
 function mapRow(row: Row): UserNotification {
@@ -63,39 +103,24 @@ export class DrizzleNotificationReadRepository implements INotificationReadRepos
     return rows.map(mapRow);
   }
 
+  async countByUser(userId: string, filter: NotificationCountFilter): Promise<NotificationCounts> {
+    const count = async (tab: NotificationListTab) => {
+      const [row] = await this.db
+        .select({ n: sql<number>`count(*)::int` })
+        .from(notification)
+        .leftJoin(legalEntity, eq(legalEntity.id, notification.legalEntityId))
+        .leftJoin(lot, eq(lot.id, notification.lotId))
+        .where(inboxCondition(userId, { ...filter, tab }));
+      return row?.n ?? 0;
+    };
+    const [needsAction, unread] = await Promise.all([count("needs_action"), count("unread")]);
+    return { needsAction, unread };
+  }
+
   async findByUserFiltered(
     userId: string,
     filter: NotificationListFilter,
   ): Promise<UserNotificationListItem[]> {
-    const parts: SQL[] = [eq(notification.userId, userId)];
-    if (filter.tab === "archived") {
-      parts.push(isNotNull(notification.archivedAt));
-    } else if (filter.tab === "unread") {
-      parts.push(isNull(notification.archivedAt));
-      parts.push(eq(notification.read, false));
-    } else if (filter.tab === "needs_action") {
-      parts.push(needsActionCondition());
-    } else {
-      parts.push(isNull(notification.archivedAt));
-    }
-    if (filter.type) {
-      parts.push(inArray(notification.type, [...notificationTypesForFilter(filter.type)]));
-    }
-    if (filter.account?.kind === "personal") {
-      const personal = or(isNull(notification.legalEntityId), eq(legalEntity.kind, "individual"));
-      if (personal) parts.push(personal);
-    } else if (filter.account?.kind === "entity") {
-      parts.push(eq(notification.legalEntityId, filter.account.legalEntityId));
-    }
-    const query = filter.query?.trim();
-    if (query) {
-      const contains = `%${escapeLikePattern(query)}%`;
-      const matches = or(
-        ilike(notification.title, contains),
-        ilike(notification.message, contains),
-      );
-      if (matches) parts.push(matches);
-    }
     const rows = await this.db
       .select({
         row: notification,
@@ -116,7 +141,7 @@ export class DrizzleNotificationReadRepository implements INotificationReadRepos
         ),
       )
       .leftJoin(lot, eq(lot.id, notification.lotId))
-      .where(and(...parts))
+      .where(inboxCondition(userId, filter))
       .orderBy(desc(notification.createdAt))
       .limit(filter.limit)
       .offset(filter.offset);

@@ -12,6 +12,8 @@ export const ACCOUNT_NOTICE_MAX_AGE_SEC = 60;
 export type AccountNotice =
   /** Switched to `accountId` to show a record that belongs to it. */
   | { kind: "switched"; accountId: string }
+  /** Opening a notification switched to `accountId`; switching back goes to `fromAccountId`. */
+  | { kind: "opened_notification"; accountId: string; fromAccountId: string }
   /** The person switched to `accountId` in another tab; this tab followed. */
   | { kind: "switched_elsewhere"; accountId: string }
   /** The organisation the person used last no longer has them as a member. */
@@ -35,6 +37,20 @@ const NOTICE_KINDS: {
     message: (notice, accountName) => {
       const name = accountName(notice.accountId);
       return name ? `Switched to ${name} to show this.` : null;
+    },
+  },
+  opened_notification: {
+    decode: (value) =>
+      typeof value.accountId === "string" && typeof value.fromAccountId === "string"
+        ? {
+            kind: "opened_notification",
+            accountId: value.accountId,
+            fromAccountId: value.fromAccountId,
+          }
+        : null,
+    message: (notice, accountName) => {
+      const name = accountName(notice.accountId);
+      return name ? `Now acting as ${name}` : null;
     },
   },
   switched_elsewhere: {
@@ -87,4 +103,30 @@ export function accountNoticeMessage(
     message: (notice: AccountNotice, accountName: AccountName) => string | null;
   };
   return kind.message(notice, accountName);
+}
+
+type ToastAccount = { kind: "personal" | "organisation"; name: string; initials: string };
+
+/** The toast after a notification opened another account: who you act as now, and the way back. */
+export type NotificationSwitchToastView = {
+  account: ToastAccount;
+  /** "Switch back" opens the same page in the account the notification was opened from. */
+  fromAccountId: string;
+};
+
+/** The toast's words, or `null` when either account is no longer one the person uses. */
+export function notificationSwitchToast(
+  notice: Extract<AccountNotice, { kind: "opened_notification" }>,
+  accountOf: (id: string) => ToastAccount | null,
+): NotificationSwitchToastView | null {
+  const account = accountOf(notice.accountId);
+  if (!account || !accountOf(notice.fromAccountId)) return null;
+  return {
+    account: {
+      kind: account.kind,
+      name: account.kind === "personal" ? "your personal account" : account.name,
+      initials: account.initials,
+    },
+    fromAccountId: notice.fromAccountId,
+  };
 }

@@ -3,11 +3,13 @@ import { cn } from "@auction/ui";
 
 type Props = {
   account: Pick<AccountOption, "kind" | "initials">;
-  size?: "sm" | "md";
+  size?: "xs" | "sm" | "md";
   className?: string;
 };
 
 const SIZE = {
+  /** Beside a line of text, as an account tag: 24px with 12px initials, the smallest type step. */
+  xs: "size-6 rounded text-xs tracking-normal",
   sm: "size-8 rounded-md text-xs",
   md: "size-9 rounded-lg text-[13px]",
 } as const;

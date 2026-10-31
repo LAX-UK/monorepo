@@ -27,6 +27,7 @@ export type SwitchHopOutcome =
 export async function planSwitchForBrowser(
   requestedId: string | null,
   next: string,
+  notificationFrom: string | null = null,
 ): Promise<SwitchHopOutcome> {
   const [lookup, orgModuleEnabled, browserId] = await Promise.all([
     listMyAccounts({ mustInclude: requestedId }),
@@ -46,6 +47,7 @@ export async function planSwitchForBrowser(
     actingId: current?.id ?? null,
     memberships: lookup.accounts,
     orgModuleEnabled,
+    notificationFrom,
   });
   const requested = plan.switchTo
     ? (lookup.accounts.find((account) => account.id === plan.switchTo?.accountId) ?? null)
