@@ -1,5 +1,5 @@
 import { verifyIdentityToken } from "@auction/identity-contracts/verify";
-import { buildPgConnectionConfig } from "@auction/identity-db/pg";
+import { buildPgPoolConfig } from "@auction/identity-db/pg";
 import { createSharedSentryInitOptions } from "@auction/observability/sentry-init-options";
 import { serve } from "@hono/node-server";
 import pg from "pg";
@@ -37,7 +37,7 @@ if (process.env.SENTRY_DSN_SHOP_IDENTITY) {
 const release = process.env.SENTRY_RELEASE ?? "unknown";
 const databaseUrl = env.DATABASE_URL_SHOP ?? env.DATABASE_URL;
 if (!databaseUrl) throw new Error("DATABASE_URL_SHOP is required");
-const pool = new pg.Pool(buildPgConnectionConfig(databaseUrl));
+const pool = new pg.Pool(buildPgPoolConfig(databaseUrl));
 const sessionRepository = createPgShopSessionRepository(pool);
 const ssfRepository = createPgShopSsfRepository(pool);
 const discovery = resolveOidcDiscovery(env.OIDC_ISSUER_URL);

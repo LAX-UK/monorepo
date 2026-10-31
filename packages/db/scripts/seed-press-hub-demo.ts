@@ -12,7 +12,7 @@ import {
   PRESS_DEMO_SALE_ID,
   buildPressDemoSaleRow,
 } from "../src/seed/shared/press-demo.js";
-import { buildPgConnectionConfig } from "../src/ssl.js";
+import { buildPgPoolConfig } from "../src/ssl.js";
 
 const { Pool } = pg;
 
@@ -23,7 +23,7 @@ async function main() {
     process.exit(1);
   }
 
-  const pool = new Pool(buildPgConnectionConfig(url));
+  const pool = new Pool(buildPgPoolConfig(url));
   const db = drizzle(pool, { schema });
   const now = Date.now();
   const day = 86_400_000;

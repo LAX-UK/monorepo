@@ -1,13 +1,13 @@
 import pg from "pg";
 import { runMigrationsPerTransaction } from "./migrate-runner.js";
-import { buildPgConnectionConfig } from "./ssl.js";
+import { buildPgPoolConfig } from "./ssl.js";
 
 async function main() {
   const url = process.env.DATABASE_URL;
   if (!url) {
     throw new Error("DATABASE_URL is required");
   }
-  const pool = new pg.Pool(buildPgConnectionConfig(url));
+  const pool = new pg.Pool(buildPgPoolConfig(url));
   try {
     await runMigrationsPerTransaction(pool);
   } finally {
