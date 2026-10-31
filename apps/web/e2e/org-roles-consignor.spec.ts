@@ -8,6 +8,7 @@ import {
   expectNoAccess,
   openAs,
 } from "./helpers/organisation-journeys";
+import { expectWorkspaceBaselines } from "./helpers/workspace-baselines";
 
 /**
  * A consignor of Northbank Gallery sends the works they have prepared, answers a specialist who
@@ -66,5 +67,17 @@ test.describe("organisation consignor journey @roles", () => {
     });
 
     await consignor.close();
+  });
+});
+
+test.describe("organisation consignor baselines @a11y", () => {
+  test.skip(!e2eEnabled, e2eSkipReason);
+
+  test("every workspace page passes axe in light and dark at 1440 and 375", async ({
+    browser,
+    baseURL,
+  }) => {
+    test.setTimeout(300_000);
+    await expectWorkspaceBaselines(browser, roleAuthState.orgConsignor, approved, baseURL);
   });
 });

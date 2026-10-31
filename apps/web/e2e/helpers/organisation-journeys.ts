@@ -13,7 +13,7 @@ const DEFAULT_BASE_URL = "http://localhost:3000";
 
 type MenuAccount = { id: string; kind: "personal" | "organisation"; name: string };
 
-/** A signed-in member acting for one organisation, in a context of their own. */
+/** A signed-in member acting for one account (an organisation, or their own), in a context of their own. */
 export type OrganisationSession = {
   context: BrowserContext;
   page: Page;
@@ -41,20 +41,47 @@ export async function openAs(
   organisationName: string,
   baseURL?: string,
 ): Promise<OrganisationSession> {
+  return openActing(
+    browser,
+    storageState,
+    (account) => account.kind === "organisation" && account.name === organisationName,
+    `organisation named ${organisationName}`,
+    baseURL,
+  );
+}
+
+/** Opens a saved session in a fresh context, on the person's own account. */
+export async function openPersonal(
+  browser: Browser,
+  storageState: string,
+  baseURL?: string,
+): Promise<OrganisationSession> {
+  return openActing(
+    browser,
+    storageState,
+    (account) => account.kind === "personal",
+    "personal account",
+    baseURL,
+  );
+}
+
+async function openActing(
+  browser: Browser,
+  storageState: string,
+  choose: (account: MenuAccount) => boolean,
+  description: string,
+  baseURL?: string,
+): Promise<OrganisationSession> {
   const origin = new URL(baseURL ?? DEFAULT_BASE_URL).origin;
   const context = await browser.newContext({ storageState, baseURL: origin });
   const page = await context.newPage();
   const accounts = await accountsOf(page);
-  const organisation = accounts.find(
-    (account) => account.kind === "organisation" && account.name === organisationName,
-  );
-  if (!organisation) {
-    throw new Error(
-      `No organisation named ${organisationName} among: ${accounts.map((a) => a.name).join(", ")}`,
-    );
+  const account = accounts.find(choose);
+  if (!account) {
+    throw new Error(`No ${description} among: ${accounts.map((a) => a.name).join(", ")}`);
   }
-  await context.addCookies([{ name: ACTING_COOKIE, value: organisation.id, url: origin }]);
-  return { context, page, organisation, origin, close: () => context.close() };
+  await context.addCookies([{ name: ACTING_COOKIE, value: account.id, url: origin }]);
+  return { context, page, organisation: account, origin, close: () => context.close() };
 }
 
 /** Places a bid through the same proxy the lot page uses, for the organisation in use. */

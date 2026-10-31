@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { cn } from "../../lib/utils.js";
 import { Skeleton } from "./skeleton.js";
 
@@ -8,31 +9,48 @@ export type PageSkeletonProps = {
   className?: string;
 };
 
+/** The busy status a page skeleton announces; its name says what is loading. */
+function SkeletonFrame({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className: string;
+  children: ReactNode;
+}) {
+  return (
+    <output aria-busy="true" aria-label={label} className={cn("block", className)}>
+      {children}
+    </output>
+  );
+}
+
 export function PageSkeleton({ variant = "dashboard", className }: PageSkeletonProps) {
   if (variant === "table") {
     return (
-      <div className={cn("space-y-4", className)} aria-busy="true" aria-label="Loading">
+      <SkeletonFrame label="Loading" className={cn("space-y-4", className)}>
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-12 w-full rounded-lg" />
         <Skeleton className="h-64 w-full rounded-xl" />
-      </div>
+      </SkeletonFrame>
     );
   }
   if (variant === "grid") {
     return (
-      <div className={cn("space-y-8", className)} aria-busy="true" aria-label="Loading">
+      <SkeletonFrame label="Loading" className={cn("space-y-8", className)}>
         <Skeleton className="h-10 w-48" />
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {(["a", "b", "c", "d", "e", "f"] as const).map((k) => (
             <Skeleton key={k} className="aspect-[4/5] w-full rounded-xl" />
           ))}
         </div>
-      </div>
+      </SkeletonFrame>
     );
   }
   if (variant === "checkout") {
     return (
-      <div className={cn("space-y-6", className)} aria-busy="true" aria-label="Loading checkout">
+      <SkeletonFrame label="Loading checkout" className={cn("space-y-6", className)}>
         <Skeleton className="h-10 w-56 rounded-md" />
         <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
           <Skeleton className="h-[min(50vh,420px)] w-full shrink-0 rounded-xl lg:h-[min(72vh,640px)] lg:w-1/2" />
@@ -43,11 +61,11 @@ export function PageSkeleton({ variant = "dashboard", className }: PageSkeletonP
             <Skeleton className="h-32 w-full rounded-xl" />
           </div>
         </div>
-      </div>
+      </SkeletonFrame>
     );
   }
   return (
-    <div className={cn("space-y-10", className)} aria-busy="true" aria-label="Loading dashboard">
+    <SkeletonFrame label="Loading dashboard" className={cn("space-y-10", className)}>
       <Skeleton className="h-12 w-full max-w-md" />
       <Skeleton className="h-4 w-48" />
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -66,6 +84,6 @@ export function PageSkeleton({ variant = "dashboard", className }: PageSkeletonP
           <Skeleton className="h-56 w-full rounded-xl" />
         </div>
       </div>
-    </div>
+    </SkeletonFrame>
   );
 }

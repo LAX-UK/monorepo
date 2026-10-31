@@ -8,6 +8,7 @@ import {
   expectNoAccess,
   openAs,
 } from "./helpers/organisation-journeys";
+import { expectWorkspaceBaselines } from "./helpers/workspace-baselines";
 
 /**
  * Finance at Northbank Gallery settles what the organisation owes and reads what it is paid: the
@@ -63,5 +64,17 @@ test.describe("organisation finance journey @roles", () => {
     });
 
     await finance.close();
+  });
+});
+
+test.describe("organisation finance baselines @a11y", () => {
+  test.skip(!e2eEnabled, e2eSkipReason);
+
+  test("every workspace page passes axe in light and dark at 1440 and 375", async ({
+    browser,
+    baseURL,
+  }) => {
+    test.setTimeout(300_000);
+    await expectWorkspaceBaselines(browser, roleAuthState.unapproved, approved, baseURL);
   });
 });
