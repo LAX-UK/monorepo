@@ -101,7 +101,7 @@ export function ProvenanceStep({ form }: StepProps) {
         </div>
         {exhibitionFields.fields.length === 0 ? (
           <p className="rounded-lg border border-dashed border-outline-variant/30 px-4 py-3 text-sm text-on-surface-variant">
-            No exhibitions listed. You can add them later while the submission is still a draft.
+            No exhibitions listed. You can add them later while the consignment is still a draft.
           </p>
         ) : (
           <ul className="space-y-4">

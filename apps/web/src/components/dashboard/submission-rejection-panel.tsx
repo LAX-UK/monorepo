@@ -11,7 +11,7 @@ export function SubmissionRejectionPanel({ submission }: Props) {
 
   return (
     <div className="space-y-4 rounded-lg border border-error/30 bg-error-container/10 p-4">
-      <h3 className="font-headline text-base text-on-surface">Submission not accepted</h3>
+      <h3 className="font-headline text-base text-on-surface">Work not accepted</h3>
       {submission.rejectionReason ? (
         <p className="font-body text-sm text-on-surface">
           <span className="font-semibold">Reason: </span>

@@ -35,6 +35,27 @@ describe("findForbiddenCopy: failing samples", () => {
     assert.deepEqual(terms('const a = "We favor speed";', "a.ts"), ["favor"]);
   });
 
+  it("finds the workspace's banned process words", () => {
+    assert.deepEqual(terms('const a = "Withdraw submission";', "a.ts"), ["submission"]);
+    assert.deepEqual(terms("export const A = () => <p>Your submissions</p>;"), ["submission"]);
+    assert.deepEqual(terms('const a = "Voided";', "a.ts"), ["voided"]);
+    assert.deepEqual(terms('const a = "Back to the Marketing site";', "a.ts"), ["Marketing site"]);
+    assert.deepEqual(terms('const a = "Your auto-bid is set";', "a.ts"), ["auto-bid"]);
+    assert.deepEqual(terms('const a = "Autobids stop at your limit";', "a.ts"), ["auto-bid"]);
+  });
+
+  it("finds pending on its own, as a badge or a label", () => {
+    assert.deepEqual(terms("export const A = () => <Badge>Pending</Badge>;"), ["pending"]);
+    assert.deepEqual(terms('const s = { pending: "Pending" };', "a.ts"), ["pending"]);
+    assert.deepEqual(terms('const s = "pending…";', "a.ts"), ["pending"]);
+  });
+
+  it("finds Organisation settings as a menu label", () => {
+    assert.deepEqual(terms('const nav = { label: "Organisation settings" };', "a.ts"), [
+      "Organisation settings",
+    ]);
+  });
+
   it("reports the line of the copy", () => {
     const [match] = findForbiddenCopy('const a = 1;\nconst b = "Paid through Stripe";\n', "a.ts");
     assert.equal(match?.line, 2);
@@ -82,6 +103,17 @@ describe("findForbiddenCopy: passing samples", () => {
 
   it("does not match a term inside a longer word", () => {
     assert.deepEqual(terms('const a = "Pinstripe frame, favourite piece";', "a.ts"), []);
+  });
+
+  it("keeps pending inside a phrase, and the words the rules suggest", () => {
+    const source = [
+      'const a = "Pending invitations";',
+      'const b = "Waiting for approval";',
+      'const c = "Set a maximum bid";',
+      'const d = "Sell a work";',
+      'const e = "submission_image";',
+    ].join("\n");
+    assert.deepEqual(terms(source, "a.ts"), []);
   });
 
   it("keeps plain copy", () => {

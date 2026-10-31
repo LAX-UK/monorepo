@@ -24,8 +24,7 @@ export function SubmissionChangesRequestedPanel({ submission }: Props) {
             Your specialist asked for changes
           </h2>
           <p className="font-body text-sm text-on-surface-variant">
-            Update the details below and send the submission back. It keeps its place and its
-            history.
+            Update the details below and send it back. It keeps its place and its history.
           </p>
         </div>
         {submission.changesRequestedNote ? (

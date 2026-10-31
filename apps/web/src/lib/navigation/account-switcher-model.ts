@@ -106,6 +106,45 @@ export function buildAccountChrome(input: Input): AccountChrome {
   };
 }
 
+/** From this many accounts the switcher offers a field to find one by name. */
+export const ACCOUNT_FILTER_FROM = 6;
+
+export function showsAccountFilter(options: readonly AccountOption[]): boolean {
+  return options.length >= ACCOUNT_FILTER_FROM;
+}
+
+function folded(text: string): string {
+  return text
+    .normalize("NFD")
+    .replace(/\p{Diacritic}/gu, "")
+    .toLowerCase();
+}
+
+/** The accounts whose name or role contains the query, ignoring case and accents, in order. */
+export function filterAccountOptions(
+  options: readonly AccountOption[],
+  query: string,
+): AccountOption[] {
+  const needle = folded(query.trim());
+  if (!needle) return [...options];
+  return options.filter((option) => folded(`${option.name} ${option.detail}`).includes(needle));
+}
+
+/**
+ * A switcher row's two lines, as the design draws them: the person's own account leads with
+ * their name and says "Personal" under it; an organisation leads with its name and the role.
+ */
+export function accountRowText(option: AccountOption): { title: string; caption: string } {
+  return option.kind === "personal"
+    ? { title: option.detail, caption: option.name }
+    : { title: option.name, caption: option.detail };
+}
+
+/** The accessible name of an account's needs-you dot: "1 needs you", "2 need you". */
+export function needsYouLabel(count: number): string {
+  return `${count} ${count === 1 ? "needs" : "need"} you`;
+}
+
 /** "Pending invitations (2)", capped so the row never grows. */
 export function pendingInvitationsLabel(count: number): string {
   return `Pending invitations (${count > 9 ? "9+" : count})`;

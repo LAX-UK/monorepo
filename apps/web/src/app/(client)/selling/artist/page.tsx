@@ -29,7 +29,7 @@ export default async function SellerArtistProfilePage() {
         <AlertDescription className="font-body text-sm">
           The artist, maker, or brand attached to your lots is part of the platform&apos;s curated
           catalogue and can only be edited by an administrator. Use the form below to request a
-          change — submissions route to the catalogue team at{" "}
+          change. Requests go to the catalogue team at{" "}
           <a
             href={`mailto:${SITE_CONSIGNMENT_EMAIL}`}
             className="underline underline-offset-2 hover:text-on-surface"

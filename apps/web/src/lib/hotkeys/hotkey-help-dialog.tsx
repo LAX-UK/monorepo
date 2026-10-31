@@ -1,6 +1,10 @@
 "use client";
 
-import { getGroupedHotkeys, subscribeHotkeys } from "@/lib/hotkeys/hotkey-registry";
+import {
+  bindingHelpKeys,
+  getGroupedHotkeys,
+  subscribeHotkeys,
+} from "@/lib/hotkeys/hotkey-registry";
 import {
   Dialog,
   DialogContent,
@@ -8,7 +12,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@auction/ui/components/dialog";
-import { useEffect, useState } from "react";
+import { ShortcutKeys } from "@auction/ui/lax";
+import { Fragment, useEffect, useState } from "react";
 
 type Props = {
   open: boolean;
@@ -46,9 +51,15 @@ export function HotkeyHelpDialog({ open, onOpenChange }: Props) {
                     className="flex items-start justify-between gap-4 rounded-md px-2 py-1.5 text-sm"
                   >
                     <span className="text-on-surface">{b.description ?? b.label}</span>
-                    <kbd className="shrink-0 rounded border border-outline-variant/40 bg-surface-container-high px-1.5 py-0.5 font-mono text-[11px] text-on-surface-variant">
-                      {formatKeys(b.keys)}
-                    </kbd>
+                    {/* The kit's key caps: "?" is one key, modifiers read "Shift" and "⌘". */}
+                    <span className="flex shrink-0 items-center gap-1 text-xs text-on-surface-variant">
+                      {bindingHelpKeys(b).map((keys, index) => (
+                        <Fragment key={keys}>
+                          {index > 0 ? <span>or</span> : null}
+                          <ShortcutKeys keys={keys} />
+                        </Fragment>
+                      ))}
+                    </span>
                   </li>
                 ))}
               </ul>
@@ -63,15 +74,4 @@ export function HotkeyHelpDialog({ open, onOpenChange }: Props) {
       </DialogContent>
     </Dialog>
   );
-}
-
-function formatKeys(keys: string): string {
-  const isMac =
-    typeof navigator !== "undefined" && /Mac|iPhone|iPad|iPod/i.test(navigator.userAgent);
-  return keys
-    .replace(/\$mod/g, isMac ? "⌘" : "Ctrl")
-    .replace(/\+/g, " + ")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toUpperCase();
 }
