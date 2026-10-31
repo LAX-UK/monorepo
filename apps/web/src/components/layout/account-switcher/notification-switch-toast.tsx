@@ -8,7 +8,6 @@ import {
 import { ButtonLink } from "@auction/ui/lax";
 import { Button } from "@auction/ui/lax";
 import { X } from "lucide-react";
-import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AccountTile } from "./account-tile";
@@ -51,15 +50,10 @@ export function NotificationSwitchToast({ account, fromAccountId }: Notification
     >
       <AccountTile account={account} size="sm" />
       <div className="min-w-0 flex-1">
-        <p className="truncate text-lax-14 font-medium text-lax-fg">Now acting as {account.name}</p>
+        <p className="text-lax-14 font-medium text-lax-fg">Now acting as {account.name}</p>
         <p className="text-lax-13 text-lax-muted">You opened a notification for that account.</p>
       </div>
-      <ButtonLink
-        href={switchAccountHref(fromAccountId, here)}
-        Link={Link}
-        size="sm"
-        className="shrink-0"
-      >
+      <ButtonLink href={switchAccountHref(fromAccountId, here)} size="sm" className="shrink-0">
         Switch back
       </ButtonLink>
       <Button

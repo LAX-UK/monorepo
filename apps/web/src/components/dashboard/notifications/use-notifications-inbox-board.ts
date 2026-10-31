@@ -144,7 +144,9 @@ export function useNotificationsInboxBoard(input: InboxBoardInput) {
     (row: InboxRowView) => {
       if (!row.href) return;
       opened(row);
-      router.push(row.href);
+      // The switch hop is a server route: load it in full rather than through the client router.
+      if (row.viaHop) window.location.assign(row.href);
+      else router.push(row.href);
     },
     [opened, router],
   );

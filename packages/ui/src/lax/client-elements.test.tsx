@@ -34,7 +34,7 @@ describe("Switch, locked", () => {
     expect(onCheckedChange).not.toHaveBeenCalled();
     expect(control).toBeChecked();
     // Drawn on, never as a faded or off control.
-    expect(control.className).toContain("data-[state=checked]:bg-lax-ink");
+    expect(control.className).toContain("bg-lax-ink");
   });
 });
 

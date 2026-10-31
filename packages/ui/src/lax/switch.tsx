@@ -80,7 +80,8 @@ function LockedSwitch({
             SIZE,
             "relative cursor-not-allowed",
             "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lax-focus",
-            "data-[state=checked]:bg-lax-ink",
+            // Always on. The tooltip trigger takes over `data-state`, so the fill is not keyed to it.
+            "bg-lax-ink",
             className,
           )}
           thumbClassName={THUMB}

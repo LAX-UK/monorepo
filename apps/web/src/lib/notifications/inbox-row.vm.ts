@@ -37,6 +37,11 @@ export type InboxRowView = {
   href: string | null;
   /** Opening it changes the account in use. */
   switchesAccount: boolean;
+  /**
+   * The link goes through the switch hop (a server route that sets the account), so it must be a
+   * full page load: never prefetched or opened by the client router.
+   */
+  viaHop: boolean;
   /** "Don't notify me about …" for an organisation the person still belongs to. */
   mute: { legalEntityId: string; name: string; muted: boolean } | null;
 };
@@ -97,6 +102,7 @@ export function inboxRowView(
     account: tag,
     href,
     switchesAccount: switchesAccount && member,
+    viaHop: switchesAccount,
     mute:
       tag.kind === "organisation" && member && accountId
         ? { legalEntityId: accountId, name: tag.name, muted: mutedIds.has(accountId) }
