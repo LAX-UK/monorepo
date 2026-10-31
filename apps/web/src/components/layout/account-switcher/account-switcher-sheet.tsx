@@ -4,7 +4,7 @@ import { useLogout } from "@/lib/auth/use-logout";
 import { laxAccountHomeUrl } from "@/lib/lax-account-url";
 import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
 import { cn } from "@auction/ui";
-import { Dialog } from "@auction/ui/lax";
+import { Button, Dialog } from "@auction/ui/lax";
 import { ArrowUpRight, LogOut, UserRound } from "lucide-react";
 import { AccountSwitcherList, SWITCHER_ROW } from "./account-switcher-list";
 import { useAccountSwitch } from "./use-account-switch";
@@ -30,10 +30,10 @@ function PersonRows({ onNavigate }: { onNavigate: () => void }) {
         </span>
         <span className="sr-only"> (opens LAX Account)</span>
       </a>
-      <button type="button" onClick={() => void logout()} disabled={pending} className={ROW}>
+      <Button variant="ghost" onClick={() => void logout()} disabled={pending} className={ROW}>
         <LogOut aria-hidden strokeWidth={1.75} />
         {pending ? "Signing out…" : "Sign out"}
-      </button>
+      </Button>
     </>
   );
 }

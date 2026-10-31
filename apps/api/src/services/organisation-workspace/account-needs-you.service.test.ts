@@ -46,6 +46,7 @@ describe("AccountNeedsYouService", () => {
     });
 
     expect(await service.countsFor("user-1")).toEqual([
+      { legalEntityId: "me", count: 0 },
       { legalEntityId: "org-a", count: 2 },
       { legalEntityId: "org-b", count: 0 },
     ]);
@@ -59,8 +60,37 @@ describe("AccountNeedsYouService", () => {
       legalEntityId: "org-b",
       role: "consignor",
     });
-    // The personal account has no workspace Needs you.
+    // The personal account is never read on its own: its count comes from the person's tasks.
     expect(read).toHaveBeenCalledTimes(2);
+  });
+
+  it("puts the person's own tasks on their personal account, not on each organisation", async () => {
+    const identity = { kind: "identity" as const, link: { page: "verify_identity" as const } };
+    const funds = { kind: "source_of_funds" as const, link: { page: "source_of_funds" as const } };
+    const service = new AccountNeedsYouService({
+      memberships: {
+        listActiveMembershipsForUser: vi.fn(async () => [
+          membership("me", { kind: "individual" }),
+          membership("org-a"),
+          membership("org-b", { role: "viewer" }),
+        ]),
+      },
+      needsYou: {
+        // The viewer role is not asked for its identity; the owner role is.
+        read: vi.fn(async (actor) => ({
+          ...view(1),
+          tasks: [
+            ...view(1).tasks,
+            ...(actor.legalEntityId === "org-a" ? [identity, funds] : [funds]),
+          ],
+        })),
+      },
+    });
+    expect(await service.countsFor("user-1")).toEqual([
+      { legalEntityId: "me", count: 2 },
+      { legalEntityId: "org-a", count: 1 },
+      { legalEntityId: "org-b", count: 1 },
+    ]);
   });
 
   it("leaves out an account whose read fails, and still answers for the rest", async () => {

@@ -463,6 +463,20 @@ export function needsYouCounts(tasks: readonly NeedsYouTask[]): NeedsYouCounts {
   return counts;
 }
 
+/**
+ * A task list split for the account switcher's dots. Tasks with a page in the account (`account`)
+ * mark that organisation. Tasks about the person (their identity check, source of funds:
+ * `person`) follow them into every account, so they would put the same dot on all of them; they
+ * mark the person's own account instead, so they are never out of sight.
+ */
+export function needsYouTaskSplit(tasks: readonly NeedsYouTask[]): {
+  account: number;
+  person: number;
+} {
+  const account = tasks.filter((task) => specOf(task.kind).section !== null).length;
+  return { account, person: tasks.length - account };
+}
+
 /** The task kind a notification type announces, if it asks for something. */
 export function needsYouKindAnnouncedBy(notificationType: string): NeedsYouKind | null {
   return (

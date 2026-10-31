@@ -8,7 +8,7 @@
 const ROW = "[data-record-row]";
 const ROW_LINK = "[data-record-link]";
 const ROW_CHECKBOX =
-  'input[type="checkbox"]:not(:disabled), [role="checkbox"]:not(:disabled):not([aria-disabled="true"])';
+  "input[type='checkbox']:not(:disabled), [role='checkbox']:not(:disabled):not([aria-disabled='true'])";
 const OPEN_LAYER =
   '[role="dialog"][data-state="open"], [role="alertdialog"][data-state="open"], [role="menu"][data-state="open"], [role="listbox"][data-state="open"]';
 

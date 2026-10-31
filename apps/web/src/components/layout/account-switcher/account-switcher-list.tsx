@@ -10,7 +10,7 @@ import {
   showsAccountFilter,
 } from "@/lib/navigation/account-switcher-model";
 import { cn } from "@auction/ui";
-import { TextInput } from "@auction/ui/lax";
+import { Button, TextInput } from "@auction/ui/lax";
 import { Check, Loader2, Mail, Plus, Search } from "lucide-react";
 import Link from "next/link";
 import { type ReactNode, useEffect, useId, useState } from "react";
@@ -35,7 +35,7 @@ type Props = {
 
 /** A menu row: 36px in the popover, 44px on a phone; account rows are 52px and 60px. */
 export const SWITCHER_ROW =
-  "lax-focus-inset flex w-full items-center gap-3 rounded-lax-control px-3 text-left text-lax-14 text-lax-fg transition-colors duration-150 hover:bg-lax-hover disabled:cursor-wait [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-lax-muted";
+  "lax-focus-inset flex h-auto w-full items-center justify-start gap-3 whitespace-normal rounded-lax-control px-3 text-left font-normal text-lax-14 text-lax-fg transition-colors duration-150 hover:bg-lax-hover disabled:cursor-wait [&>svg]:size-4 [&>svg]:shrink-0 [&>svg]:text-lax-muted";
 const ROW_HEIGHT: Record<Density, string> = { popover: "min-h-9", sheet: "min-h-11" };
 const ACCOUNT_HEIGHT: Record<Density, string> = { popover: "min-h-[52px]", sheet: "min-h-[60px]" };
 
@@ -61,8 +61,8 @@ function AccountRow({
 }) {
   const { title, caption } = accountRowText(option);
   return (
-    <button
-      type="button"
+    <Button
+      variant="ghost"
       onClick={() => onChoose(option)}
       disabled={locked}
       aria-current={option.current ? "true" : undefined}
@@ -91,7 +91,7 @@ function AccountRow({
         <Check aria-hidden strokeWidth={2} />
       ) : null}
       {option.current ? <span className="sr-only">, current account</span> : null}
-    </button>
+    </Button>
   );
 }
 
@@ -131,7 +131,7 @@ export function AccountSwitcherList({
         Switch account
       </p>
       {filterable ? (
-        <div className="px-1 pt-1 pb-1.5">
+        <div className="px-2 pt-1.5 pb-2">
           <TextInput
             size="sm"
             type="search"
@@ -147,7 +147,7 @@ export function AccountSwitcherList({
         aria-labelledby={headingId}
         className={cn(
           "flex flex-col gap-0.5",
-          density === "popover" && "max-h-[min(23rem,calc(100dvh-16rem))] overflow-y-auto",
+          density === "popover" && "max-h-[min(28rem,calc(100dvh-16rem))] overflow-y-auto",
         )}
       >
         {shown.map((option) => (

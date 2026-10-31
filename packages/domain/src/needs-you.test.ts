@@ -9,6 +9,7 @@ import {
   needsYouKindAnnouncedBy,
   needsYouKindsFor,
   needsYouLink,
+  needsYouTaskSplit,
   needsYouTasks,
   unsoldChoiceDueBy,
 } from "./needs-you.js";
@@ -318,5 +319,20 @@ describe("notifications that announce a task", () => {
 
   it("ignores informational notifications", () => {
     expect(needsYouKindAnnouncedBy("lot_ending_soon")).toBeNull();
+  });
+});
+
+describe("the account switcher's dots", () => {
+  it("splits the account's own tasks from the person's", () => {
+    expect(
+      needsYouTaskSplit([
+        { kind: "identity" },
+        { kind: "source_of_funds" },
+        { kind: "agreement", consignment: { id: "c1", title: "Untitled" } },
+        { kind: "documents" },
+      ]),
+    ).toEqual({ account: 2, person: 2 });
+    expect(needsYouTaskSplit([{ kind: "identity" }])).toEqual({ account: 0, person: 1 });
+    expect(needsYouTaskSplit([])).toEqual({ account: 0, person: 0 });
   });
 });
