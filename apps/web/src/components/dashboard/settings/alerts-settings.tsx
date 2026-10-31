@@ -18,10 +18,16 @@ import {
   formValuesToPatch,
   prefsToFormValues,
 } from "@/lib/notifications/notification-preferences-registry";
+import {
+  QUIET_HOUR_OPTIONS,
+  quietHoursZoneLabel,
+  quietTimeToLocal,
+  quietTimeToUtc,
+} from "@/lib/notifications/quiet-hours";
 import { notify } from "@/lib/ui/notify";
 import { LOCKED_NOTIFICATION_PREFERENCE_REASON } from "@auction/domain";
 import type { NotificationPreference } from "@auction/types";
-import { Button, Field, PresetCards, Switch, TextInput } from "@auction/ui/lax";
+import { Button, Field, NativeSelect, PresetCards, ReasonTooltip, Switch } from "@auction/ui/lax";
 import { Lock } from "lucide-react";
 import { useRef, useState, useTransition } from "react";
 
@@ -161,11 +167,19 @@ function AlertSwitch({
 }) {
   const cell = alertCell(row, channel.id, values);
   if (cell.kind === "none") {
+    const notSent = channel.id === "app" ? "Not sent in the app" : "Not sent by email";
     return (
-      <span className="text-lax-13 text-lax-muted">
-        <span aria-hidden>–</span>
-        <span className="sr-only">{`${row.label} isn't sent by ${channel.label.toLowerCase()}`}</span>
-      </span>
+      <ReasonTooltip reason={notSent}>
+        <span
+          role="img"
+          aria-label={notSent}
+          // biome-ignore lint/a11y/noNoninteractiveTabindex: focusable so keyboard users get the tooltip.
+          tabIndex={0}
+          className="lax-focus inline-flex size-8 items-center justify-center rounded-lax-control text-lax-13 text-lax-muted"
+        >
+          –
+        </span>
+      </ReasonTooltip>
     );
   }
   return (
@@ -180,8 +194,21 @@ function AlertSwitch({
   );
 }
 
-const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
+const NOT_SET = "not-set";
 
+function timeOptions(current: string) {
+  const times = new Set(QUIET_HOUR_OPTIONS);
+  if (current) times.add(current);
+  return [
+    { value: NOT_SET, label: "Not set" },
+    ...[...times].sort().map((time) => ({ value: time, label: time })),
+  ];
+}
+
+/**
+ * Quiet hours in the person's own time (London), as 24-hour half hours or "Not set", with a way
+ * to clear them. The API keeps UTC; the times are converted here, at the edge.
+ */
 function QuietHours({
   values,
   onSave,
@@ -189,35 +216,63 @@ function QuietHours({
   values: NotificationPreferencesFormValues;
   onSave: (next: NotificationPreferencesFormValues) => void;
 }) {
-  const [start, setStart] = useState(values.quietStart);
-  const [end, setEnd] = useState(values.quietEnd);
+  const savedStart = quietTimeToLocal(values.quietStart);
+  const savedEnd = quietTimeToLocal(values.quietEnd);
+  const [start, setStart] = useState(savedStart);
+  const [end, setEnd] = useState(savedEnd);
   const [tried, setTried] = useState(false);
-  const bothOrNeither = Boolean(start) === Boolean(end);
-  const valid = bothOrNeither && (!start || (TIME.test(start) && TIME.test(end)));
-  const changed = start !== values.quietStart || end !== values.quietEnd;
+  const valid = Boolean(start) === Boolean(end);
+  const changed = start !== savedStart || end !== savedEnd;
+  const isSet = Boolean(savedStart && savedEnd);
+  const hint = isSet
+    ? `App alerts on your devices wait from ${savedStart} until ${savedEnd}. Emails still arrive.`
+    : "Not set. Choose times to hold app alerts on your devices overnight. Emails still arrive.";
   return (
     <div>
       <p className="text-lax-14 font-semibold text-lax-fg">Quiet hours</p>
       <p className="mt-1 text-lax-13 text-lax-muted">
-        App alerts on your devices wait until quiet hours end. Emails still arrive. Times are in
-        UTC.
+        {hint} Times are in {quietHoursZoneLabel()}.
       </p>
       <div className="mt-3 flex flex-wrap items-end gap-3">
         <Field label="From" className="w-36" error={tried && !valid ? "Choose both times" : null}>
-          <TextInput type="time" value={start} onChange={(event) => setStart(event.target.value)} />
+          <NativeSelect
+            value={start || NOT_SET}
+            onValueChange={(next) => setStart(next === NOT_SET ? "" : next)}
+            options={timeOptions(start)}
+          />
         </Field>
         <Field label="Until" className="w-36">
-          <TextInput type="time" value={end} onChange={(event) => setEnd(event.target.value)} />
+          <NativeSelect
+            value={end || NOT_SET}
+            onValueChange={(next) => setEnd(next === NOT_SET ? "" : next)}
+            options={timeOptions(end)}
+          />
         </Field>
         {/* Shown once something changed, so there is never a dead button. */}
         {changed ? (
           <Button
             onClick={() => {
               setTried(true);
-              if (valid) onSave({ ...values, quietStart: start, quietEnd: end });
+              if (!valid) return;
+              onSave({
+                ...values,
+                quietStart: quietTimeToUtc(start),
+                quietEnd: quietTimeToUtc(end),
+              });
             }}
           >
             Save quiet hours
+          </Button>
+        ) : isSet ? (
+          <Button
+            variant="ghost"
+            onClick={() => {
+              setStart("");
+              setEnd("");
+              onSave({ ...values, quietStart: "", quietEnd: "" });
+            }}
+          >
+            Clear quiet hours
           </Button>
         ) : null}
       </div>

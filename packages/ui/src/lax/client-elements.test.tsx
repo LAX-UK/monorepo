@@ -29,10 +29,12 @@ describe("Switch, locked", () => {
     expect(control).toBeChecked();
     expect(control).not.toBeDisabled();
     expect(control).toHaveAttribute("aria-disabled", "true");
-    expect(control).toHaveAccessibleDescription("Required while you're bidding");
+    expect(control).toHaveAccessibleDescription("On. Required while you're bidding");
     fireEvent.click(control);
     expect(onCheckedChange).not.toHaveBeenCalled();
     expect(control).toBeChecked();
+    // Drawn on, never as a faded or off control.
+    expect(control.className).toContain("data-[state=checked]:bg-lax-ink");
   });
 });
 

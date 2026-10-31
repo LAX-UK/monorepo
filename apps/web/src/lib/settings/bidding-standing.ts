@@ -99,8 +99,8 @@ function checkRow(org: BiddingOrganisation): BiddingRow {
     detail: reason
       ? reason.line
       : org.checkedAt
-        ? `${org.name}'s documents were checked on ${formatDateInline(org.checkedAt)}.`
-        : `${org.name}'s documents are checked.`,
+        ? `Checked on ${formatDateInline(org.checkedAt)}.`
+        : "Checked by our team.",
     action: reason?.contact
       ? { label: reason.contact.label, href: reason.contact.href, style: "button" }
       : null,

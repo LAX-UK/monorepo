@@ -12,7 +12,7 @@ export type SwitchProps = SwitchRootProps & {
   /**
    * Held on by a rule the person cannot change here ("Required while you're bidding"). The
    * switch stays focusable and reads the reason as its description and in a tooltip; it shows a
-   * lock in its thumb on an outlined track, so it never reads as a faded, broken control.
+   * lock in its thumb on a filled (on) track, so it never reads as off or as a broken control.
    */
   lockedReason?: string;
 };
@@ -53,8 +53,8 @@ export function Switch({ className, lockedReason, ...props }: SwitchProps) {
 }
 
 /**
- * On, and held on. Focusable but inert: a press changes nothing. The track is the disabled fill
- * inside the 3:1 control edge, the thumb is ink with a lock, and the reason is the description.
+ * On, and held on. Focusable but inert: a press changes nothing. It is drawn on (ink track, thumb
+ * at the end) with a lock in the thumb, and "On." with the reason is its description.
  */
 function LockedSwitch({
   reason,
@@ -80,20 +80,20 @@ function LockedSwitch({
             SIZE,
             "relative cursor-not-allowed",
             "focus-visible:outline-solid focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-lax-focus",
-            "data-[state=checked]:bg-lax-disabled-bg shadow-[inset_0_0_0_1.5px_var(--lax-control-edge)]",
+            "data-[state=checked]:bg-lax-ink",
             className,
           )}
-          thumbClassName={cn(THUMB, "data-[state=checked]:bg-lax-ink shadow-none")}
+          thumbClassName={THUMB}
           {...props}
         />
       </ReasonTooltip>
       <Lock
         aria-hidden
         strokeWidth={2.25}
-        className="pointer-events-none absolute top-1/2 right-[5px] size-2.5 -translate-y-1/2 text-lax-on-ink in-data-[lax-density=client]:right-[7px]"
+        className="pointer-events-none absolute top-1/2 right-[5px] size-2.5 -translate-y-1/2 text-lax-ink in-data-[lax-density=client]:right-[7px]"
       />
       <span id={reasonId} className="sr-only">
-        {reason}
+        {`On. ${reason}`}
       </span>
     </span>
   );

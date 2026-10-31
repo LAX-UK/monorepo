@@ -48,9 +48,8 @@ describe("Bid settings' Bidding card", () => {
   it("owner: the organisation's check and date, its limit, who can bid; never their own identity", () => {
     const rows = biddingRows("pending", org("owner"));
     expect(ids(rows)).toEqual(["check", "limit", "who_can_bid"]);
-    expect(rows[0]?.detail).toMatch(
-      /^Northbank Gallery's documents were checked on 14\sMar\s2026\.$/,
-    );
+    // The badge says "Approved"; the line only adds when, never the same thing twice.
+    expect(rows[0]?.detail).toMatch(/^Checked on 14\sMar\s2026\.$/);
     expect(rows[1]?.value).toEqual({ kind: "figure", text: "£250,000", unit: "across open bids" });
     expect(rows[1]?.action).toMatchObject({ label: "Change limit", href: "/team/bidding" });
     expect(rows[2]).toMatchObject({

@@ -19,6 +19,8 @@ export type AccessDeniedStateProps = {
   reason?: React.ReactNode;
   /** The way on: "Back to Home" first, then at most one more ("Switch account"). */
   actions?: React.ReactNode;
+  /** A quiet line under a hairline, below the actions: "Need access? Ask an owner: Maya Okafor". */
+  footnote?: React.ReactNode;
   /** `page` replaces the page's content; `panel` sits inside a page, under its tabs. */
   size?: "page" | "panel";
   headingLevel?: "h1" | "h2";
@@ -44,11 +46,27 @@ export function AccessDeniedState({
   openedBy,
   reason,
   actions,
+  footnote,
   size = "page",
   headingLevel = size === "page" ? "h1" : "h2",
   className,
 }: AccessDeniedStateProps) {
   const description = reason ?? (openedBy ? accessDeniedLine(openedBy) : undefined);
+  const action =
+    actions || footnote ? (
+      <div className="flex w-full flex-col items-stretch sm:items-center">
+        {actions ? (
+          <div className="flex w-full flex-col items-stretch justify-center gap-3 sm:w-auto sm:flex-row sm:items-center">
+            {actions}
+          </div>
+        ) : null}
+        {footnote ? (
+          <p className="mt-8 w-full border-t border-border-hairline pt-5 text-left text-[0.8125rem] leading-5 text-on-surface-variant sm:text-center">
+            {footnote}
+          </p>
+        ) : null}
+      </div>
+    ) : null;
   return (
     <EmptyState
       size={size}
@@ -57,15 +75,7 @@ export function AccessDeniedState({
       illustration="lock"
       title={accessDeniedTitle(page)}
       {...(description ? { description } : {})}
-      {...(actions
-        ? {
-            action: (
-              <div className="flex w-full flex-col items-stretch justify-center gap-3 sm:w-auto sm:flex-row sm:items-center">
-                {actions}
-              </div>
-            ),
-          }
-        : {})}
+      {...(action ? { action } : {})}
       {...(className ? { className } : {})}
     />
   );
