@@ -18,7 +18,8 @@ export { buttonVariants } from "./button-variants.js";
 export type { ButtonProps } from "./button.js";
 export { ReasonTooltip, Tooltip, TooltipProvider } from "./tooltip.js";
 export { fieldBox, readOnlyBox, tooltipClass } from "./styles.js";
-export { Kbd, ShortcutKeys, shortcutKeyCaps } from "./kbd.js";
+export { Kbd, ShortcutKeys } from "./kbd.js";
+export { shortcutKeyCaps } from "./shortcut-key-caps.js";
 export { KeyboardShortcutsDialog } from "./shortcuts-dialog.js";
 export type {
   KeyboardShortcutsDialogProps,

@@ -1,4 +1,4 @@
-import { shortcutKeyCaps } from "@auction/ui/lax";
+import { shortcutKeyCaps } from "@auction/ui/lax/helpers";
 
 export type HotkeyScope = "global" | "page" | "table" | "dialog";
 

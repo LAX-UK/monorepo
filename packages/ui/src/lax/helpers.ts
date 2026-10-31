@@ -22,6 +22,7 @@ export { isLongMetricValue } from "./metric-cell.js";
 export { metricChange } from "./metric-change.js";
 export { sparklinePoints, sparklineToneClass } from "./sparkline.js";
 export { returnFocusTarget } from "./return-focus-target.js";
+export { shortcutKeyCaps } from "./shortcut-key-caps.js";
 export { fieldBox, readOnlyBox, tooltipClass } from "./styles.js";
 export { fitViewTabs } from "./tabs-fit.js";
 export { splitTokens } from "./token-split.js";
