@@ -5,6 +5,7 @@ import { AccountSwitcherSheet } from "@/components/layout/account-switcher/accou
 import { PersonAvatar } from "@/components/ui/person-avatar";
 import type { SessionUser } from "@/lib/data/contracts";
 import type { AccountChrome } from "@/lib/navigation/account-switcher-model";
+import { Button } from "@auction/ui/lax";
 import { useState } from "react";
 
 type Props = {
@@ -21,13 +22,14 @@ export function PhoneAccountButton({ user, switcher }: Props) {
   const name = user.name.trim() || user.email;
   return (
     <>
-      <button
-        type="button"
+      <Button
+        variant="ghost"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={`Your accounts, ${name}`}
         onClick={() => setOpen(true)}
-        className="lax-focus inline-flex size-11 shrink-0 items-center justify-center rounded-full transition-colors duration-150 hover:bg-lax-hover active:bg-lax-pressed"
+        // The kit's ghost button, as a 44px circle around the 32px avatar.
+        className="size-11 shrink-0 rounded-full p-0"
       >
         <PersonAvatar
           src={user.image}
@@ -35,7 +37,7 @@ export function PhoneAccountButton({ user, switcher }: Props) {
           initials={personInitials(user.name, user.email)}
           className="size-8"
         />
-      </button>
+      </Button>
       <AccountSwitcherSheet switcher={switcher} open={open} onOpenChange={setOpen} />
     </>
   );
