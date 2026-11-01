@@ -223,6 +223,30 @@ describe("Dialog", () => {
   });
 });
 
+describe("Dialog, stacked footer", () => {
+  it("stacks the buttons on a phone with the primary on top", () => {
+    render(
+      <Dialog
+        open
+        onOpenChange={() => {}}
+        title="Place a bid"
+        footerLayout="stacked"
+        footer={
+          <>
+            <button type="button">Cancel</button>
+            <button type="button">Confirm maximum of £125,000</button>
+          </>
+        }
+      >
+        <p>Body</p>
+      </Dialog>,
+    );
+    const footer = screen.getByRole("button", { name: "Cancel" }).parentElement;
+    expect(footer?.className).toContain("max-md:flex-col-reverse");
+    expect(footer?.className).not.toContain("[&>*]:max-md:flex-1");
+  });
+});
+
 describe("Dialog, focus on closing", () => {
   it("falls back to the given element when the control that opened it is gone", async () => {
     function Harness() {

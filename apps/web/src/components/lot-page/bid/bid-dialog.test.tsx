@@ -168,6 +168,18 @@ describe("LotBidDialog", () => {
     );
   });
 
+  it("over the limit: the account card and the notice agree on what is left", async () => {
+    setup(async () => ({ ok: false, failure: refused("over_limit", { remaining: "5000.00" }) }), {
+      accountName: "Northbank Gallery",
+      agentLimitLeft: "18500.00",
+    });
+    click(screen.getByRole("button", { name: "Confirm bid of £7,250" }));
+    await screen.findByRole("alert");
+    const dialog = screen.getByRole("dialog");
+    const figures = new Set((dialog.textContent ?? "").match(/£[\d,]+(?= left of your limit)/g));
+    expect(figures).toEqual(new Set(["£5,000"]));
+  });
+
   it("amount not valid: offers the nearest valid amount and uses it on request", async () => {
     setup(async () => ({
       ok: false,

@@ -149,6 +149,23 @@ describe("bid dialog view", () => {
     expect(view.confirm.kind).toBe("ready");
   });
 
+  it("never shows two different limit figures: the server's refusal updates the account note", () => {
+    const state = reduceBidDialog(idle(), {
+      type: "failed",
+      failure: {
+        kind: "refused",
+        refusal: { code: "over_limit", details: { remaining: "5000.00" } },
+      },
+      ladder,
+    });
+    const view = buildBidDialogView(
+      input(state, { accountName: "Northbank Gallery", agentLimitLeft: "18500.00" }),
+    );
+    const text = [view.notice?.detail, view.accountNote?.detail].join(" ");
+    const figures = new Set(text.match(/£[\d,]+(?= left of your limit)/g));
+    expect(figures).toEqual(new Set(["£5,000"]));
+  });
+
   it("offers a retry after the connection dropped", () => {
     const state = reduceBidDialog(idle(), {
       type: "failed",

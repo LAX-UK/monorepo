@@ -139,6 +139,7 @@ function BidDialogSession({
       title={view.title}
       description={view.description}
       initialFocusRef={focusRef}
+      footerLayout="stacked"
       {...(returnFocusFallback ? { returnFocusFallback } : {})}
       footer={
         <>

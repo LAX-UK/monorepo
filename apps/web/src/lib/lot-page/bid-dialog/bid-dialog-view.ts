@@ -164,14 +164,24 @@ function confirmOf(
   };
 }
 
+/**
+ * What is left of the limit, from one source: when the server has just refused a bid as over the
+ * limit, its figure is the freshest and replaces the one read with the page.
+ */
+function limitLeftOf(input: BidDialogViewInput): string | null {
+  const { failure } = input.state;
+  if (failure?.kind === "refused" && failure.refusal.code === "over_limit") {
+    return failure.refusal.details.remaining ?? input.agentLimitLeft;
+  }
+  return input.agentLimitLeft;
+}
+
 function accountNoteOf(input: BidDialogViewInput): BidDialogView["accountNote"] {
   if (!input.accountName) return null;
+  const left = limitLeftOf(input);
   return {
     title: `Bidding for ${input.accountName}`,
-    detail:
-      input.agentLimitLeft !== null
-        ? `${input.format.money(input.agentLimitLeft)} left of your limit for this sale.`
-        : null,
+    detail: left !== null ? `${input.format.money(left)} left of your limit for this sale.` : null,
   };
 }
 
