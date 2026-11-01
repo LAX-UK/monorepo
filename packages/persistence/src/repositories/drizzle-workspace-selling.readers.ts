@@ -93,6 +93,7 @@ export class DrizzleSoldLotsReader implements ISoldLotsReader {
         payoutId: payout.id,
         payoutStatus: payout.status,
         settledAt: payout.processedAt,
+        lineAmount: payoutLine.amount,
       })
       .from(payment)
       .leftJoin(payoutLine, and(eq(payoutLine.paymentId, payment.id), eq(payoutLine.kind, "sale")))
@@ -122,6 +123,7 @@ export class DrizzleSoldLotsReader implements ISoldLotsReader {
                 id: p.payoutId,
                 status: p.payoutStatus as NonNullable<SoldLotRow["payout"]>["status"],
                 settledAt: p.settledAt,
+                lineAmount: p.lineAmount ?? p.amount,
               }
             : null,
       };

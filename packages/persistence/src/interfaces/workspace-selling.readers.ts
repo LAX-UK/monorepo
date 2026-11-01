@@ -39,8 +39,8 @@ export type SoldLotRow = {
   hammerPrice: string;
   /** The buyer's payment, open or settled, or `null` before one exists. */
   payment: { status: PaymentStatus; amount: string; platformFee: string } | null;
-  /** The payout the sale is on, or `null` while it is on none. */
-  payout: { id: string; status: PayoutStatus; settledAt: Date | null } | null;
+  /** The payout the sale is on, or `null` while it is on none; with the amount its line settles. */
+  payout: { id: string; status: PayoutStatus; settledAt: Date | null; lineAmount: string } | null;
 };
 
 export interface ISoldLotsReader {

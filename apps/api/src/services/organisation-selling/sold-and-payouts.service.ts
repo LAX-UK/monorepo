@@ -1,6 +1,8 @@
 import {
   type SoldLotPayoutStage,
   entityActorCan,
+  payoutLineBreakdown,
+  payoutTotals,
   saleLineBreakdown,
   soldLotPayoutStage,
 } from "@auction/domain";
@@ -57,6 +59,8 @@ function soldView(row: SoldLotRow): SoldLotView {
     payoutStatus: row.payout?.status ?? null,
   });
   const paid = row.payment && row.payment.status === "captured";
+  // The amount the sale settles: its payout line once it is on a payout, else the whole payment.
+  const settled = row.payout?.lineAmount ?? row.payment?.amount ?? "0.00";
   return {
     lotId: row.lotId,
     lotTitle: row.lotTitle,
@@ -68,7 +72,7 @@ function soldView(row: SoldLotRow): SoldLotView {
     net:
       paid && row.payment
         ? saleLineBreakdown({
-            lineAmount: row.payment.amount,
+            lineAmount: settled,
             paymentAmount: row.payment.amount,
             platformFee: row.payment.platformFee,
           }).net
@@ -137,22 +141,21 @@ export class SoldAndPayoutsService implements ISoldAndPayoutsService {
     if (!this.canRead(actor)) return err(sellingError("insufficient_entity_role"));
     const found = await this.deps.payouts.find(actor.legalEntityId, payoutId);
     if (!found) return err(sellingError("payout_not_found"));
+    // The header is the lines added up with the same split each line shows.
+    const totals = payoutTotals(found.lines, found.stripeFee);
     return ok({
       ...found,
+      grossAmount: totals.gross,
+      platformFee: totals.platformFee,
+      stripeFee: totals.stripeFee,
+      netAmount: totals.net,
       lines: found.lines.map((line) => ({
         id: line.id,
         kind: line.kind,
         note: line.note,
         lot: line.lot,
         amount: line.amount,
-        breakdown:
-          line.kind === "sale" && line.payment
-            ? saleLineBreakdown({
-                lineAmount: line.amount,
-                paymentAmount: line.payment.amount,
-                platformFee: line.payment.platformFee,
-              })
-            : null,
+        breakdown: payoutLineBreakdown(line),
       })),
     });
   }

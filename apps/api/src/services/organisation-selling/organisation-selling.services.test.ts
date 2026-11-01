@@ -23,7 +23,12 @@ const soldRows = [
     soldAt: new Date("2026-10-01T18:00:00Z"),
     hammerPrice: "4000.00",
     payment: { status: "captured" as const, amount: "5000.00", platformFee: "1000.00" },
-    payout: { id: "po1", status: "paid" as const, settledAt: new Date("2026-10-20T00:00:00Z") },
+    payout: {
+      id: "po1",
+      status: "paid" as const,
+      settledAt: new Date("2026-10-20T00:00:00Z"),
+      lineAmount: "5000.00",
+    },
   },
   {
     lotId: "l2",
@@ -120,6 +125,85 @@ describe("SoldAndPayoutsService", () => {
         .status,
     ).toBe(404);
   });
+
+  it("shows the same split in the sold list and on the payout, whatever the payout header stored", async () => {
+    // The sale settled 4,800 of a 6,000 payment that carries 1,200 of fees: 960 of fees, 3,840 net.
+    const sold = {
+      ...soldRows[0],
+      lotId: "qh",
+      hammerPrice: "4800.00",
+      payment: { status: "captured" as const, amount: "6000.00", platformFee: "1200.00" },
+      payout: { ...soldRows[0]?.payout, lineAmount: "4800.00" },
+    };
+    const list = vi.fn(async () => [sold]);
+    const find = vi.fn(async () => ({
+      id: "po1",
+      status: "scheduled" as const,
+      currency: "GBP",
+      // As stored: a header that disagrees with its own line.
+      grossAmount: "4800.00",
+      platformFee: "480.00",
+      stripeFee: "0.00",
+      netAmount: "4320.00",
+      periodStart: new Date(),
+      periodEnd: new Date(),
+      processedAt: null,
+      lines: [
+        {
+          id: "line1",
+          kind: "sale",
+          amount: "4800.00",
+          note: null,
+          lot: { id: "qh", title: "Quiet Harbour", lotNumber: 1, hammerPrice: "4800.00" },
+          payment: { amount: "6000.00", platformFee: "1200.00" },
+        },
+      ],
+    }));
+    const service = new SoldAndPayoutsService({
+      sold: { list } as never,
+      payouts: { find } as never,
+    });
+    const owner = actor("owner");
+    const [item] = (await service.listSold(owner, { limit: 10, offset: 0 }))._unsafeUnwrap().items;
+    const detail = (await service.payoutDetail(owner, "po1"))._unsafeUnwrap();
+    expect(item?.net).toBe("3840.00");
+    expect(detail.lines[0]?.breakdown).toEqual({
+      gross: "4800.00",
+      commissionAndFees: "960.00",
+      net: "3840.00",
+    });
+    expect(detail).toMatchObject({
+      grossAmount: "4800.00",
+      platformFee: "960.00",
+      netAmount: "3840.00",
+    });
+  });
+
+  it.each([
+    ["unpaid", "pending", null, "buyer_paying", null],
+    ["paid", "captured", null, "paid_by_buyer", "4000.00"],
+    ["paid out", "captured", "paid", "paid_out", "4000.00"],
+    ["refunded", "refunded", null, "refunded", null],
+  ] as const)(
+    "a %s sale: stage and what the seller receives",
+    async (_name, status, payoutStatus, stage, net) => {
+      const row = {
+        ...soldRows[0],
+        payment: { status, amount: "5000.00", platformFee: "1000.00" },
+        payout: payoutStatus
+          ? { id: "po1", status: payoutStatus, settledAt: null, lineAmount: "5000.00" }
+          : null,
+      };
+      const service = new SoldAndPayoutsService({
+        sold: { list: vi.fn(async () => [row]) } as never,
+        payouts: { find: vi.fn() } as never,
+      });
+      const [item] = (
+        await service.listSold(actor("owner"), { limit: 10, offset: 0 })
+      )._unsafeUnwrap().items;
+      expect([item?.stage, item?.net]).toEqual([stage, net]);
+    },
+  );
 
   it("exports sold lots in plain words", async () => {
     const csv = (await soldService().service.exportSoldCsv(actor("owner"), {}))._unsafeUnwrap();
