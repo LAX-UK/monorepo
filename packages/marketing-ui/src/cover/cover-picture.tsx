@@ -8,20 +8,26 @@ import type { CoverPhotoMedia, CoverPlateMedia } from "./cover-types.js";
 /** The fade from the blurred preview to the sharp picture. */
 const FADE_CLASS = "transition-opacity duration-[240ms] ease-out motion-reduce:transition-none";
 
+type LoadPhase = "ssr" | "loading" | "loaded";
+
 /**
- * Tracks one image's load. A picture that finished before React attached (cached, or loaded
- * during hydration) is caught by `complete`, so it never sticks at opacity 0.
+ * Tracks one image's load for the fade. The picture is drawn from the server's HTML as it is, so
+ * the largest element is never held back. Only a picture still downloading when the page wakes
+ * up is hidden and faded in over its preview; one that already finished is left alone, and one
+ * that finished broken is reported so the next source takes over.
  */
 function useImageLoad(onError: () => void) {
-  const [loaded, setLoaded] = useState(false);
+  const [phase, setPhase] = useState<LoadPhase>("ssr");
   const ref = useCallback(
     (img: HTMLImageElement | null) => {
-      if (img?.complete && img.naturalWidth > 0) setLoaded(true);
-      if (img?.complete && img.naturalWidth === 0 && img.currentSrc) onError();
+      if (!img) return;
+      if (!img.complete) setPhase((current) => (current === "ssr" ? "loading" : current));
+      else if (img.naturalWidth === 0 && img.currentSrc) onError();
     },
     [onError],
   );
-  return { loaded, ref, onLoad: () => setLoaded(true) };
+  const hidden = phase === "loading";
+  return { hidden, ref, onLoad: () => setPhase("loaded") };
 }
 
 /** The preview a picture fades in from: its dominant colour and a 24px blurred copy. */
@@ -75,7 +81,7 @@ export function CoverPhoto({
   onFail: () => void;
 }) {
   const plan = planCoverBoxes(media);
-  const { loaded, ref, onLoad } = useImageLoad(onFail);
+  const { hidden, ref, onLoad } = useImageLoad(onFail);
   const preview = plan.desktop.slot.blurDataURL ?? media.slots.default.blurDataURL;
   return (
     <div className="absolute inset-0 overflow-hidden" style={frameVars(media)}>
@@ -92,7 +98,7 @@ export function CoverPhoto({
           loading={priority ? "eager" : "lazy"}
           onLoad={onLoad}
           onError={onFail}
-          className={cn(FRAME_CLASS, FADE_CLASS, loaded ? "opacity-100" : "opacity-0")}
+          className={cn(FRAME_CLASS, FADE_CLASS, hidden ? "opacity-0" : "opacity-100")}
         />
       </picture>
     </div>
@@ -112,14 +118,14 @@ export function CoverPlate({
   priority: boolean;
   onFail: () => void;
 }) {
-  const { loaded, ref, onLoad } = useImageLoad(onFail);
+  const { hidden, ref, onLoad } = useImageLoad(onFail);
   return (
     <div className="absolute inset-0 overflow-hidden" style={{ backgroundColor: media.field }}>
       <div
         className={cn(
-          "absolute inset-y-8 inset-x-16 flex items-center justify-center",
+          "absolute inset-x-16 inset-y-8 flex items-center justify-center",
+          "md:inset-x-auto md:inset-y-14 md:w-1/2 md:px-16",
           media.side === "left" ? "md:left-1/2" : "md:right-1/2",
-          "md:inset-x-auto md:w-[min(46%,640px)] md:inset-y-14",
         )}
       >
         <img
@@ -136,7 +142,7 @@ export function CoverPlate({
           className={cn(
             "max-h-full max-w-full object-contain shadow-[0_18px_48px_rgba(0,0,0,0.38)]",
             FADE_CLASS,
-            loaded ? "opacity-100" : "opacity-0",
+            hidden ? "opacity-0" : "opacity-100",
           )}
         />
       </div>

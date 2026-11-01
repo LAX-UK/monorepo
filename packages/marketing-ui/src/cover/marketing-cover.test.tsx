@@ -133,15 +133,39 @@ describe("pinned sales", () => {
 });
 
 describe("loading and motion", () => {
-  it("keeps the picture invisible until it has loaded, then fades it in", () => {
-    const { container } = renderFixture(fixture(BID_COVER_FIXTURES, "live"));
-    const img = container.querySelector("img") as HTMLImageElement;
-    expect(img.className).toContain("opacity-0");
-    expect(img.className).toContain("duration-[240ms]");
-    expect(img.className).toContain("motion-reduce:transition-none");
-    fireEvent.load(img);
-    expect(img.className).toContain("opacity-100");
-    expect(container.querySelector("[data-cover-blur]")).not.toBeNull();
+  it("fades a still-downloading picture in over its preview", () => {
+    const complete = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "complete");
+    Object.defineProperty(HTMLImageElement.prototype, "complete", {
+      configurable: true,
+      get: () => false,
+    });
+    try {
+      const { container } = renderFixture(fixture(BID_COVER_FIXTURES, "live"));
+      const img = container.querySelector("img") as HTMLImageElement;
+      expect(img.className).toContain("opacity-0");
+      expect(img.className).toContain("duration-[240ms]");
+      expect(img.className).toContain("motion-reduce:transition-none");
+      expect(container.querySelector("[data-cover-blur]")).not.toBeNull();
+      fireEvent.load(img);
+      expect(img.className).toContain("opacity-100");
+    } finally {
+      if (complete) Object.defineProperty(HTMLImageElement.prototype, "complete", complete);
+    }
+  });
+
+  it("never holds back a picture that has already arrived", () => {
+    const complete = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "complete");
+    Object.defineProperty(HTMLImageElement.prototype, "complete", {
+      configurable: true,
+      get: () => true,
+    });
+    try {
+      const { container } = renderFixture(fixture(BID_COVER_FIXTURES, "live"));
+      const img = container.querySelector("img") as HTMLImageElement;
+      expect(img.className).toContain("opacity-100");
+    } finally {
+      if (complete) Object.defineProperty(HTMLImageElement.prototype, "complete", complete);
+    }
   });
 
   it("settles a picture under 2880px and keeps a sharp one still", () => {
