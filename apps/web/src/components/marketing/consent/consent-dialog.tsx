@@ -46,7 +46,10 @@ export function ConsentPreferencesDialog() {
           <DialogDescription>
             Choose which optional cookies we may set. Strictly necessary cookies are always on. See
             the{" "}
-            <Link href="/cookies" className="text-link underline-offset-4 hover:underline">
+            <Link
+              href="/cookies"
+              className="text-link underline underline-offset-4 hover:decoration-2"
+            >
               Cookie policy
             </Link>{" "}
             for details.

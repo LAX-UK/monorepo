@@ -28,10 +28,10 @@ const SCHEMES = ["light", "dark"] as const;
 const found: FoundViolation[] = [];
 const routesChecked = new Set<string>();
 
-/** The unknown-address page renders outside the site shell today, so it has no main landmark. */
+/** The not-found pages render outside the site shell today, so they have no shared main landmark. */
 async function settle(page: Page, route: PublicRoute) {
   await expect(page.locator('main[aria-busy="true"]')).toHaveCount(0, { timeout: 15_000 });
-  if (route.name === "not-found") await expect(page.locator("body")).toBeVisible();
+  if (route.name.includes("not-found")) await expect(page.locator("body")).toBeVisible();
   else await expect(page.locator("#main-content")).toBeVisible();
 }
 

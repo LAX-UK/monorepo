@@ -429,7 +429,7 @@
 /* Links in running text are ink and underlined, so they read as links without relying on colour.
    Navy stays on the lockup and the active navigation, never on a link. */
 [data-bid-site] {
-  --color-link: var(--color-ink);
+  --color-link: var(--lax-fg);
 }
 
 [data-bid-site] .text-link {
