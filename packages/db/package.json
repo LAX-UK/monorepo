@@ -45,7 +45,7 @@
     "db:reconcile-identity-profiles": "tsx src/scripts/reconcile-identity-profile-drift.ts",
     "db:report-user-read-cutover": "tsx src/scripts/report-user-read-cutover.ts",
     "db:report-staff-role-cleanup": "tsx src/scripts/report-staff-role-cleanup.ts",
-    "db:adopt-release-lineage": "tsx src/scripts/adopt-release-lineage.ts",
+    "db:normalise-release-lineage": "tsx src/scripts/normalise-release-lineage.ts",
     "db:backfill-bid-milestone-events": "tsx src/scripts/backfill-bid-milestone-events.ts",
     "db:backfill-qr-code": "tsx src/scripts/backfill-qr-code.ts",
     "db:seed:press-demo": "tsx scripts/seed-press-hub-demo.ts"

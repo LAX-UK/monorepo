@@ -1,16 +1,18 @@
-import { createHash, randomUUID } from "node:crypto";
+import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
-import pg from "pg";
+import type pg from "pg";
 import { describe, expect, it } from "vitest";
 import { applyApplicationRoleGrants, ensureApplicationRolesExist } from "./migrate-roles.js";
 import {
   runMigrationsPerTransaction,
   runMigrationsPerTransactionThrough,
 } from "./migrate-runner.js";
-import { buildPgConnectionConfig } from "./ssl.js";
+import {
+  migrationTestDatabaseUrl as migrationUrl,
+  withTemporaryDatabase,
+} from "./testing/temporary-database.js";
 
-const migrationUrl = process.env.MIGRATION_TEST_DATABASE_URL;
 const RELEASED_0137_FOLDER_MILLIS = 1788000013000;
 const MAIN_0139_FOLDER_MILLIS = 1788000015000;
 const CONTRACT_0153_FOLDER_MILLIS = 1788000029000;
@@ -23,85 +25,6 @@ const BEFORE_ADDRESS_BOOK_FOLDER_MILLIS = 1794643200000;
 const DECLINE_REASON_0232_FOLDER_MILLIS = 1795420800000;
 const FINAL_FOLDER_MILLIS = 1798185600000;
 const ATG_SYNC_LINKS_FOLDER_MILLIS = 1788000007500;
-
-function isExpectedTeardownPoolError(error: Error): boolean {
-  return (error as Error & { code?: string }).code === "57P01";
-}
-
-function throwCollectedErrors(errors: unknown[]): void {
-  if (errors.length === 1) throw errors[0];
-  if (errors.length > 1) {
-    throw new AggregateError(errors, "Temporary migration database failed");
-  }
-}
-
-async function withTemporaryDatabase(
-  run: (pool: pg.Pool, databaseUrl: string) => Promise<void>,
-): Promise<void> {
-  if (!migrationUrl) throw new Error("MIGRATION_TEST_DATABASE_URL is required");
-  const databaseName = `auction_migration_${randomUUID().replaceAll("-", "")}`;
-  const adminUrl = new URL(migrationUrl);
-  adminUrl.pathname = "/postgres";
-  const databaseUrl = new URL(migrationUrl);
-  databaseUrl.pathname = `/${databaseName}`;
-  const admin = new pg.Client(buildPgConnectionConfig(adminUrl.toString()));
-  const errors: unknown[] = [];
-  let databaseCreated = false;
-
-  await admin.connect();
-  try {
-    await admin.query(`CREATE DATABASE "${databaseName}"`);
-    databaseCreated = true;
-    const pool = new pg.Pool(buildPgConnectionConfig(databaseUrl.toString()));
-    const unexpectedPoolErrors: Error[] = [];
-    let teardownStarted = false;
-    pool.on("error", (error) => {
-      if (!teardownStarted || !isExpectedTeardownPoolError(error)) {
-        unexpectedPoolErrors.push(error);
-      }
-    });
-    try {
-      await run(pool, databaseUrl.toString());
-    } catch (error) {
-      errors.push(error);
-    } finally {
-      teardownStarted = true;
-      try {
-        await pool.end();
-      } catch (error) {
-        errors.push(error);
-      }
-      try {
-        await admin.query(
-          `SELECT pg_terminate_backend(pid)
-           FROM pg_stat_activity
-           WHERE datname = $1
-             AND pid <> pg_backend_pid()`,
-          [databaseName],
-        );
-      } catch (error) {
-        errors.push(error);
-      }
-      errors.push(...unexpectedPoolErrors);
-    }
-  } catch (error) {
-    errors.push(error);
-  } finally {
-    if (databaseCreated) {
-      try {
-        await admin.query(`DROP DATABASE IF EXISTS "${databaseName}"`);
-      } catch (error) {
-        errors.push(error);
-      }
-    }
-    try {
-      await admin.end();
-    } catch (error) {
-      errors.push(error);
-    }
-  }
-  throwCollectedErrors(errors);
-}
 
 async function executeMigrationSql(pool: pg.Pool, fileName: string): Promise<void> {
   const sql = await readFile(resolve(import.meta.dirname, "../drizzle", fileName), "utf8");
