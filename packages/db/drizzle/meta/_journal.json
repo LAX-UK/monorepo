@@ -1898,6 +1898,13 @@
       "when": 1798790400000,
       "tag": "0270_sale_cover_slots",
       "breakpoints": true
+    },
+    {
+      "idx": 271,
+      "version": "7",
+      "when": 1798876800000,
+      "tag": "0271_failed_job_review",
+      "breakpoints": true
     }
   ]
 }

@@ -351,6 +351,10 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "reason",
   ]),
   /** The reason is a staff-typed operational note; the person is the aggregate, not a field. */
+  /** Queue and job names are code identifiers; the discard note is a staff-typed operational note. */
+  "failed_job.retried": new Set(["queue", "jobName", "confirmRepeat"]),
+  "failed_job.discarded": new Set(["queue", "jobName", "reason", "note"]),
+  "failed_job.restored": new Set(["queue", "jobName"]),
   "staff.role_assigned": new Set(["assignmentId", "role", "startsAt", "endsAt", "reason"]),
   "staff.role_removed": new Set(["assignmentId", "role", "reason"]),
   "staff.role_expired": new Set(["assignmentId", "role", "endedAt"]),
