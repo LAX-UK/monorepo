@@ -1,8 +1,9 @@
 import type { Database } from "@auction/db";
 import { lot, sale } from "@auction/db/schema";
 import type { SaleCoverSlot, SaleCoverSlotName, SaleStatus } from "@auction/types";
-import { and, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 import type {
+  HomePinnedSale,
   ISaleCoverRepository,
   SaleCoverState,
   SaleHomePatch,
@@ -102,6 +103,19 @@ export class DrizzleSaleCoverRepository implements ISaleCoverRepository {
       .from(sale)
       .where(and(inArray(sale.id, [...saleIds]), isNull(sale.deletedAt)));
     return new Map(rows.map((row) => [row.id, row.status as SaleStatus]));
+  }
+
+  async listHomePins(): Promise<HomePinnedSale[]> {
+    const rows = await this.db
+      .select({ saleId: sale.id, title: sale.title, position: sale.homePinOrder })
+      .from(sale)
+      .where(and(isNotNull(sale.homePinOrder), isNull(sale.deletedAt)))
+      .orderBy(asc(sale.homePinOrder));
+    return rows.flatMap((row) =>
+      row.position === null
+        ? []
+        : [{ saleId: row.saleId, title: row.title, position: row.position }],
+    );
   }
 
   async replaceHomePins(saleIds: readonly string[]): Promise<void> {

@@ -28,6 +28,7 @@ export const SALE_DETAIL_SECTIONS: Record<
   registrations: { label: "Registrations", requires: ["manage-sales"] },
   "telephone-bookings": { label: "Telephone bookings", requires: ["manage-sales", "saleroom"] },
   operations: { label: "Operations", requires: ["manage-sales", "saleroom"] },
+  cover: { label: "Cover and home", requires: [] },
   media: { label: "Media", requires: ["saleroom"] },
   press: { label: "Press", requires: [] },
   documents: { label: "Documents", requires: [] },
@@ -56,7 +57,7 @@ export const SALE_DETAIL_GROUPS: readonly {
   { id: "lots", label: "Lots", sections: ["lots"] },
   { id: "bidders", label: "Bidders", sections: ["registrations", "telephone-bookings"] },
   { id: "sale-day", label: "Sale day", sections: ["operations"] },
-  { id: "content", label: "Content", sections: ["media", "press", "documents"] },
+  { id: "content", label: "Content", sections: ["cover", "media", "press", "documents"] },
   { id: "settings", label: "Settings", sections: ["schedule", "atg"] },
 ];
 

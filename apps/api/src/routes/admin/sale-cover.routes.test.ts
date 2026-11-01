@@ -394,6 +394,18 @@ describe("home pins", () => {
     expect(covers.sales.get(SALE)?.homePinOrder).toBeNull();
   });
 
+  it("lists every pinned sale in order with the cover view", async () => {
+    const { as, covers } = setup();
+    const third = "d1e2f3a4-5b6c-4d7e-8f90-a1b2c3d4e5f6";
+    covers.addSale(third, { status: "scheduled" });
+    const person = as(salesManager);
+    expect((await body(await person.view())).data.pins).toEqual([]);
+    await person.pins({ saleIds: [third, SALE] });
+    const pins = (await body(await person.view())).data.pins;
+    expect(pins.map((pin: { saleId: string }) => pin.saleId)).toEqual([third, SALE]);
+    expect(pins.map((pin: { position: number }) => pin.position)).toEqual([1, 2]);
+  });
+
   it("refuses a draft sale, a repeat and more than three", async () => {
     const { as } = setup();
     const person = as(salesManager);

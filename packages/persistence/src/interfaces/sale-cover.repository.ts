@@ -21,6 +21,9 @@ export type SaleHomeState = {
   homePinOrder: number | null;
 };
 
+/** A sale pinned to the home page and the place it holds. */
+export type HomePinnedSale = { saleId: string; title: string; position: number };
+
 /** The staff-chosen cover and home fields of a sale, and the lookups their rules need. */
 export interface ISaleCoverRepository {
   /** The sale's cover state, or null when it does not exist or was deleted. */
@@ -35,6 +38,8 @@ export interface ISaleCoverRepository {
   /** The photographs of a lot and the sale it is in, or null when the lot does not exist. */
   getLotImages(lotId: string): Promise<{ saleId: string | null; images: string[] } | null>;
   getSaleStatuses(saleIds: readonly string[]): Promise<Map<string, SaleStatus>>;
+  /** The sales pinned to the home page, first place first. */
+  listHomePins(): Promise<HomePinnedSale[]>;
   /** Replaces the home pins: the given sales hold places 1, 2, 3 in order; all others are unpinned. */
   replaceHomePins(saleIds: readonly string[]): Promise<void>;
 }

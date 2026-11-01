@@ -13,6 +13,7 @@ import { AdminLotService } from "@/lib/services/impl/admin-lot.service";
 import { AdminPaddleService } from "@/lib/services/impl/admin-paddle.service";
 import { AdminPaymentOpsService } from "@/lib/services/impl/admin-payment-ops.service";
 import { AdminQrCodesService } from "@/lib/services/impl/admin-qr-codes.service";
+import { AdminSaleCoverService } from "@/lib/services/impl/admin-sale-cover.service";
 import { AdminSaleRegistrationsService } from "@/lib/services/impl/admin-sale-registrations.service";
 import { AdminSaleService } from "@/lib/services/impl/admin-sale.service";
 import { AdminSaleroomService } from "@/lib/services/impl/admin-saleroom.service";
@@ -46,6 +47,7 @@ import type { IAdminLotService } from "@/lib/services/interfaces/admin-lot-servi
 import type { IAdminPaddleService } from "@/lib/services/interfaces/admin-paddle-service";
 import type { IAdminPaymentOpsService } from "@/lib/services/interfaces/admin-payment-ops-service";
 import type { IAdminQrCodesService } from "@/lib/services/interfaces/admin-qr-codes-service";
+import type { IAdminSaleCoverService } from "@/lib/services/interfaces/admin-sale-cover-service";
 import type { IAdminSaleRegistrationsService } from "@/lib/services/interfaces/admin-sale-registrations-service";
 import type { IAdminSaleService } from "@/lib/services/interfaces/admin-sale-service";
 import type { IAdminSaleroomService } from "@/lib/services/interfaces/admin-saleroom-service";
@@ -96,6 +98,7 @@ export type WriteServiceContainer = {
   adminArtists: IAdminArtistService;
   adminLots: IAdminLotService;
   adminSales: IAdminSaleService;
+  adminSaleCover: IAdminSaleCoverService;
   adminVenues: IAdminVenueService;
   adminSubmissions: IAdminSubmissionService;
   adminConsignmentAfterSale: IAdminConsignmentAfterSaleService;
@@ -140,6 +143,7 @@ export function getWriteContainer(): WriteServiceContainer {
     adminArtists: new AdminArtistService(api),
     adminLots: new AdminLotService(api),
     adminSales: new AdminSaleService(api),
+    adminSaleCover: new AdminSaleCoverService(api),
     adminVenues: new AdminVenueService(api),
     adminSubmissions: new AdminSubmissionService(api),
     adminConsignmentAfterSale: new AdminConsignmentAfterSaleService(api),
