@@ -4,7 +4,7 @@ import { getUnsubscribePreview } from "@/lib/data/http/email-unsubscribe.server"
 import { maskEmail } from "@/lib/format/mask-email";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -36,11 +36,15 @@ export default async function UnsubscribePage({
                 preferences.
               </AlertDescription>
             </Alert>
-            <Button asChild variant="cta" size="xl" className="font-headline shadow-none">
-              <Link href="/settings#alerts" prefetch>
-                Manage preferences
-              </Link>
-            </Button>
+            <ButtonLink
+              Link={Link}
+              variant="primary"
+              className="font-headline"
+              href="/settings#alerts"
+              prefetch
+            >
+              Manage preferences
+            </ButtonLink>
           </div>
         ) : (
           <div className="flex flex-col gap-8">

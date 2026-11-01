@@ -19,7 +19,6 @@ import {
 } from "@/lib/ui/overlay-tone-classes";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import { Input } from "@auction/ui/components/input";
 import { Label } from "@auction/ui/components/label";
 import {
@@ -29,6 +28,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@auction/ui/components/select";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useState } from "react";
@@ -143,12 +143,7 @@ function RegisterOutlineLink({ href, children }: { href: string; children: React
     );
   }
   return (
-    <Button
-      asChild
-      variant="outline"
-      size="lg"
-      className={cn(saleroomHeroActionSizing, "shrink-0")}
-    >
+    <Button asChild variant="secondary" className={cn(saleroomHeroActionSizing, "shrink-0")}>
       {useFullPageNav ? <a href={href}>{children}</a> : <Link href={href}>{children}</Link>}
     </Button>
   );
@@ -275,7 +270,7 @@ function AgentRegistrationForm({
       </div>
       {error ? <p className="font-body text-xs text-destructive">{error}</p> : null}
       {message ? <p className="font-body text-xs text-primary">{message}</p> : null}
-      <Button type="submit" disabled={loading} className="min-h-11 w-full sm:w-auto" size="default">
+      <Button variant="primary" type="submit" disabled={loading} className="w-full sm:w-auto">
         {loading ? "Submitting…" : "Submit registration"}
       </Button>
     </form>
@@ -363,7 +358,7 @@ export function SaleroomRegisterToBid({
 
     if (agentEntities.length === 0) return null;
 
-    return <RegisterOutlineLink href="#register-to-bid">Register to bid →</RegisterOutlineLink>;
+    return <RegisterOutlineLink href="#register-to-bid">Register to bid</RegisterOutlineLink>;
   }
 
   // layout === "default"

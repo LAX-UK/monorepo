@@ -82,9 +82,12 @@ describe("atgDisplayListLot", () => {
 
 describe("atgLotBadge", () => {
   it("labels live, sold, unsold and unknown results", () => {
-    expect(atgLotBadge("live", undefined).label).toBe("On ATG");
+    expect(atgLotBadge("live", undefined)).toMatchObject({
+      label: "Live · bid on auctions.lax.bid",
+      href: "https://auctions.lax.bid/",
+    });
     expect(atgLotBadge("ended", true).label).toBe("Sold");
     expect(atgLotBadge("ended", false).label).toBe("No sale");
-    expect(atgLotBadge("ended", undefined).label).toBe("Ended on ATG");
+    expect(atgLotBadge("ended", undefined).label).toBe("Result to follow");
   });
 });

@@ -39,9 +39,9 @@ describe("LaxHeroSaleroomRotator", () => {
     expect(screen.getByRole("img", { name: "Modern British Art cover" })).toBeInTheDocument();
   });
 
-  it("exposes a single Open saleroom CTA from carousel chrome", () => {
+  it("exposes a single action from carousel chrome", () => {
     render(<LaxHeroSaleroomRotator slides={[slideA, slideB]} />);
-    expect(screen.getAllByRole("link", { name: "Open saleroom" })).toHaveLength(1);
+    expect(screen.getAllByRole("link", { name: "View lots" })).toHaveLength(1);
   });
 
   it("shows carousel controls and copy for the selected slide when multiple slides exist", () => {

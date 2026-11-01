@@ -14,7 +14,7 @@ import {
   resolveOverlayChrome,
 } from "@/lib/ui/overlay-tone-classes";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
@@ -103,7 +103,7 @@ export function ArtistWatchHeart({
     <Button
       type="button"
       variant="ghost"
-      size="icon"
+      size="icon-md"
       onClick={(e) => void onClick(e)}
       disabled={busy}
       aria-pressed={watching}
@@ -113,7 +113,7 @@ export function ArtistWatchHeart({
         useOverlayChrome
           ? overlayIconButtonClasses(
               overlayTone,
-              "size-[var(--tap-target-min,44px)] min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] shrink-0 [&_svg]:size-4",
+              "min-w-[var(--tap-target-min,44px)] shrink-0 [&_svg]:size-4",
             )
           : inlineShellClass,
         useOverlayChrome ? FOCUS_RING : null,

@@ -23,7 +23,7 @@ import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
 import type { LotReserveContext } from "@/lib/lot/reserve-presentation";
 import { liveUrgencyTextClass } from "@/lib/presenters/status-presentation";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import {
@@ -125,7 +125,12 @@ function StickyBlockerAction({
         );
       }
       return (
-        <Button type="button" onClick={onScrollToBid} className={`h-auto ${OUTLINE_CLASS}`}>
+        <Button
+          variant="primary"
+          type="button"
+          onClick={onScrollToBid}
+          className={`h-auto ${OUTLINE_CLASS}`}
+        >
           {label}
         </Button>
       );
@@ -213,6 +218,7 @@ export function BidStickyMobileBar({
         {blockerControl}
         {!blockerAction && showBidCta && outbid ? (
           <Button
+            variant="primary"
             type="button"
             onClick={hasActiveAutoBid && onFocusAutoBid ? onFocusAutoBid : onFocusManualBid}
             className={`h-auto ${CTA_CLASS}`}
@@ -234,13 +240,19 @@ export function BidStickyMobileBar({
     if (step === 1) {
       if (isLeading && onFocusAutoBid) {
         right = (
-          <Button type="button" onClick={onFocusAutoBid} className={`h-auto ${CTA_CLASS_LG}`}>
+          <Button
+            variant="primary"
+            type="button"
+            onClick={onFocusAutoBid}
+            className={`h-auto ${CTA_CLASS_LG}`}
+          >
             Raise auto-bid max
           </Button>
         );
       } else if (outbid && (onFocusAutoBid || onFocusManualBid)) {
         right = (
           <Button
+            variant="primary"
             type="button"
             onClick={hasActiveAutoBid && onFocusAutoBid ? onFocusAutoBid : onFocusManualBid}
             className={`h-auto ${CTA_CLASS_LG}`}
@@ -250,7 +262,12 @@ export function BidStickyMobileBar({
         );
       } else {
         right = (
-          <Button type="button" onClick={onScrollToBid} className={`h-auto ${CTA_CLASS_LG}`}>
+          <Button
+            variant="primary"
+            type="button"
+            onClick={onScrollToBid}
+            className={`h-auto ${CTA_CLASS_LG}`}
+          >
             Review bid
           </Button>
         );
@@ -259,9 +276,9 @@ export function BidStickyMobileBar({
       right = (
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           onClick={onScrollToBid}
-          className="h-auto shrink-0 rounded-none border border-primary/40 bg-transparent px-5 py-3 font-label text-xs font-bold text-primary hover:bg-transparent hover:text-link"
+          className="h-auto shrink-0 rounded-none border border-primary/40 bg-transparent text-primary hover:bg-transparent hover:text-link"
         >
           Confirm bid
         </Button>

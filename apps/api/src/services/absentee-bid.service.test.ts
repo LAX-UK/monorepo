@@ -1,9 +1,14 @@
-import { BidError, type IBidIdentityEligibilityGate } from "@auction/bidding-runtime";
+import {
+  BidError,
+  type IBidIdentityEligibilityGate,
+  SaleRegistrationBidGate,
+} from "@auction/bidding-runtime";
 import type { Database } from "@auction/db";
 import type {
   IAbsenteeBidRepository,
   ILegalEntityRepository,
   ILotRepository,
+  ISaleRegistrationBidReader,
 } from "@auction/persistence/interfaces";
 import { DrizzleAbsenteeBidRepository } from "@auction/persistence/repositories";
 import type { Lot } from "@auction/types";
@@ -62,6 +67,81 @@ function mkLot(overrides: Partial<Lot> = {}): Lot {
     ...overrides,
   };
 }
+
+describe("AbsenteeBidService maximum before opening", () => {
+  function scheduling(opts: {
+    lot?: Partial<Lot>;
+    registration?: { status: string; bidLimit?: string | null } | null;
+  }) {
+    const insertScheduled = vi.fn().mockResolvedValue({ id: "ab-1" });
+    const reader = {
+      findRegistration: vi.fn().mockResolvedValue(opts.registration ?? null),
+    } as unknown as ISaleRegistrationBidReader;
+    const svc = new AbsenteeBidService(
+      { insertScheduled } as unknown as IAbsenteeBidRepository,
+      {} as IBidPlacer,
+      {
+        findById: vi.fn().mockResolvedValue(mkLot({ status: "scheduled", ...opts.lot })),
+      } as unknown as ILotRepository,
+      entitiesIn("approved"),
+      null,
+      okIdentityGate(),
+      fakeBidAuthority("owner"),
+      undefined,
+      new SaleRegistrationBidGate(reader),
+    );
+    const schedule = (memberRole: "owner" | "buyer_agent", maxAmount = 500) =>
+      svc.schedule({
+        userId: "u1",
+        lotId: "lot-1",
+        buyerLegalEntityId: "le-1",
+        memberRole,
+        maxAmount,
+      });
+    return { schedule, insertScheduled };
+  }
+
+  it("takes a maximum on a scheduled lot from an approved agent", async () => {
+    const { schedule, insertScheduled } = scheduling({ registration: { status: "approved" } });
+    const result = await schedule("buyer_agent");
+    expect(result.isOk()).toBe(true);
+    expect(insertScheduled).toHaveBeenCalledOnce();
+  });
+
+  it("refuses an agent who has not registered for the sale", async () => {
+    const { schedule, insertScheduled } = scheduling({ registration: null });
+    const result = await schedule("buyer_agent");
+    expect(result.isErr() && result.error.code).toBe("sale_registration_required");
+    expect(insertScheduled).not.toHaveBeenCalled();
+  });
+
+  it("asks an agent whose registration is pending to wait for approval", async () => {
+    const { schedule, insertScheduled } = scheduling({ registration: { status: "pending" } });
+    const result = await schedule("buyer_agent");
+    expect(result.isErr() && result.error.code).toBe("sale_registration_pending");
+    expect(insertScheduled).not.toHaveBeenCalled();
+  });
+
+  it("holds a maximum to the limit approved for the sale", async () => {
+    const { schedule, insertScheduled } = scheduling({
+      registration: { status: "approved", bidLimit: "300.00" },
+    });
+    const result = await schedule("buyer_agent", 500);
+    expect(result.isErr() && result.error.code).toBe("bid_limit_exceeded");
+    expect(insertScheduled).not.toHaveBeenCalled();
+  });
+
+  it("does not ask an owner bidding in their own name to register", async () => {
+    const { schedule } = scheduling({ registration: null });
+    expect((await schedule("owner")).isOk()).toBe(true);
+  });
+
+  it("answers a closed lot with the lot_closed code", async () => {
+    const { schedule } = scheduling({ lot: { status: "ended" } });
+    const result = await schedule("owner");
+    expect(result.isErr() && result.error.code).toBe("lot_closed");
+  });
+});
 
 describe("AbsenteeBidService", () => {
   it("rejects schedule when lot is not scheduled or active", async () => {

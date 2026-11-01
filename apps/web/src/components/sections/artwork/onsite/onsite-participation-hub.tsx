@@ -6,7 +6,7 @@ import { OnsiteVenueDrawer } from "@/components/sections/artwork/onsite/onsite-v
 import type { OnsiteParticipationContext } from "@/lib/onsite/participation-request-input";
 import type { TelephoneBookingSnapshot } from "@/lib/telephone/telephone-booking-types";
 import type { Sale } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
+import { Button, ButtonLink } from "@auction/ui/lax";
 import { ExternalLink, Globe, Mail, MapPin, Phone, Video } from "lucide-react";
 
 type Props = {
@@ -86,7 +86,7 @@ export function OnsiteParticipationHub({
           </div>
           <div className="mt-6 flex flex-wrap gap-2 border-t border-outline-variant/10 pt-3">
             <OnsiteVenueDrawer sale={sale}>
-              <Button size="default" variant="outline" className="w-full">
+              <Button variant="secondary" className="w-full">
                 View Saleroom Address
               </Button>
             </OnsiteVenueDrawer>
@@ -157,12 +157,10 @@ export function OnsiteParticipationHub({
           </div>
           <div className="mt-6 border-t border-outline-variant/10 pt-3">
             {sale.streamUrl ? (
-              <Button size="default" variant="ghost" className="w-full gap-1.5" asChild>
-                <a href="#live-stream">
-                  <ExternalLink className="size-3.5" />
-                  Go to live stream
-                </a>
-              </Button>
+              <ButtonLink variant="ghost" className="w-full gap-1.5" href="#live-stream">
+                <ExternalLink className="size-3.5" />
+                Go to live stream
+              </ButtonLink>
             ) : (
               <span className="block w-full text-center font-body text-xs italic text-on-surface-variant/60">
                 Live stream unavailable

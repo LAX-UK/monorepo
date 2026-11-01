@@ -2,7 +2,7 @@
 
 import { switchActingLegalEntity } from "@/lib/legal-entity/acting-context.actions";
 import { notify } from "@/lib/ui/notify";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 
@@ -12,9 +12,9 @@ export function SwitchToPersonalButton() {
   const [pending, start] = useTransition();
   return (
     <Button
+      variant="primary"
       type="button"
-      size="default"
-      className="min-h-11"
+      className=""
       disabled={pending}
       onClick={() => {
         start(async () => {

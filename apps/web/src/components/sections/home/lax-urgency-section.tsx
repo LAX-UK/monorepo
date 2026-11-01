@@ -8,7 +8,7 @@ import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { DisplayHeading } from "@auction/ui";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 import { LaxUrgencySectionBody } from "./lax-urgency-section-body";
 
@@ -100,9 +100,9 @@ export function LaxUrgencySection({
             title={`No ${COPY[variant].heading.toLowerCase()} right now`}
             description="Check back soon or browse the full catalogue."
             action={
-              <Button variant="outline" asChild>
-                <Link href={COPY[variant].viewAllHref}>View catalogue</Link>
-              </Button>
+              <ButtonLink Link={Link} variant="secondary" href={COPY[variant].viewAllHref}>
+                View catalogue
+              </ButtonLink>
             }
           />
         </div>

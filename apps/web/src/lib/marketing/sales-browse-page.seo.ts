@@ -16,7 +16,7 @@ export const salesBrowsePageMetadata: Metadata = metadataForStatic({
 
 export type BuildSalesBrowsePageSeoInput = {
   tab: CalendarPrimaryTab;
-  err: string | null;
+  loadFailed: boolean;
   newLots: Lot[];
   filteredSales: SaleListRow[];
 };
@@ -39,7 +39,7 @@ export function buildSalesBrowsePageJsonLd(input: BuildSalesBrowsePageSeoInput):
           name: r.sale.title,
           url: `${base}${salePath(r.sale)}`,
         }));
-  const listLd = !input.err && listLdSource.length > 0 ? itemListJsonLd(listLdSource) : null;
+  const listLd = !input.loadFailed && listLdSource.length > 0 ? itemListJsonLd(listLdSource) : null;
   const listLdText = listLd ? jsonLdScript(listLd) : null;
 
   return { crumbText, listLdText };

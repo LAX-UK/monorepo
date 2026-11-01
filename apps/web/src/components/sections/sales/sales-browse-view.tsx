@@ -12,9 +12,12 @@ import { SalesNewLotsToolbar } from "@/components/sections/sales/sales-new-lots-
 import { SalesPrimaryTabs } from "@/components/sections/sales/sales-primary-tabs";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { SalesBrowsePageData } from "@/lib/marketing/load-sales-browse-page";
-import { calendarClearFiltersHref } from "@/lib/marketing/sales-calendar-params";
+import type { SalesBrowsePageVM } from "@/lib/marketing/sales-browse-page.vm";
+import { resolveCalendarEmptyState } from "@/lib/marketing/sales-calendar-empty-state";
+import { calendarClearFiltersHref, calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
 import { MarketingSectionReveal } from "@auction/marketing-ui";
-import { Button, cn } from "@auction/ui";
+import { cn } from "@auction/ui";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 
 type SalesBrowseViewProps = SalesBrowsePageData;
@@ -55,20 +58,24 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
       >
         <SalesPrimaryTabs state={vm.calendarState} hasLiveSales={vm.hasLiveSales} />
 
-        {vm.err ? (
+        {vm.loadFailed ? (
           <MarketingEmptyState
             variant="marketing"
             context="error"
             title="Calendar temporarily unavailable"
-            description={vm.err}
+            description="We couldn't load the calendar. Try again in a moment."
             action={
               <>
-                <Button variant="cta" asChild>
-                  <Link href="/sales">Try again</Link>
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link href="/">Back to home</Link>
-                </Button>
+                <ButtonLink
+                  Link={Link}
+                  variant="primary"
+                  href={calendarSalesHref(vm.calendarState)}
+                >
+                  Try again
+                </ButtonLink>
+                <ButtonLink Link={Link} variant="secondary" href="/">
+                  Back to home
+                </ButtonLink>
               </>
             }
           />
@@ -78,11 +85,11 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
           <MarketingEmptyState
             variant="marketing"
             title="Private sales"
-            description="Acquire exceptional works outside the auction calendar. Contact us or browse highlights on the homepage."
+            description="Acquire exceptional works outside the auction calendar. Contact our specialists to find out more."
             action={
-              <Button variant="cta" asChild>
-                <Link href="/#private-sale-heading">View highlights</Link>
-              </Button>
+              <ButtonLink Link={Link} variant="primary" href="/contact?intent=private-sale">
+                Contact a specialist
+              </ButtonLink>
             }
           />
         ) : null}
@@ -124,29 +131,8 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
               <MarketingBidPromoCta className="mb-6 rounded-xl border border-outline-variant/30 bg-surface-container-lowest p-8 dark:border-outline-variant/30 dark:bg-surface-container-low/40" />
             ) : null}
 
-            {vm.filteredSalesCount === 0 && !vm.err ? (
-              <MarketingEmptyState
-                variant="marketing"
-                context={vm.hasActiveCalendarFilters ? "filtered" : "noResults"}
-                title="No sales match this filter"
-                description={
-                  vm.hasActiveCalendarFilters
-                    ? "Try clearing filters or choose another calendar tab."
-                    : "Try another tab or check back when new sales are scheduled."
-                }
-                action={
-                  vm.hasActiveCalendarFilters ? (
-                    <>
-                      <Button variant="cta" asChild>
-                        <Link href={calendarClearFiltersHref(vm.calendarState)}>Clear filters</Link>
-                      </Button>
-                      <Button variant="outline" asChild>
-                        <Link href="/sales">Browse all sales</Link>
-                      </Button>
-                    </>
-                  ) : undefined
-                }
-              />
+            {vm.filteredSalesCount === 0 && !vm.loadFailed ? (
+              <CalendarEmpty vm={vm} />
             ) : (
               <SalesBrowseResults
                 initialView={vm.calendarView}
@@ -165,5 +151,40 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
         ) : null}
       </MarketingSectionReveal>
     </MarketingCatalogHubShell>
+  );
+}
+
+function CalendarEmpty({ vm }: { vm: SalesBrowsePageVM }) {
+  const empty = resolveCalendarEmptyState({
+    tab: vm.tab,
+    hasActiveFilters: vm.hasActiveCalendarFilters,
+  });
+  return (
+    <MarketingEmptyState
+      variant="marketing"
+      context={vm.hasActiveCalendarFilters ? "filtered" : "noResults"}
+      title={empty.title}
+      description={empty.description}
+      action={
+        empty.action === "clearFilters" ? (
+          <>
+            <ButtonLink
+              Link={Link}
+              variant="primary"
+              href={calendarClearFiltersHref(vm.calendarState)}
+            >
+              Clear filters
+            </ButtonLink>
+            <ButtonLink Link={Link} variant="secondary" href="/sales">
+              Browse all sales
+            </ButtonLink>
+          </>
+        ) : empty.action ? (
+          <ButtonLink Link={Link} variant="secondary" href={empty.action.href}>
+            {empty.action.label}
+          </ButtonLink>
+        ) : undefined
+      }
+    />
   );
 }

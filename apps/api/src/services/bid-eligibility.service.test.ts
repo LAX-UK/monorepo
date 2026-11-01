@@ -332,7 +332,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
     }
   });
 
-  it("requires sale registration for buyer_agent when status is pending", async () => {
+  it("tells a buyer_agent with a pending registration to wait for approval", async () => {
     const db = createSequentialDb([
       { kind: "limit", rows: [{ role: "client" }] },
       { kind: "limit", rows: [{ saleId }] },
@@ -349,7 +349,7 @@ describe("BidEligibilityService.assertCanPlaceBid", () => {
     });
     expect(r.isErr()).toBe(true);
     if (r.isErr()) {
-      expect(r.error.code).toBe("sale_registration_required");
+      expect(r.error.code).toBe("sale_registration_pending");
     }
   });
 

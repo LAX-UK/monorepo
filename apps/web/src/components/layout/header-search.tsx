@@ -12,7 +12,7 @@ import {
   headerSearchTriggerClass,
 } from "@/lib/layout/header-chrome-tone";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { Search } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -85,7 +85,7 @@ export function HeaderSearchPaletteTrigger({
         variant="ghost"
         onClick={open}
         className={cn(
-          "hidden h-12 w-full max-w-[20.75rem] items-center justify-start gap-3 rounded-full border border-shell-stroke bg-shell-search-bg px-4 text-left font-label text-sm font-normal text-on-surface-variant shadow-none hover:bg-shell-search-bg/90 lg:flex",
+          "hidden w-full max-w-[20.75rem] items-center justify-start gap-3 border border-shell-stroke bg-shell-search-bg text-left font-normal text-on-surface-variant hover:bg-shell-search-bg/90 lg:flex",
           className,
         )}
         aria-haspopup="dialog"
@@ -107,7 +107,7 @@ export function HeaderSearchPaletteTrigger({
         variant="ghost"
         onClick={open}
         className={cn(
-          "h-auto min-h-11 w-full justify-start gap-2 rounded-none border-b px-0 py-0 text-left hover:bg-transparent",
+          "h-auto w-full justify-start gap-2 rounded-none border-b text-left hover:bg-transparent",
           headerSearchTriggerClass(tone, className),
         )}
         aria-haspopup="dialog"
@@ -138,7 +138,7 @@ export function HeaderSearchPaletteTrigger({
       variant="ghost"
       onClick={open}
       className={cn(
-        "min-h-11 min-w-0 flex-1 items-center justify-start gap-2 rounded-none border-b px-0 py-0 text-left transition-[border-color,color,opacity] duration-300 ease-out hover:bg-transparent motion-reduce:transition-none",
+        "min-w-0 flex-1 items-center justify-start gap-2 rounded-none border-b text-left transition-[border-color,color,opacity] duration-300 ease-out hover:bg-transparent motion-reduce:transition-none",
         HEADER_SEARCH_BAR_FROM[fullBarFrom].default.bar,
         headerSearchTriggerClass(tone, className),
       )}

@@ -3,7 +3,7 @@
 import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
 import { SellCtaLink } from "@/components/marketing/sell-cta-link";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 
 /** Closing sell CTA band for the legal column on `/sell`. */
@@ -15,12 +15,12 @@ export function SellPageClosingPromo() {
       description="Create an account and start your submission — takes about 3 minutes."
       actions={
         <>
-          <Button variant="cta" asChild>
+          <Button variant="primary" asChild>
             <SellCtaLink href={sellIntakeHref()} source="sell_page">
               Start your submission
             </SellCtaLink>
           </Button>
-          <Button variant="outline" asChild>
+          <Button variant="secondary" asChild>
             <Link href="/contact">Talk to a specialist</Link>
           </Button>
         </>

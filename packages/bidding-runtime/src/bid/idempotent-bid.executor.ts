@@ -99,6 +99,7 @@ export class IdempotentBidExecutor {
         ...(input.autoBidStepAmount !== undefined
           ? { autoBidStepAmount: input.autoBidStepAmount }
           : {}),
+        ...(input.seenNextBid !== undefined ? { seenNextBid: input.seenNextBid } : {}),
         ...(placement !== undefined ? { placement } : {}),
       });
     } catch (e) {

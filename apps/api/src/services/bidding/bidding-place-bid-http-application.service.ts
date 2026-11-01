@@ -1,3 +1,4 @@
+import { typedPlaceBidRefusal } from "@auction/domain";
 import type { Bid } from "@auction/types";
 import type { IBiddingPlaceBidHttpApplicationService } from "../interfaces/bidding-routes/bidding-place-bid-http.js";
 import {
@@ -33,7 +34,10 @@ export class BiddingPlaceBidHttpApplicationService
           error: out.error,
         })
         .catch(() => undefined);
-      return biddingRouteFromBidError(out.error);
+      const route = biddingRouteFromBidError(out.error);
+      const typed = typedPlaceBidRefusal(out.error.code, out.error.details);
+      if (!typed) return route;
+      return { kind: "err", error: { ...route.error, code: typed.code, details: typed.details } };
     }
     return { kind: "ok", data: out.body.data, status: 201 };
   }

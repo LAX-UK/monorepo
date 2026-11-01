@@ -5,9 +5,19 @@ function matchesCode(options: MapBidErrorOptions | undefined, code: string, raw:
   return raw === code || raw.includes(code);
 }
 
+/** The place-bid API names a refusal by its typed code; the older raised code still matches. */
+function matchesAnyCode(
+  options: MapBidErrorOptions | undefined,
+  codes: readonly string[],
+  raw: string,
+): boolean {
+  return codes.some((code) => matchesCode(options, code, raw));
+}
+
 export const saleRegistrationRequiredBidErrorMatcher: BidErrorMatcher = {
   match(raw: string, options?: MapBidErrorOptions): BidErrorPresentation | null {
-    if (!matchesCode(options, "sale_registration_required", raw)) return null;
+    if (!matchesAnyCode(options, ["registration_required", "sale_registration_required"], raw))
+      return null;
     return {
       title: "Registration required",
       message: "Register and be approved to bid on this sale before placing a bid.",
@@ -24,7 +34,7 @@ export const saleRegistrationRequiredBidErrorMatcher: BidErrorMatcher = {
 
 export const bidLimitExceededBidErrorMatcher: BidErrorMatcher = {
   match(raw: string, options?: MapBidErrorOptions): BidErrorPresentation | null {
-    if (!matchesCode(options, "bid_limit_exceeded", raw)) return null;
+    if (!matchesAnyCode(options, ["over_limit", "bid_limit_exceeded"], raw)) return null;
     const agentLimit = raw.includes("buyer agent authorisation");
     return {
       title: "Bid limit exceeded",

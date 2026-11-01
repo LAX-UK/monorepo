@@ -83,3 +83,12 @@ export {
   type LotActionInput,
   type ResolvedLotAction,
 } from "./lot-action.js";
+export {
+  PLACE_BID_ERROR_CODES,
+  amountRefusal,
+  isBiddingClosedStatus,
+  typedPlaceBidRefusal,
+  type PlaceBidErrorCode,
+  type PlaceBidErrorDetails,
+  type TypedPlaceBidRefusal,
+} from "./place-bid-refusal.js";

@@ -10,7 +10,6 @@ import {
   pressHubParamsToFilterFormValues,
 } from "@/lib/marketing/press-params";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import { Form, FormControl, FormField, FormItem } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
 import {
@@ -20,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@auction/ui/components/select";
+import { Button } from "@auction/ui/lax";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -194,11 +194,7 @@ export function PressFilterForm({
             <span className={cn(labelClassName, "invisible select-none")} aria-hidden>
               Apply
             </span>
-            <Button
-              type="submit"
-              variant="cta"
-              className="h-11 min-h-11 w-full shrink-0 px-8 lg:w-auto"
-            >
+            <Button type="submit" variant="primary" className="w-full shrink-0 lg:w-auto">
               Apply
             </Button>
           </div>

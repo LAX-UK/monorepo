@@ -1,12 +1,12 @@
 "use client";
 
 import { useHydrated } from "@/lib/hooks/use-hydrated";
-import { Button } from "@auction/ui/components/button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@auction/ui/components/collapsible";
+import { Button } from "@auction/ui/lax";
 import { ChevronDownIcon } from "lucide-react";
 import type { SaleOverviewVM } from "./view-models";
 
@@ -26,7 +26,7 @@ export function SaleroomOverviewTerms({ overview }: Props) {
         <Button
           type="button"
           variant="ghost"
-          className="flex h-auto w-full cursor-pointer items-center justify-between p-0 text-lg font-semibold text-on-surface hover:bg-transparent"
+          className="flex h-auto w-full cursor-pointer items-center justify-between p-0 in-data-[lax-density=client]:px-0 text-on-surface hover:bg-transparent"
           aria-expanded={false}
         >
           <span className="underline decoration-outline-variant/50 underline-offset-2">

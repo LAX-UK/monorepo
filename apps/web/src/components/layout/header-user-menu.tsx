@@ -10,7 +10,7 @@ import type { SiteHeaderTone } from "@/lib/layout/header-chrome-tone";
 import type { AccountMenuEntry } from "@/lib/navigation/account-menu-model";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { ChevronDown } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";

@@ -1,6 +1,6 @@
 import type { HeroStateVM } from "@/components/sections/home/home-view-models";
+import { LaxHeroBetweenSeasons } from "@/components/sections/home/lax-hero-between-seasons";
 import { LaxHeroLiveStream } from "@/components/sections/home/lax-hero-live-stream";
-import { LaxHeroLot } from "@/components/sections/home/lax-hero-lot";
 import { LaxHeroSaleroomRotator } from "@/components/sections/home/lax-hero-rotator";
 
 type Props = {
@@ -13,7 +13,7 @@ export function LaxHero({ state }: Props) {
       return <LaxHeroLiveStream vm={state} />;
     case "rotator":
       return <LaxHeroSaleroomRotator slides={state.slides} />;
-    case "fallbackLot":
-      return <LaxHeroLot lot={state.lot} />;
+    case "betweenSeasons":
+      return <LaxHeroBetweenSeasons />;
   }
 }

@@ -1,5 +1,5 @@
 import { MarketingPromoCta } from "@/components/marketing/marketing-promo-cta";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -28,14 +28,14 @@ export function MarketingBidPromoCta({
       actions={
         <>
           {primaryAction ?? (
-            <Button variant="cta" asChild>
-              <Link href={registerHref}>Register to bid</Link>
-            </Button>
+            <ButtonLink Link={Link} variant="primary" href={registerHref}>
+              Register to bid
+            </ButtonLink>
           )}
           {secondaryAction ?? (
-            <Button variant="outline" asChild>
-              <Link href={loginHref}>Sign in</Link>
-            </Button>
+            <ButtonLink Link={Link} variant="secondary" href={loginHref}>
+              Sign in
+            </ButtonLink>
           )}
         </>
       }

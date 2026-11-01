@@ -1,10 +1,14 @@
 import {
   BidPlacementLimitGuard,
+  SaleRegistrationBidGate,
   SaleroomOnBlockPolicy,
   createBidPlacer,
 } from "@auction/bidding-runtime";
 import type { Database } from "@auction/db";
-import { DrizzleSaleroomSessionRepository } from "@auction/persistence/repositories";
+import {
+  DrizzleSaleRegistrationBidReader,
+  DrizzleSaleroomSessionRepository,
+} from "@auction/persistence/repositories";
 import { type Env, resolveStrictBidEligibilityEnabled } from "../env.js";
 import { RedisIdempotencyStore } from "../infrastructure/redis-idempotency.store.js";
 import { RedisSaleroomRealtimePublisher } from "../infrastructure/redis-saleroom-realtime.publisher.js";
@@ -181,6 +185,7 @@ function composeRegistrationAndBidding(
     identityEligibilityGate,
     bidAuthority,
     biddingLimitGate,
+    new SaleRegistrationBidGate(new DrizzleSaleRegistrationBidReader(db)),
   );
   const adminSaleOperationsSnapshotService = new AdminSaleOperationsSnapshotService(
     repos.adminSaleOperationsSnapshotReader,

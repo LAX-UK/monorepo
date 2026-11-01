@@ -9,7 +9,7 @@ import { formatMoney } from "@/lib/format-currency";
 import { resolveNoSaleSummaryCopy } from "@/lib/lot/reserve-presentation";
 import type { LotEndedNoSaleReason } from "@auction/types";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { Gavel, Shield, Zap } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -144,7 +144,7 @@ export function LotBidPositionSummary({
           )}
           {supportsAutoBid && onRaiseAutoBid ? (
             <div className="mt-3">
-              <Button type="button" size="default" variant="default" onClick={onRaiseAutoBid}>
+              <Button type="button" variant="primary" onClick={onRaiseAutoBid}>
                 {position.autoBid ? "Raise auto-bid max" : "Set auto-bid to defend"}
               </Button>
             </div>
@@ -167,7 +167,7 @@ export function LotBidPositionSummary({
           <AutoBidLine max={position.autoBid.max} step={position.autoBid.step} />
           {onRaiseAutoBid ? (
             <div className="mt-3">
-              <Button type="button" size="default" variant="outline" onClick={onRaiseAutoBid}>
+              <Button type="button" variant="secondary" onClick={onRaiseAutoBid}>
                 Raise auto-bid max
               </Button>
             </div>
@@ -189,12 +189,12 @@ export function LotBidPositionSummary({
           ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
             {onIncreaseBid ? (
-              <Button type="button" size="default" variant="default" onClick={onIncreaseBid}>
+              <Button type="button" variant="primary" onClick={onIncreaseBid}>
                 Increase bid
               </Button>
             ) : null}
             {onRaiseAutoBid ? (
-              <Button type="button" size="default" variant="outline" onClick={onRaiseAutoBid}>
+              <Button type="button" variant="secondary" onClick={onRaiseAutoBid}>
                 Raise auto-bid max
               </Button>
             ) : null}
@@ -216,12 +216,12 @@ export function LotBidPositionSummary({
           ) : null}
           <div className="mt-3 flex flex-wrap gap-2">
             {onIncreaseBid ? (
-              <Button type="button" size="default" variant="default" onClick={onIncreaseBid}>
+              <Button type="button" variant="primary" onClick={onIncreaseBid}>
                 Bid again
               </Button>
             ) : null}
             {onRaiseAutoBid ? (
-              <Button type="button" size="default" variant="outline" onClick={onRaiseAutoBid}>
+              <Button type="button" variant="secondary" onClick={onRaiseAutoBid}>
                 Raise auto-bid max
               </Button>
             ) : null}
