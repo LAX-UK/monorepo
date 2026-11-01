@@ -38,15 +38,12 @@ export function NewsletterSignupForm({ tone = "default" }: Props) {
     }
   });
 
-  // The hero ground is near-black in both themes, so its controls take the dark scheme.
-  const ground = onDark ? "scheme-dark" : undefined;
-
   if (status) {
     return (
       <Notice
         tone="success"
         title={status === "already_subscribed" ? "You're already subscribed" : "You're on the list"}
-        className={cn("mx-auto w-full max-w-[420px] text-left", ground)}
+        className="mx-auto w-full max-w-[420px] text-left"
       >
         {status === "already_subscribed" ? "See you in your inbox." : "We'll be in touch."}
       </Notice>
@@ -56,7 +53,7 @@ export function NewsletterSignupForm({ tone = "default" }: Props) {
   return (
     <form
       onSubmit={onSubmit}
-      className={cn("mx-auto flex w-full max-w-[420px] flex-col gap-3 text-left", ground)}
+      className="mx-auto flex w-full max-w-[420px] flex-col gap-3 text-left"
       noValidate
     >
       {bannerError ? <Notice tone="danger" alert title={bannerError} /> : null}
@@ -66,7 +63,8 @@ export function NewsletterSignupForm({ tone = "default" }: Props) {
           labelHidden
           id="newsletter-email"
           error={form.formState.errors.email?.message}
-          className="flex-1"
+          // The hero ground is near-black in both themes, so its message is white on it.
+          className={cn("flex-1", onDark && "[&>p:last-child]:text-white")}
         >
           <TextInput
             type="email"

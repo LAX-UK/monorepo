@@ -85,7 +85,7 @@ export const ErrorSummary = React.forwardRef<HTMLDivElement, ErrorSummaryProps>(
                   onClick={(event) => {
                     if (focusControl(error.fieldId)) event.preventDefault();
                   }}
-                  className="lax-focus inline-block rounded-lax-badge font-medium underline decoration-1 underline-offset-4 hover:decoration-2"
+                  className="lax-focus inline-block min-h-6 rounded-lax-badge font-medium leading-6 underline decoration-1 underline-offset-4 hover:decoration-2"
                 >
                   {error.message}
                 </a>
