@@ -86,6 +86,13 @@ function listWhere(input: Omit<ListSalesFilter, "limit" | "offset" | "sort">) {
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
+/** Order for each list sort; results read newest first. */
+const SALE_LIST_ORDER = {
+  createdDesc: desc(sale.createdAt),
+  startAsc: asc(sale.startTime),
+  endDesc: desc(sale.endTime),
+} as const;
+
 export class DrizzleSaleRepository implements ISaleRepository {
   constructor(private readonly db: Database) {}
 
@@ -191,7 +198,7 @@ export class DrizzleSaleRepository implements ISaleRepository {
 
   async list(filter: ListSalesFilter): Promise<Sale[]> {
     const whereClause = listWhere(filter);
-    const order = filter.sort === "startAsc" ? asc(sale.startTime) : desc(sale.createdAt);
+    const order = SALE_LIST_ORDER[filter.sort ?? "createdDesc"];
     const rows = await this.db
       .select()
       .from(sale)
