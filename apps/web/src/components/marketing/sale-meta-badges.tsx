@@ -61,7 +61,6 @@ export function SaleMetaBadges({
         <SaleTypeBadge
           deliveryMode={deliveryMode}
           size={size}
-          isLive={isLive}
           withExplainer={withExplainer}
           {...(explainerContext ? { explainerContext } : {})}
         />

@@ -25,7 +25,7 @@ type Props = {
   lifecycle: LotLifecycle;
   /** Pre-formatted clock text (HH:MM:SS or `Nd HH:MM:SS`) sized to the timer state. */
   countdownClock: string;
-  /** e.g. "Apr 22, 2025, 4:00 PM" — anchor instant in viewer-local time. */
+  /** e.g. "22 Apr 2025, 16:00 BST": the closing instant in London time. */
   saleEndLocalLabel: string;
   /** Same, for the start instant on scheduled lots. Falls back to closing label. */
   saleStartLocalLabel?: string;

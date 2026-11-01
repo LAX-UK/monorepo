@@ -5,7 +5,6 @@ import { saleFormatIcon } from "@/lib/sale-format-icon";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { Badge, STATUS_BADGE_TONE_CLASSES } from "@auction/ui";
-import { LiveDot } from "@auction/ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { HelpCircle } from "lucide-react";
@@ -17,7 +16,6 @@ type Props = {
   withIcon?: boolean;
   withExplainer?: boolean;
   size?: "sm" | "md" | "lg";
-  isLive?: boolean;
   /** Sale-specific context for the format help popover. */
   explainerContext?: SaleFormatExplainerContext;
 };
@@ -28,7 +26,6 @@ export function SaleTypeBadge({
   withIcon = true,
   withExplainer = false,
   size = "md",
-  isLive = false,
   explainerContext,
 }: Props) {
   const pres = getSaleTypePresentation(deliveryMode);
@@ -53,9 +50,6 @@ export function SaleTypeBadge({
         className,
       )}
     >
-      {isLive ? (
-        <LiveDot size={size === "sm" ? "sm" : "md"} className="live-dot-pulse mr-0.5" />
-      ) : null}
       {withIcon ? (
         <Icon
           className={cn(

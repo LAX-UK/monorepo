@@ -78,7 +78,7 @@ export function UpcomingAuctionMarketingCard({ tile, variant, isAuthenticated }:
               startsSoon={Boolean(tile.startsSoon)}
             />
             <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-              <SaleTypeBadge deliveryMode={tile.deliveryMode} size="sm" isLive={isLive} />
+              <SaleTypeBadge deliveryMode={tile.deliveryMode} size="sm" />
               <div className="flex min-h-[1.25em] items-center border-l border-on-surface-variant/20 pl-2.5">
                 <span className="font-body text-xs font-normal text-on-surface-variant">
                   {tile.dateLabel}
@@ -118,7 +118,7 @@ export function UpcomingAuctionMarketingCard({ tile, variant, isAuthenticated }:
             />
             <div className="flex flex-col gap-3">
               <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-                <SaleTypeBadge deliveryMode={tile.deliveryMode} size="sm" isLive={isLive} />
+                <SaleTypeBadge deliveryMode={tile.deliveryMode} size="sm" />
                 <div className="flex min-h-[1.25em] items-center border-l border-on-surface-variant/20 pl-2.5">
                   <span className="font-body text-xs font-normal text-on-surface-variant sm:text-sm">
                     {tile.dateLabel}

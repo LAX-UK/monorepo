@@ -6,7 +6,6 @@ type Props = {
   scheduleRest: string;
   auctionTypeLine: string;
   deliveryMode?: Sale["deliveryMode"] | undefined;
-  isLive?: boolean | undefined;
 };
 
 /** Schedule + auction type lines for browse rows (SRP). */
@@ -15,7 +14,6 @@ export function SaleCardHeader({
   scheduleRest,
   auctionTypeLine,
   deliveryMode,
-  isLive = false,
 }: Props) {
   const segments = scheduleRest
     .split("·")
@@ -26,7 +24,7 @@ export function SaleCardHeader({
     <div className="flex flex-col gap-3">
       {deliveryMode ? (
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-          <SaleTypeBadge deliveryMode={deliveryMode} size="sm" isLive={isLive} />
+          <SaleTypeBadge deliveryMode={deliveryMode} size="sm" />
           {segments.map((segment) => (
             <div
               key={segment}
