@@ -1,17 +1,27 @@
-import { AppNotFound } from "@/components/app/app-not-found";
+import { LotPageMessage } from "@/components/lot-page/lot-page-message";
+import { ButtonLink, EmptyState } from "@auction/ui/lax";
+import { Search } from "lucide-react";
+import Link from "next/link";
 
-export default function ArtworkNotFound() {
+/** The lot's address doesn't match a lot: say so, and offer search and the current auctions. */
+export default function LotNotFound() {
   return (
-    <AppNotFound
-      kicker="404 · Lot"
-      title="This lot has been withdrawn"
-      description="The lot may have been removed before the sale opened or the URL is incorrect. Browse the search index to discover similar work."
-      primaryHref="/search"
-      primaryLabel="Search lots"
-      secondaryHref="/sales"
-      secondaryLabel="Open calendar"
-      illustration="lots"
-      siteHeaderOffset
-    />
+    <LotPageMessage>
+      <EmptyState
+        illustration="search"
+        title="We can't find that lot"
+        description="The link may be mistyped, or the lot may have moved to another sale. Search by artist or title, or browse the current auctions."
+        actions={
+          <>
+            <ButtonLink href="/search" Link={Link} variant="primary" icon={<Search aria-hidden />}>
+              Search lots
+            </ButtonLink>
+            <ButtonLink href="/sales" Link={Link} variant="secondary">
+              Current auctions
+            </ButtonLink>
+          </>
+        }
+      />
+    </LotPageMessage>
   );
 }

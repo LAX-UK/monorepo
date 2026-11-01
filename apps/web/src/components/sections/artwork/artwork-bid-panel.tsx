@@ -40,6 +40,8 @@ type Props = {
   initialWatching?: boolean;
   loginNextPath?: string;
   omitPricingHeader?: boolean;
+  /** Render only the bid entry: the lot template owns the price block and the position line. */
+  entryOnly?: boolean;
   kycSummary?: KycStatusSummaryDto | null;
   kycUnavailable?: boolean;
   saleRegistrationBidGate?: SaleRegistrationBidGateContext | null;
@@ -66,6 +68,7 @@ export function ArtworkBidPanel({
   initialWatching = false,
   loginNextPath,
   omitPricingHeader = false,
+  entryOnly = false,
   kycSummary = null,
   kycUnavailable = false,
   saleRegistrationBidGate = null,
@@ -267,6 +270,7 @@ export function ArtworkBidPanel({
               initialWatching,
               omitPricingHeader,
               showPricingHeader: omitPricingHeader,
+              entryOnly,
               kycSummary,
               saleRegistrationBidGate,
               currentPrice,

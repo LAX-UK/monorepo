@@ -47,6 +47,12 @@ type LifecycleLotPick = Pick<
   "id" | "status" | "startTime" | "endTime" | "winnerId" | "currentPrice"
 > & { hasWinner?: boolean | undefined };
 
+/** "b. 1961" for a living artist, "1920–1999" for one who has died; `null` without a birth year. */
+function artistLifespan(birthYear: string | null, deathYear: string | null): string | null {
+  if (!birthYear) return null;
+  return deathYear ? `${birthYear}–${deathYear}` : `b. ${birthYear}`;
+}
+
 function deriveLeadingBidderId(bids: LotPageShellData["initialBids"]): string | null {
   const winning = bids.find((b) => b.isWinning);
   return winning?.bidderId ?? winning?.placedByUserId ?? null;
@@ -119,6 +125,10 @@ export type LotPageViewModel = {
   kycApprovedForBid: boolean;
   saleLots: NonNullable<LotPageShellData["saleBundle"]>["lots"] | null;
   breadcrumbItems: Array<{ label: string; href?: string; current?: boolean }>;
+  /** The registry artist the lot is attributed to, with their page; `null` when unattributed. */
+  artist: { id: string; name: string; href: string; lifespan: string | null } | null;
+  /** Published documents for the lot, as links. */
+  lotDocuments: Array<{ label: string; href: string }>;
 };
 
 export function buildLotPageViewModel(input: {
@@ -402,7 +412,22 @@ export function buildLotPageViewModel(input: {
         { label: auction.title, current: true },
       ];
 
+  const artist = catalogArtist
+    ? {
+        id: catalogArtist.id,
+        name: catalogArtist.displayName,
+        href: artistPath({ id: catalogArtist.id, name: catalogArtist.displayName }),
+        lifespan: artistLifespan(catalogArtist.birthYear, catalogArtist.deathYear),
+      }
+    : null;
+  const documentLinks = lotDocuments.map((d) => ({
+    label: d.label?.trim() || d.kind.replaceAll("_", " "),
+    href: d.downloadUrl,
+  }));
+
   return {
+    artist,
+    lotDocuments: documentLinks,
     serverNow,
     auction,
     session,

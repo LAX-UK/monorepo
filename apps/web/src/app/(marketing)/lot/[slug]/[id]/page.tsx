@@ -1,11 +1,12 @@
 import { ViewItemTracker } from "@/components/analytics/view-item-tracker";
 import { SetMarketingHeaderTitle } from "@/components/layout/set-marketing-header-title";
 import { ActingEntityCookieReconciler } from "@/components/legal-entity/acting-entity-cookie-reconciler";
+import { LotTemplate } from "@/components/lot-page/lot-template";
+import { LotWayfinding } from "@/components/lot-page/lot-wayfinding";
 import {
   AtgExternalBiddingPanel,
   isAtgReadOnlyCatalogSale,
 } from "@/components/marketing/atg-external-bidding";
-import { LotLifecycleStatusBadge } from "@/components/marketing/lot-lifecycle-status-badge";
 import { LotPager } from "@/components/marketing/lot-pager";
 import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
@@ -13,13 +14,13 @@ import { RecentlyViewedTracker } from "@/components/marketing/recently-viewed-tr
 import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
 import { ArtworkConditionReportCta } from "@/components/sections/artwork/artwork-condition-report-cta";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
-import { ArtworkOnlineLayout } from "@/components/sections/artwork/layouts/artwork-online-layout";
 import { LotOnsiteMarketingLayout } from "@/components/sections/artwork/layouts/lot-onsite-marketing-layout";
-import { OnlineBidsView } from "@/components/sections/artwork/online/online-bids-view";
+import { OnlineVideoStreamPanel } from "@/components/sections/artwork/online/online-video-stream-panel";
 import { OnsiteLotUnavailable } from "@/components/sections/artwork/onsite/onsite-lot-unavailable";
+import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more-from-rail";
+import { SaleroomLiveLotBanner } from "@/components/sections/saleroom/saleroom-live-lot-banner";
 import { usesBidAsClient } from "@/lib/auth/client-audience";
 import { isStrictBidEligibilityEnabled } from "@/lib/bid/strict-bid-eligibility-rollout.server";
-import { atgCatalogState, atgLotBadge } from "@/lib/catalog/atg-catalog-display";
 import { LiveConnectivityNoticeProvider } from "@/lib/connection/live-connectivity-notice";
 import { RealtimeHealthProvider } from "@/lib/connection/realtime-health-provider";
 import { LotBidHistoryProvider } from "@/lib/context/lot-bid-history-provider";
@@ -28,6 +29,8 @@ import { LotRealtimeProvider } from "@/lib/context/lot-realtime-provider";
 import { MarketingBidBarChromeProvider } from "@/lib/context/marketing-bid-bar-chrome";
 import { OnlineLotLifecycleProvider } from "@/lib/context/online-lot-lifecycle";
 import { MaybeSaleroomLiveProvider } from "@/lib/context/saleroom-live-provider";
+import { loadLotTemplateReads } from "@/lib/lot-page/lot-page-reads.server";
+import { toLotTemplateData } from "@/lib/lot-page/lot-template-props";
 import {
   ensureCanonicalLotSlug,
   loadLotDetailMetadata,
@@ -70,7 +73,6 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     kycSummary,
     kycUnavailable,
     initialAutoBidSettings,
-    watcherCount,
     actingCtx,
     orgModuleEnabled,
     initialSaleroomStatus,
@@ -81,7 +83,6 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     watching,
     watchedLotIds,
     parentSale,
-    catalogLinkParams,
     catalogBackHref,
     catalogBackLabel,
     lotNavVM,
@@ -96,7 +97,6 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     conditionReport,
     saleroomLotRefs,
     queueVMs,
-    artistNameByLotId,
     sessionHeaderVM,
     saleLifecyclePick,
     lifecycleLotPick,
@@ -110,6 +110,8 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     biddingAccount,
     saleLots,
     breadcrumbItems,
+    artist,
+    lotDocuments,
     viewItemCurrency,
     viewItemPriceMinor,
   } = vm;
@@ -121,45 +123,48 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
   }
 
   const atgReadOnlyCatalog = isAtgReadOnlyCatalogSale(saleBundle?.sale ?? null);
-  const atgState = atgCatalogState(saleBundle?.sale);
   const atgLotSold = saleLots?.find((l) => l.id === auction.id)?.atgSold;
 
-  const onlineBidPanel =
+  const onsiteLayout = Boolean(isOnsiteSale && saleBundle && onsiteOverviewVM);
+  const onsiteUnavailable = Boolean(auction.saleId && !saleBundle);
+  const usesLotTemplate = !onsiteLayout && !onsiteUnavailable;
+
+  const templateReads = usesLotTemplate
+    ? await loadLotTemplateReads({
+        lotId: auction.id,
+        signedIn: Boolean(session),
+        actingEntityId: actingLegalEntityId,
+      })
+    : null;
+
+  const bidEntry =
     atgReadOnlyCatalog && saleBundle ? (
       <AtgExternalBiddingPanel sale={saleBundle.sale} lot={{ sold: atgLotSold }} />
     ) : (
-      <OnlineBidsView
-        lotId={auction.id}
-        lot={auction}
-        currentUserId={session?.id ?? null}
-        watcherCount={watcherCount > 0 ? watcherCount : null}
-        compactFeedHeader
+      <ArtworkBidPanel
+        auction={auction}
+        initialHistory={initialHistory}
+        initialLeadingBidderId={initialLeadingBidderId}
+        sessionUser={session}
+        summarySeed={summarySeed}
+        initialAutoBidSettings={initialAutoBidSettings}
         initialOutbid={initialOutbid}
-      >
-        <ArtworkBidPanel
-          auction={auction}
-          initialHistory={initialHistory}
-          initialLeadingBidderId={initialLeadingBidderId}
-          sessionUser={session}
-          summarySeed={summarySeed}
-          initialAutoBidSettings={initialAutoBidSettings}
-          initialOutbid={initialOutbid}
-          initialUserHasBid={initialUserHasBid}
-          initialWatching={watching}
-          loginNextPath={lotPath(auction)}
-          omitPricingHeader
-          kycSummary={kycSummary}
-          kycUnavailable={kycUnavailable}
-          saleRegistrationBidGate={saleRegistrationBidGate}
-          saleRegistrationPath={parentSale ? salePath(parentSale) : null}
-          orgModuleEnabled={orgModuleEnabled}
-          saleForLifecycle={saleLifecyclePick}
-          isOwnLot={isOwnLot}
-          actingLegalEntityId={actingLegalEntityId}
-          biddingAccount={biddingAccount}
-          strictBidEligibilityEnabled={isStrictBidEligibilityEnabled()}
-        />
-      </OnlineBidsView>
+        initialUserHasBid={initialUserHasBid}
+        initialWatching={watching}
+        loginNextPath={lotPath(auction)}
+        omitPricingHeader
+        entryOnly
+        kycSummary={kycSummary}
+        kycUnavailable={kycUnavailable}
+        saleRegistrationBidGate={saleRegistrationBidGate}
+        saleRegistrationPath={parentSale ? salePath(parentSale) : null}
+        orgModuleEnabled={orgModuleEnabled}
+        saleForLifecycle={saleLifecyclePick}
+        isOwnLot={isOwnLot}
+        actingLegalEntityId={actingLegalEntityId}
+        biddingAccount={biddingAccount}
+        strictBidEligibilityEnabled={isStrictBidEligibilityEnabled()}
+      />
     );
 
   const followSlot = atgReadOnlyCatalog ? null : (
@@ -172,29 +177,39 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     />
   );
 
+  const wayfinding = usesLotTemplate ? (
+    <LotWayfinding
+      backHref={catalogBackHref}
+      backLabel={catalogBackLabel}
+      prevHref={lotNavVM.prevHref}
+      nextHref={lotNavVM.nextHref}
+      positionLabel={lotNavVM.positionLabel}
+    />
+  ) : (
+    <MarketingDetailWayfinding
+      backHref={catalogBackHref}
+      backLabel={catalogBackLabel}
+      actions={
+        lotNavVM.prevHref || lotNavVM.nextHref ? (
+          <LotPager
+            prevHref={lotNavVM.prevHref}
+            nextHref={lotNavVM.nextHref}
+            positionLabel={lotNavVM.positionLabel}
+          />
+        ) : null
+      }
+      breadcrumbItems={breadcrumbItems}
+    />
+  );
+
   return (
     <>
       <SetMarketingHeaderTitle title={auction.title} />
       <MarketingDetailShell
         useCatalogPt={false}
         className="pt-[calc(var(--header-height)+8px)]"
-        wrapChildren={false}
-        wayfinding={
-          <MarketingDetailWayfinding
-            backHref={catalogBackHref}
-            backLabel={catalogBackLabel}
-            actions={
-              lotNavVM.prevHref || lotNavVM.nextHref ? (
-                <LotPager
-                  prevHref={lotNavVM.prevHref}
-                  nextHref={lotNavVM.nextHref}
-                  positionLabel={lotNavVM.positionLabel}
-                />
-              ) : null
-            }
-            breadcrumbItems={breadcrumbItems}
-          />
-        }
+        wrapChildren={usesLotTemplate}
+        wayfinding={wayfinding}
         wayfindingClassName="pb-2 md:pb-4"
         jsonLd={
           <script
@@ -219,7 +234,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
             verbose={sp.acting_debug === "1" || sp.acting_debug === "true"}
           />
         ) : null}
-        {isOnsiteSale && saleBundle && onsiteOverviewVM ? (
+        {onsiteLayout && saleBundle && onsiteOverviewVM ? (
           <LotOnsiteMarketingLayout
             auction={auction}
             sale={saleBundle.sale}
@@ -241,9 +256,9 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
             saleForLifecycle={saleLifecyclePick}
             overview={onsiteOverviewVM}
           />
-        ) : auction.saleId && !saleBundle ? (
+        ) : onsiteUnavailable ? (
           <OnsiteLotUnavailable saleTitle={parentSale?.title ?? null} saleId={auction.saleId} />
-        ) : (
+        ) : templateReads ? (
           <RealtimeHealthProvider>
             <LiveConnectivityNoticeProvider>
               <LotPortsProvider actingEntityId={actingCtx.acting?.id}>
@@ -261,48 +276,60 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
                           initialLeadingBidderId={initialLeadingBidderId}
                           currentUserId={session?.id ?? null}
                         >
-                          <ArtworkOnlineLayout
-                            auction={auction}
-                            saleForLifecycle={saleLifecyclePick}
-                            showPreviewRibbon={showPreviewRibbon && !atgState}
-                            {...(atgState
-                              ? {
-                                  statePill: (
-                                    <LotLifecycleStatusBadge
-                                      badge={atgLotBadge(atgState, atgLotSold)}
-                                    />
-                                  ),
-                                }
-                              : {})}
-                            isSaleQueueLoading={isSaleQueueLoading}
-                            serverClockMs={serverNow}
-                            sessionHeader={sessionHeaderVM}
-                            queueCurrent={queueVMs.current}
-                            queueUpNext={queueVMs.upNext}
-                            queueRest={queueVMs.queue}
-                            marketingAccordionBlocks={marketingBlocks}
-                            rail={rail}
-                            isAuthenticated={Boolean(session)}
-                            watchedLotIds={watchedLotIds}
-                            currentUserId={session?.id ?? null}
-                            shareUrl={shareUrl}
-                            followSlot={followSlot}
-                            bidPanel={onlineBidPanel}
-                            bidPanelTop={
-                              <ArtworkConditionReportCta model={conditionReport.session} />
+                          <LotTemplate
+                            {...toLotTemplateData({
+                              auction,
+                              lotPath: lotPath(auction),
+                              shareUrl,
+                              saleLifecycle: saleLifecyclePick,
+                              parentSale,
+                              signedIn: Boolean(session),
+                              watching,
+                              artist,
+                              documents: lotDocuments,
+                              bidding: templateReads.bidding,
+                              viewer: templateReads.viewer,
+                              history: templateReads.history,
+                            })}
+                            bidEntry={bidEntry}
+                            banner={
+                              <>
+                                {showPreviewRibbon ? (
+                                  <p className="m-0 rounded-lg bg-lax-neutral-bg px-4 py-2 text-lax-13 leading-5 text-lax-neutral-fg">
+                                    Catalogue preview. Bidding opens when the sale is published.
+                                  </p>
+                                ) : null}
+                                {isHybridSale && saleroomLotRefs.length > 0 ? (
+                                  <SaleroomLiveLotBanner
+                                    lots={saleroomLotRefs}
+                                    viewedLotId={auction.id}
+                                  />
+                                ) : null}
+                              </>
                             }
-                            hasVideoStream={Boolean(lotStreamCtx?.showOnLotPage)}
-                            streamUrl={saleBundle?.sale?.streamUrl ?? null}
-                            streamSaleTitle={
-                              saleBundle?.sale?.title ?? parentSale?.title ?? auction.title
+                            supplementary={
+                              <>
+                                <ArtworkConditionReportCta model={conditionReport.session} />
+                                {lotStreamCtx?.showOnLotPage && saleBundle?.sale?.streamUrl ? (
+                                  <OnlineVideoStreamPanel
+                                    streamUrl={saleBundle.sale.streamUrl}
+                                    saleTitle={saleBundle.sale.title ?? auction.title}
+                                    posterUrl={
+                                      auction.images[0] ?? saleBundle.sale.coverImages?.[0] ?? null
+                                    }
+                                  />
+                                ) : null}
+                              </>
                             }
-                            streamPosterUrl={
-                              auction.images[0] ?? saleBundle?.sale?.coverImages?.[0] ?? null
+                            footer={
+                              <LotMoreFromRail
+                                rail={rail}
+                                currentUserId={session?.id ?? null}
+                                isAuthenticated={Boolean(session)}
+                                watchedLotIds={watchedLotIds}
+                                density="compact"
+                              />
                             }
-                            saleroomLotRefs={saleroomLotRefs}
-                            saleLots={saleLots}
-                            artistNameByLotId={artistNameByLotId}
-                            {...(catalogLinkParams !== undefined ? { catalogLinkParams } : {})}
                           />
                         </LotBidHistoryProvider>
                       </OnlineLotLifecycleProvider>
@@ -312,7 +339,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
               </LotPortsProvider>
             </LiveConnectivityNoticeProvider>
           </RealtimeHealthProvider>
-        )}
+        ) : null}
       </MarketingDetailShell>
     </>
   );
