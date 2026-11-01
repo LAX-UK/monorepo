@@ -171,6 +171,8 @@ export type { PercentInputProps } from "./forms/percent-input.js";
 export { EnumSelect } from "./forms/enum-select.js";
 export type { EnumOption, EnumSelectProps } from "./forms/enum-select.js";
 export { EntityPicker } from "./forms/entity-picker.js";
+export { CommandMenu } from "./forms/command-menu.js";
+export type { CommandMenuGroup, CommandMenuItem, CommandMenuProps } from "./forms/command-menu.js";
 export type { EntityOption, EntityPickerProps } from "./forms/entity-picker.js";
 export { EntityMultiPicker } from "./forms/entity-multi-picker.js";
 export type { EntityMultiPickerProps } from "./forms/entity-multi-picker.js";
@@ -247,6 +249,7 @@ export {
   EmptyValue,
   PersonCell,
   PrimaryCell,
+  StackedCell,
   StaffDate,
   StaffMoney,
   isEmptyCellValue,

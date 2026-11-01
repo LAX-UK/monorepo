@@ -74,6 +74,7 @@ export function PrimaryCell({
   secondary,
   external = false,
   thumbnail,
+  unread,
 }: {
   children: React.ReactNode;
   href?: string | null;
@@ -83,7 +84,39 @@ export function PrimaryCell({
   external?: boolean;
   /** The record's picture; `src: null` shows the "no picture yet" placeholder. */
   thumbnail?: { src: string | null; missingLabel?: string };
+  /**
+   * For lists with something new to read (an inbox): a filled dot before the row, a semibold
+   * title and "Unread" first in its accessible name. Pass false on read rows so every row keeps
+   * the dot's slot and the titles line up.
+   */
+  unread?: boolean;
 }) {
+  if (unread !== undefined) {
+    return (
+      <span className="flex min-w-0 items-center gap-2.5">
+        <span
+          aria-hidden
+          className={cn("size-2 shrink-0 rounded-full", unread ? "bg-staff-fg" : "bg-transparent")}
+        />
+        <PrimaryCell
+          {...(href !== undefined ? { href } : {})}
+          {...(Link ? { Link } : {})}
+          {...(thumbnail ? { thumbnail } : {})}
+          secondary={secondary}
+          external={external}
+        >
+          {unread ? (
+            <>
+              <span className="sr-only">Unread. </span>
+              <span className="font-semibold">{children}</span>
+            </>
+          ) : (
+            children
+          )}
+        </PrimaryCell>
+      </span>
+    );
+  }
   if (thumbnail) {
     return (
       <span className="flex min-w-0 items-center gap-3">
@@ -124,6 +157,27 @@ export function PrimaryCell({
     <span className="flex min-w-0 flex-col">
       <span className="flex min-w-0 leading-[18px] [&>a]:leading-[18px]">{label}</span>
       <span className="truncate text-staff-xs leading-4 text-staff-muted">{secondary}</span>
+    </span>
+  );
+}
+
+/**
+ * Two lines in a cell at regular weight: what it is, and a muted detail under it ("Northbank
+ * Gallery" over "Lena Fischer"). For a cell that is not the row's title.
+ */
+export function StackedCell({
+  children,
+  secondary,
+}: {
+  children: React.ReactNode;
+  secondary?: React.ReactNode;
+}) {
+  return (
+    <span className="flex min-w-0 flex-col">
+      <span className="truncate leading-[18px] text-staff-fg">{children}</span>
+      {isEmptyCellValue(secondary) ? null : (
+        <span className="truncate text-staff-xs leading-4 text-staff-muted">{secondary}</span>
+      )}
     </span>
   );
 }
