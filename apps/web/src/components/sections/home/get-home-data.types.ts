@@ -3,7 +3,6 @@ import type {
   HeroStateVM,
   HomeUpcomingAuctionTileVM,
   LotCardVM,
-  PrivateSaleHighlightVM,
 } from "@/components/sections/home/home-view-models";
 import type { Sale } from "@auction/types";
 
@@ -24,8 +23,8 @@ export type HomePageData = {
   upcomingAuctionTiles: HomeUpcomingAuctionTileVM[];
   /** First N sales backing `upcomingAuctionTiles` (for Event-rich JSON-LD). */
   upcomingSales: Sale[];
-  editorsPickLots: EditorsPickLotCardVM[];
-  privateSaleHighlights: PrivateSaleHighlightVM[];
+  /** Lots not shown elsewhere on the page; empty when too few remain to fill a strip. */
+  moreLots: EditorsPickLotCardVM[];
   isAuthenticated: boolean;
   /** Lot IDs on the signed-in user’s watchlist (empty when logged out). */
   watchedLotIds: string[];

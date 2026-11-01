@@ -3,6 +3,7 @@ import {
   isHomeHeroEligibleStatus,
   resolveHomeHeroLiveFromSale,
   resolveHomeHeroRotatorFromSales,
+  resolveHomeHeroState,
 } from "./home-hero-policy";
 
 const YOUTUBE = "https://www.youtube.com/watch?v=jNQXAC9IVRw";
@@ -104,5 +105,43 @@ describe("resolveHomeHeroRotatorFromSales", () => {
     ]);
     expect(rotator?.kind).toBe("rotator");
     expect(rotator?.slides).toHaveLength(2);
+  });
+});
+
+describe("resolveHomeHeroState", () => {
+  it("leads with the running sale", () => {
+    const state = resolveHomeHeroState([
+      baseSale({ status: "scheduled", id: "later" }),
+      baseSale({ status: "active", id: "now" }),
+    ]);
+    expect(state.kind).toBe("rotator");
+    if (state.kind === "rotator") expect(state.slides[0]?.id).toBe("now");
+  });
+
+  it("prefers a running sale's hero video", () => {
+    const state = resolveHomeHeroState([
+      baseSale({
+        status: "scheduled",
+        id: "later",
+        heroPresentation: "video",
+        heroVideoUrl: YOUTUBE,
+      }),
+      baseSale({ status: "active", id: "now", heroPresentation: "video", heroVideoUrl: YOUTUBE }),
+    ]);
+    expect(state.kind).toBe("live");
+    if (state.kind === "live") expect(state.saleId).toBe("now");
+  });
+
+  it("shows the upcoming sale when only scheduled sales exist", () => {
+    const state = resolveHomeHeroState([baseSale({ status: "scheduled", id: "next" })]);
+    expect(state.kind).toBe("rotator");
+    if (state.kind === "rotator") expect(state.slides.map((s) => s.status)).toEqual(["scheduled"]);
+  });
+
+  it("falls back to between seasons when nothing is live or scheduled", () => {
+    expect(resolveHomeHeroState([])).toEqual({ kind: "betweenSeasons" });
+    expect(
+      resolveHomeHeroState([baseSale({ status: "ended" }), baseSale({ status: "draft" })]),
+    ).toEqual({ kind: "betweenSeasons" });
   });
 });
