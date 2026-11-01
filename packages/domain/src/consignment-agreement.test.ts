@@ -2,6 +2,7 @@ import { legalEntityMemberRoles } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
   CONSIGNMENT_AGREEMENT_TERMS_VERSION,
+  agreementAcceptanceHold,
   agreementAllowsCataloguing,
   agreementTermsComplete,
   canAcceptConsignmentAgreement,
@@ -140,5 +141,56 @@ describe("reminders", () => {
   it("never reminds after acceptance", () => {
     expect(dueAgreementReminder({ ...base, acceptedAt: day(1) }, day(3))).toBeNull();
     expect(dueAgreementReminder({ ...base, acceptedAt: day(4) }, day(7))).toBeNull();
+  });
+});
+
+describe("agreementAcceptanceHold", () => {
+  it("holds nothing for an approved organisation or a person's own account", () => {
+    expect(agreementAcceptanceHold({ kind: "organisation", status: "approved" })).toBeNull();
+    // A personal account starts as a lead and is never under an organisation's review.
+    expect(agreementAcceptanceHold({ kind: "individual", status: "lead" })).toBeNull();
+  });
+
+  it("names why an organisation's state holds accepting", () => {
+    expect(agreementAcceptanceHold({ kind: "organisation", status: "restricted" })).toBe("paused");
+    expect(agreementAcceptanceHold({ kind: "organisation", status: "under_review" })).toBe(
+      "checking",
+    );
+    expect(agreementAcceptanceHold({ kind: "organisation", status: "connect_pending" })).toBe(
+      "payouts",
+    );
+    expect(agreementAcceptanceHold({ kind: "organisation", status: "archived" })).toBe("closed");
+    expect(agreementAcceptanceHold({ kind: "individual", status: "archived" })).toBe("closed");
+  });
+});
+
+/** The one table of what each organisation state does to accepting; the API and the page follow it. */
+const ACCEPT_BY_ORGANISATION_STATUS = [
+  ["lead", "checking"],
+  ["docs_requested", "checking"],
+  ["docs_received", "checking"],
+  ["under_review", "checking"],
+  ["connect_pending", "payouts"],
+  ["approved", null],
+  ["restricted", "paused"],
+  ["rejected", "closed"],
+  ["archived", "closed"],
+] as const;
+
+describe("accepting by organisation state", () => {
+  it.each(ACCEPT_BY_ORGANISATION_STATUS)("%s holds accepting as %s", (status, hold) => {
+    const account = { kind: "organisation", status } as const;
+    expect(agreementAcceptanceHold(account)).toBe(hold);
+    const decision = decide({ account });
+    expect(decision.kind).toBe(hold ? "refused" : "accept");
+    if (hold && decision.kind === "refused") expect(decision.reason).toBe("account_on_hold");
+  });
+
+  it("does not refuse an agreement that was already accepted", () => {
+    const decision = decide({
+      agreement: { ...proposed, acceptedAt: new Date() },
+      account: { kind: "organisation", status: "restricted" },
+    });
+    expect(decision.kind).toBe("already_accepted");
   });
 });

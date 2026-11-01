@@ -9,6 +9,8 @@ import {
   ConsignmentDetailHead,
 } from "@/components/dashboard/seller/consignment-detail-parts";
 import { ConsignmentDetailTabs } from "@/components/dashboard/seller/consignment-detail-tabs";
+import { ConsignmentDocumentsTab } from "@/components/dashboard/seller/consignment-documents-tab";
+import { ConsignmentHistoryTab } from "@/components/dashboard/seller/consignment-history-tab";
 import { ConsignmentThread } from "@/components/dashboard/seller/consignment-messages/consignment-thread";
 import { ConsignmentWithdrawPanel } from "@/components/dashboard/seller/consignment-withdraw-panel";
 import { SubmissionChangesRequestedPanel } from "@/components/dashboard/seller/submission-changes-requested-panel";
@@ -33,15 +35,22 @@ import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerConsignmentAfterSale } from "@/lib/data/http/consignment-after-sale.server";
 import { getServerConsignmentAgreement } from "@/lib/data/http/consignment-agreements.server";
 import { getServerConsignmentThread } from "@/lib/data/http/consignment-messages.server";
+import { getServerLotDocuments } from "@/lib/data/http/lot-documents.server";
 import { getServerStripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
 import { getServerSubmissionDocuments } from "@/lib/data/http/submission-documents.server";
+import { listServerSoldLots } from "@/lib/data/http/workspace-selling.server";
+import { resolveSaleTitles } from "@/lib/data/sale-titles.server";
 import { itemSubmissionToFormValues } from "@/lib/forms/submission/item-submission-form-defaults";
 import {
   firstIncompleteWizardStepIndex,
   wizardStepIndex,
 } from "@/lib/forms/submission/step-validation";
 import { openRecordInItsAccount } from "@/lib/legal-entity/open-record-in-account.server";
-import { resolveSellerWorkspaceContext } from "@/lib/legal-entity/seller-acting-context.server";
+import {
+  resolveSellerWorkspaceContext,
+  sellerCan,
+  sellingAccount,
+} from "@/lib/legal-entity/seller-acting-context.server";
 import {
   CONDITIONS_OF_BUSINESS_PART_C,
   partCSection,
@@ -54,17 +63,29 @@ import {
   consignmentDetailTabItems,
 } from "@/lib/seller/consignment-detail-tabs";
 import { buildConsignmentDetailVm } from "@/lib/seller/consignment-detail.vm";
-import { consignmentNextStep } from "@/lib/seller/consignment-next";
+import { consignmentDocuments } from "@/lib/seller/consignment-documents";
+import { consignmentHistory } from "@/lib/seller/consignment-history";
+import {
+  agreementHoldLine,
+  consignmentNextLink,
+  consignmentNextStep,
+} from "@/lib/seller/consignment-next";
 import {
   consignmentAgreementHref,
+  consignmentDocumentsHref,
   consignmentMessagesHref,
 } from "@/lib/seller/consignment-records";
 import { CONSIGNMENT_STATUS, consignmentStatus } from "@/lib/seller/consignment-status";
 import { consignmentWithdrawalViewModel } from "@/lib/seller/consignment-withdrawal-view";
 import { loadSellerAccountFacts } from "@/lib/seller/seller-account-facts.server";
+import { sellerDocumentsPanelShows } from "@/lib/seller/seller-documents-visibility";
 import { unsoldChoiceViewModel } from "@/lib/seller/unsold-choice-view";
 import { lotPath } from "@/lib/seo/url";
-import { computeConsignmentChecklist, evaluateSubmissionQuality } from "@auction/domain";
+import {
+  agreementAcceptanceHold,
+  computeConsignmentChecklist,
+  evaluateSubmissionQuality,
+} from "@auction/domain";
 import { Notice, StatusBadge } from "@auction/ui/lax";
 import { ChevronLeft } from "lucide-react";
 import Link from "next/link";
@@ -200,6 +221,10 @@ export default async function SubmissionDetailPage({
   const editable = actions.canEdit;
   const agreementView = agreementRes.status === "fulfilled" ? agreementRes.value : null;
   const account = accountRes.status === "fulfilled" ? accountRes.value : null;
+  // The account's state, not only the member's role, decides whether anyone can accept now.
+  const actingAccount = sellingAccount(sellerCtx);
+  const acceptHold = actingAccount ? agreementAcceptanceHold(actingAccount) : null;
+  const organisationName = account?.organisationName ?? null;
   const checklist = account
     ? computeConsignmentChecklist(
         consignmentChecklistFacts({
@@ -266,11 +291,74 @@ export default async function SubmissionDetailPage({
     afterSale?.unsold?.chooseBy && !unsoldChoiceMade
       ? formatLotMoment(new Date(afterSale.unsold.chooseBy), now, { time: false })
       : null;
-  const nextStep = consignmentNextStep(status, {
+  // Documents and History read the lot's condition reports, the sold lot's payout (for those
+  // who see payouts) and the sale's title; each degrades on its own.
+  const lotId = submission.convertedLotId;
+  const canSeePayouts = sellerCan(sellerCtx, "entity.payouts.read");
+  const sold = status === "sold";
+  const [lotDocumentsRes, soldLotsRes, saleTitlesRes] = await Promise.allSettled([
+    lotId ? getServerLotDocuments(lotId) : Promise.resolve([]),
+    sold && canSeePayouts ? listServerSoldLots() : Promise.resolve(null),
+    resolveSaleTitles([convertedLot?.saleId ?? null]),
+  ]);
+  const soldLot =
+    soldLotsRes.status === "fulfilled"
+      ? (soldLotsRes.value?.items.find((row) => row.lotId === lotId) ?? null)
+      : null;
+  const nextContext = {
     canAccept: Boolean(agreementView?.canAccept),
-    organisation: account?.organisationName ?? null,
+    organisation: organisationName,
     chooseBy,
+    acceptHold,
+    sold: soldLot,
+  };
+  const nextStep = consignmentNextStep(status, nextContext);
+  const nextLink = consignmentNextLink(status, {
+    ...nextContext,
+    submissionId: submission.id,
   });
+  const documentsView = consignmentDocuments({
+    submissionId: submission.id,
+    sellerEntityId,
+    agreement,
+    lotDocuments: lotDocumentsRes.status === "fulfilled" ? lotDocumentsRes.value : [],
+    payout: soldLot?.payout ?? null,
+    sold,
+    canSeePayouts,
+  });
+  const documentsCount = documentsView.fromLax.length + submissionDocuments.length;
+  const sellerDocumentsShown = sellerDocumentsPanelShows({
+    status: submission.status,
+    canManage: actions.canManageDocuments,
+    failed: Boolean(documentsFailure),
+    count: submissionDocuments.length,
+  });
+  const saleTitle =
+    convertedLot?.saleId && saleTitlesRes.status === "fulfilled"
+      ? (saleTitlesRes.value[convertedLot.saleId] ?? null)
+      : null;
+  const history =
+    tab === "history"
+      ? consignmentHistory({
+          submission,
+          agreement,
+          lot: convertedLot
+            ? {
+                status: convertedLot.status,
+                createdAt: convertedLot.createdAt,
+                startTime: convertedLot.startTime,
+                endTime: convertedLot.endTime,
+                sold,
+                saleTitle,
+              }
+            : null,
+          unsoldChoice: afterSale?.unsold?.choice ?? null,
+          withdrawal: afterSale?.withdrawal.request ?? null,
+          messages: thread?.messages ?? null,
+          paidOutAt: soldLot?.payout?.settledAt ?? null,
+          now,
+        })
+      : [];
   const headFacts = [
     detail.meta,
     submission.reference,
@@ -299,6 +387,14 @@ export default async function SubmissionDetailPage({
       {nextStep ? (
         <Notice tone="info" title="What happens next">
           {nextStep}
+          {nextLink ? (
+            <>
+              {" "}
+              <Link href={nextLink.href} className="font-semibold underline underline-offset-4">
+                {nextLink.label}
+              </Link>
+            </>
+          ) : null}
         </Notice>
       ) : null}
       <ConsignmentDetailTabs
@@ -312,6 +408,7 @@ export default async function SubmissionDetailPage({
                 unread: thread.access.canWrite ? thread.unread : 0,
               }
             : null,
+          documents: documentsCount,
         })}
       />
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
@@ -325,6 +422,33 @@ export default async function SubmissionDetailPage({
               now={now}
             />
           </div>
+        ) : tab === "documents" ? (
+          <div className="min-w-0">
+            <ConsignmentDocumentsTab
+              view={documentsView}
+              failed={soldLotsRes.status === "rejected"}
+              retryHref={consignmentDocumentsHref(submission.id)}
+              sellerDocuments={
+                sellerDocumentsShown ? (
+                  <SubmissionSellerDocumentsPanel
+                    submissionId={submission.id}
+                    status={submission.status}
+                    initialDocuments={submissionDocuments}
+                    loadFailure={documentsFailure}
+                    canManage={actions.canManageDocuments}
+                  />
+                ) : null
+              }
+            />
+          </div>
+        ) : tab === "history" ? (
+          <div className="min-w-0">
+            <ConsignmentHistoryTab
+              events={history}
+              messagesMissing={thread === null}
+              payoutsHidden={sold && !canSeePayouts}
+            />
+          </div>
         ) : (
           <div className="flex min-w-0 flex-col gap-6">
             <SubmissionChangesRequestedPanel submission={submission} />
@@ -335,6 +459,9 @@ export default async function SubmissionDetailPage({
                     accountKind: account.accountKind,
                     organisationName: account.organisationName,
                     agreementHref: "#agreement",
+                    agreementHeld: acceptHold
+                      ? agreementHoldLine(acceptHold, organisationName)
+                      : null,
                   }),
                 )}
                 doneCount={checklist.doneCount}
@@ -357,6 +484,7 @@ export default async function SubmissionDetailPage({
                 accountKind={account.accountKind}
                 conditions={CONDITIONS_OF_BUSINESS_PART_C}
                 pdfHref={consignmentAgreementHref(submission.id)}
+                heldReason={acceptHold ? agreementHoldLine(acceptHold, organisationName) : null}
               />
             ) : null}
             <SubmissionRejectionPanel submission={submission} />
@@ -426,13 +554,6 @@ export default async function SubmissionDetailPage({
                 </div>
               </section>
             )}
-            <SubmissionSellerDocumentsPanel
-              submissionId={submission.id}
-              status={submission.status}
-              initialDocuments={submissionDocuments}
-              loadFailure={documentsFailure}
-              canManage={actions.canManageDocuments}
-            />
           </div>
         )}
         <aside className="flex flex-col gap-4" aria-label="About this consignment">

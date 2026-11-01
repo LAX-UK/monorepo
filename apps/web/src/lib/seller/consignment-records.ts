@@ -109,6 +109,16 @@ export function consignmentMessagesHref(submissionId: string): string {
   return `${consignmentHref(submissionId)}?tab=messages`;
 }
 
+/** The consignment's Documents tab. */
+export function consignmentDocumentsHref(submissionId: string): string {
+  return `${consignmentHref(submissionId)}?tab=documents`;
+}
+
+/** The consignment's History tab. */
+export function consignmentHistoryHref(submissionId: string): string {
+  return `${consignmentHref(submissionId)}?tab=history`;
+}
+
 function day(date: Date, now: Date): string {
   return formatLotMoment(date, now, { time: false });
 }
@@ -272,8 +282,8 @@ export function visibleConsignedLots(input: {
 }
 
 /**
- * What waits on an organisation's member, from the one Needs-you reader, so the list, Home and
- * the sidebar count always agree.
+ * What waits on the member, from the one Needs-you reader (a person's own account reads it too),
+ * so the list, Home and the sidebar count always agree.
  */
 export function consignmentTasksFromNeedsYou(tasks: readonly NeedsYouTask[]): ConsignmentTasks {
   const changes = new Set<string>();
@@ -289,48 +299,4 @@ export function consignmentTasksFromNeedsYou(tasks: readonly NeedsYouTask[]): Co
     }
   }
   return { changes, agreements, unsoldLots, replies };
-}
-
-/** Consignments still open to the specialist's terms (the reader's rule). */
-const OPEN_STATUSES = new Set<ItemSubmission["status"]>([
-  "submitted",
-  "under_review",
-  "changes_requested",
-  "approved",
-  "converted",
-]);
-
-/**
- * What waits on a person selling under their own name:the same three things the organisation
- * reader asks for (changes, an agreement with its terms set, an unsold choice not made yet), from
- * what the page already read. A person holds every capability on their own account.
- */
-export function personalConsignmentTasks(input: {
-  submissions: readonly ItemSubmission[];
-  agreements: readonly ConsignmentAgreement[];
-  unsold: readonly SellerUnsoldOutcome[];
-}): ConsignmentTasks {
-  const open = new Set(
-    input.submissions.filter((s) => OPEN_STATUSES.has(s.status)).map((s) => s.id),
-  );
-  return {
-    changes: new Set(
-      input.submissions.filter((s) => s.status === "changes_requested").map((s) => s.id),
-    ),
-    agreements: new Set(
-      input.agreements
-        .filter(
-          (a) =>
-            open.has(a.submissionId) &&
-            !a.acceptedAt &&
-            a.estimateLow != null &&
-            a.estimateHigh != null &&
-            a.commissionPercent != null,
-        )
-        .map((a) => a.submissionId),
-    ),
-    unsoldLots: new Set(input.unsold.filter((u) => u.choice === "none").map((u) => u.lotId)),
-    // A specialist's unread messages are read on the consignment itself, not from this list.
-    replies: new Set(),
-  };
 }

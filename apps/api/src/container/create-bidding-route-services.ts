@@ -1,5 +1,6 @@
 import type { AbsenteeBidService } from "../services/absentee-bid.service.js";
 import type { AutoBidService } from "../services/auto-bid.service.js";
+import type { IBidRefusalObserver } from "../services/bidding/bid-limit-refusal.notifier.js";
 import { BiddingAbsenteeBidHttpApplicationService } from "../services/bidding/bidding-absentee-bid-http-application.service.js";
 import { BiddingAutoBidHttpApplicationService } from "../services/bidding/bidding-auto-bid-http-application.service.js";
 import { BiddingConditionReportHttpApplicationService } from "../services/bidding/bidding-condition-report-http-application.service.js";
@@ -27,14 +28,22 @@ export type CreateBiddingRouteServicesInput = {
   lotService: ILotService;
   displayPairingService: IDisplayPairingService;
   displaySnapshotReader: IDisplaySnapshotReader;
+  /** Tells bidders (and owners and admins) when a bid is refused at a bidding limit. */
+  bidRefusals?: IBidRefusalObserver | null;
 };
 
 export function createBiddingRouteServices(
   input: CreateBiddingRouteServicesInput,
 ): BiddingRouteServices {
   return {
-    placeBidHttp: new BiddingPlaceBidHttpApplicationService(input.bidPlacer),
-    autoBidHttp: new BiddingAutoBidHttpApplicationService(input.autoBidService),
+    placeBidHttp: new BiddingPlaceBidHttpApplicationService(
+      input.bidPlacer,
+      input.bidRefusals ?? null,
+    ),
+    autoBidHttp: new BiddingAutoBidHttpApplicationService(
+      input.autoBidService,
+      input.bidRefusals ?? null,
+    ),
     absenteeBidHttp: new BiddingAbsenteeBidHttpApplicationService(input.absenteeBidService),
     saleRegistrationHttp: new BiddingSaleRegistrationHttpApplicationService(
       input.saleRegistrationBuyer,

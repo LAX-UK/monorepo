@@ -1,4 +1,4 @@
-import { CONSIGNMENT_REPLY_UNDO_MS, messagesSinceSeen, threadAssignee } from "@auction/domain";
+import { CONSIGNMENT_REPLY_UNDO_MS, coverEndError, messagesSinceSeen } from "@auction/domain";
 import type {
   ConsignmentInboxQueryFilter,
   IConsignmentInboxReader,
@@ -17,12 +17,14 @@ import type {
 import type { ConsignmentMessageComposer } from "./consignment-message-composer.js";
 import type { ConsignmentMessagePresenter } from "./consignment-message-presenter.js";
 import type {
+  IConsignmentAssignment,
   IConsignmentMessageNotifier,
   IConsignmentReplyDelivery,
 } from "./consignment-message.ports.js";
 import {
   type ConsignmentMessageOutcome,
   NOT_FOUND,
+  assigneeView,
   failure,
 } from "./consignment-message.shared.js";
 import type { ConsignmentThreadAudit } from "./consignment-thread-audit.js";
@@ -41,6 +43,7 @@ export type ConsignmentThreadCommandDeps = {
   notifier: IConsignmentMessageNotifier;
   delivery: IConsignmentReplyDelivery;
   audit: ConsignmentThreadAudit;
+  assignment: IConsignmentAssignment;
   now?: () => Date;
 };
 
@@ -210,11 +213,15 @@ export class ConsignmentThreadCommandService {
     if (body.covering && !body.assignedToUserId) {
       return failure(400, "covering_needs_person", "Choose who is covering this thread.");
     }
+    const coveringUntil = body.coveringUntil ? new Date(body.coveringUntil) : null;
+    const badEnd = coveringUntil ? coverEndError(coveringUntil, this.now()) : null;
+    if (badEnd) return failure(400, "cover_end_invalid", badEnd);
     const ineligible = await this.checkAssignee(body.assignedToUserId);
     if (ineligible) return ineligible;
-    const outcome = await this.assignOne(staffUserId, submissionId, {
+    const outcome = await this.deps.assignment.assign(staffUserId, submissionId, {
       assignedToUserId: body.assignedToUserId,
       covering: body.covering,
+      coveringUntil,
     });
     if (outcome === "no_thread") return NO_CONVERSATION;
     const after = await this.deps.messages.findSubject(submissionId);
@@ -222,9 +229,7 @@ export class ConsignmentThreadCommandService {
       ok: true,
       value: {
         changed: outcome === "changed",
-        assignee: after
-          ? threadAssignee({ specialist: after.specialist, covering: after.covering })
-          : null,
+        assignee: after ? assigneeView(after) : null,
       },
     };
   }
@@ -255,17 +260,18 @@ export class ConsignmentThreadCommandService {
    * The hold on a staff reply has ended: tells the account, once. Safe to run twice, and does
    * nothing for a reply taken back in the meantime.
    */
-  async deliver(messageId: string): Promise<void> {
+  async deliver(messageId: string): Promise<boolean> {
     const notice = await this.deps.messages.claimReplyNotice(messageId, this.now());
-    if (!notice) return;
+    if (!notice) return false;
     const subject = await this.deps.messages.findSubject(notice.submissionId);
-    if (!subject) return;
+    if (!subject) return false;
     await this.deps.notifier.specialistWrote({
       subject,
       authorName: notice.authorName,
       body: notice.body,
       fileCount: notice.fileCount,
     });
+    return true;
   }
 
   private async applyBulk(
@@ -301,36 +307,12 @@ export class ConsignmentThreadCommandService {
       }
       case "assign":
         return (
-          (await this.assignOne(staffUserId, submissionId, {
+          (await this.deps.assignment.assign(staffUserId, submissionId, {
             assignedToUserId: body.assignedToUserId ?? null,
             covering: false,
           })) === "changed"
         );
     }
-  }
-
-  private async assignOne(
-    staffUserId: string,
-    submissionId: string,
-    target: { assignedToUserId: string | null; covering: boolean },
-  ): Promise<"changed" | "unchanged" | "no_thread"> {
-    const result = await this.deps.messages.assignThread({
-      submissionId,
-      actorUserId: staffUserId,
-      assignedToUserId: target.assignedToUserId,
-      covering: target.covering,
-      at: this.now(),
-    });
-    if (result.outcome !== "changed") return result.outcome;
-    const kind =
-      result.event ?? (target.assignedToUserId ? ("assigned" as const) : ("unassigned" as const));
-    await this.deps.audit.threadChanged({
-      kind,
-      submissionId,
-      actorUserId: staffUserId,
-      subjectUserId: target.assignedToUserId,
-    });
-    return "changed";
   }
 
   /** The person must be active staff who answer client messages. */

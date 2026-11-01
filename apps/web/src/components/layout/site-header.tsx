@@ -4,6 +4,7 @@ import type { MegaMenuSection } from "@/components/layout/header-nav-config";
 import { emptyMegaMenuSections } from "@/components/layout/header-nav-config";
 import { ChromeIconButton } from "@/components/marketing/chrome-icon-button";
 import { useAppSession } from "@/lib/auth/use-app-session";
+import { SITE_LOGO_SHORT_PATH } from "@/lib/brand";
 import { type SiteHeaderTone, headerChromeIconClass } from "@/lib/layout/header-chrome-tone";
 import { FOCUS_RING, MARKETING_PAGE_GUTTER_X } from "@/lib/marketing/chrome";
 import { useMarketingHeaderTitle } from "@/lib/marketing/marketing-header-title-context";
@@ -106,13 +107,24 @@ function SiteHeaderShell({
             logo={
               <Link
                 href="/"
-                className={cn("site-header-logo min-w-[76px] shrink-0 rounded-sm", FOCUS_RING)}
+                className={cn("site-header-logo shrink-0 rounded-sm sm:min-w-[76px]", FOCUS_RING)}
               >
+                {/* Phones get the compact mark, as the workspace bar does, so the lockup never
+                    crowds the attention chip and the account controls. */}
+                <LaxLogo
+                  variant="header"
+                  imageSrc={SITE_LOGO_SHORT_PATH}
+                  imageWidth={172}
+                  imageHeight={201}
+                  surfaceTone={headerTone}
+                  className="sm:hidden [&_img]:h-8 [&_img]:w-auto"
+                />
                 <LaxLogo
                   variant="header"
                   imageWidth={1089}
                   imageHeight={331}
                   surfaceTone={headerTone}
+                  className="max-sm:hidden"
                 />
               </Link>
             }

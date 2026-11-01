@@ -13,6 +13,9 @@ name: Build images
 #   - <environment>  (rolling tag the Terraform app spec pins to; the deploy step
 #                     `doctl apps create-deployment` always pulls the current tag)
 #   - <git_sha>      (immutable, for traceability / manual rollback)
+#
+# move_rolling_tag: false pushes the <git_sha> tag only. Use it to build images ahead of
+# a cutover without changing what the running environment pulls on its next deploy.
 
 on:
   workflow_call:
@@ -28,6 +31,11 @@ on:
         type: string
         required: false
         default: ""
+      move_rolling_tag:
+        description: Also point the <environment> tag at this build (false pushes the SHA tag only)
+        type: boolean
+        required: false
+        default: true
   workflow_dispatch:
     inputs:
       environment:
@@ -38,6 +46,11 @@ on:
         description: Image SHA tag (defaults to workflow SHA)
         type: string
         required: false
+      move_rolling_tag:
+        description: Also point the <environment> tag at this build (false pushes the SHA tag only)
+        type: boolean
+        required: false
+        default: true
 
 permissions:
   contents: read
@@ -182,7 +195,7 @@ jobs:
             sentry_auth_token=${{ secrets.SENTRY_AUTH_TOKEN }}
           tags: |
             registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-${{ matrix.component }}:${{ env.SHA }}
-            ${{ !contains(fromJSON('["shop-identity","shop","shop-api","shop-admin","account","art"]'), matrix.component) && format('registry.digitalocean.com/{0}/lax-{1}-{2}:{1}', env.REGISTRY, env.ENVIRONMENT, matrix.component) || '' }}
+            ${{ inputs.move_rolling_tag != false && !contains(fromJSON('["shop-identity","shop","shop-api","shop-admin","account","art"]'), matrix.component) && format('registry.digitalocean.com/{0}/lax-{1}-{2}:{1}', env.REGISTRY, env.ENVIRONMENT, matrix.component) || '' }}
           cache-from: type=gha,scope=${{ env.ENVIRONMENT }}-${{ matrix.component }}
           cache-to: type=gha,mode=max,scope=${{ env.ENVIRONMENT }}-${{ matrix.component }}
 
@@ -190,7 +203,7 @@ jobs:
       # rolling tag on the previous build. Terraform's pin check then refuses to apply. Point the
       # rolling tag at this build's digest explicitly and verify it, without rebuilding.
       - name: Point the rolling tag at this build
-        if: ${{ !contains(fromJSON('["shop-identity","shop","shop-api","shop-admin","account","art"]'), matrix.component) }}
+        if: ${{ inputs.move_rolling_tag != false && !contains(fromJSON('["shop-identity","shop","shop-api","shop-admin","account","art"]'), matrix.component) }}
         env:
           REPO: registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-${{ matrix.component }}
         run: |
@@ -309,7 +322,7 @@ jobs:
             VITE_EVENT_ORIGIN=https://event.lax.bid
             VITE_CDN_BASE=https://cdn.lax.bid
           tags: |
-            registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-event:${{ env.ENVIRONMENT }}
+            ${{ inputs.move_rolling_tag != false && format('registry.digitalocean.com/{0}/lax-{1}-event:{1}', env.REGISTRY, env.ENVIRONMENT) || '' }}
             registry.digitalocean.com/${{ env.REGISTRY }}/lax-${{ env.ENVIRONMENT }}-event:${{ env.SHA }}
           cache-from: type=gha,scope=${{ env.ENVIRONMENT }}-event
           cache-to: type=gha,mode=max,scope=${{ env.ENVIRONMENT }}-event

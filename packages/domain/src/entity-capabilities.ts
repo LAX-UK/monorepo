@@ -113,6 +113,11 @@ const ENTITY_CAPABILITY_RULES = {
     access: "read",
     roles: ["owner", "admin", "finance", "viewer", "buyer_agent"],
   },
+  /**
+   * Email the members who don't have two-step on a reminder to turn it on. The people who see who
+   * has it on send it; it changes nothing, so admins may send it as well as owners.
+   */
+  "entity.security.remind": { access: "write", roles: ["owner", "admin"], denyImpersonation: true },
   /** See how buyers and LAX reach the organisation: its contact email, phone and website. */
   "entity.contact.read": {
     access: "read",

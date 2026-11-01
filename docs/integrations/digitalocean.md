@@ -35,8 +35,10 @@ pnpm db:migrate:prod
 # PRODUCTION_MIGRATION_THROUGH=0161 pnpm db:migrate:prod
 ```
 
-The Job applies through `0159` unless `PRODUCTION_MIGRATION_THROUGH` is `0160`
-or `0161`. Unknown values and skipped stages fail closed.
+The Job applies through `0159` unless `PRODUCTION_MIGRATION_THROUGH` is `0160`,
+`0161` or `head` (every migration). Unknown values and skipped stages fail closed.
+The main-to-release cutover sets `head` after normalising the ledger; see
+`docs/engineering/release-main-parity.md`.
 
 Required secret for the Job only:
 

@@ -92,6 +92,7 @@ const LABELS: Record<string, string> = {
   "legal_entity.member_removed": "Member removed",
   "legal_entity.member_left": "Member left",
   "legal_entity.invoice_details_changed": "Invoice details changed",
+  "legal_entity.two_step_reminder_sent": "Two-step reminder sent",
   "legal_entity.contact_details_changed": "Contact details changed",
   "legal_entity.payout_bank_changed": "Payout bank account changed",
   "legal_entity.member_authorisations_revoked":

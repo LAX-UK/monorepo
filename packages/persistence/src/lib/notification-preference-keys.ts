@@ -148,9 +148,24 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, NotificationTypeConfig> = {
     whatsapp: null,
     template: null,
   },
-  /** Access requests are always delivered in the product: they wait for, or carry, a decision. */
-  access_requested: { inApp: null, push: null, email: null, whatsapp: null, template: null },
-  access_request_decided: { inApp: null, push: null, email: null, whatsapp: null, template: null },
+  /**
+   * Access requests are always delivered, in the product and by email: they wait for, or carry,
+   * a decision.
+   */
+  access_requested: {
+    inApp: null,
+    push: null,
+    email: null,
+    whatsapp: null,
+    template: "access-requested-notice",
+  },
+  access_request_decided: {
+    inApp: null,
+    push: null,
+    email: null,
+    whatsapp: null,
+    template: "access-request-decided-notice",
+  },
   lot_delivered: {
     inApp: "paymentInApp",
     push: null,

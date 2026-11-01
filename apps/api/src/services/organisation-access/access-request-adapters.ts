@@ -5,6 +5,7 @@ import type {
 import { memberChangeOutcome } from "../identity/identity-legal-entity-member-http-application.service.js";
 import type { IMemberManagementService } from "../interfaces/member-management.js";
 import type { INotificationFactory } from "../interfaces/notification-factory.js";
+import type { IOrganisationNames } from "../interfaces/organisation-names.js";
 import { notificationRowToPayload } from "../notification-payload.js";
 import type { NotificationDispatcher } from "../notification.dispatcher.js";
 import type { IAccessRequestNotifier, IMemberRoleChanger } from "./access-request.service.js";
@@ -48,8 +49,9 @@ function accessStatus(status: number): 400 | 403 | 404 | 409 {
 }
 
 /**
- * Tells owners and admins of a new request, and the requester of the decision, in the product.
- * Best effort: a notice that cannot be sent never undoes the request or the decision.
+ * Tells owners and admins of a new request, and the requester of the decision, in the product
+ * and by email (the notification types map to their templates). Best effort: a notice that
+ * cannot be sent never undoes the request or the decision.
  */
 export class AccessRequestNotifier implements IAccessRequestNotifier {
   constructor(
@@ -59,13 +61,21 @@ export class AccessRequestNotifier implements IAccessRequestNotifier {
       INotificationFactory,
       "createAccessRequested" | "createAccessRequestDecided"
     >,
+    private readonly organisations: IOrganisationNames,
   ) {}
+
+  private organisationName(legalEntityId: string): Promise<string | null> {
+    return this.organisations.nameOf(legalEntityId).catch(() => null);
+  }
 
   async requested(request: AccessRequestRow): Promise<void> {
     try {
-      const deciders = await this.recipients.listUserIdsForAudience(request.legalEntityId, "admin");
+      const [deciders, name] = await Promise.all([
+        this.recipients.listUserIdsForAudience(request.legalEntityId, "admin"),
+        this.organisationName(request.legalEntityId),
+      ]);
       for (const userId of deciders.filter((id) => id !== request.requesterUserId)) {
-        await this.send(userId, this.factory.createAccessRequested(userId, request), request);
+        await this.send(userId, this.factory.createAccessRequested(userId, request, name), request);
       }
     } catch (err) {
       console.error("[AccessRequestNotifier] request notice failed", { id: request.id, err });
@@ -75,7 +85,12 @@ export class AccessRequestNotifier implements IAccessRequestNotifier {
   async decided(request: AccessRequestRow): Promise<void> {
     try {
       const userId = request.requesterUserId;
-      await this.send(userId, this.factory.createAccessRequestDecided(userId, request), request);
+      const name = await this.organisationName(request.legalEntityId);
+      await this.send(
+        userId,
+        this.factory.createAccessRequestDecided(userId, request, name),
+        request,
+      );
     } catch (err) {
       console.error("[AccessRequestNotifier] decision notice failed", { id: request.id, err });
     }

@@ -393,9 +393,9 @@ databases were migrated before that entry existed, so the migrator would otherwi
 "Migration history is missing 1788000007500 before applied timestamp ...".
 `packages/db/src/late-registered-migrations.ts` lists the stamp; the runner applies it in place
 (the SQL is additive and idempotent) and records the ledger row, while a row with a different
-hash still fails closed. The release lineage mapping
-(`packages/db/src/release-lineage-mapping.ts`) keeps this row and records what happens to the
-neighbouring release rows; see `docs/engineering/release-main-parity.md`.
+hash still fails closed. On promotion, ledger normalisation archives production's release row
+and the runner adopts `0131a` without running it again
+(`packages/db/src/release-lineage-mapping.ts`); see `docs/engineering/release-main-parity.md`.
 
 `WORKER_FULL_TABLES` in `packages/db/src/migrate-roles.ts` keeps both ATG tables.
 

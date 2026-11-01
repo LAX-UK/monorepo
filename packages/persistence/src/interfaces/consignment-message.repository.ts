@@ -30,6 +30,8 @@ export type ConsignmentThreadSubject = {
   specialist: StaffPersonRecord | null;
   /** A colleague answering this thread while the specialist is away. */
   covering: StaffPersonRecord | null;
+  /** When that cover ends and the thread goes back to the specialist; null runs until ended. */
+  coveringUntil: Date | null;
   /** The sale the consignment's lot is in, once catalogued. */
   saleId: string | null;
   /** Null until the first message. */
@@ -113,8 +115,13 @@ export type AssignThreadInput = {
   assignedToUserId: string | null;
   /** Cover this thread only; the consignment keeps its specialist. */
   covering: boolean;
+  /** When the cover ends; only for a cover, null runs until someone ends it. */
+  coveringUntil: Date | null;
   at: Date;
 };
+
+/** A cover that ended: the thread is back with the consignment's specialist (if it has one). */
+export type EndedCover = { submissionId: string; specialist: StaffPersonRecord | null };
 
 export type AssignThreadResult =
   | { outcome: "changed"; event: ConsignmentThreadEventKind | null }
@@ -189,5 +196,15 @@ export interface IConsignmentMessageRepository {
    * only. One transaction, and the thread's history records it.
    */
   assignThread(input: AssignThreadInput): Promise<AssignThreadResult>;
+  /**
+   * Ends every cover whose end date has passed, returning each thread to its specialist and
+   * recording it in the thread's history. One transaction; a second run finds nothing to end.
+   */
+  endElapsedCovers(now: Date): Promise<EndedCover[]>;
+  /**
+   * Staff replies whose hold ended at or before `cutoff` and whose account was never told, oldest
+   * first, for the sweep that covers a lost delivery job.
+   */
+  listOverdueReplyNotices(cutoff: Date, limit: number): Promise<string[]>;
   listEvents(submissionId: string): Promise<ConsignmentThreadEventRecord[]>;
 }

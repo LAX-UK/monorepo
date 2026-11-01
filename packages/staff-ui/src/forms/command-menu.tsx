@@ -39,6 +39,8 @@ export type CommandMenuProps = {
   onOpenChange?: (open: boolean) => void;
   searchPlaceholder: string;
   groups: readonly CommandMenuGroup[];
+  /** A control above the search that applies to the choice, e.g. an end date for a cover. */
+  header?: React.ReactNode;
   /** Items after a separator, unaffected by the search: "Unassign". */
   footer?: readonly CommandMenuItem[];
   /** One line of help under the list: "Inserted for editing. Placeholders fill in." */
@@ -62,6 +64,7 @@ export function CommandMenu({
   onOpenChange,
   searchPlaceholder,
   groups,
+  header,
   footer = [],
   note,
   emptyText = "No matches.",
@@ -120,6 +123,7 @@ export function CommandMenu({
           className,
         )}
       >
+        {header ? <div className="border-b border-staff-line-subtle p-3">{header}</div> : null}
         <Command className={staffCommandClass}>
           <CommandInput placeholder={searchPlaceholder} aria-label={searchPlaceholder} />
           {error ? (

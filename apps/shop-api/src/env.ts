@@ -115,6 +115,16 @@ export const shopApiEnvSchema = z.object({
     (val) => (typeof val === "string" && val.trim() === "" ? undefined : val),
     z.string().trim().min(4).max(20).optional(),
   ),
+  /**
+   * In production, refuse to start without the Stripe secret key and webhook secret. Set false
+   * while the storefronts are private: shop-api then starts without them, as long as every
+   * Stripe-dependent flag (STRIPE_DEPENDENT_FLAGS) is off, and checkout, refunds and Connect
+   * payouts stay unavailable (checkout answers 503) until they are configured.
+   */
+  SHOP_REQUIRE_STRIPE: z
+    .enum(["true", "false"])
+    .default("true")
+    .transform((value) => value === "true"),
   SHOP_FAKE_CHECKOUT_ENABLED: z
     .enum(["true", "false"])
     .default("false")
@@ -215,6 +225,39 @@ export const shopApiEnvSchema = z.object({
 
 export type ShopApiEnv = z.infer<typeof shopApiEnvSchema>;
 
+const REQUIRED_STRIPE_KEYS = ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"] as const;
+
+/**
+ * Shop features that call Stripe themselves: payouts (Connect onboarding and webhooks), automatic
+ * Connect transfers, and original sales (Stripe invoices). Checkout has no flag of its own; it is
+ * governed by SHOP_REQUIRE_STRIPE, which production sets once the storefronts are public.
+ */
+export const STRIPE_DEPENDENT_FLAGS = [
+  "SHOP_PAYOUTS_ENABLED",
+  "SHOP_CONNECT_TRANSFERS_ENABLED",
+  "SHOP_ORIGINALS_ENABLED",
+] as const;
+
+/**
+ * Production Stripe requirement. Stripe may be missing only when it is not required and every
+ * Stripe-dependent feature is off; shop-api then starts with checkout, refunds and payouts disabled.
+ */
+function assertStripeConfigured(env: ShopApiEnv): void {
+  const missing = REQUIRED_STRIPE_KEYS.filter((key) => !env[key]);
+  if (missing.length === 0) return;
+  const unset = missing.join(" and ");
+  if (env.SHOP_REQUIRE_STRIPE) {
+    throw new Error(`${unset} required in production (SHOP_REQUIRE_STRIPE=true)`);
+  }
+  const enabled = STRIPE_DEPENDENT_FLAGS.filter((flag) => env[flag]);
+  if (enabled.length > 0) {
+    throw new Error(`${enabled.join(", ")} need Stripe: set ${unset}, or turn them off`);
+  }
+  console.warn(
+    `Stripe is not configured (${missing.join(", ")} unset): checkout, refunds and Connect payouts are disabled until it is.`,
+  );
+}
+
 export function loadShopApiEnv(source: NodeJS.ProcessEnv = process.env): ShopApiEnv {
   const normalized: NodeJS.ProcessEnv = { ...source };
   if (
@@ -236,12 +279,7 @@ export function loadShopApiEnv(source: NodeJS.ProcessEnv = process.env): ShopApi
     if (!parsed.data.SHOP_API_BFF_TOKEN) {
       throw new Error("SHOP_API_BFF_TOKEN is required in production");
     }
-    if (!parsed.data.STRIPE_SECRET_KEY) {
-      throw new Error("STRIPE_SECRET_KEY is required in production");
-    }
-    if (!parsed.data.STRIPE_WEBHOOK_SECRET) {
-      throw new Error("STRIPE_WEBHOOK_SECRET is required in production");
-    }
+    assertStripeConfigured(parsed.data);
     if (parsed.data.SHOP_FAKE_CHECKOUT_ENABLED) {
       throw new Error("SHOP_FAKE_CHECKOUT_ENABLED must not be enabled in production");
     }

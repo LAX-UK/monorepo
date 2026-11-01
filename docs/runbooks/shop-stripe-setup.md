@@ -72,6 +72,10 @@ Expect **400** (`Webhook not configured` or `Invalid signature`), never **404**.
 
 Use Stripe CLI or Dashboard “Send test webhook” for `checkout.session.completed`, then complete a test-card purchase and confirm the order moves to `paid` with editions `sold`.
 
+## Production before the storefront launch
+
+- In production shop-api refuses to start without `STRIPE_SECRET_KEY` and `STRIPE_WEBHOOK_SECRET` unless `SHOP_REQUIRE_STRIPE=false`. Terraform sets it from `storefronts_public`, so while Shop and lax.art are private shop-api starts without the keys, logs that checkout, refunds and Connect payouts are disabled, and answers checkout with 503. Payouts, Connect transfers and originals call Stripe directly, so with any of `SHOP_PAYOUTS_ENABLED`, `SHOP_CONNECT_TRANSFERS_ENABLED` or `SHOP_ORIGINALS_ENABLED` on, shop-api still refuses to start without the keys, and the prod apply workflow refuses to run.
+
 ## Local development
 
 - `SHOP_FAKE_CHECKOUT_ENABLED=true` with no Stripe keys enables the fake checkout path (local only).

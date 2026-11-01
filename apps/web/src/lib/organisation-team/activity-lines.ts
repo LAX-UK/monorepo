@@ -86,6 +86,10 @@ const LINES: Record<string, (line: Line) => string> = {
       : `${actor} changed the payout account`;
   },
   invoice_details_changed: ({ actor }) => `${actor} changed the invoice details`,
+  two_step_reminder_sent: ({ actor, detail }) =>
+    typeof detail.recipient_count === "number"
+      ? `${actor} reminded ${detail.recipient_count} ${detail.recipient_count === 1 ? "person" : "people"} to turn on two-step`
+      : `${actor} sent a two-step reminder`,
   two_step_policy_changed: ({ actor, detail }) =>
     detail.required === true
       ? `${actor} made two-step required for everyone`

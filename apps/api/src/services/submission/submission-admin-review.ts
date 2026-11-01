@@ -7,7 +7,7 @@ import type { ItemSubmissionServiceDeps } from "./submission-types.js";
 
 export async function assignForAdmin(
   deps: ItemSubmissionServiceDeps,
-  _adminId: string,
+  adminId: string,
   id: string,
   assignedToUserId: string | null,
 ): Promise<Result<ItemSubmission, SubmissionError>> {
@@ -27,6 +27,15 @@ export async function assignForAdmin(
     if (!canAccessAdminSubmissionsRead(role, staffRoles)) {
       return err(new SubmissionError("Assignee must be staff with submissions access", 400));
     }
+  }
+  if (deps.consignmentAssignment) {
+    // The thread and the consignment move together, and the thread's history shows it.
+    await deps.consignmentAssignment.assign(adminId, id, {
+      assignedToUserId: assignedToUserId || null,
+      covering: false,
+    });
+    const reloaded = await deps.submissions.findById(id);
+    return reloaded ? ok(reloaded) : err(new SubmissionError("Not found", 404));
   }
   const updated = await deps.submissions.update(id, {
     assignedToUserId: assignedToUserId ?? null,

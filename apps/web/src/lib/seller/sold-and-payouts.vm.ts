@@ -34,6 +34,11 @@ export type SoldAndPayoutsVm = {
   payouts: PayoutRow[];
 };
 
+/** A payout's statement PDF, through the app so the member's session goes with it. */
+export function payoutStatementHref(sellerEntityId: string, payoutId: string): string {
+  return `/legal-entities/${encodeURIComponent(sellerEntityId)}/payouts/${encodeURIComponent(payoutId)}/statement`;
+}
+
 /** Payouts, newest first, each with its statement. */
 export function buildPayoutRows(payouts: readonly Payout[], sellerEntityId: string): PayoutRow[] {
   return [...payouts]
@@ -48,7 +53,7 @@ export function buildPayoutRows(payouts: readonly Payout[], sellerEntityId: stri
         fees: formatMoney(Number.isFinite(fees) ? -fees : 0, payout.currency),
         net: formatMoney(payout.netAmount, payout.currency),
         status: payout.status,
-        statementHref: `/legal-entities/${encodeURIComponent(sellerEntityId)}/payouts/${encodeURIComponent(payout.id)}/statement`,
+        statementHref: payoutStatementHref(sellerEntityId, payout.id),
       };
     });
 }

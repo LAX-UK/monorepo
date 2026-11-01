@@ -20,6 +20,7 @@ import type {
 import type { UserRole } from "@auction/types";
 import type { Result } from "neverthrow";
 import type { SubmissionError } from "../lib/errors.js";
+import type { IConsignmentAssignment } from "./consignment-messages/consignment-message.ports.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { ImageCleanupService } from "./image-cleanup.service.js";
 import type {
@@ -95,6 +96,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
     consignmentAgreements: IConsignmentAgreementRepository | null = null,
     sellerIdentity: ISellerIdentityReader | null = null,
     staffRoles: Pick<IStaffRoleAssignmentReader, "listActiveRoles"> | null = null,
+    consignmentAssignment: IConsignmentAssignment | null = null,
   ) {
     this.deps = {
       transactionRunner,
@@ -112,6 +114,7 @@ export class ItemSubmissionService implements IItemSubmissionService {
       consignmentAgreements,
       sellerIdentity,
       staffRoles,
+      consignmentAssignment,
     };
   }
 

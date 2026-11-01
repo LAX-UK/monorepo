@@ -49,6 +49,17 @@ export type NotificationPayload = {
     organisationName?: string;
     /** Last four digits of a new payout bank account. */
     bankLast4?: string | null;
+    /** An access request's words for its email: who asked, for what and why, and the decision. */
+    accessRequest?: {
+      requesterName: string;
+      /** "the buyer agent role", "more access". */
+      requested: string;
+      reason: string | null;
+      /** Set once decided. */
+      approved?: boolean;
+      grantedRole?: string | null;
+      note?: string | null;
+    };
     /**
      * The invoices one payment settled together, each with its amount (major units, `currency`);
      * `amount` is then their total.
