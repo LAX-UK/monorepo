@@ -3,6 +3,7 @@ import { SetMarketingHeaderTitle } from "@/components/layout/set-marketing-heade
 import { ActingEntityCookieReconciler } from "@/components/legal-entity/acting-entity-cookie-reconciler";
 import { LotTemplate } from "@/components/lot-page/lot-template";
 import { LotWayfinding } from "@/components/lot-page/lot-wayfinding";
+import { WithdrawnLotPage } from "@/components/lot-page/withdrawn-lot-page";
 import {
   AtgExternalBiddingPanel,
   isAtgReadOnlyCatalogSale,
@@ -29,6 +30,10 @@ import { LotRealtimeProvider } from "@/lib/context/lot-realtime-provider";
 import { MarketingBidBarChromeProvider } from "@/lib/context/marketing-bid-bar-chrome";
 import { OnlineLotLifecycleProvider } from "@/lib/context/online-lot-lifecycle";
 import { MaybeSaleroomLiveProvider } from "@/lib/context/saleroom-live-provider";
+import {
+  getServerWithdrawnLot,
+  loadWithdrawnLotPage,
+} from "@/lib/lot-page/load-withdrawn-lot.server";
 import { loadLotTemplateReads } from "@/lib/lot-page/lot-page-reads.server";
 import { toLotTemplateData } from "@/lib/lot-page/lot-template-props";
 import {
@@ -51,7 +56,12 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
   const { id, slug } = await params;
   const sp = await searchParams;
   const auction = await loadLotDetailMetadata(id);
-  if (!auction) return metadataForNotFound("Lot not found");
+  if (!auction) {
+    const withdrawn = await getServerWithdrawnLot(id);
+    return withdrawn
+      ? metadataForNotFound(`${withdrawn.title} (withdrawn)`)
+      : metadataForNotFound("Lot not found");
+  }
   ensureCanonicalLotSlug(slug, auction, sp);
   return metadataForLot(auction);
 }
@@ -59,6 +69,15 @@ export async function generateMetadata({ params, searchParams }: PageProps): Pro
 export default async function ArtworkPage({ params, searchParams }: PageProps) {
   const { id, slug } = await params;
   const sp = await searchParams;
+  const withdrawn = await loadWithdrawnLotPage({ id, slug, searchParams: sp });
+  if (withdrawn) {
+    return (
+      <MarketingDetailShell useCatalogPt={false} className="pt-[calc(var(--header-height)+8px)]">
+        <SetMarketingHeaderTitle title={withdrawn.lot.title} />
+        <WithdrawnLotPage data={withdrawn} now={new Date()} />
+      </MarketingDetailShell>
+    );
+  }
   const vm = await loadLotDetailPage({
     id,
     slug,

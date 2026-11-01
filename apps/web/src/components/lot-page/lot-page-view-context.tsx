@@ -38,3 +38,21 @@ export function useLotPageViewContext(): LotPageViewContextValue {
   if (!ctx) throw new Error("useLotPageViewContext must be used within LotPageViewProvider");
   return ctx;
 }
+
+/**
+ * A lot page that draws a view which never changes (a withdrawn lot has no clock, no price and no
+ * bidding), so it needs none of the live providers.
+ */
+export function LotPageViewStaticProvider({
+  view,
+  children,
+}: {
+  view: LotPageView;
+  children: ReactNode;
+}) {
+  return (
+    <LotPageViewContext.Provider value={{ view, history: null, nowMs: 0 }}>
+      {children}
+    </LotPageViewContext.Provider>
+  );
+}
