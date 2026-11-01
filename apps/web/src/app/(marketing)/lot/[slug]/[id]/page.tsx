@@ -1,6 +1,7 @@
 import { ViewItemTracker } from "@/components/analytics/view-item-tracker";
 import { SetMarketingHeaderTitle } from "@/components/layout/set-marketing-header-title";
 import { ActingEntityCookieReconciler } from "@/components/legal-entity/acting-entity-cookie-reconciler";
+import { LotBidEntry } from "@/components/lot-page/bid/lot-bid-entry";
 import { LotTemplate } from "@/components/lot-page/lot-template";
 import { LotWayfinding } from "@/components/lot-page/lot-wayfinding";
 import {
@@ -11,7 +12,6 @@ import { LotPager } from "@/components/marketing/lot-pager";
 import { MarketingDetailShell } from "@/components/marketing/marketing-detail-shell";
 import { MarketingDetailWayfinding } from "@/components/marketing/marketing-detail-wayfinding";
 import { RecentlyViewedTracker } from "@/components/marketing/recently-viewed-tracker";
-import { ArtworkBidPanel } from "@/components/sections/artwork/artwork-bid-panel";
 import { ArtworkConditionReportCta } from "@/components/sections/artwork/artwork-condition-report-cta";
 import { ArtworkWatchToggle } from "@/components/sections/artwork/artwork-watch-toggle";
 import { LotOnsiteMarketingLayout } from "@/components/sections/artwork/layouts/lot-onsite-marketing-layout";
@@ -20,6 +20,7 @@ import { OnsiteLotUnavailable } from "@/components/sections/artwork/onsite/onsit
 import { LotMoreFromRail } from "@/components/sections/artwork/redesign/lot-more-from-rail";
 import { SaleroomLiveLotBanner } from "@/components/sections/saleroom/saleroom-live-lot-banner";
 import { usesBidAsClient } from "@/lib/auth/client-audience";
+import { resolveKycBidGate } from "@/lib/bid/resolve-kyc-bid-gate";
 import { isStrictBidEligibilityEnabled } from "@/lib/bid/strict-bid-eligibility-rollout.server";
 import { LiveConnectivityNoticeProvider } from "@/lib/connection/live-connectivity-notice";
 import { RealtimeHealthProvider } from "@/lib/connection/realtime-health-provider";
@@ -29,6 +30,7 @@ import { LotRealtimeProvider } from "@/lib/context/lot-realtime-provider";
 import { MarketingBidBarChromeProvider } from "@/lib/context/marketing-bid-bar-chrome";
 import { OnlineLotLifecycleProvider } from "@/lib/context/online-lot-lifecycle";
 import { MaybeSaleroomLiveProvider } from "@/lib/context/saleroom-live-provider";
+import { isEnglishOnlyAuctionsLocked } from "@/lib/feature-flags/english-only-auctions";
 import { loadLotTemplateReads } from "@/lib/lot-page/lot-page-reads.server";
 import { toLotTemplateData } from "@/lib/lot-page/lot-template-props";
 import {
@@ -72,14 +74,11 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     saleBundle,
     kycSummary,
     kycUnavailable,
-    initialAutoBidSettings,
     actingCtx,
     orgModuleEnabled,
     initialSaleroomStatus,
     initialHistory,
     initialLeadingBidderId,
-    initialOutbid,
-    initialUserHasBid,
     watching,
     watchedLotIds,
     parentSale,
@@ -141,29 +140,26 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
     atgReadOnlyCatalog && saleBundle ? (
       <AtgExternalBiddingPanel sale={saleBundle.sale} lot={{ sold: atgLotSold }} />
     ) : (
-      <ArtworkBidPanel
+      <LotBidEntry
         auction={auction}
-        initialHistory={initialHistory}
-        initialLeadingBidderId={initialLeadingBidderId}
-        sessionUser={session}
-        summarySeed={summarySeed}
-        initialAutoBidSettings={initialAutoBidSettings}
-        initialOutbid={initialOutbid}
-        initialUserHasBid={initialUserHasBid}
-        initialWatching={watching}
-        loginNextPath={lotPath(auction)}
-        omitPricingHeader
-        entryOnly
-        kycSummary={kycSummary}
-        kycUnavailable={kycUnavailable}
-        saleRegistrationBidGate={saleRegistrationBidGate}
-        saleRegistrationPath={parentSale ? salePath(parentSale) : null}
-        orgModuleEnabled={orgModuleEnabled}
-        saleForLifecycle={saleLifecyclePick}
-        isOwnLot={isOwnLot}
-        actingLegalEntityId={actingLegalEntityId}
-        biddingAccount={biddingAccount}
-        strictBidEligibilityEnabled={isStrictBidEligibilityEnabled()}
+        artistName={artist?.name ?? null}
+        buyersPremium={templateReads?.bidding.buyersPremium ?? null}
+        gate={{
+          sessionUser: session,
+          loginNextPath: lotPath(auction),
+          isOwnLot,
+          actingLegalEntityId,
+          biddingAccount,
+          kycBidGate: resolveKycBidGate({ summary: kycSummary, unavailable: kycUnavailable }),
+          saleRegistrationBidGate,
+          strictBidEligibilityEnabled: isStrictBidEligibilityEnabled(),
+          orgModuleEnabled,
+          saleRegistrationPath: parentSale ? salePath(parentSale) : null,
+          unsupportedAuctionMode:
+            isEnglishOnlyAuctionsLocked() &&
+            auction.auctionType !== "english" &&
+            auction.auctionType !== "buy_it_now",
+        }}
       />
     );
 

@@ -56,7 +56,7 @@ describe("bid dialog state", () => {
     });
     expect(failed.phase).toBe("choosing");
     expect(failed.shownNextBid).toBe("7500.00");
-    expect(failed.failure?.kind).toBe("refused");
+    expect(failed.failure).toEqual({ kind: "moved", seenNextBid: "7250.00", nextBid: "7500.00" });
   });
 
   it("keeps the attempt after a dropped connection so the retry reuses the same key", () => {

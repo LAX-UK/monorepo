@@ -216,7 +216,7 @@ export function LotMoreFromRail({
                           asChild
                           className="h-10 min-h-10 w-full rounded border-outline-variant text-base font-semibold text-on-surface"
                         >
-                          <Link href={`${c.href}#bid-interactive-anchor`}>Bid</Link>
+                          <Link href={`${c.href}#lot-bid-entry`}>Bid</Link>
                         </Button>
                       ) : null}
                       <div className="min-w-0 w-full">

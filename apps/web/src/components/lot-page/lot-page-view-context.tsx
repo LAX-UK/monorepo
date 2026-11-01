@@ -1,16 +1,14 @@
 "use client";
 
-import type { LotPageView } from "@/lib/lot-page/build-lot-page-view";
-import { type LotPageViewSource, useLotPageView } from "@/lib/lot-page/use-lot-page-view";
-import type { PublicBidHistory } from "@auction/domain";
+import {
+  type LotPageLive,
+  type LotPageViewSource,
+  useLotPageView,
+} from "@/lib/lot-page/use-lot-page-view";
 import { type ReactNode, createContext, useContext } from "react";
 
-type LotPageViewContextValue = {
-  view: LotPageView;
-  history: PublicBidHistory | null;
-  /** The server-corrected clock, in ms, for relative times. */
-  nowMs: number;
-};
+/** The lot's live view, plus the server-corrected clock (`nowMs`) for relative times. */
+type LotPageViewContextValue = LotPageLive;
 
 const LotPageViewContext = createContext<LotPageViewContextValue | null>(null);
 
@@ -25,12 +23,8 @@ export function LotPageViewProvider({
   source: LotPageViewSource;
   children: ReactNode;
 }) {
-  const { view, history, nowMs } = useLotPageView(source);
-  return (
-    <LotPageViewContext.Provider value={{ view, history, nowMs }}>
-      {children}
-    </LotPageViewContext.Provider>
-  );
+  const live = useLotPageView(source);
+  return <LotPageViewContext.Provider value={live}>{children}</LotPageViewContext.Provider>;
 }
 
 export function useLotPageViewContext(): LotPageViewContextValue {

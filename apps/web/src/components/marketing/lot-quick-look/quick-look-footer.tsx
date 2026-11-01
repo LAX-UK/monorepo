@@ -15,7 +15,7 @@ type Props = {
 export function QuickLookFooter({ vm, options, onCtaNavigate }: Props) {
   const loginNextPath = options.loginNextPath ?? vm.href;
   const showBid = isLotQuickLookBiddable(vm.status);
-  const bidHref = `${vm.href}#bid-interactive-anchor`;
+  const bidHref = `${vm.href}#lot-bid-entry`;
   const shareBase = process.env.NEXT_PUBLIC_SITE_URL ?? "";
   const shareUrl = vm.href.startsWith("http")
     ? vm.href

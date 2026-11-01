@@ -76,13 +76,17 @@ export function reduceBidDialog(state: BidDialogState, action: BidDialogAction):
       return { ...state, phase: "placed", failure: null };
     case "failed": {
       const nextBid = nextBidOf(action.failure);
+      // The server names the new next bid; the dialog knows which one the bidder was looking at.
+      const failure: BidFailure = nextBid
+        ? { kind: "moved", seenNextBid: state.shownNextBid, nextBid }
+        : action.failure;
       // Nothing the bidder pressed changes unless the notice says so; a dropped connection keeps
       // the attempt, so the retry carries the same key and cannot place the bid twice.
       const keepAttempt = action.failure.kind === "unreachable";
       return {
         ...state,
         phase: "choosing",
-        failure: action.failure,
+        failure,
         shownNextBid: nextBid ?? state.shownNextBid,
         maximum: nextBid ? keepMaximum(action.ladder, state.maximum) : state.maximum,
         attempt: keepAttempt ? state.attempt : state.attempt + 1,
