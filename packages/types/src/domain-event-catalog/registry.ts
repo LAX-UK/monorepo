@@ -116,6 +116,8 @@ export const ALL_LIVE_DOMAIN_EVENT_TYPES = [
   "condition_report.fulfilled",
   "condition_report.in_progress",
   "condition_report.requested",
+  "dispute_case.allocated",
+  "dispute_case.needs_allocation",
   "export.requested",
   "item_submission.restricted_entity_write",
   "kyc.verified",

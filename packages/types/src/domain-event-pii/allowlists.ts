@@ -80,6 +80,9 @@ export const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "currency",
     "reason",
   ]),
+  /** A dispute no invoice carries yet; Stripe's dispute reason code is operational, not PII. */
+  "dispute_case.needs_allocation": new Set(["stripeDisputeId", "stripeChargeId", "reason"]),
+  "dispute_case.allocated": new Set(["stripeDisputeId"]),
   /** Payment dispute opened via Stripe webhook. */
   "payment.dispute_opened": new Set([
     "stripeDisputeId",
