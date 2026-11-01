@@ -90,7 +90,16 @@ export function NewsletterSignupForm({ tone = "default" }: Props) {
               )}
             />
           </div>
-          <Button type="submit" variant={onDark ? "secondary" : "primary"} disabled={loading}>
+          <Button
+            type="submit"
+            variant={onDark ? "secondary" : "primary"}
+            disabled={loading}
+            // The hero ground is near-black in both themes, so its button stays light in both.
+            className={cn(
+              onDark &&
+                "border-transparent bg-hero-cream text-brand-900 hover:bg-brand-100 active:bg-brand-100",
+            )}
+          >
             {loading ? "Subscribing…" : "Subscribe"}
           </Button>
         </div>
