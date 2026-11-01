@@ -10,7 +10,10 @@ import {
 import type { IEmailService } from "@auction/email";
 import { and, eq, gt, inArray, isNotNull, isNull, or } from "drizzle-orm";
 import type pino from "pino";
-import { listStaffOpsRecipients } from "../lib/staff-ops-email-recipients.js";
+import {
+  listStaffFinanceRecipients,
+  listStaffOpsRecipients,
+} from "../lib/staff-ops-email-recipients.js";
 
 export const NOTIFICATION_FANOUT_PROJECTOR = "notification_fanout";
 
@@ -422,9 +425,9 @@ export function formatRespondBy(iso: string | null): string | null {
 }
 
 /**
- * A Stripe dispute matching no payment row has no seller to notify, so alert platform staff
- * and the ops inbox (`ADMIN_EMAIL_ADDRESS`) directly. It must be answered at Stripe before
- * its response deadline.
+ * A Stripe dispute matching no payment row has no seller to notify, so alert the ops inbox
+ * (`ADMIN_EMAIL_ADDRESS`) and staff with finance access directly. It must be answered at
+ * Stripe before its response deadline.
  */
 export async function fanoutDisputeUnmatched(options: {
   db: Db;
@@ -446,8 +449,8 @@ export async function fanoutDisputeUnmatched(options: {
     stripeEventType: payload.stripeEventType,
     stripeDashboardUrl: stripeDisputeDashboardUrl(payload.stripeDisputeId, payload.livemode),
   };
-  const staffOps = await listStaffOpsRecipients(options.db);
-  for (const s of staffOps) {
+  const financeStaff = await listStaffFinanceRecipients(options.db);
+  for (const s of financeStaff) {
     await options.emailService.enqueue({
       template: "dispute-unmatched-admin-notice",
       to: s.email,
@@ -458,8 +461,10 @@ export async function fanoutDisputeUnmatched(options: {
     });
   }
   const adminEmail = options.adminEmailAddress;
-  const adminIsStaff = staffOps.some((s) => s.email.toLowerCase() === adminEmail?.toLowerCase());
-  if (adminEmail && !adminIsStaff) {
+  const adminIsFinanceStaff = financeStaff.some(
+    (s) => s.email.toLowerCase() === adminEmail?.toLowerCase(),
+  );
+  if (adminEmail && !adminIsFinanceStaff) {
     await options.emailService.enqueue({
       template: "dispute-unmatched-admin-notice",
       to: adminEmail,

@@ -59,9 +59,14 @@ const expectedVars = {
 };
 
 describe("fanoutDisputeUnmatched", () => {
-  it("alerts every staff ops recipient and the ops inbox, idempotent per domain event", async () => {
+  it("alerts finance and administrator staff and the ops inbox, idempotent per domain event", async () => {
     const emailService = makeEmail();
-    const db = fakeDb([[{ id: "staff_1", email: "finance@lax.bid", firstName: "Fin" }]]);
+    const db = fakeDb([
+      [
+        { id: "staff_1", email: "finance@lax.bid", firstName: "Fin", staffRole: "finance_ops" },
+        { id: "staff_2", email: "owner@lax.bid", firstName: "Ann", staffRole: "super_admin" },
+      ],
+    ]);
 
     await fanoutDisputeUnmatched({
       db,
@@ -71,7 +76,13 @@ describe("fanoutDisputeUnmatched", () => {
       payload,
     });
 
-    expect(emailService.enqueue).toHaveBeenCalledTimes(2);
+    expect(emailService.enqueue).toHaveBeenCalledTimes(3);
+    expect(emailService.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({
+        to: "owner@lax.bid",
+        idempotencyKey: "dispute-unmatched-admin-notice:99:ops:staff_2",
+      }),
+    );
     expect(emailService.enqueue).toHaveBeenCalledWith({
       template: "dispute-unmatched-admin-notice",
       to: "finance@lax.bid",
@@ -90,9 +101,36 @@ describe("fanoutDisputeUnmatched", () => {
     });
   });
 
-  it("does not email the ops inbox twice when it is also a staff account", async () => {
+  it("does not email staff without finance access (clerk, cataloguer, viewer, unset role)", async () => {
     const emailService = makeEmail();
-    const db = fakeDb([[{ id: "staff_1", email: "Admin@lax.bid", firstName: null }]]);
+    const db = fakeDb([
+      [
+        { id: "s_ops", email: "clerk@lax.bid", firstName: null, staffRole: "operations" },
+        { id: "s_cat", email: "cat@lax.bid", firstName: null, staffRole: "catalogue_manager" },
+        { id: "s_view", email: "view@lax.bid", firstName: null, staffRole: "staff_viewer" },
+        { id: "s_none", email: "none@lax.bid", firstName: null, staffRole: null },
+      ],
+    ]);
+
+    await fanoutDisputeUnmatched({
+      db,
+      emailService,
+      adminEmailAddress: "admin@lax.bid",
+      eventId: 102,
+      payload,
+    });
+
+    expect(emailService.enqueue).toHaveBeenCalledTimes(1);
+    expect(emailService.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ to: "admin@lax.bid" }),
+    );
+  });
+
+  it("does not email the ops inbox twice when it is also a finance staff account", async () => {
+    const emailService = makeEmail();
+    const db = fakeDb([
+      [{ id: "staff_1", email: "Admin@lax.bid", firstName: null, staffRole: "finance_ops" }],
+    ]);
 
     await fanoutDisputeUnmatched({
       db,
@@ -105,7 +143,7 @@ describe("fanoutDisputeUnmatched", () => {
     expect(emailService.enqueue).toHaveBeenCalledTimes(1);
   });
 
-  it("still alerts the ops inbox when no staff accounts exist", async () => {
+  it("still alerts the ops inbox when no finance staff exist", async () => {
     const emailService = makeEmail();
     const db = fakeDb([[]]);
 
