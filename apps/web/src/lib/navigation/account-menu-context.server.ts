@@ -1,6 +1,5 @@
 import "server-only";
 
-import { purchasesToPayBy } from "@/lib/buying/account-buying-figures";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import type { SessionUser } from "@/lib/data/contracts";
 import { requireActingContext } from "@/lib/legal-entity/acting-context.server";
@@ -9,11 +8,9 @@ import { resolveOrgModuleEnabledFromRequest } from "@/lib/legal-entity/org-modul
 import { createPendingInvitationsGateway } from "@/lib/legal-entity/pending-invitations.gateway.server";
 import type { AccountMenuContext } from "./account-menu-context";
 import { buildAccountChrome } from "./account-switcher-model";
+import { NO_ATTENTION } from "./client-attention";
+import { loadClientAttention } from "./client-attention.server";
 import { clientNavScopeFor } from "./client-nav-scope";
-import { deriveClientAttention } from "./derive-client-attention";
-
-/** Unread notifications counted for the menu; the badge shows "9+" past this. */
-const UNREAD_LIMIT = 10;
 
 function settled<T>(result: PromiseSettledResult<T>, fallback: T): T {
   return result.status === "fulfilled" ? result.value : fallback;
@@ -29,16 +26,12 @@ function settled<T>(result: PromiseSettledResult<T>, fallback: T): T {
 export async function loadAccountMenuContext(user: SessionUser): Promise<AccountMenuContext> {
   const c = await getServerDataContainer();
   const orgModuleEnabled = await resolveOrgModuleEnabledFromRequest();
-  const [acting, submissions, invitations, scope, bids, purchases, unread] =
-    await Promise.allSettled([
-      requireActingContext(user.role, user.staffRoles),
-      c.submissions.getSummary(),
-      orgModuleEnabled ? createPendingInvitationsGateway().listMine() : Promise.resolve([]),
-      c.buying.scope(),
-      c.buying.bids(),
-      c.buying.purchases(),
-      c.notifications.listMine({ tab: "unread", limit: UNREAD_LIMIT }),
-    ]);
+  const [acting, submissions, invitations, attention] = await Promise.allSettled([
+    requireActingContext(user.role, user.staffRoles),
+    c.submissions.getSummary(),
+    orgModuleEnabled ? createPendingInvitationsGateway().listMine() : Promise.resolve([]),
+    loadClientAttention(user.id),
+  ]);
 
   // Without the accounts the menu would describe the personal account; the caller keeps what it
   // showed last instead.
@@ -62,13 +55,6 @@ export async function loadAccountMenuContext(user: SessionUser): Promise<Account
     pendingInvitations,
     scope: clientNavScopeFor(safeActing, hasConsigned),
     accounts: account.switcher?.options ?? null,
-    attention: deriveClientAttention({
-      userId: user.id,
-      bids: settled(bids, []),
-      // Only what this person pays: a buyer agent is told about a win, not asked to pay for it.
-      purchasesToPay:
-        scope.status === "fulfilled" ? purchasesToPayBy(scope.value, settled(purchases, [])) : [],
-      unreadNotifications: settled(unread, []),
-    }),
+    attention: settled(attention, NO_ATTENTION),
   };
 }
