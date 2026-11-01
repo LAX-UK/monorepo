@@ -21,7 +21,6 @@ export type SaleFormatExplainerViewModel = {
   steps: Array<{ title: string; description: string }>;
   footnotes: string[];
   iconName: "Laptop" | "MapPin";
-  colorClass: string;
 };
 
 const HYBRID_GATED_DESCRIPTION =
@@ -123,7 +122,6 @@ export function resolveSaleFormatExplainer(
     steps,
     footnotes,
     iconName: base.iconName,
-    colorClass: base.colorClass,
   };
 }
 

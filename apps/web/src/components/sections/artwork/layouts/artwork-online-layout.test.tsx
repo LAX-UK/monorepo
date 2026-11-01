@@ -160,13 +160,13 @@ describe("ArtworkOnlineLayout", () => {
       bidPanel: <div>Bid panel</div>,
     });
 
-    expect(screen.getByRole("heading", { name: "LOT DETAILS" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Lot details" })).toBeInTheDocument();
     expect(screen.getByText(/Hybrid catalogue and reserve copy/i)).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "In-Person Event Participation Hub" }),
     ).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /Fees & buyer's premium/i })).toBeInTheDocument();
-    expect(screen.getAllByRole("heading", { name: "LOT DETAILS" })).toHaveLength(1);
+    expect(screen.getAllByRole("heading", { name: "Lot details" })).toHaveLength(1);
   });
 
   it("keeps lot details in the lower marketing section for online-only sales", () => {
@@ -187,8 +187,8 @@ describe("ArtworkOnlineLayout", () => {
       bidPanel: <div>Bid panel</div>,
     });
 
-    expect(screen.getByRole("heading", { name: "LOT DETAILS" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Lot details" })).toBeInTheDocument();
     expect(screen.getByText(/Hybrid catalogue and reserve copy/i)).toBeInTheDocument();
-    expect(screen.getAllByRole("heading", { name: "LOT DETAILS" })).toHaveLength(1);
+    expect(screen.getAllByRole("heading", { name: "Lot details" })).toHaveLength(1);
   });
 });

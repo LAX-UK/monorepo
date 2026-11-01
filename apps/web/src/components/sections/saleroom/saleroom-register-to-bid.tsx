@@ -220,9 +220,7 @@ function AgentRegistrationForm({
       onSubmit={(e) => void onSubmit(e)}
       className="flex w-full min-w-0 max-w-md flex-col gap-2 rounded-md border border-outline-variant/30 bg-surface-container-low/40 p-3 sm:max-w-sm"
     >
-      <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        Register to bid (buyer agents)
-      </p>
+      <p className="font-label text-xs text-on-surface-variant">Register to bid (buyer agents)</p>
       <p className="font-body text-xs text-on-surface-variant">
         For organisations bidding as agents on this sale. Private collectors can bid online after
         sign-in and identity verification — no separate registration.

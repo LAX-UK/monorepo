@@ -30,7 +30,7 @@ export function PaletteRow({ item, onNavigate }: Props) {
       <span className="min-w-0 flex-1">
         <span className="block truncate font-body text-sm text-on-surface">{item.label}</span>
         {item.hint ? (
-          <span className="block truncate font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
+          <span className="block truncate font-label text-xs text-on-surface-variant">
             {item.hint}
           </span>
         ) : null}

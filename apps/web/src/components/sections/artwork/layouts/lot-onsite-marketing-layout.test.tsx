@@ -201,7 +201,7 @@ describe("LotOnsiteMarketingLayout", () => {
 
   it("shows lot details where the participation hub used to render", () => {
     renderLayout();
-    expect(screen.getByRole("heading", { name: "LOT DETAILS" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Lot details" })).toBeInTheDocument();
     expect(screen.getByText(/Catalogue and reserve copy/i)).toBeInTheDocument();
     expect(
       screen.queryByRole("heading", { name: "In-Person Event Participation Hub" }),

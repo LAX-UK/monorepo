@@ -79,9 +79,7 @@ export function SearchFilterSheet({
           onSubmitted={close}
         />
         <div>
-          <p className="mb-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-            Status
-          </p>
+          <p className="mb-3 font-label text-xs text-on-surface-variant">Status</p>
           <SearchStatusChips
             layout="list"
             trimmed={trimmed}
@@ -94,9 +92,7 @@ export function SearchFilterSheet({
         </div>
         {categories.length > 0 ? (
           <div>
-            <p className="mb-3 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-              Category
-            </p>
+            <p className="mb-3 font-label text-xs text-on-surface-variant">Category</p>
             <SearchCategoryChips
               layout="list"
               categories={categories}

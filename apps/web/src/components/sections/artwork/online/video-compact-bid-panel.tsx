@@ -36,20 +36,16 @@ export function VideoCompactBidPanel() {
       <div className="rounded-lg border border-outline-variant/25 bg-surface-container-lowest p-4 shadow-[0_1px_0_rgba(0,0,0,0.04)] dark:bg-surface-container-low/40">
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
-            <p className="font-label text-[0.65rem] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-              Current bid
-            </p>
+            <p className="font-label text-xs text-on-surface-variant">Current bid</p>
             <p
               className={`font-headline text-xl tabular-nums text-on-surface ${priceFlash ? "motion-safe:animate-[bidPriceBump_0.45s_ease-out]" : ""}`}
             >
               {formatMoney(currentPrice)}
             </p>
-            <p className="mt-0.5 font-label text-[0.65rem] text-secondary">
+            <p className="mt-0.5 font-label text-xs text-on-surface-variant">
               Min next {formatMoney(minNumeric.toFixed(2))}
               {positionLabel ? (
-                <span className="ml-2 font-bold uppercase tracking-wider text-primary">
-                  · {positionLabel}
-                </span>
+                <span className="ml-2 font-bold text-primary">· {positionLabel}</span>
               ) : null}
             </p>
           </div>

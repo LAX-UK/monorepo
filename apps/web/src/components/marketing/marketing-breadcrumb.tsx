@@ -16,7 +16,7 @@ export type MarketingBreadcrumbProps = {
 
 /** Shared visible-breadcrumb styling for catalog hubs + content pages (matches detail wayfinding). */
 export const MARKETING_HUB_BREADCRUMB_CLASS =
-  "font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant md:text-xs";
+  "font-label text-xs text-on-surface-variant md:text-xs";
 
 /** Visible trail; pair with JSON-LD `BreadcrumbList` from `lib/seo/jsonld`. */
 export function MarketingBreadcrumb({ items, className }: MarketingBreadcrumbProps) {

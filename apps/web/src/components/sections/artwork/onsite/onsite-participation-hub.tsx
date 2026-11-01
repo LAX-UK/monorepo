@@ -66,7 +66,7 @@ export function OnsiteParticipationHub({
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="group flex flex-col justify-between rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-5 transition-all hover:border-link/30 hover:shadow-md">
           <div className="space-y-3">
-            <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-primary">
+            <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold tracking-wider text-primary">
               ROUTE 1 · SALEROOM
             </span>
             <h3 className="flex items-center gap-2 font-headline text-base font-bold text-on-surface">
@@ -95,7 +95,7 @@ export function OnsiteParticipationHub({
 
         <div className="group flex flex-col justify-between rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-5 transition-all hover:border-link/30 hover:shadow-md">
           <div className="space-y-3">
-            <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-primary">
+            <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold tracking-wider text-primary">
               ROUTE 2 · CONFIDENTIAL
             </span>
             <h3 className="flex items-center gap-2 font-headline text-base font-bold text-on-surface">
@@ -113,7 +113,7 @@ export function OnsiteParticipationHub({
 
         <div className="group flex flex-col justify-between rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-5 transition-all hover:border-link/30 hover:shadow-md">
           <div className="space-y-3">
-            <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-primary">
+            <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold tracking-wider text-primary">
               ROUTE 3 · TELEPHONE
             </span>
             <h3 className="flex items-center gap-2 font-headline text-base font-bold text-on-surface">
@@ -144,7 +144,7 @@ export function OnsiteParticipationHub({
 
         <div className="group flex flex-col justify-between rounded-2xl border border-outline-variant/20 bg-surface-container-lowest p-5 transition-all hover:border-link/30 hover:shadow-md">
           <div className="space-y-3">
-            <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold tracking-wider text-primary">
+            <span className="inline-flex items-center justify-center rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-bold tracking-wider text-primary">
               ROUTE 4 · BROADCAST
             </span>
             <h3 className="flex items-center gap-2 font-headline text-base font-bold text-on-surface">

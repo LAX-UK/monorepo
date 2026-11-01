@@ -218,14 +218,24 @@
   --color-nav-active-bg: var(--color-info-container);
   --color-nav-active-border: var(--color-info);
 
-  /* Micro type scale — chips, eyebrows, kbd hints (marketing chrome + cards) */
-  --text-label-1: 0.625rem;
-  --text-label-2: 0.6875rem;
+  /*
+   * Countdown tones, one per tone of the lot domain's time-left table: calm ink by default, the
+   * warning tone in the final hour, the danger tone in the final minutes or during an extension.
+   * Red never marks a calm countdown. `countdownToneClass` (lib/presenters/countdown-tone.ts)
+   * names them per tone.
+   */
+  --color-countdown-calm: var(--lax-fg);
+  --color-countdown-soon: var(--lax-warning-fg);
+  --color-countdown-final: var(--lax-danger-fg);
+
+  /* 13/20, the dense interface step. 12/16 (`text-xs`) is the smallest text anywhere; the old
+     10px and 11px label steps are retired. */
   --text-label-3: 0.8125rem;
 
+  /* The family rule: Montserrat for titles and display, Outfit for interface text. */
   --font-headline: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
-  --font-body: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
-  --font-label: var(--font-montserrat), ui-sans-serif, system-ui, sans-serif;
+  --font-body: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
+  --font-label: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   --font-supporting: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   --font-footer-links: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
 
@@ -306,8 +316,6 @@
   --text-title-section: 2.5rem;
   --font-feature-tabular: "tnum" 1, "ss01" 1;
   --text-legal-h2: 1.125rem;
-  --text-label-caps-tracking: 0.22em;
-  --text-label-caps-tracking-tight: 0.18em;
   /* Mobile-first shell */
   --tap-target-min: 44px;
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);

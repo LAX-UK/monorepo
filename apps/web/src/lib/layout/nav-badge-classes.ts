@@ -22,7 +22,7 @@ export function navBadgeShowsCount(tone: NavBadgeTone = "default"): boolean {
 
 export function navBadgeClassName(tone: NavBadgeTone = "default", className?: string): string {
   return cn(
-    "rounded-full px-1.5 py-0 font-label text-[9px] leading-none",
+    "rounded-full px-1.5 py-0 font-label text-xs leading-none",
     TONE_CLASS[tone],
     className,
   );

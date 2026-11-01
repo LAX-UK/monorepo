@@ -11,9 +11,9 @@ export function resolveSaleLotCount(lotCount: unknown, previewLength: number): n
   return Number.isFinite(n) && n >= 0 ? n : previewLength;
 }
 
-/** Card / grid copy: "1 Item" | "15 Items". */
+/** Card / grid copy: "1 item" | "15 items". */
 export function formatSaleItemsLabel(count: number): string {
-  return `${count} Item${count === 1 ? "" : "s"}`;
+  return `${count} item${count === 1 ? "" : "s"}`;
 }
 
 /** Agenda / related rail copy: "1 lot" | "10 lots". */

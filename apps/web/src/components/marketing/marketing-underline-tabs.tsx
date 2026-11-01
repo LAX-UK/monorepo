@@ -49,14 +49,14 @@ export function MarketingUnderlineTabs({
           const active = Boolean(tab.active);
           const linkClass = isAnchor
             ? cn(
-                "relative inline-flex min-h-11 shrink-0 items-center border-b-2 px-4 font-label text-[0.7rem] font-semibold uppercase tracking-wider transition-colors motion-reduce:transition-none",
+                "relative inline-flex min-h-11 shrink-0 items-center border-b-2 px-4 font-label text-xs font-medium transition-colors motion-reduce:transition-none",
                 FOCUS_RING,
                 active
                   ? "border-primary text-on-surface"
                   : "border-transparent text-on-surface-variant hover:text-on-surface",
               )
             : cn(
-                "snap-start inline-flex min-h-[44px] shrink-0 items-center whitespace-nowrap py-2 font-body text-base font-semibold uppercase leading-5 text-nav-text transition-colors duration-200 ease-out sm:pb-1.5 lg:text-lg lg:leading-[21px]",
+                "snap-start inline-flex min-h-[44px] shrink-0 items-center whitespace-nowrap py-2 font-body text-base font-semibold leading-5 text-nav-text transition-colors duration-200 ease-out sm:pb-1.5 lg:text-lg lg:leading-[21px]",
                 "border-b-[1.5px] border-transparent hover:text-on-surface",
                 "motion-safe:transition-[color,border-color] motion-safe:duration-200",
                 "focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",

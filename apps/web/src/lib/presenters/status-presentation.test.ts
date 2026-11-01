@@ -13,20 +13,22 @@ import {
 } from "./status-presentation";
 
 describe("liveUrgencyTextClass", () => {
-  it("returns live-red for live and urgent tiers", () => {
-    expect(liveUrgencyTextClass("live")).toContain("text-live-red");
-    expect(liveUrgencyTextClass("soon")).toContain("text-live-red");
+  it("keeps a live or calm countdown in calm ink", () => {
+    expect(liveUrgencyTextClass("live")).toBe("text-countdown-calm");
+    expect(liveUrgencyTextClass("normal")).toBe("text-countdown-calm");
   });
 
-  it("returns neutral text for normal tier", () => {
-    expect(liveUrgencyTextClass("normal")).toContain("text-on-surface");
+  it("warns in the final hour and is urgent in the final minutes", () => {
+    expect(liveUrgencyTextClass("soon")).toBe("text-countdown-soon");
+    expect(liveUrgencyTextClass("imminent")).toBe("text-countdown-final");
   });
 });
 
 describe("liveStatusCountdownClassName", () => {
-  it("exports live accent typography", () => {
-    expect(liveStatusCountdownClassName).toContain("text-live-red");
-    expect(liveStatusCountdownClassName.length).toBeGreaterThan(0);
+  it("is calm, tabular and at least 12px", () => {
+    expect(liveStatusCountdownClassName).toContain("text-countdown-calm");
+    expect(liveStatusCountdownClassName).toContain("tabular-nums");
+    expect(liveStatusCountdownClassName).toContain("text-xs");
   });
 });
 

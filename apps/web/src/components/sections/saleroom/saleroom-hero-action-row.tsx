@@ -74,7 +74,7 @@ function SaleroomHeroPrimaryCta({
 
   return (
     <Button variant="cta" size="lg" className={ctaClassName} asChild>
-      <a href={buildHostedLoginStartHref({ intent: "signup" })}>Register to Bid →</a>
+      <a href={buildHostedLoginStartHref({ intent: "signup" })}>Register to bid →</a>
     </Button>
   );
 }
@@ -131,7 +131,7 @@ export function SaleroomHeroActionRow({
   return (
     <div className="flex flex-col gap-4">
       {hasApprovedRegistration ? (
-        <span className="inline-flex w-fit items-center rounded border border-primary/30 bg-primary/5 px-3 py-1 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-primary">
+        <span className="inline-flex w-fit items-center rounded border border-primary/30 bg-primary/5 px-3 py-1 font-label text-xs font-medium text-primary">
           You&apos;re registered
         </span>
       ) : null}

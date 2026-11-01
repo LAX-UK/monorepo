@@ -97,8 +97,8 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
                       onClick={() => setFilter(f.id)}
                       className={
                         selected
-                          ? "inline-flex min-h-11 items-center rounded bg-on-surface px-3 py-1 font-label text-xs font-semibold uppercase tracking-[0.05em] text-surface"
-                          : "inline-flex min-h-11 items-center rounded px-3 py-1 font-label text-xs font-semibold uppercase tracking-[0.05em] text-on-surface"
+                          ? "inline-flex min-h-11 items-center rounded bg-on-surface px-3 py-1 font-label text-xs font-medium text-surface"
+                          : "inline-flex min-h-11 items-center rounded px-3 py-1 font-label text-xs font-medium text-on-surface"
                       }
                     >
                       {f.label}

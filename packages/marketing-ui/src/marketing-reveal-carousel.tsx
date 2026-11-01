@@ -34,7 +34,7 @@ export type MarketingRevealCarouselProps = {
 
 function DividedParts({ parts, className }: { parts: readonly string[]; className?: string }) {
   return (
-    <p className={cn("flex flex-wrap items-center font-label text-xs uppercase", className)}>
+    <p className={cn("flex flex-wrap items-center font-label text-xs", className)}>
       {parts.map((part, index) => (
         <span
           key={part}

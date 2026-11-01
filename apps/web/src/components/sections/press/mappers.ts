@@ -1,4 +1,5 @@
 import type { PressCoverageVM } from "@/components/sections/saleroom/view-models";
+import { formatLondonDate } from "@/lib/datetime/london-time";
 import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
 import type { PressArchiveEntry, PressDayMediaSaleSummary } from "@auction/types";
 
@@ -26,11 +27,7 @@ export function mapPressDayMediaSaleToVM(
   const href = salePathFn(sale);
   let endDateLabel: string | null = null;
   if (sale.endTime) {
-    endDateLabel = new Intl.DateTimeFormat("en-GB", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    }).format(sale.endTime);
+    endDateLabel = formatLondonDate(sale.endTime);
   }
   const coverImageUrl = sale.coverImages[0] ? resolveMediaSrc(sale.coverImages[0]) : null;
   return {
@@ -62,11 +59,7 @@ export function mapPressRefToVM(ref: {
   let dateLabel: string | null = null;
   if (ref.publishedAt) {
     try {
-      dateLabel = new Intl.DateTimeFormat("en-GB", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      }).format(new Date(`${ref.publishedAt}T12:00:00Z`));
+      dateLabel = formatLondonDate(new Date(`${ref.publishedAt}T12:00:00Z`));
     } catch {
       dateLabel = ref.publishedAt;
     }

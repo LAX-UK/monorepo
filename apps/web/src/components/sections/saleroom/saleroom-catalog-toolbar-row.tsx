@@ -69,7 +69,7 @@ export function SaleroomCatalogToolbarRow({
             <HydrationDeferred
               fallback={
                 <span
-                  className="inline-flex h-10 min-h-10 items-center rounded-md border border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-on-surface-variant"
+                  className="inline-flex h-10 min-h-10 items-center rounded-md border border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-xs font-medium text-on-surface-variant"
                   aria-label={`Sort: ${sortLabel}`}
                 >
                   {sortLabel}
@@ -82,7 +82,7 @@ export function SaleroomCatalogToolbarRow({
                 options={[...SALEROOM_CATALOG_SORT_OPTIONS]}
                 clearParams={["page"]}
                 ariaLabel="Sort lots"
-                className="h-10 min-h-10 w-auto min-w-[9.5rem] max-w-[12rem] cursor-pointer border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-[0.65rem] font-semibold uppercase tracking-wider shadow-none focus:ring-primary"
+                className="h-10 min-h-10 w-auto min-w-[9.5rem] max-w-[12rem] cursor-pointer border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-xs font-medium shadow-none focus:ring-primary"
               />
             </HydrationDeferred>
           </div>

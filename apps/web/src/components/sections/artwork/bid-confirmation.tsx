@@ -34,14 +34,12 @@ export function BidConfirmation({
       <div className="border-l-4 border-primary bg-surface-container-high/60 p-6 ring-1 ring-outline-variant/10">
         <dl className="space-y-4">
           <div>
-            <dt className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-              This bid
-            </dt>
+            <dt className="font-label text-xs text-on-surface-variant">This bid</dt>
             <dd className="font-headline text-3xl text-primary">{formatMoney(amount)}</dd>
           </div>
           {maxAuto ? (
             <div className="border-t border-outline-variant/20 pt-4">
-              <dt className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+              <dt className="font-label text-xs text-on-surface-variant">
                 Auto-bid max (stays active)
               </dt>
               <dd className="mt-1 font-headline text-xl text-on-surface">{formatMoney(maxAuto)}</dd>

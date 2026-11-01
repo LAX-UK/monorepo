@@ -15,7 +15,7 @@ export type FilterSelectOption = { value: string; label: string };
 
 /** Shared trigger styling for admin/marketing URL-synced filters. */
 export const filterSelectTriggerClassName =
-  "h-10 min-w-[9rem] bg-surface-container-lowest font-label text-[0.65rem] font-semibold uppercase tracking-wider shadow-none focus:ring-primary";
+  "h-10 min-w-[9rem] bg-surface-container-lowest font-label text-xs font-medium shadow-none focus:ring-primary";
 
 type PendingNavigation = {
   pending: boolean;

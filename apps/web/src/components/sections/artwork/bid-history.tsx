@@ -34,9 +34,7 @@ export function BidHistory({ entries, hideHeading = false, compact = false }: Pr
   return (
     <div className={compact ? "" : "mt-10 border-t border-border-hairline pt-10"}>
       {hideHeading ? null : (
-        <h3 className="mb-4 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Bid history
-        </h3>
+        <h3 className="mb-4 font-label text-xs text-on-surface-variant">Bid history</h3>
       )}
       {entries.length === 0 ? (
         <output className="block font-body text-sm text-on-surface-variant">No bids yet.</output>
@@ -54,7 +52,7 @@ export function BidHistory({ entries, hideHeading = false, compact = false }: Pr
               <div className="min-w-0">
                 <span className="block text-on-surface-variant">{maskBidder(e.bidderId)}</span>
                 <span
-                  className="font-label text-xs uppercase tracking-wider text-on-surface-variant/80"
+                  className="font-label text-xs text-on-surface-variant/80"
                   suppressHydrationWarning
                 >
                   {nowMs == null ? "\u00A0" : formatRelative(e.at, nowMs)}

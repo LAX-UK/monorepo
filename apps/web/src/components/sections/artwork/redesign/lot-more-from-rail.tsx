@@ -178,14 +178,14 @@ export function LotMoreFromRail({
                   </div>
                 ) : (
                   <div className="flex flex-col gap-2">
-                    <p className="text-sm font-bold uppercase leading-4 text-warning-on-surface">
-                      {c.lotNumber != null ? `LOT ${c.lotNumber}` : "LOT"}
+                    <p className="text-sm font-bold leading-4 text-warning-on-surface">
+                      {c.lotNumber != null ? `Lot ${c.lotNumber}` : "Lot"}
                     </p>
                     <div>
                       <p className="text-sm font-semibold leading-5 text-on-surface underline-offset-2 group-hover:underline">
                         {c.title}
                       </p>
-                      <p className="mt-1 text-sm font-light text-on-surface-variant">
+                      <p className="mt-1 text-sm font-normal text-on-surface-variant">
                         {c.artistOrSellerName}
                       </p>
                     </div>

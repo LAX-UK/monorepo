@@ -4,8 +4,7 @@ import type { SaleFormatExplainerContext } from "@/lib/sale-format-explainer";
 import { saleFormatIcon } from "@/lib/sale-format-icon";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
-import { Badge } from "@auction/ui";
-import { LiveDot } from "@auction/ui";
+import { Badge, STATUS_BADGE_TONE_CLASSES } from "@auction/ui";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
 import { HelpCircle } from "lucide-react";
@@ -17,7 +16,6 @@ type Props = {
   withIcon?: boolean;
   withExplainer?: boolean;
   size?: "sm" | "md" | "lg";
-  isLive?: boolean;
   /** Sale-specific context for the format help popover. */
   explainerContext?: SaleFormatExplainerContext;
 };
@@ -28,7 +26,6 @@ export function SaleTypeBadge({
   withIcon = true,
   withExplainer = false,
   size = "md",
-  isLive = false,
   explainerContext,
 }: Props) {
   const pres = getSaleTypePresentation(deliveryMode);
@@ -37,7 +34,7 @@ export function SaleTypeBadge({
     explainerContext ?? ({ deliveryMode: pres.key } satisfies SaleFormatExplainerContext);
 
   const sizeClasses = {
-    sm: "px-2 py-0.5 text-[10px] gap-1",
+    sm: "px-2 py-0.5 text-xs gap-1",
     md: "px-2.5 py-1 text-xs gap-1.5",
     lg: "px-3 py-1.5 text-sm gap-2",
   };
@@ -46,15 +43,13 @@ export function SaleTypeBadge({
     <Badge
       variant="outline"
       className={cn(
-        "font-label font-bold uppercase tracking-wider border transition-all duration-200",
+        // A sale format is not a status: one neutral pill for every format.
+        "border-transparent font-label font-medium transition-colors duration-200",
         sizeClasses[size],
-        pres.colorClass,
+        STATUS_BADGE_TONE_CLASSES.neutral,
         className,
       )}
     >
-      {isLive ? (
-        <LiveDot size={size === "sm" ? "sm" : "md"} className="live-dot-pulse mr-0.5" />
-      ) : null}
       {withIcon ? (
         <Icon
           className={cn(

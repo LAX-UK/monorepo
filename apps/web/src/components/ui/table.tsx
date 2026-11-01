@@ -20,7 +20,7 @@ export function Table({ children, className = "" }: TableProps) {
 
 export function TableHead({ children }: { children: ReactNode }) {
   return (
-    <UiTableThead className="bg-surface-container-low font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+    <UiTableThead className="bg-surface-container-low font-label text-xs text-on-surface-variant">
       {children}
     </UiTableThead>
   );

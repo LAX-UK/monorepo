@@ -35,7 +35,7 @@ export function MarketingProcessSteps({ steps, className }: MarketingProcessStep
                 aria-hidden
               >
                 {Icon ? <Icon className="size-3.5 shrink-0" strokeWidth={2} /> : null}
-                <span className={Icon ? "text-[10px] leading-none" : undefined}>{index + 1}</span>
+                <span className={Icon ? "text-xs leading-none" : undefined}>{index + 1}</span>
               </span>
               <h3 className="pt-0.5 font-headline text-base font-medium text-on-surface">
                 {step.title}

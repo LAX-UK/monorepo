@@ -64,7 +64,7 @@ export function lotQuickLookFromRailCard(card: LotRailCardVM): LotQuickLookVM {
     imageAlt: card.title,
     status: card.status,
     ...(endTime ? { endTime } : {}),
-    lotLabel: card.lotNumber != null ? `LOT ${card.lotNumber}` : null,
+    lotLabel: card.lotNumber != null ? `Lot ${card.lotNumber}` : null,
     currentBidLabel: "Current bid",
     currentBidValue: card.currentPrice,
     ...(card.estimateLine ? { estimateLabel: "Estimate", estimateValue: card.estimateLine } : {}),

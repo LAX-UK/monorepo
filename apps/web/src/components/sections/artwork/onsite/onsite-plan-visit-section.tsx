@@ -4,6 +4,7 @@ import {
 } from "@/components/sections/artwork/onsite/onsite-calendar-actions";
 import { OnsiteSaleFactsStrip } from "@/components/sections/artwork/onsite/onsite-sale-facts-strip";
 import type { SaleOverviewVM } from "@/components/sections/saleroom/view-models";
+import { formatLondonDateTime } from "@/lib/datetime/london-time";
 import { formatOnsitePreviewHoursLabel } from "@/lib/onsite/preview-hours-label";
 import { salePath } from "@/lib/seo/url";
 import type { Lot, PublicLotView, Sale } from "@auction/types";
@@ -35,17 +36,11 @@ export function OnsitePlanVisitSection({ sale, auction, overview, locationLine }
   const previewStart = sale.previewStartTime ? new Date(sale.previewStartTime) : null;
   const previewLabel =
     previewStart && Number.isFinite(previewStart.getTime())
-      ? previewStart.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" })
+      ? formatLondonDateTime(previewStart)
       : null;
 
-  const eventStartLabel = new Date(sale.startTime).toLocaleString("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-  const eventEndLabel = new Date(sale.endTime).toLocaleString("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  const eventStartLabel = formatLondonDateTime(new Date(sale.startTime));
+  const eventEndLabel = formatLondonDateTime(new Date(sale.endTime));
 
   return (
     <section
@@ -75,7 +70,7 @@ export function OnsitePlanVisitSection({ sale, auction, overview, locationLine }
       <div className="grid gap-6 md:grid-cols-2">
         <div className="space-y-6">
           <div className="space-y-1">
-            <p className="flex items-center gap-1.5 font-label text-[10px] font-bold uppercase tracking-widest text-secondary">
+            <p className="flex items-center gap-1.5 font-label text-xs font-medium text-on-surface-variant">
               <Clock className="size-3.5" /> Opening hours
             </p>
             <p className="mt-1 text-sm font-medium text-on-surface-variant">{previewHoursLabel}</p>
@@ -83,7 +78,7 @@ export function OnsitePlanVisitSection({ sale, auction, overview, locationLine }
 
           <div className="space-y-4">
             <div className="space-y-1">
-              <dt className="font-label text-[10px] font-bold uppercase tracking-widest text-secondary">
+              <dt className="font-label text-xs font-medium text-on-surface-variant">
                 Auction session
               </dt>
               <dd className="text-sm font-medium text-on-surface">
@@ -92,7 +87,7 @@ export function OnsitePlanVisitSection({ sale, auction, overview, locationLine }
             </div>
             {previewLabel ? (
               <div className="space-y-1">
-                <dt className="font-label text-[10px] font-bold uppercase tracking-widest text-secondary">
+                <dt className="font-label text-xs font-medium text-on-surface-variant">
                   Preview from
                 </dt>
                 <dd className="text-sm font-medium text-on-surface">{previewLabel}</dd>
@@ -122,7 +117,7 @@ export function OnsitePlanVisitSection({ sale, auction, overview, locationLine }
               </p>
             ) : null}
             {addressLines.length > 0 ? (
-              <p className="mt-0.5 font-body text-xs font-light leading-relaxed text-on-surface-variant">
+              <p className="mt-0.5 font-body text-xs font-normal leading-relaxed text-on-surface-variant">
                 {addressLines.join(", ")}
               </p>
             ) : null}
@@ -130,7 +125,7 @@ export function OnsitePlanVisitSection({ sale, auction, overview, locationLine }
           {embedUrl ? (
             <div className="mt-4 aspect-video overflow-hidden rounded-lg border border-outline-variant/10 shadow-inner">
               <iframe
-                title="Saleroom Map"
+                title="Saleroom map"
                 src={embedUrl}
                 className="h-full w-full border-0"
                 allowFullScreen

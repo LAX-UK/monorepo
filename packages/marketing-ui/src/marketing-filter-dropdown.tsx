@@ -87,9 +87,7 @@ export function MarketingFilterDropdown({
         align="start"
         className="w-[min(23.75rem,calc(100vw-2rem))] rounded-none border-border-hairline bg-surface-container-lowest p-6 sm:p-10"
       >
-        <p className="mb-4 font-label text-base uppercase tracking-[0.04em] text-on-surface">
-          {label}
-        </p>
+        <p className="mb-4 font-label text-base text-on-surface">{label}</p>
         <MarketingFilterOptionList
           legend={label}
           options={options}

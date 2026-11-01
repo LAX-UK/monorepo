@@ -1,13 +1,14 @@
 import { maskPaddleFromBidderId } from "@/components/sections/artwork/artwork-view-models";
-import {
-  type CountdownTier,
-  countdownTier,
-  formatCountdownAriaLabel,
-} from "@/lib/format-countdown";
+import { formatCountdownAriaLabel } from "@/lib/format-countdown";
 import { formatMoney } from "@/lib/format-currency";
 import type { LotLifecycle } from "@/lib/lot/lot-lifecycle";
 import type { LotReserveContext } from "@/lib/lot/reserve-presentation";
 import { reserveBadgeLabel, resolveEndedBanner } from "@/lib/lot/reserve-presentation";
+import {
+  COUNTDOWN_TONE_SURFACE_CLASS,
+  COUNTDOWN_TONE_TEXT_CLASS,
+  countdownTone,
+} from "@/lib/presenters/countdown-tone";
 import type { LotEndedNoSaleReason } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Clock } from "lucide-react";
@@ -24,7 +25,7 @@ type Props = {
   lifecycle: LotLifecycle;
   /** Pre-formatted clock text (HH:MM:SS or `Nd HH:MM:SS`) sized to the timer state. */
   countdownClock: string;
-  /** e.g. "Apr 22, 2025, 4:00 PM" — anchor instant in viewer-local time. */
+  /** e.g. "22 Apr 2025, 16:00 BST": the closing instant in London time. */
   saleEndLocalLabel: string;
   /** Same, for the start instant on scheduled lots. Falls back to closing label. */
   saleStartLocalLabel?: string;
@@ -72,13 +73,13 @@ export function LotInfoStack({
         <InfoRow label="Estimate" value={estimateLine ?? "—"} valueClass="text-sm font-medium" />
         <div className="flex flex-col justify-center gap-2.5 sm:text-right">
           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 sm:justify-end">
-            <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
+            <span className="font-label text-xs font-medium text-on-surface-variant">
               Current bid ({bidCount} {bidCount === 1 ? "bid" : "bids"})
             </span>
             {showReserveBadge ? (
               <span
                 className={cn(
-                  "rounded-sm px-1.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wide",
+                  "rounded-sm px-1.5 py-0.5 font-label text-xs font-medium",
                   reserveContext.reserveMet
                     ? "bg-primary-container/40 text-primary"
                     : "bg-surface-container-high text-on-surface-variant",
@@ -124,9 +125,7 @@ function InfoRow({
 }) {
   return (
     <div className="flex flex-col justify-center gap-2.5">
-      <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
-        {label}
-      </span>
+      <span className="font-label text-xs font-medium text-on-surface-variant">{label}</span>
       <span className={cn("tabular-nums leading-5 text-on-surface-variant", valueClass ?? "")}>
         {value}
       </span>
@@ -165,10 +164,8 @@ function LifecycleBanner({
     case "live":
     case "extended": {
       const ms = lifecycle.msLeft ?? 0;
-      const tier = countdownTier(ms);
       return (
         <ClosingBanner
-          tier={tier}
           countdownClock={countdownClock}
           endAtIso={endAtIso}
           msLeft={ms}
@@ -228,37 +225,40 @@ function LifecycleBanner({
 }
 
 function ClosingBanner({
-  tier,
   countdownClock,
   endAtIso,
   msLeft,
   saleEndLocalLabel,
   extended,
 }: {
-  tier: CountdownTier;
   countdownClock: string;
   endAtIso: string;
   msLeft: number;
   saleEndLocalLabel: string;
   extended: boolean;
 }) {
-  const rowHighlight = tier === "critical";
+  const tone = countdownTone(msLeft, { extended });
   return (
     <div
       className={cn(
-        "mt-4 flex flex-row items-center gap-2 rounded-lg border border-error/20 bg-error/10 px-4 py-3",
-        rowHighlight && "bg-error/15",
+        "mt-4 flex flex-row items-center gap-2 rounded-lg border px-4 py-3",
+        COUNTDOWN_TONE_SURFACE_CLASS[tone],
       )}
     >
-      <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-error">
-        {extended ? "Extended · closing in" : "Closing in"}
+      <span className={cn("font-label text-xs font-medium", COUNTDOWN_TONE_TEXT_CLASS[tone])}>
+        {extended ? "Extended, closing in" : "Closing in"}
       </span>
       <div className="ml-auto flex min-w-0 items-center gap-2">
-        <span className="live-dot-pulse size-1.5 shrink-0 rounded-full bg-error" aria-hidden />
+        {tone === "calm" ? null : (
+          <span className="live-dot-pulse size-1.5 shrink-0 rounded-full bg-current" aria-hidden />
+        )}
         <time
           dateTime={endAtIso}
           aria-label={formatCountdownAriaLabel(msLeft)}
-          className="min-w-0 text-xl font-bold tabular-nums leading-5 text-error"
+          className={cn(
+            "min-w-0 text-xl font-semibold tabular-nums leading-5",
+            COUNTDOWN_TONE_TEXT_CLASS[tone],
+          )}
         >
           {countdownClock}
         </time>
@@ -289,9 +289,7 @@ function OpensInBanner({
   return (
     <div className="mt-4 flex flex-col gap-3 rounded-lg border border-lot-orange/30 bg-lot-orange/10 px-4 py-3">
       <div className="flex flex-row items-center gap-2">
-        <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-lot-orange">
-          Opens in
-        </span>
+        <span className="font-label text-xs font-medium text-lot-orange">Opens in</span>
         <div className="ml-auto flex min-w-0 items-center gap-2">
           <Clock className="size-3.5 shrink-0 text-lot-orange" aria-hidden />
           <time
@@ -335,9 +333,7 @@ function EndedSoldBanner({
 
   return (
     <div className="mt-4 space-y-2 rounded-lg border border-primary/25 bg-primary-container/10 px-4 py-3 ring-1 ring-primary/15 dark:bg-primary/10">
-      <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-secondary">
-        Sold
-      </span>
+      <span className="font-label text-xs font-medium text-on-surface-variant">Sold</span>
       {youWon ? (
         <div className="space-y-2">
           <p className="font-body text-sm font-medium text-on-surface">
@@ -369,9 +365,7 @@ function EndedSoldBanner({
 function TerminalBanner({ label, detail }: { label: string; detail: string }) {
   return (
     <div className="mt-4 flex flex-row items-center gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-high/60 px-4 py-3 dark:bg-surface-container-high/30">
-      <span className="font-label text-[11px] font-bold uppercase tracking-[0.14em] text-on-surface-variant">
-        {label}
-      </span>
+      <span className="font-label text-xs font-medium text-on-surface-variant">{label}</span>
       <span className="ml-auto truncate text-sm font-medium text-on-surface-variant">{detail}</span>
     </div>
   );

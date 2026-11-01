@@ -44,9 +44,7 @@ export function ArchiveFilterSheetBody({ categories, onSelect, className }: Prop
   return (
     <div className={cn("space-y-8", className)} aria-busy={pending || undefined}>
       <div className="space-y-3">
-        <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Lot year
-        </p>
+        <p className="font-label text-xs text-on-surface-variant">Lot year</p>
         <MarketingChipStrip aria-label="Lot year">
           <FilterChip
             pressed={year === "all"}
@@ -71,9 +69,7 @@ export function ArchiveFilterSheetBody({ categories, onSelect, className }: Prop
       </div>
 
       <div className="space-y-3">
-        <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Medium
-        </p>
+        <p className="font-label text-xs text-on-surface-variant">Medium</p>
         <MarketingChipStrip aria-label="Medium">
           <FilterChip
             pressed={categoryId === ""}
@@ -98,9 +94,7 @@ export function ArchiveFilterSheetBody({ categories, onSelect, className }: Prop
       </div>
 
       <fieldset className="space-y-2" disabled={pending}>
-        <legend className="mb-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Sort by
-        </legend>
+        <legend className="mb-2 font-label text-xs text-on-surface-variant">Sort by</legend>
         <RadioGroup
           value={sort}
           onValueChange={(next) => select({ sort: next === "hammer" ? "" : next })}

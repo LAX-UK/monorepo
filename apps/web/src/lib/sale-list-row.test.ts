@@ -24,8 +24,8 @@ describe("resolveSaleLotCount", () => {
 
 describe("formatSaleItemsLabel", () => {
   it("singular and plural", () => {
-    expect(formatSaleItemsLabel(1)).toBe("1 Item");
-    expect(formatSaleItemsLabel(15)).toBe("15 Items");
+    expect(formatSaleItemsLabel(1)).toBe("1 item");
+    expect(formatSaleItemsLabel(15)).toBe("15 items");
   });
 });
 

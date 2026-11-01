@@ -32,17 +32,17 @@ export function BidFeedEntry({ entry, className }: Props) {
               ) : null}
               {entry.isYourBid ? <span className="ml-2 text-primary">You</span> : null}
             </p>
-            <p className="font-body text-xs font-semibold uppercase leading-6 tabular-nums text-on-surface">
+            <p className="font-body text-xs font-medium leading-6 tabular-nums text-on-surface">
               {entry.amount}
               {entry.isAutoBid ? (
-                <span className="ml-1.5 font-label text-[10px] font-bold normal-case tracking-wide text-primary">
+                <span className="ml-1.5 font-label text-xs font-bold normal-case tracking-wide text-primary">
                   Auto
                 </span>
               ) : null}
             </p>
           </div>
         </div>
-        <span className="shrink-0 rounded-lg bg-surface-container-lowest/90 px-2 py-1 font-body text-xs font-bold uppercase leading-4 text-primary">
+        <span className="shrink-0 rounded-lg bg-surface-container-lowest/90 px-2 py-1 font-body text-xs font-medium leading-4 text-primary">
           {entry.isAutoBid && entry.isYourBid ? "Auto bid" : "Highest"}
         </span>
       </div>
@@ -67,10 +67,10 @@ export function BidFeedEntry({ entry, className }: Props) {
           ) : null}
           {entry.isYourBid ? <span className="ml-2 text-primary">You</span> : null}
         </p>
-        <p className="font-body text-xs font-semibold uppercase leading-6 tabular-nums text-on-surface">
+        <p className="font-body text-xs font-medium leading-6 tabular-nums text-on-surface">
           {entry.amount}
           {entry.isAutoBid ? (
-            <span className="ml-1.5 font-label text-[10px] font-bold normal-case tracking-wide text-primary">
+            <span className="ml-1.5 font-label text-xs font-bold normal-case tracking-wide text-primary">
               Auto
             </span>
           ) : null}
