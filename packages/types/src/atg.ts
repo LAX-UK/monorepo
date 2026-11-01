@@ -148,6 +148,8 @@ export type AtgSaleOwnershipSnapshot = {
   atgLinked: boolean;
   atgSoldLotCount: number;
   sellingPlatform: AtgOwnershipState;
+  /** Where ATG lists the auction; only `public_marketplace` is shown on the public catalogue. */
+  atgDistribution: AtgDistribution;
 };
 
 export type AtgLotChannelState = {

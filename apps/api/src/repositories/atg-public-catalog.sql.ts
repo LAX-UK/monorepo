@@ -13,6 +13,7 @@ export function saleIsLiveOnAtgSql(saleIdRef: SaleIdRef): SQL {
     where al.sale_id = ${saleIdRef}
       and al.atg_auction_id is not null
       and al.remote_status = 'published'
+      and al.distribution = 'public_marketplace'
   )`;
 }
 
@@ -23,6 +24,7 @@ export function saleEndedOnAtgWithSalesSql(saleIdRef: SaleIdRef): SQL {
     where al.sale_id = ${saleIdRef}
       and al.atg_auction_id is not null
       and al.remote_status = 'closed'
+      and al.distribution = 'public_marketplace'
       and exists (
         select 1 from ${atgLotLink} ll
         where ll.sale_id = al.sale_id and ll.sold = true

@@ -31,6 +31,7 @@ function ownership(
       atgLinked,
       atgSoldLotCount,
     }),
+    atgDistribution: "public_marketplace",
   };
 }
 

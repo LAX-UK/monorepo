@@ -1,4 +1,5 @@
 import {
+  type AtgDistribution,
   type AtgOwnershipState,
   type Lot,
   type LotStatus,
@@ -11,6 +12,7 @@ import {
 
 export type PublicCatalogSaleContext = Pick<Sale, "status"> & {
   sellingPlatform?: AtgOwnershipState | null;
+  atgDistribution?: AtgDistribution | null;
 };
 
 /** Browse surfaces: home strips, search default, new lots — not archive. */
@@ -56,8 +58,16 @@ export function isPublicSaleStatus(status: SaleStatus): boolean {
   return (PUBLIC_SALE_STATUSES as readonly SaleStatus[]).includes(status);
 }
 
+/**
+ * An ATG-owned draft is public only when ATG lists it publicly. A `private_test` auction is
+ * hidden from ATG's own listings and stays off the public catalogue too.
+ */
 export function isAtgOwnedCatalogSale(sale: PublicCatalogSaleContext): boolean {
-  return sale.status === "draft" && sale.sellingPlatform === "atg";
+  return (
+    sale.status === "draft" &&
+    sale.sellingPlatform === "atg" &&
+    sale.atgDistribution === "public_marketplace"
+  );
 }
 
 export function isPublicCatalogSale(sale: PublicCatalogSaleContext): boolean {
