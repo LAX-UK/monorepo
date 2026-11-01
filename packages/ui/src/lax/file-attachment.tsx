@@ -62,7 +62,7 @@ export function FileAttachment({
           <Icon className="size-4" strokeWidth={1.75} />
         )}
       </span>
-      <span className="min-w-0">
+      <span className="min-w-0 flex-1">
         <a
           href={href}
           target="_blank"

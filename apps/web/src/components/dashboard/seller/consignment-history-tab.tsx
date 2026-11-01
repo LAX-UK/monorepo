@@ -65,7 +65,7 @@ export function ConsignmentHistoryTab({ events, messagesMissing, payoutsHidden }
           id="history-heading"
           className="px-4 pt-5 pb-4 font-lax-display text-lax-18 font-semibold text-lax-fg sm:px-6"
         >
-          History
+          What happened
         </h2>
         <ol aria-label="What happened, newest first" className="px-4 pb-5 sm:px-6">
           {events.map((event, index) => {
@@ -86,12 +86,12 @@ export function ConsignmentHistoryTab({ events, messagesMissing, payoutsHidden }
                   <Icon className="size-4" strokeWidth={1.75} />
                 </span>
                 <div className={last ? "min-w-0 pt-1" : "min-w-0 pt-1 pb-5"}>
-                  <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+                  <div className="grid grid-cols-[minmax(0,1fr)_auto] items-baseline gap-x-3">
                     <p className="text-lax-14 leading-5 font-medium text-lax-fg">{event.title}</p>
                     <time
                       dateTime={event.dateTime}
                       title={event.fullTime}
-                      className="text-lax-12 leading-4 text-lax-muted tabular-nums"
+                      className="text-lax-12 leading-5 whitespace-nowrap text-lax-muted tabular-nums"
                     >
                       {event.time}
                     </time>

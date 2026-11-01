@@ -63,16 +63,18 @@ export function consignmentDocuments(input: ConsignmentDocumentsSources): Consig
   }
   for (const doc of input.lotDocuments) {
     if (doc.kind !== "condition_report") continue;
-    const kind = fileKind(doc.contentType);
+    // The lot's public list carries only the file's kind, label and address; the rest may be absent.
+    const kind = fileKind(doc.contentType ?? null);
+    const added = doc.createdAt ? new Date(doc.createdAt) : null;
     const extension =
       doc.fileName?.match(/\.([a-z0-9]{2,5})$/i)?.[1] ?? (kind === "pdf" ? "pdf" : "jpg");
     rows.push({
       id: doc.id,
       name: `Condition report.${extension.toLowerCase()}`,
-      note: formatDateInline(doc.createdAt),
+      note: added && !Number.isNaN(added.getTime()) ? formatDateInline(added) : null,
       href: doc.downloadUrl,
       kind,
-      size: fileSize(doc.byteSize),
+      size: fileSize(doc.byteSize ?? null),
     });
   }
   const payout = input.canSeePayouts ? input.payout : null;

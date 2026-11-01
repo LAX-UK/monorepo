@@ -9,6 +9,27 @@ const UPLOAD_STATUSES = new Set<ItemSubmission["status"]>([
   "converted",
 ]);
 
+const IN_REVIEW = new Set<ItemSubmission["status"]>([
+  "submitted",
+  "under_review",
+  "changes_requested",
+]);
+
+/**
+ * What the seller's documents are for at this stage, said once under the heading: while the work
+ * is reviewed they help the specialist decide; once it is taken on they help sell it. Someone who
+ * cannot add documents reads what the list is.
+ */
+export function sellerDocumentsPurpose(
+  status: ItemSubmission["status"],
+  canManage: boolean,
+): string {
+  if (!canManage) return "Documents sent with this work.";
+  return IN_REVIEW.has(status)
+    ? "Certificates, invoices or condition reports that help your specialist review the work."
+    : "Anything that helps us sell the work, such as a certificate, provenance or a past invoice.";
+}
+
 /**
  * Whether the seller's documents panel has anything to show: a place to add documents, the
  * documents themselves, or why they could not be read.
