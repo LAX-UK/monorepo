@@ -24,6 +24,7 @@ import {
 import { buildCheckoutTotalsVm } from "@/lib/data/view-models/dashboard-checkout.vm";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
 import { openRecordInItsAccount } from "@/lib/legal-entity/open-record-in-account.server";
+import { checkoutIntro } from "@/lib/purchases/checkout-intro";
 import { lotPath } from "@/lib/seo/url";
 import type { Lot } from "@auction/types";
 import { Button } from "@auction/ui/components/button";
@@ -40,13 +41,6 @@ type PageProps = {
 const lotIdSchema = z.string().uuid();
 
 /** What the invoice step says, naming the organisation when paying for one. */
-function checkoutDescription(organisationName: string | null, invoiceReady: boolean): string {
-  const forWhom = organisationName ? ` for ${organisationName}` : "";
-  return invoiceReady
-    ? `Your invoice${forWhom} is ready. Confirm the delivery address and pay by card or UK bank transfer.`
-    : `Review the invoice${forWhom} and pay by card or UK bank transfer. We check some high-value purchases before payment.`;
-}
-
 export default async function DashboardCheckoutPage({ params, searchParams }: PageProps) {
   const { lotId: rawLotId } = await params;
   const { payment: paymentReturn } = await searchParams;
@@ -163,7 +157,13 @@ export default async function DashboardCheckoutPage({ params, searchParams }: Pa
       <CheckoutReadinessStrip />
       <CheckoutLayout
         lot={auction}
-        description={checkoutDescription(organisation?.name ?? null, openPayment !== null)}
+        description={checkoutIntro({
+          organisationName: organisation?.name ?? null,
+          paymentComplete,
+          openPaymentStatus: openPayment?.status ?? null,
+          openPaymentReviewReason: openPayment?.manualReviewReason ?? null,
+          complianceGate,
+        })}
       >
         <Suspense fallback={null}>
           <CheckoutReturnBanner lotTitle={auction.title} />
