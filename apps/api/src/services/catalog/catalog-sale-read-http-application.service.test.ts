@@ -67,7 +67,7 @@ describe("GET /sales?status=ended rows", () => {
       ],
     });
     const res = await http.listSales({
-      query: { status: "ended", limit: 20, offset: 0 },
+      query: { status: "ended", sort: "endDesc", limit: 20, offset: 0 },
       viewer: {},
     });
     expect(res.status).toBe(200);
@@ -95,7 +95,10 @@ describe("GET /sales?status=ended rows", () => {
         },
       ],
     });
-    const res = await http.listSales({ query: { limit: 20, offset: 0 }, viewer: {} });
+    const res = await http.listSales({
+      query: { sort: "createdDesc", limit: 20, offset: 0 },
+      viewer: {},
+    });
     const rows = (res.body as { data: { resultsSummary: unknown }[] }).data;
     expect(rows[0]?.resultsSummary).toBeNull();
   });
