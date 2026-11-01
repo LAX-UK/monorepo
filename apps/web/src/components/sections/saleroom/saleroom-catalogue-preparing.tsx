@@ -46,6 +46,7 @@ function NotifyAction({
     return (
       <ButtonLink
         variant="primary"
+        className="@max-2xl:basis-full!"
         href={buildHostedLoginStartHref({ next: saleHref })}
         icon={<Bell aria-hidden />}
       >
@@ -58,6 +59,7 @@ function NotifyAction({
     <>
       <Button
         variant={following ? "secondary" : "primary"}
+        className="@max-2xl:basis-full!"
         loading={busy}
         aria-pressed={following}
         icon={following ? <BellRing aria-hidden /> : <Bell aria-hidden />}
@@ -89,7 +91,12 @@ export function SaleroomCataloguePreparing({ copy, ...notify }: Props) {
         actions={
           <>
             <NotifyAction {...notify} />
-            <ButtonLink Link={Link} variant="secondary" href="/sell">
+            <ButtonLink
+              Link={Link}
+              variant="secondary"
+              className="@max-2xl:basis-full!"
+              href="/sell"
+            >
               Consign a work
             </ButtonLink>
           </>

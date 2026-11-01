@@ -193,6 +193,8 @@ export function mapSaleToHeroVM(
     formatLabel: getSaleTypePresentation(sale.deliveryMode).label,
     placeLabel: saleVenueLabel(sale),
     dateLine,
+    previewOpensIso:
+      isScheduled && sale.previewStartTime ? sale.previewStartTime.toISOString() : null,
     registrationClosesShort,
     biddingStartsShort,
     leftColumnLabel,

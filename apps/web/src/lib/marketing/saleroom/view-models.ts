@@ -29,6 +29,8 @@ export type SaleHeroVM = {
   placeLabel: string | null;
   /** The one time line: date range and start time, e.g. "29 Oct – 3 Nov 2026 · 21:00 GMT". */
   dateLine: string;
+  /** ISO instant the preview opens, for a scheduled sale that has one. */
+  previewOpensIso: string | null;
   /** Relative time until preview opens when `previewStartTime` is set (Figma: left detail cell).
    */
   registrationClosesShort: string | null;

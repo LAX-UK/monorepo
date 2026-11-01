@@ -9,7 +9,6 @@ type Props = {
   hero: SaleHeroVM;
   liveTrailing: string;
   deliveryMode: SaleDeliveryMode;
-  startsSoon?: boolean;
   showOnlineBiddingGatedBadge?: boolean;
   explainerContext?: SaleFormatExplainerContext;
 };
@@ -25,19 +24,15 @@ export function SaleroomHeroMetaRow({
   hero,
   liveTrailing,
   deliveryMode,
-  startsSoon = false,
   showOnlineBiddingGatedBadge = false,
   explainerContext,
 }: Props) {
   const showStatus = LIFECYCLE_STATUSES.includes(hero.status);
-  const soon = startsSoon && !hero.isLive && hero.status === "scheduled";
 
   return (
     <div className="fade-up flex flex-col gap-2">
       <div className="flex flex-wrap items-center gap-2">
-        {showStatus ? (
-          <SaleLifecycleBadge status={hero.status} {...(soon ? { label: "Starts soon" } : {})} />
-        ) : null}
+        {showStatus ? <SaleLifecycleBadge status={hero.status} opensAt={hero.startTime} /> : null}
         {showOnlineBiddingGatedBadge ? (
           <StatusBadge tone="neutral">Online bidding opens when live</StatusBadge>
         ) : null}

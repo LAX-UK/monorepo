@@ -77,7 +77,6 @@ export function SaleroomDetailView({
             catalogLotRefs={vm.catalogLotRefs}
             saleroomSession={vm.isSaleroomSale ? vm.initialSaleroomStatus : null}
             coverBlurDataURL={vm.coverBlurDataURL}
-            saleStartsSoon={vm.saleStartsSoon}
             showOnlineBiddingGatedBadge={vm.showOnlineBiddingGatedBadge}
             explainerContext={explainerContext}
             toolbar={<SaleroomHeroToolbar shareUrl={vm.shareUrl} shareTitle={vm.sale.title} />}

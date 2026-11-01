@@ -16,6 +16,7 @@ export const saleroomHeroFixture: SaleHeroVM = {
   formatLabel: "Hybrid",
   placeLabel: "London",
   dateLine: "12–14 June 2026",
+  previewOpensIso: null,
   registrationClosesShort: null,
   biddingStartsShort: null,
   leftColumnLabel: null,

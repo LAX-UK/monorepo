@@ -30,6 +30,7 @@ const hero = {
   endTime: new Date(Date.now() + 86400000).toISOString(),
   startEndLabel: "Jun 19 – Jun 20",
   shareUrl: "https://example.com/sales/test",
+  previewOpensIso: null,
   registrationClosesShort: null,
   biddingStartsShort: null,
   leftColumnLabel: null,

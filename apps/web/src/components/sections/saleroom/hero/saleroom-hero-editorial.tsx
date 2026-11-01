@@ -26,7 +26,6 @@ type Props = {
   catalogLotRefs?: Array<{ id: string; lotNumber: number | null; title: string }>;
   saleroomSession?: PublicSaleroomSessionStatus | null;
   coverBlurDataURL?: string | null;
-  saleStartsSoon?: boolean;
   showOnlineBiddingGatedBadge?: boolean;
   explainerContext?: SaleFormatExplainerContext;
 };
@@ -41,7 +40,6 @@ export function SaleroomHeroEditorial({
   catalogLotRefs = [],
   saleroomSession = null,
   coverBlurDataURL = null,
-  saleStartsSoon = false,
   showOnlineBiddingGatedBadge = false,
   explainerContext,
 }: Props) {
@@ -63,7 +61,6 @@ export function SaleroomHeroEditorial({
           hero={hero}
           liveTrailing={liveTrailing}
           deliveryMode={deliveryMode}
-          startsSoon={saleStartsSoon}
           showOnlineBiddingGatedBadge={showOnlineBiddingGatedBadge}
           {...(explainerContext ? { explainerContext } : {})}
         />
