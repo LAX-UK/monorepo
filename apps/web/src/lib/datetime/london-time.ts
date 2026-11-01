@@ -21,14 +21,25 @@ const DAY_KEY = new Intl.DateTimeFormat("en-CA", {
   month: "2-digit",
   day: "2-digit",
 });
+/**
+ * Short months are three letters everywhere ("Sep"), whatever the runtime's locale data: en-GB
+ * spells September "Sept", which would be the one four-letter month in a column of dates.
+ */
+function shortMonthFormatter(
+  options: Intl.DateTimeFormatOptions,
+): Pick<Intl.DateTimeFormat, "format"> {
+  const inner = formatter({ ...options, month: "short" });
+  return { format: (date) => inner.format(date).replace(/\bSept\b/, "Sep") };
+}
+
 const TIME = formatter({ hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
 const ZONE_NAME = formatter({ timeZoneName: "short" });
 const DAY = formatter({ day: "numeric" });
-const DAY_MONTH = formatter({ day: "numeric", month: "short" });
-const DAY_MONTH_YEAR = formatter({ day: "numeric", month: "short", year: "numeric" });
+const DAY_MONTH = shortMonthFormatter({ day: "numeric" });
+const DAY_MONTH_YEAR = shortMonthFormatter({ day: "numeric", year: "numeric" });
 const DAY_LONG_MONTH_YEAR = formatter({ day: "numeric", month: "long", year: "numeric" });
 const MONTH_YEAR = formatter({ month: "long", year: "numeric" });
-const SHORT_MONTH_YEAR = formatter({ month: "short", year: "numeric" });
+const SHORT_MONTH_YEAR = shortMonthFormatter({ year: "numeric" });
 const WEEKDAY = formatter({ weekday: "short" });
 
 /** A date, a timestamp, or an ISO string, as the API and view models hand them over. */

@@ -42,6 +42,19 @@ describe("London time", () => {
     expect(formatLondonDateTime(winter)).toBe("3 Nov 2026, 21:00 GMT");
   });
 
+  it("abbreviates September to three letters like every other month", () => {
+    const september = new Date("2026-09-08T12:00:00Z");
+    const now = new Date("2026-11-01T12:00:00Z");
+    expect(formatLondonDate(september)).toBe("8 Sep 2026");
+    expect(formatLondonDayMonth(september, now)).toBe("8 Sep");
+    expect(formatLondonMonthYear(september, { short: true })).toBe("Sep 2026");
+    expect(formatLondonDateRange(new Date("2026-08-23T12:00:00Z"), september)).toBe(
+      "23 Aug – 8 Sep 2026",
+    );
+    expect(formatLondonMoment(september, now)).toBe("8 Sep 13:00");
+    expect(formatLondonDate(september, { month: "long" })).toBe("8 September 2026");
+  });
+
   it("reads the London day, not the server's", () => {
     // 23:30 UTC on 31 July is 00:30 on 1 August in London.
     const lateSummer = new Date("2026-07-31T23:30:00Z");

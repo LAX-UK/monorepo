@@ -21,7 +21,7 @@ export function DisplayHeading({
 }) {
   return (
     <Tag
-      className={`font-headline font-light tracking-tight text-on-surface ${size ? displaySizeClass[size] : ""} ${className}`}
+      className={`font-headline font-medium tracking-tight text-on-surface ${size ? displaySizeClass[size] : ""} ${className}`}
       {...props}
     >
       {children}

@@ -51,7 +51,7 @@ export function AppRouteError({
       role="alert"
     >
       <EmptyStateIllustration name={illustration} size="page" className="mb-8" />
-      <DisplayHeading as="h1" className="mb-4 text-3xl font-medium">
+      <DisplayHeading as="h1" className="mb-4 text-3xl">
         {resolvedTitle}
       </DisplayHeading>
       <p className="mb-8 font-body text-sm text-on-surface-variant">{message}</p>

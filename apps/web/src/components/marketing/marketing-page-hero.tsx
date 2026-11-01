@@ -123,7 +123,7 @@ export function MarketingPageHero(props: MarketingPageHeroProps) {
 
   const titleNode =
     typeof title === "string" ? (
-      <DisplayHeading as={titleAs} size={titleSize} className="font-medium">
+      <DisplayHeading as={titleAs} size={titleSize}>
         {title}
       </DisplayHeading>
     ) : (
