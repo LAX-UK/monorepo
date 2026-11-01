@@ -13,7 +13,9 @@ const files = [
   "src/routes/submissions/seller.routes.ts",
   "src/routes/submissions/admin.routes.ts",
   "src/routes/submissions/after-sale.routes.ts",
+  "src/routes/submissions/messages.routes.ts",
   "src/routes/submission-documents.ts",
+  "src/routes/admin-consignment-threads.ts",
 ];
 
 const ALLOWED_CONTAINER_KEYS = new Set([

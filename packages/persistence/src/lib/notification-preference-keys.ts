@@ -226,6 +226,14 @@ const NOTIFICATION_TYPE_CONFIG: Record<string, NotificationTypeConfig> = {
     whatsapp: null,
     template: "consignment-update",
   },
+  /** A message on a consignment's thread: to the account from a specialist, or to the specialist. */
+  consignment_message: {
+    inApp: null,
+    push: "submissionUpdatesPush",
+    email: "submissionUpdatesEmail",
+    whatsapp: null,
+    template: "consignment-update",
+  },
 };
 
 export function emailPreferenceKey(type: string): keyof NotificationPreference | null {

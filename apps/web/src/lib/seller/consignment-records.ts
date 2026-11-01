@@ -28,22 +28,25 @@ import {
 } from "./consignment-status";
 
 /** What a consignment waits on its seller for, the reason it is in "Needs you". */
-export type ConsignmentTask = "changes" | "agreement" | "unsold";
+export type ConsignmentTask = "changes" | "agreement" | "unsold" | "reply";
 
 /**
- * The consignments waiting on the member, by what they wait for: submissions sent back and
- * agreements to accept (by submission id), and unsold lots to decide (by lot id).
+ * The consignments waiting on the member, by what they wait for: submissions sent back,
+ * agreements to accept and specialists' messages to read (by submission id), and unsold lots to
+ * decide (by lot id).
  */
 export type ConsignmentTasks = {
   changes: ReadonlySet<string>;
   agreements: ReadonlySet<string>;
   unsoldLots: ReadonlySet<string>;
+  replies: ReadonlySet<string>;
 };
 
 export const NO_CONSIGNMENT_TASKS: ConsignmentTasks = {
   changes: new Set(),
   agreements: new Set(),
   unsoldLots: new Set(),
+  replies: new Set(),
 };
 
 /** One consignment in the list: a submission while it is reviewed, then its lot. */
@@ -99,6 +102,11 @@ export function consignmentHref(submissionId: string): string {
 /** The agreement PDF, through the app so the member's session goes with it. */
 export function consignmentAgreementHref(submissionId: string): string {
   return `${consignmentHref(submissionId)}/agreement`;
+}
+
+/** The consignment's Messages tab. */
+export function consignmentMessagesHref(submissionId: string): string {
+  return `${consignmentHref(submissionId)}?tab=messages`;
 }
 
 function day(date: Date, now: Date): string {
@@ -168,6 +176,7 @@ function taskOf(pair: Pair, tasks: ConsignmentTasks): ConsignmentTask | null {
   if (!id) return null;
   if (tasks.agreements.has(id)) return "agreement";
   if (tasks.changes.has(id)) return "changes";
+  if (tasks.replies.has(id)) return "reply";
   return null;
 }
 
@@ -270,14 +279,16 @@ export function consignmentTasksFromNeedsYou(tasks: readonly NeedsYouTask[]): Co
   const changes = new Set<string>();
   const agreements = new Set<string>();
   const unsoldLots = new Set<string>();
+  const replies = new Set<string>();
   for (const task of tasks) {
     if (task.kind === "changes") changes.add(task.submission.id);
     else if (task.kind === "agreement") agreements.add(task.consignment.id);
+    else if (task.kind === "reply") replies.add(task.consignment.id);
     else if (task.kind === "unsold" || task.kind === "unsold_due") {
       for (const lot of task.lots) unsoldLots.add(lot.id);
     }
   }
-  return { changes, agreements, unsoldLots };
+  return { changes, agreements, unsoldLots, replies };
 }
 
 /** Consignments still open to the specialist's terms (the reader's rule). */
@@ -319,5 +330,7 @@ export function personalConsignmentTasks(input: {
         .map((a) => a.submissionId),
     ),
     unsoldLots: new Set(input.unsold.filter((u) => u.choice === "none").map((u) => u.lotId)),
+    // A specialist's unread messages are read on the consignment itself, not from this list.
+    replies: new Set(),
   };
 }

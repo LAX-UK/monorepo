@@ -49,6 +49,7 @@ export const NOTIFICATION_TYPES = [
   "bid_refused_limit",
   "access_requested",
   "access_request_decided",
+  "consignment_message",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];

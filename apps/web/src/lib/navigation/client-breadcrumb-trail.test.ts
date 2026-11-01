@@ -1,4 +1,8 @@
-import { buildClientBreadcrumbTrail } from "@/lib/navigation/client-breadcrumb-trail";
+import {
+  buildClientBreadcrumbTrail,
+  withRecordTitle,
+} from "@/lib/navigation/client-breadcrumb-trail";
+import { resolveMobileShellTitle } from "@/lib/navigation/mobile-shell-title";
 import { describe, expect, it } from "vitest";
 
 function labels(pathname: string): string[] {
@@ -41,7 +45,7 @@ describe("buildClientBreadcrumbTrail", () => {
 
   it("labels checkout and a consignment without raw ids", () => {
     expect(labels("/purchases/checkout/lot-abc")).toEqual(["Purchases", "Checkout"]);
-    expect(labels("/selling/consignments/s1")).toEqual(["Consignments", "Submission"]);
+    expect(labels("/selling/consignments/s1")).toEqual(["Consignments", "Consignment"]);
     expect(labels("/selling/new")).toEqual(["Consignments", "New submission"]);
   });
 
@@ -70,5 +74,24 @@ describe("buildClientBreadcrumbTrail", () => {
     ]) {
       expect(labels(path)).not.toContain("Detail");
     }
+  });
+});
+
+describe("record pages", () => {
+  it("title the current crumb with the record, and go back from the phone header", () => {
+    const trail = buildClientBreadcrumbTrail("/selling/consignments/s1");
+    expect(withRecordTitle(trail, "Thames at Battersea").map((i) => i.label)).toEqual([
+      "Consignments",
+      "Thames at Battersea",
+    ]);
+    expect(withRecordTitle(trail, null).map((i) => i.label)).toEqual([
+      "Consignments",
+      "Consignment",
+    ]);
+    expect(resolveMobileShellTitle(withRecordTitle(trail, "Thames at Battersea"))).toEqual({
+      title: "Thames at Battersea",
+      backHref: "/selling/consignments",
+      backLabel: "Consignments",
+    });
   });
 });

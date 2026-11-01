@@ -53,6 +53,16 @@ export function stubSubmissionRouteServices(
       move: vi.fn(),
       remindSeller: vi.fn(),
     },
+    messageHttp: {
+      listForClient: vi.fn(),
+      postForClient: vi.fn(),
+      markReadForClient: vi.fn(),
+      listThreads: vi.fn(),
+      getForStaff: vi.fn(),
+      replyForStaff: vi.fn(),
+      assignForStaff: vi.fn(),
+      markReadForStaff: vi.fn(),
+    },
     ...overrides,
   };
 }

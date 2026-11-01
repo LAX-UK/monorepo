@@ -2,6 +2,24 @@ import { describe, expect, it } from "vitest";
 import { notificationHref } from "./notification-link";
 
 describe("notificationHref", () => {
+  it("opens a message on its thread: the account's Messages tab, or Bid admin for staff", () => {
+    const base = {
+      id: "n9",
+      userId: "u1",
+      type: "consignment_message",
+      title: "Reply from Clara Mendes",
+      message: "Body",
+      lotId: null,
+      submissionId: "sub-9",
+      read: false,
+      createdAt: new Date(),
+    };
+    expect(notificationHref({ ...base, legalEntityId: "acct" })).toBe(
+      "/selling/consignments/sub-9?tab=messages",
+    );
+    expect(notificationHref({ ...base, legalEntityId: null })).toBe("/admin/submissions/sub-9");
+  });
+
   it("prefers submission detail over lot page", () => {
     expect(
       notificationHref({

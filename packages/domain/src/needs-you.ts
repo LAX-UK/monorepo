@@ -42,6 +42,8 @@ export type NeedsYouTask =
   | { kind: "unsold_due"; lots: HomeSubject[]; dueBy: Date }
   | { kind: "agreement"; consignment: HomeSubject }
   | { kind: "changes"; submission: HomeSubject; note: string | null }
+  /** A specialist wrote on a consignment and nobody who answers has read it yet. */
+  | { kind: "reply"; consignment: HomeSubject; from: string }
   | { kind: "unsold"; lots: HomeSubject[] }
   | { kind: "choose_delivery"; purchases: HomeSubject[] }
   | { kind: "quote_ready"; purchases: HomeSubject[] }
@@ -61,6 +63,8 @@ export type NeedsYouKind = NeedsYouTask["kind"];
 export type EndingAuthorisation = { id: string; memberName: string; endsAt: Date };
 export type ExpiredInvitation = { id: string; email: string; expiredAt: Date };
 export type PendingAccessRequest = { id: string; requesterName: string; askedAt: Date };
+/** A consignment with a specialist's message nobody who answers has read; `from` names them. */
+export type UnreadReply = HomeSubject & { from: string };
 
 /**
  * Everything the table reads, already loaded and already narrowed to what the member may see
@@ -78,6 +82,8 @@ export type NeedsYouFacts = {
   agreementsToAccept: readonly HomeSubject[];
   /** Submissions a specialist sent back, with the note. */
   changesRequested: ReadonlyArray<HomeSubject & { note: string | null }>;
+  /** Consignments where the specialist's newest messages are unread, newest first. */
+  unreadReplies: readonly UnreadReply[];
   /**
    * Consigned lots that ended unsold with nothing chosen yet, each with the date its choice is
    * due: the stored date, set from {@link unsoldChoiceDueBy} when the outcome was first shown.
@@ -132,6 +138,7 @@ export type NeedsYouLink =
   | { page: "purchase"; id: string }
   | { page: "purchases" }
   | { page: "consignment"; id: string }
+  | { page: "consignment_messages"; id: string }
   | { page: "consignments"; view: "unsold" }
   | { page: "sale"; id: string }
   | { page: "team"; view: "members" | "invitations" | "who_can_bid" }
@@ -287,6 +294,22 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
       })),
     items: one,
     link: (task) => ({ page: "consignment", id: task.submission.id }),
+  },
+  reply: {
+    kind: "reply",
+    section: "consignments",
+    // The people who write in the thread; the reader narrows it to consignments they see.
+    allowed: (actor) => entityActorCan(actor, "entity.submissions.create") && acting(actor),
+    requires: "message_specialist",
+    announcedBy: ["consignment_message"],
+    collect: (facts) =>
+      facts.unreadReplies.map(({ id, title, from }) => ({
+        kind: "reply",
+        consignment: { id, title },
+        from,
+      })),
+    items: one,
+    link: (task) => ({ page: "consignment_messages", id: task.consignment.id }),
   },
   unsold: {
     kind: "unsold",

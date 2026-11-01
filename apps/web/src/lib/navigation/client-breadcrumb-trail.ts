@@ -2,7 +2,11 @@ import type { BreadcrumbItem } from "@/components/dashboard/primitives/breadcrum
 import { settingsSectionLabel } from "@/lib/navigation/settings-section-labels";
 import { CLIENT_ROUTES } from "./client-routes";
 
-type Crumb = BreadcrumbItem;
+/**
+ * A crumb. `record` marks the current crumb of a record page: it reads as the record's own title
+ * once the page names it (`SetMobileShellTitle`), and the label is only the fallback.
+ */
+export type Crumb = BreadcrumbItem & { record?: true };
 
 const MY_BIDS: Crumb = { label: "My bids", href: CLIENT_ROUTES.bids };
 const PURCHASES: Crumb = { label: "Purchases", href: CLIENT_ROUTES.purchases };
@@ -25,6 +29,16 @@ function here(label: string): Crumb {
   return { label };
 }
 
+/** The current page when it is one record, titled by the page once it knows the title. */
+function record(fallback: string): Crumb {
+  return { label: fallback, record: true };
+}
+
+/** The trail with a record page's own title in its current crumb. */
+export function withRecordTitle(items: readonly Crumb[], title: string | null): Crumb[] {
+  return items.map((item) => (item.record && title ? { ...item, label: title } : item));
+}
+
 /**
  * Every client-area page and its trail, first match wins. Each page has one address, so its
  * trail is the same whichever account is in use.
@@ -41,7 +55,7 @@ const TRAILS: readonly [RegExp, (match: RegExpMatchArray) => Crumb[]][] = [
   [/^\/settings\/([^/]+)$/, (m) => [BID_SETTINGS, here(settingsSectionLabel(m[1] ?? ""))]],
   [/^\/selling\/new$/, () => [CONSIGNMENTS, here("New submission")]],
   [/^\/selling\/consignments$/, () => [here("Consignments")]],
-  [/^\/selling\/consignments\/[^/]+$/, () => [CONSIGNMENTS, here("Submission")]],
+  [/^\/selling\/consignments\/[^/]+$/, () => [CONSIGNMENTS, record("Consignment")]],
   [/^\/selling\/works$/, () => [here("Works")]],
   [/^\/selling\/payouts$/, () => [here("Sold & payouts")]],
   [/^\/selling\/payout-setup$/, () => [SOLD_AND_PAYOUTS, here("Payout setup")]],
@@ -64,7 +78,7 @@ const TRAILS: readonly [RegExp, (match: RegExpMatchArray) => Crumb[]][] = [
 ];
 
 /** Human-readable breadcrumb trail for a signed-in client-area page. */
-export function buildClientBreadcrumbTrail(pathname: string): BreadcrumbItem[] {
+export function buildClientBreadcrumbTrail(pathname: string): Crumb[] {
   const path = pathname.replace(/\/+$/, "") || "/";
   for (const [pattern, trail] of TRAILS) {
     const match = path.match(pattern);

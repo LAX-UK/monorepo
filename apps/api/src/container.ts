@@ -3,6 +3,7 @@ import {
   DrizzleAdminSavedViewRepository,
   DrizzleBiddingExposureReader,
   DrizzleBuyerAgentAuthorisationRepository,
+  DrizzleConsignmentMessageRepository,
   DrizzleLaxAdminRolesRepository,
   DrizzleLaxStaffAccessRepository,
   DrizzleOrganisationBiddingLimitRepository,
@@ -256,6 +257,13 @@ export function createContainer(env: Env): Container {
     submissionAccess: new SubmissionAccessGuard(repos.itemSubmissionRepository),
     consignmentAfterSaleHttp: catalog.consignmentAfterSaleHttp,
     recordPeople: new DrizzleRecordPeopleReader(db),
+    consignmentMessages: {
+      repository: new DrizzleConsignmentMessageRepository(db),
+      dispatcher: platform.notificationDispatcher,
+      recipients: repos.legalEntityNotificationRecipients,
+      storage: infra.objectStorage,
+      media: complianceMedia.mediaUrlResolver,
+    },
   });
   const admin = createAdminServices({
     env,

@@ -27,6 +27,7 @@ import { requirePlatformShell } from "./middleware/require-capability.js";
 import { requireSuperAdminStaffRole } from "./middleware/require-staff-role.js";
 import { createSecurityHeadersMiddleware } from "./middleware/security-headers.js";
 import { createVerifyOriginMiddleware } from "./middleware/verify-origin.js";
+import { createAdminConsignmentThreadRoutes } from "./routes/admin-consignment-threads.js";
 import { createPublicInvitationRoutes } from "./routes/admin-invitations.js";
 import { createAdminRoutes } from "./routes/admin.js";
 import { createAdminMyStaffToolsRoutes } from "./routes/admin/staff-access.routes.js";
@@ -275,6 +276,10 @@ export function createApp(container: Container, env: Env, authenticator: IAuthen
       createSubmissionRoutes(container, authenticator, requireAccountOnboarding),
     )
     .route("/submissions", createSubmissionDocumentRoutes(container, authenticator))
+    .route(
+      "/admin/consignment-threads",
+      createAdminConsignmentThreadRoutes(container, authenticator),
+    )
     .route("/uploads", createUploadRoutes(container, authenticator))
     .route("/exports", createExportRoutes(container, authenticator))
     .route("/admin/staff/my-tools", createAdminMyStaffToolsRoutes(container, authenticator))

@@ -4,6 +4,7 @@ import type {
   HomeSubject,
   PendingAccessRequest,
   PurchaseNextStepFacts,
+  UnreadReply,
 } from "@auction/domain";
 import type { SubmissionSenderFilter } from "./item-submission.repository.js";
 
@@ -59,6 +60,16 @@ export interface INeedsYouFactsReader {
     now: Date;
     until: Date;
   }): Promise<EndingAuthorisation[]>;
+
+  /**
+   * Consignments with a specialist's message nobody who answers has read, newest first, each
+   * naming the author of the newest unread one.
+   */
+  unreadReplies(input: {
+    legalEntityId: string;
+    visibleTo: SubmissionSenderFilter | undefined;
+    limit: number;
+  }): Promise<UnreadReply[]>;
 
   /** "Ask for access" requests still waiting for a decision, oldest first. */
   pendingAccessRequests(input: {

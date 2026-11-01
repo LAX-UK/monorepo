@@ -10,13 +10,20 @@ export type MobileShellTitleModel = {
 };
 
 /** Maps a breadcrumb trail to a mobile shell title model. */
-export function resolveMobileShellTitle(items: readonly BreadcrumbItem[]): MobileShellTitleModel {
+export function resolveMobileShellTitle(
+  items: ReadonlyArray<BreadcrumbItem & { record?: true }>,
+): MobileShellTitleModel {
   if (items.length === 0) {
     return { title: "Dashboard" };
   }
 
   const last = items[items.length - 1];
   const title = last?.label ?? "Dashboard";
+  // A record page goes back to its list from the phone header, the one way back on a phone.
+  const parent = items[items.length - 2];
+  if (last?.record && parent?.href) {
+    return { title, backHref: parent.href, backLabel: parent.label };
+  }
 
   if (items.length === 1) {
     return { title };

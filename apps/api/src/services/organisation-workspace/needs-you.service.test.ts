@@ -24,6 +24,9 @@ function setup(options: { standing?: { status: "approved"; payoutsReady: boolean
     pendingAccessRequests: vi.fn(async () => [
       { id: "r1", requesterName: "Tom", askedAt: new Date("2026-11-09T00:00:00Z") },
     ]),
+    unreadReplies: vi.fn(async () => [
+      { id: "s2", title: "Thames at low tide", from: "Clara Mendes" },
+    ]),
     viewerChecks: vi.fn(async () => ({
       identity: "required" as const,
       sourceOfFundsRequested: false,
@@ -90,13 +93,15 @@ describe("NeedsYouService", () => {
       // Ended 12 days ago: due within 3 days.
       ["unsold_due", { page: "consignments", view: "unsold" }],
       ["agreement", { page: "consignment", id: "c1" }],
+      // An unread specialist message opens the consignment's messages.
+      ["reply", { page: "consignment_messages", id: "s2" }],
       ["invitations_expired", { page: "team", view: "invitations" }],
       ["access_requests", { page: "team", view: "members" }],
     ]);
     expect(view.counts).toEqual({
       bids: 1,
       purchases: 1,
-      consignments: 2,
+      consignments: 3,
       team: 2,
       organisation: 0,
     });
@@ -106,6 +111,9 @@ describe("NeedsYouService", () => {
     );
     expect(facts.agreementsToAccept).toHaveBeenCalledWith(
       expect.objectContaining({ visibleTo: undefined }),
+    );
+    expect(facts.unreadReplies).toHaveBeenCalledWith(
+      expect.objectContaining({ legalEntityId: ENTITY, visibleTo: undefined }),
     );
     expect(unsold.listUnsoldOutcomes).toHaveBeenCalledWith(
       expect.objectContaining({ choice: "none", visibleTo: undefined }),

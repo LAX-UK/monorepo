@@ -256,3 +256,4 @@ export {
   DrizzlePaySeveralInvoiceFlagsReader,
   DrizzlePaymentGroupRepository,
 } from "./drizzle-payment-group.repository.js";
+export { DrizzleConsignmentMessageRepository } from "./drizzle-consignment-message.repository.js";

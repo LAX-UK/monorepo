@@ -4,7 +4,8 @@ import type { IMalwareScanner } from "../lib/malware-scanner.js";
 import type { UploadStorage } from "../lib/upload-storage.js";
 import { pickValidator } from "./content-type-validators.js";
 
-const MALWARE_SCAN_KINDS = new Set(["source_of_funds_document"]);
+/** Files people send in for staff to open are scanned before they become usable. */
+const MALWARE_SCAN_KINDS = new Set(["source_of_funds_document", "consignment_message_attachment"]);
 
 export async function validateUploadJob(args: {
   uploadValidationRepo: IUploadValidationRepository;

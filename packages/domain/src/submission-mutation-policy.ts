@@ -7,6 +7,8 @@ export const SUBMISSION_MUTATIONS = [
   "attach_document",
   "delete_document",
   "withdraw",
+  /** Write to the specialist in the consignment's messages. */
+  "message",
 ] as const;
 
 export type SubmissionMutation = (typeof SUBMISSION_MUTATIONS)[number];
@@ -36,6 +38,7 @@ const RULES: Record<SubmissionMutation, { own: EntityCapability; any: EntityCapa
   attach_document: { own: "entity.submissions.create", any: "entity.submissions.manage" },
   delete_document: { own: "entity.submissions.create", any: "entity.submissions.manage" },
   withdraw: { own: "entity.submissions.create", any: "entity.consignments.withdraw" },
+  message: { own: "entity.submissions.create", any: "entity.submissions.manage" },
 };
 
 /** What the person reads when a change is refused, with a sharper line where one helps. */
@@ -43,13 +46,20 @@ const DENIAL_MESSAGE: Record<
   SubmissionMutationDenial,
   { default: string } & Partial<Record<SubmissionMutation, string>>
 > = {
-  read_only: { default: "You're viewing this account as LAX support, so changes are turned off." },
+  read_only: {
+    default: "You're viewing this account as LAX support, so changes are turned off.",
+    message: "You're viewing this account as LAX support, so writing is turned off.",
+  },
   role: {
     default: "Your role can follow this consignment but not change it.",
     withdraw: "Only an owner or admin can withdraw this consignment.",
+    message:
+      "Your role can read these messages. Owners, admins and the person who sent this work can write.",
   },
   not_sender: {
     default: "Only the person who sent this work, or an owner or admin, can change it.",
+    message:
+      "Only the person who sent this work, or an owner or admin, can write to the specialist.",
   },
 };
 

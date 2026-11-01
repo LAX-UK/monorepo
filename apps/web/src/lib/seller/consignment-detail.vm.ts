@@ -1,6 +1,7 @@
 import type { ItemSubmission, Lot } from "@auction/types";
 import {
   type ConsignmentJourney,
+  type ConsignmentJourneyFacts,
   consignmentJourney,
   journeyProgress,
 } from "./consignment-journey";
@@ -31,13 +32,13 @@ function known(label: string, value: string | null | undefined) {
 export function buildConsignmentDetailVm(input: {
   submission: ItemSubmission;
   lot: Pick<Lot, "status" | "winnerId" | "lotNumber"> | null;
-  agreementAccepted: boolean;
+  agreement: ConsignmentJourneyFacts["agreement"];
   listingHref: string | null;
 }): ConsignmentDetailVm {
   const { submission, lot } = input;
   const journey: ConsignmentJourney | null = consignmentJourney({
     submissionStatus: submission.status,
-    agreementAccepted: input.agreementAccepted,
+    agreement: input.agreement,
     lot: lot ? { status: lot.status, sold: Boolean(lot.winnerId) } : null,
   });
   const lotLabel = lot?.lotNumber == null ? null : `Lot ${lot.lotNumber}`;

@@ -29,6 +29,7 @@ const EXPECTED: Record<LegalEntityMemberRole, Record<SubmissionMutation, Row>> =
     attach_document: CHANGE_ANY,
     delete_document: CHANGE_ANY,
     withdraw: CHANGE_ANY,
+    message: CHANGE_ANY,
   },
   admin: {
     edit: CHANGE_ANY,
@@ -36,6 +37,7 @@ const EXPECTED: Record<LegalEntityMemberRole, Record<SubmissionMutation, Row>> =
     attach_document: CHANGE_ANY,
     delete_document: CHANGE_ANY,
     withdraw: CHANGE_ANY,
+    message: CHANGE_ANY,
   },
   consignor: {
     edit: CHANGE_OWN,
@@ -43,6 +45,7 @@ const EXPECTED: Record<LegalEntityMemberRole, Record<SubmissionMutation, Row>> =
     attach_document: CHANGE_OWN,
     delete_document: CHANGE_OWN,
     withdraw: CHANGE_OWN,
+    message: CHANGE_OWN,
   },
   finance: {
     edit: NONE,
@@ -50,6 +53,7 @@ const EXPECTED: Record<LegalEntityMemberRole, Record<SubmissionMutation, Row>> =
     attach_document: NONE,
     delete_document: NONE,
     withdraw: NONE,
+    message: NONE,
   },
   viewer: {
     edit: NONE,
@@ -57,6 +61,7 @@ const EXPECTED: Record<LegalEntityMemberRole, Record<SubmissionMutation, Row>> =
     attach_document: NONE,
     delete_document: NONE,
     withdraw: NONE,
+    message: NONE,
   },
   buyer_agent: {
     edit: NONE,
@@ -64,6 +69,7 @@ const EXPECTED: Record<LegalEntityMemberRole, Record<SubmissionMutation, Row>> =
     attach_document: NONE,
     delete_document: NONE,
     withdraw: NONE,
+    message: NONE,
   },
 };
 

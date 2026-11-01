@@ -159,6 +159,7 @@ describe("buildConsignmentRecords", () => {
       changes: new Set(),
       agreements: new Set(["s-agree"]),
       unsoldLots: new Set(["l-unsold"]),
+      replies: new Set(),
     },
     now: NOW,
   });
@@ -230,10 +231,12 @@ describe("what waits on the member", () => {
       { kind: "agreement", consignment: { id: "s1", title: "A" } },
       { kind: "changes", submission: { id: "s2", title: "B" }, note: null },
       { kind: "unsold_due", lots: [{ id: "l1", title: "C" }], dueBy: NOW },
+      { kind: "reply", consignment: { id: "s3", title: "D" }, from: "Clara Mendes" },
     ]);
     expect([...tasks.agreements]).toEqual(["s1"]);
     expect([...tasks.changes]).toEqual(["s2"]);
     expect([...tasks.unsoldLots]).toEqual(["l1"]);
+    expect([...tasks.replies]).toEqual(["s3"]);
   });
 
   it("derives a person's from the same rules: open agreements with terms, changes, unmade choices", () => {

@@ -8,6 +8,7 @@ import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import type { SubmissionRouteDeps } from "./submissions/_shared.js";
 import { attachSubmissionAdminRoutes } from "./submissions/admin.routes.js";
 import { attachSubmissionAfterSaleRoutes } from "./submissions/after-sale.routes.js";
+import { attachConsignmentMessageRoutes } from "./submissions/messages.routes.js";
 import { attachSubmissionSellerRoutes } from "./submissions/seller.routes.js";
 
 export function createSubmissionRoutes(
@@ -39,6 +40,7 @@ export function createSubmissionRoutes(
   attachSubmissionSellerRoutes(r, deps);
   attachSubmissionAdminRoutes(r, deps);
   attachSubmissionAfterSaleRoutes(r, deps);
+  attachConsignmentMessageRoutes(r, deps);
 
   return r;
 }

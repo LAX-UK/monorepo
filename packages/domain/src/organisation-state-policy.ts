@@ -16,6 +16,11 @@ export const ORGANISATION_ACTIONS = [
   "set_up_payouts",
   /** Send or replace the documents LAX checks; open only while LAX is waiting for them. */
   "send_documents",
+  /**
+   * Write to a specialist about a consignment. Closed with trading (restricted, not approved,
+   * archived): the thread stays readable and LAX is reached through the contact page.
+   */
+  "message_specialist",
 ] as const;
 export type OrganisationAction = (typeof ORGANISATION_ACTIONS)[number];
 
@@ -83,7 +88,7 @@ type StateSpec = {
 const READ_ONLY: readonly OrganisationAction[] = ["read_history"];
 
 const DOCUMENTS_REQUESTED: StateSpec = {
-  allowed: ["read_history", "invite", "accept_invitation", "send_documents"],
+  allowed: ["read_history", "invite", "accept_invitation", "send_documents", "message_specialist"],
   banner: {
     kind: "attention",
     key: "documents_requested",
@@ -95,7 +100,7 @@ const DOCUMENTS_REQUESTED: StateSpec = {
 };
 
 const UNDER_REVIEW: StateSpec = {
-  allowed: ["read_history", "invite", "accept_invitation"],
+  allowed: ["read_history", "invite", "accept_invitation", "message_specialist"],
   banner: { kind: "info", key: "documents_under_review", actWith: [], toldWith: null },
   homeFirstRunKey: "documents_under_review",
   bidPanelReasonKey: "documents_under_review",
@@ -127,6 +132,7 @@ const STATE_SPECS: Readonly<Record<LegalEntityStatus, StateSpec>> = {
       "invite",
       "accept_invitation",
       "set_up_payouts",
+      "message_specialist",
     ],
     banner: PAYOUTS_PENDING_BANNER,
     homeFirstRunKey: "payouts_not_set_up",

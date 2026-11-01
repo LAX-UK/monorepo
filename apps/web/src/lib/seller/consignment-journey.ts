@@ -23,7 +23,11 @@ export const CONSIGNMENT_JOURNEY_LABEL: Record<ConsignmentJourneyStep, string> =
 export type ConsignmentJourneyFacts = {
   /** `null` for a lot the seller sees without its submission. */
   submissionStatus: ItemSubmissionStatus | null;
-  agreementAccepted: boolean;
+  /**
+   * The specialist's agreement, as the status reads it: `open` waits on the seller; `none` (no
+   * terms set) and `accepted` go on to cataloguing, so the step and the status badge agree.
+   */
+  agreement: "none" | "open" | "accepted";
   lot: { status: LotStatus; sold: boolean } | null;
 };
 
@@ -47,7 +51,7 @@ const LOT_STEP: Record<LotStatus, ConsignmentJourneyStep | null> = {
 /** A submission's step before it has a lot. Rejected or withdrawn work leaves the journey. */
 function submissionStep(
   status: ItemSubmissionStatus,
-  agreementAccepted: boolean,
+  agreement: ConsignmentJourneyFacts["agreement"],
 ): ConsignmentJourneyStep | null {
   switch (status) {
     case "draft":
@@ -58,7 +62,7 @@ function submissionStep(
       return "review";
     case "approved":
     case "converted":
-      return agreementAccepted ? "catalogued" : "agreement";
+      return agreement === "open" ? "agreement" : "catalogued";
     default:
       return null;
   }
@@ -72,7 +76,7 @@ export function consignmentJourney(facts: ConsignmentJourneyFacts): ConsignmentJ
     return step ? { current: step, finished: false } : null;
   }
   if (!facts.submissionStatus) return null;
-  const step = submissionStep(facts.submissionStatus, facts.agreementAccepted);
+  const step = submissionStep(facts.submissionStatus, facts.agreement);
   return step ? { current: step, finished: false } : null;
 }
 

@@ -2,33 +2,30 @@ import { MediaImage } from "@/components/ui/media-image";
 import type { ConsignmentDetailVm } from "@/lib/seller/consignment-detail.vm";
 import { AccountProgress } from "@auction/marketing-ui";
 import { Button } from "@auction/ui/components/button";
-import { ChevronLeft, Mail } from "lucide-react";
+import { MessageSquare } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
-/** The consignment's head: back to Selling, the work's picture, its status, title and medium. */
+/**
+ * The consignment's head: the work's picture, its status, title and facts. The way back is the
+ * shell's (the breadcrumb, and the phone header's back), so the head draws none of its own.
+ * Each fact keeps to one line inside, so a reference ("C-1013") never breaks.
+ */
 export function ConsignmentDetailHead({
   vm,
   title,
   status,
-  backHref,
-  backLabel,
+  facts,
 }: {
   vm: ConsignmentDetailVm;
   title: string;
   status: ReactNode;
-  backHref: string;
-  backLabel: string;
+  /** The line under the title, fact by fact; the view model's line when left out. */
+  facts?: readonly string[];
 }) {
+  const line = facts ?? (vm.meta ? [vm.meta] : []);
   return (
     <div className="flex flex-col gap-6">
-      <Link
-        href={backHref}
-        className="inline-flex w-fit items-center gap-1 font-body text-sm text-on-surface-variant underline-offset-4 hover:text-on-surface hover:underline"
-      >
-        <ChevronLeft aria-hidden className="size-4" />
-        {backLabel}
-      </Link>
       <div className="flex items-center gap-5">
         <span className="relative size-20 shrink-0 overflow-hidden rounded-lg bg-surface-container-high md:size-28">
           <MediaImage src={vm.image} alt="" label="Photo to follow" sizes="112px" />
@@ -38,8 +35,15 @@ export function ConsignmentDetailHead({
           <h1 className="mt-2 text-balance font-headline text-[1.625rem] font-semibold leading-[1.15] tracking-[-0.01em] text-on-surface md:text-[2rem]">
             {title}
           </h1>
-          {vm.meta ? (
-            <p className="mt-1.5 font-body text-base text-on-surface-variant">{vm.meta}</p>
+          {line.length > 0 ? (
+            <p className="mt-1.5 font-body text-base text-on-surface-variant">
+              {line.map((fact, index) => (
+                <span key={fact}>
+                  {index > 0 ? " · " : null}
+                  <span className={/\s/.test(fact) ? undefined : "whitespace-nowrap"}>{fact}</span>
+                </span>
+              ))}
+            </p>
           ) : null}
         </div>
       </div>
@@ -79,7 +83,8 @@ export function AboutTheWork({ vm }: { vm: ConsignmentDetailVm }) {
 }
 
 /** Who to ask: the specialists reply within a working day. */
-export function AskYourSpecialist() {
+/** Questions go to the consignment's own messages, where the specialist answers. */
+export function AskYourSpecialist({ messagesHref }: { messagesHref: string }) {
   return (
     <section aria-labelledby="specialist-heading" className={ASIDE_CARD}>
       <h2 id="specialist-heading" className="font-headline text-base font-semibold text-on-surface">
@@ -90,8 +95,8 @@ export function AskYourSpecialist() {
         working day.
       </p>
       <Button variant="secondaryOutline" size="default" asChild className="mt-4 w-full">
-        <Link href="/contact?intent=selling">
-          <Mail aria-hidden />
+        <Link href={messagesHref}>
+          <MessageSquare aria-hidden />
           Send a message
         </Link>
       </Button>

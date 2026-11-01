@@ -89,3 +89,4 @@ export * from "./account-search.js";
 export * from "./organisation-team.js";
 export * from "./workspace-selling.js";
 export * from "./workspace-access.js";
+export * from "./consignment-message.js";

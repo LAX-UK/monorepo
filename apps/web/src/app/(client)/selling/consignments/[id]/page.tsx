@@ -8,6 +8,8 @@ import {
   AskYourSpecialist,
   ConsignmentDetailHead,
 } from "@/components/dashboard/seller/consignment-detail-parts";
+import { ConsignmentDetailTabs } from "@/components/dashboard/seller/consignment-detail-tabs";
+import { ConsignmentThread } from "@/components/dashboard/seller/consignment-messages/consignment-thread";
 import { ConsignmentWithdrawPanel } from "@/components/dashboard/seller/consignment-withdraw-panel";
 import { SubmissionChangesRequestedPanel } from "@/components/dashboard/seller/submission-changes-requested-panel";
 import { SubmissionSubmittedNotice } from "@/components/dashboard/seller/submission-submitted-notice";
@@ -30,6 +32,7 @@ import {
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerConsignmentAfterSale } from "@/lib/data/http/consignment-after-sale.server";
 import { getServerConsignmentAgreement } from "@/lib/data/http/consignment-agreements.server";
+import { getServerConsignmentThread } from "@/lib/data/http/consignment-messages.server";
 import { getServerStripeConnectStatus } from "@/lib/data/http/stripe-connect.server";
 import { getServerSubmissionDocuments } from "@/lib/data/http/submission-documents.server";
 import { itemSubmissionToFormValues } from "@/lib/forms/submission/item-submission-form-defaults";
@@ -46,9 +49,16 @@ import {
 import { consignmentActionsVm } from "@/lib/seller/consignment-actions.vm";
 import { checklistItemView } from "@/lib/seller/consignment-checklist-copy";
 import { consignmentChecklistFacts } from "@/lib/seller/consignment-checklist-facts";
+import {
+  consignmentDetailTab,
+  consignmentDetailTabItems,
+} from "@/lib/seller/consignment-detail-tabs";
 import { buildConsignmentDetailVm } from "@/lib/seller/consignment-detail.vm";
 import { consignmentNextStep } from "@/lib/seller/consignment-next";
-import { consignmentAgreementHref } from "@/lib/seller/consignment-records";
+import {
+  consignmentAgreementHref,
+  consignmentMessagesHref,
+} from "@/lib/seller/consignment-records";
 import { CONSIGNMENT_STATUS, consignmentStatus } from "@/lib/seller/consignment-status";
 import { consignmentWithdrawalViewModel } from "@/lib/seller/consignment-withdrawal-view";
 import { loadSellerAccountFacts } from "@/lib/seller/seller-account-facts.server";
@@ -65,10 +75,11 @@ export default async function SubmissionDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; submitted?: string }>;
+  searchParams: Promise<{ error?: string; submitted?: string; tab?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;
+  const tab = consignmentDetailTab(sp.tab);
   const actionError = sp.error ? decodeURIComponent(sp.error) : null;
   const user = await requireAuthenticatedUser({
     shell: "client",
@@ -85,15 +96,24 @@ export default async function SubmissionDetailPage({
   let categoriesFailure = null as ReturnType<typeof describeDashboardSliceFailure> | null;
   let categories: Awaited<ReturnType<typeof c.categories.tree>> = [];
 
-  const [submissionRes, categoriesRes, documentsRes, agreementRes, accountRes, afterSaleRes] =
-    await Promise.allSettled([
-      c.submissions.getMineById(id),
-      c.categories.tree(),
-      getServerSubmissionDocuments(id),
-      getServerConsignmentAgreement(id),
-      loadSellerAccountFacts(sellerCtx),
-      getServerConsignmentAfterSale(id),
-    ]);
+  const [
+    submissionRes,
+    categoriesRes,
+    documentsRes,
+    agreementRes,
+    accountRes,
+    afterSaleRes,
+    threadRes,
+  ] = await Promise.allSettled([
+    c.submissions.getMineById(id),
+    c.categories.tree(),
+    getServerSubmissionDocuments(id),
+    getServerConsignmentAgreement(id),
+    loadSellerAccountFacts(sellerCtx),
+    getServerConsignmentAfterSale(id),
+    getServerConsignmentThread(id),
+  ]);
+  const thread = threadRes.status === "fulfilled" ? threadRes.value : null;
 
   if (submissionRes.status === "fulfilled") {
     s = submissionRes.value;
@@ -216,20 +236,22 @@ export default async function SubmissionDetailPage({
   const wizardInitialStepIndex = readyToSubmit
     ? wizardStepIndex("review")
     : firstIncompleteWizardStepIndex(submissionFormValues);
+  const agreement = agreementView?.agreement ?? null;
+  // One reading of the agreement for the steps and the status badge, so they always agree.
+  const agreementState = !agreement ? "none" : agreement.acceptedAt ? "accepted" : "open";
   const detail = buildConsignmentDetailVm({
     submission,
     lot: convertedLot,
-    agreementAccepted: Boolean(agreementView?.agreement?.acceptedAt),
+    agreement: agreementState,
     listingHref: submission.convertedLotId
       ? lotPath({ id: submission.convertedLotId, title: submission.title })
       : null,
   });
   const photos = submission.images.filter((src): src is string => Boolean(src));
-  const agreement = agreementView?.agreement ?? null;
   const unsoldChoiceMade = Boolean(afterSale?.unsold?.choice?.requestedChoice);
   const status = consignmentStatus({
     submission: submission.status,
-    agreement: !agreement ? "none" : agreement.acceptedAt ? "accepted" : "open",
+    agreement: agreementState,
     lot: convertedLot
       ? {
           status: convertedLot.status,
@@ -249,152 +271,176 @@ export default async function SubmissionDetailPage({
     organisation: account?.organisationName ?? null,
     chooseBy,
   });
-  const headMeta = [
+  const headFacts = [
     detail.meta,
     submission.reference,
     submission.sentBy?.name ? `sent by ${submission.sentBy.name}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  ].filter((fact): fact is string => Boolean(fact));
 
   return (
     <DashboardPage className="space-y-8">
       <SetMobileShellTitle title={submission.title} />
       <ConsignmentDetailHead
-        vm={{ ...detail, meta: headMeta }}
+        vm={detail}
+        facts={headFacts}
         title={submission.title}
         status={
           <StatusBadge tone={statusView.tone} shape={statusView.shape}>
             {statusView.label}
           </StatusBadge>
         }
-        backHref={DASHBOARD_ROUTES.consignments}
-        backLabel={backLabel}
       />
       {actionError ? (
         <DashboardSliceErrorAlert failure={describeSettingsActionError(actionError)} />
       ) : null}
       {categoriesFailure ? <DashboardSliceErrorAlert failure={categoriesFailure} /> : null}
       {sp.submitted === "1" ? <SubmissionSubmittedNotice submissionId={submission.id} /> : null}
-      <SubmissionDetailLiveRefresh status={submission.status} />
+      {tab === "overview" ? <SubmissionDetailLiveRefresh status={submission.status} /> : null}
       {nextStep ? (
         <Notice tone="info" title="What happens next">
           {nextStep}
         </Notice>
       ) : null}
+      <ConsignmentDetailTabs
+        activeId={tab}
+        items={consignmentDetailTabItems({
+          submissionId: submission.id,
+          // Unread counts in ink only for the people who answer; others see how many there are.
+          messages: thread
+            ? {
+                total: thread.messages.length,
+                unread: thread.access.canWrite ? thread.unread : 0,
+              }
+            : null,
+        })}
+      />
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="flex min-w-0 flex-col gap-6">
-          <SubmissionChangesRequestedPanel submission={submission} />
-          {checklist?.applies && account ? (
-            <ConsignmentChecklist
-              items={checklist.items.map((item) =>
-                checklistItemView(item, {
-                  accountKind: account.accountKind,
-                  organisationName: account.organisationName,
-                  agreementHref: "#agreement",
-                }),
-              )}
-              doneCount={checklist.doneCount}
-              totalCount={checklist.totalCount}
-            />
-          ) : null}
-          {unsoldView ? (
-            <UnsoldLotChoicePanel
+        {tab === "messages" ? (
+          <div className="min-w-0">
+            <ConsignmentThread
               submissionId={submission.id}
-              view={unsoldView}
-              current={unsoldCurrent}
-              deadline={chooseBy}
+              thread={thread}
+              viewerName={user.name}
+              retryHref={consignmentMessagesHref(submission.id)}
+              now={now}
             />
-          ) : null}
-          {agreementView?.agreement && account ? (
-            <ConsignmentAgreementPanel
-              agreement={agreementView.agreement}
-              canAccept={agreementView.canAccept}
-              accountName={accountName}
-              accountKind={account.accountKind}
-              conditions={CONDITIONS_OF_BUSINESS_PART_C}
-              pdfHref={consignmentAgreementHref(submission.id)}
+          </div>
+        ) : (
+          <div className="flex min-w-0 flex-col gap-6">
+            <SubmissionChangesRequestedPanel submission={submission} />
+            {checklist?.applies && account ? (
+              <ConsignmentChecklist
+                items={checklist.items.map((item) =>
+                  checklistItemView(item, {
+                    accountKind: account.accountKind,
+                    organisationName: account.organisationName,
+                    agreementHref: "#agreement",
+                  }),
+                )}
+                doneCount={checklist.doneCount}
+                totalCount={checklist.totalCount}
+              />
+            ) : null}
+            {unsoldView ? (
+              <UnsoldLotChoicePanel
+                submissionId={submission.id}
+                view={unsoldView}
+                current={unsoldCurrent}
+                deadline={chooseBy}
+              />
+            ) : null}
+            {agreementView?.agreement && account ? (
+              <ConsignmentAgreementPanel
+                agreement={agreementView.agreement}
+                canAccept={agreementView.canAccept}
+                accountName={accountName}
+                accountKind={account.accountKind}
+                conditions={CONDITIONS_OF_BUSINESS_PART_C}
+                pdfHref={consignmentAgreementHref(submission.id)}
+              />
+            ) : null}
+            <SubmissionRejectionPanel submission={submission} />
+            <SubmissionLotReadyChecklist
+              submission={submission}
+              lot={convertedLot}
+              connectRequired={connectRequired}
             />
-          ) : null}
-          <SubmissionRejectionPanel submission={submission} />
-          <SubmissionLotReadyChecklist
-            submission={submission}
-            lot={convertedLot}
-            connectRequired={connectRequired}
-          />
-          {editable ? (
-            <SubmissionWizard
-              mode={{ kind: "edit", submissionId: submission.id }}
-              categories={categoriesFailure ? [] : categories}
-              initialValues={submissionFormValues}
-              initialStepIndex={wizardInitialStepIndex}
-              readyToSubmit={readyToSubmit}
-              {...(submission.status === "changes_requested"
-                ? { submitLabel: "Send back for review" }
-                : {})}
-            />
-          ) : (
-            <section
-              aria-labelledby="your-submission-heading"
-              className="rounded-xl border border-outline-variant/60 bg-surface-container-lowest p-5"
-            >
-              <h2
-                id="your-submission-heading"
-                className="font-headline text-base font-semibold text-on-surface"
+            {editable ? (
+              <SubmissionWizard
+                mode={{ kind: "edit", submissionId: submission.id }}
+                categories={categoriesFailure ? [] : categories}
+                initialValues={submissionFormValues}
+                initialStepIndex={wizardInitialStepIndex}
+                readyToSubmit={readyToSubmit}
+                {...(submission.status === "changes_requested"
+                  ? { submitLabel: "Send back for review" }
+                  : {})}
+              />
+            ) : (
+              <section
+                aria-labelledby="your-submission-heading"
+                className="rounded-xl border border-outline-variant/60 bg-surface-container-lowest p-5"
               >
-                Your description
-              </h2>
-              <p className="mt-2 whitespace-pre-line font-body text-sm text-on-surface-variant">
-                {submission.description?.trim() || "No description was added."}
-              </p>
-              {submission.status !== "rejected" && submission.reviewNotes ? (
-                <div className="mt-4 border-t border-outline-variant/50 pt-4">
-                  <h3 className="font-body text-sm font-semibold text-on-surface">
-                    Your specialist's notes
-                  </h3>
-                  <p className="mt-1 font-body text-sm text-on-surface-variant">
-                    {submission.reviewNotes}
-                  </p>
+                <h2
+                  id="your-submission-heading"
+                  className="font-headline text-base font-semibold text-on-surface"
+                >
+                  Your description
+                </h2>
+                <p className="mt-2 whitespace-pre-line font-body text-sm text-on-surface-variant">
+                  {submission.description?.trim() || "No description was added."}
+                </p>
+                {submission.status !== "rejected" && submission.reviewNotes ? (
+                  <div className="mt-4 border-t border-outline-variant/50 pt-4">
+                    <h3 className="font-body text-sm font-semibold text-on-surface">
+                      Your specialist's notes
+                    </h3>
+                    <p className="mt-1 font-body text-sm text-on-surface-variant">
+                      {submission.reviewNotes}
+                    </p>
+                  </div>
+                ) : null}
+                {photos.length > 1 ? (
+                  <ul className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-6" aria-label="Photos">
+                    {photos.map((src, index) => (
+                      <li
+                        key={src}
+                        className="relative aspect-square overflow-hidden rounded-md bg-surface-container-high"
+                      >
+                        <MediaImage
+                          src={src}
+                          alt={`${submission.title}, photo ${index + 1}`}
+                          label="Photo"
+                          sizes="96px"
+                        />
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+                <div className="mt-4">
+                  <SubmissionWorkflowActions
+                    submissionId={submission.id}
+                    canSubmit={actions.canSubmit}
+                    canWithdraw={withdrawOwnSubmission}
+                  />
                 </div>
-              ) : null}
-              {photos.length > 1 ? (
-                <ul className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-6" aria-label="Photos">
-                  {photos.map((src, index) => (
-                    <li
-                      key={src}
-                      className="relative aspect-square overflow-hidden rounded-md bg-surface-container-high"
-                    >
-                      <MediaImage
-                        src={src}
-                        alt={`${submission.title}, photo ${index + 1}`}
-                        label="Photo"
-                        sizes="96px"
-                      />
-                    </li>
-                  ))}
-                </ul>
-              ) : null}
-              <div className="mt-4">
-                <SubmissionWorkflowActions
-                  submissionId={submission.id}
-                  canSubmit={actions.canSubmit}
-                  canWithdraw={withdrawOwnSubmission}
-                />
-              </div>
-            </section>
-          )}
-          <SubmissionSellerDocumentsPanel
-            submissionId={submission.id}
-            status={submission.status}
-            initialDocuments={submissionDocuments}
-            loadFailure={documentsFailure}
-            canManage={actions.canManageDocuments}
-          />
-        </div>
+              </section>
+            )}
+            <SubmissionSellerDocumentsPanel
+              submissionId={submission.id}
+              status={submission.status}
+              initialDocuments={submissionDocuments}
+              loadFailure={documentsFailure}
+              canManage={actions.canManageDocuments}
+            />
+          </div>
+        )}
         <aside className="flex flex-col gap-4" aria-label="About this consignment">
           <AboutTheWork vm={detail} />
-          <AskYourSpecialist />
-          {!editable && withdrawalView && !withdrawOwnSubmission ? (
+          {tab === "overview" ? (
+            <AskYourSpecialist messagesHref={consignmentMessagesHref(submission.id)} />
+          ) : null}
+          {tab === "overview" && !editable && withdrawalView && !withdrawOwnSubmission ? (
             <ConsignmentWithdrawPanel
               submissionId={submission.id}
               view={withdrawalView}

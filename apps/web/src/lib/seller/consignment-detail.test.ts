@@ -23,7 +23,7 @@ describe("buildConsignmentDetailVm", () => {
     const vm = buildConsignmentDetailVm({
       submission: submission(),
       lot: null,
-      agreementAccepted: false,
+      agreement: "open",
       listingHref: null,
     });
     expect(vm.meta).toBe("Oil on board · 60 × 60 cm");
@@ -40,7 +40,7 @@ describe("buildConsignmentDetailVm", () => {
     const listed = buildConsignmentDetailVm({
       submission: submission({ status: "converted", yearOfWork: null }),
       lot: { status: "scheduled", winnerId: null, lotNumber: 3 },
-      agreementAccepted: true,
+      agreement: "accepted",
       listingHref: "/lot/x",
     });
     expect(listed.meta).toBe("Oil on board · 60 × 60 cm · Lot 3");
@@ -48,7 +48,7 @@ describe("buildConsignmentDetailVm", () => {
     const rejected = buildConsignmentDetailVm({
       submission: submission({ status: "rejected" }),
       lot: null,
-      agreementAccepted: false,
+      agreement: "open",
       listingHref: null,
     });
     expect(rejected.steps).toBeNull();
