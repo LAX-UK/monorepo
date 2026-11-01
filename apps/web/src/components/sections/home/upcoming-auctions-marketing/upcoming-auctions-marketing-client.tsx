@@ -76,7 +76,7 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
               Upcoming Auctions
             </DisplayHeading>
           }
-          subtitle="Scheduled and live sales curated by LAX specialists"
+          subtitle="Scheduled and live sales"
           action={<MarketingViewAllLink href="/sales" srSuffix="auctions and sales" />}
         />
 
