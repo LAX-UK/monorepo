@@ -69,6 +69,11 @@ export type Lot = {
   medium: string | null;
   /** Display dimensions (e.g. 180 x 140 cm). */
   dimensions: string | null;
+  /** True when the photograph shows the work in its frame, so its size is the framed size. */
+  photoIncludesFrame?: boolean;
+  /** Framed size in centimetres, when the work is sold framed. */
+  framedWidthCm?: number | null;
+  framedHeightCm?: number | null;
   images: string[];
   /** Enriched metadata (width/height/blur) aligned with `images` when available. */
   imageAssets?: import("./gallery.js").GalleryImage[];
@@ -177,6 +182,9 @@ export type CreateLotInput = {
   description?: string | undefined;
   medium?: string | undefined;
   dimensions?: string | undefined;
+  photoIncludesFrame?: boolean | undefined;
+  framedWidthCm?: number | null | undefined;
+  framedHeightCm?: number | null | undefined;
   images?: string[] | undefined;
   sellerLegalEntityId?: string | undefined;
   /** Artist registry FK. Pass `null` to clear an existing attribution; pass a

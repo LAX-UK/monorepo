@@ -30,11 +30,17 @@ export function normalizeCategoryIdsInput(raw: unknown): unknown {
   return raw;
 }
 
+/** Centimetres, to one decimal place. */
+const framedSizeCm = z.number().positive().max(10_000);
+
 export const createLotBodySchema = z.object({
   title: z.string().min(1).max(500),
   description: z.string().max(10000).optional(),
   medium: z.string().max(500).optional(),
   dimensions: z.string().max(200).optional(),
+  photoIncludesFrame: z.boolean().optional(),
+  framedWidthCm: framedSizeCm.nullable().optional(),
+  framedHeightCm: framedSizeCm.nullable().optional(),
   images: z.array(mediaReferenceSchema).max(50).optional(),
   sellerId: z.string().min(1).max(191).optional(),
   sellerLegalEntityId: z.string().uuid().optional(),
@@ -110,8 +116,24 @@ export function refineLotPricingFields(
   }
 }
 
-const createLotBodyWithPricingRefine = createLotBodySchema.superRefine((values, ctx) =>
-  refineLotPricingFields(values, ctx, { requireBuyNowWhenTypeSet: true }),
-);
+/** A framed size is a pair: width and height are both set, or both cleared. */
+export function refineFramedSize(
+  values: Pick<Partial<CreateLotBody>, "framedWidthCm" | "framedHeightCm">,
+  ctx: z.RefinementCtx,
+) {
+  const hasWidth = values.framedWidthCm != null;
+  const hasHeight = values.framedHeightCm != null;
+  if (hasWidth === hasHeight) return;
+  ctx.addIssue({
+    code: z.ZodIssueCode.custom,
+    message: "Give both the framed width and the framed height",
+    path: [hasWidth ? "framedHeightCm" : "framedWidthCm"],
+  });
+}
+
+const createLotBodyWithPricingRefine = createLotBodySchema.superRefine((values, ctx) => {
+  refineLotPricingFields(values, ctx, { requireBuyNowWhenTypeSet: true });
+  refineFramedSize(values, ctx);
+});
 
 export const createLotBodyWithPricingRefineSchema = createLotBodyWithPricingRefine;

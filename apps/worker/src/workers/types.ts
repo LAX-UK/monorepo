@@ -15,6 +15,7 @@ import type { Logger } from "pino";
 import type { WorkerEnv } from "../env.js";
 import type { IAdminReviewTaskProjectorRepository } from "../interfaces/admin-review-task-projector.repository.js";
 import type { IComplianceRecipientReader } from "../interfaces/compliance-recipient.reader.js";
+import type { ICoverAnalysisJobRepository } from "../interfaces/cover-analysis-job.repository.js";
 import type { IDataExportJobRepository } from "../interfaces/data-export.repository.js";
 import type { IEmailOutboxRepository } from "../interfaces/email-outbox.repository.js";
 import type { IImpersonationSweepRepository } from "../interfaces/impersonation-sweep.repository.js";
@@ -32,6 +33,7 @@ import type { ISourceOfFundsDocumentPurgeRepository } from "../interfaces/source
 import type { IStaffOpsRecipientReader } from "../interfaces/staff-ops-recipient.reader.js";
 import type { IUploadValidationRepository } from "../interfaces/upload-validation.repository.js";
 import type { IWorkerDomainEventSink } from "../interfaces/worker-domain-event-sink.js";
+import type { CoverImageAnalyser } from "../lib/cover-image-analyser.js";
 import type { IMalwareScanner } from "../lib/malware-scanner.js";
 import type { SharpImageProcessor } from "../lib/sharp-image-processor.js";
 import type { createUploadStorage } from "../lib/upload-storage.js";
@@ -69,6 +71,8 @@ export type WorkerBootstrapDeps = {
   staffOpsRecipientReader: IStaffOpsRecipientReader;
   complianceRecipientReader: IComplianceRecipientReader;
   mediaAssetProcessorRepo: IMediaAssetProcessorRepository;
+  coverAnalysisJobRepo: ICoverAnalysisJobRepository;
+  coverImageAnalyser: CoverImageAnalyser;
   mediaAssetCleanupRepo: IMediaAssetCleanupRepository;
   qrCodeScanPersister: IQrCodeScanPersister;
   qrCodeScanPurgeRepo: IQrCodeScanPurgeRepository;

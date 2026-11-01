@@ -3,6 +3,7 @@ import type {
   ItemSubmission,
   Lot,
   Sale,
+  SaleCoverSlotAssets,
   SaleDayMedia,
   SaleDayMediaRef,
   SaleDayPhoto,
@@ -10,6 +11,7 @@ import type {
 import type { IMediaAssetEnricher } from "../services/interfaces/media-asset-enricher.js";
 import type { IMediaUrlResolver } from "../services/interfaces/media-url-resolver.js";
 import type { MediaAssetRecord } from "../services/media-asset-enricher.js";
+import { collectCoverSlotKeys } from "./sale-cover-assets.js";
 
 function collectUniqueKeys(keys: readonly string[]): string[] {
   const out = new Set<string>();
@@ -26,6 +28,20 @@ function collectLotImageKeys(lots: readonly Lot[]): string[] {
 
 function collectSaleCoverKeys(sales: readonly Sale[]): string[] {
   return collectUniqueKeys(sales.flatMap((row) => row.coverImages));
+}
+
+function collectSaleCoverSlotKeys(sales: readonly Sale[]): string[] {
+  return collectUniqueKeys(sales.flatMap((row) => collectCoverSlotKeys(row)));
+}
+
+/** Cover slots with resolved addresses and the measured scrim, by sale id. */
+async function presentCoverSlots(
+  enricher: IMediaAssetEnricher | undefined,
+  sales: readonly Sale[],
+  resolvedMap: Map<string, string>,
+): Promise<Map<string, SaleCoverSlotAssets> | undefined> {
+  if (!enricher?.buildCoverSlotAssets) return undefined;
+  return enricher.buildCoverSlotAssets(sales, (key) => resolvedMap.get(key.trim()) ?? key);
 }
 
 function collectSaleDayImageKeys(sales: readonly Sale[]): string[] {
@@ -161,11 +177,16 @@ export async function presentSaleImages(
 ): Promise<Sale> {
   const coverKeys = row.coverImages;
   const dayRefs = row.dayImages ?? [];
-  const allKeys = collectUniqueKeys([...coverKeys, ...collectSaleDayImageKeys([row])]);
+  const allKeys = collectUniqueKeys([
+    ...coverKeys,
+    ...collectSaleDayImageKeys([row]),
+    ...collectSaleCoverSlotKeys([row]),
+  ]);
 
   const resolvedMap = await resolveKeysBatch(resolver, allKeys);
   const coverImages = applyResolvedKeys(coverKeys, resolvedMap);
   const coverImageAssets = await enrichImageAssets(enricher, coverKeys, coverImages);
+  const coverSlotAssets = (await presentCoverSlots(enricher, [row], resolvedMap))?.get(row.id);
 
   let dayImageAssets: SaleDayMedia[] | undefined;
   if (dayRefs.length > 0) {
@@ -187,6 +208,7 @@ export async function presentSaleImages(
     ...row,
     ...(resolver ? { coverImages } : {}),
     ...(coverImageAssets ? { coverImageAssets } : {}),
+    ...(coverSlotAssets ? { coverSlotAssets } : {}),
     ...(dayImageAssets ? { dayImageAssets } : {}),
   };
 }
@@ -206,9 +228,14 @@ export async function presentSaleAdminImages(
   const coverKeys = row.coverImages;
   const dayRefs = row.dayImages ?? [];
   const dayKeys = dayRefs.map((r) => r.key);
-  const allKeys = collectUniqueKeys([...coverKeys, ...collectSaleDayImageKeys([row])]);
+  const allKeys = collectUniqueKeys([
+    ...coverKeys,
+    ...collectSaleDayImageKeys([row]),
+    ...collectSaleCoverSlotKeys([row]),
+  ]);
 
   const resolvedMap = await resolveKeysBatch(resolver, allKeys);
+  const coverSlotAssets = (await presentCoverSlots(enricher, [row], resolvedMap))?.get(row.id);
 
   const coverImagePresentedUrls = resolver
     ? applyResolvedKeys(coverKeys, resolvedMap)
@@ -240,6 +267,7 @@ export async function presentSaleAdminImages(
     coverImages: coverKeys,
     coverImagePresentedUrls,
     dayImagePresentedUrls,
+    ...(coverSlotAssets ? { coverSlotAssets } : {}),
     ...(coverImageAssets ? { coverImageAssets } : {}),
     ...(dayImageAssets ? { dayImageAssets } : {}),
   };
@@ -278,12 +306,18 @@ export async function presentSalesWithLotsImages(
   const saleKeys = collectSaleCoverKeys(rows.map((r) => r.sale));
   const saleDayKeys = collectSaleDayImageKeys(rows.map((r) => r.sale));
   const lotKeys = collectLotImageKeys(rows.flatMap((r) => r.lots));
-  const allKeys = collectUniqueKeys([...saleKeys, ...saleDayKeys, ...lotKeys]);
+  const slotKeys = collectSaleCoverSlotKeys(rows.map((r) => r.sale));
+  const allKeys = collectUniqueKeys([...saleKeys, ...saleDayKeys, ...lotKeys, ...slotKeys]);
 
   const [resolvedMap, assetLookup] = await Promise.all([
     resolveKeysBatch(resolver, allKeys),
     enricher ? enricher.lookupByKeys(allKeys) : Promise.resolve(new Map()),
   ]);
+  const coverSlotsBySale = await presentCoverSlots(
+    enricher,
+    rows.map((r) => r.sale),
+    resolvedMap,
+  );
 
   return Promise.all(
     rows.map(async ({ sale, lots }) => {
@@ -333,11 +367,13 @@ export async function presentSalesWithLotsImages(
         }),
       );
 
+      const slotAssets = coverSlotsBySale?.get(sale.id);
       return {
         sale: {
           ...sale,
           coverImages,
           ...(coverImageAssets ? { coverImageAssets } : {}),
+          ...(slotAssets ? { coverSlotAssets: slotAssets } : {}),
           ...(dayImageAssets ? { dayImageAssets } : {}),
         },
         lots: presentedLots,

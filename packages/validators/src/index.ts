@@ -92,3 +92,4 @@ export * from "./workspace-selling.js";
 export * from "./workspace-access.js";
 export * from "./consignment-message.js";
 export * from "./consignment-inbox.js";
+export * from "./sale-cover.js";

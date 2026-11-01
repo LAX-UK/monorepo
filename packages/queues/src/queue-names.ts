@@ -7,6 +7,7 @@ export const EMAIL_QUEUE_NAME = "email" as const;
 export const VALIDATE_UPLOAD_QUEUE_NAME = "validate-upload" as const;
 export const PROCESS_IMAGE_QUEUE_NAME = "process-image" as const;
 export const IMAGE_CLEANUP_QUEUE_NAME = "image-cleanup" as const;
+export const COVER_ANALYSIS_QUEUE_NAME = "cover-analysis" as const;
 export const MARKETING_SYNC_QUEUE_NAME = "marketing-sync" as const;
 export const MARKETING_EVENTS_QUEUE_NAME = "marketing-events" as const;
 export const MARKETING_EVENTS_CAPI_BATCH_QUEUE_NAME = "marketing-events-capi-batch" as const;

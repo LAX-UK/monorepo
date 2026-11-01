@@ -27,6 +27,7 @@ import type {
 import type { LotTransitionOrchestrator } from "../../lot-transition-orchestrator.js";
 import type { QrCodeAnalyticsService } from "../../qr-code-analytics.service.js";
 import type { QrCodeService } from "../../qr-code.service.js";
+import type { SaleCoverService } from "../../sale-cover/sale-cover.service.js";
 import type { ArtistSearchHit } from "../artist-registry.js";
 import type {
   ConditionReportServiceError,
@@ -151,6 +152,11 @@ export interface IAdminConditionReportsApplicationService {
 
 export type AdminCatalogRouteServices = {
   catalog: IAdminCatalogApplicationService;
+  /** Cover slots, featured lots, subtitle and home pins for the home cover. */
+  saleCover: Pick<
+    SaleCoverService,
+    "getView" | "setSlot" | "clearSlot" | "updateHome" | "replaceHomePins"
+  >;
   lots: IAdminLotsApplicationService;
   saleRegistrations: IAdminSaleRegistrationsApplicationService;
   lotFulfilment: IAdminLotFulfilmentApplicationService;
