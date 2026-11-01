@@ -205,6 +205,9 @@ const saleRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transf
     createdBy: String(row.createdBy ?? ""),
     createdAt: zCoerceDate.parse(row.createdAt),
     updatedAt: zCoerceDate.parse(row.updatedAt),
+    ...(row.consignmentDeadline
+      ? { consignmentDeadline: zCoerceDate.parse(row.consignmentDeadline) }
+      : {}),
     ...(isSellingPlatform(row.sellingPlatform) ? { sellingPlatform: row.sellingPlatform } : {}),
     ...(isAtgState(row.atgAuctionState) ? { atgAuctionState: row.atgAuctionState } : {}),
     ...(isAtgDistribution(row.atgDistribution) ? { atgDistribution: row.atgDistribution } : {}),

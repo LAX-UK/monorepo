@@ -36,3 +36,20 @@ describe("parseSaleSchema hero compatibility", () => {
     expect(sale.heroVideoUrl).toBe("https://www.youtube.com/watch?v=jNQXAC9IVRw");
   });
 });
+
+describe("parseSaleSchema consignment deadline", () => {
+  it("reads the deadline as a date", () => {
+    const sale = parseSaleSchema({
+      ...basePayload,
+      consignmentDeadline: "2030-02-01T12:00:00.000Z",
+    });
+
+    expect(sale.consignmentDeadline).toEqual(new Date("2030-02-01T12:00:00.000Z"));
+  });
+
+  it.each([undefined, null, ""])("leaves it out when it is %j", (consignmentDeadline) => {
+    const sale = parseSaleSchema({ ...basePayload, consignmentDeadline });
+
+    expect(sale).not.toHaveProperty("consignmentDeadline");
+  });
+});

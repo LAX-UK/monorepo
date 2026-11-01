@@ -8,7 +8,10 @@ import {
   type SalesBrowseView,
   SalesViewSwitcher,
 } from "@/components/sections/sales/sales-view-switcher";
-import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
+import {
+  type CalendarSalesUrlState,
+  countActiveCalendarFilters,
+} from "@/lib/marketing/sales-calendar-params";
 
 type Category = { id: string; name: string };
 
@@ -20,7 +23,7 @@ export type SalesCalendarToolbarProps = {
   calendarView: SalesBrowseView;
 };
 
-/** Sticky sales calendar toolbar: count + filter sheet + optional desktop quick chips + view. */
+/** Sticky sales calendar toolbar: filtered count + filter sheet + optional desktop quick chips + view. */
 export function SalesCalendarToolbar({
   state,
   resultCount,
@@ -28,13 +31,17 @@ export function SalesCalendarToolbar({
   years,
   calendarView,
 }: SalesCalendarToolbarProps) {
-  const countLabel = `${resultCount} sale${resultCount === 1 ? "" : "s"}`;
+  // The tab carries the count; it is repeated here only while a filter narrows the list.
+  const countLabel =
+    countActiveCalendarFilters(state) > 0
+      ? `${resultCount} sale${resultCount === 1 ? "" : "s"}`
+      : undefined;
   const resultCountLabel = resultCount === 1 ? "Show 1 sale" : `Show ${resultCount} sales`;
 
   return (
     <>
       <MarketingListToolbar
-        countLabel={countLabel}
+        {...(countLabel ? { countLabel } : {})}
         mobileFilterTrigger={
           <SalesCalendarFilterSheet
             state={state}
