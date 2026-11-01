@@ -63,6 +63,19 @@ describe("DisputeCaseView: a case waiting for allocation", () => {
     expect(screen.getByText("£14,200.00 of £14,200.00")).toBeVisible();
   });
 
+  it("names every share field after its lot, in the table and in the phone layout", () => {
+    renderCase(sharedCase());
+    const fields = screen.getAllByRole("textbox");
+    // Each invoice has a field in the table and one in the phone layout, where no column header exists.
+    expect(fields).toHaveLength(6);
+    for (const field of fields) {
+      expect(field).toHaveAccessibleName(/^Dispute share for .+/);
+    }
+    for (const lot of ["Thames at low tide", "Study in blue and bone", "Red chair, evening"]) {
+      expect(screen.getAllByRole("textbox", { name: `Dispute share for ${lot}` })).toHaveLength(2);
+    }
+  });
+
   it("shows what comes out of each seller's net share, and what the house bears", () => {
     renderCase(sharedCase());
     const effects = screen.getByRole("region", { name: "What this does to payouts" });
