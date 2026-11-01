@@ -114,7 +114,7 @@ export function MarketingPageTitle(props: MarketingPageTitleProps) {
       {eyebrow ? (
         <p
           className={cn(
-            "max-w-[570px] font-label text-sm uppercase leading-5 tracking-[var(--text-label-caps-tracking,0.22em)]",
+            "max-w-[570px] font-label text-sm leading-5",
             media ? "" : "text-on-surface-variant",
           )}
         >

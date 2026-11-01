@@ -38,7 +38,7 @@ describe("mapLotToHeroVM", () => {
     const vm = mapLotToHeroVM(lot, { id: "sale-1", title: "Modern Art" }, siblings);
 
     expect(vm.saleTitle).toBe("Modern Art");
-    expect(vm.lotNumberLabel).toBe("LOT 3");
+    expect(vm.lotNumberLabel).toBe("Lot 3");
     expect(vm.positionLabel).toBe("2 / 3");
     expect(vm.prevHref).toContain("lot-1");
     expect(vm.nextHref).toContain("lot-2");
@@ -50,7 +50,7 @@ describe("mapLotToHeroVM", () => {
     const vm = mapLotToHeroVM(lot, null, null);
 
     expect(vm.saleHref).toBeNull();
-    expect(vm.lotNumberLabel).toBe("LOT 7");
+    expect(vm.lotNumberLabel).toBe("Lot 7");
     expect(vm.prevHref).toBeNull();
     expect(vm.nextHref).toBeNull();
   });

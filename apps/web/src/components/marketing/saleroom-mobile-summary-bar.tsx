@@ -14,7 +14,7 @@ import {
 import Link from "next/link";
 
 const viewLotsCtaClassName =
-  "shrink-0 rounded-sm border border-outline-variant/40 px-4 py-3 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant";
+  "shrink-0 rounded-sm border border-outline-variant/40 px-4 py-3 font-label text-xs font-medium text-on-surface-variant";
 
 type Props = {
   mode: Exclude<SaleroomMobileSummaryBarMode, { kind: "live_no_lot" }>;

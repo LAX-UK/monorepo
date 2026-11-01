@@ -38,7 +38,7 @@ function setup(payment: { paymentGroupId: string | null } | null = null, groupSt
   } as unknown as StripePaymentWebhookDeps;
   const handlers = createPaymentWebhookHandlers(singleDeps, {
     settlement,
-    chargeEvents: { chargeRefunded: vi.fn(), dispute: vi.fn() },
+    chargeEvents: { chargeRefunded: vi.fn() },
     groups: groups as never,
     payments: payments as never,
     gateway,

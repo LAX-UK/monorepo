@@ -22,7 +22,7 @@ export function CounterPill({ total, index, className, liveId }: Props) {
       <p
         className={cn(
           overlayPillClasses(tone),
-          "pointer-events-none absolute top-4 z-10 rounded-full px-3 py-1.5 font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] shadow-md",
+          "pointer-events-none absolute top-4 z-10 rounded-full px-3 py-1.5 font-label text-xs font-medium shadow-md",
           "right-4 md:left-4 md:right-auto",
           className,
         )}

@@ -27,8 +27,7 @@ export const MARKETING_PROSE_LINK = `rounded-sm text-link underline decoration-1
 export const INLINE_LINK = `text-link underline-offset-4 hover:underline ${FOCUS_RING}`;
 
 /** Uppercase label-style action link (midnight secondary brand). */
-export const LABEL_LINK =
-  "font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary hover:underline";
+export const LABEL_LINK = "font-label text-xs text-secondary hover:underline";
 
 /** Horizontal padding rhythm shared by all LAX shells: 16 / 24 / 40px (lax.art Figma). */
 export const MARKETING_PAGE_GUTTER_X = "px-4 md:px-6 lg:px-10";

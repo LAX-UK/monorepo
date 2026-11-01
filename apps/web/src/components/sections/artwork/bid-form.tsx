@@ -71,9 +71,7 @@ export function BidForm({
   return (
     <div className={cn("space-y-8", className)}>
       <div className="flex flex-wrap items-center gap-3">
-        <span className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-          Quick bid
-        </span>
+        <span className="font-label text-xs text-on-surface-variant">Quick bid</span>
         <Button
           type="button"
           variant="secondary"
@@ -119,7 +117,7 @@ export function BidForm({
       </div>
       {amountFieldVariant === "hidden" ? null : amountFieldVariant === "stepper" ? (
         <div className="space-y-3">
-          <span className="block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+          <span className="block font-label text-xs text-on-surface-variant">
             Enter bid amount (min. {formatMoney(minStr)})
           </span>
           <BidStepper
@@ -134,7 +132,7 @@ export function BidForm({
         <div>
           <label
             htmlFor={amountInputId}
-            className="mb-4 block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant"
+            className="mb-4 block font-label text-xs text-on-surface-variant"
           >
             Enter bid amount (min. {formatMoney(minStr)})
           </label>
@@ -155,7 +153,7 @@ export function BidForm({
         <div>
           <label
             htmlFor="bid-max-auto"
-            className="mb-4 block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant"
+            className="mb-4 block font-label text-xs text-on-surface-variant"
           >
             Set max auto-bid (optional)
           </label>
@@ -199,7 +197,7 @@ export function BidForm({
       {manualBidBlockedReason ? (
         <p className="rounded-md border border-lot-orange/30 bg-lot-orange/10 px-4 py-3 font-body text-sm text-on-surface">
           {manualBidBlockedReason.title ? (
-            <span className="block font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-lot-orange">
+            <span className="block font-label text-xs font-medium text-lot-orange">
               {manualBidBlockedReason.title}
             </span>
           ) : null}

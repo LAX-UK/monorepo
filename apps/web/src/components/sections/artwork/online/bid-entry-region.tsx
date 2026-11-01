@@ -212,8 +212,8 @@ export function BidEntryRegion() {
               lifecycle.kind !== "saleroomPaused" ? (
                 <>
                   {" "}
-                  · {saleEndLocalLabel}. Timer uses your device&apos;s local time. Hammer price plus
-                  buyer&apos;s premium; see{" "}
+                  · {saleEndLocalLabel}. Times are London time. Hammer price plus buyer&apos;s
+                  premium; see{" "}
                   <a href="/shipping" className="text-link underline">
                     shipping
                   </a>

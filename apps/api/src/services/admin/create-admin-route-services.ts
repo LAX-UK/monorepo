@@ -5,6 +5,7 @@ import type { IConditionReportRequestRepository } from "@auction/persistence/int
 import type { ILotFulfilmentRepository } from "@auction/persistence/interfaces";
 import type {
   IAdminDisputeCaseEnrichmentReader,
+  IDisputeAllocationQueueReader,
   IImpersonationSessionRepository,
 } from "@auction/persistence/interfaces";
 import type { IWatchlistScreeningReader } from "@auction/persistence/interfaces";
@@ -183,6 +184,7 @@ export type CreateAdminRouteServicesInput = {
   adminSaleReadinessReader: IAdminSaleReadinessReader;
   adminLegalEntityBrowseReader: IAdminLegalEntityBrowseReader;
   adminDisputeCaseEnrichmentReader: IAdminDisputeCaseEnrichmentReader;
+  disputeAllocationQueueReader: IDisputeAllocationQueueReader;
   bidRepo: IBidRepository;
   payoutService: IPayoutAdminService;
   payoutSettlementService: IPayoutSettlementService;
@@ -273,6 +275,7 @@ export function createAdminRouteServices(
     legalEntityLifecycleAdminService: input.legalEntityLifecycleAdminService,
     legalEntityDocumentAdminService: input.legalEntityDocumentAdminService,
     adminDisputeCaseEnrichmentReader: input.adminDisputeCaseEnrichmentReader,
+    disputeAllocationQueueReader: input.disputeAllocationQueueReader,
     amlService: input.amlService,
     amlScreeningReader: input.amlScreeningReader,
     adminSourceOfFundsQueryService: input.adminSourceOfFundsQueryService,

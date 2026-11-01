@@ -40,7 +40,7 @@ function tabClass(variant: "default" | "floating", active: boolean): string {
     );
   }
   return cn(
-    "relative flex min-h-14 flex-col items-center justify-center gap-1 font-label text-[0.65rem] uppercase tracking-wide transition-colors motion-reduce:transition-none",
+    "relative flex min-h-14 flex-col items-center justify-center gap-1 font-label text-xs transition-colors motion-reduce:transition-none",
     active
       ? "text-on-surface after:absolute after:inset-x-6 after:top-0 after:h-0.5 after:rounded-full after:bg-primary"
       : "text-on-surface-variant hover:text-on-surface",

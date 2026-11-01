@@ -51,6 +51,6 @@ describe("ArtistDirectoryLotsLink", () => {
     );
 
     const link = screen.getByRole("link", { name: "Browse 2 lots by Jane Doe" });
-    expect(link.className).toContain("text-[10px]");
+    expect(link.className).toContain("text-xs");
   });
 });

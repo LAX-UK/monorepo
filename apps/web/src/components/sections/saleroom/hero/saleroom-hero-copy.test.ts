@@ -86,15 +86,15 @@ describe("saleroom-hero-copy", () => {
       estimatedTotalLabel: "£8.4M",
     });
     expect(stats).toHaveLength(2);
-    expect(stats[0]).toEqual(["Total Lots", "40 lots"]);
-    expect(stats[1]).toEqual(["Est. Total", "£8.4M"]);
+    expect(stats[0]).toEqual(["Total lots", "40 lots"]);
+    expect(stats[1]).toEqual(["Est. total", "£8.4M"]);
   });
 
   it("returns only total lots when estimated total is absent", () => {
     const stats = buildSaleroomHeroStats({
       itemsLabel: "40 lots",
     });
-    expect(stats).toEqual([["Total Lots", "40 lots"]]);
+    expect(stats).toEqual([["Total lots", "40 lots"]]);
   });
 
   it("returns empty trailing when sale is not live with lot counts", () => {

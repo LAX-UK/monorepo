@@ -2,6 +2,7 @@
 
 import { fetchMyLotFulfilment } from "@/lib/data/http/lot-fulfilment-poll.client";
 import type { LotFulfilmentSnapshot } from "@/lib/data/http/payments.server";
+import { formatLondonDateTime } from "@/lib/datetime/london-time";
 import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -56,7 +57,7 @@ function headlineForFulfilment(f: LotFulfilmentSnapshot | null): {
           f.fulfilmentMethod === "collection" && (f.collectedBy || f.collectedAt)
             ? [
                 f.collectedBy ? `Collected by ${f.collectedBy}` : null,
-                f.collectedAt ? new Date(f.collectedAt).toLocaleString() : null,
+                f.collectedAt ? formatLondonDateTime(new Date(f.collectedAt)) : null,
               ]
                 .filter(Boolean)
                 .join(" · ") || null

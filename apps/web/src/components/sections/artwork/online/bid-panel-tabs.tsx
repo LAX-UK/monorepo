@@ -17,8 +17,8 @@ type Props = {
 };
 
 const ALL_TABS: { id: TabId; label: string }[] = [
-  { id: "bids", label: "Bids View" },
-  { id: "video", label: "Video Stream" },
+  { id: "bids", label: "Bids view" },
+  { id: "video", label: "Video stream" },
 ];
 
 /** Pill tabs: Bids View vs Video Stream (online mockup). */
@@ -96,7 +96,7 @@ export function BidPanelTabs({ bidPanel, videoPanel, hasVideoStream = false, cla
               tabIndex={selected ? 0 : -1}
               onClick={() => select(id)}
               className={cn(
-                "h-11 flex-1 rounded-full px-2 font-body text-xs font-bold uppercase leading-4 tracking-wide transition-colors motion-reduce:transition-none",
+                "h-11 flex-1 rounded-full px-2 font-body text-xs font-medium leading-4 transition-colors motion-reduce:transition-none",
                 selected ? "bg-on-surface text-background" : "bg-transparent text-on-surface",
               )}
             >

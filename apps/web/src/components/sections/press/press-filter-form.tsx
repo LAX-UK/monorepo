@@ -74,8 +74,7 @@ export function PressFilterForm({
   }, [initialParams, form]);
 
   const isSheet = variant === "sheet";
-  const labelClassName =
-    "block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary";
+  const labelClassName = "block font-label text-xs text-on-surface-variant";
   const inputClassName = cn(
     "h-11 min-h-11 rounded-none border-0 border-b-2 border-input-border bg-transparent px-0 shadow-none focus-visible:border-input-border-focus focus-visible:ring-1 focus-visible:ring-input-border-focus",
   );
@@ -124,7 +123,7 @@ export function PressFilterForm({
           />
           {resultCountLabel ? (
             <p
-              className="font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant tabular-nums"
+              className="font-label text-xs font-medium text-on-surface-variant tabular-nums"
               aria-live="polite"
             >
               {resultCountLabel}

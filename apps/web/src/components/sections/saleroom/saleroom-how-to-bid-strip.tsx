@@ -14,9 +14,7 @@ export function SaleroomHowToBidStrip({ saleHref, isAuthenticated }: Props) {
       className="mb-6 rounded-lg border border-outline-variant/40 bg-surface-container-low/50 px-4 py-3 dark:bg-surface-container-low/30"
       aria-label="How to bid on this sale"
     >
-      <p className="font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-        How to bid
-      </p>
+      <p className="font-label text-xs text-on-surface-variant">How to bid</p>
       <ul className="mt-2 space-y-1.5 font-body text-sm text-on-surface">
         <li>
           <strong className="font-medium">Online (private collectors):</strong>{" "}

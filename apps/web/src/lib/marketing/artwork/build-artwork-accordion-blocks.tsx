@@ -3,6 +3,7 @@ import { LotDetailsInline } from "@/components/sections/artwork/redesign/lot-det
 import { getMinNextBidAmount } from "@/lib/bid/lot-min-bid";
 import type { PublicUser } from "@/lib/data/contracts";
 import type { LotDocumentPublicRow } from "@/lib/data/lot-documents-public";
+import { formatLondonDateTime } from "@/lib/datetime/london-time";
 import { resolveLotReserveContext } from "@/lib/lot/reserve-presentation";
 import {
   ARTWORK_PAGE_ACCORDION_IDS,
@@ -23,10 +24,7 @@ export function buildArtworkPageAccordionBlocks(args: {
   const { lot, artist, documents = [] } = args;
   const minNext = getMinNextBidAmount(lot, lot.currentPrice).toFixed(2);
   const reserveContext = resolveLotReserveContext(lot, lot.currentPrice);
-  const saleEndLocal = new Date(lot.endTime).toLocaleString("en-GB", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
+  const saleEndLocal = formatLondonDateTime(new Date(lot.endTime));
 
   const documentsBlock: AccordionBlock | null =
     documents.length === 0
@@ -43,7 +41,7 @@ export function buildArtworkPageAccordionBlocks(args: {
                     href={d.downloadUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link underline-offset-4 hover:underline"
+                    className="font-label text-xs font-medium text-link underline-offset-4 hover:underline"
                   >
                     {d.label?.trim() || d.kind.replaceAll("_", " ")}
                     <span className="sr-only"> (opens in new tab)</span>
@@ -73,13 +71,13 @@ export function buildArtworkPageAccordionBlocks(args: {
         <div className="flex flex-wrap gap-4 pt-1">
           <Link
             href="/terms"
-            className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link underline-offset-4 hover:underline"
+            className="font-label text-xs font-medium text-link underline-offset-4 hover:underline"
           >
             Conditions of Business
           </Link>
           <Link
             href="/faq"
-            className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link underline-offset-4 hover:underline"
+            className="font-label text-xs font-medium text-link underline-offset-4 hover:underline"
           >
             FAQ
           </Link>

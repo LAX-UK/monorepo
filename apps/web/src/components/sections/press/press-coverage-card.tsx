@@ -37,11 +37,11 @@ export function PressCoverageCard({ item, saleContext, className }: Props) {
 
       <div className="flex flex-1 flex-col gap-3 p-5">
         <div className="flex items-center justify-between gap-2">
-          <span className="font-label text-xs font-semibold uppercase tracking-widest text-on-surface-variant">
+          <span className="font-label text-xs font-medium text-on-surface-variant">
             {item.outletName}
           </span>
           {item.mentionType ? (
-            <span className="shrink-0 rounded-full border border-outline-variant/30 px-2 py-0.5 font-label text-[10px] uppercase tracking-wider text-on-surface-variant/70">
+            <span className="shrink-0 rounded-full border border-outline-variant/30 px-2 py-0.5 font-label text-xs text-on-surface-variant/70">
               {getPressMentionTypeLabel(item.mentionType)}
             </span>
           ) : null}

@@ -28,9 +28,7 @@ function PricingCard({
         className,
       )}
     >
-      <span className="font-label text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">
-        {label}
-      </span>
+      <span className="font-label text-xs font-medium text-on-surface-variant">{label}</span>
       <span className="line-clamp-2 font-body text-sm font-medium text-on-surface">{value}</span>
     </div>
   );
@@ -69,7 +67,7 @@ function QuickLookStatusBand({ vm, statusId }: { vm: LotQuickLookVM; statusId: s
   return (
     <div id={statusId} className="flex min-h-8 shrink-0 flex-wrap items-center gap-2">
       {vm.lotLabel ? (
-        <span className="font-body text-xs font-bold uppercase tracking-wide text-lot-orange">
+        <span className="font-label text-xs font-medium text-on-surface-variant">
           {vm.lotLabel}
         </span>
       ) : null}
@@ -286,10 +284,7 @@ export function QuickLookMetaPanel({
     >
       <div className="quick-look-stagger flex flex-col gap-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <p
-            id={contextId}
-            className="font-body text-xs font-medium uppercase tracking-wide text-on-surface-variant"
-          >
+          <p id={contextId} className="font-body text-xs font-medium text-on-surface-variant">
             {contextLabel}
           </p>
           <Button

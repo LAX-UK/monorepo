@@ -67,14 +67,14 @@ export function MarketingPagination({
           Link({
             href: prev.href,
             className:
-              "flex items-center gap-4 font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+              "flex items-center gap-4 font-label text-xs text-on-surface-variant transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
             children: prev.label ?? "Previous",
           })
         ) : (
           <button
             type="button"
             disabled
-            className="flex cursor-not-allowed items-center gap-4 font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant/40"
+            className="flex cursor-not-allowed items-center gap-4 font-label text-xs text-on-surface-variant/40"
           >
             {prev.label ?? "Previous"}
           </button>
@@ -88,7 +88,7 @@ export function MarketingPagination({
                       href: p.href,
                       "aria-current": "page" as const,
                       className: cn(
-                        "font-label text-xs uppercase tracking-[0.2em] transition-colors focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                        "font-label text-xs transition-colors focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
                         "font-bold text-primary",
                       ),
                       children: String(p.page).padStart(2, "0"),
@@ -96,7 +96,7 @@ export function MarketingPagination({
                   : {
                       href: p.href,
                       className: cn(
-                        "font-label text-xs uppercase tracking-[0.2em] transition-colors focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                        "font-label text-xs transition-colors focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
                         "text-on-surface-variant hover:text-on-surface",
                       ),
                       children: String(p.page).padStart(2, "0"),
@@ -105,10 +105,7 @@ export function MarketingPagination({
             </React.Fragment>
           ))}
           {showEllipsis ? (
-            <span
-              className="font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant"
-              aria-hidden
-            >
+            <span className="font-label text-xs text-on-surface-variant" aria-hidden>
               …
             </span>
           ) : null}
@@ -116,7 +113,7 @@ export function MarketingPagination({
             ? Link({
                 href: trailingPage.href,
                 className:
-                  "font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant transition-colors hover:text-on-surface focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+                  "font-label text-xs text-on-surface-variant transition-colors hover:text-on-surface focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
                 children: String(trailingPage.page).padStart(2, "0"),
               })
             : null}
@@ -125,14 +122,14 @@ export function MarketingPagination({
           Link({
             href: next.href,
             className:
-              "flex items-center gap-4 font-label text-xs uppercase tracking-[0.2em] text-on-surface transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
+              "flex items-center gap-4 font-label text-xs text-on-surface transition-colors hover:text-primary focus-visible:rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary",
             children: next.label ?? "Next",
           })
         ) : (
           <button
             type="button"
             disabled
-            className="flex cursor-not-allowed items-center gap-4 font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant/40"
+            className="flex cursor-not-allowed items-center gap-4 font-label text-xs text-on-surface-variant/40"
           >
             {next.label ?? "Next"}
           </button>

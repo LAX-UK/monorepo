@@ -15,19 +15,17 @@ export function OnsiteSaleFactsStrip({ overview, saleTermsHref, className }: Pro
     >
       <dl className="grid gap-3 sm:grid-cols-2">
         <div>
-          <dt className="font-label text-[10px] font-bold uppercase tracking-widest text-secondary">
+          <dt className="font-label text-xs font-medium text-on-surface-variant">
             Buyer&apos;s premium
           </dt>
           <dd className="mt-1 text-sm font-medium text-on-surface">{overview.buyerPremiumLabel}</dd>
         </div>
         <div>
-          <dt className="font-label text-[10px] font-bold uppercase tracking-widest text-secondary">
-            Format
-          </dt>
+          <dt className="font-label text-xs font-medium text-on-surface-variant">Format</dt>
           <dd className="mt-1 text-sm font-medium text-on-surface">{overview.formatLabel}</dd>
         </div>
       </dl>
-      <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-label text-xs font-semibold uppercase tracking-[0.12em] text-on-surface-variant">
+      <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 font-label text-xs font-medium text-on-surface-variant">
         <Link href="/faq" className="text-on-surface underline-offset-4 hover:underline">
           How to bid
         </Link>

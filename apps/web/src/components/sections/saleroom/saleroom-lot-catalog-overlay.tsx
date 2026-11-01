@@ -27,7 +27,7 @@ const SALEROOM_PILL_OVERLAY =
   "pointer-events-none absolute bottom-3 left-3 z-10 inline-flex max-w-[calc(100%-1.5rem)]";
 const SALEROOM_PILL_INLINE = "relative inline-flex max-w-full shrink-0 pointer-events-auto";
 const SALEROOM_PILL_SHELL =
-  "items-center gap-1.5 rounded-full border border-transparent px-2.5 py-1 font-label text-[10px] font-bold uppercase tracking-[0.1em] backdrop-blur-sm";
+  "items-center gap-1.5 rounded-full border border-transparent px-2.5 py-1 font-label text-xs font-medium backdrop-blur-sm";
 const SALEROOM_PILL_MUTED =
   "bg-brand-900/70 text-white/70 dark:border-transparent dark:bg-black/70 dark:text-white/70";
 const SALEROOM_PILL_LIVE =

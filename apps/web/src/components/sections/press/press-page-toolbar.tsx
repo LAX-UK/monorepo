@@ -53,7 +53,7 @@ export function PressPageToolbar({ params, years, resultCount }: PressPageToolba
         <Link
           href="/press/feed.xml"
           className={cn(
-            "inline-flex min-h-11 items-center gap-1.5 font-label text-[0.65rem] font-semibold uppercase tracking-wider text-secondary hover:underline",
+            "inline-flex min-h-11 items-center gap-1.5 font-label text-xs font-medium text-secondary hover:underline",
             FOCUS_RING,
           )}
         >

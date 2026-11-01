@@ -26,9 +26,7 @@ export function RecentlyViewedRail({ className }: { className?: string }) {
       )}
     >
       <div className="mx-auto flex max-w-[var(--container-inner,1376px)] flex-col gap-2">
-        <h2 className="font-label text-[0.65rem] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Recently viewed
-        </h2>
+        <h2 className="font-label text-xs font-medium text-on-surface-variant">Recently viewed</h2>
         <ul className="flex gap-2 overflow-x-auto pb-1">
           {items.slice(0, 6).map((item) => (
             <li key={item.id} className="shrink-0">

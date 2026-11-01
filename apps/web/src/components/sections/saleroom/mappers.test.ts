@@ -82,7 +82,7 @@ describe("mapSaleToHeroVM", () => {
       now,
     });
     expect(vm.itemsLabel).toBe("12 lots");
-    expect(vm.dateLine).toContain("THELAX SALEROOM");
+    expect(vm.dateLine).toContain("TheLax Saleroom");
   });
 
   it("marks active sales as live without a duplicate bidding sidebar line", () => {
@@ -362,10 +362,10 @@ describe("mapLotToCardVM", () => {
 describe("mapSaleToRelatedVM", () => {
   it("labels onsite and online auctions distinctly", () => {
     expect(mapSaleToRelatedVM({ ...baseSale, deliveryMode: "online" }, 10).kindLabel).toBe(
-      "Online Auction",
+      "Online auction",
     );
     expect(mapSaleToRelatedVM({ ...baseSale, deliveryMode: "onsite" }, 10).kindLabel).toBe(
-      "In-person Auction",
+      "In-person auction",
     );
   });
 

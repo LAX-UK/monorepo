@@ -154,12 +154,12 @@ export function ArtistBrowseCard({
                 lotCount={artist.lotCount}
                 href={href}
                 artistName={artist.displayName}
-                className="text-[10px]"
+                className="text-xs"
               />
               <Link
                 href={href}
                 className={cn(
-                  "rounded-sm font-label text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant hover:text-link hover:underline",
+                  "rounded-sm font-label text-xs text-on-surface-variant hover:text-link hover:underline",
                   FOCUS_RING,
                 )}
               >

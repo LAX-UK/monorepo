@@ -44,12 +44,10 @@ export function LotAutoBidPanelContent({
       className="rounded-lg border border-outline-variant/30 bg-surface-container-lowest p-4 ring-1 ring-outline-variant/10 dark:bg-surface-container-low/40"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Auto-bid
-        </p>
+        <p className="font-label text-xs font-medium text-on-surface-variant">Auto-bid</p>
         <span
           className={cn(
-            "rounded-full px-2.5 py-0.5 font-label text-[10px] font-bold uppercase tracking-wider",
+            "rounded-full px-2.5 py-0.5 font-label text-xs font-medium",
             isActive
               ? "bg-primary/15 text-primary ring-1 ring-primary/30"
               : "bg-surface-container-high text-on-surface-variant",
@@ -70,7 +68,7 @@ export function LotAutoBidPanelContent({
       ) : null}
 
       {isDirty ? (
-        <p className="mt-2 font-label text-[10px] uppercase tracking-wider text-amber-800 dark:text-amber-200">
+        <p className="mt-2 font-label text-xs text-amber-800 dark:text-amber-200">
           You&apos;ve changed your auto-bid — press <strong>Save auto-bid</strong> to apply.
         </p>
       ) : null}
@@ -79,7 +77,7 @@ export function LotAutoBidPanelContent({
         <div>
           <label
             htmlFor="lot-auto-bid-max"
-            className="mb-2 block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant"
+            className="mb-2 block font-label text-xs text-on-surface-variant"
           >
             Max amount
           </label>
@@ -98,9 +96,7 @@ export function LotAutoBidPanelContent({
         </div>
 
         <div>
-          <p className="mb-2 font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-            Raise by (each round)
-          </p>
+          <p className="mb-2 font-label text-xs text-on-surface-variant">Raise by (each round)</p>
           <div className="flex flex-wrap gap-2">
             {allowedSteps.map((s) => {
               const selected = Math.abs(s - stepNumeric) < 1e-9;

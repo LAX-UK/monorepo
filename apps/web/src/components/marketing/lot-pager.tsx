@@ -37,7 +37,7 @@ export function LotPager({ prevHref, nextHref, positionLabel, className }: Props
         </span>
       )}
       {positionLabel ? (
-        <span className="min-w-14 text-center font-label text-[0.7rem] font-semibold uppercase tracking-wider text-on-surface-variant tabular-nums">
+        <span className="min-w-14 text-center font-label text-xs font-medium text-on-surface-variant tabular-nums">
           {positionLabel}
         </span>
       ) : null}

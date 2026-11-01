@@ -664,12 +664,31 @@ export {
   type PaySeveralSkipReason,
 } from "./pay-several.js";
 export {
+  DISPUTE_STATUSES_WITHOUT_LOSS,
+  decideDisputeAllocation,
+  disputeFundsAfter,
+  disputeLineEffect,
+  disputeSellerSharePence,
+  isDisputeAwaitingAllocation,
+  isNewerDisputeSnapshot,
+  isTerminalDisputeStatus,
+  planAutomaticDisputeAllocation,
+  type DisputeAllocationDecision,
+  type DisputeAllocationLine,
+  type DisputeAllocationRefusal,
+  type DisputeAllocationSource,
+  type DisputeAllocationState,
+  type DisputeCandidate,
+  type DisputeFunds,
+  type DisputeLineClawback,
+  type DisputeStage,
+} from "./dispute-case.js";
+export {
   payTogether,
   type PayTogetherDecision,
   type PayTogetherRefusal,
 } from "./pay-several-checkout.js";
 export {
-  allocateGroupDispute,
   attributeGroupRefunds,
   decidePaymentGroupSettlement,
   paymentGroupIsLive,
@@ -730,6 +749,17 @@ export {
   type BiddingLimitRefusalNotice,
   type MoneyWords,
 } from "./bidding-limit-refusal.js";
+export {
+  WATCHED_LOT_REMINDER_KINDS,
+  WATCHED_LOT_REMINDER_NOTE_MAX,
+  WATCHED_LOT_REMINDER_NOTIFICATION,
+  watchedLotReminderDueAt,
+  watchedLotReminderNotice,
+  watchedLotReminderStep,
+  type ReminderLotTimes,
+  type WatchedLotReminderKind,
+  type WatchedLotReminderStep,
+} from "./watched-lot-reminder.js";
 export {
   ACTIVITY_EVENT_TYPES,
   ACTIVITY_GROUPS,

@@ -75,7 +75,7 @@ export function NotificationBell({ headerTone = "on-light" }: { headerTone?: Sit
       >
         <Bell aria-hidden />
         {unread > 0 ? (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 font-label text-[10px] font-bold text-on-error">
+          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-error px-1 font-label text-xs font-bold text-on-error">
             {unread > 9 ? "9+" : unread}
           </span>
         ) : null}
@@ -116,14 +116,14 @@ export function NotificationBell({ headerTone = "on-light" }: { headerTone?: Sit
                     n.read ? "opacity-70" : ""
                   }`}
                 >
-                  <p className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+                  <p className="font-label text-xs font-medium text-on-surface-variant">
                     {n.title}
                   </p>
                   <p className="mt-1 font-body text-xs text-on-surface-variant">{n.message}</p>
                   {n.lotId ? (
                     <Link
                       href={lotPath({ id: n.lotId, title: n.title })}
-                      className="mt-2 inline-block font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link underline-offset-2 hover:underline"
+                      className="mt-2 inline-block font-label text-xs text-link underline-offset-2 hover:underline"
                       onClick={() => void markRead(n.id)}
                     >
                       View lot
@@ -146,7 +146,7 @@ export function NotificationBell({ headerTone = "on-light" }: { headerTone?: Sit
           <div className="flex flex-col gap-2 border-t border-border-hairline px-4 py-2">
             <Link
               href="/notifications"
-              className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary"
+              className="font-label text-xs text-on-surface-variant"
               onClick={closeMenu}
             >
               View all notifications

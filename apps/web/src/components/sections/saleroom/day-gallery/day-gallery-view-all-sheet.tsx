@@ -33,9 +33,7 @@ export function DayGalleryViewAllSheet({
     <BottomSheet open={open} onOpenChange={onOpenChange}>
       <BottomSheetContent className="max-h-[85dvh]">
         <BottomSheetHeader className="px-6 pt-2 text-left">
-          <BottomSheetTitle className="font-label text-sm uppercase tracking-wide">
-            All auction day media
-          </BottomSheetTitle>
+          <BottomSheetTitle className="font-label text-sm">All auction day media</BottomSheetTitle>
           <BottomSheetDescription>
             {total} {mediaNoun} for {saleTitle}
           </BottomSheetDescription>

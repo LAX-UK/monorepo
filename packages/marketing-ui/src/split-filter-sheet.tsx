@@ -171,8 +171,7 @@ function CatalogueMobileFooter({
   );
 }
 
-const titleClass =
-  "font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface";
+const titleClass = "font-label text-xs font-medium text-on-surface";
 
 function mergeRefs<T>(...refs: Array<Ref<T> | undefined>) {
   return (value: T) => {

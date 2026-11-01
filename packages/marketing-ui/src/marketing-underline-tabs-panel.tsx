@@ -36,7 +36,7 @@ export function MarketingUnderlineTabsPanel({
       <section aria-labelledby={headingId} className={className}>
         <h2
           id={headingId}
-          className="mb-3 border-b border-outline-variant pb-2 font-body text-base font-semibold uppercase leading-5 text-on-surface"
+          className="mb-3 border-b border-outline-variant pb-2 font-body text-base font-semibold leading-5 text-on-surface"
         >
           {first.label}
         </h2>

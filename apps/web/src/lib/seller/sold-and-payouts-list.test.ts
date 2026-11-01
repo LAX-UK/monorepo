@@ -44,7 +44,7 @@ describe("soldRecord", () => {
       }),
       NOW,
     );
-    expect(paid.badge.label).toBe("Paid out 26 Sept");
+    expect(paid.badge.label).toBe("Paid out 26 Sep");
     expect(paid.net).toBe("£8,096.00");
     expect(paid.payoutHref).toBe("/selling/payouts/p1");
   });

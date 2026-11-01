@@ -34,7 +34,7 @@ export function MarketingStepCard({
       className="flex flex-col gap-6 border border-outline-variant bg-surface p-6 md:p-8"
       data-testid={testId}
     >
-      <h2 className="m-0 font-headline text-xl font-medium uppercase leading-snug text-on-surface md:text-2xl">
+      <h2 className="m-0 font-headline text-xl font-medium leading-snug text-on-surface md:text-2xl">
         {step}. {title}
       </h2>
       {children ? (

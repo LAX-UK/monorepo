@@ -17,6 +17,7 @@ import {
   DrizzleStaffNoticeRecipientReader,
   DrizzleStaffRoleAssignmentReader,
   DrizzleStaffRoster,
+  DrizzleWatchlistReminderRepository,
 } from "@auction/persistence/repositories";
 import type { Container, ContainerComposedSlices } from "./container/container-slices.js";
 import { createAdminServices } from "./container/create-admin-services.js";
@@ -221,6 +222,7 @@ export function createContainer(env: Env): Container {
   const laxAdminRoles = new DrizzleLaxAdminRolesRepository(db);
   const staffNoticeRecipients = new DrizzleStaffNoticeRecipientReader(db);
   const staffAdministrators = new StaffAdministratorDirectory(staffNoticeRecipients, laxAdminRoles);
+  const watchlistReminders = new DrizzleWatchlistReminderRepository(db);
   const consignmentMessages = createConsignmentMessageServices({
     messages: new DrizzleConsignmentMessageRepository(db),
     inbox: new DrizzleConsignmentInboxReader(db),
@@ -245,6 +247,7 @@ export function createContainer(env: Env): Container {
     notificationDispatcher: platform.notificationDispatcher,
     emailService: infra.emailService,
     webOrigin: env.WEB_ORIGIN,
+    watchlistReminders,
     consignmentThreadSweep: consignmentMessages.sweep,
   });
   const catalogRoutes = createCatalogRouteServices({
@@ -681,6 +684,7 @@ export function createContainer(env: Env): Container {
       twoFactorRequirement: twoFactorPolicy,
       requireBuyingAccount: userMisc.requireSubmissionsLegalEntityContext,
       staffInvitationAccept: userMisc.staffInvitationAccept,
+      watchlistReminders,
     }),
     admin: {
       ...admin.admin,

@@ -18,6 +18,7 @@ import type {
   IAdminUserKycReader,
   IAdminUserReader,
   IAdminWorkItemsReader,
+  IDisputeAllocationQueueReader,
   IFailedJobRepository,
   ILegalEntityDocumentAdminRepository,
   ILegalEntityLifecycleAdminRepository,
@@ -41,6 +42,7 @@ import {
   DrizzleAdminUserKycReader,
   DrizzleAdminUserReader,
   DrizzleAdminWorkItemsReader,
+  DrizzleDisputeCaseRepository,
   DrizzleFailedJobRepository,
   DrizzleLegalEntityDocumentAdminRepository,
   DrizzleLegalEntityLifecycleAdminRepository,
@@ -66,6 +68,7 @@ export type AdminRepositories = {
   adminManualReviewPaymentEnrichmentReader: IAdminManualReviewPaymentEnrichmentReader;
   adminDomainEventReader: IAdminDomainEventReader;
   adminDisputeCaseEnrichmentReader: IAdminDisputeCaseEnrichmentReader;
+  disputeAllocationQueueReader: IDisputeAllocationQueueReader;
   legalEntityLifecycleAdminRepository: ILegalEntityLifecycleAdminRepository;
   legalEntityDocumentAdminRepository: ILegalEntityDocumentAdminRepository;
   adminMarketingEventOutboxRepository: IAdminMarketingEventOutboxRepository;
@@ -94,6 +97,7 @@ export function createAdminRepositories(
     new DrizzleAdminManualReviewPaymentEnrichmentReader(db);
   const adminDomainEventReader = new DrizzleAdminDomainEventReader(db);
   const adminDisputeCaseEnrichmentReader = new DrizzleAdminDisputeCaseEnrichmentReader(db);
+  const disputeAllocationQueueReader = new DrizzleDisputeCaseRepository(db);
   const legalEntityLifecycleAdminRepository = new DrizzleLegalEntityLifecycleAdminRepository(db);
   const legalEntityDocumentAdminRepository = new DrizzleLegalEntityDocumentAdminRepository(db);
   const adminMarketingEventOutboxRepository = new DrizzleAdminMarketingEventOutboxRepository(db);
@@ -118,6 +122,7 @@ export function createAdminRepositories(
     adminManualReviewPaymentEnrichmentReader,
     adminDomainEventReader,
     adminDisputeCaseEnrichmentReader,
+    disputeAllocationQueueReader,
     legalEntityLifecycleAdminRepository,
     legalEntityDocumentAdminRepository,
     adminMarketingEventOutboxRepository,

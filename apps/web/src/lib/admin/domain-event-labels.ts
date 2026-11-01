@@ -132,6 +132,8 @@ const LABELS: Record<string, string> = {
   "payment.dispute_opened": "Dispute opened",
   "payment.dispute_funds_withdrawn": "Dispute funds withdrawn",
   "payment.dispute_closed": "Dispute closed",
+  "dispute_case.needs_allocation": "Dispute needs allocating to invoices",
+  "dispute_case.allocated": "Dispute allocated to invoices",
 
   "payment_group.created": "Several invoices put into one payment",
   "payment_group.processing": "Bank transfer started for several invoices",

@@ -54,7 +54,7 @@ export function SalesFilterSidebar({
       {showResultCount ? (
         <div className="border-b border-outline-variant pb-3 dark:border-outline-variant/30">
           <p className={MARKETING_FILTER_RESULT_COUNT} aria-live="polite" aria-atomic="true">
-            Showing {resultCount} Result{resultCount === 1 ? "" : "s"}
+            Showing {resultCount} result{resultCount === 1 ? "" : "s"}
           </p>
         </div>
       ) : null}

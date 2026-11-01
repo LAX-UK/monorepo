@@ -39,6 +39,7 @@ import { StripePaymentGateway } from "../services/stripe/stripe-payment-gateway.
 import { XeroOAuthService } from "../services/xero-oauth.service.js";
 import type { ContainerCatalogServices } from "./create-catalog-services.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
+import { createDisputeCaseRecorder } from "./create-dispute-services.js";
 import type { ContainerInfra } from "./create-infra.js";
 import {
   type PaymentGroupServices,
@@ -318,6 +319,12 @@ export function createPaymentsServices(
           payoutAdjustmentService,
           paymentCaptureService,
           domainEventSink,
+          createDisputeCaseRecorder({
+            db,
+            transactionRunner: platform.transactionRunner,
+            payoutAdjustments: payoutAdjustmentService,
+            events: domainEventSink,
+          }),
           paymentGroups.webhooks,
         )
       : null;

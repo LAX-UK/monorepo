@@ -16,7 +16,7 @@ export function SaleCardMeta({ itemsLabel, locationLabel, className }: Props) {
   return (
     <div className={cn("flex flex-col gap-2", className)}>
       {hasItems ? (
-        <span className="font-body text-sm font-normal uppercase leading-snug text-on-surface-variant">
+        <span className="font-body text-sm font-normal leading-snug text-on-surface-variant">
           {itemsLabel}
         </span>
       ) : null}

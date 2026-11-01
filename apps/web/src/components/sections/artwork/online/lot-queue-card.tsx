@@ -41,7 +41,7 @@ export function LotQueueCard({ vm, variant, index = 0, className }: Props) {
           <p className="line-clamp-2 font-body text-[13px] font-medium leading-4 text-on-surface">
             {lotNo} {vm.title}
           </p>
-          <p className="line-clamp-1 font-body text-xs font-light text-on-surface-variant">
+          <p className="line-clamp-1 font-body text-xs font-normal text-on-surface-variant">
             {vm.artistName}
           </p>
         </div>

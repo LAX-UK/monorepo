@@ -11,7 +11,7 @@ type Props = {
 };
 
 const utilityButtonClass = cn(
-  "inline-flex min-h-11 items-center gap-2 rounded-none px-0 font-label text-sm font-medium uppercase leading-[21px] text-on-surface-variant hover:bg-transparent hover:text-on-surface",
+  "inline-flex min-h-11 items-center gap-2 rounded-none px-0 font-label text-sm font-medium leading-[21px] text-on-surface-variant hover:bg-transparent hover:text-on-surface",
   FOCUS_RING,
 );
 
