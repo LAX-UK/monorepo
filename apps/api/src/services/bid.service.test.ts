@@ -1391,7 +1391,7 @@ describe("BidService.placeBid", () => {
     const now = Date.now();
     let endTime = new Date(now + 60_000);
     const created = createBid({ amount: "150.00" });
-    const updateEndTime = vi.fn().mockImplementation(async (_id: string, next: Date) => {
+    const extendEndTime = vi.fn().mockImplementation(async (_id: string, next: Date) => {
       endTime = next;
     });
     const lotRepo = baseLotRepo({
@@ -1401,7 +1401,7 @@ describe("BidService.placeBid", () => {
           endTime,
         }),
       ),
-      updateEndTime,
+      extendEndTime,
     });
     const bidRepo = baseBidRepo({
       create: vi.fn().mockResolvedValue(created),
@@ -1425,7 +1425,7 @@ describe("BidService.placeBid", () => {
 
     await service.placeBid(personalBid("bidder-1", "auc-1", 150));
     await service.placeBid(personalBid("bidder-2", "auc-1", 160));
-    expect(updateEndTime).toHaveBeenCalledTimes(2);
+    expect(extendEndTime).toHaveBeenCalledTimes(2);
     expect(rescheduleEnd).toHaveBeenCalledTimes(2);
   });
 
