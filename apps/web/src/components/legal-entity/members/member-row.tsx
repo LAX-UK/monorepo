@@ -112,7 +112,7 @@ export function MemberRow({
           ) : null}
         </>
       }
-      meta={[row.email, row.twoStep]}
+      meta={[row.email, row.twoStep, row.lastActive]}
       status={
         row.roleOptions ? (
           <SelectMenu

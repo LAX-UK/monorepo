@@ -1,3 +1,4 @@
+import { ContactDetailsCard } from "@/components/organisation-team/contact-details-card";
 import { InvoiceDetailsCard } from "@/components/organisation-team/invoice-details-card";
 import { LeaveOrCloseCard } from "@/components/organisation-team/leave-or-close-card";
 import {
@@ -10,6 +11,7 @@ import { subkindLabel } from "@/components/organisations/labels";
 import { resumeOnboardingStepKey } from "@/components/organisations/org-onboarding-step-map";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { getOrgOnboardingResumeHrefForEntity } from "@/lib/data/http/org-onboarding.server";
+import { getServerContactDetails } from "@/lib/data/http/organisation-profile.server";
 import { getServerInvoiceDetails } from "@/lib/data/http/organisation-team.server";
 import { leaveControl } from "@/lib/legal-entity/member-controls.vm";
 import { ORG_ONBOARDING_TIMELINE_STAGES } from "@/lib/legal-entity/org-onboarding-steps";
@@ -45,8 +47,8 @@ const REVIEW_INDEX: Partial<Record<LegalEntityStatus, number>> = {
 
 /**
  * The Profile tab: setup or review progress while it is unfinished, the checked details (changed
- * through the secure setup flow, since a change is checked again), the invoice details edited in
- * place, and leaving or closing. Finance opens it for the invoice details only.
+ * through the secure setup flow, since a change is checked again), the contact and invoice
+ * details edited in place, and leaving or closing. Finance opens it for the invoice details only.
  */
 export default async function OrganisationProfilePage() {
   const user = await requireAuthenticatedUser({
@@ -72,8 +74,11 @@ export default async function OrganisationProfilePage() {
   }
 
   const readsDetails = entityActorCan(actor, "entity.profile.read");
-  const [ctx, invoiceDetails, members] = await Promise.all([
+  const [ctx, contactDetails, invoiceDetails, members] = await Promise.all([
     createPerOrgGateway().getContext(acting.id),
+    entityActorCan(actor, "entity.contact.read")
+      ? getServerContactDetails(acting.id).catch(() => null)
+      : null,
     getServerInvoiceDetails(acting.id).catch(() => null),
     entityActorCan(actor, "entity.members.read") ? loadTeamMembers(scope) : null,
   ]);
@@ -167,6 +172,20 @@ export default async function OrganisationProfilePage() {
               </div>
             )}
           </SettingsCard>
+        </SettingsSection>
+      ) : null}
+
+      {contactDetails ? (
+        <SettingsSection
+          id="contact-heading"
+          title="Contact"
+          description={
+            contactDetails.canEdit
+              ? `How buyers and our team reach ${name}. Saved straight away.`
+              : `How buyers and our team reach ${name}. Owners and admins change these.`
+          }
+        >
+          <ContactDetailsCard legalEntityId={id} details={contactDetails} />
         </SettingsSection>
       ) : null}
 

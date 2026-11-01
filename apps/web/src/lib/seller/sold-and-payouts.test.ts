@@ -37,12 +37,43 @@ describe("buildPayoutDestination", () => {
         ready: true,
         preview: { paymentCount: 1, pendingNet: "1722", currency: "GBP" },
       }),
-    ).toEqual({ ready: true, pending: "£1,722.00" });
+    ).toMatchObject({ ready: true, pending: "£1,722.00" });
     expect(
       buildPayoutDestination({
         ready: false,
         preview: { paymentCount: 0, pendingNet: "0", currency: "GBP" },
       }),
-    ).toEqual({ ready: false, pending: null });
+    ).toEqual({ ready: false, pending: null, bank: null, bankFailed: false });
+  });
+
+  const account = {
+    bankName: "BARCLAYS BANK PLC",
+    last4: "0042",
+    accountHolderName: "Northbank Gallery Ltd",
+    currency: "GBP",
+    status: "ready" as const,
+  };
+
+  it("names the bank account payouts go to, from the summary only", () => {
+    expect(
+      buildPayoutDestination({ ready: true, preview: null, account: { state: "ready", account } }),
+    ).toMatchObject({ bank: "Barclays Bank PLC ending 0042 · GBP", bankFailed: false });
+    expect(
+      buildPayoutDestination({
+        ready: true,
+        preview: null,
+        account: { state: "unavailable", account: null },
+      }),
+    ).toMatchObject({ bank: null, bankFailed: false });
+  });
+
+  it("flags a bank account a payout bounced from", () => {
+    expect(
+      buildPayoutDestination({
+        ready: true,
+        preview: null,
+        account: { state: "ready", account: { ...account, status: "failed" } },
+      }).bankFailed,
+    ).toBe(true);
   });
 });

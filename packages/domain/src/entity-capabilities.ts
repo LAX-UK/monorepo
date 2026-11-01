@@ -113,6 +113,15 @@ const ENTITY_CAPABILITY_RULES = {
     access: "read",
     roles: ["owner", "admin", "finance", "viewer", "buyer_agent"],
   },
+  /** See how buyers and LAX reach the organisation: its contact email, phone and website. */
+  "entity.contact.read": {
+    access: "read",
+    roles: ["owner", "admin", "finance", "consignor", "viewer", "buyer_agent"],
+  },
+  /** Change the organisation's contact details; they are not checked, so they change in place. */
+  "entity.contact.manage": { access: "write", roles: ["owner", "admin"] },
+  /** See when each member was last active (the date only). */
+  "entity.members.last_active.read": { access: "read", roles: ["owner", "admin"] },
 } as const satisfies Record<string, CapabilityRule>;
 
 export type EntityCapability = keyof typeof ENTITY_CAPABILITY_RULES;

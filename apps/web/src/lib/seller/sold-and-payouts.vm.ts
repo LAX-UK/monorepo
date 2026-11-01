@@ -1,5 +1,7 @@
+import type { PayoutAccountView } from "@/lib/data/http/organisation-profile.types";
 import type { SoldLot } from "@/lib/data/http/workspace-selling.schema";
 import { formatMoney } from "@/lib/format-currency";
+import { payoutBankLineWithCurrency } from "@/lib/organisation-team/payout-bank-account.vm";
 import { formatPeriod } from "@/lib/ui/format";
 import { csvDocument } from "@/lib/workspace/csv";
 import type { Payout } from "@auction/types";
@@ -19,6 +21,10 @@ export type PayoutDestinationVm = {
   ready: boolean;
   /** Money from paid sales not yet in a payout, when there is any. */
   pending: string | null;
+  /** "Barclays Bank PLC ending 0042 · GBP" once a bank account can be paid into, else `null`. */
+  bank: string | null;
+  /** A payout to the bank account bounced, so it needs replacing. */
+  bankFailed: boolean;
 };
 
 export type SoldAndPayoutsVm = {
@@ -51,12 +57,20 @@ export function buildPayoutRows(payouts: readonly Payout[], sellerEntityId: stri
 export function buildPayoutDestination(input: {
   ready: boolean;
   preview: { paymentCount: number; pendingNet: string; currency: string } | null;
+  /** The payout bank summary, when it could be read. */
+  account?: PayoutAccountView | null;
 }): PayoutDestinationVm {
   const pending =
     input.preview && input.preview.paymentCount > 0
       ? formatMoney(input.preview.pendingNet, input.preview.currency)
       : null;
-  return { ready: input.ready, pending };
+  const bankAccount = input.account?.state === "ready" ? input.account.account : null;
+  return {
+    ready: input.ready,
+    pending,
+    bank: bankAccount ? payoutBankLineWithCurrency(bankAccount) : null,
+    bankFailed: bankAccount?.status === "failed",
+  };
 }
 
 /** Payouts as CSV, one line each, amounts as the page shows them. */

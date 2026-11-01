@@ -389,6 +389,12 @@ export function createContainer(env: Env): Container {
   const organisationTeam = createOrganisationTeamServices({
     db,
     events: platform.domainEventSink,
+    payouts: repos.payoutRepository,
+    connect: repos.legalEntityConnectReader,
+    stripeClientFactory: infra.stripeClientFactory,
+    members: repos.legalEntityMemberRepository,
+    identity: identityIssuer,
+    log: createAppLogger(env),
   });
 
   const atg = new AtgAdminService(

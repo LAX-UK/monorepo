@@ -4,6 +4,7 @@ import {
   resolveSellerConnectPresentation,
 } from "@/lib/connect/resolve-seller-connect-presentation";
 import { getServerDataContainer } from "@/lib/data/container.server";
+import { getServerPayoutAccount } from "@/lib/data/http/organisation-profile.server";
 import { getServerStripeConnectClientConfig } from "@/lib/data/http/stripe-connect.server";
 import { listServerSoldLots } from "@/lib/data/http/workspace-selling.server";
 import { createOrganisationHubGateway } from "@/lib/legal-entity/organisation-hub.gateway.server";
@@ -20,7 +21,7 @@ import {
  */
 export async function loadSoldAndPayouts(sellerEntityId: string): Promise<SoldAndPayoutsVm | null> {
   const c = await getServerDataContainer();
-  const [list, preview, clientConfig, entity, lots] = await Promise.all([
+  const [list, preview, clientConfig, entity, lots, account] = await Promise.all([
     c.sellerPayouts.listForLegalEntity(sellerEntityId),
     c.sellerPayouts.previewNextForLegalEntity(sellerEntityId),
     getServerStripeConnectClientConfig(),
@@ -31,6 +32,8 @@ export async function loadSoldAndPayouts(sellerEntityId: string): Promise<SoldAn
     listServerSoldLots()
       .then((page) => page.items)
       .catch(() => null),
+    // Where payouts go, as a summary; the page reads without it.
+    getServerPayoutAccount(sellerEntityId).catch(() => null),
   ]);
   if (!list.ok) return null;
 
@@ -42,6 +45,7 @@ export async function loadSoldAndPayouts(sellerEntityId: string): Promise<SoldAn
     destination: buildPayoutDestination({
       ready: connect.connectReady,
       preview: preview.ok ? preview.data : null,
+      account,
     }),
     sold: lots,
     payouts: buildPayoutRows(list.payouts, sellerEntityId),
