@@ -132,9 +132,10 @@ describe.skipIf(!migrationUrl)("migration 0264 consignment inbox", { timeout: 30
        values ($1, 'staff', 'internal', 'for us')`,
       [ANSWERED],
     );
+    const before = await client.query("select count(*)::int as n from consignment_message");
     await client.query(read("0264_rollback.sql"));
-    const notes = await client.query("select count(*)::int as n from consignment_message");
-    expect(notes.rows[0].n).toBe(7);
+    const after = await client.query("select count(*)::int as n from consignment_message");
+    expect(after.rows[0].n).toBe(before.rows[0].n - 1);
     const columns = await client.query(
       `select count(*)::int as n from information_schema.columns
        where table_name in ('consignment_thread', 'consignment_message')

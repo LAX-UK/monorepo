@@ -51,6 +51,11 @@ function containing(text: string): string {
   return `%${text.replace(/[\\%_]/g, (char) => `\\${char}`)}%`;
 }
 
+/** A column or expression under a name of its own, so a subquery never has two of one name. */
+function aliased<T>(expression: SQLWrapper, name: string) {
+  return sql<T>`${expression}`.as(name);
+}
+
 /** The person who has the thread: whoever covers it, else the consignment's specialist. */
 const assigneeId = sql<
   string | null
@@ -196,34 +201,46 @@ export class DrizzleConsignmentInboxReader implements IConsignmentInboxReader {
   private base(filter: ConsignmentInboxQueryFilter, skip?: Facet) {
     return this.db
       .select({
-        threadId: consignmentThread.id,
-        submissionId: itemSubmission.id,
-        title: itemSubmission.title,
-        referenceNumber: itemSubmission.referenceNumber,
-        image: sql<string | null>`(${itemSubmission.images})[1]`.as("image"),
-        accountId: legalEntity.id,
-        accountName: legalEntity.displayName,
-        accountKind: legalEntity.kind,
-        organisationKey:
-          sql<string>`case when ${legalEntity.kind} = 'individual' then ${PRIVATE_SELLERS_FACET_ID} else ${legalEntity.id}::text end`.as(
-            "organisation_key",
-          ),
-        saleId: lot.saleId,
-        saleName: sale.title,
-        saleStartsAt: sale.startTime,
-        assigneeId: assigneeId.as("assignee_id"),
-        assigneeName: sql<
-          string | null
-        >`coalesce(${coveringDirectory.name}, ${specialistDirectory.name})`.as("assignee_name"),
-        specialistId: itemSubmission.assignedToUserId,
-        specialistName: specialistDirectory.name,
-        coveringId: consignmentThread.coveringUserId,
-        coveringName: coveringDirectory.name,
-        closedAt: consignmentThread.closedAt,
-        awaitingSince: consignmentThread.awaitingSince,
-        lastMessageAt: consignmentThread.lastMessageAt,
-        lastMessageSide: consignmentThread.lastMessageSide,
-        submitterName: submitterDirectory.name,
+        threadId: aliased<string>(consignmentThread.id, "thread_id"),
+        submissionId: aliased<string>(itemSubmission.id, "submission_id"),
+        title: aliased<string>(itemSubmission.title, "title"),
+        referenceNumber: sql<number>`${itemSubmission.referenceNumber}`
+          .mapWith(Number)
+          .as("reference_number"),
+        image: aliased<string | null>(sql`(${itemSubmission.images})[1]`, "image"),
+        accountId: aliased<string | null>(legalEntity.id, "account_id"),
+        accountName: aliased<string | null>(legalEntity.displayName, "account_name"),
+        accountKind: aliased<"individual" | "organisation" | null>(
+          legalEntity.kind,
+          "account_kind",
+        ),
+        organisationKey: aliased<string>(
+          sql`case when ${legalEntity.kind} = 'individual' then ${PRIVATE_SELLERS_FACET_ID} else ${legalEntity.id}::text end`,
+          "organisation_key",
+        ),
+        saleId: aliased<string | null>(lot.saleId, "sale_id"),
+        saleName: aliased<string | null>(sale.title, "sale_name"),
+        saleStartsAt: aliased<Date | null>(sale.startTime, "sale_starts_at"),
+        assigneeId: aliased<string | null>(assigneeId, "assignee_id"),
+        assigneeName: aliased<string | null>(
+          sql`coalesce(${coveringDirectory.name}, ${specialistDirectory.name})`,
+          "assignee_name",
+        ),
+        specialistId: aliased<string | null>(itemSubmission.assignedToUserId, "specialist_id"),
+        specialistName: aliased<string | null>(specialistDirectory.name, "specialist_name"),
+        coveringId: aliased<string | null>(consignmentThread.coveringUserId, "covering_id"),
+        coveringName: aliased<string | null>(coveringDirectory.name, "covering_name"),
+        closedAt: sql<Date | null>`${consignmentThread.closedAt}`
+          .mapWith(consignmentThread.closedAt)
+          .as("closed_at"),
+        awaitingSince: sql<Date | null>`${consignmentThread.awaitingSince}`
+          .mapWith(consignmentThread.awaitingSince)
+          .as("awaiting_since"),
+        lastMessageAt: sql<Date>`${consignmentThread.lastMessageAt}`
+          .mapWith(consignmentThread.lastMessageAt)
+          .as("last_message_at"),
+        lastMessageSide: aliased<string>(consignmentThread.lastMessageSide, "last_message_side"),
+        submitterName: aliased<string | null>(submitterDirectory.name, "submitter_name"),
         clientPersonName: sql<string | null>`(
           select ${bidIdentityDirectory.name}
           from ${consignmentMessage}
