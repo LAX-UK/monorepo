@@ -1,3 +1,4 @@
+import type { AtgDistribution } from "./atg.js";
 import type { AuctionTimingValue } from "./auction-timing.js";
 import type { BuyerPremiumTier } from "./buyer-premium.js";
 import type { GalleryImage } from "./gallery.js";
@@ -137,6 +138,8 @@ export type Sale = {
   sellingPlatform?: AtgOwnershipState;
   /** With `sellingPlatform: "atg"`: whether bidding is open or closed on the White Label. */
   atgAuctionState?: "live" | "ended";
+  /** With `sellingPlatform: "atg"`: a `private_test` auction is not shown on the public catalogue. */
+  atgDistribution?: AtgDistribution;
   startTime: Date;
   endTime: Date;
   previewStartTime: Date | null;
