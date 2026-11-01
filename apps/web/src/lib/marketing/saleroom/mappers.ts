@@ -1,4 +1,5 @@
 import { mapPressRefToVM } from "@/components/sections/press/mappers";
+import { atgLiveBidLabel } from "@/lib/catalog/atg-white-label";
 import {
   formatLondonDateRange,
   formatLondonDateTime,
@@ -296,7 +297,7 @@ export function mapLotToCardVM(
   const estimate = lotEstimateLine(lot);
   const price = opts.atgState
     ? opts.atgState === "live"
-      ? { label: "Bidding", value: "On ATG" }
+      ? { label: "Bidding", value: atgLiveBidLabel() }
       : { label: "Result", value: lot.hasWinner ? "Sold" : "No sale" }
     : catalogPrice(lot);
   // Server-rendered relative phrase used as a non-ticking secondary line.
