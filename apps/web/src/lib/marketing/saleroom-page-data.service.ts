@@ -62,22 +62,31 @@ async function loadAllCatalogPages(id: string, sort: SaleroomCatalogSort): Promi
   const cap = Math.min(SALE_CATALOG_LOAD_ALL_CAP, first.total);
   const items = [...first.items];
   const totalPages = Math.ceil(cap / CATALOG_LOAD_ALL_BATCH);
-  if (totalPages > 1) {
-    const rest = await Promise.all(
-      Array.from({ length: totalPages - 1 }, (_, i) =>
-        getServerSaleLotsPage({
-          id,
-          page: i + 2,
-          pageSize: CATALOG_LOAD_ALL_BATCH,
-          sort,
-        }),
-      ),
-    );
-    for (const page of rest) {
-      if (page) items.push(...page.items);
-    }
+  const rest =
+    totalPages > 1
+      ? await Promise.all(
+          Array.from({ length: totalPages - 1 }, (_, i) =>
+            getServerSaleLotsPage({
+              id,
+              page: i + 2,
+              pageSize: CATALOG_LOAD_ALL_BATCH,
+              sort,
+            }),
+          ),
+        )
+      : [];
+  for (const page of rest) {
+    if (page) items.push(...page.items);
   }
-  return { ...first, items: items.slice(0, cap), limit: cap, offset: 0 };
+  const withdrawn = [...first.withdrawn];
+  for (const page of rest) {
+    if (page) withdrawn.push(...page.withdrawn);
+  }
+  return { ...first, items: items.slice(0, cap), withdrawn, limit: cap, offset: 0 };
+}
+
+function emptyLotsPage(sort: SaleroomCatalogSort): SaleLotsPage {
+  return { items: [], withdrawn: [], total: 0, limit: 0, offset: 0, sort };
 }
 
 export class SaleroomPageDataService {
@@ -96,14 +105,18 @@ export class SaleroomPageDataService {
     ]);
     if (!shell) return null;
 
-    const lotsPage = input.loadAll
-      ? await loadAllCatalogPages(input.saleId, input.sort)
-      : await getServerSaleLotsPage({
-          id: input.saleId,
-          page: input.page,
-          pageSize: input.pageSize,
-          sort: input.sort,
-        });
+    // A cancelled sale is a notice; its catalogue is not read.
+    const lotsPage =
+      shell.sale.status === "cancelled"
+        ? emptyLotsPage(input.sort)
+        : input.loadAll
+          ? await loadAllCatalogPages(input.saleId, input.sort)
+          : await getServerSaleLotsPage({
+              id: input.saleId,
+              page: input.page,
+              pageSize: input.pageSize,
+              sort: input.sort,
+            });
     if (!lotsPage) return null;
 
     const categoryLabels = resolveSaleCategoryLabels(shell.sale, categories);

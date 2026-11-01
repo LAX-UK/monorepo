@@ -17,15 +17,20 @@ vi.mock("@/components/sections/saleroom/saleroom-follow-toggle", () => ({
 const hero = {
   id: "sale-1",
   title: "Hybrid Day Sale",
+  subtitle: null,
   coverImage: null,
   dateLine: "Jun 19, 2026",
   itemsLabel: "12 lots",
+  lotCount: 12,
+  formatLabel: "Online",
+  placeLabel: null,
   status: "active",
   isLive: true,
   startTime: new Date().toISOString(),
   endTime: new Date(Date.now() + 86400000).toISOString(),
   startEndLabel: "Jun 19 – Jun 20",
   shareUrl: "https://example.com/sales/test",
+  previewOpensIso: null,
   registrationClosesShort: null,
   biddingStartsShort: null,
   leftColumnLabel: null,
@@ -62,7 +67,7 @@ describe("SaleroomHeroActionRow", () => {
     expect(screen.queryByRole("link", { name: /browse lots/i })).not.toBeInTheDocument();
   });
 
-  it("renders Notify me in a separate footer band from register CTAs", () => {
+  it("keeps Notify me in the same action row as the register button, after it", () => {
     render(
       <SaleroomHeroActionRow
         hero={hero}
@@ -91,13 +96,16 @@ describe("SaleroomHeroActionRow", () => {
     );
 
     const verifyLink = screen.getByRole("link", { name: /verify to continue bidding/i });
-    const primaryBand = verifyLink.closest("div");
-    expect(primaryBand).toBeTruthy();
-    if (!primaryBand) return;
-    expect(within(primaryBand).queryByRole("button", { name: /notify me/i })).toBeNull();
-    expect(within(primaryBand).queryByRole("link", { name: /browse lots/i })).toBeNull();
+    const row = verifyLink.closest("div");
+    expect(row).toBeTruthy();
+    if (!row) return;
+    expect(within(row).queryByRole("link", { name: /browse lots/i })).toBeNull();
 
-    expect(screen.getByRole("button", { name: /notify me/i })).toBeInTheDocument();
+    // One row: the primary action first, Notify me after it.
+    const notify = within(row).getByRole("button", { name: /notify me/i });
+    expect(
+      verifyLink.compareDocumentPosition(notify) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
     expect(screen.getByText(KYC_BID_BLOCKED_DESCRIPTION).className).toContain(
       "text-on-surface-variant",
     );

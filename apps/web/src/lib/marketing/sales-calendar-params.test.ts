@@ -8,10 +8,10 @@ import {
   calendarPriceRangeLabel,
   calendarSalesHref,
   countActiveCalendarFilters,
-  getCalendarPrimaryTabDefinitions,
   hasExplicitCalendarTab,
   parseCalendarPrimaryTab,
   resolveDefaultCalendarPrimaryTab,
+  resolveRetiredCalendarTabHref,
 } from "./sales-calendar-params";
 import type { CalendarSalesUrlState } from "./sales-calendar-params";
 
@@ -44,7 +44,7 @@ describe("calendarClearFiltersHref", () => {
 describe("calendarSalesHref", () => {
   it("always emits an explicit tab, including upcoming", () => {
     expect(calendarSalesHref({ tab: "upcoming" })).toBe("/sales?tab=upcoming");
-    expect(calendarSalesHref({ tab: "newLots" })).toBe("/sales?tab=newLots");
+    expect(calendarSalesHref({ tab: "results" })).toBe("/sales?tab=results");
   });
 
   it("defaults to the upcoming tab when none is provided", () => {
@@ -106,10 +106,9 @@ describe("hasExplicitCalendarTab", () => {
     expect(hasExplicitCalendarTab({ tab: "live" })).toBe(true);
   });
 
-  it("returns true for camelCase tabs regardless of casing", () => {
-    expect(hasExplicitCalendarTab({ tab: "newLots" })).toBe(true);
-    expect(hasExplicitCalendarTab({ tab: "privateSales" })).toBe(true);
-    expect(hasExplicitCalendarTab({ tab: "newlots" })).toBe(true);
+  it("returns true for known tabs regardless of casing", () => {
+    expect(hasExplicitCalendarTab({ tab: "Results" })).toBe(true);
+    expect(hasExplicitCalendarTab({ tab: "LIVE" })).toBe(true);
   });
 
   it("returns false when tab is omitted", () => {
@@ -119,14 +118,18 @@ describe("hasExplicitCalendarTab", () => {
 });
 
 describe("parseCalendarPrimaryTab", () => {
-  it("resolves camelCase tabs to their canonical id", () => {
-    expect(parseCalendarPrimaryTab({ tab: "newLots" })).toBe("newLots");
-    expect(parseCalendarPrimaryTab({ tab: "privateSales" })).toBe("privateSales");
+  it("resolves known tabs to their canonical id", () => {
+    expect(parseCalendarPrimaryTab({ tab: "results" })).toBe("results");
+    expect(parseCalendarPrimaryTab({ tab: "live" })).toBe("live");
+  });
+
+  it("falls back to upcoming for a retired tab", () => {
+    expect(parseCalendarPrimaryTab({ tab: "newLots" })).toBe("upcoming");
+    expect(parseCalendarPrimaryTab({ tab: "privateSales" })).toBe("upcoming");
   });
 
   it("matches case-insensitively", () => {
-    expect(parseCalendarPrimaryTab({ tab: "newlots" })).toBe("newLots");
-    expect(parseCalendarPrimaryTab({ tab: "PRIVATESALES" })).toBe("privateSales");
+    expect(parseCalendarPrimaryTab({ tab: "RESULTS" })).toBe("results");
   });
 
   it("defaults to upcoming when tab is omitted", () => {
@@ -141,16 +144,20 @@ describe("resolveDefaultCalendarPrimaryTab", () => {
   });
 });
 
-describe("getCalendarPrimaryTabDefinitions", () => {
-  it("keeps upcoming first when no live sales", () => {
-    const tabs = getCalendarPrimaryTabDefinitions(false);
-    expect(tabs[0]?.id).toBe("upcoming");
-    expect(tabs[1]?.id).toBe("live");
+describe("resolveRetiredCalendarTabHref", () => {
+  it("sends new lots to the search sort, whatever the casing", () => {
+    expect(resolveRetiredCalendarTabHref({ tab: "newLots" })).toBe("/search?sort=createdDesc");
+    expect(resolveRetiredCalendarTabHref({ tab: "newlots" })).toBe("/search?sort=createdDesc");
   });
 
-  it("puts live first when live sales exist", () => {
-    const tabs = getCalendarPrimaryTabDefinitions(true);
-    expect(tabs[0]?.id).toBe("live");
-    expect(tabs[1]?.id).toBe("upcoming");
+  it("sends private sales to the enquiry form", () => {
+    expect(resolveRetiredCalendarTabHref({ tab: "privateSales" })).toBe(
+      "/contact?intent=private-sale",
+    );
+  });
+
+  it("leaves current tabs and a missing tab alone", () => {
+    expect(resolveRetiredCalendarTabHref({ tab: "results" })).toBeNull();
+    expect(resolveRetiredCalendarTabHref({})).toBeNull();
   });
 });

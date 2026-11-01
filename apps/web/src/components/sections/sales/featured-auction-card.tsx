@@ -40,6 +40,7 @@ export function FeaturedAuctionCard({ vm, index = 0 }: Props) {
               deliveryMode={vm.deliveryMode}
               dateLabel={vm.dateLabel}
               isLive={isLive}
+              showLifecycleBadge={!isLive}
               size="sm"
             />
 

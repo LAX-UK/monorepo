@@ -15,6 +15,7 @@ import {
   SALE_CATALOG_TOOLBAR_STICKY_TOP,
 } from "@/lib/marketing/chrome";
 import { SALEROOM_CATALOG_SORT_OPTIONS } from "@/lib/marketing/saleroom-catalog-sort";
+import type { CatalogueControls } from "@/lib/marketing/saleroom/catalogue-controls";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { DisplayHeading } from "@auction/ui";
 import { useSearchParams } from "next/navigation";
@@ -24,6 +25,8 @@ type Props = {
   layoutView: CatalogLayoutView;
   countLabel: string;
   resultCountLabel: string;
+  /** What this sale's size earns: lots only, the toolbar, or the toolbar with search. */
+  controls: CatalogueControls;
 };
 
 export function SaleroomCatalogToolbarRow({
@@ -31,6 +34,7 @@ export function SaleroomCatalogToolbarRow({
   layoutView,
   countLabel,
   resultCountLabel,
+  controls,
 }: Props) {
   const params = useSearchParams();
   const sortValue = params?.get("sort") ?? "lot";
@@ -44,60 +48,66 @@ export function SaleroomCatalogToolbarRow({
           Lots
         </DisplayHeading>
       </div>
-      <MarketingListToolbar
-        className={MARKETING_LIST_TOOLBAR_BLEED}
-        stickyTopClassName={SALE_CATALOG_TOOLBAR_STICKY_TOP}
-        countLabel={countLabel}
-        mobileFilterTrigger={
-          <HydrationDeferred fallback={<MarketingFilterTrigger activeCount={0} />}>
-            <SaleroomCatalogFilterSheet basePath={basePath} resultCountLabel={resultCountLabel} />
-          </HydrationDeferred>
-        }
-        filters={
-          <MarketingFilterSidebar
-            aria-label="Catalog filters"
-            className="space-y-0 border-0 md:border-0 md:pr-0"
-          >
-            <SaleroomCatalogToolbar basePath={basePath} />
-          </MarketingFilterSidebar>
-        }
-        sort={
-          <div className="flex shrink-0 items-center gap-2">
-            <div className="hidden w-44 sm:block">
-              <SaleroomCatalogSearch />
-            </div>
-            <HydrationDeferred
-              fallback={
-                <span
-                  className="inline-flex h-10 min-h-10 items-center rounded-md border border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-xs font-medium text-on-surface-variant"
-                  aria-label={`Sort: ${sortLabel}`}
-                >
-                  {sortLabel}
-                </span>
-              }
-            >
-              <FilterSelect
-                param="sort"
-                defaultValue="lot"
-                options={[...SALEROOM_CATALOG_SORT_OPTIONS]}
-                clearParams={["page"]}
-                ariaLabel="Sort lots"
-                className="h-10 min-h-10 w-auto min-w-[9.5rem] max-w-[12rem] cursor-pointer border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-xs font-medium shadow-none focus:ring-primary"
-              />
+      {controls.toolbar ? (
+        <MarketingListToolbar
+          className={MARKETING_LIST_TOOLBAR_BLEED}
+          stickyTopClassName={SALE_CATALOG_TOOLBAR_STICKY_TOP}
+          countLabel={countLabel}
+          mobileFilterTrigger={
+            <HydrationDeferred fallback={<MarketingFilterTrigger activeCount={0} />}>
+              <SaleroomCatalogFilterSheet basePath={basePath} resultCountLabel={resultCountLabel} />
             </HydrationDeferred>
-          </div>
-        }
-        trailing={
-          <CatalogViewSwitcher
-            routeKey="sales-lot"
-            value={layoutView}
-            supportedModes={["grid", "list"]}
-          />
-        }
-      />
-      <div className="mt-3 sm:hidden">
-        <SaleroomCatalogSearch />
-      </div>
+          }
+          filters={
+            <MarketingFilterSidebar
+              aria-label="Catalog filters"
+              className="space-y-0 border-0 md:border-0 md:pr-0"
+            >
+              <SaleroomCatalogToolbar basePath={basePath} />
+            </MarketingFilterSidebar>
+          }
+          sort={
+            <div className="flex shrink-0 items-center gap-2">
+              {controls.search ? (
+                <div className="hidden w-44 sm:block">
+                  <SaleroomCatalogSearch />
+                </div>
+              ) : null}
+              <HydrationDeferred
+                fallback={
+                  <span
+                    className="inline-flex h-10 min-h-10 items-center rounded-md border border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-xs font-medium text-on-surface-variant"
+                    aria-label={`Sort: ${sortLabel}`}
+                  >
+                    {sortLabel}
+                  </span>
+                }
+              >
+                <FilterSelect
+                  param="sort"
+                  defaultValue="lot"
+                  options={[...SALEROOM_CATALOG_SORT_OPTIONS]}
+                  clearParams={["page"]}
+                  ariaLabel="Sort lots"
+                  className="h-10 min-h-10 w-auto min-w-[9.5rem] max-w-[12rem] cursor-pointer border-outline-variant/40 bg-surface-container-lowest px-3 font-label text-xs font-medium shadow-none focus:ring-primary"
+                />
+              </HydrationDeferred>
+            </div>
+          }
+          trailing={
+            <CatalogViewSwitcher
+              routeKey="sales-lot"
+              value={layoutView}
+              supportedModes={["grid", "list"]}
+            />
+          }
+        />
+      ) : null}
+      {controls.toolbar && controls.search ? (
+        <div className="mt-3 sm:hidden">
+          <SaleroomCatalogSearch />
+        </div>
+      ) : null}
       <SaleroomCatalogActiveFilters basePath={basePath} />
     </>
   );

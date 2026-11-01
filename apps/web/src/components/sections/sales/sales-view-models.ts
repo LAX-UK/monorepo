@@ -8,7 +8,7 @@ import {
 } from "@/lib/datetime/london-time";
 import { formatMoney } from "@/lib/format-currency";
 import { type SaleListRow, formatSaleItemsLabel, formatSaleLotsLabel } from "@/lib/sale-list-row";
-import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
+import { saleVenueLabel } from "@/lib/sale-location-label";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { salePath } from "@/lib/seo/url";
 import type { Lot, Sale } from "@auction/types";
@@ -76,7 +76,7 @@ export function mapSaleToCalendarCardVM(row: SaleListRow): SaleCalendarCardVM {
   const hammer = sale.status === "ended" ? endedHammerTotal(lots) : undefined;
   const resultsSummary = hammer ? { hammer, total: hammer } : undefined;
 
-  const locationLabel = saleMarketingLocationLabel(sale);
+  const locationLabel = saleVenueLabel(sale);
   const countdownEndIso = toSaleCountdownEndIso(sale);
   const endTimeIso = toOptionalIsoString(sale.endTime);
 
@@ -212,7 +212,7 @@ export function mapSaleToAgendaItemVM(row: SaleListRow): SaleAgendaItemVM {
     timeLabel: formatLondonTimeWithZone(start),
     auctionTypeLabel: mapDeliveryToAuctionTypeLabel(sale.deliveryMode),
     itemsLabel: formatSaleLotsLabel(lotCount),
-    locationLabel: saleMarketingLocationLabel(sale),
+    locationLabel: saleVenueLabel(sale),
     ...(endTimeIso ? { endTimeIso } : {}),
     ...(countdownEndIso ? { countdownEndIso } : {}),
   };
