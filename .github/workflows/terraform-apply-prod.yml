@@ -180,12 +180,14 @@ jobs:
           ref: ${{ inputs.infra_ref }}
           app-id: ${{ vars.INFRA_REPO_APP_ID }}
           private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
-      - name: Require Shop Stripe secrets (ephemeral prod only)
-        if: inputs.layer == 'ephemeral'
+      - name: Require Shop Stripe secrets once the storefronts are public (ephemeral prod only)
+        if: inputs.layer == 'ephemeral' && vars.STOREFRONTS_PUBLIC == 'true'
         run: |
-          # shop-api refuses to start in production without them, which fails the whole deployment.
+          # With public storefronts shop-api requires Stripe (SHOP_REQUIRE_STRIPE) and refuses to
+          # start without it, which fails the whole deployment. While they are private it starts
+          # with checkout and payouts disabled, so step 1 does not need the keys.
           if [ -z "${TF_VAR_stripe_shop_secret_key}" ] || [ -z "${TF_VAR_stripe_shop_webhook_secret}" ]; then
-            echo "::error::Set STRIPE_SHOP_SECRET_KEY and STRIPE_SHOP_WEBHOOK_SECRET in the prod environment before an ephemeral apply."
+            echo "::error::Set STRIPE_SHOP_SECRET_KEY and STRIPE_SHOP_WEBHOOK_SECRET in the prod environment before applying with STOREFRONTS_PUBLIC=true."
             exit 1
           fi
       - name: App Platform Git branch (ephemeral prod only)

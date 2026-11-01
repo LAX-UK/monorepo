@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { loadShopApiEnv } from "./env.js";
 
 function productionNodeBase(overrides: Record<string, string> = {}) {
@@ -156,5 +156,39 @@ describe("loadShopApiEnv SHOP_FINANCIAL_YEAR_END", () => {
     expect(() =>
       loadShopApiEnv(productionNodeBase({ SHOP_FINANCIAL_YEAR_END: "09-31" })),
     ).toThrow();
+  });
+});
+
+describe("loadShopApiEnv Stripe requirement", () => {
+  const withoutStripe = (overrides: Record<string, string> = {}) =>
+    productionNodeBase({ STRIPE_SECRET_KEY: "", STRIPE_WEBHOOK_SECRET: "", ...overrides });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("refuses to start in production without Stripe by default", () => {
+    expect(() => loadShopApiEnv(withoutStripe())).toThrow(
+      /STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET required in production/,
+    );
+    expect(() => loadShopApiEnv(withoutStripe({ STRIPE_SECRET_KEY: "sk_live_key" }))).toThrow(
+      /STRIPE_WEBHOOK_SECRET required in production/,
+    );
+  });
+
+  it("starts with payments disabled and a warning while Stripe is not required", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const env = loadShopApiEnv(withoutStripe({ SHOP_REQUIRE_STRIPE: "false" }));
+    expect(env.SHOP_REQUIRE_STRIPE).toBe(false);
+    expect(env.STRIPE_SECRET_KEY).toBeUndefined();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringMatching(/checkout, refunds and Connect payouts are disabled/),
+    );
+  });
+
+  it("stays silent when Stripe is configured", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    loadShopApiEnv(productionNodeBase({ SHOP_REQUIRE_STRIPE: "false" }));
+    expect(warn).not.toHaveBeenCalled();
   });
 });
