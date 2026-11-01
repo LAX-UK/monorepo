@@ -21,6 +21,7 @@ const orgCtx: ChecklistCopyContext = {
 function views(facts: Partial<ConsignmentChecklistFacts>, ctx = personalCtx) {
   const list = computeConsignmentChecklist({
     submissionStatus: "approved",
+    lotStatus: null,
     accountKind: ctx.accountKind,
     identity: "required",
     agreement: { proposed: true, accepted: false },
@@ -156,7 +157,7 @@ describe("checklist facts", () => {
           commissionPercent: "15",
         },
         account,
-        lot: { saleId: "sale-1", startTime: start },
+        lot: { saleId: "sale-1", startTime: start, status: "scheduled" },
       }).saleStartsAt,
     ).toEqual(start);
     expect(
@@ -164,9 +165,32 @@ describe("checklist facts", () => {
         submission: { status: "converted" },
         agreement: null,
         account,
-        lot: { saleId: null, startTime: start },
+        lot: { saleId: null, startTime: start, status: "scheduled" },
       }),
     ).toMatchObject({ saleStartsAt: null, agreement: { proposed: false, accepted: false } });
+  });
+});
+
+describe("consignmentChecklistFacts for a sold work", () => {
+  it("carries the lot's status so a sold consignment no longer shows the checklist", () => {
+    const facts = consignmentChecklistFacts({
+      submission: { status: "converted" },
+      agreement: {
+        acceptedAt: new Date(),
+        estimateLow: "8000",
+        estimateHigh: "12000",
+        commissionPercent: "15",
+      },
+      account: {
+        accountKind: "personal",
+        identity: "verified",
+        payoutsReady: true,
+        viewer: { canAcceptAgreement: true, canSetUpPayouts: true },
+      },
+      lot: { saleId: "sale-1", startTime: new Date("2026-10-04T18:00:00Z"), status: "ended" },
+    });
+    expect(facts.lotStatus).toBe("ended");
+    expect(computeConsignmentChecklist(facts).applies).toBe(false);
   });
 });
 

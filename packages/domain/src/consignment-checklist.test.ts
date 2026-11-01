@@ -8,6 +8,7 @@ import {
 
 const base: ConsignmentChecklistFacts = {
   submissionStatus: "under_review",
+  lotStatus: null,
   accountKind: "personal",
   identity: "required",
   agreement: { proposed: false, accepted: false },
@@ -29,6 +30,17 @@ describe("computeConsignmentChecklist", () => {
           status,
         ),
       );
+    }
+  });
+
+  it("applies only until the lot's sale is live", () => {
+    const applies = (lotStatus: ConsignmentChecklistFacts["lotStatus"]) =>
+      computeConsignmentChecklist({ ...base, submissionStatus: "converted", lotStatus }).applies;
+    expect(applies(null)).toBe(true);
+    expect(applies("draft")).toBe(true);
+    expect(applies("scheduled")).toBe(true);
+    for (const past of ["active", "ended", "cancelled", "voided"] as const) {
+      expect(applies(past)).toBe(false);
     }
   });
 
