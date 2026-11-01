@@ -1,4 +1,3 @@
-import { bidLimitExceededBidErrorMatcher } from "@/lib/ui/bid-error/matchers/eligibility-api.matcher";
 import { expect, test } from "@playwright/test";
 import { e2eEnabled, e2eSkipReason } from "./helpers/auth";
 import { roleAuthState } from "./helpers/auth-state";
@@ -15,7 +14,7 @@ import { expectWorkspaceBaselines } from "./helpers/workspace-baselines";
 
 /**
  * A buyer agent bids for Northbank Gallery through an authorisation with a limit: a bid inside it
- * is placed, a bid above it is refused with the message the lot page shows. Buyer agents see
+ * is placed, a bid above it is refused with the message the bid dialog shows. Buyer agents see
  * their own bids but not the team.
  */
 
@@ -49,8 +48,7 @@ test.describe("organisation buyer agent journey @roles", () => {
       const bid = await placeBid(agent, lot, BUYER_AGENT_BID_LIMIT + 500);
       expect(bid.status).toBe(403);
       expect(bid.code).toBe("over_limit");
-      const shown = bidLimitExceededBidErrorMatcher.match(bid.error, { code: bid.code });
-      expect(shown?.message).toBe(
+      expect(bid.error).toBe(
         "This bid exceeds your buyer agent authorisation limit for this sale.",
       );
     });
