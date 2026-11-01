@@ -92,3 +92,53 @@ export function saleLineBreakdown(facts: SaleLineFacts): SaleLineBreakdown {
     net: minorUnitsToMoneyString(gross - share),
   };
 }
+
+/** A line on a payout, as stored: sale lines carry the payment they settle. */
+export type PayoutLineFacts = {
+  kind: string;
+  /** What the line settles (a negative amount for money taken back). */
+  amount: string;
+  payment: { amount: string; platformFee: string } | null;
+};
+
+/** The split of one sale line, or `null` for any other kind of line. */
+export function payoutLineBreakdown(line: PayoutLineFacts): SaleLineBreakdown | null {
+  if (line.kind !== "sale" || !line.payment) return null;
+  return saleLineBreakdown({
+    lineAmount: line.amount,
+    paymentAmount: line.payment.amount,
+    platformFee: line.payment.platformFee,
+  });
+}
+
+export type PayoutTotals = {
+  /** Everything the lines settle, sales and adjustments. */
+  gross: string;
+  /** LAX's commission across the sale lines. */
+  platformFee: string;
+  /** The payment processor's fee on the payout. */
+  stripeFee: string;
+  /** What reaches the seller: gross less both fees. */
+  net: string;
+};
+
+/**
+ * A payout's totals from its lines, with the same split each sale line shows, so the header, the
+ * lines, the statement and Home's figure always add up.
+ */
+export function payoutTotals(lines: readonly PayoutLineFacts[], stripeFee: string): PayoutTotals {
+  let gross = 0n;
+  let commission = 0n;
+  for (const line of lines) {
+    gross += parseMoneyToMinorUnits(line.amount);
+    const split = payoutLineBreakdown(line);
+    if (split) commission += parseMoneyToMinorUnits(split.commissionAndFees);
+  }
+  const processor = parseMoneyToMinorUnits(stripeFee || "0");
+  return {
+    gross: minorUnitsToMoneyString(gross),
+    platformFee: minorUnitsToMoneyString(commission),
+    stripeFee: minorUnitsToMoneyString(processor),
+    net: minorUnitsToMoneyString(gross - commission - processor),
+  };
+}

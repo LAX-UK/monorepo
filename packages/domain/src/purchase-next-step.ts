@@ -1,4 +1,5 @@
 import type { PaymentStatus } from "@auction/types";
+import { purchaseEnding, purchaseIsToPay } from "./purchase-state.js";
 
 /** Where a won lot's delivery stands (`lot_fulfilment.status`). */
 export type PurchaseFulfilmentStatus =
@@ -31,14 +32,6 @@ export type PurchaseNextStepFacts = {
  */
 export type PurchaseNextStep = "pay" | "choose_delivery" | "quote_ready" | "book_collection";
 
-/** Payment states that leave the lot still to pay. */
-const TO_PAY: ReadonlySet<PaymentStatus | null> = new Set([
-  null,
-  "pending",
-  "cancelled",
-  "requires_manual_review",
-]);
-
 /** Delivery states that are past the choice: on its way, done or stopped. */
 const PAST_CHOICE: ReadonlySet<PurchaseFulfilmentStatus> = new Set([
   "ready_for_collection",
@@ -48,7 +41,9 @@ const PAST_CHOICE: ReadonlySet<PurchaseFulfilmentStatus> = new Set([
 ]);
 
 export function purchaseNextStep(facts: PurchaseNextStepFacts): PurchaseNextStep | null {
-  if (TO_PAY.has(facts.paymentStatus)) return "pay";
+  const state = { paymentStatus: facts.paymentStatus, fulfilmentStatus: facts.fulfilment?.status };
+  if (purchaseEnding(state)) return null;
+  if (purchaseIsToPay(state)) return "pay";
   if (facts.paymentStatus !== "captured") return null;
   const { fulfilment } = facts;
   if (fulfilment?.status === "ready_for_collection" && !fulfilment.collectedAt) {

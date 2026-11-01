@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { consignmentReference, saleLineBreakdown, soldLotPayoutStage } from "./selling-records.js";
+import {
+  consignmentReference,
+  payoutLineBreakdown,
+  payoutTotals,
+  saleLineBreakdown,
+  soldLotPayoutStage,
+} from "./selling-records.js";
 
 describe("consignmentReference", () => {
   it("prefixes the number", () => {
@@ -47,5 +53,44 @@ describe("saleLineBreakdown", () => {
     expect(
       saleLineBreakdown({ lineAmount: "100.00", paymentAmount: "300.00", platformFee: "10.00" }),
     ).toEqual({ gross: "100.00", commissionAndFees: "3.33", net: "96.67" });
+  });
+});
+
+describe("payoutTotals", () => {
+  const sale = {
+    kind: "sale",
+    amount: "4800.00",
+    payment: { amount: "6000.00", platformFee: "1200.00" },
+  };
+
+  it("adds up to the same split the sale line shows", () => {
+    expect(payoutLineBreakdown(sale)).toEqual({
+      gross: "4800.00",
+      commissionAndFees: "960.00",
+      net: "3840.00",
+    });
+    expect(payoutTotals([sale], "0.00")).toEqual({
+      gross: "4800.00",
+      platformFee: "960.00",
+      stripeFee: "0.00",
+      net: "3840.00",
+    });
+  });
+
+  it("takes the processor fee and adjustments into the net", () => {
+    const adjustment = { kind: "adjustment", amount: "-100.00", payment: null };
+    expect(payoutTotals([sale, adjustment], "12.50")).toEqual({
+      gross: "4700.00",
+      platformFee: "960.00",
+      stripeFee: "12.50",
+      net: "3727.50",
+    });
+  });
+
+  it("splits only sale lines", () => {
+    expect(payoutLineBreakdown({ kind: "refund", amount: "-50.00", payment: sale.payment })).toBe(
+      null,
+    );
+    expect(payoutTotals([], "0.00").net).toBe("0.00");
   });
 });
