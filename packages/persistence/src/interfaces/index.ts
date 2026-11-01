@@ -997,6 +997,16 @@ export type {
   NewAccessRequest,
 } from "./access-request.repository.js";
 export type {
+  AttachableUpload,
+  ConsignmentMessageAttachmentRow,
+  ConsignmentMessageRow,
+  ConsignmentThreadInboxQuery,
+  ConsignmentThreadSubject,
+  ConsignmentThreadSummaryRow,
+  IConsignmentMessageRepository,
+  NewConsignmentMessage,
+} from "./consignment-message.repository.js";
+export type {
   ClaimPaymentGroupInput,
   ClaimPaymentGroupResult,
   IPaySeveralInvoiceFlagsReader,

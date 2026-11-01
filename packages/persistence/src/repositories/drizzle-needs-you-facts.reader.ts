@@ -7,6 +7,8 @@ import {
   bidUserProfile,
   buyerAgentAuthorisation,
   consignmentAgreement,
+  consignmentMessage,
+  consignmentThread,
   deliveryQuote,
   itemSubmission,
   lot,
@@ -21,6 +23,7 @@ import type {
   HomeSubject,
   PendingAccessRequest,
   PurchaseNextStepFacts,
+  UnreadReply,
 } from "@auction/domain";
 import type { PaymentStatus } from "@auction/types";
 import {
@@ -318,6 +321,41 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
       )
       .orderBy(asc(accessRequest.createdAt), asc(accessRequest.id))
       .limit(input.limit);
+  }
+
+  async unreadReplies(input: {
+    legalEntityId: string;
+    visibleTo: SubmissionSenderFilter | undefined;
+    limit: number;
+  }): Promise<UnreadReply[]> {
+    // The newest unread specialist message on each consignment names who wrote.
+    const rows = await this.db
+      .selectDistinctOn([itemSubmission.id], {
+        id: itemSubmission.id,
+        title: itemSubmission.title,
+        from: sql<string>`coalesce(${bidIdentityDirectory.name}, 'Your specialist')`,
+        at: consignmentMessage.createdAt,
+      })
+      .from(consignmentMessage)
+      .innerJoin(consignmentThread, eq(consignmentThread.id, consignmentMessage.threadId))
+      .innerJoin(itemSubmission, eq(itemSubmission.id, consignmentThread.submissionId))
+      .leftJoin(
+        bidIdentityDirectory,
+        eq(bidIdentityDirectory.subjectId, consignmentMessage.authorUserId),
+      )
+      .where(
+        and(
+          eq(itemSubmission.legalEntityId, input.legalEntityId),
+          submissionSenderSql(input.visibleTo),
+          eq(consignmentMessage.authorSide, "staff"),
+          isNull(consignmentMessage.readAt),
+        ),
+      )
+      .orderBy(asc(itemSubmission.id), desc(consignmentMessage.createdAt));
+    return rows
+      .sort((a, b) => b.at.getTime() - a.at.getTime())
+      .slice(0, input.limit)
+      .map(({ id, title, from }) => ({ id, title, from }));
   }
 
   async viewerChecks(userId: string): Promise<{

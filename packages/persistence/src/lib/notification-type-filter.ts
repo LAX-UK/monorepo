@@ -17,6 +17,7 @@ const TYPE_FILTER_GROUPS: Readonly<Record<string, readonly string[]>> = {
     "submission_changes_requested",
     "consignment_agreement_reminder",
     "consignment_update",
+    "consignment_message",
     "lot_ended_seller",
     "condition_report_ready",
     "condition_report_declined",

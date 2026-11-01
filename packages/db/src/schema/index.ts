@@ -110,3 +110,4 @@ export {
   venueRelations,
 } from "../relations.js";
 export * from "./access-request.js";
+export * from "./consignment-messages.js";

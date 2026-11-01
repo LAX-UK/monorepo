@@ -30,6 +30,7 @@ function busy(role: LegalEntityMemberRole, overrides: Partial<NeedsYouFacts> = {
     sourceOfFundsRequested: false,
     agreementsToAccept: [{ id: "c1", title: "Untitled (Blue)" }],
     changesRequested: [{ id: "s1", title: "Study in Ochre", note: "Add a photo" }],
+    unreadReplies: [{ id: "c2", title: "Thames at low tide", from: "Clara Mendes" }],
     unsoldLots: [
       // Ended 12 days ago: due in 2 days.
       { id: "u1", title: "Harbour at Dusk", dueBy: unsoldChoiceDueBy(daysAgo(12)) },
@@ -85,6 +86,7 @@ describe("the Needs you table", () => {
       "unsold_due",
       "agreement",
       "changes",
+      "reply",
       "unsold",
       "choose_delivery",
       "quote_ready",
@@ -107,6 +109,7 @@ describe("the Needs you table", () => {
       "unsold_due",
       "agreement",
       "changes",
+      "reply",
       "unsold",
       "choose_delivery",
       "quote_ready",
@@ -124,6 +127,7 @@ describe("the Needs you table", () => {
       "unsold_due",
       "agreement",
       "changes",
+      "reply",
       "unsold",
       "choose_delivery",
       "quote_ready",
@@ -143,7 +147,7 @@ describe("the Needs you table", () => {
       "source_of_funds",
       "payouts",
     ],
-    consignor: ["changes", "identity", "source_of_funds"],
+    consignor: ["changes", "reply", "identity", "source_of_funds"],
     buyer_agent: [
       "outbid",
       "won_awaiting_payment",
@@ -168,6 +172,7 @@ describe("the Needs you table", () => {
       "unsold_due",
       "agreement",
       "changes",
+      "reply",
       "unsold",
       "choose_delivery",
       "quote_ready",
@@ -210,6 +215,7 @@ describe("the Needs you table", () => {
       organisation: { status: "approved", payoutsReady: true },
       agreementsToAccept: [],
       changesRequested: [],
+      unreadReplies: [],
       unsoldLots: [],
       purchases: [],
       salesToRegister: [],
@@ -272,7 +278,7 @@ describe("tasks", () => {
     expect(needsYouCounts(tasks)).toEqual({
       bids: 2,
       purchases: 4,
-      consignments: 4,
+      consignments: 5,
       team: 3,
       organisation: 1,
     });
@@ -318,6 +324,7 @@ describe("notifications that announce a task", () => {
       "pay",
       "agreement",
       "changes",
+      "reply",
       "access_requests",
       "identity",
       "source_of_funds",

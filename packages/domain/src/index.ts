@@ -485,6 +485,24 @@ export {
   type SubmissionMutationDenial,
 } from "./submission-mutation-policy.js";
 export {
+  CONSIGNMENT_MESSAGE_ATTACHMENT_MAX_BYTES,
+  CONSIGNMENT_MESSAGE_ATTACHMENT_TYPES,
+  CONSIGNMENT_MESSAGE_MAX_ATTACHMENTS,
+  CONSIGNMENT_MESSAGE_MAX_LENGTH,
+  CONSIGNMENT_MESSAGE_SIDES,
+  ORGANISATION_MESSAGES_PAUSED,
+  consignmentMessageProblem,
+  consignmentThreadAccess,
+  normaliseConsignmentMessageBody,
+  otherSide,
+  threadAwaitsStaff,
+  type ConsignmentMessageProblem,
+  type ConsignmentMessageProblemCode,
+  type ConsignmentMessageSide,
+  type ConsignmentThreadAccess,
+  type ConsignmentThreadWriteDenial,
+} from "./consignment-messages.js";
+export {
   canSeeConsignedLot,
   canSeeSubmission,
   consignedLotScope,
@@ -528,6 +546,7 @@ export {
   type EndingAuthorisation,
   type ExpiredInvitation,
   type PendingAccessRequest,
+  type UnreadReply,
   type NeedsYouCounts,
   type NeedsYouFacts,
   type NeedsYouKind,
