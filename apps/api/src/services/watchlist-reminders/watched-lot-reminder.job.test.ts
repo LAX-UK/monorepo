@@ -38,24 +38,32 @@ describe("WatchedLotReminderJob", () => {
     const { job, dispatch } = setup([reminder({})]);
     expect(await job.sendDue(now)).toEqual({ sent: 1, dropped: 0 });
     expect(dispatch).toHaveBeenCalledWith("u1", {
-      type: "watchlist_ending_soon",
+      type: "watchlist_reminder",
       title: 'Reminder: "Red chair, evening"',
       message: "It closes in about an hour. Your note: Check the frame",
       lotId: "lot-1",
       legalEntityId: null,
       meta: {
         lotTitle: "Red chair, evening",
+        watchedLotReminder: {
+          kind: "hour_before_close",
+          note: "Check the frame",
+          closesAt: new Date(now.getTime() + HOUR).toISOString(),
+        },
         outboxIdempotencyKey: "watched-lot-reminder:w1:hour_before_close",
       },
     });
   });
 
-  it("sends a sale-start reminder as the watchlist start notice", async () => {
+  it("sends a sale-start reminder with its own words", async () => {
     const { job, dispatch } = setup([
       reminder({ kind: "sale_start", startTime: new Date(now.getTime() - 10 * 60 * 1000) }),
     ]);
     await job.sendDue(now);
-    expect(dispatch.mock.calls[0]?.[1]).toMatchObject({ type: "watchlist_starting" });
+    expect(dispatch.mock.calls[0]?.[1]).toMatchObject({
+      type: "watchlist_reminder",
+      message: "Bidding has opened. Your note: Check the frame",
+    });
   });
 
   it("drops a reminder whose lot closed, and leaves one not yet due", async () => {

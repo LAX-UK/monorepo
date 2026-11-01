@@ -32,6 +32,17 @@ describe("migration 0267 watchlist reminders", () => {
     expect(migration).toMatch(/REFERENCES "public"\."watchlist"\("id"\) ON DELETE cascade/);
   });
 
+  it("allows the reminder notice, and removes it again on rollback", () => {
+    const typesIn = (text: string) => {
+      const at = text.lastIndexOf("ADD CONSTRAINT notification_type_check");
+      return [...text.slice(at).matchAll(/'([a-z_]+)'/g)].map((m) => m[1]);
+    };
+    const previous = typesIn(read("0263_consignment_messages.sql"));
+    expect(typesIn(migration)).toEqual([...previous, "watchlist_reminder"]);
+    expect(typesIn(rollback)).toEqual(previous);
+    expect(rollback).toContain("DELETE FROM notification WHERE type = 'watchlist_reminder'");
+  });
+
   it("drops the table on rollback", () => {
     expect(rollback).toContain('DROP TABLE IF EXISTS "watchlist_reminder"');
   });

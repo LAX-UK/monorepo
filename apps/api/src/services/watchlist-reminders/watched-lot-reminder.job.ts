@@ -47,13 +47,18 @@ export class WatchedLotReminderJob implements IWatchedLotReminderJob {
         note: reminder.note,
       });
       await this.deps.dispatcher.dispatch(reminder.userId, {
-        type: WATCHED_LOT_REMINDER_NOTIFICATION[reminder.kind],
+        type: WATCHED_LOT_REMINDER_NOTIFICATION,
         title: notice.title,
         message: notice.message,
         lotId: reminder.lotId,
         legalEntityId: null,
         meta: {
           lotTitle: reminder.lotTitle,
+          watchedLotReminder: {
+            kind: reminder.kind,
+            note: reminder.note?.trim() || null,
+            closesAt: reminder.endTime.toISOString(),
+          },
           outboxIdempotencyKey: `watched-lot-reminder:${reminder.watchlistId}:${reminder.kind}`,
         },
       });

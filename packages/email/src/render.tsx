@@ -217,6 +217,9 @@ import SubmissionRejectedEmail, {
   subject as submissionRejectedSubject,
 } from "./templates/submission-rejected.js";
 import VerifyEmail, { subject as verifyEmailSubject } from "./templates/verify-email.js";
+import WatchedLotReminderEmail, {
+  subject as watchedLotReminderSubject,
+} from "./templates/watched-lot-reminder.js";
 import WelcomeEmail, { subject as welcomeSubject } from "./templates/welcome.js";
 import type { RenderedEmail, TemplateName, TemplateVarsByName } from "./types.js";
 
@@ -306,6 +309,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
     component: (vars) => <AccessInviteEmail {...vars} />,
   },
   "bid-outbid": { subject: bidOutbidSubject, component: (vars) => <BidOutbidEmail {...vars} /> },
+  "watched-lot-reminder": {
+    subject: watchedLotReminderSubject,
+    component: (vars) => <WatchedLotReminderEmail {...vars} />,
+  },
   "lot-fulfilment-update": {
     subject: lotFulfilmentUpdateSubject,
     component: (vars) => <LotFulfilmentUpdateEmail {...vars} />,

@@ -57,15 +57,11 @@ export function watchedLotReminderStep(
   return "send";
 }
 
-/** The notification type each reminder is sent as, so the person's watchlist switches apply. */
-export const WATCHED_LOT_REMINDER_NOTIFICATION: Record<
-  WatchedLotReminderKind,
-  "watchlist_starting" | "watchlist_ending_soon"
-> = {
-  sale_start: "watchlist_starting",
-  day_before_close: "watchlist_ending_soon",
-  hour_before_close: "watchlist_ending_soon",
-};
+/**
+ * The notification type every reminder is sent as. It follows the person's "Lots you watch"
+ * switches (app and email), since they asked for it on a lot they watch.
+ */
+export const WATCHED_LOT_REMINDER_NOTIFICATION = "watchlist_reminder" as const;
 
 /** The reminder's words. */
 export function watchedLotReminderNotice(input: {

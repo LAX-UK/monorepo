@@ -50,6 +50,7 @@ export const NOTIFICATION_TYPES = [
   "access_requested",
   "access_request_decided",
   "consignment_message",
+  "watchlist_reminder",
 ] as const;
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
