@@ -63,6 +63,12 @@ import {
   userAccountStatusToBadgeVariant,
 } from "./people";
 
+const CONSIGNMENT_THREAD_STATUS: Record<string, { label: string; variant: StatusBadgeVariant }> = {
+  waiting_on_us: { label: "Waiting on us", variant: "warning" },
+  answered: { label: "Answered", variant: "neutral" },
+  closed: { label: "Closed", variant: "success" },
+};
+
 type AdminStatusResolver = {
   label: (status: string) => string;
   variant: (status: string) => StatusBadgeVariant;
@@ -189,5 +195,10 @@ export const ADMIN_STATUS_REGISTRY: Record<AdminStatusDomain, AdminStatusResolve
   onsiteEvent: {
     label: (status) => onsiteEventStatusLabel[status] ?? underscoreFallback(status),
     variant: (status) => onsiteEventStatusToBadgeVariant(status),
+  },
+  // A client waiting is the one state that needs someone; an answer or a close is settled.
+  consignmentThread: {
+    label: (status) => CONSIGNMENT_THREAD_STATUS[status]?.label ?? underscoreFallback(status),
+    variant: (status) => CONSIGNMENT_THREAD_STATUS[status]?.variant ?? "neutral",
   },
 };

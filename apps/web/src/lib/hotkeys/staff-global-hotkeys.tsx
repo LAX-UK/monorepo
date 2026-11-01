@@ -55,6 +55,16 @@ export function StaffGlobalHotkeys() {
   });
 
   useHotkey({
+    id: "nav-inbox",
+    keys: "g i",
+    label: "Inbox",
+    description: "Go to inbox",
+    group: "Go to",
+    scope: "global",
+    handler: go("/admin/inbox"),
+  });
+
+  useHotkey({
     id: "nav-lots",
     keys: "g l",
     label: "Lots",

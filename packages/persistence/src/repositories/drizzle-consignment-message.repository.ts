@@ -4,30 +4,58 @@ import {
   consignmentMessage,
   consignmentMessageAttachment,
   consignmentThread,
+  consignmentThreadEvent,
   itemSubmission,
   legalEntity,
+  legalEntityMember,
   lot,
   uploadObject,
 } from "@auction/db/schema";
-import { type ConsignmentMessageSide, otherSide } from "@auction/domain";
+import {
+  type ConsignmentMessageSide,
+  type ConsignmentMessageVisibility,
+  markersAfterMessage,
+  markersFromMessages,
+  otherSide,
+} from "@auction/domain";
 import type { LegalEntityStatus } from "@auction/types";
-import { type SQL, and, asc, desc, eq, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import { type SQL, and, asc, desc, eq, inArray, isNull, lte, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import type {
+  AssignThreadInput,
+  AssignThreadResult,
   AttachableUpload,
+  ClaimedReplyNotice,
+  ConsignmentMessageAudience,
   ConsignmentMessageRow,
-  ConsignmentThreadInboxQuery,
+  ConsignmentThreadEventKind,
+  ConsignmentThreadEventRecord,
   ConsignmentThreadSubject,
-  ConsignmentThreadSummaryRow,
   IConsignmentMessageRepository,
   NewConsignmentMessage,
+  StaffPersonRecord,
+  UndoHeldReplyResult,
 } from "../interfaces/consignment-message.repository.js";
+import { staffRolesInForceFor } from "../lib/staff-role-assignment-sql.js";
 
 const authorDirectory = alias(bidIdentityDirectory, "author_directory");
 const specialistDirectory = alias(bidIdentityDirectory, "specialist_directory");
+const coveringDirectory = alias(bidIdentityDirectory, "covering_directory");
+const closedByDirectory = alias(bidIdentityDirectory, "closed_by_directory");
+const actorDirectory = alias(bidIdentityDirectory, "actor_directory");
+const subjectDirectory = alias(bidIdentityDirectory, "subject_directory");
 
-function specialistOf(userId: string | null, name: string | null) {
-  return userId ? { userId, name: name ?? "Your specialist" } : null;
+function personOf(userId: string | null, name: string | null, fallback: string) {
+  return userId ? { userId, name: name ?? fallback } : null;
+}
+
+/** Who the account may read: staff replies still held back, and notes, stay with staff. */
+function audienceFilter(audience: ConsignmentMessageAudience): SQL | undefined {
+  if (audience.kind === "staff") return undefined;
+  return and(
+    eq(consignmentMessage.visibility, "thread"),
+    or(isNull(consignmentMessage.deliverAfter), lte(consignmentMessage.deliverAfter, audience.now)),
+  );
 }
 
 export class DrizzleConsignmentMessageRepository implements IConsignmentMessageRepository {
@@ -46,13 +74,31 @@ export class DrizzleConsignmentMessageRepository implements IConsignmentMessageR
         accountStatus: legalEntity.status,
         specialistId: itemSubmission.assignedToUserId,
         specialistName: specialistDirectory.name,
+        coveringId: consignmentThread.coveringUserId,
+        coveringName: coveringDirectory.name,
         saleId: lot.saleId,
+        threadId: consignmentThread.id,
+        lastMessageAt: consignmentThread.lastMessageAt,
+        lastMessageSide: consignmentThread.lastMessageSide,
+        awaitingSince: consignmentThread.awaitingSince,
+        closedAt: consignmentThread.closedAt,
+        closedById: consignmentThread.closedByUserId,
+        closedByName: closedByDirectory.name,
       })
       .from(itemSubmission)
       .leftJoin(legalEntity, eq(legalEntity.id, itemSubmission.legalEntityId))
       .leftJoin(
         specialistDirectory,
         eq(specialistDirectory.subjectId, itemSubmission.assignedToUserId),
+      )
+      .leftJoin(consignmentThread, eq(consignmentThread.submissionId, itemSubmission.id))
+      .leftJoin(
+        coveringDirectory,
+        eq(coveringDirectory.subjectId, consignmentThread.coveringUserId),
+      )
+      .leftJoin(
+        closedByDirectory,
+        eq(closedByDirectory.subjectId, consignmentThread.closedByUserId),
       )
       .leftJoin(lot, eq(lot.id, itemSubmission.convertedLotId))
       .where(eq(itemSubmission.id, submissionId))
@@ -72,26 +118,54 @@ export class DrizzleConsignmentMessageRepository implements IConsignmentMessageR
               status: row.accountStatus as LegalEntityStatus,
             }
           : null,
-      specialist: specialistOf(row.specialistId, row.specialistName),
+      specialist: personOf(row.specialistId, row.specialistName, "Your specialist"),
+      covering: personOf(row.coveringId, row.coveringName, "A colleague"),
       saleId: row.saleId ?? null,
+      thread:
+        row.threadId && row.lastMessageAt && row.lastMessageSide
+          ? {
+              id: row.threadId,
+              lastMessageAt: row.lastMessageAt,
+              lastMessageSide: row.lastMessageSide as ConsignmentMessageSide,
+              awaitingSince: row.awaitingSince,
+              closedAt: row.closedAt,
+              closedBy: personOf(row.closedById, row.closedByName, "A colleague"),
+            }
+          : null,
     };
   }
 
-  async listMessages(submissionId: string): Promise<ConsignmentMessageRow[]> {
+  async listMessages(
+    submissionId: string,
+    audience: ConsignmentMessageAudience,
+  ): Promise<ConsignmentMessageRow[]> {
     const messages = await this.db
       .select({
         id: consignmentMessage.id,
         authorUserId: consignmentMessage.authorUserId,
         authorName: authorDirectory.name,
+        authorMemberRole: legalEntityMember.role,
+        authorStaffRoles: staffRolesInForceFor(consignmentMessage.authorUserId),
         authorSide: consignmentMessage.authorSide,
+        visibility: consignmentMessage.visibility,
         body: consignmentMessage.body,
         createdAt: consignmentMessage.createdAt,
+        deliverAfter: consignmentMessage.deliverAfter,
         readAt: consignmentMessage.readAt,
       })
       .from(consignmentMessage)
       .innerJoin(consignmentThread, eq(consignmentThread.id, consignmentMessage.threadId))
+      .innerJoin(itemSubmission, eq(itemSubmission.id, consignmentThread.submissionId))
       .leftJoin(authorDirectory, eq(authorDirectory.subjectId, consignmentMessage.authorUserId))
-      .where(eq(consignmentThread.submissionId, submissionId))
+      .leftJoin(
+        legalEntityMember,
+        and(
+          eq(legalEntityMember.legalEntityId, itemSubmission.legalEntityId),
+          eq(legalEntityMember.userId, consignmentMessage.authorUserId),
+          isNull(legalEntityMember.removedAt),
+        ),
+      )
+      .where(and(eq(consignmentThread.submissionId, submissionId), audienceFilter(audience)))
       .orderBy(asc(consignmentMessage.createdAt), asc(consignmentMessage.id));
     if (messages.length === 0) return [];
     const attachments = await this.db
@@ -122,7 +196,10 @@ export class DrizzleConsignmentMessageRepository implements IConsignmentMessageR
     return messages.map((m) => ({
       ...m,
       authorName: m.authorName ?? null,
+      authorMemberRole: m.authorMemberRole ?? null,
+      authorStaffRoles: m.authorStaffRoles ?? [],
       authorSide: m.authorSide as ConsignmentMessageSide,
+      visibility: m.visibility as ConsignmentMessageVisibility,
       attachments: byMessage.get(m.id) ?? [],
     }));
   }
@@ -140,28 +217,68 @@ export class DrizzleConsignmentMessageRepository implements IConsignmentMessageR
       .where(inArray(uploadObject.id, [...uploadObjectIds]));
   }
 
-  async append(input: NewConsignmentMessage): Promise<{ messageId: string }> {
+  async append(input: NewConsignmentMessage): Promise<{ messageId: string; reopened: boolean }> {
     return this.db.transaction(async (tx) => {
-      const [thread] = await tx
+      const opening = markersAfterMessage(null, {
+        side: input.side,
+        visibility: input.visibility,
+        at: input.at,
+      }).markers;
+      // The first message opens the thread; a second opening at the same moment finds it there.
+      await tx
         .insert(consignmentThread)
         .values({
           submissionId: input.submissionId,
-          lastMessageAt: input.at,
-          lastMessageSide: input.side,
+          lastMessageAt: opening.lastMessageAt,
+          lastMessageSide: opening.lastMessageSide,
+          awaitingSince: opening.awaitingSince,
         })
-        .onConflictDoUpdate({
-          target: consignmentThread.submissionId,
-          set: { lastMessageAt: input.at, lastMessageSide: input.side },
-        })
-        .returning({ id: consignmentThread.id });
+        .onConflictDoNothing({ target: consignmentThread.submissionId });
+      const [thread] = await tx
+        .select()
+        .from(consignmentThread)
+        .where(eq(consignmentThread.submissionId, input.submissionId))
+        .limit(1)
+        .for("update");
       if (!thread) throw new Error("consignment thread was not written");
+      const { markers, reopened } = markersAfterMessage(
+        {
+          lastMessageAt: thread.lastMessageAt,
+          lastMessageSide: thread.lastMessageSide as ConsignmentMessageSide,
+          awaitingSince: thread.awaitingSince,
+          closedAt: thread.closedAt,
+        },
+        { side: input.side, visibility: input.visibility, at: input.at },
+      );
+      if (input.visibility === "thread") {
+        await tx
+          .update(consignmentThread)
+          .set({
+            lastMessageAt: markers.lastMessageAt,
+            lastMessageSide: markers.lastMessageSide,
+            awaitingSince: markers.awaitingSince,
+            closedAt: markers.closedAt,
+            ...(reopened ? { closedByUserId: null } : {}),
+          })
+          .where(eq(consignmentThread.id, thread.id));
+      }
+      if (reopened) {
+        await tx.insert(consignmentThreadEvent).values({
+          threadId: thread.id,
+          kind: "reopened",
+          actorUserId: input.side === "client" ? null : input.authorUserId,
+          createdAt: input.at,
+        });
+      }
       const [message] = await tx
         .insert(consignmentMessage)
         .values({
           threadId: thread.id,
           authorUserId: input.authorUserId,
           authorSide: input.side,
+          visibility: input.visibility,
           body: input.body,
+          deliverAfter: input.deliverAfter,
           createdAt: input.at,
         })
         .returning({ id: consignmentMessage.id });
@@ -175,7 +292,7 @@ export class DrizzleConsignmentMessageRepository implements IConsignmentMessageR
           })),
         );
       }
-      return { messageId: message.id };
+      return { messageId: message.id, reopened };
     });
   }
 
@@ -188,6 +305,13 @@ export class DrizzleConsignmentMessageRepository implements IConsignmentMessageR
       .select({ id: consignmentThread.id })
       .from(consignmentThread)
       .where(eq(consignmentThread.submissionId, input.submissionId));
+    const releasedToClient =
+      input.readerSide === "client"
+        ? or(
+            isNull(consignmentMessage.deliverAfter),
+            lte(consignmentMessage.deliverAfter, input.at),
+          )
+        : undefined;
     const changed = await this.db
       .update(consignmentMessage)
       .set({ readAt: input.at })
@@ -195,84 +319,288 @@ export class DrizzleConsignmentMessageRepository implements IConsignmentMessageR
         and(
           inArray(consignmentMessage.threadId, threadIds),
           eq(consignmentMessage.authorSide, otherSide(input.readerSide)),
+          eq(consignmentMessage.visibility, "thread"),
           isNull(consignmentMessage.readAt),
+          releasedToClient,
         ),
       )
       .returning({ id: consignmentMessage.id });
     return changed.length;
   }
 
-  async listThreadsForStaff(
-    query: ConsignmentThreadInboxQuery,
-  ): Promise<ConsignmentThreadSummaryRow[]> {
-    const lastBody = sql<string>`(
-      select ${consignmentMessage.body} from ${consignmentMessage}
-      where ${consignmentMessage.threadId} = ${consignmentThread.id}
-      order by ${consignmentMessage.createdAt} desc, ${consignmentMessage.id} desc
-      limit 1
-    )`;
-    const unread = sql<number>`(
-      select count(*)::int from ${consignmentMessage}
-      where ${consignmentMessage.threadId} = ${consignmentThread.id}
-        and ${consignmentMessage.authorSide} = 'client'
-        and ${consignmentMessage.readAt} is null
-    )`;
-    const filters: (SQL | undefined)[] = [
-      query.awaitingStaff ? eq(consignmentThread.lastMessageSide, "client") : undefined,
-      query.assigned?.kind === "user"
-        ? eq(itemSubmission.assignedToUserId, query.assigned.userId)
-        : query.assigned?.kind === "unassigned"
-          ? isNull(itemSubmission.assignedToUserId)
-          : undefined,
-      query.saleId ? eq(lot.saleId, query.saleId) : undefined,
-      query.before
-        ? or(
-            lt(consignmentThread.lastMessageAt, query.before.lastMessageAt),
-            and(
-              eq(consignmentThread.lastMessageAt, query.before.lastMessageAt),
-              lt(consignmentThread.submissionId, query.before.submissionId),
-            ),
-          )
-        : undefined,
-    ];
+  async markNewestClientMessageUnread(submissionId: string): Promise<boolean> {
+    const [newest] = await this.db
+      .select({ id: consignmentMessage.id })
+      .from(consignmentMessage)
+      .innerJoin(consignmentThread, eq(consignmentThread.id, consignmentMessage.threadId))
+      .where(
+        and(
+          eq(consignmentThread.submissionId, submissionId),
+          eq(consignmentMessage.authorSide, "client"),
+        ),
+      )
+      .orderBy(desc(consignmentMessage.createdAt), desc(consignmentMessage.id))
+      .limit(1);
+    if (!newest) return false;
+    await this.db
+      .update(consignmentMessage)
+      .set({ readAt: null })
+      .where(eq(consignmentMessage.id, newest.id));
+    return true;
+  }
+
+  async deleteHeldReply(input: {
+    messageId: string;
+    authorUserId: string;
+    now: Date;
+  }): Promise<UndoHeldReplyResult> {
+    return this.db.transaction(async (tx) => {
+      const [message] = await tx
+        .select({
+          threadId: consignmentMessage.threadId,
+          authorUserId: consignmentMessage.authorUserId,
+          authorSide: consignmentMessage.authorSide,
+          visibility: consignmentMessage.visibility,
+          deliverAfter: consignmentMessage.deliverAfter,
+        })
+        .from(consignmentMessage)
+        .where(eq(consignmentMessage.id, input.messageId))
+        .limit(1)
+        .for("update");
+      if (
+        !message ||
+        message.authorUserId !== input.authorUserId ||
+        message.authorSide !== "staff" ||
+        message.visibility !== "thread"
+      ) {
+        return { outcome: "not_found" };
+      }
+      if (!message.deliverAfter || message.deliverAfter.getTime() <= input.now.getTime()) {
+        return { outcome: "expired" };
+      }
+      const [thread] = await tx
+        .select()
+        .from(consignmentThread)
+        .where(eq(consignmentThread.id, message.threadId))
+        .limit(1)
+        .for("update");
+      if (!thread) return { outcome: "not_found" };
+      await tx.delete(consignmentMessage).where(eq(consignmentMessage.id, input.messageId));
+      const left = await tx
+        .select({
+          side: consignmentMessage.authorSide,
+          visibility: consignmentMessage.visibility,
+          at: consignmentMessage.createdAt,
+        })
+        .from(consignmentMessage)
+        .where(eq(consignmentMessage.threadId, thread.id))
+        .orderBy(asc(consignmentMessage.createdAt), asc(consignmentMessage.id));
+      const markers = markersFromMessages(
+        left.map((m) => ({
+          side: m.side as ConsignmentMessageSide,
+          visibility: m.visibility as ConsignmentMessageVisibility,
+          at: m.at,
+        })),
+        thread.closedAt,
+      );
+      if (markers) {
+        await tx
+          .update(consignmentThread)
+          .set({
+            lastMessageAt: markers.lastMessageAt,
+            lastMessageSide: markers.lastMessageSide,
+            awaitingSince: markers.awaitingSince,
+          })
+          .where(eq(consignmentThread.id, thread.id));
+      }
+      return { outcome: "deleted", submissionId: thread.submissionId };
+    });
+  }
+
+  async releaseHeldReply(messageId: string, now: Date): Promise<boolean> {
+    const released = await this.db
+      .update(consignmentMessage)
+      .set({ deliverAfter: now })
+      .where(eq(consignmentMessage.id, messageId))
+      .returning({ id: consignmentMessage.id });
+    return released.length > 0;
+  }
+
+  async claimReplyNotice(messageId: string, now: Date): Promise<ClaimedReplyNotice | null> {
+    const [claimed] = await this.db
+      .update(consignmentMessage)
+      .set({ notifiedAt: now })
+      .where(
+        and(
+          eq(consignmentMessage.id, messageId),
+          isNull(consignmentMessage.notifiedAt),
+          eq(consignmentMessage.authorSide, "staff"),
+          eq(consignmentMessage.visibility, "thread"),
+          or(isNull(consignmentMessage.deliverAfter), lte(consignmentMessage.deliverAfter, now)),
+        ),
+      )
+      .returning({
+        threadId: consignmentMessage.threadId,
+        authorUserId: consignmentMessage.authorUserId,
+        body: consignmentMessage.body,
+      });
+    if (!claimed) return null;
+    const [thread] = await this.db
+      .select({ submissionId: consignmentThread.submissionId })
+      .from(consignmentThread)
+      .where(eq(consignmentThread.id, claimed.threadId))
+      .limit(1);
+    const [author] = claimed.authorUserId
+      ? await this.db
+          .select({ name: bidIdentityDirectory.name })
+          .from(bidIdentityDirectory)
+          .where(eq(bidIdentityDirectory.subjectId, claimed.authorUserId))
+          .limit(1)
+      : [];
+    const [files] = await this.db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(consignmentMessageAttachment)
+      .where(eq(consignmentMessageAttachment.messageId, messageId));
+    if (!thread) return null;
+    return {
+      submissionId: thread.submissionId,
+      authorName: author?.name ?? "LAX specialist",
+      body: claimed.body,
+      fileCount: Number(files?.count ?? 0),
+    };
+  }
+
+  closeThread(input: { submissionId: string; actorUserId: string; at: Date }): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const [closed] = await tx
+        .update(consignmentThread)
+        .set({ closedAt: input.at, closedByUserId: input.actorUserId })
+        .where(
+          and(
+            eq(consignmentThread.submissionId, input.submissionId),
+            isNull(consignmentThread.closedAt),
+          ),
+        )
+        .returning({ id: consignmentThread.id });
+      if (!closed) return false;
+      await tx.insert(consignmentThreadEvent).values({
+        threadId: closed.id,
+        kind: "closed",
+        actorUserId: input.actorUserId,
+        createdAt: input.at,
+      });
+      return true;
+    });
+  }
+
+  reopenThread(input: { submissionId: string; actorUserId: string; at: Date }): Promise<boolean> {
+    return this.db.transaction(async (tx) => {
+      const [reopened] = await tx
+        .update(consignmentThread)
+        .set({ closedAt: null, closedByUserId: null })
+        .where(
+          and(
+            eq(consignmentThread.submissionId, input.submissionId),
+            sql`${consignmentThread.closedAt} IS NOT NULL`,
+          ),
+        )
+        .returning({ id: consignmentThread.id });
+      if (!reopened) return false;
+      await tx.insert(consignmentThreadEvent).values({
+        threadId: reopened.id,
+        kind: "reopened",
+        actorUserId: input.actorUserId,
+        createdAt: input.at,
+      });
+      return true;
+    });
+  }
+
+  assignThread(input: AssignThreadInput): Promise<AssignThreadResult> {
+    return this.db.transaction(async (tx) => {
+      const [submission] = await tx
+        .select({ assignedTo: itemSubmission.assignedToUserId })
+        .from(itemSubmission)
+        .where(eq(itemSubmission.id, input.submissionId))
+        .limit(1)
+        .for("update");
+      if (!submission) return { outcome: "no_thread" };
+      const [thread] = await tx
+        .select({ id: consignmentThread.id, covering: consignmentThread.coveringUserId })
+        .from(consignmentThread)
+        .where(eq(consignmentThread.submissionId, input.submissionId))
+        .limit(1)
+        .for("update");
+      const target = input.assignedToUserId;
+      // Covering for the specialist themself is the end of cover.
+      const coversOnly = input.covering && target !== null && target !== submission.assignedTo;
+      const recordEvent = async (kind: ConsignmentThreadEventKind) => {
+        if (!thread) return;
+        await tx.insert(consignmentThreadEvent).values({
+          threadId: thread.id,
+          kind,
+          actorUserId: input.actorUserId,
+          subjectUserId: target,
+          createdAt: input.at,
+        });
+      };
+
+      if (coversOnly) {
+        if (!thread) return { outcome: "no_thread" };
+        if (thread.covering === target) return { outcome: "unchanged" };
+        await tx
+          .update(consignmentThread)
+          .set({ coveringUserId: target })
+          .where(eq(consignmentThread.id, thread.id));
+        await recordEvent("covering");
+        return { outcome: "changed", event: "covering" };
+      }
+
+      if (submission.assignedTo === target && !thread?.covering) return { outcome: "unchanged" };
+      await tx
+        .update(itemSubmission)
+        .set({ assignedToUserId: target, updatedAt: input.at })
+        .where(eq(itemSubmission.id, input.submissionId));
+      if (thread?.covering) {
+        await tx
+          .update(consignmentThread)
+          .set({ coveringUserId: null })
+          .where(eq(consignmentThread.id, thread.id));
+      }
+      const kind: ConsignmentThreadEventKind = target ? "assigned" : "unassigned";
+      await recordEvent(kind);
+      return { outcome: "changed", event: thread ? kind : null };
+    });
+  }
+
+  async listEvents(submissionId: string): Promise<ConsignmentThreadEventRecord[]> {
     const rows = await this.db
       .select({
-        submissionId: itemSubmission.id,
-        title: itemSubmission.title,
-        referenceNumber: itemSubmission.referenceNumber,
-        accountId: legalEntity.id,
-        accountName: legalEntity.displayName,
-        specialistId: itemSubmission.assignedToUserId,
-        specialistName: specialistDirectory.name,
-        saleId: lot.saleId,
-        lastMessageAt: consignmentThread.lastMessageAt,
-        lastMessageSide: consignmentThread.lastMessageSide,
-        lastMessageBody: lastBody,
-        unreadForStaff: unread,
+        id: consignmentThreadEvent.id,
+        kind: consignmentThreadEvent.kind,
+        actorId: consignmentThreadEvent.actorUserId,
+        actorName: actorDirectory.name,
+        subjectId: consignmentThreadEvent.subjectUserId,
+        subjectName: subjectDirectory.name,
+        at: consignmentThreadEvent.createdAt,
       })
-      .from(consignmentThread)
-      .innerJoin(itemSubmission, eq(itemSubmission.id, consignmentThread.submissionId))
-      .leftJoin(legalEntity, eq(legalEntity.id, itemSubmission.legalEntityId))
+      .from(consignmentThreadEvent)
+      .innerJoin(consignmentThread, eq(consignmentThread.id, consignmentThreadEvent.threadId))
+      .leftJoin(actorDirectory, eq(actorDirectory.subjectId, consignmentThreadEvent.actorUserId))
       .leftJoin(
-        specialistDirectory,
-        eq(specialistDirectory.subjectId, itemSubmission.assignedToUserId),
+        subjectDirectory,
+        eq(subjectDirectory.subjectId, consignmentThreadEvent.subjectUserId),
       )
-      .leftJoin(lot, eq(lot.id, itemSubmission.convertedLotId))
-      .where(and(...filters))
-      .orderBy(desc(consignmentThread.lastMessageAt), desc(consignmentThread.submissionId))
-      .limit(query.limit);
+      .where(eq(consignmentThread.submissionId, submissionId))
+      .orderBy(asc(consignmentThreadEvent.createdAt), asc(consignmentThreadEvent.id));
+    const person = (userId: string | null, name: string | null): StaffPersonRecord | null =>
+      personOf(userId, name, "A colleague");
     return rows.map((row) => ({
-      submissionId: row.submissionId,
-      title: row.title,
-      referenceNumber: row.referenceNumber,
-      account:
-        row.accountId && row.accountName ? { id: row.accountId, name: row.accountName } : null,
-      specialist: specialistOf(row.specialistId, row.specialistName),
-      saleId: row.saleId ?? null,
-      lastMessageAt: row.lastMessageAt,
-      lastMessageSide: row.lastMessageSide as ConsignmentMessageSide,
-      lastMessageBody: row.lastMessageBody ?? "",
-      unreadForStaff: Number(row.unreadForStaff ?? 0),
+      id: row.id,
+      kind: row.kind as ConsignmentThreadEventKind,
+      actor: person(row.actorId, row.actorName),
+      subject: person(row.subjectId, row.subjectName),
+      at: row.at,
     }));
   }
 }

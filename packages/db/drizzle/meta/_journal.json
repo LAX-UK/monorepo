@@ -1849,6 +1849,13 @@
       "when": 1798185600000,
       "tag": "0263_consignment_messages",
       "breakpoints": true
+    },
+    {
+      "idx": 264,
+      "version": "7",
+      "when": 1798272000000,
+      "tag": "0264_consignment_inbox",
+      "breakpoints": true
     }
   ]
 }

@@ -79,6 +79,7 @@ import type { ContainerAdminServices } from "./create-admin-services.js";
 import type { ContainerBiddingSaleroom } from "./create-bidding-saleroom.js";
 import type { ContainerCatalogAdminReaders } from "./create-catalog-admin-readers.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
+import type { ConsignmentReplyRuntime } from "./create-consignment-message-services.js";
 import type { ContainerCronServices } from "./create-cron-services.js";
 import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerLotCatalogServices } from "./create-lot-catalog-services.js";
@@ -130,6 +131,8 @@ export type ContainerRootSlice = {
   oauthAttributionStore: IOAuthAttributionStore;
   authOAuthAccountReader: IAuthOAuthAccountReader;
   subjectUsageReader: ISubjectUsageReader;
+  /** The queue behind a staff reply's hold, and what its worker runs. */
+  consignmentReply: ConsignmentReplyRuntime;
 };
 
 /** Repository ports re-exposed on the flat container bag (internal repos stay in factories). */

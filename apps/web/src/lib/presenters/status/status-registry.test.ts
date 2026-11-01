@@ -33,6 +33,11 @@ const DOMAIN_STATUS_EXPECTATIONS: Partial<
     ["under_review", "warning"],
     ["rejected", "danger"],
   ],
+  consignmentThread: [
+    ["waiting_on_us", "warning"],
+    ["answered", "neutral"],
+    ["closed", "success"],
+  ],
   payment: [
     ["captured", "success"],
     ["authorized", "info"],

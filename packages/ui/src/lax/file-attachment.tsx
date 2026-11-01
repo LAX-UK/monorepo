@@ -1,7 +1,7 @@
 "use client";
 
 import { Download, FileText, ImageIcon } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { cn } from "../lib/utils.js";
 
 export type FileAttachmentProps = {
@@ -36,6 +36,10 @@ export function FileAttachment({
   const Icon = kind === "pdf" ? FileText : ImageIcon;
   // A preview that cannot load falls back to the icon rather than a broken image.
   const [previewFailed, setPreviewFailed] = useState(false);
+  // A preview that failed before the page hydrated never fires onError again: check it on mount.
+  const checkPreview = useCallback((img: HTMLImageElement | null) => {
+    if (img?.complete && img.naturalWidth === 0) setPreviewFailed(true);
+  }, []);
   const meta = [TYPE_WORD[kind], size].filter(Boolean).join(" · ");
   return (
     <div
@@ -50,6 +54,7 @@ export function FileAttachment({
       >
         {kind === "image" && thumbnailUrl && !previewFailed ? (
           <img
+            ref={checkPreview}
             src={thumbnailUrl}
             alt=""
             className="size-full object-cover"

@@ -3,6 +3,7 @@ import "server-only";
 import type { AdminActivityRow } from "@/lib/admin/admin-home-types";
 import type { AdminKpiPeriodDays } from "@/lib/admin/admin-kpi-period";
 import { detectAnomaliesFromNavCounts } from "@/lib/admin/anomaly-detection";
+import { inboxDashboardQueues } from "@/lib/admin/consignment-inbox/inbox-dashboard";
 import {
   type getDashboardProfile,
   resolvePrimaryActionForProfile,
@@ -26,7 +27,14 @@ import type { buildWorkInboxSlice } from "@/lib/admin/dashboard/work-inbox.slice
 import type { OnsiteSalesRadarRow } from "@/lib/admin/saleroom/map-operations-snapshot-to-radar-row";
 import type { AdminHomeKpiTrends } from "@/lib/data/http/admin-kpi-trends.server";
 import type { AdminTodayMetricsPayload } from "@/lib/data/http/admin.server";
-import { FINANCE_ACCESS, type StaffRoles, type UserRole } from "@auction/types";
+import type { AttentionItem } from "@auction/staff-ui";
+import {
+  CONSIGNMENT_INBOX_READ_ACCESS,
+  CONSIGNMENT_INBOX_REPLY_ACCESS,
+  FINANCE_ACCESS,
+  type StaffRoles,
+  type UserRole,
+} from "@auction/types";
 
 export type AdminDashboardPageInput = {
   periodDays: AdminKpiPeriodDays;
@@ -46,6 +54,8 @@ export type AdminDashboardPageModel = {
   bidsPerMinute: number;
   activeLotIds: string[];
   workInbox: ReturnType<typeof buildWorkInboxSlice>;
+  /** Client messages waiting on the viewer, and (for people who assign) the unassigned ones. */
+  inboxQueues: AttentionItem[];
   saleReadiness: ReturnType<typeof buildSaleReadinessSlice>;
   liveOperations: ReturnType<typeof buildLiveOperationsSlice>;
   roleKpis: ReturnType<typeof buildRoleKpisSlice>;
@@ -71,10 +81,19 @@ export async function loadAdminDashboardPage(
     assignment: input.workAssignment ?? "all",
   });
 
-  const [live, recent] = await Promise.all([
+  const [live, recent, inboxSummary] = await Promise.all([
     loadLiveOperationsSlice(ctx),
     loadRecentActivitySlice(ctx),
+    ctx.can(CONSIGNMENT_INBOX_READ_ACCESS) && sources.getConsignmentInboxSummary
+      ? sources.getConsignmentInboxSummary().catch(() => null)
+      : Promise.resolve(null),
   ]);
+  const inboxQueues = inboxSummary
+    ? inboxDashboardQueues(inboxSummary, {
+        canAssign: ctx.can(CONSIGNMENT_INBOX_REPLY_ACCESS),
+        now: new Date(),
+      })
+    : [];
 
   const saleReadiness = await loadSaleReadinessSlice(ctx, {
     bidsPerMinute: live.bidsPerMinute,
@@ -125,6 +144,7 @@ export async function loadAdminDashboardPage(
     bidsPerMinute: live.bidsPerMinute,
     activeLotIds: live.activeLotIds,
     workInbox: workInbox.slice,
+    inboxQueues,
     saleReadiness: saleReadiness.slice,
     liveOperations: live.slice,
     roleKpis: roleKpis.slice,

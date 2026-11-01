@@ -51,7 +51,12 @@ export class UploadHttpApplicationService implements IUploadHttpApplicationServi
     if (!result.ok) {
       return {
         status: result.status,
-        body: { error: result.error, ...(result.resetAt ? { resetAt: result.resetAt } : {}) },
+        body: {
+          error: result.error,
+          ...(result.code ? { code: result.code } : {}),
+          ...(result.limit ? { limit: result.limit } : {}),
+          ...(result.resetAt ? { resetAt: result.resetAt } : {}),
+        },
       };
     }
     return { status: 200, body: { data: result.value } };
