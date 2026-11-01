@@ -117,8 +117,9 @@ export const shopApiEnvSchema = z.object({
   ),
   /**
    * In production, refuse to start without the Stripe secret key and webhook secret. Set false
-   * while the storefronts are private: shop-api then starts without them, and checkout, refunds
-   * and Connect payouts stay unavailable (checkout answers 503) until they are configured.
+   * while the storefronts are private: shop-api then starts without them, as long as every
+   * Stripe-dependent flag (STRIPE_DEPENDENT_FLAGS) is off, and checkout, refunds and Connect
+   * payouts stay unavailable (checkout answers 503) until they are configured.
    */
   SHOP_REQUIRE_STRIPE: z
     .enum(["true", "false"])
@@ -226,12 +227,31 @@ export type ShopApiEnv = z.infer<typeof shopApiEnvSchema>;
 
 const REQUIRED_STRIPE_KEYS = ["STRIPE_SECRET_KEY", "STRIPE_WEBHOOK_SECRET"] as const;
 
-/** Production Stripe requirement: fail fast when required, otherwise warn that payments are off. */
+/**
+ * Shop features that call Stripe themselves: payouts (Connect onboarding and webhooks), automatic
+ * Connect transfers, and original sales (Stripe invoices). Checkout has no flag of its own; it is
+ * governed by SHOP_REQUIRE_STRIPE, which production sets once the storefronts are public.
+ */
+export const STRIPE_DEPENDENT_FLAGS = [
+  "SHOP_PAYOUTS_ENABLED",
+  "SHOP_CONNECT_TRANSFERS_ENABLED",
+  "SHOP_ORIGINALS_ENABLED",
+] as const;
+
+/**
+ * Production Stripe requirement. Stripe may be missing only when it is not required and every
+ * Stripe-dependent feature is off; shop-api then starts with checkout, refunds and payouts disabled.
+ */
 function assertStripeConfigured(env: ShopApiEnv): void {
   const missing = REQUIRED_STRIPE_KEYS.filter((key) => !env[key]);
   if (missing.length === 0) return;
+  const unset = missing.join(" and ");
   if (env.SHOP_REQUIRE_STRIPE) {
-    throw new Error(`${missing.join(" and ")} required in production (SHOP_REQUIRE_STRIPE=true)`);
+    throw new Error(`${unset} required in production (SHOP_REQUIRE_STRIPE=true)`);
+  }
+  const enabled = STRIPE_DEPENDENT_FLAGS.filter((flag) => env[flag]);
+  if (enabled.length > 0) {
+    throw new Error(`${enabled.join(", ")} need Stripe: set ${unset}, or turn them off`);
   }
   console.warn(
     `Stripe is not configured (${missing.join(", ")} unset): checkout, refunds and Connect payouts are disabled until it is.`,

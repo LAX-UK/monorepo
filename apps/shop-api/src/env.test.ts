@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { loadShopApiEnv } from "./env.js";
+import { STRIPE_DEPENDENT_FLAGS, loadShopApiEnv } from "./env.js";
 
 function productionNodeBase(overrides: Record<string, string> = {}) {
   return {
@@ -184,6 +184,36 @@ describe("loadShopApiEnv Stripe requirement", () => {
     expect(warn).toHaveBeenCalledWith(
       expect.stringMatching(/checkout, refunds and Connect payouts are disabled/),
     );
+  });
+
+  it.each(STRIPE_DEPENDENT_FLAGS)(
+    "refuses %s without Stripe even when Stripe is not required",
+    (flag) => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      expect(() =>
+        loadShopApiEnv(
+          withoutStripe({
+            SHOP_REQUIRE_STRIPE: "false",
+            // Payouts on production need the lax_art platform key; keep that rule out of the way.
+            STRIPE_SHOP_CONNECT_PLATFORM_KEY: "lax_art",
+            [flag]: "true",
+          }),
+        ),
+      ).toThrow(new RegExp(`${flag} need Stripe: set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET`));
+      expect(warn).not.toHaveBeenCalled();
+    },
+  );
+
+  it.each(STRIPE_DEPENDENT_FLAGS)("allows %s once Stripe is configured", (flag) => {
+    expect(() =>
+      loadShopApiEnv(
+        productionNodeBase({
+          SHOP_REQUIRE_STRIPE: "false",
+          STRIPE_SHOP_CONNECT_PLATFORM_KEY: "lax_art",
+          [flag]: "true",
+        }),
+      ),
+    ).not.toThrow();
   });
 
   it("stays silent when Stripe is configured", () => {
