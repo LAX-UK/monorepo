@@ -1,4 +1,4 @@
-import { COVER_SLOT_FLOORS } from "@auction/domain";
+import { COVER_SLOT_FLOORS, effectiveCoverSize } from "@auction/domain";
 import type { SaleCoverSlotName } from "@auction/types";
 import { type SlotDraft, slotIssues } from "./cover-draft";
 import type { CoverLotOption, CoverSlotView } from "./cover-view";
@@ -52,7 +52,9 @@ export function slotSummary(
     };
   }
   if (!draft.size) return { title, detail: sourceText(draft, lots), problem: false };
-  const size = `${draft.size.width} × ${draft.size.height}`;
+  const shown = effectiveCoverSize({ ...draft.size, zoom: draft.zoom });
+  const zoomed = draft.zoom > 1;
+  const size = `${shown.width} × ${shown.height}${zoomed ? " zoomed" : ""}`;
   const below = slotIssues(name, draft, phoneSlotPresent).some(
     (issue) => issue.code === "below_floor",
   );

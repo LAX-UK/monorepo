@@ -56,12 +56,12 @@ export function LotPhotoDialog({ open, onOpenChange, lots, onChoose, busy = fals
               // A lot can repeat a picture, so the position is part of its identity.
               // biome-ignore lint/suspicious/noArrayIndexKey: photographs have no id of their own
               <li key={`${key}-${index}`}>
-                <button
-                  type="button"
+                <StaffButton
+                  variant="ghost"
                   disabled={busy}
                   aria-label={`Photo ${index + 1} of ${lotLabel(lot)}`}
                   onClick={() => onChoose({ lotId: lot.id, imageIndex: index, key })}
-                  className="staff-focus block aspect-square w-full overflow-hidden rounded-staff-sm border border-staff-line bg-staff-sunken hover:border-staff-line-strong disabled:cursor-not-allowed"
+                  className="aspect-square h-auto w-full overflow-hidden rounded-staff-sm border border-staff-line bg-staff-sunken p-0 hover:border-staff-line-strong"
                 >
                   <MediaImage
                     src={key}
@@ -70,7 +70,7 @@ export function LotPhotoDialog({ open, onOpenChange, lots, onChoose, busy = fals
                     imgClassName="size-full object-cover"
                     sizes="160px"
                   />
-                </button>
+                </StaffButton>
               </li>
             ))}
           </ul>

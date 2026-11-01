@@ -60,7 +60,7 @@ export function HomeControls({ view, home, saleTitle, saleStatus, canEdit, onCha
           htmlFor={pinId}
           label="Pin to the home hero"
           description={blocked && !home.pinned ? blocked : pinPlace(view, home.pinned)}
-          disabled={pinDisabled}
+          disabled={canEdit && pinDisabled}
           control={
             <StaffCheckbox
               id={pinId}

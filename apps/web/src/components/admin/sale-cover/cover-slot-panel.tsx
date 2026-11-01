@@ -25,7 +25,7 @@ import { COVER_ZOOM_MAX, COVER_ZOOM_MIN } from "@auction/domain";
 import { Field, Notice, SegmentedControl, StaffButton, TextInput } from "@auction/staff-ui";
 import type { CoverTextSide, CoverTextTone, SaleCoverSlotName } from "@auction/types";
 import { useState } from "react";
-import { ZoomSlider } from "./zoom-slider";
+import { ZoomStepper } from "./zoom-stepper";
 
 type Props = {
   name: SaleCoverSlotName;
@@ -46,6 +46,13 @@ type Zoomed = "whole" | "detail";
 const DETAIL_START_ZOOM = 1.5;
 
 const TONE_LABEL: Record<CoverTextTone, string> = { light: "white", dark: "dark" };
+const TONE_NAME: Record<CoverTextTone, string> = { light: "White", dark: "Dark" };
+const SIDE_NAME: Record<CoverTextSide, string> = { left: "Left", right: "Right" };
+
+/** A chosen option shown as plain text, at normal contrast, when the slot cannot be changed. */
+function ChosenValue({ children }: { children: React.ReactNode }) {
+  return <p className="text-staff-sm text-staff-fg">{children}</p>;
+}
 
 function sourceSummary(draft: SlotDraft, lots: readonly CoverLotOption[]): string {
   if (draft.source.kind === "upload") return "An uploaded picture";
@@ -144,20 +151,22 @@ export function CoverSlotPanel({
                 ? "The credit says “(detail)” because the picture is zoomed in."
                 : "The whole picture is shown."}
             </p>
-            <SegmentedControl<Zoomed>
-              label="Picture zoom"
-              value={zoomed}
-              onValueChange={(next) =>
-                onPatch({ zoom: next === "whole" ? COVER_ZOOM_MIN : DETAIL_START_ZOOM })
-              }
-              options={[
-                { value: "whole", label: "Whole work" },
-                { value: "detail", label: `Detail × ${draft.zoom.toFixed(1)}` },
-              ]}
-            />
+            {canEdit ? (
+              <SegmentedControl<Zoomed>
+                label="Picture zoom"
+                value={zoomed}
+                onValueChange={(next) =>
+                  onPatch({ zoom: next === "whole" ? COVER_ZOOM_MIN : DETAIL_START_ZOOM })
+                }
+                options={[
+                  { value: "whole", label: "Whole work" },
+                  { value: "detail", label: `Detail × ${draft.zoom.toFixed(1)}` },
+                ]}
+              />
+            ) : null}
           </div>
-          {zoomed === "detail" ? (
-            <ZoomSlider
+          {zoomed === "detail" && canEdit ? (
+            <ZoomStepper
               value={draft.zoom}
               min={COVER_ZOOM_MIN}
               max={COVER_ZOOM_MAX}
@@ -275,11 +284,15 @@ function ToneControl({
       : measure.kind === "pending"
         ? "Auto · analysing…"
         : "Auto";
+  if (disabled) {
+    return (
+      <ChosenValue>{draft.toneOverride ? TONE_NAME[draft.toneOverride] : autoLabel}</ChosenValue>
+    );
+  }
   return (
     <SegmentedControl<"auto" | CoverTextTone>
       label="Text tone"
       size="md"
-      className={disabled ? "pointer-events-none" : ""}
       value={draft.toneOverride ?? "auto"}
       onValueChange={(next) => onPatch({ toneOverride: next === "auto" ? undefined : next })}
       options={[
@@ -293,11 +306,17 @@ function ToneControl({
 
 function SideControl({ draft, disabled, onPatch }: TextControlProps) {
   const suggested = suggestCoverSide(draft.focal);
+  if (disabled) {
+    return (
+      <ChosenValue>
+        {draft.sideOverride ? SIDE_NAME[draft.sideOverride] : `Auto · ${suggested}`}
+      </ChosenValue>
+    );
+  }
   return (
     <SegmentedControl<"auto" | CoverTextSide>
       label="Text side"
       size="md"
-      className={disabled ? "pointer-events-none" : ""}
       value={draft.sideOverride ?? "auto"}
       onValueChange={(next) => onPatch({ sideOverride: next === "auto" ? undefined : next })}
       options={[

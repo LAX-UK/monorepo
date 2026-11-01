@@ -82,7 +82,7 @@ describe("SaleCoverTab", () => {
         screen.getByRole("button", { name: /Upload default cover picture/ }),
       ).toBeInTheDocument();
       expect(screen.getByRole("button", { name: "Use a lot photo" })).toBeInTheDocument();
-      expect(screen.getAllByText("No picture yet")).toHaveLength(3);
+      expect(screen.getByText(/Set a default picture to see the three crops/)).toBeInTheDocument();
       expect(screen.getByText(/No lots are featured/)).toBeInTheDocument();
       expect(screen.getByText("All changes saved.")).toBeInTheDocument();
       expect(guard()).toBe("false");
@@ -444,7 +444,11 @@ describe("SaleCoverTab", () => {
 
     it("shows everything without a way to change it", () => {
       render_({ view, canEdit: false });
-      expect(screen.getByText("You can look at the cover but not change it")).toBeInTheDocument();
+      expect(screen.queryByRole("radio")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Move keep area instead" }),
+      ).not.toBeInTheDocument();
+      expect(screen.getByText("Auto · white, 0.45")).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Save changes" })).not.toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "Discard changes" })).not.toBeInTheDocument();
       expect(

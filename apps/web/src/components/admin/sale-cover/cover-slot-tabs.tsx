@@ -1,7 +1,7 @@
 "use client";
 
 import type { SlotSummary } from "@/lib/admin/sale-cover/slot-summary";
-import { cn } from "@auction/staff-ui";
+import { StaffButton, cn } from "@auction/staff-ui";
 import { SALE_COVER_SLOT_NAMES, type SaleCoverSlotName } from "@auction/types";
 import { useRef } from "react";
 
@@ -35,13 +35,13 @@ export function CoverSlotTabs({ summaries, selected, onSelect, panelId }: Props)
         const summary = summaries[name];
         const active = name === selected;
         return (
-          <button
+          <StaffButton
             key={name}
             ref={(node) => {
               if (node) refs.current.set(name, node);
               else refs.current.delete(name);
             }}
-            type="button"
+            variant="ghost"
             role="tab"
             id={slotTabId(panelId, name)}
             aria-selected={active}
@@ -58,7 +58,7 @@ export function CoverSlotTabs({ summaries, selected, onSelect, panelId }: Props)
               }
             }}
             className={cn(
-              "staff-focus flex min-w-0 flex-col gap-0.5 rounded-staff-md border bg-staff-surface px-3 py-2.5 text-left",
+              "h-auto min-w-0 flex-col items-start justify-start gap-0.5 whitespace-normal rounded-staff-md border bg-staff-surface px-3 py-2.5 text-left font-normal",
               active
                 ? "border-staff-ink shadow-[inset_0_0_0_1px_var(--color-staff-ink)]"
                 : "border-staff-line hover:border-staff-line-strong hover:bg-staff-hover",
@@ -67,13 +67,13 @@ export function CoverSlotTabs({ summaries, selected, onSelect, panelId }: Props)
             <span className="text-staff-sm font-semibold text-staff-fg">{summary.title}</span>
             <span
               className={cn(
-                "truncate text-staff-sm",
+                "text-staff-sm",
                 summary.problem ? "font-medium text-staff-danger-fg" : "text-staff-muted",
               )}
             >
               {summary.detail}
             </span>
-          </button>
+          </StaffButton>
         );
       })}
     </div>

@@ -140,6 +140,17 @@ function badgeClass(reading: ToneReading): string {
  * picture, so it shows the crop alone.
  */
 export function CoverPreviews({ slots, view }: Props) {
+  const nothingToShow = PREVIEW_BOXES.every(
+    (box) => previewSource(box, slots, view.slots).kind === "none",
+  );
+  if (nothingToShow) {
+    return (
+      <p className="text-staff-sm text-staff-muted">
+        Set a default picture to see the three crops the home page will make, with the text zone and
+        the measured contrast.
+      </p>
+    );
+  }
   return (
     <div className="flex flex-col gap-4">
       {PREVIEW_BOXES.map((box) => {
@@ -152,26 +163,25 @@ export function CoverPreviews({ slots, view }: Props) {
         const reading = readTone(box, measure, draft?.toneOverride);
         const { width, height } = COVER_BOXES[box];
         return (
-          <figure
-            key={box}
-            className={cn("m-0 flex flex-col gap-1.5", box === "phone" && "max-w-[60%]")}
-          >
-            {preview && draft ? (
-              <CropFrame
-                preview={preview}
-                src={resolveMediaSrc(draft.pictureKey)}
-                reading={reading}
-              />
-            ) : source.kind === "legacy" ? (
-              <LegacyFrame pictureKey={source.key} width={width} height={height} />
-            ) : (
-              <div
-                className="grid place-items-center rounded-staff-sm bg-staff-sunken text-staff-sm text-staff-muted ring-1 ring-staff-line ring-inset"
-                style={{ aspectRatio: `${width} / ${height}` }}
-              >
-                No picture yet
-              </div>
-            )}
+          <figure key={box} className="m-0 flex flex-col gap-1.5">
+            <div className={box === "phone" ? "w-[60%]" : undefined}>
+              {preview && draft ? (
+                <CropFrame
+                  preview={preview}
+                  src={resolveMediaSrc(draft.pictureKey)}
+                  reading={reading}
+                />
+              ) : source.kind === "legacy" ? (
+                <LegacyFrame pictureKey={source.key} width={width} height={height} />
+              ) : (
+                <div
+                  className="grid place-items-center rounded-staff-sm bg-staff-sunken text-staff-sm text-staff-muted ring-1 ring-staff-line ring-inset"
+                  style={{ aspectRatio: `${width} / ${height}` }}
+                >
+                  No picture yet
+                </div>
+              )}
+            </div>
             <figcaption className="flex flex-wrap items-center justify-between gap-2 text-staff-sm">
               <span>
                 <span className="font-medium text-staff-fg">{PREVIEW_LABEL[box]}</span>

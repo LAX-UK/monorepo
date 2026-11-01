@@ -89,11 +89,6 @@ export function SaleCoverTab({ saleId, saleTitle, saleStatus, view, lots, canEdi
     <StaffReadOnly readOnly={!canEdit}>
       <FormDirtyGuard isDirty={dirty} label="the cover and home settings" />
       <div className="flex flex-col gap-6">
-        {!canEdit ? (
-          <Notice tone="info" title="You can look at the cover but not change it">
-            Changing the home cover needs access to sales.
-          </Notice>
-        ) : null}
         {saveError ? (
           <Notice tone="danger" alert title="Your changes were not saved">
             {saveError}

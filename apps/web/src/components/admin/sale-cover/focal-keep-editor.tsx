@@ -163,7 +163,7 @@ export function FocalKeepEditor({
           role="group"
           tabIndex={disabled ? -1 : 0}
           aria-label={`${label}. Focal point at ${Math.round(focal.x * 100)}% across and ${Math.round(focal.y * 100)}% down${keep ? ", with an area to keep in frame" : ""}.`}
-          aria-describedby={hintId}
+          aria-describedby={disabled ? undefined : hintId}
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
           onPointerUp={onPointerUp}
@@ -214,34 +214,36 @@ export function FocalKeepEditor({
           />
         </div>
       </div>
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <p id={hintId} className="text-staff-sm text-staff-muted">
-          Click to set the focal point, drag a box to keep in frame. With the keyboard, the arrow
-          keys move the {target === "focal" ? "focal point" : "keep area"}; Shift moves further
-          {target === "keep" ? ", Alt resizes" : ""}.
-        </p>
-        <div className="flex items-center gap-2">
-          <StaffButton
-            size="sm"
-            variant="secondary"
-            disabled={disabled}
-            aria-pressed={target === "keep"}
-            onClick={() => setTarget(target === "focal" ? "keep" : "focal")}
-          >
-            {target === "focal" ? "Move keep area instead" : "Move focal point instead"}
-          </StaffButton>
-          {keep ? (
+      {disabled ? null : (
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p id={hintId} className="text-staff-sm text-staff-muted">
+            Click to set the focal point, drag a box to keep in frame. With the keyboard, the arrow
+            keys move the {target === "focal" ? "focal point" : "keep area"}; Shift moves further
+            {target === "keep" ? ", Alt resizes" : ""}.
+          </p>
+          <div className="flex items-center gap-2">
             <StaffButton
               size="sm"
-              variant="ghost"
+              variant="secondary"
               disabled={disabled}
-              onClick={() => onKeepChange(undefined)}
+              aria-pressed={target === "keep"}
+              onClick={() => setTarget(target === "focal" ? "keep" : "focal")}
             >
-              Clear keep area
+              {target === "focal" ? "Move keep area instead" : "Move focal point instead"}
             </StaffButton>
-          ) : null}
+            {keep ? (
+              <StaffButton
+                size="sm"
+                variant="ghost"
+                disabled={disabled}
+                onClick={() => onKeepChange(undefined)}
+              >
+                Clear keep area
+              </StaffButton>
+            ) : null}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
