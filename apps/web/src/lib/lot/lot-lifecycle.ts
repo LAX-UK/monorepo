@@ -24,6 +24,8 @@ export type LifecycleBadgeVM = {
   label: string;
   tone: LifecycleBadgeTone;
   pulse: boolean;
+  /** When set, the badge links here (for example to the site where bidding takes place). */
+  href?: string;
 };
 
 type LotLifecycleLot = Pick<
