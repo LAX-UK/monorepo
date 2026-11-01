@@ -1,28 +1,10 @@
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney } from "@/lib/format-currency";
-import { salesCalendarTabLabel } from "@/lib/marketing/marketing-status-filters";
 import { getSaleDeliveryModeLabel } from "@/lib/sale-type-presentation";
 import type { SaleDeliveryMode } from "@auction/types";
 
-/** Primary navigation tabs from `calendar.html` (marketing calendar). */
-export const CALENDAR_PRIMARY_TABS = [
-  "upcoming",
-  "live",
-  "results",
-  "newLots",
-  "privateSales",
-] as const;
+/** The calendar's sections. Retired sections are handled by `resolveRetiredCalendarTabHref`. */
+export const CALENDAR_PRIMARY_TABS = ["upcoming", "live", "results"] as const;
 export type CalendarPrimaryTab = (typeof CALENDAR_PRIMARY_TABS)[number];
-
-export type CalendarPrimaryTabDefinition = {
-  id: CalendarPrimaryTab;
-  label: string;
-};
-
-const CALENDAR_PRIMARY_TAB_DEFINITIONS: readonly CalendarPrimaryTabDefinition[] =
-  CALENDAR_PRIMARY_TABS.map((id) => ({
-    id,
-    label: salesCalendarTabLabel(id),
-  }));
 
 export type CalendarSalesUrlParams = {
   tab?: CalendarPrimaryTab;
@@ -70,16 +52,21 @@ export function resolveDefaultCalendarPrimaryTab(hasLiveSales: boolean): Calenda
   return hasLiveSales ? "live" : "upcoming";
 }
 
-/** Tab nav definitions; Live Now leads when active sales exist. */
-export function getCalendarPrimaryTabDefinitions(
-  hasLiveSales: boolean,
-): CalendarPrimaryTabDefinition[] {
-  if (!hasLiveSales) {
-    return [...CALENDAR_PRIMARY_TAB_DEFINITIONS];
+/**
+ * Where a retired calendar section now lives, or null when the URL does not ask for one.
+ * New lots is a sort on search; private sales are enquiries handled by the specialists.
+ */
+export function resolveRetiredCalendarTabHref(
+  sp: Record<string, string | string[] | undefined>,
+): string | null {
+  switch (firstString(sp.tab)?.toLowerCase()) {
+    case "newlots":
+      return "/search?sort=createdDesc";
+    case "privatesales":
+      return "/contact?intent=private-sale";
+    default:
+      return null;
   }
-  const live = CALENDAR_PRIMARY_TAB_DEFINITIONS.find((t) => t.id === "live");
-  if (!live) return [...CALENDAR_PRIMARY_TAB_DEFINITIONS];
-  return [live, ...CALENDAR_PRIMARY_TAB_DEFINITIONS.filter((t) => t.id !== "live")];
 }
 
 export function parseDeliveryMode(

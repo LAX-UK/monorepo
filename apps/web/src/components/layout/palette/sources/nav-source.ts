@@ -40,7 +40,7 @@ const marketingSections: PaletteSection[] = [
     items: [
       { id: "m-upcoming", href: "/", label: "Upcoming auctions", hint: "Home", kind: "page" },
       { id: "m-search", href: "/search", label: "Search lots", kind: "page" },
-      { id: "m-archive", href: "/archive", label: "Past auctions", kind: "page" },
+      { id: "m-results", href: "/results", label: "Results", kind: "page" },
       { id: "m-artists", href: "/artists", label: "Browse artists", kind: "page" },
     ],
   },

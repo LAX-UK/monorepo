@@ -3,15 +3,14 @@ import "server-only";
 import type { SalesBrowseView } from "@/components/sections/sales/sales-view-switcher";
 import { firstString } from "@/lib/admin/admin-list-params";
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
-import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { type SaleListRow, getServerSalesList } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { type LoadResult, settle } from "@/lib/marketing/load-result";
-import { deriveHasMorePage } from "@/lib/marketing/pagination";
 import { buildSalesBrowsePageJsonLd } from "@/lib/marketing/sales-browse-page.seo";
-import { buildSalesBrowsePageVM } from "@/lib/marketing/sales-browse-page.vm";
+import { buildSalesBrowsePageVM, showsFeaturedSales } from "@/lib/marketing/sales-browse-page.vm";
 import { applyCalendarRowFilters } from "@/lib/marketing/sales-calendar-filter-utils";
-import { fetchHasLiveSales } from "@/lib/marketing/sales-calendar-live.server";
+import { calendarTabCounts } from "@/lib/marketing/sales-calendar-overview";
+import { loadCalendarOverview } from "@/lib/marketing/sales-calendar-overview.server";
 import {
   type CalendarPrimaryTab,
   type CalendarSalesUrlState,
@@ -26,13 +25,20 @@ import {
   parseSort,
   parseYear,
   resolveDefaultCalendarPrimaryTab,
+  resolveRetiredCalendarTabHref,
 } from "@/lib/marketing/sales-calendar-params";
+import { hasLiveSales } from "@/lib/marketing/sales-calendar-tabs";
 import { parseSalesCategoryId } from "@/lib/marketing/sales-filters";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
-import type { Lot } from "@auction/types";
 import { redirect } from "next/navigation";
 
 const CALENDAR_PAGE_SIZE = 24;
+
+const TAB_STATUS = {
+  upcoming: "scheduled",
+  live: "active",
+  results: "ended",
+} as const satisfies Record<CalendarPrimaryTab, "scheduled" | "active" | "ended">;
 
 async function loadSaleRowsForTab(
   tab: CalendarPrimaryTab,
@@ -52,11 +58,8 @@ async function loadSaleRowsForTab(
     ...cat,
   });
   return settle("sales calendar", async () => {
-    let rows: SaleListRow[] = [];
     // Results are the record of the market: the most recent sale comes first.
-    if (tab === "upcoming") rows = await getServerSalesList(query("scheduled"));
-    else if (tab === "live") rows = await getServerSalesList(query("active"));
-    else if (tab === "results") rows = await getServerSalesList(query("ended"));
+    const rows = await getServerSalesList(query(TAB_STATUS[tab]));
     const hasMore = rows.length > CALENDAR_PAGE_SIZE;
     return { rows: rows.slice(0, CALENDAR_PAGE_SIZE), hasMore };
   });
@@ -74,6 +77,8 @@ export async function loadSalesBrowsePage(
   if (firstString(searchParams.tab)?.toLowerCase() === "artists") {
     redirect("/artists");
   }
+  const retiredTabHref = resolveRetiredCalendarTabHref(searchParams);
+  if (retiredTabHref) redirect(retiredTabHref);
   const session = await getServerSessionUser();
 
   const rawView = firstString(searchParams.view);
@@ -91,12 +96,9 @@ export async function loadSalesBrowsePage(
       ? "list"
       : "grid";
 
-  const [categories, hasLiveSales] = await Promise.all([
-    getServerCategoryReader()
-      .then((r) => r.list())
-      .catch(() => []),
-    fetchHasLiveSales(),
-  ]);
+  const categories = await getServerCategoryReader()
+    .then((r) => r.list())
+    .catch(() => []);
   const categoryId = parseSalesCategoryId(searchParams, categories);
   const deliveryMode = parseDeliveryMode(searchParams);
   const location = parseLocationFilter(searchParams);
@@ -106,9 +108,12 @@ export async function loadSalesBrowsePage(
   const { minPrice, maxPrice } = parsePriceRange(searchParams);
   const calendarPage = parseCalendarPage(searchParams);
 
+  // What each section holds: the tabs' counts, the live landing and the empty calendar's neighbours.
+  const overview = await loadCalendarOverview(categoryId);
+
   if (
     !hasExplicitCalendarTab(searchParams) &&
-    resolveDefaultCalendarPrimaryTab(hasLiveSales) === "live"
+    resolveDefaultCalendarPrimaryTab(hasLiveSales(calendarTabCounts(overview))) === "live"
   ) {
     redirect(
       calendarSalesHref({
@@ -143,43 +148,17 @@ export async function loadSalesBrowsePage(
     ...(calendarPage > 1 ? { page: calendarPage } : {}),
   };
 
-  let saleRows: SaleListRow[] = [];
-  let calendarHasMore = false;
-  let newLots: Lot[] = [];
-  let newLotsHasMore = false;
-  let loadFailedForTab = false;
+  const tabResult = await loadSaleRowsForTab(tab, categoryId, sort, calendarPage);
+  const saleRows = tabResult.ok ? tabResult.value.rows : [];
+  const calendarHasMore = tabResult.ok ? tabResult.value.hasMore : false;
 
-  if (tab === "newLots") {
-    const result = await settle("sales calendar new lots", async () => {
-      const reader = await getServerLotReader();
-      const rows = await reader.list({
-        limit: CALENDAR_PAGE_SIZE + 1,
-        offset: (calendarPage - 1) * CALENDAR_PAGE_SIZE,
-        sort: "createdDesc",
-        status: "scheduled",
-      });
-      return deriveHasMorePage(rows, CALENDAR_PAGE_SIZE);
-    });
-    if (result.ok) {
-      newLots = result.value.items;
-      newLotsHasMore = result.value.hasMore;
-    } else {
-      loadFailedForTab = true;
-    }
-  } else if (tab !== "privateSales") {
-    const result = await loadSaleRowsForTab(tab, categoryId, sort, calendarPage);
-    if (result.ok) {
-      saleRows = result.value.rows;
-      calendarHasMore = result.value.hasMore;
-    } else {
-      loadFailedForTab = true;
-    }
-  }
-
-  const featured = await settle("sales calendar featured", () =>
-    getServerSalesList({ statuses: ["active", "scheduled"], limit: 3, sort: "startAsc" }),
-  );
-  const featuredRows: SaleListRow[] = featured.ok ? featured.value : [];
+  // The pinned sales belong to the default view only, so no other tab pays for reading them.
+  const featured = showsFeaturedSales(calendarState)
+    ? await settle("sales calendar featured", () =>
+        getServerSalesList({ statuses: ["active", "scheduled"], limit: 3, sort: "startAsc" }),
+      )
+    : null;
+  const featuredRows: SaleListRow[] = featured?.ok ? featured.value : [];
 
   const filteredSales = applyCalendarRowFilters(saleRows, {
     ...(deliveryMode !== "all" ? { deliveryMode } : {}),
@@ -193,24 +172,20 @@ export async function loadSalesBrowsePage(
   const vm = buildSalesBrowsePageVM({
     session,
     calendarState,
-    hasLiveSales,
+    overview,
     categories,
     calendarView,
-    loadFailed: loadFailedForTab,
-    tab,
-    newLots,
-    newLotsHasMore,
+    loadFailed: !tabResult.ok,
     saleRows,
     featuredRows,
     filteredSales,
     calendarPage,
     calendarHasMore,
+    now: new Date(),
   });
 
   const { crumbText, listLdText } = buildSalesBrowsePageJsonLd({
-    tab,
-    loadFailed: loadFailedForTab,
-    newLots,
+    loadFailed: !tabResult.ok,
     filteredSales,
   });
 

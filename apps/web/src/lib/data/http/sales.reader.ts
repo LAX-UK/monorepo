@@ -43,6 +43,7 @@ export type {
   SaleViewerState,
   SaleWithLots,
   SitemapSale,
+  WithdrawnCatalogueRow,
 } from "@/lib/data/http/sales.types";
 
 export type { SaleListRow } from "@/lib/sale-list-row";

@@ -12,7 +12,6 @@ import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { saleLifecycleActions } from "@/lib/sale/sale-lifecycle-actions";
 import type { LegalEntityMemberRole, SaleDeliveryMode } from "@auction/types";
-import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 import type { SaleHeroVM } from "./view-models";
@@ -44,8 +43,6 @@ type Props = {
   hasApprovedRegistration?: boolean;
 };
 
-const heroCtaSizing = "h-10 min-h-10 px-5 font-body text-base font-semibold";
-
 function SaleroomHeroPrimaryCta({
   hero,
   isAuthenticated,
@@ -55,12 +52,10 @@ function SaleroomHeroPrimaryCta({
   isAuthenticated: boolean;
   deliveryMode: SaleDeliveryMode;
 }) {
-  const ctaClassName = cn(heroCtaSizing, "shrink-0");
-
   if (!saleAllowsWebBidding(deliveryMode)) {
     if (hero.status === "scheduled" || hero.status === "draft") {
       return (
-        <Button variant="primary" className={ctaClassName} asChild>
+        <Button variant="primary" className="shrink-0" asChild>
           <Link href="#plan-visit">Plan your visit</Link>
         </Button>
       );
@@ -73,13 +68,13 @@ function SaleroomHeroPrimaryCta({
   }
 
   return (
-    <Button variant="primary" className={ctaClassName} asChild>
+    <Button variant="primary" className="shrink-0" asChild>
       <a href={buildHostedLoginStartHref({ intent: "signup" })}>Register to bid</a>
     </Button>
   );
 }
 
-/** Hero actions: primary CTAs, optional KYC caption, register form band, Notify me footer. */
+/** Hero actions: one row, the primary first and Notify me after it, then any caption or register form. */
 export function SaleroomHeroActionRow({
   hero,
   isAuthenticated,
@@ -135,12 +130,19 @@ export function SaleroomHeroActionRow({
           You&apos;re registered
         </span>
       ) : null}
-      {primaryCta || registerButton ? (
-        <div className="flex flex-wrap items-center gap-3">
-          {primaryCta}
-          {registerButton}
-        </div>
-      ) : null}
+      <div className="flex flex-wrap items-center gap-3">
+        {primaryCta}
+        {registerButton}
+        {actions.follow ? (
+          <SaleroomFollowToggle
+            saleId={saleId}
+            loginNextPath={saleHref}
+            initialFollowing={initialFollowing}
+            isAuthenticated={isAuthenticated}
+            label="Notify me"
+          />
+        ) : null}
+      </div>
       {caption ? (
         <RegisterHelperText className="max-w-xl text-on-surface-variant">
           {caption}
@@ -155,19 +157,6 @@ export function SaleroomHeroActionRow({
             </RegisterHelperText>
           ))
         : null}
-      {actions.follow ? (
-        <div className="flex flex-wrap items-end justify-end gap-3">
-          <SaleroomFollowToggle
-            saleId={saleId}
-            loginNextPath={saleHref}
-            initialFollowing={initialFollowing}
-            isAuthenticated={isAuthenticated}
-            size="lg"
-            appearance="outlined-block"
-            label="Notify me"
-          />
-        </div>
-      ) : null}
       {showAgentForm && registerToBid ? (
         <div id="register-to-bid" className="scroll-mt-[calc(var(--header-height)+1rem)] pt-1">
           <SaleroomRegisterToBid

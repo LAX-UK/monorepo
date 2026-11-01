@@ -1,4 +1,4 @@
-const ELIGIBLE_EXACT_PATHS = new Set(["/", "/archive", "/artists", "/buy", "/sales", "/search"]);
+const ELIGIBLE_EXACT_PATHS = new Set(["/", "/results", "/artists", "/buy", "/sales", "/search"]);
 const ELIGIBLE_PATH_PREFIXES = ["/artist/", "/artists/"];
 
 export function isMarketingPromptRoute(pathname: string): boolean {

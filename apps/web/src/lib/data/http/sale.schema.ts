@@ -201,6 +201,10 @@ const saleRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transf
       row.previewStartTime == null || row.previewStartTime === ""
         ? null
         : zCoerceDate.parse(row.previewStartTime),
+    ...(nullableString(row.subtitle) !== null ? { subtitle: nullableString(row.subtitle) } : {}),
+    ...(row.consignmentDeadline != null && row.consignmentDeadline !== ""
+      ? { consignmentDeadline: zCoerceDate.parse(row.consignmentDeadline) }
+      : {}),
     buyerPremiumRate:
       row.buyerPremiumRate == null || row.buyerPremiumRate === ""
         ? "0.25"
@@ -210,6 +214,9 @@ const saleRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transf
     createdBy: String(row.createdBy ?? ""),
     createdAt: zCoerceDate.parse(row.createdAt),
     updatedAt: zCoerceDate.parse(row.updatedAt),
+    ...(row.consignmentDeadline
+      ? { consignmentDeadline: zCoerceDate.parse(row.consignmentDeadline) }
+      : {}),
     ...(isSellingPlatform(row.sellingPlatform) ? { sellingPlatform: row.sellingPlatform } : {}),
     ...(isAtgState(row.atgAuctionState) ? { atgAuctionState: row.atgAuctionState } : {}),
     ...(isAtgDistribution(row.atgDistribution) ? { atgDistribution: row.atgDistribution } : {}),

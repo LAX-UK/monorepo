@@ -51,12 +51,9 @@ export function archiveLotLinkParams(layoutView: CatalogLayoutView): CatalogLink
   return params;
 }
 
-/** Back link to archive with preserved view. */
-export function archiveCatalogBackHref(
-  searchParams: Record<string, string | string[] | undefined>,
-): string {
-  const view = firstString(searchParams.view);
-  return mergeCatalogQueryParams("/archive", view && view !== "grid" ? { view } : undefined);
+/** Back link to the Lots view of the Results page. */
+export function archiveCatalogBackHref(): string {
+  return "/results?view=lots";
 }
 
 /** Back link to search with preserved view. */
@@ -101,7 +98,7 @@ export function lotCatalogBackLabel(
 ): string {
   const from = firstString(searchParams.from);
   if (sale && (from === "sale" || !from)) return "Back to sale";
-  if (from === "archive") return "Back to archive";
+  if (from === "archive") return "Back to results";
   return "Back to catalogue";
 }
 
@@ -114,7 +111,7 @@ export function lotCatalogBackHref(
   if (sale && (from === "sale" || !from)) {
     return saleCatalogBackHref(sale, searchParams);
   }
-  if (from === "archive") return archiveCatalogBackHref(searchParams);
+  if (from === "archive") return archiveCatalogBackHref();
   if (from === "search") return searchCatalogBackHref(searchParams);
   return searchCatalogBackHref(searchParams);
 }

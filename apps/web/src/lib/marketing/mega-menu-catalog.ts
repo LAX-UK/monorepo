@@ -11,6 +11,9 @@ const timedAuctionsHref = calendarSalesHref({
 
 const investmentGradeMinGbp = 50_000;
 
+/** Private sales are arranged with a specialist, not browsed on the calendar. */
+const PRIVATE_SALE_ENQUIRY_HREF = "/contact?intent=private-sale";
+
 function searchHref(sort?: "endingAsc" | "createdDesc", ending?: "24h"): string {
   const params = new URLSearchParams();
   if (sort && sort !== "endingAsc") params.set("sort", sort);
@@ -33,9 +36,20 @@ export function getMarketingMegaMenuSections(): MegaMenuSection[] {
         { href: calendarSalesHref({ tab: "live" }), label: "Live now" },
         { href: calendarSalesHref({ tab: "upcoming" }), label: "Upcoming auctions" },
         { href: timedAuctionsHref, label: "Timed auctions" },
-        { href: calendarSalesHref({ tab: "results" }), label: "Past results" },
+        { href: "/results", label: "Past results" },
         { href: "/sales", label: "Auction calendar" },
         { href: "/settings#alerts", label: "Auction alerts" },
+      ],
+    },
+    {
+      id: "results",
+      href: "/results",
+      label: "Results",
+      // A plain link in the desktop bar; the phone drawer lists the two ways in.
+      linkHref: "/results",
+      items: [
+        { href: "/results", label: "Sale results" },
+        { href: "/results?view=lots", label: "Sold lots" },
       ],
     },
     {
@@ -52,7 +66,7 @@ export function getMarketingMegaMenuSections(): MegaMenuSection[] {
           href: calendarSalesHref({ minPrice: investmentGradeMinGbp }),
           label: "Investment-grade works",
         },
-        { href: calendarSalesHref({ tab: "privateSales" }), label: "Private sales" },
+        { href: PRIVATE_SALE_ENQUIRY_HREF, label: "Private sales" },
         { href: "/buy", label: "Buying guide" },
       ],
     },
@@ -74,10 +88,10 @@ export function getMarketingMegaMenuSections(): MegaMenuSection[] {
     },
     {
       id: "privateSales",
-      href: calendarSalesHref({ tab: "privateSales" }),
+      href: PRIVATE_SALE_ENQUIRY_HREF,
       label: "Private sales",
       items: [
-        { href: calendarSalesHref({ tab: "privateSales" }), label: "Available now" },
+        { href: PRIVATE_SALE_ENQUIRY_HREF, label: "Available now" },
         { href: "/contact", label: "Make an offer" },
         { href: "/contact", label: "Private rooms" },
         { href: "/contact", label: "Corporate acquisitions" },

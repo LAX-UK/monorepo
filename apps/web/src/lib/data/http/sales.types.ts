@@ -5,6 +5,7 @@ import type {
   SaleViewerState,
   SaleWithLots,
   SitemapSale,
+  WithdrawnCatalogueRow,
 } from "@/lib/data/http/sales.schema";
 import type { Sale } from "@auction/types";
 
@@ -25,6 +26,7 @@ export type {
   SaleLotsPage,
   SaleRegistrationMineRow,
   SitemapSale,
+  WithdrawnCatalogueRow,
 };
 
 export type GetSaleLotsPageParams = {

@@ -63,7 +63,10 @@ export async function getSaleDetailForPublicApi(
 
   const saleWithPlatform = await withSellingPlatform(deps.saleChannelReader, bundle.sale);
   const canPreview = viewerCanSeeNonPublicCatalog(viewer?.role, viewer?.staffRoles);
-  if (!canPreview && !isPublicCatalogSale(saleWithPlatform)) return null;
+  // A cancelled sale keeps its address so a link someone was given lands on a notice; it reads as
+  // the sale and nothing of its catalogue.
+  const cancelledNotice = !canPreview && saleWithPlatform.status === "cancelled";
+  if (!canPreview && !cancelledNotice && !isPublicCatalogSale(saleWithPlatform)) return null;
 
   const isFollowing =
     viewerUserId && deps.saleFollowReader
@@ -71,9 +74,11 @@ export async function getSaleDetailForPublicApi(
       : false;
   const [sale, lots] = await Promise.all([
     presentSaleImages(deps.mediaUrlResolver, saleWithPlatform, deps.mediaAssetEnricher),
-    withAtgLotResults(deps.saleChannelReader, saleWithPlatform, bundle.lots).then((rows) =>
-      presentLotsImages(deps.mediaUrlResolver, rows, deps.mediaAssetEnricher),
-    ),
+    cancelledNotice
+      ? Promise.resolve([])
+      : withAtgLotResults(deps.saleChannelReader, saleWithPlatform, bundle.lots).then((rows) =>
+          presentLotsImages(deps.mediaUrlResolver, rows, deps.mediaAssetEnricher),
+        ),
   ]);
   const visibleLots = canPreview
     ? lots

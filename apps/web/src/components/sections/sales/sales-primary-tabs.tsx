@@ -3,8 +3,8 @@
 import {
   type CalendarSalesUrlState,
   calendarSalesHrefFromState,
-  getCalendarPrimaryTabDefinitions,
 } from "@/lib/marketing/sales-calendar-params";
+import type { CalendarTab } from "@/lib/marketing/sales-calendar-tabs";
 import { type LinkProps, TabNav } from "@auction/ui/lax";
 import Link from "next/link";
 
@@ -15,13 +15,11 @@ function CalendarTabLink({ prefetch: _prefetch, ...props }: LinkProps) {
 
 type Props = {
   state: CalendarSalesUrlState;
-  hasLiveSales?: boolean;
+  tabs: readonly CalendarTab[];
 };
 
 /** The calendar's sections as kit tabs; the ones that do not fit go into "More". */
-export function SalesPrimaryTabs({ state, hasLiveSales = false }: Props) {
-  const tabs = getCalendarPrimaryTabDefinitions(hasLiveSales);
-
+export function SalesPrimaryTabs({ state, tabs }: Props) {
   return (
     <TabNav
       label="Calendar sections"
@@ -31,6 +29,7 @@ export function SalesPrimaryTabs({ state, hasLiveSales = false }: Props) {
         id: t.id,
         label: t.label,
         href: calendarSalesHrefFromState(state, { tab: t.id, page: undefined }),
+        ...(t.count !== undefined ? { count: t.count, countLabel: "sales" } : {}),
       }))}
     />
   );
