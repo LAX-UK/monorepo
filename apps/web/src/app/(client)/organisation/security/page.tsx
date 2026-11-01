@@ -10,6 +10,7 @@ import {
   loadTwoStepPolicy,
 } from "@/lib/organisation-team/team-data.server";
 import { twoStepImpact } from "@/lib/organisation-team/two-step-impact";
+import { entityActorCan } from "@auction/domain";
 import { Notice } from "@auction/ui/lax";
 import { notFound } from "next/navigation";
 
@@ -67,6 +68,7 @@ export default async function OrganisationSecurityPage() {
           required={policy.policy.required}
           impact={impact}
           canEdit={policy.canEdit}
+          canRemind={entityActorCan(actor, "entity.security.remind")}
         />
       </SettingsSection>
     </div>

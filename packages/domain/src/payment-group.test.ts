@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   type PaymentGroupMemberFacts,
   type PaymentGroupStatus,
-  allocateGroupDispute,
   attributeGroupRefunds,
   decidePaymentGroupSettlement,
   paymentGroupIsLive,
@@ -103,21 +102,5 @@ describe("attributeGroupRefunds", () => {
     );
     expect(result.refundedPenceByPayment).toEqual(new Map([["a", 750]]));
     expect(result.unattributedPence).toBe(140);
-  });
-});
-
-describe("allocateGroupDispute", () => {
-  const members = [
-    { paymentId: "a", amountPence: 10_000 },
-    { paymentId: "b", amountPence: 20_000 },
-  ];
-
-  it("falls on every invoice in full when the whole payment is disputed", () => {
-    expect(allocateGroupDispute(30_000, members)).toEqual(members);
-  });
-
-  it("asks the finance team when only part of it is disputed", () => {
-    expect(allocateGroupDispute(10_000, members)).toBeNull();
-    expect(allocateGroupDispute(0, [])).toBeNull();
   });
 });

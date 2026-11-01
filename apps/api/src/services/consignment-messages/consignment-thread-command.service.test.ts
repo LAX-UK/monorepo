@@ -447,6 +447,39 @@ describe("assigning", () => {
     expect(messages.events.map((e) => e.kind)).toEqual(["covering", "assigned"]);
   });
 
+  it("covers until an end date, shows it on the assignee, and refuses a past one", async () => {
+    const { commands, messages, events } = waitingThread();
+    const until = "2026-11-05T00:00:00.000Z";
+    const cover = await commands.assign("clara", SUBMISSION_ID, {
+      assignedToUserId: "omar",
+      covering: true,
+      coveringUntil: until,
+    });
+    expect(cover).toMatchObject({
+      ok: true,
+      value: { changed: true, assignee: { userId: "omar", covering: true, coveringUntil: until } },
+    });
+    expect(messages.threads.get(SUBMISSION_ID)?.coveringUntil).toEqual(new Date(until));
+    expect(events.publish).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payload: expect.objectContaining({ covering: true, coveringUntil: until }),
+      }),
+    );
+    expect(
+      await commands.assign("clara", SUBMISSION_ID, {
+        assignedToUserId: "omar",
+        covering: true,
+        coveringUntil: "2026-10-28T00:00:00.000Z",
+      }),
+    ).toMatchObject({ ok: false, status: 400, code: "cover_end_invalid" });
+  });
+
+  it("a cover with no end date has none to show", async () => {
+    const { commands, messages } = waitingThread();
+    await commands.assign("clara", SUBMISSION_ID, { assignedToUserId: "omar", covering: true });
+    expect(messages.threads.get(SUBMISSION_ID)?.coveringUntil).toBeNull();
+  });
+
   it("giving the consignment to someone ends any cover, and unassigning leaves nobody", async () => {
     const { commands, messages } = waitingThread();
     await commands.assign("clara", SUBMISSION_ID, { assignedToUserId: "omar", covering: true });

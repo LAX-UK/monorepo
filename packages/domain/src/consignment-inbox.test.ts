@@ -1,12 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
+  REPLY_NOTICE_SWEEP_GRACE_MS,
   consignmentInboxAbilities,
   consignmentThreadStatus,
+  coverEndError,
+  coverHasEnded,
   defaultConsignmentInboxSort,
   fillSavedReply,
   firstNameOf,
+  isReplyNoticeOverdue,
   messagesSinceSeen,
   replyClock,
+  replyNoticeSweepCutoff,
   threadAssignee,
 } from "./consignment-inbox.js";
 
@@ -155,5 +160,45 @@ describe("firstNameOf", () => {
   it("greets by the first word", () => {
     expect(firstNameOf(" Lena Fischer ")).toBe("Lena");
     expect(firstNameOf("")).toBeNull();
+  });
+});
+
+describe("isReplyNoticeOverdue", () => {
+  const now = at("2026-11-02T12:00:00Z");
+  const held = new Date(now.getTime() - REPLY_NOTICE_SWEEP_GRACE_MS - 1000);
+
+  it("is overdue once the hold ended beyond the grace and nobody was told", () => {
+    expect(isReplyNoticeOverdue({ deliverAfter: held, notifiedAt: null }, now)).toBe(true);
+  });
+
+  it("leaves a reply the delivery job may still be about to send", () => {
+    const recent = new Date(now.getTime() - 30_000);
+    expect(isReplyNoticeOverdue({ deliverAfter: recent, notifiedAt: null }, now)).toBe(false);
+    expect(isReplyNoticeOverdue({ deliverAfter: held, notifiedAt: null }, held)).toBe(false);
+  });
+
+  it("is not overdue when the account was told, or the reply was never held", () => {
+    expect(isReplyNoticeOverdue({ deliverAfter: held, notifiedAt: held }, now)).toBe(false);
+    expect(isReplyNoticeOverdue({ deliverAfter: null, notifiedAt: null }, now)).toBe(false);
+  });
+
+  it("cuts off the grace before now", () => {
+    expect(replyNoticeSweepCutoff(now).getTime()).toBe(now.getTime() - REPLY_NOTICE_SWEEP_GRACE_MS);
+  });
+});
+
+describe("cover end", () => {
+  const now = at("2026-11-02T12:00:00Z");
+
+  it("has ended once the end moment has passed, and runs on with no end", () => {
+    expect(coverHasEnded(at("2026-11-02T11:59:59Z"), now)).toBe(true);
+    expect(coverHasEnded(now, now)).toBe(true);
+    expect(coverHasEnded(at("2026-11-03T00:00:00Z"), now)).toBe(false);
+    expect(coverHasEnded(null, now)).toBe(false);
+  });
+
+  it("accepts only a future end date", () => {
+    expect(coverEndError(at("2026-11-03T00:00:00Z"), now)).toBeNull();
+    expect(coverEndError(now, now)).toBe("Choose an end date in the future.");
   });
 });

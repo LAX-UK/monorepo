@@ -70,4 +70,25 @@ describe("CommandMenu", () => {
     expect(screen.getByText("James Hale")).toBeTruthy();
     expect(screen.getByText("Unassign")).toBeTruthy();
   });
+
+  it("shows a header control above the search, outside the list", () => {
+    render(
+      <CommandMenu
+        label="Cover this thread"
+        trigger={<button type="button">Cover</button>}
+        searchPlaceholder="Find a colleague"
+        header={
+          <label>
+            Last day of cover
+            <input />
+          </label>
+        }
+        groups={[{ id: "staff", items: [{ id: "u1", label: "Omar Reyes", onSelect: () => {} }] }]}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Cover" }));
+    const header = screen.getByLabelText("Last day of cover");
+    expect(header).toBeTruthy();
+    expect(header.closest("[cmdk-root]")).toBeNull();
+  });
 });

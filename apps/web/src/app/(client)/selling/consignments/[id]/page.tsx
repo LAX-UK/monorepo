@@ -65,7 +65,11 @@ import {
 import { buildConsignmentDetailVm } from "@/lib/seller/consignment-detail.vm";
 import { consignmentDocuments } from "@/lib/seller/consignment-documents";
 import { consignmentHistory } from "@/lib/seller/consignment-history";
-import { agreementHoldLine, consignmentNextStep } from "@/lib/seller/consignment-next";
+import {
+  agreementHoldLine,
+  consignmentNextLink,
+  consignmentNextStep,
+} from "@/lib/seller/consignment-next";
 import {
   consignmentAgreementHref,
   consignmentDocumentsHref,
@@ -217,6 +221,10 @@ export default async function SubmissionDetailPage({
   const editable = actions.canEdit;
   const agreementView = agreementRes.status === "fulfilled" ? agreementRes.value : null;
   const account = accountRes.status === "fulfilled" ? accountRes.value : null;
+  // The account's state, not only the member's role, decides whether anyone can accept now.
+  const actingAccount = sellingAccount(sellerCtx);
+  const acceptHold = actingAccount ? agreementAcceptanceHold(actingAccount) : null;
+  const organisationName = account?.organisationName ?? null;
   const checklist = account
     ? computeConsignmentChecklist(
         consignmentChecklistFacts({
@@ -283,17 +291,6 @@ export default async function SubmissionDetailPage({
     afterSale?.unsold?.chooseBy && !unsoldChoiceMade
       ? formatLotMoment(new Date(afterSale.unsold.chooseBy), now, { time: false })
       : null;
-  // The account's state, not only the member's role, decides whether anyone can accept now.
-  const actingAccount = sellingAccount(sellerCtx);
-  const acceptHold = actingAccount ? agreementAcceptanceHold(actingAccount) : null;
-  const organisationName = account?.organisationName ?? null;
-  const nextStep = consignmentNextStep(status, {
-    canAccept: Boolean(agreementView?.canAccept),
-    organisation: organisationName,
-    chooseBy,
-    acceptHold,
-  });
-
   // Documents and History read the lot's condition reports, the sold lot's payout (for those
   // who see payouts) and the sale's title; each degrades on its own.
   const lotId = submission.convertedLotId;
@@ -308,6 +305,18 @@ export default async function SubmissionDetailPage({
     soldLotsRes.status === "fulfilled"
       ? (soldLotsRes.value?.items.find((row) => row.lotId === lotId) ?? null)
       : null;
+  const nextContext = {
+    canAccept: Boolean(agreementView?.canAccept),
+    organisation: organisationName,
+    chooseBy,
+    acceptHold,
+    sold: soldLot,
+  };
+  const nextStep = consignmentNextStep(status, nextContext);
+  const nextLink = consignmentNextLink(status, {
+    ...nextContext,
+    submissionId: submission.id,
+  });
   const documentsView = consignmentDocuments({
     submissionId: submission.id,
     sellerEntityId,
@@ -378,6 +387,14 @@ export default async function SubmissionDetailPage({
       {nextStep ? (
         <Notice tone="info" title="What happens next">
           {nextStep}
+          {nextLink ? (
+            <>
+              {" "}
+              <Link href={nextLink.href} className="font-semibold underline underline-offset-4">
+                {nextLink.label}
+              </Link>
+            </>
+          ) : null}
         </Notice>
       ) : null}
       <ConsignmentDetailTabs
@@ -442,6 +459,9 @@ export default async function SubmissionDetailPage({
                     accountKind: account.accountKind,
                     organisationName: account.organisationName,
                     agreementHref: "#agreement",
+                    agreementHeld: acceptHold
+                      ? agreementHoldLine(acceptHold, organisationName)
+                      : null,
                   }),
                 )}
                 doneCount={checklist.doneCount}

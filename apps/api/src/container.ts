@@ -10,6 +10,7 @@ import {
   DrizzleConsignmentThreadFactsReader,
   DrizzleLaxAdminRolesRepository,
   DrizzleLaxStaffAccessRepository,
+  DrizzleLotViewerFactsReader,
   DrizzleOrganisationBiddingLimitRepository,
   DrizzleRecordPeopleReader,
   DrizzleStaffAccessReviewReader,
@@ -21,6 +22,7 @@ import {
 import type { Container, ContainerComposedSlices } from "./container/container-slices.js";
 import { createAdminServices } from "./container/create-admin-services.js";
 import { createContainerAuthenticator } from "./container/create-auth.js";
+import { createBidAuthority, createBiddingLimitGate } from "./container/create-bid-eligibility.js";
 import { createBiddingRouteServices } from "./container/create-bidding-route-services.js";
 import { createBiddingSaleroom } from "./container/create-bidding-saleroom.js";
 import { createCatalogRouteServices } from "./container/create-catalog-route-services.js";
@@ -37,6 +39,7 @@ import { createOrganisationAccessServices } from "./container/create-organisatio
 import { createOrganisationBuyingServices } from "./container/create-organisation-buying-services.js";
 import { createOrganisationHomeServices } from "./container/create-organisation-home-services.js";
 import { createOrganisationMembershipServices } from "./container/create-organisation-membership-services.js";
+import { createOrganisationSecurityServices } from "./container/create-organisation-security-services.js";
 import { createOrganisationSellingServices } from "./container/create-organisation-selling-services.js";
 import { createOrganisationTeamServices } from "./container/create-organisation-team-services.js";
 import { createOrganisationWorkspaceServices } from "./container/create-organisation-workspace-services.js";
@@ -62,6 +65,8 @@ import { AdminTwoFactorResetService } from "./services/admin/admin-two-factor-re
 import { AtgAdminService } from "./services/admin/atg-admin.service.js";
 import { StaffAccessAdminService } from "./services/admin/staff-access-admin.service.js";
 import { OrganisationBiddingLimitsService } from "./services/bidding-limits/organisation-bidding-limits.service.js";
+import { BidLimitRefusalNotifier } from "./services/bidding/bid-limit-refusal.notifier.js";
+import { LotViewerStateService } from "./services/bidding/lot-viewer-state.service.js";
 import {
   BidAuthorityQueryService,
   BuyerAgentAuthorisationService,
@@ -218,6 +223,19 @@ export function createContainer(env: Env): Container {
   const staffNoticeRecipients = new DrizzleStaffNoticeRecipientReader(db);
   const staffAdministrators = new StaffAdministratorDirectory(staffNoticeRecipients, laxAdminRoles);
   const watchlistReminders = new DrizzleWatchlistReminderRepository(db);
+  const consignmentMessages = createConsignmentMessageServices({
+    messages: new DrizzleConsignmentMessageRepository(db),
+    inbox: new DrizzleConsignmentInboxReader(db),
+    facts: new DrizzleConsignmentThreadFactsReader(db),
+    savedReplies: new DrizzleConsignmentSavedReplyRepository(db),
+    staff: new DrizzleConsignmentStaffDirectory(db),
+    dispatcher: platform.notificationDispatcher,
+    recipients: repos.legalEntityNotificationRecipients,
+    storage: infra.objectStorage,
+    media: complianceMedia.mediaUrlResolver,
+    events: platform.domainEventSink,
+    bullConnection: infra.bullConnection,
+  });
   const platformCron = createPlatformCronRouteServices({
     redis: infra.redis,
     lifecycleCronService: cron.lifecycleCronService,
@@ -230,6 +248,7 @@ export function createContainer(env: Env): Container {
     emailService: infra.emailService,
     webOrigin: env.WEB_ORIGIN,
     watchlistReminders,
+    consignmentThreadSweep: consignmentMessages.sweep,
   });
   const catalogRoutes = createCatalogRouteServices({
     saleService: catalog.saleService,
@@ -256,19 +275,6 @@ export function createContainer(env: Env): Container {
     artistProfileService: catalog.artistProfileService,
     artistDeleteService: catalog.artistDeleteService,
     venueService: catalog.venueService,
-  });
-  const consignmentMessages = createConsignmentMessageServices({
-    messages: new DrizzleConsignmentMessageRepository(db),
-    inbox: new DrizzleConsignmentInboxReader(db),
-    facts: new DrizzleConsignmentThreadFactsReader(db),
-    savedReplies: new DrizzleConsignmentSavedReplyRepository(db),
-    staff: new DrizzleConsignmentStaffDirectory(db),
-    dispatcher: platform.notificationDispatcher,
-    recipients: repos.legalEntityNotificationRecipients,
-    storage: infra.objectStorage,
-    media: complianceMedia.mediaUrlResolver,
-    events: platform.domainEventSink,
-    bullConnection: infra.bullConnection,
   });
   const submissionRoutes = createSubmissionRouteServices({
     itemSubmissionSellerApi: catalog.itemSubmissionSellerApi,
@@ -331,6 +337,12 @@ export function createContainer(env: Env): Container {
     ),
   });
 
+  const lotViewerState = new LotViewerStateService({
+    facts: new DrizzleLotViewerFactsReader(db),
+    bidAuthority: createBidAuthority(db),
+    limitGate: createBiddingLimitGate(db),
+  });
+
   const savedViews = new AdminSavedViewService(new DrizzleAdminSavedViewRepository(db));
   const buyerAgentAuthorisationRepository = new DrizzleBuyerAgentAuthorisationRepository(db);
 
@@ -371,6 +383,28 @@ export function createContainer(env: Env): Container {
       groupCheckout: payments.paymentGroupCheckout,
     },
   });
+  const organisationNames = {
+    nameOf: async (id: string) =>
+      (await repos.legalEntityRepository.findById(id))?.displayName ?? null,
+  };
+  const organisationSecurity = createOrganisationSecurityServices({
+    redis: infra.redis,
+    members: repos.legalEntityMemberRepository,
+    identity: identityIssuer,
+    email: infra.emailService,
+    events: platform.domainEventSink,
+    organisations: organisationNames,
+    webOrigin: env.WEB_ORIGIN,
+  });
+  const bidRefusals = new BidLimitRefusalNotifier({
+    dispatcher: platform.notificationDispatcher,
+    recipients: repos.legalEntityNotificationRecipients,
+    lots: { titleOf: async (id) => (await repos.lotRepo.findById(id))?.title ?? null },
+    people: {
+      nameOf: async (userId) => (await repos.profileRepo.getProfile(userId))?.name ?? null,
+    },
+    organisations: organisationNames,
+  });
   const organisationAccess = createOrganisationAccessServices({
     db,
     memberManagement: platform.memberManagementService,
@@ -378,6 +412,7 @@ export function createContainer(env: Env): Container {
     notificationDispatcher: platform.notificationDispatcher,
     notificationFactory: platform.notificationFactory,
     events: platform.domainEventSink,
+    organisations: organisationNames,
   });
   const organisationSelling = createOrganisationSellingServices({
     db,
@@ -392,6 +427,14 @@ export function createContainer(env: Env): Container {
   const organisationTeam = createOrganisationTeamServices({
     db,
     events: platform.domainEventSink,
+    payouts: repos.payoutRepository,
+    connect: repos.legalEntityConnectReader,
+    stripeClientFactory: infra.stripeClientFactory,
+    useSamplePayoutProvider:
+      env.APP_ENV === "development" && infra.stripeClientFactory.get() === null,
+    members: repos.legalEntityMemberRepository,
+    identity: identityIssuer,
+    log: createAppLogger(env),
   });
 
   const atg = new AtgAdminService(
@@ -575,8 +618,10 @@ export function createContainer(env: Env): Container {
       saleRegistrationBuyer: biddingSaleroom.saleRegistrationService,
       telephoneBidBookingBuyer: catalog.telephoneBidBookingService,
       lotService: catalog.lotService,
+      lotViewerState,
       displayPairingService: biddingSaleroom.displayPairingService,
       displaySnapshotReader: biddingSaleroom.displaySnapshotReader,
+      bidRefusals,
     }),
     identityRoutes: createIdentityRouteServices({
       accountSecurity: {
@@ -605,6 +650,7 @@ export function createContainer(env: Env): Container {
       env,
       bidPortfolioReader: repos.bidPortfolioReader,
       recordPeople: new DrizzleRecordPeopleReader(db),
+      lotViewerState,
       categoryInterestsEligibilityReader: repos.categoryInterestsEligibilityReader,
       categoryInterestsRepository: repos.categoryInterestsRepository,
       accountOnboardingService: userMisc.accountOnboardingService,
@@ -667,6 +713,7 @@ export function createContainer(env: Env): Container {
     organisationAccess,
     organisationWorkspace,
     organisationTeam,
+    organisationSecurity,
     queueAdmin: userMisc.queueAdmin,
     closeBullQueues: userMisc.closeBullQueues,
   };
@@ -714,6 +761,7 @@ export type {
   ContainerOrganisationAccessRoutesSlice,
   ContainerOrganisationWorkspaceRoutesSlice,
   ContainerOrganisationTeamRoutesSlice,
+  ContainerOrganisationSecurityRoutesSlice,
   ContainerLegalEntityRoutesSlice,
   ContainerLotCatalogSlice,
   ContainerLotDocumentRoutesSlice,

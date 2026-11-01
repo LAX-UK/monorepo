@@ -10,6 +10,7 @@ import {
 import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import type { KycUserFeedbackDto } from "@/lib/data/dto/dashboard-dtos";
 import { saleAllowsWebBidding } from "@/lib/sale-mode";
+import { saleLifecycleActions } from "@/lib/sale/sale-lifecycle-actions";
 import type { LegalEntityMemberRole, SaleDeliveryMode } from "@auction/types";
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/components/button";
@@ -67,7 +68,7 @@ function SaleroomHeroPrimaryCta({
     return null;
   }
 
-  if (isAuthenticated) {
+  if (isAuthenticated || !saleLifecycleActions(hero.status).register) {
     return null;
   }
 
@@ -89,15 +90,17 @@ export function SaleroomHeroActionRow({
   registerToBid,
   hasApprovedRegistration = false,
 }: Props) {
-  const registerBase = registerToBid?.show
-    ? {
-        show: registerToBid.show,
-        isAuthenticated,
-        kycApproved: registerToBid.kycApproved,
-        kycFeedback: registerToBid.kycFeedback ?? null,
-        buyerEntities: registerToBid.buyerEntities,
-      }
-    : null;
+  const actions = saleLifecycleActions(hero.status);
+  const registerBase =
+    registerToBid?.show && actions.register
+      ? {
+          show: registerToBid.show,
+          isAuthenticated,
+          kycApproved: registerToBid.kycApproved,
+          kycFeedback: registerToBid.kycFeedback ?? null,
+          buyerEntities: registerToBid.buyerEntities,
+        }
+      : null;
 
   const caption = registerBase ? registerToBidHeroCaption(registerBase) : null;
   const showAgentForm = registerBase ? registerToBidNeedsAgentFormBand(registerBase) : false;
@@ -109,7 +112,7 @@ export function SaleroomHeroActionRow({
     />
   );
   const registerButton =
-    registerToBid?.show && isAuthenticated ? (
+    registerToBid?.show && actions.register && isAuthenticated ? (
       <SaleroomRegisterToBid
         saleId={saleId}
         loginNextPath={saleHref}
@@ -143,7 +146,7 @@ export function SaleroomHeroActionRow({
           {caption}
         </RegisterHelperText>
       ) : null}
-      {isAuthenticated && registerToBid?.show
+      {isAuthenticated && registerToBid?.show && actions.register
         ? (registerToBid.registrationPaused ?? []).map((paused) => (
             <RegisterHelperText key={paused.id} className="max-w-xl text-on-surface-variant">
               <span data-testid="registration-paused">
@@ -152,17 +155,19 @@ export function SaleroomHeroActionRow({
             </RegisterHelperText>
           ))
         : null}
-      <div className="flex flex-wrap items-end justify-end gap-3">
-        <SaleroomFollowToggle
-          saleId={saleId}
-          loginNextPath={saleHref}
-          initialFollowing={initialFollowing}
-          isAuthenticated={isAuthenticated}
-          size="lg"
-          appearance="outlined-block"
-          label="Notify me"
-        />
-      </div>
+      {actions.follow ? (
+        <div className="flex flex-wrap items-end justify-end gap-3">
+          <SaleroomFollowToggle
+            saleId={saleId}
+            loginNextPath={saleHref}
+            initialFollowing={initialFollowing}
+            isAuthenticated={isAuthenticated}
+            size="lg"
+            appearance="outlined-block"
+            label="Notify me"
+          />
+        </div>
+      ) : null}
       {showAgentForm && registerToBid ? (
         <div id="register-to-bid" className="scroll-mt-[calc(var(--header-height)+1rem)] pt-1">
           <SaleroomRegisterToBid

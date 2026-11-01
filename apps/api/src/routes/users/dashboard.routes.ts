@@ -1,6 +1,7 @@
 import {
   accountBidsQuerySchema,
   listMyConditionReportRequestsQuerySchema,
+  lotStatesQuerySchema,
 } from "@auction/validators";
 import { respondUserHttpJson } from "../../lib/user-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
@@ -31,6 +32,32 @@ export function attachUserDashboardRoutes(r: UserHono, deps: UserRouteDeps): voi
     const response = await container.userRoutes.dashboardHttp.listBids({ userId });
     return respondUserHttpJson(c, response);
   });
+
+  /**
+   * How the acting account stands on up to 60 lots, for the state lines on cards. Loaded after
+   * the page renders, so a short private cache is enough; only lots with a bid appear.
+   */
+  r.get(
+    "/me/lot-states",
+    requireAuth,
+    container.userRoutes.requireBuyingAccount,
+    zValidator("query", lotStatesQuerySchema),
+    async (c) => {
+      const account = buyingAccountOf(c.get("legalEntityContext"));
+      if (!account) return c.json({ error: "insufficient_entity_role" }, 403);
+      const { lotIds } = c.req.valid("query");
+      const response = await container.userRoutes.lotStatesHttp.list({
+        actor: {
+          userId: c.get("userId") as string,
+          legalEntityId: account.legalEntityId,
+          memberRole: account.role,
+        },
+        lotIds,
+      });
+      c.header("Cache-Control", "private, max-age=15");
+      return respondUserHttpJson(c, response);
+    },
+  );
 
   r.get("/me/portfolio", requireAuth, async (c) => {
     const userId = c.get("userId") as string;

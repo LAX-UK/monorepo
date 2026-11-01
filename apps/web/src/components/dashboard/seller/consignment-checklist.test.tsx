@@ -21,6 +21,7 @@ function renderChecklist(
 ) {
   const list = computeConsignmentChecklist({
     submissionStatus: "approved",
+    lotStatus: null,
     accountKind: ctx.accountKind,
     identity: "required",
     agreement: { proposed: true, accepted: false },

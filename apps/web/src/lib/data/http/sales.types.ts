@@ -14,7 +14,8 @@ export type ListSalesQuery = {
   categoryId?: string;
   limit?: number;
   offset?: number;
-  sort?: "createdDesc" | "startAsc";
+  /** `endDesc`: most recently ended first (results). */
+  sort?: "createdDesc" | "startAsc" | "endDesc";
 };
 
 export type {

@@ -18,6 +18,17 @@ export async function getServerCategoryReader(): Promise<CategoryReader> {
   };
   return {
     list,
+    async listWithPublishedLots() {
+      const res = await client.categories["with-published-lots"].$get();
+      await throwIfNotOk(res, "categories");
+      const body = await readJsonBody(res);
+      const { rows } = readListEnvelope(
+        body,
+        categoryRowSchema,
+        "GET /categories/with-published-lots",
+      );
+      return rows;
+    },
     async tree(): Promise<CategoryNode[]> {
       const categories = await list();
       const nodes = new Map<string, CategoryNode>();

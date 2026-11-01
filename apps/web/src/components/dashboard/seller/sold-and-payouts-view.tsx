@@ -102,7 +102,8 @@ function PayoutListRow({ payout }: { payout: PayoutRow }) {
       meta={[payout.period]}
       figures={[
         { id: "gross", value: payout.gross, label: "sales" },
-        { id: "fees", value: payout.fees, label: "commission and fees" },
+        // The figure cells are a fixed width, so the label stays one short word (commission is a fee).
+        { id: "fees", value: payout.fees, label: "fees" },
       ]}
       aligned
       status={
@@ -206,6 +207,25 @@ export function SoldAndPayoutsView({
             : "An owner or admin adds the bank account we pay sale proceeds into."}
         </Notice>
       ) : null}
+      {vm.destination.bankFailed ? (
+        <Notice
+          tone="warning"
+          title="A payout couldn't be paid into your bank account"
+          {...(setup
+            ? {
+                actions: (
+                  <ButtonLink href={setup.href} Link={Link}>
+                    Change bank account
+                  </ButtonLink>
+                ),
+              }
+            : {})}
+        >
+          {setup
+            ? "Add another account and we'll send it again."
+            : "An owner or admin adds another account, and we'll send it again."}
+        </Notice>
+      ) : null}
       {problem ? (
         <Notice tone="warning" title="A payout didn't go through">
           We're already on it and will email you once it is sent again. Nothing is needed from you.
@@ -254,6 +274,9 @@ export function SoldAndPayoutsView({
             />
           ) : (
             <>
+              {vm.destination.bank ? (
+                <p className="text-lax-13 text-lax-muted">Payouts go to {vm.destination.bank}.</p>
+              ) : null}
               <RecordList aria-label="Payouts">
                 {payouts.map((payout) => (
                   <PayoutListRow key={payout.id} payout={payout} />

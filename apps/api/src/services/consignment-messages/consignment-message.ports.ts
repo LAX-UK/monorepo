@@ -58,3 +58,15 @@ export interface IConsignmentReplyDelivery {
   schedule(messageId: string, at: Date): Promise<void>;
   cancel(messageId: string): Promise<void>;
 }
+
+/**
+ * Moves a consignment's thread and ownership together, and records it. Used by the inbox, the
+ * thread page and the consignment page, so all three leave the same trail.
+ */
+export interface IConsignmentAssignment {
+  assign(
+    actorUserId: string,
+    submissionId: string,
+    target: { assignedToUserId: string | null; covering: boolean; coveringUntil?: Date | null },
+  ): Promise<"changed" | "unchanged" | "no_thread">;
+}

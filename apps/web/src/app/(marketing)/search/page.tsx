@@ -116,7 +116,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
     getServerCategoryReader().catch(() => null),
     getServerWatchedLotIdSet(),
   ]);
-  const categories = catReader ? await catReader.list().catch(() => []) : [];
+  const categories = catReader ? await catReader.listWithPublishedLots().catch(() => []) : [];
 
   const layoutView = await resolveMarketingLayoutView({
     routeKey: "search",
@@ -281,7 +281,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
             title="Search lots"
             titleSize="section"
             className="pb-6 pt-0 md:pb-8"
-            description="Browse live inventory by title, medium, and category. Save lots to your watchlist to track them from your dashboard."
+            description="Browse live inventory by title, medium, and category. Save lots to your watch list to follow them in Watching."
             meta={
               !loadError ? (
                 <p className="font-label text-xs font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">

@@ -1,4 +1,5 @@
 import { formatMoney } from "@/lib/format-currency";
+import { lotShowsBidAction } from "@/lib/lot/lot-bid-action";
 import { lotDetailsReserveLine } from "@/lib/lot/reserve-presentation";
 import type { Lot, PublicLotView } from "@auction/types";
 import Link from "next/link";
@@ -27,6 +28,8 @@ export function LotDetailsInline({
   variant = "default",
 }: Props) {
   const embedded = variant === "accordion";
+  // Once the lot has ended the live figures (next bid, reserve progress) no longer apply.
+  const biddingOpen = lotShowsBidAction(lot.status);
   const specParts = [lot.auctionType.replaceAll("_", " "), lot.medium, lot.dimensions].filter(
     Boolean,
   );
@@ -61,10 +64,16 @@ export function LotDetailsInline({
           </li>
         ) : null}
         <li>Opening bid: {formatMoney(lot.startingPrice)}</li>
-        <li>Current high bid: {formatMoney(currentPrice)}</li>
-        <li>Minimum next bid: {formatMoney(minNextBid)}</li>
-        <li>Reserve: {lotDetailsReserveLine(hasReserve)}</li>
-        <li>Closes: {saleEndLocalLabel}</li>
+        {biddingOpen ? (
+          <>
+            <li>Current high bid: {formatMoney(currentPrice)}</li>
+            <li>Minimum next bid: {formatMoney(minNextBid)}</li>
+            <li>Reserve: {lotDetailsReserveLine(hasReserve)}</li>
+          </>
+        ) : null}
+        <li>
+          {biddingOpen ? "Closes" : "Closed"}: {saleEndLocalLabel}
+        </li>
         <li>
           Buyer&apos;s premium: {((Number(lot.buyerPremiumRate) || 0) * 100).toFixed(0)}% on the
           hammer

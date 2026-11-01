@@ -6,7 +6,7 @@ import { getTableColumns } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { LATE_REGISTERED_FOLDER_MILLIS } from "./late-registered-migrations.js";
 import { WORKER_FULL_TABLES } from "./migrate-roles.js";
-import { RELEASE_TO_MAIN_SQL_MAPPING } from "./release-lineage-mapping.js";
+import { RELEASE_LINEAGE_ADOPTIONS } from "./release-lineage-mapping.js";
 import { atgAuctionLink, atgLotLink } from "./schema/atg-sync.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -31,7 +31,7 @@ describe("migration 0131a atg sync links contract", () => {
   });
 
   it("is byte-identical to release 0132_atg_sync_links so production's ledger hash matches", () => {
-    const mapping = RELEASE_TO_MAIN_SQL_MAPPING.find(
+    const mapping = RELEASE_LINEAGE_ADOPTIONS.find(
       (candidate) => candidate.releaseTag === "0132_atg_sync_links",
     );
     expect(mapping?.mainTag).toBe(TAG);

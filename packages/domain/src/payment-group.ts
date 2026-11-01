@@ -139,17 +139,3 @@ export function attributeGroupRefunds(
   }
   return { refundedPenceByPayment, unattributedPence };
 }
-
-/**
- * How a dispute on a group's payment falls on its invoices. A dispute of the whole payment falls
- * on every invoice in full. A dispute of part of it does not say which invoices it is about, so
- * nothing is assumed: `null` asks the finance team to decide.
- */
-export function allocateGroupDispute(
-  disputedPence: number,
-  members: readonly { paymentId: string; amountPence: number }[],
-): { paymentId: string; amountPence: number }[] | null {
-  const totalPence = members.reduce((sum, m) => sum + m.amountPence, 0);
-  if (members.length === 0 || disputedPence !== totalPence) return null;
-  return members.map((m) => ({ paymentId: m.paymentId, amountPence: m.amountPence }));
-}

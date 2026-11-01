@@ -104,9 +104,15 @@ export function ArtworkWatchToggle({
     }
     if (appearance === "outlined-block") {
       return (
-        <Link href={loginHref} className={cn(lotBtnClass, "whitespace-nowrap", FOCUS_RING)}>
+        // A half-width block cannot hold "Sign in to watch": it shows the same action word as
+        // for a signed-in person, and the sign-in step is said to assistive tech and on arrival.
+        <Link
+          href={loginHref}
+          aria-label={`Sign in to ${outlinedFollowLabel.toLowerCase()}`}
+          className={cn(lotBtnClass, "whitespace-nowrap", FOCUS_RING)}
+        >
           <LogIn className="size-4 shrink-0" aria-hidden />
-          <span className="truncate">{signInLabel}</span>
+          <span>{outlinedFollowLabel}</span>
         </Link>
       );
     }

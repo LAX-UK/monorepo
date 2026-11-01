@@ -168,7 +168,13 @@ export function InboxThreadView({ detail, list, pager, viewer }: Props) {
                 viewerUserId={viewer.userId}
                 assigneeUserId={detail.assignee?.userId ?? null}
                 specialist={detail.specialist}
-                onChoose={(person) => void actions.assign(person, assignOpen === "cover")}
+                onChoose={(person, options) =>
+                  void actions.assign(
+                    person,
+                    assignOpen === "cover",
+                    options?.coveringUntil ?? null,
+                  )
+                }
               />
             ) : null}
             {canClose ? (

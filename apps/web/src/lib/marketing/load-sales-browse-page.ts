@@ -65,11 +65,12 @@ async function loadSaleRowsForTab(
         });
         break;
       case "results":
+        // Results are the record of the market: the most recent sale comes first.
         rows = await getServerSalesList({
           status: "ended",
           limit,
           offset,
-          sort: sortParam,
+          sort: "endDesc",
           ...cat,
         });
         break;

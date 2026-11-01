@@ -1,7 +1,9 @@
 import { mapPressRefToVM } from "@/components/sections/press/mappers";
 import { formatEstimateRange, formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
+import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
 import { lotWasSold } from "@/lib/lot/lot-outcome";
+import { lotPriceLabel } from "@/lib/lot/lot-price-label";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import type {
@@ -262,6 +264,30 @@ function lotSubtitle(lot: Lot): string | null {
   return null;
 }
 
+/** A catalogue card's price, read with the same lifecycle words as the lot page. */
+function catalogPrice(lot: Lot): { label: string; value: string } {
+  const kind: LotLifecycleKind =
+    lot.status === "ended"
+      ? lotWasSold(lot)
+        ? "endedSold"
+        : "endedNoSale"
+      : lot.status === "cancelled"
+        ? "cancelled"
+        : lot.status === "voided"
+          ? "withdrawn"
+          : lot.status === "active"
+            ? "live"
+            : "scheduled";
+  const price = lotPriceLabel(kind);
+  return {
+    label: price.label,
+    value:
+      price.value.kind === "amount"
+        ? formatMoney(lot.currentPrice, lotChargeCurrency(lot))
+        : price.value.text,
+  };
+}
+
 export function mapLotToCardVM(
   lot: Lot,
   opts: {
@@ -278,10 +304,7 @@ export function mapLotToCardVM(
     ? opts.atgState === "live"
       ? { label: "Bidding", value: "On ATG" }
       : { label: "Result", value: lot.hasWinner ? "Sold" : "No sale" }
-    : {
-        label: lot.status === "ended" ? "Final bid" : "Current bid",
-        value: formatMoney(lot.currentPrice, lotChargeCurrency(lot)),
-      };
+    : catalogPrice(lot);
   // Server-rendered relative phrase used as a non-ticking secondary line.
   // Important: scheduled lots count down to start (opens-in), active lots to end (closes-in).
   const closingShort =

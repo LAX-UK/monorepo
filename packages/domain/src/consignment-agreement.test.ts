@@ -163,3 +163,34 @@ describe("agreementAcceptanceHold", () => {
     expect(agreementAcceptanceHold({ kind: "individual", status: "archived" })).toBe("closed");
   });
 });
+
+/** The one table of what each organisation state does to accepting; the API and the page follow it. */
+const ACCEPT_BY_ORGANISATION_STATUS = [
+  ["lead", "checking"],
+  ["docs_requested", "checking"],
+  ["docs_received", "checking"],
+  ["under_review", "checking"],
+  ["connect_pending", "payouts"],
+  ["approved", null],
+  ["restricted", "paused"],
+  ["rejected", "closed"],
+  ["archived", "closed"],
+] as const;
+
+describe("accepting by organisation state", () => {
+  it.each(ACCEPT_BY_ORGANISATION_STATUS)("%s holds accepting as %s", (status, hold) => {
+    const account = { kind: "organisation", status } as const;
+    expect(agreementAcceptanceHold(account)).toBe(hold);
+    const decision = decide({ account });
+    expect(decision.kind).toBe(hold ? "refused" : "accept");
+    if (hold && decision.kind === "refused") expect(decision.reason).toBe("account_on_hold");
+  });
+
+  it("does not refuse an agreement that was already accepted", () => {
+    const decision = decide({
+      agreement: { ...proposed, acceptedAt: new Date() },
+      account: { kind: "organisation", status: "restricted" },
+    });
+    expect(decision.kind).toBe("already_accepted");
+  });
+});

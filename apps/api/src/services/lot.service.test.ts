@@ -1155,6 +1155,92 @@ describe("LotService.listBidsForPublicApi", () => {
   });
 });
 
+describe("LotService.listPublicBidHistory", () => {
+  const bidRow = (over: Partial<Bid>): Bid => ({
+    id: "bid-1",
+    lotId,
+    placedByUserId: "bidder-user",
+    buyerLegalEntityId: "00000000-0000-4000-8000-0000000000be",
+    amount: "10.00",
+    isWinning: true,
+    isAutoBid: false,
+    maxAutoBidAmount: null,
+    createdAt: new Date("2026-11-03T20:00:00.000Z"),
+    ...over,
+  });
+
+  function serviceFor(lot: Lot | null, rows: Bid[], total = rows.length) {
+    const listForLot = vi.fn().mockResolvedValue(rows);
+    const countForLot = vi.fn().mockResolvedValue(total);
+    const svc = new LotService({
+      lotRepo: { findById: vi.fn().mockResolvedValue(lot) } as unknown as ILotRepository,
+      bids: { listForLot, countForLot } as unknown as IBidRepository,
+      watchlist: {} as IWatchlistRepository,
+      jobScheduler: null,
+      lotNotifications: null,
+    });
+    return { svc, listForLot, countForLot };
+  }
+
+  it("is not_found for a missing lot", async () => {
+    const { svc } = serviceFor(null, []);
+    expect(
+      await svc.listPublicBidHistory({ lotId, viewerId: undefined, limitQuery: undefined }),
+    ).toEqual({
+      kind: "not_found",
+    });
+  });
+
+  it("anonymises: amount, channel, time and 'you' only, with the full count", async () => {
+    const { svc } = serviceFor(
+      baseLot,
+      [
+        bidRow({ id: "b2", amount: "12.00", placedByUserId: "me", placedVia: "saleroom" }),
+        bidRow({ id: "b1", amount: "10.00", placedVia: "web" }),
+      ],
+      9,
+    );
+    const r = await svc.listPublicBidHistory({ lotId, viewerId: "me", limitQuery: "2" });
+    expect(r).toEqual({
+      kind: "ok",
+      data: {
+        total: 9,
+        entries: [
+          {
+            amount: "12.00",
+            channel: "room",
+            placedAt: "2026-11-03T20:00:00.000Z",
+            isViewer: true,
+          },
+          {
+            amount: "10.00",
+            channel: "online",
+            placedAt: "2026-11-03T20:00:00.000Z",
+            isViewer: false,
+          },
+        ],
+      },
+    });
+    expect(JSON.stringify(r)).not.toContain("bidder-user");
+  });
+
+  it("shows nothing for an open sealed lot, even to staff", async () => {
+    const sealed: Lot = { ...baseLot, auctionType: "sealed", status: "active" };
+    const { svc, listForLot } = serviceFor(sealed, [bidRow({})]);
+    const r = await svc.listPublicBidHistory({ lotId, viewerId: "admin", limitQuery: undefined });
+    expect(r).toEqual({ kind: "ok", data: { entries: [], total: 0 } });
+    expect(listForLot).not.toHaveBeenCalled();
+  });
+
+  it("keeps a withdrawn lot's history out of sight", async () => {
+    const voided: Lot = { ...baseLot, status: "voided" };
+    const { svc, listForLot } = serviceFor(voided, [bidRow({})]);
+    const r = await svc.listPublicBidHistory({ lotId, viewerId: undefined, limitQuery: undefined });
+    expect(r).toEqual({ kind: "ok", data: { entries: [], total: 0 } });
+    expect(listForLot).not.toHaveBeenCalled();
+  });
+});
+
 describe("LotService.listLotsForPublicApi", () => {
   it("lists, presents images, and masks for viewer role", async () => {
     const list = vi.fn().mockResolvedValue([baseLot]);

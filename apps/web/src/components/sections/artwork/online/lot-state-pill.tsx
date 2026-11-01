@@ -14,7 +14,12 @@ import type { Lot, Sale } from "@auction/types";
 import { cn } from "@auction/ui";
 import { useEffect, useMemo, useState } from "react";
 
-type LotPick = Pick<Lot, "status" | "startTime" | "endTime" | "winnerId" | "currentPrice" | "id">;
+type LotPick = Pick<
+  Lot,
+  "status" | "startTime" | "endTime" | "winnerId" | "currentPrice" | "id"
+> & {
+  hasWinner?: boolean | undefined;
+};
 type SalePick =
   | (Pick<Sale, "status" | "deliveryMode"> & Partial<Pick<Sale, "allowOnlineBidsBeforeGoLive">>)
   | null;

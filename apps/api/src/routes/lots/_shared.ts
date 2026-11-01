@@ -5,13 +5,14 @@ import type { ContainerLotReadRoutesSlice, ContainerLotRouteDepsSlice } from "..
 import type { createOptionalAuth } from "../../middleware/optional-auth.js";
 import type { createRequireAuth } from "../../middleware/require-auth.js";
 import type { createRequireKyc } from "../../middleware/require-kyc.js";
+import type { LegalEntityContext } from "../../middleware/require-legal-entity-context.js";
 
 export type LotHono = Hono<{
   Variables: {
     userId?: string;
     userRole?: string;
     userStaffRoles?: StaffRoles | undefined;
-    legalEntityContext?: { legalEntityId: string };
+    legalEntityContext?: LegalEntityContext;
   };
 }>;
 

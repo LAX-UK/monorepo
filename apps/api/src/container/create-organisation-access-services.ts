@@ -5,6 +5,7 @@ import type { IDomainEventSink } from "../services/domain-event-sink.js";
 import type { IAccessRequestService } from "../services/interfaces/access-request-service.js";
 import type { IMemberManagementService } from "../services/interfaces/member-management.js";
 import type { INotificationFactory } from "../services/interfaces/notification-factory.js";
+import type { IOrganisationNames } from "../services/interfaces/organisation-names.js";
 import type { NotificationDispatcher } from "../services/notification.dispatcher.js";
 import {
   AccessRequestNotifier,
@@ -27,6 +28,7 @@ export function createOrganisationAccessServices(input: {
     "createAccessRequested" | "createAccessRequestDecided"
   >;
   events: IDomainEventSink;
+  organisations: IOrganisationNames;
 }): OrganisationAccessServices {
   const requests = new DrizzleAccessRequestRepository(input.db);
   return {
@@ -38,6 +40,7 @@ export function createOrganisationAccessServices(input: {
         input.recipients,
         input.notificationDispatcher,
         input.notificationFactory,
+        input.organisations,
       ),
       events: input.events,
     }),

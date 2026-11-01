@@ -16,6 +16,8 @@ export type UpdateCategoryInput = (typeof adminUpdateCategoryBodySchema)["_outpu
 
 export interface ICategoryRepository {
   findAll(options?: { includeArchived?: boolean }): Promise<Category[]>;
+  /** Ids of categories that hold at least one published (scheduled, live or ended) lot. */
+  findIdsWithPublishedLots(): Promise<Set<string>>;
   findAllForAdmin(options?: { includeArchived?: boolean }): Promise<AdminCategory[]>;
   findPageForAdmin(options: {
     includeArchived?: boolean;

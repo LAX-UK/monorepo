@@ -15,6 +15,8 @@ export type ChecklistCopyContext = {
   organisationName: string | null;
   /** Where the agreement is read and accepted (an anchor on the consignment page). */
   agreementHref: string;
+  /** Why the account's state holds accepting the agreement, as a line; `null` while it allows it. */
+  agreementHeld?: string | null;
 };
 
 /** How one checklist row reads and where its button goes. */
@@ -102,13 +104,16 @@ const ACTIONS: Record<ConsignmentChecklistItemId, (ctx: Ctx) => { label: string;
 
 /** The words and links for one checklist item. Every item and state is covered by a table. */
 export function checklistItemView(item: ConsignmentChecklistItem, ctx: Ctx): ChecklistItemView {
+  // A held action is not offered; the row says why instead of showing a button that would refuse.
+  const held =
+    item.id === "agreement" && item.state === "action" ? (ctx.agreementHeld ?? null) : null;
   return {
     id: item.id,
     state: item.state,
     title: TITLES[item.id](ctx),
     why: WHY[item.id](ctx, item.state),
     due: item.state === "done" ? "Done" : dueText(item.deadline),
-    action: item.state === "action" ? ACTIONS[item.id](ctx) : null,
-    waiting: item.waitingOn ? WAITING[item.waitingOn](ctx) : null,
+    action: item.state === "action" && !held ? ACTIONS[item.id](ctx) : null,
+    waiting: held ?? (item.waitingOn ? WAITING[item.waitingOn](ctx) : null),
   };
 }

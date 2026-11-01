@@ -1,6 +1,7 @@
-import type { Database } from "@auction/db";
+import { type Database, lotNotDeleted } from "@auction/db";
 import {
   category,
+  lot,
   lotCategories,
   saleCategories,
   submissionCategories,
@@ -22,6 +23,9 @@ import type {
   ICategoryRepository,
   UpdateCategoryInput,
 } from "../interfaces/category.repository.js";
+
+/** Lot states a visitor can see in a catalogue, results or search. */
+const PUBLISHED_LOT_STATUSES = ["scheduled", "active", "ended"] as const;
 
 function mapCategory(r: typeof category.$inferSelect): Category {
   return {
@@ -48,6 +52,15 @@ export class DrizzleCategoryRepository implements ICategoryRepository {
       .where(options.includeArchived ? undefined : eq(category.archived, false))
       .orderBy(asc(category.sortOrder), asc(category.name));
     return rows.map(mapCategory);
+  }
+
+  async findIdsWithPublishedLots(): Promise<Set<string>> {
+    const rows = await this.db
+      .selectDistinct({ categoryId: lotCategories.categoryId })
+      .from(lotCategories)
+      .innerJoin(lot, eq(lot.id, lotCategories.lotId))
+      .where(and(inArray(lot.status, PUBLISHED_LOT_STATUSES), lotNotDeleted()));
+    return new Set(rows.map((row) => row.categoryId));
   }
 
   async findAllForAdmin(options: { includeArchived?: boolean } = {}): Promise<AdminCategory[]> {

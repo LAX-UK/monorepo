@@ -8,6 +8,7 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import { StaffRoleExpiryNotifier } from "../infrastructure/staff-role-expiry.notifier.js";
+import type { ConsignmentThreadSweepService } from "../services/consignment-messages/consignment-thread-sweep.service.js";
 import type { HygieneCronService } from "../services/cron/hygiene-cron.service.js";
 import { PlatformHygieneCronApplicationService } from "../services/finance/platform-hygiene-cron-application.service.js";
 import type { PlatformCronRouteServices } from "../services/interfaces/platform-cron-routes/index.js";
@@ -33,6 +34,7 @@ export type CreatePlatformCronRouteServicesInput = {
   emailService: IEmailService;
   webOrigin: string;
   watchlistReminders: Pick<IWatchlistReminderRepository, "listPending" | "markSent">;
+  consignmentThreadSweep: ConsignmentThreadSweepService;
 };
 
 export function createPlatformCronRouteServices(
@@ -48,6 +50,9 @@ export function createPlatformCronRouteServices(
   return {
     lifecycle: new PlatformLifecycleCronApplicationService(input.redis, input.lifecycleCronService),
     hygiene: new PlatformHygieneCronApplicationService(input.hygieneCronService),
+    consignmentThreads: {
+      sweepConsignmentThreads: () => input.consignmentThreadSweep.sweep(),
+    },
     // One daily job ends expired roles on both admins, with the same notices.
     staffRoles: new StaffRoleExpiryJob([
       new StaffRoleExpiryService(input.staffRoster, expiryNotifier),

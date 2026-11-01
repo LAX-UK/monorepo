@@ -32,9 +32,13 @@ function createTestQueryClient() {
 
 function initialHydrate(): LotBidHydrateData {
   return buildLotBidInitialHydrate({
-    lotId: LOT_ID,
+    initialSnapshot: {
+      currentPrice: "100.00",
+      endTime: new Date("2026-07-01T20:00:00Z"),
+      status: "active",
+      winnerId: null,
+    },
     initialHistory: [],
-    initialCurrentPrice: "100.00",
     initialLeadingBidderId: null,
   });
 }

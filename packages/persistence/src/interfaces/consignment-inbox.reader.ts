@@ -43,6 +43,8 @@ export type ConsignmentInboxRowRecord = {
   unreadFromClient: number;
   specialist: StaffPersonRecord | null;
   covering: StaffPersonRecord | null;
+  /** When that cover ends; null runs until ended. */
+  coveringUntil: Date | null;
 };
 
 export type ConsignmentInboxFacetRecord = { id: string; label: string; count: number };

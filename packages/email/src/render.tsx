@@ -102,6 +102,14 @@ import {
   OrganisationMembershipEndedNoticeEmail,
   membershipEndedSubject as organisationMembershipEndedSubject,
 } from "./templates/organisation-membership-notices.js";
+import {
+  AccessRequestDecidedNoticeEmail,
+  AccessRequestedNoticeEmail,
+  TwoStepReminderNoticeEmail,
+  accessRequestDecidedSubject,
+  accessRequestedSubject,
+  twoStepReminderSubject,
+} from "./templates/organisation-team-notices.js";
 import PasswordChangedElsewhereEmail, {
   subject as passwordChangedElsewhereSubject,
 } from "./templates/password-changed-elsewhere.js";
@@ -393,6 +401,18 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "organisation-membership-ended-notice": {
     subject: organisationMembershipEndedSubject,
     component: (vars) => <OrganisationMembershipEndedNoticeEmail {...vars} />,
+  },
+  "access-requested-notice": {
+    subject: accessRequestedSubject,
+    component: (vars) => <AccessRequestedNoticeEmail {...vars} />,
+  },
+  "access-request-decided-notice": {
+    subject: accessRequestDecidedSubject,
+    component: (vars) => <AccessRequestDecidedNoticeEmail {...vars} />,
+  },
+  "two-step-reminder-notice": {
+    subject: twoStepReminderSubject,
+    component: (vars) => <TwoStepReminderNoticeEmail {...vars} />,
   },
   "legal-entity-submitted-admin-notice": {
     subject: legalEntitySubmittedAdminSubject,

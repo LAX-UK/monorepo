@@ -1,4 +1,6 @@
 import { classifyLotTimerState } from "@/lib/lot/classify-lot-timer-state";
+import { lotWasSold } from "@/lib/lot/lot-outcome";
+import type { LotLifecycleKind as DomainLotLifecycleKind } from "@auction/domain";
 import type { Lot, Sale } from "@auction/types";
 import {
   isSaleroomDeliveryMode,
@@ -6,17 +8,8 @@ import {
   toLotCardTimingVM,
 } from "@auction/validators";
 
-export type LotLifecycleKind =
-  | "preLaunch"
-  | "scheduled"
-  | "live"
-  | "extended"
-  | "liveSaleroom"
-  | "saleroomPaused"
-  | "endedSold"
-  | "endedNoSale"
-  | "cancelled"
-  | "withdrawn";
+/** The kinds, and the copy table keyed by them, live in the domain: one source for every surface. */
+export type LotLifecycleKind = DomainLotLifecycleKind;
 
 export type LotLifecycle = {
   kind: LotLifecycleKind;
@@ -36,7 +29,10 @@ export type LifecycleBadgeVM = {
 type LotLifecycleLot = Pick<
   Lot,
   "status" | "startTime" | "endTime" | "winnerId" | "currentPrice" | "id"
->;
+> & {
+  /** Public lot payloads hide the buyer and say only whether the lot sold. */
+  hasWinner?: boolean | undefined;
+};
 
 type LotLifecycleSale =
   | (Pick<Sale, "status" | "deliveryMode"> & Partial<Pick<Sale, "allowOnlineBidsBeforeGoLive">>)
@@ -73,8 +69,8 @@ export function classifyLotLifecycle(
   }
 
   if (lot.status === "ended") {
-    if (lot.winnerId) {
-      return { kind: "endedSold", msLeft: null, winnerId: lot.winnerId };
+    if (lotWasSold(lot)) {
+      return { kind: "endedSold", msLeft: null, winnerId: lot.winnerId ?? null };
     }
     return { kind: "endedNoSale", msLeft: null };
   }

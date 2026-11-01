@@ -55,8 +55,10 @@ function createSut(categories: Category[]) {
     total: 0,
   });
   const remove = vi.fn().mockResolvedValue(true);
+  const findIdsWithPublishedLots = vi.fn().mockResolvedValue(new Set<string>());
   const repo = {
     findAll,
+    findIdsWithPublishedLots,
     findById,
     findBySlug,
     create,
@@ -78,8 +80,22 @@ function createSut(categories: Category[]) {
     summarizeForAdmin,
     usageFor,
     remove,
+    findIdsWithPublishedLots,
   };
 }
+
+describe("CategoryService.listWithPublishedLots", () => {
+  it("keeps only categories that hold a published lot, so empty placeholders stay off public filters", async () => {
+    const rows = [
+      category({ id: rootId, name: "Drawings", slug: "drawings" }),
+      category({ id: childId, name: "Name of the category", slug: "placeholder" }),
+    ];
+    const { service, findIdsWithPublishedLots } = createSut(rows);
+    findIdsWithPublishedLots.mockResolvedValue(new Set([rootId]));
+
+    await expect(service.listWithPublishedLots()).resolves.toEqual([rows[0]]);
+  });
+});
 
 describe("CategoryService admin list", () => {
   it("delegates paginated listing and global summary to persistence", async () => {

@@ -1,4 +1,4 @@
-import type { ItemSubmissionStatus } from "@auction/types";
+import type { ItemSubmissionStatus, LotStatus } from "@auction/types";
 
 /**
  * "Before your work can go to sale": the three things a seller does after submitting, each
@@ -34,7 +34,7 @@ export type ConsignmentChecklistItem = {
 };
 
 export type ConsignmentChecklist = {
-  /** False for drafts and for consignments that ended (rejected, withdrawn). */
+  /** False for drafts, for consignments that ended, and once the lot's sale is live or over. */
   applies: boolean;
   items: ConsignmentChecklistItem[];
   doneCount: number;
@@ -44,6 +44,8 @@ export type ConsignmentChecklist = {
 
 export type ConsignmentChecklistFacts = {
   submissionStatus: ItemSubmissionStatus;
+  /** The status of the consignment's lot, or `null` while it has none. */
+  lotStatus: LotStatus | null;
   /** Whose consignment it is. An organisation's identity is checked through its documents. */
   accountKind: "personal" | "organisation";
   /** Identity of the person (personal) or verification of the organisation. */
@@ -63,6 +65,16 @@ const CHECKLIST_STATUSES: ReadonlySet<ItemSubmissionStatus> = new Set([
   "approved",
   "converted",
 ]);
+
+/** A lot still on its way to a sale: in preparation or scheduled. Live, ended and cancelled are past it. */
+const PRE_SALE_LOT_STATUSES: ReadonlySet<LotStatus> = new Set(["draft", "scheduled"]);
+
+function isPreSale(facts: ConsignmentChecklistFacts): boolean {
+  return (
+    CHECKLIST_STATUSES.has(facts.submissionStatus) &&
+    (facts.lotStatus === null || PRE_SALE_LOT_STATUSES.has(facts.lotStatus))
+  );
+}
 
 function identityItem(facts: ConsignmentChecklistFacts): ConsignmentChecklistItem {
   const deadline = { kind: "before_specialist_accepts" } as const;
@@ -103,7 +115,7 @@ export function computeConsignmentChecklist(
   const items = [identityItem(facts), agreementItem(facts), payoutsItem(facts)];
   const doneCount = items.filter((item) => item.state === "done").length;
   return {
-    applies: CHECKLIST_STATUSES.has(facts.submissionStatus),
+    applies: isPreSale(facts),
     items,
     doneCount,
     totalCount: items.length,

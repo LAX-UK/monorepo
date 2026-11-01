@@ -2,8 +2,12 @@
 
 import { MarketingUnderlineTabs } from "@/components/marketing/marketing-underline-tabs";
 import { SALE_ANCHOR_STICKY_CLASS } from "@/lib/marketing/chrome";
+import { activeSectionId } from "@/lib/marketing/sale-anchor-active";
 import { cn } from "@auction/ui";
 import { useCallback, useEffect, useState } from "react";
+
+/** Where a section counts as being read: a third of the way down the viewport. */
+const READING_LINE = 1 / 3;
 
 export type SaleAnchorTab = {
   /** Target section id (without the leading #). */
@@ -26,19 +30,28 @@ export function SaleAnchorTabs({ tabs, className }: Props) {
       .filter((el): el is HTMLElement => el != null);
     if (sections.length === 0) return;
 
-    const observer = new IntersectionObserver(
-      (entries) => {
-        const visible = entries
-          .filter((e) => e.isIntersecting)
-          .sort((a, b) => b.intersectionRatio - a.intersectionRatio);
-        if (visible[0]?.target.id) {
-          setActiveId(visible[0].target.id);
-        }
-      },
-      { rootMargin: "-45% 0px -45% 0px", threshold: [0, 0.25, 0.5, 1] },
-    );
-    for (const section of sections) observer.observe(section);
-    return () => observer.disconnect();
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const line = window.innerHeight * READING_LINE;
+      setActiveId(
+        activeSectionId(
+          sections.map((el) => ({ id: el.id, top: el.getBoundingClientRect().top })),
+          line,
+        ),
+      );
+    };
+    const schedule = () => {
+      if (frame === 0) frame = window.requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule);
+    return () => {
+      if (frame !== 0) window.cancelAnimationFrame(frame);
+      window.removeEventListener("scroll", schedule);
+      window.removeEventListener("resize", schedule);
+    };
   }, [tabs]);
 
   const onClick = useCallback((e: React.MouseEvent<HTMLAnchorElement>, id: string) => {

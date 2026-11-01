@@ -16,8 +16,12 @@ async function main() {
   try {
     const lastApplied = await readLastAppliedFolderMillis(pool);
     const ceiling = resolveProductionMigrationThrough(process.env, lastApplied);
-    console.log(`Production migration ceiling: ${ceiling.tag}.`);
-    await runMigrationsPerTransactionThrough(pool, ceiling.folderMillis);
+    console.log(
+      ceiling.folderMillis === null
+        ? `Production migration ceiling: ${ceiling.tag} (every journal migration).`
+        : `Production migration ceiling: ${ceiling.tag}.`,
+    );
+    await runMigrationsPerTransactionThrough(pool, ceiling.folderMillis ?? undefined);
     // Re-applies `api_app` / `auth_app` / `worker_app` table + column grants (see migrate-roles.ts).
     // DigitalOcean App Platform PRE_DEPLOY runs this script on each release.
     await applyApplicationRoleGrants(url);

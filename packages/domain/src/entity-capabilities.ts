@@ -113,6 +113,20 @@ const ENTITY_CAPABILITY_RULES = {
     access: "read",
     roles: ["owner", "admin", "finance", "viewer", "buyer_agent"],
   },
+  /**
+   * Email the members who don't have two-step on a reminder to turn it on. The people who see who
+   * has it on send it; it changes nothing, so admins may send it as well as owners.
+   */
+  "entity.security.remind": { access: "write", roles: ["owner", "admin"], denyImpersonation: true },
+  /** See how buyers and LAX reach the organisation: its contact email, phone and website. */
+  "entity.contact.read": {
+    access: "read",
+    roles: ["owner", "admin", "finance", "consignor", "viewer", "buyer_agent"],
+  },
+  /** Change the organisation's contact details; they are not checked, so they change in place. */
+  "entity.contact.manage": { access: "write", roles: ["owner", "admin"] },
+  /** See when each member was last active (the date only). */
+  "entity.members.last_active.read": { access: "read", roles: ["owner", "admin"] },
 } as const satisfies Record<string, CapabilityRule>;
 
 export type EntityCapability = keyof typeof ENTITY_CAPABILITY_RULES;

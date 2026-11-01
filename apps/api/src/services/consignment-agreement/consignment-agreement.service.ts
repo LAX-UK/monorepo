@@ -16,6 +16,7 @@ import type {
   ConsignmentAgreementProposalInput,
   ConsignmentAgreementView,
   ItemSubmission,
+  LegalEntity,
   StaffConsignmentView,
 } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
@@ -35,6 +36,10 @@ export type ConsignmentAgreementServiceDeps = {
   recipients: ILegalEntityNotificationRecipientReader | null;
   events: IDomainEventSink | null;
   sellerIdentity?: ISellerIdentityReader | null;
+  /** The account's kind and status, so its state can hold accepting. */
+  legalEntities?: {
+    findById(id: string): Promise<Pick<LegalEntity, "kind" | "status"> | null>;
+  } | null;
   now?: () => Date;
 };
 
@@ -66,6 +71,7 @@ const REFUSAL_STATUS = {
   not_proposed: 409,
   incomplete_terms: 409,
   forbidden_role: 403,
+  account_on_hold: 403,
   stale_terms: 409,
 } as const;
 
@@ -191,6 +197,7 @@ export class ConsignmentAgreementService implements IConsignmentAgreementService
       actingLegalEntityId: seller.legalEntityId,
       actor: seller.actor,
       termsVersion,
+      account: (await this.deps.legalEntities?.findById(seller.legalEntityId)) ?? null,
     });
     if (decision.kind === "refused") {
       return err(new SubmissionError(decision.message, REFUSAL_STATUS[decision.reason]));

@@ -92,6 +92,8 @@ const LABELS: Record<string, string> = {
   "legal_entity.member_removed": "Member removed",
   "legal_entity.member_left": "Member left",
   "legal_entity.invoice_details_changed": "Invoice details changed",
+  "legal_entity.two_step_reminder_sent": "Two-step reminder sent",
+  "legal_entity.contact_details_changed": "Contact details changed",
   "legal_entity.payout_bank_changed": "Payout bank account changed",
   "legal_entity.member_authorisations_revoked":
     "Buyer agent authorisations ended (member left or changed role)",
@@ -130,6 +132,8 @@ const LABELS: Record<string, string> = {
   "payment.dispute_opened": "Dispute opened",
   "payment.dispute_funds_withdrawn": "Dispute funds withdrawn",
   "payment.dispute_closed": "Dispute closed",
+  "dispute_case.needs_allocation": "Dispute needs allocating to invoices",
+  "dispute_case.allocated": "Dispute allocated to invoices",
 
   "payment_group.created": "Several invoices put into one payment",
   "payment_group.processing": "Bank transfer started for several invoices",

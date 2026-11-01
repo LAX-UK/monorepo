@@ -22,7 +22,7 @@ export function stubCatalogRouteServices(
       listSaleLotsPage: vi.fn(),
       listSaleBidders: vi.fn(),
     },
-    categoryReadHttp: { listCategories: vi.fn() },
+    categoryReadHttp: { listCategories: vi.fn(), listCategoriesWithPublishedLots: vi.fn() },
     pressReadHttp: {
       listCoverage: vi.fn(),
       listDayMedia: vi.fn(),

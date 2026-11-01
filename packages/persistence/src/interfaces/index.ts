@@ -167,6 +167,12 @@ export type {
   OrganisationBiddingLimitRecord,
 } from "./bidding-limits.repository.js";
 
+export type {
+  ILotViewerFactsReader,
+  LotViewerFactsQuery,
+  LotViewerRawFacts,
+} from "./lot-viewer-facts.reader.js";
+
 export type { IGuestPaddleReader } from "./guest-paddle.reader.js";
 
 export type { IPaddleRepository, PaddleRegistrationRow } from "./paddle.repository.js";
@@ -984,6 +990,10 @@ export type {
   InvoiceDetails,
 } from "./organisation-team.readers.js";
 export type {
+  ContactDetails,
+  IContactDetailsRepository,
+} from "./organisation-contact-details.repository.js";
+export type {
   AgreementDocumentFacts,
   IAgreementDocumentFactsReader,
   IPayoutLinesReader,
@@ -1004,6 +1014,7 @@ export type {
 export type {
   AssignThreadInput,
   AssignThreadResult,
+  EndedCover,
   AttachableUpload,
   ClaimedReplyNotice,
   ConsignmentMessageAttachmentRow,
@@ -1049,3 +1060,14 @@ export type {
   PaymentGroupMember,
   PaymentGroupRecord,
 } from "./payment-group.repository.js";
+export type {
+  DisputeAllocationRecord,
+  DisputeCaseRecord,
+  DisputeStripeSnapshot,
+  IDisputeAllocationQueueReader,
+  IDisputeCaseRepository,
+  IDisputePaymentReader,
+  LegacyDisputeLine,
+  NewDisputeAllocation,
+  NewDisputeCase,
+} from "./dispute-case.repository.js";

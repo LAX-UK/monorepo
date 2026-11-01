@@ -1,5 +1,6 @@
 import {
   CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
+  CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME,
   LOT_LIFECYCLE_TICK_QUEUE_NAME,
   PROCESS_NOTIFICATION_OUTBOX_QUEUE_NAME,
   SHOP_STOCK_RECONCILIATION_QUEUE_NAME,
@@ -118,6 +119,25 @@ export const PLATFORM_CRON_QUEUE_REGISTRY = {
       removeOnFail: 50,
     },
     description: "Record staff roles whose end date passed and tell the people involved",
+  },
+  [CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "background",
+    pauseOrder: null,
+    heartbeatKey: "consignment-thread-sweep",
+    dlq: false,
+    showInUi: false,
+    allowUiRetries: false,
+    repeatable: true,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 60_000 },
+      removeOnComplete: 50,
+      removeOnFail: 50,
+    },
+    description:
+      "Tell the account about staff replies whose delivery job was lost, and end covers past their end date",
   },
   [SHOP_STOCK_RECONCILIATION_QUEUE_NAME]: {
     producers: ["worker"],

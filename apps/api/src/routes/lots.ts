@@ -6,6 +6,7 @@ import type { ContainerLotRouteDepsSlice } from "../container.js";
 import { createOptionalKycGate } from "../middleware/buyer-participation-policy.js";
 import { createOptionalAuth } from "../middleware/optional-auth.js";
 import { createRequireAuth } from "../middleware/require-auth.js";
+import type { LegalEntityContext } from "../middleware/require-legal-entity-context.js";
 import type { IAuthenticator } from "../services/interfaces/authenticator.js";
 import { createBidUserRateLimitMiddleware } from "./bids.js";
 import type { LotRouteDeps } from "./lots/_shared.js";
@@ -39,7 +40,7 @@ export function createLotRoutes(
       userId?: string;
       userRole?: string;
       userStaffRoles?: StaffRoles | undefined;
-      legalEntityContext?: { legalEntityId: string };
+      legalEntityContext?: LegalEntityContext;
     };
   }>();
 

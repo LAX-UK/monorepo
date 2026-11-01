@@ -7,6 +7,7 @@ import { CatalogArchiveViewClient } from "@/components/sections/archive/catalog-
 import type { ArchiveLotVM } from "@/components/sections/archive/catalog-archive-views";
 import { PastAuctionsEmpty } from "@/components/sections/archive/past-auctions-grid";
 import { PastAuctionsHeader } from "@/components/sections/archive/past-auctions-header";
+import { archiveTotalVolumeLabel } from "@/lib/archive/archive-total-volume";
 import {
   buildArchivePageQuery,
   countActiveArchiveFilters,
@@ -16,7 +17,6 @@ import { getServerArchiveMetricsReader, getServerLotReader } from "@/lib/catalog
 import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerPublicUserReader } from "@/lib/data/http/users-public.server";
-import { formatMoney } from "@/lib/format-currency";
 import { archiveLotLinkParams } from "@/lib/marketing/catalog-links";
 import { resolveMarketingLayoutView } from "@/lib/preferences/resolve-marketing-layout-view.server";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
@@ -39,15 +39,6 @@ export const metadata: Metadata = metadataForStatic({
 type PageProps = {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 };
-
-function formatArchiveVolume(totalHammer: string): string {
-  const n = Number.parseFloat(totalHammer);
-  if (Number.isNaN(n)) return formatMoney(totalHammer);
-  if (n >= 1_000_000) {
-    return `$${(n / 1_000_000).toFixed(1)}M`;
-  }
-  return formatMoney(totalHammer);
-}
 
 function filtersFallback() {
   return (
@@ -87,7 +78,7 @@ export default async function ArchivePage({ searchParams }: PageProps) {
       fallback: "grid",
     });
 
-    categories = await catReader.list();
+    categories = await catReader.listWithPublishedLots();
     const [summary, count, list] = await Promise.all([
       metricsReader.getEndedSummary(q.endYear),
       metricsReader.countEndedLots({
@@ -141,7 +132,7 @@ export default async function ArchivePage({ searchParams }: PageProps) {
             {jsonLdText}
           </script>
         }
-        hero={<PastAuctionsHeader totalVolumeLabel={formatArchiveVolume(totalHammer)} />}
+        hero={<PastAuctionsHeader totalVolumeLabel={archiveTotalVolumeLabel(totalHammer)} />}
         toolbar={
           <Suspense fallback={filtersFallback()}>
             <ArchivePageToolbar
@@ -179,7 +170,7 @@ export default async function ArchivePage({ searchParams }: PageProps) {
     console.error("[ArchivePage]", err);
     return (
       <MarketingCatalogHubShell
-        hero={<PastAuctionsHeader totalVolumeLabel="—" />}
+        hero={<PastAuctionsHeader totalVolumeLabel={null} />}
         toolbar={
           <Suspense fallback={filtersFallback()}>
             <ArchivePageToolbar query={q} resultCount={0} categories={[]} layoutView="grid" />

@@ -6,20 +6,22 @@ import {
 } from "@/components/marketing/marketing-breadcrumb";
 import { PolicyHubLayout } from "@/components/marketing/policy-hub-layout";
 import {
-  SITE_BUSINESS_ADDRESS_INLINE,
-  SITE_BUSINESS_ADDRESS_LINES,
   SITE_CONTACT_EMAIL,
   SITE_PRESS_EMAIL,
   SITE_SEO_NAME,
   SITE_SUPPORT_EMAIL,
   SITE_TELEPHONE_DISPLAY,
   SITE_TELEPHONE_HREF,
+  legalEntityFor,
 } from "@/lib/brand";
 import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript, localBusinessJsonLd } from "@/lib/seo/structured-data";
 import type { Metadata } from "next";
 import Link from "next/link";
+
+/** LAX Bid's operator: the registered office named on this page. */
+const BID_OPERATOR = legalEntityFor("bid");
 
 export const metadata: Metadata = metadataForStatic({
   title: "Contact",
@@ -104,9 +106,9 @@ export default async function ContactPage({
           </a>
         </p>
 
-        <LegalH2>Registered Office</LegalH2>
+        <LegalH2>Registered office</LegalH2>
         <address className="not-italic">
-          {SITE_BUSINESS_ADDRESS_LINES.map((line) => (
+          {[BID_OPERATOR.name, ...BID_OPERATOR.registeredAddress.lines].map((line) => (
             <span key={line}>
               {line}
               <br />
@@ -127,11 +129,11 @@ export default async function ContactPage({
         <ContactForm intent={intent} sellType={type} />
 
         <aside className="mt-10 border-t border-divider-soft pt-6 font-body text-sm text-on-surface-variant">
-          For bidding support during live phases, signed-in collectors can reach us through their{" "}
-          <Link href="/home" className={MARKETING_PROSE_LINK}>
-            dashboard
-          </Link>{" "}
-          notifications channel. See also{" "}
+          For bidding support during a live sale, signed-in collectors can reach us through{" "}
+          <Link href="/notifications" className={MARKETING_PROSE_LINK}>
+            Notifications
+          </Link>
+          . See also{" "}
           <Link href="/shipping" className={MARKETING_PROSE_LINK}>
             Shipping &amp; Logistics
           </Link>{" "}
@@ -141,7 +143,7 @@ export default async function ContactPage({
           </Link>
           .
           <br />
-          Registered office: {SITE_BUSINESS_ADDRESS_INLINE}
+          Registered office: {BID_OPERATOR.name}, {BID_OPERATOR.registeredAddress.inline}.
         </aside>
       </LegalPage>
     </PolicyHubLayout>

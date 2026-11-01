@@ -1,7 +1,7 @@
 import { ArchiveLotCardHero } from "@/components/sections/archive/archive-lot-card-hero";
 import { PastAuctionCard } from "@/components/sections/archive/past-auction-card";
 import { MediaImage } from "@/components/ui/media-image";
-import { formatMoney } from "@/lib/format-currency";
+import { archiveLotResult } from "@/lib/archive/archive-lot-result";
 import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import {
@@ -102,6 +102,7 @@ export function ArchiveLotListView({
         {items.map((row, i) => {
           const a = row.auction;
           const img = a.images[0];
+          const { hammer } = archiveLotResult(a);
           return (
             <li key={a.id}>
               <MarketingCardReveal index={i} className="block w-full">
@@ -130,14 +131,18 @@ export function ArchiveLotListView({
                       <p className="mt-1 text-xs text-on-surface-variant">{row.sellerName}</p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
-                      Hammer
-                    </p>
-                    <p className="font-headline text-lg tabular-nums text-on-surface">
-                      {formatMoney(a.currentPrice)}
-                    </p>
-                  </div>
+                  {hammer ? (
+                    <div className="text-right">
+                      <p className="font-label text-[10px] uppercase tracking-wider text-on-surface-variant">
+                        {hammer.label}
+                      </p>
+                      <p className="font-headline text-lg tabular-nums text-on-surface">
+                        {hammer.value}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="font-body text-sm text-on-surface-variant">Not sold</p>
+                  )}
                 </Link>
               </MarketingCardReveal>
             </li>

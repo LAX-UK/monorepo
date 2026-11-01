@@ -46,7 +46,7 @@ Organisation payers can settle several invoices with one checkout (`POST /legal-
 | **Webhook events** | The Bid payments webhook endpoint must also send `checkout.session.expired` (it releases a group whose checkout lapsed). Without it, a lapsed group is released only by `payment_intent.canceled`. |
 | **Settlement** | `payment_intent.succeeded` with `metadata.paymentGroupId` marks every invoice paid in one transaction. Any mismatch (amount, currency, an invoice paid or cancelled meanwhile, a released group) applies nothing and raises `payment_group.settlement_refused` plus the `payment_group_settlement_refused_*` metric: reconcile and refund by hand. |
 | **Refunds** | Always per invoice and by amount; the Stripe refund carries `metadata.paymentId`. A refund made in the Stripe dashboard on a group charge must set `paymentId`, or it raises `payment_group.refund_unattributed` and changes no ledger. |
-| **Disputes** | A dispute of the whole charge claws back every invoice in full. A partial dispute raises `payment_group.dispute_needs_allocation`; finance allocates it by hand. |
+| **Disputes** | Any dispute on a combined payment is recorded as a dispute case that needs allocation (`dispute_case.needs_allocation`). No seller payout moves until finance allocates it; each line then moves its seller's net share. |
 | **Double payment** | An invoice paid through an older single checkout after its group was paid logs `payment_group_invoice_paid_twice`: refund one of the two. |
 | **Xero** | One Xero payment per invoice, as for single payments; the Stripe payout still lands as one deposit. |
 | **Rollback** | `0261_rollback.sql` stops while a paid group exists, because grouped invoices share one charge. |
@@ -73,7 +73,7 @@ Manual replay remains available via the same endpoints (see `docs/runbooks/xero-
 | **Webhook status races** | `payment_intent.processing` / `partially_funded` use conditional `applyAuthorizedInTransaction` (pending → authorized only). Cancel paths use `applyCancelledInTransaction`. |
 | **Bank transfer PI orphan** | Re-POST `/payments` when status is already `authorized` returns in-flight state without minting a new Stripe session/PI. |
 | **Async bank transfer failure** | `checkout.session.async_payment_failed` cancels authorized payments so buyers can retry cleanly. |
-| **Dispute clawback timing** | Seller clawback on `charge.dispute.funds_withdrawn`; reversal on `dispute.closed` + `won`. |
+| **Dispute clawback timing** | Every dispute is recorded as a dispute case, matched or not. Seller clawback on `charge.dispute.funds_withdrawn`; reversed once on `charge.dispute.funds_reinstated` or `charge.dispute.closed` + `won`. `charge.dispute.updated` keeps the status and respond-by deadline current. |
 | **Stale authorized payments** | Cron expires `authorized` rows after `PAYMENT_AUTHORIZED_EXPIRE_DAYS` (default 30). |
 | **Admin capture amount parity** | `markCapturedByAdmin` rejects Stripe PI amount ≠ DB invoice total. |
 | **Buyer UX** | Null checkout URL → paid state; payments slice failure surfaced; Stripe redirect retry; manual-review keeps order summary; fulfilment polling retains last snapshot on error. |

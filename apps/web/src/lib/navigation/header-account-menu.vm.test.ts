@@ -103,7 +103,7 @@ describe("buildHeaderAccountMenu", () => {
 
   it("carries what is due to the matching pages", () => {
     const links = menu({
-      attention: { outbidLots: ["14"], paymentsDue: 1, unreadNotifications: 3 },
+      attention: { outbidLots: ["14"], paymentsDue: 1, unreadNotifications: 3, groups: [] },
     }).sections.flatMap((s) => s.links);
     const counts = Object.fromEntries(links.map((l) => [l.id, l.count?.label ?? null]));
     expect(counts).toMatchObject({

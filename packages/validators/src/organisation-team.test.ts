@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   organisationActivityQuerySchema,
+  updateContactDetailsSchema,
   updateInvoiceDetailsSchema,
 } from "./organisation-team.js";
 
@@ -51,6 +52,51 @@ describe("updateInvoiceDetailsSchema", () => {
     expect(
       updateInvoiceDetailsSchema.safeParse({ ...base, poReference: "x".repeat(61) }).success,
     ).toBe(false);
+  });
+});
+
+describe("updateContactDetailsSchema", () => {
+  const base = { email: null, phone: null, website: null };
+
+  it("normalises the email and adds https to a bare web address", () => {
+    expect(
+      updateContactDetailsSchema.parse({
+        email: " Hello@Northbank.Gallery ",
+        phone: " +44 20 7946 0321 ",
+        website: "northbank.gallery",
+      }),
+    ).toEqual({
+      email: "hello@northbank.gallery",
+      phone: "+44 20 7946 0321",
+      website: "https://northbank.gallery",
+    });
+  });
+
+  it("keeps a full web address with its path", () => {
+    expect(
+      updateContactDetailsSchema.parse({ ...base, website: "http://northbank.gallery/visit/" })
+        .website,
+    ).toBe("http://northbank.gallery/visit");
+  });
+
+  it("clears every field with empty values", () => {
+    expect(updateContactDetailsSchema.parse({ email: "", phone: " ", website: "" })).toEqual(base);
+  });
+
+  it.each([
+    ["email", "nope"],
+    ["phone", "call us"],
+    ["phone", "12345"],
+    ["phone", "+44 1234 5678 9012 3456"],
+    ["website", "javascript:alert(1)"],
+    ["website", "localhost"],
+    ["website", "https://user:pass@northbank.gallery"],
+  ])("refuses %s %j", (field, value) => {
+    expect(updateContactDetailsSchema.safeParse({ ...base, [field]: value }).success).toBe(false);
+  });
+
+  it("refuses unknown fields", () => {
+    expect(updateContactDetailsSchema.safeParse({ ...base, fax: "1" }).success).toBe(false);
   });
 });
 
