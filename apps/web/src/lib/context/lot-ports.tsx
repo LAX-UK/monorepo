@@ -1,9 +1,8 @@
 "use client";
 
 import { useRealtimeHealthPortOptional } from "@/lib/connection/realtime-health-provider";
-import type { AbsenteeBidWriter, AutoBidWriter, BidWriter } from "@/lib/data/contracts";
+import type { AbsenteeBidWriter, BidWriter } from "@/lib/data/contracts";
 import { createHttpAbsenteeBidWriter } from "@/lib/data/http/absentee-bid";
-import { createHttpAutoBidWriter } from "@/lib/data/http/auto-bid";
 import { createHttpBidWriter } from "@/lib/data/http/bids";
 import type { LotRealtimePort, RealtimeHealthPort } from "@/lib/realtime/contracts";
 import { createSocketLotRealtime } from "@/lib/realtime/socket-adapter";
@@ -12,7 +11,6 @@ import { type ReactNode, createContext, useContext, useMemo } from "react";
 
 export type LotPortsValue = {
   bidWriter: BidWriter;
-  autoBidWriter: AutoBidWriter;
   absenteeBidWriter: AbsenteeBidWriter;
   realtime: LotRealtimePort;
   health: RealtimeHealthPort;
@@ -23,7 +21,6 @@ const LotPortsContext = createContext<LotPortsValue | null>(null);
 export function LotPortsProvider({
   children,
   bidWriter,
-  autoBidWriter,
   absenteeBidWriter,
   realtime,
   health,
@@ -31,7 +28,6 @@ export function LotPortsProvider({
 }: {
   children: ReactNode;
   bidWriter?: BidWriter;
-  autoBidWriter?: AutoBidWriter;
   absenteeBidWriter?: AbsenteeBidWriter;
   realtime?: LotRealtimePort;
   health?: RealtimeHealthPort;
@@ -43,12 +39,11 @@ export function LotPortsProvider({
   const value = useMemo<LotPortsValue>(
     () => ({
       bidWriter: bidWriter ?? createHttpBidWriter(actingEntityId),
-      autoBidWriter: autoBidWriter ?? createHttpAutoBidWriter(actingEntityId),
       absenteeBidWriter: absenteeBidWriter ?? createHttpAbsenteeBidWriter(actingEntityId),
       realtime: realtime ?? createSocketLotRealtime(),
       health: health ?? contextHealth ?? createSocketHealthAdapter(),
     }),
-    [bidWriter, autoBidWriter, absenteeBidWriter, realtime, health, contextHealth, actingEntityId],
+    [bidWriter, absenteeBidWriter, realtime, health, contextHealth, actingEntityId],
   );
   return <LotPortsContext.Provider value={value}>{children}</LotPortsContext.Provider>;
 }

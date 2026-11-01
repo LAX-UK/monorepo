@@ -48,15 +48,6 @@ export type RpcApp = {
           header?: Record<string, string>;
         }) => Promise<Response>;
       };
-      "auto-bid": {
-        $get: (args: { param: { id: string } }) => Promise<Response>;
-        $put: (args: {
-          param: { id: string };
-          json: { maxAutoBidAmount: number; autoBidStepAmount: number };
-          header?: Record<string, string>;
-        }) => Promise<Response>;
-        $delete: (args: { param: { id: string } }) => Promise<Response>;
-      };
     };
   };
   sales: {

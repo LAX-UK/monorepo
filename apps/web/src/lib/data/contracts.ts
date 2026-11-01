@@ -119,46 +119,6 @@ export type AutoBidSettings = {
   isActive: boolean;
 };
 
-/** Opening min bid returned when setAutoBid places the first bid on a lot. */
-export type AutoBidPlacedBid = {
-  id: string;
-  amount: string;
-  bidderId?: string | null;
-  placedByUserId?: string | null;
-  maxAutoBidAmount?: string | null;
-  autoBidStepAmount?: string | null;
-};
-
-export type AutoBidMutationResult =
-  | { ok: true; settings: AutoBidSettings; placedBid?: AutoBidPlacedBid }
-  | {
-      ok: false;
-      error: string;
-      status: number;
-      code?: string | null;
-      kycFeedback?: PlaceBidResult extends { ok: false } ? PlaceBidResult["kycFeedback"] : never;
-    };
-
-export interface AutoBidWriter {
-  getAutoBid(lotId: string): Promise<AutoBidSettings | null>;
-  setAutoBid(input: {
-    lotId: string;
-    maxAutoBidAmount: number;
-    autoBidStepAmount: number;
-    idempotencyKey?: string;
-  }): Promise<AutoBidMutationResult>;
-  clearAutoBid(lotId: string): Promise<
-    | { ok: true }
-    | {
-        ok: false;
-        error: string;
-        status: number;
-        code?: string | null;
-        kycFeedback?: PlaceBidResult extends { ok: false } ? PlaceBidResult["kycFeedback"] : never;
-      }
-  >;
-}
-
 export type SessionUser = {
   id: string;
   email: string;
