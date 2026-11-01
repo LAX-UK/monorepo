@@ -27,6 +27,11 @@ export type DialogProps = {
   wide?: boolean;
   /** Where focus lands on opening; by default the first focusable element. */
   initialFocusRef?: React.RefObject<HTMLElement | null>;
+  /**
+   * Where focus goes on closing when the control that opened the dialog is gone (a button that
+   * the action just replaced). Without it focus would fall back to the page.
+   */
+  returnFocusFallback?: () => HTMLElement | null;
 };
 
 /** Phone first: a bottom sheet; from 768px a centred dialog or a right-hand sheet. */
@@ -58,9 +63,10 @@ export function Dialog({
   placement = "center",
   wide = false,
   initialFocusRef,
+  returnFocusFallback,
 }: DialogProps) {
   const layer = useLayerAttributes();
-  const returnFocus = useReturnFocus(open);
+  const returnFocus = useReturnFocus(open, returnFocusFallback);
   return (
     <DialogPrimitive.Root open={open} onOpenChange={onOpenChange}>
       <DialogPrimitive.Portal>

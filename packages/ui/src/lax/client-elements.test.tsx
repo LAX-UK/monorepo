@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { useState } from "react";
+import { createRef, useState } from "react";
 import { describe, expect, it, vi } from "vitest";
 import {
   Dialog,
@@ -131,6 +131,25 @@ describe("PresetCards", () => {
   });
 });
 
+describe("PresetCards, chosen card", () => {
+  it("hands the chosen card to the caller, so a dialog can put focus on it", () => {
+    const checked = createRef<HTMLButtonElement>();
+    render(
+      <PresetCards
+        value="b"
+        onValueChange={() => {}}
+        label="Bid type"
+        checkedRef={checked}
+        options={[
+          { value: "a", label: "Next bid" },
+          { value: "b", label: "Maximum" },
+        ]}
+      />,
+    );
+    expect(checked.current).toBe(screen.getByRole("radio", { name: "Maximum" }));
+  });
+});
+
 describe("FilterChips", () => {
   it("removes a chip by its own button and moves focus to the next one", () => {
     const onRemove = vi.fn();
@@ -201,6 +220,39 @@ describe("Dialog", () => {
     fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     await vi.waitFor(() => expect(trigger).toHaveFocus());
+  });
+});
+
+describe("Dialog, focus on closing", () => {
+  it("falls back to the given element when the control that opened it is gone", async () => {
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          {open ? null : (
+            <button type="button" onClick={() => setOpen(true)}>
+              Bid
+            </button>
+          )}
+          <div tabIndex={-1} data-testid="area" />
+          <Dialog
+            open={open}
+            onOpenChange={setOpen}
+            title="Place a bid"
+            returnFocusFallback={() => screen.getByTestId("area")}
+          >
+            <p>Body</p>
+          </Dialog>
+        </>
+      );
+    }
+    render(<Harness />);
+    const trigger = screen.getByRole("button", { name: "Bid" });
+    trigger.focus();
+    fireEvent.click(trigger);
+    const dialog = screen.getByRole("dialog", { name: "Place a bid" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Close" }));
+    await vi.waitFor(() => expect(screen.getByTestId("area")).toHaveFocus());
   });
 });
 
