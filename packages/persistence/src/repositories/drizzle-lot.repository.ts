@@ -111,6 +111,9 @@ export class DrizzleLotRepository implements ILotRepository {
           description: input.description ?? null,
           medium: input.medium ?? null,
           dimensions: input.dimensions ?? null,
+          photoIncludesFrame: input.photoIncludesFrame ?? false,
+          framedWidthCm: input.framedWidthCm != null ? String(input.framedWidthCm) : null,
+          framedHeightCm: input.framedHeightCm != null ? String(input.framedHeightCm) : null,
           images,
           auctionType: input.auctionType,
           startingPrice: input.startingPrice,
@@ -295,6 +298,13 @@ export class DrizzleLotRepository implements ILotRepository {
     if (input.description !== undefined) patch.description = input.description ?? null;
     if (input.medium !== undefined) patch.medium = input.medium ?? null;
     if (input.dimensions !== undefined) patch.dimensions = input.dimensions ?? null;
+    if (input.photoIncludesFrame !== undefined) patch.photoIncludesFrame = input.photoIncludesFrame;
+    if (input.framedWidthCm !== undefined) {
+      patch.framedWidthCm = input.framedWidthCm != null ? String(input.framedWidthCm) : null;
+    }
+    if (input.framedHeightCm !== undefined) {
+      patch.framedHeightCm = input.framedHeightCm != null ? String(input.framedHeightCm) : null;
+    }
     if (input.sellerLegalEntityId !== undefined) {
       if (!input.sellerLegalEntityId) throw new Error("seller_legal_entity_id_required");
       patch.sellerLegalEntityId = input.sellerLegalEntityId;

@@ -4,6 +4,7 @@ import {
   createLotBodySchema,
   createLotBodyWithPricingRefineSchema,
   normalizeCategoryIdsInput,
+  refineFramedSize,
   refineLotPricingFields,
 } from "./shared-fields.js";
 
@@ -28,6 +29,8 @@ export const updateLotSchema = z
     refineLotPricingFields(values as Partial<CreateLotBody>, ctx, {
       requireBuyNowWhenTypeSet: values.auctionType === "buy_it_now",
     });
+    // On an update a missing size is "leave as is", so only an explicit half-pair is refused.
+    if ("framedWidthCm" in values || "framedHeightCm" in values) refineFramedSize(values, ctx);
   });
 
 /** Lot rows nested under `POST /sales` (no `saleId`; set server-side). */
