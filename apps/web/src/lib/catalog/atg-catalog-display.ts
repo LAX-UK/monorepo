@@ -2,7 +2,10 @@ import type { LifecycleBadgeVM } from "@/lib/lot/lot-lifecycle";
 import type { Lot, Sale } from "@auction/types";
 import { isAtgOwnedCatalogSale } from "@auction/validators";
 
-type AtgSaleFields = Pick<Sale, "status" | "sellingPlatform" | "atgAuctionState">;
+type AtgSaleFields = Pick<
+  Sale,
+  "status" | "sellingPlatform" | "atgAuctionState" | "atgDistribution"
+>;
 
 /** Live/ended state of an ATG-owned sale, or null for LAX and free sales. */
 export function atgCatalogState(sale: AtgSaleFields | null | undefined): "live" | "ended" | null {
