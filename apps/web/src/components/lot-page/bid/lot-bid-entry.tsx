@@ -219,6 +219,7 @@ export function LotBidEntry({ auction: lot, artistName, gate, buyersPremium }: L
           }}
           terms={buyersPremium}
           agentLimitLeft={viewer.agentLimitLeft}
+          estimateHigh={lot.marketingDetails.estimate?.high ?? null}
           accountName={
             gate.biddingAccount?.kind === "organisation" ? gate.biddingAccount.name : null
           }

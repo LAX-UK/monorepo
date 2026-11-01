@@ -15,6 +15,9 @@ describe("bid dialog state", () => {
       mode: "next",
       shownNextBid: "7250.00",
       maximum: "7250.00",
+      entry: "choose",
+      typedText: "",
+      largeConfirmed: false,
       failure: null,
       attempt: 0,
     });

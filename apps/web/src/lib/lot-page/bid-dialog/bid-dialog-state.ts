@@ -15,6 +15,11 @@ export type BidDialogState = {
   /** The next bid on screen. It only changes in front of the bidder, with a notice saying so. */
   shownNextBid: string;
   maximum: string | null;
+  /** How a maximum is given: picked from the valid amounts, or typed and snapped to a step. */
+  entry: "choose" | "type";
+  typedText: string;
+  /** The bidder confirmed a very large typed maximum. */
+  largeConfirmed: boolean;
   failure: BidFailure | null;
   /** Counts changes to what will be sent. A retry of the same bid keeps the count, and so the key. */
   attempt: number;
@@ -23,6 +28,9 @@ export type BidDialogState = {
 export type BidDialogAction =
   | { type: "chose_mode"; mode: BidMode; ladder: readonly string[] }
   | { type: "chose_maximum"; maximum: string }
+  | { type: "chose_entry"; entry: "choose" | "type" }
+  | { type: "typed"; text: string }
+  | { type: "confirmed_large" }
   | { type: "submitted" }
   | { type: "placed" }
   | { type: "failed"; failure: BidFailure; ladder: readonly string[] }
@@ -40,6 +48,9 @@ export function openBidDialog(input: {
     mode: input.mode,
     shownNextBid: input.nextBid,
     maximum: keepMaximum(input.ladder, null),
+    entry: "choose",
+    typedText: "",
+    largeConfirmed: false,
     failure: null,
     attempt: 0,
   };
@@ -70,6 +81,14 @@ export function reduceBidDialog(state: BidDialogState, action: BidDialogAction):
     case "chose_maximum":
       if (state.phase !== "choosing" || action.maximum === state.maximum) return state;
       return changed(state, { maximum: action.maximum });
+    case "chose_entry":
+      if (state.phase !== "choosing" || action.entry === state.entry) return state;
+      return changed(state, { entry: action.entry, largeConfirmed: false });
+    case "typed":
+      if (state.phase !== "choosing") return state;
+      return changed(state, { typedText: action.text, largeConfirmed: false });
+    case "confirmed_large":
+      return state.phase === "choosing" ? { ...state, largeConfirmed: true } : state;
     case "submitted":
       return state.phase === "choosing" ? { ...state, phase: "submitting", failure: null } : state;
     case "placed":
@@ -104,6 +123,9 @@ export function reduceBidDialog(state: BidDialogState, action: BidDialogAction):
     }
     case "used_amount":
       if (state.phase !== "choosing") return state;
+      if (state.mode === "maximum" && state.entry === "type") {
+        return changed(state, { typedText: action.amount, largeConfirmed: false });
+      }
       return state.mode === "maximum"
         ? changed(state, { maximum: action.amount })
         : changed(state, { shownNextBid: action.amount });

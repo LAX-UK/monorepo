@@ -20,6 +20,15 @@ function input(state: BidDialogState, patch: Partial<BidDialogViewInput> = {}): 
     modes: ["next", "maximum"],
     terms: { kind: "flat", rate: "0.25" },
     agentLimitLeft: null,
+    pricing: {
+      lot: {
+        auctionType: "english",
+        currentPrice: "7000.00",
+        startingPrice: "4200.00",
+        minBidIncrement: "250.00",
+      },
+      estimateHigh: "9000",
+    },
     accountName: null,
     scheduled: false,
     format: { money },
@@ -217,6 +226,52 @@ describe("bid dialog view", () => {
     const view = buildBidDialogView(input(state));
     expect(view.notice?.title).toBe("Someone bid £7,250 first");
     expect(view.confirm).toEqual({ kind: "ready", label: "Confirm bid of £7,500" });
+  });
+
+  it("a typed maximum is snapped down, said aloud, and the summary follows it", () => {
+    let state = reduceBidDialog(idle(), { type: "chose_mode", mode: "maximum", ladder });
+    state = reduceBidDialog(state, { type: "chose_entry", entry: "type" });
+    state = reduceBidDialog(state, { type: "typed", text: "49,600" });
+    const view = buildBidDialogView(input(state));
+    expect(view.maximum?.snapNote).toBe("Your maximum will be £49,500, the nearest valid step.");
+    expect(view.amount).toBe("49500.00");
+    expect(view.summary?.total.value).toBe("£61,875");
+    expect(view.confirm).toEqual({ kind: "ready", label: "Confirm maximum of £49,500" });
+  });
+
+  it("asks once about a very large amount, then lets it through", () => {
+    let state = reduceBidDialog(idle(), { type: "chose_mode", mode: "maximum", ladder });
+    state = reduceBidDialog(state, { type: "chose_entry", entry: "type" });
+    state = reduceBidDialog(state, { type: "typed", text: "95000" });
+    expect(buildBidDialogView(input(state)).maximum?.large).toEqual({ amount: "95000.00" });
+    state = reduceBidDialog(state, { type: "confirmed_large" });
+    const view = buildBidDialogView(input(state));
+    expect(view.maximum?.large).toBeNull();
+    expect(view.confirm.kind).toBe("ready");
+    // Typing again asks again.
+    state = reduceBidDialog(state, { type: "typed", text: "96000" });
+    expect(buildBidDialogView(input(state)).maximum?.large).not.toBeNull();
+  });
+
+  it("holds confirm for an empty, invalid or too-low typed amount", () => {
+    let state = reduceBidDialog(idle(), { type: "chose_mode", mode: "maximum", ladder });
+    state = reduceBidDialog(state, { type: "chose_entry", entry: "type" });
+    expect(buildBidDialogView(input(state)).confirm.kind).toBe("disabled");
+    state = reduceBidDialog(state, { type: "typed", text: "lots" });
+    expect(buildBidDialogView(input(state)).maximum?.error).toContain("Enter an amount in pounds");
+    state = reduceBidDialog(state, { type: "typed", text: "100" });
+    expect(buildBidDialogView(input(state)).maximum?.error).toBe(
+      "Enter at least £7,250, the next bid.",
+    );
+  });
+
+  it("an agent typing past their limit gets the over-limit notice before confirming", () => {
+    let state = reduceBidDialog(idle(), { type: "chose_mode", mode: "maximum", ladder });
+    state = reduceBidDialog(state, { type: "chose_entry", entry: "type" });
+    state = reduceBidDialog(state, { type: "typed", text: "9500" });
+    const view = buildBidDialogView(input(state, { agentLimitLeft: "9000.00" }));
+    expect(view.notice?.remedy).toEqual({ kind: "limit_help" });
+    expect(view.confirm.kind).toBe("disabled");
   });
 
   it("shows no summary when the premium terms are missing", () => {

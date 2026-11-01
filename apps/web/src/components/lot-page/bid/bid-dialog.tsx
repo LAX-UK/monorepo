@@ -1,6 +1,7 @@
 "use client";
 
 import { BidDialogNotice } from "@/components/lot-page/bid/bid-dialog-notice";
+import { BidMaximumField } from "@/components/lot-page/bid/bid-maximum-field";
 import type { BidDialogConfirm, BidDialogSummary } from "@/lib/lot-page/bid-dialog/bid-dialog-view";
 import {
   type BidDialogController,
@@ -9,15 +10,7 @@ import {
   useBidDialog,
 } from "@/lib/lot-page/bid-dialog/use-bid-dialog";
 import type { BidMode } from "@auction/domain";
-import {
-  Button,
-  Dialog,
-  DialogClose,
-  Field,
-  NativeSelect,
-  Notice,
-  PresetCards,
-} from "@auction/ui/lax";
+import { Button, Dialog, DialogClose, Notice, PresetCards } from "@auction/ui/lax";
 import Link from "next/link";
 import { type ReactNode, useEffect, useId, useRef } from "react";
 
@@ -198,14 +191,15 @@ function BidDialogSession({
               if (!view.options) focusRef.current = node?.querySelector("select") ?? null;
             }}
           >
-            <Field label="Your maximum">
-              <NativeSelect
-                value={view.maximum.value ?? ""}
-                disabled={busy}
-                onValueChange={controller.chooseMaximum}
-                options={view.maximum.choices}
-              />
-            </Field>
+            <BidMaximumField
+              maximum={view.maximum}
+              busy={busy}
+              money={input.format.money}
+              onChoose={controller.chooseMaximum}
+              onEntry={controller.chooseEntry}
+              onType={controller.typeMaximum}
+              onConfirmLarge={controller.confirmLarge}
+            />
           </div>
         ) : null}
         {view.summary ? <SummaryBlock summary={view.summary} /> : null}

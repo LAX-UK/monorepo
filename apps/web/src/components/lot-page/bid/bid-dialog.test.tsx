@@ -46,6 +46,7 @@ function setup(
     display: { lotNumber: 4, title: "Estuary, evening", artistName: "Anna Whitcombe" },
     terms: { kind: "flat", rate: "0.25" },
     agentLimitLeft: null,
+    estimateHigh: "9000",
     accountName: null,
     scheduled: false,
     legalEntityId: "entity-1",
@@ -262,6 +263,64 @@ describe("LotBidDialog", () => {
       scheduled: true,
       maximum: "7250.00",
       legalEntityId: "entity-1",
+    });
+  });
+
+  it("typing an amount: snaps down to a valid step and says so before confirming", () => {
+    setup();
+    click(screen.getByRole("radio", { name: /set a maximum bid/i }));
+    click(screen.getByRole("button", { name: "Type an amount" }));
+    const field = screen.getByLabelText("Your maximum");
+    fireEvent.change(field, { target: { value: "9,100" } });
+    expect(
+      screen.getByText("Your maximum will be £9,000, the nearest valid step."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Confirm maximum of £9,000" })).toBeEnabled();
+    expect(screen.getByText("Most you would pay").nextElementSibling).toHaveTextContent("£11,250");
+  });
+
+  it("typing an amount below the next bid: an error on the field and no confirm", () => {
+    setup();
+    click(screen.getByRole("radio", { name: /set a maximum bid/i }));
+    click(screen.getByRole("button", { name: "Type an amount" }));
+    const field = screen.getByLabelText("Your maximum");
+    fireEvent.change(field, { target: { value: "5000" } });
+    expect(screen.getByText("Enter at least £7,250, the next bid.")).toBeInTheDocument();
+    expect(field).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByRole("button", { name: "Confirm maximum" })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+  });
+
+  it("typing over an agent's limit: the over-limit notice shows before confirming", () => {
+    setup(undefined, { agentLimitLeft: "9000.00", accountName: "Northbank Gallery" });
+    click(screen.getByRole("radio", { name: /set a maximum bid/i }));
+    click(screen.getByRole("button", { name: "Type an amount" }));
+    fireEvent.change(screen.getByLabelText("Your maximum"), { target: { value: "9500" } });
+    expect(screen.getByText("This bid is over your limit")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Confirm maximum of £9,500/ })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+  });
+
+  it("a very large amount asks first, and sends the snapped maximum once confirmed", async () => {
+    const { submitter } = setup();
+    click(screen.getByRole("radio", { name: /set a maximum bid/i }));
+    click(screen.getByRole("button", { name: "Type an amount" }));
+    fireEvent.change(screen.getByLabelText("Your maximum"), { target: { value: "125,100" } });
+    expect(screen.getByText("That's a very large maximum")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Confirm maximum of/ })).toHaveAttribute(
+      "aria-disabled",
+      "true",
+    );
+    click(screen.getByRole("button", { name: /Yes, use £125,000/ }));
+    click(screen.getByRole("button", { name: "Confirm maximum of £125,000" }));
+    await waitFor(() => expect(submitter.submit).toHaveBeenCalled());
+    expect(submitter.submit.mock.calls[0]?.[0]).toMatchObject({
+      mode: "maximum",
+      maximum: "125000.00",
     });
   });
 

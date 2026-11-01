@@ -115,6 +115,13 @@ export {
   type BidMode,
 } from "./bid-entry.js";
 export {
+  LARGE_MAXIMUM_FACTOR,
+  isLargeMaximum,
+  parseTypedAmount,
+  snapTypedMaximum,
+  type TypedMaximum,
+} from "./typed-maximum.js";
+export {
   bidPlacedAnnouncement,
   positionAnnouncement,
   type PositionChange,

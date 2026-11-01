@@ -35,6 +35,8 @@ export type UseBidDialogInput = {
   display: BidDialogViewInput["lot"];
   terms: BuyersPremiumTerms | null;
   agentLimitLeft: string | null;
+  /** The lot's high estimate; a very large maximum is measured against it. */
+  estimateHigh: string | null;
   accountName: string | null;
   scheduled: boolean;
   legalEntityId: string | null;
@@ -48,6 +50,9 @@ export type BidDialogController = {
   view: BidDialogView;
   chooseMode: (mode: BidMode) => void;
   chooseMaximum: (maximum: string) => void;
+  chooseEntry: (entry: "choose" | "type") => void;
+  typeMaximum: (text: string) => void;
+  confirmLarge: () => void;
   applyAmount: (amount: string) => void;
   confirm: () => void;
   mode: BidMode;
@@ -91,6 +96,7 @@ export function useBidDialog(input: UseBidDialogInput): BidDialogController {
     modes: input.modes,
     terms: input.terms,
     agentLimitLeft,
+    pricing: { lot, estimateHigh: input.estimateHigh },
     accountName: input.accountName,
     scheduled: input.scheduled,
     format: input.format,
@@ -112,14 +118,14 @@ export function useBidDialog(input: UseBidDialogInput): BidDialogController {
     const current = stateRef.current;
     if (current.phase !== "choosing" || view.confirm.kind === "none") return;
     if (view.confirm.kind === "disabled") return;
-    const amount = current.mode === "maximum" ? current.maximum : current.shownNextBid;
+    const amount = current.mode === "maximum" ? view.amount : current.shownNextBid;
     if (amount === null) return;
     dispatch({ type: "submitted" });
     const outcome = await submitter.submit({
       lotId: lot.id,
       mode: current.mode,
       amount: current.shownNextBid,
-      maximum: current.mode === "maximum" ? current.maximum : null,
+      maximum: current.mode === "maximum" ? view.amount : null,
       seenNextBid: current.shownNextBid,
       idempotencyKey: keyFor(current.attempt),
       scheduled: input.scheduled,
@@ -133,6 +139,7 @@ export function useBidDialog(input: UseBidDialogInput): BidDialogController {
     dispatch({ type: "failed", failure: outcome.failure, ladder });
   }, [
     view.confirm.kind,
+    view.amount,
     submitter,
     lot.id,
     keyFor,
@@ -147,6 +154,9 @@ export function useBidDialog(input: UseBidDialogInput): BidDialogController {
     mode: state.mode,
     submitting: state.phase === "submitting" || state.phase === "placed",
     chooseMode: useCallback((mode) => dispatch({ type: "chose_mode", mode, ladder }), [ladder]),
+    chooseEntry: useCallback((entry) => dispatch({ type: "chose_entry", entry }), []),
+    typeMaximum: useCallback((text) => dispatch({ type: "typed", text }), []),
+    confirmLarge: useCallback(() => dispatch({ type: "confirmed_large" }), []),
     chooseMaximum: useCallback((maximum) => dispatch({ type: "chose_maximum", maximum }), []),
     applyAmount: useCallback((amount) => dispatch({ type: "used_amount", amount }), []),
     confirm: () => void submit(),
