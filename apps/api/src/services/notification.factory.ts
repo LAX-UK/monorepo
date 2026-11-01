@@ -207,29 +207,57 @@ export class NotificationFactory implements INotificationFactory {
     userId: string,
     request: Pick<
       AccessRequestRow,
-      "legalEntityId" | "requesterName" | "requestedRole" | "requestedCapability"
+      "legalEntityId" | "requesterName" | "requestedRole" | "requestedCapability" | "reason"
     >,
+    organisationName?: string | null,
   ): CreateNotificationRow {
     const who = request.requesterName?.trim() || "A member";
-    const what = request.requestedRole
-      ? `the ${roleWords(request.requestedRole)} role`
-      : "more access";
+    const what = requestedWords(request);
     return {
       userId,
       type: "access_requested",
       legalEntityId: request.legalEntityId,
       title: "Someone asked for access",
       message: `${who} asked for ${what}. Open Team to approve or decline.`,
-      meta: {},
+      meta: {
+        ...(organisationName ? { organisationName } : {}),
+        accessRequest: {
+          requesterName: who,
+          requested: what,
+          reason: request.reason?.trim() || null,
+        },
+      },
     };
   }
 
   createAccessRequestDecided(
     userId: string,
-    request: Pick<AccessRequestRow, "legalEntityId" | "status" | "grantedRole" | "decisionNote">,
+    request: Pick<
+      AccessRequestRow,
+      | "legalEntityId"
+      | "status"
+      | "grantedRole"
+      | "decisionNote"
+      | "requesterName"
+      | "requestedRole"
+      | "requestedCapability"
+      | "reason"
+    >,
+    organisationName?: string | null,
   ): CreateNotificationRow {
     const approved = request.status === "approved";
     const note = request.decisionNote?.trim();
+    const meta: NonNullable<CreateNotificationRow["meta"]> = {
+      ...(organisationName ? { organisationName } : {}),
+      accessRequest: {
+        requesterName: request.requesterName?.trim() || "A member",
+        requested: requestedWords(request),
+        reason: request.reason?.trim() || null,
+        approved,
+        grantedRole: approved ? roleWords(request.grantedRole ?? "viewer") : null,
+        note: note || null,
+      },
+    };
     return {
       userId,
       type: "access_request_decided",
@@ -238,7 +266,7 @@ export class NotificationFactory implements INotificationFactory {
       message: approved
         ? `You now have the ${roleWords(request.grantedRole ?? "viewer")} role.${note ? ` ${note}` : ""}`
         : note || "An owner or admin declined it. Ask them if you need it for your work.",
-      meta: {},
+      meta,
     };
   }
 
@@ -339,4 +367,9 @@ const ROLE_WORDS: Record<LegalEntityMemberRole, string> = {
 
 function roleWords(role: LegalEntityMemberRole): string {
   return ROLE_WORDS[role];
+}
+
+/** What an access request asked for, in a sentence: "the buyer agent role", "more access". */
+function requestedWords(request: Pick<AccessRequestRow, "requestedRole">): string {
+  return request.requestedRole ? `the ${roleWords(request.requestedRole)} role` : "more access";
 }

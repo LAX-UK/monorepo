@@ -60,14 +60,26 @@ export interface INotificationFactory {
     userId: string,
     request: Pick<
       AccessRequestRow,
-      "legalEntityId" | "requesterName" | "requestedRole" | "requestedCapability"
+      "legalEntityId" | "requesterName" | "requestedRole" | "requestedCapability" | "reason"
     >,
+    organisationName?: string | null,
   ): CreateNotificationRow;
 
   /** The member's request for access was approved or declined. */
   createAccessRequestDecided(
     userId: string,
-    request: Pick<AccessRequestRow, "legalEntityId" | "status" | "grantedRole" | "decisionNote">,
+    request: Pick<
+      AccessRequestRow,
+      | "legalEntityId"
+      | "status"
+      | "grantedRole"
+      | "decisionNote"
+      | "requesterName"
+      | "requestedRole"
+      | "requestedCapability"
+      | "reason"
+    >,
+    organisationName?: string | null,
   ): CreateNotificationRow;
 
   /** A payout failed or was reversed; LAX is on it and the money is not lost. */

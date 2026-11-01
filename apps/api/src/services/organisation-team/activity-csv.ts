@@ -21,6 +21,7 @@ const KIND_LABEL: Record<ActivityKind, string> = {
   bank_details_changed: "Payout bank account changed",
   invoice_details_changed: "Invoice details changed",
   two_step_policy_changed: "Two-step verification rule changed",
+  two_step_reminder_sent: "Two-step reminder sent",
 };
 
 const ROLE_LABEL: Record<LegalEntityMemberRole, string> = {
@@ -85,6 +86,8 @@ function detailText(entry: ActivityEntryView): string {
         : "";
     case "two_step_policy_changed":
       return d.required ? "Required for every member" : "Each member chooses";
+    case "two_step_reminder_sent":
+      return typeof d.recipient_count === "number" ? `Emailed ${d.recipient_count}` : "";
     default:
       return "";
   }

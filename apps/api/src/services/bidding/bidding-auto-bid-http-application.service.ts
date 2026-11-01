@@ -6,9 +6,14 @@ import {
   type BiddingRouteOutcome,
   biddingRouteFromBidError,
 } from "../interfaces/bidding-routes/bidding-route-http.js";
+import type { IBidRefusalObserver } from "./bid-limit-refusal.notifier.js";
 
 export class BiddingAutoBidHttpApplicationService implements IBiddingAutoBidHttpApplicationService {
-  constructor(private readonly autoBidService: AutoBidService) {}
+  constructor(
+    private readonly autoBidService: AutoBidService,
+    /** Told about refused maximums (for the bidding-limit notices); never delays the answer. */
+    private readonly refusals: IBidRefusalObserver | null = null,
+  ) {}
 
   async getAutoBid(input: {
     lotId: string;
@@ -40,7 +45,18 @@ export class BiddingAutoBidHttpApplicationService implements IBiddingAutoBidHttp
       autoBidStepAmount: input.autoBidStepAmount,
       ...(input.idempotencyKey ? { idempotencyKey: input.idempotencyKey } : {}),
     });
-    if (result.isErr()) return biddingRouteFromBidError(result.error);
+    if (result.isErr()) {
+      void this.refusals
+        ?.refused({
+          placedByUserId: input.placedByUserId,
+          buyerLegalEntityId: entity.value,
+          lotId: input.lotId,
+          amount: input.maxAutoBidAmount,
+          error: result.error,
+        })
+        .catch(() => undefined);
+      return biddingRouteFromBidError(result.error);
+    }
     return { kind: "ok", data: result.value, status: 200 };
   }
 
