@@ -9,7 +9,7 @@ export async function getAdminSaleCover(saleId: string): Promise<CoverView | nul
     cache: "no-store",
   });
   if (res.status === 404) return null;
-  if (!res.ok) throw new Error(`Could not load the sale cover (${res.status})`);
+  if (!res.ok) throw new Error(`The cover settings could not be read (${res.status}).`);
   const body = (await res.json()) as { data?: CoverView };
   if (!body.data) throw new Error("The sale cover came back empty");
   return body.data;
