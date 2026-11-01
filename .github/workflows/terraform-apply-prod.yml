@@ -20,7 +20,7 @@ on:
         required: false
         default: main
       app_image_tag:
-        description: Immutable monorepo SHA for web/api/ws/worker when using prebuilt images
+        description: Immutable monorepo SHA every prebuilt component pins to (ephemeral)
         type: string
         required: false
 concurrency:
@@ -53,6 +53,18 @@ jobs:
       TF_VAR_email_unsubscribe_secret: ${{ secrets.EMAIL_UNSUBSCRIBE_SECRET }}
       TF_VAR_zoho_campaigns_api_key: ${{ secrets.ZOHO_CAMPAIGNS_API_KEY }}
       TF_VAR_zoho_campaigns_list_key: ${{ secrets.ZOHO_CAMPAIGNS_LIST_KEY }}
+      # Zoho CRM stays off until all three OAuth secrets are set (terraform/ephemeral/prod).
+      TF_VAR_zoho_client_id: ${{ secrets.ZOHO_CLIENT_ID }}
+      TF_VAR_zoho_client_secret: ${{ secrets.ZOHO_CLIENT_SECRET }}
+      TF_VAR_zoho_refresh_token: ${{ secrets.ZOHO_REFRESH_TOKEN }}
+      TF_VAR_zoho_crm_sync_mode: ${{ vars.ZOHO_CRM_SYNC_MODE || 'off' }}
+      TF_VAR_zoho_crm_enabled_event_types: ${{ vars.ZOHO_CRM_ENABLED_EVENT_TYPES || '' }}
+      TF_VAR_zoho_crm_auction_pipeline: ${{ vars.ZOHO_CRM_AUCTION_PIPELINE || '' }}
+      TF_VAR_zoho_crm_deal_stage_lot_won: ${{ vars.ZOHO_CRM_DEAL_STAGE_LOT_WON || '' }}
+      TF_VAR_zoho_crm_deal_stage_payment_captured: ${{ vars.ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED || '' }}
+      TF_VAR_zoho_crm_deal_stage_payment_refunded: ${{ vars.ZOHO_CRM_DEAL_STAGE_PAYMENT_REFUNDED || '' }}
+      TF_VAR_zoho_crm_deal_stage_shop_paid: ${{ vars.ZOHO_CRM_DEAL_STAGE_SHOP_PAID || '' }}
+      TF_VAR_zoho_crm_lead_conversion_enabled: ${{ vars.ZOHO_CRM_LEAD_CONVERSION_ENABLED || 'false' }}
       TF_VAR_brevo_api_key: ${{ secrets.BREVO_API_KEY }}
       TF_VAR_brevo_webhook_secret: ${{ secrets.BREVO_WEBHOOK_SECRET }}
       TF_VAR_brevo_list_id: ${{ vars.BREVO_LIST_ID }}
@@ -70,6 +82,34 @@ jobs:
       TF_VAR_stripe_connect_webhook_secret: ${{ secrets.STRIPE_CONNECT_WEBHOOK_SECRET }}
       TF_VAR_stripe_transfers_webhook_secret: ${{ secrets.STRIPE_TRANSFERS_WEBHOOK_SECRET }}
       TF_VAR_stripe_payments_webhook_secret: ${{ secrets.STRIPE_PAYMENTS_WEBHOOK_SECRET }}
+      # --- Shop and lax.art (London Art Exchange Ltd Stripe account). ---
+      TF_VAR_stripe_shop_secret_key: ${{ secrets.STRIPE_SHOP_SECRET_KEY }}
+      TF_VAR_stripe_shop_webhook_secret: ${{ secrets.STRIPE_SHOP_WEBHOOK_SECRET }}
+      TF_VAR_stripe_shop_connect_webhook_secret: ${{ secrets.STRIPE_SHOP_CONNECT_WEBHOOK_SECRET }}
+      TF_VAR_stripe_shop_publishable_key: ${{ secrets.STRIPE_SHOP_PUBLISHABLE_KEY }}
+      TF_VAR_stripe_shop_connect_platform_key: ${{ vars.STRIPE_SHOP_CONNECT_PLATFORM_KEY || 'lax_art' }}
+      TF_VAR_shop_connect_transfers_enabled: ${{ vars.SHOP_CONNECT_TRANSFERS_ENABLED || 'false' }}
+      TF_VAR_shop_portal_ownership_enabled: ${{ vars.SHOP_PORTAL_OWNERSHIP_ENABLED || 'false' }}
+      TF_VAR_shop_admin_enabled: ${{ vars.SHOP_ADMIN_ENABLED || 'false' }}
+      TF_VAR_shop_payouts_enabled: ${{ vars.SHOP_PAYOUTS_ENABLED || 'false' }}
+      TF_VAR_shop_third_party_enabled: ${{ vars.SHOP_THIRD_PARTY_ENABLED || 'false' }}
+      TF_VAR_shop_originals_enabled: ${{ vars.SHOP_ORIGINALS_ENABLED || 'false' }}
+      TF_VAR_shop_merchandise_enabled: ${{ vars.SHOP_MERCHANDISE_ENABLED || 'false' }}
+      TF_VAR_shop_editorial_enabled: ${{ vars.SHOP_EDITORIAL_ENABLED || 'false' }}
+      TF_VAR_art_editorial_enabled: ${{ vars.ART_EDITORIAL_ENABLED || 'false' }}
+      TF_VAR_shop_ops_alert_email: ${{ secrets.OPS_ALERT_EMAIL }}
+      # Attaches shop.lax.art, admin.shop.lax.art and www.thelax.art (storefront launch only).
+      TF_VAR_storefronts_public: ${{ vars.STOREFRONTS_PUBLIC || 'false' }}
+      # --- Identity ---
+      TF_VAR_enable_auth_ssf_delivery: ${{ vars.AUTH_SSF_DELIVERY_ENABLED || 'false' }}
+      TF_VAR_production_migration_through: ${{ vars.PRODUCTION_MIGRATION_THROUGH || '' }}
+      # --- Per-component images: empty inherits app_image_tag, so every component pins one SHA. ---
+      TF_VAR_shop_identity_image_tag: ${{ inputs.app_image_tag }}
+      TF_VAR_shop_image_tag: ${{ inputs.app_image_tag }}
+      TF_VAR_shop_api_image_tag: ${{ inputs.app_image_tag }}
+      TF_VAR_shop_admin_image_tag: ${{ inputs.app_image_tag }}
+      TF_VAR_account_image_tag: ${{ inputs.app_image_tag }}
+      TF_VAR_art_image_tag: ${{ inputs.app_image_tag }}
       TF_VAR_cron_internal_secret: ${{ secrets.CRON_INTERNAL_SECRET }}
       TF_VAR_kyc_threshold_amount: "1000"
       TF_VAR_kyc_threshold_currency: "GBP"
@@ -120,6 +160,12 @@ jobs:
       # persistent layer: auctions.lax.bid proxied through the atg-cookie-shield Worker
       # (token needs Workers Scripts + Workers Routes edit; see docs/integrations/atg.md).
       TF_VAR_atg_white_label_enabled: ${{ vars.ATG_WHITE_LABEL_ENABLED || 'false' }}
+      # persistent layer: planned-maintenance page (Cloudflare Worker) and its staff allow-list,
+      # as an HCL/JSON list, e.g. ["198.51.100.7","2001:db8::/48"].
+      TF_VAR_maintenance_enabled: ${{ vars.MAINTENANCE_ENABLED || 'false' }}
+      TF_VAR_maintenance_allowed_ips: ${{ vars.MAINTENANCE_ALLOWED_IPS || '[]' }}
+      # persistent layer: shop.lax.art / admin.shop.lax.art records once the lax.art zone is in Cloudflare.
+      TF_VAR_lax_art_dns_enabled: ${{ vars.LAX_ART_DNS_ENABLED || 'false' }}
       # --- Prebuilt-image deploys (DOCR). Set APP_DEPLOY_SOURCE_* repo variable to "image". ---
       TF_VAR_app_deploy_source: ${{ vars.APP_DEPLOY_SOURCE_PROD || 'github' }}
       # persistent layer: create the account-level DOCR registry (prod state only).
@@ -134,6 +180,25 @@ jobs:
           ref: ${{ inputs.infra_ref }}
           app-id: ${{ vars.INFRA_REPO_APP_ID }}
           private-key: ${{ secrets.INFRA_REPO_APP_PRIVATE_KEY }}
+      - name: Require Shop Stripe secrets for Stripe-dependent Shop features (ephemeral prod only)
+        if: inputs.layer == 'ephemeral'
+        run: |
+          # Mirrors shop-api (apps/shop-api/src/env.ts): Stripe may be missing only while the
+          # storefronts are private (checkout) and payouts, Connect transfers and originals are off.
+          # Otherwise shop-api refuses to start, which fails the whole deployment.
+          needs_stripe=()
+          [ "${TF_VAR_storefronts_public}" = "true" ] && needs_stripe+=(STOREFRONTS_PUBLIC)
+          [ "${TF_VAR_shop_payouts_enabled}" = "true" ] && needs_stripe+=(SHOP_PAYOUTS_ENABLED)
+          [ "${TF_VAR_shop_connect_transfers_enabled}" = "true" ] && needs_stripe+=(SHOP_CONNECT_TRANSFERS_ENABLED)
+          [ "${TF_VAR_shop_originals_enabled}" = "true" ] && needs_stripe+=(SHOP_ORIGINALS_ENABLED)
+          if [ "${#needs_stripe[@]}" -eq 0 ]; then
+            echo "No Stripe-dependent Shop feature is on; Shop Stripe secrets are optional."
+            exit 0
+          fi
+          if [ -z "${TF_VAR_stripe_shop_secret_key}" ] || [ -z "${TF_VAR_stripe_shop_webhook_secret}" ]; then
+            echo "::error::${needs_stripe[*]} need STRIPE_SHOP_SECRET_KEY and STRIPE_SHOP_WEBHOOK_SECRET in the prod environment."
+            exit 1
+          fi
       - name: App Platform Git branch (ephemeral prod only)
         if: inputs.layer == 'ephemeral'
         run: |
