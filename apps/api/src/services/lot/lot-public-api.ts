@@ -1,6 +1,6 @@
 import { type PublicBidHistory, toPublicBidHistory } from "@auction/domain";
 import type { ListLotsFilter } from "@auction/persistence/interfaces";
-import type { Lot, PublicLotView, StaffRoles, UserRole } from "@auction/types";
+import type { Bid, Lot, PublicLotView, StaffRoles, UserRole } from "@auction/types";
 import { roleHasCapability } from "@auction/types";
 import { resolvePublicLotListFilter, viewerCanSeeNonPublicCatalog } from "@auction/validators";
 import { lotBidderRef } from "../../lib/lot-bidder-ref.js";
@@ -56,6 +56,27 @@ export async function listLotsForPublicApi(
   };
 }
 
+/**
+ * A bid as the public may read it: what happened and when, never who or for which account.
+ * A bidder also sees their own user id and ceilings. Anything not listed here is left out, so a
+ * field added to the bid row later stays private until it is chosen to be shown.
+ */
+function toSafeBidRow(bid: Bid, bidderRef: string, isOwnBid: boolean): LotBidPublicApiRow {
+  return {
+    id: bid.id,
+    lotId: bid.lotId,
+    amount: bid.amount,
+    isWinning: bid.isWinning,
+    isAutoBid: bid.isAutoBid,
+    placedVia: bid.placedVia ?? null,
+    createdAt: bid.createdAt,
+    bidderRef,
+    placedByUserId: isOwnBid ? (bid.placedByUserId ?? null) : null,
+    maxAutoBidAmount: isOwnBid ? bid.maxAutoBidAmount : null,
+    autoBidStepAmount: isOwnBid ? (bid.autoBidStepAmount ?? null) : null,
+  };
+}
+
 export async function listBidsForPublicApi(
   deps: LotServiceDeps,
   input: {
@@ -81,13 +102,11 @@ export async function listBidsForPublicApi(
   const bids = await deps.bids.listForLot(lotId, limit);
   const canSeeBidderIds = roleHasCapability(viewerRole, "auction.manage", vStaff);
   const data: LotBidPublicApiRow[] = bids.map((bid) => {
-    const isOwnBid = Boolean(viewerId && bid.placedByUserId === viewerId);
-    const placedByUserIdForRef = bid.placedByUserId ?? "unknown";
-    return {
-      ...bid,
-      bidderRef: lotBidderRef(lotId, placedByUserIdForRef),
-      placedByUserId: canSeeBidderIds || isOwnBid ? (bid.placedByUserId ?? null) : null,
-    };
+    const bidderRef = lotBidderRef(lotId, bid.placedByUserId ?? "unknown");
+    if (canSeeBidderIds) {
+      return { ...bid, bidderRef, placedByUserId: bid.placedByUserId ?? null };
+    }
+    return toSafeBidRow(bid, bidderRef, Boolean(viewerId && bid.placedByUserId === viewerId));
   });
   return { kind: "ok", data };
 }

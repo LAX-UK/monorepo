@@ -20,6 +20,8 @@ export type PlaceBidInput = {
   amount: number;
   maxAutoBidAmount?: number;
   autoBidStepAmount?: number;
+  /** The next bid the bidder was shown when they confirmed; tells "outbid while confirming" apart. */
+  seenNextBid?: string;
   placement?: PlaceBidPlacement;
   /** Durable idempotency for internal replays (e.g. absentee). */
   internalPlacementKey?: string;
@@ -38,6 +40,8 @@ export type PlaceBidWithIdempotencyInput = {
   amount: number;
   maxAutoBidAmount?: number;
   autoBidStepAmount?: number;
+  /** The next bid the bidder was shown when they confirmed; tells "outbid while confirming" apart. */
+  seenNextBid?: string;
   placedVia?: string;
   telephoneBookingId?: string;
   clerkUserId?: string;

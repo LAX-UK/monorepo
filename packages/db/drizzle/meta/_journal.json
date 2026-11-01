@@ -1886,6 +1886,13 @@
       "breakpoints": true
     },
     {
+      "idx": 269,
+      "version": "7",
+      "when": 1798704000000,
+      "tag": "0269_lot_extended_until",
+      "breakpoints": true
+    },
+    {
       "idx": 270,
       "version": "7",
       "when": 1798790400000,

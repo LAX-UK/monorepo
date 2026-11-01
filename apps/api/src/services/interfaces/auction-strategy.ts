@@ -14,6 +14,8 @@ export type ValidateBidContext = {
   currentWinnerId?: string | null;
   /** Origin of bid placement; operator paths skip self-service-only guards. */
   placedVia?: string | null;
+  /** The next bid the bidder was shown when they confirmed. */
+  seenNextBid?: string | null;
 };
 
 import { isOperatorPlacement } from "@auction/domain";

@@ -81,6 +81,21 @@ async function getDetail(row: Lot, saleRow: Partial<Sale> = sale()) {
 }
 
 describe("GET /lots/:id bidding facts", () => {
+  it("says when a late bid extended the close, and null when none did", async () => {
+    const extended = await getDetail(
+      lot({
+        endTime: new Date("2026-11-03T21:02:00.000Z"),
+        extendedUntil: new Date("2026-11-03T21:02:00.000Z"),
+      }),
+    );
+    expect(extended.body.data).toMatchObject({
+      endTime: "2026-11-03T21:02:00.000Z",
+      extendedUntil: "2026-11-03T21:02:00.000Z",
+    });
+    const plain = await getDetail(lot());
+    expect(plain.body.data).toMatchObject({ extendedUntil: null });
+  });
+
   it("always carries real timing and the server clock", async () => {
     const { res, body } = await getDetail(lot());
     expect(res.status).toBe(200);
