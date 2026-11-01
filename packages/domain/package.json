@@ -7,6 +7,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./cover": {
+      "types": "./dist/cover.d.ts",
+      "default": "./dist/cover.js"
     }
   },
   "scripts": {
