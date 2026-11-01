@@ -6,6 +6,7 @@ import type {
 import type { DomainEventConnection, DomainEventInput } from "@auction/persistence/lib";
 import type {
   Bid,
+  LegalEntityMemberRole,
   Lot,
   LotAttachedToSalePayload,
   LotCancelledPayload,
@@ -63,6 +64,8 @@ export interface IAbsenteeBidService {
     userId: string;
     lotId: string;
     buyerLegalEntityId: string;
+    /** The acting member's role on the account; decides whether the sale needs a registration. */
+    memberRole?: LegalEntityMemberRole | undefined;
     maxAmount: number;
   }): Promise<Result<{ id: string }, AbsenteeBidServiceError>>;
   expireStaleExecutingLeases(): Promise<void>;

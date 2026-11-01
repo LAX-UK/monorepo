@@ -13,7 +13,7 @@ export class SaleRegistrationBidGate {
     saleId: string;
     placedByUserId: string;
     buyerLegalEntityId: string;
-    memberRole: LegalEntityMemberRole;
+    memberRole: LegalEntityMemberRole | undefined;
     effectiveAmount: number;
     operatorBypass: boolean;
   }): Promise<Result<void, BidError>> {
