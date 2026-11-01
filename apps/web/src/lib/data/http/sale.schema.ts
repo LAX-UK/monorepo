@@ -168,12 +168,7 @@ const saleRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transf
     coverImages: zStringArrayFromUnknown.parse(row.coverImages),
     ...(coverImageAssets !== undefined ? { coverImageAssets } : {}),
     ...(coverSlotAssets !== undefined ? { coverSlotAssets } : {}),
-    subtitle: nullableString(row.subtitle),
     homePinOrder: typeof row.homePinOrder === "number" ? row.homePinOrder : null,
-    consignmentDeadline:
-      row.consignmentDeadline == null || row.consignmentDeadline === ""
-        ? null
-        : zCoerceDate.parse(row.consignmentDeadline),
     ...(featuredLotIds.length > 0 ? { featuredLotIds } : {}),
     ...(dayImages !== undefined ? { dayImages } : {}),
     ...(dayImageAssets !== undefined ? { dayImageAssets } : {}),

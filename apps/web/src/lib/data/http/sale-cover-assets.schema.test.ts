@@ -66,9 +66,9 @@ describe("sale rows carry the home cover fields", () => {
 
   it("reads absent fields as none", () => {
     const sale = parseSaleSchema(row);
-    expect(sale.subtitle).toBeNull();
+    expect(sale.subtitle).toBeUndefined();
     expect(sale.homePinOrder).toBeNull();
-    expect(sale.consignmentDeadline).toBeNull();
+    expect(sale.consignmentDeadline).toBeUndefined();
     expect(sale.coverSlotAssets).toBeUndefined();
   });
 });
