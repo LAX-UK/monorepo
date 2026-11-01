@@ -53,6 +53,7 @@ const VIEWS = [
   { id: "finance", label: "Finance", view: "finance" },
   { id: "catalogue", label: "Catalogue", view: "catalogue" },
   { id: "people", label: "People", view: "people" },
+  { id: "operations", label: "Operations", view: "operations" },
 ] as const;
 
 const VIEW_EMPTY: Record<string, string> = {
@@ -60,6 +61,7 @@ const VIEW_EMPTY: Record<string, string> = {
   finance: "No finance events yet",
   catalogue: "No catalogue events yet",
   people: "No people events yet",
+  operations: "No operations events yet",
 };
 
 /** Module-level so the picker does not search again each time the list re-renders. */

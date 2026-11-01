@@ -276,6 +276,16 @@ const envSchema = z
       if (v === undefined || v === "") return undefined;
       return v === "true" || v === true;
     }, z.boolean().optional()),
+    /**
+     * Kill switch for the failed jobs screen: when false, retrying and discarding are refused
+     * while the list stays readable. Operators turn it off during an incident.
+     */
+    FAILED_JOB_ACTIONS_ENABLED: z
+      .preprocess(
+        (v) => (v === undefined || v === "" ? true : v === "true" || v === true),
+        z.boolean(),
+      )
+      .default(true),
     /** Days before `pending` buyer payments auto-expire (cron). */
     PAYMENT_PENDING_EXPIRE_DAYS: z.coerce.number().int().min(1).max(365).default(14),
     /** Days before in-flight `authorized` bank-transfer payments auto-expire (cron). */

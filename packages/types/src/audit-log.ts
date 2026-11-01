@@ -3,7 +3,7 @@
  * view and the web app labels it from the same list.
  */
 
-export const AUDIT_LOG_VIEW_IDS = ["finance", "catalogue", "people"] as const;
+export const AUDIT_LOG_VIEW_IDS = ["finance", "catalogue", "people", "operations"] as const;
 export type AuditLogView = (typeof AUDIT_LOG_VIEW_IDS)[number];
 
 export const AUDIT_LOG_VIEW_PREFIXES: Readonly<Record<AuditLogView, readonly string[]>> = {
@@ -40,6 +40,7 @@ export const AUDIT_LOG_VIEW_PREFIXES: Readonly<Record<AuditLogView, readonly str
     "admin.impersonation_",
     "bid.user_suspended",
   ],
+  operations: ["failed_job."],
 };
 
 export function isAuditLogView(value: string): value is AuditLogView {

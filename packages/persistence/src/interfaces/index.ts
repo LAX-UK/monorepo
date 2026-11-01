@@ -58,6 +58,16 @@ export type {
 } from "./external-account.repository.js";
 
 export type { IFailedJobRepository, FailedJobReplayRow } from "./failed-job.repository.js";
+export type {
+  FailedJobFilter,
+  FailedJobRecord,
+  FailedJobRecordWithPayload,
+  FailedJobReviewView,
+  FailedJobSearch,
+  FailedJobSearchResult,
+  IFailedJobDisposition,
+  IFailedJobReviewReader,
+} from "./failed-job-review.js";
 
 export type { ISaleroomLiveSessionCounter } from "./saleroom-live-session-counter.js";
 
