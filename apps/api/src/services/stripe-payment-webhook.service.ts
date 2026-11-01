@@ -5,6 +5,7 @@ import type {
 import type { IPaymentWriteRepository } from "@auction/persistence/interfaces";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type Stripe from "stripe";
+import type { IDisputeWebhookRecorder } from "./disputes/dispute-case-recorder.js";
 import type { IDomainEventSink } from "./domain-event-sink.js";
 import type { IPaymentCaptureService } from "./interfaces/payment-capture.js";
 import type { IPayoutAdjustmentService } from "./interfaces/payout-adjustment.js";
@@ -13,11 +14,6 @@ import {
   type PaymentGroupWebhookDeps,
   createPaymentWebhookHandlers,
 } from "./stripe-webhook/create-payment-webhook-handlers.js";
-import {
-  handleDisputeClosed,
-  handleDisputeCreated,
-  handleDisputeFundsWithdrawn,
-} from "./stripe-webhook/dispute-handlers.js";
 import type { StripePaymentWebhookDeps } from "./stripe-webhook/payment-webhook-lookup.js";
 import type { PaymentWebhookResult } from "./stripe-webhook/payment-webhook-types.js";
 
@@ -36,6 +32,7 @@ export class StripePaymentWebhookService {
     payoutAdjustments: IPayoutAdjustmentService,
     paymentCapture: IPaymentCaptureService,
     domainEventSink: IDomainEventSink,
+    private readonly disputes: IDisputeWebhookRecorder,
     private readonly paymentGroups: PaymentGroupWebhookDeps | null = null,
   ) {
     this.deps = {
@@ -99,32 +96,36 @@ export class StripePaymentWebhookService {
     return this.handlers.checkoutSessionExpired.handle(event, session);
   }
 
-  async handleDisputeCreated(
+  handleDisputeCreated(
     event: Stripe.Event,
     dispute: Stripe.Dispute,
   ): Promise<PaymentWebhookResult> {
-    const grouped = await this.paymentGroups?.chargeEvents.dispute("created", event, dispute);
-    return grouped ?? handleDisputeCreated(this.deps, event, dispute);
+    return this.disputes.record("created", event, dispute);
   }
 
-  async handleDisputeFundsWithdrawn(
+  handleDisputeUpdated(
     event: Stripe.Event,
     dispute: Stripe.Dispute,
   ): Promise<PaymentWebhookResult> {
-    const grouped = await this.paymentGroups?.chargeEvents.dispute(
-      "funds_withdrawn",
-      event,
-      dispute,
-    );
-    return grouped ?? handleDisputeFundsWithdrawn(this.deps, event, dispute);
+    return this.disputes.record("updated", event, dispute);
   }
 
-  async handleDisputeClosed(
+  handleDisputeFundsWithdrawn(
     event: Stripe.Event,
     dispute: Stripe.Dispute,
   ): Promise<PaymentWebhookResult> {
-    const grouped = await this.paymentGroups?.chargeEvents.dispute("closed", event, dispute);
-    return grouped ?? handleDisputeClosed(this.deps, event, dispute);
+    return this.disputes.record("funds_withdrawn", event, dispute);
+  }
+
+  handleDisputeFundsReinstated(
+    event: Stripe.Event,
+    dispute: Stripe.Dispute,
+  ): Promise<PaymentWebhookResult> {
+    return this.disputes.record("funds_reinstated", event, dispute);
+  }
+
+  handleDisputeClosed(event: Stripe.Event, dispute: Stripe.Dispute): Promise<PaymentWebhookResult> {
+    return this.disputes.record("closed", event, dispute);
   }
 
   async handleChargeRefunded(

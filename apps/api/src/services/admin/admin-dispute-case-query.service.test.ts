@@ -5,6 +5,8 @@ import { AdminDisputeCaseQueryService } from "./admin-dispute-case-query.service
 
 const mockListRedacted = vi.fn<IAdminDomainEventQueryService["listRedacted"]>();
 
+const allocationQueue = { countAwaitingAllocation: vi.fn(async () => 0) };
+
 const mockDb = {
   select: vi.fn(),
 };
@@ -109,6 +111,7 @@ describe("AdminDisputeCaseQueryService", () => {
     const svc = new AdminDisputeCaseQueryService(
       { listRedacted: mockListRedacted },
       enrichmentReader,
+      allocationQueue,
     );
 
     const result = await svc.listCases({ limit: 1, offset: 0 });
@@ -126,11 +129,25 @@ describe("AdminDisputeCaseQueryService", () => {
     const svc = new AdminDisputeCaseQueryService(
       { listRedacted: mockListRedacted },
       enrichmentReader,
+      allocationQueue,
     );
 
     await svc.countOpenCases();
     await svc.countOpenCases();
     expect(mockListRedacted).toHaveBeenCalledTimes(1);
+  });
+
+  it("counts cases waiting for allocation as open", async () => {
+    chainSelect([]);
+    allocationQueue.countAwaitingAllocation.mockResolvedValueOnce(2);
+    const svc = new AdminDisputeCaseQueryService(
+      { listRedacted: mockListRedacted },
+      new DrizzleAdminDisputeCaseEnrichmentReader(mockDb as never),
+      allocationQueue,
+    );
+
+    // dp_1 is open and dp_2 was won, plus two cases nobody has allocated yet.
+    expect(await svc.countOpenCases()).toBe(3);
   });
 
   it("filters open cases only", async () => {
@@ -139,6 +156,7 @@ describe("AdminDisputeCaseQueryService", () => {
     const svc = new AdminDisputeCaseQueryService(
       { listRedacted: mockListRedacted },
       enrichmentReader,
+      allocationQueue,
     );
 
     const result = await svc.listCases({ limit: 50, offset: 0, status: "open" });

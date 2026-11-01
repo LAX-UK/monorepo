@@ -1,6 +1,8 @@
 import { randomUUID } from "node:crypto";
 import { createDb } from "@auction/db";
 import {
+  disputeAllocation,
+  disputeCase,
   legalEntity,
   lot,
   payment,
@@ -10,12 +12,14 @@ import {
   processedStripeEvents,
 } from "@auction/db/schema";
 import {
+  DrizzleDisputeCaseRepository,
+  DrizzleDisputePaymentReader,
   DrizzlePaymentGroupRepository,
   DrizzlePaymentRepository,
   DrizzlePaymentWebhookLookupReader,
   DrizzlePayoutRepository,
 } from "@auction/persistence/repositories";
-import { eq, inArray, like } from "drizzle-orm";
+import { and, eq, inArray, like, sql } from "drizzle-orm";
 import type Stripe from "stripe";
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { tryClaimProcessedStripeEvent } from "../../lib/stripe-processed-event.js";
@@ -25,6 +29,9 @@ import {
   deleteIdentityUserFixtures,
   seedIdentityUserFixtures,
 } from "../../testing/identity-user-fixtures.js";
+import { DisputeAllocationService } from "../disputes/dispute-allocation.service.js";
+import { DisputeCaseRecorder } from "../disputes/dispute-case-recorder.js";
+import { DisputeLineEffects } from "../disputes/dispute-line-effects.js";
 import { PaymentCaptureService } from "../payment/payment-capture.service.js";
 import { PayoutAdjustmentService } from "../payout/payout-adjustment.service.js";
 import { StripePaymentWebhookService } from "../stripe-payment-webhook.service.js";
@@ -111,6 +118,24 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     events,
     claims,
   });
+  const disputeCases = new DrizzleDisputeCaseRepository(db);
+  const disputePayments = new DrizzleDisputePaymentReader();
+  const disputeEffects = new DisputeLineEffects({ cases: disputeCases, payoutAdjustments, events });
+  const disputes = new DisputeCaseRecorder({
+    transactionRunner: runner,
+    claims,
+    cases: disputeCases,
+    payments: disputePayments,
+    effects: disputeEffects,
+    events,
+  });
+  const allocation = new DisputeAllocationService({
+    transactionRunner: runner,
+    cases: disputeCases,
+    payments: disputePayments,
+    effects: disputeEffects,
+    events,
+  });
   const webhooks = new StripePaymentWebhookService(
     runner,
     new DrizzlePaymentWebhookLookupReader(db),
@@ -119,6 +144,7 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     payoutAdjustments,
     capture,
     events,
+    disputes,
     { settlement, chargeEvents, groups, payments, gateway },
   );
 
@@ -203,9 +229,35 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     );
   });
 
+  const deleteDisputes = () =>
+    db.delete(disputeCase).where(like(disputeCase.stripeDisputeId, `dp_ps_${run}_%`));
+  const deleteAllocations = async () => {
+    const cases = await db
+      .select({ id: disputeCase.id })
+      .from(disputeCase)
+      .where(like(disputeCase.stripeDisputeId, `dp_ps_${run}_%`));
+    if (cases.length) {
+      await db.delete(disputeAllocation).where(
+        inArray(
+          disputeAllocation.caseId,
+          cases.map((c) => c.id),
+        ),
+      );
+    }
+  };
+  const disputeLinesPence = async (paymentId: string) => {
+    const [row] = await db
+      .select({ pence: sql<number>`coalesce(round(sum(${payoutLine.amount}) * 100), 0)::int` })
+      .from(payoutLine)
+      .where(and(eq(payoutLine.paymentId, paymentId), eq(payoutLine.kind, "dispute")));
+    return row?.pence ?? 0;
+  };
+
   beforeEach(async () => {
     vi.clearAllMocks();
     chargeRefunds = [];
+    await deleteAllocations();
+    await deleteDisputes();
     const paymentIds = (
       await db.select({ id: payment.id }).from(payment).where(inArray(payment.lotId, lotIds))
     ).map((r) => r.id);
@@ -233,6 +285,8 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
   });
 
   afterAll(async () => {
+    await deleteAllocations();
+    await deleteDisputes();
     const paymentIds = (
       await db.select({ id: payment.id }).from(payment).where(inArray(payment.lotId, lotIds))
     ).map((r) => r.id);
@@ -403,5 +457,77 @@ describe.skipIf(!HAS_DB)("pay several: one payment for several invoices (integra
     expect(publish).toHaveBeenCalledWith(
       expect.objectContaining({ eventType: "payment_group.refund_unattributed" }),
     );
+  });
+
+  it("holds a dispute on a combined payment for allocation, then moves each seller's share once", async () => {
+    const groupId = await startOk([ids.a, ids.b]);
+    const pi = succeeded(groupId);
+    await webhooks.handlePaymentIntentSucceeded(eventOf("payment_intent.succeeded", pi), pi);
+    // The whole £200 charge is disputed: before, each invoice was clawed back in full at once.
+    const dispute = {
+      id: `dp_ps_${run}_whole`,
+      object: "dispute",
+      charge: pi.latest_charge as string,
+      payment_intent: pi.id,
+      amount: 20_000,
+      currency: "gbp",
+      reason: "fraudulent",
+      status: "needs_response",
+      created: 1_798_000_000,
+      evidence_details: { due_by: 1_798_900_000, submission_count: 0 },
+    } as unknown as Stripe.Dispute;
+
+    expect(
+      await webhooks.handleDisputeCreated(eventOf("charge.dispute.created", dispute), dispute),
+    ).toMatchObject({ action: "dispute_created", reason: "needs_allocation" });
+    expect(
+      await webhooks.handleDisputeFundsWithdrawn(
+        eventOf("charge.dispute.funds_withdrawn", dispute),
+        dispute,
+      ),
+    ).toMatchObject({ reason: "needs_allocation" });
+    expect(await disputeLinesPence(ids.a)).toBe(0);
+    expect(await disputeLinesPence(ids.b)).toBe(0);
+
+    const [record] = await db
+      .select()
+      .from(disputeCase)
+      .where(eq(disputeCase.stripeDisputeId, dispute.id));
+    if (!record) throw new Error("expected a dispute case");
+    expect(record.allocationState).toBe("needs_allocation");
+    expect(await disputeCases.countAwaitingAllocation()).toBeGreaterThanOrEqual(1);
+
+    // Finance puts £100 on each invoice; each seller carries their net share (a £5 fee each).
+    const saved = await allocation.allocate({
+      caseId: record.id,
+      expectedVersion: record.version,
+      actorUserId: payerId,
+      lines: [
+        { paymentId: ids.a, amountPence: 10_000 },
+        { paymentId: ids.b, amountPence: 10_000 },
+      ],
+    });
+    expect(saved.isOk()).toBe(true);
+    expect(await disputeLinesPence(ids.a)).toBe(-9_500);
+    expect(await disputeLinesPence(ids.b)).toBe(-9_500);
+
+    // A stale or repeated save changes nothing.
+    const again = await allocation.allocate({
+      caseId: record.id,
+      expectedVersion: record.version,
+      actorUserId: payerId,
+      lines: [{ paymentId: ids.a, amountPence: 20_000 }],
+    });
+    expect(again._unsafeUnwrapErr()).toBe("version_conflict");
+
+    // Won: each line is reversed once, even with both Stripe notices.
+    const won = { ...dispute, status: "won" } as Stripe.Dispute;
+    await webhooks.handleDisputeFundsReinstated(
+      eventOf("charge.dispute.funds_reinstated", won),
+      won,
+    );
+    await webhooks.handleDisputeClosed(eventOf("charge.dispute.closed", won), won);
+    expect(await disputeLinesPence(ids.a)).toBe(0);
+    expect(await disputeLinesPence(ids.b)).toBe(0);
   });
 });

@@ -2,7 +2,9 @@ export type PaymentWebhookResult = {
   processed: boolean;
   action?:
     | "dispute_created"
+    | "dispute_updated"
     | "dispute_funds_withdrawn"
+    | "dispute_funds_reinstated"
     | "dispute_closed"
     | "refund_received"
     | "payment_intent_succeeded"

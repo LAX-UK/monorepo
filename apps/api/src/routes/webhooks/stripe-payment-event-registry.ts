@@ -22,8 +22,12 @@ export const STRIPE_PAYMENT_EVENT_HANDLERS: Partial<
     service.handlePaymentIntentCanceled(event, event.data.object as Stripe.PaymentIntent),
   "charge.dispute.created": (service, event) =>
     service.handleDisputeCreated(event, event.data.object as Stripe.Dispute),
+  "charge.dispute.updated": (service, event) =>
+    service.handleDisputeUpdated(event, event.data.object as Stripe.Dispute),
   "charge.dispute.funds_withdrawn": (service, event) =>
     service.handleDisputeFundsWithdrawn(event, event.data.object as Stripe.Dispute),
+  "charge.dispute.funds_reinstated": (service, event) =>
+    service.handleDisputeFundsReinstated(event, event.data.object as Stripe.Dispute),
   "charge.dispute.closed": (service, event) =>
     service.handleDisputeClosed(event, event.data.object as Stripe.Dispute),
   "charge.refunded": (service, event) =>
