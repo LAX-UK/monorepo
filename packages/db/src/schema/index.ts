@@ -23,6 +23,7 @@ export * from "./sale-registration.js";
 export * from "./buyer-agent-authorisation.js";
 export * from "./legal-entity-bidding-limit.js";
 export * from "./legal-entity-invoice-details.js";
+export * from "./legal-entity-contact-details.js";
 export * from "./condition-report-request.js";
 export * from "./absentee-bid.js";
 export * from "./saleroom-session.js";

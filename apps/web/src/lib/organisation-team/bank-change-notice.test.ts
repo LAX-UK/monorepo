@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { ActivityEntryView } from "../data/http/organisation-team.types";
-import { bankChangeNotice } from "./bank-change-notice";
+import { bankChangeNotice, bankChangedLine } from "./bank-change-notice";
 
 const change = (occurredAt: string, kind = "bank_details_changed"): ActivityEntryView => ({
   id: 1,
@@ -30,5 +30,17 @@ describe("bankChangeNotice", () => {
   it("is quiet for older changes and other money events", () => {
     expect(bankChangeNotice([change("2026-09-01T10:00:00Z")], now)).toBeNull();
     expect(bankChangeNotice([change("2026-10-28T10:00:00Z", "payout_sent")], now)).toBeNull();
+  });
+});
+
+describe("bankChangedLine", () => {
+  it("says when the newest change was made and by whom, however old", () => {
+    expect(
+      bankChangedLine([change("2026-03-02T10:00:00Z"), change("2026-01-20T10:00:00Z")]),
+    ).toMatch(/^Changed 2.Mar.2026 by Daniel Reyes$/);
+  });
+
+  it("is null when no change is in the entries", () => {
+    expect(bankChangedLine([change("2026-10-28T10:00:00Z", "payout_sent")])).toBeNull();
   });
 });

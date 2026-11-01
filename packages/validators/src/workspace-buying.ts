@@ -9,6 +9,25 @@ const poundsString = z
 /** The acting account's bids, optionally on one sale (the per-sale view). */
 export const accountBidsQuerySchema = z.object({ saleId: z.string().uuid().optional() });
 
+/** Lots a card grid asks the bidder's standing on at once. */
+export const LOT_STATES_MAX_LOTS = 60;
+
+/** `?lotIds=a,b,c`: up to 60 lot ids, repeats ignored. */
+export const lotStatesQuerySchema = z.object({
+  lotIds: z
+    .string()
+    .transform((raw) => [
+      ...new Set(
+        raw
+          .split(",")
+          .map((id) => id.trim())
+          .filter(Boolean),
+      ),
+    ])
+    .pipe(z.array(z.string().uuid()).min(1).max(LOT_STATES_MAX_LOTS)),
+});
+export type LotStatesQuery = z.infer<typeof lotStatesQuerySchema>;
+
 /** A page of the acting account's purchases. */
 export const accountPurchasesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(50),

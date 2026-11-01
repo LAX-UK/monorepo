@@ -10,6 +10,7 @@ import {
   DrizzleConsignmentThreadFactsReader,
   DrizzleLaxAdminRolesRepository,
   DrizzleLaxStaffAccessRepository,
+  DrizzleLotViewerFactsReader,
   DrizzleOrganisationBiddingLimitRepository,
   DrizzleRecordPeopleReader,
   DrizzleStaffAccessReviewReader,
@@ -20,6 +21,7 @@ import {
 import type { Container, ContainerComposedSlices } from "./container/container-slices.js";
 import { createAdminServices } from "./container/create-admin-services.js";
 import { createContainerAuthenticator } from "./container/create-auth.js";
+import { createBidAuthority, createBiddingLimitGate } from "./container/create-bid-eligibility.js";
 import { createBiddingRouteServices } from "./container/create-bidding-route-services.js";
 import { createBiddingSaleroom } from "./container/create-bidding-saleroom.js";
 import { createCatalogRouteServices } from "./container/create-catalog-route-services.js";
@@ -63,6 +65,7 @@ import { AtgAdminService } from "./services/admin/atg-admin.service.js";
 import { StaffAccessAdminService } from "./services/admin/staff-access-admin.service.js";
 import { OrganisationBiddingLimitsService } from "./services/bidding-limits/organisation-bidding-limits.service.js";
 import { BidLimitRefusalNotifier } from "./services/bidding/bid-limit-refusal.notifier.js";
+import { LotViewerStateService } from "./services/bidding/lot-viewer-state.service.js";
 import {
   BidAuthorityQueryService,
   BuyerAgentAuthorisationService,
@@ -331,6 +334,12 @@ export function createContainer(env: Env): Container {
     ),
   });
 
+  const lotViewerState = new LotViewerStateService({
+    facts: new DrizzleLotViewerFactsReader(db),
+    bidAuthority: createBidAuthority(db),
+    limitGate: createBiddingLimitGate(db),
+  });
+
   const savedViews = new AdminSavedViewService(new DrizzleAdminSavedViewRepository(db));
   const buyerAgentAuthorisationRepository = new DrizzleBuyerAgentAuthorisationRepository(db);
 
@@ -415,6 +424,14 @@ export function createContainer(env: Env): Container {
   const organisationTeam = createOrganisationTeamServices({
     db,
     events: platform.domainEventSink,
+    payouts: repos.payoutRepository,
+    connect: repos.legalEntityConnectReader,
+    stripeClientFactory: infra.stripeClientFactory,
+    useSamplePayoutProvider:
+      env.APP_ENV === "development" && infra.stripeClientFactory.get() === null,
+    members: repos.legalEntityMemberRepository,
+    identity: identityIssuer,
+    log: createAppLogger(env),
   });
 
   const atg = new AtgAdminService(
@@ -598,6 +615,7 @@ export function createContainer(env: Env): Container {
       saleRegistrationBuyer: biddingSaleroom.saleRegistrationService,
       telephoneBidBookingBuyer: catalog.telephoneBidBookingService,
       lotService: catalog.lotService,
+      lotViewerState,
       displayPairingService: biddingSaleroom.displayPairingService,
       displaySnapshotReader: biddingSaleroom.displaySnapshotReader,
       bidRefusals,
@@ -629,6 +647,7 @@ export function createContainer(env: Env): Container {
       env,
       bidPortfolioReader: repos.bidPortfolioReader,
       recordPeople: new DrizzleRecordPeopleReader(db),
+      lotViewerState,
       categoryInterestsEligibilityReader: repos.categoryInterestsEligibilityReader,
       categoryInterestsRepository: repos.categoryInterestsRepository,
       accountOnboardingService: userMisc.accountOnboardingService,

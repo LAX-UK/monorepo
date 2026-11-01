@@ -27,7 +27,9 @@ export function stubBiddingRouteServices(
     },
     lotBidHistoryHttp: {
       listForLot: vi.fn().mockResolvedValue({ kind: "ok", data: [] }),
+      listPublicForLot: vi.fn().mockResolvedValue({ kind: "ok", data: { entries: [], total: 0 } }),
     },
+    lotViewerHttp: { getMine: vi.fn() },
     conditionReportHttp: {
       findForBuyerOnLot: vi.fn(),
       createRequest: vi.fn(),

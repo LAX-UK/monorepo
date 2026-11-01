@@ -6,6 +6,7 @@ import {
   type BiddingLimitKind,
   type BindingBiddingLimit,
   type ExposureCommitment,
+  bindingBiddingLimit,
   decideBiddingLimits,
   exposureOf,
   parseMoneyCap,
@@ -42,6 +43,11 @@ export interface IBiddingLimitGate {
    * two bids racing on different lots cannot both pass and together go past a limit.
    */
   checkInTransaction(tx: Database, input: BiddingLimitCheck): Promise<Result<void, BidError>>;
+  /**
+   * The limit that leaves the least room for a bid on this lot, with the room it leaves, or
+   * `null` when no limit applies. Reads only: nothing is locked.
+   */
+  room(input: Omit<BiddingLimitCheck, "amount">): Promise<BindingBiddingLimit | null>;
 }
 
 const MESSAGES: Record<BiddingLimitKind, string> = {
@@ -77,6 +83,10 @@ export class PerLotBiddingLimitGate implements IBiddingLimitGate {
   async checkInTransaction(_tx: Database, input: BiddingLimitCheck) {
     return this.check(input);
   }
+
+  async room(input: Omit<BiddingLimitCheck, "amount">): Promise<BindingBiddingLimit | null> {
+    return bindingBiddingLimit(perLotLimits(input.authority));
+  }
 }
 
 export type BiddingLimitGateDeps = {
@@ -100,23 +110,40 @@ export class BiddingLimitGate implements IBiddingLimitGate {
     return this.run(input, tx);
   }
 
+  async room(input: Omit<BiddingLimitCheck, "amount">): Promise<BindingBiddingLimit | null> {
+    const limits = await this.applicableLimits(input, undefined, false);
+    return bindingBiddingLimit(limits);
+  }
+
   private async run(
     input: BiddingLimitCheck,
     tx: Database | null,
   ): Promise<Result<void, BidError>> {
-    const { authority } = input;
-    if (!authority.allowed) return ok(undefined);
+    if (!input.authority.allowed) return ok(undefined);
+    const limits = await this.applicableLimits(input, tx ?? undefined, tx !== null);
+    return decide(input.amount, limits);
+  }
 
-    const conn = tx ?? undefined;
-    const organisationRow = await this.deps.organisationLimits.find(input.legalEntityId, conn);
+  /**
+   * Every limit that applies to a bid on the lot, with the exposure it is measured against.
+   * Exposure is read (and, for the deciding check, the organisation locked) only when an
+   * organisation limit or an authorisation total is set.
+   */
+  private async applicableLimits(
+    input: Omit<BiddingLimitCheck, "amount">,
+    tx: Database | undefined,
+    lock: boolean,
+  ): Promise<ApplicableBiddingLimit[]> {
+    const { authority } = input;
+    if (!authority.allowed) return [];
+
+    const organisationRow = await this.deps.organisationLimits.find(input.legalEntityId, tx);
     const organisationLimit = parseMoneyCap(organisationRow?.limitAmount);
     const total = authority.totalLimit;
-    if (organisationLimit == null && total == null) {
-      return decide(input.amount, perLotLimits(authority));
-    }
+    if (organisationLimit == null && total == null) return perLotLimits(authority);
 
-    if (tx) await this.deps.lock.lockForLegalEntity(tx, input.legalEntityId);
-    const commitments = await this.loadCommitments(input.legalEntityId, conn);
+    if (tx && lock) await this.deps.lock.lockForLegalEntity(tx, input.legalEntityId);
+    const commitments = await this.loadCommitments(input.legalEntityId, tx);
     const limits = perLotLimits(authority);
     if (total != null) {
       limits.push({
@@ -136,7 +163,7 @@ export class BiddingLimitGate implements IBiddingLimitGate {
         exposure: exposureOf(commitments, {}, input.lotId),
       });
     }
-    return decide(input.amount, limits);
+    return limits;
   }
 
   private async loadCommitments(

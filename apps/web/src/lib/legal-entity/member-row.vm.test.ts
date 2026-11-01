@@ -105,6 +105,27 @@ describe("memberRowViews two-step sign-in", () => {
   });
 });
 
+describe("memberRowViews last active", () => {
+  it("shows the day only, and says when someone hasn't signed in", () => {
+    const actor = { role: "owner" as const, memberId: owner.id };
+    const rows = memberRowViews({
+      actor,
+      members: team,
+      lastActiveByUserId: { "user-owner": "2026-10-28", "user-lena": null },
+    });
+    const owners = rows.find((r) => r.id === owner.id);
+    expect(owners?.lastActive).toMatch(/^Active 28.Oct.2026$/);
+    expect(
+      rows.filter((r) => r.id !== owner.id).every((r) => r.lastActive === "Not signed in yet"),
+    ).toBe(true);
+  });
+
+  it("is hidden from people not given it", () => {
+    const actor = { role: "owner" as const, memberId: owner.id };
+    expect(memberRowViews({ actor, members: team }).every((r) => r.lastActive === null)).toBe(true);
+  });
+});
+
 describe("memberRowViews order", () => {
   it("lists you first, then by role from owners to viewers, then by name", () => {
     const viewerB = member("vb", "viewer", "Beth Viewer");

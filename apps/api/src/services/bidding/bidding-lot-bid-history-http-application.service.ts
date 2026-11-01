@@ -1,3 +1,4 @@
+import type { PublicBidHistory } from "@auction/domain";
 import type { StaffRoles, UserRole } from "@auction/types";
 import type {
   IBiddingLotBidHistoryHttpApplicationService,
@@ -28,6 +29,16 @@ export class BiddingLotBidHistoryHttpApplicationService
     if (result.kind === "not_found") {
       return { kind: "not_found" };
     }
+    return { kind: "ok", data: result.data };
+  }
+
+  async listPublicForLot(input: {
+    lotId: string;
+    viewerId: string | undefined;
+    limitQuery: string | undefined;
+  }): Promise<BiddingRouteOutcome<PublicBidHistory> | { kind: "not_found" }> {
+    const result = await this.lotService.listPublicBidHistory(input);
+    if (result.kind === "not_found") return { kind: "not_found" };
     return { kind: "ok", data: result.data };
   }
 }

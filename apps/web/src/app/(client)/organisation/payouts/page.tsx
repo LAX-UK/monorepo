@@ -1,9 +1,12 @@
 import { ConnectLoadFailure } from "@/components/connect/connect-load-failure";
 import { ConnectWorkspace } from "@/components/connect/connect-workspace";
 import { PayoutSetupSteps } from "@/components/connect/payout-setup-steps";
+import { PayoutAccountCard } from "@/components/organisation-team/payout-account-card";
+import { SettingsSection } from "@/components/organisation-team/settings-section";
 import { OrgTabSectionHeader } from "@/components/organisations/org-tab-section-header";
 import { OrganisationTabNoAccess } from "@/components/organisations/organisation-tab-no-access";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
+import { getServerPayoutAccount } from "@/lib/data/http/organisation-profile.server";
 import { getServerOrganisationActivity } from "@/lib/data/http/organisation-team.server";
 import {
   getServerStripeConnectClientConfig,
@@ -13,7 +16,7 @@ import { requireActiveOrganisationActor } from "@/lib/legal-entity/active-organi
 import { createPerOrgGateway } from "@/lib/legal-entity/per-org.gateway.server";
 import { organisationHref } from "@/lib/navigation/client-routes";
 import { requireOrganisationTab } from "@/lib/navigation/organisation-tabs";
-import { bankChangeNotice } from "@/lib/organisation-team/bank-change-notice";
+import { bankChangeNotice, bankChangedLine } from "@/lib/organisation-team/bank-change-notice";
 import { payoutSetupSteps } from "@/lib/presenters/payout-setup-steps";
 import { entityActorCan } from "@auction/domain";
 import { DisplayHeading } from "@auction/ui";
@@ -35,12 +38,15 @@ export default async function OrganisationPayoutsPage() {
   if (!ctx) notFound();
   const { member, entity } = ctx;
 
-  const [clientConfig, connectRes, moneyActivity] = await Promise.all([
+  const [clientConfig, connectRes, moneyActivity, payoutAccount] = await Promise.all([
     getServerStripeConnectClientConfig(),
     syncServerStripeConnectStatus(id),
     // The bank-change notice is for the people who read Activity (owners and admins).
     entityActorCan(actor, "entity.activity.read")
       ? getServerOrganisationActivity(id, { group: ["money"], limit: 20 }).catch(() => null)
+      : null,
+    entityActorCan(actor, "entity.payouts.read")
+      ? getServerPayoutAccount(id).catch(() => null)
       : null,
   ]);
   const bankChange = moneyActivity ? bankChangeNotice(moneyActivity.entries, new Date()) : null;
@@ -63,6 +69,21 @@ export default async function OrganisationPayoutsPage() {
         >
           {bankChange.body}
         </Notice>
+      ) : null}
+      {payoutAccount?.state === "ready" || payoutAccount?.state === "unavailable" ? (
+        <SettingsSection
+          id="payout-account-heading"
+          title="Payout account"
+          description={`Where we send money from works that sell for ${member.displayName}.`}
+        >
+          <PayoutAccountCard
+            view={payoutAccount}
+            changedLine={moneyActivity ? bankChangedLine(moneyActivity.entries) : null}
+            readOnlyNote={
+              canChangeBank ? null : "Only owners and admins can change the payout account."
+            }
+          />
+        </SettingsSection>
       ) : null}
       <OrgTabSectionHeader>
         <SectionHeader heading={<DisplayHeading as="h2">Payout setup</DisplayHeading>} />

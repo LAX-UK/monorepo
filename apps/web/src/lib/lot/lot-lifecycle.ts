@@ -1,5 +1,6 @@
 import { classifyLotTimerState } from "@/lib/lot/classify-lot-timer-state";
 import { lotWasSold } from "@/lib/lot/lot-outcome";
+import type { LotLifecycleKind as DomainLotLifecycleKind } from "@auction/domain";
 import type { Lot, Sale } from "@auction/types";
 import {
   isSaleroomDeliveryMode,
@@ -7,17 +8,8 @@ import {
   toLotCardTimingVM,
 } from "@auction/validators";
 
-export type LotLifecycleKind =
-  | "preLaunch"
-  | "scheduled"
-  | "live"
-  | "extended"
-  | "liveSaleroom"
-  | "saleroomPaused"
-  | "endedSold"
-  | "endedNoSale"
-  | "cancelled"
-  | "withdrawn";
+/** The kinds, and the copy table keyed by them, live in the domain: one source for every surface. */
+export type LotLifecycleKind = DomainLotLifecycleKind;
 
 export type LotLifecycle = {
   kind: LotLifecycleKind;

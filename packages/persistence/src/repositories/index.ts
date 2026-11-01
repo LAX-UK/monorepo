@@ -26,6 +26,7 @@ export { DrizzleBidActorEligibilityReader } from "./drizzle-bid-actor-eligibilit
 export { DrizzleBuyerAgentAuthorisationReader } from "./drizzle-buyer-agent-authorisation.reader.js";
 export { DrizzleBuyerAgentAuthorisationRepository } from "./drizzle-buyer-agent-authorisation.repository.js";
 export { DrizzleBiddingExposureReader } from "./drizzle-bidding-exposure.reader.js";
+export { DrizzleLotViewerFactsReader } from "./drizzle-lot-viewer-facts.reader.js";
 export { DrizzleOrganisationBiddingLimitRepository } from "./drizzle-organisation-bidding-limit.repository.js";
 export { DrizzleGuestPaddleReader } from "./drizzle-guest-paddle.reader.js";
 export { DrizzlePaddleRepository, isPaddleUniqueViolation } from "./drizzle-paddle.repository.js";
@@ -244,6 +245,7 @@ export {
   DrizzleInvoiceDetailsRepository,
   DrizzleOrganisationActivityReader,
 } from "./drizzle-organisation-team.readers.js";
+export { DrizzleContactDetailsRepository } from "./drizzle-contact-details.repository.js";
 export { DrizzleUnsoldChoiceDeadlineStore } from "./drizzle-unsold-choice-deadline.store.js";
 export {
   DrizzleAgreementDocumentFactsReader,

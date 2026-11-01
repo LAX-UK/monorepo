@@ -1,5 +1,9 @@
 import { exportFilename } from "@auction/exports";
-import { organisationActivityQuerySchema, updateInvoiceDetailsSchema } from "@auction/validators";
+import {
+  organisationActivityQuerySchema,
+  updateContactDetailsSchema,
+  updateInvoiceDetailsSchema,
+} from "@auction/validators";
 import { Hono } from "hono";
 import type { ContainerOrganisationTeamRoutesSlice } from "../container.js";
 import { zValidator } from "../lib/z-validator.js";
@@ -20,8 +24,9 @@ function memberActor(ctx: LegalEntityContext): OrganisationMemberActor {
 }
 
 /**
- * The acting organisation's invoice details and Activity. Mounted under `/legal-entities`; the
- * organisation comes from the context header and the services decide who may read or change.
+ * The acting organisation's Profile, Team and money reads: contact and invoice details,
+ * statements, the payout bank summary, members' last activity and Activity. Mounted under
+ * `/legal-entities`; the organisation comes from the context header and the services decide who may read or change.
  */
 export function createOrganisationTeamRoutes(
   container: ContainerOrganisationTeamRoutesSlice,
@@ -31,8 +36,63 @@ export function createOrganisationTeamRoutes(
     isSuspended: (id) => container.userSuspensionChecker.isSuspended(id),
   });
   const requireContext = container.requireLegalEntityContext;
-  const { invoiceDetails, activity } = container.organisationTeam;
+  const { invoiceDetails, activity, contactDetails, statements, payoutAccount, memberLastActive } =
+    container.organisationTeam;
   const r = new Hono<{ Variables: Variables }>();
+
+  r.get("/contact-details", requireAuth, requireContext, async (c) => {
+    const ctx = c.get("legalEntityContext") as LegalEntityContext;
+    const result = await contactDetails.view(memberActor(ctx));
+    return result.match(
+      (data) => c.json({ data }),
+      (e) => c.json({ error: e.code, message: e.message }, e.status),
+    );
+  });
+
+  r.put(
+    "/contact-details",
+    requireAuth,
+    requireContext,
+    zValidator("json", updateContactDetailsSchema),
+    async (c) => {
+      const ctx = c.get("legalEntityContext") as LegalEntityContext;
+      const result = await contactDetails.update(memberActor(ctx), c.req.valid("json"));
+      return result.match(
+        (data) => c.json({ data }),
+        (e) => c.json({ error: e.code, message: e.message }, e.status),
+      );
+    },
+  );
+
+  /** Statements for the document library; each downloads through its payout's statement route. */
+  r.get("/statements", requireAuth, requireContext, async (c) => {
+    const ctx = c.get("legalEntityContext") as LegalEntityContext;
+    const result = await statements.list(memberActor(ctx));
+    return result.match(
+      (data) => c.json({ data }),
+      (e) => c.json({ error: e.code, message: e.message }, e.status),
+    );
+  });
+
+  /** The bank account payouts go to, as a summary; never a full account number. */
+  r.get("/payout-account", requireAuth, requireContext, async (c) => {
+    const ctx = c.get("legalEntityContext") as LegalEntityContext;
+    const result = await payoutAccount.view(memberActor(ctx));
+    return result.match(
+      (data) => c.json({ data }, 200, { "Cache-Control": "no-store" }),
+      (e) => c.json({ error: e.code, message: e.message }, e.status),
+    );
+  });
+
+  /** The day each member was last active, for owners and admins. */
+  r.get("/members/last-active", requireAuth, requireContext, async (c) => {
+    const ctx = c.get("legalEntityContext") as LegalEntityContext;
+    const result = await memberLastActive.list(memberActor(ctx));
+    return result.match(
+      (data) => c.json({ data }, 200, { "Cache-Control": "no-store" }),
+      (e) => c.json({ error: e.code, message: e.message }, e.status),
+    );
+  });
 
   r.get("/invoice-details", requireAuth, requireContext, async (c) => {
     const ctx = c.get("legalEntityContext") as LegalEntityContext;

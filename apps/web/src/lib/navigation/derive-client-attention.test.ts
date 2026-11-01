@@ -68,6 +68,19 @@ describe("deriveClientAttention", () => {
       unreadNotifications: [],
     });
     expect(attention.outbidLots).toEqual(["14", "22", null]);
+    expect(attention.groups).toMatchObject([{ kind: "outbid", count: 3, url: "/bids?tab=active" }]);
+  });
+
+  it("names a single outbid lot and links straight to its price", () => {
+    const attention = deriveClientAttention({
+      userId: "user-1",
+      bids: [bidOn({ lotId: "z", lotNumber: 3, winning: false, endsInHours: 2 })],
+      purchasesToPay: [],
+      unreadNotifications: [],
+    });
+    expect(attention.groups).toMatchObject([
+      { kind: "outbid", count: 1, url: "/lot/lot/z#price", items: [{ title: "Lot" }] },
+    ]);
   });
 
   it("counts the purchases this person pays and unread notifications", () => {
@@ -77,6 +90,11 @@ describe("deriveClientAttention", () => {
       purchasesToPay: [{ lot: "a" }, { lot: "b" }],
       unreadNotifications: [{ read: false }, { read: true }, { read: false }],
     });
-    expect(attention).toEqual({ outbidLots: [], paymentsDue: 2, unreadNotifications: 2 });
+    expect(attention).toEqual({
+      outbidLots: [],
+      paymentsDue: 2,
+      unreadNotifications: 2,
+      groups: [],
+    });
   });
 });

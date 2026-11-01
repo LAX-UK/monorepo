@@ -12,6 +12,7 @@ import { requireTeamTab } from "@/lib/navigation/team-tabs";
 import { accessRequestRows } from "@/lib/organisation-team/access-requests.vm";
 import { activityHrefForPerson } from "@/lib/organisation-team/activity-filters";
 import {
+  loadMemberLastActive,
   loadPendingAccessRequests,
   loadTeamMembers,
   loadTeamScope,
@@ -49,10 +50,11 @@ export default async function TeamMembersPage() {
     );
   }
 
-  const [fetched, twoStep, requests] = await Promise.all([
+  const [fetched, twoStep, requests, lastActive] = await Promise.all([
     loadTeamMembers(scope),
     loadTwoStepPolicy(scope),
     canDecideAccessRequests(actor) ? loadPendingAccessRequests(acting.id) : null,
+    loadMemberLastActive(scope),
   ]);
   if (!fetched.ok) {
     return (
@@ -74,6 +76,9 @@ export default async function TeamMembersPage() {
       : undefined,
     activityHrefFor: entityActorCan(actor, "entity.activity.read")
       ? activityHrefForPerson
+      : undefined,
+    lastActiveByUserId: lastActive?.available
+      ? Object.fromEntries(lastActive.members.map((m) => [m.userId, m.lastActiveOn]))
       : undefined,
   });
   const askRows = requests ? accessRequestRows(requests, user.id) : [];

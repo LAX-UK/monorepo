@@ -18,7 +18,14 @@ const ORGANISATION_TAB_SPECS: readonly SectionTabSpec<OrganisationTab>[] = [
     capability: "entity.profile.read",
     alsoOpenedBy: "entity.invoice_details.manage",
   },
-  { id: "documents", label: "Documents", capability: "entity.profile.read" },
+  // Finance opens Documents for the payout statements; the check and agreements are for owners
+  // and admins.
+  {
+    id: "documents",
+    label: "Documents",
+    capability: "entity.profile.read",
+    alsoOpenedBy: "entity.payouts.read",
+  },
   { id: "payouts", label: "Payouts", capability: "entity.connect.operate" },
   // Admins see the policy read-only; only owners change it (`entity.security.manage`).
   { id: "security", label: "Security", capability: "entity.security.read" },
