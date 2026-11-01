@@ -42,6 +42,18 @@ type SellerMoneyPayload = {
   outcome?: string;
 };
 
+type DisputeUnmatchedPayload = {
+  stripeEventType: string;
+  stripeDisputeId: string;
+  stripeChargeId: string;
+  amountCents: number;
+  currency: string;
+  reason: string | null;
+  status: string;
+  evidenceDueAt: string | null;
+  livemode: boolean;
+};
+
 type ProxyCancelledPayload = {
   lotId: string;
   bidderUserId: string;
@@ -59,6 +71,7 @@ const SUPPORTED_EVENT_TYPES = [
   "payout.transfer_initiated",
   "payment.dispute_opened",
   "payment.dispute_closed",
+  "payment.dispute_unmatched",
   "bid.proxy_cancelled",
   "lot.voided",
   "payout.clawback_required",
@@ -172,6 +185,15 @@ export async function processNotificationFanout(options: {
           supportContactEmail,
           eventId: row.id,
           payload: row.payload as SellerMoneyPayload,
+        });
+      }
+      if (row.eventType === "payment.dispute_unmatched") {
+        await fanoutDisputeUnmatched({
+          db,
+          emailService,
+          adminEmailAddress: options.adminEmailAddress,
+          eventId: row.id,
+          payload: row.payload as DisputeUnmatchedPayload,
         });
       }
       if (row.eventType === "bid.proxy_cancelled") {
@@ -379,6 +401,72 @@ async function fanoutDisputeClosed(options: {
       },
       category: "transactional",
       idempotencyKey: `dispute-closed-notice:${options.eventId}:${recipient.userId}`,
+    });
+  }
+}
+
+export function stripeDisputeDashboardUrl(disputeId: string, livemode: boolean): string {
+  return `https://dashboard.stripe.com/${livemode ? "" : "test/"}disputes/${encodeURIComponent(disputeId)}`;
+}
+
+export function formatRespondBy(iso: string | null): string | null {
+  if (!iso) return null;
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return null;
+  const formatted = date.toLocaleString("en-GB", {
+    timeZone: "UTC",
+    dateStyle: "medium",
+    timeStyle: "short",
+  });
+  return `${formatted} UTC`;
+}
+
+/**
+ * A Stripe dispute matching no payment row has no seller to notify, so alert platform staff
+ * and the ops inbox (`ADMIN_EMAIL_ADDRESS`) directly. It must be answered at Stripe before
+ * its response deadline.
+ */
+export async function fanoutDisputeUnmatched(options: {
+  db: Db;
+  emailService: IEmailService;
+  adminEmailAddress?: string | undefined;
+  eventId: number;
+  payload: DisputeUnmatchedPayload;
+}): Promise<void> {
+  const { payload } = options;
+  if (!payload?.stripeDisputeId) return;
+  const vars = {
+    disputeId: payload.stripeDisputeId,
+    chargeId: payload.stripeChargeId,
+    amount: centsToAmount(payload.amountCents),
+    currency: payload.currency.toUpperCase(),
+    reason: payload.reason,
+    status: payload.status,
+    respondBy: formatRespondBy(payload.evidenceDueAt),
+    stripeEventType: payload.stripeEventType,
+    stripeDashboardUrl: stripeDisputeDashboardUrl(payload.stripeDisputeId, payload.livemode),
+  };
+  const staffOps = await listStaffOpsRecipients(options.db);
+  for (const s of staffOps) {
+    await options.emailService.enqueue({
+      template: "dispute-unmatched-admin-notice",
+      to: s.email,
+      userId: s.id,
+      vars,
+      category: "transactional",
+      idempotencyKey: `dispute-unmatched-admin-notice:${options.eventId}:ops:${s.id}`,
+    });
+  }
+  const adminEmail = options.adminEmailAddress;
+  const adminIsStaff = staffOps.some((s) => s.email.toLowerCase() === adminEmail?.toLowerCase());
+  if (adminEmail && !adminIsStaff) {
+    await options.emailService.enqueue({
+      template: "dispute-unmatched-admin-notice",
+      to: adminEmail,
+      recipientResolution: "snapshot",
+      vars,
+      category: "transactional",
+      idempotencyKey: `dispute-unmatched-admin-notice:${options.eventId}:admin`,
     });
   }
 }

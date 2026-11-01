@@ -1,6 +1,6 @@
 import type { Database } from "@auction/db";
-import { payment } from "@auction/db/schema";
-import { eq } from "drizzle-orm";
+import { domainEvent, payment } from "@auction/db/schema";
+import { and, eq, sql } from "drizzle-orm";
 import type Stripe from "stripe";
 import { gbpAmountToPence } from "../lib/decimal-money.js";
 import { tryClaimProcessedStripeEvent } from "../lib/stripe-processed-event.js";
@@ -378,6 +378,7 @@ export class StripePaymentWebhookService {
 
       const paymentRow = await this.findPaymentRow(tx, { chargeId });
       if (!paymentRow) {
+        await this.recordUnmatchedDispute(tx, event, dispute, chargeId);
         return { processed: true, action: "skipped", reason: "no_matching_payment" };
       }
 
@@ -422,6 +423,7 @@ export class StripePaymentWebhookService {
 
       const paymentRow = await this.findPaymentRow(tx, { chargeId });
       if (!paymentRow) {
+        await this.recordUnmatchedDispute(tx, event, dispute, chargeId);
         return { processed: true, action: "skipped", reason: "no_matching_payment" };
       }
 
@@ -476,6 +478,7 @@ export class StripePaymentWebhookService {
 
       const paymentRow = await this.findPaymentRow(tx, { chargeId });
       if (!paymentRow) {
+        await this.recordUnmatchedDispute(tx, event, dispute, chargeId);
         return { processed: true, action: "skipped", reason: "no_matching_payment" };
       }
 
@@ -483,16 +486,28 @@ export class StripePaymentWebhookService {
         dispute.status === "won" ? "won" : dispute.status === "lost" ? "lost" : "closed";
 
       if (dispute.status === "won") {
-        const reversalAmount = (dispute.amount / 100).toFixed(2);
-        await this.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
-          legalEntityId: paymentRow.sellerLegalEntityId,
-          paymentId: paymentRow.id,
-          amount: reversalAmount,
-          kind: "dispute",
-          sourceEventId: `${event.id}:won_reversal`,
-          note: `Dispute won — reverse clawback: ${dispute.id}`,
-          tx,
-        });
+        if (await this.hasRecordedDisputeWithdrawal(tx, paymentRow.id, dispute.id)) {
+          const reversalAmount = (dispute.amount / 100).toFixed(2);
+          await this.payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback({
+            legalEntityId: paymentRow.sellerLegalEntityId,
+            paymentId: paymentRow.id,
+            amount: reversalAmount,
+            kind: "dispute",
+            sourceEventId: `${event.id}:won_reversal`,
+            note: `Dispute won — reverse clawback: ${dispute.id}`,
+            tx,
+          });
+        } else {
+          console.warn(
+            JSON.stringify({
+              msg: "stripe_dispute_won_without_clawback",
+              stripeEventId: event.id,
+              stripeDisputeId: dispute.id,
+              stripeChargeId: chargeId,
+              paymentId: paymentRow.id,
+            }),
+          );
+        }
       }
 
       await this.domainEventPublisher.publish(tx, {
@@ -584,6 +599,67 @@ export class StripePaymentWebhookService {
 
       return { processed: true, action: "refund_received" };
     });
+  }
+
+  /**
+   * A dispute whose charge matches no payment row still has a response deadline at Stripe.
+   * Record it as a domain event (the notification fanout alerts ops) so it cannot go unseen.
+   * Runs inside the claimed transaction, so each Stripe event is recorded once.
+   */
+  private async recordUnmatchedDispute(
+    tx: Database,
+    event: Stripe.Event,
+    dispute: Stripe.Dispute,
+    chargeId: string,
+  ): Promise<void> {
+    const dueBy = dispute.evidence_details?.due_by;
+    const payload = {
+      stripeEventId: event.id,
+      stripeEventType: event.type,
+      stripeDisputeId: dispute.id,
+      stripeChargeId: chargeId,
+      amountCents: dispute.amount,
+      currency: dispute.currency,
+      reason: dispute.reason ?? null,
+      status: dispute.status,
+      evidenceDueAt: typeof dueBy === "number" ? new Date(dueBy * 1000).toISOString() : null,
+      livemode: dispute.livemode,
+    };
+    recordMoneyPathEvent("stripe_dispute_unmatched");
+    console.error(JSON.stringify({ msg: "stripe_dispute_unmatched", ...payload }));
+    await this.domainEventPublisher.publish(tx, {
+      aggregateType: "stripe_dispute",
+      aggregateId: dispute.id,
+      eventType: "payment.dispute_unmatched",
+      payload,
+      actorUserId: null,
+      actingLegalEntityId: null,
+    });
+  }
+
+  /**
+   * True when `charge.dispute.funds_withdrawn` clawed back this dispute from the seller.
+   * The clawback line and this event are written in the same transaction; payout lines
+   * aggregate per payment, so the event is the per-dispute record.
+   */
+  private async hasRecordedDisputeWithdrawal(
+    db: Database,
+    paymentId: string,
+    disputeId: string,
+  ): Promise<boolean> {
+    const [row] = await db
+      .select({ id: domainEvent.id })
+      .from(domainEvent)
+      .where(
+        and(
+          eq(domainEvent.aggregateType, "payment"),
+          eq(domainEvent.aggregateId, paymentId),
+          eq(domainEvent.eventType, "payment.dispute_funds_withdrawn"),
+          sql`${domainEvent.payload}->>'stripeDisputeId' = ${disputeId}`,
+        ),
+      )
+      .limit(1);
+    return Boolean(row);
   }
 
   private async findPaymentRow(

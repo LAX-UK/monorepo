@@ -30,6 +30,7 @@ export const templateNames = [
   "payout-initiated-notice",
   "dispute-opened-notice",
   "dispute-closed-notice",
+  "dispute-unmatched-admin-notice",
   "proxy-cancelled-notice",
   "lot-voided-notice",
   "payout-clawback-required-notice",
@@ -240,6 +241,18 @@ export type TemplateVarsByName = {
     outcome: string;
     supportContactEmail: string;
   };
+  "dispute-unmatched-admin-notice": {
+    disputeId: string;
+    chargeId: string;
+    amount: string;
+    currency: string;
+    reason?: string | null;
+    status: string;
+    /** Stripe `evidence_details.due_by`, formatted for display; null when Stripe sent none. */
+    respondBy?: string | null;
+    stripeEventType: string;
+    stripeDashboardUrl: string;
+  };
   "proxy-cancelled-notice": {
     userName?: string | null;
     lotTitle: string;
@@ -409,6 +422,7 @@ export const RECIPIENT_RESOLUTION: Record<TemplateName, RecipientResolution> = {
   "payout-initiated-notice": "live",
   "dispute-opened-notice": "live",
   "dispute-closed-notice": "live",
+  "dispute-unmatched-admin-notice": "live",
   "proxy-cancelled-notice": "live",
   "lot-voided-notice": "live",
   "payout-clawback-required-notice": "live",
