@@ -6,6 +6,7 @@ const base = {
   status: "ended" as const,
   currentPrice: "6200.00",
   lotNumber: 7,
+  marketingDetails: {},
 };
 
 describe("archiveLotResult", () => {
