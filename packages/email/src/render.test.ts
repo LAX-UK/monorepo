@@ -174,4 +174,24 @@ describe("renderEmail", () => {
     ).html;
     expect(financeHtml).toContain("#091f5b");
   });
+
+  it("renders dispute-unmatched-admin-notice with the deadline and Stripe link", async () => {
+    const rendered = await renderEmail("dispute-unmatched-admin-notice", {
+      disputeId: "dp_orphan",
+      chargeId: "ch_orphan",
+      amount: "123.45",
+      currency: "GBP",
+      reason: "fraudulent",
+      status: "needs_response",
+      respondBy: "4 Nov 2026, 00:00 UTC",
+      stripeEventType: "charge.dispute.created",
+      stripeDashboardUrl: "https://dashboard.stripe.com/disputes/dp_orphan",
+    });
+
+    expect(rendered.subject).toBe("Unmatched Stripe dispute dp_orphan needs a response");
+    expect(rendered.html).toContain("https://dashboard.stripe.com/disputes/dp_orphan");
+    expect(rendered.text).toContain("GBP 123.45");
+    expect(rendered.text).toContain("fraudulent");
+    expect(rendered.text).toContain("4 Nov 2026, 00:00 UTC");
+  });
 });

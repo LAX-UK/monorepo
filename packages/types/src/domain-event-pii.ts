@@ -110,6 +110,18 @@ const EXCEPTION_PATHS: Record<string, Set<string>> = {
     "amountCents",
     "currency",
   ]),
+  /** Stripe dispute whose charge matches no payment row (ops alert). */
+  "payment.dispute_unmatched": new Set([
+    "stripeEventId",
+    "stripeEventType",
+    "stripeDisputeId",
+    "stripeChargeId",
+    "amountCents",
+    "currency",
+    "reason",
+    "status",
+    "evidenceDueAt",
+  ]),
   /** Seller requested to withdraw an active lot (admin queue). */
   "lot.withdrawal_requested": new Set(["sellerLegalEntityId"]),
   /** Pending payment cancelled by buyer or expired by cron. */

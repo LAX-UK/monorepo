@@ -46,6 +46,31 @@ function mockDbWithPayment(paymentRow: {
   return db;
 }
 
+/** Each `select(...).limit()` resolves to the next result, in call order. */
+function mockDbWithSelectResults(...results: unknown[][]): Database {
+  const limit = vi.fn();
+  for (const result of results) limit.mockResolvedValueOnce(result);
+  limit.mockResolvedValue([]);
+  const db = {
+    select: vi.fn().mockReturnValue({
+      from: vi.fn().mockReturnValue({
+        where: vi.fn().mockReturnValue({ limit }),
+      }),
+    }),
+    transaction: vi.fn(),
+  } as unknown as Database;
+  vi.mocked(db.transaction).mockImplementation((async (fn) =>
+    fn(db as never)) as typeof db.transaction);
+  return db;
+}
+
+const SELLER_PAYMENT_ROW = {
+  id: "pay_1",
+  sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
+  status: "captured",
+  amount: "5000.00",
+};
+
 function createWebhookService(deps: {
   db: Database;
   payoutRepository?: Partial<IPayoutRepository>;
@@ -169,14 +194,9 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
     );
   });
 
-  it("reverses clawback when dispute closes won", async () => {
+  it("reverses clawback when dispute closes won after funds were withdrawn", async () => {
     const addLine = vi.fn().mockResolvedValue(undefined);
-    const db = mockDbWithPayment({
-      id: "pay_1",
-      sellerLegalEntityId: "00000000-0000-4000-8000-000000000001",
-      status: "captured",
-      amount: "5000.00",
-    });
+    const db = mockDbWithSelectResults([SELLER_PAYMENT_ROW], [{ id: 42 }]);
     const { svc, payoutAdjustments } = createWebhookService({
       db,
       payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
@@ -198,6 +218,40 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
         sourceEventId: "evt_dispute_won:won_reversal",
       }),
     );
+  });
+
+  it("does not reverse anything when a won dispute never had funds withdrawn", async () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const addLine = vi.fn().mockResolvedValue(undefined);
+    const db = mockDbWithSelectResults([SELLER_PAYMENT_ROW], []);
+    const { svc, payoutAdjustments, publisher } = createWebhookService({
+      db,
+      payoutAdjustments: { addPaymentLineToOpenPayoutOrCreateClawback: addLine },
+    });
+    const event = { id: "evt_won_no_clawback", type: "charge.dispute.closed" } as Stripe.Event;
+    const dispute = {
+      id: "dp_won_early",
+      status: "won",
+      amount: 500000,
+      currency: "gbp",
+      charge: "ch_1",
+    } as Stripe.Dispute;
+
+    const result = await svc.handleDisputeClosed(event, dispute);
+
+    expect(result).toEqual({ processed: true, action: "dispute_closed" });
+    expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).not.toHaveBeenCalled();
+    expect(warn).toHaveBeenCalledWith(
+      expect.stringContaining("stripe_dispute_won_without_clawback"),
+    );
+    expect(publisher.publish).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.objectContaining({
+        eventType: "payment.dispute_closed",
+        payload: expect.objectContaining({ outcome: "won" }),
+      }),
+    );
+    warn.mockRestore();
   });
 
   it("short-circuits duplicate deliveries via processed_stripe_events", async () => {
@@ -308,6 +362,95 @@ describe("StripePaymentWebhookService.handleDisputeClosed", () => {
       "ch_refunded_fixture",
     );
     expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).toHaveBeenCalled();
+  });
+});
+
+describe("StripePaymentWebhookService — dispute with no matching payment", () => {
+  beforeEach(() => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockReset();
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: true });
+  });
+
+  const dispute = {
+    id: "dp_orphan",
+    status: "needs_response",
+    amount: 12345,
+    currency: "gbp",
+    reason: "fraudulent",
+    charge: "ch_orphan",
+    livemode: true,
+    evidence_details: { due_by: 1_793_750_400 },
+  } as unknown as Stripe.Dispute;
+
+  it.each([
+    ["charge.dispute.created", "handleDisputeCreated"],
+    ["charge.dispute.funds_withdrawn", "handleDisputeFundsWithdrawn"],
+    ["charge.dispute.closed", "handleDisputeClosed"],
+  ] as const)("records %s as payment.dispute_unmatched and alerts", async (type, handler) => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const db = mockDbWithSelectResults([]);
+    const { svc, payoutAdjustments, publisher } = createWebhookService({ db });
+    const event = { id: `evt_${handler}`, type } as Stripe.Event;
+
+    const result = await svc[handler](event, dispute);
+
+    expect(result).toEqual({
+      processed: true,
+      action: "skipped",
+      reason: "no_matching_payment",
+    });
+    expect(payoutAdjustments.addPaymentLineToOpenPayoutOrCreateClawback).not.toHaveBeenCalled();
+    expect(publisher.publish).toHaveBeenCalledTimes(1);
+    expect(publisher.publish).toHaveBeenCalledWith(db, {
+      aggregateType: "stripe_dispute",
+      aggregateId: "dp_orphan",
+      eventType: "payment.dispute_unmatched",
+      payload: {
+        stripeEventId: `evt_${handler}`,
+        stripeEventType: type,
+        stripeDisputeId: "dp_orphan",
+        stripeChargeId: "ch_orphan",
+        amountCents: 12345,
+        currency: "gbp",
+        reason: "fraudulent",
+        status: "needs_response",
+        evidenceDueAt: "2026-11-04T00:00:00.000Z",
+        livemode: true,
+      },
+      actorUserId: null,
+      actingLegalEntityId: null,
+    });
+    expect(error).toHaveBeenCalledWith(expect.stringContaining('"msg":"stripe_dispute_unmatched"'));
+    error.mockRestore();
+  });
+
+  it("records nothing again for a duplicate delivery of the same Stripe event", async () => {
+    vi.mocked(tryClaimProcessedStripeEvent).mockResolvedValue({ claimed: false });
+    const db = mockDbWithSelectResults([]);
+    const { svc, publisher } = createWebhookService({ db });
+    const event = { id: "evt_dup_orphan", type: "charge.dispute.created" } as Stripe.Event;
+
+    const result = await svc.handleDisputeCreated(event, dispute);
+
+    expect(result).toEqual({ processed: false, action: "skipped", reason: "duplicate_event" });
+    expect(publisher.publish).not.toHaveBeenCalled();
+  });
+
+  it("records a null respond-by date when Stripe sends no evidence deadline", async () => {
+    const error = vi.spyOn(console, "error").mockImplementation(() => {});
+    const db = mockDbWithSelectResults([]);
+    const { svc, publisher } = createWebhookService({ db });
+    const event = { id: "evt_no_due", type: "charge.dispute.created" } as Stripe.Event;
+
+    await svc.handleDisputeCreated(event, { ...dispute, evidence_details: undefined } as never);
+
+    expect(publisher.publish).toHaveBeenCalledWith(
+      db,
+      expect.objectContaining({
+        payload: expect.objectContaining({ evidenceDueAt: null }),
+      }),
+    );
+    error.mockRestore();
   });
 });
 

@@ -26,6 +26,9 @@ import DisputeClosedNoticeEmail, {
 import DisputeOpenedNoticeEmail, {
   subject as disputeOpenedNoticeSubject,
 } from "./templates/dispute-opened-notice.js";
+import DisputeUnmatchedAdminNoticeEmail, {
+  subject as disputeUnmatchedAdminNoticeSubject,
+} from "./templates/dispute-unmatched-admin-notice.js";
 import InviteEmail, { subject as inviteSubject } from "./templates/invite.js";
 import KycResubmissionRequiredEmail, {
   subject as kycResubmissionRequiredSubject,
@@ -234,6 +237,10 @@ const renderers: { [T in TemplateName]: TemplateRenderer<T> } = {
   "dispute-closed-notice": {
     subject: disputeClosedNoticeSubject,
     component: (vars) => <DisputeClosedNoticeEmail {...vars} />,
+  },
+  "dispute-unmatched-admin-notice": {
+    subject: disputeUnmatchedAdminNoticeSubject,
+    component: (vars) => <DisputeUnmatchedAdminNoticeEmail {...vars} />,
   },
   "proxy-cancelled-notice": {
     subject: proxyCancelledNoticeSubject,
