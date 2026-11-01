@@ -24,7 +24,7 @@ describe("SaleroomCatalogToolbarRow", () => {
     render(<SaleroomCatalogToolbarRow {...baseProps} />);
 
     expect(screen.getAllByRole("button", { name: /Filters/i }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole("radiogroup", { name: "View" }).length).toBe(1);
+    expect(screen.getAllByRole("group", { name: "View" }).length).toBe(1);
     expect(screen.queryByTestId("mobile-trailing-row")).not.toBeInTheDocument();
 
     const allLink = screen.getByRole("link", { name: "All" });

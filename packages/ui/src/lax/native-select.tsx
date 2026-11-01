@@ -35,7 +35,9 @@ export function NativeSelect<T extends string>({
   const field = useField();
   const describedBy = props["aria-describedby"] ?? field?.describedBy;
   return (
-    <div className={cn(fieldBox, "relative h-lax-control-md px-0 text-lax-14", className)}>
+    <div
+      className={cn(fieldBox, "lax-target relative h-lax-control-md px-0 text-lax-14", className)}
+    >
       <select
         id={id ?? field?.controlId}
         disabled={disabled ?? field?.disabled}

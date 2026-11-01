@@ -8,7 +8,7 @@ export type LinkProps = {
   href: string;
   className?: string;
   children?: React.ReactNode;
-  "aria-current"?: "page";
+  "aria-current"?: "page" | "true";
   "aria-label"?: string;
   onClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
   prefetch?: boolean;

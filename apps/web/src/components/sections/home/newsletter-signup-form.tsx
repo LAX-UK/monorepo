@@ -1,16 +1,15 @@
 "use client";
 
+import { publicFormResolver } from "@/lib/forms/public-form-resolver";
 import { defaultNewsletterSubmitter } from "@/lib/newsletter/services/newsletter.client";
 import { useNewsletterSubmit } from "@/lib/newsletter/use-newsletter-submit";
 import { cn } from "@auction/ui";
-import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@auction/ui/components/form";
-import { Input } from "@auction/ui/components/input";
-import { Button } from "@auction/ui/lax";
+import { Button, Field, Notice, TextInput } from "@auction/ui/lax";
 import { type NewsletterSubscribeInput, newsletterSubscribeSchema } from "@auction/validators";
-import { zodResolver } from "@hookform/resolvers/zod";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+
+const ON_DARK_FOCUS = "[--color-lax-focus:#fff] [--lax-focus:#fff]";
 
 type Props = {
   /** `onDark` for use on the near-black home hero. */
@@ -26,8 +25,9 @@ export function NewsletterSignupForm({ tone = "default" }: Props) {
   );
 
   const form = useForm<NewsletterSubscribeInput>({
-    resolver: zodResolver(newsletterSubscribeSchema),
+    resolver: publicFormResolver(newsletterSubscribeSchema),
     defaultValues: { email: "" },
+    reValidateMode: "onBlur",
   });
 
   const onSubmit = form.handleSubmit(async (values) => {
@@ -42,69 +42,59 @@ export function NewsletterSignupForm({ tone = "default" }: Props) {
 
   if (status) {
     return (
-      <output
-        className={cn(
-          "block text-center font-body text-base font-medium",
-          onDark ? "text-white" : "text-primary",
-        )}
-        aria-live="polite"
-        aria-atomic="true"
+      <Notice
+        tone="success"
+        title={status === "already_subscribed" ? "You're already subscribed" : "You're on the list"}
+        className="mx-auto w-full max-w-[420px] text-left"
       >
-        {status === "already_subscribed"
-          ? "You're already subscribed — see you in your inbox."
-          : "You're on the list."}
-      </output>
+        {status === "already_subscribed" ? "See you in your inbox." : "We'll be in touch."}
+      </Notice>
     );
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={onSubmit} className="mx-auto w-full max-w-[420px] text-left" noValidate>
-        {bannerError ? (
-          <Alert variant="destructive" className="mb-4" aria-live="assertive">
-            <AlertDescription>{bannerError}</AlertDescription>
-          </Alert>
-        ) : null}
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <div className="min-w-0 flex-1">
-            <FormField
-              control={form.control}
-              name="email"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Input
-                      {...field}
-                      type="email"
-                      autoComplete="email"
-                      placeholder="your@email.com"
-                      aria-label="Email address"
-                      disabled={loading}
-                      className="h-11 rounded-sm border-outline-variant bg-surface px-4 font-body text-sm text-on-surface sm:h-9"
-                    />
-                  </FormControl>
-                  <FormMessage
-                    className={cn("mt-3 text-sm", onDark ? "text-white" : "text-error")}
-                  />
-                </FormItem>
-              )}
-            />
-          </div>
-          <Button
-            type="submit"
-            variant={onDark ? "secondary" : "primary"}
+    <form
+      onSubmit={onSubmit}
+      className={cn(
+        "mx-auto flex w-full max-w-[420px] flex-col gap-3 text-left",
+        // The focus outline is ink by default, which vanishes on the near-black hero ground: draw it white here.
+        onDark && ON_DARK_FOCUS,
+      )}
+      noValidate
+    >
+      {bannerError ? <Notice tone="danger" alert title={bannerError} /> : null}
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start">
+        <Field
+          label="Email address"
+          labelHidden
+          id="newsletter-email"
+          error={form.formState.errors.email?.message}
+          // The hero ground is near-black in both themes, so its message is white on it.
+          className={cn("flex-1", onDark && "[&>p:last-child]:text-white")}
+        >
+          <TextInput
+            type="email"
+            autoComplete="email"
+            placeholder="your@email.com"
             disabled={loading}
-            // The hero ground is near-black in both themes, so its button is a fixed light fill with dark text in both
-            // (theme-aware cream tokens turn dark in dark mode).
-            className={cn(
-              onDark &&
-                "border-transparent bg-white text-brand-900 hover:bg-brand-100 active:bg-brand-100",
-            )}
-          >
-            {loading ? "Subscribing…" : "Subscribe"}
-          </Button>
-        </div>
-      </form>
-    </Form>
+            {...form.register("email")}
+          />
+        </Field>
+        <Button
+          type="submit"
+          variant={onDark ? "secondary" : "primary"}
+          loading={loading}
+          // The hero ground is near-black in both themes, so its button is a fixed light fill with dark text in both
+          // (theme-aware cream tokens turn dark in dark mode).
+          className={cn(
+            "shrink-0",
+            onDark &&
+              "border-transparent bg-white text-brand-900 hover:bg-brand-100 active:bg-brand-100",
+          )}
+        >
+          {loading ? "Subscribing…" : "Subscribe"}
+        </Button>
+      </div>
+    </form>
   );
 }

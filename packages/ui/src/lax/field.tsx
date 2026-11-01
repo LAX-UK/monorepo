@@ -56,6 +56,10 @@ export type FieldProps = {
   error?: string | null | undefined;
   /** Marks the label "Optional" instead; required is the default. */
   optional?: boolean;
+  /** With `optional`, drops the visible "Optional" mark: for filters, where every field is optional. */
+  quiet?: boolean;
+  /** Keeps the label for assistive technology only, for a lone control whose purpose is plain (a search or sign-up box). */
+  labelHidden?: boolean;
   disabled?: boolean;
   /** Use when the control renders its own id (e.g. a picker trigger). */
   id?: string;
@@ -65,7 +69,7 @@ export type FieldProps = {
 
 /**
  * Label, guidance, control and inline error in one vertical rhythm (label 20, gap 6, control,
- * gap 6, message 16). Controls inside read their ids from context, so every input is labelled
+ * gap 6, message 16; client density: 13/20). Controls inside read their ids from context, so every input is labelled
  * and described without wiring ids by hand.
  */
 export function Field({
@@ -73,6 +77,8 @@ export function Field({
   description,
   error,
   optional = false,
+  quiet = false,
+  labelHidden = false,
   disabled = false,
   id,
   className,
@@ -100,7 +106,7 @@ export function Field({
 
   return (
     <div className={cn("flex min-w-0 flex-col gap-1.5", className)}>
-      <div className="flex flex-col gap-0.5">
+      <div className={cn("flex flex-col gap-0.5", labelHidden && "sr-only")}>
         <label
           id={labelId}
           htmlFor={controlId}
@@ -110,7 +116,7 @@ export function Field({
           )}
         >
           {label}
-          {optional ? (
+          {optional && !quiet ? (
             <span className="text-lax-12 font-normal text-lax-subtle">Optional</span>
           ) : null}
         </label>
@@ -124,9 +130,12 @@ export function Field({
       {error ? (
         <p
           id={errorId}
-          className="flex items-start gap-1.5 text-lax-12 font-medium text-lax-danger"
+          className="flex items-start gap-1.5 text-lax-12 font-medium text-lax-danger in-data-[lax-density=client]:text-lax-13 in-data-[lax-density=client]:leading-5"
         >
-          <CircleAlert aria-hidden className="mt-px size-3.5 shrink-0" />
+          <CircleAlert
+            aria-hidden
+            className="mt-px size-3.5 shrink-0 in-data-[lax-density=client]:mt-[3px]"
+          />
           {error}
         </p>
       ) : null}

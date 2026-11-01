@@ -4,6 +4,7 @@ import { SaleTypeBadge } from "@/components/marketing/sale-type-badge";
 import type { SaleFormatExplainerContext } from "@/lib/sale-format-explainer";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { cn } from "@auction/ui";
+import { StatusBadge } from "@auction/ui/lax";
 
 type Props = {
   status: Sale["status"] | "voided";
@@ -60,14 +61,11 @@ export function SaleMetaBadges({
         ) : null}
         <SaleTypeBadge
           deliveryMode={deliveryMode}
-          size={size}
           withExplainer={withExplainer}
           {...(explainerContext ? { explainerContext } : {})}
         />
         {showOnlineBiddingGatedBadge ? (
-          <span className="inline-flex items-center rounded border border-outline-variant/50 bg-surface-container-low px-2 py-0.5 font-label text-xs font-medium text-on-surface-variant">
-            Online bidding opens when live
-          </span>
+          <StatusBadge tone="neutral">Online bidding opens when live</StatusBadge>
         ) : null}
         {showDate ? (
           <div
