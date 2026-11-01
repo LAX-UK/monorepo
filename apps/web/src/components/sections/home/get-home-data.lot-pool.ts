@@ -1,6 +1,6 @@
 import { isPublicLotStatus } from "@/lib/catalog/public-catalog-visibility";
 import { allocateHomeLots } from "@auction/domain";
-import type { Lot } from "@auction/types";
+import type { Lot, Sale } from "@auction/types";
 import { HOME_MORE_LOTS_MIN } from "./get-home-data.constants";
 
 /** Merge active + scheduled lots for the lower home strip; active order preserved first. */
@@ -20,19 +20,46 @@ export type HomePageLotsInput = {
   railLots: Lot[];
   pool: Lot[];
   moreLimit: number;
+  /** Lots staff featured for the lead sale, in staff order; they lead the rail. */
+  featuredLotIds?: readonly string[];
 };
+
+/** Sale ids pinned to the home page, in `homePinOrder`. */
+export function homePinnedSaleIds(
+  sales: ReadonlyArray<Pick<Sale, "id" | "homePinOrder">>,
+): string[] {
+  return sales
+    .filter((s): s is typeof s & { homePinOrder: number } => typeof s.homePinOrder === "number")
+    .sort((a, b) => a.homePinOrder - b.homePinOrder)
+    .map((s) => s.id);
+}
+
+/** The pool lots staff featured, in staff order; unknown ids are skipped. */
+function featuredLots(pool: Lot[], featuredLotIds: readonly string[]): Lot[] {
+  const byId = new Map(pool.map((lot) => [lot.id, lot]));
+  return featuredLotIds.flatMap((id) => byId.get(id) ?? []);
+}
 
 /**
  * Every lot appears once on the page, by priority: the sale rail first, then
  * "More lots", which is empty (so the section is hidden) when fewer than
  * `HOME_MORE_LOTS_MIN` unseen lots remain.
  */
-export function allocateHomePageLots({ railLots, pool, moreLimit }: HomePageLotsInput): {
+export function allocateHomePageLots({
+  railLots,
+  pool,
+  moreLimit,
+  featuredLotIds = [],
+}: HomePageLotsInput): {
   rail: Lot[];
   more: Lot[];
 } {
   const slots = allocateHomeLots<Lot>([
-    { key: "rail", candidates: railLots, limit: railLots.length },
+    {
+      key: "rail",
+      candidates: [...featuredLots(pool, featuredLotIds), ...railLots],
+      limit: railLots.length,
+    },
     { key: "more", candidates: pool, limit: moreLimit, min: HOME_MORE_LOTS_MIN },
   ]);
   return { rail: slots.rail ?? [], more: slots.more ?? [] };

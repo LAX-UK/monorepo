@@ -10,6 +10,7 @@ import {
 import {
   allocateHomePageLots,
   buildHomeCatalogLotPool,
+  homePinnedSaleIds,
 } from "@/components/sections/home/get-home-data.lot-pool";
 import type {
   HomeJsonLdListEntry,
@@ -176,12 +177,21 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
     console.error("[getHomeData] ended sales load failed", err);
   }
 
+  const allSales = [...salesRows, ...endedRows].map((row) => row.sale);
+  const homeState = resolveHomeState({
+    sales: allSales,
+    now: new Date(),
+    pinnedSaleIds: homePinnedSaleIds(allSales),
+  });
+  const leadSale = allSales.find((sale) => sale.id === homeState.leadSaleId);
+
   const endingSoon = lotsEndingSoon(activeLots);
   const choice = chooseUrgencyLots(activeLots, endingSoon, scheduledLots);
   const { rail, more } = allocateHomePageLots({
     railLots: choice.lots,
     pool: buildHomeCatalogLotPool(activeLots, scheduledLots),
     moreLimit: HOME_MORE_LOTS_LIMIT,
+    featuredLotIds: leadSale?.featuredLotIds ?? [],
   });
   const urgencySection: HomeUrgencySection = {
     variant: choice.variant,
@@ -200,8 +210,6 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
     HOME_UPCOMING_LIMIT,
   );
 
-  const allSales = [...salesRows, ...endedRows].map((row) => row.sale);
-  const homeState = resolveHomeState({ sales: allSales, now: new Date() });
   const heroState = resolveHomeHeroState(heroSalesLeadFirst(allSales, homeState));
   const moreLots = toEditorsPickLotCardVMs(more);
 
