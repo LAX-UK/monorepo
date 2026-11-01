@@ -9,6 +9,7 @@ html.dark {
   --color-accent-brand: var(--color-accent-gold);
   /* Marketing surfaces in dark */
   --color-page-bg: #121414;
+  --color-surface-paper: var(--brand-paper-on-dark);
   --color-footer-bg: #0d0f0f;
   --color-footer-soft: #0d0f0f;
   --color-nav-border: #333534;

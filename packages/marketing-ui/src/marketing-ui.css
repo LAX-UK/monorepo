@@ -200,6 +200,18 @@ html.lenis {
   filter: var(--filter-work-mat-image, none);
 }
 
+/* The hang: a work hung on the paper wall. The shadow is stronger in dark, where the wall sits
+   almost on the page tone; the hover state deepens it. */
+:root {
+  --hang-art-shadow: 0 1px 2px rgb(16 18 18 / 0.14), 0 14px 30px -10px rgb(16 18 18 / 0.34);
+  --hang-art-shadow-hover: 0 2px 4px rgb(16 18 18 / 0.18), 0 20px 36px -10px rgb(16 18 18 / 0.44);
+}
+
+.dark {
+  --hang-art-shadow: 0 1px 2px rgb(0 0 0 / 0.4), 0 16px 34px -10px rgb(0 0 0 / 0.7);
+  --hang-art-shadow-hover: 0 2px 4px rgb(0 0 0 / 0.5), 0 22px 40px -10px rgb(0 0 0 / 0.8);
+}
+
 .marketing-status-state {
   display: flex;
   flex-direction: column;
