@@ -49,6 +49,36 @@ export const SUBMISSIONS_ACCESS: CapabilityRequirement = {
 };
 export const SUBMISSIONS_READ_ACCESS: CapabilityRequirement = readOrWrite(SUBMISSIONS_ACCESS);
 
+/**
+ * Consignment messages in Bid admin. Answering a client, assigning a thread and closing it belong
+ * to the people who own the client relationship: specialists, client services, sales managers and
+ * administrators.
+ */
+export const CONSIGNMENT_INBOX_REPLY_ACCESS: CapabilityRequirement = {
+  anyOf: ["specialist.appraise", "support.respond", "auction.manage", "platform.admin.full"],
+};
+
+/**
+ * Reading the inbox and its threads: everyone who replies, plus the teams who need the context
+ * (cataloguing, finance, compliance, fulfilment) and read-only staff. The saleroom clerk holds
+ * none of these, so never sees client messages.
+ */
+export const CONSIGNMENT_INBOX_READ_ACCESS: CapabilityRequirement = {
+  anyOf: [
+    ...requirementCapabilities(CONSIGNMENT_INBOX_REPLY_ACCESS),
+    "catalogue.write",
+    "finance.read",
+    "aml.review",
+    "operations.fulfilment",
+    "admin.read",
+  ],
+};
+
+/** The team's saved replies are written and retired by sales managers and administrators. */
+export const CONSIGNMENT_SAVED_REPLIES_MANAGE_ACCESS: CapabilityRequirement = {
+  anyOf: ["auction.manage", "platform.admin.full"],
+};
+
 export const CONDITION_REPORTS_ACCESS: CapabilityRequirement = {
   anyOf: ["catalogue.write", "specialist.appraise", "platform.admin.full"],
 };

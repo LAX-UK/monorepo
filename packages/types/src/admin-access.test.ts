@@ -254,3 +254,40 @@ describe("admin-access requirements", () => {
     });
   });
 });
+
+describe("consignment inbox", () => {
+  const REPLY: UserStaffRole[] = [
+    "specialist",
+    "client_services",
+    "sales_manager",
+    "administrator",
+  ];
+  const READ_ONLY: UserStaffRole[] = [
+    "cataloguer",
+    "finance",
+    "compliance",
+    "fulfilment",
+    "read_only",
+  ];
+
+  it.each(REPLY)("%s reads and replies", (role) => {
+    expect(has(role, adminAccess.CONSIGNMENT_INBOX_READ_ACCESS)).toBe(true);
+    expect(has(role, adminAccess.CONSIGNMENT_INBOX_REPLY_ACCESS)).toBe(true);
+  });
+
+  it.each(READ_ONLY)("%s reads without replying", (role) => {
+    expect(has(role, adminAccess.CONSIGNMENT_INBOX_READ_ACCESS)).toBe(true);
+    expect(has(role, adminAccess.CONSIGNMENT_INBOX_REPLY_ACCESS)).toBe(false);
+  });
+
+  it("keeps the saleroom clerk out", () => {
+    expect(has("saleroom_clerk", adminAccess.CONSIGNMENT_INBOX_READ_ACCESS)).toBe(false);
+  });
+
+  it("leaves saved replies to sales managers and administrators", () => {
+    const managers = [...REPLY, ...READ_ONLY].filter((role) =>
+      has(role, adminAccess.CONSIGNMENT_SAVED_REPLIES_MANAGE_ACCESS),
+    );
+    expect(managers.sort()).toEqual(["administrator", "sales_manager"]);
+  });
+});
