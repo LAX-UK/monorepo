@@ -4,9 +4,10 @@ import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title"
 import { resolveArtistFollowProfiles } from "@/lib/data/artist-follow-profiles.server";
 import { getServerDataContainer } from "@/lib/data/container.server";
 import { getServerMySavedSearches } from "@/lib/data/http/saved-searches.server";
+import { getServerWatchlistReminders } from "@/lib/data/http/watchlist-reminders.server";
 import { resolveSaleTitles } from "@/lib/data/sale-titles.server";
 import { artistPath } from "@/lib/seo/url";
-import { buildWatchedLots, parseWatchingView } from "@/lib/watching/watching.vm";
+import { buildWatchedLots, parseWatchingView, withReminders } from "@/lib/watching/watching.vm";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Watching" };
@@ -24,19 +25,22 @@ async function settle<T>(read: () => Promise<T>): Promise<T | null> {
 /** The person's watched lots, with where they stand on each; `null` when they could not be read. */
 async function loadLots() {
   const c = await getServerDataContainer();
-  const [rows, bids, user] = await Promise.all([
+  const [rows, bids, user, reminders] = await Promise.all([
     settle(() => c.watchlist.listMine({ sort: "endingSoon", categoryIds: [] })),
     settle(() => c.buying.bids()),
     settle(() => c.session.getCurrent()),
+    // Reminders only add to each row; the list works without them.
+    settle(getServerWatchlistReminders),
   ]);
   if (!rows) return null;
-  return buildWatchedLots({
+  const lots = buildWatchedLots({
     rows,
     // Bids only add the person's standing; the list works without them.
     bids: bids ?? [],
     userId: user?.id,
     saleTitleById: await resolveSaleTitles(rows.map((row) => row.lot?.saleId)),
   });
+  return withReminders(lots, reminders ?? []);
 }
 
 /** The artists the person follows, with each alert; `null` when they could not be read. */

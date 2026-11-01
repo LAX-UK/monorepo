@@ -1856,6 +1856,13 @@
       "when": 1798272000000,
       "tag": "0264_consignment_inbox",
       "breakpoints": true
+    },
+    {
+      "idx": 267,
+      "version": "7",
+      "when": 1798531200000,
+      "tag": "0267_watchlist_reminders",
+      "breakpoints": true
     }
   ]
 }

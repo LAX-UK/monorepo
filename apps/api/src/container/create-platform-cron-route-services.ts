@@ -4,6 +4,7 @@ import type {
   ILaxAdminRoleExpiryRequests,
   IStaffNoticeRecipientReader,
   IStaffRoster,
+  IWatchlistReminderRepository,
 } from "@auction/persistence/interfaces";
 import type { Redis } from "ioredis";
 import { StaffRoleExpiryNotifier } from "../infrastructure/staff-role-expiry.notifier.js";
@@ -18,6 +19,7 @@ import {
 } from "../services/staff/lax-admin-role-expiry.service.js";
 import { StaffRoleExpiryService } from "../services/staff/staff-role-expiry.service.js";
 import type { IStaffAdministrators } from "../services/staff/staff-role-notices.js";
+import { WatchedLotReminderJob } from "../services/watchlist-reminders/watched-lot-reminder.job.js";
 
 export type CreatePlatformCronRouteServicesInput = {
   redis: Redis;
@@ -30,6 +32,7 @@ export type CreatePlatformCronRouteServicesInput = {
   notificationDispatcher: Pick<NotificationDispatcher, "dispatch">;
   emailService: IEmailService;
   webOrigin: string;
+  watchlistReminders: Pick<IWatchlistReminderRepository, "listPending" | "markSent">;
 };
 
 export function createPlatformCronRouteServices(
@@ -50,5 +53,9 @@ export function createPlatformCronRouteServices(
       new StaffRoleExpiryService(input.staffRoster, expiryNotifier),
       new LaxAdminRoleExpiryService(input.laxAdminRoleExpiry, expiryNotifier),
     ]),
+    watchedLotReminders: new WatchedLotReminderJob({
+      reminders: input.watchlistReminders,
+      dispatcher: input.notificationDispatcher,
+    }),
   };
 }

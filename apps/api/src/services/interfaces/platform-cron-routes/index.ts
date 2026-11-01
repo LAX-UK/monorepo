@@ -1,3 +1,5 @@
+import type { IWatchedLotReminderJob } from "../../watchlist-reminders/watched-lot-reminder.job.js";
+
 export type {
   LotLifecycleTickCronResult,
   IPlatformLifecycleCronApplicationService,
@@ -9,6 +11,7 @@ export type PlatformCronRouteServices = {
   lifecycle: import("./platform-lifecycle-cron.js").IPlatformLifecycleCronApplicationService;
   hygiene: import("./platform-hygiene-cron.js").IPlatformHygieneCronApplicationService;
   staffRoles: import("./platform-staff-roles-cron.js").IPlatformStaffRolesCronApplicationService;
+  watchedLotReminders: IWatchedLotReminderJob;
 };
 
 export type {

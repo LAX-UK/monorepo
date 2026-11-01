@@ -3,12 +3,14 @@ import {
   SHOP_STOCK_RECONCILIATION_QUEUE_NAME,
   STAFF_ROLE_EXPIRY_QUEUE_NAME,
   STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME,
+  WATCHED_LOT_REMINDERS_QUEUE_NAME,
 } from "@auction/queues";
 import { Queue, Worker } from "bullmq";
 import { runConsignmentAgreementRemindersJob } from "../jobs/consignment-agreement-reminders.js";
 import { runShopStockReconciliationJob } from "../jobs/shop-stock-reconciliation.job.js";
 import { runStaffRoleExpiryJob } from "../jobs/staff-role-expiry.js";
 import { runStaleSubmissionDraftRemindersJob } from "../jobs/stale-submission-draft-reminders.js";
+import { runWatchedLotRemindersJob } from "../jobs/watched-lot-reminders.js";
 import { withSentryCronMonitor } from "../lib/sentry-cron.js";
 import { registerFinanceAndLifecycleCronWorkers } from "./register-finance-cron-workers.js";
 import type { WorkerBootstrapDeps, WorkerErrorHandlerEntry } from "./types.js";
@@ -130,6 +132,45 @@ export function registerCronWorkers(deps: WorkerBootstrapDeps): CronWorkersHandl
     queue: CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
   });
   closables.push(agreementRemindersWorker, agreementRemindersQueue);
+
+  const watchedLotRemindersQueue = new Queue(WATCHED_LOT_REMINDERS_QUEUE_NAME, bullConnection);
+  const watchedLotRemindersWorker = new Worker(
+    WATCHED_LOT_REMINDERS_QUEUE_NAME,
+    async () => {
+      await withSentryCronMonitor(
+        WATCHED_LOT_REMINDERS_QUEUE_NAME,
+        sentryMonitorSlugs,
+        async () => {
+          await runWatchedLotRemindersJob({
+            apiBaseUrl: env.API_INTERNAL_BASE_URL,
+            cronSecret,
+            log,
+          });
+          await heartbeat(WATCHED_LOT_REMINDERS_QUEUE_NAME);
+        },
+      );
+    },
+    bullConnection,
+  );
+  watchedLotRemindersWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(WATCHED_LOT_REMINDERS_QUEUE_NAME, job, err);
+  });
+  // Every five minutes: an hour-before reminder arrives between 55 and 60 minutes before close.
+  void watchedLotRemindersQueue.add(
+    WATCHED_LOT_REMINDERS_QUEUE_NAME,
+    {},
+    {
+      jobId: "five-minutely-watched-lot-reminders",
+      repeat: { every: 5 * 60 * 1000 },
+      removeOnComplete: 50,
+    },
+  );
+  log.info("watched-lot-reminders repeat registered (every 5 minutes)");
+  errorHandlers.push({
+    worker: watchedLotRemindersWorker,
+    queue: WATCHED_LOT_REMINDERS_QUEUE_NAME,
+  });
+  closables.push(watchedLotRemindersWorker, watchedLotRemindersQueue);
 
   const staffRoleExpiryQueue = new Queue(STAFF_ROLE_EXPIRY_QUEUE_NAME, bullConnection);
   const staffRoleExpiryWorker = new Worker(

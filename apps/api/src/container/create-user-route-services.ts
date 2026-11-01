@@ -1,5 +1,8 @@
 import type { IAttributionStore } from "@auction/marketing-events";
-import type { IRecordPeopleReader } from "@auction/persistence/interfaces";
+import type {
+  IRecordPeopleReader,
+  IWatchlistReminderRepository,
+} from "@auction/persistence/interfaces";
 import type {
   IBidPortfolioReader,
   ICategoryInterestsEligibilityReader,
@@ -38,6 +41,7 @@ import { UserProfileHttpApplicationService } from "../services/user/user-profile
 import { UserPublicHttpApplicationService } from "../services/user/user-public-http-application.service.js";
 import { UserSecurityHttpApplicationService } from "../services/user/user-security-http-application.service.js";
 import { UserWatchlistHttpApplicationService } from "../services/user/user-watchlist-http-application.service.js";
+import { WatchlistRemindersHttpService } from "../services/watchlist-reminders/watchlist-reminders-http.service.js";
 import type { WatchlistService } from "../services/watchlist.service.js";
 
 export type CreateUserRouteServicesInput = {
@@ -73,6 +77,7 @@ export type CreateUserRouteServicesInput = {
   authAuditPublisher: IAuthAuditPublisher;
   twoFactorRequirement: UserRouteServices["twoFactorRequirement"];
   staffInvitationAccept: UserRouteServices["staffInvitationAccept"];
+  watchlistReminders: IWatchlistReminderRepository;
   requireBuyingAccount: UserRouteServices["requireBuyingAccount"];
   recordPeople: IRecordPeopleReader;
 };
@@ -146,6 +151,7 @@ export function createUserRouteServices(input: CreateUserRouteServicesInput): Us
     }),
     twoFactorRequirement: input.twoFactorRequirement,
     staffInvitationAccept: input.staffInvitationAccept,
+    watchlistRemindersHttp: new WatchlistRemindersHttpService(input.watchlistReminders),
     requireBuyingAccount: input.requireBuyingAccount,
   };
 }

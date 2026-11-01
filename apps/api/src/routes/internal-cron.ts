@@ -234,6 +234,13 @@ export function createInternalCronRoutes(container: ContainerInternalCronRoutesS
     return c.json({ data });
   });
 
+  r.post("/watched-lot-reminders", async (c) => {
+    const gate = auth(c);
+    if (!gate.ok) return c.json(gate.body, gate.status);
+    const data = await container.platformCron.watchedLotReminders.sendDue();
+    return c.json({ data });
+  });
+
   r.post("/staff-role-expiry", async (c) => {
     const gate = auth(c);
     if (!gate.ok) return c.json(gate.body, gate.status);
