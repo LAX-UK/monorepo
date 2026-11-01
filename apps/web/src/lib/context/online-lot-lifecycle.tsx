@@ -20,7 +20,9 @@ type SalePick =
   | null;
 
 type Ctx = {
-  lot: Pick<Lot, "status" | "startTime" | "endTime" | "winnerId" | "currentPrice" | "id">;
+  lot: Pick<Lot, "status" | "startTime" | "endTime" | "winnerId" | "currentPrice" | "id"> & {
+    hasWinner?: boolean | undefined;
+  };
   sale: SalePick;
   extendedByMs: number | null;
   setExtendedDeltaMs: (deltaMs: number | null) => void;

@@ -45,7 +45,7 @@ type SaleLifecyclePick =
 type LifecycleLotPick = Pick<
   Lot,
   "id" | "status" | "startTime" | "endTime" | "winnerId" | "currentPrice"
->;
+> & { hasWinner?: boolean | undefined };
 
 function deriveLeadingBidderId(bids: LotPageShellData["initialBids"]): string | null {
   const winning = bids.find((b) => b.isWinning);
@@ -300,6 +300,9 @@ export function buildLotPageViewModel(input: {
     endTime: auction.endTime,
     winnerId: auction.winnerId,
     currentPrice: auction.currentPrice,
+    ...("hasWinner" in auction && auction.hasWinner !== undefined
+      ? { hasWinner: auction.hasWinner }
+      : {}),
   };
 
   // Seed the SSR lifecycle with the server-loaded saleroom session so a hybrid

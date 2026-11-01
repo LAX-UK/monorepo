@@ -4,7 +4,7 @@ import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-vie
 import { ParticipationWarningBadge } from "@/components/ui/participation-warning-badge";
 import { formatMoney } from "@/lib/format-currency";
 import type { LotLifecycle } from "@/lib/lot/lot-lifecycle";
-import { lotPriceLabel } from "@/lib/lot/lot-price-label";
+import { lotLifecycleIsClosed, lotPriceLabel } from "@/lib/lot/lot-price-label";
 import type { LotReserveContext } from "@/lib/lot/reserve-presentation";
 import { reserveBadgeLabel } from "@/lib/lot/reserve-presentation";
 import { cn } from "@auction/ui";
@@ -106,7 +106,7 @@ export function LotPricingStatusHeader({
               />
             ) : null}
           </div>
-        ) : (
+        ) : lotLifecycleIsClosed(lifecycle.kind) ? null : (
           <div>
             <p className="font-label text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">
               Min. next bid

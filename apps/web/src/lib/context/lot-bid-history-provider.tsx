@@ -116,7 +116,16 @@ export function LotBidHistoryProvider({
     (snapshot: LotBidSnapshot) => {
       const endMs = new Date(snapshot.endTime).getTime();
       onlineLifecycle?.setLiveEndTimeMs(endMs);
-      onlineLifecycle?.setLiveLotStatus(snapshot.status);
+      if (snapshot.status === "ended") {
+        // An ended lot carries its result: the winner comes with the status, so the header
+        // never reads a sold lot as "No sale" before a realtime event names the winner.
+        onlineLifecycle?.setLiveLotEnded({
+          winnerId: snapshot.winnerId ?? null,
+          noSale: snapshot.winnerId == null,
+        });
+      } else {
+        onlineLifecycle?.setLiveLotStatus(snapshot.status);
+      }
     },
     [onlineLifecycle],
   );

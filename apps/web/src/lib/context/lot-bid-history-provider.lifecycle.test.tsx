@@ -26,7 +26,7 @@ const HOUR = 60 * 60 * 1000;
 
 type LotFixture = {
   id: string;
-  status: "active" | "scheduled";
+  status: "active" | "scheduled" | "ended";
   startTime: Date;
   endTime: Date;
   winnerId: string | null;
@@ -80,6 +80,19 @@ describe("LotBidHistoryProvider seeds the lot lifecycle from the server lot", ()
       NOW,
     );
     expect(lifecycle.kind).toBe("live");
+  });
+
+  it("carries an ended lot's winner, so a sold lot never reads as no sale", () => {
+    const { result } = renderLifecycle({
+      id: "lot-sold",
+      status: "ended",
+      startTime: new Date(NOW - 48 * HOUR),
+      endTime: new Date(NOW - HOUR),
+      winnerId: "buyer-1",
+      currentPrice: "95000.00",
+    });
+    expect(result.current?.liveLotStatus).toBe("ended");
+    expect(result.current?.liveWinnerId).toBe("buyer-1");
   });
 
   it("keeps an upcoming lot scheduled instead of marking it active", () => {
