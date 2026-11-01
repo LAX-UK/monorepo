@@ -1,6 +1,5 @@
 "use client";
 
-import { SubmissionReadyToSubmitBanner } from "@/components/dashboard/submission-ready-to-submit-banner";
 import { DraftResumeToast } from "@/components/dashboard/submission-wizard/draft-resume-toast";
 import { BasicsStep } from "@/components/dashboard/submission-wizard/steps/basics-step";
 import { DetailsStep } from "@/components/dashboard/submission-wizard/steps/details-step";
@@ -12,7 +11,6 @@ import { SubmissionDraftContextStrip } from "@/components/dashboard/submission-w
 import { WizardFooter } from "@/components/dashboard/submission-wizard/wizard-footer";
 import { WizardHeaderActions } from "@/components/dashboard/submission-wizard/wizard-header-actions";
 import { WizardStepper } from "@/components/dashboard/submission-wizard/wizard-stepper";
-import { withdrawSubmissionFromValuesAction } from "@/lib/actions/submissions";
 import { trackWizardStepComplete } from "@/lib/analytics/sell-funnel";
 import type { SubmissionCategoryOption } from "@/lib/forms/submission/item-submission-form-defaults";
 import {
@@ -28,11 +26,11 @@ import {
   useSubmissionWizardController,
 } from "@/lib/forms/submission/use-submission-wizard-controller";
 import {
+  SPECIALIST_RESPONSE_PROMISE,
   SUBMISSION_FINISH_LATER_LABEL,
   SUBMISSION_SUBMIT_LABEL,
 } from "@/lib/marketing/sell-flow-copy";
 import { HideBottomTabBarWhileMounted } from "@/lib/shell/shell-chrome-context";
-import { notify } from "@/lib/ui/notify";
 import { evaluateSubmissionQuality } from "@auction/domain";
 import { Button } from "@auction/ui/components/button";
 import {
@@ -234,19 +232,6 @@ export function SubmissionWizardView({
     router.push("/selling/consignments");
   }, [exitGuardActive, router]);
 
-  const handleWithdraw = useCallback(() => {
-    if (mode.kind !== "edit" || isSubmitting) return;
-    void (async () => {
-      const result = await withdrawSubmissionFromValuesAction(mode.submissionId);
-      if (result.ok) {
-        notify.success("Withdrawn");
-        router.push("/selling/consignments");
-        return;
-      }
-      notify.error(result.error ?? "Withdraw failed");
-    })();
-  }, [isSubmitting, mode, router]);
-
   // Moving between steps takes focus to the new step's heading, so it is announced. Opening the
   // form does not: the page loads in reading order with nothing focused.
   // biome-ignore lint/correctness/useExhaustiveDependencies: refocus step heading on navigation
@@ -310,12 +295,6 @@ export function SubmissionWizardView({
   return (
     <>
       {mode.kind === "edit" ? <DraftResumeToast readyToSubmit={readyToSubmit} /> : null}
-      {readyToSubmit && mode.kind === "edit" ? (
-        <SubmissionReadyToSubmitBanner
-          onSubmit={handleSubmitForReview}
-          isSubmitting={isSubmitting}
-        />
-      ) : null}
       <HideBottomTabBarWhileMounted />
       <Dialog
         open={exitGuardOpen}
@@ -326,10 +305,9 @@ export function SubmissionWizardView({
       >
         <DialogContent className="max-w-md border-border-hairline">
           <DialogHeader>
-            <DialogTitle>You haven&apos;t submitted yet</DialogTitle>
+            <DialogTitle>You haven&apos;t sent it yet</DialogTitle>
             <DialogDescription>
-              Your item won&apos;t be reviewed until you click Submit. Specialists usually respond
-              within 24 hours once submitted.
+              Your work won&apos;t be reviewed until you send it. {SPECIALIST_RESPONSE_PROMISE}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex flex-col gap-2 sm:flex-col">
@@ -397,9 +375,10 @@ export function SubmissionWizardView({
             actions={
               <WizardHeaderActions
                 isSubmitting={isSubmitting}
+                // The last step carries its own "Save and finish later", beside the send button.
+                showFinishLater={!isLastStep}
                 onFinishLater={handleFinishLater}
                 onLeaveWithoutSaving={requestLeaveWithoutSaving}
-                {...(mode.kind === "edit" ? { onWithdraw: handleWithdraw } : {})}
               />
             }
           />
@@ -410,7 +389,7 @@ export function SubmissionWizardView({
               ref={stepHeadingRef}
               tabIndex={-1}
               // A heading is not a control: focus lands here for screen readers, with no ring.
-              className="font-headline text-xl text-on-surface outline-none"
+              className="font-headline text-xl font-semibold text-on-surface outline-none"
             >
               {currentStep.label}
             </h2>

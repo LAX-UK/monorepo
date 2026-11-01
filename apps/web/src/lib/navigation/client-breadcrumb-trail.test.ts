@@ -49,6 +49,14 @@ describe("buildClientBreadcrumbTrail", () => {
     expect(labels("/selling/new")).toEqual(["Consignments", "New submission"]);
   });
 
+  it("trails the edit page back to its consignment", () => {
+    expect(buildClientBreadcrumbTrail("/selling/consignments/s1/edit")).toEqual([
+      { label: "Consignments", href: "/selling/consignments" },
+      { label: "Consignment", href: "/selling/consignments/s1" },
+      { label: "Make changes" },
+    ]);
+  });
+
   it("labels the Bid settings pages", () => {
     expect(buildClientBreadcrumbTrail("/settings/bidding")).toEqual([
       { label: "Bid settings", href: "/settings" },

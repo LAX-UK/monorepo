@@ -20,8 +20,30 @@ export type ConsignmentStatus =
   | "withdrawn"
   | "cancelled";
 
-/** The list views a status belongs to; `closed` work shows only under All. */
-export type ConsignmentStage = "drafts" | "in-review" | "in-sale" | "sold" | "unsold" | "closed";
+/**
+ * The one list of stages a consignment moves through, in order. Tabs, badges, filters, search and
+ * Home's stage counts all read these names; a new stage is a new entry. `id` is the tab's address.
+ */
+export const CONSIGNMENT_STAGES = [
+  { id: "drafts", label: "Draft" },
+  { id: "in-review", label: "In review" },
+  { id: "accepted", label: "Accepted" },
+  { id: "in-sale", label: "In a sale" },
+  { id: "sold", label: "Sold" },
+  { id: "unsold", label: "Did not sell" },
+] as const;
+
+export type ConsignmentOpenStage = (typeof CONSIGNMENT_STAGES)[number]["id"];
+
+/** The stage a status belongs to; `closed` work (not accepted, withdrawn) shows only under All. */
+export type ConsignmentStage = ConsignmentOpenStage | "closed";
+
+export const CONSIGNMENT_STAGE_LABEL: Record<ConsignmentOpenStage, string> = Object.fromEntries(
+  CONSIGNMENT_STAGES.map(({ id, label }) => [id, label]),
+) as Record<ConsignmentOpenStage, string>;
+
+/** The badge that rides on the In review stage when the specialist is waiting on the seller. */
+export const NEEDS_CHANGES_LABEL = "Needs changes";
 
 export type ConsignmentStatusPresentation = {
   label: string;
@@ -31,21 +53,28 @@ export type ConsignmentStatusPresentation = {
 };
 
 /**
- * How each status reads and which view holds it. A status that waits on the seller (changes, the
- * agreement, the unsold choice) asks for attention; work moving on its own is information; a
- * sale is good news; finished or closed work is neutral.
+ * How each status reads and which stage holds it. Its label is the stage's name, apart from
+ * "Needs changes", the one badge on In review; what the member must do next is the row's step,
+ * not a stage. A status that waits on the seller (changes, the agreement, the unsold choice) asks
+ * for attention; work moving on its own is information; a sale is good news; finished or closed
+ * work is neutral.
  */
 export const CONSIGNMENT_STATUS: Record<ConsignmentStatus, ConsignmentStatusPresentation> = {
   draft: { label: "Draft", tone: "neutral", shape: "ring", stage: "drafts" },
   in_review: { label: "In review", tone: "info", shape: "dot", stage: "in-review" },
-  needs_changes: { label: "Needs changes", tone: "warning", shape: "alert", stage: "in-review" },
-  agreement: { label: "Agreement to accept", tone: "warning", shape: "alert", stage: "in-review" },
-  preparing: { label: "Preparing catalogue", tone: "info", shape: "dot", stage: "in-review" },
+  needs_changes: {
+    label: NEEDS_CHANGES_LABEL,
+    tone: "warning",
+    shape: "alert",
+    stage: "in-review",
+  },
+  agreement: { label: "Accepted", tone: "warning", shape: "alert", stage: "accepted" },
+  preparing: { label: "Accepted", tone: "info", shape: "dot", stage: "accepted" },
   in_sale: { label: "In a sale", tone: "info", shape: "dot", stage: "in-sale" },
-  live: { label: "Live", tone: "live", shape: "dot", stage: "in-sale" },
+  live: { label: "In a sale", tone: "live", shape: "dot", stage: "in-sale" },
   sold: { label: "Sold", tone: "success", shape: "check", stage: "sold" },
   choose_unsold: {
-    label: "Choose what happens",
+    label: "Did not sell",
     tone: "warning",
     shape: "alert",
     stage: "unsold",

@@ -20,9 +20,9 @@ import { SubmissionDetailLiveRefresh } from "@/components/dashboard/submission-d
 import { SubmissionLotReadyChecklist } from "@/components/dashboard/submission-lot-ready-checklist";
 import { SubmissionRejectionPanel } from "@/components/dashboard/submission-rejection-panel";
 import { SubmissionSellerDocumentsPanel } from "@/components/dashboard/submission-seller-documents-panel";
-import { SubmissionWizard } from "@/components/dashboard/submission-wizard/submission-wizard";
 import { SubmissionWorkflowActions } from "@/components/dashboard/submission-workflow-actions";
 import { SetMobileShellTitle } from "@/components/layout/set-mobile-shell-title";
+import { WorkspacePageNoAccess } from "@/components/organisations/workspace-page-no-access";
 import { MediaImage } from "@/components/ui/media-image";
 import { requireAuthenticatedUser } from "@/lib/auth/guards.server";
 import { formatLotMoment } from "@/lib/bid/lot-moment";
@@ -40,11 +40,6 @@ import { getServerStripeConnectStatus } from "@/lib/data/http/stripe-connect.ser
 import { getServerSubmissionDocuments } from "@/lib/data/http/submission-documents.server";
 import { listServerSoldLots } from "@/lib/data/http/workspace-selling.server";
 import { resolveSaleTitles } from "@/lib/data/sale-titles.server";
-import { itemSubmissionToFormValues } from "@/lib/forms/submission/item-submission-form-defaults";
-import {
-  firstIncompleteWizardStepIndex,
-  wizardStepIndex,
-} from "@/lib/forms/submission/step-validation";
 import { openRecordInItsAccount } from "@/lib/legal-entity/open-record-in-account.server";
 import {
   resolveSellerWorkspaceContext,
@@ -55,6 +50,8 @@ import {
   CONDITIONS_OF_BUSINESS_PART_C,
   partCSection,
 } from "@/lib/legal/conditions-of-business-part-c";
+import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
+import { workspacePageRefusal } from "@/lib/presenters/workspace-access/workspace-access";
 import { consignmentActionsVm } from "@/lib/seller/consignment-actions.vm";
 import { checklistItemView } from "@/lib/seller/consignment-checklist-copy";
 import { consignmentChecklistFacts } from "@/lib/seller/consignment-checklist-facts";
@@ -73,6 +70,8 @@ import {
 import {
   consignmentAgreementHref,
   consignmentDocumentsHref,
+  consignmentEditHref,
+  consignmentHref,
   consignmentMessagesHref,
 } from "@/lib/seller/consignment-records";
 import { CONSIGNMENT_STATUS, consignmentStatus } from "@/lib/seller/consignment-status";
@@ -81,15 +80,14 @@ import { loadSellerAccountFacts } from "@/lib/seller/seller-account-facts.server
 import { sellerDocumentsPanelShows } from "@/lib/seller/seller-documents-visibility";
 import { unsoldChoiceViewModel } from "@/lib/seller/unsold-choice-view";
 import { lotPath } from "@/lib/seo/url";
-import {
-  agreementAcceptanceHold,
-  computeConsignmentChecklist,
-  evaluateSubmissionQuality,
-} from "@auction/domain";
-import { Notice, StatusBadge } from "@auction/ui/lax";
+import { agreementAcceptanceHold, computeConsignmentChecklist } from "@auction/domain";
+import { ButtonLink, Notice, StatusBadge } from "@auction/ui/lax";
 import { ChevronLeft } from "lucide-react";
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+
+export const metadata: Metadata = { title: "Consignment" };
 
 export default async function SubmissionDetailPage({
   params,
@@ -108,32 +106,37 @@ export default async function SubmissionDetailPage({
   });
   const sellerCtx = await resolveSellerWorkspaceContext(user.role, user.staffRoles);
   const { sellerEntityId, sellingAsOrganisation } = sellerCtx;
+  // A role that does not follow consignments gets the access page, not a page that claims the
+  // consignment does not exist.
+  const refusal = workspacePageRefusal(CLIENT_ROUTES.consignments, sellerCtx.actor);
+  if (refusal) {
+    return (
+      <>
+        <SetMobileShellTitle title="Consignment" />
+        <WorkspacePageNoAccess
+          label="this consignment"
+          openedBy={refusal.openedBy}
+          next={consignmentHref(id)}
+        />
+      </>
+    );
+  }
   // A person's consignments sit under Selling; an organisation's under Consignments.
   const backLabel = sellingAsOrganisation ? "Consignments" : "Selling";
   const c = await getServerDataContainer();
 
   let s: Awaited<ReturnType<typeof c.submissions.getMineById>> = null;
   let loadFailure = null as ReturnType<typeof describeDashboardSliceFailure> | null;
-  let categoriesFailure = null as ReturnType<typeof describeDashboardSliceFailure> | null;
-  let categories: Awaited<ReturnType<typeof c.categories.tree>> = [];
 
-  const [
-    submissionRes,
-    categoriesRes,
-    documentsRes,
-    agreementRes,
-    accountRes,
-    afterSaleRes,
-    threadRes,
-  ] = await Promise.allSettled([
-    c.submissions.getMineById(id),
-    c.categories.tree(),
-    getServerSubmissionDocuments(id),
-    getServerConsignmentAgreement(id),
-    loadSellerAccountFacts(sellerCtx),
-    getServerConsignmentAfterSale(id),
-    getServerConsignmentThread(id),
-  ]);
+  const [submissionRes, documentsRes, agreementRes, accountRes, afterSaleRes, threadRes] =
+    await Promise.allSettled([
+      c.submissions.getMineById(id),
+      getServerSubmissionDocuments(id),
+      getServerConsignmentAgreement(id),
+      loadSellerAccountFacts(sellerCtx),
+      getServerConsignmentAfterSale(id),
+      getServerConsignmentThread(id),
+    ]);
   const thread = threadRes.status === "fulfilled" ? threadRes.value : null;
 
   if (submissionRes.status === "fulfilled") {
@@ -143,16 +146,6 @@ export default async function SubmissionDetailPage({
       submissionRes.reason,
       "submissions",
       "We couldn't load this consignment.",
-    );
-  }
-
-  if (categoriesRes.status === "fulfilled") {
-    categories = categoriesRes.value;
-  } else {
-    categoriesFailure = describeDashboardSliceFailure(
-      categoriesRes.reason,
-      "categories",
-      "Could not load categories.",
     );
   }
 
@@ -255,12 +248,6 @@ export default async function SubmissionDetailPage({
     actions.canWithdraw &&
     withdrawalView?.mode === "available" &&
     withdrawalView.blockedReason !== null;
-  const submissionFormValues = itemSubmissionToFormValues(submission);
-  const submissionQuality = evaluateSubmissionQuality(submission);
-  const readyToSubmit = editable && submissionQuality.canSubmit;
-  const wizardInitialStepIndex = readyToSubmit
-    ? wizardStepIndex("review")
-    : firstIncompleteWizardStepIndex(submissionFormValues);
   const agreement = agreementView?.agreement ?? null;
   // One reading of the agreement for the steps and the status badge, so they always agree.
   const agreementState = !agreement ? "none" : agreement.acceptedAt ? "accepted" : "open";
@@ -381,11 +368,26 @@ export default async function SubmissionDetailPage({
       {actionError ? (
         <DashboardSliceErrorAlert failure={describeSettingsActionError(actionError)} />
       ) : null}
-      {categoriesFailure ? <DashboardSliceErrorAlert failure={categoriesFailure} /> : null}
       {sp.submitted === "1" ? <SubmissionSubmittedNotice submissionId={submission.id} /> : null}
       {tab === "overview" ? <SubmissionDetailLiveRefresh status={submission.status} /> : null}
       {nextStep ? (
-        <Notice tone="info" title="What happens next">
+        <Notice
+          tone="info"
+          title="What happens next"
+          {...(editable && submission.status === "draft"
+            ? {
+                actions: (
+                  <ButtonLink
+                    href={consignmentEditHref(submission.id)}
+                    Link={Link}
+                    variant="primary"
+                  >
+                    Continue
+                  </ButtonLink>
+                ),
+              }
+            : {})}
+        >
           {nextStep}
           {nextLink ? (
             <>
@@ -451,7 +453,11 @@ export default async function SubmissionDetailPage({
           </div>
         ) : (
           <div className="flex min-w-0 flex-col gap-6">
-            <SubmissionChangesRequestedPanel submission={submission} />
+            <SubmissionChangesRequestedPanel
+              submission={submission}
+              sentBy={submission.sentBy?.name ?? null}
+              editHref={editable ? consignmentEditHref(submission.id) : null}
+            />
             {checklist?.applies && account ? (
               <ConsignmentChecklist
                 items={checklist.items.map((item) =>
@@ -493,75 +499,66 @@ export default async function SubmissionDetailPage({
               lot={convertedLot}
               connectRequired={connectRequired}
             />
-            {editable ? (
-              <SubmissionWizard
-                mode={{ kind: "edit", submissionId: submission.id }}
-                categories={categoriesFailure ? [] : categories}
-                initialValues={submissionFormValues}
-                initialStepIndex={wizardInitialStepIndex}
-                readyToSubmit={readyToSubmit}
-                {...(submission.status === "changes_requested"
-                  ? { submitLabel: "Send back for review" }
-                  : {})}
-              />
-            ) : (
-              <section
-                aria-labelledby="your-submission-heading"
-                className="rounded-xl border border-outline-variant/60 bg-surface-container-lowest p-5"
+            <section
+              aria-labelledby="your-submission-heading"
+              className="rounded-xl border border-outline-variant/60 bg-surface-container-lowest p-5"
+            >
+              <h2
+                id="your-submission-heading"
+                className="font-headline text-base font-semibold text-on-surface"
               >
-                <h2
-                  id="your-submission-heading"
-                  className="font-headline text-base font-semibold text-on-surface"
-                >
-                  Your description
-                </h2>
-                <p className="mt-2 whitespace-pre-line font-body text-sm text-on-surface-variant">
-                  {submission.description?.trim() || "No description was added."}
-                </p>
-                {submission.status !== "rejected" && submission.reviewNotes ? (
-                  <div className="mt-4 border-t border-outline-variant/50 pt-4">
-                    <h3 className="font-body text-sm font-semibold text-on-surface">
-                      Your specialist's notes
-                    </h3>
-                    <p className="mt-1 font-body text-sm text-on-surface-variant">
-                      {submission.reviewNotes}
-                    </p>
-                  </div>
-                ) : null}
-                {photos.length > 1 ? (
-                  <ul className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-6" aria-label="Photos">
-                    {photos.map((src, index) => (
-                      <li
-                        key={src}
-                        className="relative aspect-square overflow-hidden rounded-md bg-surface-container-high"
-                      >
-                        <MediaImage
-                          src={src}
-                          alt={`${submission.title}, photo ${index + 1}`}
-                          label="Photo"
-                          sizes="96px"
-                        />
-                      </li>
-                    ))}
-                  </ul>
-                ) : null}
-                <div className="mt-4">
-                  <SubmissionWorkflowActions
-                    submissionId={submission.id}
-                    canSubmit={actions.canSubmit}
-                    canWithdraw={withdrawOwnSubmission}
-                  />
+                Your description
+              </h2>
+              <p className="mt-2 whitespace-pre-line font-body text-sm text-on-surface-variant">
+                {submission.description?.trim() || "No description was added."}
+              </p>
+              {submission.status !== "rejected" && submission.reviewNotes ? (
+                <div className="mt-4 border-t border-outline-variant/50 pt-4">
+                  <h3 className="font-body text-sm font-semibold text-on-surface">
+                    Your specialist's notes
+                  </h3>
+                  <p className="mt-1 font-body text-sm text-on-surface-variant">
+                    {submission.reviewNotes}
+                  </p>
                 </div>
-              </section>
-            )}
+              ) : null}
+              {photos.length > 1 ? (
+                <ul className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-6" aria-label="Photos">
+                  {photos.map((src, index) => (
+                    <li
+                      key={src}
+                      className="relative aspect-square overflow-hidden rounded-md bg-surface-container-high"
+                    >
+                      <MediaImage
+                        src={src}
+                        alt={`${submission.title}, photo ${index + 1}`}
+                        label="Photo"
+                        sizes="96px"
+                      />
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+              <div className="mt-4">
+                <SubmissionWorkflowActions
+                  submissionId={submission.id}
+                  // Sending happens in the form at Make changes, never from the record.
+                  canSubmit={false}
+                  canWithdraw={withdrawOwnSubmission}
+                />
+              </div>
+            </section>
           </div>
         )}
         <aside className="flex flex-col gap-4" aria-label="About this consignment">
           <AboutTheWork vm={detail} />
           {tab === "overview" ? (
-            <AskYourSpecialist messagesHref={consignmentMessagesHref(submission.id)} />
+            <AskYourSpecialist
+              messagesHref={consignmentMessagesHref(submission.id)}
+              canWrite={thread ? thread.access.canWrite : null}
+            />
           ) : null}
-          {tab === "overview" && !editable && withdrawalView && !withdrawOwnSubmission ? (
+          {tab === "overview" && withdrawalView && !withdrawOwnSubmission ? (
             <ConsignmentWithdrawPanel
               submissionId={submission.id}
               view={withdrawalView}
