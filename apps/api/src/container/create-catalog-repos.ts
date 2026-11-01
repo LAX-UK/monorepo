@@ -14,6 +14,7 @@ import type {
   IAttentionFeedReader,
   ICategoryRepository,
   IConditionReportRequestRepository,
+  ICoverAnalysisReader,
   IDisplayPairingRepository,
   IItemSubmissionRepository,
   ILotDocumentRepository,
@@ -33,6 +34,7 @@ import type {
   IRepositoryFactory,
   ISaleAttentionSignalsReader,
   ISaleBiddersReader,
+  ISaleCoverRepository,
   ISaleDocumentRepository,
   ISaleExpectedGuestsReader,
   ISaleFollowRepository,
@@ -65,6 +67,7 @@ import {
   DrizzleAttentionFeedReader,
   DrizzleCategoryRepository,
   DrizzleConditionReportRequestRepository,
+  DrizzleCoverAnalysisReader,
   DrizzleDisplayPairingRepository,
   DrizzleLotDocumentRepository,
   DrizzleLotLifecycleSnapshotRepository,
@@ -81,6 +84,7 @@ import {
   DrizzleQrCodeScanPersister,
   DrizzleSaleAttentionSignalsReader,
   DrizzleSaleBiddersReader,
+  DrizzleSaleCoverRepository,
   DrizzleSaleDocumentRepository,
   DrizzleSaleExpectedGuestsReader,
   DrizzleSaleFollowRepository,
@@ -155,6 +159,8 @@ export type CatalogRepositories = {
   saleroomDisplaySnapshotReader: ISaleroomDisplaySnapshotReader;
   qrCodeAnalyticsReader: IQrCodeAnalyticsReader;
   mediaAssetReader: IMediaAssetReader;
+  coverAnalysisReader: ICoverAnalysisReader;
+  saleCoverRepository: ISaleCoverRepository;
   qrCodeScanPersister: IQrCodeScanPersister;
   saleroomOnBlockReader: ISaleroomOnBlockReader;
   platformCatalogLegalEntityReader: IPlatformCatalogLegalEntityReader;
@@ -208,6 +214,8 @@ export function createCatalogRepositories(db: Database): CatalogRepositories {
   const saleroomDisplaySnapshotReader = new DrizzleSaleroomDisplaySnapshotReader(db);
   const qrCodeAnalyticsReader = new DrizzleQrCodeAnalyticsReader(db);
   const mediaAssetReader = new DrizzleMediaAssetReader(db);
+  const coverAnalysisReader = new DrizzleCoverAnalysisReader(db);
+  const saleCoverRepository = new DrizzleSaleCoverRepository(db);
   const qrCodeScanPersister = new DrizzleQrCodeScanPersister(db);
   const saleroomOnBlockReader = new DrizzleSaleroomOnBlockReader(db);
   const platformCatalogLegalEntityReader = new DrizzlePlatformCatalogLegalEntityReader(db);
@@ -260,6 +268,8 @@ export function createCatalogRepositories(db: Database): CatalogRepositories {
     saleroomDisplaySnapshotReader,
     qrCodeAnalyticsReader,
     mediaAssetReader,
+    coverAnalysisReader,
+    saleCoverRepository,
     qrCodeScanPersister,
     saleroomOnBlockReader,
     platformCatalogLegalEntityReader,

@@ -1,3 +1,4 @@
+import type { SaleCoverSlots } from "@auction/types";
 import { relations, sql } from "drizzle-orm";
 import {
   boolean,
@@ -7,8 +8,10 @@ import {
   numeric,
   pgEnum,
   pgTable,
+  smallint,
   text,
   timestamp,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 import { user } from "./auth.js";
@@ -70,6 +73,19 @@ export const sale = pgTable(
     title: text("title").notNull(),
     description: text("description"),
     coverImages: text("cover_images").array().notNull().default([]),
+    /**
+     * Named cover slots (`default`, `wide`, `phone`): focal point, keep-in-frame area, zoom, alt
+     * text and overrides. Reads fall back to the position in `cover_images` for a missing slot.
+     */
+    coverSlots: jsonb("cover_slots").$type<SaleCoverSlots>().notNull().default({}),
+    /** One line of fact shown under the title on the home cover. */
+    subtitle: text("subtitle"),
+    /** Lots staff chose to lead with, in order (up to 12). */
+    featuredLotIds: uuid("featured_lot_ids").array().notNull().default([]),
+    /** Position (1 to 3) among the sales pinned to the home page; null when not pinned. */
+    homePinOrder: smallint("home_pin_order"),
+    /** Last day to consign to the next sale. */
+    consignmentDeadline: timestamp("consignment_deadline", { mode: "date", withTimezone: true }),
     deliveryMode: saleDeliveryModeEnum("delivery_mode").notNull().default("onsite"),
     /**
      * When false (default), hybrid online bids require clerk Go Live + lot on block.
@@ -128,6 +144,15 @@ export const sale = pgTable(
     index("sale_start_time_idx").on(table.startTime),
     index("sale_not_deleted_idx").on(table.id).where(sql`${table.deletedAt} IS NULL`),
     check("sale_end_after_start", sql`${table.endTime} > ${table.startTime}`),
+    check("sale_subtitle_length", sql`char_length(${table.subtitle}) <= 160`),
+    check("sale_featured_lot_ids_max", sql`cardinality(${table.featuredLotIds}) <= 12`),
+    check(
+      "sale_home_pin_order_range",
+      sql`${table.homePinOrder} IS NULL OR ${table.homePinOrder} BETWEEN 1 AND 3`,
+    ),
+    uniqueIndex("sale_home_pin_order_uid")
+      .on(table.homePinOrder)
+      .where(sql`${table.homePinOrder} IS NOT NULL AND ${table.deletedAt} IS NULL`),
   ],
 );
 

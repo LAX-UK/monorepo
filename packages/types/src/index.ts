@@ -42,3 +42,4 @@ export * from "./sale-expected-guests.js";
 export * from "./admin-dispute-case.js";
 export * from "./press.js";
 export * from "./atg.js";
+export * from "./sale-cover.js";

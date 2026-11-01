@@ -1,6 +1,7 @@
 import type { AuctionTimingValue } from "./auction-timing.js";
 import type { BuyerPremiumTier } from "./buyer-premium.js";
 import type { GalleryImage } from "./gallery.js";
+import type { SaleCoverSlotAssets, SaleCoverSlots } from "./sale-cover.js";
 import type { AtgDistribution, AtgOwnershipState } from "./selling-platform.js";
 
 export const saleStatuses = ["draft", "scheduled", "active", "ended", "cancelled"] as const;
@@ -90,6 +91,18 @@ export type Sale = {
   coverImages: string[];
   /** Enriched metadata (width/height/blur) aligned with `coverImages` when available. */
   coverImageAssets?: GalleryImage[];
+  /** Named cover slots as stored. Read through `resolveCoverSlots` to include the legacy array. */
+  coverSlots?: SaleCoverSlots;
+  /** Cover slots with resolved URLs and the measured text-over-image settings. Added by the API. */
+  coverSlotAssets?: SaleCoverSlotAssets;
+  /** One line of fact shown under the title on the home cover. */
+  subtitle?: string | null;
+  /** Lots staff chose to lead with, in order (up to 12). */
+  featuredLotIds?: string[];
+  /** Position (1 to 3) among the sales pinned to the home page, or null when not pinned. */
+  homePinOrder?: number | null;
+  /** Last day to consign to the next sale. */
+  consignmentDeadline?: SaleTimingValue | null;
   /** Auction-day event photos and videos (raw refs). Only set for onsite/hybrid. */
   dayImages?: SaleDayMediaRef[];
   /** Enriched/resolved auction-day media. Populated by the API after media enrichment. */

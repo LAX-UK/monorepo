@@ -145,6 +145,8 @@ export { DrizzleAdminReviewTaskReader } from "./drizzle-admin-review-task.reader
 export { DrizzleAdminReviewTaskRepository } from "./drizzle-admin-review-task.repository.js";
 export { DrizzleAdminSubmissionsSummaryReader } from "./drizzle-admin-submissions-summary.reader.js";
 export { DrizzleMediaAssetReader } from "./drizzle-media-asset.reader.js";
+export { DrizzleCoverAnalysisReader } from "./drizzle-cover-analysis.reader.js";
+export { DrizzleSaleCoverRepository } from "./drizzle-sale-cover.repository.js";
 export { DrizzleQrCodeScanPersister } from "./drizzle-qr-code-scan.persister.js";
 export { DrizzleSaleroomOnBlockReader } from "./drizzle-saleroom-on-block.reader.js";
 export { DrizzleSaleroomLiveSessionCounter } from "./drizzle-saleroom-live-session-counter.js";

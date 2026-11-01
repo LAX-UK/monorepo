@@ -262,6 +262,8 @@ export const WORKER_FULL_TABLES = [
   "upload_object",
   /** process-image job upserts; image-cleanup deletes rows. */
   "media_asset",
+  /** The cover analysis job writes what it measures from each sale cover picture. */
+  "cover_analysis",
   "marketing_click_ids",
   "marketing_attribution",
   /** Zoho CRM sync links platform ids to Zoho record ids. */

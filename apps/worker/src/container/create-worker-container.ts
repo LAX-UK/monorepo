@@ -50,6 +50,7 @@ import { isMarketingEventsEnabled } from "../lib/marketing-events-enabled.js";
 import { queueRuntimeEnvFromWorkerEnv } from "../lib/queue-runtime-env.js";
 import { runtimeOwnershipConfigFromWorkerEnv } from "../lib/runtime-ownership-config.js";
 import { loadSentryMonitorSlugs } from "../lib/sentry-cron.js";
+import { SharpCoverImageAnalyser } from "../lib/sharp-cover-image-analyser.js";
 import { SharpImageProcessor } from "../lib/sharp-image-processor.js";
 import { createUploadStorage } from "../lib/upload-storage.js";
 import { registerWorkerLotLifecycleConsumer } from "../lifecycle/register-lot-lifecycle-worker.js";
@@ -317,6 +318,8 @@ export function createWorkerContainer(): WorkerContainer {
     staffOpsRecipientReader: repositories.staffOpsRecipientReader,
     complianceRecipientReader: repositories.complianceRecipientReader,
     mediaAssetProcessorRepo: repositories.mediaAssetProcessorRepo,
+    coverAnalysisJobRepo: repositories.coverAnalysisJobRepo,
+    coverImageAnalyser: new SharpCoverImageAnalyser(),
     mediaAssetCleanupRepo: repositories.mediaAssetCleanupRepo,
     qrCodeScanPersister: repositories.qrCodeScanPersister,
     qrCodeScanPurgeRepo: repositories.qrCodeScanPurgeRepo,
@@ -415,6 +418,7 @@ export function createWorkerContainer(): WorkerContainer {
     heartbeat("webhook-events"),
     heartbeat("validate-upload"),
     heartbeat("process-image"),
+    heartbeat("cover-analysis"),
     heartbeat("image-cleanup"),
     heartbeat("qr-code-scan"),
     heartbeat("gc-pending-uploads"),

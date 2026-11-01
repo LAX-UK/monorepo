@@ -36,6 +36,7 @@ import {
   type RoleCapability,
   SALEROOM_ACCESS,
   SALES_ACCESS,
+  SALES_READ_ACCESS,
   STAFF_ACCESS_REVIEW_ACCESS,
   STAFF_ROLES_READ_ACCESS,
   SUBMISSIONS_ACCESS,
@@ -121,6 +122,7 @@ export const requireAuctionManage = createRequireCapability("auction.manage");
 
 /** Rules shared with the admin web UI, so a button is shown exactly when the route will accept it. */
 export const requireSalesAccess = createRequireAccess(SALES_ACCESS);
+export const requireSalesRead = createRequireAccess(SALES_READ_ACCESS);
 export const requireWithdrawalDecision = createRequireAccess(WITHDRAWAL_DECISION_ACCESS);
 export const requireDeliveryReplay = createRequireAccess(DELIVERY_REPLAY_ACCESS);
 export const requirePaymentManualReviewWrite = createRequireAccess(
