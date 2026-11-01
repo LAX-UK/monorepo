@@ -21,7 +21,7 @@ import type { IMediaAssetEnricher } from "./interfaces/media-asset-enricher.js";
 import type { IMediaUrlResolver } from "./interfaces/media-url-resolver.js";
 import type { IQrCodeService } from "./interfaces/qr-code-service.js";
 import type { ISalePublishService } from "./interfaces/sale-publish.js";
-import type { ISaleService } from "./interfaces/sale-service.js";
+import type { ISaleService, PublicCatalogueLot } from "./interfaces/sale-service.js";
 import { createSale } from "./sale/sale-create.js";
 import {
   addLotToSale,
@@ -115,7 +115,9 @@ export class SaleService implements ISaleService {
     saleId: string,
     viewerUserId: string | undefined,
     viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
-  ): Promise<{ data: { sale: Sale; lots: Lot[]; viewer: { isFollowing: boolean } } } | null> {
+  ): Promise<{
+    data: { sale: Sale; lots: PublicCatalogueLot[]; viewer: { isFollowing: boolean } };
+  } | null> {
     return getSaleDetailForPublicApi(this.deps, saleId, viewerUserId, viewer);
   }
 
@@ -132,7 +134,7 @@ export class SaleService implements ISaleService {
     viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
   ): Promise<{
     data: {
-      items: Lot[];
+      items: PublicCatalogueLot[];
       total: number;
       limit: number;
       offset: number;

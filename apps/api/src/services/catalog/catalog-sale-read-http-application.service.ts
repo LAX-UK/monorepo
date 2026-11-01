@@ -21,6 +21,7 @@ import type { SaleroomServicePort } from "../interfaces/saleroom-service.js";
 import type { IStripeConnectService } from "../interfaces/stripe-connect.js";
 import type { SaleBiddersService } from "../sale-bidders.service.js";
 import type { SaleListReadService } from "../sale-list-read.service.js";
+import type { ISaleResultsSummaryService } from "../sale-results-summary.service.js";
 
 export class CatalogSaleReadHttpApplicationService
   implements ICatalogSaleReadHttpApplicationService
@@ -35,6 +36,7 @@ export class CatalogSaleReadHttpApplicationService
     private readonly stripeConnectService: IStripeConnectService,
     private readonly legalEntityRepository: ILegalEntityRepository,
     private readonly saleBiddersService: SaleBiddersService,
+    private readonly saleResults: ISaleResultsSummaryService,
   ) {}
 
   async listSales(input: {
@@ -66,10 +68,11 @@ export class CatalogSaleReadHttpApplicationService
         staffRoles: staff,
       });
       return {
-        data: rows.map(({ sale, lotCount, previewLots }) => ({
+        data: rows.map(({ sale, lotCount, previewLots, resultsSummary }) => ({
           sale,
           lots: previewLots,
           lotCount,
+          resultsSummary,
         })),
       };
     };
@@ -149,7 +152,13 @@ export class CatalogSaleReadHttpApplicationService
       },
     );
     if (!detail) return { status: 404, body: { error: "Not found" } };
-    return { status: 200, body: detail };
+    const summaries = await this.saleResults.summarise([detail.data.sale]);
+    return {
+      status: 200,
+      body: {
+        data: { ...detail.data, resultsSummary: summaries.get(detail.data.sale.id) ?? null },
+      },
+    };
   }
 
   async getCatalogAdminDetail(input: {

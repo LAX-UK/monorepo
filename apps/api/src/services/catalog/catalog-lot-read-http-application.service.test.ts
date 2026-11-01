@@ -61,4 +61,93 @@ describe("CatalogLotReadHttpApplicationService", () => {
 
     expect(listLotsForPublicApi).toHaveBeenCalledTimes(2);
   });
+
+  describe("lot detail of a withdrawn lot", () => {
+    const publicSale = { id: "s1", status: "ended", buyerPremiumTiers: null };
+    const lot = (status: string, saleId: string | null = "s1") => ({
+      id: "lot-1",
+      saleId,
+      lotNumber: 3,
+      title: "Harbour lights",
+      description: null,
+      medium: "Oil",
+      dimensions: null,
+      images: [],
+      categoryId: "c1",
+      auctionType: "english",
+      status,
+      startingPrice: "100.00",
+      reservePrice: "500.00",
+      currentPrice: "900.00",
+      buyerPremiumRate: "0.25",
+      minBidIncrement: "10.00",
+      winnerId: "buyer-1",
+      startTime: new Date("2026-10-01T10:00:00Z"),
+      endTime: new Date("2026-10-31T10:00:00Z"),
+      marketingDetails: { estimate: { low: "1000", high: "2000", currency: "GBP" } },
+    });
+    const detail = (found: ReturnType<typeof lot>, sale: unknown = publicSale) =>
+      createCatalogLotReadHttpFixture({
+        lotService: {
+          listLotsForPublicApi: vi.fn(),
+          getById: vi.fn().mockResolvedValue(found),
+        },
+        saleService: { getByIdForPublicCatalog: vi.fn().mockResolvedValue(sale) } as never,
+        cachedCatalogueListService: new CachedCatalogueListService(createMemoryCache(), 60),
+        now: () => new Date("2026-11-01T12:00:00Z"),
+      });
+
+    it("is public with the status withdrawn and no price, history or actions", async () => {
+      const res = await detail(lot("cancelled")).getLotDetail({ lotId: "lot-1", viewer: {} });
+      expect(res.status).toBe(200);
+      const data = (res.body as { data: Record<string, unknown> }).data;
+      expect(data).toMatchObject({ id: "lot-1", status: "withdrawn", title: "Harbour lights" });
+      for (const key of [
+        "currentPrice",
+        "startingPrice",
+        "reservePrice",
+        "winnerId",
+        "marketingDetails",
+        "checkoutPricing",
+        "nextBidAmount",
+        "validBidAmounts",
+        "buyersPremium",
+        "hammerPrice",
+        "soldForWithPremium",
+        "startTime",
+        "endTime",
+      ]) {
+        expect(data).not.toHaveProperty(key);
+      }
+    });
+
+    it("stays unknown for a voided lot", async () => {
+      const res = await detail(lot("voided")).getLotDetail({ lotId: "lot-1", viewer: {} });
+      expect(res.status).toBe(404);
+    });
+
+    it("stays unknown when the sale is not public or the lot has no sale", async () => {
+      const draftSale = { id: "s1", status: "draft", buyerPremiumTiers: null };
+      expect(
+        (await detail(lot("cancelled"), draftSale).getLotDetail({ lotId: "lot-1", viewer: {} }))
+          .status,
+      ).toBe(404);
+      expect(
+        (await detail(lot("cancelled", null), null).getLotDetail({ lotId: "lot-1", viewer: {} }))
+          .status,
+      ).toBe(404);
+    });
+
+    it("gives staff the full lot", async () => {
+      const res = await detail(lot("cancelled")).getLotDetail({
+        lotId: "lot-1",
+        viewer: { role: "staff", staffRoles: ["cataloguer"] },
+      });
+      expect(res.status).toBe(200);
+      expect((res.body as { data: Record<string, unknown> }).data).toMatchObject({
+        status: "cancelled",
+        currentPrice: "900.00",
+      });
+    });
+  });
 });

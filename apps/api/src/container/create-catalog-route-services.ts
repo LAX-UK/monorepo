@@ -32,6 +32,7 @@ import type { LotLifecycleQueryService } from "../services/lot-lifecycle-query.s
 import type { SaleBiddersService } from "../services/sale-bidders.service.js";
 import type { SaleFollowService } from "../services/sale-follow.service.js";
 import type { SaleListReadService } from "../services/sale-list-read.service.js";
+import type { ISaleResultsSummaryService } from "../services/sale-results-summary.service.js";
 import type { VenueService } from "../services/venue.service.js";
 
 export type CreateCatalogRouteServicesInput = {
@@ -49,6 +50,7 @@ export type CreateCatalogRouteServicesInput = {
   stripeConnectService: IStripeConnectService;
   legalEntityRepository: ILegalEntityRepository;
   saleListReadService: SaleListReadService;
+  saleResultsSummaryService: ISaleResultsSummaryService;
   repoFactory: IRepositoryFactory;
   saleroomService: SaleroomServicePort;
   saleBiddersService: SaleBiddersService;
@@ -93,6 +95,7 @@ export function createCatalogRouteServices(
       input.stripeConnectService,
       input.legalEntityRepository,
       input.saleBiddersService,
+      input.saleResultsSummaryService,
     ),
     categoryReadHttp: new CatalogCategoryReadHttpApplicationService(input.categoryService),
     pressReadHttp: new CatalogPressReadHttpApplicationService(input.pressArchiveReadService),

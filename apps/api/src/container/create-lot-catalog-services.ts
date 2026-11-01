@@ -54,6 +54,10 @@ import { PressArchiveReadService } from "../services/press-archive-read.service.
 import { SaleBiddersService } from "../services/sale-bidders.service.js";
 import { SaleFollowService } from "../services/sale-follow.service.js";
 import { SaleListReadService } from "../services/sale-list-read.service.js";
+import {
+  type ISaleResultsSummaryService,
+  SaleResultsSummaryService,
+} from "../services/sale-results-summary.service.js";
 import { SaleSoftDeleteService } from "../services/sale-soft-delete.service.js";
 import { SaleStatusTransitionService } from "../services/sale-status-transition.service.js";
 import { SaleService } from "../services/sale.service.js";
@@ -90,6 +94,7 @@ export type ContainerLotCatalogServices = {
   resolvePlatformCatalogLegalEntityId: PlatformCatalogLegalEntityIdProvider;
   saleService: ISaleService;
   saleListReadService: SaleListReadService;
+  saleResultsSummaryService: ISaleResultsSummaryService;
   pressArchiveReadService: PressArchiveReadService;
   saleSoftDeleteService: ISaleSoftDeleteService;
   lotSoftDeleteService: ILotSoftDeleteService;
@@ -275,12 +280,17 @@ export function createLotCatalogServices(
     saleChannelReader,
     salePublishService,
   });
+  const saleResultsSummaryService = new SaleResultsSummaryService(
+    repos.saleResultLotsReader,
+    saleChannelReader,
+  );
   const saleListReadService = new SaleListReadService(
     saleRepo,
     lotRepo,
     catalogueMediaUrlResolver,
     mediaAssetEnricher,
     saleChannelReader,
+    saleResultsSummaryService,
   );
   const pressArchiveReadService = new PressArchiveReadService(
     new SalePressArchiveRepository(saleRepo),
@@ -404,6 +414,7 @@ export function createLotCatalogServices(
     resolvePlatformCatalogLegalEntityId,
     saleService,
     saleListReadService,
+    saleResultsSummaryService,
     pressArchiveReadService,
     saleSoftDeleteService,
     lotSoftDeleteService,
