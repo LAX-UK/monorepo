@@ -80,7 +80,8 @@ export function sourceFromView(
   if (slot.fromLot) {
     const { lotId, imageKey, crop } = slot.fromLot;
     const photos = lots.find((lot) => lot.id === lotId)?.images ?? [];
-    const found = photos.indexOf(imageKey);
+    // A lot's pictures reach the page as addresses; the stored key is the end of its address.
+    const found = photos.findIndex((photo) => photo === imageKey || photo.endsWith(`/${imageKey}`));
     return {
       source: {
         kind: "lot",

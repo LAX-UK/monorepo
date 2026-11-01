@@ -9,8 +9,8 @@ import {
   type ToneReading,
   cropPreview,
   measureState,
+  previewSource,
   readTone,
-  slotServingBox,
   toneBadge,
 } from "@/lib/admin/sale-cover/cover-previews";
 import type { CoverView } from "@/lib/admin/sale-cover/cover-view";
@@ -109,6 +109,24 @@ function CropFrame({
   );
 }
 
+/** A picture still held in the old cover list: shown as it is, centred, until staff set the slot. */
+function LegacyFrame({
+  pictureKey,
+  width,
+  height,
+}: { pictureKey: string; width: number; height: number }) {
+  const src = resolveMediaSrc(pictureKey);
+  return (
+    <div
+      className="relative overflow-hidden rounded-staff-sm bg-staff-sunken ring-1 ring-staff-line ring-inset"
+      style={{ aspectRatio: `${width} / ${height}` }}
+      data-testid="preview-legacy"
+    >
+      {src ? <img src={src} alt="" className="absolute inset-0 size-full object-cover" /> : null}
+    </div>
+  );
+}
+
 function badgeClass(reading: ToneReading): string {
   if (reading.kind === "measured") return "bg-staff-success-bg text-staff-success-fg";
   if (reading.kind === "plate") return "bg-staff-warning-bg text-staff-warning-fg";
@@ -125,8 +143,9 @@ export function CoverPreviews({ slots, view }: Props) {
   return (
     <div className="flex flex-col gap-4">
       {PREVIEW_BOXES.map((box) => {
-        const name = slotServingBox(box, slots);
-        const draft = slots[name];
+        const source = previewSource(box, slots, view.slots);
+        const name = source.slot;
+        const draft = source.kind === "draft" ? source.draft : undefined;
         const preview = draft ? cropPreview(box, name, draft) : null;
         const measure: MeasureState =
           box === "phone" ? { kind: "none" } : measureState(name, draft, view.slots[name]);
@@ -143,6 +162,8 @@ export function CoverPreviews({ slots, view }: Props) {
                 src={resolveMediaSrc(draft.pictureKey)}
                 reading={reading}
               />
+            ) : source.kind === "legacy" ? (
+              <LegacyFrame pictureKey={source.key} width={width} height={height} />
             ) : (
               <div
                 className="grid place-items-center rounded-staff-sm bg-staff-sunken text-staff-sm text-staff-muted ring-1 ring-staff-line ring-inset"
@@ -157,7 +178,9 @@ export function CoverPreviews({ slots, view }: Props) {
                 <span className="text-staff-muted">
                   {" "}
                   · {width} × {height}
-                  {draft && name === "default" && box !== "desktop" ? " · uses the default" : ""}
+                  {source.kind !== "none" && name === "default" && box !== "desktop"
+                    ? " · uses the default"
+                    : ""}
                 </span>
               </span>
               <span

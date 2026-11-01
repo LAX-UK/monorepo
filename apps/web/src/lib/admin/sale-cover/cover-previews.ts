@@ -31,16 +31,6 @@ export const PREVIEW_LABEL: Record<CoverBoxName, string> = {
   phone: "Phone",
 };
 
-/** The slot a box shows: its own slot when staff filled it, otherwise the default. */
-export function slotServingBox(
-  box: CoverBoxName,
-  slots: Partial<Record<SaleCoverSlotName, unknown>>,
-): SaleCoverSlotName {
-  if (box === "wide" && slots.wide) return "wide";
-  if (box === "phone" && slots.phone) return "phone";
-  return "default";
-}
-
 /** The measured state of a slot against what is on screen. */
 export type MeasureState =
   | { kind: "none" }
@@ -91,6 +81,43 @@ export function measureState(
   if (status === "failed") return { kind: "failed" };
   if (status === "ready" && value) return { kind: "ready", analysis: value };
   return { kind: "pending" };
+}
+
+/** Whether any saved slot that is measured still waits for the worker. A phone slot never is. */
+export function isAwaitingAnalysis(
+  slots: Partial<Record<SaleCoverSlotName, CoverSlotView>>,
+): boolean {
+  return (["default", "wide"] as const).some((name) => {
+    const view = slots[name];
+    return view?.source === "slot" && view.analysis.status === "pending";
+  });
+}
+
+/** What a preview draws: the slot being edited, a picture left in the old cover list, or nothing. */
+export type PreviewSource =
+  | { kind: "draft"; slot: SaleCoverSlotName; draft: SlotDraft }
+  | { kind: "legacy"; slot: SaleCoverSlotName; key: string }
+  | { kind: "none"; slot: SaleCoverSlotName };
+
+/**
+ * The picture a box shows. A slot staff are editing wins; a slot not yet set shows the picture the
+ * old cover list holds for it; a box without its own slot falls back to the default the same way.
+ */
+export function previewSource(
+  box: CoverBoxName,
+  slots: Partial<Record<SaleCoverSlotName, SlotDraft>>,
+  saved: Partial<Record<SaleCoverSlotName, CoverSlotView>>,
+): PreviewSource {
+  const own: SaleCoverSlotName = box === "wide" ? "wide" : box === "phone" ? "phone" : "default";
+  for (const name of own === "default" ? (["default"] as const) : ([own, "default"] as const)) {
+    const draft = slots[name];
+    if (draft) return { kind: "draft", slot: name, draft };
+    const legacy = saved[name];
+    if (legacy?.source === "legacy" && legacy.legacyKey) {
+      return { kind: "legacy", slot: name, key: legacy.legacyKey };
+    }
+  }
+  return { kind: "none", slot: "default" };
 }
 
 export type ZoneBoxView = {

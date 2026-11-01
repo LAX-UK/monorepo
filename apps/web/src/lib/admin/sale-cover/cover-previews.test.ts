@@ -2,7 +2,14 @@ import { coverAnalysisHash } from "@auction/domain";
 import type { CoverAnalysis, CoverToneSolution, SaleCoverSlot } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import { type SlotDraft, newSlotDraft } from "./cover-draft";
-import { cropPreview, measureState, readTone, slotServingBox, toneBadge } from "./cover-previews";
+import {
+  cropPreview,
+  isAwaitingAnalysis,
+  measureState,
+  previewSource,
+  readTone,
+  toneBadge,
+} from "./cover-previews";
 import type { CoverSlotView } from "./cover-view";
 
 const draft = (over: Partial<SlotDraft> = {}): SlotDraft => ({
@@ -67,13 +74,52 @@ const analysis: CoverAnalysis = {
   },
 };
 
-describe("which slot a preview shows", () => {
+describe("previewSource", () => {
+  const legacy = (key: string): CoverSlotView => ({
+    source: "legacy",
+    legacyKey: key,
+    issues: [],
+    analysis: { status: "pending", value: null },
+  });
+
   it("uses the wide and phone slots when set, and the default otherwise", () => {
-    expect(slotServingBox("wide", { default: 1 })).toBe("default");
-    expect(slotServingBox("wide", { default: 1, wide: 1 })).toBe("wide");
-    expect(slotServingBox("phone", { default: 1, wide: 1 })).toBe("default");
-    expect(slotServingBox("phone", { default: 1, phone: 1 })).toBe("phone");
-    expect(slotServingBox("desktop", { default: 1, wide: 1, phone: 1 })).toBe("default");
+    const wide = draft({ alt: "wide" });
+    expect(previewSource("wide", { default: draft() }, {})).toMatchObject({
+      kind: "draft",
+      slot: "default",
+    });
+    expect(previewSource("wide", { default: draft(), wide }, {})).toMatchObject({
+      kind: "draft",
+      slot: "wide",
+    });
+    expect(previewSource("phone", { default: draft(), wide }, {})).toMatchObject({
+      kind: "draft",
+      slot: "default",
+    });
+    expect(previewSource("desktop", { default: draft(), wide }, {})).toMatchObject({
+      slot: "default",
+    });
+  });
+
+  it("shows a picture left in the old cover list until the slot is set", () => {
+    expect(previewSource("desktop", {}, { default: legacy("old/a.jpg") })).toEqual({
+      kind: "legacy",
+      slot: "default",
+      key: "old/a.jpg",
+    });
+    expect(
+      previewSource("phone", {}, { default: legacy("old/a.jpg"), phone: legacy("old/p.jpg") }),
+    ).toMatchObject({
+      slot: "phone",
+      key: "old/p.jpg",
+    });
+    expect(
+      previewSource("wide", { wide: draft() }, { default: legacy("old/a.jpg") }),
+    ).toMatchObject({ kind: "draft", slot: "wide" });
+  });
+
+  it("has nothing to show for a sale with no cover", () => {
+    expect(previewSource("desktop", {}, {})).toEqual({ kind: "none", slot: "default" });
   });
 });
 
@@ -182,5 +228,27 @@ describe("readTone", () => {
       "Could not be measured",
     );
     expect(toneBadge(readTone("desktop", { kind: "none" }, undefined))).toBe("Not measured");
+  });
+});
+
+describe("isAwaitingAnalysis", () => {
+  const slot = (status: "pending" | "ready" | "failed"): CoverSlotView => ({
+    source: "slot",
+    issues: [],
+    analysis: { status, value: null },
+  });
+
+  it("waits for a default or wide slot that has not been measured", () => {
+    expect(isAwaitingAnalysis({ default: slot("pending") })).toBe(true);
+    expect(isAwaitingAnalysis({ default: slot("ready"), wide: slot("pending") })).toBe(true);
+    expect(isAwaitingAnalysis({ default: slot("ready"), wide: slot("failed") })).toBe(false);
+  });
+
+  it("never waits for the phone slot, which is not measured", () => {
+    expect(isAwaitingAnalysis({ default: slot("ready"), phone: slot("pending") })).toBe(false);
+  });
+
+  it("ignores a picture still in the old cover list", () => {
+    expect(isAwaitingAnalysis({ default: { ...slot("pending"), source: "legacy" } })).toBe(false);
   });
 });

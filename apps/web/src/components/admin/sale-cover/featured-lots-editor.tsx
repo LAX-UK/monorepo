@@ -65,7 +65,7 @@ export function FeaturedLotsEditor({ lots, featuredLotIds, coverLotId, canEdit, 
             renderItem={(row) => <FeaturedLotRow row={row} isCover={row.id === coverLotId} />}
           />
         )}
-        {canEdit ? (
+        {canEdit && addable.length > 0 ? (
           <div className="max-w-[420px]">
             <EnumSelect
               aria-label="Add a lot"
@@ -73,15 +73,16 @@ export function FeaturedLotsEditor({ lots, featuredLotIds, coverLotId, canEdit, 
               placeholder={
                 full
                   ? `${SALE_FEATURED_LOTS_MAX} is the most. Remove one to add another.`
-                  : addable.length === 0
-                    ? "Every lot in this sale is featured"
-                    : "Add a lot"
+                  : "Add a lot"
               }
-              disabled={full || addable.length === 0}
+              disabled={full}
               onValueChange={(lotId) => onChange([...featuredLotIds, lotId])}
               options={addable.map((lot) => ({ value: lot.id, label: lotLabel(lot) }))}
             />
           </div>
+        ) : null}
+        {canEdit && addable.length === 0 && lots.length > 0 ? (
+          <p className="text-staff-sm text-staff-muted">Every lot in this sale is featured.</p>
         ) : null}
       </div>
     </Section>

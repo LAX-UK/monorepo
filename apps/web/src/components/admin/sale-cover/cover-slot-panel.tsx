@@ -174,33 +174,35 @@ export function CoverSlotPanel({
             />
           ))}
 
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="flex flex-col gap-4">
             <Field label="This cover shows">
-              <div className="flex items-center gap-3 rounded-staff-md border border-staff-line px-3 py-2">
-                <span className="size-10 shrink-0 overflow-hidden rounded-staff-xs bg-staff-sunken">
-                  <MediaImage
-                    src={draft.pictureKey}
-                    alt=""
-                    label="Cover"
-                    imgClassName="size-full object-cover"
-                    sizes="40px"
-                  />
-                </span>
-                <span className="min-w-0 flex-1 truncate text-staff-sm text-staff-fg">
-                  {sourceSummary(draft, lots)}
-                </span>
+              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 rounded-staff-md border border-staff-line px-3 py-2.5">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="size-10 shrink-0 overflow-hidden rounded-staff-xs bg-staff-sunken">
+                    <MediaImage
+                      src={draft.pictureKey}
+                      alt=""
+                      label="Cover"
+                      imgClassName="size-full object-cover"
+                      sizes="40px"
+                    />
+                  </span>
+                  <span className="min-w-0 truncate text-staff-sm font-medium text-staff-fg">
+                    {sourceSummary(draft, lots)}
+                  </span>
+                </div>
                 {canEdit ? (
-                  <span className="flex shrink-0 gap-1">
-                    <StaffButton size="sm" variant="ghost" onClick={() => setLotDialog(true)}>
-                      Lot photo
+                  <div className="flex flex-wrap gap-1">
+                    <StaffButton size="sm" variant="secondary" onClick={() => setLotDialog(true)}>
+                      Use a lot photo
                     </StaffButton>
-                    <StaffButton size="sm" variant="ghost" onClick={() => setMode("upload")}>
-                      Upload
+                    <StaffButton size="sm" variant="secondary" onClick={() => setMode("upload")}>
+                      Upload instead
                     </StaffButton>
                     <StaffButton size="sm" variant="ghost" onClick={() => onSet(null)}>
                       Remove
                     </StaffButton>
-                  </span>
+                  </div>
                 ) : null}
               </div>
             </Field>

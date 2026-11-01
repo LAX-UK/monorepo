@@ -123,6 +123,29 @@ describe("draftFromView", () => {
     });
   });
 
+  it("matches a lot photograph by the end of its address", () => {
+    const resolved: CoverLotOption[] = [
+      {
+        ...(lots[0] as CoverLotOption),
+        images: ["https://cdn.example/lots/a1.jpg", "https://cdn.example/lots/a2.jpg"],
+      },
+    ];
+    const view = viewWith({
+      slots: {
+        default: {
+          source: "slot",
+          slot: storedSlot({
+            key: undefined as never,
+            fromLot: { lotId: LOT_A, imageKey: "lots/a2.jpg" },
+          }),
+          issues: [],
+          analysis: { status: "pending", value: null },
+        },
+      },
+    });
+    expect(draftFromView(view, resolved).slots.default?.source).toMatchObject({ imageIndex: 1 });
+  });
+
   it("ignores a slot that only exists in the old cover list", () => {
     const view = viewWith({
       slots: {

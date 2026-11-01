@@ -7,7 +7,7 @@ import { CoverSlotTabs, slotTabId } from "@/components/admin/sale-cover/cover-sl
 import { FeaturedLotsEditor } from "@/components/admin/sale-cover/featured-lots-editor";
 import { HomeControls } from "@/components/admin/sale-cover/home-controls";
 import { useCoverDraft } from "@/components/admin/sale-cover/use-cover-draft";
-import { measureState } from "@/lib/admin/sale-cover/cover-previews";
+import { isAwaitingAnalysis, measureState } from "@/lib/admin/sale-cover/cover-previews";
 import type { CoverLotOption, CoverView } from "@/lib/admin/sale-cover/cover-view";
 import { slotSummary } from "@/lib/admin/sale-cover/slot-summary";
 import { FormActions, Notice, Section, StaffButton, StaffReadOnly } from "@auction/staff-ui";
@@ -78,10 +78,7 @@ export function SaleCoverTab({ saleId, saleTitle, saleStatus, view, lots, canEdi
     [draft.slots, view.slots, lots, phoneSlotPresent],
   );
 
-  const pending = SALE_COVER_SLOT_NAMES.some((name) => {
-    const state = view.slots[name]?.analysis.status;
-    return view.slots[name]?.source === "slot" && state === "pending";
-  });
+  const pending = isAwaitingAnalysis(view.slots);
   useAnalysisPolling(pending);
 
   const coverLotId =
@@ -175,7 +172,7 @@ export function SaleCoverTab({ saleId, saleTitle, saleStatus, view, lots, canEdi
                 {saving
                   ? "Saving…"
                   : blocked
-                    ? (firstBlocker ?? "Fix the highlighted picture to save.")
+                    ? "Fix the problems above to save."
                     : dirty
                       ? "You have unsaved changes."
                       : "All changes saved."}

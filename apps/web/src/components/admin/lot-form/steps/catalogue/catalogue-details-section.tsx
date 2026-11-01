@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  StaffCheckboxField,
   StaffEntityField,
   StaffEntityMultiField,
   StaffTextField,
@@ -102,6 +103,37 @@ export function CatalogueDetailsSection({
             />
           ) : null}
         </FieldRow>
+      ) : null}
+      {fields.dimensions.visible ? (
+        <>
+          <StaffCheckboxField
+            control={form.control}
+            name="photoIncludesFrame"
+            formId={LOT_FORM_ID}
+            label="The photo includes the frame"
+            description="Tick this when the picture shows the work in its frame. The home page then scales the work by its framed size."
+          />
+          <FieldRow>
+            <StaffTextField
+              control={form.control}
+              name="framedWidthCm"
+              formId={LOT_FORM_ID}
+              label="Framed width (cm)"
+              optional
+              inputMode="decimal"
+              placeholder="e.g. 62.5"
+            />
+            <StaffTextField
+              control={form.control}
+              name="framedHeightCm"
+              formId={LOT_FORM_ID}
+              label="Framed height (cm)"
+              optional
+              inputMode="decimal"
+              placeholder="e.g. 82.5"
+            />
+          </FieldRow>
+        </>
       ) : null}
     </FormSection>
   );
