@@ -4,6 +4,7 @@ import type { LotSummarySeedVM } from "@/components/sections/artwork/artwork-vie
 import { ParticipationWarningBadge } from "@/components/ui/participation-warning-badge";
 import { formatMoney } from "@/lib/format-currency";
 import type { LotLifecycle } from "@/lib/lot/lot-lifecycle";
+import { lotPriceLabel } from "@/lib/lot/lot-price-label";
 import type { LotReserveContext } from "@/lib/lot/reserve-presentation";
 import { reserveBadgeLabel } from "@/lib/lot/reserve-presentation";
 import { cn } from "@auction/ui";
@@ -38,6 +39,7 @@ export function LotPricingStatusHeader({
   const live = lifecycle.kind === "live" || lifecycle.kind === "extended";
   const scheduled = lifecycle.kind === "scheduled";
   const showTimingColumn = live || scheduled;
+  const price = lotPriceLabel(lifecycle.kind);
 
   return (
     <div className={cn("mb-4 border-b border-outline-variant/30 pb-4", className)}>
@@ -57,9 +59,7 @@ export function LotPricingStatusHeader({
         <div>
           <div className="flex flex-wrap items-baseline gap-1.5">
             <p className="font-label text-[10px] font-bold uppercase tracking-wide text-on-surface-variant">
-              {lifecycle.kind === "endedSold" || lifecycle.kind === "endedNoSale"
-                ? "Final bid"
-                : "Current bid"}
+              {price.label}
             </p>
             {showBadge ? (
               <span
@@ -78,7 +78,7 @@ export function LotPricingStatusHeader({
             className="mt-0.5 font-body text-sm font-semibold tabular-nums text-on-surface"
             aria-live="polite"
           >
-            {formatMoney(currentPrice)}
+            {price.value.kind === "amount" ? formatMoney(currentPrice) : price.value.text}
           </p>
         </div>
         {showTimingColumn ? (
