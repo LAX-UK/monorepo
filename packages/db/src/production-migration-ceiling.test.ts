@@ -62,6 +62,22 @@ describe("production migration ceiling", () => {
     });
   });
 
+  it("accepts head only once 0161 is applied", () => {
+    const env = { [PRODUCTION_MIGRATION_THROUGH_ENV]: "head" };
+    expect(
+      resolveProductionMigrationThrough(
+        env,
+        PRODUCTION_MIGRATION_CEILING_BY_TAG["0161"].folderMillis,
+      ).tag,
+    ).toBe("head");
+    expect(() =>
+      resolveProductionMigrationThrough(
+        env,
+        PRODUCTION_MIGRATION_CEILING_BY_TAG["0160"].folderMillis,
+      ),
+    ).toThrow(/until 0161 is already applied/);
+  });
+
   it("fails closed on missing prior stage and invalid values", () => {
     expect(() =>
       resolveProductionMigrationThrough({ [PRODUCTION_MIGRATION_THROUGH_ENV]: "0160" }, null),
