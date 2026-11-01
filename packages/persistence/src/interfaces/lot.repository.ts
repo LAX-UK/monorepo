@@ -47,6 +47,8 @@ export interface ILotWriteRepository {
   create(input: CreateLotInput): Promise<Lot>;
   updateCurrentPrice(id: string, price: string): Promise<void>;
   updateEndTime(id: string, endTime: Date): Promise<void>;
+  /** Moves the close later because of a late bid, and records it as the lot's extended end. */
+  extendEndTime(id: string, endTime: Date): Promise<void>;
   updateStatus(id: string, status: Lot["status"]): Promise<void>;
   /** void lot after anti-shilling eliminated all reserve-eligible winners at close. */
   voidLotAntiShillingClose(id: string): Promise<void>;

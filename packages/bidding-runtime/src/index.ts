@@ -36,6 +36,7 @@ export {
   absenteePlacementKey,
 } from "./absentee-bid.service.js";
 export { BidError } from "./bid-error.js";
+export { amountRefusedError } from "./bid-amount-refusal.js";
 export { BidService, type BidServiceOptions } from "./bid.service.js";
 export { createBidPlacer, type CreateBidPlacerDeps } from "./create-bid-placer.js";
 export { AmlBidGate, NoOpAmlBidGate, type IAmlBidGate } from "./bid/aml-bid.gate.js";

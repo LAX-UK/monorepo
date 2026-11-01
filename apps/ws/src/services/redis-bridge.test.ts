@@ -154,4 +154,89 @@ describe("bridgeRedisToSockets", () => {
       expect.objectContaining({ kind: "fair_warning" }),
     );
   });
+
+  it("sends lot.extended to the lot room with the new close", () => {
+    const io = createMockIo();
+    const sub = createMockSub();
+    bridgeRedisToSockets(io as never, sub);
+
+    sub.emit(
+      "pmessage",
+      LOT_EVENTS_PATTERN,
+      "lot:lot-1:events",
+      JSON.stringify({
+        type: "lot_extended",
+        lotId: "lot-1",
+        newEndTime: "2026-06-01T12:02:00.000Z",
+      }),
+    );
+
+    const calls = io.to.mock.results.flatMap((r) => r.value.emit.mock.calls);
+    expect(calls).toContainEqual([
+      "lot.extended",
+      expect.objectContaining({ lotId: "lot-1", extendedUntil: "2026-06-01T12:02:00.000Z" }),
+    ]);
+  });
+
+  it("sends lot.closed with the result but never the winner", () => {
+    const io = createMockIo();
+    const sub = createMockSub();
+    bridgeRedisToSockets(io as never, sub);
+
+    sub.emit(
+      "pmessage",
+      LOT_EVENTS_PATTERN,
+      "lot:lot-1:events",
+      JSON.stringify({
+        type: "lot_ended",
+        lotId: "lot-1",
+        winnerId: "winner-secret",
+        currentPrice: "900.00",
+        status: "ended",
+        outcome: "sold",
+        hadBids: true,
+      }),
+    );
+
+    const closed = io.to.mock.results
+      .flatMap((r) => r.value.emit.mock.calls)
+      .find(([name]) => name === "lot.closed");
+    expect(closed?.[1]).toMatchObject({
+      lotId: "lot-1",
+      result: { outcome: "sold", hammerPrice: "900.00" },
+    });
+    expect(JSON.stringify(closed)).not.toContain("winner-secret");
+  });
+
+  it("sends viewer.outbid only to the displaced bidder's own room", () => {
+    const sent: Array<{ room: string; event: string; payload: unknown }> = [];
+    const io = {
+      to: vi.fn((room: string) => ({
+        emit: (event: string, payload: unknown) => sent.push({ room, event, payload }),
+      })),
+    };
+    const sub = createMockSub();
+    bridgeRedisToSockets(io as never, sub);
+
+    sub.emit(
+      "pmessage",
+      LOT_EVENTS_PATTERN,
+      "lot:lot-1:events",
+      JSON.stringify({
+        type: "bid_placed",
+        lotId: "lot-1",
+        currentPrice: "150.00",
+        nextBidAmount: "160.00",
+        outbidUserId: "prev-winner",
+        bid: { id: "b1", bidderId: "u2", amount: "150.00" },
+      }),
+    );
+
+    const outbid = sent.filter((e) => e.event === "viewer.outbid");
+    expect(outbid).toHaveLength(1);
+    expect(outbid[0]).toMatchObject({
+      room: "user:prev-winner",
+      payload: { lotId: "lot-1", nextBidAmount: "160.00" },
+    });
+  });
 });

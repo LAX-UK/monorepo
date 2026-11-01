@@ -54,6 +54,25 @@ export function resolveHomeHeroLiveFromSale(
   };
 }
 
+/**
+ * Which hero the home page shows, derived only from the sales on offer:
+ * a sale with a hero video, else the sales themselves, else the
+ * "between seasons" state. Never fabricates a live auction.
+ */
+export function resolveHomeHeroState(sales: HomeHeroSaleInput[]): HeroStateVM {
+  const eligible = sales.filter((sale) => isHomeHeroEligibleStatus(sale.status));
+  // Active sales first, so a running sale's video wins over an upcoming one.
+  const ordered = [
+    ...eligible.filter((sale) => sale.status === "active"),
+    ...eligible.filter((sale) => sale.status !== "active"),
+  ];
+  for (const sale of ordered) {
+    const live = resolveHomeHeroLiveFromSale(sale);
+    if (live) return live;
+  }
+  return resolveHomeHeroRotatorFromSales(ordered) ?? { kind: "betweenSeasons" };
+}
+
 export function resolveHomeHeroRotatorFromSales(
   sales: HomeHeroSaleInput[],
 ): Extract<HeroStateVM, { kind: "rotator" }> | null {

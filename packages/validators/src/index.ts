@@ -14,6 +14,7 @@ export * from "./lot-sale-timing.js";
 export * from "./sale-settlement.js";
 export * from "./stream-embed.js";
 export * from "./bid.js";
+export * from "./lot-live-events.js";
 export * from "./lot-realtime-events.js";
 export * from "./bid-anti-sniping-policy.js";
 export * from "./auto-bid.js";

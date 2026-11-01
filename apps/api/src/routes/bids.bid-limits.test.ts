@@ -161,6 +161,54 @@ function bidBody() {
   return JSON.stringify({ lotId, amount: 100 });
 }
 
+describe("typed place-bid refusals", () => {
+  it("passes the next bid the bidder was shown to bid placement", async () => {
+    const { app, placeBid } = mount();
+    const res = await app.request("/bids", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lotId, amount: 100, seenNextBid: "100.00" }),
+    });
+    expect(res.status).toBe(201);
+    expect(placeBid).toHaveBeenCalledWith(expect.objectContaining({ seenNextBid: "100.00" }));
+  });
+
+  it("refuses a malformed seen next bid before placement", async () => {
+    const { app, placeBid } = mount();
+    const res = await app.request("/bids", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lotId, amount: 100, seenNextBid: "soon" }),
+    });
+    expect(res.status).toBe(400);
+    expect(placeBid).not.toHaveBeenCalled();
+  });
+
+  it("returns the typed payload a refused amount carries", async () => {
+    const { app } = mount({
+      placeBid: vi.fn().mockResolvedValue({
+        kind: "err",
+        error: {
+          message: "Bid must be at least 110.00",
+          status: 400,
+          code: "outbid_during_confirm",
+          details: { nextBidAmount: "110.00" },
+        },
+      }),
+    });
+    const res = await app.request("/bids", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: bidBody(),
+    });
+    expect(res.status).toBe(400);
+    expect(await res.json()).toMatchObject({
+      code: "outbid_during_confirm",
+      details: { nextBidAmount: "110.00" },
+    });
+  });
+});
+
 describe("bid user rate limits", () => {
   it("returns 429 with Retry-After after 30 bids in one minute for the same user", async () => {
     const { app, placeBid } = mount();

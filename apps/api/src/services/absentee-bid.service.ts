@@ -3,6 +3,7 @@ import type {
   IBidAuthority,
   IBidIdentityEligibilityGate,
   IBiddingLimitGate,
+  SaleRegistrationBidGate,
 } from "@auction/bidding-runtime";
 import type { IAbsenteeBidRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
@@ -40,6 +41,7 @@ export class AbsenteeBidService implements IAbsenteeBidService {
     identityEligibilityGate: IBidIdentityEligibilityGate | null,
     bidAuthority: IBidAuthority,
     biddingLimitGate?: IBiddingLimitGate,
+    saleRegistrationGate: Pick<SaleRegistrationBidGate, "assertCanBid"> | null = null,
   ) {
     this.inner = new RuntimeAbsenteeBidService(
       absenteeBidRepo,
@@ -50,6 +52,7 @@ export class AbsenteeBidService implements IAbsenteeBidService {
       identityEligibilityGate,
       bidAuthority,
       biddingLimitGate,
+      saleRegistrationGate,
     );
   }
 

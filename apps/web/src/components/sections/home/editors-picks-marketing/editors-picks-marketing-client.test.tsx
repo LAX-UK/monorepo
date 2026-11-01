@@ -60,7 +60,7 @@ describe("EditorsPicksMarketingClient", () => {
       />,
     );
 
-    expect(screen.getByRole("list", { name: "Editor's picks" })).toHaveAttribute(
+    expect(screen.getByRole("list", { name: "More lots" })).toHaveAttribute(
       "id",
       "home-editors-picks-rail",
     );

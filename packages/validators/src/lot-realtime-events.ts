@@ -30,6 +30,8 @@ export const lotRealtimeBidPlacedPublicSchema = z.object({
   currentPrice: moneyString,
   emittedAt: z.number().optional(),
   outbidUserId: z.string().optional(),
+  /** The least a bidder can bid after this bid, so a displaced bidder can bid again at once. */
+  nextBidAmount: z.string().optional(),
   bidCount: z.number().optional(),
   reserveMet: z.boolean().optional(),
 });
@@ -91,6 +93,7 @@ export type EncodeBidPlacedPublicInput = {
   currentPrice: string;
   emittedAt?: number;
   outbidUserId?: string;
+  nextBidAmount?: string;
   bidCount?: number;
   reserveMet?: boolean;
 };
@@ -103,6 +106,7 @@ export function encodeBidPlacedPublicRedisMessage(input: EncodeBidPlacedPublicIn
     currentPrice: input.currentPrice,
     emittedAt: input.emittedAt ?? Date.now(),
     ...(input.outbidUserId ? { outbidUserId: input.outbidUserId } : {}),
+    ...(input.nextBidAmount ? { nextBidAmount: input.nextBidAmount } : {}),
     ...(input.bidCount != null ? { bidCount: input.bidCount } : {}),
     ...(input.reserveMet !== undefined ? { reserveMet: input.reserveMet } : {}),
   });

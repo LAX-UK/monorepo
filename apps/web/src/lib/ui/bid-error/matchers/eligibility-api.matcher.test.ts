@@ -18,6 +18,15 @@ describe("eligibility API bid error matchers", () => {
     expect(r.title).toBe("Bid limit exceeded");
   });
 
+  it("maps the typed registration and limit codes the same way", () => {
+    expect(mapBidError("Register and be approved", { code: "registration_required" }).title).toBe(
+      "Registration required",
+    );
+    expect(mapBidError("Bid exceeds your approved limit", { code: "over_limit" }).title).toBe(
+      "Bid limit exceeded",
+    );
+  });
+
   it("maps bid_rate_limited_minute", () => {
     const r = mapBidError("Too many bids", { code: "bid_rate_limited_minute" });
     expect(r.severity).toBe("warning");
