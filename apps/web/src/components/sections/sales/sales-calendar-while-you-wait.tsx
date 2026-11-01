@@ -9,7 +9,7 @@ import Link from "next/link";
 export function SalesCalendarWhileYouWait({ links }: { links: readonly WhileYouWaitLink[] }) {
   if (links.length === 0) return null;
   return (
-    <section aria-labelledby="calendar-while-you-wait" className="px-5 pb-6 @2xl:px-10">
+    <section aria-labelledby="calendar-while-you-wait" className="pb-6">
       <h2 id="calendar-while-you-wait" className="font-lax text-lax-14 font-medium text-lax-muted">
         While you wait
       </h2>

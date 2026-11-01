@@ -42,9 +42,12 @@ export function SalesCalendarEmpty({ vm }: Props) {
     );
   }
 
+  // The kit's empty state carries its own inset for use inside a card; on the open page it
+  // lines up with the tabs and the title instead.
   return (
-    <>
+    <div className="@container">
       <EmptyState
+        className="-mx-5 @2xl:-mx-10"
         illustration="easel"
         title={empty.title}
         description={empty.description}
@@ -70,6 +73,6 @@ export function SalesCalendarEmpty({ vm }: Props) {
         }
       />
       <SalesCalendarWhileYouWait links={vm.whileYouWait} />
-    </>
+    </div>
   );
 }
