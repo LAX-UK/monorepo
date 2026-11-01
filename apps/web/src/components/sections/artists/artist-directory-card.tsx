@@ -1,3 +1,4 @@
+import { ArtistBadges } from "@/components/marketing/artist-badges";
 import { ArtistPortraitFrame } from "@/components/marketing/artist-portrait-frame";
 import { ArtistWatchHeart } from "@/components/marketing/artist-watch-heart";
 import { MediaImage } from "@/components/ui/media-image";
@@ -6,7 +7,7 @@ import type { ArtistProfileLinkContext } from "@/lib/marketing/catalog-links";
 import { artistProfileHref } from "@/lib/marketing/catalog-links";
 import { MarketingArtistCard, marketingArtistFactsLine } from "@auction/marketing-ui";
 import type { PublicArtistDirectoryRow } from "@auction/types";
-import { Badge, cn } from "@auction/ui";
+import { cn } from "@auction/ui";
 
 type Props = {
   artist: PublicArtistDirectoryRow;
@@ -103,17 +104,12 @@ export function ArtistDirectoryCard({
           : {})}
         withoutImage="text"
         badges={
-          artist.featured || artist.verified || kindBadge ? (
-            <>
-              {artist.featured ? <Badge>Featured</Badge> : null}
-              {artist.verified ? <Badge variant="secondary">Verified</Badge> : null}
-              {kindBadge ? (
-                <Badge variant="outline" className="bg-surface/90">
-                  {kindBadge}
-                </Badge>
-              ) : null}
-            </>
-          ) : null
+          <ArtistBadges
+            featured={artist.featured}
+            verified={artist.verified}
+            kindLabel={kindBadge}
+            onImage
+          />
         }
         {...(textOnly ? { action: heart } : { overlayAction: heart })}
       />
