@@ -30,7 +30,12 @@ const routesChecked = new Set<string>();
 
 /** The not-found pages render outside the site shell today, so they have no shared main landmark. */
 async function settle(page: Page, route: PublicRoute) {
+  // A canonical redirect can stack loading shells; wait until one finished main remains.
   await expect(page.locator('main[aria-busy="true"]')).toHaveCount(0, { timeout: 15_000 });
+  if (!route.name.includes("not-found")) {
+    await expect(page.locator("#main-content")).toHaveCount(1, { timeout: 15_000 });
+    await expect(page.locator('main[aria-busy="true"]')).toHaveCount(0);
+  }
   if (route.name.includes("not-found")) await expect(page.locator("body")).toBeVisible();
   else await expect(page.locator("#main-content")).toBeVisible();
 }
