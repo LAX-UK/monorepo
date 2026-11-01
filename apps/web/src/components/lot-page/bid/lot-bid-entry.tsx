@@ -160,9 +160,7 @@ export function LotBidEntry({ auction: lot, artistName, gate, buyersPremium }: L
       void queryClient.invalidateQueries({ queryKey: lotPageKeys.viewer(lot.id) });
       const message = bidPlacedAnnouncement({ mode: result.mode, amount: result.amount, format });
       announce(message);
-      notify.success(result.mode === "maximum" ? "Maximum set" : "Bid placed", {
-        description: message,
-      });
+      notify.success(message);
       setDialog((current) => ({ ...current, open: false }));
     },
     [applyOwnBid, announce, format, lot.id, queryClient],
