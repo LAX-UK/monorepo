@@ -102,7 +102,8 @@ function PayoutListRow({ payout }: { payout: PayoutRow }) {
       meta={[payout.period]}
       figures={[
         { id: "gross", value: payout.gross, label: "sales" },
-        { id: "fees", value: payout.fees, label: "commission and fees" },
+        // The figure cells are a fixed width, so the label stays one short word (commission is a fee).
+        { id: "fees", value: payout.fees, label: "fees" },
       ]}
       aligned
       status={
