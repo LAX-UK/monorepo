@@ -1,6 +1,5 @@
 import { finished } from "node:stream/promises";
 import { legalEntityFor, productCopyrightLine } from "@auction/branding";
-import { payoutLineBreakdown, payoutTotals } from "@auction/domain";
 import PDFDocument from "pdfkit";
 import type { WorkerEnv } from "../env.js";
 import type {
@@ -55,12 +54,10 @@ export async function renderPayoutStatementPdf(input: PayoutStatementRenderInput
   doc.text(`Payout reference: ${payoutId}`);
   doc.moveDown();
 
-  // The totals are the lines added up with the split each sale line shows, as on the payout page.
-  const totals = payoutTotals(lines, pRow.stripeFee);
-  const gross = totals.gross;
-  const pf = totals.platformFee;
-  const sf = totals.stripeFee;
-  const net = totals.net;
+  const gross = pRow.grossAmount;
+  const pf = pRow.platformFee;
+  const sf = pRow.stripeFee;
+  const net = pRow.netAmount;
   const currency = pRow.currency;
   const feePct =
     Number.parseFloat(gross) > 0
@@ -83,11 +80,7 @@ export async function renderPayoutStatementPdf(input: PayoutStatementRenderInput
     } else {
       desc = `${kind}${line.note ? ` — ${line.note}` : ""}`;
     }
-    const split = payoutLineBreakdown(line);
-    const fees = split
-      ? ` (less commission and fees ${moneyFmt(split.commissionAndFees, currency)}, you receive ${moneyFmt(split.net, currency)})`
-      : "";
-    doc.text(`• [${kind}] ${moneyFmt(String(line.amount), currency)} — ${desc}${fees}`);
+    doc.text(`• [${kind}] ${moneyFmt(String(line.amount), currency)} — ${desc}`);
   }
 
   doc.moveDown();
