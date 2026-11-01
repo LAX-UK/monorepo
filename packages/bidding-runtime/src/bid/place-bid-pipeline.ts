@@ -252,7 +252,7 @@ export async function applyAntiSnipeExtension(
     )
   ) {
     nextEnd = new Date(lotRow.endTime.getTime() + deps.bidPolicy.antiSnipingExtensionMs);
-    await lots.updateEndTime(lotId, nextEnd);
+    await lots.extendEndTime(lotId, nextEnd);
   }
 
   return nextEnd;

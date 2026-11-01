@@ -140,6 +140,7 @@ function baseLotRepo(overrides: Partial<ILotRepository> = {}): ILotRepository {
     sumEndedHammer: vi.fn().mockResolvedValue({ total: "0", count: 0 }),
     updateCurrentPrice: vi.fn(),
     updateEndTime: vi.fn(),
+    extendEndTime: vi.fn(),
     updateStatus: vi.fn(),
     update: vi.fn(),
     setWinner: vi.fn(),
@@ -1149,7 +1150,7 @@ describe("BidService.placeBid", () => {
 
     const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
     expect(result.isOk()).toBe(true);
-    expect(lotRepo.updateEndTime).toHaveBeenCalledOnce();
+    expect(lotRepo.extendEndTime).toHaveBeenCalledOnce();
     expect(notifyLotExtended).toHaveBeenCalledOnce();
     expect(rescheduleEnd).toHaveBeenCalledOnce();
   });
@@ -1196,7 +1197,7 @@ describe("BidService.placeBid", () => {
 
     const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
     expect(result.isOk()).toBe(true);
-    expect(lotRepo.updateEndTime).not.toHaveBeenCalled();
+    expect(lotRepo.extendEndTime).not.toHaveBeenCalled();
     expect(saleroomSessionLookup.shouldSkipAntiSnipeForLot).toHaveBeenCalledWith("auc-1");
   });
 
