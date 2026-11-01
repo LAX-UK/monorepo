@@ -95,6 +95,26 @@ export {
 } from "./motion/index.js";
 export { MarketingSectionHeader } from "./marketing-section-header.js";
 export {
+  HANG_MAX_WORKS,
+  HANG_SCROLL_FROM_COUNT,
+  type HangFramedSize,
+  type HangLayout,
+  type HangLongSide,
+  type HangSalonReason,
+  type HangViewport,
+  type HangWorkInput,
+  resolveHangLongSide,
+  solveHangLayout,
+} from "./hang/hang-layout.js";
+export {
+  MarketingHang,
+  type MarketingHangProps,
+  type MarketingHangSeeAll,
+  type MarketingHangWork,
+} from "./hang/marketing-hang.js";
+export { MarketingHangLabel, type MarketingHangLabelProps } from "./hang/marketing-hang-label.js";
+export { MarketingHangSkeleton } from "./hang/marketing-hang-skeleton.js";
+export {
   MarketingHorizontalRail,
   type MarketingHorizontalRailControls,
   type MarketingHorizontalRailControlsPlacement,
@@ -611,3 +631,5 @@ export {
   accountSubNavCountText,
   visibleAccountSubNavCount,
 } from "./account/index.js";
+
+export * from "./cover/index.js";

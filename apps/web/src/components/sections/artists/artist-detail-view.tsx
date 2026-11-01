@@ -18,7 +18,8 @@ import {
   MarketingReadMore,
   marketingArtistFacts,
 } from "@auction/marketing-ui";
-import { Badge, Button, cn } from "@auction/ui";
+import { cn } from "@auction/ui";
+import { ButtonLink, StatusBadge } from "@auction/ui/lax";
 import Link from "next/link";
 
 type ArtistDetailViewProps = ArtistDetailPageData;
@@ -92,9 +93,9 @@ export function ArtistDetailView({ vm, jsonLdText }: ArtistDetailViewProps) {
         badges={
           vm.registry.verified || (kind && KIND_BADGE_KINDS.has(kind)) ? (
             <>
-              {vm.registry.verified ? <Badge variant="secondary">Verified</Badge> : null}
+              {vm.registry.verified ? <StatusBadge tone="success">Verified</StatusBadge> : null}
               {kind && KIND_BADGE_KINDS.has(kind) ? (
-                <Badge variant="outline">{artistKindMeta(kind).badge}</Badge>
+                <StatusBadge tone="neutral">{artistKindMeta(kind).badge}</StatusBadge>
               ) : null}
             </>
           ) : null
@@ -210,12 +211,12 @@ export function ArtistDetailView({ vm, jsonLdText }: ArtistDetailViewProps) {
         description="Request a valuation or submit work to be considered for an upcoming auction."
         actions={
           <>
-            <Button variant="cta" asChild>
-              <Link href="/selling/new">Submit work</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/sell">Selling guide</Link>
-            </Button>
+            <ButtonLink Link={Link} variant="primary" href="/selling/new">
+              Submit work
+            </ButtonLink>
+            <ButtonLink Link={Link} variant="secondary" href="/sell">
+              Selling guide
+            </ButtonLink>
           </>
         }
       />

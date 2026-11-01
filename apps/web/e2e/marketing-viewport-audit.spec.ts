@@ -49,7 +49,7 @@ test.describe("marketing viewport audit @a11y", () => {
     const naturalWidth = await heroImg.evaluate((el) => (el as HTMLImageElement).naturalWidth);
     expect(naturalWidth).toBeGreaterThan(0);
 
-    const cta = page.getByRole("link", { name: "Open saleroom" }).first();
+    const cta = page.getByRole("link", { name: /^(Join the saleroom|View lots)$/ }).first();
     await expect(cta).toBeVisible();
     await expect(cta).toBeInViewport();
 
@@ -99,7 +99,7 @@ test.describe("marketing viewport audit @a11y", () => {
       expect(heroBox.height).toBeLessThanOrEqual(1080 + headerHeight + 1);
     }
 
-    const cta = page.getByRole("link", { name: "Open saleroom" }).first();
+    const cta = page.getByRole("link", { name: /^(Join the saleroom|View lots)$/ }).first();
     await expect(cta).toBeVisible();
     await expect(cta).toBeInViewport();
 

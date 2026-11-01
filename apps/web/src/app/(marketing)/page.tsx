@@ -1,12 +1,12 @@
-import { LaxEditorsPicksMarketing } from "@/components/sections/home/editors-picks-marketing/lax-editors-picks-marketing";
+import { EditorsPicksMarketingClient } from "@/components/sections/home/editors-picks-marketing/editors-picks-marketing-client";
 import { getHomeData } from "@/components/sections/home/get-home-data";
+import { HomeHangSection } from "@/components/sections/home/home-hang/home-hang-section";
 import { HomeNewsletter } from "@/components/sections/home/home-newsletter";
 import { LaxConsignCTA } from "@/components/sections/home/lax-consign-cta";
 import { LaxHero } from "@/components/sections/home/lax-hero";
 import { LaxUrgencySection } from "@/components/sections/home/lax-urgency-section";
-import { LaxPrivateSaleHighlightsMarketing } from "@/components/sections/home/private-sale-highlights-marketing/lax-private-sale-highlights-marketing";
 import { HomeSkeleton } from "@/components/sections/home/skeletons/home-skeleton";
-import { LaxUpcomingAuctionsMarketing } from "@/components/sections/home/upcoming-auctions-marketing/lax-upcoming-auctions-marketing";
+import { UpcomingAuctionsMarketingClient } from "@/components/sections/home/upcoming-auctions-marketing/upcoming-auctions-marketing-client";
 import { SITE_NAME, SITE_TAGLINE } from "@/lib/brand";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { HOME_HERO_BLEED } from "@/lib/marketing/home-hero-layout";
@@ -64,8 +64,8 @@ async function MarketingHomeContent({
     urgencySection,
     upcomingAuctionTiles,
     upcomingSales,
-    editorsPickLots,
-    privateSaleHighlights,
+    moreLots,
+    hang,
     isAuthenticated,
     watchedLotIds,
   } = data;
@@ -106,6 +106,7 @@ async function MarketingHomeContent({
       <div className={HOME_HERO_BLEED}>
         <LaxHero state={heroState} />
       </div>
+      <HomeHangSection hang={hang} />
       {urgencySection.variant !== "none" ? (
         <LaxUrgencySection
           variant={urgencySection.variant}
@@ -116,20 +117,24 @@ async function MarketingHomeContent({
           loginNextPath="/"
         />
       ) : null}
-      <LaxUpcomingAuctionsMarketing
-        tiles={upcomingAuctionTiles}
-        layoutView={layoutView}
-        isAuthenticated={isAuthenticated}
-      />
-      <LaxEditorsPicksMarketing
-        lots={editorsPickLots}
-        isAuthenticated={isAuthenticated}
-        watchedLotIds={watchedLotIds}
-        loginNextPath="/"
-      />
-      <LaxPrivateSaleHighlightsMarketing highlights={privateSaleHighlights} />
+      {upcomingAuctionTiles.length > 0 ? (
+        <UpcomingAuctionsMarketingClient
+          tiles={upcomingAuctionTiles}
+          layoutView={layoutView}
+          isAuthenticated={isAuthenticated}
+        />
+      ) : null}
+      {moreLots.length > 0 ? (
+        <EditorsPicksMarketingClient
+          lots={moreLots}
+          isAuthenticated={isAuthenticated}
+          watchedLotIds={watchedLotIds}
+          loginNextPath="/"
+        />
+      ) : null}
       <LaxConsignCTA />
-      <HomeNewsletter />
+      {/* The between-seasons hero already carries the sign-up. */}
+      {heroState.kind !== "betweenSeasons" ? <HomeNewsletter /> : null}
     </>
   );
 }

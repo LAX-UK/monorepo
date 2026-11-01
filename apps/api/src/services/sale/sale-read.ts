@@ -1,11 +1,13 @@
 import type { ISaleRepository } from "@auction/persistence/interfaces";
-import type { Lot, Sale, StaffRoles } from "@auction/types";
+import type { Lot, Sale, StaffRoles, WithdrawnLotView } from "@auction/types";
 import {
   isPublicCatalogLot,
   isPublicCatalogSale,
+  isPublicCatalogueLot,
   resolvePublicSaleListFilter,
   viewerCanSeeNonPublicCatalog,
 } from "@auction/validators";
+import { presentCatalogueRowForPublic } from "../../lib/lot-public-view.js";
 import {
   presentLotsImages,
   presentSaleAdminImages,
@@ -53,7 +55,9 @@ export async function getSaleDetailForPublicApi(
   saleId: string,
   viewerUserId: string | undefined,
   viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
-): Promise<{ data: { sale: Sale; lots: Lot[]; viewer: { isFollowing: boolean } } } | null> {
+): Promise<{
+  data: { sale: Sale; lots: (Lot | WithdrawnLotView)[]; viewer: { isFollowing: boolean } };
+} | null> {
   const bundle = await getByIdWithLots(deps, saleId);
   if (!bundle) return null;
 
@@ -73,7 +77,9 @@ export async function getSaleDetailForPublicApi(
   ]);
   const visibleLots = canPreview
     ? lots
-    : lots.filter((lot) => isPublicCatalogLot(lot, saleWithPlatform));
+    : lots
+        .filter((lot) => isPublicCatalogueLot(lot, saleWithPlatform))
+        .map(presentCatalogueRowForPublic);
   return { data: { sale, lots: visibleLots, viewer: { isFollowing } } };
 }
 
@@ -143,7 +149,7 @@ export async function listSaleLotsPageForPublicApi(
   viewer?: { role?: string | undefined; staffRoles?: StaffRoles | undefined },
 ): Promise<{
   data: {
-    items: Lot[];
+    items: (Lot | WithdrawnLotView)[];
     total: number;
     limit: number;
     offset: number;
@@ -175,7 +181,7 @@ export async function listSaleLotsPageForPublicApi(
   );
   return {
     data: {
-      items,
+      items: canPreview ? items : items.map(presentCatalogueRowForPublic),
       total: page.total,
       limit: opts.limit,
       offset: opts.offset,

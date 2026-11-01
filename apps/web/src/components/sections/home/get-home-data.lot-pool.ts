@@ -1,19 +1,13 @@
-import type { HeroStateVM } from "@/components/sections/home/home-view-models";
 import { isPublicLotStatus } from "@/lib/catalog/public-catalog-visibility";
-import type { Lot } from "@auction/types";
-import { HOME_PRIVATE_HIGHLIGHTS_LIMIT } from "./get-home-data.constants";
-import type { HomeUrgencySection } from "./get-home-data.types";
+import { allocateHomeLots } from "@auction/domain";
+import type { Lot, Sale } from "@auction/types";
+import { HOME_MORE_LOTS_MIN } from "./get-home-data.constants";
 
-/** Merge active + scheduled lots for lower home strips; active order preserved first. */
+/** Merge active + scheduled lots for the lower home strip; active order preserved first. */
 export function buildHomeCatalogLotPool(activeLots: Lot[], scheduledLots: Lot[]): Lot[] {
   const seen = new Set<string>();
   const merged: Lot[] = [];
-  for (const lot of activeLots) {
-    if (!isPublicLotStatus(lot.status) || seen.has(lot.id)) continue;
-    seen.add(lot.id);
-    merged.push(lot);
-  }
-  for (const lot of scheduledLots) {
+  for (const lot of [...activeLots, ...scheduledLots]) {
     if (!isPublicLotStatus(lot.status) || seen.has(lot.id)) continue;
     seen.add(lot.id);
     merged.push(lot);
@@ -21,48 +15,66 @@ export function buildHomeCatalogLotPool(activeLots: Lot[], scheduledLots: Lot[])
   return merged;
 }
 
-/** Prefer lots past the editor’s-picks window; fall back to the tail so thin
- * catalogues still surface a distinct row when possible. */
-export function pickPrivateSaleHighlightLots(lots: Lot[]): Lot[] {
-  if (lots.length === 0) return [];
-  const fromOffset = lots.slice(12, 15);
-  if (fromOffset.length > 0) return fromOffset;
-  return lots.slice(-Math.min(HOME_PRIVATE_HIGHLIGHTS_LIMIT, lots.length));
+export type HomePageLotsInput = {
+  /** Lots the sale rail already chose, in display order. */
+  railLots: Lot[];
+  pool: Lot[];
+  moreLimit: number;
+  /** Lots staff featured for the lead sale, in staff order; they lead the rail. */
+  featuredLotIds?: readonly string[];
+  /**
+   * The hang's candidates in hanging order (the lead sale's featured lots first, then its top
+   * lots). The hang claims its lots before the rail and "More lots", and stays empty when fewer
+   * than `HOME_HANG_MIN_WORKS` can hang.
+   */
+  hangLots?: readonly Lot[];
+  hangLimit?: number;
+};
+
+/** The hang needs two works with photographs: one is already the hero's work. */
+export const HOME_HANG_MIN_WORKS = 2;
+
+/** Sale ids pinned to the home page, in `homePinOrder`. */
+export function homePinnedSaleIds(
+  sales: ReadonlyArray<Pick<Sale, "id" | "homePinOrder">>,
+): string[] {
+  return sales
+    .filter((s): s is typeof s & { homePinOrder: number } => typeof s.homePinOrder === "number")
+    .sort((a, b) => a.homePinOrder - b.homePinOrder)
+    .map((s) => s.id);
 }
 
-export type HomeLowerStripPickInput = {
-  pool: Lot[];
-  heroState: HeroStateVM;
-  urgencySection: HomeUrgencySection;
-};
+/** The pool lots staff featured, in staff order; unknown ids are skipped. */
+function featuredLots(pool: Lot[], featuredLotIds: readonly string[]): Lot[] {
+  const byId = new Map(pool.map((lot) => [lot.id, lot]));
+  return featuredLotIds.flatMap((id) => byId.get(id) ?? []);
+}
 
-type PickOpts = {
-  /** When true, ignore ending-soon urgency exclusions (second pass). */
-  relaxEndingSoonExclusion?: boolean;
-};
-
-/** Candidates for Editor's Picks / Private Sale — hero- and urgency-aware, with fallback. */
-export function pickHomeLowerStripCandidates(
-  input: HomeLowerStripPickInput,
-  opts: PickOpts = {},
-): Lot[] {
-  const excludeIds = new Set<string>();
-
-  if (input.heroState.kind === "fallbackLot" && input.heroState.lot.id !== "placeholder") {
-    excludeIds.add(input.heroState.lot.id);
-  }
-
-  if (!opts.relaxEndingSoonExclusion && input.urgencySection.variant === "endingSoon") {
-    for (const vm of input.urgencySection.lots) {
-      excludeIds.add(vm.id);
-    }
-  }
-
-  const candidates = input.pool.filter((lot) => !excludeIds.has(lot.id));
-
-  if (candidates.length === 0 && input.pool.length > 0 && !opts.relaxEndingSoonExclusion) {
-    return pickHomeLowerStripCandidates(input, { relaxEndingSoonExclusion: true });
-  }
-
-  return candidates;
+/**
+ * Every lot appears once on the page, by priority: the hang under the hero, the sale rail, then
+ * "More lots", which is empty (so the section is hidden) when fewer than
+ * `HOME_MORE_LOTS_MIN` unseen lots remain.
+ */
+export function allocateHomePageLots({
+  railLots,
+  pool,
+  moreLimit,
+  featuredLotIds = [],
+  hangLots = [],
+  hangLimit = 0,
+}: HomePageLotsInput): {
+  hang: Lot[];
+  rail: Lot[];
+  more: Lot[];
+} {
+  const slots = allocateHomeLots<Lot>([
+    { key: "hang", candidates: hangLots, limit: hangLimit, min: HOME_HANG_MIN_WORKS },
+    {
+      key: "rail",
+      candidates: [...featuredLots(pool, featuredLotIds), ...railLots],
+      limit: railLots.length,
+    },
+    { key: "more", candidates: pool, limit: moreLimit, min: HOME_MORE_LOTS_MIN },
+  ]);
+  return { hang: slots.hang ?? [], rail: slots.rail ?? [], more: slots.more ?? [] };
 }

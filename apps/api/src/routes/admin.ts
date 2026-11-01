@@ -24,6 +24,7 @@ import { attachAdminCatalogRoutes } from "./admin/catalog.routes.js";
 import { attachAdminComplianceRoutes } from "./admin/compliance.routes.js";
 import { attachAdminConditionReportsRoutes } from "./admin/condition-reports.routes.js";
 import { attachAdminDeliveryOpsRoutes } from "./admin/delivery-ops.routes.js";
+import { attachAdminDisputeDeskRoutes } from "./admin/dispute-desk.routes.js";
 import { attachAdminEmailRoutes } from "./admin/email.routes.js";
 import { attachAdminFinanceRoutes } from "./admin/finance.routes.js";
 import { attachAdminImpersonationRoutes } from "./admin/impersonation.routes.js";
@@ -41,6 +42,7 @@ import {
   attachAdminPaymentsManualReviewRoutes,
 } from "./admin/payments.routes.js";
 import { attachAdminQrCodesRoutes } from "./admin/qr-codes.routes.js";
+import { attachAdminSaleCoverRoutes } from "./admin/sale-cover.routes.js";
 import { attachAdminSaleRegistrationsRoutes } from "./admin/sale-registrations.routes.js";
 import { attachAdminSaleroomSessionRoutes } from "./admin/saleroom-session.routes.js";
 import { attachAdminSaleroomRoutes } from "./admin/saleroom.routes.js";
@@ -96,6 +98,7 @@ export function createAdminRoutes(
   attachAdminOpsDashboardRoutes(platform, container);
   attachAdminConditionReportsRoutes(platform, container);
   attachAdminSaleRegistrationsRoutes(platform, container);
+  attachAdminSaleCoverRoutes(platform, container.admin.saleCover);
   attachAdminSaleroomRoutes(platform, container);
 
   // Hono merges a sub-app's handlers into the parent router, so `subApp.use("*", mw)`
@@ -163,6 +166,7 @@ export function createAdminRoutes(
   attachAdminPaymentsManualReviewRoutes(finance, container, guards);
   attachAdminFinanceIssueRoutes(finance, container);
   attachAdminFinanceRoutes(finance, container);
+  attachAdminDisputeDeskRoutes(finance, container, guards);
 
   // Mount finance first: its routes terminate the chain before platform's
   // `use("*", requirePlatformShell)` wildcard can 403 finance.

@@ -28,3 +28,16 @@ export const fieldBox = [
   "has-[input:read-only,textarea:read-only]:bg-lax-sunken",
   "[&_svg]:size-4 [&_svg]:shrink-0 [&_svg]:text-lax-subtle",
 ].join(" ");
+
+/**
+ * A link in running text or on its own line: ink, underlined with a 4px offset, 14/20 at 500
+ * (the interface step follows the density). Underlined at rest, so it never relies on colour
+ * alone; the line gets heavier on hover. The target size comes from the row, not from padding.
+ */
+export const textLinkClass = [
+  "inline-flex max-w-full items-center gap-1 rounded-lax-badge align-baseline",
+  "font-lax text-lax-ui font-medium text-lax-fg",
+  "underline decoration-1 underline-offset-4 hover:decoration-2",
+  "lax-focus aria-disabled:pointer-events-none aria-disabled:text-lax-disabled-fg",
+  "[&_svg]:pointer-events-none [&_svg]:size-4 [&_svg]:shrink-0",
+].join(" ");

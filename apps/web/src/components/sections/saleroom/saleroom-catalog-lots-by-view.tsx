@@ -3,7 +3,7 @@ import { SaleroomLotListActions } from "@/components/marketing/lot-quick-look/sa
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import type { SaleroomSaleForLifecycle } from "@/components/sections/saleroom/saleroom-lot-catalog-overlay";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
-import { Button } from "@auction/ui";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { SaleroomLotCard } from "./saleroom-lot-card";
@@ -46,9 +46,9 @@ export function SaleroomCatalogLotsByView({
         }
         action={
           clearFiltersHref ? (
-            <Button variant="cta" asChild>
-              <Link href={clearFiltersHref}>Clear filters</Link>
-            </Button>
+            <ButtonLink Link={Link} variant="primary" href={clearFiltersHref}>
+              Clear filters
+            </ButtonLink>
           ) : undefined
         }
       />

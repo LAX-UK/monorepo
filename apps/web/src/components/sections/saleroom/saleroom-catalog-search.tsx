@@ -1,8 +1,7 @@
 "use client";
 
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
-import { Input } from "@auction/ui/components/input";
+import { Button, TextInput } from "@auction/ui/lax";
 import { Search, X } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { type FormEvent, useEffect, useState } from "react";
@@ -42,35 +41,33 @@ export function SaleroomCatalogSearch({ className }: Props) {
     <form
       onSubmit={onSubmit}
       aria-label="Search lots in this sale"
-      className={cn("relative flex min-w-0 items-center", className)}
+      className={cn("min-w-0", className)}
     >
-      <Search
-        className="pointer-events-none absolute left-3 size-4 text-on-surface-variant"
-        aria-hidden
-      />
-      <Input
+      <TextInput
         type="search"
         value={value}
         onChange={(e) => setValue(e.target.value)}
         placeholder="Search this sale…"
         aria-label="Search lots in this sale"
-        className="h-10 min-h-10 w-full rounded-full bg-surface-container-lowest pl-9 pr-9 font-body text-sm shadow-none focus-visible:ring-primary"
+        leading={<Search aria-hidden />}
+        trailing={
+          current ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              onClick={() => {
+                setValue("");
+                commit("");
+              }}
+              aria-label="Clear search"
+              className="-mr-2"
+            >
+              <X aria-hidden />
+            </Button>
+          ) : null
+        }
       />
-      {current ? (
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          onClick={() => {
-            setValue("");
-            commit("");
-          }}
-          aria-label="Clear search"
-          className="absolute right-2 size-7 rounded-full text-on-surface-variant hover:text-on-surface"
-        >
-          <X className="size-4" aria-hidden />
-        </Button>
-      ) : null}
     </form>
   );
 }

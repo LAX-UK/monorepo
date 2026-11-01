@@ -18,6 +18,8 @@ export type DisputeAllocationInput = {
   expectedVersion: number;
   lines: readonly { paymentId: string; amountPence: number }[];
   actorUserId: string;
+  /** Why the finance user allocated it this way; kept on the audit event. */
+  note?: string;
 };
 
 export type DisputeAllocationError =
@@ -102,6 +104,7 @@ export class DisputeAllocationService {
             amountCents: l.amountPence,
             sellerShareCents: l.sellerSharePence,
           })),
+          ...(input.note ? { note: input.note } : {}),
         },
         actorUserId: input.actorUserId,
         actingLegalEntityId: null,

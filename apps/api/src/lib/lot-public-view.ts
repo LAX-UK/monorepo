@@ -1,8 +1,9 @@
-import { deriveReserveStatus, hasConfiguredReserve } from "@auction/domain";
+import { deriveReserveStatus, hasConfiguredReserve, toWithdrawnLotView } from "@auction/domain";
 import {
   type Lot,
   type PublicLotView,
   type StaffRoles,
+  type WithdrawnLotView,
   normalizeUserRoleOrClient,
   roleHasCapability,
 } from "@auction/types";
@@ -54,6 +55,14 @@ export function maskLotForPublicView(
   }
 
   return toPublicLotView(masked, realCurrentPrice);
+}
+
+/**
+ * A catalogue row for a non-staff reader: a withdrawn lot is reduced to its identity (no price,
+ * history or actions); every other lot is returned as it is.
+ */
+export function presentCatalogueRowForPublic<T extends Lot>(lot: T): T | WithdrawnLotView {
+  return lot.status === "cancelled" ? toWithdrawnLotView(lot) : lot;
 }
 
 /** Always returns a public view (for web SSR when viewer is not staff). */

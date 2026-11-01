@@ -136,6 +136,7 @@ run("Admin capability drift", "pnpm", ["lint:admin-capability-drift"]);
 run("Web guardrails", "pnpm", ["lint:web-guardrails"]);
 run("Admin lib boundaries", "pnpm", ["lint:lib-admin-boundaries"]);
 run("Staff UI guardrails", "pnpm", ["lint:staff-legacy-shell"]);
+run("Bid public kit", "pnpm", ["lint:bid-public-kit"]);
 run("Staff route composition", "pnpm", ["lint:staff-route-composition"]);
 run("E2E portfolio guard", "pnpm", ["lint:e2e-portfolio"]);
 run("E2E tag guard", "pnpm", ["lint:e2e-tags"]);

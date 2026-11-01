@@ -3,6 +3,7 @@ import type { IUserInvitationRepository } from "@auction/persistence/interfaces"
 import type { IBidRepository, ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IConditionReportRequestRepository } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentRepository } from "@auction/persistence/interfaces";
+import type { ICoverAnalysisReader, ISaleCoverRepository } from "@auction/persistence/interfaces";
 import type {
   IAdminDisputeCaseEnrichmentReader,
   IDisputeAllocationQueueReader,
@@ -43,6 +44,7 @@ import type { ImpersonationAuditService } from "../impersonation-audit.service.j
 import type {
   AdminMetricsQueryServices,
   AdminRouteServicesWithoutSatellites,
+  IAdminDisputeDeskService,
 } from "../interfaces/admin-routes.js";
 import type { IArtistRegistryService } from "../interfaces/artist-registry.js";
 import type { IConditionReportService } from "../interfaces/condition-report.js";
@@ -155,6 +157,8 @@ export type CreateAdminRouteServicesInput = {
   conditionReportRequestRepository: IConditionReportRequestRepository;
   mediaUrlResolver: MediaUrlResolver;
   mediaAssetEnricher: MediaAssetEnricher;
+  saleCoverRepository: ISaleCoverRepository;
+  coverAnalysisReader: ICoverAnalysisReader;
   amlService: AmlService;
   amlScreeningReader: IWatchlistScreeningReader;
   adminSourceOfFundsQueryService: AdminSourceOfFundsQueryService;
@@ -185,6 +189,7 @@ export type CreateAdminRouteServicesInput = {
   adminLegalEntityBrowseReader: IAdminLegalEntityBrowseReader;
   adminDisputeCaseEnrichmentReader: IAdminDisputeCaseEnrichmentReader;
   disputeAllocationQueueReader: IDisputeAllocationQueueReader;
+  disputeDesk: IAdminDisputeDeskService;
   bidRepo: IBidRepository;
   payoutService: IPayoutAdminService;
   payoutSettlementService: IPayoutSettlementService;
@@ -252,6 +257,8 @@ export function createAdminRouteServices(
     conditionReportRequestRepository: input.conditionReportRequestRepository,
     mediaUrlResolver: input.mediaUrlResolver,
     mediaAssetEnricher: input.mediaAssetEnricher,
+    saleCoverRepository: input.saleCoverRepository,
+    coverAnalysisReader: input.coverAnalysisReader,
   });
 
   const finance = createAdminFinanceServices({
@@ -276,6 +283,7 @@ export function createAdminRouteServices(
     legalEntityDocumentAdminService: input.legalEntityDocumentAdminService,
     adminDisputeCaseEnrichmentReader: input.adminDisputeCaseEnrichmentReader,
     disputeAllocationQueueReader: input.disputeAllocationQueueReader,
+    disputeDesk: input.disputeDesk,
     amlService: input.amlService,
     amlScreeningReader: input.amlScreeningReader,
     adminSourceOfFundsQueryService: input.adminSourceOfFundsQueryService,

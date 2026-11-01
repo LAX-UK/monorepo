@@ -24,7 +24,6 @@ import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
 import { toCatalogLotVMs } from "@/lib/lot/to-catalog-lot-vm";
 import { catalogViewCarryParams } from "@/lib/marketing/catalog-links";
-import { FOCUS_RING } from "@/lib/marketing/chrome";
 import {
   parseSearchEnding,
   parseSearchStatus,
@@ -38,8 +37,8 @@ import { metadataForListing } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { lotPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
-import type { Category, Lot } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
+import type { Lot } from "@auction/types";
+import { ButtonLink } from "@auction/ui/lax";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -182,7 +181,8 @@ export default async function SearchPage({ searchParams }: PageProps) {
       hasNext = auctions.length > PAGE_SIZE;
       if (hasNext) auctions = auctions.slice(0, PAGE_SIZE);
     }
-  } catch {
+  } catch (error) {
+    console.error("[search] inventory load failed", error);
     loadError = "We couldn’t load inventory right now. Please try again shortly.";
   }
   const filtered = auctions;
@@ -231,7 +231,6 @@ export default async function SearchPage({ searchParams }: PageProps) {
       ...qsExtras,
     });
 
-  const popularCategories = categories.slice(0, 6);
   const countLabel = loadError
     ? undefined
     : exactTotal != null
@@ -337,12 +336,12 @@ export default async function SearchPage({ searchParams }: PageProps) {
               description={loadError}
               action={
                 <div className="flex flex-wrap justify-center gap-3">
-                  <Button variant="cta" asChild>
-                    <Link href="/search">Try again</Link>
-                  </Button>
-                  <Button variant="outline" asChild>
-                    <Link href="/sales">Browse sales</Link>
-                  </Button>
+                  <ButtonLink Link={Link} variant="primary" href="/search">
+                    Try again
+                  </ButtonLink>
+                  <ButtonLink Link={Link} variant="secondary" href="/sales">
+                    Browse sales
+                  </ButtonLink>
                 </div>
               }
             />
@@ -352,47 +351,21 @@ export default async function SearchPage({ searchParams }: PageProps) {
               context={hasActiveFilters ? "filtered" : "noResults"}
               className="mt-8"
               title={trimmed ? "No lots match that search" : "No lots to show yet"}
-              description="Try another search, pick a category below, or browse upcoming and past sales."
+              description="Try another search, or browse upcoming and past sales."
               action={
                 <div className="flex w-full max-w-lg flex-col items-center gap-6">
                   {hasActiveFilters ? (
-                    <Button variant="cta" asChild>
-                      <Link href={clearFiltersHref}>Clear filters</Link>
-                    </Button>
-                  ) : null}
-                  {popularCategories.length > 0 ? (
-                    <div className="w-full">
-                      <p className="mb-3 font-label text-xs font-medium text-on-surface-variant">
-                        Popular categories
-                      </p>
-                      <div className="flex flex-wrap justify-center gap-2">
-                        {popularCategories.map((c: Category) => (
-                          <Link
-                            key={c.id}
-                            href={`/search?${buildSearchQs({
-                              offset: 0,
-                              q: trimmed,
-                              sort,
-                              categoryId: c.id,
-                              view: layoutView,
-                              ...qsExtras,
-                            })}`}
-                            scroll={false}
-                            className={`inline-flex min-h-11 shrink-0 items-center justify-center rounded-full border border-outline-variant/60 px-4 py-2 font-label text-xs font-medium text-on-surface-variant transition-colors hover:border-link/50 hover:text-on-surface ${FOCUS_RING}`}
-                          >
-                            {c.name}
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
+                    <ButtonLink Link={Link} variant="primary" href={clearFiltersHref}>
+                      Clear filters
+                    </ButtonLink>
                   ) : null}
                   <div className="flex flex-wrap justify-center gap-4">
-                    <Button variant="outline" asChild>
-                      <Link href="/archive">Past auctions</Link>
-                    </Button>
-                    <Button variant="cta" asChild>
-                      <Link href="/">Upcoming auctions</Link>
-                    </Button>
+                    <ButtonLink Link={Link} variant="secondary" href="/results">
+                      Past auctions
+                    </ButtonLink>
+                    <ButtonLink Link={Link} variant="primary" href="/">
+                      Upcoming auctions
+                    </ButtonLink>
                   </div>
                 </div>
               }

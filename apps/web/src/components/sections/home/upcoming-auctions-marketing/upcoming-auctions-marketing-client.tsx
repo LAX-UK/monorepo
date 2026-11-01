@@ -14,7 +14,7 @@ import { getSaleDeliveryModeLabel } from "@/lib/sale-type-presentation";
 import { sparseGridClasses } from "@/lib/ui/sparse-grid-classes";
 import { DisplayHeading } from "@auction/ui";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 import { useMemo, useState } from "react";
 import { UpcomingAuctionMarketingCard } from "./upcoming-auction-marketing-card";
@@ -76,7 +76,7 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
               Upcoming Auctions
             </DisplayHeading>
           }
-          subtitle="Scheduled and live sales curated by LAX specialists"
+          subtitle="Scheduled and live sales"
           action={<MarketingViewAllLink href="/sales" srSuffix="auctions and sales" />}
         />
 
@@ -97,8 +97,8 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
                       onClick={() => setFilter(f.id)}
                       className={
                         selected
-                          ? "inline-flex min-h-11 items-center rounded bg-on-surface px-3 py-1 font-label text-xs font-medium text-surface"
-                          : "inline-flex min-h-11 items-center rounded px-3 py-1 font-label text-xs font-medium text-on-surface"
+                          ? "inline-flex items-center bg-on-surface text-surface"
+                          : "inline-flex items-center text-on-surface"
                       }
                     >
                       {f.label}
@@ -124,7 +124,7 @@ export function UpcomingAuctionsMarketingClient({ tiles, layoutView, isAuthentic
             title="No auctions match this filter"
             description="Try another filter or browse the full catalogue."
             action={
-              <Button variant="outline" asChild>
+              <Button variant="secondary" asChild>
                 <Link href="/sales">View all auctions</Link>
               </Button>
             }

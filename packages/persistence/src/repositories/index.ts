@@ -56,6 +56,7 @@ export {
   createDrizzleLotTransitionRepository,
   DrizzleLotTransitionRepository,
 } from "./drizzle-lot-transition.repository.js";
+export { DrizzleAdminDisputeDeskReader } from "./drizzle-admin-dispute-desk.reader.js";
 export { DrizzleAdminDisputeCaseEnrichmentReader } from "./drizzle-admin-dispute-case-enrichment.reader.js";
 export { DrizzleAdminMarketingEventOutboxRepository } from "./drizzle-admin-marketing-event-outbox.repository.js";
 export { DrizzleAdminSaleOperationsSnapshotReader } from "./drizzle-admin-sale-operations-snapshot.reader.js";
@@ -145,6 +146,8 @@ export { DrizzleAdminReviewTaskReader } from "./drizzle-admin-review-task.reader
 export { DrizzleAdminReviewTaskRepository } from "./drizzle-admin-review-task.repository.js";
 export { DrizzleAdminSubmissionsSummaryReader } from "./drizzle-admin-submissions-summary.reader.js";
 export { DrizzleMediaAssetReader } from "./drizzle-media-asset.reader.js";
+export { DrizzleCoverAnalysisReader } from "./drizzle-cover-analysis.reader.js";
+export { DrizzleSaleCoverRepository } from "./drizzle-sale-cover.repository.js";
 export { DrizzleQrCodeScanPersister } from "./drizzle-qr-code-scan.persister.js";
 export { DrizzleSaleroomOnBlockReader } from "./drizzle-saleroom-on-block.reader.js";
 export { DrizzleSaleroomLiveSessionCounter } from "./drizzle-saleroom-live-session-counter.js";
@@ -209,6 +212,7 @@ export { DrizzleAttentionFeedReader } from "./drizzle-attention-feed.reader.js";
 export { DrizzleAdminWorkItemsReader } from "./drizzle-admin-work-items.reader.js";
 export { DrizzleAdminSaleReadinessReader } from "./drizzle-admin-sale-readiness.reader.js";
 export { DrizzleSaleAttentionSignalsReader } from "./drizzle-sale-attention-signals.reader.js";
+export { DrizzleSaleResultLotsReader } from "./drizzle-sale-result-lots.reader.js";
 export { DrizzleSaleOverviewKpiTrendReader } from "./drizzle-sale-overview-kpi-trend.reader.js";
 export { DrizzleSaleRevenueSnapshotReader } from "./drizzle-sale-revenue-snapshot.reader.js";
 

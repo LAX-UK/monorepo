@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 const STATIC_PATHS = [
   "",
   "/search",
-  "/archive",
+  "/results",
   "/about",
   "/buy",
   "/sell",

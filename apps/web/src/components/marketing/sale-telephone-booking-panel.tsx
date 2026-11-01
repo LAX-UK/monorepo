@@ -3,7 +3,6 @@
 import { createTelephoneBooking } from "@/lib/telephone/telephone-booking-api";
 import type { TelephoneBookingSnapshot } from "@/lib/telephone/telephone-booking-types";
 import { TelephoneParticipationGate } from "@/lib/telephone/telephone-participation-gate";
-import { Button } from "@auction/ui/components/button";
 import {
   Form,
   FormControl,
@@ -21,6 +20,7 @@ import {
   SelectValue,
 } from "@auction/ui/components/select";
 import { Textarea } from "@auction/ui/components/textarea";
+import { Button } from "@auction/ui/lax";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
 import { useState, useTransition } from "react";
@@ -120,7 +120,7 @@ export function SaleTelephoneBookingPanel({
           Telephone line requested for {saleTitle}. Our team will confirm before your lots open.
         </p>
         {createdBookingId ? (
-          <Button size="default" variant="outline" asChild>
+          <Button variant="secondary" asChild>
             <Link href={`/bids/telephone/${createdBookingId}`}>View booking</Link>
           </Button>
         ) : null}
@@ -207,7 +207,7 @@ export function SaleTelephoneBookingPanel({
             <p className="font-body text-xs text-on-surface-variant">
               We will call {mobileDisplay ?? mobile} when your lot is approaching the block.
             </p>
-            <Button type="submit" disabled={pending}>
+            <Button variant="primary" type="submit" disabled={pending}>
               {pending ? "Submitting…" : "Request telephone line"}
             </Button>
           </form>

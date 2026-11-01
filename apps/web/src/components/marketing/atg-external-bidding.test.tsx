@@ -24,7 +24,7 @@ describe("AtgExternalBiddingPanel", () => {
 
   it("links live sales to the White Label in a new tab", () => {
     render(<AtgExternalBiddingPanel sale={liveSale} />);
-    expect(screen.getByText("Live on ATG")).toBeInTheDocument();
+    expect(screen.getByText("Live · bid on auctions.lax.bid")).toBeInTheDocument();
     const link = screen.getByRole("link", { name: /Bid on auctions\.lax\.bid/i });
     expect(link).toHaveAttribute("href", "https://auctions.lax.bid/");
     expect(link).toHaveAttribute("target", "_blank");
@@ -33,7 +33,7 @@ describe("AtgExternalBiddingPanel", () => {
 
   it("shows ended copy and a view link once the ATG auction closes", () => {
     render(<AtgExternalBiddingPanel sale={endedSale} />);
-    expect(screen.getByText("Ended on ATG")).toBeInTheDocument();
+    expect(screen.getByText("Result to follow")).toBeInTheDocument();
     expect(screen.getByText(/Bidding on this sale has closed/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /View on auctions\.lax\.bid/i })).toBeInTheDocument();
   });

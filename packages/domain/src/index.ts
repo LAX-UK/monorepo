@@ -684,6 +684,16 @@ export {
   type DisputeStage,
 } from "./dispute-case.js";
 export {
+  DISPUTE_CLOSED_STATUSES,
+  DISPUTE_UNDER_REVIEW_STATUSES,
+  disputeBelongsToView,
+  disputeDeadline,
+  disputeStatusView,
+  type DisputeDeadline,
+  type DisputeDeadlineState,
+  type DisputeView,
+} from "./dispute-case-view.js";
+export {
   payTogether,
   type PayTogetherDecision,
   type PayTogetherRefusal,
@@ -798,3 +808,91 @@ export {
   type AccessRequestStatus,
 } from "./access-request.js";
 export * from "./lot-page/index.js";
+export {
+  HOME_SECTION_ORDER,
+  HOME_STATE_WINDOWS,
+  homeStates,
+  pruneEmptyHomeSections,
+  resolveHomeState,
+  resolveHomeViewerSwaps,
+  type HomeAlertsSwap,
+  type HomeBidderApproval,
+  type HomeRegisterSwap,
+  type HomeSaleFacts,
+  type HomeSectionId,
+  type HomeState,
+  type HomeStateInput,
+  type HomeStateResult,
+  type HomeStateWindows,
+  type HomeViewer,
+  type HomeViewerSwaps,
+} from "./home-state.js";
+export { allocateHomeLots, type HomeLotSlot } from "./home-lot-pool.js";
+export {
+  PLATE_FIELD_MIN_CONTRAST,
+  blend,
+  contrastRatio,
+  parseHex,
+  plateFieldColour,
+  relativeLuminance,
+  toHex,
+  type Rgb,
+} from "./cover-colour.js";
+export {
+  COVER_BOXES,
+  boxesServedBySlot,
+  breakpointsMeasuredForSlot,
+  coverCrop,
+  cropKeepsArea,
+  suggestCoverSide,
+  type CoverBoxName,
+  type CoverCropInput,
+} from "./cover-crop.js";
+export {
+  BAND_STOPS,
+  CREDIT_BAND_CAP,
+  DARK_TONE_MARGIN,
+  LINE_MIN_CONTRAST,
+  RADIAL_RADIUS,
+  RADIAL_STOPS,
+  SCRIM_STRENGTH_CAP,
+  SCRIM_STRENGTH_FLOOR,
+  chooseTone,
+  coverZoneRect,
+  lineScrimAlpha,
+  scrimSettingFor,
+  solveCoverScrim,
+  type ZoneRect,
+} from "./cover-scrim.js";
+export { assembleCoverAnalysis, type CoverImageMeasurements } from "./cover-analysis.js";
+export {
+  COVER_ANALYSIS_VERSION,
+  COVER_SLOT_FLOORS,
+  COVER_ZOOM_MAX,
+  COVER_ZOOM_MIN,
+  coverAnalysisHash,
+  effectiveCoverSide,
+  effectiveCoverSize,
+  measuredBreakpoints,
+  resolveCoverSlotSources,
+  slotScrimSettings,
+  validateCoverSlot,
+  type CoverSlotIssue,
+  type CoverSlotSource,
+} from "./sale-cover.js";
+export {
+  canPinToHome,
+  featuredLotsRefusal,
+  homePinsRefusal,
+  type FeaturedLotsRefusal,
+  type HomePinsRefusal,
+} from "./sale-home.js";
+export {
+  EXTERNAL_RESULTS_SETTLING_MS,
+  saleHasResultsPhase,
+  summariseSaleResults,
+  type SaleResultLot,
+  type SaleResultsSaleContext,
+  type SaleResultsSummary,
+} from "./sale-results-summary.js";
+export { toWithdrawnLotView } from "./withdrawn-lot-view.js";

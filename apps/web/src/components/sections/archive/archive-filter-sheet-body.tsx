@@ -1,16 +1,11 @@
 "use client";
 
 import { MarketingChipStrip } from "@/components/marketing/marketing-chip-strip";
-import {
-  type ArchiveSortMode,
-  archiveSortLabel,
-  buildArchiveYearRange,
-} from "@/lib/archive/build-archive-params";
+import { type ArchiveSortMode, archiveSortLabel } from "@/lib/archive/build-archive-params";
 import { FilterChip } from "@auction/ui";
 import { cn } from "@auction/ui";
 import { Label } from "@auction/ui/components/label";
 import { RadioGroup, RadioGroupItem } from "@auction/ui/components/radio-group";
-import { useMemo } from "react";
 import { useArchiveFilterNavigation } from "./use-archive-filter-navigation";
 
 type Category = { id: string; name: string };
@@ -23,14 +18,15 @@ const SORT_OPTIONS: { value: ArchiveSortMode; label: string }[] = [
 
 type Props = {
   categories: Category[];
+  /** Years in which a sale with results closed; the year group is hidden for fewer than two. */
+  years: readonly number[];
   onSelect?: () => void;
   className?: string;
 };
 
 /** Archive filter controls for the mobile sheet (year, medium, sort). */
-export function ArchiveFilterSheetBody({ categories, onSelect, className }: Props) {
+export function ArchiveFilterSheetBody({ categories, years, onSelect, className }: Props) {
   const { pending, setParams, searchParams } = useArchiveFilterNavigation();
-  const years = useMemo(() => buildArchiveYearRange(), []);
 
   const year = searchParams.get("year") ?? "all";
   const categoryId = searchParams.get("categoryId") ?? "";
@@ -43,55 +39,59 @@ export function ArchiveFilterSheetBody({ categories, onSelect, className }: Prop
 
   return (
     <div className={cn("space-y-8", className)} aria-busy={pending || undefined}>
-      <div className="space-y-3">
-        <p className="font-label text-xs text-on-surface-variant">Lot year</p>
-        <MarketingChipStrip aria-label="Lot year">
-          <FilterChip
-            pressed={year === "all"}
-            pending={pending}
-            aria-current={year === "all" ? "true" : undefined}
-            onClick={() => select({ year: "all" })}
-          >
-            All time
-          </FilterChip>
-          {years.map((y) => (
+      {years.length > 1 ? (
+        <div className="space-y-3">
+          <p className="font-label text-xs text-on-surface-variant">Lot year</p>
+          <MarketingChipStrip aria-label="Lot year">
             <FilterChip
-              key={y}
-              pressed={year === String(y)}
+              pressed={year === "all"}
               pending={pending}
-              aria-current={year === String(y) ? "true" : undefined}
-              onClick={() => select({ year: String(y) })}
+              aria-current={year === "all" ? "true" : undefined}
+              onClick={() => select({ year: "all" })}
             >
-              {y}
+              All time
             </FilterChip>
-          ))}
-        </MarketingChipStrip>
-      </div>
+            {years.map((y) => (
+              <FilterChip
+                key={y}
+                pressed={year === String(y)}
+                pending={pending}
+                aria-current={year === String(y) ? "true" : undefined}
+                onClick={() => select({ year: String(y) })}
+              >
+                {y}
+              </FilterChip>
+            ))}
+          </MarketingChipStrip>
+        </div>
+      ) : null}
 
-      <div className="space-y-3">
-        <p className="font-label text-xs text-on-surface-variant">Medium</p>
-        <MarketingChipStrip aria-label="Medium">
-          <FilterChip
-            pressed={categoryId === ""}
-            pending={pending}
-            aria-current={categoryId === "" ? "true" : undefined}
-            onClick={() => select({ categoryId: "" })}
-          >
-            All media
-          </FilterChip>
-          {categories.map((c) => (
+      {categories.length > 1 ? (
+        <div className="space-y-3">
+          <p className="font-label text-xs text-on-surface-variant">Medium</p>
+          <MarketingChipStrip aria-label="Medium">
             <FilterChip
-              key={c.id}
-              pressed={categoryId === c.id}
+              pressed={categoryId === ""}
               pending={pending}
-              aria-current={categoryId === c.id ? "true" : undefined}
-              onClick={() => select({ categoryId: c.id })}
+              aria-current={categoryId === "" ? "true" : undefined}
+              onClick={() => select({ categoryId: "" })}
             >
-              {c.name}
+              All media
             </FilterChip>
-          ))}
-        </MarketingChipStrip>
-      </div>
+            {categories.map((c) => (
+              <FilterChip
+                key={c.id}
+                pressed={categoryId === c.id}
+                pending={pending}
+                aria-current={categoryId === c.id ? "true" : undefined}
+                onClick={() => select({ categoryId: c.id })}
+              >
+                {c.name}
+              </FilterChip>
+            ))}
+          </MarketingChipStrip>
+        </div>
+      ) : null}
 
       <fieldset className="space-y-2" disabled={pending}>
         <legend className="mb-2 font-label text-xs text-on-surface-variant">Sort by</legend>

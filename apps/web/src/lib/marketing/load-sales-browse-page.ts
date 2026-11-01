@@ -6,6 +6,7 @@ import { getServerCategoryReader } from "@/lib/data/http/categories.server";
 import { getServerLotReader } from "@/lib/data/http/lots.server";
 import { type SaleListRow, getServerSalesList } from "@/lib/data/http/sales.server";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
+import { type LoadResult, settle } from "@/lib/marketing/load-result";
 import { deriveHasMorePage } from "@/lib/marketing/pagination";
 import { buildSalesBrowsePageJsonLd } from "@/lib/marketing/sales-browse-page.seo";
 import { buildSalesBrowsePageVM } from "@/lib/marketing/sales-browse-page.vm";
@@ -38,50 +39,27 @@ async function loadSaleRowsForTab(
   categoryId: string | undefined,
   sort: "startAsc" | "createdDesc",
   page: number,
-): Promise<{ rows: SaleListRow[]; hasMore: boolean }> {
+): Promise<LoadResult<{ rows: SaleListRow[]; hasMore: boolean }>> {
   const cat = categoryId ? { categoryId } : {};
   const sortParam = sort;
   const offset = (page - 1) * CALENDAR_PAGE_SIZE;
   const limit = CALENDAR_PAGE_SIZE + 1;
-  try {
+  const query = (status: "scheduled" | "active" | "ended") => ({
+    status,
+    limit,
+    offset,
+    sort: status === "ended" ? ("endDesc" as const) : sortParam,
+    ...cat,
+  });
+  return settle("sales calendar", async () => {
     let rows: SaleListRow[] = [];
-    switch (tab) {
-      case "upcoming":
-        rows = await getServerSalesList({
-          status: "scheduled",
-          limit,
-          offset,
-          sort: sortParam,
-          ...cat,
-        });
-        break;
-      case "live":
-        rows = await getServerSalesList({
-          status: "active",
-          limit,
-          offset,
-          sort: sortParam,
-          ...cat,
-        });
-        break;
-      case "results":
-        // Results are the record of the market: the most recent sale comes first.
-        rows = await getServerSalesList({
-          status: "ended",
-          limit,
-          offset,
-          sort: "endDesc",
-          ...cat,
-        });
-        break;
-      default:
-        return { rows: [], hasMore: false };
-    }
+    // Results are the record of the market: the most recent sale comes first.
+    if (tab === "upcoming") rows = await getServerSalesList(query("scheduled"));
+    else if (tab === "live") rows = await getServerSalesList(query("active"));
+    else if (tab === "results") rows = await getServerSalesList(query("ended"));
     const hasMore = rows.length > CALENDAR_PAGE_SIZE;
     return { rows: rows.slice(0, CALENDAR_PAGE_SIZE), hasMore };
-  } catch {
-    return { rows: [], hasMore: false };
-  }
+  });
 }
 
 export type SalesBrowsePageData = {
@@ -169,10 +147,10 @@ export async function loadSalesBrowsePage(
   let calendarHasMore = false;
   let newLots: Lot[] = [];
   let newLotsHasMore = false;
-  let err: string | null = null;
+  let loadFailedForTab = false;
 
-  try {
-    if (tab === "newLots") {
+  if (tab === "newLots") {
+    const result = await settle("sales calendar new lots", async () => {
       const reader = await getServerLotReader();
       const rows = await reader.list({
         limit: CALENDAR_PAGE_SIZE + 1,
@@ -180,30 +158,28 @@ export async function loadSalesBrowsePage(
         sort: "createdDesc",
         status: "scheduled",
       });
-      const page = deriveHasMorePage(rows, CALENDAR_PAGE_SIZE);
-      newLots = page.items;
-      newLotsHasMore = page.hasMore;
-    } else if (tab === "privateSales") {
-      saleRows = [];
+      return deriveHasMorePage(rows, CALENDAR_PAGE_SIZE);
+    });
+    if (result.ok) {
+      newLots = result.value.items;
+      newLotsHasMore = result.value.hasMore;
     } else {
-      const loaded = await loadSaleRowsForTab(tab, categoryId, sort, calendarPage);
-      saleRows = loaded.rows;
-      calendarHasMore = loaded.hasMore;
+      loadFailedForTab = true;
     }
-  } catch (e) {
-    err = e instanceof Error ? e.message : "Could not load data.";
+  } else if (tab !== "privateSales") {
+    const result = await loadSaleRowsForTab(tab, categoryId, sort, calendarPage);
+    if (result.ok) {
+      saleRows = result.value.rows;
+      calendarHasMore = result.value.hasMore;
+    } else {
+      loadFailedForTab = true;
+    }
   }
 
-  let featuredRows: SaleListRow[] = [];
-  try {
-    featuredRows = await getServerSalesList({
-      statuses: ["active", "scheduled"],
-      limit: 3,
-      sort: "startAsc",
-    });
-  } catch {
-    featuredRows = [];
-  }
+  const featured = await settle("sales calendar featured", () =>
+    getServerSalesList({ statuses: ["active", "scheduled"], limit: 3, sort: "startAsc" }),
+  );
+  const featuredRows: SaleListRow[] = featured.ok ? featured.value : [];
 
   const filteredSales = applyCalendarRowFilters(saleRows, {
     ...(deliveryMode !== "all" ? { deliveryMode } : {}),
@@ -220,7 +196,7 @@ export async function loadSalesBrowsePage(
     hasLiveSales,
     categories,
     calendarView,
-    err,
+    loadFailed: loadFailedForTab,
     tab,
     newLots,
     newLotsHasMore,
@@ -233,7 +209,7 @@ export async function loadSalesBrowsePage(
 
   const { crumbText, listLdText } = buildSalesBrowsePageJsonLd({
     tab,
-    err,
+    loadFailed: loadFailedForTab,
     newLots,
     filteredSales,
   });

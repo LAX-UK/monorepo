@@ -3,8 +3,7 @@ import { UnsubscribeForm } from "@/components/auth/unsubscribe-form";
 import { getUnsubscribePreview } from "@/lib/data/http/email-unsubscribe.server";
 import { maskEmail } from "@/lib/format/mask-email";
 import { metadataForPrivate } from "@/lib/seo/metadata-factory";
-import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink, Notice } from "@auction/ui/lax";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -30,27 +29,21 @@ export default async function UnsubscribePage({
       >
         {!token || !preview ? (
           <div className="flex flex-col gap-6">
-            <Alert variant="destructive">
-              <AlertDescription>
-                This unsubscribe link is invalid or expired. Sign in to manage your notification
-                preferences.
-              </AlertDescription>
-            </Alert>
-            <Button asChild variant="cta" size="xl" className="font-headline shadow-none">
-              <Link href="/settings#alerts" prefetch>
-                Manage preferences
-              </Link>
-            </Button>
+            <Notice tone="danger" alert title="This link no longer works">
+              This unsubscribe link is invalid or expired. Sign in to manage your notification
+              preferences.
+            </Notice>
+            <ButtonLink Link={Link} variant="primary" href="/settings#alerts" prefetch>
+              Manage preferences
+            </ButtonLink>
           </div>
         ) : (
           <div className="flex flex-col gap-8">
-            <Alert>
-              <AlertDescription>
-                {preview.scope === "global"
-                  ? `You will stop receiving all non-essential email at ${maskEmail(preview.email)}.`
-                  : `You will stop receiving ${labelForNotification(preview.notificationType)} email at ${maskEmail(preview.email)}.`}
-              </AlertDescription>
-            </Alert>
+            <Notice tone="info" title="What will change">
+              {preview.scope === "global"
+                ? `You will stop receiving all non-essential email at ${maskEmail(preview.email)}.`
+                : `You will stop receiving ${labelForNotification(preview.notificationType)} email at ${maskEmail(preview.email)}.`}
+            </Notice>
             <UnsubscribeForm token={token} />
           </div>
         )}

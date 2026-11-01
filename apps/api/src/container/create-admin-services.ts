@@ -37,6 +37,7 @@ import type { IPayoutStatementApplicationService } from "../services/interfaces/
 import type { ContainerBiddingSaleroom } from "./create-bidding-saleroom.js";
 import type { ContainerCatalogServices } from "./create-catalog-services.js";
 import type { ContainerComplianceMedia } from "./create-compliance-media.js";
+import { createAdminDisputeDesk } from "./create-dispute-services.js";
 import type { ContainerInfra } from "./create-infra.js";
 import type { ContainerPaymentsServices } from "./create-payments-services.js";
 import type { ContainerPlatformServices } from "./create-platform-services.js";
@@ -200,6 +201,8 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     conditionReportRequestRepository: repos.conditionReportRequestRepository,
     mediaUrlResolver,
     mediaAssetEnricher,
+    saleCoverRepository: repos.saleCoverRepository,
+    coverAnalysisReader: repos.coverAnalysisReader,
     amlService,
     amlScreeningReader,
     adminSourceOfFundsQueryService,
@@ -234,6 +237,7 @@ export function createAdminServices(input: CreateAdminServicesInput): ContainerA
     adminLegalEntityBrowseReader,
     adminDisputeCaseEnrichmentReader,
     disputeAllocationQueueReader,
+    disputeDesk: createAdminDisputeDesk({ db, allocator: payments.disputeAllocationService }),
     bidRepo: repoFactory.root.bid,
     payoutService: platform.payoutService,
     payoutSettlementService: platform.payoutSettlementService,

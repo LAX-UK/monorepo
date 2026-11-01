@@ -2,59 +2,47 @@ import "server-only";
 
 import {
   HOME_CATALOG_FETCH_LIMIT,
-  HOME_EDITORS_PICKS_LIMIT,
   HOME_ENDING_SOON_LIMIT,
   HOME_LIVE_NOW_LIMIT,
-  HOME_PRIVATE_HIGHLIGHTS_LIMIT,
+  HOME_MORE_LOTS_LIMIT,
   HOME_UPCOMING_LIMIT,
 } from "@/components/sections/home/get-home-data.constants";
 import {
+  allocateHomePageLots,
   buildHomeCatalogLotPool,
-  pickHomeLowerStripCandidates,
-  pickPrivateSaleHighlightLots,
+  homePinnedSaleIds,
 } from "@/components/sections/home/get-home-data.lot-pool";
 import type {
   HomeJsonLdListEntry,
   HomePageData,
   HomeUrgencySection,
 } from "@/components/sections/home/get-home-data.types";
+import { getHomeHangSales } from "@/components/sections/home/get-home-hang";
+import { fetchHomeLots, fetchHomeSales } from "@/components/sections/home/home-fetchers";
 import { lotsEndingSoon, nextUpcomingLots } from "@/components/sections/home/home-urgency-helpers";
 import {
-  type HeroLotVM,
-  type HeroStateVM,
   type LotCardVM,
-  createHeroFallbackVm,
   toEditorsPickLotCardVMs,
   toEndingSoonLotCardVMs,
-  toHeroLotVM,
   toHomeUpcomingAuctionTileVMs,
-  toPrivateSaleHighlightVMs,
 } from "@/components/sections/home/home-view-models";
-import {
-  CATALOGUE_FETCH_POLICIES,
-  buildLotListQuery,
-  catalogueFetch,
-} from "@/lib/catalog/catalog.server";
 import type { ListLotsParams } from "@/lib/data/contracts";
-import { getServerApiBase } from "@/lib/data/http/hc-server";
-import { parseLot } from "@/lib/data/http/parse";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
-import {
-  resolveHomeHeroLiveFromSale,
-  resolveHomeHeroRotatorFromSales,
-} from "@/lib/home-hero-policy";
-import { type SaleListRow, parseSaleListRowApiPayload } from "@/lib/sale-list-row";
+import { buildHomeHang, hangSaleIds, planHomeHang } from "@/lib/hang/home-hang";
+import { resolveHomeHeroState } from "@/lib/home-hero-policy";
+import type { SaleListRow } from "@/lib/sale-list-row";
 import { lotPath } from "@/lib/seo/url";
+import { type HomeStateResult, resolveHomeState } from "@auction/domain";
+import { HANG_MAX_WORKS } from "@auction/marketing-ui";
 import type { Lot, Sale } from "@auction/types";
 import { cache } from "react";
 
 export {
   HOME_CATALOG_FETCH_LIMIT,
-  HOME_EDITORS_PICKS_LIMIT,
   HOME_ENDING_SOON_LIMIT,
   HOME_LIVE_NOW_LIMIT,
-  HOME_PRIVATE_HIGHLIGHTS_LIMIT,
+  HOME_MORE_LOTS_LIMIT,
   HOME_UPCOMING_LIMIT,
 } from "@/components/sections/home/get-home-data.constants";
 export type {
@@ -62,15 +50,6 @@ export type {
   HomePageData,
   HomeUrgencySection,
 } from "@/components/sections/home/get-home-data.types";
-
-type HomeSaleListQuery = {
-  status?: Sale["status"];
-  statuses?: Sale["status"][];
-  categoryId?: string;
-  limit?: number;
-  offset?: number;
-  sort?: "createdDesc" | "startAsc";
-};
 
 function jsonLdListEntriesFromLots(lots: Lot[]): HomeJsonLdListEntry[] {
   return lots.map((lot) => ({ title: lot.title, href: lotPath(lot) }));
@@ -80,44 +59,8 @@ function jsonLdListEntriesFromLotCardVMs(vms: LotCardVM[]): HomeJsonLdListEntry[
   return vms.map((l) => ({ title: l.title, href: l.href }));
 }
 
-function buildHomeSalesQuery(params: HomeSaleListQuery): Record<string, string> {
-  const q: Record<string, string> = {
-    limit: String(params.limit ?? 24),
-    offset: String(params.offset ?? 0),
-  };
-  if (params.statuses?.length) q.statuses = params.statuses.join(",");
-  else if (params.status) q.status = params.status;
-  if (params.categoryId) q.categoryId = params.categoryId;
-  if (params.sort) q.sort = params.sort;
-  return q;
-}
-
-async function fetchHomeLots(params: ListLotsParams): Promise<Lot[]> {
-  const qs = new URLSearchParams(buildLotListQuery(params));
-  const res = await catalogueFetch(
-    `${getServerApiBase()}/lots?${qs.toString()}`,
-    CATALOGUE_FETCH_POLICIES.home,
-  );
-  if (!res.ok) throw new Error(`Failed to list home lots: ${res.status}`);
-  const body = (await res.json()) as { data: unknown[] };
-  return body.data.map(parseLot);
-}
-
-async function fetchHomeSales(params: HomeSaleListQuery = {}): Promise<SaleListRow[]> {
-  const qs = new URLSearchParams(buildHomeSalesQuery(params));
-  const res = await catalogueFetch(
-    `${getServerApiBase()}/sales?${qs.toString()}`,
-    CATALOGUE_FETCH_POLICIES.home,
-  );
-  if (!res.ok) throw new Error(`Failed to list home sales: ${res.status}`);
-  const body = (await res.json()) as { data: unknown[] };
-  return body.data.map(parseSaleListRowApiPayload);
-}
-
-function liveNowLots(lots: Lot[], excludeLotId: string | null): Lot[] {
-  const active = lots.filter(
-    (l) => l.status === "active" && (!excludeLotId || l.id !== excludeLotId),
-  );
+function liveNowLots(lots: Lot[]): Lot[] {
+  const active = lots.filter((l) => l.status === "active");
   active.sort((a, b) => {
     const ea = a.endTime instanceof Date ? a.endTime.getTime() : Date.parse(String(a.endTime));
     const eb = b.endTime instanceof Date ? b.endTime.getTime() : Date.parse(String(b.endTime));
@@ -126,80 +69,28 @@ function liveNowLots(lots: Lot[], excludeLotId: string | null): Lot[] {
   return active.slice(0, HOME_LIVE_NOW_LIMIT);
 }
 
-function buildUrgencySection(
-  upcoming: Lot[],
-  featuredLot: Lot | null,
-  endingSoonWithoutHero: Lot[],
+type UrgencyChoice = { variant: HomeUrgencySection["variant"]; lots: Lot[] };
+
+function chooseUrgencyLots(
+  activeLots: Lot[],
+  endingSoon: Lot[],
   scheduledLots: Lot[],
-): HomeUrgencySection {
-  if (endingSoonWithoutHero.length > 0) {
-    return {
-      variant: "endingSoon",
-      lots: toEndingSoonLotCardVMs(endingSoonWithoutHero.slice(0, HOME_ENDING_SOON_LIMIT)),
-    };
+): UrgencyChoice {
+  if (endingSoon.length > 0) {
+    return { variant: "endingSoon", lots: endingSoon.slice(0, HOME_ENDING_SOON_LIMIT) };
   }
-  const live = liveNowLots(upcoming, featuredLot?.id ?? null);
-  if (live.length > 0) {
-    return {
-      variant: "liveNow",
-      lots: toEndingSoonLotCardVMs(live),
-    };
-  }
+  const live = liveNowLots(activeLots);
+  if (live.length > 0) return { variant: "liveNow", lots: live };
   const upcomingLots = nextUpcomingLots(scheduledLots, HOME_ENDING_SOON_LIMIT);
-  if (upcomingLots.length > 0) {
-    return {
-      variant: "upcoming",
-      lots: toEndingSoonLotCardVMs(upcomingLots),
-    };
-  }
+  if (upcomingLots.length > 0) return { variant: "upcoming", lots: upcomingLots };
   return { variant: "none", lots: [] };
 }
 
-async function resolveHomeHeroState(heroVm: HeroLotVM): Promise<HeroStateVM> {
-  try {
-    const activeRows = await fetchHomeSales({ status: "active", limit: 10 });
-    for (const row of activeRows) {
-      const hero = resolveHomeHeroLiveFromSale(row.sale);
-      if (hero) return hero;
-    }
-
-    const rotatorRows = await fetchHomeSales({
-      statuses: ["scheduled", "active"],
-      sort: "startAsc",
-      limit: 5,
-    });
-    for (const row of rotatorRows) {
-      const hero = resolveHomeHeroLiveFromSale(row.sale);
-      if (hero) return hero;
-    }
-    const rotator = resolveHomeHeroRotatorFromSales(rotatorRows.map((row) => row.sale));
-    if (rotator) return rotator;
-  } catch (err) {
-    console.error("[getHomeData] hero sale load failed", err);
-  }
-
-  return { kind: "fallbackLot", lot: heroVm };
-}
-
-function buildLowerStripLots(
-  activeLots: Lot[],
-  scheduledLots: Lot[],
-  heroState: HeroStateVM,
-  urgencySection: HomeUrgencySection,
-) {
-  const catalogPool = buildHomeCatalogLotPool(activeLots, scheduledLots);
-  const candidates = pickHomeLowerStripCandidates({
-    pool: catalogPool,
-    heroState,
-    urgencySection,
-  });
-
-  return {
-    editorsPickLots: toEditorsPickLotCardVMs(candidates.slice(0, HOME_EDITORS_PICKS_LIMIT)),
-    privateSaleHighlights: toPrivateSaleHighlightVMs(
-      pickPrivateSaleHighlightLots(candidates).slice(0, HOME_PRIVATE_HIGHLIGHTS_LIMIT),
-    ),
-  };
+/** Today's hero renders live and upcoming sales; the lead sale goes first. */
+function heroSalesLeadFirst(sales: Sale[], state: HomeStateResult): Sale[] {
+  const offered = sales.filter((sale) => sale.status === "active" || sale.status === "scheduled");
+  const lead = offered.find((sale) => sale.id === state.leadSaleId);
+  return lead ? [lead, ...offered.filter((s) => s !== lead)] : offered;
 }
 
 export const getHomeData = cache(async (): Promise<HomePageData> => {
@@ -213,6 +104,7 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
   let activeLots: Lot[] = [];
   let scheduledLots: Lot[] = [];
   let salesRows: SaleListRow[] = [];
+  let endedRows: SaleListRow[] = [];
   try {
     const filtered: ListLotsParams = {
       limit: HOME_CATALOG_FETCH_LIMIT,
@@ -233,37 +125,51 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
   } catch (err) {
     console.error("[getHomeData] data load failed", err);
   }
+  try {
+    endedRows = await fetchHomeSales({ status: "ended", sort: "endDesc", limit: 12 });
+  } catch (err) {
+    console.error("[getHomeData] ended sales load failed", err);
+  }
 
-  const featuredLot = activeLots[0] ?? scheduledLots[0] ?? null;
-  const firstSale = salesRows[0] ?? null;
-  const saleTitleForHero =
-    featuredLot && firstSale && featuredLot.saleId === firstSale.sale.id
-      ? firstSale.sale.title
-      : (firstSale?.sale.title ?? null);
+  const allSales = [...salesRows, ...endedRows].map((row) => row.sale);
+  const homeState = resolveHomeState({
+    sales: allSales,
+    now: new Date(),
+    pinnedSaleIds: homePinnedSaleIds(allSales),
+  });
+  const leadSale = allSales.find((sale) => sale.id === homeState.leadSaleId);
 
-  const heroVm: HeroLotVM = featuredLot
-    ? toHeroLotVM(featuredLot, saleTitleForHero, { saleId: featuredLot.saleId ?? null })
-    : createHeroFallbackVm();
   const endingSoon = lotsEndingSoon(activeLots);
-  const endingSoonWithoutHero = featuredLot
-    ? endingSoon.filter((l) => l.id !== featuredLot.id)
-    : endingSoon;
-  const endingSoonRowIds = new Set(
-    endingSoonWithoutHero.slice(0, HOME_ENDING_SOON_LIMIT).map((l) => l.id),
+  const choice = chooseUrgencyLots(activeLots, endingSoon, scheduledLots);
+  const now = new Date();
+  const hangPlan = planHomeHang(
+    homeState,
+    await getHomeHangSales(hangSaleIds(homeState), [...salesRows, ...endedRows]),
   );
-  const upcomingAfterHero = activeLots.filter(
-    (l) => l.id !== featuredLot?.id && !endingSoonRowIds.has(l.id),
-  );
-  const urgencySection = buildUrgencySection(
-    activeLots,
-    featuredLot,
-    endingSoonWithoutHero,
-    scheduledLots,
-  );
+  const {
+    hang: hangLots,
+    rail,
+    more,
+  } = allocateHomePageLots({
+    railLots: choice.lots,
+    pool: buildHomeCatalogLotPool(activeLots, scheduledLots),
+    moreLimit: HOME_MORE_LOTS_LIMIT,
+    featuredLotIds: leadSale?.featuredLotIds ?? [],
+    hangLots: hangPlan?.candidates ?? [],
+    hangLimit: HANG_MAX_WORKS,
+  });
+  const hang = buildHomeHang(hangPlan, hangLots, now);
+  const urgencySection: HomeUrgencySection = {
+    // The hang may have taken every lot of the sale; an empty rail is hidden, not shown empty.
+    variant: rail.length > 0 ? choice.variant : "none",
+    lots: toEndingSoonLotCardVMs(rail),
+  };
+  const urgencyLotIds = new Set(rail.map((lot) => lot.id));
+  const upcomingAfterUrgency = activeLots.filter((l) => !urgencyLotIds.has(l.id));
   const jsonLdListFallback =
     urgencySection.variant === "upcoming" && urgencySection.lots.length > 0
       ? jsonLdListEntriesFromLotCardVMs(urgencySection.lots)
-      : jsonLdListEntriesFromLots(upcomingAfterHero.slice(0, HOME_UPCOMING_LIMIT));
+      : jsonLdListEntriesFromLots(upcomingAfterUrgency.slice(0, HOME_UPCOMING_LIMIT));
 
   const upcomingSales = salesRows.slice(0, HOME_UPCOMING_LIMIT).map((r) => r.sale);
   const upcomingAuctionTiles = toHomeUpcomingAuctionTileVMs(salesRows).slice(
@@ -271,22 +177,18 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
     HOME_UPCOMING_LIMIT,
   );
 
-  const heroState = await resolveHomeHeroState(heroVm);
-  const { editorsPickLots, privateSaleHighlights } = buildLowerStripLots(
-    activeLots,
-    scheduledLots,
-    heroState,
-    urgencySection,
-  );
+  const heroState = resolveHomeHeroState(heroSalesLeadFirst(allSales, homeState));
+  const moreLots = toEditorsPickLotCardVMs(more);
 
   return {
+    homeState,
+    hang,
     heroState,
     jsonLdListFallback,
     urgencySection,
     upcomingAuctionTiles,
     upcomingSales,
-    editorsPickLots,
-    privateSaleHighlights,
+    moreLots,
     isAuthenticated,
     watchedLotIds,
   };

@@ -1,6 +1,7 @@
 "use client";
 
-import { Button, cn } from "@auction/ui";
+import { cn } from "@auction/ui";
+import { Button } from "@auction/ui/lax";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 
@@ -79,7 +80,6 @@ function MarketingQueryToastInner({
         <Button
           type="button"
           variant="ghost"
-          size="default"
           className="shrink-0 text-inverse-on-surface"
           onClick={dismiss}
         >

@@ -1,20 +1,19 @@
 "use client";
 
 import { trackSearch } from "@/lib/analytics/events";
+import { errorCopy } from "@/lib/forms/error-copy";
+import { publicFormResolver } from "@/lib/forms/public-form-resolver";
 import type { SearchEndingWindow } from "@/lib/marketing/parse-search-params";
 import type { LotStatus } from "@auction/types";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
-import { Form, FormControl, FormField, FormItem, FormMessage } from "@auction/ui/components/form";
-import { Input } from "@auction/ui/components/input";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { Button, Field, TextInput } from "@auction/ui/lax";
 import { useRouter } from "next/navigation";
 import type { ComponentProps } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 const searchFilterSchema = z.object({
-  q: z.string().trim().max(200),
+  q: z.string().trim().max(200, errorCopy.maxLength(200, "your search")),
 });
 
 type SearchFilterValues = z.infer<typeof searchFilterSchema>;
@@ -46,7 +45,7 @@ export function SearchFilterForm({
 }) {
   const router = useRouter();
   const form = useForm<SearchFilterValues>({
-    resolver: zodResolver(searchFilterSchema),
+    resolver: publicFormResolver(searchFilterSchema),
     defaultValues: { q: initialQ },
   });
 
@@ -54,64 +53,54 @@ export function SearchFilterForm({
   const showSubmit = !isSheet;
 
   return (
-    <Form {...form}>
-      <form
-        id={formId}
-        className={
-          variant === "default"
-            ? "mb-6 flex flex-col gap-3 sm:flex-row sm:items-end"
-            : "flex flex-col gap-3 sm:flex-row sm:items-end"
+    <form
+      id={formId}
+      className={
+        variant === "default"
+          ? "mb-6 flex flex-col gap-3 sm:flex-row sm:items-end"
+          : "flex flex-col gap-3 sm:flex-row sm:items-end"
+      }
+      onSubmit={form.handleSubmit((values) => {
+        const params = new URLSearchParams();
+        params.set("offset", "0");
+        if (sort !== "endingAsc") params.set("sort", sort);
+        if (categoryId) params.set("categoryId", categoryId);
+        if (status) params.set("status", status);
+        if (ending) params.set("ending", ending);
+        const qTrim = values.q.trim();
+        if (qTrim) {
+          trackSearch(qTrim);
+          params.set("q", qTrim);
         }
-        onSubmit={form.handleSubmit((values) => {
-          const params = new URLSearchParams();
-          params.set("offset", "0");
-          if (sort !== "endingAsc") params.set("sort", sort);
-          if (categoryId) params.set("categoryId", categoryId);
-          if (status) params.set("status", status);
-          if (ending) params.set("ending", ending);
-          const qTrim = values.q.trim();
-          if (qTrim) {
-            trackSearch(qTrim);
-            params.set("q", qTrim);
-          }
-          if (view && (view === "grid" || view === "card" || view === "list")) {
-            params.set("view", view);
-          }
-          router.push(`/search?${params.toString()}`);
-          onSubmitted?.();
-        })}
-        noValidate
+        if (view && (view === "grid" || view === "card" || view === "list")) {
+          params.set("view", view);
+        }
+        router.push(`/search?${params.toString()}`);
+        onSubmitted?.();
+      })}
+      noValidate
+    >
+      <Field
+        label="Keywords"
+        optional
+        quiet
+        id={inputId}
+        error={form.formState.errors.q?.message}
+        className="min-w-0 flex-1"
       >
-        <FormField
-          control={form.control}
-          name="q"
-          render={({ field }) => (
-            <FormItem className="min-w-0 flex-1">
-              <label
-                htmlFor={inputId}
-                className="mb-2 block font-label text-xs text-on-surface-variant"
-              >
-                Keywords
-              </label>
-              <FormControl>
-                <Input
-                  id={inputId}
-                  placeholder="Search by lot title..."
-                  className="rounded-none border-0 border-b-2 border-input-border bg-transparent px-0 shadow-none focus-visible:border-input-border-focus focus-visible:ring-1 focus-visible:ring-input-border-focus"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
+        <TextInput
+          type="search"
+          enterKeyHint="search"
+          placeholder="Search by lot title…"
+          {...form.register("q")}
         />
-        {showSubmit ? (
-          <Button type="submit" variant="cta" className="h-11 min-h-[44px] shrink-0 px-8">
-            Search
-          </Button>
-        ) : null}
-      </form>
-    </Form>
+      </Field>
+      {showSubmit ? (
+        <Button type="submit" variant="primary" className="shrink-0">
+          Search
+        </Button>
+      ) : null}
+    </form>
   );
 }
 

@@ -19,16 +19,7 @@ import {
 } from "@/lib/ui/overlay-tone-classes";
 import type { LegalEntityMemberRole } from "@auction/types";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
-import { Input } from "@auction/ui/components/input";
-import { Label } from "@auction/ui/components/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@auction/ui/components/select";
+import { Button, Field, NativeSelect, Notice, TextInput } from "@auction/ui/lax";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useMemo, useState } from "react";
@@ -143,12 +134,7 @@ function RegisterOutlineLink({ href, children }: { href: string; children: React
     );
   }
   return (
-    <Button
-      asChild
-      variant="outline"
-      size="lg"
-      className={cn(saleroomHeroActionSizing, "shrink-0")}
-    >
+    <Button asChild variant="secondary" className={cn(saleroomHeroActionSizing, "shrink-0")}>
       {useFullPageNav ? <a href={href}>{children}</a> : <Link href={href}>{children}</Link>}
     </Button>
   );
@@ -225,57 +211,45 @@ function AgentRegistrationForm({
         For organisations bidding as agents on this sale. Private collectors can bid online after
         sign-in and identity verification — no separate registration.
       </p>
-      <div className="space-y-1">
-        <Label htmlFor={`register-entity-${saleId}`} className="font-body text-xs text-secondary">
-          Buying as
-        </Label>
-        <Select value={entityId} onValueChange={onEntityChange} required>
-          <SelectTrigger
-            id={`register-entity-${saleId}`}
-            className="w-full font-body text-sm"
-            aria-required="true"
-          >
-            <SelectValue placeholder="Select an account…" />
-          </SelectTrigger>
-          <SelectContent>
-            {agentEntities.map((e) => (
-              <SelectItem key={e.id} value={e.id}>
-                {e.displayName}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      <Field label="Buying as" id={`register-entity-${saleId}`}>
+        <NativeSelect
+          value={entityId}
+          onValueChange={onEntityChange}
+          required
+          options={[
+            { value: "", label: "Select an account…" },
+            ...agentEntities.map((e) => ({ value: e.id, label: e.displayName })),
+          ]}
+        />
+      </Field>
       {entityId && selectedStatus ? (
         <p className="font-body text-xs text-secondary">
           Status for this sale:{" "}
           <span className="font-medium text-on-surface">{selectedStatus}</span>
         </p>
       ) : null}
-      <div className="space-y-1">
-        <Label
-          htmlFor={`register-bid-limit-${saleId}`}
-          className="font-body text-xs text-secondary"
-        >
-          {BID_LIMIT_FIELD_LABEL}
-        </Label>
-        <Input
-          id={`register-bid-limit-${saleId}`}
+      <Field
+        label={BID_LIMIT_FIELD_LABEL}
+        description={bidLimitFieldHelp(saleCurrency)}
+        optional
+        id={`register-bid-limit-${saleId}`}
+      >
+        <TextInput
           type="number"
           min={0}
           step="0.01"
-          className="font-body text-sm"
           value={bidLimit}
           onChange={(ev) => setBidLimit(ev.target.value)}
           placeholder={bidLimitFieldPlaceholder(saleCurrency)}
         />
-        <p className="font-body text-xs text-on-surface-variant">
-          {bidLimitFieldHelp(saleCurrency)}
-        </p>
-      </div>
-      {error ? <p className="font-body text-xs text-destructive">{error}</p> : null}
-      {message ? <p className="font-body text-xs text-primary">{message}</p> : null}
-      <Button type="submit" disabled={loading} className="min-h-11 w-full sm:w-auto" size="default">
+      </Field>
+      {error ? (
+        <Notice tone="danger" alert title="We couldn't submit your registration">
+          {error}
+        </Notice>
+      ) : null}
+      {message ? <Notice tone="success" title={message} /> : null}
+      <Button variant="primary" type="submit" disabled={loading} className="w-full sm:w-auto">
         {loading ? "Submitting…" : "Submit registration"}
       </Button>
     </form>
@@ -363,7 +337,7 @@ export function SaleroomRegisterToBid({
 
     if (agentEntities.length === 0) return null;
 
-    return <RegisterOutlineLink href="#register-to-bid">Register to bid →</RegisterOutlineLink>;
+    return <RegisterOutlineLink href="#register-to-bid">Register to bid</RegisterOutlineLink>;
   }
 
   // layout === "default"

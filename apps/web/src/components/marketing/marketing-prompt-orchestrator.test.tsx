@@ -206,7 +206,7 @@ describe("MarketingPromptOrchestrator", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(mocks.analytics.onDismiss).toHaveBeenCalledOnce();
 
-    navigate("/archive", rerender);
+    navigate("/results", rerender);
     advance(5_000);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(mocks.analytics.onImpression).toHaveBeenCalledOnce();

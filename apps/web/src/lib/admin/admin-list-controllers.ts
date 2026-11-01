@@ -23,9 +23,6 @@ export {
   paymentsListController,
 } from "./list-controllers/payments-list-controller";
 
-export type { DisputesListQuery } from "./list-controllers/disputes-list-controller";
-export { disputesListController } from "./list-controllers/disputes-list-controller";
-
 export type { CategoriesListQuery } from "./list-controllers/categories-list-controller";
 export { categoriesListController } from "./list-controllers/categories-list-controller";
 

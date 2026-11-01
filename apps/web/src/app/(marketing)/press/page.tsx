@@ -27,7 +27,7 @@ import { pressHubJsonLd } from "@/lib/seo/press/jsonld";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -114,12 +114,12 @@ export default async function PressPage({ searchParams }: PageProps) {
           description="We couldn't load press coverage right now. Please try again in a moment."
           action={
             <>
-              <Button variant="cta" asChild>
-                <Link href="/press">Try again</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/">Back to home</Link>
-              </Button>
+              <ButtonLink Link={Link} variant="primary" href="/press">
+                Try again
+              </ButtonLink>
+              <ButtonLink Link={Link} variant="secondary" href="/">
+                Back to home
+              </ButtonLink>
             </>
           }
         />

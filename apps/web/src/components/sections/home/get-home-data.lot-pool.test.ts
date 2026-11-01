@@ -1,10 +1,8 @@
 import {
+  allocateHomePageLots,
   buildHomeCatalogLotPool,
-  pickHomeLowerStripCandidates,
-  pickPrivateSaleHighlightLots,
+  homePinnedSaleIds,
 } from "@/components/sections/home/get-home-data.lot-pool";
-import type { HomeUrgencySection } from "@/components/sections/home/get-home-data.types";
-import { toEndingSoonLotCardVMs } from "@/components/sections/home/home-view-models";
 import type { Lot } from "@auction/types";
 import { describe, expect, it } from "vitest";
 
@@ -58,175 +56,152 @@ describe("buildHomeCatalogLotPool", () => {
   });
 });
 
-describe("Editor's Picks draft regression", () => {
-  it("shows scheduled only when active is empty and drafts were mistakenly included in fetch", () => {
-    const activeLots: Lot[] = [];
-    const scheduledLots = [
-      baseLot({ id: "sched-1", status: "scheduled" }),
-      baseLot({ id: "sched-2", status: "scheduled" }),
-    ];
-    const mistakenDrafts = [
-      baseLot({ id: "draft-1", status: "draft" }),
-      baseLot({ id: "draft-2", status: "draft" }),
-    ];
-    const pool = buildHomeCatalogLotPool([...activeLots, ...mistakenDrafts], scheduledLots);
-    const urgencySection: HomeUrgencySection = { variant: "none", lots: [] };
-    const picked = pickHomeLowerStripCandidates({
+describe("allocateHomePageLots", () => {
+  const lots = (n: number, prefix = "lot") =>
+    Array.from({ length: n }, (_, i) => baseLot({ id: `${prefix}-${i}` }));
+  const ids = (xs: Lot[]) => xs.map((l) => l.id);
+
+  it("never repeats a rail lot in More lots", () => {
+    const pool = lots(8);
+    const { rail, more } = allocateHomePageLots({
+      railLots: pool.slice(0, 3),
       pool,
-      heroState: { kind: "rotator", slides: [] },
-      urgencySection,
+      moreLimit: 8,
     });
-    expect(picked.every((l) => l.status !== "draft")).toBe(true);
-    expect(picked.map((l) => l.id)).toEqual(["sched-1", "sched-2"]);
+    expect(ids(rail)).toEqual(["lot-0", "lot-1", "lot-2"]);
+    expect(ids(more)).toEqual(["lot-3", "lot-4", "lot-5", "lot-6", "lot-7"]);
+  });
+
+  it("hides More lots when fewer than four unseen lots remain", () => {
+    const pool = lots(6);
+    expect(allocateHomePageLots({ railLots: pool.slice(0, 3), pool, moreLimit: 8 }).more).toEqual(
+      [],
+    );
+  });
+
+  it("shows exactly four unseen lots", () => {
+    expect(allocateHomePageLots({ railLots: [], pool: lots(4), moreLimit: 8 }).more).toHaveLength(
+      4,
+    );
+  });
+
+  it("respects the limit", () => {
+    expect(allocateHomePageLots({ railLots: [], pool: lots(12), moreLimit: 8 }).more).toHaveLength(
+      8,
+    );
+  });
+
+  it("excludes draft lots from the pool", () => {
+    const pool = buildHomeCatalogLotPool(
+      [],
+      [...lots(3), baseLot({ id: "draft-1", status: "draft" })],
+    );
+    expect(allocateHomePageLots({ railLots: [], pool, moreLimit: 8 }).more).toEqual([]);
   });
 });
 
-describe("pickHomeLowerStripCandidates", () => {
-  it("keeps scheduled lots when hero is rotator and active pool is a single lot", () => {
-    const active = [baseLot({ id: "active-only", status: "active" })];
-    const scheduled = [
-      baseLot({ id: "sched-1", status: "scheduled" }),
-      baseLot({ id: "sched-2", status: "scheduled" }),
-    ];
-    const pool = buildHomeCatalogLotPool(active, scheduled);
-    const urgencySection: HomeUrgencySection = {
-      variant: "upcoming",
-      lots: toEndingSoonLotCardVMs(scheduled),
-    };
+describe("featured lots", () => {
+  const lots = (n: number) => Array.from({ length: n }, (_, i) => baseLot({ id: `lot-${i}` }));
+  const ids = (xs: Lot[]) => xs.map((l) => l.id);
 
-    const picked = pickHomeLowerStripCandidates({
+  it("leads the rail with featured lots in staff order, then the current order", () => {
+    const pool = lots(8);
+    const { rail, more } = allocateHomePageLots({
+      railLots: pool.slice(0, 3),
       pool,
-      heroState: {
-        kind: "rotator",
-        slides: [
-          {
-            id: "sale-1",
-            href: "/sales/sale-1",
-            title: "Sale",
-            dateLabel: "Jan 2026",
-            coverImageUrl: null,
-            coverImageAlt: "Sale",
-            modeBadge: "Online",
-          },
-        ],
-      },
-      urgencySection,
+      moreLimit: 8,
+      featuredLotIds: ["lot-6", "lot-2"],
     });
-
-    expect(picked.map((l) => l.id)).toEqual(["active-only", "sched-1", "sched-2"]);
+    expect(ids(rail)).toEqual(["lot-6", "lot-2", "lot-0"]);
+    expect(ids(more)).toEqual(["lot-1", "lot-3", "lot-4", "lot-5", "lot-7"]);
   });
 
-  it("relaxes ending-soon exclusions when a thin live catalogue would otherwise be empty", () => {
-    const endingSoonEnd = new Date("2026-01-02T06:00:00.000Z");
-    const lots = [
-      baseLot({ id: "hero", endTime: endingSoonEnd, status: "active" }),
-      baseLot({ id: "es-1", endTime: endingSoonEnd, status: "active" }),
-      baseLot({ id: "es-2", endTime: endingSoonEnd, status: "active" }),
-      baseLot({ id: "es-3", endTime: endingSoonEnd, status: "active" }),
-      baseLot({ id: "es-4", endTime: endingSoonEnd, status: "active" }),
-    ];
-    const urgencyLots = lots.slice(1);
-    const urgencySection: HomeUrgencySection = {
-      variant: "endingSoon",
-      lots: toEndingSoonLotCardVMs(urgencyLots),
-    };
-
-    const picked = pickHomeLowerStripCandidates({
-      pool: lots,
-      heroState: {
-        kind: "fallbackLot",
-        lot: {
-          id: "hero",
-          href: "/lots/hero",
-          title: "Hero lot",
-          artistName: "Artist",
-          priceLabel: "Estimate",
-          priceFormatted: "£1",
-          currentBidFormatted: "£1",
-          bidCountDisplay: "—",
-          heroImageUrl: null,
-          imageAlt: "Hero",
-          auctionDateLabel: "Live",
-          saleMetaLine: "Sale",
-          featuredHeading: "Featured",
-          lotLabel: "Lot 1",
-          isAuctionLive: true,
-        },
-      },
-      urgencySection,
-    });
-
-    expect(picked.length).toBeGreaterThan(0);
-    expect(picked.map((l) => l.id)).toEqual(["es-1", "es-2", "es-3", "es-4"]);
-  });
-
-  it("excludes ending-soon urgency lots when enough catalogue depth remains", () => {
-    const farEnd = new Date("2026-01-10T12:00:00.000Z");
-    const soonEnd = new Date("2026-01-02T06:00:00.000Z");
-    const endingSoonLots = [
-      baseLot({ id: "es-1", endTime: soonEnd, status: "active" }),
-      baseLot({ id: "es-2", endTime: soonEnd, status: "active" }),
-    ];
-    const remainder = [
-      baseLot({ id: "pick-1", endTime: farEnd, status: "active" }),
-      baseLot({ id: "pick-2", endTime: farEnd, status: "active" }),
-    ];
-    const pool = [...endingSoonLots, ...remainder];
-    const urgencySection: HomeUrgencySection = {
-      variant: "endingSoon",
-      lots: toEndingSoonLotCardVMs(endingSoonLots),
-    };
-
-    const picked = pickHomeLowerStripCandidates({
+  it("skips featured ids that are not in the pool", () => {
+    const pool = lots(5);
+    const { rail } = allocateHomePageLots({
+      railLots: pool.slice(0, 2),
       pool,
-      heroState: { kind: "rotator", slides: [] },
-      urgencySection,
+      moreLimit: 8,
+      featuredLotIds: ["gone", "lot-4"],
     });
-
-    expect(picked.map((l) => l.id)).toEqual(["pick-1", "pick-2"]);
+    expect(ids(rail)).toEqual(["lot-4", "lot-0"]);
   });
 
-  it("excludes fallbackLot hero lot from candidates", () => {
-    const lots = [
-      baseLot({ id: "hero", status: "active" }),
-      baseLot({ id: "other", status: "active" }),
-    ];
-    const picked = pickHomeLowerStripCandidates({
-      pool: lots,
-      heroState: {
-        kind: "fallbackLot",
-        lot: {
-          id: "hero",
-          href: "/lots/hero",
-          title: "Hero lot",
-          artistName: "Artist",
-          priceLabel: "Estimate",
-          priceFormatted: "£1",
-          currentBidFormatted: "£1",
-          bidCountDisplay: "—",
-          heroImageUrl: null,
-          imageAlt: "Hero",
-          auctionDateLabel: "Live",
-          saleMetaLine: "Sale",
-          featuredHeading: "Featured",
-          lotLabel: "Lot 1",
-          isAuctionLive: true,
-        },
-      },
-      urgencySection: { variant: "none", lots: [] },
-    });
-
-    expect(picked.map((l) => l.id)).toEqual(["other"]);
+  it("keeps the current order without featured lots", () => {
+    const pool = lots(5);
+    expect(
+      ids(allocateHomePageLots({ railLots: pool.slice(0, 2), pool, moreLimit: 8 }).rail),
+    ).toEqual(["lot-0", "lot-1"]);
   });
 });
 
-describe("pickPrivateSaleHighlightLots", () => {
-  it("uses offset slice when pool is deep enough", () => {
-    const lots = Array.from({ length: 15 }, (_, i) => baseLot({ id: `lot-${i}` }));
-    expect(pickPrivateSaleHighlightLots(lots).map((l) => l.id)).toEqual([
-      "lot-12",
-      "lot-13",
-      "lot-14",
-    ]);
+describe("the hang slot", () => {
+  const lots = (n: number) => Array.from({ length: n }, (_, i) => baseLot({ id: `lot-${i}` }));
+  const ids = (xs: Lot[]) => xs.map((l) => l.id);
+
+  it("claims its lots before the rail and More lots, so neither repeats them", () => {
+    const pool = lots(12);
+    const { hang, rail, more } = allocateHomePageLots({
+      railLots: pool.slice(0, 3),
+      pool,
+      moreLimit: 8,
+      hangLots: pool.slice(0, 5),
+      hangLimit: 12,
+    });
+    expect(ids(hang)).toEqual(["lot-0", "lot-1", "lot-2", "lot-3", "lot-4"]);
+    expect(rail).toEqual([]);
+    expect(ids(more)).toEqual(["lot-5", "lot-6", "lot-7", "lot-8", "lot-9", "lot-10", "lot-11"]);
+  });
+
+  it("takes lots outside the pool too, and keeps the hanging order", () => {
+    const pool = lots(8);
+    const outside = [baseLot({ id: "ended-1" }), baseLot({ id: "ended-2" })];
+    const { hang } = allocateHomePageLots({
+      railLots: [],
+      pool,
+      moreLimit: 8,
+      hangLots: [...outside, pool[3] as Lot],
+      hangLimit: 12,
+    });
+    expect(ids(hang)).toEqual(["ended-1", "ended-2", "lot-3"]);
+  });
+
+  it("stays empty, and claims nothing, with fewer than two lots to hang", () => {
+    const pool = lots(8);
+    const { hang, more } = allocateHomePageLots({
+      railLots: [],
+      pool,
+      moreLimit: 8,
+      hangLots: [pool[0] as Lot],
+      hangLimit: 12,
+    });
+    expect(hang).toEqual([]);
+    expect(ids(more)).toContain("lot-0");
+  });
+
+  it("respects the limit", () => {
+    const pool = lots(20);
+    expect(
+      allocateHomePageLots({ railLots: [], pool, moreLimit: 8, hangLots: pool, hangLimit: 12 })
+        .hang,
+    ).toHaveLength(12);
+  });
+
+  it("is absent when the page has no hang", () => {
+    expect(allocateHomePageLots({ railLots: [], pool: lots(5), moreLimit: 8 }).hang).toEqual([]);
+  });
+});
+
+describe("homePinnedSaleIds", () => {
+  it("orders pinned sales by pin order and skips unpinned ones", () => {
+    expect(
+      homePinnedSaleIds([
+        { id: "c", homePinOrder: 3 },
+        { id: "x", homePinOrder: null },
+        { id: "a", homePinOrder: 1 },
+        { id: "y" },
+        { id: "b", homePinOrder: 2 },
+      ]),
+    ).toEqual(["a", "b", "c"]);
   });
 });

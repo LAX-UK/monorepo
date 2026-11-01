@@ -4,7 +4,7 @@ import { MediaImage } from "@/components/ui/media-image";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { SaleDayMedia } from "@auction/types";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { PlayCircleIcon } from "lucide-react";
 
 export type DayMediaThumbnailVariant = "inline" | "sheet";
@@ -53,8 +53,8 @@ export function DayMediaThumbnail({
       type="button"
       variant="ghost"
       className={cn(
-        "group relative h-auto w-full overflow-hidden bg-surface-container-low p-0 hover:bg-surface-container-low",
-        isSheet ? "rounded-md" : "rounded-lg",
+        "group relative h-auto w-full overflow-hidden bg-surface-container-low p-0 in-data-[lax-density=client]:px-0 hover:bg-surface-container-low",
+        isSheet ? "" : "",
         FOCUS_RING,
       )}
       aria-label={thumbnailLabel(item, index, total, saleTitle)}

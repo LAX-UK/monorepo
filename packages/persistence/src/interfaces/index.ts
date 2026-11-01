@@ -299,6 +299,12 @@ export type {
 export type { ILotTransitionRepository } from "./lot-transition.repository.js";
 
 export type {
+  DisputeDeskCaseRecord,
+  DisputeDeskListInput,
+  IAdminDisputeDeskReader,
+} from "./admin-dispute-desk.reader.js";
+
+export type {
   AdminDisputePaymentRow,
   IAdminDisputeCaseEnrichmentReader,
 } from "./admin-dispute-case-enrichment.reader.js";
@@ -659,6 +665,14 @@ export type {
   LotWithdrawalTaskSnapshot,
 } from "./admin-review-task.repository.js";
 export type { IMediaAssetReader, MediaAssetRecord } from "./media-asset.reader.js";
+export type { CoverAnalysisRecord, ICoverAnalysisReader } from "./cover-analysis.reader.js";
+export type {
+  HomePinnedSale,
+  ISaleCoverRepository,
+  SaleCoverState,
+  SaleHomePatch,
+  SaleHomeState,
+} from "./sale-cover.repository.js";
 export type { IQrCodeScanPersister, QrCodeScanInput } from "./qr-code-scan.persister.js";
 export type {
   ISaleroomOnBlockReader,
@@ -907,6 +921,11 @@ export type {
   PaymentAttentionRow,
   SubmissionAttentionRow,
 } from "./attention-feed.reader.js";
+
+export type {
+  ISaleResultLotsReader,
+  SaleResultLotRow,
+} from "./sale-result-lots.reader.js";
 
 export type {
   ISaleAttentionSignalsReader,

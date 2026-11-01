@@ -1,5 +1,5 @@
 import { salePath } from "@/lib/seo/url";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 
 type Props = {
@@ -21,13 +21,18 @@ export function OnsiteLotUnavailable({ saleTitle, saleId }: Props) {
           right now. Please try again shortly or browse the catalogue.
         </p>
         {saleId ? (
-          <Button className="mt-6" asChild>
-            <Link href={salePath({ id: saleId, title: saleTitle ?? "sale" })}>View sale</Link>
-          </Button>
+          <ButtonLink
+            Link={Link}
+            variant="primary"
+            className="mt-6"
+            href={salePath({ id: saleId, title: saleTitle ?? "sale" })}
+          >
+            View sale
+          </ButtonLink>
         ) : (
-          <Button className="mt-6" asChild>
-            <Link href="/sales">Browse sales</Link>
-          </Button>
+          <ButtonLink Link={Link} variant="primary" className="mt-6" href="/sales">
+            Browse sales
+          </ButtonLink>
         )}
       </div>
     </section>

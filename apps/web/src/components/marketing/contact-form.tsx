@@ -1,27 +1,26 @@
 "use client";
 
 import { submitContactFormResult } from "@/app/(marketing)/contact/actions";
-import { UnderlineInput } from "@/components/ui/input";
-import { RhfSelect } from "@/components/ui/rhf-select";
+import { SITE_CONTACT_EMAIL } from "@/lib/brand";
 import { contactFormValuesSchema } from "@/lib/contact/contact-input";
+import { publicFormErrorMap, submitFailureCopy } from "@/lib/forms/error-copy";
 import { useActionForm } from "@/lib/forms/use-action-form";
+import { useFormErrorSummary } from "@/lib/forms/use-form-error-summary";
 import { contactIntentFromSearchParams } from "@/lib/marketing/contact-intent-copy";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
-import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@auction/ui/components/form";
-import { Input } from "@auction/ui/components/input";
-import { Textarea } from "@auction/ui/components/textarea";
+  Button,
+  ButtonLink,
+  ErrorSummary,
+  Field,
+  NativeSelect,
+  Notice,
+  TextArea,
+  TextInput,
+} from "@auction/ui/lax";
 import Link from "next/link";
-import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { useState } from "react";
+import { Controller } from "react-hook-form";
 
 const topics = [
   { value: "buying", label: "Buying" },
@@ -40,13 +39,22 @@ type ContactFormProps = {
   sellType?: string | null;
 };
 
-const underlineField =
-  "font-body text-base placeholder:text-on-surface-variant/55 focus-visible:shadow-none";
-
-const labelClass = "mb-1 block font-label text-xs font-medium text-on-surface-variant";
-
-const messageField =
-  "min-h-[8rem] w-full resize-y rounded-none border-0 border-b-2 border-outline/40 bg-transparent py-3 font-body text-sm text-on-surface shadow-none transition-colors placeholder:text-on-surface-variant/55 focus-visible:border-primary focus-visible:outline-none focus-visible:ring-0";
+/** The control ids the error summary links to, in page order. */
+const FIELD_IDS = {
+  split: {
+    firstName: "contact-first-name",
+    lastName: "contact-last-name",
+    email: "contact-email",
+    topic: "contact-topic",
+    message: "contact-message",
+  },
+  single: {
+    firstName: "contact-name",
+    email: "contact-email",
+    topic: "contact-topic",
+    message: "contact-message",
+  },
+} as const;
 
 export function ContactForm({
   nameMode = "split",
@@ -68,206 +76,115 @@ export function ContactForm({
     },
     action: submitContactFormResult,
     onSuccess: () => setDone(true),
+    errorMap: publicFormErrorMap,
+    // The summary takes focus after a failed submit, and a failed send shows in the form's notice.
+    formOptions: { reValidateMode: "onBlur", shouldFocusError: false },
+    focusInvalidField: false,
+    toastFailure: false,
   });
+  const summary = useFormErrorSummary(form, FIELD_IDS[nameMode]);
+  const errors = form.formState.errors;
 
   if (done) {
     const ctaLabel = intentConfig.successCtaLabel;
     const ctaHref = intentConfig.successCtaHref ?? (ctaLabel ? sellIntakeHref() : null);
     return (
-      <output
-        className="mt-6 block rounded-sm border border-divider-soft bg-surface px-6 py-8 text-center font-body text-sm text-on-surface"
-        aria-live="polite"
+      <Notice
+        tone="success"
+        title="Message sent"
+        className="mt-6 max-w-[520px]"
+        {...(ctaLabel && ctaHref
+          ? {
+              actions: (
+                <ButtonLink Link={Link} href={ctaHref} variant="secondary">
+                  {ctaLabel}
+                </ButtonLink>
+              ),
+            }
+          : {})}
       >
-        <p>{intentConfig.successMessage}</p>
-        {ctaLabel && ctaHref ? (
-          <Button variant="cta" asChild className="mt-5">
-            <Link href={ctaHref}>{ctaLabel}</Link>
-          </Button>
-        ) : null}
-      </output>
+        {intentConfig.successMessage}
+      </Notice>
     );
   }
 
   return (
-    <Form {...form}>
-      <form onSubmit={onSubmit} className="mt-6 max-w-[520px] space-y-6" noValidate>
-        {intentConfig.headline ? (
-          <p className="font-body text-sm text-on-surface-variant">{intentConfig.headline}</p>
-        ) : null}
-        {rootError ? (
-          <p
-            className="rounded-sm border border-error/40 bg-error-container/20 px-4 py-3 text-sm text-error"
-            role="alert"
+    <form onSubmit={onSubmit} className="mt-6 flex max-w-[520px] flex-col gap-5" noValidate>
+      {intentConfig.headline ? (
+        <p className="text-lax-ui text-lax-muted">{intentConfig.headline}</p>
+      ) : null}
+      <ErrorSummary errors={summary.errors} focusKey={summary.focusKey} />
+      {rootError ? (
+        <Notice tone="danger" alert title={submitFailureCopy.title}>
+          {submitFailureCopy.detail(SITE_CONTACT_EMAIL)}
+        </Notice>
+      ) : null}
+
+      <input
+        type="text"
+        tabIndex={-1}
+        autoComplete="off"
+        aria-hidden
+        className="hidden"
+        {...form.register("website")}
+      />
+
+      {nameMode === "split" ? (
+        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+          <Field
+            label="First name"
+            id={FIELD_IDS.split.firstName}
+            error={errors.firstName?.message}
           >
-            {rootError}
-          </p>
-        ) : null}
+            <TextInput maxLength={120} autoComplete="given-name" {...form.register("firstName")} />
+          </Field>
+          <Field label="Last name" id={FIELD_IDS.split.lastName} error={errors.lastName?.message}>
+            <TextInput maxLength={120} autoComplete="family-name" {...form.register("lastName")} />
+          </Field>
+        </div>
+      ) : (
+        <Field
+          label="Name"
+          id={FIELD_IDS.single.firstName}
+          error={errors.name?.message ?? errors.firstName?.message}
+        >
+          <TextInput maxLength={120} autoComplete="name" {...form.register("name")} />
+        </Field>
+      )}
 
-        <FormField
-          control={form.control}
-          name="website"
-          render={({ field }) => (
-            <FormItem className="hidden" aria-hidden>
-              <FormControl>
-                <Input tabIndex={-1} autoComplete="off" className="hidden" {...field} />
-              </FormControl>
-            </FormItem>
-          )}
+      <Field label="Email" id="contact-email" error={errors.email?.message}>
+        <TextInput
+          type="email"
+          inputMode="email"
+          autoComplete="email"
+          {...form.register("email")}
         />
+      </Field>
 
-        {nameMode === "split" ? (
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="firstName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel htmlFor="contact-first-name" className={labelClass}>
-                    First name
-                  </FormLabel>
-                  <FormControl>
-                    <UnderlineInput
-                      id="contact-first-name"
-                      maxLength={120}
-                      className={underlineField}
-                      autoComplete="given-name"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="lastName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel htmlFor="contact-last-name" className={labelClass}>
-                    Last name
-                  </FormLabel>
-                  <FormControl>
-                    <UnderlineInput
-                      id="contact-last-name"
-                      maxLength={120}
-                      className={underlineField}
-                      autoComplete="family-name"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </div>
-        ) : (
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel htmlFor="contact-name" className={labelClass}>
-                  Name
-                </FormLabel>
-                <FormControl>
-                  <UnderlineInput
-                    id="contact-name"
-                    maxLength={120}
-                    className={underlineField}
-                    autoComplete="name"
-                    {...field}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        )}
-
-        <FormField
-          control={form.control}
-          name="email"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel htmlFor="contact-email" className={labelClass}>
-                Email
-              </FormLabel>
-              <FormControl>
-                <UnderlineInput
-                  id="contact-email"
-                  type="email"
-                  inputMode="email"
-                  className={underlineField}
-                  autoComplete="email"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <FormField
+      <Field label="Topic" id="contact-topic" error={errors.topic?.message}>
+        <Controller
           control={form.control}
           name="topic"
           render={({ field }) => (
-            <FormItem>
-              <FormLabel htmlFor="contact-topic" className={labelClass}>
-                Topic
-              </FormLabel>
-              <RhfSelect
-                id="contact-topic"
-                value={field.value}
-                onValueChange={field.onChange}
-                onBlur={field.onBlur}
-                options={topics.map((t) => ({ value: t.value, label: t.label }))}
-                triggerClassName="min-h-11 w-full rounded-none border-0 border-b-2 border-outline/40 bg-transparent px-0 py-3 font-body text-sm text-on-surface shadow-none focus-visible:ring-0"
-              />
-              <FormMessage />
-            </FormItem>
+            <NativeSelect
+              value={field.value}
+              onValueChange={field.onChange}
+              onBlur={field.onBlur}
+              options={topics}
+            />
           )}
         />
+      </Field>
 
-        <FormField
-          control={form.control}
-          name="message"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel htmlFor="contact-message" className={labelClass}>
-                Message
-              </FormLabel>
-              <FormControl>
-                <Textarea id="contact-message" rows={5} className={messageField} {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+      <Field label="Message" id="contact-message" error={errors.message?.message}>
+        <TextArea rows={5} {...form.register("message")} />
+      </Field>
 
-        <ContactSubmitButton loading={isSubmitting}>Send message</ContactSubmitButton>
-      </form>
-    </Form>
-  );
-}
-
-function ContactSubmitButton({
-  loading,
-  children,
-  className,
-  ...rest
-}: { loading?: boolean; children: ReactNode } & Omit<
-  ButtonHTMLAttributes<HTMLButtonElement>,
-  "type"
->) {
-  return (
-    <Button
-      type="submit"
-      variant="cta"
-      disabled={loading || rest.disabled}
-      className={cn("px-7 py-3.5 font-label text-xs font-semibold", className)}
-      {...rest}
-    >
-      {loading ? "Sending\u2026" : children}
-    </Button>
+      <div>
+        <Button type="submit" variant="primary" loading={isSubmitting}>
+          {isSubmitting ? "Sending…" : "Send message"}
+        </Button>
+      </div>
+    </form>
   );
 }

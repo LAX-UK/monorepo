@@ -38,6 +38,8 @@
   /* Semantic aliases (layer 2) */
   --color-ink: var(--color-brand-obsidian);
   --color-paper: var(--color-brand-light-cream);
+  /* Warm paper, shared with lax.art and Shop (--brand-paper in @auction/branding). */
+  --color-surface-paper: var(--brand-paper);
   --color-link: var(--color-brand-midnight);
   /* Bid's product accent, the shared name every LAX product defines (Shop aubergine, Account teal). */
   --color-product-accent: var(--color-brand-midnight);
@@ -366,6 +368,11 @@
     @apply bg-background text-on-surface font-body antialiased;
   }
 
+  /* A focused element is never hidden under the sticky header (WCAG 2.4.11). */
+  html {
+    scroll-padding-top: calc(var(--header-height) + 1rem);
+  }
+
   /* F6 — every in-page anchor target clears the fixed header. */
   :target {
     scroll-margin-top: var(--header-height);
@@ -398,6 +405,38 @@
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+}
+
+/* The one LAX focus ring on the public site: a 2px outline in --lax-focus, 2px outside the element,
+   whatever component draws it. Outside any layer and important, so it beats the older
+   `ring-*` box-shadows (which an `overflow-hidden` card clips) and `outline-none` resets. */
+[data-bid-site]
+  :is(
+    a[href],
+    button,
+    summary,
+    [role="button"],
+    [role="tab"],
+    [role="menuitem"],
+    [tabindex]:not([tabindex="-1"]),
+    input,
+    select,
+    textarea
+  ):focus-visible {
+  outline: var(--lax-focus-width, 2px) solid var(--lax-focus) !important;
+  outline-offset: var(--lax-focus-offset, 2px) !important;
+  box-shadow: none !important;
+}
+
+/* Links in running text are ink and underlined, so they read as links without relying on colour.
+   Navy stays on the lockup and the active navigation, never on a link. */
+[data-bid-site] {
+  --color-link: var(--lax-fg);
+}
+
+[data-bid-site] .text-link {
+  text-decoration-line: underline;
+  text-underline-offset: 4px;
 }
 
 @layer components {

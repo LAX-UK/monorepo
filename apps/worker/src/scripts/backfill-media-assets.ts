@@ -12,20 +12,11 @@
  *   --limit=100
  *   --force   Re-process keys that already have a media_asset row
  */
-import {
-  artistProfile,
-  bidIdentityDirectory,
-  category,
-  createDb,
-  itemSubmission,
-  lot,
-  mediaAsset,
-  sale,
-} from "@auction/db";
-import { sql } from "drizzle-orm";
+import { createDb } from "@auction/db";
 import pino from "pino";
 import { loadWorkerEnv } from "../env.js";
 import { processImageJob } from "../jobs/process-image.js";
+import { listCatalogueImageKeys, normalizeCatalogueKey } from "../lib/catalogue-image-keys.js";
 import { SharpImageProcessor } from "../lib/sharp-image-processor.js";
 import { createUploadStorage } from "../lib/upload-storage.js";
 import { DrizzleMediaAssetProcessorRepository } from "../repositories/drizzle-media-asset-processor.repository.js";
@@ -39,62 +30,6 @@ function parseArgs(argv: string[]) {
     throw new Error("--limit must be a positive integer");
   }
   return { apply, force, limit };
-}
-
-function normalizeCatalogueKey(value: string, publicBaseUrl?: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  if (trimmed.startsWith("data:") || trimmed.startsWith("blob:")) return null;
-
-  if (publicBaseUrl) {
-    const prefix = `${publicBaseUrl.replace(/\/$/, "")}/`;
-    if (trimmed.startsWith(prefix)) {
-      return decodeURIComponent(trimmed.slice(prefix.length)).replace(/^\/+/, "");
-    }
-  }
-
-  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
-    return null;
-  }
-
-  return trimmed.replace(/^\/+/, "");
-}
-
-async function listCatalogueImageKeys(
-  db: ReturnType<typeof createDb>,
-  opts: { force: boolean; limit?: number },
-): Promise<string[]> {
-  const limitSql = opts.limit ? sql`limit ${opts.limit}` : sql``;
-  const missingOnlySql = opts.force
-    ? sql``
-    : sql`and not exists (select 1 from ${mediaAsset} ma where ma.key = refs.key)`;
-
-  const result = await db.execute<{ key: string }>(sql`
-    select distinct refs.key as key
-    from (
-      select unnest(${lot.images}) as key from ${lot} where cardinality(${lot.images}) > 0
-      union
-      select unnest(${sale.coverImages}) as key from ${sale} where cardinality(${sale.coverImages}) > 0
-      union
-      select unnest(${itemSubmission.images}) as key from ${itemSubmission} where cardinality(${itemSubmission.images}) > 0
-      union
-      select ${category.heroImageKey} as key from ${category} where ${category.heroImageKey} is not null
-      union
-      select ${artistProfile.portraitUrl} as key from ${artistProfile} where ${artistProfile.portraitUrl} is not null
-      union
-      select ${artistProfile.heroImageUrl} as key from ${artistProfile} where ${artistProfile.heroImageUrl} is not null
-      union
-      select ${bidIdentityDirectory.image} as key
-      from ${bidIdentityDirectory}
-      where ${bidIdentityDirectory.image} is not null
-    ) refs
-    where refs.key is not null and trim(refs.key) <> ''
-    ${missingOnlySql}
-    order by refs.key
-    ${limitSql}
-  `);
-
-  return result.rows.map((row) => row.key);
 }
 
 async function main() {
