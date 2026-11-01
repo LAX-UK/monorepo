@@ -36,7 +36,7 @@ function EditorsPicksCarousel({
   loginNextPath,
 }: CarouselProps) {
   return (
-    <ScrollRegion id={RAIL_ID} label={MORE_LOTS_COPY.ariaLabel}>
+    <ScrollRegion id={RAIL_ID} label={`${MORE_LOTS_COPY.ariaLabel}, scrolling list`}>
       <ul className="m-0 flex list-none snap-x snap-mandatory gap-6 p-0 pb-2">
         {lots.map((lot, index) => (
           <li

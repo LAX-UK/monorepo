@@ -44,14 +44,13 @@ describe("LaxHeroSaleroomRotator", () => {
     expect(screen.getAllByRole("link", { name: "View lots" })).toHaveLength(1);
   });
 
-  it("shows carousel controls and copy for the selected slide when multiple slides exist", () => {
+  it("shows previous and next controls, without dots, and copy for the selected slide when multiple slides exist", () => {
     render(<LaxHeroSaleroomRotator slides={[slideA, slideB]} />);
 
     expect(screen.getByRole("heading", { name: "Modern British Art" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Previous saleroom" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Next saleroom" })).toBeInTheDocument();
-    expect(screen.getByRole("group", { name: "Choose slide" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Slide 1 of 2" })).toBeInTheDocument();
+    expect(screen.queryByRole("group", { name: "Choose slide" })).toBeNull();
   });
 
   it("keeps a sized hero shell so absolute media layers do not collapse", () => {
