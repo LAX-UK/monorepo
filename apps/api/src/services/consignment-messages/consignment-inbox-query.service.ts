@@ -5,7 +5,6 @@ import {
   defaultConsignmentInboxSort,
   firstNameOf,
   replyClock,
-  threadAssignee,
 } from "@auction/domain";
 import type {
   ConsignmentInboxQueryFilter,
@@ -271,7 +270,7 @@ export class ConsignmentInboxQueryService {
       unread: row.unreadFromClient > 0,
       clock:
         status === "waiting_on_us" && row.awaitingSince ? clockView(row.awaitingSince, now) : null,
-      assignee: threadAssignee({ specialist: row.specialist, covering: row.covering }),
+      assignee: assigneeView(row),
     };
   }
 

@@ -26,6 +26,7 @@ import {
   inboxViews,
 } from "@/lib/admin/consignment-inbox/inbox-list-state";
 import {
+  coverNote,
   lastMessageLine,
   waitingCue,
   workingDuration,
@@ -176,14 +177,14 @@ export function InboxStaffList({ state, list, summary, loadError, viewer }: Prop
       {
         id: "assignee",
         header: "Assignee",
-        width: "15%",
+        width: "17%",
         hideBelow: "lg",
         mobile: "meta",
         cell: (row) =>
           row.assignee ? (
             <PersonCell
               name={row.assignee.name}
-              secondary={row.assignee.covering ? "Covering" : null}
+              secondary={row.assignee.covering ? coverNote(row.assignee) : null}
             />
           ) : (
             <span className="flex items-center gap-2.5 text-staff-muted">

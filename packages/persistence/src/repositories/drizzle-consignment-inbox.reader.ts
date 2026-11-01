@@ -123,6 +123,7 @@ export class DrizzleConsignmentInboxReader implements IConsignmentInboxReader {
             covering: row.coveringId
               ? { userId: row.coveringId, name: row.coveringName ?? "A colleague" }
               : null,
+            coveringUntil: row.coveringId ? row.coveringUntil : null,
           },
         ];
       }),
@@ -229,6 +230,9 @@ export class DrizzleConsignmentInboxReader implements IConsignmentInboxReader {
         specialistId: aliased<string | null>(itemSubmission.assignedToUserId, "specialist_id"),
         specialistName: aliased<string | null>(specialistDirectory.name, "specialist_name"),
         coveringId: aliased<string | null>(consignmentThread.coveringUserId, "covering_id"),
+        coveringUntil: sql<Date | null>`${consignmentThread.coveringUntil}`
+          .mapWith(consignmentThread.coveringUntil)
+          .as("covering_until"),
         coveringName: aliased<string | null>(coveringDirectory.name, "covering_name"),
         closedAt: sql<Date | null>`${consignmentThread.closedAt}`
           .mapWith(consignmentThread.closedAt)

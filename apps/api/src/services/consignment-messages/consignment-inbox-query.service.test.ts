@@ -110,6 +110,27 @@ describe("the inbox list", () => {
     expect(messages.threads.get(SUBMISSION_ID)?.covering).toBe("omar");
   });
 
+  it("shows when a cover ends on the list row and the thread", async () => {
+    const { queries, commands } = threadWithEverything();
+    const until = "2026-11-05T00:00:00.000Z";
+    await commands.assign("clara", SUBMISSION_ID, {
+      assignedToUserId: "omar",
+      covering: true,
+      coveringUntil: until,
+    });
+    const list = await queries.list("clara", { view: "all", limit: 10, offset: 0 });
+    expect(list.data[0]?.assignee).toMatchObject({
+      userId: "omar",
+      covering: true,
+      coveringUntil: until,
+    });
+    const detail = await queries.detail(specialistViewer, SUBMISSION_ID);
+    expect(detail).toMatchObject({
+      ok: true,
+      value: { assignee: { userId: "omar", covering: true, coveringUntil: until } },
+    });
+  });
+
   it("marks a closed thread closed, whoever wrote last", async () => {
     const { queries, commands } = threadWithEverything();
     await commands.close("clara", SUBMISSION_ID);

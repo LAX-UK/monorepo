@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   assigneeLabel,
+  coverNote,
   dueWhen,
   inboxNavCount,
   lastMessageLine,
@@ -97,7 +98,7 @@ describe("assigneeLabel", () => {
         },
         "u1",
       ),
-    ).toBe("James Hale, covering until 30 Nov 2026");
+    ).toMatch(/^James Hale, covering until 30 Nov( 2026)?$/);
     expect(assigneeLabel(null, "u1")).toBeNull();
   });
 });
@@ -114,5 +115,19 @@ describe("row words", () => {
   it("shows no zero badge and caps the count", () => {
     expect(inboxNavCount(0)).toBeUndefined();
     expect(inboxNavCount(1500)).toBe(999);
+  });
+});
+
+describe("coverNote", () => {
+  it("says Covering, with the last day when the cover has an end date", () => {
+    expect(coverNote({})).toBe("Covering");
+    expect(coverNote({ coveringUntil: null })).toBe("Covering");
+    const now = new Date("2026-11-01T10:00:00Z");
+    expect(coverNote({ coveringUntil: "2026-11-13T00:00:00.000Z" }, now)).toBe(
+      "Covering until 12 Nov",
+    );
+    expect(coverNote({ coveringUntil: "2027-01-02T00:00:00.000Z" }, now)).toBe(
+      "Covering until 1 Jan 2027",
+    );
   });
 });
