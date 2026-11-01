@@ -14,11 +14,15 @@ export class DrizzleMediaAssetCleanupRepository implements IMediaAssetCleanupRep
     const result = await this.db.execute<{ referenced: boolean }>(sql`
       select exists (
           select 1 from ${bidIdentityDirectory}
-          where ${bidIdentityDirectory.image} = any(${values})
+          where ${bidIdentityDirectory.image} = any(${refs})
           union all
           select 1 from ${lot} where ${lot.images} && ${refs}
           union all
           select 1 from ${sale} where ${sale.coverImages} && ${refs}
+          union all
+          select 1 from ${sale}, jsonb_each(${sale.coverSlots}) as slot
+          where slot.value ->> 'key' = any(${refs})
+             or slot.value -> 'fromLot' ->> 'imageKey' = any(${refs})
           union all
           select 1 from ${itemSubmission} where ${itemSubmission.images} && ${refs}
         ) as "referenced"

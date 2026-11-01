@@ -41,6 +41,7 @@ import {
   attachAdminPaymentsManualReviewRoutes,
 } from "./admin/payments.routes.js";
 import { attachAdminQrCodesRoutes } from "./admin/qr-codes.routes.js";
+import { attachAdminSaleCoverRoutes } from "./admin/sale-cover.routes.js";
 import { attachAdminSaleRegistrationsRoutes } from "./admin/sale-registrations.routes.js";
 import { attachAdminSaleroomSessionRoutes } from "./admin/saleroom-session.routes.js";
 import { attachAdminSaleroomRoutes } from "./admin/saleroom.routes.js";
@@ -96,6 +97,7 @@ export function createAdminRoutes(
   attachAdminOpsDashboardRoutes(platform, container);
   attachAdminConditionReportsRoutes(platform, container);
   attachAdminSaleRegistrationsRoutes(platform, container);
+  attachAdminSaleCoverRoutes(platform, container.admin.saleCover);
   attachAdminSaleroomRoutes(platform, container);
 
   // Hono merges a sub-app's handlers into the parent router, so `subApp.use("*", mw)`

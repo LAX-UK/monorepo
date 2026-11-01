@@ -798,3 +798,62 @@ export {
   type AccessRequestStatus,
 } from "./access-request.js";
 export * from "./lot-page/index.js";
+export {
+  PLATE_FIELD_MIN_CONTRAST,
+  blend,
+  contrastRatio,
+  parseHex,
+  plateFieldColour,
+  relativeLuminance,
+  toHex,
+  type Rgb,
+} from "./cover-colour.js";
+export {
+  COVER_BOXES,
+  boxesServedBySlot,
+  breakpointsMeasuredForSlot,
+  coverCrop,
+  cropKeepsArea,
+  suggestCoverSide,
+  type CoverBoxName,
+  type CoverCropInput,
+} from "./cover-crop.js";
+export {
+  BAND_STOPS,
+  CREDIT_BAND_CAP,
+  DARK_TONE_MARGIN,
+  LINE_MIN_CONTRAST,
+  RADIAL_RADIUS,
+  RADIAL_STOPS,
+  SCRIM_STRENGTH_CAP,
+  SCRIM_STRENGTH_FLOOR,
+  chooseTone,
+  coverZoneRect,
+  lineScrimAlpha,
+  scrimSettingFor,
+  solveCoverScrim,
+  type ZoneRect,
+} from "./cover-scrim.js";
+export { assembleCoverAnalysis, type CoverImageMeasurements } from "./cover-analysis.js";
+export {
+  COVER_ANALYSIS_VERSION,
+  COVER_SLOT_FLOORS,
+  COVER_ZOOM_MAX,
+  COVER_ZOOM_MIN,
+  coverAnalysisHash,
+  effectiveCoverSide,
+  effectiveCoverSize,
+  measuredBreakpoints,
+  resolveCoverSlotSources,
+  slotScrimSettings,
+  validateCoverSlot,
+  type CoverSlotIssue,
+  type CoverSlotSource,
+} from "./sale-cover.js";
+export {
+  canPinToHome,
+  featuredLotsRefusal,
+  homePinsRefusal,
+  type FeaturedLotsRefusal,
+  type HomePinsRefusal,
+} from "./sale-home.js";

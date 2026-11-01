@@ -1,4 +1,5 @@
 import {
+  COVER_ANALYSIS_QUEUE_NAME,
   GC_PENDING_UPLOADS_QUEUE_NAME,
   IMAGE_CLEANUP_QUEUE_NAME,
   PROCESS_IMAGE_QUEUE_NAME,
@@ -7,6 +8,7 @@ import {
 } from "@auction/queues";
 import type { QrCodeScanJobPayload } from "@auction/queues";
 import { Queue, Worker } from "bullmq";
+import { analyseSaleCoversJob } from "../jobs/analyse-sale-covers.js";
 import { cleanupImageJob } from "../jobs/image-cleanup.js";
 import { processImageJob } from "../jobs/process-image.js";
 import { purgeSourceOfFundsDocumentsJob } from "../jobs/purge-source-of-funds-documents.js";
@@ -32,6 +34,8 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
     imageProcessor,
     publicUploadBase,
     mediaAssetProcessorRepo,
+    coverAnalysisJobRepo,
+    coverImageAnalyser,
     mediaAssetCleanupRepo,
     qrCodeScanPersister,
     sentryMonitorSlugs,
@@ -92,6 +96,35 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
   processImageWorker.on("failed", (job, err) => {
     reportWorkerJobFailure("process-image", job, err);
   });
+
+  // Staff set or change a cover slot through the API, which cannot read pictures; this picks up
+  // every slot without an analysis for its fingerprint, so a change is measured within a minute.
+  const coverAnalysisQueue = new Queue(
+    COVER_ANALYSIS_QUEUE_NAME,
+    queueOpts(COVER_ANALYSIS_QUEUE_NAME),
+  );
+  const coverAnalysisWorker = new Worker(
+    COVER_ANALYSIS_QUEUE_NAME,
+    async () => {
+      await analyseSaleCoversJob({
+        repo: coverAnalysisJobRepo,
+        storage: uploadStorage,
+        analyser: coverImageAnalyser,
+        log,
+      });
+      await heartbeat(COVER_ANALYSIS_QUEUE_NAME);
+    },
+    bullConnection,
+  );
+  coverAnalysisWorker.on("completed", () => void heartbeat(COVER_ANALYSIS_QUEUE_NAME));
+  coverAnalysisWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(COVER_ANALYSIS_QUEUE_NAME, job, err);
+  });
+  void coverAnalysisQueue.add(
+    COVER_ANALYSIS_QUEUE_NAME,
+    {},
+    { jobId: "minutely-cover-analysis", repeat: { every: 60 * 1000 }, removeOnComplete: 50 },
+  );
 
   const imageCleanupWorker = new Worker(
     IMAGE_CLEANUP_QUEUE_NAME,
@@ -163,6 +196,7 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
     errorHandlers: [
       { worker: validateUploadWorker, queue: VALIDATE_UPLOAD_QUEUE_NAME },
       { worker: processImageWorker, queue: PROCESS_IMAGE_QUEUE_NAME },
+      { worker: coverAnalysisWorker, queue: COVER_ANALYSIS_QUEUE_NAME },
       { worker: imageCleanupWorker, queue: IMAGE_CLEANUP_QUEUE_NAME },
       { worker: qrCodeScanWorker, queue: QR_CODE_SCAN_QUEUE_NAME },
       { worker: gcPendingUploadsWorker, queue: GC_PENDING_UPLOADS_QUEUE_NAME },
@@ -172,6 +206,8 @@ export function registerMediaWorkers(deps: WorkerBootstrapDeps): MediaWorkersHan
         validateUploadWorker,
         processImageWorker,
         processImageQueue,
+        coverAnalysisWorker,
+        coverAnalysisQueue,
         imageCleanupWorker,
         qrCodeScanWorker,
         gcPendingUploadsWorker,

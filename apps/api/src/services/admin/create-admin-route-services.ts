@@ -3,6 +3,7 @@ import type { IUserInvitationRepository } from "@auction/persistence/interfaces"
 import type { IBidRepository, ITransactionRunner } from "@auction/persistence/interfaces";
 import type { IConditionReportRequestRepository } from "@auction/persistence/interfaces";
 import type { ILotFulfilmentRepository } from "@auction/persistence/interfaces";
+import type { ICoverAnalysisReader, ISaleCoverRepository } from "@auction/persistence/interfaces";
 import type {
   IAdminDisputeCaseEnrichmentReader,
   IDisputeAllocationQueueReader,
@@ -155,6 +156,8 @@ export type CreateAdminRouteServicesInput = {
   conditionReportRequestRepository: IConditionReportRequestRepository;
   mediaUrlResolver: MediaUrlResolver;
   mediaAssetEnricher: MediaAssetEnricher;
+  saleCoverRepository: ISaleCoverRepository;
+  coverAnalysisReader: ICoverAnalysisReader;
   amlService: AmlService;
   amlScreeningReader: IWatchlistScreeningReader;
   adminSourceOfFundsQueryService: AdminSourceOfFundsQueryService;
@@ -252,6 +255,8 @@ export function createAdminRouteServices(
     conditionReportRequestRepository: input.conditionReportRequestRepository,
     mediaUrlResolver: input.mediaUrlResolver,
     mediaAssetEnricher: input.mediaAssetEnricher,
+    saleCoverRepository: input.saleCoverRepository,
+    coverAnalysisReader: input.coverAnalysisReader,
   });
 
   const finance = createAdminFinanceServices({

@@ -54,6 +54,7 @@ export function createComplianceUploadExportMedia(
     uploadPersistenceRepository,
     legalEntityDocumentAdminRepository,
     mediaAssetReader,
+    coverAnalysisReader,
     uploadObjectReader,
   } = repos;
 
@@ -82,7 +83,11 @@ export function createComplianceUploadExportMedia(
     env.STORAGE_READ_MODE,
     new StableSigningPolicy(Math.max(env.SIGNED_GET_TTL_SEC, 86_400)),
   );
-  const mediaAssetEnricher = new MediaAssetEnricher(mediaAssetReader, objectStorage);
+  const mediaAssetEnricher = new MediaAssetEnricher(
+    mediaAssetReader,
+    objectStorage,
+    coverAnalysisReader,
+  );
   const legalEntityDocumentAdminService = new LegalEntityDocumentAdminService(
     legalEntityDocumentAdminRepository,
     objectStorage,
