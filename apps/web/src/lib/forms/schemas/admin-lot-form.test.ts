@@ -16,6 +16,9 @@ const base: AdminLotFormValues = {
   description: "",
   medium: "",
   dimensions: "",
+  photoIncludesFrame: false,
+  framedWidthCm: "",
+  framedHeightCm: "",
   sellerLegalEntityId: "7f3ed11b-257a-4fc1-a916-4723c8417c5e",
   categoryIds: ["7f3ed11b-257a-4fc1-a916-4723c8417c5e"],
   saleId,
@@ -186,5 +189,49 @@ describe("formValuesToImageAltsPatch", () => {
         imageAlts: ["   "],
       }),
     ).toEqual({ imageAlts: null });
+  });
+});
+
+describe("framed size", () => {
+  it("sends the framed size as numbers with the frame toggle", () => {
+    const parsed = safeParseCreateLotFromForm({
+      ...base,
+      photoIncludesFrame: true,
+      framedWidthCm: "62.5",
+      framedHeightCm: "82,5",
+    });
+    expect(parsed.success).toBe(true);
+    expect(parsed.success && parsed.data).toMatchObject({
+      photoIncludesFrame: true,
+      framedWidthCm: 62.5,
+      framedHeightCm: 82.5,
+    });
+  });
+
+  it("leaves the size out of a new lot that has none, and clears it on an update", () => {
+    const created = safeParseCreateLotFromForm(base);
+    expect(created.success && created.data).not.toHaveProperty("framedWidthCm");
+    const updated = safeParseUpdateLotFromForm(base);
+    expect(updated.success && updated.data).toMatchObject({
+      photoIncludesFrame: false,
+      framedWidthCm: null,
+      framedHeightCm: null,
+    });
+  });
+
+  it("asks for both sides, and for a real size", () => {
+    const half = adminLotFormValuesSchema.safeParse({ ...base, framedWidthCm: "60" });
+    expect(half.success).toBe(false);
+    expect(!half.success && half.error.issues.map((issue) => issue.path[0])).toContain(
+      "framedHeightCm",
+    );
+    const bad = adminLotFormValuesSchema.safeParse({
+      ...base,
+      framedWidthCm: "wide",
+      framedHeightCm: "80",
+    });
+    expect(!bad.success && bad.error.issues.map((issue) => issue.path[0])).toContain(
+      "framedWidthCm",
+    );
   });
 });

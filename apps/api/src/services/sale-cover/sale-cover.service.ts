@@ -8,6 +8,7 @@ import {
   validateCoverSlot,
 } from "@auction/domain";
 import type {
+  HomePinnedSale,
   ICoverAnalysisReader,
   ISaleCoverRepository,
   SaleHomeState,
@@ -60,6 +61,8 @@ export type AdminCoverView = {
   saleId: string;
   slots: Partial<Record<SaleCoverSlotName, AdminCoverSlotView>>;
   home: SaleHomeState;
+  /** Every sale pinned to the home page, first place first, so staff see the whole order. */
+  pins: HomePinnedSale[];
 };
 
 type Dependencies = {
@@ -115,7 +118,8 @@ export class SaleCoverService {
         },
       };
     }
-    return ok({ saleId, slots, home });
+    const pins = await this.deps.covers.listHomePins();
+    return ok({ saleId, slots, home, pins });
   }
 
   /** Sets one slot. A picture below the slot's floor, or a crop that cuts the keep area, is refused. */

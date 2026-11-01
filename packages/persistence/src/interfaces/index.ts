@@ -661,6 +661,7 @@ export type {
 export type { IMediaAssetReader, MediaAssetRecord } from "./media-asset.reader.js";
 export type { CoverAnalysisRecord, ICoverAnalysisReader } from "./cover-analysis.reader.js";
 export type {
+  HomePinnedSale,
   ISaleCoverRepository,
   SaleCoverState,
   SaleHomePatch,
