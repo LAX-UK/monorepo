@@ -1,6 +1,7 @@
 import type { SoldLot } from "@/lib/data/http/workspace-selling.schema";
 import { formatDate } from "@/lib/ui/format";
-import type { AgreementAcceptanceHold, SellingActionsHold } from "@auction/domain";
+import type { AgreementAcceptanceHold } from "@auction/domain";
+import { consignmentMessagesHref } from "./consignment-records";
 import type { ConsignmentStatus } from "./consignment-status";
 
 type Context = {
@@ -43,8 +44,8 @@ const SOLD_STEP: Record<SoldPayout["stage"], SoldStep> = {
     link: true,
   },
   payout_problem: {
-    text: () => "It sold, but there is a problem with the payout. Ask your specialist for help.",
-    link: true,
+    text: () => "It sold, but there is a problem with the payout.",
+    link: false,
   },
   refunded: {
     text: () => "It sold, but the buyer's payment was refunded, so there is no payout.",
@@ -54,26 +55,25 @@ const SOLD_STEP: Record<SoldPayout["stage"], SoldStep> = {
 
 const SOLD_UNKNOWN = "It sold. Payout details are shown to people who see the account's payouts.";
 
-/** The link to the payout for a sold lot whose payout exists, else `null`. */
+/**
+ * The link that follows the sentence: the payout once it exists, or the consignment's messages
+ * when the payout has a problem and the seller needs to talk to their specialist.
+ */
 export function consignmentNextLink(
   status: ConsignmentStatus,
-  context: Pick<Context, "sold">,
+  context: Pick<Context, "sold"> & { submissionId: string },
 ): { label: string; href: string } | null {
-  const { sold } = context;
-  if (status !== "sold" || !sold?.payout || !SOLD_STEP[sold.stage].link) return null;
+  const { sold, submissionId } = context;
+  if (status !== "sold" || !sold) return null;
+  if (sold.stage === "payout_problem") {
+    return {
+      label: "Message your specialist about this payout",
+      href: consignmentMessagesHref(submissionId),
+    };
+  }
+  if (!sold.payout || !SOLD_STEP[sold.stage].link) return null;
   return { label: "View payout", href: `/selling/payouts/${encodeURIComponent(sold.payout.id)}` };
 }
-
-/** Why the account's state holds withdrawing, as a line. */
-const WITHDRAW_HOLD_LINE: Record<SellingActionsHold, (account: string) => string> = {
-  paused: (account) =>
-    `Selling is paused for ${account}, so this can't be withdrawn for now. Contact us to find out why and when it resumes.`,
-  checking: (account) =>
-    `This can be withdrawn once we've checked ${account}'s documents. Contact us if you need it sooner.`,
-  payouts: (account) =>
-    `This can be withdrawn once payouts are set up for ${account}. Contact us if you need it sooner.`,
-  closed: (account) => `This can't be withdrawn because ${account} is closed.`,
-};
 
 /**
  * Why the agreement cannot be accepted yet, said from the account's state rather than the
@@ -99,11 +99,6 @@ const HOLD_LINE: Record<AgreementAcceptanceHold, (account: string) => string> = 
 
 function holdAccount(organisation: string | null): string {
   return organisation ?? "your account";
-}
-
-/** The line that replaces the withdraw action while the account's state holds it. */
-export function withdrawHoldLine(hold: SellingActionsHold, organisation: string | null) {
-  return WITHDRAW_HOLD_LINE[hold](holdAccount(organisation));
 }
 
 /** The sentence for an agreement on hold, for "What happens next". */

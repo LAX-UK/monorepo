@@ -8,7 +8,6 @@ import {
   canAcceptConsignmentAgreement,
   decideAgreementAcceptance,
   dueAgreementReminder,
-  sellingActionsHold,
 } from "./consignment-agreement.js";
 
 const ENTITY = "entity-1";
@@ -165,24 +164,33 @@ describe("agreementAcceptanceHold", () => {
   });
 });
 
-describe("sellingActionsHold", () => {
-  it("is the same rule accepting follows, for every status", () => {
-    for (const status of [
-      "lead",
-      "under_review",
-      "connect_pending",
-      "approved",
-      "restricted",
-      "rejected",
-      "archived",
-    ] as const) {
-      const account = { kind: "organisation", status } as const;
-      expect(sellingActionsHold(account)).toBe(agreementAcceptanceHold(account));
-    }
+/** The one table of what each organisation state does to accepting; the API and the page follow it. */
+const ACCEPT_BY_ORGANISATION_STATUS = [
+  ["lead", "checking"],
+  ["docs_requested", "checking"],
+  ["docs_received", "checking"],
+  ["under_review", "checking"],
+  ["connect_pending", "payouts"],
+  ["approved", null],
+  ["restricted", "paused"],
+  ["rejected", "closed"],
+  ["archived", "closed"],
+] as const;
+
+describe("accepting by organisation state", () => {
+  it.each(ACCEPT_BY_ORGANISATION_STATUS)("%s holds accepting as %s", (status, hold) => {
+    const account = { kind: "organisation", status } as const;
+    expect(agreementAcceptanceHold(account)).toBe(hold);
+    const decision = decide({ account });
+    expect(decision.kind).toBe(hold ? "refused" : "accept");
+    if (hold && decision.kind === "refused") expect(decision.reason).toBe("account_on_hold");
   });
 
-  it("pauses a restricted organisation and holds nothing for an approved one", () => {
-    expect(sellingActionsHold({ kind: "organisation", status: "restricted" })).toBe("paused");
-    expect(sellingActionsHold({ kind: "organisation", status: "approved" })).toBeNull();
+  it("does not refuse an agreement that was already accepted", () => {
+    const decision = decide({
+      agreement: { ...proposed, acceptedAt: new Date() },
+      account: { kind: "organisation", status: "restricted" },
+    });
+    expect(decision.kind).toBe("already_accepted");
   });
 });

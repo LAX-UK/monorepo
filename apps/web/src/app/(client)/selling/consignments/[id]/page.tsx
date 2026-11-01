@@ -69,7 +69,6 @@ import {
   agreementHoldLine,
   consignmentNextLink,
   consignmentNextStep,
-  withdrawHoldLine,
 } from "@/lib/seller/consignment-next";
 import {
   consignmentAgreementHref,
@@ -83,9 +82,9 @@ import { sellerDocumentsPanelShows } from "@/lib/seller/seller-documents-visibil
 import { unsoldChoiceViewModel } from "@/lib/seller/unsold-choice-view";
 import { lotPath } from "@/lib/seo/url";
 import {
+  agreementAcceptanceHold,
   computeConsignmentChecklist,
   evaluateSubmissionQuality,
-  sellingActionsHold,
 } from "@auction/domain";
 import { Notice, StatusBadge } from "@auction/ui/lax";
 import { ChevronLeft } from "lucide-react";
@@ -222,10 +221,9 @@ export default async function SubmissionDetailPage({
   const editable = actions.canEdit;
   const agreementView = agreementRes.status === "fulfilled" ? agreementRes.value : null;
   const account = accountRes.status === "fulfilled" ? accountRes.value : null;
-  // The account's state, not only the member's role, decides whether anyone can accept or
-  // withdraw now.
+  // The account's state, not only the member's role, decides whether anyone can accept now.
   const actingAccount = sellingAccount(sellerCtx);
-  const acceptHold = actingAccount ? sellingActionsHold(actingAccount) : null;
+  const acceptHold = actingAccount ? agreementAcceptanceHold(actingAccount) : null;
   const organisationName = account?.organisationName ?? null;
   const checklist = account
     ? computeConsignmentChecklist(
@@ -250,19 +248,13 @@ export default async function SubmissionDetailPage({
         reserve: afterSale.unsold.choice.requestedReserve,
       }
     : null;
-  const withdrawHeld = acceptHold ? withdrawHoldLine(acceptHold, organisationName) : null;
-  const withdrawalView = afterSale
-    ? consignmentWithdrawalViewModel(afterSale.withdrawal, withdrawHeld)
-    : null;
+  const withdrawalView = afterSale ? consignmentWithdrawalViewModel(afterSale.withdrawal) : null;
   // A consignor takes back their own uncatalogued submission themselves; the panel's withdrawal
-  // binds the organisation and stays with owners and admins, so it would only refuse them. A
-  // paused account holds both.
+  // binds the organisation and stays with owners and admins, so it would only refuse them.
   const withdrawOwnSubmission =
     actions.canWithdraw &&
-    !withdrawHeld &&
-    afterSale !== null &&
-    consignmentWithdrawalViewModel(afterSale.withdrawal).mode === "available" &&
-    afterSale.withdrawal.canAct === false;
+    withdrawalView?.mode === "available" &&
+    withdrawalView.blockedReason !== null;
   const submissionFormValues = itemSubmissionToFormValues(submission);
   const submissionQuality = evaluateSubmissionQuality(submission);
   const readyToSubmit = editable && submissionQuality.canSubmit;
@@ -321,7 +313,10 @@ export default async function SubmissionDetailPage({
     sold: soldLot,
   };
   const nextStep = consignmentNextStep(status, nextContext);
-  const nextLink = consignmentNextLink(status, nextContext);
+  const nextLink = consignmentNextLink(status, {
+    ...nextContext,
+    submissionId: submission.id,
+  });
   const documentsView = consignmentDocuments({
     submissionId: submission.id,
     sellerEntityId,
