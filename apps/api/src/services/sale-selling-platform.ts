@@ -21,6 +21,7 @@ export async function withSellingPlatforms<T extends Sale>(
       ...s,
       sellingPlatform: "atg",
       atgAuctionState: owned.atgRemoteStatus === "published" ? "live" : "ended",
+      atgDistribution: owned.atgDistribution,
     };
   });
 }

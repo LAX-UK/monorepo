@@ -22,7 +22,10 @@ import type { IAtgLinkReader } from "../interfaces/index.js";
 
 const iso = (value: Date | null): string | null => value?.toISOString() ?? null;
 
-type OwnershipRow = ResolveSaleSellingPlatformInput & { atgApprovedAt: string | null };
+type OwnershipRow = ResolveSaleSellingPlatformInput & {
+  atgApprovedAt: string | null;
+  atgDistribution: AtgDistribution;
+};
 
 export class DrizzleAtgLinkReader implements IAtgLinkReader {
   constructor(private readonly db: Database) {}
@@ -111,6 +114,7 @@ export class DrizzleAtgLinkReader implements IAtgLinkReader {
         atgLinked: row.atgLinked,
         atgSoldLotCount: row.atgSoldLotCount,
         sellingPlatform: resolveSaleSellingPlatform(row),
+        atgDistribution: row.atgDistribution,
       });
     }
     return out;
@@ -170,6 +174,7 @@ export class DrizzleAtgLinkReader implements IAtgLinkReader {
         remoteStatus: atgAuctionLink.remoteStatus,
         atgAuctionId: atgAuctionLink.atgAuctionId,
         approvedAt: atgAuctionLink.atgApprovedAt,
+        distribution: atgAuctionLink.distribution,
       })
       .from(sale)
       .leftJoin(atgAuctionLink, eq(atgAuctionLink.saleId, sale.id))
@@ -191,6 +196,8 @@ export class DrizzleAtgLinkReader implements IAtgLinkReader {
         atgLinked: Boolean(row.atgAuctionId),
         atgSoldLotCount: soldBySale.get(row.saleId) ?? 0,
         atgApprovedAt: iso(row.approvedAt ?? null),
+        atgDistribution:
+          (row.distribution as AtgDistribution | null) ?? DEFAULT_ATG_SALE_SETTINGS.distribution,
       });
     }
     return out;

@@ -15,6 +15,10 @@ function isSellingPlatform(v: unknown): v is NonNullable<Sale["sellingPlatform"]
   return v === "atg" || v === "lax" || v === "free";
 }
 
+function isAtgDistribution(v: unknown): v is NonNullable<Sale["atgDistribution"]> {
+  return v === "private_test" || v === "public_marketplace";
+}
+
 function isAtgState(v: unknown): v is "live" | "ended" {
   return v === "live" || v === "ended";
 }
@@ -216,6 +220,7 @@ const saleRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transf
     updatedAt: zCoerceDate.parse(row.updatedAt),
     ...(isSellingPlatform(row.sellingPlatform) ? { sellingPlatform: row.sellingPlatform } : {}),
     ...(isAtgState(row.atgAuctionState) ? { atgAuctionState: row.atgAuctionState } : {}),
+    ...(isAtgDistribution(row.atgDistribution) ? { atgDistribution: row.atgDistribution } : {}),
   };
 });
 

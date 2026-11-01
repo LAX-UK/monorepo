@@ -13,7 +13,13 @@ const past = new Date("2026-10-13T12:00:00Z");
 const future = new Date("2026-10-15T12:00:00Z");
 
 const sale = (over: Partial<Sale>) =>
-  ({ status: "draft", sellingPlatform: "atg", startTime: past, ...over }) as Sale;
+  ({
+    status: "draft",
+    sellingPlatform: "atg",
+    atgDistribution: "public_marketplace",
+    startTime: past,
+    ...over,
+  }) as Sale;
 const lot = (over: Partial<Lot>) =>
   ({ id: "l1", status: "draft", startTime: past, ...over }) as Lot;
 
@@ -22,6 +28,7 @@ describe("atgCatalogState", () => {
     expect(atgCatalogState(null)).toBeNull();
     expect(atgCatalogState(sale({ sellingPlatform: "free" }))).toBeNull();
     expect(atgCatalogState(sale({ status: "active" }))).toBeNull();
+    expect(atgCatalogState(sale({ atgDistribution: "private_test" }))).toBeNull();
     expect(atgCatalogState(sale({ atgAuctionState: "live" }))).toBe("live");
     expect(atgCatalogState(sale({ atgAuctionState: "ended" }))).toBe("ended");
   });
