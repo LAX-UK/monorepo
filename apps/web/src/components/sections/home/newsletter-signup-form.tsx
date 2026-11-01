@@ -96,7 +96,7 @@ export function NewsletterSignupForm({ tone = "default" }: Props) {
             disabled={loading}
             className={cn(
               "h-12 rounded-b-sm rounded-t-none px-6 font-label text-xs sm:rounded-l-none sm:rounded-r-sm",
-              onDark && "bg-hero-cream text-brand-900 hover:bg-brand-100",
+              onDark && "bg-brand-light-cream text-brand-900 hover:bg-brand-100",
             )}
           >
             {loading ? "Subscribing…" : "Subscribe"}
