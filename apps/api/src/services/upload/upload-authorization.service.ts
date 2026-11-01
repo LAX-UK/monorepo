@@ -2,7 +2,13 @@ import type { IUploadPersistenceRepository } from "@auction/persistence/interfac
 import type { StaffRoles, UserRole } from "@auction/types";
 import { roleHasCapability } from "@auction/types";
 import type { IUploadAuthorizationService } from "../interfaces/upload-service.js";
-import { type UploadKind, canUploadKind, isUploadKind, uploadPolicies } from "../upload.policy.js";
+import {
+  type UploadKind,
+  canUploadKind,
+  isUploadKind,
+  uploadPolicies,
+  uploadRejection,
+} from "../upload.policy.js";
 
 export class UploadAuthorizationService implements IUploadAuthorizationService {
   constructor(private readonly repo?: IUploadPersistenceRepository) {}
@@ -23,14 +29,21 @@ export class UploadAuthorizationService implements IUploadAuthorizationService {
     }
     const policy = uploadPolicies[input.kind];
     if (!policy.allowedContentTypes.includes(input.contentType)) {
-      return { ok: false, status: 400, error: "unsupported_content_type" };
+      const rejection = uploadRejection(input.kind, "type");
+      return rejection
+        ? { ok: false, status: 400, ...rejection }
+        : { ok: false, status: 400, error: "unsupported_content_type" };
     }
     if (
       !Number.isInteger(input.byteSize) ||
       input.byteSize <= 0 ||
       input.byteSize > policy.maxBytes
     ) {
-      return { ok: false, status: 400, error: "invalid_byte_size" };
+      const tooLarge = Number.isInteger(input.byteSize) && input.byteSize > policy.maxBytes;
+      const rejection = tooLarge ? uploadRejection(input.kind, "size") : null;
+      return rejection
+        ? { ok: false, status: 400, ...rejection }
+        : { ok: false, status: 400, error: "invalid_byte_size" };
     }
     return { ok: true, kind: input.kind };
   }

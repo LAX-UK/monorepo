@@ -24,7 +24,8 @@ export const postConsignmentMessageBodySchema = z
           })
           .strict(),
       )
-      .max(CONSIGNMENT_MESSAGE_MAX_ATTACHMENTS)
+      // A little headroom, so the domain rule answers with the limit instead of a bare 400.
+      .max(CONSIGNMENT_MESSAGE_MAX_ATTACHMENTS + 5)
       .default([]),
   })
   .strict();
