@@ -95,6 +95,32 @@ export function artistPublicCatalogLotCountSubquery() {
   )`;
 }
 
+/** Count of public ended lots: the artist's results, for cards of artists with nothing on sale. */
+export function artistPublicResultCountSubquery() {
+  return sql<number>`(
+    select count(*)::int
+    from lot
+    where ${artistPublicCatalogLotPredicatesSql()}
+      and lot.status = 'ended'
+  )`;
+}
+
+/**
+ * First image of a representative public lot, for directory cards of artists without a portrait:
+ * what is on sale first, then the most recent result. Lots without an image are skipped.
+ */
+export function artistRepresentativeWorkImageSubquery() {
+  return sql<string | null>`(
+    select lot.images[1]
+    from lot
+    where ${artistPublicCatalogLotPredicatesSql()}
+      and cardinality(lot.images) > 0
+      and coalesce(lot.images[1], '') <> ''
+    order by (lot.status in ('active', 'scheduled')) desc, lot.created_at desc
+    limit 1
+  )`;
+}
+
 /** EXISTS filter for artists with upcoming (`active` | `scheduled`) browse lots. */
 export function artistHasPublicBrowseLotsExists() {
   return sql`exists (

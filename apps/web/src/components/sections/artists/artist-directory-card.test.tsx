@@ -53,18 +53,41 @@ const baseArtist: PublicArtistDirectoryRow = {
   createdAt: new Date("2020-01-01"),
   updatedAt: new Date("2020-01-01"),
   lotCount: 3,
+  resultCount: 0,
+  workImageUrl: null,
 };
 
 describe("ArtistDirectoryCard", () => {
-  it("shows initials on the mat when there is no portrait", () => {
-    render(
+  it("is a text-only card, not a hatched tile, when there is no portrait and no work", () => {
+    const { container } = render(
       <ul>
-        <ArtistDirectoryCard artist={baseArtist} watching={false} isAuthenticated={false} />
+        <ArtistDirectoryCard
+          artist={{ ...baseArtist, lotCount: 0, resultCount: 2 }}
+          watching={false}
+          isAuthenticated={false}
+        />
       </ul>,
     );
 
-    expect(screen.getByText("JD")).toBeInTheDocument();
+    expect(screen.queryByText("JD")).not.toBeInTheDocument();
+    expect(container.querySelector(".marketing-work-mat")).toBeNull();
     expect(screen.getByRole("heading", { level: 2, name: "Jane Doe" })).toBeInTheDocument();
+    expect(screen.getByText("2 results")).toBeInTheDocument();
+  });
+
+  it("shows a representative work on the paper mat when there is no portrait", () => {
+    const { container } = render(
+      <ul>
+        <ArtistDirectoryCard
+          artist={{ ...baseArtist, workImageUrl: "https://example.com/work.jpg" }}
+          watching={false}
+          isAuthenticated={false}
+        />
+      </ul>,
+    );
+
+    expect(container.querySelector(".marketing-work-mat")).not.toBeNull();
+    expect(screen.queryByText("JD")).not.toBeInTheDocument();
   });
 
   it("shows the facts line and the lot count", () => {

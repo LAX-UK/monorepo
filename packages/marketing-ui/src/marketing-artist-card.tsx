@@ -9,14 +9,24 @@ import { MarketingCardReveal } from "./motion/index.js";
 export type MarketingArtistCardProps = {
   href: string;
   name: string;
-  /** h2 on the directory, h3 inside a titled section. */
-  nameAs?: "h2" | "h3";
+  /** h2 on the directory, h3 or h4 inside titled sections. */
+  nameAs?: "h2" | "h3" | "h4";
   /** Portrait filling the frame (absolutely positioned, `object-cover`). Initials show without one. */
   portrait?: ReactNode;
   /** Plain facts line, e.g. "British · b. 1956". */
   facts?: string | null;
   /** What this product holds for the artist, e.g. "12 lots" or "3 editions". */
   caption?: ReactNode;
+  /**
+   * A representative work for an artist without a portrait: shown whole on the paper mat, as on
+   * the work cards.
+   */
+  work?: ReactNode;
+  /**
+   * What an artist with neither portrait nor work gets. `placeholder` keeps the hatched initials
+   * (Shop and lax.art); `text` is a card of text only: name, facts and caption, no image area.
+   */
+  withoutImage?: "placeholder" | "text";
   /** Badges over the top-left of the portrait, e.g. Featured. */
   badges?: ReactNode;
   /** Icon control over the bottom-right of the portrait, e.g. a watch heart. */
@@ -43,6 +53,8 @@ export function MarketingArtistCard({
   name,
   nameAs: Name = "h2",
   portrait,
+  work,
+  withoutImage = "placeholder",
   facts,
   caption,
   badges,
@@ -52,32 +64,58 @@ export function MarketingArtistCard({
   className,
 }: MarketingArtistCardProps) {
   const compact = density === "compact";
+  const textOnly = !portrait && !work && withoutImage === "text";
   return (
     <article
-      className={cn("group relative flex h-full min-w-0 flex-col", className)}
+      className={cn(
+        "group relative flex min-w-0 flex-col",
+        textOnly ? "h-auto" : "h-full",
+        textOnly && "rounded-xl border border-border-hairline p-4",
+        className,
+      )}
       data-testid="marketing-artist-card"
     >
-      <MarketingCardMedia className="aspect-[4/5] bg-surface-container-low">
-        <Link href={href} tabIndex={-1} aria-hidden className="absolute inset-0 block">
-          {portrait ?? (
-            <>
-              <MediaPlaceholder fill />
-              <span className="absolute inset-0 flex items-center justify-center font-headline text-4xl font-medium tracking-tight text-on-surface-variant">
-                {marketingArtistInitials(name)}
-              </span>
-            </>
+      {portrait || work || withoutImage === "placeholder" ? (
+        <MarketingCardMedia
+          className={cn(
+            "aspect-[4/5]",
+            work && !portrait ? "marketing-work-mat" : "bg-surface-container-low",
           )}
-        </Link>
-        {badges ? (
-          <div className="pointer-events-none absolute left-2 top-2 z-[1] flex flex-wrap gap-1">
-            {badges}
-          </div>
-        ) : null}
-        {overlayAction ? (
-          <div className="absolute bottom-2 right-2 z-10">{overlayAction}</div>
-        ) : null}
-      </MarketingCardMedia>
-      <div className={cn("flex min-w-0 flex-1 flex-col", compact ? "pt-2" : "pt-3 md:pt-4")}>
+        >
+          <Link
+            href={href}
+            tabIndex={-1}
+            aria-hidden
+            className={cn("absolute inset-0 block", work && !portrait && "p-[7%]")}
+          >
+            {portrait ??
+              (work ? (
+                <span className="relative block size-full [&_img]:!object-contain">{work}</span>
+              ) : (
+                <>
+                  <MediaPlaceholder fill />
+                  <span className="absolute inset-0 flex items-center justify-center font-headline text-4xl font-medium tracking-tight text-on-surface-variant">
+                    {marketingArtistInitials(name)}
+                  </span>
+                </>
+              ))}
+          </Link>
+          {badges ? (
+            <div className="pointer-events-none absolute left-2 top-2 z-[1] flex flex-wrap gap-1">
+              {badges}
+            </div>
+          ) : null}
+          {overlayAction ? (
+            <div className="absolute bottom-2 right-2 z-10">{overlayAction}</div>
+          ) : null}
+        </MarketingCardMedia>
+      ) : null}
+      <div
+        className={cn(
+          "flex min-w-0 flex-1 flex-col",
+          textOnly ? "" : compact ? "pt-2" : "pt-3 md:pt-4",
+        )}
+      >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div className="flex min-w-0 flex-col gap-0.5">
             <Name
