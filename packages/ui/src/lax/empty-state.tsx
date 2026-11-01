@@ -14,8 +14,8 @@ export type EmptyStateProps = {
   description: React.ReactNode;
   /** One action when the person has one: the primary first, then at most one more. */
   actions?: React.ReactNode;
-  /** h2 when the state replaces a page's content, h3 inside a section. */
-  headingLevel?: "h2" | "h3";
+  /** h1 when the state is the whole page, h2 when it replaces a page's content, h3 inside a section. */
+  headingLevel?: "h1" | "h2" | "h3";
   className?: string;
 };
 

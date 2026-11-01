@@ -9,6 +9,7 @@
     "hooks/admin/use-admin-invitations-page-query.ts",
     "lib/context/saleroom-live-provider.tsx",
     "lib/context/lot-bid-history-provider.tsx",
+    "lib/lot-page/use-lot-reads.ts",
     "app/admin/(platform)/invitations/page.tsx",
     "components/admin/admin-invitations-board-container.tsx",
     "lib/admin/invitations-list-nuqs.ts"

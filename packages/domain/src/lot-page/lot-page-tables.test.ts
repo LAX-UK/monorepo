@@ -271,6 +271,29 @@ describe("primary action", () => {
     expect(resolveLotAction({ ...base, lifecycle: "withdrawn" })).toBe("back_to_sale");
     expect(resolveLotAction({ ...base, lifecycle: "saleroomPaused" })).toBe("bid_disabled");
   });
+
+  describe("the winner of an ended lot", () => {
+    const sold = { ...base, lifecycle: "endedSold" as const };
+    it("pays an open invoice, and sees the purchase once it is settled", () => {
+      expect(resolveLotAction({ ...sold, position: "won", purchaseStatus: "due" })).toBe("pay");
+      expect(resolveLotAction({ ...sold, position: "won", purchaseStatus: "overdue" })).toBe("pay");
+      expect(resolveLotAction({ ...sold, position: "won", purchaseStatus: "paid" })).toBe(
+        "view_purchase",
+      );
+      expect(resolveLotAction({ ...sold, position: "won", purchaseStatus: "processing" })).toBe(
+        "view_purchase",
+      );
+    });
+    it("keeps artist alerts until there is an invoice, for a loser and for a visitor", () => {
+      expect(resolveLotAction({ ...sold, position: "won", purchaseStatus: null })).toBe(
+        "get_artist_alerts",
+      );
+      expect(resolveLotAction({ ...sold, position: "lost", purchaseStatus: "due" })).toBe(
+        "get_artist_alerts",
+      );
+      expect(resolveLotAction({ ...sold, signedIn: false })).toBe("get_artist_alerts");
+    });
+  });
 });
 
 describe("bidder attention", () => {

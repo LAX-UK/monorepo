@@ -26,6 +26,18 @@ export type RpcApp = {
           query?: Record<string, string>;
         }) => Promise<Response>;
       };
+      "bid-history": {
+        $get: (args: {
+          param: { id: string };
+          query?: Record<string, string>;
+        }) => Promise<Response>;
+      };
+      me: {
+        $get: (
+          args: { param: { id: string } },
+          options?: { headers?: Record<string, string> },
+        ) => Promise<Response>;
+      };
       "watch-count": {
         $get: (args: { param: { id: string } }) => Promise<Response>;
       };

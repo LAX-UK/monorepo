@@ -71,6 +71,8 @@ export type { NoticeTone } from "./notice.js";
 export { Toaster } from "./toaster.js";
 export { TOAST_DURATION_MS, UNDO_TOAST_DURATION_MS } from "./toast-durations.js";
 export { Skeleton } from "./skeleton.js";
+export { FactList } from "./fact-list.js";
+export type { Fact } from "./fact-list.js";
 export { MetricCell, MetricCellSkeleton, MetricDelta, isLongMetricValue } from "./metric-cell.js";
 export type { Metric, MetricCellItem, MetricComparison } from "./metric-cell.js";
 export { metricChange } from "./metric-change.js";

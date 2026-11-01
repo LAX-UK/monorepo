@@ -62,6 +62,8 @@ export type BidPanelContextValue = {
   initialWatching: boolean;
   omitPricingHeader: boolean;
   showPricingHeader: boolean;
+  /** The lot template draws the price and the bidder's position; the panel is only the entry. */
+  entryOnly?: boolean;
   kycSummary: KycStatusSummaryDto | null;
   saleRegistrationBidGate: SaleRegistrationBidGateContext | null;
   currentPrice: string;

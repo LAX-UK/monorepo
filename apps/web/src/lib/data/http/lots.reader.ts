@@ -187,7 +187,8 @@ export async function getServerLotReader(): Promise<LotReader> {
         throw new Error(`Failed to load lot: ${res.status}`);
       }
       const body = await readJsonBody(res);
-      // A withdrawn lot is not rendered yet; the page treats it as it did before it was public.
+      // A withdrawn lot is not a `Lot`: the lot page reads and draws it on its own path
+      // (`loadWithdrawnLotPage`), and every other surface skips it.
       if (isWithdrawnLotRow((body as { data?: unknown } | null)?.data)) return null;
       return readDataEnvelope(body, publicLotViewEnvelopeSchema, `GET /lots/${id}`);
     },
