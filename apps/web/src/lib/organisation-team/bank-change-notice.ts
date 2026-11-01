@@ -6,6 +6,15 @@ export const BANK_CHANGE_NOTICE_DAYS = 30;
 
 export type BankChangeNotice = { title: string; body: string };
 
+/** The newest payout account change among Activity entries, or `null`. */
+export function latestBankChange(entries: readonly ActivityEntryView[]): ActivityEntryView | null {
+  return (
+    entries
+      .filter((e) => e.kind === "bank_details_changed")
+      .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0] ?? null
+  );
+}
+
 /**
  * The notice every owner and admin sees after the payout account changes: when and by whom, and
  * what to do if they didn't expect it. From the newest change in the window, or `null`.
@@ -14,13 +23,17 @@ export function bankChangeNotice(
   entries: readonly ActivityEntryView[],
   now: Date,
 ): BankChangeNotice | null {
+  const change = latestBankChange(entries);
   const since = now.getTime() - BANK_CHANGE_NOTICE_DAYS * 86_400_000;
-  const change = entries
-    .filter((e) => e.kind === "bank_details_changed" && new Date(e.occurredAt).getTime() >= since)
-    .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))[0];
-  if (!change) return null;
+  if (!change || new Date(change.occurredAt).getTime() < since) return null;
   return {
     title: `The payout account was changed on ${formatDateInline(change.occurredAt)} by ${change.actorName}.`,
     body: "We emailed every owner and admin. If you didn't expect this, contact us now and we'll hold payouts.",
   };
+}
+
+/** "Changed 28 Oct 2026 by Daniel Reyes", under the bank account; `null` with no change seen. */
+export function bankChangedLine(entries: readonly ActivityEntryView[]): string | null {
+  const change = latestBankChange(entries);
+  return change ? `Changed ${formatDateInline(change.occurredAt)} by ${change.actorName}` : null;
 }

@@ -3,6 +3,7 @@ import "server-only";
 import type { SessionUser } from "@/lib/data/contracts";
 import { getServerBuyerAgentOverview } from "@/lib/data/http/buyer-agent-authorisations.server";
 import { getServerStoppedMemberBids } from "@/lib/data/http/organisation-membership.server";
+import { getServerMemberLastActive } from "@/lib/data/http/organisation-profile.server";
 import {
   getServerAccessRequests,
   getServerBiddingLimits,
@@ -82,6 +83,13 @@ export const loadBiddingLimits = cache((legalEntityId: string) =>
 export const loadTwoStepPolicy = cache((scope: TeamScope) =>
   entityActorCan(scope.actor, "entity.security.read")
     ? getServerOrgTwoFactorPolicy(scope.acting.id).catch(() => null)
+    : Promise.resolve(null),
+);
+
+/** The day each member was last active, for owners and admins. */
+export const loadMemberLastActive = cache((scope: TeamScope) =>
+  entityActorCan(scope.actor, "entity.members.last_active.read")
+    ? getServerMemberLastActive(scope.acting.id).catch(() => null)
     : Promise.resolve(null),
 );
 

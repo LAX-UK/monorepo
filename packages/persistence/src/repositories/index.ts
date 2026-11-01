@@ -244,6 +244,7 @@ export {
   DrizzleInvoiceDetailsRepository,
   DrizzleOrganisationActivityReader,
 } from "./drizzle-organisation-team.readers.js";
+export { DrizzleContactDetailsRepository } from "./drizzle-contact-details.repository.js";
 export { DrizzleUnsoldChoiceDeadlineStore } from "./drizzle-unsold-choice-deadline.store.js";
 export {
   DrizzleAgreementDocumentFactsReader,

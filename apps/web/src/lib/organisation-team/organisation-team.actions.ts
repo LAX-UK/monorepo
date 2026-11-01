@@ -82,6 +82,23 @@ export async function saveInvoiceDetailsAction(
   });
 }
 
+export type ContactDetailsInput = { email: string; phone: string; website: string };
+
+/** Saves the whole set of contact details; an empty field means none. */
+export async function saveContactDetailsAction(
+  legalEntityId: string,
+  input: ContactDetailsInput,
+): Promise<TeamActionResult> {
+  return send({
+    name: "saveContactDetailsAction",
+    legalEntityId,
+    path: "/legal-entities/contact-details",
+    method: "PUT",
+    body: input,
+    revalidate: [CLIENT_ROUTES.organisation],
+  });
+}
+
 /** Sets the organisation-wide bidding limit in pounds, or removes it with `null`. */
 export async function setOrganisationBiddingLimitAction(
   legalEntityId: string,
