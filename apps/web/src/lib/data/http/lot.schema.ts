@@ -1,3 +1,4 @@
+import { parseGalleryImages } from "@/lib/data/http/gallery-image.schema";
 import { isIndexableObject, toObjectRecord } from "@/lib/data/http/object-guards";
 import { zCoerceDate, zStringArrayFromUnknown } from "@/lib/data/http/schema-coerce";
 import type { Lot, LotMarketingDetails, PublicLotView } from "@auction/types";
@@ -29,8 +30,14 @@ function nullableString(value: unknown): string | null {
   return value == null || value === "" ? null : String(value);
 }
 
+function positiveNumberOrNull(value: unknown): number | null {
+  const n = typeof value === "number" ? value : Number.parseFloat(String(value ?? ""));
+  return Number.isFinite(n) && n > 0 ? n : null;
+}
+
 const lotRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transform((row): Lot => {
   const checkoutPricing = parseCheckoutPricing(row.checkoutPricing);
+  const imageAssets = parseGalleryImages(row.imageAssets);
 
   return {
     id: String(row.id),
@@ -52,7 +59,11 @@ const lotRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transfo
     description: row.description == null ? null : String(row.description),
     medium: nullableString(row.medium),
     dimensions: nullableString(row.dimensions),
+    photoIncludesFrame: row.photoIncludesFrame === true,
+    framedWidthCm: positiveNumberOrNull(row.framedWidthCm),
+    framedHeightCm: positiveNumberOrNull(row.framedHeightCm),
     images: zStringArrayFromUnknown.parse(row.images),
+    ...(imageAssets !== undefined ? { imageAssets } : {}),
     categoryId: String(row.categoryId ?? ""),
     auctionType: row.auctionType as Lot["auctionType"],
     startingPrice:

@@ -17,6 +17,8 @@ import type {
   HomePageData,
   HomeUrgencySection,
 } from "@/components/sections/home/get-home-data.types";
+import { getHomeHangSales } from "@/components/sections/home/get-home-hang";
+import { fetchHomeLots, fetchHomeSales } from "@/components/sections/home/home-fetchers";
 import { lotsEndingSoon, nextUpcomingLots } from "@/components/sections/home/home-urgency-helpers";
 import {
   type LotCardVM,
@@ -24,20 +26,15 @@ import {
   toEndingSoonLotCardVMs,
   toHomeUpcomingAuctionTileVMs,
 } from "@/components/sections/home/home-view-models";
-import {
-  CATALOGUE_FETCH_POLICIES,
-  buildLotListQuery,
-  catalogueFetch,
-} from "@/lib/catalog/catalog.server";
 import type { ListLotsParams } from "@/lib/data/contracts";
-import { getServerApiBase } from "@/lib/data/http/hc-server";
-import { parseLot } from "@/lib/data/http/parse";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
+import { buildHomeHang, hangSaleIds, planHomeHang } from "@/lib/hang/home-hang";
 import { resolveHomeHeroState } from "@/lib/home-hero-policy";
-import { type SaleListRow, parseSaleListRowApiPayload } from "@/lib/sale-list-row";
+import type { SaleListRow } from "@/lib/sale-list-row";
 import { lotPath } from "@/lib/seo/url";
 import { type HomeStateResult, resolveHomeState } from "@auction/domain";
+import { HANG_MAX_WORKS } from "@auction/marketing-ui";
 import type { Lot, Sale } from "@auction/types";
 import { cache } from "react";
 
@@ -54,55 +51,12 @@ export type {
   HomeUrgencySection,
 } from "@/components/sections/home/get-home-data.types";
 
-type HomeSaleListQuery = {
-  status?: Sale["status"];
-  statuses?: Sale["status"][];
-  categoryId?: string;
-  limit?: number;
-  offset?: number;
-  sort?: "createdDesc" | "startAsc" | "endDesc";
-};
-
 function jsonLdListEntriesFromLots(lots: Lot[]): HomeJsonLdListEntry[] {
   return lots.map((lot) => ({ title: lot.title, href: lotPath(lot) }));
 }
 
 function jsonLdListEntriesFromLotCardVMs(vms: LotCardVM[]): HomeJsonLdListEntry[] {
   return vms.map((l) => ({ title: l.title, href: l.href }));
-}
-
-function buildHomeSalesQuery(params: HomeSaleListQuery): Record<string, string> {
-  const q: Record<string, string> = {
-    limit: String(params.limit ?? 24),
-    offset: String(params.offset ?? 0),
-  };
-  if (params.statuses?.length) q.statuses = params.statuses.join(",");
-  else if (params.status) q.status = params.status;
-  if (params.categoryId) q.categoryId = params.categoryId;
-  if (params.sort) q.sort = params.sort;
-  return q;
-}
-
-async function fetchHomeLots(params: ListLotsParams): Promise<Lot[]> {
-  const qs = new URLSearchParams(buildLotListQuery(params));
-  const res = await catalogueFetch(
-    `${getServerApiBase()}/lots?${qs.toString()}`,
-    CATALOGUE_FETCH_POLICIES.home,
-  );
-  if (!res.ok) throw new Error(`Failed to list home lots: ${res.status}`);
-  const body = (await res.json()) as { data: unknown[] };
-  return body.data.map(parseLot);
-}
-
-async function fetchHomeSales(params: HomeSaleListQuery = {}): Promise<SaleListRow[]> {
-  const qs = new URLSearchParams(buildHomeSalesQuery(params));
-  const res = await catalogueFetch(
-    `${getServerApiBase()}/sales?${qs.toString()}`,
-    CATALOGUE_FETCH_POLICIES.home,
-  );
-  if (!res.ok) throw new Error(`Failed to list home sales: ${res.status}`);
-  const body = (await res.json()) as { data: unknown[] };
-  return body.data.map(parseSaleListRowApiPayload);
 }
 
 function liveNowLots(lots: Lot[]): Lot[] {
@@ -187,14 +141,27 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
 
   const endingSoon = lotsEndingSoon(activeLots);
   const choice = chooseUrgencyLots(activeLots, endingSoon, scheduledLots);
-  const { rail, more } = allocateHomePageLots({
+  const now = new Date();
+  const hangPlan = planHomeHang(
+    homeState,
+    await getHomeHangSales(hangSaleIds(homeState), [...salesRows, ...endedRows]),
+  );
+  const {
+    hang: hangLots,
+    rail,
+    more,
+  } = allocateHomePageLots({
     railLots: choice.lots,
     pool: buildHomeCatalogLotPool(activeLots, scheduledLots),
     moreLimit: HOME_MORE_LOTS_LIMIT,
     featuredLotIds: leadSale?.featuredLotIds ?? [],
+    hangLots: hangPlan?.candidates ?? [],
+    hangLimit: HANG_MAX_WORKS,
   });
+  const hang = buildHomeHang(hangPlan, hangLots, now);
   const urgencySection: HomeUrgencySection = {
-    variant: choice.variant,
+    // The hang may have taken every lot of the sale; an empty rail is hidden, not shown empty.
+    variant: rail.length > 0 ? choice.variant : "none",
     lots: toEndingSoonLotCardVMs(rail),
   };
   const urgencyLotIds = new Set(rail.map((lot) => lot.id));
@@ -215,6 +182,7 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
 
   return {
     homeState,
+    hang,
     heroState,
     jsonLdListFallback,
     urgencySection,
