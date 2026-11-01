@@ -4,7 +4,7 @@ import {
   parseSocketRevocationPayloadV1,
 } from "@auction/identity-contracts";
 import { captureBackgroundError } from "@auction/observability";
-import { parseLotRealtimeRedisMessage } from "@auction/validators";
+import { lotLiveDeliveries, parseLotRealtimeRedisMessage } from "@auction/validators";
 import type { Redis } from "ioredis";
 import type { Server, Socket } from "socket.io";
 
@@ -52,6 +52,25 @@ function parseJsonMessage(message: string): Record<string, unknown> | null {
     return parsed as Record<string, unknown>;
   } catch {
     return null;
+  }
+}
+
+/**
+ * The lot page's own events (`lot.extended`, `lot.closed`, `viewer.outbid`), sent alongside the
+ * price and state events older clients already listen for. An outbid notice goes only to the
+ * displaced bidder's personal room.
+ */
+function deliverLotLiveEvents(
+  io: Server,
+  lotRoom: string,
+  message: unknown,
+  now = new Date(),
+): void {
+  const parsed = parseLotRealtimeRedisMessage(message);
+  if (!parsed) return;
+  for (const delivery of lotLiveDeliveries(parsed, now)) {
+    const target = delivery.audience === "user" ? `user:${delivery.userId}` : lotRoom;
+    io.to(target).emit(delivery.event, delivery.payload);
   }
 }
 
@@ -112,6 +131,7 @@ const channelRouters: ChannelRouter[] = [
           });
         return;
       }
+      deliverLotLiveEvents(io, room, validated);
       if (payload.type === "bid_placed") {
         io.to(room).emit("bidUpdate", payload);
       } else if (payload.type === "lot_extended") {

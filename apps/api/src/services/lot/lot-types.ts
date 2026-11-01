@@ -23,10 +23,19 @@ import { LOT_CANCELLABLE_STATUSES } from "@auction/domain";
 
 export const CANCELLABLE = LOT_CANCELLABLE_STATUSES;
 
-export type LotBidPublicApiRow = Omit<Bid, "placedByUserId"> & {
-  bidderRef: string;
-  placedByUserId: string | null;
-};
+/** Fields that identify who bid or how; only staff and the bidder themselves ever see them. */
+type BidIdentityField =
+  | "bidderId"
+  | "buyerLegalEntityId"
+  | "telephoneBookingId"
+  | "clerkUserId"
+  | "placedByUserId";
+
+export type LotBidPublicApiRow = Omit<Bid, BidIdentityField> &
+  Partial<Pick<Bid, Exclude<BidIdentityField, "placedByUserId">>> & {
+    bidderRef: string;
+    placedByUserId: string | null;
+  };
 
 export type ListBidsForPublicApiResult =
   | { kind: "not_found" }

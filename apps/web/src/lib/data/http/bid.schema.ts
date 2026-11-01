@@ -8,8 +8,13 @@ const bidRowSchema = z.preprocess(toObjectRecord, z.record(z.unknown())).transfo
     row.placedByUserId == null || row.placedByUserId === ""
       ? undefined
       : String(row.placedByUserId);
+  // A public row names no bidder; its per-lot reference keeps one bidder apart from another.
+  const bidderRef =
+    row.bidderRef == null || row.bidderRef === "" ? undefined : String(row.bidderRef);
   const bidderId =
-    row.bidderId == null || row.bidderId === "" ? placedByUserId : String(row.bidderId);
+    row.bidderId == null || row.bidderId === ""
+      ? (placedByUserId ?? bidderRef)
+      : String(row.bidderId);
   const placedVia = zNullableStringFromEmpty.parse(row.placedVia);
   const clerkUserId = zNullableStringFromEmpty.parse(row.clerkUserId);
 
