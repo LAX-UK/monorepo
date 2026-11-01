@@ -9,6 +9,8 @@ import { type NewsletterSubscribeInput, newsletterSubscribeSchema } from "@aucti
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 
+const ON_DARK_FOCUS = "[--color-lax-focus:#fff] [--lax-focus:#fff]";
+
 type Props = {
   /** `onDark` for use on the near-black home hero. */
   tone?: "default" | "onDark";
@@ -53,7 +55,11 @@ export function NewsletterSignupForm({ tone = "default" }: Props) {
   return (
     <form
       onSubmit={onSubmit}
-      className="mx-auto flex w-full max-w-[420px] flex-col gap-3 text-left"
+      className={cn(
+        "mx-auto flex w-full max-w-[420px] flex-col gap-3 text-left",
+        // The focus outline is ink by default, which vanishes on the near-black hero ground: draw it white here.
+        onDark && ON_DARK_FOCUS,
+      )}
       noValidate
     >
       {bannerError ? <Notice tone="danger" alert title={bannerError} /> : null}
