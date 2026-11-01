@@ -414,6 +414,11 @@ export type {
   WatchlistPageSort,
   WatchlistRow,
 } from "./watchlist.repository.js";
+export type {
+  IWatchlistReminderRepository,
+  PendingWatchlistReminder,
+  WatchlistReminderRow,
+} from "./watchlist-reminder.repository.js";
 
 export type {
   ArtistWatchlistRow,

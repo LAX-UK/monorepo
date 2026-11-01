@@ -1,5 +1,11 @@
 import type { SaleCardCommon } from "@/components/sections/sales/card/types";
 import { atgDisplaySale } from "@/lib/catalog/atg-catalog-display";
+import {
+  formatLondonDateRange,
+  formatLondonTimeWithZone,
+  formatLondonWeekday,
+  londonDayKey,
+} from "@/lib/datetime/london-time";
 import { formatMoney } from "@/lib/format-currency";
 import { type SaleListRow, formatSaleItemsLabel, formatSaleLotsLabel } from "@/lib/sale-list-row";
 import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
@@ -16,9 +22,9 @@ export type SaleCalendarCardVM = {
   title: string;
   coverImageUrl: string | null;
   coverImageAlt: string;
-  /** Uppercased date range only, e.g. "9–16 APRIL 2026". */
+  /** Date range in London time, e.g. "9–16 Apr 2026". */
   dateRangeLabel: string;
-  /** Uppercased start time with zone, e.g. "11:00 AM GMT". */
+  /** Start time in London time with its zone, e.g. "11:00 GMT". */
   timeLabel: string;
   /** Combined line for JSON-LD / legacy consumers. */
   dateLabel: string;
@@ -34,36 +40,6 @@ export type SaleCalendarCardVM = {
   resultsSummary?: { hammer?: string; total?: string };
   deliveryMode: Sale["deliveryMode"];
 };
-
-function formatTimeLine(start: Date, locale = "en-GB"): string {
-  return new Intl.DateTimeFormat(locale, {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZoneName: "short",
-  }).format(start);
-}
-
-function formatDateRangeLine(start: Date, end: Date, locale = "en-GB"): string {
-  const startDay = start.getDate();
-  const endDay = end.getDate();
-  const startMonth = start.getMonth();
-  const endMonth = end.getMonth();
-  const startYear = start.getFullYear();
-  const endYear = end.getFullYear();
-
-  const mon = new Intl.DateTimeFormat(locale, { month: "long" });
-  if (startYear === endYear && startMonth === endMonth && startDay === endDay) {
-    return `${startDay} ${mon.format(start)} ${startYear}`;
-  }
-  if (startYear === endYear && startMonth === endMonth) {
-    return `${startDay}–${endDay} ${mon.format(start)} ${startYear}`;
-  }
-  if (startYear === endYear) {
-    return `${startDay} ${mon.format(start)} – ${endDay} ${mon.format(end)} ${startYear}`;
-  }
-  return `${startDay} ${mon.format(start)} ${startYear} – ${endDay} ${mon.format(end)} ${endYear}`;
-}
 
 function mapDeliveryToAuctionTypeLabel(mode: Sale["deliveryMode"]): string {
   return getSaleTypePresentation(mode).title;
@@ -85,17 +61,14 @@ function deriveCategoryLabel(sale: Sale): string | undefined {
   return candidate?.trim() || undefined;
 }
 
-export function mapSaleToCalendarCardVM(
-  row: SaleListRow,
-  listLocale = "en-GB",
-): SaleCalendarCardVM {
+export function mapSaleToCalendarCardVM(row: SaleListRow): SaleCalendarCardVM {
   const { lots, lotCount } = row;
   const sale = atgDisplaySale(row.sale);
   const start = toDisplayDate(sale.startTime);
   const end = toDisplayDate(sale.endTime);
-  const dateRangeLabel = formatDateRangeLine(start, end, listLocale).toUpperCase();
-  const timeLabel = formatTimeLine(start, listLocale).toUpperCase();
-  const dateLabel = `${dateRangeLabel} | ${timeLabel}`;
+  const dateRangeLabel = formatLondonDateRange(start, end);
+  const timeLabel = formatLondonTimeWithZone(start);
+  const dateLabel = `${dateRangeLabel} · ${timeLabel}`;
 
   const itemsLabel = formatSaleItemsLabel(lotCount);
 
@@ -132,7 +105,7 @@ export function mapSaleToCalendarCardVM(
 export type FeaturedAuctionCardVM = SaleCardCommon & {
   deliveryMode: Sale["deliveryMode"];
   auctionTypeLabel: string;
-  /** Uppercase schedule line, e.g. "9–16 APRIL 2026 | 11:00 AM GMT". */
+  /** Schedule line, e.g. "9–16 Apr 2026 · 11:00 GMT". */
   dateLabel: string;
   locationLabel: string | null;
   itemsLabel: string;
@@ -155,57 +128,19 @@ export type CalendarGridCardVM = FeaturedAuctionCardVM & {
   showRegisterButton: boolean;
 };
 
-function formatDateRangeHyphenCase(start: Date, end: Date, locale = "en-GB"): string {
-  const startDay = start.getDate();
-  const endDay = end.getDate();
-  const startMonth = start.getMonth();
-  const endMonth = end.getMonth();
-  const startYear = start.getFullYear();
-  const endYear = end.getFullYear();
-  const mon = new Intl.DateTimeFormat(locale, { month: "long" });
-  if (startYear === endYear && startMonth === endMonth && startDay === endDay) {
-    return `${startDay}-${mon.format(start)} ${startYear}`;
-  }
-  if (startYear === endYear && startMonth === endMonth) {
-    return `${startDay}-${endDay} ${mon.format(start)} ${startYear}`;
-  }
-  if (startYear === endYear) {
-    return `${startDay} ${mon.format(start)} – ${endDay} ${mon.format(end)} ${startYear}`;
-  }
-  return `${startDay} ${mon.format(start)} ${startYear} – ${endDay} ${mon.format(end)} ${endYear}`;
-}
-
-function formatTimeLineShort(start: Date, locale = "en-GB"): string {
-  return new Intl.DateTimeFormat(locale, {
-    hour: "numeric",
-    minute: "2-digit",
-    hour12: true,
-    timeZoneName: "short",
-  }).format(start);
-}
-
-/** Row schedule: "Online Auction " + "| 9-16 April 2026 | 11 AM BST" style. */
-function buildRowScheduleParts(
-  sale: Sale,
-  _lots: Lot[],
-  listLocale = "en-GB",
-): { lead: string; rest: string } {
+/** Row schedule: "Online auction " + "· 9–16 Apr 2026 · 11:00 BST". */
+function buildRowScheduleParts(sale: Sale): { lead: string; rest: string } {
   const start = toDisplayDate(sale.startTime);
   const end = toDisplayDate(sale.endTime);
-  const datePart = formatDateRangeHyphenCase(start, end, listLocale);
-  const timePart = formatTimeLineShort(start, listLocale);
   const type = mapDeliveryToAuctionTypeLabel(sale.deliveryMode);
   return {
     lead: `${type} `,
-    rest: `| ${datePart} | ${timePart}`,
+    rest: `· ${formatLondonDateRange(start, end)} · ${formatLondonTimeWithZone(start)}`,
   };
 }
 
-export function mapSaleToFeaturedAuctionCardVM(
-  row: SaleListRow,
-  listLocale = "en-GB",
-): FeaturedAuctionCardVM {
-  const base = mapSaleToCalendarCardVM(row, listLocale);
+export function mapSaleToFeaturedAuctionCardVM(row: SaleListRow): FeaturedAuctionCardVM {
+  const base = mapSaleToCalendarCardVM(row);
   return {
     id: base.id,
     href: base.href,
@@ -226,9 +161,8 @@ export function mapSaleToFeaturedAuctionCardVM(
 export function mapSaleToCalendarGridCardVM(
   row: SaleListRow,
   opts: { showRegisterButton: boolean },
-  listLocale = "en-GB",
 ): CalendarGridCardVM {
-  const featured = mapSaleToFeaturedAuctionCardVM(row, listLocale);
+  const featured = mapSaleToFeaturedAuctionCardVM(row);
   return {
     ...featured,
     lotsHref: salePath(row.sale),
@@ -244,11 +178,11 @@ export type SaleAgendaItemVM = {
   status: Sale["status"];
   /** ISO start used to group rows by month and order within a day. */
   startIso: string;
-  /** Day-of-month, e.g. "9". */
+  /** London day of the month, e.g. "9". */
   dayLabel: string;
-  /** Short weekday, e.g. "WED". */
+  /** Short weekday, e.g. "Wed". */
   weekdayLabel: string;
-  /** Uppercase start time with zone, e.g. "11:00 AM GMT". */
+  /** Start time in London time with its zone, e.g. "11:00 GMT". */
   timeLabel: string;
   auctionTypeLabel: string;
   itemsLabel: string;
@@ -259,7 +193,7 @@ export type SaleAgendaItemVM = {
   countdownEndIso?: string;
 };
 
-export function mapSaleToAgendaItemVM(row: SaleListRow, listLocale = "en-GB"): SaleAgendaItemVM {
+export function mapSaleToAgendaItemVM(row: SaleListRow): SaleAgendaItemVM {
   const { lotCount } = row;
   const sale = atgDisplaySale(row.sale);
   const start = toDisplayDate(sale.startTime);
@@ -273,11 +207,9 @@ export function mapSaleToAgendaItemVM(row: SaleListRow, listLocale = "en-GB"): S
     status: sale.status,
     deliveryMode: sale.deliveryMode,
     startIso,
-    dayLabel: String(start.getDate()),
-    weekdayLabel: new Intl.DateTimeFormat(listLocale, { weekday: "short" })
-      .format(start)
-      .toUpperCase(),
-    timeLabel: formatTimeLineShort(start, listLocale).toUpperCase(),
+    dayLabel: String(Number(londonDayKey(start).slice(8, 10))),
+    weekdayLabel: formatLondonWeekday(start),
+    timeLabel: formatLondonTimeWithZone(start),
     auctionTypeLabel: mapDeliveryToAuctionTypeLabel(sale.deliveryMode),
     itemsLabel: formatSaleLotsLabel(lotCount),
     locationLabel: saleMarketingLocationLabel(sale),
@@ -289,11 +221,10 @@ export function mapSaleToAgendaItemVM(row: SaleListRow, listLocale = "en-GB"): S
 export function mapSaleToAuctionRowVM(
   row: SaleListRow,
   opts: { showRegisterButton: boolean },
-  listLocale = "en-GB",
 ): SaleAuctionRowVM {
-  const { lots, lotCount } = row;
+  const { lotCount } = row;
   const sale = atgDisplaySale(row.sale);
-  const { lead, rest } = buildRowScheduleParts(sale, lots, listLocale);
+  const { lead, rest } = buildRowScheduleParts(sale);
   const itemsLabel = formatSaleItemsLabel(lotCount);
   const countdownEndIso = toSaleCountdownEndIso(sale);
   const endTimeIso = toOptionalIsoString(sale.endTime);
@@ -307,7 +238,7 @@ export function mapSaleToAuctionRowVM(
     coverImageAlt: sale.title,
     scheduleLead: lead,
     scheduleRest: rest,
-    auctionTypeLine: mapDeliveryToAuctionTypeLabel(sale.deliveryMode).toUpperCase(),
+    auctionTypeLine: mapDeliveryToAuctionTypeLabel(sale.deliveryMode),
     itemsLabel,
     status: sale.status,
     showRegisterButton: opts.showRegisterButton,

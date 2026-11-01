@@ -7,9 +7,10 @@ import {
   watchlistBodySchema,
   watchlistLotIdParamSchema,
   watchlistQuerySchema,
+  watchlistReminderBodySchema,
 } from "@auction/validators";
 import { marketingWebsiteContextFromHono } from "../../lib/marketing-website-context.js";
-import { respondUserHttpJson } from "../../lib/user-route-response.js";
+import { respondUserHttpJson, respondUserRouteOutcome } from "../../lib/user-route-response.js";
 import { zValidator } from "../../lib/z-validator.js";
 import type { UserHono, UserRouteDeps } from "./_shared.js";
 
@@ -21,6 +22,44 @@ export function attachUserWatchlistRoutes(r: UserHono, deps: UserRouteDeps): voi
     const response = await container.userRoutes.watchlistHttp.listWatchlistIds({ userId });
     return respondUserHttpJson(c, response);
   });
+
+  /** The person's reminders and notes on watched lots, one per lot that has one. */
+  r.get("/me/watchlist/reminders", requireAuth, async (c) => {
+    const userId = c.get("userId") as string;
+    return respondUserRouteOutcome(
+      c,
+      await container.userRoutes.watchlistRemindersHttp.list(userId),
+    );
+  });
+
+  r.put(
+    "/me/watchlist/:lotId/reminder",
+    requireAuth,
+    zValidator("param", watchlistLotIdParamSchema),
+    zValidator("json", watchlistReminderBodySchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { lotId } = c.req.valid("param");
+      const outcome = await container.userRoutes.watchlistRemindersHttp.set(
+        userId,
+        lotId,
+        c.req.valid("json"),
+      );
+      return respondUserRouteOutcome(c, outcome);
+    },
+  );
+
+  r.delete(
+    "/me/watchlist/:lotId/reminder",
+    requireAuth,
+    zValidator("param", watchlistLotIdParamSchema),
+    async (c) => {
+      const userId = c.get("userId") as string;
+      const { lotId } = c.req.valid("param");
+      const outcome = await container.userRoutes.watchlistRemindersHttp.clear(userId, lotId);
+      return respondUserRouteOutcome(c, outcome);
+    },
+  );
 
   r.get("/me/watchlist", requireAuth, zValidator("query", watchlistQuerySchema), async (c) => {
     const userId = c.get("userId") as string;

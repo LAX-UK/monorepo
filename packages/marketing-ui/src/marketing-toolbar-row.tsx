@@ -44,9 +44,9 @@ export function MarketingToolbarRow({
 
   // A count is never truncated ("8 availab…"): it keeps its width and the controls beside it wrap.
   const countClassName = hideFiltersOnMobile
-    ? "shrink-0 whitespace-nowrap font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant tabular-nums"
+    ? "shrink-0 whitespace-nowrap font-label text-xs font-medium text-on-surface-variant tabular-nums"
     : countLabel
-      ? "shrink-0 whitespace-nowrap font-label text-[length:var(--text-label-1)] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant tabular-nums"
+      ? "shrink-0 whitespace-nowrap font-label text-xs font-medium text-on-surface-variant tabular-nums"
       : "";
 
   return (

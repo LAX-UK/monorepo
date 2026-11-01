@@ -1,8 +1,8 @@
 /** Accordion `value` + human label for the sales calendar filter sidebar (data only). */
 export const SALES_FILTER_SIDEBAR_GROUPS = [
-  { value: "delivery", title: "Auction Type" },
+  { value: "delivery", title: "Auction type" },
   { value: "location", title: "Location" },
-  { value: "sort", title: "Sort by Date" },
+  { value: "sort", title: "Sort by date" },
   { value: "price", title: "Price" },
   { value: "department", title: "Department" },
   { value: "month", title: "Month" },

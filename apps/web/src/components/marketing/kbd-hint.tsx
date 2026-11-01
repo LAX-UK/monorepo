@@ -8,7 +8,7 @@ export function KbdHint({ className, children, ...rest }: KbdHintProps) {
   return (
     <kbd
       className={cn(
-        "rounded border border-brand-300/80 bg-transparent px-1.5 py-0.5 font-mono text-[0.65rem] font-medium text-brand-900 transition-colors duration-300 motion-reduce:transition-none dark:border-outline-variant/50 dark:text-on-surface sm:inline",
+        "rounded border border-brand-300/80 bg-transparent px-1.5 py-0.5 font-mono text-xs font-medium text-brand-900 transition-colors duration-300 motion-reduce:transition-none dark:border-outline-variant/50 dark:text-on-surface sm:inline",
         className,
       )}
       {...rest}

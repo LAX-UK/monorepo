@@ -1,5 +1,6 @@
 import { SaleAgendaLiveCountdown } from "@/components/sections/sales/sale-agenda-live-countdown";
 import type { SaleAgendaItemVM } from "@/components/sections/sales/sales-view-models";
+import { formatLondonMonthYear, londonDayKey } from "@/lib/datetime/london-time";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { LiveDot, cn } from "@auction/ui";
 import { ChevronRight } from "lucide-react";
@@ -12,12 +13,11 @@ type MonthBucket = {
 };
 
 function monthKey(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+  return londonDayKey(new Date(iso)).slice(0, 7);
 }
 
 function monthLabel(iso: string): string {
-  return new Intl.DateTimeFormat("en-GB", { month: "long", year: "numeric" }).format(new Date(iso));
+  return formatLondonMonthYear(new Date(iso));
 }
 
 function groupByMonth(items: readonly SaleAgendaItemVM[]): MonthBucket[] {
@@ -62,19 +62,19 @@ export function SalesCalendarMonthGrid({ items }: { items: readonly SaleAgendaIt
                       <span className="font-headline text-2xl font-semibold leading-none text-on-surface tabular-nums">
                         {item.dayLabel}
                       </span>
-                      <span className="mt-1 font-label text-[0.6rem] font-bold uppercase tracking-wider text-on-surface-variant">
+                      <span className="mt-1 font-label text-xs font-medium text-on-surface-variant">
                         {item.weekdayLabel}
                       </span>
                     </div>
                     <div className="flex min-w-0 flex-1 flex-col justify-center gap-1">
                       <div className="flex items-center gap-2">
                         {isLive ? (
-                          <span className="inline-flex items-center gap-1 font-label text-[0.6rem] font-bold uppercase tracking-wider text-cta-bg">
+                          <span className="inline-flex items-center gap-1 font-label text-xs font-medium text-cta-bg">
                             <LiveDot className="live-dot-pulse h-1.5 w-1.5" />
                             Live
                           </span>
                         ) : null}
-                        <span className="truncate font-label text-[0.65rem] font-semibold uppercase tracking-wider text-on-surface-variant">
+                        <span className="truncate font-label text-xs font-medium text-on-surface-variant">
                           {item.auctionTypeLabel}
                         </span>
                       </div>
@@ -104,7 +104,7 @@ export function SalesCalendarMonthGrid({ items }: { items: readonly SaleAgendaIt
                             : {})}
                         />
                       ) : isEnded ? (
-                        <span className="hidden font-label text-[0.65rem] font-semibold uppercase tracking-wider text-on-surface-variant sm:inline">
+                        <span className="hidden font-label text-xs font-medium text-on-surface-variant sm:inline">
                           Results
                         </span>
                       ) : null}

@@ -4,6 +4,7 @@ import { classifyLotTimerState } from "@/components/lot-timer";
 import { useNow } from "@/hooks/use-now";
 import { useOnlineLotLifecycle } from "@/lib/context/online-lot-lifecycle";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
+import { formatLondonDateTime } from "@/lib/datetime/london-time";
 import { formatCountdownForDisplay } from "@/lib/format-countdown";
 import { type LotLifecycle, classifyLotLifecycle } from "@/lib/lot/lot-lifecycle";
 import type { Lot, PublicLotView, Sale } from "@auction/types";
@@ -74,15 +75,12 @@ export function useLotCountdown({
 
   const remainingLabel = now != null ? formatCountdownForDisplay(endTime - now) : "";
 
-  const saleEndLocalLabel = useMemo(() => {
-    const d = new Date(endTime);
-    return d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
-  }, [endTime]);
+  const saleEndLocalLabel = useMemo(() => formatLondonDateTime(new Date(endTime)), [endTime]);
 
-  const saleStartLocalLabel = useMemo(() => {
-    const d = new Date(startTimeMs);
-    return d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
-  }, [startTimeMs]);
+  const saleStartLocalLabel = useMemo(
+    () => formatLondonDateTime(new Date(startTimeMs)),
+    [startTimeMs],
+  );
 
   const timerState = useMemo(
     () =>

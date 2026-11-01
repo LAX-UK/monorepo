@@ -15,7 +15,7 @@ describe("SalesPrimaryTabs", () => {
   it("renders all five section tabs", () => {
     render(<SalesPrimaryTabs state={baseState} />);
     expect(screen.getByRole("link", { name: /^Upcoming$/i })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: /Live Now/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Live now/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Auction Results/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /New Lots/i })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Private Sales/i })).toBeInTheDocument();
@@ -23,7 +23,7 @@ describe("SalesPrimaryTabs", () => {
 
   it("marks the active tab with aria-current=page", () => {
     render(<SalesPrimaryTabs state={{ ...baseState, tab: "live" }} />);
-    expect(screen.getByRole("link", { name: /Live Now/i })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: /Live now/i })).toHaveAttribute("aria-current", "page");
     expect(screen.getByRole("link", { name: /^Upcoming$/i })).not.toHaveAttribute("aria-current");
   });
 
@@ -38,10 +38,10 @@ describe("SalesPrimaryTabs", () => {
     expect(screen.getByRole("link", { name: /^Upcoming$/i })).toHaveClass("snap-start");
   });
 
-  it("puts Live Now first when hasLiveSales is true", () => {
+  it("puts Live now first when hasLiveSales is true", () => {
     render(<SalesPrimaryTabs state={{ ...baseState, tab: "live" }} hasLiveSales />);
     const links = screen.getAllByRole("link");
-    expect(links[0]).toHaveTextContent("Live Now");
+    expect(links[0]).toHaveTextContent("Live now");
     expect(links[1]).toHaveTextContent("Upcoming");
   });
 

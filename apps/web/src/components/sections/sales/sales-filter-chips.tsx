@@ -38,7 +38,7 @@ export function SalesFilterChips({ state, categories }: Props) {
       ? getSaleDeliveryModeLabel("online")
       : state.deliveryMode === "onsite"
         ? getSaleDeliveryModeLabel("onsite")
-        : "Auction Type";
+        : "Auction type";
 
   const locationLabel =
     state.location === "all"

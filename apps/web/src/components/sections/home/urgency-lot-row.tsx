@@ -107,14 +107,14 @@ export function UrgencyLotRow({
             >
               {item.title}
             </Link>
-            <p className="text-xs font-light leading-4 text-on-surface-variant">
+            <p className="text-xs font-normal leading-4 text-on-surface-variant">
               {item.artistName}
             </p>
 
             {rows ? (
               <div className="flex flex-col gap-3">
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] font-normal uppercase leading-4 tracking-wide text-on-surface-variant">
+                  <span className="text-xs font-normal leading-4 text-on-surface-variant">
                     {rows.estimate.label}
                   </span>
                   <span className="text-sm font-semibold leading-5 text-on-surface">
@@ -122,7 +122,7 @@ export function UrgencyLotRow({
                   </span>
                 </div>
                 <div className="flex flex-col gap-0.5">
-                  <span className="text-[10px] font-normal uppercase leading-4 tracking-wide text-on-surface-variant">
+                  <span className="text-xs font-normal leading-4 text-on-surface-variant">
                     {rows.current.label}
                   </span>
                   <span className="text-base font-semibold tabular-nums leading-6 text-on-surface">
@@ -132,7 +132,7 @@ export function UrgencyLotRow({
               </div>
             ) : (
               <div className="flex flex-col gap-0.5">
-                <span className="text-[10px] font-normal uppercase leading-4 tracking-wide text-on-surface-variant">
+                <span className="text-xs font-normal leading-4 text-on-surface-variant">
                   {priceLabel}
                 </span>
                 <span className="text-sm font-semibold leading-5 text-on-surface">

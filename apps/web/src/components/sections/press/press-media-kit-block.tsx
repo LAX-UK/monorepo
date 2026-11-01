@@ -37,9 +37,7 @@ export function PressMediaKitBlock() {
         .
       </p>
       <div className="mt-6">
-        <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Brand assets
-        </p>
+        <p className="font-label text-xs text-on-surface-variant">Brand assets</p>
         <ul className="mt-3 flex flex-col gap-2 font-body text-sm">
           <li>
             <a href="/logo.svg" className={MARKETING_PROSE_LINK} download>
@@ -59,9 +57,7 @@ export function PressMediaKitBlock() {
         </ul>
       </div>
       <div className="mt-6">
-        <p className="font-label text-xs uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-          Further reading
-        </p>
+        <p className="font-label text-xs text-on-surface-variant">Further reading</p>
         <ul className="mt-3 flex flex-col gap-2 font-body text-sm">
           <li>
             <Link href="/about" className={MARKETING_PROSE_LINK}>

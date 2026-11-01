@@ -6,6 +6,7 @@ import { lotPath } from "@/lib/seo/url";
 import { matchesEveryWord, searchParam } from "@/lib/workspace/list-search";
 import type { Lot, LotStatus } from "@auction/types";
 import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
+import type { WatchedLotReminderVm } from "./watched-lot-reminder.vm";
 
 /** The views of Watching, in order. The ids are the page's `?tab=` values. */
 export const WATCHING_VIEWS = ["lots", "artists", "searches"] as const;
@@ -69,6 +70,10 @@ export type WatchedLotRowVm = {
   /** For sorting: when it closes, and when it was watched. */
   closesAt: number;
   watchedAt: number;
+  /** When the lot opens, for the reminder times. */
+  startsAt: number;
+  /** The person's reminder and note on it, when they set one. */
+  reminder: WatchedLotReminderVm | null;
 };
 
 function standingOf(lot: Lot, bid: MyBidStatus | null): WatchedLotStanding {
@@ -123,6 +128,8 @@ export function buildWatchedLots(input: {
         ended: ENDED.has(lot.status),
         closesAt: lot.endTime.getTime(),
         watchedAt: row.createdAt.getTime(),
+        startsAt: lot.startTime.getTime(),
+        reminder: null,
       },
     ];
   });
@@ -158,4 +165,21 @@ export function watchedLotsInView(
         ? 1
         : -1,
   );
+}
+
+type ReminderRead = {
+  lotId: string;
+  kind: WatchedLotReminderVm["kind"];
+  note: string | null;
+  sentAt: string | null;
+};
+
+/** Puts each lot's reminder on its row; a reminder already sent no longer shows. */
+export function withReminders(
+  rows: readonly WatchedLotRowVm[],
+  reminders: readonly ReminderRead[],
+): WatchedLotRowVm[] {
+  const pending = reminders.filter((r) => r.sentAt === null);
+  const byLot = new Map(pending.map((r) => [r.lotId, { kind: r.kind, note: r.note }]));
+  return rows.map((row) => ({ ...row, reminder: byLot.get(row.lotId) ?? null }));
 }

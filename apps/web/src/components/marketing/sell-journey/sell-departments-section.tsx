@@ -50,7 +50,7 @@ function DepartmentCard({ dept }: { dept: SellDepartment }) {
             ) : null}
           </div>
         </div>
-        <p className="mt-3 font-label text-[10px] font-semibold uppercase tracking-[0.14em] text-secondary">
+        <p className="mt-3 font-label text-xs font-medium text-on-surface-variant">
           {departmentAffordance()}
         </p>
       </SellCtaLink>
@@ -70,9 +70,7 @@ export function SellDepartmentsSection() {
 
       {visibleSellDepartmentGroups().map((group) => (
         <div key={group.id} className="space-y-3">
-          <h3 className="font-label text-xs font-bold uppercase tracking-[0.16em] text-on-surface-variant">
-            {group.label}
-          </h3>
+          <h3 className="font-label text-xs font-medium text-on-surface-variant">{group.label}</h3>
           <ul className="grid gap-3 sm:grid-cols-2">
             {group.departments.map((dept) => (
               <DepartmentCard key={dept.id} dept={dept} />

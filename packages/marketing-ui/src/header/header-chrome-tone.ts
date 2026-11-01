@@ -90,7 +90,7 @@ export function headerProductLinkClass(
   extra?: string,
 ): string {
   return cn(
-    "font-label text-xs uppercase tracking-[0.22em]",
+    "font-label text-xs",
     tone === "on-dark"
       ? current
         ? "text-hero-foreground"

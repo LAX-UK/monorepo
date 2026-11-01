@@ -1,6 +1,7 @@
 import { formatMoney } from "@/lib/format-currency";
 import { lotShowsBidAction } from "@/lib/lot/lot-bid-action";
 import { lotDetailsReserveLine } from "@/lib/lot/reserve-presentation";
+import { lotAuctionTypeLabel } from "@/lib/presenters/lot-auction-type-presentation";
 import type { Lot, PublicLotView } from "@auction/types";
 import Link from "next/link";
 import { Fragment } from "react";
@@ -17,7 +18,7 @@ type Props = {
   variant?: "default" | "accordion";
 };
 
-/** Figma “LOT DETAILS” block: catalog + reserve + open/close, plus policy links.
+/** Figma “Lot details” block: catalog + reserve + open/close, plus policy links.
  */
 export function LotDetailsInline({
   lot,
@@ -30,9 +31,12 @@ export function LotDetailsInline({
   const embedded = variant === "accordion";
   // Once the lot has ended the live figures (next bid, reserve progress) no longer apply.
   const biddingOpen = lotShowsBidAction(lot.status);
-  const specParts = [lot.auctionType.replaceAll("_", " "), lot.medium, lot.dimensions].filter(
-    Boolean,
-  );
+  // Medium and size read as the cataloguer wrote them; the auction type is a registry label.
+  const specParts = [
+    `${lotAuctionTypeLabel(lot.auctionType)} auction`,
+    lot.medium,
+    lot.dimensions,
+  ].filter(Boolean);
 
   return (
     <section
@@ -42,7 +46,7 @@ export function LotDetailsInline({
       {embedded ? null : (
         <h2
           id="inline-lot-details"
-          className="text-center text-lg font-medium uppercase leading-[21px] text-on-surface"
+          className="text-center text-lg font-medium leading-[21px] text-on-surface"
         >
           Lot details
         </h2>
@@ -58,7 +62,7 @@ export function LotDetailsInline({
             {specParts.map((p, i) => (
               <Fragment key={p}>
                 {i > 0 ? " · " : null}
-                <span className="capitalize">{p}</span>
+                <span>{p}</span>
               </Fragment>
             ))}
           </li>

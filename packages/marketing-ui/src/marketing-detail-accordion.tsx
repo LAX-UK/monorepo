@@ -38,7 +38,7 @@ export function MarketingDetailAccordion({
             value={item.id}
             className="border-b border-outline-variant/40"
           >
-            <AccordionTrigger className="min-h-11 py-4 text-left font-label text-sm font-semibold uppercase tracking-[0.1em] text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
+            <AccordionTrigger className="min-h-11 py-4 text-left font-label text-sm font-semibold text-on-surface hover:no-underline [&>svg]:size-5 [&>svg]:translate-y-0 [&>svg]:text-on-surface">
               {item.title}
             </AccordionTrigger>
             <AccordionContent>

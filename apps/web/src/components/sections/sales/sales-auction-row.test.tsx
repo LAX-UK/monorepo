@@ -14,7 +14,7 @@ function baseVm(over: Partial<SaleAuctionRowVM> = {}): SaleAuctionRowVM {
     scheduleLead: "Online Auction ",
     scheduleRest: "| 1 Jan 2026",
     auctionTypeLine: "ONLINE AUCTION",
-    itemsLabel: "3 Items",
+    itemsLabel: "3 items",
     status: "scheduled",
     showRegisterButton: false,
     ...over,

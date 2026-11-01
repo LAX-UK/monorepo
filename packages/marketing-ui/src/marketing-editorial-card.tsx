@@ -87,7 +87,7 @@ export function MarketingEditorialCard({
       <div className={LAYOUT_CLASS[layout].text}>
         <div className="flex flex-col gap-1">
           {kicker.length > 0 ? (
-            <p className="flex flex-wrap items-center font-label text-xs uppercase leading-[1.125rem] text-on-surface-variant">
+            <p className="flex flex-wrap items-center font-label text-xs leading-[1.125rem] text-on-surface-variant">
               {kicker.map((part, index) => (
                 <span
                   key={part}

@@ -67,7 +67,7 @@ export function LotBidPositionSummary({
       return shell(
         "primary",
         <>
-          <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+          <span className="font-label text-xs font-medium text-on-surface-variant">
             Your listing
           </span>
           <p className="mt-1">
@@ -80,7 +80,7 @@ export function LotBidPositionSummary({
       return shell(
         "neutral",
         <>
-          <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+          <span className="font-label text-xs font-medium text-on-surface-variant">
             Sign in to bid
           </span>
           <p className="mt-1 text-on-surface-variant">
@@ -99,7 +99,7 @@ export function LotBidPositionSummary({
       return shell(
         "neutral",
         <>
-          <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+          <span className="font-label text-xs font-medium text-on-surface-variant">
             Your position
           </span>
           <p className="mt-1 text-on-surface-variant">
@@ -112,7 +112,7 @@ export function LotBidPositionSummary({
       return shell(
         "warn",
         <>
-          <span className="inline-flex items-center gap-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-lot-orange">
+          <span className="inline-flex items-center gap-2 font-label text-xs font-medium text-lot-orange">
             <Gavel className="size-3.5 shrink-0" aria-hidden />
             High bid — reserve not met yet
           </span>
@@ -130,7 +130,7 @@ export function LotBidPositionSummary({
       return shell(
         "primary",
         <>
-          <span className="inline-flex items-center gap-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+          <span className="inline-flex items-center gap-2 font-label text-xs font-medium text-on-surface-variant">
             <Gavel className="size-3.5 shrink-0" aria-hidden />
             You&apos;re winning
           </span>
@@ -156,7 +156,7 @@ export function LotBidPositionSummary({
       return shell(
         "primary",
         <>
-          <span className="inline-flex items-center gap-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
+          <span className="inline-flex items-center gap-2 font-label text-xs font-medium text-on-surface-variant">
             <Shield className="size-3.5 shrink-0" aria-hidden />
             Winning · auto-bid defending
           </span>
@@ -179,9 +179,7 @@ export function LotBidPositionSummary({
       return shell(
         "error",
         <>
-          <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-error">
-            You&apos;ve been outbid
-          </span>
+          <span className="font-label text-xs font-medium text-error">You&apos;ve been outbid</span>
           <p className="mt-1 text-on-surface-variant">
             Another bidder is ahead. Place a higher bid or raise your auto-bid max to retake the
             lead.
@@ -208,9 +206,7 @@ export function LotBidPositionSummary({
       return shell(
         "warn",
         <>
-          <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-lot-orange">
-            Behind the leader
-          </span>
+          <span className="font-label text-xs font-medium text-lot-orange">Behind the leader</span>
           <p className="mt-1 text-on-surface-variant">
             You&apos;ve bid on this lot but aren&apos;t the high bidder. Bid again or raise your
             auto-bid max.
@@ -237,9 +233,7 @@ export function LotBidPositionSummary({
       return shell(
         "primary",
         <>
-          <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary">
-            You won
-          </span>
+          <span className="font-label text-xs font-medium text-on-surface-variant">You won</span>
           <p className="mt-1">{position.hammerLabel}</p>
           <Link
             href="/purchases#payment-history"
@@ -254,9 +248,7 @@ export function LotBidPositionSummary({
       return shell(
         "neutral",
         <>
-          <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-            Lot sold
-          </span>
+          <span className="font-label text-xs font-medium text-on-surface-variant">Lot sold</span>
           <p className="mt-1 text-on-surface-variant">{position.hammerLabel}</p>
         </>,
       );
@@ -265,9 +257,7 @@ export function LotBidPositionSummary({
       return shell(
         "neutral",
         <>
-          <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-            No sale
-          </span>
+          <span className="font-label text-xs font-medium text-on-surface-variant">No sale</span>
           <p className="mt-1 text-on-surface-variant">
             {position.noSaleReason
               ? resolveNoSaleSummaryCopy({
@@ -282,9 +272,7 @@ export function LotBidPositionSummary({
       return shell(
         "neutral",
         <>
-          <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-            Cancelled
-          </span>
+          <span className="font-label text-xs font-medium text-on-surface-variant">Cancelled</span>
           <p className="mt-1 text-on-surface-variant">This lot was cancelled.</p>
         </>,
       );
@@ -293,9 +281,7 @@ export function LotBidPositionSummary({
       return shell(
         "neutral",
         <>
-          <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-            Withdrawn
-          </span>
+          <span className="font-label text-xs font-medium text-on-surface-variant">Withdrawn</span>
           <p className="mt-1 text-on-surface-variant">This lot was withdrawn from the sale.</p>
         </>,
       );
@@ -304,9 +290,7 @@ export function LotBidPositionSummary({
       return shell(
         "warn",
         <>
-          <span className="font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-lot-orange">
-            Preview
-          </span>
+          <span className="font-label text-xs font-medium text-lot-orange">Preview</span>
           <p className="mt-1 text-on-surface-variant">
             Catalogue preview — online bidding opens when the sale is published.
           </p>
@@ -317,7 +301,7 @@ export function LotBidPositionSummary({
       return shell(
         "warn",
         <>
-          <span className="inline-flex items-center gap-2 font-label text-xs font-bold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-lot-orange">
+          <span className="inline-flex items-center gap-2 font-label text-xs font-medium text-lot-orange">
             <Zap className="size-3.5 shrink-0" aria-hidden />
             Opens soon
           </span>

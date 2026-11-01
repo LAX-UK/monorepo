@@ -64,7 +64,7 @@ export function EditorsPickMarketingCard({
             >
               {lot.title}
             </LotViewTransitionLink>
-            <p className="line-clamp-1 min-h-4 font-body text-sm font-light leading-4 text-on-surface-variant">
+            <p className="line-clamp-1 min-h-4 font-body text-sm font-normal leading-4 text-on-surface-variant">
               {lot.artistName}
             </p>
           </div>

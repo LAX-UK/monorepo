@@ -28,7 +28,7 @@ export function CollapsibleSection({ title, children, className, defaultOpen = f
     >
       <CollapsibleTrigger
         className={cn(
-          "flex min-h-11 w-full cursor-pointer items-center justify-between rounded-lg px-4 py-3 font-label text-xs font-semibold uppercase tracking-[0.12em] text-on-surface",
+          "flex min-h-11 w-full cursor-pointer items-center justify-between rounded-lg px-4 py-3 font-label text-xs font-medium text-on-surface",
           FOCUS_RING,
         )}
       >

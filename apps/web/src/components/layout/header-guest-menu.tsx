@@ -107,7 +107,7 @@ export function HeaderGuestMenu({ headerTone = "on-light" }: Props) {
       <span
         className={cn(
           SITE_HEADER_CHROME,
-          "hidden font-label text-xs font-medium uppercase tracking-[0.18em] xl:inline",
+          "hidden font-label text-xs font-medium xl:inline",
           headerTone === "on-dark" ? "text-hero-foreground/85" : "text-on-surface-variant",
         )}
       >
@@ -137,7 +137,7 @@ export function HeaderGuestMenu({ headerTone = "on-light" }: Props) {
               role="menuitem"
               data-guest-menu-item=""
               className={cn(
-                "block min-h-11 rounded-md px-2 py-2.5 font-label text-sm font-medium uppercase tracking-wide text-brand-900 transition-colors hover:bg-page-bg focus-visible:bg-page-bg dark:text-on-surface dark:hover:bg-surface-container-low",
+                "block min-h-11 rounded-md px-2 py-2.5 font-label text-sm font-medium text-brand-900 transition-colors hover:bg-page-bg focus-visible:bg-page-bg dark:text-on-surface dark:hover:bg-surface-container-low",
                 FOCUS_RING,
               )}
               onClick={closeMenu}

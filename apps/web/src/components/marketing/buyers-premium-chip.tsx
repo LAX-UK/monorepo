@@ -42,7 +42,7 @@ export function BuyersPremiumChip({
     <Link
       href={href}
       className={cn(
-        "inline-flex w-fit items-center gap-1 rounded-full border px-2.5 py-1 font-label text-[11px] font-medium uppercase leading-3 tracking-[0.12em] transition-colors motion-reduce:transition-none",
+        "inline-flex w-fit items-center gap-1 rounded-full border px-2.5 py-1 font-label text-xs font-medium leading-4 transition-colors motion-reduce:transition-none",
         inFrame ? overlayPillClasses(contentTone) : inlinePalette,
         className,
       )}

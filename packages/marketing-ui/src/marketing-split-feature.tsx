@@ -76,9 +76,7 @@ export function MarketingSplitFeature({
             media ? "max-w-[35rem]" : "max-w-[44rem] items-center",
           )}
         >
-          {eyebrow ? (
-            <p className="font-label text-xs font-medium uppercase tracking-[0.12em]">{eyebrow}</p>
-          ) : null}
+          {eyebrow ? <p className="font-label text-xs font-medium">{eyebrow}</p> : null}
           <Heading
             id={headingId}
             className="m-0 text-balance font-headline text-[length:var(--text-title-promo,clamp(1.75rem,3.2vw,2.75rem))] font-normal leading-[1.15]"

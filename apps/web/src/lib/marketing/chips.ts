@@ -6,7 +6,7 @@ import { cn } from "@auction/ui";
  * marketing filter strip shares the same height, tracking, and focus ring. */
 export const marketingFilterChipStrip = (active: boolean) =>
   cn(
-    "inline-flex min-h-11 shrink-0 snap-start items-center rounded-full border px-3 py-1.5 font-label text-[0.65rem] font-semibold uppercase tracking-wider transition-colors motion-reduce:transition-none",
+    "inline-flex min-h-11 shrink-0 snap-start items-center rounded-full border px-3 py-1.5 font-label text-xs font-medium transition-colors motion-reduce:transition-none",
     FOCUS_RING,
     active
       ? "border-primary bg-primary/10 text-on-surface"

@@ -47,8 +47,8 @@ export function SaleMetaBadges({
     showLifecycleBadge && (status === "active" || status === "scheduled" || status === "ended");
   const dateClass =
     size === "sm"
-      ? "font-body text-xs font-normal uppercase leading-snug text-on-surface-variant sm:text-sm"
-      : "font-body text-xs font-normal uppercase text-on-surface-variant sm:text-sm";
+      ? "font-body text-xs font-normal leading-snug text-on-surface-variant sm:text-sm"
+      : "font-body text-xs font-normal text-on-surface-variant sm:text-sm";
 
   return (
     <div className={cn("flex flex-col gap-2", className)}>
@@ -61,12 +61,11 @@ export function SaleMetaBadges({
         <SaleTypeBadge
           deliveryMode={deliveryMode}
           size={size}
-          isLive={isLive}
           withExplainer={withExplainer}
           {...(explainerContext ? { explainerContext } : {})}
         />
         {showOnlineBiddingGatedBadge ? (
-          <span className="inline-flex items-center rounded border border-outline-variant/50 bg-surface-container-low px-2 py-0.5 font-label text-[0.6rem] font-semibold uppercase tracking-wider text-on-surface-variant">
+          <span className="inline-flex items-center rounded border border-outline-variant/50 bg-surface-container-low px-2 py-0.5 font-label text-xs font-medium text-on-surface-variant">
             Online bidding opens when live
           </span>
         ) : null}

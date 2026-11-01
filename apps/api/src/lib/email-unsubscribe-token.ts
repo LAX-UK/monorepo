@@ -1,10 +1,19 @@
 import crypto from "node:crypto";
 
+/** Notice types a person can turn off from the email itself (their email switch for it). */
+export const OPT_OUT_TYPES = [
+  "outbid",
+  "lot_won",
+  "lot_ended_seller",
+  "watchlist_reminder",
+] as const;
+export type OptOutType = (typeof OPT_OUT_TYPES)[number];
+
 export type UnsubscribeTokenPayload =
   | {
       scope: "type";
       userId: string;
-      notificationType: "outbid" | "lot_won" | "lot_ended_seller";
+      notificationType: OptOutType;
     }
   | {
       scope: "global";
@@ -40,8 +49,6 @@ function isPayload(value: unknown): value is UnsubscribeTokenPayload {
   return (
     v.scope === "type" &&
     typeof v.userId === "string" &&
-    (v.notificationType === "outbid" ||
-      v.notificationType === "lot_won" ||
-      v.notificationType === "lot_ended_seller")
+    (OPT_OUT_TYPES as readonly unknown[]).includes(v.notificationType)
   );
 }

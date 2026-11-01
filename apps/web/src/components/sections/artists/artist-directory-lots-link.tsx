@@ -13,10 +13,8 @@ type Props = {
 };
 
 const variantClassName = {
-  footer:
-    "text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-link",
-  inline:
-    "text-[10px] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant hover:text-link",
+  footer: "text-xs text-link",
+  inline: "text-xs text-on-surface-variant hover:text-link",
 } as const;
 
 /** Footer "N lots" link for directory cards — omitted when count is zero. */

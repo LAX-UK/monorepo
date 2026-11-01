@@ -750,6 +750,17 @@ export {
   type MoneyWords,
 } from "./bidding-limit-refusal.js";
 export {
+  WATCHED_LOT_REMINDER_KINDS,
+  WATCHED_LOT_REMINDER_NOTE_MAX,
+  WATCHED_LOT_REMINDER_NOTIFICATION,
+  watchedLotReminderDueAt,
+  watchedLotReminderNotice,
+  watchedLotReminderStep,
+  type ReminderLotTimes,
+  type WatchedLotReminderKind,
+  type WatchedLotReminderStep,
+} from "./watched-lot-reminder.js";
+export {
   ACTIVITY_EVENT_TYPES,
   ACTIVITY_GROUPS,
   ACTIVITY_RETENTION_MONTHS,

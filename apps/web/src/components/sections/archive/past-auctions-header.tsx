@@ -22,7 +22,7 @@ export function PastAuctionsHeader({ totalVolumeLabel }: Props) {
         />
       }
       eyebrow="Archive"
-      title="Past Auctions"
+      title="Past auctions"
       titleSize="lg"
       description="An archival collection of distinguished sales and curated masterpieces. Explore our history of connecting collectors with extraordinary digital and physical assets."
       className="mb-8 !px-0 !py-0 md:mb-10 md:!py-2"
@@ -30,7 +30,7 @@ export function PastAuctionsHeader({ totalVolumeLabel }: Props) {
         totalVolumeLabel ? (
           <div className="flex justify-start md:justify-end">
             <div className="flex items-center gap-2 rounded-full bg-surface-container-low px-6 py-3 ring-1 ring-outline-variant/10">
-              <span className="font-label text-xs font-semibold uppercase tracking-[0.2em] text-secondary">
+              <span className="font-label text-xs font-medium text-on-surface-variant">
                 Total volume
               </span>
               <span className="font-headline text-lg text-primary">{totalVolumeLabel}</span>

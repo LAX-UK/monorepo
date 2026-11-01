@@ -1,26 +1,31 @@
+import { COUNTDOWN_TONE_TEXT_CLASS, type CountdownTone } from "@/lib/presenters/countdown-tone";
+
 /** Matches `StatusBadge` `variant` prop in `@auction/ui`. */
 export type StatusBadgeVariant = "neutral" | "info" | "success" | "warning" | "danger" | "live";
 
 /** @deprecated Use `StatusBadgeVariant`. */
 export type AdminStatusBadgeVariant = StatusBadgeVariant;
 
-/** Accent + typography for countdown text paired with LiveBadge / live StatusBadge. */
-export const liveStatusCountdownClassName =
-  "font-label text-[length:var(--text-label-1)] tabular-nums font-medium normal-case text-live-red";
+/** Typography for the countdown beside a live status badge: calm ink, tabular digits. */
+export const liveStatusCountdownClassName = `font-label text-xs tabular-nums font-medium ${COUNTDOWN_TONE_TEXT_CLASS.calm}`;
 
 /** Urgency tier for live countdown digits (catalog + onsite). */
 export type LiveCountdownUrgency = "normal" | "soon" | "imminent" | "live";
 
-/** Text color for countdown by urgency — `live` is always live-red (during event). */
+/**
+ * Urgency onto the countdown tone table. `live` (a lot on the block, a session in progress) is
+ * a state, shown by the status badge; its digits stay calm.
+ */
+const TONE_BY_URGENCY: Readonly<Record<LiveCountdownUrgency, CountdownTone>> = {
+  normal: "calm",
+  live: "calm",
+  soon: "soon",
+  imminent: "final",
+};
+
+/** Text colour for countdown digits by urgency. */
 export function liveUrgencyTextClass(urgency: LiveCountdownUrgency): string {
-  switch (urgency) {
-    case "live":
-    case "imminent":
-    case "soon":
-      return "text-live-red";
-    default:
-      return "text-on-surface";
-  }
+  return COUNTDOWN_TONE_TEXT_CLASS[TONE_BY_URGENCY[urgency]];
 }
 
 /** Pulse class for critical countdown segments (respects motion-reduce via caller). */

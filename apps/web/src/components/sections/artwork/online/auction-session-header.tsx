@@ -38,7 +38,7 @@ export function AuctionSessionHeader({ vm, rightSlot, stateSlot, className }: Pr
               {rightSlot}
               {vm.paddleNumber ? (
                 <div className="flex flex-col items-end gap-0.5">
-                  <span className="font-body text-xs font-medium uppercase tracking-wide text-on-surface">
+                  <span className="font-body text-xs font-medium text-on-surface">
                     {vm.paddleNumber}
                   </span>
                   {vm.userVerified ? (

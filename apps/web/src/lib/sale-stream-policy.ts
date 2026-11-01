@@ -1,3 +1,4 @@
+import { formatLondonDate } from "@/lib/datetime/london-time";
 import type { SaleDeliveryMode } from "@auction/types";
 import { isSaleroomDeliveryMode } from "@auction/validators";
 
@@ -99,14 +100,7 @@ function buildPresentation(
       };
 
     case "recording": {
-      const dateSuffix = endTime
-        ? ` · ${endTime.toLocaleDateString("en-GB", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-            timeZone: "Europe/London",
-          })}`
-        : "";
+      const dateSuffix = endTime ? ` · ${formatLondonDate(endTime)}` : "";
       return {
         phase,
         sectionHeading: "Saleroom recording",

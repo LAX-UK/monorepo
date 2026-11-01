@@ -114,7 +114,7 @@ export function CatalogLotGridView({
             }}
             title={
               <>
-                <h2 className="font-headline line-clamp-2 text-sm font-light text-on-surface group-hover:text-link md:text-xl">
+                <h2 className="font-headline line-clamp-2 text-sm font-medium text-on-surface group-hover:text-link md:text-xl">
                   {a.title}
                 </h2>
                 <p className="mt-0.5 line-clamp-1 min-h-4 font-body text-xs text-on-surface-variant md:mt-1 md:text-sm">
@@ -124,10 +124,10 @@ export function CatalogLotGridView({
             }
             meta={
               <>
-                <p className="mt-1 font-label text-[length:var(--text-label-1)] uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-secondary md:mt-2 md:text-xs">
+                <p className="mt-1 font-label text-xs text-on-surface-variant md:mt-2">
                   {formatMoney(a.currentPrice, lotChargeCurrency(a))}
                 </p>
-                <p className="mt-0.5 hidden min-h-4 font-label text-[length:var(--text-label-2)] uppercase tracking-wider text-on-surface-variant md:mt-1 md:block">
+                <p className="mt-0.5 hidden min-h-4 font-label text-xs text-on-surface-variant md:mt-1 md:block">
                   {est ? `Est. ${est}` : "\u00a0"}
                 </p>
               </>
@@ -260,11 +260,11 @@ export function CatalogLotListView({
                 footer={
                   <div className="flex flex-wrap items-center justify-between gap-3">
                     <div>
-                      <p className="font-label text-[length:var(--text-label-1)] uppercase tracking-wider text-secondary">
+                      <p className="font-label text-xs text-on-surface-variant">
                         {formatMoney(a.currentPrice, lotChargeCurrency(a))}
                       </p>
                       {est ? (
-                        <p className="mt-0.5 font-label text-[length:var(--text-label-2)] uppercase tracking-wider text-on-surface-variant">
+                        <p className="mt-0.5 font-label text-xs text-on-surface-variant">
                           Est. {est}
                         </p>
                       ) : null}

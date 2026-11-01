@@ -1,4 +1,9 @@
 import { mapPressRefToVM } from "@/components/sections/press/mappers";
+import {
+  formatLondonDateRange,
+  formatLondonDateTime,
+  formatLondonTimeWithZone,
+} from "@/lib/datetime/london-time";
 import { formatEstimateRange, formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { lotEstimateLine } from "@/lib/lot-marketing-display";
 import type { LotLifecycleKind } from "@/lib/lot/lot-lifecycle";
@@ -31,24 +36,14 @@ import {
   resolveOnsiteMapUrl,
 } from "@auction/validators";
 
-const DATE_OPTS: Intl.DateTimeFormatOptions = {
-  day: "2-digit",
-  month: "short",
-  year: "numeric",
-};
-const TIME_OPTS: Intl.DateTimeFormatOptions = {
-  hour: "2-digit",
-  minute: "2-digit",
-};
-
+/** "3–9 Nov 2026", in London time. */
 export function formatSaleDateLabel(start: Date, end: Date): string {
-  const sameDay = start.toDateString() === end.toDateString();
-  const d = (x: Date) => x.toLocaleDateString(undefined, DATE_OPTS);
-  return sameDay ? d(start) : `${d(start)} – ${d(end)}`;
+  return formatLondonDateRange(start, end);
 }
 
+/** "3 Nov 2026, 21:00 GMT". */
 export function formatLongDateTime(d: Date): string {
-  return `${d.toLocaleDateString(undefined, DATE_OPTS)} · ${d.toLocaleTimeString(undefined, TIME_OPTS)}`;
+  return formatLondonDateTime(d);
 }
 
 /** Relative short copy e.g. "10 days" for UI rows (not "in 10 days"). */
@@ -69,13 +64,12 @@ function heroLocationSegment(sale: Sale): string | null {
   return saleMarketingLocationLabel(sale);
 }
 
-/** Uppercased line: date range | time | location or format (from `Sale`). */
+/** Hero line: "29 Oct – 3 Nov 2026 · 21:00 GMT · Online" (location or format last). */
 export function formatHeroDateLine(sale: Sale): string {
   const range = formatSaleDateLabel(sale.startTime, sale.endTime);
-  const time = sale.startTime.toLocaleTimeString(undefined, TIME_OPTS);
+  const time = formatLondonTimeWithZone(sale.startTime);
   const loc = heroLocationSegment(sale);
-  const tail = loc ? ` | ${loc}` : "";
-  return `${range} | ${time}${tail}`.toUpperCase();
+  return [range, time, loc].filter(Boolean).join(" · ");
 }
 
 function formatBuyerPremiumDisplay(rate: string, tiers: BuyerPremiumTier[] | null): string {

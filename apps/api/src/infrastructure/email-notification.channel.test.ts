@@ -230,6 +230,43 @@ describe("EmailNotificationChannel invoices to the billing email", () => {
   });
 });
 
+describe("EmailNotificationChannel watched-lot reminder", () => {
+  it("prints the person's note and the close, with an unsubscribe for this switch only", async () => {
+    const { channel, enqueued } = setup();
+    await channel.send(USER_ID, {
+      type: "watchlist_reminder",
+      legalEntityId: null,
+      title: 'Reminder: "Blue Vase"',
+      message: "It closes in about an hour.",
+      lotId: LOT_ID,
+      meta: {
+        lotTitle: "Blue Vase",
+        watchedLotReminder: {
+          kind: "hour_before_close",
+          note: "Check the glaze",
+          closesAt: "2026-11-26T18:00:00.000Z",
+        },
+      },
+    });
+    expect(enqueued).toHaveLength(1);
+    expect(enqueued[0]).toMatchObject({
+      template: "watched-lot-reminder",
+      to: "ada@example.com",
+      vars: {
+        lotTitle: "Blue Vase",
+        kind: "hour_before_close",
+        note: "Check the glaze",
+        closesAt: "26 Nov 2026, 18:00",
+      },
+    });
+    const url = new URL((enqueued[0]?.vars as { unsubscribeUrl: string }).unsubscribeUrl);
+    const body = JSON.parse(
+      Buffer.from(url.searchParams.get("t")?.split(".")[0] ?? "", "base64url").toString(),
+    );
+    expect(body).toMatchObject({ scope: "type", notificationType: "watchlist_reminder" });
+  });
+});
+
 describe("EmailNotificationChannel payout bank change", () => {
   it("names the organisation and the new account, and links to payouts", async () => {
     const { channel, enqueued } = setup();

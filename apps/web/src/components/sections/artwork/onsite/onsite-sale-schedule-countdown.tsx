@@ -1,18 +1,18 @@
 "use client";
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
+import { formatLondonDateTime } from "@/lib/datetime/london-time";
 import {
-  type CountdownTier,
-  countdownTier,
   formatCountdownAriaLabel,
   formatCountdownForDisplay,
   parseCountdownSegments,
 } from "@/lib/format-countdown";
 import {
-  type LiveCountdownUrgency,
-  liveUrgencyPulseClass,
-  liveUrgencyTextClass,
-} from "@/lib/presenters/status-presentation";
+  type CountdownTone,
+  countdownTone,
+  countdownToneClass,
+} from "@/lib/presenters/countdown-tone";
+import { liveUrgencyPulseClass } from "@/lib/presenters/status-presentation";
 import { useClientClock } from "@/lib/time/use-client-clock";
 import type { Sale } from "@auction/types";
 import { LiveDot, cn } from "@auction/ui";
@@ -58,48 +58,39 @@ function formatStartsAriaLabel(ms: number): string {
 function formatTargetDatetime(value: Date | string): string {
   const d = toDisplayDate(value);
   if (Number.isNaN(d.getTime())) return "";
-  return d.toLocaleString("en-GB", { dateStyle: "medium", timeStyle: "short" });
+  return formatLondonDateTime(d);
 }
 
 function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-function tierToUrgency(phase: Phase, tier: CountdownTier): LiveCountdownUrgency {
-  if (phase === "during" || phase === "livePastEnd") return "live";
-  if (tier === "critical") return "imminent";
-  if (tier === "urgent") return "soon";
-  return "normal";
-}
-
-function segmentDigitClass(phase: Phase, tier: CountdownTier): string {
+function segmentDigitClass(phase: Phase, tone: CountdownTone): string {
   if (phase === "ended") return "text-on-surface-variant";
-  return liveUrgencyTextClass(tierToUrgency(phase, tier));
+  return countdownToneClass(tone);
 }
 
 type SegmentChipProps = {
   value: number;
   unit: string;
   phase: Phase;
-  tier: CountdownTier;
+  tone: CountdownTone;
   placeholder?: boolean;
 };
 
-function SegmentChip({ value, unit, phase, tier, placeholder }: SegmentChipProps) {
+function SegmentChip({ value, unit, phase, tone, placeholder }: SegmentChipProps) {
   return (
     <div className="rounded-lg border border-outline-variant/15 bg-surface-container-low/50 px-2 py-2 backdrop-blur-sm">
       <p
         className={cn(
           "text-2xl font-bold tabular-nums",
-          segmentDigitClass(phase, tier),
-          tier === "critical" && phase !== "ended" && !placeholder && liveUrgencyPulseClass,
+          segmentDigitClass(phase, tone),
+          tone === "final" && phase !== "ended" && !placeholder && liveUrgencyPulseClass,
         )}
       >
         {placeholder ? "\u00A0" : pad2(value)}
       </p>
-      <p className="text-[10px] font-body uppercase tracking-wider text-on-surface-variant">
-        {unit}
-      </p>
+      <p className="text-xs font-body text-on-surface-variant">{unit}</p>
     </div>
   );
 }
@@ -138,7 +129,7 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
   }, [phase, startMs, endMs, now]);
 
   const segments = msLeft != null ? parseCountdownSegments(msLeft) : null;
-  const tier = msLeft != null ? countdownTier(msLeft) : "normal";
+  const tone: CountdownTone = msLeft != null ? countdownTone(msLeft) : "calm";
 
   const label =
     phase === "before"
@@ -194,7 +185,7 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
   if (variant === "compact") {
     return (
       <div className={cn("text-left", className)}>
-        <p className="font-label text-[10px] font-bold uppercase tracking-wider text-on-surface-variant">
+        <p className="font-label text-xs font-medium text-on-surface-variant">
           {phase === "during" ? (
             <span className="inline-flex items-center gap-1.5">
               <LiveDot className="live-dot-pulse h-2 w-2" aria-hidden />
@@ -217,9 +208,7 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
             aria-label={ariaLabel}
             className={cn(
               "mt-0.5 block font-body text-sm font-semibold tabular-nums",
-              phase === "during" || tier !== "normal"
-                ? liveUrgencyTextClass(tierToUrgency(phase, tier))
-                : "text-on-surface",
+              phase === "during" || tone !== "calm" ? countdownToneClass(tone) : "text-on-surface",
             )}
             suppressHydrationWarning
           >
@@ -275,7 +264,7 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
                   value={segments?.days}
                   unit="Days"
                   phase={phase}
-                  tier={tier}
+                  tone={tone}
                   placeholder={placeholder}
                 />
               ) : null}
@@ -283,21 +272,21 @@ export function OnsiteSaleScheduleCountdown({ sale, className, variant = "defaul
                 value={segments?.hours ?? 0}
                 unit="Hours"
                 phase={phase}
-                tier={tier}
+                tone={tone}
                 placeholder={placeholder}
               />
               <SegmentChip
                 value={segments?.minutes ?? 0}
                 unit="Min"
                 phase={phase}
-                tier={tier}
+                tone={tone}
                 placeholder={placeholder}
               />
               <SegmentChip
                 value={segments?.seconds ?? 0}
                 unit="Sec"
                 phase={phase}
-                tier={tier}
+                tone={tone}
                 placeholder={placeholder}
               />
             </div>

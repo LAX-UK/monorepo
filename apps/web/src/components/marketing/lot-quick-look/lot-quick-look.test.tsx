@@ -61,7 +61,7 @@ const lotCardVm: LotCardVM = {
   status: "active",
   startTime: "2026-01-01T00:00:00.000Z",
   endTime: "2026-01-02T00:00:00.000Z",
-  lotLabel: "LOT 12",
+  lotLabel: "Lot 12",
   sellerId: "seller-1",
   priceLabel: "Estimate",
   priceFormatted: "$1,000 – $2,000",
@@ -182,7 +182,7 @@ describe("lotQuickLook mappers", () => {
     ]);
     expect(deck).toHaveLength(2);
     expect(deck[0]?.title).toBe("A");
-    expect(deck[1]?.lotLabel).toBe("LOT 2");
+    expect(deck[1]?.lotLabel).toBe("Lot 2");
   });
 });
 

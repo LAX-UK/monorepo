@@ -8,6 +8,7 @@ const names = [
   "proxy-cancelled-notice",
   "lot-voided-notice",
   "lot-withdrawal-declined-notice",
+  "watched-lot-reminder",
 ] as const;
 
 type BiddingTemplateName = (typeof names)[number];
@@ -60,6 +61,13 @@ type BiddingTemplateVars = {
     reason: string;
     supportContactEmail: string;
   };
+  /** The reminder a person set on a watched lot, with their note. */
+  "watched-lot-reminder": OptOutableLotVars & {
+    kind: "sale_start" | "day_before_close" | "hour_before_close";
+    note?: string | null;
+    /** When the lot closes, formatted for display ("26 Nov 2026, 18:00"). */
+    closesAt?: string | null;
+  };
 };
 
 export const biddingTemplates = {
@@ -73,6 +81,7 @@ export const biddingTemplates = {
     "proxy-cancelled-notice": "live",
     "lot-voided-notice": "live",
     "lot-withdrawal-declined-notice": "live",
+    "watched-lot-reminder": "live",
   },
 } satisfies TemplateDomainSlice<BiddingTemplateName, BiddingTemplateVars>;
 
