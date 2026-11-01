@@ -1,5 +1,6 @@
 import { SalesPrimaryTabs } from "@/components/sections/sales/sales-primary-tabs";
 import type { CalendarSalesUrlState } from "@/lib/marketing/sales-calendar-params";
+import { resolveCalendarTabs } from "@/lib/marketing/sales-calendar-tabs";
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 
@@ -12,39 +13,55 @@ const baseState: CalendarSalesUrlState = {
 };
 
 describe("SalesPrimaryTabs", () => {
-  it("renders all five section tabs in sentence case", () => {
-    render(<SalesPrimaryTabs state={baseState} />);
-    expect(screen.getByRole("link", { name: "Upcoming" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Live now" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Auction results" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "New lots" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Private sales" })).toBeInTheDocument();
-  });
-
-  it("is a labelled navigation", () => {
-    render(<SalesPrimaryTabs state={baseState} />);
+  it("is a labelled navigation of the sections it is given", () => {
+    render(<SalesPrimaryTabs state={baseState} tabs={resolveCalendarTabs({}, "upcoming")} />);
     expect(screen.getByRole("navigation", { name: "Calendar sections" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Upcoming" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Results" })).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /live now/i })).not.toBeInTheDocument();
   });
 
   it("marks the active tab with aria-current=page", () => {
-    render(<SalesPrimaryTabs state={{ ...baseState, tab: "live" }} />);
-    expect(screen.getByRole("link", { name: "Live now" })).toHaveAttribute("aria-current", "page");
-    expect(screen.getByRole("link", { name: "Upcoming" })).not.toHaveAttribute("aria-current");
+    render(
+      <SalesPrimaryTabs
+        state={{ ...baseState, tab: "live" }}
+        tabs={resolveCalendarTabs({ live: 1, upcoming: 2 }, "live")}
+      />,
+    );
+    expect(screen.getByRole("link", { name: /live now/i })).toHaveAttribute("aria-current", "page");
+    expect(screen.getByRole("link", { name: /upcoming/i })).not.toHaveAttribute("aria-current");
   });
 
-  it("puts Live now first when hasLiveSales is true", () => {
-    render(<SalesPrimaryTabs state={{ ...baseState, tab: "live" }} hasLiveSales />);
+  it("leads with Live now when something is live", () => {
+    render(
+      <SalesPrimaryTabs state={baseState} tabs={resolveCalendarTabs({ live: 1 }, "upcoming")} />,
+    );
     const links = screen.getAllByRole("link");
     expect(links[0]).toHaveTextContent("Live now");
     expect(links[1]).toHaveTextContent("Upcoming");
   });
 
-  it("clears stale page params when changing tabs", () => {
-    render(<SalesPrimaryTabs state={{ ...baseState, page: 3 }} />);
+  it("shows a count above zero only", () => {
+    render(
+      <SalesPrimaryTabs
+        state={baseState}
+        tabs={resolveCalendarTabs({ upcoming: 0, results: 8 }, "upcoming")}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Upcoming" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Results/ })).toHaveTextContent("8");
+  });
 
-    expect(screen.getByRole("link", { name: "New lots" })).toHaveAttribute(
+  it("clears stale page params when changing tabs", () => {
+    render(
+      <SalesPrimaryTabs
+        state={{ ...baseState, page: 3 }}
+        tabs={resolveCalendarTabs({}, "upcoming")}
+      />,
+    );
+    expect(screen.getByRole("link", { name: "Results" })).toHaveAttribute(
       "href",
-      "/sales?tab=newLots",
+      "/sales?tab=results",
     );
   });
 });

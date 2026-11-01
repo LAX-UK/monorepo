@@ -12,6 +12,8 @@ type Props = {
   dateLabel: string;
   isLive: boolean;
   startsSoon?: boolean;
+  /** When the sale opens, for the badge of a scheduled sale. */
+  opensAt?: Date | string | null;
   locationLabel?: string | null;
   /** When true, render `SaleScheduleBadges` above the meta row (home tiles). */
   withScheduleRow?: boolean;
@@ -34,6 +36,7 @@ export function SaleMetaBadges({
   dateLabel,
   isLive,
   startsSoon = false,
+  opensAt,
   locationLabel,
   withScheduleRow = false,
   showLifecycleBadge = true,
@@ -55,9 +58,8 @@ export function SaleMetaBadges({
     <div className={cn("flex flex-col gap-2", className)}>
       {withScheduleRow ? <SaleScheduleBadges isLive={isLive} startsSoon={startsSoon} /> : null}
       <div className="flex flex-wrap items-center gap-2">
-        {!withScheduleRow && showRegistryLifecycle ? <SaleLifecycleBadge status={status} /> : null}
-        {!withScheduleRow && startsSoon && !isLive && status === "scheduled" ? (
-          <SaleLifecycleBadge status="scheduled" label="Starts soon" />
+        {!withScheduleRow && showRegistryLifecycle ? (
+          <SaleLifecycleBadge status={status} opensAt={opensAt} />
         ) : null}
         <SaleTypeBadge
           deliveryMode={deliveryMode}

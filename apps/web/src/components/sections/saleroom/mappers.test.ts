@@ -82,7 +82,8 @@ describe("mapSaleToHeroVM", () => {
       now,
     });
     expect(vm.itemsLabel).toBe("12 lots");
-    expect(vm.dateLine).toContain("TheLax Saleroom");
+    expect(vm.placeLabel).toBe("TheLax Saleroom");
+    expect(vm.dateLine).toBe("1 Jun 2026 · 19:00 BST");
   });
 
   it("marks active sales as live without a duplicate bidding sidebar line", () => {
@@ -287,23 +288,6 @@ describe("aggregateSaleEstimateTotal", () => {
   it("returns null when catalogue is paginated", async () => {
     const { aggregateSaleEstimateTotal } = await import("./mappers");
     expect(aggregateSaleEstimateTotal([baseLot], { loadedCount: 1, totalLots: 10 })).toBeNull();
-  });
-});
-
-describe("computeEndedSaleSummary", () => {
-  it("aggregates sold and hammer total for ended sales", async () => {
-    const { computeEndedSaleSummary } = await import("./mappers");
-    const summary = computeEndedSaleSummary(
-      { ...baseSale, status: "ended" },
-      [
-        { ...baseLot, status: "ended", winnerId: "buyer-1", currentPrice: "1000.00" },
-        { ...baseLot, id: "lot-2", status: "ended", winnerId: null, currentPrice: "0.00" },
-      ],
-      { loadedCount: 2, totalLots: 2 },
-    );
-    expect(summary?.soldCount).toBe(1);
-    expect(summary?.unsoldCount).toBe(1);
-    expect(summary?.hammerTotalLabel).toBeTruthy();
   });
 });
 

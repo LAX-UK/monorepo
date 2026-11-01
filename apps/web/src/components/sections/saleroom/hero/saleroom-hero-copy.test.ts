@@ -83,6 +83,7 @@ describe("saleroom-hero-copy", () => {
   it("builds hero stats with estimated total when present", () => {
     const stats = buildSaleroomHeroStats({
       itemsLabel: "40 lots",
+      lotCount: 40,
       estimatedTotalLabel: "£8.4M",
     });
     expect(stats).toHaveLength(2);
@@ -93,8 +94,13 @@ describe("saleroom-hero-copy", () => {
   it("returns only total lots when estimated total is absent", () => {
     const stats = buildSaleroomHeroStats({
       itemsLabel: "40 lots",
+      lotCount: 40,
     });
     expect(stats).toEqual([["Total lots", "40 lots"]]);
+  });
+
+  it("states no lot count before any lot is published", () => {
+    expect(buildSaleroomHeroStats({ itemsLabel: "0 lots", lotCount: 0 })).toEqual([]);
   });
 
   it("returns empty trailing when sale is not live with lot counts", () => {

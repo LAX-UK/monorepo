@@ -26,7 +26,6 @@ type Props = {
   catalogLotRefs?: Array<{ id: string; lotNumber: number | null; title: string }>;
   saleroomSession?: PublicSaleroomSessionStatus | null;
   coverBlurDataURL?: string | null;
-  saleStartsSoon?: boolean;
   showOnlineBiddingGatedBadge?: boolean;
   explainerContext?: SaleFormatExplainerContext;
 };
@@ -41,7 +40,6 @@ export function SaleroomHeroEditorial({
   catalogLotRefs = [],
   saleroomSession = null,
   coverBlurDataURL = null,
-  saleStartsSoon = false,
   showOnlineBiddingGatedBadge = false,
   explainerContext,
 }: Props) {
@@ -63,14 +61,20 @@ export function SaleroomHeroEditorial({
           hero={hero}
           liveTrailing={liveTrailing}
           deliveryMode={deliveryMode}
-          startsSoon={saleStartsSoon}
           showOnlineBiddingGatedBadge={showOnlineBiddingGatedBadge}
           {...(explainerContext ? { explainerContext } : {})}
         />
 
-        <DisplayHeading as="h1" size="lg" className="fade-up-d1 text-balance font-semibold">
-          {hero.title}
-        </DisplayHeading>
+        <div className="flex flex-col gap-3">
+          <DisplayHeading as="h1" size="lg" className="fade-up-d1 text-balance font-semibold">
+            {hero.title}
+          </DisplayHeading>
+          {hero.subtitle ? (
+            <p className="fade-up-d1 max-w-[60ch] text-balance font-body text-base leading-6 text-on-surface-variant md:text-lg md:leading-7">
+              {hero.subtitle}
+            </p>
+          ) : null}
+        </div>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2 lg:items-start lg:gap-10">
           <SaleroomHeroCoverMedia

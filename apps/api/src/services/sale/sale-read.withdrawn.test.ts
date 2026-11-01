@@ -92,6 +92,27 @@ describe("public sale detail with withdrawn lots", () => {
   });
 });
 
+describe("public sale detail of a cancelled sale", () => {
+  it("keeps the sale readable for a notice page, with none of its lots", async () => {
+    const detail = await getSaleDetailForPublicApi(
+      deps(sale({ status: "cancelled" }), lots),
+      "s1",
+      undefined,
+    );
+    expect(detail?.data.sale.status).toBe("cancelled");
+    expect(detail?.data.lots).toEqual([]);
+  });
+
+  it("still hides a draft sale", async () => {
+    const detail = await getSaleDetailForPublicApi(
+      deps(sale({ status: "draft" }), lots),
+      "s1",
+      undefined,
+    );
+    expect(detail).toBeNull();
+  });
+});
+
 describe("public sale catalogue page with withdrawn lots", () => {
   it("returns the withdrawn lot as a slim row and asks the store for public catalogue rows", async () => {
     const d = deps(sale(), [lots[0] as Lot, lots[1] as Lot]);

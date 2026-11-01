@@ -9,6 +9,7 @@ import { SaleTelephoneBiddingSection } from "@/components/marketing/sale-telepho
 import { SaleroomCatalogLiveShell } from "@/components/sections/saleroom/saleroom-catalog-live-shell";
 import { SaleroomCatalogLotsLive } from "@/components/sections/saleroom/saleroom-catalog-lots-live";
 import { SaleroomCatalogToolbarRow } from "@/components/sections/saleroom/saleroom-catalog-toolbar-row";
+import { SaleroomCataloguePreparing } from "@/components/sections/saleroom/saleroom-catalogue-preparing";
 import { SaleroomDayGallery } from "@/components/sections/saleroom/saleroom-day-gallery";
 import { SaleroomHero } from "@/components/sections/saleroom/saleroom-hero";
 import { SaleroomHeroActionRow } from "@/components/sections/saleroom/saleroom-hero-action-row";
@@ -16,6 +17,7 @@ import { SaleroomHeroToolbar } from "@/components/sections/saleroom/saleroom-her
 import { SaleroomOverviewPanel } from "@/components/sections/saleroom/saleroom-overview-panel";
 import { SaleroomPressCoverage } from "@/components/sections/saleroom/saleroom-press-coverage";
 import { SaleroomRelatedAuctionsSection } from "@/components/sections/saleroom/saleroom-related-auctions-section";
+import { SaleroomResultsBand } from "@/components/sections/saleroom/saleroom-results-band";
 import { MARKETING_PAGE_SHELL, SALE_SECTION_SCROLL_MT } from "@/lib/marketing/chrome";
 import type { SaleroomDetailPageData } from "@/lib/marketing/load-saleroom-detail-page";
 import { buildSaleAnchorTabs } from "@/lib/marketing/sale-anchor-tab-list";
@@ -75,7 +77,6 @@ export function SaleroomDetailView({
             catalogLotRefs={vm.catalogLotRefs}
             saleroomSession={vm.isSaleroomSale ? vm.initialSaleroomStatus : null}
             coverBlurDataURL={vm.coverBlurDataURL}
-            saleStartsSoon={vm.saleStartsSoon}
             showOnlineBiddingGatedBadge={vm.showOnlineBiddingGatedBadge}
             explainerContext={explainerContext}
             toolbar={<SaleroomHeroToolbar shareUrl={vm.shareUrl} shareTitle={vm.sale.title} />}
@@ -107,6 +108,9 @@ export function SaleroomDetailView({
           />
         }
       >
+        {/* The sale's cover slot (a marketing hang) sits here, between the hero and the results. */}
+        {vm.resultsBand ? <SaleroomResultsBand band={vm.resultsBand} /> : null}
+
         <SaleAnchorTabs
           tabs={buildSaleAnchorTabs({
             showTelephone: vm.showTelephoneBooking,
@@ -128,40 +132,53 @@ export function SaleroomDetailView({
             listName={vm.sale.title}
             itemIds={vm.lotVMs.map((l) => l.id)}
           />
-          <SaleroomCatalogToolbarRow
-            basePath={vm.basePath}
-            layoutView={vm.layoutView}
-            countLabel={vm.countLabel}
-            resultCountLabel={vm.resultCountLabel}
-          />
-          {vm.catalogSearchFilterCapped ? (
-            <p className="mb-4 text-sm text-on-surface-variant">
-              Search and status filters apply to the first {SALE_CATALOG_LOAD_ALL_CAP} lots of{" "}
-              {vm.lotsPage.total} in this sale.
-            </p>
-          ) : null}
-          <SaleroomCatalogLotsLive
-            view={vm.layoutView}
-            lots={vm.lotVMs}
-            saleForLifecycle={{
-              status: vm.sale.status,
-              deliveryMode: vm.sale.deliveryMode,
-              allowOnlineBidsBeforeGoLive: vm.sale.allowOnlineBidsBeforeGoLive,
-            }}
-            isAuthenticated={vm.isAuthenticated}
-            canParticipate={vm.canParticipate}
-            emptyMessage={vm.catalogEmptyMessage}
-            clearFiltersHref={vm.catalogClearFiltersHref}
-          />
-          {vm.query.isCatalogLoadAll ? null : (
-            <MarketingPaginationControls
-              ariaLabel="Catalogue pagination"
-              currentPage={vm.query.pageNum}
-              totalPages={vm.catalogTotalPages}
-              getPageHref={vm.catalogPageHref}
-              className="mt-12 border-t border-border-hairline pt-10"
-              scroll={false}
+          {vm.pageState === "preparing" && vm.preparing ? (
+            <SaleroomCataloguePreparing
+              copy={vm.preparing}
+              saleId={vm.sale.id}
+              saleHref={vm.basePath}
+              isAuthenticated={vm.isAuthenticated}
+              initialFollowing={vm.initialFollowing}
             />
+          ) : (
+            <>
+              <SaleroomCatalogToolbarRow
+                basePath={vm.basePath}
+                layoutView={vm.layoutView}
+                countLabel={vm.countLabel}
+                resultCountLabel={vm.resultCountLabel}
+                controls={vm.controls}
+              />
+              {vm.catalogSearchFilterCapped ? (
+                <p className="mb-4 text-sm text-on-surface-variant">
+                  Search and status filters apply to the first {SALE_CATALOG_LOAD_ALL_CAP} lots of{" "}
+                  {vm.lotsPage.total} in this sale.
+                </p>
+              ) : null}
+              <SaleroomCatalogLotsLive
+                view={vm.layoutView}
+                rows={vm.catalogueRows}
+                saleForLifecycle={{
+                  status: vm.sale.status,
+                  deliveryMode: vm.sale.deliveryMode,
+                  allowOnlineBidsBeforeGoLive: vm.sale.allowOnlineBidsBeforeGoLive,
+                }}
+                isAuthenticated={vm.isAuthenticated}
+                canParticipate={vm.canParticipate}
+                emptyMessage={vm.catalogEmptyMessage}
+                clearFiltersHref={vm.catalogClearFiltersHref}
+              />
+              {vm.query.isCatalogLoadAll ? null : (
+                <MarketingPaginationControls
+                  ariaLabel="Catalogue pagination"
+                  currentPage={vm.query.pageNum}
+                  totalPages={vm.catalogTotalPages}
+                  getPageHref={vm.catalogPageHref}
+                  className="mt-12 border-t border-border-hairline pt-10"
+                  scroll={false}
+                />
+              )}
+            </>
           )}
         </section>
 

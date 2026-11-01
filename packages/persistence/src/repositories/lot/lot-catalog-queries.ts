@@ -151,7 +151,7 @@ export async function listCatalogLotsBySalePage(
       .from(lot)
       .innerJoin(sale, eq(lot.saleId, sale.id))
       .where(whereClause)
-      .orderBy(orderBy)
+      .orderBy(...orderBy)
       .limit(input.limit)
       .offset(input.offset);
     return {
@@ -171,7 +171,7 @@ export async function listCatalogLotsBySalePage(
     .select()
     .from(lot)
     .where(whereClause)
-    .orderBy(orderBy)
+    .orderBy(...orderBy)
     .limit(input.limit)
     .offset(input.offset);
   return {

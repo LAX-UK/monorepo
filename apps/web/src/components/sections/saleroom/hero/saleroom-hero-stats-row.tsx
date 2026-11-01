@@ -7,6 +7,7 @@ type Props = {
 
 export function SaleroomHeroStatsRow({ hero }: Props) {
   const stats = buildSaleroomHeroStats(hero);
+  if (stats.length === 0) return null;
 
   return (
     <dl className="fade-up-d4 flex flex-wrap gap-8 md:gap-10">

@@ -1,10 +1,8 @@
 import type { SaleListRow } from "@/lib/data/http/sales.server";
-import type { CalendarPrimaryTab } from "@/lib/marketing/sales-calendar-params";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
-import { lotPath, salePath } from "@/lib/seo/url";
+import { salePath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
-import type { Lot } from "@auction/types";
 import type { Metadata } from "next";
 
 export const salesBrowsePageMetadata: Metadata = metadataForStatic({
@@ -15,9 +13,7 @@ export const salesBrowsePageMetadata: Metadata = metadataForStatic({
 });
 
 export type BuildSalesBrowsePageSeoInput = {
-  tab: CalendarPrimaryTab;
   loadFailed: boolean;
-  newLots: Lot[];
   filteredSales: SaleListRow[];
 };
 
@@ -32,13 +28,10 @@ export function buildSalesBrowsePageJsonLd(input: BuildSalesBrowsePageSeoInput):
   ]);
   const crumbText = jsonLdScript(crumbLd);
 
-  const listLdSource =
-    input.tab === "newLots"
-      ? input.newLots.map((l) => ({ name: l.title, url: `${base}${lotPath(l)}` }))
-      : input.filteredSales.map((r) => ({
-          name: r.sale.title,
-          url: `${base}${salePath(r.sale)}`,
-        }));
+  const listLdSource = input.filteredSales.map((r) => ({
+    name: r.sale.title,
+    url: `${base}${salePath(r.sale)}`,
+  }));
   const listLd = !input.loadFailed && listLdSource.length > 0 ? itemListJsonLd(listLdSource) : null;
   const listLdText = listLd ? jsonLdScript(listLd) : null;
 

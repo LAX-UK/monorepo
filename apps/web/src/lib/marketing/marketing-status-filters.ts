@@ -1,5 +1,4 @@
 import type { SearchEndingWindow } from "@/lib/marketing/parse-search-params";
-import type { CalendarPrimaryTab } from "@/lib/marketing/sales-calendar-params";
 import type { LotStatus, SaleStatus } from "@auction/types";
 
 export type SaleroomCatalogStatus = "all" | "live" | "upcoming" | "ended";
@@ -29,19 +28,6 @@ export const SALEROOM_CATALOG_FILTER_LABELS: Record<SaleroomCatalogStatus, strin
 
 export function saleroomCatalogFilterLabel(value: SaleroomCatalogStatus): string {
   return SALEROOM_CATALOG_FILTER_LABELS[value];
-}
-
-/** Sales calendar primary tab labels. */
-export const SALES_CALENDAR_TAB_LABELS: Record<CalendarPrimaryTab, string> = {
-  upcoming: "Upcoming",
-  live: "Live now",
-  results: "Auction results",
-  newLots: "New lots",
-  privateSales: "Private sales",
-};
-
-export function salesCalendarTabLabel(tab: CalendarPrimaryTab): string {
-  return SALES_CALENDAR_TAB_LABELS[tab];
 }
 
 /** Map saleroom catalog facet → lot API statuses for filtering. */
