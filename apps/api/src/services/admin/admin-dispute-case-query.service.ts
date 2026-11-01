@@ -1,4 +1,7 @@
-import type { IAdminDisputeCaseEnrichmentReader } from "@auction/persistence/interfaces";
+import type {
+  IAdminDisputeCaseEnrichmentReader,
+  IDisputeAllocationQueueReader,
+} from "@auction/persistence/interfaces";
 import {
   type AdminDisputeCaseRow,
   type DisputeCaseListFilter,
@@ -27,6 +30,7 @@ export class AdminDisputeCaseQueryService implements IAdminDisputeCaseQueryServi
   constructor(
     private readonly domainEvents: IAdminDomainEventQueryService,
     private readonly enrichmentReader: IAdminDisputeCaseEnrichmentReader,
+    private readonly allocationQueue: IDisputeAllocationQueueReader,
   ) {}
 
   async listCases(input: {
@@ -47,9 +51,16 @@ export class AdminDisputeCaseQueryService implements IAdminDisputeCaseQueryServi
     return { rows, hasNextPage, summary };
   }
 
+  /**
+   * Open cases plus cases waiting for the finance team to allocate them. A case waiting for
+   * allocation has published no payment events yet, so it is never counted twice.
+   */
   async countOpenCases(): Promise<number> {
-    const all = await this.loadAllCases();
-    return countOpenDisputeCases(all);
+    const [all, awaitingAllocation] = await Promise.all([
+      this.loadAllCases(),
+      this.allocationQueue.countAwaitingAllocation(),
+    ]);
+    return countOpenDisputeCases(all) + awaitingAllocation;
   }
 
   private loadAllCases(): Promise<AdminDisputeCaseRow[]> {

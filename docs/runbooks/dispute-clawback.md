@@ -6,10 +6,13 @@ platform must recover funds manually.
 
 ## Trigger
 
-`charge.dispute.closed` with **`status=lost`** creates a negative dispute payout
-line. Other closed outcomes (`won`, `warning_closed`, `charge_refunded`) do **not**
-create clawback lines. If there is no open seller payout, the system creates an adjustment-only
-payout. The next payout settlement pass marks that payout `clawback_pending`
+Every Stripe dispute on a Bid charge is recorded as a dispute case. When the charge paid one
+invoice, `charge.dispute.funds_withdrawn` claws back that seller's net share (the house bears its fee).
+When it paid several invoices, or none, the case waits in "needs allocation" and no payout moves
+until finance allocates it; each allocation line then claws back that seller's net share.
+`charge.dispute.funds_reinstated`, or `charge.dispute.closed` with **`status=won`**, reverses each
+line once. A loss creates no further line. If there is no open seller payout, the system creates
+an adjustment-only payout. The next payout settlement pass marks that payout `clawback_pending`
 and emits `payout.clawback_required`.
 
 ## Triage

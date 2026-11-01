@@ -9,6 +9,7 @@ export type UserAccountRoutesContainer = UserRoutePick<
   | "dashboardHttp"
   | "laxPortfolioHttp"
   | "watchlistHttp"
+  | "watchlistRemindersHttp"
   | "notificationsHttp"
   | "preferencesHttp"
   | "profileHttp"

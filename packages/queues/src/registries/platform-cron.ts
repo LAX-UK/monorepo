@@ -6,6 +6,7 @@ import {
   SHOP_STOCK_RECONCILIATION_QUEUE_NAME,
   STAFF_ROLE_EXPIRY_QUEUE_NAME,
   STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME,
+  WATCHED_LOT_REMINDERS_QUEUE_NAME,
 } from "../queue-names-platform-cron.js";
 import type { QueueDefinition } from "../types.js";
 
@@ -82,6 +83,24 @@ export const PLATFORM_CRON_QUEUE_REGISTRY = {
       removeOnFail: 50,
     },
     description: "Remind sellers to accept a proposed consignment agreement (days 3 and 7)",
+  },
+  [WATCHED_LOT_REMINDERS_QUEUE_NAME]: {
+    producers: ["worker"],
+    consumer: "worker",
+    criticality: "background",
+    pauseOrder: null,
+    heartbeatKey: "watched-lot-reminders",
+    dlq: false,
+    showInUi: false,
+    allowUiRetries: false,
+    repeatable: true,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: "exponential", delay: 60_000 },
+      removeOnComplete: 50,
+      removeOnFail: 50,
+    },
+    description: "Send the reminders people set on lots they watch, when each is due",
   },
   [STAFF_ROLE_EXPIRY_QUEUE_NAME]: {
     producers: ["worker"],

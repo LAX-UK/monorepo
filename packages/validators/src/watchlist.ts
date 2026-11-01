@@ -1,3 +1,4 @@
+import { WATCHED_LOT_REMINDER_KINDS, WATCHED_LOT_REMINDER_NOTE_MAX } from "@auction/domain";
 import { z } from "zod";
 
 export const watchlistBodySchema = z.object({
@@ -26,3 +27,19 @@ export const watchlistQuerySchema = z.object({
 });
 
 export type WatchlistQuery = z.infer<typeof watchlistQuerySchema>;
+
+/** `PUT /users/me/watchlist/:lotId/reminder`: when to be reminded, and an optional note. */
+export const watchlistReminderBodySchema = z
+  .object({
+    kind: z.enum(WATCHED_LOT_REMINDER_KINDS),
+    note: z
+      .string()
+      .trim()
+      .max(WATCHED_LOT_REMINDER_NOTE_MAX, "Keep the note to 500 characters")
+      .transform((value) => (value.length > 0 ? value : null))
+      .nullable()
+      .default(null),
+  })
+  .strict();
+
+export type WatchlistReminderBody = z.infer<typeof watchlistReminderBodySchema>;

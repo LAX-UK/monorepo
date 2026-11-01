@@ -11,6 +11,7 @@ import { CLIENT_ROUTES } from "@/lib/navigation/client-routes";
 import { notify } from "@/lib/ui/notify";
 import { artistAlertSummary } from "@/lib/watching/artist-alert";
 import { savedSearchHref, savedSearchSummary } from "@/lib/watching/saved-search";
+import { reminderRowLabel } from "@/lib/watching/watched-lot-reminder.vm";
 import {
   WATCHED_LOT_SORTS,
   WATCHED_LOT_SORT_LABEL,
@@ -38,6 +39,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ArtistAlertDialog } from "./artist-alert-dialog";
+import { LotReminderDialog } from "./lot-reminder-dialog";
 
 export type WatchedArtistVm = {
   artistId: string;
@@ -72,6 +74,7 @@ export function WatchingView({ view, lots, artists, searches, organisation }: Wa
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<WatchedLotSort>("closing");
   const [editing, setEditing] = useState<WatchedArtistVm | null>(null);
+  const [reminding, setReminding] = useState<WatchedLotRowVm | null>(null);
   const [busy, start] = useTransition();
   const counts: Record<WatchingViewId, number | undefined> = {
     lots: lots?.length,
@@ -164,6 +167,7 @@ export function WatchingView({ view, lots, artists, searches, organisation }: Wa
           sort={sort}
           onClear={() => setQuery("")}
           onStop={stopWatching}
+          onRemind={setReminding}
         />
       ) : null}
       {view === "artists" ? (
@@ -191,6 +195,13 @@ export function WatchingView({ view, lots, artists, searches, organisation }: Wa
         artist={editing ? { id: editing.artistId, name: editing.name, alert: editing.alert } : null}
         onSaved={refresh}
       />
+      <LotReminderDialog
+        lot={reminding}
+        onOpenChange={(open) => {
+          if (!open) setReminding(null);
+        }}
+        onSaved={refresh}
+      />
     </div>
   );
 }
@@ -201,12 +212,14 @@ function LotsList({
   sort,
   onClear,
   onStop,
+  onRemind,
 }: {
   lots: WatchedLotRowVm[] | null;
   query: string;
   sort: WatchedLotSort;
   onClear: () => void;
   onStop: (lot: WatchedLotRowVm) => void;
+  onRemind: (lot: WatchedLotRowVm) => void;
 }) {
   if (!lots) return <ListLoadError />;
   if (lots.length === 0) {
@@ -240,7 +253,7 @@ function LotsList({
               </RecordRowMedia>
             }
             title={lot.title}
-            meta={[lot.lotLabel, lot.saleTitle, lot.moment]}
+            meta={[lot.lotLabel, lot.saleTitle, lot.moment, reminderRowLabel(lot.reminder)]}
             figures={[lot.figure]}
             aligned
             status={
@@ -257,6 +270,15 @@ function LotsList({
                     label: "View lot",
                     onSelect: () => window.location.assign(lot.href),
                   },
+                  ...(lot.ended
+                    ? []
+                    : [
+                        {
+                          type: "item" as const,
+                          label: lot.reminder ? "Change reminder or note" : "Set reminder or note",
+                          onSelect: () => onRemind(lot),
+                        },
+                      ]),
                   { type: "separator" },
                   {
                     type: "item",

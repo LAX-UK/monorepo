@@ -82,6 +82,7 @@ export { DrizzleUserSuspensionChecker } from "./drizzle-user-suspension.checker.
 export { DrizzleUiPreferenceRepository } from "./drizzle-ui-preference.repository.js";
 export { DrizzlePushSubscriptionRepository } from "./drizzle-push-subscription.repository.js";
 export { DrizzleWatchlistRepository } from "./drizzle-watchlist.repository.js";
+export { DrizzleWatchlistReminderRepository } from "./drizzle-watchlist-reminder.repository.js";
 export { DrizzleArtistWatchlistRepository } from "./drizzle-artist-watchlist.repository.js";
 export { DrizzleNotificationReadRepository } from "./drizzle-notification-read.repository.js";
 export { DrizzleNotificationWriteRepository } from "./drizzle-notification-write.repository.js";
@@ -258,6 +259,10 @@ export {
   DrizzlePaySeveralInvoiceFlagsReader,
   DrizzlePaymentGroupRepository,
 } from "./drizzle-payment-group.repository.js";
+export {
+  DrizzleDisputeCaseRepository,
+  DrizzleDisputePaymentReader,
+} from "./drizzle-dispute-case.repository.js";
 export { DrizzleConsignmentMessageRepository } from "./drizzle-consignment-message.repository.js";
 export { DrizzleConsignmentInboxReader } from "./drizzle-consignment-inbox.reader.js";
 export { DrizzleConsignmentThreadFactsReader } from "./drizzle-consignment-thread-facts.reader.js";
