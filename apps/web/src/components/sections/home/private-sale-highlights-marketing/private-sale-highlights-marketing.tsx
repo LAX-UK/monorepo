@@ -4,7 +4,7 @@ import { MediaImage } from "@/components/ui/media-image";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { MarketingCardReveal, MarketingSectionReveal } from "@auction/marketing-ui";
 import { DisplayHeading, cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import { ChevronRight } from "lucide-react";
 import Link from "next/link";
 
@@ -43,12 +43,15 @@ export function PrivateSaleHighlightsMarketing({
             </p>
           </MarketingSectionReveal>
           <MarketingSectionReveal index={2}>
-            <Button variant="outline" asChild className="min-h-[44px] gap-2 px-5">
-              <Link href={PRIVATE_SALE_COPY.ctaHref}>
-                {PRIVATE_SALE_COPY.cta}
-                <ChevronRight className="size-4 shrink-0" aria-hidden />
-              </Link>
-            </Button>
+            <ButtonLink
+              Link={Link}
+              variant="secondary"
+              className="gap-2"
+              href={PRIVATE_SALE_COPY.ctaHref}
+            >
+              {PRIVATE_SALE_COPY.cta}
+              <ChevronRight className="size-4 shrink-0" aria-hidden />
+            </ButtonLink>
           </MarketingSectionReveal>
         </div>
 

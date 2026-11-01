@@ -3,7 +3,7 @@
 import type { LotQueueCardVM } from "@/components/sections/artwork/artwork-view-models";
 import { LotQueueCard } from "@/components/sections/artwork/online/lot-queue-card";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
 
@@ -53,7 +53,7 @@ export function LotQueueSidebar({
         <Button
           type="button"
           variant="ghost"
-          className="flex w-full items-center justify-start gap-2 rounded-lg border border-outline-variant/40 bg-surface-container-low/50 px-3 py-3 text-left dark:bg-surface-container-low/30"
+          className="flex w-full items-center justify-start gap-2 border border-outline-variant/40 bg-surface-container-low/50 text-left dark:bg-surface-container-low/30"
           aria-expanded={mobileOpen}
           aria-controls={panelId}
           onClick={() => setMobileOpen((o) => !o)}

@@ -8,8 +8,8 @@ import {
 } from "@/lib/sale-format-explainer";
 import { saleFormatIcon, saleFormatIconToneClass } from "@/lib/sale-format-icon";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
+import { Button } from "@auction/ui/lax";
 import { HelpCircle } from "lucide-react";
 import type * as React from "react";
 
@@ -101,8 +101,8 @@ export function SaleTypeExplainerPopover({ children, context, align = "center" }
         <Button
           type="button"
           variant="ghost"
-          size="icon"
-          className="rounded-full text-on-surface-variant/75 hover:text-on-surface"
+          size="icon-md"
+          className="text-on-surface-variant/75 hover:text-on-surface"
           aria-label={ariaLabel}
         >
           <HelpCircle className="size-4" />
@@ -118,8 +118,8 @@ export function SaleTypeExplainerPopover({ children, context, align = "center" }
           <Button
             type="button"
             variant="ghost"
-            size="icon"
-            className="rounded-full text-on-surface-variant/75 hover:text-on-surface"
+            size="icon-md"
+            className="text-on-surface-variant/75 hover:text-on-surface"
             aria-label={ariaLabel}
           >
             <HelpCircle className="size-4" />

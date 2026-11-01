@@ -12,7 +12,7 @@ import type { SiteHeaderTone } from "@/lib/layout/header-chrome-tone";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import type { LaxProductLinkVm } from "@auction/lax-ecosystem";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { LogoutButton } from "./logout-button";
 
 type HeaderAuthChipVariant = "account" | "notifications" | "full";
@@ -72,7 +72,7 @@ function MobileGuestAuthSection({ onNavigate }: { onNavigate: () => void }) {
 
   return (
     <div className="flex flex-col items-center gap-3 border-t border-nav-border pt-4">
-      <Button variant="cta" size="lg" className="w-full" asChild>
+      <Button variant="primary" className="w-full" asChild>
         <a href={registerHref} onClick={onNavigate}>
           Create account
         </a>

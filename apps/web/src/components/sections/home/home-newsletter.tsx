@@ -6,9 +6,9 @@ import { defaultNewsletterSubmitter } from "@/lib/newsletter/services/newsletter
 import { useNewsletterSubmit } from "@/lib/newsletter/use-newsletter-submit";
 import { LabelCaps, cn } from "@auction/ui";
 import { Alert, AlertDescription } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
+import { Button } from "@auction/ui/lax";
 import { type NewsletterSubscribeInput, newsletterSubscribeSchema } from "@auction/validators";
 import { zodResolver } from "@hookform/resolvers/zod";
 import Link from "next/link";
@@ -107,12 +107,7 @@ export function HomeNewsletter() {
                       )}
                     />
                   </div>
-                  <Button
-                    type="submit"
-                    variant="cta"
-                    disabled={loading}
-                    className="h-12 rounded-b-sm rounded-t-none px-6 font-label text-xs sm:rounded-l-none sm:rounded-r-sm"
-                  >
+                  <Button type="submit" variant="primary" disabled={loading} className="">
                     {loading ? "Subscribing…" : "Subscribe"}
                   </Button>
                 </div>

@@ -2,7 +2,8 @@
 
 import { useConsent } from "@/lib/analytics/consent/context";
 import { useSignInNoticeActive } from "@/lib/ui/first-visit-overlays";
-import { Button, Card, CardContent } from "@auction/ui";
+import { Card, CardContent } from "@auction/ui";
+import { Button, laxDensityAttributes } from "@auction/ui/lax";
 import Link from "next/link";
 
 /** Underlined at rest: colour alone does not set a link apart from the paragraph around it. */
@@ -20,6 +21,7 @@ export function ConsentBar() {
     <section
       className="pointer-events-none fixed inset-x-0 bottom-0 z-[var(--z-site-chrome,50)] flex justify-center p-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
       aria-label="Cookie consent"
+      {...laxDensityAttributes("client")}
     >
       <Card className="pointer-events-auto w-full max-w-3xl border border-outline-variant/60 shadow-lg">
         <CardContent className="flex flex-col gap-4 p-5 sm:p-6">
@@ -44,13 +46,14 @@ export function ConsentBar() {
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
             <Button
               type="button"
-              variant="outline"
+              variant="secondary"
               className="w-full sm:w-auto sm:min-w-[8.5rem]"
               onClick={openPreferences}
             >
               Customise
             </Button>
             <Button
+              variant="primary"
               type="button"
               className="w-full sm:w-auto sm:min-w-[8.5rem]"
               onClick={() => void acceptAll()}

@@ -6,8 +6,7 @@ import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 import { MarketingSectionReveal } from "@auction/marketing-ui";
 import { LabelCaps } from "@auction/ui";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
-import { ArrowRight } from "lucide-react";
+import { buttonVariants } from "@auction/ui/lax";
 
 /** B6 — Consign CTA. Centered band against a slightly darker surface so it
  * breaks the visual rhythm of stacked white sections.
@@ -40,16 +39,13 @@ export function LaxConsignCTA() {
         </MarketingSectionReveal>
         <MarketingSectionReveal index={2} className="lg:shrink-0">
           <div className="flex flex-col items-start gap-3">
-            <Button variant="cta" size="xl" className="min-h-[44px] w-fit" asChild>
-              <SellCtaLink
-                href={sellIntakeHref()}
-                source="home_consign"
-                className="inline-flex items-center gap-2"
-              >
-                Start your submission
-                <ArrowRight className="size-5 shrink-0" aria-hidden />
-              </SellCtaLink>
-            </Button>
+            <SellCtaLink
+              href={sellIntakeHref()}
+              source="home_consign"
+              className={cn(buttonVariants({ variant: "primary" }), "w-fit")}
+            >
+              Start your submission
+            </SellCtaLink>
             <p className="font-label text-xs text-on-surface-variant">{CONSIGN_COPY.microcopy}</p>
           </div>
         </MarketingSectionReveal>

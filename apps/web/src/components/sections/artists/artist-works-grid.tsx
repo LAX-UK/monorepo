@@ -13,7 +13,7 @@ import { lotPath } from "@/lib/seo/url";
 import { MarketingWorkCard, MarketingWorkGrid } from "@auction/marketing-ui";
 import type { Lot } from "@auction/types";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { isPublicLotStatus } from "@auction/validators";
 import { useMemo, useState } from "react";
 
@@ -71,10 +71,10 @@ function WorkFilterControls({
             aria-pressed={selected}
             onClick={() => onChange(item.value)}
             className={cn(
-              "inline-flex min-h-9 items-center rounded-full border px-3 font-body text-sm transition-colors motion-reduce:transition-none",
+              "inline-flex items-center border font-body transition-colors motion-reduce:transition-none",
               FOCUS_RING,
               selected
-                ? "border-primary bg-primary font-medium text-on-primary"
+                ? "border-primary bg-primary text-on-primary"
                 : "border-outline-variant/40 text-on-surface-variant hover:border-on-surface/40 hover:text-on-surface",
             )}
           >

@@ -6,7 +6,7 @@ import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import type { Sale, SaleDeliveryMode } from "@auction/types";
 import { Badge, STATUS_BADGE_TONE_CLASSES } from "@auction/ui";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { HelpCircle } from "lucide-react";
 import { SaleTypeExplainerPopover } from "./sale-type-explainer";
 
@@ -73,7 +73,7 @@ export function SaleTypeBadge({
         <Button
           type="button"
           variant="ghost"
-          className="group inline-flex h-auto items-center rounded-full p-0 text-left hover:bg-transparent"
+          className="group inline-flex h-auto items-center p-0 text-left hover:bg-transparent"
           aria-label={`${pres.label} — format details`}
         >
           {badgeElement}

@@ -1,7 +1,7 @@
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import type { EditorsPickLotCardVM } from "@/components/sections/home/home-view-models";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
-import { Button } from "@auction/ui";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 import { EditorsPicksMarketingClient } from "./editors-picks-marketing-client";
 
@@ -30,9 +30,9 @@ export function LaxEditorsPicksMarketing({
           title="Editor's picks coming soon"
           description="Our specialists are curating highlights for this section."
           action={
-            <Button variant="outline" asChild>
-              <Link href="/search">Browse all lots</Link>
-            </Button>
+            <ButtonLink Link={Link} variant="secondary" href="/search">
+              Browse all lots
+            </ButtonLink>
           }
         />
       </section>

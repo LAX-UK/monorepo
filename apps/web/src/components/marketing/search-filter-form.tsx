@@ -4,9 +4,9 @@ import { trackSearch } from "@/lib/analytics/events";
 import type { SearchEndingWindow } from "@/lib/marketing/parse-search-params";
 import type { LotStatus } from "@auction/types";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import { Form, FormControl, FormField, FormItem, FormMessage } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
+import { Button } from "@auction/ui/lax";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import type { ComponentProps } from "react";
@@ -106,7 +106,7 @@ export function SearchFilterForm({
           )}
         />
         {showSubmit ? (
-          <Button type="submit" variant="cta" className="h-11 min-h-[44px] shrink-0 px-8">
+          <Button type="submit" variant="primary" className="shrink-0">
             Search
           </Button>
         ) : null}

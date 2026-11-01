@@ -1,7 +1,8 @@
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import type { PrivateSaleHighlightVM } from "@/components/sections/home/home-view-models";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
-import { Button, cn } from "@auction/ui";
+import { cn } from "@auction/ui";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 import { PrivateSaleHighlightsMarketing } from "./private-sale-highlights-marketing";
 
@@ -22,9 +23,9 @@ export function LaxPrivateSaleHighlightsMarketing({ highlights }: Props) {
           title="Private sale highlights"
           description="Acquire exceptional works outside the auction calendar. Contact us to learn more."
           action={
-            <Button variant="outline" asChild>
-              <Link href="/contact#message">Contact us</Link>
-            </Button>
+            <ButtonLink Link={Link} variant="secondary" href="/contact#message">
+              Contact us
+            </ButtonLink>
           }
         />
       </section>

@@ -8,7 +8,7 @@ import { formatLondonDateTime } from "@/lib/datetime/london-time";
 import { formatOnsitePreviewHoursLabel } from "@/lib/onsite/preview-hours-label";
 import { salePath } from "@/lib/seo/url";
 import type { Lot, PublicLotView, Sale } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import {
   buildGoogleMapsEmbedUrl,
   formatPostalAddressLines,
@@ -134,11 +134,15 @@ export function OnsitePlanVisitSection({ sale, auction, overview, locationLine }
             </div>
           ) : null}
           {mapsUrl ? (
-            <Button size="default" variant="outline" className="mt-4 w-full" asChild>
-              <a href={mapsUrl} target="_blank" rel="noopener noreferrer">
-                Get Directions <ExternalLink className="ml-1.5 size-3" />
-              </a>
-            </Button>
+            <ButtonLink
+              variant="secondary"
+              className="mt-4 w-full"
+              href={mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Get Directions <ExternalLink className="ml-1.5 size-3" />
+            </ButtonLink>
           ) : null}
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { archiveClearFiltersHref } from "@/lib/archive/build-archive-params";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 
 export type { ArchiveLotVM } from "./catalog-archive-views";
@@ -31,21 +31,21 @@ export function PastAuctionsEmpty({
       action={
         hasActiveFilters ? (
           <>
-            <Button variant="cta" asChild>
-              <Link href={clearHref}>Clear filters</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/search">Browse all lots</Link>
-            </Button>
+            <ButtonLink Link={Link} variant="primary" href={clearHref}>
+              Clear filters
+            </ButtonLink>
+            <ButtonLink Link={Link} variant="secondary" href="/search">
+              Browse all lots
+            </ButtonLink>
           </>
         ) : (
           <>
-            <Button variant="cta" asChild>
-              <Link href="/search">Browse all lots</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/sales">View upcoming sales</Link>
-            </Button>
+            <ButtonLink Link={Link} variant="primary" href="/search">
+              Browse all lots
+            </ButtonLink>
+            <ButtonLink Link={Link} variant="secondary" href="/sales">
+              View upcoming sales
+            </ButtonLink>
           </>
         )
       }

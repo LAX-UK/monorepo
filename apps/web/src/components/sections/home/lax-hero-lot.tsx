@@ -1,7 +1,6 @@
 "use client";
 
 import { BuyersPremiumChip } from "@/components/marketing/buyers-premium-chip";
-import { MagneticButton } from "@/components/marketing/magnetic-button";
 import { type HeroLotVM, heroLotCoverSources } from "@/components/sections/home/home-view-models";
 import { LiveIndicatorRow } from "@/components/sections/home/live-indicator";
 import { HeroAdaptiveShell } from "@/components/ui/hero-adaptive-shell";
@@ -10,10 +9,9 @@ import { OverlayToneText } from "@/components/ui/overlay-tone-text";
 import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
 import { HOME_HERO_CONTENT_PT, HOME_HERO_MIN_H } from "@/lib/marketing/home-hero-layout";
 import { RevealOnMount } from "@auction/marketing-ui";
-import { Countdown, LiveDot } from "@auction/ui";
+import { Countdown } from "@auction/ui";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
-import { ArrowRight } from "lucide-react";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 
 type Props = {
@@ -105,51 +103,16 @@ export function LaxHeroLot({ lot }: Props) {
                   <BuyersPremiumChip className="fade-up-d2" />
                 </div>
                 <div className="fade-up-d3 flex flex-col gap-4 sm:flex-row sm:items-start">
-                  <MagneticButton strength={10}>
-                    <Button
-                      variant="cta"
-                      size="xl"
-                      className="min-h-[44px] min-w-0 sm:min-w-[218px]"
-                      asChild
-                    >
-                      <a
-                        href={buildHostedLoginStartHref({ intent: "signup" })}
-                        className="inline-flex items-center justify-center gap-[11px]"
-                      >
-                        Register to bid
-                        <ArrowRight className="!size-5 shrink-0 text-cta-on" aria-hidden />
-                      </a>
-                    </Button>
-                  </MagneticButton>
+                  <Button variant="primary" asChild>
+                    <a href={buildHostedLoginStartHref({ intent: "signup" })}>Register to bid</a>
+                  </Button>
                   {lot.isAuctionLive ? (
-                    <Button
-                      variant="liveJoin"
-                      size="xl"
-                      className="min-h-[44px] min-w-0 sm:min-w-[200px]"
-                      asChild
-                    >
-                      <Link
-                        href={liveCtaHref}
-                        className="inline-flex items-center justify-center gap-[11px]"
-                      >
-                        <LiveDot className="h-5 w-5" />
-                        Join Live Stream
-                      </Link>
+                    <Button variant="secondary" asChild>
+                      <Link href={liveCtaHref}>Join the live stream</Link>
                     </Button>
                   ) : (
-                    <Button
-                      variant="outline"
-                      size="xl"
-                      className="min-h-[44px] min-w-0 border-[color:var(--overlay-border)] bg-transparent text-[color:var(--overlay-fg)] shadow-none hover:bg-[color:var(--overlay-bg)] sm:min-w-[200px]"
-                      asChild
-                    >
-                      <Link
-                        href={artworkHref}
-                        className="inline-flex items-center justify-center gap-[11px]"
-                      >
-                        View lot
-                        <ArrowRight className="!size-5 shrink-0" aria-hidden />
-                      </Link>
+                    <Button variant="secondary" asChild>
+                      <Link href={artworkHref}>View lot</Link>
                     </Button>
                   )}
                 </div>

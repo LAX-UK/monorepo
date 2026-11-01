@@ -1,6 +1,6 @@
 import { atgCatalogState } from "@/lib/catalog/atg-catalog-display";
 import type { Sale } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import { isAtgOwnedCatalogSale } from "@auction/validators";
 import { ExternalLinkIcon } from "lucide-react";
 
@@ -53,13 +53,17 @@ export function AtgExternalBiddingPanel({ sale, lot }: Props) {
         {live ? "Live on ATG" : "Ended on ATG"}
       </p>
       <p className="text-sm text-on-surface">{copy}</p>
-      <Button asChild className="w-full sm:w-auto" variant={live ? "default" : "outline"}>
-        <a href={url.toString()} target="_blank" rel="noopener noreferrer">
-          {live ? `Bid on ${host}` : `View on ${host}`}
-          <ExternalLinkIcon className="ml-2 size-4" aria-hidden />
-          <span className="sr-only"> (opens in a new tab)</span>
-        </a>
-      </Button>
+      <ButtonLink
+        className="w-full sm:w-auto"
+        variant={live ? "primary" : "secondary"}
+        href={url.toString()}
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        {live ? `Bid on ${host}` : `View on ${host}`}
+        <ExternalLinkIcon className="ml-2 size-4" aria-hidden />
+        <span className="sr-only"> (opens in a new tab)</span>
+      </ButtonLink>
     </section>
   );
 }

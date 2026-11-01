@@ -1,7 +1,7 @@
 import { LotStatusTimer } from "@/components/marketing/lot-status-badge";
 import { MediaImage } from "@/components/ui/media-image";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import type { ReactNode, TouchEvent } from "react";
 import { useRef } from "react";
 import { LotQuickLookDeckNav } from "./lot-quick-look-deck-nav";
@@ -125,7 +125,7 @@ function QuickLookImageStrip({
             variant="ghost"
             onClick={() => onSelect(index)}
             className={cn(
-              "relative h-auto min-h-0 size-12 overflow-hidden rounded-md border-2 p-0 font-normal transition-all motion-safe:duration-200 focus-visible:border-inherit focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:ring-0 focus-visible:ring-offset-0",
+              "relative h-auto min-h-0 overflow-hidden border-2 p-0 font-normal transition-all motion-safe:duration-200 focus-visible:border-inherit focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring focus-visible:ring-0 focus-visible:ring-offset-0",
               index === activeIndex
                 ? "scale-100 border-primary hover:bg-transparent"
                 : "scale-95 border-transparent opacity-70 hover:scale-100 hover:opacity-100 hover:bg-transparent",
@@ -290,7 +290,7 @@ export function QuickLookMetaPanel({
           <Button
             type="button"
             variant="ghost"
-            className="h-auto min-h-0 rounded-none px-0 font-body text-xs font-normal text-link underline-offset-2 hover:bg-transparent hover:text-link hover:underline focus-visible:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+            className="h-auto min-h-0 rounded-none font-body font-normal text-link underline-offset-2 hover:bg-transparent hover:text-link hover:underline focus-visible:bg-transparent focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
             onClick={onClose}
           >
             Back to results

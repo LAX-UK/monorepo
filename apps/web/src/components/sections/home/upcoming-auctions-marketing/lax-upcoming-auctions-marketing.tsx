@@ -5,7 +5,7 @@ import type { HomeUpcomingAuctionTileVM } from "@/components/sections/home/home-
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { DisplayHeading } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 import { UpcomingAuctionsMarketingClient } from "./upcoming-auctions-marketing-client";
 
@@ -43,9 +43,9 @@ export function LaxUpcomingAuctionsMarketing({ tiles, layoutView, isAuthenticate
             title="No auctions scheduled"
             description="Our next auction is being prepared. Sign up for our newsletter to be the first to know."
             action={
-              <Button variant="outline" asChild>
-                <Link href="#newsletter">Get notified</Link>
-              </Button>
+              <ButtonLink Link={Link} variant="secondary" href="#newsletter">
+                Get notified
+              </ButtonLink>
             }
           />
         </div>

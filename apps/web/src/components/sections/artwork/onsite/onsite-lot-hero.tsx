@@ -6,7 +6,7 @@ import { formatMoney } from "@/lib/format-currency";
 import { saleFormatExplainerContextFromSale } from "@/lib/sale-format-explainer";
 import { salePath } from "@/lib/seo/url";
 import type { Lot, PublicLotView, Sale } from "@auction/types";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 import { LotMediaBlock } from "../redesign/lot-media-block";
 
@@ -122,13 +122,13 @@ export function OnsiteLotHero({
 
           <div className="flex flex-wrap items-center gap-3">
             {showStreamCta ? (
-              <Button variant="outline" className="flex-1" asChild>
-                <a href="#live-stream">Watch live stream</a>
-              </Button>
+              <ButtonLink variant="secondary" className="flex-1" href="#live-stream">
+                Watch live stream
+              </ButtonLink>
             ) : null}
-            <Button variant="outline" className="flex-1" asChild>
-              <Link href={salePath(sale)}>View catalogue</Link>
-            </Button>
+            <ButtonLink Link={Link} variant="secondary" className="flex-1" href={salePath(sale)}>
+              View catalogue
+            </ButtonLink>
           </div>
         </div>
       </div>

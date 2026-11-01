@@ -2,7 +2,7 @@
 
 import type { UserBidsHistoryVM } from "@/components/sections/artwork/artwork-view-models";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { ChevronDown } from "lucide-react";
 import { useId, useState } from "react";
 
@@ -34,7 +34,7 @@ export function UserBidsHistory({ vm, className, defaultOpen = true }: Props) {
       <Button
         type="button"
         variant="ghost"
-        className="flex w-full items-center gap-2 rounded-t-[24px] px-4 py-3 text-left font-body text-on-surface"
+        className="flex w-full items-center gap-2 text-left font-body text-on-surface"
         aria-expanded={open}
         aria-controls={panelId}
         onClick={() => setOpen((o) => !o)}

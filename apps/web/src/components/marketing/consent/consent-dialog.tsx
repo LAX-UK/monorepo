@@ -6,7 +6,6 @@ import {
 } from "@/lib/analytics/consent/categories";
 import { useConsent } from "@/lib/analytics/consent/context";
 import {
-  Button,
   Dialog,
   DialogContent,
   DialogDescription,
@@ -16,6 +15,7 @@ import {
   Label,
   Switch,
 } from "@auction/ui";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -101,17 +101,21 @@ export function ConsentPreferencesDialog() {
         <DialogFooter className="flex-col gap-2 sm:flex-row sm:justify-between">
           <Button
             type="button"
-            variant="outline"
+            variant="secondary"
             className="w-full sm:mr-auto sm:w-auto"
             onClick={() => void rejectAll()}
           >
             Reject all
           </Button>
           <div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row">
-            <Button type="button" variant="outline" onClick={closePreferences}>
+            <Button type="button" variant="secondary" onClick={closePreferences}>
               Cancel
             </Button>
-            <Button type="button" onClick={() => void saveCustom({ analytics, marketing })}>
+            <Button
+              variant="primary"
+              type="button"
+              onClick={() => void saveCustom({ analytics, marketing })}
+            >
               Save preferences
             </Button>
           </div>

@@ -14,7 +14,8 @@ import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import type { SalesBrowsePageData } from "@/lib/marketing/load-sales-browse-page";
 import { calendarClearFiltersHref } from "@/lib/marketing/sales-calendar-params";
 import { MarketingSectionReveal } from "@auction/marketing-ui";
-import { Button, cn } from "@auction/ui";
+import { cn } from "@auction/ui";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 
 type SalesBrowseViewProps = SalesBrowsePageData;
@@ -63,12 +64,12 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
             description={vm.err}
             action={
               <>
-                <Button variant="cta" asChild>
-                  <Link href="/sales">Try again</Link>
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link href="/">Back to home</Link>
-                </Button>
+                <ButtonLink Link={Link} variant="primary" href="/sales">
+                  Try again
+                </ButtonLink>
+                <ButtonLink Link={Link} variant="secondary" href="/">
+                  Back to home
+                </ButtonLink>
               </>
             }
           />
@@ -80,9 +81,9 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
             title="Private sales"
             description="Acquire exceptional works outside the auction calendar. Contact us or browse highlights on the homepage."
             action={
-              <Button variant="cta" asChild>
-                <Link href="/#private-sale-heading">View highlights</Link>
-              </Button>
+              <ButtonLink Link={Link} variant="primary" href="/#private-sale-heading">
+                View highlights
+              </ButtonLink>
             }
           />
         ) : null}
@@ -137,12 +138,16 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
                 action={
                   vm.hasActiveCalendarFilters ? (
                     <>
-                      <Button variant="cta" asChild>
-                        <Link href={calendarClearFiltersHref(vm.calendarState)}>Clear filters</Link>
-                      </Button>
-                      <Button variant="outline" asChild>
-                        <Link href="/sales">Browse all sales</Link>
-                      </Button>
+                      <ButtonLink
+                        Link={Link}
+                        variant="primary"
+                        href={calendarClearFiltersHref(vm.calendarState)}
+                      >
+                        Clear filters
+                      </ButtonLink>
+                      <ButtonLink Link={Link} variant="secondary" href="/sales">
+                        Browse all sales
+                      </ButtonLink>
                     </>
                   ) : undefined
                 }
