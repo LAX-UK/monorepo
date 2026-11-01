@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { FileAttachment } from "./index.js";
 
@@ -12,11 +12,13 @@ describe("FileAttachment", () => {
     expect(screen.getByText("Photo · 1.8 MB")).toBeInTheDocument();
   });
 
-  it("shows a photo's thumbnail, and a PDF's type without a size", () => {
+  it("shows a photo's thumbnail (the icon when it cannot load), and a PDF's type", () => {
     const { container, rerender } = render(
       <FileAttachment name="a.jpg" href="/f/a" kind="image" thumbnailUrl="/t/a" />,
     );
     expect(container.querySelector("img")).toHaveAttribute("src", "/t/a");
+    fireEvent.error(container.querySelector("img") as HTMLImageElement);
+    expect(container.querySelector("img")).toBeNull();
     rerender(<FileAttachment name="report.pdf" href="/f/b" kind="pdf" />);
     expect(container.querySelector("img")).toBeNull();
     expect(screen.getByText("PDF")).toBeInTheDocument();

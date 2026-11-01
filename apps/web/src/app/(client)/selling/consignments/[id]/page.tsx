@@ -305,7 +305,13 @@ export default async function SubmissionDetailPage({
         activeId={tab}
         items={consignmentDetailTabItems({
           submissionId: submission.id,
-          messages: thread ? { total: thread.messages.length, unread: thread.unread } : null,
+          // Unread counts in ink only for the people who answer; others see how many there are.
+          messages: thread
+            ? {
+                total: thread.messages.length,
+                unread: thread.access.canWrite ? thread.unread : 0,
+              }
+            : null,
         })}
       />
       <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_20rem]">

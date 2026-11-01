@@ -32,7 +32,7 @@ export async function sendConsignmentMessageAction(
       },
     ).catch(() => null);
     if (!res) {
-      return { ok: false, error: "Not sent. Check your connection and try again." };
+      return { ok: false, error: "Check your connection, then retry." };
     }
     const payload = await readJsonBody(res).catch(() => null);
     if (!res.ok) {
@@ -40,7 +40,7 @@ export async function sendConsignmentMessageAction(
       return {
         ok: false,
         status: res.status,
-        error: refusal(payload, "Not sent. Try again."),
+        error: refusal(payload, "Something went wrong on our side. Retry in a moment."),
         ...(typeof code === "string" ? { errorCode: code } : {}),
       };
     }

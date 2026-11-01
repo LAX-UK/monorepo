@@ -21,7 +21,7 @@ type Props = {
   now: Date;
 };
 
-const CARD = "flex flex-col rounded-lax-card border border-lax-line bg-lax-surface";
+const CARD = "group/thread flex flex-col rounded-lax-card border border-lax-line bg-lax-surface";
 const HEADING = "font-lax-display text-lax-18 font-semibold text-lax-fg";
 
 /**
@@ -65,7 +65,8 @@ export function ConsignmentThread({ submissionId, thread, viewerName, retryHref,
           ))}
         </ol>
       ) : (
-        <div className="mx-4 flex items-start gap-3 rounded-lax-card bg-lax-sunken px-4 py-4 sm:mx-6">
+        // The first message on its way replaces the empty note.
+        <div className="mx-4 flex items-start gap-3 rounded-lax-card bg-lax-sunken px-4 py-4 group-has-[[data-pending-messages]]/thread:hidden sm:mx-6">
           <MessageSquare
             aria-hidden
             className="mt-0.5 size-5 shrink-0 text-lax-muted"

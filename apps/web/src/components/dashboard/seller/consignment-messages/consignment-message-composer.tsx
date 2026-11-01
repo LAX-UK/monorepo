@@ -13,10 +13,10 @@ import {
   CONSIGNMENT_MESSAGE_ATTACHMENT_TYPES,
   CONSIGNMENT_MESSAGE_MAX_LENGTH,
 } from "@auction/domain";
-import { Button, TextArea } from "@auction/ui/lax";
+import { Button, FilePickerButton, TextArea } from "@auction/ui/lax";
 import { Paperclip, RotateCcw, Send, X } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useId, useRef, useState } from "react";
+import { useId, useState } from "react";
 import { MessageBubble } from "./consignment-message-item";
 
 type Props = {
@@ -87,7 +87,6 @@ export function ConsignmentMessageComposer({ submissionId, placeholder, viewer }
   const router = useRouter();
   const inputId = useId();
   const hintId = useId();
-  const fileInput = useRef<HTMLInputElement>(null);
   const [body, setBody] = useState("");
   const [files, setFiles] = useState<ComposerFile[]>([]);
   const [pending, setPending] = useState<PendingMessage[]>([]);
@@ -107,9 +106,8 @@ export function ConsignmentMessageComposer({ submissionId, placeholder, viewer }
     }
   }
 
-  function onPick(list: FileList | null) {
-    if (!list) return;
-    const { accepted, problem } = pickAttachableFiles([...list], files.length);
+  function onPick(list: File[]) {
+    const { accepted, problem } = pickAttachableFiles(list, files.length);
     setFileProblem(problem);
     const added = accepted.map((file) => ({ id: localId(), file }));
     setFiles((all) => [
@@ -122,7 +120,6 @@ export function ConsignmentMessageComposer({ submissionId, placeholder, viewer }
       })),
     ]);
     for (const { id, file } of added) void upload(id, file);
-    if (fileInput.current) fileInput.current.value = "";
   }
 
   async function deliver(message: PendingMessage) {
@@ -135,7 +132,7 @@ export function ConsignmentMessageComposer({ submissionId, placeholder, viewer }
         uploadObjectId: f.uploadObjectId,
         fileName: f.name,
       })),
-    }).catch(() => ({ ok: false as const, error: "Not sent. Try again." }));
+    }).catch(() => ({ ok: false as const, error: "Check your connection, then retry." }));
     if (result.ok) {
       setPending((all) => all.filter((m) => m.id !== message.id));
       router.refresh();
@@ -171,6 +168,7 @@ export function ConsignmentMessageComposer({ submissionId, placeholder, viewer }
       {pending.length > 0 ? (
         <ol
           aria-label="Messages being sent"
+          data-pending-messages=""
           aria-live="polite"
           className="mt-4 flex flex-col gap-4 px-4 sm:px-6"
         >
@@ -243,25 +241,15 @@ export function ConsignmentMessageComposer({ submissionId, placeholder, viewer }
             {fileProblem ?? state.hint}
           </p>
           <div className="flex shrink-0 items-center gap-2">
-            <input
-              ref={fileInput}
-              type="file"
+            <FilePickerButton
               accept={ACCEPT}
               multiple
-              className="sr-only"
-              tabIndex={-1}
-              aria-hidden
-              onChange={(event) => onPick(event.target.files)}
-            />
-            <Button
               icon={<Paperclip />}
+              onFiles={onPick}
               {...(state.attachBlockedReason ? { disabledReason: state.attachBlockedReason } : {})}
-              onClick={() => {
-                if (state.canAttach) fileInput.current?.click();
-              }}
             >
               Attach
-            </Button>
+            </FilePickerButton>
             <Button
               type="submit"
               variant="primary"

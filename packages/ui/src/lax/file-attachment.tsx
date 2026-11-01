@@ -1,4 +1,7 @@
+"use client";
+
 import { Download, FileText, ImageIcon } from "lucide-react";
+import { useState } from "react";
 import { cn } from "../lib/utils.js";
 
 export type FileAttachmentProps = {
@@ -31,6 +34,8 @@ export function FileAttachment({
   className,
 }: FileAttachmentProps) {
   const Icon = kind === "pdf" ? FileText : ImageIcon;
+  // A preview that cannot load falls back to the icon rather than a broken image.
+  const [previewFailed, setPreviewFailed] = useState(false);
   const meta = [TYPE_WORD[kind], size].filter(Boolean).join(" · ");
   return (
     <div
@@ -43,8 +48,13 @@ export function FileAttachment({
         aria-hidden
         className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-lax-control bg-lax-sunken text-lax-muted"
       >
-        {kind === "image" && thumbnailUrl ? (
-          <img src={thumbnailUrl} alt="" className="size-full object-cover" />
+        {kind === "image" && thumbnailUrl && !previewFailed ? (
+          <img
+            src={thumbnailUrl}
+            alt=""
+            className="size-full object-cover"
+            onError={() => setPreviewFailed(true)}
+          />
         ) : (
           <Icon className="size-4" strokeWidth={1.75} />
         )}
