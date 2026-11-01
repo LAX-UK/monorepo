@@ -40,22 +40,22 @@ describe("MarketingSideSheet", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("keeps the caps title by default and sets a sentence-case title on request", () => {
+  it("draws a 12px label title by default and a heading-size title on request", () => {
     const { rerender } = render(
       <MarketingSideSheet open onOpenChange={() => {}} title="Send an enquiry">
         <p>Body</p>
       </MarketingSideSheet>,
     );
-    expect(screen.getByRole("heading", { name: "Send an enquiry" }).className).toContain(
-      "uppercase",
-    );
+    const label = screen.getByRole("heading", { name: "Send an enquiry" }).className;
+    expect(label).toContain("text-xs");
+    expect(label).not.toMatch(/uppercase|tracking-/);
     rerender(
       <MarketingSideSheet open onOpenChange={() => {}} title="Send an enquiry" titleCase="sentence">
         <p>Body</p>
       </MarketingSideSheet>,
     );
-    expect(screen.getByRole("heading", { name: "Send an enquiry" }).className).not.toContain(
-      "uppercase",
+    expect(screen.getByRole("heading", { name: "Send an enquiry" }).className).toContain(
+      "text-2xl",
     );
   });
 });
