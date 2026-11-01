@@ -112,6 +112,8 @@ const PURCHASES: PortfolioRow[] = [
   purchase("lot-14", "authorized"),
   purchase("lot-15", "captured"),
   purchase("lot-16", "refunded"),
+  // Cancelled: owed by nobody, so it joins no count, figure or banner.
+  purchase("lot-17", "cancelled"),
 ];
 
 function purchaseSources(scope: AccountScope, rows: readonly PortfolioRow[]): PurchaseSources {
@@ -152,6 +154,7 @@ describe("Home, the lists and the menu agree", () => {
         unreadNotifications: [],
       });
       expect(figure.purchases).toBe(3);
+      expect(vm.cardsByTab.completed.map((card) => card.lotId)).toContain("lot-17");
       expect(toPayTab).toBe(figure.purchases);
       expect(attention.paymentsDue).toBe(figure.purchases);
       expect(figure.totals).toEqual([{ currency: "GBP", amount: "3750.00" }]);

@@ -3,7 +3,7 @@ import type { ComplianceGateStatus } from "@/lib/data/http/payments.server";
 import { PLATFORM_DEFAULT_CURRENCY, formatMoney, lotChargeCurrency } from "@/lib/format-currency";
 import { portfolioComplianceReason } from "@/lib/portfolio-settlement";
 import { isToPay } from "@/lib/purchases/purchase-progress";
-import { sumMoneyByCurrency } from "@auction/domain";
+import { purchaseEnding, sumMoneyByCurrency } from "@auction/domain";
 import type { ManualReviewReason, PortfolioRow } from "@auction/types";
 import { lotTotalMajorUnits } from "./lot-pricing-helpers";
 
@@ -31,7 +31,7 @@ export function filterPortfolioRows(
     if (filters.payment === "all") return true;
     const status = row.payment?.status ?? null;
     if (filters.payment === "due") {
-      return status !== "captured" && status !== "refunded";
+      return status !== "captured" && status !== "refunded" && status !== "cancelled";
     }
     if (filters.payment === "paid") return status === "captured";
     if (filters.payment === "authorized") return status === "authorized";
@@ -75,7 +75,9 @@ export function buildPortfolioAnalytics(rows: readonly PortfolioRow[]): Portfoli
     if (cat) categoryCount.set(cat, (categoryCount.get(cat) ?? 0) + 1);
   }
   const outstanding = rows.filter(
-    (row) => row.payment?.status !== "captured" && row.payment?.status !== "refunded",
+    (row) =>
+      row.payment?.status !== "captured" &&
+      !purchaseEnding({ paymentStatus: row.payment?.status ?? null }),
   );
   return {
     totalRows: rows.length,
