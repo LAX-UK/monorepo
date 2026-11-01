@@ -5,7 +5,7 @@ import {
   DEFAULT_PRODUCTION_MIGRATION_THROUGH,
   PRODUCTION_MIGRATION_CEILING_BY_TAG,
   PRODUCTION_MIGRATION_THROUGH_ENV,
-  PRODUCTION_MIGRATION_THROUGH_TAGS,
+  STAGED_PRODUCTION_MIGRATION_TAGS,
   resolveProductionMigrationCeiling,
   resolveProductionMigrationThrough,
 } from "./production-migration-ceiling.js";
@@ -62,20 +62,23 @@ describe("production migration ceiling", () => {
     });
   });
 
-  it("accepts head only once 0161 is applied", () => {
-    const env = { [PRODUCTION_MIGRATION_THROUGH_ENV]: "head" };
-    expect(
-      resolveProductionMigrationThrough(
-        env,
-        PRODUCTION_MIGRATION_CEILING_BY_TAG["0161"].folderMillis,
-      ).tag,
-    ).toBe("head");
+  it("applies every migration at head, from any applied state", () => {
+    for (const lastApplied of [
+      null,
+      1788000003000,
+      PRODUCTION_MIGRATION_CEILING_BY_TAG["0159"].folderMillis,
+      PRODUCTION_MIGRATION_CEILING_BY_TAG["0161"].folderMillis,
+    ]) {
+      expect(
+        resolveProductionMigrationThrough(
+          { [PRODUCTION_MIGRATION_THROUGH_ENV]: " head " },
+          lastApplied,
+        ),
+      ).toEqual({ tag: "head", folderMillis: null });
+    }
     expect(() =>
-      resolveProductionMigrationThrough(
-        env,
-        PRODUCTION_MIGRATION_CEILING_BY_TAG["0160"].folderMillis,
-      ),
-    ).toThrow(/until 0161 is already applied/);
+      resolveProductionMigrationCeiling({ [PRODUCTION_MIGRATION_THROUGH_ENV]: "HEAD" }),
+    ).toThrow(/Allowed values/);
   });
 
   it("fails closed on missing prior stage and invalid values", () => {
@@ -111,7 +114,7 @@ describe("production migration ceiling", () => {
   });
 
   it("binds ceiling stamps to the journal and the production entrypoint", () => {
-    for (const tag of PRODUCTION_MIGRATION_THROUGH_TAGS) {
+    for (const tag of STAGED_PRODUCTION_MIGRATION_TAGS) {
       const entry = journal.entries.find((item) => item.tag.startsWith(`${tag}_`));
       expect(entry?.when).toBe(PRODUCTION_MIGRATION_CEILING_BY_TAG[tag].folderMillis);
     }
@@ -120,6 +123,7 @@ describe("production migration ceiling", () => {
     expect(migrateProd).toContain("readLastAppliedFolderMillis");
     expect(migrateProd).toContain("runMigrationsPerTransactionThrough");
     expect(migrateProd).not.toMatch(/runMigrationsPerTransaction\(/);
+    expect(migrateProd).toContain("ceiling.folderMillis ?? undefined");
     expect(migrateLocal).toContain("runMigrationsPerTransaction(");
     expect(migrateLocal).not.toContain("PRODUCTION_MIGRATION_THROUGH");
   });
