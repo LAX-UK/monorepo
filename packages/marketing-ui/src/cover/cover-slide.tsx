@@ -4,8 +4,14 @@ import { cn } from "@auction/ui";
 import { ButtonLink, TextLink } from "@auction/ui/lax";
 import { Check, Clock } from "lucide-react";
 import type { CSSProperties, ElementType } from "react";
+import { CoverAlertField } from "./cover-alert.js";
 import { coverSettles } from "./cover-motion.js";
-import { ON_IMAGE_BADGE, ON_IMAGE_BUTTON, PHONE_IMAGE_BADGE } from "./cover-on-image.js";
+import {
+  ON_IMAGE_BADGE,
+  ON_IMAGE_BUTTON,
+  ON_IMAGE_FOCUS,
+  PHONE_IMAGE_BADGE,
+} from "./cover-on-image.js";
 import { CoverPager } from "./cover-pager.js";
 import { CoverPhoto, CoverPlate } from "./cover-picture.js";
 import {
@@ -16,6 +22,8 @@ import {
   scrimsForPhoto,
 } from "./cover-scrim.js";
 import type { PhotoScrims } from "./cover-scrim.js";
+import { CoverSeasons } from "./cover-seasons.js";
+import { CoverTimeLine } from "./cover-time-line.js";
 import { coverTitleClass } from "./cover-type-scale.js";
 import type { CoverMedia, CoverSide, CoverSlide, CoverTone } from "./cover-types.js";
 
@@ -184,7 +192,10 @@ export function CoverSlideView({
             <TextLink
               href={slide.credit.href}
               {...(Link ? { Link } : {})}
-              className="inline max-w-full truncate text-xs font-normal leading-4 text-inherit"
+              className={cn(
+                "inline max-w-full truncate text-xs font-normal leading-4 text-inherit",
+                onImage && ON_IMAGE_FOCUS[onImage],
+              )}
             >
               {slide.credit.text}
             </TextLink>
@@ -204,7 +215,7 @@ export function CoverSlideView({
         {slide.badge || slide.time ? (
           <p className="mb-4 flex items-center gap-3 font-body text-[13px] leading-5 text-on-surface-variant md:text-sm md:text-[color:var(--cover-eyebrow)]">
             {slide.badge ? <Badge label={slide.badge} ground={ground} /> : null}
-            {slide.time ? <span className="font-medium">{slide.time}</span> : null}
+            {slide.time ? <CoverTimeLine text={slide.time} tick={slide.timeTick} /> : null}
           </p>
         ) : null}
         <h1
@@ -221,6 +232,7 @@ export function CoverSlideView({
             {slide.fact}
           </p>
         ) : null}
+        {ground.mode === "type" && slide.seasons ? <CoverSeasons rows={slide.seasons} /> : null}
         {slide.status ? (
           <p className="mt-3 flex items-center gap-2 font-body text-sm leading-5 text-on-surface-variant md:text-[color:var(--cover-sub)]">
             {slide.status.icon === "check" ? (
@@ -232,25 +244,29 @@ export function CoverSlideView({
           </p>
         ) : null}
         <div className="mt-6 flex flex-col gap-3 md:flex-row md:items-center md:gap-6">
-          <ButtonLink
-            href={slide.primary.href}
-            {...(Link ? { Link } : {})}
-            variant="primary"
-            size="md"
-            className={cn(
-              "max-md:h-lax-control-lg max-md:w-full",
-              onImage && ON_IMAGE_BUTTON[onImage],
-            )}
-          >
-            {slide.primary.label}
-          </ButtonLink>
+          {slide.alert ? (
+            <CoverAlertField alert={slide.alert} submitLabel={slide.primary.label} tone={onImage} />
+          ) : (
+            <ButtonLink
+              href={slide.primary.href}
+              {...(Link ? { Link } : {})}
+              variant="primary"
+              size="md"
+              className={cn(
+                "max-md:h-lax-control-lg max-md:w-full",
+                onImage && [ON_IMAGE_BUTTON[onImage], ON_IMAGE_FOCUS[onImage]],
+              )}
+            >
+              {slide.primary.label}
+            </ButtonLink>
+          )}
           {slide.link ? (
             <TextLink
               href={slide.link.href}
               {...(Link ? { Link } : {})}
               className={cn(
                 "max-md:min-h-11 max-md:justify-center",
-                onImage && "md:text-[color:var(--cover-link)]",
+                onImage && ["md:text-[color:var(--cover-link)]", ON_IMAGE_FOCUS[onImage]],
               )}
             >
               {slide.link.label}

@@ -5,6 +5,8 @@ import {
   londonDayKey,
 } from "@/lib/datetime/london-time";
 
+import { type CoverTimeTick, formatCoverClock } from "@auction/marketing-ui";
+
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
@@ -34,9 +36,7 @@ export function coverTimeLeft(ms: number): string | null {
       ? plural(hours, "hour")
       : `${plural(hours, "hour")} ${plural(minutes, "minute")}`;
   }
-  const minutes = Math.floor(ms / MINUTE);
-  const seconds = Math.floor((ms % MINUTE) / 1000);
-  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+  return formatCoverClock(ms);
 }
 
 /** "Tue 3 Nov, 21:00 GMT". */
@@ -52,27 +52,42 @@ export function coverDay(date: Date, now: Date): string {
 export type CoverSaleStatus = "scheduled" | "active" | "ended";
 
 /** The words after the status badge: the moment, then the time left when it is near. */
+export type CoverTimeText = { time: string; timeTick?: CoverTimeTick };
+
+/** In the final hour the line counts every second: the clock goes where `{time}` stands. */
+function counting(moment: string, target: Date, now: Date, wording: "left" | "in"): CoverTimeText {
+  const ms = target.getTime() - now.getTime();
+  const left = coverTimeLeft(ms);
+  const line = (clock: string) => (wording === "left" ? `${clock} left` : `in ${clock}`);
+  if (!left) return { time: moment };
+  const time = `${moment} · ${line(left)}`;
+  if (ms >= HOUR) return { time };
+  return {
+    time,
+    timeTick: { endsAt: target.toISOString(), template: `${moment} · ${line("{time}")}` },
+  };
+}
+
 export function coverTimeLine(input: {
   status: CoverSaleStatus;
   start: Date | null;
   end: Date | null;
   now: Date;
-}): string | null {
+}): CoverTimeText | null {
   const { status, start, end, now } = input;
   if (status === "active" && end) {
-    const left = coverTimeLeft(end.getTime() - now.getTime());
-    const moment = `Lots close from ${coverMoment(end, now)}`;
-    return left ? `${moment} · ${left} left` : moment;
+    return counting(`Lots close from ${coverMoment(end, now)}`, end, now, "left");
   }
   if (status === "scheduled" && start) {
-    const left = coverTimeLeft(start.getTime() - now.getTime());
-    const moment = `Opens ${coverMoment(start, now)}`;
-    return left ? `${moment} · in ${left}` : moment;
+    return counting(`Opens ${coverMoment(start, now)}`, start, now, "in");
   }
   if (status === "ended" && end) {
-    return londonDayKey(end) === londonDayKey(now)
-      ? `Ended today, ${formatLondonTimeWithZone(end)}`
-      : `Ended ${coverDay(end, now)}`;
+    return {
+      time:
+        londonDayKey(end) === londonDayKey(now)
+          ? `Ended today, ${formatLondonTimeWithZone(end)}`
+          : `Ended ${coverDay(end, now)}`,
+    };
   }
   return null;
 }

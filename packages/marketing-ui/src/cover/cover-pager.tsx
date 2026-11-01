@@ -3,7 +3,7 @@
 import { cn } from "@auction/ui";
 import { Button } from "@auction/ui/lax";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { ON_IMAGE_BUTTON } from "./cover-on-image.js";
+import { ON_IMAGE_BUTTON, ON_IMAGE_FOCUS } from "./cover-on-image.js";
 import { slidePosition } from "./cover-sources.js";
 import type { CoverTone } from "./cover-types.js";
 
@@ -25,7 +25,7 @@ export function CoverPager({
   onStep: (direction: 1 | -1) => void;
   className?: string;
 }) {
-  const onImage = tone ? ON_IMAGE_BUTTON[tone] : "";
+  const onImage = tone ? cn(ON_IMAGE_BUTTON[tone], ON_IMAGE_FOCUS[tone]) : "";
   return (
     <div className={cn("flex items-center gap-3", className)}>
       <Button

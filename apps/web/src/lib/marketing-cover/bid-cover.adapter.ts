@@ -195,7 +195,8 @@ export function toBidCoverSlide(
   return {
     id: sale.id,
     badge: BADGE[sale.status],
-    ...(time ? { time } : {}),
+    ...(time ? { time: time.time } : {}),
+    ...(time?.timeTick ? { timeTick: time.timeTick } : {}),
     title: sale.title,
     fact: factLine(sale),
     primary: { label: PRIMARY_LABEL[sale.status], href: sale.href },

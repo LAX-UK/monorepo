@@ -51,17 +51,40 @@ export type CoverAction = { label: string; href: string };
 /** "Lot 4 · Estuary, Evening (detail) · current bid £7,000"; a link when the lot has a page. */
 export type CoverCredit = { text: string; href?: string };
 
+/**
+ * A time that counts down in the final hour. `template` holds `{time}` where the clock goes
+ * ("Lots close from 21:00 GMT · {time} left"); the page shows the static `time` until it wakes up.
+ */
+export type CoverTimeTick = { endsAt: string; template: string };
+
+/** An email field before the primary action, which becomes its submit button. */
+export type CoverAlert = {
+  /** Where the form posts the address (field name `email`). */
+  action: string;
+  /** The field's accessible name and placeholder, such as "Your email address". */
+  fieldLabel: string;
+};
+
+/** One row of the season list: "Consign by" / "Fri 4 Dec". */
+export type CoverSeasonRow = { label: string; value: string };
+
 export type CoverSlide = {
   id: string;
   /** Status, such as "Live now". Neutral: one badge style, never an accent. */
   badge?: string;
   /** The time that goes with the status, already worded by the product's time rule. */
   time?: string;
+  /** Set in the final hour: the time line then updates every second. */
+  timeTick?: CoverTimeTick;
   title: string;
   /** One sentence. Never two. */
   fact?: string;
   primary: CoverAction;
+  /** Puts an email field before the primary action, which then submits it (between seasons). */
+  alert?: CoverAlert;
   link?: CoverAction;
+  /** The season ahead, shown on a type cover only: ruled rows under the line of fact. */
+  seasons?: readonly CoverSeasonRow[];
   /** Where the person stands, such as "You're approved to bid in this sale". */
   status?: { text: string; icon: "check" | "clock" };
   credit?: CoverCredit;

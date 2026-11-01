@@ -28,27 +28,51 @@ describe("coverTimeLeft", () => {
 describe("coverTimeLine", () => {
   it("names a live sale's close and the time left", () => {
     const end = new Date(now.getTime() + 2 * DAY + 5 * HOUR);
-    expect(coverTimeLine({ status: "active", start: null, end, now })).toBe(
-      "Lots close from Tue 3 Nov, 20:25 GMT · 2 days 5 hours left",
-    );
+    expect(coverTimeLine({ status: "active", start: null, end, now })).toEqual({
+      time: "Lots close from Tue 3 Nov, 20:25 GMT · 2 days 5 hours left",
+    });
   });
   it("shows a date alone for a sale more than a week away", () => {
     const start = new Date("2026-11-10T21:00:00Z");
-    expect(coverTimeLine({ status: "scheduled", start, end: null, now })).toBe(
-      "Opens Tue 10 Nov, 21:00 GMT",
-    );
+    expect(coverTimeLine({ status: "scheduled", start, end: null, now })).toEqual({
+      time: "Opens Tue 10 Nov, 21:00 GMT",
+    });
   });
   it("adds the time until a sale within a week opens", () => {
     const start = new Date(now.getTime() + 3 * DAY);
-    expect(coverTimeLine({ status: "scheduled", start, end: null, now })).toContain("· in 3 days");
+    expect(coverTimeLine({ status: "scheduled", start, end: null, now })).toMatchObject({
+      time: expect.stringContaining("· in 3 days"),
+    });
   });
   it("says when a sale ended", () => {
     expect(
       coverTimeLine({ status: "ended", start: null, end: new Date("2026-10-15T20:00:00Z"), now }),
-    ).toBe("Ended Thu 15 Oct");
+    ).toEqual({ time: "Ended Thu 15 Oct" });
     expect(
       coverTimeLine({ status: "ended", start: null, end: new Date("2026-11-01T14:00:00Z"), now }),
-    ).toBe("Ended today, 14:00 GMT");
+    ).toEqual({ time: "Ended today, 14:00 GMT" });
+  });
+
+  it("counts every second in the final hour, from the visitor's clock", () => {
+    const end = new Date(now.getTime() + 42 * MIN + 18_000);
+    const line = coverTimeLine({ status: "active", start: null, end, now });
+    expect(line?.time).toBe("Lots close from Sun 1 Nov, 16:07 GMT · 42:18 left");
+    expect(line?.timeTick).toEqual({
+      endsAt: end.toISOString(),
+      template: expect.stringContaining("· {time} left"),
+    });
+  });
+
+  it("counts down to an opening in the final hour too", () => {
+    const start = new Date(now.getTime() + 5 * MIN);
+    expect(
+      coverTimeLine({ status: "scheduled", start, end: null, now })?.timeTick?.template,
+    ).toContain("· in {time}");
+  });
+
+  it("does not count above the final hour", () => {
+    const end = new Date(now.getTime() + 2 * HOUR);
+    expect(coverTimeLine({ status: "active", start: null, end, now })?.timeTick).toBeUndefined();
   });
   it("is null without the date it needs", () => {
     expect(coverTimeLine({ status: "active", start: null, end: null, now })).toBeNull();

@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, within } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
 import {
   BID_COVER_FIXTURES,
   COVER_BEHAVIOUR_FIXTURES,
@@ -198,5 +198,89 @@ describe("loading and motion", () => {
   it("states where the person stands", () => {
     renderFixture(fixture(BID_COVER_FIXTURES, "approved"));
     expect(screen.getByText("You’re approved to bid in this sale")).toBeInTheDocument();
+  });
+});
+
+describe("between seasons", () => {
+  it("puts the email field before the primary action as one form", () => {
+    renderFixture(fixture(BID_COVER_FIXTURES, "between"));
+    const field = screen.getByRole("textbox", { name: "Your email address" });
+    expect(field).toHaveAttribute("type", "email");
+    expect(field).toHaveAttribute("name", "email");
+    const form = field.closest("form");
+    expect(form).not.toBeNull();
+    expect(within(form as HTMLElement).getByRole("button", { name: "Notify me" })).toHaveAttribute(
+      "type",
+      "submit",
+    );
+  });
+
+  it("lists the season on a type cover, as ruled rows", () => {
+    const { container } = renderFixture(fixture(BID_COVER_FIXTURES, "no-images"));
+    const rows = container.querySelectorAll("[data-cover-seasons] dt");
+    expect([...rows].map((row) => row.textContent)).toEqual(["Consign by", "February", "March"]);
+  });
+
+  it("leaves the season list for the type cover only", () => {
+    const base = fixture(BID_COVER_FIXTURES, "between").slides[0];
+    if (!base) throw new Error("fixture");
+    const { container } = render(
+      <MarketingCover
+        label="Featured sales"
+        slides={[{ ...base, seasons: [{ label: "February", value: "Modern British" }] }]}
+      />,
+    );
+    expect(container.querySelector("[data-cover-seasons]")).toBeNull();
+  });
+});
+
+describe("the final-hour clock", () => {
+  it("counts every second from the visitor's clock, replacing the text in place", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-11-01T20:17:42Z"));
+      const hour = fixture(BID_COVER_FIXTURES, "hour").slides[0];
+      if (!hour) throw new Error("fixture");
+      const slide = {
+        ...hour,
+        timeTick: {
+          endsAt: "2026-11-01T21:00:00Z",
+          template: "Lots close from 21:00 GMT · {time} to the first close",
+        },
+      };
+      render(<MarketingCover slides={[slide]} label="Featured sales" />);
+      expect(
+        screen.getByText("Lots close from 21:00 GMT · 42:18 to the first close"),
+      ).toBeInTheDocument();
+      act(() => {
+        vi.advanceTimersByTime(3000);
+      });
+      expect(
+        screen.getByText("Lots close from 21:00 GMT · 42:15 to the first close"),
+      ).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stops at zero and is not a live region", () => {
+    vi.useFakeTimers();
+    try {
+      vi.setSystemTime(new Date("2026-11-01T20:59:58Z"));
+      const hour = fixture(BID_COVER_FIXTURES, "hour").slides[0];
+      if (!hour) throw new Error("fixture");
+      const slide = {
+        ...hour,
+        timeTick: { endsAt: "2026-11-01T21:00:00Z", template: "Closing {time}" },
+      };
+      const { container } = render(<MarketingCover slides={[slide]} label="Featured sales" />);
+      act(() => {
+        vi.advanceTimersByTime(10_000);
+      });
+      expect(screen.getByText("Closing 00:00")).toBeInTheDocument();
+      expect(container.querySelector("[aria-live] .tabular-nums")).toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

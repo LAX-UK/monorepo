@@ -122,12 +122,15 @@ const UPCOMING: CoverSlide = {
   media: [photo("ochre", "light", 0.6, { zoom: 1.45 })],
 };
 
+const ALERT = { action: "#notify", fieldLabel: "Your email address" } as const;
+
 const BETWEEN: CoverSlide = {
   id: "between",
   time: "Between sales",
   title: "The winter season is in preparation",
   fact: "New sales are announced here first. Consign by Fri 4 Dec for February.",
   primary: { label: "Notify me", href: "#notify" },
+  alert: ALERT,
   link: { label: "Sell with LAX", href: "#sell" },
   credit: {
     text: "Recently sold · Red Kite (detail) · £1,875, Autumn Works on Paper",
@@ -163,6 +166,10 @@ export const BID_COVER_FIXTURES: readonly CoverFixture[] = [
         ...LIVE,
         id: "hour",
         time: "Lots close from 21:00 GMT · 42:18 to the first close",
+        timeTick: {
+          endsAt: new Date(Date.now() + 42 * 60_000 + 18_000).toISOString(),
+          template: "Lots close from 21:00 GMT · {time} to the first close",
+        },
         fact: "Lot 1, Harbour at First Light, closes first · current bid £4,200",
         primary: { label: "View lots closing first", href: "#lots" },
         link: { label: "How closing works", href: "#closing" },
@@ -354,6 +361,12 @@ export const BID_COVER_FIXTURES: readonly CoverFixture[] = [
         title: "The winter season is in preparation",
         fact: "New sales are announced here first. Leave your email for one message when the next sale is announced.",
         primary: { label: "Notify me", href: "#notify" },
+        alert: ALERT,
+        seasons: [
+          { label: "Consign by", value: "Fri 4 Dec" },
+          { label: "February", value: "Modern British" },
+          { label: "March", value: "Works on paper" },
+        ],
         link: { label: "Sell with LAX", href: "#sell" },
         media: [],
       },
