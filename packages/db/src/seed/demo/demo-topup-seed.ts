@@ -41,6 +41,13 @@ type Db = PgDatabase<NodePgQueryResultHKT, typeof schema>;
 const DAY = 86_400_000;
 const money = (pounds: number) => pounds.toFixed(2);
 
+/**
+ * What the buyer pays for a hammer price, and LAX's commission on it. A payout's header and line
+ * use the same two figures as the payment, so a payout's totals equal its lines added up.
+ */
+const paidFor = (hammer: number) => hammer * (1 + BUYER_PREMIUM_RATE);
+const commissionOn = (hammer: number) => paidFor(hammer) * SELLER_COMMISSION_RATE;
+
 export type DemoTopUpResult = {
   created: string[];
   existing: string[];
@@ -464,8 +471,8 @@ async function writeCatalogue(db: Db, catalogue: DemoCatalogue, base: Base) {
         buyerId: p.buyerUserId,
         buyerLegalEntityId: p.buyerEntityId,
         sellerLegalEntityId: p.sellerEntityId,
-        amount: money(p.hammer * (1 + BUYER_PREMIUM_RATE)),
-        platformFee: money(p.hammer * BUYER_PREMIUM_RATE),
+        amount: money(paidFor(p.hammer)),
+        platformFee: money(commissionOn(p.hammer)),
         stripePaymentIntentId: p.status === "captured" ? `pi_demo_${p.id.slice(-6)}` : null,
         status: p.status,
         createdAt: p.createdAt,
@@ -493,7 +500,8 @@ async function writeCatalogue(db: Db, catalogue: DemoCatalogue, base: Base) {
     .onConflictDoNothing();
 
   for (const payout of catalogue.payouts) {
-    const fee = payout.hammer * SELLER_COMMISSION_RATE;
+    const settled = paidFor(payout.hammer);
+    const fee = commissionOn(payout.hammer);
     await db
       .insert(schema.payout)
       .values({
@@ -501,10 +509,10 @@ async function writeCatalogue(db: Db, catalogue: DemoCatalogue, base: Base) {
         legalEntityId: payout.legalEntityId,
         periodStart: payout.periodStart,
         periodEnd: payout.periodEnd,
-        grossAmount: money(payout.hammer),
+        grossAmount: money(settled),
         platformFee: money(fee),
         stripeFee: money(0),
-        netAmount: money(payout.hammer - fee),
+        netAmount: money(settled - fee),
         status: payout.status,
         stripeTransferId: payout.status === "paid" ? `tr_demo_${payout.id.slice(-6)}` : null,
         processedAt: payout.processedAt,
@@ -517,7 +525,7 @@ async function writeCatalogue(db: Db, catalogue: DemoCatalogue, base: Base) {
         id: payout.lineId,
         payoutId: payout.id,
         paymentId: payout.paymentId,
-        amount: money(payout.hammer),
+        amount: money(settled),
         kind: "sale",
         createdAt: payout.periodEnd,
       })

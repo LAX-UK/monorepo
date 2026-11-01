@@ -796,6 +796,7 @@ export {
   consignmentReference,
   payoutLineBreakdown,
   payoutTotals,
+  payoutTotalsDiffer,
   saleLineBreakdown,
   soldLotPayoutStage,
   type PayoutLineFacts,

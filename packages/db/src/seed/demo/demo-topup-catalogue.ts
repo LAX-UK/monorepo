@@ -36,7 +36,7 @@ const COVERS = [
 ] as const;
 
 export const BUYER_PREMIUM_RATE = 0.25;
-/** The seller's commission LAX keeps from the hammer price on a payout. */
+/** The seller commission LAX keeps from what the buyer paid, on a payout. */
 export const SELLER_COMMISSION_RATE = 0.1;
 
 /** The ids of the people and accounts the catalogue refers to. */

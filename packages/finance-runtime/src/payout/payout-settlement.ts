@@ -1,6 +1,6 @@
+import { type PayoutLineFacts, payoutTotals } from "@auction/domain";
 import type { IPayoutRepository } from "@auction/persistence/interfaces";
 import type { PayoutLine } from "@auction/types";
-import { subtractDecimal, sumDecimal } from "../decimal-money.js";
 import {
   DEFAULT_CURRENCY,
   type PayoutSettlementDeps,
@@ -19,10 +19,18 @@ export async function createSettlementCore(
   }
 
   const settled = pending.map((p) => ({ ...p, ...settlementAmounts(p) }));
-  const grossAmount = sumDecimal(settled.map((p) => p.saleAmount));
-  const platformFee = sumDecimal(settled.map((p) => p.platformFee));
   const stripeFee = "0.00";
-  const netAmount = subtractDecimal(subtractDecimal(grossAmount, platformFee), stripeFee);
+  // Stored totals are the lines added up with the split the payout page shows.
+  const saleLine = (p: (typeof pending)[number], saleAmount: string): PayoutLineFacts => ({
+    kind: "sale",
+    amount: saleAmount,
+    payment: { amount: p.amount, platformFee: p.platformFee },
+  });
+  const initial = payoutTotals(
+    pending.map((p, i) => saleLine(p, settled[i]?.saleAmount ?? p.amount)),
+    stripeFee,
+  );
+  const { gross: grossAmount, platformFee, net: netAmount } = initial;
 
   const created = await r.create({
     legalEntityId: input.legalEntityId,
@@ -35,7 +43,7 @@ export async function createSettlementCore(
     currency: DEFAULT_CURRENCY,
   });
 
-  const inserted: { line: PayoutLine; platformFee: string }[] = [];
+  const inserted: { line: PayoutLine; facts: PayoutLineFacts }[] = [];
   for (const p of settled) {
     const line = await r.tryInsertSaleLine({
       payoutId: created.id,
@@ -46,7 +54,8 @@ export async function createSettlementCore(
       note: null,
     });
     if (line) {
-      inserted.push({ line, platformFee: p.platformFee });
+      const original = pending.find((x) => x.id === p.id);
+      inserted.push({ line, facts: saleLine(original ?? p, p.saleAmount) });
     }
   }
 
@@ -55,16 +64,14 @@ export async function createSettlementCore(
   }
 
   if (inserted.length < pending.length) {
-    const adjustedGross = sumDecimal(inserted.map((x) => x.line.amount));
-    const adjustedPlatformFee = sumDecimal(inserted.map((x) => x.platformFee));
-    const adjustedNet = subtractDecimal(
-      subtractDecimal(adjustedGross, adjustedPlatformFee),
+    const adjusted = payoutTotals(
+      inserted.map((x) => x.facts),
       stripeFee,
     );
     await r.updateTotals(created.id, {
-      grossAmount: adjustedGross,
-      platformFee: adjustedPlatformFee,
-      netAmount: adjustedNet,
+      grossAmount: adjusted.gross,
+      platformFee: adjusted.platformFee,
+      netAmount: adjusted.net,
     });
     const refreshed = (await r.findById(created.id)) ?? created;
     return {

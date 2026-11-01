@@ -1,8 +1,10 @@
 import {
+  type PayoutTotals,
   type SoldLotPayoutStage,
   entityActorCan,
   payoutLineBreakdown,
   payoutTotals,
+  payoutTotalsDiffer,
   saleLineBreakdown,
   soldLotPayoutStage,
 } from "@auction/domain";
@@ -21,6 +23,14 @@ import type {
   SoldLotView,
 } from "../interfaces/organisation-selling-service.js";
 import { entityActorOf, paged, sellingError } from "./selling-errors.js";
+
+/** A payout whose stored totals disagree with its lines. */
+export type PayoutTotalsMismatch = {
+  payoutId: string;
+  legalEntityId: string;
+  stored: PayoutTotals;
+  derived: PayoutTotals;
+};
 
 /** The most rows one export carries; a longer history is exported a year at a time. */
 const EXPORT_LIMIT = 5000;
@@ -87,7 +97,14 @@ function soldView(row: SoldLotRow): SoldLotView {
  * money (`entity.payouts.read`: owners, admins, finance) read any of it.
  */
 export class SoldAndPayoutsService implements ISoldAndPayoutsService {
-  constructor(private readonly deps: { sold: ISoldLotsReader; payouts: IPayoutLinesReader }) {}
+  constructor(
+    private readonly deps: {
+      sold: ISoldLotsReader;
+      payouts: IPayoutLinesReader;
+      /** Told when a payout's stored totals differ from its lines; the stored totals are shown. */
+      onTotalsMismatch?: (report: PayoutTotalsMismatch) => void;
+    },
+  ) {}
 
   private canRead(actor: OrganisationMemberActor): boolean {
     return entityActorCan(entityActorOf(actor), "entity.payouts.read");
@@ -141,14 +158,24 @@ export class SoldAndPayoutsService implements ISoldAndPayoutsService {
     if (!this.canRead(actor)) return err(sellingError("insufficient_entity_role"));
     const found = await this.deps.payouts.find(actor.legalEntityId, payoutId);
     if (!found) return err(sellingError("payout_not_found"));
-    // The header is the lines added up with the same split each line shows.
-    const totals = payoutTotals(found.lines, found.stripeFee);
+    // The header is what is transferred. It must equal the lines added up; if it ever does not,
+    // say so rather than quietly show a different figure.
+    const derived = payoutTotals(found.lines, found.stripeFee);
+    if (payoutTotalsDiffer(found, derived)) {
+      this.deps.onTotalsMismatch?.({
+        payoutId: found.id,
+        legalEntityId: actor.legalEntityId,
+        stored: {
+          gross: found.grossAmount,
+          platformFee: found.platformFee,
+          stripeFee: found.stripeFee,
+          net: found.netAmount,
+        },
+        derived,
+      });
+    }
     return ok({
       ...found,
-      grossAmount: totals.gross,
-      platformFee: totals.platformFee,
-      stripeFee: totals.stripeFee,
-      netAmount: totals.net,
       lines: found.lines.map((line) => ({
         id: line.id,
         kind: line.kind,

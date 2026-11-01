@@ -98,7 +98,7 @@ export type PayoutLineFacts = {
   kind: string;
   /** What the line settles (a negative amount for money taken back). */
   amount: string;
-  payment: { amount: string; platformFee: string } | null;
+  payment?: { amount: string; platformFee: string } | null | undefined;
 };
 
 /** The split of one sale line, or `null` for any other kind of line. */
@@ -141,4 +141,18 @@ export function payoutTotals(lines: readonly PayoutLineFacts[], stripeFee: strin
     stripeFee: minorUnitsToMoneyString(processor),
     net: minorUnitsToMoneyString(gross - commission - processor),
   };
+}
+
+/** Whether a payout's stored totals differ from what its lines come to. */
+export function payoutTotalsDiffer(
+  stored: { grossAmount: string; platformFee: string; stripeFee: string; netAmount: string },
+  derived: PayoutTotals,
+): boolean {
+  const same = (a: string, b: string) => parseMoneyToMinorUnits(a) === parseMoneyToMinorUnits(b);
+  return !(
+    same(stored.grossAmount, derived.gross) &&
+    same(stored.platformFee, derived.platformFee) &&
+    same(stored.stripeFee, derived.stripeFee) &&
+    same(stored.netAmount, derived.net)
+  );
 }

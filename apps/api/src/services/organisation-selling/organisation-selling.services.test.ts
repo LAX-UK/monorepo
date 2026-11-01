@@ -126,7 +126,7 @@ describe("SoldAndPayoutsService", () => {
     ).toBe(404);
   });
 
-  it("shows the same split in the sold list and on the payout, whatever the payout header stored", async () => {
+  it("shows the stored payout header, reports when it differs from the lines, and splits each line like the sold list", async () => {
     // The sale settled 4,800 of a 6,000 payment that carries 1,200 of fees: 960 of fees, 3,840 net.
     const sold = {
       ...soldRows[0],
@@ -159,9 +159,11 @@ describe("SoldAndPayoutsService", () => {
         },
       ],
     }));
+    const onTotalsMismatch = vi.fn();
     const service = new SoldAndPayoutsService({
       sold: { list } as never,
       payouts: { find } as never,
+      onTotalsMismatch,
     });
     const owner = actor("owner");
     const [item] = (await service.listSold(owner, { limit: 10, offset: 0 }))._unsafeUnwrap().items;
@@ -172,11 +174,48 @@ describe("SoldAndPayoutsService", () => {
       commissionAndFees: "960.00",
       net: "3840.00",
     });
-    expect(detail).toMatchObject({
-      grossAmount: "4800.00",
-      platformFee: "960.00",
-      netAmount: "3840.00",
+    // What is transferred is shown as stored, and the difference is reported.
+    expect(detail).toMatchObject({ platformFee: "480.00", netAmount: "4320.00" });
+    expect(onTotalsMismatch).toHaveBeenCalledWith(
+      expect.objectContaining({
+        payoutId: "po1",
+        derived: expect.objectContaining({ platformFee: "960.00", net: "3840.00" }),
+      }),
+    );
+  });
+
+  it("does not report a payout whose stored totals equal its lines", async () => {
+    const onTotalsMismatch = vi.fn();
+    const find = vi.fn(async () => ({
+      id: "po1",
+      status: "paid" as const,
+      currency: "GBP",
+      grossAmount: "4775.00",
+      platformFee: "1000.00",
+      stripeFee: "0.00",
+      netAmount: "3775.00",
+      periodStart: new Date(),
+      periodEnd: new Date(),
+      processedAt: null,
+      lines: [
+        {
+          id: "a",
+          kind: "sale",
+          amount: "5000.00",
+          note: null,
+          lot: null,
+          payment: { amount: "5000.00", platformFee: "1000.00" },
+        },
+        { id: "b", kind: "adjustment", amount: "-225.00", note: null, lot: null, payment: null },
+      ],
+    }));
+    const service = new SoldAndPayoutsService({
+      sold: { list: vi.fn() } as never,
+      payouts: { find } as never,
+      onTotalsMismatch,
     });
+    (await service.payoutDetail(actor("owner"), "po1"))._unsafeUnwrap();
+    expect(onTotalsMismatch).not.toHaveBeenCalled();
   });
 
   it.each([
