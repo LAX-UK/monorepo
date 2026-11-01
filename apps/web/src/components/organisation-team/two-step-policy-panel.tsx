@@ -3,9 +3,12 @@
 import { MemberInitials } from "@/components/legal-entity/members/member-initials";
 import { initials } from "@/components/organisations/initials";
 import type { TwoStepImpact } from "@/lib/organisation-team/two-step-impact";
-import { setOrgTwoFactorPolicyAction } from "@/lib/security/two-factor-policy.actions";
+import {
+  remindTwoStepAction,
+  setOrgTwoFactorPolicyAction,
+} from "@/lib/security/two-factor-policy.actions";
 import { notify } from "@/lib/ui/notify";
-import { Button, Dialog, DialogClose, Meter, Notice, StatusBadge } from "@auction/ui/lax";
+import { Button, Dialog, DialogClose, Meter, Notice, StatusBadge, Switch } from "@auction/ui/lax";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { SettingsCard, SettingsRow } from "./settings-section";
@@ -17,7 +20,13 @@ type Props = {
   impact: TwoStepImpact;
   /** Only an owner changes the policy; admins see it. */
   canEdit: boolean;
+  /** Owners and admins email the members without two-step a reminder. */
+  canRemind: boolean;
 };
+
+function remindedWords(count: number): string {
+  return count === 1 ? "We emailed 1 person a reminder" : `We emailed ${count} people a reminder`;
+}
 
 /**
  * The organisation's two-step policy: whether it is required and who has it on. Requiring it
@@ -29,11 +38,28 @@ export function TwoStepPolicyPanel({
   required,
   impact,
   canEdit,
+  canRemind,
 }: Props) {
   const router = useRouter();
   const [confirming, setConfirming] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const [remindOnRequire, setRemindOnRequire] = useState(true);
+  const [reminding, startReminding] = useTransition();
+  const [remindError, setRemindError] = useState<string | null>(null);
+  const offersReminder = canRemind && impact.affected.length > 0;
+
+  const remind = () =>
+    startReminding(async () => {
+      setRemindError(null);
+      const result = await remindTwoStepAction(legalEntityId);
+      if (!result.ok) {
+        setRemindError(result.error);
+        return;
+      }
+      notify.success(remindedWords(result.reminded));
+      router.refresh();
+    });
 
   const save = (next: boolean) =>
     startTransition(async () => {
@@ -43,7 +69,12 @@ export function TwoStepPolicyPanel({
         setError(result.error);
         return;
       }
-      notify.success(next ? "Two-step is now required" : "Two-step is now optional");
+      const reminder =
+        next && offersReminder && remindOnRequire ? await remindTwoStepAction(legalEntityId) : null;
+      notify.success(next ? "Two-step is now required" : "Two-step is now optional", {
+        ...(reminder?.ok ? { description: `${remindedWords(reminder.reminded)}.` } : {}),
+      });
+      if (reminder && !reminder.ok) notify.error(reminder.error);
       setConfirming(null);
       router.refresh();
     });
@@ -85,6 +116,14 @@ export function TwoStepPolicyPanel({
           <p className="text-lax-13 text-lax-muted">
             {impact.missingLine ?? "Everyone who acts for the organisation has it on."}
           </p>
+          {offersReminder ? (
+            <div className="flex flex-col items-start gap-2 pt-1">
+              <Button size="sm" loading={reminding} onClick={remind}>
+                Remind them
+              </Button>
+              {remindError ? <Notice tone="warning" title={remindError} /> : null}
+            </div>
+          ) : null}
         </div>
         {!canEdit ? (
           <p className="px-4 py-3 text-lax-13 text-lax-muted md:px-5">
@@ -136,6 +175,19 @@ export function TwoStepPolicyPanel({
                   They&apos;ll be asked to turn it on at their next sign-in, and can&apos;t act for{" "}
                   {organisationName} until they do. Nobody is signed out now.
                 </p>
+                {offersReminder ? (
+                  <div className="flex items-center justify-between gap-4 rounded-lax-card border border-lax-line px-4 py-3">
+                    <span id="remind-on-require" className="text-lax-14 font-medium text-lax-fg">
+                      Email them a reminder now
+                    </span>
+                    <Switch
+                      aria-labelledby="remind-on-require"
+                      checked={remindOnRequire}
+                      onCheckedChange={setRemindOnRequire}
+                      disabled={pending}
+                    />
+                  </div>
+                ) : null}
               </>
             ) : null}
             {error ? <Notice tone="danger" alert title={error} /> : null}

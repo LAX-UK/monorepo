@@ -36,6 +36,7 @@ import { createOrganisationAccessServices } from "./container/create-organisatio
 import { createOrganisationBuyingServices } from "./container/create-organisation-buying-services.js";
 import { createOrganisationHomeServices } from "./container/create-organisation-home-services.js";
 import { createOrganisationMembershipServices } from "./container/create-organisation-membership-services.js";
+import { createOrganisationSecurityServices } from "./container/create-organisation-security-services.js";
 import { createOrganisationSellingServices } from "./container/create-organisation-selling-services.js";
 import { createOrganisationTeamServices } from "./container/create-organisation-team-services.js";
 import { createOrganisationWorkspaceServices } from "./container/create-organisation-workspace-services.js";
@@ -61,6 +62,7 @@ import { AdminTwoFactorResetService } from "./services/admin/admin-two-factor-re
 import { AtgAdminService } from "./services/admin/atg-admin.service.js";
 import { StaffAccessAdminService } from "./services/admin/staff-access-admin.service.js";
 import { OrganisationBiddingLimitsService } from "./services/bidding-limits/organisation-bidding-limits.service.js";
+import { BidLimitRefusalNotifier } from "./services/bidding/bid-limit-refusal.notifier.js";
 import {
   BidAuthorityQueryService,
   BuyerAgentAuthorisationService,
@@ -368,6 +370,28 @@ export function createContainer(env: Env): Container {
       groupCheckout: payments.paymentGroupCheckout,
     },
   });
+  const organisationNames = {
+    nameOf: async (id: string) =>
+      (await repos.legalEntityRepository.findById(id))?.displayName ?? null,
+  };
+  const organisationSecurity = createOrganisationSecurityServices({
+    redis: infra.redis,
+    members: repos.legalEntityMemberRepository,
+    identity: identityIssuer,
+    email: infra.emailService,
+    events: platform.domainEventSink,
+    organisations: organisationNames,
+    webOrigin: env.WEB_ORIGIN,
+  });
+  const bidRefusals = new BidLimitRefusalNotifier({
+    dispatcher: platform.notificationDispatcher,
+    recipients: repos.legalEntityNotificationRecipients,
+    lots: { titleOf: async (id) => (await repos.lotRepo.findById(id))?.title ?? null },
+    people: {
+      nameOf: async (userId) => (await repos.profileRepo.getProfile(userId))?.name ?? null,
+    },
+    organisations: organisationNames,
+  });
   const organisationAccess = createOrganisationAccessServices({
     db,
     memberManagement: platform.memberManagementService,
@@ -375,6 +399,7 @@ export function createContainer(env: Env): Container {
     notificationDispatcher: platform.notificationDispatcher,
     notificationFactory: platform.notificationFactory,
     events: platform.domainEventSink,
+    organisations: organisationNames,
   });
   const organisationSelling = createOrganisationSellingServices({
     db,
@@ -574,6 +599,7 @@ export function createContainer(env: Env): Container {
       lotService: catalog.lotService,
       displayPairingService: biddingSaleroom.displayPairingService,
       displaySnapshotReader: biddingSaleroom.displaySnapshotReader,
+      bidRefusals,
     }),
     identityRoutes: createIdentityRouteServices({
       accountSecurity: {
@@ -663,6 +689,7 @@ export function createContainer(env: Env): Container {
     organisationAccess,
     organisationWorkspace,
     organisationTeam,
+    organisationSecurity,
     queueAdmin: userMisc.queueAdmin,
     closeBullQueues: userMisc.closeBullQueues,
   };
@@ -710,6 +737,7 @@ export type {
   ContainerOrganisationAccessRoutesSlice,
   ContainerOrganisationWorkspaceRoutesSlice,
   ContainerOrganisationTeamRoutesSlice,
+  ContainerOrganisationSecurityRoutesSlice,
   ContainerLegalEntityRoutesSlice,
   ContainerLotCatalogSlice,
   ContainerLotDocumentRoutesSlice,

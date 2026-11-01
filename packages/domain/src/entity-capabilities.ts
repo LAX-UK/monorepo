@@ -113,6 +113,11 @@ const ENTITY_CAPABILITY_RULES = {
     access: "read",
     roles: ["owner", "admin", "finance", "viewer", "buyer_agent"],
   },
+  /**
+   * Email the members who don't have two-step on a reminder to turn it on. The people who see who
+   * has it on send it; it changes nothing, so admins may send it as well as owners.
+   */
+  "entity.security.remind": { access: "write", roles: ["owner", "admin"], denyImpersonation: true },
 } as const satisfies Record<string, CapabilityRule>;
 
 export type EntityCapability = keyof typeof ENTITY_CAPABILITY_RULES;
