@@ -53,13 +53,15 @@ export class DrizzlePayoutStatementRepository implements IPayoutStatementReposit
   }
 
   async findPayoutLines(payoutId: string): Promise<PayoutStatementLineRow[]> {
-    return this.db
+    const rows = await this.db
       .select({
         lineId: payoutLine.id,
         kind: payoutLine.kind,
         amount: payoutLine.amount,
         note: payoutLine.note,
         paymentId: payoutLine.paymentId,
+        paymentAmount: payment.amount,
+        platformFee: payment.platformFee,
         createdByUserId: payoutLine.createdByUserId,
         lotTitle: lot.title,
         lotNumber: lot.lotNumber,
@@ -70,6 +72,13 @@ export class DrizzlePayoutStatementRepository implements IPayoutStatementReposit
       .leftJoin(lot, eq(payment.lotId, lot.id))
       .leftJoin(bidIdentityDirectory, eq(payment.buyerId, bidIdentityDirectory.subjectId))
       .where(eq(payoutLine.payoutId, payoutId));
+    return rows.map(({ paymentAmount, platformFee, ...line }) => ({
+      ...line,
+      payment:
+        paymentAmount != null && platformFee != null
+          ? { amount: String(paymentAmount), platformFee: String(platformFee) }
+          : null,
+    }));
   }
 
   async findAuthorNames(userIds: string[]): Promise<Map<string, string>> {

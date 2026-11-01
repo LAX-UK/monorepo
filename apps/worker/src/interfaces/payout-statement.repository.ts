@@ -26,6 +26,8 @@ export type PayoutStatementLineRow = {
   amount: string;
   note: string | null;
   paymentId: string | null;
+  /** The buyer payment a sale line settles, and LAX's fee on it. */
+  payment: { amount: string; platformFee: string } | null;
   createdByUserId: string | null;
   lotTitle: string | null;
   lotNumber: number | null;
