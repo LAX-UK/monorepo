@@ -356,6 +356,7 @@ export function createLotCatalogServices(
     recipients: legalEntityNotificationRecipients,
     events: domainEventSink,
     sellerIdentity,
+    legalEntities: legalEntityRepository,
   });
 
   const consignmentAfterSaleHttp = createConsignmentAfterSaleServices({

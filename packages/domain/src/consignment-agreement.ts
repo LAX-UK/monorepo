@@ -38,6 +38,8 @@ export type AgreementAcceptanceInput = {
   actor: EntityActor | null;
   /** The version the person read and is accepting. */
   termsVersion: string;
+  /** The account's kind and status; its state can hold accepting whoever the member is. */
+  account?: Pick<AccountStanding, "kind" | "status"> | null;
 };
 
 export type AgreementAcceptanceRefusal =
@@ -45,6 +47,7 @@ export type AgreementAcceptanceRefusal =
   | "not_proposed"
   | "incomplete_terms"
   | "forbidden_role"
+  | "account_on_hold"
   | "stale_terms";
 
 export type AgreementAcceptanceDecision =
@@ -58,6 +61,7 @@ const REFUSAL_MESSAGES: Record<AgreementAcceptanceRefusal, string> = {
   not_proposed: "The specialist has not proposed terms for this consignment yet.",
   incomplete_terms: "Your specialist hasn't sent the estimate and terms yet.",
   forbidden_role: "Only an owner or admin can accept the consignment agreement.",
+  account_on_hold: "The account's current state does not allow accepting the agreement.",
   stale_terms: "The agreement has changed since you opened it. Read it again before accepting.",
 };
 
@@ -108,6 +112,7 @@ export function decideAgreementAcceptance(
   if (!agreement) return refuse("not_proposed");
   if (!canAcceptConsignmentAgreement(input.actor)) return refuse("forbidden_role");
   if (agreement.acceptedAt) return { kind: "already_accepted" };
+  if (input.account && agreementAcceptanceHold(input.account)) return refuse("account_on_hold");
   if (!agreementTermsComplete(agreement)) return refuse("incomplete_terms");
   if (agreement.termsVersion !== input.termsVersion) return refuse("stale_terms");
   return { kind: "accept" };
