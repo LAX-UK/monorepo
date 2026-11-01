@@ -9,7 +9,7 @@ import {
 import { DomainStatusBadge } from "@/components/ui/domain-status-badge";
 import { HeroVerticalScrim } from "@/components/ui/hero-tone-scrim";
 import { OverlayToneText } from "@/components/ui/overlay-tone-text";
-import { formatMoney } from "@/lib/format-currency";
+import { archiveLotResult } from "@/lib/archive/archive-lot-result";
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { EDITORIAL_BOLD_SLOTS } from "@/lib/media/overlay-slot-presets";
 import type { Lot } from "@auction/types";
@@ -43,6 +43,7 @@ function ArchiveHeroCardInner({
   href: string;
 }) {
   const a = row.auction;
+  const result = archiveLotResult(a);
   return (
     <article className="overflow-hidden rounded-xl border border-border-hairline bg-surface-container-lowest ring-1 ring-outline-variant/10 transition-transform duration-[var(--motion-duration-md)] motion-reduce:transition-none hover:-translate-y-px">
       <Link href={href} className={cn("group block rounded-xl", FOCUS_RING)}>
@@ -66,7 +67,7 @@ function ArchiveHeroCardInner({
                 <DomainStatusBadge
                   domain="lot"
                   status={a.status}
-                  context={{ lot: { winnerId: a.winnerId } }}
+                  context={{ lot: result.statusContext }}
                 />
                 <span className="font-label text-[0.65rem] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
                   {closingSeason(a.endTime)}
@@ -91,14 +92,16 @@ function ArchiveHeroCardInner({
             ) : null}
             <p className="font-body text-sm text-on-surface-variant">{row.sellerName}</p>
           </div>
-          <div className="text-right">
-            <p className="mb-1 font-label text-[0.65rem] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
-              Hammer
-            </p>
-            <p className="font-headline text-2xl tabular-nums text-on-surface">
-              {formatMoney(a.currentPrice)}
-            </p>
-          </div>
+          {result.hammer ? (
+            <div className="text-right">
+              <p className="mb-1 font-label text-[0.65rem] font-semibold uppercase tracking-[var(--text-label-caps-tracking,0.22em)] text-on-surface-variant">
+                {result.hammer.label}
+              </p>
+              <p className="font-headline text-2xl tabular-nums text-on-surface">
+                {result.hammer.value}
+              </p>
+            </div>
+          ) : null}
         </div>
       </Link>
     </article>

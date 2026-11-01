@@ -34,6 +34,14 @@ export class CategoryService implements ICategoryService {
     return normalizeCategoryHierarchy(categories);
   }
 
+  async listWithPublishedLots(): Promise<Category[]> {
+    const [categories, idsWithLots] = await Promise.all([
+      this.list(),
+      this.categories.findIdsWithPublishedLots(),
+    ]);
+    return categories.filter((c) => idsWithLots.has(c.id));
+  }
+
   async validateParent(categoryId: string, parentId: string | null | undefined): Promise<void> {
     const categories = await this.categories.findAll();
     const issue = validateCategoryParent(categories, categoryId, parentId);

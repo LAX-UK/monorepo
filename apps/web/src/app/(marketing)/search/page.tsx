@@ -116,7 +116,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
     getServerCategoryReader().catch(() => null),
     getServerWatchedLotIdSet(),
   ]);
-  const categories = catReader ? await catReader.list().catch(() => []) : [];
+  const categories = catReader ? await catReader.listWithPublishedLots().catch(() => []) : [];
 
   const layoutView = await resolveMarketingLayoutView({
     routeKey: "search",

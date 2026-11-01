@@ -83,14 +83,17 @@ export interface ILotLifecycleRepository {
 }
 
 export interface ILotAnalyticsRepository {
-  /** Sum of current_price for ended lots (hammer totals), optional calendar year on endTime. */
+  /**
+   * Hammer total of ended lots that sold (current_price where a winner is set) and the count of
+   * all ended lots; optional calendar year on endTime.
+   */
   sumEndedHammer(filter: ArchiveEndedAggregateFilter): Promise<{ total: string; count: number }>;
   /** UTC day counts for admin KPI trends (created_at >= rangeStart, non-deleted lots). */
   countCreatedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
   countEndedAtByDay(rangeStart: Date): Promise<Map<string, number>>;
   /** Lots open for bidding on each UTC day from rangeStart to today; every day present. */
   countLiveByDay(rangeStart: Date): Promise<Map<string, number>>;
-  /** Sum hammer (current price) for ended lots per UTC day (by endTime). */
+  /** Hammer total (current price) of ended lots that sold, per UTC day (by endTime). */
   sumEndedHammerByDay(rangeStart: Date): Promise<Map<string, number>>;
   /** Lot counts per sale id for list endpoints. */
   countLotsBySaleIds(
