@@ -530,6 +530,12 @@ export {
   type SavedReplyPlaceholder,
 } from "./consignment-inbox.js";
 export {
+  markersAfterMessage,
+  markersFromMessages,
+  type ConsignmentThreadMarkers,
+  type MarkerMessage,
+} from "./consignment-thread-markers.js";
+export {
   LONDON_WORKING_CALENDAR,
   addWorkingMinutes,
   englandAndWalesBankHolidays,
