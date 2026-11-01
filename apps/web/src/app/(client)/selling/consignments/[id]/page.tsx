@@ -236,20 +236,22 @@ export default async function SubmissionDetailPage({
   const wizardInitialStepIndex = readyToSubmit
     ? wizardStepIndex("review")
     : firstIncompleteWizardStepIndex(submissionFormValues);
+  const agreement = agreementView?.agreement ?? null;
+  // One reading of the agreement for the steps and the status badge, so they always agree.
+  const agreementState = !agreement ? "none" : agreement.acceptedAt ? "accepted" : "open";
   const detail = buildConsignmentDetailVm({
     submission,
     lot: convertedLot,
-    agreementAccepted: Boolean(agreementView?.agreement?.acceptedAt),
+    agreement: agreementState,
     listingHref: submission.convertedLotId
       ? lotPath({ id: submission.convertedLotId, title: submission.title })
       : null,
   });
   const photos = submission.images.filter((src): src is string => Boolean(src));
-  const agreement = agreementView?.agreement ?? null;
   const unsoldChoiceMade = Boolean(afterSale?.unsold?.choice?.requestedChoice);
   const status = consignmentStatus({
     submission: submission.status,
-    agreement: !agreement ? "none" : agreement.acceptedAt ? "accepted" : "open",
+    agreement: agreementState,
     lot: convertedLot
       ? {
           status: convertedLot.status,
@@ -269,27 +271,24 @@ export default async function SubmissionDetailPage({
     organisation: account?.organisationName ?? null,
     chooseBy,
   });
-  const headMeta = [
+  const headFacts = [
     detail.meta,
     submission.reference,
     submission.sentBy?.name ? `sent by ${submission.sentBy.name}` : null,
-  ]
-    .filter(Boolean)
-    .join(" · ");
+  ].filter((fact): fact is string => Boolean(fact));
 
   return (
     <DashboardPage className="space-y-8">
       <SetMobileShellTitle title={submission.title} />
       <ConsignmentDetailHead
-        vm={{ ...detail, meta: headMeta }}
+        vm={detail}
+        facts={headFacts}
         title={submission.title}
         status={
           <StatusBadge tone={statusView.tone} shape={statusView.shape}>
             {statusView.label}
           </StatusBadge>
         }
-        backHref={DASHBOARD_ROUTES.consignments}
-        backLabel={backLabel}
       />
       {actionError ? (
         <DashboardSliceErrorAlert failure={describeSettingsActionError(actionError)} />

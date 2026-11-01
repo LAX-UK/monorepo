@@ -95,6 +95,8 @@ export { SelectionBar } from "./selection-bar.js";
 export { ToggleRow } from "./toggle-row.js";
 export type { ToggleRowProps } from "./toggle-row.js";
 export { EmptyState } from "./empty-state.js";
+export { FileAttachment } from "./file-attachment.js";
+export type { FileAttachmentProps } from "./file-attachment.js";
 export type { EmptyStateProps } from "./empty-state.js";
 export {
   FilterButton,

@@ -5,7 +5,10 @@ import type { AppShellRole } from "@/components/layout/app-shell-nav";
 import { MobileShellTitle } from "@/components/layout/mobile-shell-title";
 import type { SessionUser } from "@/lib/data/contracts";
 import { buildAdminBreadcrumbTrail } from "@/lib/navigation/admin-breadcrumb-trail";
-import { buildClientBreadcrumbTrail } from "@/lib/navigation/client-breadcrumb-trail";
+import {
+  buildClientBreadcrumbTrail,
+  withRecordTitle,
+} from "@/lib/navigation/client-breadcrumb-trail";
 import { resolveMobileShellTitle } from "@/lib/navigation/mobile-shell-title";
 import { useShellChrome } from "@/lib/shell/shell-chrome-context";
 import { usePathname } from "next/navigation";
@@ -24,7 +27,7 @@ export function AppShellBreadcrumbs({
   const { mobileTitleOverride } = useShellChrome();
 
   if (role === "client") {
-    const items = buildClientBreadcrumbTrail(pathname);
+    const items = withRecordTitle(buildClientBreadcrumbTrail(pathname), mobileTitleOverride);
     const routeModel = resolveMobileShellTitle(items);
     const resolvedModel = mobileTitleOverride
       ? { ...routeModel, title: mobileTitleOverride }

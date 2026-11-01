@@ -4,22 +4,27 @@ import { consignmentJourney, journeyCaption, journeyProgress } from "./consignme
 
 describe("consignmentJourney", () => {
   it("follows a submission through review and the agreement", () => {
-    const at = (status: ItemSubmissionStatus, accepted = false) =>
-      consignmentJourney({ submissionStatus: status, agreementAccepted: accepted, lot: null })
-        ?.current;
+    const at = (status: ItemSubmissionStatus, agreement: "none" | "open" | "accepted" = "open") =>
+      consignmentJourney({ submissionStatus: status, agreement, lot: null })?.current;
     expect(at("draft")).toBe("submitted");
     expect(at("under_review")).toBe("review");
     expect(at("changes_requested")).toBe("review");
     expect(at("approved")).toBe("agreement");
-    expect(at("approved", true)).toBe("catalogued");
+    expect(at("approved", "accepted")).toBe("catalogued");
     expect(at("rejected")).toBeUndefined();
+  });
+
+  it("goes on to cataloguing when no terms wait, as the status badge says", () => {
+    expect(
+      consignmentJourney({ submissionStatus: "approved", agreement: "none", lot: null })?.current,
+    ).toBe("catalogued");
   });
 
   it("follows the lot once there is one", () => {
     const lot = (status: "draft" | "active" | "ended" | "cancelled", sold = false) =>
       consignmentJourney({
         submissionStatus: "converted",
-        agreementAccepted: true,
+        agreement: "accepted",
         lot: { status, sold },
       });
     expect(lot("draft")?.current).toBe("catalogued");
