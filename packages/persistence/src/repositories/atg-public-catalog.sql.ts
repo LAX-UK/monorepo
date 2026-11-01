@@ -81,6 +81,17 @@ export function publicSaleCondition(): SQL {
   );
 }
 
+/**
+ * A sale's catalogue: the public lots plus its withdrawn ones, so numbering has no gaps.
+ * Browse, search, counts and previews keep using {@link publicLotCondition}.
+ */
+export function publicCatalogueLotCondition(): SQL {
+  return requireSql(
+    or(publicLotCondition(), and(eq(lot.status, "cancelled"), sql`${lot.saleId} is not null`)),
+    "publicCatalogueLotCondition",
+  );
+}
+
 /** Public marketing visibility for lots joined to their sale. */
 export function publicLotCondition(): SQL {
   return requireSql(

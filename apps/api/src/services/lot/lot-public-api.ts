@@ -93,7 +93,10 @@ export async function listBidsForPublicApi(
   if (!lot) {
     return { kind: "not_found" };
   }
-  if (lot.auctionType === "sealed" && lot.status === "active") {
+  if (
+    (lot.auctionType === "sealed" && lot.status === "active") ||
+    HISTORY_HIDDEN_STATUSES.has(lot.status)
+  ) {
     if (!roleHasCapability(viewerRole, "auction.manage", vStaff)) {
       return { kind: "ok", data: [] };
     }

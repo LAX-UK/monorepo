@@ -799,6 +799,26 @@ export {
 } from "./access-request.js";
 export * from "./lot-page/index.js";
 export {
+  HOME_SECTION_ORDER,
+  HOME_STATE_WINDOWS,
+  homeStates,
+  pruneEmptyHomeSections,
+  resolveHomeState,
+  resolveHomeViewerSwaps,
+  type HomeAlertsSwap,
+  type HomeBidderApproval,
+  type HomeRegisterSwap,
+  type HomeSaleFacts,
+  type HomeSectionId,
+  type HomeState,
+  type HomeStateInput,
+  type HomeStateResult,
+  type HomeStateWindows,
+  type HomeViewer,
+  type HomeViewerSwaps,
+} from "./home-state.js";
+export { allocateHomeLots, type HomeLotSlot } from "./home-lot-pool.js";
+export {
   PLATE_FIELD_MIN_CONTRAST,
   blend,
   contrastRatio,
@@ -857,3 +877,12 @@ export {
   type FeaturedLotsRefusal,
   type HomePinsRefusal,
 } from "./sale-home.js";
+export {
+  EXTERNAL_RESULTS_SETTLING_MS,
+  saleHasResultsPhase,
+  summariseSaleResults,
+  type SaleResultLot,
+  type SaleResultsSaleContext,
+  type SaleResultsSummary,
+} from "./sale-results-summary.js";
+export { toWithdrawnLotView } from "./withdrawn-lot-view.js";

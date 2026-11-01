@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { hangLot, hangSale } from "./hang-fixtures";
-import { type HangSale, homeHangLotIds, pickCurrentSale, resolveHomeHang } from "./home-hang";
+import {
+  type HangSale,
+  type HomeHangState,
+  buildHomeHang,
+  hangKind,
+  hangSaleIds,
+  planHomeHang,
+} from "./home-hang";
 
 const NOW = new Date("2026-11-01T12:00:00.000Z");
 
@@ -19,91 +26,135 @@ function saleWith(count: number, saleOverrides = {}, lotOverrides = {}): HangSal
   return { sale, lots, lotCount: count };
 }
 
-describe("pickCurrentSale", () => {
-  it("prefers the live sale, then the next to open", () => {
-    const upcoming = { sale: hangSale({ id: "u", status: "scheduled" }) };
-    const live = { sale: hangSale({ id: "l", status: "active" }) };
-    expect(pickCurrentSale([upcoming, live])?.sale.id).toBe("l");
-    expect(pickCurrentSale([upcoming])?.sale.id).toBe("u");
-    expect(pickCurrentSale([])).toBeNull();
+const state = (over: Partial<HomeHangState> = {}): HomeHangState => ({
+  state: "live",
+  leadSaleId: "sale-1",
+  resultsBandSaleIds: [],
+  ...over,
+});
+
+const SOLD = { status: "ended" as const, winnerId: "u1" };
+
+describe("hangKind", () => {
+  it.each([
+    ["live", "inSale"],
+    ["upcoming", "inSale"],
+    ["justEnded", "recentlySold"],
+    ["recentResults", "recentlySold"],
+    ["betweenSeasons", "recentlySold"],
+  ] as const)("titles the %s state as %s", (s, kind) => {
+    expect(hangKind(s)).toBe(kind);
   });
 });
 
-describe("resolveHomeHang: in this sale", () => {
+describe("hangSaleIds", () => {
+  it("reads the lead sale for every state but between seasons", () => {
+    expect(hangSaleIds(state({ state: "upcoming", leadSaleId: "x" }))).toEqual(["x"]);
+    expect(hangSaleIds(state({ leadSaleId: null }))).toEqual([]);
+  });
+
+  it("reads the last two ended sales between seasons", () => {
+    expect(
+      hangSaleIds(state({ state: "betweenSeasons", resultsBandSaleIds: ["a", "b", "c"] })),
+    ).toEqual(["a", "b"]);
+  });
+});
+
+describe("in this sale", () => {
   it("titles a live sale's wall In this sale and offers all its lots", () => {
-    const hang = resolveHomeHang({ openSales: [saleWith(8)], endedSales: [], now: NOW });
+    const entry = saleWith(8);
+    const plan = planHomeHang(state(), [entry]);
+    const hang = buildHomeHang(plan, plan?.candidates ?? [], NOW);
     expect(hang).toMatchObject({
       kind: "inSale",
       title: "In this sale",
       summary: "8 lots",
       scaleNote: true,
-      seeAll: { href: expect.stringContaining("sale"), label: "See all 8 lots" },
+      seeAll: { label: "See all 8 lots" },
     });
     expect(hang?.works).toHaveLength(8);
   });
 
   it("offers a preview of an upcoming sale", () => {
-    const hang = resolveHomeHang({
-      openSales: [saleWith(6, { status: "scheduled" }, { status: "scheduled" })],
-      endedSales: [],
-      now: NOW,
-    });
+    const entry = saleWith(6, { status: "scheduled" }, { status: "scheduled" });
+    const plan = planHomeHang(state({ state: "upcoming" }), [entry]);
+    const hang = buildHomeHang(plan, plan?.candidates ?? [], NOW);
     expect(hang?.title).toBe("In this sale");
     expect(hang?.seeAll.label).toBe("Preview all 6 lots");
   });
 
+  it("leads with the lead sale's featured lots in staff order, then its top lots", () => {
+    const entry = saleWith(5, { featuredLotIds: ["sale-1-l2", "sale-1-l4"] });
+    expect(planHomeHang(state(), [entry])?.candidates.map((l) => l.id)).toEqual([
+      "sale-1-l2",
+      "sale-1-l4",
+    ]);
+    const plain = saleWith(5);
+    expect(planHomeHang(state(), [plain])?.candidates[0]?.id).toBe("sale-1-l5");
+  });
+
   it("says how many of the sale's lots are shown when it shows only some", () => {
     const entry = { ...saleWith(4), lotCount: 30 };
-    const hang = resolveHomeHang({ openSales: [entry], endedSales: [], now: NOW });
-    expect(hang?.summary).toBe("4 of 30 lots");
+    const plan = planHomeHang(state(), [entry]);
+    expect(buildHomeHang(plan, plan?.candidates ?? [], NOW)?.summary).toBe("4 of 30 lots");
   });
 
-  it("is left out with fewer than two works with photographs", () => {
+  it("is left out with fewer than two works with photographs hanging", () => {
     const entry = saleWith(3);
-    entry.lots = entry.lots.map((l, i) => (i === 0 ? l : { ...l, images: [], imageAssets: [] }));
-    expect(resolveHomeHang({ openSales: [entry], endedSales: [], now: NOW })).toBeNull();
+    const plan = planHomeHang(state(), [entry]);
+    expect(buildHomeHang(plan, plan?.candidates.slice(0, 1) ?? [], NOW)).toBeNull();
+    expect(buildHomeHang(plan, [], NOW)).toBeNull();
   });
 
-  it("wins over recent results while a sale is live or upcoming", () => {
-    const hang = resolveHomeHang({
-      openSales: [saleWith(3)],
-      endedSales: [saleWith(3, { id: "old", status: "ended" }, { status: "ended", winnerId: "u" })],
-      now: NOW,
-    });
-    expect(hang?.kind).toBe("inSale");
+  it("hangs only the lots the page allocated to it", () => {
+    const entry = saleWith(5);
+    const plan = planHomeHang(state(), [entry]);
+    const hang = buildHomeHang(plan, plan?.candidates.slice(0, 3) ?? [], NOW);
+    expect(hang?.works).toHaveLength(3);
+    expect(hang?.summary).toBe("3 of 5 lots");
+  });
+
+  it("has nothing when the lead sale was not loaded", () => {
+    expect(planHomeHang(state(), [])).toBeNull();
+    expect(buildHomeHang(null, [], NOW)).toBeNull();
   });
 });
 
-describe("resolveHomeHang: recently sold", () => {
-  const sold = { status: "ended" as const, winnerId: "u1" };
+describe("recently sold", () => {
+  it.each(["justEnded", "recentResults"] as const)(
+    "shows the lead sale's sold lots in the %s state with a link to its results",
+    (name) => {
+      const entry = saleWith(
+        4,
+        { id: "sep", title: "September Modern British", status: "ended" },
+        SOLD,
+      );
+      const plan = planHomeHang(state({ state: name, leadSaleId: "sep" }), [entry]);
+      const hang = buildHomeHang(plan, plan?.candidates ?? [], NOW);
+      expect(hang).toMatchObject({
+        kind: "recentlySold",
+        title: "Recently sold",
+        scaleNote: false,
+        seeAll: { label: "See the results" },
+      });
+      expect(hang?.summary).toContain("September Modern British · 4 lots sold");
+      expect(hang?.summary).toContain("buyer’s premium");
+      expect(hang?.works[0]?.label.eyebrow).toMatch(/^Lot /);
+    },
+  );
 
-  it("shows a single ended sale's sold lots with a link to its results", () => {
-    const hang = resolveHomeHang({
-      openSales: [],
-      endedSales: [
-        saleWith(4, { id: "sep", title: "September Modern British", status: "ended" }, sold),
-      ],
-      now: NOW,
-    });
-    expect(hang).toMatchObject({
-      kind: "recentlySold",
-      title: "Recently sold",
-      scaleNote: false,
-      seeAll: { label: "See the results" },
-    });
-    expect(hang?.summary).toContain("September Modern British · 4 lots sold");
-    expect(hang?.summary).toContain("buyer’s premium");
-    expect(hang?.works[0]?.label.eyebrow).toMatch(/^Lot /);
-  });
-
-  it("mixes the last two sales and names each work's sale", () => {
+  it("mixes the last two sales between seasons and names each work's sale", () => {
     const sep = saleWith(
       2,
       { id: "sep", title: "September Modern British", status: "ended" },
-      sold,
+      SOLD,
     );
-    const oct = saleWith(2, { id: "oct", title: "Autumn Works on Paper", status: "ended" }, sold);
-    const hang = resolveHomeHang({ openSales: [], endedSales: [oct, sep], now: NOW });
+    const oct = saleWith(2, { id: "oct", title: "Autumn Works on Paper", status: "ended" }, SOLD);
+    const plan = planHomeHang(
+      state({ state: "betweenSeasons", leadSaleId: "oct", resultsBandSaleIds: ["oct", "sep"] }),
+      [sep, oct],
+    );
+    const hang = buildHomeHang(plan, plan?.candidates ?? [], NOW);
     expect(hang?.summary).toBe("From the last two sales · prices include buyer’s premium");
     expect(hang?.seeAll).toMatchObject({ href: "/archive", label: "All results" });
     const eyebrows = hang?.works.map((w) => w.label.eyebrow);
@@ -112,19 +163,7 @@ describe("resolveHomeHang: recently sold", () => {
   });
 
   it("leaves out lots that did not sell", () => {
-    const entry = saleWith(3, { status: "ended" }, { status: "ended", winnerId: null });
-    expect(resolveHomeHang({ openSales: [], endedSales: [entry], now: NOW })).toBeNull();
-  });
-
-  it("is left out with nothing to show", () => {
-    expect(resolveHomeHang({ openSales: [], endedSales: [], now: NOW })).toBeNull();
-  });
-});
-
-describe("homeHangLotIds", () => {
-  it("lists the hung lots so More lots can skip them", () => {
-    const hang = resolveHomeHang({ openSales: [saleWith(3)], endedSales: [], now: NOW });
-    expect(homeHangLotIds(hang)).toEqual(new Set(["sale-1-l1", "sale-1-l2", "sale-1-l3"]));
-    expect(homeHangLotIds(null).size).toBe(0);
+    const entry = saleWith(3, { id: "x", status: "ended" }, { status: "ended", winnerId: null });
+    expect(planHomeHang(state({ state: "recentResults", leadSaleId: "x" }), [entry])).toBeNull();
   });
 });

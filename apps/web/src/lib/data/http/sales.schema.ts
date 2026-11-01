@@ -1,5 +1,5 @@
 import { lotSchema } from "@/lib/data/http/lot.schema";
-import { toObjectRecord } from "@/lib/data/http/object-guards";
+import { isWithdrawnLotRow, toObjectRecord } from "@/lib/data/http/object-guards";
 import { saleSchema } from "@/lib/data/http/sale.schema";
 import { parseSaleListRowApiPayload } from "@/lib/sale-list-row";
 import type { SaleListRow } from "@/lib/sale-list-row";
@@ -87,7 +87,7 @@ export const saleWithLotsDataSchema = z
   .transform((data): SaleWithLots => {
     const base = {
       sale: saleSchema.parse(data.sale),
-      lots: data.lots.map((lot) => lotSchema.parse(lot)),
+      lots: data.lots.filter((lot) => !isWithdrawnLotRow(lot)).map((lot) => lotSchema.parse(lot)),
     };
     return data.viewer ? { ...base, viewer: data.viewer } : base;
   }) as z.ZodType<SaleWithLots>;
@@ -104,7 +104,7 @@ export const saleLotsPageDataSchema = z
   })
   .transform(
     (data): SaleLotsPage => ({
-      items: data.items.map((lot) => lotSchema.parse(lot)),
+      items: data.items.filter((lot) => !isWithdrawnLotRow(lot)).map((lot) => lotSchema.parse(lot)),
       total: data.total,
       limit: data.limit,
       offset: data.offset,

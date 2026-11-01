@@ -4,6 +4,7 @@ import { type HangLotPhoto, hangLotPhoto } from "@/lib/hang/hang-lot";
 import { pickHangLots } from "@/lib/hang/hang-selection";
 import { lotWasSold } from "@/lib/lot/lot-outcome";
 import { lotPath, salePath } from "@/lib/seo/url";
+import type { HomeStateResult } from "@auction/domain";
 import type { Lot, Sale } from "@auction/types";
 
 /** A sale with the lots fetched for it. */
@@ -28,17 +29,66 @@ export type HomeHangVM = {
   works: HomeHangWork[];
 };
 
-export type HomeHangInput = {
-  /** Scheduled and active sales, soonest first; only the current one needs its lots. */
-  openSales: readonly HangSale[];
-  /** Ended sales, most recent first, with their lots. */
-  endedSales: readonly HangSale[];
-  now: Date;
+/** The parts of the home state that decide what hangs. */
+export type HomeHangState = Pick<HomeStateResult, "state" | "leadSaleId" | "resultsBandSaleIds">;
+
+/** Ended sales mixed on the wall between seasons. */
+const BAND_SALES = 2;
+
+/**
+ * Which sales' lots the hang needs for this home state: the lead sale when a sale is live,
+ * upcoming, just ended or in recent results; the last two ended sales between seasons.
+ */
+export function hangSaleIds(state: HomeHangState): string[] {
+  if (state.state === "betweenSeasons") return state.resultsBandSaleIds.slice(0, BAND_SALES);
+  return state.leadSaleId ? [state.leadSaleId] : [];
+}
+
+/** "In this sale" for a sale that is live or opening; "Recently sold" once results are in. */
+export function hangKind(state: HomeHangState["state"]): HomeHangVM["kind"] {
+  return state === "live" || state === "upcoming" ? "inSale" : "recentlySold";
+}
+
+/** What can hang, in hanging order, before the page gives each lot to one place. */
+export type HangPlan = {
+  kind: HomeHangVM["kind"];
+  /** The sales the candidates come from. */
+  sales: readonly HangSale[];
+  /** Several sales share the wall, so each label names its sale. */
+  mixed: boolean;
+  candidates: Lot[];
 };
 
-/** The hang needs at least two works with photographs; one is already the hero's work. */
-const MIN_WORKS = 2;
-const RECENT_SALES = 2;
+function soldLots(entry: HangSale): Lot[] {
+  return entry.lots.filter((lot) => lot.status === "ended" && lotWasSold(lot));
+}
+
+/**
+ * The candidates for the wall: the lead sale's featured lots first, then its top lots. Results
+ * walls take sold lots only. `null` when there is nothing to hang.
+ */
+export function planHomeHang(state: HomeHangState, loaded: readonly HangSale[]): HangPlan | null {
+  const kind = hangKind(state.state);
+  const byId = new Map(loaded.map((entry) => [entry.sale.id, entry]));
+  const wanted = hangSaleIds(state).flatMap((id) => byId.get(id) ?? []);
+
+  if (kind === "inSale") {
+    const entry = wanted[0];
+    if (!entry) return null;
+    const candidates = pickHangLots(entry.lots, entry.sale.featuredLotIds ?? []);
+    return { kind, sales: [entry], mixed: false, candidates };
+  }
+
+  const withResults = wanted.filter((entry) => soldLots(entry).length > 0);
+  const first = withResults[0];
+  if (!first) return null;
+  const mixed = withResults.length > 1;
+  const candidates = pickHangLots(
+    withResults.flatMap(soldLots),
+    mixed ? [] : (first.sale.featuredLotIds ?? []),
+  );
+  return { kind, sales: withResults, mixed, candidates };
+}
 
 function lotsLabel(count: number): string {
   return `${count} lot${count === 1 ? "" : "s"}`;
@@ -47,107 +97,80 @@ function lotsLabel(count: number): string {
 /** How a work's label reads when it hangs among works from other sales. */
 type LabelOverride = { eyebrow: string; notes: string[] };
 
-function toWork(
-  lot: Lot,
-  sale: HangSale["sale"],
-  now: Date,
-  override?: LabelOverride,
-): HomeHangWork | null {
+function toWork(lot: Lot, sale: Sale, now: Date, override?: LabelOverride): HomeHangWork | null {
   const photo = hangLotPhoto(lot);
   if (!photo) return null;
   const label = hangLabelModel(lot, { sale, now, shownFramed: photo.shownFramed });
   return { lotId: lot.id, href: lotPath(lot), photo, label: { ...label, ...override } };
 }
 
-/** The sale the hang follows: the live one, else the next to open. */
-export function pickCurrentSale<T extends { sale: Pick<Sale, "status"> }>(
-  open: readonly T[],
-): T | null {
-  return open.find((entry) => entry.sale.status === "active") ?? open[0] ?? null;
+function saleOfLot(plan: HangPlan): Map<string, HangSale> {
+  return new Map(plan.sales.flatMap((entry) => entry.lots.map((lot) => [lot.id, entry] as const)));
 }
 
-function inThisSale(entry: HangSale, now: Date): HomeHangVM | null {
-  const lots = pickHangLots(entry.lots, entry.sale.featuredLotIds ?? []);
-  const works = lots.map((lot) => toWork(lot, entry.sale, now)).filter((w) => w !== null);
-  if (works.length < MIN_WORKS) return null;
-  const total = Math.max(entry.lotCount, works.length);
+function inThisSaleCopy(entry: HangSale, shown: number) {
+  const total = Math.max(entry.lotCount, shown);
   const totalLabel = lotsLabel(total);
+  const live = entry.sale.status === "active";
   return {
-    kind: "inSale",
     title: "In this sale",
-    summary: works.length === total ? totalLabel : `${works.length} of ${totalLabel}`,
+    summary: shown === total ? totalLabel : `${shown} of ${totalLabel}`,
     scaleNote: true,
     seeAll: {
       href: salePath(entry.sale),
-      label: entry.sale.status === "active" ? `See all ${totalLabel}` : `Preview all ${totalLabel}`,
+      label: live ? `See all ${totalLabel}` : `Preview all ${totalLabel}`,
       tileNote: entry.sale.title,
     },
-    works,
   };
 }
 
-function soldLots(entry: HangSale): Lot[] {
-  return entry.lots.filter((lot) => lot.status === "ended" && lotWasSold(lot));
-}
-
-function recentlySold(ended: readonly HangSale[], now: Date): HomeHangVM | null {
-  const sales = ended.filter((entry) => soldLots(entry).length > 0).slice(0, RECENT_SALES);
-  const first = sales[0];
-  if (!first) return null;
-  const single = sales.length === 1;
-
-  const pooled = sales.flatMap((entry) => soldLots(entry).map((lot) => ({ lot, entry })));
-  const bySale = new Map(pooled.map(({ lot, entry }) => [lot.id, entry]));
-  const picked = pickHangLots(
-    pooled.map(({ lot }) => lot),
-    single ? (first.sale.featuredLotIds ?? []) : [],
-  );
-  const works = picked
-    .map((lot) => {
-      const entry = bySale.get(lot.id) ?? first;
-      return toWork(
-        lot,
-        entry.sale,
-        now,
-        single
-          ? undefined
-          : {
-              eyebrow: entry.sale.title,
-              notes: [formatLondonDayMonth(entry.sale.endTime, now)],
-            },
-      );
-    })
-    .filter((w) => w !== null);
-  if (works.length < MIN_WORKS) return null;
-
-  const results = single
-    ? { href: salePath(first.sale), label: "See the results" }
-    : { href: "/archive", label: "All results" };
-  const sold = soldLots(first).length;
+function recentlySoldCopy(plan: HangPlan) {
+  const first = plan.sales[0];
+  if (!first || plan.mixed) {
+    return {
+      title: "Recently sold",
+      summary: "From the last two sales · prices include buyer’s premium",
+      scaleNote: false,
+      seeAll: { href: "/archive", label: "All results" },
+    };
+  }
   return {
-    kind: "recentlySold",
     title: "Recently sold",
-    summary: single
-      ? `${first.sale.title} · ${lotsLabel(sold)} sold · prices include buyer’s premium`
-      : "From the last two sales · prices include buyer’s premium",
+    summary: `${first.sale.title} · ${lotsLabel(soldLots(first).length)} sold · prices include buyer’s premium`,
     scaleNote: false,
-    seeAll: results,
-    works,
+    seeAll: { href: salePath(first.sale), label: "See the results" },
   };
 }
 
 /**
- * The hang under the home hero. A live or upcoming sale shows "In this sale" and follows its
- * lots as bidding moves. With none, "Recently sold" shows what the last sales made, buyer's
- * premium included. Either needs two works with photographs; with fewer the section is left out.
+ * The hang section for the lots the page gave it. The title follows the home state: "In this
+ * sale" while live or upcoming, "Recently sold" otherwise. `null` when fewer than two works
+ * with photographs remain.
  */
-export function resolveHomeHang(input: HomeHangInput): HomeHangVM | null {
-  const open = pickCurrentSale(input.openSales);
-  if (open) return inThisSale(open, input.now);
-  return recentlySold(input.endedSales, input.now);
-}
+export function buildHomeHang(
+  plan: HangPlan | null,
+  allocated: readonly Lot[],
+  now: Date,
+): HomeHangVM | null {
+  const first = plan?.sales[0];
+  if (!plan || !first) return null;
+  const owner = saleOfLot(plan);
+  const works = allocated
+    .map((lot) => {
+      const entry = owner.get(lot.id) ?? first;
+      return toWork(
+        lot,
+        entry.sale,
+        now,
+        plan.mixed
+          ? { eyebrow: entry.sale.title, notes: [formatLondonDayMonth(entry.sale.endTime, now)] }
+          : undefined,
+      );
+    })
+    .filter((w): w is HomeHangWork => w !== null);
+  if (works.length < 2) return null;
 
-/** The lots the hang shows, so "More lots" does not repeat them. */
-export function homeHangLotIds(hang: HomeHangVM | null): Set<string> {
-  return new Set((hang?.works ?? []).map((w) => w.lotId));
+  const copy =
+    plan.kind === "inSale" ? inThisSaleCopy(first, works.length) : recentlySoldCopy(plan);
+  return { kind: plan.kind, ...copy, works };
 }

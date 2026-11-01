@@ -17,7 +17,7 @@ export type HomeSaleListQuery = {
   categoryId?: string;
   limit?: number;
   offset?: number;
-  sort?: "createdDesc" | "startAsc";
+  sort?: "createdDesc" | "startAsc" | "endDesc";
 };
 
 function buildHomeSalesQuery(params: HomeSaleListQuery): Record<string, string> {

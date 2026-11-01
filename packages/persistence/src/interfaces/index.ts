@@ -916,6 +916,11 @@ export type {
 } from "./attention-feed.reader.js";
 
 export type {
+  ISaleResultLotsReader,
+  SaleResultLotRow,
+} from "./sale-result-lots.reader.js";
+
+export type {
   ISaleAttentionSignalsReader,
   SaleAttentionSignalKey,
   SaleAttentionSignals,

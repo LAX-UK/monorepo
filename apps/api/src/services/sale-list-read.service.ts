@@ -1,3 +1,4 @@
+import type { SaleResultsSummary } from "@auction/domain";
 import type {
   ILotRepository,
   ISaleChannelReader,
@@ -14,6 +15,7 @@ import { mapLotToSummary } from "../lib/mappers.js";
 import { presentSalesWithLotsImages } from "../lib/media-presenters.js";
 import type { MediaAssetEnricher } from "./media-asset-enricher.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
+import type { ISaleResultsSummaryService } from "./sale-results-summary.service.js";
 import { withSellingPlatforms } from "./sale-selling-platform.js";
 
 const PREVIEW_LOTS_PER_SALE = 4;
@@ -22,6 +24,8 @@ export type SaleListItem = {
   sale: Sale;
   lotCount: number;
   previewLots: LotSummary[];
+  /** Results once the sale has ended (or is finalising); `null` before that. */
+  resultsSummary: SaleResultsSummary | null;
 };
 
 export interface ISaleListReadService {
@@ -38,6 +42,7 @@ export class SaleListReadService implements ISaleListReadService {
     private readonly catalogueMediaUrlResolver: MediaUrlResolver,
     private readonly mediaAssetEnricher: MediaAssetEnricher,
     private readonly saleChannelReader: Pick<ISaleChannelReader, "getSaleOwnerships"> | null = null,
+    private readonly resultsSummaries: ISaleResultsSummaryService | null = null,
   ) {}
 
   async listForPublicApi(
@@ -92,16 +97,18 @@ export class SaleListReadService implements ISaleListReadService {
       this.mediaAssetEnricher,
     );
 
-    const data = presented
-      .filter(({ sale }) => canPreview || isPublicCatalogSale(sale))
-      .map(({ sale, lots }) => {
-        const visibleLots = canPreview ? lots : lots.filter((lot) => isPublicCatalogLot(lot, sale));
-        return {
-          sale,
-          lotCount: lotCounts.get(sale.id) ?? visibleLots.length,
-          previewLots: visibleLots.map(mapLotToSummary),
-        };
-      });
+    const visible = presented.filter(({ sale }) => canPreview || isPublicCatalogSale(sale));
+    const summaries = await (this.resultsSummaries?.summarise(visible.map(({ sale }) => sale)) ??
+      new Map<string, SaleResultsSummary>());
+    const data = visible.map(({ sale, lots }) => {
+      const visibleLots = canPreview ? lots : lots.filter((lot) => isPublicCatalogLot(lot, sale));
+      return {
+        sale,
+        lotCount: lotCounts.get(sale.id) ?? visibleLots.length,
+        previewLots: visibleLots.map(mapLotToSummary),
+        resultsSummary: summaries.get(sale.id) ?? null,
+      };
+    });
 
     return { data };
   }
