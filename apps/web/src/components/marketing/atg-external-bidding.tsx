@@ -5,7 +5,7 @@ import { isAtgOwnedCatalogSale } from "@auction/validators";
 import { ExternalLinkIcon } from "lucide-react";
 
 type Props = {
-  sale: Pick<Sale, "status" | "sellingPlatform" | "atgAuctionState">;
+  sale: Pick<Sale, "status" | "sellingPlatform" | "atgAuctionState" | "atgDistribution">;
   /** Lot pages: shorter copy, plus the ATG result once bidding has ended. */
   lot?: { sold: boolean | undefined };
 };
@@ -65,7 +65,7 @@ export function AtgExternalBiddingPanel({ sale, lot }: Props) {
 }
 
 export function isAtgReadOnlyCatalogSale(
-  sale: Pick<Sale, "status" | "sellingPlatform"> | null | undefined,
+  sale: Pick<Sale, "status" | "sellingPlatform" | "atgDistribution"> | null | undefined,
 ): boolean {
   return sale != null && isAtgOwnedCatalogSale(sale);
 }

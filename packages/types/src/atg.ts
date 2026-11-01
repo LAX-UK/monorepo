@@ -6,8 +6,12 @@ export type AtgRemoteStatus = "pending" | "created" | "approved" | "published" |
 export type AtgSyncAction = "push" | "publish" | "close";
 
 // Defined on their own so sale.ts can use them without importing this module (which imports sale.ts).
-import type { AtgOwnershipState } from "./selling-platform.js";
-export type { AtgOwnershipState, AtgSellingPlatform } from "./selling-platform.js";
+import type { AtgDistribution, AtgOwnershipState } from "./selling-platform.js";
+export type {
+  AtgDistribution,
+  AtgOwnershipState,
+  AtgSellingPlatform,
+} from "./selling-platform.js";
 
 /** ATG allows only these auction types for LAX. */
 export const ATG_AUCTION_TYPES = ["Timed", "Live"] as const;
@@ -18,8 +22,10 @@ export type AtgAuctionType = (typeof ATG_AUCTION_TYPES)[number];
  * listings); `public_marketplace` lists it on both the White Label and The Saleroom. ATG has not
  * confirmed a public White-Label-only mode, so none is offered.
  */
-export const ATG_DISTRIBUTIONS = ["private_test", "public_marketplace"] as const;
-export type AtgDistribution = (typeof ATG_DISTRIBUTIONS)[number];
+export const ATG_DISTRIBUTIONS = [
+  "private_test",
+  "public_marketplace",
+] as const satisfies readonly AtgDistribution[];
 
 export type AtgSaleSettings = {
   auctionType: AtgAuctionType;
