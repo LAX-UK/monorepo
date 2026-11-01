@@ -1,168 +1,263 @@
 import { buildListHref } from "@/lib/admin/admin-list-params";
-import { domainEventLabel } from "@/lib/admin/domain-event-labels";
-import { isoDate, isoDateOrNull } from "@/lib/admin/iso-date";
-import { staffStatus } from "@/lib/admin/staff-kit-status";
-import type { AdminDisputeTableRow } from "@/lib/data/view-models/admin-disputes-table.vm";
+import { disputeDeadline } from "@auction/domain";
 import {
-  type AttentionStripItem,
-  type Metric,
+  type FilterOption,
   type DataView as StaffDataView,
   type StatusPresentation,
-  type TimelineEvent,
   formatStaffMoney,
+  humanizeStatus,
 } from "@auction/staff-ui";
-import type { AdminDisputeCaseSummary, DisputeCaseStatus } from "@auction/types";
+import {
+  DISPUTE_DESK_VIEWS,
+  type DisputeDeskCaseSummary,
+  type DisputeDeskCounts,
+  type DisputeDeskView,
+} from "@auction/types";
 
 export const DISPUTES_LIST_PATH = "/admin/disputes";
 
 export type DisputesListSearch = Record<string, string | string[] | undefined>;
 
-/** One dispute case as the staff list shows it; plain data, so it crosses to the client as is. */
-export type DisputesStaffRow = {
-  /** The Stripe dispute ID, which identifies the case. */
-  id: string;
-  paymentId: string;
-  lotId: string | null;
-  /** The lot's title; "Dispute case" when the payment's lot is not known. */
-  title: string;
-  reason: string;
-  status: DisputeCaseStatus;
-  statusPresentation: StatusPresentation;
-  amount: string;
-  amountCents: number;
-  buyerId: string | null;
-  buyer: string | null;
-  sellerId: string;
-  seller: string;
-  openedAt: string;
-  closedAt: string | null;
-  timeline: TimelineEvent[];
+/** The view a person lands on: the cases waiting for a response. */
+export const DEFAULT_DISPUTES_VIEW: DisputeDeskView = "open";
+
+/** Stripe's reasons, in the words finance uses. A reason Stripe adds later shows humanised. */
+const REASON_LABELS: Readonly<Record<string, string>> = {
+  fraudulent: "Fraudulent",
+  duplicate: "Duplicate charge",
+  product_not_received: "Product not received",
+  product_unacceptable: "Product unacceptable",
+  subscription_canceled: "Subscription cancelled",
+  unrecognized: "Unrecognised",
+  credit_not_processed: "Credit not processed",
+  general: "General",
+  bank_cannot_process: "Bank cannot process",
+  debit_not_authorized: "Debit not authorised",
+  incorrect_account_details: "Incorrect account details",
+  insufficient_funds: "Insufficient funds",
 };
 
-export function presentDisputeStatus(status: DisputeCaseStatus): StatusPresentation {
-  return staffStatus("dispute", status);
+export function disputeReasonLabel(reason: string | null): string {
+  if (!reason) return "Reason not given";
+  return REASON_LABELS[reason] ?? humanizeStatus(reason);
 }
 
-export function toDisputesStaffRows(rows: readonly AdminDisputeTableRow[]): DisputesStaffRow[] {
+/** The reasons offered as a filter. */
+export const DISPUTE_REASON_FILTERS: readonly FilterOption[] = Object.entries(REASON_LABELS).map(
+  ([value, label]) => ({ value, label }),
+);
+
+/** How each Stripe status reads on the screen; a status not listed shows humanised and neutral. */
+const STATUS_PRESENTATION: Readonly<Record<string, StatusPresentation>> = {
+  needs_response: { label: "Needs response", tone: "warning" },
+  warning_needs_response: { label: "Early warning", tone: "warning" },
+  under_review: { label: "Under review", tone: "info" },
+  warning_under_review: { label: "Early warning under review", tone: "info" },
+  won: { label: "Won", tone: "success" },
+  lost: { label: "Lost", tone: "danger" },
+  warning_closed: { label: "Early warning closed", tone: "neutral" },
+  prevented: { label: "Prevented", tone: "neutral" },
+  charge_refunded: { label: "Refunded", tone: "neutral" },
+};
+
+export function disputeStatusPresentation(status: string): StatusPresentation {
+  return STATUS_PRESENTATION[status] ?? { label: humanizeStatus(status), tone: "neutral" };
+}
+
+/** Where a case stands on allocation, as a badge. */
+export function disputeAllocationPresentation(
+  row: Pick<DisputeDeskCaseSummary, "awaitingAllocation" | "allocationState" | "invoiceCount">,
+): StatusPresentation {
+  if (row.awaitingAllocation) {
+    return row.invoiceCount === 0
+      ? { label: "No payment found", tone: "danger" }
+      : { label: "Needs allocation", tone: "warning" };
+  }
+  if (row.allocationState === "allocated") return { label: "Allocated", tone: "success" };
+  return { label: "Not needed", tone: "neutral" };
+}
+
+const DAY_MONTH = new Intl.DateTimeFormat("en-GB", {
+  day: "numeric",
+  month: "short",
+  timeZone: "Europe/London",
+});
+
+export type DisputeDeadlinePresentation = {
+  /** The respond-by sentence: "2 days left", "Respond by 12 Nov", "Evidence submitted". */
+  label: string;
+  /** A badge tone when the date is close; null for plain text. */
+  tone: StatusPresentation["tone"] | null;
+};
+
+/** The respond-by date as text, with a badge when it is within a week. Never colour alone. */
+export function disputeDeadlinePresentation(
+  row: Pick<DisputeDeskCaseSummary, "dueBy" | "status" | "evidenceSubmitted">,
+  now: Date,
+): DisputeDeadlinePresentation | null {
+  const deadline = disputeDeadline(
+    {
+      dueBy: row.dueBy ? new Date(row.dueBy) : null,
+      status: row.status,
+      evidenceSubmitted: row.evidenceSubmitted,
+    },
+    now,
+  );
+  const due = row.dueBy ? DAY_MONTH.format(new Date(row.dueBy)) : "";
+  switch (deadline.state) {
+    case "none":
+      return null;
+    case "submitted":
+      return { label: "Evidence submitted", tone: null };
+    case "overdue":
+      return { label: `Overdue since ${due}`, tone: "danger" };
+    case "urgent":
+    case "soon": {
+      const days = deadline.daysLeft ?? 0;
+      return {
+        label: days === 1 ? "1 day left" : `${days} days left`,
+        tone: deadline.state === "urgent" ? "danger" : "warning",
+      };
+    }
+    default:
+      return { label: `Respond by ${due}`, tone: null };
+  }
+}
+
+/** What a row's first cell says about the invoices behind the case. */
+export function disputeTitle(
+  row: Pick<DisputeDeskCaseSummary, "invoiceCount" | "lotTitle">,
+): string {
+  if (row.invoiceCount === 0) return "No matching payment";
+  if (row.invoiceCount === 1) return row.lotTitle ?? "One invoice";
+  return `${row.invoiceCount} lots on one payment`;
+}
+
+/** One dispute case as the staff list shows it; plain data, so it crosses to the client as is. */
+export type DisputesStaffRow = {
+  id: string;
+  stripeDisputeId: string;
+  title: string;
+  kind: "single" | "shared" | "unmatched";
+  reason: string;
+  allocation: StatusPresentation;
+  deadline: DisputeDeadlinePresentation | null;
+  /** The respond-by instant, for sorting; null when there is no deadline to sort by. */
+  dueBy: string | null;
+  buyerId: string | null;
+  buyer: string | null;
+  amount: string;
+  amountPence: number;
+  status: StatusPresentation;
+  openedAt: string;
+};
+
+export function toDisputesStaffRows(
+  rows: readonly DisputeDeskCaseSummary[],
+  now: Date,
+): DisputesStaffRow[] {
   return rows.map((row) => ({
-    id: row.stripeDisputeId,
-    paymentId: row.paymentId,
-    lotId: row.lotId,
-    title: row.lotTitle ?? "Dispute case",
-    reason: row.reasonLabel,
-    status: row.status,
-    statusPresentation: presentDisputeStatus(row.status),
-    amount: formatStaffMoney(row.amountCents, row.currency),
-    amountCents: row.amountCents,
+    id: row.id,
+    stripeDisputeId: row.stripeDisputeId,
+    title: disputeTitle(row),
+    kind: row.invoiceCount === 0 ? "unmatched" : row.invoiceCount === 1 ? "single" : "shared",
+    reason: disputeReasonLabel(row.reason),
+    allocation: disputeAllocationPresentation(row),
+    deadline: disputeDeadlinePresentation(row, now),
+    dueBy: row.dueBy,
     buyerId: row.buyerId,
     buyer: row.buyerId ? row.buyerLabel?.trim() || "Buyer" : null,
-    sellerId: row.sellerLegalEntityId,
-    seller: row.sellerDisplayName?.trim() || `Seller ${row.sellerLegalEntityId.slice(0, 8)}`,
-    openedAt: isoDate(row.openedAt),
-    closedAt: isoDateOrNull(row.closedAt),
-    timeline: [...(row.timelineEvents ?? [])]
-      .sort((a, b) => b.occurredAt.localeCompare(a.occurredAt))
-      .map((event) => ({
-        id: event.id,
-        title: domainEventLabel(event.eventType),
-        at: event.occurredAt,
-        actor: "Stripe",
-      })),
+    amount: formatStaffMoney(row.amountPence, row.currency),
+    amountPence: row.amountPence,
+    status: disputeStatusPresentation(row.status),
+    openedAt: row.openedAt,
   }));
 }
 
-/** A link to the disputes list with some of its URL state changed; paging restarts. */
+/** A link to the list with some of its URL state changed; paging restarts. */
 export function disputesListHref(
   search: DisputesListSearch,
   patch: Record<string, string | number | null | undefined>,
 ): string {
   const base: DisputesListSearch = { ...search };
-  for (const key of ["error", "success", "dispute"]) delete base[key];
+  for (const key of ["error", "success"]) delete base[key];
   return buildListHref(DISPUTES_LIST_PATH, base, {
     ...("offset" in patch ? {} : { offset: null }),
     ...patch,
   });
 }
 
-/** The list with a case's panel open (`?dispute=`), or closed when `disputeId` is null. */
-export function disputePanelHref(search: DisputesListSearch, disputeId: string | null): string {
-  const base: DisputesListSearch = { ...search };
-  for (const key of ["error", "success"]) delete base[key];
-  return buildListHref(DISPUTES_LIST_PATH, base, { dispute: disputeId });
+export function activeDisputesView(search: DisputesListSearch): DisputeDeskView {
+  const view = typeof search.view === "string" ? search.view : "";
+  return (DISPUTE_DESK_VIEWS as readonly string[]).includes(view)
+    ? (view as DisputeDeskView)
+    : DEFAULT_DISPUTES_VIEW;
 }
 
-export type DisputesViewId = "all" | "open" | "under_review" | "closed";
+const VIEW_LABELS: Readonly<Record<DisputeDeskView, string>> = {
+  needs_allocation: "Needs allocation",
+  open: "Open",
+  under_review: "Under review",
+  closed: "Closed",
+  all: "All",
+};
 
-export function activeDisputesView(search: DisputesListSearch): DisputesViewId {
-  const status = typeof search.status === "string" ? search.status : "";
-  return status === "open" || status === "under_review" || status === "closed" ? status : "all";
-}
+/** Views whose cases are work waiting, so only they carry a count. */
+const COUNTED_VIEWS: readonly DisputeDeskView[] = ["needs_allocation", "open"];
 
-/** The cases a view holds, from the queue-wide summary (the API pages without a total). */
-export function disputesViewTotal(view: DisputesViewId, summary: AdminDisputeCaseSummary): number {
-  switch (view) {
-    case "open":
-      return summary.open;
-    case "under_review":
-      return summary.underReview;
-    case "closed":
-      return summary.won + summary.lost + summary.closed;
-    default:
-      return summary.open + summary.underReview + summary.won + summary.lost + summary.closed;
-  }
-}
-
-/** The status lenses as tabs; only the open cases are work waiting, so only they carry a count. */
+/** The queues as tabs. The default view's link leaves the URL clean. */
 export function disputesViews(
   search: DisputesListSearch,
-  summary: AdminDisputeCaseSummary,
+  counts: DisputeDeskCounts,
 ): StaffDataView[] {
-  return [
-    { id: "all", label: "All", href: disputesListHref(search, { status: null }) },
-    {
-      id: "open",
-      label: "Open",
-      href: disputesListHref(search, { status: "open" }),
-      ...(summary.open > 0 ? { count: summary.open } : {}),
-    },
-    {
-      id: "under_review",
-      label: "Under review",
-      href: disputesListHref(search, { status: "under_review" }),
-    },
-    { id: "closed", label: "Closed", href: disputesListHref(search, { status: "closed" }) },
-  ];
+  return DISPUTE_DESK_VIEWS.map((view) => ({
+    id: view,
+    label: VIEW_LABELS[view],
+    href: disputesListHref(search, { view: view === DEFAULT_DISPUTES_VIEW ? null : view }),
+    ...(COUNTED_VIEWS.includes(view) && counts[view] > 0 ? { count: counts[view] } : {}),
+  }));
 }
 
-/** Disputes waiting for a response, linking to the open cases. */
-export function disputesAttention(
-  search: DisputesListSearch,
-  summary: AdminDisputeCaseSummary,
-  view: DisputesViewId,
-): AttentionStripItem[] {
-  if (view === "open") return [];
+export type DisputesFilterChip = { id: string; label: string; clearHref: string };
+
+export function disputesFilterChips(search: DisputesListSearch): DisputesFilterChip[] {
+  const reason = typeof search.reason === "string" ? search.reason : "";
+  if (!reason) return [];
   return [
     {
-      id: "open",
-      count: summary.open,
-      label: summary.open === 1 ? "dispute needs a response" : "disputes need a response",
-      href: disputesListHref(search, { status: "open" }),
-      actionLabel: "Respond",
-      tone: "danger",
+      id: "reason",
+      label: `Reason: ${disputeReasonLabel(reason)}`,
+      clearHref: disputesListHref(search, { reason: null }),
     },
   ];
 }
 
-/** The queue-wide summary: it covers every dispute, not only the view being looked at. */
-export function disputesMetrics(summary: AdminDisputeCaseSummary): Metric[] {
-  const count = new Intl.NumberFormat("en-GB");
-  return [
-    { id: "open", label: "Open", value: count.format(summary.open) },
-    { id: "under-review", label: "Under review", value: count.format(summary.underReview) },
-    { id: "won", label: "Won", value: count.format(summary.won) },
-    { id: "lost", label: "Lost", value: count.format(summary.lost) },
-  ];
-}
+/** What an empty view says, so a quiet queue reads as good news and not as a fault. */
+export const EMPTY_VIEW_COPY: Readonly<
+  Record<DisputeDeskView, { title: string; description: string }>
+> = {
+  needs_allocation: {
+    title: "Nothing needs allocating",
+    description:
+      "When a card dispute falls on a payment that settled several invoices, or on none, it waits here for you to allocate it.",
+  },
+  open: {
+    title: "No open disputes",
+    description: "When a buyer challenges a card payment, the case appears here with its deadline.",
+  },
+  under_review: {
+    title: "No disputes under review",
+    description: "Cases the card network is deciding appear here once evidence is submitted.",
+  },
+  closed: {
+    title: "No closed disputes",
+    description: "Won, lost and closed disputes are kept here.",
+  },
+  all: {
+    title: "No disputes yet",
+    description: "When a buyer challenges a card payment, the case appears here with its deadline.",
+  },
+};
 
 /** "1–50 of 312 disputes". */
 export function disputesRangeSummary(offset: number, shown: number, total: number): string {
