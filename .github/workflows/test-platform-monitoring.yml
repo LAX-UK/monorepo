@@ -14,6 +14,7 @@ jobs:
     environment: test
     env:
       AUTH_DEK_KEY: ${{ secrets.AUTH_DEK_KEY }}
+      DIGITALOCEAN_TOKEN: ${{ secrets.DIGITALOCEAN_TOKEN }}
     steps:
       - uses: actions/checkout@v4
       - uses: ./.github/actions/checkout-infra
