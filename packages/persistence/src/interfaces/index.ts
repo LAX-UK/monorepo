@@ -985,6 +985,10 @@ export type {
   InvoiceDetails,
 } from "./organisation-team.readers.js";
 export type {
+  ContactDetails,
+  IContactDetailsRepository,
+} from "./organisation-contact-details.repository.js";
+export type {
   AgreementDocumentFacts,
   IAgreementDocumentFactsReader,
   IPayoutLinesReader,

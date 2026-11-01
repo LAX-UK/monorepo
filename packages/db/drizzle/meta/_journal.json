@@ -1867,6 +1867,13 @@
     {
       "idx": 266,
       "version": "7",
+      "when": 1798444800000,
+      "tag": "0266_organisation_contact_details",
+      "breakpoints": true
+    },
+    {
+      "idx": 267,
+      "version": "7",
       "when": 1798704000000,
       "tag": "0269_lot_extended_until",
       "breakpoints": true

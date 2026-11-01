@@ -27,6 +27,8 @@ export type MemberRowView = {
   roleLabel: string;
   /** "Two-step on"; `null` when the viewer does not see it or it is unknown. */
   twoStep: string | null;
+  /** "Active 28 Oct 2026" or "Not signed in yet"; `null` when the viewer does not see it. */
+  lastActive: string | null;
   /** The role picker's options, the current role first; `null` shows the role as text. */
   roleOptions: { value: LegalEntityMemberRole; label: string }[] | null;
   /** Handing ownership over, with the phrase to type; owners only. */
@@ -45,12 +47,19 @@ type MemberRowsInput = {
   twoFactorByUserId?: Readonly<Record<string, boolean | null>> | undefined;
   /** Where one person's Activity opens, when the viewer may read Activity. */
   activityHrefFor?: ((userId: string) => string) | undefined;
+  /** The day each person was last active (`YYYY-MM-DD`), for owners and admins. */
+  lastActiveByUserId?: Readonly<Record<string, string | null>> | undefined;
 };
 
 function twoStepWords(enabled: boolean | null | undefined): string | null {
   if (enabled === true) return "Two-step on";
   if (enabled === false) return "Two-step off";
   return null;
+}
+
+/** The day only, never a time; someone the sign-in service has no session for hasn't signed in. */
+function lastActiveWords(day: string | null | undefined): string {
+  return day ? `Active ${formatDate(`${day}T12:00:00Z`)}` : "Not signed in yet";
 }
 
 /** The picker: the current role first, then the others in listing order (owners first). */
@@ -72,6 +81,7 @@ export function memberRowViews({
   members,
   twoFactorByUserId,
   activityHrefFor,
+  lastActiveByUserId,
 }: MemberRowsInput) {
   const leave = leaveControl(actor, members);
   return members
@@ -86,6 +96,7 @@ export function memberRowViews({
         role: member.role,
         roleLabel: organisationRoleLabel(member.role),
         twoStep: twoFactorByUserId ? twoStepWords(twoFactorByUserId[member.userId]) : null,
+        lastActive: lastActiveByUserId ? lastActiveWords(lastActiveByUserId[member.userId]) : null,
         roleOptions: controls.roleOptions.length > 0 ? pickerOptions(controls.roleOptions) : null,
         transfer: controls.transfer,
         canRemove: controls.remove,

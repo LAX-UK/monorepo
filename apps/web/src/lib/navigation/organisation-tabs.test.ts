@@ -13,7 +13,7 @@ const TABS: OrganisationTab[] = ["profile", "documents", "payouts", "security"];
 const EXPECTED: Record<LegalEntityMemberRole, OrganisationTab[]> = {
   owner: ["profile", "documents", "payouts", "security"],
   admin: ["profile", "documents", "payouts", "security"],
-  finance: ["profile", "payouts"],
+  finance: ["profile", "documents", "payouts"],
   consignor: [],
   viewer: [],
   buyer_agent: [],
