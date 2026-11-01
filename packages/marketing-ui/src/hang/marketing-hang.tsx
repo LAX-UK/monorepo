@@ -2,6 +2,7 @@
 
 import { FOCUS_RING, MARKETING_PAGE_SHELL } from "@auction/branding";
 import { cn } from "@auction/ui";
+import { TextLink } from "@auction/ui/lax/text-link";
 import Link from "next/link";
 import { type CSSProperties, type ReactNode, useCallback, useId, useMemo, useState } from "react";
 import {
@@ -54,11 +55,6 @@ export type MarketingHangProps = {
   rowLabel?: string;
   className?: string;
 };
-
-const SEE_ALL_LINK_CLASS = cn(
-  "inline-flex items-center rounded-sm font-body text-sm font-medium text-on-surface underline-offset-4 hover:underline",
-  FOCUS_RING,
-);
 
 /** The gutter used by the page shell, so the wall lines up with the sections around it. */
 const GUTTER_VARS =
@@ -167,9 +163,9 @@ export function MarketingHang({
         </div>
         <div className="flex items-center gap-4 max-sm:hidden">
           {seeAll ? (
-            <Link href={seeAll.href} className={SEE_ALL_LINK_CLASS}>
+            <TextLink href={seeAll.href} Link={Link}>
               {seeAll.label}
-            </Link>
+            </TextLink>
           ) : null}
           {scrolls ? (
             <MarketingHangArrows
@@ -294,9 +290,9 @@ export function MarketingHang({
 
       {seeAll ? (
         <div className="flex justify-center px-4 pt-1 sm:hidden">
-          <Link href={seeAll.href} className={cn(SEE_ALL_LINK_CLASS, "min-h-11")}>
+          <TextLink href={seeAll.href} Link={Link} className="min-h-11 items-center">
             {seeAll.label}
-          </Link>
+          </TextLink>
         </div>
       ) : null}
     </section>

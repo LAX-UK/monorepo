@@ -83,6 +83,13 @@ describe("MarketingHang", () => {
     expect(screen.getByText("salon line")).toBeInTheDocument();
   });
 
+  it("draws the See all links as the kit text link: ink and underlined", () => {
+    render(<MarketingHang title="In this sale" works={makeWorks(3)} seeAll={SEE_ALL} />);
+    for (const link of screen.getAllByRole("link", { name: "See all 8 lots" })) {
+      expect(link).toHaveClass("underline");
+    }
+  });
+
   describe("one work", () => {
     it("hangs the single work with no arrows and no figure on home", () => {
       render(<MarketingHang title="In this sale" works={makeWorks(1)} />);
