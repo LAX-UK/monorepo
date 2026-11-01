@@ -5,7 +5,8 @@ import type { ArtistProfileLinkContext } from "@/lib/marketing/catalog-links";
 import { artistProfileHref } from "@/lib/marketing/catalog-links";
 import { MarketingArtistCard, marketingArtistFactsLine } from "@auction/marketing-ui";
 import type { PublicArtistDirectoryRow } from "@auction/types";
-import { Badge, cn } from "@auction/ui";
+import { cn } from "@auction/ui";
+import { StatusBadge } from "@auction/ui/lax";
 
 type Props = {
   artist: PublicArtistDirectoryRow;
@@ -70,12 +71,12 @@ export function ArtistDirectoryCard({
         badges={
           artist.featured || artist.verified || kindBadge ? (
             <>
-              {artist.featured ? <Badge>Featured</Badge> : null}
-              {artist.verified ? <Badge variant="secondary">Verified</Badge> : null}
+              {artist.featured ? <StatusBadge tone="info">Featured</StatusBadge> : null}
+              {artist.verified ? <StatusBadge tone="success">Verified</StatusBadge> : null}
               {kindBadge ? (
-                <Badge variant="outline" className="bg-surface/90">
+                <StatusBadge tone="neutral" onImage>
                   {kindBadge}
-                </Badge>
+                </StatusBadge>
               ) : null}
             </>
           ) : null

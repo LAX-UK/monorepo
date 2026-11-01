@@ -18,8 +18,8 @@ import {
   MarketingReadMore,
   marketingArtistFacts,
 } from "@auction/marketing-ui";
-import { Badge, cn } from "@auction/ui";
-import { ButtonLink } from "@auction/ui/lax";
+import { cn } from "@auction/ui";
+import { ButtonLink, StatusBadge } from "@auction/ui/lax";
 import Link from "next/link";
 
 type ArtistDetailViewProps = ArtistDetailPageData;
@@ -93,9 +93,9 @@ export function ArtistDetailView({ vm, jsonLdText }: ArtistDetailViewProps) {
         badges={
           vm.registry.verified || (kind && KIND_BADGE_KINDS.has(kind)) ? (
             <>
-              {vm.registry.verified ? <Badge variant="secondary">Verified</Badge> : null}
+              {vm.registry.verified ? <StatusBadge tone="success">Verified</StatusBadge> : null}
               {kind && KIND_BADGE_KINDS.has(kind) ? (
-                <Badge variant="outline">{artistKindMeta(kind).badge}</Badge>
+                <StatusBadge tone="neutral">{artistKindMeta(kind).badge}</StatusBadge>
               ) : null}
             </>
           ) : null

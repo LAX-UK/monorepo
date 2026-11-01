@@ -52,10 +52,8 @@ export function OnsiteLotHero({
           <div className="flex items-center justify-between gap-4">
             <SaleTypeBadge
               deliveryMode={sale.deliveryMode}
-              size="sm"
               withExplainer
               explainerContext={saleFormatExplainerContextFromSale(sale)}
-              className="border-outline-variant/30 bg-surface-container-low text-on-surface-variant"
             />
             {auction.lotNumber != null && (
               <span className="font-label text-xs font-medium text-on-surface-variant">

@@ -49,7 +49,22 @@ export type TabNavItem = {
   countTone?: CountTone;
   /** What the count means, for assistive technology ("waiting"). */
   countLabel?: string;
+  /**
+   * Marks the item that is current. `page` (the default) is the page being viewed; `true` is the
+   * section in view on a page of in-page links.
+   */
+  currentKind?: "page" | "true";
+  /** For in-page links that scroll to a section instead of navigating. */
+  onClick?: (event: React.MouseEvent<HTMLAnchorElement>) => void;
 };
+
+/** The props a tab link takes from its item: the current marker and any click handler. */
+function tabLinkProps(item: TabNavItem, active: boolean) {
+  return {
+    ...(active ? { "aria-current": item.currentKind ?? ("page" as const) } : {}),
+    ...(item.onClick ? { onClick: item.onClick } : {}),
+  };
+}
 
 /** A tab's count, in the tone and with the meaning its item gives. */
 function TabCount({ item }: { item: TabNavItem }) {
@@ -145,11 +160,7 @@ function ScrollingTabs({
           const active = view.id === currentId;
           return (
             <li key={view.id} className="shrink-0">
-              <Link
-                href={view.href}
-                {...(active ? { "aria-current": "page" as const } : {})}
-                className={tabClass(active)}
-              >
+              <Link href={view.href} {...tabLinkProps(view, active)} className={tabClass(active)}>
                 {view.label}
                 <TabCount item={view} />
               </Link>
@@ -268,11 +279,7 @@ export function OverflowTabs({
           const active = view.id === currentId;
           return (
             <li key={view.id} className="shrink-0">
-              <Link
-                href={view.href}
-                {...(active ? { "aria-current": "page" as const } : {})}
-                className={tabClass(active)}
-              >
+              <Link href={view.href} {...tabLinkProps(view, active)} className={tabClass(active)}>
                 {content(view)}
               </Link>
             </li>
@@ -385,6 +392,7 @@ export function SegmentedControl<T extends string>({
   options,
   label,
   size = "sm",
+  disabled = false,
   className,
 }: {
   value: T;
@@ -392,10 +400,12 @@ export function SegmentedControl<T extends string>({
   options: readonly SegmentOption<T>[];
   label: string;
   size?: "sm" | "md";
+  disabled?: boolean;
   className?: string;
 }) {
   return (
     <ToggleGroup
+      disabled={disabled}
       type="single"
       // A non-zero spacing keeps the shared primitive from drawing joined-segment borders.
       spacing={1}
@@ -406,7 +416,7 @@ export function SegmentedControl<T extends string>({
         if (match) onValueChange(match.value);
       }}
       className={cn(
-        "inline-flex gap-0.5 rounded-lax-control bg-lax-sunken p-0.5 shadow-none ring-1 ring-lax-line ring-inset",
+        "lax-target inline-flex gap-0.5 rounded-lax-control bg-lax-sunken p-0.5 shadow-none ring-1 ring-lax-line ring-inset",
         size === "sm" ? "h-lax-control-sm" : "h-lax-control-md",
         className,
       )}

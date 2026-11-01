@@ -24,4 +24,13 @@ describe("Notice", () => {
     expect(notice.className).toContain("bg-lax-success-bg");
     expect(notice).toHaveTextContent("Ada Lovelace");
   });
+
+  it("is named by its title", () => {
+    render(
+      <Notice alert tone="warning" title="Verification required">
+        Complete verification before bidding.
+      </Notice>,
+    );
+    expect(screen.getByRole("alert")).toHaveAccessibleName("Verification required");
+  });
 });

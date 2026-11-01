@@ -10,24 +10,12 @@ import {
   pressHubParamsToFilterFormValues,
 } from "@/lib/marketing/press-params";
 import { cn } from "@auction/ui";
-import { Form, FormControl, FormField, FormItem } from "@auction/ui/components/form";
-import { Input } from "@auction/ui/components/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@auction/ui/components/select";
-import { Button } from "@auction/ui/lax";
+import { Button, Field, NativeSelect, TextInput } from "@auction/ui/lax";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
-
-const ALL_YEARS = PRESS_FILTER_ALL;
-const ALL_MENTION_TYPES = PRESS_FILTER_ALL;
 
 const pressFilterSchema = z.object({
   q: z.string().trim().max(200),
@@ -74,132 +62,74 @@ export function PressFilterForm({
   }, [initialParams, form]);
 
   const isSheet = variant === "sheet";
-  const labelClassName = "block font-label text-xs text-on-surface-variant";
-  const inputClassName = cn(
-    "h-11 min-h-11 rounded-none border-0 border-b-2 border-input-border bg-transparent px-0 shadow-none focus-visible:border-input-border-focus focus-visible:ring-1 focus-visible:ring-input-border-focus",
-  );
-  const selectClassName = cn(
-    "h-11 min-h-11 w-full rounded-md bg-surface font-body text-sm text-on-surface lg:w-[10rem]",
-  );
-  const fieldClassName = "space-y-2";
   const resultCountLabel = resultCount != null ? formatPressArticleCount(resultCount) : null;
+  const yearOptions = [
+    { value: "", label: "All years" },
+    ...years.map((year) => ({ value: String(year), label: String(year) })),
+  ];
+  const typeOptions = [
+    { value: PRESS_FILTER_ALL, label: "All types" },
+    ...PRESS_MENTION_TYPE_OPTIONS.map((option) => ({ value: option.value, label: option.label })),
+  ];
 
   return (
-    <Form {...form}>
-      <form
-        id={formId}
-        className={cn(
-          isSheet
-            ? "flex flex-col gap-6"
-            : "flex flex-col gap-3 lg:grid lg:w-full lg:grid-cols-[minmax(14rem,1fr)_10rem_10rem_auto] lg:items-start lg:gap-3",
-          className,
-        )}
-        onSubmit={form.handleSubmit((values) => {
-          router.push(buildPressHubQuery(pressFilterFormValuesToHubParams(values)));
-          onSubmitted?.();
-        })}
-        noValidate
-      >
-        <div className="min-w-0 space-y-2">
-          <FormField
-            control={form.control}
-            name="q"
-            render={({ field }) => (
-              <FormItem className="min-w-0 space-y-2">
-                <label htmlFor={inputId} className={labelClassName}>
-                  Search
-                </label>
-                <FormControl>
-                  <Input
-                    id={inputId}
-                    type="search"
-                    placeholder="Outlet, headline, sale…"
-                    className={inputClassName}
-                    {...field}
-                  />
-                </FormControl>
-              </FormItem>
-            )}
-          />
-          {resultCountLabel ? (
-            <p
-              className="font-label text-xs font-medium text-on-surface-variant tabular-nums"
-              aria-live="polite"
-            >
-              {resultCountLabel}
-            </p>
-          ) : null}
-        </div>
-        <FormField
+    <form
+      id={formId}
+      className={cn(
+        isSheet
+          ? "flex flex-col gap-5"
+          : "flex flex-col gap-3 lg:grid lg:w-full lg:grid-cols-[minmax(14rem,1fr)_10rem_10rem_auto] lg:items-end lg:gap-3",
+        className,
+      )}
+      onSubmit={form.handleSubmit((values) => {
+        router.push(buildPressHubQuery(pressFilterFormValuesToHubParams(values)));
+        onSubmitted?.();
+      })}
+      noValidate
+    >
+      <div className="flex min-w-0 flex-col gap-2">
+        <Field label="Search" optional quiet id={inputId} error={form.formState.errors.q?.message}>
+          <TextInput type="search" placeholder="Outlet, headline, sale…" {...form.register("q")} />
+        </Field>
+        {resultCountLabel ? (
+          <p className="text-lax-12 font-medium text-lax-muted tabular-nums" aria-live="polite">
+            {resultCountLabel}
+          </p>
+        ) : null}
+      </div>
+      <Field label="Year" optional quiet id={yearSelectId} className="min-w-0">
+        <Controller
           control={form.control}
           name="year"
           render={({ field }) => (
-            <FormItem className="min-w-0 space-y-2">
-              <label htmlFor={yearSelectId} className={labelClassName}>
-                Year
-              </label>
-              <Select
-                value={field.value || ALL_YEARS}
-                onValueChange={(value) => field.onChange(value === ALL_YEARS ? "" : value)}
-              >
-                <FormControl>
-                  <SelectTrigger id={yearSelectId} className={selectClassName} aria-label="Year">
-                    <SelectValue placeholder="All years" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value={ALL_YEARS}>All years</SelectItem>
-                  {years.map((year) => (
-                    <SelectItem key={year} value={String(year)}>
-                      {year}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormItem>
+            <NativeSelect
+              value={field.value}
+              onValueChange={field.onChange}
+              onBlur={field.onBlur}
+              options={yearOptions}
+            />
           )}
         />
-        <FormField
+      </Field>
+      <Field label="Coverage type" optional quiet id={mentionTypeSelectId} className="min-w-0">
+        <Controller
           control={form.control}
           name="mentionType"
           render={({ field }) => (
-            <FormItem className="min-w-0 space-y-2">
-              <label htmlFor={mentionTypeSelectId} className={labelClassName}>
-                Coverage type
-              </label>
-              <Select value={field.value || ALL_MENTION_TYPES} onValueChange={field.onChange}>
-                <FormControl>
-                  <SelectTrigger
-                    id={mentionTypeSelectId}
-                    className={selectClassName}
-                    aria-label="Coverage type"
-                  >
-                    <SelectValue placeholder="All types" />
-                  </SelectTrigger>
-                </FormControl>
-                <SelectContent>
-                  <SelectItem value={ALL_MENTION_TYPES}>All types</SelectItem>
-                  {PRESS_MENTION_TYPE_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {option.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </FormItem>
+            <NativeSelect
+              value={field.value || PRESS_FILTER_ALL}
+              onValueChange={field.onChange}
+              onBlur={field.onBlur}
+              options={typeOptions}
+            />
           )}
         />
-        {!isSheet ? (
-          <div className={cn(fieldClassName, "w-full shrink-0 lg:w-auto")}>
-            <span className={cn(labelClassName, "invisible select-none")} aria-hidden>
-              Apply
-            </span>
-            <Button type="submit" variant="primary" className="w-full shrink-0 lg:w-auto">
-              Apply
-            </Button>
-          </div>
-        ) : null}
-      </form>
-    </Form>
+      </Field>
+      {!isSheet ? (
+        <Button type="submit" variant="primary" className="w-full shrink-0 lg:w-auto">
+          Apply
+        </Button>
+      ) : null}
+    </form>
   );
 }

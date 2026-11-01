@@ -59,7 +59,7 @@ export function SalesCalendarGridCard({ vm, index = 0 }: Props) {
           <div className="flex min-w-0 flex-1 flex-col gap-1.5 md:gap-2">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
               <SaleLifecycleBadge status={vm.status} />
-              <SaleTypeBadge deliveryMode={vm.deliveryMode} size="sm" />
+              <SaleTypeBadge deliveryMode={vm.deliveryMode} />
               <span className="min-w-0 max-w-full break-words font-body text-xs font-normal leading-snug text-on-surface-variant md:border-l md:border-on-surface-variant md:pl-2 md:text-xs">
                 {vm.dateLabel}
               </span>

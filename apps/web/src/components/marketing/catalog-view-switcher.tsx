@@ -3,7 +3,14 @@
 import { useUrlLayoutView } from "@/lib/hooks/use-url-layout-view";
 import { useViewQueryNavigation } from "@/lib/hooks/use-view-query-navigation";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
-import { ViewSwitcher } from "@auction/ui";
+import { type SegmentOption, SegmentedControl } from "@auction/ui/lax";
+import { LayoutGrid, Rows3, Square } from "lucide-react";
+
+const ALL_MODES: readonly SegmentOption<CatalogLayoutView>[] = [
+  { value: "grid", label: "Grid", icon: <LayoutGrid aria-hidden />, iconOnly: true },
+  { value: "card", label: "Card", icon: <Square aria-hidden />, iconOnly: true },
+  { value: "list", label: "List", icon: <Rows3 aria-hidden />, iconOnly: true },
+];
 
 export function CatalogViewSwitcher({
   routeKey,
@@ -20,12 +27,16 @@ export function CatalogViewSwitcher({
 }) {
   const liveView = useUrlLayoutView(defaultView, value) as CatalogLayoutView;
   const { navigate, pending } = useViewQueryNavigation({ routeKey, defaultView });
+  const options = supportedModes
+    ? ALL_MODES.filter((mode) => supportedModes.includes(mode.value))
+    : ALL_MODES;
 
   return (
-    <ViewSwitcher
+    <SegmentedControl
+      label="View"
       value={liveView}
       onValueChange={navigate}
-      {...(supportedModes !== undefined ? { modes: supportedModes } : {})}
+      options={options}
       disabled={pending}
     />
   );
