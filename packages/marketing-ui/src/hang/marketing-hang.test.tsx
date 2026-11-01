@@ -139,13 +139,13 @@ describe("MarketingHang", () => {
       const row = screen.getByRole("region", { name: /scrolls sideways/ });
       expect(screen.getByRole("button", { name: "Next works" })).toBeEnabled();
       expect(screen.getByRole("button", { name: "Previous works" })).toBeDisabled();
-      expect(container.querySelector(".bg-gradient-to-r")).not.toBeNull();
+      expect(container.querySelector("[data-hang-fade]")).not.toBeNull();
 
       row.scrollLeft = 2000;
       fireEvent.scroll(row);
       expect(screen.getByRole("button", { name: "Next works" })).toBeDisabled();
       expect(screen.getByRole("button", { name: "Previous works" })).toBeEnabled();
-      expect(container.querySelector(".bg-gradient-to-r")).toBeNull();
+      expect(container.querySelector("[data-hang-fade]")).toBeNull();
       restore();
     });
 

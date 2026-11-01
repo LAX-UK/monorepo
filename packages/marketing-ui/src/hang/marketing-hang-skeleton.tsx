@@ -27,7 +27,7 @@ export function MarketingHangSkeleton({ count = 4, className }: MarketingHangSke
         <div className={cn(BLOCK, "h-7 w-40 rounded-sm sm:h-9 sm:w-56")} />
         <div className={cn(BLOCK, "h-5 w-52 rounded-sm sm:w-72")} />
       </div>
-      <div className="mt-4 bg-[var(--color-surface-paper,#f6f4ee)] pt-6 pb-4 sm:mt-6 sm:pt-12 sm:pb-7">
+      <div className="mt-4 bg-[var(--color-surface-paper,#f6f4ee)] pt-4 pb-2 sm:mt-6 sm:pt-10 sm:pb-5">
         <div
           className={cn(
             MARKETING_PAGE_SHELL,
@@ -55,7 +55,7 @@ export function MarketingHangSkeleton({ count = 4, className }: MarketingHangSke
             );
           })}
         </div>
-        <div className={cn(MARKETING_PAGE_SHELL, "mt-[18px] sm:mt-7")}>
+        <div className={cn(MARKETING_PAGE_SHELL, "mt-[26px] sm:mt-[28px]")}>
           <div className={cn(BLOCK, "h-4 w-48 rounded-sm")} />
         </div>
       </div>

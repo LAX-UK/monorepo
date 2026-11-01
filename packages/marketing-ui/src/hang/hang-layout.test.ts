@@ -94,9 +94,11 @@ describe("solveHangLayout: salon mode", () => {
   });
 
   it("narrows the heights to fit a short row", () => {
-    const works = Array.from({ length: 5 }, (_, i) => work(`w${i}`, null, 2));
-    const layout = solveHangLayout(works, { viewport: "desktop", fitWidth: 1000 });
+    const works = Array.from({ length: 5 }, (_, i) => work(`w${i}`, null, 1.5));
+    const layout = solveHangLayout(works, { viewport: "desktop", fitWidth: 1300 });
+    const total = layout.items.reduce((sum, i) => sum + Math.max(i.width, 168), 0) + 56 * 4;
     expect(layout.slotHeight).toBeLessThan(220);
+    expect(total).toBeLessThanOrEqual(1300);
   });
 });
 

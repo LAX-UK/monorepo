@@ -62,7 +62,7 @@ const SEE_ALL_LINK_CLASS = cn(
 
 /** The gutter used by the page shell, so the wall lines up with the sections around it. */
 const GUTTER_VARS =
-  "[--hang-gutter:1rem] md:[--hang-gutter:1.5rem] lg:[--hang-gutter:2.5rem]" as const;
+  "[--hang-gutter:1rem] md:[--hang-gutter:1.5rem] lg:[--hang-gutter:2.5rem] [--hang-inset:max(var(--hang-gutter),calc((100%-var(--container-max,1440px))/2+var(--hang-gutter)))] [scroll-padding-inline:var(--hang-inset)]" as const;
 
 function wallVars(desktop: HangLayout, phone: HangLayout): CSSProperties {
   const vars: Record<string, string> = {
@@ -184,7 +184,7 @@ export function MarketingHang({
         </div>
       </div>
 
-      <div className="relative mt-4 overflow-hidden bg-[var(--color-surface-paper,#f6f4ee)] pt-6 pb-4 sm:mt-6 sm:pt-12 sm:pb-7">
+      <div className="relative mt-4 overflow-hidden bg-[var(--color-surface-paper,#f6f4ee)] pt-4 pb-2 sm:mt-6 sm:pt-10 sm:pb-5">
         {/* The row scrolls, so it takes focus when there is more to reach and answers the arrow keys. */}
         <section
           ref={scroll.ref}
@@ -194,7 +194,7 @@ export function MarketingHang({
           onKeyDown={scroll.onKeyDown}
           data-lenis-prevent-horizontal
           className={cn(
-            "snap-x snap-proximity overflow-x-auto overflow-y-hidden overscroll-x-contain [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
+            "snap-x snap-proximity overflow-x-auto overflow-y-hidden overscroll-x-contain py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden",
             "focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
             GUTTER_VARS,
           )}
@@ -206,8 +206,7 @@ export function MarketingHang({
             )}
             style={{
               ...wallVars(desktop, phone),
-              paddingInline:
-                "max(var(--hang-gutter), calc((100% - var(--container-max, 1440px)) / 2 + var(--hang-gutter)))",
+              paddingInline: "var(--hang-inset)",
             }}
           >
             {withFigure && desktop.figure ? (
@@ -280,7 +279,12 @@ export function MarketingHang({
         {scroll.canScrollEnd ? (
           <div
             aria-hidden
-            className="pointer-events-none absolute inset-y-0 right-0 w-24 bg-gradient-to-r from-transparent to-[var(--color-surface-paper,#f6f4ee)]"
+            data-hang-fade
+            className="pointer-events-none absolute inset-y-0.5 right-0.5 w-24"
+            style={{
+              background:
+                "linear-gradient(90deg, transparent, var(--color-surface-paper, #f6f4ee))",
+            }}
           />
         ) : null}
         <div className={cn(MARKETING_PAGE_SHELL)}>

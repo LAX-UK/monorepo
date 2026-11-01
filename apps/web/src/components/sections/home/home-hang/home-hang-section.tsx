@@ -33,7 +33,7 @@ export function HomeHangSection({ hang }: { hang: HomeHangVM | null }) {
       title={hang.title}
       meta={(mode) =>
         hang.scaleNote
-          ? `${hang.summary} · ${mode === "scale" ? SCALE_NOTE : "not to scale"}`
+          ? `${hang.summary} · ${mode === "scale" ? SCALE_NOTE : "Not to scale"}`
           : hang.summary
       }
       works={hang.works.map(toMarketingWork)}

@@ -23,7 +23,7 @@ type MarketingHangFooterProps = {
 export function MarketingHangFooter({ desktop, phone, note }: MarketingHangFooterProps) {
   const copy = desktop.salonReason ? SALON_COPY[desktop.salonReason] : null;
   return (
-    <div className="mt-7 flex items-center justify-between gap-6 font-body text-xs leading-4 text-on-surface-variant max-sm:mt-[18px]">
+    <div className="mt-5 flex items-center justify-between gap-6 font-body text-xs leading-4 text-on-surface-variant max-sm:mt-2.5">
       <span className="flex min-w-0 items-center gap-4">
         {desktop.mode === "salon" ? (
           <span className="inline-flex shrink-0 items-center gap-1.5">

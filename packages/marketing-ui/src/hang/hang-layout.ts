@@ -167,13 +167,16 @@ function solveSalon(
   const gap = HANG_GAP_PX[viewport];
   let height = HANG_SALON_PX[viewport];
   if (fitWidth !== undefined) {
-    const total = rowWidth(
-      works.map((w) => w.aspect * height),
-      minColumn,
-      gap,
-      0,
-    );
-    if (total > fitWidth) height = Math.floor((height * fitWidth) / total);
+    for (let step = 0; step < FIT_MAX_STEPS; step++) {
+      const total = rowWidth(
+        works.map((w) => w.aspect * height),
+        minColumn,
+        gap,
+        0,
+      );
+      if (total <= fitWidth) break;
+      height = Math.floor(height * FIT_SHRINK_STEP);
+    }
   }
   return {
     mode: "salon",
