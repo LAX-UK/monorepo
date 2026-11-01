@@ -1,11 +1,13 @@
 import {
   CONSIGNMENT_AGREEMENT_REMINDERS_QUEUE_NAME,
+  CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME,
   SHOP_STOCK_RECONCILIATION_QUEUE_NAME,
   STAFF_ROLE_EXPIRY_QUEUE_NAME,
   STALE_SUBMISSION_DRAFT_REMINDERS_QUEUE_NAME,
 } from "@auction/queues";
 import { Queue, Worker } from "bullmq";
 import { runConsignmentAgreementRemindersJob } from "../jobs/consignment-agreement-reminders.js";
+import { runConsignmentThreadSweepJob } from "../jobs/consignment-thread-sweep.js";
 import { runShopStockReconciliationJob } from "../jobs/shop-stock-reconciliation.job.js";
 import { runStaffRoleExpiryJob } from "../jobs/staff-role-expiry.js";
 import { runStaleSubmissionDraftRemindersJob } from "../jobs/stale-submission-draft-reminders.js";
@@ -162,6 +164,43 @@ export function registerCronWorkers(deps: WorkerBootstrapDeps): CronWorkersHandl
   log.info("staff-role-expiry repeat registered (daily)");
   errorHandlers.push({ worker: staffRoleExpiryWorker, queue: STAFF_ROLE_EXPIRY_QUEUE_NAME });
   closables.push(staffRoleExpiryWorker, staffRoleExpiryQueue);
+
+  const threadSweepQueue = new Queue(CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME, bullConnection);
+  const threadSweepWorker = new Worker(
+    CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME,
+    async () => {
+      await withSentryCronMonitor(
+        CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME,
+        sentryMonitorSlugs,
+        async () => {
+          await runConsignmentThreadSweepJob({
+            apiBaseUrl: env.API_INTERNAL_BASE_URL,
+            cronSecret,
+            log,
+          });
+          await heartbeat(CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME);
+        },
+      );
+    },
+    bullConnection,
+  );
+  threadSweepWorker.on("failed", (job, err) => {
+    reportWorkerJobFailure(CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME, job, err);
+  });
+  // Every few minutes: a reply whose delivery job was lost reaches the account within one sweep,
+  // and a cover ends close to its end date. The API does each at most once.
+  void threadSweepQueue.add(
+    CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME,
+    {},
+    {
+      jobId: "five-minute-consignment-thread-sweep",
+      repeat: { every: 5 * 60 * 1000 },
+      removeOnComplete: 50,
+    },
+  );
+  log.info("consignment-thread-sweep repeat registered (every 5 minutes)");
+  errorHandlers.push({ worker: threadSweepWorker, queue: CONSIGNMENT_THREAD_SWEEP_QUEUE_NAME });
+  closables.push(threadSweepWorker, threadSweepQueue);
 
   const shopStockReconciliationQueue = new Queue(
     SHOP_STOCK_RECONCILIATION_QUEUE_NAME,

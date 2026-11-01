@@ -5,7 +5,6 @@ import {
   defaultConsignmentInboxSort,
   firstNameOf,
   replyClock,
-  threadAssignee,
 } from "@auction/domain";
 import type {
   ConsignmentInboxQueryFilter,
@@ -39,7 +38,11 @@ import type {
 import type { ConsignmentMessagePresenter } from "./consignment-message-presenter.js";
 import { memberRoleWords } from "./consignment-message-presenter.js";
 import type { IImageLinks } from "./consignment-message.ports.js";
-import { type ConsignmentMessageOutcome, NOT_FOUND } from "./consignment-message.shared.js";
+import {
+  type ConsignmentMessageOutcome,
+  NOT_FOUND,
+  assigneeView,
+} from "./consignment-message.shared.js";
 
 const EXCERPT_LENGTH = 140;
 
@@ -193,7 +196,7 @@ export class ConsignmentInboxQueryService {
         facts: this.toFacts(facts),
         people: this.toPeople(facts),
         specialist: subject.specialist,
-        assignee: threadAssignee({ specialist: subject.specialist, covering: subject.covering }),
+        assignee: assigneeView(subject),
         status,
         closed:
           thread?.closedAt != null
@@ -267,7 +270,7 @@ export class ConsignmentInboxQueryService {
       unread: row.unreadFromClient > 0,
       clock:
         status === "waiting_on_us" && row.awaitingSince ? clockView(row.awaitingSince, now) : null,
-      assignee: threadAssignee({ specialist: row.specialist, covering: row.covering }),
+      assignee: assigneeView(row),
     };
   }
 

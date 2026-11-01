@@ -10,6 +10,7 @@ import type {
 import type { IRepositoryFactory } from "@auction/persistence/interfaces";
 import type { IConsignmentAgreementRepository } from "@auction/persistence/interfaces";
 import type { UpdateItemSubmissionInput } from "@auction/types";
+import type { IConsignmentAssignment } from "../consignment-messages/consignment-message.ports.js";
 import type { IDomainEventSink } from "../domain-event-sink.js";
 import type { ImageCleanupService } from "../image-cleanup.service.js";
 import type { ILotLifecycleRecorder } from "../interfaces/lot-lifecycle-recorder.js";
@@ -43,6 +44,11 @@ export type ItemSubmissionServiceDeps = {
   sellerIdentity: ISellerIdentityReader | null;
   /** Roles in force of the staff member a submission is assigned to. */
   staffRoles: Pick<IStaffRoleAssignmentReader, "listActiveRoles"> | null;
+  /**
+   * Hands the consignment's thread over with its owner and records it in the thread's history.
+   * Without it (tests, tools) the owner changes on the record alone.
+   */
+  consignmentAssignment?: IConsignmentAssignment | null;
 };
 
 export function sellerPatchToRepoPatch(

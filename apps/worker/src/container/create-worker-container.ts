@@ -431,6 +431,7 @@ export function createWorkerContainer(): WorkerContainer {
           heartbeat("stale-submission-draft-reminders"),
           heartbeat("consignment-agreement-reminders"),
           heartbeat("staff-role-expiry"),
+          heartbeat("consignment-thread-sweep"),
           heartbeat("lot-lifecycle-tick"),
           heartbeat("expire-stale-payments"),
           heartbeat("retry-xero-webhook-failures"),

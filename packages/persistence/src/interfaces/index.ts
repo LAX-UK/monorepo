@@ -999,6 +999,7 @@ export type {
 export type {
   AssignThreadInput,
   AssignThreadResult,
+  EndedCover,
   AttachableUpload,
   ClaimedReplyNotice,
   ConsignmentMessageAttachmentRow,

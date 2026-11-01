@@ -218,6 +218,19 @@ export function createContainer(env: Env): Container {
   const laxAdminRoles = new DrizzleLaxAdminRolesRepository(db);
   const staffNoticeRecipients = new DrizzleStaffNoticeRecipientReader(db);
   const staffAdministrators = new StaffAdministratorDirectory(staffNoticeRecipients, laxAdminRoles);
+  const consignmentMessages = createConsignmentMessageServices({
+    messages: new DrizzleConsignmentMessageRepository(db),
+    inbox: new DrizzleConsignmentInboxReader(db),
+    facts: new DrizzleConsignmentThreadFactsReader(db),
+    savedReplies: new DrizzleConsignmentSavedReplyRepository(db),
+    staff: new DrizzleConsignmentStaffDirectory(db),
+    dispatcher: platform.notificationDispatcher,
+    recipients: repos.legalEntityNotificationRecipients,
+    storage: infra.objectStorage,
+    media: complianceMedia.mediaUrlResolver,
+    events: platform.domainEventSink,
+    bullConnection: infra.bullConnection,
+  });
   const platformCron = createPlatformCronRouteServices({
     redis: infra.redis,
     lifecycleCronService: cron.lifecycleCronService,
@@ -229,6 +242,7 @@ export function createContainer(env: Env): Container {
     notificationDispatcher: platform.notificationDispatcher,
     emailService: infra.emailService,
     webOrigin: env.WEB_ORIGIN,
+    consignmentThreadSweep: consignmentMessages.sweep,
   });
   const catalogRoutes = createCatalogRouteServices({
     saleService: catalog.saleService,
@@ -255,19 +269,6 @@ export function createContainer(env: Env): Container {
     artistProfileService: catalog.artistProfileService,
     artistDeleteService: catalog.artistDeleteService,
     venueService: catalog.venueService,
-  });
-  const consignmentMessages = createConsignmentMessageServices({
-    messages: new DrizzleConsignmentMessageRepository(db),
-    inbox: new DrizzleConsignmentInboxReader(db),
-    facts: new DrizzleConsignmentThreadFactsReader(db),
-    savedReplies: new DrizzleConsignmentSavedReplyRepository(db),
-    staff: new DrizzleConsignmentStaffDirectory(db),
-    dispatcher: platform.notificationDispatcher,
-    recipients: repos.legalEntityNotificationRecipients,
-    storage: infra.objectStorage,
-    media: complianceMedia.mediaUrlResolver,
-    events: platform.domainEventSink,
-    bullConnection: infra.bullConnection,
   });
   const submissionRoutes = createSubmissionRouteServices({
     itemSubmissionSellerApi: catalog.itemSubmissionSellerApi,

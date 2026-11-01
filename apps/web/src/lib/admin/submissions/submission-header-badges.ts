@@ -15,6 +15,12 @@ export type SubmissionHeaderBadge = {
   tone: DotStatusPillTone;
 };
 
+/** The countdown already says "Over SLA" once the deadline has passed; say it once. */
+export function slaBadgeLabel(isOverSla: boolean, countdown: string): string {
+  if (!isOverSla) return `SLA at risk — ${countdown}`;
+  return countdown.startsWith("Over SLA") ? countdown : `Over SLA — ${countdown}`;
+}
+
 export function buildSubmissionHeaderBadges(submission: ItemSubmission): SubmissionHeaderBadge[] {
   const badges: SubmissionHeaderBadge[] = [];
   const quality = evaluateSubmissionQuality(submission);
@@ -33,7 +39,7 @@ export function buildSubmissionHeaderBadges(submission: ItemSubmission): Submiss
       if (atRisk) {
         badges.push({
           id: "sla",
-          label: sla.isOverSla ? `Over SLA — ${countdown}` : `SLA at risk — ${countdown}`,
+          label: slaBadgeLabel(sla.isOverSla, countdown),
           tone: sla.isOverSla ? "critical" : "warning",
         });
       }

@@ -24,6 +24,8 @@ export const consignmentThread = pgTable(
     closedByUserId: text("closed_by_user_id").references(() => user.id, { onDelete: "set null" }),
     /** A colleague answering this thread while the consignment keeps its specialist. */
     coveringUserId: text("covering_user_id").references(() => user.id, { onDelete: "set null" }),
+    /** When the cover ends and the thread goes back to the specialist; null runs until ended. */
+    coveringUntil: timestamp("covering_until", { mode: "date", withTimezone: true }),
     /**
      * The first client message after the last reply the client can see; null when nobody waits.
      * The reply clock counts from here.
@@ -43,6 +45,9 @@ export const consignmentThread = pgTable(
     index("consignment_thread_covering_idx")
       .on(table.coveringUserId)
       .where(sql`${table.coveringUserId} IS NOT NULL`),
+    index("consignment_thread_cover_end_idx")
+      .on(table.coveringUntil)
+      .where(sql`${table.coveringUserId} IS NOT NULL AND ${table.coveringUntil} IS NOT NULL`),
     check(
       "consignment_thread_last_side_check",
       sql`${table.lastMessageSide} IN ('client', 'staff')`,
@@ -82,6 +87,9 @@ export const consignmentMessage = pgTable(
     index("consignment_message_unread_idx")
       .on(table.threadId, table.authorSide)
       .where(sql`${table.readAt} IS NULL`),
+    index("consignment_message_unnotified_idx")
+      .on(table.deliverAfter)
+      .where(sql`${table.notifiedAt} IS NULL AND ${table.deliverAfter} IS NOT NULL`),
     check("consignment_message_side_check", sql`${table.authorSide} IN ('client', 'staff')`),
     check("consignment_message_body_length_check", sql`char_length(${table.body}) <= 4000`),
     check(
