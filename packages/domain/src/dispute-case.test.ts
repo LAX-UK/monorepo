@@ -21,15 +21,28 @@ const invoice = (paymentId: string, amountPence: number, platformFeePence = 0) =
   }) satisfies DisputeCandidate;
 
 describe("planAutomaticDisputeAllocation", () => {
-  it("puts the whole disputed amount on the only invoice, as the seller's to carry", () => {
+  it("puts the whole disputed amount on the only invoice; the seller carries their net share", () => {
+    // A £100 invoice with a £10 fee: the house bears its fee's part of a £50 dispute.
     expect(planAutomaticDisputeAllocation(5_000, [invoice("a", 10_000, 1_000)])).toEqual([
       {
         paymentId: "a",
         sellerLegalEntityId: "seller-a",
         amountPence: 5_000,
-        sellerSharePence: 5_000,
+        sellerSharePence: 4_500,
       },
     ]);
+  });
+
+  it("charges the seller the same share as a finance allocation of the same amount", () => {
+    const only = invoice("a", 10_000, 2_500);
+    const staff = decideDisputeAllocation({
+      disputedPence: 10_000,
+      candidatePaymentIds: ["a"],
+      invoices: [only],
+      lines: [{ paymentId: "a", amountPence: 10_000 }],
+    });
+    expect(staff.ok).toBe(true);
+    expect(planAutomaticDisputeAllocation(10_000, [only])).toEqual(staff.ok ? staff.lines : null);
   });
 
   it("asks the finance team when the charge paid several invoices", () => {

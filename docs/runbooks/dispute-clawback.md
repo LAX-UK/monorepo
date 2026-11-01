@@ -7,7 +7,7 @@ platform must recover funds manually.
 ## Trigger
 
 Every Stripe dispute on a Bid charge is recorded as a dispute case. When the charge paid one
-invoice, `charge.dispute.funds_withdrawn` adds a negative dispute payout line for that seller.
+invoice, `charge.dispute.funds_withdrawn` claws back that seller's net share (the house bears its fee).
 When it paid several invoices, or none, the case waits in "needs allocation" and no payout moves
 until finance allocates it; each allocation line then claws back that seller's net share.
 `charge.dispute.funds_reinstated`, or `charge.dispute.closed` with **`status=won`**, reverses each

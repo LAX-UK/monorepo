@@ -252,10 +252,10 @@ describe.skipIf(!HAS_DB)("dispute webhooks record dispute cases (integration)", 
       .from(disputeAllocation)
       .where(eq(disputeAllocation.caseId, rows[0]?.id as string));
     expect(lines).toHaveLength(1);
-    expect(await disputeLinesPence()).toBe(-10_000);
+    expect(await disputeLinesPence()).toBe(-9_500);
   });
 
-  it("claws back a single invoice's seller once and reverses it once when won", async () => {
+  it("claws back a single invoice's seller net share once and reverses it once when won", async () => {
     const dispute = disputeOf("single");
     await deliver("charge.dispute.created", dispute);
     const record = await caseOf(dispute.id);
@@ -263,7 +263,7 @@ describe.skipIf(!HAS_DB)("dispute webhooks record dispute cases (integration)", 
 
     await deliver("charge.dispute.funds_withdrawn", dispute);
     await deliver("charge.dispute.funds_withdrawn", dispute);
-    expect(await disputeLinesPence()).toBe(-10_000);
+    expect(await disputeLinesPence()).toBe(-9_500);
 
     await deliver("charge.dispute.updated", {
       ...dispute,

@@ -85,8 +85,9 @@ export function isDisputeAwaitingAllocation(input: {
 
 /**
  * The allocation made without asking anyone, or `null` when the finance team must decide. A charge
- * that paid exactly one invoice puts the whole disputed amount on it, and the seller's payout
- * carries the whole disputed amount, as it always has.
+ * that paid exactly one invoice puts the whole disputed amount on it; the seller's payout carries
+ * their net share of it, by the same rule as a finance allocation, and the house bears its fee's
+ * part.
  */
 export function planAutomaticDisputeAllocation(
   disputedPence: number,
@@ -99,7 +100,7 @@ export function planAutomaticDisputeAllocation(
       paymentId: only.paymentId,
       sellerLegalEntityId: only.sellerLegalEntityId,
       amountPence: disputedPence,
-      sellerSharePence: disputedPence,
+      sellerSharePence: disputeSellerSharePence(disputedPence, only),
     },
   ];
 }

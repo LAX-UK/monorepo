@@ -242,7 +242,8 @@ describe("DisputeCaseRecorder", () => {
     expect(t.store.cases.size).toBe(1);
   });
 
-  it("keeps today's single-invoice clawback and reversal", async () => {
+  it("claws back a single invoice's seller net share and reverses it on a win", async () => {
+    // A £200 invoice with a £10 fee: the seller carries £190 of a £200 dispute.
     t.store.payments = [invoice("pay_1", 20_000, 1_000)];
     t.store.charges.set("ch_fixture", ["pay_1"]);
 
@@ -261,14 +262,14 @@ describe("DisputeCaseRecorder", () => {
       expect.objectContaining({
         legalEntityId: "seller-pay_1",
         paymentId: "pay_1",
-        amount: "-200.00",
+        amount: "-190.00",
         kind: "dispute",
       }),
     );
 
     await t.recorder.record("closed", t.event("charge.dispute.closed"), dispute({ status: "won" }));
     expect(t.addLine).toHaveBeenLastCalledWith(
-      expect.objectContaining({ paymentId: "pay_1", amount: "200.00" }),
+      expect.objectContaining({ paymentId: "pay_1", amount: "190.00" }),
     );
     expect(t.eventTypes()).toEqual([
       "payment.dispute_opened",
