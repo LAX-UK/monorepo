@@ -3,14 +3,12 @@ import {
   type DashboardFigureGroup,
   type DashboardFigures,
   type EntityActor,
-  addMoneyStrings,
   consignedLotScope,
   consignmentProgressCounts,
   dashboardFigureGroupsFor,
   dashboardFigureScope,
   isAccountFigureGroup,
   londonCalendarYear,
-  payoutTotals,
   splitPayoutDates,
   sumMoneyByCurrency,
   upcomingSaleFigures,
@@ -18,7 +16,6 @@ import {
 import type {
   ConsignmentReadScope,
   CurrencyCountRow,
-  DuePayoutRow,
   IConsignmentStatusCountsReader,
   IPayoutsDueReader,
   ISoldWorksReader,
@@ -26,9 +23,6 @@ import type {
 } from "@auction/persistence/interfaces";
 import type { IOrganisationDashboardService } from "../interfaces/organisation-dashboard-service.js";
 import type { OrganisationMemberActor } from "../interfaces/organisation-membership-service.js";
-
-/** Payouts still to arrive in one currency, with their settlement dates either side of now. */
-type PayoutsDueRow = CurrencyCountRow & { nextDate: Date | null; overdueSince: Date | null };
 
 /** One read-model port per figure group. */
 export type OrganisationDashboardReaders = {
@@ -81,32 +75,6 @@ const totalsOf = (rows: readonly CurrencyCountRow[]) =>
   sumMoneyByCurrency(rows.map(({ currency, amount }) => ({ currency, amount })));
 
 /**
- * Payouts still to arrive, one row per currency. Each payout counts for what its lines come to
- * (the split the payout page shows), and the soonest date ahead is kept apart from the earliest
- * already past, so an overdue payout never hides the next one.
- */
-function dueByCurrency(payouts: readonly DuePayoutRow[], now: Date): PayoutsDueRow[] {
-  const byCurrency = new Map<string, PayoutsDueRow>();
-  for (const due of payouts) {
-    const row = byCurrency.get(due.currency) ?? {
-      currency: due.currency,
-      count: 0,
-      amount: "0.00",
-      nextDate: null,
-      overdueSince: null,
-    };
-    row.count += 1;
-    row.amount = addMoneyStrings(row.amount, payoutTotals(due.lines, due.stripeFee).net);
-    const past = due.periodEnd < now;
-    const key = past ? "overdueSince" : "nextDate";
-    const current = row[key];
-    if (!current || due.periodEnd < current) row[key] = due.periodEnd;
-    byCurrency.set(due.currency, row);
-  }
-  return [...byCurrency.values()];
-}
-
-/**
  * Builds the figures for a member's Home: the domain decides which groups the role uses and whose
  * records each counts; each group is read once, all in parallel.
  */
@@ -140,10 +108,7 @@ export class OrganisationDashboardService implements IOrganisationDashboardServi
         return { year: year.year, works: countOf(rows), totals: totalsOf(rows) };
       },
       payoutsDue: async (ctx) => {
-        const rows = dueByCurrency(
-          await readers.payoutsDue.listDue(ctx.member.legalEntityId),
-          ctx.now,
-        );
+        const rows = await readers.payoutsDue.listDue(ctx.member.legalEntityId, ctx.now);
         const dates = rows.flatMap((row) =>
           [row.nextDate, row.overdueSince].filter((date): date is Date => date !== null),
         );
