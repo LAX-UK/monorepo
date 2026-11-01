@@ -1,7 +1,6 @@
 import type { BidHistoryEntry } from "@/components/sections/artwork/bid-history";
 import { fetchLotBidHistory } from "@/lib/bid/fetch-lot-bid-history.client";
 import { type LotBidSnapshot, fetchLotBidSnapshot } from "@/lib/bid/fetch-lot-bid-snapshot.client";
-import type { Lot } from "@auction/types";
 import { queryOptions } from "@tanstack/react-query";
 
 export type LotBidHydrateData = {
@@ -43,24 +42,21 @@ export async function fetchLotBidHydrate(lotId: string): Promise<LotBidHydrateDa
   };
 }
 
+/**
+ * Seed the live bid cache from the server-rendered lot. The snapshot is the lot as the
+ * server loaded it: its real status and closing time, never placeholders, because the
+ * lifecycle (open, upcoming, closed) is classified from it before the first resync.
+ */
 export function buildLotBidInitialHydrate(input: {
-  lotId: string;
+  initialSnapshot: LotBidSnapshot;
   initialHistory: BidHistoryEntry[];
-  initialCurrentPrice: string;
   initialLeadingBidderId?: string | null;
-  initialStatus?: Lot["status"];
-  initialEndTime?: Date;
 }): LotBidHydrateData {
   return {
-    snapshot: {
-      currentPrice: input.initialCurrentPrice,
-      endTime: input.initialEndTime ?? new Date(),
-      status: input.initialStatus ?? "active",
-      winnerId: input.initialLeadingBidderId ?? null,
-    },
+    snapshot: input.initialSnapshot,
     entries: input.initialHistory,
     leadingBidderId: input.initialLeadingBidderId ?? null,
-    reserveMet: undefined,
+    reserveMet: input.initialSnapshot.reserveMet,
   };
 }
 

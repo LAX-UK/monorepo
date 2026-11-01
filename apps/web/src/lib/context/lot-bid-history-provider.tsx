@@ -55,7 +55,8 @@ const LotBidHistoryContext = createContext<LotBidHistoryContextValue | null>(nul
 type ProviderProps = {
   lotId: string;
   initialHistory: BidHistoryEntry[];
-  initialCurrentPrice: string;
+  /** The lot as the server loaded it (price, status, closing time, winner). */
+  initialSnapshot: LotBidSnapshot;
   initialLeadingBidderId?: string | null;
   currentUserId?: string | null;
   children: ReactNode;
@@ -76,7 +77,7 @@ function hydrateDataToContext(
 export function LotBidHistoryProvider({
   lotId,
   initialHistory,
-  initialCurrentPrice,
+  initialSnapshot,
   initialLeadingBidderId = null,
   currentUserId = null,
   children,
@@ -90,12 +91,11 @@ export function LotBidHistoryProvider({
   const initialHydrate = useMemo(
     () =>
       buildLotBidInitialHydrate({
-        lotId,
+        initialSnapshot,
         initialHistory,
-        initialCurrentPrice,
         initialLeadingBidderId,
       }),
-    [lotId, initialHistory, initialCurrentPrice, initialLeadingBidderId],
+    [initialSnapshot, initialHistory, initialLeadingBidderId],
   );
 
   const { refetch } = useLotBidHydrateQuery(lotId, {

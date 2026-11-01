@@ -124,7 +124,7 @@ function renderArtworkBidPanel(props: ComponentProps<typeof ArtworkBidPanel>) {
       <LotBidHistoryProvider
         lotId={props.auction.id}
         initialHistory={props.initialHistory}
-        initialCurrentPrice={props.auction.currentPrice}
+        initialSnapshot={props.auction}
         initialLeadingBidderId={props.initialLeadingBidderId ?? null}
         currentUserId={props.sessionUser?.id ?? null}
       >

@@ -257,7 +257,7 @@ export default async function ArtworkPage({ params, searchParams }: PageProps) {
                         <LotBidHistoryProvider
                           lotId={auction.id}
                           initialHistory={initialHistory}
-                          initialCurrentPrice={auction.currentPrice}
+                          initialSnapshot={lifecycleLotPick}
                           initialLeadingBidderId={initialLeadingBidderId}
                           currentUserId={session?.id ?? null}
                         >
