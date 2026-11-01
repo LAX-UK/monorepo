@@ -1,8 +1,8 @@
 import { UnderlineInput } from "@/components/ui/input";
 import { formatMoney } from "@/lib/format-currency";
 import { BodyText, cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import { ConfirmDialog } from "@auction/ui/components/confirm-dialog";
+import { Button } from "@auction/ui/lax";
 import type { ReactNode } from "react";
 import { AutoBidRangeVisual } from "./auto-bid-range-visual";
 import type { useLotAutoBidPanel } from "./use-lot-auto-bid-panel";
@@ -108,7 +108,7 @@ export function LotAutoBidPanelContent({
                   disabled={disabled || saving || clearing}
                   onClick={() => onStepSelect(s.toFixed(2))}
                   className={cn(
-                    "rounded-md border px-3 py-1.5 font-label text-xs font-semibold transition-colors",
+                    "border transition-colors",
                     selected
                       ? "border-primary bg-primary/10 text-primary"
                       : "border-outline-variant/40 text-on-surface-variant hover:border-link/40 hover:text-link",
@@ -143,19 +143,20 @@ export function LotAutoBidPanelContent({
 
       <div className="mt-4 flex flex-wrap gap-2">
         <Button
+          variant="primary"
           type="button"
           disabled={disabled || saving || clearing}
           onClick={() => void onSave()}
-          className="h-auto rounded-sm bg-cta-bg px-4 py-2 font-label text-xs font-bold text-cta-on"
+          className="h-auto bg-cta-bg text-cta-on"
         >
           {saving ? "Saving…" : "Save auto-bid"}
         </Button>
         <Button
           type="button"
-          variant="outline"
+          variant="secondary"
           disabled={disabled || saving || clearing || !isActive}
           onClick={onClearRequest}
-          className="h-auto px-4 py-2 font-label text-xs"
+          className="h-auto"
         >
           {clearing ? "Clearing…" : "Clear auto-bid"}
         </Button>

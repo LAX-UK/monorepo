@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { Heart } from "lucide-react";
 import * as React from "react";
 
@@ -57,7 +57,7 @@ export function WatchlistHeart({
       aria-pressed={isPressed}
       aria-label={label}
       className={cn(
-        "inline-flex min-h-[var(--tap-target-min,44px)] min-w-[var(--tap-target-min,44px)] items-center justify-center rounded-full transition-colors motion-reduce:transition-none",
+        "inline-flex min-w-[var(--tap-target-min,44px)] items-center justify-center transition-colors motion-reduce:transition-none",
         disabled && "cursor-wait opacity-60",
         className,
       )}

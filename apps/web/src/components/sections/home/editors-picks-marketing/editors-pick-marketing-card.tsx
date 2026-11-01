@@ -4,7 +4,8 @@ import { LotViewTransitionLink } from "@/components/marketing/lot-view-transitio
 import { MarketingLotTile } from "@/components/marketing/marketing-lot-tile";
 import type { EditorsPickLotCardVM } from "@/components/sections/home/home-view-models";
 import { HOME_LOT_TILE_SLOTS } from "@/lib/media/overlay-slot-presets";
-import { Button } from "@auction/ui/components/button";
+import { cn } from "@auction/ui";
+import { buttonVariants } from "@auction/ui/lax";
 
 type Props = {
   lot: EditorsPickLotCardVM;
@@ -76,15 +77,13 @@ export function EditorsPickMarketingCard({
               {lot.estimateValue}
             </span>
           </div>
-          <Button
-            variant="outline"
-            asChild
-            className="mt-auto h-11 w-full rounded border-outline-variant text-base font-semibold tracking-[0.05em] text-on-surface"
+          <LotViewTransitionLink
+            lotId={lot.id}
+            href={lot.href}
+            className={cn(buttonVariants({ variant: "secondary" }), "mt-auto w-full")}
           >
-            <LotViewTransitionLink lotId={lot.id} href={lot.href}>
-              View Lot
-            </LotViewTransitionLink>
-          </Button>
+            View lot
+          </LotViewTransitionLink>
         </div>
       }
     />

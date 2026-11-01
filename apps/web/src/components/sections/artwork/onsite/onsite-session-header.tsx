@@ -3,7 +3,7 @@ import { OnsiteSaleScheduleCountdown } from "@/components/sections/artwork/onsit
 import { salePath } from "@/lib/seo/url";
 import type { Sale } from "@auction/types";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 
 type Props = {
@@ -34,9 +34,14 @@ export function OnsiteSessionHeader({ vm, sale, className }: Props) {
           <div className="min-w-[10rem] flex-1 sm:flex-none">
             <OnsiteSaleScheduleCountdown sale={sale} variant="compact" />
           </div>
-          <Button variant="outline" size="default" className="hidden lg:inline-flex" asChild>
-            <Link href={salePath(sale)}>View catalogue</Link>
-          </Button>
+          <ButtonLink
+            Link={Link}
+            variant="secondary"
+            className="hidden lg:inline-flex"
+            href={salePath(sale)}
+          >
+            View catalogue
+          </ButtonLink>
         </div>
       </div>
     </header>

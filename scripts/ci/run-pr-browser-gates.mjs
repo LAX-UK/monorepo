@@ -41,7 +41,7 @@ function run(command, extraEnv = {}) {
 
 if (!args.values["skip-static"]) {
   run("node scripts/ci/require-node-version.mjs");
-  run('pnpm --filter @auction/web exec playwright test --list --grep "@smoke|@roles"');
+  run('pnpm --filter @auction/web exec playwright test --list --grep "@smoke|@roles|@public-a11y"');
 }
 
 if (!args.values["skip-prepare"]) {
@@ -50,6 +50,13 @@ if (!args.values["skip-prepare"]) {
 
 flushRateLimits();
 run("pnpm --filter @auction/web test:e2e:pr", {
+  PLAYWRIGHT_E2E: "1",
+  PLAYWRIGHT_AUTH_PREPARED: "1",
+});
+
+// The public site's accessibility gate: serious and critical violations fail, moderate ones are
+// held to the shrinking baseline in apps/web/e2e/a11y-baseline.json.
+run("pnpm --filter @auction/web test:e2e:public-a11y", {
   PLAYWRIGHT_E2E: "1",
   PLAYWRIGHT_AUTH_PREPARED: "1",
 });

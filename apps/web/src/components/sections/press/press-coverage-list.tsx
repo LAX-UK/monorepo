@@ -3,7 +3,7 @@ import { MarketingSectionHeader } from "@/components/marketing/marketing-section
 import { EMPTY_STATE_VOICE } from "@/lib/ui/empty-state-copy";
 import { MarketingCardReveal } from "@auction/marketing-ui";
 import { DisplayHeading } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { PressArchiveEntryVM } from "./mappers";
@@ -49,9 +49,9 @@ export function PressCoverageList({ items, hasActiveFilters = false, toolbar }: 
           }
           action={
             hasActiveFilters ? (
-              <Button variant="cta" asChild>
-                <Link href="/press">Clear filters</Link>
-              </Button>
+              <ButtonLink Link={Link} variant="primary" href="/press">
+                Clear filters
+              </ButtonLink>
             ) : undefined
           }
         />

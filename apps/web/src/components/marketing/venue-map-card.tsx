@@ -1,7 +1,7 @@
 "use client";
 
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { ExternalLink, MapPin } from "lucide-react";
 import { useCallback, useId, useState } from "react";
 
@@ -66,7 +66,7 @@ export function VenueMapCard({
           type="button"
           variant="ghost"
           onClick={showMap}
-          className="relative flex w-full flex-col items-center justify-center overflow-hidden rounded-xl border border-outline-variant/30 bg-surface-container-high/60 px-4 py-10 text-center transition-colors hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          className="relative flex w-full flex-col items-center justify-center overflow-hidden border border-outline-variant/30 bg-surface-container-high/60 text-center transition-colors hover:bg-surface-container-high focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           aria-expanded={false}
           aria-controls={mapRegionId}
         >
@@ -95,7 +95,7 @@ export function VenueMapCard({
       ) : null}
 
       {directionsUrl ? (
-        <Button variant="outline" asChild className="gap-2">
+        <Button variant="secondary" asChild className="gap-2">
           <a
             href={directionsUrl}
             target="_blank"

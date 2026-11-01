@@ -9,7 +9,7 @@ import type {
 } from "@/lib/bid/bid-blocker-presentation";
 import { cn } from "@auction/ui";
 import { Alert, AlertDescription, AlertTitle } from "@auction/ui/components/alert";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { AlertTriangle, CircleAlert, Clock3, Info, type LucideIcon } from "lucide-react";
 import Link from "next/link";
 import { useId } from "react";
@@ -32,7 +32,7 @@ function BidBlockerActionControl({ action }: { action: BidBlockerAction }) {
   switch (action.kind) {
     case "link":
       return (
-        <Button asChild size="default" className="min-h-11">
+        <Button variant="primary" asChild className="">
           <Link href={action.href}>{action.label}</Link>
         </Button>
       );

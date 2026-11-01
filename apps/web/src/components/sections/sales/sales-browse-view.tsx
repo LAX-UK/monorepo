@@ -16,7 +16,8 @@ import type { SalesBrowsePageVM } from "@/lib/marketing/sales-browse-page.vm";
 import { resolveCalendarEmptyState } from "@/lib/marketing/sales-calendar-empty-state";
 import { calendarClearFiltersHref, calendarSalesHref } from "@/lib/marketing/sales-calendar-params";
 import { MarketingSectionReveal } from "@auction/marketing-ui";
-import { Button, cn } from "@auction/ui";
+import { cn } from "@auction/ui";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 
 type SalesBrowseViewProps = SalesBrowsePageData;
@@ -65,12 +66,16 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
             description="We couldn't load the calendar. Try again in a moment."
             action={
               <>
-                <Button variant="cta" asChild>
-                  <Link href={calendarSalesHref(vm.calendarState)}>Try again</Link>
-                </Button>
-                <Button variant="outline" asChild>
-                  <Link href="/">Back to home</Link>
-                </Button>
+                <ButtonLink
+                  Link={Link}
+                  variant="primary"
+                  href={calendarSalesHref(vm.calendarState)}
+                >
+                  Try again
+                </ButtonLink>
+                <ButtonLink Link={Link} variant="secondary" href="/">
+                  Back to home
+                </ButtonLink>
               </>
             }
           />
@@ -82,9 +87,9 @@ export function SalesBrowseView({ vm, crumbText, listLdText }: SalesBrowseViewPr
             title="Private sales"
             description="Acquire exceptional works outside the auction calendar. Contact our specialists to find out more."
             action={
-              <Button variant="cta" asChild>
-                <Link href="/contact?intent=private-sale">Contact a specialist</Link>
-              </Button>
+              <ButtonLink Link={Link} variant="primary" href="/contact?intent=private-sale">
+                Contact a specialist
+              </ButtonLink>
             }
           />
         ) : null}
@@ -163,17 +168,21 @@ function CalendarEmpty({ vm }: { vm: SalesBrowsePageVM }) {
       action={
         empty.action === "clearFilters" ? (
           <>
-            <Button variant="cta" asChild>
-              <Link href={calendarClearFiltersHref(vm.calendarState)}>Clear filters</Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/sales">Browse all sales</Link>
-            </Button>
+            <ButtonLink
+              Link={Link}
+              variant="primary"
+              href={calendarClearFiltersHref(vm.calendarState)}
+            >
+              Clear filters
+            </ButtonLink>
+            <ButtonLink Link={Link} variant="secondary" href="/sales">
+              Browse all sales
+            </ButtonLink>
           </>
         ) : empty.action ? (
-          <Button variant="outline" asChild>
-            <Link href={empty.action.href}>{empty.action.label}</Link>
-          </Button>
+          <ButtonLink Link={Link} variant="secondary" href={empty.action.href}>
+            {empty.action.label}
+          </ButtonLink>
         ) : undefined
       }
     />

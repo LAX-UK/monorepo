@@ -12,7 +12,7 @@ import { MARKETING_PROSE_LINK } from "@/lib/marketing/chrome";
 import { metadataForStatic } from "@/lib/seo/metadata-factory";
 import { breadcrumbJsonLd, jsonLdScript } from "@/lib/seo/structured-data";
 import { MarketingSectionReveal } from "@auction/marketing-ui";
-import { Button } from "@auction/ui";
+import { ButtonLink } from "@auction/ui/lax";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -64,12 +64,12 @@ export default function BuyPage() {
           description="Create an account to register and start bidding, or browse upcoming auctions."
           actions={
             <>
-              <Button variant="cta" asChild>
-                <a href={buildHostedLoginStartHref({ intent: "signup" })}>Create account</a>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/sales">Browse auctions</Link>
-              </Button>
+              <ButtonLink variant="primary" href={buildHostedLoginStartHref({ intent: "signup" })}>
+                Create account
+              </ButtonLink>
+              <ButtonLink Link={Link} variant="secondary" href="/sales">
+                Browse auctions
+              </ButtonLink>
             </>
           }
         />
@@ -89,12 +89,12 @@ export default function BuyPage() {
           description="Browse the FAQ or contact client services if you need help with registration or verification."
           actions={
             <>
-              <Button variant="cta" asChild>
-                <Link href="/sales">Browse auctions</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/faq">View FAQ</Link>
-              </Button>
+              <ButtonLink Link={Link} variant="primary" href="/sales">
+                Browse auctions
+              </ButtonLink>
+              <ButtonLink Link={Link} variant="secondary" href="/faq">
+                View FAQ
+              </ButtonLink>
             </>
           }
         />

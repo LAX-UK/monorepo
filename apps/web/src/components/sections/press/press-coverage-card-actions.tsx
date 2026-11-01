@@ -45,7 +45,7 @@ export function PressCoverageCardActions({
         {dateLabel ? (
           <time
             dateTime={publishedAt ?? undefined}
-            className="font-body text-xs text-on-surface-variant/60"
+            className="font-body text-xs text-on-surface-variant"
           >
             {dateLabel}
           </time>

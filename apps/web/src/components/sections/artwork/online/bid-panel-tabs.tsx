@@ -2,7 +2,7 @@
 
 import { BidPanelSurfaceProvider } from "@/components/sections/artwork/online/bid-panel-surface";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import type { ReactNode } from "react";
 import { useCallback, useId, useRef, useState } from "react";
 
@@ -96,7 +96,7 @@ export function BidPanelTabs({ bidPanel, videoPanel, hasVideoStream = false, cla
               tabIndex={selected ? 0 : -1}
               onClick={() => select(id)}
               className={cn(
-                "h-11 flex-1 rounded-full px-2 font-body text-xs font-medium leading-4 transition-colors motion-reduce:transition-none",
+                "flex-1 font-body transition-colors motion-reduce:transition-none",
                 selected ? "bg-on-surface text-background" : "bg-transparent text-on-surface",
               )}
             >

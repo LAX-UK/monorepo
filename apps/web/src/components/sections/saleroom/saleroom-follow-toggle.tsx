@@ -8,7 +8,6 @@ import {
   saleroomHeroActionSizing,
 } from "@/lib/ui/overlay-tone-classes";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import { Bell, BellRing } from "lucide-react";
 import { useCallback, useState } from "react";
 
@@ -28,6 +27,7 @@ type Props = {
 };
 
 import { toggleSaleFollow } from "@/lib/data/http/sale-follow.client";
+import { Button } from "@auction/ui/lax";
 
 const outlinedBlockSizing = cn(saleroomHeroActionSizing, "min-w-[117px]");
 
@@ -121,7 +121,7 @@ export function SaleroomFollowToggle({
   return (
     <Button
       type="button"
-      variant={following ? "secondary" : "outline"}
+      variant={following ? "secondary" : "secondary"}
       disabled={busy}
       aria-pressed={following}
       onClick={() => void toggle()}

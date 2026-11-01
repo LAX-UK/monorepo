@@ -6,7 +6,7 @@ import { BidEntryRegion } from "@/components/sections/artwork/online/bid-entry-r
 import { useBidPanelContext } from "@/components/sections/artwork/online/bid-panel-context";
 import { lotBidPositionStickyLabel } from "@/lib/bid/derive-lot-bid-position";
 import { formatMoney } from "@/lib/format-currency";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { useState } from "react";
 
 export function VideoCompactBidPanel() {
@@ -52,6 +52,7 @@ export function VideoCompactBidPanel() {
 
           {decision.kind !== "block" && !compactExpanded ? (
             <Button
+              variant="primary"
               type="button"
               aria-expanded={false}
               disabled={!canBid}
@@ -61,7 +62,7 @@ export function VideoCompactBidPanel() {
                   setCompactExpanded(true);
                 }
               }}
-              className="shrink-0 rounded-sm bg-cta-bg px-5 py-2.5 font-label text-xs font-bold text-cta-on shadow-sm hover:bg-cta-bg/90"
+              className="shrink-0 bg-cta-bg text-cta-on hover:bg-cta-bg/90"
             >
               {step === 2 ? "Confirm bid" : "Bid"}
             </Button>
@@ -71,7 +72,7 @@ export function VideoCompactBidPanel() {
               aria-expanded={true}
               variant="ghost"
               onClick={() => setCompactExpanded(false)}
-              className="shrink-0 px-3 py-2 font-label text-xs text-on-surface-variant"
+              className="shrink-0 text-on-surface-variant"
             >
               Close
             </Button>
