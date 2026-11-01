@@ -16,6 +16,7 @@ const files = [
   "src/routes/submissions/messages.routes.ts",
   "src/routes/submission-documents.ts",
   "src/routes/admin-consignment-threads.ts",
+  "src/routes/admin-consignment-saved-replies.ts",
 ];
 
 const ALLOWED_CONTAINER_KEYS = new Set([

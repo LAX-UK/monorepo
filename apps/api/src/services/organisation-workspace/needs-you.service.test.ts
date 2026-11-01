@@ -1,5 +1,5 @@
 import type { INeedsYouFactsReader } from "@auction/persistence/interfaces";
-import type { LegalEntityMemberRole } from "@auction/types";
+import type { LegalEntityKind, LegalEntityMemberRole, LegalEntityStatus } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { UnsoldChoiceDeadlines } from "../consignment-after-sale/unsold-choice-deadlines.js";
 import { NeedsYouService } from "./needs-you.service.js";
@@ -7,7 +7,9 @@ import { NeedsYouService } from "./needs-you.service.js";
 const ENTITY = "00000000-0000-4000-8000-000000000001";
 const NOW = new Date("2026-11-10T12:00:00Z");
 
-function setup(options: { standing?: { status: "approved"; payoutsReady: boolean } | null } = {}) {
+type Standing = { kind: LegalEntityKind; status: LegalEntityStatus; payoutsReady: boolean };
+
+function setup(options: { standing?: Standing | null } = {}) {
   const facts = {
     outbidLots: vi.fn(async () => [
       { id: "l1", title: "Closing lot", endsAt: new Date("2026-11-10T14:00:00Z") },
@@ -61,9 +63,9 @@ function setup(options: { standing?: { status: "approved"; payoutsReady: boolean
       },
     ]),
   };
-  const standing =
+  const standing: Standing | null =
     options.standing === undefined
-      ? { status: "approved" as const, payoutsReady: true }
+      ? { kind: "organisation", status: "approved", payoutsReady: true }
       : options.standing;
   const service = new NeedsYouService({
     facts,
@@ -165,6 +167,18 @@ describe("NeedsYouService", () => {
     const { service } = setup();
     const view = await service.read(member("admin", true));
     expect(view.tasks).toEqual([]);
+  });
+
+  it("a person's own account: the same table, its consignments asked for while it is a lead", async () => {
+    const { service } = setup({
+      standing: { kind: "individual", status: "lead", payoutsReady: false },
+    });
+    const view = await service.read(member("owner"));
+    expect(view.tasks.map((task) => task.kind)).toEqual(
+      expect.arrayContaining(["unsold_due", "agreement", "reply"]),
+    );
+    expect(view.tasks.map((task) => task.kind)).not.toContain("invitations_expired");
+    expect(view.counts.consignments).toBe(3);
   });
 
   it("an organisation that cannot be found asks nothing", async () => {

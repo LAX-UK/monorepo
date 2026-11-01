@@ -7,6 +7,7 @@ import {
 import { Keyboard, LogOut, Monitor, Moon, Sun } from "lucide-react";
 import type * as React from "react";
 import { cn } from "../lib/cn.js";
+import { initialsOf } from "../lib/initials.js";
 import {
   StaffMenu,
   StaffMenuCheckboxItem,
@@ -19,12 +20,7 @@ import {
 import { useStaffShortcuts } from "./shortcuts.js";
 import type { StaffTheme, StaffUser } from "./types.js";
 
-export function initialsOf(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  const first = parts[0]?.[0] ?? "";
-  const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? "") : "";
-  return `${first}${last}`.toUpperCase() || "?";
-}
+export { initialsOf };
 
 const THEMES: ReadonlyArray<{ value: StaffTheme; label: string; icon: React.ReactNode }> = [
   { value: "light", label: "Light", icon: <Sun aria-hidden /> },

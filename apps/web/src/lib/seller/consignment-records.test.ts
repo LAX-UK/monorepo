@@ -10,7 +10,6 @@ import {
   NO_CONSIGNMENT_TASKS,
   buildConsignmentRecords,
   consignmentTasksFromNeedsYou,
-  personalConsignmentTasks,
   visibleConsignedLots,
 } from "./consignment-records";
 import { consignmentStatus } from "./consignment-status";
@@ -239,20 +238,24 @@ describe("what waits on the member", () => {
     expect([...tasks.replies]).toEqual(["s3"]);
   });
 
-  it("derives a person's from the same rules: open agreements with terms, changes, unmade choices", () => {
-    const tasks = personalConsignmentTasks({
-      submissions: [
-        submission("s1", { status: "approved" }),
-        submission("s2", { status: "changes_requested" }),
-        submission("s3", { status: "rejected" }),
-      ],
-      agreements: [agreement("s1", null), agreement("s3", null)],
-      unsold: [unsold, { ...unsold, lotId: "l2", choice: "requested" }],
+  it("lists a person's reply from their specialist under Needs you, as the tab counts it", () => {
+    const tasks = consignmentTasksFromNeedsYou([
+      { kind: "reply", consignment: { id: "s1", title: "Thames" }, from: "Clara Mendes" },
+    ]);
+    const records = buildConsignmentRecords({
+      submissions: [submission("s1", { status: "under_review" }), submission("s2")],
+      lots: [],
+      agreements: [],
+      unsold: [],
+      saleTitleById: {},
+      tasks,
+      now: NOW,
     });
-    expect([...tasks.agreements]).toEqual(["s1"]);
-    expect([...tasks.changes]).toEqual(["s2"]);
-    expect([...tasks.unsoldLots]).toEqual(["l-unsold"]);
-    expect(NO_CONSIGNMENT_TASKS.changes.size).toBe(0);
+    const query = parseConsignmentsListQuery({ tab: "needs-you" });
+    const waiting = consignmentsInView(records, query);
+    expect(waiting.map((record) => [record.submissionId, record.task])).toEqual([["s1", "reply"]]);
+    expect(consignmentViewCounts(records, query)["needs-you"]).toBe(waiting.length);
+    expect(NO_CONSIGNMENT_TASKS.replies.size).toBe(0);
   });
 });
 

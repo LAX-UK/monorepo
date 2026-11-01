@@ -4,7 +4,7 @@ import {
   CONSIGNMENT_MESSAGE_ATTACHMENT_TYPES,
 } from "@auction/domain";
 import type { StaffRoles, UserRole } from "@auction/types";
-import { roleHasCapability } from "@auction/types";
+import { CONSIGNMENT_INBOX_REPLY_ACCESS, roleHasCapability, userHasAccessTo } from "@auction/types";
 
 export const uploadKinds = [
   "avatar",
@@ -98,6 +98,49 @@ export const uploadPolicies: Record<UploadKind, UploadPolicy> = {
   },
 };
 
+/** A refusal an upload kind answers in its own words, with the limit it broke. */
+export type UploadRejection = {
+  code: string;
+  error: string;
+  limit: { maxBytes: number; types: readonly string[] };
+};
+
+const megabytes = (bytes: number) => `${Math.round(bytes / (1024 * 1024))} MB`;
+
+/**
+ * Kinds whose refusals tell the person what is allowed, so the form can say it. Other kinds
+ * keep their plain error ids.
+ */
+const uploadRejections: Partial<
+  Record<
+    UploadKind,
+    {
+      type: (limit: UploadRejection["limit"]) => UploadRejection;
+      size: (limit: UploadRejection["limit"]) => UploadRejection;
+    }
+  >
+> = {
+  consignment_message_attachment: {
+    type: (limit) => ({
+      code: "attachment_type",
+      error: "That file type can't be attached. Use a JPEG, PNG or WebP photo, or a PDF.",
+      limit,
+    }),
+    size: (limit) => ({
+      code: "attachment_too_large",
+      error: `That file is larger than ${megabytes(limit.maxBytes)}. Use a smaller one.`,
+      limit,
+    }),
+  },
+};
+
+export function uploadRejection(kind: UploadKind, reason: "type" | "size"): UploadRejection | null {
+  const policy = uploadPolicies[kind];
+  const rejection = uploadRejections[kind];
+  if (!rejection) return null;
+  return rejection[reason]({ maxBytes: policy.maxBytes, types: policy.allowedContentTypes });
+}
+
 export function isUploadKind(value: string): value is UploadKind {
   return (uploadKinds as readonly string[]).includes(value);
 }
@@ -152,10 +195,7 @@ export function canUploadKind(
       // consignment is decided when the message is sent.
       return (
         roleHasCapability(role, "client.submit", staffRoles) ||
-        roleHasCapability(role, "specialist.appraise", staffRoles) ||
-        roleHasCapability(role, "catalogue.write", staffRoles) ||
-        roleHasCapability(role, "auction.manage", staffRoles) ||
-        roleHasCapability(role, "platform.admin.full", staffRoles)
+        userHasAccessTo(role, staffRoles, CONSIGNMENT_INBOX_REPLY_ACCESS)
       );
     case "artist_image":
     case "category_image":

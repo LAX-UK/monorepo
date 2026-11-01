@@ -83,6 +83,7 @@ export default async function AdminHomePage({
       quickLink={showGreeting ? quickLink : null}
       loadWarning={dashboard.loadWarning}
       workInbox={dashboard.workInbox}
+      inboxQueues={dashboard.inboxQueues}
       workAreas={workAreas}
       area={area === "all" || workAreas.includes(area) ? area : "all"}
       assignment={assignment}

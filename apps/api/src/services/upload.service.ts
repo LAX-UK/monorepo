@@ -4,7 +4,11 @@ import type { StaffRoles, UserRole } from "@auction/types";
 import type { Queue } from "bullmq";
 import type { Redis } from "ioredis";
 import type { IObjectStorage } from "./interfaces/object-storage.js";
-import type { IUploadAuthorizationService, IUploadService } from "./interfaces/upload-service.js";
+import type {
+  IUploadAuthorizationService,
+  IUploadService,
+  UploadRefusalDetail,
+} from "./interfaces/upload-service.js";
 import type { MediaUrlResolver } from "./media-url-resolver.js";
 import { createUploadKey } from "./upload.policy.js";
 import type { UploadRateLimitPolicy } from "./upload/upload-rate-limit.policy.js";
@@ -87,7 +91,7 @@ export class UploadService implements IUploadService {
           requiredHeaders: Record<string, string>;
         };
       }
-    | { ok: false; status: number; error: string; resetAt?: string }
+    | ({ ok: false; status: number; error: string; resetAt?: string } & UploadRefusalDetail)
   > {
     if (!this.repo || !this.redis) {
       return { ok: false, status: 503, error: "upload_tracking_not_configured" };

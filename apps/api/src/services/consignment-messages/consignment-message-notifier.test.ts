@@ -9,7 +9,9 @@ const subject: ConsignmentThreadSubject = {
   submittedByUserId: "lena",
   account: { id: "acct", name: "Northbank Gallery", kind: "organisation", status: "approved" },
   specialist: { userId: "clara", name: "Clara Mendes" },
+  covering: null,
   saleId: null,
+  thread: null,
 };
 
 function setup(audiences: { seller: string[]; admin: string[] }) {
@@ -56,6 +58,18 @@ describe("ConsignmentMessageNotifier", () => {
       legalEntityId: null,
       meta: { audience: "staff" },
     });
+  });
+
+  it("a client's message reaches the colleague covering the thread, not the specialist", async () => {
+    const { dispatcher, notifier } = setup({ seller: [], admin: [] });
+    await notifier.clientWrote({
+      subject: { ...subject, covering: { userId: "omar", name: "Omar Reyes" } },
+      authorName: "Lena Fischer",
+      body: "Hello",
+      fileCount: 0,
+    });
+    expect(dispatcher.dispatch).toHaveBeenCalledOnce();
+    expect(dispatcher.dispatch.mock.calls[0]?.[0]).toBe("omar");
   });
 
   it("nobody is told when no specialist is assigned yet; the inbox lists it as unassigned", async () => {

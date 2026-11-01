@@ -53,6 +53,7 @@ function renderShell(value: ItemSubmission, assignee: string | null = null) {
         submission={value}
         title={value.title}
         documentCount={2}
+        unreadMessages={0}
         submitterLegalEntityId="le-1"
         submitterDisplayName="Jane Seller"
         assigneeDisplayName={assignee}

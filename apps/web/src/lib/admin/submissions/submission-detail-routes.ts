@@ -1,4 +1,4 @@
-export const SUBMISSION_DETAIL_TABS = ["overview", "documents", "decision"] as const;
+export const SUBMISSION_DETAIL_TABS = ["overview", "documents", "messages", "decision"] as const;
 
 export type SubmissionDetailTab = (typeof SUBMISSION_DETAIL_TABS)[number];
 

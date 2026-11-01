@@ -6,7 +6,7 @@ vi.mock("@auction/ui/components/tooltip", () =>
   import("../test/radix-stubs.js").then((m) => m.tooltip),
 );
 
-const { PersonCell, PrimaryCell } = await import("./cells.js");
+const { PersonCell, PrimaryCell, StackedCell } = await import("./cells.js");
 
 describe("PrimaryCell", () => {
   it("puts the record's picture before its link and second line", () => {
@@ -33,6 +33,37 @@ describe("PrimaryCell", () => {
       </PrimaryCell>,
     );
     expect(screen.getByRole("img", { name: "No photos yet" })).toBeInTheDocument();
+  });
+
+  it("marks an unread row with a dot, a semibold title and Unread first in its name", () => {
+    const { container } = render(
+      <PrimaryCell href="/admin/inbox/1" unread thumbnail={{ src: null }} secondary="NB-2041">
+        Thames at low tide
+      </PrimaryCell>,
+    );
+    expect(screen.getByRole("link").textContent).toBe("Unread. Thames at low tide");
+    expect(container.querySelector(".rounded-full.bg-staff-fg")).not.toBeNull();
+  });
+
+  it("keeps the dot's slot empty on a read row, so titles line up", () => {
+    const { container } = render(
+      <PrimaryCell href="/admin/inbox/1" unread={false}>
+        Downs after rain
+      </PrimaryCell>,
+    );
+    expect(screen.getByRole("link").textContent).toBe("Downs after rain");
+    expect(container.querySelector(".rounded-full.bg-transparent")).not.toBeNull();
+  });
+});
+
+describe("StackedCell", () => {
+  it("puts the detail under the value, and leaves an empty one out", () => {
+    const { rerender, container } = render(
+      <StackedCell secondary="Lena Fischer">Northbank Gallery</StackedCell>,
+    );
+    expect(screen.getByText("Lena Fischer")).toBeInTheDocument();
+    rerender(<StackedCell secondary={null}>Private seller</StackedCell>);
+    expect(container.querySelectorAll("span span")).toHaveLength(1);
   });
 });
 

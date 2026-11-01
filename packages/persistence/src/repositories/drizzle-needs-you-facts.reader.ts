@@ -348,6 +348,12 @@ export class DrizzleNeedsYouFactsReader implements INeedsYouFactsReader {
           eq(itemSubmission.legalEntityId, input.legalEntityId),
           submissionSenderSql(input.visibleTo),
           eq(consignmentMessage.authorSide, "staff"),
+          // Notes, and replies still held back for taking back, are not the account's to see.
+          eq(consignmentMessage.visibility, "thread"),
+          or(
+            isNull(consignmentMessage.deliverAfter),
+            lte(consignmentMessage.deliverAfter, sql`now()`),
+          ),
           isNull(consignmentMessage.readAt),
         ),
       )

@@ -1,12 +1,13 @@
 import type { LegalEntityMemberRole, LegalEntityStatus } from "@auction/types";
 import { describe, expect, it, vi } from "vitest";
 import { InMemoryConsignmentMessages } from "../../testing/in-memory-consignment-messages.js";
+import { ConsignmentMessageComposer } from "./consignment-message-composer.js";
+import { ConsignmentMessagePresenter } from "./consignment-message-presenter.js";
 import {
   CONSIGNMENT_MESSAGE_UPLOAD_KIND,
   ConsignmentMessageService,
-  decodeThreadCursor,
-  encodeThreadCursor,
 } from "./consignment-message.service.js";
+import { ConsignmentThreadAudit } from "./consignment-thread-audit.js";
 
 const ACCOUNT = "eeeeeeee-eeee-4eee-8eee-eeeeeeeeeeee";
 const OTHER_ACCOUNT = "ffffffff-ffff-4fff-8fff-ffffffffffff";
@@ -43,16 +44,17 @@ function setup(
     specialistWrote: vi.fn().mockResolvedValue(undefined),
     clientWrote: vi.fn().mockResolvedValue(undefined),
   };
-  const assigner = { assign: vi.fn().mockResolvedValue({ ok: true }) };
   const links = { linksFor: vi.fn(async (keys: readonly string[]) => keys.map((k) => `/f/${k}`)) };
+  const events = { publish: vi.fn().mockResolvedValue(undefined), withTx: vi.fn() };
   const service = new ConsignmentMessageService({
     messages,
+    composer: new ConsignmentMessageComposer(messages),
+    presenter: new ConsignmentMessagePresenter(links),
     notifier,
-    assigner,
-    links,
+    audit: new ConsignmentThreadAudit(events),
     now: () => NOW,
   });
-  return { service, messages, notifier, assigner, links };
+  return { service, messages, notifier, links, events };
 }
 
 const member = (role: LegalEntityMemberRole, userId = "owner", isImpersonation = false) => ({
@@ -253,113 +255,5 @@ describe("client side", () => {
       ok: true,
       value: { marked: 0 },
     });
-  });
-});
-
-describe("staff side", () => {
-  it("replies and tells the account; the client's messages count as read", async () => {
-    const { service, messages, notifier } = setup();
-    messages.seedMessage({
-      submissionId: SUBMISSION,
-      side: "client",
-      authorUserId: "lena",
-      body: "Any news?",
-      at: new Date("2026-10-28T09:00:00Z"),
-    });
-    const result = await service.writeForStaff("clara", SUBMISSION, {
-      body: "The agreement is ready.",
-      attachments: [],
-    });
-    expect(result.ok && result.value.side).toBe("staff");
-    expect(messages.messages[0]?.readAt).toEqual(NOW);
-    expect(notifier.specialistWrote).toHaveBeenCalledWith(
-      expect.objectContaining({ authorName: "Clara Mendes", body: "The agreement is ready." }),
-    );
-  });
-
-  it("reads one thread with whether it waits for LAX", async () => {
-    const { service, messages } = setup();
-    messages.seedMessage({
-      submissionId: SUBMISSION,
-      side: "client",
-      authorUserId: "lena",
-      body: "Any news?",
-      at: NOW,
-    });
-    const result = await service.readForStaff(SUBMISSION);
-    expect(result).toMatchObject({
-      ok: true,
-      value: {
-        submission: { id: SUBMISSION, reference: "C-2041" },
-        account: { id: ACCOUNT, name: "Northbank Gallery" },
-        unread: 1,
-        awaitingStaff: true,
-      },
-    });
-    expect(await service.readForStaff("missing")).toMatchObject({ ok: false, status: 404 });
-  });
-
-  it("lists threads waiting for an answer, one specialist's, a page at a time", async () => {
-    const { service, messages } = setup();
-    messages.seedMessage({
-      submissionId: SUBMISSION,
-      side: "client",
-      authorUserId: "lena",
-      body: "Is there a date for the sale yet? ".repeat(10),
-      at: NOW,
-    });
-    const page = await service.listForStaff("clara", {
-      view: "unanswered",
-      assigned: "me",
-      limit: 1,
-    });
-    expect(page.rows).toHaveLength(1);
-    expect(page.rows[0]).toMatchObject({
-      reference: "C-2041",
-      awaitingStaff: true,
-      unread: 1,
-    });
-    expect(page.rows[0]?.lastMessagePreview.length).toBeLessThanOrEqual(160);
-    expect(page.nextCursor).toBeNull();
-    const unassigned = await service.listForStaff("clara", {
-      view: "all",
-      assigned: "unassigned",
-      limit: 10,
-    });
-    expect(unassigned.rows).toHaveLength(0);
-  });
-
-  it("assigns through the submission's assignment and returns the specialist", async () => {
-    const { service, assigner } = setup();
-    const result = await service.assign("lead", SUBMISSION, "clara");
-    expect(assigner.assign).toHaveBeenCalledWith({
-      staffUserId: "lead",
-      submissionId: SUBMISSION,
-      assignedToUserId: "clara",
-    });
-    expect(result).toEqual({
-      ok: true,
-      value: { specialist: { userId: "clara", name: "Clara Mendes" } },
-    });
-  });
-
-  it("passes on a refused assignment", async () => {
-    const { service, assigner } = setup();
-    assigner.assign.mockResolvedValueOnce({ ok: false, status: 400, message: "Not staff" });
-    expect(await service.assign("lead", SUBMISSION, "nobody")).toMatchObject({
-      ok: false,
-      status: 400,
-      error: "Not staff",
-    });
-  });
-});
-
-describe("inbox cursor", () => {
-  it("round-trips and ignores rubbish", () => {
-    const at = new Date("2026-10-29T10:00:00Z");
-    const cursor = encodeThreadCursor({ lastMessageAt: at, submissionId: SUBMISSION });
-    expect(decodeThreadCursor(cursor)).toEqual({ lastMessageAt: at, submissionId: SUBMISSION });
-    expect(decodeThreadCursor("not-a-cursor")).toBeUndefined();
-    expect(decodeThreadCursor(undefined)).toBeUndefined();
   });
 });

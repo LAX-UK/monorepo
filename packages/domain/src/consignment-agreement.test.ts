@@ -2,6 +2,7 @@ import { legalEntityMemberRoles } from "@auction/types";
 import { describe, expect, it } from "vitest";
 import {
   CONSIGNMENT_AGREEMENT_TERMS_VERSION,
+  agreementAcceptanceHold,
   agreementAllowsCataloguing,
   agreementTermsComplete,
   canAcceptConsignmentAgreement,
@@ -140,5 +141,25 @@ describe("reminders", () => {
   it("never reminds after acceptance", () => {
     expect(dueAgreementReminder({ ...base, acceptedAt: day(1) }, day(3))).toBeNull();
     expect(dueAgreementReminder({ ...base, acceptedAt: day(4) }, day(7))).toBeNull();
+  });
+});
+
+describe("agreementAcceptanceHold", () => {
+  it("holds nothing for an approved organisation or a person's own account", () => {
+    expect(agreementAcceptanceHold({ kind: "organisation", status: "approved" })).toBeNull();
+    // A personal account starts as a lead and is never under an organisation's review.
+    expect(agreementAcceptanceHold({ kind: "individual", status: "lead" })).toBeNull();
+  });
+
+  it("names why an organisation's state holds accepting", () => {
+    expect(agreementAcceptanceHold({ kind: "organisation", status: "restricted" })).toBe("paused");
+    expect(agreementAcceptanceHold({ kind: "organisation", status: "under_review" })).toBe(
+      "checking",
+    );
+    expect(agreementAcceptanceHold({ kind: "organisation", status: "connect_pending" })).toBe(
+      "payouts",
+    );
+    expect(agreementAcceptanceHold({ kind: "organisation", status: "archived" })).toBe("closed");
+    expect(agreementAcceptanceHold({ kind: "individual", status: "archived" })).toBe("closed");
   });
 });

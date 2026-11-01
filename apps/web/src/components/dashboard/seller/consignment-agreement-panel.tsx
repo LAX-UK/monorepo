@@ -69,9 +69,12 @@ export function ConsignmentAgreementPanel({
   accountKind,
   conditions,
   pdfHref = null,
+  heldReason = null,
 }: Props & {
   /** The agreement as a PDF to keep, once its terms are set. */
   pdfHref?: string | null;
+  /** Why the account's state holds accepting (a paused organisation); replaces the acceptance. */
+  heldReason?: string | null;
 }) {
   const router = useRouter();
   const vm = consignmentAgreementViewModel(agreement);
@@ -189,6 +192,10 @@ export function ConsignmentAgreementPanel({
               Accepted by {vm.accepted.by} on {vm.accepted.on} · {vm.versionName}
             </span>
           </p>
+        ) : heldReason ? (
+          <Alert data-testid="agreement-held">
+            <AlertDescription>{heldReason}</AlertDescription>
+          </Alert>
         ) : canAccept ? (
           <div className="space-y-4 border-t border-border-hairline pt-5">
             <div className="flex items-start gap-3">

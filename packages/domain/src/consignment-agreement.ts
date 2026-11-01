@@ -1,3 +1,5 @@
+import type { LegalEntityStatus } from "@auction/types";
+import { type AccountStanding, accountStatePolicy } from "./account-state-policy.js";
 import { type EntityActor, entityActorCan } from "./entity-capabilities.js";
 
 /**
@@ -66,6 +68,33 @@ function refuse(reason: AgreementAcceptanceRefusal): AgreementAcceptanceDecision
 /** Whether `actor` may accept agreements for the account; a person's own profile always may. */
 export function canAcceptConsignmentAgreement(actor: EntityActor | null): boolean {
   return actor === null || entityActorCan(actor, "entity.consignments.accept_agreement");
+}
+
+/**
+ * Why the account's state holds accepting an agreement, whoever the member is: selling is paused
+ * (restricted), LAX is still checking the organisation, payouts are not set up yet, or the
+ * account is closed.
+ */
+export type AgreementAcceptanceHold = "paused" | "checking" | "payouts" | "closed";
+
+const HOLD_BY_STATUS: Readonly<Record<LegalEntityStatus, AgreementAcceptanceHold | null>> = {
+  lead: "checking",
+  docs_requested: "checking",
+  docs_received: "checking",
+  under_review: "checking",
+  connect_pending: "payouts",
+  approved: null,
+  restricted: "paused",
+  rejected: "closed",
+  archived: "closed",
+};
+
+/** The hold on accepting for this account, or `null` while its state allows it. */
+export function agreementAcceptanceHold(
+  account: Pick<AccountStanding, "kind" | "status">,
+): AgreementAcceptanceHold | null {
+  const state = accountStatePolicy({ ...account, payoutsReady: true }, new Set());
+  return state.actions.accept_agreement ? null : (HOLD_BY_STATUS[account.status] ?? "closed");
 }
 
 /** Who may accept, which account, which version, and whether it was already accepted. */

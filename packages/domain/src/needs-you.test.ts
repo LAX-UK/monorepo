@@ -210,6 +210,36 @@ describe("the Needs you table", () => {
     ]);
   });
 
+  it("a person's own account asks for its consignments whatever its review status", () => {
+    // A personal account starts as a lead; it is never paused like an organisation under review.
+    const personal = { kind: "individual" as const, status: "lead" as const, payoutsReady: false };
+    const selling = new Set<NeedsYouKind>([
+      "unsold_due",
+      "agreement",
+      "changes",
+      "reply",
+      "unsold",
+    ]);
+    const consignments = kinds(busy("owner", { organisation: personal })).filter((kind) =>
+      selling.has(kind),
+    );
+    expect(consignments).toEqual(["unsold_due", "agreement", "changes", "reply", "unsold"]);
+  });
+
+  it("a person's own account never asks for an organisation's documents, team or payouts", () => {
+    const personal = { kind: "individual" as const, status: "lead" as const, payoutsReady: false };
+    const asked = kinds(busy("owner", { organisation: personal }));
+    expect(asked).not.toContain("documents");
+    expect(asked).not.toContain("invitations_expired");
+    expect(asked).not.toContain("payouts");
+  });
+
+  it("a closed personal account asks for nothing to sell", () => {
+    const closed = { kind: "individual" as const, status: "archived" as const, payoutsReady: true };
+    expect(kinds(busy("owner", { organisation: closed }))).not.toContain("agreement");
+    expect(kinds(busy("owner", { organisation: closed }))).not.toContain("reply");
+  });
+
   it("an organisation with nothing waiting asks for nothing", () => {
     const quiet = busy("owner", {
       organisation: { status: "approved", payoutsReady: true },
