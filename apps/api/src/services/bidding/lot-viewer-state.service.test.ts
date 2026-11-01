@@ -1,5 +1,5 @@
 import type { BidAuthorityDecision } from "@auction/domain";
-import type { LotViewerRawFacts } from "@auction/persistence/interfaces";
+import type { LotViewerFactsQuery, LotViewerRawFacts } from "@auction/persistence/interfaces";
 import { describe, expect, it, vi } from "vitest";
 import type { LotViewerActor } from "../interfaces/lot-viewer-state.js";
 import { LotViewerStateService } from "./lot-viewer-state.service.js";
@@ -29,7 +29,7 @@ function facts(over: Partial<LotViewerRawFacts> = {}): LotViewerRawFacts {
 }
 
 function service(rows: LotViewerRawFacts[], available: number | null = null) {
-  const load = vi.fn(async () => rows);
+  const load = vi.fn(async (_query: LotViewerFactsQuery) => rows);
   const resolve = vi.fn(
     async (): Promise<BidAuthorityDecision> => ({
       allowed: true,
