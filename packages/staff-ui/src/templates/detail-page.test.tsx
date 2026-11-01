@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { DetailPage } from "./detail-page.js";
+import { DetailColumns, DetailPage } from "./detail-page.js";
 
 describe("DetailPage heading", () => {
   it("wraps a plain title in the page's one h1", () => {
@@ -25,5 +25,25 @@ describe("DetailPage heading", () => {
     );
     expect(screen.getAllByRole("heading", { level: 1 })).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Rename client" })).toBeInTheDocument();
+  });
+});
+
+describe("DetailColumns rail placement", () => {
+  it("keeps the rail after the main column by default", () => {
+    render(<DetailColumns rail={<p>Facts</p>}>Thread</DetailColumns>);
+    expect(screen.getByRole("complementary", { name: "Activity" }).className).not.toContain(
+      "order-first",
+    );
+  });
+
+  it("puts the rail first on narrow screens when asked, named for what it holds", () => {
+    render(
+      <DetailColumns rail={<p>Facts</p>} railLabel="Consignment facts" railPlacement="before">
+        Thread
+      </DetailColumns>,
+    );
+    const rail = screen.getByRole("complementary", { name: "Consignment facts" });
+    expect(rail.className).toContain("order-first");
+    expect(rail.className).toContain("xl:order-none");
   });
 });

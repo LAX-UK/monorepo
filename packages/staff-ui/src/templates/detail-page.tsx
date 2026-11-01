@@ -52,6 +52,9 @@ export type DetailPageProps = {
   tabs?: React.ReactNode;
   /** The side column: activity, timeline, related records. Stacks under the main column below 1280px. */
   rail?: React.ReactNode;
+  /** The rail's landmark name, and whether it comes first when stacked (see DetailColumns). */
+  railLabel?: string;
+  railPlacement?: "after" | "before";
   /** The main column: sections of work. */
   children?: React.ReactNode;
 
@@ -83,6 +86,8 @@ export function DetailPage({
   notice,
   tabs,
   rail,
+  railLabel,
+  railPlacement,
   children,
   loading = false,
   error,
@@ -169,7 +174,13 @@ export function DetailPage({
           ) : null}
           {notice}
           {tabs}
-          <DetailColumns rail={rail}>{children}</DetailColumns>
+          <DetailColumns
+            rail={rail}
+            {...(railLabel ? { railLabel } : {})}
+            {...(railPlacement ? { railPlacement } : {})}
+          >
+            {children}
+          </DetailColumns>
         </>
       )}
     </div>
@@ -212,11 +223,17 @@ export function DetailError({
 export function DetailColumns({
   rail,
   railLabel = "Activity",
+  railPlacement = "after",
   children,
 }: {
   rail?: React.ReactNode;
   /** The rail's landmark name. */
   railLabel?: string;
+  /**
+   * Where the rail sits when it stacks (below 1280px): after the main column, or before it when
+   * its facts are what a reader needs first on a phone.
+   */
+  railPlacement?: "after" | "before";
   children?: React.ReactNode;
 }) {
   return (
@@ -228,7 +245,13 @@ export function DetailColumns({
     >
       <div className="flex min-w-0 flex-col gap-6">{children}</div>
       {rail ? (
-        <aside aria-label={railLabel} className="flex min-w-0 flex-col gap-6">
+        <aside
+          aria-label={railLabel}
+          className={cn(
+            "flex min-w-0 flex-col gap-6",
+            railPlacement === "before" && "order-first xl:order-none",
+          )}
+        >
           {rail}
         </aside>
       ) : null}

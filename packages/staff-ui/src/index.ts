@@ -75,6 +75,17 @@ export { StatGrid } from "./display/stat-grid.js";
 export type { StatItem } from "./display/stat-grid.js";
 export type { KeyValueItem } from "./display/key-value-list.js";
 export { Timeline } from "./display/timeline.js";
+export { MessageThread } from "./display/message-thread.js";
+export type {
+  MessageThreadProps,
+  ThreadAttachment,
+  ThreadDivider,
+  ThreadEvent,
+  ThreadEventIcon,
+  ThreadItem,
+  ThreadMessage,
+  ThreadTime,
+} from "./display/message-thread.js";
 export { RelativeTime } from "./display/relative-time.js";
 export {
   STAFF_TRUNCATION_TOOLTIP_DELAY_MS,
@@ -143,6 +154,12 @@ export type {
   UnsavedChangesState,
 } from "./forms/unsaved-changes.js";
 export { FileDropzone } from "./forms/file-dropzone.js";
+export { MessageComposer } from "./forms/message-composer.js";
+export type {
+  ComposerAttachment,
+  ComposerMode,
+  MessageComposerProps,
+} from "./forms/message-composer.js";
 export type { FileDropzoneProps } from "./forms/file-dropzone.js";
 export { MediaGrid } from "./forms/media-grid.js";
 export type { MediaGridItem, MediaGridProps } from "./forms/media-grid.js";
@@ -216,6 +233,8 @@ export { ColumnsMenu, useColumnVisibility, visibleColumns } from "./data/columns
 export type { ColumnVisibility } from "./data/columns-menu.js";
 export { RowActions, rowActionsColumn } from "./data/row-actions.js";
 export { DisplayMenu } from "./data/display-menu.js";
+export { SortMenu } from "./data/sort-menu.js";
+export type { SortOption } from "./data/sort-menu.js";
 export {
   STAFF_DEFAULT_PAGE_SIZE,
   STAFF_PAGE_SIZES,

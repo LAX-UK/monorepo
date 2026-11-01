@@ -45,6 +45,7 @@ export function RecordPager({
   noun = "record",
   Link,
   navigate,
+  shortcuts = true,
 }: {
   position: number;
   total: number;
@@ -55,9 +56,14 @@ export function RecordPager({
   Link: LinkComponent;
   /** Client-side navigation for the J and K keys (e.g. `router.push`). */
   navigate: (href: string) => void;
+  /**
+   * Registers J and K with the kit's registry. Off where the app registers the keys itself, so
+   * its own shortcut sheet lists them and they never fire twice.
+   */
+  shortcuts?: boolean;
 }) {
   useStaffShortcut(
-    previousHref
+    shortcuts && previousHref
       ? {
           id: "staff:record-previous",
           keys: "k",
@@ -68,7 +74,7 @@ export function RecordPager({
       : null,
   );
   useStaffShortcut(
-    nextHref
+    shortcuts && nextHref
       ? {
           id: "staff:record-next",
           keys: "j",
