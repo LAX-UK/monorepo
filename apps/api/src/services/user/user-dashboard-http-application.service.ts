@@ -17,6 +17,12 @@ import type { UserDashboardReadService } from "../user-dashboard-read.service.js
 
 /** Won lots a purchases list reads; the same for a person and for an account. */
 const PURCHASES_LIMIT = 50;
+/**
+ * A won lot becomes a purchase only once it has ended. A leader on a lot that is still open
+ * (whatever `winnerId` holds at that moment) owes nothing yet, so open lots never reach
+ * Purchases, the amounts due, or the menu counts that read them.
+ */
+const PURCHASE_LOT_STATUSES: Lot["status"][] = ["ended"];
 
 /** A role that does not follow the account's buying records. */
 const NOT_YOURS: UserHttpJson = {
@@ -62,7 +68,12 @@ export class UserDashboardHttpApplicationService implements IUserDashboardHttpAp
   async listPortfolio(input: { userId: string }): Promise<UserHttpJson> {
     const userId = input.userId;
     const [lots, { data: payments }] = await Promise.all([
-      this.deps.lotService.list({ winnerId: userId, limit: PURCHASES_LIMIT, offset: 0 }),
+      this.deps.lotService.list({
+        winnerId: userId,
+        statuses: PURCHASE_LOT_STATUSES,
+        limit: PURCHASES_LIMIT,
+        offset: 0,
+      }),
       this.deps.paymentBuyerService.listMyPaymentsForBuyerApi(userId, {}),
     ]);
     return { status: 200, body: { data: await this.toPurchaseRows(lots, payments) } };
@@ -103,7 +114,7 @@ export class UserDashboardHttpApplicationService implements IUserDashboardHttpAp
       this.deps.lotService.list({
         buyerLegalEntityId: accountId,
         ...(scope === "own" ? { winnerId: input.userId } : {}),
-        statuses: ["ended"],
+        statuses: PURCHASE_LOT_STATUSES,
         limit: PURCHASES_LIMIT,
         offset: 0,
       }),
