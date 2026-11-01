@@ -65,7 +65,12 @@ import {
 import { buildConsignmentDetailVm } from "@/lib/seller/consignment-detail.vm";
 import { consignmentDocuments } from "@/lib/seller/consignment-documents";
 import { consignmentHistory } from "@/lib/seller/consignment-history";
-import { agreementHoldLine, consignmentNextStep } from "@/lib/seller/consignment-next";
+import {
+  agreementHoldLine,
+  consignmentNextLink,
+  consignmentNextStep,
+  withdrawHoldLine,
+} from "@/lib/seller/consignment-next";
 import {
   consignmentAgreementHref,
   consignmentDocumentsHref,
@@ -78,9 +83,9 @@ import { sellerDocumentsPanelShows } from "@/lib/seller/seller-documents-visibil
 import { unsoldChoiceViewModel } from "@/lib/seller/unsold-choice-view";
 import { lotPath } from "@/lib/seo/url";
 import {
-  agreementAcceptanceHold,
   computeConsignmentChecklist,
   evaluateSubmissionQuality,
+  sellingActionsHold,
 } from "@auction/domain";
 import { Notice, StatusBadge } from "@auction/ui/lax";
 import { ChevronLeft } from "lucide-react";
@@ -217,6 +222,11 @@ export default async function SubmissionDetailPage({
   const editable = actions.canEdit;
   const agreementView = agreementRes.status === "fulfilled" ? agreementRes.value : null;
   const account = accountRes.status === "fulfilled" ? accountRes.value : null;
+  // The account's state, not only the member's role, decides whether anyone can accept or
+  // withdraw now.
+  const actingAccount = sellingAccount(sellerCtx);
+  const acceptHold = actingAccount ? sellingActionsHold(actingAccount) : null;
+  const organisationName = account?.organisationName ?? null;
   const checklist = account
     ? computeConsignmentChecklist(
         consignmentChecklistFacts({
@@ -240,13 +250,19 @@ export default async function SubmissionDetailPage({
         reserve: afterSale.unsold.choice.requestedReserve,
       }
     : null;
-  const withdrawalView = afterSale ? consignmentWithdrawalViewModel(afterSale.withdrawal) : null;
+  const withdrawHeld = acceptHold ? withdrawHoldLine(acceptHold, organisationName) : null;
+  const withdrawalView = afterSale
+    ? consignmentWithdrawalViewModel(afterSale.withdrawal, withdrawHeld)
+    : null;
   // A consignor takes back their own uncatalogued submission themselves; the panel's withdrawal
-  // binds the organisation and stays with owners and admins, so it would only refuse them.
+  // binds the organisation and stays with owners and admins, so it would only refuse them. A
+  // paused account holds both.
   const withdrawOwnSubmission =
     actions.canWithdraw &&
-    withdrawalView?.mode === "available" &&
-    withdrawalView.blockedReason !== null;
+    !withdrawHeld &&
+    afterSale !== null &&
+    consignmentWithdrawalViewModel(afterSale.withdrawal).mode === "available" &&
+    afterSale.withdrawal.canAct === false;
   const submissionFormValues = itemSubmissionToFormValues(submission);
   const submissionQuality = evaluateSubmissionQuality(submission);
   const readyToSubmit = editable && submissionQuality.canSubmit;
@@ -283,17 +299,6 @@ export default async function SubmissionDetailPage({
     afterSale?.unsold?.chooseBy && !unsoldChoiceMade
       ? formatLotMoment(new Date(afterSale.unsold.chooseBy), now, { time: false })
       : null;
-  // The account's state, not only the member's role, decides whether anyone can accept now.
-  const actingAccount = sellingAccount(sellerCtx);
-  const acceptHold = actingAccount ? agreementAcceptanceHold(actingAccount) : null;
-  const organisationName = account?.organisationName ?? null;
-  const nextStep = consignmentNextStep(status, {
-    canAccept: Boolean(agreementView?.canAccept),
-    organisation: organisationName,
-    chooseBy,
-    acceptHold,
-  });
-
   // Documents and History read the lot's condition reports, the sold lot's payout (for those
   // who see payouts) and the sale's title; each degrades on its own.
   const lotId = submission.convertedLotId;
@@ -308,6 +313,15 @@ export default async function SubmissionDetailPage({
     soldLotsRes.status === "fulfilled"
       ? (soldLotsRes.value?.items.find((row) => row.lotId === lotId) ?? null)
       : null;
+  const nextContext = {
+    canAccept: Boolean(agreementView?.canAccept),
+    organisation: organisationName,
+    chooseBy,
+    acceptHold,
+    sold: soldLot,
+  };
+  const nextStep = consignmentNextStep(status, nextContext);
+  const nextLink = consignmentNextLink(status, nextContext);
   const documentsView = consignmentDocuments({
     submissionId: submission.id,
     sellerEntityId,
@@ -378,6 +392,14 @@ export default async function SubmissionDetailPage({
       {nextStep ? (
         <Notice tone="info" title="What happens next">
           {nextStep}
+          {nextLink ? (
+            <>
+              {" "}
+              <Link href={nextLink.href} className="font-semibold underline underline-offset-4">
+                {nextLink.label}
+              </Link>
+            </>
+          ) : null}
         </Notice>
       ) : null}
       <ConsignmentDetailTabs
@@ -442,6 +464,9 @@ export default async function SubmissionDetailPage({
                     accountKind: account.accountKind,
                     organisationName: account.organisationName,
                     agreementHref: "#agreement",
+                    agreementHeld: acceptHold
+                      ? agreementHoldLine(acceptHold, organisationName)
+                      : null,
                   }),
                 )}
                 doneCount={checklist.doneCount}

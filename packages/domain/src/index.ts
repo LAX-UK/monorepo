@@ -114,6 +114,8 @@ export {
   agreementAllowsCataloguing,
   agreementTermsComplete,
   canAcceptConsignmentAgreement,
+  sellingActionsHold,
+  type SellingActionsHold,
   type AgreementAcceptanceHold,
   decideAgreementAcceptance,
   dueAgreementReminder,

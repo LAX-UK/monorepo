@@ -1,6 +1,6 @@
 import { agreementAcceptanceHold } from "@auction/domain";
 import { describe, expect, it } from "vitest";
-import { consignmentNextStep } from "./consignment-next";
+import { consignmentNextLink, consignmentNextStep, withdrawHoldLine } from "./consignment-next";
 
 describe("consignmentNextStep for an agreement", () => {
   const owner = { canAccept: true, organisation: "Northbank Gallery", chooseBy: null };
@@ -27,5 +27,60 @@ describe("consignmentNextStep for an agreement", () => {
     expect(consignmentNextStep("agreement", { ...owner, acceptHold })).toContain(
       "once we've checked Northbank Gallery's documents",
     );
+  });
+});
+
+describe("consignmentNextStep for a sold consignment", () => {
+  const base = { canAccept: true, organisation: null, chooseBy: null };
+  const payout = { id: "p1", settledAt: new Date("2026-11-12T10:00:00Z") };
+
+  it("waits for the buyer until they pay", () => {
+    const sold = { stage: "buyer_paying", payout: null } as const;
+    expect(consignmentNextStep("sold", { ...base, sold })).toContain("once the buyer pays");
+    expect(consignmentNextLink("sold", { sold })).toBeNull();
+  });
+
+  it("says the payout is scheduled once the buyer paid, and links it", () => {
+    const sold = { stage: "in_payout", payout: { id: "p1", settledAt: null } } as const;
+    const next = consignmentNextStep("sold", { ...base, sold });
+    expect(next).toContain("buyer has paid");
+    expect(next).not.toContain("once the buyer pays");
+    expect(consignmentNextLink("sold", { sold })).toEqual({
+      label: "View payout",
+      href: "/selling/payouts/p1",
+    });
+  });
+
+  it("says when it was paid out, never that the buyer still has to pay", () => {
+    const sold = { stage: "paid_out", payout } as const;
+    expect(consignmentNextStep("sold", { ...base, sold })).toBe(
+      "It sold and was paid out on 12 Nov 2026.",
+    );
+    expect(consignmentNextLink("sold", { sold })?.href).toBe("/selling/payouts/p1");
+  });
+
+  it("does not promise money for a refunded sale", () => {
+    const sold = { stage: "refunded", payout: null } as const;
+    expect(consignmentNextStep("sold", { ...base, sold })).toContain("refunded");
+  });
+
+  it("does not guess the payout for a member who cannot see payouts", () => {
+    expect(consignmentNextStep("sold", { ...base, sold: null })).not.toContain(
+      "once the buyer pays",
+    );
+    expect(consignmentNextLink("sold", { sold: null })).toBeNull();
+  });
+
+  it("links nothing for other statuses", () => {
+    expect(consignmentNextLink("live", { sold: { stage: "paid_out", payout } })).toBeNull();
+  });
+});
+
+describe("withdrawHoldLine", () => {
+  it("names the account and why a paused account cannot withdraw", () => {
+    expect(withdrawHoldLine("paused", "Northbank Gallery")).toContain(
+      "Selling is paused for Northbank Gallery",
+    );
+    expect(withdrawHoldLine("closed", null)).toContain("your account is closed");
   });
 });

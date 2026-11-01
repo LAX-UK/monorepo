@@ -48,8 +48,13 @@ export type ConsignmentWithdrawalViewModel =
       declined: string | null;
     };
 
+/**
+ * `held` is why the account's state refuses selling actions, as a line; the panel then explains
+ * instead of offering a withdrawal that would be refused.
+ */
 export function consignmentWithdrawalViewModel(
   withdrawal: SellerAfterSaleView["withdrawal"],
+  held: string | null = null,
 ): ConsignmentWithdrawalViewModel {
   const { path, request, canAct } = withdrawal;
   if (path === "unavailable") return { mode: "hidden" };
@@ -66,7 +71,7 @@ export function consignmentWithdrawalViewModel(
   return {
     mode: "available",
     copy: COPY[path],
-    blockedReason: canAct ? null : WITHDRAWAL_FORBIDDEN_MESSAGE[path],
+    blockedReason: held ?? (canAct ? null : WITHDRAWAL_FORBIDDEN_MESSAGE[path]),
     declined,
   };
 }

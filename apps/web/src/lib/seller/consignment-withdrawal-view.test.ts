@@ -58,3 +58,13 @@ describe("consignmentWithdrawalViewModel", () => {
     expect(declined.declined).toMatch(/was declined: The catalogue has been printed\.$/);
   });
 });
+
+describe("consignmentWithdrawalViewModel on a held account", () => {
+  it("gives the hold as the reason instead of an action, whoever the member is", () => {
+    const vm = consignmentWithdrawalViewModel(
+      { path: "request", canAct: true, request: null },
+      "Selling is paused.",
+    );
+    expect(vm).toMatchObject({ mode: "available", blockedReason: "Selling is paused." });
+  });
+});

@@ -1,4 +1,6 @@
-import type { AgreementAcceptanceHold } from "@auction/domain";
+import type { SoldLot } from "@/lib/data/http/workspace-selling.schema";
+import { formatDate } from "@/lib/ui/format";
+import type { AgreementAcceptanceHold, SellingActionsHold } from "@auction/domain";
 import type { ConsignmentStatus } from "./consignment-status";
 
 type Context = {
@@ -10,6 +12,67 @@ type Context = {
   chooseBy: string | null;
   /** Why the account's state holds accepting, whoever the member is; `null` while it allows it. */
   acceptHold?: AgreementAcceptanceHold | null;
+  /** The sold work's payout state; `null` when this member does not see payouts. */
+  sold?: SoldPayout | null;
+};
+
+/** What "What happens next" needs from a sold lot's row in Sold & payouts. */
+export type SoldPayout = Pick<SoldLot, "stage" | "payout">;
+
+type SoldStep = { text: (sold: SoldPayout) => string; link: boolean };
+
+/** One entry per stage of a sold lot, so the sentence follows the real payout. */
+const SOLD_STEP: Record<SoldPayout["stage"], SoldStep> = {
+  buyer_paying: {
+    text: () => "It sold. The money appears in Sold & payouts once the buyer pays.",
+    link: false,
+  },
+  paid_by_buyer: {
+    text: () => "It sold and the buyer has paid. Your payout will be scheduled soon.",
+    link: false,
+  },
+  in_payout: {
+    text: () => "It sold and the buyer has paid. Your payout is scheduled.",
+    link: true,
+  },
+  paid_out: {
+    text: ({ payout }) =>
+      payout?.settledAt
+        ? `It sold and was paid out on ${formatDate(payout.settledAt)}.`
+        : "It sold and was paid out.",
+    link: true,
+  },
+  payout_problem: {
+    text: () => "It sold, but there is a problem with the payout. Ask your specialist for help.",
+    link: true,
+  },
+  refunded: {
+    text: () => "It sold, but the buyer's payment was refunded, so there is no payout.",
+    link: false,
+  },
+};
+
+const SOLD_UNKNOWN = "It sold. Payout details are shown to people who see the account's payouts.";
+
+/** The link to the payout for a sold lot whose payout exists, else `null`. */
+export function consignmentNextLink(
+  status: ConsignmentStatus,
+  context: Pick<Context, "sold">,
+): { label: string; href: string } | null {
+  const { sold } = context;
+  if (status !== "sold" || !sold?.payout || !SOLD_STEP[sold.stage].link) return null;
+  return { label: "View payout", href: `/selling/payouts/${encodeURIComponent(sold.payout.id)}` };
+}
+
+/** Why the account's state holds withdrawing, as a line. */
+const WITHDRAW_HOLD_LINE: Record<SellingActionsHold, (account: string) => string> = {
+  paused: (account) =>
+    `Selling is paused for ${account}, so this can't be withdrawn for now. Contact us to find out why and when it resumes.`,
+  checking: (account) =>
+    `This can be withdrawn once we've checked ${account}'s documents. Contact us if you need it sooner.`,
+  payouts: (account) =>
+    `This can be withdrawn once payouts are set up for ${account}. Contact us if you need it sooner.`,
+  closed: (account) => `This can't be withdrawn because ${account} is closed.`,
 };
 
 /**
@@ -36,6 +99,11 @@ const HOLD_LINE: Record<AgreementAcceptanceHold, (account: string) => string> = 
 
 function holdAccount(organisation: string | null): string {
   return organisation ?? "your account";
+}
+
+/** The line that replaces the withdraw action while the account's state holds it. */
+export function withdrawHoldLine(hold: SellingActionsHold, organisation: string | null) {
+  return WITHDRAW_HOLD_LINE[hold](holdAccount(organisation));
 }
 
 /** The sentence for an agreement on hold, for "What happens next". */
@@ -65,7 +133,7 @@ const NEXT: Record<ConsignmentStatus, (context: Context) => string | null> = {
   preparing: () => "We're cataloguing the work for its sale. There is nothing to do.",
   in_sale: () => "The work is catalogued for a sale. We'll tell you how it went.",
   live: () => "The sale is live now.",
-  sold: () => "It sold. The money appears in Sold & payouts once the buyer pays.",
+  sold: ({ sold }) => (sold ? SOLD_STEP[sold.stage].text(sold) : SOLD_UNKNOWN),
   choose_unsold: ({ chooseBy }) =>
     chooseBy
       ? `It did not sell. Choose what happens next by ${chooseBy}.`

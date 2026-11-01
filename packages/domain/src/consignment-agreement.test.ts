@@ -8,6 +8,7 @@ import {
   canAcceptConsignmentAgreement,
   decideAgreementAcceptance,
   dueAgreementReminder,
+  sellingActionsHold,
 } from "./consignment-agreement.js";
 
 const ENTITY = "entity-1";
@@ -161,5 +162,27 @@ describe("agreementAcceptanceHold", () => {
     );
     expect(agreementAcceptanceHold({ kind: "organisation", status: "archived" })).toBe("closed");
     expect(agreementAcceptanceHold({ kind: "individual", status: "archived" })).toBe("closed");
+  });
+});
+
+describe("sellingActionsHold", () => {
+  it("is the same rule accepting follows, for every status", () => {
+    for (const status of [
+      "lead",
+      "under_review",
+      "connect_pending",
+      "approved",
+      "restricted",
+      "rejected",
+      "archived",
+    ] as const) {
+      const account = { kind: "organisation", status } as const;
+      expect(sellingActionsHold(account)).toBe(agreementAcceptanceHold(account));
+    }
+  });
+
+  it("pauses a restricted organisation and holds nothing for an approved one", () => {
+    expect(sellingActionsHold({ kind: "organisation", status: "restricted" })).toBe("paused");
+    expect(sellingActionsHold({ kind: "organisation", status: "approved" })).toBeNull();
   });
 });

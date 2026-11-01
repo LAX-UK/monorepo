@@ -89,12 +89,25 @@ const HOLD_BY_STATUS: Readonly<Record<LegalEntityStatus, AgreementAcceptanceHold
   archived: "closed",
 };
 
+/**
+ * The hold on a consignment's selling actions for this account, or `null` while its state allows
+ * them. One rule for everything that moves a consignment forward or back (accepting the
+ * agreement, withdrawing), so a screen never offers what the account's state refuses.
+ */
+export type SellingActionsHold = AgreementAcceptanceHold;
+
+export function sellingActionsHold(
+  account: Pick<AccountStanding, "kind" | "status">,
+): SellingActionsHold | null {
+  const state = accountStatePolicy({ ...account, payoutsReady: true }, new Set());
+  return state.actions.accept_agreement ? null : (HOLD_BY_STATUS[account.status] ?? "closed");
+}
+
 /** The hold on accepting for this account, or `null` while its state allows it. */
 export function agreementAcceptanceHold(
   account: Pick<AccountStanding, "kind" | "status">,
 ): AgreementAcceptanceHold | null {
-  const state = accountStatePolicy({ ...account, payoutsReady: true }, new Set());
-  return state.actions.accept_agreement ? null : (HOLD_BY_STATUS[account.status] ?? "closed");
+  return sellingActionsHold(account);
 }
 
 /** Who may accept, which account, which version, and whether it was already accepted. */
