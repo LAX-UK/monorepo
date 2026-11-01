@@ -94,10 +94,11 @@ export function NewsletterSignupForm({ tone = "default" }: Props) {
             type="submit"
             variant={onDark ? "secondary" : "primary"}
             disabled={loading}
-            // The hero ground is near-black in both themes, so its button stays light in both.
+            // The hero ground is near-black in both themes, so its button is a fixed light fill with dark text in both
+            // (theme-aware cream tokens turn dark in dark mode).
             className={cn(
               onDark &&
-                "border-transparent bg-hero-cream text-brand-900 hover:bg-brand-100 active:bg-brand-100",
+                "border-transparent bg-white text-brand-900 hover:bg-brand-100 active:bg-brand-100",
             )}
           >
             {loading ? "Subscribing…" : "Subscribe"}
