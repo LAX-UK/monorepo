@@ -17,7 +17,7 @@ describe("LaxHeroBetweenSeasons", () => {
     expect(screen.getByRole("form", { name: "Newsletter sign-up" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "See recent results" })).toHaveAttribute(
       "href",
-      "/archive",
+      "/results",
     );
   });
 

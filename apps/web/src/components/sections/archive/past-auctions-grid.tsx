@@ -1,20 +1,13 @@
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import { archiveClearFiltersHref } from "@/lib/archive/build-archive-params";
-import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 
 export type { ArchiveLotVM } from "./catalog-archive-views";
 
 /** Empty state when no archive rows match filters. */
-export function PastAuctionsEmpty({
-  hasActiveFilters = false,
-  layoutView = "grid",
-}: {
-  hasActiveFilters?: boolean;
-  layoutView?: CatalogLayoutView;
-}) {
-  const clearHref = archiveClearFiltersHref(layoutView === "list" ? "list" : undefined);
+export function PastAuctionsEmpty({ hasActiveFilters = false }: { hasActiveFilters?: boolean }) {
+  const clearHref = archiveClearFiltersHref();
 
   return (
     <MarketingEmptyState

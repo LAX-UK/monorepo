@@ -360,7 +360,7 @@ export default async function SearchPage({ searchParams }: PageProps) {
                     </ButtonLink>
                   ) : null}
                   <div className="flex flex-wrap justify-center gap-4">
-                    <ButtonLink Link={Link} variant="secondary" href="/archive">
+                    <ButtonLink Link={Link} variant="secondary" href="/results">
                       Past auctions
                     </ButtonLink>
                     <ButtonLink Link={Link} variant="primary" href="/">
