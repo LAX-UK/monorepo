@@ -54,6 +54,10 @@ export function notificationWebPath(payload: NotificationPayload): string | unde
   if (payload.submissionId && payload.meta?.audience === "staff") {
     return `/admin/submissions/${payload.submissionId}`;
   }
+  // A specialist's message opens the consignment's Messages tab.
+  if (payload.submissionId && payload.type === "consignment_message") {
+    return `${notificationSubmissionWebPath(payload)}?tab=messages`;
+  }
   if (payload.submissionId && SELLER_SUBMISSION_FIRST_TYPES.has(payload.type)) {
     return notificationSubmissionWebPath(payload);
   }

@@ -1,5 +1,6 @@
 import type { IConsignmentAfterSaleHttpApplicationService } from "./consignment-after-sale-http.js";
 import type { IConsignmentAgreementHttpApplicationService } from "./consignment-agreement-http.js";
+import type { IConsignmentMessageHttpApplicationService } from "./consignment-message-http.js";
 import type { ISubmissionAdminHttpApplicationService } from "./submission-admin-http.js";
 import type { ISubmissionDocumentHttpApplicationService } from "./submission-document-http.js";
 import type { ISubmissionSellerHttpApplicationService } from "./submission-seller-http.js";
@@ -10,6 +11,7 @@ export type SubmissionRouteServices = {
   documentHttp: ISubmissionDocumentHttpApplicationService;
   agreementHttp: IConsignmentAgreementHttpApplicationService;
   afterSaleHttp: IConsignmentAfterSaleHttpApplicationService;
+  messageHttp: IConsignmentMessageHttpApplicationService;
 };
 
 export type {
@@ -25,6 +27,11 @@ export type {
   AgreementSellerContext,
   IConsignmentAgreementHttpApplicationService,
 } from "./consignment-agreement-http.js";
+export type {
+  IConsignmentMessageClientHttp,
+  IConsignmentMessageHttpApplicationService,
+  IConsignmentMessageStaffHttp,
+} from "./consignment-message-http.js";
 export type {
   IConsignmentAfterSaleHttpApplicationService,
   IConsignmentAfterSaleSellerHttp,

@@ -110,6 +110,7 @@ export class NeedsYouService implements INeedsYouService {
       purchases,
       agreementsToAccept,
       changesRequested,
+      unreadReplies,
       unsold,
       registrations,
       endingAuthorisations,
@@ -146,6 +147,11 @@ export class NeedsYouService implements INeedsYouService {
       when(
         any("changes"),
         () => this.deps.facts.changesRequested({ legalEntityId, visibleTo, limit: LIST_LIMIT }),
+        [],
+      ),
+      when(
+        any("reply"),
+        () => this.deps.facts.unreadReplies({ legalEntityId, visibleTo, limit: LIST_LIMIT }),
         [],
       ),
       when(
@@ -212,6 +218,7 @@ export class NeedsYouService implements INeedsYouService {
       sourceOfFundsRequested: checks.sourceOfFundsRequested,
       agreementsToAccept,
       changesRequested,
+      unreadReplies,
       unsoldLots: unsold.rows.map((row) => ({
         id: row.lotId,
         title: row.title,
@@ -236,7 +243,7 @@ export class NeedsYouService implements INeedsYouService {
       pendingAccessRequests,
     };
     const truncated =
-      [outbidLots, purchases, agreementsToAccept, changesRequested].some(
+      [outbidLots, purchases, agreementsToAccept, changesRequested, unreadReplies].some(
         (rows) => rows.length >= LIST_LIMIT,
       ) || unsold.total > unsold.rows.length;
     return { facts, truncated };

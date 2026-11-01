@@ -1,4 +1,8 @@
 import { randomUUID } from "node:crypto";
+import {
+  CONSIGNMENT_MESSAGE_ATTACHMENT_MAX_BYTES,
+  CONSIGNMENT_MESSAGE_ATTACHMENT_TYPES,
+} from "@auction/domain";
 import type { StaffRoles, UserRole } from "@auction/types";
 import { roleHasCapability } from "@auction/types";
 
@@ -15,6 +19,7 @@ export const uploadKinds = [
   "source_of_funds_document",
   "artist_image",
   "category_image",
+  "consignment_message_attachment",
 ] as const;
 export type UploadKind = (typeof uploadKinds)[number];
 
@@ -86,6 +91,11 @@ export const uploadPolicies: Record<UploadKind, UploadPolicy> = {
     allowedContentTypes: ["image/jpeg", "image/png", "image/webp"],
     keyPrefix: "uploads/pending/categories",
   },
+  consignment_message_attachment: {
+    maxBytes: CONSIGNMENT_MESSAGE_ATTACHMENT_MAX_BYTES,
+    allowedContentTypes: CONSIGNMENT_MESSAGE_ATTACHMENT_TYPES,
+    keyPrefix: "uploads/pending/consignment-messages",
+  },
 };
 
 export function isUploadKind(value: string): value is UploadKind {
@@ -135,6 +145,16 @@ export function canUploadKind(
       return (
         roleHasCapability(role, "client.read", staffRoles) ||
         roleHasCapability(role, "aml.review", staffRoles) ||
+        roleHasCapability(role, "platform.admin.full", staffRoles)
+      );
+    case "consignment_message_attachment":
+      // Clients who send works, and the staff who answer them; who may write on a given
+      // consignment is decided when the message is sent.
+      return (
+        roleHasCapability(role, "client.submit", staffRoles) ||
+        roleHasCapability(role, "specialist.appraise", staffRoles) ||
+        roleHasCapability(role, "catalogue.write", staffRoles) ||
+        roleHasCapability(role, "auction.manage", staffRoles) ||
         roleHasCapability(role, "platform.admin.full", staffRoles)
       );
     case "artist_image":
