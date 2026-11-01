@@ -219,13 +219,14 @@
   --color-nav-active-border: var(--color-info);
 
   /*
-   * Countdown tones, one per time-left tone: calm ink by default, the warning tone in the final
-   * hour, the danger tone in the final minutes or during an extension. Red never marks a calm
-   * countdown. `countdownToneClass` (lib/presenters/countdown-tone.ts) names them per tone.
+   * Countdown tones, one per tone of the lot domain's time-left table: calm ink by default, the
+   * warning tone in the final hour, the danger tone in the final minutes or during an extension.
+   * Red never marks a calm countdown. `countdownToneClass` (lib/presenters/countdown-tone.ts)
+   * names them per tone.
    */
   --color-countdown-calm: var(--lax-fg);
   --color-countdown-soon: var(--lax-warning-fg);
-  --color-countdown-urgent: var(--lax-danger-fg);
+  --color-countdown-final: var(--lax-danger-fg);
 
   /* 13/20, the dense interface step. 12/16 (`text-xs`) is the smallest text anywhere; the old
      10px and 11px label steps are retired. */

@@ -2,13 +2,12 @@
 
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { formatLondonDateTime } from "@/lib/datetime/london-time";
+import { formatCountdownAriaLabel, parseCountdownSegments } from "@/lib/format-countdown";
 import {
-  type CountdownTier,
-  countdownTier,
-  formatCountdownAriaLabel,
-  parseCountdownSegments,
-} from "@/lib/format-countdown";
-import { countdownToneClass, countdownToneForTier } from "@/lib/presenters/countdown-tone";
+  type CountdownTone,
+  countdownTone,
+  countdownToneClass,
+} from "@/lib/presenters/countdown-tone";
 import { liveUrgencyPulseClass } from "@/lib/presenters/status-presentation";
 import { useActiveSaleCountdownEndIso } from "@/lib/sale/use-active-sale-countdown-end-iso";
 import { useClientClock } from "@/lib/time/use-client-clock";
@@ -56,27 +55,27 @@ function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
-function segmentDigitClass(tier: CountdownTier, ended: boolean): string {
+function segmentDigitClass(tone: CountdownTone, ended: boolean): string {
   if (ended) return "text-on-surface-variant";
-  return countdownToneClass(countdownToneForTier(tier));
+  return countdownToneClass(tone);
 }
 
 type SegmentChipProps = {
   value: number;
   unit: string;
-  tier: CountdownTier;
+  tone: CountdownTone;
   ended: boolean;
   placeholder?: boolean;
 };
 
-function SegmentChip({ value, unit, tier, ended, placeholder }: SegmentChipProps) {
+function SegmentChip({ value, unit, tone, ended, placeholder }: SegmentChipProps) {
   return (
     <div className="rounded-lg border border-outline-variant/15 bg-surface-container-low/50 px-2 py-2 backdrop-blur-sm">
       <p
         className={cn(
           "text-2xl font-bold tabular-nums",
-          segmentDigitClass(tier, ended),
-          tier === "critical" && !ended && !placeholder && liveUrgencyPulseClass,
+          segmentDigitClass(tone, ended),
+          tone === "final" && !ended && !placeholder && liveUrgencyPulseClass,
         )}
       >
         {placeholder ? "\u00A0" : pad2(value)}
@@ -125,7 +124,7 @@ export function MarketingCountdownPanel({
 
   const ended = msLeft === 0 && nowMs != null;
   const segments = msLeft != null ? parseCountdownSegments(msLeft) : null;
-  const tier = msLeft != null ? countdownTier(msLeft) : "normal";
+  const tone: CountdownTone = msLeft != null ? countdownTone(msLeft) : "calm";
 
   const ariaLabel =
     msLeft == null
@@ -200,7 +199,7 @@ export function MarketingCountdownPanel({
                 <SegmentChip
                   value={segments?.days ?? 0}
                   unit="Days"
-                  tier={tier}
+                  tone={tone}
                   ended={ended}
                   placeholder={placeholder}
                 />
@@ -208,21 +207,21 @@ export function MarketingCountdownPanel({
               <SegmentChip
                 value={segments?.hours ?? 0}
                 unit="Hours"
-                tier={tier}
+                tone={tone}
                 ended={ended}
                 placeholder={placeholder}
               />
               <SegmentChip
                 value={segments?.minutes ?? 0}
                 unit="Min"
-                tier={tier}
+                tone={tone}
                 ended={ended}
                 placeholder={placeholder}
               />
               <SegmentChip
                 value={segments?.seconds ?? 0}
                 unit="Sec"
-                tier={tier}
+                tone={tone}
                 ended={ended}
                 placeholder={placeholder}
               />

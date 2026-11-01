@@ -1,47 +1,30 @@
-import { type CountdownTier, countdownTier } from "@/lib/format-countdown";
+import { type TimeLeftTone, timeLeftBand } from "@auction/domain";
 
 /**
- * How loud a countdown is. Calm ink while there is time; the warning tone in the final hour; the
- * danger tone in the final minutes or while a closing time is extended. Red is kept for the
- * moments that need action, so a sale closing in two days never reads as an alarm.
- *
- * Binding point for the lot domain: when its time-left tone table lands, map that table's tones
- * onto `CountdownTone` here and drop `countdownToneForRemaining`; the classes below stay.
+ * How loud a countdown is, from the lot domain's time-left table (`timeLeftBand`): calm ink while
+ * there is more than an hour, the warning tone in the final hour, the danger tone in the final
+ * minutes and during any extension. Red is kept for the moments that need action, so a sale
+ * closing in two days never reads as an alarm. The thresholds live in the domain table only.
  */
-export type CountdownTone = "calm" | "soon" | "urgent";
+export type CountdownTone = TimeLeftTone;
 
-const TONE_BY_TIER: Readonly<Record<CountdownTier, CountdownTone>> = {
-  normal: "calm",
-  urgent: "soon",
-  critical: "urgent",
-};
-
-/** The tone for a countdown tier from `countdownTier`. */
-export function countdownToneForTier(tier: CountdownTier): CountdownTone {
-  return TONE_BY_TIER[tier];
-}
-
-/** The tone for the time left; an extension is always urgent. */
-export function countdownToneForRemaining(
-  msLeft: number,
-  options: { extended?: boolean } = {},
-): CountdownTone {
-  if (options.extended) return "urgent";
-  return countdownToneForTier(countdownTier(msLeft));
+/** The tone for the time left; an extension is always final. */
+export function countdownTone(msLeft: number, options: { extended?: boolean } = {}): CountdownTone {
+  return timeLeftBand(msLeft, options).tone;
 }
 
 /** Digit colour per tone, from the `--color-countdown-*` tokens in globals.css. */
 export const COUNTDOWN_TONE_TEXT_CLASS: Readonly<Record<CountdownTone, string>> = {
   calm: "text-countdown-calm",
   soon: "text-countdown-soon",
-  urgent: "text-countdown-urgent",
+  final: "text-countdown-final",
 };
 
 /** A tinted strip around a countdown (the lot page's closing row): neutral until the last hour. */
 export const COUNTDOWN_TONE_SURFACE_CLASS: Readonly<Record<CountdownTone, string>> = {
   calm: "border-outline-variant/40 bg-surface-container-low",
   soon: "border-transparent bg-warning-container",
-  urgent: "border-transparent bg-danger-container",
+  final: "border-transparent bg-danger-container",
 };
 
 export function countdownToneClass(tone: CountdownTone): string {

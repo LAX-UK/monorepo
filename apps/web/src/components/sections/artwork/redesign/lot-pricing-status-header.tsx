@@ -7,7 +7,7 @@ import type { LotLifecycle } from "@/lib/lot/lot-lifecycle";
 import { lotLifecycleIsClosed, lotPriceLabel } from "@/lib/lot/lot-price-label";
 import type { LotReserveContext } from "@/lib/lot/reserve-presentation";
 import { reserveBadgeLabel } from "@/lib/lot/reserve-presentation";
-import { countdownToneClass, countdownToneForRemaining } from "@/lib/presenters/countdown-tone";
+import { countdownTone, countdownToneClass } from "@/lib/presenters/countdown-tone";
 import { cn } from "@auction/ui";
 
 type Props = {
@@ -92,7 +92,7 @@ export function LotPricingStatusHeader({
                 "mt-0.5 font-body text-sm font-bold tabular-nums",
                 live
                   ? countdownToneClass(
-                      countdownToneForRemaining(lifecycle.msLeft ?? 0, {
+                      countdownTone(lifecycle.msLeft ?? 0, {
                         extended: lifecycle.kind === "extended",
                       }),
                     )

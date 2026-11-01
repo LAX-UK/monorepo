@@ -20,7 +20,7 @@ describe("liveUrgencyTextClass", () => {
 
   it("warns in the final hour and is urgent in the final minutes", () => {
     expect(liveUrgencyTextClass("soon")).toBe("text-countdown-soon");
-    expect(liveUrgencyTextClass("imminent")).toBe("text-countdown-urgent");
+    expect(liveUrgencyTextClass("imminent")).toBe("text-countdown-final");
   });
 });
 

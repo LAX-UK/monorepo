@@ -7,7 +7,7 @@ import { reserveBadgeLabel, resolveEndedBanner } from "@/lib/lot/reserve-present
 import {
   COUNTDOWN_TONE_SURFACE_CLASS,
   COUNTDOWN_TONE_TEXT_CLASS,
-  countdownToneForRemaining,
+  countdownTone,
 } from "@/lib/presenters/countdown-tone";
 import type { LotEndedNoSaleReason } from "@auction/types";
 import { cn } from "@auction/ui";
@@ -237,7 +237,7 @@ function ClosingBanner({
   saleEndLocalLabel: string;
   extended: boolean;
 }) {
-  const tone = countdownToneForRemaining(msLeft, { extended });
+  const tone = countdownTone(msLeft, { extended });
   return (
     <div
       className={cn(

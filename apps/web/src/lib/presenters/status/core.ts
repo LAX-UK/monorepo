@@ -20,7 +20,7 @@ const TONE_BY_URGENCY: Readonly<Record<LiveCountdownUrgency, CountdownTone>> = {
   normal: "calm",
   live: "calm",
   soon: "soon",
-  imminent: "urgent",
+  imminent: "final",
 };
 
 /** Text colour for countdown digits by urgency. */
