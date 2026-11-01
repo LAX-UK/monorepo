@@ -3,11 +3,9 @@ import {
   clientFacts,
   consignmentFacts,
 } from "@/lib/admin/consignment-inbox/thread-facts";
-import { staffStatus } from "@/lib/admin/staff-kit-status";
 import {
-  CellThumbnail,
   KeyValueList,
-  RecordImage,
+  RecordThumbnail,
   Section,
   StaffButtonLink,
   type StaffLinkComponent,
@@ -22,10 +20,9 @@ const NextLink: StaffLinkComponent = Link;
 
 function value(fact: ThreadFact) {
   const main = fact.stage ? (
-    (() => {
-      const status = staffStatus("submission", fact.stage);
-      return <StatusBadge tone={status.tone}>{status.label}</StatusBadge>;
-    })()
+    <StatusBadge tone={fact.stage.tone} shape={fact.stage.shape}>
+      {fact.stage.label}
+    </StatusBadge>
   ) : fact.href ? (
     <TextLink href={fact.href} Link={NextLink}>
       {fact.value}
@@ -74,15 +71,7 @@ export function ThreadFactsRail({ detail }: { detail: ConsignmentThreadDetail })
         }
       >
         <div className="flex items-center gap-3 pb-3">
-          {detail.submission.imageUrl ? (
-            <RecordImage
-              src={detail.submission.imageUrl}
-              alt=""
-              className="aspect-square size-14 w-14 shrink-0 object-cover"
-            />
-          ) : (
-            <CellThumbnail src={null} label="No photos yet" />
-          )}
+          <RecordThumbnail src={detail.submission.imageUrl} title={detail.submission.title} />
           <div className="min-w-0">
             <p className="truncate text-staff-md font-medium text-staff-fg">
               {detail.submission.title}

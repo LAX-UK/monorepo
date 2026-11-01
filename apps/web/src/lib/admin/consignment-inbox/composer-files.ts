@@ -46,12 +46,23 @@ export function fileProblem(file: { name: string; type: string; size: number }):
   return null;
 }
 
-/** The sentence under the box naming every refused file and what is accepted. */
+function joinAnd(words: readonly string[]): string {
+  if (words.length <= 1) return words[0] ?? "";
+  return `${words.slice(0, -1).join(", ")} and ${words.at(-1)}`;
+}
+
+/**
+ * The sentence under the box: which files will not go, with the one reason when there is one,
+ * what is accepted, and that Send goes without them. Each chip names its own file.
+ */
 export function attachmentErrorSentence(files: readonly StaffComposerFile[]): string | null {
   const rejected = files.filter((file) => file.status === "rejected");
   if (rejected.length === 0) return null;
-  const names = rejected.map((file) => `${file.name} (${file.error})`).join("; ");
-  return `${names}. Send goes without ${rejected.length === 1 ? "it" : "them"}. Photos (JPG, PNG, WebP) or PDFs, up to ${MAX_MB} MB each.`;
+  const only = rejected.length === 1 ? rejected[0] : null;
+  const what = only
+    ? `${only.name} can’t be sent: ${only.error}.`
+    : `${joinAnd(rejected.map((file) => file.name))} can’t be sent.`;
+  return `${what} Photos (JPG, PNG, WebP) or PDFs, up to ${MAX_MB} MB each. Send goes without ${only ? "it" : "them"}.`;
 }
 
 export function attachBlockedReason(files: readonly StaffComposerFile[]): string | null {

@@ -70,6 +70,7 @@ export type { StatusPresentation } from "@auction/ui/lax";
 export { KeyValueList } from "./display/key-value-list.js";
 export { Notice } from "@auction/ui/lax";
 export { RecordImage } from "./display/record-image.js";
+export { RecordThumbnail } from "./display/record-thumbnail.js";
 export { ImageGallery, type ImageGalleryItem } from "./display/image-gallery.js";
 export { StatGrid } from "./display/stat-grid.js";
 export type { StatItem } from "./display/stat-grid.js";

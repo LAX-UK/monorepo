@@ -46,7 +46,9 @@ describe("composer files", () => {
     const files = [file({}), file({ id: "r", status: "rejected", error: "HEIC isn’t accepted" })];
     expect(sendBlockedReason("", files)).toBeNull();
     expect(readyAttachments(files)).toEqual([{ uploadObjectId: "u1", fileName: "a.jpg" }]);
-    expect(attachmentErrorSentence(files)).toContain("Send goes without it");
+    expect(attachmentErrorSentence(files)).toBe(
+      "a.jpg can’t be sent: HEIC isn’t accepted. Photos (JPG, PNG, WebP) or PDFs, up to 15 MB each. Send goes without it.",
+    );
   });
 
   it("holds Send while a file uploads, or when there is nothing to send", () => {
@@ -172,6 +174,11 @@ describe("thread facts", () => {
       "agreement",
       "reference",
     ]);
+    expect(facts.find((f) => f.id === "stage")?.stage).toEqual({
+      label: "Agreement to accept",
+      tone: "warning",
+      shape: "alert",
+    });
     expect(facts.find((f) => f.id === "estimate")?.value).toBe("£8,000–12,000");
     expect(facts.find((f) => f.id === "reserve")?.value).toBe("£7,000");
     expect(facts.find((f) => f.id === "agreement")?.detail).toBe(

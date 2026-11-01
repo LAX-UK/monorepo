@@ -31,6 +31,8 @@ export class DrizzleConsignmentThreadFactsReader implements IConsignmentThreadFa
         saleStartsAt: sale.startTime,
         lotId: lot.id,
         lotNumber: lot.lotNumber,
+        lotStatus: lot.status,
+        lotWinnerId: lot.winnerId,
         estimateLow: consignmentAgreement.estimateLow,
         estimateHigh: consignmentAgreement.estimateHigh,
         reservePrice: consignmentAgreement.reservePrice,
@@ -99,7 +101,14 @@ export class DrizzleConsignmentThreadFactsReader implements IConsignmentThreadFa
       sale: row.saleId
         ? { id: row.saleId, name: row.saleName ?? "A sale", startsAt: row.saleStartsAt }
         : null,
-      lot: row.lotId ? { id: row.lotId, number: row.lotNumber } : null,
+      lot: row.lotId
+        ? {
+            id: row.lotId,
+            number: row.lotNumber,
+            status: row.lotStatus ?? "draft",
+            sold: row.lotWinnerId != null,
+          }
+        : null,
       agreement: row.proposedAt
         ? {
             estimateLow: row.estimateLow,

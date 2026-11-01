@@ -235,7 +235,8 @@ export type ConsignmentThreadFacts = {
   stage: string;
   artistLine: string | null;
   sale: { id: string; name: string; startsAt: string | null } | null;
-  lot: { id: string; number: number | null } | null;
+  /** The lot, with its state and whether it sold, so the stage reads as the consignment's step. */
+  lot: { id: string; number: number | null; status: string; sold: boolean } | null;
   estimate: { low: string | null; high: string | null; currency: string } | null;
   reserve: { amount: string; currency: string } | null;
   agreement: {

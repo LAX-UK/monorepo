@@ -41,6 +41,14 @@ export function workingDuration(minutes: number): string {
   return hours ? `${days}d ${hours}h` : `${days}d`;
 }
 
+/** "40m", "7h", "2d": the largest unit only, rounded down, for the short cue in a badge. */
+export function workingDurationShort(minutes: number): string {
+  const total = Math.max(0, Math.round(minutes));
+  if (total < 60) return `${total}m`;
+  if (total < WORKING_DAY) return `${Math.floor(total / 60)}h`;
+  return `${Math.floor(total / WORKING_DAY)}d`;
+}
+
 /** "1 day 3 hours", "4 hours", "45 minutes": the same, in words for sentences. */
 export function workingDurationWords(minutes: number): string {
   const total = Math.max(0, Math.round(minutes));
@@ -82,14 +90,14 @@ export function waitingCue(clock: ConsignmentReplyClockView, now: Date): Waiting
     return {
       kind: "badge",
       tone: "danger",
-      label: `Overdue ${workingDuration(clock.overdueMinutes)}`,
+      label: `Overdue ${workingDurationShort(clock.overdueMinutes)}`,
     };
   }
   if (clock.state === "due_soon") {
     return {
       kind: "badge",
       tone: "warning",
-      label: `Due in ${workingDuration(clock.remainingMinutes)}`,
+      label: `Due in ${workingDurationShort(clock.remainingMinutes)}`,
     };
   }
   const due = dueWhen(new Date(clock.dueAt), now);

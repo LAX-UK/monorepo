@@ -155,13 +155,18 @@ export function useThreadComposer(input: {
   const deliver = useCallback(
     async (reply: PendingReply, sendAnyway: boolean) => {
       setPending({ ...reply, state: "sending" });
+      // A request that never reaches the server rejects instead of answering: it failed too.
       const result = await postConsignmentThreadMessageAction(submissionId, {
         body: reply.body,
         attachments: readyAttachments(reply.files),
         visibility: reply.mode === "note" ? "internal" : "thread",
         lastSeenMessageId: seen.current,
         sendAnyway,
-      });
+      }).catch(() => null);
+      if (!result) {
+        setPending({ ...reply, state: "failed" });
+        return;
+      }
       if (result.ok) {
         setPending(null);
         setChanged(null);

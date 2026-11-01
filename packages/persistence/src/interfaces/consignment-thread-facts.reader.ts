@@ -1,3 +1,4 @@
+import type { LotStatus } from "@auction/types";
 /** What the thread's side panel shows about the consignment, the account and its people. */
 export type ConsignmentThreadFactsRecord = {
   submission: {
@@ -7,7 +8,8 @@ export type ConsignmentThreadFactsRecord = {
     yearOfWork: string | null;
   };
   sale: { id: string; name: string; startsAt: Date | null } | null;
-  lot: { id: string; number: number | null } | null;
+  /** The lot, with its state and whether it sold, for the consignment's step. */
+  lot: { id: string; number: number | null; status: LotStatus; sold: boolean } | null;
   agreement: {
     estimateLow: string | null;
     estimateHigh: string | null;

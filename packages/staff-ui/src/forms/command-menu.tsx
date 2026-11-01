@@ -7,7 +7,6 @@ import {
   CommandInput,
   CommandItem,
   CommandList,
-  CommandSeparator,
 } from "@auction/ui/components/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@auction/ui/components/popover";
 import { Check, LoaderCircle } from "lucide-react";
@@ -125,30 +124,29 @@ export function CommandMenu({
           <CommandInput placeholder={searchPlaceholder} aria-label={searchPlaceholder} />
           {error ? (
             <div className="px-3 py-4 text-staff-sm text-staff-muted">{error}</div>
+          ) : loading ? (
+            <output className="flex items-center gap-2 px-3 py-3 text-staff-sm text-staff-muted">
+              <LoaderCircle aria-hidden className="size-4 animate-spin" />
+              Loading…
+            </output>
           ) : (
-            <CommandList className="max-h-80 p-1">
-              {loading ? (
-                <div className="flex items-center gap-2 px-2 py-3 text-staff-sm text-staff-muted">
-                  <LoaderCircle aria-hidden className="size-4 animate-spin" />
-                  Loading…
-                </div>
-              ) : (
-                <CommandEmpty className="px-2 py-6 text-center text-staff-sm text-staff-muted">
-                  {emptyText}
-                </CommandEmpty>
-              )}
+            <CommandList className="max-h-96 p-1">
+              <CommandEmpty className="px-2 py-6 text-center text-staff-sm text-staff-muted">
+                {emptyText}
+              </CommandEmpty>
               {groups.map((group) => (
                 <CommandGroup key={group.id} heading={group.heading} className="p-0">
                   {group.items.map((item) => row(item, true))}
                 </CommandGroup>
               ))}
               {footer.length > 0 ? (
-                <>
-                  <CommandSeparator className="my-1 bg-staff-line-subtle" />
-                  <CommandGroup className="p-0" forceMount>
-                    {footer.map((item) => row(item, false))}
-                  </CommandGroup>
-                </>
+                // A rule, not a separator element: a listbox holds only options and groups.
+                <CommandGroup
+                  className="mt-1 border-t border-staff-line-subtle p-0 pt-1"
+                  forceMount
+                >
+                  {footer.map((item) => row(item, false))}
+                </CommandGroup>
               ) : null}
             </CommandList>
           )}

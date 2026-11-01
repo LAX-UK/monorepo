@@ -1,5 +1,8 @@
 import { formatEstimateRangeShort, formatWholeMoney } from "@/lib/money/currency";
+import { CONSIGNMENT_STATUS, consignmentStatus } from "@/lib/seller/consignment-status";
 import { formatStaffDate, formatStaffDateTime } from "@auction/staff-ui";
+import type { ItemSubmissionStatus, LotStatus } from "@auction/types";
+import type { StatusBadgeShape, StatusBadgeTone } from "@auction/ui/lax";
 import type { ConsignmentThreadDetail } from "@auction/validators";
 
 /**
@@ -15,17 +18,42 @@ export type ThreadFact = {
   value: string;
   /** A muted second line: "19 Nov 2026, 18:00", "Waiting for an owner or admin". */
   detail?: string;
-  /** Shown as the submission's status badge instead of text. */
-  stage?: string;
+  /** The consignment's step, shown as its badge instead of text. */
+  stage?: { label: string; tone: StatusBadgeTone; shape: StatusBadgeShape };
   /** Adds a copy control. */
   copy?: string;
   href?: string;
 };
 
+/**
+ * The stage as the consignment's step, in the words the seller's own stepper uses ("Agreement to
+ * accept"), from the shared status mapping rather than the submission's workflow status.
+ */
+export function consignmentStage(detail: Pick<ConsignmentThreadDetail, "facts">) {
+  const { facts } = detail;
+  const status = consignmentStatus({
+    submission: facts.stage as ItemSubmissionStatus,
+    agreement: !facts.agreement
+      ? "none"
+      : facts.agreement.state === "accepted"
+        ? "accepted"
+        : "open",
+    lot: facts.lot ? { status: facts.lot.status as LotStatus, sold: facts.lot.sold } : null,
+    unsoldChoice: null,
+  });
+  return CONSIGNMENT_STATUS[status];
+}
+
 export function consignmentFacts(detail: ConsignmentThreadDetail): ThreadFact[] {
   const { facts } = detail;
+  const stage = consignmentStage(detail);
   const rows: ThreadFact[] = [
-    { id: "stage", label: "Stage", value: facts.stage, stage: facts.stage },
+    {
+      id: "stage",
+      label: "Stage",
+      value: stage.label,
+      stage: { label: stage.label, tone: stage.tone, shape: stage.shape },
+    },
   ];
   if (facts.sale) {
     rows.push({

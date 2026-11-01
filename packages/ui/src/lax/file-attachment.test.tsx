@@ -23,4 +23,21 @@ describe("FileAttachment", () => {
     expect(container.querySelector("img")).toBeNull();
     expect(screen.getByText("PDF")).toBeInTheDocument();
   });
+
+  it("falls back to the icon for a preview that failed before it was watched", () => {
+    const complete = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "complete");
+    Object.defineProperty(HTMLImageElement.prototype, "complete", {
+      configurable: true,
+      get: () => true,
+    });
+    try {
+      const { container } = render(
+        <FileAttachment name="a.jpg" href="/f/a" kind="image" thumbnailUrl="/missing.jpg" />,
+      );
+      expect(container.querySelector("img")).toBeNull();
+      expect(container.querySelector("svg")).not.toBeNull();
+    } finally {
+      if (complete) Object.defineProperty(HTMLImageElement.prototype, "complete", complete);
+    }
+  });
 });

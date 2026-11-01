@@ -168,8 +168,8 @@ export function InboxStaffList({ state, list, summary, loadError, viewer }: Prop
       {
         id: "waiting",
         header: waitingView ? "Waiting" : "Last activity",
-        width: "132px",
-        mobile: "badge",
+        width: "148px",
+        mobile: "meta",
         truncate: false,
         cell: (row) => <Waiting row={row} now={now} />,
       },

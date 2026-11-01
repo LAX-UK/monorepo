@@ -70,6 +70,12 @@ describe("waitingCue", () => {
       tone: "danger",
       label: "Overdue 3h",
     });
+    expect(waitingCue(clock({ state: "overdue", overdueMinutes: 465 }), now).label).toBe(
+      "Overdue 7h",
+    );
+    expect(waitingCue(clock({ state: "due_soon", remainingMinutes: 90 }), now).label).toBe(
+      "Due in 1h",
+    );
   });
 });
 
