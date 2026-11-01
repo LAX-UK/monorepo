@@ -41,6 +41,13 @@ export type RpcApp = {
       "watch-count": {
         $get: (args: { param: { id: string } }) => Promise<Response>;
       };
+      "absentee-bids": {
+        $post: (args: {
+          param: { id: string };
+          json: { buyerLegalEntityId: string; maxAmount: number };
+          header?: Record<string, string>;
+        }) => Promise<Response>;
+      };
       "auto-bid": {
         $get: (args: { param: { id: string } }) => Promise<Response>;
         $put: (args: {
@@ -60,7 +67,13 @@ export type RpcApp = {
   };
   bids: {
     $post: (args: {
-      json: { lotId: string; amount: number; maxAutoBidAmount?: number };
+      json: {
+        lotId: string;
+        amount: number;
+        maxAutoBidAmount?: number;
+        autoBidStepAmount?: number;
+        seenNextBid?: string;
+      };
       header?: Record<string, string>;
     }) => Promise<Response>;
   };

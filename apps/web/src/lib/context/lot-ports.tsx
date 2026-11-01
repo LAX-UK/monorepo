@@ -1,7 +1,8 @@
 "use client";
 
 import { useRealtimeHealthPortOptional } from "@/lib/connection/realtime-health-provider";
-import type { AutoBidWriter, BidWriter } from "@/lib/data/contracts";
+import type { AbsenteeBidWriter, AutoBidWriter, BidWriter } from "@/lib/data/contracts";
+import { createHttpAbsenteeBidWriter } from "@/lib/data/http/absentee-bid";
 import { createHttpAutoBidWriter } from "@/lib/data/http/auto-bid";
 import { createHttpBidWriter } from "@/lib/data/http/bids";
 import type { LotRealtimePort, RealtimeHealthPort } from "@/lib/realtime/contracts";
@@ -12,6 +13,7 @@ import { type ReactNode, createContext, useContext, useMemo } from "react";
 export type LotPortsValue = {
   bidWriter: BidWriter;
   autoBidWriter: AutoBidWriter;
+  absenteeBidWriter: AbsenteeBidWriter;
   realtime: LotRealtimePort;
   health: RealtimeHealthPort;
 };
@@ -22,6 +24,7 @@ export function LotPortsProvider({
   children,
   bidWriter,
   autoBidWriter,
+  absenteeBidWriter,
   realtime,
   health,
   actingEntityId,
@@ -29,6 +32,7 @@ export function LotPortsProvider({
   children: ReactNode;
   bidWriter?: BidWriter;
   autoBidWriter?: AutoBidWriter;
+  absenteeBidWriter?: AbsenteeBidWriter;
   realtime?: LotRealtimePort;
   health?: RealtimeHealthPort;
   /** Server-resolved acting entity, forwarded to bid writers as an explicit
@@ -40,10 +44,11 @@ export function LotPortsProvider({
     () => ({
       bidWriter: bidWriter ?? createHttpBidWriter(actingEntityId),
       autoBidWriter: autoBidWriter ?? createHttpAutoBidWriter(actingEntityId),
+      absenteeBidWriter: absenteeBidWriter ?? createHttpAbsenteeBidWriter(actingEntityId),
       realtime: realtime ?? createSocketLotRealtime(),
       health: health ?? contextHealth ?? createSocketHealthAdapter(),
     }),
-    [bidWriter, autoBidWriter, realtime, health, contextHealth, actingEntityId],
+    [bidWriter, autoBidWriter, absenteeBidWriter, realtime, health, contextHealth, actingEntityId],
   );
   return <LotPortsContext.Provider value={value}>{children}</LotPortsContext.Provider>;
 }

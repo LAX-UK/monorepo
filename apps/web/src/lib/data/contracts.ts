@@ -66,6 +66,8 @@ export type PlaceBidInput = {
   autoBidStepAmount?: number;
   /** Dedupe concurrent / retried submissions (24h server cache). */
   idempotencyKey?: string;
+  /** The next bid the bidder was shown, so the server can tell them they were outbid while confirming. */
+  seenNextBid?: string;
 };
 
 export type PlaceBidResult =
@@ -75,6 +77,8 @@ export type PlaceBidResult =
       error: string;
       status: number;
       code?: string | null;
+      /** Facts a typed refusal carries: the new next bid, the nearest valid amount, the room left. */
+      details?: Readonly<Record<string, string>>;
       kycFeedback?: {
         headline: string;
         detail: string | null;
@@ -82,6 +86,27 @@ export type PlaceBidResult =
         action: "start" | "continue" | "retry" | "wait" | "none";
       } | null;
     };
+
+/** A maximum left before a lot opens, to be bid for the bidder from the opening. */
+export type AbsenteeBidInput = {
+  lotId: string;
+  maxAmount: number;
+  buyerLegalEntityId: string;
+};
+
+export type AbsenteeBidResult =
+  | { ok: true }
+  | {
+      ok: false;
+      error: string;
+      status: number;
+      code?: string | null;
+      details?: Readonly<Record<string, string>>;
+    };
+
+export interface AbsenteeBidWriter {
+  schedule(input: AbsenteeBidInput): Promise<AbsenteeBidResult>;
+}
 
 /** Mutations for bids only — segregated from reads (ISP). */
 export interface BidWriter {
