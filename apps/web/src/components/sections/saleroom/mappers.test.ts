@@ -341,7 +341,7 @@ describe("mapLotToCardVM", () => {
   it("shows where to bid instead of LAX prices for lots selling on ATG", () => {
     const vm = mapLotToCardVM(baseLot, { viewerUserId: null, now, atgState: "live" });
     expect(vm.currentBidLabel).toBe("Bidding");
-    expect(vm.currentBidValue).toBe("On ATG");
+    expect(vm.currentBidValue).toBe("Live · bid on auctions.lax.bid");
   });
 
   it("shows the ATG result for lots of an ended ATG sale", () => {

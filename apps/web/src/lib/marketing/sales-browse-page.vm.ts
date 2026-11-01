@@ -30,7 +30,8 @@ export type SalesBrowsePageVM = {
   hasLiveSales: boolean;
   categories: Category[];
   calendarView: SalesBrowseView;
-  err: string | null;
+  /** The tab's data could not be loaded (as opposed to loading and being empty). */
+  loadFailed: boolean;
   tab: CalendarSalesUrlState["tab"];
   newLots: Lot[];
   newLotsHasMore: boolean;
@@ -54,7 +55,8 @@ export type BuildSalesBrowsePageVMInput = {
   hasLiveSales: boolean;
   categories: Category[];
   calendarView: SalesBrowseView;
-  err: string | null;
+  /** The tab's data could not be loaded (as opposed to loading and being empty). */
+  loadFailed: boolean;
   tab: CalendarSalesUrlState["tab"];
   newLots: Lot[];
   newLotsHasMore: boolean;
@@ -91,7 +93,7 @@ export function buildSalesBrowsePageVM(input: BuildSalesBrowsePageVMInput): Sale
     hasLiveSales: input.hasLiveSales,
     categories: input.categories,
     calendarView: input.calendarView,
-    err: input.err,
+    loadFailed: input.loadFailed,
     tab: input.tab,
     newLots: input.newLots,
     newLotsHasMore: input.newLotsHasMore,

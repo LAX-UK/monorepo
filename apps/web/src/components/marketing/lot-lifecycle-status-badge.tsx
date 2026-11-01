@@ -12,7 +12,7 @@ export type LotLifecycleStatusBadgeProps = {
 /** Lifecycle badge VM → registry variant → StatusBadge. */
 export function LotLifecycleStatusBadge({ badge, className }: LotLifecycleStatusBadgeProps) {
   const presentation = lifecycleToStatusPresentation(badge);
-  return (
+  const pill = (
     <StatusBadge
       tone={presentation.variant}
       {...(presentation.dot ? { shape: "dot" as const } : {})}
@@ -20,5 +20,17 @@ export function LotLifecycleStatusBadge({ badge, className }: LotLifecycleStatus
     >
       {presentation.label}
     </StatusBadge>
+  );
+  if (!badge.href) return pill;
+  return (
+    <a
+      href={badge.href}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="inline-flex rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-link"
+    >
+      {pill}
+      <span className="sr-only"> (opens in a new tab)</span>
+    </a>
   );
 }
