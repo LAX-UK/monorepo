@@ -27,11 +27,16 @@ function mount(user: { id: string; role: string; staffRoles?: StaffRoles | undef
         id: "bid-1",
         lotId,
         placedByUserId: bidderId,
+        bidderId,
         buyerLegalEntityId: "22222222-2222-4222-8222-222222222222",
+        telephoneBookingId: "33333333-3333-4333-8333-333333333333",
+        clerkUserId: "clerk-1",
         amount: "100.00",
         isWinning: true,
-        isAutoBid: false,
-        maxAutoBidAmount: null,
+        isAutoBid: true,
+        maxAutoBidAmount: "900.00",
+        autoBidStepAmount: "25.00",
+        placedVia: "web",
         createdAt: new Date(),
       },
     ]),
@@ -126,6 +131,57 @@ describe("lot bid history privacy", () => {
 
     expect(res.status).toBe(200);
     expect(body.data[0]?.placedByUserId).toBe(bidderId);
+  });
+});
+
+describe("lot bid history exposes no identity to the public", () => {
+  const PRIVATE_FIELDS = ["bidderId", "buyerLegalEntityId", "telephoneBookingId", "clerkUserId"];
+  type Row = Record<string, unknown>;
+
+  async function read(user: Parameters<typeof mount>[0]) {
+    const res = await mount(user).app.request(`/lots/${lotId}/bids`, {
+      headers: user ? { authorization: RESOURCE_AUTHORIZATION } : {},
+    });
+    expect(res.status).toBe(200);
+    return ((await res.json()) as { data: Row[] }).data[0] as Row;
+  }
+
+  it("returns only safe fields to an anonymous reader", async () => {
+    const row = await read(null);
+    for (const field of PRIVATE_FIELDS) expect(row).not.toHaveProperty(field);
+    expect(row).toMatchObject({
+      id: "bid-1",
+      amount: "100.00",
+      isWinning: true,
+      isAutoBid: true,
+      placedVia: "web",
+      placedByUserId: null,
+      maxAutoBidAmount: null,
+      autoBidStepAmount: null,
+    });
+    expect(row.bidderRef).toMatch(/^[a-f0-9]{16}$/);
+  });
+
+  it("returns only safe fields to a different signed-in client", async () => {
+    const row = await read({ id: "someone-else", role: "client" });
+    for (const field of PRIVATE_FIELDS) expect(row).not.toHaveProperty(field);
+    expect(row.placedByUserId).toBeNull();
+    expect(row.maxAutoBidAmount).toBeNull();
+  });
+
+  it("shows a bidder their own user id and ceilings, and still no account fields", async () => {
+    const row = await read({ id: bidderId, role: "client" });
+    expect(row).toMatchObject({ placedByUserId: bidderId, maxAutoBidAmount: "900.00" });
+    for (const field of PRIVATE_FIELDS) expect(row).not.toHaveProperty(field);
+  });
+
+  it("keeps the full row for staff who manage auctions", async () => {
+    const row = await read({ id: "admin-1", role: "staff", staffRoles: ["administrator"] });
+    expect(row).toMatchObject({
+      buyerLegalEntityId: "22222222-2222-4222-8222-222222222222",
+      clerkUserId: "clerk-1",
+      placedByUserId: bidderId,
+    });
   });
 });
 

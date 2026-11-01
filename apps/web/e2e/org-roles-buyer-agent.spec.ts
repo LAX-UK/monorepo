@@ -48,7 +48,7 @@ test.describe("organisation buyer agent journey @roles", () => {
     await test.step("a bid over the limit is refused with its message", async () => {
       const bid = await placeBid(agent, lot, BUYER_AGENT_BID_LIMIT + 500);
       expect(bid.status).toBe(403);
-      expect(bid.code).toBe("bid_limit_exceeded");
+      expect(bid.code).toBe("over_limit");
       const shown = bidLimitExceededBidErrorMatcher.match(bid.error, { code: bid.code });
       expect(shown?.message).toBe(
         "This bid exceeds your buyer agent authorisation limit for this sale.",

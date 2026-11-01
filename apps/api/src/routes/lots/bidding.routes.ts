@@ -72,6 +72,7 @@ export function attachLotBiddingRoutes(r: LotHono, deps: LotRouteDeps): void {
           ? { actingLegalEntityId: legalEntityContext.legalEntityId }
           : {}),
         bodyLegalEntityId: body.buyerLegalEntityId,
+        ...(legalEntityContext?.role !== undefined ? { memberRole: legalEntityContext.role } : {}),
         maxAmount: body.maxAmount,
       });
       return respondBiddingRouteOutcome(c, outcome, 201);

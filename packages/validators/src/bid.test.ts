@@ -26,4 +26,24 @@ describe("placeBidSchema", () => {
     });
     expect(r.success).toBe(false);
   });
+
+  it("accepts the next bid the bidder was shown", () => {
+    const r = placeBidSchema.safeParse({
+      lotId: "00000000-0000-4000-8000-000000000001",
+      amount: 110,
+      seenNextBid: "110.00",
+    });
+    expect(r.success).toBe(true);
+  });
+
+  it("rejects a seen next bid that is not money", () => {
+    for (const seenNextBid of ["ten", "-5.00", "110.001", ""]) {
+      const r = placeBidSchema.safeParse({
+        lotId: "00000000-0000-4000-8000-000000000001",
+        amount: 110,
+        seenNextBid,
+      });
+      expect(r.success).toBe(false);
+    }
+  });
 });

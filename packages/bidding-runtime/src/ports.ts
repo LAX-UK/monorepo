@@ -6,6 +6,7 @@ import type {
 import type { DomainEventConnection, DomainEventInput } from "@auction/persistence/lib";
 import type {
   Bid,
+  LegalEntityMemberRole,
   Lot,
   LotAttachedToSalePayload,
   LotCancelledPayload,
@@ -34,6 +35,8 @@ export type PlaceBidInput = {
   amount: number;
   maxAutoBidAmount?: number;
   autoBidStepAmount?: number;
+  /** The next bid the bidder was shown when they confirmed; tells "outbid while confirming" apart. */
+  seenNextBid?: string;
   placement?: PlaceBidPlacement;
   /** Durable idempotency for internal replays (e.g. absentee). */
   internalPlacementKey?: string;
@@ -61,6 +64,8 @@ export interface IAbsenteeBidService {
     userId: string;
     lotId: string;
     buyerLegalEntityId: string;
+    /** The acting member's role on the account; decides whether the sale needs a registration. */
+    memberRole?: LegalEntityMemberRole | undefined;
     maxAmount: number;
   }): Promise<Result<{ id: string }, AbsenteeBidServiceError>>;
   expireStaleExecutingLeases(): Promise<void>;
@@ -76,6 +81,8 @@ export type PlaceBidWithIdempotencyInput = {
   amount: number;
   maxAutoBidAmount?: number;
   autoBidStepAmount?: number;
+  /** The next bid the bidder was shown when they confirmed; tells "outbid while confirming" apart. */
+  seenNextBid?: string;
   placedVia?: string;
   telephoneBookingId?: string;
   clerkUserId?: string;
@@ -285,6 +292,8 @@ export type ValidateBidContext = {
   currentWinnerId?: string | null;
   /** Origin of bid placement; operator paths skip self-service-only guards. */
   placedVia?: string | null;
+  /** The next bid the bidder was shown when they confirmed. */
+  seenNextBid?: string | null;
 };
 
 export type EarlyCloseResolution = {

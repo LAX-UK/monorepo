@@ -7,6 +7,7 @@ import { createWsContainer } from "./container.js";
 import { loadWsEnv } from "./env.js";
 import { consumeSocketTicket, registerSocketHandlers } from "./handlers/register-handlers.js";
 import { verifyBidApiPrivilegeToken, verifyWsResourceToken } from "./resource-authenticator.js";
+import { startHeartbeat } from "./services/heartbeat.js";
 import { bindSocketIdentity, bridgeRedisToSockets } from "./services/redis-bridge.js";
 
 const env = loadWsEnv();
@@ -101,6 +102,7 @@ const io = new Server(httpServer, {
 });
 
 bridgeRedisToSockets(io, container.redisSub);
+const stopHeartbeat = startHeartbeat(io);
 
 io.use(async (socket, next) => {
   const result = await consumeSocketTicket(socket, container.redis);
@@ -188,6 +190,7 @@ function shutdown(signal: NodeJS.Signals) {
   if (shuttingDown) return;
   shuttingDown = true;
   log.info({ signal }, "draining websocket gateway");
+  stopHeartbeat();
   const timeout = setTimeout(() => {
     log.error("graceful shutdown timed out");
     process.exit(1);

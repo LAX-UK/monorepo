@@ -1884,6 +1884,13 @@
       "when": 1798617600000,
       "tag": "0268_watchlist_reminders",
       "breakpoints": true
+    },
+    {
+      "idx": 269,
+      "version": "7",
+      "when": 1798704000000,
+      "tag": "0269_lot_extended_until",
+      "breakpoints": true
     }
   ]
 }

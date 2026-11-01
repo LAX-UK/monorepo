@@ -1,11 +1,12 @@
 import type { Bid, Lot, NewBid } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
+import { amountRefusedError } from "../bid-amount-refusal.js";
 import { BidError } from "../bid-error.js";
 import type { BidPolicyConfig } from "../bid-policy.js";
-import type { ILotStrategy } from "../ports.js";
+import type { ILotStrategy, ValidateBidContext } from "../ports.js";
 
 export class SealedBidAuctionStrategy implements ILotStrategy {
-  validateBid(lot: Lot, bid: NewBid): Result<void, BidError> {
+  validateBid(lot: Lot, bid: NewBid, ctx?: ValidateBidContext): Result<void, BidError> {
     if (lot.status !== "active") {
       return err(new BidError("Sealed bids are only accepted while lot is active"));
     }
@@ -18,7 +19,7 @@ export class SealedBidAuctionStrategy implements ILotStrategy {
     }
     const min = Number(lot.startingPrice);
     if (bid.amount < min) {
-      return err(new BidError("Bid must be at least starting price"));
+      return err(amountRefusedError("Bid must be at least starting price", lot, ctx?.seenNextBid));
     }
     return ok(undefined);
   }

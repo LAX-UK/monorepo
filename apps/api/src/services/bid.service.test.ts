@@ -140,6 +140,7 @@ function baseLotRepo(overrides: Partial<ILotRepository> = {}): ILotRepository {
     sumEndedHammer: vi.fn().mockResolvedValue({ total: "0", count: 0 }),
     updateCurrentPrice: vi.fn(),
     updateEndTime: vi.fn(),
+    extendEndTime: vi.fn(),
     updateStatus: vi.fn(),
     update: vi.fn(),
     setWinner: vi.fn(),
@@ -1149,7 +1150,7 @@ describe("BidService.placeBid", () => {
 
     const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
     expect(result.isOk()).toBe(true);
-    expect(lotRepo.updateEndTime).toHaveBeenCalledOnce();
+    expect(lotRepo.extendEndTime).toHaveBeenCalledOnce();
     expect(notifyLotExtended).toHaveBeenCalledOnce();
     expect(rescheduleEnd).toHaveBeenCalledOnce();
   });
@@ -1196,7 +1197,7 @@ describe("BidService.placeBid", () => {
 
     const result = await service.placeBid(personalBid("bidder-1", "auc-1", 150));
     expect(result.isOk()).toBe(true);
-    expect(lotRepo.updateEndTime).not.toHaveBeenCalled();
+    expect(lotRepo.extendEndTime).not.toHaveBeenCalled();
     expect(saleroomSessionLookup.shouldSkipAntiSnipeForLot).toHaveBeenCalledWith("auc-1");
   });
 
@@ -1390,7 +1391,7 @@ describe("BidService.placeBid", () => {
     const now = Date.now();
     let endTime = new Date(now + 60_000);
     const created = createBid({ amount: "150.00" });
-    const updateEndTime = vi.fn().mockImplementation(async (_id: string, next: Date) => {
+    const extendEndTime = vi.fn().mockImplementation(async (_id: string, next: Date) => {
       endTime = next;
     });
     const lotRepo = baseLotRepo({
@@ -1400,7 +1401,7 @@ describe("BidService.placeBid", () => {
           endTime,
         }),
       ),
-      updateEndTime,
+      extendEndTime,
     });
     const bidRepo = baseBidRepo({
       create: vi.fn().mockResolvedValue(created),
@@ -1424,7 +1425,7 @@ describe("BidService.placeBid", () => {
 
     await service.placeBid(personalBid("bidder-1", "auc-1", 150));
     await service.placeBid(personalBid("bidder-2", "auc-1", 160));
-    expect(updateEndTime).toHaveBeenCalledTimes(2);
+    expect(extendEndTime).toHaveBeenCalledTimes(2);
     expect(rescheduleEnd).toHaveBeenCalledTimes(2);
   });
 

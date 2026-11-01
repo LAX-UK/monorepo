@@ -42,6 +42,7 @@ function lotRow(
     dutchLastDecrementAt: null,
     startTime: now,
     endTime: now,
+    extendedUntil: null,
     status: "active",
     voidedReason: null,
     archivedSeller: false,

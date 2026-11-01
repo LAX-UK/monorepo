@@ -1,14 +1,19 @@
-import { buyerEntityCanBid, organisationBidRefusalMessage } from "@auction/domain";
+import {
+  buyerEntityCanBid,
+  isBiddingClosedStatus,
+  organisationBidRefusalMessage,
+} from "@auction/domain";
 import type { IAbsenteeBidRepository } from "@auction/persistence/interfaces";
 import type { ILegalEntityRepository } from "@auction/persistence/interfaces";
 import type { ILotRepository } from "@auction/persistence/interfaces";
 import type { IBidRepository } from "@auction/persistence/interfaces";
-import type { Lot } from "@auction/types";
+import type { LegalEntityMemberRole, Lot } from "@auction/types";
 import { type Result, err, ok } from "neverthrow";
 import { bidAuthorityError } from "./bid/bid-authority-error.js";
 import type { IBidAuthority } from "./bid/bid-authority.service.js";
 import { type IBiddingLimitGate, PerLotBiddingLimitGate } from "./bid/bidding-limit.gate.js";
 import type { IBidIdentityEligibilityGate } from "./bid/identity-bid-eligibility.gate.js";
+import type { SaleRegistrationBidGate } from "./bid/sale-registration-bid.gate.js";
 import type { AbsenteeBidServiceError, IAbsenteeBidService, IBidPlacer } from "./ports.js";
 
 export const ABSENTEE_EXECUTING_LEASE_MS = 15 * 60 * 1000;
@@ -36,6 +41,11 @@ export class AbsenteeBidService implements IAbsenteeBidService {
     private readonly identityEligibilityGate: IBidIdentityEligibilityGate | null,
     private readonly bidAuthority: IBidAuthority,
     private readonly biddingLimitGate: IBiddingLimitGate = new PerLotBiddingLimitGate(),
+    /** When set, a maximum on a lot in a sale needs the sale registration a live bid needs. */
+    private readonly saleRegistrationGate: Pick<
+      SaleRegistrationBidGate,
+      "assertCanBid"
+    > | null = null,
   ) {}
 
   private async reconcileStaleExecutingLeases(cutoff: Date): Promise<void> {
@@ -58,6 +68,8 @@ export class AbsenteeBidService implements IAbsenteeBidService {
     userId: string;
     lotId: string;
     buyerLegalEntityId: string;
+    /** The acting member's role on the account; decides whether the sale needs a registration. */
+    memberRole?: LegalEntityMemberRole | undefined;
     maxAmount: number;
   }): Promise<Result<{ id: string }, AbsenteeBidServiceError>> {
     const lotRow = await this.lotRepo.findById(input.lotId);
@@ -68,6 +80,7 @@ export class AbsenteeBidService implements IAbsenteeBidService {
       return err({
         message: "Absentee bids are only allowed on scheduled or live lots",
         status: 400,
+        ...(isBiddingClosedStatus(lotRow.status) ? { code: "lot_closed" } : {}),
       });
     }
     if (!this.identityEligibilityGate) {
@@ -108,6 +121,20 @@ export class AbsenteeBidService implements IAbsenteeBidService {
     if (!authority.allowed) {
       const { message, status, code } = bidAuthorityError(authority.reason);
       return err({ message, status, ...(code ? { code } : {}) });
+    }
+    if (this.saleRegistrationGate && lotRow.saleId) {
+      const registration = await this.saleRegistrationGate.assertCanBid({
+        saleId: lotRow.saleId,
+        placedByUserId: input.userId,
+        buyerLegalEntityId: input.buyerLegalEntityId,
+        memberRole: input.memberRole,
+        effectiveAmount: input.maxAmount,
+        operatorBypass: false,
+      });
+      if (registration.isErr()) {
+        const { message, status, code, details } = registration.error;
+        return err({ message, status, ...(code ? { code } : {}), ...(details ? { details } : {}) });
+      }
     }
     const limits = await this.biddingLimitGate.check({
       legalEntityId: input.buyerLegalEntityId,
