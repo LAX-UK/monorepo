@@ -73,7 +73,17 @@ describe("AdminShell", () => {
     renderShell("/overview");
     fireEvent.click(screen.getByRole("button", { name: "Open navigation" }));
     const dialog = await screen.findByRole("dialog");
-    fireEvent.click(within(dialog).getByRole("link", { name: "Stock holds" }));
+    const link = within(dialog).getByRole("link", { name: "Stock holds" });
+    expect(link).toHaveAttribute("href", "/holds");
+    // The shell's default link is a plain anchor and jsdom cannot navigate: stop the click after
+    // React has handled it, so the test asserts on the drawer and not on a page load.
+    const stopNavigation = (event: Event) => event.preventDefault();
+    document.addEventListener("click", stopNavigation);
+    try {
+      fireEvent.click(link);
+    } finally {
+      document.removeEventListener("click", stopNavigation);
+    }
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });

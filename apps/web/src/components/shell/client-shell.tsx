@@ -79,6 +79,7 @@ export function ClientShell({
             familyLinks={familyLinks}
             banner={contextBanner}
             topSlot={topSlot}
+            accountSheetFromAvatar
           >
             {children}
           </WorkspaceShell>

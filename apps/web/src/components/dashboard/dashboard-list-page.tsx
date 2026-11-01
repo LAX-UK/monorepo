@@ -42,14 +42,11 @@ export function DashboardListPage({
     <DashboardPage className={cn("space-y-5", className)}>
       {bannerFirst ? banner : null}
       <DashboardPageHeader
-        // In the workspace on phones the title is in the top bar, so the header is only its
-        // actions: they keep the list rhythm (20px) to the content below rather than touching it.
-        {...(bannerFirst ? { className: "max-lg:mb-5" } : {})}
         meta={meta}
         title={title}
-        // The workspace header sets its own margin to zero, which beats the page rhythm; this
-        // gives it the standard 16px to the tabs or list below (the action on phones).
-        {...(bannerFirst ? { className: "mb-4" } : {})}
+        // The header sets its own margin to zero, which beats the page rhythm; this gives it the
+        // standard 16px to the tabs or list below (the action on phones), in either frame.
+        className="mb-4"
         {...(description ? { description } : {})}
         {...(actions ? { actions } : {})}
       />
