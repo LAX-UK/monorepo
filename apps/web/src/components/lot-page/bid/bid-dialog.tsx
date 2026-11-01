@@ -36,19 +36,21 @@ export type LotBidDialogProps = Omit<UseBidDialogInput, "start" | "onPlaced"> & 
 
 function SummaryBlock({ summary }: { summary: BidDialogSummary }) {
   return (
-    <dl className="m-0 grid gap-1.5 rounded-lax-card bg-lax-sunken px-4 py-3 text-lax-13 leading-5">
-      {summary.rows.map((row) => (
-        <div key={row.label} className="flex justify-between gap-4">
-          <dt className="text-lax-muted">{row.label}</dt>
-          <dd className="m-0 tabular-nums text-lax-fg">{row.value}</dd>
+    <div className="grid gap-1.5 rounded-lax-card bg-lax-sunken px-4 py-3 text-lax-13 leading-5">
+      <dl className="m-0 grid gap-1.5">
+        {summary.rows.map((row) => (
+          <div key={row.label} className="flex justify-between gap-4">
+            <dt className="text-lax-muted">{row.label}</dt>
+            <dd className="m-0 tabular-nums text-lax-fg">{row.value}</dd>
+          </div>
+        ))}
+        <div className="mt-0.5 flex justify-between gap-4 border-t border-lax-line pt-2 text-lax-14 font-semibold">
+          <dt className="text-lax-fg">{summary.total.label}</dt>
+          <dd className="m-0 tabular-nums text-lax-fg">{summary.total.value}</dd>
         </div>
-      ))}
-      <div className="mt-0.5 flex justify-between gap-4 border-t border-lax-line pt-2 text-lax-14 font-semibold">
-        <dt className="text-lax-fg">{summary.total.label}</dt>
-        <dd className="m-0 tabular-nums text-lax-fg">{summary.total.value}</dd>
-      </div>
+      </dl>
       <p className="m-0 text-lax-12 leading-4 text-lax-muted">{summary.fine}</p>
-    </dl>
+    </div>
   );
 }
 

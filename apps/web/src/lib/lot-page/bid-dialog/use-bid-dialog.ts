@@ -108,7 +108,7 @@ export function useBidDialog(input: UseBidDialogInput): BidDialogController {
   const stateRef = useRef(state);
   stateRef.current = state;
 
-  const confirm = useCallback(async () => {
+  const submit = useCallback(async () => {
     const current = stateRef.current;
     if (current.phase !== "choosing" || view.confirm.kind === "none") return;
     if (view.confirm.kind === "disabled") return;
@@ -149,6 +149,6 @@ export function useBidDialog(input: UseBidDialogInput): BidDialogController {
     chooseMode: useCallback((mode) => dispatch({ type: "chose_mode", mode, ladder }), [ladder]),
     chooseMaximum: useCallback((maximum) => dispatch({ type: "chose_maximum", maximum }), []),
     applyAmount: useCallback((amount) => dispatch({ type: "used_amount", amount }), []),
-    confirm: () => void confirm(),
+    confirm: () => void submit(),
   };
 }
