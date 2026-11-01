@@ -5,6 +5,7 @@ import { AtgExternalBiddingPanel } from "./atg-external-bidding";
 const liveSale = {
   status: "draft",
   sellingPlatform: "atg",
+  atgDistribution: "public_marketplace",
   atgAuctionState: "live",
 } as const;
 const endedSale = { ...liveSale, atgAuctionState: "ended" } as const;

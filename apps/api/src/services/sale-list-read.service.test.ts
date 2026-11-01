@@ -68,7 +68,7 @@ describe("SaleListReadService", () => {
 });
 
 describe("SaleListReadService ATG-owned drafts", () => {
-  it("includes ATG-owned drafts with one batched ownership lookup for drafts only", async () => {
+  function atgListService(distribution: "public_marketplace" | "private_test") {
     const atgDraft = { ...sale("s-atg"), status: "draft" } as Sale;
     const plainDraft = { ...sale("s-draft"), status: "draft" } as Sale;
     const saleRepo = { list: vi.fn(async () => [sale("s1"), atgDraft, plainDraft]) };
@@ -89,6 +89,7 @@ describe("SaleListReadService ATG-owned drafts", () => {
               atgLinked: true,
               atgSoldLotCount: 0,
               sellingPlatform: "atg" as const,
+              atgDistribution: distribution,
             },
           ],
         ]),
@@ -104,6 +105,11 @@ describe("SaleListReadService ATG-owned drafts", () => {
       } as never,
       { getSaleOwnerships },
     );
+    return { svc, saleRepo, getSaleOwnerships };
+  }
+
+  it("includes publicly listed ATG-owned drafts with one batched ownership lookup", async () => {
+    const { svc, saleRepo, getSaleOwnerships } = atgListService("public_marketplace");
 
     const { data } = await svc.listForPublicApi({
       limit: 20,
@@ -119,5 +125,35 @@ describe("SaleListReadService ATG-owned drafts", () => {
     expect(data.map((row) => row.sale.id)).toEqual(["s1", "s-atg"]);
     expect(data[1]?.sale.sellingPlatform).toBe("atg");
     expect(data[1]?.previewLots.map((l) => l.id)).toEqual(["l-atg"]);
+  });
+
+  it("excludes draft sales, including private-test ATG drafts, from the public list", async () => {
+    const { svc } = atgListService("private_test");
+
+    const { data } = await svc.listForPublicApi({ limit: 20, offset: 0 });
+
+    expect(data.map((row) => row.sale.id)).toEqual(["s1"]);
+  });
+
+  it("returns published and active sales", async () => {
+    const saleRepo = { list: vi.fn(async () => [sale("s1")]) };
+    const lotRepo = {
+      countLotsBySaleIds: vi.fn(async () => new Map<string, number>()),
+      findPreviewLotsBySaleIds: vi.fn(async () => []),
+    };
+    const svc = new SaleListReadService(
+      saleRepo as never,
+      lotRepo as never,
+      { resolveManyUnique: vi.fn(async () => new Map()) } as never,
+      {
+        lookupByKeys: vi.fn(async () => new Map()),
+        buildGalleryImages: vi.fn(async () => []),
+        buildGalleryImagesWithLookup: vi.fn(async () => []),
+      } as never,
+    );
+
+    const { data } = await svc.listForPublicApi({ limit: 20, offset: 0 });
+
+    expect(data.map((row) => row.sale.id)).toEqual(["s1"]);
   });
 });

@@ -18,10 +18,24 @@ const ids = {
   soldLot: "a7c00000-0000-4000-8000-000000000021",
   unsoldLot: "a7c00000-0000-4000-8000-000000000031",
   plainLot: "a7c00000-0000-4000-8000-000000000041",
+  privateSale: "a7c00000-0000-4000-8000-000000000050",
+  privateLot: "a7c00000-0000-4000-8000-000000000051",
 } as const;
 
-const ourSales = new Set<string>([ids.liveSale, ids.soldSale, ids.unsoldSale, ids.plainDraft]);
-const ourLots = new Set<string>([ids.liveLot, ids.soldLot, ids.unsoldLot, ids.plainLot]);
+const ourSales = new Set<string>([
+  ids.liveSale,
+  ids.soldSale,
+  ids.unsoldSale,
+  ids.plainDraft,
+  ids.privateSale,
+]);
+const ourLots = new Set<string>([
+  ids.liveLot,
+  ids.soldLot,
+  ids.unsoldLot,
+  ids.plainLot,
+  ids.privateLot,
+]);
 
 describe.skipIf(!HAS_DB)("ATG-owned drafts in public catalogue SQL (integration)", () => {
   it("matches ownership in batch lookups, sale lists and lot search", async () => {
@@ -67,6 +81,7 @@ describe.skipIf(!HAS_DB)("ATG-owned drafts in public catalogue SQL (integration)
             saleRow(ids.soldSale, "Sold on ATG"),
             saleRow(ids.unsoldSale, "Closed unsold"),
             saleRow(ids.plainDraft, "Plain draft"),
+            saleRow(ids.privateSale, "Private test on ATG"),
           ]);
         const lotRow = (id: string, saleId: string) => ({
           id,
@@ -87,11 +102,33 @@ describe.skipIf(!HAS_DB)("ATG-owned drafts in public catalogue SQL (integration)
             lotRow(ids.soldLot, ids.soldSale),
             lotRow(ids.unsoldLot, ids.unsoldSale),
             lotRow(ids.plainLot, ids.plainDraft),
+            lotRow(ids.privateLot, ids.privateSale),
           ]);
         await tx.insert(atgAuctionLink).values([
-          { saleId: ids.liveSale, atgAuctionId: "atg-live", remoteStatus: "published" },
-          { saleId: ids.soldSale, atgAuctionId: "atg-sold", remoteStatus: "closed" },
-          { saleId: ids.unsoldSale, atgAuctionId: "atg-unsold", remoteStatus: "closed" },
+          {
+            saleId: ids.liveSale,
+            atgAuctionId: "atg-live",
+            remoteStatus: "published",
+            distribution: "public_marketplace",
+          },
+          {
+            saleId: ids.soldSale,
+            atgAuctionId: "atg-sold",
+            remoteStatus: "closed",
+            distribution: "public_marketplace",
+          },
+          {
+            saleId: ids.unsoldSale,
+            atgAuctionId: "atg-unsold",
+            remoteStatus: "closed",
+            distribution: "public_marketplace",
+          },
+          {
+            saleId: ids.privateSale,
+            atgAuctionId: "atg-private",
+            remoteStatus: "published",
+            distribution: "private_test",
+          },
         ]);
         await tx.insert(atgLotLink).values([
           { lotId: ids.liveLot, saleId: ids.liveSale, atgLotId: "l-live", numberOfBids: 2 },
@@ -105,6 +142,7 @@ describe.skipIf(!HAS_DB)("ATG-owned drafts in public catalogue SQL (integration)
           ids.soldSale,
           ids.unsoldSale,
           ids.plainDraft,
+          ids.privateSale,
         ]);
         expect(
           Object.fromEntries([...ownership].map(([id, o]) => [id, o.sellingPlatform])),
@@ -113,7 +151,9 @@ describe.skipIf(!HAS_DB)("ATG-owned drafts in public catalogue SQL (integration)
           [ids.soldSale]: "atg",
           [ids.unsoldSale]: "free",
           [ids.plainDraft]: "free",
+          [ids.privateSale]: "atg",
         });
+        expect(ownership.get(ids.privateSale)?.atgDistribution).toBe("private_test");
         expect(ownership.get(ids.soldSale)?.atgSoldLotCount).toBe(1);
 
         const sales = new DrizzleSaleRepository(conn);
