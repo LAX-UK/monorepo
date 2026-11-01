@@ -2,6 +2,7 @@ import { saleListRowSchema } from "@/lib/data/http/sales.schema";
 import {
   formatSaleItemsLabel,
   formatSaleLotsLabel,
+  parseResultsSummary,
   parseSaleListRowApiPayload,
   resolveSaleLotCount,
 } from "@/lib/sale-list-row";
@@ -100,5 +101,34 @@ describe("saleListRowSchema", () => {
     expect(row.sale.startTime).toBeInstanceOf(Date);
     expect(row.sale.endTime).toBeInstanceOf(Date);
     expect(row.lotCount).toBe(3);
+  });
+});
+
+describe("parseResultsSummary", () => {
+  it("reads a finalising sale", () => {
+    expect(parseResultsSummary({ state: "finalising", pendingLotCount: 3 })).toEqual({
+      state: "finalising",
+      pendingLotCount: 3,
+    });
+  });
+
+  it("reads a final sale with its figures and top lot", () => {
+    expect(
+      parseResultsSummary({
+        state: "final",
+        lotCount: 24,
+        soldCount: 18,
+        currency: "GBP",
+        totalWithPremium: "186400.00",
+        topLot: { lotId: "l1", priceWithPremium: "42000.00" },
+        endedAt: "2026-10-15T20:00:00.000Z",
+      }),
+    ).toMatchObject({ state: "final", lotCount: 24, soldCount: 18, topLot: { lotId: "l1" } });
+  });
+
+  it("treats null and unknown shapes as no summary", () => {
+    expect(parseResultsSummary(null)).toBeNull();
+    expect(parseResultsSummary(undefined)).toBeNull();
+    expect(parseResultsSummary({ state: "something-else" })).toBeNull();
   });
 });

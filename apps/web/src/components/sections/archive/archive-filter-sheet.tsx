@@ -8,7 +8,6 @@ import {
   archiveClearFiltersHref,
   countActiveArchiveFilters,
 } from "@/lib/archive/build-archive-params";
-import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { useRouter } from "next/navigation";
 import { useCallback, useState } from "react";
 
@@ -18,11 +17,11 @@ type Props = {
   query: Pick<ArchivePageQuery, "endYear" | "categoryId" | "sortMode">;
   categories: Category[];
   resultCountLabel: string;
-  layoutView: CatalogLayoutView;
+  years: readonly number[];
 };
 
-/** Mobile filter sheet for the past-auctions archive on `/archive`. */
-export function ArchiveFilterSheet({ query, categories, resultCountLabel, layoutView }: Props) {
+/** Mobile filter sheet for the past-auctions archive on `/results?view=lots`. */
+export function ArchiveFilterSheet({ query, categories, resultCountLabel, years }: Props) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const activeCount = countActiveArchiveFilters(query);
@@ -37,11 +36,11 @@ export function ArchiveFilterSheet({ query, categories, resultCountLabel, layout
       applyLabel={resultCountLabel}
       onApply={close}
       onReset={() => {
-        router.push(archiveClearFiltersHref(layoutView === "list" ? "list" : undefined));
+        router.push(archiveClearFiltersHref());
         close();
       }}
     >
-      <ArchiveFilterSheetBody categories={categories} onSelect={close} />
+      <ArchiveFilterSheetBody categories={categories} years={years} onSelect={close} />
     </MarketingFilterSheet>
   );
 }

@@ -135,6 +135,63 @@ describe("featured lots", () => {
   });
 });
 
+describe("the hang slot", () => {
+  const lots = (n: number) => Array.from({ length: n }, (_, i) => baseLot({ id: `lot-${i}` }));
+  const ids = (xs: Lot[]) => xs.map((l) => l.id);
+
+  it("claims its lots before the rail and More lots, so neither repeats them", () => {
+    const pool = lots(12);
+    const { hang, rail, more } = allocateHomePageLots({
+      railLots: pool.slice(0, 3),
+      pool,
+      moreLimit: 8,
+      hangLots: pool.slice(0, 5),
+      hangLimit: 12,
+    });
+    expect(ids(hang)).toEqual(["lot-0", "lot-1", "lot-2", "lot-3", "lot-4"]);
+    expect(rail).toEqual([]);
+    expect(ids(more)).toEqual(["lot-5", "lot-6", "lot-7", "lot-8", "lot-9", "lot-10", "lot-11"]);
+  });
+
+  it("takes lots outside the pool too, and keeps the hanging order", () => {
+    const pool = lots(8);
+    const outside = [baseLot({ id: "ended-1" }), baseLot({ id: "ended-2" })];
+    const { hang } = allocateHomePageLots({
+      railLots: [],
+      pool,
+      moreLimit: 8,
+      hangLots: [...outside, pool[3] as Lot],
+      hangLimit: 12,
+    });
+    expect(ids(hang)).toEqual(["ended-1", "ended-2", "lot-3"]);
+  });
+
+  it("stays empty, and claims nothing, with fewer than two lots to hang", () => {
+    const pool = lots(8);
+    const { hang, more } = allocateHomePageLots({
+      railLots: [],
+      pool,
+      moreLimit: 8,
+      hangLots: [pool[0] as Lot],
+      hangLimit: 12,
+    });
+    expect(hang).toEqual([]);
+    expect(ids(more)).toContain("lot-0");
+  });
+
+  it("respects the limit", () => {
+    const pool = lots(20);
+    expect(
+      allocateHomePageLots({ railLots: [], pool, moreLimit: 8, hangLots: pool, hangLimit: 12 })
+        .hang,
+    ).toHaveLength(12);
+  });
+
+  it("is absent when the page has no hang", () => {
+    expect(allocateHomePageLots({ railLots: [], pool: lots(5), moreLimit: 8 }).hang).toEqual([]);
+  });
+});
+
 describe("homePinnedSaleIds", () => {
   it("orders pinned sales by pin order and skips unpinned ones", () => {
     expect(

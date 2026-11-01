@@ -299,6 +299,12 @@ export type {
 export type { ILotTransitionRepository } from "./lot-transition.repository.js";
 
 export type {
+  DisputeDeskCaseRecord,
+  DisputeDeskListInput,
+  IAdminDisputeDeskReader,
+} from "./admin-dispute-desk.reader.js";
+
+export type {
   AdminDisputePaymentRow,
   IAdminDisputeCaseEnrichmentReader,
 } from "./admin-dispute-case-enrichment.reader.js";

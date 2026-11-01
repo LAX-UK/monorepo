@@ -56,33 +56,23 @@ describe("countActiveArchiveFilters", () => {
 });
 
 describe("archiveClearFiltersHref", () => {
-  it("returns bare archive path", () => {
-    expect(archiveClearFiltersHref()).toBe("/archive");
-  });
-
-  it("preserves list view", () => {
-    expect(archiveClearFiltersHref("list")).toBe("/archive?view=list");
+  it("returns the Lots view of Results with no filters", () => {
+    expect(archiveClearFiltersHref()).toBe("/results?view=lots");
   });
 });
 
 describe("buildArchiveHrefFromQuery", () => {
   const base = { endYear: 2024, categoryId: "cat-1", sortMode: "recent" as const };
 
-  it("clears individual facets", () => {
+  it("clears individual facets and stays on the Lots view", () => {
     expect(buildArchiveHrefFromQuery(base, { endYear: null })).toBe(
-      "/archive?categoryId=cat-1&sort=recent",
+      "/results?view=lots&categoryId=cat-1&sort=recent",
     );
     expect(buildArchiveHrefFromQuery(base, { categoryId: null })).toBe(
-      "/archive?year=2024&sort=recent",
+      "/results?view=lots&year=2024&sort=recent",
     );
     expect(buildArchiveHrefFromQuery(base, { sortMode: null })).toBe(
-      "/archive?year=2024&categoryId=cat-1",
-    );
-  });
-
-  it("preserves list view when provided", () => {
-    expect(buildArchiveHrefFromQuery(base, { endYear: null }, "list")).toBe(
-      "/archive?categoryId=cat-1&sort=recent&view=list",
+      "/results?view=lots&year=2024&categoryId=cat-1",
     );
   });
 });

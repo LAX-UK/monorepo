@@ -4,9 +4,8 @@ export default function DisputesLoading() {
   return (
     <ListPageSkeleton
       title="Disputes"
-      description="Card disputes raised through Stripe. Open one for the payment, the evidence deadline and its history."
-      metrics={4}
-      columns={["Lot", "Status", "Reason", "Amount", "Seller", "Opened"]}
+      description="Card disputes on Bid payments. Allocate each one to the right invoices before the deadline."
+      columns={["Dispute", "Allocation", "Respond by", "Buyer", "Amount", "Status"]}
     />
   );
 }

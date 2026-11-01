@@ -17,7 +17,7 @@ export const BUY_JOURNEY_STEPS: readonly MarketingProcessStep[] = [
           upcoming auctions
         </Link>
         , review{" "}
-        <Link href="/archive" className={MARKETING_PROSE_LINK}>
+        <Link href="/results" className={MARKETING_PROSE_LINK}>
           past sales
         </Link>
         , or search for specific works through the{" "}

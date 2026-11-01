@@ -24,6 +24,7 @@ import { attachAdminCatalogRoutes } from "./admin/catalog.routes.js";
 import { attachAdminComplianceRoutes } from "./admin/compliance.routes.js";
 import { attachAdminConditionReportsRoutes } from "./admin/condition-reports.routes.js";
 import { attachAdminDeliveryOpsRoutes } from "./admin/delivery-ops.routes.js";
+import { attachAdminDisputeDeskRoutes } from "./admin/dispute-desk.routes.js";
 import { attachAdminEmailRoutes } from "./admin/email.routes.js";
 import { attachAdminFinanceRoutes } from "./admin/finance.routes.js";
 import { attachAdminImpersonationRoutes } from "./admin/impersonation.routes.js";
@@ -165,6 +166,7 @@ export function createAdminRoutes(
   attachAdminPaymentsManualReviewRoutes(finance, container, guards);
   attachAdminFinanceIssueRoutes(finance, container);
   attachAdminFinanceRoutes(finance, container);
+  attachAdminDisputeDeskRoutes(finance, container, guards);
 
   // Mount finance first: its routes terminate the chain before platform's
   // `use("*", requirePlatformShell)` wildcard can 403 finance.

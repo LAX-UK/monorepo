@@ -10,6 +10,7 @@ import { purgeStaleAuthCookies } from "@/lib/auth/purge-stale-auth-cookies";
 import { applySilentSignInEdge } from "@/lib/auth/silent-sign-in/apply-silent-sign-in-edge";
 import { THEME_INIT_SNIPPET } from "@/lib/csp/theme-init-snippet";
 import { isOrgModuleEnabled } from "@/lib/legal-entity/org-module-enabled";
+import { legacyArchiveRedirect } from "@/lib/marketing/archive-redirect";
 import { accountLinkRedirect } from "@/lib/navigation/account-link";
 import { isClientAreaPath } from "@/lib/navigation/client-routes";
 import { applyClientHintHeaders } from "@/lib/preferences/client-hint-headers";
@@ -96,6 +97,12 @@ function isStaleSessionLanding(url: URL): boolean {
 }
 
 export async function middleware(request: NextRequest) {
+  // The old past-auctions archive is the Lots view of Results: a permanent move.
+  const archiveTarget = legacyArchiveRedirect(request.nextUrl);
+  if (archiveTarget) {
+    return NextResponse.redirect(archiveTarget, 301);
+  }
+
   const silentRedirect = applySilentSignInEdge(request);
   if (silentRedirect) {
     return silentRedirect;

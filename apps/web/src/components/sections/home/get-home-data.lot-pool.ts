@@ -22,7 +22,17 @@ export type HomePageLotsInput = {
   moreLimit: number;
   /** Lots staff featured for the lead sale, in staff order; they lead the rail. */
   featuredLotIds?: readonly string[];
+  /**
+   * The hang's candidates in hanging order (the lead sale's featured lots first, then its top
+   * lots). The hang claims its lots before the rail and "More lots", and stays empty when fewer
+   * than `HOME_HANG_MIN_WORKS` can hang.
+   */
+  hangLots?: readonly Lot[];
+  hangLimit?: number;
 };
+
+/** The hang needs two works with photographs: one is already the hero's work. */
+export const HOME_HANG_MIN_WORKS = 2;
 
 /** Sale ids pinned to the home page, in `homePinOrder`. */
 export function homePinnedSaleIds(
@@ -41,7 +51,7 @@ function featuredLots(pool: Lot[], featuredLotIds: readonly string[]): Lot[] {
 }
 
 /**
- * Every lot appears once on the page, by priority: the sale rail first, then
+ * Every lot appears once on the page, by priority: the hang under the hero, the sale rail, then
  * "More lots", which is empty (so the section is hidden) when fewer than
  * `HOME_MORE_LOTS_MIN` unseen lots remain.
  */
@@ -50,11 +60,15 @@ export function allocateHomePageLots({
   pool,
   moreLimit,
   featuredLotIds = [],
+  hangLots = [],
+  hangLimit = 0,
 }: HomePageLotsInput): {
+  hang: Lot[];
   rail: Lot[];
   more: Lot[];
 } {
   const slots = allocateHomeLots<Lot>([
+    { key: "hang", candidates: hangLots, limit: hangLimit, min: HOME_HANG_MIN_WORKS },
     {
       key: "rail",
       candidates: [...featuredLots(pool, featuredLotIds), ...railLots],
@@ -62,5 +76,5 @@ export function allocateHomePageLots({
     },
     { key: "more", candidates: pool, limit: moreLimit, min: HOME_MORE_LOTS_MIN },
   ]);
-  return { rail: slots.rail ?? [], more: slots.more ?? [] };
+  return { hang: slots.hang ?? [], rail: slots.rail ?? [], more: slots.more ?? [] };
 }

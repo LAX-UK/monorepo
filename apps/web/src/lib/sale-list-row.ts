@@ -1,5 +1,5 @@
 import { parseLot, parseSale } from "@/lib/data/http/parse";
-import { type SaleResultsSummaryView, parseSaleResultsSummary } from "@/lib/sale-results-summary";
+import type { SaleResultsSummary } from "@auction/domain";
 import type { Lot, Sale } from "@auction/types";
 
 /** Public catalogue sales list row: sale metadata + preview lots + total lot count. */
@@ -7,8 +7,8 @@ export type SaleListRow = {
   sale: Sale;
   lots: Lot[];
   lotCount: number;
-  /** Results of an ended sale; absent before it has any. */
-  resultsSummary?: SaleResultsSummaryView;
+  /** Results of an ended sale: finalising, or final with figures. Absent before the sale ends. */
+  resultsSummary?: SaleResultsSummary | null;
 };
 
 /** Resolve API lotCount with safe fallback to preview array length. */
@@ -28,6 +28,31 @@ export function formatSaleLotsLabel(count: number): string {
   return `${count} lot${count === 1 ? "" : "s"}`;
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
+}
+
+/** Read the API's `resultsSummary`; anything that is not a known shape is treated as absent. */
+export function parseResultsSummary(raw: unknown): SaleResultsSummary | null {
+  if (!isRecord(raw)) return null;
+  if (raw.state === "finalising") {
+    return { state: "finalising", pendingLotCount: Number(raw.pendingLotCount ?? 0) };
+  }
+  if (raw.state !== "final") return null;
+  const top = isRecord(raw.topLot) ? raw.topLot : null;
+  return {
+    state: "final",
+    lotCount: Number(raw.lotCount ?? 0),
+    soldCount: Number(raw.soldCount ?? 0),
+    currency: typeof raw.currency === "string" ? raw.currency : "GBP",
+    totalWithPremium: String(raw.totalWithPremium ?? "0"),
+    topLot: top
+      ? { lotId: String(top.lotId ?? ""), priceWithPremium: String(top.priceWithPremium ?? "0") }
+      : null,
+    endedAt: String(raw.endedAt ?? ""),
+  };
+}
+
 /** Parse one row from `GET /sales` list payload. */
 export function parseSaleListRowApiPayload(row: unknown): SaleListRow {
   const o = row as {
@@ -37,12 +62,11 @@ export function parseSaleListRowApiPayload(row: unknown): SaleListRow {
     resultsSummary?: unknown;
   };
   const lots = (o.lots ?? []).map(parseLot);
-  const resultsSummary = parseSaleResultsSummary(o.resultsSummary);
   return {
     sale: parseSale(o.sale),
     lots,
     lotCount: resolveSaleLotCount(o.lotCount, lots.length),
-    ...(resultsSummary ? { resultsSummary } : {}),
+    resultsSummary: parseResultsSummary(o.resultsSummary),
   };
 }
 
