@@ -4,8 +4,6 @@ import {
   HERO_AUTOPLAY_MS,
   createHeroAutoplayPlugin,
 } from "@/components/gallery/engine/hero-autoplay-plugin";
-import { HeroDots } from "@/components/sections/home/hero/hero-dots";
-import { HeroProgressBar } from "@/components/sections/home/hero/hero-progress-bar";
 import { HeroSlideCopy } from "@/components/sections/home/hero/hero-slide-copy";
 import {
   type HeroSaleSlideVM,
@@ -20,7 +18,7 @@ import { RevealOnMount } from "@auction/marketing-ui";
 import { Carousel, CarouselContent, CarouselItem, cn, useCarousel } from "@auction/ui";
 import { Button } from "@auction/ui/lax";
 import { ChevronLeft, ChevronRight } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 type Props = {
   slides: HeroSaleSlideVM[];
@@ -29,7 +27,6 @@ type Props = {
 export function LaxHeroSaleroomRotator({ slides }: Props) {
   const n = slides.length;
   const reduceMotion = useReducedMotion();
-  const [paused, setPaused] = useState(false);
   const plugins = useMemo(
     () => createHeroAutoplayPlugin(reduceMotion, HERO_AUTOPLAY_MS),
     [reduceMotion],
@@ -47,15 +44,8 @@ export function LaxHeroSaleroomRotator({ slides }: Props) {
         FOCUS_RING,
       )}
       aria-label="Upcoming salerooms"
-      onMouseEnter={() => setPaused(true)}
-      onMouseLeave={() => setPaused(false)}
-      onFocus={() => setPaused(true)}
-      onBlur={(e) => {
-        if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setPaused(false);
-      }}
       tabIndex={0}
     >
-      <HeroProgressWithCarousel paused={paused} active={n > 1} reduceMotion={reduceMotion} />
       <CarouselContent className={cn("-ml-0 h-full", HOME_HERO_MIN_H)}>
         {slides.map((slide, i) => (
           <CarouselItem key={slide.id} className="basis-full pl-0">
@@ -94,27 +84,6 @@ function HeroSlidePanel({ slide, priority }: { slide: HeroSaleSlideVM; priority:
   );
 }
 
-function HeroProgressWithCarousel({
-  paused,
-  active,
-  reduceMotion,
-}: {
-  paused: boolean;
-  active: boolean;
-  reduceMotion: boolean;
-}) {
-  const { selectedIndex } = useCarousel();
-  return (
-    <HeroProgressBar
-      durationMs={HERO_AUTOPLAY_MS}
-      paused={paused}
-      active={active}
-      reduceMotion={reduceMotion}
-      resetKey={selectedIndex}
-    />
-  );
-}
-
 function HeroChrome({ slides }: { slides: HeroSaleSlideVM[] }) {
   const { selectedIndex, scrollPrev, scrollNext } = useCarousel();
   const n = slides.length;
@@ -134,7 +103,6 @@ function HeroChrome({ slides }: { slides: HeroSaleSlideVM[] }) {
           {n > 1 ? (
             <div className="pointer-events-auto mt-4 flex flex-col gap-4 sm:flex-row sm:items-center">
               <HeroNavButtons onPrev={scrollPrev} onNext={scrollNext} />
-              <HeroDots />
             </div>
           ) : null}
         </div>

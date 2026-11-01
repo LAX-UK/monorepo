@@ -3,15 +3,13 @@ import { cn } from "@auction/ui";
 
 export default function LotLoading() {
   return (
-    <main
-      id="main-content"
+    <div
       className={cn(
         MARKETING_PAGE_SHELL,
         MARKETING_CATALOG_PT,
         "bg-page-bg pb-[calc(var(--page-bottom-padding)+4rem)] dark:bg-background md:pb-[var(--page-bottom-padding)]",
       )}
       aria-busy="true"
-      aria-label="Loading lot"
     >
       <div className="animate-pulse space-y-10">
         <div className="space-y-3 pt-4 md:pt-6">
@@ -51,6 +49,6 @@ export default function LotLoading() {
           <div className="h-11 w-28 rounded bg-surface-container-high" />
         </div>
       </div>
-    </main>
+    </div>
   );
 }

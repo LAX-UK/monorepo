@@ -185,12 +185,8 @@ export function MarketingCountdownPanel({
           <span className="sr-only" aria-live="polite" aria-atomic="true">
             {liveMessage}
           </span>
-          <time
-            dateTime={effectiveEndIso}
-            aria-label={ariaLabel}
-            className="mt-3 block"
-            suppressHydrationWarning
-          >
+          <time dateTime={effectiveEndIso} className="mt-3 block" suppressHydrationWarning>
+            <span className="sr-only">{ariaLabel}</span>
             <div
               className={cn("grid max-w-xs gap-2", showDays ? "grid-cols-4" : "grid-cols-3")}
               aria-hidden

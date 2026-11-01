@@ -1,17 +1,9 @@
-import { AppNotFound } from "@/components/app/app-not-found";
+import { NOT_FOUND_COPY } from "@/components/not-found/not-found-copy";
+import { PageNotFound } from "@/components/not-found/page-not-found";
+import { metadataForNotFound } from "@/lib/seo/metadata-factory";
 
-export default function ArtworkNotFound() {
-  return (
-    <AppNotFound
-      kicker="404 · Lot"
-      title="This lot has been withdrawn"
-      description="The lot may have been removed before the sale opened or the URL is incorrect. Browse the search index to discover similar work."
-      primaryHref="/search"
-      primaryLabel="Search lots"
-      secondaryHref="/sales"
-      secondaryLabel="Open calendar"
-      illustration="lots"
-      siteHeaderOffset
-    />
-  );
+export const metadata = metadataForNotFound(NOT_FOUND_COPY.lot.documentTitle);
+
+export default function LotNotFound() {
+  return <PageNotFound kind="lot" />;
 }

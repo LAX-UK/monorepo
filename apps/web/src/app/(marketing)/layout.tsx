@@ -13,6 +13,7 @@ export default async function MarketingLayout({ children }: { children: ReactNod
     <MarketingSmoothScroll>
       <BidSiteChrome
         transparentPaths={["/"]}
+        mainLandmark
         wrap={(content) => (
           <MarketingLotQuickLookShell>
             <CommandPaletteLazy variant="marketing" />

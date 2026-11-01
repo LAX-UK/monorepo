@@ -2,15 +2,17 @@
 
 import { MarketingSectionHeader } from "@/components/marketing/marketing-section-header";
 import { MarketingViewAllLink } from "@/components/marketing/marketing-view-all-link";
+import { RailArrows } from "@/components/marketing/rail/rail-arrows";
+import { ScrollRegion } from "@/components/marketing/rail/scroll-region";
 import { MORE_LOTS_COPY } from "@/components/sections/home/home-copy";
 import type { EditorsPickLotCardVM } from "@/components/sections/home/home-view-models";
 import { MARKETING_PAGE_SHELL } from "@/lib/marketing/chrome";
 import { MarketingCardReveal } from "@auction/marketing-ui";
-import { MarketingHorizontalRail } from "@auction/marketing-ui";
 import { DisplayHeading } from "@auction/ui";
 import { EditorsPickMarketingCard } from "./editors-pick-marketing-card";
 
 const VIEW_ALL_HREF = "/search";
+const RAIL_ID = "home-editors-picks-rail";
 
 type Props = {
   lots: EditorsPickLotCardVM[];
@@ -34,30 +36,25 @@ function EditorsPicksCarousel({
   loginNextPath,
 }: CarouselProps) {
   return (
-    <MarketingHorizontalRail
-      id="home-editors-picks-rail"
-      ariaLabel={MORE_LOTS_COPY.ariaLabel}
-      forwardAriaLabel={MORE_LOTS_COPY.scrollLabel}
-      forwardButtonClassName="top-[170px]"
-      scrollerAs="ul"
-      scrollerClassName="m-0 flex list-none snap-x snap-mandatory gap-6 overflow-x-auto overflow-y-hidden overscroll-x-contain p-0 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-    >
-      {lots.map((lot, index) => (
-        <li
-          key={lot.id}
-          className="flex w-[min(100vw-4rem,280px)] shrink-0 snap-start flex-col sm:w-[280px]"
-        >
-          <MarketingCardReveal index={index} className="h-full min-w-0">
-            <EditorsPickMarketingCard
-              lot={lot}
-              isAuthenticated={isAuthenticated}
-              watchedLotIds={watchedLotIds}
-              loginNextPath={loginNextPath}
-            />
-          </MarketingCardReveal>
-        </li>
-      ))}
-    </MarketingHorizontalRail>
+    <ScrollRegion id={RAIL_ID} label={MORE_LOTS_COPY.ariaLabel}>
+      <ul className="m-0 flex list-none snap-x snap-mandatory gap-6 p-0 pb-2">
+        {lots.map((lot, index) => (
+          <li
+            key={lot.id}
+            className="flex w-[min(100vw-4rem,280px)] shrink-0 snap-start flex-col sm:w-[280px]"
+          >
+            <MarketingCardReveal index={index} className="h-full min-w-0">
+              <EditorsPickMarketingCard
+                lot={lot}
+                isAuthenticated={isAuthenticated}
+                watchedLotIds={watchedLotIds}
+                loginNextPath={loginNextPath}
+              />
+            </MarketingCardReveal>
+          </li>
+        ))}
+      </ul>
+    </ScrollRegion>
   );
 }
 
@@ -86,7 +83,12 @@ export function EditorsPicksMarketingClient({
               {MORE_LOTS_COPY.heading}
             </DisplayHeading>
           }
-          action={<MarketingViewAllLink href={VIEW_ALL_HREF} srSuffix="lots and catalogue" />}
+          action={
+            <div className="flex items-center gap-4">
+              <MarketingViewAllLink href={VIEW_ALL_HREF} srSuffix="lots and catalogue" />
+              <RailArrows key={stripKey} targetId={RAIL_ID} noun="lots" />
+            </div>
+          }
         />
 
         <EditorsPicksCarousel

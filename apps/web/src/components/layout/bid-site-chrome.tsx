@@ -1,3 +1,4 @@
+import { AnnouncerProvider } from "@/components/layout/announcer";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { SiteHeader } from "@/components/layout/site-header";
 import {
@@ -15,6 +16,11 @@ type BidSiteChromeProps = {
   transparentPaths?: string[];
   /** Wraps the header and page in site-wide extras (quick look, hotkeys, palette, toasts). */
   wrap?: (content: ReactNode) => ReactNode;
+  /**
+   * Wraps the page in the site's single main landmark (the skip link's target). Pages that bring
+   * their own main, such as the account workspace, leave it off.
+   */
+  mainLandmark?: boolean;
   children: ReactNode;
 };
 
@@ -26,6 +32,7 @@ type BidSiteChromeProps = {
 export async function BidSiteChrome({
   transparentPaths,
   wrap = (content) => content,
+  mainLandmark = false,
   children,
 }: BidSiteChromeProps) {
   const nav = await loadCachedMegaMenuSections();
@@ -35,24 +42,26 @@ export async function BidSiteChrome({
 
   return (
     <LaxDensityProvider density="client">
-      <div {...laxDensityAttributes("client")} data-bid-site="">
-        <div className="overflow-x-clip">
-          <MarketingHeaderTitleProvider>
-            {wrap(
-              <>
-                <SiteHeader
-                  nav={nav}
-                  laxProductLinks={laxProductLinks}
-                  familyLinks={familyLinks}
-                  {...(transparentPaths ? { transparentPaths } : {})}
-                />
-                {children}
-              </>,
-            )}
-          </MarketingHeaderTitleProvider>
+      <AnnouncerProvider>
+        <div {...laxDensityAttributes("client")} data-bid-site="">
+          <div className="overflow-x-clip">
+            <MarketingHeaderTitleProvider>
+              {wrap(
+                <>
+                  <SiteHeader
+                    nav={nav}
+                    laxProductLinks={laxProductLinks}
+                    familyLinks={familyLinks}
+                    {...(transparentPaths ? { transparentPaths } : {})}
+                  />
+                  {mainLandmark ? <main id="main-content">{children}</main> : children}
+                </>,
+              )}
+            </MarketingHeaderTitleProvider>
+          </div>
+          <SiteFooter crossProductLinks={crossProductFooterLinks} />
         </div>
-        <SiteFooter crossProductLinks={crossProductFooterLinks} />
-      </div>
+      </AnnouncerProvider>
     </LaxDensityProvider>
   );
 }

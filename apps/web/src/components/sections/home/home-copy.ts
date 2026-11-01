@@ -19,5 +19,4 @@ export const BETWEEN_SEASONS_COPY = {
 export const MORE_LOTS_COPY = {
   heading: "More lots",
   ariaLabel: "More lots",
-  scrollLabel: "Scroll to see more lots",
 } as const;

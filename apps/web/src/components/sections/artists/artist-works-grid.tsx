@@ -152,6 +152,8 @@ export function ArtistWorksGrid({ lots, currentUserId }: Props) {
       {visibleLots.length === 0 ? (
         <MarketingEmptyState
           variant="panel"
+          size="compact"
+          headingLevel="h3"
           context="filtered"
           title="No works match this filter"
           description="Try another filter to browse this artist's catalogue."

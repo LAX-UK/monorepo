@@ -331,18 +331,18 @@ export default async function SearchPage({ searchParams }: PageProps) {
             <MarketingEmptyState
               variant="marketing"
               context="error"
-              className="mt-8 rounded-xl border-error/30 bg-error-container/10"
+              className="mt-8"
               title="Could not load inventory"
               description={loadError}
               action={
-                <div className="flex flex-wrap justify-center gap-3">
+                <>
                   <ButtonLink Link={Link} variant="primary" href="/search">
                     Try again
                   </ButtonLink>
                   <ButtonLink Link={Link} variant="secondary" href="/sales">
                     Browse sales
                   </ButtonLink>
-                </div>
+                </>
               }
             />
           ) : filtered.length === 0 ? (
@@ -350,24 +350,25 @@ export default async function SearchPage({ searchParams }: PageProps) {
               variant="marketing"
               context={hasActiveFilters ? "filtered" : "noResults"}
               className="mt-8"
-              title={trimmed ? "No lots match that search" : "No lots to show yet"}
-              description="Try another search, or browse upcoming and past sales."
+              title={
+                hasActiveFilters || trimmed ? "No lots match these filters" : "Nothing to show yet"
+              }
+              description={
+                hasActiveFilters || trimmed
+                  ? "Try fewer filters or a different spelling."
+                  : "Search by artist, title or sale."
+              }
               action={
-                <div className="flex w-full max-w-lg flex-col items-center gap-6">
-                  {hasActiveFilters ? (
+                hasActiveFilters ? (
+                  <>
                     <ButtonLink Link={Link} variant="primary" href={clearFiltersHref}>
                       Clear filters
                     </ButtonLink>
-                  ) : null}
-                  <div className="flex flex-wrap justify-center gap-4">
-                    <ButtonLink Link={Link} variant="secondary" href="/archive">
-                      Past auctions
+                    <ButtonLink Link={Link} variant="secondary" href="/search">
+                      Search all lots
                     </ButtonLink>
-                    <ButtonLink Link={Link} variant="primary" href="/">
-                      Upcoming auctions
-                    </ButtonLink>
-                  </div>
-                </div>
+                  </>
+                ) : undefined
               }
             />
           ) : (

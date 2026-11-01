@@ -148,10 +148,10 @@ export default async function HomePage({
   const urlView = firstString(sp.view);
 
   return (
-    <main id="main-content" className="bg-page-bg">
+    <div className="bg-page-bg">
       <Suspense fallback={<HomeSkeleton />}>
         <MarketingHomeContent urlView={urlView} />
       </Suspense>
-    </main>
+    </div>
   );
 }

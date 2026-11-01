@@ -3,10 +3,6 @@ import type { APIRequestContext } from "@playwright/test";
 /** One page of the public site that the visual and accessibility specs open. */
 export type PublicRoute = { name: string; path: string };
 
-/**
- * The lot 404 joins this list when its page is rebuilt (the lot page batch): today it streams a
- * 200 response with no document title.
- */
 export const STATIC_PUBLIC_ROUTES: readonly PublicRoute[] = [
   { name: "home", path: "/" },
   { name: "calendar-live", path: "/sales?tab=live" },
@@ -19,6 +15,9 @@ export const STATIC_PUBLIC_ROUTES: readonly PublicRoute[] = [
   { name: "press", path: "/press" },
   { name: "artists", path: "/artists" },
   { name: "not-found", path: "/this-page-does-not-exist" },
+  { name: "lot-not-found", path: "/lot/missing-lot/00000000-0000-4000-8000-000000000000" },
+  { name: "sale-not-found", path: "/sales/missing-sale/00000000-0000-4000-8000-000000000000" },
+  { name: "artist-not-found", path: "/artist/missing-artist" },
 ];
 
 type SaleRow = { sale: { id: string; status: string; deliveryMode: string } };

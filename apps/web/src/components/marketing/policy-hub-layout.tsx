@@ -23,10 +23,10 @@ export function PolicyHubLayout({ children }: Props) {
   }));
 
   return (
-    <main id="main-content" className="bg-page-bg pt-[var(--header-height)] dark:bg-background">
+    <div className="bg-page-bg pt-[var(--header-height)] dark:bg-background">
       <LegalHub label="Policies and information" links={links}>
         {children}
       </LegalHub>
-    </main>
+    </div>
   );
 }
