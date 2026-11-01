@@ -115,6 +115,8 @@ export function buildLotPageView(input: LotPageViewInput): LotPageView {
     signedIn: input.signedIn,
     registrationRequired: input.viewer.registrationRequired,
     registration: input.viewer.registration,
+    position: input.viewer.position,
+    purchaseStatus: input.viewer.purchase?.status ?? null,
   });
   return {
     lifecycle: input.lifecycle,

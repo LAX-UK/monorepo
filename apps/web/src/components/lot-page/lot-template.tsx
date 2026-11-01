@@ -42,6 +42,7 @@ export function LotTemplate({
 }: LotTemplateProps) {
   const actions: LotActionContext = {
     bidEntry,
+    lotId: lot.id,
     artist: artist ? { id: artist.id, name: artist.name } : null,
     signedIn: source.signedIn,
     lotPath: lot.path,

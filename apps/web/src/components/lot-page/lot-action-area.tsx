@@ -1,9 +1,11 @@
 "use client";
 
 import { LotArtistAlertsButton } from "@/components/lot-page/lot-artist-alerts-button";
+import { dashboardCheckoutLotUrl } from "@/lib/dashboard/dashboard-copy";
+import type { LotPageView } from "@/lib/lot-page/build-lot-page-view";
 import type { LotActionSurface } from "@/lib/lot-page/lot-action-surface";
 import { ButtonLink } from "@auction/ui/lax";
-import { ArrowLeft, Mail } from "lucide-react";
+import { ArrowLeft, Mail, Receipt } from "lucide-react";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -11,6 +13,7 @@ import type { ReactNode } from "react";
 export type LotActionContext = {
   /** The bid entry, until the bid dialog replaces it. */
   bidEntry: ReactNode;
+  lotId: string;
   artist: { id: string; name: string } | null;
   signedIn: boolean;
   lotPath: string;
@@ -18,7 +21,7 @@ export type LotActionContext = {
   saleLabel: string;
 };
 
-type SurfaceRenderer = (ctx: LotActionContext) => ReactNode;
+type SurfaceRenderer = (ctx: LotActionContext, view: LotPageView) => ReactNode;
 
 /** One renderer per surface, so a new kind of action is a new row. */
 const SURFACES: Readonly<Record<LotActionSurface, SurfaceRenderer>> = {
@@ -32,6 +35,29 @@ const SURFACES: Readonly<Record<LotActionSurface, SurfaceRenderer>> = {
         returnPath={ctx.lotPath}
       />
     ) : null,
+  pay: (ctx, view) => (
+    <ButtonLink
+      href={dashboardCheckoutLotUrl(ctx.lotId)}
+      Link={Link}
+      variant="primary"
+      size="lg"
+      className="w-full"
+    >
+      {view.price.amountText ? `Pay ${view.price.amountText}` : "Pay for this lot"}
+    </ButtonLink>
+  ),
+  view_purchase: (ctx) => (
+    <ButtonLink
+      href={`/purchases/${ctx.lotId}`}
+      Link={Link}
+      variant="secondary"
+      size="lg"
+      icon={<Receipt aria-hidden />}
+      className="w-full"
+    >
+      View purchase
+    </ButtonLink>
+  ),
   enquire: () => (
     <div className="grid gap-3">
       <ButtonLink
@@ -67,11 +93,13 @@ const SURFACES: Readonly<Record<LotActionSurface, SurfaceRenderer>> = {
 export function LotActionArea({
   surface,
   context,
+  view,
 }: {
   surface: LotActionSurface;
   context: LotActionContext;
+  view: LotPageView;
 }) {
-  const content = SURFACES[surface](context);
+  const content = SURFACES[surface](context, view);
   if (content === null) return null;
   return <div className="mt-4">{content}</div>;
 }

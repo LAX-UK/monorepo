@@ -36,6 +36,7 @@ function input(over: Partial<LotPageViewInput> = {}): LotPageViewInput {
 
 const actions = {
   bidEntry: <button type="button">Bid entry</button>,
+  lotId: "lot-1",
   artist: { id: "a1", name: "Anna Whitcombe" },
   signedIn: true,
   lotPath: "/lot/x/1",
@@ -108,5 +109,56 @@ describe("LotPriceBlockView", () => {
       "/sales/modern",
     );
     expect(screen.queryByText(/£/)).toBeNull();
+  });
+
+  describe("a lot the viewer won", () => {
+    const soldInput = {
+      lifecycle: "endedSold" as const,
+      msLeft: null,
+      amounts: {
+        starting: "4200.00",
+        current: "7000.00",
+        hammer: "7000.00",
+        soldForWithPremium: "8750.00",
+      },
+    };
+
+    it("offers Pay with the amount and says when it is due", () => {
+      draw({
+        ...soldInput,
+        viewer: viewer({
+          position: "won",
+          purchase: { id: "p1", status: "due", dueAt: "2026-11-10T12:00:00Z" },
+        }),
+      });
+      expect(screen.getByRole("link", { name: "Pay £8,750" })).toHaveAttribute(
+        "href",
+        expect.stringMatching(/checkout\/lot-1$/),
+      );
+      expect(screen.getByText("Pay by Tue 10 Nov")).toBeInTheDocument();
+      expect(screen.queryByRole("button", { name: /alerts for/ })).toBeNull();
+    });
+
+    it("confirms a paid lot and links to the purchase instead of Pay", () => {
+      draw({
+        ...soldInput,
+        viewer: viewer({
+          position: "won",
+          purchase: { id: "p1", status: "paid", dueAt: null },
+        }),
+      });
+      expect(screen.getByText("You won this lot and it is paid for")).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /^Pay/ })).toBeNull();
+      expect(screen.getByRole("link", { name: "View purchase" })).toHaveAttribute(
+        "href",
+        "/purchases/lot-1",
+      );
+    });
+
+    it("keeps artist alerts for someone who did not win", () => {
+      draw({ ...soldInput, viewer: viewer({ position: "lost" }) });
+      expect(screen.getByRole("button", { name: /alerts for Anna Whitcombe/ })).toBeInTheDocument();
+      expect(screen.queryByRole("link", { name: /^Pay/ })).toBeNull();
+    });
   });
 });

@@ -8,6 +8,7 @@ export default function LotNotFound() {
   return (
     <LotPageMessage>
       <EmptyState
+        headingLevel="h1"
         illustration="search"
         title="We can't find that lot"
         description="The link may be mistyped, or the lot may have moved to another sale. Search by artist or title, or browse the current auctions."

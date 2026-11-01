@@ -1,7 +1,14 @@
 import type { ResolvedLotAction } from "@auction/domain";
 
 /** Which part of the page carries the primary action. */
-export type LotActionSurface = "bid_entry" | "artist_alerts" | "enquire" | "back_to_sale" | "none";
+export type LotActionSurface =
+  | "bid_entry"
+  | "artist_alerts"
+  | "enquire"
+  | "back_to_sale"
+  | "pay"
+  | "view_purchase"
+  | "none";
 
 /**
  * One row per action the domain can resolve, so a new action is a new row rather than another
@@ -18,6 +25,8 @@ export const LOT_ACTION_SURFACE: Readonly<Record<ResolvedLotAction, LotActionSur
   registration_pending: "bid_entry",
   registration_declined: "bid_entry",
   get_artist_alerts: "artist_alerts",
+  pay: "pay",
+  view_purchase: "view_purchase",
   enquire: "enquire",
   back_to_sale: "back_to_sale",
   none: "none",

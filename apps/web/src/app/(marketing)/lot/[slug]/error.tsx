@@ -18,6 +18,7 @@ export default function LotError({
   return (
     <LotPageMessage>
       <EmptyState
+        headingLevel="h1"
         illustration="frame"
         title="We couldn't load this lot"
         description="This is on our side. Your bids are safe. Try again in a moment."

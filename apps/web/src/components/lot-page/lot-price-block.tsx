@@ -34,7 +34,7 @@ export function LotPriceBlockView({
         <p className="m-0 mt-2 text-lax-13 leading-5 text-lax-muted">
           The rest of the sale is unaffected.
         </p>
-        <LotActionArea surface={view.actionSurface} context={actions} />
+        <LotActionArea surface={view.actionSurface} context={actions} view={view} />
       </section>
     );
   }
@@ -67,7 +67,7 @@ export function LotPriceBlockView({
         </div>
       ) : null}
 
-      <LotActionArea surface={view.actionSurface} context={actions} />
+      <LotActionArea surface={view.actionSurface} context={actions} view={view} />
     </section>
   );
 }

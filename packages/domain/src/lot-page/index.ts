@@ -82,4 +82,5 @@ export {
   resolveLotAction,
   type LotActionInput,
   type ResolvedLotAction,
+  type WonPurchaseStatus,
 } from "./lot-action.js";
