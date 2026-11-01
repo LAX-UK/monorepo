@@ -293,6 +293,12 @@ PRODUCTION_MIGRATION_THROUGH=0160 pnpm db:migrate:prod
 PRODUCTION_MIGRATION_THROUGH=0161 pnpm db:migrate:prod
 ```
 
+`PRODUCTION_MIGRATION_THROUGH=head` applies every journal migration. It is for the
+main-to-release cutover only: that runs in a maintenance window with the old
+release binaries stopped, after the ledger is normalised
+(`docs/engineering/release-main-parity.md`). The default stays `0159` until the
+cutover ships.
+
 On App Platform, set `PRODUCTION_MIGRATION_THROUGH` on the migrate Job, then
 run the normal deploy so `pnpm db:migrate:prod` picks it up. The runner
 fail-closes on unknown values and refuses to skip a stage (0161 requires 0160
