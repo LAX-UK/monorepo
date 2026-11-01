@@ -14,6 +14,8 @@ export type MarketingCatalogHubShellProps = {
   jsonLd?: ReactNode;
   className?: string;
   shellClassName?: string;
+  /** `div` when the app layout owns the page's main landmark. */
+  as?: "main" | "div";
 } & Omit<ComponentPropsWithoutRef<"main">, "children" | "className" | "id">;
 
 /** Shared layout chrome for marketing catalogue hubs. */
@@ -25,11 +27,12 @@ export function MarketingCatalogHubShell({
   jsonLd,
   className,
   shellClassName,
+  as: Tag = "main",
   ...mainProps
 }: MarketingCatalogHubShellProps) {
   return (
-    <main
-      id="main-content"
+    <Tag
+      {...(Tag === "main" ? { id: "main-content" } : {})}
       className={cn(
         MARKETING_CATALOG_PT,
         "bg-page-bg pb-[var(--page-bottom-padding)] text-on-surface dark:bg-background",
@@ -44,6 +47,6 @@ export function MarketingCatalogHubShell({
         {children}
         {footer}
       </div>
-    </main>
+    </Tag>
   );
 }
