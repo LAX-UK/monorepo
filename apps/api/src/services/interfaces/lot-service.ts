@@ -1,3 +1,4 @@
+import type { PublicBidHistory } from "@auction/domain";
 import type { ArchiveEndedAggregateFilter, ListLotsFilter } from "@auction/persistence/interfaces";
 import type { CreateLotInput, Lot, PublicLotView, StaffRoles, UserRole } from "@auction/types";
 import type { UpdateLotMarketingDetailsInput } from "@auction/validators";
@@ -25,6 +26,13 @@ export interface ILotReadService {
     viewerId: string | undefined;
     limitQuery: string | undefined;
   }): Promise<ListBidsForPublicApiResult>;
+
+  /** The anonymised public history of a lot (no bidder, paddle or account). */
+  listPublicBidHistory(input: {
+    lotId: string;
+    viewerId: string | undefined;
+    limitQuery: string | undefined;
+  }): Promise<{ kind: "ok"; data: PublicBidHistory } | { kind: "not_found" }>;
 
   countWatchersForPublicApi(
     lotId: string,

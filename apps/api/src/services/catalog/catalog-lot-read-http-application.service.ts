@@ -10,6 +10,7 @@ import { isPublicCatalogLot, viewerCanSeeNonPublicCatalog } from "@auction/valid
 import { canReadCatalogueAdmin } from "../../lib/catalogue-auth.js";
 import { listLotDocumentsPublic } from "../../lib/list-lot-documents-public.js";
 import { computeLotCheckoutPricing } from "../../lib/lot-checkout-pricing.js";
+import { buildLotDetailBiddingView } from "../../lib/lot-detail-bidding-view.js";
 import { maskLotForPublicView } from "../../lib/lot-public-view.js";
 import { lotsWithCheckoutPricing } from "../../lib/lots-with-checkout-pricing.js";
 import { mapLotToStaffListRow, mapLotToSummary } from "../../lib/mappers.js";
@@ -43,6 +44,7 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
     private readonly mediaAssetEnricher: IMediaAssetEnricher,
     private readonly db: Database,
     private readonly objectStorage: IObjectStorage,
+    private readonly now: () => Date = () => new Date(),
   ) {}
 
   async listLots(input: {
@@ -204,24 +206,31 @@ export class CatalogLotReadHttpApplicationService implements ICatalogLotReadHttp
     if (!canPreview && !isPublicCatalogLot(presented, sale)) {
       return { status: 404, body: { error: "Not found" } };
     }
-    const withPricing = {
-      ...presented,
-      checkoutPricing: computeLotCheckoutPricing(presented, sale),
-    };
     const viewerRole = normalizeUserRoleOrClient(input.viewer.role);
     const staff = input.viewer.staffRoles;
     const deleteEligibility = roleHasCapability(viewerRole, "auction.manage", staff)
       ? await this.lotSoftDeleteService.getDeleteEligibility(input.lotId)
       : null;
+    // Mask first, then price: a sealed lot's real price must not leak through its checkout figures.
+    const masked = maskLotForPublicView(
+      presented,
+      input.viewer.role ?? undefined,
+      input.viewer.staffRoles,
+    );
+    const checkoutPricing = computeLotCheckoutPricing(masked, sale);
+    const visible = { ...masked, checkoutPricing };
+    const bidding = buildLotDetailBiddingView({
+      lot: visible,
+      sale,
+      checkoutTotal: checkoutPricing.totalMajor,
+      now: this.now(),
+    });
     return {
       status: 200,
       body: {
         data: {
-          ...maskLotForPublicView(
-            withPricing,
-            input.viewer.role ?? undefined,
-            input.viewer.staffRoles,
-          ),
+          ...visible,
+          ...bidding,
           ...(deleteEligibility ? { deleteEligibility } : {}),
         },
       },

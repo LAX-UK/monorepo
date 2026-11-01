@@ -1,3 +1,4 @@
+import type { BidderAttentionGroup } from "@auction/domain";
 import { CLIENT_ROUTES } from "./client-routes";
 
 /**
@@ -13,12 +14,19 @@ export type ClientAttention = {
   /** Won lots still to pay for. */
   paymentsDue: number;
   unreadNotifications: number;
+  /**
+   * The same prompts named by the work, with a link and a count per kind. The chip, the menu and
+   * the Needs action list can say "Outbid on Estuary, evening" instead of a lot number that
+   * repeats across sales.
+   */
+  groups: readonly BidderAttentionGroup[];
 };
 
 export const NO_ATTENTION: ClientAttention = {
   outbidLots: [],
   paymentsDue: 0,
   unreadNotifications: 0,
+  groups: [],
 };
 
 /** How a count reads next to a page's name. */
