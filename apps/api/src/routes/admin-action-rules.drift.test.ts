@@ -1,6 +1,7 @@
 import {
   type CapabilityRequirement,
   DELIVERY_REPLAY_ACCESS,
+  DISPUTE_ALLOCATION_WRITE_ACCESS,
   PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
   PAYMENT_WRITE_ACCESS,
   SALES_ACCESS,
@@ -82,6 +83,18 @@ const ACTIONS: AdminAction[] = [
     rule: PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
     method: "POST",
     path: `/admin/payments/${PAYMENT_ID}/refund-buyer`,
+    expectedRoles: ["administrator", "finance"],
+  },
+  {
+    name: "allocate a dispute to invoices",
+    rule: DISPUTE_ALLOCATION_WRITE_ACCESS,
+    method: "POST",
+    path: `/admin/finance/dispute-cases/${PAYMENT_ID}/allocation`,
+    body: {
+      expectedVersion: 1,
+      lines: [{ paymentId: PAYMENT_ID, amountPence: 1000 }],
+      note: "Split across the three invoices on the charge.",
+    },
     expectedRoles: ["administrator", "finance"],
   },
   {

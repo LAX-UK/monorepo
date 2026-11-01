@@ -118,6 +118,44 @@ export const adminFinanceDisputeDomainEventsQuerySchema = z.object({
 
 const disputeCaseStatusChip = z.enum(["open", "under_review", "closed"]);
 
+/** Finance: the Disputes screen's list. `q` searches the dispute ID, lot, buyer and seller. */
+export const adminDisputeDeskListQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(200).default(50),
+  offset: z.coerce.number().int().min(0).max(50_000).default(0),
+  view: z.enum(["needs_allocation", "open", "under_review", "closed", "all"]).default("all"),
+  q: z.string().trim().max(100).optional(),
+  reason: z.string().trim().min(1).max(60).optional(),
+});
+
+export type AdminDisputeDeskListQuery = z.infer<typeof adminDisputeDeskListQuerySchema>;
+
+export const adminDisputeCaseIdParamSchema = z.object({ id: z.string().uuid() });
+
+/** Allocating a dispute names why, for the audit log. */
+export const ADMIN_DISPUTE_ALLOCATION_NOTE_MIN = 10;
+export const ADMIN_DISPUTE_ALLOCATION_NOTE_MAX = 500;
+
+export const adminDisputeAllocationBodySchema = z.object({
+  /** The case version the finance user saw. */
+  expectedVersion: z.number().int().min(1),
+  lines: z
+    .array(
+      z.object({
+        paymentId: z.string().uuid(),
+        amountPence: z.number().int().min(1),
+      }),
+    )
+    .min(1)
+    .max(50),
+  note: z
+    .string()
+    .trim()
+    .min(ADMIN_DISPUTE_ALLOCATION_NOTE_MIN)
+    .max(ADMIN_DISPUTE_ALLOCATION_NOTE_MAX),
+});
+
+export type AdminDisputeAllocationBody = z.infer<typeof adminDisputeAllocationBodySchema>;
+
 /** Finance-only: folded Stripe dispute cases derived from domain events. */
 export const adminFinanceDisputesQuerySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),

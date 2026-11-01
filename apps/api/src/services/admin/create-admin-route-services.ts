@@ -43,6 +43,7 @@ import type { ImpersonationAuditService } from "../impersonation-audit.service.j
 import type {
   AdminMetricsQueryServices,
   AdminRouteServicesWithoutSatellites,
+  IAdminDisputeDeskService,
 } from "../interfaces/admin-routes.js";
 import type { IArtistRegistryService } from "../interfaces/artist-registry.js";
 import type { IConditionReportService } from "../interfaces/condition-report.js";
@@ -185,6 +186,7 @@ export type CreateAdminRouteServicesInput = {
   adminLegalEntityBrowseReader: IAdminLegalEntityBrowseReader;
   adminDisputeCaseEnrichmentReader: IAdminDisputeCaseEnrichmentReader;
   disputeAllocationQueueReader: IDisputeAllocationQueueReader;
+  disputeDesk: IAdminDisputeDeskService;
   bidRepo: IBidRepository;
   payoutService: IPayoutAdminService;
   payoutSettlementService: IPayoutSettlementService;
@@ -276,6 +278,7 @@ export function createAdminRouteServices(
     legalEntityDocumentAdminService: input.legalEntityDocumentAdminService,
     adminDisputeCaseEnrichmentReader: input.adminDisputeCaseEnrichmentReader,
     disputeAllocationQueueReader: input.disputeAllocationQueueReader,
+    disputeDesk: input.disputeDesk,
     amlService: input.amlService,
     amlScreeningReader: input.amlScreeningReader,
     adminSourceOfFundsQueryService: input.adminSourceOfFundsQueryService,

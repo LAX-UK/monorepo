@@ -18,6 +18,7 @@ import {
   CONSIGNMENT_SAVED_REPLIES_MANAGE_ACCESS,
   type CapabilityRequirement,
   DELIVERY_REPLAY_ACCESS,
+  DISPUTE_ALLOCATION_WRITE_ACCESS,
   EMAIL_ADMIN_ACCESS,
   EMAIL_OBSERVABILITY_ACCESS,
   INVITATIONS_ACCESS,
@@ -126,6 +127,8 @@ export const requireDeliveryReplay = createRequireAccess(DELIVERY_REPLAY_ACCESS)
 export const requirePaymentManualReviewWrite = createRequireAccess(
   PAYMENT_MANUAL_REVIEW_WRITE_ACCESS,
 );
+
+export const requireDisputeAllocationWrite = createRequireAccess(DISPUTE_ALLOCATION_WRITE_ACCESS);
 
 export const requirePlatformAdminFull = createRequireAccess(PLATFORM_ADMIN_ACCESS);
 export const requireUsersDirectory = createRequireAccess(USERS_DIRECTORY_ACCESS);

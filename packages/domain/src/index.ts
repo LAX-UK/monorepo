@@ -684,6 +684,16 @@ export {
   type DisputeStage,
 } from "./dispute-case.js";
 export {
+  DISPUTE_CLOSED_STATUSES,
+  DISPUTE_UNDER_REVIEW_STATUSES,
+  disputeBelongsToView,
+  disputeDeadline,
+  disputeStatusView,
+  type DisputeDeadline,
+  type DisputeDeadlineState,
+  type DisputeView,
+} from "./dispute-case-view.js";
+export {
   payTogether,
   type PayTogetherDecision,
   type PayTogetherRefusal,
