@@ -37,6 +37,7 @@ export function createMinimalShopApiTestDeps(
       OIDC_ISSUER_URL: "http://localhost:3001",
       SHOP_SCHEDULER_ENABLED: false,
       SHOP_SCHEDULER_INTERVAL_MS: 60_000,
+      SHOP_REQUIRE_STRIPE: true,
       SHOP_FAKE_CHECKOUT_ENABLED: false,
       DOMAIN_EVENT_PUBLISH_VALIDATE: "off",
       SHOP_ADMIN_ENABLED: false,

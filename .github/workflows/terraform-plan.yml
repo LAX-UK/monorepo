@@ -38,8 +38,8 @@ jobs:
       TF_VAR_zoho_client_id: ${{ secrets.ZOHO_CLIENT_ID }}
       TF_VAR_zoho_client_secret: ${{ secrets.ZOHO_CLIENT_SECRET }}
       TF_VAR_zoho_refresh_token: ${{ secrets.ZOHO_REFRESH_TOKEN }}
-      TF_VAR_zoho_crm_sync_mode: ${{ vars.ZOHO_CRM_SYNC_MODE || 'dry_run' }}
-      TF_VAR_zoho_crm_enabled_event_types: ${{ vars.ZOHO_CRM_ENABLED_EVENT_TYPES || 'user.registered' }}
+      TF_VAR_zoho_crm_sync_mode: ${{ vars.ZOHO_CRM_SYNC_MODE || (matrix.env == 'prod' && 'off' || 'dry_run') }}
+      TF_VAR_zoho_crm_enabled_event_types: ${{ vars.ZOHO_CRM_ENABLED_EVENT_TYPES || (matrix.env == 'prod' && '' || 'user.registered') }}
       TF_VAR_zoho_crm_auction_pipeline: ${{ vars.ZOHO_CRM_AUCTION_PIPELINE || '' }}
       TF_VAR_zoho_crm_deal_stage_lot_won: ${{ vars.ZOHO_CRM_DEAL_STAGE_LOT_WON || '' }}
       TF_VAR_zoho_crm_deal_stage_payment_captured: ${{ vars.ZOHO_CRM_DEAL_STAGE_PAYMENT_CAPTURED || '' }}
@@ -69,6 +69,27 @@ jobs:
       TF_VAR_full_buyer_onboarding_enabled: ${{ vars.FULL_BUYER_ONBOARDING_ENABLED || (matrix.env == 'test' && 'true' || 'false') }}
       TF_VAR_marketing_prompts_enabled: ${{ vars.MARKETING_PROMPTS_ENABLED || 'false' }}
       TF_VAR_ga4_measurement_id: ${{ vars.GA4_MEASUREMENT_ID }}
+      # --- Shop, lax.art and cutover inputs. Defaults match each environment's apply workflow. ---
+      TF_VAR_stripe_shop_secret_key: ${{ secrets.STRIPE_SHOP_SECRET_KEY }}
+      TF_VAR_stripe_shop_webhook_secret: ${{ secrets.STRIPE_SHOP_WEBHOOK_SECRET }}
+      TF_VAR_stripe_shop_connect_webhook_secret: ${{ secrets.STRIPE_SHOP_CONNECT_WEBHOOK_SECRET }}
+      TF_VAR_stripe_shop_publishable_key: ${{ secrets.STRIPE_SHOP_PUBLISHABLE_KEY }}
+      TF_VAR_stripe_shop_connect_platform_key: ${{ vars.STRIPE_SHOP_CONNECT_PLATFORM_KEY || (matrix.env == 'prod' && 'lax_art' || 'bid_sandbox') }}
+      TF_VAR_shop_connect_transfers_enabled: ${{ vars.SHOP_CONNECT_TRANSFERS_ENABLED || 'false' }}
+      TF_VAR_shop_portal_ownership_enabled: ${{ vars.SHOP_PORTAL_OWNERSHIP_ENABLED || (matrix.env == 'test' && 'true' || 'false') }}
+      TF_VAR_shop_admin_enabled: ${{ vars.SHOP_ADMIN_ENABLED || 'false' }}
+      TF_VAR_shop_payouts_enabled: ${{ vars.SHOP_PAYOUTS_ENABLED || 'false' }}
+      TF_VAR_shop_third_party_enabled: ${{ vars.SHOP_THIRD_PARTY_ENABLED || 'false' }}
+      TF_VAR_shop_originals_enabled: ${{ vars.SHOP_ORIGINALS_ENABLED || 'false' }}
+      TF_VAR_shop_merchandise_enabled: ${{ vars.SHOP_MERCHANDISE_ENABLED || 'false' }}
+      TF_VAR_shop_editorial_enabled: ${{ vars.SHOP_EDITORIAL_ENABLED || 'false' }}
+      TF_VAR_art_editorial_enabled: ${{ vars.ART_EDITORIAL_ENABLED || 'false' }}
+      TF_VAR_shop_ops_alert_email: ${{ secrets.OPS_ALERT_EMAIL }}
+      TF_VAR_storefronts_public: ${{ vars.STOREFRONTS_PUBLIC || 'false' }}
+      TF_VAR_production_migration_through: ${{ vars.PRODUCTION_MIGRATION_THROUGH || '' }}
+      TF_VAR_maintenance_enabled: ${{ vars.MAINTENANCE_ENABLED || 'false' }}
+      TF_VAR_maintenance_allowed_ips: ${{ vars.MAINTENANCE_ALLOWED_IPS || '[]' }}
+      TF_VAR_lax_art_dns_enabled: ${{ vars.LAX_ART_DNS_ENABLED || 'false' }}
       # --- Prebuilt-image deploys (DOCR). Match the apply workflows so PR plans are accurate. ---
       TF_VAR_app_deploy_source: ${{ (matrix.env == 'prod' && (vars.APP_DEPLOY_SOURCE_PROD || 'github')) || (vars.APP_DEPLOY_SOURCE_TEST || 'github') }}
       TF_VAR_create_container_registry: ${{ vars.CREATE_CONTAINER_REGISTRY || 'false' }}
