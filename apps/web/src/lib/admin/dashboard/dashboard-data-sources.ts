@@ -12,6 +12,7 @@ import type {
   AdminFinanceIssuesPayload,
   AdminTodayMetricsPayload,
 } from "@/lib/data/http/admin.server";
+import type { ConsignmentInboxSummary } from "@auction/validators";
 
 type RecentLotRow = {
   id: string;
@@ -37,6 +38,8 @@ export type DashboardDataSources = {
   getOperationsRadar(limit: number): Promise<readonly AdminSaleOperationsSnapshot[]>;
   getWorkItems(query?: AdminWorkItemsQuery): Promise<AdminWorkItemsResponse>;
   getSaleReadiness(limit?: number): Promise<readonly AdminSaleReadinessRow[]>;
+  /** The viewer's client-message queues; null when they could not be read. */
+  getConsignmentInboxSummary?(): Promise<ConsignmentInboxSummary | null>;
 };
 
 export type DashboardRawActivity = AdminActivityRow[];

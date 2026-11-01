@@ -19,11 +19,30 @@ export const consignmentThread = pgTable(
     lastMessageAt: timestamp("last_message_at", { mode: "date", withTimezone: true }).notNull(),
     /** Who wrote the newest message: `client` means the thread waits for LAX. */
     lastMessageSide: text("last_message_side").notNull(),
+    /** When staff closed the thread; a client message or a staff reply reopens it. */
+    closedAt: timestamp("closed_at", { mode: "date", withTimezone: true }),
+    closedByUserId: text("closed_by_user_id").references(() => user.id, { onDelete: "set null" }),
+    /** A colleague answering this thread while the consignment keeps its specialist. */
+    coveringUserId: text("covering_user_id").references(() => user.id, { onDelete: "set null" }),
+    /**
+     * The first client message after the last reply the client can see; null when nobody waits.
+     * The reply clock counts from here.
+     */
+    awaitingSince: timestamp("awaiting_since", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
     uniqueIndex("consignment_thread_submission_uidx").on(table.submissionId),
     index("consignment_thread_inbox_idx").on(table.lastMessageSide, table.lastMessageAt),
+    index("consignment_thread_waiting_idx")
+      .on(table.awaitingSince)
+      .where(sql`${table.closedAt} IS NULL AND ${table.awaitingSince} IS NOT NULL`),
+    index("consignment_thread_closed_idx")
+      .on(table.closedAt)
+      .where(sql`${table.closedAt} IS NOT NULL`),
+    index("consignment_thread_covering_idx")
+      .on(table.coveringUserId)
+      .where(sql`${table.coveringUserId} IS NOT NULL`),
     check(
       "consignment_thread_last_side_check",
       sql`${table.lastMessageSide} IN ('client', 'staff')`,
@@ -47,6 +66,15 @@ export const consignmentMessage = pgTable(
     authorSide: text("author_side").notNull(),
     body: text("body").notNull().default(""),
     readAt: timestamp("read_at", { mode: "date", withTimezone: true }),
+    /** `internal` is a note for staff only; the account never sees it. */
+    visibility: text("visibility").notNull().default("thread"),
+    /**
+     * A staff reply stays with staff until this time (the window to take it back); the account
+     * sees it, and is told, only afterwards. Null for messages that were never held.
+     */
+    deliverAfter: timestamp("deliver_after", { mode: "date", withTimezone: true }),
+    /** When the account was told of a staff reply; set once. */
+    notifiedAt: timestamp("notified_at", { mode: "date", withTimezone: true }),
     createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
   },
   (table) => [
@@ -56,6 +84,14 @@ export const consignmentMessage = pgTable(
       .where(sql`${table.readAt} IS NULL`),
     check("consignment_message_side_check", sql`${table.authorSide} IN ('client', 'staff')`),
     check("consignment_message_body_length_check", sql`char_length(${table.body}) <= 4000`),
+    check(
+      "consignment_message_visibility_check",
+      sql`${table.visibility} IN ('thread', 'internal')`,
+    ),
+    check(
+      "consignment_message_internal_staff_check",
+      sql`${table.visibility} = 'thread' OR ${table.authorSide} = 'staff'`,
+    ),
   ],
 );
 
@@ -77,6 +113,47 @@ export const consignmentMessageAttachment = pgTable(
   (table) => [
     index("consignment_message_attachment_message_idx").on(table.messageId),
     uniqueIndex("consignment_message_attachment_upload_uidx").on(table.uploadObjectId),
+  ],
+);
+
+/** What happened to a thread's ownership and state. A null actor is the client's message. */
+export const consignmentThreadEvent = pgTable(
+  "consignment_thread_event",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    threadId: uuid("thread_id")
+      .notNull()
+      .references(() => consignmentThread.id, { onDelete: "cascade" }),
+    kind: text("kind").notNull(),
+    actorUserId: text("actor_user_id").references(() => user.id, { onDelete: "set null" }),
+    /** The person assigned or covering. */
+    subjectUserId: text("subject_user_id").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    index("consignment_thread_event_thread_idx").on(table.threadId, table.createdAt),
+    check(
+      "consignment_thread_event_kind_check",
+      sql`${table.kind} IN ('assigned', 'unassigned', 'covering', 'closed', 'reopened')`,
+    ),
+  ],
+);
+
+/** A reply the team shares and inserts into a thread. Titles are unique, ignoring case. */
+export const consignmentSavedReply = pgTable(
+  "consignment_saved_reply",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    createdByUserId: text("created_by_user_id").references(() => user.id, { onDelete: "set null" }),
+    updatedByUserId: text("updated_by_user_id").references(() => user.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { mode: "date", withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("consignment_saved_reply_title_uidx").on(sql`lower(${table.title})`),
+    check("consignment_saved_reply_body_length_check", sql`char_length(${table.body}) <= 4000`),
   ],
 );
 

@@ -1,5 +1,11 @@
 import type { StaffRoles, UserRole } from "@auction/types";
 
+/** What an upload kind adds to a refusal: a code the form reads, and the limit that was broken. */
+export type UploadRefusalDetail = {
+  code?: string | undefined;
+  limit?: { maxBytes: number; types: readonly string[] } | undefined;
+};
+
 export interface IUploadAuthorizationService {
   validatePresignedUploadRequest(input: {
     kind: string;
@@ -9,7 +15,7 @@ export interface IUploadAuthorizationService {
     byteSize: number;
   }):
     | { ok: true; kind: import("../upload.policy.js").UploadKind }
-    | { ok: false; status: number; error: string };
+    | ({ ok: false; status: number; error: string } & UploadRefusalDetail);
 
   findUploadForAccess(input: {
     uploadId: string;
@@ -42,7 +48,7 @@ export interface IUploadService {
           requiredHeaders: Record<string, string>;
         };
       }
-    | { ok: false; status: number; error: string; resetAt?: string }
+    | ({ ok: false; status: number; error: string; resetAt?: string } & UploadRefusalDetail)
   >;
 
   confirmUpload(input: {

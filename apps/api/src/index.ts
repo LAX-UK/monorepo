@@ -61,6 +61,20 @@ if (env.LIFECYCLE_EXECUTION_OWNER === "api") {
 } else {
   console.log("[api] lot-lifecycle worker skipped (LIFECYCLE_EXECUTION_OWNER=worker)");
 }
+// A staff reply reaches the account after its short hold; this worker sends the notice.
+const replyDelivery = container.consignmentReply;
+replyDelivery.jobs.queue.on("error", (err: Error) => {
+  reportBackground("consignment-reply-queue", err);
+});
+const replyWorker = replyDelivery.jobs.createWorker((messageId) =>
+  replyDelivery.deliver(messageId),
+);
+replyWorker.on("error", (err: Error) => {
+  reportBackground("consignment-reply-worker", err);
+});
+replyWorker.on("failed", (job: { id?: string } | undefined, err: Error) => {
+  reportBackground("consignment-reply-worker", err, { jobId: job?.id });
+});
 const deadLetterQueue = new Queue(
   DEAD_LETTER_QUEUE_NAME,
   createBullQueueOptions(DEAD_LETTER_QUEUE_NAME, { connection: container.redis }),
@@ -120,6 +134,8 @@ function shutdown(signal: NodeJS.Signals) {
         Promise.allSettled([
           ...(lotWorker ? [lotWorker.close()] : []),
           lotJobs.queue.close(),
+          replyWorker.close(),
+          replyDelivery.jobs.queue.close(),
           deadLetterQueue.close(),
           container.closeBullQueues(),
           closeBullBoardQueues(),

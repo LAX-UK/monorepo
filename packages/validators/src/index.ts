@@ -90,3 +90,4 @@ export * from "./organisation-team.js";
 export * from "./workspace-selling.js";
 export * from "./workspace-access.js";
 export * from "./consignment-message.js";
+export * from "./consignment-inbox.js";

@@ -1,4 +1,5 @@
 import type { AppShellNavItem } from "@/components/layout/app-shell-nav-item";
+import { inboxNavCount } from "@/lib/admin/consignment-inbox/inbox-presenters";
 import { STAFF_ACCESS_REVIEW_PATH } from "@/lib/admin/people/staff-access-review.vm";
 import {
   type AdminNavCounts,
@@ -15,6 +16,7 @@ import {
   AUDIT_DOMAIN_EVENTS_ACCESS,
   CATEGORIES_READ_ACCESS,
   CONDITION_REPORTS_READ_ACCESS,
+  CONSIGNMENT_INBOX_READ_ACCESS,
   FINANCE_ACCESS,
   INVITATIONS_ACCESS,
   LEGAL_ENTITY_BROWSE_ACCESS,
@@ -41,6 +43,7 @@ import {
   ClipboardList,
   Gauge,
   History,
+  Inbox,
   KeyRound,
   ListTree,
   Mail,
@@ -149,6 +152,16 @@ function buildStaffNavGroupSpecs(
           icon: Gauge,
           match: (pathname) => pathname === "/admin",
           requirement: STAFF_OVERVIEW_ACCESS,
+        },
+        {
+          // A daily queue, so it sits in the top block: the count is the unanswered client
+          // messages this person has.
+          id: "inbox",
+          href: "/admin/inbox",
+          label: "Inbox",
+          icon: Inbox,
+          requirement: CONSIGNMENT_INBOX_READ_ACCESS,
+          ...navBadge(inboxNavCount(navCounts.inboxWaitingForYou) ?? 0, "warning"),
         },
       ],
     },

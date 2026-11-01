@@ -85,6 +85,7 @@ export type AdminStatusDomain =
   | "dispute"
   | "category"
   | "venue"
-  | "onsiteEvent";
+  | "onsiteEvent"
+  | "consignmentThread";
 
 export type StatusDomain = AdminStatusDomain;

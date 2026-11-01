@@ -1669,6 +1669,44 @@ describe("SaleService.getSaleDetailForPublicApi", () => {
     const r = await svc.getSaleDetailForPublicApi("s-draft", undefined);
     expect(r).toBeNull();
   });
+
+  function atgDraftDetailService(distribution: "public_marketplace" | "private_test") {
+    const sale = baseSale({ id: "s-atg", status: "draft" });
+    const saleRepo = {
+      findById: vi.fn().mockResolvedValue(sale),
+    } as unknown as ISaleRepository;
+    const lotRepo = {
+      findBySaleId: vi.fn().mockResolvedValue([]),
+    } as unknown as ILotRepository;
+    const ownership: AtgSaleOwnershipSnapshot = {
+      saleStatus: "draft",
+      atgRemoteStatus: "published",
+      atgLinked: true,
+      atgSoldLotCount: 0,
+      sellingPlatform: "atg",
+      atgDistribution: distribution,
+    };
+    const saleChannelReader = {
+      getSaleOwnership: vi.fn().mockResolvedValue(ownership),
+      getSaleOwnerships: vi.fn().mockResolvedValue(new Map([["s-atg", ownership]])),
+      getLotAtgState: vi.fn(),
+      getSoldLotIds: vi.fn().mockResolvedValue(new Set()),
+    } as unknown as ISaleChannelReader;
+    return new SaleService(
+      saleServiceOpts({ saleRepo, lotRepo, jobScheduler: null, saleChannelReader }),
+    );
+  }
+
+  it("returns null for a private-test ATG draft", async () => {
+    const svc = atgDraftDetailService("private_test");
+    expect(await svc.getSaleDetailForPublicApi("s-atg", undefined)).toBeNull();
+  });
+
+  it("returns a publicly listed ATG draft", async () => {
+    const svc = atgDraftDetailService("public_marketplace");
+    const r = await svc.getSaleDetailForPublicApi("s-atg", undefined);
+    expect(r?.data.sale.id).toBe("s-atg");
+  });
 });
 
 describe("SaleService.listSaleLotsPageForPublicApi", () => {
@@ -2242,6 +2280,7 @@ describe("SaleService one-platform-per-sale guards", () => {
     atgLinked: true,
     atgSoldLotCount: 0,
     sellingPlatform: "atg",
+    atgDistribution: "public_marketplace",
   };
 
   function channelReader(lotState: AtgLotChannelState): ISaleChannelReader {
@@ -2312,6 +2351,7 @@ describe("SaleService one-platform-per-sale guards", () => {
       atgLinked: true,
       atgSoldLotCount: 1,
       sellingPlatform: "atg",
+      atgDistribution: "public_marketplace",
     };
     const soldLot = {
       id: "lot-1",
