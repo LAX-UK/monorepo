@@ -7,7 +7,7 @@ vi.mock("next/navigation", () => ({
   usePathname: () => "/",
 }));
 
-vi.mock("@auction/ui/components/dropdown-menu", async () => {
+vi.mock("@auction/ui/components/dropdown-menu", async (importOriginal) => {
   const React = await import("react");
   const DropdownOpenContext = React.createContext(false);
 
@@ -60,7 +60,11 @@ vi.mock("@auction/ui/components/dropdown-menu", async () => {
     );
   }
 
+  // Everything the account menu does not use stays real, so other kit parts that share this module
+  // (the LAX menu behind the cover's controls) keep their exports.
+  const actual = await importOriginal<Record<string, unknown>>();
   return {
+    ...actual,
     DropdownMenu,
     DropdownMenuTrigger: ({ children }: { asChild?: boolean; children: ReactNode }) => (
       <>{children}</>

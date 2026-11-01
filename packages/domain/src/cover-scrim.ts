@@ -29,14 +29,14 @@ export const CREDIT_BAND_CAP = 0.9;
 export const DARK_TONE_MARGIN = 0.12;
 const SEARCH_STEP = 0.01;
 
-const SCRIM_COLOUR: Record<CoverTextTone, Rgb> = {
+export const SCRIM_COLOUR: Record<CoverTextTone, Rgb> = {
   light: [10, 11, 11],
   dark: [246, 244, 238],
 };
 
-type TextStyle = { colour: Rgb; alpha: number };
+export type TextStyle = { colour: Rgb; alpha: number };
 
-const TEXT_STYLE: Record<CoverTextTone, Record<CoverTextLine, TextStyle>> = {
+export const TEXT_STYLE: Record<CoverTextTone, Record<CoverTextLine, TextStyle>> = {
   light: {
     eyebrow: { colour: [255, 255, 255], alpha: 0.88 },
     title: { colour: [255, 255, 255], alpha: 1 },

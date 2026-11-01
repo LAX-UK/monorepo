@@ -567,6 +567,26 @@ html.lenis {
   }
 }
 
+/* The cover's one motion: the picture settles from 1.00 to 1.03 over 14 seconds. */
+@keyframes marketing-cover-settle {
+  from {
+    transform: scale(1);
+  }
+  to {
+    transform: scale(1.03);
+  }
+}
+
+.marketing-cover-settle {
+  animation: marketing-cover-settle 14s cubic-bezier(0.2, 0.6, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .marketing-cover-settle {
+    animation: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .marketing-success-state__circle,
   .marketing-success-state__tick {
