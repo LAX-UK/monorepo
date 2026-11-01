@@ -210,7 +210,7 @@ describe.skipIf(!HAS_DB)(
       await deleteIdentityUserFixtures(db, [buyerUserId, staffUserId]);
     });
 
-    const mine = (rows: { stripeDisputeId: string }[]) =>
+    const mine = <T extends { stripeDisputeId: string }>(rows: T[]): T[] =>
       rows.filter((r) => r.stripeDisputeId.startsWith(`dp_dd_${run}_`));
 
     it("lists the cases of a view, soonest respond-by first, closed cases last", async () => {
