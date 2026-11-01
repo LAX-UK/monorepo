@@ -19,6 +19,16 @@ describe("reminderOptions", () => {
     expect(defaultReminderKind(options)).toBe("day_before_close");
   });
 
+  it("says when each arrives in UK time, the way the row says when the lot closes", () => {
+    const options = reminderOptions(
+      { startsAt: now.getTime() - HOUR, closesAt: Date.parse("2026-11-21T07:00:00Z") },
+      now,
+    );
+    expect(options.find((o) => o.value === "hour_before_close")?.description).toBe(
+      "Tomorrow 06:00",
+    );
+  });
+
   it("says why a time that has passed can't be chosen", () => {
     const options = reminderOptions(
       { startsAt: now.getTime() - HOUR, closesAt: now.getTime() + 3 * HOUR },

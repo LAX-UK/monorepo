@@ -1,4 +1,4 @@
-import { formatDateTimeShort } from "@/lib/ui/format";
+import { formatLotMoment } from "@/lib/bid/lot-moment";
 import {
   WATCHED_LOT_REMINDER_KINDS,
   type WatchedLotReminderKind,
@@ -28,7 +28,7 @@ export function reminderRowLabel(reminder: WatchedLotReminderVm | null): string 
 export type ReminderOption = {
   value: WatchedLotReminderKind;
   label: string;
-  /** When it would arrive: "26 Nov, 18:00", or why it can't be chosen. */
+  /** When it would arrive, in UK time: "Tomorrow 17:00", "26 Nov 18:00". */
   description: string;
   disabledReason?: string;
 };
@@ -45,7 +45,8 @@ export function reminderOptions(
   return WATCHED_LOT_REMINDER_KINDS.map((kind) => {
     const due = watchedLotReminderDueAt(kind, times);
     const passed = !due || due.getTime() <= now.getTime();
-    const when = due ? formatDateTimeShort(due) : "";
+    // UK time, as the row says when the lot closes.
+    const when = due ? formatLotMoment(due, now) : "";
     return {
       value: kind,
       label: OPTION_LABEL[kind],
