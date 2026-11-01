@@ -18,7 +18,7 @@ import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { HOME_HERO_CONTENT_PT, HOME_HERO_MIN_H } from "@/lib/marketing/home-hero-layout";
 import { RevealOnMount } from "@auction/marketing-ui";
 import { Carousel, CarouselContent, CarouselItem, cn, useCarousel } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { useMemo, useState } from "react";
 
@@ -148,9 +148,9 @@ function HeroNavButtons({ onPrev, onNext }: { onPrev: () => void; onNext: () => 
     <div className="flex items-center gap-2">
       <Button
         type="button"
-        variant="outline"
-        size="icon"
-        className="min-h-[44px] min-w-[44px] border-nav-border bg-surface/80 text-brand-900 backdrop-blur-sm hover:bg-surface dark:border-border-hairline dark:text-on-surface"
+        variant="secondary"
+        size="icon-md"
+        className="min-w-[44px] border-nav-border bg-surface/80 text-brand-900 backdrop-blur-sm hover:bg-surface dark:border-border-hairline dark:text-on-surface"
         aria-label="Previous saleroom"
         onClick={onPrev}
       >
@@ -158,9 +158,9 @@ function HeroNavButtons({ onPrev, onNext }: { onPrev: () => void; onNext: () => 
       </Button>
       <Button
         type="button"
-        variant="outline"
-        size="icon"
-        className="min-h-[44px] min-w-[44px] border-nav-border bg-surface/80 text-brand-900 backdrop-blur-sm hover:bg-surface dark:border-border-hairline dark:text-on-surface"
+        variant="secondary"
+        size="icon-md"
+        className="min-w-[44px] border-nav-border bg-surface/80 text-brand-900 backdrop-blur-sm hover:bg-surface dark:border-border-hairline dark:text-on-surface"
         aria-label="Next saleroom"
         onClick={onNext}
       >

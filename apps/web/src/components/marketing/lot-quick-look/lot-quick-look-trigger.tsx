@@ -9,7 +9,7 @@ import {
   resolveOverlayChrome,
 } from "@/lib/ui/overlay-tone-classes";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { Eye } from "lucide-react";
 import { type MouseEvent, useRef } from "react";
 import { useLotQuickLookOptional } from "./lot-quick-look-context";
@@ -69,7 +69,7 @@ export function LotQuickLookTrigger({
       ref={triggerRef}
       type="button"
       variant="ghost"
-      size="icon"
+      size="icon-md"
       onClick={handleClick}
       className={cn(shell, className, "[&_svg]:pointer-events-none [&_svg]:size-5")}
       {...(useOverlayChrome ? overlayToneProps(overlayTone) : {})}

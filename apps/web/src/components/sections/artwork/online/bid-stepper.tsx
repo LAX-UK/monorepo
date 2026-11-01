@@ -2,7 +2,7 @@
 
 import { formatMoney } from "@/lib/format-currency";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { Minus, Plus } from "lucide-react";
 import { useId, useMemo } from "react";
 
@@ -57,7 +57,7 @@ export function BidStepper({
         aria-label="Decrease bid"
         disabled={disabled || atMin}
         onClick={dec}
-        className="flex size-12 shrink-0 items-center justify-center rounded-[4px] outline outline-1 outline-offset-[-1px] outline-outline-variant transition-colors hover:bg-black/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-surface/20 disabled:opacity-40 dark:focus-visible:ring-white/20"
+        className="flex shrink-0 items-center justify-center outline outline-1 outline-offset-[-1px] outline-outline-variant transition-colors hover:bg-black/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-surface/20 disabled:opacity-40 dark:focus-visible:ring-white/20"
       >
         <Minus className="size-5 text-on-surface" aria-hidden />
       </Button>
@@ -85,7 +85,7 @@ export function BidStepper({
         aria-label="Increase bid"
         disabled={disabled}
         onClick={inc}
-        className="flex size-12 shrink-0 items-center justify-center rounded-[4px] outline outline-1 outline-offset-[-1px] outline-outline-variant transition-colors hover:bg-black/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-surface/20 disabled:opacity-40 dark:focus-visible:ring-white/20"
+        className="flex shrink-0 items-center justify-center outline outline-1 outline-offset-[-1px] outline-outline-variant transition-colors hover:bg-black/[0.04] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-on-surface/20 disabled:opacity-40 dark:focus-visible:ring-white/20"
       >
         <Plus className="size-5 text-on-surface" aria-hidden />
       </Button>

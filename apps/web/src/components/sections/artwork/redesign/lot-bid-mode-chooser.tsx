@@ -2,7 +2,7 @@
 
 import type { LotBidEntryMode } from "@/lib/bid/lot-bid-entry-mode";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { Gavel, Zap } from "lucide-react";
 
 type Props = {
@@ -47,12 +47,11 @@ export function LotBidModeChooser({ mode, onModeChange, disabled = false, classN
               key={m.id}
               type="button"
               variant="ghost"
-              size="link"
               disabled={disabled}
               aria-pressed={selected}
               onClick={() => onModeChange(m.id)}
               className={cn(
-                "flex h-auto min-h-0 w-full min-w-0 flex-col items-start justify-start gap-2 whitespace-normal rounded-lg border p-4 text-left shadow-none transition-colors",
+                "flex h-auto min-h-0 w-full min-w-0 flex-col items-start justify-start gap-2 whitespace-normal border p-4 text-left transition-colors",
                 selected
                   ? "border-primary bg-primary/10 ring-2 ring-primary/30"
                   : "border-outline-variant/40 bg-surface-container-lowest hover:border-link/40 dark:bg-surface-container-low/40",

@@ -25,7 +25,7 @@ import { breadcrumbJsonLd, itemListJsonLd, jsonLdScript } from "@/lib/seo/struct
 import { lotPath } from "@/lib/seo/url";
 import { getSiteUrl } from "@/lib/site-url";
 import type { Category, Lot } from "@auction/types";
-import { Button } from "@auction/ui";
+import { ButtonLink } from "@auction/ui/lax";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Suspense } from "react";
@@ -184,12 +184,12 @@ export default async function ArchivePage({ searchParams }: PageProps) {
           description="We couldn't load past auction results right now. Please try again in a moment."
           action={
             <>
-              <Button variant="cta" asChild>
-                <Link href="/archive">Try again</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/">Back to home</Link>
-              </Button>
+              <ButtonLink Link={Link} variant="primary" href="/archive">
+                Try again
+              </ButtonLink>
+              <ButtonLink Link={Link} variant="secondary" href="/">
+                Back to home
+              </ButtonLink>
             </>
           }
         />

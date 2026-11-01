@@ -7,6 +7,7 @@ import {
 } from "@/lib/ecosystem/product-directory.server";
 import { MarketingHeaderTitleProvider } from "@/lib/marketing/marketing-header-title-context";
 import { loadCachedMegaMenuSections } from "@/lib/marketing/mega-menu-sections.server";
+import { LaxDensityProvider, laxDensityAttributes } from "@auction/ui/lax";
 import type { ReactNode } from "react";
 
 type BidSiteChromeProps = {
@@ -20,6 +21,7 @@ type BidSiteChromeProps = {
 /**
  * The public lax.bid frame: the LAX top bar and Bid header, the page, then the Bid footer.
  * The marketing pages and a personal client's account pages share it, so they read as one site.
+ * The frame sets the client density, so kit controls are 36px on a desktop and 44px on a phone.
  */
 export async function BidSiteChrome({
   transparentPaths,
@@ -32,23 +34,25 @@ export async function BidSiteChrome({
   const familyLinks = loadBidFamilyLinks();
 
   return (
-    <>
-      <div className="overflow-x-clip">
-        <MarketingHeaderTitleProvider>
-          {wrap(
-            <>
-              <SiteHeader
-                nav={nav}
-                laxProductLinks={laxProductLinks}
-                familyLinks={familyLinks}
-                {...(transparentPaths ? { transparentPaths } : {})}
-              />
-              {children}
-            </>,
-          )}
-        </MarketingHeaderTitleProvider>
+    <LaxDensityProvider density="client">
+      <div {...laxDensityAttributes("client")} data-bid-site="">
+        <div className="overflow-x-clip">
+          <MarketingHeaderTitleProvider>
+            {wrap(
+              <>
+                <SiteHeader
+                  nav={nav}
+                  laxProductLinks={laxProductLinks}
+                  familyLinks={familyLinks}
+                  {...(transparentPaths ? { transparentPaths } : {})}
+                />
+                {children}
+              </>,
+            )}
+          </MarketingHeaderTitleProvider>
+        </div>
+        <SiteFooter crossProductLinks={crossProductFooterLinks} />
       </div>
-      <SiteFooter crossProductLinks={crossProductFooterLinks} />
-    </>
+    </LaxDensityProvider>
   );
 }

@@ -1,5 +1,5 @@
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
@@ -53,18 +53,18 @@ export function SegmentNotFound({
       </h1>
       <p className="mb-10 max-w-md font-body text-sm text-on-surface-variant">{description}</p>
       <div className="flex flex-wrap items-center justify-center gap-3">
-        <Button asChild variant="primary" size="lg">
-          <Link href={primaryHref}>{primaryLabel}</Link>
-        </Button>
+        <ButtonLink Link={Link} variant="primary" href={primaryHref}>
+          {primaryLabel}
+        </ButtonLink>
         {secondaryHref && secondaryLabel ? (
-          <Button asChild variant="outline" size="lg">
-            <Link href={secondaryHref}>{secondaryLabel}</Link>
-          </Button>
+          <ButtonLink Link={Link} variant="secondary" href={secondaryHref}>
+            {secondaryLabel}
+          </ButtonLink>
         ) : null}
         {searchHref ? (
-          <Button asChild variant="outline" size="lg">
-            <Link href={searchHref}>{searchLabel}</Link>
-          </Button>
+          <ButtonLink Link={Link} variant="secondary" href={searchHref}>
+            {searchLabel}
+          </ButtonLink>
         ) : null}
       </div>
     </section>

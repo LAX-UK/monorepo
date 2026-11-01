@@ -11,7 +11,7 @@ import {
 } from "@/lib/ui/overlay-tone-classes";
 import { useWatchlistToggle } from "@/lib/watchlist/use-watchlist-toggle";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { Heart } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback } from "react";

@@ -35,7 +35,7 @@ export function SaleroomMobileSummaryBar({ mode, saleTitle, canParticipate = tru
         </div>
         {canParticipate ? (
           <Link href={mode.lot.href} className={saleroomBidNowCtaClassName}>
-            Bid now →
+            Bid now
           </Link>
         ) : (
           <Link href="#catalog" className={viewLotsCtaClassName}>

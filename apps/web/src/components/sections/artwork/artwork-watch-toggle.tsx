@@ -3,7 +3,7 @@
 import { FOCUS_RING } from "@/lib/marketing/chrome";
 import { useWatchlistToggle } from "@/lib/watchlist/use-watchlist-toggle";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import { Bookmark, BookmarkCheck, Loader2, LogIn } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -170,6 +170,7 @@ export function ArtworkWatchToggle({
       <>
         {liveRegion}
         <Button
+          variant="primary"
           type="button"
           disabled={busy}
           aria-pressed={watching}
@@ -199,8 +200,7 @@ export function ArtworkWatchToggle({
         {liveRegion}
         <Button
           type="button"
-          variant="secondaryOutline"
-          size="default"
+          variant="secondary"
           disabled={busy}
           aria-pressed={watching}
           aria-label={listActionAriaLabel(watching)}

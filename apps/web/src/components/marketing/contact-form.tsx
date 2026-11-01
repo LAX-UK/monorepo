@@ -8,7 +8,6 @@ import { useActionForm } from "@/lib/forms/use-action-form";
 import { contactIntentFromSearchParams } from "@/lib/marketing/contact-intent-copy";
 import { sellIntakeHref } from "@/lib/marketing/sell-intake";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import {
   Form,
   FormControl,
@@ -19,6 +18,7 @@ import {
 } from "@auction/ui/components/form";
 import { Input } from "@auction/ui/components/input";
 import { Textarea } from "@auction/ui/components/textarea";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { useState } from "react";
@@ -80,7 +80,7 @@ export function ContactForm({
       >
         <p>{intentConfig.successMessage}</p>
         {ctaLabel && ctaHref ? (
-          <Button variant="cta" asChild className="mt-5">
+          <Button variant="primary" asChild className="mt-5">
             <Link href={ctaHref}>{ctaLabel}</Link>
           </Button>
         ) : null}
@@ -262,9 +262,9 @@ function ContactSubmitButton({
   return (
     <Button
       type="submit"
-      variant="cta"
+      variant="primary"
       disabled={loading || rest.disabled}
-      className={cn("px-7 py-3.5 font-label text-xs font-semibold", className)}
+      className={cn("", className)}
       {...rest}
     >
       {loading ? "Sending\u2026" : children}

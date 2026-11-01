@@ -13,7 +13,7 @@ import { saleAllowsWebBidding } from "@/lib/sale-mode";
 import { saleLifecycleActions } from "@/lib/sale/sale-lifecycle-actions";
 import type { LegalEntityMemberRole, SaleDeliveryMode } from "@auction/types";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
+import { Button } from "@auction/ui/lax";
 import Link from "next/link";
 import type { SaleHeroVM } from "./view-models";
 
@@ -60,8 +60,8 @@ function SaleroomHeroPrimaryCta({
   if (!saleAllowsWebBidding(deliveryMode)) {
     if (hero.status === "scheduled" || hero.status === "draft") {
       return (
-        <Button variant="cta" size="lg" className={ctaClassName} asChild>
-          <Link href="#plan-visit">Plan visit →</Link>
+        <Button variant="primary" className={ctaClassName} asChild>
+          <Link href="#plan-visit">Plan your visit</Link>
         </Button>
       );
     }
@@ -73,8 +73,8 @@ function SaleroomHeroPrimaryCta({
   }
 
   return (
-    <Button variant="cta" size="lg" className={ctaClassName} asChild>
-      <a href={buildHostedLoginStartHref({ intent: "signup" })}>Register to bid →</a>
+    <Button variant="primary" className={ctaClassName} asChild>
+      <a href={buildHostedLoginStartHref({ intent: "signup" })}>Register to bid</a>
     </Button>
   );
 }

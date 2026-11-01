@@ -12,7 +12,6 @@ import { createTelephoneBooking } from "@/lib/telephone/telephone-booking-api";
 import type { TelephoneBookingSnapshot } from "@/lib/telephone/telephone-booking-types";
 import { TelephoneParticipationGate } from "@/lib/telephone/telephone-participation-gate";
 import { cn } from "@auction/ui";
-import { Button } from "@auction/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -38,6 +37,7 @@ import {
   SelectValue,
 } from "@auction/ui/components/select";
 import { Textarea } from "@auction/ui/components/textarea";
+import { Button } from "@auction/ui/lax";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Mail, Phone } from "lucide-react";
 import Link from "next/link";
@@ -111,7 +111,7 @@ export function OnsiteAbsenteeBidForm({ ctx, triggerClassName }: AbsenteeProps) 
       title="Submit absentee bid"
       description="Set a confidential maximum hammer price. Our team will confirm receipt and execute bids on your behalf in the saleroom."
       trigger={
-        <Button size="default" className={cn("w-full gap-1.5", triggerClassName)}>
+        <Button variant="primary" className={cn("w-full gap-1.5", triggerClassName)}>
           <Mail className="size-3.5" />
           Submit Bid Form
         </Button>
@@ -193,10 +193,10 @@ export function OnsiteAbsenteeBidForm({ ctx, triggerClassName }: AbsenteeProps) 
             autoComplete="off"
           />
           <div className="flex flex-col gap-2 pt-2">
-            <Button type="submit" disabled={isSubmitting}>
+            <Button variant="primary" type="submit" disabled={isSubmitting}>
               {isSubmitting ? "Submitting…" : "Submit request"}
             </Button>
-            <Button type="button" variant="outline" size="default" asChild>
+            <Button type="button" variant="secondary" asChild>
               <a href={buildAbsenteeMailto(ctx, form.getValues(), SITE_SUPPORT_EMAIL)}>
                 Use email client instead
               </a>
@@ -337,7 +337,7 @@ export function OnsiteTelephoneBidForm({
             your lot opens.
           </p>
           {createdBookingId ? (
-            <Button size="default" variant="outline" asChild>
+            <Button variant="secondary" asChild>
               <Link href={`/bids/telephone/${createdBookingId}`}>View booking</Link>
             </Button>
           ) : null}
@@ -346,7 +346,7 @@ export function OnsiteTelephoneBidForm({
       title="Request telephone line"
       description="Register for a live telephone bidding line. A representative will call you before this lot opens."
       trigger={
-        <Button size="default" variant="outline" className={cn("w-full gap-1.5", triggerClassName)}>
+        <Button variant="secondary" className={cn("w-full gap-1.5", triggerClassName)}>
           <Phone className="size-3.5" />
           Request Line
         </Button>
@@ -419,7 +419,7 @@ export function OnsiteTelephoneBidForm({
             <p className="font-body text-xs text-on-surface-variant">
               We will call {mobileDisplay ?? mobile} when your lot is approaching the block.
             </p>
-            <Button type="submit" disabled={pending} className="w-full">
+            <Button variant="primary" type="submit" disabled={pending} className="w-full">
               {pending ? "Submitting…" : "Submit request"}
             </Button>
           </form>
