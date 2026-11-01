@@ -659,12 +659,31 @@ export {
   type PaySeveralSkipReason,
 } from "./pay-several.js";
 export {
+  DISPUTE_STATUSES_WITHOUT_LOSS,
+  decideDisputeAllocation,
+  disputeFundsAfter,
+  disputeLineEffect,
+  disputeSellerSharePence,
+  isDisputeAwaitingAllocation,
+  isNewerDisputeSnapshot,
+  isTerminalDisputeStatus,
+  planAutomaticDisputeAllocation,
+  type DisputeAllocationDecision,
+  type DisputeAllocationLine,
+  type DisputeAllocationRefusal,
+  type DisputeAllocationSource,
+  type DisputeAllocationState,
+  type DisputeCandidate,
+  type DisputeFunds,
+  type DisputeLineClawback,
+  type DisputeStage,
+} from "./dispute-case.js";
+export {
   payTogether,
   type PayTogetherDecision,
   type PayTogetherRefusal,
 } from "./pay-several-checkout.js";
 export {
-  allocateGroupDispute,
   attributeGroupRefunds,
   decidePaymentGroupSettlement,
   paymentGroupIsLive,

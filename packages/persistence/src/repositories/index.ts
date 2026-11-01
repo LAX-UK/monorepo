@@ -256,6 +256,10 @@ export {
   DrizzlePaySeveralInvoiceFlagsReader,
   DrizzlePaymentGroupRepository,
 } from "./drizzle-payment-group.repository.js";
+export {
+  DrizzleDisputeCaseRepository,
+  DrizzleDisputePaymentReader,
+} from "./drizzle-dispute-case.repository.js";
 export { DrizzleConsignmentMessageRepository } from "./drizzle-consignment-message.repository.js";
 export { DrizzleConsignmentInboxReader } from "./drizzle-consignment-inbox.reader.js";
 export { DrizzleConsignmentThreadFactsReader } from "./drizzle-consignment-thread-facts.reader.js";

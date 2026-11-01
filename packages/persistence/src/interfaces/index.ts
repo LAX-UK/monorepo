@@ -1044,3 +1044,14 @@ export type {
   PaymentGroupMember,
   PaymentGroupRecord,
 } from "./payment-group.repository.js";
+export type {
+  DisputeAllocationRecord,
+  DisputeCaseRecord,
+  DisputeStripeSnapshot,
+  IDisputeAllocationQueueReader,
+  IDisputeCaseRepository,
+  IDisputePaymentReader,
+  LegacyDisputeLine,
+  NewDisputeAllocation,
+  NewDisputeCase,
+} from "./dispute-case.repository.js";
