@@ -14,5 +14,8 @@ export function ConsignmentDetailTabs({
   items: readonly TabNavItem[];
   activeId: string;
 }) {
-  return <TabNav items={items} activeId={activeId} label="Consignment" Link={Link} />;
+  // One scrolling row on a phone, so all four tabs stay in view as the design draws them.
+  return (
+    <TabNav items={items} activeId={activeId} label="Consignment" Link={Link} overflow="scroll" />
+  );
 }

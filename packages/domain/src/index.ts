@@ -110,9 +110,11 @@ export {
   AGREEMENT_NOT_ACCEPTED_MESSAGE,
   AGREEMENT_REMINDER_DAYS,
   CONSIGNMENT_AGREEMENT_TERMS_VERSION,
+  agreementAcceptanceHold,
   agreementAllowsCataloguing,
   agreementTermsComplete,
   canAcceptConsignmentAgreement,
+  type AgreementAcceptanceHold,
   decideAgreementAcceptance,
   dueAgreementReminder,
   type AgreementAcceptanceDecision,
@@ -569,6 +571,7 @@ export {
   accountPurchaseScope,
   type BuyingRecordScope,
 } from "./account-buying-scope.js";
+export { type AccountStanding, accountStatePolicy } from "./account-state-policy.js";
 export {
   AUTHORISATION_ENDING_SOON_DAYS,
   EXPIRED_INVITATION_SHOWN_DAYS,

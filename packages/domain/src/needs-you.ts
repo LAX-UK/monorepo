@@ -1,6 +1,6 @@
-import type { LegalEntityStatus } from "@auction/types";
 import { canDecideAccessRequests } from "./access-request.js";
 import { accountBidScope } from "./account-buying-scope.js";
+import { type AccountStanding, accountStatePolicy } from "./account-state-policy.js";
 import { roleBidsThroughAuthorisation } from "./bid-authority.js";
 import {
   type EntityActor,
@@ -10,11 +10,7 @@ import {
 } from "./entity-capabilities.js";
 import { roleNeedsPersonalIdentity } from "./member-role-guide.js";
 import { type OrganisationSetupState, organisationSetupState } from "./organisation-setup.js";
-import {
-  type OrganisationAction,
-  type OrganisationStatePolicy,
-  organisationStatePolicy,
-} from "./organisation-state-policy.js";
+import type { OrganisationAction, OrganisationStatePolicy } from "./organisation-state-policy.js";
 import {
   type PurchaseNextStep,
   type PurchaseNextStepFacts,
@@ -72,7 +68,8 @@ export type UnreadReply = HomeSubject & { from: string };
  */
 export type NeedsYouFacts = {
   actor: EntityActor;
-  organisation: { status: LegalEntityStatus; payoutsReady: boolean };
+  /** The acting account: an organisation, or a person's own account (`kind: "individual"`). */
+  organisation: AccountStanding;
   now: Date;
   /** The member's own identity check. */
   viewerIdentity: "verified" | "checking" | "required";
@@ -415,6 +412,8 @@ const SPECS: { readonly [K in NeedsYouKind]: Spec<K> } = {
     kind: "documents",
     section: "organisation",
     allowed: capability("entity.members.manage"),
+    // Only an organisation sends LAX documents to check.
+    requires: "send_documents",
     collect: (facts) => {
       const state = organisationSetupState(facts.organisation);
       return state && DOCUMENT_STATES.has(state) ? [{ kind: "documents" }] : [];
@@ -469,11 +468,7 @@ export function needsYouKindsFor(actor: EntityActor): NeedsYouKind[] {
 
 /** The tasks this member can complete now, in rank order. */
 export function needsYouTasks(facts: NeedsYouFacts): NeedsYouTask[] {
-  const state = organisationStatePolicy(
-    facts.organisation.status,
-    entityCapabilitiesOf(facts.actor),
-    { payoutsReady: facts.organisation.payoutsReady },
-  );
+  const state = accountStatePolicy(facts.organisation, entityCapabilitiesOf(facts.actor));
   return NEEDS_YOU_KINDS.flatMap((kind) => {
     const spec = specOf(kind) as Spec<NeedsYouKind>;
     if (!spec.allowed(facts.actor)) return [];
