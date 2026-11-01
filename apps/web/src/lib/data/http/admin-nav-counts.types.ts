@@ -16,6 +16,8 @@ export type AdminNavCounts = {
   sourceOfFundsPending: number;
   telephoneBookingsPending: number;
   legalEntityStripeRequirementsCount: number;
+  /** Unanswered client messages the signed-in person has (per person, not from the shared cache). */
+  inboxWaitingForYou: number;
 };
 
 export const EMPTY_ADMIN_NAV_COUNTS: AdminNavCounts = {
@@ -36,4 +38,5 @@ export const EMPTY_ADMIN_NAV_COUNTS: AdminNavCounts = {
   sourceOfFundsPending: 0,
   telephoneBookingsPending: 0,
   legalEntityStripeRequirementsCount: 0,
+  inboxWaitingForYou: 0,
 };

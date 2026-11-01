@@ -12,6 +12,7 @@ import {
   getAdminMetricsLive,
   getAdminMetricsToday,
 } from "@/lib/data/http/admin.server";
+import { fetchConsignmentInboxSummary } from "@/lib/data/http/consignment-inbox.server";
 
 /** Production HTTP wiring for staff dashboard slice loaders. */
 export const dashboardHttpDataSources: DashboardDataSources = {
@@ -25,4 +26,8 @@ export const dashboardHttpDataSources: DashboardDataSources = {
   getOperationsRadar: getAdminSaleroomOperationsRadar,
   getWorkItems: getAdminWorkItems,
   getSaleReadiness: getAdminSaleReadiness,
+  getConsignmentInboxSummary: async () => {
+    const summary = await fetchConsignmentInboxSummary();
+    return summary.ok ? summary.data : null;
+  },
 };

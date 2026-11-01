@@ -277,6 +277,7 @@ export type { StaffAccess, StaffPermission } from "./access/staff-access.js";
 export { CsvExportMenu } from "./data/csv-export-menu.js";
 export type { CsvExportScope } from "./data/csv-export-menu.js";
 export { StaffChip } from "./display/staff-chip.js";
+export { StaffAvatar } from "./display/staff-avatar.js";
 export type { StaffChipProps } from "./display/staff-chip.js";
 
 // Page templates

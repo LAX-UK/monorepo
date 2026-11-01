@@ -36,6 +36,8 @@ type Props = {
   submission: ItemSubmission;
   title: string;
   documentCount: number;
+  /** Client messages nobody at LAX has read: the Messages tab's count. */
+  unreadMessages: number;
   submitterLegalEntityId: string | null;
   submitterDisplayName: string | null;
   assigneeDisplayName: string | null;
@@ -54,6 +56,7 @@ export function SubmissionDetailShell({
   submission,
   title,
   documentCount,
+  unreadMessages,
   submitterLegalEntityId,
   submitterDisplayName,
   assigneeDisplayName,
@@ -163,6 +166,12 @@ export function SubmissionDetailShell({
       label: "Documents",
       href: submissionDetailTabHref(submissionId, "documents"),
       count: documentCount,
+    },
+    {
+      id: "messages",
+      label: "Messages",
+      href: submissionDetailTabHref(submissionId, "messages"),
+      ...(unreadMessages > 0 ? { count: unreadMessages } : {}),
     },
     { id: "decision", label: "Decision", href: decisionHref },
   ];

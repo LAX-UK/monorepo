@@ -18,6 +18,8 @@ import type { WorkInboxSlice } from "@/lib/admin/dashboard/work-inbox.slice";
 import type { WorkArea, WorkAssignment } from "@/lib/admin/dashboard/work-inbox.vm";
 import type { AdminWorkItemDomain } from "@/lib/data/http/admin-work-items.schema";
 import {
+  type AttentionItem,
+  AttentionList,
   type Metric,
   MetricStrip,
   Notice,
@@ -43,6 +45,8 @@ export type PersonalDashboardProps = {
   /** Some data could not load; what did loads. */
   loadWarning?: string | null;
   workInbox: WorkInboxSlice;
+  /** Client messages waiting; the card is left out when there are none. */
+  inboxQueues?: readonly AttentionItem[];
   workAreas: readonly AdminWorkItemDomain[];
   area: WorkArea;
   assignment: WorkAssignment;
@@ -94,6 +98,10 @@ export function PersonalDashboard(props: PersonalDashboardProps) {
         <Notice tone="warning" title="Some of Overview could not load">
           {props.loadWarning}
         </Notice>
+      ) : null}
+
+      {props.inboxQueues && props.inboxQueues.length > 0 ? (
+        <AttentionList title="Client messages" items={props.inboxQueues} Link={NextLink} />
       ) : null}
 
       {show("my-queue") ? (
