@@ -71,6 +71,8 @@ export type AdminFinancePayoutRoutesContainer = Pick<
 
 export type AdminSatelliteJobQueuesRoutesContainer = AdminRoutePick<"jobQueues">;
 
+export type AdminSatelliteFailedJobsRoutesContainer = AdminRoutePick<"failedJobs">;
+
 export type AdminSatelliteMarketingEventsRoutesContainer = AdminRoutePick<"marketingEvents">;
 
 export type AdminSatelliteOnsiteEventsRoutesContainer = AdminRoutePick<"onsiteEvents">;

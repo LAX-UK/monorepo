@@ -67,6 +67,15 @@ function page(overrides: Partial<React.ComponentProps<typeof ListPage<Payment>>>
 describe("ListPage", () => {
   beforeEach(() => window.localStorage.clear());
 
+  it("shows a notice about the whole list between the header and the table", () => {
+    render(page({ notice: <p role="note">Retries are switched off.</p> }));
+    const heading = screen.getByRole("heading", { level: 1, name: "Payments" });
+    const note = screen.getByRole("note");
+    const table = screen.getAllByRole("table", { name: "Payments" })[0] as HTMLElement;
+    expect(heading.compareDocumentPosition(note) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(note.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("lays the page out in the fixed order with a single heading", () => {
     render(
       page({
