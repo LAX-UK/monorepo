@@ -1,6 +1,6 @@
 "use client";
 
-import { Button } from "@auction/ui/lax";
+import { Button } from "@auction/ui/lax/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 type MarketingHangArrowsProps = {
