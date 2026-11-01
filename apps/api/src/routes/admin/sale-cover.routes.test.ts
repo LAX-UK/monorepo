@@ -88,6 +88,7 @@ const upload = (key: string, extra: Record<string, unknown> = {}) => ({
 });
 
 async function body(res: Response) {
+  // biome-ignore lint/suspicious/noExplicitAny: responses are read loosely in this test
   return (await res.json()) as Record<string, any>;
 }
 
