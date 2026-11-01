@@ -57,6 +57,10 @@ test.describe("organisation consignor journey @roles", () => {
       await expect(page.getByTestId("changes-requested")).toContainText(
         "Please add a clearer photograph of the signature.",
       );
+      // The wizard ends the page now that documents have their own tab, so its button can sit
+      // under the first-visit cookie banner; answer the banner as a person would.
+      const cookies = page.getByRole("button", { name: "Accept all" });
+      if (await cookies.isVisible().catch(() => false)) await cookies.click();
       await page.getByRole("button", { name: "Send back for review" }).first().click();
       await expect(page.getByTestId("changes-requested")).toHaveCount(0);
     });
