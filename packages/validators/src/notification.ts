@@ -1,3 +1,4 @@
+import { isValidTimeZone } from "@auction/domain";
 import { z } from "zod";
 
 /** Dashboard “Bidding preferences” (subset of notification prefs + optional client-only max bid hint). */
@@ -36,6 +37,12 @@ export const notificationPreferencePatchSchema = z.object({
   lotEndedSellerWhatsapp: z.boolean().optional(),
   quietStart: z.string().nullable().optional(),
   quietEnd: z.string().nullable().optional(),
+  /** The IANA zone the quiet hours are in ("Europe/London"). */
+  quietTimeZone: z
+    .string()
+    .max(64)
+    .refine(isValidTimeZone, { message: "Choose a real time zone" })
+    .optional(),
 });
 
 export const pushSubscriptionBodySchema = z.object({

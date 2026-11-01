@@ -1,3 +1,4 @@
+import { DEFAULT_QUIET_HOURS_TIME_ZONE } from "@auction/domain";
 import type { NotificationPreference } from "@auction/types";
 import { Bell, Mail, MessageCircle, Smartphone } from "lucide-react";
 import { z } from "zod";
@@ -32,13 +33,14 @@ export const notificationPreferencesFormSchema = z.object({
   lotEndedSellerWhatsapp: z.boolean(),
   quietStart: z.string(),
   quietEnd: z.string(),
+  quietTimeZone: z.string(),
 });
 
 export type NotificationPreferencesFormValues = z.infer<typeof notificationPreferencesFormSchema>;
 
 export type BooleanNotificationFieldName = Exclude<
   keyof NotificationPreferencesFormValues,
-  "quietStart" | "quietEnd"
+  "quietStart" | "quietEnd" | "quietTimeZone"
 >;
 
 export type NotificationChannelId = "inApp" | "push" | "email" | "whatsapp";
@@ -179,6 +181,7 @@ export function prefsToFormValues(
     lotEndedSellerWhatsapp: prefs.lotEndedSellerWhatsapp,
     quietStart: prefs.quietStart ?? "",
     quietEnd: prefs.quietEnd ?? "",
+    quietTimeZone: prefs.quietTimeZone,
   };
 }
 
@@ -244,4 +247,5 @@ export const DEFAULT_NOTIFICATION_PREFERENCES_FORM_VALUES: NotificationPreferenc
   submissionUpdatesPush: true,
   quietStart: "",
   quietEnd: "",
+  quietTimeZone: DEFAULT_QUIET_HOURS_TIME_ZONE,
 };

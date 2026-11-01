@@ -29,6 +29,7 @@ const DEFAULTS: NotificationPreference = {
   lotEndedSellerWhatsapp: false,
   quietStart: null,
   quietEnd: null,
+  quietTimeZone: "Europe/London",
   updatedAt: new Date(),
 };
 

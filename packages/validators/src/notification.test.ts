@@ -27,3 +27,14 @@ test("notificationPreferencePatchSchema accepts email and whatsapp channel field
   assert.equal(parsed.quietStart, null);
   assert.equal(parsed.quietEnd, "18:00");
 });
+
+test("notificationPreferencePatchSchema takes a real IANA time zone for quiet hours", () => {
+  assert.equal(
+    notificationPreferencePatchSchema.parse({ quietTimeZone: "Europe/London" }).quietTimeZone,
+    "Europe/London",
+  );
+  assert.equal(
+    notificationPreferencePatchSchema.safeParse({ quietTimeZone: "Mars/Olympus" }).success,
+    false,
+  );
+});
