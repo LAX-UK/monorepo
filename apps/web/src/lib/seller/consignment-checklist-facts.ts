@@ -37,10 +37,11 @@ export function consignmentChecklistFacts(input: {
     "acceptedAt" | "estimateLow" | "estimateHigh" | "commissionPercent"
   > | null;
   account: SellerAccountFacts;
-  lot: Pick<Lot, "saleId" | "startTime"> | null;
+  lot: Pick<Lot, "saleId" | "startTime" | "status"> | null;
 }): ConsignmentChecklistFacts {
   return {
     submissionStatus: input.submission.status,
+    lotStatus: input.lot?.status ?? null,
     accountKind: input.account.accountKind,
     identity: input.account.identity,
     agreement: {
