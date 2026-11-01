@@ -1,5 +1,6 @@
 import "server-only";
 
+import { getHomeCover, neutralHomeCover } from "@/components/sections/home/get-home-cover";
 import {
   HOME_CATALOG_FETCH_LIMIT,
   HOME_ENDING_SOON_LIMIT,
@@ -30,12 +31,12 @@ import type { ListLotsParams } from "@/lib/data/contracts";
 import { getServerSessionUser } from "@/lib/data/http/session.server";
 import { getServerWatchedLotIdSet } from "@/lib/data/http/watchlist.server";
 import { buildHomeHang, hangSaleIds, planHomeHang } from "@/lib/hang/home-hang";
-import { resolveHomeHeroState } from "@/lib/home-hero-policy";
+import { coverSaleIds } from "@/lib/marketing-cover/home-cover";
 import type { SaleListRow } from "@/lib/sale-list-row";
 import { lotPath } from "@/lib/seo/url";
-import { type HomeStateResult, resolveHomeState } from "@auction/domain";
+import { resolveHomeState } from "@auction/domain";
 import { HANG_MAX_WORKS } from "@auction/marketing-ui";
-import type { Lot, Sale } from "@auction/types";
+import type { Lot } from "@auction/types";
 import { cache } from "react";
 
 export {
@@ -86,13 +87,6 @@ function chooseUrgencyLots(
   return { variant: "none", lots: [] };
 }
 
-/** Today's hero renders live and upcoming sales; the lead sale goes first. */
-function heroSalesLeadFirst(sales: Sale[], state: HomeStateResult): Sale[] {
-  const offered = sales.filter((sale) => sale.status === "active" || sale.status === "scheduled");
-  const lead = offered.find((sale) => sale.id === state.leadSaleId);
-  return lead ? [lead, ...offered.filter((s) => s !== lead)] : offered;
-}
-
 export const getHomeData = cache(async (): Promise<HomePageData> => {
   const [session, watchedSet] = await Promise.all([
     getServerSessionUser(),
@@ -105,6 +99,7 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
   let scheduledLots: Lot[] = [];
   let salesRows: SaleListRow[] = [];
   let endedRows: SaleListRow[] = [];
+  let salesLoaded = true;
   try {
     const filtered: ListLotsParams = {
       limit: HOME_CATALOG_FETCH_LIMIT,
@@ -123,6 +118,7 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
       limit: 12,
     });
   } catch (err) {
+    salesLoaded = false;
     console.error("[getHomeData] data load failed", err);
   }
   try {
@@ -142,10 +138,21 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
   const endingSoon = lotsEndingSoon(activeLots);
   const choice = chooseUrgencyLots(activeLots, endingSoon, scheduledLots);
   const now = new Date();
-  const hangPlan = planHomeHang(
-    homeState,
-    await getHomeHangSales(hangSaleIds(homeState), [...salesRows, ...endedRows]),
+  const rows = [...salesRows, ...endedRows];
+  const loaded = await getHomeHangSales(
+    [...new Set([...coverSaleIds(homeState, allSales), ...hangSaleIds(homeState)])],
+    rows,
   );
+  const hangPlan = planHomeHang(homeState, loaded);
+  // A failed read must not look like a quiet season: the cover then says nothing about any sale.
+  const cover = salesLoaded
+    ? await getHomeCover({
+        state: homeState,
+        sales: rows,
+        lotsBySale: new Map(loaded.map((entry) => [entry.sale.id, entry.lots])),
+        now,
+      })
+    : neutralHomeCover();
   const {
     hang: hangLots,
     rail,
@@ -157,6 +164,7 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
     featuredLotIds: leadSale?.featuredLotIds ?? [],
     hangLots: hangPlan?.candidates ?? [],
     hangLimit: HANG_MAX_WORKS,
+    heroLots: cover.lots,
   });
   const hang = buildHomeHang(hangPlan, hangLots, now);
   const urgencySection: HomeUrgencySection = {
@@ -177,13 +185,12 @@ export const getHomeData = cache(async (): Promise<HomePageData> => {
     HOME_UPCOMING_LIMIT,
   );
 
-  const heroState = resolveHomeHeroState(heroSalesLeadFirst(allSales, homeState));
   const moreLots = toEditorsPickLotCardVMs(more);
 
   return {
     homeState,
     hang,
-    heroState,
+    cover,
     jsonLdListFallback,
     urgencySection,
     upcomingAuctionTiles,
