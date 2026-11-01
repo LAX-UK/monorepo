@@ -322,9 +322,18 @@ describe("mapLotToCardVM", () => {
     expect(vm.viewerOwnsLot).toBe(false);
   });
 
-  it("labels final bid when lot has ended", () => {
-    const vm = mapLotToCardVM({ ...baseLot, status: "ended" }, { viewerUserId: null, now });
-    expect(vm.currentBidLabel).toBe("Final bid");
+  it("reports an ended lot's result, never a live bid label", () => {
+    const sold = mapLotToCardVM(
+      { ...baseLot, status: "ended", hasWinner: true },
+      { viewerUserId: null, now },
+    );
+    expect(sold.currentBidLabel).toBe("Hammer price");
+    const vm = mapLotToCardVM(
+      { ...baseLot, status: "ended", winnerId: null, hasWinner: false },
+      { viewerUserId: null, now },
+    );
+    expect(vm.currentBidLabel).toBe("Result");
+    expect(vm.currentBidValue).toBe("Not sold");
     expect(vm.closingLabel).toBeNull();
     expect(vm.isLive).toBe(false);
   });

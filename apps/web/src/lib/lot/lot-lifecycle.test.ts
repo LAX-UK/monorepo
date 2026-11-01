@@ -280,6 +280,13 @@ describe("classifyLotLifecycle", () => {
     expect(classifyLotLifecycle(l, onlineSale, Date.now()).kind).toBe("cancelled");
   });
 
+  it("reads a public ended lot as sold from hasWinner when the buyer id is hidden", () => {
+    const sold = { ...lotBase("ended", { winnerId: null }), hasWinner: true };
+    expect(classifyLotLifecycle(sold, onlineSale, Date.now()).kind).toBe("endedSold");
+    const unsold = { ...lotBase("ended", { winnerId: null }), hasWinner: false };
+    expect(classifyLotLifecycle(unsold, onlineSale, Date.now()).kind).toBe("endedNoSale");
+  });
+
   it("returns withdrawn for voided", () => {
     const l = lotBase("voided");
     expect(classifyLotLifecycle(l, onlineSale, Date.now()).kind).toBe("withdrawn");

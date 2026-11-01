@@ -87,7 +87,7 @@ export function LiveBidFeed({
             : `${watcherCount} watching`
           : null;
       return {
-        title: "Live Feed",
+        title: tone === "ended" ? "Bid history" : "Live feed",
         statusLabel: watchingLabel ? `${bidCountLabel} · ${watchingLabel}` : bidCountLabel,
         pulse: tone === "live",
         tone,
@@ -106,7 +106,7 @@ export function LiveBidFeed({
         {showHeader ? (
           <div className="flex min-h-6 flex-wrap items-center gap-2">
             <h2 className="flex-1 font-body text-xl font-medium text-on-surface">
-              {headerMode === "watching" ? watchingHeader.title : "Live Feed"}
+              {headerMode === "watching" ? watchingHeader.title : "Live feed"}
             </h2>
             {headerMode === "watching" ? (
               <div className="flex items-center gap-2 font-body text-xs font-medium text-on-surface-variant">

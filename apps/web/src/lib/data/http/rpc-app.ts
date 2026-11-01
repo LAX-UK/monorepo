@@ -81,6 +81,9 @@ export type RpcApp = {
   };
   categories: {
     $get: () => Promise<Response>;
+    "with-published-lots": {
+      $get: () => Promise<Response>;
+    };
   };
   payments: {
     $post: (args: { json: { lotId: string } }) => Promise<Response>;

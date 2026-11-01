@@ -22,7 +22,7 @@ import { useEffect, useMemo, useState } from "react";
 
 type Props = {
   lotId: string;
-  lot: Pick<Lot, "status" | "winnerId" | "auctionType"> & {
+  lot: Pick<Lot, "status" | "winnerId" | "auctionType" | "startTime" | "endTime"> & {
     marketingDetails?: Lot["marketingDetails"];
   };
   currentUserId: string | null;
@@ -91,38 +91,43 @@ export function OnlineBidsView({
     };
   }, [userBidsVmBase, initialOutbid, currentUserId, entries, liveCurrentPrice, lot]);
 
-  const lifecycle = useMemo(() => {
-    if (!onlineCtx) {
-      return classifyLotLifecycle(
+  // The lot's own times drive the lifecycle even without the online lot context (previews,
+  // tests); fabricating "now" for them classifies every live or upcoming lot as closed.
+  const startTime = onlineCtx?.lot.startTime ?? lot.startTime;
+  const endTime = onlineCtx?.lot.endTime ?? lot.endTime;
+
+  const lifecycle = useMemo(
+    () =>
+      classifyLotLifecycle(
         {
           id: lotId,
           status: lotSnap.status,
-          startTime: new Date(),
-          endTime: new Date(),
+          startTime,
+          endTime,
           winnerId: lotSnap.winnerId,
           currentPrice: liveCurrentPrice,
         },
-        null,
+        onlineCtx?.sale ?? null,
         now ?? 0,
-      );
-    }
-    return classifyLotLifecycle(
-      {
-        ...onlineCtx.lot,
-        status: lotSnap.status,
-        winnerId: lotSnap.winnerId,
-        currentPrice: liveCurrentPrice,
-      },
-      onlineCtx.sale,
-      now ?? 0,
-      {
-        recentlyExtended: Boolean(onlineCtx.extendedByMs && onlineCtx.extendedByMs > 0),
-        saleroomSessionPaused: saleroomLive?.status === "paused",
-        saleroomSessionActive: saleroomLive?.isSessionLive ?? false,
-        isOnBlock: saleroomLive?.isLotOnBlock(lotId) ?? false,
-      },
-    );
-  }, [onlineCtx, lotId, lotSnap, liveCurrentPrice, now, saleroomLive]);
+        {
+          recentlyExtended: Boolean(onlineCtx?.extendedByMs && onlineCtx.extendedByMs > 0),
+          saleroomSessionPaused: saleroomLive?.status === "paused",
+          saleroomSessionActive: saleroomLive?.isSessionLive ?? false,
+          isOnBlock: saleroomLive?.isLotOnBlock(lotId) ?? false,
+        },
+      ),
+    [
+      lotId,
+      lotSnap,
+      startTime,
+      endTime,
+      liveCurrentPrice,
+      onlineCtx?.sale,
+      onlineCtx?.extendedByMs,
+      now,
+      saleroomLive,
+    ],
+  );
 
   const typeProfile = getArtworkAuctionTypeProfile(lot.auctionType);
 

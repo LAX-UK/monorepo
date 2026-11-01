@@ -46,3 +46,38 @@ describe("listAccountBids", () => {
     expect(refused.status).toBe(403);
   });
 });
+
+describe("purchases list only ended lots", () => {
+  function buildPurchases() {
+    const list = vi.fn(async () => []);
+    const service = new UserDashboardHttpApplicationService({
+      lotService: { list },
+      paymentBuyerService: {
+        listMyPaymentsForBuyerApi: vi.fn(async () => ({ data: [] })),
+        listEntityPaymentsForBuyerApi: vi.fn(async () => ({ data: [] })),
+      },
+      saleService: {},
+      mediaUrlResolver: {},
+    } as never);
+    return { service, list };
+  }
+
+  it("never reads an open lot with a provisional leader as a personal purchase", async () => {
+    const { service, list } = buildPurchases();
+    await service.listPortfolio({ userId: "buyer-1" });
+    expect(list).toHaveBeenCalledWith(
+      expect.objectContaining({ winnerId: "buyer-1", statuses: ["ended"] }),
+    );
+  });
+
+  it("reads an organisation's purchases with the same rule", async () => {
+    const { service, list } = buildPurchases();
+    await service.listAccountPurchases({
+      userId: "owner-1",
+      account: { legalEntityId: ACCOUNT, role: "owner" },
+    });
+    expect(list).toHaveBeenCalledWith(
+      expect.objectContaining({ buyerLegalEntityId: ACCOUNT, statuses: ["ended"] }),
+    );
+  });
+});

@@ -23,6 +23,7 @@ export default async function NotificationsPage({
       <Suspense fallback={<ListSkeleton label="Loading your notifications" rows={4} />}>
         <NotificationsInboxContent
           searchParams={searchParams}
+          userId={user.id}
           role={user.role}
           staffRoles={user.staffRoles}
         />

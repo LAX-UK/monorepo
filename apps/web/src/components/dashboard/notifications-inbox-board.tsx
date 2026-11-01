@@ -7,6 +7,7 @@ import {
   ListNoResults,
   ListSkeleton,
 } from "@/components/workspace/list-states";
+import type { AttentionTask } from "@/lib/navigation/client-attention";
 import {
   INBOX_TABS,
   INBOX_TAB_LABEL,
@@ -21,6 +22,7 @@ import {
 } from "@/lib/notifications/inbox-query";
 import {
   Button,
+  ButtonLink,
   Field,
   FilterSheet,
   ListToolbar,
@@ -56,9 +58,14 @@ const EMPTY: Record<InboxTab, { title: string; description: string }> = {
 
 const ANY = "any";
 
-function tabCount(tab: InboxTab, counts: InboxCounts | null): number | null {
+function tabCount(
+  tab: InboxTab,
+  counts: InboxCounts | null,
+  tasks: readonly AttentionTask[],
+): number | null {
+  // The header chip's prompts count here too, so the tab never reads 0 beside them.
+  if (tab === "needs_action") return (counts?.needsAction ?? 0) || tasks.length || null;
   if (!counts) return null;
-  if (tab === "needs_action") return counts.needsAction;
   if (tab === "unread") return counts.unread;
   return null;
 }
@@ -71,10 +78,13 @@ function tabCount(tab: InboxTab, counts: InboxCounts | null): number | null {
  */
 export function NotificationsInboxBoard({
   paused,
+  attentionTasks,
   ...input
 }: InboxBoardInput & {
   /** The account in use is paused: notifications still arrive, and the page says so. */
   paused: string | null;
+  /** What the header chip prompts for (outbid, payment due), from the same attention reader. */
+  attentionTasks: readonly AttentionTask[];
 }) {
   const board = useNotificationsInboxBoard(input);
   const { query, setQuery, counts } = board;
@@ -93,7 +103,7 @@ export function NotificationsInboxBoard({
     })),
   ];
   const tabs: TabNavItem[] = INBOX_TABS.map((id) => {
-    const count = tabCount(id, counts);
+    const count = tabCount(id, counts, attentionTasks);
     return {
       id,
       label: INBOX_TAB_LABEL[id],
@@ -176,7 +186,13 @@ export function NotificationsInboxBoard({
             </Button>
           )}
         </SelectionBar>
-        <InboxList board={board} query={query} narrowed={narrowed} onClear={clearAll} />
+        <InboxList
+          board={board}
+          query={query}
+          narrowed={narrowed}
+          onClear={clearAll}
+          attentionTasks={attentionTasks}
+        />
       </div>
       <FilterSheet
         open={filterOpen}
@@ -208,20 +224,46 @@ export function NotificationsInboxBoard({
   );
 }
 
+/** What needs the person when no notification asks for it yet: the chip's prompts, as tasks. */
+function AttentionTaskList({ tasks }: { tasks: readonly AttentionTask[] }) {
+  return (
+    <ul className="flex flex-col gap-2" aria-label="Needs action">
+      {tasks.map((task) => (
+        <li key={task.kind}>
+          <Notice
+            tone={task.kind === "outbid" ? "danger" : "info"}
+            title={task.title}
+            actions={
+              <ButtonLink href={task.href} Link={Link}>
+                {task.actionLabel}
+              </ButtonLink>
+            }
+          />
+        </li>
+      ))}
+    </ul>
+  );
+}
+
 function InboxList({
   board,
   query,
   narrowed,
   onClear,
+  attentionTasks,
 }: {
   board: ReturnType<typeof useNotificationsInboxBoard>;
   query: InboxQuery;
   narrowed: boolean;
   onClear: () => void;
+  attentionTasks: readonly AttentionTask[];
 }) {
   if (board.error) return <ListLoadError onRetry={() => void board.retry()} />;
   if (board.loading) return <ListSkeleton label="Loading your notifications" rows={4} />;
   if (board.rows.length === 0) {
+    if (!narrowed && query.tab === "needs_action" && attentionTasks.length > 0) {
+      return <AttentionTaskList tasks={attentionTasks} />;
+    }
     return narrowed ? (
       <ListNoResults query={query.q} onClear={onClear} />
     ) : (

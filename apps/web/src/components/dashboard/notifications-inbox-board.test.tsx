@@ -39,6 +39,7 @@ vi.mock("@/components/dashboard/notifications/use-notifications-inbox", () => ({
   useNotificationsInbox: () => inbox,
 }));
 
+import type { AttentionTask } from "@/lib/navigation/client-attention";
 import { NotificationsInboxBoard } from "./notifications-inbox-board";
 
 const option = (id: string, kind: "personal" | "organisation", name: string, current = false) => ({
@@ -92,15 +93,20 @@ function notice(
   };
 }
 
-function renderBoard(query = parseInboxQuery({})) {
+function renderBoard(
+  query = parseInboxQuery({}),
+  attentionTasks: AttentionTask[] = [],
+  counts = { needsAction: 2, unread: 3 },
+) {
   return render(
     <AccountChromeProvider account={chrome}>
       <NotificationsInboxBoard
         query={query}
         initialPage={null}
-        counts={{ needsAction: 2, unread: 3 }}
+        counts={counts}
         mutedIds={[]}
         paused={null}
+        attentionTasks={attentionTasks}
       />
     </AccountChromeProvider>,
   );
@@ -145,6 +151,37 @@ describe("NotificationsInboxBoard", () => {
   it("says nothing needs you on an empty Needs action", () => {
     renderBoard();
     expect(screen.getByText("Nothing needs you")).toBeInTheDocument();
+  });
+
+  it("lists what the header chip prompts for instead of saying nothing needs you", () => {
+    renderBoard(
+      parseInboxQuery({}),
+      [
+        {
+          kind: "outbid",
+          title: "Outbid on lot 2",
+          actionLabel: "Review your bids",
+          href: "/bids?tab=active",
+        },
+        {
+          kind: "payment-due",
+          title: "2 purchases to pay",
+          actionLabel: "Go to purchases",
+          href: "/purchases",
+        },
+      ],
+      { needsAction: 0, unread: 3 },
+    );
+    expect(screen.queryByText("Nothing needs you")).toBeNull();
+    expect(screen.getByText("Outbid on lot 2")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go to purchases" })).toHaveAttribute(
+      "href",
+      "/purchases",
+    );
+    const needsAction = screen
+      .getAllByRole("link")
+      .find((a) => a.getAttribute("href")?.startsWith("/notifications"));
+    expect(needsAction?.textContent).toBe("Needs action2");
   });
 
   it("offers to clear a search that matched nothing", () => {

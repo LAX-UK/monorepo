@@ -13,6 +13,7 @@ import { LotAutoBidPanel } from "@/components/sections/artwork/redesign/lot-auto
 import { LotBidModeChooser } from "@/components/sections/artwork/redesign/lot-bid-mode-chooser";
 import { shouldShowBiddingAs } from "@/lib/bid/bidding-account";
 import { formatMoney } from "@/lib/format-currency";
+import { lotLifecycleIsClosed } from "@/lib/lot/lot-price-label";
 import { cn } from "@auction/ui";
 
 export function BidEntryRegion() {
@@ -200,7 +201,7 @@ export function BidEntryRegion() {
             )}
           </div>
 
-          {!sellerBlocked ? (
+          {!sellerBlocked && !lotLifecycleIsClosed(lifecycle.kind) ? (
             <p className="mt-6 text-xs leading-relaxed text-on-surface-variant">
               Minimum next bid{" "}
               <span className="font-medium text-on-surface">

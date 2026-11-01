@@ -1,4 +1,5 @@
 import { classifyLotTimerState } from "@/lib/lot/classify-lot-timer-state";
+import { lotWasSold } from "@/lib/lot/lot-outcome";
 import type { Lot, Sale } from "@auction/types";
 import {
   isSaleroomDeliveryMode,
@@ -36,7 +37,10 @@ export type LifecycleBadgeVM = {
 type LotLifecycleLot = Pick<
   Lot,
   "status" | "startTime" | "endTime" | "winnerId" | "currentPrice" | "id"
->;
+> & {
+  /** Public lot payloads hide the buyer and say only whether the lot sold. */
+  hasWinner?: boolean | undefined;
+};
 
 type LotLifecycleSale =
   | (Pick<Sale, "status" | "deliveryMode"> & Partial<Pick<Sale, "allowOnlineBidsBeforeGoLive">>)
@@ -73,8 +77,8 @@ export function classifyLotLifecycle(
   }
 
   if (lot.status === "ended") {
-    if (lot.winnerId) {
-      return { kind: "endedSold", msLeft: null, winnerId: lot.winnerId };
+    if (lotWasSold(lot)) {
+      return { kind: "endedSold", msLeft: null, winnerId: lot.winnerId ?? null };
     }
     return { kind: "endedNoSale", msLeft: null };
   }
