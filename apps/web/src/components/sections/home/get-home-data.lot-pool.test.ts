@@ -1,6 +1,6 @@
 import {
+  allocateHomePageLots,
   buildHomeCatalogLotPool,
-  pickHomeMoreLots,
 } from "@/components/sections/home/get-home-data.lot-pool";
 import type { Lot } from "@auction/types";
 import { describe, expect, it } from "vitest";
@@ -55,35 +55,39 @@ describe("buildHomeCatalogLotPool", () => {
   });
 });
 
-describe("pickHomeMoreLots", () => {
+describe("allocateHomePageLots", () => {
   const lots = (n: number, prefix = "lot") =>
     Array.from({ length: n }, (_, i) => baseLot({ id: `${prefix}-${i}` }));
+  const ids = (xs: Lot[]) => xs.map((l) => l.id);
 
-  it("never repeats a lot already shown elsewhere on the page", () => {
+  it("never repeats a rail lot in More lots", () => {
     const pool = lots(8);
-    const picked = pickHomeMoreLots({
+    const { rail, more } = allocateHomePageLots({
+      railLots: pool.slice(0, 3),
       pool,
-      shownLotIds: new Set(["lot-0", "lot-1", "lot-2"]),
-      limit: 8,
+      moreLimit: 8,
     });
-    expect(picked.map((l) => l.id)).toEqual(["lot-3", "lot-4", "lot-5", "lot-6", "lot-7"]);
+    expect(ids(rail)).toEqual(["lot-0", "lot-1", "lot-2"]);
+    expect(ids(more)).toEqual(["lot-3", "lot-4", "lot-5", "lot-6", "lot-7"]);
   });
 
-  it("is empty when fewer than four unique lots remain", () => {
-    const picked = pickHomeMoreLots({
-      pool: lots(6),
-      shownLotIds: new Set(["lot-0", "lot-1", "lot-2"]),
-      limit: 8,
-    });
-    expect(picked).toEqual([]);
+  it("hides More lots when fewer than four unseen lots remain", () => {
+    const pool = lots(6);
+    expect(allocateHomePageLots({ railLots: pool.slice(0, 3), pool, moreLimit: 8 }).more).toEqual(
+      [],
+    );
   });
 
-  it("shows exactly four unique lots", () => {
-    expect(pickHomeMoreLots({ pool: lots(4), shownLotIds: new Set(), limit: 8 })).toHaveLength(4);
+  it("shows exactly four unseen lots", () => {
+    expect(allocateHomePageLots({ railLots: [], pool: lots(4), moreLimit: 8 }).more).toHaveLength(
+      4,
+    );
   });
 
   it("respects the limit", () => {
-    expect(pickHomeMoreLots({ pool: lots(12), shownLotIds: new Set(), limit: 8 })).toHaveLength(8);
+    expect(allocateHomePageLots({ railLots: [], pool: lots(12), moreLimit: 8 }).more).toHaveLength(
+      8,
+    );
   });
 
   it("excludes draft lots from the pool", () => {
@@ -91,6 +95,6 @@ describe("pickHomeMoreLots", () => {
       [],
       [...lots(3), baseLot({ id: "draft-1", status: "draft" })],
     );
-    expect(pickHomeMoreLots({ pool, shownLotIds: new Set(), limit: 8 })).toEqual([]);
+    expect(allocateHomePageLots({ railLots: [], pool, moreLimit: 8 }).more).toEqual([]);
   });
 });

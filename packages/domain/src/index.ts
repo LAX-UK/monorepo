@@ -798,3 +798,23 @@ export {
   type AccessRequestStatus,
 } from "./access-request.js";
 export * from "./lot-page/index.js";
+export {
+  HOME_SECTION_ORDER,
+  HOME_STATE_WINDOWS,
+  homeStates,
+  pruneEmptyHomeSections,
+  resolveHomeState,
+  resolveHomeViewerSwaps,
+  type HomeAlertsSwap,
+  type HomeBidderApproval,
+  type HomeRegisterSwap,
+  type HomeSaleFacts,
+  type HomeSectionId,
+  type HomeState,
+  type HomeStateInput,
+  type HomeStateResult,
+  type HomeStateWindows,
+  type HomeViewer,
+  type HomeViewerSwaps,
+} from "./home-state.js";
+export { allocateHomeLots, type HomeLotSlot } from "./home-lot-pool.js";

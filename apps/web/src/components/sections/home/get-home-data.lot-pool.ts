@@ -1,4 +1,5 @@
 import { isPublicLotStatus } from "@/lib/catalog/public-catalog-visibility";
+import { allocateHomeLots } from "@auction/domain";
 import type { Lot } from "@auction/types";
 import { HOME_MORE_LOTS_MIN } from "./get-home-data.constants";
 
@@ -14,18 +15,25 @@ export function buildHomeCatalogLotPool(activeLots: Lot[], scheduledLots: Lot[])
   return merged;
 }
 
-export type HomeMoreLotsInput = {
+export type HomePageLotsInput = {
+  /** Lots the sale rail already chose, in display order. */
+  railLots: Lot[];
   pool: Lot[];
-  /** Lots already shown higher up the page (for example the live or upcoming rail). */
-  shownLotIds: ReadonlySet<string>;
-  limit: number;
+  moreLimit: number;
 };
 
 /**
- * Lots for the "More lots" strip: never a lot already shown on the page, and
- * empty (so the section is hidden) when fewer than `HOME_MORE_LOTS_MIN` remain.
+ * Every lot appears once on the page, by priority: the sale rail first, then
+ * "More lots", which is empty (so the section is hidden) when fewer than
+ * `HOME_MORE_LOTS_MIN` unseen lots remain.
  */
-export function pickHomeMoreLots({ pool, shownLotIds, limit }: HomeMoreLotsInput): Lot[] {
-  const unique = pool.filter((lot) => !shownLotIds.has(lot.id));
-  return unique.length >= HOME_MORE_LOTS_MIN ? unique.slice(0, limit) : [];
+export function allocateHomePageLots({ railLots, pool, moreLimit }: HomePageLotsInput): {
+  rail: Lot[];
+  more: Lot[];
+} {
+  const slots = allocateHomeLots<Lot>([
+    { key: "rail", candidates: railLots, limit: railLots.length },
+    { key: "more", candidates: pool, limit: moreLimit, min: HOME_MORE_LOTS_MIN },
+  ]);
+  return { rail: slots.rail ?? [], more: slots.more ?? [] };
 }
