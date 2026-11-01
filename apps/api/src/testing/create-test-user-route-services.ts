@@ -26,6 +26,13 @@ export function createTestUserRouteServicesInput(
     marketingEventService: { emit: vi.fn(), enqueue: vi.fn() } as never,
     attributionStore: { get: vi.fn(), put: vi.fn(), delete: vi.fn() } as never,
     marketingAttributionEnabled: false,
+    watchlistReminders: {
+      listForUser: vi.fn(async () => []),
+      set: vi.fn(async () => null),
+      clear: vi.fn(),
+      listPending: vi.fn(async () => []),
+      markSent: vi.fn(async () => true),
+    },
     userService: { listPublicArtists: vi.fn(), getById: vi.fn() } as never,
     mediaUrlResolver: { resolve: vi.fn(async (x: string | null) => x) } as never,
     conditionReportService: { listForBuyer: vi.fn() } as never,

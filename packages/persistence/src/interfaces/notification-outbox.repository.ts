@@ -49,6 +49,12 @@ export type NotificationPayload = {
     organisationName?: string;
     /** Last four digits of a new payout bank account. */
     bankLast4?: string | null;
+    /** A reminder the person set on a watched lot: which one, their note and when it closes. */
+    watchedLotReminder?: {
+      kind: "sale_start" | "day_before_close" | "hour_before_close";
+      note: string | null;
+      closesAt: string;
+    };
     /** An access request's words for its email: who asked, for what and why, and the decision. */
     accessRequest?: {
       requesterName: string;
