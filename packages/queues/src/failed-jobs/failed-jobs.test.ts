@@ -92,7 +92,7 @@ describe("maskJobPayload", () => {
     expect(byLabel["Recipient name"]).toMatchObject({ value: "L. F•••", masked: true });
     expect(byLabel.Phone).toMatchObject({ value: "•••••123", masked: true });
     expect(byLabel["Lot ID"]).toMatchObject({ value: "lot-14", masked: false });
-    expect(byLabel.Amount).toMatchObject({ value: "900000", masked: false });
+    expect(byLabel.Amount).toMatchObject({ value: "£9,000.00", masked: false });
     expect(byLabel.Template).toMatchObject({ value: "outbid" });
     const shown = JSON.stringify(masked.entries);
     expect(shown).not.toContain("secret");

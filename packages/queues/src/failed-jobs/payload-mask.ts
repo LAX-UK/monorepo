@@ -66,15 +66,27 @@ export function payloadLabel(key: string): string {
   return text.charAt(0).toUpperCase() + text.slice(1);
 }
 
+const POUNDS = new Intl.NumberFormat("en-GB", { style: "currency", currency: "GBP" });
+
+/** Amounts are carried in pence; the platform sells in pounds. */
+const isPence = (key: string) => /pence$/i.test(key.split(".").pop() ?? key);
+const formatPounds = (pence: number) => POUNDS.format(pence / 100);
+
 function shortText(value: string): string {
   const clean = scrubText(value);
   return clean.length > VALUE_MAX ? `${clean.slice(0, VALUE_MAX).trimEnd()}…` : clean;
 }
 
-function render(mode: FieldMode, value: unknown): { value: string; masked: boolean } | null {
+function render(
+  key: string,
+  mode: FieldMode,
+  value: unknown,
+): { value: string; masked: boolean } | null {
   if (value === null || value === undefined) return null;
   if (typeof value === "boolean") return { value: value ? "Yes" : "No", masked: false };
-  if (typeof value === "number") return { value: String(value), masked: false };
+  if (typeof value === "number") {
+    return { value: isPence(key) ? formatPounds(value) : String(value), masked: false };
+  }
   if (Array.isArray(value)) {
     if (mode === "omit") return null;
     return { value: `${value.length} ${value.length === 1 ? "item" : "items"}`, masked: false };
@@ -120,7 +132,7 @@ export function maskJobPayload(payload: unknown): MaskedPayload {
       }
       return;
     }
-    const shown = mode === "omit" ? null : render(mode, value);
+    const shown = mode === "omit" ? null : render(key, mode, value);
     if (!shown) {
       omitted += 1;
       return;
