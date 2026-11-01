@@ -1,13 +1,8 @@
 "use client";
 
-import { useOverlayTone, useOverlayToneContext } from "@/components/ui/overlay-tone-context";
 import { buildHostedLoginStartHref } from "@/lib/auth/hosted-login-start-href";
-import {
-  overlayOutlineButtonClasses,
-  overlayToneProps,
-  saleroomHeroActionSizing,
-} from "@/lib/ui/overlay-tone-classes";
-import { cn } from "@auction/ui";
+import { toggleSaleFollow } from "@/lib/data/http/sale-follow.client";
+import { Button, ButtonLink } from "@auction/ui/lax";
 import { Bell, BellRing } from "lucide-react";
 import { useCallback, useState } from "react";
 
@@ -15,49 +10,25 @@ type Props = {
   saleId: string;
   initialFollowing: boolean;
   isAuthenticated: boolean;
-  /** Optional size variant — "lg" is hero; default is compact. */
-  size?: "sm" | "lg";
-  /** Optional label override (e.g. for a hero CTA). */
-  label?: string;
+  /** Where signing in leads back to. */
   loginNextPath: string;
-  /** `outlined-block` — Figma saleroom hero: 40px height, square corners, #0A0A0A border.
-   * `rounded` (default) — pill / existing marketing style.
-   */
-  appearance?: "rounded" | "outlined-block";
+  /** The action's words before it is on; once on, the button reads "Following". */
+  label?: string;
 };
 
-import { toggleSaleFollow } from "@/lib/data/http/sale-follow.client";
-import { Button } from "@auction/ui/lax";
-
-const outlinedBlockSizing = cn(saleroomHeroActionSizing, "min-w-[117px]");
-
-const outlinedOnSurfaceClass = cn(
-  outlinedBlockSizing,
-  "border border-brand-800 bg-transparent text-brand-800 hover:bg-transparent hover:opacity-90 dark:border-on-surface/80 dark:text-on-surface",
-);
-
+/** Follow a sale to hear when it opens or closes: a secondary kit button, in the sale's action row. */
 export function SaleroomFollowToggle({
   saleId,
   initialFollowing,
   isAuthenticated,
-  size = "lg",
-  label,
   loginNextPath,
-  appearance = "rounded",
+  label = "Follow sale",
 }: Props) {
   const [following, setFollowing] = useState(initialFollowing);
   const [busy, setBusy] = useState(false);
-  const inFrame = useOverlayToneContext() != null;
-  const overlayTone = useOverlayTone("contentBlock");
-  const outlinedClass =
-    appearance === "outlined-block" && inFrame
-      ? overlayOutlineButtonClasses(overlayTone, cn(outlinedBlockSizing, "justify-center gap-2.5"))
-      : cn("inline-flex items-center justify-center gap-2.5", outlinedOnSurfaceClass);
-  const outlinedToneProps =
-    appearance === "outlined-block" && inFrame ? overlayToneProps(overlayTone) : {};
 
   const toggle = useCallback(async () => {
-    if (!isAuthenticated || busy) return;
+    if (busy) return;
     setBusy(true);
     try {
       const ok = await toggleSaleFollow(saleId, following);
@@ -65,78 +36,29 @@ export function SaleroomFollowToggle({
     } finally {
       setBusy(false);
     }
-  }, [saleId, busy, isAuthenticated, following]);
-
-  const sizeClasses =
-    size === "lg" ? "min-h-11 px-5 py-2.5 text-xs" : "min-h-9 px-3 py-1.5 text-xs";
+  }, [busy, following, saleId]);
 
   if (!isAuthenticated) {
-    if (appearance === "outlined-block") {
-      return (
-        <a
-          href={buildHostedLoginStartHref({ next: loginNextPath })}
-          className={cn(
-            outlinedClass,
-            "focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-brand",
-          )}
-          {...outlinedToneProps}
-        >
-          <BellRing className="size-4 shrink-0" aria-hidden />
-          {label ?? "Follow"}
-        </a>
-      );
-    }
     return (
-      <a
+      <ButtonLink
+        variant="secondary"
         href={buildHostedLoginStartHref({ next: loginNextPath })}
-        className={`inline-flex items-center gap-2 rounded-full border border-outline-variant/60 bg-surface-container-high font-label font-bold text-on-surface transition-colors hover:border-link hover:text-link focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring ${sizeClasses}`}
+        icon={<BellRing aria-hidden />}
       >
-        <BellRing className="size-4" aria-hidden />
-        {label ?? "Sign in to follow"}
-      </a>
-    );
-  }
-
-  if (appearance === "outlined-block") {
-    return (
-      <Button
-        type="button"
-        variant="ghost"
-        disabled={busy}
-        aria-pressed={following}
-        onClick={() => void toggle()}
-        className={cn(outlinedClass, following ? "bg-primary-container/20" : "")}
-        {...outlinedToneProps}
-      >
-        {following ? (
-          <BellRing className="size-4 shrink-0" aria-hidden />
-        ) : (
-          <Bell className="size-4 shrink-0" aria-hidden />
-        )}
-        {label ? (following ? "Following" : label) : following ? "Following" : "Follow sale"}
-      </Button>
+        {label}
+      </ButtonLink>
     );
   }
 
   return (
     <Button
-      type="button"
-      variant={following ? "secondary" : "secondary"}
-      disabled={busy}
+      variant="secondary"
+      loading={busy}
       aria-pressed={following}
+      icon={following ? <BellRing aria-hidden /> : <Bell aria-hidden />}
       onClick={() => void toggle()}
-      className={`h-auto rounded-full font-label font-bold ${sizeClasses} ${
-        following
-          ? "bg-primary-container text-on-primary-container hover:bg-primary-container hover:opacity-95"
-          : "border-outline-variant/60 bg-surface-container-high text-on-surface hover:border-link hover:bg-surface-container-high hover:text-link"
-      }`}
     >
-      {following ? (
-        <BellRing className="size-4" aria-hidden />
-      ) : (
-        <Bell className="size-4" aria-hidden />
-      )}
-      {label ?? (following ? "Following" : "Follow sale")}
+      {following ? "Following" : label}
     </Button>
   );
 }

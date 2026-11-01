@@ -107,7 +107,7 @@ describe("SaleroomCatalogLotsLive staff gating", () => {
     render(
       <SaleroomCatalogLotsLive
         view="grid"
-        lots={[lot]}
+        rows={[{ kind: "lot", key: lot.id, lot }]}
         saleForLifecycle={hybridSaleForLifecycle}
         isAuthenticated
         canParticipate={false}
@@ -122,7 +122,7 @@ describe("SaleroomCatalogLotsLive staff gating", () => {
     render(
       <SaleroomCatalogLotsLive
         view="grid"
-        lots={[lot]}
+        rows={[{ kind: "lot", key: lot.id, lot }]}
         saleForLifecycle={hybridSaleForLifecycle}
         isAuthenticated
         canParticipate
@@ -138,7 +138,7 @@ describe("SaleroomCatalogLotsLive view switching", () => {
     render(
       <SaleroomCatalogLotsLive
         view="grid"
-        lots={[lot]}
+        rows={[{ kind: "lot", key: lot.id, lot }]}
         saleForLifecycle={hybridSaleForLifecycle}
         isAuthenticated
         canParticipate={false}

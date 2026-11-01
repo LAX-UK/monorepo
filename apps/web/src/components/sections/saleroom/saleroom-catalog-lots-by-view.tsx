@@ -2,17 +2,19 @@ import { CatalogByView } from "@/components/marketing/catalog-by-view";
 import { SaleroomLotListActions } from "@/components/marketing/lot-quick-look/saleroom-lot-list-actions";
 import { MarketingEmptyState } from "@/components/marketing/marketing-empty-state";
 import type { SaleroomSaleForLifecycle } from "@/components/sections/saleroom/saleroom-lot-catalog-overlay";
+import type { CatalogueRow } from "@/lib/marketing/saleroom/catalogue-rows";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { ButtonLink } from "@auction/ui/lax";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { SaleroomLotCard } from "./saleroom-lot-card";
 import { SaleroomLotsGrid } from "./saleroom-lots-grid";
+import { SaleroomWithdrawnRow } from "./saleroom-withdrawn-row";
 import type { SaleLotCardVM } from "./view-models";
 
 type Props = {
   view: CatalogLayoutView;
-  lots: SaleLotCardVM[];
+  rows: CatalogueRow<SaleLotCardVM>[];
   saleForLifecycle: SaleroomSaleForLifecycle;
   isAuthenticated: boolean;
   /** OCP: grid image overlays (watchlist + quick-look on tile). */
@@ -25,7 +27,7 @@ type Props = {
 
 export function SaleroomCatalogLotsByView({
   view,
-  lots,
+  rows,
   saleForLifecycle,
   isAuthenticated,
   renderCorner,
@@ -34,7 +36,7 @@ export function SaleroomCatalogLotsByView({
   clearFiltersHref,
 }: Props) {
   const resolvedEmpty =
-    lots.length === 0 ? (
+    rows.length === 0 ? (
       <MarketingEmptyState
         variant="marketing"
         context={clearFiltersHref ? "filtered" : "noResults"}
@@ -57,30 +59,34 @@ export function SaleroomCatalogLotsByView({
   return (
     <CatalogByView
       view={view}
-      items={lots}
+      items={rows}
       emptyMessage={resolvedEmpty}
       renderList={(items) => (
         <ul className="list-none divide-y divide-outline-variant/10 p-0">
-          {items.map((lot) => (
-            <li key={lot.id} className="px-0">
-              <SaleroomLotCard
-                lot={lot}
-                saleForLifecycle={saleForLifecycle}
-                listActions={
-                  renderCorner ? (
-                    <SaleroomLotListActions lot={lot} isAuthenticated={isAuthenticated} />
-                  ) : undefined
-                }
-                actions={renderActions?.(lot)}
-                layout="row"
-              />
+          {items.map((entry) => (
+            <li key={entry.key} className="px-0">
+              {entry.kind === "withdrawn" ? (
+                <SaleroomWithdrawnRow row={entry.row} layout="list" />
+              ) : (
+                <SaleroomLotCard
+                  lot={entry.lot}
+                  saleForLifecycle={saleForLifecycle}
+                  listActions={
+                    renderCorner ? (
+                      <SaleroomLotListActions lot={entry.lot} isAuthenticated={isAuthenticated} />
+                    ) : undefined
+                  }
+                  actions={renderActions?.(entry.lot)}
+                  layout="row"
+                />
+              )}
             </li>
           ))}
         </ul>
       )}
       renderGrid={(items) => (
         <SaleroomLotsGrid
-          lots={items}
+          rows={items}
           saleForLifecycle={saleForLifecycle}
           {...(renderCorner ? { renderCorner } : {})}
           {...(renderActions ? { renderActions } : {})}

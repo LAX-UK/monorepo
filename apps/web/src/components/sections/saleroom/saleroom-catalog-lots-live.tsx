@@ -9,13 +9,15 @@ import type { SaleLotCardVM } from "@/components/sections/saleroom/view-models";
 import { useSaleroomLive } from "@/lib/context/saleroom-live-provider";
 import { useUrlLayoutView } from "@/lib/hooks/use-url-layout-view";
 import { lotShowsBidAction } from "@/lib/lot/lot-bid-action";
+import type { CatalogueRow } from "@/lib/marketing/saleroom/catalogue-rows";
 import type { CatalogLayoutView } from "@/lib/preferences/view-cookie";
 import { isSaleroomSessionActive } from "@/lib/saleroom/public-session-status";
 import { cn } from "@auction/ui";
 
 type Props = {
   view: CatalogLayoutView;
-  lots: SaleLotCardVM[];
+  /** The catalogue in display order: lots, with withdrawn lots at their place. */
+  rows: CatalogueRow<SaleLotCardVM>[];
   saleForLifecycle: SaleroomSaleForLifecycle;
   isAuthenticated: boolean;
   /** When false (staff viewers), hide per-lot bid CTAs. Defaults to true. */
@@ -25,7 +27,7 @@ type Props = {
 };
 
 export function SaleroomCatalogLotsLive({
-  lots,
+  rows,
   saleForLifecycle,
   view: initialView,
   isAuthenticated,
@@ -38,14 +40,15 @@ export function SaleroomCatalogLotsLive({
   const currentLotId = live?.currentLotId ?? null;
   const nextLotId = live?.nextLotId ?? null;
 
-  const sortedLots =
+  const lots = rows.flatMap((row) => (row.kind === "lot" ? [row.lot] : []));
+  const onBlockFirst =
     currentLotId != null
-      ? [...lots].sort((a, b) => {
-          if (a.id === currentLotId) return -1;
-          if (b.id === currentLotId) return 1;
+      ? [...rows].sort((a, b) => {
+          if (a.kind === "lot" && a.lot.id === currentLotId) return -1;
+          if (b.kind === "lot" && b.lot.id === currentLotId) return 1;
           return 0;
         })
-      : lots;
+      : rows;
 
   const bannerLots = lots.map((lot) => {
     const patch = live?.endedLotPatches[lot.id];
@@ -73,20 +76,25 @@ export function SaleroomCatalogLotsLive({
         isAuthenticated={isAuthenticated}
         {...(emptyMessage !== undefined ? { emptyMessage } : {})}
         {...(clearFiltersHref !== undefined ? { clearFiltersHref } : {})}
-        lots={sortedLots.map((lot) => {
+        rows={onBlockFirst.map((row): CatalogueRow<SaleLotCardVM> => {
+          if (row.kind === "withdrawn") return row;
+          const lot = row.lot;
           const patch = live?.endedLotPatches[lot.id];
           return {
-            ...lot,
-            ...(patch
-              ? {
-                  status: patch.status,
-                  winnerId: patch.winnerId,
-                  hasWinner: patch.hasWinner,
-                  isLive: false,
-                }
-              : {}),
-            isOnBlock: lot.id === currentLotId,
-            isUpNext: lot.id === nextLotId,
+            ...row,
+            lot: {
+              ...lot,
+              ...(patch
+                ? {
+                    status: patch.status,
+                    winnerId: patch.winnerId,
+                    hasWinner: patch.hasWinner,
+                    isLive: false,
+                  }
+                : {}),
+              isOnBlock: lot.id === currentLotId,
+              isUpNext: lot.id === nextLotId,
+            },
           };
         })}
         renderCorner={(lot) => (

@@ -14,7 +14,6 @@ import type { CatalogLinkParams } from "@/lib/marketing/catalog-links";
 import { lotCatalogHref } from "@/lib/marketing/catalog-links";
 import type {
   DayGalleryVM,
-  EndedSaleSummaryVM,
   PressCoverageVM,
   RelatedSaleVM,
   SaleHeroVM,
@@ -23,7 +22,7 @@ import type {
 } from "@/lib/marketing/saleroom/view-models";
 import { resolveMediaSrc } from "@/lib/media/resolve-media-src";
 import { formatSaleLotsLabel } from "@/lib/sale-list-row";
-import { saleMarketingLocationLabel } from "@/lib/sale-location-label";
+import { saleVenueLabel } from "@/lib/sale-location-label";
 import { resolveSaleStreamContext } from "@/lib/sale-stream-policy";
 import { getSaleTypePresentation } from "@/lib/sale-type-presentation";
 import { salePath } from "@/lib/seo/url";
@@ -61,16 +60,11 @@ export function formatRelativeShort(target: Date, now: Date): string {
   return "Soon";
 }
 
-function heroLocationSegment(sale: Sale): string | null {
-  return saleMarketingLocationLabel(sale);
-}
-
-/** Hero line: "29 Oct – 3 Nov 2026 · 21:00 GMT · Online" (location or format last). */
+/** Hero time line: "29 Oct – 3 Nov 2026 · 21:00 GMT". The place has its own line. */
 export function formatHeroDateLine(sale: Sale): string {
   const range = formatSaleDateLabel(sale.startTime, sale.endTime);
   const time = formatLondonTimeWithZone(sale.startTime);
-  const loc = heroLocationSegment(sale);
-  return [range, time, loc].filter(Boolean).join(" · ");
+  return [range, time].join(" · ");
 }
 
 function formatBuyerPremiumDisplay(rate: string, tiers: BuyerPremiumTier[] | null): string {
@@ -132,52 +126,6 @@ export function aggregateSaleEstimateTotal(
   }
 }
 
-/** Ended-sale aggregates from loaded lots (accurate when full catalogue is present). */
-export function computeEndedSaleSummary(
-  sale: Sale,
-  lots: Lot[],
-  opts: { loadedCount: number; totalLots: number },
-): EndedSaleSummaryVM | null {
-  if (sale.status !== "ended" || lots.length === 0) return null;
-
-  const allLoaded = opts.loadedCount === opts.totalLots && lots.length === opts.totalLots;
-  const endedLots = lots.filter((l) => l.status === "ended");
-  const soldLots = endedLots.filter(lotWasSold);
-  const unsoldCount = endedLots.length - soldLots.length;
-
-  let hammerSum = 0;
-  let currency: string | null = null;
-  for (const lot of soldLots) {
-    const price = Number.parseFloat(lot.currentPrice);
-    if (!Number.isFinite(price)) continue;
-    const lotCurrency = lotChargeCurrency(lot);
-    if (currency && lotCurrency !== currency) {
-      currency = null;
-      break;
-    }
-    currency = lotCurrency;
-    hammerSum += price;
-  }
-
-  const hammerTotalLabel =
-    currency && soldLots.length > 0
-      ? formatMoney(String(hammerSum), currency)
-      : soldLots.length > 0
-        ? "—"
-        : formatMoney("0", currency ?? "GBP");
-
-  return {
-    soldCount: soldLots.length,
-    unsoldCount,
-    hammerTotalLabel,
-    ...(!allLoaded
-      ? {
-          partialLabel: `Based on ${lots.length} of ${opts.totalLots} lots loaded.`,
-        }
-      : {}),
-  };
-}
-
 function saleStartsSoon(sale: Sale, now: Date): boolean {
   if (sale.status !== "scheduled") return false;
   const startMs = sale.startTime.getTime();
@@ -234,13 +182,19 @@ export function mapSaleToHeroVM(
   return {
     id: sale.id,
     title: sale.title,
+    subtitle: sale.subtitle?.trim() || null,
     coverImage: sale.coverImages[0] ?? null,
     startEndLabel: formatSaleDateLabel(sale.startTime, sale.endTime),
     ...toSaleCardTimingVM(sale),
     isLive,
     shareUrl: opts.shareUrl,
     itemsLabel: formatSaleLotsLabel(opts.totalLots),
+    lotCount: opts.totalLots,
+    formatLabel: getSaleTypePresentation(sale.deliveryMode).label,
+    placeLabel: saleVenueLabel(sale),
     dateLine,
+    previewOpensIso:
+      isScheduled && sale.previewStartTime ? sale.previewStartTime.toISOString() : null,
     registrationClosesShort,
     biddingStartsShort,
     leftColumnLabel,
@@ -351,7 +305,7 @@ export function mapSaleToRelatedVM(sale: Sale, lotCount: number, now = new Date(
     isLive,
     startsSoon: saleStartsSoon(sale, now),
     countdownEndIso: countdownEndIso ?? null,
-    locationLabel: saleMarketingLocationLabel(sale),
+    locationLabel: saleVenueLabel(sale),
   };
 }
 
@@ -360,7 +314,6 @@ export function mapSaleToOverviewVM(
   opts: {
     categoryLabel: string | null;
     categoryLabels?: string[];
-    endedSaleSummary?: EndedSaleSummaryVM | null;
   },
 ): SaleOverviewVM {
   const formatLabel = formatDeliveryModeLabel(sale);
@@ -413,7 +366,6 @@ export function mapSaleToOverviewVM(
     resolvedMapUrl,
     locationEmbedUrl,
     showLocation,
-    ...(opts.endedSaleSummary ? { endedSaleSummary: opts.endedSaleSummary } : {}),
   };
 }
 

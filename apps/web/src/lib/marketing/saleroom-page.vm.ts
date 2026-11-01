@@ -16,14 +16,29 @@ import {
   type SaleroomPageQuery,
 } from "@/lib/marketing/saleroom-page.query";
 import {
+  type CatalogueControls,
+  catalogueControls,
+} from "@/lib/marketing/saleroom/catalogue-controls";
+import {
+  type CatalogueRow,
+  mergeCatalogueRows,
+  withdrawnRowsFor,
+} from "@/lib/marketing/saleroom/catalogue-rows";
+import {
   aggregateSaleEstimateTotal,
-  computeEndedSaleSummary,
   mapLotToCardVM,
   mapSaleToDayGalleryVM,
   mapSaleToHeroVM,
   mapSaleToOverviewVM,
   mapSaleToPressCoverageVM,
 } from "@/lib/marketing/saleroom/mappers";
+import { type ResultsBandVM, buildResultsBand } from "@/lib/marketing/saleroom/results-band";
+import {
+  type CataloguePreparingVM,
+  type SalePageState,
+  cataloguePreparingCopy,
+  resolveSalePageState,
+} from "@/lib/marketing/saleroom/sale-page-state";
 import type {
   DayGalleryVM,
   PressCoverageVM,
@@ -75,6 +90,16 @@ export type SaleroomDetailPageVM = {
   showPressSection: boolean;
   overviewVM: SaleOverviewVM;
   lotVMs: SaleLotCardVM[];
+  /** The catalogue in the order it is shown: lots, with withdrawn lots at their place. */
+  catalogueRows: CatalogueRow<SaleLotCardVM>[];
+  /** What the sale page is before its sections: the catalogue, or a promise of lots. */
+  pageState: SalePageState;
+  /** Which catalogue controls this sale's size earns. */
+  controls: CatalogueControls;
+  /** Server results of an ended sale, shown above the catalogue. */
+  resultsBand: ResultsBandVM | null;
+  /** Words for a scheduled sale whose lots are not online yet. */
+  preparing: CataloguePreparingVM | null;
   /** Sale is selling on ATG: the page is a read-only catalogue that links out to bid. */
   atgReadOnly: boolean;
   /** Sale status for badges and timers; ATG-owned drafts read as upcoming, live or ended. */
@@ -181,13 +206,6 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
         totalLots: lotsPage.total,
       })
     : null;
-  const endedSaleSummary =
-    bundle.sale.status === "ended"
-      ? computeEndedSaleSummary(bundle.sale, lotsPage.items, {
-          loadedCount: lotsPage.items.length,
-          totalLots: lotsPage.total,
-        })
-      : null;
   const coverBlurDataURL = bundle.sale.coverImageAssets?.[0]?.blurDataURL ?? null;
 
   const heroVM = mapSaleToHeroVM(displaySale, {
@@ -208,7 +226,6 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
   const overviewVM = mapSaleToOverviewVM(bundle.sale, {
     categoryLabel,
     categoryLabels,
-    ...(endedSaleSummary ? { endedSaleSummary } : {}),
   });
 
   const preservedQuery: Array<[string, string]> = [["view", layoutView]];
@@ -233,6 +250,18 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
       ...(atgState ? { atgState } : {}),
     }),
   );
+
+  const withdrawnRows = withdrawnRowsFor(lotsPage.withdrawn, {
+    statusFilter: query.statusFilter,
+    catalogSearch: query.catalogSearch,
+  });
+  const catalogueRows = mergeCatalogueRows(lotVMs, withdrawnRows, query.catalogSort);
+  const shownCount = catalogueRows.length;
+  const pageState = resolveSalePageState({
+    status: bundle.sale.status,
+    lotCount: lotsPage.total,
+  });
+  const resultsBand = buildResultsBand(shell.resultsSummary, lotsPage.items);
 
   const viewer = resolveViewerParticipation(session);
   const isAuthenticated = viewer.isAuthenticated;
@@ -282,9 +311,9 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
     query.isCatalogLoadAll && lotsPage.total > SALE_CATALOG_LOAD_ALL_CAP;
 
   const catalogEmptyMessage =
-    query.catalogSearch && lotVMs.length === 0
+    query.catalogSearch && shownCount === 0
       ? `No lots match “${query.catalogSearch}”.`
-      : query.statusFilter && lotVMs.length === 0
+      : query.statusFilter && shownCount === 0
         ? `No ${query.statusFilter} lots match these filters.`
         : "No lots in this section yet.";
 
@@ -329,11 +358,11 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
   }));
 
   const countLabel = catalogSearchFilterCapped
-    ? hasCatalogNarrowing && lotVMs.length !== lotsPage.items.length
-      ? `${lotVMs.length} matching · first ${SALE_CATALOG_LOAD_ALL_CAP} of ${lotsPage.total} lots`
+    ? hasCatalogNarrowing && shownCount !== lotsPage.items.length + lotsPage.withdrawn.length
+      ? `${shownCount} matching · first ${SALE_CATALOG_LOAD_ALL_CAP} of ${lotsPage.total} lots`
       : `First ${SALE_CATALOG_LOAD_ALL_CAP} of ${lotsPage.total} lots`
-    : hasCatalogNarrowing && lotVMs.length !== lotsPage.total
-      ? `${lotVMs.length} matching · ${lotsPage.total} in sale`
+    : hasCatalogNarrowing && shownCount !== lotsPage.total
+      ? `${shownCount} matching · ${lotsPage.total} in sale`
       : `${lotsPage.total} lots`;
 
   return {
@@ -352,6 +381,11 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
     showPressSection,
     overviewVM,
     lotVMs,
+    catalogueRows,
+    pageState,
+    controls: catalogueControls(lotsPage.total),
+    resultsBand,
+    preparing: pageState === "preparing" ? cataloguePreparingCopy(bundle.sale, now) : null,
     atgReadOnly: atgState != null,
     displayStatus: displaySale.status,
     canParticipate: viewer.canParticipateAsBuyer && !atgState,
@@ -363,7 +397,7 @@ export function buildSaleroomPageVM(input: BuildSaleroomPageVMInput): SaleroomDe
     catalogSearchFilterCapped,
     hasCatalogNarrowing,
     countLabel,
-    resultCountLabel: lotVMs.length === 1 ? "Show 1 lot" : `Show ${lotVMs.length} lots`,
+    resultCountLabel: shownCount === 1 ? "Show 1 lot" : `Show ${shownCount} lots`,
     calendarBackHref,
     locationLine,
     directionsUrl,
