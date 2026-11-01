@@ -143,6 +143,22 @@ export function CoverSlideView({
     : undefined;
   const settles = coverSettles(media);
   const [playing, setPlaying] = useState(false);
+  const creditNode = slide.credit ? (
+    slide.credit.href ? (
+      <TextLink
+        href={slide.credit.href}
+        {...(Link ? { Link } : {})}
+        className={cn(
+          "inline max-w-full truncate text-xs font-normal leading-4 text-inherit",
+          onImage && ON_IMAGE_FOCUS[onImage],
+        )}
+      >
+        {slide.credit.text}
+      </TextLink>
+    ) : (
+      slide.credit.text
+    )
+  ) : null;
 
   return (
     <div
@@ -177,7 +193,12 @@ export function CoverSlideView({
             {ground.mode === "photo" ? (
               <CoverPhoto media={ground.media} priority={priority} onFail={onMediaFail} />
             ) : (
-              <CoverPlate media={ground.media} priority={priority} onFail={onMediaFail} />
+              <CoverPlate
+                media={ground.media}
+                credit={creditNode}
+                priority={priority}
+                onFail={onMediaFail}
+              />
             )}
           </div>
           {ground.mode === "photo" ? <Scrims scrims={ground.scrims} side={side} /> : null}
@@ -197,23 +218,14 @@ export function CoverSlideView({
           className={cn(
             "relative min-w-0 truncate px-4 pt-3 font-body text-xs leading-4 text-on-surface-variant",
             "md:absolute md:bottom-6 md:max-w-[520px] md:p-0 md:text-[color:var(--cover-credit)]",
-            onImage ? (textLeft ? "md:right-10" : "md:left-10") : "md:hidden",
+            onImage && ground.mode === "photo"
+              ? textLeft
+                ? "md:right-10"
+                : "md:left-10"
+              : "md:hidden",
           )}
         >
-          {slide.credit.href ? (
-            <TextLink
-              href={slide.credit.href}
-              {...(Link ? { Link } : {})}
-              className={cn(
-                "inline max-w-full truncate text-xs font-normal leading-4 text-inherit",
-                onImage && ON_IMAGE_FOCUS[onImage],
-              )}
-            >
-              {slide.credit.text}
-            </TextLink>
-          ) : (
-            slide.credit.text
-          )}
+          {creditNode}
         </p>
       ) : null}
 
